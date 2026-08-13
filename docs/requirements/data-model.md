@@ -398,8 +398,9 @@ Prod está **sin medir**. Ver issue #609.
 **`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
 `20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
 2026-08-12** contra `information_schema.column_privileges`). Marca que ya se trajo la obra
-COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o
-`/authors/{key}/works.json` de Open Library—. Con valor, la ficha de persona no vuelve a
+COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o dos
+pasadas de `search.json` de Open Library por `author_key` (`lang=es` y `lang=en`, normalizadas
+por `normalizeAuthorWorks`)—. Con valor, la ficha de persona no vuelve a
 llamar a la API: sirve `credits` y punto.
 
 Lleva **`grant update (credits_hydrated_at) on people to authenticated`** en la misma

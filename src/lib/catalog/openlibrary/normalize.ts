@@ -79,7 +79,7 @@ export type NormalizedWork = {
 // «The Underland Chronicles 5 Volume Set».
 //
 // `collection` NO está en la lista a propósito: es el único patrón con riesgo
-// real de tragarse un libro legítimo. Los siete que quedan son inequívocos, y
+// real de tragarse un libro legítimo. Los ocho que quedan son inequívocos, y
 // el precio asumido es que un libro que se llame «Omnibus» caería.
 const OMNIBUS_PATTERNS = [
   "box set",
@@ -155,9 +155,18 @@ export function normalizeAuthorWorks(
     const { doc } = entry;
     const workTitle = doc.title as string;
 
-    // 2. Idioma: fuera lo que no tenga ninguna edición en español ni inglés.
-    //    Se lleva los tres «Dena sutan» en euskera y los registros fantasma,
-    //    que no traen idiomas porque no tienen ediciones.
+    // 2. Idioma: fuera lo que no tenga ninguna edición en español ni inglés —
+    //    y fuera también lo que no traiga el campo `language` en absoluto.
+    //    Esto último no es un caso raro ni exclusivo de registros fantasma sin
+    //    ediciones: Open Library omite `language` en aproximadamente uno de
+    //    cada diez docs (5/25 en Collins, 5/86 en Shusterman), a veces en
+    //    obras con ediciones reales — así se pierde «Courage to Dream» de
+    //    Shusterman (`edition_count: 2`), que solo sobrevive en la lista
+    //    final porque un SEGUNDO registro más débil de la misma obra sí trae
+    //    `language`. Se acepta el precio porque la alternativa es peor:
+    //    admitir los `language` ausentes readmitiría dos de los tres «Dena
+    //    sutan» en euskera, que es justo el caso para el que existe este
+    //    filtro.
     const languages = doc.language ?? [];
     if (!languages.includes("spa") && !languages.includes("eng")) continue;
 

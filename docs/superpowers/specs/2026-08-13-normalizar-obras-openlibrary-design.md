@@ -188,7 +188,14 @@ porque sin ediciones no tiene ningún idioma. La desduplicación entre idiomas s
   la edición. No se corrige: normalizar mayúsculas rompe siglas y nombres propios.
 - **Obras sin edición en español ni inglés se pierden enteras**, no solo su título. Es el
   precio del filtro de idioma y es deliberado.
-- **El filtro de omnibus es una heurística de título.** Sin `collection`, los seis patrones que
+- **El filtro de idioma también descarta por falta de dato, no solo por idioma real.** Open
+  Library omite el campo `language` en aproximadamente uno de cada diez docs (5/25 en Collins,
+  5/86 en Shusterman), y no solo en registros fantasma sin ediciones: se lleva por delante
+  «Courage to Dream» de Shusterman (`edition_count: 2`), que solo sobrevive en la lista final
+  porque un segundo registro más débil de la misma obra sí trae `language`. Se acepta el precio
+  porque admitir los `language` ausentes readmitiría dos de los tres «Dena sutan» en euskera,
+  el caso para el que existe el filtro.
+- **El filtro de omnibus es una heurística de título.** Sin `collection`, los ocho patrones que
   quedan son inequívocos, pero un libro real llamado «Omnibus» caería.
 - **La desduplicación no ve dos registros del mismo libro que no compartan ningún título** en
   ninguno de los dos idiomas. No se ha observado ninguno, pero el mecanismo no lo garantiza.

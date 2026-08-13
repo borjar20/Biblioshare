@@ -55,6 +55,22 @@ export async function fetchAuthorWorks(authorKey: string): Promise<NormalizedWor
   try {
     // En paralelo: son independientes y así la ficha no espera el doble.
     const [docsEs, docsEn] = await Promise.all([fetchPass(key, "es"), fetchPass(key, "en")]);
+
+    // Las dos pasadas cubren las MISMAS obras del autor y solo difieren en qué
+    // edición sacan a relucir (`editions.docs[0]`): comparadas clave a clave
+    // contra los fixtures reales de Collins y Shusterman, ninguna obra es
+    // exclusiva de una pasada. Así que si UNA vuelve con cero docs y la otra
+    // no, no es que el autor tenga menos obras en ese idioma — es una
+    // respuesta a medias de Open Library (recortes bajo carga ya medidos en
+    // esta misma sesión: 39/37/34/33 obras en cuatro llamadas idénticas).
+    // Escribirla igual crearía cada libro con el título y el orden del idioma
+    // que sí contestó, y `hydratePersonCredits` marca `credits_hydrated_at`
+    // sin volver a mirar nunca: el estropicio quedaría congelado para
+    // siempre. Las DOS vacías sí es legítimo — un autor sin obras — y debe
+    // seguir devolviendo `[]` sin más.
+    const unaSolaPasadaVacia = (docsEs.length === 0) !== (docsEn.length === 0);
+    if (unaSolaPasadaVacia) return [];
+
     return normalizeAuthorWorks(docsEs, docsEn);
   } catch (error) {
     console.error("fetchAuthorWorks failed", { authorKey, error });

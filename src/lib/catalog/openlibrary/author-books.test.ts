@@ -89,6 +89,47 @@ describe("fetchAuthorWorks", () => {
     await expect(fetchAuthorWorks("OL1A")).resolves.toEqual([]);
   });
 
+  it("si la pasada ES vuelve vacía y la EN no, no escribe nada (respuesta a medias)", async () => {
+    stubTwoPasses(
+      [],
+      [
+        {
+          key: "/works/OL1W",
+          title: "The Hunger Games",
+          language: ["eng", "spa"],
+          edition_count: 142,
+          first_publish_year: 2008,
+          cover_i: 111,
+          editions: { docs: [{ title: "The Hunger Games", language: ["eng"] }] },
+        },
+      ]
+    );
+    await expect(fetchAuthorWorks("OL1394359A")).resolves.toEqual([]);
+  });
+
+  it("si la pasada EN vuelve vacía y la ES no, no escribe nada (respuesta a medias)", async () => {
+    stubTwoPasses(
+      [
+        {
+          key: "/works/OL1W",
+          title: "The Hunger Games",
+          language: ["eng", "spa"],
+          edition_count: 142,
+          first_publish_year: 2008,
+          cover_i: 111,
+          editions: { docs: [{ title: "Los juegos del hambre", language: ["spa"] }] },
+        },
+      ],
+      []
+    );
+    await expect(fetchAuthorWorks("OL1394359A")).resolves.toEqual([]);
+  });
+
+  it("si las DOS pasadas vuelven vacías, es un autor legítimo sin obras, no un error", async () => {
+    stubTwoPasses([], []);
+    await expect(fetchAuthorWorks("OL1394359A")).resolves.toEqual([]);
+  });
+
   it(
     "lanza las dos pasadas a la vez, no una detrás de otra",
     { timeout: 2000 },
