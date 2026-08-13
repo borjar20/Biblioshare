@@ -89,7 +89,7 @@ export async function setEpisodeWatched(
     await markEpisodeWatched(supabase, user.id, seriesId, passId, season, episode);
     // Marcar un episodio no avisa a nadie: el aviso lo emitiría un post
     // kind='watched', y hoy NADIE crea posts de ese kind (no existe «compartir
-    // episodio»). Ver spec 2026-08-13 §8.2 (docs/superpowers/specs/2026-08-13-avisos-de-seguidores-desde-el-post-design.md).
+    // episodio»). Ver issue #626 (github.com/borjar20/Biblioshare).
   } else {
     const { error } = await supabase
       .from("episode_watches")
