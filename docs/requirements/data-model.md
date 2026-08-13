@@ -17,7 +17,7 @@ comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y 
 servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
 argumentos, en dev y en prod; **tanda de seguridad del 2026-07-29 (issues #130, #176, #133)
 aplicada y verificada en dev Y EN PROD** — cuatro migraciones (`20260808`…`20260811`), ninguna
-toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` (§8),
+toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` en esa tanda (§8; **desactualizado, ver el detalle en §8: a 2026-08-13 son 69 funciones, 62 con `pg_temp`**),
 `save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
 defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
 `list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
@@ -272,6 +272,18 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > `20260831_club_activity_role_gate_first.sql` (issue #129) ya había corregido en otras cuatro
 > RPC de esta misma tabla. Corregido y verificado en los dos entornos: los tres casos del
 > sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
+
+> **Delta del 2026-08-13 (desmarcar un hito, y el gate de `confirm_checkpoint`
+> reordenado, §6): aplicado y verificado en DEV y en PRODUCCIÓN**, contra `pg_proc`, nunca
+> contra `list_migrations`. Migración `20260855_unconfirm_checkpoint.sql`: nueva RPC
+> `unconfirm_checkpoint(uuid)`, simétrica a `confirm_checkpoint` (desmarca el hito N y los
+> posteriores, donde confirmar auto-confirma 1..N), gate de participante comprobado
+> PRIMERO, no mira el estado de la actividad a propósito. Y `confirm_checkpoint` cambia de
+> ORDEN, no de efecto: su gate de participante pasa también a ir primero (issue #129, misma
+> fuga de INFO que corrigió `20260831_club_activity_role_gate_first.sql` en otras cuatro
+> RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
+> columnas, tablas ni cambios de grants. Las dos con `search_path = public, pg_temp`, como
+> manda la plantilla. Detalle en §6.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -969,6 +981,50 @@ visual opcional**: `{}` = hito sin pista, y la app ya no compara posiciones
 (`hasReachedPosition` eliminada de `src/lib/library/position.ts`). El spoiler guard del
 chat no cambia: `can_view_target('activity_checkpoint', …)` sigue exigiendo
 `is_activity_participant` **y** `has_reached_checkpoint`.
+
+### Desmarcar un hito, y el gate de `confirm_checkpoint` reordenado (DEV Y PROD, 2026-08-13)
+
+`unconfirm_checkpoint(uuid)`, nueva RPC, SECURITY DEFINER, único camino de borrado de
+`club_activity_checkpoint_reads` (la tabla no tiene política de escritura de cliente, a
+propósito — `20260713_activity_checkpoints.sql`). Simétrica a `confirm_checkpoint`: donde
+confirmar el hito N auto-confirma 1..N, desmarcar el hito N desmarca N..último —
+`delete ... where c."order" >= v_order and r.user_id = auth.uid()`. El invariante que
+sostiene la simetría: el progreso de cada participante es siempre un tramo CONTINUO desde
+el principio; permitir huecos daría estados sin sentido («llegué al 5 pero no al 2») que
+además no cambiarían ningún número, porque el tablero de grupo mide por el hito más alto
+alcanzado. Solo borra filas del llamante (`r.user_id = auth.uid()`), nunca las de otro
+participante. Idempotente: desmarcar dos veces seguidas no falla, la segunda borra cero
+filas.
+
+Gate: ser participante (`is_activity_participant`), comprobado PRIMERO — igual que las
+cuatro RPC que corrigió `20260831_club_activity_role_gate_first.sql` (issue #129). **No
+mira el estado de la actividad**, igual que su gemela `confirm_checkpoint`: la asimetría
+sería peor que la permisividad — si puedes marcar un hito en una actividad ya finalizada,
+tienes que poder desmarcarlo. Dos códigos: `forbidden` (no participante, o hito
+inexistente — con `p_checkpoint_id` que no existe, `v_activity_id` es null y el gate ya da
+`false`) y `not_found` (guarda defensiva, inalcanzable con el gate delante; se conserva por
+coherencia con las otras cuatro).
+
+`confirm_checkpoint` cambia de orden, no de efecto: comprobaba `not found` ANTES que el
+permiso, así que un uuid de hito ajeno revelaba su existencia a quien no participa en esa
+actividad — la misma fuga de INFO que #129 cerró en cuatro RPC de `club_activities`. El
+gate de participante pasa a ir primero; la cascada 1..N (el cuerpo) **no cambia**. El
+código de error se normaliza: `'not found'` → `'not_found'`, para que las dos gemelas
+hablen igual.
+
+Migración `20260855_unconfirm_checkpoint.sql`, **aplicada y verificada en DEV y en
+PRODUCCIÓN** (2026-08-13). La misma batería en los dos entornos, sembrando dentro de un
+bloque que siempre aborta para no dejar basura —comprobado después con un SELECT que no
+quedaba ninguna fila—: confirmar el 5º hito crea 5 filas; desmarcar el 3º deja 2;
+desmarcar dos veces no falla; los CUATRO casos de alguien ajeno al club dan `forbidden` —
+incluido `confirm_checkpoint` sobre un uuid inexistente, que antes daba `not found`; y con
+dos participantes, desmarcar uno deja al otro intacto (0 y 3 filas).
+
+**Antes de reemplazar `confirm_checkpoint` se leyó su cuerpo vivo en cada entorno** y se
+confirmó que era el de `20260827` en los dos: prod no iba por detrás del repo, así que el
+`create or replace` solo reordenó las comprobaciones y añadió `pg_temp`, sin cambiar qué
+escribe. Es la comprobación que evita dejar atrasada una función que ya había avanzado por
+otra vía.
 
 ### `evento` — actividad no participativa (dev y prod, 2026-07-22)
 
@@ -2648,7 +2704,8 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
   `save_saga_sequence` (§7.5/§7.6), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
-  `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`. Los advisors los marcan
+  `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`,
+  `unconfirm_checkpoint`. Los advisors los marcan
   como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` estuvo en esta lista
   hasta la fase 3: dejó de tener llamador en la app cuando la fase 2a retiró su editor (§7.5), y una
   vez la fase 3 derivó el mapa de la curación (§7.7) tampoco quedaba ya ningún lector del grafo que la
@@ -2659,12 +2716,18 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
   explícitamente en la lista; con `set search_path = public` a secas, quien pueda crear una
   tabla o un tipo temporal con el nombre de algo que la función referencie sin cualificar la
   secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda. **Estado medido en
-  los dos entornos: 55 funciones `SECURITY DEFINER`, 55 con `pg_temp`.** Tres
+  dev el 2026-08-13: 69 funciones `SECURITY DEFINER`, 62 con `pg_temp`.** El número de
+  55/55 de 2026-07-29 quedó desactualizado por funciones nuevas de otras ramas, no por una
+  regresión de esta migración. Faltan 7, todas deuda de otras ramas (ninguna de esta rama):
+  `archive_club_activity`, `pin_comment`, `ensure_club_round`, `get_club_round_state`,
+  `pull_pending_celebrations`, `get_activities_progress`, `update_activity_details`. Tres
   (`approve_club_join_request`, `club_is_private`, `notify_club_join_request`) conservan su
   `search_path` vacío — más estricto — y quedaron como `"", pg_temp`; la migración preserva
   el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
   `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
-  pg_temp`, pero si alguna se escapa, volver a correr la migración la arregla.
+  pg_temp`, pero si alguna se escapa, **el arreglo es re-ejecutar
+  `20260808_secdef_search_path_pg_temp.sql`** (idempotente) para que las 7 pendientes queden
+  cubiertas también.
 - **Helpers privados de Social fases 0/1**: las funciones `SECURITY DEFINER` nuevas viven en el
   esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
   Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
