@@ -2745,6 +2745,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_activities_progress: {
+        Args: { p_activity_ids: string[] }
+        Returns: {
+          activity_id: string
+          collective_done: number
+          collective_total: number
+          kind: string
+          participants: number
+          viewer_done: number
+          viewer_total: number
+        }[]
+      }
       get_activity_diary_passes: {
         Args: { p_activity_id: string }
         Returns: {

@@ -1,0 +1,91 @@
+import { describe, expect, it } from "vitest";
+import { describeProgress } from "./kind-metrics";
+import type { ActivityProgress } from "./progress";
+
+// Traductor de mentira: devuelve la clave y los valores, así el test comprueba
+// QUÉ clave se elige sin depender del texto de messages/es.json.
+const t = (key: string, values?: Record<string, unknown>) =>
+  values ? `${key}(${Object.values(values).join(",")})` : key;
+
+const prog = (over: Partial<ActivityProgress> = {}): ActivityProgress => ({
+  collective: { done: 3, total: 5 },
+  viewer: { done: 4, total: 5 },
+  participants: 6,
+  ...over,
+});
+
+describe("describeProgress", () => {
+  it("buddy_read cuenta hitos", () => {
+    const labels = describeProgress("buddy_read", prog(), t);
+    expect(labels.collectiveLabel).toBe("metricCheckpoints(3,5)");
+    expect(labels.viewerLabel).toBe("metricCheckpoints(4,5)");
+    expect(labels.collectivePercent).toBe(60);
+    expect(labels.viewerPercent).toBe(80);
+  });
+
+  it("list_challenge cuenta ítems completados", () => {
+    expect(describeProgress("list_challenge", prog(), t).collectiveLabel).toBe(
+      "metricCompleted(3,5)",
+    );
+  });
+
+  it("criteria_challenge cuenta conseguidos", () => {
+    expect(describeProgress("criteria_challenge", prog(), t).collectiveLabel).toBe(
+      "metricAchieved(3,5)",
+    );
+  });
+
+  it("tierlist cuenta votantes, no ítems", () => {
+    const labels = describeProgress("tierlist", prog({ collective: { done: 4, total: 6 } }), t);
+    expect(labels.collectiveLabel).toBe("metricVoted(4,6)");
+    // 4/6 = 66.66…: fija el redondeo, que es donde se cuela un floor por descuido.
+    expect(labels.collectivePercent).toBe(67);
+  });
+
+  // La RPC fija viewer_total=1 SIEMPRE en tierlist: reusar la clave colectiva
+  // aquí producía "0 de 1 han votado", que no es castellano. La fila del
+  // viewer es un sí/no, nunca una fracción (spec §6.4).
+  it("tierlist: la fila del viewer es sí/no, no una fracción", () => {
+    const votó = describeProgress("tierlist", prog({ viewer: { done: 1, total: 1 } }), t);
+    expect(votó.viewerLabel).toBe("metricVotedSelf(yes)");
+    // Sin barra: no hay porcentaje que pintar de un booleano.
+    expect(votó.viewerPercent).toBeNull();
+
+    const noVotó = describeProgress("tierlist", prog({ viewer: { done: 0, total: 1 } }), t);
+    expect(noVotó.viewerLabel).toBe("metricVotedSelf(no)");
+  });
+
+  it("tierlist: sin fila de viewer (no participa), sin sí/no", () => {
+    const labels = describeProgress("tierlist", prog({ viewer: null }), t);
+    expect(labels.viewerLabel).toBeNull();
+    expect(labels.viewerPercent).toBeNull();
+  });
+
+  it("sin denominador NO hay barra: nada de un 0% que parece progreso", () => {
+    const labels = describeProgress("buddy_read", prog({ collective: null }), t);
+    expect(labels.collectiveLabel).toBeNull();
+    expect(labels.collectivePercent).toBeNull();
+  });
+
+  it("quien no participa no tiene barra propia: ni etiqueta ni porcentaje", () => {
+    const labels = describeProgress("buddy_read", prog({ viewer: null }), t);
+    expect(labels.viewerLabel).toBeNull();
+    expect(labels.viewerPercent).toBeNull();
+    // Y lo colectivo sigue ahí: no participar no te quita ver cómo va el grupo.
+    expect(labels.collectiveLabel).toBe("metricCheckpoints(3,5)");
+  });
+
+  it("sin progreso cargado devuelve LOS CUATRO campos a null, sin reventar", () => {
+    const labels = describeProgress("buddy_read", undefined, t);
+    expect(labels).toEqual({
+      collectiveLabel: null,
+      viewerLabel: null,
+      collectivePercent: null,
+      viewerPercent: null,
+    });
+  });
+
+  it("un evento no tiene métrica: nunca llega a esta tarjeta, pero no debe romper", () => {
+    expect(describeProgress("evento", prog(), t).collectiveLabel).toBeNull();
+  });
+});
