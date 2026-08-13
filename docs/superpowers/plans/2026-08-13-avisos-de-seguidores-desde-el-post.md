@@ -336,7 +336,9 @@ git commit -m "feat(social): tipos de aviso followed_started/dropped/thought"
 
 ## Task 3: `notifyFollowersOfPost` junto al viejo (sin enganchar)
 
-Se añade el fan-out nuevo **sin borrar el viejo ni tocar ningún llamante**. El árbol queda verde y con las dos implementaciones vivas; la Task 4 hace el cambio de una vez.
+Se añade el fan-out nuevo **sin borrar el viejo ni tocar ningún llamante**. La Task 4 hace el cambio de una vez.
+
+> **El árbol queda ROJO al terminar esta tarea, y es inevitable.** Lo escribí al revés en la primera versión del plan y el implementador lo destapó. `NotifyCategory` cambia de dominio conservando el nombre (4 valores por hecho → 3 por naturaleza del post), así que todo el que pase un literal viejo deja de compilar: `notify-bell.tsx` y las tres server actions (`sessions/actions.ts`, `passes/actions.ts`, `episode-actions.ts`), más el `notifyFollowersOfEvent` que esta tarea tiene prohibido tocar. Son exactamente los ficheros que arregla la Task 4. **Las tareas 3 y 4 se revisan JUNTAS**: por separado, la 3 no se puede juzgar contra un árbol que compile.
 
 **Files:**
 - Create: `src/lib/social/post-kinds.ts`
@@ -744,13 +746,22 @@ fnm use 22 && npx vitest run src/lib/social/notify-followers.test.ts src/lib/soc
 
 Esperado: PASS. Los tests viejos de `notifyFollowersOfEvent` siguen ahí y siguen verdes — el viejo no se ha tocado.
 
-- [ ] **Step 11: Verificar que el árbol entero compila**
+- [ ] **Step 11: Comprobar que lo ROTO es exactamente lo que se espera**
 
 ```bash
 fnm use 22 && npx tsc --noEmit
 ```
 
-Esperado: cero errores.
+Esperado: **NO compila**, y ese es el estado correcto al acabar esta tarea. Lo que debes confirmar es que los errores caen **solo** en estos ficheros, todos ellos por pasar un literal del vocabulario viejo a `NotifyCategory`:
+
+- `src/components/social/notify-bell.tsx`
+- `src/lib/sessions/actions.ts`
+- `src/lib/passes/actions.ts`
+- `src/lib/series/episode-actions.ts`
+- `src/lib/social/notify-followers.ts` (el `notifyFollowersOfEvent` viejo, que esta tarea no toca)
+- `src/lib/social/notify-followers.test.ts` (el `describe` viejo)
+
+Un error en cualquier OTRO fichero sí es tuyo: párate y repórtalo. Los seis de arriba los cierra la Task 4, y por eso las dos se revisan juntas.
 
 - [ ] **Step 12: Commit**
 
