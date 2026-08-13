@@ -308,9 +308,16 @@ describe("normalizeAuthorWorks · recuentos", () => {
     expect(collins).toHaveLength(14);
   });
 
-  it("Shusterman pasa de 86 entradas crudas a 67 obras", () => {
+  it("Shusterman pasa de 86 entradas crudas a 68 obras", () => {
     expect(shustermanEs.docs).toHaveLength(86);
-    expect(shusterman).toHaveLength(67);
+    expect(shusterman).toHaveLength(68);
+  });
+
+  it("sin `collection` entre los patrones, sobrevive «The Unwind Collection»", () => {
+    // El precio exacto de haber quitado ese patrón: es el único estuche que
+    // pasa el filtro en las 111 obras probadas. Se documenta aquí para que la
+    // próxima persona no lo lea como un fallo.
+    expect(titulos(shusterman)).toContain("The Unwind Collection");
   });
 
   it("todas las obras salen con año, que es el fallo que originó esto", () => {
@@ -573,9 +580,9 @@ export function normalizeAuthorWorks(
 npx vitest run src/lib/catalog/openlibrary/normalize.test.ts
 ```
 
-Expected: PASS, 20 tests.
+Expected: PASS, 21 tests.
 
-⚠️ Si los recuentos de 14 y 67 no salen, **no toques los números del test para que pase**. Imprime la lista y averigua qué regla sobra o falta:
+⚠️ Si los recuentos de 14 y 68 no salen, **no toques los números del test para que pase**. Imprime la lista y averigua qué regla sobra o falta:
 
 ```bash
 npx tsx -e "import('./src/lib/catalog/openlibrary/normalize.ts').then(async (m) => { const es = require('./src/lib/catalog/openlibrary/__fixtures__/collins-es.json'); const en = require('./src/lib/catalog/openlibrary/__fixtures__/collins-en.json'); console.log(m.normalizeAuthorWorks(es.docs, en.docs).map(o => o.year + ' ' + o.title).join('\n')); })"
@@ -991,7 +998,7 @@ git commit -m "fix(people): la bibliografia de un autor ya no nace sin anio ni p
 Añade **al final** de la tabla de `docs/requirements/decisiones.md`, sin reescribir ninguna fila anterior:
 
 ```
-| 2026-08-13 | **La bibliografía de un autor se pide a `search.json`, no al volcado de `/authors/<key>/works.json`** | El endpoint viejo no daba orden, ni `edition_count`, ni fecha en más de la mitad de las entradas: en dev metió 112 libros con el 87% sin año, estuches, tres registros del mismo `Dread locks` y obras fantasma sin ninguna edición. Producción estaba limpia porque sus libros vinieron de la búsqueda. Dos pasadas de `search.json` (`lang=es` y `lang=en`) traen año, portada, idiomas, conteo de ediciones y el título de la mejor edición en cada idioma, sin llamadas extra. Sobre eso, cinco reglas: el título sale de la edición española, si no de la inglesa, si no de la obra —descartando el de la edición cuando pierde información, para no dejar «Gregor and the Code of Claw» en «Gregor»—; fuera lo que no tenga edición en español ni inglés; fuera estuches y omnibus por título; y dos obras son la misma si sus títulos candidatos se cruzan, que es lo que une «Amanecer de la Cosecha» con «Sunrise on the Reaping» —dos works del mismo libro en idiomas distintos— y los tres registros de «Dread locks» de Shusterman entre sí. Collins pasa de 25 entradas a 14 obras y Shusterman de 86 a 67, todas con año. **Sin umbral de ediciones a propósito**: se llevaría por delante las novedades reales, que es lo que más interesa. **`collection` fuera de los patrones de omnibus**: es el único con riesgo de tragarse un libro legítimo; el precio es que un libro llamado «Omnibus» caería. Que la bibliografía deje de CREAR filas de catálogo es otro proyecto, y limpiar lo ya contaminado también. |
+| 2026-08-13 | **La bibliografía de un autor se pide a `search.json`, no al volcado de `/authors/<key>/works.json`** | El endpoint viejo no daba orden, ni `edition_count`, ni fecha en más de la mitad de las entradas: en dev metió 112 libros con el 87% sin año, estuches, tres registros del mismo `Dread locks` y obras fantasma sin ninguna edición. Producción estaba limpia porque sus libros vinieron de la búsqueda. Dos pasadas de `search.json` (`lang=es` y `lang=en`) traen año, portada, idiomas, conteo de ediciones y el título de la mejor edición en cada idioma, sin llamadas extra. Sobre eso, cinco reglas: el título sale de la edición española, si no de la inglesa, si no de la obra —descartando el de la edición cuando pierde información, para no dejar «Gregor and the Code of Claw» en «Gregor»—; fuera lo que no tenga edición en español ni inglés; fuera estuches y omnibus por título; y dos obras son la misma si sus títulos candidatos se cruzan, que es lo que une «Amanecer de la Cosecha» con «Sunrise on the Reaping» —dos works del mismo libro en idiomas distintos— y los tres registros de «Dread locks» de Shusterman entre sí. Collins pasa de 25 entradas a 14 obras y Shusterman de 86 a 68, todas con año. **Sin umbral de ediciones a propósito**: se llevaría por delante las novedades reales, que es lo que más interesa. **`collection` fuera de los patrones de omnibus**: es el único con riesgo de tragarse un libro legítimo. Medido, el precio de quitarlo es exactamente una obra en las 111 probadas —«The Unwind Collection», un estuche que ahora sobrevive—, y a cambio ningún libro real cae. Que la bibliografía deje de CREAR filas de catálogo es otro proyecto, y limpiar lo ya contaminado también. |
 ```
 
 - [ ] **Step 2: Commit**

@@ -160,7 +160,7 @@ Con las reglas completas, sobre datos reales del 2026-08-13:
 | Autor | Antes | Después |
 |---|---|---|
 | Suzanne Collins | 25 entradas, 24 sin año | **14 obras, todas con año** |
-| Neal Shusterman | 86 entradas, 83 sin año | **67 obras, todas con año** |
+| Neal Shusterman | 86 entradas, 83 sin año | **68 obras, todas con año** |
 
 ```
 142ed 2008  Los juegos del hambre          21ed 2016  Scythe
@@ -215,7 +215,11 @@ públicos de Open Library, idénticos para anónimo, dueño y tercero; no toca `
 
 - **Vitest sobre `normalizarObras`**, con las respuestas reales de Collins (`OL1394359A`) y
   Shusterman (`OL234454A`) capturadas hoy como fixtures. Al ser fixtures congelados, los
-  recuentos son estables aunque Open Library cambie: 25 → 14 y 86 → 67.
+  recuentos son estables aunque Open Library cambie: 25 → 14 y 86 → 68.
+
+  **Medido después de quitar `collection`:** el número de Shusterman es 68 y no 67 porque
+  «The Unwind Collection» sobrevive al filtro. Es el único estuche que pasa en las 111 obras
+  probadas, y el precio exacto de esa decisión. Lleva su propio test para que quede escrito.
 - Casos concretos por regla: `Fatta Eld` se titula «En llamas»; `Gregor and the Code of Claw`
   **no** se queda en «Gregor»; una obra sin edición española ni inglesa no cuela un título en
   alemán; `Amanecer de la Cosecha` y `Sunrise on the Reaping` colapsan en una; los `Dena sutan`
