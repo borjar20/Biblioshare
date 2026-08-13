@@ -301,7 +301,12 @@ async function BookTabs({
   const [, sagas, editions, activeRow, role, reviewsResult] = await Promise.all([
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
-    ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
+    ensureItemEnriched(supabase, "book", {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      openlibraryWorkKey: book.openlibrary_work_key,
+    }),
     getItemSagas("book", book.id),
     getEditions("book", book.id),
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
