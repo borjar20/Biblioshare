@@ -7,8 +7,14 @@ import { ensureItemEnriched } from "./enrich-item";
 // mapeo de OpenLibrary (eso es de work-authors.test.ts).
 
 type Upserted = Array<Record<string, unknown>>;
+type UpsertCall = { rows: Upserted; options: unknown };
 
-function fakeSupabase(upserted: Upserted) {
+function fakeSupabase(
+  upserted: Upserted,
+  options: { upsertError?: { code: string; message: string } } = {},
+  upsertCalls?: UpsertCall[]
+) {
+  let insertCount = 0;
   return {
     from(table: string) {
       return {
@@ -25,13 +31,20 @@ function fakeSupabase(upserted: Upserted) {
           };
         },
         insert() {
-          return { select: () => ({ single: async () => ({ data: { id: `p-${table}` }, error: null }) }) };
+          insertCount += 1;
+          // Ids DISTINTOS por llamada: el índice único de `credits` hace
+          // imposible que dos autores compartan person_id, y un doble que los
+          // igualara dejaría pasar un fixture que en la realidad no existe.
+          const id = `p-${table}-${insertCount}`;
+          return { select: () => ({ single: async () => ({ data: { id }, error: null }) }) };
         },
         update() {
           return { eq: async () => ({ error: null }) };
         },
-        upsert: async (rows: Upserted) => {
+        upsert: async (rows: Upserted, upsertOptions: unknown) => {
           upserted.push(...rows);
+          upsertCalls?.push({ rows, options: upsertOptions });
+          if (options.upsertError) return { error: options.upsertError };
           return { error: null };
         },
       };
@@ -63,7 +76,8 @@ describe("ensureItemEnriched · libros", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const upserted: Upserted = [];
-    await ensureItemEnriched(fakeSupabase(upserted) as never, "book", {
+    const upsertCalls: UpsertCall[] = [];
+    await ensureItemEnriched(fakeSupabase(upserted, {}, upsertCalls) as never, "book", {
       id: "libro-1",
       title: "El nombre del viento",
       author: "Patrick Rothfuss, Marc Simonetti",
@@ -73,6 +87,77 @@ describe("ensureItemEnriched · libros", () => {
     expect(upserted).toHaveLength(2);
     expect(upserted[0]).toMatchObject({ item_type: "book", role: "author", billing_order: 0 });
     expect(upserted[1]).toMatchObject({ billing_order: 1 });
+    // Dos autores reales tienen dos person_id distintos: si el doble de
+    // `insert` los igualara, este fixture sería imposible en la BD real.
+    expect(upserted[0].person_id).not.toBe(upserted[1].person_id);
+    // `onConflict`/`ignoreDuplicates` son load-bearing: sin ellos, un insert
+    // plano falla ENTERO en cuanto el autor ya está acreditado por la
+    // hidratación de su propia ficha de persona.
+    expect(upsertCalls).toHaveLength(1);
+    expect(upsertCalls[0].options).toEqual({
+      onConflict: "item_type,item_id,person_id,role",
+      ignoreDuplicates: true,
+    });
+  });
+
+  it("si el upsert de créditos falla, lo registra (salvo 42501, visitante anónimo)", async () => {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes("/works/")) {
+        return {
+          ok: true,
+          json: async () => ({ authors: [{ author: { key: "/authors/OL2830895A" } }] }),
+        };
+      }
+      return { ok: true, json: async () => ({ name: "Autor" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const upserted: Upserted = [];
+    await ensureItemEnriched(
+      fakeSupabase(upserted, { upsertError: { code: "23503", message: "fk violation" } }) as never,
+      "book",
+      {
+        id: "libro-error",
+        title: "Con fallo real",
+        author: null,
+        openlibraryWorkKey: "/works/OL1W",
+      }
+    );
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("si el upsert de créditos falla con 42501 (visitante anónimo), no lo registra", async () => {
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes("/works/")) {
+        return {
+          ok: true,
+          json: async () => ({ authors: [{ author: { key: "/authors/OL2830895A" } }] }),
+        };
+      }
+      return { ok: true, json: async () => ({ name: "Autor" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const upserted: Upserted = [];
+    await ensureItemEnriched(
+      fakeSupabase(upserted, { upsertError: { code: "42501", message: "permission denied" } }) as never,
+      "book",
+      {
+        id: "libro-anonimo",
+        title: "Sin permiso",
+        author: null,
+        openlibraryWorkKey: "/works/OL1W",
+      }
+    );
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("sin work key, la resuelve por título y autor y la guarda", async () => {
@@ -83,7 +168,7 @@ describe("ensureItemEnriched · libros", () => {
         return {
           ok: true,
           json: async () => ({
-            docs: [{ key: "/works/OL893414W", author_key: ["OL79034A"] }],
+            docs: [{ key: "/works/OL893414W", title: "Dune", author_key: ["OL79034A"] }],
           }),
         };
       }
@@ -116,6 +201,57 @@ describe("ensureItemEnriched · libros", () => {
     });
 
     expect(updates.some((u) => u.includes("/works/OL893414W"))).toBe(true);
+    expect(upserted).toHaveLength(1);
+  });
+
+  it("sin work key, si el título resuelto NO coincide, usa los autores pero no persiste la work key", async () => {
+    // Guard de la Fix 2: un acierto fuzzy de título no es identidad. Los
+    // autores se aprovechan igual (son útiles aunque la obra sea otra), pero
+    // `books.openlibrary_work_key` —que otras features tratan como verdad—
+    // no se contamina con una obra que no es la que se pidió.
+    const updates: string[] = [];
+    const fetchMock = vi.fn(async (input: unknown) => {
+      const url = String(input);
+      if (url.includes("search.json")) {
+        return {
+          ok: true,
+          json: async () => ({
+            docs: [
+              {
+                key: "/works/OL999W",
+                title: "Un libro completamente distinto",
+                author_key: ["OL79034A"],
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ name: "Frank Herbert" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const upserted: Upserted = [];
+    const supabase = fakeSupabase(upserted);
+    const original = supabase.from;
+    supabase.from = ((table: string) => {
+      const api = original.call(supabase, table);
+      return {
+        ...api,
+        update: (patch: Record<string, unknown>) => {
+          updates.push(JSON.stringify(patch));
+          return { eq: async () => ({ error: null }) };
+        },
+      };
+    }) as typeof supabase.from;
+
+    await ensureItemEnriched(supabase as never, "book", {
+      id: "libro-titulo-distinto",
+      title: "Dune",
+      author: "Frank Herbert",
+      openlibraryWorkKey: null,
+    });
+
+    expect(updates).toHaveLength(0);
     expect(upserted).toHaveLength(1);
   });
 

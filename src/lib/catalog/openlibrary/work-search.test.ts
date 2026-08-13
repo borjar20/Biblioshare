@@ -65,6 +65,7 @@ describe("resolveWorkByTitleAuthor", () => {
     expect(await resolveWorkByTitleAuthor("Dune", "Frank Herbert")).toEqual({
       workKey: "/works/OL893414W",
       authorKeys: ["OL79034A"],
+      titleMatches: true,
     });
   });
 
@@ -107,6 +108,51 @@ describe("resolveWorkByTitleAuthor", () => {
     expect(await resolveWorkByTitleAuthor("Dune", null)).toEqual({
       workKey: "/works/OL893414W",
       authorKeys: [],
+      titleMatches: true,
     });
+  });
+
+  it("titleMatches: true cuando el título coincide salvo mayúsculas, acentos o puntuación", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          docs: [{ key: "/works/OL1W", title: "¡El Aleph!", author_key: [] }],
+        }),
+      })
+    );
+
+    expect(await resolveWorkByTitleAuthor("el aleph", null)).toMatchObject({ titleMatches: true });
+  });
+
+  it("titleMatches: false cuando el resultado es otra obra distinta", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          docs: [{ key: "/works/OL2W", title: "Fundación e Imperio", author_key: [] }],
+        }),
+      })
+    );
+
+    expect(await resolveWorkByTitleAuthor("Fundación", null)).toMatchObject({
+      titleMatches: false,
+    });
+  });
+
+  it("titleMatches: false cuando el doc no trae título", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          docs: [{ key: "/works/OL3W", author_key: [] }],
+        }),
+      })
+    );
+
+    expect(await resolveWorkByTitleAuthor("Dune", null)).toMatchObject({ titleMatches: false });
   });
 });

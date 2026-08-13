@@ -32,8 +32,8 @@ type AuthorWorksResponse = {
 };
 
 // Acepta "OL1A" y "/authors/OL1A": `people.openlibrary_key` guarda la forma
-// corta (findOrCreateBookAuthor hace `.replace("/authors/", "")`), pero no
-// cuesta nada tolerar la larga.
+// corta (findOrCreateBookAuthorByKey, en find-or-create-person.ts, hace
+// `.replace("/authors/", "")`), pero no cuesta nada tolerar la larga.
 function normalizeAuthorKey(key: string): string {
   return key.trim().replace(/^\/?authors\//, "");
 }

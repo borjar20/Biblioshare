@@ -77,12 +77,29 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
   }
 }
 
+// Normaliza un título para comparar: minúsculas, sin marcas diacríticas (NFD +
+// quitar combinantes) y solo letras/dígitos. Deja "El Aleph" y "el-aleph!!"
+// como el mismo valor, que es justo la tolerancia que hace falta para decidir
+// si el primer resultado de una búsqueda fuzzy es de verdad la obra pedida.
+function normalizeTitleForComparison(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
 // Resolución de la OBRA para un libro que no guardó su work key (alta manual,
 // import de CSV, ISBN que no resolvió). Se pide título y autor por separado
 // —no concatenados en `q`— porque los campos dedicados de OL puntúan mucho
 // mejor que la cadena libre, y de ahí sale además `author_key`: la identidad
 // del autor, gratis y sin una segunda llamada.
-export type ResolvedWork = { workKey: string; authorKeys: string[] };
+//
+// `titleMatches` existe porque el primer resultado de una búsqueda fuzzy NO
+// es identidad — el mismo problema de origen que este cambio entero vino a
+// cerrar, solo que ahora en el título en vez del nombre del autor. El
+// llamador decide con esto si el work key es fiable para persistir.
+export type ResolvedWork = { workKey: string; authorKeys: string[]; titleMatches: boolean };
 
 export async function resolveWorkByTitleAuthor(
   title: string,
@@ -108,9 +125,14 @@ export async function resolveWorkByTitleAuthor(
     const doc = (data.docs ?? []).find((d) => d.key);
     if (!doc?.key) return null;
 
+    const titleMatches =
+      typeof doc.title === "string" &&
+      normalizeTitleForComparison(doc.title) === normalizeTitleForComparison(trimmedTitle);
+
     return {
       workKey: doc.key,
       authorKeys: (doc.author_key ?? []).filter((k) => typeof k === "string" && k.length > 0),
+      titleMatches,
     };
   } catch {
     return null;

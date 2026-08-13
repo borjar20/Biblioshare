@@ -25,7 +25,13 @@ function fakeSupabase(options: {
       return {
         select() {
           return {
-            eq(_column: string, value: string) {
+            eq(column: string, value: string) {
+              // La columna importa: el defecto que este test guarda es una
+              // regresión a `.eq("name", …)`. Un doble que filtrara solo por
+              // valor dejaría pasar esa regresión sin que ningún test lo notara.
+              if (column !== "openlibrary_key") {
+                throw new Error(`se esperaba filtrar por "openlibrary_key", se recibió "${column}"`);
+              }
               selectCount += 1;
               const pool = selectCount === 1 ? (options.existing ?? []) : (options.afterRace ?? []);
               const row = pool.find((r) => r.openlibrary_key === value) ?? null;

@@ -144,15 +144,27 @@ export async function ensureItemEnriched(
       } else if (item.title) {
         const resolved = await resolveWorkByTitleAuthor(item.title, item.author ?? null);
         if (resolved) {
+          // Las claves de autor se aprovechan siempre, aunque el título no
+          // case exacto: son útiles hasta de un acierto imperfecto.
           authorKeys = resolved.authorKeys;
-          // 42501 = visitante anónimo, que no tiene UPDATE sobre `books`.
-          // Esperado e inocuo: la guardará el primer visitante con sesión.
-          const { error } = await supabase
-            .from("books")
-            .update({ openlibrary_work_key: resolved.workKey })
-            .eq("id", item.id);
-          if (error && error.code !== "42501") {
-            console.error("book work key update failed", { id: item.id, error });
+
+          // Pero la work key SOLO se persiste si el título coincide. El
+          // principio fundador de este cambio es que un nombre no es
+          // identidad; guardar aquí un acierto fuzzy sin verificar, en una
+          // columna que OTRAS features (ensureBookHydrated: sinopsis,
+          // ediciones) tratan como verdad, colaría ese mismo error de vuelta
+          // por otra puerta — y de forma permanente, porque una vez escrita
+          // ya no se vuelve a resolver.
+          if (resolved.titleMatches) {
+            // 42501 = visitante anónimo, que no tiene UPDATE sobre `books`.
+            // Esperado e inocuo: la guardará el primer visitante con sesión.
+            const { error } = await supabase
+              .from("books")
+              .update({ openlibrary_work_key: resolved.workKey })
+              .eq("id", item.id);
+            if (error && error.code !== "42501") {
+              console.error("book work key update failed", { id: item.id, error });
+            }
           }
         }
       }
@@ -186,11 +198,19 @@ export async function ensureItemEnriched(
 
       // UPSERT y no INSERT: el autor puede estar ya puesto por la hidratación
       // de su ficha de persona.
+      //
+      // 42501 = visitante anónimo, sin INSERT sobre `credits`. Esperado e
+      // inocuo: lo escribirá el primer visitante con sesión. Cualquier otro
+      // error SÍ se registra: esta es la escritura por la que existe todo
+      // este cambio, y antes se descartaba en silencio.
       if (rows.length > 0) {
-        await supabase.from("credits").upsert(rows, {
+        const { error } = await supabase.from("credits").upsert(rows, {
           onConflict: "item_type,item_id,person_id,role",
           ignoreDuplicates: true,
         });
+        if (error && error.code !== "42501") {
+          console.error("book credits upsert failed", { id: item.id, count: rows.length, error });
+        }
       }
       return;
     }
