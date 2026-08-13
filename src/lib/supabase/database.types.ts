@@ -3026,6 +3026,9 @@ export type Database = {
         | "followed_finished"
         | "followed_session"
         | "followed_episode"
+        | "followed_started"
+        | "followed_dropped"
+        | "followed_thought"
         | "followed_added"
         | "club_event_reminder"
         | "club_event_updated"
@@ -3250,6 +3253,9 @@ export const Constants = {
         "followed_finished",
         "followed_session",
         "followed_episode",
+        "followed_started",
+        "followed_dropped",
+        "followed_thought",
         "followed_added",
         "club_event_reminder",
         "club_event_updated",

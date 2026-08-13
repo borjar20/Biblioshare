@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { notifyAdded } from "@/lib/social/notify-followers";
 import type { ItemType } from "@/lib/catalog/types";
 
 // Resultado discriminado (no se lanza: Next borra el mensaje de los Error de
@@ -28,7 +27,6 @@ export async function quickAddToLibrary(
   if (!user) redirect("/login");
 
   const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned");
-  await notifyAdded(supabase, user.id, outcome);
   revalidatePath("/");
   return outcome.kind === "askResume" ? { kind: "askResume" } : { kind: "added" };
 }

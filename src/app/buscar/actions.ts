@@ -6,7 +6,6 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { notifyAdded } from "@/lib/social/notify-followers";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { itemHref } from "@/lib/catalog/item-href";
 import { loginHref } from "@/lib/auth/safe-next";
@@ -78,8 +77,7 @@ export async function addToLibrary(result: SearchResult) {
 
   // Alta = pase activo en planned vía la máquina; si ya estaba en la
   // biblioteca (pase activo existente), la transición es un no-op.
-  const outcome = await applyTransition(supabase, user.id, result.itemType, itemId, "planned");
-  await notifyAdded(supabase, user.id, outcome);
+  await applyTransition(supabase, user.id, result.itemType, itemId, "planned");
 
   revalidatePath("/buscar");
 }
