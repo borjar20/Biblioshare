@@ -260,6 +260,18 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > con el resto de RPC del proyecto**: la función existe precisamente para dar a un miembro
 > autenticado un agregado que la RLS no le dejaría calcular. Lo que importaba era no aparecer
 > bajo `anon_security_definer_function_executable`, y no aparece.
+>
+> **Delta del 2026-08-12 (editar título/descripción/fechas de una actividad, §6.5): estado
+> MIXTO, léase con cuidado.** Migración `supabase/migrations/20260854_update_activity_details.sql`,
+> nueva RPC `update_activity_details(uuid, text, text, date, date)`, **aplicada y verificada en
+> DEV y en PRODUCCIÓN** con la versión corregida (gate de rol primero, commit `eec82b0e`).
+>
+> Hubo un tramo en que dev tuvo la primera versión, con un fallo de seguridad: el gate de rol
+> se comprobaba DESPUÉS de revelar si la fila existía y de qué `kind` era, así que alguien
+> ajeno al club podía sondear uuids por el código de excepción. Era una **regresión** de lo que
+> `20260831_club_activity_role_gate_first.sql` (issue #129) ya había corregido en otras cuatro
+> RPC de esta misma tabla. Corregido y verificado en los dos entornos: los tres casos del
+> sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -1564,6 +1576,106 @@ Es **intencionado**: la función existe justo para dar a un miembro autenticado 
 la RLS no le dejaría calcular, y el WARN lo comparten las demás RPC `security definer` del
 proyecto. Lo que sí importaba —no aparecer bajo `anon_security_definer_function_executable`— se
 verificó y no aparece.
+
+### 6.5 Editar título, descripción y fechas de una actividad ya creada: `update_activity_details` (DEV Y PROD, 2026-08-12)
+
+> Spec: `docs/superpowers/specs/2026-08-12-editar-actividades-design.md`. Migración
+> `supabase/migrations/20260854_update_activity_details.sql`. Issue #596. Decisiones de forma
+> en `decisiones.md` (2026-08-12).
+
+RPC `security definer`, firma:
+
+```sql
+update_activity_details(
+  p_activity_id uuid, p_title text, p_description text,
+  p_starts_on date, p_ends_on date
+) returns void
+```
+
+Edita **`title`, `description`, `starts_on` y `ends_on`** de la cabecera de una actividad de
+club. Es la primera escritura de cliente sobre esa cabecera (`club_activities` no tiene
+política UPDATE, a propósito, desde `20260713_club_activities.sql:196`).
+
+**Quién:**
+
+- **Moderador+ del club, siempre.**
+- **El creador que no modera, SOLO mientras la actividad está en `proposed`.** Mientras nadie
+  la ha aprobado, la actividad es de quien la propuso; en cuanto el club la activa hay gente
+  apuntada y progreso contándose, así que pasa a ser un compromiso del club y la gobierna la
+  moderación — el creador que no modera deja de poder corregir hasta una errata de su propio
+  título. Justificación completa en `decisiones.md` (2026-08-12).
+
+**Hasta cuándo:** `proposed` y `active`. **`finished` y `archived` quedan CONGELADAS**
+(`dates_frozen`): la ventana `starts_on..ends_on` alimenta `activity_window()`, que decide qué
+lecturas cuentan en los retos, y mover esa ventana en algo ya terminado reescribiría el
+historial de quién completó qué.
+
+**Los eventos (`kind = 'evento'`) quedan fuera** (`use_update_club_event`): ya tienen
+`update_club_event` (§6), que además maneja hora, zona, modalidad y enlace. Dos RPC
+escribiendo los mismos campos divergirían en silencio en cuanto una de las dos se olvidara de
+actualizar.
+
+Códigos de error, en el orden en que la función los evalúa (el orden es diseño, no casualidad
+— ver el fallo de seguridad más abajo):
+
+1. `forbidden` — **el gate de rol, y va PRIMERO** (#129, ver abajo). No eres el creador ni
+   moderador+ del club dueño. Con la fila inexistente, `v_club_id` y `v_created_by` son nulos,
+   así que también cae aquí: quien no está autorizado recibe `forbidden` y **no aprende nada**,
+   ni si el uuid existe ni de qué tipo es.
+2. `not_found` — la fila no existe. **Inalcanzable hoy**, precisamente porque el gate va antes:
+   se conserva como guarda defensiva, igual que en las cuatro funciones hermanas de
+   `20260831`. Si algún día el gate deja de cubrir el caso nulo, esto lo recoge.
+3. `forbidden` (segunda vez) — eres el creador pero NO moderador, y la actividad ya no está en
+   `proposed`. Va antes que `dates_frozen` a propósito: si no, quien intente editar una
+   finalizada sin permiso creería que el problema es el momento, cuando además le falta el
+   permiso.
+4. `use_update_club_event` — es un evento. Solo se revela **después** de autorizar.
+5. `dates_frozen` — estado `finished`/`archived`.
+6. `title_required` — título vacío tras `btrim`.
+7. `invalid_range` — `p_ends_on < p_starts_on` (solo se rechaza la ventana INVERTIDA; una
+   fecha de fin en el pasado es válida — cerrar hoy una lectura con la fecha en que de verdad
+   terminó es un uso normal).
+
+**Consecuencia para la interfaz:** quien no puede ver la fila por RLS recibe `forbidden`, NO
+`not_found`. Un formulario que traduzca `not_found` como «esta actividad ya no existe» está
+escribiendo un mensaje que nadie verá.
+
+**Fallo de seguridad corregido antes de aplicar en ningún sitio real (commit `eec82b0e`):**
+la primera versión del código comprobaba el permiso (código 3) DESPUÉS de revelar si la fila
+existía (código 1) y de qué `kind` era (código 2). Como es `security definer`, cualquier
+`authenticated` que no fuera miembro del club podía distinguir por el código de excepción
+devuelto si un uuid existía y si era un evento — fuga de información, no de escritura. **Era
+una REGRESIÓN de algo ya arreglado en este repo**: `20260831_club_activity_role_gate_first.sql`
+(issue #129) corrigió exactamente este patrón en `update_club_event`, `set_club_event_state`,
+`finish_club_activity` y `archive_club_activity`. El plan de esta RPC lo reintrodujo sin
+querer. Se corrigió copiando ese mismo patrón: el gate de rol (`v_created_by <> auth.uid() and
+not v_is_mod`) va PRIMERO, con `coalesce(...)` para que un creador NULL (fila inexistente) no
+cuele por un `null = auth.uid()` que da NULL en vez de `false`. **Regla que queda para
+cualquier RPC nueva sobre `club_activities`: el gate de rol va PRIMERO, siempre** — leer
+`20260831_club_activity_role_gate_first.sql` antes de escribir la siguiente.
+
+**Aplicada y verificada en DEV y en PRODUCCIÓN el 2026-08-12**, con la versión corregida
+(gate de rol primero, commit `eec82b0e`). En prod: `prosecdef=true`,
+`proconfig=search_path=public`, ACL `authenticated/postgres/service_role` **sin `anon`**,
+verificado contra `pg_proc` y nunca contra `list_migrations`.
+
+Los tres casos que motivaron el arreglo se corrieron **contra producción**, y fue la primera
+ejecución real del cuerpo corregido en cualquier entorno. Los tres dan `forbidden`, y los tres
+desde el **primer** gate (línea 27 de la función), que es lo que se estaba comprobando:
+
+- extraño al club + actividad normal existente → `forbidden`
+- extraño al club + actividad `evento` existente → `forbidden` (aquí estaba la fuga: antes
+  daba `use_update_club_event` y le revelaba el `kind` a quien no podía ni ver la fila)
+- extraño al club + uuid inexistente → `forbidden`
+
+Si alguno diera un código distinto, la fuga seguiría. En dev se comprobó el tercero, que es el
+que distingue la versión corregida de la vieja (antes daba `not_found`).
+
+**Trampa al montar esta prueba, para quien la repita:** el primer intento usó un usuario que
+resultó ser **owner** del club dueño del evento, así que recibió `use_update_club_event` — y
+eso es correcto, no una fuga. Hay que asegurarse de que el usuario simulado NO tiene membresía
+en el club de la actividad; en prod no había ninguno, así que se simuló la sesión con un uuid
+que no pertenece a nadie (al gate le da igual quién seas: comprueba la membresía).
 
 ## 7. Sagas
 

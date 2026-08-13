@@ -2933,6 +2933,16 @@ export type Database = {
         Args: { p_activity_id: string; p_config: Json }
         Returns: undefined
       }
+      update_activity_details: {
+        Args: {
+          p_activity_id: string
+          p_title: string
+          p_description: string | null
+          p_starts_on: string | null
+          p_ends_on: string | null
+        }
+        Returns: undefined
+      }
       update_club_event: {
         Args: {
           p_activity_id: string
