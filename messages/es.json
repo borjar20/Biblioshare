@@ -551,8 +551,11 @@
     "clubJoinApproved": "{name} ha aceptado tu solicitud de unirte al club",
     "mentioned": "{name} te mencionó",
     "followedFinished": "{name} terminó una obra",
-    "followedSession": "{name} registró una sesión de lectura",
-    "followedEpisode": "{name} vio un episodio",
+    "followedSession": "{name} compartió una sesión de lectura",
+    "followedEpisode": "{name} compartió un episodio",
+    "followedStarted": "{name} empezó una obra",
+    "followedDropped": "{name} abandonó una obra",
+    "followedThought": "{name} publicó un pensamiento",
     "followedAdded": "{name} añadió algo a su biblioteca"
   },
   "time": {

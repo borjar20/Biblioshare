@@ -34,9 +34,18 @@ export type NotificationType =
   | "club_event_reminder"
   | "club_event_updated"
   | "club_event_cancelled"
-  | "followed_finished"
-  | "followed_session"
-  | "followed_episode"
+  // Avisos de seguimiento. Desde la spec 2026-08-13 los emite createPost al
+  // PUBLICAR, no el hecho: hay uno por post.kind porque el tipo decide el TEXTO
+  // de la campana ("terminó X" vs "empezó X"). La suscripción va por otro eje
+  // (NotifyCategory, 3 valores) — ver notify-categories.ts.
+  | "followed_finished" // post.kind 'finished'
+  | "followed_session" // post.kind 'progressed'
+  | "followed_episode" // post.kind 'watched'
+  | "followed_started" // post.kind 'started'
+  | "followed_dropped" // post.kind 'dropped'
+  | "followed_thought" // post.kind 'thought'
+  // Ya no se emite: añadir a biblioteca no publica post. Se conserva por las
+  // filas históricas de `notifications`.
   | "followed_added"
   | "club_round_proposed"
   | "club_round_commented"
@@ -121,6 +130,9 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   followed_session: "followedSession",
   followed_episode: "followedEpisode",
   followed_added: "followedAdded",
+  followed_started: "followedStarted",
+  followed_dropped: "followedDropped",
+  followed_thought: "followedThought",
   club_round_proposed: "clubRoundProposed",
   club_round_commented: "clubRoundCommented",
   club_round_liked: "clubRoundLiked",
