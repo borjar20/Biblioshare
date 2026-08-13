@@ -1,5 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
-import { resolveOpenLibraryAuthor } from "@/lib/catalog/openlibrary/authors";
+import { fetchOpenLibraryAuthorByKey } from "@/lib/catalog/openlibrary/work-authors";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -66,48 +66,68 @@ export async function findOrCreatePeopleByTmdb(
   return map;
 }
 
-// Autores de libro: los identifica por nombre (tmdb_id null los distingue de las
-// personas de cine). En el primer alta resuelve Open Library para enriquecer
-// bio/foto; si no hay match, deja una ficha ligera (solo nombre). Ver §7.34.
-export async function findOrCreateBookAuthor(
+// Autores de libro: los identifica por su CLAVE de Open Library, nunca por el
+// nombre. El nombre no es identidad —"Fiódor Dostoyevski" y "Fyodor Dostoevsky"
+// son el mismo humano, y "Frank Herbert" son dos personas distintas en OL— y
+// buscarlo era el origen de las fichas falsas y de una fila por idioma.
+//
+// `tmdb_id` nulo sigue distinguiendo a los autores de las personas de cine.
+//
+// Devuelve `null`, nunca lanza: si el autor no se puede resolver, el libro se
+// queda sin crédito y su ficha enseña `books.author` como texto plano. Es
+// preferible a inventarse a alguien.
+export async function findOrCreateBookAuthorByKey(
   supabase: SupabaseServerClient,
-  name: string
-): Promise<string> {
+  key: string
+): Promise<string | null> {
+  const authorKey = (key ?? "").trim().replace(/^\/?authors\//, "");
+  if (!authorKey) return null;
+
   const { data: existing } = await supabase
     .from("people")
     .select("id")
-    .eq("name", name)
-    .is("tmdb_id", null)
+    .eq("openlibrary_key", authorKey)
     .limit(1)
     .maybeSingle();
   if (existing) return existing.id;
 
-  const ol = await resolveOpenLibraryAuthor(name);
+  const ol = await fetchOpenLibraryAuthorByKey(authorKey);
+  // Sin ficha, o sin ninguna grafía latina: no se crea la persona.
+  if (!ol) return null;
 
   const { data: inserted, error } = await supabase
     .from("people")
     .insert({
-      name,
-      openlibrary_key: ol?.key ?? null,
-      photo_url: ol?.photoUrl ?? null,
-      bio: ol?.bio ?? null,
-      birth_date: ol?.birthDate ?? null,
-      death_date: ol?.deathDate ?? null,
+      name: ol.name,
+      aliases: ol.aliases,
+      openlibrary_key: ol.key,
+      photo_url: ol.photoUrl,
+      bio: ol.bio,
+      birth_date: ol.birthDate,
+      death_date: ol.deathDate,
     })
     .select("id")
     .single();
 
   if (error) {
-    // Carrera (índice único sobre openlibrary_key): otra request lo insertó ya.
+    // 23505 = otra request lo insertó a la vez (índice único parcial
+    // `people_openlibrary_key_key`). Se recupera re-seleccionando POR CLAVE —
+    // por nombre NO funcionaba, y ese era justo el bug que dejaba el libro sin
+    // ningún crédito.
     const { data: raced } = await supabase
       .from("people")
       .select("id")
-      .eq("name", name)
-      .is("tmdb_id", null)
+      .eq("openlibrary_key", authorKey)
       .limit(1)
       .maybeSingle();
     if (raced) return raced.id;
-    throw error;
+
+    // 42501 = visitante anónimo sin grant de escritura; esperado, no se
+    // registra. Cualquier otro sí.
+    if (error.code !== "42501" && error.code !== "23505") {
+      console.error("people insert failed", { authorKey, error });
+    }
+    return null;
   }
 
   return inserted.id;
