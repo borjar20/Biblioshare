@@ -192,7 +192,17 @@ Un array vacío se queda vacío: quien no quería avisos de alguien sigue sin re
 
 Que `thought` se encienda para todo el que tuviera algo activo es una decisión deliberada del
 dueño: «quiero saber de esta persona» se interpreta como que incluye lo que escriba. Es la única
-transformación que **añade** avisos que nadie pidió literalmente, y por eso se deja escrita aquí.
+**categoría** que se añade de la nada, sin análogo en el vocabulario viejo, y por eso se deja
+escrita aquí.
+
+> **Corregido el 2026-08-13**, tras la revisión final de la rama: la frase original de este párrafo
+> decía que `thought` era la única transformación que añade un aviso no pedido. Es falso —
+> `milestone` y `progress` no son traducciones 1-a-1 de la categoría vieja: `CATEGORY_FOR_POST_KIND`
+> (`src/lib/social/notify-categories.ts`) agrupa varios `post.kind` bajo la misma categoría, así que
+> `finished`→`milestone` también suscribe a `started`/`dropped`, y `session` u `episode`→`progress`
+> también suscribe al otro. `thought` sigue siendo la única *categoría* nueva; `milestone` y
+> `progress` ensanchan tipos que el vocabulario de cuatro categorías no podía expresar. Este párrafo
+> de la spec queda como historia congelada salvo esta nota — no se reescribe el resto.
 
 Enum: tres `ALTER TYPE public.notification_type ADD VALUE` (`followed_started`, `followed_dropped`,
 `followed_thought`). No se borra ningún valor.

@@ -6,9 +6,20 @@
 --   session OR episode    -> progress
 --   cualquier cosa activa -> thought   <-- decision deliberada del dueno:
 --       "quiero saber de esta persona" se interpreta como que incluye lo que
---       escriba. Es la unica transformacion que ANADE un aviso que nadie pidio
---       literalmente, y por eso queda escrita aqui y en decisiones.md.
+--       escriba. Es la unica CATEGORIA que se anade de la nada, sin analogo
+--       en el vocabulario viejo, y por eso queda escrita aqui y en decisiones.md.
 --   added                 -> se pierde (anadir no publica post)
+--
+--   OJO (corregido 2026-08-13 tras la revision final de rama: la version
+--   anterior de este comentario decia que 'thought' era la UNICA transformacion
+--   que anade un aviso no pedido -- eso es falso. 'milestone' y 'progress' NO
+--   son traducciones 1-a-1: CATEGORY_FOR_POST_KIND (notify-categories.ts) mete
+--   varios post.kind bajo la misma categoria, asi que una fila con solo
+--   'finished' sale suscrita tambien a 'started'/'dropped' (los tres caen en
+--   milestone), y una fila con 'session' sin 'episode' (o al reves) sale
+--   suscrita tambien al otro (los dos caen en progress). Las 8 filas no vacias
+--   de prod solo tienen 'finished', asi que las 8 saldran suscritas a TRES
+--   tipos de aviso nuevos, no a uno.
 --
 -- Una fila con notify_events vacio SE QUEDA VACIA: quien no queria avisos de
 -- alguien sigue sin recibirlos. Y una fila que YA paso por esta migracion

@@ -960,8 +960,43 @@ migraciones, en este orden: `20260856_notification_type_followed_post_kinds.sql`
 (`enum_range(null::public.notification_type)` trae los tres valores nuevos; `follows.notify_events`
 en dev solo tenía filas con array vacío, así que la transformación de la tabla de abajo no tuvo
 filas que mover en este entorno, pero corrió sin error contra el `where` de solapamiento). **Prod
-NO tiene ninguna de las dos migraciones todavía** — Task 7 del plan las deja fuera a propósito,
-pendientes de que el dueño confirme antes de aplicarlas.
+NO tiene ninguna de las dos migraciones todavía** — se dejó fuera de esta entrega a petición del
+dueño, al contrario de lo que decía el Paso 1 de la Task 7 del plan (que instruía aplicarlas
+también en prod); el plan es historia congelada y no se toca, esta frase es la que estaba mal.
+Prod queda pendiente de que el dueño confirme antes de aplicarlas.
+
+> **Orden de despliegue en prod — léelo antes de aplicar nada.** Verificado contra prod el
+> 2026-08-13: el enum `notification_type` NO tiene los tres valores nuevos y las **8** filas no
+> vacías de `follows.notify_events` siguen hablando el vocabulario viejo. Cualquier orden de
+> despliegue deja una ventana muda, y uno de los dos deja además un daño que la migración no cura:
+>
+> - **Código antes que las migraciones**: `notifyFollowersOfPost` filtra por
+>   `.contains("notify_events", ["milestone"])`, que no matchea ninguna fila de prod (todas dicen
+>   `finished`, no `milestone`) → **todos** los avisos de seguidores quedan mudos hasta que corra
+>   `20260857`.
+> - **Migraciones antes que el código**: el código viejo, aún desplegado, filtra por `["finished"]`
+>   — tampoco matchea nada tras la migración (las filas ya dicen `milestone`) → ventana muda
+>   igual. Y esta dirección **no se autocura**: durante la ventana, el `parseNotifyCategories`
+>   viejo lee un array ya migrado (`["milestone",…]`) como `[]` porque no reconoce ese vocabulario
+>   — la campana del usuario se pinta con las tres casillas SIN marcar. Si esa persona toca
+>   cualquier casilla en ese momento, el formulario viejo escribe de vuelta el vocabulario VIEJO
+>   sobre una fila que ya estaba migrada. El `where` de la migración solo matchea vocabulario viejo,
+>   así que reejecutar `20260857` **no vuelve a arreglar esa fila**: en cuanto el código nuevo
+>   aterriza, la campana de ese usuario queda vacía de forma permanente. Con 8 suscriptores en prod,
+>   un solo toque así es la octava parte de todos ellos.
+>
+> **Regla:** aplicar `20260856` y luego `20260857`, y desplegar el código **en la misma ventana**
+> (lo antes posible tras las migraciones, no en un merge posterior). Un toggle de campana hecho
+> entre las dos mitades del despliegue no es recuperable reejecutando la migración — solo lo
+> arregla una corrección de datos aparte, o evitar la ventana.
+>
+> **Sitios de la documentación que se vuelven falsos en el instante en que prod recibe la
+> migración** — hoy todos dicen «SOLO EN DEV» / «prod pendiente», cierto hoy, falso en cuanto se
+> aplique: `docs/requirements/backlog.md:90`, `docs/requirements/data-model.md:54` (el log de
+> deltas), el propio encabezado y cuerpo de esta §5.3, la fila de `notification_type` de la tabla
+> de enums en §9 (alrededor de `data-model.md:2804`), y la entrada de `decisiones.md` del
+> 2026-08-13. Actualízalos todos en el mismo cambio que aplique la migración en prod — no solo el
+> primero que se te ocurra.
 
 - **`public.notification_type` gana tres valores**: `followed_started`, `followed_dropped`,
   `followed_thought` (`ALTER TYPE … ADD VALUE`, sin borrar nada). Con los tres que ya existían
@@ -978,6 +1013,17 @@ pendientes de que el dueño confirme antes de aplicarlas.
   un no-op seguro. Sin columna nueva — la superficie 6 de `docs/DRIFT-CHECK.md` (grants por
   columna) no aplica aquí; `notify_events` ya trae su grant desde
   `20260804000000_follow_notify_events.sql`.
+  **Precisión sobre lo que "añade" la migración** (corregido tras la revisión final de rama del
+  2026-08-13, que encontró esto infrarreportado en cuatro sitios — ver `decisiones.md`):
+  `thought` es la única CATEGORÍA que se enciende de la nada, sin análogo en el vocabulario viejo.
+  `milestone` y `progress` no son traducciones 1-a-1 de una categoría vieja: ENSANCHAN a `post.kind`
+  que el vocabulario de cuatro categorías no podía expresar, porque `CATEGORY_FOR_POST_KIND`
+  (`src/lib/social/notify-categories.ts`) agrupa varios `kind` bajo la misma categoría. Una fila que
+  solo tenía `finished` sale suscrita también a `started` y `dropped` (los tres caen en
+  `milestone`); una fila con `session` pero sin `episode` (o al revés) sale suscrita también al
+  otro, porque los dos caen en `progress`. Las 8 filas no vacías de prod contienen `finished`, así
+  que las 8 saldrán suscritas a tres tipos de aviso nuevos (`followed_started`, `followed_dropped`,
+  `followed_thought`), no a uno solo.
 - **El disparo se mueve del hecho al post.** `notifyFollowersOfEvent`, `notifyAdded` y
   `resolvePostInteractionTargetId` (la heurística que adivinaba el post de una sesión/pase/episodio
   ya publicado) desaparecen enteros de `src/lib/social/notify-followers.ts`. El único punto de
@@ -991,11 +1037,20 @@ pendientes de que el dueño confirme antes de aplicarlas.
   `finished`/`dropped`; `progress` la disparan `progressed`/`watched`; `thought` la dispara
   `thought`.
 - **Pérdidas aceptadas por el dueño** (ver `decisiones.md`, 2026-08-13): cerrar un pase sin
-  publicar no avisa a nadie (autopost apagado, o el auto-cierre de
-  `sessions/actions.ts` que no pasa por autopost); marcar un episodio no avisa a nadie —
+  publicar no avisa a nadie (autopost apagado); marcar un episodio no avisa a nadie —
   `watched` es un `post.kind` declarado que hoy no crea ningún flujo, issue
   [#626](https://github.com/borjar20/Biblioshare/issues/626); y «añadió a su biblioteca»
   desaparece del todo, sin sustituto.
+- **Gap NO documentado en la spec, encontrado en la revisión final de rama**: `maybeAutopostMilestone`
+  (lo único que hoy produce un `followed_*` de hito) solo se llama desde `updateStatus`
+  (`src/lib/library/manage-actions.ts:18-47`, el gesto deliberado de la ficha). Pero **tres** rutas de
+  `src/lib/sessions/actions.ts` escriben `passes.status` llamando a `applyTransition` DIRECTAMENTE,
+  sin pasar por `updateStatus`, y por tanto nunca publican ni avisan aunque `autopost_finished` esté
+  ON (el default): la primera sesión de un pase `planned` → `in_progress` (`:104`), el `<Select>` de
+  estado de la hoja de sesión (`:246-247`) y el auto-cierre al alcanzar la última página/episodio
+  (`:289-291`, la única de las tres que sí nombraba la spec §8.1 y esta entrada). Marcar «completado»
+  desde la ficha del ítem sigue publicando y avisando bien — el gap es específico de estas tres rutas.
+  Issue [#628](https://github.com/borjar20/Biblioshare/issues/628).
 
 ## 6. Clubes
 
