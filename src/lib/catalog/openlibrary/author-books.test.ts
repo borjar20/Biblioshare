@@ -88,4 +88,33 @@ describe("fetchAuthorWorks", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
     await expect(fetchAuthorWorks("OL1A")).resolves.toEqual([]);
   });
+
+  it(
+    "lanza las dos pasadas a la vez, no una detrás de otra",
+    { timeout: 2000 },
+    async () => {
+      // Si alguien cambia el Promise.all por dos await seguidos, la primera
+      // llamada se queda esperando un desbloqueo que solo produce la segunda, y
+      // este test expira en vez de pasar. Es la única forma de distinguir
+      // «dos llamadas» de «dos llamadas en paralelo».
+      let desbloquear: (() => void) | undefined;
+      const primeraEnVuelo = new Promise<void>((resolve) => {
+        desbloquear = resolve;
+      });
+      let llamadas = 0;
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          llamadas += 1;
+          if (llamadas === 1) await primeraEnVuelo;
+          else desbloquear?.();
+          return { ok: true, json: async () => ({ docs: [] }) };
+        })
+      );
+
+      await expect(fetchAuthorWorks("OL1394359A")).resolves.toEqual([]);
+      expect(llamadas).toBe(2);
+    }
+  );
 });
