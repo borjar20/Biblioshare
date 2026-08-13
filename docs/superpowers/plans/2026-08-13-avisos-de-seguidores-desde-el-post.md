@@ -103,8 +103,15 @@ alter type public.notification_type add value if not exists 'followed_thought';
 --       literalmente, y por eso queda escrita aqui y en decisiones.md.
 --   added                 -> se pierde (anadir no publica post)
 --
--- Una fila con notify_events vacio SE QUEDA VACIA: quien no queria avisos de
--- alguien sigue sin recibirlos. De ahi el WHERE.
+-- El WHERE hace DOS cosas, y las dos importan:
+--   1. Una fila con notify_events vacio SE QUEDA VACIA: quien no queria avisos
+--      de alguien sigue sin recibirlos. Un array vacio no solapa con nada, asi
+--      que `&&` lo excluye solo (no hace falta cardinality > 0).
+--   2. REAPLICAR ESTA MIGRACION ES SEGURO. Sin esta condicion, una fila ya
+--      migrada ({milestone,thought}) volveria a pasar por el transform: ya no
+--      contiene 'finished', asi que la rama de milestone no aporta nada y la
+--      fila colapsaria a {thought}, perdiendo milestone en silencio. Filtrar por
+--      "todavia contiene vocabulario VIEJO" lo impide.
 --
 -- No hay columna nueva, asi que la superficie 6 de docs/DRIFT-CHECK.md (grants
 -- por columna) no aplica: notify_events ya trae el suyo desde
@@ -121,8 +128,16 @@ set notify_events = (
     || array['thought']::text[]
   ) as v
 )
-where cardinality(notify_events) > 0;
+where notify_events && array['finished','session','episode','added']::text[];
+
+-- El comentario de columna es documentacion incrustada en el esquema: `\d+
+-- follows` y information_schema lo sirven. El de 20260804000000 describia el
+-- vocabulario viejo, asi que se refresca aqui.
+comment on column public.follows.notify_events is
+  'Categorias de aviso activas sobre este followee (milestone|progress|thought). Un aviso se emite al PUBLICAR un post de esa categoria, nunca al ocurrir el hecho.';
 ```
+
+> El `where` que se escribió primero era `cardinality(notify_events) > 0` y la revisión lo tumbó: filtraba los vacíos pero no los ya migrados, así que una segunda aplicación se comía `milestone`. En dev no se veía —cero filas con `notify_events` no vacío— y en este repo el ledger y la base real divergen a propósito, que es justo cuando alguien reaplica un fichero creyendo que no corrió.
 
 - [ ] **Step 3: Probar la transformación contra casos conocidos (antes de aplicarla)**
 
