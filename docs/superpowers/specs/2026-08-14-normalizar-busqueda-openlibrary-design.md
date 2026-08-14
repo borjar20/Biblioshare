@@ -122,10 +122,19 @@ Entrada: los `docs` de dos pasadas de `search.json` (`lang=es` y `lang=en`) sobr
    llamas» de Alejandro Basañez Loyola —dos novelas sin ninguna relación— se fundían, y la de
    menos ediciones desaparecía de la búsqueda sin que nada dijera que existe. Es el modo de
    fallo que este rediseño existe para eliminar; el primer borrador solo lo había movido de
-   sitio. El precio, también medido: en `q="hunger games"` reaparecen cinco works que Open
-   Library titula «The Hunger Games» pero cuyos autores son Kate Egan, Emily Seife o Nicola
-   Balkind —guías y acompañamientos—, y empujan obras hacia abajo. Se acepta: ver de más es
-   recuperable, un libro que no puedes añadir no.
+   sitio.
+
+   El precio, también medido: en `q="hunger games"` reaparecen cinco works homónimos de la
+   novela —Kate Egan, Emily Seife, Nicola Balkind, Jessica Linn Butler y James Newton Howard,
+   o sea guías, acompañamientos y la partitura— y empujan cinco obras fuera del corte visible,
+   entre ellas una novela sin relación con la consulta. Nada queda inalcanzable: solo pierde
+   posiciones en una búsqueda que no es la suya. Se acepta, porque ver de más es recuperable
+   y un libro que no puedes añadir no lo es.
+
+   **Sin autoría no hay clave, y sin clave no se desduplica.** Dos works anónimos con el mismo
+   título son dos libros distintos hasta que se demuestre lo contrario, y `author_name` falta
+   en 2 de cada 40 docs de los fixtures. Se aplica el mismo criterio: antes un duplicado a la
+   vista que un libro borrado.
 
 7. **Recortar a 20**, en el orden del paso 1.
 
