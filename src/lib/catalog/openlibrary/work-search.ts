@@ -1,6 +1,6 @@
 import type { SearchResult } from "../types";
-import { buildCoverUrl } from "./covers";
 import { normalizeTitleForComparison } from "./normalize";
+import { mapWorkDoc, type OpenLibrarySearchDoc } from "./search-normalize";
 
 // PELDAÑO 1 de la escalera de hidratación (ver el spec de 2026-07-14): una
 // tarjeta de resultado muestra portada, título, autor y año — y eso es
@@ -15,43 +15,14 @@ import { normalizeTitleForComparison } from "./normalize";
 // Un doc de search.json ES una obra (`key` = /works/OL...W). No hay que
 // reagruparlo a mano: OpenLibrary ya lo entrega agrupado, y `edition_count` dice
 // cuántas tiradas cubre.
-export type OpenLibraryWorkDoc = {
-  key?: string;
-  title?: string;
-  author_name?: string[];
-  /**
-   * Claves de autor, alineadas con `author_name`. Es identidad, no texto: la
-   * usa la resolución de autores para no tener que adivinar quién es quién.
-   */
-  author_key?: string[];
-  cover_i?: number;
-  first_publish_year?: number;
-  edition_count?: number;
-};
-
 type WorkSearchResponse = {
-  docs?: OpenLibraryWorkDoc[];
+  docs?: OpenLibrarySearchDoc[];
 };
 
 const SEARCH_FIELDS = "key,title,author_name,author_key,cover_i,first_publish_year,edition_count";
 const REVALIDATE_SECONDS = 3600;
 const SEARCH_LIMIT = 20;
 const FETCH_TIMEOUT_MS = 5000;
-
-export function mapWorkDoc(doc: OpenLibraryWorkDoc): SearchResult {
-  return {
-    itemType: "book",
-    externalId: doc.key ?? "",
-    title: doc.title ?? "",
-    subtitle: doc.author_name?.join(", ") ?? null,
-    coverUrl: buildCoverUrl(doc.cover_i),
-    year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : null,
-    // La obra se hidrata al abrir su ficha (ensureBookHydrated), no aquí.
-    synopsis: null,
-    genres: null,
-    editionCount: typeof doc.edition_count === "number" ? doc.edition_count : 1,
-  };
-}
 
 // Nunca lanza: si OpenLibrary falla o tarda, la búsqueda se degrada a lo que
 // haya en el catálogo local (ver search.ts).

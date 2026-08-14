@@ -101,7 +101,7 @@ function looseTitle(value: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
-function isOmnibus(titles: string[]): boolean {
+export function isOmnibus(titles: string[]): boolean {
   return titles.some((title) => {
     const loose = looseTitle(title);
     if (OMNIBUS_PATTERNS.some((pattern) => loose.includes(pattern))) return true;
