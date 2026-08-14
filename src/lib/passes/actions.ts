@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyMentions } from "@/lib/social/notify-mentions";
+import { DROPPED_REASONS, type DroppedReason } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -35,8 +36,21 @@ function parseFinishedOn(raw: FormDataEntryValue | null): string | undefined {
   return value;
 }
 
+// Vacío = sin motivo (opcional incluso cerrando como dropped). Fuera de la
+// lista cerrada = inválido, mismo patrón que parseRating: `undefined`
+// distingue "no vino nada" (válido) de "vino algo que no reconocemos".
+// Exportada (a diferencia de parseRating) solo para poder probarla sin
+// levantar un cliente Supabase real — ver actions.test.ts.
+export function parseDroppedReason(raw: FormDataEntryValue | null): DroppedReason | null | undefined {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  return (DROPPED_REASONS as readonly string[]).includes(value)
+    ? (value as DroppedReason)
+    : undefined;
+}
+
 export type ClosePassState = {
-  error?: "invalidDate" | "invalidRating" | "generic";
+  error?: "invalidDate" | "invalidRating" | "invalidReason" | "generic";
 };
 
 // Nota SIEMPRE entera 1-10 (misma regla que parseRating, pero aquí el valor
@@ -60,6 +74,15 @@ async function savePassFields(
   const rating = parseRating(formData.get("rating"));
   if (rating === undefined) return { error: "invalidRating" };
 
+  const droppedReason = parseDroppedReason(formData.get("droppedReason"));
+  if (droppedReason === undefined) return { error: "invalidReason" };
+  // La nota solo tiene sentido junto a "otro" — se descarta server-side
+  // aunque el cliente la mande, no nos fiamos del formulario.
+  const droppedReasonNote =
+    droppedReason === "otro"
+      ? String(formData.get("droppedReasonNote") ?? "").trim() || null
+      : null;
+
   const review = String(formData.get("review") ?? "").trim();
   // is_public tiene default false en la columna: hay que escribirlo siempre
   // explícitamente, nunca confiar en el default.
@@ -72,6 +95,8 @@ async function savePassFields(
       rating,
       review: review || null,
       is_public: isPublic,
+      dropped_reason: droppedReason,
+      dropped_reason_note: droppedReasonNote,
     })
     .eq("id", passId)
     .eq("user_id", userId);

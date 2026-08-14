@@ -14,7 +14,7 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateReadingLog: mocks.revalidateReadingLog,
 }));
 
-import { closePass } from "./actions";
+import { closePass, parseDroppedReason } from "./actions";
 
 function makePassClient(targetId: string | null, targetError: unknown = null) {
   const targetFilters: Array<[string, unknown]> = [];
@@ -70,6 +70,21 @@ function publicReviewForm() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.notifyMentions.mockResolvedValue([]);
+});
+
+describe("parseDroppedReason", () => {
+  it("vacío → null (motivo opcional)", () => {
+    expect(parseDroppedReason(null)).toBeNull();
+    expect(parseDroppedReason("")).toBeNull();
+  });
+
+  it("categoría válida → se conserva", () => {
+    expect(parseDroppedReason("aburrido")).toBe("aburrido");
+  });
+
+  it("valor fuera de la lista → undefined (inválido)", () => {
+    expect(parseDroppedReason("no_existe")).toBeUndefined();
+  });
 });
 
 describe("closePass — menciones", () => {
