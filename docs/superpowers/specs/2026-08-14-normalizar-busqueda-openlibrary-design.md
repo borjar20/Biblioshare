@@ -102,7 +102,12 @@ Entrada: los `docs` de dos pasadas de `search.json` (`lang=es` y `lang=en`) sobr
    1 en `q="dune"`.
 
 3. **Idioma.** Fuera lo que no tenga `spa` ni `eng` en `language`, incluido lo que no traiga
-   el campo en absoluto. Idéntica a la bibliografía, con el mismo precio asumido allí.
+   el campo en absoluto. La regla es idéntica a la de la bibliografía, **el precio no**: aquí
+   falta `language` en 1 de cada 4 docs (9/40 en `q="hunger games"`, 11/40 en `q="en llamas"`),
+   frente a ~1 de cada 10 en la bibliografía, y el daño es de otra naturaleza — en una
+   bibliografía se esconde una obra más de un autor que ya tienes localizado; en una búsqueda
+   por título se esconde justo lo que el usuario acaba de pedir por su nombre. Límite sin
+   recortar: issue [#652](https://github.com/borjar20/Biblioshare/issues/652).
 
 4. **Omnibus.** Los mismos ocho patrones y la regla de «tres o más obras separadas por ` / `»,
    evaluados sobre el título de obra y sobre los títulos de edición **que hayan sobrevivido al
@@ -124,17 +129,18 @@ Entrada: los `docs` de dos pasadas de `search.json` (`lang=es` y `lang=en`) sobr
    fallo que este rediseño existe para eliminar; el primer borrador solo lo había movido de
    sitio.
 
-   El precio, también medido: en `q="hunger games"` reaparecen cinco works homónimos de la
-   novela —Kate Egan, Emily Seife, Nicola Balkind, Jessica Linn Butler y James Newton Howard,
-   o sea guías, acompañamientos y la partitura— y empujan cinco obras fuera del corte visible,
-   entre ellas una novela sin relación con la consulta. Nada queda inalcanzable: solo pierde
-   posiciones en una búsqueda que no es la suya. Se acepta, porque ver de más es recuperable
-   y un libro que no puedes añadir no lo es.
+   El precio, también medido: en `q="hunger games"` reaparecen **seis** works homónimos de la
+   novela —Kate Egan, Emily Seife, Nicola Balkind, Jessica Linn Butler, James Newton Howard y
+   CliffsNotes (`OL29073080W`, `edition_count: 2`)—, o sea guías, acompañamientos y la
+   partitura, y empujan cinco obras fuera del corte visible, entre ellas una novela sin
+   relación con la consulta (`OL35014570W`, «The Ashes and the Star-Cursed King»). Nada queda
+   inalcanzable: solo pierde posiciones en una búsqueda que no es la suya. Se acepta, porque
+   ver de más es recuperable y un libro que no puedes añadir no lo es.
 
    **Sin autoría no hay clave, y sin clave no se desduplica.** Dos works anónimos con el mismo
    título son dos libros distintos hasta que se demuestre lo contrario, y `author_name` falta
-   en 2 de cada 40 docs de los fixtures. Se aplica el mismo criterio: antes un duplicado a la
-   vista que un libro borrado.
+   en 2 de 40 docs del fixture de `q="hunger games"` y en 3 de 40 del de `q="en llamas"`. Se
+   aplica el mismo criterio: antes un duplicado a la vista que un libro borrado.
 
 7. **Recortar a 20**, en el orden del paso 1.
 
