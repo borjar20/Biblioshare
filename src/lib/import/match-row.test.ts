@@ -1,15 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { matchImportRow } from "./match-row";
 import { searchLocalCatalog } from "@/lib/catalog/local-search";
+import { searchWorks } from "@/lib/catalog/openlibrary/work-search";
 import { getMovieAsSearchResult, searchMoviesForImport } from "@/lib/catalog/tmdb";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import type { ImportCandidate, ImportRow } from "./types";
+import type { SearchResult } from "@/lib/catalog/types";
 
 // isSameTitle (title-match) queda SIN mockear a propósito: el test valida el
 // matcher real. Solo se falsean las fuentes de candidatos.
 vi.mock("@/lib/catalog/local-search", () => ({
   findLocalBookByIsbn: vi.fn(),
   searchLocalCatalog: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/lib/catalog/openlibrary/work-search", () => ({
+  searchWorks: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/lib/catalog/openlibrary/isbn-lookup", () => ({
+  lookupIsbn: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("@/lib/catalog/tmdb", () => ({
   searchMoviesForImport: vi.fn().mockResolvedValue([]),
@@ -347,5 +355,67 @@ describe("matchMovie: la ficha que se cachea va en español", () => {
     expect(result).toEqual({ kind: "matched", catalogId: "local-7" });
     expect(getMovieAsSearchResult).not.toHaveBeenCalled();
     expect(findOrCreateCatalogItem).not.toHaveBeenCalled();
+  });
+});
+
+const bookRow = (over: Partial<ImportRow> = {}): ImportRow => ({
+  rowNumber: 1,
+  title: "En llamas",
+  author: "Suzanne Collins",
+  isbn: null,
+  publisher: null,
+  pageCount: null,
+  year: null,
+  status: "completed",
+  rating: null,
+  bookFormat: null,
+  diaryDates: [],
+  unknownStatusLabel: null,
+  ...over,
+});
+
+describe("matchBook: los títulos alternativos de una obra", () => {
+  beforeEach(() => {
+    vi.mocked(searchLocalCatalog).mockResolvedValue([]);
+  });
+
+  it("casa una fila cuyo título coincide con un altTitle, no con el mostrado", async () => {
+    // El work OL36410330W se llama «Fatta Eld» en Open Library. Sin los títulos
+    // alternativos, esta fila de un CSV español se quedaba sin casar.
+    const work: SearchResult = {
+      itemType: "book",
+      externalId: "/works/OL36410330W",
+      title: "Fatta Eld",
+      altTitles: ["Fatta Eld", "En llamas"],
+      subtitle: "Suzanne Collins",
+      coverUrl: null,
+      year: 2009,
+      synopsis: null,
+      genres: null,
+    };
+    vi.mocked(searchWorks).mockResolvedValue([work]);
+
+    expect(await matchImportRow(client, "book", bookRow())).toEqual({
+      kind: "matched",
+      catalogId: "created-id",
+    });
+  });
+
+  it("sigue sin casar cuando no coincide ningún título", async () => {
+    vi.mocked(searchWorks).mockResolvedValue([
+      {
+        itemType: "book",
+        externalId: "/works/OL5735363W",
+        title: "The Hunger Games",
+        altTitles: ["The Hunger Games", "Los juegos del hambre"],
+        subtitle: "Suzanne Collins",
+        coverUrl: null,
+        year: 2008,
+        synopsis: null,
+        genres: null,
+      },
+    ]);
+
+    expect(await matchImportRow(client, "book", bookRow())).toEqual({ kind: "unmatched" });
   });
 });

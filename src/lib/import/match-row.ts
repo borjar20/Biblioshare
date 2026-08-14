@@ -43,8 +43,15 @@ async function matchBook(
   const localTitleMatch = localTitleResults.find((r) => isSameTitle(r.title, row.title));
   if (localTitleMatch) return { kind: "matched", catalogId: localTitleMatch.catalogId! };
 
+  // Un libro tiene hasta TRES títulos que nos pueden llegar: el del work de
+  // Open Library —que es arbitrario: OL36410330W se llama «Fatta Eld»— y los
+  // de sus mejores ediciones en español y en inglés. Comparar solo contra el
+  // mostrado dejaba sin casar toda fila española cuyo work esté titulado en
+  // otro idioma. Mismo patrón que `matchMovie` con sus tres títulos.
   const apiTitleResults = await searchWorks(row.title);
-  const apiTitleMatch = apiTitleResults.find((r) => isSameTitle(r.title, row.title));
+  const apiTitleMatch = apiTitleResults.find((r) =>
+    [r.title, ...(r.altTitles ?? [])].some((title) => isSameTitle(title, row.title))
+  );
   if (apiTitleMatch) {
     return { kind: "matched", catalogId: await findOrCreateCatalogItem(supabase, apiTitleMatch) };
   }
