@@ -52,9 +52,9 @@ alter table public.passes
 
 -- Grant por columna (DRIFT-CHECK superficie 6, issue #375): sin esto el
 -- UPDATE de savePassFields falla ENTERO en cuanto se nombra dropped_reason,
--- no solo el campo nuevo.
-grant select, insert, update (dropped_reason, dropped_reason_note)
-  on public.passes to authenticated;
+-- no solo el campo nuevo. SOLO update, a propósito — ver la nota de
+-- privacidad más abajo sobre por qué NO lleva select.
+grant update (dropped_reason, dropped_reason_note) on public.passes to authenticated;
 ```
 
 - `dropped_reason` nullable: `null` para pases no abandonados y para los
@@ -63,11 +63,42 @@ grant select, insert, update (dropped_reason, dropped_reason_note)
 - `dropped_reason_note` nullable, solo tiene sentido junto a
   `dropped_reason = 'otro'`; el servidor descarta cualquier valor si
   `dropped_reason` no es `'otro'` (ver §2).
-- **A diferencia de `review`, sí lleva `SELECT` normal para `authenticated`**
-  (no pasa por `pass_reviews`): es privado por diseño de aplicación (nunca se
-  lee fuera del propio dueño en las queries que ya existen — `passes` está
-  bajo RLS de dueño salvo la vista `pass_reviews`, que este campo no toca), no
-  por RLS especial. No se añade a `pass_reviews` ni a ninguna query pública.
+- **Corrección tras revisar el camino de lectura real**: `getPasses`
+  (`src/lib/passes/get-passes.ts`) —único lector, siempre invocado con el id
+  del propio usuario en sesión (`libro|pelicula|serie/[id]/page.tsx`, dentro
+  de `if (userId && activeRow)`)— lee por la vista `pass_reviews`, no por la
+  tabla directamente. Esa vista devuelve la FILA ENTERA a cualquiera que
+  pueda ver un pase público de OTRO usuario (`is_public and
+  can_view_profile(...)`), así que un `SELECT` plano de `dropped_reason` en
+  la vista lo filtraría a terceros pese a ser "siempre privado" — la
+  regla #437 de `AGENTS.md` aplicada a una vista, no a `use cache`. Se
+  enmascara por dueño DENTRO de la vista, no con un grant nuevo:
+
+  ```sql
+  case when d.user_id = (select auth.uid())
+       then d.dropped_reason else null end as dropped_reason,
+  case when d.user_id = (select auth.uid())
+       then d.dropped_reason_note else null end as dropped_reason_note
+  ```
+
+  Con esto da igual que hoy `getPasses` solo se llame con el propio id: si
+  algún día se reutiliza para el perfil de otro, el motivo sigue oculto sin
+  tocar nada más.
+
+  **Por qué NO lleva `grant select` en la tabla base, ni siquiera para
+  `authenticated`.** La política de SELECT de `passes` ("diary entries select
+  visible") es `can_view_profile(user_id)` — visibilidad de PERFIL, no de
+  dueño — así que cualquier columna con `grant select` de tabla queda legible
+  para cualquiera que pueda ver ese perfil, público o no, con independencia
+  de `is_public` del pase (`is_public` solo lo aplica la vista). Es
+  exactamente el motivo por el que `review` se sacó del grant de tabla en
+  `20260714_passes_review_privacy.sql` y solo se lee por `pass_reviews`.
+  `dropped_reason`/`dropped_reason_note` siguen el mismo patrón: sin grant de
+  SELECT en ningún lado — ni de tabla ni por columna —, la vista los sirve
+  igualmente porque corre con los permisos de su dueño (no es
+  `security_invoker`), y la app nunca hace `.from("passes").select("dropped_reason")`
+  directo. Solo llevan `grant update` (arriba), que sí hace falta para que
+  `closePass`/`updatePass` puedan escribirlos.
 - Sin backfill: pases `dropped` ya existentes quedan con `dropped_reason`
   `null`, indistinguibles de "no contestó". Aceptado — no hay forma de inferir
   un motivo retroactivo.
