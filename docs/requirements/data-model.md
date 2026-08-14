@@ -1536,9 +1536,45 @@ reproducir el `drop`+`create` — prod nunca pasó por la forma intermedia de
 
 **Pendiente, con issue:** el camino de la consigna de la casa no tiene cobertura
 automática de test (depende del día real de la semana); `resolveTargetHrefs` toma
-`targetType` como `string` en vez de una unión de tipos; el histórico no pinta los huecos
-«Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
-una en las issues abiertas (ver `backlog.md`).
+`targetType` como `string` en vez de una unión de tipos; faltan los avatares del titular y
+de quién ya ha respondido. Detalle de cada una en las issues abiertas (ver `backlog.md`).
+
+### 6.1.1 Huecos «Sin ronda» en el histórico — `list_club_round_weeks` (dev y prod, 2026-08-14)
+
+Issue #403. `listRoundHistory` (`src/lib/clubs/rounds/history.ts`) listaba las últimas N
+**rondas que existen**, no las últimas N **semanas de calendario**: una semana muerta
+(nadie propuso, nadie respondió a la consigna de la casa — §2.4, sin fila hasta que alguien
+la responde) desaparecía de la lista en vez de mostrar un hueco «Sin ronda» en su sitio
+cronológico.
+
+`public.list_club_round_weeks(p_club_id uuid, p_weeks int default 4) returns
+table(period_key, round_id, author_id, prompt)` (`SECURITY DEFINER`, migración
+`supabase/migrations/20260814_club_round_history_weeks.sql`) genera la serie de semanas ISO
+**en SQL** (`generate_series` sobre `date_trunc('week', private.club_now())`, `left join`
+a `club_rounds`) — nunca en TypeScript: es la misma razón por la que el periodo actual
+tampoco se calcula ahí (decisión del 2026-08-03). `round_id` (y `author_id`/`prompt`) `NULL`
+= esa semana no tiene ronda. Recortada a partir de la semana de nacimiento del club
+(`date_trunc('week', timezone('Europe/Madrid', clubs.created_at))`, mismo cálculo que la CTE
+`turno` de `get_club_round_state`) para que un club joven no enseñe huecos de semanas
+anteriores a su propia creación. `SECURITY DEFINER` porque necesita llamar a
+`private.club_now()` (revocada a `authenticated`); el gate de socio se pone a mano con
+`is_club_member()`, igual que `get_club_round_state` — sin fila si quien llama no es socio
+(silencio, no excepción; la puerta de verdad la pone la página).
+
+`listRoundHistory` llama a esta RPC y traduce cada fila a `RoundHistoryEntry` (`prompt:
+null` en los huecos); `getInteractionSummary` solo recibe los `round_id` no nulos, nunca uno
+inventado para una semana sin fila real en `club_rounds`. `RoundHistory` pinta
+`t("historyEmptyWeek")` («Sin ronda») en vez del prompt cuando es `null`, y omite el
+recuento de respuestas en esa fila.
+
+**Verificado en dev y prod contra objetos reales (`pg_proc`, nunca `list_migrations`)**:
+función presente en `public`, `SECURITY DEFINER`, `language sql`, `search_path` fijado a
+`''`; privilegios `EXECUTE` en `{postgres, authenticated, service_role}`, sin `anon` ni
+`PUBLIC`. Comportamiento probado con clubes desechables (creados y borrados en la misma
+sesión, sin dejar rastro): club antiguo con hueco a propósito en la semana -3 devuelve
+exactamente ese patrón (`round_id` presente en -1/-2/-4, `NULL` en -3); club recién creado
+(`created_at` = esta semana) devuelve **cero filas**, no huecos fantasma antes de existir;
+llamar como no-socio (o sin sesión) también devuelve cero filas.
 
 ### 6.2 «Pensamiento»: tabla `thoughts` — SUPERSEDIDA y RETIRADA (dev y **prod**, 2026-08-09)
 

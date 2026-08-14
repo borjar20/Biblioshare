@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getRoundState } from "@/lib/clubs/rounds/rounds";
+import { getRoundByPeriod, getRoundState } from "@/lib/clubs/rounds/rounds";
 import { getInteractionSummary } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -14,17 +14,34 @@ import { RoundHistory } from "./round-history";
 // pinta lo decide el estado que devuelve SQL, no el cliente.
 export async function RoundBlock({
   clubId,
+  clubSlug,
   viewerId,
+  periodKey,
 }: {
   clubId: string;
+  clubSlug: string;
   viewerId: string;
+  /** `?ronda=` de la URL (issue #408): un enlace de notificación puede
+   *  apuntar a un periodo que ya no es el actual. */
+  periodKey?: string;
 }) {
   const [state, t] = await Promise.all([getRoundState(clubId), getTranslations("club.round")]);
   if (!state) return null;
 
+  // Solo se resuelve como histórico si el periodo pedido existe de verdad --
+  // un `ronda=` roto o de una semana sin ronda cae de vuelta al estado
+  // actual en vez de dejar el bloque en blanco.
+  const historicalRound =
+    periodKey && periodKey !== state.periodKey
+      ? await getRoundByPeriod(clubId, periodKey)
+      : null;
+  const isHistorical = historicalRound !== null;
+  const displayPeriodKey = isHistorical ? periodKey! : state.periodKey;
+  const round = isHistorical ? historicalRound : state.round;
+
   const supabase = await createClient();
-  const summary = state.round
-    ? (await getInteractionSummary(supabase, "club_round", [state.round.id])).get(state.round.id)
+  const summary = round
+    ? (await getInteractionSummary(supabase, "club_round", [round.id])).get(round.id)
     : undefined;
 
   const esMiTurno = state.holderId === viewerId;
@@ -35,35 +52,42 @@ export async function RoundBlock({
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-serif text-[15px] font-semibold">{t("title")}</h2>
         <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
-          {state.periodKey}
+          {displayPeriodKey}
         </span>
       </div>
 
-      {/* 03 y 04: ya hay ronda escrita este periodo. */}
-      {state.round ? (
+      {isHistorical && (
+        <Link href={`/club/${clubSlug}`} className="self-start text-xs font-medium text-accent hover:underline">
+          {t("backToCurrent")}
+        </Link>
+      )}
+
+      {/* 03 y 04: ya hay ronda escrita este periodo (o, con `ronda=`, del
+         periodo pedido -- issue #408). */}
+      {round ? (
         <>
-          {state.round.authorId === null && (
+          {round.authorId === null && (
             <span className="self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
               {t("houseStamp")}
             </span>
           )}
           <p className="font-serif text-xl leading-snug font-medium text-balance">
-            {state.round.prompt}
+            {round.prompt}
           </p>
           {/* La obra viaja a la RPC y se persiste (item_type/item_id), pero
              hasta aquí nadie la pintaba: se guardaba en silencio. Un enlace a
              la ficha basta -- una ronda de la casa nunca lleva obra. */}
-          {state.round.itemType && state.round.itemId && (
+          {round.itemType && round.itemId && (
             <Link
-              href={itemHref(state.round.itemType, state.round.itemId)}
+              href={itemHref(round.itemType, round.itemId)}
               className="self-start text-sm font-medium text-accent hover:underline"
             >
               {t("itemLink")}
             </Link>
           )}
-          {state.round.authorName && (
+          {round.authorName && (
             <p className="text-xs text-muted-foreground">
-              {t("proposedBy", { name: state.round.authorName })}
+              {t("proposedBy", { name: round.authorName })}
             </p>
           )}
           {summary && (
@@ -81,7 +105,7 @@ export async function RoundBlock({
               // consigna Y los cuerpos de las respuestas, igual que
               // checkpoints.ts con su chat.
               knownUsernames={await resolveKnownMentions(supabase, [
-                state.round.prompt,
+                round.prompt,
                 ...summary.comments.map((c) => c.body),
               ])}
             />
@@ -129,7 +153,9 @@ export async function RoundBlock({
         )
       )}
 
-      <RoundHistory clubId={clubId} currentPeriodKey={state.periodKey} />
+      {/* Excluye `displayPeriodKey`, no siempre `state.periodKey`: viendo un
+         periodo histórico (arriba), no tiene sentido repetirlo también aquí. */}
+      <RoundHistory clubId={clubId} currentPeriodKey={displayPeriodKey} />
     </section>
   );
 }

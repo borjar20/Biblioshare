@@ -2800,6 +2800,15 @@ export type Database = {
         Args: { p_item_id: string; p_saga_id: string }
         Returns: undefined
       }
+      list_club_round_weeks: {
+        Args: { p_club_id: string; p_weeks?: number }
+        Returns: {
+          author_id: string
+          period_key: string
+          prompt: string
+          round_id: string
+        }[]
+      }
       moderatable_target_ids: {
         Args: {
           candidate_target_ids: string[]
