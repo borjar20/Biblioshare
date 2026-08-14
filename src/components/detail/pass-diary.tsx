@@ -215,6 +215,16 @@ function PassCard({
             {editionLabel}
           </span>
         )}
+        {/* Motivo de abandono (§7 del diseño: "¿por qué dejé esto?" al mirar
+            el historial). Mismo patrón de chip que editionLabel, con los
+            colores de --status-dropped — un pase `completed` con datos
+            residuales de un dropped anterior nunca entra aquí porque el
+            gate exige status === "dropped", no solo droppedReason presente. */}
+        {pass.status === "dropped" && pass.droppedReason && (
+          <span className="rounded-chip bg-status-dropped/10 px-1.5 py-0.5 tracking-wide uppercase text-status-dropped">
+            {t(`droppedReason.options.${pass.droppedReason}`)}
+          </span>
+        )}
       </div>
 
       {/* `.tx` del frame: prosa, no metadato — va en --foreground-soft (el
@@ -224,6 +234,16 @@ function PassCard({
           {pass.review}
         </p>
       )}
+
+      {/* Nota libre de "otro": misma prosa que la reseña, no truncada — es la
+          respuesta a la pregunta que motivó la feature. */}
+      {pass.status === "dropped" &&
+        pass.droppedReason === "otro" &&
+        pass.droppedReasonNote && (
+          <p className="mt-1 text-[12.5px] leading-[1.55] text-foreground-soft">
+            {pass.droppedReasonNote}
+          </p>
+        )}
 
       <div className="flex items-center gap-3 pt-1">
         {canEdit && (
