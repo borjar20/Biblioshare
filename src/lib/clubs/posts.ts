@@ -84,13 +84,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Fan-out a los miembros activos, excepto el autor — vía notifyMany(): un solo
 // INSERT multi-fila + push en lote, en vez de notify() por miembro (EPIC-05
 // Bloque F; se acepta el ruido temporal, silenciar-club queda diferido a E5.J).
-// postId es opcional: cuando se conoce (texto/compartido, Task 4) target_type/
+// postId es opcional: cuando se conoce (texto/compartido/encuesta) target_type/
 // target_id apuntan al post concreto ('club_post'), más preciso que antes.
-// createPoll no lo pasa porque create_club_poll() (RPC) no devuelve el id del
-// post creado (returns void) — se mantiene el target_type='club' original
-// (apunta al club, resuelve al mismo href) para no romper su comportamiento
-// existente. Ver limitación anotada en createPoll: sin menciones tampoco por
-// el mismo motivo.
 // excludeUserIds: los ya notificados por @mención (Task 4) para no duplicar
 // aviso — se suman a la exclusión del propio autor.
 async function notifyNewPost(
@@ -213,14 +208,12 @@ export async function createPoll(
   if (trimmedOptions.length < 2) throw new Error("at_least_two_options_required");
   if (trimmedOptions.some((o) => o.length > MAX_OPTION_LENGTH)) throw new Error("option_too_long");
 
-  // LÍMITE CONOCIDO (Task 4 de menciones): create_club_poll() (SECURITY
-  // DEFINER, schema-baseline.sql) devuelve `void`, no el id del post creado —
-  // sin él no hay target_id para notifyMentions() ni forma de apuntar el
-  // fan-out genérico al post concreto. La pregunta del poll SÍ es texto libre
-  // y podría llevar @menciones, pero se quedan sin notificar aquí. Arreglo
-  // correcto: hacer que la RPC devuelva el id (`returns uuid`) — pendiente,
-  // issue a abrir en Task 8.
-  const { error } = await supabase.rpc("create_club_poll", {
+  // create_club_poll() (SECURITY DEFINER) devuelve el id del post creado
+  // (issue #320 — antes `returns void`, sin id no había target_id para
+  // notifyMentions() ni forma de apuntar el fan-out genérico al post
+  // concreto). La pregunta del poll es texto libre y puede llevar @menciones,
+  // mismo tratamiento que createTextPost/createShareActivityPost.
+  const { data: postId, error } = await supabase.rpc("create_club_poll", {
     p_club_id: clubId,
     p_question: trimmedQuestion,
     p_options: trimmedOptions,
@@ -228,7 +221,8 @@ export async function createPoll(
   });
   if (error) throw error;
 
-  await notifyNewPost(supabase, clubId, userId);
+  const mentioned = await notifyPostMentions(supabase, userId, trimmedQuestion, postId);
+  await notifyNewPost(supabase, clubId, userId, postId, mentioned);
   await earnFirstClubParticipation(supabase, userId, clubId);
   revalidateClubPages();
 }
