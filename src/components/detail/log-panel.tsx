@@ -210,6 +210,10 @@ function ManagedLog({
   const [closingPassId, setClosingPassId] = useState<string | null>(
     initialClosingPassId,
   );
+  // El auto-cierre por sesión (initialClosingPassId) solo dispara al
+  // terminar un libro: siempre "completed". handleStatusChange lo pisa con
+  // el `next` real cuando el cierre lo dispara marcar un estado a mano.
+  const [closingStatus, setClosingStatus] = useState<MediaStatus>("completed");
   const [prevInitialClosingPassId, setPrevInitialClosingPassId] =
     useState(initialClosingPassId);
   if (initialClosingPassId !== prevInitialClosingPassId) {
@@ -248,6 +252,7 @@ function ManagedLog({
         const outcome = await updateStatus(itemType, itemId, "completed");
         router.refresh();
         if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+          setClosingStatus("completed");
           setClosingPassId(outcome.passId);
         }
       });
@@ -274,6 +279,7 @@ function ManagedLog({
       // sin pase activo previo, closed puede llegar true con passId vacío.
       // No abrir la hoja de cierre contra un pase inexistente.
       if (outcome.closed && outcome.passId) {
+        setClosingStatus(next);
         setClosingPassId(outcome.passId);
       }
     });
@@ -494,6 +500,7 @@ function ManagedLog({
           passId={closingPassId}
           itemType={itemType}
           itemId={itemId}
+          status={closingStatus}
           open
           onClose={() => setClosingPassId(null)}
         />
