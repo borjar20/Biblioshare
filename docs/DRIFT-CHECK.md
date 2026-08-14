@@ -228,6 +228,16 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > `club_event_followers` **no** entra en la lista por otra razón: solo tiene `grant select`
 > (se escribe únicamente por RPC `SECURITY DEFINER`), así que no es una tabla con grants de
 > escritura por columna y la consulta no la mira.
+>
+> **Nota del 2026-08-14 (motivo de abandono, solo dev por ahora).** `passes` ganó **2 columnas**
+> (`dropped_reason`, `dropped_reason_note`, `20260858_pass_dropped_reason.sql`) con grant de
+> **solo UPDATE, a propósito**: un SELECT aquí (de tabla o por columna) se filtraría a cualquiera
+> que pueda ver el perfil, saltándose `is_public` — la RLS de `passes` es de visibilidad de
+> perfil, no de dueño; se lee enmascarado por dueño a través de `pass_reviews`. Tampoco tienen
+> INSERT: un pase no nace `dropped`, solo llega ahí por una transición posterior (UPDATE). En dev
+> la consulta ya devuelve `passes | 19 | 14 | 13` (antes `17 | 14 | 11`, verificado en vivo);
+> en prod, donde esta migración aún no se ha aplicado, sigue devolviendo los números de la tabla
+> de abajo. Al desplegar, actualiza la fila de `passes` a `19 | 14 | 13`.
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
