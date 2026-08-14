@@ -8,6 +8,7 @@ import {
   FAKE_ACTOR_ID,
   FAKE_BOOK_ID,
   FAKE_MOVIE_ID,
+  FAKE_SERIES_ID,
 } from "./fake-feed-supabase";
 
 // El feed lee de `posts` (kind = thought|finished|progressed|started|dropped|
@@ -93,6 +94,24 @@ describe("getFeed — fuente `posts`", () => {
     expect(e.kind).toBe("progressed");
     expect(e.verb).toBe("progressed");
     expect(e.progress).toEqual({ durationMinutes: 45, page: 150, percent: null, note: { body: "Voy por la mitad", isSpoiler: false } });
+  });
+
+  test("un progreso de SERIE => episode desde la posición, sin minutos", async () => {
+    // Regresión: los posts 'progressed' de serie caían a "0 minutos registrados"
+    // porque el feed solo miraba `position.page`. La posición de serie guarda
+    // {season, episode} (episodio más alto de la sesión) y se pinta "S#E#".
+    const sb = fakeSupabase({
+      posts: [post("p1", "2026-08-09T10:00:00+00:00", {
+        kind: "progressed", source_kind: "progress_session", source_id: "sess-1",
+        anchor_type: "series", anchor_id: FAKE_SERIES_ID,
+      })],
+      sessions: [{ id: "sess-1", duration_minutes: null, position: { season: 3, episode: 7 } }],
+    });
+    const [e] = personEvents((await getFeed(sb.client, VIEWER, {})).events);
+    expect(e.kind).toBe("progressed");
+    expect(e.episode).toEqual({ season: 3, episode: 7, title: null });
+    expect(e.progress?.page).toBeNull();
+    expect(e.progress?.durationMinutes).toBeNull();
   });
 
   test("hito started/dropped => se emite con su kind (sin display extra)", async () => {

@@ -398,13 +398,22 @@ async function resolvePostDrafts(
     }
     if (r.kind === "progressed") {
       const session = r.source_id ? sessionById.get(r.source_id) : undefined;
-      const pos = (session?.position ?? {}) as { page?: number };
+      const pos = (session?.position ?? {}) as { page?: number; season?: number; episode?: number };
       const page = typeof pos.page === "number" ? pos.page : null;
       const totalPages = catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.totalPages ?? null;
       const percent = page != null && totalPages ? Math.min(100, Math.round((page / totalPages) * 100)) : null;
+      // Series: el avance es por episodio, no por página ni minutos. La sesión
+      // guarda position={season, episode} (episodio más alto marcado) y la
+      // tarjeta lo pinta "S#E#", igual que un 'watched'. Sin este mapeo el post
+      // caía a `minutesLogged(0)` = "0 minutos registrados" (bug Futurama).
+      const seriesEpisode =
+        r.anchor_type === "series" && typeof pos.season === "number" && typeof pos.episode === "number"
+          ? { season: pos.season, episode: pos.episode, title: null }
+          : null;
       drafts.push({
         ...base,
         verb: "progressed",
+        episode: seriesEpisode,
         progress: {
           durationMinutes: session?.duration_minutes ?? null,
           page,
