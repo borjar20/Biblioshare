@@ -73,9 +73,20 @@ export function FiltersDropdown({
           role="menu"
           className="fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-auto sm:top-[42px] sm:right-0 sm:w-[min(280px,92vw)] sm:overflow-visible sm:rounded-xl sm:border sm:border-border sm:p-3.5 sm:shadow-card"
         >
-          <div className="flex items-center justify-between sm:hidden">
-            <span className="font-serif text-base font-semibold text-foreground">
-              {label}
+          <div className="flex items-center justify-between gap-3 sm:hidden">
+            <span className="flex items-baseline gap-2">
+              <span className="font-serif text-base font-semibold text-foreground">
+                {label}
+              </span>
+              {/* La hoja móvil es `fixed inset-0` y tapa la fila de fuera donde
+                  vive `countLabel` (issue #378): se repite aquí, junto al
+                  título, para que "N de M" siga visible mientras se encadenan
+                  filtros sin cerrar la hoja. */}
+              {activeCount > 0 && countLabel && (
+                <span className="font-mono text-[11px] tracking-wide text-muted-foreground">
+                  {countLabel}
+                </span>
+              )}
             </span>
             <button
               type="button"
