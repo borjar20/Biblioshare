@@ -29,10 +29,12 @@ export type SearchResult = {
   // así que no se cachean tal cual — ver `catalogIdForMovieCandidate`.
   englishTitle?: string | null;
   subtitle: string | null; // libros: autoría
-  // Libros, SOLO en resultados de búsqueda: los demás títulos con los que
-  // `q=` puede haber traído esta obra (el de la obra en Open Library, más el
-  // de edición no elegido). Lo usa `match-row.ts` para casar una fila de CSV
-  // cuyo título coincide con uno de estos y no con el `title` mostrado.
+  // Libros, SOLO en resultados de búsqueda: TODOS los títulos candidatos que
+  // `q=` trajo para esta obra —el de la obra en Open Library, más los de
+  // edición aceptados por idioma— e INCLUYE el `title` ya elegido, no solo
+  // "los demás": con `title === "En llamas"`, `altTitles` es
+  // `["Fatta Eld", "En llamas"]`. Lo usa `match-row.ts` para casar una fila de
+  // CSV cuyo título coincide con uno de estos y no con el `title` mostrado.
   altTitles?: string[];
   coverUrl: string | null;
   year: number | null;

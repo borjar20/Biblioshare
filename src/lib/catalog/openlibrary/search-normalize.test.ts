@@ -133,17 +133,84 @@ describe("normalizeSearchWorks · idioma, omnibus y desduplicación", () => {
     expect(results.map((r) => r.title)).toEqual(["Mockingjay", "Fatta Eld"]);
   });
 
-  it("funde dos registros con el mismo título de OBRA y deja el de más ediciones", () => {
+  it("funde dos registros con el mismo título de OBRA y autoría, y deja el de más ediciones", () => {
     const results = normalizeSearchWorks(
       [],
       [
-        { key: "/works/OL1W", title: "The Hunger Games", language: ["eng"], edition_count: 5 },
-        { key: "/works/OL2W", title: "The Hunger games", language: ["eng"], edition_count: 142 },
+        {
+          key: "/works/OL1W",
+          title: "The Hunger Games",
+          author_name: ["Suzanne Collins"],
+          language: ["eng"],
+          edition_count: 5,
+        },
+        {
+          key: "/works/OL2W",
+          title: "The Hunger games",
+          author_name: ["Suzanne Collins"],
+          language: ["eng"],
+          edition_count: 142,
+        },
       ]
     );
 
     expect(results).toHaveLength(1);
     expect(results[0].externalId).toBe("/works/OL2W");
+  });
+
+  it("NO funde dos obras homónimas de autores distintos", () => {
+    // «México en llamas» de Anabel Hernández y «Mexico en llamas» de Basañez
+    // Loyola son dos novelas sin relación. Con la clave solo por título, la de
+    // menos ediciones desaparecía de la búsqueda y no había forma de añadirla.
+    const results = normalizeSearchWorks(
+      [],
+      [
+        {
+          key: "/works/OL1W",
+          title: "México en llamas",
+          author_name: ["Anabel Hernández"],
+          language: ["spa"],
+          edition_count: 1,
+        },
+        {
+          key: "/works/OL2W",
+          title: "Mexico en llamas",
+          author_name: ["Alejandro Basañez Loyola"],
+          language: ["spa"],
+          edition_count: 4,
+        },
+      ]
+    );
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL1W", "/works/OL2W"]);
+  });
+
+  it("la obra fusionada se queda con la MEJOR posición del grupo", () => {
+    // Si el superviviente heredara su propia posición, el grupo bajaría a la
+    // del gemelo — y con el corte en 20, una obra que iba primera puede caer
+    // fuera de la lista.
+    const results = normalizeSearchWorks(
+      [],
+      [
+        {
+          key: "/works/OL1W",
+          title: "Dune",
+          author_name: ["Frank Herbert"],
+          language: ["eng"],
+          edition_count: 3,
+        },
+        { key: "/works/OL2W", title: "Otro libro", language: ["eng"], edition_count: 50 },
+        {
+          key: "/works/OL3W",
+          title: "Dune",
+          author_name: ["Frank Herbert"],
+          language: ["eng"],
+          edition_count: 312,
+        },
+      ]
+    );
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL3W", "/works/OL2W"]);
   });
 
   it("NO funde dos obras que solo comparten un título de edición", () => {
@@ -211,14 +278,32 @@ describe("normalizeSearchWorks · fixtures reales", () => {
     });
   });
 
-  it("q='hunger games': los registros repetidos de la obra se funden en uno", () => {
+  it("q='hunger games': los homónimos de otros autores NO se funden con la novela", () => {
+    // Open Library tiene tres works distintos titulados «The Hunger Games»:
+    // la novela de Collins y dos acompañamientos. Son libros distintos y los
+    // tres se pueden añadir.
     const results = normalizeSearchWorks(
       searchHungerGamesEs.docs,
       searchHungerGamesEn.docs
     );
 
     expect(results[0].externalId).toBe("/works/OL5735363W");
-    expect(results.filter((r) => r.title === "The Hunger Games")).toHaveLength(1);
+    expect(
+      results.filter((r) => r.title === "The Hunger Games").map((r) => r.subtitle)
+    ).toEqual(["Suzanne Collins", "Kate Egan", "Nicola Balkind"]);
+    expect(new Set(results.map((r) => r.externalId)).size).toBe(20);
+  });
+
+  it("q='en llamas': dos novelas homónimas de autores distintos sobreviven las dos", () => {
+    // Antes de meter la autoría en la clave, «Mexico en llamas» de Basañez
+    // Loyola borraba «México en llamas» de Anabel Hernández.
+    const results = normalizeSearchWorks(searchEnLlamasEs.docs, searchEnLlamasEn.docs);
+
+    expect(results[7]).toMatchObject({
+      externalId: "/works/OL19963340W",
+      title: "México en llamas",
+      subtitle: "Anabel Hernández",
+    });
   });
 
   it("q='en llamas': la MISMA obra sale con su título español", () => {

@@ -63,7 +63,7 @@ type Merged = {
 /**
  * Las siete reglas, en el orden en que las aplica el cuerpo de la función:
  * 1. Juntar. 2. Guarda de colisión. 3. Idioma. 4. Omnibus. 5. Título.
- * 6. Desduplicar por título de obra. 7. Recortar.
+ * 6. Desduplicar por título de obra y autoría. 7. Recortar.
  *
  * Recibe los `docs` de las dos pasadas de `search.json` (`lang=es` y `lang=en`)
  * sobre la MISMA consulta.
@@ -121,7 +121,7 @@ export function normalizeSearchWorks(
 
   const candidates: Array<{
     result: SearchResult;
-    workTitle: string;
+    dedupKey: string;
     editions: number;
     order: number;
   }> = [];
@@ -149,26 +149,43 @@ export function normalizeSearchWorks(
     // 5. Título: español, si no inglés, si no el de la obra.
     const title = entry.es ?? entry.en ?? workTitle;
 
+    // La clave de fusión del paso 6: título de obra Y autoría. Solo con el
+    // título, «México en llamas» de Anabel Hernández y «Mexico en llamas» de
+    // Basañez Loyola —dos novelas sin ninguna relación— se fundían, y la de
+    // menos ediciones desaparecía de la búsqueda sin que nada dijera que
+    // existe. Medido sobre el fixture de `q="en llamas"`.
+    //
+    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
+    // cualquier otra obra en el mismo caso: esas no desduplican (clave vacía).
+    const normalizedWorkTitle = normalizeTitleForComparison(workTitle);
+    const dedupKey = normalizedWorkTitle
+      ? `${normalizedWorkTitle}|${normalizeTitleForComparison((doc.author_name ?? []).join(", "))}`
+      : "";
+
     candidates.push({
       result: { ...mapWorkDoc(doc), title, altTitles: allTitles },
-      workTitle,
+      dedupKey,
       editions: typeof doc.edition_count === "number" ? doc.edition_count : 0,
       order: entry.order,
     });
   }
 
-  // 6. Desduplicar por título de OBRA solamente. Los títulos de edición NO
+  // 6. Desduplicar por título de OBRA y autoría. Los títulos de edición NO
   //    cruzan: son los que la consulta contamina. Esto funde los registros
-  //    repetidos de la misma obra y deja en paz a sus hermanos de saga.
-  //    Sobrevive la de más ediciones.
+  //    repetidos de la misma obra y deja en paz a sus hermanos de saga y a sus
+  //    homónimos de otros autores. Sobrevive la de más ediciones.
   const survivors: typeof candidates = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, (typeof candidates)[number]>();
   for (const candidate of [...candidates].sort((a, b) => b.editions - a.editions)) {
-    const key = normalizeTitleForComparison(candidate.workTitle);
-    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
-    // cualquier otra obra en el mismo caso y las fundiría: no desduplica.
-    if (key && seen.has(key)) continue;
-    if (key) seen.add(key);
+    const twin = candidate.dedupKey ? seen.get(candidate.dedupKey) : undefined;
+    if (twin) {
+      // Fusionar no puede hundir una obra en la lista: el grupo se queda con la
+      // mejor posición de sus miembros. Con el corte en 20, heredar la posición
+      // del superviviente puede tirar fuera una obra que iba la primera.
+      twin.order = Math.min(twin.order, candidate.order);
+      continue;
+    }
+    if (candidate.dedupKey) seen.set(candidate.dedupKey, candidate);
     survivors.push(candidate);
   }
 
