@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
+import type { RouteFormState } from "@/lib/sagas/route-actions";
 import { SheetShell } from "../sheet-shell";
 import { RouteForm } from "./route-form";
 import type { RouteRowData } from "./route-row";
@@ -30,7 +31,7 @@ export function RouteSheet({
   onDesignate: () => void;
   onDelete: () => void;
   deleting: boolean;
-  deleteError: boolean;
+  deleteError: RouteFormState["error"] | null;
   onClose: () => void;
 }) {
   const t = useTranslations("sagaEditor");
@@ -88,7 +89,9 @@ export function RouteSheet({
               {deleting ? t("routeDeleting") : t("routeDeleteConfirm")}
             </button>
           </div>
-          {deleteError && <p className="mt-2 text-[11.5px] text-status-dropped">{t("routeErrors.generic")}</p>}
+          {deleteError && (
+            <p className="mt-2 text-[11.5px] text-status-dropped">{t(`routeErrors.${deleteError}`)}</p>
+          )}
         </div>
       )}
     </SheetShell>

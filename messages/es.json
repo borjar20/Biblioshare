@@ -1498,6 +1498,7 @@
     "orderPublication": "Publicación",
     "routeAdopt": "Leer por aquí",
     "routeAdopted": "Leyendo por aquí",
+    "routeAdoptError": "No se pudo guardar tu elección. Inténtalo de nuevo.",
     "routeProgress": "Llevas {completed} de {total} de esta ruta",
     "routeBlockCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "routeEmpty": "Esta ruta aún no tiene pasos.",
