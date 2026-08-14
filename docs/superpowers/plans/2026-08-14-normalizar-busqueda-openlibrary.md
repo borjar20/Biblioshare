@@ -381,6 +381,20 @@ describe("normalizeSearchWorks · idioma, omnibus y desduplicación", () => {
     expect(results.map((r) => r.externalId)).toEqual(["/works/OL1W", "/works/OL2W"]);
   });
 
+  it("NO funde dos obras anónimas homónimas", () => {
+    // Sin `author_name` no hay forma de saber si son el mismo libro. Se
+    // prefiere enseñar un duplicado a borrar uno de los dos.
+    const results = normalizeSearchWorks(
+      [],
+      [
+        { key: "/works/OL1W", title: "España en llamas", language: ["spa"], edition_count: 1 },
+        { key: "/works/OL2W", title: "España en llamas", language: ["spa"], edition_count: 9 },
+      ]
+    );
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL1W", "/works/OL2W"]);
+  });
+
   it("la obra fusionada se queda con la MEJOR posición del grupo", () => {
     // Si el superviviente heredara su propia posición, el grupo bajaría a la
     // del gemelo — y con el corte en 20, una obra que iba primera puede caer
@@ -566,12 +580,18 @@ export function normalizeSearchWorks(
     // menos ediciones desaparecía de la búsqueda sin que nada dijera que
     // existe. Medido sobre el fixture de `q="en llamas"`.
     //
-    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
-    // cualquier otra obra en el mismo caso: esas no desduplican (clave vacía).
+    // Sin clave no se desduplica, y hay DOS motivos para no tenerla. Un título
+    // que normaliza a la cadena vacía («!!!», «—») casaría con el de cualquier
+    // otra obra en el mismo caso. Y una obra sin `author_name` —2 de cada 40
+    // docs en los fixtures— casaría con cualquier otra anónima del mismo
+    // título, que son dos libros distintos. En ambos casos se prefiere enseñar
+    // un duplicado a borrar un libro.
     const normalizedWorkTitle = normalizeTitleForComparison(workTitle);
-    const dedupKey = normalizedWorkTitle
-      ? `${normalizedWorkTitle}|${normalizeTitleForComparison((doc.author_name ?? []).join(", "))}`
-      : "";
+    const normalizedAuthors = normalizeTitleForComparison((doc.author_name ?? []).join(", "));
+    const dedupKey =
+      normalizedWorkTitle && normalizedAuthors
+        ? `${normalizedWorkTitle}|${normalizedAuthors}`
+        : "";
 
     candidates.push({
       result: { ...mapWorkDoc(doc), title, altTitles: allTitles },
