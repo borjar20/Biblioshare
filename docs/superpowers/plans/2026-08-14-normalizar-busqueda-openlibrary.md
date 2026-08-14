@@ -329,17 +329,84 @@ describe("normalizeSearchWorks · idioma, omnibus y desduplicación", () => {
     expect(results.map((r) => r.title)).toEqual(["Mockingjay", "Fatta Eld"]);
   });
 
-  it("funde dos registros con el mismo título de OBRA y deja el de más ediciones", () => {
+  it("funde dos registros con el mismo título de OBRA y autoría, y deja el de más ediciones", () => {
     const results = normalizeSearchWorks(
       [],
       [
-        { key: "/works/OL1W", title: "The Hunger Games", language: ["eng"], edition_count: 5 },
-        { key: "/works/OL2W", title: "The Hunger games", language: ["eng"], edition_count: 142 },
+        {
+          key: "/works/OL1W",
+          title: "The Hunger Games",
+          author_name: ["Suzanne Collins"],
+          language: ["eng"],
+          edition_count: 5,
+        },
+        {
+          key: "/works/OL2W",
+          title: "The Hunger games",
+          author_name: ["Suzanne Collins"],
+          language: ["eng"],
+          edition_count: 142,
+        },
       ]
     );
 
     expect(results).toHaveLength(1);
     expect(results[0].externalId).toBe("/works/OL2W");
+  });
+
+  it("NO funde dos obras homónimas de autores distintos", () => {
+    // «México en llamas» de Anabel Hernández y «Mexico en llamas» de Basañez
+    // Loyola son dos novelas sin relación. Con la clave solo por título, la de
+    // menos ediciones desaparecía de la búsqueda y no había forma de añadirla.
+    const results = normalizeSearchWorks(
+      [],
+      [
+        {
+          key: "/works/OL1W",
+          title: "México en llamas",
+          author_name: ["Anabel Hernández"],
+          language: ["spa"],
+          edition_count: 1,
+        },
+        {
+          key: "/works/OL2W",
+          title: "Mexico en llamas",
+          author_name: ["Alejandro Basañez Loyola"],
+          language: ["spa"],
+          edition_count: 4,
+        },
+      ]
+    );
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL1W", "/works/OL2W"]);
+  });
+
+  it("la obra fusionada se queda con la MEJOR posición del grupo", () => {
+    // Si el superviviente heredara su propia posición, el grupo bajaría a la
+    // del gemelo — y con el corte en 20, una obra que iba primera puede caer
+    // fuera de la lista.
+    const results = normalizeSearchWorks(
+      [],
+      [
+        {
+          key: "/works/OL1W",
+          title: "Dune",
+          author_name: ["Frank Herbert"],
+          language: ["eng"],
+          edition_count: 3,
+        },
+        { key: "/works/OL2W", title: "Otro libro", language: ["eng"], edition_count: 50 },
+        {
+          key: "/works/OL3W",
+          title: "Dune",
+          author_name: ["Frank Herbert"],
+          language: ["eng"],
+          edition_count: 312,
+        },
+      ]
+    );
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL3W", "/works/OL2W"]);
   });
 
   it("NO funde dos obras que solo comparten un título de edición", () => {
@@ -407,7 +474,7 @@ type Merged = {
 /**
  * Las siete reglas, en el orden en que las aplica el cuerpo de la función:
  * 1. Juntar. 2. Guarda de colisión. 3. Idioma. 4. Omnibus. 5. Título.
- * 6. Desduplicar por título de obra. 7. Recortar.
+ * 6. Desduplicar por título de obra y autoría. 7. Recortar.
  *
  * Recibe los `docs` de las dos pasadas de `search.json` (`lang=es` y `lang=en`)
  * sobre la MISMA consulta.
@@ -465,7 +532,7 @@ export function normalizeSearchWorks(
 
   const candidates: Array<{
     result: SearchResult;
-    workTitle: string;
+    dedupKey: string;
     editions: number;
     order: number;
   }> = [];
@@ -493,26 +560,43 @@ export function normalizeSearchWorks(
     // 5. Título: español, si no inglés, si no el de la obra.
     const title = entry.es ?? entry.en ?? workTitle;
 
+    // La clave de fusión del paso 6: título de obra Y autoría. Solo con el
+    // título, «México en llamas» de Anabel Hernández y «Mexico en llamas» de
+    // Basañez Loyola —dos novelas sin ninguna relación— se fundían, y la de
+    // menos ediciones desaparecía de la búsqueda sin que nada dijera que
+    // existe. Medido sobre el fixture de `q="en llamas"`.
+    //
+    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
+    // cualquier otra obra en el mismo caso: esas no desduplican (clave vacía).
+    const normalizedWorkTitle = normalizeTitleForComparison(workTitle);
+    const dedupKey = normalizedWorkTitle
+      ? `${normalizedWorkTitle}|${normalizeTitleForComparison((doc.author_name ?? []).join(", "))}`
+      : "";
+
     candidates.push({
       result: { ...mapWorkDoc(doc), title, altTitles: allTitles },
-      workTitle,
+      dedupKey,
       editions: typeof doc.edition_count === "number" ? doc.edition_count : 0,
       order: entry.order,
     });
   }
 
-  // 6. Desduplicar por título de OBRA solamente. Los títulos de edición NO
+  // 6. Desduplicar por título de OBRA y autoría. Los títulos de edición NO
   //    cruzan: son los que la consulta contamina. Esto funde los registros
-  //    repetidos de la misma obra y deja en paz a sus hermanos de saga.
-  //    Sobrevive la de más ediciones.
+  //    repetidos de la misma obra y deja en paz a sus hermanos de saga y a sus
+  //    homónimos de otros autores. Sobrevive la de más ediciones.
   const survivors: typeof candidates = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, (typeof candidates)[number]>();
   for (const candidate of [...candidates].sort((a, b) => b.editions - a.editions)) {
-    const key = normalizeTitleForComparison(candidate.workTitle);
-    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
-    // cualquier otra obra en el mismo caso y las fundiría: no desduplica.
-    if (key && seen.has(key)) continue;
-    if (key) seen.add(key);
+    const twin = candidate.dedupKey ? seen.get(candidate.dedupKey) : undefined;
+    if (twin) {
+      // Fusionar no puede hundir una obra en la lista: el grupo se queda con la
+      // mejor posición de sus miembros. Con el corte en 20, heredar la posición
+      // del superviviente puede tirar fuera una obra que iba la primera.
+      twin.order = Math.min(twin.order, candidate.order);
+      continue;
+    }
+    if (candidate.dedupKey) seen.set(candidate.dedupKey, candidate);
     survivors.push(candidate);
   }
 
@@ -573,14 +657,32 @@ describe("normalizeSearchWorks · fixtures reales", () => {
     });
   });
 
-  it("q='hunger games': los registros repetidos de la obra se funden en uno", () => {
+  it("q='hunger games': los homónimos de otros autores NO se funden con la novela", () => {
+    // Open Library tiene tres works distintos titulados «The Hunger Games»:
+    // la novela de Collins y dos acompañamientos. Son libros distintos y los
+    // tres se pueden añadir.
     const results = normalizeSearchWorks(
       searchHungerGamesEs.docs,
       searchHungerGamesEn.docs
     );
 
     expect(results[0].externalId).toBe("/works/OL5735363W");
-    expect(results.filter((r) => r.title === "The Hunger Games")).toHaveLength(1);
+    expect(
+      results.filter((r) => r.title === "The Hunger Games").map((r) => r.subtitle)
+    ).toEqual(["Suzanne Collins", "Kate Egan", "Nicola Balkind"]);
+    expect(new Set(results.map((r) => r.externalId)).size).toBe(20);
+  });
+
+  it("q='en llamas': dos novelas homónimas de autores distintos sobreviven las dos", () => {
+    // Antes de meter la autoría en la clave, «Mexico en llamas» de Basañez
+    // Loyola borraba «México en llamas» de Anabel Hernández.
+    const results = normalizeSearchWorks(searchEnLlamasEs.docs, searchEnLlamasEn.docs);
+
+    expect(results[7]).toMatchObject({
+      externalId: "/works/OL19963340W",
+      title: "México en llamas",
+      subtitle: "Anabel Hernández",
+    });
   });
 
   it("q='en llamas': la MISMA obra sale con su título español", () => {
@@ -797,14 +899,15 @@ Aquí se cierra el fallo concreto: una fila «En llamas» que hoy no casa.
 - Consumes: `SearchResult` de `@/lib/catalog/types`; `isSameTitle(a: string, b: string): boolean` de `@/lib/catalog/title-match`; `searchWorks` de la Task 3.
 - Produces: `SearchResult.altTitles?: string[]`.
 
-- [ ] **Step 1: Añadir el campo al tipo**
+- [ ] **Step 1: Verificar el campo del tipo**
 
-En `src/lib/catalog/types.ts`, antes del cierre de `SearchResult` (tras `matchedIsbn`):
+`altTitles?: string[]` ya se añadió a `SearchResult` en la Task 2, porque el normalizador lo rellena y sin el campo no compilaba. Comprueba que en `src/lib/catalog/types.ts` existe y que su comentario dice la verdad: **`altTitles` incluye TAMBIÉN el título mostrado**, no solo «los demás». Si el comentario dice otra cosa, corrígelo:
 
 ```ts
-  // Libros, solo desde la búsqueda de Open Library: los títulos candidatos de
-  // la obra (el del work, y los de sus mejores ediciones en español e inglés).
-  // El importador de CSV compara contra TODOS, igual que `matchMovie` compara
+  // Libros, solo desde la búsqueda de Open Library: TODOS los títulos
+  // candidatos de la obra — el del work y los de sus mejores ediciones en
+  // español e inglés, incluido el que se acabó mostrando en `title`. El
+  // importador de CSV compara contra todos, igual que `matchMovie` compara
   // contra `title`/`originalTitle`/`englishTitle`: la fila «En llamas» tiene
   // que casar con el work que Open Library titula «Fatta Eld». Opcional — el
   // catálogo local, el lookup por ISBN y TMDB no lo rellenan.

@@ -112,9 +112,20 @@ Entrada: los `docs` de dos pasadas de `search.json` (`lang=es` y `lang=en`) sobr
 5. **Título.** Español, si no inglés, si no el de la obra — usando solo títulos de edición no
    anulados.
 
-6. **Desduplicar por título de OBRA solamente.** Los títulos de edición no participan en el
-   cruce. Sobrevive la de más ediciones. Esto funde los cinco registros basura de «The Hunger
-   Games» y no roza a «Mockingjay», cuyo título de obra es otro.
+6. **Desduplicar por título de OBRA y autoría.** Los títulos de edición no participan en el
+   cruce: son los que la consulta contamina. Sobrevive la de más ediciones, y el grupo se
+   queda con la **mejor** posición de sus miembros, para que fusionar nunca hunda una obra
+   fuera del corte de 20.
+
+   La autoría entra en la clave por una revisión de esta misma rama, medida sobre el fixture
+   de `q="en llamas"`: con el título solo, «México en llamas» de Anabel Hernández y «Mexico en
+   llamas» de Alejandro Basañez Loyola —dos novelas sin ninguna relación— se fundían, y la de
+   menos ediciones desaparecía de la búsqueda sin que nada dijera que existe. Es el modo de
+   fallo que este rediseño existe para eliminar; el primer borrador solo lo había movido de
+   sitio. El precio, también medido: en `q="hunger games"` reaparecen cinco works que Open
+   Library titula «The Hunger Games» pero cuyos autores son Kate Egan, Emily Seife o Nicola
+   Balkind —guías y acompañamientos—, y empujan obras hacia abajo. Se acepta: ver de más es
+   recuperable, un libro que no puedes añadir no.
 
 7. **Recortar a 20**, en el orden del paso 1.
 
@@ -168,7 +179,9 @@ junto a los de Collins y Shusterman (`search-hunger-games-{es,en}.json`,
 - `q="en llamas"` devuelve un resultado con `title === "En llamas"` y `"Fatta Eld"` entre sus
   `altTitles`.
 - La guarda anula un título de edición reclamado por dos obras, y solo entonces.
-- La desduplicación funde los cinco registros de «The Hunger Games» y deja «Mockingjay».
+- La desduplicación funde dos registros del mismo título Y autor, y NO funde dos homónimos de
+  autores distintos.
+- Al fusionar, el grupo se queda con la mejor posición de sus miembros.
 - 40 docs por pasada entran, 20 resultados salen.
 - `match-row` casa una fila cuyo título coincide con un `altTitle` y no con el mostrado.
 - Una pasada vacía y la otra no: se devuelve lo normalizado de la que respondió, no `[]`.
