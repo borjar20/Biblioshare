@@ -132,8 +132,11 @@ export function normalizeSearchWorks(
 
     // 3. Idioma: fuera lo que no tenga ninguna edición en español ni inglés, y
     //    fuera también lo que no traiga `language` en absoluto (Open Library lo
-    //    omite en ~1 de cada 10 docs, y admitirlos readmite las traducciones
-    //    sueltas que este filtro existe para quitar).
+    //    omite en 1 de cada 4 docs de búsqueda —9/40 en q="hunger games", 11/40
+    //    en q="en llamas", medido sobre los fixtures commiteados; la cifra de
+    //    ~1 de cada 10 de `normalize.ts` es de los fixtures de BIBLIOGRAFÍA, no
+    //    de estos—, y admitirlos readmite las traducciones sueltas que este
+    //    filtro existe para quitar). Límite sin recortar: issue #652.
     const languages = doc.language ?? [];
     if (!languages.includes("spa") && !languages.includes("eng")) continue;
 

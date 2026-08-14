@@ -24,8 +24,11 @@ const SEARCH_FIELDS =
   "key,title,author_name,author_key,cover_i,first_publish_year,edition_count,language,editions,editions.title,editions.language";
 const REVALIDATE_SECONDS = 3600;
 // 40 por pasada y recorte a 20: las reglas del normalizador se comen cerca de
-// la mitad de los docs (medido: 40 -> 20 en las cuatro consultas de prueba),
-// y pidiendo 20 la lista salía más corta que la de hoy.
+// la mitad de los docs. Medido en los dos fixtures commiteados (`q="hunger
+// games"` y `q="en llamas"`, los únicos de los que se puede volver a comprobar
+// esto desde el repo): 40 docs por pasada dan 28 supervivientes y se muestran
+// 20. Pidiendo 20 de entrada la lista salía más corta que la de antes de esta
+// rama.
 const SEARCH_LIMIT = 40;
 const FETCH_TIMEOUT_MS = 5000;
 
