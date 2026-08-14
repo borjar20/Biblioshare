@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { deleteRoute, moveRoute, setReadingOrder } from "@/lib/sagas/route-actions";
+import { deleteRoute, moveRoute, setReadingOrder, type RouteFormState } from "@/lib/sagas/route-actions";
 import { ShellDesktop } from "./shell-desktop";
 import { ShellMobile } from "./shell-mobile";
 import { RouteFormSheet, RouteSheet } from "./route-sheet";
@@ -41,8 +41,8 @@ export function RoutesManager({
   // acción no es de ninguna fila concreta (designar el mapa generado toca a
   // todas). Deshabilitar solo lo afectado evita el spinner global.
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState(false);
+  const [error, setError] = useState<RouteFormState["error"] | null>(null);
+  const [deleteError, setDeleteError] = useState<RouteFormState["error"] | null>(null);
   const [, startTransition] = useTransition();
 
   // El designado está fijado arriba por su designación, no por su `position`:
@@ -50,7 +50,7 @@ export function RoutesManager({
   // esa sublista.
   const movableIds = rows.filter((r) => !r.isReadingOrder).map((r) => r.id);
 
-  function run(id: string, fn: () => Promise<string | null>) {
+  function run(id: string, fn: () => Promise<RouteFormState["error"] | null>) {
     setError(null);
     setBusyId(id);
     startTransition(async () => {
@@ -61,10 +61,12 @@ export function RoutesManager({
     });
   }
 
+  // #174: moveRoute ya no se traga el error del Promise.all de updates — se
+  // lee aquí igual que setReadingOrder ya hacía, en vez de asumir éxito.
   const onMove = (routeId: string, direction: "up" | "down") =>
     run(routeId, async () => {
-      await moveRoute(routeId, sagaId, direction);
-      return null;
+      const result = await moveRoute(routeId, sagaId, direction);
+      return result.error ?? null;
     });
 
   const onDesignate = (routeId: string | null) =>
@@ -77,13 +79,13 @@ export function RoutesManager({
   const active = sheet && sheet.kind !== "create" ? rows.find((r) => r.id === sheet.routeId) ?? null : null;
 
   function onDelete(routeId: string) {
-    setDeleteError(false);
+    setDeleteError(null);
     setBusyId(routeId);
     startTransition(async () => {
       const result = await deleteRoute(routeId, sagaId);
       setBusyId(null);
       if (result.error) {
-        setDeleteError(true);
+        setDeleteError(result.error);
         return;
       }
       setSheet(null);
@@ -102,7 +104,7 @@ export function RoutesManager({
     onMove,
     onDesignate,
     onMenu: (routeId: string) => {
-      setDeleteError(false);
+      setDeleteError(null);
       setSheet({ kind: "menu", routeId });
     },
     onCreate: () => setSheet({ kind: "create" }),
