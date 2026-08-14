@@ -682,6 +682,8 @@
       "itemLink": "Ver la obra",
       "historyTitle": "Rondas anteriores",
       "historyAnswers": "{count} respuestas",
+      "historyEmptyWeek": "Sin ronda",
+      "backToCurrent": "← Volver a la ronda actual",
       "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
       "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
     }

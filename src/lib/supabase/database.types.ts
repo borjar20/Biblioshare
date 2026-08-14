@@ -2682,7 +2682,7 @@ export type Database = {
           p_options: string[]
           p_question: string
         }
-        Returns: undefined
+        Returns: string
       }
       current_user_role: {
         Args: never
@@ -2799,6 +2799,15 @@ export type Database = {
       link_tmdb_saga_item: {
         Args: { p_item_id: string; p_saga_id: string }
         Returns: undefined
+      }
+      list_club_round_weeks: {
+        Args: { p_club_id: string; p_weeks?: number }
+        Returns: {
+          author_id: string
+          period_key: string
+          prompt: string
+          round_id: string
+        }[]
       }
       moderatable_target_ids: {
         Args: {

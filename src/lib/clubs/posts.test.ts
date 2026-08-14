@@ -16,12 +16,16 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateClubPages: mocks.revalidateClubPages,
 }));
 
-import { createShareActivityPost, createTextPost } from "./posts";
+import { createPoll, createShareActivityPost, createTextPost } from "./posts";
 
 function makePostsClient(targetId: string | null) {
   const targetFilters: Array<[string, unknown]> = [];
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
+    async rpc(name: string) {
+      if (name !== "create_club_poll") throw new Error(`RPC inesperada: ${name}`);
+      return { data: "post-1", error: null };
+    },
     from(table: string) {
       if (table === "club_posts") {
         return {
@@ -92,6 +96,10 @@ describe("menciones de posts", () => {
           sourceTable: "diary_entries",
           rowId: "00000000-0000-4000-8000-000000000001",
         }),
+    ],
+    [
+      "encuesta",
+      () => createPoll("club-1", "hola @ana", ["opción a", "opción b"], "2027-01-01T00:00:00.000Z"),
     ],
   ])("resuelve club_post:<post.id> para el post de %s", async (_label, run) => {
     const fake = makePostsClient("target-post");
