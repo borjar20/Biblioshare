@@ -804,7 +804,31 @@ describe("searchWorks", () => {
     expect(results[0].externalId).toBe("/works/OL893415W");
   });
 
-  it("con la API caída o la consulta vacía devuelve [] sin lanzar", async () => {
+  it("si UNA pasada falla, devuelve lo que trajo la otra", async () => {
+    // `Promise.all` cortaba a la primera que falla: un timeout del idioma
+    // español vaciaba una búsqueda que la inglesa ya había contestado.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: URL | string) => {
+        const lang = new URL(String(url)).searchParams.get("lang") ?? "";
+        if (lang === "es") return Promise.reject(new Error("timeout"));
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            docs: [
+              { key: "/works/OL893415W", title: "Dune", language: ["eng"], edition_count: 312 },
+            ],
+          }),
+        });
+      })
+    );
+
+    const results = await searchWorks("dune");
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL893415W"]);
+  });
+
+  it("con las DOS pasadas caídas, o la consulta vacía, devuelve [] sin lanzar", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
     await expect(searchWorks("dune")).resolves.toEqual([]);
 
@@ -875,9 +899,16 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
 
   try {
     // En paralelo: son independientes, así la búsqueda no espera el doble.
+    //
+    // Y cada pasada se protege SOLA. `Promise.all` corta a la primera que
+    // falla, así que un timeout del idioma español vaciaba una búsqueda que la
+    // inglesa ya había contestado — justo lo contrario del criterio de esta
+    // capa: como no se escribe nada, media respuesta es mejor que ninguna. La
+    // bibliografía sí devuelve `[]` en ese caso, porque su resultado SE ESCRIBE
+    // y quedaría congelado.
     const [docsEs, docsEn] = await Promise.all([
-      fetchSearchPass(trimmed, "es"),
-      fetchSearchPass(trimmed, "en"),
+      fetchSearchPass(trimmed, "es").catch((): OpenLibrarySearchDoc[] => []),
+      fetchSearchPass(trimmed, "en").catch((): OpenLibrarySearchDoc[] => []),
     ]);
     return normalizeSearchWorks(docsEs, docsEn);
   } catch {

@@ -175,8 +175,18 @@ y la caché de una hora sigue delante.
 **Divergencia deliberada con la bibliografía.** Allí, si una pasada vuelve vacía y la otra no,
 se devuelve `[]`, porque el resultado se **escribe** y medio resultado quedaría congelado para
 siempre. La búsqueda no escribe nada, así que aquí media respuesta es mejor que ninguna: se
-normaliza con lo que haya llegado. Si fallan las dos, `[]` y la búsqueda se degrada al
-catálogo local, como hoy. `searchWorks` sigue sin lanzar nunca.
+normaliza con lo que haya llegado.
+
+Y eso vale igual para la pasada que **falla** que para la que vuelve vacía: cada una se
+protege sola (`.catch(() => [])`), porque un `Promise.all` pelado corta a la primera que
+revienta y un timeout del idioma español vaciaba una búsqueda que la inglesa ya había
+contestado. El precio asumido es que, con la pasada española caída, los títulos salen en
+inglés — y si el usuario añade el libro, ese título se persiste. Se acepta porque perder la
+búsqueda entera por un timeout de un idioma es peor, y porque una pasada española vacía ya
+producía ese mismo efecto.
+
+Si fallan las dos, `[]` y la búsqueda se degrada al catálogo local, como hoy. `searchWorks`
+sigue sin lanzar nunca.
 
 ## Pruebas
 
