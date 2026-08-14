@@ -60,9 +60,16 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
 
   try {
     // En paralelo: son independientes, así la búsqueda no espera el doble.
+    //
+    // Y cada pasada se protege SOLA. `Promise.all` corta a la primera que
+    // falla, así que un timeout del idioma español vaciaba una búsqueda que la
+    // inglesa ya había contestado — justo lo contrario del criterio de esta
+    // capa: como no se escribe nada, media respuesta es mejor que ninguna. La
+    // bibliografía sí devuelve `[]` en ese caso, porque su resultado SE ESCRIBE
+    // y quedaría congelado.
     const [docsEs, docsEn] = await Promise.all([
-      fetchSearchPass(trimmed, "es"),
-      fetchSearchPass(trimmed, "en"),
+      fetchSearchPass(trimmed, "es").catch((): OpenLibrarySearchDoc[] => []),
+      fetchSearchPass(trimmed, "en").catch((): OpenLibrarySearchDoc[] => []),
     ]);
     return normalizeSearchWorks(docsEs, docsEn);
   } catch {

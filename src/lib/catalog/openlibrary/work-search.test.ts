@@ -49,7 +49,31 @@ describe("searchWorks", () => {
     expect(results[0].externalId).toBe("/works/OL893415W");
   });
 
-  it("con la API caída o la consulta vacía devuelve [] sin lanzar", async () => {
+  it("si UNA pasada falla, devuelve lo que trajo la otra", async () => {
+    // `Promise.all` cortaba a la primera que falla: un timeout del idioma
+    // español vaciaba una búsqueda que la inglesa ya había contestado.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: URL | string) => {
+        const lang = new URL(String(url)).searchParams.get("lang") ?? "";
+        if (lang === "es") return Promise.reject(new Error("timeout"));
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            docs: [
+              { key: "/works/OL893415W", title: "Dune", language: ["eng"], edition_count: 312 },
+            ],
+          }),
+        });
+      })
+    );
+
+    const results = await searchWorks("dune");
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL893415W"]);
+  });
+
+  it("con las DOS pasadas caídas, o la consulta vacía, devuelve [] sin lanzar", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
     await expect(searchWorks("dune")).resolves.toEqual([]);
 
