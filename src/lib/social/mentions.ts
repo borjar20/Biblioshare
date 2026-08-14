@@ -26,3 +26,12 @@ export function extractMentions(text: string): string[] {
   }
   return result;
 }
+
+// Menciones que aparecen en `next` pero no en `prev` -- usado al editar
+// (updatePass, issue #317) para notificar solo la primera vez que se
+// menciona a alguien, sin re-notificar a quien ya estaba mencionado antes
+// de la edición.
+export function diffNewMentions(prev: string, next: string): string[] {
+  const prevSet = new Set(extractMentions(prev));
+  return extractMentions(next).filter((username) => !prevSet.has(username));
+}

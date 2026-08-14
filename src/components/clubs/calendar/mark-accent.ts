@@ -38,8 +38,16 @@ import {
 // (4.5:1), no el 3:1 de objeto gráfico, y mark-accent.test.ts mide los dos:
 // `bar` contra --surface a 3:1 y `text` contra el tinte compuesto a 4.5:1.
 // Por eso --event-meetup y --event-highlight son más oscuros de lo que pedía
-// el objeto gráfico solo, y por eso gold (cierre, 2.64:1) y accent (hito,
-// 4.35:1) están excluidos con issue: son tokens compartidos con media app.
+// el objeto gráfico solo. `hito` usa --accent-ink (issue #586) para ese mismo
+// motivo: --accent puro da 4.35:1 sobre su tinte, por debajo del 4.5:1 de
+// TEXTO, y --accent es un token compartido con media app que no se puede
+// oscurecer entero -- --accent-ink es el par dedicado a texto-sobre-tinte,
+// mismo patrón que --gold-ink. `cierre.bar` usa --gold-graphic (issue #577)
+// por el motivo simétrico del lado OBJETO GRÁFICO: --gold puro da 2.89:1
+// contra --surface, por debajo del 3:1. `cierre.text` SIGUE en --gold (no
+// --gold-ink): ese texto da 2.64:1 y queda excluido más abajo -- oscurecer
+// para TEXTO es un cambio de fondo mayor (afecta al icono, no solo al chip) y
+// no lo pedía el issue, que era solo objeto gráfico.
 export type MarkAccent = {
   text: string;
   bgSoft: string;
@@ -69,7 +77,7 @@ export const MARK_ACCENT: Record<MarkAccentKey, MarkAccent> = {
     Icon: PlusIcon,
   },
   hito: {
-    text: "text-accent",
+    text: "text-accent-ink",
     bgSoft: "bg-accent/10",
     bar: "bg-accent",
     border: "border-accent",
@@ -78,7 +86,7 @@ export const MARK_ACCENT: Record<MarkAccentKey, MarkAccent> = {
   cierre: {
     text: "text-gold",
     bgSoft: "bg-gold/10",
-    bar: "bg-gold",
+    bar: "bg-gold-graphic",
     border: "border-gold",
     Icon: CheckIcon,
   },

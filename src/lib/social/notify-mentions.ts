@@ -8,9 +8,12 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export async function resolveDeliverableMentions(
   supabase: SupabaseServerClient,
-  params: { authorId: string; text: string; interactionTargetId: string },
+  // `usernames`: cuando se pasa, sustituye la extracción de `text` -- lo usa
+  // updatePass (issue #317) para pedir entregabilidad solo del diff de
+  // menciones nuevas, sin reimplementar el filtro de arriba.
+  params: { authorId: string; text: string; interactionTargetId: string; usernames?: string[] },
 ): Promise<string[]> {
-  const usernames = extractMentions(params.text);
+  const usernames = params.usernames ?? extractMentions(params.text);
   if (usernames.length === 0) return [];
 
   const { data: target, error: targetError } = await supabase
@@ -95,7 +98,7 @@ export async function resolveDeliverableMentions(
 // Best-effort: las menciones nunca revierten la escritura que las originó.
 export async function notifyMentions(
   supabase: SupabaseServerClient,
-  params: { authorId: string; text: string; interactionTargetId: string },
+  params: { authorId: string; text: string; interactionTargetId: string; usernames?: string[] },
 ): Promise<string[]> {
   try {
     const deliverables = await resolveDeliverableMentions(supabase, params);

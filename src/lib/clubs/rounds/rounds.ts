@@ -63,6 +63,48 @@ export async function getRoundState(clubId: string): Promise<RoundState | null> 
   };
 }
 
+/** La ronda de un periodo concreto que YA NO es el actual (issue #408): el
+ *  href de una notificación de comentario/reacción es
+ *  `/club/<slug>?ronda=<period_key>` y ese periodo puede haber quedado atrás
+ *  cuando se abre el enlace. `get_club_round_state` solo sabe hablar del
+ *  periodo de HOY (turno, consigna pendiente...), así que un periodo pasado
+ *  se resuelve leyendo `club_rounds` directo -- la RLS de la tabla (solo
+ *  miembros) ya hace de guarda. `null` si ese periodo no tiene ronda (nunca
+ *  se materializó, o `ronda=` del enlace no existe). */
+export async function getRoundByPeriod(
+  clubId: string,
+  periodKey: string,
+): Promise<RoundState["round"]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("club_rounds")
+    .select("id, author_id, prompt, item_type, item_id")
+    .eq("club_id", clubId)
+    .eq("period_key", periodKey)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  let authorName: string | null = null;
+  if (data.author_id) {
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("display_name, username")
+      .eq("user_id", data.author_id)
+      .maybeSingle();
+    authorName = perfil?.display_name ?? perfil?.username ?? null;
+  }
+
+  return {
+    id: data.id,
+    authorId: data.author_id,
+    authorName,
+    prompt: data.prompt,
+    itemType: data.item_type,
+    itemId: data.item_id,
+  };
+}
+
 /** Resultado de `proposeRound`. Los dos fallos de dominio de `ensure_club_round`
  *  (no eres el titular / alguien ya abrió la ronda) viajan como valor, no como
  *  `throw`: Next.js redacta el `message` de los errores lanzados desde una
