@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
-import type { Pass } from "@/lib/passes/types";
+import type { Pass, DroppedReason } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
 import {
   updatePass,
@@ -15,6 +15,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
+import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 
 const initialState: ClosePassState = {};
 
@@ -140,6 +141,8 @@ function PassCard({
   const [isDeleting, startDeleteTransition] = useTransition();
   const [rating, setRating] = useState<number | null>(pass.rating);
   const [review, setReview] = useState(pass.review ?? "");
+  const [reason, setReason] = useState<DroppedReason | "">(pass.droppedReason ?? "");
+  const [reasonNote, setReasonNote] = useState(pass.droppedReasonNote ?? "");
   const mention = useMentionAutocomplete({
     value: review,
     onChange: setReview,
@@ -212,6 +215,16 @@ function PassCard({
             {editionLabel}
           </span>
         )}
+        {/* Motivo de abandono (§7 del diseño: "¿por qué dejé esto?" al mirar
+            el historial). Mismo patrón de chip que editionLabel, con los
+            colores de --status-dropped — un pase `completed` con datos
+            residuales de un dropped anterior nunca entra aquí porque el
+            gate exige status === "dropped", no solo droppedReason presente. */}
+        {pass.status === "dropped" && pass.droppedReason && (
+          <span className="rounded-chip bg-status-dropped/10 px-1.5 py-0.5 tracking-wide uppercase text-status-dropped">
+            {t(`droppedReason.options.${pass.droppedReason}`)}
+          </span>
+        )}
       </div>
 
       {/* `.tx` del frame: prosa, no metadato — va en --foreground-soft (el
@@ -221,6 +234,16 @@ function PassCard({
           {pass.review}
         </p>
       )}
+
+      {/* Nota libre de "otro": misma prosa que la reseña, no truncada — es la
+          respuesta a la pregunta que motivó la feature. */}
+      {pass.status === "dropped" &&
+        pass.droppedReason === "otro" &&
+        pass.droppedReasonNote && (
+          <p className="mt-1 text-[12.5px] leading-[1.55] text-foreground-soft">
+            {pass.droppedReasonNote}
+          </p>
+        )}
 
       <div className="flex items-center gap-3 pt-1">
         {canEdit && (
@@ -287,6 +310,16 @@ function PassCard({
               {mention.dropdown}
             </div>
           </label>
+
+          {pass.status === "dropped" && (
+            <DroppedReasonFields
+              reason={reason}
+              onReasonChange={setReason}
+              note={reasonNote}
+              onNoteChange={setReasonNote}
+              size="sm"
+            />
+          )}
 
           <label className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">{t("isPublic")}</span>

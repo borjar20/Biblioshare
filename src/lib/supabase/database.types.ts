@@ -1449,6 +1449,10 @@ export type Database = {
       passes: {
         Row: {
           created_at: string
+          dropped_reason:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note: string | null
           edition_id: string | null
           finished_on: string | null
           id: string
@@ -1468,6 +1472,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dropped_reason?:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note?: string | null
           edition_id?: string | null
           finished_on?: string | null
           id?: string
@@ -1487,6 +1495,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dropped_reason?:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note?: string | null
           edition_id?: string | null
           finished_on?: string | null
           id?: string
@@ -2485,6 +2497,10 @@ export type Database = {
       pass_reviews: {
         Row: {
           created_at: string | null
+          dropped_reason:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note: string | null
           edition_id: string | null
           finished_on: string | null
           id: string | null
@@ -2503,6 +2519,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          dropped_reason?: never
+          dropped_reason_note?: never
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
@@ -2521,6 +2539,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          dropped_reason?: never
+          dropped_reason_note?: never
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
@@ -3037,6 +3057,12 @@ export type Database = {
         | "thought_liked"
         | "post_commented"
         | "post_liked"
+      pass_dropped_reason:
+        | "no_enganchado"
+        | "aburrido"
+        | "no_es_momento"
+        | "no_esperado"
+        | "otro"
       pending_import_status: "pending" | "resolved" | "dismissed"
       post_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       post_kind:
@@ -3264,6 +3290,13 @@ export const Constants = {
         "thought_liked",
         "post_commented",
         "post_liked",
+      ],
+      pass_dropped_reason: [
+        "no_enganchado",
+        "aburrido",
+        "no_es_momento",
+        "no_esperado",
+        "otro",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       post_anchor_type: ["book", "movie", "series", "saga", "person"],

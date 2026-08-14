@@ -3,10 +3,13 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
+import type { MediaStatus } from "@/lib/library/types";
+import type { DroppedReason } from "@/lib/passes/types";
 import { closePass, type ClosePassState } from "@/lib/passes/actions";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
+import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 
 const initialState: ClosePassState = {};
 
@@ -30,12 +33,14 @@ export function ClosePassSheet({
   passId,
   itemType,
   itemId,
+  status,
   open,
   onClose,
 }: {
   passId: string;
   itemType: ItemType;
   itemId: string;
+  status: MediaStatus;
   open: boolean;
   onClose: () => void;
 }) {
@@ -43,6 +48,8 @@ export function ClosePassSheet({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [review, setReview] = useState("");
+  const [reason, setReason] = useState<DroppedReason | "">("");
+  const [reasonNote, setReasonNote] = useState("");
   const mention = useMentionAutocomplete({
     value: review,
     onChange: setReview,
@@ -60,7 +67,11 @@ export function ClosePassSheet({
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open) setRating(null);
+    if (open) {
+      setRating(null);
+      setReason("");
+      setReasonNote("");
+    }
   }
 
   // showModal()/close() son llamadas imperativas al DOM, no setState: no
@@ -155,6 +166,15 @@ export function ClosePassSheet({
               {mention.dropdown}
             </div>
           </label>
+
+          {status === "dropped" && (
+            <DroppedReasonFields
+              reason={reason}
+              onReasonChange={setReason}
+              note={reasonNote}
+              onNoteChange={setReasonNote}
+            />
+          )}
 
           <label className="flex items-center justify-between gap-3 text-sm">
             <span className="text-muted-foreground">{t("isPublic")}</span>
