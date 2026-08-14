@@ -93,6 +93,24 @@ describe("groupActivities — los eventos viven en el calendario y en su ficha, 
     expect(groups.proximas).toHaveLength(0);
   });
 
+  // #135: la exclusión es por `kind`, no por `status` -- así que un evento sin
+  // fecha (hoy bloqueado en las RPC, pero alcanzable por el camino genérico de
+  // proponer actividad) tampoco se cuela en ningún grupo ni decide un orden con
+  // `?? ""`. No depende de que nazca `proposed` en vez de `active`.
+  it("un evento SIN fecha de inicio tampoco cae en ningún grupo", () => {
+    const groups = groupActivities(
+      [
+        act({ id: "e", kind: "evento", status: "active", startsOn: null }),
+        act({ id: "a", kind: "buddy_read", status: "active", startsOn: "2026-07-23" }),
+      ],
+      HOY,
+    );
+    expect(groups.enCurso.map((a) => a.id)).toEqual([]);
+    expect(groups.proximas.map((a) => a.id)).toEqual(["a"]);
+    expect(groups.proposed).toHaveLength(0);
+    expect(groups.finished).toHaveLength(0);
+  });
+
   it("propuestas y finalizadas no-evento se agrupan como antes", () => {
     const groups = groupActivities(
       [

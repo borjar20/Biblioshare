@@ -17,10 +17,26 @@ describe("formatDayMonth", () => {
   it("no retrocede un día en el primero de enero", () => {
     expect(formatDayMonth("2026-01-01").day).toBe("01");
   });
+
+  // #135: iso.split("-") sin comprobar longitud dejaba `day` en `undefined`
+  // (coaccionado a la cadena "undefined" por el template literal de abajo).
+  it("cadena vacía no revienta: día y mes vuelven vacíos", () => {
+    expect(formatDayMonth("")).toEqual({ day: "", month: "" });
+  });
+
+  it("cadena malformada (sin los tres tramos) también vuelve vacía", () => {
+    expect(formatDayMonth("2026-07")).toEqual({ day: "", month: "" });
+  });
 });
 
 describe("formatEventDate", () => {
   it("junta día y mes en una línea", () => {
     expect(formatEventDate("2026-07-18")).toBe("18 jul");
+  });
+
+  // #135: antes de la validación de longitud, esto devolvía el texto literal
+  // "undefined " en vez de una cadena vacía.
+  it("cadena vacía devuelve cadena vacía, no 'undefined '", () => {
+    expect(formatEventDate("")).toBe("");
   });
 });
