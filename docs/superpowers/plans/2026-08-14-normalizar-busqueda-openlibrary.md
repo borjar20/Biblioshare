@@ -1144,6 +1144,8 @@ gh issue create --label "area:catalogo,tipo:deuda,P2" --title "La guarda de coli
 gh issue create --label "area:catalogo,tipo:deuda,P2" --title "Los patrones de omnibus son ingleses: «Estuche…» pasa el filtro" --body-file body-2.md
 gh issue create --label "area:catalogo,tipo:deuda,P2" --title "Los libros ya guardados conservan su título crudo en la búsqueda" --body-file body-3.md
 gh issue create --label "area:catalogo,tipo:deuda,P3" --title "resolveWorkByTitleAuthor no casa contra títulos de edición" --body-file body-4.md
+gh issue create --label "area:catalogo,tipo:deuda,P2" --title "matchBook no prefiere el título exacto ni sabe declarar ambigüedad, como sí hace matchMovie" --body-file body-5.md
+gh issue create --label "area:infra,tipo:sospecha,P3" --title "manage-actions.test.ts falla por timeout de forma intermitente" --body-file body-6.md
 ```
 
 Los ficheros temporales van fuera del repo y se borran después. Cada cuerpo, escrito para quien lo lea dentro de seis meses sin contexto: qué falla y qué se esperaba, cómo reproducirlo, qué SÍ funciona, y la sección «Límites asumidos» del spec como origen. El contenido concreto de cada uno:
@@ -1152,6 +1154,8 @@ Los ficheros temporales van fuera del repo y se borran después. Cada cuerpo, es
 2. **Patrones de omnibus ingleses** — reproducible con `q="el señor de los anillos"`: sobreviven dos resultados que empiezan por «Estuche». Los ocho patrones están en `OMNIBUS_PATTERNS`, `src/lib/catalog/openlibrary/normalize.ts`. Añadir «estuche» cambia también el comportamiento de las bibliografías, por eso no entró aquí.
 3. **Títulos ya guardados** — `mergeByExternalId` (`src/lib/catalog/merge-results.ts`) da preferencia a lo local, y `find-or-create.ts` solo escribe `title` en el INSERT. Un libro creado antes de este cambio sigue saliendo como «Fatta Eld». La alternativa —mostrar el título de la API sobre una fila local— daría dos nombres al mismo libro entre la búsqueda y su ficha. Va junto con la limpieza de los 112 libros basura de dev.
 4. **`resolveWorkByTitleAuthor`** — pide `limit=1` y sin ediciones, así que su `titleMatches` compara contra el título crudo del work. Una obra titulada en sueco no casa aunque la fila esté en español. Es la ruta de hidratación, no la de búsqueda.
+5. **`matchBook` se queda con el PRIMER resultado que case** (`src/lib/import/match-row.ts`), sin el `preferExactTitle` ni la rama de «ambiguo» que sí tiene `matchMovie`. `isSameTitle` acepta contención difusa, así que un candidato peor puede ganar por salir antes en la lista — y de un match sale una escritura en la biblioteca del usuario. Es anterior a este cambio, pero este cambio pasa de comparar 1 título por candidato a comparar hasta 3, así que ensancha la superficie. Lo que SÍ acota el problema: el normalizador ya anula un título de edición reclamado por dos obras distintas.
+6. **`manage-actions.test.ts` falló una vez por timeout** durante la suite completa de esta rama, y pasó al reintentar y en aislamiento. No reproducido, ajeno a este cambio. Se abre como sospecha para que no se pierda, con el comando exacto que se corrió.
 
 - [ ] **Step 3: Commit**
 
