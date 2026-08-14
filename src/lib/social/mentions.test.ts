@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractMentions } from "./mentions";
+import { diffNewMentions, extractMentions } from "./mentions";
 
 describe("extractMentions", () => {
   it("extracts a simple mention", () => {
@@ -33,5 +33,23 @@ describe("extractMentions", () => {
   });
   it("returns empty for no mentions", () => {
     expect(extractMentions("sin menciones aquí")).toEqual([]);
+  });
+});
+
+describe("diffNewMentions", () => {
+  it("misma mención en ambas versiones → sin novedades", () => {
+    expect(diffNewMentions("gran libro @borja", "gran libro, gracias @borja")).toEqual([]);
+  });
+
+  it("mención nueva en la versión editada → aparece en el diff", () => {
+    expect(diffNewMentions("gran libro", "gran libro, gracias a @borja")).toEqual(["borja"]);
+  });
+
+  it("no repite una mención ya presente aunque aparezcan otras nuevas", () => {
+    expect(diffNewMentions("hola @ana", "hola @ana y @bob")).toEqual(["bob"]);
+  });
+
+  it("una mención retirada no cuenta como nueva", () => {
+    expect(diffNewMentions("hola @ana @bob", "hola @ana")).toEqual([]);
   });
 });
