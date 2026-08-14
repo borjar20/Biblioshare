@@ -2682,7 +2682,7 @@ export type Database = {
           p_options: string[]
           p_question: string
         }
-        Returns: undefined
+        Returns: string
       }
       current_user_role: {
         Args: never
