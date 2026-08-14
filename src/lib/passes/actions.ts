@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyMentions } from "@/lib/social/notify-mentions";
+import { diffNewMentions } from "@/lib/social/mentions";
 import { parseDroppedReason } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -88,9 +89,10 @@ async function savePassFields(
     .eq("id", passId)
     .eq("user_id", userId);
 
-  // review/isPublic se devuelven también en éxito: closePass los necesita
-  // para decidir si notifica menciones (solo alta, nunca en updatePass — ver
-  // llamadas más abajo) sin tener que releer la fila recién escrita.
+  // review/isPublic se devuelven también en éxito: closePass y updatePass los
+  // necesitan para decidir si notifican menciones (alta: todas; edición:
+  // solo el diff de menciones nuevas, issue #317 — ver llamadas más abajo)
+  // sin tener que releer la fila recién escrita.
   return error ? { error: "generic" } : { review: review || null, isPublic };
 }
 
@@ -99,6 +101,7 @@ async function notifyPublicReviewMentions(
   authorId: string,
   passId: string,
   review: string,
+  usernames?: string[],
 ): Promise<void> {
   try {
     const { data: target, error } = await supabase
@@ -113,6 +116,7 @@ async function notifyPublicReviewMentions(
       authorId,
       text: review,
       interactionTargetId: target.id,
+      usernames,
     });
   } catch (error) {
     console.error("notifyPublicReviewMentions failed", error);
@@ -140,10 +144,11 @@ export async function closePass(
   const result = await savePassFields(supabase, passId, user.id, formData);
   if (result.error) return result;
 
-  // Menciones en la reseña, SOLO en alta (nunca en updatePass — editar no
-  // debe re-notificar). Solo tiene sentido si hay texto y la reseña es
-  // pública (el destinatario debe poder verla) -- el gate 'profile' con el
-  // propio autor como owner reutiliza la visibilidad de su perfil.
+  // Menciones en la reseña: en el alta se notifican TODAS las presentes.
+  // Solo tiene sentido si hay texto y la reseña es pública (el destinatario
+  // debe poder verla) -- el gate 'profile' con el propio autor como owner
+  // reutiliza la visibilidad de su perfil. updatePass reutiliza el mismo
+  // helper pero solo para el diff de menciones nuevas (issue #317).
   if (result.review && result.isPublic) {
     await notifyPublicReviewMentions(supabase, user.id, passId, result.review);
   }
@@ -172,8 +177,28 @@ export async function updatePass(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Se lee ANTES de guardar: savePassFields sobrescribe review, y el diff de
+  // menciones (issue #317) necesita el texto previo para saber cuáles son
+  // nuevas.
+  const { data: existing } = await supabase
+    .from("passes")
+    .select("review")
+    .eq("id", passId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const result = await savePassFields(supabase, passId, user.id, formData);
   if (result.error) return result;
+
+  // A diferencia de closePass, editar SÍ notifica -- pero solo las menciones
+  // que son nuevas respecto al texto anterior: quien ya estaba mencionado
+  // antes de la edición no vuelve a recibir aviso (issue #317).
+  if (result.review && result.isPublic) {
+    const newMentions = diffNewMentions(existing?.review ?? "", result.review);
+    if (newMentions.length > 0) {
+      await notifyPublicReviewMentions(supabase, user.id, passId, result.review, newMentions);
+    }
+  }
 
   revalidateReadingLog(itemType, itemId);
   return {};

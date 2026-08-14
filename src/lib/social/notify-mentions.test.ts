@@ -320,4 +320,24 @@ describe("notifyMentions", () => {
       }),
     ).resolves.toEqual([]);
   });
+
+  it("usernames explícito sustituye la extracción de text (issue #317)", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [
+        { user_id: "u-ana", username: "ana" },
+        { user_id: "u-bob", username: "bob" },
+      ],
+      profiles: [{ user_id: "owner", is_public: true }],
+    });
+
+    const out = await resolveDeliverableMentions(supabase, {
+      authorId: "author",
+      text: "@ana @bob",
+      usernames: ["bob"],
+      interactionTargetId: "target-1",
+    });
+
+    expect(out).toEqual(["u-bob"]);
+  });
 });

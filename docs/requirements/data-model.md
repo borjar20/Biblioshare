@@ -71,6 +71,13 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
 > servidor usa `service_role`. Spec:
 > `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
+> **Delta del 2026-08-14 (menciones `@usuario`, issue #320): `create_club_poll()` pasa de
+> `returns void` a `returns uuid`** (el id del post creado), para que `createPoll` pueda
+> notificar `@menciones` en la pregunta de la encuesta igual que `createTextPost`/
+> `createShareActivityPost`. Migración `20260860_create_club_poll_returns_id.sql`
+> (DROP + CREATE, `CREATE OR REPLACE` no permite cambiar el tipo de retorno), aplicada y
+> verificada en DEV **y en PROD** contra `pg_proc.prorettype` (no solo el ledger) — grants y
+> `search_path = public, pg_temp` intactos en ambos entornos.
 > **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
 > `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
 > Son siete migraciones:
