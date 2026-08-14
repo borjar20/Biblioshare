@@ -14,6 +14,19 @@ export type CollectionCard = {
   count: number;
   fanCovers: (string | null)[]; // hasta 3, más reciente primero
   dominantType: ItemType | null;
+  /**
+   * Recuento por tipo, para la línea «12 libros · 3 películas» de la tarjeta.
+   * Ya se calculaba aquí dentro para resolver `dominantType`; ahora además se
+   * expone. Solo lleva los tipos PRESENTES: un `0` no se guarda, para que la
+   * línea no acabe diciendo «0 series».
+   */
+  typeCounts: Partial<Record<ItemType, number>>;
+  /** Para ordenar en cliente sin volver al servidor (ver collection-browse.ts). */
+  updatedAt: string;
+  position: number;
+  /** Para los atajos rápidos de la tarjeta (renombrar/borrar/sorteo, `CollectionMenu`). */
+  description: string | null;
+  isSorteable: boolean;
 };
 
 // Portada por (item_type, item_id) reutilizando el patrón de get-library-items.
@@ -42,7 +55,7 @@ export async function listCollections(
 ): Promise<CollectionCard[]> {
   const { data: cols, error } = await supabase
     .from("collections")
-    .select("id, name, updated_at, position")
+    .select("id, name, updated_at, position, description, is_sorteable")
     .eq("user_id", userId);
   if (error) throw error;
   if (!cols || cols.length === 0) return [];
@@ -62,8 +75,11 @@ export async function listCollections(
     const own = (items ?? [])
       .filter((i) => i.collection_id === c.id)
       .sort((a, b) => (a.position - b.position) || b.added_at.localeCompare(a.added_at));
-    const typeCounts: Record<string, number> = {};
-    for (const i of own) typeCounts[i.item_type] = (typeCounts[i.item_type] ?? 0) + 1;
+    const typeCounts: Partial<Record<ItemType, number>> = {};
+    for (const i of own) {
+      const type = i.item_type as ItemType;
+      typeCounts[type] = (typeCounts[type] ?? 0) + 1;
+    }
     const dominantType = (Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null) as ItemType | null;
     return {
       id: c.id,
@@ -71,6 +87,11 @@ export async function listCollections(
       count: own.length,
       fanCovers: own.slice(0, 3).map((i) => covers.get(`${i.item_type}:${i.item_id}`) ?? null),
       dominantType,
+      typeCounts,
+      updatedAt: c.updated_at,
+      position: c.position,
+      description: c.description,
+      isSorteable: c.is_sorteable,
     };
   });
 
@@ -106,6 +127,52 @@ export async function getCollectionsForItem(
       .filter((r) => r.collections?.user_id === userId)
       .map((r) => r.collection_id),
   );
+}
+
+/**
+ * Lo que está en la biblioteca del usuario pero en NINGUNA de sus colecciones —
+ * la tira «Sin colección» al pie de la pestaña. Devuelve el total (para el
+ * encabezado) y solo las `limit` más recientes hidratadas (para las portadas):
+ * la tira enseña un puñado, no la lista entera.
+ *
+ * Sin colecciones no devuelve nada A PROPÓSITO: para quien no ha creado
+ * ninguna, «todo está sin organizar» no es información, es la biblioteca entera
+ * repetida debajo de un estado vacío.
+ */
+export async function getUncollectedItems(
+  supabase: SupabaseServerClient,
+  userId: string,
+  limit = 12,
+): Promise<{ items: LibraryItem[]; total: number }> {
+  const { data: cols } = await supabase
+    .from("collections")
+    .select("id")
+    .eq("user_id", userId);
+  if (!cols || cols.length === 0) return { items: [], total: 0 };
+
+  const { data: rows } = await supabase
+    .from("collection_items")
+    .select("item_type, item_id")
+    .in("collection_id", cols.map((c) => c.id));
+  const collected = new Set((rows ?? []).map((r) => `${r.item_type}:${r.item_id}`));
+
+  // La "entrada de biblioteca" es el pase ACTIVO (§Tarea 9, hub), igual que en
+  // getLibraryItems: mismo criterio, mismo orden (lo más tocado primero).
+  const { data: passes } = await supabase
+    .from("passes")
+    .select("item_type, item_id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false });
+
+  const keys = (passes ?? [])
+    .map((p) => ({ item_type: p.item_type as ItemType, item_id: p.item_id }))
+    .filter((k) => !collected.has(`${k.item_type}:${k.item_id}`));
+
+  return {
+    items: await hydrateItems(supabase, userId, keys.slice(0, limit)),
+    total: keys.length,
+  };
 }
 
 export type CollectionDetail = {

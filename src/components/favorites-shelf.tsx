@@ -8,12 +8,18 @@ import { itemHref } from "@/lib/catalog/item-href";
 //  · "titled" (por defecto) — el de /coleccion: 3/6 columnas con título debajo.
 //  · "compact" — la carta de presentación del visitante (frame E/I): una fila
 //    de portadas sin título, 6 en móvil y 8 en escritorio.
+//
+// `heading` opcional: por defecto «Destacados», pero la tira «Sin colección» de
+// Mi Biblioteca es la MISMA pieza con otro rótulo, y duplicar el marcado de
+// portadas para cambiar una cadena no compensa.
 export async function FavoritesShelf({
   items,
   variant = "titled",
+  heading,
 }: {
   items: LibraryItem[];
   variant?: "titled" | "compact";
+  heading?: string;
 }) {
   const t = await getTranslations("profile");
 
@@ -24,7 +30,7 @@ export async function FavoritesShelf({
   return (
     <div className="flex flex-col gap-3">
       <h2 className="label-section">
-        {t("highlights")}
+        {heading ?? t("highlights")}
       </h2>
       <div
         className={

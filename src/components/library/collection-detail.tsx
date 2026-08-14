@@ -4,6 +4,7 @@ import type { CollectionDetail as CollectionDetailData } from "@/lib/library/col
 import { CollectionItems } from "@/components/library/collection-items";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxIcon } from "@/components/ui/icons";
+import { formatDots } from "@/lib/rating/dots";
 
 // Abanico de la cabecera (`dethead`, frame B de `Paper - Colección v2.html`):
 // las 3 portadas más recientes de la colección (`getCollection` ya las
@@ -28,14 +29,22 @@ export async function CollectionDetail({
 }) {
   const t = await getTranslations("collection");
   const covers = detail.items.slice(0, 3).map((item) => item.coverUrl);
-  // Nota media con coma decimal española («4,3», no «4.3»); sin nota media,
-  // el meta se queda solo en el recuento (misma clave que el grid, Task 5).
+  // `avgRating` sale de `getCollection` en la escala CRUDA de `passes` (1–10);
+  // `formatDots` es el único módulo que conoce la equivalencia y la pasa a la
+  // escala de 5 dots que usa el resto de la app (RatingDots, media de
+  // comunidad, /estadisticas) — sin esto la colección era la única pantalla
+  // que enseñaba «9,0» donde en todas las demás esa misma nota es «4,5».
+  // Sin nota media, el meta se queda solo en el recuento (misma clave que el
+  // grid, Task 5).
   const meta =
     detail.avgRating === null
       ? t("titleCount", { count: detail.items.length })
       : t("collectionMeta", {
           count: detail.items.length,
-          avg: detail.avgRating.toFixed(1).replace(".", ","),
+          // `!`: en esta rama `detail.avgRating` ya es `number` (el ternario de
+          // arriba lo comprobó), así que `formatDots` nunca devuelve `null`
+          // aquí -- pero su firma general sí lo permite para `rating: null`.
+          avg: formatDots(detail.avgRating)!,
         });
 
   return (

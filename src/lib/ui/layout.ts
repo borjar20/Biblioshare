@@ -115,6 +115,17 @@ export const NOTE_GRID_COLS = "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:gri
 export const CARD_GRID_COLS = "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 
 /**
+ * Rejilla de Colecciones, dentro de `SHELL_GRID` (mismo contenedor que `Todo` y
+ * `Sagas`: cambiar de pestaña no salta de ancho). Misma escalera grande que
+ * `CARD_GRID_COLS` (3 en `lg`, 4 en `xl`) — para que `Colecciones` y `Sagas`
+ * lleguen al mismo número de columnas en pantallas grandes y no solo compartan
+ * ancho de contenedor. Difiere solo en MÓVIL: dos columnas desde el principio
+ * (`CARD_GRID_COLS` empieza en una), porque la tarjeta de colección es vertical
+ * y estrecha — a una sola columna sobra media pantalla vacía a cada lado.
+ */
+export const TILE_GRID_COLS = "grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+/**
  * Fichas-formulario que se revisan en tanda (filas sin emparejar al importar,
  * cola de revisión). Cada celda conserva ~470px dentro de `SHELL_APP`: de sobra
  * para etiqueta e input sin apretar.

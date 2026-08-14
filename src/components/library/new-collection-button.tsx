@@ -8,11 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 
-// Tile «＋ Nueva colección», último del grid (Task 5, S1). Hoja mínima con un
-// solo campo (nombre) — mismo `<dialog>` nativo que el resto de hojas del
-// proyecto (foco atrapado, Escape/clic-fuera cierran gratis). Al crear, entra
+// «＋ Nueva colección». Era el último TILE del grid (Task 5, S1); ahora es un
+// botón de la cabecera: con la rejilla ensanchada a tres columnas, un recuadro
+// punteado del tamaño de una tarjeta competía en peso visual con las
+// colecciones de verdad, y su sitio bailaba según cuántas hubiera. La hoja no
+// cambia — mismo `<dialog>` nativo que el resto de hojas del proyecto (foco
+// atrapado, Escape/clic-fuera cierran gratis) y misma acción. Al crear, entra
 // directo al detalle recién nacido.
-export function NewCollectionTile() {
+//
+// `variant`: en la cabecera es el botón principal; dentro del estado vacío
+// (cuando no hay ninguna colección) lo pinta el propio EmptyState como acción.
+export function NewCollectionButton({
+  variant = "primary",
+}: {
+  variant?: "primary" | "secondary";
+}) {
   const t = useTranslations("collection");
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -49,16 +59,10 @@ export function NewCollectionTile() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openSheet}
-        className="flex h-full min-h-[172px] flex-col items-center justify-center gap-1.5 rounded-card border border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
-      >
-        <span aria-hidden className="text-xl leading-none">
-          ＋
-        </span>
+      <Button type="button" variant={variant} onClick={openSheet}>
+        <span aria-hidden>＋</span>
         {t("newCollection")}
-      </button>
+      </Button>
 
       <dialog
         ref={dialogRef}

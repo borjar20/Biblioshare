@@ -29,12 +29,19 @@ import { CollectionsGrid } from "@/components/library/collections-grid";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
 import { getFollowedSagas } from "@/lib/sagas/get-followed-sagas";
 import { SagaLibraryCard } from "@/components/library/saga-library-card";
-import { SkeletonCoverGrid } from "@/components/ui/skeleton";
-import { COVER_GRID_COLS, SHELL_GRID, SHELL_READ } from "@/lib/ui/layout";
+import { SkeletonCoverGrid, SkeletonLine } from "@/components/ui/skeleton";
+import {
+  CARD_GRID_COLS,
+  COVER_GRID_COLS,
+  SHELL_GRID,
+} from "@/lib/ui/layout";
 import {
   CollectionOverviewSkeleton,
   CollectionsGridSkeleton,
+  SagasPanelSkeleton,
 } from "@/components/library/collection-skeletons";
+import { NewCollectionButton } from "@/components/library/new-collection-button";
+import { UncollectedShelf } from "@/components/library/uncollected-shelf";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -55,9 +62,9 @@ const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 
 // Mi Biblioteca (Colección v2, Sesión 1 + F5 Task 4): gira en torno a
 // colecciones que crea el usuario, no a estados. Tres subpestañas visibles —
-// `Colecciones` (default, frame A), `Todo` (frame C, la biblioteca completa
-// sin el bloque «en curso», que ahora vive en Inicio/Perfil) y `Sagas` (frame
-// COL, sagas seguidas con progreso).
+// `Todo` (la pestaña por DEFECTO, frame C: la biblioteca completa sin el bloque
+// «en curso», que ahora vive en Inicio/Perfil), `Colecciones` (frame A) y
+// `Sagas` (frame COL, sagas seguidas con progreso).
 //
 // Las **colas** (§7.22) se retiran aquí (2026-07-20): al integrar Colección v2
 // dejaron de pintarse en las subpestañas y quedaron inalcanzables — ningún
@@ -140,13 +147,17 @@ export default async function CollectionPage({
   // streaming detrás de su <Suspense> con skeleton (Fase B del plan de
   // navegación). El `key` de los boundaries es la consulta: al cambiar un
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
-  // `Todo` es la única subpestaña que es una REJILLA larga de portadas, y en
-  // escritorio ancho la columna de 4xl la dejaba en cinco columnas con dos
-  // palmos de margen muerto a cada lado. Solo esa pestaña se ensancha: en
-  // `Colecciones` y `Sagas` las tarjetas son grandes y estirarlas a 1600px las
-  // deja desangeladas. Cambiar de pestaña es una navegación, así que el salto
-  // de ancho no ocurre "en vivo".
-  const shell = tab === "todo" ? SHELL_GRID : SHELL_READ;
+  //
+  // Ancho ÚNICO (`SHELL_GRID`) para las tres pestañas: el ancho del CONTENEDOR
+  // y el tamaño de las TARJETAS son dos decisiones distintas. `Colecciones` y
+  // `Sagas` vivían antes en `SHELL_READ` (896px), luego en un `SHELL_TILES`
+  // propio (1280px) — cada cambio de ancho por pestaña provocaba un salto de
+  // layout al alternar `Todo`/`Colecciones`/`Sagas`. `Colecciones` usa su
+  // propia rejilla (`TILE_GRID_COLS`), pero mismo TECHO grande que `Sagas`
+  // (`CARD_GRID_COLS`): las dos llegan a 4 columnas en `xl`, solo difieren en
+  // móvil (2 en Colecciones, tarjeta vertical estrecha; 1 en Sagas, tarjeta
+  // horizontal).
+  const shell = SHELL_GRID;
 
   return (
     <div
@@ -161,11 +172,22 @@ export default async function CollectionPage({
 
       {tab === "colecciones" && (
         <>
-          <Suspense fallback={null}>
-            <CollectionsHeader userId={user.id} />
-          </Suspense>
+          {/* El botón va FUERA del <Suspense> del recuento: comparten fila,
+              pero el fallback del recuento no puede llevárselo por delante —
+              crear la primera colección no depende de saber cuántas hay. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Suspense fallback={<SkeletonLine className="w-44" />}>
+              <CollectionsHeader userId={user.id} />
+            </Suspense>
+            <NewCollectionButton />
+          </div>
           <Suspense fallback={<CollectionsGridSkeleton />}>
             <CollectionsGrid userId={user.id} />
+          </Suspense>
+          {/* Lo que no está en ninguna colección, al pie: se pinta sola solo si
+              hay algo suelto Y el usuario ya tiene alguna colección. */}
+          <Suspense fallback={null}>
+            <UncollectedShelf userId={user.id} />
           </Suspense>
         </>
       )}
@@ -213,7 +235,7 @@ export default async function CollectionPage({
       )}
 
       {tab === "sagas" && (
-        <Suspense fallback={<SkeletonCoverGrid count={4} />}>
+        <Suspense fallback={<SagasPanelSkeleton />}>
           <FollowedSagasPanel userId={user.id} />
         </Suspense>
       )}
@@ -360,8 +382,11 @@ async function FollowedSagasPanel({ userId }: { userId: string }) {
     );
   }
 
+  // Misma escalera que el índice de sagas (`/sagas`), que pinta tarjetas del
+  // mismo tipo: una columna en móvil (la card es horizontal y a dos se
+  // rompe) y hasta cuatro en pantalla ancha.
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className={`grid gap-4 ${CARD_GRID_COLS}`}>
       {cards.map((card) => (
         <SagaLibraryCard key={card.sagaId} card={card} />
       ))}

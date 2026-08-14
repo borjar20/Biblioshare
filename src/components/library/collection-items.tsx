@@ -8,26 +8,12 @@ import { LibraryItemCard } from "@/components/library/library-item-card";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { COVER_GRID_COLS } from "@/lib/ui/layout";
+import { pillClass, segClass } from "@/lib/ui/control-classes";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = ["planned", "in_progress", "completed", "dropped"];
 const SORTS = ["recent", "rating", "title"] as const;
 type Sort = (typeof SORTS)[number];
-
-function pillClass(active: boolean) {
-  return `inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-    active
-      ? "bg-accent text-accent-foreground"
-      : "bg-surface-muted text-muted-foreground hover:text-foreground"
-  }`;
-}
-function segClass(active: boolean) {
-  return `rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
-    active
-      ? "bg-surface-muted text-foreground"
-      : "text-muted-foreground hover:text-foreground"
-  }`;
-}
 
 // Ítems de una colección (frame B) con un DESPLEGABLE de filtros (tipo · estado
 // · orden, como en Todo). Filtrado en CLIENTE: una colección tiene pocos ítems,

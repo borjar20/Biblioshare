@@ -146,7 +146,9 @@ test("marcar una colección como sorteable la ofrece en el filtro del sorteo", a
   const collectionName = `e2e-${Date.now()}`;
 
   try {
-    await page.goto("/coleccion");
+    // La pestaña hay que pedirla: `/coleccion` a secas abre en `Todo`, donde no
+    // hay ningún control de crear colección. Este test llevaba roto por eso.
+    await page.goto("/coleccion?tab=colecciones");
     await page.getByRole("button", { name: /nueva colección/i }).click();
     await page.getByLabel(/^nombre$/i).fill(collectionName);
     await page.getByRole("button", { name: /^crear$/i }).click();
@@ -180,7 +182,7 @@ test("marcar una colección como sorteable la ofrece en el filtro del sorteo", a
     await page.keyboard.press("Escape");
 
     // Limpieza: borrar la colección (confirm() nativo).
-    await page.goto("/coleccion");
+    await page.goto("/coleccion?tab=colecciones");
     await page.getByRole("link", { name: new RegExp(collectionName) }).click();
     await page.waitForURL(/\/coleccion\/c\//);
     page.once("dialog", (dialog) => dialog.accept());

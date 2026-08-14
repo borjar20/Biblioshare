@@ -2245,6 +2245,26 @@
     "filterCount": "{shown} de {total}",
     "clearFilters": "Limpiar",
     "noMatch": "Nada coincide con los filtros.",
+    "searchPlaceholder": "Buscar colección…",
+    "noMatchCollections": "Ninguna colección coincide con la búsqueda.",
+    "emptyTitle": "Aún no tienes colecciones",
+    "emptyBody": "Agrupa títulos como quieras: por autor, por pendientes, por lo que sea.",
+    "sortLabel": "Orden",
+    "sort": {
+      "custom": "Personalizado",
+      "recent": "Recientes",
+      "name": "Nombre",
+      "size": "Nº de títulos"
+    },
+    "typeCount": {
+      "book": "{count, plural, one {# libro} other {# libros}}",
+      "movie": "{count, plural, one {# película} other {# películas}}",
+      "series": "{count, plural, one {# serie} other {# series}}"
+    },
+    "uncollected": {
+      "heading": "Sin colección",
+      "count": "{count, plural, one {# título sin organizar} other {# títulos sin organizar}}"
+    },
     "back": "Volver a Mi Biblioteca",
     "newCollection": "Nueva colección",
     "newCollectionNameLabel": "Nombre",
@@ -2285,6 +2305,13 @@
       "createNew": "＋ Crear nueva colección…",
       "done": "Hecho",
       "saving": "Guardando…"
+    },
+    "addItemsSheet": {
+      "trigger": "Añadir ítems",
+      "title": "Añadir a esta colección",
+      "searchPlaceholder": "Buscar en tu biblioteca…",
+      "loading": "Buscando…",
+      "empty": "No hay títulos que coincidan."
     }
   },
   "errors": {

@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateProfilePages } from "@/lib/reactivity/revalidate";
 import type { ItemType } from "@/lib/catalog/types";
+import type { LibraryItem } from "@/lib/library/types";
+import { getLibraryItems } from "@/lib/library/get-library-items";
 import {
   listCollections,
   getCollectionsForItem,
@@ -95,6 +97,33 @@ export async function deleteCollection(id: string): Promise<{ error?: string }> 
   if (error) return { error: "delete_failed" };
   revalidatePath("/coleccion");
   return {};
+}
+
+// Atajo «＋ Añadir ítems» del detalle de colección: busca en TODA la
+// biblioteca del usuario por título y descarta lo que la colección YA tiene
+// (si no, cada tecleo repetiría en la lista lo que el propio detalle ya
+// enseña debajo). La exclusión se recalcula en cada búsqueda contra
+// `collection_items` en vez de fiarse de una lista pasada por el cliente: así
+// un ítem añadido a mitad de sesión no puede reaparecer en un tecleo
+// posterior por estado del cliente desactualizado.
+export async function searchAddableLibraryItems(
+  collectionId: string,
+  query: string,
+): Promise<LibraryItem[]> {
+  const { supabase, userId } = await requireUser();
+  const { data: existing } = await supabase
+    .from("collection_items")
+    .select("item_type, item_id")
+    .eq("collection_id", collectionId); // RLS restringe a colecciones del dueño
+  const excluded = new Set((existing ?? []).map((r) => `${r.item_type}:${r.item_id}`));
+
+  // Sin `limit` aquí: se recorta DESPUÉS de excluir, o una colección con
+  // varias decenas de ítems recientes vaciaría casi entera la primera página
+  // de resultados antes de aplicar el tope.
+  const items = await getLibraryItems(supabase, userId, { search: query });
+  return items
+    .filter((item) => !excluded.has(`${item.itemType}:${item.itemId}`))
+    .slice(0, 20);
 }
 
 // La hoja D marca/desmarca varias: aquí solo se AÑADEN las marcadas nuevas
