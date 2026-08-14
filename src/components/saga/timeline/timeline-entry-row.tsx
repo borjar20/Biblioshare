@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
+import { RoleChip } from "../role-chip";
 import { RoleRibbon } from "./role-ribbon";
 import { SkipOptionalButton } from "./skip-optional-button";
 import { TimelineBranchRow } from "./timeline-branch";
@@ -81,9 +82,17 @@ export function TimelineEntryRow({
               <RoleRibbon role={row.node.role} labels={labels} />
             </span>
             <span className="min-w-0 flex-1">
-              {row.no !== null && (
-                <span className="block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
-                  {labels.orderNo(row.no)}
+              {(row.no !== null || row.node.role !== null) && (
+                <span className="flex items-center gap-1.5">
+                  {row.no !== null && (
+                    <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+                      {labels.orderNo(row.no)}
+                    </span>
+                  )}
+                  {/* Issue #184: la fila numerada no llevaba chip de rol — se
+                      veía en la pestaña Info y en "Como lista lineal", pero no
+                      aquí, mismo dato. `RoleChip` ya vuelve null sin rol. */}
+                  <RoleChip role={row.node.role} />
                 </span>
               )}
               <span
