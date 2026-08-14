@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SAGA_ACCENT, type SagaAccentToken } from "@/lib/sagas/accents";
 import type { TimelineBranch } from "@/lib/sagas/derive-timeline";
+import { RequisiteBadge } from "../requisite-badge";
 import { RoleChip } from "../role-chip";
 import { RoleRibbon } from "./role-ribbon";
 import { SkipOptionalButton } from "./skip-optional-button";
@@ -59,11 +60,7 @@ export function TimelineBranchRow({
                 un spin-off. Ahora la chapa de posición/estado y el rol conviven:
                 dicen cosas distintas. */}
             <span className="flex flex-wrap items-center gap-1">
-              {branch.edgeType === "requisito" && (
-                <span className="inline-block rounded bg-gold/10 px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wide text-gold">
-                  {labels.branchRequisite}
-                </span>
-              )}
+              {branch.edgeType === "requisito" && <RequisiteBadge label={labels.branchRequisite} />}
               {branch.node.optional && (
                 <span
                   data-testid="optional-tag"
