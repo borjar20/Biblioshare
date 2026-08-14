@@ -57,10 +57,10 @@ export default async function ClubPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string; nueva?: string }>;
+  searchParams: Promise<{ tab?: string; nueva?: string; ronda?: string }>;
 }) {
   const { slug } = await params;
-  const { tab: tabParam, nueva } = await searchParams;
+  const { tab: tabParam, nueva, ronda } = await searchParams;
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/club/${slug}`));
@@ -159,7 +159,7 @@ export default async function ClubPage({
     >
       {tab === "feed" && (
         <Suspense fallback={<ClubContentSkeleton />}>
-          <ClubFeedSection club={club} userId={user.id} activities={activities} />
+          <ClubFeedSection club={club} userId={user.id} activities={activities} roundPeriodKey={ronda} />
         </Suspense>
       )}
 
@@ -199,10 +199,13 @@ async function ClubFeedSection({
   club,
   userId,
   activities,
+  roundPeriodKey,
 }: {
   club: ClubDetail;
   userId: string;
   activities: ClubActivities;
+  /** `?ronda=` de la URL (issue #408). */
+  roundPeriodKey?: string;
 }) {
   // UNA sola lectura de "hoy" por respuesta (ver Task 2).
   const hoy = todayISO();
@@ -247,7 +250,12 @@ async function ClubFeedSection({
 
       <div className="min-w-0 lg:order-1">
         <div className="mb-5">
-          <RoundBlock clubId={club.id} viewerId={userId} />
+          <RoundBlock
+            clubId={club.id}
+            clubSlug={club.slug}
+            viewerId={userId}
+            periodKey={roundPeriodKey}
+          />
         </div>
         <ClubFeed
           clubId={club.id}
