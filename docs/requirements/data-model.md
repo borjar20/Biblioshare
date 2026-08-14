@@ -460,10 +460,17 @@ escrito al abrir la ficha de **una obra concreta**: una persona con una sola pel
 afirmaba, sin matices, que esa era toda su obra. No era un hueco, era una afirmación falsa.
 
 > **Delta del 2026-08-13 (`people.aliases`, autores de libro por Open Library key): columna +
-> grant de INSERT aplicados y verificados en DEV** contra
-> `information_schema.column_privileges` (migración `20260853_people_aliases.sql`; prod
-> pendiente). Spec:
+> grants de SELECT, INSERT y REFERENCES aplicados y verificados en DEV** contra
+> `information_schema.column_privileges` (migración `20260859_people_aliases.sql`; **prod
+> pendiente — es la ÚNICA migración de esta rama que falta en producción**). Spec:
 > `docs/superpowers/specs/2026-08-13-autores-libro-datos-design.md`.
+>
+> Dos correcciones del 2026-08-14, al comprobar el estado real de prod antes de mezclar: el
+> fichero se renombró de `20260853_` a `20260859_` (compartía prefijo con
+> `20260853_activities_progress.sql`, que llegó por `main`), y se le añadió el **grant de
+> SELECT**, que faltaba. Sin él, prod habría quedado distinto de dev —donde `aliases` sí lo
+> tiene— y un futuro `select *` sobre `people`, o simplemente añadir `aliases` a
+> `PERSON_COLUMNS`, habría fallado solo en producción.
 
 | Columna | Tipo | Para qué |
 |---|---|---|
