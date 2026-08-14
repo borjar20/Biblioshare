@@ -14,21 +14,31 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateReadingLog: mocks.revalidateReadingLog,
 }));
 
-import { closePass } from "./actions";
+import { closePass, updatePass } from "./actions";
 import { parseDroppedReason } from "./types";
 
-function makePassClient(targetId: string | null, targetError: unknown = null) {
+function makePassClient(
+  targetId: string | null,
+  targetError: unknown = null,
+  existingReview: string | null = null,
+) {
   const targetFilters: Array<[string, unknown]> = [];
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
     from(table: string) {
       if (table === "passes") {
         const builder = {
+          select() {
+            return builder;
+          },
           update() {
             return builder;
           },
           eq() {
             return builder;
+          },
+          async maybeSingle() {
+            return { data: existingReview !== null ? { review: existingReview } : null, error: null };
           },
           then(resolve: (value: unknown) => void) {
             resolve({ error: null });
@@ -116,5 +126,40 @@ describe("closePass — menciones", () => {
 
     expect(mocks.notifyMentions).not.toHaveBeenCalled();
     expect(mocks.revalidateReadingLog).toHaveBeenCalledWith("book", "book-1");
+  });
+});
+
+describe("updatePass — menciones (issue #317)", () => {
+  it("misma mención en ambas versiones → no re-notifica", async () => {
+    const fake = makePassClient("target-diary", null, "hola @ana");
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    const form = new FormData();
+    form.set("finishedOn", "2026-07-30");
+    form.set("review", "hola @ana, releído");
+    form.set("isPublic", "on");
+
+    await updatePass("pass-1", "book", "book-1", {}, form);
+
+    expect(mocks.notifyMentions).not.toHaveBeenCalled();
+  });
+
+  it("mención nueva en la versión editada → notifica solo la nueva", async () => {
+    const fake = makePassClient("target-diary", null, "gran libro");
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    const form = new FormData();
+    form.set("finishedOn", "2026-07-30");
+    form.set("review", "gran libro, gracias a @borja");
+    form.set("isPublic", "on");
+
+    await updatePass("pass-1", "book", "book-1", {}, form);
+
+    expect(mocks.notifyMentions).toHaveBeenCalledWith(fake.client, {
+      authorId: "author",
+      text: "gran libro, gracias a @borja",
+      interactionTargetId: "target-diary",
+      usernames: ["borja"],
+    });
   });
 });

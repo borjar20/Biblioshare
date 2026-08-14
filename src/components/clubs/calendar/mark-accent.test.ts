@@ -245,22 +245,28 @@ describe("contraste de las clases de MARK_ACCENT", () => {
 
   // ── Exclusiones. Ninguna es muda: cada una lleva su motivo y su issue. ──
   //
-  // `cierre` usa --gold, que da 2.89:1 contra --surface en tema claro. Falla
-  // desde ANTES de esta rama y no se corrige aquí: oscurecer --gold pide
-  // revisar su blast radius fuera del calendario (--gold-ink existe justo por
-  // eso, para texto sobre tinte dorado). Issue #577.
-  const EXCLUIDAS_OBJETO_GRAFICO = new Set<MarkAccentKey>(["cierre"]);
+  // `cierre.bar` usaba --gold a secas (2.89:1 contra --surface en claro, por
+  // debajo del 3:1). Arreglado con --gold-graphic, un derivado solo para este
+  // uso -- oscurecer --gold entero pedía revisar su blast radius fuera del
+  // calendario (botones, badges, gráficas). Issue #577, cerrado para el
+  // OBJETO GRÁFICO; ya no hay exclusiones aquí.
+  const EXCLUIDAS_OBJETO_GRAFICO = new Set<MarkAccentKey>([]);
 
-  // Para el umbral de TEXTO se excluyen las claves que apuntan a un token
-  // COMPARTIDO con el resto de la app, que no se puede mover sin restilar media
-  // aplicación -- a diferencia de --event-meetup y --event-highlight, que solo
-  // consume MARK_ACCENT y por eso sí se ajustaron hasta pasar:
-  //   - `cierre` -> --gold, 2.64:1 en claro. Issue #577.
-  //   - `hito`   -> --accent (el terracota de marca), 4.35:1 en claro. Issue #586.
+  // Para el umbral de TEXTO se excluyen las claves cuyo `text` sigue apuntando
+  // a un token COMPARTIDO con el resto de la app, que no se puede mover sin
+  // restilar media aplicación -- a diferencia de --event-meetup y
+  // --event-highlight, que solo consume MARK_ACCENT y por eso sí se ajustaron
+  // hasta pasar:
+  //   - `cierre` -> --gold, 2.64:1 en claro. Sigue abierto: la parte de OBJETO
+  //     GRÁFICO del issue #577 (`bar`) ya tiene su --gold-graphic, pero
+  //     oscurecer para TEXTO es un cambio de fondo mayor (afecta también al
+  //     icono, no solo al chip) y el issue no lo pedía.
+  // `hito` YA NO está aquí: --accent-ink resuelve su 4.35:1 (issue #586) sin
+  // tocar --accent, que sí es compartido.
   // Los `type-*` de lanzamiento NO se excluyen: pasan, aunque type-book quede
   // al filo (4.51:1 en claro). Si algún día dejaran de pasar, la salida es la
   // misma que la de #586 (un token `-ink` para texto), no relajar el umbral.
-  const EXCLUIDAS_TEXTO_TOKEN_COMPARTIDO = new Set<MarkAccentKey>(["cierre", "hito"]);
+  const EXCLUIDAS_TEXTO_TOKEN_COMPARTIDO = new Set<MarkAccentKey>(["cierre"]);
 
   // El espejo del @media es un invariante por sí mismo, aparte del contraste:
   // si alguien cambia `.dark` y olvida el @media, el tema oscuro por defecto

@@ -171,10 +171,12 @@ calendario ›» del resumen. Sin migración. Spec:
 `docs/superpowers/specs/2026-08-12-calendario-movil-legibilidad-y-pestana-design.md`
 - [x] **La ronda — latido semanal de club** (2026-08-03) — cada semana le toca a un miembro proponer una pregunta al club (con o sin obra adjunta); si no aparece en 48h, entra una consigna de la casa. Turno y periodo (semana ISO en `Europe/Madrid`) se calculan en SQL, nunca los envía el cliente; tabla propia `club_rounds` (deliberadamente NO un `kind` de `club_activities`, contra SD-8 — ver `decisiones.md`), RPCs `get_club_round_state`/`ensure_club_round`, registro en `interaction_targets` (comentable/reaccionable). **Migración aplicada y verificada solo en dev** (`20260803_club_rounds.sql`, llegó en cuatro entradas sucesivas); **producción pendiente**, aplicación reservada al usuario — detalle en `data-model.md` §6. Deuda abierta con issues: cobertura de test de la consigna de la casa
 ([#401](https://github.com/borjar20/Biblioshare/issues/401)), tipado de `resolveTargetHrefs`
-([#402](https://github.com/borjar20/Biblioshare/issues/402)), huecos «Sin ronda» en el histórico
-([#403](https://github.com/borjar20/Biblioshare/issues/403)), avatares de titular/respondido
+([#402](https://github.com/borjar20/Biblioshare/issues/402)), avatares de titular/respondido
 ([#404](https://github.com/borjar20/Biblioshare/issues/404)), y el POST sin comprobar de la
-semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Spec:
+semilla e2e ([#405](https://github.com/borjar20/Biblioshare/issues/405)). Huecos «Sin ronda»
+en el histórico ([#403](https://github.com/borjar20/Biblioshare/issues/403)) y el deep link
+`?ronda=` de las notificaciones ([#408](https://github.com/borjar20/Biblioshare/issues/408))
+resueltos el 2026-08-14 (`20260814_club_round_history_weeks.sql`, PR #661). Spec:
 `docs/superpowers/specs/2026-08-03-club-rondas-design.md` · Plan:
 `docs/superpowers/plans/2026-08-03-club-rondas.md`
 - [x] **«Pensamiento» — post manual anclado a una entidad** (2026-08-06/07) — el primer

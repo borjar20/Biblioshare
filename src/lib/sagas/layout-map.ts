@@ -62,9 +62,11 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
 
   const nodosDeBloque = new Map<string | null, SagaGraphNode[]>();
   const bloqueDeNodo = new Map<string, string | null>();
+  const nodoDeId = new Map<string, SagaGraphNode>();
   for (const n of graph.nodes) {
     const clave = n.groupSagaId;
     bloqueDeNodo.set(n.id, clave);
+    nodoDeId.set(n.id, n);
     const lista = nodosDeBloque.get(clave);
     if (lista === undefined) nodosDeBloque.set(clave, [n]);
     else lista.push(n);
@@ -141,6 +143,53 @@ export function alignRowsToLongEdges(graph: SagaGraph): SagaGraph {
       else ya.add(columna);
     }
     colocados.add(clave);
+  }
+
+  // Bloque intercalado bajo la cadena (issue #249). `orderBlocksForLayout`
+  // intercala a propósito un bloque `libre` con ancla entre dos bloques que la
+  // cadena `principal` conecta — eso está bien, la cadena sigue uniendo sus
+  // dos bloques colocados. El problema es geométrico: si esa arista entra y
+  // sale por la MISMA columna (el caso común, con las dos anclas en columna 0
+  // porque `principal` no participa en la alineación de arriba) y el bloque
+  // intercalado cae justo en esa columna, `FloatingEdge` la dibuja centro a
+  // centro y la línea atraviesa el nodo intercalado en vez de pasar a su lado.
+  //
+  // Si las dos columnas de la arista DIFIEREN la línea sale en diagonal y, en
+  // la fila del intercalado, no pasa por su columna — desviarlo igual solo
+  // ensancharía el mapa sin arreglar nada (mismo criterio que el desempate de
+  // verticales, arriba). Y se compara con la columna final del intercalado,
+  // no con su ancla: el bloque intercalado puede no tener ninguna arista larga
+  // que lo mueva y seguir en su columna original.
+  for (const e of graph.edges) {
+    if (e.type !== "principal") continue;
+    const origenBloque = bloqueDeNodo.get(e.source);
+    const destinoBloque = bloqueDeNodo.get(e.target);
+    if (origenBloque === destinoBloque) continue; // dentro del mismo bloque: nada que intercalar
+    const colOrigen = xFinal.get(e.source);
+    const colDestino = xFinal.get(e.target);
+    if (colOrigen === undefined || colDestino === undefined || colOrigen !== colDestino) continue;
+    const filaOrigen = nodoDeId.get(e.source)!.y;
+    const filaDestino = nodoDeId.get(e.target)!.y;
+    const filaMin = Math.min(filaOrigen, filaDestino);
+    const filaMax = Math.max(filaOrigen, filaDestino);
+
+    for (const [clave, lista] of nodosDeBloque) {
+      if (clave === origenBloque || clave === destinoBloque) continue;
+      const filaBloqueMin = Math.min(...lista.map((n) => n.y));
+      const filaBloqueMax = Math.max(...lista.map((n) => n.y));
+      // Estrictamente ENTRE las dos filas de la arista: un bloque que comparte
+      // fila con uno de los extremos no está intercalado.
+      if (filaBloqueMin <= filaMin || filaBloqueMax >= filaMax) continue;
+      if (!lista.some((n) => xFinal.get(n.id) === colOrigen)) continue;
+
+      // Se desplaza el bloque ENTERO, no solo el nodo que choca, para no
+      // desapilar un tándem — mismo criterio que el resto de esta función. Si
+      // el tope ya está agotado se acepta el solape: ensanchar el mapa sin
+      // límite es peor (la razón de ser de MAX_COL_OFFSET, arriba).
+      const colMaxTrasDesvio = Math.max(...lista.map((n) => xFinal.get(n.id)!)) + NODE_STEP_X;
+      if (colMaxTrasDesvio > MAX_COL_OFFSET * NODE_STEP_X) continue;
+      for (const n of lista) xFinal.set(n.id, xFinal.get(n.id)! + NODE_STEP_X);
+    }
   }
 
   // Segunda fase: dentro de una FILA DE SUELTAS, ordenar por la columna del

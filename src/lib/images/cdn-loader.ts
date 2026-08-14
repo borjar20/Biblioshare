@@ -25,10 +25,29 @@ const OPENLIBRARY_RE =
 
 const OPENLIBRARY_RANK = { S: 0, M: 1, L: 2 } as const;
 
+// next/image detecta un loader que "no implementa width" llamándolo una vez y
+// comparando la URL devuelta con `src`: si son idénticas, avisa
+// (next-image-missing-loader-width — ver node_modules/next/dist/shared/lib/
+// get-img-props.js). Nuestra política de solo-bajar-nunca-subir hace que,
+// cuando el ancho pedido ya cabe en el bucket/tamaño actual, la salida sea
+// igual a la entrada a propósito: es un falso positivo del aviso, no un
+// loader que ignora `width`. Añadimos un parámetro inocuo SOLO en ese caso —
+// si el bucket sí cambió, la URL ya difiere y no tocamos nada — para no
+// crear variantes de caché nuevas en el CDN de origen.
+function markIfUnchanged(
+  url: string,
+  src: string,
+  resolvedSize: string | number
+): string {
+  if (url !== src) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}width=${resolvedSize}`;
+}
+
 function tmdbPoster(src: string, width: number): string {
   const target =
     TMDB_POSTER_WIDTHS.find((candidate) => candidate >= width) ?? 342;
-  return src.replace("/t/p/w342/", `/t/p/w${target}/`);
+  const resized = src.replace("/t/p/w342/", `/t/p/w${target}/`);
+  return markIfUnchanged(resized, src, target);
 }
 
 function openLibraryCover(
@@ -40,7 +59,21 @@ function openLibraryCover(
   // Nunca subir: si en BD hay -M y la vista pide 800px, se queda en -M.
   const size =
     OPENLIBRARY_RANK[wanted] < OPENLIBRARY_RANK[current] ? wanted : current;
-  return `${base}-${size}.jpg`;
+  return markIfUnchanged(`${base}-${size}.jpg`, `${base}-${current}.jpg`, size);
+}
+
+// Avatares de Supabase Storage, Google Books y cualquier otro origen remoto:
+// no sabemos redimensionarlos por URL (Supabase solo transforma en plan de
+// pago — issue #160; construir /render/image/... a mano falla en silencio
+// sin ese plan, ver la issue). Declaramos `width` como parámetro de consulta:
+// el CDN de origen lo ignora, pero el loader ya "implementa" el contrato de
+// next/image y dispensa el aviso next-image-missing-loader-width con
+// honestidad — no se finge un resize que no ocurre. Coste real: cero.
+function withHonestWidth(src: string, width: number): string {
+  if (!/^https?:\/\//.test(src)) return src;
+  const url = new URL(src);
+  url.searchParams.set("width", String(width));
+  return url.toString();
 }
 
 export default function cdnLoader({
@@ -62,7 +95,5 @@ export default function cdnLoader({
     );
   }
 
-  // Avatares de Supabase Storage, Google Books y cualquier otro origen: se
-  // sirven tal cual. Coste en transformaciones: cero.
-  return src;
+  return withHonestWidth(src, width);
 }

@@ -821,6 +821,30 @@ describe("parseItemKey", () => {
   });
 });
 
+describe("deriveSagaMap — bloque intercalado bajo la cadena (issue #249)", () => {
+  it("un libre intercalado entre dos bloques que la cadena conecta no comparte columna con esa arista", () => {
+    // Datos exactos del repro del issue: A fila 0 col 0, L (intercalado) fila
+    // 1 col 0, B fila 2 col 0 — sin el arreglo, la cadena A->B es una vertical
+    // recta por el centro de L.
+    const map = deriveSagaMap(
+      groups([
+        block("Uno", 1, [work("A", 1)]),
+        block("Dos", 2, [work("B", 1)]),
+        freeBlock("Libre", [work("L", 1)]),
+      ]),
+      { "s:saga-Libre": { afterKey: "i:book:A", afterTitle: "A", beforeKey: null, beforeTitle: null, reason: null } },
+      lookup(),
+    );
+    const a = map.nodes.find((n) => n.id === "i:book:A")!;
+    const l = map.nodes.find((n) => n.id === "i:book:L")!;
+    const b = map.nodes.find((n) => n.id === "i:book:B")!;
+    // La cadena A->B sigue en columna 0 (no se toca): solo el intercalado se
+    // desvía.
+    expect(a.x).toBe(b.x);
+    expect(l.x).not.toBe(a.x);
+  });
+});
+
 describe("deriveSagaMap — alineación de columnas (el nudo de la captura)", () => {
   it("el bloque libre sube junto a su ancla Y se alinea bajo su columna", () => {
     // Escenario reducido de la captura del 2026-07-28: un bloque colocado de

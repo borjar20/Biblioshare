@@ -682,6 +682,8 @@
       "itemLink": "Ver la obra",
       "historyTitle": "Rondas anteriores",
       "historyAnswers": "{count} respuestas",
+      "historyEmptyWeek": "Sin ronda",
+      "backToCurrent": "← Volver a la ronda actual",
       "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
       "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
     }
@@ -1483,6 +1485,7 @@
     "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",
     "avgRating": "★ {rating}",
     "yourProgress": "Tu progreso",
+    "allOptional": "Nada de esta saga cuenta para el avance: aquí, todo es opcional",
     "synopsis": "Sinopsis",
     "noSynopsis": "Sin sinopsis disponible.",
     "nexusGroup": "Nexo",
