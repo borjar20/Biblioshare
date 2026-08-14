@@ -185,6 +185,20 @@ describe("normalizeSearchWorks · idioma, omnibus y desduplicación", () => {
     expect(results.map((r) => r.externalId)).toEqual(["/works/OL1W", "/works/OL2W"]);
   });
 
+  it("NO funde dos obras anónimas homónimas", () => {
+    // Sin `author_name` no hay forma de saber si son el mismo libro. Se
+    // prefiere enseñar un duplicado a borrar uno de los dos.
+    const results = normalizeSearchWorks(
+      [],
+      [
+        { key: "/works/OL1W", title: "España en llamas", language: ["spa"], edition_count: 1 },
+        { key: "/works/OL2W", title: "España en llamas", language: ["spa"], edition_count: 9 },
+      ]
+    );
+
+    expect(results.map((r) => r.externalId)).toEqual(["/works/OL1W", "/works/OL2W"]);
+  });
+
   it("la obra fusionada se queda con la MEJOR posición del grupo", () => {
     // Si el superviviente heredara su propia posición, el grupo bajaría a la
     // del gemelo — y con el corte en 20, una obra que iba primera puede caer
@@ -279,9 +293,13 @@ describe("normalizeSearchWorks · fixtures reales", () => {
   });
 
   it("q='hunger games': los homónimos de otros autores NO se funden con la novela", () => {
-    // Open Library tiene tres works distintos titulados «The Hunger Games»:
-    // la novela de Collins y dos acompañamientos. Son libros distintos y los
-    // tres se pueden añadir.
+    // Open Library tiene CUATRO works distintos titulados «The Hunger Games»
+    // (comparando cadena exacta): la novela de Collins y tres acompañamientos
+    // — Kate Egan, Emily Seife y Nicola Balkind. Emily Seife se escapa de este
+    // filtro (`r.title === "The Hunger Games"`) porque su work se titula «The
+    // Hunger games», con ge minúscula, así que no aparece en la lista de abajo
+    // aunque sí sobreviva la desduplicación. Son libros distintos y los cuatro
+    // se pueden añadir.
     const results = normalizeSearchWorks(
       searchHungerGamesEs.docs,
       searchHungerGamesEn.docs
@@ -294,9 +312,13 @@ describe("normalizeSearchWorks · fixtures reales", () => {
     expect(new Set(results.map((r) => r.externalId)).size).toBe(20);
   });
 
-  it("q='en llamas': dos novelas homónimas de autores distintos sobreviven las dos", () => {
+  it("q='en llamas': la novela de Anabel Hernández ya no la borra su homónima", () => {
     // Antes de meter la autoría en la clave, «Mexico en llamas» de Basañez
-    // Loyola borraba «México en llamas» de Anabel Hernández.
+    // Loyola borraba «México en llamas» de Anabel Hernández. Ahora sobrevive
+    // la desduplicación y sale en la posición 7 de los 20 devueltos. Su
+    // homónima de Basañez Loyola también sobrevive, pero con menos ediciones
+    // queda en la posición 20 de los supervivientes — fuera de los 20
+    // devueltos —, así que este test solo comprueba a la de Hernández.
     const results = normalizeSearchWorks(searchEnLlamasEs.docs, searchEnLlamasEn.docs);
 
     expect(results[7]).toMatchObject({

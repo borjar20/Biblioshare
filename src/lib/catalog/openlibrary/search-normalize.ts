@@ -155,12 +155,19 @@ export function normalizeSearchWorks(
     // menos ediciones desaparecía de la búsqueda sin que nada dijera que
     // existe. Medido sobre el fixture de `q="en llamas"`.
     //
-    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
-    // cualquier otra obra en el mismo caso: esas no desduplican (clave vacía).
+    // Sin clave no se desduplica, y hay DOS motivos para no tenerla. Un título
+    // que normaliza a la cadena vacía («!!!», «—») casaría con el de cualquier
+    // otra obra en el mismo caso. Y una obra sin `author_name` —2 de 40 works
+    // en el fixture de q="hunger games" y 3 de 40 en el de q="en llamas"—
+    // casaría con cualquier otra anónima del mismo título, que son dos libros
+    // distintos. En ambos casos se prefiere enseñar un duplicado a borrar un
+    // libro.
     const normalizedWorkTitle = normalizeTitleForComparison(workTitle);
-    const dedupKey = normalizedWorkTitle
-      ? `${normalizedWorkTitle}|${normalizeTitleForComparison((doc.author_name ?? []).join(", "))}`
-      : "";
+    const normalizedAuthors = normalizeTitleForComparison((doc.author_name ?? []).join(", "));
+    const dedupKey =
+      normalizedWorkTitle && normalizedAuthors
+        ? `${normalizedWorkTitle}|${normalizedAuthors}`
+        : "";
 
     candidates.push({
       result: { ...mapWorkDoc(doc), title, altTitles: allTitles },
