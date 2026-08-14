@@ -10,12 +10,15 @@ export const MONTHS_ES = [
 ];
 
 export function formatDayMonth(iso: string): { day: string; month: string } {
-  const [, month, day] = iso.split("-");
+  const parts = iso.split("-");
+  if (parts.length !== 3) return { day: "", month: "" };
+  const [, month, day] = parts;
   return { day, month: MONTHS_ES[Number(month) - 1] ?? "" };
 }
 
 export function formatEventDate(iso: string): string {
   const { day, month } = formatDayMonth(iso);
+  if (!day || !month) return "";
   return `${day} ${month}`;
 }
 
