@@ -218,7 +218,14 @@ function ManagedLog({
     useState(initialClosingPassId);
   if (initialClosingPassId !== prevInitialClosingPassId) {
     setPrevInitialClosingPassId(initialClosingPassId);
-    if (initialClosingPassId) setClosingPassId(initialClosingPassId);
+    if (initialClosingPassId) {
+      // Auto-cierre por sesión: siempre "completed" (no existe abandonar vía
+      // sesión, solo se abandona a mano desde StatusSegments). Sin este pisado,
+      // `closingStatus` arrastraba el valor de una interacción anterior no
+      // relacionada (p. ej. un "dropped" manual descartado sin enviar).
+      setClosingStatus("completed");
+      setClosingPassId(initialClosingPassId);
+    }
   }
 
   // Retomar un abandonado (dropped → in_progress) es la única transición que
