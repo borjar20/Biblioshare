@@ -30,7 +30,7 @@ export function CollectionOverviewSkeleton() {
 // que en `CollectionCard`/`CollectionsBrowser`, o al llegar los datos la
 // rejilla salta (es el defecto que cerró la PR #372, esqueleto y contenido con
 // rejillas distintas). Por eso `TILE_GRID_COLS` sale de la misma constante.
-export function CollectionsGridSkeleton({ count = 6 }: { count?: number }) {
+export function CollectionsGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">

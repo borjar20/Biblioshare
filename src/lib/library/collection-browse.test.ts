@@ -11,6 +11,8 @@ function card(over: Partial<CollectionCard> & { name: string }): CollectionCard 
     typeCounts: {},
     updatedAt: "2026-01-01T00:00:00Z",
     position: 0,
+    description: null,
+    isSorteable: false,
     ...over,
   };
 }

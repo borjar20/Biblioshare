@@ -34,7 +34,6 @@ import {
   CARD_GRID_COLS,
   COVER_GRID_COLS,
   SHELL_GRID,
-  SHELL_TILES,
 } from "@/lib/ui/layout";
 import {
   CollectionOverviewSkeleton,
@@ -149,17 +148,16 @@ export default async function CollectionPage({
   // navegación). El `key` de los boundaries es la consulta: al cambiar un
   // filtro, la sección vuelve a mostrar su skeleton en vez de congelarse.
   //
-  // Ancho POR PESTAÑA, porque las tres tienen piezas de tamaños distintos.
-  // `Colecciones` y `Sagas` vivían en `SHELL_READ` (896px) por miedo a que sus
-  // tarjetas grandes se desangelaran estiradas a 1600 — pero eso las dejaba a
-  // dos columnas con ~270px de margen muerto a cada lado en un monitor normal.
-  // La respuesta no era quedarse en 896 sino emparejar cada ancho con su
-  // escalera de columnas (la regla de `lib/ui/layout.ts`): `Colecciones` para
-  // en 1280 con tres tarjetas de ~400px, que es lo que pide su abanico de
-  // portadas; `Sagas` reutiliza el par `SHELL_GRID`/`CARD_GRID_COLS` del índice
-  // de sagas, cuyas tarjetas son las mismas. Cambiar de pestaña es una
-  // navegación, así que el salto de ancho no ocurre "en vivo".
-  const shell = tab === "colecciones" ? SHELL_TILES : SHELL_GRID;
+  // Ancho ÚNICO (`SHELL_GRID`) para las tres pestañas: el ancho del CONTENEDOR
+  // y el tamaño de las TARJETAS son dos decisiones distintas. `Colecciones` y
+  // `Sagas` vivían antes en `SHELL_READ` (896px), luego en un `SHELL_TILES`
+  // propio (1280px) — cada cambio de ancho por pestaña provocaba un salto de
+  // layout al alternar `Todo`/`Colecciones`/`Sagas`. `Colecciones` usa su
+  // propia rejilla (`TILE_GRID_COLS`), pero mismo TECHO grande que `Sagas`
+  // (`CARD_GRID_COLS`): las dos llegan a 4 columnas en `xl`, solo difieren en
+  // móvil (2 en Colecciones, tarjeta vertical estrecha; 1 en Sagas, tarjeta
+  // horizontal).
+  const shell = SHELL_GRID;
 
   return (
     <div

@@ -104,6 +104,8 @@ export function AddToCollectionSheet({
           // esta lista se ordena.
           updatedAt: new Date().toISOString(),
           position: 0,
+          description: null,
+          isSorteable: false,
           checked: true,
         },
       ]);

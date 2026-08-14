@@ -23,7 +23,7 @@ carácter a la tarjeta, medía 54×81px.
 
 | Decisión | Elección | Por qué |
 |---|---|---|
-| Ancho de `Colecciones` | `SHELL_TILES` (para en 1280) + `TILE_GRID_COLS` | Tres tarjetas de ~400px es lo que pide el abanico. A 1600 esas tres se van a ~520px y la tarjeta se queda hueca. |
+| Ancho de `Colecciones` | ~~`SHELL_TILES` (para en 1280)~~ **→ `SHELL_GRID`, revertido el mismo día** (ver `decisiones.md` 2026-08-14) — solo queda `TILE_GRID_COLS` | Tres tarjetas de ~400px es lo que pedía el abanico a 1280px, pero un ancho propio hacía saltar el layout al cambiar de pestaña. Se prioriza que `Todo`/`Colecciones`/`Sagas` compartan contenedor; el abanico se ensancha algo más de lo justo a 2xl. |
 | Rejilla de `Colecciones` | 2 móvil · 2 tablet · 3 escritorio | Se **mantienen** las dos columnas del móvil: la tarjeta es vertical y estrecha, y a una sola solo caben dos colecciones por pantalla. |
 | Ancho de `Sagas` | `SHELL_GRID` + `CARD_GRID_COLS` | No se inventa un reparto nuevo: es el par que ya usa `/sagas`, cuyas tarjetas son del mismo tipo. Su escalera conserva **una** columna en móvil, necesaria porque `SagaLibraryCard` es horizontal. |
 | Búsqueda y orden | En **cliente**, sin tocar la URL | Las colecciones llegan todas en la misma consulta (son decenas como mucho). Es lo contrario que `Todo`, donde el filtro es server-side y enlazable porque la rejilla es la biblioteca entera. |

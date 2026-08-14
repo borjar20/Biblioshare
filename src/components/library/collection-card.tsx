@@ -2,10 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { CollectionCard as CollectionCardData } from "@/lib/library/collections";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
+import { CollectionMenu } from "./collection-menu";
 
 // Componente de CLIENTE, no de servidor: quien lo pinta es `CollectionsBrowser`,
 // que filtra y ordena en el navegador y no puede renderizar un componente async.
@@ -56,6 +58,7 @@ const BREAKDOWN_ORDER: ItemType[] = ["book", "movie", "series"];
 
 export function CollectionCard({ card }: { card: CollectionCardData }) {
   const t = useTranslations("collection");
+  const router = useRouter();
   const covers = card.fanCovers.slice(0, 3);
   const dotClass = card.dominantType
     ? MEDIA_ACCENT[card.dominantType].bg
@@ -72,48 +75,69 @@ export function CollectionCard({ card }: { card: CollectionCardData }) {
       : null;
 
   return (
-    <Link
-      href={`/coleccion/c/${card.id}`}
-      className="group flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card transition-colors hover:border-accent"
-    >
-      <div className="relative isolate h-[112px] w-full sm:h-[150px] lg:h-[168px]">
-        {covers.map((cover, index) => {
-          const slot = FAN_SLOTS[index];
-          return (
-            <div
-              key={index}
-              className={`absolute top-1/2 left-1/2 -translate-y-1/2 overflow-hidden rounded-[5px] border border-border bg-surface-muted shadow-cover transition-transform duration-200 ${COVER_SIZE} ${slot.x} ${slot.rotate} ${slot.hover} ${FAN_Z[index]}`}
-            >
-              {cover && (
-                <Image
-                  src={cover}
-                  alt=""
-                  fill
-                  sizes="(max-width: 640px) 61px, (max-width: 1024px) 83px, 93px"
-                  className="object-cover"
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+    // El menú «⋯» (atajos de renombrar/sorteo/borrar) va FUERA del <Link>, como
+    // superficie propia. Un <button> anidado dentro de un <a> es HTML inválido
+    // (contenido interactivo dentro de contenido interactivo) y además el clic
+    // se propagaría al enlace y navegaría al detalle en vez de abrir el menú.
+    // Mismo patrón que `LibraryItemCard`: el `<Link>` cubre el contenido de la
+    // tarjeta, el menú es un hermano posicionado encima en la esquina.
+    <div className="group relative flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card transition-colors hover:border-accent">
+      <Link href={`/coleccion/c/${card.id}`} className="flex flex-col gap-3">
+        <div className="relative isolate h-[112px] w-full sm:h-[150px] lg:h-[168px]">
+          {covers.map((cover, index) => {
+            const slot = FAN_SLOTS[index];
+            return (
+              <div
+                key={index}
+                className={`absolute top-1/2 left-1/2 -translate-y-1/2 overflow-hidden rounded-[5px] border border-border bg-surface-muted shadow-cover transition-transform duration-200 ${COVER_SIZE} ${slot.x} ${slot.rotate} ${slot.hover} ${FAN_Z[index]}`}
+              >
+                {cover && (
+                  <Image
+                    src={cover}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 61px, (max-width: 1024px) 83px, 93px"
+                    className="object-cover"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="line-clamp-1 font-serif text-base font-semibold text-foreground">
-          {card.name}
-        </span>
-
-        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-          <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
-          {t("titleCount", { count: card.count })}
-        </span>
-
-        {breakdown && (
-          <span className="line-clamp-1 font-mono text-[11px] text-muted-foreground">
-            {breakdown}
+        <div className="flex flex-col gap-1 pr-8">
+          <span className="line-clamp-1 font-serif text-base font-semibold text-foreground">
+            {card.name}
           </span>
-        )}
+
+          <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+            <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`} />
+            {t("titleCount", { count: card.count })}
+          </span>
+
+          {breakdown && (
+            <span className="line-clamp-1 font-mono text-[11px] text-muted-foreground">
+              {breakdown}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      <div className="absolute top-3 right-3 z-40">
+        <CollectionMenu
+          collectionId={card.id}
+          name={card.name}
+          description={card.description}
+          isSorteable={card.isSorteable}
+          triggerClassName="grid h-[28px] w-[28px] shrink-0 place-items-center rounded-lg border border-border bg-surface/90 text-muted-foreground shadow-card backdrop-blur transition-colors hover:bg-surface-muted hover:text-foreground"
+          // Ya estamos en /coleccion?tab=colecciones: `router.refresh()` vuelve
+          // a pedir la rejilla (la tarjeta borrada desaparece en su sitio) en
+          // vez del push a /coleccion por defecto de CollectionMenu, que en el
+          // detalle tiene sentido (la colección ya no existe) pero aquí solo
+          // sacaría a la persona de la pestaña Colecciones a la de Todo.
+          onDeleted={() => router.refresh()}
+        />
       </div>
-    </Link>
+    </div>
   );
 }

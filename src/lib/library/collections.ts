@@ -24,6 +24,9 @@ export type CollectionCard = {
   /** Para ordenar en cliente sin volver al servidor (ver collection-browse.ts). */
   updatedAt: string;
   position: number;
+  /** Para los atajos rápidos de la tarjeta (renombrar/borrar/sorteo, `CollectionMenu`). */
+  description: string | null;
+  isSorteable: boolean;
 };
 
 // Portada por (item_type, item_id) reutilizando el patrón de get-library-items.
@@ -52,7 +55,7 @@ export async function listCollections(
 ): Promise<CollectionCard[]> {
   const { data: cols, error } = await supabase
     .from("collections")
-    .select("id, name, updated_at, position")
+    .select("id, name, updated_at, position, description, is_sorteable")
     .eq("user_id", userId);
   if (error) throw error;
   if (!cols || cols.length === 0) return [];
@@ -87,6 +90,8 @@ export async function listCollections(
       typeCounts,
       updatedAt: c.updated_at,
       position: c.position,
+      description: c.description,
+      isSorteable: c.is_sorteable,
     };
   });
 

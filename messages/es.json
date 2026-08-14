@@ -2305,6 +2305,13 @@
       "createNew": "＋ Crear nueva colección…",
       "done": "Hecho",
       "saving": "Guardando…"
+    },
+    "addItemsSheet": {
+      "trigger": "Añadir ítems",
+      "title": "Añadir a esta colección",
+      "searchPlaceholder": "Buscar en tu biblioteca…",
+      "loading": "Buscando…",
+      "empty": "No hay títulos que coincidan."
     }
   },
   "errors": {
