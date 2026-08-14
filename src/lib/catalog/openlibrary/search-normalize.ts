@@ -1,5 +1,6 @@
 import type { SearchResult } from "../types";
 import { buildCoverUrl } from "./covers";
+import { acceptEditionTitle, isOmnibus, normalizeTitleForComparison } from "./normalize";
 
 // Normalización de los RESULTADOS DE BÚSQUEDA de Open Library.
 //
@@ -48,4 +49,132 @@ export function mapWorkDoc(doc: OpenLibrarySearchDoc): SearchResult {
     genres: null,
     editionCount: typeof doc.edition_count === "number" ? doc.edition_count : 1,
   };
+}
+
+const MAX_RESULTS = 20;
+
+type Merged = {
+  doc: OpenLibrarySearchDoc;
+  order: number;
+  es: string | null;
+  en: string | null;
+};
+
+/**
+ * Las siete reglas, en el orden en que las aplica el cuerpo de la función:
+ * 1. Juntar. 2. Guarda de colisión. 3. Idioma. 4. Omnibus. 5. Título.
+ * 6. Desduplicar por título de obra. 7. Recortar.
+ *
+ * Recibe los `docs` de las dos pasadas de `search.json` (`lang=es` y `lang=en`)
+ * sobre la MISMA consulta.
+ */
+export function normalizeSearchWorks(
+  docsEs: OpenLibrarySearchDoc[],
+  docsEn: OpenLibrarySearchDoc[]
+): SearchResult[] {
+  // 1. Juntar las dos pasadas por clave de obra. El orden lo marca la pasada
+  //    española; las obras que solo aparecen en la inglesa van detrás. En
+  //    búsqueda ese orden es RELEVANCIA (no se pide `sort`), y es el que se
+  //    devuelve al final.
+  const merged = new Map<string, Merged>();
+  for (const [docs, want] of [
+    [docsEs, "spa"],
+    [docsEn, "eng"],
+  ] as const) {
+    for (const doc of docs) {
+      if (!doc.key || !doc.title) continue;
+      const entry = merged.get(doc.key) ?? { doc, order: merged.size, es: null, en: null };
+      const edition = doc.editions?.docs?.[0];
+      const accepted = acceptEditionTitle(doc.title, edition?.title, edition?.language, want);
+      if (accepted) {
+        if (want === "spa") entry.es = accepted;
+        else entry.en = accepted;
+      }
+      merged.set(doc.key, entry);
+    }
+  }
+
+  // 2. Guarda de colisión. Un título de edición que reclaman DOS obras
+  //    distintas no es el título de ninguna: es la edición que casa con la
+  //    consulta. Se anula para todas. Sin esto, `q="hunger games"` le pone
+  //    «The Hunger Games» a Mockingjay y a Fatta Eld, y el paso 6 —o peor, la
+  //    regla de la bibliografía— las borra.
+  const owners = new Map<string, Set<string>>();
+  for (const [key, entry] of merged) {
+    for (const title of [entry.es, entry.en]) {
+      if (!title) continue;
+      const normalized = normalizeTitleForComparison(title);
+      if (!normalized) continue;
+      const set = owners.get(normalized) ?? new Set<string>();
+      set.add(key);
+      owners.set(normalized, set);
+    }
+  }
+  for (const entry of merged.values()) {
+    if (entry.es && (owners.get(normalizeTitleForComparison(entry.es))?.size ?? 0) > 1) {
+      entry.es = null;
+    }
+    if (entry.en && (owners.get(normalizeTitleForComparison(entry.en))?.size ?? 0) > 1) {
+      entry.en = null;
+    }
+  }
+
+  const candidates: Array<{
+    result: SearchResult;
+    workTitle: string;
+    editions: number;
+    order: number;
+  }> = [];
+
+  for (const entry of merged.values()) {
+    const { doc } = entry;
+    const workTitle = doc.title as string;
+
+    // 3. Idioma: fuera lo que no tenga ninguna edición en español ni inglés, y
+    //    fuera también lo que no traiga `language` en absoluto (Open Library lo
+    //    omite en ~1 de cada 10 docs, y admitirlos readmite las traducciones
+    //    sueltas que este filtro existe para quitar).
+    const languages = doc.language ?? [];
+    if (!languages.includes("spa") && !languages.includes("eng")) continue;
+
+    // Los títulos candidatos, sin los envenenados: el paso 4 mira estos, no los
+    // originales. Un estuche que casa con la consulta no puede tumbar una obra.
+    const allTitles = [workTitle, entry.es, entry.en].filter(
+      (title): title is string => typeof title === "string" && title.length > 0
+    );
+
+    // 4. Omnibus.
+    if (isOmnibus(allTitles)) continue;
+
+    // 5. Título: español, si no inglés, si no el de la obra.
+    const title = entry.es ?? entry.en ?? workTitle;
+
+    candidates.push({
+      result: { ...mapWorkDoc(doc), title, altTitles: allTitles },
+      workTitle,
+      editions: typeof doc.edition_count === "number" ? doc.edition_count : 0,
+      order: entry.order,
+    });
+  }
+
+  // 6. Desduplicar por título de OBRA solamente. Los títulos de edición NO
+  //    cruzan: son los que la consulta contamina. Esto funde los registros
+  //    repetidos de la misma obra y deja en paz a sus hermanos de saga.
+  //    Sobrevive la de más ediciones.
+  const survivors: typeof candidates = [];
+  const seen = new Set<string>();
+  for (const candidate of [...candidates].sort((a, b) => b.editions - a.editions)) {
+    const key = normalizeTitleForComparison(candidate.workTitle);
+    // Un título que normaliza a la cadena vacía («!!!», «—») casaría con el de
+    // cualquier otra obra en el mismo caso y las fundiría: no desduplica.
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    survivors.push(candidate);
+  }
+
+  // 7. Recortar, en el orden de relevancia del paso 1.
+  return survivors
+    .sort((a, b) => a.order - b.order)
+    .slice(0, MAX_RESULTS)
+    .map((candidate) => candidate.result);
 }

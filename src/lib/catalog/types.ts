@@ -29,6 +29,11 @@ export type SearchResult = {
   // así que no se cachean tal cual — ver `catalogIdForMovieCandidate`.
   englishTitle?: string | null;
   subtitle: string | null; // libros: autoría
+  // Libros, SOLO en resultados de búsqueda: los demás títulos con los que
+  // `q=` puede haber traído esta obra (el de la obra en Open Library, más el
+  // de edición no elegido). Lo usa `match-row.ts` para casar una fila de CSV
+  // cuyo título coincide con uno de estos y no con el `title` mostrado.
+  altTitles?: string[];
   coverUrl: string | null;
   year: number | null;
   // Películas/series: TMDB los da ya en la búsqueda. Libros: SIEMPRE null — la
