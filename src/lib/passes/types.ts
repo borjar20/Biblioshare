@@ -13,6 +13,19 @@ export const DROPPED_REASONS = [
 ] as const;
 export type DroppedReason = (typeof DROPPED_REASONS)[number];
 
+// Vacío = sin motivo (opcional incluso cerrando como dropped). Fuera de la
+// lista cerrada = inválido, mismo patrón que parseRating: `undefined`
+// distingue "no vino nada" (válido) de "vino algo que no reconocemos".
+// Exportada (a diferencia de parseRating) solo para poder probarla sin
+// levantar un cliente Supabase real — ver actions.test.ts.
+export function parseDroppedReason(raw: FormDataEntryValue | null): DroppedReason | null | undefined {
+  const value = String(raw ?? "").trim();
+  if (!value) return null;
+  return (DROPPED_REASONS as readonly string[]).includes(value)
+    ? (value as DroppedReason)
+    : undefined;
+}
+
 // Un "pase" es una lectura o un visionado, y desde la migración hub es el
 // dueño de TODO el registro personal: estado, cursor, cola, fijado, nota y
 // reseña. "Activo" = el que representa la obra en tu biblioteca (puede estar

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyMentions } from "@/lib/social/notify-mentions";
-import { DROPPED_REASONS, type DroppedReason } from "./types";
+import { parseDroppedReason } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -34,19 +34,6 @@ function parseFinishedOn(raw: FormDataEntryValue | null): string | undefined {
   if (!value) return today();
   if (!ISO_DATE.test(value) || value > today()) return undefined;
   return value;
-}
-
-// Vacío = sin motivo (opcional incluso cerrando como dropped). Fuera de la
-// lista cerrada = inválido, mismo patrón que parseRating: `undefined`
-// distingue "no vino nada" (válido) de "vino algo que no reconocemos".
-// Exportada (a diferencia de parseRating) solo para poder probarla sin
-// levantar un cliente Supabase real — ver actions.test.ts.
-export function parseDroppedReason(raw: FormDataEntryValue | null): DroppedReason | null | undefined {
-  const value = String(raw ?? "").trim();
-  if (!value) return null;
-  return (DROPPED_REASONS as readonly string[]).includes(value)
-    ? (value as DroppedReason)
-    : undefined;
 }
 
 export type ClosePassState = {

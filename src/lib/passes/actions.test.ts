@@ -14,7 +14,8 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateReadingLog: mocks.revalidateReadingLog,
 }));
 
-import { closePass, parseDroppedReason } from "./actions";
+import { closePass } from "./actions";
+import { parseDroppedReason } from "./types";
 
 function makePassClient(targetId: string | null, targetError: unknown = null) {
   const targetFilters: Array<[string, unknown]> = [];
