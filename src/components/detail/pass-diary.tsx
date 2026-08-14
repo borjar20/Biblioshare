@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
-import type { Pass } from "@/lib/passes/types";
+import type { Pass, DroppedReason } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
 import {
   updatePass,
@@ -15,6 +15,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
+import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 
 const initialState: ClosePassState = {};
 
@@ -140,6 +141,8 @@ function PassCard({
   const [isDeleting, startDeleteTransition] = useTransition();
   const [rating, setRating] = useState<number | null>(pass.rating);
   const [review, setReview] = useState(pass.review ?? "");
+  const [reason, setReason] = useState<DroppedReason | "">(pass.droppedReason ?? "");
+  const [reasonNote, setReasonNote] = useState(pass.droppedReasonNote ?? "");
   const mention = useMentionAutocomplete({
     value: review,
     onChange: setReview,
@@ -287,6 +290,16 @@ function PassCard({
               {mention.dropdown}
             </div>
           </label>
+
+          {pass.status === "dropped" && (
+            <DroppedReasonFields
+              reason={reason}
+              onReasonChange={setReason}
+              note={reasonNote}
+              onNoteChange={setReasonNote}
+              size="sm"
+            />
+          )}
 
           <label className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">{t("isPublic")}</span>
