@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 /** Chasis común de toda hoja del editor de sagas. `<dialog>` nativo con
@@ -24,9 +25,24 @@ export function SheetShell({
 }) {
   const t = useTranslations("sagaEditor");
   const ref = useRef<HTMLDialogElement>(null);
+  const pathname = usePathname();
+  const navGuard = useRef(false);
   useEffect(() => {
     ref.current?.showModal();
   }, []);
+
+  // Alguna hoja del editor navega estando abierta (p.ej. RouteSheet -> "editar
+  // pasos"). Con Cache Components la hoja NO se desmonta en navegación soft: el
+  // <dialog> quedaría con `open=true` pero fuera del top layer al volver, roto e
+  // incerrable (#448, como item-connect-sheet). Al cambiar de ruta se cierra. El
+  // primer render se salta: la hoja acaba de abrirse EN esa ruta.
+  useEffect(() => {
+    if (!navGuard.current) {
+      navGuard.current = true;
+      return;
+    }
+    ref.current?.close();
+  }, [pathname]);
 
   return (
     <dialog

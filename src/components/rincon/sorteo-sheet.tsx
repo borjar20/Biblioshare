@@ -437,6 +437,10 @@ export function SorteoSheet({
               {ctaState === "done" ? (
                 <Link
                   href={itemHref(picked.itemType, picked.itemId)}
+                  // Cierra el <dialog> antes de navegar: con Cache Components la
+                  // hoja no se desmonta en navegación soft y quedaría rota e
+                  // incerrable al volver (#448, como item-connect-sheet).
+                  onClick={() => dialogRef.current?.close()}
                   className="mt-2.5 block w-full rounded-[13px] border py-3.5 text-sm font-semibold"
                   style={{ borderColor: "rgba(240,232,219,.12)", color: "#f0e8db" }}
                 >
