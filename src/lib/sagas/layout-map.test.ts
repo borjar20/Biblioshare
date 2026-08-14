@@ -331,4 +331,60 @@ describe("alignRowsToLongEdges", () => {
     alignRowsToLongEdges(graph);
     expect(graph.nodes.find((n) => n.id === "z")!.x).toBe(0);
   });
+
+  // Issue #249: un bloque intercalado (por `orderBlocksForLayout`) entre dos
+  // que la cadena `principal` conecta puede caer justo en la columna por la
+  // que pasa esa arista — `FloatingEdge` la dibuja centro a centro, así que la
+  // línea atraviesa el nodo intercalado.
+  describe("bloque intercalado bajo una arista de cadena (issue #249)", () => {
+    it("la arista de cadena y el intercalado comparten columna: el intercalado se desvía", () => {
+      const graph: SagaGraph = {
+        nodes: [nodo("a", "uno", 0, 0), nodo("l", "libre", 0, 1), nodo("b", "dos", 0, 2)],
+        // `l` se alinea bajo `a` (columna 0) por la ventana; la cadena `a->b`
+        // también queda en columna 0 porque `principal` no participa en la
+        // alineación (TIPOS_LARGOS la excluye) y ninguno de los dos tiene otra
+        // ancla que lo mueva.
+        edges: [arista("a", "l", "requisito"), arista("a", "b", "principal")],
+      };
+      const out = alignRowsToLongEdges(graph);
+      expect(col(out, "l")).not.toBe(col(out, "a"));
+      // Las anclas de la cadena no se tocan: solo se desvía el intercalado.
+      expect(col(out, "a")).toBe(0);
+      expect(col(out, "b")).toBe(0);
+    });
+
+    it("si las dos anclas de la cadena NO comparten columna, el intercalado no se toca", () => {
+      // La línea sale en diagonal: en la fila del intercalado no pasa por su
+      // columna, así que desviarlo igual solo ensancharía el mapa sin arreglar
+      // nada (mismo criterio que el desempate de verticales).
+      const graph: SagaGraph = {
+        nodes: [nodo("a", "uno", 2, 0), nodo("l", "libre", 2, 1), nodo("b", "dos", 0, 2)],
+        edges: [arista("a", "l", "requisito"), arista("a", "b", "principal")],
+      };
+      const out = alignRowsToLongEdges(graph);
+      expect(col(out, "l")).toBe(2);
+    });
+
+    it("un bloque en la MISMA fila que un extremo de la cadena no es intercalado: no se desvía", () => {
+      // Solo cuenta lo que cae ESTRICTAMENTE entre las dos filas de la arista.
+      const graph: SagaGraph = {
+        nodes: [nodo("a", "uno", 0, 0), nodo("l", "libre", 0, 0), nodo("b", "dos", 0, 1)],
+        edges: [arista("a", "l", "requisito"), arista("a", "b", "principal")],
+      };
+      const out = alignRowsToLongEdges(graph);
+      expect(col(out, "l")).toBe(0);
+    });
+
+    it("si el desvío se saliera del tope, se acepta el solape (mismo criterio que MAX_COL_OFFSET)", () => {
+      const graph: SagaGraph = {
+        nodes: [nodo("a", "uno", 0, 0), nodo("l", "libre", MAX_COL_OFFSET, 1), nodo("b", "dos", 0, 2)],
+        edges: [arista("a", "l", "requisito"), arista("a", "b", "principal")],
+      };
+      const out = alignRowsToLongEdges(graph);
+      // `l` ya está clavado en el tope (delta = MAX_COL_OFFSET, recortado):
+      // desviarlo una columna más lo pasaría de MAX_COL_OFFSET, así que se
+      // queda donde está.
+      expect(col(out, "l")).toBe(MAX_COL_OFFSET);
+    });
+  });
 });
