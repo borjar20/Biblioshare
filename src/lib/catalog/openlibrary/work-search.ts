@@ -1,5 +1,7 @@
 import type { SearchResult } from "../types";
-import { buildCoverUrl } from "./covers";
+import { normalizeTitleForComparison } from "./normalize";
+// `mapWorkDoc` deja de usarse aquí: ahora lo llama el normalizador.
+import { normalizeSearchWorks, type OpenLibrarySearchDoc } from "./search-normalize";
 
 // PELDAÑO 1 de la escalera de hidratación (ver el spec de 2026-07-14): una
 // tarjeta de resultado muestra portada, título, autor y año — y eso es
@@ -14,36 +16,43 @@ import { buildCoverUrl } from "./covers";
 // Un doc de search.json ES una obra (`key` = /works/OL...W). No hay que
 // reagruparlo a mano: OpenLibrary ya lo entrega agrupado, y `edition_count` dice
 // cuántas tiradas cubre.
-export type OpenLibraryWorkDoc = {
-  key?: string;
-  title?: string;
-  author_name?: string[];
-  cover_i?: number;
-  first_publish_year?: number;
-  edition_count?: number;
-};
-
 type WorkSearchResponse = {
-  docs?: OpenLibraryWorkDoc[];
+  docs?: OpenLibrarySearchDoc[];
 };
 
-const SEARCH_FIELDS = "key,title,author_name,cover_i,first_publish_year,edition_count";
-const SEARCH_LIMIT = 20;
+const SEARCH_FIELDS =
+  "key,title,author_name,author_key,cover_i,first_publish_year,edition_count,language,editions,editions.title,editions.language";
+const REVALIDATE_SECONDS = 3600;
+// 40 por pasada y recorte a 20: las reglas del normalizador se comen cerca de
+// la mitad de los docs. Medido en los dos fixtures commiteados (`q="hunger
+// games"` y `q="en llamas"`, los únicos de los que se puede volver a comprobar
+// esto desde el repo): 40 docs por pasada dan 28 supervivientes y se muestran
+// 20. Pidiendo 20 de entrada la lista salía más corta que la de antes de esta
+// rama.
+const SEARCH_LIMIT = 40;
 const FETCH_TIMEOUT_MS = 5000;
 
-export function mapWorkDoc(doc: OpenLibraryWorkDoc): SearchResult {
-  return {
-    itemType: "book",
-    externalId: doc.key ?? "",
-    title: doc.title ?? "",
-    subtitle: doc.author_name?.join(", ") ?? null,
-    coverUrl: buildCoverUrl(doc.cover_i),
-    year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : null,
-    // La obra se hidrata al abrir su ficha (ensureBookHydrated), no aquí.
-    synopsis: null,
-    genres: null,
-    editionCount: typeof doc.edition_count === "number" ? doc.edition_count : 1,
-  };
+async function fetchSearchPass(
+  query: string,
+  lang: "es" | "en"
+): Promise<OpenLibrarySearchDoc[]> {
+  const url = new URL("https://openlibrary.org/search.json");
+  url.searchParams.set("q", query);
+  url.searchParams.set("limit", String(SEARCH_LIMIT));
+  url.searchParams.set("fields", SEARCH_FIELDS);
+  // Sin `sort`: en una búsqueda manda la relevancia de Open Library. La
+  // bibliografía sí pide `sort=readinglog`, que aquí sería un orden ajeno a lo
+  // que el usuario ha escrito.
+  url.searchParams.set("lang", lang);
+
+  const res = await fetch(url, {
+    next: { revalidate: REVALIDATE_SECONDS },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`search.json ${lang}: ${res.status}`);
+
+  const data: WorkSearchResponse = await res.json();
+  return data.docs ?? [];
 }
 
 // Nunca lanza: si OpenLibrary falla o tarda, la búsqueda se degrada a lo que
@@ -53,20 +62,71 @@ export async function searchWorks(query: string): Promise<SearchResult[]> {
   if (!trimmed) return [];
 
   try {
-    const url = new URL("https://openlibrary.org/search.json");
-    url.searchParams.set("q", trimmed);
-    url.searchParams.set("limit", String(SEARCH_LIMIT));
-    url.searchParams.set("fields", SEARCH_FIELDS);
-
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!res.ok) return [];
-
-    const data: WorkSearchResponse = await res.json();
-    return (data.docs ?? []).filter((doc) => doc.title && doc.key).map(mapWorkDoc);
+    // En paralelo: son independientes, así la búsqueda no espera el doble.
+    //
+    // Y cada pasada se protege SOLA. `Promise.all` corta a la primera que
+    // falla, así que un timeout del idioma español vaciaba una búsqueda que la
+    // inglesa ya había contestado — justo lo contrario del criterio de esta
+    // capa: como no se escribe nada, media respuesta es mejor que ninguna. La
+    // bibliografía sí devuelve `[]` en ese caso, porque su resultado SE ESCRIBE
+    // y quedaría congelado.
+    const [docsEs, docsEn] = await Promise.all([
+      fetchSearchPass(trimmed, "es").catch((): OpenLibrarySearchDoc[] => []),
+      fetchSearchPass(trimmed, "en").catch((): OpenLibrarySearchDoc[] => []),
+    ]);
+    return normalizeSearchWorks(docsEs, docsEn);
   } catch {
     return [];
+  }
+}
+
+
+// Resolución de la OBRA para un libro que no guardó su work key (alta manual,
+// import de CSV, ISBN que no resolvió). Se pide título y autor por separado
+// —no concatenados en `q`— porque los campos dedicados de OL puntúan mucho
+// mejor que la cadena libre, y de ahí sale además `author_key`: la identidad
+// del autor, gratis y sin una segunda llamada.
+//
+// `titleMatches` existe porque el primer resultado de una búsqueda fuzzy NO
+// es identidad — el mismo problema de origen que este cambio entero vino a
+// cerrar, solo que ahora en el título en vez del nombre del autor. El
+// llamador decide con esto si el work key es fiable para persistir.
+export type ResolvedWork = { workKey: string; authorKeys: string[]; titleMatches: boolean };
+
+export async function resolveWorkByTitleAuthor(
+  title: string,
+  author: string | null
+): Promise<ResolvedWork | null> {
+  const trimmedTitle = title?.trim();
+  if (!trimmedTitle) return null;
+
+  try {
+    const url = new URL("https://openlibrary.org/search.json");
+    url.searchParams.set("title", trimmedTitle);
+    if (author?.trim()) url.searchParams.set("author", author.trim());
+    url.searchParams.set("limit", "1");
+    url.searchParams.set("fields", "key,title,author_name,author_key");
+
+    const res = await fetch(url, {
+      next: { revalidate: REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const data: WorkSearchResponse = await res.json();
+    const doc = (data.docs ?? []).find((d) => d.key);
+    if (!doc?.key) return null;
+
+    const titleMatches =
+      typeof doc.title === "string" &&
+      normalizeTitleForComparison(doc.title) === normalizeTitleForComparison(trimmedTitle);
+
+    return {
+      workKey: doc.key,
+      authorKeys: (doc.author_key ?? []).filter((k) => typeof k === "string" && k.length > 0),
+      titleMatches,
+    };
+  } catch {
+    return null;
   }
 }

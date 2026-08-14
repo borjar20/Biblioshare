@@ -1,6 +1,16 @@
+import Link from "next/link";
 import { GenreTag } from "@/components/ui/genre-tag";
 
-export type MetaRow = { label: string; value: string };
+export type MetaRow = {
+  label: string;
+  value: string;
+  /**
+   * Si viene, el valor se pinta como enlaces (uno por entrada, separados por
+   * coma) en vez de texto plano. Lo usa la fila «Autor» de la ficha de libro
+   * para llegar a `/persona/[id]`; el resto de filas siguen con `value`.
+   */
+  links?: { href: string; label: string }[];
+};
 
 // Metadata card for the detail "Info" tab: stacked label/value rows with hair
 // dividers, plus an optional genre-tag cluster.
@@ -25,7 +35,23 @@ export function MetadataSidebar({
           <span className="label-section">
             {row.label}
           </span>
-          <span className="text-sm text-foreground">{row.value}</span>
+          {row.links && row.links.length > 0 ? (
+            <span className="text-sm text-foreground">
+              {row.links.map((link, j) => (
+                <span key={link.href}>
+                  {j > 0 && ", "}
+                  <Link
+                    href={link.href}
+                    className="font-medium text-foreground underline-offset-2 hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                </span>
+              ))}
+            </span>
+          ) : (
+            <span className="text-sm text-foreground">{row.value}</span>
+          )}
         </div>
       ))}
 

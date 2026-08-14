@@ -444,8 +444,9 @@ Prod está **sin medir**. Ver issue #609.
 **`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
 `20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
 2026-08-12** contra `information_schema.column_privileges`). Marca que ya se trajo la obra
-COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o
-`/authors/{key}/works.json` de Open Library—. Con valor, la ficha de persona no vuelve a
+COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o dos
+pasadas de `search.json` de Open Library por `author_key` (`lang=es` y `lang=en`, normalizadas
+por `normalizeAuthorWorks`)—. Con valor, la ficha de persona no vuelve a
 llamar a la API: sirve `credits` y punto.
 
 Lleva **`grant update (credits_hydrated_at) on people to authenticated`** en la misma
@@ -457,6 +458,29 @@ no solo el campo nuevo. Ver issue #375 y la superficie 6 de `docs/DRIFT-CHECK.md
 Antes de esto, «Su obra» de una ficha de persona era solo lo que `ensureItemEnriched` hubiera
 escrito al abrir la ficha de **una obra concreta**: una persona con una sola película abierta
 afirmaba, sin matices, que esa era toda su obra. No era un hueco, era una afirmación falsa.
+
+> **Delta del 2026-08-13 (`people.aliases`, autores de libro por Open Library key): columna +
+> grants de SELECT, INSERT y REFERENCES aplicados y verificados en DEV** contra
+> `information_schema.column_privileges` (migración `20260859_people_aliases.sql`; **prod
+> pendiente — es la ÚNICA migración de esta rama que falta en producción**). Spec:
+> `docs/superpowers/specs/2026-08-13-autores-libro-datos-design.md`.
+>
+> Dos correcciones del 2026-08-14, al comprobar el estado real de prod antes de mezclar: el
+> fichero se renombró de `20260853_` a `20260859_` (compartía prefijo con
+> `20260853_activities_progress.sql`, que llegó por `main`), y se le añadió el **grant de
+> SELECT**, que faltaba. Sin él, prod habría quedado distinto de dev —donde `aliases` sí lo
+> tiene— y un futuro `select *` sobre `people`, o simplemente añadir `aliases` a
+> `PERSON_COLUMNS`, habría fallado solo en producción.
+
+| Columna | Tipo | Para qué |
+|---|---|---|
+| `aliases` | `text[] not null default '{}'` | Otras grafías del nombre (otros idiomas y alfabetos). El visible es `name`. Solo lo escribe el alta de autor y el backfill. |
+
+Open Library da un nombre canónico que puede venir en otro alfabeto (`Фёдор Достоевский`) y una
+lista de variantes; se enseña la forma latina y el resto se guarda aquí, que es lo que permite
+reconocer "Dostoievski" y "Fyodor Dostoyevsky" como la MISMA fila en vez de crear una por idioma.
+Igual que `credits_hydrated_at`, **sin grant de `UPDATE` a propósito**: la app no reescribe
+personas, y el backfill que corrige nombres y alias va con `service_role`.
 
 ## 3. El pase: el hub del estado
 
