@@ -10,7 +10,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // era primary, la nueva membresía hereda primary; si el ítem no tiene primary
 // en NINGUNA saga, la nueva la toma. Esto aplica tanto si el destino requiere
 // un insert nuevo COMO si el ítem ya estaba en el destino (`promoteTarget`):
-// caso real (manage-saga-actions.ts:108-111) — fila en root sin primary
+// caso real (manage-saga-actions.ts:100-109) — fila en root sin primary
 // (cache-as-you-go) + fila curada en una hija CON primary; al mover a root se
 // borra la hija primary, así que la fila YA existente en root debe heredarla,
 // o el ítem se queda sin primary para siempre sin que salte ningún error.
@@ -34,6 +34,12 @@ export type MembershipPlan = {
   } | null;
   /** true = la fila YA existente en el destino debe pasar a is_primary=true (UPDATE, no INSERT). */
   promoteTarget: boolean;
+  /** #186: cuando el ítem ya tiene fila en el destino, la hermana que se borra
+   *  solo rellena (UPDATE) los campos que el destino tiene a null — nunca
+   *  pisa un valor ya curado. position/placement viajan juntos (igual que en
+   *  `insert`, por el CHECK saga_items_placement_position): si el destino ya
+   *  tiene cualquiera de los dos no-nulo, ninguno de los dos se toca. */
+  patchTarget: { position: number | null; placement: SagaPlacement | null; role: SagaItemRole | null } | null;
 };
 
 export function planMembershipOps(
@@ -48,10 +54,33 @@ export function planMembershipOps(
   const wasPrimaryInTree = others.some((r) => r.is_primary);
 
   if (inTarget) {
+    // Mismo dual-lookup que el insert de abajo (position y role viajan por
+    // separado a propósito). position+placement se tratan como UN campo
+    // acoplado (el CHECK exige placement='fijo' ⇔ position no nulo): solo se
+    // rellenan cuando el destino tiene AMBOS a null (fila en bruto tipo
+    // cache-as-you-go). Si el destino ya tiene placement='libre' curado a
+    // propósito (sin número), no se le cuela un position de la hermana.
+    const carried = others.find((r) => r.position !== null);
+    const carriedRole = others.find((r) => r.role !== null);
+    const carriedPlacement = carried
+      ? (carried.placement ?? "fijo")
+      : (others.find((r) => r.placement !== null)?.placement ?? null);
+
+    const canPatchPosition = inTarget.position === null && inTarget.placement === null;
+    const patchPosition = canPatchPosition ? (carried?.position ?? null) : null;
+    const patchPlacement = canPatchPosition ? carriedPlacement : null;
+    const patchRole = inTarget.role === null ? (carriedRole?.role ?? null) : null;
+
+    const patchTarget =
+      patchPosition !== null || patchPlacement !== null || patchRole !== null
+        ? { position: patchPosition, placement: patchPlacement, role: patchRole }
+        : null;
+
     return {
       deleteFrom,
       insert: null,
       promoteTarget: !inTarget.is_primary && (wasPrimaryInTree || !hasPrimaryAnywhere),
+      patchTarget,
     };
   }
 
@@ -92,6 +121,7 @@ export function planMembershipOps(
       is_primary: wasPrimaryInTree || !hasPrimaryAnywhere,
     },
     promoteTarget: false,
+    patchTarget: null,
   };
 }
 
@@ -150,13 +180,25 @@ export async function applyMembershipOps(
       });
       if (error) return "insert-failed";
     }
-    if (plan.promoteTarget) {
-      // Re-promoción (DEFER F1): la fila del destino hereda la primary de la
-      // hermana borrada (o toma la primary si el ítem no tenía ninguna). El
-      // delete previo ya liberó el índice parcial.
+    if (plan.promoteTarget || plan.patchTarget) {
+      // Re-promoción (DEFER F1) y patch enrich-only (#186) van en el MISMO
+      // UPDATE sobre la fila del destino, calculado a partir de `plan`
+      // (derivado de `rows`, ya leído antes del delete de arriba) — nunca de
+      // una relectura tras el delete, que ya habría perdido la hermana.
+      const patch: { is_primary?: true; position?: number; placement?: SagaPlacement; role?: SagaItemRole } = {};
+      if (plan.promoteTarget) patch.is_primary = true;
+      if (plan.patchTarget?.position !== null && plan.patchTarget?.position !== undefined) {
+        patch.position = plan.patchTarget.position;
+      }
+      if (plan.patchTarget?.placement !== null && plan.patchTarget?.placement !== undefined) {
+        patch.placement = plan.patchTarget.placement;
+      }
+      if (plan.patchTarget?.role !== null && plan.patchTarget?.role !== undefined) {
+        patch.role = plan.patchTarget.role;
+      }
       const { error } = await supabase
         .from("saga_items")
-        .update({ is_primary: true })
+        .update(patch)
         .eq("saga_id", targetTableSagaId)
         .eq("item_type", op.itemType)
         .eq("item_id", op.itemId);
