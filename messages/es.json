@@ -1483,6 +1483,7 @@
     "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",
     "avgRating": "★ {rating}",
     "yourProgress": "Tu progreso",
+    "allOptional": "Nada de esta saga cuenta para el avance: aquí, todo es opcional",
     "synopsis": "Sinopsis",
     "noSynopsis": "Sin sinopsis disponible.",
     "nexusGroup": "Nexo",
