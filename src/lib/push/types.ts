@@ -110,6 +110,11 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, PushCategory> = {
   followed_session: "progress",
   followed_episode: "progress",
   followed_added: "progress",
+  followed_started: "progress",
+  followed_dropped: "progress",
+  // Un pensamiento es contenido personal, no progreso: misma categoría que
+  // post_commented / thought_liked.
+  followed_thought: "social",
   // Fase 2 «Pensamiento»: contenido personal, misma categoría que
   // review_commented/activity_liked.
   thought_commented: "social",

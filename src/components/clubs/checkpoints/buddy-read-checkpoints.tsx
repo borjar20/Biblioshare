@@ -9,15 +9,16 @@ import { nextCheckpoint } from "@/lib/clubs/activities/next-checkpoint";
 import { formatPosition } from "@/lib/library/position";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { CheckpointList } from "./checkpoint-list";
+import { BuddyReadCheckpointEditor } from "./checkpoint-editor";
 
 // DetailExtension de buddy_read (registro de kinds, EPIC-05 Bloque H1) --
 // se monta para cualquier miembro del club, no gateado a isParticipant
 // (decisión 7 del diseño: la lista de checkpoints ayuda a decidir si
 // unirse). Estado propio con su propio refresh: los cambios de checkpoints
 // no requieren refrescar el resto de la ficha de actividad (items/opiniones)
-// que gestiona ActivityDetailView. Solo lectura: el alta/edición de hitos vive
-// en "Modificar actividad" (BuddyReadCheckpointEditor).
-export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
+// que gestiona ActivityDetailView. El alta/edición de hitos se gestiona aquí
+// mismo, debajo de la lista, para moderadores (spec 2026-08-12, #597).
+export function BuddyReadCheckpoints({ activity, isModerator, Layout, railExtra }: {
   activity: ActivityDetail;
   viewerId: string;
   isModerator: boolean;
@@ -49,7 +50,7 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
   // el primer frame -- si no, a 1280 "N participan" no aparece en ningún
   // sitio durante el fetch (ni en el flujo, oculto por `hasBoard`, ni en el
   // rail, que sin `Layout` nunca llega a montarse).
-  if (!view || !view.itemType) return <Layout railExtra={railExtra} body={null} />;
+  if (!view) return <Layout railExtra={railExtra} body={null} />;
 
   // Card "Tu progreso" (mockup frame 4): posición del diario + hitos
   // confirmados. El % de la barra sale de los hitos, no de la página -- es lo
@@ -57,7 +58,12 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
   const item = activity.items[0];
   const total = view.checkpoints.length;
   const confirmedCount = view.checkpoints.filter((c) => c.status === "confirmed").length;
-  const positionLabel = view.viewerPosition
+  // view.viewerPosition solo es no-null cuando view.itemType también lo es
+  // (getActivityCheckpoints la calcula bajo `if (itemRow && itemType)`), pero
+  // son dos campos separados y TS no conoce esa relación -- al quitar
+  // `!view.itemType` de la guarda de arriba, itemType deja de venir
+  // estrechado aquí abajo y hay que comprobarlo explícito para que tipe.
+  const positionLabel = view.itemType && view.viewerPosition
     ? formatPosition(view.itemType, view.viewerPosition)
     : null;
 
@@ -107,15 +113,40 @@ export function BuddyReadCheckpoints({ activity, Layout, railExtra }: {
           <h2 className="label-section">
             {t("checkpoints")}
           </h2>
-          <CheckpointList
-            itemType={view.itemType}
-            checkpoints={view.checkpoints}
-            groupSafeOrder={view.groupSafeOrder}
-            onChanged={refresh}
-            clubId={activity.clubId}
-            knownUsernames={view.knownUsernames}
-            viewerIsParticipant={activity.viewerIsParticipant}
-          />
+
+          {view.itemType ? (
+            <CheckpointList
+              itemType={view.itemType}
+              checkpoints={view.checkpoints}
+              groupSafeOrder={view.groupSafeOrder}
+              onChanged={refresh}
+              clubId={activity.clubId}
+              knownUsernames={view.knownUsernames}
+              viewerIsParticipant={activity.viewerIsParticipant}
+            />
+          ) : (
+            // Sin obra en el pool no hay posiciones que medir, así que no hay
+            // hitos que listar. A un moderador se lo explica el editor de abajo
+            // (y le dice qué hacer); a quien no modera, esto, porque la acción
+            // no está en su mano.
+            !isModerator && (
+              <p className="text-[12.5px] text-muted-foreground">
+                {t("checkpointsEmpty")}
+              </p>
+            )
+          )}
+
+          {/* Los hitos se gestionan DONDE SE MIRAN (spec 2026-08-12, #597).
+              Antes se veían aquí y se editaban en "Modificar actividad", detrás
+              de un botón que no mencionaba los hitos: un moderador con permiso
+              concluyó que la función no existía. */}
+          {isModerator && (
+            <BuddyReadCheckpointEditor
+              activityId={activity.id}
+              status={activity.status}
+              onChanged={refresh}
+            />
+          )}
         </div>
       }
       railBottom={

@@ -233,21 +233,22 @@ export function buildCalendarMarks(
   );
 }
 
-// La tira "Próximo" del feed: solo hitos y eventos (los inicios/cierre de
-// actividad ya se ven en "Actividades activas", justo encima), sin lo pasado,
-// como mucho `limite`. Depende de que `marks` llegue YA ordenada por fecha
-// ascendente -- lo hace `buildCalendarMarks` (está testeado) -- así que aquí
-// NO se vuelve a ordenar.
+// Recorta `marks` a lo próximo (sin lo pasado, como mucho `limite`), filtrado
+// por `kinds`. El valor por defecto -- solo hitos y eventos -- es el que
+// necesita el FEED de Inicio: ahí los inicios/cierre de actividad ya se ven en
+// "Actividades activas", justo encima, y repetirlos sería redundante. NO es
+// una verdad universal de "qué es próximo": la pestaña Actividades no tiene
+// nada encima de su rail de fechas, así que pide los cuatro tipos.
+// Depende de que `marks` llegue YA ordenada por fecha ascendente -- lo hace
+// `buildCalendarMarks` (está testeado) -- así que aquí NO se vuelve a ordenar.
 export function proximasMarcas(
   marks: CalendarMark[],
   today: string,
   limite: number,
+  kinds: readonly CalendarMarkKind[] = ["hito", "evento"],
 ): CalendarMark[] {
   return marks
-    .filter(
-      (m) =>
-        (m.markKind === "hito" || m.markKind === "evento") && m.date >= today,
-    )
+    .filter((m) => kinds.includes(m.markKind) && m.date >= today)
     .slice(0, limite);
 }
 

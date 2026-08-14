@@ -6,8 +6,10 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // Pases del usuario para una obra: el abierto primero, luego cerrados de más
 // reciente a más antiguo (orden que espera el diario para el delta). review
-// se lee SIEMPRE por la vista pass_reviews (privacidad aplicada); como la
-// vista solo enseña filas visibles, para el diario propio devuelve todo.
+// y dropped_reason/dropped_reason_note se leen SIEMPRE por la vista
+// pass_reviews (privacidad aplicada); como la vista enmascara estas dos
+// últimas por dueño y esta función solo se llama con el propio userId (ver
+// libro|pelicula|serie/[id]/page.tsx), siempre llegan con valor real.
 export async function getPasses(
   supabase: SupabaseServerClient,
   itemType: ItemType,
@@ -17,7 +19,7 @@ export async function getPasses(
   const { data } = await supabase
     .from("pass_reviews")
     .select(
-      "id, status, is_active, position, started_on, finished_on, rating, review, is_public, edition_id, pinned_order"
+      "id, status, is_active, position, started_on, finished_on, rating, review, is_public, edition_id, pinned_order, dropped_reason, dropped_reason_note"
     )
     .eq("user_id", userId)
     .eq("item_type", itemType)
@@ -36,6 +38,8 @@ export async function getPasses(
     isPublic: r.is_public as boolean,
     editionId: r.edition_id,
     pinnedOrder: r.pinned_order,
+    droppedReason: r.dropped_reason as Pass["droppedReason"],
+    droppedReasonNote: r.dropped_reason_note,
   }));
 }
 

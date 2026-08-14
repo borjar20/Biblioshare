@@ -33,11 +33,24 @@ export function CollectionMenu({
   name,
   description,
   isSorteable,
+  triggerClassName,
+  onDeleted,
 }: {
   collectionId: string;
   name: string;
   description: string | null;
   isSorteable: boolean;
+  /** Estilo del botón «⋯» disparador. Sin esto, el tamaño del topbar del detalle. */
+  triggerClassName?: string;
+  /**
+   * Tras borrar con éxito. Por defecto navega a `/coleccion` (el detalle deja
+   * de tener sentido si su colección ya no existe). El atajo de la TARJETA
+   * (grid de `Colecciones`) pasa `router.refresh()` en su lugar: ya está en
+   * `/coleccion`, y navegar ahí de nuevo la sacaría de la pestaña `Colecciones`
+   * de vuelta a `Todo` (la pestaña por defecto) en vez de solo quitar la
+   * tarjeta borrada de la rejilla.
+   */
+  onDeleted?: () => void;
 }) {
   const t = useTranslations("collection");
   const router = useRouter();
@@ -120,7 +133,8 @@ export function CollectionMenu({
         alert(t(`errors.${result.error}`));
         return;
       }
-      router.push("/coleccion");
+      if (onDeleted) onDeleted();
+      else router.push("/coleccion");
     });
   }
 
@@ -128,7 +142,10 @@ export function CollectionMenu({
     <>
       <ActionMenu
         label={t("menuLabel")}
-        triggerClassName="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+        triggerClassName={
+          triggerClassName ??
+          "grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-foreground transition-colors hover:bg-surface-muted"
+        }
         items={[
           {
             key: "rename",

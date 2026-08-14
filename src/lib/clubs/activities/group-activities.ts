@@ -1,7 +1,10 @@
 import type { ClubActivity } from "./core";
 
 export type ActivityGroups = {
-  active: ClubActivity[];
+  /** Activas que ya han empezado, o que nunca dijeron cuándo empezaban. */
+  enCurso: ClubActivity[];
+  /** Activas con fecha de inicio en el futuro. */
+  proximas: ClubActivity[];
   proposed: ClubActivity[];
   /** Finalizadas y archivadas. Sin eventos: los archivados también salen. */
   finished: ClubActivity[];
@@ -30,17 +33,27 @@ export function isPastEvent(startsOn: string | null, today: string): boolean {
 }
 
 // Los eventos NO se agrupan aquí: viven en el calendario y en su ficha propia
-// (spec 2026-08-11). Se filtran por `kind`, no por estado, y en los tres grupos
-// -- el que se olvida es `finished`, donde caía el evento ARCHIVADO y seguiría
-// a la vista.
+// (spec 2026-08-11). Se filtran por `kind`, no por estado, y en TODOS los grupos
+// -- el que se olvida es `finished`, donde caía el evento ARCHIVADO.
 //
-// Por eso esta función ya no necesita `today`: lo usaba solo para ordenar los
-// eventos (futuros antes que pasados), y ese grupo ya no existe.
-export function groupActivities(activities: ClubActivity[]): ActivityGroups {
+// `today` volvió a hacer falta (spec 2026-08-12) por un motivo NUEVO, no por una
+// vuelta atrás: partir las activas en las que ya corren y las que aún no
+// empiezan. Viene del SERVIDOR; con el reloj del visitante, una actividad
+// cambiaría de sección según el huso y contradiría al calendario del club (#271).
+//
+// Una PROPUESTA con fecha futura no es "próxima": `proposed` es una cola de
+// moderación y puede acabar rechazada (spec 2026-08-12, D2). Por eso el reparto
+// por fecha se aplica SOLO a las activas.
+export function groupActivities(
+  activities: ClubActivity[],
+  today: string,
+): ActivityGroups {
   const sinEventos = activities.filter((a) => a.kind !== "evento");
+  const activas = sinEventos.filter((a) => a.status === "active");
 
   return {
-    active: sinEventos.filter((a) => a.status === "active"),
+    enCurso: activas.filter((a) => !a.startsOn || a.startsOn <= today),
+    proximas: activas.filter((a) => a.startsOn !== null && a.startsOn > today),
     proposed: sinEventos.filter((a) => a.status === "proposed"),
     finished: sinEventos.filter(
       (a) => a.status === "finished" || a.status === "archived",

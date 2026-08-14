@@ -15,7 +15,6 @@ import {
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
-import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
 import { createPost } from "@/lib/social/post-actions";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 
@@ -182,10 +181,10 @@ export async function addSession(
 
   if (insertError || !inserted) return { error: "generic" };
 
-  await notifyFollowersOfEvent(supabase, user.id, "session", {
-    targetType: "diary_entry",
-    targetId: passId,
-  });
+  // Registrar una sesión NO avisa a nadie por sí solo: el aviso a seguidores lo
+  // emite createPost más abajo, y solo si el usuario marcó «Compartir». Ese es el
+  // trato de la spec 2026-08-13 — se pierden los avisos de lo no compartido a
+  // cambio de que el aviso lleve siempre al post.
 
   // Las notas de esta sesión ya se guardaron sueltas (SessionNotebook,
   // session_id null) mientras la hoja estaba abierta — aquí solo se

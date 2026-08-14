@@ -4,11 +4,13 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   revalidateFeed: vi.fn(),
   notifyMentions: vi.fn(),
+  notifyFollowersOfPost: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/reactivity/revalidate", () => ({ revalidateFeed: mocks.revalidateFeed }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
+vi.mock("./notify-followers", () => ({ notifyFollowersOfPost: mocks.notifyFollowersOfPost }));
 
 import { createPost, deletePost } from "./post-actions";
 
@@ -354,5 +356,101 @@ describe("deletePost", () => {
     const result = await deletePost("post-1");
 
     expect(result).toEqual({ ok: false, error: "unknown" });
+  });
+});
+
+describe("createPost — fan-out a seguidores", () => {
+  it("avisa con el target del post ya resuelto", async () => {
+    const { client } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: { id: "it-post-1" },
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await createPost({
+      kind: "progressed",
+      anchorType: "book",
+      anchorId: "anchor-1",
+      sourceKind: "progress_session",
+      sourceId: "ses-1",
+    });
+
+    expect(result).toEqual({ ok: true, id: "post-1" });
+    expect(mocks.notifyFollowersOfPost).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyFollowersOfPost.mock.calls[0][1]).toBe("actor");
+    expect(mocks.notifyFollowersOfPost.mock.calls[0][2]).toEqual({
+      postId: "post-1",
+      kind: "progressed",
+      interactionTargetId: "it-post-1",
+    });
+  });
+
+  it("un hito SIN cuerpo también avisa (el lookup del target no depende del body)", async () => {
+    // Regresión: el lookup de interaction_targets vivía dentro de `if (body)`
+    // porque solo lo usaban las menciones. Los posts de hito no llevan cuerpo,
+    // así que dejarlo ahí los habría dejado a todos sin aviso.
+    const { client } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: { id: "it-post-1" },
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    await createPost({
+      kind: "finished",
+      anchorType: "book",
+      anchorId: "anchor-1",
+      sourceKind: "pass",
+      sourceId: "pase-1",
+    });
+
+    expect(mocks.notifyFollowersOfPost).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyMentions).not.toHaveBeenCalled();
+  });
+
+  it("sin interaction_target no avisa, pero el post sigue publicado", async () => {
+    const { client } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: null,
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await createPost({
+      kind: "thought",
+      anchorType: "book",
+      anchorId: "anchor-1",
+      body: "hola",
+    });
+
+    expect(result).toEqual({ ok: true, id: "post-1" });
+    expect(mocks.notifyFollowersOfPost).not.toHaveBeenCalled();
+  });
+
+  // Esta prueba fabrica con `mockRejectedValueOnce` un rechazo que la
+  // implementación real de `notifyFollowersOfPost` no puede producir: captura
+  // todos sus errores internamente y `notifyMany` está documentado "nunca
+  // lanza". Lo que fija es la guarda EXTERNA redundante de `createPost` (defensa
+  // en profundidad), no un comportamiento alcanzable en producción. La prueba de
+  // que el fan-out real es seguro vive en notify-followers.test.ts, no aquí.
+  it("un fan-out que lanza NO convierte el post en {ok:false}", async () => {
+    const { client } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: { id: "it-post-1" },
+    });
+    mocks.createClient.mockResolvedValue(client);
+    mocks.notifyFollowersOfPost.mockRejectedValueOnce(new Error("boom"));
+
+    const result = await createPost({
+      kind: "finished",
+      anchorType: "book",
+      anchorId: "anchor-1",
+      sourceKind: "pass",
+      sourceId: "pase-1",
+    });
+
+    expect(result).toEqual({ ok: true, id: "post-1" });
   });
 });

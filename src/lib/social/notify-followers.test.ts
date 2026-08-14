@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Ancla el ruteo de los avisos `followed_*`: si el hito publicó un post, la
-// notificación debe llevar el interaction_target_id de ESE post (href
-// /post/[id]); si no hay post, cae al target original (ficha) sin cambiar nada.
+// Ancla el contrato del fan-out a seguidores: el aviso nace del POST y guarda
+// SIEMPRE su interaction_target_id, sin rama de fallback a la ficha del ítem.
 
 const mocks = vi.hoisted(() => ({
   notifyMany: vi.fn(),
@@ -12,8 +11,6 @@ vi.mock("./notifications", () => ({ notifyMany: mocks.notifyMany }));
 vi.mock("@/lib/supabase/service-role", () => ({
   createServiceRoleClient: mocks.createServiceRoleClient,
 }));
-
-import { notifyFollowersOfEvent } from "./notify-followers";
 
 type Row = Record<string, unknown>;
 
@@ -84,83 +81,134 @@ function makeFakeSupabase(tables: Record<string, Row[]>) {
 
 const FOLLOWER = { follower_id: "seguidor", followee_id: "autor", status: "accepted" };
 
+// Sin default de `createServiceRoleClient` a propósito: cada test fija el suyo
+// (la fila de `follows` y sus `notify_events` es justo lo que cada uno quiere
+// variar), así que un default aquí nunca gobernaría una aserción -- sería un
+// fixture muerto que invita a leerlo como si importara.
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.notifyMany.mockResolvedValue(["seguidor"]);
-  // El fan-out lee follows por service-role; el resto de tablas (posts, sesiones,
-  // interaction_targets) las lee el cliente de petición que se pasa a la función.
-  mocks.createServiceRoleClient.mockReturnValue(
-    makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["finished", "session", "added"] }] }),
-  );
 });
 
-describe("notifyFollowersOfEvent — ruteo al post del hito", () => {
-  it("finished con post publicado → interactionTargetId del post (no la ficha)", async () => {
-    const supabase = makeFakeSupabase({
-      posts: [{ id: "post-1", source_kind: "pass", source_id: "pase-1", kind: "finished" }],
-      interaction_targets: [{ id: "it-post-1", kind: "post", source_id: "post-1" }],
-    });
+import { notifyFollowersOfPost } from "./notify-followers";
 
-    await notifyFollowersOfEvent(supabase, "autor", "finished", {
-      targetType: "diary_entry",
-      targetId: "pase-1",
+describe("notifyFollowersOfPost — el aviso nace del post", () => {
+  it("guarda el interaction_target del post y nunca un target de ficha", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["progress"] }] }),
+    );
+    const supabase = makeFakeSupabase({});
+
+    await notifyFollowersOfPost(supabase, "autor", {
+      postId: "post-p",
+      kind: "progressed",
+      interactionTargetId: "it-post-p",
     });
 
     expect(mocks.notifyMany).toHaveBeenCalledTimes(1);
     const params = mocks.notifyMany.mock.calls[0][1];
-    expect(params.interactionTargetId).toBe("it-post-1");
+    expect(params.interactionTargetId).toBe("it-post-p");
     expect(params.targetType).toBeUndefined();
     expect(params.targetId).toBeUndefined();
-    // El colapso sigue clavado al pase, no al post.
-    expect(params.dedupeKey).toBe("person:followed_finished:pase-1");
+    expect(params.userIds).toEqual(["seguidor"]);
+    expect(params.actorId).toBe("autor");
   });
 
-  it("finished SIN post (autopost desactivado) → cae a la ficha (target original)", async () => {
-    const supabase = makeFakeSupabase({ posts: [], interaction_targets: [] });
+  it("la clave de dedupe cuelga del POST, no del pase: dos posts = dos avisos", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["progress"] }] }),
+    );
+    const supabase = makeFakeSupabase({});
 
-    await notifyFollowersOfEvent(supabase, "autor", "finished", {
-      targetType: "diary_entry",
-      targetId: "pase-1",
+    await notifyFollowersOfPost(supabase, "autor", {
+      postId: "post-1",
+      kind: "progressed",
+      interactionTargetId: "it-1",
+    });
+    await notifyFollowersOfPost(supabase, "autor", {
+      postId: "post-2",
+      kind: "progressed",
+      interactionTargetId: "it-2",
     });
 
-    const params = mocks.notifyMany.mock.calls[0][1];
-    expect(params.interactionTargetId).toBeUndefined();
-    expect(params.targetType).toBe("diary_entry");
-    expect(params.targetId).toBe("pase-1");
+    expect(mocks.notifyMany.mock.calls[0][1].dedupeKey).toBe("person:followed_session:post-1");
+    expect(mocks.notifyMany.mock.calls[1][1].dedupeKey).toBe("person:followed_session:post-2");
   });
 
-  it("added no publica post → ficha aunque exista un post 'finished' del mismo pase", async () => {
-    // Añadir no debe secuestrar el post de 'finished': son hitos distintos.
-    const supabase = makeFakeSupabase({
-      posts: [{ id: "post-1", source_kind: "pass", source_id: "pase-1", kind: "finished" }],
-      interaction_targets: [{ id: "it-post-1", kind: "post", source_id: "post-1" }],
-    });
+  it("cada kind emite su tipo y filtra por SU categoría", async () => {
+    const casos = [
+      { kind: "started", categoria: "milestone", tipo: "followed_started" },
+      { kind: "finished", categoria: "milestone", tipo: "followed_finished" },
+      { kind: "dropped", categoria: "milestone", tipo: "followed_dropped" },
+      { kind: "progressed", categoria: "progress", tipo: "followed_session" },
+      { kind: "watched", categoria: "progress", tipo: "followed_episode" },
+      { kind: "thought", categoria: "thought", tipo: "followed_thought" },
+    ] as const;
 
-    await notifyFollowersOfEvent(supabase, "autor", "added", {
-      targetType: "diary_entry",
-      targetId: "pase-1",
-    });
+    for (const caso of casos) {
+      vi.clearAllMocks();
+      mocks.notifyMany.mockResolvedValue(["seguidor"]);
+      mocks.createServiceRoleClient.mockReturnValue(
+        makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: [caso.categoria] }] }),
+      );
 
-    const params = mocks.notifyMany.mock.calls[0][1];
-    expect(params.interactionTargetId).toBeUndefined();
-    expect(params.targetType).toBe("diary_entry");
+      await notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+        postId: "post-1",
+        kind: caso.kind,
+        interactionTargetId: "it-1",
+      });
+
+      expect(mocks.notifyMany, `kind ${caso.kind}`).toHaveBeenCalledTimes(1);
+      expect(mocks.notifyMany.mock.calls[0][1].type, `kind ${caso.kind}`).toBe(caso.tipo);
+    }
   });
 
-  it("session compartida → post 'progressed' de una sesión de ese pase", async () => {
-    const supabase = makeFakeSupabase({
-      progress_sessions: [{ id: "ses-1", pass_id: "pase-1" }],
-      posts: [
-        { id: "post-p", source_kind: "progress_session", source_id: "ses-1", kind: "progressed" },
-      ],
-      interaction_targets: [{ id: "it-post-p", kind: "post", source_id: "post-p" }],
+  it("quien no tiene la categoría activa no recibe nada", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({ follows: [{ ...FOLLOWER, notify_events: ["milestone"] }] }),
+    );
+
+    await notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+      postId: "post-p",
+      kind: "progressed",
+      interactionTargetId: "it-post-p",
     });
 
-    await notifyFollowersOfEvent(supabase, "autor", "session", {
-      targetType: "diary_entry",
-      targetId: "pase-1",
+    expect(mocks.notifyMany).not.toHaveBeenCalled();
+  });
+
+  it("un follow 'pending' no recibe aviso, solo el 'accepted' (RED/GREEN: comentar el .eq('status','accepted') en notify-followers.ts hace fallar esta prueba)", async () => {
+    mocks.createServiceRoleClient.mockReturnValue(
+      makeFakeSupabase({
+        follows: [
+          { follower_id: "aceptado", followee_id: "autor", status: "accepted", notify_events: ["progress"] },
+          { follower_id: "pendiente", followee_id: "autor", status: "pending", notify_events: ["progress"] },
+        ],
+      }),
+    );
+
+    await notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+      postId: "post-p",
+      kind: "progressed",
+      interactionTargetId: "it-post-p",
     });
 
-    const params = mocks.notifyMany.mock.calls[0][1];
-    expect(params.interactionTargetId).toBe("it-post-p");
+    expect(mocks.notifyMany).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyMany.mock.calls[0][1].userIds).toEqual(["aceptado"]);
+  });
+
+  it("un fallo leyendo follows no propaga (best-effort)", async () => {
+    mocks.createServiceRoleClient.mockImplementation(() => {
+      throw new Error("service role caído");
+    });
+
+    await expect(
+      notifyFollowersOfPost(makeFakeSupabase({}), "autor", {
+        postId: "post-p",
+        kind: "progressed",
+        interactionTargetId: "it-post-p",
+      }),
+    ).resolves.toBeUndefined();
+    expect(mocks.notifyMany).not.toHaveBeenCalled();
   });
 });

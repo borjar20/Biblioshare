@@ -6,8 +6,6 @@ import { BellIcon } from "@/components/ui/icons";
 import { setFollowNotify } from "@/lib/social/notify-actions";
 import { NOTIFY_CATEGORIES, type NotifyCategory } from "@/lib/social/notify-categories";
 
-const HINTED: NotifyCategory = "added";
-
 export function NotifyBell({
   targetUserId,
   username,
@@ -40,10 +38,9 @@ export function NotifyBell({
   }, [open]);
 
   const label: Record<NotifyCategory, string> = {
-    finished: t("notifyFinished"),
-    session: t("notifySession"),
-    episode: t("notifyEpisode"),
-    added: t("notifyAdded"),
+    milestone: t("notifyMilestone"),
+    progress: t("notifyProgress"),
+    thought: t("notifyThought"),
   };
 
   async function toggle(cat: NotifyCategory) {
@@ -92,14 +89,12 @@ export function NotifyBell({
                 onChange={() => toggle(cat)}
                 className="mt-0.5"
               />
-              <span className="flex flex-col">
-                {label[cat]}
-                {cat === HINTED && (
-                  <span className="text-xs text-muted-foreground">{t("notifyAddedHint")}</span>
-                )}
-              </span>
+              <span>{label[cat]}</span>
             </label>
           ))}
+          <p className="px-2 pb-1 pt-1.5 text-xs text-muted-foreground">
+            {t("notifyOnlyPublishedHint")}
+          </p>
           {failed && (
             <p role="alert" className="px-2 py-1 text-xs text-status-dropped">
               {t("actionError")}

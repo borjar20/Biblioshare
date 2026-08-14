@@ -228,6 +228,18 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > `club_event_followers` **no** entra en la lista por otra razón: solo tiene `grant select`
 > (se escribe únicamente por RPC `SECURITY DEFINER`), así que no es una tabla con grants de
 > escritura por columna y la consulta no la mira.
+>
+> **Nota del 2026-08-14 (motivo de abandono).** `passes` ganó **2 columnas**
+> (`dropped_reason`, `dropped_reason_note`, `20260858_pass_dropped_reason.sql`) con grant de
+> **solo UPDATE, a propósito**: un SELECT aquí (de tabla o por columna) se filtraría a cualquiera
+> que pueda ver el perfil, saltándose `is_public` — la RLS de `passes` es de visibilidad de
+> perfil, no de dueño; se lee enmascarado por dueño a través de `pass_reviews`. Tampoco tienen
+> INSERT: un pase no nace `dropped`, solo llega ahí por una transición posterior (UPDATE).
+> **Aplicada y verificada en DEV y en PROD el 2026-08-14** (migración aplicada a prod ANTES de
+> mergear el código, no después — `getPasses` traga en silencio un `select` que nombra una
+> columna inexistente, así que el orden inverso habría vaciado el diario de todos los usuarios,
+> issue #657): la consulta devuelve `passes | 19 | 14 | 13` en los dos entornos (antes
+> `17 | 14 | 11`). La fila de la tabla de abajo ya está actualizada.
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
@@ -235,7 +247,7 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
 | `movies` | 11 | 11 | 7 | ídem `books` |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
-| `passes` | 17 | 14 | 11 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables |
+| `passes` | 19 | 14 | 13 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables; `dropped_reason`/`dropped_reason_note` sin SELECT (motivo de abandono, siempre privado) |
 | `people` | 12 | 11 | 6 | ídem `books` |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
 | `series` | 13 | 13 | 9 | ídem `books` |

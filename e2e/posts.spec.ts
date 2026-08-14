@@ -582,3 +582,172 @@ test("la UI de ajustes escribe post_preferences (autopublicar hitos)", async ({ 
     }
   }
 });
+
+// Spec 2026-08-13 — el aviso de seguimiento nace del POST: compartir una sesión
+// avisa a quien sigue, y la campana abre /post/[id], NO la ficha del libro. Antes
+// de esta spec el aviso se emitía en addSession ANTES de createPost, así que el
+// resolutor no encontraba el post y caía a la ficha (el bug que motivó el cambio).
+//
+// El autor es devtest (tiene el pase fixture con el que se conduce la hoja de
+// sesión); el seguidor es un usuario desechable. El follow se inserta por
+// service-role con notify_events ya puesto: que el toggle persista lo cubre
+// avisos-por-persona.spec.ts, aquí lo que se prueba es a dónde LLEVA el aviso.
+test("sesión compartida: quien sigue recibe el aviso y la campana abre el post", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(150_000);
+  await login(page);
+  const owner = await devtestId();
+  const { itemId, passId } = await resolveBookFixture(owner);
+
+  const stamp = Date.now();
+  const follower = await createUser(request, `avisopost${stamp}`.slice(0, 20));
+  const shareBody = `Sesión con aviso e2e ${stamp}`;
+  const bodyFilter = encodeURIComponent(shareBody);
+  const passSnapshot = await snapshotPass(passId);
+  const sessionsBefore = await sessionIds(passId);
+
+  try {
+    await insertOne("follows", {
+      follower_id: follower.id,
+      followee_id: owner,
+      status: "accepted",
+      notify_events: ["progress"],
+    });
+
+    // ── El autor registra una sesión CON «Compartir» ──
+    await page.goto(`/libro/${itemId}?tab=log`);
+    const dialog = page.getByRole("dialog");
+    await sessionLink(page, passId).click();
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[name="page"]').fill("5"); // lejísimos del total: no auto-cierra
+    await dialog.getByRole("checkbox", { name: "Compartir en mi perfil" }).check();
+    await dialog.getByPlaceholder(/algo que contar/i).fill(shareBody);
+    await dialog.getByRole("button", { name: "Guardar sesión" }).click();
+    await expect(dialog).toBeHidden();
+
+    // ── Verdad del SERVIDOR antes de mirar la campana: el aviso existe ──
+    await expect
+      .poll(
+        async () =>
+          (
+            await rest<{ id: string }[]>(
+              `notifications?user_id=eq.${follower.id}&type=eq.followed_session&select=id`,
+            )
+          ).length,
+        { timeout: 15_000, message: "el aviso followed_session del seguidor debe persistir" },
+      )
+      .toBeGreaterThan(0);
+
+    const [post] = await rest<{ id: string }[]>(
+      `posts?kind=eq.progressed&body=eq.${bodyFilter}&select=id`,
+    );
+    expect(post?.id).toBeTruthy();
+
+    // ── El seguidor abre la campana y el aviso le lleva AL POST ──
+    await loginAs(page, follower.email, follower.password);
+    await page.getByRole("button", { name: "Notificaciones" }).click();
+    const aviso = page.getByRole("link").filter({ hasText: /compartió una sesión de lectura/i });
+    await expect(aviso).toBeVisible();
+    await aviso.click();
+    // LA aserción del test: /post/<id>, no /libro/<id>.
+    await expect(page).toHaveURL(new RegExp(`/post/${post.id}$`));
+  } finally {
+    await rest(
+      `follows?follower_id=eq.${follower.id}&followee_id=eq.${owner}`,
+      { method: "DELETE" },
+    ).catch(() => {});
+    const rows = await rest<{ id: string }[]>(
+      `progress_sessions?pass_id=eq.${passId}&select=id`,
+    ).catch(() => [] as { id: string }[]);
+    const newIds = rows.map((r) => r.id).filter((id) => !sessionsBefore.has(id));
+    if (newIds.length > 0) {
+      await rest(`posts?source_id=in.(${newIds.join(",")})&kind=eq.progressed`, {
+        method: "DELETE",
+      }).catch(() => {});
+      await rest(`progress_sessions?id=in.(${newIds.join(",")})`, { method: "DELETE" }).catch(
+        () => {},
+      );
+    }
+    await restorePass(passId, passSnapshot);
+    await deleteUser(follower.id); // arrastra sus notifications por FK
+  }
+});
+
+// La otra mitad del trato: lo que NO se publica no avisa. Sin este caso, alguien
+// puede reintroducir un notifyFollowersOfEvent en addSession y todos los tests
+// seguirían verdes.
+test("sesión NO compartida: cero avisos para quien sigue", async ({ page, request }) => {
+  test.setTimeout(150_000);
+  await login(page);
+  const owner = await devtestId();
+  const { itemId, passId } = await resolveBookFixture(owner);
+
+  const stamp = Date.now();
+  const follower = await createUser(request, `sinaviso${stamp}`.slice(0, 20));
+  const passSnapshot = await snapshotPass(passId);
+  const sessionsBefore = await sessionIds(passId);
+
+  try {
+    await insertOne("follows", {
+      follower_id: follower.id,
+      followee_id: owner,
+      status: "accepted",
+      // Las TRES activas: si algo avisara, avisaría con cualquier categoría.
+      notify_events: ["milestone", "progress", "thought"],
+    });
+
+    await page.goto(`/libro/${itemId}?tab=log`);
+    const dialog = page.getByRole("dialog");
+    await sessionLink(page, passId).click();
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[name="page"]').fill("7");
+    // NO se marca «Compartir en mi perfil».
+    await dialog.getByRole("button", { name: "Guardar sesión" }).click();
+    await expect(dialog).toBeHidden();
+
+    // Se espera a que la SESIÓN exista (verdad del servidor). Sin este anclaje,
+    // "0 avisos" sería cierto simplemente porque aún no había pasado nada.
+    await expect
+      .poll(
+        async () => {
+          const rows = await rest<{ id: string }[]>(
+            `progress_sessions?pass_id=eq.${passId}&select=id`,
+          );
+          return rows.filter((r) => !sessionsBefore.has(r.id)).length;
+        },
+        { timeout: 15_000, message: "la sesión sin compartir debe guardarse igual" },
+      )
+      .toBeGreaterThan(0);
+
+    const avisos = await rest<{ id: string }[]>(
+      `notifications?user_id=eq.${follower.id}&select=id`,
+    );
+    expect(avisos).toHaveLength(0);
+
+    // Y tampoco se publicó post de esa sesión.
+    const rows = await rest<{ id: string }[]>(`progress_sessions?pass_id=eq.${passId}&select=id`);
+    const newIds = rows.map((r) => r.id).filter((id) => !sessionsBefore.has(id));
+    const posts = await rest<{ id: string }[]>(
+      `posts?source_id=in.(${newIds.join(",")})&select=id`,
+    );
+    expect(posts).toHaveLength(0);
+  } finally {
+    await rest(
+      `follows?follower_id=eq.${follower.id}&followee_id=eq.${owner}`,
+      { method: "DELETE" },
+    ).catch(() => {});
+    const rows = await rest<{ id: string }[]>(
+      `progress_sessions?pass_id=eq.${passId}&select=id`,
+    ).catch(() => [] as { id: string }[]);
+    const newIds = rows.map((r) => r.id).filter((id) => !sessionsBefore.has(id));
+    if (newIds.length > 0) {
+      await rest(`progress_sessions?id=in.(${newIds.join(",")})`, { method: "DELETE" }).catch(
+        () => {},
+      );
+    }
+    await restorePass(passId, passSnapshot);
+    await deleteUser(follower.id);
+  }
+});

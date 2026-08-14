@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { notifyMentions } from "@/lib/social/notify-mentions";
-import { notifyFollowersOfEvent } from "@/lib/social/notify-followers";
+import { parseDroppedReason } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -37,7 +37,7 @@ function parseFinishedOn(raw: FormDataEntryValue | null): string | undefined {
 }
 
 export type ClosePassState = {
-  error?: "invalidDate" | "invalidRating" | "generic";
+  error?: "invalidDate" | "invalidRating" | "invalidReason" | "generic";
 };
 
 // Nota SIEMPRE entera 1-10 (misma regla que parseRating, pero aquí el valor
@@ -61,6 +61,15 @@ async function savePassFields(
   const rating = parseRating(formData.get("rating"));
   if (rating === undefined) return { error: "invalidRating" };
 
+  const droppedReason = parseDroppedReason(formData.get("droppedReason"));
+  if (droppedReason === undefined) return { error: "invalidReason" };
+  // La nota solo tiene sentido junto a "otro" — se descarta server-side
+  // aunque el cliente la mande, no nos fiamos del formulario.
+  const droppedReasonNote =
+    droppedReason === "otro"
+      ? String(formData.get("droppedReasonNote") ?? "").trim() || null
+      : null;
+
   const review = String(formData.get("review") ?? "").trim();
   // is_public tiene default false en la columna: hay que escribirlo siempre
   // explícitamente, nunca confiar en el default.
@@ -73,6 +82,8 @@ async function savePassFields(
       rating,
       review: review || null,
       is_public: isPublic,
+      dropped_reason: droppedReason,
+      dropped_reason_note: droppedReasonNote,
     })
     .eq("id", passId)
     .eq("user_id", userId);
@@ -137,13 +148,11 @@ export async function closePass(
     await notifyPublicReviewMentions(supabase, user.id, passId, result.review);
   }
 
-  // Aviso a los seguidores suscritos a "terminó". SOLO en closePass, nunca en
-  // updatePass: editar un pase cerrado no debe re-notificar (misma regla que las
-  // menciones de arriba).
-  await notifyFollowersOfEvent(supabase, user.id, "finished", {
-    targetType: "diary_entry",
-    targetId: passId,
-  });
+  // Cerrar el pase no avisa: el aviso de «terminó» lo emite createPost cuando
+  // updateStatus autopostea el hito (manage-actions.ts), y solo si el usuario no
+  // desactivó `autopost_finished` (opt-out por defecto activado, ver
+  // src/lib/social/autopost.ts) -- con esa preferencia apagada no hay post y por
+  // tanto tampoco aviso. Ver spec 2026-08-13.
 
   revalidateReadingLog(itemType, itemId);
   return {};

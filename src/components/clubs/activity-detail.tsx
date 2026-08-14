@@ -14,7 +14,7 @@ import {
 } from "@/lib/clubs/activities/core";
 import { ActivityChat } from "./activity-chat";
 import { ActivityItemPool } from "./activity-item-pool";
-import { BuddyReadCheckpointEditor } from "./checkpoints/checkpoint-editor";
+import { ActivityDetailsEditor } from "./activity-details-editor";
 import { CompletionModeEditor } from "./list-challenge/completion-mode-editor";
 import { LinkedActivities } from "./list-challenge/linked-activities";
 import { getActivityKindDefinition } from "@/lib/clubs/activities/kinds/registry";
@@ -220,6 +220,8 @@ export function ActivityDetailView({
           <p className="text-[13px] text-muted-foreground">{activity.title}</p>
         </div>
 
+        <ActivityDetailsEditor activity={activity} onChanged={refreshActivity} />
+
         <ActivityItemPool
           activityId={activity.id}
           items={activity.items}
@@ -232,12 +234,6 @@ export function ActivityDetailView({
           itemCuration={kindDefinition.itemCuration}
           onChanged={refreshActivity}
         />
-
-        {/* Los hitos de la lectura conjunta también se gestionan aquí: el
-            board del detalle solo los lista. */}
-        {activity.kind === "buddy_read" && isModerator && (
-          <BuddyReadCheckpointEditor activityId={activity.id} status={status} />
-        )}
 
         {/* La modalidad de compleción también se cambia aquí. Espejo de la RPC
             set_activity_completion_mode: creador o moderador, en cualquier estado. */}

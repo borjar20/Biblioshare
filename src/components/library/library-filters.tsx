@@ -6,6 +6,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { SearchIcon } from "@/components/ui/icons";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
 import { ALL_TYPES_PARAM } from "@/lib/library/effective-type";
+import { pillClass, segClass } from "@/lib/ui/control-classes";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = [
@@ -14,29 +15,10 @@ const STATUSES: MediaStatus[] = [
   "completed",
   "dropped",
 ];
-// Las películas solo tienen dos estados (pendiente/vista, ver StatusSegments):
-// al filtrar por tipo "movie" no ofrecemos "en curso" ni "abandonado".
-const MOVIE_STATUSES: MediaStatus[] = ["planned", "completed"];
+// Las películas tienen tres estados (pendiente/vista/abandonada, ver StatusSegments):
+// al filtrar por tipo "movie" no ofrecemos "en curso".
+const MOVIE_STATUSES: MediaStatus[] = ["planned", "completed", "dropped"];
 const SORTS: LibrarySort[] = ["recent", "rating", "title"];
-
-// Píldora de tipo (prominente): la elección más "de un vistazo".
-function pillClass(active: boolean) {
-  return `inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-    active
-      ? "bg-accent text-accent-foreground"
-      : "bg-surface-muted text-muted-foreground hover:text-foreground"
-  }`;
-}
-
-// Segmento compacto (`.sortrow .s` del mockup): estado y orden, menudos, sin
-// fondo salvo el activo — pesan mucho menos que las píldoras grandes de antes.
-function segClass(active: boolean) {
-  return `rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
-    active
-      ? "bg-surface-muted text-foreground"
-      : "text-muted-foreground hover:text-foreground"
-  }`;
-}
 
 export async function LibraryFilters({
   itemType,

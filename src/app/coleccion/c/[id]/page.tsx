@@ -7,6 +7,7 @@ import { loginHref } from "@/lib/auth/safe-next";
 import { getCollection } from "@/lib/library/collections";
 import { CollectionDetail } from "@/components/library/collection-detail";
 import { CollectionMenu } from "@/components/library/collection-menu";
+import { AddItemsToCollectionSheet } from "@/components/library/add-items-to-collection-sheet";
 import { ChevronLeftIcon } from "@/components/ui/icons";
 import { SHELL_GRID } from "@/lib/ui/layout";
 
@@ -58,8 +59,9 @@ export default async function CollectionDetailPage({
 
   return (
     <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      {/* Topbar del frame B: «‹» a /coleccion + nombre + menú «⋯»
-          (renombrar/descripción/borrar, Sesión 2). */}
+      {/* Topbar del frame B: «‹» a /coleccion + nombre + «＋ Añadir ítems»
+          (busca en toda la biblioteca, alta sin salir de la página) + menú «⋯»
+          (renombrar/descripción/sorteo/borrar, Sesión 2). */}
       <div className="flex items-center gap-2.5">
         <Link
           href="/coleccion"
@@ -71,6 +73,7 @@ export default async function CollectionDetailPage({
         <span className="min-w-0 flex-1 truncate font-serif text-sm font-semibold text-foreground">
           {detail.name}
         </span>
+        <AddItemsToCollectionSheet collectionId={detail.id} />
         <CollectionMenu
           collectionId={detail.id}
           name={detail.name}

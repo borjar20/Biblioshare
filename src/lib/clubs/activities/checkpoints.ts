@@ -246,3 +246,13 @@ export async function confirmCheckpoint(checkpointId: string): Promise<void> {
   if (error) throw error;
   revalidateClubPages();
 }
+
+// Deshace la declaración de haber llegado, y la de los hitos posteriores (spec
+// 2026-08-12). Lanza como su gemela `confirmCheckpoint`: quien la llama traduce
+// el fallo a un mensaje genérico, sin distinguir códigos.
+export async function unconfirmCheckpoint(checkpointId: string): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("unconfirm_checkpoint", { p_checkpoint_id: checkpointId });
+  if (error) throw error;
+  revalidateClubPages();
+}

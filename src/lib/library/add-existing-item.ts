@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { notifyAdded } from "@/lib/social/notify-followers";
 import { revalidateItemPage, revalidateLibrary } from "@/lib/reactivity/revalidate";
 
 // Unlike addToLibrary in src/app/buscar/actions.ts, the item here already has
@@ -26,8 +25,7 @@ export async function addExistingItemToLibrary(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned");
-  await notifyAdded(supabase, user.id, outcome);
+  await applyTransition(supabase, user.id, itemType, itemId, "planned");
 
   revalidateItemPage(itemType, itemId);
   // Seguir mete la obra en la biblioteca, así que /coleccion también cambia.
