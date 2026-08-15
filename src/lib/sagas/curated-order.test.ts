@@ -210,3 +210,42 @@ describe("invariante: la columna del timeline no contradice al orden curado", ()
     expect(curado("R")).toEqual([k("a1"), k("l1"), k("c1"), k("c2")]);
   });
 });
+
+describe("anclado", () => {
+  it("una obra anclada con dos anclas parte el bloque e intercala", () => {
+    // Bloque "IM" = im1, im2, im3 (posición fija); "Hulk" anclado entre im1 e im2.
+    const order = createCuratedOrder(
+      [root("UCM"), child("IM", "UCM", { positionInParent: 1 }), child("Solo", "UCM", { positionInParent: 2 })],
+      [
+        member("IM", "im1", 1), member("IM", "im2", 2), member("IM", "im3", 3),
+        member("Solo", "hulk", 1, "anclado"),
+      ],
+      titleOf,
+      { "i:book:hulk": { afterKey: "i:book:im1", beforeKey: "i:book:im2" } },
+    );
+    expect(order("UCM")).toEqual([k("im1"), k("hulk"), k("im2"), k("im3")]);
+  });
+
+  it("una obra anclada con SOLO after no corta: va a fin de bloque", () => {
+    const order = createCuratedOrder(
+      [root("UCM"), child("IM", "UCM", { positionInParent: 1 }), child("Solo", "UCM", { positionInParent: 2 })],
+      [
+        member("IM", "im1", 1), member("IM", "im2", 2), member("IM", "im3", 3),
+        member("Solo", "hulk", 1, "anclado"),
+      ],
+      titleOf,
+      { "i:book:hulk": { afterKey: "i:book:im1", beforeKey: null } },
+    );
+    expect(order("UCM")).toEqual([k("im1"), k("im2"), k("im3"), k("hulk")]);
+  });
+
+  it("un anclado SIN ventana no se mueve (degrada suave)", () => {
+    const order = createCuratedOrder(
+      [root("UCM"), child("IM", "UCM", { positionInParent: 1 }), child("Solo", "UCM", { positionInParent: 2 })],
+      [member("IM", "im1", 1), member("Solo", "hulk", 1, "anclado")],
+      titleOf,
+      {},
+    );
+    expect(order("UCM")).toEqual([k("im1"), k("hulk")]);
+  });
+});
