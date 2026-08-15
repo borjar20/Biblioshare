@@ -2,6 +2,7 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaPlacement } from "./types";
+import { esColocable } from "./placement";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -85,7 +86,7 @@ export function buildWindowOwners(
 
   const out = new Map<string, string>();
   for (const [key, list] of byKey) {
-    if (!list.some((r) => r.placement === "libre")) continue;
+    if (!list.some((r) => esColocable(r.placement))) continue;
     out.set(key, windowOwnerFor(list.map((r) => ({ sagaId: r.sagaId, isPrimary: r.isPrimary })), curatedSagaId));
   }
   // Un BLOQUE `libre` es sujeto igual que una obra, y su fila vive bajo el
@@ -93,7 +94,7 @@ export function buildWindowOwners(
   // padre quien la cura. Es el caso de *Nacidos de la Bruma. Era 2* en
   // producción (sujeto bloque, saga_id = Cosmere).
   for (const b of blocks) {
-    if (b.placementInParent !== "libre") continue;
+    if (!esColocable(b.placementInParent)) continue;
     out.set(`s:${b.childSagaId}`, curatedSagaId);
   }
   return out;

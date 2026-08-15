@@ -5,6 +5,7 @@ import type { UserRole } from "@/lib/auth/roles";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getSagaBase } from "./get-saga";
 import { deriveSagaMap } from "./derive-map";
+import { esColocable } from "./placement";
 import type { SagaGraph } from "./map-types";
 import type { SagaAccentToken } from "./accents";
 import {
@@ -254,7 +255,7 @@ export function freeItemWindow(
   windows: Record<string, ResolvedWindow>,
   m: DetailMember,
 ): ResolvedWindow | null {
-  if (m.placement !== "libre") return null;
+  if (!esColocable(m.placement)) return null;
   return windows[`i:${m.itemType}:${m.itemId}`] ?? null;
 }
 
@@ -264,7 +265,7 @@ export function freeBlockWindow(
   windows: Record<string, ResolvedWindow>,
   group: MemberGroup,
 ): ResolvedWindow | null {
-  if (group.placementInParent !== "libre" || group.sagaId === null) return null;
+  if (!esColocable(group.placementInParent) || group.sagaId === null) return null;
   return windows[`s:${group.sagaId}`] ?? null;
 }
 

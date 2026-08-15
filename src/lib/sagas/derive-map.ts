@@ -5,6 +5,7 @@ import { alignRowsToLongEdges } from "./layout-map";
 import type { SagaGraph, SagaGraphEdge, SagaGraphNode } from "./map-types";
 import type { DetailMember, ResolvedWindow, SagaPlacement, TandemMode } from "./types";
 import { NODE_STEP_X, NODE_STEP_Y } from "./graph-metrics";
+import { esColocable } from "./placement";
 
 // Derivación PURA del mapa (fase 3, Task 1): sustituye a las tablas curadas a
 // mano `saga_nodes`/`saga_edges` — el mapa se DERIVA de lo que ya está curado
@@ -291,7 +292,7 @@ export function deriveSagaMap(
     // puede estar intercalado en la posición 2, y ese índice lo encadenaría como
     // si fuera colocado: un bloque libre flota A PROPÓSITO, fuera de la cadena.
     // El predicado es el mismo, exacto, que usa `partitionGroups`.
-    if (group.placementInParent !== "libre") {
+    if (!esColocable(group.placementInParent)) {
       if (huecos.length > 0) {
         if (chainTail) {
           for (const prevMember of chainTail) {
@@ -382,7 +383,7 @@ export function deriveSagaMap(
     const subjectSagaId = blockSagaId(subjectKey);
     const subjectPlacement =
       subjectSagaId !== null ? (blockPlacement.get(subjectSagaId) ?? null) : (itemPlacement.get(subjectKey) ?? null);
-    if (subjectPlacement !== "libre") continue;
+    if (!esColocable(subjectPlacement)) continue;
 
     const subject = resolveEntry(subjectKey, "first");
     if (subject === null) continue;
