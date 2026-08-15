@@ -1695,6 +1695,7 @@
     "zone": {
       "sequence": "La secuencia",
       "free": "Cuando quieras",
+      "anchored": "Anclado",
       "unclassified": "Sin clasificar"
     },
     "zonePickerLabel": "Zona que se está curando",
@@ -1710,6 +1711,9 @@
     "zoneFree": "Cuando quieras",
     "zoneFreeHint": "Obras que no ocupan un hueco del orden: se leen en varios puntos. Siguen contando para el progreso salvo que las marques opcional — son dos cosas distintas.",
     "zoneFreeEmpty": "Todavía no hay nada aquí",
+    "zoneAnchored": "Anclado",
+    "zoneAnchoredHint": "Va en un punto concreto, relativo a otra obra (después de… / antes de…). Para intercalar EN MEDIO de una subsaga, pon las dos anclas.",
+    "zoneAnchoredEmpty": "Nada anclado todavía.",
     "zoneUnclassified": "Sin clasificar",
     "zoneUnclassifiedHint": "Ni colocadas en el orden ni marcadas como libres. Mándalas a una de las dos zonas de arriba.",
     "blockMeta": "Bloque · {count} obras",
@@ -1740,8 +1744,10 @@
     "moveDownFor": "Bajar un hueco: {title}",
     "sendToSequence": "Enviar a la secuencia",
     "sendToFree": "Enviar a «Cuando quieras»",
+    "sendToAnchored": "Anclar",
     "sendToSequenceFor": "Enviar {title} a la secuencia",
     "sendToFreeFor": "Enviar {title} a «Cuando quieras»",
+    "sendToAnchoredFor": "Anclar {title}",
     "pairPrompt": "Mismo hueco que otra obra…",
     "pairConfirm": "Emparejar en el hueco {n}",
     "pairFilter": "Filtrar obras de la secuencia…",

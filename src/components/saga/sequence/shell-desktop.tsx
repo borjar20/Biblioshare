@@ -129,6 +129,21 @@ export function ShellDesktop({
           )}
         </div>
 
+        <Zone title={t("zoneAnchored")} hint={t("zoneAnchoredHint")} empty={draft.anchored.length === 0} emptyTitle={t("zoneAnchoredEmpty")}>
+          {draft.anchored.map((e) => (
+            <div key={`anchored-${e.key}`}>
+              {row(e, null)}
+              <WindowEditor
+                subject={e}
+                anchors={anchors}
+                onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
+                onClearAnchor={(side) => ops.clearAnchor(e.key, side)}
+                onSetReason={(reason) => ops.setWindowReason(e.key, reason)}
+              />
+            </div>
+          ))}
+        </Zone>
+
         <Zone title={t("zoneFree")} hint={t("zoneFreeHint")} empty={draft.free.length === 0} emptyTitle={t("zoneFreeEmpty")}>
           {draft.free.map((e) => (
             <div key={`free-${e.key}`}>
@@ -162,6 +177,9 @@ export function ShellDesktop({
                   </button>
                   <button type="button" onClick={() => ops.sendTo(e.key, "free")} aria-label={t("sendToFreeFor", { title: e.title })} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold">
                     {t("sendToFree")}
+                  </button>
+                  <button type="button" onClick={() => ops.sendTo(e.key, "anchored")} aria-label={t("sendToAnchoredFor", { title: e.title })} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-semibold">
+                    {t("sendToAnchored")}
                   </button>
                 </div>
               ))}
