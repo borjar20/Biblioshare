@@ -63,14 +63,14 @@ export function windowOwnerFor(
  * saga bajo la que vive su fila. Clave en el mismo formato que `DraftEntry.key`
  * (`i:<tipo>:<uuid>` / `s:<uuid>`).
  *
- * Solo lo `libre`: una obra con hueco fijo YA tiene sitio, y darle además una
- * ventana es la contradicción que los dos ejes (`placement` y `optional`)
- * existen para evitar. Y hay una razón operativa además de la conceptual: la
- * saga dueña hidrata a `null` la ventana de lo que no es `libre`
+ * Solo lo colocable (placement `libre` o `anclado`): una obra con hueco fijo YA tiene
+ * sitio, y darle además una ventana es la contradicción que los dos ejes (`placement` y
+ * `optional`) existen para evitar. Y hay una razón operativa además de la conceptual: la
+ * saga dueña hidrata a `null` la ventana de lo que no es colocable
  * (get-saga-sequence.ts), así que una ventana sobre algo `fijo` la borraría el
  * primer guardado de esa saga — se perdería en silencio.
  *
- * Basta con que UNA de las membresías de la obra sea `libre`: es la que le da
+ * Basta con que UNA de las membresías de la obra sea colocable: es la que le da
  * derecho a ventana. La dueña la decide `is_primary`, no esa membresía.
  */
 export function buildWindowOwners(

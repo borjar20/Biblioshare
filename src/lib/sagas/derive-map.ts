@@ -356,16 +356,16 @@ export function deriveSagaMap(
 
   // Placement ACTUAL de cada posible sujeto de ventana (obra directa u obra
   // de bloque → itemPlacement; bloque-subsaga → blockPlacement): «solo lo
-  // `libre` tiene ventana» es una guarda que NINGÚN CHECK de BD puede
-  // imponer entre `saga_items`/`sagas` y `saga_placement_windows` — misma
-  // guarda que la ficha aplica con `freeItemWindow`/`freeBlockWindow`
-  // (get-saga-detail.ts), y por el mismo motivo: `windows` no confía en que
-  // no llegue una fila rancia de un sujeto que dejó de ser `libre` (hoy no
-  // hay camino de interfaz que la deje ahí — `sendTo`/`pairWith` limpian la
-  // ventana y el RPC hace reemplazo total — pero el mapa no puede confiar en
-  // que ningún camino futuro la deje). Sin esta guarda, una fila así haría
-  // que la ficha ocultara la línea y el mapa siguiera pintando la arista:
-  // dos vistas discrepando de la misma fila.
+  // colocable tiene ventana» (placement `libre` o `anclado`) es una guarda que
+  // NINGÚN CHECK de BD puede imponer entre `saga_items`/`sagas` y
+  // `saga_placement_windows` — misma guarda que la ficha aplica con
+  // `freeItemWindow`/`freeBlockWindow` (get-saga-detail.ts), y por el mismo
+  // motivo: `windows` no confía en que no llegue una fila rancia de un sujeto
+  // que dejó de ser colocable (hoy no hay camino de interfaz que la deje ahí —
+  // `sendTo`/`pairWith` limpian la ventana y el RPC hace reemplazo total — pero
+  // el mapa no puede confiar en que ningún camino futuro la deje). Sin esta
+  // guarda, una fila así haría que la ficha ocultara la línea y el mapa
+  // siguiera pintando la arista: dos vistas discrepando de la misma fila.
   const itemPlacement = new Map<string, SagaPlacement | null>();
   const blockPlacement = new Map<string, SagaPlacement | null>();
   for (const group of blocks) {

@@ -242,15 +242,15 @@ export function resolveWindows(
   return result;
 }
 
-/** Ventana de una entrada `libre` (fase 2b, Task 6) — solo aplica a una entrada
- *  realmente `libre` AHORA MISMO: no confía en que `windows` no traiga fila
- *  para algo que dejó de serlo (un cambio de colocación no borra la fila de
- *  `saga_placement_windows`, ver el comentario de `windows` en `SagaDetail`),
- *  así que comprueba `placement` ella misma antes de mirar el mapa, en vez de
- *  confiar en que la lista que recibe ya está filtrada. Extraída de
+/** Ventana de una entrada colocable (fase 2b, Task 6) — solo aplica a una entrada
+ *  realmente colocable AHORA MISMO (placement `libre` o `anclado`): no confía en que
+ *  `windows` no traiga fila para algo que dejó de serlo (un cambio de colocación no
+ *  borra la fila de `saga_placement_windows`, ver el comentario de `windows` en
+ *  `SagaDetail`), así que comprueba `placement` ella misma antes de mirar el mapa, en
+ *  vez de confiar en que la lista que recibe ya está filtrada. Extraída de
  *  `saga-info.tsx` (revisión Task 6) para poder probarla sin renderizar React
- *  — es la única guarda que sostiene «solo lo libre tiene ventana», y ningún
- *  constraint de BD puede imponerla. */
+ *  — es la única guarda que sostiene esta colocabilidad, y ningún constraint de BD
+ *  puede imponerla. */
 export function freeItemWindow(
   windows: Record<string, ResolvedWindow>,
   m: DetailMember,
