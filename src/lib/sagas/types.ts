@@ -40,7 +40,7 @@ export type { SagaItemRole } from "./roles";
 /** Dónde se lee un miembro. null = sin clasificar (deuda de curación).
  *  Espejo a mano de public.saga_placement, igual que SagaItemRole: si se añade
  *  un valor en BD, TypeScript NO se queja aquí. */
-export type SagaPlacement = "fijo" | "libre";
+export type SagaPlacement = "fijo" | "libre" | "anclado";
 
 /** Qué clase de tándem es un hueco compartido (`saga_tandems.modo`, fase 2):
  *  `simultaneo` = «a la vez»; `indistinto` = «cualquier orden». Espejo a mano de
@@ -68,11 +68,9 @@ export type SagaMember = {
   /** null = sin clasificar. Ortogonal a `position`: `position` dice si la obra
    *  tiene hueco fijo en el orden, `role` dice qué es. */
   role: SagaItemRole | null;
-  /** Dónde se lee. `fijo` ⇔ position !== null — lo garantiza el CHECK
-   *  saga_items_placement_position, que es un CASE (no un OR de tres ramas):
-   *  con `placement IS NULL` un OR de tres ramas da NULL, no FALSE, y un CHECK
-   *  solo rechaza FALSE (bug real, corregido en el review final de la rama,
-   *  2026-07-26 — ver comentario en la migración). null = sin clasificar. */
+  /** Dónde se lee. `fijo` ⇔ position !== null (CHECK saga_items_placement_position,
+   *  un CASE). `anclado` = position null, colocado por ventana relativa y
+   *  OBLIGATORIO. `libre` = cuando quieras. null = sin clasificar. */
   placement: SagaPlacement | null;
   /** true = NO cuenta en el denominador del progreso. Ortogonal a placement:
    *  una obra puede ser libre y contar, o fija y no contar. */
