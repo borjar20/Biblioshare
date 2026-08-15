@@ -48,6 +48,16 @@ describe("planTransition", () => {
       kind: "updateActive", set: { status: "dropped", finished_on: HOY },
     });
   });
+  it("sin activo, a dropped → crea activo ya cerrado (abandono directo)", () => {
+    expect(planTransition(null, "dropped", HOY)).toEqual({
+      kind: "createActive", status: "dropped", startedOn: HOY, finishedOn: HOY, plannedOn: null,
+    });
+  });
+  it("planned → dropped cierra de golpe (película abandonada desde pendiente)", () => {
+    expect(planTransition({ id: "p1", status: "planned" }, "dropped", HOY)).toEqual({
+      kind: "updateActive", set: { status: "dropped", finished_on: HOY },
+    });
+  });
   it("in_progress → planned reabre como pendiente sin perder started_on, sella planned_on", () => {
     expect(planTransition({ id: "p1", status: "in_progress" }, "planned", HOY)).toEqual({
       kind: "updateActive", set: { status: "planned", planned_on: HOY },

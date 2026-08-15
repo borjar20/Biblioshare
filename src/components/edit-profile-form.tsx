@@ -68,7 +68,14 @@ export function EditProfileForm({ profile }: { profile: Profile }) {
 
           <div className="flex flex-col gap-4 px-5 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Link href="/importar" className={buttonVariants("secondary", "px-4")}>
+              <Link
+                href="/importar"
+                // Cierra el <dialog> antes de navegar: con Cache Components la
+                // hoja no se desmonta en navegación soft y quedaría rota e
+                // incerrable al volver (#448, como item-connect-sheet).
+                onClick={() => dialogRef.current?.close()}
+                className={buttonVariants("secondary", "px-4")}
+              >
                 {t("importLibrary")}
               </Link>
               <a

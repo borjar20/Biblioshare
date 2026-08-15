@@ -105,7 +105,15 @@ export function DaySheet({
               return (
                 <li key={`${mark.activityId}-${mark.markKind}-${i}`}>
                   {mark.href ? (
-                    <Link href={mark.href} className={`${clases} hover:bg-surface-muted`}>
+                    <Link
+                      href={mark.href}
+                      // Cierra el <dialog> a mano antes de navegar: con Cache
+                      // Components la hoja no se desmonta en navegación soft y
+                      // quedaría con dialog.open=true pero fuera del top layer al
+                      // volver — rota e incerrable (#448, como item-connect-sheet).
+                      onClick={() => dialogRef.current?.close()}
+                      className={`${clases} hover:bg-surface-muted`}
+                    >
                       {inner}
                     </Link>
                   ) : (

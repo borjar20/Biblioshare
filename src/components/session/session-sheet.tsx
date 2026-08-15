@@ -381,6 +381,7 @@ export function SessionSheet({
         passId={passId}
         itemType={itemType}
         itemId={itemId}
+        status="completed"
         open={closingPass}
         onClose={() => {
           setClosingPass(false);

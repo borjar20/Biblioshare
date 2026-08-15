@@ -105,6 +105,14 @@ export function ItemConnectSheet({
 
         <Link
           href={itemHref(item.itemType, item.itemId)}
+          // "Ver ficha" navega fuera de la ficha del reto (a /libro|/serie|...).
+          // Hay que cerrar el <dialog> A MANO antes de irse: con Cache Components
+          // el slot de la ficha se conserva en navegación soft, así que un
+          // <dialog> abierto no se desmonta -- al volver queda con dialog.open
+          // pero FUERA del top layer (sin backdrop, sin Escape), roto e
+          // incerrable (misma clase que session-modal, #448). El close() nativo
+          // dispara onClose -> setSheetItem(null); la navegación del Link sigue.
+          onClick={() => dialogRef.current?.close()}
           className="flex items-center gap-3 rounded-card border border-border px-4 py-3"
         >
           <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-surface-muted text-muted-foreground">▤</span>

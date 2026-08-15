@@ -1,0 +1,1142 @@
+{
+  "docs": [
+    {
+      "author_key": [
+        "OL199285A"
+      ],
+      "author_name": [
+        "Juan Rulfo"
+      ],
+      "cover_i": 5419076,
+      "edition_count": 134,
+      "first_publish_year": 1955,
+      "key": "/works/OL1731119W",
+      "language": [
+        "gle",
+        "heb",
+        "gre",
+        "ger",
+        "eng",
+        "spa",
+        "swe",
+        "fre"
+      ],
+      "title": "Pedro Páramo",
+      "editions": {
+        "numFound": 7,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Pedro Páramo",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL199285A"
+      ],
+      "author_name": [
+        "Juan Rulfo"
+      ],
+      "cover_i": 3220981,
+      "edition_count": 52,
+      "first_publish_year": 1953,
+      "key": "/works/OL1731074W",
+      "language": [
+        "por",
+        "heb",
+        "gre",
+        "fre",
+        "spa",
+        "eng",
+        "ger"
+      ],
+      "title": "El llano en llamas",
+      "editions": {
+        "numFound": 42,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El llano en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL1394359A"
+      ],
+      "author_name": [
+        "Suzanne Collins"
+      ],
+      "cover_i": 12646539,
+      "edition_count": 116,
+      "first_publish_year": 2009,
+      "key": "/works/OL36410330W",
+      "language": [
+        "pol",
+        "chi",
+        "gre",
+        "dut",
+        "por",
+        "spa",
+        "kor",
+        "baq",
+        "tur",
+        "heb",
+        "ger",
+        "ita",
+        "swe",
+        "fre",
+        "eng",
+        "dan",
+        "cat",
+        "rus"
+      ],
+      "title": "Fatta Eld",
+      "editions": {
+        "numFound": 15,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "En llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL199285A"
+      ],
+      "author_name": [
+        "Juan Rulfo"
+      ],
+      "cover_i": 4901502,
+      "edition_count": 25,
+      "first_publish_year": 1969,
+      "key": "/works/OL1731097W",
+      "language": [
+        "eng",
+        "spa",
+        "por"
+      ],
+      "title": "Pedro Páramo / El llano en llamas",
+      "editions": {
+        "numFound": 24,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Pedro Páramo y El llano en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL31482A"
+      ],
+      "author_name": [
+        "Phyllis A. Whitney"
+      ],
+      "cover_i": 7349846,
+      "edition_count": 17,
+      "first_publish_year": 1985,
+      "key": "/works/OL60488W",
+      "language": [
+        "eng",
+        "spa"
+      ],
+      "title": "Flaming tree",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El árbol en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL25161A",
+        "OL3126860A"
+      ],
+      "author_name": [
+        "Orson Scott Card",
+        "Aaron Johnston"
+      ],
+      "cover_i": 8266507,
+      "edition_count": 10,
+      "first_publish_year": 2013,
+      "key": "/works/OL17207142W",
+      "language": [
+        "eng",
+        "spa",
+        "pol"
+      ],
+      "title": "Earth Afire",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "La tierra en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL30765A"
+      ],
+      "author_name": [
+        "Rick Riordan"
+      ],
+      "cover_i": 8174272,
+      "edition_count": 21,
+      "first_publish_year": 2018,
+      "key": "/works/OL17868260W",
+      "language": [
+        "cat",
+        "por",
+        "tur",
+        "eng",
+        "spa"
+      ],
+      "title": "The Burning Maze",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El laberinto en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL6287957A"
+      ],
+      "author_name": [
+        "Anabel Hernández"
+      ],
+      "cover_i": 11355421,
+      "edition_count": 1,
+      "first_publish_year": 2012,
+      "key": "/works/OL19963340W",
+      "language": [
+        "spa"
+      ],
+      "title": "México en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "México en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL547594A"
+      ],
+      "author_name": [
+        "Gamel Woolsey"
+      ],
+      "cover_i": 10520708,
+      "edition_count": 7,
+      "first_publish_year": 1939,
+      "key": "/works/OL3366094W",
+      "language": [
+        "spa",
+        "eng"
+      ],
+      "title": "Death's Other Kingdom",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Málaga en llamas",
+            "language": [
+              "spa",
+              "eng"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL10648922A",
+        "OL9394324A"
+      ],
+      "author_name": [
+        "Beatriz Larrea",
+        "Marian Rojas Estapé"
+      ],
+      "cover_i": 12879789,
+      "edition_count": 2,
+      "first_publish_year": 2022,
+      "key": "/works/OL28764087W",
+      "language": [
+        "spa"
+      ],
+      "title": "Tu cuerpo en llamas",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Tu cuerpo en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "cover_i": 12727474,
+      "edition_count": 1,
+      "first_publish_year": 2022,
+      "key": "/works/OL27729814W",
+      "title": "Tu cuerpo en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Tu cuerpo en llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL23108A"
+      ],
+      "author_name": [
+        "Johanna Lindsey"
+      ],
+      "cover_i": 7248012,
+      "edition_count": 2,
+      "first_publish_year": 1987,
+      "key": "/works/OL15602W",
+      "language": [
+        "spa"
+      ],
+      "title": "Corazones En Llamas",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Corazones En Llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL6382342A"
+      ],
+      "author_name": [
+        "Alvaro San Félix"
+      ],
+      "edition_count": 3,
+      "first_publish_year": 1980,
+      "key": "/works/OL13514011W",
+      "language": [
+        "spa"
+      ],
+      "title": "CAUDILLO EN LLAMAS",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "CAUDILLO EN LLAMAS",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL10648922A"
+      ],
+      "author_name": [
+        "Beatriz Larrea"
+      ],
+      "cover_i": 14380707,
+      "edition_count": 1,
+      "first_publish_year": 2023,
+      "key": "/works/OL36388124W",
+      "title": "Apaga tu cuerpo en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Apaga tu cuerpo en llamas en 30 días"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL690056A"
+      ],
+      "author_name": [
+        "Christiane Gohl"
+      ],
+      "cover_i": 7374806,
+      "edition_count": 6,
+      "first_publish_year": 2015,
+      "key": "/works/OL17219543W",
+      "language": [
+        "spa",
+        "eng",
+        "ger"
+      ],
+      "title": "Die Zeit der Feuerblüten",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "La estación de las flores en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL2687872A"
+      ],
+      "author_name": [
+        "Richard Wrangham"
+      ],
+      "cover_i": 10467531,
+      "edition_count": 1,
+      "first_publish_year": 2019,
+      "key": "/works/OL22468032W",
+      "title": "EN LLAMAS. CÓMO LA COCINA NOS HIZO HUMANOS",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "EN LLAMAS. CÓMO LA COCINA NOS HIZO HUMANOS"
+          }
+        ]
+      }
+    },
+    {
+      "cover_i": 8165043,
+      "edition_count": 1,
+      "first_publish_year": 1931,
+      "key": "/works/OL17861531W",
+      "language": [
+        "spa"
+      ],
+      "title": "España en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "España en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL1637795A"
+      ],
+      "author_name": [
+        "Salvador Smilovich"
+      ],
+      "edition_count": 2,
+      "first_publish_year": 1970,
+      "key": "/works/OL6278263W",
+      "language": [
+        "spa"
+      ],
+      "title": "Otoño en llamas",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Otoño en llamas.",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL29976A"
+      ],
+      "author_name": [
+        "Billy Graham"
+      ],
+      "cover_i": 5057839,
+      "edition_count": 1,
+      "first_publish_year": 1983,
+      "key": "/works/OL15421512W",
+      "language": [
+        "eng"
+      ],
+      "title": "El Mundo En Llamas/World Aflame",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El Mundo En Llamas/World Aflame",
+            "language": [
+              "eng"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL6549311A",
+        "OL7651446A"
+      ],
+      "author_name": [
+        "Robin Yassin-Kassab",
+        "Leila al-Shami"
+      ],
+      "cover_i": 8839880,
+      "edition_count": 6,
+      "first_publish_year": 2016,
+      "key": "/works/OL17696919W",
+      "language": [
+        "eng",
+        "spa",
+        "fre"
+      ],
+      "title": "Burning Country",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "País en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL5744955A"
+      ],
+      "author_name": [
+        "Jesús Ruiz Mantilla"
+      ],
+      "cover_i": 9423799,
+      "edition_count": 3,
+      "first_publish_year": 2012,
+      "key": "/works/OL16648114W",
+      "language": [
+        "spa"
+      ],
+      "title": "Ahogada en llamas",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Ahogada en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL682312A"
+      ],
+      "author_name": [
+        "William Nicholson"
+      ],
+      "cover_i": 3328762,
+      "edition_count": 3,
+      "first_publish_year": 2005,
+      "key": "/works/OL3828421W",
+      "language": [
+        "spa"
+      ],
+      "title": "Viento en llamas",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Viento en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL1583466A"
+      ],
+      "author_name": [
+        "Pablo Zogoibi"
+      ],
+      "edition_count": 1,
+      "key": "/works/OL6166240W",
+      "language": [
+        "spa"
+      ],
+      "title": "Cantera en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Cantera en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL9942910A",
+        "OL2654679A",
+        "OL9161186A",
+        "OL9942911A"
+      ],
+      "author_name": [
+        "Mallmann",
+        "Francis",
+        "V&R Editoras",
+        "Santiago Soto Monllor;Santiago Soto Monllor;Santiago Soto Monllor;Santiago Soto Monllor"
+      ],
+      "cover_i": 12328806,
+      "edition_count": 1,
+      "first_publish_year": 2015,
+      "key": "/works/OL26382022W",
+      "title": "Mallman en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Mallman en llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL5407295A",
+        "OL7986700A"
+      ],
+      "author_name": [
+        "Don Winslow",
+        "Victoria Horrillo Ledesma"
+      ],
+      "cover_i": 12726185,
+      "edition_count": 1,
+      "first_publish_year": 2022,
+      "key": "/works/OL27720017W",
+      "title": "Ciudad en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Ciudad en llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL7540189A"
+      ],
+      "author_name": [
+        "Alejandro Basañez Loyola"
+      ],
+      "edition_count": 1,
+      "first_publish_year": 2012,
+      "key": "/works/OL19963339W",
+      "language": [
+        "spa"
+      ],
+      "title": "Mexico en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Mexico en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "cover_i": 9282539,
+      "edition_count": 1,
+      "first_publish_year": 2020,
+      "key": "/works/OL20648691W",
+      "title": "Planeta en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Planeta en llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL7244936A",
+        "OL9191884A"
+      ],
+      "author_name": [
+        "Emmy Laybourne",
+        "Carlos Loscertales"
+      ],
+      "cover_i": 14296233,
+      "edition_count": 1,
+      "first_publish_year": 2017,
+      "key": "/works/OL35262525W",
+      "title": "Cielo en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Cielo en llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL1792055A"
+      ],
+      "author_name": [
+        "Bernardo Gil Mugarza"
+      ],
+      "edition_count": 2,
+      "first_publish_year": 1968,
+      "key": "/works/OL6646988W",
+      "language": [
+        "spa"
+      ],
+      "title": "España en llamas, 1936",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "España en llamas, 1936.",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL9868933A"
+      ],
+      "author_name": [
+        "Javier Gómez Pérez"
+      ],
+      "edition_count": 4,
+      "first_publish_year": 2015,
+      "key": "/works/OL30572689W",
+      "language": [
+        "spa"
+      ],
+      "title": "Adolf Hitler, el Mundo en Llamas",
+      "editions": {
+        "numFound": 4,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "ADOLF HITLER, el Mundo en Llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL7173196A",
+        "OL10133339A"
+      ],
+      "author_name": [
+        "Jennifer L. Armentrout",
+        "Guiomar Manso de Zuñiga Spottorno"
+      ],
+      "cover_i": 13709100,
+      "edition_count": 1,
+      "first_publish_year": 2023,
+      "key": "/works/OL34902707W",
+      "title": "Una luz en la llama",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Una luz en la llama"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL1792055A"
+      ],
+      "author_name": [
+        "Bernardo Gil Mugarza"
+      ],
+      "edition_count": 3,
+      "first_publish_year": 1968,
+      "key": "/works/OL6646987W",
+      "language": [
+        "spa"
+      ],
+      "title": "España en llamas, 1936",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "España en llamas, 1936",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL90715A"
+      ],
+      "author_name": [
+        "Alberto Vázquez-Figueroa"
+      ],
+      "cover_i": 12152014,
+      "edition_count": 3,
+      "first_publish_year": 2011,
+      "key": "/works/OL15935566W",
+      "language": [
+        "spa"
+      ],
+      "title": "El mar en llamas",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El mar en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL607652A"
+      ],
+      "author_name": [
+        "José Muñoz Cota"
+      ],
+      "edition_count": 3,
+      "first_publish_year": 1967,
+      "key": "/works/OL3591734W",
+      "language": [
+        "spa"
+      ],
+      "title": "Querétaro, Sinaí en llamas",
+      "editions": {
+        "numFound": 3,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Querétaro, Sinaí en llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL25793A",
+        "OL8505874A"
+      ],
+      "author_name": [
+        "Bernard Cornwell",
+        "Gregorio Cantera"
+      ],
+      "edition_count": 1,
+      "first_publish_year": 2010,
+      "key": "/works/OL25833564W",
+      "language": [
+        "spa"
+      ],
+      "title": "tierra en llamas (V)",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "tierra en llamas (V)",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL18979A"
+      ],
+      "author_name": [
+        "Michael Connelly"
+      ],
+      "cover_i": 7989095,
+      "edition_count": 1,
+      "first_publish_year": 2017,
+      "key": "/works/OL17713923W",
+      "title": "La habitación en llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "La habitación en llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL8186191A"
+      ],
+      "author_name": [
+        "Lena Valenti"
+      ],
+      "cover_i": 13581934,
+      "edition_count": 1,
+      "first_publish_year": 2017,
+      "key": "/works/OL34816375W",
+      "title": "LA TUMBA EN LLAMAS",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "LA TUMBA EN LLAMAS"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL6808106A",
+        "OL7885437A"
+      ],
+      "author_name": [
+        "John Flanagan",
+        "Guiomar Manso de Zúñiga"
+      ],
+      "cover_i": 14296492,
+      "edition_count": 1,
+      "first_publish_year": 2017,
+      "key": "/works/OL35262708W",
+      "title": "El Puente en Llamas",
+      "editions": {
+        "numFound": 1,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El Puente en Llamas"
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL199285A"
+      ],
+      "author_name": [
+        "Juan Rulfo"
+      ],
+      "cover_i": 12336542,
+      "edition_count": 2,
+      "first_publish_year": 1999,
+      "key": "/works/OL26389348W",
+      "language": [
+        "eng"
+      ],
+      "title": "Llano en llamas",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "Llano en Llamas",
+            "language": [
+              "eng"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "author_key": [
+        "OL408500A",
+        "OL9940655A"
+      ],
+      "author_name": [
+        "Louis De Wohl",
+        "Joaquín Esteban Perruca"
+      ],
+      "cover_i": 698138,
+      "edition_count": 12,
+      "first_publish_year": 1953,
+      "key": "/works/OL18506240W",
+      "language": [
+        "spa",
+        "slo",
+        "eng",
+        "fre"
+      ],
+      "title": "Set all afire",
+      "editions": {
+        "numFound": 2,
+        "start": 0,
+        "numFoundExact": true,
+        "docs": [
+          {
+            "title": "El Oriente en Llamas",
+            "language": [
+              "spa"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

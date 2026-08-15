@@ -114,6 +114,15 @@ export async function SagaHero({
         </div>
       )}
 
+      {/* allOptional (issue #194): total === 0 con miembros reales en el
+          subárbol (todo el subárbol es `optional`, o el único bloque hijo es
+          `optionalInParent`) — mismo hecho, mismo texto que ya usa la card de
+          Mi Biblioteca (`saga-library-card.tsx`) para su chip «siguiente».
+          Antes el hero ocultaba el bloque entero y no decía nada de esto. */}
+      {isAuthenticated && progress.total === 0 && memberCount > 0 && (
+        <p className="text-xs font-semibold text-muted-foreground">{t("allOptional")}</p>
+      )}
+
       {isAuthenticated && (
         <SagaFollowButton sagaId={saga.id} isFollowing={detail.isFollowing} />
       )}

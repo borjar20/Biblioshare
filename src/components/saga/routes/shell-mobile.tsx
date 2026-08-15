@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
+import type { RouteFormState } from "@/lib/sagas/route-actions";
 import { GeneratedMapRow, RouteRow, type RouteRowData } from "./route-row";
 import { RouteForm } from "./route-form";
 
@@ -16,7 +17,7 @@ export type ShellProps = {
   /** Ids de las filas movibles, en orden, para calcular extremos. */
   movableIds: string[];
   busyId: string | null;
-  error: string | null;
+  error: RouteFormState["error"] | null;
   onMove: (routeId: string, direction: "up" | "down") => void;
   onDesignate: (routeId: string | null) => void;
   onMenu: (routeId: string) => void;

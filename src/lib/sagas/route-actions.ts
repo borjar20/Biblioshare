@@ -21,28 +21,45 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // Guarda el SLUG, no el route_id: así vale también para las rutas sintéticas
 // («lectura», «publicacion») y si un curador borra la ruta, la preferencia
 // degrada sola al orden por defecto en vez de dejar una referencia rota.
-export async function adoptRoute(sagaId: string, slug: string): Promise<void> {
+// #174: las dos acciones YA NO se tragan el error del upsert/delete. Antes el
+// resultado de la escritura ni se leía: si RLS o una red caída rechazaban la
+// escritura, el <form> igual se desmontaba (unmount optimista de React) y el
+// usuario veía "Leyendo por aquí" sobre una preferencia que nunca se guardó
+// — la pantalla mentía sobre el estado real. Devolver RouteFormState obliga
+// al consumidor (AdoptRouteButton, convertido a Client Component con
+// useActionState — ver ese fichero) a leer el resultado antes de asumir éxito.
+export async function adoptRoute(sagaId: string, slug: string): Promise<RouteFormState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await supabase
+  const { error } = await supabase
     .from("saga_route_choices")
     .upsert({ user_id: user.id, saga_id: sagaId, route_slug: slug }, { onConflict: "user_id,saga_id" });
+  if (error) return { error: "generic" };
+
   revalidateSagaPage(sagaId);
+  return {};
 }
 
-export async function dropRoute(sagaId: string): Promise<void> {
+export async function dropRoute(sagaId: string): Promise<RouteFormState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await supabase.from("saga_route_choices").delete().eq("user_id", user.id).eq("saga_id", sagaId);
+  const { error } = await supabase
+    .from("saga_route_choices")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("saga_id", sagaId);
+  if (error) return { error: "generic" };
+
   revalidateSagaPage(sagaId);
+  return {};
 }
 
 // Curación de itinerarios (spec 2026-07-22, Task 8): crear, renombrar,
@@ -50,8 +67,27 @@ export async function dropRoute(sagaId: string): Promise<void> {
 // curación: gate collaborator+ en el server action, además del de RLS que ya
 // lleva la tabla (política "saga routes writable by collaborators"). Los
 // dos, nunca solo uno.
+//
+// #174: contrato ÚNICO de error para TODO el fichero (antes había cinco:
+// void con el error sin leer en adopt/drop/move, un booleano ciego en
+// delete, un string suelto en save). Se unifica en RouteFormState —ya era el
+// más expresivo de los cinco— y se ensancha su unión para cubrir también los
+// códigos que devuelven validateRouteDraft y la RPC save_saga_route.
 export type RouteFormState = {
-  error?: "nameRequired" | "slugTaken" | "forbidden" | "notFound" | "generic";
+  error?:
+    | "nameRequired"
+    | "slugTaken"
+    | "forbidden"
+    | "notFound"
+    | "generic"
+    | "positions"
+    | "xor"
+    | "duplicate"
+    | "foreignBlock"
+    | "foreignItem"
+    | "noteTooLong"
+    | "emptyRoute"
+    | "readingOrderEmpty";
 };
 
 // #176: `routeId` y `sagaId` llegan los DOS del cliente, y hasta esta issue
@@ -193,7 +229,11 @@ export async function renameRoute(
 // de drag & drop: la lista de rutas curadas de una saga es corta y así no
 // hace falta ninguna librería nueva ni lógica de puntero, y el resultado es
 // accesible por teclado de fábrica (son <button> normales).
-export async function moveRoute(routeId: string, sagaId: string, direction: "up" | "down"): Promise<void> {
+export async function moveRoute(
+  routeId: string,
+  sagaId: string,
+  direction: "up" | "down",
+): Promise<RouteFormState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -206,12 +246,19 @@ export async function moveRoute(routeId: string, sagaId: string, direction: "up"
   // no depender de que las posiciones de partida sean únicas — ver el
   // comentario en get-saga-routes.ts.
   const next = computeMovedPositions(routes, routeId, direction);
-  if (!next) return; // routeId no encontrado o ya en el extremo: nada que escribir.
+  if (!next) return {}; // routeId no encontrado o ya en el extremo: nada que escribir.
 
-  await Promise.all(
+  // #174: antes se ignoraban los resultados del Promise.all — un update
+  // rechazado a media reordenación dejaba las posiciones a medio escribir Y
+  // la pantalla revalidaba igual, mostrando el orden viejo como si el
+  // reordenado hubiera funcionado entero.
+  const results = await Promise.all(
     next.map((r) => supabase.from("saga_routes").update({ position: r.position }).eq("id", r.id)),
   );
+  if (results.some((r) => r.error)) return { error: "generic" };
+
   revalidateSagaPage(sagaId);
+  return {};
 }
 
 // Designar el «Orden de lectura» de una saga (fase 4). Con un itinerario
@@ -274,7 +321,7 @@ export async function setReadingOrder(
   return {};
 }
 
-export async function deleteRoute(routeId: string, sagaId: string): Promise<{ error?: boolean }> {
+export async function deleteRoute(routeId: string, sagaId: string): Promise<RouteFormState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -291,13 +338,19 @@ export async function deleteRoute(routeId: string, sagaId: string): Promise<{ er
   //
   // `.eq("saga_id", sagaId)` (#176): sin él, un routeId de otra saga se borraba
   // — y con él sus pasos, por el `on delete cascade` de saga_route_entries.
+  //
+  // #174: el booleano ciego `{ error: true }` se sustituye por el mismo
+  // contrato tipado que el resto del fichero — distingue "no había nada que
+  // borrar" (notFound) de un fallo real (generic), en vez de fundir los dos
+  // en un genérico "algo salió mal".
   const { data, error } = await supabase
     .from("saga_routes")
     .delete()
     .eq("id", routeId)
     .eq("saga_id", sagaId)
     .select("id");
-  if (error || !data || data.length === 0) return { error: true };
+  if (error) return { error: "generic" };
+  if (!data || data.length === 0) return { error: "notFound" };
 
   revalidateSagaPage(sagaId);
   return {};
@@ -307,12 +360,18 @@ export async function deleteRoute(routeId: string, sagaId: string): Promise<{ er
 // RPC save_saga_route (SECURITY DEFINER, gate collaborator+ interno — Task 1).
 // Mismo gate duplicado que el resto de este fichero: el de aquí da un error
 // legible en la UI antes de llegar a la RPC; el de la RPC es la garantía real.
+//
+// #174: `{ error?: string }` (sin tipar) se sustituye por RouteFormState. Los
+// códigos que devuelve `validateRouteDraft` (positions/xor/duplicate/…) son
+// `string[]` genérico porque esa función también la usa validate-sequence
+// con su propio vocabulario — de ahí el cast: aquí SÍ se sabe que los suyos
+// están todos en la unión de RouteFormState (misma lista que routeErrors.*).
 export async function saveRoute(
   routeId: string,
   sagaId: string,
   entries: RawRouteEntry[],
   descendantIds: string[],
-): Promise<{ error?: string }> {
+): Promise<RouteFormState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -325,7 +384,7 @@ export async function saveRoute(
   // roundtrip. Quien decide de verdad qué bloques y qué obras caben es la RPC,
   // que recalcula el subárbol en servidor (#176, migración 20260809).
   const problems = validateRouteDraft(entries, { descendantIds: new Set(descendantIds) });
-  if (problems.length > 0) return { error: problems[0] };
+  if (problems.length > 0) return { error: problems[0] as RouteFormState["error"] };
 
   // Dos cosas en una consulta:
   //   - pertenencia (#176): la ruta tiene que ser de ESTA saga. Antes esta

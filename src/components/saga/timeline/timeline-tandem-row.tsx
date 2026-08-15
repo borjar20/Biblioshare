@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { TimelineRow } from "@/lib/sagas/derive-timeline";
 import { RoleRibbon } from "./role-ribbon";
+import { SkipOptionalButton } from "./skip-optional-button";
 import { TimelineBranchRow } from "./timeline-branch";
 import type { TimelineLabels } from "./timeline-labels";
 
@@ -24,12 +25,11 @@ export function TimelineTandemRow({
   row: TandemRow;
   labels: TimelineLabels;
   showGroupLabel: boolean;
-  /** Ficha que hay que revalidar al saltar; null sin sesión. Aquí solo viaja
-   *  hacia las RAMAS: las obras del propio tándem no llevan botón de saltar.
-   *  Hoy no hay ninguna obra opcional dentro de un tándem en producción (hay un
-   *  solo tándem, y sus dos obras cuentan), así que se deja fuera en vez de
-   *  inventarle un sitio a la píldora dentro de una fila que ya comparte
-   *  número. Abierto como issue #233. */
+  /** Ficha que hay que revalidar al saltar; null sin sesión. Viaja hacia las
+   *  RAMAS y hacia cada obra del propio tándem que sea opcional (issue #233):
+   *  el número/corchete se comparte, pero la píldora de saltar es por obra,
+   *  junto a su título — no tiene sentido saltar el hueco entero cuando solo
+   *  una de las N obras es opcional. */
   sagaId: string | null;
 }) {
   const accent = row.nodes[0]?.accent ?? "beige";
@@ -63,8 +63,11 @@ export function TimelineTandemRow({
           {row.note && <p className="mt-1 text-[11px] italic text-muted-foreground">{row.note}</p>}
           <ul className="mt-2 flex flex-col gap-2">
             {row.nodes.map((n) => (
-              <li key={n.id}>
-                <Link href={n.href} className="flex items-center gap-3">
+              <li key={n.id} className="flex items-center gap-2">
+                {/* El botón es HERMANO del enlace, no hijo: un <form> dentro de
+                    un <a> es HTML inválido (mismo motivo que en
+                    timeline-entry-row.tsx y timeline-branch.tsx). */}
+                <Link href={n.href} className="flex min-w-0 flex-1 items-center gap-3">
                   <span className="relative h-[57px] w-[38px] shrink-0 overflow-hidden rounded shadow">
                     {n.coverUrl && <Image src={n.coverUrl} alt="" fill sizes="38px" className="object-cover" />}
                     {n.status === "completed" && (
@@ -89,6 +92,7 @@ export function TimelineTandemRow({
                     )}
                   </span>
                 </Link>
+                {n.optional && <SkipOptionalButton sagaId={sagaId} node={n} labels={labels} />}
               </li>
             ))}
           </ul>

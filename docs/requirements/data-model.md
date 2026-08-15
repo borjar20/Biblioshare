@@ -51,7 +51,7 @@ recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a 
 migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
 bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
 `anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**; **los avisos de seguimiento nacen del post, no del hecho (§5.3), 2026-08-13**: `notification_type` gana `followed_started`/`followed_dropped`/`followed_thought` y `follows.notify_events` cambia de dominio a `milestone|progress|thought`; verificado en dev contra `enum_range` y `follows` reales el 2026-08-13; **las dos migraciones aplicadas y verificadas en PROD el 2026-08-13**: `20260856` (el enum, aditiva pura, verificada contra `pg_enum`) por delante, y `20260857` (la de datos) **después de desplegar el código** (merge de #629 y deploy de producción en verde) — 8 filas a `{milestone,progress,thought}`, 4 vacías intactas, cero filas con vocabulario viejo; el orden importa y está razonado en §5.3]**
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**; **los avisos de seguimiento nacen del post, no del hecho (§5.3), 2026-08-13**: `notification_type` gana `followed_started`/`followed_dropped`/`followed_thought` y `follows.notify_events` cambia de dominio a `milestone|progress|thought`; verificado en dev contra `enum_range` y `follows` reales el 2026-08-13; **las dos migraciones aplicadas y verificadas en PROD el 2026-08-13**: `20260856` (el enum, aditiva pura, verificada contra `pg_enum`) por delante, y `20260857` (la de datos) **después de desplegar el código** (merge de #629 y deploy de producción en verde) — 8 filas a `{milestone,progress,thought}`, 4 vacías intactas, cero filas con vocabulario viejo; el orden importa y está razonado en §5.3; **motivo de abandono (§3), 2026-08-14 — corregido aquí el mismo día: aplicado y verificado en DEV y en PROD**, no solo dev — `passes.dropped_reason`/`dropped_reason_note`, enmascarados por dueño en `pass_reviews`, sin `grant select` en la tabla, verificado contra `information_schema.column_privileges` de prod antes de mergear el código (la migración va delante del despliegue, no detrás, para no vaciar el diario de nadie)]**
 
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
 > **Este es el documento canónico del esquema.** Verificado contra producción el
@@ -71,6 +71,13 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
 > servidor usa `service_role`. Spec:
 > `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
+> **Delta del 2026-08-14 (menciones `@usuario`, issue #320): `create_club_poll()` pasa de
+> `returns void` a `returns uuid`** (el id del post creado), para que `createPoll` pueda
+> notificar `@menciones` en la pregunta de la encuesta igual que `createTextPost`/
+> `createShareActivityPost`. Migración `20260860_create_club_poll_returns_id.sql`
+> (DROP + CREATE, `CREATE OR REPLACE` no permite cambiar el tipo de retorno), aplicada y
+> verificada en DEV **y en PROD** contra `pg_proc.prorettype` (no solo el ledger) — grants y
+> `search_path = public, pg_temp` intactos en ambos entornos.
 > **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
 > `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
 > Son siete migraciones:
@@ -453,8 +460,9 @@ Prod está **sin medir**. Ver issue #609.
 **`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
 `20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
 2026-08-12** contra `information_schema.column_privileges`). Marca que ya se trajo la obra
-COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o
-`/authors/{key}/works.json` de Open Library—. Con valor, la ficha de persona no vuelve a
+COMPLETA de la persona desde su API externa —`/person/{id}/combined_credits` de TMDB, o dos
+pasadas de `search.json` de Open Library por `author_key` (`lang=es` y `lang=en`, normalizadas
+por `normalizeAuthorWorks`)—. Con valor, la ficha de persona no vuelve a
 llamar a la API: sirve `credits` y punto.
 
 Lleva **`grant update (credits_hydrated_at) on people to authenticated`** en la misma
@@ -467,6 +475,29 @@ Antes de esto, «Su obra» de una ficha de persona era solo lo que `ensureItemEn
 escrito al abrir la ficha de **una obra concreta**: una persona con una sola película abierta
 afirmaba, sin matices, que esa era toda su obra. No era un hueco, era una afirmación falsa.
 
+> **Delta del 2026-08-13 (`people.aliases`, autores de libro por Open Library key): columna +
+> grants de SELECT, INSERT y REFERENCES aplicados y verificados en DEV** contra
+> `information_schema.column_privileges` (migración `20260859_people_aliases.sql`; **prod
+> pendiente — es la ÚNICA migración de esta rama que falta en producción**). Spec:
+> `docs/superpowers/specs/2026-08-13-autores-libro-datos-design.md`.
+>
+> Dos correcciones del 2026-08-14, al comprobar el estado real de prod antes de mezclar: el
+> fichero se renombró de `20260853_` a `20260859_` (compartía prefijo con
+> `20260853_activities_progress.sql`, que llegó por `main`), y se le añadió el **grant de
+> SELECT**, que faltaba. Sin él, prod habría quedado distinto de dev —donde `aliases` sí lo
+> tiene— y un futuro `select *` sobre `people`, o simplemente añadir `aliases` a
+> `PERSON_COLUMNS`, habría fallado solo en producción.
+
+| Columna | Tipo | Para qué |
+|---|---|---|
+| `aliases` | `text[] not null default '{}'` | Otras grafías del nombre (otros idiomas y alfabetos). El visible es `name`. Solo lo escribe el alta de autor y el backfill. |
+
+Open Library da un nombre canónico que puede venir en otro alfabeto (`Фёдор Достоевский`) y una
+lista de variantes; se enseña la forma latina y el resto se guarda aquí, que es lo que permite
+reconocer "Dostoievski" y "Fyodor Dostoyevsky" como la MISMA fila en vez de crear una por idioma.
+Igual que `credits_hydrated_at`, **sin grant de `UPDATE` a propósito**: la app no reescribe
+personas, y el backfill que corrige nombres y alias va con `service_role`.
+
 ## 3. El pase: el hub del estado
 
 **`passes` es la tabla central del usuario.** Una fila por *pase* — una lectura o visionado
@@ -474,8 +505,9 @@ concreto de un ítem. Releer un libro es un pase nuevo, no una edición del ante
 
 Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status`:
 `planned|in_progress|completed|dropped`), `is_active`, `position` (jsonb), `rating`,
-`review`, `is_public`, `planned_on`/`started_on`/`finished_on`, `edition_id`, y
-`pinned_order` (las de cola se borraron, ver «`queues` ya no existe»).
+`review`, `is_public`, `planned_on`/`started_on`/`finished_on`, `edition_id`,
+`dropped_reason`/`dropped_reason_note`, y `pinned_order` (las de cola se borraron, ver
+«`queues` ya no existe»).
 
 - **Fechas hito**: `planned_on` (entró en la pila), `started_on` (se empezó a leer/ver) y
   `finished_on` (se terminó). Las fija `planTransition` (`src/lib/passes/transitions.ts`) en
@@ -484,6 +516,19 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   Por eso «la pila» ordena por `created_at` (proxy con datos para todos) y no por `planned_on`.
 
 - **`is_active`** distingue el pase en curso de los cerrados. Solo uno activo por ítem.
+- **`dropped_reason`/`dropped_reason_note`** (migración `20260858_pass_dropped_reason.sql`,
+  **aplicada y verificada en DEV y en PROD el 2026-08-14** contra
+  `information_schema.columns`/`column_privileges` de los dos entornos (en
+  prod: `authenticated` solo `UPDATE` en ambas columnas, sin `SELECT`, sin
+  `anon` — idéntico a dev): motivo de abandono,
+  enum cerrado (`no_enganchado|aburrido|no_es_momento|no_esperado|otro`) +
+  nota libre solo con `otro`. **Siempre privado**, con independencia de
+  `is_public` — sin `grant select` en `passes` (la RLS de SELECT de la tabla
+  es de visibilidad de PERFIL, `can_view_profile`, no de dueño; un grant ahí
+  se filtraría a cualquiera que vea el perfil). Se lee solo por
+  `pass_reviews`, enmascarado por `d.user_id = auth.uid()` dentro de la
+  vista. Solo `grant update`, necesario para `closePass`/`updatePass`. Sin
+  backfill: pases `dropped` previos quedan con motivo `NULL`.
 - **El pase es dueño de la nota y la reseña**, no la entrada de biblioteca: cada relectura
   puede tener su propia valoración.
 - **`position` es jsonb** porque es lo único que varía por tipo: `{"page": 42}` en libros,
@@ -1500,9 +1545,45 @@ reproducir el `drop`+`create` — prod nunca pasó por la forma intermedia de
 
 **Pendiente, con issue:** el camino de la consigna de la casa no tiene cobertura
 automática de test (depende del día real de la semana); `resolveTargetHrefs` toma
-`targetType` como `string` en vez de una unión de tipos; el histórico no pinta los huecos
-«Sin ronda»; faltan los avatares del titular y de quién ya ha respondido. Detalle de cada
-una en las issues abiertas (ver `backlog.md`).
+`targetType` como `string` en vez de una unión de tipos; faltan los avatares del titular y
+de quién ya ha respondido. Detalle de cada una en las issues abiertas (ver `backlog.md`).
+
+### 6.1.1 Huecos «Sin ronda» en el histórico — `list_club_round_weeks` (dev y prod, 2026-08-14)
+
+Issue #403. `listRoundHistory` (`src/lib/clubs/rounds/history.ts`) listaba las últimas N
+**rondas que existen**, no las últimas N **semanas de calendario**: una semana muerta
+(nadie propuso, nadie respondió a la consigna de la casa — §2.4, sin fila hasta que alguien
+la responde) desaparecía de la lista en vez de mostrar un hueco «Sin ronda» en su sitio
+cronológico.
+
+`public.list_club_round_weeks(p_club_id uuid, p_weeks int default 4) returns
+table(period_key, round_id, author_id, prompt)` (`SECURITY DEFINER`, migración
+`supabase/migrations/20260814_club_round_history_weeks.sql`) genera la serie de semanas ISO
+**en SQL** (`generate_series` sobre `date_trunc('week', private.club_now())`, `left join`
+a `club_rounds`) — nunca en TypeScript: es la misma razón por la que el periodo actual
+tampoco se calcula ahí (decisión del 2026-08-03). `round_id` (y `author_id`/`prompt`) `NULL`
+= esa semana no tiene ronda. Recortada a partir de la semana de nacimiento del club
+(`date_trunc('week', timezone('Europe/Madrid', clubs.created_at))`, mismo cálculo que la CTE
+`turno` de `get_club_round_state`) para que un club joven no enseñe huecos de semanas
+anteriores a su propia creación. `SECURITY DEFINER` porque necesita llamar a
+`private.club_now()` (revocada a `authenticated`); el gate de socio se pone a mano con
+`is_club_member()`, igual que `get_club_round_state` — sin fila si quien llama no es socio
+(silencio, no excepción; la puerta de verdad la pone la página).
+
+`listRoundHistory` llama a esta RPC y traduce cada fila a `RoundHistoryEntry` (`prompt:
+null` en los huecos); `getInteractionSummary` solo recibe los `round_id` no nulos, nunca uno
+inventado para una semana sin fila real en `club_rounds`. `RoundHistory` pinta
+`t("historyEmptyWeek")` («Sin ronda») en vez del prompt cuando es `null`, y omite el
+recuento de respuestas en esa fila.
+
+**Verificado en dev y prod contra objetos reales (`pg_proc`, nunca `list_migrations`)**:
+función presente en `public`, `SECURITY DEFINER`, `language sql`, `search_path` fijado a
+`''`; privilegios `EXECUTE` en `{postgres, authenticated, service_role}`, sin `anon` ni
+`PUBLIC`. Comportamiento probado con clubes desechables (creados y borrados en la misma
+sesión, sin dejar rastro): club antiguo con hueco a propósito en la semana -3 devuelve
+exactamente ese patrón (`round_id` presente en -1/-2/-4, `NULL` en -3); club recién creado
+(`created_at` = esta semana) devuelve **cero filas**, no huecos fantasma antes de existir;
+llamar como no-socio (o sin sesión) también devuelve cero filas.
 
 ### 6.2 «Pensamiento»: tabla `thoughts` — SUPERSEDIDA y RETIRADA (dev y **prod**, 2026-08-09)
 

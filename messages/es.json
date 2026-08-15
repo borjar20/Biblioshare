@@ -235,6 +235,17 @@
     "review": "Reseña",
     "reviewPlaceholder": "Qué te ha parecido…",
     "isPublic": "Visible para la comunidad",
+    "droppedReason": {
+      "label": "Motivo (opcional)",
+      "options": {
+        "no_enganchado": "No enganchó",
+        "aburrido": "Me aburrió",
+        "no_es_momento": "No es el momento (lo retomaré)",
+        "no_esperado": "No era lo que esperaba",
+        "otro": "Otro"
+      },
+      "notePlaceholder": "Cuéntanos más…"
+    },
     "skip": "Ahora no",
     "submit": "Guardar",
     "submitting": "Guardando…",
@@ -247,6 +258,7 @@
     "errors": {
       "invalidDate": "La fecha no es válida.",
       "invalidRating": "La nota va de media estrella a cinco.",
+      "invalidReason": "Motivo no válido.",
       "generic": "No se pudo guardar."
     },
     "resume": {
@@ -670,6 +682,8 @@
       "itemLink": "Ver la obra",
       "historyTitle": "Rondas anteriores",
       "historyAnswers": "{count} respuestas",
+      "historyEmptyWeek": "Sin ronda",
+      "backToCurrent": "← Volver a la ronda actual",
       "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
       "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
     }
@@ -1471,6 +1485,7 @@
     "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",
     "avgRating": "★ {rating}",
     "yourProgress": "Tu progreso",
+    "allOptional": "Nada de esta saga cuenta para el avance: aquí, todo es opcional",
     "synopsis": "Sinopsis",
     "noSynopsis": "Sin sinopsis disponible.",
     "nexusGroup": "Nexo",
@@ -1486,6 +1501,7 @@
     "orderPublication": "Publicación",
     "routeAdopt": "Leer por aquí",
     "routeAdopted": "Leyendo por aquí",
+    "routeAdoptError": "No se pudo guardar tu elección. Inténtalo de nuevo.",
     "routeProgress": "Llevas {completed} de {total} de esta ruta",
     "routeBlockCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "routeEmpty": "Esta ruta aún no tiene pasos.",

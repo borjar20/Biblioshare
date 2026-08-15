@@ -2,7 +2,9 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getMovieDetails, getSeriesDetails, type ScreenDetails } from "@/lib/catalog/tmdb";
 import { persistCollectionMembership } from "@/lib/sagas/persist-collection";
-import { findOrCreatePeopleByTmdb, findOrCreateBookAuthor } from "./find-or-create-person";
+import { findOrCreatePeopleByTmdb, findOrCreateBookAuthorByKey } from "./find-or-create-person";
+import { fetchWorkAuthorKeys } from "@/lib/catalog/openlibrary/work-authors";
+import { resolveWorkByTitleAuthor } from "@/lib/catalog/openlibrary/work-search";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -11,7 +13,12 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type EnrichableItem = {
   id: string;
   tmdbId?: number | null;
+  /** Solo libros: el texto de portada, ya NO fuente de identidad de personas. */
   author?: string | null;
+  /** Solo libros: hace falta para resolver la obra cuando no hay work key. */
+  title?: string | null;
+  /** Solo libros: "/works/OL…W". La identidad de los autores sale de aquí. */
+  openlibraryWorkKey?: string | null;
   durationMinutes?: number | null;
   totalEpisodes?: number | null;
   episodeRuntimeMinutes?: number | null;
@@ -26,11 +33,6 @@ export function needsSizeHydration(itemType: ItemType, item: EnrichableItem): bo
   if (itemType === "series")
     return item.totalEpisodes == null || item.episodeRuntimeMinutes == null;
   return false;
-}
-
-// Un mismo autor puede venir como "A, B" (varios autores) desde la búsqueda.
-function splitAuthors(author: string): string[] {
-  return [...new Set(author.split(",").map((n) => n.trim()).filter(Boolean))].slice(0, 4);
 }
 
 // ⚠️ NO es "¿hay algún crédito?", que es lo que preguntaba antes y estaba MAL.
@@ -130,8 +132,48 @@ export async function ensureItemEnriched(
 
     if (itemType === "book") {
       if (!needsCredits) return;
-      if (!item.author) return;
-      const names = splitAuthors(item.author);
+
+      // La identidad de los autores sale de la OBRA, no del texto de portada.
+      // Si el libro no guardó su work key (alta manual, CSV, ISBN que no
+      // resolvió), se resuelve por título+autor y se guarda para no repetir la
+      // búsqueda en cada visita — y de paso esa misma respuesta ya trae las
+      // claves de autor, sin una segunda llamada.
+      let authorKeys: string[] = [];
+      if (item.openlibraryWorkKey) {
+        authorKeys = await fetchWorkAuthorKeys(item.openlibraryWorkKey);
+      } else if (item.title) {
+        const resolved = await resolveWorkByTitleAuthor(item.title, item.author ?? null);
+        if (resolved) {
+          // Las claves de autor se aprovechan siempre, aunque el título no
+          // case exacto: son útiles hasta de un acierto imperfecto.
+          authorKeys = resolved.authorKeys;
+
+          // Pero la work key SOLO se persiste si el título coincide. El
+          // principio fundador de este cambio es que un nombre no es
+          // identidad; guardar aquí un acierto fuzzy sin verificar, en una
+          // columna que OTRAS features (ensureBookHydrated: sinopsis,
+          // ediciones) tratan como verdad, colaría ese mismo error de vuelta
+          // por otra puerta — y de forma permanente, porque una vez escrita
+          // ya no se vuelve a resolver.
+          if (resolved.titleMatches) {
+            // 42501 = visitante anónimo, que no tiene UPDATE sobre `books`.
+            // Esperado e inocuo: la guardará el primer visitante con sesión.
+            const { error } = await supabase
+              .from("books")
+              .update({ openlibrary_work_key: resolved.workKey })
+              .eq("id", item.id);
+            if (error && error.code !== "42501") {
+              console.error("book work key update failed", { id: item.id, error });
+            }
+          }
+        }
+      }
+
+      // Sin obra o sin autores en ella no se escribe NADA. La ficha enseñará
+      // `books.author` como texto plano, sin enlace a ficha de persona. Es
+      // deliberado: mejor sin autor que con uno inventado (spec de 2026-08-13).
+      if (authorKeys.length === 0) return;
+
       const rows: Array<{
         item_type: ItemType;
         item_id: string;
@@ -140,8 +182,11 @@ export async function ensureItemEnriched(
         billing_order: number;
       }> = [];
       let order = 0;
-      for (const name of names) {
-        const personId = await findOrCreateBookAuthor(supabase, name);
+      for (const key of authorKeys) {
+        const personId = await findOrCreateBookAuthorByKey(supabase, key);
+        // null = autor sin grafía latina (duplicado en otro alfabeto) o alta
+        // fallida. Se omite ESE autor, no el libro entero.
+        if (!personId) continue;
         rows.push({
           item_type: "book",
           item_id: item.id,
@@ -150,13 +195,22 @@ export async function ensureItemEnriched(
           billing_order: order++,
         });
       }
-      // UPSERT y no INSERT, por el mismo motivo que abajo: el autor puede estar
-      // ya puesto por la hidratación de su ficha de persona.
+
+      // UPSERT y no INSERT: el autor puede estar ya puesto por la hidratación
+      // de su ficha de persona.
+      //
+      // 42501 = visitante anónimo, sin INSERT sobre `credits`. Esperado e
+      // inocuo: lo escribirá el primer visitante con sesión. Cualquier otro
+      // error SÍ se registra: esta es la escritura por la que existe todo
+      // este cambio, y antes se descartaba en silencio.
       if (rows.length > 0) {
-        await supabase.from("credits").upsert(rows, {
+        const { error } = await supabase.from("credits").upsert(rows, {
           onConflict: "item_type,item_id,person_id,role",
           ignoreDuplicates: true,
         });
+        if (error && error.code !== "42501") {
+          console.error("book credits upsert failed", { id: item.id, count: rows.length, error });
+        }
       }
       return;
     }

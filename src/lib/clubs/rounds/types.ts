@@ -32,10 +32,12 @@ export type RoundState = {
   housePrompt: string | null;
 };
 
-/** Una semana del histórico. `prompt: null` = esa semana no hubo ronda.
- *  Hoy nunca llega `null` en la práctica: `listRoundHistory` solo lista
- *  rondas que existen, no la serie completa de semanas ISO (ver su
- *  comentario). El campo queda nullable para cuando se rellenen los huecos. */
+/** Una semana del histórico. `prompt: null` = esa semana no hubo ronda ("Sin
+ *  ronda", issue #403) -- la serie de semanas la genera en SQL la RPC
+ *  `list_club_round_weeks` (`generate_series` + `left join club_rounds`,
+ *  migración `20260814_club_round_history_weeks`), nunca `listRoundHistory`
+ *  a mano: es la misma razón por la que el periodo actual tampoco se calcula
+ *  en TS (decisión del 2026-08-03). */
 export type RoundHistoryEntry = {
   periodKey: string;
   prompt: string | null;

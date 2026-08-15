@@ -103,6 +103,10 @@ export function ProfileSettingsSheet({
             {isAdmin && (
               <Link
                 href="/admin"
+                // Cierra el <dialog> antes de navegar: con Cache Components la
+                // hoja no se desmonta en navegación soft y quedaría rota e
+                // incerrable al volver (#448, como item-connect-sheet).
+                onClick={() => dialogRef.current?.close()}
                 className="inline-flex items-center gap-1.5 label-section underline hover:text-foreground"
               >
                 <LockIcon className="h-3.5 w-3.5" />

@@ -17,6 +17,7 @@ describe("planMembershipOps", () => {
       deleteFrom: [],
       insert: { saga_id: "root", position: null, placement: null, role: null, is_primary: true },
       promoteTarget: false,
+      patchTarget: null,
     });
   });
 
@@ -27,7 +28,7 @@ describe("planMembershipOps", () => {
       "childA",
       true,
     );
-    expect(plan).toEqual({ deleteFrom: [], insert: null, promoteTarget: false });
+    expect(plan).toEqual({ deleteFrom: [], insert: null, promoteTarget: false, patchTarget: null });
   });
 
   it("mover entre hermanas conserva position y re-promociona primary (DEFER F1)", () => {
@@ -41,6 +42,7 @@ describe("planMembershipOps", () => {
       deleteFrom: ["childA"],
       insert: { saga_id: "childB", position: 3, placement: "fijo", role: null, is_primary: true },
       promoteTarget: false,
+      patchTarget: null,
     });
   });
 
@@ -55,6 +57,7 @@ describe("planMembershipOps", () => {
       deleteFrom: ["childA"],
       insert: { saga_id: "root", position: 1, placement: "fijo", role: null, is_primary: false },
       promoteTarget: false,
+      patchTarget: null,
     });
   });
 
@@ -65,7 +68,7 @@ describe("planMembershipOps", () => {
       "childB",
       true,
     );
-    expect(plan).toEqual({ deleteFrom: ["root", "childA"], insert: null, promoteTarget: true });
+    expect(plan).toEqual({ deleteFrom: ["root", "childA"], insert: null, promoteTarget: true, patchTarget: null });
   });
 
   it("en destino sin primary + primary en hermana → borra la hermana y promociona el destino (Critical de revisión)", () => {
@@ -75,7 +78,84 @@ describe("planMembershipOps", () => {
       "root",
       true,
     );
-    expect(plan).toEqual({ deleteFrom: ["childA"], insert: null, promoteTarget: true });
+    expect(plan).toEqual({ deleteFrom: ["childA"], insert: null, promoteTarget: true, patchTarget: null });
+  });
+});
+
+// #186: si el ítem YA tiene fila en el destino, position/role de la hermana
+// borrada se perdían sin avisar. Fix: "enrich-only" (mismo principio que
+// enforce_people_enrich_only) — el destino gana en cualquier campo que ya
+// tenga no-nulo; la hermana solo rellena lo que el destino tiene a null.
+describe("patchTarget: enrich-only al mover a un destino que ya tiene fila (#186)", () => {
+  it("destino en bruto (cache-as-you-go) + hermana curada → arrastra position+placement+role", () => {
+    const plan = planMembershipOps(
+      { itemType: "movie", itemId: "m1", targetSagaId: "root" },
+      [
+        row("root"), // fila en bruto: position/placement/role null, is_primary false
+        row("childA", { position: 2, placement: "fijo", role: "precuela", is_primary: true }),
+      ],
+      "root",
+      true,
+    );
+    expect(plan.insert).toBeNull();
+    expect(plan.patchTarget).toEqual({ position: 2, placement: "fijo", role: "precuela" });
+    // Caso real del issue: la hermana borrada era primary → el destino la hereda.
+    expect(plan.promoteTarget).toBe(true);
+  });
+
+  it("destino ya tiene position/placement propios → no se tocan, aunque la hermana traiga otros", () => {
+    const plan = planMembershipOps(
+      { itemType: "movie", itemId: "m1", targetSagaId: "root" },
+      [
+        row("root", { position: 1, placement: "fijo" }),
+        row("childA", { position: 9, placement: "fijo", role: "spin_off" }),
+      ],
+      "root",
+      true,
+    );
+    // role sí estaba a null en el destino → se rellena; position/placement no.
+    expect(plan.patchTarget).toEqual({ position: null, placement: null, role: "spin_off" });
+  });
+
+  it("destino ya tiene role propio → no se sobreescribe aunque la hermana traiga otro", () => {
+    const plan = planMembershipOps(
+      { itemType: "movie", itemId: "m1", targetSagaId: "root" },
+      [
+        row("root", { role: "precuela" }),
+        row("childA", { position: 4, placement: "fijo", role: "spin_off" }),
+      ],
+      "root",
+      true,
+    );
+    expect(plan.patchTarget).toEqual({ position: 4, placement: "fijo", role: null });
+  });
+
+  it("destino curado como 'libre' (sin número, a propósito) → no se le cuela un position de la hermana", () => {
+    // placement='libre' es una decisión de curación (no un hueco vacío como el
+    // bruto de cache-as-you-go): CHECK saga_items_placement_position exige
+    // position=null cuando placement≠'fijo', así que colarle un position aquí
+    // rompería el CHECK Y pisaría la curación. patchTarget respeta el campo
+    // acoplado (position+placement) como ya-no-nulo y no lo toca.
+    const plan = planMembershipOps(
+      { itemType: "movie", itemId: "m1", targetSagaId: "root" },
+      [
+        row("root", { placement: "libre" }),
+        row("childA", { position: 4, placement: "fijo" }),
+      ],
+      "root",
+      true,
+    );
+    expect(plan.patchTarget).toBeNull();
+  });
+
+  it("nada que arrastrar (hermanas también en bruto) → patchTarget null", () => {
+    const plan = planMembershipOps(
+      { itemType: "movie", itemId: "m1", targetSagaId: "root" },
+      [row("root"), row("childA")],
+      "root",
+      true,
+    );
+    expect(plan.patchTarget).toBeNull();
   });
 });
 

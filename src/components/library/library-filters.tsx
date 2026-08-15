@@ -15,9 +15,9 @@ const STATUSES: MediaStatus[] = [
   "completed",
   "dropped",
 ];
-// Las películas solo tienen dos estados (pendiente/vista, ver StatusSegments):
-// al filtrar por tipo "movie" no ofrecemos "en curso" ni "abandonado".
-const MOVIE_STATUSES: MediaStatus[] = ["planned", "completed"];
+// Las películas tienen tres estados (pendiente/vista/abandonada, ver StatusSegments):
+// al filtrar por tipo "movie" no ofrecemos "en curso".
+const MOVIE_STATUSES: MediaStatus[] = ["planned", "completed", "dropped"];
 const SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 export async function LibraryFilters({
