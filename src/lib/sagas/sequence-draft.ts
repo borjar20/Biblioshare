@@ -3,7 +3,7 @@ import type { SagaItemRole, SagaPlacement, TandemMode, WindowReason } from "./ty
 
 /** Las tres zonas de la pantalla. La zona ES la colocación (spec §«Tres zonas»):
  *  no hay desplegable de `placement`, se deriva de dónde vive la fila. */
-export type ZoneId = "sequence" | "free" | "unclassified";
+export type ZoneId = "sequence" | "free" | "anchored" | "unclassified";
 
 /** Un ancla apunta a una obra o a un bloque del subárbol. Lleva el título
  *  resuelto porque el editor la pinta sin volver a consultar. */
@@ -122,6 +122,10 @@ export type SequenceDraft = {
   /** La secuencia, hueco a hueco. */
   slots: DraftSlot[];
   free: DraftEntry[];
+  /** Zona "Anclado": placement `anclado`. Como `free`, admite ventana — pero
+   *  aquí la ventana ES el sentido de la zona (colocación relativa obligatoria),
+   *  no un extra opcional. */
+  anchored: DraftEntry[];
   unclassified: DraftEntry[];
   /** Claves dadas de baja que SÍ existían en BD. Viaja al RPC como `p_removed`;
    *  el borrado por omisión está prohibido (spec §«Por qué la baja es explícita»). */
@@ -198,7 +202,7 @@ export type SequencePayload = {
   tandems: Array<{ position: number; modo: TandemMode | null; nota: string | null }>;
 };
 
-const ZONES = ["free", "unclassified"] as const;
+const ZONES = ["free", "anchored", "unclassified"] as const;
 
 /** Saca una entrada de donde esté y devuelve el draft sin ella + la entrada.
  *  Cerrar el hueco vacío es parte de sacar: un hueco sin entradas no existe. */
@@ -246,10 +250,10 @@ export function sendTo(d: SequenceDraft, key: string, zone: ZoneId): SequenceDra
 
   const [without, entry] = extract(d, key);
   if (!entry) return d;
-  // Solo `free` admite ventana: sacar la fila de ahí se la lleva por delante,
-  // porque ningún CHECK entre `saga_placement_windows` y las tablas de
-  // colocación puede imponer esa coherencia.
-  const clean = zone === "free" ? entry : { ...entry, window: null };
+  // `free` y `anchored` admiten ventana: sacar la fila de ahí hacia otra zona se
+  // la lleva por delante, porque ningún CHECK entre `saga_placement_windows` y
+  // las tablas de colocación puede imponer esa coherencia.
+  const clean = zone === "free" || zone === "anchored" ? entry : { ...entry, window: null };
   if (zone === "sequence") {
     return { ...without, slots: [...without.slots, { entries: [clean], mode: null, note: null }] };
   }
@@ -292,6 +296,7 @@ function mapEntry(d: SequenceDraft, key: string, fn: (e: DraftEntry) => DraftEnt
     ...d,
     slots: d.slots.map((s) => ({ ...s, entries: s.entries.map(one) })),
     free: d.free.map(one),
+    anchored: d.anchored.map(one),
     unclassified: d.unclassified.map(one),
   };
 }
@@ -344,7 +349,7 @@ export function setAnchor(
       ),
     };
   }
-  if (!d.free.some((e) => e.key === key)) return d;
+  if (!d.free.some((e) => e.key === key) && !d.anchored.some((e) => e.key === key)) return d;
   return mapEntry(d, key, (e) => {
     const base = e.window ?? EMPTY_WINDOW;
     return { ...e, window: { ...base, [side]: anchor } };
@@ -384,7 +389,7 @@ export function setWindowReason(
   if (d.nested.some((n) => n.key === key)) {
     return { ...d, nested: d.nested.map((n) => (n.key === key ? { ...n, window: put(n.window) } : n)) };
   }
-  if (!d.free.some((e) => e.key === key)) return d;
+  if (!d.free.some((e) => e.key === key) && !d.anchored.some((e) => e.key === key)) return d;
   return mapEntry(d, key, (e) => ({ ...e, window: put(e.window) }));
 }
 
@@ -397,6 +402,7 @@ export function setWindowReason(
 export function draftWindowOwners(d: SequenceDraft): Map<string, string> {
   const out = new Map<string, string>();
   for (const e of d.free) out.set(e.key, e.ownerSagaId);
+  for (const e of d.anchored) out.set(e.key, e.ownerSagaId);
   for (const n of d.nested) out.set(n.key, n.ownerSagaId);
   return out;
 }
@@ -406,6 +412,7 @@ export const addEntry = (d: SequenceDraft, entry: DraftEntry): SequenceDraft => 
   if (
     d.slots.some((s) => s.entries.some((e) => e.key === entry.key)) ||
     d.free.some((e) => e.key === entry.key) ||
+    d.anchored.some((e) => e.key === entry.key) ||
     d.unclassified.some((e) => e.key === entry.key)
   ) {
     return d;
@@ -448,6 +455,7 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   // comparte número y el hueco siguiente vale n+1, nunca n+2.
   d.slots.forEach((slot, i) => slot.entries.forEach((e) => push(e, i + 1, "fijo")));
   d.free.forEach((e) => push(e, null, "libre"));
+  d.anchored.forEach((e) => push(e, null, "anclado"));
   d.unclassified.forEach((e) => push(e, null, null));
 
   // El número es el del HUECO, el mismo que acaba de recibir cada entrada: por
@@ -508,6 +516,17 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
           e.window!,
         ),
       ),
+    ...d.anchored
+      .filter((e) => e.window !== null)
+      .map((e) =>
+        windowRow(
+          e.ownerSagaId,
+          e.kind === "item" ? e.itemType : null,
+          e.kind === "item" ? e.itemId : null,
+          e.kind === "block" ? e.childSagaId : null,
+          e.window!,
+        ),
+      ),
     ...d.nested
       .filter((n) => n.window !== null)
       .map((n) => windowRow(n.ownerSagaId, n.itemType, n.itemId, null, n.window!)),
@@ -550,6 +569,7 @@ export function toPayload(d: SequenceDraft, sagaId: string): SequencePayload {
   const windowSubjects: SequencePayload["windowSubjects"] = [
     ...d.slots.flatMap((s) => s.entries).map((e) => subjectOf(e, "own")),
     ...d.free.map((e) => subjectOf(e, "free")),
+    ...d.anchored.map((e) => subjectOf(e, "free")),
     ...d.unclassified.map((e) => subjectOf(e, "own")),
     ...d.removed.map(subjectFromKey),
     ...d.nested.map((n) => ({

@@ -26,9 +26,11 @@ const draft = (
   free: DraftEntry[] = [],
   unclassified: DraftEntry[] = [],
   nested: SequenceDraft["nested"] = [],
+  anchored: DraftEntry[] = [],
 ): SequenceDraft => ({
   slots: slots.map((entries) => ({ entries, mode: null, note: null })),
   free,
+  anchored,
   unclassified,
   removed: [],
   nested,
@@ -282,6 +284,7 @@ describe("toPayload: ventanas y sujetos (fase 4)", () => {
       {
         slots: [{ entries: [fijo], mode: null, note: null }],
         free: [free],
+        anchored: [],
         unclassified: [sin],
         removed: ["i:book:borrada"],
         nested: [nested],
@@ -315,7 +318,7 @@ describe("toPayload: ventanas y sujetos (fase 4)", () => {
 
   it("una baja de BLOQUE se apunta como sujeto de bloque", () => {
     const p = toPayload(
-      { slots: [], free: [], unclassified: [], removed: ["s:hija"], nested: [] },
+      { slots: [], free: [], anchored: [], unclassified: [], removed: ["s:hija"], nested: [] },
       "padre",
     );
     expect(p.windowSubjects).toEqual([{ saga_id: "padre", item_type: null, item_id: null, child_saga_id: "hija" }]);
@@ -341,6 +344,39 @@ describe("un sujeto solo se reclama bajo la saga cuya ventana esta pantalla ense
     expect(p.windowSubjects).toEqual([
       { saga_id: "hija", item_type: "book", item_id: "f", child_saga_id: null },
     ]);
+  });
+});
+
+describe("zona anchored", () => {
+  const anchorItem: DraftAnchor = {
+    kind: "item", itemType: "book", itemId: "im1", childSagaId: null, title: "IM1",
+  };
+
+  it("sendTo a `anchored` mueve la fila y conserva su ventana", () => {
+    const conVentana = { ...work("hulk"), window: { after: anchorItem, before: null, reason: null } };
+    const d = draft([], [], [], [], [conVentana]);
+    const moved = sendTo(d, "i:book:hulk", "free");
+    // Sale de anchored, entra en free (free también conserva ventana).
+    expect(moved.anchored).toHaveLength(0);
+    expect(moved.free).toHaveLength(1);
+    expect(moved.free[0].window).not.toBeNull();
+  });
+
+  it("setAnchor funciona sobre una fila de `anchored`", () => {
+    const d = draft([], [], [], [], [work("hulk")]);
+    const next = setAnchor(d, "i:book:hulk", "after", anchorItem);
+    expect(next.anchored[0].window?.after?.itemId).toBe("im1");
+  });
+
+  it("toPayload emite placement `anclado` y su fila de ventana", () => {
+    const conVentana = { ...work("hulk"), window: { after: anchorItem, before: null, reason: null } };
+    const d = draft([], [], [], [], [conVentana]);
+    const p = toPayload(d, "UCM");
+    expect(p.entries).toContainEqual(
+      expect.objectContaining({ item_id: "hulk", placement: "anclado", position: null }),
+    );
+    expect(p.windows).toHaveLength(1);
+    expect(p.windows[0]).toMatchObject({ saga_id: "saga", item_id: "hulk", after_item_id: "im1" });
   });
 });
 
