@@ -4,6 +4,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { DraftAnchor, DraftEntry, DraftSlot, DraftWindow, NestedSubject, SequenceDraft } from "./sequence-draft";
 import type { SagaItemRole, SagaPlacement, TandemMode, WindowReason } from "./types";
 import { getAnchorOptions } from "./get-anchor-options";
+import { esColocable } from "./placement";
 import { buildWindowOwners, type OwnerRow } from "./window-owners";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -197,7 +198,7 @@ export async function getSagaSequence(
         // Defensivo, como sendTo/pairWith al escribir: `window` SIEMPRE null
         // fuera de `libre`, aunque quedara una fila huérfana en la tabla de
         // ventanas por un cambio de placement que no pasó por el borrador.
-        window: r.placement === "libre" ? windowsByKey.get(`i:${r.item_type}:${r.item_id}`) ?? null : null,
+        window: esColocable(r.placement) ? windowsByKey.get(`i:${r.item_type}:${r.item_id}`) ?? null : null,
         // `owners` se construye SOLO con las filas de las hijas, así que una
         // obra propia sin doble membresía no está ahí y cae en `sagaId`, que es
         // lo correcto: su fila de `saga_items` vive bajo esta saga.
@@ -213,7 +214,7 @@ export async function getSagaSequence(
         key: `s:${c.id}`, kind: "block", itemType: null, itemId: null, childSagaId: c.id,
         title: c.name, coverUrl: null, accentColor: c.accent_color, count: counts.get(c.id) ?? 0,
         optional: c.optional_in_parent, role: null,
-        window: c.placement_in_parent === "libre" ? windowsByKey.get(`s:${c.id}`) ?? null : null,
+        window: esColocable(c.placement_in_parent) ? windowsByKey.get(`s:${c.id}`) ?? null : null,
         // La colocación de la hija en el padre es del padre: su fila de ventana
         // vive bajo esta saga, siempre.
         ownerSagaId: sagaId,
@@ -299,12 +300,15 @@ export function hydrateSequenceDraft(
 ): SequenceDraft {
   const byPosition = new Map<number, DraftEntry[]>();
   const free: DraftEntry[] = [];
+  const anchored: DraftEntry[] = [];
   const unclassified: DraftEntry[] = [];
   for (const r of rows) {
     if (r.placement === "fijo" && r.position !== null) {
       byPosition.set(r.position, [...(byPosition.get(r.position) ?? []), r.entry]);
     } else if (r.placement === "libre") {
       free.push(r.entry);
+    } else if (r.placement === "anclado") {
+      anchored.push(r.entry);
     } else {
       unclassified.push(r.entry);
     }
@@ -322,7 +326,7 @@ export function hydrateSequenceDraft(
       const meta = entries.length >= 2 ? tandemByPosition.get(position) : undefined;
       return { entries, mode: meta?.modo ?? null, note: meta?.nota ?? null };
     });
-  return { slots, free, unclassified, removed: [], nested };
+  return { slots, free, anchored, unclassified, removed: [], nested };
 }
 
 /** Forma cruda de una fila de `saga_placement_windows`
