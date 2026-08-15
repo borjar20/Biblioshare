@@ -1,0 +1,11 @@
+-- Tercer valor del eje `placement` (spec 2026-08-15): colocación relativa
+-- OBLIGATORIA por ventana, sin número absoluto. Se comporta en el orden como
+-- `libre` (se recoloca por `saga_placement_windows`, puede partir un bloque),
+-- pero semánticamente es "va aquí", no "cuando quieras".
+--
+-- Solo AÑADE el valor: no lo usa en la misma transacción, así que es seguro
+-- (ALTER TYPE ... ADD VALUE no puede usarse en la misma tx en que se crea).
+-- Los CHECK `saga_items_placement_position` y `sagas_placement_position` son
+-- CASE ... WHEN placement='fijo' THEN position IS NOT NULL ELSE position IS NULL:
+-- `anclado` cae al ELSE ⇒ exige position NULL. No hay que tocarlos.
+alter type public.saga_placement add value if not exists 'anclado';
