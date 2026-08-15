@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildWindowOwners, windowOwnerFor, type OwnerBlock, type OwnerRow } from "./window-owners";
+import {
+  buildWindowOwners,
+  overlayDraftWindowOwners,
+  windowOwnerFor,
+  type OwnerBlock,
+  type OwnerRow,
+} from "./window-owners";
+import type { SequencePayload } from "./sequence-draft";
 
 // Mock de server-only, mismo patrón que get-saga-sequence.test.ts: este módulo
 // lo importa por `loadWindowOwners`, y sin el mock el import rompe en Vitest.
@@ -66,6 +73,66 @@ describe("buildWindowOwners", () => {
     ];
     const owners = buildWindowOwners([], blocks, PADRE);
     expect([...owners.keys()]).toEqual([`s:${HIJA}`]);
+    expect(owners.get(`s:${HIJA}`)).toBe(PADRE);
+  });
+});
+
+describe("overlayDraftWindowOwners", () => {
+  // Payload mínimo: solo los campos que la función lee (`placement` /
+  // `placement_in_parent` y las claves), el resto son rellenos válidos de tipo.
+  const entry = (
+    itemId: string,
+    placement: SequencePayload["entries"][number]["placement"],
+  ): SequencePayload["entries"][number] => ({
+    item_type: "book",
+    item_id: itemId,
+    position: null,
+    placement,
+    optional: false,
+    role: null,
+  });
+  const block = (
+    childSagaId: string,
+    placement: SequencePayload["blocks"][number]["placement_in_parent"],
+  ): SequencePayload["blocks"][number] => ({
+    child_saga_id: childSagaId,
+    position_in_parent: null,
+    placement_in_parent: placement,
+    optional_in_parent: false,
+  });
+  const payload = (
+    entries: SequencePayload["entries"],
+    blocks: SequencePayload["blocks"],
+  ): Pick<SequencePayload, "entries" | "blocks"> => ({ entries, blocks });
+
+  // REGRESIÓN: antes del fix, el guardado del flujo principal de la feature
+  // (colocar un sujeto como `anclado`) fallaba en runtime con `windowNotFree`
+  // porque este overlay solo cubría `libre` — la validación del cliente SÍ
+  // superponía `anclado` (`draftWindowOwners` en sequence-draft.ts), y esa
+  // asimetría es justo lo que hizo que los tests unitarios no lo detectaran.
+  it("una entrada NUEVA en anclado recibe sagaId como dueña (regresión)", () => {
+    const owners = overlayDraftWindowOwners(new Map(), payload([entry("a", "anclado")], []), PADRE);
+    expect(owners.get("i:book:a")).toBe(PADRE);
+  });
+
+  it("una entrada libre sigue recibiendo sagaId (comportamiento sin cambios)", () => {
+    const owners = overlayDraftWindowOwners(new Map(), payload([entry("b", "libre")], []), PADRE);
+    expect(owners.get("i:book:b")).toBe(PADRE);
+  });
+
+  it("una entrada fija NO es sujeto: ya tiene hueco", () => {
+    const owners = overlayDraftWindowOwners(new Map(), payload([entry("c", "fijo")], []), PADRE);
+    expect(owners.has("i:book:c")).toBe(false);
+  });
+
+  it("no pisa una dueña que ya venía de BD", () => {
+    const seeded = new Map([["i:book:d", HIJA]]);
+    const owners = overlayDraftWindowOwners(seeded, payload([entry("d", "anclado")], []), PADRE);
+    expect(owners.get("i:book:d")).toBe(HIJA);
+  });
+
+  it("un BLOQUE anclado recibe su dueña s:<id> (regresión, forma bloque)", () => {
+    const owners = overlayDraftWindowOwners(new Map(), payload([], [block(HIJA, "anclado")]), PADRE);
     expect(owners.get(`s:${HIJA}`)).toBe(PADRE);
   });
 });

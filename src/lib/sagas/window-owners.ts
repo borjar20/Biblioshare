@@ -3,6 +3,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaPlacement } from "./types";
 import { esColocable } from "./placement";
+import type { SequencePayload } from "./sequence-draft";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -98,6 +99,42 @@ export function buildWindowOwners(
     out.set(`s:${b.childSagaId}`, curatedSagaId);
   }
   return out;
+}
+
+/**
+ * Superpone en `owners` los sujetos COLOCABLES (`libre` o `anclado`) que este
+ * payload va a escribir, sin pisar lo que ya se sabe.
+ *
+ * `loadWindowOwners` lee el estado ANTERIOR al guardado, así que por sí solo
+ * acusaría de `windowNotFree` a un sujeto que este mismo borrador acaba de
+ * colocar en «Cuando quieras» o «Anclado»: en BD todavía tiene su placement
+ * viejo. Es el `foreignBlock` falso de la fase 2a otra vez, ahora del lado
+ * del servidor.
+ *
+ * El `if (!owners.has)` conserva la dueña resuelta contra BD (la que decide
+ * `is_primary` con doble membresía) y solo añade los sujetos que esta saga
+ * está creando ahora, cuya fila vive por definición bajo ella.
+ *
+ * Pura y síncrona a propósito, separada de `saveSequence`: es la única forma
+ * de que un test unitario la ejercite sin levantar Supabase — el server
+ * action es async y no se puede probar en aislamiento.
+ */
+export function overlayDraftWindowOwners(
+  owners: Map<string, string>,
+  payload: Pick<SequencePayload, "entries" | "blocks">,
+  sagaId: string,
+): Map<string, string> {
+  for (const e of payload.entries) {
+    if (!esColocable(e.placement)) continue;
+    const key = `i:${e.item_type}:${e.item_id}`;
+    if (!owners.has(key)) owners.set(key, sagaId);
+  }
+  for (const b of payload.blocks) {
+    if (!esColocable(b.placement_in_parent)) continue;
+    const key = `s:${b.child_saga_id}`;
+    if (!owners.has(key)) owners.set(key, sagaId);
+  }
+  return owners;
 }
 
 /** La parte de Supabase: padre + hijas DIRECTAS. Nada más hondo — el editor del
