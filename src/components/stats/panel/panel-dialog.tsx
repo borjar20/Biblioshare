@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * La capa donde un panel se lee entero. Sustituye al `<details>` en línea: en
@@ -36,6 +37,16 @@ export function PanelDialog({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const pathname = usePathname();
+
+  // El contenido del panel navega estando la capa abierta (acciones/tabla con
+  // <Link href>). Con Cache Components la capa NO se desmonta en navegación
+  // soft: el <dialog> quedaría con `open=true` pero fuera del top layer al
+  // volver, roto e incerrable (#448, como item-connect-sheet). Al cambiar de
+  // ruta se cierra si está abierta (close() sobre una capa cerrada es no-op).
+  useEffect(() => {
+    if (ref.current?.open) ref.current.close();
+  }, [pathname]);
 
   return (
     <>
