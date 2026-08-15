@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import { freeBlockWindow, freeItemWindow } from "@/lib/sagas/get-saga-detail";
 import { partitionGroups, type MemberGroup } from "@/lib/sagas/group-members";
+import { esColocable } from "@/lib/sagas/placement";
 import type { DetailMember, ResolvedWindow } from "@/lib/sagas/types";
 import { RoleChip } from "./role-chip";
 
@@ -77,9 +78,12 @@ function MemberCell({
 }: {
   m: DetailMember;
   labels: { done: string; reading: string; optional: string; noSlot: string };
-  /** Línea de ventana (fase 2b, Task 6), ya resuelta a JSX por el llamante —
-   *  `null` fuera de la zona «Cuando quieras» o sin ventana. Bajo la celda,
-   *  como pide el brief. */
+  /** Línea de ventana (fase 2b, Task 6; ampliada a `anclado` en Task 10), ya
+   *  resuelta a JSX por el llamante — `undefined`/`null` si el miembro no es
+   *  colocable (`esColocable`) o no tiene ventana resuelta. Se pinta tanto en
+   *  «Cuando quieras» (siempre `libre`) como en la grid ordenada (un
+   *  `anclado` vive ahí, en su hueco relativo, con su chip de ventana — no se
+   *  lista aparte). Bajo la celda, como pide el brief. */
   windowLine?: ReactNode;
 }) {
   return (
@@ -153,9 +157,19 @@ function MemberCell({
 function GroupBody({
   members,
   labels,
+  windows,
+  renderWindow,
 }: {
   members: DetailMember[];
   labels: { done: string; reading: string; optional: string; noSlot: string };
+  /** Mapa de ventanas resueltas + su traductor a JSX (Task 10): un miembro
+   *  `anclado` vive en esta grid (nunca en «Cuando quieras», ver
+   *  `partitionGroups`/el filtro `!== "libre"` de la llamante) pero SÍ debe
+   *  pintar su ventana — `esColocable` es la misma guarda que ya usa
+   *  `freeItemWindow` por dentro; se repite aquí para no llamarla a ciegas en
+   *  un miembro `fijo`/sin clasificar que nunca tendrá fila. */
+  windows: Record<string, ResolvedWindow>;
+  renderWindow: (w: ResolvedWindow | null) => ReactNode;
 }) {
   if (members.length === 0) return null;
 
@@ -163,7 +177,11 @@ function GroupBody({
     <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
       {members.map((m) => (
         <li key={`${m.itemType}-${m.itemId}`}>
-          <MemberCell m={m} labels={labels} />
+          <MemberCell
+            m={m}
+            labels={labels}
+            windowLine={esColocable(m.placement) ? renderWindow(freeItemWindow(windows, m)) : undefined}
+          />
         </li>
       ))}
     </ul>
@@ -351,7 +369,7 @@ export async function SagaInfo({
                       </span>
                     </div>
                   )}
-                  <GroupBody members={eligible} labels={cellLabels} />
+                  <GroupBody members={eligible} labels={cellLabels} windows={windows} renderWindow={renderWindow} />
                 </div>
               );
             })}
@@ -411,7 +429,7 @@ export async function SagaInfo({
                     </span>
                   </div>
                   {renderWindow(freeBlockWindow(windows, group))}
-                  <GroupBody members={eligible} labels={cellLabels} />
+                  <GroupBody members={eligible} labels={cellLabels} windows={windows} renderWindow={renderWindow} />
                 </div>
               );
             })}

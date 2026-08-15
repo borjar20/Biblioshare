@@ -81,18 +81,18 @@ export function orderWindowsFromRows(rows: RawOrderWindowRow[]): Record<string, 
 }
 
 /**
- * Recoloca los sujetos `libre` con ventana dentro de `units`.
+ * Recoloca los sujetos colocables (`libre`/`anclado`) con ventana dentro de `units`.
  *
- * `isFreeSubject` es la guarda «solo lo `libre` tiene ventana», la MISMA que
- * aplican `deriveSagaMap` y la ficha. Ningún CHECK de BD puede imponerla (cruza
- * dos tablas), así que una fila rancia de un sujeto que dejó de ser `libre`
- * puede llegar hasta aquí; sin la guarda, el orden movería algo que la ficha ni
- * siquiera pinta.
+ * `isPlaceable` es la guarda «solo un sujeto colocable tiene ventana», la MISMA
+ * que aplican `deriveSagaMap` y la ficha (vía `esColocable`). Ningún CHECK de BD
+ * puede imponerla (cruza dos tablas), así que una fila rancia de un sujeto que
+ * dejó de ser colocable puede llegar hasta aquí; sin la guarda, el orden movería
+ * algo que la ficha ni siquiera pinta.
  */
 export function placeByWindow(
   units: OrderUnit[],
   windows: Record<string, OrderWindow>,
-  isFreeSubject: (subjectKey: string) => boolean,
+  isPlaceable: (subjectKey: string) => boolean,
 ): OrderUnit[] {
   // Sujetos a mover, en el orden en que aparecen HOY en la secuencia. Ese orden
   // ES el desempate del spec §4: dos sujetos que acaben en el mismo punto
@@ -109,7 +109,7 @@ export function placeByWindow(
       if (vistos.has(clave)) continue;
       vistos.add(clave);
       if (windows[clave] === undefined) continue;
-      if (!isFreeSubject(clave)) continue;
+      if (!isPlaceable(clave)) continue;
       sujetos.push(clave);
     }
   }

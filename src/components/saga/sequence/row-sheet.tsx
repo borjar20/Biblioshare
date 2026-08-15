@@ -8,7 +8,7 @@ import { SAGA_ITEM_ROLES, type SagaItemRole } from "@/lib/sagas/types";
 // La lista viene de `roles.ts`: era una de las tres copias del mismo
 // vocabulario que la fase 5 unificó.
 const ROLES = SAGA_ITEM_ROLES;
-const ZONES: ZoneId[] = ["sequence", "free", "unclassified"];
+const ZONES: ZoneId[] = ["sequence", "free", "anchored", "unclassified"];
 
 /** Hoja de una fila (frame B2). Es el gemelo pulsable y tecleable de cada
  *  gesto de arrastre: cambiar de zona, subir, bajar, emparejar y quitar. Sin
@@ -67,7 +67,7 @@ export function RowSheet({
 
         <fieldset className="mb-3 grid gap-1.5">
           <legend className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground">{t("whereRead")}</legend>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {ZONES.map((z) => (
               <button
                 key={z} type="button" onClick={() => onZone(z)} aria-pressed={zone === z}

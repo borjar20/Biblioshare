@@ -2,6 +2,8 @@ import "server-only";
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { SagaPlacement } from "./types";
+import { esColocable } from "./placement";
+import type { SequencePayload } from "./sequence-draft";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -62,14 +64,14 @@ export function windowOwnerFor(
  * saga bajo la que vive su fila. Clave en el mismo formato que `DraftEntry.key`
  * (`i:<tipo>:<uuid>` / `s:<uuid>`).
  *
- * Solo lo `libre`: una obra con hueco fijo YA tiene sitio, y darle además una
- * ventana es la contradicción que los dos ejes (`placement` y `optional`)
- * existen para evitar. Y hay una razón operativa además de la conceptual: la
- * saga dueña hidrata a `null` la ventana de lo que no es `libre`
+ * Solo lo colocable (placement `libre` o `anclado`): una obra con hueco fijo YA tiene
+ * sitio, y darle además una ventana es la contradicción que los dos ejes (`placement` y
+ * `optional`) existen para evitar. Y hay una razón operativa además de la conceptual: la
+ * saga dueña hidrata a `null` la ventana de lo que no es colocable
  * (get-saga-sequence.ts), así que una ventana sobre algo `fijo` la borraría el
  * primer guardado de esa saga — se perdería en silencio.
  *
- * Basta con que UNA de las membresías de la obra sea `libre`: es la que le da
+ * Basta con que UNA de las membresías de la obra sea colocable: es la que le da
  * derecho a ventana. La dueña la decide `is_primary`, no esa membresía.
  */
 export function buildWindowOwners(
@@ -85,7 +87,7 @@ export function buildWindowOwners(
 
   const out = new Map<string, string>();
   for (const [key, list] of byKey) {
-    if (!list.some((r) => r.placement === "libre")) continue;
+    if (!list.some((r) => esColocable(r.placement))) continue;
     out.set(key, windowOwnerFor(list.map((r) => ({ sagaId: r.sagaId, isPrimary: r.isPrimary })), curatedSagaId));
   }
   // Un BLOQUE `libre` es sujeto igual que una obra, y su fila vive bajo el
@@ -93,10 +95,46 @@ export function buildWindowOwners(
   // padre quien la cura. Es el caso de *Nacidos de la Bruma. Era 2* en
   // producción (sujeto bloque, saga_id = Cosmere).
   for (const b of blocks) {
-    if (b.placementInParent !== "libre") continue;
+    if (!esColocable(b.placementInParent)) continue;
     out.set(`s:${b.childSagaId}`, curatedSagaId);
   }
   return out;
+}
+
+/**
+ * Superpone en `owners` los sujetos COLOCABLES (`libre` o `anclado`) que este
+ * payload va a escribir, sin pisar lo que ya se sabe.
+ *
+ * `loadWindowOwners` lee el estado ANTERIOR al guardado, así que por sí solo
+ * acusaría de `windowNotFree` a un sujeto que este mismo borrador acaba de
+ * colocar en «Cuando quieras» o «Anclado»: en BD todavía tiene su placement
+ * viejo. Es el `foreignBlock` falso de la fase 2a otra vez, ahora del lado
+ * del servidor.
+ *
+ * El `if (!owners.has)` conserva la dueña resuelta contra BD (la que decide
+ * `is_primary` con doble membresía) y solo añade los sujetos que esta saga
+ * está creando ahora, cuya fila vive por definición bajo ella.
+ *
+ * Pura y síncrona a propósito, separada de `saveSequence`: es la única forma
+ * de que un test unitario la ejercite sin levantar Supabase — el server
+ * action es async y no se puede probar en aislamiento.
+ */
+export function overlayDraftWindowOwners(
+  owners: Map<string, string>,
+  payload: Pick<SequencePayload, "entries" | "blocks">,
+  sagaId: string,
+): Map<string, string> {
+  for (const e of payload.entries) {
+    if (!esColocable(e.placement)) continue;
+    const key = `i:${e.item_type}:${e.item_id}`;
+    if (!owners.has(key)) owners.set(key, sagaId);
+  }
+  for (const b of payload.blocks) {
+    if (!esColocable(b.placement_in_parent)) continue;
+    const key = `s:${b.child_saga_id}`;
+    if (!owners.has(key)) owners.set(key, sagaId);
+  }
+  return owners;
 }
 
 /** La parte de Supabase: padre + hijas DIRECTAS. Nada más hondo — el editor del

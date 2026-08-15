@@ -293,6 +293,15 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
 > columnas, tablas ni cambios de grants. Las dos con `search_path = public, pg_temp`, como
 > manda la plantilla. Detalle en §6.
+>
+> **Delta del 2026-08-15 (tercer valor `anclado` del eje `placement`, §7.4): SOLO EN DEV.**
+> Migración `20260815_saga_placement_anclado.sql` — `alter type public.saga_placement add
+> value if not exists 'anclado'` (aditiva pura, sin tocar los CHECK). Aplicada y verificada
+> en dev contra el objeto real (`pg_enum`/`pg_type`, no `list_migrations`):
+> `enumlabel` devuelve `fijo`, `libre`, `anclado`, en ese orden. **Producción queda
+> pendiente a propósito**: la aplicación está reservada al controlador de la rama en el
+> momento del merge, no a esta tarea de cierre. Ver §7.4 para la semántica del valor nuevo y
+> `decisiones.md` (2026-08-15).
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -2209,8 +2218,9 @@ y desplegadas — la unificación del orden queda cerrada** (ver §7.7 y `backlo
 | **`fijo`** (hueco numerado) | el caso normal | un spin-off con hueco propio que no se quiere exigir |
 | **`libre`** (se lee cuando quieras) | *p. ej. una novela puente que sí se cuenta* | *p. ej. un relato suelto que no se cuenta* |
 
-`placement` dice **dónde** se lee (`fijo` = tiene hueco numerado; `libre` = en cualquier momento;
-`null` = sin clasificar). `optional` dice **si cuenta** en el progreso. Una obra puede ser libre y
+`placement` dice **dónde** se lee: `fijo` (hueco numerado) · **`anclado`** (posición relativa
+por ventana, OBLIGATORIA, `position` null) · `libre` (en cualquier momento) · `null` (sin
+clasificar). `optional` dice **si cuenta** en el progreso. Una obra puede ser libre y
 contar, o fija y no contar — la doc no debe volver a presentarlos como un solo eje, que es
 justo la confusión que #167 dejó sin resolver del todo (`role`, §7.3, es un **tercer** eje,
 ortogonal a los otros dos: qué *es* la obra).
@@ -2225,6 +2235,18 @@ alter table public.saga_items
     case when placement = 'fijo' then position is not null else position is null end
   );
 ```
+
+**Tercer valor `anclado` (2026-08-15, `20260815_saga_placement_anclado.sql`, SOLO EN DEV — ver
+delta al inicio de este documento).** `alter type public.saga_placement add value if not exists
+'anclado'` añade el valor al enum sin tocar ninguno de los dos CHECK: `saga_items_placement_position`
+y `sagas_placement_position` siguen siendo el mismo `CASE` de arriba, sin cambios, porque solo
+`fijo` exige número — `anclado` cae al `ELSE` exactamente igual que `libre` y exige `position`
+(o `position_in_parent`) `null`. En el orden, `anclado` se trata como colocable a través del
+mismo predicado que `libre` (`esColocable`, `src/lib/sagas/placement.ts`); la diferencia entre
+ambos es semántica y de autoría, no de esquema: `anclado` es obligatorio (no "cuando quieras")
+y solo se asigna desde la zona "Anclado" del editor de secuencia, que exige una ventana
+(`saga_placement_windows`, §7.6) — `libre` no la exige. Motivo y alternativas descartadas en
+`decisiones.md` (2026-08-15).
 
 **El CHECK es un `CASE`, no un `OR` de tres ramas — corregido en el review final de la rama
 (2026-07-26).** La primera versión escrita era el `OR` de arriba con las tres ramas comentadas, y con

@@ -44,6 +44,13 @@ it("un hueco con número pero placement nulo cae en «sin clasificar», no en la
   expect(d.unclassified.map((x) => x.itemId)).toEqual(["raro"]);
 });
 
+it("una fila `anclado` cae en la zona anchored", () => {
+  const d = hydrateSequenceDraft([{ entry: e("hulk"), position: null, placement: "anclado" }]);
+  expect(d.anchored.map((x) => x.itemId)).toEqual(["hulk"]);
+  expect(d.free).toHaveLength(0);
+  expect(d.unclassified).toHaveLength(0);
+});
+
 const w = (fields: Partial<RawWindowRow>): RawWindowRow => ({
   item_type: null, item_id: null, child_saga_id: null,
   after_item_type: null, after_item_id: null, after_child_saga_id: null,

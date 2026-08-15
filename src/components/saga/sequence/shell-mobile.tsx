@@ -9,7 +9,7 @@ import { BlockWindowsDrawer } from "./block-windows-drawer";
 import type { DraftAnchor, DraftEntry, SequenceDraft, ZoneId } from "@/lib/sagas/sequence-draft";
 import type { TandemMode, WindowReason } from "@/lib/sagas/types";
 
-const TABS: ZoneId[] = ["sequence", "free", "unclassified"];
+const TABS: ZoneId[] = ["sequence", "anchored", "free", "unclassified"];
 
 // Propuesta B (frames B1/B2): una zona a la vez. A 400px apilar tres zonas de
 // las que dos estarán vacías el día 1 empujaría la lista de 5 obras —el caso
@@ -47,6 +47,7 @@ export function ShellMobile({
   const counts: Record<ZoneId, number> = {
     sequence: draft.slots.reduce((n, s) => n + s.entries.length, 0),
     free: draft.free.length,
+    anchored: draft.anchored.length,
     unclassified: draft.unclassified.length,
   };
 
@@ -158,6 +159,32 @@ export function ShellMobile({
         </div>
       )}
 
+      {tab === "anchored" && (
+        <div className="mt-3">
+          {draft.anchored.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-foreground/25 bg-surface/55 px-4 py-4.5">
+              <h2 className="font-serif text-[15px] font-semibold">{t("zoneAnchoredEmpty")}</h2>
+              <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{t("zoneAnchoredHint")}</p>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {draft.anchored.map((e) => (
+                <div key={`anchored-${e.key}`}>
+                  {row(e, null)}
+                  <WindowEditor
+                    subject={e}
+                    anchors={anchors}
+                    onSetAnchor={(side, anchor) => ops.setAnchor(e.key, side, anchor)}
+                    onClearAnchor={(side) => ops.clearAnchor(e.key, side)}
+                    onSetReason={(reason) => ops.setWindowReason(e.key, reason)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {tab === "unclassified" && (
         <div className="mt-3">
           <p className="mb-2.5 text-[12px] text-gold-ink">{t("zoneUnclassifiedHint")}</p>
@@ -168,6 +195,7 @@ export function ShellMobile({
                 <div className="flex gap-1.5">
                   <button type="button" onClick={() => ops.sendTo(e.key, "sequence")} aria-label={t("sendToSequenceFor", { title: e.title })} className="flex-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-[11px] font-semibold">{t("sendToSequence")}</button>
                   <button type="button" onClick={() => ops.sendTo(e.key, "free")} aria-label={t("sendToFreeFor", { title: e.title })} className="flex-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-[11px] font-semibold">{t("sendToFree")}</button>
+                  <button type="button" onClick={() => ops.sendTo(e.key, "anchored")} aria-label={t("sendToAnchoredFor", { title: e.title })} className="flex-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-[11px] font-semibold">{t("sendToAnchored")}</button>
                 </div>
               </div>
             ))}

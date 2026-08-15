@@ -202,6 +202,14 @@ describe("partitionGroups", () => {
     expect(ordered).toEqual([colocado, sinClasificar]);
     expect(free).toEqual([libre]);
   });
+
+  it("un grupo `anclado` va al bucket que se intercala por ancla, como `libre`", () => {
+    const anclado = group({ sagaId: "anclado", placementInParent: "anclado" });
+    const colocado = group({ sagaId: "colocado", placementInParent: "fijo", positionInParent: 1 });
+    const { ordered, free } = partitionGroups([anclado, colocado]);
+    expect(ordered).toEqual([colocado]);
+    expect(free).toEqual([anclado]);
+  });
 });
 
 describe("computeProgress", () => {

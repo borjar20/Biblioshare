@@ -5,6 +5,7 @@ import {
   type SagaAccentToken,
 } from "./accents";
 import { isMemberCompleted } from "./completion";
+import { esColocable } from "./placement";
 import type { DetailMember, ResolvedWindow, SagaChildRef, SagaPlacement } from "./types";
 
 // Agrupación de la pestaña Info y progreso del hero (spec §2.1/§2.3, frames
@@ -177,8 +178,8 @@ export function partitionGroups(groups: MemberGroup[]): {
   free: MemberGroup[];
 } {
   return {
-    ordered: groups.filter((g) => g.placementInParent !== "libre"),
-    free: groups.filter((g) => g.placementInParent === "libre"),
+    ordered: groups.filter((g) => !esColocable(g.placementInParent)),
+    free: groups.filter((g) => esColocable(g.placementInParent)),
   };
 }
 
