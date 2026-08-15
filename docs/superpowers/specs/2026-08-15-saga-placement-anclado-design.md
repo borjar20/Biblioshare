@@ -101,21 +101,52 @@ Auditar todos los `=== 'libre'` del módulo de sagas y decidir caso por caso si 
 entra (regla general: donde "tiene ventana / se recoloca", sí; donde "no cuenta / es
 opcional", no — eso es `optional`, no `placement`).
 
-## 7. Autoría (editor de secuencia)
+## 7. Autoría (editor de secuencia) — NUEVA ZONA, no acción suelta
 
-- Acción **"Anclar…"** disponible en **cualquier fila** (obra o bloque) del editor de
-  secuencia, no solo en la zona "Cuando quieras". Al activarla: setea
-  `placement='anclado'` (+ `position=null`) y abre el `AnchorPicker` para elegir `after` /
-  `before`. Reutiliza los componentes existentes `WindowEditor`, `AnchorPicker`,
-  `get-anchor-options`.
-- La fila anclada muestra su ventana resuelta inline (chip "después de X, antes de Y").
-- El editor distingue visualmente los tres estados: **fijo** (número) · **anclado**
-  (relativo) · **libre** (cuando quieras), y explica que intercalar en medio de una
-  subsaga necesita las dos anclas.
-- Camino de escritura: una acción/RPC que escriba `saga_items.placement='anclado'`,
-  `position=null` y la fila de `saga_placement_windows`, gated `collaborator` (reusa el
-  camino existente; no hace falta RPC nueva salvo que el actual no permita fijar
-  `placement` arbitrario — a verificar en el plan).
+**Restricción del código real:** en el editor de secuencia `placement` NO es un campo
+editable. Se **deriva de la ZONA** en que vive la fila (`sequence-draft.ts` `toPayload`):
+zona `sequence` → `fijo`+número; zona `free` ("Cuando quieras") → `libre`; zona
+`unclassified` → `null`. "Marcar libre" es, literalmente, mover la fila a "Cuando
+quieras". Por eso `anclado` se modela como una **cuarta zona**, no como una acción o un
+desplegable.
+
+- **Nueva zona `anchored`** ("Va aquí" / "Anclado"), entre "Secuencia" y "Cuando quieras".
+  Una fila en esta zona ⇒ `placement='anclado'`, `position=null`, y **monta un
+  `WindowEditor`** (reusa `WindowEditor`, `AnchorPicker`, `get-anchor-options`, que ya
+  existen) — a diferencia de "Cuando quieras", aquí la ventana es el sentido de la zona.
+- Mover una fila a la zona `anchored` (vía `sendTo`, la misma mecánica que hoy mueve entre
+  `sequence`/`free`/`unclassified`) es lo que la marca `anclado`. Sin desplegable de
+  placement: **la zona ES la colocación**, igual que las otras tres.
+- El editor distingue así los cuatro estados por zona: **fijo** (número) · **anclado**
+  (relativo, obligatorio) · **libre** (cuando quieras) · **sin clasificar**. Copia de la
+  zona explica que intercalar EN MEDIO de una subsaga necesita las dos anclas.
+- **Camino de escritura sin RPC nueva.** La RPC `save_saga_sequence`
+  (`20260804_save_saga_sequence_motivo.sql`) ya castea `(e->>'placement')::public.saga_placement`
+  y persiste ventanas en el mismo guardado; con el enum ampliado (§3) escribe `anclado`
+  sin cambios. Solo cambian, en cliente: `sequence-draft.ts` (`ZoneId` += `anchored`;
+  `toPayload` emite `anclado` y sus ventanas; `sendTo` acepta el destino),
+  `get-saga-sequence.ts` (hidratación: `placement==='anclado'` → zona `anchored`, y colgar
+  su ventana), `validate-sequence-draft.ts` (una fila `anchored` sin ancla es error de
+  borrador), y las dos cáscaras del editor (`shell-desktop.tsx`, `shell-mobile.tsx`) +
+  `RowSheet` (opción de zona).
+
+### 7b. Auditoría de los `=== 'libre'` (no es un find/replace)
+
+El código aplica la guarda "solo `libre` tiene ventana / se recoloca" en ~21 sitios de
+`src/lib/sagas/` y `src/components/saga/`. Se dividen en dos grupos con trato distinto:
+
+- **"Colocable / tiene ventana"** → incluir `anclado` vía un predicado compartido
+  `esColocable(p) = p === 'libre' || p === 'anclado'` (nuevo, un solo sitio, para no
+  duplicar la regla — es justo lo que la cabecera de `place-by-window.ts` advierte que no
+  puede vivir dos veces): `curated-order.ts:151,155`, el callback `isFreeSubject`→
+  `isPlaceable` de `place-by-window.ts`, `derive-map.ts:294,385`, `window-owners.ts:88,96`,
+  `group-members.ts:180,181`, `get-saga-detail.ts:257,267`, `get-saga-sequence.ts:200,216`,
+  `sequence-actions.ts:60,65`.
+- **"Enrutado de zona / render"** → trato explícito, NO el predicado: `get-saga-sequence.ts:306`
+  (routea `libre`→zona free; añadir rama `anclado`→zona `anchored`, y `:304` `fijo` sin
+  cambios), `saga-info.tsx:217,238,249` (la ficha separa visualmente "Cuando quieras"; una
+  fila `anclado` muestra su ventana pero NO va en esa sección — decidir el bloque visual),
+  `validate-sequence-draft.ts:27,36` (`=== 'fijo'`, sin cambios: `anclado` no es `fijo`).
 
 ## 8. Render del bloque partido
 
