@@ -397,6 +397,88 @@ export async function getSeriesDetails(
   };
 }
 
+// ── Hidratación server-authoritative (#674) ─────────────────────────────────
+// El catálogo escribe SIEMPRE lo que dice TMDB, nunca lo que manda el cliente
+// (ver spec 2026-08-14). Estos fetchers traen TODO lo que las RPCs `hydrate_*`
+// necesitan en una sola llamada (director/creator vienen de credits/created_by,
+// que `getMovieAsSearchResult`/`getSeriesDetails` no exponen con estos nombres).
+
+export type MovieHydration = {
+  title: string | null; originalTitle: string | null; director: string | null;
+  synopsis: string | null; genres: string[] | null; year: number | null;
+  coverUrl: string | null; durationMinutes: number | null;
+};
+
+export type SeriesHydration = {
+  title: string | null; originalTitle: string | null; creator: string | null;
+  synopsis: string | null; genres: string[] | null; year: number | null;
+  coverUrl: string | null; totalSeasons: number | null; totalEpisodes: number | null;
+  episodeRuntimeMinutes: number | null;
+};
+
+function yearFrom(date: string | undefined | null): number | null {
+  return date ? Number(date.slice(0, 4)) || null : null;
+}
+
+// #674: fetch server-side por id con TODO lo que la hidratación escribe en una
+// sola llamada. director/creator salen de credits/created_by, que getMovieAs-
+// SearchResult NO trae. Ver spec 2026-08-14.
+export async function getMovieForHydration(tmdbId: number): Promise<MovieHydration | null> {
+  const data = await tmdbGet<{
+    title?: string; original_title?: string; overview?: string;
+    poster_path: string | null; release_date?: string; runtime?: number | null;
+    genres?: Array<{ id: number }>;
+    credits?: { crew?: Array<{ name: string; job?: string }> };
+  }>(`/movie/${tmdbId}?language=es-ES&append_to_response=credits`);
+  if (!data) return null;
+
+  const director =
+    (data.credits?.crew ?? []).find((c) => c.job === "Director")?.name ?? null;
+
+  return {
+    title: data.title ?? null,
+    originalTitle: data.original_title ?? null,
+    director,
+    synopsis: data.overview ?? null,
+    genres: resolveGenresFromIds((data.genres ?? []).map((g) => g.id)),
+    year: yearFrom(data.release_date),
+    coverUrl: data.poster_path ? `${TMDB_IMAGE_BASE}${data.poster_path}` : null,
+    durationMinutes:
+      typeof data.runtime === "number" && data.runtime > 0 ? data.runtime : null,
+  };
+}
+
+export async function getSeriesForHydration(tmdbId: number): Promise<SeriesHydration | null> {
+  const data = await tmdbGet<{
+    name?: string; original_name?: string; overview?: string;
+    poster_path: string | null; first_air_date?: string;
+    number_of_seasons?: number | null; number_of_episodes?: number | null;
+    episode_run_time?: number[]; last_episode_to_air?: { runtime?: number | null } | null;
+    genres?: Array<{ id: number }>;
+    created_by?: Array<{ name: string }>;
+  }>(`/tv/${tmdbId}?language=es-ES&append_to_response=credits`);
+  if (!data) return null;
+
+  return {
+    title: data.name ?? null,
+    originalTitle: data.original_name ?? null,
+    creator: (data.created_by ?? [])[0]?.name ?? null,
+    synopsis: data.overview ?? null,
+    genres: resolveGenresFromIds((data.genres ?? []).map((g) => g.id)),
+    year: yearFrom(data.first_air_date),
+    coverUrl: data.poster_path ? `${TMDB_IMAGE_BASE}${data.poster_path}` : null,
+    totalSeasons:
+      typeof data.number_of_seasons === "number" && data.number_of_seasons > 0
+        ? data.number_of_seasons : null,
+    totalEpisodes:
+      typeof data.number_of_episodes === "number" && data.number_of_episodes > 0
+        ? data.number_of_episodes : null,
+    episodeRuntimeMinutes: pickEpisodeRuntime(
+      data.episode_run_time, data.last_episode_to_air?.runtime
+    ),
+  };
+}
+
 // Un episodio del catálogo, tal como se persiste en series_episodes (§7.x).
 export type SeriesEpisode = {
   seasonNumber: number;
