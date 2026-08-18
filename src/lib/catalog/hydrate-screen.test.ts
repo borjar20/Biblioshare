@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ensureMovieHydrated } from "./hydrate-screen";
+import { ensureMovieHydrated, ensureSeriesHydrated } from "./hydrate-screen";
 import * as tmdb from "./tmdb";
 
 function fakeSupabase() {
@@ -52,5 +52,34 @@ describe("ensureMovieHydrated", () => {
     await expect(
       ensureMovieHydrated(supabase, { id: "m1", tmdb_id: 1, hydrated_at: null })
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("ensureSeriesHydrated", () => {
+  it("no hace nada si ya está hidratada", async () => {
+    const { supabase, rpc } = fakeSupabase();
+    await ensureSeriesHydrated(supabase, { id: "s1", tmdb_id: 1, hydrated_at: "2026-01-01" });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("llama a hydrate_series con creator y tamaños del proveedor", async () => {
+    const { supabase, rpc } = fakeSupabase();
+    vi.spyOn(tmdb, "getSeriesForHydration").mockResolvedValue({
+      title: "T", originalTitle: null, creator: "C", synopsis: "S",
+      genres: ["g"], year: 2008, coverUrl: "c",
+      totalSeasons: 5, totalEpisodes: 62, episodeRuntimeMinutes: 47,
+    });
+    await ensureSeriesHydrated(supabase, { id: "s1", tmdb_id: 1396, hydrated_at: null });
+    expect(rpc).toHaveBeenCalledWith("hydrate_series", expect.objectContaining({
+      p_series_id: "s1", p_creator: "C", p_total_seasons: 5,
+      p_total_episodes: 62, p_episode_runtime_minutes: 47,
+    }));
+  });
+
+  it("marca hidratada sin tmdb_id, sin llamar al proveedor", async () => {
+    const { supabase, rpc, update } = fakeSupabase();
+    await ensureSeriesHydrated(supabase, { id: "s1", tmdb_id: null, hydrated_at: null });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalled();
   });
 });

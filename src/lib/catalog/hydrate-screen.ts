@@ -11,8 +11,9 @@ export type HydratableScreen = {
 
 // Hermano de ensureBookHydrated (hydrate-book.ts): idempotente, guarded por
 // hydrated_at, y NUNCA lanza. La primera apertura de ficha trae del proveedor los
-// campos canónicos y los escribe por la RPC definer (autoritativa si la fila no
-// estaba hidratada, fill-only si ya lo estaba). #674.
+// campos canónicos y los escribe por la RPC definer fill-only (rellena huecos,
+// nunca pisa lo que un colaborador curó). Las shells nacen sin canónicos, así que
+// no hace falta escritura autoritativa. #674.
 export async function ensureMovieHydrated(
   supabase: SupabaseServerClient,
   movie: HydratableScreen
