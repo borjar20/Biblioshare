@@ -14,10 +14,11 @@ import { test, expect, type Page } from "@playwright/test";
 //
 // Convención de datos (docs/TESTING.md): sin usuarios ni filas de catálogo con
 // UUID fijo que sembrar de antemano — la fila la crea la propia UI al abrir la
-// ficha, así que no hay nada que insertar por REST antes del test. Lo único
-// que se limpia es lo que el flujo real deja atrás: la fila de `movies` que
-// nace del clic, borrada en el `finally` por el id que se lee de la URL tras
-// la redirección.
+// ficha, así que no hay nada que insertar por REST antes del test. Y NO se
+// limpia la fila de `movies` que nace del clic: a diferencia de los usuarios/
+// pases desechables, el catálogo es compartido y autoritativo por diseño
+// (#674) — borrar una obra real arrastraría los pases de quien la tenga en su
+// biblioteca (`catalog_item_has_passes`, #272). Solo se restaura onboarded_at.
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
