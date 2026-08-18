@@ -148,64 +148,28 @@ export async function findOrCreateCatalogItemsBulk(
 // catalog right away, see docs/REQUIREMENTS.md §7.32) and by add-to-library
 // (fallback for results that arrived without a catalogId, e.g. mock mode).
 //
-// userId es opcional: se rellena created_by cuando ya tenemos al usuario a
-// mano (alta desde /buscar), y se deja nulo cuando no (cache oportunista
-// durante la propia búsqueda, que puede correr para un visitante anónimo).
+// #674: el cliente NO fija canónicos (title/synopsis/genres/...) — los
+// descartamos de `result` a propósito. La shell nace con solo el id externo
+// vía RPC definer (idempotente: inserta o re-selecciona), y los campos de
+// ficha los pone la hidratación server-side. `userId` ya no firma
+// `created_by` (eso lo hace `auth.uid()` dentro de la RPC); se conserva en la
+// firma solo porque `ensureBookEdition` lo necesita.
 export async function findOrCreateCatalogItem(
   supabase: SupabaseServerClient,
   result: SearchResult,
   userId?: string | null
 ): Promise<string> {
-  const table = TABLE_BY_TYPE[result.itemType];
-  const idColumn = ID_COLUMN_BY_TYPE[result.itemType];
-  const externalId =
-    result.itemType === "book" ? result.externalId : Number(result.externalId);
+  const { data: id, error } = await supabase.rpc("register_catalog_item", {
+    p_item_type: result.itemType,
+    p_external_id: result.externalId,
+  });
+  if (error || !id) throw error ?? new Error("register_catalog_item returned no id");
 
-  const { data: existing } = await supabase
-    .from(table)
-    .select("id")
-    .eq(idColumn as never, externalId)
-    .maybeSingle();
-  if (existing) {
-    if (result.itemType === "book") {
-      await ensureBookEdition(supabase, existing.id, result, userId);
-    }
-    return existing.id;
-  }
-
-  const payload = catalogInsertPayload(result);
-
-  // The insert shape differs per item type (picked above); this cast is the
-  // single spot where the three catalog tables' insert types are reconciled.
-  const { data: inserted, error } = await supabase
-    .from(table)
-    .insert(payload as never)
-    .select("id")
-    .single();
-
-  if (error) {
-    if (error.code === "23505") {
-      // Race: another request inserted the same external id first.
-      const { data: raceRow } = await supabase
-        .from(table)
-        .select("id")
-        .eq(idColumn as never, externalId)
-        .single();
-      if (raceRow) {
-        if (result.itemType === "book") {
-          await ensureBookEdition(supabase, raceRow.id, result, userId);
-        }
-        return raceRow.id;
-      }
-    }
-    throw error;
-  }
-
+  // La edición del libro (ISBN escaneado) sigue su camino validado server-side.
   if (result.itemType === "book") {
-    await ensureBookEdition(supabase, inserted.id, result, userId);
+    await ensureBookEdition(supabase, id as string, result, userId);
   }
-
-  return inserted.id;
+  return id as string;
 }
 
 // Registra la tirada que el usuario tiene EN LA MANO como edición de la obra.

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { findOrCreateCatalogItemsBulk } from "./find-or-create";
+import { describe, expect, it, vi } from "vitest";
+import { findOrCreateCatalogItem, findOrCreateCatalogItemsBulk } from "./find-or-create";
 import type { SearchResult } from "./types";
 
 function movie(externalId: string, title: string): SearchResult {
@@ -160,5 +160,31 @@ describe("findOrCreateCatalogItemsBulk", () => {
 
     expect(map.get("movie:5")).toBe("uuid-carrera");
     expect(selectCount).toBe(2);
+  });
+});
+
+describe("findOrCreateCatalogItem", () => {
+  it("crea la shell por RPC y NO manda campos canónicos", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "movie-id-1", error: null });
+    const supabase = { rpc } as never;
+    const id = await findOrCreateCatalogItem(
+      supabase,
+      {
+        itemType: "movie",
+        externalId: "129",
+        title: "FAKE",
+        subtitle: null,
+        coverUrl: null,
+        year: 2001,
+        synopsis: "x",
+        genres: ["g"],
+      } as never,
+      "user-1"
+    );
+    expect(id).toBe("movie-id-1");
+    expect(rpc).toHaveBeenCalledWith("register_catalog_item", {
+      p_item_type: "movie",
+      p_external_id: "129",
+    });
   });
 });
