@@ -1259,6 +1259,7 @@
   },
   "detail": {
     "back": "Volver",
+    "untitled": "Sin título",
     "inLibrary": "En tu biblioteca",
     "heroMenu": {
       "open": "Más opciones"

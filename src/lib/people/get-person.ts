@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getPersonDetails } from "@/lib/catalog/tmdb";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { CreditRole, Person, PersonWork } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -92,7 +93,7 @@ async function resolveWorks(
         .select("id, title, cover_url")
         .in("id", ids);
       for (const row of data ?? []) {
-        titles.set(`${type}:${row.id}`, { title: row.title, coverUrl: row.cover_url });
+        titles.set(`${type}:${row.id}`, { title: row.title ?? UNTITLED_FALLBACK, coverUrl: row.cover_url });
       }
     })
   );

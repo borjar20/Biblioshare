@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { AnchorRef } from "@/lib/catalog/anchor";
 import type { ItemType } from "@/lib/catalog/types";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -81,13 +82,31 @@ export async function searchAnchors(
   // suma de las cinco puede superarlo.
   const items: AnchorRef[] = [
     ...(books.data ?? []).map(
-      (r): AnchorRef => ({ type: "book", id: r.id, title: r.title, imageUrl: r.cover_url, subtitle: r.author }),
+      (r): AnchorRef => ({
+        type: "book",
+        id: r.id,
+        title: r.title ?? UNTITLED_FALLBACK,
+        imageUrl: r.cover_url,
+        subtitle: r.author,
+      }),
     ),
     ...(movies.data ?? []).map(
-      (r): AnchorRef => ({ type: "movie", id: r.id, title: r.title, imageUrl: r.cover_url, subtitle: null }),
+      (r): AnchorRef => ({
+        type: "movie",
+        id: r.id,
+        title: r.title ?? UNTITLED_FALLBACK,
+        imageUrl: r.cover_url,
+        subtitle: null,
+      }),
     ),
     ...(series.data ?? []).map(
-      (r): AnchorRef => ({ type: "series", id: r.id, title: r.title, imageUrl: r.cover_url, subtitle: null }),
+      (r): AnchorRef => ({
+        type: "series",
+        id: r.id,
+        title: r.title ?? UNTITLED_FALLBACK,
+        imageUrl: r.cover_url,
+        subtitle: null,
+      }),
     ),
   ];
   const globalRefs: AnchorRef[] = [

@@ -6,6 +6,7 @@ import { keepLatestClosedPass } from "@/lib/community/latest-rating";
 import type { LibraryItem, LibrarySort, MediaStatus } from "./types";
 import { loadGenres } from "@/lib/challenges/load-catalog-facets";
 import { labelForSlug, slugForLabel } from "@/lib/catalog/genre-vocab";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -96,7 +97,7 @@ export async function hydrateItems(
 
   for (const row of books.data ?? []) {
     catalogByKey.set(`book:${row.id}`, {
-      title: row.title,
+      title: row.title ?? UNTITLED_FALLBACK,
       coverUrl: row.cover_url,
       subtitle: row.author,
       publisher: row.publisher,
@@ -106,7 +107,7 @@ export async function hydrateItems(
   }
   for (const row of movies.data ?? []) {
     catalogByKey.set(`movie:${row.id}`, {
-      title: row.title,
+      title: row.title ?? UNTITLED_FALLBACK,
       coverUrl: row.cover_url,
       subtitle: null,
       publisher: null,
@@ -116,7 +117,7 @@ export async function hydrateItems(
   }
   for (const row of series.data ?? []) {
     catalogByKey.set(`series:${row.id}`, {
-      title: row.title,
+      title: row.title ?? UNTITLED_FALLBACK,
       coverUrl: row.cover_url,
       subtitle: null,
       publisher: null,

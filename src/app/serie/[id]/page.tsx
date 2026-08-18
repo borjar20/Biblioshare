@@ -220,7 +220,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
       <ItemShell
         itemType="series"
         mediaLabel={tDetail("mediaLabel.series")}
-        title={series.title}
+        title={series.title ?? tDetail("untitled")}
         byline={byline}
         genres={genres}
         coverUrl={series.cover_url}
@@ -448,7 +448,7 @@ async function SeriesTabs({
           itemType="series"
           itemId={series.id}
           item={{
-            title: series.title,
+            title: series.title ?? tDetail("untitled"),
             author: series.creator,
             synopsis: series.synopsis,
             genres,

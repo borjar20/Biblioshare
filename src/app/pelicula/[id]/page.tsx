@@ -184,7 +184,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
       <ItemShell
         itemType="movie"
         mediaLabel={tDetail("mediaLabel.movie")}
-        title={movie.title}
+        title={movie.title ?? tDetail("untitled")}
         byline={byline}
         genres={genres}
         coverUrl={movie.cover_url}
@@ -386,7 +386,7 @@ async function MovieTabs({
           itemType="movie"
           itemId={movie.id}
           item={{
-            title: movie.title,
+            title: movie.title ?? tDetail("untitled"),
             author: movie.director,
             synopsis: movie.synopsis,
             genres,

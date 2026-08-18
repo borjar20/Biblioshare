@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ItemType } from "@/lib/catalog/types";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import { orderFollowers, type FollowerRow } from "./event-follow-optimistic";
 import { deriveEventState, type DeclaredEventState, type EventState } from "./event-state";
 import {
@@ -206,9 +207,12 @@ export async function getClubEvent(
       ? supabase.from("series").select("id, title, cover_url").in("id", byType.series)
       : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
   ]);
-  for (const r of bookRows.data ?? []) catalogTitles.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url });
-  for (const r of movieRows.data ?? []) catalogTitles.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url });
-  for (const r of seriesRows.data ?? []) catalogTitles.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+  for (const r of bookRows.data ?? [])
+    catalogTitles.set(`book:${r.id}`, { title: r.title ?? UNTITLED_FALLBACK, coverUrl: r.cover_url });
+  for (const r of movieRows.data ?? [])
+    catalogTitles.set(`movie:${r.id}`, { title: r.title ?? UNTITLED_FALLBACK, coverUrl: r.cover_url });
+  for (const r of seriesRows.data ?? [])
+    catalogTitles.set(`series:${r.id}`, { title: r.title ?? UNTITLED_FALLBACK, coverUrl: r.cover_url });
 
   // El href depende del `kind`: un evento vive en /evento/[id], el resto (que
   // SÍ tiene ficha propia) en /actividad/[id] -- mezclarlos da 404 (#T13 fix

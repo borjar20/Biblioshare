@@ -3,6 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getCollection } from "@/lib/catalog/tmdb";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import { planCollectionSync, type DesiredPart } from "./collection-sync";
 import type { Saga, SagaItemRole, SagaMember, SagaPlacement } from "./types";
 
@@ -129,7 +130,7 @@ async function resolveMembers(
         .select("id, title, cover_url")
         .in("id", ids);
       for (const row of data ?? []) {
-        meta.set(`${type}:${row.id}`, { title: row.title, coverUrl: row.cover_url });
+        meta.set(`${type}:${row.id}`, { title: row.title ?? UNTITLED_FALLBACK, coverUrl: row.cover_url });
       }
     })
   );

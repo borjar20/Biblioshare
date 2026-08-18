@@ -4,6 +4,7 @@ import { getItemCredits } from "@/lib/people/get-item-credits";
 import { anchorHref, type AnchorType } from "@/lib/catalog/anchor";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -95,7 +96,7 @@ export async function getWorkSummary(
     if (!data) return null;
     return {
       type, id, href,
-      title: data.title,
+      title: data.title ?? UNTITLED_FALLBACK,
       coverUrl: data.cover_url,
       year: data.published_year ?? null,
       creator: pickCreator(cred.crew) ?? data.author ?? null,
@@ -115,7 +116,7 @@ export async function getWorkSummary(
     if (!data) return null;
     return {
       type, id, href,
-      title: data.title,
+      title: data.title ?? UNTITLED_FALLBACK,
       coverUrl: data.cover_url,
       year: data.release_year ?? null,
       creator: pickCreator(cred.crew) ?? data.director ?? null,
@@ -135,7 +136,7 @@ export async function getWorkSummary(
   if (!data) return null;
   return {
     type, id, href,
-    title: data.title,
+    title: data.title ?? UNTITLED_FALLBACK,
     coverUrl: data.cover_url,
     year: data.release_year ?? null,
     creator: pickCreator(cred.crew) ?? data.creator ?? null,

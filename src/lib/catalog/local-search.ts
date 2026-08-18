@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { UNTITLED_FALLBACK } from "./untitled";
 import { normalizeIsbn } from "./isbn";
 import type { ItemType, SearchResult } from "./types";
 
@@ -7,7 +8,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 type BookRow = {
   id: string;
   openlibrary_work_key: string | null;
-  title: string;
+  title: string | null;
   author: string | null;
   cover_url: string | null;
   published_year: number | null;
@@ -19,7 +20,7 @@ type BookRow = {
 type ScreenRow = {
   id: string;
   tmdb_id: number | null;
-  title: string;
+  title: string | null;
   original_title: string | null;
   cover_url: string | null;
   release_year: number | null;
@@ -45,7 +46,7 @@ function mapBookRow(row: BookRow): SearchResult {
     // queda con string vacío: no fusiona con nada, pero tampoco se pierde.
     externalId: row.openlibrary_work_key ?? "",
     catalogId: row.id,
-    title: row.title,
+    title: row.title ?? UNTITLED_FALLBACK,
     subtitle: row.author,
     coverUrl: row.cover_url,
     year: row.published_year,
@@ -62,7 +63,7 @@ function mapScreenRow(itemType: "movie" | "series", row: ScreenRow): SearchResul
     itemType,
     externalId: row.tmdb_id !== null ? String(row.tmdb_id) : "",
     catalogId: row.id,
-    title: row.title,
+    title: row.title ?? UNTITLED_FALLBACK,
     originalTitle: row.original_title,
     subtitle: null,
     coverUrl: row.cover_url,

@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { FeedEvent } from "./feed";
 import { emptyReactions, getInteractionSummary } from "./interactions";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
 // Reseñas recientes de UN usuario para su pestaña Actividad (mockup "IA
 // nueva", frame D). A diferencia de getFeed (fan-out por seguidos), aquí se
@@ -130,14 +131,22 @@ export async function getRecentReviews(
   >();
   for (const r of books.data ?? [])
     catalogByKey.set(`book:${r.id}`, {
-      title: r.title,
+      title: r.title ?? UNTITLED_FALLBACK,
       coverUrl: r.cover_url,
       subtitle: r.author,
     });
   for (const r of movies.data ?? [])
-    catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
+    catalogByKey.set(`movie:${r.id}`, {
+      title: r.title ?? UNTITLED_FALLBACK,
+      coverUrl: r.cover_url,
+      subtitle: null,
+    });
   for (const r of series.data ?? [])
-    catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null });
+    catalogByKey.set(`series:${r.id}`, {
+      title: r.title ?? UNTITLED_FALLBACK,
+      coverUrl: r.cover_url,
+      subtitle: null,
+    });
 
   // Título de episodio, best-effort (igual que feed.ts).
   const episodeSeriesIds = [...new Set(episodeRows.map((r) => r.series_id))];

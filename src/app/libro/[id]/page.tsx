@@ -223,7 +223,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
       <ItemShell
         itemType="book"
         mediaLabel={tDetail("mediaLabel.book")}
-        title={book.title}
+        title={book.title ?? tDetail("untitled")}
         byline={byline}
         genres={genres}
         coverUrl={book.cover_url}
@@ -464,7 +464,7 @@ async function BookTabs({
           itemType="book"
           itemId={book.id}
           item={{
-            title: book.title,
+            title: book.title ?? tDetail("untitled"),
             author: book.author,
             synopsis: book.synopsis,
             genres,
