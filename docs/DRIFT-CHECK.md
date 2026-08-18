@@ -2,7 +2,9 @@
 
 > **[Procedimiento · a demanda]** No corre solo. Se lanza cuando quieras verificar que los
 > docs canónicos siguen coincidiendo con la realidad (prod + dev + repo). Última ejecución:
-> 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122)
+> 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122).
+> Superficie 6 revisada de nuevo el 2026-08-18 (#674, catálogo server-authoritative, solo dev
+> — ver el detalle en su sección más abajo).
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
 Compara seis superficies y reporta solo lo que **no cuadra**.
@@ -228,6 +230,26 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > `club_event_followers` **no** entra en la lista por otra razón: solo tiene `grant select`
 > (se escribe únicamente por RPC `SECURITY DEFINER`), así que no es una tabla con grants de
 > escritura por columna y la consulta no la mira.
+>
+> **Nota del 2026-08-18 (#674, catálogo server-authoritative, SOLO EN DEV — prod sigue con
+> los números de 2026-08-04 de abajo hasta desplegar).** Verificado en dev contra
+> `information_schema.column_privileges`. Tres filas cambian:
+> - `movies`: **12** cols (+`hydrated_at`, con su `grant update` — confirmado, no falta),
+>   con_insert **11→0**, con_update **7→8**.
+> - `series`: mismo patrón — **14** cols, con_insert **13→0**, con_update **9→10**.
+> - `books`: cols se mantienen en 14 (`hydrated_at` ya existía desde `20260715_book_hydration`),
+>   con_insert **14→0**, con_update se mantiene en 9.
+>
+> El hueco de INSERT de las tres pasa a ser **total y a propósito**, no parcial como el resto
+> de la tabla: `20260818_catalog_f_revoke_insert.sql` revoca el INSERT de tabla completo (no
+> había grants de INSERT por columna que revocar uno a uno) y quita las tres policies
+> `catalog * insertable`. La única vía de alta que queda es
+> `register_catalog_item`/`register_catalog_items_bulk` (`SECURITY DEFINER`, escribe como owner,
+> no consume el grant del rol que invoca). **Si `con_insert` de estas tres tablas vuelve a subir
+> por encima de 0 para `authenticated`, es una regresión** — alguien reabrió el INSERT directo
+> que #674 cerró. Ninguna columna quedó sin su grant de escritura tras la revocación: solo se
+> tocó INSERT, el UPDATE por columna de la hidratación queda intacto. Detalle: `data-model.md`
+> §2.1, `decisiones.md` (2026-08-18).
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|

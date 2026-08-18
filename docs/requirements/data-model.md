@@ -286,6 +286,32 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
 > columnas, tablas ni cambios de grants. Las dos con `search_path = public, pg_temp`, como
 > manda la plantilla. Detalle en §6.
+>
+> **Delta del 2026-08-18 (#674, catálogo server-authoritative, §2) — aplicado y verificado
+> SOLO EN DEV, prod pendiente del merge.** Cierra el envenenamiento del catálogo global:
+> `authenticated` deja de poder escribir campos canónicos de `movies`/`series`/`books`
+> directamente. `title` pasa a **nullable** en las tres tablas (antes `NOT NULL`, impedía la
+> shell vacía); `movies.hydrated_at`/`series.hydrated_at timestamptz` añadidas, hermanas de
+> `books.hydrated_at`, con `grant update (hydrated_at) to authenticated`. RPCs nuevas
+> `SECURITY DEFINER`: `register_catalog_item`/`register_catalog_items_bulk` (alta = shell con
+> SOLO el id externo) y `hydrate_movie`/`hydrate_series`/`hydrate_screens_bulk`
+> (fill-only, hermanas de `hydrate_book`, que también pasa a activar el flag de sesión de
+> abajo). El trigger `enforce_catalog_edit_collaborator_only` respeta ahora un flag de sesión
+> `app.hydrating`: si está `'on'` dentro de la transacción, deja pasar el UPDATE — arregla un
+> **bug preexistente** ([#699](https://github.com/borjar20/Biblioshare/issues/699)) por el que
+> ese trigger bloqueaba TODA hidratación (incluida la de `hydrate_book`, ya en producción) para
+> cualquier `user` sin rol de colaborador, porque disparaba también en `null→valor`. El INSERT
+> directo sobre `books`/`movies`/`series` queda **revocado** a `authenticated`/`anon`
+> (`drop policy` de las tres `catalog * insertable` + `revoke insert`, migración
+> `20260818_catalog_f_revoke_insert.sql`): la RPC definer es la única vía de alta. Seis
+> migraciones, `20260818_catalog_a`…`f`, verificadas contra objetos reales
+> (`information_schema.columns`, `pg_proc`, `pg_trigger`), no `list_migrations`. Desviaciones registradas frente al spec
+> original y el bug de #699: ver `decisiones.md` (2026-08-18). Superficie 6 de
+> `docs/DRIFT-CHECK.md` corrida para este delta. Spec:
+> `docs/superpowers/specs/2026-08-14-catalogo-server-authoritative-design.md`; plan:
+> `docs/superpowers/plans/2026-08-18-catalogo-server-authoritative.md`; issue:
+> [#674](https://github.com/borjar20/Biblioshare/issues/674) (abierta — pendiente aplicar a
+> prod + merge).
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -457,6 +483,90 @@ no solo el campo nuevo. Ver issue #375 y la superficie 6 de `docs/DRIFT-CHECK.md
 Antes de esto, «Su obra» de una ficha de persona era solo lo que `ensureItemEnriched` hubiera
 escrito al abrir la ficha de **una obra concreta**: una persona con una sola película abierta
 afirmaba, sin matices, que esa era toda su obra. No era un hueco, era una afirmación falsa.
+
+### 2.1 Catálogo server-authoritative (#674, cierre del envenenamiento) — SOLO EN DEV
+
+**El cliente ya no puede escribir campos canónicos de `movies`/`series`/`books`.** Antes de
+esta pieza, un `authenticated` cualquiera podía insertar directo con el `title`/`synopsis`/
+`director`… que quisiera (policies `catalog * insertable with check(true)`): el catálogo
+compartido — visible por cualquier usuario y, en las obras públicas, por anónimos — era
+escribible por el primero que lo diera de alta. Alta y hidratación se separan en dos pasos:
+
+1. **Alta = shell.** `register_catalog_item(p_item_type, p_external_id) returns uuid` /
+   `register_catalog_items_bulk(p_item_type, p_external_ids[]) returns table(external_id, id)`
+   — `SECURITY DEFINER`, insertan una fila con **solo el id externo** (`tmdb_id` /
+   `openlibrary_work_key`); todo lo demás nace `NULL`, incluido `title`. El cliente nunca
+   manda un campo canónico en el alta; `findOrCreateCatalogItem(Bulk)` (`src/lib/catalog/
+   find-or-create.ts`) descarta los que trae el `SearchResult` y llama solo con el id.
+2. **Hidratación = fill-only, server-side, por id.** `ensureMovieHydrated`/
+   `ensureSeriesHydrated` (`src/lib/catalog/hydrate-screen.ts`), hermanas de la
+   `ensureBookHydrated` ya existente, se lanzan en `after()` al abrir la ficha
+   (`src/app/pelicula/[id]/page.tsx`, `src/app/serie/[id]/page.tsx`): re-obtienen los
+   canónicos del proveedor por el id externo (`getMovieForHydration`/`getSeriesForHydration`,
+   `src/lib/catalog/tmdb.ts`, una llamada con `append_to_response=credits` para
+   director/creator) y llaman a `hydrate_movie`/`hydrate_series`/`hydrate_screens_bulk`
+   (`SECURITY DEFINER`). **NUNCA lanzan** (try/catch): un fallo de API externa no tumba el
+   render de la ficha, solo deja la shell sin hidratar para el siguiente visitante.
+
+**Columnas.** `title` pasa a **nullable** en `movies`/`series`/`books` (el spec original decía
+"canónicos NULL" pero `title` era `NOT NULL`, lo que impedía la shell vacía). La UI muestra
+`UNTITLED_FALLBACK` ("Sin título", `src/lib/catalog/untitled.ts`) mientras no hay título.
+`movies.hydrated_at`/`series.hydrated_at timestamptz` (nullable), hermanas de
+`books.hydrated_at` (`20260715_book_hydration`): marca que la ficha ya se hidrató una vez, para
+no volver a preguntar al proveedor. **Grant `update (hydrated_at) on movies/series to
+authenticated`** en la misma migración — sin él la RPC fill-only fallaría en silencio para
+cualquier `user` que abriera la ficha (issue #375, DRIFT-CHECK superficie 6).
+
+**Semántica de la hidratación: FILL-ONLY pura, no "autoritativa-si-no-hidratada".** El spec
+original (§3c) pedía que una shell sin hidratar (`hydrated_at IS NULL`) aceptara una escritura
+AUTORITATIVA (pisando cualquier valor) y que, ya hidratada, pasara a fill-only. Verificado
+contra el modelo implementado, esa distinción es innecesaria e incompatible: con alta =
+`register_catalog_item` + INSERT revocado, una shell **nace siempre vacía** — no hay ningún
+valor "envenenado" que pisar en la primera hidratación — y el trigger de curación
+(`enforce_catalog_edit_collaborator_only`) ya impide que una hidratación automática sobrescriba
+un valor→valor curado por un colaborador. `hydrate_movie`/`hydrate_series`/`hydrate_book` son,
+pues, **fill-only puro** en las tres tablas: solo rellenan columnas `NULL`/vacías, nunca pisan
+un valor existente. `hydrate_book` **cambia de comportamiento** respecto a antes de #674 (ya
+era fill-only, así que no hay diferencia observable, pero el motivo pasa a ser explícito: se
+alinea con `hydrate_movie`/`hydrate_series` en vez de ser una regla aislada).
+
+**El bug preexistente que #674 destapó y arregla ([#699](https://github.com/borjar20/Biblioshare/issues/699)).**
+El trigger `enforce_catalog_edit_collaborator_only` (preexistente, gate de curación manual)
+dispara también en `null → valor`, no solo `valor → valor`. Como `hydrate_book` corre con
+`auth.uid()` del visitante (no del owner de la función, porque el trigger evalúa el rol de
+quien invocó la transacción) y la inmensa mayoría de usuarios tiene rol `user`, **toda
+hidratación automática de libros llevaba bloqueada en producción desde que existe
+`hydrate_book`** — no se veía en dev porque ahí se prueba con cuentas admin. Arreglo: flag de
+sesión `app.hydrating` (`set_config('app.hydrating', 'on', true)`, transaction-scoped) que
+las RPC de hidratación activan alrededor del `UPDATE` y el trigger respeta (`current_setting
+('app.hydrating', true) = 'on'` deja pasar el UPDATE sin exigir `collaborator+`). La curación
+manual (edición humana desde `/libro|pelicula|serie/[id]/editar`) sigue exigiendo
+`collaborator+` exactamente igual que antes — el flag solo lo activan las RPC `SECURITY
+DEFINER` de hidratación, nunca el cliente.
+
+**INSERT directo revocado.** `20260818_catalog_f_revoke_insert.sql`: `drop policy` de las tres
+`"catalog books/movies/series insertable"` (`with check(true)`) + `revoke insert on
+books/movies/series from authenticated, anon`. No había grants de INSERT por columna (a
+diferencia de UPDATE, ver superficie 6 de `docs/DRIFT-CHECK.md`), así que revocar es
+`drop policy` + `revoke` de tabla, no un ajuste por columna. `register_catalog_item` sigue
+funcionando porque es `SECURITY DEFINER` (escribe como owner, no necesita el grant del rol que
+invoca). **Regresión de seguridad esperada tras esta migración**: un INSERT directo del cliente
+sobre `books`/`movies`/`series` da `42501`.
+
+**Camino de créditos de persona (bulk).** `findOrCreateCatalogItemsBulk` (origen: hidratación
+de la filmografía completa de una persona, `hydratePersonCredits`) usa
+`register_catalog_items_bulk` + `hydrate_screens_bulk` para no convertir ~6 consultas en
+300+ llamadas RPC; sus `SearchResult` vienen de TMDB (origen servidor, no del cliente), así
+que hidratarlos directamente no reabre el envenenamiento — la RPC fill-only tampoco podría
+pisar una curación existente aunque quisiera.
+
+**Estado: aplicado y verificado SOLO EN DEV**, contra objetos reales
+(`information_schema.columns`, `pg_proc`, `pg_trigger`), nunca `list_migrations`. **Producción
+sigue con el catálogo escribible por `authenticated`** hasta desplegar — el envenenamiento
+sigue vivo en prod. Ver `decisiones.md` (2026-08-18), issue
+[#674](https://github.com/borjar20/Biblioshare/issues/674) (abierta) y el efecto colateral de
+regenerar tipos desde dev sobre los RPC de club-events, issue
+[#701](https://github.com/borjar20/Biblioshare/issues/701).
 
 ## 3. El pase: el hub del estado
 
