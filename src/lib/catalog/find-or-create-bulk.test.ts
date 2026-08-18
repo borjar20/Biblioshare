@@ -2,12 +2,27 @@ import { describe, expect, it, vi } from "vitest";
 import { findOrCreateCatalogItem, findOrCreateCatalogItemsBulk } from "./find-or-create";
 import type { SearchResult } from "./types";
 
-function movie(externalId: string, title: string): SearchResult {
+function movie(externalId: string, title: string, extra: Partial<SearchResult> = {}): SearchResult {
   return {
     itemType: "movie",
     externalId,
     title,
+    originalTitle: null,
     subtitle: null,
+    coverUrl: null,
+    year: null,
+    synopsis: null,
+    genres: null,
+    ...extra,
+  } as SearchResult;
+}
+
+function book(externalId: string, title: string): SearchResult {
+  return {
+    itemType: "book",
+    externalId,
+    title,
+    subtitle: "Autora",
     coverUrl: null,
     year: null,
     synopsis: null,
@@ -15,151 +30,107 @@ function movie(externalId: string, title: string): SearchResult {
   } as SearchResult;
 }
 
-/**
- * Doble mínimo del cliente de Supabase para el camino del lote:
- * `.from(t).select(c).in(col, ids)` y `.from(t).insert(rows).select(c)`.
- * `existing` son las filas que ya están; `inserted`, las que devuelve el insert.
- */
-function fakeSupabase(opts: {
-  existing: Array<{ id: string; tmdb_id: number }>;
-  inserted?: Array<{ id: string; tmdb_id: number }>;
-  insertError?: { code: string } | null;
-}) {
-  const selectCalls: unknown[] = [];
-  const insertCalls: unknown[][] = [];
-
-  return {
-    from() {
-      return {
-        select() {
-          return {
-            in(_col: string, ids: unknown[]) {
-              selectCalls.push(ids);
-              return Promise.resolve({ data: opts.existing, error: null });
-            },
-          };
-        },
-        insert(rows: unknown[]) {
-          insertCalls.push(rows);
-          return {
-            select() {
-              return Promise.resolve({
-                data: opts.insertError ? null : (opts.inserted ?? []),
-                error: opts.insertError ?? null,
-              });
-            },
-          };
-        },
-      };
-    },
-    _selectCalls: selectCalls,
-    _insertCalls: insertCalls,
-  };
-}
-
 describe("findOrCreateCatalogItemsBulk", () => {
-  it("lote vacío -> mapa vacío, sin tocar la base", async () => {
-    const supabase = fakeSupabase({ existing: [] });
-    const map = await findOrCreateCatalogItemsBulk(supabase as never, []);
+  it("lote vacío -> mapa vacío, sin llamar a rpc", async () => {
+    const rpc = vi.fn();
+    const supabase = { rpc } as never;
+
+    const map = await findOrCreateCatalogItemsBulk(supabase, []);
+
     expect(map.size).toBe(0);
-    expect(supabase._selectCalls).toHaveLength(0);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("todos existentes -> un solo select, ningún insert", async () => {
-    const supabase = fakeSupabase({ existing: [{ id: "uuid-1", tmdb_id: 1 }] });
+  it("crea shells en lote e hidrata con los datos en mano", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [{ external_id: "129", id: "m1" }], error: null }) // register bulk
+      .mockResolvedValueOnce({ data: null, error: null }); // hydrate bulk
+    const supabase = { rpc } as never;
 
-    const map = await findOrCreateCatalogItemsBulk(supabase as never, [movie("1", "A")]);
+    const map = await findOrCreateCatalogItemsBulk(supabase, [
+      movie("129", "T", { coverUrl: "c", year: 2001, synopsis: "S", genres: ["g"] }),
+    ]);
 
-    expect(map.get("movie:1")).toBe("uuid-1");
-    expect(supabase._selectCalls).toHaveLength(1);
-    expect(supabase._insertCalls).toHaveLength(0);
-  });
-
-  it("lote mixto -> inserta SOLO los que faltan, en UNA llamada", async () => {
-    const supabase = fakeSupabase({
-      existing: [{ id: "uuid-1", tmdb_id: 1 }],
-      inserted: [
-        { id: "uuid-2", tmdb_id: 2 },
-        { id: "uuid-3", tmdb_id: 3 },
+    expect(map.get("movie:129")).toBe("m1");
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_items_bulk", {
+      p_item_type: "movie",
+      p_external_ids: ["129"],
+    });
+    expect(rpc.mock.calls[1][0]).toBe("hydrate_screens_bulk");
+    expect(rpc.mock.calls[1][1]).toEqual({
+      p_item_type: "movie",
+      p_rows: [
+        {
+          item_id: "m1",
+          title: "T",
+          original_title: null,
+          synopsis: "S",
+          genres: ["g"],
+          release_year: 2001,
+          cover_url: "c",
+        },
       ],
     });
-
-    const map = await findOrCreateCatalogItemsBulk(supabase as never, [
-      movie("1", "A"),
-      movie("2", "B"),
-      movie("3", "C"),
-    ]);
-
-    expect(supabase._insertCalls).toHaveLength(1);
-    expect(supabase._insertCalls[0]).toHaveLength(2);
-    expect([...map.entries()].sort()).toEqual([
-      ["movie:1", "uuid-1"],
-      ["movie:2", "uuid-2"],
-      ["movie:3", "uuid-3"],
-    ]);
   });
 
-  it("deduplica externalId repetidos antes de insertar", async () => {
-    const supabase = fakeSupabase({
-      existing: [],
-      inserted: [{ id: "uuid-9", tmdb_id: 9 }],
+  it("deduplica externalId repetidos antes de llamar a register_catalog_items_bulk", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [{ external_id: "9", id: "uuid-9" }], error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItemsBulk(supabase, [movie("9", "Repe"), movie("9", "Repe")]);
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_items_bulk", {
+      p_item_type: "movie",
+      p_external_ids: ["9"],
     });
-
-    await findOrCreateCatalogItemsBulk(supabase as never, [
-      movie("9", "Repe"),
-      movie("9", "Repe"),
-    ]);
-
-    expect(supabase._insertCalls[0]).toHaveLength(1);
   });
 
-  it("42501 (anónimo sin grant) -> devuelve solo los existentes, sin lanzar", async () => {
-    const supabase = fakeSupabase({
-      existing: [{ id: "uuid-1", tmdb_id: 1 }],
-      insertError: { code: "42501" },
+  it("libros: registra la shell pero NO hidrata (la ficha de libro lo hace)", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: [{ external_id: "/works/OL1W", id: "book-1" }],
+      error: null,
     });
+    const supabase = { rpc } as never;
 
-    const map = await findOrCreateCatalogItemsBulk(supabase as never, [
-      movie("1", "A"),
-      movie("2", "B"),
-    ]);
+    const map = await findOrCreateCatalogItemsBulk(supabase, [book("/works/OL1W", "Libro")]);
+
+    expect(map.get("book:/works/OL1W")).toBe("book-1");
+    expect(rpc).toHaveBeenCalledTimes(1); // solo el register, ningún hydrate_screens_bulk
+  });
+
+  it("sin sesión: register_catalog_items_bulk lanza (raise exception) -> se traga, no lanza", async () => {
+    const rpc = vi.fn().mockRejectedValueOnce(new Error("authentication required"));
+    const supabase = { rpc } as never;
+
+    const map = await findOrCreateCatalogItemsBulk(supabase, [movie("1", "A")]);
+
+    expect(map.size).toBe(0);
+  });
+
+  it("hydrate_screens_bulk falla -> el map ya resuelto se conserva, no lanza", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [{ external_id: "1", id: "uuid-1" }], error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    const supabase = { rpc } as never;
+
+    const map = await findOrCreateCatalogItemsBulk(supabase, [movie("1", "A")]);
 
     expect(map.get("movie:1")).toBe("uuid-1");
-    expect(map.has("movie:2")).toBe(false);
   });
 
-  it("23505 (carrera) -> re-selecciona y recupera los ids", async () => {
-    // El segundo select ya ve la fila que insertó la otra petición.
-    let selectCount = 0;
-    const supabase = {
-      from() {
-        return {
-          select() {
-            return {
-              in() {
-                selectCount += 1;
-                return Promise.resolve({
-                  data: selectCount === 1 ? [] : [{ id: "uuid-carrera", tmdb_id: 5 }],
-                  error: null,
-                });
-              },
-            };
-          },
-          insert() {
-            return {
-              select() {
-                return Promise.resolve({ data: null, error: { code: "23505" } });
-              },
-            };
-          },
-        };
-      },
-    };
+  it("externalId no devuelto por el register -> no llama a hydrate_screens_bulk", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({ data: [], error: null }); // register no resolvió nada
+    const supabase = { rpc } as never;
 
-    const map = await findOrCreateCatalogItemsBulk(supabase as never, [movie("5", "Carrera")]);
+    const map = await findOrCreateCatalogItemsBulk(supabase, [movie("404", "Missing")]);
 
-    expect(map.get("movie:5")).toBe("uuid-carrera");
-    expect(selectCount).toBe(2);
+    expect(map.size).toBe(0);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });
 
