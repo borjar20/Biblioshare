@@ -81,7 +81,7 @@ export type Database = {
           published_year: number | null
           publisher: string | null
           synopsis: string | null
-          title: string
+          title: string | null
           total_pages: number | null
         }
         Insert: {
@@ -97,7 +97,7 @@ export type Database = {
           published_year?: number | null
           publisher?: string | null
           synopsis?: string | null
-          title: string
+          title?: string | null
           total_pages?: number | null
         }
         Update: {
@@ -113,7 +113,7 @@ export type Database = {
           published_year?: number | null
           publisher?: string | null
           synopsis?: string | null
-          title?: string
+          title?: string | null
           total_pages?: number | null
         }
         Relationships: []
@@ -916,6 +916,13 @@ export type Database = {
             referencedRelation: "interaction_targets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       content_reports: {
@@ -1245,11 +1252,12 @@ export type Database = {
           director: string | null
           duration_minutes: number | null
           genres: string[] | null
+          hydrated_at: string | null
           id: string
           original_title: string | null
           release_year: number | null
           synopsis: string | null
-          title: string
+          title: string | null
           tmdb_id: number | null
         }
         Insert: {
@@ -1258,11 +1266,12 @@ export type Database = {
           director?: string | null
           duration_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title: string
+          title?: string | null
           tmdb_id?: number | null
         }
         Update: {
@@ -1271,11 +1280,12 @@ export type Database = {
           director?: string | null
           duration_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title?: string
+          title?: string | null
           tmdb_id?: number | null
         }
         Relationships: []
@@ -1363,6 +1373,42 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          android_push_enabled: boolean
+          category_clubs: boolean
+          category_progress: boolean
+          category_social: boolean
+          category_system: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+          web_push_enabled: boolean
+        }
+        Insert: {
+          android_push_enabled?: boolean
+          category_clubs?: boolean
+          category_progress?: boolean
+          category_social?: boolean
+          category_system?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+          web_push_enabled?: boolean
+        }
+        Update: {
+          android_push_enabled?: boolean
+          category_clubs?: boolean
+          category_progress?: boolean
+          category_social?: boolean
+          category_system?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+          web_push_enabled?: boolean
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           actor_id: string | null
@@ -1410,45 +1456,13 @@ export type Database = {
           },
         ]
       }
-      user_celebrations: {
-        Row: {
-          created_at: string
-          displayed_at: string | null
-          event_key: string
-          event_type: string
-          first_triggered_at: string
-          id: string
-          last_triggered_at: string
-          payload: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          displayed_at?: string | null
-          event_key: string
-          event_type: string
-          first_triggered_at?: string
-          id?: string
-          last_triggered_at?: string
-          payload?: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          displayed_at?: string | null
-          event_key?: string
-          event_type?: string
-          first_triggered_at?: string
-          id?: string
-          last_triggered_at?: string
-          payload?: Json
-          user_id?: string
-        }
-        Relationships: []
-      }
       passes: {
         Row: {
           created_at: string
+          dropped_reason:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note: string | null
           edition_id: string | null
           finished_on: string | null
           id: string
@@ -1468,6 +1482,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dropped_reason?:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note?: string | null
           edition_id?: string | null
           finished_on?: string | null
           id?: string
@@ -1487,6 +1505,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dropped_reason?:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note?: string | null
           edition_id?: string | null
           finished_on?: string | null
           id?: string
@@ -1541,6 +1563,7 @@ export type Database = {
       }
       people: {
         Row: {
+          aliases: string[]
           bio: string | null
           birth_date: string | null
           created_at: string
@@ -1555,6 +1578,7 @@ export type Database = {
           tmdb_id: number | null
         }
         Insert: {
+          aliases?: string[]
           bio?: string | null
           birth_date?: string | null
           created_at?: string
@@ -1569,6 +1593,7 @@ export type Database = {
           tmdb_id?: number | null
         }
         Update: {
+          aliases?: string[]
           bio?: string | null
           birth_date?: string | null
           created_at?: string
@@ -1748,42 +1773,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      notification_preferences: {
-        Row: {
-          android_push_enabled: boolean
-          category_clubs: boolean
-          category_progress: boolean
-          category_social: boolean
-          category_system: boolean
-          created_at: string
-          updated_at: string
-          user_id: string
-          web_push_enabled: boolean
-        }
-        Insert: {
-          android_push_enabled?: boolean
-          category_clubs?: boolean
-          category_progress?: boolean
-          category_social?: boolean
-          category_system?: boolean
-          created_at?: string
-          updated_at?: string
-          user_id: string
-          web_push_enabled?: boolean
-        }
-        Update: {
-          android_push_enabled?: boolean
-          category_clubs?: boolean
-          category_progress?: boolean
-          category_social?: boolean
-          category_system?: boolean
-          created_at?: string
-          updated_at?: string
-          user_id?: string
-          web_push_enabled?: boolean
-        }
-        Relationships: []
       }
       push_devices: {
         Row: {
@@ -2299,11 +2288,12 @@ export type Database = {
           creator: string | null
           episode_runtime_minutes: number | null
           genres: string[] | null
+          hydrated_at: string | null
           id: string
           original_title: string | null
           release_year: number | null
           synopsis: string | null
-          title: string
+          title: string | null
           tmdb_id: number | null
           total_episodes: number | null
           total_seasons: number | null
@@ -2314,11 +2304,12 @@ export type Database = {
           creator?: string | null
           episode_runtime_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title: string
+          title?: string | null
           tmdb_id?: number | null
           total_episodes?: number | null
           total_seasons?: number | null
@@ -2329,11 +2320,12 @@ export type Database = {
           creator?: string | null
           episode_runtime_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title?: string
+          title?: string | null
           tmdb_id?: number | null
           total_episodes?: number | null
           total_seasons?: number | null
@@ -2387,39 +2379,6 @@ export type Database = {
           },
         ]
       }
-      thoughts: {
-        Row: {
-          anchor_id: string
-          anchor_type: Database["public"]["Enums"]["thought_anchor_type"]
-          body: string
-          created_at: string
-          id: string
-          is_spoiler: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          anchor_id: string
-          anchor_type: Database["public"]["Enums"]["thought_anchor_type"]
-          body: string
-          created_at?: string
-          id?: string
-          is_spoiler?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          anchor_id?: string
-          anchor_type?: Database["public"]["Enums"]["thought_anchor_type"]
-          body?: string
-          created_at?: string
-          id?: string
-          is_spoiler?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_blocks: {
         Row: {
           blocked_id: string
@@ -2435,6 +2394,42 @@ export type Database = {
           blocked_id?: string
           blocker_id?: string
           created_at?: string
+        }
+        Relationships: []
+      }
+      user_celebrations: {
+        Row: {
+          created_at: string
+          displayed_at: string | null
+          event_key: string
+          event_type: string
+          first_triggered_at: string
+          id: string
+          last_triggered_at: string
+          payload: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          displayed_at?: string | null
+          event_key: string
+          event_type: string
+          first_triggered_at?: string
+          id?: string
+          last_triggered_at?: string
+          payload?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          displayed_at?: string | null
+          event_key?: string
+          event_type?: string
+          first_triggered_at?: string
+          id?: string
+          last_triggered_at?: string
+          payload?: Json
+          user_id?: string
         }
         Relationships: []
       }
@@ -2485,6 +2480,10 @@ export type Database = {
       pass_reviews: {
         Row: {
           created_at: string | null
+          dropped_reason:
+            | Database["public"]["Enums"]["pass_dropped_reason"]
+            | null
+          dropped_reason_note: string | null
           edition_id: string | null
           finished_on: string | null
           id: string | null
@@ -2503,6 +2502,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          dropped_reason?: never
+          dropped_reason_note?: never
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
@@ -2521,6 +2522,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          dropped_reason?: never
+          dropped_reason_note?: never
           edition_id?: string | null
           finished_on?: string | null
           id?: string | null
@@ -2590,16 +2593,6 @@ export type Database = {
         Args: { p_activity_id: string }
         Returns: undefined
       }
-      related_posts_by_author: {
-        Args: {
-          p_anchor_id: string
-          p_anchor_type: Database["public"]["Enums"]["post_anchor_type"]
-          p_author_id: string
-          p_exclude_post_id: string
-          p_limit?: number
-        }
-        Returns: Database["public"]["Tables"]["posts"]["Row"][]
-      }
       can_view_interaction_target: {
         Args: { p_interaction_target_id: string }
         Returns: boolean
@@ -2612,19 +2605,24 @@ export type Database = {
         }
         Returns: boolean
       }
-      club_is_private: { Args: { p_club_id: string }; Returns: boolean }
-      pin_comment: {
-        Args: { p_comment_id: string; p_pinned: boolean }
-        Returns: undefined
-      }
-      pull_pending_celebrations: {
-        Args: Record<PropertyKey, never>
+      claim_due_event_reminders: {
+        Args: { p_activity_id?: string; p_limit?: number }
         Returns: {
-          event_key: string
-          event_type: string
-          payload: Json
+          activity_id: string
+          club_id: string
+          club_name: string
+          club_slug: string
+          event_timezone: string
+          location: string
+          minutes_before: number
+          modality: Database["public"]["Enums"]["event_modality"]
+          organizer_id: string
+          starts_at: string
+          title: string
+          user_id: string
         }[]
       }
+      club_is_private: { Args: { p_club_id: string }; Returns: boolean }
       club_member_row_exists: { Args: { p_club_id: string }; Returns: boolean }
       club_role: {
         Args: { p_club_id: string }
@@ -2666,23 +2664,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      claim_due_event_reminders: {
-        Args: { p_limit?: number }
-        Returns: {
-          activity_id: string
-          club_id: string
-          club_name: string
-          club_slug: string
-          event_timezone: string
-          location: string | null
-          minutes_before: number | null
-          modality: Database["public"]["Enums"]["event_modality"] | null
-          organizer_id: string
-          starts_at: string | null
-          title: string
-          user_id: string
-        }[]
-      }
       create_club_event: {
         Args: {
           p_club_id: string
@@ -2707,16 +2688,13 @@ export type Database = {
           p_options: string[]
           p_question: string
         }
-        Returns: undefined
+        Returns: string
       }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      editions_in_use: {
-        Args: { p_edition_ids: string[] }
-        Returns: string[]
-      }
+      editions_in_use: { Args: { p_edition_ids: string[] }; Returns: string[] }
       ensure_club_round: {
         Args: {
           p_club_id: string
@@ -2735,14 +2713,7 @@ export type Database = {
         Returns: undefined
       }
       follow_club_event: {
-        Args: {
-          p_activity_id: string
-          // null es un valor legítimo: significa "sin recordatorio". Postgres no
-          // declara la nulabilidad de un parámetro, así que el generador lo emite
-          // como `number` a secas y hay que admitir null a mano — igual que en
-          // set_club_event_reminder.
-          p_remind_minutes_before?: number | null
-        }
+        Args: { p_activity_id: string; p_remind_minutes_before?: number }
         Returns: undefined
       }
       get_activities_progress: {
@@ -2789,6 +2760,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_widget_snapshot: { Args: never; Returns: Json }
       has_min_club_role: {
         Args: {
           min: Database["public"]["Enums"]["club_role"]
@@ -2814,6 +2786,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      hydrate_movie: {
+        Args: {
+          p_cover_url?: string
+          p_director?: string
+          p_duration_minutes?: number
+          p_genres?: string[]
+          p_movie_id: string
+          p_original_title?: string
+          p_release_year?: number
+          p_synopsis?: string
+          p_title?: string
+        }
+        Returns: undefined
+      }
+      hydrate_screens_bulk: {
+        Args: { p_item_type: string; p_rows: Json }
+        Returns: undefined
+      }
+      hydrate_series: {
+        Args: {
+          p_cover_url?: string
+          p_creator?: string
+          p_episode_runtime_minutes?: number
+          p_genres?: string[]
+          p_original_title?: string
+          p_release_year?: number
+          p_series_id: string
+          p_synopsis?: string
+          p_title?: string
+          p_total_episodes?: number
+          p_total_seasons?: number
+        }
+        Returns: undefined
+      }
       is_activity_participant: {
         Args: { p_activity_id: string }
         Returns: boolean
@@ -2827,6 +2833,15 @@ export type Database = {
         Args: { p_item_id: string; p_saga_id: string }
         Returns: undefined
       }
+      list_club_round_weeks: {
+        Args: { p_club_id: string; p_weeks?: number }
+        Returns: {
+          author_id: string
+          period_key: string
+          prompt: string
+          round_id: string
+        }[]
+      }
       moderatable_target_ids: {
         Args: {
           candidate_target_ids: string[]
@@ -2838,7 +2853,19 @@ export type Database = {
         Args: { p_club_id: string }
         Returns: undefined
       }
+      pin_comment: {
+        Args: { p_comment_id: string; p_pinned: boolean }
+        Returns: undefined
+      }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
+      pull_pending_celebrations: {
+        Args: never
+        Returns: {
+          event_key: string
+          event_type: string
+          payload: Json
+        }[]
+      }
       register_book_edition: {
         Args: {
           p_book_id: string
@@ -2850,6 +2877,49 @@ export type Database = {
           p_year?: number
         }
         Returns: string
+      }
+      register_catalog_item: {
+        Args: { p_external_id: string; p_item_type: string }
+        Returns: string
+      }
+      register_catalog_items_bulk: {
+        Args: { p_external_ids: string[]; p_item_type: string }
+        Returns: {
+          external_id: string
+          id: string
+        }[]
+      }
+      related_posts_by_author: {
+        Args: {
+          p_anchor_id: string
+          p_anchor_type: Database["public"]["Enums"]["post_anchor_type"]
+          p_author_id: string
+          p_exclude_post_id: string
+          p_limit?: number
+        }
+        Returns: {
+          anchor_id: string
+          anchor_type: Database["public"]["Enums"]["post_anchor_type"]
+          author_id: string
+          body: string | null
+          created_at: string
+          id: string
+          is_spoiler: boolean
+          kind: Database["public"]["Enums"]["post_kind"]
+          source_id: string | null
+          source_kind: Database["public"]["Enums"]["post_source_kind"] | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "posts"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      release_event_reminders: {
+        Args: { p_activity_id: string; p_user_ids: string[] }
+        Returns: number
       }
       reorder_activity_checkpoints: {
         Args: { p_activity_id: string; p_checkpoint_ids: string[] }
@@ -2884,12 +2954,8 @@ export type Database = {
         Args: { p_activity_id: string; p_mode: string }
         Returns: undefined
       }
-      release_event_reminders: {
-        Args: { p_activity_id: string; p_user_ids: string[] }
-        Returns: number
-      }
       set_club_event_reminder: {
-        Args: { p_activity_id: string; p_remind_minutes_before: number | null }
+        Args: { p_activity_id: string; p_remind_minutes_before: number }
         Returns: undefined
       }
       set_club_event_state: {
@@ -2940,10 +3006,10 @@ export type Database = {
       update_activity_details: {
         Args: {
           p_activity_id: string
+          p_description: string
+          p_ends_on: string
+          p_starts_on: string
           p_title: string
-          p_description: string | null
-          p_starts_on: string | null
-          p_ends_on: string | null
         }
         Returns: undefined
       }
@@ -3026,9 +3092,6 @@ export type Database = {
         | "followed_finished"
         | "followed_session"
         | "followed_episode"
-        | "followed_started"
-        | "followed_dropped"
-        | "followed_thought"
         | "followed_added"
         | "club_event_reminder"
         | "club_event_updated"
@@ -3037,6 +3100,15 @@ export type Database = {
         | "thought_liked"
         | "post_commented"
         | "post_liked"
+        | "followed_started"
+        | "followed_dropped"
+        | "followed_thought"
+      pass_dropped_reason:
+        | "no_enganchado"
+        | "aburrido"
+        | "no_es_momento"
+        | "no_esperado"
+        | "otro"
       pending_import_status: "pending" | "resolved" | "dismissed"
       post_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       post_kind:
@@ -3056,7 +3128,7 @@ export type Database = {
         | "spin_off"
         | "companero"
         | "crossover"
-      saga_placement: "fijo" | "libre"
+      saga_placement: "fijo" | "libre" | "anclado"
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
       target_kind:
@@ -3253,9 +3325,6 @@ export const Constants = {
         "followed_finished",
         "followed_session",
         "followed_episode",
-        "followed_started",
-        "followed_dropped",
-        "followed_thought",
         "followed_added",
         "club_event_reminder",
         "club_event_updated",
@@ -3264,6 +3333,16 @@ export const Constants = {
         "thought_liked",
         "post_commented",
         "post_liked",
+        "followed_started",
+        "followed_dropped",
+        "followed_thought",
+      ],
+      pass_dropped_reason: [
+        "no_enganchado",
+        "aburrido",
+        "no_es_momento",
+        "no_esperado",
+        "otro",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       post_anchor_type: ["book", "movie", "series", "saga", "person"],
@@ -3286,7 +3365,7 @@ export const Constants = {
         "companero",
         "crossover",
       ],
-      saga_placement: ["fijo", "libre"],
+      saga_placement: ["fijo", "libre", "anclado"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],
       target_kind: [
