@@ -502,6 +502,21 @@ type TmdbSeasonResponse = {
   }>;
 };
 
+// Techo duro de temporadas que se recorren en una visita, y cuántas peticiones
+// vuelan a la vez. #676: `totalSeasons` llegaba de una columna de catálogo que
+// cualquier `authenticated` podía escribir (`total_seasons = 100000`) y se
+// convertía 1:1 en peticiones lanzadas de golpe con `Promise.all` — memoria,
+// sockets, cuota de TMDB y tiempo de función reventados por UNA visita. El
+// usuario controlaba el multiplicador del fan-out.
+//
+// 80 deja holgura de sobra sobre la serie más larga que existe (las telenovelas
+// diarias rondan las 60 en TMDB; el máximo real en prod al 2026-08-19 era 11) y
+// convierte el peor caso en algo acotado. Las capas de BD (CHECK + revoke del
+// grant de escritura, 20260865) y la de llamador (contar temporadas contra TMDB,
+// no contra la fila) están en sus sitios; esta es la última red.
+const MAX_SEASONS_PER_FETCH = 80;
+const SEASON_FETCH_CONCURRENCY = 4;
+
 // Trae todos los episodios de una serie recorriendo sus temporadas
 // (`/tv/{id}/season/{n}`). TMDB numera las temporadas desde 1; la 0 son
 // "especiales" y se omite. Alimenta el cache-as-you-go de series_episodes;
@@ -510,11 +525,33 @@ export async function getSeriesEpisodes(
   tmdbId: number,
   totalSeasons: number
 ): Promise<SeriesEpisode[]> {
-  const seasons = Array.from({ length: Math.max(0, totalSeasons) }, (_, i) => i + 1);
-  const perSeason = await Promise.all(
-    seasons.map((n) =>
-      tmdbGet<TmdbSeasonResponse>(`/tv/${tmdbId}/season/${n}?language=es-ES`)
-    )
+  const wanted = Math.max(0, Math.floor(totalSeasons) || 0);
+  if (wanted > MAX_SEASONS_PER_FETCH) {
+    console.warn("getSeriesEpisodes: total_seasons fuera de rango, recortado", {
+      tmdbId,
+      totalSeasons,
+      cap: MAX_SEASONS_PER_FETCH,
+    });
+  }
+  const seasons = Array.from(
+    { length: Math.min(wanted, MAX_SEASONS_PER_FETCH) },
+    (_, i) => i + 1
+  );
+
+  // Ventana deslizante de SEASON_FETCH_CONCURRENCY: cada worker va tomando la
+  // siguiente temporada libre. Nunca hay más de N peticiones vivas, sea cual sea
+  // el número de temporadas. `perSeason[i]` mantiene el orden del array original
+  // (el worker escribe en su índice), que es lo que espera el bucle de abajo.
+  const perSeason: Array<TmdbSeasonResponse | null> = new Array(seasons.length).fill(null);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(SEASON_FETCH_CONCURRENCY, seasons.length) }, async () => {
+      for (let i = next++; i < seasons.length; i = next++) {
+        perSeason[i] = await tmdbGet<TmdbSeasonResponse>(
+          `/tv/${tmdbId}/season/${seasons[i]}?language=es-ES`
+        );
+      }
+    })
   );
 
   const out: SeriesEpisode[] = [];

@@ -21,15 +21,18 @@ export async function ensureSeriesEpisodes(
       .eq("series_id", series.id);
     if ((count ?? 0) > 0) return;
 
-    // La fila de catálogo recién creada por la búsqueda no trae total_seasons
-    // (se rellena con backfill perezoso más tarde). Resolvemos el número de
-    // temporadas desde TMDB para no depender de ese backfill.
-    let totalSeasons = series.totalSeasons ?? null;
-    if (!totalSeasons) {
-      const details = await getSeriesDetails(series.tmdbId);
-      totalSeasons = details?.numberOfSeasons ?? null;
-    }
-    if (!totalSeasons) return;
+    // #676: el número de temporadas se pregunta SIEMPRE a TMDB, nunca se cree
+    // el de la fila de catálogo. `series.totalSeasons` es un dato COMPARTIDO y
+    // escribible (lo rellena la hidratación), y aquí decide cuántas peticiones
+    // salen: usarlo como fuente convertía cualquier valor absurdo en el
+    // multiplicador de un fan-out. La llamada extra no cuesta nada real —
+    // `getSeriesDetails` va por `tmdbGet`, cacheada 24 h por Next, y este camino
+    // solo corre la PRIMERA vez que se abre la serie (guard de `count` arriba).
+    // Antes solo se preguntaba a TMDB cuando la fila venía sin dato.
+    const details = await getSeriesDetails(series.tmdbId);
+    const fromTmdb = details?.numberOfSeasons ?? null;
+    if (!fromTmdb || fromTmdb <= 0) return;
+    const totalSeasons = fromTmdb;
 
     const episodes = await getSeriesEpisodes(series.tmdbId, totalSeasons);
     if (episodes.length === 0) return;
