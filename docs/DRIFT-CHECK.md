@@ -262,17 +262,26 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 |---|---|---|---|---|
 | `books` | 14 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
-| `movies` | 12 | **0** | 8 | ídem `books` (+`hydrated_at` con su `grant update`) |
+| `movies` | 12 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676) |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
 | `passes` | 19 | 14 | 13 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables; `dropped_reason`/`dropped_reason_note` sin SELECT (motivo de abandono, siempre privado) |
 | `people` | 12 | 11 | 6 | ídem `books` |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
-| `series` | 14 | **0** | 10 | ídem `books` (+`hydrated_at` con su `grant update`) |
+| `series` | 14 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 10 a 7 el 2026-08-19**: `total_seasons`, `total_episodes` y `episode_runtime_minutes` revocadas (#676) |
 | `series_episodes` | 10 | 10 | 0 | catálogo de episodios, alta-only |
 | `user_blocks` | 3 | 3 | 0 | un bloqueo se crea o se borra, no se edita |
 
 Si aparece una tabla que **no** está en esta lista, o a una de estas le sube `cols` sin
 subir el grant correspondiente, eso es el bug: falta el `grant ... (columna_nueva)`.
+
+> **Ojo con `movies`/`series` desde el 2026-08-19 (#676):** su `con_update` bajó A PROPÓSITO.
+> Las columnas de TAMAÑO (`total_seasons`, `total_episodes`, `episode_runtime_minutes`,
+> `duration_minutes`) ya no las escribe nadie directo: van por `hydrate_movie`/`hydrate_series`.
+> `total_seasons` decidía cuántas peticiones TMDB salían al abrir la ficha, así que dejarla
+> escribible ponía el multiplicador de un fan-out en manos del usuario. **Si vuelven a 8 y 10,
+> es una regresión**, no un grant que faltaba. Los valores esperados, por si hay duda:
+> `series` → `cover_url, creator, genres, hydrated_at, release_year, synopsis, title`;
+> `movies` → `cover_url, director, genres, hydrated_at, release_year, synopsis, title`.
 
 > `passes.review` tiene INSERT/UPDATE pero **no** SELECT, y es correcto: se lee por la vista
 > `pass_reviews` (`src/lib/library/get-library-items.ts:181`). No lo cuenta esta consulta,
@@ -312,6 +321,35 @@ select table_name, grantee, string_agg(privilege_type, ', ' order by privilege_t
 es el bug — una vista con permiso de escritura para el rol del navegador. El arreglo es
 `revoke insert, update, delete on public.<vista> from anon, authenticated`, más añadir ese
 `revoke` a la migración que la recreó.
+
+**Actualización 2026-08-19 (#691): la raíz está tapada en DEV, y hay que comprobarla aquí.**
+`20260866` endurece los default privileges de `public`, así que una relación nueva ya no nace
+escribible. Eso es lo que el `revoke` por objeto no conseguía: **el default sobrevive a un
+`drop view` + `create view` y el `revoke` no.** Comprobación:
+
+```sql
+select defaclrole::regrole as grantor, defaclacl from pg_default_acl
+ where defaclnamespace = 'public'::regnamespace and defaclobjtype = 'r';
+```
+
+Esperado para el grantor `postgres`: `anon=rxm/postgres` y `authenticated=rxm/postgres` (SELECT
+sí, escritura y `trigger` no). Si vuelven a aparecer `a`, `w` o `d` ahí, la raíz está reabierta
+y el barrido de arriba solo verá el síntoma.
+
+Dos cosas que hay que saber al leer esa salida:
+
+- El grantor **`supabase_admin` sigue en `arwdDxtm`** y no se puede tocar desde `postgres`
+  (issue #710). No es drift: es un límite conocido. Solo importaría si alguna relación de
+  `public` la creara ese rol.
+- Este control mira además **todos** los privilegios de las vistas, no solo INSERT/UPDATE/
+  DELETE. `pass_reviews` conservaba `rDxtm` en prod (el `revoke` de #690 solo quitó `a`, `w`,
+  `d`): TRUNCATE sobre una vista es inerte, pero `trigger` deja colgarle un `instead of`. Lo
+  esperado hoy en las cuatro vistas es **`anon=r` y `authenticated=r`, y nada más**:
+
+```sql
+select c.relname, c.relacl from pg_class c join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'public' and c.relkind = 'v' order by c.relname;
+```
 
 ## Salida
 Un informe corto por superficie: "coincide" o la lista de divergencias concretas, con la

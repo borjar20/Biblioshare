@@ -2797,7 +2797,8 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
   `save_saga_sequence` (§7.5/§7.6), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
-  `sync_tmdb_saga_items` (§7.1), `create_club_poll`, `confirm_checkpoint`,
+  `sync_tmdb_saga_items` (§7.1 — **desde el 2026-08-19 solo `service_role`**, ver §8.1),
+  `create_club_poll`, `confirm_checkpoint`,
   `unconfirm_checkpoint`. Los advisors los marcan
   como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` estuvo en esta lista
   hasta la fase 3: dejó de tener llamador en la app cuando la fase 2a retiró su editor (§7.5), y una
@@ -2833,6 +2834,79 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
   (66 avisos totales en prod y en dev, sin hallazgos atribuibles a esta fase).
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
+
+### 8.1 Endurecimiento de la barrida P1 (DEV, 2026-08-19 — **prod pendiente del merge**)
+
+Cuatro cambios de esquema, todos verificados contra objetos reales (`pg_proc`,
+`information_schema.column_privileges`, `pg_constraint`, `pg_default_acl`, `pg_class.relacl`),
+nunca contra `list_migrations`.
+
+**a) Las RPC de colecciones TMDB pasan a `service_role` (#675, `20260864`).**
+`link_tmdb_saga_item(uuid,uuid)` y `sync_tmdb_saga_items(uuid,jsonb)` tenían `EXECUTE` para
+`authenticated` y solo comprobaban que la saga *pareciera* TMDB — nunca que la película
+perteneciera de verdad a la colección. Cualquier autenticado podía inyectar películas
+arbitrarias en una colección que la app enseña como oficial, saltándose la RLS de `saga_items`.
+No se arregla validando dentro: el hecho «esta peli pertenece a esta colección» solo existe en
+TMDB, y cualquier columna que lo guardara la rellenaría el mismo camino que se quiere validar
+(hidratación fill-only llamable por el cliente, §2.1) — sería circular. Ahora las llama el
+servidor, con la lista de partes ya obtenida de TMDB.
+
+```sql
+-- esperado: {service_role} en las dos
+select p.proname, array(select r.rolname from pg_roles r
+         where has_function_privilege(r.rolname, p.oid, 'EXECUTE')
+           and r.rolname in ('anon','authenticated','service_role'))
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname='public' and p.proname in ('link_tmdb_saga_item','sync_tmdb_saga_items');
+```
+
+**b) Las columnas de TAMAÑO del catálogo dejan de ser escribibles por `authenticated` (#676,
+`20260865`).** El grant por columna incluía `series.total_seasons`/`total_episodes`/
+`episode_runtime_minutes` y `movies.duration_minutes`, con política `using(true)` (el trigger
+de curación las excluye a propósito). `total_seasons` decide cuántas peticiones TMDB salen al
+abrir la ficha, así que un `UPDATE ... = 100000` convertía una visita en un fan-out. Quien las
+escribe ahora es `hydrate_movie`/`hydrate_series` (§2.1, fill-only). Se revocan **solo** las de
+tamaño: las de ficha conservan su grant porque la edición de colaborador va por UPDATE directo
+y la guarda el trigger — revocar de más rompe la escritura ENTERA de la tabla (#375).
+Grant esperado de `authenticated` tras el cambio:
+
+- `series`: `cover_url, creator, genres, hydrated_at, release_year, synopsis, title`
+- `movies`: `cover_url, director, genres, hydrated_at, release_year, synopsis, title`
+
+Y CHECK de rango en las cuatro columnas (`series_total_seasons_range` ≤ 200,
+`series_total_episodes_range` ≤ 100000, `series_episode_runtime_range` ≤ 1440,
+`movies_duration_minutes_range` ≤ 2000). Son pararrayos, no reglas de negocio: se eligieron
+tras medir los máximos reales (dev 8 temporadas, prod 11; cero filas fuera de rango en ambas),
+así que validan al vuelo sin `not valid`.
+
+**c) Las relaciones NUEVAS de `public` ya no nacen escribibles (#691, `20260866`).** Los default
+privileges concedían `arwdDxtm` a `anon` y `authenticated` en cada relación nueva. En una tabla
+la RLS lo contiene; en una **vista auto-updatable owner-privileged no hay RLS que valga**:
+hereda el grant y propaga la escritura a la tabla base con privilegios del owner. Fue la causa
+real de #690, y el `revoke` por objeto de aquel arreglo **se revierte solo** en cuanto alguien
+hace `drop view … create view`. Ahora el default de `postgres` es `rxm` (SELECT sí; escritura y
+`trigger` no).
+
+> **Consecuencia para toda migración futura:** una tabla nueva que necesite que `authenticated`
+> escriba **tiene que conceder el grant a mano** — `grant select, insert, update, delete on
+> public.<tabla> to authenticated;`. Si aparece un `permission denied for table` en una feature
+> nueva, es esto, y es deliberado.
+
+Las cuatro vistas de `public` (`pass_reviews`, `club_identities`, `club_stats`,
+`profile_identities`) quedan además con **SELECT y nada más** para `anon`/`authenticated`:
+`pass_reviews` conservaba `rDxtm` (el revoke de #690 solo quitó a/w/d) en dev **y en prod**.
+TRUNCATE sobre una vista es inerte, pero `trigger` permite colgarle un `instead of`.
+**Límite conocido**: hay dos juegos de default privileges, uno por grantor, y solo se puede
+tocar el de `postgres` — `current_user` no es superusuario ni miembro de `supabase_admin`
+(issue #710).
+
+**d) Los `credits` se van con su obra (#609, `20260867`).** `credits` referencia el ítem de
+forma polimórfica (`item_type` + `item_id`), así que no admite FK, y el guard de #272 solo
+cubría `passes`. Nuevo `private.cascade_delete_credits()` en `books`/`movies`/`series`. Aquí se
+CASCADEA, al contrario que con `passes`: un crédito no contiene nada del usuario, es un hecho
+derivado del proveedor y se rehidrata solo. Medición previa: **prod 0 huérfanos**, dev 3525 de
+4436 filas (79 %), limpiados en la misma migración. Quedan **once tablas más** con referencia
+polimórfica sin guard (issue #708).
 
 ## 9. Enums
 
