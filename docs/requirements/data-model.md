@@ -2835,11 +2835,23 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
-### 8.1 Endurecimiento de la barrida P1 (DEV, 2026-08-19 — **prod pendiente del merge**)
+### 8.1 Endurecimiento de la barrida P1 (DEV Y **PROD**, 2026-08-19)
 
 Cuatro cambios de esquema, todos verificados contra objetos reales (`pg_proc`,
 `information_schema.column_privileges`, `pg_constraint`, `pg_default_acl`, `pg_class.relacl`),
 nunca contra `list_migrations`.
+
+**Aplicados a producción el 2026-08-19, DESPUÉS del deploy del código** (merge de #711,
+commit `f7d46b90`, deploy de Vercel en verde antes de tocar la base). Ese orden no es
+comodidad: las cuatro son restrictivas sobre caminos que el código viejo SÍ usaba —
+`writeSizes` hacía UPDATE directo y el enlace de colecciones llamaba las RPC con el cliente
+del usuario—, así que aplicarlas antes deja una ventana con `42501`. Medido en prod al
+aplicarlas: `series` con_update 10→7, `movies` 8→7, cero filas fuera de rango, cero créditos
+huérfanos (el `delete` de limpieza fue un no-op: 3272 filas antes y después), y el default
+privilege de `postgres` en `anon=rxm`/`authenticated=rxm`. Advisors de seguridad tras el
+cambio: los 4 `ERROR security_definer_view` de siempre (las vistas de enmascarado, excepción
+con nombre en `SEGURIDAD.md`) y **ninguno nuevo**; las dos RPC de sagas desaparecen de
+`authenticated_security_definer_function_executable`, que es la señal de que (a) funcionó.
 
 **a) Las RPC de colecciones TMDB pasan a `service_role` (#675, `20260864`).**
 `link_tmdb_saga_item(uuid,uuid)` y `sync_tmdb_saga_items(uuid,jsonb)` tenían `EXECUTE` para
@@ -3220,7 +3232,10 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > falso. Se sopesó y se descartó a decisión del dueño; el commit `c22e307` revirtió la
 > exigencia. Manda §6.3 y el código.]**
 > Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
-> contra `list_migrations`. **Producción pendiente del merge.**
+> contra `list_migrations`. **[CORREGIDO 2026-08-19: este delta seguía diciendo «Producción
+> pendiente del merge» y llevaba tiempo sin ser cierto — §6.3 está en dev Y PROD desde
+> 2026-08-09, y el delta del 2026-08-12 de más abajo da por sentado que `create_club_event`
+> vivo en prod ya era la versión de `20260842`.]**
 >
 > **Delta del 2026-08-12 (recordatorio predeterminado a una semana): aplicado y verificado
 > en DEV y en PROD.** Migración `20260852_event_reminder_default_1w.sql`. Reemplaza DOS funciones
