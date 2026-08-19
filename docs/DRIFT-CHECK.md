@@ -5,7 +5,7 @@
 > 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122)
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
-Compara seis superficies y reporta solo lo que **no cuadra**.
+Compara siete superficies y reporta solo lo que **no cuadra**.
 
 ## Qué se compara
 
@@ -261,12 +261,47 @@ subir el grant correspondiente, eso es el bug: falta el `grant ... (columna_nuev
 > `pass_reviews` (`src/lib/library/get-library-items.ts:181`). No lo cuenta esta consulta,
 > que solo mira escritura.
 
+### 7. Vistas de solo lectura ↔ grants de escritura (issues #690, #691)
+
+Supabase concede **ALL — incluida la escritura — a `anon` y `authenticated` sobre cada
+relación nueva del esquema `public`** (default privileges, issue #691). Una vista propiedad
+de `postgres` sin `security_invoker` evalúa sus tablas base con los privilegios del
+propietario, que tiene BYPASSRLS: con esos grants de serie, **un `UPDATE` sobre la vista
+reescribe filas ajenas saltándose la RLS de la tabla base**. Así nació el P0 #690, donde
+cualquiera podía reescribir la reseña de otro por `PATCH /rest/v1/pass_reviews`.
+
+Lo traicionero es que **no hace falta escribir mal una migración para reabrirlo**: basta con
+recrear la vista. `pass_reviews` se ha recreado seis veces (`20260714`, `20260716` x2,
+`20260717`, `20260833`, `20260858`) y cada `drop view` + `create view` restaura los grants
+por defecto. Por eso el control es un barrido y no un comentario: toda migración que recree
+una vista debe terminar con `grant select` **y** el `revoke` de escritura.
+
+**No** se arregla poniendo `security_invoker` a estas vistas: existen para leer columnas que
+la tabla base no concede a nadie (ver la excepción con nombre en `docs/SEGURIDAD.md`).
+
+```sql
+select table_name, grantee, string_agg(privilege_type, ', ' order by privilege_type) as escritura
+  from information_schema.role_table_grants g
+ where table_schema = 'public'
+   and grantee in ('anon', 'authenticated')
+   and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+   and exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                where n.nspname = 'public' and c.relname = g.table_name and c.relkind = 'v')
+ group by table_name, grantee
+ order by table_name, grantee;
+```
+
+**Referencia (prod y dev, 2026-08-19): la consulta no devuelve NINGUNA fila.** Cualquier fila
+es el bug — una vista con permiso de escritura para el rol del navegador. El arreglo es
+`revoke insert, update, delete on public.<vista> from anon, authenticated`, más añadir ese
+`revoke` a la migración que la recreó.
+
 ## Salida
 Un informe corto por superficie: "coincide" o la lista de divergencias concretas, con la
 acción sugerida (actualizar doc / anexar migración / marcar checkbox / aplicar al entorno
 que va por detrás). No modifica nada solo.
 
 ## Cómo pedirlo
-Basta con: *"corre el chequeo de deriva"*. Se ejecutan las seis comparaciones contra los
+Basta con: *"corre el chequeo de deriva"*. Se ejecutan las siete comparaciones contra los
 proyectos de prod y dev y el repo conectado, y se actualiza la fecha de "Última ejecución"
 de arriba.

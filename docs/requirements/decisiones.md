@@ -250,3 +250,36 @@ rompía decenas de referencias cruzadas sin ganar nada. Nuevos canónicos: docs/
 a decisiones vigentes (este fichero); el log completo queda congelado en
 docs/superpowers/decisiones-historicas-2026-08.md. backlog.md pasa a contener solo
 trabajo pendiente: el backlog operativo son las issues (regla de AGENTS.md).
+
+---
+
+## 2026-08-19 — Cierre de los P0 de seguridad: dos correcciones al diagnóstico de la auditoría
+
+Al cerrar los P0 #689/#690 (auditoría 2026-08) se descubrió que **los dos fixes que
+proponían los issues eran erróneos para este esquema**. Se registran aquí porque el
+diagnóstico equivocado sobrevive en el repo y manda al siguiente en dirección contraria.
+
+**1. `pass_reviews` NO lleva `security_invoker`, y no es un descuido.** El issue #690 pedía
+`alter view ... set (security_invoker = true)`. Rompe la app: `passes` no concede `SELECT`
+sobre `review`/`dropped_reason`/`dropped_reason_note` a NADIE, y la vista existe justo para
+ser la única lectura enmascarada de esas columnas. Con `security_invoker` la vista lee con
+los privilegios del que consulta y da «permission denied for table passes» (comprobado en
+dev). Hacerla funcionar exigiría conceder `SELECT` sobre `review`, o sea exponer por REST lo
+que la vista oculta. **La barrera correcta es que la vista sea de SOLO LECTURA**: lo que
+abría el P0 no era la semántica de definer sino los grants de escritura que Supabase concede
+por defecto a toda relación nueva (#691). Queda como excepción con nombre en `SEGURIDAD.md`
+y como superficie 7 de `DRIFT-CHECK.md`, porque cada `drop view`+`create view` los restaura.
+
+**2. En `profiles` el segundo cinturón es un TRIGGER, no un grant por columna.** El issue
+#689 pedía `revoke insert (role) on public.profiles from authenticated`. Sobre esta tabla es
+un no-op silencioso: `profiles` tiene grants de TABLA, y en PostgreSQL revocar un privilegio
+de columna no revoca el de tabla que lo cubre. Convertirla a grants finos es justo la maniobra
+que ya tumbó producción dos veces (regla #375). Se añade en su lugar
+`enforce_role_insert_user_only` (BEFORE INSERT), hermano del `enforce_role_change_admin_only`
+que ya existía para UPDATE: cubre todo camino de escritura, no depende de la policy y no
+puede romper la escritura de otras columnas.
+
+**Regla operativa que deja esto:** una migración aplicada a las bases sin fichero en el repo
+es deuda que se cobra sola. Las dos que cerraban estos P0 (`20260861`, `20260862`) llevaban
+cinco días vivas en dev y prod sin fichero; sin la auditoría, la primera recreación de la
+vista habría reabierto el P0 sin que nada chillara.

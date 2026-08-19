@@ -243,6 +243,19 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   `pass_reviews`, enmascarado por `d.user_id = auth.uid()` dentro de la
   vista. Solo `grant update`, necesario para `closePass`/`updatePass`. Sin
   backfill: pases `dropped` previos quedan con motivo `NULL`.
+- ⚠️ **La vista `public.pass_reviews` es de SOLO LECTURA y su semántica de definer es
+  INTENCIONADA** (verificado en DEV y en PROD el 2026-08-19; P0 #690). Es la única vía de
+  lectura de `review`/`dropped_reason`/`dropped_reason_note`, columnas que `passes` no
+  concede a nadie por `SELECT`; por eso **no puede llevar `security_invoker`** — con él la
+  vista leería `passes` con los privilegios del que consulta y revienta con «permission
+  denied for table passes» (comprobado), y hacerla funcionar exigiría exponer `review` por
+  REST, justo lo que enmascara. Su barrera es no tener permisos de escritura: mientras los
+  tuvo (los que Supabase concede POR DEFECTO a toda relación nueva, #691) cualquiera podía
+  reescribir la reseña de otro con un `UPDATE` sobre la vista, saltándose la RLS de `passes`.
+  Revocados el 2026-08-14 (`20260862`, rescatada al repo el 2026-08-19: aplicada en las dos
+  bases **sin fichero**). **Toda migración que recree esta vista debe volver a revocar**
+  `insert/update/delete` a `anon` y `authenticated` — un `drop view`+`create view` restaura
+  los grants por defecto, y ya se ha recreado seis veces. Superficie 7 de `DRIFT-CHECK.md`.
 - **El pase es dueño de la nota y la reseña**, no la entrada de biblioteca: cada relectura
   puede tener su propia valoración.
 - **`position` es jsonb** porque es lo único que varía por tipo: `{"page": 42}` en libros,
@@ -382,6 +395,24 @@ desde julio de 2026, y confundirlas ya rompió el asistente una vez), `follows` 
 `pending|accepted` — a perfil público es aceptado directo), `reactions` y `comments`
 (polimórficos vía `target_kind` **hasta la fase 1 social; desde el 2026-08-02, en dev y en prod,
 apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, `push_subscriptions`.
+
+> **Delta del 2026-08-19 (`profiles.role` blindado en las DOS operaciones, P0 #689).**
+> `role` lo guardan ahora **dos triggers hermanos**, uno por operación, ambos SECURITY
+> DEFINER con `search_path` con `pg_temp` y con la misma semántica (`auth.uid() is null` =
+> service-role/seed/migración, se permite; con sesión, solo un admin):
+> `enforce_role_change_admin_only` (BEFORE **UPDATE**, ya existía) y
+> **`enforce_role_insert_user_only`** (BEFORE **INSERT**, migración
+> `20260863_profiles_role_insert_trigger.sql`). **Aplicada y verificada en DEV y en PROD el
+> 2026-08-19** (`pg_trigger`, más prueba transaccional revertida en los dos entornos: el alta
+> con `role='admin'` da `P0001`, el alta normal sigue dando `rol=user`).
+> Faltaba el de INSERT y eso era una escalada `user→admin` real: entre el signup y el
+> onboarding la cuenta no tiene perfil y podía crearse el suyo con `role='admin'` de un
+> `INSERT`. La policy `profiles insert own` ya exige `role='user'` desde el 2026-08-14
+> (`20260861`, rescatada al repo el 2026-08-19: estaba aplicada en las dos bases **sin
+> fichero**), pero eso dejaba el P0 colgando de una frase de una policy.
+> **No se usan grants por columna en `profiles`**: tiene grants de TABLA, y en PostgreSQL
+> revocar una columna no revoca el privilegio de tabla que la cubre — `revoke insert (role)`
+> aquí es un no-op silencioso (contrasta con el patrón fino de `passes`, §6 de DRIFT-CHECK).
 
 `target_kind` conserva el valor histórico **`diary_entry`** aunque la tabla se llame
 `passes`: renombrar un valor de enum en uso habría requerido migrar datos por una etiqueta.

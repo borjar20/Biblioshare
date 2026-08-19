@@ -15,14 +15,23 @@
 
 ## P0 — antes de seguir desarrollando
 
-Cuatro problemas reales (dos pares de issues duplicadas a fusionar):
+Cuatro problemas reales (dos pares de issues duplicadas a fusionar). **Estado al
+2026-08-19: dos cerrados, uno a medias, uno pendiente de despliegue.**
 
-1. **#689/#687** — escalada user→admin en el alta de perfil pre-onboarding.
-2. **#690/#688** — escritura/borrado de reseñas ajenas vía la vista
-   `pass_reviews` (falta `security_invoker` + grants residuales).
-3. **#677** — backup real de producción (PII) trackeado en git.
+1. ~~**#689/#687** — escalada user→admin en el alta de perfil pre-onboarding.~~
+   **CERRADO 2026-08-19**: policy `20260861` (rescatada al repo) + trigger
+   `enforce_role_insert_user_only` (`20260863`), verificado en dev y prod.
+2. ~~**#690/#688** — escritura/borrado de reseñas ajenas vía la vista
+   `pass_reviews`.~~ **CERRADO 2026-08-19**: la vista ya no tiene grants de
+   escritura (`20260862`, rescatada al repo), verificado en dev y prod.
+   `security_invoker` **descartado a propósito** — rompe la lectura, ver
+   `decisiones.md` (2026-08-19).
+3. **#677** — backup real de producción (PII) trackeado en git. **A medias**:
+   destrackeado y `/backups/` ignorado el 2026-08-19; **queda decidir si se purga
+   el historial** (los ficheros siguen en todos los commits anteriores).
 4. **#674** — envenenamiento del catálogo global: **cerrado en dev, abierto en
-   prod** hasta desplegar la migración F con el código nuevo.
+   prod** hasta desplegar la migración F con el código nuevo (rama
+   `fix/674-catalogo-server-authoritative`, sin PR a 2026-08-19).
 
 ## P1 — siguiente bloque (issues abiertas)
 

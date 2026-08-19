@@ -77,4 +77,14 @@ next-env.d.ts
 # reescribe entre ramas con el mismo nombre de fichero: versionarlo ensucia
 # los diffs y no aporta historia. Lo que SI es historia vive en docs/superpowers/.
 .superpowers/
+
+# Volcados de la base de datos. SON DATOS REALES DE USUARIOS (emails, UUID de
+# auth, perfiles, biblioteca, pases, follows, notificaciones, suscripciones push):
+# PII que no puede vivir en el repo — si el repo o un ZIP sale del circulo de
+# confianza, es una filtracion. Se guardan cifrados FUERA del arbol del proyecto.
+# Origen: issue #677 (P0 de la auditoria 2026-08), donde dos backups de produccion
+# llevaban meses trackeados.
+/backups/
+*.dump
+*.sql.gz
 /images/*

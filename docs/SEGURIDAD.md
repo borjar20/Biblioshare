@@ -12,8 +12,14 @@
 1. **RLS en todo.** Las 55 tablas de `public` tienen RLS activa y al menos una
    policy. No hay tabla abierta.
 2. **Roles de aplicación** en `profiles.role`: `user` → `collaborator` → `admin`.
-   `role` está blindado en BD (trigger `enforce_role_change_admin_only` bloquea el
-   UPDATE por no-admins; la policy de INSERT exige `role='user'`). El patrón de
+   `role` está blindado en BD por DOS triggers hermanos, uno por operación:
+   `enforce_role_change_admin_only` (BEFORE UPDATE) y
+   `enforce_role_insert_user_only` (BEFORE INSERT, `20260863`), más la policy de
+   INSERT que exige `role='user'`. Los triggers son el cinturón que no depende de
+   la policy: cubren REST, RPC, server action y SQL suelto. No se usan grants por
+   columna aquí — `profiles` tiene grants de TABLA, y en PostgreSQL revocar una
+   columna NO revoca el privilegio de tabla que la cubre (sería un no-op silencioso).
+   El patrón de
    autorización del catálogo/curación es **doble barrera**: gate en servidor
    (`requireCollaborator`/`hasMinRole`) + gate en BD (trigger o policy con
    `has_min_role(...)`). Decisión 8-H.
@@ -42,10 +48,21 @@
 
 ## Reglas que hay que conservar al tocar BD
 
-- **Toda vista nueva nace `security_invoker` y con grants mínimos.** El defecto
-  de Supabase concede ALL (incl. escritura) a `anon`+`authenticated` en cada
-  relación nueva (#691): una vista recreada sin re-revocar vuelve a ser
-  escribible. Este defecto es la raíz de los P0 de `pass_reviews`.
+- **Toda vista nueva nace con grants mínimos, y `security_invoker` salvo que
+  exista una razón escrita para lo contrario.** El defecto de Supabase concede
+  ALL (incl. escritura) a `anon`+`authenticated` en cada relación nueva (#691):
+  una vista recreada sin re-revocar vuelve a ser escribible. Ese defecto es la
+  raíz del P0 de `pass_reviews`, no la falta de `security_invoker`.
+- **Excepción con nombre: las vistas de enmascarado NO pueden ser
+  `security_invoker`.** `pass_reviews` (y el mismo patrón en las vistas identity)
+  existe para ser la única vía de lectura de columnas que la tabla base NO concede
+  a nadie — `passes.review`, `dropped_reason`, `dropped_reason_note` están fuera de
+  los grants por columna de `passes` a propósito. Con `security_invoker=true` la
+  vista lee con los privilegios del que consulta y revienta con «permission denied
+  for table passes» (comprobado en dev el 2026-08-19); hacerla funcionar exigiría
+  conceder SELECT sobre `review`, o sea exponer por REST justo lo que enmascara.
+  En estas vistas la barrera es **ser de solo lectura**: `grant select` + `revoke
+  insert, update, delete` en CADA recreación. Ver migración `20260862` e issue #690.
 - **Todo SECURITY DEFINER lleva `search_path` con `pg_temp`** (plantilla de
   `20260808_secdef_search_path_pg_temp.sql`). A 2026-08-19 hay 15 funciones sin
   él (S2-19) — re-ejecutar el barrido al tocar BD.
@@ -62,9 +79,9 @@ informe de auditoría.
 
 | Riesgo | Issue | Estado |
 |---|---|---|
-| Escalada user→admin en alta pre-onboarding | #689/#687 | **P0 abierto** |
-| Escritura de reseñas ajenas vía vista `pass_reviews` (sin `security_invoker` + grants) | #690/#688 | **P0 abierto** |
-| Backup real de prod (PII) trackeado en git | #677 | **P0 abierto** |
+| Escalada user→admin en alta pre-onboarding | #689/#687 | **Cerrado 2026-08-19** (policy `20260861` + trigger `20260863`, verificado en dev y prod) |
+| Escritura de reseñas ajenas vía vista `pass_reviews` | #690/#688 | **Cerrado 2026-08-19** (revoke de escritura `20260862`, verificado en dev y prod; `security_invoker` descartado, ver regla de arriba) |
+| Backup real de prod (PII) trackeado en git | #677 | **Parcial**: destrackeado + `/backups/` ignorado (2026-08-19); **queda decidir la purga del historial** |
 | Catálogo global insertable por cualquier autenticado — cerrado en dev, **abierto en prod** hasta desplegar la migración F de #674 | #674 | **P0 abierto** |
 | Default privileges ALL a anon/authenticated | #691 | P1 |
 | RPC sagas TMDB sin gate de rol | #675 | P1 |
