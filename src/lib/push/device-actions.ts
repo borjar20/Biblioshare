@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { isSafePushEndpoint, resolvesToPublicHost } from "./safe-endpoint";
 
 // Registro/baja de dispositivos push (spec item 3). Escribe en push_devices.
 // Sustituye a subscription-actions.ts (que escribía en push_subscriptions).
@@ -28,6 +29,30 @@ async function requireUserId(): Promise<string> {
 
 export async function registerWebDevice(subscription: WebSubscriptionJson): Promise<void> {
   const userId = await requireUserId();
+
+  // #678: el endpoint decide a dónde hace el servidor una petición saliente más
+  // tarde (webpush.sendNotification). Sin validarlo, un autenticado elegía ese
+  // destino: SSRF ciego. Se comprueba la forma y el host, y a dónde resuelve el
+  // DNS ahora mismo. El rebinding posterior lo para el agente del envío.
+  //
+  // Lanzar (y no ignorar en silencio) es deliberado: esto no es un endpoint que
+  // «no funcione», es uno que no debería haber llegado hasta aquí — el navegador
+  // no emite endpoints así. El cliente lo ve como un fallo de suscripción.
+  if (!isSafePushEndpoint(subscription.endpoint)) {
+    console.error("registerWebDevice: endpoint rechazado por forma/host", {
+      userId,
+      endpoint: subscription.endpoint.slice(0, 200),
+    });
+    throw new Error("push endpoint not allowed");
+  }
+  if (!(await resolvesToPublicHost(subscription.endpoint))) {
+    console.error("registerWebDevice: endpoint resuelve a destino no público", {
+      userId,
+      endpoint: subscription.endpoint.slice(0, 200),
+    });
+    throw new Error("push endpoint not allowed");
+  }
+
   const db = createServiceRoleClient();
   // Idempotente: re-suscribirse desde el mismo endpoint es delete+insert.
   await db
