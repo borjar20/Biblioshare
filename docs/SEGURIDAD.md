@@ -53,9 +53,9 @@
   ALL (incl. escritura) a `anon`+`authenticated` en cada relación nueva (#691):
   una vista recreada sin re-revocar vuelve a ser escribible. Ese defecto es la
   raíz del P0 de `pass_reviews`, no la falta de `security_invoker`.
-  **Desde `20260866` (2026-08-19) ese defecto está corregido en dev**: el default
-  de `postgres` ya no concede escritura, así que una vista recreada nace de solo
-  lectura sola. El `revoke` explícito en cada recreación **sigue siendo la regla**
+  **Desde `20260866` (2026-08-19) ese defecto está corregido en dev y en PROD**: el
+  default de `postgres` ya no concede escritura, así que una vista recreada nace de
+  solo lectura sola. El `revoke` explícito en cada recreación **sigue siendo la regla**
   —el default del grantor `supabase_admin` no se pudo endurecer (#710) y un
   cinturón de más no cuesta nada—, pero deja de ser lo único que separa a la app
   de reabrir #690.
@@ -89,10 +89,10 @@ informe de auditoría.
 | Escritura de reseñas ajenas vía vista `pass_reviews` | #690/#688 | **Cerrado 2026-08-19** (revoke de escritura `20260862`, verificado en dev y prod; `security_invoker` descartado, ver regla de arriba) |
 | Backup real de prod (PII) trackeado en git | #677 | **Cerrado 2026-08-19**: destrackeado + `/backups/` ignorado. El dueño decide NO purgar el historial (repo privado); a revisar si el repo se hace público |
 | Catálogo global insertable por cualquier autenticado | #674 | **Cerrado 2026-08-19** en dev y prod: alta por RPC definer + hidratación fill-only, INSERT directo revocado (`42501` comprobado en prod). Arregla de paso #699 |
-| Default privileges ALL a anon/authenticated | #691 | **Cerrado en DEV 2026-08-19** (`20260866`: el default de `postgres` pasa a `rxm`; las 4 vistas quedan en `anon=r`/`authenticated=r`). **Prod pendiente del merge.** Resto: el grantor `supabase_admin` no se puede tocar desde `postgres` → #710 |
-| RPC sagas TMDB sin gate de rol | #675 | **Cerrado en DEV 2026-08-19** (`20260864`: `link_tmdb_saga_item`/`sync_tmdb_saga_items` solo `service_role`; las llama el servidor con la colección ya resuelta contra TMDB). **Prod pendiente del merge.** Queda abierto el INSERT de `sagas` → #709 |
-| SSRF ciego vía endpoint de Web Push | #678 | **Cerrado 2026-08-19** (solo código): allowlist de host + rechazo de rangos privados al registrar, misma validación al enviar (cubre filas viejas) y `https.Agent` con `lookup` propio contra DNS-rebinding. Los 4 endpoints web de prod son `fcm.googleapis.com`: ninguno se queda fuera |
-| DoS por `total_seasons` sin límite | #676 | **Cerrado en DEV 2026-08-19** (`20260865` + código): revoke de las columnas de tamaño, CHECK de rango, concurrencia acotada y contar temporadas contra TMDB, no contra la fila. **Prod pendiente del merge** |
+| Default privileges ALL a anon/authenticated | #691 | **Cerrado 2026-08-19 en dev y PROD** (`20260866`: el default de `postgres` pasa a `rxm`; las 4 vistas quedan en `anon=r`/`authenticated=r` — `pass_reviews` conservaba `rDxtm` también en prod). Resto: el grantor `supabase_admin` no se puede tocar desde `postgres` → #710 |
+| RPC sagas TMDB sin gate de rol | #675 | **Cerrado 2026-08-19 en dev y PROD** (`20260864`: `link_tmdb_saga_item`/`sync_tmdb_saga_items` solo `service_role`; las llama el servidor con la colección ya resuelta contra TMDB). Verificado además por el advisor: desaparecen de `authenticated_security_definer_function_executable`. Queda abierto el INSERT de `sagas` → #709 |
+| SSRF ciego vía endpoint de Web Push | #678 | **Cerrado 2026-08-19** (solo código, en prod con el deploy de #711): allowlist de host + rechazo de rangos privados al registrar, misma validación al enviar (cubre filas viejas) y `https.Agent` con `lookup` propio contra DNS-rebinding. Los 4 endpoints web de prod son `fcm.googleapis.com`: ninguno se queda fuera |
+| DoS por `total_seasons` sin límite | #676 | **Cerrado 2026-08-19 en dev y PROD** (`20260865` + código): revoke de las columnas de tamaño (prod `series` 10→7, `movies` 8→7), CHECK de rango, concurrencia acotada y contar temporadas contra TMDB, no contra la fila |
 | INSERT arbitrario en `credits`/`people`/`series_episodes` (`with_check true`) | S2-05 (issue pendiente de abrir) | P2 |
 | CSV formula injection en export | #681 | P2 |
 | Sin security headers/CSP ni middleware | S2-08 (pendiente de abrir) | P2 |

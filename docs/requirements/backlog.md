@@ -41,9 +41,10 @@ se cerraron, no como trabajo pendiente.
 
 ## P1 — siguiente bloque (issues abiertas)
 
-**Barrida del 2026-08-19: los diez P1 de escritorio quedan abordados** (#691, #678,
-#676, #675, #654, #643, #609, #584, #582, #514). Las migraciones están aplicadas y
-verificadas en DEV; **producción, pendiente del merge**. Detalle del esquema en
+**Barrida del 2026-08-19: los diez P1 de escritorio quedan CERRADOS** (#691, #678,
+#676, #675, #654, #643, #609, #584, #582, #514). Mergeada en #711 y **aplicada a
+producción el mismo día**, con las migraciones DESPUÉS del deploy del código (son
+restrictivas sobre caminos que el código viejo sí usaba). Detalle del esquema en
 `data-model.md` §8.1 y de las decisiones no obvias en `decisiones.md` (2026-08-19).
 Dos se cierran corrigiendo su diagnóstico: **#654 ya no reproduce** (los tipos de
 `main` son idénticos a una regeneración desde dev y `next build` sale limpio; lo
