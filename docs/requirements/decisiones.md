@@ -283,3 +283,60 @@ puede romper la escritura de otras columnas.
 es deuda que se cobra sola. Las dos que cerraban estos P0 (`20260861`, `20260862`) llevaban
 cinco días vivas en dev y prod sin fichero; sin la auditoría, la primera recreación de la
 vista habría reabierto el P0 sin que nada chillara.
+
+---
+
+## 2026-08-18/19 — Catálogo server-authoritative (#674): shell por RPC, hidratación fill-only y flag `app.hydrating`
+
+Cierra el envenenamiento del catálogo global: `authenticated` podía insertar `movies`/`series`/
+`books` directo con cualquier `title`/`synopsis`/`director` — dato COMPARTIDO, visible por
+cualquier usuario y por anónimos en obras públicas. El modelo pasa a dos pasos: **alta**
+(`register_catalog_item`/`register_catalog_items_bulk`, `SECURITY DEFINER`, shell con SOLO el
+id externo) e **hidratación** (`hydrate_movie`/`hydrate_series`/`hydrate_screens_bulk`,
+hermanas de `hydrate_book`, disparadas en `after()` al abrir la ficha, re-obteniendo los
+canónicos del proveedor por id), con el INSERT directo revocado al final. Detalle de esquema
+en `data-model.md` §2.1.
+
+Siete desviaciones/hallazgos frente al spec original, verificadas contra la base real y no
+contra el spec en abstracto:
+
+1. **`title` pasa a NULLABLE** en las tres tablas. El spec decía "canónicos NULL" pero `title`
+   era `NOT NULL`: una shell vacía lo habría violado.
+2. **Sin `created_by`.** El spec lo pedía en la shell; esa columna no existe en
+   `movies`/`series`/`books` y no aporta a cerrar #674 — la garantía es que la shell tiene el
+   id externo correcto, no quién la creó. Si hiciera falta auditoría, es otra feature.
+3. **Revocar el INSERT es `drop policy` + `revoke insert` de tabla**, no un ajuste de grants
+   por columna: el INSERT no colgaba de grants finos (a diferencia del UPDATE, superficie 6 de
+   DRIFT-CHECK), solo de las tres policies `with check(true)` y del privilegio de tabla.
+4. **Fetchers de hidratación dedicados** (`getMovieForHydration`/`getSeriesForHydration`) en
+   vez de reutilizar `getMovieAsSearchResult`, que no trae `director`/`duration_minutes` y no
+   tenía equivalente para series. Una sola llamada con `append_to_response=credits`.
+5. **La más importante: hidratación FILL-ONLY pura, NO "autoritativa-si-no-hidratada"** (§3c
+   del spec). Con alta = shell vacía por RPC + INSERT revocado, **nunca existe un valor
+   envenenado que la primera hidratación tenga que pisar**, y el trigger de curación impediría
+   de todos modos que una hidratación de rol `user` pisara un valor ya curado. La rama
+   "autoritativa" habría sido código muerto que además abría una ventana rara.
+6. **Bug preexistente destapado y arreglado ([#699](https://github.com/borjar20/Biblioshare/issues/699)):**
+   `enforce_catalog_edit_collaborator_only` dispara también en `null → valor` y evalúa el rol
+   de quien invoca — que en `hydrate_book` es el visitante. Consecuencia: **toda hidratación
+   automática de libros llevaba bloqueada en producción para el rol `user`** (la mayoría) desde
+   que existe `hydrate_book`, y no se detectó porque en dev se prueba con cuentas admin.
+   Arreglo: flag transaction-scoped `app.hydrating` que solo activan las RPC definer.
+7. **Efecto colateral de regenerar tipos desde dev, ajeno a #674**: los argumentos RPC de
+   club-events perdieron `| null` en su firma generada (codegen over-strict sobre parámetros
+   opcionales), parcheados con casts type-only sin tocar el runtime. Registrado como
+   [#701](https://github.com/borjar20/Biblioshare/issues/701) para no perder por qué existen.
+
+**Decisión de despliegue (2026-08-19), que es la parte que no se puede improvisar:** las
+migraciones NO van todas juntas con el merge. `a`…`e` son aditivas y el código viejo funciona
+con ellas, así que se aplican a prod ANTES; `f` —la revocación del INSERT— se aplica DESPUÉS
+de que el deploy del código nuevo esté en verde. Al revés deja una ventana en la que
+producción no puede dar de alta ninguna obra: el código desplegado inserta directo y el
+privilegio ya no está. Es el mismo razonamiento que en `20260856`/`20260857` (avisos de
+seguimiento, 2026-08-13) y en `20260858` (motivo de abandono): la migración va delante o
+detrás del deploy según qué dirección se autocure, nunca "a la vez" por comodidad.
+
+**Nota de integración:** la rama salió antes de que `main` absorbiera la auditoría 2026-08. Al
+fusionar se aceptó el borrado de `recent-reviews.ts` y de `resolveWorks`/`getPerson` (código
+muerto verificado por la auditoría, sin llamadores) que la rama solo tocaba para tolerar
+`title` NULL.
