@@ -88,6 +88,38 @@ navegador" tras implementar una feature de UI.
 - Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
   archivos) la sigue haciendo el agente directamente, como siempre.
 
+### Tandas largas: córrelas por lotes (issue #584)
+
+**No lances una familia entera de specs de una vez en la máquina de 8 GB.**
+`npm run test:e2e -- club-` son 23 tests con un worker, y a mitad de la tanda el
+dev server se MUERE por falta de recursos: los que quedan caen en cascada con
+`net::ERR_CONNECTION_REFUSED` y `worker process exited unexpectedly
+(code=3221225794)` (`0xC0000142`, STATUS_DLL_INIT_FAILED). El 2026-08-11 eso dio
+17 passed / 6 failed **de los cuales cinco eran puro entorno**. No es flakiness
+de ningún test: es acumulación — los mismos ficheros, en dos tandas cortas, pasan
+todos.
+
+El daño de verdad no es el rojo, es el diagnóstico: quien lea ese log da por rota
+su rama y se pone a "arreglar" tests que están bien.
+
+```sh
+npm run dev                 # UN servidor, en el 3000 (ver AGENTS.md)
+npm run test:e2e:club       # los club-* en lotes de 4, cada uno en su proceso
+npm run test:e2e:batches    # la suite entera por lotes
+node scripts/e2e-batches.mjs club-evento --size 2   # a medida
+```
+
+Cada lote corre en un proceso de Playwright aparte —al terminar, su memoria
+vuelve al sistema— y el runner **comprueba que el servidor sigue vivo entre
+lotes**. Si se cae, para y lo dice con todas las letras («ENTORNO, NO PRODUCTO»)
+con el comando exacto para repetir solo ese lote, en vez de dejar que los
+siguientes se pinten del mismo rojo. Códigos de salida: `1` = fallos con el
+servidor vivo (mira el producto), `3` = el servidor se murió (mira la máquina),
+`2` = error de uso.
+
+Sigue valiendo `npm run test:e2e -- <patrón>` para uno o dos ficheros sueltos,
+que es el caso normal mientras desarrollas.
+
 **Nota histórica (2026-07-12 → 2026-07-15):** durante esos días el default
 fue justo lo contrario: tras implementar algo con UI, generar un documento
 markdown con un checklist paso a paso para que lo ejecutara el usuario
