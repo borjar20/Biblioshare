@@ -1,5 +1,7 @@
 # Convención de reactividad
 
+> **[Convención · verificada contra código el 2026-08-19]**
+
 Dos capas separadas:
 
 1. **Verdad (servidor).** Toda server action mutadora revalida vía los helpers
@@ -62,6 +64,24 @@ contra un build de producción).
 
 ## Modelo de caché
 
-El proyecto usa el modelo anterior (sin `cacheComponents`). `revalidatePath` es
-el primitivo correcto: lecturas dinámicas, por-usuario, con RLS. No introducir
-`revalidateTag`/`use cache`/Cache Components (cachearía datos por-usuario).
+El proyecto usa **Cache Components** (`cacheComponents: true` en `next.config.ts`,
+activado en la fase 4 de la migración, 2026-08-05). `revalidatePath` sigue siendo
+el primitivo para las lecturas dinámicas por-usuario, pero `use cache` +
+`revalidateTag` existen y se usan — con una regla dura.
+
+**Todo `use cache` nuevo debe cumplir la regla #437 de `AGENTS.md`: solo se
+cachea lo que es idéntico para TODO el mundo.** En una app cuya privacidad
+descansa en RLS, un `use cache` sobre datos por-usuario no es una regresión de
+rendimiento: es una fuga de datos entre cuentas. En concreto:
+
+- La función cacheada recibe **argumentos escalares** y usa un **cliente SIN
+  sesión** (`createPublicClient()` de `src/lib/supabase/server.ts`, rol anónimo)
+  — nunca el cliente de la petición.
+- Lleva su `cacheTag` para poder invalidarla con `revalidateTag`.
+- Si el dato **depende de quién mira** (RLS filtra por `auth.uid()`), no se
+  cachea: se queda detrás de `<Suspense>` (o, si tiene vida útil conocida por
+  sesión, `use cache: private`).
+
+Los tres `use cache` existentes son el patrón de referencia:
+`src/lib/sagas/get-item-sagas.ts`, `src/lib/people/get-item-credits.ts` y
+`src/lib/community/get-community.ts`.

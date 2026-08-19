@@ -1,307 +1,9 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; motivo de la ventana, fase 3 del timeline (§7.9), aplicado en dev **y en prod** el 2026-07-28; **opcionales saltables, fase 4 del timeline (§7.10), aplicadas en dev **y en prod** el 2026-07-28 — verificadas contra `to_regclass`, `pg_policies` y `information_schema.columns`; ningún RPC cambió y `progress.ts` no se tocó**; **roles, fase 5 del timeline (§7.3), aplicados en dev **y en prod** el 2026-07-28 — las dos migraciones, la segunda DESPUÉS del despliegue a propósito (#237, cerrada); verificado contra `pg_enum`/`pg_attribute`: seis valores, sin `paralela`, sin tipo huérfano y con las 8 filas con rol intactas; ningún RPC cambió y `progress.ts` tampoco** —sin backfill: las 4 ventanas de prod siguen con `motivo IS NULL`, y `save_saga_sequence` NO cambió de firma—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
-`saga_nodes`/`saga_edges`/`save_saga_graph` (§7.7)— **corregido aquí, 2026-07-27**: esta cabecera
-llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
-escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
-prod el 2026-07-27, fase cerrada, contra los objetos reales (`pg_type`, `pg_constraint`,
-`pg_policies`, `pg_proc`, `to_regclass`), nunca contra `list_migrations`; **fase 4 del orden
-unificado —`saga_routes.is_reading_order` (§7.2) y el borrado explícito de ventanas por lista de
-sujetos (§7.6)— verificada en dev y **en prod** el 2026-07-28 contra `information_schema.columns`,
-`pg_indexes` y `pg_proc`: en los dos entornos existen la columna (`boolean NO false`) y su unique
-parcial `saga_routes_reading_order_key` (`(saga_id) WHERE is_reading_order`). El «sin backfill» se
-comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y **0 con
-`is_reading_order`**, y sus 2 ventanas seguían diciendo exactamente lo mismo que antes.
-**Fase 4 CERRADA el 2026-07-28**: retirada también la sobrecarga de cinco argumentos
-(`20260731_drop_save_saga_sequence_v5.sql`), aplicada DESPUÉS de confirmar que el bundle nuevo
-servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
-argumentos, en dev y en prod; **tanda de seguridad del 2026-07-29 (issues #130, #176, #133)
-aplicada y verificada en dev Y EN PROD** — cuatro migraciones (`20260808`…`20260811`), ninguna
-toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` en esa tanda (§8; **desactualizado, ver el detalle en §8: a 2026-08-13 son 69 funciones, 62 con `pg_temp`**),
-`save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
-defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
-`list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
-`anon`; `target_kind` ampliado con `pass`/`progress_session` para el feed agrupado de Inicio
-(§5), aplicado y verificado en dev y en prod el 2026-07-29 (migraciones
-`20260812_feed_targets_enum.sql` y `20260813_feed_targets_can_view.sql`); **lectura pública
-de `notes` para el feed de tarjetas por tipo (§3) — corregido aquí, 2026-07-30**: la política
-aditiva `"public notes select"` (`is_public = true and public.can_view_profile(user_id)`,
-migración `20260814_notes_public_select.sql`) está aplicada y verificada **SOLO EN DEV**;
-prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`; **normalización de géneros
-del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gin`
-(`20260815_genres_gin_indexes.sql`) y backfill de `movies`/`series` a labels canónicas
-aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_indexes`;
-backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
-divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
-`books` no necesita backfill (las labels ya coincidían); **Social fase 1 — corregido aquí,
-2026-08-02**: esta cabecera llevaba «fix del writer canónico y migración de CONTRATO SOLO EN
-DEV» y «PRODUCCIÓN NO TIENE `interaction_targets` EN ABSOLUTO», y ya no es cierto — **la fase 1
-ENTERA está aplicada y verificada en DEV y en PROD** (`vmutcradmodhiltuohys`) el 2026-08-02: las
-siete migraciones de la cadena expansiva (`20260730212803` → `20260730213248` → `20260730214405`
-→ `20260730214621` → `20260801115944` → `20260801135656` → `20260802013421`) y, DESPUÉS de que
-el bundle canónico estuviera vivo, la de contrato
-(`20260801224621_social_interaction_targets_contract.sql`). Verificado contra los objetos reales
-—`pg_class`, `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra
-`list_migrations`: `interaction_target_id` es `NOT NULL` en `comments` y `reactions`, el par
-heredado `target_type`/`target_id` ya NO es columna de ninguna de las dos, `notifications`
-conserva sus tres columnas nullable, la unicidad de reacción es `(interaction_target_id,
-user_id, kind)` y `comments_no_nesting` ha desaparecido. Cero pérdida de datos en todo el
-recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a paso.
-`schema-baseline.sql` **ya no está sin anexar**: lleva el «ANEXO 2026-08-02» con las ocho
-migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
-bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
-`anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
-ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**; **los avisos de seguimiento nacen del post, no del hecho (§5.3), 2026-08-13**: `notification_type` gana `followed_started`/`followed_dropped`/`followed_thought` y `follows.notify_events` cambia de dominio a `milestone|progress|thought`; verificado en dev contra `enum_range` y `follows` reales el 2026-08-13; **las dos migraciones aplicadas y verificadas en PROD el 2026-08-13**: `20260856` (el enum, aditiva pura, verificada contra `pg_enum`) por delante, y `20260857` (la de datos) **después de desplegar el código** (merge de #629 y deploy de producción en verde) — 8 filas a `{milestone,progress,thought}`, 4 vacías intactas, cero filas con vocabulario viejo; el orden importa y está razonado en §5.3; **motivo de abandono (§3), 2026-08-14 — corregido aquí el mismo día: aplicado y verificado en DEV y en PROD**, no solo dev — `passes.dropped_reason`/`dropped_reason_note`, enmascarados por dueño en `pass_reviews`, sin `grant select` en la tabla, verificado contra `information_schema.column_privileges` de prod antes de mergear el código (la migración va delante del despliegue, no detrás, para no vaciar el diario de nadie)]**
-
-> Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
-> **Este es el documento canónico del esquema.** Verificado contra producción el
-> **2026-07-30** para el delta de Social fase 0 (el resto conserva sus fechas de
-> verificación específicas): 47 tablas públicas, todas con RLS activa.
-> **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
-> select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
-> pendiente del merge de `feat/feed-tarjetas-por-tipo`.
-> **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico, índices
-> GIN y backfill aplicados y verificados en DEV **y en PROD** el 2026-07-30 (PR #312).
-> **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §9): valor `mentioned` del enum
-> `notification_type` aplicado y verificado en DEV **y en PROD** contra `pg_enum` (sin
-> tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
-> `decisiones.md`). Al entrar esta mejora, las políticas RLS de `notifications` aún incluían
-> `insert as actor` y no referenciaban `type`, por lo que `mentioned` quedó cubierto sin
-> cambio específico. **Social fase 0 supersede esa puerta en dev y prod**: ya no existe ninguna
-> política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
-> servidor usa `service_role`. Spec:
-> `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
-> **Delta del 2026-08-14 (menciones `@usuario`, issue #320): `create_club_poll()` pasa de
-> `returns void` a `returns uuid`** (el id del post creado), para que `createPoll` pueda
-> notificar `@menciones` en la pregunta de la encuesta igual que `createTextPost`/
-> `createShareActivityPost`. Migración `20260860_create_club_poll_returns_id.sql`
-> (DROP + CREATE, `CREATE OR REPLACE` no permite cambiar el tipo de retorno), aplicada y
-> verificada en DEV **y en PROD** contra `pg_proc.prorettype` (no solo el ledger) — grants y
-> `search_path = public, pg_temp` intactos en ambos entornos.
-> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
-> `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
-> Son siete migraciones:
-> `20260730190602_social_phase0_integrity.sql`,
-> `20260730190801_social_phase0_notification_compat.sql`,
-> `20260730191652_social_phase0_user_blocks.sql`,
-> `20260730191702_social_phase0_moderation_reports.sql`,
-> `20260730191708_social_phase0_polymorphic_cleanup.sql`,
-> `20260730194407_social_phase0_close_notification_inserts.sql` y
-> `20260730200000_social_phase0_report_reviewer_index.sql`. Pasaron la matriz transaccional
-> `supabase/tests/social_phase0_rls.sql` en prod dentro de una transacción con rollback; el
-> barrido dejó 0 comentarios, 0 reacciones y 0 notificaciones huérfanos. En ambos entornos,
-> INSERT sobre `notifications` queda permitido solo a
-> `service_role` (`anon=false`, `authenticated=false`, 0 políticas INSERT); las cuatro RPC
-> públicas nuevas son `SECURITY INVOKER`. En prod hay 66 avisos de seguridad, sin hallazgos
-> atribuibles a las tablas o RPC de esta fase. El rollout aplicó integridad+compatibilidad de
-> forma atómica, desplegó el bundle `8589601` y solo entonces cerró el INSERT heredado y añadió
-> el índice de reviewer; [#332](https://github.com/borjar20/Biblioshare/issues/332) conserva la
-> evidencia operativa.
-> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado en DEV, y desde el
-> 2026-08-02 también en PROD (ver el corte de producción más abajo).**
-> `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
-> `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
-> `activity_checkpoint` desde `club_activity_checkpoints.created_by`, repara el registro ya
-> materializado y añade el índice `interaction_targets_owner_id_idx`. La matriz transaccional
-> `supabase/tests/social_phase1_interaction_targets.sql` pasó completa y los advisors de seguridad
-> siguen en 66, sin findings nuevos.
-> **Fix del 2026-08-01 (writer canónico de notificaciones): aplicado y verificado en DEV, y en
-> PROD el 2026-08-02 dentro de la cadena expansiva.**
-> `20260801135656_social_interaction_targets_notification_writer_fix.sql` conserva en INSERT el
-> `interaction_target_id` enviado sin par legacy por el writer confiable (`service_role`); si el
-> INSERT incluye `(target_type, target_id)`, ese par sigue siendo la autoridad. En UPDATE el trigger
-> nunca acepta metadatos canónicos aislados del cliente: vuelve a derivar desde el par completo o
-> limpia el ID si falta alguna parte. La matriz SQL pasó completa; advisors de seguridad 66→66 y de
-> rendimiento 53→53, sin delta.
-> **Delta del 2026-08-01 (Social fase 1, migración de CONTRATO, §5): aplicado y verificado en DEV
-> el 2026-08-01 y en PROD el 2026-08-02, la última de las ocho.**
-> `20260801224621_social_interaction_targets_contract.sql` cierra el ciclo
-> expand/migrate/contract: `interaction_target_id` pasa a `NOT NULL` en `comments` y
-> `reactions`, la unicidad de reacción se apoya en él, desaparecen de esas dos tablas el par
-> heredado `(target_type, target_id)`, sus triggers de resolución, sus índices y el CHECK
-> `comments_no_nesting`, y cinco funciones `SECURITY DEFINER` pasan a resolver el padre de un
-> comentario por el registro canónico. `notifications` conserva intacto su par heredado
-> nullable y su trigger resolutor. La matriz `supabase/tests/social_phase1_interaction_targets.sql`
-> pasó completa (`ALL ASSERTIONS PASSED`) y los advisors siguen en 66 de seguridad, sin
-> hallazgos nuevos.
-> **Corte de producción del 2026-08-02: la fase 1 ENTERA está aplicada y verificada en PROD.**
-> Ocho migraciones contra `vmutcradmodhiltuohys`, verificadas contra objetos reales —`pg_class`,
-> `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra `list_migrations`: el
-> ledger de prod ya venía sin la fila de `social_phase0_notification_compat` pese a tener su
-> efecto (`comments_body_canonical`), que es justo la trampa que advierte `AGENTS.md`. Primero la
-> cadena EXPANSIVA de siete (`20260730212803` … `20260802013421`, esta última el fix de la
-> audiencia de checkpoint): el backfill no borró NADA — las 21 filas de comentarios/reacciones
-> tenían fuente viva y los conteos salieron idénticos (8 comentarios, 13 reacciones, 6 avisos),
-> con 647 targets y cero `interaction_target_id` nulos. Después el merge del bundle canónico
-> (`a4dcc0b` en `main`, despliegue de producción de Vercel correcto, el sitio responde 200) y
-> **solo entonces** la migración de CONTRATO
-> (`20260801224621_social_interaction_targets_contract.sql`), que borra columnas que el bundle
-> anterior todavía leía. Los conteos siguieron idénticos tras ella. Prod y dev quedan en 48 tablas
-> públicas, todas con RLS, y sin advisors nuevos en ninguno de los dos entornos.
-> **Ojo al orden, que difiere entre entornos**: en dev el contrato se aplicó ANTES que el fix de
-> la audiencia de checkpoint; en prod el fix viajó con la cadena expansiva y el contrato entró
-> después. Se verificó tras aplicarlo que el contrato NO revierte el fix —
-> `private.can_view_interaction_target` sigue delegando en
-> `can_view_target('activity_checkpoint', …)`. El baseline replica el orden de PROD, que es el que
-> reproduce producción desde cero.
-> El orden de despliegue fue expansiva → backfill → bundle → contrato. `schema-baseline.sql`
-> **ya está anexado** («ANEXO 2026-08-02»), en la misma pasada en que se cerró el ciclo en prod.
-> Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
-> `diary_entries`, que **ya no existe** (ver §0).
->
-> **Delta del 2026-08-03 (issue #361): `passes.planned_on date` añadida y verificada en DEV y
-> en PROD** (`information_schema.columns` → `date`, nullable). Migración
-> `20260817_passes_planned_on.sql`. Es forward-only (la fija `planTransition` al entrar en
-> `planned`); el historial importado se queda en `NULL`. Ningún RPC cambió; sin backfill. Ver §3.
->
-> **Delta del 2026-08-03 (bis): la columna anterior salió SIN su grant y rompió «Seguir» en
-> producción.** `passes` tiene grants **por columna**, y Postgres exige privilegio sobre toda
-> columna nombrada en el INSERT/UPDATE aunque su valor sea `NULL`: al desplegar #366, el insert de
-> `applyTransition` (que siempre nombra `planned_on`) empezó a dar `42501 permission denied for
-> table passes` y toda alta de pase caía en el error boundary. Migración
-> `20260819_grant_passes_planned_on.sql`, **aplicada y verificada en DEV y en PROD el 2026-08-03**
-> (`information_schema.column_privileges` → `anon: SELECT`; `authenticated: INSERT, SELECT,
-> UPDATE`, idéntico a `started_on`). Se le dieron los tres privilegios de sus hermanas, no solo
-> los dos rotos, para que el SELECT no vuelva a faltar cuando `/estadisticas` lea la columna.
-> **Es el MISMO fallo que `episode_runtime_minutes` un día antes** (`20260818`): columna nueva sin
-> grant compila, pasa los tests y solo revienta contra la BD real (issue #375).
->
-> Auditada de paso **toda** la tabla en prod: no queda ninguna otra columna con hueco. Sin
-> INSERT/UPDATE para `authenticated` solo están `id`, `created_at` y `updated_at` (default y
-> trigger, correcto), y `review` sigue **sin SELECT** a propósito — se lee por la vista
-> `pass_reviews`, que es la que aplica la privacidad.
->
-> **Delta del 2026-08-04 (avisos por persona, §5): `follows.notify_events` y los cuatro valores
-> `followed_*` de `notification_type` añadidos y verificados en DEV Y EN PROD** el 2026-08-04
-> (`information_schema.columns` y `pg_enum`: prod devuelve `has_column=1`, `followed_enum_values=4`). Migraciones
-> `20260804000000_follow_notify_events.sql` y `20260804000001_notification_type_followed.sql`. Sin
-> tabla nueva: el interruptor de aviso por persona vive en `follows.notify_events`
-> (`finished|session|episode|added`), escrito por **service-role** porque la RLS de `follows` solo
-> concede UPDATE al followee. Ver §5 y `decisiones.md` (2026-08-04).
-> **SUPERSEDIDO por el delta del 2026-08-13 (§5.3): el dominio de `notify_events` cambió a
-> `milestone|progress|thought` y el disparo se movió del hecho al post — ver más abajo.**
->
-> **Delta del 2026-08-04 (barrido de P0), aplicado y verificado en DEV Y EN PROD** — ninguna
-> columna ni tabla nueva, solo dos guardas: `private.enforce_comment_target_commentable` pasa a
-> rechazar el reapuntado de un comentario (§5, issue #339) y nace
-> `private.forbid_delete_with_passes` con sus tres triggers `BEFORE DELETE` sobre
-> `books`/`movies`/`series` (§3, issue #272). Migraciones `20260820_comments_forbid_retarget.sql`
-> y `20260821_catalog_delete_guard_passes.sql`. Verificado además que **no había datos ya
-> derivados**: cero comentarios con audiencia/href distintos de los de su padre en los dos
-> entornos, y cero pases huérfanos en prod (en dev había 4, borrados). El control preventivo de
-> los grants por columna vive ahora en `docs/DRIFT-CHECK.md` §6 (issue #375), con la referencia
-> de las 10 tablas con hueco intencionado — idéntica en dev y prod.
-
-> **Delta del 2026-08-04 — seguimiento de eventos de club (§6.1) y el primer trabajo
-> programado del repo (§6.2): aplicado y verificado en dev Y EN PRODUCCIÓN** el mismo día.
-> Verificado contra los objetos reales de los dos entornos (`information_schema.columns`,
-> `pg_constraint`, `pg_policies`, `pg_proc`, `cron.job`, `cron.job_run_details`,
-> `net._http_response`), nunca contra `list_migrations`, y con 12 checks de impersonación en
-> dev. Incluye un cambio en una tabla del núcleo: `notifications.actor_id` pasa a
-> **nullable**. El trabajo programado está **entregando de verdad** en producción (200 desde
-> el propio cron, ver §6.2).
-
-> **Delta del 2026-08-05 — hitos de `buddy_read` autodeclarados (§6, issues #470/#471):
-> aplicado y verificado en DEV y EN PROD** contra `pg_proc` (nunca contra `list_migrations`).
-> `confirm_checkpoint` deja de revalidar la posición del lector: la comparaba contra
-> `library_entries` (CONGELADA — tercer bug real de esa tabla) y, aunque leyera `passes`, la
-> página objetivo depende de la edición de cada participante. Dos migraciones,
-> `20260826_confirm_checkpoint_lee_passes.sql` y `20260827_hitos_autodeclarados.sql`; sin
-> columnas nuevas ni cambios de grants (ACL de la función preservada por `create or replace`
-> y verificada: `authenticated=X`, sin `anon`).
->
-> **Delta del 2026-08-06 — la vista `public.pass_reviews` proyecta ahora `d.updated_at` (Bloque 3
-> del triage #496, issue #345), aplicado y verificado en DEV y EN PROD** (`pg_get_viewdef`).
-> `updated_at` se añadió AL FINAL (`create or replace view` solo admite columnas nuevas al final;
-> el WHERE de RLS no cambió, grants a `anon, authenticated` preservados). Motivo: es la hora REAL
-> del terminado —un pase se CREA al añadir la obra y el «terminado» llega después como UPDATE, así
-> que `created_at` puede ir semanas por delante—. `recent-reviews.ts` y `shared-activity.ts` ya
-> leían de esta vista y seguían con `created_at` porque la vista no lo exponía; ahora usan
-> `updated_at` como `sortDate`, igual que `getFeed`. Trade-off asumido (mismo que el feed):
-> `updated_at` lo mueve cualquier update del pase. Migración `20260833_pass_reviews_updated_at.sql`.
->
-> **Delta del 2026-08-09 — tipos de evento de club (§6.3), SOLO EN DEV.** Nuevo enum
-> `club_event_type` (`encuentro | lanzamiento | fecha_destacada`, migración `20260840`) y
-> columna `club_activities.event_type NOT NULL DEFAULT 'encuentro'` con grant por columna
-> idéntico a `modality` (migración `20260841`, verificado contra
-> `information_schema.column_privileges`). `create_club_event`/`update_club_event` ganan
-> `p_event_type` (solo en create) y `p_config jsonb` (migración `20260842`), y la hora de
-> inicio pasa a OPCIONAL para Lanzamiento/Fecha destacada (ancla `starts_at` a 00:00 en
-> `event_timezone`); **Encuentro, al contrario, pasa a EXIGIR hora** — retira el default de
-> las 19:00 que aplicaba hasta hoy a todo evento sin hora (§6.3, `decisiones.md` 2026-08-09).
-> Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
-> contra `list_migrations`. **Producción pendiente del merge.**
->
-> **Delta del 2026-08-12 (recordatorio predeterminado a una semana): aplicado y verificado
-> en DEV y en PROD.** Migración `20260852_event_reminder_default_1w.sql`. Reemplaza DOS funciones
-> para mover el predeterminado de 1440 a 10080: el default del parámetro de
-> `follow_club_event` y el literal del auto-seguimiento del organizador dentro de
-> `create_club_event` (el segundo no pasa por la primera, y es el que se olvida). **Ninguna
-> tabla, columna, política ni grant cambia**, y **ninguna fila existente se toca**: quien ya
-> sigue un evento conserva el offset que eligió. El conjunto de valores válidos no se amplía
-> — `private.valid_event_reminder` ya aceptaba 10080. Verificado contra `pg_proc`
-> (`pg_get_function_arguments` devuelve `DEFAULT 10080`, y `pg_get_functiondef` de las dos
-> funciones ya no contiene ningún 1440), nunca contra `list_migrations`. **Aplicada a PROD el
-> 2026-08-12** tras comprobar antes que su `create_club_event` vivo era la versión de
-> `20260842` (con `p_event_type`/`p_config`) y que su cuerpo solo difería en esa constante:
-> reemplazar la función sobre una prod más atrasada habría roto la creación de eventos.
-> `schema-baseline.sql` —que replica PROD— pasa a 10080 en sus dos sitios. Comprobado
-> además que **no se movió ninguna fila**: en prod quedan 23 seguimientos con 1440 (los que
-> ya existían) y 3 con 10080. Ver `event-state.ts:DEFAULT_REMINDER_MINUTES`, que es quien
-> manda en la práctica.
->
-> **Delta del 2026-08-12 (progreso en lote de la pestaña Actividades, §6.4): aplicado y
-> verificado en DEV y en PRODUCCIÓN.** Migración `20260853_activities_progress.sql`, nueva RPC
-> `get_activities_progress(uuid[])` (`stable security definer`, gate `is_club_member`, más
-> ancho que `is_activity_participant` a propósito — ver §6.4 y `decisiones.md`). Sin columnas
-> ni tablas nuevas ni cambios de grants en tablas existentes. Verificado contra `pg_proc`
-> (`prosecdef=true`, `provolatile='s'`, `proconfig=search_path=public`, ACL
-> `authenticated/postgres/service_role` **sin `anon`**), nunca contra `list_migrations`.
->
-> En producción se comprobó además con datos reales, no solo la existencia del objeto: sin
-> sesión devuelve **cero filas** (el gate no deja pasar nada al rol de servicio), y con sesión
-> simulada de un miembro real devuelve la actividad de SU club con números coherentes
-> (`buddy_read` de 4 hitos: colectivo 2/4, del viewer 4/4, 2 participantes) mientras las de
-> otro club quedan fuera — `is_club_member` da `false` para ellas y no sale su fila.
->
-> El advisor de seguridad la marca con un WARN
-> (`authenticated_security_definer_function_executable`), que es **intencionado y compartido
-> con el resto de RPC del proyecto**: la función existe precisamente para dar a un miembro
-> autenticado un agregado que la RLS no le dejaría calcular. Lo que importaba era no aparecer
-> bajo `anon_security_definer_function_executable`, y no aparece.
->
-> **Delta del 2026-08-12 (editar título/descripción/fechas de una actividad, §6.5): estado
-> MIXTO, léase con cuidado.** Migración `supabase/migrations/20260854_update_activity_details.sql`,
-> nueva RPC `update_activity_details(uuid, text, text, date, date)`, **aplicada y verificada en
-> DEV y en PRODUCCIÓN** con la versión corregida (gate de rol primero, commit `eec82b0e`).
->
-> Hubo un tramo en que dev tuvo la primera versión, con un fallo de seguridad: el gate de rol
-> se comprobaba DESPUÉS de revelar si la fila existía y de qué `kind` era, así que alguien
-> ajeno al club podía sondear uuids por el código de excepción. Era una **regresión** de lo que
-> `20260831_club_activity_role_gate_first.sql` (issue #129) ya había corregido en otras cuatro
-> RPC de esta misma tabla. Corregido y verificado en los dos entornos: los tres casos del
-> sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
-
-> **Delta del 2026-08-13 (desmarcar un hito, y el gate de `confirm_checkpoint`
-> reordenado, §6): aplicado y verificado en DEV y en PRODUCCIÓN**, contra `pg_proc`, nunca
-> contra `list_migrations`. Migración `20260855_unconfirm_checkpoint.sql`: nueva RPC
-> `unconfirm_checkpoint(uuid)`, simétrica a `confirm_checkpoint` (desmarca el hito N y los
-> posteriores, donde confirmar auto-confirma 1..N), gate de participante comprobado
-> PRIMERO, no mira el estado de la actividad a propósito. Y `confirm_checkpoint` cambia de
-> ORDEN, no de efecto: su gate de participante pasa también a ir primero (issue #129, misma
-> fuga de INFO que corrigió `20260831_club_activity_role_gate_first.sql` en otras cuatro
-> RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
-> columnas, tablas ni cambios de grants. Las dos con `search_path = public, pg_temp`, como
-> manda la plantilla. Detalle en §6.
->
-> **Delta del 2026-08-15 (tercer valor `anclado` del eje `placement`, §7.4): SOLO EN DEV.**
-> Migración `20260815_saga_placement_anclado.sql` — `alter type public.saga_placement add
-> value if not exists 'anclado'` (aditiva pura, sin tocar los CHECK). Aplicada y verificada
-> en dev contra el objeto real (`pg_enum`/`pg_type`, no `list_migrations`):
-> `enumlabel` devuelve `fijo`, `libre`, `anclado`, en ese orden. **Producción queda
-> pendiente a propósito**: la aplicación está reservada al controlador de la rama en el
-> momento del merge, no a esta tarea de cierre. Ver §7.4 para la semántica del valor nuevo y
-> `decisiones.md` (2026-08-15).
+> **[Canónico · verificado contra dev el 2026-08-19 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
+> Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
+> El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
+> íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -433,6 +135,18 @@ Tres tablas de "tirada concreta" cuelgan del catálogo:
 BD**. Son tres peldaños — tarjeta de resultado (memoria) → ficha de obra (se crea al abrirla)
 → edición (al registrarla). Por eso la tarjeta de búsqueda no lleva editorial ni páginas:
 son de una tirada, no de la obra.
+
+Las escrituras de esos peldaños pasan por RPCs `SECURITY DEFINER`, no por UPDATE directo:
+**`hydrate_book`** (`20260715_book_hydration.sql`; `revoke` a `anon` en
+`20260715_book_hydration_revoke_anon.sql`) rellena sinopsis/géneros/portada **solo donde la
+fila estaba vacía** — cualquier `authenticated` completa una obra hueca al abrir su ficha sin
+poder pisar lo que un colaborador curó a mano — y **`register_book_edition`**
+(`20260714_editions_c_register.sql`) registra la tirada concreta en `book_editions`. En dev
+existen además **`hydrate_movie` / `hydrate_series` / `hydrate_screens_bulk`** y
+**`register_catalog_item` / `register_catalog_items_bulk`** con el mismo patrón, pero **sin
+fichero de migración en el repo** (verificadas contra `pg_proc` el 2026-08-19 — solo la de
+libros tiene fichero). Las seis `hydrate_*`/`register_catalog_*` están en la lista de
+pendientes de `pg_temp` (§8).
 
 `people` + `credits` guardan autoría/dirección/reparto, también polimórfico por
 `(item_type, item_id)`. `credits` tiene índice **único** sobre
@@ -574,8 +288,8 @@ Cuelgan del pase:
   `idx_notes_parent` (parcial, `where parent_note_id is not null`). **RLS: dueño (4
   políticas) + lectura pública desde el 2026-07-30** — política aditiva `"public
   notes select"` (`is_public = true and public.can_view_profile(user_id)`, migración
-  `20260814_notes_public_select.sql`, **solo en dev**, prod pendiente del merge de
-  `feat/feed-tarjetas-por-tipo`): un visitante que puede ver el perfil del autor lee
+  `20260814_notes_public_select.sql`; el merge de `feat/feed-tarjetas-por-tipo` fue el
+  2026-07-30 — desplegado; **prod por reverificar (2026-08-19)**): un visitante que puede ver el perfil del autor lee
   sus notas PÚBLICAS; la nota privada sigue oculta a todos menos su dueño. El feed de
   tarjetas por tipo (`getFeed`, tarjeta de avance/`progressed`) se apoya en esta
   política para servir `notes.body` (spoiler-aware) junto a `progress_sessions.position`
@@ -606,6 +320,22 @@ web `e6dec32`/`pickEditionPages`; antes salía «Sin progreso» porque `books.to
 siempre es null (la búsqueda ya no lo escribe). Riesgo vivo: como la web sigue usando el TS, widget
 y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver
 `decisiones.md` e issue de reconciliación.
+
+### Importación: `pending_import_rows` + `resolve_pending_import`
+
+Las filas de un CSV importado que el matcher no resuelve solo **no se tiran**: quedan en
+`pending_import_rows` (`user_id`, `item_type`, `payload` jsonb — la `ImportRow` serializada,
+**con los candidatos persistidos dentro del propio `payload`**, issue #390 —, `status`
+(enum `pending_import_status`: `pending|resolved|dismissed`), `resolved_at`/`resolved_by`;
+migración `20260710_pending_import_rows.sql`), y el usuario las desempata en
+`/importar/pendientes`. RLS: el dueño ve, crea y borra las suyas; un `collaborator`
+(`has_min_role`) puede verlas y marcarlas resueltas/descartadas (cola de revisión).
+La RPC **`resolve_pending_import(p_pending_id, p_catalog_item_id)`** es `SECURITY DEFINER`
+a propósito: al resolver, crea la entrada y los pases **para el DUEÑO de la fila**, no para
+el revisor — un INSERT con `user_id` ajeno que la RLS de dueño no permitiría.
+
+⚠️ **`resolve_pending_import` comparte el hueco de fechas del importador** (hallazgo F1-002
+de la auditoría 2026-08): crea pases `completed` **sin fechas**.
 
 ## 4. Organización del usuario
 
@@ -670,7 +400,8 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 > hecho (sesión/pase/episodio) sino `createPost`. El `comment on column` de abajo es el vigente.
 
 > **Delta del 2026-08-05 (notificaciones push unificadas Web+Android): aplicado en DEV;
-> PROD pendiente del merge.** Migraciones `20260828_push_devices.sql`,
+> el merge fue el 2026-08-05 — desplegado; prod por reverificar (2026-08-19).**
+> Migraciones `20260828_push_devices.sql`,
 > `20260829_notification_preferences.sql`, `20260830_notifications_dedupe_key.sql`.
 > - **`push_devices`** (NUEVA): dispositivos push unificados. Enum `push_platform`
 >   (`web_push|fcm_android|apns_ios`). `web_push` usa `endpoint`+`p256dh`+`auth` (VAPID);
@@ -900,7 +631,7 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 >   el un-fijado-por-hilo. `EXECUTE` solo a `authenticated`. `canPin` (capa de datos) = solo
 >   `viewerOwnsTarget`.
 
-### 5.1 `posts` — la capa social canónica (dev y **PROD**, 2026-08-09; SUPERSEDE §6.2 `thoughts`)
+### 5.1 `posts` — la capa social canónica (dev y **PROD**, 2026-08-09; SUPERSEDE §6.2b `thoughts`)
 
 > Diseño en `docs/superpowers/specs/2026-08-09-posts-capa-social-design.md`. Aplicado y
 > **verificado en dev Y EN PRODUCCIÓN el 2026-08-09** contra objetos reales (`to_regclass`,
@@ -976,7 +707,7 @@ la ficha (`get-community.getReviews`, community tab) resuelve ahora el hilo por 
 `finished` (el MISMO que ve el feed y `/post/[id]` — la conversación converge); un pase terminado
 sin post se muestra sin hilo (`interactionTargetId` null), no se rompe.
 
-**§6.2 `thoughts` queda SUPERSEDIDA**: la tabla se absorbe en `posts` y se elimina en `20260847`
+**§6.2b `thoughts` queda SUPERSEDIDA**: la tabla se absorbe en `posts` y se elimina en `20260847`
 (POST-merge); los valores de enum muertos (`thought` en `target_kind`, `thought_*` en
 `notification_type`) se dejan inertes (recrear el tipo es caro).
 
@@ -1585,7 +1316,10 @@ exactamente ese patrón (`round_id` presente en -1/-2/-4, `NULL` en -3); club re
 (`created_at` = esta semana) devuelve **cero filas**, no huecos fantasma antes de existir;
 llamar como no-socio (o sin sesión) también devuelve cero filas.
 
-### 6.2 «Pensamiento»: tabla `thoughts` — SUPERSEDIDA y RETIRADA (dev y **prod**, 2026-08-09)
+### 6.2b «Pensamiento»: tabla `thoughts` — SUPERSEDIDA y RETIRADA (dev y **prod**, 2026-08-09)
+
+> (Antes numerada «6.2», chocando con «6.2 El planificador» de más arriba; renumerada a 6.2b el
+> 2026-08-19 sin mover el resto de la numeración.)
 
 > **⚠️ HISTÓRICO.** La tabla `thoughts` se **absorbió en `posts`** (§5.1) y se **eliminó de dev y
 > prod el 2026-08-09** (migración `20260847`, `to_regclass('public.thoughts')` = null en ambos).
@@ -1689,12 +1423,14 @@ y `.claude/launch.json` apunta a un `dev.cmd` en `D:\` que no existe en esta má
 Queda como entregable ejecutable por quien tenga esas credenciales, no como verificación ya
 hecha.
 
-### 6.3 Tipos de evento: `club_event_type` + `config` por tipo (SOLO EN DEV, 2026-08-09)
+### 6.3 Tipos de evento: `club_event_type` + `config` por tipo (dev y **prod**, 2026-08-09)
 
 > Diseño en `docs/superpowers/specs/2026-08-09-tipos-de-evento-design.md`. Migraciones
 > `20260840_club_event_type_enum.sql`, `20260841_club_event_type_column.sql` y
-> `20260842_club_event_typed_rpcs.sql`, **aplicadas y verificadas en dev**; producción
-> pendiente del merge del bundle (migración primero, merge después, §10 de la spec).
+> `20260842_club_event_typed_rpcs.sql`, **aplicadas y verificadas en dev** el 2026-08-09 y
+> **en prod**: al aplicar `20260852` el 2026-08-12 se comprobó contra `pg_proc` que el
+> `create_club_event` vivo de producción ya era la versión de `20260842`, con
+> `p_event_type`/`p_config` (ver el delta 2026-08-12 en el historial).
 
 Un evento (§6, `kind='evento'`) deja de ser un único formato: gana un discriminador
 `event_type` y usa el `config` jsonb —ya opaco a la BD para toda actividad, §6— para los
@@ -1763,7 +1499,8 @@ evento. Encuentro nunca es «todo el día» (siempre tiene una hora, real o asum
 sola firma por nombre de `create_club_event`/`update_club_event` (12 y 11 argumentos), la
 firma de 10 argumentos anterior ya no existe, `to_regtype('public.club_event_type')` no es
 nulo, y `information_schema.column_privileges` para `event_type` es idéntico al de
-`modality`. **Producción pendiente del merge.**
+`modality`. **En producción desde antes del 2026-08-12**: su `create_club_event` vivo es la
+versión con `p_event_type`/`p_config` (verificado contra `pg_proc` al aplicar `20260852`).
 
 ### 6.4 Progreso en lote de la pestaña Actividades: `get_activities_progress()` (DEV Y PROD, 2026-08-12)
 
@@ -1989,6 +1726,15 @@ puede descuadrar el progreso porque el progreso no la mira.
 
 Unique vigente: `(saga_id, item_type, item_id)` (`saga_items_saga_item_key`) — el antiguo
 `saga_items_item_key` sobre `(item_type, item_id)` se retiró al abrir la multi-membresía.
+
+### Seguir sagas: `saga_follows` (dev y prod desde julio de 2026)
+
+Seguir una saga es un **follow explícito**, no derivado de tener pases de sus obras:
+`saga_follows` (`user_id`, `saga_id`, `created_at`; PK compuesta `(user_id, saga_id)`, FKs
+con `on delete cascade`, índice por `saga_id`; migración `20260719_saga_follows.sql`).
+RLS solo-dueño: una única política `for all` con `auth.uid() = user_id`, patrón
+`collections`. Alimenta el botón «Seguir esta saga» del hero, la pestaña **Sagas de
+Colección** y el índice `/sagas`.
 
 ### 7.1 Escritura de `saga_items` (issue #169)
 
@@ -2236,8 +1982,9 @@ alter table public.saga_items
   );
 ```
 
-**Tercer valor `anclado` (2026-08-15, `20260815_saga_placement_anclado.sql`, SOLO EN DEV — ver
-delta al inicio de este documento).** `alter type public.saga_placement add value if not exists
+**Tercer valor `anclado` (2026-08-15, `20260815_saga_placement_anclado.sql`; en dev — la rama
+se mergeó en `main` con #698, prod: aplicar con el despliegue del merge, verificar; ver el
+delta 2026-08-15 en el historial del final del documento).** `alter type public.saga_placement add value if not exists
 'anclado'` añade el valor al enum sin tocar ninguno de los dos CHECK: `saga_items_placement_position`
 y `sagas_placement_position` siguen siendo el mismo `CASE` de arriba, sin cambios, porque solo
 `fijo` exige número — `anclado` cae al `ELSE` exactamente igual que `libre` y exige `position`
@@ -2874,7 +2621,10 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
-## 7.9 Celebraciones — `user_celebrations` (dev y **prod**, 2026-08-05)
+## 7bis. Celebraciones — `user_celebrations` (dev y **prod**, 2026-08-05)
+
+> (Antes numerada «7.9», chocando con «7.9 Motivo de la ventana recomendada» dentro de Sagas;
+> renumerada a 7bis el 2026-08-19 — es sección propia, no una subsección de §7 Sagas.)
 
 Memoria de las microanimaciones ganadas por usuario, para que un hito **no se repita** entre
 recargas ni entre dispositivos (localStorage no se comparte). **No es estado de progreso** —
@@ -2914,7 +2664,8 @@ la RPC, anima una vez y sella `displayed_at`. Migración
 
 ## 8. Seguridad
 
-Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
+Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
+2026-08-19; prod por reverificar). Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
@@ -2935,17 +2686,21 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
   explícitamente en la lista; con `set search_path = public` a secas, quien pueda crear una
   tabla o un tipo temporal con el nombre de algo que la función referencie sin cualificar la
   secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda. **Estado medido en
-  dev el 2026-08-13: 69 funciones `SECURITY DEFINER`, 62 con `pg_temp`.** El número de
-  55/55 de 2026-07-29 quedó desactualizado por funciones nuevas de otras ramas, no por una
-  regresión de esta migración. Faltan 7, todas deuda de otras ramas (ninguna de esta rama):
-  `archive_club_activity`, `pin_comment`, `ensure_club_round`, `get_club_round_state`,
-  `pull_pending_celebrations`, `get_activities_progress`, `update_activity_details`. Tres
+  dev el 2026-08-19: 89 funciones en `public` (más 36 en el esquema `private`), 75
+  `SECURITY DEFINER` en `public`, 60 con `pg_temp` — faltan 15.** Los números anteriores
+  (55/55 de 2026-07-29, 69/62 de 2026-08-13) quedaron desactualizados por funciones nuevas,
+  no por una regresión de esta migración. Las 7 que ya faltaban siguen sin arreglar
+  (`archive_club_activity`, `pin_comment`, `ensure_club_round`, `get_club_round_state`,
+  `pull_pending_celebrations`, `get_activities_progress`, `update_activity_details`) y se
+  suman `list_club_round_weeks`, `enforce_catalog_edit_collaborator_only` y las 6 de
+  book-hydration (`hydrate_book`, `hydrate_movie`, `hydrate_series`, `hydrate_screens_bulk`,
+  `register_catalog_item`, `register_catalog_items_bulk`). Tres
   (`approve_club_join_request`, `club_is_private`, `notify_club_join_request`) conservan su
   `search_path` vacío — más estricto — y quedaron como `"", pg_temp`; la migración preserva
   el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
   `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
   pg_temp`, pero si alguna se escapa, **el arreglo es re-ejecutar
-  `20260808_secdef_search_path_pg_temp.sql`** (idempotente) para que las 7 pendientes queden
+  `20260808_secdef_search_path_pg_temp.sql`** (idempotente) para que las 15 pendientes queden
   cubiertas también.
 - **Helpers privados de Social fases 0/1**: las funciones `SECURITY DEFINER` nuevas viven en el
   esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
@@ -2957,6 +2712,8 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
   actions, no desde el cliente.
 
 ## 9. Enums
+
+**29 enums en `public`** (recontados contra `pg_type` de dev el 2026-08-19):
 
 | Enum | Valores |
 |---|---|
@@ -2970,20 +2727,33 @@ Las 48 tablas públicas de prod y las 48 de dev tienen **RLS activa**. Patrones:
 | `club_event_state` | `programado \| cancelado \| pospuesto` (§6.1, 2026-08-04, dev y **prod**). Solo los tres estados que una PERSONA declara: «en curso» y «finalizado» se derivan del reloj y NO se guardan |
 | `event_modality` | `presencial \| online \| hibrida` (§6.1, 2026-08-04, dev y **prod**) |
 | `content_report_reason` | `spam \| harassment \| spoiler \| hate \| other` (Social fase 0, dev y prod, 2026-07-30) |
-| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable · `club_round_proposed \| club_round_commented \| club_round_liked` (§6, la ronda, dev y **prod** 2026-08-04) · **`thought_commented \| thought_liked`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) · **`followed_started \| followed_dropped \| followed_thought`** (§5.3, avisos de seguimiento desde el post, 2026-08-13, migración `20260856_notification_type_followed_post_kinds.sql`, **dev y PROD** — verificado contra `pg_enum` de prod el 2026-08-13: `enumlabel like 'followed_%'` devuelve los siete. La migración de datos `20260857` también está en prod desde ese día, aplicada después del despliegue del código — ver §5.3). Junto con los tres `followed_*` que ya existían cubren uno por `post.kind`; `followed_added` queda huérfano desde el mismo delta — el enum lo conserva pero `createPost` ya no lo emite |
+| `notification_type` | `follow_request \| new_follower \| follow_accepted \| review_liked \| review_commented \| club_invite \| club_invite_accepted \| club_post \| club_post_liked \| club_post_commented \| comment_liked \| club_activity_proposed \| club_activity_activated \| club_join_request \| club_join_approved \| club_activity_spawned \| club_event_created \| mentioned \| activity_liked \| activity_commented \| checkpoint_commented \| followed_finished \| followed_session \| followed_episode \| followed_added` (`club_event_created`: 2026-07-22; `mentioned`: 2026-07-30, E5.K3, dev+prod; los tres siguientes: Social fase 1, dev y **prod** 2026-08-02; los cuatro `followed_*`: avisos por persona, 2026-08-04, migración `20260804000001_notification_type_followed.sql` — **corregido aquí el 2026-08-04**: esta tabla decía «SOLO EN DEV, prod aún no tiene estos valores» y ya no es cierto; verificado contra `pg_enum` de PROD, los cuatro están) · **`club_event_reminder \| club_event_updated \| club_event_cancelled`** (§6.1, seguimiento de eventos, 2026-08-04, `20260823_club_event_following_rpcs.sql`, dev y **prod**). `club_event_reminder` es el primer tipo que **no tiene actor**: lo emite el trabajo programado, y por eso `notifications.actor_id` pasó a nullable · `club_round_proposed \| club_round_commented \| club_round_liked` (§6, la ronda, dev y **prod** 2026-08-04) · **`thought_commented \| thought_liked`** (§6.2b, Fase 2 de «Pensamiento», dev y **prod** desde el 2026-08-07; **inertes** desde la retirada de `thoughts` el 2026-08-09 — hoy esos avisos salen como `post_commented`/`post_liked`) · **`post_commented \| post_liked`** (§5.1 `posts`, dev y **prod**, 2026-08-09) · **`followed_started \| followed_dropped \| followed_thought`** (§5.3, avisos de seguimiento desde el post, 2026-08-13, migración `20260856_notification_type_followed_post_kinds.sql`, **dev y PROD** — verificado contra `pg_enum` de prod el 2026-08-13: `enumlabel like 'followed_%'` devuelve los siete. La migración de datos `20260857` también está en prod desde ese día, aplicada después del despliegue del código — ver §5.3). Junto con los tres `followed_*` que ya existían cubren uno por `post.kind`; `followed_added` queda huérfano desde el mismo delta — el enum lo conserva pero `createPost` ya no lo emite |
 | `interaction_audience_kind` | `profile \| club_member \| activity_participant \| checkpoint_reached` (Social fase 1, dev y **prod** 2026-08-02) |
 | `follow_status` | `pending \| accepted` |
-| `saga_edge_type` / `saga_node_level` | `principal \| opcional \| requisito` / `principal \| menor` (§7.7: `saga_nodes`/`saga_edges`, las tablas que los usaban, se retiraron por completo en la fase 3 — `20260729_drop_saga_graph.sql`, dev y prod, 2026-07-27. Los dos tipos enum **siguen existiendo** en `pg_type`, huérfanos: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya, verificado contra `pg_attribute`) |
 | `saga_item_role` | `precuela \| novela_corta \| relato \| spin_off \| companero \| crossover` (§7.3, issue #167; nullable, sin default — dev y **prod** 2026-07-28, fase 5: `paralela` retirada) |
-| `saga_placement` | `fijo \| libre` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — aplicado en dev y en prod el 2026-07-26) |
-| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session \| club_round` (§6, la ronda, dev y **prod** 2026-08-04 — **corregido aquí, 2026-08-06**: esta fila no lo listaba y ya estaba en los dos entornos) · **`thought`** (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
-| `thought_anchor_type` | `book \| movie \| series \| saga \| person` (§6.2, Fase 2 de «Pensamiento», **SOLO EN DEV**, 2026-08-06) |
+| `saga_placement` | `fijo \| libre \| anclado` (§7.4, fase 1 del orden unificado; nullable en `saga_items.placement`/`sagas.placement_in_parent` — `fijo`/`libre` en dev y prod desde el 2026-07-26; **`anclado`** en dev desde el 2026-08-15, `20260815_saga_placement_anclado.sql`, mergeado en `main` con #698 — **prod: aplicar con el despliegue del merge #698, verificar**) |
+| `target_kind` | `diary_entry \| episode_watch \| club_post \| comment \| activity_checkpoint \| club_activity \| pass \| progress_session \| club_round \| thought \| post` — 11 valores (los nueve primeros: §6, la ronda, dev y **prod** 2026-08-04 — **corregido aquí, 2026-08-06**: esta fila no los listaba y ya estaban en los dos entornos) · **`thought`** (§6.2b, Fase 2 de «Pensamiento», dev y **prod** desde el 2026-08-07; **inerte** desde la retirada de `thoughts` el 2026-08-09) · **`post`** (§5.1 `posts`, dev y **prod**, 2026-08-09) |
+| `thought_anchor_type` | `book \| movie \| series \| saga \| person` (§6.2b, Fase 2 de «Pensamiento», dev y **prod** desde el 2026-08-07; **inerte** desde la retirada de `thoughts` el 2026-08-09 — lo reemplaza `post_anchor_type`, mismos valores; se conserva porque recrear el tipo es caro) |
+| `club_post_kind` | `text \| activity_share \| poll` (`20260712_club_posts.sql`, §6 — el `kind` de `club_posts`) |
+| `pending_import_status` | `pending \| resolved \| dismissed` (`20260710_pending_import_rows.sql`, §3 — estado de una fila de import sin resolver) |
+| `push_channel` | `web` (`20260712_push_subscriptions.sql` — legacy de `push_subscriptions`; el mundo unificado usa `push_platform`) |
+| `push_platform` | `web_push \| fcm_android \| apns_ios` (`20260828_push_devices.sql`, §5 — plataforma de `push_devices`) |
+| `pass_dropped_reason` | `no_enganchado \| aburrido \| no_es_momento \| no_esperado \| otro` (`20260858_pass_dropped_reason.sql`, §3 — motivo de abandono, dev y **prod** 2026-08-14) |
+| `club_event_type` | `encuentro \| lanzamiento \| fecha_destacada` (`20260840_club_event_type_enum.sql`, §6.3 — dev y **prod**, ver §6.3) |
+| `post_kind` | `started \| finished \| dropped \| progressed \| watched \| thought` (`20260844_posts.sql`, §5.1 — dev y **prod** 2026-08-09) |
+| `post_anchor_type` | `book \| movie \| series \| saga \| person` (`20260844_posts.sql`, §5.1) |
+| `post_source_kind` | `pass \| progress_session \| episode_watch` (`20260844_posts.sql`, §5.1 — el hecho del que nace el post) |
+| `saga_tandem_mode` | `simultaneo \| indistinto` (`20260801_saga_tandems.sql`, §7.8 — modo del hueco compartido) |
+| `saga_window_reason` | `spoiler \| contexto` (`20260803_saga_window_reason.sql`, §7.9 — `saga_placement_windows.motivo`) |
+
+Los tipos `saga_edge_type`/`saga_node_level` **ya no existen**: `20260729_drop_saga_graph.sql`
+incluye su `drop type if exists` y `pg_type` de dev no los devuelve (verificado el 2026-08-19).
+Una versión anterior de esta tabla los daba por «huérfanos vivos» y era falso.
 
 ## 10. Migraciones
 
-158 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
-2026-08-06 tras las dos de Fase 2 de «Pensamiento»; incluye los deltas que aún están solo en dev,
-como `20260814_notes_public_select.sql` y `20260834_thoughts_enum_values.sql`/`20260835_thoughts.sql`).
+186 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+2026-08-19).
 Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
 pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
 `supabase/schema-baseline.sql` es el replay ordenado para levantar un entorno limpio.
@@ -3011,3 +2781,315 @@ pase-hub se redataron y prod las registra en otro orden.
 ⚠️ **"No aparece en `list_migrations`" ≠ "no está en prod".** `20260716_list_challenge_completion_mode.sql`
 está aplicada pero sin registrar en el ledger. Para comprobar si algo existe de verdad,
 mirar los **objetos** (`pg_proc`, `pg_class`), no el ledger.
+
+
+## Historial de verificaciones (deltas antiguos, congelados)
+
+> **[Histórico · congelado el 2026-08-19]** Este bloque es la antigua cabecera-changelog del doc
+> (deltas de verificación acumulados hasta el 2026-08-15), movida aquí tal cual al sustituirla por
+> la cabecera corta del 2026-08-19. Explica el *porqué* de cada verificación, no el *hoy*: donde
+> contradiga al cuerpo del documento, manda el cuerpo.
+
+> **[Canónico · verificado contra prod el 2026-07-21; delta de eventos de club verificado el 2026-07-22; itinerarios de sagas (§7.2) verificados en dev y prod el 2026-07-22; rol narrativo de sagas (§7.3) verificado en dev y prod el 2026-07-23; colocación/opcionalidad de sagas (§7.4) verificada en dev y **en prod** el 2026-07-26; editor único de secuencia, fase 2a (§7.5) verificado en prod el 2026-07-26; ventanas de colocación, fase 2b (§7.6) — **corregido aquí, 2026-07-27**: esta cabecera llevaba "solo en dev, prod pendiente", y ya no es cierto — reverificado hoy contra `pg_proc`/`to_regclass` de PROD: `saga_placement_windows` existe y `save_saga_sequence` tiene una única firma (la de cinco argumentos), coherente con el ANEXO 2026-07-27 de `schema-baseline.sql` —; metadatos del tándem, fase 2 del timeline (§7.8), aplicados en dev **y en prod** el 2026-07-28 — incluida la retirada del envoltorio de seis argumentos: `pg_proc` devuelve UNA sola firma en los dos entornos—; motivo de la ventana, fase 3 del timeline (§7.9), aplicado en dev **y en prod** el 2026-07-28; **opcionales saltables, fase 4 del timeline (§7.10), aplicadas en dev **y en prod** el 2026-07-28 — verificadas contra `to_regclass`, `pg_policies` y `information_schema.columns`; ningún RPC cambió y `progress.ts` no se tocó**; **roles, fase 5 del timeline (§7.3), aplicados en dev **y en prod** el 2026-07-28 — las dos migraciones, la segunda DESPUÉS del despliegue a propósito (#237, cerrada); verificado contra `pg_enum`/`pg_attribute`: seis valores, sin `paralela`, sin tipo huérfano y con las 8 filas con rol intactas; ningún RPC cambió y `progress.ts` tampoco** —sin backfill: las 4 ventanas de prod siguen con `motivo IS NULL`, y `save_saga_sequence` NO cambió de firma—; fase 3 del orden unificado —mapa derivado, migración de grafos a itinerarios y retirada de
+`saga_nodes`/`saga_edges`/`save_saga_graph` (§7.7)— **corregido aquí, 2026-07-27**: esta cabecera
+llevaba "solo en dev, prod pendiente" para las dos primeras migraciones y daba el `DROP` por no
+escrito; ya no es cierto — las tres migraciones de la fase están aplicadas y verificadas en dev y en
+prod el 2026-07-27, fase cerrada, contra los objetos reales (`pg_type`, `pg_constraint`,
+`pg_policies`, `pg_proc`, `to_regclass`), nunca contra `list_migrations`; **fase 4 del orden
+unificado —`saga_routes.is_reading_order` (§7.2) y el borrado explícito de ventanas por lista de
+sujetos (§7.6)— verificada en dev y **en prod** el 2026-07-28 contra `information_schema.columns`,
+`pg_indexes` y `pg_proc`: en los dos entornos existen la columna (`boolean NO false`) y su unique
+parcial `saga_routes_reading_order_key` (`(saga_id) WHERE is_reading_order`). El «sin backfill» se
+comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y **0 con
+`is_reading_order`**, y sus 2 ventanas seguían diciendo exactamente lo mismo que antes.
+**Fase 4 CERRADA el 2026-07-28**: retirada también la sobrecarga de cinco argumentos
+(`20260731_drop_save_saga_sequence_v5.sql`), aplicada DESPUÉS de confirmar que el bundle nuevo
+servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
+argumentos, en dev y en prod; **tanda de seguridad del 2026-07-29 (issues #130, #176, #133)
+aplicada y verificada en dev Y EN PROD** — cuatro migraciones (`20260808`…`20260811`), ninguna
+toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` en esa tanda (§8; **desactualizado, ver el detalle en §8: a 2026-08-13 son 69 funciones, 62 con `pg_temp`**),
+`save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
+defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
+`list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
+`anon`; `target_kind` ampliado con `pass`/`progress_session` para el feed agrupado de Inicio
+(§5), aplicado y verificado en dev y en prod el 2026-07-29 (migraciones
+`20260812_feed_targets_enum.sql` y `20260813_feed_targets_can_view.sql`); **lectura pública
+de `notes` para el feed de tarjetas por tipo (§3) — corregido aquí, 2026-07-30**: la política
+aditiva `"public notes select"` (`is_public = true and public.can_view_profile(user_id)`,
+migración `20260814_notes_public_select.sql`) está aplicada y verificada **SOLO EN DEV**;
+prod queda pendiente del merge de `feat/feed-tarjetas-por-tipo`; **normalización de géneros
+del catálogo (§2), 2026-07-30**: índices GIN `{books,movies,series}_genres_gin`
+(`20260815_genres_gin_indexes.sql`) y backfill de `movies`/`series` a labels canónicas
+aplicados y verificados **en DEV y en PROD** el 2026-07-30 (GIN 3/3 contra `pg_indexes`;
+backfill prod: movies `Suspense`→`Thriller`, series `Action & Adventure`/`Sci-Fi & Fantasy`
+divididos con dedupe+cap5; filas solo-ruido `Kids`/`Reality`/`Talk` conservadas — issue #311);
+`books` no necesita backfill (las labels ya coincidían); **Social fase 1 — corregido aquí,
+2026-08-02**: esta cabecera llevaba «fix del writer canónico y migración de CONTRATO SOLO EN
+DEV» y «PRODUCCIÓN NO TIENE `interaction_targets` EN ABSOLUTO», y ya no es cierto — **la fase 1
+ENTERA está aplicada y verificada en DEV y en PROD** (`vmutcradmodhiltuohys`) el 2026-08-02: las
+siete migraciones de la cadena expansiva (`20260730212803` → `20260730213248` → `20260730214405`
+→ `20260730214621` → `20260801115944` → `20260801135656` → `20260802013421`) y, DESPUÉS de que
+el bundle canónico estuviera vivo, la de contrato
+(`20260801224621_social_interaction_targets_contract.sql`). Verificado contra los objetos reales
+—`pg_class`, `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra
+`list_migrations`: `interaction_target_id` es `NOT NULL` en `comments` y `reactions`, el par
+heredado `target_type`/`target_id` ya NO es columna de ninguna de las dos, `notifications`
+conserva sus tres columnas nullable, la unicidad de reacción es `(interaction_target_id,
+user_id, kind)` y `comments_no_nesting` ha desaparecido. Cero pérdida de datos en todo el
+recorrido: 8 comentarios, 13 reacciones, 6 avisos y 647 targets, iguales paso a paso.
+`schema-baseline.sql` **ya no está sin anexar**: lleva el «ANEXO 2026-08-02» con las ocho
+migraciones en el orden en que las recibió producción; **grants de lectura anónima a los helpers de
+bloqueo (EXECUTE en `users_are_blocked`/`filter_unblocked_user_ids` + SELECT en `user_blocks` para
+`anon`) aplicados y verificados en dev y prod el 2026-08-02** (migración `grant_anon_read_block_helpers`;
+ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-06**: corregidas dos contradicciones del backlog (itinerarios «solo en dev» y `queues` «sigue en pie», ambas en prod desde julio-2026), recontadas migraciones (155 ficheros) y tablas públicas (53, todas con RLS, verificado contra `pg_tables` de prod), y documentadas `saga_route_entries.note` y la tabla de columnas de `saga_items` (10); sin cambio de esquema; **Fase 2 de «Pensamiento» (§6.2), 2026-08-06 — SOLO EN DEV**: tabla `thoughts` (ancla polimórfica `book|movie|series|saga|person` sin FK, contenido autoral personal) + clase `thought` de `interaction_targets` con su trigger resolutor y dos valores nuevos de `notification_type` (`thought_commented`/`thought_liked`); verificado en dev contra objetos reales (`to_regclass`, `enum_range`, DRIFT-CHECK superficie 6 de grants por columna, advisors de seguridad sin hallazgos nuevos) — migraciones `20260834_thoughts_enum_values.sql` y `20260835_thoughts.sql`, 158 ficheros en el repo tras las dos; prod pendiente de una fase de despliegue posterior; **Fases 3-6 de «Pensamiento» (§6.2), 2026-08-07 — feed 6ª fuente, compositor, tarjeta/hilo con markdown-lite y e2e (`e2e/thoughts.spec.ts`, escrito y committeado, no ejecutable en este worktree por falta de `.env.local`/credenciales) — feature completa de extremo a extremo en dev; **migración aplicada y verificada en PROD el 2026-08-07** (`to_regclass`, `enum_range` con los 5 valores de ancla, `'thought'` en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`, 3 triggers, 4 policies con RLS, grants por columna 5-INSERT/2-UPDATE idénticos a dev, `get_advisors` sin hallazgos nuevos sobre `thoughts`); el código se despliega al mergear el PR**; **los avisos de seguimiento nacen del post, no del hecho (§5.3), 2026-08-13**: `notification_type` gana `followed_started`/`followed_dropped`/`followed_thought` y `follows.notify_events` cambia de dominio a `milestone|progress|thought`; verificado en dev contra `enum_range` y `follows` reales el 2026-08-13; **las dos migraciones aplicadas y verificadas en PROD el 2026-08-13**: `20260856` (el enum, aditiva pura, verificada contra `pg_enum`) por delante, y `20260857` (la de datos) **después de desplegar el código** (merge de #629 y deploy de producción en verde) — 8 filas a `{milestone,progress,thought}`, 4 vacías intactas, cero filas con vocabulario viejo; el orden importa y está razonado en §5.3; **motivo de abandono (§3), 2026-08-14 — corregido aquí el mismo día: aplicado y verificado en DEV y en PROD**, no solo dev — `passes.dropped_reason`/`dropped_reason_note`, enmascarados por dueño en `pass_reviews`, sin `grant select` en la tabla, verificado contra `information_schema.column_privileges` de prod antes de mergear el código (la migración va delante del despliegue, no detrás, para no vaciar el diario de nadie)]**
+
+> Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3.
+> **Este es el documento canónico del esquema.** Verificado contra producción el
+> **2026-07-30** para el delta de Social fase 0 (el resto conserva sus fechas de
+> verificación específicas): 47 tablas públicas, todas con RLS activa.
+> **Delta del 2026-07-30 (feed de tarjetas por tipo, §3): la política `"public notes
+> select"` de `notes` está verificada solo en DEV**, contra `pg_policies` — prod queda
+> pendiente del merge de `feat/feed-tarjetas-por-tipo`.
+> **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico, índices
+> GIN y backfill aplicados y verificados en DEV **y en PROD** el 2026-07-30 (PR #312).
+> **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §9): valor `mentioned` del enum
+> `notification_type` aplicado y verificado en DEV **y en PROD** contra `pg_enum` (sin
+> tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
+> `decisiones.md`). Al entrar esta mejora, las políticas RLS de `notifications` aún incluían
+> `insert as actor` y no referenciaban `type`, por lo que `mentioned` quedó cubierto sin
+> cambio específico. **Social fase 0 supersede esa puerta en dev y prod**: ya no existe ninguna
+> política INSERT y `anon`/`authenticated` no tienen privilegio de inserción; el writer de
+> servidor usa `service_role`. Spec:
+> `docs/superpowers/specs/2026-07-30-menciones-usuario-design.md`.
+> **Delta del 2026-08-14 (menciones `@usuario`, issue #320): `create_club_poll()` pasa de
+> `returns void` a `returns uuid`** (el id del post creado), para que `createPoll` pueda
+> notificar `@menciones` en la pregunta de la encuesta igual que `createTextPost`/
+> `createShareActivityPost`. Migración `20260860_create_club_poll_returns_id.sql`
+> (DROP + CREATE, `CREATE OR REPLACE` no permite cambiar el tipo de retorno), aplicada y
+> verificada en DEV **y en PROD** contra `pg_proc.prorettype` (no solo el ledger) — grants y
+> `search_path = public, pg_temp` intactos en ambos entornos.
+> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
+> `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
+> Son siete migraciones:
+> `20260730190602_social_phase0_integrity.sql`,
+> `20260730190801_social_phase0_notification_compat.sql`,
+> `20260730191652_social_phase0_user_blocks.sql`,
+> `20260730191702_social_phase0_moderation_reports.sql`,
+> `20260730191708_social_phase0_polymorphic_cleanup.sql`,
+> `20260730194407_social_phase0_close_notification_inserts.sql` y
+> `20260730200000_social_phase0_report_reviewer_index.sql`. Pasaron la matriz transaccional
+> `supabase/tests/social_phase0_rls.sql` en prod dentro de una transacción con rollback; el
+> barrido dejó 0 comentarios, 0 reacciones y 0 notificaciones huérfanos. En ambos entornos,
+> INSERT sobre `notifications` queda permitido solo a
+> `service_role` (`anon=false`, `authenticated=false`, 0 políticas INSERT); las cuatro RPC
+> públicas nuevas son `SECURITY INVOKER`. En prod hay 66 avisos de seguridad, sin hallazgos
+> atribuibles a las tablas o RPC de esta fase. El rollout aplicó integridad+compatibilidad de
+> forma atómica, desplegó el bundle `8589601` y solo entonces cerró el INSERT heredado y añadió
+> el índice de reviewer; [#332](https://github.com/borjar20/Biblioshare/issues/332) conserva la
+> evidencia operativa.
+> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado en DEV, y desde el
+> 2026-08-02 también en PROD (ver el corte de producción más abajo).**
+> `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
+> `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
+> `activity_checkpoint` desde `club_activity_checkpoints.created_by`, repara el registro ya
+> materializado y añade el índice `interaction_targets_owner_id_idx`. La matriz transaccional
+> `supabase/tests/social_phase1_interaction_targets.sql` pasó completa y los advisors de seguridad
+> siguen en 66, sin findings nuevos.
+> **Fix del 2026-08-01 (writer canónico de notificaciones): aplicado y verificado en DEV, y en
+> PROD el 2026-08-02 dentro de la cadena expansiva.**
+> `20260801135656_social_interaction_targets_notification_writer_fix.sql` conserva en INSERT el
+> `interaction_target_id` enviado sin par legacy por el writer confiable (`service_role`); si el
+> INSERT incluye `(target_type, target_id)`, ese par sigue siendo la autoridad. En UPDATE el trigger
+> nunca acepta metadatos canónicos aislados del cliente: vuelve a derivar desde el par completo o
+> limpia el ID si falta alguna parte. La matriz SQL pasó completa; advisors de seguridad 66→66 y de
+> rendimiento 53→53, sin delta.
+> **Delta del 2026-08-01 (Social fase 1, migración de CONTRATO, §5): aplicado y verificado en DEV
+> el 2026-08-01 y en PROD el 2026-08-02, la última de las ocho.**
+> `20260801224621_social_interaction_targets_contract.sql` cierra el ciclo
+> expand/migrate/contract: `interaction_target_id` pasa a `NOT NULL` en `comments` y
+> `reactions`, la unicidad de reacción se apoya en él, desaparecen de esas dos tablas el par
+> heredado `(target_type, target_id)`, sus triggers de resolución, sus índices y el CHECK
+> `comments_no_nesting`, y cinco funciones `SECURITY DEFINER` pasan a resolver el padre de un
+> comentario por el registro canónico. `notifications` conserva intacto su par heredado
+> nullable y su trigger resolutor. La matriz `supabase/tests/social_phase1_interaction_targets.sql`
+> pasó completa (`ALL ASSERTIONS PASSED`) y los advisors siguen en 66 de seguridad, sin
+> hallazgos nuevos.
+> **Corte de producción del 2026-08-02: la fase 1 ENTERA está aplicada y verificada en PROD.**
+> Ocho migraciones contra `vmutcradmodhiltuohys`, verificadas contra objetos reales —`pg_class`,
+> `pg_proc`, `pg_constraint`, `information_schema.columns`—, nunca contra `list_migrations`: el
+> ledger de prod ya venía sin la fila de `social_phase0_notification_compat` pese a tener su
+> efecto (`comments_body_canonical`), que es justo la trampa que advierte `AGENTS.md`. Primero la
+> cadena EXPANSIVA de siete (`20260730212803` … `20260802013421`, esta última el fix de la
+> audiencia de checkpoint): el backfill no borró NADA — las 21 filas de comentarios/reacciones
+> tenían fuente viva y los conteos salieron idénticos (8 comentarios, 13 reacciones, 6 avisos),
+> con 647 targets y cero `interaction_target_id` nulos. Después el merge del bundle canónico
+> (`a4dcc0b` en `main`, despliegue de producción de Vercel correcto, el sitio responde 200) y
+> **solo entonces** la migración de CONTRATO
+> (`20260801224621_social_interaction_targets_contract.sql`), que borra columnas que el bundle
+> anterior todavía leía. Los conteos siguieron idénticos tras ella. Prod y dev quedan en 48 tablas
+> públicas, todas con RLS, y sin advisors nuevos en ninguno de los dos entornos.
+> **Ojo al orden, que difiere entre entornos**: en dev el contrato se aplicó ANTES que el fix de
+> la audiencia de checkpoint; en prod el fix viajó con la cadena expansiva y el contrato entró
+> después. Se verificó tras aplicarlo que el contrato NO revierte el fix —
+> `private.can_view_interaction_target` sigue delegando en
+> `can_view_target('activity_checkpoint', …)`. El baseline replica el orden de PROD, que es el que
+> reproduce producción desde cero.
+> El orden de despliegue fue expansiva → backfill → bundle → contrato. `schema-baseline.sql`
+> **ya está anexado** («ANEXO 2026-08-02»), en la misma pasada en que se cerró el ciclo en prod.
+> Donde otro doc lo contradiga, manda este — y varios docs antiguos aún dicen
+> `diary_entries`, que **ya no existe** (ver §0).
+>
+> **Delta del 2026-08-03 (issue #361): `passes.planned_on date` añadida y verificada en DEV y
+> en PROD** (`information_schema.columns` → `date`, nullable). Migración
+> `20260817_passes_planned_on.sql`. Es forward-only (la fija `planTransition` al entrar en
+> `planned`); el historial importado se queda en `NULL`. Ningún RPC cambió; sin backfill. Ver §3.
+>
+> **Delta del 2026-08-03 (bis): la columna anterior salió SIN su grant y rompió «Seguir» en
+> producción.** `passes` tiene grants **por columna**, y Postgres exige privilegio sobre toda
+> columna nombrada en el INSERT/UPDATE aunque su valor sea `NULL`: al desplegar #366, el insert de
+> `applyTransition` (que siempre nombra `planned_on`) empezó a dar `42501 permission denied for
+> table passes` y toda alta de pase caía en el error boundary. Migración
+> `20260819_grant_passes_planned_on.sql`, **aplicada y verificada en DEV y en PROD el 2026-08-03**
+> (`information_schema.column_privileges` → `anon: SELECT`; `authenticated: INSERT, SELECT,
+> UPDATE`, idéntico a `started_on`). Se le dieron los tres privilegios de sus hermanas, no solo
+> los dos rotos, para que el SELECT no vuelva a faltar cuando `/estadisticas` lea la columna.
+> **Es el MISMO fallo que `episode_runtime_minutes` un día antes** (`20260818`): columna nueva sin
+> grant compila, pasa los tests y solo revienta contra la BD real (issue #375).
+>
+> Auditada de paso **toda** la tabla en prod: no queda ninguna otra columna con hueco. Sin
+> INSERT/UPDATE para `authenticated` solo están `id`, `created_at` y `updated_at` (default y
+> trigger, correcto), y `review` sigue **sin SELECT** a propósito — se lee por la vista
+> `pass_reviews`, que es la que aplica la privacidad.
+>
+> **Delta del 2026-08-04 (avisos por persona, §5): `follows.notify_events` y los cuatro valores
+> `followed_*` de `notification_type` añadidos y verificados en DEV Y EN PROD** el 2026-08-04
+> (`information_schema.columns` y `pg_enum`: prod devuelve `has_column=1`, `followed_enum_values=4`). Migraciones
+> `20260804000000_follow_notify_events.sql` y `20260804000001_notification_type_followed.sql`. Sin
+> tabla nueva: el interruptor de aviso por persona vive en `follows.notify_events`
+> (`finished|session|episode|added`), escrito por **service-role** porque la RLS de `follows` solo
+> concede UPDATE al followee. Ver §5 y `decisiones.md` (2026-08-04).
+> **SUPERSEDIDO por el delta del 2026-08-13 (§5.3): el dominio de `notify_events` cambió a
+> `milestone|progress|thought` y el disparo se movió del hecho al post — ver más abajo.**
+>
+> **Delta del 2026-08-04 (barrido de P0), aplicado y verificado en DEV Y EN PROD** — ninguna
+> columna ni tabla nueva, solo dos guardas: `private.enforce_comment_target_commentable` pasa a
+> rechazar el reapuntado de un comentario (§5, issue #339) y nace
+> `private.forbid_delete_with_passes` con sus tres triggers `BEFORE DELETE` sobre
+> `books`/`movies`/`series` (§3, issue #272). Migraciones `20260820_comments_forbid_retarget.sql`
+> y `20260821_catalog_delete_guard_passes.sql`. Verificado además que **no había datos ya
+> derivados**: cero comentarios con audiencia/href distintos de los de su padre en los dos
+> entornos, y cero pases huérfanos en prod (en dev había 4, borrados). El control preventivo de
+> los grants por columna vive ahora en `docs/DRIFT-CHECK.md` §6 (issue #375), con la referencia
+> de las 10 tablas con hueco intencionado — idéntica en dev y prod.
+
+> **Delta del 2026-08-04 — seguimiento de eventos de club (§6.1) y el primer trabajo
+> programado del repo (§6.2): aplicado y verificado en dev Y EN PRODUCCIÓN** el mismo día.
+> Verificado contra los objetos reales de los dos entornos (`information_schema.columns`,
+> `pg_constraint`, `pg_policies`, `pg_proc`, `cron.job`, `cron.job_run_details`,
+> `net._http_response`), nunca contra `list_migrations`, y con 12 checks de impersonación en
+> dev. Incluye un cambio en una tabla del núcleo: `notifications.actor_id` pasa a
+> **nullable**. El trabajo programado está **entregando de verdad** en producción (200 desde
+> el propio cron, ver §6.2).
+
+> **Delta del 2026-08-05 — hitos de `buddy_read` autodeclarados (§6, issues #470/#471):
+> aplicado y verificado en DEV y EN PROD** contra `pg_proc` (nunca contra `list_migrations`).
+> `confirm_checkpoint` deja de revalidar la posición del lector: la comparaba contra
+> `library_entries` (CONGELADA — tercer bug real de esa tabla) y, aunque leyera `passes`, la
+> página objetivo depende de la edición de cada participante. Dos migraciones,
+> `20260826_confirm_checkpoint_lee_passes.sql` y `20260827_hitos_autodeclarados.sql`; sin
+> columnas nuevas ni cambios de grants (ACL de la función preservada por `create or replace`
+> y verificada: `authenticated=X`, sin `anon`).
+>
+> **Delta del 2026-08-06 — la vista `public.pass_reviews` proyecta ahora `d.updated_at` (Bloque 3
+> del triage #496, issue #345), aplicado y verificado en DEV y EN PROD** (`pg_get_viewdef`).
+> `updated_at` se añadió AL FINAL (`create or replace view` solo admite columnas nuevas al final;
+> el WHERE de RLS no cambió, grants a `anon, authenticated` preservados). Motivo: es la hora REAL
+> del terminado —un pase se CREA al añadir la obra y el «terminado» llega después como UPDATE, así
+> que `created_at` puede ir semanas por delante—. `recent-reviews.ts` y `shared-activity.ts` ya
+> leían de esta vista y seguían con `created_at` porque la vista no lo exponía; ahora usan
+> `updated_at` como `sortDate`, igual que `getFeed`. Trade-off asumido (mismo que el feed):
+> `updated_at` lo mueve cualquier update del pase. Migración `20260833_pass_reviews_updated_at.sql`.
+>
+> **Delta del 2026-08-09 — tipos de evento de club (§6.3), SOLO EN DEV.** Nuevo enum
+> `club_event_type` (`encuentro | lanzamiento | fecha_destacada`, migración `20260840`) y
+> columna `club_activities.event_type NOT NULL DEFAULT 'encuentro'` con grant por columna
+> idéntico a `modality` (migración `20260841`, verificado contra
+> `information_schema.column_privileges`). `create_club_event`/`update_club_event` ganan
+> `p_event_type` (solo en create) y `p_config jsonb` (migración `20260842`), y la hora de
+> inicio pasa a OPCIONAL para Lanzamiento/Fecha destacada (ancla `starts_at` a 00:00 en
+> `event_timezone`); **Encuentro, al contrario, pasa a EXIGIR hora** — retira el default de
+> las 19:00 que aplicaba hasta hoy a todo evento sin hora (§6.3, `decisiones.md` 2026-08-09).
+> **[NOTA 2026-08-19: este delta era erróneo; manda §6.3 — hora opcional con default 19:00]**
+> Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
+> contra `list_migrations`. **Producción pendiente del merge.**
+>
+> **Delta del 2026-08-12 (recordatorio predeterminado a una semana): aplicado y verificado
+> en DEV y en PROD.** Migración `20260852_event_reminder_default_1w.sql`. Reemplaza DOS funciones
+> para mover el predeterminado de 1440 a 10080: el default del parámetro de
+> `follow_club_event` y el literal del auto-seguimiento del organizador dentro de
+> `create_club_event` (el segundo no pasa por la primera, y es el que se olvida). **Ninguna
+> tabla, columna, política ni grant cambia**, y **ninguna fila existente se toca**: quien ya
+> sigue un evento conserva el offset que eligió. El conjunto de valores válidos no se amplía
+> — `private.valid_event_reminder` ya aceptaba 10080. Verificado contra `pg_proc`
+> (`pg_get_function_arguments` devuelve `DEFAULT 10080`, y `pg_get_functiondef` de las dos
+> funciones ya no contiene ningún 1440), nunca contra `list_migrations`. **Aplicada a PROD el
+> 2026-08-12** tras comprobar antes que su `create_club_event` vivo era la versión de
+> `20260842` (con `p_event_type`/`p_config`) y que su cuerpo solo difería en esa constante:
+> reemplazar la función sobre una prod más atrasada habría roto la creación de eventos.
+> `schema-baseline.sql` —que replica PROD— pasa a 10080 en sus dos sitios. Comprobado
+> además que **no se movió ninguna fila**: en prod quedan 23 seguimientos con 1440 (los que
+> ya existían) y 3 con 10080. Ver `event-state.ts:DEFAULT_REMINDER_MINUTES`, que es quien
+> manda en la práctica.
+>
+> **Delta del 2026-08-12 (progreso en lote de la pestaña Actividades, §6.4): aplicado y
+> verificado en DEV y en PRODUCCIÓN.** Migración `20260853_activities_progress.sql`, nueva RPC
+> `get_activities_progress(uuid[])` (`stable security definer`, gate `is_club_member`, más
+> ancho que `is_activity_participant` a propósito — ver §6.4 y `decisiones.md`). Sin columnas
+> ni tablas nuevas ni cambios de grants en tablas existentes. Verificado contra `pg_proc`
+> (`prosecdef=true`, `provolatile='s'`, `proconfig=search_path=public`, ACL
+> `authenticated/postgres/service_role` **sin `anon`**), nunca contra `list_migrations`.
+>
+> En producción se comprobó además con datos reales, no solo la existencia del objeto: sin
+> sesión devuelve **cero filas** (el gate no deja pasar nada al rol de servicio), y con sesión
+> simulada de un miembro real devuelve la actividad de SU club con números coherentes
+> (`buddy_read` de 4 hitos: colectivo 2/4, del viewer 4/4, 2 participantes) mientras las de
+> otro club quedan fuera — `is_club_member` da `false` para ellas y no sale su fila.
+>
+> El advisor de seguridad la marca con un WARN
+> (`authenticated_security_definer_function_executable`), que es **intencionado y compartido
+> con el resto de RPC del proyecto**: la función existe precisamente para dar a un miembro
+> autenticado un agregado que la RLS no le dejaría calcular. Lo que importaba era no aparecer
+> bajo `anon_security_definer_function_executable`, y no aparece.
+>
+> **Delta del 2026-08-12 (editar título/descripción/fechas de una actividad, §6.5): estado
+> MIXTO, léase con cuidado.** Migración `supabase/migrations/20260854_update_activity_details.sql`,
+> nueva RPC `update_activity_details(uuid, text, text, date, date)`, **aplicada y verificada en
+> DEV y en PRODUCCIÓN** con la versión corregida (gate de rol primero, commit `eec82b0e`).
+>
+> Hubo un tramo en que dev tuvo la primera versión, con un fallo de seguridad: el gate de rol
+> se comprobaba DESPUÉS de revelar si la fila existía y de qué `kind` era, así que alguien
+> ajeno al club podía sondear uuids por el código de excepción. Era una **regresión** de lo que
+> `20260831_club_activity_role_gate_first.sql` (issue #129) ya había corregido en otras cuatro
+> RPC de esta misma tabla. Corregido y verificado en los dos entornos: los tres casos del
+> sondeo dan `forbidden` desde el primer gate. Detalle en §6.5.
+
+> **Delta del 2026-08-13 (desmarcar un hito, y el gate de `confirm_checkpoint`
+> reordenado, §6): aplicado y verificado en DEV y en PRODUCCIÓN**, contra `pg_proc`, nunca
+> contra `list_migrations`. Migración `20260855_unconfirm_checkpoint.sql`: nueva RPC
+> `unconfirm_checkpoint(uuid)`, simétrica a `confirm_checkpoint` (desmarca el hito N y los
+> posteriores, donde confirmar auto-confirma 1..N), gate de participante comprobado
+> PRIMERO, no mira el estado de la actividad a propósito. Y `confirm_checkpoint` cambia de
+> ORDEN, no de efecto: su gate de participante pasa también a ir primero (issue #129, misma
+> fuga de INFO que corrigió `20260831_club_activity_role_gate_first.sql` en otras cuatro
+> RPC) y su código `'not found'` se normaliza a `'not_found'`; la cascada 1..N no varía. Sin
+> columnas, tablas ni cambios de grants. Las dos con `search_path = public, pg_temp`, como
+> manda la plantilla. Detalle en §6.
+>
+> **Delta del 2026-08-15 (tercer valor `anclado` del eje `placement`, §7.4): SOLO EN DEV.**
+> Migración `20260815_saga_placement_anclado.sql` — `alter type public.saga_placement add
+> value if not exists 'anclado'` (aditiva pura, sin tocar los CHECK). Aplicada y verificada
+> en dev contra el objeto real (`pg_enum`/`pg_type`, no `list_migrations`):
+> `enumlabel` devuelve `fijo`, `libre`, `anclado`, en ese orden. **Producción queda
+> pendiente a propósito**: la aplicación está reservada al controlador de la rama en el
+> momento del merge, no a esta tarea de cierre. Ver §7.4 para la semántica del valor nuevo y
+> `decisiones.md` (2026-08-15).

@@ -1,9 +1,9 @@
 # Arquitectura
 
-> **[Canónico · verificado contra código el 2026-07-20]**
+> **[Canónico · verificado contra código el 2026-08-19]**
 
-> Cómo encaja Biblioshare. Verificado contra el código el **2026-07-20**
-> (544 ficheros TS/TSX, ~57.000 líneas, 32 rutas, 76 migraciones).
+> Cómo encaja Biblioshare. Verificado contra el código el **2026-08-19**
+> (1007 ficheros TS/TSX, ~113.000 líneas, 41 rutas, 186 migraciones).
 >
 > Para el esquema de BD, el canónico es [modelo de datos](./requirements/data-model.md).
 > Antes de depurar algo que no cuadra, [Trampas](./TRAMPAS.md).
@@ -77,29 +77,54 @@ graph TD
 
     root --> ses["/sesion/[passId]"]
     root --> per["/persona/[id]"]
+    root --> gen["/genero/[slug]"]
     root --> est["/estadisticas"]
+    root --> nts["/notas"]
+    root --> post["/post/[id]"]
 
     root --> sg["/sagas"] --> sgn["/sagas/nueva"]
     sg --> sgd["/saga/[id]"]
     sgd --> sge["/saga/[id]/editar"]
-    sgd --> sgm["/saga/[id]/mapa"]
+    sgd --> sgm["/saga/[id]/mapa"] --> sgme["/mapa/editar"]
+    sgd --> sgr["/rutas"] --> sgre["/rutas/[slug]/editar"]
 
     root --> cl["/clubes"] --> cld["/club/[slug]"]
     cld --> cla["/actividad/[id]"]
+    cld --> cle["/evento/[id]"]
+    cld --> clc["/calendario"]
     cld --> clm["/miembros"]
 
     root --> u["/u/[username]"]
     u --> seg["/seguidores · /siguiendo"]
     u -. "pestañas propias" .-> ut["Actividad · Estadísticas · Rincón"]
 
-    root --> otras["/importar · /onboarding · /admin<br/>/cuenta/contrasena · /offline"]
+    root --> imp["/importar"] --> impp["/importar/pendientes"]
+    root --> otras["/onboarding · /admin<br/>/cuenta/contrasena · /offline"]
 ```
+
+Rutas que no se explican solas:
+
+- **`/@modal/(.)sesion/[passId]`** — slot paralelo en el layout raíz: ruta interceptada que
+  abre el registro de sesión como modal sobre la página actual; la URL `/sesion/[passId]`
+  sigue funcionando en directo (recarga, enlace compartido).
+- **`/genero/[slug]`** — listado de obras por género.
+- **`/notas`** — todas las notas y citas del usuario, con filtros.
+- **`/post/[id]`** — permalink de una publicación del feed (para compartir/notificaciones).
+- **`/importar/pendientes`** — filas del CSV que no casaron con el catálogo, para resolver a mano.
+- **`/saga/[id]/mapa`** (+ `/mapa/editar`) — mapa visual de la saga y su editor (`collaborator+`).
+- **`/saga/[id]/rutas`** (+ `/rutas/[slug]/editar`) — rutas de lectura alternativas de una saga.
+- **`/club/[slug]/evento/[id]`** — ficha de un evento del club; **`/calendario`**, su vista mensual.
+- **`/persona/[id]`** — ficha de autor/director/reparto.
+- **`/estadisticas`** — estadísticas propias (solo-dueño); **`/cuenta/contrasena`**, cambio de
+  contraseña; **`/admin`**, panel de administración (`admin`).
 
 **`/estadisticas` existe** (ruta propia, solo-dueño). Algún doc antiguo dice que se eliminó;
 es falso.
 
 Route handlers: `/api/export`, `/api/month-calendar`, `/api/og/nota/[id]` (genera la tarjeta
-PNG de una cita vía `next/og`), `/auth/confirm`, `/icon-192`.
+PNG de una cita vía `next/og`), `/api/cron/event-reminders` (cron de Vercel: recordatorios de
+eventos de club), `/api/native/session` (puente de sesión para el wrapper Capacitor),
+`/auth/confirm`, `/icon-192`, `/badge-96`.
 
 ## 3. Capas
 
@@ -125,13 +150,22 @@ actualiza sin recargar" — ver [Trampas §2](./TRAMPAS.md).
 
 | Módulo | Ficheros | Qué resuelve |
 |---|---|---|
-| `sagas` | 31 | Jerarquía, grafo, orden principal, cards de biblioteca |
-| `catalog` | 27 | Búsqueda, TMDB/OpenLibrary, tipos, acentos por tipo |
-| `clubs` | 25 | Clubes, actividades y sus 4 tipos, directorio |
-| `stats` | 22 | Métricas, rachas, distribuciones, bloque de hoy |
-| `social` | 16 | Feed, follows, reacciones, notificaciones |
-| `library` | 15 | Biblioteca, estados, hidratación de ítems |
-| `queue`, `import`, `passes`, `challenges`, `editions`, `sessions`, `series`, `people`, `profile`, `notes`, `rincon`, `reactivity`, `community`, `rating`, `storage`, `push`, `pwa`, `auth`, `image`, `async` | 1–11 | Un dominio cada uno |
+| `sagas` | 81 | Jerarquía, grafo, orden principal, rutas de lectura, mapa |
+| `clubs` | 69 | Clubes, actividades y sus tipos, eventos, calendario, directorio |
+| `social` | 67 | Feed, follows, reacciones, notificaciones, posts |
+| `catalog` | 50 | Búsqueda, TMDB/OpenLibrary, tipos, acentos por tipo |
+| `stats` | 46 | Métricas, rachas, distribuciones, bloque de hoy |
+| `people` | 23 | Fichas de persona, créditos |
+| `library` | 21 | Biblioteca, estados, hidratación de ítems |
+| `push` | 19 | Notificaciones push (web + wrapper) |
+| `sessions` | 17 | Sesiones de lectura/visionado |
+| `import` | 15 | Importación CSV y pendientes |
+| `notes`, `editions`, `passes`, `challenges`, `pace`, `celebrations`, `onboarding`, `series`, `profile`, `reactivity`, `native`, `community`, `auth`, `rating`, `ui`, `image`, `images`, `async`, `rincon`, `pwa`, `storage` | 1–9 | Un dominio cada uno |
+
+El mapa fino de esta sección (nodos por capa, dependencias, flujos end-to-end con el fichero
+de cada paso e invariantes) vive en [`docs/architecture/graph.json`](./architecture/graph.json)
+— es **derivado** del código; cómo consultarlo y regenerarlo, en
+[`docs/architecture/README.md`](./architecture/README.md).
 
 ## 4. Los cuatro patrones que hay que conocer
 
@@ -181,7 +215,7 @@ skeletons son client-safe y el anuncio i18n va aparte.
 
 ## 6. Verificación
 
-Vitest para lógica pura (38 ficheros de test), Playwright para flujos (24 specs).
+Vitest para lógica pura (183 ficheros de test), Playwright para flujos (83 specs).
 Detalle en [TESTING.md](./TESTING.md).
 
 ⚠️ En la máquina de desarrollo actual (8 GB) **la suite e2e completa de una tacada no es
