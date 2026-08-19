@@ -467,8 +467,8 @@ test("la rejilla de episodios de una serie va acotada (272px) con scroll propio"
 // closeOnce(): sale por router.back(), y eso DESMONTA la ruta interceptada,
 // que se llevaba el <dialog> por delante y tapaba el fallo de abajo.
 //
-// El usuario real entra a registrar desde el inicio (tarjeta de hoy /
-// now-consuming), y ahí la entrada anterior NO es la ficha: closeOnce toma la
+// El usuario real entra a registrar desde el inicio (tarjeta de hoy),
+// y ahí la entrada anterior NO es la ficha: closeOnce toma la
 // rama router.replace(exitHref), una navegación SOFT que conserva el slot
 // @modal — la ruta NO se desmonta y el <dialog> sigue MONTADO. Cerrarlo con
 // close() no bastaba: su className forzaba `display:flex`, que gana a la

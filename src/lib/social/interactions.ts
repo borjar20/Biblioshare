@@ -14,7 +14,6 @@ import {
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type TargetType = Exclude<CanonicalTargetType, "comment">;
-export type ReactableTargetType = CanonicalTargetType;
 
 export type ReactionKind = "like" | "read" | "shock" | "fire";
 export const REACTION_KINDS: readonly ReactionKind[] = ["like", "read", "shock", "fire"];

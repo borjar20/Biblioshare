@@ -51,8 +51,8 @@ export type FeedEvent = {
   // El id estable del post → ruta propia `/post/[id]` (deep-link de
   // notificaciones y superficie de lectura). Opcional: solo lo llevan los
   // eventos que salen de una fila `posts` (el feed). Las previews legadas
-  // (`recent-reviews`, `shared-activity`, que derivan de pases/sesiones/reseñas
-  // sin post) lo omiten.
+  // (`shared-activity`, que derivan de pases/sesiones/reseñas sin post) lo
+  // omiten.
   postId?: string;
   // El `kind` crudo del post. El despacho de tarjeta (feed-item.tsx) enruta por
   // aquí; `verb` es una vista derivada de `kind`+reseña que conservan las
@@ -105,8 +105,8 @@ export type FeedEvent = {
   // itemId (ver comentario de arriba).
   thought: { body: string; isSpoiler: boolean; anchor: AnchorRef } | null;
   // El feed emite SIEMPRE `post` (el target canónico del post). Las previews
-  // legadas (`recent-reviews`) siguen sirviendo `diary_entry`/`episode_watch`
-  // sobre las mismas tarjetas, así que la unión los conserva.
+  // legadas siguen sirviendo `diary_entry`/`episode_watch` sobre las mismas
+  // tarjetas, así que la unión los conserva.
   interactionTarget: {
     targetType: "post" | "diary_entry" | "episode_watch" | "pass" | "progress_session" | "thought";
     targetId: string;

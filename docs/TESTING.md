@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-07-20]**
+> **[Canónico · verificado contra código el 2026-08-19]**
 
 ## Cuenta de desarrollo persistente
 
@@ -113,8 +113,8 @@ Ver `.claude/agents/`:
   verificación de UI (ver sección de arriba), junto con `npm run test:e2e`.
 - **supabase-schema**: migraciones, RLS, advisors y regeneración de tipos de
   Supabase.
-- **backlog-scribe**: mantiene `docs/REQUIREMENTS.md` al día (checklists,
-  numeración, log de decisiones) tras cerrar una tarea.
+- **backlog-scribe**: mantiene `docs/requirements/backlog.md` y
+  `docs/requirements/decisiones.md` al día tras cerrar una tarea.
 
 Al ser subagentes independientes, se pueden lanzar en paralelo mientras se
 sigue trabajando en el hilo principal.
@@ -123,12 +123,13 @@ sigue trabajando en el hilo principal.
 
 - Proyecto: `borjar20s-projects/biblioshare`, vinculado localmente vía `.vercel/project.json` (gitignorado).
 - URL de producción: **https://biblioshare-nine.vercel.app**
-- Conexión automática con el repo de GitHub no se completó (requiere autorizar la GitHub App de Vercel desde GitHub — paso manual, no forzado). Sin esa conexión, los despliegues no son automáticos en cada push; hay que correr `npx vercel deploy --prod` a mano cuando toque desplegar cambios.
-- **Variables de entorno pendientes de configurar en el dashboard de Vercel** (Project Settings → Environment Variables) — no se han introducido por CLI a propósito, para no pegar API keys en un comando: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `TMDB_API_KEY`, `GOOGLE_BOOKS_API_KEY` (mismos valores que en `.env.local`). Dejar `MOCK_EXTERNAL_APIS` sin definir en producción (solo se usa en local). Hasta que se configuren, la producción responde 500 en todas las rutas (esperado: la app necesita Supabase para casi todo).
+- La producción está desplegada y funcionando (con tráfico real de campo desde
+  ~2026-08-04; ver `docs/perf-baseline.md`). Para verificar el estado de un
+  despliegue, usa el MCP de Vercel o el dashboard.
 
 ## Wrapper nativo (Capacitor) — estado
 
-Ver `docs/REQUIREMENTS.md` §8-F / §7.31 para el porqué. Estado actual:
+Ver `docs/requirements/backlog.md` (Capacitor/Android) para el porqué. Estado actual:
 
 - `capacitor.config.ts` apunta `server.url` a la URL de producción de Vercel
   de arriba. Para probar contra el servidor de desarrollo local en su lugar,
@@ -177,40 +178,12 @@ Ver `docs/REQUIREMENTS.md` §8-F / §7.31 para el porqué. Estado actual:
     las constantes del script y vuelve a ejecutarlo. Solo corre en Windows
     (System.Drawing) — límite aceptado a sabiendas, issue #287.
 
-### Sacar un APK de release firmado
+### Release firmado y distribución
 
-El de debug **no sirve** para distribuir: va con la keystore de depuración
-genérica (contraseña pública) y con `android:debuggable="true"`, y no es
-actualizable a uno firmado de verdad — al cambiar la firma Android obliga a
-desinstalar.
+Lo hace la CI — ver `docs/ci-firebase-app-distribution.md` (keystore, firma,
+versionado y distribución por Firebase App Distribution). Lo de arriba (APK de
+debug en local) sigue siendo el camino para probar en esta máquina.
 
-La clave de release vive **fuera del repo**, en `C:\Users\borja\.keystores\`
-(RSA 4096, validez 10.000 días). Ni ella ni sus contraseñas se versionan: van en
-`android/keystore.properties`, gitignorado, que `app/build.gradle` lee al
-configurar. **Perder esa keystore significa no poder volver a publicar una
-actualización** que los dispositivos acepten como la misma app — respáldala.
-
-Si `keystore.properties` no existe, `assembleRelease` sigue funcionando pero
-saca un APK **sin firmar** (avisa por log), que Android no instala. Es
-deliberado: clonar el repo no rompe el build de debug.
-
-```powershell
-# mismas variables de entorno que arriba
-.\android\gradlew.bat -p android assembleRelease --no-daemon
-# -> android/app/build/outputs/apk/release/app-release.apk
-```
-
-Comprueba siempre antes de publicar — que compile no implica que esté firmado:
-
-```powershell
-$bt = "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0"
-& "$bt\apksigner.bat" verify --print-certs <apk>   # debe decir "Verifies"
-& "$bt\aapt2.exe" dump badging <apk>               # NO debe aparecer "debuggable"
-```
-
-La versión sale de `versionCode` / `versionName` en `android/app/build.gradle`;
-súbelos antes de publicar una nueva. La release 1.0 (`versionCode 1`) está
-publicada como tag `v1.0` con el APK adjunto.
 - **iOS no es viable en este entorno**: Xcode solo corre en macOS. Compilar
   y probar la plataforma iOS requiere una Mac o un runner de CI en la nube
   (Codemagic, GitHub Actions con runner `macos-latest`, etc.). No hay

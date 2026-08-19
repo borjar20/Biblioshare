@@ -37,13 +37,21 @@ gobernanza de abajo para saber cuál manda.**
 | [**Arquitectura**](docs/ARQUITECTURA.md) | Rutas, capas, flujo de datos, mapa de módulos | Canónico · vs código |
 | [**Modelo de datos**](docs/requirements/data-model.md) | Esquema: tablas, RLS, enums, migraciones | Canónico · vs prod |
 | [**Trampas conocidas**](docs/TRAMPAS.md) | Lo que ya ha costado horas. **Léelo antes de depurar algo raro** | Canónico |
+| [**Proyecto**](docs/PROYECTO.md) | Qué existe hoy (mapa de features por dominio) | Canónico |
+| [**Seguridad**](docs/SEGURIDAD.md) | Modelo de permisos: RLS, roles, grants, excepciones | Canónico |
+| [**Guía de UI**](docs/UI-GUIA.md) | Patrones de UI y principios de diseño (derivados de la auditoría 2026-08) | Canónico |
 | [Visión y alcance](docs/requirements/vision.md) | Qué es el producto y su MVP | Canónico · estable |
 | [Backlog](docs/requirements/backlog.md) | Qué está hecho y qué queda | Estado vivo |
-| [Decisiones](docs/requirements/decisiones.md) | El porqué de cada decisión (fechado) | Historia append-only |
+| [Decisiones](docs/requirements/decisiones.md) | Decisiones vigentes (consolidado 2026-08-19; historial completo en `docs/superpowers/decisiones-historicas-2026-08.md`) | Consolidado |
 | [Reactividad](docs/reactividad.md) | Cómo se refleja el estado en la UI | Convención |
 | [Testing](docs/TESTING.md) | Cómo se verifica | Convención |
-| [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño (temporal) | Iniciativa |
+| [Auditoría 2026-08](docs/audit/AUDIT-2026-08.md) | Auditoría integral 2026-08 (hallazgos y roadmap) | Estado vivo |
+| [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño 2026-07 (cerrada) | Histórico · congelado |
 | [Referencia visual para prototipos](docs/REFERENCIA-VISUAL.md) | Sistema visual actual y capturas base para nuevos prototipos | Canónico · vs código/capturas |
+| [Baseline de rendimiento](docs/perf-baseline.md) | Baseline de rendimiento (congelado a propósito) | Baseline congelado |
+| [Push Android](docs/push-notifications-android.md) | Arquitectura push Web/FCM | Canónico |
+| [CI de release Android](docs/ci-firebase-app-distribution.md) | CI de release Android (firma y distribución) | Canónico |
+| [Widgets Android](docs/widgets-android.md) | Widgets Glance | Canónico |
 | [Mapa de arquitectura](docs/architecture/README.md) | Localizar dónde vive una feature: flujos end-to-end con ficheros (`graph.json`) y diagrama interactivo (`map.html`) | Derivado del código |
 | [Paneles estadísticos](docs/design/paneles-estadisticos.md) | El contrato de cualquier panel de datos: resumen, indicadores, gráfico decorativo y tabla exacta desde una sola fuente | Canónico · vs código |
 

@@ -545,12 +545,9 @@ function ManagedLog({
 // estoy leyendo/viendo ahora"). La nota se guarda con ratePass — NO con
 // updatePass, que siempre escribe finished_on y cerraría el pase de tapadillo
 // (ver el comentario en src/lib/passes/actions.ts). La página actual sale de
-// `entry.position` (library_entries), comparada contra las páginas de la
-// edición del pase — o la primaria si el pase no tiene una asignada todavía.
-// OJO (ventana transicional Tarea 7→9): desde que las sesiones cuelgan del
-// pase, esta cifra deja de refrescarse tras registrar una sesión —
-// library_entries.position ya no la escribe nadie. El barrido de la Tarea 9
-// (derivar esto de diary_entries) la pone al día otra vez.
+// `entry.position` (passes.position del pase activo), comparada contra las
+// páginas de la edición del pase — o la primaria si el pase no tiene una
+// asignada todavía.
 function PassDataPanel({
   itemType,
   itemId,
