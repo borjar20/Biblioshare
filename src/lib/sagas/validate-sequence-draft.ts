@@ -38,6 +38,27 @@ export function validateSequenceDraft(
     if (b.position_in_parent !== null) positions.push(b.position_in_parent);
   }
 
+  // Un sujeto `anclado` SIN ventana no tiene sentido: su posición ES la ventana.
+  // La ventana viaja aparte en `payload.windows`, así que se cruza por clave de
+  // sujeto (mismo formato `i:<tipo>:<id>` / `s:<uuid>`).
+  const subjectsConVentana = new Set<string>();
+  for (const w of payload.windows) {
+    const sk = w.item_id !== null && w.item_type !== null
+      ? `i:${w.item_type}:${w.item_id}`
+      : w.child_saga_id !== null ? `s:${w.child_saga_id}` : null;
+    if (sk !== null) subjectsConVentana.add(sk);
+  }
+  for (const e of payload.entries) {
+    if (e.placement === "anclado" && !subjectsConVentana.has(`i:${e.item_type}:${e.item_id}`)) {
+      errors.add("anchoredNoWindow");
+    }
+  }
+  for (const b of payload.blocks) {
+    if (b.placement_in_parent === "anclado" && !subjectsConVentana.has(`s:${b.child_saga_id}`)) {
+      errors.add("anchoredNoWindow");
+    }
+  }
+
   // Ventanas (fase 2b): forma calcada de `saga_placement_windows`. La clave
   // usa el mismo formato que `DraftEntry.key` (`i:<tipo>:<id>` / `s:<uuid>`)
   // para que `ctx.anchorKeys`, que el llamante rellena con las claves del

@@ -1,7 +1,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 
 // HEREDADO — el formato del ejemplar (bolsillo/tapa blanda/tapa dura) ahora
-// lo dice la EDICIÓN elegida en el pase (diary_entries.edition_id), no
+// lo dice la EDICIÓN elegida en el pase (passes.edition_id), no
 // position.format: elegir "Tapa dura · Plaza & Janés" en el selector de
 // edición ya dice qué ejemplar tienes. Este tipo y BOOK_FORMATS se conservan
 // solo para seguir leyendo `position.format` guardado antes de que existieran
@@ -16,8 +16,8 @@ export type MoviePosition = Record<string, never>;
 
 export type Position = BookPosition | SeriesPosition | MoviePosition;
 
-// `library_entries.position` is untyped JSONB in the DB (see docs/REQUIREMENTS.md
-// §3.2) — this is the single place that interprets its shape per item type.
+// `passes.position` is untyped JSONB in the DB (see docs/requirements/data-model.md)
+// — this is the single place that interprets its shape per item type.
 export function parsePosition(itemType: ItemType, raw: unknown): Position {
   const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
 

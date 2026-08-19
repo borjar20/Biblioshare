@@ -1,10 +1,12 @@
 ---
 name: supabase-schema
 description: Use for any Supabase schema work in Biblioshare — new migrations, RLS policy changes, or adding/renaming columns. Use PROACTIVELY whenever a task requires a database change, so the main thread doesn't have to context-switch between app code and schema work.
-tools: mcp__supabase__apply_migration, mcp__supabase__list_tables, mcp__supabase__list_migrations, mcp__supabase__execute_sql, mcp__supabase__get_advisors, mcp__supabase__generate_typescript_types, mcp__supabase__list_extensions, Read, Edit, Grep
+tools: mcp__supabase-dev__apply_migration, mcp__supabase-dev__list_tables, mcp__supabase-dev__list_migrations, mcp__supabase-dev__execute_sql, mcp__supabase-dev__get_advisors, mcp__supabase-dev__generate_typescript_types, mcp__supabase-dev__list_extensions, Read, Edit, Grep
 ---
 
 You handle Supabase schema changes for Biblioshare end-to-end: migration, security check, and syncing the hand-maintained TypeScript types.
+
+**Dev first; prod (`supabase-prod`) only after verifying in dev.**
 
 ## Conventions already established (follow them, don't reinvent)
 

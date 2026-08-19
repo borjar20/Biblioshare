@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType, SearchResult } from "@/lib/catalog/types";
 import { getPersonCombinedCredits } from "@/lib/catalog/tmdb";
-import { getAuthorWorks } from "@/lib/catalog/openlibrary/author-works";
+import { fetchAuthorWorks } from "@/lib/catalog/openlibrary/author-books";
 import { findOrCreateCatalogItemsBulk } from "@/lib/catalog/find-or-create";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -72,18 +72,20 @@ export async function hydratePersonCredits(
         });
       }
     } else if (person.openlibraryKey) {
-      for (const w of await getAuthorWorks(person.openlibraryKey)) {
+      for (const w of await fetchAuthorWorks(person.openlibraryKey)) {
         searchResults.push({
           itemType: "book",
           externalId: w.workKey,
           title: w.title,
           // `subtitle` acaba en `books.author`. Lo sabemos —es la persona cuya
           // ficha estamos hidratando—, y dejarlo a null haría nacer el libro sin
-          // autor: la ficha lo mostraría vacío y `ensureItemEnriched` se plantaría
-          // en su `if (!item.author) return`.
+          // autor: la ficha lo mostraría vacío.
           subtitle: person.name,
           coverUrl: w.coverUrl,
-          year: null,
+          // El año viene de `first_publish_year`. Antes se escribía `null`
+          // literal aquí, y de ahí salían los 83 libros sin año de Shusterman:
+          // el endpoint viejo no lo daba y este sí.
+          year: w.year,
           synopsis: null,
           genres: null,
         } as SearchResult);

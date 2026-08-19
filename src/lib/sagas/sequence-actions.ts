@@ -6,7 +6,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { revalidateSagaEditPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
 import { validateSequenceDraft } from "./validate-sequence-draft";
 import { getAnchorOptions } from "./get-anchor-options";
-import { loadWindowOwners } from "./window-owners";
+import { loadWindowOwners, overlayDraftWindowOwners } from "./window-owners";
 import type { SequencePayload } from "./sequence-draft";
 
 // Doble gate a propósito, no triple: la RPC es SECURITY DEFINER, así que sus
@@ -47,25 +47,11 @@ export async function saveSequence(
     }
     windowOwners = owners;
 
-    // `loadWindowOwners` lee el estado ANTERIOR al guardado, así que por sí solo
-    // acusaría de `windowNotFree` a la entrada que este mismo borrador acaba de
-    // mandar a «Cuando quieras»: en BD todavía es `fijo`. Es el `foreignBlock`
-    // falso de la fase 2a otra vez, ahora del lado del servidor.
-    //
-    // Se superpone lo que el payload VA a escribir, sin pisar lo que BD ya sabe:
-    // el `if (!has)` conserva la dueña resuelta contra BD (la que decide
-    // `is_primary` con doble membresía) y solo añade los sujetos que esta saga
-    // está creando ahora, cuya fila vive por definición bajo ella.
-    for (const e of payload.entries) {
-      if (e.placement !== "libre") continue;
-      const key = `i:${e.item_type}:${e.item_id}`;
-      if (!windowOwners.has(key)) windowOwners.set(key, sagaId);
-    }
-    for (const b of payload.blocks) {
-      if (b.placement_in_parent !== "libre") continue;
-      const key = `s:${b.child_saga_id}`;
-      if (!windowOwners.has(key)) windowOwners.set(key, sagaId);
-    }
+    // Se superpone lo que el payload VA a escribir, sin pisar lo que BD ya sabe
+    // (colocable = `libre` o `anclado`). Ver `overlayDraftWindowOwners` para el
+    // porqué: es el `foreignBlock` falso de la fase 2a otra vez, del lado del
+    // servidor.
+    windowOwners = overlayDraftWindowOwners(windowOwners, payload, sagaId);
   }
   const { errors } = validateSequenceDraft(payload, {
     childIds: new Set(childIds),

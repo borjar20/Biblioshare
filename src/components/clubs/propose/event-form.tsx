@@ -642,7 +642,10 @@ export function EventForm({
               ? t("eventSaveSubmit")
               : t("eventSubmit")}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        {/* #134: sin este disabled, cancelar justo tras enviar desmonta el
+            formulario mientras la petición sigue en vuelo -- el evento se
+            crea/edita igual, sin que quien canceló lo vea. */}
+        <Button type="button" variant="ghost" disabled={isPending} onClick={onCancel}>
           {hasPreviousStep ? t("back") : t("cancel")}
         </Button>
       </div>

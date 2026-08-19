@@ -430,6 +430,43 @@ describe("rol narrativo en las ramas (#167)", () => {
     expect(entry.branches[0].node.role).toBe("spin_off");
     expect(entry.branches[0].edgeType).toBe("opcional");
   });
+
+  // Issue #184: la única rama `role`-en-rama existente hasta ahora usaba
+  // `edgeType: "opcional"`. `edgeType` (arista) y `role` (obra) son ejes
+  // independientes — esta prueba es la que demuestra que los dos llegan
+  // juntos a la MISMA rama con `edgeType: "requisito"`, que es el dato que el
+  // render (timeline-branch.tsx) necesita para pintar la chapa "Requisito" Y
+  // el chip de rol a la vez, sin que uno tape al otro.
+  //
+  // OJO con la dirección de la arista: `n2 → n1` (rama es SOURCE, columna es
+  // TARGET). Al revés (`n1 → n2`) `windowAnchors` la lee como el ancla
+  // «después de» de una VENTANA (arista requisito que ENTRA en un nodo sin
+  // orderNo) y `n2` sale como fila `window`, no como rama — es exactamente el
+  // caso real que documenta `e2e/sagas-rol-narrativo.spec.ts` (Test D
+  // omitido): la única arista `requisito` del seed dev nunca produce una rama.
+  it("una rama requisito también conserva el role del nodo (#184)", () => {
+    const graph: SagaGraph = {
+      nodes: [
+        { id: "n1", kind: "item", x: 0, y: 0, level: "principal", orderNo: 1,
+          label: "Uno", accent: "beige", status: null, role: null, coverUrl: null,
+          covers: [], href: "/1", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null,
+          optional: false, skipped: false, ownerSagaId: "owner" },
+        { id: "n2", kind: "item", x: 0, y: 0, level: "principal", orderNo: null,
+          label: "Precuela", accent: "beige", status: null, role: "precuela", coverUrl: null,
+          covers: [], href: "/2", memberCount: null, groupSagaId: "g1", groupName: "G", step: null, tandem: null, windowReason: null,
+          optional: false, skipped: false, ownerSagaId: "owner" },
+      ],
+      edges: [{ id: "e1", source: "n2", target: "n1", type: "requisito", accent: "beige" }],
+    };
+
+    const sections = deriveTimeline(graph);
+    const entry = sections[0].rows[0];
+    if (entry.kind !== "entry") throw new Error("se esperaba una entry");
+
+    expect(entry.branches).toHaveLength(1);
+    expect(entry.branches[0].node.role).toBe("precuela");
+    expect(entry.branches[0].edgeType).toBe("requisito");
+  });
 });
 
 describe("sortByPublication", () => {

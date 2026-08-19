@@ -255,7 +255,17 @@ export function deriveTimeline(
   //
   // Solo obras: un BLOQUE `libre` con ventana tiene obras CON `orderNo`, así
   // que sigue viviendo en la columna como una sección normal. Límite asumido de
-  // la fase 1, abierto en su issue: pintarlo movería una sección entera.
+  // la fase 1, abierto como issue #221: sus obras nunca llegan al bucle de
+  // abajo (que solo mira `orderNo === null`), así que jamás se pintan como
+  // `window`. PUNTO EXACTO si se retoma: el bucle empieza en `for (const n of
+  // items) { if (n.orderNo !== null) continue;` un poco más abajo — ahí habría
+  // que reconocer "primer/último nodo de un bloque `libre` con ventana" además
+  // de "nodo suelto sin orderNo". No es un cambio de una línea: pintarlo como
+  // ventana mueve la SECCIÓN entera (cabecera incluida) al hueco de su ancla,
+  // y `TimelineSection`/`sections` hoy no modelan "sección con forma de
+  // ventana" — solo filas sueltas la modelan. Se dejó fuera de este batch
+  // (#184/#233/#221/#238) a propósito: forzarlo aquí arriesgaba las otras tres
+  // issues por un cambio de modelo que merece su propio diseño y PR.
   const windowAnchors = (nodeId: string): { after: SagaGraphNode | null; before: SagaGraphNode | null } => {
     let after: SagaGraphNode | null = null;
     let before: SagaGraphNode | null = null;

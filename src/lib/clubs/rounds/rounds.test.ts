@@ -16,7 +16,7 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateClubPages: mocks.revalidateClubPages,
 }));
 
-import { ensureHouseRound, proposeRound } from "./rounds";
+import { ensureHouseRound, getRoundByPeriod, proposeRound } from "./rounds";
 
 // No se testea el cálculo de semana/turno aquí -- eso vive en SQL y lo cubre
 // la matriz transaccional (supabase/tests/club_rounds.sql). Esto solo cubre
@@ -110,6 +110,90 @@ describe("proposeRound", () => {
     });
     expect(mocks.notifyClub).not.toHaveBeenCalled();
     expect(mocks.revalidateClubPages).not.toHaveBeenCalled();
+  });
+});
+
+// issue #408: la ronda de un periodo pasado (`?ronda=` de un enlace de
+// notificación) se resuelve leyendo `club_rounds` directo, no la RPC del
+// periodo actual.
+function makeRoundByPeriodClient(round: {
+  id: string;
+  author_id: string | null;
+  prompt: string;
+  item_type: string | null;
+  item_id: string | null;
+} | null, profile?: { display_name: string | null; username: string | null } | null) {
+  const filtersByTable: Record<string, Array<[string, unknown]>> = {};
+  const client = {
+    from: vi.fn((table: string) => {
+      const filters: Array<[string, unknown]> = (filtersByTable[table] ??= []);
+      const builder = {
+        select: vi.fn(() => builder),
+        eq: vi.fn((col: string, val: unknown) => {
+          filters.push([col, val]);
+          return builder;
+        }),
+        maybeSingle: vi.fn(async () => {
+          if (table === "club_rounds") return { data: round, error: null };
+          if (table === "profiles") return { data: profile ?? null, error: null };
+          throw new Error(`Tabla inesperada: ${table}`);
+        }),
+      };
+      return builder;
+    }),
+  };
+  return { client, filtersByTable };
+}
+
+describe("getRoundByPeriod", () => {
+  it("devuelve null si ese periodo no tiene ronda", async () => {
+    const { client, filtersByTable } = makeRoundByPeriodClient(null);
+    mocks.createClient.mockResolvedValue(client);
+
+    await expect(getRoundByPeriod("club-1", "2026-W30")).resolves.toBeNull();
+    expect(filtersByTable["club_rounds"]).toEqual([
+      ["club_id", "club-1"],
+      ["period_key", "2026-W30"],
+    ]);
+    expect(filtersByTable["profiles"]).toBeUndefined();
+  });
+
+  it("resuelve el nombre del autor cuando la ronda tiene uno", async () => {
+    const { client } = makeRoundByPeriodClient(
+      { id: "round-1", author_id: "user-2", prompt: "¿Qué leemos?", item_type: "book", item_id: "item-1" },
+      { display_name: "Marta", username: "marta99" },
+    );
+    mocks.createClient.mockResolvedValue(client);
+
+    await expect(getRoundByPeriod("club-1", "2026-W30")).resolves.toEqual({
+      id: "round-1",
+      authorId: "user-2",
+      authorName: "Marta",
+      prompt: "¿Qué leemos?",
+      itemType: "book",
+      itemId: "item-1",
+    });
+  });
+
+  it("ronda de la casa (author_id null): no consulta profiles y authorName sale null", async () => {
+    const { client, filtersByTable } = makeRoundByPeriodClient({
+      id: "round-2",
+      author_id: null,
+      prompt: "Consigna de la casa",
+      item_type: null,
+      item_id: null,
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    await expect(getRoundByPeriod("club-1", "2026-W29")).resolves.toEqual({
+      id: "round-2",
+      authorId: null,
+      authorName: null,
+      prompt: "Consigna de la casa",
+      itemType: null,
+      itemId: null,
+    });
+    expect(filtersByTable["profiles"]).toBeUndefined();
   });
 });
 

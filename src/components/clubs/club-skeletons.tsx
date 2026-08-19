@@ -16,14 +16,3 @@ export function ClubCardSkeleton() {
     </div>
   );
 }
-
-// Lista de tarjetas de club fantasma.
-export function ClubListSkeleton({ count = 2 }: { count?: number }) {
-  return (
-    <div className="flex flex-col gap-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <ClubCardSkeleton key={i} />
-      ))}
-    </div>
-  );
-}

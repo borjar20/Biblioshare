@@ -1,5 +1,7 @@
 # Análisis de features — app de referencia (Bookmory)
 
+> **[Histórico · congelado el 2026-08-19]** Análisis competitivo puntual (2026-07). Parte de su top ya se construyó; valor residual como referencia para features pendientes (etiquetas, método de adquisición).
+
 > Fuente: vídeo de pantalla (3:49) de una app de registro de lecturas y estadísticas — es **Bookmory**, la misma de la que ya importamos bibliotecas (7.7). Todas las capturas de este documento están extraídas del vídeo y viven en [`img/`](./img).
 >
 > Objetivo: inventariar lo que hace bien, cruzarlo con el estado real de Biblioshare y dejar una lista priorizada con referencias visuales para los mockups posteriores.

@@ -48,6 +48,21 @@ describe("buildCalendarMarks", () => {
     expect(marks[0].title).toBe("Café literario");
   });
 
+  // #135: un evento sin `starts_on` (hoy bloqueado en las RPC, pero alcanzable
+  // por el camino genérico de proponer actividad) no debe producir ninguna
+  // marca ni colarse en el orden por fecha -- el guard `if (activity.startsOn)`
+  // ya lo hacía; esta prueba lo deja explícito en vez de depender del valor por
+  // defecto de `actividad()`.
+  it("un evento SIN starts_on no produce ninguna marca", () => {
+    const marks = buildCalendarMarks(
+      [actividad({ kind: "evento", startsOn: null })],
+      [],
+      HOY,
+      SLUG,
+    );
+    expect(marks).toHaveLength(0);
+  });
+
   it("un evento se marca como seguido solo si quien mira lo sigue", () => {
     const [sinSeguir] = buildCalendarMarks(
       [actividad({ kind: "evento", startsOn: "2026-07-04" })],

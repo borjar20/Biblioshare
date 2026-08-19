@@ -43,15 +43,6 @@ export function itemFilterLabel(filter: ItemFilter): string {
 }
 
 /**
- * El filtro tal y como se lee en el rótulo de un panel, o `undefined` cuando no
- * hay nada que decir. «Todo» no se anuncia: un rótulo que dice «Todo» en cada
- * tarjeta es ruido.
- */
-export function itemFilterNote(filter: ItemFilter): string[] | undefined {
-  return filter === "all" ? undefined : [`Solo ${LABEL[filter].toLowerCase()}`];
-}
-
-/**
  * La magnitud de «Actividad del periodo»: obras terminadas o tiempo registrado.
  * Alternarlas es una pregunta distinta, no un adorno — quien lee tochos ve poca
  * obra y muchas horas, y al revés.

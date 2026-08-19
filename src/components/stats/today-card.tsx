@@ -45,7 +45,7 @@ export async function TodayCard({
     : 0;
 
   // Las películas no tienen sesiones, así que tampoco "⏱ Sesión": su registro
-  // es la ficha. Mismo criterio que NowConsuming.
+  // es la ficha.
   const sessionHref =
     item.itemType !== "movie" && item.activePassId ? `/sesion/${item.activePassId}` : null;
 

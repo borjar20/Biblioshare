@@ -2,6 +2,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { compareBlocksByPlacement } from "./group-members";
 import { placeByWindow, type OrderUnit, type OrderWindow } from "./place-by-window";
 import type { SagaPlacement } from "./types";
+import { esColocable } from "./placement";
 
 // Orden principal de una saga: la SECUENCIA con la que se pinta (columna del
 // timeline, expansión de bloques en un itinerario, portadas y «siguiente» de
@@ -143,17 +144,17 @@ export function createCuratedOrder(
     return out;
   }
 
-  // Placement por clave de obra: basta con que UNA membresía sea `libre` para
-  // que la obra pueda tener ventana — mismo criterio que `buildWindowOwners`
-  // (window-owners.ts).
-  const obrasLibres = new Set<string>();
+  // Placement por clave de obra: basta con que UNA membresía sea colocable
+  // (`libre`/`anclado`) para que la obra pueda tener ventana — mismo criterio
+  // que `buildWindowOwners` (window-owners.ts), vía `esColocable`.
+  const obrasColocables = new Set<string>();
   for (const m of memberships) {
-    if (m.placement === "libre") obrasLibres.add(`i:${itemKey(m.itemType, m.itemId)}`);
+    if (esColocable(m.placement)) obrasColocables.add(`i:${itemKey(m.itemType, m.itemId)}`);
   }
-  const esLibre = (subjectKey: string): boolean =>
+  const esColocableKey = (subjectKey: string): boolean =>
     subjectKey.startsWith("s:")
-      ? sagaById.get(subjectKey.slice(2))?.placementInParent === "libre"
-      : obrasLibres.has(subjectKey);
+      ? esColocable(sagaById.get(subjectKey.slice(2))?.placementInParent ?? null)
+      : obrasColocables.has(subjectKey);
 
   /** Claves `item_type:item_id` del orden principal de `rootId`, deduplicadas y
    *  con los sujetos `libre` ya recolocados por su ventana. */
@@ -177,6 +178,6 @@ export function createCuratedOrder(
         blockId: wu.sagaId === rootId ? null : wu.sagaId,
       });
     }
-    return placeByWindow(units, windows, esLibre).map((u) => u.key.slice(2));
+    return placeByWindow(units, windows, esColocableKey).map((u) => u.key.slice(2));
   };
 }

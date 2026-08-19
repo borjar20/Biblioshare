@@ -1,5 +1,12 @@
 # EPIC-05 — Social (seguir, clubes, feed y retos comparativos)
 
+> **[Histórico · congelado el 2026-08-19]** Documento de diseño del EPIC-05 (2026-07-11).
+> Describe el estado del mundo ANTERIOR a las fases 0-2 de social: usa `diary_entries`
+> (hoy `passes`), da por inexistente la infraestructura de notificaciones (hoy completa:
+> notifications, push_devices, pg_cron) y deja sin marcar bloques ya construidos
+> (user_blocks, content_reports, eventos de club, encuestas). NO leer como estado actual;
+> el estado vive en docs/PROYECTO.md y el esquema en docs/requirements/data-model.md.
+
 > Backlog **independiente** para la capa social de Biblioshare. Autocontenido, pero
 > se apoya en decisiones ya tomadas en [REQUIREMENTS.md](../REQUIREMENTS.md): §8-D
 > (infra de notificaciones — ya menciona explícitamente *"EPIC-05 (clubs)"*), §8-E

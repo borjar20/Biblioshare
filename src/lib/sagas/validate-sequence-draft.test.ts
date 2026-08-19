@@ -196,6 +196,29 @@ describe("ventanas con dueña (fase 4)", () => {
   });
 });
 
+describe("anchored sin ventana", () => {
+  it("marca `anchoredNoWindow` si una entrada anclada no tiene ventana", () => {
+    const p: SequencePayload = {
+      ...base,
+      entries: [{ item_type: "book", item_id: "hulk", position: null, placement: "anclado", optional: false, role: null }],
+    };
+    expect(validateSequenceDraft(p, ctx).errors).toContain("anchoredNoWindow");
+  });
+
+  it("no marca error si la entrada anclada trae su ventana", () => {
+    const p: SequencePayload = {
+      ...base,
+      entries: [{ item_type: "book", item_id: "hulk", position: null, placement: "anclado", optional: false, role: null }],
+      windows: [{
+        saga_id: "UCM", item_type: "book", item_id: "hulk", child_saga_id: null,
+        after_item_type: "book", after_item_id: "im1", after_child_saga_id: null,
+        before_item_type: null, before_item_id: null, before_child_saga_id: null, motivo: null,
+      }],
+    };
+    expect(validateSequenceDraft(p, { ...ctx, anchorKeys: new Set(["i:book:im1"]) }).errors).not.toContain("anchoredNoWindow");
+  });
+});
+
 describe("tándems (fase 2)", () => {
   const entry = (id: string, position: number | null) => ({
     item_type: "book" as const, item_id: id, position, placement: (position === null ? null : "fijo") as null | "fijo",

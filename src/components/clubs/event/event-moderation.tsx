@@ -83,10 +83,14 @@ export function EventModeration({ event }: { event: ClubEventDetail }) {
     >
       <h2 className="label-section">{t("eventModerationTitle")}</h2>
       <div className="flex flex-wrap gap-2">
+        {/* #134: sin este disabled, un cancelar/posponer/reprogramar en vuelo
+            puede resolver mientras el formulario de edición está abierto con
+            texto sin guardar -- se pierde sin aviso. */}
         <Button
           type="button"
           variant="secondary"
           className="px-3 py-1.5 text-xs"
+          disabled={isPending}
           onClick={() => setEditando(true)}
         >
           {t("editEvent")}

@@ -6,9 +6,12 @@ import type { SagaItemRole } from "@/lib/sagas/types";
 // rol nuevo en BD que no tenga traducción debe verse raro en dev, no caer en
 // un genérico que lo esconda.
 //
-// El estilo replica el badge de rama de reading-timeline.tsx:100 — mismo gold
-// sobre gold/10 — para no inventar una quinta etiqueta visual en la ficha. La
-// fase 5 añade el glifo del mockup y NO añade color por rol: el color ya
+// El gold sobre gold/10 es la paleta reservada de "opcional" en el timeline
+// (ver graph-legend.tsx). La chapa "Requisito" (`./requisite-badge.tsx`)
+// compartía este mismo estilo hasta el #184 — colisionaban visualmente cuando
+// una rama era requisito Y llevaba rol ("REQUISITO PRECUELA" leía como una
+// sola chapa) — así que ahora usa spine, y las dos conviven sin confundirse.
+// La fase 5 añade el glifo del mockup y NO añade color por rol: el color ya
 // significa subsaga en este producto (ver role-style.ts).
 export async function RoleChip({ role }: { role: SagaItemRole | null }) {
   if (role === null) return null;

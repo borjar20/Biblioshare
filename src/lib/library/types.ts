@@ -20,12 +20,12 @@ export type LibraryItem = {
   pageCount: number | null;
   // Series-only metadata (null otherwise): total episode count, for progress bars.
   totalEpisodes: number | null;
-  // Count of diary_entries for this library entry. See docs/REQUIREMENTS.md §7.13.
+  // Nº de pases (`passes`) de esta obra. See docs/requirements/data-model.md.
   rereadCount: number;
   // NULL = not pinned to the public profile. See docs/REQUIREMENTS.md §7.9.
   pinnedOrder: number | null;
-  // Id del pase ACTIVO de esta obra (diary_entries.is_active, §Tarea 7 hub):
-  // destino real de "/sesion/", que ya no acepta el id de library_entries.
+  // Id del pase ACTIVO de esta obra (passes.is_active): destino real de
+  // "/sesion/".
   // null solo en datos huérfanos (no debería pasar para una entrada seguida).
   activePassId: string | null;
 };

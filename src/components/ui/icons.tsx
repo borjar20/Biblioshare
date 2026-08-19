@@ -170,14 +170,6 @@ export function SeriesIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function FireIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Icon {...props}>
-      <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
-    </Icon>
-  );
-}
-
 export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
@@ -191,19 +183,6 @@ export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
       <path d="M8 18h.01" />
       <path d="M12 18h.01" />
       <path d="M16 18h.01" />
-    </Icon>
-  );
-}
-
-export function TrophyIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Icon {...props}>
-      <path d="M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978" />
-      <path d="M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978" />
-      <path d="M18 9h1.5a1 1 0 0 0 0-5H18" />
-      <path d="M4 22h16" />
-      <path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" />
-      <path d="M6 9H4.5a1 1 0 0 1 0-5H6" />
     </Icon>
   );
 }
@@ -316,19 +295,6 @@ export function ChevronUpIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Icon {...props}>
-      <circle cx="9" cy="12" r="1" />
-      <circle cx="9" cy="5" r="1" />
-      <circle cx="9" cy="19" r="1" />
-      <circle cx="15" cy="12" r="1" />
-      <circle cx="15" cy="5" r="1" />
-      <circle cx="15" cy="19" r="1" />
-    </Icon>
-  );
-}
-
 export function EyeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
@@ -384,16 +350,6 @@ export function CommentIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
       <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
-    </Icon>
-  );
-}
-
-export function MenuIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Icon {...props}>
-      <path d="M4 6h16" />
-      <path d="M4 12h16" />
-      <path d="M4 18h16" />
     </Icon>
   );
 }

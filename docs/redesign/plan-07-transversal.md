@@ -1,5 +1,7 @@
 # Fidelidad Paper · 07 — Transversal (nav, notificaciones, estados, marca)
 
+> **[Histórico · congelado el 2026-08-19]** Lo aún pendiente de este plan quedó recogido en la auditoría 2026-08 (docs/audit/AUDIT-2026-08.md) y el backlog.
+
 > Parte de la iniciativa **fidelidad Paper**. Índice y convenciones en [`README.md`](./README.md).
 
 **Maquetas de referencia**

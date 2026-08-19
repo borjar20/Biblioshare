@@ -28,14 +28,24 @@ export async function RoundHistory({
             <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
               {e.periodKey.slice(-3)}
             </span>
-            {/* e.prompt es nullable en el tipo (huecos futuros), pero
-                listRoundHistory hoy solo trae rondas que existen -- nunca
-                null en la práctica. JSX pinta `null` como nada, así que no
-                hace falta un fallback. */}
-            <span className="min-w-0 text-sm text-foreground-soft">{e.prompt}</span>
-            <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
-              {t("historyAnswers", { count: e.answerCount })}
+            {/* `prompt: null` = semana sin ronda (issue #403): la RPC
+                list_club_round_weeks la trae con su hueco, no ausente. */}
+            <span
+              className={
+                e.prompt === null
+                  ? "min-w-0 text-sm text-muted-foreground italic"
+                  : "min-w-0 text-sm text-foreground-soft"
+              }
+            >
+              {e.prompt ?? t("historyEmptyWeek")}
             </span>
+            {/* "0 respuestas" en una semana sin ronda leería como si hubiera
+               habido ronda y nadie contestara -- se omite el recuento entero. */}
+            {e.prompt !== null && (
+              <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
+                {t("historyAnswers", { count: e.answerCount })}
+              </span>
+            )}
           </li>
         ))}
       </ul>

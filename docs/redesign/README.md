@@ -1,5 +1,7 @@
 # Iniciativa: fidelidad Paper
 
+> **[Histórico · congelado el 2026-08-19]** Iniciativa de fidelidad Paper (2026-07). Los planes 00-06 se ejecutaron y cerraron; el remanente del plan 07 pasó al backlog de la auditoría 2026-08. El sistema visual vigente vive en docs/REFERENCIA-VISUAL.md y los patrones de UI en docs/UI-GUIA.md.
+
 Planes por pestaña para acercar el producto a las maquetas del handoff
 (`Biblioshare_mockups/Biblioshare/design_handoff_biblioshare_paper/`, fuera del repo).
 La base del rediseño (tokens, fuentes, IA nueva, componentes) ya está mergeada;

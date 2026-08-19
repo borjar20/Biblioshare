@@ -5,7 +5,6 @@ import type { Json } from "@/lib/supabase/database.types";
 // BD; parseEventConfig es la ÚNICA puerta de entrada tipada -- tolerante a formas
 // viejas o corruptas para que un jsonb raro no reviente una ficha.
 export type EventType = "encuentro" | "lanzamiento" | "fecha_destacada";
-export const EVENT_TYPES = ["encuentro", "lanzamiento", "fecha_destacada"] as const;
 
 const ITEM_TYPES: ReadonlyArray<ItemType> = ["book", "movie", "series"];
 

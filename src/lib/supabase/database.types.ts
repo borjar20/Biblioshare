@@ -3128,7 +3128,7 @@ export type Database = {
         | "spin_off"
         | "companero"
         | "crossover"
-      saga_placement: "fijo" | "libre"
+      saga_placement: "fijo" | "libre" | "anclado"
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
       target_kind:
@@ -3365,7 +3365,7 @@ export const Constants = {
         "companero",
         "crossover",
       ],
-      saga_placement: ["fijo", "libre"],
+      saga_placement: ["fijo", "libre", "anclado"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],
       target_kind: [

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { getRecentReviews } from "./recent-reviews";
 import { resolveSharedActivity } from "./shared-activity";
 
 // Contrato de `FeedEvent.sortDate`: SIEMPRE un timestamp real (updated_at, #345
@@ -43,7 +42,7 @@ function fakeSupabase(rowsByTable: Record<string, Row[]>) {
     rpc: async () => ({ data: [], error: null }),
     from: (table: string) => query(table),
   };
-  return client as unknown as Parameters<typeof getRecentReviews>[0];
+  return client as unknown as Parameters<typeof resolveSharedActivity>[0];
 }
 
 const IDENTITY = {
@@ -53,15 +52,6 @@ const IDENTITY = {
   avatar_url: null,
 };
 const BOOK = { id: ITEM_ID, title: "Título", author: null, cover_url: null };
-
-// El UUID canónico de interacción de cada reseña: `getInteractionSummary` lo
-// exige (lanza si falta) desde que las interacciones cuelgan de
-// `interaction_target_id`. No es parte del contrato que prueba este fichero,
-// solo el mínimo para que la lectura llegue a devolver eventos.
-const INTERACTION_TARGETS = [
-  { id: "it-resena-ok", kind: "diary_entry", source_id: "resena-ok" },
-  { id: "it-sin-hora", kind: "diary_entry", source_id: "sin-hora" },
-];
 
 function review(overrides: Row): Row {
   return {
@@ -78,23 +68,6 @@ function review(overrides: Row): Row {
 }
 
 describe("sortDate nunca es date-only", () => {
-  it("getRecentReviews no sirve una reseña sin updated_at con la fecha semántica", async () => {
-    const events = await getRecentReviews(
-      fakeSupabase({
-        pass_reviews: [review({ id: "sin-hora", updated_at: null }), review({})],
-        profile_identities: [IDENTITY],
-        books: [BOOK],
-        interaction_targets: INTERACTION_TARGETS,
-      }),
-      USER_ID,
-    );
-
-    // La fila sana sigue apareciendo; la que no tiene hora real se descarta
-    // igual que ya se descartan las que no tienen id/item_type/item_id.
-    expect(events.map((e) => e.id)).toEqual(["diary_entries:resena-ok"]);
-    for (const e of events) expect(e.sortDate).toContain("T");
-  });
-
   it("resolveSharedActivity trata una reseña sin updated_at como no disponible", async () => {
     const resolved = await resolveSharedActivity(
       fakeSupabase({

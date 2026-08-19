@@ -2,12 +2,10 @@
 
 > **[Procedimiento · a demanda]** No corre solo. Se lanza cuando quieras verificar que los
 > docs canónicos siguen coincidiendo con la realidad (prod + dev + repo). Última ejecución:
-> 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122).
-> Superficie 6 revisada de nuevo el 2026-08-18 (#674, catálogo server-authoritative, solo dev
-> — ver el detalle en su sección más abajo).
+> 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122)
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
-Compara seis superficies y reporta solo lo que **no cuadra**.
+Compara siete superficies y reporta solo lo que **no cuadra**.
 
 ## Qué se compara
 
@@ -231,25 +229,17 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > (se escribe únicamente por RPC `SECURITY DEFINER`), así que no es una tabla con grants de
 > escritura por columna y la consulta no la mira.
 >
-> **Nota del 2026-08-18 (#674, catálogo server-authoritative, SOLO EN DEV — prod sigue con
-> los números de 2026-08-04 de abajo hasta desplegar).** Verificado en dev contra
-> `information_schema.column_privileges`. Tres filas cambian:
-> - `movies`: **12** cols (+`hydrated_at`, con su `grant update` — confirmado, no falta),
->   con_insert **11→0**, con_update **7→8**.
-> - `series`: mismo patrón — **14** cols, con_insert **13→0**, con_update **9→10**.
-> - `books`: cols se mantienen en 14 (`hydrated_at` ya existía desde `20260715_book_hydration`),
->   con_insert **14→0**, con_update se mantiene en 9.
->
-> El hueco de INSERT de las tres pasa a ser **total y a propósito**, no parcial como el resto
-> de la tabla: `20260818_catalog_f_revoke_insert.sql` revoca el INSERT de tabla completo (no
-> había grants de INSERT por columna que revocar uno a uno) y quita las tres policies
-> `catalog * insertable`. La única vía de alta que queda es
-> `register_catalog_item`/`register_catalog_items_bulk` (`SECURITY DEFINER`, escribe como owner,
-> no consume el grant del rol que invoca). **Si `con_insert` de estas tres tablas vuelve a subir
-> por encima de 0 para `authenticated`, es una regresión** — alguien reabrió el INSERT directo
-> que #674 cerró. Ninguna columna quedó sin su grant de escritura tras la revocación: solo se
-> tocó INSERT, el UPDATE por columna de la hidratación queda intacto. Detalle: `data-model.md`
-> §2.1, `decisiones.md` (2026-08-18).
+> **Nota del 2026-08-14 (motivo de abandono).** `passes` ganó **2 columnas**
+> (`dropped_reason`, `dropped_reason_note`, `20260858_pass_dropped_reason.sql`) con grant de
+> **solo UPDATE, a propósito**: un SELECT aquí (de tabla o por columna) se filtraría a cualquiera
+> que pueda ver el perfil, saltándose `is_public` — la RLS de `passes` es de visibilidad de
+> perfil, no de dueño; se lee enmascarado por dueño a través de `pass_reviews`. Tampoco tienen
+> INSERT: un pase no nace `dropped`, solo llega ahí por una transición posterior (UPDATE).
+> **Aplicada y verificada en DEV y en PROD el 2026-08-14** (migración aplicada a prod ANTES de
+> mergear el código, no después — `getPasses` traga en silencio un `select` que nombra una
+> columna inexistente, así que el orden inverso habría vaciado el diario de todos los usuarios,
+> issue #657): la consulta devuelve `passes | 19 | 14 | 13` en los dos entornos (antes
+> `17 | 14 | 11`). La fila de la tabla de abajo ya está actualizada.
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
@@ -257,7 +247,7 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
 | `movies` | 11 | 11 | 7 | ídem `books` |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
-| `passes` | 17 | 14 | 11 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables |
+| `passes` | 19 | 14 | 13 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables; `dropped_reason`/`dropped_reason_note` sin SELECT (motivo de abandono, siempre privado) |
 | `people` | 12 | 11 | 6 | ídem `books` |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
 | `series` | 13 | 13 | 9 | ídem `books` |
@@ -271,12 +261,47 @@ subir el grant correspondiente, eso es el bug: falta el `grant ... (columna_nuev
 > `pass_reviews` (`src/lib/library/get-library-items.ts:181`). No lo cuenta esta consulta,
 > que solo mira escritura.
 
+### 7. Vistas de solo lectura ↔ grants de escritura (issues #690, #691)
+
+Supabase concede **ALL — incluida la escritura — a `anon` y `authenticated` sobre cada
+relación nueva del esquema `public`** (default privileges, issue #691). Una vista propiedad
+de `postgres` sin `security_invoker` evalúa sus tablas base con los privilegios del
+propietario, que tiene BYPASSRLS: con esos grants de serie, **un `UPDATE` sobre la vista
+reescribe filas ajenas saltándose la RLS de la tabla base**. Así nació el P0 #690, donde
+cualquiera podía reescribir la reseña de otro por `PATCH /rest/v1/pass_reviews`.
+
+Lo traicionero es que **no hace falta escribir mal una migración para reabrirlo**: basta con
+recrear la vista. `pass_reviews` se ha recreado seis veces (`20260714`, `20260716` x2,
+`20260717`, `20260833`, `20260858`) y cada `drop view` + `create view` restaura los grants
+por defecto. Por eso el control es un barrido y no un comentario: toda migración que recree
+una vista debe terminar con `grant select` **y** el `revoke` de escritura.
+
+**No** se arregla poniendo `security_invoker` a estas vistas: existen para leer columnas que
+la tabla base no concede a nadie (ver la excepción con nombre en `docs/SEGURIDAD.md`).
+
+```sql
+select table_name, grantee, string_agg(privilege_type, ', ' order by privilege_type) as escritura
+  from information_schema.role_table_grants g
+ where table_schema = 'public'
+   and grantee in ('anon', 'authenticated')
+   and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+   and exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                where n.nspname = 'public' and c.relname = g.table_name and c.relkind = 'v')
+ group by table_name, grantee
+ order by table_name, grantee;
+```
+
+**Referencia (prod y dev, 2026-08-19): la consulta no devuelve NINGUNA fila.** Cualquier fila
+es el bug — una vista con permiso de escritura para el rol del navegador. El arreglo es
+`revoke insert, update, delete on public.<vista> from anon, authenticated`, más añadir ese
+`revoke` a la migración que la recreó.
+
 ## Salida
 Un informe corto por superficie: "coincide" o la lista de divergencias concretas, con la
 acción sugerida (actualizar doc / anexar migración / marcar checkbox / aplicar al entorno
 que va por detrás). No modifica nada solo.
 
 ## Cómo pedirlo
-Basta con: *"corre el chequeo de deriva"*. Se ejecutan las seis comparaciones contra los
+Basta con: *"corre el chequeo de deriva"*. Se ejecutan las siete comparaciones contra los
 proyectos de prod y dev y el repo conectado, y se actualiza la fecha de "Última ejecución"
 de arriba.

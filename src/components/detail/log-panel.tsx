@@ -210,11 +210,22 @@ function ManagedLog({
   const [closingPassId, setClosingPassId] = useState<string | null>(
     initialClosingPassId,
   );
+  // El auto-cierre por sesión (initialClosingPassId) solo dispara al
+  // terminar un libro: siempre "completed". handleStatusChange lo pisa con
+  // el `next` real cuando el cierre lo dispara marcar un estado a mano.
+  const [closingStatus, setClosingStatus] = useState<MediaStatus>("completed");
   const [prevInitialClosingPassId, setPrevInitialClosingPassId] =
     useState(initialClosingPassId);
   if (initialClosingPassId !== prevInitialClosingPassId) {
     setPrevInitialClosingPassId(initialClosingPassId);
-    if (initialClosingPassId) setClosingPassId(initialClosingPassId);
+    if (initialClosingPassId) {
+      // Auto-cierre por sesión: siempre "completed" (no existe abandonar vía
+      // sesión, solo se abandona a mano desde StatusSegments). Sin este pisado,
+      // `closingStatus` arrastraba el valor de una interacción anterior no
+      // relacionada (p. ej. un "dropped" manual descartado sin enviar).
+      setClosingStatus("completed");
+      setClosingPassId(initialClosingPassId);
+    }
   }
 
   // Retomar un abandonado (dropped → in_progress) es la única transición que
@@ -248,6 +259,7 @@ function ManagedLog({
         const outcome = await updateStatus(itemType, itemId, "completed");
         router.refresh();
         if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+          setClosingStatus("completed");
           setClosingPassId(outcome.passId);
         }
       });
@@ -274,6 +286,7 @@ function ManagedLog({
       // sin pase activo previo, closed puede llegar true con passId vacío.
       // No abrir la hoja de cierre contra un pase inexistente.
       if (outcome.closed && outcome.passId) {
+        setClosingStatus(next);
         setClosingPassId(outcome.passId);
       }
     });
@@ -494,6 +507,7 @@ function ManagedLog({
           passId={closingPassId}
           itemType={itemType}
           itemId={itemId}
+          status={closingStatus}
           open
           onClose={() => setClosingPassId(null)}
         />
@@ -531,12 +545,9 @@ function ManagedLog({
 // estoy leyendo/viendo ahora"). La nota se guarda con ratePass — NO con
 // updatePass, que siempre escribe finished_on y cerraría el pase de tapadillo
 // (ver el comentario en src/lib/passes/actions.ts). La página actual sale de
-// `entry.position` (library_entries), comparada contra las páginas de la
-// edición del pase — o la primaria si el pase no tiene una asignada todavía.
-// OJO (ventana transicional Tarea 7→9): desde que las sesiones cuelgan del
-// pase, esta cifra deja de refrescarse tras registrar una sesión —
-// library_entries.position ya no la escribe nadie. El barrido de la Tarea 9
-// (derivar esto de diary_entries) la pone al día otra vez.
+// `entry.position` (passes.position del pase activo), comparada contra las
+// páginas de la edición del pase — o la primaria si el pase no tiene una
+// asignada todavía.
 function PassDataPanel({
   itemType,
   itemId,

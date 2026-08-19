@@ -50,6 +50,7 @@ import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { getItemCredits } from "@/lib/people/get-item-credits";
+import { personHref } from "@/lib/catalog/item-href";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
@@ -302,7 +303,12 @@ async function BookTabs({
   const [, sagas, editions, activeRow, role, reviewsResult] = await Promise.all([
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
-    ensureItemEnriched(supabase, "book", { id: book.id, author: book.author }),
+    ensureItemEnriched(supabase, "book", {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      openlibraryWorkKey: book.openlibrary_work_key,
+    }),
     getItemSagas("book", book.id),
     getEditions("book", book.id),
     // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub):
@@ -429,8 +435,19 @@ async function BookTabs({
   // de la obra: se muestran en el panel de la edición (EditionDetails), no
   // aquí. El año que se queda en la obra es el de primera publicación.
   const metaRows: MetaRow[] = [];
+  // El autor enlaza a su ficha de persona: es el ÚNICO acceso desde un libro a
+  // `/persona/[id]` (película y serie llegan por CreditsSection). Si el libro no
+  // se pudo enriquecer, `authorCredits` está vacío y la fila se queda en texto
+  // plano — nunca se pinta un enlace sin `people.id` detrás.
   if (authorNames.length > 0)
-    metaRows.push({ label: tMeta("author"), value: authorNames.join(", ") });
+    metaRows.push({
+      label: tMeta("author"),
+      value: authorNames.join(", "),
+      links:
+        authorCredits.length > 0
+          ? authorCredits.map((a) => ({ href: personHref(a.id), label: a.name }))
+          : undefined,
+    });
   if (book.published_year)
     metaRows.push({
       label: tMeta("firstPublished"),

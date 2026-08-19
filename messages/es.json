@@ -235,6 +235,17 @@
     "review": "Reseña",
     "reviewPlaceholder": "Qué te ha parecido…",
     "isPublic": "Visible para la comunidad",
+    "droppedReason": {
+      "label": "Motivo (opcional)",
+      "options": {
+        "no_enganchado": "No enganchó",
+        "aburrido": "Me aburrió",
+        "no_es_momento": "No es el momento (lo retomaré)",
+        "no_esperado": "No era lo que esperaba",
+        "otro": "Otro"
+      },
+      "notePlaceholder": "Cuéntanos más…"
+    },
     "skip": "Ahora no",
     "submit": "Guardar",
     "submitting": "Guardando…",
@@ -247,6 +258,7 @@
     "errors": {
       "invalidDate": "La fecha no es válida.",
       "invalidRating": "La nota va de media estrella a cinco.",
+      "invalidReason": "Motivo no válido.",
       "generic": "No se pudo guardar."
     },
     "resume": {
@@ -670,6 +682,8 @@
       "itemLink": "Ver la obra",
       "historyTitle": "Rondas anteriores",
       "historyAnswers": "{count} respuestas",
+      "historyEmptyWeek": "Sin ronda",
+      "backToCurrent": "← Volver a la ronda actual",
       "errorNotYourTurn": "Se te pasó el turno: alguien ya abrió la ronda de esta semana.",
       "errorGeneric": "No se ha podido guardar la ronda. Inténtalo otra vez."
     }
@@ -1472,6 +1486,7 @@
     "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",
     "avgRating": "★ {rating}",
     "yourProgress": "Tu progreso",
+    "allOptional": "Nada de esta saga cuenta para el avance: aquí, todo es opcional",
     "synopsis": "Sinopsis",
     "noSynopsis": "Sin sinopsis disponible.",
     "nexusGroup": "Nexo",
@@ -1487,6 +1502,7 @@
     "orderPublication": "Publicación",
     "routeAdopt": "Leer por aquí",
     "routeAdopted": "Leyendo por aquí",
+    "routeAdoptError": "No se pudo guardar tu elección. Inténtalo de nuevo.",
     "routeProgress": "Llevas {completed} de {total} de esta ruta",
     "routeBlockCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "routeEmpty": "Esta ruta aún no tiene pasos.",
@@ -1696,6 +1712,7 @@
     "zone": {
       "sequence": "La secuencia",
       "free": "Cuando quieras",
+      "anchored": "Anclado",
       "unclassified": "Sin clasificar"
     },
     "zonePickerLabel": "Zona que se está curando",
@@ -1711,6 +1728,9 @@
     "zoneFree": "Cuando quieras",
     "zoneFreeHint": "Obras que no ocupan un hueco del orden: se leen en varios puntos. Siguen contando para el progreso salvo que las marques opcional — son dos cosas distintas.",
     "zoneFreeEmpty": "Todavía no hay nada aquí",
+    "zoneAnchored": "Anclado",
+    "zoneAnchoredHint": "Va en un punto concreto, relativo a otra obra (después de… / antes de…). Para intercalar EN MEDIO de una subsaga, pon las dos anclas.",
+    "zoneAnchoredEmpty": "Nada anclado todavía.",
     "zoneUnclassified": "Sin clasificar",
     "zoneUnclassifiedHint": "Ni colocadas en el orden ni marcadas como libres. Mándalas a una de las dos zonas de arriba.",
     "blockMeta": "Bloque · {count} obras",
@@ -1741,8 +1761,10 @@
     "moveDownFor": "Bajar un hueco: {title}",
     "sendToSequence": "Enviar a la secuencia",
     "sendToFree": "Enviar a «Cuando quieras»",
+    "sendToAnchored": "Anclar",
     "sendToSequenceFor": "Enviar {title} a la secuencia",
     "sendToFreeFor": "Enviar {title} a «Cuando quieras»",
+    "sendToAnchoredFor": "Anclar {title}",
     "pairPrompt": "Mismo hueco que otra obra…",
     "pairConfirm": "Emparejar en el hueco {n}",
     "pairFilter": "Filtrar obras de la secuencia…",
@@ -1775,6 +1797,7 @@
       "duplicate": "Hay una obra repetida.",
       "generic": "No se ha podido guardar.",
       "windowNotFree": "Solo las entradas de «Cuando quieras» pueden tener ventana.",
+      "anchoredNoWindow": "Una obra anclada necesita al menos un ancla (después de… o antes de…).",
       "windowWrongOwner": "Esa ventana intenta guardarse bajo una saga que no es la dueña de la obra.",
       "windowNoAnchor": "Una ventana necesita al menos un ancla.",
       "windowSelfAnchor": "Una obra no puede anclarse a sí misma.",

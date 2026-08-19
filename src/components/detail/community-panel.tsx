@@ -7,10 +7,10 @@ import { CommunitySummary } from "@/components/detail/community-summary";
 import { ReviewRow } from "@/components/detail/review-row";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 
-// "Comunidad" tab body: agregados reales de library_entries (notas) y
-// diary_entries (reseñas), calculados en src/lib/community/get-community.ts.
+// "Comunidad" tab body: agregados reales de passes (estados) y pass_reviews
+// (reseñas), calculados en src/lib/community/get-community.ts.
 // Para series, las reseñas son por episodio (§7.x): se pasa `episodeReviews` y
-// la sección de reseñas muestra esas en vez de las de diary_entries.
+// la sección de reseñas muestra esas en vez de las reseñas de pase.
 //
 // Frames 2 (móvil) y 9 (PC). En PC son dos columnas — las reseñas a toda la
 // izquierda y el resumen pegado a la derecha —, con el mismo `.desk-cols` que

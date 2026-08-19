@@ -52,8 +52,8 @@ export type FeedEvent = {
   // El id estable del post → ruta propia `/post/[id]` (deep-link de
   // notificaciones y superficie de lectura). Opcional: solo lo llevan los
   // eventos que salen de una fila `posts` (el feed). Las previews legadas
-  // (`recent-reviews`, `shared-activity`, que derivan de pases/sesiones/reseñas
-  // sin post) lo omiten.
+  // (`shared-activity`, que derivan de pases/sesiones/reseñas sin post) lo
+  // omiten.
   postId?: string;
   // El `kind` crudo del post. El despacho de tarjeta (feed-item.tsx) enruta por
   // aquí; `verb` es una vista derivada de `kind`+reseña que conservan las
@@ -106,8 +106,8 @@ export type FeedEvent = {
   // itemId (ver comentario de arriba).
   thought: { body: string; isSpoiler: boolean; anchor: AnchorRef } | null;
   // El feed emite SIEMPRE `post` (el target canónico del post). Las previews
-  // legadas (`recent-reviews`) siguen sirviendo `diary_entry`/`episode_watch`
-  // sobre las mismas tarjetas, así que la unión los conserva.
+  // legadas siguen sirviendo `diary_entry`/`episode_watch` sobre las mismas
+  // tarjetas, así que la unión los conserva.
   interactionTarget: {
     targetType: "post" | "diary_entry" | "episode_watch" | "pass" | "progress_session" | "thought";
     targetId: string;
@@ -414,13 +414,22 @@ async function resolvePostDrafts(
     }
     if (r.kind === "progressed") {
       const session = r.source_id ? sessionById.get(r.source_id) : undefined;
-      const pos = (session?.position ?? {}) as { page?: number };
+      const pos = (session?.position ?? {}) as { page?: number; season?: number; episode?: number };
       const page = typeof pos.page === "number" ? pos.page : null;
       const totalPages = catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.totalPages ?? null;
       const percent = page != null && totalPages ? Math.min(100, Math.round((page / totalPages) * 100)) : null;
+      // Series: el avance es por episodio, no por página ni minutos. La sesión
+      // guarda position={season, episode} (episodio más alto marcado) y la
+      // tarjeta lo pinta "S#E#", igual que un 'watched'. Sin este mapeo el post
+      // caía a `minutesLogged(0)` = "0 minutos registrados" (bug Futurama).
+      const seriesEpisode =
+        r.anchor_type === "series" && typeof pos.season === "number" && typeof pos.episode === "number"
+          ? { season: pos.season, episode: pos.episode, title: null }
+          : null;
       drafts.push({
         ...base,
         verb: "progressed",
+        episode: seriesEpisode,
         progress: {
           durationMinutes: session?.duration_minutes ?? null,
           page,
