@@ -1,4 +1,4 @@
-import type { ItemType, SearchResult } from "@/lib/catalog/types";
+import type { SearchResult } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import type { BookFormat } from "@/lib/library/position";
 
@@ -27,12 +27,6 @@ export type ImportRow = {
   // Set when the source status label didn't map to a known MediaStatus and
   // fell back to "planned" — surfaced in the results screen for review.
   unknownStatusLabel: string | null;
-};
-
-export type ParsedImport = {
-  format: ImportFormat;
-  itemType: ItemType;
-  rows: ImportRow[];
 };
 
 export type ImportRowOutcome =

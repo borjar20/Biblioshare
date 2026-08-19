@@ -21,14 +21,6 @@ export function writeCelebrationPreference(pref: CelebrationPreference): void {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: pref }));
 }
 
-export function onCelebrationPreferenceChange(
-  handler: (pref: CelebrationPreference) => void,
-): () => void {
-  const listener = (e: Event) => handler((e as CustomEvent).detail);
-  window.addEventListener(EVENT, listener);
-  return () => window.removeEventListener(EVENT, listener);
-}
-
 // Suscripción para useSyncExternalStore: reacciona al cambio en esta pestaña
 // (evento propio) y en otras (storage). Así la preferencia se lee sin
 // useEffect+setState — hidratación segura, sin el lint react-hooks.

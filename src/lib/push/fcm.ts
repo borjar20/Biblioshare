@@ -38,10 +38,6 @@ function readConfig(): FcmConfig | null {
   return cachedConfig;
 }
 
-export function isFcmConfigured(): boolean {
-  return readConfig() !== null;
-}
-
 function base64url(input: string): string {
   return Buffer.from(input).toString("base64url");
 }

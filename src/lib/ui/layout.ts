@@ -12,9 +12,6 @@
 // pantalla. Fue el fallo del skeleton en la PR #372. Por eso `COVER_GRID_COLS`
 // solo se usa junto a `SHELL_GRID`, y `NOTE_GRID_COLS` también.
 
-/** Un solo camino, un solo foco: alta, acceso, importar (fases de subida), onboarding. */
-export const SHELL_FORM = "max-w-2xl";
-
 /** Prosa y listas de una columna, donde la línea larga cansa: /admin, seguidores, siguiendo. */
 export const SHELL_READ = "max-w-4xl";
 

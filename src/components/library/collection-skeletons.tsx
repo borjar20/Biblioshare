@@ -8,8 +8,7 @@ import { CARD_GRID_COLS, TILE_GRID_COLS } from "@/lib/ui/layout";
 // Skeleton del Resumen de la colección (tab `Todo`). Compartido entre
 // `coleccion/loading.tsx` (fallback de página) y el fallback granular de
 // `<Suspense>` del overview, para que ambos coincidan. Ya no incluye el
-// bloque "Ahora mismo · En curso" — `ContinueStrip` salió de Colección
-// (Colección v2, Sesión 1): vive en Inicio/Perfil, no aquí.
+// bloque "Ahora mismo · En curso": salió de Colección (Colección v2, Sesión 1).
 export function CollectionOverviewSkeleton() {
   return (
     <SkeletonCard className="flex flex-col gap-4">
