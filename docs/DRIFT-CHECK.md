@@ -2,7 +2,9 @@
 
 > **[Procedimiento · a demanda]** No corre solo. Se lanza cuando quieras verificar que los
 > docs canónicos siguen coincidiendo con la realidad (prod + dev + repo). Última ejecución:
-> 2026-07-21 (superficie 5, entornos: dev y prod quedan idénticos — issues #118, #121, #122)
+> 2026-08-19 (superficies 6 y 7, tras cerrar los cuatro P0 de la auditoría: dev y prod quedan
+> idénticos en grants de catálogo y sin vistas escribibles). Antes, 2026-07-21 (superficie 5 —
+> issues #118, #121, #122)
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
 Compara siete superficies y reporta solo lo que **no cuadra**.
