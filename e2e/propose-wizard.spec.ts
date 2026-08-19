@@ -20,8 +20,11 @@ test("asistente: propone una lectura conjunta ya montada (ítem + hitos)", async
   await page.waitForURL("/");
 
   await page.goto("/club/test-public-club?tab=actividades");
+  // `link`, no `button`: el CTA que ABRE el asistente es un <a href=?nueva=1>
+  // desde el rediseño de la pestaña Actividades (#598). El botón homónimo que
+  // queda es el SUBMIT de dentro del asistente.
   await page
-    .getByRole("button", { name: /proponer actividad/i })
+    .getByRole("link", { name: /proponer actividad/i })
     .first()
     .click();
 
@@ -61,10 +64,16 @@ test("asistente: propone una lectura conjunta ya montada (ítem + hitos)", async
   const tarjeta = page.locator('a[href*="/actividad/"]').filter({ hasText: titulo });
   await expect(tarjeta).toBeVisible({ timeout: 15000 });
 
-  // Y que el asistente se cerró (si el submit falla, sigue abierto).
+  // Y que el asistente se cerró (si el submit falla, sigue abierto). El botón
+  // "Proponer actividad" es el SUBMIT del asistente y solo existe con el
+  // asistente abierto: cerrado, no debe quedar ninguno. Antes se esperaba 1
+  // porque el CTA que abre el asistente también era un botón; desde #598 es un
+  // enlace, así que se comprueba aparte que ese sigue ahí — sin esa segunda
+  // aserción, un "0 botones" sería trivialmente cierto en una página vacía.
+  await expect(page.getByRole("button", { name: /^proponer actividad$/i })).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: /^proponer actividad$/i }),
-  ).toHaveCount(1); // solo queda el botón que ABRE el asistente
+    page.getByRole("link", { name: /proponer actividad/i }).first(),
+  ).toBeVisible();
 
   console.log("PROPUESTA OK:", titulo, "| item:", elegido);
 
