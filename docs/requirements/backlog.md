@@ -16,7 +16,7 @@
 ## P0 — antes de seguir desarrollando
 
 Cuatro problemas reales (dos pares de issues duplicadas a fusionar). **Estado al
-2026-08-19: dos cerrados, uno a medias, uno pendiente de despliegue.**
+2026-08-19: tres cerrados y el cuarto en despliegue.**
 
 1. ~~**#689/#687** — escalada user→admin en el alta de perfil pre-onboarding.~~
    **CERRADO 2026-08-19**: policy `20260861` (rescatada al repo) + trigger
@@ -26,12 +26,14 @@ Cuatro problemas reales (dos pares de issues duplicadas a fusionar). **Estado al
    escritura (`20260862`, rescatada al repo), verificado en dev y prod.
    `security_invoker` **descartado a propósito** — rompe la lectura, ver
    `decisiones.md` (2026-08-19).
-3. **#677** — backup real de producción (PII) trackeado en git. **A medias**:
-   destrackeado y `/backups/` ignorado el 2026-08-19; **queda decidir si se purga
-   el historial** (los ficheros siguen en todos los commits anteriores).
-4. **#674** — envenenamiento del catálogo global: **cerrado en dev, abierto en
-   prod** hasta desplegar la migración F con el código nuevo (rama
-   `fix/674-catalogo-server-authoritative`, sin PR a 2026-08-19).
+3. ~~**#677** — backup real de producción (PII) trackeado en git.~~ **CERRADO
+   2026-08-19**: destrackeado y `/backups/` ignorado. El dueño del repo decide
+   **no purgar el historial** (repo privado, cuentas de prueba). A revisar si el
+   repo pasa a ser público — los ficheros siguen en los commits anteriores.
+4. **#674** — envenenamiento del catálogo global: **en despliegue el 2026-08-19**.
+   Migraciones `a`…`e` ya en prod; `f` (la revocación del INSERT) se aplica en
+   cuanto el deploy del código nuevo esté en verde — antes no, o producción se
+   queda sin poder dar de alta obras. Ver `data-model.md` §2.1.
 
 ## P1 — siguiente bloque (issues abiertas)
 

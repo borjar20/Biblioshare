@@ -81,8 +81,8 @@ informe de auditoría.
 |---|---|---|
 | Escalada user→admin en alta pre-onboarding | #689/#687 | **Cerrado 2026-08-19** (policy `20260861` + trigger `20260863`, verificado en dev y prod) |
 | Escritura de reseñas ajenas vía vista `pass_reviews` | #690/#688 | **Cerrado 2026-08-19** (revoke de escritura `20260862`, verificado en dev y prod; `security_invoker` descartado, ver regla de arriba) |
-| Backup real de prod (PII) trackeado en git | #677 | **Parcial**: destrackeado + `/backups/` ignorado (2026-08-19); **queda decidir la purga del historial** |
-| Catálogo global insertable por cualquier autenticado — cerrado en dev, **abierto en prod** hasta desplegar la migración F de #674 | #674 | **P0 abierto** |
+| Backup real de prod (PII) trackeado en git | #677 | **Cerrado 2026-08-19**: destrackeado + `/backups/` ignorado. El dueño decide NO purgar el historial (repo privado); a revisar si el repo se hace público |
+| Catálogo global insertable por cualquier autenticado | #674 | **En despliegue 2026-08-19**: alta por RPC definer + hidratación fill-only; `a`…`e` ya en prod, `f` (revocación del INSERT) en cuanto el deploy esté en verde |
 | Default privileges ALL a anon/authenticated | #691 | P1 |
 | RPC sagas TMDB sin gate de rol | #675 | P1 |
 | SSRF ciego vía endpoint de Web Push | #678 | P1 |

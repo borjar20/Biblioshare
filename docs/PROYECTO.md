@@ -22,6 +22,12 @@ con i18n (`next-intl`) desde el inicio.
   escáner de código de barras/ISBN en Android), TMDB para cine/series. Alta
   «cache-as-you-go»: la obra se materializa como shell al abrirla y se hidrata
   (sinopsis, géneros, tamaños, créditos) en la primera visita.
+- **El catálogo lo escribe el servidor, no el cliente** (#674, 2026-08-19): el alta
+  manda SOLO el id externo a una RPC `SECURITY DEFINER` (`register_catalog_item`) y
+  los campos canónicos los rellena la hidratación fill-only desde el proveedor
+  oficial. El INSERT directo está revocado — antes cualquiera podía apropiarse de un
+  `tmdb_id` con metadatos falsos y servírselos a todo el mundo. Detalle:
+  `data-model.md` §2.1.
 - **Ediciones de libro** (`book_editions`): el pase apunta a la edición leída
   (formato/páginas/editorial); selector en ficha y editor propio.
 - **Personas y créditos** (`/persona/[id]`): reparto/equipo de cine y series y

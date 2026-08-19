@@ -67,7 +67,11 @@ export async function followClubEvent(
   const supabase = await createClient();
   const { error } = await supabase.rpc("follow_club_event", {
     p_activity_id: activityId,
-    p_remind_minutes_before: remindMinutesBefore,
+    // El tipo generado del RPC exige `number | undefined` (sin `null`): artefacto
+    // de codegen ajeno al title nullable de #674 -- la función SQL sí acepta NULL
+    // (`valid_event_reminder` lo trata como "sin recordatorio"). Cast sin cambiar
+    // el comportamiento en runtime.
+    p_remind_minutes_before: remindMinutesBefore as number | undefined,
   });
   if (error) return mapError(error, "followClubEvent");
 
@@ -111,7 +115,9 @@ export async function setClubEventReminder(
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_club_event_reminder", {
     p_activity_id: activityId,
-    p_remind_minutes_before: remindMinutesBefore,
+    // Mismo artefacto de codegen que en followClubEvent: la función SQL acepta
+    // NULL. Cast sin cambiar el comportamiento en runtime.
+    p_remind_minutes_before: remindMinutesBefore as number,
   });
   if (error) return mapError(error, "setClubEventReminder");
 

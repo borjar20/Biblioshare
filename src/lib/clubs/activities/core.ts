@@ -7,6 +7,7 @@ import { notify } from "@/lib/social/notifications";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 import { getInteractionSummary, type InteractionSummary } from "@/lib/social/interactions";
 import type { ItemType } from "@/lib/catalog/types";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { Json } from "@/lib/supabase/database.types";
 import type { EventType } from "./event-types";
 import {
@@ -371,9 +372,12 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
       : Promise.resolve({ data: [] as { id: string; title: string; cover_url: string | null }[] }),
   ]);
   const catalogByKey = new Map<string, { title: string; coverUrl: string | null }>();
-  for (const r of books.data ?? []) catalogByKey.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url });
-  for (const r of movies.data ?? []) catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url });
-  for (const r of series.data ?? []) catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url });
+  for (const r of books.data ?? [])
+    catalogByKey.set(`book:${r.id}`, { title: r.title ?? UNTITLED_FALLBACK, coverUrl: r.cover_url });
+  for (const r of movies.data ?? [])
+    catalogByKey.set(`movie:${r.id}`, { title: r.title ?? UNTITLED_FALLBACK, coverUrl: r.cover_url });
+  for (const r of series.data ?? [])
+    catalogByKey.set(`series:${r.id}`, { title: r.title ?? UNTITLED_FALLBACK, coverUrl: r.cover_url });
 
   const items: ActivityItem[] = (itemRows ?? [])
     .map((r): ActivityItem | null => {
@@ -430,9 +434,9 @@ export async function getActivity(activityId: string): Promise<ActivityDetail | 
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
   ]);
   const childTitleByKey = new Map<string, string>();
-  for (const r of cBooks.data ?? []) childTitleByKey.set(`book:${r.id}`, r.title);
-  for (const r of cMovies.data ?? []) childTitleByKey.set(`movie:${r.id}`, r.title);
-  for (const r of cSeries.data ?? []) childTitleByKey.set(`series:${r.id}`, r.title);
+  for (const r of cBooks.data ?? []) childTitleByKey.set(`book:${r.id}`, r.title ?? UNTITLED_FALLBACK);
+  for (const r of cMovies.data ?? []) childTitleByKey.set(`movie:${r.id}`, r.title ?? UNTITLED_FALLBACK);
+  for (const r of cSeries.data ?? []) childTitleByKey.set(`series:${r.id}`, r.title ?? UNTITLED_FALLBACK);
 
   const linkedChildren: LinkedChild[] = (childRows ?? []).map((c) => ({
     id: c.id,
@@ -506,8 +510,12 @@ export async function updateActivityDetails(
     p_title: input.title,
     p_description: input.description,
     // "" es "sin fecha": la columna es nullable y el formulario manda cadena.
-    p_starts_on: input.startsOn || null,
-    p_ends_on: input.endsOn || null,
+    // El tipo generado del RPC exige `string` (sin `| null`): es un artefacto de
+    // codegen ajeno al title nullable de #674 -- la función SQL sí acepta NULL
+    // (parámetro `date` sin NOT NULL) y así lo interpreta como "sin fecha".
+    // Cast sin cambiar el comportamiento en runtime.
+    p_starts_on: (input.startsOn || null) as string,
+    p_ends_on: (input.endsOn || null) as string,
   });
 
   if (error) {

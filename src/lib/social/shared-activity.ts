@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { FeedEvent, FeedVerb } from "./feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
 // Resuelve UNA fila concreta (no un fan-out por seguidos) a la misma forma
 // FeedEvent que usa el feed personal (Bloque C, SD-1) -- usado por
@@ -73,11 +74,11 @@ async function resolveCatalog(supabase: SupabaseServerClient, itemType: ItemType
       .select("title, author, cover_url")
       .eq("id", itemId)
       .maybeSingle();
-    return data ? { title: data.title, cover_url: data.cover_url, subtitle: data.author } : null;
+    return data ? { title: data.title ?? UNTITLED_FALLBACK, cover_url: data.cover_url, subtitle: data.author } : null;
   }
   const table = itemType === "movie" ? "movies" : "series";
   const { data } = await supabase.from(table).select("title, cover_url").eq("id", itemId).maybeSingle();
-  return data ? { title: data.title, cover_url: data.cover_url, subtitle: null } : null;
+  return data ? { title: data.title ?? UNTITLED_FALLBACK, cover_url: data.cover_url, subtitle: null } : null;
 }
 
 // item_type/item_id son columnas propias del pase (§Tarea 9): resuelve la

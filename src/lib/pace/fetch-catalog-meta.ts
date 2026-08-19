@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { EstimableItem } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -83,7 +84,7 @@ export async function fetchCatalogMeta(
       editionIdByItem.get(`book:${row.id}`)
     );
     metaByKey.set(`book:${row.id}`, {
-      title: row.title,
+      title: row.title ?? UNTITLED_FALLBACK,
       coverUrl: row.cover_url,
       subtitle: row.author,
       totalPages: editionPages ?? row.total_pages,
@@ -95,7 +96,7 @@ export async function fetchCatalogMeta(
   }
   for (const row of movies.data ?? []) {
     metaByKey.set(`movie:${row.id}`, {
-      title: row.title,
+      title: row.title ?? UNTITLED_FALLBACK,
       coverUrl: row.cover_url,
       subtitle: null,
       totalPages: null,
@@ -107,7 +108,7 @@ export async function fetchCatalogMeta(
   }
   for (const row of series.data ?? []) {
     metaByKey.set(`series:${row.id}`, {
-      title: row.title,
+      title: row.title ?? UNTITLED_FALLBACK,
       coverUrl: row.cover_url,
       subtitle: null,
       totalPages: null,

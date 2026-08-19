@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { AnchorRef, AnchorType } from "@/lib/catalog/anchor";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { MediaStatus } from "@/lib/library/types";
 import type { PostKind } from "./post-actions";
 import {
@@ -283,11 +284,26 @@ async function resolvePostDrafts(
     { title: string; coverUrl: string | null; subtitle: string | null; totalPages: number | null }
   >();
   for (const r of books.data ?? [])
-    catalogByKey.set(`book:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: r.author, totalPages: r.total_pages });
+    catalogByKey.set(`book:${r.id}`, {
+      title: r.title ?? UNTITLED_FALLBACK,
+      coverUrl: r.cover_url,
+      subtitle: r.author,
+      totalPages: r.total_pages,
+    });
   for (const r of movies.data ?? [])
-    catalogByKey.set(`movie:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null, totalPages: null });
+    catalogByKey.set(`movie:${r.id}`, {
+      title: r.title ?? UNTITLED_FALLBACK,
+      coverUrl: r.cover_url,
+      subtitle: null,
+      totalPages: null,
+    });
   for (const r of series.data ?? [])
-    catalogByKey.set(`series:${r.id}`, { title: r.title, coverUrl: r.cover_url, subtitle: null, totalPages: null });
+    catalogByKey.set(`series:${r.id}`, {
+      title: r.title ?? UNTITLED_FALLBACK,
+      coverUrl: r.cover_url,
+      subtitle: null,
+      totalPages: null,
+    });
   for (const r of sagas.data ?? [])
     catalogByKey.set(`saga:${r.id}`, { title: r.name, coverUrl: r.cover_url, subtitle: null, totalPages: null });
   for (const r of people.data ?? [])
@@ -754,8 +770,8 @@ type PostRow = {
   is_spoiler: boolean;
   created_at: string;
 };
-type BookRow = { id: string; title: string; author: string | null; cover_url: string | null; total_pages: number | null };
-type ScreenRow = { id: string; title: string; cover_url: string | null };
+type BookRow = { id: string; title: string | null; author: string | null; cover_url: string | null; total_pages: number | null };
+type ScreenRow = { id: string; title: string | null; cover_url: string | null };
 type NamedRow = { id: string; name: string; cover_url: string | null };
 type PersonRow = { id: string; name: string; photo_url: string | null };
 type PassRow = { id: string; started_on: string | null; finished_on: string | null; rating: number | null };

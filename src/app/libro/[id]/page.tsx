@@ -63,6 +63,8 @@ import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { NotesSection } from "@/components/notes/notes-section";
 
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
+
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
@@ -80,7 +82,7 @@ export async function generateMetadata({
     .eq("id", id)
     .maybeSingle();
 
-  return { title: book ? `${book.title} — Biblioshare` : "Biblioshare" };
+  return { title: book ? `${book.title ?? UNTITLED_FALLBACK} — Biblioshare` : "Biblioshare" };
 }
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -224,7 +226,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
       <ItemShell
         itemType="book"
         mediaLabel={tDetail("mediaLabel.book")}
-        title={book.title}
+        title={book.title ?? tDetail("untitled")}
         byline={byline}
         genres={genres}
         coverUrl={book.cover_url}
@@ -481,7 +483,7 @@ async function BookTabs({
           itemType="book"
           itemId={book.id}
           item={{
-            title: book.title,
+            title: book.title ?? tDetail("untitled"),
             author: book.author,
             synopsis: book.synopsis,
             genres,

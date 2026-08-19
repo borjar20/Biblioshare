@@ -81,7 +81,7 @@ export type Database = {
           published_year: number | null
           publisher: string | null
           synopsis: string | null
-          title: string
+          title: string | null
           total_pages: number | null
         }
         Insert: {
@@ -97,7 +97,7 @@ export type Database = {
           published_year?: number | null
           publisher?: string | null
           synopsis?: string | null
-          title: string
+          title?: string | null
           total_pages?: number | null
         }
         Update: {
@@ -113,7 +113,7 @@ export type Database = {
           published_year?: number | null
           publisher?: string | null
           synopsis?: string | null
-          title?: string
+          title?: string | null
           total_pages?: number | null
         }
         Relationships: []
@@ -1252,11 +1252,12 @@ export type Database = {
           director: string | null
           duration_minutes: number | null
           genres: string[] | null
+          hydrated_at: string | null
           id: string
           original_title: string | null
           release_year: number | null
           synopsis: string | null
-          title: string
+          title: string | null
           tmdb_id: number | null
         }
         Insert: {
@@ -1265,11 +1266,12 @@ export type Database = {
           director?: string | null
           duration_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title: string
+          title?: string | null
           tmdb_id?: number | null
         }
         Update: {
@@ -1278,11 +1280,12 @@ export type Database = {
           director?: string | null
           duration_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title?: string
+          title?: string | null
           tmdb_id?: number | null
         }
         Relationships: []
@@ -2285,11 +2288,12 @@ export type Database = {
           creator: string | null
           episode_runtime_minutes: number | null
           genres: string[] | null
+          hydrated_at: string | null
           id: string
           original_title: string | null
           release_year: number | null
           synopsis: string | null
-          title: string
+          title: string | null
           tmdb_id: number | null
           total_episodes: number | null
           total_seasons: number | null
@@ -2300,11 +2304,12 @@ export type Database = {
           creator?: string | null
           episode_runtime_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title: string
+          title?: string | null
           tmdb_id?: number | null
           total_episodes?: number | null
           total_seasons?: number | null
@@ -2315,11 +2320,12 @@ export type Database = {
           creator?: string | null
           episode_runtime_minutes?: number | null
           genres?: string[] | null
+          hydrated_at?: string | null
           id?: string
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
-          title?: string
+          title?: string | null
           tmdb_id?: number | null
           total_episodes?: number | null
           total_seasons?: number | null
@@ -2707,14 +2713,7 @@ export type Database = {
         Returns: undefined
       }
       follow_club_event: {
-        Args: {
-          p_activity_id: string
-          // null es un valor legítimo: significa "sin recordatorio". Postgres no
-          // declara la nulabilidad de un parámetro, así que el generador lo emite
-          // como `number` a secas y hay que admitir null a mano — igual que en
-          // set_club_event_reminder.
-          p_remind_minutes_before?: number | null
-        }
+        Args: { p_activity_id: string; p_remind_minutes_before?: number }
         Returns: undefined
       }
       get_activities_progress: {
@@ -2787,6 +2786,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      hydrate_movie: {
+        Args: {
+          p_cover_url?: string
+          p_director?: string
+          p_duration_minutes?: number
+          p_genres?: string[]
+          p_movie_id: string
+          p_original_title?: string
+          p_release_year?: number
+          p_synopsis?: string
+          p_title?: string
+        }
+        Returns: undefined
+      }
+      hydrate_screens_bulk: {
+        Args: { p_item_type: string; p_rows: Json }
+        Returns: undefined
+      }
+      hydrate_series: {
+        Args: {
+          p_cover_url?: string
+          p_creator?: string
+          p_episode_runtime_minutes?: number
+          p_genres?: string[]
+          p_original_title?: string
+          p_release_year?: number
+          p_series_id: string
+          p_synopsis?: string
+          p_title?: string
+          p_total_episodes?: number
+          p_total_seasons?: number
+        }
+        Returns: undefined
+      }
       is_activity_participant: {
         Args: { p_activity_id: string }
         Returns: boolean
@@ -2844,6 +2877,17 @@ export type Database = {
           p_year?: number
         }
         Returns: string
+      }
+      register_catalog_item: {
+        Args: { p_external_id: string; p_item_type: string }
+        Returns: string
+      }
+      register_catalog_items_bulk: {
+        Args: { p_external_ids: string[]; p_item_type: string }
+        Returns: {
+          external_id: string
+          id: string
+        }[]
       }
       related_posts_by_author: {
         Args: {
@@ -2911,7 +2955,7 @@ export type Database = {
         Returns: undefined
       }
       set_club_event_reminder: {
-        Args: { p_activity_id: string; p_remind_minutes_before: number | null }
+        Args: { p_activity_id: string; p_remind_minutes_before: number }
         Returns: undefined
       }
       set_club_event_state: {
@@ -2962,10 +3006,10 @@ export type Database = {
       update_activity_details: {
         Args: {
           p_activity_id: string
+          p_description: string
+          p_ends_on: string
+          p_starts_on: string
           p_title: string
-          p_description: string | null
-          p_starts_on: string | null
-          p_ends_on: string | null
         }
         Returns: undefined
       }
@@ -3048,9 +3092,6 @@ export type Database = {
         | "followed_finished"
         | "followed_session"
         | "followed_episode"
-        | "followed_started"
-        | "followed_dropped"
-        | "followed_thought"
         | "followed_added"
         | "club_event_reminder"
         | "club_event_updated"
@@ -3059,6 +3100,9 @@ export type Database = {
         | "thought_liked"
         | "post_commented"
         | "post_liked"
+        | "followed_started"
+        | "followed_dropped"
+        | "followed_thought"
       pass_dropped_reason:
         | "no_enganchado"
         | "aburrido"
@@ -3281,9 +3325,6 @@ export const Constants = {
         "followed_finished",
         "followed_session",
         "followed_episode",
-        "followed_started",
-        "followed_dropped",
-        "followed_thought",
         "followed_added",
         "club_event_reminder",
         "club_event_updated",
@@ -3292,6 +3333,9 @@ export const Constants = {
         "thought_liked",
         "post_commented",
         "post_liked",
+        "followed_started",
+        "followed_dropped",
+        "followed_thought",
       ],
       pass_dropped_reason: [
         "no_enganchado",

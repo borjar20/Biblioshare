@@ -240,17 +240,32 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > columna inexistente, así que el orden inverso habría vaciado el diario de todos los usuarios,
 > issue #657): la consulta devuelve `passes | 19 | 14 | 13` en los dos entornos (antes
 > `17 | 14 | 11`). La fila de la tabla de abajo ya está actualizada.
+>
+> **Nota del 2026-08-19 (#674, catálogo server-authoritative).** Cambian las tres filas del
+> catálogo, y el cambio es **direccional a propósito**: el hueco de INSERT de `movies`,
+> `series` y `books` pasa a ser **TOTAL**, no parcial como el del resto de la tabla.
+> `20260818_catalog_f_revoke_insert.sql` revoca el INSERT de tabla entero y quita las tres
+> policies `catalog * insertable` — no había grants de INSERT por columna que quitar uno a
+> uno —, así que la única vía de alta que queda es `register_catalog_item`/
+> `register_catalog_items_bulk` (`SECURITY DEFINER`: escribe como owner, no consume el grant
+> del rol que invoca). `movies` y `series` ganan además la columna `hydrated_at` **con su
+> `grant update`** (confirmado, no falta: sin él la hidratación fallaría en silencio para
+> cualquier rol `user`, que es el pie del #375). Números tras la revocación, iguales en dev y
+> prod: `movies | 12 | 0 | 8`, `series | 14 | 0 | 10`, `books | 14 | 0 | 9`.
+> **Si `con_insert` de esas tres vuelve a subir por encima de 0 para `authenticated`, es una
+> regresión**: alguien reabrió el INSERT directo que #674 cerró. La tabla de abajo ya lleva
+> los números nuevos. Detalle: `data-model.md` §2.1, `decisiones.md` (2026-08-18/19).
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
-| `books` | 14 | 14 | 9 | la hidratación solo reescribe parte de la ficha |
+| `books` | 14 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
-| `movies` | 11 | 11 | 7 | ídem `books` |
+| `movies` | 12 | **0** | 8 | ídem `books` (+`hydrated_at` con su `grant update`) |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
 | `passes` | 19 | 14 | 13 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables; `dropped_reason`/`dropped_reason_note` sin SELECT (motivo de abandono, siempre privado) |
 | `people` | 12 | 11 | 6 | ídem `books` |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
-| `series` | 13 | 13 | 9 | ídem `books` |
+| `series` | 14 | **0** | 10 | ídem `books` (+`hydrated_at` con su `grant update`) |
 | `series_episodes` | 10 | 10 | 0 | catálogo de episodios, alta-only |
 | `user_blocks` | 3 | 3 | 0 | un bloqueo se crea o se borra, no se edita |
 

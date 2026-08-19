@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import {
   heroStatusLabels,
@@ -36,6 +37,7 @@ import { ItemStatusProvider } from "@/components/detail/item-status-context";
 import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { ensureMovieHydrated } from "@/lib/catalog/hydrate-screen";
 import {
   getRatingSummary,
   getReviews,
@@ -60,6 +62,8 @@ import {
 } from "@/components/detail/catalog-editor";
 import { NotesSection } from "@/components/notes/notes-section";
 
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
+
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
@@ -77,7 +81,7 @@ export async function generateMetadata({
     .eq("id", id)
     .maybeSingle();
 
-  return { title: movie ? `${movie.title} — Biblioshare` : "Biblioshare" };
+  return { title: movie ? `${movie.title ?? UNTITLED_FALLBACK} — Biblioshare` : "Biblioshare" };
 }
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -86,7 +90,7 @@ function fetchMovie(supabase: Supa, id: string) {
   return supabase
     .from("movies")
     .select(
-      "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id",
+      "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id, hydrated_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -130,6 +134,24 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   ]);
 
   if (!movie) notFound();
+
+  // Hidratación de la OBRA (TMDB): se resuelve en after() porque es una API
+  // externa que escribe. Lo normal es que la fila ya llegue hidratada
+  // (openCatalogItem hidrata al pulsar el resultado), así que esto es sobre
+  // todo curador de filas viejas (`hydrated_at` null). Mismo criterio que
+  // ensureBookHydrated en libro/[id]/page.tsx — ver el comentario ahí.
+  //
+  // Solo con sesión: un visitante anónimo no puede escribir (grant de
+  // `authenticated`).
+  if (user) {
+    after(() =>
+      ensureMovieHydrated(supabase, {
+        id: movie.id,
+        tmdb_id: movie.tmdb_id,
+        hydrated_at: movie.hydrated_at,
+      }),
+    );
+  }
 
   // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
   // resto (reparto, plataformas de TMDB, saga, ediciones, pases) llega por
@@ -184,7 +206,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
       <ItemShell
         itemType="movie"
         mediaLabel={tDetail("mediaLabel.movie")}
-        title={movie.title}
+        title={movie.title ?? tDetail("untitled")}
         byline={byline}
         genres={genres}
         coverUrl={movie.cover_url}
@@ -386,7 +408,7 @@ async function MovieTabs({
           itemType="movie"
           itemId={movie.id}
           item={{
-            title: movie.title,
+            title: movie.title ?? tDetail("untitled"),
             author: movie.director,
             synopsis: movie.synopsis,
             genres,

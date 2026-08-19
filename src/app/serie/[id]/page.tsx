@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import {
   heroStatusLabels,
@@ -36,6 +37,7 @@ import { ItemStatusProvider } from "@/components/detail/item-status-context";
 import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
+import { ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
 import {
   getRatingSummary,
   getReviews,
@@ -63,6 +65,8 @@ import {
 } from "@/components/detail/catalog-editor";
 import { NotesSection } from "@/components/notes/notes-section";
 
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
+
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
@@ -80,7 +84,7 @@ export async function generateMetadata({
     .eq("id", id)
     .maybeSingle();
 
-  return { title: series ? `${series.title} — Biblioshare` : "Biblioshare" };
+  return { title: series ? `${series.title ?? UNTITLED_FALLBACK} — Biblioshare` : "Biblioshare" };
 }
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -89,7 +93,7 @@ function fetchSeries(supabase: Supa, id: string) {
   return supabase
     .from("series")
     .select(
-      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id",
+      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id, hydrated_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -126,6 +130,24 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   ]);
 
   if (!series) notFound();
+
+  // Hidratación de la OBRA (TMDB): se resuelve en after() porque es una API
+  // externa que escribe. Lo normal es que la fila ya llegue hidratada
+  // (openCatalogItem hidrata al pulsar el resultado), así que esto es sobre
+  // todo curador de filas viejas (`hydrated_at` null). Mismo criterio que
+  // ensureBookHydrated en libro/[id]/page.tsx — ver el comentario ahí.
+  //
+  // Solo con sesión: un visitante anónimo no puede escribir (grant de
+  // `authenticated`).
+  if (user) {
+    after(() =>
+      ensureSeriesHydrated(supabase, {
+        id: series.id,
+        tmdb_id: series.tmdb_id,
+        hydrated_at: series.hydrated_at,
+      }),
+    );
+  }
 
   // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
   // resto (sincronización de episodios con TMDB, plataformas, reparto, saga,
@@ -220,7 +242,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
       <ItemShell
         itemType="series"
         mediaLabel={tDetail("mediaLabel.series")}
-        title={series.title}
+        title={series.title ?? tDetail("untitled")}
         byline={byline}
         genres={genres}
         coverUrl={series.cover_url}
@@ -448,7 +470,7 @@ async function SeriesTabs({
           itemType="series"
           itemId={series.id}
           item={{
-            title: series.title,
+            title: series.title ?? tDetail("untitled"),
             author: series.creator,
             synopsis: series.synopsis,
             genres,

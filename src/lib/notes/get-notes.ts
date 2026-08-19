@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
+import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import { parsePosition } from "@/lib/library/position";
 import type { Note, NoteCounts } from "./types";
 import { NOTES_PAGE_SIZE, type NotesQuery } from "./query";
@@ -87,9 +88,9 @@ async function resolveTitles(
   if (series.error) throw series.error;
 
   const titleByKey = new Map<string, string>();
-  for (const r of books.data ?? []) titleByKey.set(`book:${r.id}`, r.title);
-  for (const r of movies.data ?? []) titleByKey.set(`movie:${r.id}`, r.title);
-  for (const r of series.data ?? []) titleByKey.set(`series:${r.id}`, r.title);
+  for (const r of books.data ?? []) titleByKey.set(`book:${r.id}`, r.title ?? UNTITLED_FALLBACK);
+  for (const r of movies.data ?? []) titleByKey.set(`movie:${r.id}`, r.title ?? UNTITLED_FALLBACK);
+  for (const r of series.data ?? []) titleByKey.set(`series:${r.id}`, r.title ?? UNTITLED_FALLBACK);
   return titleByKey;
 }
 
