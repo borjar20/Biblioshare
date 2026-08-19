@@ -69,7 +69,7 @@ test("evento: se crea, no aparece en Actividades, se ve en el calendario, y se m
 
   try {
     await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
-    await page.getByRole("button", { name: /proponer actividad/i }).first().click();
+    await page.getByRole("link", { name: /proponer actividad/i }).first().click();
 
     const titulo = `e2e evento ${Date.now()}`;
     await page.getByLabel(/^título$/i).fill(titulo);
@@ -134,7 +134,7 @@ test("evento: se crea, no aparece en Actividades, se ve en el calendario, y se m
     // trivialmente cierta si la página aún no hubiera pintado nada.
     await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
     await expect(
-      page.getByRole("button", { name: /proponer actividad/i }).first(),
+      page.getByRole("link", { name: /proponer actividad/i }).first(),
     ).toBeVisible();
     await expect(page.getByText(titulo)).toHaveCount(0);
 
@@ -363,7 +363,7 @@ test("evento: un miembro raso no ve la tarjeta 'Evento' en el asistente", async 
     await page.waitForURL("/");
 
     await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);
-    await page.getByRole("button", { name: /proponer actividad/i }).first().click();
+    await page.getByRole("link", { name: /proponer actividad/i }).first().click();
 
     // Prueba positiva de que el asistente pintó de verdad su paso 1 (si no
     // pintara nada, la ausencia de la tarjeta "Evento" sería un falso verde).

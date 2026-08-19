@@ -72,39 +72,54 @@ async function hasBilledCast(
 //
 // 42501 = visitante ANÓNIMO. Desde la navegación anónima (#359/#360) las fichas
 // las abre también quien no tiene sesión, y `anon` no tiene —ni debe tener—
-// grant de UPDATE sobre el catálogo. Es esperado e inocuo: la hidratación la
+// grant de escritura sobre el catálogo. Es esperado e inocuo: la hidratación la
 // hará el primer visitante con sesión. Mismo criterio que el 23505 de los
-// créditos; cualquier otro error sí se registra.
+// créditos; cualquier otro error sí se registra. Con la RPC el anónimo recibe
+// además el `authentication required` que ella misma lanza (P0001), tratado
+// igual: la RPC exige `auth.uid()`.
+//
+// #676: esto era un UPDATE DIRECTO sobre `movies`/`series`. El grant de UPDATE
+// por columna que lo sostenía incluía `total_seasons`, y la política era
+// `using(true)`, así que cualquier `authenticated` podía por REST poner
+// `total_seasons = 100000` en una serie compartida; abrir esa ficha lanzaba una
+// petición TMDB POR TEMPORADA (ver getSeriesEpisodes). El usuario controlaba el
+// multiplicador del fan-out. Ahora va por las RPC `hydrate_*` (SECURITY
+// DEFINER, fill-only, #674) y el grant directo de las columnas de tamaño se
+// revoca en 20260865.
+//
+// Fill-only NO cambia el comportamiento: el único llamador ya venía filtrado
+// por `needsSizeHydration`, que exige que la columna esté a NULL.
 async function writeSizes(
   supabase: SupabaseServerClient,
   itemType: ItemType,
   id: string,
   details: ScreenDetails
 ): Promise<void> {
-  // Las dos ramas van con el nombre de tabla literal: con `from(tabla)` en una
-  // variable, supabase-js no puede casar el patch con la tabla y el tipo se cae.
   if (itemType === "movie") {
     if (!details.runtimeMinutes) return;
-    const { error } = await supabase
-      .from("movies")
-      .update({ duration_minutes: details.runtimeMinutes })
-      .eq("id", id);
+    const { error } = await supabase.rpc("hydrate_movie", {
+      p_movie_id: id,
+      p_duration_minutes: details.runtimeMinutes,
+    });
     if (error && error.code !== "42501") console.error("writeSizes failed", { itemType, id, error });
     return;
   }
 
   const patch = {
     ...(details.numberOfEpisodes && {
-      total_episodes: details.numberOfEpisodes,
-      total_seasons: details.numberOfSeasons,
+      p_total_episodes: details.numberOfEpisodes,
+      // Se OMITE si no viene: la RPC declara sus parámetros opcionales, no
+      // nullable. Omitirlo y pasar null significan lo mismo para ella (no
+      // rellenar esa columna), pero solo lo primero tipa.
+      ...(details.numberOfSeasons != null && { p_total_seasons: details.numberOfSeasons }),
     }),
     ...(details.episodeRuntimeMinutes && {
-      episode_runtime_minutes: details.episodeRuntimeMinutes,
+      p_episode_runtime_minutes: details.episodeRuntimeMinutes,
     }),
   };
   if (Object.keys(patch).length === 0) return;
 
-  const { error } = await supabase.from("series").update(patch).eq("id", id);
+  const { error } = await supabase.rpc("hydrate_series", { p_series_id: id, ...patch });
   if (error && error.code !== "42501") console.error("writeSizes failed", { itemType, id, error });
 }
 

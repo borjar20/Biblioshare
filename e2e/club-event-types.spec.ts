@@ -162,7 +162,7 @@ async function pollActividad(clubId: string, titulo: string): Promise<ActividadR
 /** Paso 1 del asistente: título + tarjeta "Evento" + Continuar. Común a los tres
  *  tipos -- lo que cambia después es el radiogroup de EventForm (paso 2). */
 async function abrirEventoEnAsistente(page: Page, titulo: string) {
-  await page.getByRole("button", { name: /proponer actividad/i }).first().click();
+  await page.getByRole("link", { name: /proponer actividad/i }).first().click();
   await page.getByLabel(/^título$/i).fill(titulo);
   // Mismo ancla que club-evento.spec.ts: la tarjeta lleva nombre + descripción
   // ("Evento Una fecha señalada del club."), así que un /^evento$/ no casaría.
@@ -224,7 +224,7 @@ test.describe("tipos de evento de club", () => {
       // por no haber cargado nada todavía.
       await page.goto(`/club/${club.slug}?tab=actividades`);
       await expect(
-        page.getByRole("button", { name: /proponer actividad/i }).first(),
+        page.getByRole("link", { name: /proponer actividad/i }).first(),
       ).toBeVisible();
       await expect(page.getByText(titulo)).toHaveCount(0);
 

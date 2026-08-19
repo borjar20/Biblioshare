@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { ScreenCollection } from "@/lib/catalog/tmdb";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -62,7 +63,15 @@ export async function persistCollectionMembership(
   // abrir una ficha de película. link_tmdb_saga_item es SECURITY DEFINER, está
   // acotada a sagas TMDB y lleva dentro la lógica de primary y el reintento
   // ante la carrera, que antes vivían aquí.
-  const { error: memberError } = await supabase.rpc("link_tmdb_saga_item", {
+  //
+  // #675: la RPC ya NO tiene EXECUTE para `authenticated` — la comprobación de
+  // «la saga parece TMDB» no impedía que un autenticado eligiera saga+ítem a
+  // mano por PostgREST e inyectara pelis en una colección oficial. Aquí la
+  // pareja (saga, ítem) es server-derived: `collection` viene de TMDB por el
+  // camino de enriquecimiento, no del cliente. De ahí el service_role: es la
+  // única forma de que el hecho «pertenece a esta colección» lo respalde el
+  // servidor y no el usuario.
+  const { error: memberError } = await createServiceRoleClient().rpc("link_tmdb_saga_item", {
     p_saga_id: sagaId,
     p_item_id: itemId,
   });

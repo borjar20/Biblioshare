@@ -340,3 +340,47 @@ detrás del deploy según qué dirección se autocure, nunca "a la vez" por como
 fusionar se aceptó el borrado de `recent-reviews.ts` y de `resolveWorks`/`getPerson` (código
 muerto verificado por la auditoría, sin llamadores) que la rama solo tocaba para tolerar
 `title` NULL.
+
+## 2026-08-19 — Barrida de los P1 abiertos: cuatro decisiones que no son obvias
+
+Cerrados en una pasada #691, #678, #676, #675, #654, #643, #609, #584, #582 y #514. La mayoría
+son mecánicos; estas cuatro no, y por eso se registran.
+
+1. **Cuando el hecho a validar vive FUERA de la base, la validación no puede vivir dentro
+   (#675).** La tentación era añadir a `link_tmdb_saga_item` una comprobación de que la película
+   pertenece a la colección. No se puede: esa pertenencia solo la conoce TMDB, y cualquier
+   columna que la guardara la rellenaría el mismo camino fill-only llamable por el cliente que
+   se quiere validar — el atacante se adelanta, escribe la pertenencia falsa y la comprobación
+   le da la razón. La única salida es que la llamada la haga quien SÍ habló con TMDB: el
+   servidor, con `service_role`. Se acepta a sabiendas que esto ensancha el uso de
+   `service_role` más allá de lo que decía el comentario de `service-role.ts` («nada que un
+   usuario autenticado pueda pedir directamente»): el criterio real no es *quién dispara* la
+   operación, es *de dónde salen sus argumentos*.
+2. **Contra un fan-out controlable por el usuario, la capa que importa es la del llamador
+   (#676).** Se pusieron cuatro (revoke del grant, CHECK de rango, concurrencia acotada, techo
+   de temporadas), pero la que de verdad cierra el agujero es la quinta: **dejar de creerse la
+   columna compartida y preguntarle a TMDB cuántas temporadas hay**. Las otras acotan el daño;
+   esta le quita al usuario el mando. El coste —una llamada más, cacheada 24 h, solo en la
+   primera visita— es ruido frente a eso.
+3. **`credits` se cascadea; `passes` se bloquea (#609).** Mismo problema (referencia polimórfica
+   sin FK), decisión opuesta a propósito. El discriminante no es la tabla: es **si la fila
+   contiene algo del usuario que no se pueda reconstruir**. Un pase guarda nota, reseña y
+   fechas; un crédito es un hecho del proveedor que se rehidrata solo. Queda escrito porque las
+   otras once tablas polimórficas (#708) hay que decidirlas una a una con este mismo criterio,
+   y la tentación será copiar la última que se hizo.
+4. **El 200 de PPR en `notFound()` NO se arregla: se documenta (#514).** Se midió contra un
+   build de producción y el cuerpo servido es el del 404 (sin título del evento, sin heading,
+   `<title>` genérico, con `noindex`): no hay fuga, la hipótesis P0 queda descartada. Y el
+   status es **comportamiento documentado de Cache Components** — «the response has already
+   begun streaming as a 200, and the status can't change once streaming has started […] run
+   that check in `proxy` instead» (doc de `not-found` en `node_modules/next/dist/docs`).
+   Llevarlo a `proxy` costaría un viaje a la base en CADA petición de la ruta para ganar un
+   código de estado que ya está mitigado por el `noindex`. **No se hace.** De paso, dos
+   diagnósticos de la issue quedan corregidos: `instant = false` nunca fue un opt-out de PPR
+   (es validación de navegación), y `dynamic = 'force-dynamic'` tampoco lo sería («Not needed.
+   All pages are dynamic by default»).
+
+**Y una que se decidió NO hacer:** el `database.types.ts` de `main` ya está sincronizado con dev
+(#654). Se comprobó regenerando desde dev y comparando byte a byte: idéntico, y `next build`
+sale en verde. El drift que describía la issue lo cerró #674 al arreglar `core.ts` y
+`event-follow-actions.ts`; el diagnóstico «hay que auditar el drift acumulado» ya no aplica.

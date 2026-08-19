@@ -41,12 +41,17 @@ se cerraron, no como trabajo pendiente.
 
 ## P1 — siguiente bloque (issues abiertas)
 
-#699 (hydrate_book falla para rol user), #691 (default privileges ALL),
-#678 (SSRF Web Push), #676 (DoS total_seasons), #675 (RPC sagas TMDB sin gate),
-#654 (database.types.ts desincronizado — con #695/#625/#701),
-#643 (nota media de saga en base 10), #609 (créditos huérfanos — cuantificado en
-F1-008: ~80 % de `credits` en dev), #584 (e2e club tumba el dev server),
-#582 (doc hora de Encuentro), #514 (PPR devuelve 200 en notFound), más los P1
+**Barrida del 2026-08-19: los diez P1 de escritorio quedan abordados** (#691, #678,
+#676, #675, #654, #643, #609, #584, #582, #514). Las migraciones están aplicadas y
+verificadas en DEV; **producción, pendiente del merge**. Detalle del esquema en
+`data-model.md` §8.1 y de las decisiones no obvias en `decisiones.md` (2026-08-19).
+Dos se cierran corrigiendo su diagnóstico: **#654 ya no reproduce** (los tipos de
+`main` son idénticos a una regeneración desde dev y `next build` sale limpio; lo
+arregló #674) y **#514 no es una fuga** (el 200 sirve el contenido del 404, con
+`noindex`, y es comportamiento documentado de Cache Components — no se arregla).
+Salieron cinco issues nuevas: #706, #707, #708, #709, #710.
+
+Sigue abierto #699 (hydrate_book falla para rol user) y los P1
 móviles #679/#680. Y de la auditoría 2026-08 (issues por abrir): F1-001
 (reseñas de serie invisibles), F1-002 (import crea pases sin fechas),
 F1-003 (triggers escriben en `library_entries`), F4-001 (ficha de serie rota en

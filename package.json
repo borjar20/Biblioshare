@@ -12,7 +12,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:batches": "node scripts/e2e-batches.mjs",
+    "test:e2e:club": "node scripts/e2e-batches.mjs club-"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",

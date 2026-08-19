@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
 import { sagaHref } from "@/lib/catalog/item-href";
+import { formatDots } from "@/lib/rating/dots";
 import { SagaFollowButton } from "./saga-follow-button";
 
 // Hero de la ficha de saga (frames A/D): abanico de portadas, título, byline,
@@ -81,7 +82,11 @@ export async function SagaHero({
         )}
         {avgRating !== null && (
           <span className="rounded-full bg-surface-muted px-2.5 py-1 font-mono text-[10px]">
-            {t("avgRating", { rating: avgRating })}
+            {/* `formatDots`, NO `avgRating` en crudo: `averageSagaRating`
+                devuelve la escala de guardado (1–10) y el chip enseña sobre 5
+                como el resto de la app (issue #643). `!`: en esta rama
+                `avgRating` ya es `number`, así que `formatDots` no da null. */}
+            {t("avgRating", { rating: formatDots(avgRating)! })}
           </span>
         )}
       </div>
