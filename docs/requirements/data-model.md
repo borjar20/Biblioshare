@@ -288,13 +288,17 @@ de la filmografía completa de una persona, `hydratePersonCredits`) usa
 que hidratarlos directamente no reabre el envenenamiento — la RPC fill-only tampoco podría
 pisar una curación existente aunque quisiera.
 
-> **Estado del despliegue (2026-08-19).** Las seis migraciones llevan en **DEV** desde el
-> 2026-08-18. En **PROD**, `a`…`e` **aplicadas y verificadas el 2026-08-19** contra objetos
-> reales (`information_schema.columns`, `pg_proc`, `pg_trigger`, `pg_policies`), nunca
-> `list_migrations`; **`f` (la revocación) se aplica justo DESPUÉS de que el deploy de este
-> código esté en verde**. El orden es deliberado y no es intercambiable: `a`…`e` son aditivas
-> y el código viejo sigue funcionando con ellas, pero revocar el INSERT antes de desplegar
-> rompería toda alta de catálogo en producción, porque el código viejo inserta directo.
+> **Estado del despliegue: COMPLETO el 2026-08-19.** Las seis migraciones están **aplicadas y
+> verificadas en DEV y en PROD** contra objetos reales (`information_schema.columns`,
+> `pg_proc`, `pg_policies`, `information_schema.column_privileges`), nunca `list_migrations`;
+> las siete funciones del catálogo tienen `md5(prosrc)` normalizado **idéntico** en los dos
+> entornos. El orden fue deliberado y no es intercambiable: `a`…`e` (aditivas, el código viejo
+> funciona con ellas) ANTES del deploy; `f` (la revocación del INSERT) DESPUÉS de que el deploy
+> estuviera en verde — al revés, producción se queda sin poder dar de alta ninguna obra.
+> Regresiones comprobadas en PROD tras `f`, con prueba transaccional revertida: un `INSERT`
+> directo de `authenticated` sobre `movies` da **`42501 permission denied for table movies`**,
+> y `register_catalog_item('movie', …)` sigue devolviendo una shell (`title` NULL,
+> `hydrated_at` NULL). También en prod: `hydrate_book` ya funciona para el rol `user` (#699).
 > Ver `decisiones.md` (2026-08-19),
 > issue [#674](https://github.com/borjar20/Biblioshare/issues/674) y el efecto colateral de
 > regenerar tipos desde dev sobre los RPC de club-events, issue

@@ -15,8 +15,9 @@
 
 ## P0 — antes de seguir desarrollando
 
-Cuatro problemas reales (dos pares de issues duplicadas a fusionar). **Estado al
-2026-08-19: tres cerrados y el cuarto en despliegue.**
+Cuatro problemas reales (dos pares de issues duplicadas a fusionar). **Todos
+cerrados el 2026-08-19** — se conservan aquí como registro de qué eran y de cómo
+se cerraron, no como trabajo pendiente.
 
 1. ~~**#689/#687** — escalada user→admin en el alta de perfil pre-onboarding.~~
    **CERRADO 2026-08-19**: policy `20260861` (rescatada al repo) + trigger
@@ -30,10 +31,13 @@ Cuatro problemas reales (dos pares de issues duplicadas a fusionar). **Estado al
    2026-08-19**: destrackeado y `/backups/` ignorado. El dueño del repo decide
    **no purgar el historial** (repo privado, cuentas de prueba). A revisar si el
    repo pasa a ser público — los ficheros siguen en los commits anteriores.
-4. **#674** — envenenamiento del catálogo global: **en despliegue el 2026-08-19**.
-   Migraciones `a`…`e` ya en prod; `f` (la revocación del INSERT) se aplica en
-   cuanto el deploy del código nuevo esté en verde — antes no, o producción se
-   queda sin poder dar de alta obras. Ver `data-model.md` §2.1.
+4. ~~**#674** — envenenamiento del catálogo global.~~ **CERRADO 2026-08-19**: las
+   seis migraciones en dev y prod, con `f` aplicada tras el deploy en verde.
+   Comprobado en prod: `INSERT` directo → `42501`, alta por RPC → shell vacía.
+   Arregla de paso #699 (hidratación de libros bloqueada para el rol `user`).
+   Ver `data-model.md` §2.1.
+
+**Los cuatro P0 de la auditoría 2026-08 quedan cerrados el 2026-08-19.**
 
 ## P1 — siguiente bloque (issues abiertas)
 
