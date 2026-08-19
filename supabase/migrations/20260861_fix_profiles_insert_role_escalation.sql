@@ -1,0 +1,28 @@
+-- #689/#687 (P0) — escalada user->admin en el alta de perfil.
+--
+-- RESCATE DE MIGRACIÓN HUÉRFANA. Esta migración se aplicó a dev y a prod el
+-- 2026-08-14 (ledger: dev `20260814191212`, prod `20260814222532`, ambas con el
+-- nombre `20260861_fix_profiles_insert_role_escalation`) pero NUNCA llegó a
+-- existir como fichero en el repo: la auditoría 2026-08 (F1-017) la detectó como
+-- fantasma. Se rescata aquí para que el árbol vuelva a describir la base real y
+-- para que un entorno nuevo (restaurar baseline + migraciones) nazca ya parcheado.
+-- Es idempotente y no-op en dev/prod, donde el ledger ya la tiene registrada.
+--
+-- Qué agujero cerraba
+-- -------------------
+-- Una cuenta recién registrada, ANTES del onboarding (aún sin fila en
+-- `public.profiles`), podía crear su propio perfil con `role='admin'` en un solo
+-- INSERT. Se alineaban tres cosas:
+--   1) la policy `profiles insert own` solo comprobaba `auth.uid() = user_id`,
+--      sin decir nada del `role`;
+--   2) `authenticated` tiene grant de INSERT sobre la tabla (grant de TABLA, no
+--      por columna: por eso `revoke insert (role)` NO sirve aquí, ver 20260863);
+--   3) el trigger `enforce_role_change_admin_only` es BEFORE **UPDATE**, así que
+--      no dispara en el alta.
+-- Confirmado en runtime sobre prod (prueba transaccional revertida, 2026-08-14):
+-- `current_user_role()` devolvía `admin` tras el INSERT.
+--
+-- El fix: la policy de alta solo acepta `role='user'`. El camino de promoción a
+-- admin sigue siendo un UPDATE, y ese lo cubre `enforce_role_change_admin_only`.
+alter policy "profiles insert own" on public.profiles
+  with check ((select auth.uid()) = user_id and role = 'user'::user_role);
