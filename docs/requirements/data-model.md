@@ -3140,9 +3140,11 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > `information_schema.column_privileges`). `create_club_event`/`update_club_event` ganan
 > `p_event_type` (solo en create) y `p_config jsonb` (migración `20260842`), y la hora de
 > inicio pasa a OPCIONAL para Lanzamiento/Fecha destacada (ancla `starts_at` a 00:00 en
-> `event_timezone`); **Encuentro, al contrario, pasa a EXIGIR hora** — retira el default de
-> las 19:00 que aplicaba hasta hoy a todo evento sin hora (§6.3, `decisiones.md` 2026-08-09).
-> **[NOTA 2026-08-19: este delta era erróneo; manda §6.3 — hora opcional con default 19:00]**
+> `event_timezone`); **Encuentro conserva la hora OPCIONAL con default 19:00** — comportamiento
+> heredado, sin guarda `starts_time_required` (§6.3, `decisiones.md` 2026-08-09).
+> **[CORREGIDO 2026-08-19, issue #582: este delta decía «Encuentro pasa a EXIGIR hora», que es
+> falso. Se sopesó y se descartó a decisión del dueño; el commit `c22e307` revirtió la
+> exigencia. Manda §6.3 y el código.]**
 > Verificado contra `pg_proc`/`information_schema.column_privileges`/`to_regtype`, nunca
 > contra `list_migrations`. **Producción pendiente del merge.**
 >
