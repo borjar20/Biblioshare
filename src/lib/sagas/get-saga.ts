@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { getCollection } from "@/lib/catalog/tmdb";
@@ -87,6 +88,12 @@ async function populateTmdbCollection(
     // abrir la ficha. sync_tmdb_saga_items es SECURITY DEFINER y está acotada a
     // sagas TMDB. El diff se sigue calculando aquí para no llamar en vano
     // cuando no hay nada que cambiar (el caso normal: la colección ya está).
+    //
+    // #675: la RPC ya NO tiene EXECUTE para `authenticated`. Aceptaba un array
+    // entero de (item_id, position) y solo comprobaba que la saga «pareciera»
+    // TMDB, así que por PostgREST era una inyección masiva en cualquier
+    // colección oficial. `plan.toInsert` sale de `getCollection(...)` — TMDB,
+    // en servidor — así que la llamada se hace con service_role.
     const { data: existingRows } = await supabase
       .from("saga_items")
       .select("item_id, position")
@@ -95,7 +102,7 @@ async function populateTmdbCollection(
     const plan = planCollectionSync(existingRows ?? [], desired);
 
     if (plan.toInsert.length > 0) {
-      const { error } = await supabase.rpc("sync_tmdb_saga_items", {
+      const { error } = await createServiceRoleClient().rpc("sync_tmdb_saga_items", {
         p_saga_id: saga.id,
         p_items: plan.toInsert.map((p) => ({ item_id: p.itemId, position: p.position })),
       });
