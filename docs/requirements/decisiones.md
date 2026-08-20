@@ -615,3 +615,62 @@ plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS
    pero rompe **en silencio**: episodios que no se escriben nunca, reparto que no aparece. Es
    el modo de fallo de #699 y no se ve probando con una cuenta admin. Por eso el orden está
    escrito en la cabecera de la migración y no solo en la PR, que es lo que nadie relee.
+
+---
+
+## 2026-08-20 (noche) — El historial de git NO se purga (#728)
+
+**Decisión tomada: los dos backups con PII de #677 se quedan en la historia de git.** Es un
+límite asumido a sabiendas, no un olvido — y por eso está escrito aquí, que era la condición
+para poder cerrar #728.
+
+Los ficheros son `backups/prod-2026-07-14-antes-de-reiniciar.json` y
+`backups/prod-2026-07-26-saga-nodes-edges.json`. Ya están **destrackeados** y `.gitignore` cubre
+`backups/`, así que no se puede añadir otro por descuido. Lo que queda es que siguen siendo
+recuperables de cualquier clon.
+
+**Lo que acota el riesgo:** el repositorio es **privado**. El daño exige que alguien con acceso
+vaya a buscarlo a la historia.
+
+**Lo que costaba purgarlo:** `git filter-repo`/BFG reescribe todos los SHA, lo que obliga a
+coordinar todos los clones y worktrees vivos, a hacer **force-push a `main`** —que las reglas
+del repo prohíben por defecto— y a invalidar las referencias a commits viejos que haya en issues
+y PRs cerradas. Se decidió que ese coste no compensa mientras el repo siga siendo privado.
+
+⚠️ **Lo que reabre esta decisión:** si el repositorio pasara a ser **público** alguna vez, la
+purga vuelve a la mesa y hay que hacerla **antes** de abrirlo, no después. Ese es el disparador
+concreto; sin él, esto se queda como está.
+
+---
+
+## 2026-08-20 (noche) — Sesión y cambio de estado son la MISMA lectura (#717)
+
+**La pregunta era de producto y la respuesta la da el usuario:** al registrar una sesión y
+cambiar el estado en el mismo gesto, ¿la sesión es de la lectura vieja o de la nueva? **De la
+misma lectura que el cambio de estado.** Si alguien dice «he leído hasta la página 42 y lo estoy
+releyendo», lo leído es de la relectura.
+
+De ahí sale todo lo demás, que es mecánico:
+
+1. **La transición se adelanta.** Corría al final, después de escribir la sesión, el cursor y
+   los episodios; ahora corre antes de tocar nada y su `passId` manda sobre todas esas
+   escrituras. `applyTransition` ya devolvía el pase vigente — `addSession` lo estaba tirando.
+
+2. **Las notas se buscan por el pase VIEJO y se repuntan al nuevo.** Se escribieron mientras la
+   hoja estaba abierta, así que llevan el `pass_id` de entonces; filtrar por el nuevo no
+   encontraría ninguna. Sin repuntarlas, la nota se queda en el pase archivado mientras su
+   sesión cuelga del vivo — la misma partición que este arreglo viene a cerrar.
+
+3. **Si el pase es nuevo, el cursor parte de `{}`, no de la posición del viejo.** Una relectura
+   empieza a cero (Regla 5); arrastrarle la página anterior la haría nacer por la mitad. Se
+   pierde el `format` de la copia, que era de aquella lectura y no de esta.
+
+4. **Se acepta a sabiendas el orden menos malo ante un fallo:** si la inserción de la sesión
+   fallara justo después de la transición, el estado ya habría cambiado. Al revés —escribir
+   primero y repuntar después— un fallo parte la sesión y el pase en dos, que es exactamente el
+   bug de origen. Entre «el estado cambió y la sesión no se guardó» (visible, y el usuario
+   reintenta) y «quedan colgando de pases distintos» (invisible), se elige lo visible.
+
+**Lo que NO arregla esto:** `dropped` + «Leyendo» sigue devolviendo `askResume` y no hace nada
+sin avisar. Es #737 y va aparte, porque es un no-op mudo y no un problema de a qué pase van las
+escrituras.
