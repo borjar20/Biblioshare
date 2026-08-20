@@ -108,6 +108,35 @@ export function revalidateReadingLog(itemType: ItemType, id: string): void {
   revalidateFeed();
 }
 
+/** Fin de una importación CSV. El importador escribe pases `completed` CON NOTA
+ *  sin pasar por `revalidateReadingLog` —el comentario de ahí arriba («todo
+ *  escritor de nota pasa por aquí») era falso para este camino—, así que la
+ *  media cacheada de cada obra importada seguía enseñando el valor viejo hasta
+ *  que expiraba sola por `cacheLife("hours")` (#718).
+ *
+ *  Las etiquetas se invalidan UNA por obra (es el dato que cambió de verdad),
+ *  pero las páginas UNA vez por tanda: un import de 300 filas no puede disparar
+ *  300 revalidaciones de perfil y feed. Por eso no vale con llamar a
+ *  `revalidateReadingLog` en bucle. */
+export function revalidateImportBatch(
+  itemType: ItemType,
+  itemIds: readonly string[]
+): void {
+  const seen = new Set<string>();
+  for (const id of itemIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    updateTag(`ratings:${itemType}:${id}`);
+  }
+  if (seen.size === 0) return;
+
+  // Las fichas van por patrón (`revalidateAllItemPages`) en vez de una a una:
+  // con cientos de obras importadas sale más barato y no hay que enumerar.
+  revalidateAllItemPages();
+  revalidateProfilePages();
+  revalidateFeed();
+}
+
 /** Reacción/comentario: puede vivir en una ficha, en el feed o en un post de
  *  club — por eso revalida las tres zonas. La inclusión de las fichas de club
  *  es el arreglo del bug: antes un like a un post de club nunca revalidaba

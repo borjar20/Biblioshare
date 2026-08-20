@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
-import { getActivePass } from "@/lib/passes/get-passes";
+import { getActivePass, isAutoCloseable } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import {
   episodeExists,
@@ -51,19 +51,30 @@ async function ensureWritablePass(
 // el auto-cierre (idéntico al de la sesión, §Tarea 7/8): si el episodio más
 // avanzado de ESTE pase es el último de la serie, el pase se completa solo
 // y la ficha abre la hoja de cierre al volver.
+//
+// Dos guardas, ambas de #716 — `reachedEnd` solo dice «el más avanzado de este
+// pase es el último del catálogo», y eso sigue siendo cierto DESPUÉS de cerrar:
+//
+//   - `addedProgress`: el auto-cierre solo se dispara si ESTE gesto añadió un
+//     episodio nuevo. Sin esto, desmarcar un episodio intermedio teniendo el
+//     final visto —o puntuar el final ya visto— volvía a cerrar el pase.
+//   - `isAutoCloseable`: nunca sobre un pase `dropped` o `completed`. Abandonar
+//     una serie es una decisión del usuario; puntuar un episodio no la deshace.
 async function rollAndMaybeClose(
   supabase: SupabaseServerClient,
   userId: string,
   seriesId: string,
-  passId: string
+  passId: string,
+  addedProgress: boolean
 ): Promise<void> {
   const { reachedEnd } = await rollSeriesProgress(supabase, userId, seriesId, passId);
   revalidateReadingLog("series", seriesId);
-  if (reachedEnd) {
-    await applyTransition(supabase, userId, "series", seriesId, "completed");
-    revalidateReadingLog("series", seriesId);
-    redirect(`${itemHref("series", seriesId)}?cerrar=${passId}&tab=log`);
-  }
+  if (!reachedEnd || !addedProgress) return;
+  if (!(await isAutoCloseable(supabase, passId, userId))) return;
+
+  await applyTransition(supabase, userId, "series", seriesId, "completed");
+  revalidateReadingLog("series", seriesId);
+  redirect(`${itemHref("series", seriesId)}?cerrar=${passId}&tab=log`);
 }
 
 // Marca / desmarca un episodio como visto EN EL PASE ACTIVO. Marcar no pisa
@@ -85,8 +96,16 @@ export async function setEpisodeWatched(
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
 
+  let addedProgress = false;
   if (watched) {
-    await markEpisodeWatched(supabase, user.id, seriesId, passId, season, episode);
+    addedProgress = await markEpisodeWatched(
+      supabase,
+      user.id,
+      seriesId,
+      passId,
+      season,
+      episode,
+    );
     // Marcar un episodio no avisa a nadie: el aviso lo emitiría un post
     // kind='watched', y hoy NADIE crea posts de ese kind (no existe «compartir
     // episodio»). Ver issue #626 (github.com/borjar20/Biblioshare).
@@ -101,7 +120,8 @@ export async function setEpisodeWatched(
     if (error) throw error;
   }
 
-  await rollAndMaybeClose(supabase, user.id, seriesId, passId);
+  // Desmarcar NUNCA cierra: `addedProgress` se queda en false.
+  await rollAndMaybeClose(supabase, user.id, seriesId, passId, addedProgress);
 }
 
 // Pone (o actualiza) nota y/o reseña de un episodio EN EL PASE ACTIVO.
@@ -156,5 +176,7 @@ export async function rateEpisode(
     if (error) throw error;
   }
 
-  await rollAndMaybeClose(supabase, user.id, seriesId, passId);
+  // Puntuar un episodio YA visto no es progreso: solo cuenta si la puntuación
+  // acaba de crear la fila (puntuar implica visto).
+  await rollAndMaybeClose(supabase, user.id, seriesId, passId, !existing);
 }

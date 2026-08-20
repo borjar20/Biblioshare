@@ -151,6 +151,35 @@ export async function hydrateItems(
     });
   }
 
+  // Progreso de serie: cuántos episodios lleva vistos EN ESTE PASE. La posición
+  // del pase NO sirve de numerador — `rollSeriesProgress` guarda
+  // `{season, episode}` con numeración POR TEMPORADA, así que T3E2 se leía como
+  // "2" contra el total de la serie y la tarjeta decía «2/60» (#715). El rail de
+  // la ficha ya contaba bien porque cuenta `episode_watches`; esto es lo mismo,
+  // batched para todas las series del lote.
+  //
+  // Se traen las filas y se cuentan en memoria en vez de pedirle a Postgres un
+  // `group by`: PostgREST no agrega sin RPC, y el volumen está acotado por los
+  // episodios vistos de las series que caben en una página de biblioteca.
+  const seriesPassIds = [...activePassByKey.entries()]
+    .filter(([itemKey]) => itemKey.startsWith("series:"))
+    .map(([, pass]) => pass.id);
+
+  const watchedByPassId = new Map<string, number>();
+  if (seriesPassIds.length > 0) {
+    const { data: watchRows } = await supabase
+      .from("episode_watches")
+      .select("pass_id")
+      .eq("user_id", userId)
+      .in("pass_id", seriesPassIds);
+    for (const row of watchRows ?? []) {
+      // `pass_id` es nullable: las filas legadas (anteriores al hub) no cuelgan
+      // de ningún pase y no cuentan para el progreso de ESTE.
+      if (!row.pass_id) continue;
+      watchedByPassId.set(row.pass_id, (watchedByPassId.get(row.pass_id) ?? 0) + 1);
+    }
+  }
+
   // Todos los pases (de cualquier obra en este lote, abiertos y cerrados) de
   // este usuario, batched — cheaper than one query per entry. See
   // docs/REQUIREMENTS.md §7.13. item_type/item_id ya son columnas propias del
@@ -241,6 +270,8 @@ export async function hydrateItems(
         publisher: meta.publisher,
         pageCount,
         totalEpisodes: meta.totalEpisodes,
+        watchedEpisodes:
+          key.item_type === "series" ? (watchedByPassId.get(activePass.id) ?? 0) : null,
         rereadCount: rereadCountByItem.get(itemKey) ?? 0,
         pinnedOrder: activePass.pinnedOrder,
         activePassId: activePass.id,

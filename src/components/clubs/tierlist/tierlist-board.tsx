@@ -5,7 +5,8 @@ import type { ComponentType, ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -50,7 +51,18 @@ export function TierlistBoard({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+  // MouseSensor + TouchSensor en vez de PointerSensor (#723): con el sensor de
+  // puntero el arrastre arranca al PRIMER píxel, y como cada portada lleva
+  // `touch-action:none` el navegador ya ha cedido el gesto -- bajar con el
+  // pulgar por la bandeja «sin colocar» arrastraba en vez de scrollear. Es el
+  // par que recomienda la doc legacy de dnd-kit para convivir con el scroll
+  // táctil: el ratón arranca por distancia, el dedo exige mantener pulsado y
+  // aborta si se mueve más de la tolerancia (= estaba scrolleando).
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
 
   useEffect(() => {
     startTransition(async () => {

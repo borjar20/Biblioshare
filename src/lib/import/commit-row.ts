@@ -40,6 +40,12 @@ function mostRecentDate(dates: ImportDiaryDate[]): ImportDiaryDate | null {
   return [...dates].sort((a, b) => a.finishedOn.localeCompare(b.finishedOn)).at(-1)!;
 }
 
+// Mismo criterio (y mismo UTC) que apply-transition.ts al cerrar un pase a
+// mano: la fecha de cierre por defecto es hoy.
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 // Same idiom as add-existing-item.ts/buscar/actions.ts: a unique-violation on
 // insert means the row is already in the user's library (ya tiene pase
 // activo para esta obra), no un error real — se busca su id para que
@@ -52,10 +58,21 @@ async function ensureActivePass(
   row: ImportRow
 ): Promise<ActivePassResult> {
   const position: Position = row.bookFormat ? { format: row.bookFormat } : {};
-  const historical =
-    (row.status === "completed" || row.status === "dropped")
-      ? mostRecentDate(row.diaryDates)
-      : null;
+  const isClosedStatus = row.status === "completed" || row.status === "dropped";
+  const historical = isClosedStatus ? mostRecentDate(row.diaryDates) : null;
+
+  // Invariante del esquema: `finished_on IS NULL` ⟺ pase abierto (#714). Un
+  // CSV de Goodreads con *Exclusive Shelf = read* y *Date Read* VACÍA traía un
+  // `completed` sin fechas, y toda la app aguas abajo (log-panel, get-passes)
+  // lo leía como lectura EN CURSO — al releer la obra quedaban dos pases
+  // abiertos de facto.
+  //
+  // Se cierra con la fecha de importación en vez de degradar el estado a
+  // `planned`: el usuario AFIRMÓ que lo había leído, y perder ese dato es peor
+  // que no saber el día exacto. La fecha inventada no entra en el diario como
+  // relectura —`diaryDates` sigue teniendo solo fechas reales del CSV—, solo
+  // cierra el pase activo. Ver decisiones.md (2026-08-20).
+  const finishedOn = historical?.finishedOn ?? (isClosedStatus ? today() : null);
 
   const { data: inserted, error } = await supabase
     .from("passes")
@@ -68,7 +85,7 @@ async function ensureActivePass(
       position,
       rating: row.rating,
       started_on: historical?.startedOn ?? null,
-      finished_on: historical?.finishedOn ?? null,
+      finished_on: finishedOn,
       // Mismo valor por defecto que abrir un pase a mano (Hallazgo 3): sin
       // esto, el default de columna (false) dejaba el pase importado fuera
       // del feed de quien te sigue.
@@ -136,7 +153,7 @@ async function addHistoricalPasses(
       .maybeSingle();
     if (existing) continue;
 
-    await supabase.from("passes").insert({
+    const { error } = await supabase.from("passes").insert({
       user_id: userId,
       item_type: itemType,
       item_id: itemId,
@@ -149,6 +166,13 @@ async function addHistoricalPasses(
       is_public: true,
       created_at: historicalCreatedAt(date),
     });
+    // 23505 = el índice `passes_one_pass_per_day` acaba de rechazar un pase que
+    // ya existía para esa obra y ese día. Es el mismo «ya estaba» que busca el
+    // `select` de arriba, solo que ganado por otra importación concurrente: la
+    // comprobación previa es read-then-write y dos imports simultáneos del
+    // mismo CSV la atraviesan los dos (#720). Se traga igual que en
+    // ensureActivePass y apply-transition.
+    if (error && error.code !== "23505") throw error;
   }
 }
 
@@ -185,6 +209,7 @@ async function commitPasses(
     title: row.title,
     outcome: activeResult.isNew ? "imported" : "duplicate",
     unknownStatus: row.unknownStatusLabel ?? undefined,
+    itemId,
   };
 }
 

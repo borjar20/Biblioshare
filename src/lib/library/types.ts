@@ -20,6 +20,11 @@ export type LibraryItem = {
   pageCount: number | null;
   // Series-only metadata (null otherwise): total episode count, for progress bars.
   totalEpisodes: number | null;
+  // Series-only (null otherwise): episodios vistos EN EL PASE ACTIVO, contados
+  // desde `episode_watches`. Es el numerador del progreso: `position.episode`
+  // NO vale, va numerado por temporada y `totalEpisodes` es de la serie entera
+  // (#715).
+  watchedEpisodes: number | null;
   // Nº de pases (`passes`) de esta obra. See docs/requirements/data-model.md.
   rereadCount: number;
   // NULL = not pinned to the public profile. See docs/REQUIREMENTS.md §7.9.

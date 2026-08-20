@@ -384,3 +384,74 @@ son mecánicos; estas cuatro no, y por eso se registran.
 (#654). Se comprobó regenerando desde dev y comparando byte a byte: idéntico, y `next build`
 sale en verde. El drift que describía la issue lo cerró #674 al arreglar `core.ts` y
 `event-follow-actions.ts`; el diagnóstico «hay que auditar el drift acumulado» ya no aplica.
+
+---
+
+## 2026-08-20 — Barrida de las acciones 3-5 del roadmap: seis decisiones que no son obvias
+
+Ejecución de las acciones 3 (importador), 4 (serie) y 5 (triviales de móvil) del roadmap P1 de
+`docs/audit/AUDIT-2026-08.md`, más el barrido de `pg_temp` de la acción 2.
+
+1. **Un `completed` importado sin fecha se cierra con la fecha de IMPORTACIÓN, no se degrada a
+   `planned` (#714).** Un CSV de Goodreads con *Exclusive Shelf = read* y *Date Read* vacía traía
+   un pase cerrado sin `finished_on`, que la app entera —que define «pase abierto» como
+   `finished_on IS NULL`— leía como lectura en curso. Había que elegir qué dato sacrificar: el
+   estado que el usuario afirmó («lo leí») o el día exacto, que no consta en ninguna parte.
+   **Manda el estado.** La fecha inventada NO entra en el diario como relectura: `diaryDates`
+   sigue conteniendo solo fechas reales del CSV, y el relleno solo cierra el pase activo.
+
+2. **El panel de comunidad de una serie mezcla las dos fuentes de reseña, y el discriminante deja
+   de ser la presencia del prop (#713).** Antes elegía rama con `episodeReviews !== undefined`, y
+   como la ficha pasaba siempre el array —aunque viniera vacío— la rama de reseñas de pase era
+   código muerto: lo que el usuario escribía al cerrar el pase de una serie se guardaba y no
+   aparecía nunca. Se normalizan ambas listas a la misma forma y se ordenan por fecha; el chip
+   («S3E2 · título» vs. etiqueta de edición) es lo que las distingue a la vista. La lección que
+   se queda: **usar `undefined` como discriminante de rama convierte cualquier `?? []` de más en
+   una desaparición silenciosa de datos.**
+
+3. **El progreso de serie en tarjetas cuenta `episode_watches`, no `position.episode` (#715).**
+   La posición va numerada POR TEMPORADA y `totalEpisodes` es de la serie entera, así que T3E2 de
+   una serie de 60 salía como «2/60». Se añade `watchedEpisodes` a `LibraryItem`, batched en una
+   consulta por lote. **No se cambia `position` a numeración absoluta**, que era la solución
+   aparentemente obvia: esa posición la escriben y leen el auto-cierre, el reanudar y las
+   sesiones, y la numeración por temporada es la que enseña la pestaña de episodios.
+
+4. **El auto-cierre exige delta positivo Y pase abierto (#716).** `reachedEnd` solo dice «el
+   episodio más avanzado de este pase es el último del catálogo», y eso **sigue siendo cierto
+   después de cerrar**: por eso desmarcar un episodio intermedio, o puntuar el final ya visto,
+   volvía a disparar `completed` — incluso sobre un pase `dropped`, que resucitaba con
+   `finished_on` = hoy. Dos guardas: `markEpisodeWatched` devuelve si creó fila (delta real), y
+   el nuevo helper `isAutoCloseable` prohíbe cerrar lo que ya está `dropped` o `completed`. La
+   segunda guarda se aplica también al auto-cierre de `addSession`, donde podía pisar un
+   `dropped` elegido por el usuario en la misma hoja.
+
+5. **Los controles del mapa de universo suben a la esquina superior derecha, no «por encima de la
+   leyenda» (#722).** El informe proponía anclarlos sobre la leyenda; se descarta porque la
+   altura de la leyenda depende del contenido del grafo y cualquier offset fijo vuelve a romperse
+   con otro grafo. La esquina superior derecha está libre siempre y solo hay que bajar del
+   header. De paso los botones pasan de 26px (default de React Flow) a 40px.
+
+6. **El auto-zoom de iOS se arregla con una regla global de 16px, no componente a componente
+   (#724).** El disparador es el valor calculado de `font-size`, no la clase: mientras el arreglo
+   viva en `ui/input.tsx`, cualquier campo nuevo que nazca con `text-sm` vuelve a traer el bug. Se
+   excluyen checkbox/radio/range (ahí la `font-size` no dispara zoom y sí altera el dibujo).
+   `user-scalable=no` queda descartado: mata el zoom de accesibilidad para todos.
+
+**Y tres que se decidieron NO hacer (todavía):**
+
+- **El CHECK `finished_on >= started_on` no entra** con el de estado⟺fechas. Prod tiene **167 de
+  407 pases (41 %)** con la fecha de inicio posterior a la de fin —`started_on` = el día de una
+  importación, `finished_on` = la fecha real de lectura—, así que ponerlo exige reescribir datos
+  reales del usuario. Medido y abierto como issue #729 con las dos salidas posibles.
+- **El índice único «un pase por obra y día» (#720) se queda pendiente** de decidir si se borran
+  los 12 pases duplicados de dev (ruido de una sesión de pruebas del 2026-07-15, cada uno con
+  sesión y post colgando). El CHECK de #719 sí entra, porque sale en verde en las dos bases.
+- **S2-05 (revoke de INSERT en `credits`/`people`/`series_episodes`) no es un revoke, es un
+  rewire** (#725). Esas tres tablas las escribe hoy el **cliente de la petición**
+  (`ensureSeriesEpisodes`, `enrich-item`, `find-or-create-person`), así que revocar sin mover
+  antes las escrituras a RPC `SECURITY DEFINER` deja al usuario normal sin hidratar episodios ni
+  reparto — el modo de fallo exacto de #699, invisible si se prueba con una cuenta admin.
+
+**Corrección de diagnóstico (S2-19, #726):** las funciones `SECURITY DEFINER` que desvían de la
+plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS estricto que
+`public, pg_temp` (cualifican cada nombre a mano); pasarlas a la plantilla las empeoraría.

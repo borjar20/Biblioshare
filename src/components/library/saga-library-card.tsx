@@ -34,7 +34,11 @@ export async function SagaLibraryCard({ card }: { card: LibrarySagaCardData }) {
     : "bg-muted-foreground";
 
   return (
-    <article className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
+    // `min-w-0`: como celda de grid vale `min-width:auto` y la tarjeta se
+    // negaba a encoger, estirando la pestaña entera a 438px en un viewport de
+    // 360 (#721). Los `truncate` de dentro ya estaban puestos; lo que faltaba
+    // era permitir que la celda bajara del ancho de su contenido.
+    <article className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="flex items-start gap-3">
         {/* Las portadas del abanico son decorativas (alt=""): sin este
             aria-label el enlace queda sin nombre accesible. */}

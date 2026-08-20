@@ -725,3 +725,24 @@ body {
     animation: none;
   }
 }
+
+/* iOS: Safari hace auto-zoom al enfocar cualquier campo cuya `font-size` sea
+   MENOR de 16px, y al cerrar el teclado deja la página ampliada y desplazada
+   (#724). Los componentes del sistema van a `text-sm` (14px) y las textareas
+   incluso a 12px, así que pasaba en TODOS los formularios de la app. No se ve
+   en el emulador Android — por eso sobrevivió tanto.
+
+   Se arregla aquí y no componente a componente porque el disparador es el
+   valor calculado, no la clase: cualquier campo nuevo que naciera con
+   `text-sm` volvería a traer el bug. `user-scalable=no` en el viewport NO es
+   alternativa: mata el zoom de accesibilidad para todo el mundo.
+
+   Se excluyen los controles sin texto (checkbox, radio, range): ahí la
+   `font-size` no dispara el zoom y sí puede alterar el dibujo. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
-import { getActivePass } from "@/lib/passes/get-passes";
+import { getActivePass, isAutoCloseable } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import { todayISO } from "@/lib/stats/dates";
 import { getEditions } from "@/lib/editions/get-editions";
@@ -286,7 +286,11 @@ export async function addSession(
       "page" in sessionPosition &&
       sessionPosition.page === maxPosition) ||
     seriesReachedEnd;
-  if (reachedEnd) {
+  // `isAutoCloseable` (#716, mismo criterio que la pestaña Episodios): si el
+  // usuario acaba de elegir `dropped` en ESTA misma hoja, el auto-cierre no
+  // puede pisarlo con un `completed`. Alcanzar el final y abandonar son dos
+  // afirmaciones sobre el mismo pase, y manda la que hizo el usuario a mano.
+  if (reachedEnd && (await isAutoCloseable(supabase, passId, user.id))) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);
     return { ok: true, passClosed: true };

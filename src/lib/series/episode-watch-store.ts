@@ -55,8 +55,8 @@ export async function markEpisodeWatched(
   passId: string,
   season: number,
   episode: number
-): Promise<void> {
-  if (!(await episodeExists(supabase, seriesId, season, episode))) return;
+): Promise<boolean> {
+  if (!(await episodeExists(supabase, seriesId, season, episode))) return false;
 
   const { data: existing } = await supabase
     .from("episode_watches")
@@ -66,7 +66,10 @@ export async function markEpisodeWatched(
     .eq("season_number", season)
     .eq("episode_number", episode)
     .maybeSingle();
-  if (existing) return;
+  // Ya estaba visto: no hay progreso NUEVO que registrar. Se devuelve `false`
+  // para que el llamante sepa que este gesto no avanzó nada y no dispare el
+  // auto-cierre (#716).
+  if (existing) return false;
 
   const { error } = await supabase.from("episode_watches").insert({
     user_id: userId,
@@ -76,6 +79,9 @@ export async function markEpisodeWatched(
     episode_number: episode,
   });
   if (error && error.code !== "23505") throw error;
+  // 23505 = otra pestaña lo insertó primero: la fila existe, pero no la creó
+  // ESTE gesto, así que tampoco cuenta como progreso nuevo.
+  return !error;
 }
 
 // Hace rodar la posición del PASE (Tarea 8, hub) al episodio visto más

@@ -154,3 +154,83 @@ describe("commitImportRow — pases históricos e importación con relecturas", 
     expect(insertedRows[0]!.created_at).toBeUndefined();
   });
 });
+
+// #714: `finished_on IS NULL` ⟺ pase abierto. El importador era el camino por
+// el que entraban los estados imposibles (Goodreads con *Date Read* vacía).
+describe("commitImportRow — invariante estado ⟺ fechas", () => {
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("un completed SIN fechas en el CSV se cierra con la fecha de importación, no con null", async () => {
+    const { client, insertedRows } = createFakeSupabase();
+
+    await commitImportRow(client as never, "user-1", "book", baseRow({ diaryDates: [] }));
+
+    expect(insertedRows).toHaveLength(1);
+    const active = insertedRows[0]!;
+    expect(active.status).toBe("completed");
+    expect(active.finished_on).toMatch(ISO_DATE);
+    // El estado se respeta: no se degrada a `planned` para esquivar el
+    // invariante — el usuario afirmó haberlo leído.
+    expect(active.started_on).toBeNull();
+  });
+
+  it("lo mismo con dropped", async () => {
+    const { client, insertedRows } = createFakeSupabase();
+
+    await commitImportRow(
+      client as never,
+      "user-1",
+      "book",
+      baseRow({ status: "dropped", diaryDates: [] }),
+    );
+
+    expect(insertedRows[0]!.status).toBe("dropped");
+    expect(insertedRows[0]!.finished_on).toMatch(ISO_DATE);
+  });
+
+  it("un pase ABIERTO sigue naciendo sin fecha de cierre", async () => {
+    const { client, insertedRows } = createFakeSupabase();
+
+    await commitImportRow(
+      client as never,
+      "user-1",
+      "book",
+      baseRow({ status: "in_progress", diaryDates: [] }),
+    );
+
+    expect(insertedRows[0]!.status).toBe("in_progress");
+    expect(insertedRows[0]!.finished_on).toBeNull();
+  });
+
+  it("planned tampoco: ni fecha de cierre ni estado tocado", async () => {
+    const { client, insertedRows } = createFakeSupabase();
+
+    await commitImportRow(
+      client as never,
+      "user-1",
+      "book",
+      baseRow({ status: "planned", diaryDates: [] }),
+    );
+
+    expect(insertedRows[0]!.status).toBe("planned");
+    expect(insertedRows[0]!.finished_on).toBeNull();
+  });
+
+  it("con fecha real en el CSV manda la fecha real, no la de importación", async () => {
+    const { client, insertedRows } = createFakeSupabase();
+
+    await commitImportRow(
+      client as never,
+      "user-1",
+      "book",
+      baseRow({ diaryDates: [{ startedOn: "2019-01-01", finishedOn: "2019-01-20" }] }),
+    );
+
+    expect(insertedRows[0]!.finished_on).toBe("2019-01-20");
+    expect(insertedRows[0]!.started_on).toBe("2019-01-01");
+  });
+});
