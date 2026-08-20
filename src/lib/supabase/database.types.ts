@@ -2779,10 +2779,13 @@ export type Database = {
       has_voted_in_club_poll: { Args: { p_post_id: string }; Returns: boolean }
       hydrate_book: {
         Args: {
+          p_author?: string
           p_book_id: string
           p_cover_url?: string
           p_genres?: string[]
+          p_published_year?: number
           p_synopsis?: string
+          p_title?: string
         }
         Returns: undefined
       }

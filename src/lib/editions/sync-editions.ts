@@ -41,6 +41,10 @@ export async function ensureBookEditions(
     // 2. Sin work key propia: se intenta resolver por ISBN (caso de las
     // altas antiguas, de cuando el catálogo usaba Google Books) y, si se
     // resuelve, se guarda para no tener que repetir esta resolución.
+    //
+    // El error del update se ignora a propósito, incluido el 23505 que puede
+    // dar desde #730 si esa work key ya es de otra fila del catálogo: la
+    // sincronización sigue con la key en memoria, solo se pierde el atajo.
     if (!workKey && book.isbn) {
       workKey = await resolveWorkKey(book.isbn);
       if (workKey) {

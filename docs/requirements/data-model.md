@@ -138,9 +138,11 @@ son de una tirada, no de la obra.
 
 Las escrituras de esos peldaños pasan por RPCs `SECURITY DEFINER`, no por UPDATE directo:
 **`hydrate_book`** (`20260715_book_hydration.sql`; `revoke` a `anon` en
-`20260715_book_hydration_revoke_anon.sql`) rellena sinopsis/géneros/portada **solo donde la
-fila estaba vacía** — cualquier `authenticated` completa una obra hueca al abrir su ficha sin
-poder pisar lo que un colaborador curó a mano — y **`register_book_edition`**
+`20260715_book_hydration_revoke_anon.sql`; firma ampliada en
+`20260871_hydrate_book_title_author.sql`) rellena
+**título/autor/año**/sinopsis/géneros/portada **solo donde la fila estaba vacía** — cualquier
+`authenticated` completa una obra hueca al abrir su ficha sin poder pisar lo que un colaborador
+curó a mano — y **`register_book_edition`**
 (`20260714_editions_c_register.sql`) registra la tirada concreta en `book_editions`. En dev
 existen además **`hydrate_movie` / `hydrate_series` / `hydrate_screens_bulk`** y
 **`register_catalog_item` / `register_catalog_items_bulk`** con el mismo patrón, pero **sin
@@ -247,6 +249,38 @@ escribible por el primero que lo diera de alta. Alta y hidratación se separan e
 no volver a preguntar al proveedor. **Grant `update (hydrated_at) on movies/series to
 authenticated`** en la misma migración — sin él la RPC fill-only fallaría en silencio para
 cualquier `user` que abriera la ficha (issue #375, DRIFT-CHECK superficie 6).
+
+**Los dos defectos que la rama de LIBRO arrastró desde #674 (arreglados el 2026-08-20, #730).**
+La pieza se probó con películas y a los libros les faltaban las dos mitades:
+
+1. **El alta no funcionaba en absoluto.** `register_catalog_item` hace
+   `on conflict (openlibrary_work_key)`, pero esa columna **no tenía ningún índice único**
+   detrás — solo `books_openlibrary_work_key_idx`, normal y parcial. `ON CONFLICT (col)` exige
+   un índice único para inferir árbitro, así que Postgres devolvía **42P10 siempre**: dar de
+   alta un libro nuevo desde `/buscar` era un **500 determinista** en producción, no una
+   carrera. Las ramas de película y serie no se veían afectadas porque `movies_tmdb_id_key` y
+   `series_tmdb_id_key` **sí** son `UNIQUE`. Arreglo:
+   `20260870_books_openlibrary_work_key_unique.sql` crea
+   `books_openlibrary_work_key_key` **sin predicado** (con un único parcial habría que repetir
+   el `where` en cada `on conflict`; los NULL no chocan entre sí en un índice único, así que
+   los libros de alta manual siguen pudiendo ser muchos) y retira el parcial. La misma
+   migración fusiona los duplicados que el defecto ya había dejado — prod tenía uno,
+   `/works/OL453658W`. Esto cierra también **#682**, que pedía justo esta unicidad.
+2. **Y lo que se daba de alta salía sin título.** `hydrate_book` recibía sinopsis, géneros y
+   portada, pero **no `p_title`** — al revés que `hydrate_movie`/`hydrate_series`, que sí lo
+   reciben. Como la shell nace vacía desde #674 y la RPC **sí marcaba `hydrated_at`**, la ficha
+   se quedaba en «Sin título» **de forma permanente**: el curador no reintenta lo que ya está
+   marcado hidratado. Medido en dev: `title=NULL author=NULL synopsis=<puesta>
+   hydrated_at=<puesto>`. Arreglo: `20260871_hydrate_book_title_author.sql` añade
+   `p_title`/`p_author`/`p_published_year` con el mismo criterio fill-only, y `fetchWork`
+   (`src/lib/catalog/openlibrary/work-detail.ts`) pasa a leer `title`, las claves de autor y
+   `first_publish_date` del JSON del work — campos que ya venían en la respuesta y que nadie
+   miraba. **El segundo defecto solo se ve una vez arreglado el primero**: mientras el alta
+   reventaba, no había libro nuevo que mirar.
+
+⚠️ **Al ampliar una RPC, `drop function` ANTES del `create or replace`.** Con una firma
+distinta, `create or replace` **no reemplaza: crea una sobrecarga**, y PostgREST se queda con
+dos `hydrate_book` sin saber cuál llamar.
 
 **Semántica de la hidratación: FILL-ONLY pura, no "autoritativa-si-no-hidratada".** El spec
 original (§3c) pedía que una shell sin hidratar (`hydrated_at IS NULL`) aceptara una escritura
