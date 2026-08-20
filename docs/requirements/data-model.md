@@ -326,7 +326,9 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   solo TypeScript: constraint `passes_status_dates`
   (`20260868_passes_state_dates_invariant.sql`, **aplicada y verificada en DEV** contra
   `pg_constraint` — probada además insertando un `completed` sin fecha, que sale con
-  `check_violation`; **PROD pendiente del merge**).
+  `check_violation`; **aplicada y verificada también en PROD el 2026-08-20**, con la
+  misma prueba: un `completed` sin fecha sale con `check_violation` y la transacción
+  aborta sola).
 
   ```sql
   CHECK ((status in ('completed','dropped')) = (finished_on is not null))
@@ -464,8 +466,8 @@ a propósito: al resolver, crea la entrada y los pases **para el DUEÑO de la fi
 el revisor — un INSERT con `user_id` ajeno que la RLS de dueño no permitiría.
 
 ✅ **El hueco de fechas que compartía con el importador está cerrado** (#714, migración
-`20260868_passes_state_dates_invariant.sql`, **aplicada y verificada en DEV, prod pendiente del
-merge**): cuando el CSV no trae fecha y el estado es `completed`/`dropped`, cierra con
+`20260868_passes_state_dates_invariant.sql`, **aplicada y verificada en DEV y en PROD el
+2026-08-20** contra `pg_proc.proconfig` y `pg_constraint`): cuando el CSV no trae fecha y el estado es `completed`/`dropped`, cierra con
 `current_date` en vez de dejar `finished_on` a NULL — mismo criterio que `commit-row.ts`. De
 paso pasó a `search_path = public, pg_temp`.
 
@@ -2839,7 +2841,8 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
   secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda.
 
   **Estado medido en dev el 2026-08-20, tras el barrido de #726
-  (`20260869_secdef_search_path_pg_temp.sql`, PROD PENDIENTE del merge):**
+  (`20260869_secdef_search_path_pg_temp.sql`, **aplicado y verificado en DEV y en PROD**
+  ese mismo día — en prod la consulta de deriva de abajo devuelve 0):**
 
   | `search_path` | funciones | ¿correcto? |
   |---|---|---|

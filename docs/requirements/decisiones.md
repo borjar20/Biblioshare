@@ -455,3 +455,23 @@ Ejecución de las acciones 3 (importador), 4 (serie) y 5 (triviales de móvil) d
 **Corrección de diagnóstico (S2-19, #726):** las funciones `SECURITY DEFINER` que desvían de la
 plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS estricto que
 `public, pg_temp` (cualifican cada nombre a mano); pasarlas a la plantilla las empeoraría.
+
+---
+
+## 2026-08-20 (tarde) — Dos correcciones al cerrar la barrida
+
+1. **Una variante arbitraria de Tailwind NO sirve para apuntar a una clase con guiones
+   bajos.** `[&_.react-flow__controls-button]:h-10` compila a
+   `.react-flow controls-button`: dentro de un valor arbitrario, Tailwind traduce cada `_`
+   a un ESPACIO (es su forma de escribir combinadores). La regla se emite y no pinta nada,
+   así que el arreglo de tamaño de #722 estuvo un rato dado por hecho **estando roto** —
+   la parte de posición sí funcionaba porque va en un `style` inline. Se lleva a
+   `globals.css` como CSS plano en vez de escapar los guiones (`\_\_`): la trampa está en
+   la sintaxis de Tailwind, no en el CSS. **No se ve leyendo el código, solo el CSS
+   servido**; salió comprobando el bundle de producción tras el deploy.
+
+2. **Verificar un despliegue mirando el estado de GitHub no basta.** El check de Vercel
+   dio «success» un minuto después del merge y el alias seguía sirviendo un bundle sin una
+   de las reglas nuevas (y con `x-vercel-cache: HIT` de por medio). La comprobación que sí
+   vale es buscar en el CSS/HTML servido un marcador que **solo exista en el cambio nuevo**
+   — aquí, el selector de los controles del mapa y la regla de 16px de #724.
