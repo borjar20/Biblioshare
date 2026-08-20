@@ -57,7 +57,9 @@ export async function getPersonProfile(
     .maybeSingle();
   if (!row) return null;
 
-  const enriched = await enrichTmdbBio(supabase, row as unknown as PersonRow);
+  // Ya no recibe el cliente de la petición: desde #725 la escritura de la bio va
+  // con service_role, como el resto del catálogo derivado del proveedor.
+  const enriched = await enrichTmdbBio(row as unknown as PersonRow);
 
   const hydratable = {
     id: enriched.id,

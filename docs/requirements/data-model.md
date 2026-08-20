@@ -159,6 +159,38 @@ Ojo al escribir en lote: un `insert` con una sola fila ya presente falla **enter
 no inserta ninguna de las nuevas — por eso `hydratePersonCredits` va por `upsert` con
 `ignoreDuplicates`.
 
+🔒 **`people`, `credits` y `series_episodes` son de SOLO LECTURA para `anon` y
+`authenticated` desde el 2026-08-20** (`20260875_catalog_people_credits_episodes_readonly.sql`,
+#725). Hasta entonces sus tres policies de INSERT eran `with check (true)`: con una sesión
+normal y un POST a PostgREST se podía colgar de cualquier persona una filmografía inventada,
+crear personas que no existen o inventar episodios — y lo veía todo el mundo, porque el catálogo
+es compartido. **#674 cerró esto mismo para `movies`/`series`/`books` y estas tres se quedaron
+fuera.**
+
+El arreglo tiene dos mitades y **el orden importa**:
+
+1. **Código primero.** Las cinco funciones que escribían aquí con el cliente de la petición
+   pasan a escribir con **`createServiceRoleClient()`**: `ensure-series-episodes.ts`,
+   `find-or-create-person.ts` (×2), `get-person.ts`, `hydrate-person-credits.ts` (×2) y
+   `enrich-item.ts` (×2). El argumento es el mismo que ya se aplicó a las sagas de TMDB
+   (#675): **estas filas las deriva el servidor del proveedor** y ni un campo viene del
+   cliente, así que el hecho lo respalda el servidor.
+2. **Base después.** Se caen las policies `* insertable` y `people bio enrichable`, y se
+   revocan `insert/update/delete` —incluidos los grants POR COLUMNA de `people`— a
+   `anon`/`authenticated`. El SELECT no se toca.
+
+**Aplicarlo al revés rompe en SILENCIO**: las cinco escrituras son best-effort, así que ninguna
+ficha da 500 — la rejilla de episodios se queda vacía para siempre y el reparto no se escribe
+nunca. Es el modo de fallo exacto de #699, invisible con una cuenta admin.
+
+**Cambio de comportamiento buscado:** un visitante **anónimo** ahora también hidrata. Antes su
+escritura moría con 42501 y la ficha se quedaba a medias hasta que pasara alguien con sesión.
+Sigue acotado por los guards de siempre (`credits_hydrated_at`, el `count` de episodios): una
+vez por ficha.
+
+El trigger `enforce_people_enrich_only` (fill-only en UPDATE) **se queda**, aunque ya no haya
+ninguna policy de UPDATE que lo alcance: es la red por si alguien vuelve a abrir una.
+
 ⚠️ **La referencia de `credits` a la obra es POLIMÓRFICA y por tanto NO hay FK** — el mismo
 agujero que tenía `passes` (issue #272), pero `credits` **se quedó fuera** del trigger
 `private.forbid_delete_with_passes`. Resultado: hay filas de `credits` apuntando a obras que

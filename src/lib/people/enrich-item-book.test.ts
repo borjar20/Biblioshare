@@ -1,4 +1,15 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
+
+// #725: las escrituras de `people` y `credits` ya no van con el cliente de la
+// petición sino con service_role — son catálogo global y su INSERT estaba
+// abierto a cualquier `authenticated`. El doble se comparte entre los dos
+// clientes a propósito: así las aserciones sobre `upserted` siguen mirando lo
+// que importa, qué filas se escriben.
+const mocks = vi.hoisted(() => ({ service: null as unknown }));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: () => mocks.service,
+}));
+
 import { ensureItemEnriched } from "./enrich-item";
 
 // La rama de libro ya no mira el string `books.author` para saber QUIÉN escribió
@@ -15,7 +26,7 @@ function fakeSupabase(
   upsertCalls?: UpsertCall[]
 ) {
   let insertCount = 0;
-  return {
+  const doble = {
     from(table: string) {
       return {
         select() {
@@ -50,10 +61,16 @@ function fakeSupabase(
       };
     },
   };
+
+  // El mismo doble sirve de cliente de la petición (lecturas) y de service_role
+  // (escrituras).
+  mocks.service = doble;
+  return doble;
 }
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  mocks.service = null;
 });
 
 describe("ensureItemEnriched · libros", () => {
@@ -130,7 +147,12 @@ describe("ensureItemEnriched · libros", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("si el upsert de créditos falla con 42501 (visitante anónimo), no lo registra", async () => {
+  // Antes este test afirmaba lo contrario: que un 42501 NO se registraba, porque
+  // era el visitante anónimo escribiendo con su propia sesión y el fallo era
+  // esperado. Desde #725 la escritura va con service_role, así que el anónimo
+  // también escribe y un 42501 dejó de ser un desenlace normal: si aparece, es
+  // que algo está mal configurado y hay que verlo en el log, no tragárselo.
+  it("un 42501 ya NO se silencia: con service_role no es un desenlace esperado (#725)", async () => {
     const fetchMock = vi.fn(async (input: unknown) => {
       const url = String(input);
       if (url.includes("/works/")) {
@@ -156,7 +178,7 @@ describe("ensureItemEnriched · libros", () => {
       }
     );
 
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 

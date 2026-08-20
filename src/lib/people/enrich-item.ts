@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { ItemType } from "@/lib/catalog/types";
 import { getMovieDetails, getSeriesDetails, type ScreenDetails } from "@/lib/catalog/tmdb";
 import { persistCollectionMembership } from "@/lib/sagas/persist-collection";
@@ -220,16 +221,15 @@ export async function ensureItemEnriched(
       // UPSERT y no INSERT: el autor puede estar ya puesto por la hidratación
       // de su ficha de persona.
       //
-      // 42501 = visitante anónimo, sin INSERT sobre `credits`. Esperado e
-      // inocuo: lo escribirá el primer visitante con sesión. Cualquier otro
-      // error SÍ se registra: esta es la escritura por la que existe todo
-      // este cambio, y antes se descartaba en silencio.
+      // #725: con service_role (ver la cabecera de `find-or-create-person.ts`).
+      // Ya no hay que tratar el 42501 del visitante anónimo: escribe él también,
+      // y la ficha deja de depender de que pase alguien con sesión.
       if (rows.length > 0) {
-        const { error } = await supabase.from("credits").upsert(rows, {
+        const { error } = await createServiceRoleClient().from("credits").upsert(rows, {
           onConflict: "item_type,item_id,person_id,role",
           ignoreDuplicates: true,
         });
-        if (error && error.code !== "42501") {
+        if (error) {
           console.error("book credits upsert failed", { id: item.id, count: rows.length, error });
         }
       }
@@ -281,7 +281,8 @@ export async function ensureItemEnriched(
       // el NORMAL: si esta película entró al catálogo desde la ficha de alguien,
       // esa persona ya tiene su crédito aquí, y aparece otra vez en la respuesta
       // de TMDB. Con el insert plano, el reparto entero se perdía en silencio.
-      const { error } = await supabase.from("credits").upsert(rows, {
+      // #725: con service_role, igual que la rama de libro de arriba.
+      const { error } = await createServiceRoleClient().from("credits").upsert(rows, {
         onConflict: "item_type,item_id,person_id,role",
         ignoreDuplicates: true,
       });

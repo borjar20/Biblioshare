@@ -551,3 +551,59 @@ plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS
    comprobó que `started_on` está en la lista de `authenticated` antes de añadir la escritura.
    Es la trampa del issue #375, y ya ha costado dos veces: compila, pasa el typecheck, pasa los
    unitarios y revienta en producción.
+
+6. **NO se pone el índice único «un pase por obra y día» que pedía F1-011/#720.** Se escribió
+   la migración, con una guarda que aborta si un grupo duplicado tiene nota o reseña en vez de
+   decidir por el usuario — y **la guarda saltó en dev**. Mirando por qué, el diagnóstico se
+   cae: las 14 filas duplicadas de dev no son una carrera entre importaciones, son cierres
+   sucesivos **con minutos de diferencia** (17:56, 18:05, 18:11…) de una tarde probando el hub
+   de pases. O sea, el caso legítimo que el índice prohibiría: **releer algo y volver a
+   cerrarlo el mismo día**, que es justo lo que hace el e2e `pase-hub` en una sola corrida.
+
+   Y fallaría **en silencio**: `apply-transition.ts:49` se traga el 23505 y devuelve
+   `closed: true` sin haber escrito nada, así que la UI encadenaría su hoja de cierre con el
+   pase todavía en curso. Tragarse ese error es correcto para «doble clic o dos pestañas»
+   —donde el estado final es el que el usuario quería— y no lo es aquí.
+
+   El problema original sigue en pie (`commit-row.ts` es un read-then-write sin nada detrás),
+   pero el arreglo tiene que ser un **candado por importación**, no un invariante global. Un
+   índice único solo sería viable si se pudiera distinguir «pase histórico importado» de «pase
+   cerrado a mano», y hoy no hay columna que lo diga.
+
+   La lección, que es la que vale para la próxima: **la guarda defensiva de una migración no
+   es burocracia — es lo que convierte un borrado silencioso en un diagnóstico.** Si la
+   migración hubiera borrado «los duplicados» sin preguntar, se habría llevado por delante la
+   evidencia y habría dejado el índice puesto rompiendo un camino real.
+
+---
+
+## 2026-08-20 (noche) — Cerrar el catálogo de personas, créditos y episodios (#725)
+
+1. **Service_role, no una RPC nueva.** El patrón del repo para esto es «RPC `SECURITY DEFINER`
+   + cliente service_role + sin EXECUTE para `authenticated`» (sagas TMDB, #675). Aquí se usa
+   solo la mitad del patrón —cliente service_role escribiendo directo— porque **una RPC no
+   compraría nada**: no lleva lógica que proteger (son inserts planos) y, si tuviera EXECUTE
+   para `authenticated`, movería el agujero en vez de cerrarlo (cualquiera podría llamarla con
+   filas inventadas). Lo que cierra el agujero es que la clave no sale del servidor.
+
+2. **El criterio para decidir si algo puede escribir con service_role: ¿de dónde sale el
+   dato?** Aquí, de TMDB y Open Library, por un id que el servidor ya tenía. Ni un campo viene
+   del cliente. Ese es el mismo argumento que justificó el service_role de las sagas, y es la
+   línea que hay que exigir la próxima vez — no «es cómodo».
+
+3. **Se revoca también el UPDATE de `people`, que la issue no pedía.** Sus grants por columna
+   (`bio`, `photo_url`, fechas…) existían para el enriquecimiento desde TMDB; movida esa
+   escritura a service_role, dejarlos puestos habría sido dejar el trabajo a medias: cualquier
+   autenticado podía seguir rellenando la biografía vacía de cualquier persona. El trigger
+   fill-only se queda como red, aunque ya no haya policy que lo alcance.
+
+4. **El anónimo pasa a hidratar, y es deliberado.** Antes su escritura moría con 42501 y la
+   ficha se quedaba a medias hasta que pasara alguien con sesión. Que la hidratación dependiera
+   de quién mira era el bug, no la protección: el catálogo es compartido. Sigue acotado por los
+   guards que ya existían, así que es una vez por ficha, no por visita.
+
+5. **El orden de despliegue es parte del arreglo, no un detalle de operaciones.** Aplicar la
+   migración antes del deploy no rompe ninguna página —las cinco escrituras son best-effort—
+   pero rompe **en silencio**: episodios que no se escriben nunca, reparto que no aparece. Es
+   el modo de fallo de #699 y no se ve probando con una cuenta admin. Por eso el orden está
+   escrito en la cabecera de la migración y no solo en la PR, que es lo que nadie relee.

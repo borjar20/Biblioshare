@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getPersonDetails } from "@/lib/catalog/tmdb";
 import type { Person } from "./types";
 
@@ -37,14 +38,18 @@ export function toPerson(row: PersonRow): Person {
 // Enriquece bio/foto/fechas de una persona de TMDB la primera vez que se abre su
 // ficha (los créditos solo guardan nombre+foto). Nunca lanza. Ver §7.34.
 export async function enrichTmdbBio(
-  supabase: SupabaseServerClient,
   row: PersonRow
 ): Promise<PersonRow> {
   if (row.bio || !row.tmdb_id) return row;
   try {
     const details = await getPersonDetails(row.tmdb_id);
     if (!details) return row;
-    const { data: updated } = await supabase
+    // #725: con service_role, como el resto de escrituras de catálogo derivadas
+    // del proveedor (ver la cabecera de `find-or-create-person.ts`). Antes iba
+    // con el cliente de la petición y el error ni se miraba, así que para un
+    // visitante anónimo esto fallaba en silencio y se volvía a pedir a TMDB en
+    // CADA visita.
+    const { data: updated } = await createServiceRoleClient()
       .from("people")
       .update({
         bio: details.bio ?? row.bio,

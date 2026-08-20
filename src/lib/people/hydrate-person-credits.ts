@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { ItemType, SearchResult } from "@/lib/catalog/types";
 import { getPersonCombinedCredits } from "@/lib/catalog/tmdb";
 import { fetchAuthorWorks } from "@/lib/catalog/openlibrary/author-books";
@@ -130,32 +131,40 @@ export async function hydratePersonCredits(
       // crédito que escribió ensureItemEnriched al abrir la ficha de una de sus
       // obras—. Con un insert plano, esa única fila repetida haría fallar el
       // lote ENTERO con 23505 y no se guardaría ninguna de las nuevas.
-      const { error } = await supabase
+      // #725: con service_role. `credits` es catálogo global y su INSERT estaba
+      // abierto a cualquier `authenticated` (`with check (true)`): se podía
+      // colgar de una persona una filmografía inventada que veía todo el mundo.
+      // Estas filas las deriva el SERVIDOR del proveedor; ninguna viene del
+      // cliente. Ver la cabecera de `find-or-create-person.ts`.
+      //
+      // Efecto secundario buscado: **un visitante ANÓNIMO también hidrata**.
+      // Antes su escritura moría con 42501 y la ficha se quedaba sin obra hasta
+      // que pasara alguien con sesión. Ahora la hidratación ya no depende de
+      // quién mire — que es justo lo que significa «catálogo compartido». Sigue
+      // acotada por el guard de `credits_hydrated_at`: una vez por persona.
+      const { error } = await createServiceRoleClient()
         .from("credits")
         .upsert(rows, {
           onConflict: "item_type,item_id,person_id,role",
           ignoreDuplicates: true,
         });
-      // 42501 = anónimo. Cualquier otro error sí se registra, y se corta antes
-      // de marcar: marcar tras un fallo dejaría la persona sin hidratar para
-      // siempre.
+      // Se corta antes de marcar: marcar tras un fallo dejaría la persona sin
+      // hidratar para siempre.
       if (error) {
-        if (error.code !== "42501") {
-          console.error("person credits upsert failed", {
-            personId: person.id,
-            count: rows.length,
-            error,
-          });
-        }
+        console.error("person credits upsert failed", {
+          personId: person.id,
+          count: rows.length,
+          error,
+        });
         return;
       }
     }
 
-    const { error: markError } = await supabase
+    const { error: markError } = await createServiceRoleClient()
       .from("people")
       .update({ credits_hydrated_at: new Date().toISOString() })
       .eq("id", person.id);
-    if (markError && markError.code !== "42501") {
+    if (markError) {
       console.error("credits_hydrated_at update failed", { personId: person.id, error: markError });
     }
   } catch (error) {

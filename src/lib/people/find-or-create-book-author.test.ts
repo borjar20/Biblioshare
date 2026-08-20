@@ -1,4 +1,15 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
+
+// #725: el INSERT en `people` ya no va con el cliente de la petición sino con
+// service_role (`people` es catálogo global y su INSERT estaba abierto a
+// cualquier `authenticated`). El doble se comparte entre los dos clientes a
+// propósito: así las aserciones sobre `inserted` siguen valiendo y el test no
+// deja de mirar lo que le importa — qué fila se escribe.
+const mocks = vi.hoisted(() => ({ service: null as unknown }));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: () => mocks.service,
+}));
+
 import { findOrCreateBookAuthorByKey } from "./find-or-create-person";
 
 // El caso que importa es el 23505. Hasta hoy, cuando dos grafías del mismo autor
@@ -19,7 +30,7 @@ function fakeSupabase(options: {
   let selectCount = 0;
   const inserted: Array<Record<string, unknown>> = [];
 
-  return {
+  const doble = {
     inserted,
     from() {
       return {
@@ -59,10 +70,16 @@ function fakeSupabase(options: {
       };
     },
   };
+
+  // El mismo doble sirve de cliente de la petición (lecturas) y de service_role
+  // (escrituras).
+  mocks.service = doble;
+  return doble;
 }
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  mocks.service = null;
 });
 
 function stubAuthorFetch(payload: unknown, ok = true) {

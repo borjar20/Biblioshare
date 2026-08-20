@@ -1,7 +1,20 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { fetchOpenLibraryAuthorByKey } from "@/lib/catalog/openlibrary/work-authors";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+// #725: las ALTAS en `people` van con service_role, no con el cliente de la
+// petición. `people` es catálogo global y su INSERT estaba abierto de par en par
+// (`with check (true)` para cualquier `authenticated`): se podían crear personas
+// inventadas que veía todo el mundo. Las filas que se escriben aquí las deriva
+// el SERVIDOR del proveedor —TMDB por `tmdb_id`, Open Library por
+// `openlibrary_key`— y ni un campo viene del cliente, así que el hecho lo
+// respalda el servidor. Mismo argumento y mismo patrón que las sagas TMDB
+// (`src/lib/sagas/persist-collection.ts`).
+//
+// Las LECTURAS se quedan con el cliente de la petición: el catálogo es público y
+// no hace falta saltarse la RLS para consultarlo.
 
 // Resuelve (creando si hace falta) las filas de `people` para un lote de
 // personas de TMDB, devolviendo un mapa tmdbId → people.id. Patrón por lotes
@@ -31,7 +44,7 @@ export async function findOrCreatePeopleByTmdb(
     // Construir el mapa desde las filas devueltas por el propio insert (evita un
     // re-select posterior). En caso de carrera (índice único parcial sobre
     // tmdb_id) el insert falla en bloque; se recupera re-seleccionando.
-    const { data: inserted, error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await createServiceRoleClient()
       .from("people")
       .insert(
         toInsert.map((p) => ({
@@ -95,7 +108,7 @@ export async function findOrCreateBookAuthorByKey(
   // Sin ficha, o sin ninguna grafía latina: no se crea la persona.
   if (!ol) return null;
 
-  const { data: inserted, error } = await supabase
+  const { data: inserted, error } = await createServiceRoleClient()
     .from("people")
     .insert({
       name: ol.name,

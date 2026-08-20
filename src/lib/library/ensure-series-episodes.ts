@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getSeriesEpisodes, getSeriesDetails } from "@/lib/catalog/tmdb";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -48,7 +49,19 @@ export async function ensureSeriesEpisodes(
       runtime_minutes: ep.runtimeMinutes,
     }));
 
-    const { error } = await supabase.from("series_episodes").insert(rows);
+    // #725: la escritura va con service_role, no con el cliente de la petición.
+    // `series_episodes` es catálogo GLOBAL y su INSERT estaba abierto a
+    // cualquier `authenticated` con `with check (true)`: se podían inventar
+    // episodios que veía todo el mundo. Mismo argumento que las sagas TMDB
+    // (`persist-collection.ts`): estas filas las deriva el SERVIDOR de TMDB —
+    // `rows` no lleva ni un dato que venga del cliente, solo el id de la serie y
+    // lo que devolvió la API—, así que el hecho lo respalda el servidor y la
+    // tabla puede quedar cerrada a la sesión del usuario.
+    //
+    // La lectura de arriba (el guard de `count`) se queda con el cliente de la
+    // petición a propósito: leer catálogo es público y no hace falta saltarse
+    // nada para contarlo.
+    const { error } = await createServiceRoleClient().from("series_episodes").insert(rows);
     // 23505 = enriquecimiento concurrente (otro render insertó ya estos
     // episodios); esperado e inocuo. Cualquier otro error sí se registra.
     if (error && error.code !== "23505") {
