@@ -291,7 +291,11 @@ test("capturar desde la ficha sin sesion, y borrar desde la lista", async ({ pag
     // normalizeTags: minúsculas, sin #, sin duplicadas → una sola etiqueta.
     await expect(card.getByText("#e2e")).toHaveCount(1);
 
-    await card.getByRole("button", { name: /borrar/i }).click();
+    // Borrar dejó de ser un enlace rojo en cada tarjeta: vive tras el «···» y
+    // pregunta (F3-012). Playwright descarta los diálogos por defecto.
+    page.once("dialog", (d) => d.accept());
+    await card.getByRole("button", { name: /acciones de la nota/i }).click();
+    await page.getByRole("menuitem", { name: /borrar/i }).click();
     await expect(page.getByText(BODY)).toHaveCount(0, { timeout: 15_000 });
     expect(await countNotesByBody(userId, BODY)).toBe(0);
   } finally {
