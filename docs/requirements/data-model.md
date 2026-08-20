@@ -504,7 +504,9 @@ Cuelgan del pase:
 - **`notes`** — notas y citas de «Memorizar». **Varias por sesión** (no hay tope):
   `SessionNotebook` (hoja de sesión) las guarda una a una según se escriben —
   `session_id` queda `null` hasta que se guarda la sesión, momento en que `addSession`
-  las enlaza por id. Además de `pass_id`/`session_id` (ambas opcionales), `item_type`/
+  las enlaza por id. Desde #717, ese mismo enlace **repunta también su `pass_id`** al pase
+  que queda vivo: si el estado elegido en la hoja archivó el pase y creó otro, la nota se
+  quedaría colgando del archivado mientras su sesión cuelga del nuevo. Además de `pass_id`/`session_id` (ambas opcionales), `item_type`/
   `item_id`, `kind` (`note|quote`, con `CHECK`) y `body`: desde
   `20260721_notes_social_columns.sql` suma `meta jsonb not null default '{}'::jsonb`
   (metadata libre por tipo de nota), `is_spoiler boolean not null default false`,

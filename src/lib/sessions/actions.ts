@@ -166,10 +166,42 @@ export async function addSession(
     ? (statusRaw as MediaStatus)
     : undefined;
 
+  // El Select de estado del formulario NUNCA escribe a mano (era el fallo 5 de
+  // la spec): si el usuario eligió un estado distinto del que ya tiene el pase,
+  // se pide por la máquina — la misma que usa el segmented de la ficha.
+  //
+  // #717: esto va AQUÍ, antes de escribir nada, y no al final. Cuando el estado
+  // elegido archiva el pase y crea otro (`archiveAndCreate`: releer algo que ya
+  // estaba cerrado), la sesión, el cursor, los episodios y las notas tienen que
+  // caer TODOS en el pase que queda vivo. Antes la transición corría después y
+  // esas escrituras se quedaban colgando del pase recién archivado: quedaba
+  // actividad registrada contra un pase que ya no era el vivo.
+  //
+  // La decisión de producto, tomada a propósito: **registrar una sesión y
+  // cambiar de estado en el mismo gesto son afirmaciones sobre la MISMA
+  // lectura**. Si el usuario dice «he leído hasta aquí y lo estoy releyendo»,
+  // lo leído es de la relectura.
+  //
+  // Lo que se acepta a cambio: si la inserción de la sesión fallara justo
+  // después, el estado ya habría cambiado. Es el orden menos malo — al revés, un
+  // fallo al repuntar parte la sesión y el pase en dos, que es el bug de origen.
+  let effectivePassId = passId;
+  let passWasCreated = false;
+  if (status && status !== currentStatus) {
+    const outcome = await applyTransition(supabase, user.id, itemType, itemId, status);
+    // `askResume` (abandonado → leyendo) no escribe nada: la máquina no puede
+    // elegir sola entre continuar y empezar de cero. Se sigue con el pase de
+    // siempre; que el usuario no reciba aviso de esto es #737.
+    if (outcome.kind === "done") {
+      effectivePassId = outcome.passId;
+      passWasCreated = outcome.created;
+    }
+  }
+
   const { data: inserted, error: insertError } = await supabase
     .from("progress_sessions")
     .insert({
-      pass_id: passId,
+      pass_id: effectivePassId,
       user_id: user.id,
       ...(sessionDate && { session_date: sessionDate }),
       duration_minutes: durationMinutes,
@@ -191,11 +223,16 @@ export async function addSession(
   // enlazan a la sesión recién creada. Best-effort a propósito (D4 de la
   // spec 2026-07-29): si falla, la sesión y las notas siguen existiendo,
   // solo queda sin poner la etiqueta de agrupación.
+  //
+  // #717: se filtra por el pase ORIGINAL —es con el que se escribieron mientras
+  // la hoja estaba abierta— pero se repunta `pass_id` al pase vivo, junto con la
+  // sesión. Si no, una nota se quedaría colgando del pase archivado mientras su
+  // sesión cuelga del nuevo: la misma partición que este arreglo viene a cerrar.
   const noteIds = formData.getAll("noteIds").map(String).filter(Boolean);
   if (noteIds.length > 0) {
     await supabase
       .from("notes")
-      .update({ session_id: inserted.id })
+      .update({ session_id: inserted.id, pass_id: effectivePassId })
       .eq("user_id", user.id)
       .eq("pass_id", passId)
       .is("session_id", null)
@@ -234,25 +271,23 @@ export async function addSession(
   let seriesReachedEnd = false;
   if (itemType === "series" && episodesToMark.length > 0) {
     for (const { season, episode } of episodesToMark) {
-      await markEpisodeWatched(supabase, user.id, itemId, passId, season, episode);
+      await markEpisodeWatched(supabase, user.id, itemId, effectivePassId, season, episode);
     }
-    const result = await rollSeriesProgress(supabase, user.id, itemId, passId);
+    const result = await rollSeriesProgress(supabase, user.id, itemId, effectivePassId);
     seriesReachedEnd = result.reachedEnd;
-  }
-
-  // El Select de estado del formulario NUNCA escribe a mano (era el fallo 5
-  // de la spec): si el usuario eligió un estado distinto del que ya tiene el
-  // pase, se pide por la máquina — la misma que usa el segmented de la ficha.
-  if (status && status !== currentStatus) {
-    await applyTransition(supabase, user.id, itemType, itemId, status);
   }
 
   // Roll the pase's current position forward. For books, merge so the
   // copy's `format` (part of the same JSONB) isn't lost by a page update.
   // Para series NO se escribe aquí: rollSeriesProgress ya dejó la posición
   // derivada de episode_watches.
+  //
+  // #717: si la transición creó un pase NUEVO, la base del merge es `{}` y no la
+  // posición del pase viejo. Una relectura empieza a cero (Regla 5): arrastrarle
+  // la página del pase anterior la haría nacer por la mitad. Lo único que se
+  // pierde es el `format` de la copia, que era de aquella lectura.
   const hasSessionPosition = Object.keys(sessionPosition).length > 0;
-  const currentPosition = parsePosition(itemType, pass.position);
+  const currentPosition = passWasCreated ? {} : parsePosition(itemType, pass.position);
   const nextPosition =
     itemType === "book" && hasSessionPosition
       ? { ...currentPosition, ...sessionPosition }
@@ -262,7 +297,7 @@ export async function addSession(
     const { error: updateError } = await supabase
       .from("passes")
       .update({ position: nextPosition })
-      .eq("id", passId)
+      .eq("id", effectivePassId)
       .eq("user_id", user.id);
     if (updateError) return { error: "generic" };
   }
@@ -290,7 +325,7 @@ export async function addSession(
   // usuario acaba de elegir `dropped` en ESTA misma hoja, el auto-cierre no
   // puede pisarlo con un `completed`. Alcanzar el final y abandonar son dos
   // afirmaciones sobre el mismo pase, y manda la que hizo el usuario a mano.
-  if (reachedEnd && (await isAutoCloseable(supabase, passId, user.id))) {
+  if (reachedEnd && (await isAutoCloseable(supabase, effectivePassId, user.id))) {
     await applyTransition(supabase, user.id, itemType, itemId, "completed");
     revalidateReadingLog(itemType, itemId);
     return { ok: true, passClosed: true };
