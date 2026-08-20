@@ -43,6 +43,27 @@ export async function getPasses(
   }));
 }
 
+// ¿Puede un gesto lateral AUTO-cerrar este pase? Solo si sigue abierto
+// (`planned` / `in_progress`). Un `dropped` lo dejó el usuario a propósito y un
+// `completed` ya está cerrado: que puntuar un episodio o registrar una sesión
+// los mueva a `completed` con `finished_on` = hoy es un efecto colateral que
+// nadie pidió (#716). Reabrir un pase cerrado sigue siendo posible, pero por
+// donde debe: la decisión explícita de StatusSegments.
+export async function isAutoCloseable(
+  supabase: SupabaseServerClient,
+  passId: string,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("passes")
+    .select("status")
+    .eq("id", passId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return data?.status === "in_progress" || data?.status === "planned";
+}
+
 export async function getActivePass(
   supabase: SupabaseServerClient,
   itemType: ItemType,

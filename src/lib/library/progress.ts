@@ -15,16 +15,15 @@ export function getProgress(
       label: `${item.position.page}/${item.pageCount}`,
     };
   }
-  if (
-    item.itemType === "series" &&
-    "episode" in item.position &&
-    item.position.episode &&
-    item.totalEpisodes
-  ) {
+  // Serie: el numerador son los episodios VISTOS, no `position.episode` — la
+  // posición va numerada por temporada (T3E2 -> 2) y el total es el de la serie
+  // entera, así que dividir una por otro daba «2/60» a quien iba por la tercera
+  // temporada (#715). El rail de la ficha ya contaba así.
+  if (item.itemType === "series" && item.watchedEpisodes && item.totalEpisodes) {
     return {
-      current: item.position.episode,
+      current: item.watchedEpisodes,
       total: item.totalEpisodes,
-      label: `${item.position.episode}/${item.totalEpisodes}`,
+      label: `${item.watchedEpisodes}/${item.totalEpisodes}`,
     };
   }
   return null;
