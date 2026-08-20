@@ -30,6 +30,13 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // resuelve como primer resultado.
 const MOVIE_QUERY = "El viaje de Chihiro";
 
+// Equivalente para libros (OpenLibrary). Distinto del que usa pase-hub.spec.ts
+// ("The Old Man and the Sea") a propósito: los dos specs BORRAN su fila de
+// catálogo para forzar el alta, y compartir libro los haría pelearse si corren
+// a la vez.
+const BOOK_QUERY = "brave new world huxley";
+const BOOK_TITLE = "Brave New World";
+
 // Textos "vacíos" de la shell sin hidratar (messages/es.json, ns "detail"):
 // si la ficha los sigue mostrando, la hidratación server-side no llegó.
 const UNTITLED = "Sin título";
@@ -105,6 +112,43 @@ async function waitForRealFicha(
   return { title: (await heading.textContent())?.trim() ?? "", synopsisParagraph: synopsisBlock.locator("p").first() };
 }
 
+// Abre el primer resultado de la búsqueda de libros que case con el título y
+// devuelve el id de catálogo al que se ha navegado. Acepta tarjeta-enlace (obra
+// ya cacheada) o tarjeta-botón (obra aún por crear): mismo patrón que
+// pase-hub.spec.ts.
+async function openBookFromSearch(page: Page): Promise<string> {
+  await page.goto(`/buscar?type=book&q=${encodeURIComponent(BOOK_QUERY)}`);
+  const card = page
+    .locator('a[href*="/libro/"]')
+    .or(page.getByRole("button"))
+    .filter({ hasText: BOOK_TITLE })
+    .first();
+  await expect(card).toBeVisible({ timeout: 25_000 });
+  await card.click();
+  await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
+  const match = page.url().match(/\/libro\/([0-9a-f-]{36})/);
+  if (!match) throw new Error(`no se pudo extraer el id de ${page.url()}`);
+  return match[1];
+}
+
+// Borra la fila de catálogo del libro. Es la única forma de que el test pruebe
+// el camino de ALTA: si la obra ya existe de una corrida anterior,
+// register_catalog_item se va por la rama "ya estaba" y el INSERT —lo que #730
+// tenía roto— no llega a ejecutarse.
+//
+// El borrado lo puede rechazar la guarda `catalog_item_has_passes` (#272) si
+// alguien tiene la obra en su biblioteca. En ese caso NO se silencia: se lanza,
+// porque un skip mudo dejaría el test en verde sin haber probado nada.
+async function deleteBookRow(bookId: string) {
+  const res = await rest(`books?id=eq.${bookId}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error(
+      `no se pudo borrar el libro ${bookId} (${res.status}): probablemente tenga pases colgando. ` +
+        `Elige otro título para BOOK_QUERY o limpia sus pases.`,
+    );
+  }
+}
+
 test.describe("catálogo server-authoritative (#674)", () => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
   test.setTimeout(120_000);
@@ -157,5 +201,47 @@ test.describe("catálogo server-authoritative (#674)", () => {
     const synopsisText = (await synopsisParagraph.textContent())?.trim() ?? "";
     expect(synopsisText.length).toBeGreaterThan(10);
     expect(synopsisText).not.toBe(NO_SYNOPSIS);
+  });
+
+  // #730 (P0): la rama de LIBRO de register_catalog_item hacía
+  // `on conflict (openlibrary_work_key)` contra un índice que no era único, y
+  // Postgres respondía 42P10 SIEMPRE. Dar de alta un libro nuevo desde /buscar
+  // devolvía 500 en producción. El test de arriba no lo pilló porque prueba la
+  // rama de PELÍCULA, cuyo `movies_tmdb_id_key` sí es UNIQUE: el defecto vivía
+  // justo en el tipo que no tenía cobertura.
+  //
+  // La gracia está en el borrado del medio. Abrir la ficha a secas no prueba
+  // nada en la segunda corrida: la obra ya existe y la RPC se va por la rama
+  // "ya estaba". Se borra la fila y se vuelve a abrir; que salga un id
+  // DISTINTO solo puede significar que el INSERT se ejecutó.
+  test("alta de un LIBRO nuevo desde /buscar crea la fila (no 42P10) (#730)", async ({
+    page,
+  }) => {
+    await setOnboardedAt(new Date().toISOString());
+    await login(page);
+
+    const primero = await openBookFromSearch(page);
+    await deleteBookRow(primero);
+
+    const segundo = await openBookFromSearch(page);
+    expect(segundo).not.toBe(primero);
+
+    const { title, synopsisParagraph } = await waitForRealFicha(page);
+    expect(title).not.toBe("");
+    expect(title).not.toBe(UNTITLED);
+    await expect(synopsisParagraph).toBeVisible();
+
+    // Y la fila, por debajo. El heading ya dice que el título llegó, pero `author`
+    // sale de OTRA llamada (la ficha del autor en OpenLibrary, que el work solo
+    // referencia por clave) y no se ve en el h1: sin esto, que se quedara a null
+    // pasaría desapercibido. Los dos estaban a null antes del arreglo de #730,
+    // con `hydrated_at` puesto — o sea, sin reintento posible.
+    const fila = await (await rest(`books?id=eq.${segundo}&select=title,author`)).json();
+    expect(fila[0]?.title ?? null).not.toBeNull();
+    expect(fila[0]?.author ?? null).not.toBeNull();
+
+    // Se deja el catálogo como estaba: la obra la trajo este test, y ninguna
+    // otra corrida depende de que siga ahí.
+    await deleteBookRow(segundo);
   });
 });

@@ -173,11 +173,17 @@ export async function ensureItemEnriched(
           if (resolved.titleMatches) {
             // 42501 = visitante anónimo, que no tiene UPDATE sobre `books`.
             // Esperado e inocuo: la guardará el primer visitante con sesión.
+            //
+            // 23505 = esa work key ya la tiene OTRA fila del catálogo, desde que
+            // #730 puso el índice único. También esperado: significa que la obra
+            // ya está dada de alta con su key y esta fila es un alta manual que
+            // apunta a lo mismo. No escribir es exactamente lo correcto —
+            // guardarla duplicaría el catálogo, que es lo que el índice impide.
             const { error } = await supabase
               .from("books")
               .update({ openlibrary_work_key: resolved.workKey })
               .eq("id", item.id);
-            if (error && error.code !== "42501") {
+            if (error && error.code !== "42501" && error.code !== "23505") {
               console.error("book work key update failed", { id: item.id, error });
             }
           }

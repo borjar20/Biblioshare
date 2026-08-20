@@ -475,3 +475,45 @@ plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS
    de las reglas nuevas (y con `x-vercel-cache: HIT` de por medio). La comprobación que sí
    vale es buscar en el CSS/HTML servido un marcador que **solo exista en el cambio nuevo**
    — aquí, el selector de los controles del mapa y la regla de 16px de #724.
+
+---
+
+## 2026-08-20 (noche) — Alta de libros: el P0 y lo que había debajo (#730, #682, #735)
+
+1. **El índice único de `openlibrary_work_key` va SIN predicado.** El que había era parcial
+   (`where openlibrary_work_key is not null`) y encima no era único. Con un único *parcial*,
+   cada `on conflict (openlibrary_work_key)` tendría que repetir el `where` para que Postgres
+   infiera el árbitro, y ese detalle se olvida la próxima vez. En un índice único los NULL no
+   chocan entre sí, así que los libros de alta manual (sin work key) siguen pudiendo ser
+   muchos: el parcial no compraba nada que el único no dé.
+
+2. **La fusión de duplicados va DENTRO de la migración, y es cobarde a propósito.** Repunta y
+   borra solo lo que puede hacer sin destruir datos de nadie; si mover las filas del perdedor
+   al ganador chocara con un único de una tabla de usuario (dos pases activos, la misma obra
+   dos veces en una colección), **aborta con el detalle** en vez de decidir qué fila de un
+   usuario sobrevive. Gana la fila con más rastro de usuario, no la más completa: en prod la
+   ganadora era además la más rica, pero el criterio se escribió al revés a propósito y se
+   probó en dev con un duplicado sembrado en el que la fila con el pase era la más pobre y la
+   más vieja. Un dato de catálogo se vuelve a bajar de OpenLibrary; un pase, no.
+
+3. **El arreglo de «Sin título» va en la MISMA PR que el P0, y no en una aparte.** La regla del
+   repo dice no encadenar a la PR en curso un fallo descubierto de refilón, y aquí se hace la
+   excepción **explícita**: no son dos diagnósticos, son las dos mitades de «dar de alta un
+   libro nuevo desde /buscar». Arreglar solo el 42P10 habría entregado la función visiblemente
+   rota — libros que se crean y se quedan en «Sin título» para siempre, porque `hydrated_at` ya
+   está puesto y nadie reintenta. Se abre igualmente su issue (#735) para que quede el registro.
+
+4. **El segundo defecto no era visible mientras existiera el primero.** Un fallo que aborta
+   antes tapa a los que vienen después: mientras el alta reventaba con 42P10, no había libro
+   nuevo que mirar. Por eso el e2e nuevo cubre el camino entero (alta **y** ficha con datos
+   reales), no solo que el `insert` no lance.
+
+5. **Un e2e que abre una ficha ya existente no prueba el alta.** El test nuevo **borra la fila
+   y vuelve a abrirla**: que salga un id DISTINTO es la única evidencia de que el `insert` se
+   ejecutó. Sin ese borrado pasaría en verde desde la segunda corrida sin tocar la rama rota —
+   que es justo por qué el spec de #674, que sí existía, no pilló nada: probaba películas, y el
+   defecto vivía en el único tipo sin cobertura.
+
+6. **`create or replace` con una firma distinta NO reemplaza: crea una sobrecarga.** Al ampliar
+   `hydrate_book` hay un `drop function` explícito antes. Con las dos versiones vivas, PostgREST
+   no sabría a cuál llamar.
