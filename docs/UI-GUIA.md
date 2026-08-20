@@ -25,22 +25,46 @@ editor de catálogo inline (banner + barra sticky).
    orden de secciones, pestañas y rail; cada tipo solo inserta sus secciones
    propias (ediciones / dónde verla / episodios). Toda divergencia entre tipos es
    decisión registrada, nunca accidente.
-3. **Un primario por vista, un color de primario en la app** (naranja);
-   secundarios outline, terciarios texto. Ningún color nuevo de botón sin entrada
-   en `decisiones.md`.
-4. **Lo destructivo nunca vive inline.** Borrar/quitar/archivar van tras menú
-   «···» con confirmación si es irreversible. Máximo una acción secundaria
-   permanente por item de lista.
+3. **Un primario por vista, un color de primario en la app** (naranja).
+   `Button` tiene cinco variantes y son TODAS las que hay: `primary` (naranja),
+   `secondary` (outline), `ghost` (texto), `green` (lo social de Paper: unirse,
+   aprobar, aceptar) y `danger` (rojo `--status-dropped`). El CTA de la ficha va
+   en naranja SIEMPRE, aunque la obra sea una serie: el color de tipo
+   (`MEDIA_ACCENT`) es del **contenido** —barras, chips, marcas del calendario—,
+   nunca del rol de un botón. Ningún color nuevo sin entrada en `decisiones.md`.
+   `danger` no es «lo mismo en rojo»: solo sale cuando el borrado ES el asunto
+   de la pantalla (el botón que remata una hoja de confirmación). Sembrado por
+   fila es justo el patrón que la regla 4 quita.
+4. **Lo destructivo nunca vive inline.** Borrar/quitar van tras el «···»
+   (`ActionMenu`, con `danger: true` en el item), y preguntan **solo si son
+   irreversibles Y arrastran otros datos**: borrar un pase (se lleva nota,
+   reseña y sesiones), quitar una obra de la biblioteca (se lleva TODOS sus
+   pases), borrar una edición del catálogo común, borrar una nota, subir a
+   alguien de rol. Lo que se rehace en diez segundos —una sesión suelta— va sin
+   pregunta: confirmar todo enseña a decir que sí sin leer. Lo reversible
+   (archivar, que tiene «Reactivar») se queda a la vista. Máximo una acción
+   secundaria permanente por item de lista.
+   *Excepción registrada:* «Quitar de mi biblioteca» sigue siendo un enlace
+   visible al final del panel de Registro — no está sembrado por fila, es una
+   acción única de un panel de gestión, y esconderla la haría inencontrable sin
+   reducir el misclick. Lo que le faltaba era la pregunta, y ya la tiene.
 5. **Dos patrones de navegación secundaria.** Tabs = misma entidad, distinto
    contenido; pills = filtros de una lista. Nada de tabs de un solo elemento ni
    pills que naveguen a rutas.
 6. **La portada es EL componente.** Un solo `WorkCard` con variantes de tamaño y
    slots (estado, progreso, acciones on-hover); las acciones no tapan la portada
    en reposo.
-7. **Todo vacío explica y ofrece.** `EmptyState` estándar (qué pasa + qué puedes
-   hacer, con CTA). Prohibido el string suelto y la card en blanco.
-8. **Un nombre por concepto.** Glosario canónico (Biblioteca, Cuaderno, Pase,
-   Saga, Universo, Lista…); i18n y páginas usan el término del glosario.
+7. **Todo vacío explica y ofrece.** `EmptyState` estándar en **dos tallas**:
+   `page` (el vacío ES la pantalla) y `panel` (una lista dentro de una sección
+   — clubes de «Descubrir», agenda del mes, sesiones de un pase). La talla
+   `panel` existe porque sin ella nadie usaba el componente: 128px de aire y un
+   titular serif de 20px no caben en una sección, así que cada sitio
+   improvisaba su `<p>` gris. Anatomía igual en las dos: glifo, qué pasa, y una
+   salida — si no hay salida que ofrecer, se omite, pero se ha pensado.
+   Prohibido el string suelto y la card en blanco: una colección sin ítems
+   pinta su abanico con tres huecos punteados, no 168px de blanco.
+8. **Un nombre por concepto.** Glosario canónico en **`docs/UI-GLOSARIO.md`**;
+   i18n y páginas usan el término del glosario y nada más.
 9. **Toda feature cuelga de la navegación.** Ruta no alcanzable desde su área =
    o se le da entrada o se registra acta de por qué es contextual.
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados
