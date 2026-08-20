@@ -34,7 +34,12 @@ export function TierlistItem({
   const className = `relative h-[51px] w-[34px] shrink-0 overflow-hidden rounded-[4px] border bg-surface-muted shadow-cover ${
     selected ? "border-accent ring-1 ring-accent" : "border-border"
   } ${isDragging ? "opacity-60" : ""} ${
-    editable ? "cursor-grab touch-none active:cursor-grabbing" : "cursor-default"
+    // `touch-manipulation`, no `touch-none` (#723): `none` le quita al
+    // navegador el gesto ANTES de que el TouchSensor decida si esto era un
+    // arrastre o un scroll, y con la bandeja llena de portadas no se podía
+    // bajar la página con el pulgar. El sensor hace `preventDefault` por su
+    // cuenta cuando el arrastre llega a activarse.
+    editable ? "cursor-grab touch-manipulation active:cursor-grabbing" : "cursor-default"
   }`;
   const cover = item.itemCoverUrl && (
     <Image

@@ -131,7 +131,22 @@ export function SagaGraphView({
             `.react-flow__node` con el que dos e2e cuentan las obras del mapa,
             ni reciben el `onNodeClick` que navega a una ficha. */}
         <MapOverlayLayer graph={graph} />
-        {showZoomControls && <Controls showInteractive={false} showFitView position="bottom-right" />}
+        {/* Arriba a la derecha, NO abajo (#722): abajo los tapaba la leyenda
+            (panel de ancho completo y ~152px) y quedaban medio fuera del
+            viewport — medidos en y=706-784 con pantalla de 740. Anclarlos a la
+            altura de la leyenda sería frágil (esa altura depende del contenido
+            del grafo); la esquina superior derecha está libre siempre, solo hay
+            que bajar del header. El tamaño sube de 26px (default de React Flow)
+            a 40px, mínimo táctil. */}
+        {showZoomControls && (
+          <Controls
+            showInteractive={false}
+            showFitView
+            position="top-right"
+            style={{ marginTop: "4.75rem" }}
+            className="[&_.react-flow__controls-button]:h-10 [&_.react-flow__controls-button]:w-10"
+          />
+        )}
       </ReactFlow>
     </div>
   );

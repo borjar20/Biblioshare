@@ -35,7 +35,11 @@ export function InfoPanel({
     <div
       className={`grid items-start gap-8 ${sidebar ? "lg:grid-cols-[1fr_340px]" : ""}`}
     >
-      <div className="flex flex-col gap-4">
+      {/* `min-w-0`: una celda de grid vale `min-width:auto`, así que su
+          contenido no encoge. Sin esto la tira de reparto (6 avatares de 64px
+          = 454px) estiraba la ficha entera a 470px en un viewport de 360 y el
+          `overflow-x-auto` de CreditsSection nunca llegaba a actuar (#721). */}
+      <div className="flex min-w-0 flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-tight">{aboutLabel}</h2>
           {actions}
