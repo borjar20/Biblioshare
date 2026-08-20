@@ -59,6 +59,24 @@ F1-003 (triggers escriben en `library_entries`), F4-001 (ficha de serie rota en
 móvil), F4-010 (RatingDots inoperables a dedo), F4-018 (auto-zoom iOS),
 F3-006/F3-010/F3-012 (CTA, IA de navegación, destructivo inline).
 
+## P2 — mantenimiento (acciones 6-9 del roadmap)
+
+**Acción 6 — hit-areas + RatingDots táctiles: HECHA el 2026-08-20.** F4-010
+(puntuar a dedo pasa a ser un arrastre con la nota visible), F4-013 (check de
+episodio visto) y F4-015 (regla de sistema `tap-44`, aplicada al trigger de
+`ActionMenu`, el cierre de sheets, las flechas de reordenar y la píldora
+«Saltar»). Decisiones en `decisiones.md` (2026-08-20 noche) y la regla en
+`UI-GUIA.md` §«Reglas móviles y táctiles» 1 y 9.
+
+Quedan de este bloque: acción 7 (sistema mínimo de UI: roles de botón,
+destructivo tras «···», `EmptyState`, glosario — F3-006/012/014/015/011),
+acción 8 (IA de navegación + página de Ajustes — F3-010, F4-007, F1-025,
+F1-024), acción 9 (pasada de revalidación — F1-014/023/030/027), y los sueltos:
+contraste y `<main>`/skip-link (F4-022/023), security headers + rate limiting
+(S2-08/S2-11), formula injection (#681), trigger de curación (S2-14), regenerar
+`graph.json` y `database.types.ts` (#695, #701, #625), y las migraciones
+fantasma de F1-017 (5 RPCs de hidratación solo en dev).
+
 ## Features que no existen (P2-P3, por dominio)
 
 **Biblioteca y ejemplar**

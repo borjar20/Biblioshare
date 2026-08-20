@@ -674,3 +674,51 @@ De ahí sale todo lo demás, que es mecánico:
 **Lo que NO arregla esto:** `dropped` + «Leyendo» sigue devolviendo `askResume` y no hace nada
 sin avisar. Es #737 y va aparte, porque es un no-op mudo y no un problema de a qué pase van las
 escrituras.
+
+## 2026-08-20 (noche) — Acción 6 del roadmap: puntuar a dedo y la regla de 44px (F4-010/013/015)
+
+1. **La hit-area de sistema es un pseudo-elemento, no padding + margen negativo.** La propuesta
+   de la auditoría era `p-3 -m-3`; se descarta porque sí mueve el flujo cuando el control vive
+   en un `flex` con `gap` (el `gap` se mide desde la caja de margen, así que el vecino se
+   acerca). `tap-44` centra un `::after` transparente de 44px sobre el control: la caja de
+   layout no cambia y ninguna maqueta se mueve. El precio es que no sirve con `overflow-hidden`
+   ni sobre un control ya `absolute`/`fixed` — está escrito en el propio CSS.
+
+2. **Solo bajo `(pointer: coarse)`.** Con ratón la precisión ya alcanza y un área de 44px
+   alrededor de un icono de 24 le robaría clics al vecino de al lado. Es la regla 4 de
+   UI-GUIA («capacidad, no ancho») aplicada a sí misma.
+
+3. **La regla se pone DENTRO de `ActionMenu`, no en sus cinco consumidores.** Los cinco dibujan
+   su disparador entre 24 y 34px con `triggerClassName` propio; si la clase la tuviera que
+   pedir cada sitio, el sexto nacería otra vez pequeño.
+
+4. **Puntuar en táctil pasa a ser un ARRASTRE, no una diana.** Las dos salidas que ofrecía la
+   auditoría no son equivalentes: ensanchar la hit-area a 22px por mitad obliga a 220px de fila
+   para cinco dots de 10px (34px de `gap`), que es otro dibujo y otra maqueta. El arrastre
+   mantiene el dibujo y resuelve el problema real, que no era el tamaño sino la ausencia de
+   feedback: con la nota grande visible mientras el dedo no se levanta, un target de 3,5px se
+   corrige antes de soltar. Se aplica lo que enseña el globo, no lo que caiga debajo del dedo.
+
+5. **El arrastre es solo para dedo y lápiz; el ratón no se toca.** `pointerType === "mouse"`
+   sale por arriba del handler, así que el hover y el clic sobre las mitades siguen intactos —
+   y con ellos los e2e que pulsan «10/10» y el camino de teclado, que sigue siendo el de los
+   diez `<button>` reales.
+
+6. **`touch-action: pan-y`, nunca `none`.** El eje vertical se lo queda el scroll de la página:
+   empezar a bajar con el dedo sobre la fila de dots no puede secuestrar el gesto. Es el mismo
+   error que F4-012 documentó en la tierlist, y no se repite aquí.
+
+7. **El reparto de la nota es lineal sobre TODO el ancho de la fila**, en diez tramos iguales,
+   ignorando los `gap` entre dots. Es monótono y continuo (lo que pide un arrastre) y el
+   desfase máximo contra el dot dibujado son 2-3px. Vive en `lib/rating/dots`
+   (`ratingFromFraction`) para poder probarlo sin navegador.
+
+**Cobertura:** la aritmética, en unitarios; el ÁREA y el gesto, en
+`e2e/movil-areas-tactiles.spec.ts` con emulación de dispositivo (`isMobile` es lo que pone el
+navegador en `pointer: coarse`) y eventos de dedo por CDP — `page.touchscreen` solo da toques, y
+un `dispatchEvent` sintético no vale porque `setPointerCapture` necesita un puntero activo de
+verdad. El spec no guarda nada: se queda en el formulario de edición del diario, así que no toca
+la BD compartida.
+
+**Referencia obsoleta de la auditoría:** F4-015 cita `catalog-editor.tsx:723` (✕ de 20×20). Ese
+fichero ya no existe — se lo llevó la limpieza de código muerto de la fase 5.

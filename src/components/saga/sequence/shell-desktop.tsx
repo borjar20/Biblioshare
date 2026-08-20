@@ -44,11 +44,11 @@ export function ShellDesktop({
     <div className="flex shrink-0 gap-0.5">
       <button
         type="button" onClick={() => ops.moveSlot(i, -1)} disabled={i === 0} aria-label={t("moveUpFor", { title })}
-        className="grid h-6 w-6 place-items-center rounded-lg border border-border text-[10px] text-muted-foreground disabled:opacity-40"
+        className="tap-44 grid h-6 w-6 place-items-center rounded-lg border border-border text-[10px] text-muted-foreground disabled:opacity-40"
       >↑</button>
       <button
         type="button" onClick={() => ops.moveSlot(i, 1)} disabled={i === draft.slots.length - 1} aria-label={t("moveDownFor", { title })}
-        className="grid h-6 w-6 place-items-center rounded-lg border border-border text-[10px] text-muted-foreground disabled:opacity-40"
+        className="tap-44 grid h-6 w-6 place-items-center rounded-lg border border-border text-[10px] text-muted-foreground disabled:opacity-40"
       >↓</button>
     </div>
   );

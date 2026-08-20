@@ -48,9 +48,17 @@ editor de catálogo inline (banner + barra sticky).
 
 ## Reglas móviles y táctiles (fase 4)
 
-1. **Hit-area mínima 40-44px** como regla de sistema: padding + margen negativo
-   en los componentes base (Button/IconButton, triggers de ActionMenu, cierres de
-   sheet, checks, RatingDots) — el dibujo no cambia.
+1. **Hit-area mínima 44px** como regla de sistema: la utilidad `tap-44` de
+   `globals.css`, que crece un pseudo-elemento centrado — el dibujo NO cambia y
+   la caja de layout tampoco (frente a padding + margen negativo, que sí mueve
+   el flujo cuando el control vive en un `flex` con `gap`). Solo bajo
+   `(pointer: coarse)`: con ratón, 44px alrededor de un icono de 24 le roban
+   clics al vecino. Puesta ya en el trigger de `ActionMenu` (dentro del
+   componente, no en sus consumidores), el check de episodio visto, el cierre de
+   `sheet-shell`, las flechas de reordenar del editor de secuencia y la píldora
+   «Saltar». No sirve con `overflow-hidden` (recorta el pseudo-elemento) ni
+   sobre un control ya posicionado en `absolute`/`fixed`: ahí, agrandar el
+   dibujo o envolver. `RatingDots` va por su cuenta (regla 9).
 2. **`min-w-0` / `minmax(0,1fr)` obligatorio** en celdas de grid/flex con
    contenido que debe encoger o scrollear (dos vistas rotas hoy por esto:
    F4-001/F4-002). Candidato a test e2e de `scrollWidth` por vista.
@@ -68,6 +76,13 @@ editor de catálogo inline (banner + barra sticky).
    scrolleable de tabs/chips.
 8. **Tablet = móvil ancho** es el estado actual (dos escalones: base → `lg:`);
    si se mantiene, registrar acta; si duele (ficha, Inicio), dar paso `md:`.
+9. **Puntuar es un arrastre en táctil**, no una diana: `RatingDots` mantiene el
+   dibujo de cinco dots y lee la nota de la posición del dedo sobre la fila,
+   con la nota grande visible hasta que se levanta (patrón Letterboxd). Es la
+   única salida cuando el target por mitad son 3,5px y ensanchar la fila a los
+   220px que pedirían diez mitades de 44 sería otro dibujo. Con ratón no cambia
+   nada (early-return por `pointerType`). `touch-action: pan-y`, nunca `none`:
+   el eje vertical se lo queda el scroll de la página.
 
 ## Accesibilidad — base y deuda
 

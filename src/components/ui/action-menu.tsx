@@ -61,10 +61,14 @@ export function ActionMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={
+        // `tap-44` se añade SIEMPRE, también cuando el consumidor trae su
+        // propio `triggerClassName`: los cinco sitios que lo personalizan lo
+        // dibujan entre 24 y 34px, y la regla táctil no puede depender de que
+        // cada uno se acuerde de pedirla. Va al final para que gane el orden.
+        className={`${
           triggerClassName ??
           "grid h-[30px] w-[30px] place-items-center rounded-lg border border-border bg-surface text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-        }
+        } tap-44`}
       >
         <EllipsisIcon className="h-4 w-4" />
       </button>
