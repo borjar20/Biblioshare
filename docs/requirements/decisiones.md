@@ -602,6 +602,14 @@ plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS
    de quién mira era el bug, no la protección: el catálogo es compartido. Sigue acotado por los
    guards que ya existían, así que es una vez por ficha, no por visita.
 
+   **Corrección medida en producción, para no dejar la afirmación más ancha de lo que es:** la
+   filmografía de una ficha de persona (`hydratePersonCredits`) sigue sin hidratarse para el
+   anónimo. No por estos grants — porque antes de tocar `credits` pasa por
+   `register_catalog_items_bulk` para dar de alta las obras, y esa RPC exige `auth.uid()`. Lo
+   que sí se comprobó escribiendo desde una visita anónima real a `/persona/<id>` en prod fue
+   la bio y la foto. Conviene distinguirlo: si alguien lee «el anónimo ya hidrata» y ve la
+   filmografía vacía, va a buscar el fallo en el sitio equivocado.
+
 5. **El orden de despliegue es parte del arreglo, no un detalle de operaciones.** Aplicar la
    migración antes del deploy no rompe ninguna página —las cinco escrituras son best-effort—
    pero rompe **en silencio**: episodios que no se escriben nunca, reparto que no aparece. Es

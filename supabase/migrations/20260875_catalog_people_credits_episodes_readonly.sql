@@ -35,11 +35,16 @@
 -- nunca. Es el modo de fallo exacto de #699, y no se ve con una cuenta admin.
 -- Primero el deploy, después la base.
 --
--- Efecto secundario BUSCADO: un visitante anónimo ahora también hidrata. Antes
--- su escritura moría con 42501 y la ficha se quedaba a medias hasta que pasara
--- alguien con sesión. Ahora la hidratación no depende de quién mire — que es lo
--- que significa «catálogo compartido». Sigue acotada por los guards de siempre
--- (`credits_hydrated_at`, el `count` de episodios), así que es una vez por ficha.
+-- Efecto secundario BUSCADO: un visitante anónimo pasa a hidratar donde antes su
+-- escritura moría con 42501 — la bio de una persona, el reparto de una ficha, los
+-- episodios de una serie. Comprobado en producción: abriendo `/persona/<id>` sin
+-- sesión, la fila se queda con bio y foto escritas.
+--
+-- Con UNA excepción, medida el 2026-08-20 y que conviene no confundir: la
+-- hidratación de la FILMOGRAFÍA de una persona (`hydratePersonCredits`) sigue sin
+-- funcionar para el anónimo, porque antes de llegar a `credits` pasa por
+-- `register_catalog_items_bulk` para dar de alta las obras, y esa RPC exige
+-- `auth.uid()`. Ahí el gate es otro y no lo toca esta migración.
 
 -- ---------------------------------------------------------------------------
 -- 1. Las policies abiertas
