@@ -258,6 +258,20 @@ describe("addSession · la sesión y el cambio de estado son la misma lectura (#
     });
   });
 
+  // El riesgo que introduce adelantar la transición: que un formulario inválido
+  // cambie el estado antes de rechazarse. Las validaciones van ANTES.
+  it("una página inválida se rechaza SIN haber cambiado el estado", async () => {
+    const escrituras: Escritura[] = [];
+    mocks.createClient.mockResolvedValue(fakeClient(escrituras));
+
+    // 300 es el tope que devuelve el doble para `books.total_pages`.
+    const res = await addSession(PASE_VIEJO, "book", "libro-1", {}, form({ status: "in_progress", page: "999" }));
+
+    expect(res).toEqual({ error: "invalidPosition" });
+    expect(mocks.applyTransition).not.toHaveBeenCalled();
+    expect(escrituraEn(escrituras, "progress_sessions")).toBeUndefined();
+  });
+
   it("el auto-cierre pregunta por el pase VIVO, no por el archivado", async () => {
     mocks.applyTransition.mockResolvedValue({
       kind: "done",
