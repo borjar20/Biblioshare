@@ -746,3 +746,14 @@ body {
     font-size: 16px;
   }
 }
+
+/* Controles de zoom del mapa de universo (#722). Van aquí y no en una variante
+   arbitraria de Tailwind (`[&_.react-flow__controls-button]:h-10`) porque
+   Tailwind convierte cada `_` de un valor arbitrario en un ESPACIO: aquella
+   clase compilaba a `.react-flow controls-button`, un descendiente inexistente,
+   así que los botones se quedaban en los 26px por defecto de React Flow y el
+   arreglo parecía hecho mirando el código. Mínimo táctil: 40px. */
+.saga-map-controls .react-flow__controls-button {
+  width: 40px;
+  height: 40px;
+}

@@ -138,13 +138,19 @@ export function SagaGraphView({
             del grafo); la esquina superior derecha está libre siempre, solo hay
             que bajar del header. El tamaño sube de 26px (default de React Flow)
             a 40px, mínimo táctil. */}
+        {/* El tamaño de los botones va por CSS en globals.css y NO por una
+            variante arbitraria de Tailwind: dentro de `[&_…]` Tailwind convierte
+            cada `_` en un ESPACIO, así que `.react-flow__controls-button` salía
+            compilado como `.react-flow controls-button` —un descendiente que no
+            existe— y la regla no pintaba nada. Se ve en el CSS servido, no en el
+            código. */}
         {showZoomControls && (
           <Controls
             showInteractive={false}
             showFitView
             position="top-right"
             style={{ marginTop: "4.75rem" }}
-            className="[&_.react-flow__controls-button]:h-10 [&_.react-flow__controls-button]:w-10"
+            className="saga-map-controls"
           />
         )}
       </ReactFlow>
