@@ -50,6 +50,10 @@ export type ImportRowResult = {
   outcome: ImportRowOutcome;
   unknownStatus?: string;
   errorMessage?: string;
+  /** Obra de catálogo contra la que se escribió (outcome "imported"/"duplicate").
+   *  Lo necesita quien invalida la caché al terminar la tanda: la nota
+   *  importada no se ve hasta que se invalida `ratings:<tipo>:<id>` (#718). */
+  itemId?: string;
   // Solo en outcome "ambiguous".
   candidates?: ImportCandidate[];
 };

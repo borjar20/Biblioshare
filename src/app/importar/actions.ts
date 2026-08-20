@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateImportBatch, revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
@@ -101,6 +102,19 @@ export async function commitImportBatch(
     );
     results.push(...chunkResults);
   }
+
+  // La tanda ha escrito notas (`rating` de cada pase importado) sin pasar por
+  // revalidateReadingLog: sin esto la media de la comunidad de cada obra sigue
+  // cacheada con el valor viejo hasta que expira sola (#718). Se hace UNA vez,
+  // al final, no por fila.
+  revalidateImportBatch(
+    itemType,
+    results
+      .filter((r) => r.outcome === "imported" || r.outcome === "duplicate")
+      .map((r) => r.itemId)
+      .filter((id): id is string => Boolean(id)),
+  );
+
   return results;
 }
 
@@ -126,7 +140,17 @@ export async function resolveAmbiguousImportRow(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  return commitImportRowWithCandidate(supabase, user.id, itemType, row, candidate);
+  const result = await commitImportRowWithCandidate(
+    supabase,
+    user.id,
+    itemType,
+    row,
+    candidate,
+  );
+  // Igual que la tanda, pero de una sola obra: la nota recién escrita no se ve
+  // en la ficha hasta invalidar su `ratings:*` (#718).
+  if (result.itemId) revalidateReadingLog(itemType, result.itemId);
+  return result;
 }
 
 export type ResolveUnmatchedState = {
@@ -163,6 +187,8 @@ export async function resolveUnmatchedImportRow(
     year,
   });
   if (result.outcome === "error") return { error: "generic" };
+  // Fila suelta: una obra, un camino normal de escritura de nota (#718).
+  if (result.itemId) revalidateReadingLog(itemType, result.itemId);
   return { result };
 }
 
@@ -255,6 +281,9 @@ export async function resolvePendingRow(
   });
   if (rpcError) return { error: "generic" };
 
+  // El RPC escribe pases con nota para el DUEÑO de la fila: la media cacheada
+  // de esa obra hay que invalidarla igual que en el camino normal (#718).
+  revalidateReadingLog(itemType, inserted.id);
   revalidatePath("/importar/pendientes");
   return { done: true };
 }
@@ -358,6 +387,7 @@ export async function resolvePendingRowWithCandidate(
   });
   if (error) return { error: "generic" };
 
+  revalidateReadingLog(itemType, catalogId);
   revalidatePath("/importar/pendientes");
   return { done: true };
 }
