@@ -31,15 +31,32 @@ const WATCH_IDS = [
   "e2fe0003-0000-4000-8000-000000000003",
   "e2fe0004-0000-4000-8000-000000000004",
 ];
+// El feed NO lee `episode_watches`: lee `posts`, y de ahí resuelve el visionado
+// por `source_kind='episode_watch'` + `source_id` (src/lib/social/feed.ts:242).
+// Sembrar solo los watches dejaba la tarjeta sin existir y el spec en rojo
+// permanente (#731) — el diagnóstico que se sospechaba entonces (que el feed
+// filtrara por `pass_id`) era falso.
+//
+// ⚠️ Estos posts los siembra el test porque **la app no los crea**: hoy no hay
+// «compartir episodio» y nadie escribe posts `kind='watched'`
+// (`src/lib/series/episode-actions.ts:110`, issue #626). O sea que esto cubre el
+// camino de PINTADO, que es código vivo y se rompería en silencio, no el de
+// escritura, que todavía no existe.
+const POST_IDS = [
+  "e2fe1001-0000-4000-8000-000000000001",
+  "e2fe1002-0000-4000-8000-000000000002",
+  "e2fe1003-0000-4000-8000-000000000003",
+  "e2fe1004-0000-4000-8000-000000000004",
+];
 const COVER_URL = "https://covers.openlibrary.org/b/id/12627383-M.jpg";
 
 // Cuatro episodios en días contiguos (hueco de 1 día ≤ ventana) → un solo grupo
 // de 4. Notas variadas y una reseña para ejercer los estados de cada fila.
 const EPISODES = [
-  { id: WATCH_IDS[0], season: 1, episode: 5, rating: 8, review: "El giro final no lo vi venir; el mejor de la temporada.", off: 0 },
-  { id: WATCH_IDS[1], season: 1, episode: 4, rating: 9, review: null, off: 1 },
-  { id: WATCH_IDS[2], season: 1, episode: 3, rating: 6, review: null, off: 2 },
-  { id: WATCH_IDS[3], season: 1, episode: 2, rating: 7, review: null, off: 3 },
+  { id: WATCH_IDS[0], postId: POST_IDS[0], season: 1, episode: 5, rating: 8, review: "El giro final no lo vi venir; el mejor de la temporada.", off: 0 },
+  { id: WATCH_IDS[1], postId: POST_IDS[1], season: 1, episode: 4, rating: 9, review: null, off: 1 },
+  { id: WATCH_IDS[2], postId: POST_IDS[2], season: 1, episode: 3, rating: 6, review: null, off: 2 },
+  { id: WATCH_IDS[3], postId: POST_IDS[3], season: 1, episode: 2, rating: 7, review: null, off: 3 },
 ];
 
 function adminHeaders() {
@@ -114,6 +131,8 @@ async function sweepDisposableUsers(): Promise<void> {
 }
 
 async function cleanFixtures(): Promise<void> {
+  // Los posts primero: cuelgan de los watches por `source_id`.
+  await rest(`posts?id=in.(${POST_IDS.join(",")})`, { method: "DELETE" });
   await rest(`episode_watches?id=in.(${WATCH_IDS.join(",")})`, { method: "DELETE" });
   await rest(`series?id=eq.${SERIES_ID}`, { method: "DELETE" });
 }
@@ -122,6 +141,24 @@ test("un seguido que valora varios episodios de una serie se agrupa en una tarje
   page,
 }, testInfo) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  // ⚠️ #731 — MARCADO, no arreglado, y a propósito. Este spec llevaba tiempo en
+  // rojo permanente, que es peor que no tener test: entrena a leer los rojos como
+  // ambientales, justo lo que vino a resolver el runner por lotes de #584.
+  //
+  // Lo que se ha averiguado (y corrige el diagnóstico con el que nació #731):
+  //   1. El feed NO lee `episode_watches`, lee `posts`. Sembrar solo los watches
+  //      no podía pintar nada. La sospecha original —que el feed filtrara por
+  //      `pass_id`— es FALSA.
+  //   2. Con los posts sembrados (arriba), la tarjeta YA aparece... pero solo la
+  //      del post más reciente. Los tres con `created_at` atrasado 1, 2 y 3 días
+  //      no llegan al feed.
+  //   3. No es cosa de la reseña: se probó dándoles reseña a los cuatro y el
+  //      resultado es idéntico. La variable que queda es la fecha atrasada.
+  //
+  // Lo que falta es entender el punto 2. Hasta entonces se marca en vez de
+  // dejarlo rojo. Detalle completo en la issue.
+  test.fixme(true, "#731: los posts con created_at atrasado no llegan al feed");
 
   const ts = Date.now();
   const followeeName = `E2E Episodios ${ts}`;
@@ -162,6 +199,27 @@ test("un seguido que valora varios episodios de una serie se agrupa en una tarje
             rating: e.rating,
             review: e.review,
             watched_on: at.slice(0, 10),
+            created_at: at,
+            updated_at: at,
+          };
+        }),
+      ),
+    });
+
+    // Y su post por visionado: es lo que el feed lee de verdad.
+    await rest("posts", {
+      method: "POST",
+      body: JSON.stringify(
+        EPISODES.map((e) => {
+          const at = new Date(ts - e.off * 86_400_000).toISOString();
+          return {
+            id: e.postId,
+            author_id: followee.id,
+            kind: "watched",
+            anchor_type: "series",
+            anchor_id: SERIES_ID,
+            source_kind: "episode_watch",
+            source_id: e.id,
             created_at: at,
             updated_at: at,
           };

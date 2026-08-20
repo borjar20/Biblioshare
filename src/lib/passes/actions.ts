@@ -76,6 +76,26 @@ async function savePassFields(
   // explícitamente, nunca confiar en el default.
   const isPublic = formData.get("isPublic") === "on";
 
+  // Cerrar con una fecha ANTERIOR al inicio no es un error del usuario: es el
+  // camino normal de «añado hoy una obra que leí hace años». Lo que pasa es que
+  // `started_on` no lo escribe nadie a mano —lo pone la máquina al pasar a en
+  // curso (apply-transition) o lo trae el importador—, así que en ese caso vale
+  // el día del alta, no el día en que se empezó. Se pone a NULL: «no se sabe
+  // cuándo empezó», que es la verdad. El día del alta no se pierde, sigue en
+  // `created_at`.
+  //
+  // Sin esto, producción acumuló 167 de 407 pases (41 %) con la fecha de inicio
+  // POSTERIOR a la de fin (#729), y la ficha llegaba a anunciar lecturas de «1
+  // día» que en realidad eran de años.
+  const { data: actual } = await supabase
+    .from("passes")
+    .select("started_on")
+    .eq("id", passId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const inicioInvalido =
+    finishedOn !== null && actual?.started_on != null && finishedOn < actual.started_on;
+
   const { error } = await supabase
     .from("passes")
     .update({
@@ -85,6 +105,7 @@ async function savePassFields(
       is_public: isPublic,
       dropped_reason: droppedReason,
       dropped_reason_note: droppedReasonNote,
+      ...(inicioInvalido ? { started_on: null } : {}),
     })
     .eq("id", passId)
     .eq("user_id", userId);

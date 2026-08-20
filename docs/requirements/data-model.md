@@ -375,6 +375,31 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   y su gemelo SQL `resolve_pending_import` cierran con la fecha de importación cuando el CSV no
   trae ninguna.
 
+- ⚠️ **Y si están las dos fechas, van en orden**: constraint `passes_started_before_finished`
+  (`20260873_passes_started_before_finished.sql`, #729).
+
+  ```sql
+  CHECK (started_on is null or finished_on is null or finished_on >= started_on)
+  ```
+
+  Este NO entró con el anterior a propósito: **167 de los 407 pases de prod (41 %) lo
+  violaban** — empezados después de terminarse. La medida que desbloqueó la decisión fue esta:
+  **los 167, sin excepción, tenían `started_on` EXACTAMENTE igual a `created_at::date`**. Esa
+  fecha no era «cuándo se empezó a leer» sino el día del alta (casi siempre una importación),
+  así que ponerla a NULL no pierde nada: sigue en `created_at`. La migración los limpia así y
+  luego pone el CHECK.
+
+  La puerta que los producía era `savePassFields` (`src/lib/passes/actions.ts`): cerrar hoy una
+  obra leída hace años. Ahora esa acción pone `started_on` a NULL **en vez de rechazar** —
+  cerrar con una fecha anterior al alta es un camino legítimo, no un error del usuario, y
+  `started_on` no lo escribe nadie a mano: lo pone la máquina (`apply-transition`) o el
+  importador.
+
+  Lo que cambia de lo que se ve, tras limpiar: `get-records.ts:73` («libro más rápido») ya
+  hacía `started_on ?? created_at.slice(0,10)`, así que calcula lo mismo; y el feed deja de
+  anunciar lecturas de «1 día» que en realidad eran de años (con las fechas invertidas, su
+  `Math.max(1, negativo)` daba 1).
+
   **Lo que el CHECK NO cubre:** el orden de las fechas. Prod tiene 167 de 407 pases (41 %) con
   `started_on` POSTERIOR a `finished_on` —importaciones: inicio = día del import, fin = fecha
   real de lectura—, así que `finished_on >= started_on` exige limpiar datos primero (issue
@@ -2986,6 +3011,29 @@ TRUNCATE sobre una vista es inerte, pero `trigger` permite colgarle un `instead 
 **Límite conocido**: hay dos juegos de default privileges, uno por grantor, y solo se puede
 tocar el de `postgres` — `current_user` no es superusuario ni miembro de `supabase_admin`
 (issue #710).
+
+**c-bis) El residuo del pasado: TRUNCATE en 49 tablas (#727, `20260872`).** #691 arregló el
+**futuro** (las relaciones nuevas ya no nacen con ALL), no lo ya concedido: **49 tablas de
+`public` seguían dando `TRUNCATE` a `anon`/`authenticated`**, más `TRIGGER` y `REFERENCES`.
+Los dos cinturones de siempre no cubren este caso —PostgREST no expone TRUNCATE, y DELETE lo
+filtra la RLS—, pero **TRUNCATE no lo mira la RLS**: cualquier camino que acabe ejecutando SQL
+con esos roles vacía la tabla entera sin que ninguna policy diga nada.
+
+```sql
+revoke truncate, trigger, references on all tables in schema public from anon, authenticated;
+alter default privileges in schema public revoke truncate, trigger, references on tables from anon, authenticated;
+```
+
+Medido antes (dev, 2026-08-20): TRUNCATE 49/47, TRIGGER 49/47, REFERENCES 49/47. Después: **0**
+en las tres, con `DELETE` (49/50) y `SELECT` (56/56) intactos.
+
+⚠️ **`DELETE` NO se toca, y es deliberado.** Hay tablas donde borrar por RLS es el camino
+legítimo (contenido propio del usuario); ahí el grant es correcto y el cinturón es la policy.
+Un `revoke delete on all tables` de golpe rompería justo eso.
+
+📌 **Medido de paso y NO arreglado:** `anon` conserva `INSERT` en 45 tablas y `UPDATE` en 43
+(dev). Lo contiene la RLS —anon no tiene policies de escritura—, pero es el mismo residuo y
+está sin censar. Sigue en #710.
 
 **d) Los `credits` se van con su obra (#609, `20260867`).** `credits` referencia el ítem de
 forma polimórfica (`item_type` + `item_id`), así que no admite FK, y el guard de #272 solo

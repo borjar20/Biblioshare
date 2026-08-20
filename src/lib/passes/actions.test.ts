@@ -83,6 +83,101 @@ beforeEach(() => {
   mocks.notifyMentions.mockResolvedValue([]);
 });
 
+// Cliente que RECUERDA lo que se le manda en el update, para poder afirmar sobre
+// el payload y no solo sobre "no hubo error".
+function makeRecordingClient(startedOn: string | null) {
+  const updates: Array<Record<string, unknown>> = [];
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
+    from(table: string) {
+      if (table === "passes") {
+        const builder = {
+          select() {
+            return builder;
+          },
+          update(payload: Record<string, unknown>) {
+            updates.push(payload);
+            return builder;
+          },
+          eq() {
+            return builder;
+          },
+          async maybeSingle() {
+            return { data: { started_on: startedOn, review: null }, error: null };
+          },
+          then(resolve: (value: unknown) => void) {
+            resolve({ error: null });
+          },
+        };
+        return builder;
+      }
+      // Sin fila en interaction_targets no hay menciones que notificar: aquí no
+      // es lo que se prueba.
+      const builder = {
+        select() {
+          return builder;
+        },
+        eq() {
+          return builder;
+        },
+        async maybeSingle() {
+          return { data: null, error: null };
+        },
+      };
+      return builder;
+    },
+  };
+  return { client, updates };
+}
+
+function closeForm(finishedOn: string) {
+  const form = new FormData();
+  form.set("finishedOn", finishedOn);
+  return form;
+}
+
+// #729: 167 de los 407 pases de producción tenían la fecha de inicio POSTERIOR a
+// la de fin. La puerta era esta: cerrar hoy una obra leída hace años, con un
+// `started_on` que la máquina había puesto el día del alta.
+describe("closePass — fecha de fin anterior al inicio (#729)", () => {
+  it("cerrar con una fecha anterior al inicio pone started_on a null", async () => {
+    const { client, updates } = makeRecordingClient("2026-08-14");
+    mocks.createClient.mockResolvedValue(client);
+
+    await closePass("pass-1", "book", "book-1", {}, closeForm("2015-07-22"));
+
+    expect(updates[0]).toMatchObject({ finished_on: "2015-07-22", started_on: null });
+  });
+
+  it("no toca started_on cuando las fechas van en orden", async () => {
+    const { client, updates } = makeRecordingClient("2026-08-01");
+    mocks.createClient.mockResolvedValue(client);
+
+    await closePass("pass-1", "book", "book-1", {}, closeForm("2026-08-14"));
+
+    // Ni siquiera aparece la clave: lo que no se toca, no se escribe.
+    expect(updates[0]).not.toHaveProperty("started_on");
+  });
+
+  it("no toca started_on si el pase no tenía fecha de inicio", async () => {
+    const { client, updates } = makeRecordingClient(null);
+    mocks.createClient.mockResolvedValue(client);
+
+    await closePass("pass-1", "book", "book-1", {}, closeForm("2015-07-22"));
+
+    expect(updates[0]).not.toHaveProperty("started_on");
+  });
+
+  it("mismo día no es inversión: se conserva", async () => {
+    const { client, updates } = makeRecordingClient("2026-08-14");
+    mocks.createClient.mockResolvedValue(client);
+
+    await closePass("pass-1", "book", "book-1", {}, closeForm("2026-08-14"));
+
+    expect(updates[0]).not.toHaveProperty("started_on");
+  });
+});
+
 describe("parseDroppedReason", () => {
   it("vacío → null (motivo opcional)", () => {
     expect(parseDroppedReason(null)).toBeNull();
