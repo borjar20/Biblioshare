@@ -152,9 +152,9 @@
     "startCta": "Empezar",
     "collectionTitle": "¿Qué empezamos?",
     "emptyTitle": "Encuentra algo para disfrutar",
-    "emptyBody": "Aún no tienes nada a medias. Busca un título o asómate a tu colección para elegir por dónde seguir.",
+    "emptyBody": "Aún no tienes nada a medias. Busca un título o asómate a tu biblioteca para elegir por dónde seguir.",
     "emptySearch": "Buscar",
-    "emptyExplore": "Explorar la colección"
+    "emptyExplore": "Explorar tu biblioteca"
   },
   "search": {
     "title": "Buscar",
@@ -312,8 +312,8 @@
     "avatarChoose": "Elegir imagen",
     "avatarUploading": "Subiendo...",
     "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo.",
-    "panelPrivateNote": "Solo tú ves este panel. Tu colección y tu actividad son públicas.",
-    "emptyTitle": "Colección vacía",
+    "panelPrivateNote": "Solo tú ves este panel. Tu biblioteca y tu actividad son públicas.",
+    "emptyTitle": "Biblioteca vacía",
     "highlights": "Destacados",
     "recentReviews": "Reseñas recientes",
     "activityToday": "Hoy",
@@ -1861,7 +1861,7 @@
       "series": "{count, plural, =1 {1 serie} other {# series}}"
     },
     "moreSubsagas": "{count, plural, =1 {+1 subsaga} other {+# subsagas}}",
-    "ownedCount": "{count, plural, =1 {◐ 1 en tu colección} other {◐ # en tu colección}}",
+    "ownedCount": "{count, plural, =1 {◐ 1 en tu biblioteca} other {◐ # en tu biblioteca}}",
     "readingLabel": "leyendo por «{name}»",
     "followAria": "Seguir esta saga",
     "followingAria": "Sigues esta saga",
@@ -2062,7 +2062,7 @@
     "welcomeTitle": "Aquí verás cómo vas",
     "welcomeBody": "Tu semana de lectura, tu año y tu racha aparecerán a medida que registres lo que disfrutas.",
     "welcomeGoalCta": "Fijar una meta 2026",
-    "welcomeExploreCta": "Explorar la colección"
+    "welcomeExploreCta": "Explorar tu biblioteca"
   },
   "whoToFollow": {
     "title": "A quién seguir",
@@ -2127,7 +2127,7 @@
     "unpin": "Quitar de fijados",
     "addToCollection": "Añadir a colección",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
-    "emptyTitle": "Tu colección está vacía",
+    "emptyTitle": "Tu biblioteca está vacía",
     "titlesCount": "{count, plural, one {# título} other {# títulos}}"
   },
   "import": {

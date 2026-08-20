@@ -100,8 +100,11 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   // cuidado que en la ficha.
   await expect(page.locator("h1:visible")).toHaveText(/hola,|novedades/i);
 
-  // La nav lleva a las 5 secciones.
-  await expect(page.getByRole("link", { name: /^colección$/i }).first()).toBeVisible();
+  // La nav lleva a las 5 secciones. La entrada se llama «Biblioteca» desde
+  // F3-011: «Colección» quedó reservado para las agrupaciones que crea el
+  // usuario, que vivían DENTRO de esta misma página con el mismo nombre (ver
+  // docs/UI-GLOSARIO.md). La URL sigue siendo /coleccion.
+  await expect(page.getByRole("link", { name: /^biblioteca$/i }).first()).toBeVisible();
 
   // Buscar un libro y ver resultados. Una tarjeta de resultado es un ENLACE si
   // la obra ya está en el catálogo, y un BOTÓN si todavía no (§7.39: la búsqueda
