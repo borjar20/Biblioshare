@@ -517,3 +517,37 @@ plantilla eran **11, no 15**. Las otras 4 llevan `search_path = ""`, que es MÁS
 6. **`create or replace` con una firma distinta NO reemplaza: crea una sobrecarga.** Al ampliar
    `hydrate_book` hay un `drop function` explícito antes. Con las dos versiones vivas, PostgREST
    no sabría a cuál llamar.
+
+---
+
+## 2026-08-20 (noche) — Grants residuales y fechas invertidas (#727, #729)
+
+1. **Se revoca TRUNCATE/TRIGGER/REFERENCES en bloque; DELETE no.** TRUNCATE es la única de las
+   cuatro que **no pasa por la RLS**: por cualquier camino que ejecute SQL con `anon` o
+   `authenticated`, vacía la tabla entera sin que ninguna policy diga nada. TRIGGER y REFERENCES
+   se van con ella porque el cliente no hace DDL. **DELETE se queda**: en muchas tablas borrar
+   por RLS es el camino legítimo (contenido propio del usuario) y un `revoke` de golpe rompería
+   justo eso — ahí el cinturón es la policy, no el grant.
+
+2. **Se mide y NO se arregla que `anon` conserve INSERT en 45 tablas y UPDATE en 43.** Es el
+   mismo residuo de default privileges, pero lo contiene la RLS (anon no tiene policies de
+   escritura) y tocarlo en bloque es de otro tamaño. Queda anotado en `data-model.md` §8 y vive
+   en #710. Escribirlo importa: sin la medida, el `revoke` de arriba se lee como «los grants de
+   anon ya están limpios», y no lo están.
+
+3. **Las 167 fechas invertidas de prod se resuelven poniendo `started_on` a NULL, y eso no
+   destruye nada — está medido, no supuesto.** Los 167 pases tenían `started_on` **exactamente
+   igual** a `created_at::date` (167 de 167). O sea que la fecha no decía «cuándo empezó a
+   leer», decía «cuándo se dio de alta la obra», y eso sigue estando en `created_at`. Se
+   descartó la alternativa (`started_on = finished_on`, «lectura de un día») porque inventa una
+   duración que nadie ha afirmado.
+
+4. **La app NO rechaza cerrar con una fecha anterior al inicio: pone `started_on` a NULL.**
+   Cerrar hoy una obra leída hace años es el camino normal, no un error del usuario — y
+   `started_on` no lo escribe nadie a mano, lo pone la máquina. Devolverle un error al usuario
+   por un dato que él no ha tocado sería culparle de lo nuestro.
+
+5. **Antes de escribir una columna, mirar su grant.** `passes` tiene grants POR COLUMNA; se
+   comprobó que `started_on` está en la lista de `authenticated` antes de añadir la escritura.
+   Es la trampa del issue #375, y ya ha costado dos veces: compila, pasa el typecheck, pasa los
+   unitarios y revienta en producción.
