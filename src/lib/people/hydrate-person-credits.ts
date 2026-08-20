@@ -137,11 +137,11 @@ export async function hydratePersonCredits(
       // Estas filas las deriva el SERVIDOR del proveedor; ninguna viene del
       // cliente. Ver la cabecera de `find-or-create-person.ts`.
       //
-      // Efecto secundario buscado: **un visitante ANÓNIMO también hidrata**.
-      // Antes su escritura moría con 42501 y la ficha se quedaba sin obra hasta
-      // que pasara alguien con sesión. Ahora la hidratación ya no depende de
-      // quién mire — que es justo lo que significa «catálogo compartido». Sigue
-      // acotada por el guard de `credits_hydrated_at`: una vez por persona.
+      // Ojo, aquí el anónimo SIGUE sin llegar, pero por otra puerta: unas líneas
+      // más arriba `findOrCreateCatalogItemsBulk` va contra
+      // `register_catalog_items_bulk`, que exige `auth.uid()` y corta antes de
+      // llegar a este upsert. Lo que cambia con #725 es que, cuando se llega, la
+      // escritura ya no depende de los permisos de quien mire.
       const { error } = await createServiceRoleClient()
         .from("credits")
         .upsert(rows, {

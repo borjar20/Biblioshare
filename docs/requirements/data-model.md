@@ -183,10 +183,15 @@ El arreglo tiene dos mitades y **el orden importa**:
 ficha da 500 — la rejilla de episodios se queda vacía para siempre y el reparto no se escribe
 nunca. Es el modo de fallo exacto de #699, invisible con una cuenta admin.
 
-**Cambio de comportamiento buscado:** un visitante **anónimo** ahora también hidrata. Antes su
-escritura moría con 42501 y la ficha se quedaba a medias hasta que pasara alguien con sesión.
-Sigue acotado por los guards de siempre (`credits_hydrated_at`, el `count` de episodios): una
-vez por ficha.
+**Cambio de comportamiento buscado:** un visitante **anónimo** pasa a hidratar donde antes su
+escritura moría con 42501 — la bio de una persona, el reparto de una ficha, los episodios de una
+serie. Verificado en producción el 2026-08-20: abriendo `/persona/<id>` sin sesión, la fila queda
+con bio y foto escritas.
+
+⚠️ **Con una excepción que no conviene confundir:** la hidratación de la **filmografía** de una
+persona (`hydratePersonCredits`) sigue sin funcionar para el anónimo, y no por estos grants —
+antes de llegar a `credits` pasa por `register_catalog_items_bulk` para dar de alta las obras, y
+esa RPC exige `auth.uid()`. Ese gate es otro y sigue en pie.
 
 El trigger `enforce_people_enrich_only` (fill-only en UPDATE) **se queda**, aunque ya no haya
 ninguna policy de UPDATE que lo alcance: es la red por si alguien vuelve a abrir una.
