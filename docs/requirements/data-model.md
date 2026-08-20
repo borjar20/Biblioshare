@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-19 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
+> **[Canónico · verificado contra dev el 2026-08-20 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -145,8 +145,9 @@ poder pisar lo que un colaborador curó a mano — y **`register_book_edition`**
 existen además **`hydrate_movie` / `hydrate_series` / `hydrate_screens_bulk`** y
 **`register_catalog_item` / `register_catalog_items_bulk`** con el mismo patrón, pero **sin
 fichero de migración en el repo** (verificadas contra `pg_proc` el 2026-08-19 — solo la de
-libros tiene fichero). Las seis `hydrate_*`/`register_catalog_*` están en la lista de
-pendientes de `pg_temp` (§8).
+libros tiene fichero; las de pantalla y registro se rescataron después en
+`20260818_catalog_c_hydrate_screen.sql` y `20260818_catalog_e_register.sql`). Las seis
+`hydrate_*`/`register_catalog_*` ya llevan `pg_temp` desde el barrido de #726 (§8).
 
 `people` + `credits` guardan autoría/dirección/reparto, también polimórfico por
 `(item_type, item_id)`. `credits` tiene índice **único** sobre
@@ -321,6 +322,29 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   importado nace como pases cerrados que nunca pasaron por `planned`, así que ahí es `NULL`.
   Por eso «la pila» ordena por `created_at` (proxy con datos para todos) y no por `planned_on`.
 
+- ⚠️ **`finished_on IS NULL` ⟺ pase abierto, y desde el 2026-08-20 lo garantiza la BASE**, no
+  solo TypeScript: constraint `passes_status_dates`
+  (`20260868_passes_state_dates_invariant.sql`, **aplicada y verificada en DEV** contra
+  `pg_constraint` — probada además insertando un `completed` sin fecha, que sale con
+  `check_violation`; **PROD pendiente del merge**).
+
+  ```sql
+  CHECK ((status in ('completed','dropped')) = (finished_on is not null))
+  ```
+
+  Importa porque toda la app aguas abajo define «pase abierto» así (`log-panel.tsx:288`,
+  `get-passes.ts:25`). El camino que lo rompía era el importador: un CSV de Goodreads con
+  *Date Read* vacía creaba un `completed` sin fechas que la biblioteca pintaba como lectura EN
+  CURSO, y al releer la obra quedaban dos pases abiertos de facto (#714). Ahora `commit-row.ts`
+  y su gemelo SQL `resolve_pending_import` cierran con la fecha de importación cuando el CSV no
+  trae ninguna.
+
+  **Lo que el CHECK NO cubre:** el orden de las fechas. Prod tiene 167 de 407 pases (41 %) con
+  `started_on` POSTERIOR a `finished_on` —importaciones: inicio = día del import, fin = fecha
+  real de lectura—, así que `finished_on >= started_on` exige limpiar datos primero (issue
+  #729). `savePassFields` sigue pudiendo escribir `finished_on` sin mirar el estado; hoy lo
+  frena el CHECK, con un error genérico (#719).
+
 - **`is_active`** distingue el pase en curso de los cerrados. Solo uno activo por ítem.
 - **`dropped_reason`/`dropped_reason_note`** (migración `20260858_pass_dropped_reason.sql`,
   **aplicada y verificada en DEV y en PROD el 2026-08-14** contra
@@ -439,8 +463,11 @@ La RPC **`resolve_pending_import(p_pending_id, p_catalog_item_id)`** es `SECURIT
 a propósito: al resolver, crea la entrada y los pases **para el DUEÑO de la fila**, no para
 el revisor — un INSERT con `user_id` ajeno que la RLS de dueño no permitiría.
 
-⚠️ **`resolve_pending_import` comparte el hueco de fechas del importador** (hallazgo F1-002
-de la auditoría 2026-08): crea pases `completed` **sin fechas**.
+✅ **El hueco de fechas que compartía con el importador está cerrado** (#714, migración
+`20260868_passes_state_dates_invariant.sql`, **aplicada y verificada en DEV, prod pendiente del
+merge**): cuando el CSV no trae fecha y el estado es `completed`/`dropped`, cierra con
+`current_date` en vez de dejar `finished_on` a NULL — mismo criterio que `commit-row.ts`. De
+paso pasó a `search_path = public, pg_temp`.
 
 ## 4. Organización del usuario
 
@@ -2809,23 +2836,34 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
   esquema temporal **antes** que los esquemas listados salvo que `pg_temp` aparezca
   explícitamente en la lista; con `set search_path = public` a secas, quien pueda crear una
   tabla o un tipo temporal con el nombre de algo que la función referencie sin cualificar la
-  secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda. **Estado medido en
-  dev el 2026-08-19: 89 funciones en `public` (más 36 en el esquema `private`), 75
-  `SECURITY DEFINER` en `public`, 60 con `pg_temp` — faltan 15.** Los números anteriores
-  (55/55 de 2026-07-29, 69/62 de 2026-08-13) quedaron desactualizados por funciones nuevas,
-  no por una regresión de esta migración. Las 7 que ya faltaban siguen sin arreglar
-  (`archive_club_activity`, `pin_comment`, `ensure_club_round`, `get_club_round_state`,
-  `pull_pending_celebrations`, `get_activities_progress`, `update_activity_details`) y se
-  suman `list_club_round_weeks`, `enforce_catalog_edit_collaborator_only` y las 6 de
-  book-hydration (`hydrate_book`, `hydrate_movie`, `hydrate_series`, `hydrate_screens_bulk`,
-  `register_catalog_item`, `register_catalog_items_bulk`). Tres
-  (`approve_club_join_request`, `club_is_private`, `notify_club_join_request`) conservan su
-  `search_path` vacío — más estricto — y quedaron como `"", pg_temp`; la migración preserva
-  el valor previo en vez de normalizar todo a `public`. Es un **barrido genérico sobre
-  `pg_proc`, idempotente**: la plantilla para funciones nuevas es `set search_path = public,
-  pg_temp`, pero si alguna se escapa, **el arreglo es re-ejecutar
-  `20260808_secdef_search_path_pg_temp.sql`** (idempotente) para que las 15 pendientes queden
-  cubiertas también.
+  secuestra. Listarlo AL FINAL lo manda al último lugar de la búsqueda.
+
+  **Estado medido en dev el 2026-08-20, tras el barrido de #726
+  (`20260869_secdef_search_path_pg_temp.sql`, PROD PENDIENTE del merge):**
+
+  | `search_path` | funciones | ¿correcto? |
+  |---|---|---|
+  | `public, pg_temp` | 69 | sí, es la plantilla |
+  | `""` | 4 | sí, **más** estricto (cualifican todo a mano) |
+  | `"", pg_temp` | 3 | sí |
+  | `public` a secas | **0** | — |
+
+  Las 4 con `search_path` vacío (`ensure_club_round`, `get_club_round_state`,
+  `list_club_round_weeks`, `pin_comment`) **se dejan como están a propósito**: vaciarlo es más
+  estricto que la plantilla, y pasarlas a `public, pg_temp` las empeoraría. Por eso el conteo
+  anterior de «faltan 15» sobreestimaba: **desviaciones reales eran 11**, y `resolve_pending_import`
+  (la 15ª) se arregló de paso en `20260868`.
+
+  Es un **barrido idempotente sobre nombres explícitos**; la plantilla para funciones nuevas
+  sigue siendo `set search_path = public, pg_temp`. La comprobación de deriva es una consulta,
+  no un ledger:
+
+  ```sql
+  select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.prosecdef
+    and coalesce(array_to_string(p.proconfig, ','), '') = 'search_path=public';
+  -- debe salir vacío
+  ```
 - **Helpers privados de Social fases 0/1**: las funciones `SECURITY DEFINER` nuevas viven en el
   esquema no expuesto `private`, cualifican todas las referencias y fijan `search_path = ''`.
   Las cuatro RPC públicas de bloqueos/moderación son `SECURITY INVOKER` y usan también
