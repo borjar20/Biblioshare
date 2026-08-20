@@ -95,7 +95,18 @@ export default async function SearchPage({
             {t("browseSagas")} →
           </Link>
 
-          {!query && <p className="text-sm text-muted-foreground">{t("empty")}</p>}
+          {/* «Escribe algo para buscar» era una línea gris bajo el formulario
+              (F3-015): la pantalla de entrada a la búsqueda parecía a medio
+              cargar. Misma anatomía que el «sin resultados» de debajo, en talla
+              de panel porque el formulario ya ocupa la mitad de arriba. */}
+          {!query && (
+            <EmptyState
+              variant="panel"
+              glyph={<SearchIcon className="h-5 w-5" />}
+              title={t("empty")}
+              message={t("emptyBody")}
+            />
+          )}
 
           {query && results.length === 0 && (
             <EmptyState

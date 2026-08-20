@@ -487,6 +487,13 @@ function ManagedLog({
             type="button"
             disabled={isPending}
             onClick={() => {
+              // Pregunta antes (F3-012): esto borra TODOS los pases de la obra,
+              // y hasta ahora se ejecutaba al primer clic. Es la excepción
+              // consciente a «lo destructivo vive tras un ···»: no está sembrado
+              // por fila, es una acción única al final de un panel de gestión al
+              // que se entra a propósito, así que esconderla la volvería
+              // inencontrable sin reducir el riesgo de misclick.
+              if (!window.confirm(t("unfollowConfirm"))) return;
               // Quitar de la biblioteca = quedarse sin pase activo: el badge del
               // hero debe desaparecer ya, no cuando aterrice la revalidación.
               setStatus(null);

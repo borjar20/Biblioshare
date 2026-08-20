@@ -231,7 +231,11 @@ test("crear y borrar un reto", async ({ page }) => {
   // "¡Completado!" en vez del progreso.
   await expect(card.getByText(/de 9999/)).toBeVisible();
 
-  // Limpieza.
-  await card.getByRole("button", { name: /eliminar/i }).click();
+  // Limpieza. Eliminar ya no es un text-link de la tarjeta: vive tras el «···»
+  // y pregunta (F3-012). Playwright descarta los diálogos por defecto, así que
+  // sin el handler el reto se quedaría sin borrar.
+  page.once("dialog", (d) => d.accept());
+  await card.getByRole("button", { name: "Acciones del reto" }).click();
+  await page.getByRole("menuitem", { name: /eliminar/i }).click();
   await expect(page.getByRole("heading", { name })).toHaveCount(0);
 });

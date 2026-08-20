@@ -8,6 +8,7 @@ import { formatPosition } from "@/lib/library/position";
 import { itemHref } from "@/lib/catalog/item-href";
 import { deleteNote, toggleNoteFavorite } from "@/lib/notes/actions";
 import { defaultNotesQuery, notesHref } from "@/lib/notes/query";
+import { ActionMenu } from "@/components/ui/action-menu";
 
 // Dos tratamientos por `kind` (mockup): la cita es protagonista en serif, la
 // nota es una tarjeta normal. Tus propias notas NUNCA se te velan: el spoiler
@@ -80,7 +81,11 @@ export function NoteCard({
         )}
       </div>
 
-      <div className="flex gap-3 text-[11.5px]">
+      {/* Favorita se queda (es reversible y de un clic); borrar la nota se va
+          detrás del «···» y pregunta (F3-012). Era un enlace ROJO en cada
+          tarjeta del cuaderno: una lista de veinte notas enseñaba veinte
+          borrados, y lo que se pierde es texto escrito a mano. */}
+      <div className="flex items-center gap-3 text-[11.5px]">
         <button
           type="button"
           disabled={pending}
@@ -94,14 +99,26 @@ export function NoteCard({
           {note.isFavorite ? t("favoriteOn") : t("favoriteOff")}
         </button>
         {showDelete && (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => startTransition(() => deleteNote(note.id, note.itemType, note.itemId))}
-            className="text-status-dropped underline disabled:opacity-50"
-          >
-            {t("delete")}
-          </button>
+          <div className="ml-auto">
+            <ActionMenu
+              label={t("actionsLabel")}
+              triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+              items={[
+                {
+                  key: "delete",
+                  label: t("delete"),
+                  danger: true,
+                  disabled: pending,
+                  onSelect: () => {
+                    if (!window.confirm(t("deleteConfirm"))) return;
+                    startTransition(() =>
+                      deleteNote(note.id, note.itemType, note.itemId),
+                    );
+                  },
+                },
+              ]}
+            />
+          </div>
         )}
       </div>
     </article>

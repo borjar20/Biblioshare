@@ -9,6 +9,7 @@ import {
 } from "@/lib/challenges/actions";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { ActionMenu } from "@/components/ui/action-menu";
 import { ChallengeForm } from "./challenge-form";
 
 export function ChallengeCard({ progress }: { progress: ChallengeProgress }) {
@@ -58,7 +59,11 @@ export function ChallengeCard({ progress }: { progress: ChallengeProgress }) {
 
       <ProgressBar current={completed} total={challenge.targetCount} />
 
-      <div className="flex gap-3 text-xs text-muted-foreground">
+      {/* Editar y archivar se quedan a la vista: son neutros y reversibles
+          (archivar tiene su «Reactivar»). Eliminar se va detrás del «···» y
+          pregunta (F3-012): estaba a un píxel de «Archivar», con el mismo peso
+          tipográfico, y borra el reto con su histórico. */}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <button
           type="button"
           className="hover:text-foreground"
@@ -76,14 +81,24 @@ export function ChallengeCard({ progress }: { progress: ChallengeProgress }) {
         >
           {isArchived ? t("unarchive") : t("archive")}
         </button>
-        <button
-          type="button"
-          disabled={isPending}
-          className="hover:text-status-dropped disabled:opacity-60"
-          onClick={() => startTransition(() => deleteChallenge(challenge.id))}
-        >
-          {t("delete")}
-        </button>
+        <div className="ml-auto">
+          <ActionMenu
+            label={t("actionsLabel")}
+            triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+            items={[
+              {
+                key: "delete",
+                label: t("delete"),
+                danger: true,
+                disabled: isPending,
+                onSelect: () => {
+                  if (!window.confirm(t("deleteConfirm"))) return;
+                  startTransition(() => deleteChallenge(challenge.id));
+                },
+              },
+            ]}
+          />
+        </div>
       </div>
     </div>
   );

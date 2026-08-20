@@ -8,6 +8,8 @@ import { getClubUnreadCounts } from "@/lib/clubs/unread";
 import { ClubCard } from "@/components/clubs/club-card";
 import { ClubSearch } from "@/components/clubs/club-search";
 import { ClubCreateToggle } from "@/components/clubs/club-create-toggle";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SearchIcon, UsersIcon } from "@/components/ui/icons";
 import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -73,8 +75,18 @@ export default async function ClubesPage({
 
       <section className="flex flex-col gap-3">
         <h2 className="label-section">{t("myClubs")}</h2>
+        {/* Dos vacíos con MOTIVOS distintos, y por eso dos textos distintos
+            (F3-015): «no tienes clubes» es un principio y ofrece la sección de
+            abajo; «no se encontraron» puede ser una búsqueda que no casa o que
+            de verdad no haya ninguno público, y ahí la salida no es la misma.
+            Antes los tres eran la misma frase gris suelta. */}
         {mine.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          <EmptyState
+            variant="panel"
+            glyph={<UsersIcon className="h-5 w-5" />}
+            title={t("empty")}
+            message={t("emptyBody")}
+          />
         ) : (
           <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
             {mine.map((club) => (
@@ -91,7 +103,12 @@ export default async function ClubesPage({
       <section className="flex flex-col gap-3">
         <h2 className="label-section">{t("discover")}</h2>
         {discovered.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("emptyDiscover")}</p>
+          <EmptyState
+            variant="panel"
+            glyph={<SearchIcon className="h-5 w-5" />}
+            title={t("emptyDiscover")}
+            message={q ? t("emptyDiscoverBody") : t("emptyDiscoverNoQuery")}
+          />
         ) : (
           <div className={`grid gap-3.5 ${CARD_GRID_COLS}`}>
             {discovered.map((club) => (

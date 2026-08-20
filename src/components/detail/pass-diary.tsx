@@ -14,6 +14,7 @@ import { formatEdition } from "@/lib/editions/edition-label";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
+import { ActionMenu } from "@/components/ui/action-menu";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 
@@ -245,6 +246,12 @@ function PassCard({
           </p>
         )}
 
+      {/* Editar se queda en línea (es neutro y es lo que se hace a diario);
+          borrar se va detrás del «···» (F3-012). Antes los dos eran el mismo
+          text-link gris, uno al lado del otro, y el de la derecha borraba el
+          pase con sus sesiones SIN preguntar. La confirmación va aquí y no en
+          `deletePass` porque la Server Action también la llaman flujos que ya
+          preguntaron antes. */}
       <div className="flex items-center gap-3 pt-1">
         {canEdit && (
           <button
@@ -255,16 +262,26 @@ function PassCard({
             {editing ? t("cancelEdit") : t("edit")}
           </button>
         )}
-        <button
-          type="button"
-          disabled={isDeleting}
-          onClick={() =>
-            startDeleteTransition(() => deletePass(pass.id, itemType, itemId))
-          }
-          className="text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
-        >
-          {t("delete")}
-        </button>
+        <div className="ml-auto">
+          <ActionMenu
+            label={t("actionsLabel")}
+            triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+            items={[
+              {
+                key: "delete",
+                label: t("delete"),
+                danger: true,
+                disabled: isDeleting,
+                onSelect: () => {
+                  if (!window.confirm(t("deleteConfirm"))) return;
+                  startDeleteTransition(() =>
+                    deletePass(pass.id, itemType, itemId),
+                  );
+                },
+              },
+            ]}
+          />
+        </div>
       </div>
 
       {canEdit && editing && (

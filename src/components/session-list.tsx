@@ -9,6 +9,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { deleteSession } from "@/lib/sessions/actions";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
+import { ActionMenu } from "@/components/ui/action-menu";
 
 // El tramo leído en una sesión ("p. 180 → 240" del frame 3).
 //
@@ -146,18 +147,31 @@ export function SessionList({
                           year: "numeric",
                         })}
                   </time>
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() =>
-                      startTransition(() =>
-                        deleteSession(session.id, itemType, itemId),
-                      )
-                    }
-                    className="shrink-0 text-[11px] text-muted-foreground underline hover:text-status-dropped disabled:opacity-60"
-                  >
-                    {t("delete")}
-                  </button>
+                  {/* Borrar la sesión ya no es un text-link sembrado en cada
+                      fila (F3-012): con diez sesiones había diez borrados
+                      permanentes a un misclick del scroll. Sin `confirm()` a
+                      propósito — la confirmación se reserva a lo que arrastra
+                      otros datos (pase, edición, rol); una sesión suelta se
+                      vuelve a registrar en diez segundos. */}
+                  <div className="shrink-0">
+                    <ActionMenu
+                      label={t("actionsLabel")}
+                      menuAlign="right"
+                      triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+                      items={[
+                        {
+                          key: "delete",
+                          label: t("delete"),
+                          danger: true,
+                          disabled: isPending,
+                          onSelect: () =>
+                            startTransition(() =>
+                              deleteSession(session.id, itemType, itemId),
+                            ),
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
                 {/* Aquí NO va el texto de la nota (issue #109): su hogar es la
                     tabla `notes` y lo pinta «Mis notas y citas», con su tipo,

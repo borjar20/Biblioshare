@@ -46,11 +46,17 @@ export function ClubCard({
 
   return (
     // `h-full` + el pie con `mt-auto`: en una fila de la rejilla, un club sin
-    // descripción quedaba más bajo que sus vecinos y su botón «Abrir» flotaba a
-    // media altura. La celda ya se estira sola (`items-stretch` es el defecto de
+    // descripción quedaba más bajo que sus vecinos y el pie flotaba a media
+    // altura. La celda ya se estira sola (`items-stretch` es el defecto de
     // grid); lo que faltaba era que la tarjeta ocupase la celda entera.
-    <div className="flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
-      <Link href={`/club/${club.slug}`} className="block">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card">
+      {/* La tarjeta ENTERA es el enlace (F3-014): el `after:inset-0` estira el
+          área pulsable de este <Link> sobre toda la tarjeta, así que el botón
+          «Abrir» del pie sobraba — repetía en un control lo que ya hacía el
+          bloque en el que estaba dentro. Lo que sí es otra acción (unirse,
+          solicitar, ver invitación) se levanta con `relative z-10` para quedar
+          POR ENCIMA de esa capa; si no, el enlace se comería sus clics. */}
+      <Link href={`/club/${club.slug}`} className="block after:absolute after:inset-0">
         <ClubCoverBand coverUrl={club.coverUrl} seed={club.id} className="h-[74px]">
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-surface/85 px-2 py-0.5 font-mono text-[9px] tracking-wide text-foreground uppercase backdrop-blur-sm">
             {isPrivate && <LockIcon aria-hidden className="h-2.5 w-2.5" />}
@@ -88,20 +94,13 @@ export function ClubCard({
           </span>
         </span>
 
-        {status === "active" ? (
-          <Link
-            href={`/club/${club.slug}`}
-            className={buttonVariants("secondary", compact)}
-          >
-            {t("open")}
-          </Link>
-        ) : status === "invited" ? (
+        {status === "invited" ? (
           // Aceptar/rechazar vive en la cabecera del club (ClubHeader), que es
           // donde se ve de qué club se trata antes de decidir. Aquí solo hace
           // falta la puerta.
           <Link
             href={`/club/${club.slug}`}
-            className={buttonVariants("green", compact)}
+            className={buttonVariants("green", `relative z-10 ${compact}`)}
           >
             {t("seeInvite")}
           </Link>
@@ -113,7 +112,7 @@ export function ClubCard({
           <Button
             type="button"
             variant={isPrivate ? "secondary" : "green"}
-            className={compact}
+            className={`relative z-10 ${compact}`}
             disabled={isPending}
             onClick={handleJoin}
           >
