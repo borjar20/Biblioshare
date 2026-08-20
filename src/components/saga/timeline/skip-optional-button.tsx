@@ -36,7 +36,7 @@ export function SkipOptionalButton({
         type="submit"
         data-testid={node.skipped ? "unskip-optional" : "skip-optional"}
         aria-label={node.skipped ? labels.unskipAria(node.label) : labels.skipAria(node.label)}
-        className="rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.05em] text-muted-foreground"
+        className="tap-44 rounded-full border border-border bg-surface px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.05em] text-muted-foreground"
       >
         {node.skipped ? labels.unskip : labels.skip}
       </button>

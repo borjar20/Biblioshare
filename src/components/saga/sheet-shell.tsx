@@ -65,7 +65,7 @@ export function SheetShell({
             type="button"
             onClick={() => ref.current?.close()}
             aria-label={t("close")}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border"
+            className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border"
           >
             ✕
           </button>

@@ -159,7 +159,9 @@ function EpisodeItem({
             onClick={() => onToggleWatched(episode)}
             disabled={isPending}
             aria-label={t("watched")}
-            className={`grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[6px] border-[1.5px] transition-colors disabled:opacity-60 ${
+            // 22px de dibujo, 44 de área: es el gesto más repetido del dominio
+            // series y se marcaba a ciegas (F4-013).
+            className={`tap-44 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[6px] border-[1.5px] transition-colors disabled:opacity-60 ${
               own.watched
                 ? "border-type-series bg-type-series text-white"
                 : "border-border text-transparent hover:border-type-series hover:text-type-series/40"

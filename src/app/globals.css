@@ -350,6 +350,43 @@ body {
   color: var(--muted-foreground);
 }
 
+/* Área de pulsación mínima de 44px SIN tocar el dibujo (F4-015 de la auditoría
+   2026-08). El hallazgo no era un control suelto: medido a 360px, el 60-80% de
+   los elementos interactivos de cada vista bajaba de 40px en su lado corto, y
+   los reincidentes son siempre los mismos (disparadores «⋯» de 28-30px, cierres
+   de sheet de 32px, flechas de reordenar de 24px, píldoras de 24px de alto).
+   Por eso vive aquí como regla y no como un `p-3 -m-3` copiado en cada sitio.
+
+   Crece un pseudo-elemento transparente centrado sobre el control: la caja de
+   layout no cambia, así que ninguna maqueta se mueve ni un píxel. La alternativa
+   (padding + margen negativo) sí altera el flujo cuando el control vive en un
+   `flex` con `gap`.
+
+   Solo en punteros gruesos: con ratón la precisión ya alcanza, y un área de
+   44px alrededor de un icono de 24 le robaría clics al vecino de al lado.
+   `touch-action: manipulation` va fuera del media query porque también mata el
+   doble-tap-zoom sobre el propio control en híbridos.
+
+   NO sirve si el control lleva `overflow-hidden` (recorta el pseudo-elemento) ni
+   si está posicionado en `absolute`/`fixed` por el llamante (aquí se le pone
+   `relative`): en esos dos casos hay que agrandar el dibujo o envolverlo. */
+@utility tap-44 {
+  position: relative;
+  touch-action: manipulation;
+
+  @media (pointer: coarse) {
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
 /* Rejilla de tres áreas del Inicio: PERSONAL · FEED · STATS (consumir →
    socializar → medir). Vive aquí y no en utilidades de Tailwind porque son
    CUATRO reflows con `grid-template-areas`, y el `[grid-template-areas:...]`
