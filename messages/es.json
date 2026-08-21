@@ -16,6 +16,14 @@
     "auth": {
       "signIn": "Iniciar sesión",
       "signUp": "Crear cuenta"
+    },
+    "youLabel": "Tu cuenta",
+    "you": {
+      "profile": "Mi perfil",
+      "notes": "Cuaderno",
+      "stats": "Estadísticas",
+      "settings": "Ajustes",
+      "rowLabel": "Lo tuyo"
     }
   },
   "auth": {
@@ -323,6 +331,20 @@
     "activityEmptyCta": "Buscar algo que registrar",
     "settings": "Ajustes",
     "visibilityLabel": "Visibilidad"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "profileSection": "Perfil",
+    "viewProfile": "Ver perfil",
+    "accountSection": "Cuenta",
+    "emailLabel": "Correo",
+    "emailUnknown": "Sin correo asociado",
+    "changePassword": "Cambiar contraseña",
+    "dataSection": "Tus datos",
+    "dataDescription": "Tu biblioteca es tuya: puedes traerla de otro sitio y llevártela cuando quieras.",
+    "pendingLink": "{count, plural, one {Tienes 1 título pendiente de revisar} other {Tienes # títulos pendientes de revisar}}",
+    "noticesSection": "Avisos",
+    "adminSection": "Administración"
   },
   "social": {
     "follow": "Seguir",

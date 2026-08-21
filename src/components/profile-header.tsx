@@ -5,7 +5,8 @@ import type { Profile } from "@/lib/profile/get-profile-by-username";
 import type { LibraryStats } from "@/lib/library/get-library-stats";
 import type { FollowCounts } from "@/lib/social/follows";
 import { EditProfileForm } from "./edit-profile-form";
-import { ProfileSettingsSheet } from "@/app/u/[username]/profile-settings-sheet";
+import { buttonVariants } from "@/components/ui/button";
+import { GearIcon } from "@/components/ui/icons";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { ImageZoom } from "@/components/ui/image-zoom";
 
@@ -28,7 +29,6 @@ export async function ProfileHeader({
 }) {
   const t = await getTranslations("profile");
   const tSocial = await getTranslations("social");
-  const tAdmin = await getTranslations("admin");
   const name = profile.displayName || profile.username;
   const memberSinceYear = new Date(profile.createdAt).getFullYear();
   const basePath = `/u/${profile.username}`;
@@ -83,12 +83,18 @@ export async function ProfileHeader({
             {isOwner && (
               <>
                 <EditProfileForm profile={profile} />
-                <ProfileSettingsSheet
-                  username={profile.username}
-                  isPublic={profile.isPublic}
-                  isAdmin={profile.role === "admin"}
-                  adminLabel={tAdmin("navLabel")}
-                />
+                {/* El engranaje era una hoja modal con visibilidad, avisos,
+                    admin y cerrar sesión dentro. Ahora es un ENLACE a /ajustes:
+                    una pantalla de configuración se comparte, se marca y se
+                    vuelve a ella con el botón atrás, y un <dialog> no hace
+                    ninguna de las tres (F3-010). */}
+                <Link
+                  href="/ajustes"
+                  aria-label={t("settings")}
+                  className={buttonVariants("secondary", "px-2.5")}
+                >
+                  <GearIcon className="h-4 w-4" />
+                </Link>
               </>
             )}
           </div>
