@@ -765,6 +765,76 @@ export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
  * permitió retirar su tabla: sin esto, quitar la tabla habría dejado el reparto
  * exacto solo al alcance del ratón.
  */
+/** Celdas del waffle cuando el total no cabe a una celda por obra. */
+const WAFFLE_CELLS = 100;
+
+/**
+ * Reparto en rejilla de celdas contables.
+ *
+ * Sustituye al anillo por una razón del propio doc, no de gusto: el principio 3
+ * de `paneles-estadisticos.md` prohíbe que un dato exija medir una altura, un
+ * ÁREA o un ÁNGULO — y un sector de donut es exactamente eso. El anillo era el
+ * único gráfico del muro que peleaba con nuestra propia regla, y había tres.
+ *
+ * Dos modos, y la diferencia se dice en voz alta debajo de la rejilla porque
+ * cambia lo que el dibujo significa:
+ *   ≤100 puntos → una celda = una obra. Lo que se cuenta ES el dato, sin redondeo.
+ *   >100        → una celda = 1 %. Hay redondeo, y callarlo sería mentir.
+ *
+ * El reparto va por RESTO MAYOR. Redondear la cuota de cada serie por separado
+ * da 99 o 101 celdas según caiga, y una rejilla de 10×10 con una celda de menos
+ * se ve coja en la última fila.
+ */
+export function WaffleChart({ spec, derived }: ChartProps) {
+  const total = derived.total;
+  const perWork = total > 0 && total <= WAFFLE_CELLS;
+  const cellCount = perWork ? total : WAFFLE_CELLS;
+
+  // `known` ya excluye los huecos: un `null` no ocupa celdas, porque no se midió.
+  const wanted = derived.known.map((d) => ({
+    datum: d,
+    want: total > 0 ? (d.value / total) * cellCount : 0,
+  }));
+  const shares = wanted.map((w) => ({ ...w, n: Math.floor(w.want) }));
+  let left = cellCount - shares.reduce((sum, s) => sum + s.n, 0);
+  for (const s of [...shares].sort((x, y) => (y.want % 1) - (x.want % 1))) {
+    if (left <= 0) break;
+    s.n += 1;
+    left -= 1;
+  }
+
+  const cells = shares.flatMap((s) =>
+    Array.from({ length: s.n }, (_, i) => ({
+      key: `${s.datum.key}-${i}`,
+      color: colorFor(spec, s.datum),
+    })),
+  );
+
+  return (
+    <div className="flex flex-col gap-2 py-1">
+      {/* La rejilla se esconde al lector: cien celdas sueltas son cien nodos que
+          no dicen nada. El dato exacto lo da la LEYENDA, que lleva serie, glifo
+          y cifra, y que el armazón pinta también en la cara. Ahí está la mitad
+          del invariante de `SELF_DESCRIBING` que este gráfico cumple. */}
+      <div aria-hidden data-cells className="grid grid-cols-10 gap-[3px]">
+        {cells.map((c) => (
+          <span
+            key={c.key}
+            data-cell
+            className="aspect-square rounded-[3px]"
+            style={{ background: c.color }}
+          />
+        ))}
+      </div>
+      <p className="font-mono text-[9px] text-foreground-faint">
+        {perWork
+          ? `cada celda = 1 ${spec.unit.one}`
+          : `cada celda = 1 % · ${formatValue(total, spec.unit)} en total`}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Ranking dibujado: etiqueta · tallo · punto · valor exacto.
  *
@@ -932,6 +1002,8 @@ export function Chart({ spec, derived, interactive }: ChartProps) {
       return <HeatmapChart spec={spec} derived={derived} interactive={interactive} />;
     case "lollipop":
       return <LollipopChart spec={spec} derived={derived} interactive={interactive} />;
+    case "waffle":
+      return <WaffleChart spec={spec} derived={derived} />;
     default:
       return null;
   }

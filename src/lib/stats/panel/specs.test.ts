@@ -78,6 +78,19 @@ describe("la forma sale de lo que mide el panel", () => {
     expect(lollipops.map((p) => p.id).sort()).toEqual([...ids].sort());
   });
 
+  it("ningún reparto se queda en anillo: el principio 3 prohíbe medir un ángulo", () => {
+    // `donut` sigue en `PanelViz` como referencia del arco, pero sin consumidor.
+    expect(allPanels().filter((p) => p.viz === "donut")).toHaveLength(0);
+    const waffles = allPanels().filter((p) => p.viz === "waffle");
+    expect(waffles.map((p) => p.id).sort()).toEqual(["estados", "pila", "por-tipo"]);
+  });
+
+  it("todo waffle trae `series`: sin ellas la leyenda pierde el nombre, y ahí vive su dato", () => {
+    for (const p of allPanels().filter((x) => x.viz === "waffle")) {
+      expect(p.series?.length, `panel ${p.id}`).toBeGreaterThan(0);
+    }
+  });
+
   it("más de la mitad del muro DIBUJA: era el problema de partida", () => {
     const TEXTO = ["kpi", "ranking", "table"];
     const panels = allPanels();

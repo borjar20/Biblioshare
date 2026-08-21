@@ -71,6 +71,10 @@ const SELF_DESCRIBING: PanelSpec["viz"][] = [
   // es focalizable con su valor en el nombre accesible. Cumple las dos mitades
   // del invariante, así que pierde la tabla — que habría sido una copia exacta.
   "lollipop",
+  // El waffle no escribe dentro de la rejilla (cien cifras no caben): su dato
+  // exacto vive en la LEYENDA, que lleva serie, glifo y cifra, se lee con
+  // teclado y sale también en la cara. Misma garantía por otra puerta.
+  "waffle",
 ];
 
 const CARD =

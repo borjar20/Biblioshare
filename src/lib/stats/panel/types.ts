@@ -150,6 +150,8 @@ export type PanelViz =
   | "heatmap"
   /** Ranking DIBUJADO: etiqueta, tallo, punto y cifra. Sustituye a `ranking`. */
   | "lollipop"
+  /** Reparto en celdas CONTABLES. Sustituye a `donut`, que exigía medir un ángulo. */
+  | "waffle"
   | "ranking"
   | "kpi"
   | "table";
