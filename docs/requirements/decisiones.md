@@ -982,3 +982,68 @@ que separó un fallo del vecino de un fallo propio.
 `interactions.ts` se parte porque el build lo exigía, no como primer paso de ese refactor; `lib/clubs`
 sigue marcando módulos de dominio enteros como `"use server"`. Y quedan ~129 `auth.getUser()` en
 server actions: ahí es un viaje por mutación y no por render, que es otro coste y otra decisión.
+
+---
+
+## 2026-08-21 (noche) — #751: la hidratación perezosa de las fichas vuelve a correr
+
+Las tres fichas (`/libro`, `/pelicula`, `/serie`) curan la fila del catálogo en `after()` cuando
+llega sin hidratar. **Llevaban semanas sin curar ni una sola fila en producción.** Escala del
+problema medida antes de tocar nada:
+
+| | dev | prod |
+|---|---|---|
+| `books` sin `hydrated_at` | 380 / 423 | 10 / 193 |
+| `movies` | 568 / 571 | **862 / 1086** |
+| `series` | 75 / 82 | 105 / 170 |
+
+1. **El cliente de la petición no cruza a un `after()`, y eso no es evidente leyendo el código.**
+   `createClient()` resuelve `await cookies()` al construirse, pero le pasa al cliente un adaptador
+   cuyo `getAll()` corre en CADA consulta. Pasarlo por closure a un callback de `after()` es, en
+   diferido, llamar a `cookies()` dentro del callback — prohibido en Server Components. Nadie
+   escribió `cookies()` ahí: se coló dentro de una variable.
+
+2. **`createServiceRoleClient()` era la salida obvia y NO vale.** Se probó primero y se descartó
+   con evidencia, no por criterio: la RPC contesta `P0001 authentication required`. `hydrate_book`,
+   `hydrate_movie` y `hydrate_series` empiezan con `if auth.uid() is null then raise`, que es parte
+   del blindaje del catálogo (#674). `service_role` tiene los grants —EXECUTE en las tres y UPDATE
+   en `books`, verificado contra `pg_proc`/`pg_class`— pero no tiene `auth.uid()`. **Pasa el guard
+   de permisos y choca con el de sesión**, que es peor que fallar antes: parece que funciona.
+
+3. **La vía es `createTokenClient(token)`, con el token leído durante el render.** Es literalmente
+   lo que manda la doc de `after` («read request data before `after` […] and pass the values in»).
+   RLS sigue aplicando con la identidad del usuario y `auth.uid()` devuelve su id: **el arreglo no
+   cuesta ni un grant, ni relaja ni un guard.** Ese era el requisito, no un detalle — un arreglo de
+   reactividad que abriera el catálogo a escritura sin sesión habría deshecho #674.
+
+4. **`getAccessToken()` se memoiza por petición, aunque no haga red.** `getSession()` decodifica la
+   cookie y no llama al servidor de auth (a diferencia de `getUser()`), así que no se memoiza por
+   coste de red sino para no construir un cliente extra: la ficha ya pide la sesión en el mismo
+   `Promise.all`. Devuelve SOLO el token, nunca el `user` de la sesión — ese no lo ha verificado el
+   servidor de auth, y para eso está `getCurrentUser()`.
+
+5. **El guard del `after()` se limita a Server Components a propósito.** La doc de Next prohíbe las
+   request APIs dentro de `after` en páginas, layouts y `generateMetadata`, y en Route Handlers
+   enseña el caso contrario como ejemplo VÁLIDO. De las Server Actions no dice nada. Un guard que
+   prohibiera ahí se estaría inventando una regla, así que `src/app/buscar/actions.ts` —que tiene
+   la misma forma, en una server action— queda fuera y se abre como sospecha (#753), no como bug.
+
+6. **El e2e deja de conformarse con «la ficha sigue viva».** Ese aserto es exactamente el motivo de
+   que el bug durase semanas: no distingue «se hidrató» de «se tragó el error». Ahora el test
+   devuelve la fila a `hydrated_at = null` por REST, reabre la ficha y comprueba **la columna**. Se
+   mira la columna y no la sinopsis porque si la work key no resuelve, `markHydrated` marca igual la
+   fila y no habría sinopsis que ver — pero la hidratación sí corrió.
+
+**Verificación:** contra `next start`, que es la única pasada que ve el fallo. Antes del arreglo el
+test nuevo falla («la hidratación en after() no llegó a escribir hydrated_at») y el log trae
+`hydrate_book rpc failed`; después, 7/7 en verde y **cero** fallos de RPC en el log.
+
+**Corrección al diagnóstico de #751:** la issue atribuía la línea `⨯ … used cookies() inside
+after()` del log a `ensureBookHydrated`. **No era suya** — los errores de esa función los captura su
+propio `try/catch` y salen como `ensureBookHydrated failed`. La traza apunta a `NotesSection`, que
+también llama a `createClient()`. La conclusión de fondo (la hidratación no corría) era correcta y
+está arreglada; el ⨯ residual persiste tras el arreglo y se rastrea aparte (#754).
+
+**Lo que NO entra:** el ⨯ de `NotesSection`, la sospecha de `buscar/actions.ts` y el desborde de 17px
+de la barra de filtros del cuaderno a 390 px, que también salió al verificar. Tres diagnósticos
+distintos, tres issues: #754, #753 y #755.

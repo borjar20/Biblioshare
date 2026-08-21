@@ -371,9 +371,8 @@ Dos detalles que cuestan una pasada cada uno:
   sigue viva su `cacheLife` completo: llamas a la función y no caduca nada.
 - **Dentro de `after()` no se puede tocar el cliente Supabase de la petición.** Su adaptador
   de cookies llama a `cookies()` cuando lanza la consulta, no al construirse, y Next lo
-  rechaza — con lo que la escritura no ocurre y el `catch` la silencia. Es la issue #751.
-  Dentro de un `after()`, cliente propio (`createServiceRoleClient()`) o solo valores leídos
-  durante el render.
+  rechaza — con lo que la escritura no ocurre y el `catch` la silencia. Es la issue #751,
+  y tiene sección propia abajo (§24) porque la salida obvia no funciona.
 
 En el repo esto está resuelto por nombre: los helpers de `src/lib/reactivity/revalidate.ts`
 que se llaman `revalidate*` usan `updateTag` y son para server actions; los que se llaman
@@ -383,3 +382,62 @@ que se llaman `revalidate*` usan `updateTag` y son para server actions; los que 
 **Y el corolario:** esto **solo se ve contra `next start`**, igual que los errores de `use cache`
 que documenta AGENTS.md. `next dev` no lo destapa. Origen: acción 9 de la auditoría 2026-08
 (F1-023), decisiones.md del 2026-08-21 tarde.
+
+## 24. `after()` + Supabase: el cliente de la petición no cruza, y service_role tampoco vale
+
+**Síntoma:** ninguno. La página se pinta, los tests pasan, y en el log de `next start` aparece
+una línea suelta:
+
+```
+⨯ Error: Route /libro/[id] used `cookies()` inside `after()` while rendering.
+```
+
+La escritura que iba en ese `after()` no ocurrió, y no ocurrirá nunca. Fue la issue #751: la
+hidratación perezosa de las tres fichas llevaba semanas sin curar una sola fila en producción.
+
+**Por qué no se ve.** Tres capas tapan el fallo, y hay que quitarlas todas:
+
+1. `ensure*Hydrated` **nunca lanza** — el `try/catch` existe para que un fallo de OpenLibrary o
+   TMDB no tumbe la ficha, que es el contrato correcto, y de paso se come esto.
+2. `next dev` no lo enseña. **Solo el build de producción**, igual que los errores de `use cache`.
+3. El test que lo cubría se conformaba con «la ficha sigue viva», que no distingue «se hidrató»
+   de «se tragó el error». Ver §20.
+
+**Por qué pasa.** `createClient()` resuelve `await cookies()` al construirse, pero le pasa al
+cliente un adaptador cuyo `getAll()` corre en **cada consulta**. Pasar ese cliente a un callback
+de `after()` por closure es, en diferido, llamar a `cookies()` dentro del callback — prohibido en
+Server Components (páginas, layouts y `generateMetadata`; en Route Handlers **sí** vale, lo dice
+la doc de `after` con un ejemplo).
+
+**Y aquí está la trampa de segundo orden:** la salida evidente —`createServiceRoleClient()`, que
+no toca cookies— **no funciona para esto**. Las RPC de catálogo cortan solas:
+
+```
+hydrate_book rpc failed { code: 'P0001', message: 'authentication required' }
+```
+
+`hydrate_book`, `hydrate_movie` y `hydrate_series` empiezan con `if auth.uid() is null then raise`,
+que es parte del blindaje del catálogo (#674). `service_role` tiene los grants —EXECUTE en las tres
+y UPDATE en `books`, comprobado— pero **no tiene `auth.uid()`**. Se pasa el guard de permisos y se
+choca con el de sesión, que es peor que fallar antes: parece que va.
+
+**Lo que sí funciona:** leer el token DURANTE el render y pasarlo como valor.
+
+```ts
+const accessToken = await getAccessToken();          // durante el render
+if (accessToken) {
+  after(() => ensureBookHydrated(createTokenClient(accessToken), { … }));
+}
+```
+
+`createTokenClient` (en `src/lib/supabase/server.ts`) construye un cliente sin cookies con el token
+en la cabecera `Authorization`: RLS sigue aplicando con la identidad del usuario y `auth.uid()`
+devuelve su id, así que **el arreglo no cuesta ni un grant**. Es el patrón que manda la doc de
+`after`: «read request data before `after` […] and pass the values in».
+
+**El guard.** `src/lib/reactivity/after-guard.test.ts` recorre los Server Components y falla
+nombrando el fichero si un callback de `after()` menciona `supabase`, `createClient`,
+`getCurrentUser`, `getAccessToken`, `cookies` o `headers`. Se probó en rojo antes de darlo por
+bueno: nombraba las tres fichas.
+
+Origen: issue #751, 2026-08-21.

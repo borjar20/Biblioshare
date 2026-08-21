@@ -8,7 +8,12 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import {
+  createClient,
+  createTokenClient,
+  getAccessToken,
+  getCurrentUser,
+} from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
 import { RouteMessages } from "@/components/route-messages";
@@ -125,9 +130,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
-  const [{ data: book }, user] = await Promise.all([
+  const [{ data: book }, user, accessToken] = await Promise.all([
     fetchBook(supabase, id),
     getCurrentUser(),
+    // Para el `after()` de hidratación: hay que leerlo AQUÍ, durante el render.
+    getAccessToken(),
   ]);
 
   if (!book) notFound();
@@ -142,13 +149,28 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // streaming vía loadBookEditions (ver editionsPromise, dentro del <Suspense>
   // de EditionsSection), así que la primera visita SÍ las ve tras el streaming.
   //
-  // Solo con sesión: un visitante anónimo no puede escribir — el grant es de
-  // `authenticated`. Sin este guardia, cada visita anónima a una ficha sin
-  // hidratación programaría en segundo plano hasta cinco llamadas a
-  // OpenLibrary, todo para tirarlo a la basura.
-  if (user) {
+  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión): un
+  // visitante anónimo no puede escribir —el grant es de `authenticated` y la
+  // RPC además exige `auth.uid()`—, y sin este guardia cada visita anónima a
+  // una ficha sin hidratar programaría en segundo plano hasta cinco llamadas a
+  // OpenLibrary para tirarlas a la basura.
+  //
+  // El cliente NO es el de la petición, y esto es el arreglo de #751: aquel
+  // resuelve `cookies()` en CADA consulta, no al construirse, así que pasarlo
+  // por closure a un `after()` equivale a llamar a `cookies()` dentro del
+  // callback — prohibido en Server Components, lanza, y como
+  // `ensureBookHydrated` nunca lanza el `try/catch` se comía el error y la
+  // hidratación no corría JAMÁS en producción. Se lee el token DURANTE el
+  // render y se le pasa como valor, que es el patrón que manda la doc de
+  // `after`. Guard en `src/lib/reactivity/after-guard.test.ts`.
+  //
+  // Se conserva la identidad del usuario en vez de tirar de service_role a
+  // propósito: `hydrate_book` corta con «authentication required» si no hay
+  // `auth.uid()`, y ese guard es parte del blindaje del catálogo (#674). El
+  // arreglo del `after()` no puede costar un grant.
+  if (accessToken) {
     after(() =>
-      ensureBookHydrated(supabase, {
+      ensureBookHydrated(createTokenClient(accessToken), {
         id: book.id,
         openlibrary_work_key: book.openlibrary_work_key,
         isbn: book.isbn,
