@@ -1047,3 +1047,38 @@ está arreglada; el ⨯ residual persiste tras el arreglo y se rastrea aparte (#
 **Lo que NO entra:** el ⨯ de `NotesSection`, la sospecha de `buscar/actions.ts` y el desborde de 17px
 de la barra de filtros del cuaderno a 390 px, que también salió al verificar. Tres diagnósticos
 distintos, tres issues: #754, #753 y #755.
+
+---
+
+## 2026-08-21 (noche) — #750: los dos specs de club que llevaban un mes rojos
+
+`club-reactivity.spec.ts` y `social-optimista.spec.ts` fallaban por timeout en dev y en producción
+desde que la UI cambió debajo. Ninguno de los dos protegía ya nada: agotaban los 60 s buscando
+controles que dejaron de existir.
+
+1. **Los dos arreglos son de selector, y la propiedad que protegen sigue intacta.** El feed de club
+   resiembra su primera página desde las props del servidor, así que un post nuevo sale sin
+   `page.reload()`; ese aserto llegaba en verde y el timeout ocurría después. Lo que caducó fue
+   dónde se pulsa: «Borrar» se fue tras el «···» (F3-012, `3061b6f0`) y «Me gusta» se agrupó dentro
+   del desplegable de «Reaccionar» (`7f9c3f69`).
+
+2. **La limpieza pasa a ser por PREFIJO, no por el cuerpo exacto de la pasada.** Es lo que convirtió
+   dos tests rojos en basura acumulada: cada corrida borraba lo suyo, se caía antes de llegar, y el
+   post quedaba. Se encontraron doce posts huérfanos en el club de pruebas. Con `body=like.<prefijo>%`
+   una corrida se lleva también lo que dejaron las anteriores — mismo criterio que el `globalSetup`
+   de sagas, que reimpone la línea base en vez de fiarse de la pasada previa. Tras el arreglo, cero
+   huérfanos en dev.
+
+3. **El desplegable de reacciones se cierra pulsando su propia capa, no un punto al azar.** Mientras
+   está abierto hay un `<button aria-hidden>` a pantalla completa (así se cierra sin `useEffect`),
+   y **intercepta cualquier otro clic**: pulsar «Reaccionar» otra vez, o en una esquina, no cierra
+   nada y el siguiente paso se queda esperando. El helper `cerrarPicker()` pulsa esa capa y espera a
+   que el trigger vuelva a `aria-expanded="false"`.
+
+4. **La tarjeta se ancla por `div.shadow-card`, no por `div`.** El locator viejo filtraba `div` por
+   texto, lo que casa también con los contenedores del feed: resolvía a doce menús a la vez. Ver
+   `TRAMPAS.md` §25 — el patrón viejo solo funcionaba porque «Borrar» salía en una sola tarjeta.
+
+**Lo que NO entra:** el desborde de 17 px del cuaderno a 390 px (#755), que salió en la misma
+verificación pero es un fallo de la pantalla, no del test: ahí el aserto mide bien y lo que está mal
+es la UI.

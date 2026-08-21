@@ -7,8 +7,24 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const CLUB_SLUG = "test-public-club"; // devtest es miembro
 
+// Prefijo común a todas las pasadas: la limpieza barre por él, así que una
+// corrida se lleva también lo que dejaron las anteriores.
+const PREFIJO = "e2e optimista ";
+
 function adminHeaders() {
   return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+}
+
+// Cierra el desplegable de reacciones de una tarjeta pulsando su propia capa de
+// cierre, y espera a que el trigger vuelva a decir `aria-expanded="false"`. La
+// capa es un `<button aria-hidden tabIndex={-1}>` a pantalla completa, así que
+// mientras esté abierto ningún otro clic de la tarjeta llega a su destino.
+async function cerrarPicker(card: import("@playwright/test").Locator) {
+  await card.locator('button[aria-hidden="true"]').first().click();
+  await expect(card.getByRole("button", { name: "Reaccionar" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
 }
 
 // Fase 3: la capa optimista (like/comentario) pinta al instante ENCIMA de la
@@ -21,7 +37,7 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
 }) => {
   test.setTimeout(60_000);
 
-  const cuerpo = `e2e optimista ${Date.now()}`;
+  const cuerpo = `${PREFIJO}${Date.now()}`;
   const comentario = `comentario ${Date.now()}`;
 
   try {
@@ -41,18 +57,30 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
     await page.getByRole("button", { name: /^publicar$/i }).click();
     await expect(page.getByText(cuerpo)).toBeVisible({ timeout: 15_000 });
 
-    // La tarjeta de ESTE post: contiene su cuerpo y su botón de like.
+    // La tarjeta de ESTE post: contiene su cuerpo y su botón de reacciones.
+    //
+    // «Me gusta» dejó de ser un botón suelto en la tarjeta: es una de las cuatro
+    // reacciones que viven dentro del desplegable de «Reaccionar» (`7f9c3f69`).
+    // Localizar la tarjeta por él era lo que dejó este spec en rojo (#750).
     const card = page
       .locator("div.shadow-card")
       .filter({ hasText: cuerpo })
-      .filter({ has: page.getByRole("button", { name: "Me gusta" }) })
+      .filter({ has: page.getByRole("button", { name: "Reaccionar" }) })
       .last();
 
     // ── Like: se marca sin recargar ──
+    // Se abre el desplegable; queda abierto tras elegir, así que el aserto de
+    // `aria-pressed` va sobre el mismo botón que se acaba de pulsar.
+    await card.getByRole("button", { name: "Reaccionar" }).click();
     const like = card.getByRole("button", { name: "Me gusta" });
     await expect(like).toHaveAttribute("aria-pressed", "false");
     await like.click();
     await expect(like).toHaveAttribute("aria-pressed", "true");
+    // Cerrar antes de seguir. Mientras el desplegable está abierto, la capa que
+    // lo cierra ocupa la pantalla entera (`fixed inset-0`, así se cierra sin
+    // useEffect — ver `reaction-bar.tsx`) e intercepta cualquier otro clic. Así
+    // que se pulsa ESA capa, no «Reaccionar» ni un punto al azar.
+    await cerrarPicker(card);
 
     // ── Comentario: aparece sin recargar ──
     await card.getByRole("button", { name: /comentario/i }).click(); // expande el hilo
@@ -65,21 +93,27 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
     const cardTrasRecarga = page
       .locator("div.shadow-card")
       .filter({ hasText: cuerpo })
-      .filter({ has: page.getByRole("button", { name: "Me gusta" }) })
+      .filter({ has: page.getByRole("button", { name: "Reaccionar" }) })
       .last();
-    // El like sigue marcado y el contador de comentarios subió a 1.
+    // El like sigue marcado y el contador de comentarios subió a 1. Hay que
+    // reabrir el desplegable: la recarga lo devuelve a cerrado.
+    await cardTrasRecarga.getByRole("button", { name: "Reaccionar" }).click();
     await expect(
       cardTrasRecarga.getByRole("button", { name: "Me gusta" }),
     ).toHaveAttribute("aria-pressed", "true");
+    await cerrarPicker(cardTrasRecarga);
     await expect(
       cardTrasRecarga.getByRole("button", { name: /1 comentario/i }),
     ).toBeVisible();
 
     console.log("SOCIAL OPTIMISTA OK:", cuerpo, "|", comentario);
   } finally {
-    // Borra el post por cuerpo; sus reacciones y comentarios caen por cascade.
+    // Borra por PREFIJO, no por el cuerpo de esta pasada; sus reacciones y
+    // comentarios caen por cascade. Mientras el spec estuvo rojo cada corrida
+    // dejó su post huérfano en el club de pruebas, y una limpieza que solo se
+    // lleva lo suyo no los recoge nunca (#750).
     await fetch(
-      `${SUPABASE_URL}/rest/v1/club_posts?body=eq.${encodeURIComponent(cuerpo)}`,
+      `${SUPABASE_URL}/rest/v1/club_posts?body=like.${encodeURIComponent(`${PREFIJO}%`)}`,
       { method: "DELETE", headers: adminHeaders() },
     );
   }

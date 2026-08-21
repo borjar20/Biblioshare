@@ -441,3 +441,29 @@ nombrando el fichero si un callback de `after()` menciona `supabase`, `createCli
 bueno: nombraba las tres fichas.
 
 Origen: issue #751, 2026-08-21.
+
+## 25. Un locator de `div` filtrado por texto casa también con los CONTENEDORES
+
+**Síntoma:** `strict mode violation: … resolved to 12 elements`, y las doce son el mismo botón
+repetido — uno por tarjeta del feed.
+
+```ts
+page.locator("div").filter({ hasText: cuerpo })       // ← casa la tarjeta Y todo lo que la envuelve
+   .filter({ has: page.getByRole("button", { name: /borrar/i }) })
+   .last();
+```
+
+`filter({ hasText })` casa cualquier `div` que **contenga** ese texto, así que el `<div>` del feed
+entero, el de la columna y el de la página casan igual que la tarjeta. `.last()` no salva: devuelve
+el último en orden de documento, que puede ser un contenedor. Y el segundo `.filter({ has })` tampoco
+descarta nada, porque el contenedor también tiene un botón dentro — tiene doce.
+
+**Regla:** anclar por algo que solo tenga la tarjeta (`div.shadow-card`, un `data-testid`, un `role`),
+nunca por `div` a secas.
+
+**Por qué se cuela:** funciona mientras el botón que se busca exista en UNA sola tarjeta —
+p. ej. «Borrar», que solo sale en los posts propios. El día que el feed tiene dos posts tuyos, o que
+el selector pasa a algo que llevan todas las tarjetas, el mismo código empieza a fallar sin que nadie
+lo haya tocado. Salió así en `club-reactivity.spec.ts` (#750).
+
+Ver también §3 (la regla de los dos árboles) y §20 (un test que pasa no prueba lo que dice).
