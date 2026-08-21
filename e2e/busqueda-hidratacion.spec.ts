@@ -198,6 +198,9 @@ test.describe("búsqueda e hidratación de libros", () => {
   test("un libro viejo sin hidratar se cura al abrirlo con sesión", async ({
     page,
   }) => {
+    // Más margen que el resto del fichero: este test espera a que OpenLibrary
+    // conteste de verdad, reintentando con recargas.
+    test.setTimeout(180_000);
     await login(page);
 
     // "La casa de los espíritus" tiene varias filas antiguas en dev, cacheadas
@@ -232,12 +235,27 @@ test.describe("búsqueda e hidratación de libros", () => {
     // Se comprueba la COLUMNA y no la sinopsis a propósito: si la work key no
     // resuelve, `markHydrated` marca igual la fila (para no reintentar en cada
     // visita) y no habría sinopsis que ver — pero la hidratación sí corrió.
+    //
+    // Se reintenta RECARGANDO, no solo esperando más: si OpenLibrary falla o
+    // tarda, `ensureBookHydrated` NO marca la fila a propósito («la API falló:
+    // no marcar, reintentar en la siguiente visita»), así que esperar sentado
+    // no cambia nada y lo que el producto hace es curarla en la visita
+    // siguiente. Esperar sin recargar convertía este aserto en un dado cargado
+    // contra la latencia de una API de terceros.
     await expect
-      .poll(() => hydratedAt("books", bookId), {
-        timeout: 30_000,
-        intervals: [1000],
-        message: "la hidratación en after() no llegó a escribir hydrated_at",
-      })
+      .poll(
+        async () => {
+          const marca = await hydratedAt("books", bookId);
+          if (marca) return marca;
+          await page.reload();
+          return null;
+        },
+        {
+          timeout: 60_000,
+          intervals: [4000],
+          message: "la hidratación en after() no llegó a escribir hydrated_at",
+        },
+      )
       .not.toBeNull();
   });
 
