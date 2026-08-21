@@ -47,6 +47,10 @@ import {
 import { getEditions } from "@/lib/editions/get-editions";
 import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import {
+  expireItemCredits,
+  expireSagaMembership,
+} from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
@@ -173,7 +177,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
           .maybeSingle()
           .then(({ data }) => data)
       : Promise.resolve(null),
-    user ? getCurrentUserRole(supabase) : Promise.resolve(null),
+    user ? getCurrentUserRole() : Promise.resolve(null),
   ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
@@ -279,7 +283,7 @@ async function MovieTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. La única
   // dependencia real aquí es que ensureItemEnriched escribe lo que
   // getItemCredits lee; el resto va en paralelo aunque se lea en orden.
-  const [watchProviders, , sagas, editions, activeRow, role, reviewsResult] =
+  const [watchProviders, enriched, sagas, editions, activeRow, role, reviewsResult] =
     await Promise.all([
       movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
       ensureItemEnriched(supabase, "movie", {
@@ -303,7 +307,7 @@ async function MovieTabs({
             .maybeSingle()
             .then(({ data }) => data)
         : null,
-        userId ? getCurrentUserRole(supabase) : null,
+        userId ? getCurrentUserRole() : null,
       // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
       // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
       getReviews(supabase, "movie", movie.id),
@@ -315,6 +319,16 @@ async function MovieTabs({
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits("movie", movie.id);
+
+  // Ver la nota de la ficha de libro: caducar lo que el enriquecimiento
+  // perezoso acaba de escribir, y hacerlo tras la respuesta porque durante el
+  // render las APIs de revalidación no son legales (F1-023). La película tiene
+  // un segundo efecto que las otras dos fichas no: entrar en su colección TMDB
+  // cambia el «nº X de Y» de TODAS las pelis de esa colección, no solo de esta.
+  after(() => {
+    if (enriched.wroteCredits) expireItemCredits("movie", movie.id);
+    if (enriched.sagaMembers.length > 0) expireSagaMembership(enriched.sagaMembers);
+  });
 
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];

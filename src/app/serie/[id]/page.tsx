@@ -48,6 +48,7 @@ import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
@@ -192,7 +193,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             .eq("series_id", series.id)
             .then(({ count }) => count ?? 0)
         : Promise.resolve(0),
-      user ? getCurrentUserRole(supabase) : Promise.resolve(null),
+      user ? getCurrentUserRole() : Promise.resolve(null),
     ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
@@ -316,7 +317,7 @@ async function SeriesTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
   // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
   // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
-  const [, , watchProviders, sagas, activeRow, role, reviewsResult] =
+  const [enriched, , watchProviders, sagas, activeRow, role, reviewsResult] =
     await Promise.all([
       ensureItemEnriched(supabase, "series", {
         id: series.id,
@@ -345,7 +346,7 @@ async function SeriesTabs({
             .maybeSingle()
             .then(({ data }) => data)
         : null,
-        userId ? getCurrentUserRole(supabase) : null,
+        userId ? getCurrentUserRole() : null,
       // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
       // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
       getReviews(supabase, "series", series.id),
@@ -357,6 +358,13 @@ async function SeriesTabs({
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits("series", series.id);
+
+  // Ver la nota de la ficha de libro: caducar la etiqueta `credits:*` cuando el
+  // enriquecimiento perezoso ha escrito de verdad, y hacerlo tras la respuesta
+  // porque durante el render las APIs de revalidación no son legales (F1-023).
+  after(() => {
+    if (enriched.wroteCredits) expireItemCredits("series", series.id);
+  });
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];
