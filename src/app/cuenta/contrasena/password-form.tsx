@@ -14,8 +14,12 @@ export function PasswordForm() {
   const [state, formAction, pending] = useActionState(updatePassword, initialState);
 
   return (
+    // El título dejó de estar aquí: era un <h1> en sans de 20px dentro del
+    // formulario, mientras el resto de la app titula con PageHeader en serif.
+    // Ahora lo pone la página, que es además quien puede ofrecer la vuelta a
+    // /ajustes — esta pantalla ya no es un formulario suelto al que solo se
+    // llegaba desde un correo (F3-010).
     <form action={formAction} className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{t("newPassword.title")}</h1>
       <p className="text-sm text-muted-foreground">{t("newPassword.description")}</p>
 
       <Field label={t("newPassword.password")} htmlFor="password">

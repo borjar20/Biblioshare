@@ -8,7 +8,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SearchIcon } from "@/components/ui/icons";
+import { SearchIcon, TiersIcon } from "@/components/ui/icons";
 import { SearchForm } from "./search-form";
 import { SearchResultCard } from "./search-result-card";
 import { PeopleResults } from "./people-results";
@@ -88,11 +88,18 @@ export default async function SearchPage({
         <>
           <SearchForm query={query} itemType={itemType} />
 
+          {/* Sagas no cuelga de ninguna barra de navegación, y su único enlace
+              estable era ESTE, en mono de 11px, gris y en versalitas: leído
+              como un rótulo de sección, no como un destino. Al ser lo único que
+              separaba una feature entera del olvido (F3-010/F1-025), pasa a
+              tener forma de sitio al que se va. La regla de reparto de la IA lo
+              deja aquí y no en «Tú»: una saga es del catálogo, no tuya. */}
           <Link
             href="/sagas"
-            className="self-start font-mono text-[11px] tracking-[0.08em] text-muted-foreground uppercase hover:text-foreground"
+            className="flex items-center gap-2 self-start rounded-full border border-border bg-surface px-3.5 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-muted tap-44"
           >
-            {t("browseSagas")} →
+            <TiersIcon className="h-4 w-4 text-muted-foreground" />
+            {t("browseSagas")}
           </Link>
 
           {/* «Escribe algo para buscar» era una línea gris bajo el formulario
