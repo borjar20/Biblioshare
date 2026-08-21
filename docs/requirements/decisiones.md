@@ -884,3 +884,101 @@ son `<a href>` y no botones, y que los accesos móviles miden ≥44px de alto.
 `/admin` y la ficha de saga siguen cada una con su propio ancho y su propia cabecera; `/ajustes`
 estrena un patrón de tarjeta-por-sección que puede servirles de base cuando se aborde. Y la URL
 `/coleccion` sigue sin cambiar, por lo mismo que se anotó el 2026-08-20.
+
+## 2026-08-21 (tarde) — Acción 9 del roadmap: pasada de revalidación (F1-014/023/027/030)
+
+Los cuatro hallazgos eran del mismo tipo: **la reactividad revalidaba lo que no era.** De más en la
+campana, de menos en el alta rápida, y de nada en dos etiquetas que se declaraban y no invalidaba
+nadie. Ninguno se nota HOY, y ese es justo el problema: lo tapa el refresco-al-navegar temporal de
+Next, que sus propios docs dan por transitorio.
+
+1. **La campana no revalida NADA, y no se sustituye por un tag.** `markAllNotificationsRead` hacía
+   `revalidatePath("/", "layout")` —la revalidación más cara que existe: purga la Client Cache
+   entera— en cada apertura del desplegable, que es la acción más frecuente de la app, para
+   refrescar un número de dos dígitos. La auditoría proponía «un tag propio del contador»; se
+   descarta y se quita a secas. Motivo: **el contador no está cacheado en ninguna parte**.
+   `getUnreadCount` es una consulta viva dentro del `<Suspense>` dinámico de `SessionChrome`, así
+   que cualquier render posterior ya lee la BD; y entre medias el badge tampoco se queda rancio
+   porque la campana lo baja a 0 en el cliente y el Header vive en el layout raíz, que no se
+   desmonta al navegar. Un tag habría sido peor que inútil: un contador de no leídas depende de
+   `auth.uid()`, y cachearlo bajo etiqueta compartida es servirle a un usuario el contador de otro
+   (regla #437). **Para un dato por-usuario, lo correcto es no cachearlo.**
+
+2. **`revalidateSagaMembership` recibe TODOS los miembros, no el ítem tocado.** Es el punto entero
+   de F1-023(b): la ficha de cada obra canta «nº X de Y» y la Y es el total de la saga, así que dar
+   de alta una obra cambia el rótulo de todas las demás. Se paga una consulta extra por mutación
+   (`listSagaMemberRefs`) y es barato: son acciones de colaborador, no de usuario.
+
+3. **Y se invalida también al RENOMBRAR y al BORRAR la saga, que la auditoría no listaba.** El
+   nombre viaja dentro de `getItemSagas` (la chip «Parte de X»), así que renombrar dejaba el nombre
+   viejo en todas las fichas; borrarla dejaba la chip de una saga que ya no existe. Mismo agujero,
+   distinta puerta. Igual con `saveSequence`: escribe `position`, que es la X del «nº X de Y».
+
+4. **Dos primitivas de etiqueta, distinguidas por quién llama: `revalidate*` vs `expire*`.**
+   `updateTag` **solo es legal dentro de una server action**; el enriquecimiento perezoso corre
+   durante el RENDER de la ficha, no en una acción. Así que la curación de sagas usa `updateTag`
+   (espera al dato fresco: el que acaba de curar recarga y tiene que ver su cambio) y el
+   enriquecimiento usa `revalidateTag` desde `after()` (basta con marcar caducado: quien enriquece
+   no es el dueño del dato, es un visitante que ha rellenado catálogo compartido). Confundirlas no
+   da error de compilación: **revienta en runtime y solo en el camino que las ejecuta.**
+   `revalidateTag` en Next 16 exige un segundo argumento con el perfil de caducidad; sin
+   `{ expire: 0 }` la entrada seguiría viva su `cacheLife` completo, o sea no caducaría nada.
+
+5. **El enriquecimiento DEVUELVE lo que hay que invalidar en vez de invalidarlo.**
+   `ensureItemEnriched` pasa a devolver `EnrichmentEffects` (`wroteCredits`, `sagaMembers`) y es la
+   ficha quien agenda el `after()`. No es rodeo: las APIs de revalidación no son legales durante un
+   render, y meter el `after()` dentro de la función habría obligado a mockear `next/server` en sus
+   ocho tests unitarios. Además el agujero real que arregla no es el enriquecido que funciona —ese
+   escribe ANTES de que la misma petición lea, así que cachea bien— sino **el que falla**: si Open
+   Library no contesta, la visita cachea créditos VACÍOS durante días y la siguiente, que sí
+   consigue escribirlos, los sigue leyendo vacíos.
+
+6. **`getCurrentUserRole` pierde el parámetro `supabase` en vez de ignorarlo.** Lo pasaban 35
+   llamadas y con él hacía `auth.getUser()`, que es un viaje de red de ~240 ms, no una lectura
+   local — la ficha de película lo llamaba dos veces por render y pagaba los dos. Se podría haber
+   dejado el parámetro muerto en la firma; no se hace porque mientras esté ahí seguirá leyéndose
+   como «el rol depende del cliente que le pases», y no depende: depende de la cookie de la
+   petición.
+
+7. **`getClub` se memoiza con `cache()` detrás de un envoltorio async.** Se ejecutaba DOS veces
+   enteras por petición en `/club/[slug]` —lo llaman `generateMetadata` y el cuerpo, cada uno por
+   su lado—, hasta cuatro viajes cada una. `clubs.ts` es `"use server"` y ahí solo se pueden
+   exportar funciones async, así que la parte memoizada es una constante privada y lo exportado es
+   una función de verdad. Mismo patrón que `getCurrentUserRole` y `getOwnProfile`.
+
+8. **`interactions.ts` se parte en dos, y no era opcional.** Contenía el vocabulario (tipos,
+   `REACTION_KINDS`, `emptyReactions`) que importan tres componentes de CLIENTE **y** el lector que
+   toca BD. Solo compilaba porque su única referencia al servidor era un `import type`, que
+   desaparece al transpilar; en cuanto necesitó un import de VALOR, el build cayó con «This module
+   cannot be imported from a Client Component» por cinco caminos. El lector se muda a
+   `get-interaction-summary.ts` con `server-only`. **Un fichero que mezcla vocabulario compartido y
+   acceso a BD es una bomba con la mecha en el próximo import.**
+
+9. **La regla del módulo central pasa de comentario a test.** `revalidate.ts` decía desde el primer
+   día que «toda server action revalida a través de estos helpers»; la auditoría encontró nueve
+   llamadas sueltas en seis ficheros. Ahora `revalidate-guard.test.ts` recorre `src/` y falla con
+   el nombre del fichero infractor. Se bloquea `revalidatePath` y **no** `updateTag`/`revalidateTag`
+   a propósito: las etiquetas se declaran en el mismo fichero que las lee (`cacheTag` junto a su
+   `use cache`), así que quien las invalida tiene el contrato delante; una ruta se revalida a
+   ciegas desde cualquier sitio y nadie ve la lista completa de las que hacían falta.
+
+10. **`revalidateAppChrome()` existe para que la bomba tenga nombre.** Queda un solo uso legítimo
+    de `revalidatePath("/", "layout")` —terminar el onboarding, que estrena las barras de
+    navegación y pasa una vez en la vida de una cuenta— y vive en el módulo con nombre propio, para
+    que usarla sea una decisión y no un descuido.
+
+**Cobertura:** ocho casos nuevos en `revalidate.test.ts` más el guard. Los asertos miran
+EXACTAMENTE qué rutas y qué etiquetas, no «se llamó a algo», porque los cuatro bugs eran de alcance.
+Uno comprueba que `expireSagaMembership` usa `revalidateTag` y **nunca** `updateTag`: es la
+distinción del punto 4 y es la que cuesta un error de runtime.
+
+**Verificado contra `next start`, no contra `next dev`** — y menos mal, porque es lo único que
+destapó el bug de la issue #751 (la hidratación perezosa de las fichas lleva sin correr en
+producción: usa el cliente de la petición dentro de un `after()`). Que ese error apareciera UNA vez
+en toda la suite, con el `after()` nuevo de esta acción corriendo en cada render sin fallar, es lo
+que separó un fallo del vecino de un fallo propio.
+
+**Lo que NO entra:** el resto de F1-028 (la convención única de dónde viven las server actions).
+`interactions.ts` se parte porque el build lo exigía, no como primer paso de ese refactor; `lib/clubs`
+sigue marcando módulos de dominio enteros como `"use server"`. Y quedan ~129 `auth.getUser()` en
+server actions: ahí es un viaje por mutación y no por render, que es otro coste y otra decisión.

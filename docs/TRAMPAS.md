@@ -37,6 +37,10 @@ Cuatro causas distintas, y **se comprueban en este orden**:
 **Regla general:** derivar de props y reconciliar con `router.refresh()`; no duplicar estado
 del servidor en el cliente.
 
+Y una quinta, que hoy **no se ve**: revalidar de menos. Next todavía refresca al NAVEGAR
+cualquier página ya visitada, así que una acción que se deja una ruta sin nombrar parece
+correcta. Sus propios docs dan ese refresco por temporal. Ver §23.
+
 ---
 
 ## 3. La regla de los dos árboles (`:visible`)
@@ -340,3 +344,42 @@ basura `tsc@2.0.4`). Se recupera con `npm ci` (~2 min), pero cuesta media hora d
 
 Regla: **`npm ci` DENTRO del worktree, nunca junction.** Dos árboles independientes, ningún
 estado compartido — es lo único que no vuelve a romperlo. Issue #389.
+
+---
+
+## 23. Invalidar caché: `updateTag` y `revalidateTag` no son intercambiables
+
+**Síntoma:** compila, pasa el typecheck, pasa los unitarios, y en producción sale por el log
+`updateTag can only be called from within a Server Action` — o peor, nada, porque el `try/catch`
+de quien la llamó se la come.
+
+Las dos invalidan una etiqueta y **no valen en los mismos sitios**:
+
+| | Dónde es legal | Qué hace |
+|---|---|---|
+| `updateTag(tag)` | **Solo** dentro de una server action | La SIGUIENTE petición espera al dato fresco (read-your-own-writes) |
+| `revalidateTag(tag, perfil)` | Server functions y route handlers | Marca caducado; se recalcula cuando toque |
+
+Ninguna de las dos es legal **durante un render**. Y en este repo hay escrituras que ocurren
+justo ahí: el enriquecimiento perezoso (`ensureItemEnriched`, `persistCollectionMembership`)
+corre dentro del render de la ficha, no en una acción. La salida es `after()` — pero entonces
+ya no estás en una server action, así que ahí toca `revalidateTag`, nunca `updateTag`.
+
+Dos detalles que cuestan una pasada cada uno:
+
+- **`revalidateTag` exige el segundo argumento** en Next 16. Sin `{ expire: 0 }` la entrada
+  sigue viva su `cacheLife` completo: llamas a la función y no caduca nada.
+- **Dentro de `after()` no se puede tocar el cliente Supabase de la petición.** Su adaptador
+  de cookies llama a `cookies()` cuando lanza la consulta, no al construirse, y Next lo
+  rechaza — con lo que la escritura no ocurre y el `catch` la silencia. Es la issue #751.
+  Dentro de un `after()`, cliente propio (`createServiceRoleClient()`) o solo valores leídos
+  durante el render.
+
+En el repo esto está resuelto por nombre: los helpers de `src/lib/reactivity/revalidate.ts`
+que se llaman `revalidate*` usan `updateTag` y son para server actions; los que se llaman
+`expire*` usan `revalidateTag` y son para `after()`. Un test lo fija
+(`revalidate.test.ts`, «expireSagaMembership usa revalidateTag, NUNCA updateTag»).
+
+**Y el corolario:** esto **solo se ve contra `next start`**, igual que los errores de `use cache`
+que documenta AGENTS.md. `next dev` no lo destapa. Origen: acción 9 de la auditoría 2026-08
+(F1-023), decisiones.md del 2026-08-21 tarde.
