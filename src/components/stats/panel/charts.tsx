@@ -888,7 +888,12 @@ export function WaffleChart({ spec, derived }: ChartProps) {
           no dicen nada. El dato exacto lo da la LEYENDA, que lleva serie, glifo
           y cifra, y que el armazón pinta también en la cara. Ahí está la mitad
           del invariante de `SELF_DESCRIBING` que este gráfico cumple. */}
-      <div aria-hidden data-cells className="grid grid-cols-10 gap-[3px]">
+      {/* TOPE DE ANCHO, y no es estético: la rejilla es cuadrada, así que sin él
+          crece con la columna y una tarjeta de 340 px de ancho se lleva 340 de
+          alto — dos veces y media lo que medía el anillo al que sustituye. Con
+          220 px las celdas quedan en ~19, que es donde siguen siendo contables
+          de un vistazo sin comerse la sección. */}
+      <div aria-hidden data-cells className="grid max-w-[220px] grid-cols-10 gap-[3px]">
         {cells.map((c) => (
           <span
             key={c.key}
