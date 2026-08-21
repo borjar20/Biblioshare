@@ -997,7 +997,7 @@ function ratedGroupPanel(
     description:
       "Solo entran los nombres con dos obras valoradas o más. Con una sola, el ranking premiaría el acierto de una prueba, no un gusto.",
     context: { period, filter, filters: ["Mínimo 2 obras valoradas"] },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.stars,
     labelHeader,
     valueHeader: "Nota",
@@ -1086,7 +1086,7 @@ function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): Pa
       filter: globalFilter(itemFilter),
       filters: ["Solo películas", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Director",
     data: catalog.directors.slice(0, RANK_LIMIT).map((d) => ({
@@ -1111,7 +1111,7 @@ function publishersPanel({ catalog, itemFilter }: StatsInput, period: string): P
       filter: globalFilter(itemFilter),
       filters: ["Solo libros", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Editorial",
     data: catalog.publishers.slice(0, RANK_LIMIT).map((p) => ({
@@ -1611,7 +1611,7 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
       filter: globalFilter(itemFilter),
       filters: ["Ordenado por nota, de mayor a menor"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.stars,
     labelHeader: "Obra",
     valueHeader: "Nota",
@@ -1805,7 +1805,7 @@ function authorsPanel({ catalog, titles, itemFilter }: StatsInput, period: strin
       filter: globalFilter(itemFilter),
       filters: ["Solo autores de libro", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Autor",
     data: catalog.authors.slice(0, RANK_LIMIT).map((a) => ({

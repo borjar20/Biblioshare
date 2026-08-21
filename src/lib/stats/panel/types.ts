@@ -148,6 +148,8 @@ export type PanelViz =
   | "donut"
   | "gauge"
   | "heatmap"
+  /** Ranking DIBUJADO: etiqueta, tallo, punto y cifra. Sustituye a `ranking`. */
+  | "lollipop"
   | "ranking"
   | "kpi"
   | "table";

@@ -56,4 +56,32 @@ describe("la forma sale de lo que mide el panel", () => {
   it("horas por mes es un área, no barras: es una serie temporal continua", () => {
     expect(allPanels().find((p) => p.id === "horas-por-mes")?.viz).toBe("area");
   });
+
+  it("ningún panel se queda en `ranking`: una lista de texto no es un gráfico", () => {
+    // Eran SIETE en ejecución (`ratedGroupPanel` se llama tres veces) y tres de
+    // ellos iban seguidos en la misma sección. Esa fila de listas idénticas era
+    // la mitad de la repetición que se veía en el muro.
+    expect(allPanels().filter((p) => p.viz === "ranking")).toHaveLength(0);
+  });
+
+  it("los siete rankings son lollipop", () => {
+    const ids = [
+      "nota-generos",
+      "nota-autores",
+      "nota-directores",
+      "directores",
+      "editoriales",
+      "mejor-valoradas",
+      "autores",
+    ];
+    const lollipops = allPanels().filter((p) => p.viz === "lollipop");
+    expect(lollipops.map((p) => p.id).sort()).toEqual([...ids].sort());
+  });
+
+  it("más de la mitad del muro DIBUJA: era el problema de partida", () => {
+    const TEXTO = ["kpi", "ranking", "table"];
+    const panels = allPanels();
+    const dibujan = panels.filter((p) => !TEXTO.includes(p.viz));
+    expect(dibujan.length).toBeGreaterThan(panels.length / 2);
+  });
 });
