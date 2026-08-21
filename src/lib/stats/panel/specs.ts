@@ -1701,7 +1701,11 @@ function hoursPanel({ hours, titles, todayISO, itemFilter }: StatsInput): PanelS
       scope: withAllTypes(itemFilter, "año natural"),
       filters: ["Sesiones de lectura"],
     },
-    viz: "bars",
+    // Área, no barras: doce meses seguidos son una serie CONTINUA, y la curva
+    // dice de un vistazo la forma del año que doce columnas sueltas obligan a
+    // recomponer. De paso baja a cuatro los paneles de barras del muro, que era
+    // media docena y sonaba a repetición.
+    viz: "area",
     unit: UNITS.minutes,
     labelHeader: "Mes",
     series: [{ key: "minutes", label: "Minutos", color: "var(--accent)" }],

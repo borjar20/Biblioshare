@@ -2,16 +2,21 @@ import { describe, it, expect } from "vitest";
 import { buildStatsSections } from "./specs";
 import { statsInput as input } from "./__fixtures__/stats-input";
 
+/** Todos los paneles del muro, sin importar en qué sección caen. */
+function allPanels() {
+  return buildStatsSections(input()).flatMap((s) => s.panels);
+}
+
 /**
- * Invariantes del muro que no vive en ningún componente: se cumplen o no en la
+ * Invariantes del muro que no viven en ningún componente: se cumplen o no en la
  * forma de las secciones que `buildStatsSections` devuelve.
  *
  * Ojo con la tentación de escribir SOLO los invariantes negativos («como mucho
  * uno», «va primero»): sin datos, `buildStatsSections` devuelve secciones sin
- * paneles y esas dos afirmaciones se cumplen en vacío. Por eso el primer test
- * afirma que un panel CONCRETO es el héroe — es el que se pone rojo si el campo
- * no existe, porque vitest no typechequea y `spec.hero` sería `undefined` sin
- * que nadie se entere.
+ * paneles y esas dos afirmaciones se cumplen en vacío. Por eso hay un test que
+ * afirma que un panel CONCRETO es el héroe, y otro que la fixture trae paneles
+ * de verdad — vitest no typechequea, así que `spec.hero` sería `undefined` sin
+ * que ninguna aserción se entere.
  */
 describe("panel héroe", () => {
   it("el calendario anual preside «Actividad»: 53 semanas no caben en un tercio de tarjeta", () => {
@@ -23,8 +28,7 @@ describe("panel héroe", () => {
     // Doce puntos de línea se leen bien en un tercio de tarjeta. Y ser héroe
     // obliga a ir primero, lo que rompería el orden que promete la descripción
     // de «Biblioteca y estados».
-    const panels = buildStatsSections(input()).flatMap((s) => s.panels);
-    expect(panels.find((p) => p.id === "backlog")?.hero).toBeUndefined();
+    expect(allPanels().find((p) => p.id === "backlog")?.hero).toBeUndefined();
   });
 
   it("como mucho un héroe por sección", () => {
@@ -41,9 +45,15 @@ describe("panel héroe", () => {
     }
   });
 
-  it("la fixture no está vacía: si lo estuviera, los dos invariantes de arriba se cumplirían en vacío", () => {
+  it("la fixture no está vacía: si lo estuviera, los invariantes se cumplirían en vacío", () => {
     const sections = buildStatsSections(input());
     expect(sections.length).toBeGreaterThan(3);
     expect(sections.flatMap((s) => s.panels).length).toBeGreaterThan(10);
+  });
+});
+
+describe("la forma sale de lo que mide el panel", () => {
+  it("horas por mes es un área, no barras: es una serie temporal continua", () => {
+    expect(allPanels().find((p) => p.id === "horas-por-mes")?.viz).toBe("area");
   });
 });
