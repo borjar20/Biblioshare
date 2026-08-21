@@ -269,18 +269,27 @@ function allSections(
       id: "valoraciones",
       title: "Valoraciones",
       description: "Cómo puntúas y qué puntúas mejor.",
+      // Los tres `ratedGroupPanel` NO van seguidos, y es a propósito: son el
+      // mismo panel tres veces —mismo título, misma forma, misma frase de
+      // vacío—, y en fila se leen como una repetición aunque hablen de cosas
+      // distintas. Intercalados entre paneles de otra forma, cada uno se lee por
+      // lo que dice.
+      //
+      // Colapsarlos en UNO con selector de faceta sería lo suyo, pero choca con
+      // «nunca hay un filtro por panel» (`filter.ts`), así que se arregla por
+      // forma y por orden. Queda su issue.
       panels: [
         ratingPanel(input.rating, input.titles.rating, period, filter),
-        topRatedPanel(input, period),
         ratedGroupPanel("nota-generos", "Géneros mejor valorados", "Género", input.facets.genres, period, filter),
-        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
-        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
         // Páginas y minutos no comparten eje, así que van en dos paneles; y con
         // un tipo elegido solo se pinta el suyo, o el otro saldría vacío al
         // lado sin más explicación que «sin datos».
         ...(input.itemFilter === "movie" || input.itemFilter === "series"
           ? []
           : [lengthVsRatingPanel(input, "book", period)]),
+        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
+        topRatedPanel(input, period),
+        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
         ...(input.itemFilter === "book"
           ? []
           : [lengthVsRatingPanel(input, "screen", period)]),

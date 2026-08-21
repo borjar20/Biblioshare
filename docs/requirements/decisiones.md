@@ -884,3 +884,51 @@ son `<a href>` y no botones, y que los accesos móviles miden ≥44px de alto.
 `/admin` y la ficha de saga siguen cada una con su propio ancho y su propia cabecera; `/ajustes`
 estrena un patrón de tarjeta-por-sección que puede servirles de base cuando se aborde. Y la URL
 `/coleccion` sigue sin cambiar, por lo mismo que se anotó el 2026-08-20.
+
+---
+
+## 2026-08-21 · El muro de estadísticas deja de ser tipografía (fase A del rediseño gráfico)
+
+**El problema no era la variedad de gráficos: era que 18 de ~33 paneles no dibujaban nada.**
+Once `kpi` y siete `ranking` —tres de ellos seguidos en la misma sección— hacían que más de
+la mitad de la pantalla fuera texto. Cambiar el tipo de gráfico habría cambiado el interior
+de las tarjetas sin tocar eso.
+
+**El anillo era el único gráfico que peleaba con nuestra propia regla.** El principio 3 de
+`docs/design/paneles-estadisticos.md` prohíbe que un dato exija medir una altura, un área o
+un ángulo — y un sector de donut es exactamente eso. Había tres. Se sustituyen por `waffle`,
+cuyas celdas se **cuentan**. No escribe dentro (cien cifras no caben): su dato exacto vive en
+la leyenda, que ya viajaba a la cara, y eso es lo que le permite estar en `SELF_DESCRIBING`.
+`donut` se queda en `PanelViz` sin consumidor, como referencia del arco.
+
+**El selector de faceta que se propuso NO se hizo.** La spec quería colapsar los tres rankings
+de nota (géneros, autores, directores) en un panel con selector. Choca con el principio 9 del
+propio doc —«Los filtros van en una fila, arriba, para todo el muro. Nunca un filtro dentro de
+una tarjeta»— y con `src/lib/stats/filter.ts`. Se arregla por forma (pasan a `lollipop`) y por
+orden (dejan de ir seguidos), con un test que lo fija. Queda issue de deuda: si algún día se
+hace, `faceta` tendría que ser un filtro GLOBAL, y eso es una excepción deliberada que se
+decide antes de escribirla, no después.
+
+**El `bullet` cambió de consumidor respecto a la spec.** Iba a «Récords», que no encaja: dos
+de sus cuatro entradas son texto, la mejor racha YA es la marca, y su única comparación
+posible —el récord del periodo contra el de siempre— no existe con «Todo» puesto, que es el
+periodo por defecto. En la vista por defecto no habría dibujado ni una marca. Se lleva a
+«Rachas», donde «racha actual contra tu mejor racha» sí es valor-contra-referencia y vale en
+todo periodo.
+
+**Consecuencia de forma que hay que recordar:** el bullet compara cada fila con SU marca, no
+con las otras filas, así que **una sola fila ya es un bullet completo**. La regla heredada de
+dataviz «una sola barra ⇒ `kpi`» no le aplica, y cuando se implemente la degradación
+automática de `viz` (fase B) su mínimo tiene que ser 1, no 2.
+
+**El ancho se reserva para lo que no cabe.** `PanelSpec.hero` marca el panel que preside su
+sección y ocupa las tres columnas con `column-span: all` — que es lo que permite una tarjeta
+ancha sin volver a `grid`, descartada en su día por igualar el alto de cada fila. Solo lo
+lleva el calendario anual: 53 semanas en un tercio de tarjeta son celdas de 6 px. «Evolución
+de la pila» se barajó y se descartó, porque doce puntos de línea sí caben y ser héroe obliga a
+ir primero, lo que rompería el orden que promete la descripción de su sección.
+
+**Y un tope que solo se vio mirando la pantalla:** el waffle es una rejilla cuadrada, así que
+crecía con la columna y una tarjeta de 340 px de ancho se llevaba 340 de alto — dos veces y
+media lo que medía el anillo. Con tope de 220 px las celdas quedan en ~19 y la página baja de
+4834 a 4607 px de alto. Ningún test lo habría visto.

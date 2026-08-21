@@ -106,6 +106,20 @@ describe("la forma sale de lo que mide el panel", () => {
     expect(racha?.data[0]?.target).toBeUndefined();
   });
 
+  it("los tres rankings de nota NO van seguidos: en fila se leen como una repetición", () => {
+    // Son el mismo panel tres veces: mismo título, misma forma, misma frase de
+    // vacío. Intercalados entre paneles de otra forma, cada uno se lee por lo
+    // que dice. Colapsarlos en uno choca con «nunca hay un filtro por panel».
+    const NOTA = ["nota-generos", "nota-autores", "nota-directores"];
+    for (const section of buildStatsSections(input())) {
+      const ids = section.panels.map((p) => p.id);
+      for (let i = 0; i < ids.length - 1; i++) {
+        const seguidos = NOTA.includes(ids[i]) && NOTA.includes(ids[i + 1]);
+        expect(seguidos, `${ids[i]} justo antes de ${ids[i + 1]}`).toBe(false);
+      }
+    }
+  });
+
   it("más de la mitad del muro DIBUJA: era el problema de partida", () => {
     const TEXTO = ["kpi", "ranking", "table"];
     const panels = allPanels();

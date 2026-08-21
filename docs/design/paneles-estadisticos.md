@@ -1,6 +1,6 @@
 # Sistema de paneles estadísticos
 
-[Canónico · verificado contra código el 2026-08-04]
+[Canónico · verificado contra código el 2026-08-21]
 
 Manda para: **cualquier panel que muestre un dato agregado** — actividad, evolución,
 distribución, progreso, comparativas, porcentajes, objetivos, estados, rankings o
@@ -211,7 +211,23 @@ ERROR                         PARCIAL
 
 ## 4. Variantes por tipo de dato
 
-`viz` elige la forma. Todo lo demás del contrato es idéntico en las trece.
+`viz` elige la forma. Todo lo demás del contrato es idéntico en todas.
+
+> **Delta del 2026-08-21 (fase A del rediseño gráfico del muro).** Entran `lollipop`,
+> `waffle` y `bullet`, y `area` estrena consumidor (`horas-por-mes`).
+>
+> - **`ranking` y `donut` se quedan en `PanelViz` SIN CONSUMIDOR**, a propósito. `donut`
+>   es la referencia del arco en `charts.tsx`; retirar cualquiera de los dos es una
+>   migración de tipo sin ganancia.
+> - **El anillo se sustituye por el waffle por el principio 3**, no por gusto: un sector
+>   obliga a medir un ángulo, y las celdas se cuentan. Era el único gráfico del muro que
+>   peleaba con nuestra propia regla, y había tres.
+> - **El waffle no escribe dentro** (cien cifras no caben): su dato exacto vive en la
+>   leyenda, que ya viajaba a la cara. Es la misma garantía por otra puerta, y es lo que
+>   le permite estar en `SELF_DESCRIBING`.
+> - **El bullet compara cada fila con SU marca, no con las otras filas**, así que una
+>   sola fila ya es un bullet completo. La regla de abajo «una sola barra ⇒ `kpi`» **no**
+>   le aplica.
 
 | `viz` | Para qué | Gráfico | Columnas por defecto | Regla de resumen |
 |---|---|---|---|---|
@@ -220,6 +236,9 @@ ERROR                         PARCIAL
 | `line` | evolución continua | línea 2 px, **partida en los huecos** | label · valor · cuota | total, extremos, huecos |
 | `area` | evolución con volumen | línea + relleno 14 % | ídem | ídem |
 | `donut` | parte-todo, ≤ 6 sectores | anillo, resto en gris | label · valor · cuota | total, mayor y su cuota |
+| `waffle` | parte-todo **contable** | rejilla de celdas, tope 220 px | label · valor · cuota | total, mayor y su cuota |
+| `lollipop` | orden por mérito, DIBUJADO | etiqueta · tallo · punto · cifra | label · valor · detalle | nº de posiciones, 1.ª y última |
+| `bullet` | valor contra su propia referencia | barra + marca de `PanelDatum.target` | label · valor | valor, marca y si está batida |
 | `gauge` | progreso hacia objetivo | barra + marca de meta | label · valor | hecho / meta, cuánto falta, o «cumplido» |
 | `heatmap` | densidad en calendario | rampa de **un** tono + el número dentro | label · valor | días activos sobre el total |
 | `ranking` | orden por mérito | **ninguno**: `<ol>` real | label · valor | nº de posiciones, 1.ª y última |

@@ -260,7 +260,8 @@ Tabla de degradación, cerrada:
 |---|---|---|
 | `line` · `area` | < 4 | `kpi` |
 | `donut` · `waffle` | < 3 | `kpi` |
-| `lollipop` · `bars` · `stacked` · `bullet` · `dumbbell` | < 2 | `kpi` |
+| `lollipop` · `bars` · `stacked` · `dumbbell` | < 2 | `kpi` |
+| `bullet` | **no degrada por número de filas** — ver §12.3 | `bullet` |
 | cualquiera | 0 | estado vacío (nivel 1 o 2) |
 
 ⚠️ **Invariante de implementación, y es donde esto se rompe.** `StatPanel` consulta hoy
@@ -476,3 +477,31 @@ es §6.3, fase C. Construirlo antes es YAGNI. Se hace justo antes del panel que 
 El argumento de §4.2 sobre `PanelKpi.delta` sigue en pie —la variación es hoy tipografía y es
 lo más repetido de la pantalla— pero convertir los deltas en dumbbells es un cambio propio,
 con su propia decisión de diseño, y no entra en este plan.
+
+### 12.3 `bullet` cambió de consumidor, y no degrada por número de filas
+
+*(Corregido durante la ejecución de la fase A, 2026-08-21.)*
+
+§4.2 le daba `records` como consumidor. **No encaja**, y se vio al abrir el panel: de sus
+cuatro entradas, dos son texto (nombre de mes, título de libro), la mejor racha **ya es** la
+marca —no tiene contra qué compararse— y los repasos no tienen referencia. Su única
+comparación posible sería «el récord del periodo contra el de siempre», que con «Todo»
+puesto —**el periodo por defecto**— no existe: en la vista por defecto el bullet no habría
+dibujado ni una marca.
+
+Se lleva a **`racha`**, donde «racha actual contra tu mejor racha» sí es
+valor-contra-referencia, vale en todo periodo y el dato ya venía en el mismo `getStreaks`.
+`records` se queda en `kpi`.
+
+**Y de ahí sale una corrección a la tabla de §5:** el bullet compara cada fila con SU propia
+marca, no con las otras filas, así que **una sola fila ya es un bullet completo**. Su mínimo
+es 1, no 2 — con 2 degradaría a `kpi` justo el panel que estrenó la forma. Por lo mismo, la
+regla heredada de dataviz «una sola barra ⇒ `kpi`» no le aplica.
+
+### 12.4 El tope de ancho del waffle
+
+*(Encontrado mirando la pantalla, no por un test.)* La rejilla es cuadrada, así que crecía
+con la columna: una tarjeta de 340 px de ancho se llevaba 340 de alto, **dos veces y media
+lo que medía el anillo al que sustituye**. Con `max-w-[220px]` las celdas quedan en ~19 px y
+la página baja de 4834 a 4607 px de alto. Ningún test lo habría visto — jsdom no hace layout
+y el e2e comprobaba la cuenta de celdas, no su tamaño.
