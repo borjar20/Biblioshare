@@ -68,8 +68,18 @@ episodio visto) y F4-015 (regla de sistema `tap-44`, aplicada al trigger de
 «Saltar»). Decisiones en `decisiones.md` (2026-08-20 noche) y la regla en
 `UI-GUIA.md` §«Reglas móviles y táctiles» 1 y 9.
 
-Quedan de este bloque: acción 7 (sistema mínimo de UI: roles de botón,
-destructivo tras «···», `EmptyState`, glosario — F3-006/012/014/015/011),
+**Acción 7 — sistema mínimo de UI: HECHA el 2026-08-20.** F3-006 (el CTA
+principal deja de cambiar de color por tipo de medio), F3-014 (`Button` cierra
+en cinco variantes, con `danger`; la tarjeta de club entera es el enlace),
+F3-012 (lo destructivo se va detrás del «···» y pregunta cuando arrastra otros
+datos), F3-015 (`EmptyState` gana talla `panel` y llega a búsqueda, clubes,
+agenda y colecciones vacías) y F3-011 (glosario canónico en
+`docs/UI-GLOSARIO.md`: «Biblioteca» y «Cuaderno»). Decisiones en
+`decisiones.md` (2026-08-20 tarde) y las reglas 3, 4, 7 y 8 de `UI-GUIA.md`.
+Quedan fuera a propósito F3-013 (unificar `WorkCard`) y F3-009 (los cuatro
+patrones de navegación secundaria): son refactores con su propio alcance.
+
+Quedan de este bloque:
 acción 8 (IA de navegación + página de Ajustes — F3-010, F4-007, F1-025,
 F1-024), acción 9 (pasada de revalidación — F1-014/023/030/027), y los sueltos:
 contraste y `<main>`/skip-link (F4-022/023), security headers + rate limiting

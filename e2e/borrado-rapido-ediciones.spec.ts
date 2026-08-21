@@ -107,11 +107,27 @@ async function login(page: import("@playwright/test").Page) {
 }
 
 // El botón × de una edición concreta: la tarjeta se localiza por su etiqueta.
-function deleteButton(page: import("@playwright/test").Page, label: string) {
+// El borrado dejó de ser una × siempre visible en la tarjeta y pasó a vivir
+// tras el «···» (F3-012). `deleteButton` mantiene su contrato —«el control que
+// dispara el borrado de ESTA edición»— abriendo antes el menú; los tests no
+// cambian. `toHaveCount(0)` sobre el disparador sigue distinguiendo «no se
+// puede borrar» (no hay menú) de «se puede».
+function editionCard(page: import("@playwright/test").Page, label: string) {
   return page
     .locator('[data-testid="edition-card"]')
-    .filter({ hasText: label })
-    .getByTestId("delete-edition");
+    .filter({ hasText: label });
+}
+
+function deleteButton(page: import("@playwright/test").Page, label: string) {
+  return editionCard(page, label).getByTestId("edition-actions");
+}
+
+async function openDeleteDialog(
+  page: import("@playwright/test").Page,
+  label: string,
+) {
+  await deleteButton(page, label).click();
+  await page.getByTestId("delete-edition").click();
 }
 
 // La cuenta `devtest` es admin en dev, que cumple colaborador+.
@@ -141,12 +157,12 @@ test.describe("borrado rápido de ediciones desde la ficha", () => {
     await login(page);
     await page.goto(`/libro/${BOOK_ID}?tab=info`);
 
-    // La edición libre ofrece ×; la que tiene un pase, no.
+    // La edición libre ofrece menú de acciones; la que tiene un pase, no.
     await expect(deleteButton(page, "QA LIBRE")).toBeVisible();
     await expect(deleteButton(page, "QA EN USO")).toHaveCount(0);
 
     // Cancelar no borra.
-    await deleteButton(page, "QA LIBRE").click();
+    await openDeleteDialog(page, "QA LIBRE");
     const dialog = page.getByTestId("delete-edition-dialog");
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Cancelar" }).click();
@@ -154,7 +170,7 @@ test.describe("borrado rápido de ediciones desde la ficha", () => {
     expect(await editionExists(FREE_EDITION_ID)).toBe(true);
 
     // Confirmar sí borra: la tarjeta desaparece y la fila también.
-    await deleteButton(page, "QA LIBRE").click();
+    await openDeleteDialog(page, "QA LIBRE");
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Borrar", exact: true }).click();
     await expect(

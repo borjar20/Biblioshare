@@ -13,7 +13,8 @@ import {
 } from "@/lib/catalog/edit-actions";
 import { EditionFields } from "./edition-fields";
 import { Button } from "@/components/ui/button";
-import { CheckIcon, PlusIcon, XIcon } from "@/components/ui/icons";
+import { ActionMenu } from "@/components/ui/action-menu";
+import { CheckIcon, PlusIcon } from "@/components/ui/icons";
 
 const initialState: CreateEditionState = {};
 
@@ -178,19 +179,32 @@ export function EditionStrip({
                   <CheckIcon className="h-3.5 w-3.5" />
                 </span>
               )}
-              {/* El × no compite con el ✓ por la esquina: la edición marcada
+              {/* El menú no compite con el ✓ por la esquina: la edición marcada
                   como «La tuya» es la del pase abierto de quien mira, así que
-                  siempre está en uso y nunca ofrece borrado. */}
+                  siempre está en uso y nunca ofrece borrado.
+
+                  Antes esto era una × de borrado SIEMPRE VISIBLE en cada
+                  tarjeta, para cualquier colaborador — y lo que borra no es un
+                  dato propio, es una edición del catálogo COMÚN (F3-012). Ahora
+                  vive tras el «···»; la hoja de confirmación de dos pasos que ya
+                  existía (askDelete) no cambia. */}
               {canContribute && !used.has(edition.id) && (
-                <button
-                  type="button"
-                  data-testid="delete-edition"
-                  aria-label={t("delete", { label: edition.label })}
-                  onClick={() => askDelete(edition)}
-                  className="absolute top-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-status-dropped"
-                >
-                  <XIcon aria-hidden className="h-3 w-3" />
-                </button>
+                <div className="absolute top-1.5 right-1.5">
+                  <ActionMenu
+                    label={t("actionsLabel", { label: edition.label })}
+                    triggerTestId="edition-actions"
+                    items={[
+                      {
+                        key: "delete",
+                        label: t("delete", { label: edition.label }),
+                        danger: true,
+                        testId: "delete-edition",
+                        onSelect: () => askDelete(edition),
+                      },
+                    ]}
+                    triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+                  />
+                </div>
               )}
               <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                 <span

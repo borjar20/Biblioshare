@@ -100,8 +100,11 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   // cuidado que en la ficha.
   await expect(page.locator("h1:visible")).toHaveText(/hola,|novedades/i);
 
-  // La nav lleva a las 5 secciones.
-  await expect(page.getByRole("link", { name: /^colección$/i }).first()).toBeVisible();
+  // La nav lleva a las 5 secciones. La entrada se llama «Biblioteca» desde
+  // F3-011: «Colección» quedó reservado para las agrupaciones que crea el
+  // usuario, que vivían DENTRO de esta misma página con el mismo nombre (ver
+  // docs/UI-GLOSARIO.md). La URL sigue siendo /coleccion.
+  await expect(page.getByRole("link", { name: /^biblioteca$/i }).first()).toBeVisible();
 
   // Buscar un libro y ver resultados. Una tarjeta de resultado es un ENLACE si
   // la obra ya está en el catálogo, y un BOTÓN si todavía no (§7.39: la búsqueda
@@ -231,7 +234,11 @@ test("crear y borrar un reto", async ({ page }) => {
   // "¡Completado!" en vez del progreso.
   await expect(card.getByText(/de 9999/)).toBeVisible();
 
-  // Limpieza.
-  await card.getByRole("button", { name: /eliminar/i }).click();
+  // Limpieza. Eliminar ya no es un text-link de la tarjeta: vive tras el «···»
+  // y pregunta (F3-012). Playwright descarta los diálogos por defecto, así que
+  // sin el handler el reto se quedaría sin borrar.
+  page.once("dialog", (d) => d.accept());
+  await card.getByRole("button", { name: "Acciones del reto" }).click();
+  await page.getByRole("menuitem", { name: /eliminar/i }).click();
   await expect(page.getByRole("heading", { name })).toHaveCount(0);
 });

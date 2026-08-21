@@ -8,6 +8,9 @@ import type { UserRole } from "@/lib/auth/roles";
 
 const ROLES: UserRole[] = ["user", "collaborator", "admin"];
 
+// Orden de PERMISO, no alfabético: es lo que distingue subir de bajar.
+const RANK: Record<UserRole, number> = { user: 0, collaborator: 1, admin: 2 };
+
 // Cambio de rol en línea. Al cambiar el select, llama al server action y refleja
 // el resultado. El propio admin no puede cambiarse su rol aquí (evita quedarse
 // sin admins por accidente) — se deshabilita su fila.
@@ -27,6 +30,14 @@ export function RoleSelect({
 
   function onChange(next: UserRole) {
     const prev = role;
+    // Un select que escribe al soltar el ratón y avisa de que «los cambios son
+    // inmediatos» no es una confirmación: es un aviso después del hecho
+    // (F3-012). Dar `admin` reparte permisos sobre el catálogo común y sobre
+    // los roles de los demás, así que va con pregunta. Solo al SUBIR de rol —
+    // bajar es reversible y no reparte nada.
+    if (RANK[next] > RANK[prev] && !window.confirm(t("roleConfirm", { role: t(`roles.${next}`) }))) {
+      return;
+    }
     setRole(next);
     setError(false);
     startTransition(async () => {

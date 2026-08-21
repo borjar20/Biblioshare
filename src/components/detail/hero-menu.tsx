@@ -99,6 +99,9 @@ export function HeroMenu({
               type="button"
               disabled={isPending}
               onClick={() => {
+                // La misma acción que el enlace rojo del Registro y, por
+                // tanto, la misma pregunta (F3-012): borra todos los pases.
+                if (!window.confirm(t("unfollowConfirm"))) return;
                 // Mismo gesto que el enlace rojo del Registro: sin pase
                 // activo el badge del hero debe desaparecer ya, no cuando
                 // aterrice la revalidación.

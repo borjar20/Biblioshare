@@ -40,6 +40,7 @@ gobernanza de abajo para saber cuál manda.**
 | [**Proyecto**](docs/PROYECTO.md) | Qué existe hoy (mapa de features por dominio) | Canónico |
 | [**Seguridad**](docs/SEGURIDAD.md) | Modelo de permisos: RLS, roles, grants, excepciones | Canónico |
 | [**Guía de UI**](docs/UI-GUIA.md) | Patrones de UI y principios de diseño (derivados de la auditoría 2026-08) | Canónico |
+| [**Glosario de UI**](docs/UI-GLOSARIO.md) | Cómo se llama cada concepto de cara al usuario. Se consulta ANTES de escribir copy | Canónico |
 | [Visión y alcance](docs/requirements/vision.md) | Qué es el producto y su MVP | Canónico · estable |
 | [Backlog](docs/requirements/backlog.md) | Qué está hecho y qué queda | Estado vivo |
 | [Decisiones](docs/requirements/decisiones.md) | Decisiones vigentes (consolidado 2026-08-19; historial completo en `docs/superpowers/decisiones-historicas-2026-08.md`) | Consolidado |

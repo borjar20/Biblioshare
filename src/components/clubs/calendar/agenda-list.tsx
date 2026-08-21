@@ -7,7 +7,8 @@ import {
   type CalendarMark,
 } from "@/lib/clubs/activities/calendar-marks";
 import { formatEventDate } from "@/lib/clubs/activities/format-date";
-import { BellIcon } from "@/components/ui/icons";
+import { BellIcon, CalendarIcon } from "@/components/ui/icons";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MARK_ACCENT, accentKeyFor } from "./mark-accent";
 import { markLabel } from "./mark-label";
 import { AgendaReminderButton } from "./agenda-reminder-button";
@@ -28,11 +29,20 @@ export function AgendaList({
 }) {
   const t = useTranslations("activity");
 
+  // El vacío del mes conserva el marco de tarjeta (aquí SÍ hay contenedor: es
+  // el hueco de la agenda), pero por dentro pasa a la anatomía común —glifo y
+  // frase— en talla de panel (F3-015). Sin acción a propósito: quien mira puede
+  // no ser miembro de ningún club de ese mes, y «crea un evento» sería una
+  // salida que la mitad de los casos no tiene.
   if (marks.length === 0) {
     return (
-      <p className="rounded-card border border-border bg-surface p-4 text-sm text-muted-foreground">
-        {emptyMessage ?? t("calendarEmptyMonth")}
-      </p>
+      <div className="rounded-card border border-border bg-surface">
+        <EmptyState
+          variant="panel"
+          glyph={<CalendarIcon className="h-5 w-5" />}
+          title={emptyMessage ?? t("calendarEmptyMonth")}
+        />
+      </div>
     );
   }
 

@@ -60,6 +60,8 @@ export function CollectionCard({ card }: { card: CollectionCardData }) {
   const t = useTranslations("collection");
   const router = useRouter();
   const covers = card.fanCovers.slice(0, 3);
+  const isEmpty = covers.length === 0;
+  const fanSlots = isEmpty ? [null, null, null] : covers;
   const dotClass = card.dominantType
     ? MEDIA_ACCENT[card.dominantType].bg
     : "bg-muted-foreground";
@@ -83,13 +85,22 @@ export function CollectionCard({ card }: { card: CollectionCardData }) {
     // tarjeta, el menú es un hermano posicionado encima en la esquina.
     <div className="group relative flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card transition-colors hover:border-accent">
       <Link href={`/coleccion/c/${card.id}`} className="flex flex-col gap-3">
+        {/* Una colección sin ítems dibujaba 168px de BLANCO (F3-015): el
+            `covers.map` no tenía sobre qué iterar y la tarjeta parecía a medio
+            cargar, no vacía. Ahora el abanico se pinta igual con tres huecos
+            punteados — misma geometría, mismo gesto al pasar el ratón — y una
+            línea que dice qué pasa. Los huecos son decorativos: lo que un
+            lector de pantalla necesita ya lo dice el «0 títulos» de abajo. */}
         <div className="relative isolate h-[112px] w-full sm:h-[150px] lg:h-[168px]">
-          {covers.map((cover, index) => {
+          {fanSlots.map((cover, index) => {
             const slot = FAN_SLOTS[index];
             return (
               <div
                 key={index}
-                className={`absolute top-1/2 left-1/2 -translate-y-1/2 overflow-hidden rounded-[5px] border border-border bg-surface-muted shadow-cover transition-transform duration-200 ${COVER_SIZE} ${slot.x} ${slot.rotate} ${slot.hover} ${FAN_Z[index]}`}
+                aria-hidden={isEmpty || undefined}
+                className={`absolute top-1/2 left-1/2 -translate-y-1/2 overflow-hidden rounded-[5px] border bg-surface-muted shadow-cover transition-transform duration-200 ${COVER_SIZE} ${slot.x} ${slot.rotate} ${slot.hover} ${FAN_Z[index]} ${
+                  isEmpty ? "border-dashed border-border/70 bg-surface-muted/50 shadow-none" : "border-border"
+                }`}
               >
                 {cover && (
                   <Image
@@ -103,6 +114,11 @@ export function CollectionCard({ card }: { card: CollectionCardData }) {
               </div>
             );
           })}
+          {isEmpty && (
+            <span className="absolute inset-x-0 bottom-0 z-40 text-center font-mono text-[10px] text-muted-foreground">
+              {t("cardEmptyHint")}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col gap-1 pr-8">

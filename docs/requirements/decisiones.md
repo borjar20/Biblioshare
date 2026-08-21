@@ -722,3 +722,82 @@ la BD compartida.
 
 **Referencia obsoleta de la auditoría:** F4-015 cita `catalog-editor.tsx:723` (✕ de 20×20). Ese
 fichero ya no existe — se lo llevó la limpieza de código muerto de la fase 5.
+
+## 2026-08-20 (tarde) — Acción 7 del roadmap: el sistema mínimo de UI (F3-006/011/012/014/015)
+
+Los cinco hallazgos van juntos porque son el mismo problema visto desde cinco sitios: **no había
+sistema**. Cada pantalla decidía por su cuenta de qué color es un botón, dónde vive un borrado,
+qué se enseña cuando una lista está vacía y cómo se llama cada cosa.
+
+1. **El CTA principal es naranja SIEMPRE, aunque la obra sea una serie.** Lo pintaba
+   `MEDIA_ACCENT[itemType].bg`, así que «Marcar episodio» era el único botón morado de la app
+   mientras el MISMO gesto, desde la pestaña Episodios, salía naranja. La regla que queda: el
+   color de tipo es del **contenido** (barras de progreso, chips, marcas del calendario); el
+   color de un botón es de su **rol**. Lo que sí cambia por tipo es el verbo, y esos verbos están
+   ahora escritos en el glosario, no repartidos por cuatro componentes.
+
+2. **Cinco variantes de `Button` y ninguna más**, con `danger` como cuarta de la jerarquía
+   (`primary` / `secondary` / `ghost` / `danger`) más `green`, que se queda porque en Paper el
+   verde es *lo social* (unirse, aprobar, aceptar) y no un quinto nivel de énfasis.
+   `danger` es rojo SÓLIDO y solo sale cuando el borrado es el asunto de la pantalla — el botón
+   que remata una hoja de confirmación. Un `variant="danger"` por fila sería exactamente el
+   patrón que la decisión 3 viene a quitar.
+
+3. **Lo destructivo se va detrás del «···», y pregunta solo cuando arrastra otros datos.**
+   Movidos a `ActionMenu` con `danger: true`: borrar un pase, borrar una sesión, borrar una nota,
+   borrar una edición, borrar un post de club, borrar un reto. Preguntan (con `confirm()`, que es
+   lo que el repo ya usaba en cinco sitios: no se trae un `<dialog>` nuevo para esto) los que se
+   llevan algo por delante — pase, edición, nota, quitar de la biblioteca, subir de rol.
+   **NO pregunta borrar una sesión suelta**: se vuelve a registrar en diez segundos, y confirmar
+   todo enseña a decir que sí sin leer. Lo reversible (archivar un reto, que tiene «Reactivar»)
+   se queda a la vista.
+
+4. **Dos excepciones registradas a propósito.** (a) «Quitar de mi biblioteca» sigue siendo un
+   enlace rojo visible al final del panel de Registro: no está sembrado por fila, es la acción
+   única de un panel de gestión al que se entra a propósito, y esconderla la haría inencontrable
+   sin reducir el misclick. Lo que le faltaba era la pregunta —borra TODOS los pases de la obra—
+   y ya la tiene, en sus dos puertas (panel de Registro y menú del hero). (b) «Editar» se queda
+   en línea junto al «···» en el diario y en los retos: es neutro, es lo que se hace a diario, y
+   esconderlo penalizaría el caso frecuente para proteger el raro.
+
+5. **El rol de admin pregunta solo al SUBIR.** `/admin` cambiaba el rol al soltar el select y
+   avisaba en la descripción de que «los cambios son inmediatos», que es un aviso *después* del
+   hecho. Ahora `user → collaborator → admin` compara rango y pregunta; bajar no pregunta,
+   porque es reversible y no reparte permisos sobre el catálogo común.
+
+6. **`EmptyState` gana una talla `panel`, y esa es la razón de que nadie lo usara.** El
+   componente existía desde la fase de Estados, pero con `py-16` y un titular serif de 20px no
+   cabe dentro de una sección — así que las listas embebidas (clubes de «Descubrir», agenda del
+   mes, búsqueda sin consulta) seguían resolviendo su vacío con un `<p>` gris suelto. La
+   anatomía no cambia entre tallas: glifo, qué pasa, y una salida; si no hay salida honesta que
+   ofrecer se omite, pero se ha pensado. La agenda del mes es justo ese caso: quien mira puede
+   no ser miembro de ningún club ese mes, y «crea un evento» sería una salida falsa.
+
+7. **Una colección vacía dibuja su abanico con tres huecos punteados**, no 168px de blanco. El
+   `covers.map` no tenía sobre qué iterar y la tarjeta parecía *a medio cargar*, no vacía — que
+   es peor que fea: hace desconfiar de que la app haya terminado de responder. Los huecos son
+   decorativos (`aria-hidden`): lo que un lector de pantalla necesita ya lo dice el «0 títulos».
+
+8. **La tarjeta de club entera es el enlace y el botón «Abrir» desaparece.** Repetía en un
+   control lo que ya hacía el bloque que lo contenía. Técnica: `after:inset-0` sobre el `<Link>`
+   del cuerpo, y `relative z-10` en lo que SÍ es otra acción (unirse, solicitar, ver invitación)
+   para que no se lo coma la capa estirada.
+
+9. **«Biblioteca» y «Cuaderno» son los términos canónicos** (decisión del dueño del repo).
+   «Colección» queda SOLO para las agrupaciones que crea el usuario, que era el choque de verdad:
+   la nav decía «Colección» para toda la biblioteca y dentro había una pestaña «Colecciones» con
+   otro significado, a un clic de distancia. **La URL `/coleccion` NO cambia**: rompería enlaces
+   compartidos y las rutas guardadas de la PWA. Deuda consciente, anotada en el glosario.
+   El vocabulario entero vive ahora en `docs/UI-GLOSARIO.md`, y se consulta *antes* de escribir
+   copy — si un concepto no está, se añade allí primero.
+
+**Cobertura:** los cambios son de forma, no de lógica, así que lo que los protege son los e2e que
+ya recorrían esos flujos, adaptados al gesto nuevo (abrir el «···» y aceptar el diálogo):
+`pase-hub` (borrar pase), `happy-path` (borrar reto), `borrado-rapido-ediciones` (borrar edición).
+`ActionMenu` gana `triggerTestId` y `testId` por item para que un spec pueda seguir agarrándose al
+control que sustituye al que había — `delete-edition` sigue existiendo, ahora sobre el `menuitem`.
+
+**Lo que NO entra:** F3-013 (unificar `WorkCard`) y F3-009 (cuatro patrones de navegación
+secundaria) son refactores de componente con su propio alcance, no parte de este sistema mínimo.
+Y «Sin sinopsis disponible.» se queda como está: es la ausencia de un CAMPO dentro de un panel
+lleno, no una lista vacía; meterle un `EmptyState` con glifo sería ruido.
