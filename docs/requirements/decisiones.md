@@ -801,3 +801,86 @@ control que sustituye al que había — `delete-edition` sigue existiendo, ahora
 secundaria) son refactores de componente con su propio alcance, no parte de este sistema mínimo.
 Y «Sin sinopsis disponible.» se queda como está: es la ausencia de un CAMPO dentro de un panel
 lleno, no una lista vacía; meterle un `EmptyState` con glifo sería ruido.
+
+## 2026-08-21 — Acción 8 del roadmap: IA de navegación y página de Ajustes (F3-010/F4-007/F1-025)
+
+El diagnóstico de la auditoría era que **26 de 41 rutas colgaban solo de enlaces contextuales**:
+la nav tenía cuatro entradas y la app ocho áreas, así que lo que no cabía no estaba en ninguna
+parte. `/cuenta/contrasena` tenía **cero enlaces en `src/`** —solo se llegaba por el correo de
+recuperación, de modo que un usuario con sesión no podía cambiar su contraseña desde dentro de la
+app—, `/importar` vivía dentro de la hoja modal de «Editar perfil», y `/notas`, `/estadisticas` y
+`/sagas` colgaban de enlaces de segundo nivel.
+
+1. **La regla de reparto de la IA: si es TUYO cuelga de «Tú»; si es del catálogo, de Buscar.**
+   Es lo que decide dónde va cada cosa sin discutirlo pantalla a pantalla. Cuaderno, Estadísticas
+   y Ajustes son tuyos; **Sagas no**, aunque estuviera igual de enterrada — una saga es del
+   catálogo común, así que su sitio es Buscar, que es donde se descubre. La lista de «Tú» vive en
+   `nav-items.ts` junto a la principal (`youItems`), no dentro de un componente: se sirve en dos
+   sitios y tenía que haber uno solo que tocar.
+
+2. **La barra principal NO se toca.** La propuesta de la auditoría era rehacer las cinco entradas
+   (Inicio · Biblioteca · Descubrir · Clubes · Tú). Se descarta: «Descubrir» sería un término
+   nuevo estrenado tres días después de cerrar el glosario, y renombrar «Perfil» a «Tú» cambia la
+   etiqueta más aprendida de la app para arreglar un problema que es de SEGUNDO nivel. El agujero
+   no era que las cinco entradas estuvieran mal elegidas: era que no había nada colgando de ellas.
+
+3. **Los ajustes son una PÁGINA (`/ajustes`), no una hoja modal.** Una pantalla de configuración
+   se marca, se comparte y se vuelve a ella con el botón atrás; un `<dialog>` no hace ninguna de
+   las tres. Además había DOS hojas que se repartían lo que es configurar —«Editar perfil», que
+   escondía Importar/Exportar, y el engranaje, con visibilidad, avisos, admin y salir— y ninguna
+   de las dos tenía sitio para la contraseña. El engranaje del perfil pasa a ser un `<Link>`.
+
+4. **Criterio de reparto entre el perfil y los ajustes: el perfil es lo que otros ven de ti; los
+   ajustes son lo que tú decides sobre tu cuenta.** Por eso «Editar perfil» sigue existiendo en el
+   perfil (editar tu nombre en su contexto), pero **Importar/Exportar se van**: mover tu
+   biblioteca entera en CSV no es un rasgo de tu perfil público, y esconderlo tras «Editar perfil»
+   era exactamente por lo que nadie encontraba el importador.
+
+5. **El correo se enseña y no se edita.** Cambiarlo es un flujo de verificación por partida doble
+   que hoy no existe; enseñarlo cuesta cero y responde la pregunta «¿con qué cuenta entré?», que
+   es una de las dos que traen a esta página.
+
+6. **Un camino por viewport, no dos.** En `sm+` la lista de «Tú» es el menú del avatar de la
+   topbar; en móvil no hay avatar ahí, así que la misma lista se despliega como fila de accesos en
+   tu propio perfil (`YouRow`, `sm:hidden`). No se enseñan las dos a la vez a propósito: repetir
+   los mismos cuatro destinos dos dedos más abajo no es descubribilidad, es ruido. Lo que faltaba
+   era que en cada viewport hubiera UNO, no que hubiera dos.
+
+7. **El menú del avatar no reutiliza `ActionMenu`.** Sus items son `<button onSelect>` y estos son
+   **navegación**: un destino tiene que abrirse en pestaña nueva con ctrl+clic o con el botón
+   central, y un botón que llama a `router.push()` no hace ninguna de las dos. Se copia su
+   mecánica accesible (`aria-haspopup`, Escape, puntero fuera) sobre `<Link role="menuitem">`. Y
+   se cierra al cambiar de `pathname`: con Cache Components la navegación soft no desmonta el
+   componente y el menú se quedaría abierto sobre la página nueva (#448).
+
+8. **El enlace a Sagas pasa a tener forma de destino.** Era mono de 11px, gris y en versalitas:
+   se leía como un rótulo de sección, no como un sitio al que ir — y era lo único que separaba una
+   feature entera del olvido.
+
+9. **`/cuenta/contrasena` deja de ser un formulario suelto.** Título con `PageHeader` (el `<h1>`
+   en sans de 20px que traía el formulario iba contra la regla de titulares en serif) y vuelta a
+   Ajustes. Quien llega desde el correo de recuperación también tiene sesión, así que el enlace le
+   sirve igual.
+
+10. **F1-024 estaba caducada y no se implementa: se registra.** La auditoría decía que «desde un
+    libro no se puede llegar a la ficha de su autor» y que «el autor es texto plano
+    (`libro:433`)». Es falso hoy y ya lo era cuando se escribió: el autor enlaza a
+    `/persona/[id]` desde el **2026-08-13** (commit `2ed0dc8f`, vía `links` de
+    `metadata-sidebar.tsx`), seis días antes de la auditoría, y hay un e2e dedicado
+    (`e2e/libro-autor-enlace.spec.ts`). Lo único cierto del hallazgo es que la ficha de libro no
+    monta `CreditsSection` — y **no debe montarlo**: para libros el único rol de crew que se
+    escribe es `author` (`enrich-item.ts:216`; Open Library marca autor e ilustrador con el mismo
+    `/type/author_role` y no se pueden distinguir), así que la sección sería una fila de avatares
+    con las mismas personas que ya enlaza el panel de metadatos. Acta, no trabajo pendiente
+    (issue #748).
+
+**Cobertura:** `e2e/ia-navegacion.spec.ts`, cinco casos. Los asertos **navegan con clics desde el
+perfil**, nunca con `page.goto()` al destino, porque el fallo que se arregla es el más silencioso
+que hay: `/cuenta/contrasena` respondía 200 sin tener un solo enlace que llevara a ella, así que
+ningún test de «la ruta funciona» lo habría pillado. Se comprueba además que los items del menú
+son `<a href>` y no botones, y que los accesos móviles miden ≥44px de alto.
+
+**Lo que NO entra:** el contenedor estándar de página utilitaria (F3-002, P3) — `/importar`,
+`/admin` y la ficha de saga siguen cada una con su propio ancho y su propia cabecera; `/ajustes`
+estrena un patrón de tarjeta-por-sección que puede servirles de base cuando se aborde. Y la URL
+`/coleccion` sigue sin cambiar, por lo mismo que se anotó el 2026-08-20.

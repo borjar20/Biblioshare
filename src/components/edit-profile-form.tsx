@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -66,27 +65,12 @@ export function EditProfileForm({ profile }: { profile: Profile }) {
             </h2>
           </div>
 
+          {/* Importar/Exportar CSV vivían AQUÍ, dentro de la hoja de editar el
+              perfil: mover tu biblioteca entera no es editar tu nombre y tu bio,
+              y esconderlo tras «Editar perfil» era la razón de que nadie
+              encontrara el importador (F3-010). Se han ido a /ajustes, sección
+              «Tus datos». Esta hoja se queda con lo que de verdad es el perfil. */}
           <div className="flex flex-col gap-4 px-5 py-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/importar"
-                // Cierra el <dialog> antes de navegar: con Cache Components la
-                // hoja no se desmonta en navegación soft y quedaría rota e
-                // incerrable al volver (#448, como item-connect-sheet).
-                onClick={() => dialogRef.current?.close()}
-                className={buttonVariants("secondary", "px-4")}
-              >
-                {t("importLibrary")}
-              </Link>
-              <a
-                href="/api/export"
-                download
-                className={buttonVariants("secondary", "px-4")}
-              >
-                {t("exportLibrary")}
-              </a>
-            </div>
-
             <form action={formAction} className="flex flex-col gap-3">
               <Field label={t("displayName")} htmlFor="edit-profile-display-name">
                 <Input

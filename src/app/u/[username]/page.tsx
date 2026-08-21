@@ -32,6 +32,7 @@ import { ActivityTab } from "./_tabs/activity-tab";
 import { CollectionTab } from "./_tabs/collection-tab";
 import { StatsTab } from "./_tabs/stats-tab";
 import { RinconTab } from "./_tabs/rincon-tab";
+import { YouRow } from "@/components/nav/you-row";
 import { SHELL_APP } from "@/lib/ui/layout";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -181,9 +182,13 @@ export default async function PublicProfilePage({
         }
       />
 
+      {/* Accesos a lo tuyo (Cuaderno, Estadísticas, Ajustes) — solo móvil: en
+          sm+ los sirve el menú del avatar de la topbar. Ver YouRow. */}
+      {isOwner && <YouRow username={profile.username} />}
+
       {/* Solicitudes de seguimiento: en el mockup v2 se mudan al desplegable de
           Notificaciones (P1/D3), que es del plan 07. Hasta entonces siguen
-          aquí. Visibilidad y admin ya viven en la hoja de ajustes (⚙). */}
+          aquí. Visibilidad y admin ya viven en /ajustes (⚙ de la cabecera). */}
       {isOwner && <FollowRequests requests={pendingRequests} />}
 
       <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />

@@ -66,7 +66,16 @@ editor de catálogo inline (banner + barra sticky).
 8. **Un nombre por concepto.** Glosario canónico en **`docs/UI-GLOSARIO.md`**;
    i18n y páginas usan el término del glosario y nada más.
 9. **Toda feature cuelga de la navegación.** Ruta no alcanzable desde su área =
-   o se le da entrada o se registra acta de por qué es contextual.
+   o se le da entrada o se registra acta de por qué es contextual. **Aplicado
+   (acción 8, 2026-08-21).** La regla de reparto de la IA: **si es TUYO cuelga de
+   «Tú»** —el menú del avatar en `sm+`, la fila «Lo tuyo» del perfil en móvil,
+   ambos desde `youItems` en `nav-items.ts`—; **si es del catálogo, cuelga de
+   Buscar** (por eso Sagas va ahí y no en «Tú»). La configuración es una PÁGINA
+   (`/ajustes`), no una hoja modal: una pantalla de ajustes se marca, se comparte
+   y se vuelve a ella con el botón atrás. **Un camino por viewport, no dos:** la
+   misma lista no se enseña dos veces en la misma pantalla. La barra principal
+   sigue con sus cinco entradas a propósito — el agujero no era cuáles eran, sino
+   que no colgaba nada de ellas. Ver `decisiones.md` (2026-08-21).
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados
     juntos derivan del mismo dato (una fórmula por métrica).
 

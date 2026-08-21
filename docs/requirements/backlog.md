@@ -79,9 +79,19 @@ agenda y colecciones vacías) y F3-011 (glosario canónico en
 Quedan fuera a propósito F3-013 (unificar `WorkCard`) y F3-009 (los cuatro
 patrones de navegación secundaria): son refactores con su propio alcance.
 
+**Acción 8 — IA de navegación + página de Ajustes: HECHA el 2026-08-21.**
+F3-010/F4-007/F1-025 (la app tenía ~8 áreas y 4 entradas de nav: se estrena
+`/ajustes` como página real —perfil, visibilidad, contraseña, importar/exportar,
+avisos, admin y salir— y un segundo nivel «Tú» que sale del menú del avatar en
+`sm+` y de una fila de accesos en el perfil en móvil; Sagas pasa a ser un destino
+visible en Buscar). La barra principal NO se toca a propósito. **F1-024 se cierra
+como acta, no como trabajo:** su diagnóstico estaba caducado —el autor de un
+libro enlaza a `/persona/[id]` desde el 2026-08-13 (`2ed0dc8f`), con e2e propio—
+y montar `CreditsSection` en libro duplicaría el panel de metadatos. Decisiones
+en `decisiones.md` (2026-08-21); cobertura en `e2e/ia-navegacion.spec.ts`.
+
 Quedan de este bloque:
-acción 8 (IA de navegación + página de Ajustes — F3-010, F4-007, F1-025,
-F1-024), acción 9 (pasada de revalidación — F1-014/023/030/027), y los sueltos:
+acción 9 (pasada de revalidación — F1-014/023/030/027), y los sueltos:
 contraste y `<main>`/skip-link (F4-022/023), security headers + rate limiting
 (S2-08/S2-11), formula injection (#681), trigger de curación (S2-14), regenerar
 `graph.json` y `database.types.ts` (#695, #701, #625), y las migraciones
