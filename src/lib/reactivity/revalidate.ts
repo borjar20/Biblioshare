@@ -1,5 +1,5 @@
 import "server-only";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { itemHref, sagaHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 
@@ -8,6 +8,9 @@ import type { ItemType } from "@/lib/catalog/types";
 // para que "olvidar una ruta" deje de ser posible. Modelo de caché anterior
 // (sin cacheComponents): revalidatePath basta y actualiza la UI al momento si
 // estás viendo la ruta afectada.
+
+/** Caducidad inmediata para `revalidateTag` (ver el bloque de `expire*`). */
+const EXPIRE_NOW = { expire: 0 } as const;
 
 // --- Primitivas de ruta (una por zona de la app) ---
 
@@ -42,6 +45,16 @@ export function revalidateProfile(username: string): void {
 /** La colección/biblioteca del usuario. */
 export function revalidateLibrary(): void {
   revalidatePath("/coleccion");
+}
+
+/** El detalle de UNA colección (/coleccion/c/[id]) además del listado. Ruta
+ *  distinta de `revalidateLibrary` por el mismo motivo que las pantallas de
+ *  saga: renombrar una colección estando DENTRO de su detalle no refrescaba el
+ *  título hasta salir y volver. Casi siempre se quieren las dos, así que van
+ *  juntas y no hay que acordarse de la segunda. */
+export function revalidateCollection(id: string): void {
+  revalidateLibrary();
+  revalidatePath(`/coleccion/c/${id}`);
 }
 
 /** La ficha de una saga concreta. */
@@ -91,6 +104,40 @@ export function revalidateClubPages(): void {
   revalidatePath("/clubes");
 }
 
+/** El panel de administración. */
+export function revalidateAdmin(): void {
+  revalidatePath("/admin");
+}
+
+/** El buscador (alta manual de catálogo, que cambia lo que encuentra). */
+export function revalidateSearch(): void {
+  revalidatePath("/buscar");
+}
+
+/** La bandeja de filas sin resolver de una importación CSV. */
+export function revalidatePendingImports(): void {
+  revalidatePath("/importar/pendientes");
+}
+
+/** El asistente de alta (sus 3 pasos comparten ruta). */
+export function revalidateOnboarding(): void {
+  revalidatePath("/onboarding");
+}
+
+/** El chrome ENTERO, por una vez y a propósito.
+ *
+ *  Es la revalidación más cara que hay —purga la Client Cache y todo lo
+ *  cacheado bajo el layout raíz—, así que vive aquí con nombre propio para que
+ *  usarla sea una decisión y no un descuido. Solo tiene un caso legítimo:
+ *  terminar el onboarding, que hace aparecer las barras de navegación por
+ *  primera vez y ocurre UNA vez en la vida de una cuenta.
+ *
+ *  Lo que NO es caso: refrescar un contador de la topbar (era F1-014, en la
+ *  campana). Un dato por-usuario no se cachea, así que no hay nada que purgar. */
+export function revalidateAppChrome(): void {
+  revalidatePath("/", "layout");
+}
+
 // --- Helpers compuestos por forma de mutación ---
 
 /** Registro de lectura (pase, sesión, episodio visto): ficha + perfiles + feed.
@@ -135,6 +182,104 @@ export function revalidateImportBatch(
   revalidateAllItemPages();
   revalidateProfilePages();
   revalidateFeed();
+}
+
+/** Alta rápida en la biblioteca (el «＋» del feed y del buscador, que crea un
+ *  pase `planned`). Toca TRES zonas: el feed —de donde se pulsa—, la biblioteca
+ *  —donde la obra acaba de aparecer— y la ficha, cuyo CTA pasa de «Añadir» a
+ *  «En tu biblioteca».
+ *
+ *  Antes solo se revalidaba `"/"` (F1-030): ni colección ni ficha. Hoy no se
+ *  nota porque Next aún refresca al NAVEGAR toda página ya visitada, pero ese
+ *  comportamiento está documentado como temporal — el día que lo retiren, la
+ *  biblioteca se queda sin la obra recién añadida hasta recargar a mano.
+ *
+ *  No lleva `updateTag("ratings:…")` a propósito: un pase `planned` no tiene
+ *  nota, así que la media de la comunidad no cambia. */
+export function revalidateQuickAdd(itemType: ItemType, id: string): void {
+  revalidateFeed();
+  revalidateLibrary();
+  revalidateItemPage(itemType, id);
+}
+
+/** Variante en lote del anterior («Guardar los N en mi cola»). Las fichas van
+ *  por patrón en vez de una a una: son hasta 20 obras de tipos mezclados y
+ *  enumerarlas costaría más que revalidar las tres rutas dinámicas. */
+export function revalidateQuickAddMany(): void {
+  revalidateFeed();
+  revalidateLibrary();
+  revalidateAllItemPages();
+}
+
+// --- Caducar (`revalidateTag`) vs. actualizar (`updateTag`) ---
+//
+// `{ expire: 0 }` es obligatorio en Next 16: `revalidateTag` pide un segundo
+// argumento con el perfil de caducidad, y sin él la entrada seguiría viva su
+// `cacheLife` completo —o sea, no caducaría nada—. Cero = fuera ya.
+//
+// Los dos helpers de abajo se llaman `expire*` y no `revalidate*` y la
+// diferencia NO es cosmética: `updateTag` solo es legal DENTRO de una server
+// action, y estos dos se invocan desde `after()` en la ficha —el
+// enriquecimiento perezoso ocurre durante el render, no en una acción—. Con
+// `updateTag` ahí, Next lanza en runtime.
+//
+// La semántica también encaja mejor: `updateTag` hace que la SIGUIENTE petición
+// espere al dato fresco (read-your-own-writes, imprescindible cuando el que
+// mutó es el que va a mirar). Aquí quien enriquece no es «el dueño» del dato —
+// es un visitante cualquiera que ha rellenado catálogo compartido—, así que
+// basta con marcar la entrada caducada y que se recalcule cuando toque.
+
+/** Caduca los créditos (reparto/equipo) de un ítem recién enriquecido.
+ *
+ *  `getItemCredits` cachea con `cacheLife("days")` bajo la etiqueta
+ *  `credits:<tipo>:<id>`, y hasta F1-023 nadie la invalidaba jamás. El agujero
+ *  no es el enriquecido que funciona —ese escribe ANTES de que la misma
+ *  petición lea, así que cachea bien—, sino el que FALLA: si Open Library o
+ *  TMDB no contestan, la visita cachea créditos VACÍOS durante DÍAS, y la
+ *  siguiente visita —la que sí consigue escribirlos— los sigue leyendo vacíos
+ *  de la caché. Caducando al escribir, la visita siguiente ya los ve. */
+export function expireItemCredits(itemType: ItemType, id: string): void {
+  revalidateTag(`credits:${itemType}:${id}`, EXPIRE_NOW);
+}
+
+/** Caduca la membresía de saga de varios ítems desde un contexto de render
+ *  (hoy: entrar en una colección TMDB al abrir una ficha de película). Mismo
+ *  alcance que `revalidateSagaMembership`, distinta primitiva. */
+export function expireSagaMembership(
+  members: readonly { itemType: ItemType; itemId: string }[]
+): void {
+  for (const tag of membershipTags(members)) revalidateTag(tag, EXPIRE_NOW);
+}
+
+/** Cambio en la composición de una saga (alta, baja o borrado de la saga).
+ *
+ *  Recibe TODOS los miembros, no solo el ítem tocado, y ese es el punto: la
+ *  ficha de cada miembro enseña «nº X de Y», y la Y es el total de la saga —
+ *  así que añadir una obra cambia el rótulo de todas las demás. Hasta F1-023
+ *  solo se revalidaba la ficha del ítem tocado, con lo que el resto seguía
+ *  cantando el total viejo hasta que expiraba `cacheLife("days")`.
+ *
+ *  Se invoca desde server actions de colaborador (`updateTag`, con su espera al
+ *  dato fresco: el que acaba de curar la saga la recarga y tiene que ver su
+ *  cambio). Deduplica porque una misma obra puede llegar por dos caminos al
+ *  recomponer jerarquías de subsagas. */
+export function revalidateSagaMembership(
+  members: readonly { itemType: ItemType; itemId: string }[]
+): void {
+  for (const tag of membershipTags(members)) updateTag(tag);
+}
+
+/** Las etiquetas de membresía, deduplicadas: una misma obra puede llegar por
+ *  dos caminos al recomponer jerarquías de subsagas, y una saga de 40 títulos
+ *  no debe disparar 80 invalidaciones. */
+function membershipTags(
+  members: readonly { itemType: ItemType; itemId: string }[]
+): string[] {
+  const seen = new Set<string>();
+  for (const member of members) {
+    seen.add(`saga-membership:${member.itemType}:${member.itemId}`);
+  }
+  return [...seen];
 }
 
 /** Reacción/comentario: puede vivir en una ficha, en el feed o en un post de
