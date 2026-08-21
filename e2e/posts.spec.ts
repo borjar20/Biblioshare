@@ -520,10 +520,16 @@ test("compartir una sesión desde el formulario publica un post 'progressed'", a
   }
 });
 
-// Spec 2 — UI de post_preferences: la hoja de ajustes del perfil escribe la
-// tabla que hoy solo se leía (sin esta pantalla, started/dropped nunca podían
-// activarse). Cubre también la trampa #375: un upsert con una columna sin grant
-// rompería la escritura entera de la tabla.
+// Spec 2 — UI de post_preferences: los ajustes escriben la tabla que hoy solo
+// se leía (sin esta pantalla, started/dropped nunca podían activarse). Cubre
+// también la trampa #375: un upsert con una columna sin grant rompería la
+// escritura entera de la tabla.
+//
+// Desde la acción 8 los ajustes son una PÁGINA (/ajustes) y no una hoja modal
+// dentro del perfil, así que el test navega en vez de abrir un <dialog>. Se
+// entra por el engranaje del perfil a propósito: si ese enlace se rompiera,
+// /ajustes seguiría existiendo pero nadie llegaría — que es exactamente el
+// fallo que la acción 8 venía a arreglar.
 test("la UI de ajustes escribe post_preferences (autopublicar hitos)", async ({ page }) => {
   test.setTimeout(90_000);
   await login(page);
@@ -541,11 +547,11 @@ test("la UI de ajustes escribe post_preferences (autopublicar hitos)", async ({ 
 
   try {
     await page.goto(`/u/${USERNAME}`);
-    await page.getByRole("button", { name: "Ajustes" }).click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
+    await page.getByRole("link", { name: "Ajustes" }).click();
+    await expect(page).toHaveURL(/\/ajustes$/);
+    await expect(page.getByRole("heading", { name: "Ajustes", level: 1 })).toBeVisible();
 
-    const started = dialog.getByRole("switch", { name: "Al empezar una obra" });
+    const started = page.getByRole("switch", { name: "Al empezar una obra" });
     // El interruptor arranca deshabilitado hasta cargar; esperar a que refleje
     // el estado real antes de leerlo y pulsarlo.
     await expect(started).toBeEnabled();
@@ -566,10 +572,10 @@ test("la UI de ajustes escribe post_preferences (autopublicar hitos)", async ({ 
       )
       .toBe(!wasOn);
 
-    // Persiste tras recargar: reabrir ajustes y el interruptor sigue en su sitio.
+    // Persiste tras recargar: la página de ajustes sigue enseñando el
+    // interruptor en su sitio.
     await page.reload();
-    await page.getByRole("button", { name: "Ajustes" }).click();
-    const reopened = page.getByRole("dialog").getByRole("switch", { name: "Al empezar una obra" });
+    const reopened = page.getByRole("switch", { name: "Al empezar una obra" });
     await expect(reopened).toBeEnabled();
     await expect(reopened).toHaveAttribute("aria-checked", (!wasOn).toString());
   } finally {
