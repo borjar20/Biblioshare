@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notifyMany } from "@/lib/social/notifications";
 import { notifyMentions } from "@/lib/social/notify-mentions";
-import { getInteractionSummary, type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import { type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import {
   resolveSharedActivity,

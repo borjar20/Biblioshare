@@ -163,7 +163,7 @@ export async function createRoute(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) return { error: "forbidden" };
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "nameRequired" };
@@ -192,7 +192,7 @@ export async function renameRoute(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) return { error: "forbidden" };
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "nameRequired" };
@@ -239,7 +239,7 @@ export async function moveRoute(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${sagaId}`);
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) redirect(`/saga/${sagaId}`);
 
   const routes = await getSagaRoutes(supabase, sagaId);
   // computeMovedPositions renumera TODA la lista (no solo el par movido) para
@@ -274,7 +274,7 @@ export async function setReadingOrder(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) return { error: "forbidden" };
 
   if (routeId !== null) {
     // Un itinerario SIN PASOS no puede ocupar el puesto: el flujo normal es
@@ -327,7 +327,7 @@ export async function deleteRoute(routeId: string, sagaId: string): Promise<Rout
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${sagaId}`);
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) redirect(`/saga/${sagaId}`);
 
   // Hallazgo 4 (revisión Task 8): antes no se comprobaba `error` ni filas
   // afectadas, así que un routeId inválido (o ya borrado por otra pestaña)
@@ -377,7 +377,7 @@ export async function saveRoute(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) return { error: "forbidden" };
 
   // Comprobación OPTIMISTA, no la garantía: `descendantIds` llega del cliente,
   // así que esto solo sirve para dar un mensaje concreto en el editor sin
@@ -447,7 +447,7 @@ export async function generateRoute(sagaId: string): Promise<{ error?: string }>
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) return { error: "forbidden" };
 
   // getSagaDetail ya trae `orderSagas`/`orderMemberships` (los insumos exactos
   // de createCuratedOrder) y `groups` (para el desempate por título) — la

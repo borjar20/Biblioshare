@@ -68,7 +68,7 @@ export default async function SearchPage({
     mode === "titles" && query
       ? searchCatalog(itemType, query)
       : Promise.resolve([]),
-    getCurrentUserRole(supabase),
+    getCurrentUserRole(),
   ]);
   // Añadir manualmente es contribución curada → solo colaborador+ (§7.35).
   const canContribute = hasMinRole(role, "collaborator");

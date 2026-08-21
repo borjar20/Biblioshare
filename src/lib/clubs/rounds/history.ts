@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getInteractionSummary } from "@/lib/social/interactions";
+import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import type { RoundHistoryEntry } from "./types";
 
 const DEFAULT_WEEKS = 4;

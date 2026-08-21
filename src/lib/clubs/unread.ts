@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 
 // Novedades por club: posts y actividades creados por OTRA persona después de la
 // última vez que abriste ese club. Lo tuyo propio no es novedad para ti.
@@ -10,9 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 // consultas, y en SQL es una.
 export async function getClubUnreadCounts(): Promise<Map<string, number>> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return new Map();
 
   const { data, error } = await supabase.rpc("club_unread_counts");
@@ -26,9 +24,7 @@ export async function getClubUnreadCounts(): Promise<Map<string, number>> {
 // Marcar un club como leído hasta ahora. Se llama al abrir su feed.
 export async function markClubRead(clubId: string): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return;
 
   // upsert: la primera vez inserta, después actualiza. La RLS de club_reads solo

@@ -1,12 +1,8 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import {
-  emptyReactions,
-  getInteractionSummary,
-  type InteractionComment,
-  type ReactionsByKind,
-} from "@/lib/social/interactions";
+import { emptyReactions, type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { formatEdition } from "@/lib/editions/edition-label";
 import { toStar } from "@/lib/stats/rating";
