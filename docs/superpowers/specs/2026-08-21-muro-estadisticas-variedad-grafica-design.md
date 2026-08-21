@@ -1,7 +1,9 @@
 # Diseño: variedad gráfica y panel adaptativo en el muro de `/estadisticas`
 
 - **Fecha**: 2026-08-21
-- **Estado**: propuesta, pendiente de aprobación para plan de implementación
+- **Estado**: propuesta, con plan escrito en
+  `docs/superpowers/plans/2026-08-21-muro-estadisticas-variedad-grafica.md`.
+  **Dos puntos de esta spec quedaron corregidos al escribir el plan — ver §12.**
 - **Área**: `area:ui` (fases A y B) · `area:catalogo` (fase C)
 - **Origen**: la pantalla se lee repetitiva y sin fluidez, y con biblioteca pequeña se ve
   hueca. Revisión comparativa contra el catálogo de visualizadores de
@@ -440,3 +442,37 @@ Por fase, antes de cerrar la PR:
   debajo si la sección tiene pocas. Se prueba con secciones de 2, 3 y 7 paneles.
 - **Que la fase C engorde el muro** en vez de mejorarlo. Por eso §4.3 va **antes** que la
   fase C, y no después.
+
+---
+
+## 12. Correcciones (2026-08-21, al escribir el plan)
+
+Dos puntos de esta spec no sobrevivieron al contacto con el código. Se dejan escritos aquí
+en vez de reescribir las secciones, para que se vea qué se propuso y por qué no se hizo.
+
+### 12.1 El selector de faceta de §4.3 NO se hace
+
+**Choca con una regla explícita.** `src/lib/stats/filter.ts:4-6`: *«acota TODOS los paneles
+de la vista a la vez — **nunca hay un filtro por panel**: dos filtros distintos en la misma
+pantalla hacen imposible saber qué compara cada cifra con cuál»*. `page.tsx:114` lo repite.
+
+Los tres paneles de `ratedGroupPanel` se quedan. Lo que se arregla es la **forma** (pasan a
+`lollipop`) y el **orden** (dejan de ir seguidos). El problema real eran tres *listas de
+texto idénticas* en fila, y eso desaparece sin inventar un concepto de filtro nuevo.
+
+Queda como issue `tipo:deuda`. Si algún día se hace, `faceta` tendría que ser un filtro
+**global** en la fila de filtros: excepción deliberada a una regla documentada, que va a
+`decisiones.md` **antes** de escribirse.
+
+Consecuencia sobre §10: el orden de fase A pierde el paso «colapsar rankings», y la fase C
+ya no tiene dos huecos esperándola. Si el muro se hace largo, lo que sobra se decide
+mirándolo, no reservando sitio por adelantado.
+
+### 12.2 `dumbbell` se mueve de la fase A a la C
+
+§4.2 lo ponía en fase A. Ahí **no tiene consumidor**: su primer usuario es `relecturas`, que
+es §6.3, fase C. Construirlo antes es YAGNI. Se hace justo antes del panel que lo usa.
+
+El argumento de §4.2 sobre `PanelKpi.delta` sigue en pie —la variación es hoy tipografía y es
+lo más repetido de la pantalla— pero convertir los deltas en dumbbells es un cambio propio,
+con su propia decisión de diseño, y no entra en este plan.
