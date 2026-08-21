@@ -234,10 +234,13 @@ function allSections(
       title: "Actividad",
       description: "Cuándo ocurrió, en qué ritmo y con qué constancia.",
       panels: [
+        // El héroe va PRIMERO (invariante de `specs.test.ts`): ocupa las tres
+        // columnas, así que cualquier panel por encima quedaría cortado a un
+        // tercio con una banda debajo.
+        yearCalendarPanel(input),
         periodActivityPanel(input, period, filter),
         completedByYearPanel(input),
         hoursPanel(input),
-        yearCalendarPanel(input),
         streaksPanel(input.streaks, "Rachas", input.itemFilter),
         recordsPanel(input.records, input.streaks, input.titles.records, period, filter),
       ],
@@ -620,6 +623,8 @@ function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
       scope: withAllTypes(itemFilter, "año natural"),
     },
     viz: "heatmap",
+    // Preside su sección: 53 semanas en un tercio de tarjeta son celdas de 6 px.
+    hero: true,
     // Siete filas, una por día de la semana; cada columna, una semana. El
     // desplazamiento es el día de la semana del 1 de enero: sin él las filas
     // dejarían de ser lunes, martes… y el mosaico no sería un calendario.
@@ -832,6 +837,10 @@ function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
       filter: globalFilter(itemFilter),
     },
     viz: "line",
+    // NO es héroe, aunque el diseño lo barajó: doce puntos de línea se leen bien
+    // en un tercio de tarjeta, y ser héroe obliga a ir primero en la sección —
+    // lo que rompería el orden que su descripción promete («qué tienes, qué
+    // acabas y qué se te acumula»). El ancho se reserva para lo que no cabe.
     unit: UNITS.items,
     labelHeader: "Mes",
     series: [{ key: "pending", label: "Abiertas", color: "var(--status-planned)" }],

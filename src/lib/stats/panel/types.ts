@@ -181,6 +181,19 @@ export type PanelSpec = {
   description?: string;
   context: PanelContext;
   viz: PanelViz;
+  /**
+   * El panel que preside su sección: ocupa las TRES columnas del masonry.
+   *
+   * UNO por sección como mucho, y el primero de la lista (lo afirma
+   * `specs.test.ts`). Dos héroes seguidos parten la sección en bandas y el
+   * masonry deja de repartir — que es justo el motivo por el que la rejilla se
+   * descartó en su día (ver el comentario largo de `page.tsx`).
+   *
+   * Se marca por NECESITAR EL ANCHO, no por importancia: 53 semanas de
+   * calendario en un tercio de tarjeta son ilegibles, mientras que una cifra
+   * grande no gana nada por ocupar tres veces más.
+   */
+  hero?: true;
   unit: Unit;
   data: PanelDatum[];
   /** Obligatorio para `stacked`; opcional en el resto para colorear. */
