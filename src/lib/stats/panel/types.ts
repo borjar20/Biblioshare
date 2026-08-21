@@ -89,6 +89,15 @@ export type PanelDatum = {
   value: number | null;
   /** Desglose por serie, para `stacked`. */
   parts?: PanelPart[];
+  /**
+   * Valor de referencia contra el que se compara ESTE punto: la mejor marca, el
+   * objetivo, la media. Solo lo consume `bullet`.
+   *
+   * `undefined` = no hay contra qué comparar, y entonces NO se dibuja marca.
+   * Inventar una —la media, el máximo de la serie— haría que el panel dijera
+   * que has batido algo que nadie llegó a fijar.
+   */
+  target?: number;
   /** Texto libre para la columna «Detalle» de la tabla. */
   detail?: string;
   /** Si la fila lleva a algún sitio, el enlace va en la tabla (no en el gráfico). */
@@ -152,6 +161,8 @@ export type PanelViz =
   | "lollipop"
   /** Reparto en celdas CONTABLES. Sustituye a `donut`, que exigía medir un ángulo. */
   | "waffle"
+  /** Valor contra su propia referencia (`PanelDatum.target`). Una fila ya es un bullet. */
+  | "bullet"
   | "ranking"
   | "kpi"
   | "table";

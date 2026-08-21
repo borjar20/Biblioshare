@@ -26,7 +26,7 @@
 //   · el color nunca va solo: la leyenda lleva glifo de forma además de color.
 
 import { GLYPH_CHAR, share, partValue, type PanelDerived } from "@/lib/stats/panel/derive";
-import { formatNumber, formatValue } from "@/lib/stats/panel/format";
+import { formatNumber, formatValue, NO_DATA } from "@/lib/stats/panel/format";
 import { UNITS, type PanelDatum, type PanelSpec } from "@/lib/stats/panel/types";
 
 type ChartProps = {
@@ -765,6 +765,78 @@ export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
  * permitió retirar su tabla: sin esto, quitar la tabla habría dejado el reparto
  * exacto solo al alcance del ratón.
  */
+/**
+ * Valor contra su propia referencia: barra de progreso con la marca de lo que
+ * hay que batir.
+ *
+ * A diferencia de las barras o el lollipop, aquí cada fila NO se compara con las
+ * otras: se compara consigo misma. Por eso UNA fila ya es un bullet completo, y
+ * por eso `MIN_POINTS` no debe pedirle dos.
+ *
+ * La escala sí es común a todas las filas, y eso sí es necesario: si cada una se
+ * escalara sola, dos barras del mismo largo dirían cifras distintas y comparar
+ * entre filas —lo único que el ojo hace sin pedir permiso— sería falso.
+ *
+ * «Batida» se dice con PALABRA en el nombre accesible, no solo con el verde: el
+ * color no diferencia nada por sí solo (principio 2).
+ */
+export function BulletChart({ spec, derived, interactive }: ChartProps) {
+  const ceiling = Math.max(derived.scale, ...spec.data.map((d) => d.target ?? 0));
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {spec.data.map((d) => {
+        const probe = interactive && d.value !== null;
+        const beaten = d.target !== undefined && d.value !== null && d.value >= d.target;
+        const label =
+          d.value === null
+            ? undefined
+            : d.target === undefined
+              ? `${d.label}: ${formatValue(d.value, spec.unit)}`
+              : `${d.label}: ${formatValue(d.value, spec.unit)}, tu marca ${formatValue(
+                  d.target,
+                  spec.unit,
+                )}${beaten ? " — marca batida" : ""}`;
+        return (
+          <li
+            key={d.key}
+            className="flex flex-col gap-1 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            tabIndex={probe ? 0 : undefined}
+            role={probe ? "img" : undefined}
+            aria-label={probe ? label : undefined}
+          >
+            <span aria-hidden className="flex items-baseline justify-between gap-3">
+              <span className="text-[11px] text-foreground-soft">{d.label}</span>
+              <span className="font-mono text-[10.5px] tabular-nums text-foreground">
+                {d.value === null ? NO_DATA : formatNumber(d.value)}
+                {d.value !== null && d.target !== undefined && ` / ${formatNumber(d.target)}`}
+              </span>
+            </span>
+            <span aria-hidden className="relative h-3 w-full rounded-full bg-surface-muted">
+              {d.value !== null && (
+                <span
+                  data-fill
+                  className="absolute inset-y-0 left-0 rounded-full"
+                  style={{
+                    width: `${share(d.value, ceiling)}%`,
+                    background: beaten ? "var(--green)" : "var(--gold-graphic)",
+                  }}
+                />
+              )}
+              {d.target !== undefined && (
+                <span
+                  data-target
+                  className="absolute -inset-y-1 w-[2.5px] rounded-full bg-foreground"
+                  style={{ left: `${share(d.target, ceiling)}%` }}
+                />
+              )}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** Celdas del waffle cuando el total no cabe a una celda por obra. */
 const WAFFLE_CELLS = 100;
 
@@ -1004,6 +1076,8 @@ export function Chart({ spec, derived, interactive }: ChartProps) {
       return <LollipopChart spec={spec} derived={derived} interactive={interactive} />;
     case "waffle":
       return <WaffleChart spec={spec} derived={derived} />;
+    case "bullet":
+      return <BulletChart spec={spec} derived={derived} interactive={interactive} />;
     default:
       return null;
   }

@@ -684,9 +684,22 @@ function streaksPanel(
       period: "Ahora mismo",
       scope: withAllTypes(itemFilter, "foto del momento"),
     },
-    viz: "kpi",
+    // Bullet y no tres cifras sueltas: «racha actual contra tu mejor racha» ES
+    // valor-contra-referencia, que es exactamente lo que este gráfico dice. Con
+    // tres números había que restarlos mentalmente para saber si estabas cerca.
+    viz: "bullet",
     unit: UNITS.days,
-    data: [],
+    // Una sola fila basta: el bullet compara cada punto con SU marca, no con los
+    // otros puntos. `target` se omite si no hay mejor racha todavía — dibujar
+    // una marca en cero diría que ya la has batido.
+    data: [
+      {
+        key: "actual",
+        label: "Racha actual",
+        value: streaks.current,
+        target: streaks.best > 0 ? streaks.best : undefined,
+      },
+    ],
     kpis: [
       { key: "actual", label: "Días seguidos", value: streaks.current, unit: UNITS.days },
       {

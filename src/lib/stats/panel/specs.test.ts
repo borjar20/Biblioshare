@@ -91,6 +91,21 @@ describe("la forma sale de lo que mide el panel", () => {
     }
   });
 
+  it("la racha se dibuja contra tu mejor marca, no como tres cifras sueltas", () => {
+    const racha = allPanels().find((p) => p.id === "racha");
+    expect(racha?.viz).toBe("bullet");
+    // La marca es la mejor racha; sin ella no se dibuja ninguna.
+    expect(racha?.data[0]?.target).toBe(27);
+  });
+
+  it("sin mejor racha todavía, el bullet no inventa una marca en cero", () => {
+    const sinRacha = input({ streaks: { current: 0, best: 0, activeDays: 0 } });
+    const racha = buildStatsSections(sinRacha)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "racha");
+    expect(racha?.data[0]?.target).toBeUndefined();
+  });
+
   it("más de la mitad del muro DIBUJA: era el problema de partida", () => {
     const TEXTO = ["kpi", "ranking", "table"];
     const panels = allPanels();

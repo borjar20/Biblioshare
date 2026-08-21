@@ -16,7 +16,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { derive } from "@/lib/stats/panel/derive";
 import { UNITS, type PanelSpec } from "@/lib/stats/panel/types";
-import { LollipopChart, WaffleChart } from "./charts";
+import { BulletChart, LollipopChart, WaffleChart } from "./charts";
 
 afterEach(cleanup);
 
@@ -178,5 +178,64 @@ describe("waffle", () => {
     const s = reparto();
     const { container } = render(<WaffleChart spec={s} derived={derive(s)} />);
     expect(container.querySelector("[data-cells]")?.getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+/**
+ * El bullet compara cada punto con SU propia referencia, no con los otros
+ * puntos. Por eso una sola fila ya es un bullet completo — a diferencia de las
+ * barras o el lollipop, donde un punto solo no compara nada.
+ */
+function marca(over: Partial<PanelSpec> = {}): PanelSpec {
+  return {
+    id: "racha",
+    title: "Rachas",
+    context: { period: "Ahora mismo" },
+    viz: "bullet",
+    unit: UNITS.days,
+    data: [{ key: "actual", label: "Racha actual", value: 5, target: 27 }],
+    ...over,
+  };
+}
+
+describe("bullet", () => {
+  it("dice el valor y la marca, y las dos en el nombre accesible", () => {
+    const s = marca();
+    render(<BulletChart spec={s} derived={derive(s)} interactive />);
+    expect(screen.getByLabelText("Racha actual: 5 días, tu marca 27 días")).toBeTruthy();
+    expect(screen.getByText("5 / 27")).toBeTruthy();
+  });
+
+  it("sin marca de referencia no dibuja ninguna: inventarla diria que bátiste algo que nadie fijó", () => {
+    const s = marca({ data: [{ key: "a", label: "A", value: 4 }] });
+    const { container } = render(<BulletChart spec={s} derived={derive(s)} />);
+    expect(container.querySelector("[data-target]")).toBeNull();
+  });
+
+  it("batir la marca se dice con palabra, no solo con color", () => {
+    const s = marca({ data: [{ key: "a", label: "A", value: 30, target: 27 }] });
+    render(<BulletChart spec={s} derived={derive(s)} interactive />);
+    expect(screen.getByLabelText(/marca batida/i)).toBeTruthy();
+  });
+
+  it("la escala es común a todas las filas, o comparar entre filas sería falso", () => {
+    const s = marca({
+      data: [
+        { key: "a", label: "A", value: 10, target: 20 },
+        { key: "b", label: "B", value: 20, target: 20 },
+      ],
+    });
+    const { container } = render(<BulletChart spec={s} derived={derive(s)} />);
+    const barras = [...container.querySelectorAll("[data-fill]")] as HTMLElement[];
+    // 10 y 20 sobre el mismo techo: la primera mide la mitad que la segunda.
+    expect(barras[0].style.width).toBe("50%");
+    expect(barras[1].style.width).toBe("100%");
+  });
+
+  it("un hueco no pinta barra: `null` no es cero", () => {
+    const s = marca({ data: [{ key: "a", label: "A", value: null, target: 20 }] });
+    const { container } = render(<BulletChart spec={s} derived={derive(s)} />);
+    expect(container.querySelector("[data-fill]")).toBeNull();
+    expect(screen.getByText(/Sin datos/)).toBeTruthy();
   });
 });

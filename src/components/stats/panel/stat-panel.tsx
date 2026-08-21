@@ -75,6 +75,9 @@ const SELF_DESCRIBING: PanelSpec["viz"][] = [
   // exacto vive en la LEYENDA, que lleva serie, glifo y cifra, se lee con
   // teclado y sale también en la cara. Misma garantía por otra puerta.
   "waffle",
+  // El bullet escribe «valor / marca» sobre cada barra y su fila es focalizable
+  // con las dos cifras —y la palabra «batida»— en el nombre accesible.
+  "bullet",
 ];
 
 const CARD =
