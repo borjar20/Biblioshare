@@ -41,6 +41,8 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Reto** | Challenge, Objetivo | La meta contable del usuario («50 libros en 2026»). | `/estadisticas`, `challenges` |
 | **Rincón** | Mi rincón, Panel | La pestaña personal del perfil, con el sorteo y los accesos a lo tuyo. | pestaña de `/u/[username]` |
 | **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón |
+| **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
+| **Tu cuenta** | Mi cuenta, Tú (como etiqueta visible) | El **agrupador** de lo tuyo (perfil, Cuaderno, Estadísticas, Ajustes). Es el nombre del menú del avatar; en el código el concepto se llama «Tú» (`youItems`), pero al usuario no se le enseña esa palabra suelta. | menú del avatar (`sm+`), fila «Lo tuyo» del perfil (móvil) |
 
 ## Reglas de escritura que se derivan
 
@@ -70,3 +72,11 @@ de la app, por bien dibujada que esté cada pantalla.
   vez hay una pantalla titulada «Actividad» fuera de un club, hay que resolverlo.
 - El vocabulario de **series** (temporada, episodio, T2·E3) no está aquí porque
   no tiene competencia: nadie lo llama de dos formas.
+- **«Tú» no llegó a ser una etiqueta visible** (acción 8, 2026-08-21). La
+  propuesta de la auditoría era renombrar la pestaña «Perfil» de la barra
+  inferior a «Tú»; se descartó por no estrenar un término tres días después de
+  cerrar este glosario, y porque el problema no era el nombre de la pestaña sino
+  que no colgaba nada de ella. El concepto existe en el código (`youItems`) y
+  llega al usuario como **«Tu cuenta»** (el menú) y **«Lo tuyo»** (la fila del
+  perfil en móvil). Si algún día se rehace la barra principal, decidir la
+  etiqueta AQUÍ antes de tocar `nav-items.ts`.
