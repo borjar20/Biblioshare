@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/social/interactions", () => ({
+vi.mock("@/lib/social/get-interaction-summary", () => ({
   getInteractionSummary: mocks.getInteractionSummary,
 }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
