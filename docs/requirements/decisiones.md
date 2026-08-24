@@ -932,3 +932,57 @@ ir primero, lo que rompería el orden que promete la descripción de su sección
 crecía con la columna y una tarjeta de 340 px de ancho se llevaba 340 de alto — dos veces y
 media lo que medía el anillo. Con tope de 220 px las celdas quedan en ~19 y la página baja de
 4834 a 4607 px de alto. Ningún test lo habría visto.
+
+## 2026-08-24 — El muro de estadísticas, fase B: la forma la elige el dato, y el vacío tiene tres niveles
+
+**`spec.viz` deja de ser lo que se pinta.** Es lo que el panel PIDE; lo que se dibuja es
+`derived.viz`, que `derive()` decide según cuántos puntos MEDIDOS haya. Con menos de cuatro no
+hay curva, con menos de tres no hay reparto, con menos de dos no hay comparación: el panel
+degrada a `kpi` y conserva su cifra en vez de dibujar una recta entre dos números con ejes,
+rejilla y leyenda ocupando lo que un año entero.
+
+Los umbrales están solo en 2, 3 y 4, y **nunca por estética**. Si la forma cambiara por gusto,
+el panel se vería distinto cada visita y se perdería la comparación entre visitas, que es para
+lo que existe un muro de estadísticas. `bullet` y `gauge` no degradan nunca —comparan contra
+una referencia propia, no contra otros puntos—, ni `kpi`, `ranking` y `table`, que ya son su
+forma mínima.
+
+**El invariante que hunde la fase si se rompe: `StatPanel` no lee `spec.viz` ni una sola vez.**
+Cinco sitios decidían texto, tabla, `aria-hidden` y lista de enlaces; uno que se quedara atrás
+da un panel que dice tener tabla y no la tiene, **y el typecheck no lo caza** porque ambos
+campos son `PanelViz`. Se afirma con un test que **lee el fichero** y busca la cadena. Por eso
+el motivo de la degradación viaja en `derived.degradedFrom` en vez de calcularse comparando en
+el componente: comparar exigiría leer `spec.viz` y dejaría la guardia sin poder ser absoluta.
+
+**Dos correcciones al plan, encontradas al ejecutarlo:**
+
+- **Un panel degradado CONSERVA la tabla**, contra la regla «`kpi` no lleva tabla». Sin dibujo
+  y con un indicador fabricado que solo trae el total, la tabla era lo único que dejaba los
+  puntos en el DOM: el plan los habría hecho desaparecer.
+- **La leyenda del waffle no traía sus cifras.** La fase A lo dio por hecho —`SELF_DESCRIBING`
+  obliga a que el dato exacto esté en alguna parte, y para el waffle ese sitio es la leyenda—
+  pero el flag que las pinta seguía siendo `viz === "donut"`. Los tres waffles llevaban desde
+  la fase A sin su dato exacto en ningún sitio. Corregido aquí.
+
+**El vacío deja de ser un estado y pasa a ser tres**, distinguidos por quién puede arreglarlo:
+estructural (no puede tener datos con ningún periodo, se pliega a una línea), por filtro (no
+hay datos AQUÍ, y el aquí lo elegiste tú: tarjeta atenuada con la cifra de fuera y su salida)
+y degradado (hay datos, pero pocos para esa forma: la cifra, con la frase de por qué).
+
+**El criterio del nivel 1 es lo delicado.** «No puede tener datos NUNCA» no se decide con una
+cifra que el selector de periodo acaba de recortar; se decide con `byYear`, la única señal del
+muro que ignora a la vez el periodo y el filtro de tipo. Y como `byYear` cuenta obras
+TERMINADAS, solo vale para paneles que también midan lo terminado: **`series-formato` queda
+fuera a propósito**, porque mide episodios vistos y quien lleva media temporada de tres series
+tiene datos y cero series terminadas. Plegarlo por ahí habría escondido un panel lleno.
+
+**Y el nivel 2 no ofrece salida si la salida no lleva a ningún dato.** `elsewhere` trae la
+cifra de fuera **y** el enlace, juntos y nunca por separado; devuelve nada con «Todo» puesto
+(no hay ningún fuera al que ir) y sin histórico (el destino está igual de vacío). La salida
+conserva el filtro de tipo: mandar a «todo» a quien acaba de elegir «libros» le deshace dos
+filtros cuando solo le sobraba uno. Y la cifra de fuera **no se inventa pidiendo otra
+consulta** — solo la declaran los dos paneles que ya la tienen a mano, porque convertir el
+vacío en el caso más caro de la página es lo contrario de lo que busca este nivel.
+
+**Sin `use cache` en toda la fase**, como en la A: no se ha tocado ningún getter ni añadido
+ninguna consulta. Regla #437.

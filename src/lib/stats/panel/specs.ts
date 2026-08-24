@@ -38,6 +38,7 @@ import {
   type ActivityMetric,
   type ItemFilter,
   itemFilterLabel,
+  itemFilterParam,
 } from "@/lib/stats/filter";
 import {
   type StatsPeriod,
@@ -187,6 +188,66 @@ export function fitsPeriod(spec: PanelSpec, period: StatsPeriod): boolean {
   return true;
 }
 
+/**
+ * ¿Has terminado alguna obra de este tipo EN TODO EL HISTÓRICO?
+ *
+ * `byYear` es la única señal del muro que ignora a la vez el periodo y el filtro
+ * de tipo —`getCompletedByYear` no recibe ninguno de los dos—, y eso es justo lo
+ * que exige el nivel 1: «no puede tener datos nunca» no se puede decidir con una
+ * cifra que el selector de periodo acaba de recortar.
+ *
+ * Cuenta obras TERMINADAS, así que solo vale para los paneles que también miden
+ * lo terminado. `series-formato` mide episodios vistos y por eso NO lo usa: quien
+ * lleva media temporada de tres series tiene datos y cero series terminadas.
+ */
+function everFinished(byYear: YearCompleted[], type: "book" | "movie"): boolean {
+  return byYear.some((y) => y[type] > 0);
+}
+
+/**
+ * Los paneles que solo existen para un tipo de obra que nunca has terminado. La
+ * frase va en primera persona del panel, no del sistema: dice qué falta, no que
+ * algo se haya escondido.
+ */
+const NEVER_BOOKS = "No has terminado ningún libro todavía";
+const NEVER_MOVIES = "No has terminado ninguna película todavía";
+
+/**
+ * La vista sin recortar por periodo, conservando el tipo elegido.
+ *
+ * Sin `?periodo=` el muro arranca en «todo el histórico» (ver `page.tsx`), así
+ * que la salida es quitar el parámetro. El de tipo se conserva a propósito:
+ * mandar a «todo» a quien acaba de elegir «libros» le deshace dos filtros
+ * cuando solo le sobraba uno.
+ */
+function allTimeHref(itemFilter: ItemFilter): string {
+  return itemFilter === "all"
+    ? "/estadisticas"
+    : `/estadisticas?tipo=${itemFilterParam(itemFilter)}`;
+}
+
+/**
+ * NIVEL 2 — la salida del vacío por filtro, cuando la hay.
+ *
+ * Devuelve `undefined` en los dos casos en que el enlace mentiría: con «Todo»
+ * puesto no hay ningún fuera al que ir, y sin histórico el sitio al que lleva
+ * está igual de vacío. Un enlace que promete un dato que no existe es peor que
+ * no ofrecer ninguno.
+ */
+function wayOutToAllTime(
+  { period, itemFilter }: StatsInput,
+  everTotal: number,
+  text: string,
+): NonNullable<PanelSpec["empty"]>["elsewhere"] | undefined {
+  if (period === "all" || everTotal <= 0) return undefined;
+  return { text, href: allTimeHref(itemFilter), label: "Ver todo el histórico" };
+}
+
+/** Obras terminadas en TODO el histórico. `byYear` no obedece a ningún filtro. */
+function everFinishedTotal(byYear: YearCompleted[]): number {
+  return byYear.reduce((n, y) => n + y.total, 0);
+}
+
 export function buildStatsSections(input: StatsInput): PanelSection[] {
   const period = periodLabel(input.period);
   // El filtro global va SUELTO al rótulo, no mezclado con los filtros propios
@@ -215,6 +276,20 @@ export function hiddenPanelCount(input: StatsInput): number {
     0,
   );
   return total - shown;
+}
+
+/** Cuántos paneles se pliegan por no poder tener datos nunca. */
+export function collapsedPanelCount(input: StatsInput): number {
+  return allSections(input, periodLabel(input.period), undefined)
+    .filter((s) => s.panels.some((spec) => fitsPeriod(spec, input.period)))
+    .reduce(
+      (n, s) =>
+        n +
+        s.panels.filter(
+          (spec) => spec.structurallyEmpty && fitsPeriod(spec, input.period),
+        ).length,
+      0,
+    );
 }
 
 function allSections(
@@ -583,7 +658,7 @@ function periodActivityPanel(
   period: string,
   filter: string | undefined,
 ): PanelSpec {
-  return activitySpec(
+  const spec = activitySpec(
     input.activity,
     input.metric,
     "actividad-periodo",
@@ -592,6 +667,23 @@ function periodActivityPanel(
     previousLabel(input.period),
     filter,
   );
+
+  // La salida solo se ofrece con la medida en OBRAS: el histórico que hay a
+  // mano (`byYear`) cuenta obras terminadas, y prometer «llevas 54 obras» en un
+  // panel que está midiendo minutos sería cambiarle la unidad al lector sin
+  // avisar. Con «Tiempo» puesto no hay cifra de fuera, así que no hay enlace.
+  const ever = input.metric === "time" ? 0 : everFinishedTotal(input.byYear);
+  return {
+    ...spec,
+    empty: spec.empty && {
+      ...spec.empty,
+      elsewhere: wayOutToAllTime(
+        input,
+        ever,
+        `En todo el histórico llevas ${ever} ${ever === 1 ? "obra terminada" : "obras terminadas"}`,
+      ),
+    },
+  };
 }
 
 /**
@@ -1099,10 +1191,11 @@ function lengthVsRatingPanel(
 
 // ── §6 Gustos y descubrimiento ────────────────────────────────────────────────
 
-function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+function directorsPanel({ catalog, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "directores",
     title: "Directores más vistos",
+    structurallyEmpty: everFinished(byYear, "movie") ? undefined : NEVER_MOVIES,
     context: {
       period,
       filter: globalFilter(itemFilter),
@@ -1124,10 +1217,11 @@ function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): Pa
   };
 }
 
-function publishersPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+function publishersPanel({ catalog, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "editoriales",
     title: "Editoriales",
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: {
       period,
       filter: globalFilter(itemFilter),
@@ -1206,7 +1300,7 @@ function coverageNote(known: number, unknown: number, what: string): string | un
   } ${what} en su ficha de catálogo. Las medias son de las que sí.`;
 }
 
-function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): PanelSpec {
+function bookFormatPanel({ formats, pagesPerDay, byYear }: StatsInput, period: string): PanelSpec {
   const b = formats.books;
   const known = b.finished - b.unknown;
   const daysToEmpty =
@@ -1215,6 +1309,7 @@ function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): 
   return {
     id: "libros-formato",
     title: "Libros",
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: { period, filters: ["Solo libros"] },
     viz: "kpi",
     unit: UNITS.pages,
@@ -1262,12 +1357,13 @@ function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): 
   };
 }
 
-function movieFormatPanel({ formats }: StatsInput, period: string): PanelSpec {
+function movieFormatPanel({ formats, byYear }: StatsInput, period: string): PanelSpec {
   const m = formats.movies;
   const known = m.finished - m.unknown;
   return {
     id: "peliculas-formato",
     title: "Películas",
+    structurallyEmpty: everFinished(byYear, "movie") ? undefined : NEVER_MOVIES,
     context: { period, filters: ["Solo películas"] },
     viz: "kpi",
     unit: UNITS.minutes,
@@ -1656,7 +1752,9 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
  * misma pregunta. Filtrarlo lo dejaría con un solo sector y el cien por cien,
  * que no informa de nada.
  */
-function typePanel({ type, titles, itemFilter }: StatsInput, period: string): PanelSpec {
+function typePanel(input: StatsInput, period: string): PanelSpec {
+  const { type, titles, itemFilter } = input;
+  const ever = everFinishedTotal(input.byYear);
   return {
     id: "por-tipo",
     title: titles.type,
@@ -1678,6 +1776,11 @@ function typePanel({ type, titles, itemFilter }: StatsInput, period: string): Pa
     empty: {
       title: "Nada terminado en este periodo",
       message: "Cierra un pase para que aparezca aquí.",
+      elsewhere: wayOutToAllTime(
+        input,
+        ever,
+        `En todo el histórico llevas ${ever} ${ever === 1 ? "obra terminada" : "obras terminadas"}`,
+      ),
     },
   };
 }
@@ -1818,10 +1921,11 @@ function genresPanel(
   };
 }
 
-function authorsPanel({ catalog, titles, itemFilter }: StatsInput, period: string): PanelSpec {
+function authorsPanel({ catalog, titles, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "autores",
     title: titles.authors,
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: {
       period,
       filter: globalFilter(itemFilter),

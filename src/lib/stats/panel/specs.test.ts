@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildStatsSections } from "./specs";
+import { buildStatsSections, collapsedPanelCount } from "./specs";
 import { statsInput as input } from "./__fixtures__/stats-input";
 
 /** Todos los paneles del muro, sin importar en qué sección caen. */
@@ -125,5 +125,86 @@ describe("la forma sale de lo que mide el panel", () => {
     const panels = allPanels();
     const dibujan = panels.filter((p) => !TEXTO.includes(p.viz));
     expect(dibujan.length).toBeGreaterThan(panels.length / 2);
+  });
+});
+
+describe("nivel 1 — vacío estructural", () => {
+  /** Un histórico sin un solo libro terminado: ni un año, ni con otro periodo. */
+  const sinLibros = () =>
+    input({ byYear: [{ year: 2026, book: 0, movie: 4, series: 2, total: 6 }] });
+
+  function panelsOf(i: ReturnType<typeof input>) {
+    return buildStatsSections(i).flatMap((s) => s.panels);
+  }
+
+  it("sin un solo libro terminado en TODO el histórico, «Libros» no puede tener datos nunca", () => {
+    const libros = panelsOf(sinLibros()).find((p) => p.id === "libros-formato");
+    expect(libros?.structurallyEmpty).toMatch(/ningún libro/i);
+  });
+
+  it("los paneles que solo existen para un tipo se pliegan con él", () => {
+    const ids = panelsOf(sinLibros())
+      .filter((p) => p.structurallyEmpty)
+      .map((p) => p.id)
+      .sort();
+    expect(ids).toEqual(["autores", "editoriales", "libros-formato"]);
+  });
+
+  it("con libros en el histórico no se pliega: su vacío sería cosa del periodo", () => {
+    expect(
+      allPanels().find((p) => p.id === "libros-formato")?.structurallyEmpty,
+    ).toBeUndefined();
+  });
+
+  it("«Series» NO se pliega aunque no hayas TERMINADO ninguna: mide episodios vistos", () => {
+    // La trampa del nivel 1. La única señal histórica del muro (`byYear`) cuenta
+    // obras TERMINADAS, y este panel mide episodios: quien lleva media temporada
+    // de tres series tiene datos y cero series terminadas. Plegarlo por ahí
+    // escondería un panel lleno.
+    const sinSeriesAcabadas = input({
+      byYear: [{ year: 2026, book: 12, movie: 4, series: 0, total: 16 }],
+    });
+    expect(
+      panelsOf(sinSeriesAcabadas).find((p) => p.id === "series-formato")
+        ?.structurallyEmpty,
+    ).toBeUndefined();
+  });
+
+  it("cuenta los plegados, para no esconder en silencio", () => {
+    expect(collapsedPanelCount(sinLibros())).toBe(3);
+    expect(collapsedPanelCount(input())).toBe(0);
+  });
+});
+
+describe("nivel 2 — la salida solo se ofrece si lleva a algún dato", () => {
+  it("con un periodo corto puesto, el panel de actividad dice lo que llevas en todo el histórico", () => {
+    const semana = input({ period: "week" });
+    const actividad = buildStatsSections(semana)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "actividad-periodo");
+    // 14 + 22 + 18 en la fixture.
+    expect(actividad?.empty?.elsewhere?.text).toMatch(/54/);
+    expect(actividad?.empty?.elsewhere?.href).toBe("/estadisticas");
+  });
+
+  it("la salida CONSERVA el filtro de tipo: mandarte a «todo» te quitaría el que elegiste", () => {
+    const semana = input({ period: "week", itemFilter: "book" });
+    const actividad = buildStatsSections(semana)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "actividad-periodo");
+    expect(actividad?.empty?.elsewhere?.href).toBe("/estadisticas?tipo=libros");
+  });
+
+  it("con «Todo» puesto NO hay salida: llevaría al mismo sitio vacío", () => {
+    const actividad = allPanels().find((p) => p.id === "actividad-periodo");
+    expect(actividad?.empty?.elsewhere).toBeUndefined();
+  });
+
+  it("sin histórico tampoco hay salida: el enlace prometería un dato que no existe", () => {
+    const nuevo = input({ period: "week", byYear: [] });
+    const actividad = buildStatsSections(nuevo)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "actividad-periodo");
+    expect(actividad?.empty?.elsewhere).toBeUndefined();
   });
 });

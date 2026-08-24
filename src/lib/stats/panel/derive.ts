@@ -8,6 +8,7 @@ import type {
   PanelKpi,
   PanelSeries,
   PanelSpec,
+  PanelViz,
   SeriesGlyph,
 } from "./types";
 
@@ -46,8 +47,63 @@ export type PanelDerived = {
   isEmpty: boolean;
   /** Hay medidas y todas valen cero. Es un dato, no un vacío. */
   allZero: boolean;
+  /**
+   * La forma que se pinta, que puede no ser `spec.viz` (ver `effectiveViz`).
+   * **Todo `StatPanel` lee ESTO, nunca `spec.viz`** — hay un test que lee el
+   * fichero y lo afirma, porque el typecheck no puede: ambos son `PanelViz`.
+   */
+  viz: PanelViz;
+  /**
+   * La forma que la spec PEDÍA, cuando `viz` no es esa. `null` = no degradó.
+   *
+   * Va aquí y no se calcula comparando en el componente para que `StatPanel` no
+   * tenga que leer `spec.viz` ni una sola vez: es la única manera de que el
+   * invariante «nadie lee spec.viz» se pueda afirmar leyendo el fichero, que es
+   * como se afirma, porque el typecheck no distingue dos campos del mismo tipo.
+   */
+  degradedFrom: PanelViz | null;
   series: Required<PanelSeries>[];
 };
+
+/**
+ * Mínimo de puntos MEDIDOS que necesita cada forma para no mentir.
+ *
+ * Una línea con dos puntos es una recta entre dos números, con ejes, rejilla y
+ * leyenda, ocupando lo que un año entero. Un reparto con dos partes es «casi
+ * todo esto y un poco de aquello», que es una frase, no un gráfico.
+ *
+ * Los umbrales están SOLO en 2, 3 y 4, y nunca por estética. Si la forma
+ * cambiara por gusto, el panel se vería distinto cada visita y se perdería la
+ * comparación entre visitas, que es para lo que existe un muro de estadísticas.
+ */
+const MIN_POINTS: Partial<Record<PanelViz, number>> = {
+  line: 4,
+  area: 4,
+  donut: 3,
+  waffle: 3,
+  bars: 2,
+  stacked: 2,
+  lollipop: 2,
+  heatmap: 2,
+  // `bullet` NO entra aquí, y es deliberado: compara cada fila con SU propia
+  // referencia, no con las otras filas, así que UNA fila ya es un bullet
+  // completo. Ponerle 2 degradaría a `kpi` el panel «Rachas», que estrenó la
+  // forma en la fase A con una sola fila (racha actual contra tu mejor racha).
+};
+
+/**
+ * La forma que el panel va a pintar DE VERDAD, que no siempre es la que declara
+ * la spec. Cuando no hay puntos para el gráfico pero sí hay dato, se degrada a
+ * `kpi`: el panel conserva su cifra y su variación en vez de quedarse hueco.
+ *
+ * `kpi`, `ranking`, `table` y `gauge` no degradan nunca: los tres primeros ya
+ * son texto, y el medidor compara contra un objetivo, no contra otros puntos.
+ */
+function effectiveViz(spec: PanelSpec, knownCount: number): PanelViz {
+  const min = MIN_POINTS[spec.viz];
+  if (min === undefined) return spec.viz;
+  return knownCount < min ? "kpi" : spec.viz;
+}
 
 export function derive(spec: PanelSpec): PanelDerived {
   const known = spec.data.filter((d): d is MeasuredDatum => d.value !== null);
@@ -68,6 +124,7 @@ export function derive(spec: PanelSpec): PanelDerived {
   }
 
   const peak = known.reduce((m, d) => Math.max(m, d.value), 0);
+  const viz = effectiveViz(spec, known.length);
 
   return {
     known,
@@ -83,6 +140,8 @@ export function derive(spec: PanelSpec): PanelDerived {
         ? !(spec.kpis ?? []).some((k) => k.value !== null || Boolean(k.text))
         : known.length === 0,
     allZero: known.length > 0 && peak === 0,
+    viz,
+    degradedFrom: viz === spec.viz ? null : spec.viz,
     series: withGlyphs(spec.series ?? []),
   };
 }

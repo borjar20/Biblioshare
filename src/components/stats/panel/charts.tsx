@@ -1002,7 +1002,11 @@ export function Legend({
   spec?: PanelSpec;
 }) {
   if (derived.series.length < 2) return null;
-  const withValues = spec?.viz === "donut";
+  // Los repartos parte-todo llevan la CIFRA en la leyenda. En el waffle no es
+  // un adorno: su rejilla va `aria-hidden` (cien celdas sueltas no dicen nada) y
+  // pierde la tabla por estar en `SELF_DESCRIBING`, así que la leyenda es el
+  // único sitio donde queda el dato exacto.
+  const withValues = spec?.viz === "donut" || spec?.viz === "waffle";
   const byKey = new Map(derived.known.map((d) => [d.key, d.value]));
 
   return (
@@ -1060,9 +1064,15 @@ function colorFor(spec: PanelSpec, datum: PanelDatum): string {
   return FALLBACK_COLORS[(i < 0 ? 0 : i) % FALLBACK_COLORS.length];
 }
 
-/** Elige la visualización. `ranking`, `kpi` y `table` no dibujan: son texto. */
+/**
+ * Elige la visualización. `ranking`, `kpi` y `table` no dibujan: son texto.
+ *
+ * Despacha por `derived.viz`, la forma EFECTIVA, no por la que declara la spec:
+ * si `derive()` decidió que dos puntos no dan una curva, aquí no puede seguir
+ * dibujándose una línea de dos puntos.
+ */
 export function Chart({ spec, derived, interactive }: ChartProps) {
-  switch (spec.viz) {
+  switch (derived.viz) {
     case "bars":
       return <BarsChart spec={spec} derived={derived} interactive={interactive} />;
     case "stacked":
