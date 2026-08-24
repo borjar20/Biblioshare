@@ -3,7 +3,7 @@ import {
   emptyReactions,
   getInteractionSummary,
   type InteractionComment,
-  type ReactionsByKind,
+  type ReactionsByEmoji,
 } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
@@ -29,7 +29,7 @@ export type EpisodeReview = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 export type EpisodeReviewsResult = {

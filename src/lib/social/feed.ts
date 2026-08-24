@@ -8,7 +8,7 @@ import {
   emptyReactions,
   getInteractionSummary,
   type InteractionComment,
-  type ReactionsByKind,
+  type ReactionsByEmoji,
 } from "./interactions";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
@@ -117,7 +117,7 @@ export type FeedEvent = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 // Forma interna mientras se resuelve el target canónico en batch. Nunca cruza el

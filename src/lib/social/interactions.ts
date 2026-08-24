@@ -15,17 +15,38 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type TargetType = Exclude<CanonicalTargetType, "comment">;
 
-export type ReactionKind = "like" | "read" | "shock" | "fire";
-export const REACTION_KINDS: readonly ReactionKind[] = ["like", "read", "shock", "fire"];
+/**
+ * Un emoji del catálogo (`src/lib/social/emoji-catalog.data.ts`). Es un alias
+ * documental, no un tipo cerrado: la lista blanca se valida en la acción de
+ * servidor, no en el sistema de tipos.
+ */
+export type ReactionEmoji = string;
 export type ReactionTally = { count: number; viewerReacted: boolean };
-export type ReactionsByKind = Record<ReactionKind, ReactionTally>;
-export function emptyReactions(): ReactionsByKind {
-  return {
-    like: { count: 0, viewerReacted: false },
-    read: { count: 0, viewerReacted: false },
-    shock: { count: 0, viewerReacted: false },
-    fire: { count: 0, viewerReacted: false },
-  };
+/**
+ * Mapa DISPERSO: hay clave solo si alguien reaccionó con ese emoji. Indexar a
+ * pelo (`reactions["🔥"]`) puede dar `undefined` — usa siempre `tallyOf`.
+ * El orden de las claves es el de primera aparición, que es lo que
+ * `reaction-display.ts` usa como desempate estable; por eso las consultas de
+ * reacciones van ordenadas por `created_at`.
+ */
+export type ReactionsByEmoji = Record<ReactionEmoji, ReactionTally>;
+
+export function emptyReactions(): ReactionsByEmoji {
+  return {};
+}
+
+export function tallyOf(reactions: ReactionsByEmoji, emoji: string): ReactionTally {
+  return reactions[emoji] ?? { count: 0, viewerReacted: false };
+}
+
+export function totalReactions(reactions: ReactionsByEmoji): number {
+  let total = 0;
+  for (const tally of Object.values(reactions)) total += tally.count;
+  return total;
+}
+
+export function anyViewerReacted(reactions: ReactionsByEmoji): boolean {
+  return Object.values(reactions).some((tally) => tally.viewerReacted);
 }
 
 export type InteractionComment = {
@@ -51,7 +72,7 @@ export type InteractionComment = {
   // callers que aún pintan el total sin desglosar por emoji.
   reactionCount: number;
   viewerReacted: boolean;
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 export type InteractionSummary = {
@@ -60,7 +81,7 @@ export type InteractionSummary = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 // Hilo esperado corto (Reddit-lite, Q del diseño); sin paginación en este MVP.
@@ -142,7 +163,8 @@ export async function getInteractionSummary(
     supabase
       .from("reactions")
       .select("interaction_target_id, user_id, kind")
-      .in("interaction_target_id", interactionTargetIds),
+      .in("interaction_target_id", interactionTargetIds)
+      .order("created_at", { ascending: true }),
     supabase
       .from("comments")
       .select("id, interaction_target_id, author_id, body, created_at, parent_id, is_spoiler, pinned, edited_at")
@@ -157,15 +179,15 @@ export async function getInteractionSummary(
     const sourceId = sourceIdByTargetId.get(r.interaction_target_id);
     const s = sourceId ? summaries.get(sourceId) : undefined;
     if (!s) continue;
-    const kind = (r.kind ?? "like") as ReactionKind;
-    const tally = s.reactions[kind];
-    if (!tally) continue; // kind desconocido: ignora, no rompas
+    const emoji = r.kind;
+    if (!emoji) continue; // fila sin kind: ignora, no rompas
+    const tally = (s.reactions[emoji] ??= { count: 0, viewerReacted: false });
     tally.count += 1;
     if (user && r.user_id === user.id) tally.viewerReacted = true;
   }
   for (const s of summaries.values()) {
-    s.reactionCount = REACTION_KINDS.reduce((n, k) => n + s.reactions[k].count, 0);
-    s.viewerReacted = REACTION_KINDS.some((k) => s.reactions[k].viewerReacted);
+    s.reactionCount = totalReactions(s.reactions);
+    s.viewerReacted = anyViewerReacted(s.reactions);
   }
 
   const commentRows = commentsResult.data ?? [];
@@ -271,7 +293,8 @@ export async function getInteractionSummary(
     const { data: commentReactions, error: commentReactionsError } = await supabase
       .from("reactions")
       .select("interaction_target_id, user_id, kind")
-      .in("interaction_target_id", commentInteractionTargetIds);
+      .in("interaction_target_id", commentInteractionTargetIds)
+      .order("created_at", { ascending: true });
     if (commentReactionsError) throw commentReactionsError;
 
     const commentById = new Map<string, InteractionComment>();
@@ -281,15 +304,15 @@ export async function getInteractionSummary(
     for (const r of commentReactions ?? []) {
       const c = commentById.get(r.interaction_target_id);
       if (!c) continue;
-      const kind = (r.kind ?? "like") as ReactionKind;
-      const tally = c.reactions[kind];
-      if (!tally) continue;
+      const emoji = r.kind;
+      if (!emoji) continue;
+      const tally = (c.reactions[emoji] ??= { count: 0, viewerReacted: false });
       tally.count += 1;
       if (user && r.user_id === user.id) tally.viewerReacted = true;
     }
     for (const c of commentById.values()) {
-      c.reactionCount = REACTION_KINDS.reduce((n, k) => n + c.reactions[k].count, 0);
-      c.viewerReacted = REACTION_KINDS.some((k) => c.reactions[k].viewerReacted);
+      c.reactionCount = totalReactions(c.reactions);
+      c.viewerReacted = anyViewerReacted(c.reactions);
     }
   }
 
