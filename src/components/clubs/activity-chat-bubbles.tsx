@@ -12,7 +12,7 @@ import {
 import {
   emptyReactions,
   type InteractionComment,
-  type ReactionsByKind,
+  type ReactionsByEmoji,
 } from "@/lib/social/interactions";
 import { buildChatMessages } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
@@ -48,7 +48,7 @@ export function ActivityChatBubbles({
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
   viewerLoggedIn: boolean;
   /** Club de la actividad -- acota el autocompletar de @menciones a sus miembros. */
   clubId: string;
@@ -235,9 +235,9 @@ export function ActivityChatBubbles({
                 <ReactionBar
                   reactions={c.reactions}
                   disabled={isPending}
-                  onToggle={(kind) =>
-                    run({ type: "toggleComment", id: c.id, kind }, async () => {
-                      await toggleReaction(c.interactionTargetId, kind);
+                  onToggle={(emoji) =>
+                    run({ type: "toggleComment", id: c.id, emoji }, async () => {
+                      await toggleReaction(c.interactionTargetId, emoji);
                     })
                   }
                 />

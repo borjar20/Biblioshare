@@ -1,30 +1,39 @@
 import {
-  REACTION_KINDS,
+  anyViewerReacted,
+  tallyOf,
+  totalReactions,
   type InteractionComment,
   type InteractionSummary,
-  type ReactionKind,
-  type ReactionsByKind,
+  type ReactionsByEmoji,
 } from "./interactions";
 
 export type InteractionAction =
-  | { type: "toggleTarget"; kind: ReactionKind }
-  | { type: "toggleComment"; id: string; kind: ReactionKind }
+  | { type: "toggleTarget"; emoji: string }
+  | { type: "toggleComment"; id: string; emoji: string }
   | { type: "addComment"; comment: InteractionComment }
   | { type: "deleteComment"; id: string }
   | { type: "editComment"; id: string; body: string }
   | { type: "pinComment"; id: string; pinned: boolean };
 
-function toggleKind(r: ReactionsByKind, kind: ReactionKind): ReactionsByKind {
-  const cur = r[kind];
-  const next = { count: cur.count + (cur.viewerReacted ? -1 : 1), viewerReacted: !cur.viewerReacted };
-  return { ...r, [kind]: next };
+// Al quitar la ÚLTIMA reacción de un emoji hay que borrar la clave, no dejarla
+// a cero: el mapa es disperso y el ReactionBar pinta lo que hay en él, así que
+// un cero superviviente se vería como una píldora vacía.
+function toggleEmoji(reactions: ReactionsByEmoji, emoji: string): ReactionsByEmoji {
+  const current = tallyOf(reactions, emoji);
+  if (!current.viewerReacted) {
+    return { ...reactions, [emoji]: { count: current.count + 1, viewerReacted: true } };
+  }
+  const next = { ...reactions };
+  if (current.count <= 1) delete next[emoji];
+  else next[emoji] = { count: current.count - 1, viewerReacted: false };
+  return next;
 }
 
-function derive<T extends { reactions: ReactionsByKind }>(x: T): T {
+function derive<T extends { reactions: ReactionsByEmoji }>(x: T): T {
   return {
     ...x,
-    reactionCount: REACTION_KINDS.reduce((n, k) => n + x.reactions[k].count, 0),
-    viewerReacted: REACTION_KINDS.some((k) => x.reactions[k].viewerReacted),
+    reactionCount: totalReactions(x.reactions),
+    viewerReacted: anyViewerReacted(x.reactions),
   } as T;
 }
 
@@ -39,13 +48,13 @@ export function interactionReducer(
 ): InteractionSummary {
   switch (action.type) {
     case "toggleTarget":
-      return derive({ ...state, reactions: toggleKind(state.reactions, action.kind) });
+      return derive({ ...state, reactions: toggleEmoji(state.reactions, action.emoji) });
     case "toggleComment":
       return {
         ...state,
         comments: state.comments.map((c) =>
           c.id === action.id
-            ? derive({ ...c, reactions: toggleKind(c.reactions, action.kind) })
+            ? derive({ ...c, reactions: toggleEmoji(c.reactions, action.emoji) })
             : c,
         ),
       };

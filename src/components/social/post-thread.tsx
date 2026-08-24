@@ -17,7 +17,7 @@ import {
 import {
   emptyReactions,
   type InteractionComment,
-  type ReactionsByKind,
+  type ReactionsByEmoji,
 } from "@/lib/social/interactions";
 import { buildCommentTree, MAX_THREAD_DEPTH, type CommentSort, type CommentNode } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
@@ -53,7 +53,7 @@ export function PostThread({
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
   viewerLoggedIn: boolean;
   knownUsernames?: string[];
 }) {
@@ -287,9 +287,9 @@ export function PostThread({
                   <ReactionBar
                     reactions={c.reactions}
                     disabled={isPending}
-                    onToggle={(kind) =>
-                      run({ type: "toggleComment", id: c.id, kind }, async () => {
-                        await toggleReaction(c.interactionTargetId, kind);
+                    onToggle={(emoji) =>
+                      run({ type: "toggleComment", id: c.id, emoji }, async () => {
+                        await toggleReaction(c.interactionTargetId, emoji);
                       })
                     }
                   />
@@ -360,9 +360,9 @@ export function PostThread({
         <ReactionBar
           reactions={state.reactions}
           disabled={isPending || !viewerLoggedIn}
-          onToggle={(kind) =>
-            run({ type: "toggleTarget", kind }, async () => {
-              await toggleReaction(interactionTargetId, kind);
+          onToggle={(emoji) =>
+            run({ type: "toggleTarget", emoji }, async () => {
+              await toggleReaction(interactionTargetId, emoji);
             })
           }
         />
