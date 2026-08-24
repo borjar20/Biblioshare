@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getInteractionSummary } from "@/lib/social/interactions";
+import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import type { InteractionSummary } from "@/lib/social/interactions";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { parsePosition } from "@/lib/library/position";

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateAdmin } from "@/lib/reactivity/revalidate";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole, type UserRole } from "@/lib/auth/roles";
 
@@ -23,7 +23,7 @@ export async function updateUserRole(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  if (!hasMinRole(await getCurrentUserRole(supabase), "admin")) {
+  if (!hasMinRole(await getCurrentUserRole(), "admin")) {
     return { error: "forbidden" };
   }
   if (!ROLES.includes(role)) return { error: "invalidRole" };
@@ -35,6 +35,6 @@ export async function updateUserRole(
 
   if (error) return { error: "generic" };
 
-  revalidatePath("/admin");
+  revalidateAdmin();
   return {};
 }

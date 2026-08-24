@@ -21,7 +21,7 @@ export default async function SagaRoutesPage({ params }: { params: Promise<{ id:
 
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/saga/${id}/rutas`));
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(sagaHref(id));
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) redirect(sagaHref(id));
 
   // `show_map` decide el TEXTO de la fila del mapa generado, no si se pinta:
   // una saga sin mapa con un itinerario ya designado necesita esa fila para

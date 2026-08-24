@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
-import { revalidateItemPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
+import {
+  revalidateItemPage,
+  revalidateSagaMembership,
+  revalidateSagaPage,
+} from "@/lib/reactivity/revalidate";
+import { listSagaMemberRefs } from "./saga-member-refs";
 
 export type AssignSagaState = {
   error?: "nameRequired" | "forbidden" | "generic";
@@ -28,7 +33,7 @@ export async function assignItemToSaga(
   if (!user) redirect("/login");
 
   // Curar sagas es contribución manual → colaborador+ (§7.35).
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { error: "forbidden" };
   }
 
@@ -109,6 +114,10 @@ export async function assignItemToSaga(
   );
   if (insertError) return { error: "generic" };
 
+  // Los DEMÁS miembros también, no solo el que se acaba de meter: su ficha
+  // canta «nº X de Y» y la Y acaba de subir (F1-023). Se leen DESPUÉS del
+  // upsert, así que la lista ya incluye al recién llegado.
+  revalidateSagaMembership(await listSagaMemberRefs(supabase, sagaId));
   revalidateItemPage(itemType, itemId);
   revalidateSagaPage(sagaId);
   return {};
@@ -131,7 +140,7 @@ export async function removeItemFromSaga(itemType: ItemType, itemId: string, sag
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     redirect(itemHref(itemType, itemId));
   }
 
@@ -143,6 +152,12 @@ export async function removeItemFromSaga(itemType: ItemType, itemId: string, sag
     .eq("saga_id", sagaId);
   if (error) throw error;
 
+  // El que sale, más los que se quedan: a estos les baja la Y del «nº X de Y».
+  // El saliente hay que nombrarlo aparte porque ya no está en `saga_items`.
+  revalidateSagaMembership([
+    { itemType, itemId },
+    ...(await listSagaMemberRefs(supabase, sagaId)),
+  ]);
   revalidateItemPage(itemType, itemId);
   revalidateSagaPage(sagaId);
 }

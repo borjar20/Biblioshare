@@ -1,8 +1,6 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export type UserRole = Database["public"]["Enums"]["user_role"];
 
@@ -40,15 +38,20 @@ const roleByUserId = cache(
 );
 
 // Rol del usuario autenticado, o null si no hay sesión. Fuente de verdad en la
-// app (la misma que usan las políticas RLS vía current_user_role()). Se mantiene
-// el parámetro `supabase` —lo pasan ~40 llamadas— para el chequeo de sesión; la
-// consulta de rol se delega en roleByUserId, que es la parte memoizada.
-export async function getCurrentUserRole(
-  supabase: SupabaseServerClient
-): Promise<UserRole | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+// app (la misma que usan las políticas RLS vía current_user_role()).
+//
+// SIN parámetro `supabase` desde F1-027. Antes lo recibía —lo pasaban ~35
+// llamadas— y hacía con él `auth.getUser()`, que es un VIAJE DE RED a
+// /auth/v1/user (~240 ms), no una lectura local: la ficha de película llamaba a
+// esta función dos veces por render y pagaba los dos. `getCurrentUser()` hace
+// exactamente lo mismo pero memoizado con React.cache(), así que la sesión se
+// pide una vez por petición pase por donde pase (reincidencia del #283).
+//
+// Quitar el parámetro en vez de ignorarlo es deliberado: mientras estuviera en
+// la firma seguiría leyéndose como «el rol depende del cliente que le pases», y
+// no depende — depende de la cookie de sesión de la petición.
+export async function getCurrentUserRole(): Promise<UserRole | null> {
+  const user = await getCurrentUser();
   if (!user) return null;
 
   return roleByUserId(user.id);

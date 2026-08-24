@@ -8,7 +8,12 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import {
+  createClient,
+  createTokenClient,
+  getAccessToken,
+  getCurrentUser,
+} from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
 import { RouteMessages } from "@/components/route-messages";
@@ -47,6 +52,10 @@ import {
 import { getEditions } from "@/lib/editions/get-editions";
 import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import {
+  expireItemCredits,
+  expireSagaMembership,
+} from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
@@ -128,9 +137,11 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
-  const [{ data: movie }, user] = await Promise.all([
+  const [{ data: movie }, user, accessToken] = await Promise.all([
     fetchMovie(supabase, id),
     getCurrentUser(),
+    // Para el `after()` de hidratación: hay que leerlo AQUÍ, durante el render.
+    getAccessToken(),
   ]);
 
   if (!movie) notFound();
@@ -141,11 +152,17 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   // todo curador de filas viejas (`hydrated_at` null). Mismo criterio que
   // ensureBookHydrated en libro/[id]/page.tsx — ver el comentario ahí.
   //
-  // Solo con sesión: un visitante anónimo no puede escribir (grant de
-  // `authenticated`).
-  if (user) {
+  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión): un
+  // visitante anónimo no puede escribir (grant de `authenticated`, y la RPC
+  // exige además `auth.uid()`).
+  //
+  // El token se lee DURANTE el render y se le pasa al callback como valor; el
+  // cliente de la petición NO puede cruzar a un `after()` porque lee cookies en
+  // cada consulta y eso, en un Server Component, lanza (#751). El porqué
+  // completo está en libro/[id]/page.tsx.
+  if (accessToken) {
     after(() =>
-      ensureMovieHydrated(supabase, {
+      ensureMovieHydrated(createTokenClient(accessToken), {
         id: movie.id,
         tmdb_id: movie.tmdb_id,
         hydrated_at: movie.hydrated_at,
@@ -173,7 +190,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
           .maybeSingle()
           .then(({ data }) => data)
       : Promise.resolve(null),
-    user ? getCurrentUserRole(supabase) : Promise.resolve(null),
+    user ? getCurrentUserRole() : Promise.resolve(null),
   ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
@@ -279,7 +296,7 @@ async function MovieTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. La única
   // dependencia real aquí es que ensureItemEnriched escribe lo que
   // getItemCredits lee; el resto va en paralelo aunque se lea en orden.
-  const [watchProviders, , sagas, editions, activeRow, role, reviewsResult] =
+  const [watchProviders, enriched, sagas, editions, activeRow, role, reviewsResult] =
     await Promise.all([
       movie.tmdb_id ? getWatchProviders("movie", movie.tmdb_id) : null,
       ensureItemEnriched(supabase, "movie", {
@@ -303,7 +320,7 @@ async function MovieTabs({
             .maybeSingle()
             .then(({ data }) => data)
         : null,
-        userId ? getCurrentUserRole(supabase) : null,
+        userId ? getCurrentUserRole() : null,
       // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
       // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
       getReviews(supabase, "movie", movie.id),
@@ -315,6 +332,16 @@ async function MovieTabs({
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits("movie", movie.id);
+
+  // Ver la nota de la ficha de libro: caducar lo que el enriquecimiento
+  // perezoso acaba de escribir, y hacerlo tras la respuesta porque durante el
+  // render las APIs de revalidación no son legales (F1-023). La película tiene
+  // un segundo efecto que las otras dos fichas no: entrar en su colección TMDB
+  // cambia el «nº X de Y» de TODAS las pelis de esa colección, no solo de esta.
+  after(() => {
+    if (enriched.wroteCredits) expireItemCredits("movie", movie.id);
+    if (enriched.sagaMembers.length > 0) expireSagaMembership(enriched.sagaMembers);
+  });
 
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];

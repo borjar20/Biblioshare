@@ -3,7 +3,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { revalidateSagaEditPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
+import {
+  revalidateSagaEditPage,
+  revalidateSagaMembership,
+  revalidateSagaPage,
+} from "@/lib/reactivity/revalidate";
+import { listSagaMemberRefs } from "./saga-member-refs";
 import { validateSequenceDraft } from "./validate-sequence-draft";
 import { getAnchorOptions } from "./get-anchor-options";
 import { loadWindowOwners, overlayDraftWindowOwners } from "./window-owners";
@@ -25,7 +30,7 @@ export async function saveSequence(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) return { error: "forbidden" };
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) return { error: "forbidden" };
 
   // Anclas y dueños válidos: los dos se resuelven CONTRA BD, no se cree al
   // cliente. Las anclas son TODO el subárbol (getAnchorOptions), no solo
@@ -77,6 +82,20 @@ export async function saveSequence(
   });
   if (error) return { error: "generic" };
 
+  // El editor de secuencia escribe `position`, y la ficha de cada obra la
+  // enseña en su «nº X de Y» leyéndola de `getItemSagas`, cacheada bajo
+  // `saga-membership:*` (F1-023). `p_removed` además saca miembros, así que el
+  // total cambia para los que quedan. El alcance es el mismo que el de la RPC:
+  // esta saga y sus hijas DIRECTAS, ni más ni menos.
+  const memberLists = await Promise.all(
+    [sagaId, ...childIds].map((id) => listSagaMemberRefs(supabase, id)),
+  );
+  revalidateSagaMembership([
+    // Las bajas van aparte: `p_removed` ya las sacó de `saga_items`, así que la
+    // relectura de arriba no las trae y su chip «Parte de» se quedaría pegada.
+    ...payload.removed.map((r) => ({ itemType: r.item_type, itemId: r.item_id })),
+    ...memberLists.flat(),
+  ]);
   revalidateSagaPage(sagaId);
   revalidateSagaEditPage(sagaId);
   return {};

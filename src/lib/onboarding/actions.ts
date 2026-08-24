@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateAppChrome, revalidateOnboarding } from "@/lib/reactivity/revalidate";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { addExistingItemToLibrary } from "@/lib/library/add-existing-item";
@@ -24,7 +24,7 @@ export async function saveInterests(interests: ItemType[]): Promise<void> {
     .update({ interests: clean.length > 0 ? clean : null })
     .eq("user_id", user.id);
 
-  revalidatePath("/onboarding");
+  revalidateOnboarding();
 }
 
 /**
@@ -57,7 +57,7 @@ export async function toggleTitle(
       .eq("status", "planned");
   }
 
-  revalidatePath("/onboarding");
+  revalidateOnboarding();
 }
 
 export async function finishOnboarding(): Promise<never> {
@@ -73,6 +73,6 @@ export async function finishOnboarding(): Promise<never> {
     .eq("user_id", user.id);
 
   // La home cambia de golpe (deja de estar vacía): hay que revalidarla.
-  revalidatePath("/", "layout");
+  revalidateAppChrome();
   redirect("/");
 }

@@ -15,7 +15,7 @@ async function requireCollaborator() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { supabase: null } as const;
   }
   return { supabase } as const;

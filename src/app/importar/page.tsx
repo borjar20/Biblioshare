@@ -28,7 +28,7 @@ export default async function ImportPage() {
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/importar"));
 
-  const role = await getCurrentUserRole(supabase);
+  const role = await getCurrentUserRole();
   // Resolving an unmatched row manually creates a freeform catalog entry —
   // same trust level as /buscar/manual, so gated the same way (§7.35).
   const canResolveManually = hasMinRole(role, "collaborator");

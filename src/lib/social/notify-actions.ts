@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateProfile } from "@/lib/reactivity/revalidate";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { parseNotifyCategories, type NotifyCategory } from "./notify-categories";
 
@@ -40,6 +40,6 @@ export async function setFollowNotify(
     console.error("setFollowNotify failed", error);
     return { ok: false };
   }
-  revalidatePath(`/u/${username}`);
+  revalidateProfile(username);
   return { ok: true };
 }

@@ -8,7 +8,12 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import {
+  createClient,
+  createTokenClient,
+  getAccessToken,
+  getCurrentUser,
+} from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
 import { RouteMessages } from "@/components/route-messages";
@@ -48,6 +53,7 @@ import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
@@ -124,9 +130,11 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
-  const [{ data: series }, user] = await Promise.all([
+  const [{ data: series }, user, accessToken] = await Promise.all([
     fetchSeries(supabase, id),
     getCurrentUser(),
+    // Para el `after()` de hidratación: hay que leerlo AQUÍ, durante el render.
+    getAccessToken(),
   ]);
 
   if (!series) notFound();
@@ -137,11 +145,17 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   // todo curador de filas viejas (`hydrated_at` null). Mismo criterio que
   // ensureBookHydrated en libro/[id]/page.tsx — ver el comentario ahí.
   //
-  // Solo con sesión: un visitante anónimo no puede escribir (grant de
-  // `authenticated`).
-  if (user) {
+  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión): un
+  // visitante anónimo no puede escribir (grant de `authenticated`, y la RPC
+  // exige además `auth.uid()`).
+  //
+  // El token se lee DURANTE el render y se le pasa al callback como valor; el
+  // cliente de la petición NO puede cruzar a un `after()` porque lee cookies en
+  // cada consulta y eso, en un Server Component, lanza (#751). El porqué
+  // completo está en libro/[id]/page.tsx.
+  if (accessToken) {
     after(() =>
-      ensureSeriesHydrated(supabase, {
+      ensureSeriesHydrated(createTokenClient(accessToken), {
         id: series.id,
         tmdb_id: series.tmdb_id,
         hydrated_at: series.hydrated_at,
@@ -192,7 +206,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             .eq("series_id", series.id)
             .then(({ count }) => count ?? 0)
         : Promise.resolve(0),
-      user ? getCurrentUserRole(supabase) : Promise.resolve(null),
+      user ? getCurrentUserRole() : Promise.resolve(null),
     ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
@@ -316,7 +330,7 @@ async function SeriesTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
   // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
   // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
-  const [, , watchProviders, sagas, activeRow, role, reviewsResult] =
+  const [enriched, , watchProviders, sagas, activeRow, role, reviewsResult] =
     await Promise.all([
       ensureItemEnriched(supabase, "series", {
         id: series.id,
@@ -345,7 +359,7 @@ async function SeriesTabs({
             .maybeSingle()
             .then(({ data }) => data)
         : null,
-        userId ? getCurrentUserRole(supabase) : null,
+        userId ? getCurrentUserRole() : null,
       // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
       // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
       getReviews(supabase, "series", series.id),
@@ -357,6 +371,13 @@ async function SeriesTabs({
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits("series", series.id);
+
+  // Ver la nota de la ficha de libro: caducar la etiqueta `credits:*` cuando el
+  // enriquecimiento perezoso ha escrito de verdad, y hacerlo tras la respuesta
+  // porque durante el render las APIs de revalidación no son legales (F1-023).
+  after(() => {
+    if (enriched.wroteCredits) expireItemCredits("series", series.id);
+  });
 
   let entry: ManagedEntry | null = null;
   let sessions: ProgressSession[] = [];

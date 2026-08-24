@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { ManualAddForm } from "./manual-add-form";
 import { TypePills } from "../type-pills";
@@ -29,8 +28,7 @@ export default async function ManualAddPage({
 
   // Contribución curada → colaborador+ (§7.35). Guard a nivel de página además
   // del check en la server action.
-  const supabase = await createClient();
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     redirect("/buscar");
   }
 

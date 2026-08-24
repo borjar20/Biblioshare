@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getRoundByPeriod, getRoundState } from "@/lib/clubs/rounds/rounds";
-import { getInteractionSummary } from "@/lib/social/interactions";
+import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { itemHref } from "@/lib/catalog/item-href";
 import { ReviewInteractions } from "@/components/social/review-interactions";
