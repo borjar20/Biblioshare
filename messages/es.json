@@ -342,6 +342,9 @@
     "changePassword": "Cambiar contraseña",
     "dataSection": "Tus datos",
     "dataDescription": "Tu biblioteca es tuya: puedes traerla de otro sitio y llevártela cuando quieras.",
+    "librarySection": "Biblioteca",
+    "hideDroppedLabel": "Ocultar obras abandonadas",
+    "hideDroppedHint": "Seguirán en tu biblioteca y en tus estadísticas; solo dejan de aparecer en las rejillas.",
     "pendingLink": "{count, plural, one {Tienes 1 título pendiente de revisar} other {Tienes # títulos pendientes de revisar}}",
     "noticesSection": "Avisos",
     "adminSection": "Administración"

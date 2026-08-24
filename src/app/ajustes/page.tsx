@@ -16,6 +16,7 @@ import { EditProfileForm } from "@/components/edit-profile-form";
 import { CelebrationPreferenceToggle } from "@/components/celebrations/celebration-preference-toggle";
 import { NotificationPreferences } from "@/components/push/notification-preferences";
 import { PostPreferences } from "@/components/social/post-preferences";
+import { HideDroppedToggle } from "@/components/settings/hide-dropped-toggle";
 import { VisibilityToggle } from "./visibility-toggle";
 import { LogoutButton } from "./logout-button";
 
@@ -145,6 +146,10 @@ export default async function AjustesPage() {
             {t("pendingLink", { count: pendingCount })}
           </Link>
         )}
+      </Section>
+
+      <Section title={t("librarySection")}>
+        <HideDroppedToggle hideDropped={profile.hideDropped} />
       </Section>
 
       <Section title={t("noticesSection")}>
