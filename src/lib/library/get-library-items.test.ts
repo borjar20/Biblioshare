@@ -74,13 +74,20 @@ function fakeEmptyLibrary() {
   return { from: () => builder } as never;
 }
 
-describe("getLibraryView", () => {
-  it("devuelve items y hiddenDropped", async () => {
+// OJO: con este cliente falso la función sale por su primer `return` temprano
+// (biblioteca sin pases activos) y NUNCA llega a `splitDropped` — así que
+// estos dos tests solo comprueban la FORMA del contrato (que existe, que
+// devuelve `{items, hiddenDropped}`, que una biblioteca vacía no revienta),
+// no que `hideDropped` esté bien cableado en el pipeline. Es a propósito: un
+// mock por tabla para ejercitar el pipeline completo no compensa aquí — esa
+// cobertura real la da el e2e `e2e/biblioteca-ocultar-abandonados.spec.ts`.
+describe("getLibraryView (solo contrato de forma, ver nota arriba)", () => {
+  it("con biblioteca vacía devuelve {items: [], hiddenDropped: 0}", async () => {
     const view = await getLibraryView(fakeEmptyLibrary(), "u1", {});
     expect(view).toEqual({ items: [], hiddenDropped: 0 });
   });
 
-  it("biblioteca vacía con hideDropped no inventa ocultos", async () => {
+  it("con biblioteca vacía, hideDropped no inventa ocultos (no llega a splitDropped)", async () => {
     const view = await getLibraryView(fakeEmptyLibrary(), "u1", { hideDropped: true });
     expect(view.hiddenDropped).toBe(0);
   });
