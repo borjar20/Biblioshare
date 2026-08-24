@@ -158,11 +158,33 @@ test("reaccionar con un emoji del catálogo, sumarse a una reacción ajena y per
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(collapsed).toContainText("🔥");
 
-    // ── "Más emojis" abre el catálogo DENTRO del mismo popover: buscador +
-    //    rejilla. Buscamos algo que NO está en la fila rápida (🐙 pulpo). ──
+    // ── Foco: Escape cierra el popover y devuelve el foco al botón que lo
+    //    abrió (ReactionBar.close() → triggerRef.current?.focus()). Es la
+    //    única cobertura de este comportamiento: si se borra, hoy no lo nota
+    //    nadie. ──
     await collapsed.click();
-    await page.getByRole("button", { name: "Más emojis" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(collapsed).toBeFocused();
+
+    // ── "Más emojis" abre el catálogo DENTRO del mismo popover: buscador +
+    //    rejilla. Antes de elegir, comprobamos el foco de "Volver": vuelve al
+    //    botón "+" (ReactionBar.backFromPicker / restorePlusFocus — un
+    //    callback ref a propósito para evitar useEffect; sin test, si se
+    //    rompe tampoco lo nota nadie). ──
+    await collapsed.click();
+    const masEmojis = page.getByRole("button", { name: "Más emojis" });
+    await masEmojis.click();
     const buscador = page.getByRole("searchbox", { name: "Buscar emoji" });
+    await expect(buscador).toBeVisible();
+    await page.getByRole("button", { name: "Volver" }).click();
+    await expect(buscador).toHaveCount(0);
+    await expect(masEmojis).toBeFocused();
+
+    // Reabrir el catálogo para buscar algo que NO está en la fila rápida
+    // (🐙 pulpo).
+    await masEmojis.click();
     await expect(buscador).toBeVisible();
     await buscador.fill("pulpo");
     await page.getByRole("button", { name: "pulpo" }).first().click();
