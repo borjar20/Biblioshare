@@ -597,12 +597,30 @@ delete from public.reactions where kind = '1️⃣';
 - [ ] **Step 6: Verificar el tope**
 
 ```sql
--- Con un (target,user) que ya tenga 6 emojis distintos, el séptimo debe fallar.
+-- Sobre un (target,user) SIN reacciones previas, mete 7 emojis distintos: el
+-- séptimo debe fallar.
+--
+-- Ojo con la forma ingenua `select ..., unnest(array[...]) from reactions limit 1`:
+-- el LIMIT 1 recorta el resultado FINAL, ya expandido, no la fila origen — así
+-- que inserta UNA fila y no llega a tocar el trigger, dando un falso verde.
+-- Por eso la expansión va como `cross join`, con el origen limitado aparte.
+with origen as (
+  select interaction_target_id, user_id
+  from public.reactions
+  group by 1, 2
+  having count(*) = 0
+  limit 1
+)
 insert into public.reactions (interaction_target_id, user_id, kind)
-select interaction_target_id, user_id, unnest(array['❤️','📖','😱','🔥','😂','👏','🎉'])
-from public.reactions limit 1;
+select origen.interaction_target_id, origen.user_id, emoji
+from origen
+cross join unnest(array['❤️','📖','😱','🔥','😂','👏','🎉']) as emoji;
 ```
-Esperado: error `reaction_cap_reached`. Limpia lo insertado por la prueba antes de seguir.
+Esperado: error `reaction_cap_reached`. Si el `with` no devuelve nada porque en dev no hay
+un par sin reacciones, coge un `interaction_target_id` cualquiera y un `user_id` cualquiera
+que no tengan filas juntos, y compruébalo antes con un `select count(*)`.
+
+Limpia lo insertado por la prueba antes de seguir.
 
 - [ ] **Step 7: Commit**
 
