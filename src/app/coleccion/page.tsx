@@ -7,8 +7,11 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import {
   getLibraryItems,
+  getLibraryView,
   getUserGenres,
 } from "@/lib/library/get-library-items";
+import { SHOW_DROPPED_PARAM } from "@/lib/library/hide-dropped";
+import { HiddenDroppedNote } from "@/components/library/hidden-dropped-note";
 import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
 import {
   resolveEffectiveType,
@@ -82,6 +85,7 @@ export default async function CollectionPage({
     sort?: string;
     type?: string;
     genero?: string;
+    abandonados?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -112,21 +116,25 @@ export default async function CollectionPage({
   //
   // Ojo: aquí NO se toca la pestaña de entrada. Colección v2 dejó las
   // subpestañas en colecciones|todo|sagas|colas — no hay pestaña por tipo.
-  //
-  // `interests` solo se consulta en el caso por defecto (ni tipo válido ni
-  // `todos`): es la única rama que los necesita, y así se ahorra la query.
   const isExplicitType =
     VALID_TYPES.includes(params.type as ItemType) ||
     params.type === ALL_TYPES_PARAM;
-  let interests: ItemType[] = [];
-  if (!isExplicitType) {
-    const { data: prefs } = await supabase
-      .from("profiles")
-      .select("interests")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    interests = (prefs?.interests ?? []) as ItemType[];
-  }
+  // La lectura del perfil deja de ser condicional: `hide_dropped` hace falta en
+  // las tres pestañas (rejilla, tira «Sin colección», destacados), no solo en
+  // la rama sin tipo explícito. Es una fila por PK en una página que ya hace
+  // varias consultas; `interests` se sigue ignorando cuando la URL manda.
+  const { data: prefs } = await supabase
+    .from("profiles")
+    .select("interests, hide_dropped")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const interests: ItemType[] = isExplicitType
+    ? []
+    : ((prefs?.interests ?? []) as ItemType[]);
+  const hideDroppedPref = prefs?.hide_dropped ?? false;
+  // `?abandonados=1` anula la preferencia solo en esta vista (spec D7).
+  const showDropped = params.abandonados === "1";
+  const hideDropped = hideDroppedPref && !showDropped;
   const itemType: ItemType | undefined = resolveEffectiveType(
     params.type,
     interests,
@@ -159,6 +167,20 @@ export default async function CollectionPage({
   // horizontal).
   const shell = SHELL_GRID;
 
+  // Enlace «Mostrar» de la nota: la MISMA vista más `?abandonados=1`. Se
+  // construye aquí y no en el componente porque el componente es genérico y no
+  // conoce los filtros de esta página.
+  function showDroppedHref(): string {
+    const qs = new URLSearchParams({ tab: "todo" });
+    if (params.type) qs.set("type", params.type);
+    if (status) qs.set("status", status);
+    if (sort !== "recent") qs.set("sort", sort);
+    if (genre) qs.set("genero", genre);
+    if (search) qs.set("q", search);
+    qs.set(SHOW_DROPPED_PARAM, "1");
+    return `/coleccion?${qs.toString()}`;
+  }
+
   return (
     <div
       className={`mx-auto flex w-full ${shell} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
@@ -187,7 +209,7 @@ export default async function CollectionPage({
           {/* Lo que no está en ninguna colección, al pie: se pinta sola solo si
               hay algo suelto Y el usuario ya tiene alguna colección. */}
           <Suspense fallback={null}>
-            <UncollectedShelf userId={user.id} />
+            <UncollectedShelf userId={user.id} hideDropped={hideDropped} />
           </Suspense>
         </>
       )}
@@ -201,7 +223,7 @@ export default async function CollectionPage({
               casa se quedarían sin sitio (D2). */}
           {!status && !search && !itemType && !genre && (
             <Suspense fallback={<CollectionOverviewSkeleton />}>
-              <TodoOverview userId={user.id} />
+              <TodoOverview userId={user.id} hideDropped={hideDropped} />
             </Suspense>
           )}
           <LibraryFilters
@@ -213,10 +235,12 @@ export default async function CollectionPage({
             genres={genres}
             basePath="/coleccion"
             showTypeFilter
+            hideDroppedPref={hideDroppedPref}
+            showDropped={showDropped}
             extraParams={{ tab: "todo" }}
           />
           <Suspense
-            key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}:${genre ?? ""}`}
+            key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}:${genre ?? ""}:${hideDropped}`}
             fallback={<SkeletonCoverGrid count={16} cols={COVER_GRID_COLS} />}
           >
             <LibraryGrid
@@ -226,6 +250,8 @@ export default async function CollectionPage({
               search={search}
               sort={sort}
               genre={genre}
+              hideDropped={hideDropped}
+              showDroppedHref={showDroppedHref()}
               emptyTitle={tLibrary("emptyTitle")}
               emptyLabel={tLibrary("empty")}
               emptyCta={tLibrary("emptyCta")}
@@ -266,11 +292,19 @@ async function CollectionsHeader({ userId }: { userId: string }) {
   );
 }
 
-async function TodoOverview({ userId }: { userId: string }) {
+async function TodoOverview({
+  userId,
+  hideDropped,
+}: {
+  userId: string;
+  hideDropped: boolean;
+}) {
   const supabase = await createClient();
   const [summary, favorites] = await Promise.all([
+    // El Resumen NO se toca: su barra apilada por estado es el único sitio
+    // donde se ve que existen abandonados (spec D6).
     getLibrarySummary(supabase, userId),
-    getLibraryItems(supabase, userId, { favoritesOnly: true }),
+    getLibraryItems(supabase, userId, { favoritesOnly: true, hideDropped }),
   ]);
 
   if (summary.total === 0) return null;
@@ -309,6 +343,8 @@ async function LibraryGrid({
   sort,
   genre,
   limit,
+  hideDropped,
+  showDroppedHref,
   emptyTitle,
   emptyLabel,
   emptyCta,
@@ -320,40 +356,52 @@ async function LibraryGrid({
   sort: LibrarySort;
   genre?: string;
   limit?: number;
+  hideDropped: boolean;
+  showDroppedHref: string;
   emptyTitle: string;
   emptyLabel: string;
   emptyCta: string;
 }) {
   const supabase = await createClient();
-  const items = await getLibraryItems(supabase, userId, {
+  const { items, hiddenDropped } = await getLibraryView(supabase, userId, {
     itemType,
     status,
     search,
     sort,
     genre,
     limit,
+    hideDropped,
   });
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        glyph={<InboxIcon className="h-7 w-7" />}
-        title={emptyTitle}
-        message={emptyLabel}
-        action={
-          <Link href="/buscar" className={buttonVariants("primary")}>
-            {emptyCta}
-          </Link>
-        }
-      />
+      <div className="flex flex-col gap-3">
+        <EmptyState
+          glyph={<InboxIcon className="h-7 w-7" />}
+          title={emptyTitle}
+          message={emptyLabel}
+          action={
+            <Link href="/buscar" className={buttonVariants("primary")}>
+              {emptyCta}
+            </Link>
+          }
+        />
+        {/* La nota TAMBIÉN en el vacío: una biblioteca entera de abandonados
+            que parece vacía sin explicación es el peor resultado posible de
+            esta feature. */}
+        <HiddenDroppedNote count={hiddenDropped} href={showDroppedHref} />
+      </div>
     );
   }
 
   return (
-    <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
-      {items.map((item) => (
-        <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
-      ))}
+    <div className="flex flex-col gap-4">
+      <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
+        {items.map((item) => (
+          <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
+        ))}
+      </div>
+      <HiddenDroppedNote count={hiddenDropped} href={showDroppedHref} />
     </div>
   );
 }
