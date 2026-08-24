@@ -7,12 +7,23 @@ import { tallyOf, type ReactionsByEmoji } from "@/lib/social/interactions";
 import { capReached, orderedReactions, summarize } from "@/lib/social/reaction-display";
 import { QUICK_REACTIONS, QUICK_REACTION_NAMES } from "@/lib/social/reaction-constants";
 
-// El catálogo entero (~95 KB) vive DENTRO de este chunk diferido. Por eso el
-// ReactionBar importa reaction-constants y no emoji-catalog: si importara el
-// catálogo, esos datos viajarían en el bundle del feed y la carga diferida no
-// serviría de nada.
+// El catálogo entero (153 KB en crudo, 1.906 entradas) vive DENTRO de este
+// chunk diferido. Por eso el ReactionBar importa reaction-constants y no
+// emoji-catalog: si importara el catálogo, esos datos viajarían en el bundle
+// del feed y la carga diferida no serviría de nada.
+// `loading` ocupa el hueco del selector mientras llega el chunk: sin él, al
+// pulsar «+» el botón se desmonta y no se pinta nada hasta que carga. El foco
+// cae entonces a <body>, que queda FUERA del div que lleva el onKeyDown de
+// Escape, así que con el chunk frío un usuario de teclado se queda varado sin
+// poder cerrar. El placeholder mantiene el tamaño aproximado del picker
+// (19rem) para que el popover no salte de tamaño al resolver.
 const EmojiPicker = dynamic(() => import("./emoji-picker").then((m) => m.EmojiPicker), {
   ssr: false,
+  loading: () => (
+    <div className="flex h-56 w-[19rem] max-w-[calc(100vw-2rem)] items-center justify-center text-xs text-muted-foreground">
+      …
+    </div>
+  ),
 });
 
 // Reacciones con cualquier emoji, estilo Teams. Colapsado: los 3 emojis más

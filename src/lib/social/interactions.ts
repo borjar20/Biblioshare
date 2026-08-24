@@ -67,8 +67,8 @@ export type InteractionComment = {
   isSpoiler: boolean;
   pinned: boolean;
   edited: boolean;
-  // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todos
-  // los kinds / algún kind activo del viewer) para no romper a los 9
+  // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todas
+  // las reacciones / si el viewer tiene alguna puesta) para no romper a los 9
   // callers que aún pintan el total sin desglosar por emoji.
   reactionCount: number;
   viewerReacted: boolean;

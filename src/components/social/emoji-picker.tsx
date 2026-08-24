@@ -10,7 +10,7 @@ import {
 } from "@/lib/social/emoji-catalog";
 
 // Selector completo. Se carga con next/dynamic desde el ReactionBar para que el
-// catálogo (~95 KB de datos) no viaje en el bundle del feed.
+// catálogo (153 KB en crudo, 1.906 entradas) no viaje en el bundle del feed.
 //
 // Sin virtualización a propósito: se pinta SOLO la categoría activa (la mayor,
 // Caras, ronda 180 entradas) y la búsqueda corta en 100. Una ventana virtual
@@ -96,7 +96,7 @@ export function EmojiPicker({
               type="button"
               disabled={isDisabled?.(entry.e) ?? false}
               aria-label={entry.n}
-              title={entry.n}
+              title={atCap && isDisabled?.(entry.e) ? t("emojiPicker.capReached") : entry.n}
               onClick={() => onPick(entry.e)}
               className="rounded p-1 text-lg leading-none transition-colors hover:bg-surface-muted disabled:opacity-40"
             >

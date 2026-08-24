@@ -1,8 +1,9 @@
 import { EMOJI_CATALOG_DATA } from "./emoji-catalog.data";
 
 // Catálogo de emojis generado por scripts/build-emoji-catalog.mjs. Arrastra
-// ~95 KB de datos: solo deben importarlo el servidor y el selector cargado en
-// diferido. Para el ReactionBar está reaction-constants.ts.
+// 153 KB de datos en crudo (1.906 entradas): solo deben importarlo el
+// servidor y el selector cargado en diferido. Para el ReactionBar está
+// reaction-constants.ts.
 //
 // El fichero de datos importa `EmojiEntry` de aquí y aquí se importan sus
 // datos: el ciclo es solo de TIPOS (`import type`), que se borra al compilar,

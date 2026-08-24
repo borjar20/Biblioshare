@@ -74,8 +74,9 @@ orden:
    varias reacciones distintas por persona.
 6. **Tope de 6 emojis distintos por persona y target**, como trigger `before insert`. Sin
    él, emoji libre + varias por persona permite que una sola persona cuelgue 40 píldoras de
-   un mensaje. La acción de servidor también lo valida, pero el trigger es el que no se
-   puede saltar.
+   un mensaje. La acción de servidor NO lo valida por su cuenta: solo traduce el 23514 del
+   trigger a un `Error("reaction_cap_reached")` con identidad estable; el trigger es la
+   única defensa real y la que no se puede saltar.
 
 Coste visible asumido: `like` hoy se pinta `♡` (corazón de contorno) y pasa a `❤️`.
 
@@ -154,8 +155,8 @@ regenerarlo cuando Unicode saque versión; **no** es un paso de build, así que 
 `next build` dependen de la red.
 
 Recorte: solo RGI fully-qualified, sin variantes de tono de piel (se lista el base), sin el
-grupo *Component*. Quedan ~1.900 entradas de forma `{e:"🔥", n:"fuego", k:["llama","caliente"], g:4}`.
-Claves de una letra a propósito: ~95 KB en crudo, ~30 KB comprimido, y solo se descarga al
+grupo *Component*. Quedan 1.906 entradas de forma `{e:"🔥", n:"fuego", k:["llama","caliente"], g:4}`.
+Claves de una letra a propósito: 153 KB en crudo, ~30 KB comprimido, y solo se descarga al
 abrir el selector.
 
 **Validación en servidor: lista blanca contra el catálogo, no regex.**

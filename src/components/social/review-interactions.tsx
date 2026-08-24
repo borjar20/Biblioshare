@@ -57,9 +57,10 @@ export function ReviewInteractions({
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  // Paleta de reacciones (♡/📖/😱/🔥) del target. reactionCount/viewerReacted
-  // arriba se CONSERVAN como derivados -- el estado no-logueado los sigue
-  // usando para el total, sin desglosar por emoji.
+  // Reacciones del target: cualquier emoji del catálogo, sin paleta cerrada.
+  // reactionCount/viewerReacted arriba se CONSERVAN como derivados -- el
+  // estado no-logueado los sigue usando para el total, sin desglosar por
+  // emoji.
   reactions: ReactionsByEmoji;
   viewerLoggedIn: boolean;
   // false para targets sin sentido de "me gusta" propio (p.ej. un checkpoint
