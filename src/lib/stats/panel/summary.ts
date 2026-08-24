@@ -8,7 +8,28 @@
 
 import { derive, partValue, type PanelDerived } from "./derive";
 import { formatDelta, formatProse, formatShare, formatValue } from "./format";
-import type { PanelSpec } from "./types";
+import type { PanelSpec, PanelViz } from "./types";
+
+/**
+ * Por qué este panel no está pintando la forma que declara su spec.
+ *
+ * La frase habla de la forma de ORIGEN, no de la efectiva: lo que hay que
+ * explicar es la curva que falta, no la cifra que sí está. Y dice que el panel
+ * vuelve solo cuando haya datos, porque si no, un muro que cambia de forma entre
+ * visitas se lee como una avería.
+ */
+export function degradeNote(intended: PanelViz): string {
+  switch (intended) {
+    case "line":
+    case "area":
+      return "Con menos de cuatro medidas todavía no hay curva. Cuando las haya, este panel vuelve solo a ser una línea.";
+    case "donut":
+    case "waffle":
+      return "Con menos de tres partes, el reparto se cuenta antes de lo que se dibuja.";
+    default:
+      return "Todavía hay pocos datos para dibujarlo; la cifra sí es exacta.";
+  }
+}
 
 /** Limpia las frases que ninguna regla llenó y las puntúa. */
 function sentences(raw: (string | null)[]): string[] {

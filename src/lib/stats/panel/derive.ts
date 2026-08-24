@@ -53,6 +53,15 @@ export type PanelDerived = {
    * fichero y lo afirma, porque el typecheck no puede: ambos son `PanelViz`.
    */
   viz: PanelViz;
+  /**
+   * La forma que la spec PEDÍA, cuando `viz` no es esa. `null` = no degradó.
+   *
+   * Va aquí y no se calcula comparando en el componente para que `StatPanel` no
+   * tenga que leer `spec.viz` ni una sola vez: es la única manera de que el
+   * invariante «nadie lee spec.viz» se pueda afirmar leyendo el fichero, que es
+   * como se afirma, porque el typecheck no distingue dos campos del mismo tipo.
+   */
+  degradedFrom: PanelViz | null;
   series: Required<PanelSeries>[];
 };
 
@@ -115,6 +124,7 @@ export function derive(spec: PanelSpec): PanelDerived {
   }
 
   const peak = known.reduce((m, d) => Math.max(m, d.value), 0);
+  const viz = effectiveViz(spec, known.length);
 
   return {
     known,
@@ -130,7 +140,8 @@ export function derive(spec: PanelSpec): PanelDerived {
         ? !(spec.kpis ?? []).some((k) => k.value !== null || Boolean(k.text))
         : known.length === 0,
     allZero: known.length > 0 && peak === 0,
-    viz: effectiveViz(spec, known.length),
+    viz,
+    degradedFrom: viz === spec.viz ? null : spec.viz,
     series: withGlyphs(spec.series ?? []),
   };
 }

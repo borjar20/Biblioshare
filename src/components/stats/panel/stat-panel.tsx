@@ -37,7 +37,7 @@ import {
   formatValue,
   NO_DATA,
 } from "@/lib/stats/panel/format";
-import { buildHighlight, summaryLines } from "@/lib/stats/panel/summary";
+import { buildHighlight, degradeNote, summaryLines } from "@/lib/stats/panel/summary";
 import type { PanelKpi, PanelSpec } from "@/lib/stats/panel/types";
 import { Chart, Legend, PLAIN_VIZ } from "./charts";
 import { PanelDialog } from "./panel-dialog";
@@ -165,10 +165,24 @@ export function StatPanel({
   // El resto son los demás indicadores. Se descarta POR CLAVE, no por posición:
   // el que preside no tiene por qué ser el primero (ver `heroKpi`).
   const rest = spec.kpis?.filter((k) => k.key !== hero?.key) ?? [];
-  const isTextual = TEXTUAL.includes(spec.viz);
+  const isTextual = TEXTUAL.includes(derived.viz);
+  const selfDescribing = SELF_DESCRIBING.includes(derived.viz);
 
   const highlight = isTextual ? "" : buildHighlight(spec, derived);
   const warning = state.status === "partial" ? state.message : null;
+
+  // Un panel degradado lo DICE. Sin esta frase, quien vio ayer una curva y hoy
+  // ve una cifra piensa que se ha perdido el gráfico, no que aún no hay datos
+  // para dibujarlo.
+  const degraded = derived.degradedFrom ? degradeNote(derived.degradedFrom) : null;
+
+  // La tabla sale en tres casos, y va como UNA regla en vez de tres líneas
+  // sueltas: cuando el dibujo no dice sus cifras, cuando el panel ES una tabla,
+  // y cuando se ha degradado. Este último es el que hay que tener presente: sin
+  // dibujo y con un KPI fabricado que solo trae el total, la tabla es lo único
+  // que deja los puntos en el DOM.
+  const showTable =
+    derived.viz === "table" || Boolean(degraded) || (!isTextual && !selfDescribing);
 
   // Aviso y gráfico salen igual en la cara y en la capa. El titular NO: en la
   // capa está el resumen entero, que ya lo contiene — repetirlo dejaba la misma
@@ -180,7 +194,11 @@ export function StatPanel({
     </p>
   );
 
-  const selfDescribing = SELF_DESCRIBING.includes(spec.viz);
+  // Va en la cara Y en la capa, como el aviso: en la cara es donde se nota que
+  // falta el dibujo, y en la capa es donde se busca la explicación.
+  const degradedLine = degraded && (
+    <p className="text-[11px] leading-relaxed text-foreground-faint">{degraded}</p>
+  );
 
   // DOS gráficos, y no es un descuido: el de la cara es decorativo y el de la
   // capa se puede consultar punto a punto.
@@ -200,7 +218,7 @@ export function StatPanel({
   // un gráfico que ya no tiene tabla detrás dejaría su dato fuera del alcance de
   // un lector de pantalla, que es lo contrario de lo que este sistema hace.
   const plot = !isTextual && (
-    <div aria-hidden={PLAIN_VIZ.includes(spec.viz) || undefined} className="pt-0.5">
+    <div aria-hidden={PLAIN_VIZ.includes(derived.viz) || undefined} className="pt-0.5">
       <Chart spec={spec} derived={derived} interactive={selfDescribing} />
     </div>
   );
@@ -224,6 +242,7 @@ export function StatPanel({
             {highlight}
           </p>
         )}
+        {degradedLine}
         {faceplot}
         <Legend derived={derived} spec={spec} />
         {/* La cara ya no lleva lista: el lollipop escribe el dato. Los enlaces
@@ -259,6 +278,8 @@ export function StatPanel({
             </p>
           )}
 
+          {degradedLine}
+
           {rest.length > 0 && <KpiRow kpis={rest} />}
 
           {plot}
@@ -267,15 +288,14 @@ export function StatPanel({
           {/* El ranking completo CON SUS ENLACES. El gráfico no puede llevarlos:
               en la cara lo tapa el disparador del modal, y aquí la lista es lo
               único que convierte cada fila en un sitio al que ir. */}
-          {spec.viz === "lollipop" && <RankingList spec={spec} />}
+          {derived.viz === "lollipop" && <RankingList spec={spec} />}
 
           {/* Los valores exactos. NO los repiten ni los paneles que ya son
               texto —su lista o su `<dl>` YA son el dato— ni los gráficos que
               escriben sus cifras dentro: duplicarlos solo obliga al lector de
               pantalla a oírlo dos veces, y en el calendario anual eran 365
               filas de las que 348 decían «0». */}
-          {!isTextual && !selfDescribing && <PanelTable spec={spec} derived={derived} />}
-          {spec.viz === "table" && <PanelTable spec={spec} derived={derived} />}
+          {showTable && <PanelTable spec={spec} derived={derived} />}
 
           <p className="text-[10.5px] leading-relaxed text-foreground-faint">
             {contextSentence(spec)}
