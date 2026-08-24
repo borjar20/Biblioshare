@@ -425,11 +425,26 @@ export async function getLibraryItems(
 // subconjunto que la rejilla no está mostrando (si no, un chip filtra a 0
 // resultados — issue #306 para `status`, mismo defecto que ya se acotó por
 // `itemType`). Sin ellos, se cuenta la biblioteca activa completa (sin cambios).
+//
+// `hideDropped` es el mismo eje que ya vio `getLibraryView`, y reabre #306 si
+// no se propaga: con la preferencia activa, un género con obras solo
+// abandonadas seguía ofreciendo su chip (con recuento) y la rejilla se iba a
+// 0 (o mentía en el parcial). Se decide con `shouldHideDropped` — no un `if`
+// propio — porque es la MISMA regla D5 (un filtro de estado explícito manda)
+// que ya usa `getLibraryView`.
+//
+// Y aquí el filtro SÍ va en SQL (`.neq`), al revés que en `getLibraryView`
+// (que oculta en memoria, al final, tras búsqueda/género y antes de `limit`,
+// D3/D4). Esa postergación existe para que «N ocultos» no mienta — pero la
+// faceta no alimenta ningún «N ocultos» (de hecho ya ignora `search` hoy), así
+// que no hay ese motivo para retrasar el filtro. Filtrar en SQL evita traer y
+// descartar filas de obras abandonadas que no van a contar para ningún chip.
 export async function getUserGenres(
   supabase: SupabaseServerClient,
   userId: string,
   itemType?: ItemType,
-  status?: MediaStatus
+  status?: MediaStatus,
+  hideDropped = false
 ): Promise<{ slug: string; label: string; count: number }[]> {
   let query = supabase
     .from("passes")
@@ -438,6 +453,7 @@ export async function getUserGenres(
     .eq("is_active", true);
   if (itemType) query = query.eq("item_type", itemType);
   if (status) query = query.eq("status", status);
+  if (shouldHideDropped({ hideDropped, status })) query = query.neq("status", "dropped");
   const { data: entries } = await query;
 
   const refs = (entries ?? []).map((e) => ({
