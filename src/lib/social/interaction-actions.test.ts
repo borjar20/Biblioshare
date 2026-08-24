@@ -148,7 +148,7 @@ describe("toggleReaction", () => {
       {
         interaction_target_id: "target-pass",
         user_id: "actor",
-        kind: "like",
+        kind: "❤️",
       },
     ]);
     expect(mocks.notify).toHaveBeenCalledWith(fake.client, {
@@ -187,7 +187,7 @@ describe("toggleReaction", () => {
     // makeActionClient, que no rastrea filtros entre llamadas): dos toggles
     // consecutivos necesitan ver el resultado del primero.
     let rows: Array<{ interaction_target_id: string; user_id: string; kind: string }> = [
-      { interaction_target_id: "target-pass", user_id: "actor", kind: "like" },
+      { interaction_target_id: "target-pass", user_id: "actor", kind: "❤️" },
     ];
     function reactionsTable() {
       const filters: Array<[string, unknown]> = [];
@@ -248,27 +248,54 @@ describe("toggleReaction", () => {
     };
     mocks.createClient.mockResolvedValue(client);
 
-    await toggleReaction("target-pass", "fire");
+    await toggleReaction("target-pass", "🔥");
     expect(rows).toContainEqual({
       interaction_target_id: "target-pass",
       user_id: "actor",
-      kind: "fire",
+      kind: "🔥",
     });
     expect(rows).toContainEqual({
       interaction_target_id: "target-pass",
       user_id: "actor",
-      kind: "like",
+      kind: "❤️",
     });
 
-    await toggleReaction("target-pass", "fire");
+    await toggleReaction("target-pass", "🔥");
     expect(rows).not.toContainEqual(
-      expect.objectContaining({ kind: "fire" }),
+      expect.objectContaining({ kind: "🔥" }),
     );
     expect(rows).toContainEqual({
       interaction_target_id: "target-pass",
       user_id: "actor",
-      kind: "like",
+      kind: "❤️",
     });
+  });
+
+  it("rechaza cualquier cosa que no esté en el catálogo, sin tocar la base", async () => {
+    const fake = makeActionClient({ target: passTarget });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await expect(toggleReaction("target-pass", "like")).rejects.toThrow(
+      "reaction_emoji_not_allowed",
+    );
+    await expect(toggleReaction("target-pass", "<script>")).rejects.toThrow(
+      "reaction_emoji_not_allowed",
+    );
+    await expect(toggleReaction("target-pass", "🔥🔥")).rejects.toThrow(
+      "reaction_emoji_not_allowed",
+    );
+    expect(fake.insertedReactions).toHaveLength(0);
+  });
+
+  it("acepta un emoji cualquiera del catálogo, no solo la fila rápida", async () => {
+    const fake = makeActionClient({ target: passTarget });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await toggleReaction("target-pass", "🐙");
+
+    expect(fake.insertedReactions).toEqual([
+      { interaction_target_id: "target-pass", user_id: "actor", kind: "🐙" },
+    ]);
   });
 });
 

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
 import { notifyMentions } from "./notify-mentions";
-import type { ReactionKind } from "./interactions";
+import { isAllowedEmoji } from "./emoji-catalog";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,8 +27,14 @@ async function getInteractionTarget(
 
 export async function toggleReaction(
   interactionTargetId: string,
-  kind: ReactionKind = "like",
+  emoji: string = "❤️",
 ): Promise<void> {
+  // Lista blanca contra el catálogo, no regex: garantiza que todo lo guardado
+  // en reactions.kind se puede pintar Y nombrar. Con solo un regex de emoji,
+  // por aquí entraría cualquier secuencia ZWJ rara, sin nombre y sin
+  // aria-label. El CHECK de Postgres es la red de debajo, no la puerta.
+  if (!isAllowedEmoji(emoji)) throw new Error("reaction_emoji_not_allowed");
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,7 +51,7 @@ export async function toggleReaction(
     .select("id")
     .eq("interaction_target_id", interactionTargetId)
     .eq("user_id", user.id)
-    .eq("kind", kind)
+    .eq("kind", emoji)
     .maybeSingle();
   if (selectError) throw selectError;
 
@@ -55,15 +61,23 @@ export async function toggleReaction(
       .delete()
       .eq("interaction_target_id", interactionTargetId)
       .eq("user_id", user.id)
-      .eq("kind", kind);
+      .eq("kind", emoji);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("reactions").insert({
       interaction_target_id: interactionTargetId,
       user_id: user.id,
-      kind,
+      kind: emoji,
     });
-    if (error) throw error;
+    if (error) {
+      // El trigger reactions_cap_before_insert protege el tope de 6 por
+      // persona y target. Se traduce a un error estable para que la UI pueda
+      // distinguirlo de un fallo de red.
+      if (error.message.includes("reaction_cap_reached")) {
+        throw new Error("reaction_cap_reached");
+      }
+      throw error;
+    }
 
     if (target.owner_id !== user.id) {
       try {
