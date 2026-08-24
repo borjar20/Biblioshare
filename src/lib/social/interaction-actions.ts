@@ -71,8 +71,13 @@ export async function toggleReaction(
     });
     if (error) {
       // El trigger reactions_cap_before_insert protege el tope de 6 por
-      // persona y target. Se traduce a un error estable para que la UI pueda
-      // distinguirlo de un fallo de red.
+      // persona y target. Se traduce a un `Error("reaction_cap_reached")` con
+      // identidad estable -- útil para el rollback optimista -- pero hoy la
+      // UI NO lo distingue: useOptimisticAction lo recoge con un catch {}
+      // pelado y los tres consumidores (activity-chat-bubbles, post-thread,
+      // review-interactions) pintan el t("actionError") genérico igual que
+      // ante un fallo de red. Propagar el código hasta el componente queda
+      // pendiente (ver issue del tope de reacciones).
       if (error.message.includes("reaction_cap_reached")) {
         throw new Error("reaction_cap_reached");
       }
