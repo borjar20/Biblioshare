@@ -226,13 +226,17 @@ export default async function PublicProfilePage({
 
       {tab === "coleccion" && (
         <Suspense
-          key={itemType ?? ""}
+          key={`${itemType ?? ""}:${profile.hideDropped}`}
           fallback={<SkeletonCoverGrid count={10} />}
         >
           <CollectionTab
             userId={profile.userId}
             basePath={basePath}
             itemType={itemType}
+            // Preferencia del DUEÑO, no del visitante: si decide que sus
+            // abandonados no cuentan como su biblioteca, tampoco los enseña
+            // (spec, alcance).
+            hideDropped={profile.hideDropped}
           />
         </Suspense>
       )}

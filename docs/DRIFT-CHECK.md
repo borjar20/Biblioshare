@@ -257,6 +257,12 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > **Si `con_insert` de esas tres vuelve a subir por encima de 0 para `authenticated`, es una
 > regresión**: alguien reabrió el INSERT directo que #674 cerró. La tabla de abajo ya lleva
 > los números nuevos. Detalle: `data-model.md` §2.1, `decisiones.md` (2026-08-18/19).
+>
+> **Nota del 2026-08-24.** `profiles` tiene grant de **TABLA** (`role_table_grants` devuelve
+> `DELETE,INSERT,SELECT,UPDATE` para `anon` y `authenticated`, en dev y en prod), no grants por
+> columna, así que `hide_dropped` (`20260876`) no necesitó `grant` propio. Ojo al comprobarlo:
+> `column_privileges` lista una fila por columna también con grant de tabla — la vista que
+> distingue los dos casos es `role_table_grants`.
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|

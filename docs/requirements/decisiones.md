@@ -982,3 +982,247 @@ que separó un fallo del vecino de un fallo propio.
 `interactions.ts` se parte porque el build lo exigía, no como primer paso de ese refactor; `lib/clubs`
 sigue marcando módulos de dominio enteros como `"use server"`. Y quedan ~129 `auth.getUser()` en
 server actions: ahí es un viaje por mutación y no por render, que es otro coste y otra decisión.
+
+---
+
+## 2026-08-21 · El muro de estadísticas deja de ser tipografía (fase A del rediseño gráfico)
+
+**El problema no era la variedad de gráficos: era que 18 de ~33 paneles no dibujaban nada.**
+Once `kpi` y siete `ranking` —tres de ellos seguidos en la misma sección— hacían que más de
+la mitad de la pantalla fuera texto. Cambiar el tipo de gráfico habría cambiado el interior
+de las tarjetas sin tocar eso.
+
+**El anillo era el único gráfico que peleaba con nuestra propia regla.** El principio 3 de
+`docs/design/paneles-estadisticos.md` prohíbe que un dato exija medir una altura, un área o
+un ángulo — y un sector de donut es exactamente eso. Había tres. Se sustituyen por `waffle`,
+cuyas celdas se **cuentan**. No escribe dentro (cien cifras no caben): su dato exacto vive en
+la leyenda, que ya viajaba a la cara, y eso es lo que le permite estar en `SELF_DESCRIBING`.
+`donut` se queda en `PanelViz` sin consumidor, como referencia del arco.
+
+**El selector de faceta que se propuso NO se hizo.** La spec quería colapsar los tres rankings
+de nota (géneros, autores, directores) en un panel con selector. Choca con el principio 9 del
+propio doc —«Los filtros van en una fila, arriba, para todo el muro. Nunca un filtro dentro de
+una tarjeta»— y con `src/lib/stats/filter.ts`. Se arregla por forma (pasan a `lollipop`) y por
+orden (dejan de ir seguidos), con un test que lo fija. Queda issue de deuda: si algún día se
+hace, `faceta` tendría que ser un filtro GLOBAL, y eso es una excepción deliberada que se
+decide antes de escribirla, no después.
+
+**El `bullet` cambió de consumidor respecto a la spec.** Iba a «Récords», que no encaja: dos
+de sus cuatro entradas son texto, la mejor racha YA es la marca, y su única comparación
+posible —el récord del periodo contra el de siempre— no existe con «Todo» puesto, que es el
+periodo por defecto. En la vista por defecto no habría dibujado ni una marca. Se lleva a
+«Rachas», donde «racha actual contra tu mejor racha» sí es valor-contra-referencia y vale en
+todo periodo.
+
+**Consecuencia de forma que hay que recordar:** el bullet compara cada fila con SU marca, no
+con las otras filas, así que **una sola fila ya es un bullet completo**. La regla heredada de
+dataviz «una sola barra ⇒ `kpi`» no le aplica, y cuando se implemente la degradación
+automática de `viz` (fase B) su mínimo tiene que ser 1, no 2.
+
+**El ancho se reserva para lo que no cabe.** `PanelSpec.hero` marca el panel que preside su
+sección y ocupa las tres columnas con `column-span: all` — que es lo que permite una tarjeta
+ancha sin volver a `grid`, descartada en su día por igualar el alto de cada fila. Solo lo
+lleva el calendario anual: 53 semanas en un tercio de tarjeta son celdas de 6 px. «Evolución
+de la pila» se barajó y se descartó, porque doce puntos de línea sí caben y ser héroe obliga a
+ir primero, lo que rompería el orden que promete la descripción de su sección.
+
+**Y un tope que solo se vio mirando la pantalla:** el waffle es una rejilla cuadrada, así que
+crecía con la columna y una tarjeta de 340 px de ancho se llevaba 340 de alto — dos veces y
+media lo que medía el anillo. Con tope de 220 px las celdas quedan en ~19 y la página baja de
+4834 a 4607 px de alto. Ningún test lo habría visto.
+
+## 2026-08-24 — El muro de estadísticas, fase B: la forma la elige el dato, y el vacío tiene tres niveles
+
+**`spec.viz` deja de ser lo que se pinta.** Es lo que el panel PIDE; lo que se dibuja es
+`derived.viz`, que `derive()` decide según cuántos puntos MEDIDOS haya. Con menos de cuatro no
+hay curva, con menos de tres no hay reparto, con menos de dos no hay comparación: el panel
+degrada a `kpi` y conserva su cifra en vez de dibujar una recta entre dos números con ejes,
+rejilla y leyenda ocupando lo que un año entero.
+
+Los umbrales están solo en 2, 3 y 4, y **nunca por estética**. Si la forma cambiara por gusto,
+el panel se vería distinto cada visita y se perdería la comparación entre visitas, que es para
+lo que existe un muro de estadísticas. `bullet` y `gauge` no degradan nunca —comparan contra
+una referencia propia, no contra otros puntos—, ni `kpi`, `ranking` y `table`, que ya son su
+forma mínima.
+
+**El invariante que hunde la fase si se rompe: `StatPanel` no lee `spec.viz` ni una sola vez.**
+Cinco sitios decidían texto, tabla, `aria-hidden` y lista de enlaces; uno que se quedara atrás
+da un panel que dice tener tabla y no la tiene, **y el typecheck no lo caza** porque ambos
+campos son `PanelViz`. Se afirma con un test que **lee el fichero** y busca la cadena. Por eso
+el motivo de la degradación viaja en `derived.degradedFrom` en vez de calcularse comparando en
+el componente: comparar exigiría leer `spec.viz` y dejaría la guardia sin poder ser absoluta.
+
+**Dos correcciones al plan, encontradas al ejecutarlo:**
+
+- **Un panel degradado CONSERVA la tabla**, contra la regla «`kpi` no lleva tabla». Sin dibujo
+  y con un indicador fabricado que solo trae el total, la tabla era lo único que dejaba los
+  puntos en el DOM: el plan los habría hecho desaparecer.
+- **La leyenda del waffle no traía sus cifras.** La fase A lo dio por hecho —`SELF_DESCRIBING`
+  obliga a que el dato exacto esté en alguna parte, y para el waffle ese sitio es la leyenda—
+  pero el flag que las pinta seguía siendo `viz === "donut"`. Los tres waffles llevaban desde
+  la fase A sin su dato exacto en ningún sitio. Corregido aquí.
+
+**El vacío deja de ser un estado y pasa a ser tres**, distinguidos por quién puede arreglarlo:
+estructural (no puede tener datos con ningún periodo, se pliega a una línea), por filtro (no
+hay datos AQUÍ, y el aquí lo elegiste tú: tarjeta atenuada con la cifra de fuera y su salida)
+y degradado (hay datos, pero pocos para esa forma: la cifra, con la frase de por qué).
+
+**El criterio del nivel 1 es lo delicado.** «No puede tener datos NUNCA» no se decide con una
+cifra que el selector de periodo acaba de recortar; se decide con `byYear`, la única señal del
+muro que ignora a la vez el periodo y el filtro de tipo. Y como `byYear` cuenta obras
+TERMINADAS, solo vale para paneles que también midan lo terminado: **`series-formato` queda
+fuera a propósito**, porque mide episodios vistos y quien lleva media temporada de tres series
+tiene datos y cero series terminadas. Plegarlo por ahí habría escondido un panel lleno.
+
+**Y el nivel 2 no ofrece salida si la salida no lleva a ningún dato.** `elsewhere` trae la
+cifra de fuera **y** el enlace, juntos y nunca por separado; devuelve nada con «Todo» puesto
+(no hay ningún fuera al que ir) y sin histórico (el destino está igual de vacío). La salida
+conserva el filtro de tipo: mandar a «todo» a quien acaba de elegir «libros» le deshace dos
+filtros cuando solo le sobraba uno. Y la cifra de fuera **no se inventa pidiendo otra
+consulta** — solo la declaran los dos paneles que ya la tienen a mano, porque convertir el
+vacío en el caso más caro de la página es lo contrario de lo que busca este nivel.
+
+**Sin `use cache` en toda la fase**, como en la A: no se ha tocado ningún getter ni añadido
+ninguna consulta. Regla #437.
+
+## 2026-08-24 — El muro de estadísticas, fase C: cinco preguntas que el esquema ya sabía contestar
+
+Ninguna de las cinco necesita una columna nueva. Todas salen de datos que llevan meses en
+producción y que ningún getter miraba.
+
+**«Cómo cambia tu nota al releer» es la que llevaba más tiempo esperando.** El esquema está
+diseñado para eso desde el principio —el pase es dueño de la nota, así que cada relectura tiene la
+suya— y lo único que se sacaba de ahí era un contador (`records.rereads`). Compara el PRIMER pase
+con el ÚLTIMO, nunca con el del medio: la pregunta es qué te parece ahora frente a la primera vez,
+no el recorrido. Y **ignora el selector de periodo a propósito**, porque una relectura son dos
+pases separados por años y recortarlos a la ventana elegida dejaría fuera justo el primero, que es
+la mitad de la comparación.
+
+**Los dos paneles de abandono solo pueden vivir en el muro privado, y no es una decisión de
+producto sino del esquema.** `passes.dropped_reason` es siempre privado, con independencia de
+`is_public`: la tabla **no concede `SELECT`** sobre esa columna a nadie, porque su RLS de SELECT es
+de visibilidad de PERFIL (`can_view_profile`), no de dueño — un grant ahí filtraría el motivo a
+cualquiera que pueda ver el perfil. La única vía de lectura es la vista `pass_reviews`,
+`SECURITY DEFINER` y enmascarada por `d.user_id = auth.uid()`. Un `select("dropped_reason")` sobre
+`passes` falla con «permission denied», y **es correcto que falle**. Hay un test que lee
+`stats-tab.tsx` y afirma que ninguno de los dos paneles se ha colado en la pestaña pública, porque
+esto no lo caza ningún tipo.
+
+**El punto de no retorno no se afirma con menos de cinco abandonos medibles.** Es un MÁXIMO, y un
+máximo sobre dos o tres muestras se mueve entero con el siguiente dato: «nunca has abandonado por
+encima del 26 %» con dos abandonos es ruido presentado como hallazgo. Cuando falta, la barra se
+queda sin marca en vez de inventarse un límite.
+
+**El bullet estrena `PanelSpec.targetName`.** «Tu marca» describe un récord que se persigue, y eso
+es exactamente lo que la racha es y lo que el punto de no retorno **no** es. Sin el campo, el
+nombre accesible de «Dónde abandonas» habría dicho «tu marca 44 %» sobre algo que nadie persigue.
+
+**Las anotaciones se normalizan por cada cien páginas y no por obra**, que es toda la diferencia:
+sin normalizar, «las obras que más te hacen escribir» sería un ranking de libros largos. Doce notas
+en un tocho de mil páginas es menos escritura que cuatro en uno de cien. Cita y nota se cuentan
+aparte porque son dos gestos distintos —copiar lo que dice el libro y decir lo tuyo— y mezclarlos
+hace que un lector de citas y otro de comentarios se vean iguales.
+
+**«Velocidad real» divide por tiempo, no por días**, y esa es la corrección: `computePagesPerDay`
+divide por días distintos, así que mezcla una sesión de tres horas con una de diez minutos.
+Contesta a «cuánto avanzas al día», que es constancia; la nueva contesta a «a qué velocidad lees»,
+que es ritmo. Las dos se quedan, porque son dos preguntas.
+
+**Y la decisión de forma que hay que recordar de esa tarea: la PRIMERA sesión de un pase solo fija
+el cursor, nunca cuenta como avance.** Es lo que separa una medida de velocidad de una inflada:
+quien empieza a registrar por la página 300 no ha leído 300 páginas en esa sesión. El plan de la
+fase pedía lo contrario (contar desde cero) y se corrigió al implementarlo — una métrica de
+velocidad que infla es peor que no tenerla. El «avance positivo por pase» pasó a un helper
+compartido con `computePagesPerDay` en vez de copiarse, para que las dos no puedan divergir.
+
+**Todas las cifras que dejan algo fuera dicen cuánto.** Relecturas sin nota en los dos extremos,
+abandonos sin motivo (el campo nació el 2026-08-14 sin backfill), abandonos sin páginas en ficha,
+anotaciones de obras sin talla, sesiones sin duración. Son cinco denominadores, y sin ellos los
+cinco paneles parecerían hablar de todo.
+
+**Sin `use cache` en ninguno de los cuatro getters nuevos**, y no es olvido: los cuatro dependen de
+`auth.uid()` vía RLS, y los de abandono además leen una vista enmascarada por dueño. Cachear
+cualquiera de ellos es una fuga de datos entre cuentas invisible en desarrollo. Regla #437.
+
+**Rendimiento medido, no supuesto.** El muro pasa de 17 a 21 consultas en un solo `Promise.all`,
+así que su reloj es el de la consulta más lenta. Medido sobre siete cargas del muro completo:
+`getFormatStats` es la más lenta en las siete (695–865 ms) y el total va siempre 3–5 ms por encima
+de ella. Los cuatro getters nuevos entran en 458–742 ms, todos por debajo. El techo no se mueve.
+
+## 2026-08-24 — El desplegable de @menciones elige lado, y por eso el arreglo no es «abrirlo hacia arriba»
+
+**El desplegable se coloca midiendo el hueco, no por una regla fija.** Se abre hacia abajo salvo
+que abajo no quepa y arriba haya más sitio; el `max-height` se recorta al hueco elegido, así que la
+caja no puede salirse por ningún borde. La alternativa barata —voltearlo siempre hacia arriba, que
+es lo que arreglaba el caso que se reportó— cambia un bug por otro: los composers que están a media
+página (la reseña del sheet de cierre, el cuaderno de la ficha, el composer de club) tienen encima
+la etiqueta y el contenido del formulario, y en pantallas cortas la lista se habría salido por
+arriba. Por eso el e2e comprueba los **dos** bordes, no solo el de abajo.
+
+**La causa raíz no era el ancho, y eso importa para el siguiente que lo lea.** El `<ul>` iba
+`absolute` **sin ancla vertical** (ni `top` ni `bottom`), así que se quedaba en su posición
+estática: justo debajo del campo. En escritorio eso se ve; en móvil el composer del hilo es `fixed
+inset-x-0 bottom-0`, de modo que la lista nacía pegada al borde inferior de la pantalla. Medido a
+360x740 en `/post/[id]`: caja en `y=734` con 202px de alto, o sea 196 de sus 202px fuera. El
+`docScrollWidth` era 360 — por los lados no desbordaba nada. Aun así la lista lleva ahora
+`max-w-full` junto al `w-56`, porque un ancho fijo sin tope en un contenedor estrecho es el
+siguiente bug esperando (el patrón bueno ya estaba en `notification-bell.tsx`).
+
+**Se mide justo antes de montar la lista, no en un efecto posterior.** La colocación se calcula en
+el mismo callback que trae los candidatos, así que el primer pintado ya sale en su sitio y no hay
+salto visible. El ancla es el propio campo, tomado del evento `onInput`: ningún caller tiene que
+pasar una ref, y el arreglo entra una sola vez en el hook compartido para los seis composers que lo
+usan (hilo de post, reseña de ficha, chat de club, post de club, sheet de cierre, cuaderno).
+
+**Límite asumido:** la colocación se decide al abrir y no se recalcula si el viewport cambia con la
+lista ya abierta (teclado del móvil, rotación, scroll). Se corrige sola en cuanto se sigue
+escribiendo, porque cada búsqueda vuelve a medir. Queda en la issue #765.
+
+**Y esto no se cubre con un unitario:** lo que distingue «se ve» de «está pintada fuera» es la caja,
+y sin motor de layout no hay caja que medir. El test vive en
+`e2e/menciones-desplegable-movil.spec.ts`.
+
+## 2026-08-24 — El editor de un comentario ocupa su fila entera, y los botones bajan debajo
+
+**En `compact`, el campo va solo en su fila y "Cancelar"/"Guardar" en una fila propia debajo.**
+Antes los tres compartían una fila flex, que es el patrón razonable en escritorio y el que hunde el
+móvil: los botones y el contador tienen ancho fijo, así que se lo comen del campo, y lo que sobra
+depende de cuánto haya sangrado el hilo. Medido a 360x740 en `/post/[id]`, editando un comentario a
+profundidad 1: el campo salía a **152px contra los 262px del comentario que estaba editando** —el
+58%—, con **35px de alto**, una sola línea (`rows={1}`). Con el campo en su fila: 262px de ancho
+(el 100%) y 92px de alto.
+
+**El contador reserva alto, no ancho.** El `pr-12` que le dejaba sitio a `0/2000` costaba ~48px de
+línea de texto; ahora se le da `pb-5` y el texto usa el ancho entero. En el modo no-`compact` se
+queda el `pr-12`, porque ahí el composer ya es de ancho completo (`fixed inset-x-0 bottom-0` en
+móvil) y quitarlo no compraría nada.
+
+**El arreglo entra en `CommentComposer`, no en el hilo.** El síntoma se reportó editando en un
+hilo, pero `compact` lo comparten tres sitios —editar un comentario del hilo, responder inline y
+editar un mensaje del chat de club—, así que arreglarlo en `post-thread.tsx` habría dejado los
+otros dos rotos igual. En el chat de club se quitó además el `max-w-[85%]` de la burbuja **solo
+mientras se edita**: recortaba el campo por debajo del ancho del mensaje que estabas corrigiendo.
+
+**La aserción del e2e compara contra el propio comentario, no contra un número de píxeles.** El
+ancho útil depende de la profundidad del hilo, del avatar y del móvil de referencia; fijar «≥200px»
+habría envejecido mal y no diría gran cosa. La regla estable es que **el campo tiene que ser tan
+ancho como el texto que edita** (>0,9). Vive en `e2e/composer-compact-movil.spec.ts`, y se comprobó
+que falla contra el código anterior (0,58) antes de darlo por bueno.
+
+**Límite conocido:** el textarea sigue en `text-xs` (12px) y Safari iOS hace zoom al enfocar
+cualquier campo de menos de 16px. No se toca aquí porque cambiaría el tamaño de fuente de los
+campos de todo el proyecto; queda en la issue #768.
+
+## 2026-08-24 — Ocultar abandonados: el filtro es opt-in por sitio de llamada
+
+`getLibraryItems` la llaman diez sitios y solo cuatro son «vistas propias». El export CSV, el
+selector de obras de clubes, los buscadores de añadir a colección y los bloques de «hoy» comparten
+esa función; hacer que ocultara por defecto habría vaciado filas del respaldo del usuario sin que
+nada lo delate. Por eso `hideDropped` es un filtro que hay que pedir, y las vistas propias usan un
+envoltorio aparte (`getLibraryView`) que además devuelve cuántas ocultó.
+
+Corolario que conviene no deshacer en un refactor: **el Resumen de la biblioteca
+(`CollectionSummary`) no filtra.** Su barra apilada por estado es el único sitio de la app donde se
+ve que existen obras abandonadas; ocultar ahí dejaría al usuario sin saber que las tiene.
+
+Spec: `docs/superpowers/specs/2026-08-24-ocultar-abandonados-biblioteca-design.md`.

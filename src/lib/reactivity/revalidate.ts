@@ -57,6 +57,14 @@ export function revalidateCollection(id: string): void {
   revalidatePath(`/coleccion/c/${id}`);
 }
 
+/** Todas las fichas de colección (patrón dinámico): al cambiar una preferencia
+ *  que afecta a lo que se pinta en ellas no se sabe cuál está abierta. Es la
+ *  hermana ciega de `revalidateCollection`: esa nombra UNA colección concreta,
+ *  esta se usa cuando el cambio afecta a todas y no se sabe cuál está abierta. */
+export function revalidateCollectionPages(): void {
+  revalidatePath("/coleccion/c/[id]", "page");
+}
+
 /** La ficha de una saga concreta. */
 export function revalidateSagaPage(id: string): void {
   revalidatePath(sagaHref(id));

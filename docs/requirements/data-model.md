@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-20 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
+> **[Canónico · verificado contra dev el 2026-08-24 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -603,6 +603,18 @@ después** — y anotar el pendiente como issue para que no se quede a medias (`
 `20260720_collections_sorteable.sql`) marca qué colecciones se ofrecen en el filtro del
 sorteo (§7.28). Es opt-in porque el usuario tiene ~19 colecciones y ofrecerlas todas hacía
 el filtro inservible. El pool del sorteo es entonces **colección ∩ pases `planned` activos**.
+
+**`profiles.hide_dropped`** (`boolean not null default false`, migración
+`20260876_profiles_hide_dropped.sql`, **aplicada y verificada en DEV y en PROD el
+2026-08-24** contra `information_schema.columns`) oculta de las rejillas propias —y del
+perfil público del dueño— las obras cuyo pase activo está en `dropped`. Mismo patrón que
+`profiles.show_optional_readings` (§7.10): preferencia global del usuario, NOT NULL con
+default explícito que conserva el comportamiento de hoy. **No** afecta a `/estadisticas`
+ni al export CSV: es un filtro opt-in por sitio de llamada, no un cambio en
+`getLibraryItems` (que usan también el export, el selector de obras de clubes y los
+buscadores de añadir a colección), sino en un envoltorio aparte, `getLibraryView`, que
+usan solo las vistas propias (ver `decisiones.md`, 2026-08-24). Sin `grant` propio a
+propósito: `profiles` tiene grant de TABLA, no por columna (§DRIFT-CHECK.md, superficie 6).
 
 ## 5. Social
 

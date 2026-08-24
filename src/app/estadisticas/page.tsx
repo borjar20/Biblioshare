@@ -35,8 +35,15 @@ import { getLibraryHealth } from "@/lib/stats/get-library-health";
 import { getRatedFacets } from "@/lib/stats/get-rated-facets";
 import { getFormatStats } from "@/lib/stats/get-format-stats";
 import { getYearCalendar } from "@/lib/stats/get-year-calendar";
-import { getPagesPerDay } from "@/lib/stats/get-pace";
-import { buildStatsSections, hiddenPanelCount } from "@/lib/stats/panel/specs";
+import { getPagesPerDay, getReadingSpeed } from "@/lib/stats/get-pace";
+import { getRereads } from "@/lib/stats/get-rereads";
+import { getDropStats } from "@/lib/stats/get-drop-reasons";
+import { getNotesPerWork } from "@/lib/stats/get-notes-per-work";
+import {
+  buildStatsSections,
+  collapsedPanelCount,
+  hiddenPanelCount,
+} from "@/lib/stats/panel/specs";
 import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { StatsControls } from "@/components/stats/stats-controls";
 import { StatsWallSkeleton } from "@/components/stats/stats-wall-skeleton";
@@ -195,6 +202,10 @@ async function StatsWall({
     formats,
     calendar,
     pagesPerDay,
+    rereads,
+    drops,
+    annotations,
+    speed,
   ] = await Promise.all([
     getPeriodActivity(supabase, userId, period, itemFilter),
     getRatingDistribution(supabase, userId, period, itemFilter),
@@ -213,6 +224,14 @@ async function StatsWall({
     getFormatStats(supabase, userId, period),
     getYearCalendar(supabase, userId, calendarYear),
     getPagesPerDay(supabase, userId, period),
+    // Sin periodo: una relectura son dos pases separados por años y recortarlos
+    // a la ventana elegida dejaría fuera el primero, que es media comparación.
+    getRereads(supabase, userId, itemFilter),
+    // Lee de `pass_reviews`, no de `passes`: el motivo de abandono no tiene
+    // grant de SELECT en la tabla y solo la vista lo enmascara por dueño.
+    getDropStats(supabase, userId, itemFilter),
+    getNotesPerWork(supabase, userId, period),
+    getReadingSpeed(supabase, userId, period),
   ]);
 
   const panelInput = {
@@ -251,6 +270,10 @@ async function StatsWall({
     formats,
     calendar,
     pagesPerDay,
+    rereads,
+    drops,
+    annotations,
+    speed,
   };
 
   const sections = buildStatsSections(panelInput);
@@ -258,6 +281,9 @@ async function StatsWall({
   // cuántos son: un panel que desaparece sin explicación se lee como que la
   // página se rompió, y el calendario anual es de los que más se buscan.
   const escondidos = hiddenPanelCount(panelInput);
+  // Y los que se pliegan a una línea por no poder tener datos NUNCA, que es otra
+  // cosa: esos no dependen del periodo y ampliarlo no los devuelve.
+  const plegados = collapsedPanelCount(panelInput);
 
   return (
     <>
@@ -273,6 +299,8 @@ async function StatsWall({
                 ? "los de foto del momento y los que necesitan meses o años (el año natural, la serie histórica y los récords)"
                 : "los de foto del momento, que no hablan de un año sino de ahora"
             }. Amplía el periodo para verlos.`}
+        {plegados > 0 &&
+          ` Otros ${plegados} se pliegan a una línea porque no pueden tener datos con ningún periodo: son los que solo existen para un tipo de obra que todavía no has terminado.`}
       </p>
 
       {/* Índice de secciones: con siete bloques, bajar a «Por categoría»
@@ -315,7 +343,22 @@ async function StatsWall({
             <div className="columns-1 gap-4 lg:columns-2 xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
               {section.panels.map((spec) => (
                 // h3: los paneles cuelgan del título de su sección, que es h2.
-                (<StatPanel key={spec.id} spec={spec} headingLevel={3} />)
+                //
+                // El HÉROE rompe la multicolumna con `column-span: all`. Es lo
+                // que evita tener que volver a `grid` —descartada arriba por
+                // igualar el alto de cada fila— para conseguir una tarjeta
+                // ancha: multicolumna sí sabe hacer esto, y el resto de paneles
+                // sigue fluyendo debajo sin hueco muerto.
+                //
+                // El `div` envolvente es quien recibe ahora `[&>*]:mb-4` y
+                // `[&>*]:break-inside-avoid` del contenedor, por ser el hijo
+                // directo; por eso la `key` viaja aquí.
+                <div
+                  key={spec.id}
+                  className={spec.hero ? "[column-span:all]" : undefined}
+                >
+                  <StatPanel spec={spec} headingLevel={3} />
+                </div>
               ))}
             </div>
           </section>
