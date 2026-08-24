@@ -1115,7 +1115,7 @@ que falla contra el código anterior (0,58) antes de darlo por bueno.
 cualquier campo de menos de 16px. No se toca aquí porque cambiaría el tamaño de fuente de los
 campos de todo el proyecto; queda en la issue #768.
 
-## Ocultar abandonados: el filtro es opt-in por sitio de llamada (2026-08-24)
+## 2026-08-24 — Ocultar abandonados: el filtro es opt-in por sitio de llamada
 
 `getLibraryItems` la llaman diez sitios y solo cuatro son «vistas propias». El export CSV, el
 selector de obras de clubes, los buscadores de añadir a colección y los bloques de «hoy» comparten
