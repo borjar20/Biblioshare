@@ -215,19 +215,27 @@ test("un post tiene su página /post/[id] con cuerpo y hilo (pensamiento y hito)
     await expect(page.getByText(comentario)).toBeVisible();
 
     // Reacción al post: barra de acciones del hilo. El selector desplegable
-    // (ReactionBar) se abre y se pulsa Fuego (🔥); la del post va primera.
+    // (ReactionBar) se abre y se pulsa fuego (🔥); la del post va primera.
+    // Desde la Task 7/8 de "reacciones-emoji-libre" elegir un emoji CIERRA el
+    // popover (role="dialog"), así que hay que reabrirlo para volver a leer
+    // aria-pressed sobre el mismo botón de la fila rápida.
     await page.getByRole("button", { name: "Reaccionar" }).first().click();
-    const fire = page.getByRole("button", { name: "Fuego" }).first();
+    const fire = page.getByRole("button", { name: "fuego" }).first();
     await expect(fire).toHaveAttribute("aria-pressed", "false");
     await fire.click();
-    await expect(fire).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByRole("button", { name: "Reaccionar" }).first().click();
+    await expect(page.getByRole("button", { name: "fuego" }).first()).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     // ── Persiste: recargar /post/[id] y la verdad del servidor lo confirma
     //    (el hilo se pinta abierto, el comentario sigue ahí). ──
     await page.reload();
     await expect(page.getByText(comentario)).toBeVisible();
     await page.getByRole("button", { name: "Reaccionar" }).first().click();
-    await expect(page.getByRole("button", { name: "Fuego" }).first()).toHaveAttribute(
+    await expect(page.getByRole("button", { name: "fuego" }).first()).toHaveAttribute(
       "aria-pressed",
       "true",
     );
