@@ -234,10 +234,13 @@ function allSections(
       title: "Actividad",
       description: "Cuándo ocurrió, en qué ritmo y con qué constancia.",
       panels: [
+        // El héroe va PRIMERO (invariante de `specs.test.ts`): ocupa las tres
+        // columnas, así que cualquier panel por encima quedaría cortado a un
+        // tercio con una banda debajo.
+        yearCalendarPanel(input),
         periodActivityPanel(input, period, filter),
         completedByYearPanel(input),
         hoursPanel(input),
-        yearCalendarPanel(input),
         streaksPanel(input.streaks, "Rachas", input.itemFilter),
         recordsPanel(input.records, input.streaks, input.titles.records, period, filter),
       ],
@@ -266,18 +269,27 @@ function allSections(
       id: "valoraciones",
       title: "Valoraciones",
       description: "Cómo puntúas y qué puntúas mejor.",
+      // Los tres `ratedGroupPanel` NO van seguidos, y es a propósito: son el
+      // mismo panel tres veces —mismo título, misma forma, misma frase de
+      // vacío—, y en fila se leen como una repetición aunque hablen de cosas
+      // distintas. Intercalados entre paneles de otra forma, cada uno se lee por
+      // lo que dice.
+      //
+      // Colapsarlos en UNO con selector de faceta sería lo suyo, pero choca con
+      // «nunca hay un filtro por panel» (`filter.ts`), así que se arregla por
+      // forma y por orden. Queda su issue.
       panels: [
         ratingPanel(input.rating, input.titles.rating, period, filter),
-        topRatedPanel(input, period),
         ratedGroupPanel("nota-generos", "Géneros mejor valorados", "Género", input.facets.genres, period, filter),
-        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
-        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
         // Páginas y minutos no comparten eje, así que van en dos paneles; y con
         // un tipo elegido solo se pinta el suyo, o el otro saldría vacío al
         // lado sin más explicación que «sin datos».
         ...(input.itemFilter === "movie" || input.itemFilter === "series"
           ? []
           : [lengthVsRatingPanel(input, "book", period)]),
+        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
+        topRatedPanel(input, period),
+        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
         ...(input.itemFilter === "book"
           ? []
           : [lengthVsRatingPanel(input, "screen", period)]),
@@ -620,6 +632,8 @@ function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
       scope: withAllTypes(itemFilter, "año natural"),
     },
     viz: "heatmap",
+    // Preside su sección: 53 semanas en un tercio de tarjeta son celdas de 6 px.
+    hero: true,
     // Siete filas, una por día de la semana; cada columna, una semana. El
     // desplazamiento es el día de la semana del 1 de enero: sin él las filas
     // dejarían de ser lunes, martes… y el mosaico no sería un calendario.
@@ -679,9 +693,22 @@ function streaksPanel(
       period: "Ahora mismo",
       scope: withAllTypes(itemFilter, "foto del momento"),
     },
-    viz: "kpi",
+    // Bullet y no tres cifras sueltas: «racha actual contra tu mejor racha» ES
+    // valor-contra-referencia, que es exactamente lo que este gráfico dice. Con
+    // tres números había que restarlos mentalmente para saber si estabas cerca.
+    viz: "bullet",
     unit: UNITS.days,
-    data: [],
+    // Una sola fila basta: el bullet compara cada punto con SU marca, no con los
+    // otros puntos. `target` se omite si no hay mejor racha todavía — dibujar
+    // una marca en cero diría que ya la has batido.
+    data: [
+      {
+        key: "actual",
+        label: "Racha actual",
+        value: streaks.current,
+        target: streaks.best > 0 ? streaks.best : undefined,
+      },
+    ],
     kpis: [
       { key: "actual", label: "Días seguidos", value: streaks.current, unit: UNITS.days },
       {
@@ -832,6 +859,10 @@ function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
       filter: globalFilter(itemFilter),
     },
     viz: "line",
+    // NO es héroe, aunque el diseño lo barajó: doce puntos de línea se leen bien
+    // en un tercio de tarjeta, y ser héroe obliga a ir primero en la sección —
+    // lo que rompería el orden que su descripción promete («qué tienes, qué
+    // acabas y qué se te acumula»). El ancho se reserva para lo que no cabe.
     unit: UNITS.items,
     labelHeader: "Mes",
     series: [{ key: "pending", label: "Abiertas", color: "var(--status-planned)" }],
@@ -988,7 +1019,7 @@ function ratedGroupPanel(
     description:
       "Solo entran los nombres con dos obras valoradas o más. Con una sola, el ranking premiaría el acierto de una prueba, no un gusto.",
     context: { period, filter, filters: ["Mínimo 2 obras valoradas"] },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.stars,
     labelHeader,
     valueHeader: "Nota",
@@ -1077,7 +1108,7 @@ function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): Pa
       filter: globalFilter(itemFilter),
       filters: ["Solo películas", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Director",
     data: catalog.directors.slice(0, RANK_LIMIT).map((d) => ({
@@ -1102,7 +1133,7 @@ function publishersPanel({ catalog, itemFilter }: StatsInput, period: string): P
       filter: globalFilter(itemFilter),
       filters: ["Solo libros", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Editorial",
     data: catalog.publishers.slice(0, RANK_LIMIT).map((p) => ({
@@ -1602,7 +1633,7 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
       filter: globalFilter(itemFilter),
       filters: ["Ordenado por nota, de mayor a menor"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.stars,
     labelHeader: "Obra",
     valueHeader: "Nota",
@@ -1634,7 +1665,7 @@ function typePanel({ type, titles, itemFilter }: StatsInput, period: string): Pa
       scope: withAllTypes(itemFilter),
       filters: ["Obras terminadas"],
     },
-    viz: "donut",
+    viz: "waffle",
     unit: UNITS.works,
     labelHeader: "Tipo",
     series: TYPE_SERIES,
@@ -1662,7 +1693,7 @@ function statusPanel({ status, titles }: StatsInput, filter: string | undefined)
       scope: "foto del momento",
       filter,
     },
-    viz: "donut",
+    viz: "waffle",
     unit: UNITS.items,
     labelHeader: "Estado",
     series: STATUS_SERIES,
@@ -1692,7 +1723,11 @@ function hoursPanel({ hours, titles, todayISO, itemFilter }: StatsInput): PanelS
       scope: withAllTypes(itemFilter, "año natural"),
       filters: ["Sesiones de lectura"],
     },
-    viz: "bars",
+    // Área, no barras: doce meses seguidos son una serie CONTINUA, y la curva
+    // dice de un vistazo la forma del año que doce columnas sueltas obligan a
+    // recomponer. De paso baja a cuatro los paneles de barras del muro, que era
+    // media docena y sonaba a repetición.
+    viz: "area",
     unit: UNITS.minutes,
     labelHeader: "Mes",
     series: [{ key: "minutes", label: "Minutos", color: "var(--accent)" }],
@@ -1792,7 +1827,7 @@ function authorsPanel({ catalog, titles, itemFilter }: StatsInput, period: strin
       filter: globalFilter(itemFilter),
       filters: ["Solo autores de libro", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Autor",
     data: catalog.authors.slice(0, RANK_LIMIT).map((a) => ({
@@ -1971,7 +2006,7 @@ function tbrPanel(tbr: TbrSnapshot, title: string, filter?: string): PanelSpec {
       scope: "foto del momento",
       filter,
     },
-    viz: "donut",
+    viz: "waffle",
     unit: UNITS.items,
     labelHeader: "Tipo",
     series: TYPE_SERIES,

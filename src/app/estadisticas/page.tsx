@@ -315,7 +315,22 @@ async function StatsWall({
             <div className="columns-1 gap-4 lg:columns-2 xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
               {section.panels.map((spec) => (
                 // h3: los paneles cuelgan del título de su sección, que es h2.
-                (<StatPanel key={spec.id} spec={spec} headingLevel={3} />)
+                //
+                // El HÉROE rompe la multicolumna con `column-span: all`. Es lo
+                // que evita tener que volver a `grid` —descartada arriba por
+                // igualar el alto de cada fila— para conseguir una tarjeta
+                // ancha: multicolumna sí sabe hacer esto, y el resto de paneles
+                // sigue fluyendo debajo sin hueco muerto.
+                //
+                // El `div` envolvente es quien recibe ahora `[&>*]:mb-4` y
+                // `[&>*]:break-inside-avoid` del contenedor, por ser el hijo
+                // directo; por eso la `key` viaja aquí.
+                <div
+                  key={spec.id}
+                  className={spec.hero ? "[column-span:all]" : undefined}
+                >
+                  <StatPanel spec={spec} headingLevel={3} />
+                </div>
               ))}
             </div>
           </section>

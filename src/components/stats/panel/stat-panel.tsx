@@ -67,10 +67,18 @@ const SELF_DESCRIBING: PanelSpec["viz"][] = [
   "heatmap",
   "line",
   "area",
+  // El lollipop escribe la cifra de cada fila a la derecha y cada marca medida
+  // es focalizable con su valor en el nombre accesible. Cumple las dos mitades
+  // del invariante, así que pierde la tabla — que habría sido una copia exacta.
+  "lollipop",
+  // El waffle no escribe dentro de la rejilla (cien cifras no caben): su dato
+  // exacto vive en la LEYENDA, que lleva serie, glifo y cifra, se lee con
+  // teclado y sale también en la cara. Misma garantía por otra puerta.
+  "waffle",
+  // El bullet escribe «valor / marca» sobre cada barra y su fila es focalizable
+  // con las dos cifras —y la palabra «batida»— en el nombre accesible.
+  "bullet",
 ];
-
-/** Cuántas filas de un ranking caben en la vista compacta. */
-const RANKING_PREVIEW = 3;
 
 const CARD =
   "rounded-card border border-border bg-surface shadow-card transition-colors";
@@ -218,9 +226,8 @@ export function StatPanel({
         )}
         {faceplot}
         <Legend derived={derived} spec={spec} />
-        {spec.viz === "ranking" && (
-          <RankingList spec={spec} limit={RANKING_PREVIEW} />
-        )}
+        {/* La cara ya no lleva lista: el lollipop escribe el dato. Los enlaces
+            de cada fila viven en la capa, donde no los tapa el disparador. */}
         <span aria-hidden className="label-section pt-0.5 text-accent/70">
           Ampliar ↗
         </span>
@@ -257,8 +264,10 @@ export function StatPanel({
           {plot}
           <Legend derived={derived} spec={spec} />
 
-          {/* El ranking completo: la cara solo enseñaba las primeras. */}
-          {spec.viz === "ranking" && <RankingList spec={spec} />}
+          {/* El ranking completo CON SUS ENLACES. El gráfico no puede llevarlos:
+              en la cara lo tapa el disparador del modal, y aquí la lista es lo
+              único que convierte cada fila en un sitio al que ir. */}
+          {spec.viz === "lollipop" && <RankingList spec={spec} />}
 
           {/* Los valores exactos. NO los repiten ni los paneles que ya son
               texto —su lista o su `<dl>` YA son el dato— ni los gráficos que
