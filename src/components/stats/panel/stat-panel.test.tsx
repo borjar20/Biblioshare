@@ -76,3 +76,34 @@ describe("panel degradado", () => {
     expect(screen.queryAllByText(/todavía no hay curva/i)).toHaveLength(0);
   });
 });
+
+describe("nivel 2 — vacío por filtro", () => {
+  const vacio: PanelSpec = {
+    id: "horas-por-mes",
+    title: "Horas por mes",
+    context: { period: "Esta semana" },
+    viz: "area",
+    unit: UNITS.minutes,
+    data: [],
+    empty: {
+      title: "Sin sesiones esta semana",
+      elsewhere: {
+        text: "En 2026 llevas 148 h",
+        href: "/estadisticas",
+        label: "Ver todo el año",
+      },
+    },
+  };
+
+  it("dice la cifra que sí existe fuera del filtro y ofrece la salida", () => {
+    render(<StatPanel spec={vacio} />);
+    expect(screen.getByText("En 2026 llevas 148 h")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Ver todo el año/ })).toBeTruthy();
+  });
+
+  it("sin cifra de fuera NO hay enlace: llevar a otro sitio vacío es peor que no ofrecer salida", () => {
+    render(<StatPanel spec={{ ...vacio, empty: { title: "Sin sesiones esta semana" } }} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText("Sin sesiones esta semana")).toBeTruthy();
+  });
+});

@@ -38,6 +38,7 @@ import {
   type ActivityMetric,
   type ItemFilter,
   itemFilterLabel,
+  itemFilterParam,
 } from "@/lib/stats/filter";
 import {
   type StatsPeriod,
@@ -210,6 +211,42 @@ function everFinished(byYear: YearCompleted[], type: "book" | "movie"): boolean 
  */
 const NEVER_BOOKS = "No has terminado ningún libro todavía";
 const NEVER_MOVIES = "No has terminado ninguna película todavía";
+
+/**
+ * La vista sin recortar por periodo, conservando el tipo elegido.
+ *
+ * Sin `?periodo=` el muro arranca en «todo el histórico» (ver `page.tsx`), así
+ * que la salida es quitar el parámetro. El de tipo se conserva a propósito:
+ * mandar a «todo» a quien acaba de elegir «libros» le deshace dos filtros
+ * cuando solo le sobraba uno.
+ */
+function allTimeHref(itemFilter: ItemFilter): string {
+  return itemFilter === "all"
+    ? "/estadisticas"
+    : `/estadisticas?tipo=${itemFilterParam(itemFilter)}`;
+}
+
+/**
+ * NIVEL 2 — la salida del vacío por filtro, cuando la hay.
+ *
+ * Devuelve `undefined` en los dos casos en que el enlace mentiría: con «Todo»
+ * puesto no hay ningún fuera al que ir, y sin histórico el sitio al que lleva
+ * está igual de vacío. Un enlace que promete un dato que no existe es peor que
+ * no ofrecer ninguno.
+ */
+function wayOutToAllTime(
+  { period, itemFilter }: StatsInput,
+  everTotal: number,
+  text: string,
+): NonNullable<PanelSpec["empty"]>["elsewhere"] | undefined {
+  if (period === "all" || everTotal <= 0) return undefined;
+  return { text, href: allTimeHref(itemFilter), label: "Ver todo el histórico" };
+}
+
+/** Obras terminadas en TODO el histórico. `byYear` no obedece a ningún filtro. */
+function everFinishedTotal(byYear: YearCompleted[]): number {
+  return byYear.reduce((n, y) => n + y.total, 0);
+}
 
 export function buildStatsSections(input: StatsInput): PanelSection[] {
   const period = periodLabel(input.period);
@@ -621,7 +658,7 @@ function periodActivityPanel(
   period: string,
   filter: string | undefined,
 ): PanelSpec {
-  return activitySpec(
+  const spec = activitySpec(
     input.activity,
     input.metric,
     "actividad-periodo",
@@ -630,6 +667,23 @@ function periodActivityPanel(
     previousLabel(input.period),
     filter,
   );
+
+  // La salida solo se ofrece con la medida en OBRAS: el histórico que hay a
+  // mano (`byYear`) cuenta obras terminadas, y prometer «llevas 54 obras» en un
+  // panel que está midiendo minutos sería cambiarle la unidad al lector sin
+  // avisar. Con «Tiempo» puesto no hay cifra de fuera, así que no hay enlace.
+  const ever = input.metric === "time" ? 0 : everFinishedTotal(input.byYear);
+  return {
+    ...spec,
+    empty: spec.empty && {
+      ...spec.empty,
+      elsewhere: wayOutToAllTime(
+        input,
+        ever,
+        `En todo el histórico llevas ${ever} ${ever === 1 ? "obra terminada" : "obras terminadas"}`,
+      ),
+    },
+  };
 }
 
 /**
@@ -1698,7 +1752,9 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
  * misma pregunta. Filtrarlo lo dejaría con un solo sector y el cien por cien,
  * que no informa de nada.
  */
-function typePanel({ type, titles, itemFilter }: StatsInput, period: string): PanelSpec {
+function typePanel(input: StatsInput, period: string): PanelSpec {
+  const { type, titles, itemFilter } = input;
+  const ever = everFinishedTotal(input.byYear);
   return {
     id: "por-tipo",
     title: titles.type,
@@ -1720,6 +1776,11 @@ function typePanel({ type, titles, itemFilter }: StatsInput, period: string): Pa
     empty: {
       title: "Nada terminado en este periodo",
       message: "Cierra un pase para que aparezca aquí.",
+      elsewhere: wayOutToAllTime(
+        input,
+        ever,
+        `En todo el histórico llevas ${ever} ${ever === 1 ? "obra terminada" : "obras terminadas"}`,
+      ),
     },
   };
 }

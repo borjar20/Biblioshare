@@ -165,13 +165,31 @@ export function StatPanel({
     return (
       <section
         aria-labelledby={titleId}
-        className="flex flex-col gap-3 rounded-card border border-dashed border-border p-4"
+        // Relleno REDUCIDO respecto a un panel lleno: una tarjeta vacía ocupaba
+        // lo mismo que una con datos, y en un muro de treinta ahí estaba medio
+        // hueco de la pantalla.
+        className="flex flex-col gap-2 rounded-card border border-dashed border-border px-4 py-3"
       >
         <PanelHead spec={spec} titleId={titleId} Heading={Heading} />
         <div className="flex flex-col gap-1 py-1">
           <p className="text-sm text-muted-foreground">
             {spec.empty?.title ?? "Todavía no hay datos"}
           </p>
+          {/* La cifra de FUERA y su salida. Solo salen juntas: un enlace sin la
+              cifra llevaría a un sitio que puede estar igual de vacío, y eso es
+              peor que no ofrecer ninguno. Con ella, el vacío deja de ser «no hay
+              datos» y pasa a ser «no hay datos AQUÍ, y el aquí lo elegiste tú». */}
+          {spec.empty?.elsewhere && (
+            <p className="flex flex-wrap items-baseline gap-x-2 text-[11px] leading-relaxed text-foreground-soft">
+              {spec.empty.elsewhere.text}
+              <Link
+                href={spec.empty.elsewhere.href}
+                className="font-medium text-accent hover:underline"
+              >
+                {spec.empty.elsewhere.label} ›
+              </Link>
+            </p>
+          )}
           {spec.empty?.message && (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {spec.empty.message}

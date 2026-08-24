@@ -175,3 +175,36 @@ describe("nivel 1 — vacío estructural", () => {
     expect(collapsedPanelCount(input())).toBe(0);
   });
 });
+
+describe("nivel 2 — la salida solo se ofrece si lleva a algún dato", () => {
+  it("con un periodo corto puesto, el panel de actividad dice lo que llevas en todo el histórico", () => {
+    const semana = input({ period: "week" });
+    const actividad = buildStatsSections(semana)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "actividad-periodo");
+    // 14 + 22 + 18 en la fixture.
+    expect(actividad?.empty?.elsewhere?.text).toMatch(/54/);
+    expect(actividad?.empty?.elsewhere?.href).toBe("/estadisticas");
+  });
+
+  it("la salida CONSERVA el filtro de tipo: mandarte a «todo» te quitaría el que elegiste", () => {
+    const semana = input({ period: "week", itemFilter: "book" });
+    const actividad = buildStatsSections(semana)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "actividad-periodo");
+    expect(actividad?.empty?.elsewhere?.href).toBe("/estadisticas?tipo=libros");
+  });
+
+  it("con «Todo» puesto NO hay salida: llevaría al mismo sitio vacío", () => {
+    const actividad = allPanels().find((p) => p.id === "actividad-periodo");
+    expect(actividad?.empty?.elsewhere).toBeUndefined();
+  });
+
+  it("sin histórico tampoco hay salida: el enlace prometería un dato que no existe", () => {
+    const nuevo = input({ period: "week", byYear: [] });
+    const actividad = buildStatsSections(nuevo)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "actividad-periodo");
+    expect(actividad?.empty?.elsewhere).toBeUndefined();
+  });
+});

@@ -278,5 +278,16 @@ export type PanelSpec = {
   actions?: PanelAction[];
   state?: PanelState;
   /** Qué decir cuando no hay NINGÚN dato conocido. */
-  empty?: { title: string; message?: string };
+  empty?: {
+    title: string;
+    message?: string;
+    /**
+     * La cifra que SÍ existe fuera del filtro actual, con su salida.
+     *
+     * Sin ella no se ofrece salida: un enlace a un sitio donde tampoco hay nada
+     * es peor que no ofrecer ninguno. Es lo que separa «no hay datos» de «no
+     * hay datos AQUÍ, y el aquí lo acabas de elegir tú».
+     */
+    elsewhere?: { text: string; href: string; label: string };
+  };
 };
