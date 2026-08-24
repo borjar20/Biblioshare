@@ -132,20 +132,28 @@ export function CommentComposer({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
+      {/* En `compact` (editar un comentario, responder dentro de un hilo) el
+          campo va SOLO en su fila y los botones debajo. Antes compartían fila:
+          en móvil, con la sangría del hilo + el avatar + "Cancelar/Guardar"
+          (~120px fijos) + el hueco del contador (`pr-12`), al textarea le
+          quedaban ~90px útiles y UNA línea de alto — imposible ver lo que
+          estabas editando. */}
+      <div className={compact ? "flex flex-col gap-1.5" : "flex items-center gap-2"}>
+        <div className={compact ? "relative w-full" : "relative flex-1"}>
           <textarea
             ref={textareaRef}
             value={value}
             maxLength={MAX_LENGTH}
-            rows={compact ? 1 : 2}
+            rows={compact ? 3 : 2}
             onChange={(e) => onChange(e.target.value)}
             onInput={onInput}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
             className={
               compact
-                ? "w-full resize-none rounded-xl border border-border bg-surface px-2.5 py-1.5 pr-12 text-xs outline-none focus:border-accent"
+                ? // Sin `pr-12`: el contador deja de comer ancho; se le reserva
+                  // alto (`pb-5`) y el texto usa la línea entera.
+                  "w-full resize-y rounded-xl border border-border bg-surface px-2.5 py-1.5 pb-5 text-xs outline-none focus:border-accent"
                 : "w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 pr-12 text-xs outline-none focus:border-accent"
             }
           />
@@ -154,23 +162,25 @@ export function CommentComposer({
           </span>
           {dropdown}
         </div>
-        {onCancel && (
+        <div className={compact ? "flex items-center justify-end gap-4" : "contents"}>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className={`shrink-0 text-xs text-muted-foreground hover:text-foreground${compact ? " px-1 py-1" : ""}`}
+            >
+              {t("cancel")}
+            </button>
+          )}
           <button
             type="button"
-            onClick={onCancel}
-            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            onClick={onSubmit}
+            disabled={busy || !value.trim()}
+            className={`shrink-0 text-xs font-medium text-accent disabled:opacity-50${compact ? " px-1 py-1" : ""}`}
           >
-            {t("cancel")}
+            {submitLabel}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={busy || !value.trim()}
-          className="shrink-0 text-xs font-medium text-accent disabled:opacity-50"
-        >
-          {submitLabel}
-        </button>
+        </div>
       </div>
     </div>
   );

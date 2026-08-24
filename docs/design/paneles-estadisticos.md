@@ -1,6 +1,6 @@
 # Sistema de paneles estadísticos
 
-[Canónico · verificado contra código el 2026-08-04]
+[Canónico · verificado contra código el 2026-08-24]
 
 Manda para: **cualquier panel que muestre un dato agregado** — actividad, evolución,
 distribución, progreso, comparativas, porcentajes, objetivos, estados, rankings o
@@ -211,7 +211,23 @@ ERROR                         PARCIAL
 
 ## 4. Variantes por tipo de dato
 
-`viz` elige la forma. Todo lo demás del contrato es idéntico en las trece.
+`viz` elige la forma. Todo lo demás del contrato es idéntico en todas.
+
+> **Delta del 2026-08-21 (fase A del rediseño gráfico del muro).** Entran `lollipop`,
+> `waffle` y `bullet`, y `area` estrena consumidor (`horas-por-mes`).
+>
+> - **`ranking` y `donut` se quedan en `PanelViz` SIN CONSUMIDOR**, a propósito. `donut`
+>   es la referencia del arco en `charts.tsx`; retirar cualquiera de los dos es una
+>   migración de tipo sin ganancia.
+> - **El anillo se sustituye por el waffle por el principio 3**, no por gusto: un sector
+>   obliga a medir un ángulo, y las celdas se cuentan. Era el único gráfico del muro que
+>   peleaba con nuestra propia regla, y había tres.
+> - **El waffle no escribe dentro** (cien cifras no caben): su dato exacto vive en la
+>   leyenda, que ya viajaba a la cara. Es la misma garantía por otra puerta, y es lo que
+>   le permite estar en `SELF_DESCRIBING`.
+> - **El bullet compara cada fila con SU marca, no con las otras filas**, así que una
+>   sola fila ya es un bullet completo. La regla de abajo «una sola barra ⇒ `kpi`» **no**
+>   le aplica.
 
 | `viz` | Para qué | Gráfico | Columnas por defecto | Regla de resumen |
 |---|---|---|---|---|
@@ -220,6 +236,10 @@ ERROR                         PARCIAL
 | `line` | evolución continua | línea 2 px, **partida en los huecos** | label · valor · cuota | total, extremos, huecos |
 | `area` | evolución con volumen | línea + relleno 14 % | ídem | ídem |
 | `donut` | parte-todo, ≤ 6 sectores | anillo, resto en gris | label · valor · cuota | total, mayor y su cuota |
+| `waffle` | parte-todo **contable** | rejilla de celdas, tope 220 px | label · valor · cuota | total, mayor y su cuota |
+| `lollipop` | orden por mérito, DIBUJADO | etiqueta · tallo · punto · cifra | label · valor · detalle | nº de posiciones, 1.ª y última |
+| `bullet` | valor contra su propia referencia | barra + marca de `PanelDatum.target` | label · valor | valor, marca y si está batida |
+| `dumbbell` | variación de dos puntos | segmento entre `PanelDatum.from` y `value` | label · valor · detalle | de dónde a dónde y en qué dirección |
 | `gauge` | progreso hacia objetivo | barra + marca de meta | label · valor | hecho / meta, cuánto falta, o «cumplido» |
 | `heatmap` | densidad en calendario | rampa de **un** tono + el número dentro | label · valor | días activos sobre el total |
 | `ranking` | orden por mérito | **ninguno**: `<ol>` real | label · valor | nº de posiciones, 1.ª y última |
@@ -229,6 +249,55 @@ ERROR                         PARCIAL
 Reglas de forma heredadas de la guía de dataviz: nunca dos ejes Y; el color sigue a la
 entidad, jamás al ranking; secuencial = un tono claro→oscuro; más de ~7 clases de color
 con significado ⇒ `table`; una sola barra o dos sectores ⇒ `kpi`.
+
+> **Delta del 2026-08-24 (fase C).** Entra `dumbbell`, con su primer consumidor
+> (`relecturas`). Y `bullet` gana **`PanelSpec.targetName`**: la referencia no siempre es una
+> marca que se persiga. En «Rachas» lo es; en «Dónde abandonas» es el punto más tardío al que has
+> soltado un libro, y llamarlo «tu marca» en el nombre accesible sugería un récord.
+>
+> - **`dumbbell` mide DISTANCIA, no magnitud**: entre 3,5 y 5 hay lo mismo que entre 2 y 3,5, y
+>   con barras desde cero esas dos parejas se ven completamente distintas.
+> - **La dirección no se codifica en color**: la palabra «sube», «baja» o «no cambia» va en el
+>   nombre accesible, el punto de origen es HUECO y el de destino MACIZO.
+> - **`dumbbell` y `bullet` no degradan nunca**: comparan cada fila con su propia referencia, no
+>   con las otras filas, así que una fila ya es un gráfico completo.
+
+### La forma la elige `derive()`, no la spec (fase B, 2026-08-24)
+
+`spec.viz` es lo que el panel **pide**. Lo que se pinta es **`derived.viz`**, y puede no
+ser lo mismo: cuando no hay puntos medidos para sostener la forma, el panel **degrada a
+`kpi`** en vez de dibujar una curva de dos puntos con ejes, rejilla y leyenda ocupando lo
+que un año entero.
+
+| Forma | Mínimo de puntos MEDIDOS |
+|---|---|
+| `line` · `area` | 4 |
+| `donut` · `waffle` | 3 |
+| `bars` · `stacked` · `lollipop` · `heatmap` | 2 |
+| `bullet` | **ninguno** — compara cada fila con SU marca, así que una fila ya es un bullet |
+| `gauge` | **ninguno** — mide contra un objetivo, no contra otros puntos |
+| `kpi` · `ranking` · `table` | **ninguno** — ya son su forma mínima |
+
+Los huecos (`null`) **no cuentan**: tres nulos y un dato siguen siendo un dato. Los ceros
+medidos **sí**: son una respuesta, no una ausencia.
+
+Tres invariantes que se pagan caros si se rompen:
+
+- **`StatPanel` no lee `spec.viz` ni una sola vez.** Los cinco sitios que decidían texto,
+  tabla, `aria-hidden` y lista de enlaces leen `derived.viz`; el `switch` de `Chart`,
+  también. Un sitio que se quede atrás da un panel que dice tener tabla y no la tiene, y
+  **el typecheck no lo caza** porque ambos campos son `PanelViz`. Lo afirma un test que
+  **lee el fichero** (`stat-panel.test.tsx`) — por eso el motivo de la degradación viaja
+  en `derived.degradedFrom` y no se calcula comparando en el componente.
+- **Un panel degradado lo DICE** (`degradeNote`, en `summary.ts`). Quien vio ayer una
+  curva y hoy ve una cifra piensa que se ha perdido el gráfico, no que aún no hay datos.
+- **Un panel degradado CONSERVA la tabla.** Es la excepción a «`kpi` no lleva tabla»: sin
+  dibujo y con un indicador fabricado que solo trae el total, la tabla es lo único que
+  deja los puntos en el DOM.
+
+Los umbrales están solo en 2, 3 y 4, y nunca por estética: si la forma cambiara por gusto,
+el panel se vería distinto cada visita y se perdería la comparación entre visitas, que es
+para lo que existe un muro de estadísticas.
 
 **`ranking`, `kpi` y `table` no llevan tabla plegada aparte**: su contenido ya es texto
 estructurado, y duplicarlo solo obliga al lector de pantalla a oírlo dos veces.
@@ -752,6 +821,58 @@ Lo que **no** se atenúa es el texto: bajar su opacidad costaría el contraste d
 que explica por qué el panel está vacío. Y **«todo a cero» no es «sin datos»**: un panel
 con ceros medidos conserva su tarjeta normal y su gráfico, porque un cero medido es una
 respuesta. La distinción se deriva del dato (`derived.isEmpty`), nunca se declara.
+
+### Los tres niveles de vacío (fase B, 2026-08-24)
+
+«Vacío» no es un estado, son tres, y se distinguen por **quién puede arreglarlo**.
+
+| Nivel | Qué es | Cómo se ve | De dónde sale |
+|---|---|---|---|
+| **1 · estructural** | no puede tener datos con NINGÚN periodo | una línea plegada: título · frase | `spec.structurallyEmpty` |
+| **2 · por filtro** | no hay datos AQUÍ, y el aquí lo elegiste tú | tarjeta atenuada + la cifra de fuera + su salida | `spec.empty.elsewhere` |
+| **3 · degradado** | hay datos, pero pocos para esa forma | la cifra, con la frase de por qué | `derived.degradedFrom` |
+
+**El nivel 1 se cuenta, no se calla.** `collapsedPanelCount()` los suma y la página lo
+dice, igual que ya decía cuántos esconde el periodo: un muro que oculta en silencio miente
+sobre lo que existe. Hoy lo declaran los cinco paneles que solo existen para un tipo de
+obra (`libros-formato`, `peliculas-formato`, `autores`, `editoriales`, `directores`).
+
+**El criterio del nivel 1 es la trampa.** «No puede tener datos NUNCA» no se decide con
+una cifra que el selector de periodo acaba de recortar; se decide con `byYear`, que es la
+única señal del muro que ignora a la vez el periodo y el filtro de tipo. Y como `byYear`
+cuenta obras **terminadas**, solo vale para paneles que también midan lo terminado:
+**`series-formato` NO lo usa**, porque mide episodios vistos y quien lleva media temporada
+de tres series tiene datos y cero series terminadas. Plegarlo por ahí escondería un panel
+lleno.
+
+**El nivel 2 no ofrece salida si la salida no lleva a ningún dato.** `elsewhere` trae la
+cifra que sí existe fuera **y** el enlace, juntos y nunca por separado: un enlace a un
+sitio que puede estar igual de vacío es peor que no ofrecer ninguno. Por eso
+`wayOutToAllTime()` devuelve `undefined` con «Todo» puesto (no hay ningún fuera al que ir)
+y sin histórico (el destino está igual de vacío). La salida **conserva el filtro de tipo**:
+mandar a «todo» a quien acaba de elegir «libros» le deshace dos filtros cuando solo le
+sobraba uno.
+
+Y la cifra de fuera **no se inventa pidiendo otra consulta**: solo la declaran los paneles
+que ya la tienen a mano (`actividad-periodo` y `por-tipo`, vía `byYear`). Convertir el
+vacío en el caso más caro de la página es lo contrario de lo que busca este nivel.
+
+### Un panel puede ser demasiado privado para el perfil (fase C, 2026-08-24)
+
+**«Por qué abandonas» y «Dónde abandonas» solo pueden vivir en `/estadisticas`.** No es una
+decisión de producto, es del esquema: `passes.dropped_reason` es siempre privado con independencia
+de `is_public`, porque la tabla **no concede `SELECT`** sobre esa columna a nadie —su RLS de SELECT
+es de visibilidad de PERFIL (`can_view_profile`), no de dueño, así que un grant ahí filtraría el
+motivo a cualquiera que pueda ver el perfil—. La única vía de lectura es la vista `pass_reviews`,
+`SECURITY DEFINER` y enmascarada por `d.user_id = auth.uid()`.
+
+Consecuencia para quien añada consumidores: **el getter lee de `pass_reviews`, nunca de `passes`**
+(un `select("dropped_reason")` sobre la tabla falla con «permission denied», y es correcto que
+falle), y el panel **no** puede aparecer en `src/app/u/[username]/_tabs/stats-tab.tsx`. Lo afirma un
+test que lee ese fichero, porque no lo caza ningún tipo.
+
+Es el primer caso del sistema en el que el sitio donde puede pintarse un panel lo decide un grant
+de columna. Si aparece un segundo, va aquí.
 
 ### Lo que queda fuera, y por qué
 

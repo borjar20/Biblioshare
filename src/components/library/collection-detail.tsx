@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import type { CollectionDetail as CollectionDetailData } from "@/lib/library/collections";
 import { CollectionItems } from "@/components/library/collection-items";
+import { HiddenDroppedNote } from "@/components/library/hidden-dropped-note";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InboxIcon } from "@/components/ui/icons";
 import { formatDots } from "@/lib/rating/dots";
@@ -24,8 +25,10 @@ const FAN_Z = ["z-30", "z-10", "z-20"];
 
 export async function CollectionDetail({
   detail,
+  showDroppedHref,
 }: {
   detail: CollectionDetailData;
+  showDroppedHref: string;
 }) {
   const t = await getTranslations("collection");
   const covers = detail.items.slice(0, 3).map((item) => item.coverUrl);
@@ -92,12 +95,24 @@ export async function CollectionDetail({
       {/* Con ítems: rejilla + desplegable de filtros (tipo/estado/orden) en
           cliente (CollectionItems). Sin ítems: estado vacío. */}
       {detail.items.length === 0 ? (
-        <EmptyState
-          glyph={<InboxIcon className="h-7 w-7" />}
-          title={t("emptyDetail")}
-        />
+        <div className="flex flex-col gap-3">
+          <EmptyState
+            glyph={<InboxIcon className="h-7 w-7" />}
+            title={t("emptyDetail")}
+          />
+          {/* Una colección entera de abandonados no puede parecer una colección
+              vacía: sin esto no habría forma de saber que hay algo detrás. */}
+          <HiddenDroppedNote
+            count={detail.hiddenDropped}
+            href={showDroppedHref}
+          />
+        </div>
       ) : (
-        <CollectionItems items={detail.items} />
+        <CollectionItems
+          items={detail.items}
+          hiddenDropped={detail.hiddenDropped}
+          showDroppedHref={showDroppedHref}
+        />
       )}
     </div>
   );

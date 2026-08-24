@@ -342,6 +342,9 @@
     "changePassword": "Cambiar contraseña",
     "dataSection": "Tus datos",
     "dataDescription": "Tu biblioteca es tuya: puedes traerla de otro sitio y llevártela cuando quieras.",
+    "librarySection": "Biblioteca",
+    "hideDroppedLabel": "Ocultar obras abandonadas",
+    "hideDroppedHint": "Seguirán en tu biblioteca y en tus estadísticas; solo dejan de aparecer en las rejillas.",
     "pendingLink": "{count, plural, one {Tienes 1 título pendiente de revisar} other {Tienes # títulos pendientes de revisar}}",
     "noticesSection": "Avisos",
     "adminSection": "Administración"
@@ -2122,7 +2125,8 @@
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados",
-      "allGenres": "Todos los géneros"
+      "allGenres": "Todos los géneros",
+      "showDropped": "Mostrar abandonados"
     },
     "search": {
       "placeholder": "Buscar en tu biblioteca...",
@@ -2150,7 +2154,9 @@
     "addToCollection": "Añadir a colección",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
     "emptyTitle": "Tu biblioteca está vacía",
-    "titlesCount": "{count, plural, one {# título} other {# títulos}}"
+    "titlesCount": "{count, plural, one {# título} other {# títulos}}",
+    "hiddenDropped": "{count, plural, one {# abandonado oculto} other {# abandonados ocultos}}",
+    "hiddenDroppedAction": "Mostrar"
   },
   "import": {
     "title": "Importar biblioteca",
