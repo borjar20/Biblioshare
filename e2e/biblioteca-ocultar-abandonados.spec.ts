@@ -156,8 +156,12 @@ test("el interruptor de Ajustes esconde la obra abandonada y deja salida", async
   const nota = page.getByText(/abandonad[oa]s? ocultos?/);
   await expect(nota).toBeVisible();
 
-  // «Mostrar» la devuelve SIN apagar la preferencia.
-  await page.getByRole("link", { name: "Mostrar" }).click();
+  // «Mostrar» la devuelve SIN apagar la preferencia. `exact: true` porque
+  // "Mostrar" (sin exact) también casaría por subcadena con el chip "Mostrar
+  // abandonados" de LibraryFilters — hoy no falla solo porque FiltersDropdown
+  // desmonta su panel cuando está cerrado, pero eso es un detalle de
+  // implementación de OTRO componente del que este test no debería depender.
+  await page.getByRole("link", { name: "Mostrar", exact: true }).click();
   await expect(page).toHaveURL(/abandonados=1/);
   await expect(page.getByText(obraTitulo).first()).toBeVisible();
 
@@ -229,7 +233,7 @@ test("en el detalle de colección, «N títulos» cuenta lo visible y hay salida
     await expect(page.getByText(obraTitulo)).toHaveCount(0);
     await expect(page.getByText(/abandonad[oa]s? ocultos?/)).toBeVisible();
 
-    await page.getByRole("link", { name: "Mostrar" }).click();
+    await page.getByRole("link", { name: "Mostrar", exact: true }).click();
     await expect(page).toHaveURL(/abandonados=1/);
     await expect(page.getByText(obraTitulo).first()).toBeVisible();
   } finally {
