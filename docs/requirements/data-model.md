@@ -15,10 +15,25 @@ de la doc vieja aún la presenta así. Ya no lo es: **el estado vivo del usuario
 `passes`**. `library_entries` sigue existiendo porque conserva `pinned_order`
 (sus columnas de cola se borraron con la retirada de colas, ver más abajo), pero **su
 `status` y su `position` no se actualizan** — leerlos
-da datos de hace meses. Esto ya ha causado tres bugs reales en producción (avance de sagas
-al 0%, PR #96; confirmación de hitos de lectura conjunta rechazada, issue #470). Regla:
-**cualquier feature que necesite el estado del usuario lo deriva de `passes`, nunca de
+da datos de hace meses. Esto ya ha causado **cuatro** bugs reales en producción (avance de
+sagas al 0%, PR #96; confirmación de hitos de lectura conjunta rechazada, issue #470;
+hidratación bloqueada, #674; y el auto-añadir de clubes que no añadía nada, issue #782).
+Regla: **cualquier feature que necesite el estado del usuario lo deriva de `passes`, nunca de
 `library_entries`.**
+
+**Desde la migración `20260876` no queda NINGÚN escritor de la tabla** (verificado contra
+`pg_proc` en dev y prod el 2026-08-24: cero funciones con `insert/update/delete` sobre ella).
+Se fueron ahí los dos triggers `autoadd_library_on_activity_*`, que eran el cuarto episodio —
+ver el acta en `decisiones.md` (2026-08-24). En la misma migración se revocaron a `anon` los
+grants de `INSERT/UPDATE/DELETE` que arrastraba sobre esta tabla: no eran una fuga (la RLS
+está activa y no hay policy de escritura para `anon`), pero un grant sin policy es una mina
+para el día que alguien añada una permisiva. `anon` conserva `SELECT`, que sí tiene policy
+(`library entries select visible`). Las filas que quedan (**153 en prod, de 3 usuarios,
+última escritura 2026-08-18**) son historia, no estado: no se migran a `passes`.
+
+**`validate_club_post_ref` sigue mencionando `'library_entries'`** como `sourceTable`
+aceptada. NO escribe en la tabla y no es parte de lo anterior — no lo confundas con un
+escritor vivo.
 
 ## 1. La forma general
 

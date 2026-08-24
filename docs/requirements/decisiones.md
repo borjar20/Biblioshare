@@ -1326,3 +1326,54 @@ Corolario que conviene no deshacer en un refactor: **el Resumen de la biblioteca
 ve que existen obras abandonadas; ocultar ahí dejaría al usuario sin saber que las tiene.
 
 Spec: `docs/superpowers/specs/2026-08-24-ocultar-abandonados-biblioteca-design.md`.
+
+## 2026-08-24 — Acta: el auto-añadir a la biblioteca al unirse a una actividad de club se ELIMINA (#782, F1-003)
+
+**Decisión: se borran los dos triggers y no se reimplementa.** No es «arreglarlo más tarde»: es que
+la feature no se quiere. Si alguien lee un mockup viejo de EPIC-05 y ve prometido «al unirte a una
+actividad, sus obras aparecen en tu biblioteca», que sepa que se decidió a propósito que no.
+
+Lo que había: `autoadd_library_on_activity_join` (AFTER INSERT en `club_activity_participants`) y
+`autoadd_library_on_activity_item` (AFTER INSERT en `club_activity_items`), ambos de
+`20260713_list_challenge.sql`, insertando filas `planned` en `library_entries`.
+
+**Llevaban desde el hub de pases sin hacer nada visible.** `library_entries` está congelada y la app
+no la lee en ningún sitio — las 31 menciones que quedan en `src/` son comentarios explicando
+justamente eso. Así que el único efecto real era acumular filas huérfanas: 153 en producción, de 3
+usuarios, con la última escritura el 2026-08-18.
+
+**Por qué eliminar y no reimplementar contra `passes`.** La alternativa era que el trigger creara un
+pase `planned` por la vía canónica. Suena a una línea y no lo es: `passes` tiene máquina de estados
+e invariantes propias (estado ⟺ fechas, un solo pase abierto por obra), así que hay que decidir qué
+pasa cuando el usuario ya tiene un pase de esa obra, abierto o cerrado — y decidirlo para un trigger
+cross-user que se dispara sin que el dueño del pase esté mirando. Ese diseño cuesta más que lo que
+vale una feature que nadie ha echado de menos en 153 filas. Si algún día se quiere, se construye de
+cero desde la acción de unirse, no desde un trigger.
+
+**Y hay una razón que pesa más que el coste: el escritor vivo era el cebo.** Van cuatro episodios
+del mismo bug —PR #96, #470, #674 y este— y en todos algo seguía apuntando a la tabla muerta.
+Mientras exista un `insert into library_entries` en la base, el quinto episodio es cuestión de
+tiempo. Verificado tras la migración `20260876`: **cero funciones escriben en la tabla**, en dev y
+en prod, comprobado contra `pg_proc` y no contra el ledger de migraciones.
+
+**Las 153 filas de prod se dan por perdidas.** No se migran a `passes`. Son estados `planned` que
+ningún usuario llegó a ver nunca, así que «recuperarlas» no sería restaurar nada: sería inventarle a
+tres personas una biblioteca que no eligieron. Se quedan donde están como registro histórico.
+
+**Extra que salió al verificar: `anon` tenía `INSERT/UPDATE/DELETE` sobre la tabla congelada** y
+`authenticated` solo `SELECT` — al revés de lo que uno esperaría. **No era una fuga**: la RLS está
+activa y no existe ni una policy de escritura para `anon`, así que el grant no llegaba a nada. Pero
+un grant sin policy es una mina cargada: basta que alguien añada una permisiva algún día para
+convertirlo en escritura anónima. Se revoca en la misma migración, ahora que quitar el último
+escritor lo deja obviamente inútil. `SELECT` se queda, que ese sí tiene policy
+(`library entries select visible`).
+
+**Lo que NO se toca: `validate_club_post_ref`.** Acepta `'library_entries'` como `sourceTable`, pero
+no escribe. Es otro diagnóstico y meterlo aquí habría mezclado dos.
+
+**Dónde vive la guarda.** En `e2e/club-actividad-pc.spec.ts`, que ya sembraba un participante y un
+ítem con rol admin —o sea, los dos caminos exactos que disparaban los triggers—. Antes tenía una
+limpieza en el `finally` para borrar la fila que el trigger le metía a la cuenta compartida
+`devtest`; esa limpieza se convierte en su contraria: se cuenta antes y se afirma que el número no
+cambia. Se compara el **delta** y no el valor absoluto porque `devtest` es compartida y puede
+arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas por unirse.

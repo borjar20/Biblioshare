@@ -1,11 +1,12 @@
 # Backlog — trabajo pendiente
 
-> **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P1
-> reverificada contra issues y BD el 2026-08-24]**
+> **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
+> reverificadas contra issues y BD el 2026-08-24]**
 >
-> **Las issues SON el backlog operativo** (regla de AGENTS.md): **263 abiertas a
-> 2026-08-24** —0 P0, 1 P1 (#782), 178 P2, 84 P3—, todas con área/tipo/prioridad;
-> la suma cuadra con el total, así que no hay ninguna sin etiquetar. Este doc es
+> **Las issues SON el backlog operativo** (regla de AGENTS.md): **264 abiertas a
+> 2026-08-24** —**0 P0, 0 P1**, 179 P2, 85 P3—, todas con área/tipo/prioridad;
+> la suma cuadra con el total, así que no hay ninguna sin etiquetar. Es la
+> primera vez que el repo se queda sin ningún P1 abierto. Este doc es
 > el mapa de medio plazo: qué features NO existen aún y por dónde empezar. **Lo hecho ya no vive aquí**: el mapa de lo que existe es
 > `docs/PROYECTO.md`. La narrativa de cómo se hizo cada cosa, en
 > `docs/superpowers/specs/`.
@@ -66,12 +67,17 @@ habían cerrado. Estado real:
   F4-011 → #722 (controles del mapa) y F4-018 → #724 (auto-zoom iOS).
 - **Cerrados en las acciones 6-8** (2026-08-20/21): F4-010/013/015,
   F3-006/011/012/014/015 y F3-010/F4-007/F1-025. Detalle en el bloque P2.
-- **F1-003 sigue vivo, y ahora tiene issue: #782.** Los dos triggers
-  (`autoadd_library_on_activity_join/item`) siguen activos **en dev y en prod**
-  escribiendo en `library_entries`, la tabla congelada, en vez de crear un pase.
-  Comprobado contra `pg_trigger`/`pg_proc` el 2026-08-24: prod lleva 153 filas,
-  la última del 2026-08-18 — es un escritor VIVO, no un fósil. El
-  «auto-añadir a biblioteca» de las actividades de club no hace nada visible.
+- **F1-003 → #782, CERRADO el 2026-08-24 eliminando la feature.** Los dos
+  triggers (`autoadd_library_on_activity_join/item`) escribían en
+  `library_entries` —congelada, y que la app no lee— en vez de crear un pase, así
+  que el «auto-añadir a biblioteca» de las actividades de club no hacía nada
+  visible. Se eligió **borrarlos y levantar acta** en vez de reimplementarlos
+  contra `passes`: esa tabla tiene máquina de estados propia y obligaba a
+  resolver el choque con un pase preexistente desde un trigger *cross-user*.
+  Migración `20260876`, aplicada a dev y prod; verificado contra `pg_proc` que ya
+  **no queda ningún escritor** de la tabla. Las 153 filas de prod se dan por
+  perdidas. Acta permanente en **#784** (`tipo:acta`) y razonamiento en
+  `decisiones.md` (2026-08-24).
 
 **#751 cerrado el 2026-08-24** (la hidratación perezosa de las fichas no corría
 en producción: el cliente de la petición acababa dentro de `after()`). Mergeado
@@ -83,8 +89,15 @@ que ve ese fallo—, con `busqueda-hidratacion` comprobando la columna
 que recorre los Server Components y falla si un callback de `after()` vuelve a
 tocar el cliente de la petición.
 
-**Así que el único P1 abierto es #782** (F1-003, arriba), y no tiene arreglo
-todavía: hay que elegir primero entre sus dos salidas.
+**Con #782 cerrado no queda ningún P1 abierto en el repo** (0 de 264, comprobado
+por etiqueta el 2026-08-24 — no con `gh issue list`, que trunca en silencio a
+partir del `--limit`). El siguiente trabajo sale del bloque P2 de abajo.
+
+Salió una issue nueva al verificar: **#785** (`tipo:sospecha`) —
+`e2e/pase-hub.spec.ts` sale rojo cuando corre junto a otros specs y verde en
+solitario, contra build de producción. No es una regresión de este cambio (la
+rama es byte-idéntica a `main` en `src/`); se sospecha contención sobre la cuenta
+compartida `devtest`, la misma familia que #750. Sin confirmar.
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 

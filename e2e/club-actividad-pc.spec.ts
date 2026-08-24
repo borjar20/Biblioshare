@@ -34,12 +34,31 @@ async function devtestId(): Promise<string> {
   return rows[0].user_id;
 }
 
-async function anyBook(): Promise<string> {
-  const rows = (await (
-    await fetch(`${SUPABASE_URL}/rest/v1/books?select=id&limit=1`, { headers: adminHeaders() })
+// Un libro que el usuario NO tenga ya en `library_entries`. Coger "el primero del
+// catálogo" valdría para lo que este test mira (que la actividad no duplique
+// controles), pero rompería la guarda del acta de #782 que hay más abajo: los
+// triggers eliminados usaban `on conflict (user_id, item_type, item_id) do
+// nothing`, así que sobre un libro que devtest YA tuviera no habrían insertado
+// nada ni estando vivos — y la guarda pasaría en verde con el bug presente.
+// Comprobado: con el trigger restaurado a mano y `limit=1`, el test pasaba.
+async function bookFueraDeLaBiblioteca(userId: string): Promise<string> {
+  const yaTiene = new Set(
+    (
+      (await (
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/library_entries?user_id=eq.${userId}&item_type=eq.book&select=item_id`,
+          { headers: adminHeaders() },
+        )
+      ).json()) as { item_id: string }[]
+    ).map((r) => r.item_id),
+  );
+  const libros = (await (
+    await fetch(`${SUPABASE_URL}/rest/v1/books?select=id&limit=200`, { headers: adminHeaders() })
   ).json()) as { id: string }[];
-  if (!rows[0]) throw new Error("no hay libros en catálogo para el e2e");
-  return rows[0].id;
+  if (libros.length === 0) throw new Error("no hay libros en catálogo para el e2e");
+  const libre = libros.find((b) => !yaTiene.has(b.id));
+  if (!libre) throw new Error("todos los libros del catálogo están ya en library_entries de devtest");
+  return libre.id;
 }
 
 test("la actividad vive en el shell del club y no duplica controles", async ({ page }) => {
@@ -48,29 +67,31 @@ test("la actividad vive en el shell del club y no duplica controles", async ({ p
   const ts = Date.now();
   const slug = `e2e-pc-${ts}`;
   const owner = await devtestId();
-  const bookId = await anyBook();
+  const bookId = await bookFueraDeLaBiblioteca(owner);
 
   let clubId: string | null = null;
   let activityId: string | null = null;
 
-  // El trigger de prod `autoadd_library_on_activity_join` (20260713_list_challenge.sql)
-  // se dispara al insertar en club_activity_participants: crea una fila en
-  // library_entries (status 'planned') por cada ítem del pool, para el usuario que
-  // se une. Aquí el participante sembrado es devtest, una cuenta COMPARTIDA -- si no
-  // limpiamos esa fila, se queda para siempre.
+  // Guarda del acta de #782 (migración 20260876): unirse a una actividad ya NO
+  // escribe en `library_entries`. Hubo dos triggers (`autoadd_library_on_activity_join`
+  // y `..._item`, de 20260713_list_challenge.sql) que insertaban ahí una fila
+  // 'planned' por cada ítem del pool; se eliminaron porque `library_entries` está
+  // congelada y la app no la lee, así que la feature no hacía nada visible.
   //
-  // Pero el trigger usa `on conflict (user_id, item_type, item_id) do nothing`: si
-  // devtest YA tenía este libro en su biblioteca antes del test, el trigger no crea
-  // nada nuevo (la fila preexistente no se toca). Si borrásemos la fila a ciegas en
-  // el finally, nos cargaríamos una entrada legítima que no sembramos nosotros. Por
-  // eso comprobamos ANTES de sembrar si la fila ya existía, y en el finally solo la
-  // borramos si no existía -- es decir, solo si fue el trigger quien la creó.
+  // Este test siembra un participante y un ítem con el rol admin, o sea que ejercita
+  // exactamente los dos caminos que disparaban los triggers. Por eso es el sitio
+  // natural para dejar la guarda: si alguien resucita el auto-añadir (o escribe uno
+  // nuevo contra la tabla congelada), esta cuenta deja de ser 0 y el test lo caza.
+  //
+  // `bookFueraDeLaBiblioteca` garantiza que la cuenta parte de CERO para esta obra
+  // (ver el porqué allí), así que aquí basta con exigir que siga en cero: si el
+  // auto-añadir resucita, la fila aparece y esto se pone rojo.
   const libraryEntryUrl =
     `${SUPABASE_URL}/rest/v1/library_entries?user_id=eq.${owner}` +
     `&item_type=eq.book&item_id=eq.${bookId}`;
-  const libraryEntryPreexisted =
+  const countLibraryEntries = async () =>
     ((await (await fetch(libraryEntryUrl, { headers: adminHeaders() })).json()) as unknown[])
-      .length > 0;
+      .length;
 
   try {
     const [club] = (await (
@@ -120,6 +141,10 @@ test("la actividad vive en el shell del club y no duplica controles", async ({ p
       headers: adminJson(),
       body: JSON.stringify({ activity_id: activityId, user_id: owner }),
     });
+
+    // Guarda del acta de #782: ni el alta del ítem ni la del participante han
+    // podido crear nada en la tabla congelada. Ver el comentario de arriba.
+    expect(await countLibraryEntries()).toBe(0);
 
     await page.context().clearCookies();
     await page.goto("/login");
@@ -197,14 +222,10 @@ test("la actividad vive en el shell del club y no duplica controles", async ({ p
         headers: adminHeaders(),
       });
     }
-    // Ver comentario junto a `libraryEntryPreexisted` más arriba: solo borramos si la
-    // fila la creó el trigger durante este test (no existía antes de sembrar). Si ya
-    // existía, la dejamos intacta -- no es basura nuestra.
-    if (!libraryEntryPreexisted) {
-      await fetch(libraryEntryUrl, {
-        method: "DELETE",
-        headers: adminHeaders(),
-      });
-    }
+    // Ya no hay nada que limpiar en `library_entries`: los triggers que sembraban
+    // filas ahí murieron con la migración 20260876 (acta de #782). La aserción de
+    // arriba es justamente lo que garantiza que este `finally` no vuelve a hacer
+    // falta -- si algún día vuelve a sobrar basura aquí, el test habrá fallado
+    // antes de llegar.
   }
 });
