@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
 
@@ -65,6 +66,50 @@ export function createPublicClient() {
     }
   );
 }
+
+// Cliente CON la identidad del usuario y SIN cookies: el token viaja como
+// valor, no como lector diferido.
+//
+// Existe por `after()` (#751). El cliente de `createClient()` resuelve
+// `await cookies()` al construirse, pero le pasa al cliente un adaptador que
+// llama a `cookieStore.getAll()` en CADA consulta: pasarlo por closure a un
+// callback de `after()` equivale a llamar a `cookies()` dentro del callback, y
+// Next 16 lo prohíbe en Server Components. Este cliente lee el token UNA vez,
+// durante el render (`getAccessToken`), y a partir de ahí no toca la petición
+// para nada — que es literalmente lo que manda la doc de `after`: «read request
+// data before `after` […] and pass the values in».
+//
+// No confundir con `createServiceRoleClient()`: aquí RLS sigue aplicando con la
+// identidad del usuario y `auth.uid()` devuelve su id, así que las RPC con
+// guard de sesión (`hydrate_book` y hermanas: `raise 'authentication required'`
+// si no hay uid) siguen funcionando igual que desde una server action. Ese es
+// el punto — el arreglo no debía relajar ni un grant.
+export function createTokenClient(accessToken: string) {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    }
+  );
+}
+
+// El token de acceso de la sesión, leído de las cookies DURANTE el render.
+//
+// `getSession()` NO hace red (decodifica la cookie), a diferencia de
+// `getUser()`; aun así se memoiza por petición por el mismo motivo que
+// `getCurrentUser`: la ficha lo pide junto a la sesión y no tiene sentido
+// construir dos clientes para lo mismo. Devuelve solo el token, nunca el
+// `user` de la sesión — ese no está verificado por el servidor de auth y para
+// eso está `getCurrentUser()`.
+export const getAccessToken = cache(async (): Promise<string | null> => {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+});
 
 // La sesión del usuario, UNA vez por petición.
 //

@@ -8,7 +8,12 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
-import { createClient, getCurrentUser } from "@/lib/supabase/server";
+import {
+  createClient,
+  createTokenClient,
+  getAccessToken,
+  getCurrentUser,
+} from "@/lib/supabase/server";
 import { ItemTabsSkeleton } from "@/components/detail/item-tabs-skeleton";
 import { ItemShellSkeleton } from "@/components/detail/item-shell-skeleton";
 import { RouteMessages } from "@/components/route-messages";
@@ -125,9 +130,11 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
-  const [{ data: series }, user] = await Promise.all([
+  const [{ data: series }, user, accessToken] = await Promise.all([
     fetchSeries(supabase, id),
     getCurrentUser(),
+    // Para el `after()` de hidratación: hay que leerlo AQUÍ, durante el render.
+    getAccessToken(),
   ]);
 
   if (!series) notFound();
@@ -138,11 +145,17 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   // todo curador de filas viejas (`hydrated_at` null). Mismo criterio que
   // ensureBookHydrated en libro/[id]/page.tsx — ver el comentario ahí.
   //
-  // Solo con sesión: un visitante anónimo no puede escribir (grant de
-  // `authenticated`).
-  if (user) {
+  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión): un
+  // visitante anónimo no puede escribir (grant de `authenticated`, y la RPC
+  // exige además `auth.uid()`).
+  //
+  // El token se lee DURANTE el render y se le pasa al callback como valor; el
+  // cliente de la petición NO puede cruzar a un `after()` porque lee cookies en
+  // cada consulta y eso, en un Server Component, lanza (#751). El porqué
+  // completo está en libro/[id]/page.tsx.
+  if (accessToken) {
     after(() =>
-      ensureSeriesHydrated(supabase, {
+      ensureSeriesHydrated(createTokenClient(accessToken), {
         id: series.id,
         tmdb_id: series.tmdb_id,
         hydrated_at: series.hydrated_at,

@@ -9,6 +9,27 @@ function adminHeaders() {
   return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
 }
 
+// `hydrated_at` de una fila del catálogo, leído por REST con service_role: es
+// el único sitio donde se ve si la hidratación perezosa corrió de verdad. La
+// ficha no sirve de testigo — una obra sin sinopsis en OpenLibrary se pinta
+// igual que una que nunca se hidrató (#751).
+async function hydratedAt(tabla: string, id: string): Promise<string | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${id}&select=hydrated_at`,
+    { headers: adminHeaders() },
+  );
+  const filas = (await res.json()) as { hydrated_at: string | null }[];
+  return filas[0]?.hydrated_at ?? null;
+}
+
+async function marcarSinHidratar(id: string): Promise<void> {
+  await fetch(`${SUPABASE_URL}/rest/v1/books?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { ...adminHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ hydrated_at: null }),
+  });
+}
+
 // Verificación de la escalera de hidratación (§7.39): la búsqueda devuelve
 // OBRAS y no escribe en la base de datos; la obra nace y se hidrata al abrir su
 // ficha; y el ISBN sigue siendo un lookup. Contra OpenLibrary real
@@ -177,6 +198,9 @@ test.describe("búsqueda e hidratación de libros", () => {
   test("un libro viejo sin hidratar se cura al abrirlo con sesión", async ({
     page,
   }) => {
+    // Más margen que el resto del fichero: este test espera a que OpenLibrary
+    // conteste de verdad, reintentando con recargas.
+    test.setTimeout(180_000);
     await login(page);
 
     // "La casa de los espíritus" tiene varias filas antiguas en dev, cacheadas
@@ -187,18 +211,52 @@ test.describe("búsqueda e hidratación de libros", () => {
     await expect(cached).toBeVisible({ timeout: 20_000 });
     await cached.click();
     await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
+    const bookId = page.url().match(/\/libro\/([0-9a-f-]{36})/)![1];
 
-    // La hidratación va en after() (tras pintar): se recarga una vez para verla
-    // ya aplicada. La ficha no debe decir "sin sinopsis" si OpenLibrary tenía
-    // datos para su work key.
-    await page.waitForTimeout(4000);
-    await page.reload();
-    // No verificamos un texto concreto (depende de qué fila salga primera y de
-    // si su work key resuelve), sino que la ficha sigue viva y no reventó por la
-    // hidratación — que es la garantía de "nunca bloquea el render".
+    // La fila se DEVUELVE a sin hidratar y se reabre la ficha. Sin esto el test
+    // dependería de qué fila saliera primera en la búsqueda: si ya venía
+    // hidratada, el guard `if (book.hydrated_at !== null) return` corta y no se
+    // estaría probando nada.
+    await marcarSinHidratar(bookId);
+    await page.goto(`/libro/${bookId}`);
     await expect(
       page.getByRole("heading", { name: /casa de los esp/i }).first(),
     ).toBeVisible({ timeout: 15_000 });
+
+    // EL ASERTO: `hydrated_at` deja de ser null.
+    //
+    // Antes esto solo comprobaba que la ficha «seguía viva», y por eso pasó en
+    // verde durante semanas mientras la hidratación NO CORRÍA (#751): el
+    // callback recibía el cliente de la petición, que lee cookies en cada
+    // consulta, Next lo rechazaba dentro de `after()` y el `try/catch` de
+    // `ensureBookHydrated` se comía la excepción. Un test que solo mira que la
+    // página no reviente no distingue «se hidrató» de «se tragó el error».
+    //
+    // Se comprueba la COLUMNA y no la sinopsis a propósito: si la work key no
+    // resuelve, `markHydrated` marca igual la fila (para no reintentar en cada
+    // visita) y no habría sinopsis que ver — pero la hidratación sí corrió.
+    //
+    // Se reintenta RECARGANDO, no solo esperando más: si OpenLibrary falla o
+    // tarda, `ensureBookHydrated` NO marca la fila a propósito («la API falló:
+    // no marcar, reintentar en la siguiente visita»), así que esperar sentado
+    // no cambia nada y lo que el producto hace es curarla en la visita
+    // siguiente. Esperar sin recargar convertía este aserto en un dado cargado
+    // contra la latencia de una API de terceros.
+    await expect
+      .poll(
+        async () => {
+          const marca = await hydratedAt("books", bookId);
+          if (marca) return marca;
+          await page.reload();
+          return null;
+        },
+        {
+          timeout: 60_000,
+          intervals: [4000],
+          message: "la hidratación en after() no llegó a escribir hydrated_at",
+        },
+      )
+      .not.toBeNull();
   });
 
   test("el ISBN es un lookup y cae en la obra correcta", async ({ page }) => {

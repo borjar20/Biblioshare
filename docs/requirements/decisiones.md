@@ -985,6 +985,106 @@ server actions: ahí es un viaje por mutación y no por render, que es otro cost
 
 ---
 
+## 2026-08-21 (noche) — #751: la hidratación perezosa de las fichas vuelve a correr
+
+Las tres fichas (`/libro`, `/pelicula`, `/serie`) curan la fila del catálogo en `after()` cuando
+llega sin hidratar. **Llevaban semanas sin curar ni una sola fila en producción.** Escala del
+problema medida antes de tocar nada:
+
+| | dev | prod |
+|---|---|---|
+| `books` sin `hydrated_at` | 380 / 423 | 10 / 193 |
+| `movies` | 568 / 571 | **862 / 1086** |
+| `series` | 75 / 82 | 105 / 170 |
+
+1. **El cliente de la petición no cruza a un `after()`, y eso no es evidente leyendo el código.**
+   `createClient()` resuelve `await cookies()` al construirse, pero le pasa al cliente un adaptador
+   cuyo `getAll()` corre en CADA consulta. Pasarlo por closure a un callback de `after()` es, en
+   diferido, llamar a `cookies()` dentro del callback — prohibido en Server Components. Nadie
+   escribió `cookies()` ahí: se coló dentro de una variable.
+
+2. **`createServiceRoleClient()` era la salida obvia y NO vale.** Se probó primero y se descartó
+   con evidencia, no por criterio: la RPC contesta `P0001 authentication required`. `hydrate_book`,
+   `hydrate_movie` y `hydrate_series` empiezan con `if auth.uid() is null then raise`, que es parte
+   del blindaje del catálogo (#674). `service_role` tiene los grants —EXECUTE en las tres y UPDATE
+   en `books`, verificado contra `pg_proc`/`pg_class`— pero no tiene `auth.uid()`. **Pasa el guard
+   de permisos y choca con el de sesión**, que es peor que fallar antes: parece que funciona.
+
+3. **La vía es `createTokenClient(token)`, con el token leído durante el render.** Es literalmente
+   lo que manda la doc de `after` («read request data before `after` […] and pass the values in»).
+   RLS sigue aplicando con la identidad del usuario y `auth.uid()` devuelve su id: **el arreglo no
+   cuesta ni un grant, ni relaja ni un guard.** Ese era el requisito, no un detalle — un arreglo de
+   reactividad que abriera el catálogo a escritura sin sesión habría deshecho #674.
+
+4. **`getAccessToken()` se memoiza por petición, aunque no haga red.** `getSession()` decodifica la
+   cookie y no llama al servidor de auth (a diferencia de `getUser()`), así que no se memoiza por
+   coste de red sino para no construir un cliente extra: la ficha ya pide la sesión en el mismo
+   `Promise.all`. Devuelve SOLO el token, nunca el `user` de la sesión — ese no lo ha verificado el
+   servidor de auth, y para eso está `getCurrentUser()`.
+
+5. **El guard del `after()` se limita a Server Components a propósito.** La doc de Next prohíbe las
+   request APIs dentro de `after` en páginas, layouts y `generateMetadata`, y en Route Handlers
+   enseña el caso contrario como ejemplo VÁLIDO. De las Server Actions no dice nada. Un guard que
+   prohibiera ahí se estaría inventando una regla, así que `src/app/buscar/actions.ts` —que tiene
+   la misma forma, en una server action— queda fuera y se abre como sospecha (#753), no como bug.
+
+6. **El e2e deja de conformarse con «la ficha sigue viva».** Ese aserto es exactamente el motivo de
+   que el bug durase semanas: no distingue «se hidrató» de «se tragó el error». Ahora el test
+   devuelve la fila a `hydrated_at = null` por REST, reabre la ficha y comprueba **la columna**. Se
+   mira la columna y no la sinopsis porque si la work key no resuelve, `markHydrated` marca igual la
+   fila y no habría sinopsis que ver — pero la hidratación sí corrió.
+
+**Verificación:** contra `next start`, que es la única pasada que ve el fallo. Antes del arreglo el
+test nuevo falla («la hidratación en after() no llegó a escribir hydrated_at») y el log trae
+`hydrate_book rpc failed`; después, 7/7 en verde y **cero** fallos de RPC en el log.
+
+**Corrección al diagnóstico de #751:** la issue atribuía la línea `⨯ … used cookies() inside
+after()` del log a `ensureBookHydrated`. **No era suya** — los errores de esa función los captura su
+propio `try/catch` y salen como `ensureBookHydrated failed`. La traza apunta a `NotesSection`, que
+también llama a `createClient()`. La conclusión de fondo (la hidratación no corría) era correcta y
+está arreglada; el ⨯ residual persiste tras el arreglo y se rastrea aparte (#754).
+
+**Lo que NO entra:** el ⨯ de `NotesSection`, la sospecha de `buscar/actions.ts` y el desborde de 17px
+de la barra de filtros del cuaderno a 390 px, que también salió al verificar. Tres diagnósticos
+distintos, tres issues: #754, #753 y #755.
+
+---
+
+## 2026-08-21 (noche) — #750: los dos specs de club que llevaban un mes rojos
+
+`club-reactivity.spec.ts` y `social-optimista.spec.ts` fallaban por timeout en dev y en producción
+desde que la UI cambió debajo. Ninguno de los dos protegía ya nada: agotaban los 60 s buscando
+controles que dejaron de existir.
+
+1. **Los dos arreglos son de selector, y la propiedad que protegen sigue intacta.** El feed de club
+   resiembra su primera página desde las props del servidor, así que un post nuevo sale sin
+   `page.reload()`; ese aserto llegaba en verde y el timeout ocurría después. Lo que caducó fue
+   dónde se pulsa: «Borrar» se fue tras el «···» (F3-012, `3061b6f0`) y «Me gusta» se agrupó dentro
+   del desplegable de «Reaccionar» (`7f9c3f69`).
+
+2. **La limpieza pasa a ser por PREFIJO, no por el cuerpo exacto de la pasada.** Es lo que convirtió
+   dos tests rojos en basura acumulada: cada corrida borraba lo suyo, se caía antes de llegar, y el
+   post quedaba. Se encontraron doce posts huérfanos en el club de pruebas. Con `body=like.<prefijo>%`
+   una corrida se lleva también lo que dejaron las anteriores — mismo criterio que el `globalSetup`
+   de sagas, que reimpone la línea base en vez de fiarse de la pasada previa. Tras el arreglo, cero
+   huérfanos en dev.
+
+3. **El desplegable de reacciones se cierra pulsando su propia capa, no un punto al azar.** Mientras
+   está abierto hay un `<button aria-hidden>` a pantalla completa (así se cierra sin `useEffect`),
+   y **intercepta cualquier otro clic**: pulsar «Reaccionar» otra vez, o en una esquina, no cierra
+   nada y el siguiente paso se queda esperando. El helper `cerrarPicker()` pulsa esa capa y espera a
+   que el trigger vuelva a `aria-expanded="false"`.
+
+4. **La tarjeta se ancla por `div.shadow-card`, no por `div`.** El locator viejo filtraba `div` por
+   texto, lo que casa también con los contenedores del feed: resolvía a doce menús a la vez. Ver
+   `TRAMPAS.md` §25 — el patrón viejo solo funcionaba porque «Borrar» salía en una sola tarjeta.
+
+**Lo que NO entra:** el desborde de 17 px del cuaderno a 390 px (#755), que salió en la misma
+verificación pero es un fallo de la pantalla, no del test: ahí el aserto mide bien y lo que está mal
+es la UI.
+
+---
+
 ## 2026-08-21 · El muro de estadísticas deja de ser tipografía (fase A del rediseño gráfico)
 
 **El problema no era la variedad de gráficos: era que 18 de ~33 paneles no dibujaban nada.**
