@@ -1083,3 +1083,34 @@ escribiendo, porque cada búsqueda vuelve a medir. Queda en la issue #765.
 **Y esto no se cubre con un unitario:** lo que distingue «se ve» de «está pintada fuera» es la caja,
 y sin motor de layout no hay caja que medir. El test vive en
 `e2e/menciones-desplegable-movil.spec.ts`.
+
+## 2026-08-24 — El editor de un comentario ocupa su fila entera, y los botones bajan debajo
+
+**En `compact`, el campo va solo en su fila y "Cancelar"/"Guardar" en una fila propia debajo.**
+Antes los tres compartían una fila flex, que es el patrón razonable en escritorio y el que hunde el
+móvil: los botones y el contador tienen ancho fijo, así que se lo comen del campo, y lo que sobra
+depende de cuánto haya sangrado el hilo. Medido a 360x740 en `/post/[id]`, editando un comentario a
+profundidad 1: el campo salía a **152px contra los 262px del comentario que estaba editando** —el
+58%—, con **35px de alto**, una sola línea (`rows={1}`). Con el campo en su fila: 262px de ancho
+(el 100%) y 92px de alto.
+
+**El contador reserva alto, no ancho.** El `pr-12` que le dejaba sitio a `0/2000` costaba ~48px de
+línea de texto; ahora se le da `pb-5` y el texto usa el ancho entero. En el modo no-`compact` se
+queda el `pr-12`, porque ahí el composer ya es de ancho completo (`fixed inset-x-0 bottom-0` en
+móvil) y quitarlo no compraría nada.
+
+**El arreglo entra en `CommentComposer`, no en el hilo.** El síntoma se reportó editando en un
+hilo, pero `compact` lo comparten tres sitios —editar un comentario del hilo, responder inline y
+editar un mensaje del chat de club—, así que arreglarlo en `post-thread.tsx` habría dejado los
+otros dos rotos igual. En el chat de club se quitó además el `max-w-[85%]` de la burbuja **solo
+mientras se edita**: recortaba el campo por debajo del ancho del mensaje que estabas corrigiendo.
+
+**La aserción del e2e compara contra el propio comentario, no contra un número de píxeles.** El
+ancho útil depende de la profundidad del hilo, del avatar y del móvil de referencia; fijar «≥200px»
+habría envejecido mal y no diría gran cosa. La regla estable es que **el campo tiene que ser tan
+ancho como el texto que edita** (>0,9). Vive en `e2e/composer-compact-movil.spec.ts`, y se comprobó
+que falla contra el código anterior (0,58) antes de darlo por bueno.
+
+**Límite conocido:** el textarea sigue en `text-xs` (12px) y Safari iOS hace zoom al enfocar
+cualquier campo de menos de 16px. No se toca aquí porque cambiaría el tamaño de fuente de los
+campos de todo el proyecto; queda en la issue #768.
