@@ -449,7 +449,15 @@ Crea `supabase/migrations/20260876_reactions_emoji_libre.sql`:
 -- guardar el emoji literal. El único (interaction_target_id, user_id, kind) NO
 -- se toca: se sigue pudiendo poner varias reacciones distintas por persona.
 
--- 1) Dedup ANTES del update. Si alguien ya tiene 'fire' y '🔥' sobre el mismo
+-- 1) Tirar el CHECK viejo LO PRIMERO. `reactions_kind_valid` solo admite los
+--    cuatro slugs, así que si sigue vivo, el UPDATE del paso 3 se viola a sí
+--    mismo: `ERROR 23514: violates check constraint "reactions_kind_valid"`.
+--    El CHECK nuevo se añade DESPUÉS de convertir los datos, por lo mismo al
+--    revés: puesto antes, rechazaría las filas que aún son slugs.
+alter table public.reactions drop constraint if exists reactions_kind_valid;
+alter table public.reactions drop constraint if exists reactions_kind_like;
+
+-- 2) Dedup ANTES del update. Si alguien ya tiene 'fire' y '🔥' sobre el mismo
 --    target, el UPDATE reventaría el único. Gana la fila que ya es emoji.
 delete from public.reactions r
 using public.reactions keep
@@ -463,7 +471,7 @@ where r.kind in ('like', 'read', 'shock', 'fire')
     when 'fire' then '🔥'
   end;
 
--- 2) Slugs -> emoji.
+-- 3) Slugs -> emoji.
 update public.reactions
 set kind = case kind
   when 'like' then '❤️'
@@ -473,22 +481,21 @@ set kind = case kind
 end
 where kind in ('like', 'read', 'shock', 'fire');
 
--- 3) CHECK de FORMA, no lista blanca: la lista blanca real es el catálogo, en
---    la acción de servidor. Esto es la red de debajo.
+-- 4) CHECK de FORMA, no lista blanca: la lista blanca real es el catálogo, en
+--    la acción de servidor. Esto es la red de debajo. Va AQUÍ, con los datos ya
+--    convertidos: antes del UPDATE rechazaría las filas que aún son slugs.
 --
 --    Ojo con la formulación ingenua `kind !~ '[[:alnum:][:space:][:punct:]]'`:
 --    parece equivalente y tumba los keycap ('1️⃣' es el dígito ASCII 1 + VS16 +
 --    U+20E3), que son emojis legítimos. Por eso la condición es "contiene algo
 --    NO ASCII", no "no contiene nada alfanumérico".
-alter table public.reactions drop constraint if exists reactions_kind_valid;
-alter table public.reactions drop constraint if exists reactions_kind_like;
 alter table public.reactions add constraint reactions_kind_emoji check (
   char_length(kind) between 1 and 16   -- 👩‍❤️‍💋‍👨 y 🏴󠁧󠁢󠁥󠁮󠁧󠁿 gastan 7-8; 16 deja aire
   and kind ~ '[^[:ascii:]]'
   and kind !~ '[[:space:]]'
 );
 
--- 4) Tope de 6 emojis distintos por persona y target. Sin esto, emoji libre +
+-- 5) Tope de 6 emojis distintos por persona y target. Sin esto, emoji libre +
 --    varias reacciones por persona deja que una sola cuelgue 40 píldoras de un
 --    mensaje. La acción de servidor valida también, pero el trigger es el que
 --    no se puede saltar.

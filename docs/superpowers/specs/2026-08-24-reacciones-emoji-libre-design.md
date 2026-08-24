@@ -46,13 +46,16 @@ Las notificaciones **no** dependen del `kind`: el tipo sale de
 Migración `<timestamp>_reactions_emoji_libre.sql` (timestamp real al crearla), en este
 orden:
 
-1. **Dedup primero.** Si un mismo `(interaction_target_id, user_id)` ya tiene `fire` **y**
-   `🔥`, el UPDATE rompería el único. Se borran antes las filas con slug cuyo emoji destino
-   ya existe para ese par.
-2. `update public.reactions set kind = ...` con el mapa
+1. **`drop constraint reactions_kind_valid` lo primero.** El CHECK viejo solo admite los
+   cuatro slugs: si sigue vivo cuando corre el UPDATE, la migración **se viola a sí misma**
+   (`ERROR 23514`). Verificado contra dev al implementar: el orden del borrador estaba mal.
+2. **Dedup, aún antes del UPDATE.** Si un mismo `(interaction_target_id, user_id)` ya tiene
+   `fire` **y** `🔥`, el UPDATE rompería el único. Se borran antes las filas con slug cuyo
+   emoji destino ya existe para ese par.
+3. `update public.reactions set kind = ...` con el mapa
    `like→❤️`, `read→📖`, `shock→😱`, `fire→🔥`.
-3. `drop constraint reactions_kind_valid` y crear uno nuevo **de forma, no de lista
-   blanca**:
+4. Crear el CHECK nuevo, **de forma, no de lista blanca** — y **después** del UPDATE: puesto
+   antes, rechazaría las filas que todavía son slugs.
 
    ```sql
    check (
@@ -67,9 +70,9 @@ orden:
    equivalente y no lo es — tumba los *keycap* (`1️⃣` es el dígito ASCII `1` + VS16 +
    U+20E3), que sí son emojis legítimos del catálogo. Por eso la condición es «contiene
    algo no ASCII», no «no contiene nada alfanumérico».
-4. El único `(interaction_target_id, user_id, kind)` **no se toca**: sigue permitiendo
+5. El único `(interaction_target_id, user_id, kind)` **no se toca**: sigue permitiendo
    varias reacciones distintas por persona.
-5. **Tope de 6 emojis distintos por persona y target**, como trigger `before insert`. Sin
+6. **Tope de 6 emojis distintos por persona y target**, como trigger `before insert`. Sin
    él, emoji libre + varias por persona permite que una sola persona cuelgue 40 píldoras de
    un mensaje. La acción de servidor también lo valida, pero el trigger es el que no se
    puede saltar.
