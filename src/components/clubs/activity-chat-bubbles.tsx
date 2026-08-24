@@ -196,7 +196,10 @@ export function ActivityChatBubbles({
               )}
 
               {editingId === c.id ? (
-                <div className="w-full max-w-[85%]">
+                // Editando NO se aplica el 85% de la burbuja: en móvil ese
+                // recorte dejaba el campo aún más estrecho que el mensaje que
+                // estabas corrigiendo.
+                <div className="w-full">
                   <CommentComposer
                     value={editDraft}
                     onChange={setEditDraft}
