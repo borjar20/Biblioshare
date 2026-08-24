@@ -241,6 +241,31 @@ export function statsInput(over: Partial<StatsInput> = {}): StatsInput {
         unmeasurable: 2,
       },
     },
+    annotations: {
+      works: [
+        {
+          type: "book",
+          itemId: "n1",
+          title: "Las ciudades invisibles",
+          count: 11,
+          quotes: 9,
+          totalPages: 170,
+          per100: 6.5,
+        },
+        {
+          type: "book",
+          itemId: "n2",
+          title: "Kafka en la orilla",
+          count: 8,
+          quotes: 3,
+          totalPages: 620,
+          per100: 1.3,
+        },
+      ],
+      quotes: 12,
+      notes: 7,
+      unmeasurable: 4,
+    },
     ...over,
   };
 }

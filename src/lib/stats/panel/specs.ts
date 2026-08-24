@@ -28,6 +28,7 @@ import type { ActivityBucket, PeriodActivity } from "@/lib/stats/get-period-acti
 import type { RatedFacets, RatedGroup } from "@/lib/stats/get-rated-facets";
 import type { RatingDistribution } from "@/lib/stats/get-rating-distribution";
 import type { DropReason, DropStats } from "@/lib/stats/get-drop-reasons";
+import type { NotesPerWork } from "@/lib/stats/get-notes-per-work";
 import type { Records } from "@/lib/stats/get-records";
 import type { Rereads } from "@/lib/stats/get-rereads";
 import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
@@ -48,7 +49,7 @@ import {
   previousLabel,
 } from "@/lib/stats/period";
 import { starLabel } from "@/lib/stats/rating";
-import { UNITS, type PanelKpi, type PanelSpec } from "./types";
+import { UNITS, type PanelKpi, type PanelSpec, type Unit } from "./types";
 
 export { periodLabel };
 
@@ -161,6 +162,7 @@ export type StatsInput = {
   pagesPerDay: number | null;
   rereads: Rereads;
   drops: DropStats;
+  annotations: NotesPerWork;
 };
 
 // ══ El muro completo, por secciones ══════════════════════════════════════════
@@ -331,6 +333,7 @@ function allSections(
       panels: [
         habitsPanel(input.habits, input.titles.habits, period, filter),
         sessionsPanel(input, period, filter),
+        annotationsPanel(input, period),
       ],
     },
     {
@@ -877,6 +880,70 @@ function sessionsPanel(
     empty: {
       title: "Sin sesiones en el periodo",
       message: "Registra una sesión con su duración para empezar a acumular.",
+    },
+  };
+}
+
+// ── Anotación ─────────────────────────────────────────────────────────────────
+/**
+ * Unidad propia. Va aquí y no en `UNITS` porque solo la usa este panel: meterla
+ * en el catálogo compartido invitaría a reutilizarla donde el denominador no son
+ * cien páginas.
+ */
+const PER_100_PAGES: Unit = {
+  short: "por 100 págs.",
+  one: "anotación por cada cien páginas",
+  many: "anotaciones por cada cien páginas",
+  decimals: 1,
+};
+
+/**
+ * Las obras que más te hacen escribir.
+ *
+ * **Normaliza por cada cien páginas y no por obra**, que es toda la diferencia:
+ * sin normalizar sería un ranking de libros largos. Doce notas en un tocho de mil
+ * páginas es menos escritura que cuatro en uno de cien.
+ */
+function annotationsPanel({ annotations }: StatsInput, period: string): PanelSpec {
+  const a = annotations;
+  return {
+    id: "anotacion",
+    title: "Las obras que más te hacen escribir",
+    description:
+      "Notas y citas por cada cien páginas, no por obra: sin normalizar, esto sería un ranking de libros largos.",
+    context: { period, filters: ["Solo libros con páginas en ficha"] },
+    viz: "lollipop",
+    unit: PER_100_PAGES,
+    labelHeader: "Obra",
+    data: a.works.slice(0, RANK_LIMIT).map((w) => ({
+      key: `${w.type}:${w.itemId}`,
+      label: w.title ?? "",
+      value: w.per100,
+      detail: `${w.count} en ${w.totalPages} págs.`,
+    })),
+    kpis: [
+      {
+        key: "citas",
+        label: "Citas",
+        value: a.quotes || null,
+        unit: { short: "citas", one: "cita", many: "citas" },
+        hint: "Lo que dice el libro, copiado",
+      },
+      {
+        key: "notas",
+        label: "Notas",
+        value: a.notes || null,
+        unit: { short: "notas", one: "nota", many: "notas" },
+        hint: "Lo tuyo sobre el libro",
+      },
+    ],
+    note:
+      a.unmeasurable > 0
+        ? `${a.unmeasurable} ${a.unmeasurable === 1 ? "anotación queda" : "anotaciones quedan"} fuera del gráfico: son de una obra sin páginas en ficha, o de una película o serie, que no tienen contra qué normalizarse. Siguen contando en las cifras de arriba.`
+        : undefined,
+    empty: {
+      title: "Todavía no has anotado nada",
+      message: "Guarda una nota o una cita desde la ficha de un libro y aparecerá aquí.",
     },
   };
 }
