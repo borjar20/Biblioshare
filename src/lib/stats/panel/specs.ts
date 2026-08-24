@@ -29,6 +29,7 @@ import type { RatedFacets, RatedGroup } from "@/lib/stats/get-rated-facets";
 import type { RatingDistribution } from "@/lib/stats/get-rating-distribution";
 import type { DropReason, DropStats } from "@/lib/stats/get-drop-reasons";
 import type { NotesPerWork } from "@/lib/stats/get-notes-per-work";
+import type { ReadingSpeed } from "@/lib/stats/get-pace";
 import type { Records } from "@/lib/stats/get-records";
 import type { Rereads } from "@/lib/stats/get-rereads";
 import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
@@ -163,6 +164,7 @@ export type StatsInput = {
   rereads: Rereads;
   drops: DropStats;
   annotations: NotesPerWork;
+  speed: ReadingSpeed;
 };
 
 // ══ El muro completo, por secciones ══════════════════════════════════════════
@@ -333,6 +335,7 @@ function allSections(
       panels: [
         habitsPanel(input.habits, input.titles.habits, period, filter),
         sessionsPanel(input, period, filter),
+        speedPanel(input, period),
         annotationsPanel(input, period),
       ],
     },
@@ -880,6 +883,64 @@ function sessionsPanel(
     empty: {
       title: "Sin sesiones en el periodo",
       message: "Registra una sesión con su duración para empezar a acumular.",
+    },
+  };
+}
+
+// ── Velocidad ─────────────────────────────────────────────────────────────────
+/** Páginas por hora de lectura. No es `UNITS.pages`: el denominador es tiempo. */
+const PAGES_PER_HOUR: Unit = {
+  short: "págs./h",
+  one: "página por hora",
+  many: "páginas por hora",
+};
+
+/**
+ * Velocidad real: páginas por HORA, no por día.
+ *
+ * «Páginas al día» (en «Sesiones y ritmo») divide por días distintos, así que
+ * mezcla una sesión de tres horas con una de diez minutos: contesta a cuánto
+ * avanzas al día, que es constancia. Esta contesta a a qué velocidad lees.
+ *
+ * La marca de cada barra es TU media, la misma para todas: la pregunta del panel
+ * es qué libros te frenan y cuáles vuelan, y eso solo se ve contra tu propio
+ * ritmo. Compararlos entre sí ya lo hace la escala común.
+ */
+function speedPanel({ speed }: StatsInput, period: string): PanelSpec {
+  const media = speed.pagesPerHour;
+  return {
+    id: "velocidad",
+    title: "A qué velocidad lees",
+    description:
+      "Páginas por hora de lectura, solo con sesiones que traen duración. La primera sesión de un pase únicamente fija el cursor: quien empieza a registrar por la página 300 no ha leído 300 páginas en esa sesión.",
+    context: { period, filters: ["Solo libros", "Solo sesiones cronometradas"] },
+    viz: "bullet",
+    targetName: "tu media",
+    unit: PAGES_PER_HOUR,
+    labelHeader: "Obra",
+    data: speed.works.slice(0, RANK_LIMIT).map((w) => ({
+      key: w.itemId,
+      label: w.title ?? "",
+      value: w.pagesPerHour,
+      target: media ?? undefined,
+      detail: `${w.pages} págs. en ${w.minutes} min`,
+    })),
+    kpis: [
+      {
+        key: "media",
+        label: "Tu velocidad",
+        value: media,
+        unit: PAGES_PER_HOUR,
+        hint: "Sobre el tiempo de las sesiones cronometradas",
+      },
+    ],
+    note:
+      speed.withoutDuration > 0
+        ? `${speed.withoutDuration} ${speed.withoutDuration === 1 ? "avance no cuenta" : "avances no cuentan"} por no traer duración la sesión que lo cerró. Sin decirlo, esta velocidad parecería la de toda tu lectura.`
+        : undefined,
+    empty: {
+      title: "Todavía no hay ninguna sesión cronometrada",
+      message: "Registra una sesión con su duración y su página para medir tu ritmo.",
     },
   };
 }

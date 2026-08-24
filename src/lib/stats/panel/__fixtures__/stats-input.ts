@@ -266,6 +266,14 @@ export function statsInput(over: Partial<StatsInput> = {}): StatsInput {
       notes: 7,
       unmeasurable: 4,
     },
+    speed: {
+      pagesPerHour: 41,
+      works: [
+        { itemId: "s1", title: "Kafka en la orilla", pagesPerHour: 58, pages: 290, minutes: 300 },
+        { itemId: "s2", title: "Ensayo sobre la ceguera", pagesPerHour: 31, pages: 155, minutes: 300 },
+      ],
+      withoutDuration: 3,
+    },
     ...over,
   };
 }
