@@ -25,7 +25,7 @@ export default async function PendingImportPage() {
   if (!user) redirect(loginHref("/importar/pendientes"));
 
   const t = await getTranslations("import");
-  const isCollaborator = hasMinRole(await getCurrentUserRole(supabase), "collaborator");
+  const isCollaborator = hasMinRole(await getCurrentUserRole(), "collaborator");
 
   const [mine, queue] = await Promise.all([
     getMyPendingRows(supabase, user.id),

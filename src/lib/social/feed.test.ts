@@ -1,4 +1,18 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+
+// `get-interaction-summary.ts` (el lector que se separó de `interactions.ts`
+// en F1-027) lleva `server-only`, que en entorno node lanza al importarse.
+vi.mock("server-only", () => ({}));
+
+// Mismo motivo que en interactions.test.ts (F1-027): `getInteractionSummary`
+// —al que llega el feed— lee la sesión con `getCurrentUser()`, no del cliente
+// inyectado. `null` reproduce lo que devolvía el falso: estos casos comprueban
+// el feed, no el «yo reaccioné».
+vi.mock("@/lib/supabase/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
+  getCurrentUser: async () => null,
+}));
+
 import { getFeed, type FeedEntry, type FeedEvent } from "./feed";
 import { isAfterCursor, parseCursor } from "./feed-order";
 import {

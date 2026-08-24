@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import type { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { UserRole } from "@/lib/auth/roles";
 import { itemHref } from "@/lib/catalog/item-href";
@@ -339,9 +339,7 @@ export async function getSagaDetail(
   // Estado del usuario (RLS: solo sus filas) — puede no haber sesión. Una
   // sola llamada para toda la función (antes había una segunda a mitad de
   // fichero y otra en el page component).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const descendants = await fetchDescendants(supabase, id);
   const children: SagaChildRef[] = [...descendants.values()]

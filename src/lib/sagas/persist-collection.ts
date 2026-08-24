@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { ScreenCollection } from "@/lib/catalog/tmdb";
+import { listSagaMemberRefs, type SagaMemberRef } from "./saga-member-refs";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -15,7 +16,7 @@ export async function persistCollectionMembership(
   itemType: "movie",
   itemId: string,
   collection: ScreenCollection
-): Promise<void> {
+): Promise<SagaMemberRef[]> {
   let sagaId: string | undefined;
 
   const { data: existing } = await supabase
@@ -51,7 +52,7 @@ export async function persistCollectionMembership(
     }
   }
 
-  if (!sagaId) return;
+  if (!sagaId) return [];
 
   // Idempotente por saga_items_saga_item_key. is_primary solo si el ítem aún
   // no tiene saga primary (índice parcial saga_items_primary_idx); ante una
@@ -77,5 +78,11 @@ export async function persistCollectionMembership(
   });
   if (memberError) {
     console.error("link_tmdb_saga_item failed", { sagaId, itemId, error: memberError });
+    return [];
   }
+
+  // Quién más está en esta colección: su ficha canta «nº X de Y» y la Y acaba
+  // de subir. Devolver en vez de invalidar aquí porque esto corre durante el
+  // render de la ficha de película (F1-023).
+  return listSagaMemberRefs(supabase, sagaId);
 }

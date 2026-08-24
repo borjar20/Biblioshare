@@ -90,8 +90,19 @@ libro enlaza a `/persona/[id]` desde el 2026-08-13 (`2ed0dc8f`), con e2e propio�
 y montar `CreditsSection` en libro duplicaría el panel de metadatos. Decisiones
 en `decisiones.md` (2026-08-21); cobertura en `e2e/ia-navegacion.spec.ts`.
 
-Quedan de este bloque:
-acción 9 (pasada de revalidación — F1-014/023/030/027), y los sueltos:
+**Acción 9 — pasada de revalidación: HECHA el 2026-08-21.** F1-014 (la campana
+dejó de purgar el layout raíz en cada apertura: el contador no está cacheado en
+ninguna parte, así que no había nada que invalidar), F1-023 (las etiquetas
+`credits:*` y `saga-membership:*` se declaraban y no las invalidaba nadie; ya lo
+hacen el enriquecimiento —vía `after()`— y los seis escritores de curación de
+sagas), F1-030 (cero `revalidatePath` sueltos fuera del módulo central, con un
+test que lo impone) y F1-027 (`getCurrentUser()` memoizado en los seis lectores
+RSC, y `getClub` envuelto en `cache()` — se ejecutaba dos veces enteras por
+petición en `/club/[slug]`). Decisiones en `decisiones.md` (2026-08-21 tarde).
+Salieron de aquí dos issues que NO se encadenan: #751 (P1: la hidratación
+perezosa de las fichas nunca corre en producción) y #750 (spec de e2e caducado).
+
+Quedan de este bloque los sueltos:
 contraste y `<main>`/skip-link (F4-022/023), security headers + rate limiting
 (S2-08/S2-11), formula injection (#681), trigger de curación (S2-14), regenerar
 `graph.json` y `database.types.ts` (#695, #701, #625), y las migraciones

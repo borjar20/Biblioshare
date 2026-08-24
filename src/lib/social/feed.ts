@@ -4,12 +4,8 @@ import type { AnchorRef, AnchorType } from "@/lib/catalog/anchor";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { MediaStatus } from "@/lib/library/types";
 import type { PostKind } from "./post-actions";
-import {
-  emptyReactions,
-  getInteractionSummary,
-  type InteractionComment,
-  type ReactionsByKind,
-} from "./interactions";
+import { emptyReactions, type InteractionComment, type ReactionsByKind } from "./interactions";
+import { getInteractionSummary } from "./get-interaction-summary";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import type { PersonGroupEntry } from "./group-feed-entries";

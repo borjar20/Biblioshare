@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
-vi.mock("@/lib/social/interactions", () => ({
+vi.mock("@/lib/social/get-interaction-summary", () => ({
   getInteractionSummary: mocks.getInteractionSummary,
 }));
 

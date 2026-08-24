@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// `get-interaction-summary.ts` (el lector que se separó de `interactions.ts`
+// en F1-027) lleva `server-only`, que en entorno node lanza al importarse.
+vi.mock("server-only", () => ({}));
+
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   redirect: vi.fn(),

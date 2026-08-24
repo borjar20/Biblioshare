@@ -2,11 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  getCurrentUser: vi.fn(async () => ({ id: "yo" })),
   redirect: vi.fn(),
   revalidateClubPages: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
+// getCurrentUser va mockeado desde F1-027: los lectores de club ya no sacan la
+// sesión del cliente que se les inyecta —hacía un viaje de red por cada sitio
+// que la pidiera— sino de `getCurrentUser()`, memoizado por petición. El `auth`
+// del cliente falso se queda porque otras funciones del módulo aún lo usan.
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: mocks.createClient,
+  getCurrentUser: mocks.getCurrentUser,
+}));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateClubPages: mocks.revalidateClubPages,

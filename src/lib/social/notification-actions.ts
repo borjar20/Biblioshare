@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { listNotifications, type Notification } from "@/lib/social/notifications";
 
@@ -32,6 +31,20 @@ export async function markAllNotificationsRead(): Promise<void> {
     .is("read_at", null);
 
   if (error) throw error;
-  // El Header (con la campana) vive en el layout raíz, presente en toda ruta.
-  revalidatePath("/", "layout");
+  // NO se revalida nada, y es a propósito (F1-014). Aquí había un
+  // `revalidatePath("/", "layout")` —la revalidación más cara que existe: purga
+  // la Client Cache entera— pagada por la acción MÁS frecuente de la app, para
+  // actualizar un número de dos dígitos.
+  //
+  // No hacía falta ni entonces: el contador no está cacheado en ninguna parte.
+  // `getUnreadCount` es una consulta viva que corre dentro del <Suspense>
+  // dinámico de `SessionChrome` (app-shell.tsx), así que cualquier render
+  // posterior ya lee la BD. Y entre medias el badge tampoco se queda rancio: la
+  // campana baja su contador a 0 en el cliente al abrirse, y el Header vive en
+  // el layout raíz —no se desmonta al navegar—, así que ese 0 sobrevive.
+  //
+  // Tampoco se sustituye por un tag: un contador de no leídas depende de
+  // `auth.uid()`, y cachear eso con una etiqueta compartida sería servirle a un
+  // usuario el contador de otro (regla #437 de AGENTS.md). Lo correcto para un
+  // dato por-usuario es justo esto: no cachearlo.
 }

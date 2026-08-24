@@ -1,7 +1,10 @@
 "use server";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateProfilePages } from "@/lib/reactivity/revalidate";
+import {
+  revalidateCollection,
+  revalidateLibrary,
+  revalidateProfilePages,
+} from "@/lib/reactivity/revalidate";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibraryItem } from "@/lib/library/types";
 import { getLibraryItems } from "@/lib/library/get-library-items";
@@ -28,7 +31,7 @@ export async function createCollection(name: string): Promise<{ id: string } | {
     .select("id")
     .single();
   if (error || !data) return { error: "create_failed" };
-  revalidatePath("/coleccion");
+  revalidateLibrary();
   return { id: data.id };
 }
 
@@ -41,8 +44,7 @@ export async function renameCollection(id: string, name: string): Promise<{ erro
     .update({ name: clean, updated_at: new Date().toISOString() })
     .eq("id", id); // RLS restringe al dueño
   if (error) return { error: "rename_failed" };
-  revalidatePath("/coleccion");
-  revalidatePath(`/coleccion/c/${id}`);
+  revalidateCollection(id);
   return {};
 }
 
@@ -65,8 +67,7 @@ export async function updateCollectionDescription(
     .update({ description: clean || null, updated_at: new Date().toISOString() })
     .eq("id", id); // RLS restringe al dueño
   if (error) return { error: "description_failed" };
-  revalidatePath("/coleccion");
-  revalidatePath(`/coleccion/c/${id}`);
+  revalidateCollection(id);
   return {};
 }
 
@@ -84,7 +85,7 @@ export async function setCollectionSorteable(
     .update({ is_sorteable: isSorteable, updated_at: new Date().toISOString() })
     .eq("id", id); // RLS restringe al dueño
   if (error) return { error: "sorteable_failed" };
-  revalidatePath(`/coleccion/c/${id}`);
+  revalidateCollection(id);
   // El Rincón (y con él el selector del sorteo) vive en el perfil, que se
   // enruta por username — aquí solo tenemos el id, así que patrón dinámico.
   revalidateProfilePages();
@@ -95,7 +96,7 @@ export async function deleteCollection(id: string): Promise<{ error?: string }> 
   const { supabase } = await requireUser();
   const { error } = await supabase.from("collections").delete().eq("id", id);
   if (error) return { error: "delete_failed" };
-  revalidatePath("/coleccion");
+  revalidateLibrary();
   return {};
 }
 
@@ -143,7 +144,9 @@ export async function addItemToCollections(
   if (error) return { error: "add_failed" };
   // Tocar updated_at de las colecciones afectadas para el orden «Recientes».
   await supabase.from("collections").update({ updated_at: new Date().toISOString() }).in("id", collectionIds);
-  revalidatePath("/coleccion");
+  // El detalle de cada colección tocada, no solo el listado: la obra acaba de
+  // entrar ahí y su rejilla la tiene que enseñar.
+  for (const id of collectionIds) revalidateCollection(id);
   return {};
 }
 
@@ -189,7 +192,10 @@ export async function setItemCollections(
   if (touched.length > 0) {
     await supabase.from("collections").update({ updated_at: new Date().toISOString() }).in("id", touched);
   }
-  revalidatePath("/coleccion");
+  // Las bajas cuentan igual que las altas: la colección de la que se quitó la
+  // obra también pinta una rejilla distinta ahora.
+  if (touched.length > 0) for (const id of touched) revalidateCollection(id);
+  else revalidateLibrary();
   return {};
 }
 

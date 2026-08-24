@@ -3,11 +3,26 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { ItemType } from "@/lib/catalog/types";
 import { getMovieDetails, getSeriesDetails, type ScreenDetails } from "@/lib/catalog/tmdb";
 import { persistCollectionMembership } from "@/lib/sagas/persist-collection";
+import type { SagaMemberRef } from "@/lib/sagas/saga-member-refs";
 import { findOrCreatePeopleByTmdb, findOrCreateBookAuthorByKey } from "./find-or-create-person";
 import { fetchWorkAuthorKeys } from "@/lib/catalog/openlibrary/work-authors";
 import { resolveWorkByTitleAuthor } from "@/lib/catalog/openlibrary/work-search";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+// Lo que el enriquecimiento ha ESCRITO, para que quien lo llame invalide las
+// cachés correspondientes. No se invalida aquí porque esto corre durante el
+// render de la ficha, donde las APIs de revalidación no son legales; la ficha
+// lo agenda con `after()`. Ver `revalidateItemCredits` /
+// `revalidateSagaMembership` en el módulo de reactividad (F1-023).
+export type EnrichmentEffects = {
+  /** Se escribieron filas nuevas en `credits`: la etiqueta `credits:*` de esta
+   *  obra puede estar cacheada VACÍA de un intento anterior que falló. */
+  wroteCredits: boolean;
+  /** Miembros de la colección TMDB en la que la película acaba de entrar: a
+   *  todos les cambia el «nº X de Y», no solo a la recién llegada. */
+  sagaMembers: SagaMemberRef[];
+};
 
 // Lo que la ficha ya tiene cargado de la obra; sirve de guard para no repetir
 // trabajo. `author` solo aplica a libros; los tamaños, a cine y series.
@@ -140,14 +155,19 @@ export async function ensureItemEnriched(
   supabase: SupabaseServerClient,
   itemType: ItemType,
   item: EnrichableItem
-): Promise<void> {
+): Promise<EnrichmentEffects> {
+  // Se acumula lo que HAY QUE INVALIDAR y se devuelve, en vez de invalidarlo
+  // aquí: esta función corre DURANTE el render de la ficha, y ni `updateTag`
+  // (solo server actions) ni `revalidateTag` son legales ahí. La ficha agenda
+  // la invalidación con `after()` a partir de esto (F1-023).
+  const effects: EnrichmentEffects = { wroteCredits: false, sagaMembers: [] };
   try {
     const needsSize = needsSizeHydration(itemType, item);
     const needsCredits = !(await hasBilledCast(supabase, itemType, item.id));
-    if (!needsCredits && !needsSize) return;
+    if (!needsCredits && !needsSize) return effects;
 
     if (itemType === "book") {
-      if (!needsCredits) return;
+      if (!needsCredits) return effects;
 
       // La identidad de los autores sale de la OBRA, no del texto de portada.
       // Si el libro no guardó su work key (alta manual, CSV, ISBN que no
@@ -194,7 +214,7 @@ export async function ensureItemEnriched(
       // Sin obra o sin autores en ella no se escribe NADA. La ficha enseñará
       // `books.author` como texto plano, sin enlace a ficha de persona. Es
       // deliberado: mejor sin autor que con uno inventado (spec de 2026-08-13).
-      if (authorKeys.length === 0) return;
+      if (authorKeys.length === 0) return effects;
 
       const rows: Array<{
         item_type: ItemType;
@@ -231,22 +251,24 @@ export async function ensureItemEnriched(
         });
         if (error) {
           console.error("book credits upsert failed", { id: item.id, count: rows.length, error });
+        } else {
+          effects.wroteCredits = true;
         }
       }
-      return;
+      return effects;
     }
 
     // Cine / series: reparto + equipo (+ saga en películas) + tamaños, todo de
     // la misma llamada de detalles.
-    if (!item.tmdbId) return;
+    if (!item.tmdbId) return effects;
     const details =
       itemType === "movie"
         ? await getMovieDetails(item.tmdbId)
         : await getSeriesDetails(item.tmdbId);
-    if (!details) return;
+    if (!details) return effects;
 
     if (needsSize) await writeSizes(supabase, itemType, item.id, details);
-    if (!needsCredits) return;
+    if (!needsCredits) return effects;
 
     const peopleMap = await findOrCreatePeopleByTmdb(
       supabase,
@@ -288,13 +310,23 @@ export async function ensureItemEnriched(
       });
       if (error) {
         console.error("credits upsert failed", { itemType, id: item.id, count: rows.length, error });
+      } else {
+        effects.wroteCredits = true;
       }
     }
 
     if (itemType === "movie" && details.collection) {
-      await persistCollectionMembership(supabase, "movie", item.id, details.collection);
+      // Entrar en una colección TMDB cambia el «nº X de Y» de TODAS las pelis
+      // de esa colección, no solo de esta.
+      effects.sagaMembers = await persistCollectionMembership(
+        supabase,
+        "movie",
+        item.id,
+        details.collection
+      );
     }
   } catch (error) {
     console.error("ensureItemEnriched failed", { itemType, id: item.id, error });
   }
+  return effects;
 }

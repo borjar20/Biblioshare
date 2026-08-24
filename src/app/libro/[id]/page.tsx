@@ -49,6 +49,7 @@ import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
+import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
 import { personHref } from "@/lib/catalog/item-href";
 import { getItemSagas } from "@/lib/sagas/get-item-sagas";
@@ -178,7 +179,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
           .maybeSingle()
           .then(({ data }) => data)
       : Promise.resolve(null),
-    user ? getCurrentUserRole(supabase) : Promise.resolve(null),
+    user ? getCurrentUserRole() : Promise.resolve(null),
   ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
@@ -300,7 +301,7 @@ async function BookTabs({
   // reales: ensureItemEnriched escribe lo que getItemCredits lee, y getSessions
   // necesita saber el pase abierto. Todo lo demás va en paralelo aunque el
   // código lo lea en orden.
-  const [, sagas, editions, activeRow, role, reviewsResult] = await Promise.all([
+  const [enriched, sagas, editions, activeRow, role, reviewsResult] = await Promise.all([
     // Créditos (autor): backfill puntual de personas, no una API externa
     // paginada — y getItemCredits, más abajo, necesita que ya haya escrito.
     ensureItemEnriched(supabase, "book", {
@@ -325,7 +326,7 @@ async function BookTabs({
           .maybeSingle()
           .then(({ data }) => data)
       : null,
-    userId ? getCurrentUserRole(supabase) : null,
+    userId ? getCurrentUserRole() : null,
     // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel; van
     // aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
     getReviews(supabase, "book", book.id),
@@ -337,6 +338,16 @@ async function BookTabs({
 
   // Lo único que de verdad esperaba a ensureItemEnriched.
   const credits = await getItemCredits("book", book.id);
+
+  // El enriquecimiento perezoso escribe catálogo COMPARTIDO que se sirve
+  // cacheado por etiqueta durante DÍAS, y hasta F1-023 nadie caducaba esas
+  // etiquetas jamás. Va en `after()` y no aquí por dos razones: las APIs de
+  // revalidación de Next no son legales durante un render, y así el trabajo
+  // ocurre DESPUÉS de la respuesta — quien está mirando no paga nada por él.
+  // Solo se caduca si de verdad se escribió algo.
+  after(() => {
+    if (enriched.wroteCredits) expireItemCredits("book", book.id);
+  });
 
   // Ediciones del DISPLAY: se resuelven por streaming (sync-si-hace-falta + lee)
   // dentro del <Suspense> de EditionsSection. NO se await aquí: eso bloquearía la

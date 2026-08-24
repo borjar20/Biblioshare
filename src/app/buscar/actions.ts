@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidateSearch } from "@/lib/reactivity/revalidate";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
@@ -108,5 +108,5 @@ export async function addToLibrary(result: SearchResult) {
     after(() => hydrateNewItem(supabase, itemId, result));
   }
 
-  revalidatePath("/buscar");
+  revalidateSearch();
 }

@@ -1,10 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
-import {
-  emptyReactions,
-  getInteractionSummary,
-  type InteractionComment,
-  type ReactionsByKind,
-} from "@/lib/social/interactions";
+import { emptyReactions, type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;

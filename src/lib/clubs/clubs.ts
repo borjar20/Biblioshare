@@ -1,7 +1,8 @@
 "use server";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { revalidateClubPages } from "@/lib/reactivity/revalidate";
 
 export type Club = {
@@ -113,13 +114,26 @@ export async function updateClub(
   revalidateClubPages();
 }
 
-export async function getClub(slug: string): Promise<
-  (ClubWithCount & { viewerStatus: ClubMembershipStatus; viewerRole: "member" | "moderator" | "owner" | null }) | null
-> {
+type ClubForViewer = ClubWithCount & {
+  viewerStatus: ClubMembershipStatus;
+  viewerRole: "member" | "moderator" | "owner" | null;
+};
+
+// La ficha de club, memoizada POR PETICIÓN (F1-027). En /club/[slug] esto se
+// ejecutaba DOS veces enteras —hasta 4 viajes de red cada una— porque lo llaman
+// `generateMetadata` y el cuerpo de la página por su cuenta, y no había nada
+// entre medias que lo dedupliсara. La clave es el `slug`, un string estable, así
+// que la segunda llamada es un acierto de caché.
+//
+// Mismo patrón que `getCurrentUserRole` y `getOwnProfile`: la parte memoizada es
+// esta constante privada, y lo que se exporta es una función async de verdad —
+// este módulo es `"use server"` y ahí solo se pueden exportar funciones async.
+const clubBySlug = cache(async (slug: string): Promise<ClubForViewer | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getCurrentUser() y no `supabase.auth.getUser()`: el segundo es un viaje de
+  // red a /auth/v1/user por cada sitio que lo pida; el primero lo hace UNA vez
+  // por petición (#283).
+  const user = await getCurrentUser();
 
   const { data: clubRow, error } = await supabase
     .from("clubs")
@@ -152,6 +166,10 @@ export async function getClub(slug: string): Promise<
     viewerRole,
     memberCount: counts.get(clubRow.id) ?? 0,
   };
+});
+
+export async function getClub(slug: string): Promise<ClubForViewer | null> {
+  return clubBySlug(slug);
 }
 
 
@@ -183,9 +201,7 @@ export async function listMyClubs(): Promise<
   (ClubWithCount & { viewerStatus: "active" | "invited" })[]
 > {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
 
   const { data, error } = await supabase

@@ -8,7 +8,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
-import { revalidateItemPage, revalidateSagaPage } from "@/lib/reactivity/revalidate";
+import {
+  revalidateItemPage,
+  revalidateSagaMembership,
+  revalidateSagaPage,
+} from "@/lib/reactivity/revalidate";
+import { listSagaMemberRefs } from "./saga-member-refs";
 import { uploadPublicImage } from "@/lib/storage/upload-public-image";
 import { SAGA_ACCENT, type SagaAccentToken } from "./accents";
 
@@ -28,7 +33,7 @@ async function requireCollaborator() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { supabase: null } as const;
   }
   return { supabase } as const;
@@ -158,6 +163,9 @@ export async function setPrimarySaga(
     .eq("saga_id", sagaId);
   if (promoteError) return { error: "generic" };
 
+  // Solo la del ítem tocado: cambiar cuál es su saga principal no altera el
+  // total de ninguna saga, solo cuál de sus membresías encabeza SU ficha.
+  revalidateSagaMembership([{ itemType, itemId }]);
   revalidateItemPage(itemType, itemId);
   revalidateSagaPage(sagaId);
   return {};
@@ -192,6 +200,11 @@ export async function updateSagaMeta(
     .eq("id", sagaId);
   if (error) return { error: "generic" };
 
+  // El NOMBRE viaja dentro de `getItemSagas`: la chip «Parte de X» de cada
+  // miembro lo lleva cacheado bajo su propia etiqueta, así que renombrar la
+  // saga sin esto dejaba el nombre viejo en todas las fichas hasta que
+  // expirase `cacheLife("days")` (F1-023, mismo agujero que el total).
+  revalidateSagaMembership(await listSagaMemberRefs(supabase, sagaId));
   revalidateSagaPage(sagaId);
   return {};
 }
@@ -231,6 +244,14 @@ export async function deleteSaga(sagaId: string): Promise<{ error?: string }> {
   revalidateSagaPage(sagaId);
   if (existing.parent_saga_id) revalidateSagaPage(existing.parent_saga_id);
   for (const child of childRows ?? []) revalidateSagaPage(child.id);
+  // La saga ya no existe: la chip «Parte de» de cada ex-miembro tiene que
+  // desaparecer, y vive cacheada bajo su etiqueta de membresía (F1-023).
+  revalidateSagaMembership(
+    (members ?? []).map((member) => ({
+      itemType: member.item_type as ItemType,
+      itemId: member.item_id,
+    })),
+  );
   const seen = new Set<string>();
   for (const member of members ?? []) {
     const key = `${member.item_type}:${member.item_id}`;
