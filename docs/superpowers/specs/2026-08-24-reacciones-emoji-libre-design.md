@@ -92,8 +92,12 @@ Coste visible asumido: `like` hoy se pinta `♡` (corazón de contorno) y pasa a
 - `toggleKind` **borra la clave** cuando el recuento baja a 0, para que el mapa no acumule
   ceros que luego se pintarían como reacciones fantasma.
 - Orden estable al pintar: recuento descendente y, a igualdad, **orden de primera
-  aparición** (`firstAt`, que ya sale de la consulta ordenada por `created_at`). Sin
-  desempate estable, dos emojis empatados bailan entre renders.
+  aparición**. Sin desempate estable, dos emojis empatados bailan entre renders.
+  **Corrección sobre el borrador**: la consulta de `reactions` en `interactions.ts` **no
+  está ordenada hoy** (a diferencia de la de `comments`), así que la primera aparición no
+  «ya viene dada». Hay que añadir `.order("created_at", { ascending: true })` a las dos
+  consultas de reacciones (target y comentario). Con eso, el orden de inserción de claves
+  del objeto **es** el orden de primera aparición — no hace falta guardar ningún `firstAt`.
 - `getInteractionSummary` (`interactions.ts`) ya lee `r.kind` fila a fila; deja de
   necesitar el `?? "like"` y el cast, y acumula directamente en el mapa.
 
@@ -142,7 +146,7 @@ enteran del cambio.
 - CLDR `annotations/es` — nombre y sinónimos **en español**, para que buscar «fuego»
   encuentre 🔥 y no solo «fire».
 
-Salida: `src/lib/social/emoji-catalog.json`, **commiteado al repo**. El script sirve para
+Salida: `src/lib/social/emoji-catalog.data.ts`, **commiteado al repo**. El script sirve para
 regenerarlo cuando Unicode saque versión; **no** es un paso de build, así que ni CI ni
 `next build` dependen de la red.
 
@@ -167,10 +171,24 @@ librería de *fuzzy*.
 
 ## 7. Pruebas
 
-**Sí hay runner de componentes.** `vitest.config.ts` incluye `src/**/*.test.tsx` y cada
-fichero pide `// @vitest-environment jsdom` en su primera línea (llegó con los gráficos del
-muro de estadísticas). El comentario de `reaction-bar.test.ts` que dice lo contrario está
-**caducado**, y con él la excusa para testear solo el helper estático `reactionMeta`.
+**Corrección importante sobre el borrador: en `main` NO hay runner de componentes.**
+`vitest.config.ts` de `main` incluye solo `src/**/*.test.ts` con entorno `node`, y
+`package.json` no trae `@testing-library/react` ni `jsdom`. El runner de `.test.tsx` existe
+únicamente en la rama **sin mergear** `fase-c-estadisticas-nuevas`, que es donde lo vi. El
+comentario de `reaction-bar.test.ts` sigue siendo cierto hoy.
+
+**Decisión: no se añaden esas dependencias en esta PR.** Montar jsdom aquí duplicaría un
+cambio de `package.json` + lockfile que otra rama viva ya hace, y el conflicto al mergear
+costaría más que lo que aporta. En su lugar:
+
+- La lógica de pintado que quiere prueba **se extrae a funciones puras** en
+  `src/lib/social/reaction-display.ts` (resumen top-3, orden estable, tope alcanzado), y se
+  prueban con `vitest` en entorno `node`, sin DOM. Es lo que el repo ya hace en todas
+  partes.
+- El comportamiento de clic, foco y `aria-*` lo cubre el **e2e de Playwright**.
+- Cuando `fase-c-estadisticas-nuevas` aterrice en `main`, se añaden los `.test.tsx` de
+  `ReactionBar` encima. Queda como issue (`tipo:cobertura` / `area:social`), no como
+  pendiente suelto.
 
 **Unitarias (`node`):**
 
@@ -185,10 +203,9 @@ muro de estadísticas). El comentario de `reaction-bar.test.ts` que dice lo cont
   deja `count: 0`); `reactionCount` / `viewerReacted` se derivan bien con mapa disperso.
 - Orden del resumen: por recuento y, en empate, por primera aparición.
 
-**De componente (`.test.tsx`, jsdom)** — nuevo, sustituye al `reactionMeta` estático: el
-colapsado corta en 3 y muestra el total; pulsar un emoji llama a `onToggle` con ese
-carácter; con 6 puestos los nuevos salen `disabled`; Escape cierra y el foco vuelve al
-botón.
+**De pintado, sin DOM** (`reaction-display.ts`, entorno `node`) — sustituye al
+`reactionMeta` estático: `summarize()` corta en 3 y da el total correcto; `capReached()`
+dice si el viewer llegó a 6 en ese target; el orden empatado respeta la primera aparición.
 
 **E2E (Playwright)**: reaccionar con un emoji del catálogo en un chat de club (abrir, «+»,
 buscar, elegir, ver recuento) y sumarse a un emoji existente desde la fila de
@@ -209,8 +226,9 @@ del UPDATE. Dev primero, prod después.
 - `docs/requirements/backlog.md`: **no hay ítem de reacciones** (comprobado el 2026-08-24
   con `grep -i reaccion`), así que no hay casilla que marcar. Nada que hacer aquí.
 - Issues a abrir:
-  - `tipo:deuda` / `area:ui` — barrer el comentario caducado «el repo no tiene runner de
-    componentes», que aparece en más de un fichero. Fuera de esta PR.
+  - `tipo:cobertura` / `area:social` — cuando `fase-c-estadisticas-nuevas` mergee y `main`
+    tenga runner de `.test.tsx`, añadir tests de componente de `ReactionBar` (clic, `aria-
+    pressed`, Escape, foco). Hoy eso lo cubre solo el e2e.
   - `tipo:feature` / `area:social` — fila rápida con «tus más usados» (guardada en el
     navegador) en vez de fija.
 
