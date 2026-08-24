@@ -78,6 +78,9 @@ const SELF_DESCRIBING: PanelSpec["viz"][] = [
   // El bullet escribe «valor / marca» sobre cada barra y su fila es focalizable
   // con las dos cifras —y la palabra «batida»— en el nombre accesible.
   "bullet",
+  // El dumbbell escribe «origen → destino» y su fila lleva las TRES cifras más
+  // la palabra («sube», «baja», «no cambia») en el nombre accesible.
+  "dumbbell",
 ];
 
 const CARD =

@@ -782,6 +782,7 @@ export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
  */
 export function BulletChart({ spec, derived, interactive }: ChartProps) {
   const ceiling = Math.max(derived.scale, ...spec.data.map((d) => d.target ?? 0));
+  const refName = spec.targetName ?? "tu marca";
   return (
     <ul className="flex flex-col gap-2.5">
       {spec.data.map((d) => {
@@ -792,7 +793,7 @@ export function BulletChart({ spec, derived, interactive }: ChartProps) {
             ? undefined
             : d.target === undefined
               ? `${d.label}: ${formatValue(d.value, spec.unit)}`
-              : `${d.label}: ${formatValue(d.value, spec.unit)}, tu marca ${formatValue(
+              : `${d.label}: ${formatValue(d.value, spec.unit)}, ${refName} ${formatValue(
                   d.target,
                   spec.unit,
                 )}${beaten ? " — marca batida" : ""}`;
@@ -829,6 +830,108 @@ export function BulletChart({ spec, derived, interactive }: ChartProps) {
                   style={{ left: `${share(d.target, ceiling)}%` }}
                 />
               )}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * Variación de dos puntos: de dónde a dónde.
+ *
+ * Es la forma de «cómo cambia tu nota al releer», y la razón de que no sean dos
+ * barras ni una flecha es que aquí lo que importa es **la distancia**, no la
+ * magnitud: entre 3,5 y 5 hay lo mismo que entre 2 y 3,5, y con barras desde
+ * cero esas dos parejas se ven completamente distintas.
+ *
+ * La escala es COMÚN a todas las filas, como en el bullet: si cada una se
+ * escalara sola, dos segmentos del mismo largo dirían saltos distintos.
+ *
+ * **La dirección no se codifica solo en color** (principio 2): la palabra
+ * «sube», «baja» o «no cambia» va en el nombre accesible, y el punto de origen
+ * es HUECO y el de destino MACIZO — forma, no tono.
+ *
+ * Una fila sin `from` no se dibuja: un punto de llegada suelto no es una
+ * variación, es otro panel.
+ */
+export function DumbbellChart({ spec, derived, interactive }: ChartProps) {
+  const rows = spec.data.filter(
+    (d): d is PanelDatum & { from: number; value: number } =>
+      d.from !== undefined && d.value !== null,
+  );
+  // El suelo NO es cero cuando lo que se compara son notas: todas caen entre 3 y
+  // 5, y sobre un eje desde el origen los dos puntos de cada fila se pegan y el
+  // salto —lo único que este panel enseña— deja de verse. Mismo criterio que el
+  // lollipop, y por el mismo motivo.
+  const values = rows.flatMap((d) => [d.from, d.value]);
+  const zeroBased = spec.unit !== UNITS.stars;
+  const floor = zeroBased || values.length === 0 ? 0 : Math.min(...values) * 0.94;
+  const ceiling = Math.max(derived.scale, ...values, floor + 0.001);
+  const span = Math.max(ceiling - floor, 0.001);
+  const at = (v: number) => ((v - floor) / span) * 100;
+
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {rows.map((d) => {
+        const delta = d.value - d.from;
+        // La palabra, no el signo: un «+1,5» pintado de verde deja fuera a quien
+        // no distingue el verde, y un lector de pantalla dice «más uno coma
+        // cinco», que no es lo mismo que «sube».
+        const move =
+          delta === 0
+            ? "no cambia"
+            : `${delta > 0 ? "sube" : "baja"} ${formatValue(Math.abs(delta), spec.unit)}`;
+        const label = `${d.label}: de ${formatValue(d.from, spec.unit)} a ${formatValue(
+          d.value,
+          spec.unit,
+        )}, ${move}`;
+        const lo = Math.min(d.from, d.value);
+        const hi = Math.max(d.from, d.value);
+        return (
+          <li
+            key={d.key}
+            className="flex flex-col gap-1 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            tabIndex={interactive ? 0 : undefined}
+            role={interactive ? "img" : undefined}
+            aria-label={interactive ? label : undefined}
+          >
+            <span aria-hidden className="flex items-baseline justify-between gap-3">
+              <span className="min-w-0 flex-1 truncate text-[11px] text-foreground-soft">
+                {d.label}
+              </span>
+              <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-foreground">
+                {formatNumber(d.from, spec.unit.decimals ?? 0)} →{" "}
+                {formatValue(d.value, spec.unit)}
+              </span>
+            </span>
+            <span aria-hidden className="relative h-3 w-full">
+              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" />
+              <span
+                data-span
+                className="absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full"
+                style={{
+                  left: `${at(lo)}%`,
+                  width: `${at(hi) - at(lo)}%`,
+                  background: delta >= 0 ? "var(--green)" : "var(--status-dropped)",
+                }}
+              />
+              {/* Origen HUECO, destino MACIZO. Es lo que dice cuál es cuál sin
+                  depender de que se distinga un color de otro. */}
+              <span
+                data-from
+                className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-foreground-soft bg-surface"
+                style={{ left: `${at(d.from)}%` }}
+              />
+              <span
+                data-to
+                className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{
+                  left: `${at(d.value)}%`,
+                  background: delta >= 0 ? "var(--green)" : "var(--status-dropped)",
+                }}
+              />
             </span>
           </li>
         );
@@ -1093,6 +1196,8 @@ export function Chart({ spec, derived, interactive }: ChartProps) {
       return <WaffleChart spec={spec} derived={derived} />;
     case "bullet":
       return <BulletChart spec={spec} derived={derived} interactive={interactive} />;
+    case "dumbbell":
+      return <DumbbellChart spec={spec} derived={derived} interactive={interactive} />;
     default:
       return null;
   }

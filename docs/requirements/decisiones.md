@@ -986,3 +986,67 @@ vacío en el caso más caro de la página es lo contrario de lo que busca este n
 
 **Sin `use cache` en toda la fase**, como en la A: no se ha tocado ningún getter ni añadido
 ninguna consulta. Regla #437.
+
+## 2026-08-24 — El muro de estadísticas, fase C: cinco preguntas que el esquema ya sabía contestar
+
+Ninguna de las cinco necesita una columna nueva. Todas salen de datos que llevan meses en
+producción y que ningún getter miraba.
+
+**«Cómo cambia tu nota al releer» es la que llevaba más tiempo esperando.** El esquema está
+diseñado para eso desde el principio —el pase es dueño de la nota, así que cada relectura tiene la
+suya— y lo único que se sacaba de ahí era un contador (`records.rereads`). Compara el PRIMER pase
+con el ÚLTIMO, nunca con el del medio: la pregunta es qué te parece ahora frente a la primera vez,
+no el recorrido. Y **ignora el selector de periodo a propósito**, porque una relectura son dos
+pases separados por años y recortarlos a la ventana elegida dejaría fuera justo el primero, que es
+la mitad de la comparación.
+
+**Los dos paneles de abandono solo pueden vivir en el muro privado, y no es una decisión de
+producto sino del esquema.** `passes.dropped_reason` es siempre privado, con independencia de
+`is_public`: la tabla **no concede `SELECT`** sobre esa columna a nadie, porque su RLS de SELECT es
+de visibilidad de PERFIL (`can_view_profile`), no de dueño — un grant ahí filtraría el motivo a
+cualquiera que pueda ver el perfil. La única vía de lectura es la vista `pass_reviews`,
+`SECURITY DEFINER` y enmascarada por `d.user_id = auth.uid()`. Un `select("dropped_reason")` sobre
+`passes` falla con «permission denied», y **es correcto que falle**. Hay un test que lee
+`stats-tab.tsx` y afirma que ninguno de los dos paneles se ha colado en la pestaña pública, porque
+esto no lo caza ningún tipo.
+
+**El punto de no retorno no se afirma con menos de cinco abandonos medibles.** Es un MÁXIMO, y un
+máximo sobre dos o tres muestras se mueve entero con el siguiente dato: «nunca has abandonado por
+encima del 26 %» con dos abandonos es ruido presentado como hallazgo. Cuando falta, la barra se
+queda sin marca en vez de inventarse un límite.
+
+**El bullet estrena `PanelSpec.targetName`.** «Tu marca» describe un récord que se persigue, y eso
+es exactamente lo que la racha es y lo que el punto de no retorno **no** es. Sin el campo, el
+nombre accesible de «Dónde abandonas» habría dicho «tu marca 44 %» sobre algo que nadie persigue.
+
+**Las anotaciones se normalizan por cada cien páginas y no por obra**, que es toda la diferencia:
+sin normalizar, «las obras que más te hacen escribir» sería un ranking de libros largos. Doce notas
+en un tocho de mil páginas es menos escritura que cuatro en uno de cien. Cita y nota se cuentan
+aparte porque son dos gestos distintos —copiar lo que dice el libro y decir lo tuyo— y mezclarlos
+hace que un lector de citas y otro de comentarios se vean iguales.
+
+**«Velocidad real» divide por tiempo, no por días**, y esa es la corrección: `computePagesPerDay`
+divide por días distintos, así que mezcla una sesión de tres horas con una de diez minutos.
+Contesta a «cuánto avanzas al día», que es constancia; la nueva contesta a «a qué velocidad lees»,
+que es ritmo. Las dos se quedan, porque son dos preguntas.
+
+**Y la decisión de forma que hay que recordar de esa tarea: la PRIMERA sesión de un pase solo fija
+el cursor, nunca cuenta como avance.** Es lo que separa una medida de velocidad de una inflada:
+quien empieza a registrar por la página 300 no ha leído 300 páginas en esa sesión. El plan de la
+fase pedía lo contrario (contar desde cero) y se corrigió al implementarlo — una métrica de
+velocidad que infla es peor que no tenerla. El «avance positivo por pase» pasó a un helper
+compartido con `computePagesPerDay` en vez de copiarse, para que las dos no puedan divergir.
+
+**Todas las cifras que dejan algo fuera dicen cuánto.** Relecturas sin nota en los dos extremos,
+abandonos sin motivo (el campo nació el 2026-08-14 sin backfill), abandonos sin páginas en ficha,
+anotaciones de obras sin talla, sesiones sin duración. Son cinco denominadores, y sin ellos los
+cinco paneles parecerían hablar de todo.
+
+**Sin `use cache` en ninguno de los cuatro getters nuevos**, y no es olvido: los cuatro dependen de
+`auth.uid()` vía RLS, y los de abandono además leen una vista enmascarada por dueño. Cachear
+cualquiera de ellos es una fuga de datos entre cuentas invisible en desarrollo. Regla #437.
+
+**Rendimiento medido, no supuesto.** El muro pasa de 17 a 21 consultas en un solo `Promise.all`,
+así que su reloj es el de la consulta más lenta. Medido sobre siete cargas del muro completo:
+`getFormatStats` es la más lenta en las siete (695–865 ms) y el total va siempre 3–5 ms por encima
+de ella. Los cuatro getters nuevos entran en 458–742 ms, todos por debajo. El techo no se mueve.

@@ -85,10 +85,12 @@ const MIN_POINTS: Partial<Record<PanelViz, number>> = {
   stacked: 2,
   lollipop: 2,
   heatmap: 2,
-  // `bullet` NO entra aquí, y es deliberado: compara cada fila con SU propia
-  // referencia, no con las otras filas, así que UNA fila ya es un bullet
-  // completo. Ponerle 2 degradaría a `kpi` el panel «Rachas», que estrenó la
-  // forma en la fase A con una sola fila (racha actual contra tu mejor racha).
+  // `bullet` y `dumbbell` NO entran aquí, y es deliberado: comparan cada fila
+  // con SU propia referencia —su marca, su punto de partida—, no con las otras
+  // filas, así que UNA fila ya es un gráfico completo. Ponerle 2 al bullet
+  // degradaría a `kpi` el panel «Rachas», que estrenó la forma en la fase A con
+  // una sola fila; y una sola relectura que te cambió la nota es un hallazgo,
+  // no medio gráfico.
 };
 
 /**

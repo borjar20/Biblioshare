@@ -16,7 +16,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { derive } from "@/lib/stats/panel/derive";
 import { UNITS, type PanelSpec } from "@/lib/stats/panel/types";
-import { BulletChart, LollipopChart, WaffleChart } from "./charts";
+import { BulletChart, DumbbellChart, LollipopChart, WaffleChart } from "./charts";
 
 afterEach(cleanup);
 
@@ -237,5 +237,61 @@ describe("bullet", () => {
     const { container } = render(<BulletChart spec={s} derived={derive(s)} />);
     expect(container.querySelector("[data-fill]")).toBeNull();
     expect(screen.getByText(/Sin datos/)).toBeTruthy();
+  });
+});
+
+describe("dumbbell", () => {
+  it("dice de dónde a dónde, y en qué dirección", () => {
+    const s = spec({
+      viz: "dumbbell",
+      unit: UNITS.stars,
+      data: [{ key: "dune", label: "Dune", from: 3.5, value: 5 }],
+    });
+    render(<DumbbellChart spec={s} derived={derive(s)} interactive />);
+    const marca = screen.getByLabelText(/^Dune: de 3,5 ★ a 5,0 ★, sube 1,5 ★$/);
+    expect(marca.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("bajar y subir no se distinguen solo por el color", () => {
+    const s = spec({
+      viz: "dumbbell",
+      unit: UNITS.stars,
+      data: [{ key: "a", label: "A", from: 4.5, value: 3.5 }],
+    });
+    render(<DumbbellChart spec={s} derived={derive(s)} interactive />);
+    // La PALABRA «baja» está en el nombre accesible: el color es redundante.
+    expect(screen.getByLabelText(/baja 1,0 ★/)).toBeTruthy();
+  });
+
+  it("sin cambio lo dice, en vez de fingir una dirección", () => {
+    const s = spec({
+      viz: "dumbbell",
+      unit: UNITS.stars,
+      data: [{ key: "a", label: "A", from: 4, value: 4 }],
+    });
+    render(<DumbbellChart spec={s} derived={derive(s)} interactive />);
+    expect(screen.getByLabelText(/no cambia/)).toBeTruthy();
+  });
+
+  it("una fila sin punto de partida no es un dumbbell y no entra en el foco", () => {
+    // `from` ausente = no hay de dónde. Dibujar el punto de llegada solo diría
+    // «esta obra vale 4», que es otro panel.
+    const s = spec({
+      viz: "dumbbell",
+      unit: UNITS.stars,
+      data: [{ key: "a", label: "A", value: 4 }],
+    });
+    render(<DumbbellChart spec={s} derived={derive(s)} interactive />);
+    expect(screen.queryByLabelText(/^A:/)).toBeNull();
+  });
+
+  it("escribe las dos cifras: es lo que le permite perder la tabla", () => {
+    const s = spec({
+      viz: "dumbbell",
+      unit: UNITS.stars,
+      data: [{ key: "dune", label: "Dune", from: 3.5, value: 5 }],
+    });
+    render(<DumbbellChart spec={s} derived={derive(s)} interactive />);
+    expect(screen.getByText("3,5 → 5,0 ★")).toBeTruthy();
   });
 });

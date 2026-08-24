@@ -199,6 +199,81 @@ export function statsInput(over: Partial<StatsInput> = {}): StatsInput {
       busiest: { date: "2026-02-14", count: 3 },
     },
     pagesPerDay: 37,
+    rereads: {
+      works: [
+        {
+          type: "book",
+          itemId: "r1",
+          title: "La mano izquierda de la oscuridad",
+          first: 3.5,
+          latest: 5,
+          change: 1.5,
+          passes: 2,
+        },
+        {
+          type: "book",
+          itemId: "r2",
+          title: "Las ciudades invisibles",
+          first: 4.5,
+          latest: 4,
+          change: -0.5,
+          passes: 3,
+        },
+      ],
+      averageChange: 0.5,
+      unratedRereads: 1,
+      totalRereadWorks: 3,
+    },
+    drops: {
+      byReason: {
+        no_enganchado: 4,
+        aburrido: 2,
+        no_es_momento: 3,
+        no_esperado: 1,
+        otro: 0,
+      },
+      withReason: 10,
+      total: 13,
+      point: {
+        averagePercent: 26,
+        pointOfNoReturn: 44,
+        measured: 7,
+        unmeasurable: 2,
+      },
+    },
+    annotations: {
+      works: [
+        {
+          type: "book",
+          itemId: "n1",
+          title: "Las ciudades invisibles",
+          count: 11,
+          quotes: 9,
+          totalPages: 170,
+          per100: 6.5,
+        },
+        {
+          type: "book",
+          itemId: "n2",
+          title: "Kafka en la orilla",
+          count: 8,
+          quotes: 3,
+          totalPages: 620,
+          per100: 1.3,
+        },
+      ],
+      quotes: 12,
+      notes: 7,
+      unmeasurable: 4,
+    },
+    speed: {
+      pagesPerHour: 41,
+      works: [
+        { itemId: "s1", title: "Kafka en la orilla", pagesPerHour: 58, pages: 290, minutes: 300 },
+        { itemId: "s2", title: "Ensayo sobre la ceguera", pagesPerHour: 31, pages: 155, minutes: 300 },
+      ],
+      withoutDuration: 3,
+    },
     ...over,
   };
 }

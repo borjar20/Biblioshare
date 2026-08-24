@@ -90,6 +90,14 @@ export type PanelDatum = {
   /** Desglose por serie, para `stacked`. */
   parts?: PanelPart[];
   /**
+   * El valor de PARTIDA de este punto. `value` es el de llegada. Solo lo
+   * consume `dumbbell`.
+   *
+   * `undefined` = no hay de dónde, y entonces la fila NO se dibuja. Un punto de
+   * llegada suelto solo diría «esta obra vale 4», que es otro panel.
+   */
+  from?: number;
+  /**
    * Valor de referencia contra el que se compara ESTE punto: la mejor marca, el
    * objetivo, la media. Solo lo consume `bullet`.
    *
@@ -163,6 +171,8 @@ export type PanelViz =
   | "waffle"
   /** Valor contra su propia referencia (`PanelDatum.target`). Una fila ya es un bullet. */
   | "bullet"
+  /** Variación de dos puntos: de dónde (`PanelDatum.from`) a dónde (`value`). */
+  | "dumbbell"
   | "ranking"
   | "kpi"
   | "table";
@@ -228,6 +238,15 @@ export type PanelSpec = {
   series?: PanelSeries[];
   /** Objetivo de `gauge`. `null` = sin objetivo configurado. */
   target?: number | null;
+  /**
+   * Cómo se llama la referencia que dibuja `bullet` (`PanelDatum.target`), para
+   * el nombre accesible de cada fila. Por defecto, «tu marca».
+   *
+   * No es cosmético: en «Rachas» la referencia ES una marca que se bate, pero en
+   * «Dónde abandonas» es el punto más tardío al que has dejado un libro, y
+   * llamarlo «tu marca» sugiere un récord que se persigue.
+   */
+  targetName?: string;
   kpis?: PanelKpi[];
   /** Sustituye al resumen generado. Solo si ninguna regla da la frase. */
   summary?: string;

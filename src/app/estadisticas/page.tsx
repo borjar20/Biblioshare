@@ -35,7 +35,10 @@ import { getLibraryHealth } from "@/lib/stats/get-library-health";
 import { getRatedFacets } from "@/lib/stats/get-rated-facets";
 import { getFormatStats } from "@/lib/stats/get-format-stats";
 import { getYearCalendar } from "@/lib/stats/get-year-calendar";
-import { getPagesPerDay } from "@/lib/stats/get-pace";
+import { getPagesPerDay, getReadingSpeed } from "@/lib/stats/get-pace";
+import { getRereads } from "@/lib/stats/get-rereads";
+import { getDropStats } from "@/lib/stats/get-drop-reasons";
+import { getNotesPerWork } from "@/lib/stats/get-notes-per-work";
 import {
   buildStatsSections,
   collapsedPanelCount,
@@ -199,6 +202,10 @@ async function StatsWall({
     formats,
     calendar,
     pagesPerDay,
+    rereads,
+    drops,
+    annotations,
+    speed,
   ] = await Promise.all([
     getPeriodActivity(supabase, userId, period, itemFilter),
     getRatingDistribution(supabase, userId, period, itemFilter),
@@ -217,6 +224,14 @@ async function StatsWall({
     getFormatStats(supabase, userId, period),
     getYearCalendar(supabase, userId, calendarYear),
     getPagesPerDay(supabase, userId, period),
+    // Sin periodo: una relectura son dos pases separados por años y recortarlos
+    // a la ventana elegida dejaría fuera el primero, que es media comparación.
+    getRereads(supabase, userId, itemFilter),
+    // Lee de `pass_reviews`, no de `passes`: el motivo de abandono no tiene
+    // grant de SELECT en la tabla y solo la vista lo enmascara por dueño.
+    getDropStats(supabase, userId, itemFilter),
+    getNotesPerWork(supabase, userId, period),
+    getReadingSpeed(supabase, userId, period),
   ]);
 
   const panelInput = {
@@ -255,6 +270,10 @@ async function StatsWall({
     formats,
     calendar,
     pagesPerDay,
+    rereads,
+    drops,
+    annotations,
+    speed,
   };
 
   const sections = buildStatsSections(panelInput);

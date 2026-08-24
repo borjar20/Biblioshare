@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { buildStatsSections, collapsedPanelCount } from "./specs";
 import { statsInput as input } from "./__fixtures__/stats-input";
@@ -64,7 +65,10 @@ describe("la forma sale de lo que mide el panel", () => {
     expect(allPanels().filter((p) => p.viz === "ranking")).toHaveLength(0);
   });
 
-  it("los siete rankings son lollipop", () => {
+  it("los siete rankings que eran texto son lollipop", () => {
+    // Lista CERRADA de los siete que existían: es la afirmación que importa. La
+    // comprobación es de inclusión y no de igualdad a propósito, para que un
+    // panel nuevo que estrene la forma no obligue a tocar este test.
     const ids = [
       "nota-generos",
       "nota-autores",
@@ -74,8 +78,10 @@ describe("la forma sale de lo que mide el panel", () => {
       "mejor-valoradas",
       "autores",
     ];
-    const lollipops = allPanels().filter((p) => p.viz === "lollipop");
-    expect(lollipops.map((p) => p.id).sort()).toEqual([...ids].sort());
+    const lollipops = allPanels()
+      .filter((p) => p.viz === "lollipop")
+      .map((p) => p.id);
+    expect(lollipops).toEqual(expect.arrayContaining(ids));
   });
 
   it("ningún reparto se queda en anillo: el principio 3 prohíbe medir un ángulo", () => {
@@ -206,5 +212,85 @@ describe("nivel 2 — la salida solo se ofrece si lleva a algún dato", () => {
       .flatMap((s) => s.panels)
       .find((p) => p.id === "actividad-periodo");
     expect(actividad?.empty?.elsewhere).toBeUndefined();
+  });
+});
+
+describe("relecturas", () => {
+  it("preside «Valoraciones»: los títulos son largos y el salto se lee en el ancho", () => {
+    const seccion = buildStatsSections(input()).find((s) => s.id === "valoraciones");
+    expect(seccion?.panels[0]?.id).toBe("relecturas");
+    expect(seccion?.panels[0]?.hero).toBe(true);
+  });
+
+  it("SIN relecturas no es héroe: una tarjeta vacía a tres columnas es el peor vacío del muro", () => {
+    const sinRelecturas = input({
+      rereads: { works: [], averageChange: null, unratedRereads: 0, totalRereadWorks: 0 },
+    });
+    const panel = buildStatsSections(sinRelecturas)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "relecturas");
+    expect(panel?.hero).toBeUndefined();
+  });
+
+  it("dice cuántas relecturas quedan fuera por no tener las dos notas", () => {
+    // Sin ese denominador, «tus relecturas te gustan medio punto más» habla solo
+    // de las que llegaste a valorar dos veces, y no lo parece.
+    const panel = allPanels().find((p) => p.id === "relecturas");
+    expect(panel?.note).toMatch(/1 relectura/);
+  });
+
+  it("no obedece al selector de periodo: una relectura son dos pases separados por años", () => {
+    expect(allPanels().find((p) => p.id === "relecturas")?.dataWindow).toBe("long");
+  });
+});
+
+describe("abandonos: el dato más privado del muro", () => {
+  it("«Por qué abandonas» NO aparece en la pestaña pública del perfil", () => {
+    // `passes.dropped_reason` es SIEMPRE privado, con independencia de
+    // `is_public`: la tabla no concede SELECT sobre la columna a nadie y la
+    // única vía de lectura es `pass_reviews`, enmascarada por dueño. Este panel
+    // solo puede vivir en /estadisticas, que es privada. No lo caza ningún tipo.
+    const src = readFileSync("src/app/u/[username]/_tabs/stats-tab.tsx", "utf8");
+    expect(src).not.toMatch(/motivos-abandono|punto-abandono|getDropStats/);
+  });
+
+  it("los cinco motivos salen aunque uno valga cero: el cero es una respuesta", () => {
+    const panel = allPanels().find((p) => p.id === "motivos-abandono");
+    expect(panel?.data).toHaveLength(5);
+    expect(panel?.data.find((d) => d.key === "otro")?.value).toBe(0);
+  });
+
+  it("dice cuántos abandonos no tienen motivo: el campo nació sin backfill", () => {
+    expect(allPanels().find((p) => p.id === "motivos-abandono")?.note).toMatch(/3 abandonos/);
+  });
+
+  it("sin cinco abandonos medibles, el punto de no retorno NO se dibuja", () => {
+    const pocos = input({
+      drops: {
+        ...input().drops,
+        point: { averagePercent: 18, pointOfNoReturn: null, measured: 2, unmeasurable: 0 },
+      },
+    });
+    const panel = buildStatsSections(pocos)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "punto-abandono");
+    expect(panel?.data[0]?.target).toBeUndefined();
+  });
+
+  it("no fingen obedecer al periodo: su getter no lo filtra", () => {
+    // Un abandono no siempre trae fecha de cierre, así que recortarlo por
+    // periodo dejaría fuera justo los que no la tienen sin que se notara.
+    // Declarar el periodo elegido y devolver el histórico es mentir por omisión.
+    for (const id of ["motivos-abandono", "punto-abandono"]) {
+      const panel = allPanels().find((p) => p.id === id);
+      expect(panel?.dataWindow, id).toBe("long");
+      expect(panel?.context.period, id).toBe("Todo el histórico");
+    }
+  });
+
+  it("la marca del bullet NO se llama «tu marca»: no es un récord que se persiga", () => {
+    expect(allPanels().find((p) => p.id === "punto-abandono")?.targetName).toBe(
+      "tu abandono más tardío",
+    );
   });
 });
