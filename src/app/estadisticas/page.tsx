@@ -36,7 +36,11 @@ import { getRatedFacets } from "@/lib/stats/get-rated-facets";
 import { getFormatStats } from "@/lib/stats/get-format-stats";
 import { getYearCalendar } from "@/lib/stats/get-year-calendar";
 import { getPagesPerDay } from "@/lib/stats/get-pace";
-import { buildStatsSections, hiddenPanelCount } from "@/lib/stats/panel/specs";
+import {
+  buildStatsSections,
+  collapsedPanelCount,
+  hiddenPanelCount,
+} from "@/lib/stats/panel/specs";
 import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { StatsControls } from "@/components/stats/stats-controls";
 import { StatsWallSkeleton } from "@/components/stats/stats-wall-skeleton";
@@ -258,6 +262,9 @@ async function StatsWall({
   // cuántos son: un panel que desaparece sin explicación se lee como que la
   // página se rompió, y el calendario anual es de los que más se buscan.
   const escondidos = hiddenPanelCount(panelInput);
+  // Y los que se pliegan a una línea por no poder tener datos NUNCA, que es otra
+  // cosa: esos no dependen del periodo y ampliarlo no los devuelve.
+  const plegados = collapsedPanelCount(panelInput);
 
   return (
     <>
@@ -273,6 +280,8 @@ async function StatsWall({
                 ? "los de foto del momento y los que necesitan meses o años (el año natural, la serie histórica y los récords)"
                 : "los de foto del momento, que no hablan de un año sino de ahora"
             }. Amplía el periodo para verlos.`}
+        {plegados > 0 &&
+          ` Otros ${plegados} se pliegan a una línea porque no pueden tener datos con ningún periodo: son los que solo existen para un tipo de obra que todavía no has terminado.`}
       </p>
 
       {/* Índice de secciones: con siete bloques, bajar a «Por categoría»

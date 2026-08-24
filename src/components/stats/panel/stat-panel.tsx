@@ -95,6 +95,28 @@ export function StatPanel({
   const titleId = `${spec.id}-title`;
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
 
+  // NIVEL 1 — vacío estructural. Va ANTES que nada, incluso que carga y error:
+  // un panel que no puede tener datos con ningún periodo tampoco los está
+  // cargando. Se pliega a una línea en vez de esconderse, y la página dice
+  // cuántos hay: esconder sí, callar no.
+  if (spec.structurallyEmpty) {
+    return (
+      <section
+        aria-labelledby={titleId}
+        className="rounded-card border border-dashed border-border bg-surface px-3.5 py-2.5"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <Heading id={titleId} className="text-[12px] font-medium text-muted-foreground">
+            {spec.title}
+          </Heading>
+          <span className="text-[11px] text-foreground-faint">
+            {spec.structurallyEmpty}
+          </span>
+        </div>
+      </section>
+    );
+  }
+
   // Carga y error no son plegables: no hay detalle que abrir todavía.
   if (state.status === "loading" || state.status === "error") {
     return (

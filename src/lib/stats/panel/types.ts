@@ -209,6 +209,19 @@ export type PanelSpec = {
    * grande no gana nada por ocupar tres veces más.
    */
   hero?: true;
+  /**
+   * Por qué este panel NO PUEDE tener datos, con independencia del periodo.
+   * `undefined` = sí puede tenerlos, y su vacío es cosa del filtro (nivel 2).
+   *
+   * La frase se enseña plegada a UNA LÍNEA y entra en el recuento de la página.
+   * Es el mismo criterio que `hiddenPanelCount` aplica al periodo: esconder sí,
+   * callar no — un muro que oculta en silencio miente sobre lo que existe.
+   *
+   * Ojo al criterio, que es la trampa del nivel 1: «no puede tener datos NUNCA»
+   * no se decide con una cifra que el selector de periodo acaba de recortar. Si
+   * es cero solo en el periodo, es nivel 2 y no nivel 1.
+   */
+  structurallyEmpty?: string;
   unit: Unit;
   data: PanelDatum[];
   /** Obligatorio para `stacked`; opcional en el resto para colorear. */

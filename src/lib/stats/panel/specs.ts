@@ -187,6 +187,30 @@ export function fitsPeriod(spec: PanelSpec, period: StatsPeriod): boolean {
   return true;
 }
 
+/**
+ * ¿Has terminado alguna obra de este tipo EN TODO EL HISTÓRICO?
+ *
+ * `byYear` es la única señal del muro que ignora a la vez el periodo y el filtro
+ * de tipo —`getCompletedByYear` no recibe ninguno de los dos—, y eso es justo lo
+ * que exige el nivel 1: «no puede tener datos nunca» no se puede decidir con una
+ * cifra que el selector de periodo acaba de recortar.
+ *
+ * Cuenta obras TERMINADAS, así que solo vale para los paneles que también miden
+ * lo terminado. `series-formato` mide episodios vistos y por eso NO lo usa: quien
+ * lleva media temporada de tres series tiene datos y cero series terminadas.
+ */
+function everFinished(byYear: YearCompleted[], type: "book" | "movie"): boolean {
+  return byYear.some((y) => y[type] > 0);
+}
+
+/**
+ * Los paneles que solo existen para un tipo de obra que nunca has terminado. La
+ * frase va en primera persona del panel, no del sistema: dice qué falta, no que
+ * algo se haya escondido.
+ */
+const NEVER_BOOKS = "No has terminado ningún libro todavía";
+const NEVER_MOVIES = "No has terminado ninguna película todavía";
+
 export function buildStatsSections(input: StatsInput): PanelSection[] {
   const period = periodLabel(input.period);
   // El filtro global va SUELTO al rótulo, no mezclado con los filtros propios
@@ -215,6 +239,20 @@ export function hiddenPanelCount(input: StatsInput): number {
     0,
   );
   return total - shown;
+}
+
+/** Cuántos paneles se pliegan por no poder tener datos nunca. */
+export function collapsedPanelCount(input: StatsInput): number {
+  return allSections(input, periodLabel(input.period), undefined)
+    .filter((s) => s.panels.some((spec) => fitsPeriod(spec, input.period)))
+    .reduce(
+      (n, s) =>
+        n +
+        s.panels.filter(
+          (spec) => spec.structurallyEmpty && fitsPeriod(spec, input.period),
+        ).length,
+      0,
+    );
 }
 
 function allSections(
@@ -1099,10 +1137,11 @@ function lengthVsRatingPanel(
 
 // ── §6 Gustos y descubrimiento ────────────────────────────────────────────────
 
-function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+function directorsPanel({ catalog, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "directores",
     title: "Directores más vistos",
+    structurallyEmpty: everFinished(byYear, "movie") ? undefined : NEVER_MOVIES,
     context: {
       period,
       filter: globalFilter(itemFilter),
@@ -1124,10 +1163,11 @@ function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): Pa
   };
 }
 
-function publishersPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+function publishersPanel({ catalog, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "editoriales",
     title: "Editoriales",
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: {
       period,
       filter: globalFilter(itemFilter),
@@ -1206,7 +1246,7 @@ function coverageNote(known: number, unknown: number, what: string): string | un
   } ${what} en su ficha de catálogo. Las medias son de las que sí.`;
 }
 
-function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): PanelSpec {
+function bookFormatPanel({ formats, pagesPerDay, byYear }: StatsInput, period: string): PanelSpec {
   const b = formats.books;
   const known = b.finished - b.unknown;
   const daysToEmpty =
@@ -1215,6 +1255,7 @@ function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): 
   return {
     id: "libros-formato",
     title: "Libros",
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: { period, filters: ["Solo libros"] },
     viz: "kpi",
     unit: UNITS.pages,
@@ -1262,12 +1303,13 @@ function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): 
   };
 }
 
-function movieFormatPanel({ formats }: StatsInput, period: string): PanelSpec {
+function movieFormatPanel({ formats, byYear }: StatsInput, period: string): PanelSpec {
   const m = formats.movies;
   const known = m.finished - m.unknown;
   return {
     id: "peliculas-formato",
     title: "Películas",
+    structurallyEmpty: everFinished(byYear, "movie") ? undefined : NEVER_MOVIES,
     context: { period, filters: ["Solo películas"] },
     viz: "kpi",
     unit: UNITS.minutes,
@@ -1818,10 +1860,11 @@ function genresPanel(
   };
 }
 
-function authorsPanel({ catalog, titles, itemFilter }: StatsInput, period: string): PanelSpec {
+function authorsPanel({ catalog, titles, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "autores",
     title: titles.authors,
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: {
       period,
       filter: globalFilter(itemFilter),
