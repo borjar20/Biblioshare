@@ -18,12 +18,19 @@ import {
 export function EmojiPicker({
   onPick,
   onBack,
-  disabledNew = false,
+  atCap = false,
+  isDisabled,
 }: {
   onPick: (emoji: string) => void;
   onBack: () => void;
-  /** El viewer llegó al tope: puede quitar las suyas, no añadir nuevas. */
-  disabledNew?: boolean;
+  /** Al llegar al tope se avisa, aunque el emoji en pantalla siga siendo pulsable. */
+  atCap?: boolean;
+  /**
+   * Qué botones deshabilitar. El ReactionBar es quien conoce el mapa de
+   * reacciones del viewer, así que decide él: al llegar al tope se bloquean
+   * los emojis nuevos, pero el viewer puede seguir quitando los suyos.
+   */
+  isDisabled?: (emoji: string) => boolean;
 }) {
   const t = useTranslations("social");
   const [group, setGroup] = useState(0);
@@ -73,7 +80,7 @@ export function EmojiPicker({
         </div>
       )}
 
-      {disabledNew && (
+      {atCap && (
         <p className="text-[11px] text-muted-foreground">{t("emojiPicker.capReached")}</p>
       )}
 
@@ -87,7 +94,7 @@ export function EmojiPicker({
             <button
               key={entry.e}
               type="button"
-              disabled={disabledNew}
+              disabled={isDisabled?.(entry.e) ?? false}
               aria-label={entry.n}
               title={entry.n}
               onClick={() => onPick(entry.e)}

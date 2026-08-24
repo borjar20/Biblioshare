@@ -38,6 +38,11 @@ export function ReactionBar({
   const existing = orderedReactions(reactions);
   const atCap = capReached(reactions);
 
+  // Foco pendiente sin useEffect: al volver del catálogo (onBack) marcamos la
+  // intención, y el callback ref del botón «+» la consume en cuanto ese botón
+  // vuelve a montarse (se desmonta mientras `browsing` está activo).
+  const restorePlusFocus = useRef(false);
+
   function close() {
     setOpen(false);
     setBrowsing(false);
@@ -47,6 +52,11 @@ export function ReactionBar({
   function pick(emoji: string) {
     onToggle(emoji);
     close();
+  }
+
+  function backFromPicker() {
+    restorePlusFocus.current = true;
+    setBrowsing(false);
   }
 
   /** Un emoji nuevo se bloquea al llegar al tope; los tuyos siempre se quitan. */
@@ -105,8 +115,9 @@ export function ReactionBar({
             {browsing ? (
               <EmojiPicker
                 onPick={pick}
-                onBack={() => setBrowsing(false)}
-                disabledNew={atCap}
+                onBack={backFromPicker}
+                atCap={atCap}
+                isDisabled={blocked}
               />
             ) : (
               <div className="flex flex-col gap-1">
@@ -125,7 +136,10 @@ export function ReactionBar({
                             : "text-muted-foreground hover:bg-surface-muted hover:text-foreground"
                         }`}
                       >
-                        <span aria-hidden="true">{r.emoji}</span>
+                        {/* Sin aria-hidden: es el único contenido del botón que
+                            identifica el emoji para lectores de pantalla, que
+                            resuelven el carácter con su propia tabla CLDR. */}
+                        <span>{r.emoji}</span>
                         <span>{r.count}</span>
                       </button>
                     ))}
@@ -153,6 +167,16 @@ export function ReactionBar({
                   ))}
                   <button
                     type="button"
+                    ref={(node) => {
+                      // Al volver del catálogo este botón se remonta; si
+                      // `backFromPicker` dejó la marca, le devolvemos el foco
+                      // aquí mismo (sin useEffect: el callback ref ya corre
+                      // tras el commit, que es cuando el nodo existe).
+                      if (node && restorePlusFocus.current) {
+                        restorePlusFocus.current = false;
+                        node.focus();
+                      }
+                    }}
                     aria-label={t("emojiPicker.open")}
                     title={t("emojiPicker.open")}
                     onClick={() => setBrowsing(true)}
