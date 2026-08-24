@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import { getCollection } from "@/lib/library/collections";
+import { SHOW_DROPPED_PARAM } from "@/lib/library/hide-dropped";
 import { CollectionDetail } from "@/components/library/collection-detail";
 import { CollectionMenu } from "@/components/library/collection-menu";
 import { AddItemsToCollectionSheet } from "@/components/library/add-items-to-collection-sheet";
@@ -44,15 +45,27 @@ export async function generateMetadata({
 // aquí se traduce en `notFound()`, no un error sin más.
 export default async function CollectionDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ abandonados?: string }>;
 }) {
   const { id } = await params;
+  const { abandonados } = await searchParams;
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/coleccion/c/${id}`));
 
-  const detail = await getCollection(supabase, user.id, id);
+  // Misma regla que en /coleccion: la preferencia manda salvo que la URL la
+  // anule para esta vista (spec D7).
+  const { data: prefs } = await supabase
+    .from("profiles")
+    .select("hide_dropped")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const hideDropped = (prefs?.hide_dropped ?? false) && abandonados !== "1";
+
+  const detail = await getCollection(supabase, user.id, id, hideDropped);
   if (!detail) notFound();
 
   const t = await getTranslations("collection");
@@ -82,7 +95,10 @@ export default async function CollectionDetailPage({
         />
       </div>
 
-      <CollectionDetail detail={detail} />
+      <CollectionDetail
+        detail={detail}
+        showDroppedHref={`/coleccion/c/${id}?${SHOW_DROPPED_PARAM}=1`}
+      />
     </div>
   );
 }
