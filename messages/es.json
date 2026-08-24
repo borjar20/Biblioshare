@@ -340,11 +340,13 @@
     "reject": "Rechazar",
     "backToProfile": "Volver al perfil",
     "like": "Me gusta",
-    "reaction": {
-      "like": "Me gusta",
-      "read": "Leído",
-      "shock": "Impacto",
-      "fire": "Fuego"
+    "emojiPicker": {
+      "title": "Elegir emoji",
+      "open": "Más emojis",
+      "back": "Volver",
+      "search": "Buscar emoji",
+      "noResults": "Ningún emoji coincide",
+      "capReached": "Máximo 6 reacciones por mensaje"
     },
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
     "viewThread": "Ver hilo",
