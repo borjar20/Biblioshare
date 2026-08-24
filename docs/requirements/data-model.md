@@ -802,9 +802,10 @@ En comentarios y reacciones, en cambio, **el id canónico es la única identidad
   > trigger a la vez.
 - **`kind` (`text`, NOT NULL) — el emoji literal** de la reacción (`❤️`, `🔥`, `🐙`). Hasta
   2026-08-24 era una paleta cerrada de cuatro slugs (`like`/`read`/`shock`/`fire`), migrados a
-  `❤️`/`📖`/`😱`/`🔥` por `20260876_reactions_emoji_libre.sql` (**aplicada en DEV; prod por
-  reverificar** — la migración está pendiente de una autorización explícita, ver
-  `docs/requirements/decisiones.md`).
+  `❤️`/`📖`/`😱`/`🔥` por `20260876_reactions_emoji_libre.sql` (**aplicada y verificada en dev y
+  en prod el 2026-08-25**, contra `pg_constraint`/`pg_trigger` y no contra el ledger). En prod
+  las 51 filas existentes se conservaron íntegras y quedaron 21 `❤️`, 13 `🔥`, 13 `😱` y 4 `📖`;
+  el dedup no llegó a borrar nada porque no había ninguna fila que ya fuese emoji.
   - CHECK `reactions_kind_emoji`: de **forma**, no lista blanca — 1..16 caracteres, al menos uno
     no ASCII, sin espacios. La lista blanca real es el catálogo
     (`src/lib/social/emoji-catalog.data.ts`), validado en `toggleReaction`.
