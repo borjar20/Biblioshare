@@ -36,6 +36,7 @@ import { getRatedFacets } from "@/lib/stats/get-rated-facets";
 import { getFormatStats } from "@/lib/stats/get-format-stats";
 import { getYearCalendar } from "@/lib/stats/get-year-calendar";
 import { getPagesPerDay } from "@/lib/stats/get-pace";
+import { getRereads } from "@/lib/stats/get-rereads";
 import {
   buildStatsSections,
   collapsedPanelCount,
@@ -199,6 +200,7 @@ async function StatsWall({
     formats,
     calendar,
     pagesPerDay,
+    rereads,
   ] = await Promise.all([
     getPeriodActivity(supabase, userId, period, itemFilter),
     getRatingDistribution(supabase, userId, period, itemFilter),
@@ -217,6 +219,9 @@ async function StatsWall({
     getFormatStats(supabase, userId, period),
     getYearCalendar(supabase, userId, calendarYear),
     getPagesPerDay(supabase, userId, period),
+    // Sin periodo: una relectura son dos pases separados por años y recortarlos
+    // a la ventana elegida dejaría fuera el primero, que es media comparación.
+    getRereads(supabase, userId, itemFilter),
   ]);
 
   const panelInput = {
@@ -255,6 +260,7 @@ async function StatsWall({
     formats,
     calendar,
     pagesPerDay,
+    rereads,
   };
 
   const sections = buildStatsSections(panelInput);

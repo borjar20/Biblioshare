@@ -208,3 +208,32 @@ describe("nivel 2 — la salida solo se ofrece si lleva a algún dato", () => {
     expect(actividad?.empty?.elsewhere).toBeUndefined();
   });
 });
+
+describe("relecturas", () => {
+  it("preside «Valoraciones»: los títulos son largos y el salto se lee en el ancho", () => {
+    const seccion = buildStatsSections(input()).find((s) => s.id === "valoraciones");
+    expect(seccion?.panels[0]?.id).toBe("relecturas");
+    expect(seccion?.panels[0]?.hero).toBe(true);
+  });
+
+  it("SIN relecturas no es héroe: una tarjeta vacía a tres columnas es el peor vacío del muro", () => {
+    const sinRelecturas = input({
+      rereads: { works: [], averageChange: null, unratedRereads: 0, totalRereadWorks: 0 },
+    });
+    const panel = buildStatsSections(sinRelecturas)
+      .flatMap((s) => s.panels)
+      .find((p) => p.id === "relecturas");
+    expect(panel?.hero).toBeUndefined();
+  });
+
+  it("dice cuántas relecturas quedan fuera por no tener las dos notas", () => {
+    // Sin ese denominador, «tus relecturas te gustan medio punto más» habla solo
+    // de las que llegaste a valorar dos veces, y no lo parece.
+    const panel = allPanels().find((p) => p.id === "relecturas");
+    expect(panel?.note).toMatch(/1 relectura/);
+  });
+
+  it("no obedece al selector de periodo: una relectura son dos pases separados por años", () => {
+    expect(allPanels().find((p) => p.id === "relecturas")?.dataWindow).toBe("long");
+  });
+});

@@ -199,6 +199,31 @@ export function statsInput(over: Partial<StatsInput> = {}): StatsInput {
       busiest: { date: "2026-02-14", count: 3 },
     },
     pagesPerDay: 37,
+    rereads: {
+      works: [
+        {
+          type: "book",
+          itemId: "r1",
+          title: "La mano izquierda de la oscuridad",
+          first: 3.5,
+          latest: 5,
+          change: 1.5,
+          passes: 2,
+        },
+        {
+          type: "book",
+          itemId: "r2",
+          title: "Las ciudades invisibles",
+          first: 4.5,
+          latest: 4,
+          change: -0.5,
+          passes: 3,
+        },
+      ],
+      averageChange: 0.5,
+      unratedRereads: 1,
+      totalRereadWorks: 3,
+    },
     ...over,
   };
 }

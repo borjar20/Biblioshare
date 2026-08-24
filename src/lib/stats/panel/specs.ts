@@ -28,6 +28,7 @@ import type { ActivityBucket, PeriodActivity } from "@/lib/stats/get-period-acti
 import type { RatedFacets, RatedGroup } from "@/lib/stats/get-rated-facets";
 import type { RatingDistribution } from "@/lib/stats/get-rating-distribution";
 import type { Records } from "@/lib/stats/get-records";
+import type { Rereads } from "@/lib/stats/get-rereads";
 import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
 import type { TbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import type { TopRatedItem } from "@/lib/stats/get-top-rated";
@@ -157,6 +158,7 @@ export type StatsInput = {
   formats: FormatStats;
   calendar: YearCalendar;
   pagesPerDay: number | null;
+  rereads: Rereads;
 };
 
 // ══ El muro completo, por secciones ══════════════════════════════════════════
@@ -354,6 +356,10 @@ function allSections(
       // «nunca hay un filtro por panel» (`filter.ts`), así que se arregla por
       // forma y por orden. Queda su issue.
       panels: [
+        // Va PRIMERO por ser el héroe de la sección, y héroe porque los títulos
+        // de obra son largos y el salto entre dos notas se lee en el ancho: en
+        // un tercio de tarjeta, «de 3,5 a 4,0» son doce píxeles de segmento.
+        rereadsPanel(input),
         ratingPanel(input.rating, input.titles.rating, period, filter),
         ratedGroupPanel("nota-generos", "Géneros mejor valorados", "Género", input.facets.genres, period, filter),
         // Páginas y minutos no comparten eje, así que van en dos paneles; y con
@@ -1742,6 +1748,83 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
     empty: {
       title: "Sin obras valoradas en este periodo",
       message: "Prueba a ampliar el periodo con el selector de arriba.",
+    },
+  };
+}
+
+// ── Relecturas ────────────────────────────────────────────────────────────────
+/**
+ * Cómo cambia tu nota al releer.
+ *
+ * El esquema lleva esto desde el principio —el pase es dueño de la nota, así que
+ * cada relectura tiene la suya— y lo único que se sacaba de ahí era un contador.
+ *
+ * **Ignora el selector de periodo a propósito**: una relectura son dos pases
+ * separados por años, y recortarlos a la ventana elegida dejaría fuera justo el
+ * primero, que es la mitad de la comparación. Lo dice en su alcance.
+ */
+function rereadsPanel(input: StatsInput): PanelSpec {
+  const { rereads, itemFilter } = input;
+  const works = rereads.works.slice(0, RANK_LIMIT);
+  const subieron = rereads.works.filter((w) => w.change > 0).length;
+
+  return {
+    id: "relecturas",
+    dataWindow: "long",
+    // Héroe SOLO cuando hay algo que dibujar. Una tarjeta vacía ocupando las tres
+    // columnas es el peor sitio del muro para no tener datos, y encima obliga a
+    // ir primera.
+    ...(works.length > 0 ? { hero: true as const } : {}),
+    title: "Cómo cambia tu nota al releer",
+    description:
+      "Compara la nota del PRIMER pase con la del último, no con la del medio: la pregunta es qué te parece ahora frente a la primera vez.",
+    context: {
+      period: "Todo el histórico",
+      scope: withAllTypes(itemFilter, "serie histórica"),
+      filters: ["Solo obras releídas y valoradas dos veces"],
+    },
+    viz: "dumbbell",
+    unit: UNITS.stars,
+    labelHeader: "Obra",
+    data: works.map((w) => ({
+      key: `${w.type}:${w.itemId}`,
+      label: w.title ?? "",
+      from: w.first,
+      value: w.latest,
+      detail: `${w.passes} pases`,
+    })),
+    kpis: [
+      {
+        key: "media",
+        label: "Cambio medio al releer",
+        value: rereads.averageChange,
+        unit: UNITS.stars,
+        hint: "En estrellas, sobre las obras valoradas las dos veces",
+      },
+      {
+        key: "obras",
+        label: "Obras releídas",
+        value: rereads.totalRereadWorks || null,
+        unit: UNITS.works,
+      },
+      {
+        key: "mejoran",
+        label: "Te gustaron más",
+        value: rereads.works.length > 0 ? subieron : null,
+        unit: UNITS.works,
+        hint: `De ${rereads.works.length} comparables`,
+      },
+    ],
+    note:
+      rereads.unratedRereads > 0
+        ? `Hay ${rereads.unratedRereads} ${
+            rereads.unratedRereads === 1 ? "relectura" : "relecturas"
+          } fuera del gráfico por no tener nota en alguno de los dos pases. Sin decirlo, la media hablaría solo de las que sí valoraste dos veces.`
+        : undefined,
+    empty: {
+      title: "Todavía no has releído nada",
+      message:
+        "Cierra un segundo pase de una obra que ya terminaste y aparecerá aquí con sus dos notas.",
     },
   };
 }
