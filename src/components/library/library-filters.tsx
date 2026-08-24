@@ -7,6 +7,7 @@ import { SearchIcon } from "@/components/ui/icons";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
 import { ALL_TYPES_PARAM } from "@/lib/library/effective-type";
 import { pillClass, segClass } from "@/lib/ui/control-classes";
+import { SHOW_DROPPED_PARAM } from "@/lib/library/hide-dropped";
 
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const STATUSES: MediaStatus[] = [
@@ -29,6 +30,8 @@ export async function LibraryFilters({
   genres,
   basePath,
   showTypeFilter = true,
+  hideDroppedPref = false,
+  showDropped = false,
   extraParams,
 }: {
   itemType?: ItemType;
@@ -41,6 +44,11 @@ export async function LibraryFilters({
   genres?: { slug: string; label: string; count: number }[];
   basePath: string;
   showTypeFilter?: boolean;
+  /** Preferencia `profiles.hide_dropped`. Solo con ella activa tiene sentido
+   *  ofrecer el chip que la anula. */
+  hideDroppedPref?: boolean;
+  /** ¿Esta vista lleva ya `?abandonados=1`? */
+  showDropped?: boolean;
   extraParams?: Record<string, string>;
 }) {
   const t = await getTranslations();
@@ -53,17 +61,21 @@ export async function LibraryFilters({
     status?: MediaStatus;
     sort?: LibrarySort;
     genre?: string;
+    showDropped?: boolean;
   }) {
     const params = new URLSearchParams(extraParams);
     const nextType = "type" in next ? next.type : itemType;
     const nextStatus = "status" in next ? next.status : status;
     const nextSort = "sort" in next ? next.sort : sort;
     const nextGenre = "genre" in next ? next.genre : genre;
+    const nextShowDropped =
+      "showDropped" in next ? next.showDropped : showDropped;
     if (nextType) params.set("type", nextType);
     if (nextStatus) params.set("status", nextStatus);
     if (nextSort && nextSort !== "recent") params.set("sort", nextSort);
     if (nextGenre) params.set("genero", nextGenre);
     if (search) params.set("q", search);
+    if (nextShowDropped) params.set(SHOW_DROPPED_PARAM, "1");
     const qs = params.toString();
     return `${basePath}${qs ? `?${qs}` : ""}`;
   }
@@ -73,10 +85,14 @@ export async function LibraryFilters({
   function clearHref() {
     const params = new URLSearchParams(extraParams);
     if (search) params.set("q", search);
+    // La anulación NO es un filtro: sobrevive a «Limpiar» por el mismo motivo
+    // que la búsqueda — el usuario acaba de pedirla a mano (spec D8).
+    if (showDropped) params.set(SHOW_DROPPED_PARAM, "1");
     const qs = params.toString();
     return `${basePath}${qs ? `?${qs}` : ""}`;
   }
 
+  // Ojo: `showDropped` NO suma aquí a propósito (spec D8).
   const activeCount =
     (showTypeFilter && itemType ? 1 : 0) +
     (status ? 1 : 0) +
@@ -98,6 +114,9 @@ export async function LibraryFilters({
         {status && <input type="hidden" name="status" value={status} />}
         {sort !== "recent" && <input type="hidden" name="sort" value={sort} />}
         {genre && <input type="hidden" name="genero" value={genre} />}
+        {showDropped && (
+          <input type="hidden" name={SHOW_DROPPED_PARAM} value="1" />
+        )}
         {extraParams &&
           Object.entries(extraParams).map(([key, value]) => (
             <input key={key} type="hidden" name={key} value={value} />
@@ -166,6 +185,17 @@ export async function LibraryFilters({
                   : t(`library.status.${s}`)}
               </Link>
             ))}
+            {/* Anulación de la preferencia «ocultar abandonados». Vive entre los
+                estados porque es de lo que habla, pero no es un filtro más: es
+                un interruptor de dos posiciones sobre esta vista. */}
+            {hideDroppedPref && (
+              <Link
+                href={buildHref({ showDropped: !showDropped })}
+                className={segClass(showDropped)}
+              >
+                {t("library.filters.showDropped")}
+              </Link>
+            )}
           </div>
         </div>
 

@@ -1114,3 +1114,17 @@ que falla contra el código anterior (0,58) antes de darlo por bueno.
 **Límite conocido:** el textarea sigue en `text-xs` (12px) y Safari iOS hace zoom al enfocar
 cualquier campo de menos de 16px. No se toca aquí porque cambiaría el tamaño de fuente de los
 campos de todo el proyecto; queda en la issue #768.
+
+## 2026-08-24 — Ocultar abandonados: el filtro es opt-in por sitio de llamada
+
+`getLibraryItems` la llaman diez sitios y solo cuatro son «vistas propias». El export CSV, el
+selector de obras de clubes, los buscadores de añadir a colección y los bloques de «hoy» comparten
+esa función; hacer que ocultara por defecto habría vaciado filas del respaldo del usuario sin que
+nada lo delate. Por eso `hideDropped` es un filtro que hay que pedir, y las vistas propias usan un
+envoltorio aparte (`getLibraryView`) que además devuelve cuántas ocultó.
+
+Corolario que conviene no deshacer en un refactor: **el Resumen de la biblioteca
+(`CollectionSummary`) no filtra.** Su barra apilada por estado es el único sitio de la app donde se
+ve que existen obras abandonadas; ocultar ahí dejaría al usuario sin saber que las tiene.
+
+Spec: `docs/superpowers/specs/2026-08-24-ocultar-abandonados-biblioteca-design.md`.

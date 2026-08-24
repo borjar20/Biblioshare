@@ -44,6 +44,12 @@ export function revalidateLibrary(): void {
   revalidatePath("/coleccion");
 }
 
+/** Todas las fichas de colección (patrón dinámico): al cambiar una preferencia
+ *  que afecta a lo que se pinta en ellas no se sabe cuál está abierta. */
+export function revalidateCollectionPages(): void {
+  revalidatePath("/coleccion/c/[id]", "page");
+}
+
 /** La ficha de una saga concreta. */
 export function revalidateSagaPage(id: string): void {
   revalidatePath(sagaHref(id));

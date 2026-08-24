@@ -2,7 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateProfile, revalidateFeed } from "@/lib/reactivity/revalidate";
+import {
+  revalidateProfile,
+  revalidateFeed,
+  revalidateLibrary,
+  revalidateProfilePages,
+  revalidateCollectionPages,
+} from "@/lib/reactivity/revalidate";
 import { uploadPublicImage } from "@/lib/storage/upload-public-image";
 
 export type UpdateProfileState = {
@@ -84,6 +90,36 @@ export async function updateGoals(
   if (error) return { error: "generic" };
 
   revalidateFeed();
+  return {};
+}
+
+/** Preferencia «ocultar obras abandonadas» (spec 2026-08-24). Booleano suelto y
+ *  no un formulario porque el control es un interruptor: no hay nada que
+ *  validar más allá del tipo, y el estado optimista del cliente necesita
+ *  respuesta inmediata.
+ *
+ *  Revalida las tres zonas donde la preferencia cambia lo que se pinta: la
+ *  biblioteca, las fichas de colección y los perfiles (el propio se ve desde
+ *  fuera con la misma regla). */
+export async function updateHideDropped(
+  value: boolean
+): Promise<{ error?: "generic" }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ hide_dropped: value })
+    .eq("user_id", user.id);
+
+  if (error) return { error: "generic" };
+
+  revalidateLibrary();
+  revalidateCollectionPages();
+  revalidateProfilePages();
   return {};
 }
 
