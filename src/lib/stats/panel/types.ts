@@ -90,6 +90,14 @@ export type PanelDatum = {
   /** Desglose por serie, para `stacked`. */
   parts?: PanelPart[];
   /**
+   * El valor de PARTIDA de este punto. `value` es el de llegada. Solo lo
+   * consume `dumbbell`.
+   *
+   * `undefined` = no hay de dónde, y entonces la fila NO se dibuja. Un punto de
+   * llegada suelto solo diría «esta obra vale 4», que es otro panel.
+   */
+  from?: number;
+  /**
    * Valor de referencia contra el que se compara ESTE punto: la mejor marca, el
    * objetivo, la media. Solo lo consume `bullet`.
    *
@@ -163,6 +171,8 @@ export type PanelViz =
   | "waffle"
   /** Valor contra su propia referencia (`PanelDatum.target`). Una fila ya es un bullet. */
   | "bullet"
+  /** Variación de dos puntos: de dónde (`PanelDatum.from`) a dónde (`value`). */
+  | "dumbbell"
   | "ranking"
   | "kpi"
   | "table";
