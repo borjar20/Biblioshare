@@ -277,6 +277,17 @@ describe("abandonos: el dato más privado del muro", () => {
     expect(panel?.data[0]?.target).toBeUndefined();
   });
 
+  it("no fingen obedecer al periodo: su getter no lo filtra", () => {
+    // Un abandono no siempre trae fecha de cierre, así que recortarlo por
+    // periodo dejaría fuera justo los que no la tienen sin que se notara.
+    // Declarar el periodo elegido y devolver el histórico es mentir por omisión.
+    for (const id of ["motivos-abandono", "punto-abandono"]) {
+      const panel = allPanels().find((p) => p.id === id);
+      expect(panel?.dataWindow, id).toBe("long");
+      expect(panel?.context.period, id).toBe("Todo el histórico");
+    }
+  });
+
   it("la marca del bullet NO se llama «tu marca»: no es un récord que se persiga", () => {
     expect(allPanels().find((p) => p.id === "punto-abandono")?.targetName).toBe(
       "tu abandono más tardío",

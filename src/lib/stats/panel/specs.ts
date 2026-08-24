@@ -347,9 +347,9 @@ function allSections(
         statusPanel(input, filter),
         tbrPanel(input.tbr, input.titles.tbr, filter),
         libraryHealthPanel(input, period),
-        dropReasonsPanel(input, period, filter),
+        dropReasonsPanel(input),
         backlogPanel(input),
-        dropPointPanel(input, period),
+        dropPointPanel(input),
       ],
     },
     {
@@ -2337,20 +2337,21 @@ const DROP_REASON_LABEL: Record<DropReason, string> = {
  * pestaña pública del perfil expondría el motivo por el que alguien dejó un
  * libro, que es exactamente lo que el esquema protege. Hay un test que lo afirma.
  */
-function dropReasonsPanel(
-  { drops, itemFilter }: StatsInput,
-  period: string,
-  filter: string | undefined,
-): PanelSpec {
+function dropReasonsPanel({ drops, itemFilter }: StatsInput): PanelSpec {
   const sinMotivo = drops.total - drops.withReason;
   return {
     id: "motivos-abandono",
+    // NO obedece al selector de periodo, y por eso lo dice en su alcance en vez
+    // de fingirlo. Un abandono no siempre trae fecha de cierre —`finished_on` es
+    // opcional al soltar una obra—, así que recortarlo por periodo dejaría fuera
+    // justo los que no la tienen sin que se notara. Es el histórico o nada.
+    dataWindow: "long",
     title: "Por qué abandonas",
     description:
       "Solo cuenta los abandonos que llevan motivo registrado. Un cero es una respuesta —«nunca lo dejo por eso»—, no un hueco.",
     context: {
-      period,
-      filter: filter ?? globalFilter(itemFilter),
+      period: "Todo el histórico",
+      scope: withAllTypes(itemFilter, "serie histórica"),
       filters: ["Solo abandonos con motivo registrado"],
     },
     viz: "lollipop",
@@ -2398,16 +2399,19 @@ const DROP_REASONS_ORDER: DropReason[] = [
  * retorno **no se afirma con pocos abandonos medidos** (ver `computeDropPoint`);
  * cuando falta, la barra se queda sin marca en vez de inventarse un límite.
  */
-function dropPointPanel({ drops, itemFilter }: StatsInput, period: string): PanelSpec {
+function dropPointPanel({ drops, itemFilter }: StatsInput): PanelSpec {
   const p = drops.point;
   const fuera = p.unmeasurable;
   return {
     id: "punto-abandono",
+    // Mismo alcance que «Por qué abandonas»: sale del mismo getter, que no
+    // filtra por periodo porque un abandono no siempre trae fecha de cierre.
+    dataWindow: "long",
     title: "Dónde abandonas",
     description:
       "El porcentaje del libro que llevabas al dejarlo. La marca es tu abandono más tardío: pasado ese punto, nunca has soltado un libro.",
     context: {
-      period,
+      period: "Todo el histórico",
       scope: withAllTypes(itemFilter, "solo libros"),
       filters: ["Libros con páginas en ficha"],
     },

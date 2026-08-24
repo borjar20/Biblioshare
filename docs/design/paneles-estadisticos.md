@@ -239,6 +239,7 @@ ERROR                         PARCIAL
 | `waffle` | parte-todo **contable** | rejilla de celdas, tope 220 px | label · valor · cuota | total, mayor y su cuota |
 | `lollipop` | orden por mérito, DIBUJADO | etiqueta · tallo · punto · cifra | label · valor · detalle | nº de posiciones, 1.ª y última |
 | `bullet` | valor contra su propia referencia | barra + marca de `PanelDatum.target` | label · valor | valor, marca y si está batida |
+| `dumbbell` | variación de dos puntos | segmento entre `PanelDatum.from` y `value` | label · valor · detalle | de dónde a dónde y en qué dirección |
 | `gauge` | progreso hacia objetivo | barra + marca de meta | label · valor | hecho / meta, cuánto falta, o «cumplido» |
 | `heatmap` | densidad en calendario | rampa de **un** tono + el número dentro | label · valor | días activos sobre el total |
 | `ranking` | orden por mérito | **ninguno**: `<ol>` real | label · valor | nº de posiciones, 1.ª y última |
@@ -248,6 +249,18 @@ ERROR                         PARCIAL
 Reglas de forma heredadas de la guía de dataviz: nunca dos ejes Y; el color sigue a la
 entidad, jamás al ranking; secuencial = un tono claro→oscuro; más de ~7 clases de color
 con significado ⇒ `table`; una sola barra o dos sectores ⇒ `kpi`.
+
+> **Delta del 2026-08-24 (fase C).** Entra `dumbbell`, con su primer consumidor
+> (`relecturas`). Y `bullet` gana **`PanelSpec.targetName`**: la referencia no siempre es una
+> marca que se persiga. En «Rachas» lo es; en «Dónde abandonas» es el punto más tardío al que has
+> soltado un libro, y llamarlo «tu marca» en el nombre accesible sugería un récord.
+>
+> - **`dumbbell` mide DISTANCIA, no magnitud**: entre 3,5 y 5 hay lo mismo que entre 2 y 3,5, y
+>   con barras desde cero esas dos parejas se ven completamente distintas.
+> - **La dirección no se codifica en color**: la palabra «sube», «baja» o «no cambia» va en el
+>   nombre accesible, el punto de origen es HUECO y el de destino MACIZO.
+> - **`dumbbell` y `bullet` no degradan nunca**: comparan cada fila con su propia referencia, no
+>   con las otras filas, así que una fila ya es un gráfico completo.
 
 ### La forma la elige `derive()`, no la spec (fase B, 2026-08-24)
 
@@ -843,6 +856,23 @@ sobraba uno.
 Y la cifra de fuera **no se inventa pidiendo otra consulta**: solo la declaran los paneles
 que ya la tienen a mano (`actividad-periodo` y `por-tipo`, vía `byYear`). Convertir el
 vacío en el caso más caro de la página es lo contrario de lo que busca este nivel.
+
+### Un panel puede ser demasiado privado para el perfil (fase C, 2026-08-24)
+
+**«Por qué abandonas» y «Dónde abandonas» solo pueden vivir en `/estadisticas`.** No es una
+decisión de producto, es del esquema: `passes.dropped_reason` es siempre privado con independencia
+de `is_public`, porque la tabla **no concede `SELECT`** sobre esa columna a nadie —su RLS de SELECT
+es de visibilidad de PERFIL (`can_view_profile`), no de dueño, así que un grant ahí filtraría el
+motivo a cualquiera que pueda ver el perfil—. La única vía de lectura es la vista `pass_reviews`,
+`SECURITY DEFINER` y enmascarada por `d.user_id = auth.uid()`.
+
+Consecuencia para quien añada consumidores: **el getter lee de `pass_reviews`, nunca de `passes`**
+(un `select("dropped_reason")` sobre la tabla falla con «permission denied», y es correcto que
+falle), y el panel **no** puede aparecer en `src/app/u/[username]/_tabs/stats-tab.tsx`. Lo afirma un
+test que lee ese fichero, porque no lo caza ningún tipo.
+
+Es el primer caso del sistema en el que el sitio donde puede pintarse un panel lo decide un grant
+de columna. Si aparece un segundo, va aquí.
 
 ### Lo que queda fuera, y por qué
 
