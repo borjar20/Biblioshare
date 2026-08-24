@@ -652,7 +652,14 @@ git commit -m "feat(social): reactions.kind guarda el emoji literal, con tope de
 
 - [ ] **Step 1: Escribir el test que falla**
 
-Sustituye por completo `src/lib/social/interactions.test.ts`:
+**AÑADE** estos tests a `src/lib/social/interactions.test.ts`, y adapta los que ya hay al mapa
+disperso. **No sustituyas el fichero entero**: contiene cobertura de `getInteractionSummary`
+que nadie más tiene, incluido el test de regresión de la **issue #340** (un comentario
+invisible por RLS tumbaba la página entera — bug de producción real). Esos casos siguen
+siendo válidos; lo único que cambia es cómo se indexan las reacciones, que pasa por
+`tallyOf()` en vez de por claves fijas.
+
+Los tests nuevos son:
 
 ```ts
 import { expect, test } from "vitest";
