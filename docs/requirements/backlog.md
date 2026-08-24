@@ -1,12 +1,14 @@
 # Backlog — trabajo pendiente
 
-> **[Estado vivo · reconstruido contra código + issues el 2026-08-19]**
+> **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P1
+> reverificada contra issues y BD el 2026-08-24]**
 >
-> **Las issues SON el backlog operativo** (regla de AGENTS.md): 246 abiertas a
-> 2026-08-19, todas con área/tipo/prioridad. Este doc es el mapa de medio plazo:
-> qué features NO existen aún y por dónde empezar. **Lo hecho ya no vive aquí**:
-> el mapa de lo que existe es `docs/PROYECTO.md`. La narrativa de cómo se hizo
-> cada cosa, en `docs/superpowers/specs/`.
+> **Las issues SON el backlog operativo** (regla de AGENTS.md): **263 abiertas a
+> 2026-08-24** —0 P0, 1 P1 (#782), 178 P2, 84 P3—, todas con área/tipo/prioridad;
+> la suma cuadra con el total, así que no hay ninguna sin etiquetar. Este doc es
+> el mapa de medio plazo: qué features NO existen aún y por dónde empezar. **Lo hecho ya no vive aquí**: el mapa de lo que existe es
+> `docs/PROYECTO.md`. La narrativa de cómo se hizo cada cosa, en
+> `docs/superpowers/specs/`.
 >
 > Reconstrucción 2026-08-19: se retiraron de «pendiente» tres items que ya
 > estaban construidos (§7.4 colecciones, §7.15 listas curadas, §7.20 clubs con
@@ -52,12 +54,37 @@ arregló #674) y **#514 no es una fuga** (el 200 sirve el contenido del 404, con
 `noindex`, y es comportamiento documentado de Cache Components — no se arregla).
 Salieron cinco issues nuevas: #706, #707, #708, #709, #710.
 
-Sigue abierto #699 (hydrate_book falla para rol user) y los P1
-móviles #679/#680. Y de la auditoría 2026-08 (issues por abrir): F1-001
-(reseñas de serie invisibles), F1-002 (import crea pases sin fechas),
-F1-003 (triggers escriben en `library_entries`), F4-001 (ficha de serie rota en
-móvil), F4-010 (RatingDots inoperables a dedo), F4-018 (auto-zoom iOS),
-F3-006/F3-010/F3-012 (CTA, IA de navegación, destructivo inline).
+**Puesta al día del 2026-08-24.** El párrafo que había aquí llevaba tres días
+mintiendo: listaba como «issues por abrir» hallazgos que las acciones 3-8 ya
+habían cerrado. Estado real:
+
+- **#699 cerrado** (lo arregló #674, ver P0 arriba). **#679/#680 no son P1**: se
+  reetiquetaron a P2 y viven con el resto de sueltos del bloque de abajo.
+- **Cerrados en las acciones 3-5** (2026-08-20, `decisiones.md` de ese día):
+  F1-001 → #713 (reseñas de serie invisibles), F1-002 → #714 (import sin fechas),
+  F1-004 → #715, F1-005/006 → #716, y los triviales de móvil F4-001/002/012 más
+  F4-011 → #722 (controles del mapa) y F4-018 → #724 (auto-zoom iOS).
+- **Cerrados en las acciones 6-8** (2026-08-20/21): F4-010/013/015,
+  F3-006/011/012/014/015 y F3-010/F4-007/F1-025. Detalle en el bloque P2.
+- **F1-003 sigue vivo, y ahora tiene issue: #782.** Los dos triggers
+  (`autoadd_library_on_activity_join/item`) siguen activos **en dev y en prod**
+  escribiendo en `library_entries`, la tabla congelada, en vez de crear un pase.
+  Comprobado contra `pg_trigger`/`pg_proc` el 2026-08-24: prod lleva 153 filas,
+  la última del 2026-08-18 — es un escritor VIVO, no un fósil. El
+  «auto-añadir a biblioteca» de las actividades de club no hace nada visible.
+
+**#751 cerrado el 2026-08-24** (la hidratación perezosa de las fichas no corría
+en producción: el cliente de la petición acababa dentro de `after()`). Mergeado
+en la PR **#756**, detrás de la **#752** (acción 9), con las dos ramas puestas
+al día contra `main` ese mismo día. Verificación: typecheck limpio, 1.912
+unitarios, `next build` verde y los e2e **contra `next start`** —la única vía
+que ve ese fallo—, con `busqueda-hidratacion` comprobando la columna
+`hydrated_at` y no «la ficha sigue viva». De paso entra `after-guard.test.ts`,
+que recorre los Server Components y falla si un callback de `after()` vuelve a
+tocar el cliente de la petición.
+
+**Así que el único P1 abierto es #782** (F1-003, arriba), y no tiene arreglo
+todavía: hay que elegir primero entre sus dos salidas.
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
