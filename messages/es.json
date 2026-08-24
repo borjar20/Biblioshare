@@ -2125,7 +2125,8 @@
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados",
-      "allGenres": "Todos los géneros"
+      "allGenres": "Todos los géneros",
+      "showDropped": "Mostrar abandonados"
     },
     "search": {
       "placeholder": "Buscar en tu biblioteca...",
@@ -2153,7 +2154,9 @@
     "addToCollection": "Añadir a colección",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
     "emptyTitle": "Tu biblioteca está vacía",
-    "titlesCount": "{count, plural, one {# título} other {# títulos}}"
+    "titlesCount": "{count, plural, one {# título} other {# títulos}}",
+    "hiddenDropped": "{count, plural, one {# abandonado oculto} other {# abandonados ocultos}}",
+    "hiddenDroppedAction": "Mostrar"
   },
   "import": {
     "title": "Importar biblioteca",
