@@ -2,8 +2,9 @@
 // `get-library-items.ts`). Sin `"use server"`: no son server actions.
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import type { LibraryItem } from "./types";
+import type { LibraryItem, MediaStatus } from "./types";
 import { hydrateItems } from "./get-library-items";
+import { splitDropped } from "./hide-dropped";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -143,12 +144,14 @@ export async function getUncollectedItems(
   supabase: SupabaseServerClient,
   userId: string,
   limit = 12,
-): Promise<{ items: LibraryItem[]; total: number }> {
+  /** Preferencia `profiles.hide_dropped`. Opt-in, como en getLibraryItems. */
+  hideDropped = false,
+): Promise<{ items: LibraryItem[]; total: number; hiddenDropped: number }> {
   const { data: cols } = await supabase
     .from("collections")
     .select("id")
     .eq("user_id", userId);
-  if (!cols || cols.length === 0) return { items: [], total: 0 };
+  if (!cols || cols.length === 0) return { items: [], total: 0, hiddenDropped: 0 };
 
   const { data: rows } = await supabase
     .from("collection_items")
@@ -158,20 +161,33 @@ export async function getUncollectedItems(
 
   // La "entrada de biblioteca" es el pase ACTIVO (§Tarea 9, hub), igual que en
   // getLibraryItems: mismo criterio, mismo orden (lo más tocado primero).
+  // `status` se pide aquí aunque la tira no lo pinte: el `total` se cuenta
+  // sobre las CLAVES, antes de hidratar, así que sin esta columna no habría
+  // forma de descontar los abandonados del rótulo. Es una columna más en una
+  // consulta que ya se hacía: cero queries extra.
   const { data: passes } = await supabase
     .from("passes")
-    .select("item_type, item_id")
+    .select("item_type, item_id, status")
     .eq("user_id", userId)
     .eq("is_active", true)
     .order("updated_at", { ascending: false });
 
-  const keys = (passes ?? [])
-    .map((p) => ({ item_type: p.item_type as ItemType, item_id: p.item_id }))
+  const uncollected = (passes ?? [])
+    .map((p) => ({
+      item_type: p.item_type as ItemType,
+      item_id: p.item_id,
+      status: p.status as MediaStatus,
+    }))
     .filter((k) => !collected.has(`${k.item_type}:${k.item_id}`));
+
+  // Ocultar ANTES del slice: el tope de la tira son 12 portadas visibles, no 12
+  // menos las que se hayan escondido (spec D4).
+  const { visible: keys, hiddenDropped } = splitDropped(uncollected, hideDropped);
 
   return {
     items: await hydrateItems(supabase, userId, keys.slice(0, limit)),
     total: keys.length,
+    hiddenDropped,
   };
 }
 
@@ -180,6 +196,9 @@ export type CollectionDetail = {
   name: string;
   description: string | null;
   items: LibraryItem[];
+  /** Obras de la colección escondidas por `profiles.hide_dropped`. Alimenta la
+   *  línea «N abandonados ocultos» de `CollectionItems`. */
+  hiddenDropped: number;
   avgRating: number | null;
   isSorteable: boolean;
 };
@@ -188,6 +207,8 @@ export async function getCollection(
   supabase: SupabaseServerClient,
   userId: string,
   id: string,
+  /** Preferencia `profiles.hide_dropped`. */
+  hideDropped = false,
 ): Promise<CollectionDetail | null> {
   const { data: col } = await supabase
     .from("collections")
@@ -207,11 +228,18 @@ export async function getCollection(
   // catálogo (título/portada/subtítulo/páginas) + estado del pase activo + nota
   // del último pase cerrado. Para no duplicar get-library-items, se reutiliza el
   // helper `hydrateItems(supabase, userId, keys)` extraído allí.
-  const items = await hydrateItems(
+  const hydrated = await hydrateItems(
     supabase,
     userId,
     (rows ?? []).map((r) => ({ item_type: r.item_type as ItemType, item_id: r.item_id })),
   );
+
+  // Se oculta AQUÍ, en servidor, y no en el filtrado de cliente de
+  // `CollectionItems`: «N títulos» y la nota media de la cabecera se calculan
+  // en este mismo sitio, y tienen que cuadrar con lo que la rejilla enseña
+  // (spec D9, D10).
+  const { visible: items, hiddenDropped } = splitDropped(hydrated, hideDropped);
+
   const ratings = items.map((i) => i.rating).filter((r): r is number => r !== null);
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
 
@@ -220,6 +248,7 @@ export async function getCollection(
     name: col.name,
     description: col.description,
     items,
+    hiddenDropped,
     avgRating,
     isSorteable: col.is_sorteable,
   };

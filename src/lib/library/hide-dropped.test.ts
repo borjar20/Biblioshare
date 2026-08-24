@@ -62,3 +62,16 @@ describe("shouldHideDropped (D5: un filtro de estado explícito manda)", () => {
     expect(shouldHideDropped({ hideDropped: true, status: "completed" })).toBe(false);
   });
 });
+
+describe("splitDropped sobre las claves de getUncollectedItems", () => {
+  it("las claves conservan item_type/item_id para hydrateItems", () => {
+    const keys = [
+      { item_type: "book" as const, item_id: "b1", status: "dropped" as MediaStatus },
+      { item_type: "series" as const, item_id: "s1", status: "in_progress" as MediaStatus },
+    ];
+    const { visible, hiddenDropped } = splitDropped(keys, true);
+    expect(hiddenDropped).toBe(1);
+    expect(visible[0].item_type).toBe("series");
+    expect(visible[0].item_id).toBe("s1");
+  });
+});
