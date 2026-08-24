@@ -114,10 +114,26 @@ una anulación de una preferencia, y enseña MÁS, no menos. Sumarlo a `activeCo
 «1» sobre una vista sin filtrar. Y «Limpiar» quita tipo/estado/orden/género conservando la búsqueda;
 la anulación se conserva por el mismo motivo que la búsqueda: el usuario acaba de pedirla a mano.
 
+**D10 · El detalle de colección SÍ tiene desplegable de filtros, y filtra en cliente.**
+`CollectionItems` (`src/components/library/collection-items.tsx`) recibe todos los ítems y los
+filtra en memoria por tipo/estado/orden. Consecuencias: (a) el ocultado se hace igualmente en
+servidor, en `getCollection`, para que «N títulos» y `avgRating` cuadren con lo que se ve; (b) con
+abandonados ocultos, el chip «Abandonado» de ese desplegable **no puede ser un botón de filtro
+cliente** —filtraría un array del que ya se quitaron— así que pasa a ser un enlace a
+`?abandonados=1`. Sin ese detalle, pedir «Abandonado» en una colección devolvería «Sin resultados»,
+que es justo lo que D5 prohíbe.
+
 **D9 · El `avgRating` del detalle de colección se calcula sobre lo visible.** Coherente con «los
 recuentos cuentan lo que se ve». Una colección cuya media cambia al ocultar es la misma clase de
 sorpresa que un «N títulos» que no cuadra, y se resuelve igual: la línea «N ocultos» explica la
 diferencia y deja verla.
+
+**D11 · La lógica de ocultar vive en un helper PURO, no dentro de las queries.** `getLibraryItems`
+necesita un cliente Supabase entero para probarse; el fichero de tests de hoy
+(`get-library-items.test.ts`) por eso solo prueba helpers puros (`filterByGenre`) y un cliente falso
+mínimo. Un `splitDropped(rows, hideDropped)` genérico sobre `{ status }` se prueba en tres líneas,
+sirve a la vez a `getLibraryItems` (sobre `LibraryItem[]`) y a `getUncollectedItems` (sobre filas de
+`passes` con `status`, antes de hidratar), y deja a las queries siendo pegamento.
 
 ## Modelo de datos
 
@@ -129,14 +145,19 @@ alter table public.profiles
 `not null default false` — mismo patrón que `show_optional_readings`. El defecto **false** conserva
 el comportamiento actual: nadie se encuentra media biblioteca escondida tras desplegar.
 
-**Trampa obligatoria (issue #375, ha pasado dos veces):** `profiles` tiene `grant` por columna. Una
-columna nueva sin su `grant` **rompe la escritura ENTERA de la tabla**, no solo el campo nuevo —
-compila, pasa el typecheck, pasa los unitarios y revienta en producción. Tras la migración hay que
-correr la superficie 6 de `docs/DRIFT-CHECK.md` y comprobar el grant real, no el ledger de
-migraciones.
+**Sobre la trampa de grants por columna (#375): comprobado, aquí NO aplica.** **[MEDIDO]** El
+2026-08-24, en dev y en prod, `profiles` tiene grant a nivel de **tabla**
+(`information_schema.role_table_grants` devuelve `DELETE,INSERT,SELECT,UPDATE` para `anon` y
+`authenticated`), no `revoke all` + `grant` fino. Una columna nueva hereda el privilegio sola. Aun
+así, la superficie 6 de `docs/DRIFT-CHECK.md` se corre tras la migración: es barata y es la que
+detectaría que esta suposición dejó de ser cierta.
 
-Orden de despliegue: `supabase-dev` primero, prod después. Verificar contra `pg_attribute` /
-`information_schema.column_privileges`, no contra `list_migrations`.
+> Ojo al leer la comprobación: `information_schema.column_privileges` lista una fila por columna
+> **también** cuando el grant es de tabla. La consulta que distingue los dos casos es
+> `role_table_grants`, que solo lista grants de tabla.
+
+Orden de despliegue: `supabase-dev` primero, prod después. Verificar la columna contra los objetos
+reales (`information_schema.columns`), no contra `list_migrations`.
 
 ## Capa de datos
 
@@ -222,8 +243,7 @@ Y **no** sumarlo a `activeCount` (D8).
 Bajo la rejilla, discreta, un enlace: `3 abandonados ocultos · Mostrar` → `?abandonados=1`.
 
 - `/coleccion?tab=todo`: bajo `LibraryGrid`.
-- `/coleccion/c/[id]`: bajo la rejilla del detalle. **Aquí es la única salida local** — el detalle de
-  colección no tiene desplegable de filtros — así que es donde más importa.
+- `/coleccion/c/[id]`: bajo la rejilla del detalle, dentro de `CollectionItems`.
 - Tira «Sin colección»: el rótulo ya dice «N títulos sin organizar»; cuenta lo visible y añade el
   sufijo de ocultos si los hay.
 - Perfil público: **no se pinta**. Al visitante no le importa la preferencia del dueño, y decirle
@@ -278,7 +298,7 @@ Correr los e2e contra build de producción, no solo `next dev` (regla #437: los 
 
 | Riesgo | Mitigación |
 |---|---|
-| Columna nueva sin `grant` rompe toda escritura en `profiles` (#375) | Superficie 6 de `DRIFT-CHECK.md`, obligatoria, verificando contra `pg_*` |
+| Columna nueva sin `grant` rompe toda escritura en `profiles` (#375) | No aplica: grant de TABLA, medido en dev y prod el 2026-08-24. Se corre igual la superficie 6 por si eso cambia |
 | Filtrar en `getLibraryItems` por defecto y vaciar el export | D2: opt-in; test 3 lo blinda |
 | Contar los ocultos antes de los filtros y enseñar un número falso | D3; test 4 |
 | Rejilla vacía sin explicación | Línea de aviso también en el estado vacío |
@@ -290,7 +310,9 @@ Correr los e2e contra build de producción, no solo `next dev` (regla #437: los 
 1. Migración aplicada en dev y en prod, verificada contra los objetos reales.
 2. `docs/requirements/data-model.md`: `profiles.hide_dropped` documentada + fecha de verificación.
 3. Superficie 6 de `docs/DRIFT-CHECK.md` corrida (columna nueva ⇒ grants).
-4. `docs/requirements/backlog.md`: casilla marcada.
+4. `docs/requirements/backlog.md`: comprobado. Esta feature **no** está en el backlog (nació de una
+   petición directa, no de la lista de «features que no existen»), así que no hay casilla que marcar
+   salvo que alguien la haya anotado entre medias.
 5. `docs/requirements/decisiones.md`: entrada **al final** con D2 (opt-in por sitio de llamada) y D6
    (el Resumen no se toca) — son las dos que alguien deshará sin querer en un refactor.
 6. Unitarios y e2e en verde.
