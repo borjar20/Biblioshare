@@ -1050,3 +1050,36 @@ cualquiera de ellos es una fuga de datos entre cuentas invisible en desarrollo. 
 así que su reloj es el de la consulta más lenta. Medido sobre siete cargas del muro completo:
 `getFormatStats` es la más lenta en las siete (695–865 ms) y el total va siempre 3–5 ms por encima
 de ella. Los cuatro getters nuevos entran en 458–742 ms, todos por debajo. El techo no se mueve.
+
+## 2026-08-24 — El desplegable de @menciones elige lado, y por eso el arreglo no es «abrirlo hacia arriba»
+
+**El desplegable se coloca midiendo el hueco, no por una regla fija.** Se abre hacia abajo salvo
+que abajo no quepa y arriba haya más sitio; el `max-height` se recorta al hueco elegido, así que la
+caja no puede salirse por ningún borde. La alternativa barata —voltearlo siempre hacia arriba, que
+es lo que arreglaba el caso que se reportó— cambia un bug por otro: los composers que están a media
+página (la reseña del sheet de cierre, el cuaderno de la ficha, el composer de club) tienen encima
+la etiqueta y el contenido del formulario, y en pantallas cortas la lista se habría salido por
+arriba. Por eso el e2e comprueba los **dos** bordes, no solo el de abajo.
+
+**La causa raíz no era el ancho, y eso importa para el siguiente que lo lea.** El `<ul>` iba
+`absolute` **sin ancla vertical** (ni `top` ni `bottom`), así que se quedaba en su posición
+estática: justo debajo del campo. En escritorio eso se ve; en móvil el composer del hilo es `fixed
+inset-x-0 bottom-0`, de modo que la lista nacía pegada al borde inferior de la pantalla. Medido a
+360x740 en `/post/[id]`: caja en `y=734` con 202px de alto, o sea 196 de sus 202px fuera. El
+`docScrollWidth` era 360 — por los lados no desbordaba nada. Aun así la lista lleva ahora
+`max-w-full` junto al `w-56`, porque un ancho fijo sin tope en un contenedor estrecho es el
+siguiente bug esperando (el patrón bueno ya estaba en `notification-bell.tsx`).
+
+**Se mide justo antes de montar la lista, no en un efecto posterior.** La colocación se calcula en
+el mismo callback que trae los candidatos, así que el primer pintado ya sale en su sitio y no hay
+salto visible. El ancla es el propio campo, tomado del evento `onInput`: ningún caller tiene que
+pasar una ref, y el arreglo entra una sola vez en el hook compartido para los seis composers que lo
+usan (hilo de post, reseña de ficha, chat de club, post de club, sheet de cierre, cuaderno).
+
+**Límite asumido:** la colocación se decide al abrir y no se recalcula si el viewport cambia con la
+lista ya abierta (teclado del móvil, rotación, scroll). Se corrige sola en cuanto se sigue
+escribiendo, porque cada búsqueda vuelve a medir. Queda en la issue #765.
+
+**Y esto no se cubre con un unitario:** lo que distingue «se ve» de «está pintada fuera» es la caja,
+y sin motor de layout no hay caja que medir. El test vive en
+`e2e/menciones-desplegable-movil.spec.ts`.
