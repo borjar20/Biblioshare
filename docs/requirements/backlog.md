@@ -3,11 +3,10 @@
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P1
 > reverificada contra issues y BD el 2026-08-24]**
 >
-> **Las issues SON el backlog operativo** (regla de AGENTS.md): **265 abiertas a
-> 2026-08-24** —0 P0, 2 P1 (#751, #782), 179 P2, 84 P3—, todas con
-> área/tipo/prioridad; la suma cuadra con el total, así que no hay ninguna sin
-> etiquetar. Este doc es el mapa de medio plazo: qué features NO existen aún y
-> por dónde empezar. **Lo hecho ya no vive aquí**: el mapa de lo que existe es
+> **Las issues SON el backlog operativo** (regla de AGENTS.md): **263 abiertas a
+> 2026-08-24** —0 P0, 1 P1 (#782), 178 P2, 84 P3—, todas con área/tipo/prioridad;
+> la suma cuadra con el total, así que no hay ninguna sin etiquetar. Este doc es
+> el mapa de medio plazo: qué features NO existen aún y por dónde empezar. **Lo hecho ya no vive aquí**: el mapa de lo que existe es
 > `docs/PROYECTO.md`. La narrativa de cómo se hizo cada cosa, en
 > `docs/superpowers/specs/`.
 >
@@ -74,14 +73,18 @@ habían cerrado. Estado real:
   la última del 2026-08-18 — es un escritor VIVO, no un fósil. El
   «auto-añadir a biblioteca» de las actividades de club no hace nada visible.
 
-**Quedan exactamente dos P1 abiertos: #751 y #782.** #751 (la hidratación
-perezosa de las fichas no corre en producción: el cliente de la petición acaba
-dentro de `after()`) **ya tiene arreglo escrito y verificado** en la PR **#756**,
-apilada sobre la **#752** (acción 9). Ambas siguen en draft, puestas al día
-contra `main` y en verde a 2026-08-24 —typecheck, 1.912 unitarios, `next build`
-y los e2e contra `next start`—. **Mergear #752 primero**, o #756 conflicta.
-#782 no tiene arreglo todavía: hay que elegir antes entre las dos salidas que
-plantea.
+**#751 cerrado el 2026-08-24** (la hidratación perezosa de las fichas no corría
+en producción: el cliente de la petición acababa dentro de `after()`). Mergeado
+en la PR **#756**, detrás de la **#752** (acción 9), con las dos ramas puestas
+al día contra `main` ese mismo día. Verificación: typecheck limpio, 1.912
+unitarios, `next build` verde y los e2e **contra `next start`** —la única vía
+que ve ese fallo—, con `busqueda-hidratacion` comprobando la columna
+`hydrated_at` y no «la ficha sigue viva». De paso entra `after-guard.test.ts`,
+que recorre los Server Components y falla si un callback de `after()` vuelve a
+tocar el cliente de la petición.
+
+**Así que el único P1 abierto es #782** (F1-003, arriba), y no tiene arreglo
+todavía: hay que elegir primero entre sus dos salidas.
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
