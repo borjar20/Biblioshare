@@ -224,6 +224,23 @@ export function statsInput(over: Partial<StatsInput> = {}): StatsInput {
       unratedRereads: 1,
       totalRereadWorks: 3,
     },
+    drops: {
+      byReason: {
+        no_enganchado: 4,
+        aburrido: 2,
+        no_es_momento: 3,
+        no_esperado: 1,
+        otro: 0,
+      },
+      withReason: 10,
+      total: 13,
+      point: {
+        averagePercent: 26,
+        pointOfNoReturn: 44,
+        measured: 7,
+        unmeasurable: 2,
+      },
+    },
     ...over,
   };
 }

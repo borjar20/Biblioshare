@@ -238,6 +238,15 @@ export type PanelSpec = {
   series?: PanelSeries[];
   /** Objetivo de `gauge`. `null` = sin objetivo configurado. */
   target?: number | null;
+  /**
+   * Cómo se llama la referencia que dibuja `bullet` (`PanelDatum.target`), para
+   * el nombre accesible de cada fila. Por defecto, «tu marca».
+   *
+   * No es cosmético: en «Rachas» la referencia ES una marca que se bate, pero en
+   * «Dónde abandonas» es el punto más tardío al que has dejado un libro, y
+   * llamarlo «tu marca» sugiere un récord que se persigue.
+   */
+  targetName?: string;
   kpis?: PanelKpi[];
   /** Sustituye al resumen generado. Solo si ninguna regla da la frase. */
   summary?: string;

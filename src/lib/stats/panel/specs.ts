@@ -27,6 +27,7 @@ import type { LibraryHealth } from "@/lib/stats/get-library-health";
 import type { ActivityBucket, PeriodActivity } from "@/lib/stats/get-period-activity";
 import type { RatedFacets, RatedGroup } from "@/lib/stats/get-rated-facets";
 import type { RatingDistribution } from "@/lib/stats/get-rating-distribution";
+import type { DropReason, DropStats } from "@/lib/stats/get-drop-reasons";
 import type { Records } from "@/lib/stats/get-records";
 import type { Rereads } from "@/lib/stats/get-rereads";
 import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
@@ -159,6 +160,7 @@ export type StatsInput = {
   calendar: YearCalendar;
   pagesPerDay: number | null;
   rereads: Rereads;
+  drops: DropStats;
 };
 
 // ══ El muro completo, por secciones ══════════════════════════════════════════
@@ -339,7 +341,9 @@ function allSections(
         statusPanel(input, filter),
         tbrPanel(input.tbr, input.titles.tbr, filter),
         libraryHealthPanel(input, period),
+        dropReasonsPanel(input, period, filter),
         backlogPanel(input),
+        dropPointPanel(input, period),
       ],
     },
     {
@@ -2178,6 +2182,145 @@ function recordsPanel(
     empty: {
       title: "Todavía no hay récords",
       message: "Necesitas al menos un pase cerrado para que haya algo que batir.",
+    },
+  };
+}
+
+// ── Abandonos ─────────────────────────────────────────────────────────────────
+/**
+ * Etiqueta legible de cada motivo. La traducción vive AQUÍ y no en el getter
+ * porque es presentación: el getter devuelve el valor del enum tal cual.
+ */
+const DROP_REASON_LABEL: Record<DropReason, string> = {
+  no_enganchado: "No me enganchó",
+  aburrido: "Me aburrió",
+  no_es_momento: "No era el momento",
+  no_esperado: "No era lo que esperaba",
+  otro: "Otro motivo",
+};
+
+/**
+ * Por qué abandonas.
+ *
+ * ⚠️ Este panel solo puede vivir en `/estadisticas`, que es privada y del dueño.
+ * `passes.dropped_reason` es SIEMPRE privado, con independencia de `is_public`:
+ * la tabla no concede `SELECT` sobre esa columna a nadie y la única vía de
+ * lectura es la vista `pass_reviews`, enmascarada por dueño. Llevarlo a la
+ * pestaña pública del perfil expondría el motivo por el que alguien dejó un
+ * libro, que es exactamente lo que el esquema protege. Hay un test que lo afirma.
+ */
+function dropReasonsPanel(
+  { drops, itemFilter }: StatsInput,
+  period: string,
+  filter: string | undefined,
+): PanelSpec {
+  const sinMotivo = drops.total - drops.withReason;
+  return {
+    id: "motivos-abandono",
+    title: "Por qué abandonas",
+    description:
+      "Solo cuenta los abandonos que llevan motivo registrado. Un cero es una respuesta —«nunca lo dejo por eso»—, no un hueco.",
+    context: {
+      period,
+      filter: filter ?? globalFilter(itemFilter),
+      filters: ["Solo abandonos con motivo registrado"],
+    },
+    viz: "lollipop",
+    unit: UNITS.passes,
+    labelHeader: "Motivo",
+    data: DROP_REASONS_ORDER.map((r) => ({
+      key: r,
+      label: DROP_REASON_LABEL[r],
+      value: drops.byReason[r],
+    })),
+    kpis: [
+      { key: "total", label: "Abandonos", value: drops.total || null, unit: UNITS.passes },
+      {
+        key: "con-motivo",
+        label: "Con motivo registrado",
+        value: drops.withReason || null,
+        unit: UNITS.passes,
+        hint: `De ${drops.total} ${drops.total === 1 ? "abandono" : "abandonos"}`,
+      },
+    ],
+    note:
+      sinMotivo > 0
+        ? `${sinMotivo} ${sinMotivo === 1 ? "abandono no tiene" : "abandonos no tienen"} motivo: el campo nació el 14 de agosto de 2026 y no se rellenó hacia atrás. Sin decirlo, este reparto parecería hablar de todos.`
+        : undefined,
+    empty: {
+      title: "No has abandonado nada en este periodo",
+      message: "Aquí aparecerá el motivo que elijas al dejar una obra.",
+    },
+  };
+}
+
+/** Orden fijo, del motivo más frecuente al menos, para que no baile por datos. */
+const DROP_REASONS_ORDER: DropReason[] = [
+  "no_enganchado",
+  "aburrido",
+  "no_es_momento",
+  "no_esperado",
+  "otro",
+];
+
+/**
+ * Dónde abandonas, y el punto pasado el cual ya no sueltas un libro.
+ *
+ * Solo libros: es lo único con una talla comparable en la ficha. El punto de no
+ * retorno **no se afirma con pocos abandonos medidos** (ver `computeDropPoint`);
+ * cuando falta, la barra se queda sin marca en vez de inventarse un límite.
+ */
+function dropPointPanel({ drops, itemFilter }: StatsInput, period: string): PanelSpec {
+  const p = drops.point;
+  const fuera = p.unmeasurable;
+  return {
+    id: "punto-abandono",
+    title: "Dónde abandonas",
+    description:
+      "El porcentaje del libro que llevabas al dejarlo. La marca es tu abandono más tardío: pasado ese punto, nunca has soltado un libro.",
+    context: {
+      period,
+      scope: withAllTypes(itemFilter, "solo libros"),
+      filters: ["Libros con páginas en ficha"],
+    },
+    viz: "bullet",
+    targetName: "tu abandono más tardío",
+    unit: UNITS.percent,
+    labelHeader: "Medida",
+    data: [
+      {
+        key: "medio",
+        label: "Avance medio al abandonar",
+        value: p.averagePercent,
+        target: p.pointOfNoReturn ?? undefined,
+      },
+    ],
+    kpis: [
+      {
+        key: "medio",
+        label: "Avance medio al abandonar",
+        value: p.averagePercent,
+        unit: UNITS.percent,
+        hint: `Sobre ${p.measured} ${p.measured === 1 ? "abandono medible" : "abandonos medibles"}`,
+      },
+      {
+        key: "limite",
+        label: "Punto de no retorno",
+        value: p.pointOfNoReturn,
+        unit: UNITS.percent,
+        hint:
+          p.pointOfNoReturn === null
+            ? "Hacen falta cinco abandonos medibles para afirmarlo"
+            : "Pasado ese punto no has soltado ningún libro",
+      },
+    ],
+    note:
+      fuera > 0
+        ? `${fuera} ${fuera === 1 ? "abandono queda" : "abandonos quedan"} fuera del cálculo: sin páginas en la ficha, con la posición guardada en otro formato, o con una página por encima del final (pasa cuando la edición leída no es la de la ficha).`
+        : undefined,
+    empty: {
+      title: "No hay ningún abandono medible",
+      message: "Hace falta que el libro traiga páginas en su ficha y que la posición esté guardada.",
     },
   };
 }

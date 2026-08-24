@@ -37,6 +37,7 @@ import { getFormatStats } from "@/lib/stats/get-format-stats";
 import { getYearCalendar } from "@/lib/stats/get-year-calendar";
 import { getPagesPerDay } from "@/lib/stats/get-pace";
 import { getRereads } from "@/lib/stats/get-rereads";
+import { getDropStats } from "@/lib/stats/get-drop-reasons";
 import {
   buildStatsSections,
   collapsedPanelCount,
@@ -201,6 +202,7 @@ async function StatsWall({
     calendar,
     pagesPerDay,
     rereads,
+    drops,
   ] = await Promise.all([
     getPeriodActivity(supabase, userId, period, itemFilter),
     getRatingDistribution(supabase, userId, period, itemFilter),
@@ -222,6 +224,9 @@ async function StatsWall({
     // Sin periodo: una relectura son dos pases separados por años y recortarlos
     // a la ventana elegida dejaría fuera el primero, que es media comparación.
     getRereads(supabase, userId, itemFilter),
+    // Lee de `pass_reviews`, no de `passes`: el motivo de abandono no tiene
+    // grant de SELECT en la tabla y solo la vista lo enmascara por dueño.
+    getDropStats(supabase, userId, itemFilter),
   ]);
 
   const panelInput = {
@@ -261,6 +266,7 @@ async function StatsWall({
     calendar,
     pagesPerDay,
     rereads,
+    drops,
   };
 
   const sections = buildStatsSections(panelInput);

@@ -782,6 +782,7 @@ export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
  */
 export function BulletChart({ spec, derived, interactive }: ChartProps) {
   const ceiling = Math.max(derived.scale, ...spec.data.map((d) => d.target ?? 0));
+  const refName = spec.targetName ?? "tu marca";
   return (
     <ul className="flex flex-col gap-2.5">
       {spec.data.map((d) => {
@@ -792,7 +793,7 @@ export function BulletChart({ spec, derived, interactive }: ChartProps) {
             ? undefined
             : d.target === undefined
               ? `${d.label}: ${formatValue(d.value, spec.unit)}`
-              : `${d.label}: ${formatValue(d.value, spec.unit)}, tu marca ${formatValue(
+              : `${d.label}: ${formatValue(d.value, spec.unit)}, ${refName} ${formatValue(
                   d.target,
                   spec.unit,
                 )}${beaten ? " — marca batida" : ""}`;
