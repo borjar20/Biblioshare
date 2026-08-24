@@ -35,6 +35,14 @@ set kind = case kind
 end
 where kind in ('like', 'read', 'shock', 'fire');
 
+-- 3b) La columna conservaba `default 'like'::text` de la migración original
+--     (20260711_review_interactions.sql): un INSERT que omita `kind` pasaría
+--     ese default al CHECK nuevo, que lo rechaza, y el error 23514 nombra el
+--     CHECK, no el default — manda a buscar en el sitio equivocado. Hoy no
+--     rompe nada porque toggleReaction siempre pasa `kind`, pero la columna no
+--     debe fingir un valor por omisión que ella misma prohíbe.
+alter table public.reactions alter column kind drop default;
+
 -- 4) CHECK de FORMA, no lista blanca: la lista blanca real es el catálogo, en
 --    la acción de servidor. Esto es la red de debajo. Va AQUÍ, con los datos ya
 --    convertidos: antes del UPDATE rechazaría las filas que aún son slugs.
@@ -43,16 +51,24 @@ where kind in ('like', 'read', 'shock', 'fire');
 --    parece equivalente y tumba los keycap ('1️⃣' es el dígito ASCII 1 + VS16 +
 --    U+20E3), que son emojis legítimos. Por eso la condición es "contiene algo
 --    NO ASCII", no "no contiene nada alfanumérico".
+--
+--    `drop constraint if exists` primero: reejecutar este fichero (p.ej. al
+--    portarlo a prod) no debe fallar con 42710 "constraint already exists".
+alter table public.reactions drop constraint if exists reactions_kind_emoji;
 alter table public.reactions add constraint reactions_kind_emoji check (
   char_length(kind) between 1 and 16   -- 👩‍❤️‍💋‍👨 y 🏴󠁧󠁢󠁥󠁮󠁧󠁿 gastan 7-8; 16 deja aire
   and kind ~ '[^[:ascii:]]'
   and kind !~ '[[:space:]]'
 );
 
--- 5) Tope de 6 emojis distintos por persona y target. Sin esto, emoji libre +
+-- 5) Tope de 6 emojis distintos por persona y target. El `6` de aquí abajo y
+--    MAX_REACTIONS_PER_TARGET en src/lib/social/reaction-constants.ts son dos
+--    literales independientes: si cambia uno, hay que cambiar el otro a mano,
+--    no hay nada en el esquema que los ate. Sin este tope, emoji libre +
 --    varias reacciones por persona deja que una sola cuelgue 40 píldoras de un
---    mensaje. La acción de servidor valida también, pero el trigger es el que
---    no se puede saltar.
+--    mensaje. La acción de servidor NO lo valida por su cuenta: solo traduce
+--    el 23514 de este trigger a un error estable para el cliente. Este
+--    trigger es la única defensa real y la que no se puede saltar.
 create or replace function public.enforce_reaction_cap()
 returns trigger
 language plpgsql

@@ -108,7 +108,7 @@ insert into public.reactions (id, interaction_target_id, user_id, kind) values
     '00000000-0000-4000-8000-000000000109',
     (select id from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'),
     '00000000-0000-4000-8000-0000000001b2',
-    'like'
+    '❤️'
   );
 insert into public.notifications (id, user_id, actor_id, type, target_type, target_id) values
   ('00000000-0000-4000-8000-000000000110', '00000000-0000-4000-8000-0000000001a1', '00000000-0000-4000-8000-0000000001b2', 'club_post_commented', 'club_post', '00000000-0000-4000-8000-000000000105');
@@ -201,11 +201,11 @@ select pg_temp.assert_true(
 );
 
 select pg_temp.expect_sqlstate($$insert into public.comments (interaction_target_id, author_id, body) values ('00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-0000000001b2', 'Bad target')$$, '23503', 'comment rejects unknown target UUID');
-select pg_temp.expect_sqlstate($$insert into public.reactions (interaction_target_id, user_id, kind) values ('00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-0000000001b2', 'like')$$, '23503', 'reaction rejects unknown target UUID');
+select pg_temp.expect_sqlstate($$insert into public.reactions (interaction_target_id, user_id, kind) values ('00000000-0000-4000-8000-000000000999', '00000000-0000-4000-8000-0000000001b2', '❤️')$$, '23503', 'reaction rejects unknown target UUID');
 select pg_temp.expect_sqlstate(
   $$insert into public.reactions (interaction_target_id, user_id, kind)
     values ('00000000-0000-4000-8000-00000000ffff',
-      '00000000-0000-4000-8000-0000000000c3', 'like')$$,
+      '00000000-0000-4000-8000-0000000000c3', '❤️')$$,
   '23503',
   'una reacción requiere target canónico existente'
 );
@@ -223,11 +223,43 @@ select pg_temp.expect_sqlstate(
 );
 select pg_temp.expect_sqlstate(
   $$insert into public.reactions (interaction_target_id, user_id, kind)
-    select id, '00000000-0000-4000-8000-0000000001b2', 'like'
+    select id, '00000000-0000-4000-8000-0000000001b2', '❤️'
     from public.interaction_targets
     where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'$$,
   '23505',
   'la unicidad de reacción se aplica sobre el target canónico'
+);
+
+-- El CHECK reactions_kind_emoji exige al menos un carácter no ASCII: rechaza
+-- texto plano, aunque parezca un "kind" razonable de la paleta vieja.
+select pg_temp.expect_sqlstate(
+  $$insert into public.reactions (interaction_target_id, user_id, kind)
+    values (
+      (select id from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'),
+      '00000000-0000-4000-8000-0000000001b2', 'like')$$,
+  '23514',
+  'el CHECK reactions_kind_emoji rechaza texto plano'
+);
+
+-- Tope de MAX_REACTIONS_PER_TARGET (6) emojis distintos por persona y target:
+-- el trigger reactions_cap_before_insert debe lanzar reaction_cap_reached
+-- (mapeado a check_violation, 23514) al séptimo emoji distinto del mismo
+-- (target, user). Bob ya tiene un '❤️' sobre este target por la inserción de
+-- arriba, así que hacen falta 5 emojis más para llegar a 6 y un séptimo que
+-- reviente el trigger.
+insert into public.reactions (interaction_target_id, user_id, kind)
+select
+  (select id from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'),
+  '00000000-0000-4000-8000-0000000001b2',
+  emoji
+from unnest(array['📖', '😱', '🔥', '😂', '👏']) as emoji;
+select pg_temp.expect_sqlstate(
+  $$insert into public.reactions (interaction_target_id, user_id, kind)
+    values (
+      (select id from public.interaction_targets where kind = 'club_post' and source_id = '00000000-0000-4000-8000-000000000105'),
+      '00000000-0000-4000-8000-0000000001b2', '🎉')$$,
+  '23514',
+  'el trigger reactions_cap_before_insert lanza reaction_cap_reached al séptimo emoji distinto'
 );
 
 -- Contrato: las columnas polimórficas heredadas ya no existen en comments ni
