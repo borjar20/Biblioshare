@@ -1495,3 +1495,43 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   (`grep` de `t("like")` en `src/` no devuelve nada) y era justo el rastro que hacía creer que el
   botón seguía existiendo. Una cadena de interfaz que nombra un control retirado no es inocua:
   es la pista falsa que el siguiente que lea el spec va a seguir.
+
+## 2026-08-25 — El barrido del rastro desechable de los e2e (#800)
+
+- **El diagnóstico de la #800 era incompleto y conviene decirlo.** La issue culpaba al `finally`
+  que no corre cuando un test muere por timeout. Esa causa existe, pero **no es la que más filas
+  deja**: los `deleteUser` de los specs hacen `fetch(...)` sin mirar `res.ok`, y cinco tablas
+  (`club_posts.author_id`, `clubs.owner_id`, `club_activities.created_by`,
+  `club_activity_checkpoints.created_by`, `club_activity_items.added_by`) referencian `auth.users`
+  con **ON DELETE NO ACTION**. El borrado rebota, el test pasa en verde y el usuario se queda.
+  Medido: de los 62 usuarios `@example.com` de `dev`, los 15 `reporta*` de `social-safety.spec.ts`
+  —todos con un `club_post`— llevaban desde el 2026-07-30 pese a que ese spec termina bien.
+- **Se barre ANTES de la suite, no se le pide a cada spec que limpie mejor.** Mismo patrón que
+  `restoreQaSeed` (#215): reimponer el punto de partida en vez de confiar en que la pasada anterior
+  se portara bien. Tocar los ~19 helpers `deleteUser` habría sido más código y seguiría sin cubrir
+  el caso del timeout. Queda como issue #806 hacerlo BIEN también dentro de la pasada.
+- **La marca de «desechable» para usuarios es el dominio `@example.com`, no el prefijo del nombre.**
+  Los 19 `createUser` de la suite firman `<username>@example.com` y ninguna cuenta real usa ese
+  dominio (la de `devtest` es de Gmail). El regex de prefijos que proponía la #800
+  (`^(it|postauth|postcom)`) encontraba **6** usuarios; el dominio encuentra los **62** que había.
+  La cuenta de `TEST_USER_EMAIL` se excluye explícitamente, pase lo que pase.
+- **El barrido NO lanza; la semilla SÍ.** Son cosas distintas: correr sobre una semilla desviada
+  hace que los tests mientan (#215), así que eso tumba la suite. Que una fila desechable se resista
+  es suciedad: se avisa por consola y se sigue. Tumbar la suite entera por eso sería cambiar un
+  problema de limpieza por uno peor.
+- **Se borran también las referencias polimórficas al catálogo (`posts.anchor_id`,
+  `passes.item_id`, `pass_reviews.item_id`, `collection_items.item_id`).** No tienen FK, así que
+  nada las arrastra: borrar solo el libro dejaría el post huérfano en el feed de `devtest` — que es
+  justo lo que compite con las aserciones que usan `.first()`/`.last()` sobre el feed.
+- **Guarda de seguridad reutilizada, no inventada:** el barrido llama a `assertQaUniverse()` antes
+  de tocar nada. Escribe con la SERVICE KEY y borra usuarios; si `.env.local` apunta a otro
+  proyecto, aborta. Es la misma línea que el repo ya aceptaba para la semilla QA.
+- **Trampa de PostgREST que devuelve 200 y cero filas:** entrecomillar el patrón de `like` (el
+  reflejo, porque `[E2E]*` empieza por corchete) hace que busque las comillas DENTRO del texto.
+  No da error: da éxito vacío, que parece «no había nada que barrer». Sin comillas salen 22/21/5/5,
+  los mismos números que el `SELECT` de la issue. Cualquier filtro de barrido se comprueba contra
+  un `SELECT` conocido antes de dejarle borrar.
+- **Límite asumido:** solo se reconoce el catálogo con prefijo `E2E`/`[E2E]`. Varios specs titulan
+  sin prefijo («Estreno dos …», «en curso …») y eso no se puede distinguir de un dato real por el
+  título. Ampliar el patrón a ciegas es la clase de limpieza que un día se lleva algo que no debía.
+  Queda como issue #807: que los specs nuevos usen el prefijo, no que el barrido adivine.

@@ -131,6 +131,18 @@ y copiarlo a mano rompió `social-optimista.spec.ts` dos veces seguidas (#750 y
 #801). Ahora los specs importan `QUICK_REACTION_NAMES`, así que renombrar un
 emoji falla en el typecheck y no tres semanas después en la suite.
 
+**#800 también cerrada el 2026-08-25**, con el diagnóstico corregido: la issue
+culpaba al `finally` que no corre tras un timeout, y esa causa existe, pero la
+que más filas dejaba era otra — los `deleteUser` de los specs no miran `res.ok` y
+el borrado rebota contra cinco FK **ON DELETE NO ACTION**, así que el usuario se
+queda aunque el test pase en verde. `e2e/global-setup.ts` barre ahora el rastro
+desechable antes de la suite (`e2e/support/sweep-disposable.ts`): la primera
+pasada se llevó 62 usuarios, 43 libros, 5 sagas, 5 personas, 18 `club_posts` y 10
+posts huérfanos; `dev` quedó a cero en las cinco medidas. Quedan abiertas **#806**
+(que el borrado del usuario falle ruidosamente también DENTRO de la pasada),
+**#807** (catálogo sin prefijo, fuera del barrido) y **#805** (`splash.spec.ts`
+prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada).
+
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
 **Acción 6 — hit-areas + RatingDots táctiles: HECHA el 2026-08-20.** F4-010
