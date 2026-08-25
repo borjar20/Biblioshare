@@ -25,17 +25,6 @@ export type CreatePostInput = {
 
 export type CreatePostResult = { ok: true; id: string } | { ok: false; error: string };
 
-// Tabla de catálogo que resuelve cada tipo de ancla (20260844_posts.sql):
-// `anchor_id` es polimórfico y NO tiene FK SQL, así que la integridad la
-// garantiza esta función resolviendo la fila ANTES de insertar.
-const ANCHOR_TABLE: Record<AnchorType, "books" | "movies" | "series" | "sagas" | "people"> = {
-  book: "books",
-  movie: "movies",
-  series: "series",
-  saga: "sagas",
-  person: "people",
-};
-
 // `createPost` generaliza `createThought` a la entidad social canónica `posts`
 // (kind = thought | hitos de pase). Resultado discriminado, NUNCA lanza un valor
 // que el cliente lea -- Next.js borra `.message` de los errores lanzados desde
@@ -57,13 +46,88 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
     if (rawBody.length > 2000) return { ok: false, error: "too_long" };
     const body = trimmed.length > 0 ? trimmed : null;
 
-    const { data: anchorRow, error: anchorError } = await supabase
-      .from(ANCHOR_TABLE[input.anchorType])
-      .select("id")
-      .eq("id", input.anchorId)
-      .maybeSingle();
-    if (anchorError) throw anchorError;
-    if (!anchorRow) return { ok: false, error: "anchor_not_found" };
+    // Resuelve el ancla Y su título en la MISMA consulta que ya hacía falta
+    // para comprobar que existe -- no es una consulta nueva. El título es lo
+    // que permite rellenar `subject` en el aviso a seguidores (spec: la única
+    // excepción autorizada a "no consultes en el camino de notificar", porque
+    // interaction_targets no guarda ningún título y esto corre UNA vez al
+    // publicar, no por destinatario). Libros/películas/series lo guardan en
+    // `title`; sagas y personas, en `name` -- mismo criterio que feed.ts al
+    // montar las tarjetas del muro.
+    //
+    // La tabla se nombra literal en cada `case` (en vez de un Record
+    // AnchorType -> tabla, como antes): un Record da el MISMO tipo de valor a
+    // toda clave, así que indexarlo con un anchorType ya estrechado no
+    // estrecha el resultado para tsc, que no podría validar que `name`/
+    // `title` existen de verdad en esa tabla concreta. El `switch`
+    // exhaustivo (un `case` por AnchorType, con `default` inalcanzable
+    // asegurado por `never`) es lo que recupera esa validación: si algún día
+    // se añade un sexto AnchorType sin su `case`, esto deja de compilar en
+    // vez de caer en silencio en la tabla equivocada.
+    let anchorFound = false;
+    let subject: string | undefined;
+    switch (input.anchorType) {
+      case "book": {
+        const { data, error } = await supabase
+          .from("books")
+          .select("id, title")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.title ?? undefined;
+        break;
+      }
+      case "movie": {
+        const { data, error } = await supabase
+          .from("movies")
+          .select("id, title")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.title ?? undefined;
+        break;
+      }
+      case "series": {
+        const { data, error } = await supabase
+          .from("series")
+          .select("id, title")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.title ?? undefined;
+        break;
+      }
+      case "saga": {
+        const { data, error } = await supabase
+          .from("sagas")
+          .select("id, name")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.name ?? undefined;
+        break;
+      }
+      case "person": {
+        const { data, error } = await supabase
+          .from("people")
+          .select("id, name")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.name ?? undefined;
+        break;
+      }
+      default: {
+        const _exhaustive: never = input.anchorType;
+        throw new Error(`createPost: anchorType sin resolver: ${String(_exhaustive)}`);
+      }
+    }
+    if (!anchorFound) return { ok: false, error: "anchor_not_found" };
 
     // Cliente de SESIÓN (no service-role): la RLS `posts insert own`
     // (`auth.uid() = author_id`) es quien de verdad impide suplantar autoría.
@@ -116,6 +180,10 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
           authorId: user.id,
           text: body,
           interactionTargetId,
+          // Un pensamiento SÍ trae su propia marca de spoiler (input.isSpoiler,
+          // el mismo botón del compositor que fija is_spoiler al insertar el
+          // post) -- se reutiliza, no se inventa una consulta para tenerla.
+          isSpoiler: input.isSpoiler,
         });
       } catch (mentionError) {
         console.error("createPost: notifyMentions failed", mentionError);
@@ -136,6 +204,7 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
           postId: inserted.id,
           kind: input.kind,
           interactionTargetId,
+          subject,
         });
       } catch (notifyError) {
         console.error("createPost: notifyFollowersOfPost failed", notifyError);

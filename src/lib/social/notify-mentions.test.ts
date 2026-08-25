@@ -290,7 +290,55 @@ describe("notifyMentions", () => {
       actorId: "author",
       type: "mentioned",
       interactionTargetId: "target-1",
+      context: { excerpt: "hola @ana" },
     });
+  });
+
+  // Cobertura del camino que arregló Task 5: createPost reenvía el
+  // isSpoiler REAL del pensamiento (no un `false` fijo) hasta aquí. Este
+  // par de pruebas ancla el contrato en la frontera de notifyMentions: si
+  // alguien reintroduce un `false` fijo en cualquier llamante, o si
+  // notifyMentions deja de leer `params.isSpoiler`, la primera se rompe.
+  it("una mención en texto marcado como spoiler avisa sin citar", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "mentioned", username: "ana" }],
+      profiles: [{ user_id: "owner", is_public: true }],
+    });
+
+    await notifyMentions(supabase, {
+      authorId: "author",
+      text: "@ana, muere el protagonista",
+      interactionTargetId: "target-1",
+      isSpoiler: true,
+    });
+
+    expect(mocks.notifyMany).toHaveBeenCalledWith(
+      supabase,
+      expect.objectContaining({ context: { spoiler: true } }),
+    );
+  });
+
+  it("la misma mención sin marcar sí lleva el extracto", async () => {
+    const supabase = makeFakeSupabase({
+      interaction_targets: [canonicalTarget("profile", "owner")],
+      profile_identities: [{ user_id: "mentioned", username: "ana" }],
+      profiles: [{ user_id: "owner", is_public: true }],
+    });
+
+    await notifyMentions(supabase, {
+      authorId: "author",
+      text: "@ana, muere el protagonista",
+      interactionTargetId: "target-1",
+      isSpoiler: false,
+    });
+
+    expect(mocks.notifyMany).toHaveBeenCalledWith(
+      supabase,
+      expect.objectContaining({
+        context: { excerpt: "@ana, muere el protagonista" },
+      }),
+    );
   });
 
   it("devuelve vacío si el insert no confirma destinatarios", async () => {

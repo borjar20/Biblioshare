@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { notifyMany } from "./notifications";
 import { CATEGORY_FOR_POST_KIND, POST_KIND_NOTIFICATION_TYPE, type NotifyCategory } from "./notify-categories";
+import { buildSubject } from "./notification-context";
 import type { PostKind } from "./post-kinds";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -23,7 +24,15 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export async function notifyFollowersOfPost(
   supabase: SupabaseServerClient,
   authorId: string,
-  post: { postId: string; kind: PostKind; interactionTargetId: string },
+  post: {
+    postId: string;
+    kind: PostKind;
+    interactionTargetId: string;
+    // Título de la obra, cuando createPost ya lo resolvió (una única consulta
+    // autorizada por el spec, ver post-actions.ts). Sin él, la copia genérica
+    // se queda como estaba.
+    subject?: string;
+  },
 ): Promise<void> {
   try {
     const category: NotifyCategory = CATEGORY_FOR_POST_KIND[post.kind];
@@ -54,6 +63,12 @@ export async function notifyFollowersOfPost(
       // lo controla quien publica: para eso pulsó «Compartir». notifyMany añade
       // `:${userId}`.
       dedupeKey: `person:${type}:${post.postId}`,
+      // Recortado aquí, no en cada llamante (post-actions.ts es hoy el único,
+      // pero este es el punto por el que `subject` entra SIEMPRE en el
+      // contexto guardado): igual que `commentContext` acota el excerpt antes
+      // de guardarlo, este es el sitio que protege a cualquier futuro
+      // llamante sin que tenga que acordarse de recortar el título él mismo.
+      context: post.subject ? { subject: buildSubject(post.subject) } : undefined,
     });
   } catch (err) {
     console.error("notifyFollowersOfPost failed", err);

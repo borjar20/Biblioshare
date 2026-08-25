@@ -3,6 +3,8 @@
 // puedan importarlos sin arrastrar send-push.ts (web-push, node:tls/net) al
 // bundle del navegador — ver E5.D4.
 
+import type { NotificationContext } from "./notification-context";
+
 export type NotificationType =
   | "follow_request"
   | "new_follower"
@@ -100,6 +102,8 @@ export type Notification = {
   // mismo target (p. ej. varios likes sobre la misma reseña) — se agrupan en
   // una sola fila al listar, mostrando el actor más reciente + este contador.
   extraActorsCount?: number;
+  /** Foto de lo ocurrido; null en las filas anteriores a la spec 2026-08-25. */
+  context?: NotificationContext | null;
 };
 
 export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
@@ -141,4 +145,50 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   thought_liked: "thoughtLiked",
   post_commented: "postCommented",
   post_liked: "postLiked",
+};
+
+/**
+ * Variantes enriquecidas por tipo. Se declaran EXPLÍCITAMENTE en vez de
+ * componer la clave concatenando sufijos: así una clave que no existe en
+ * `messages/es.json` es un hueco visible aquí, y no un texto crudo en pantalla
+ * que nadie descubre hasta que un usuario lo fotografía.
+ *
+ * Un tipo ausente de este mapa no tiene variantes y se queda con su copia de
+ * siempre — es el caso de invitaciones de club, eventos y rondas propuestas.
+ */
+export const ENRICHED_NOTIFICATION_KEY: Partial<
+  Record<NotificationType, { emoji?: string; excerpt?: string; spoiler?: string; subject?: string }>
+> = {
+  review_liked: { emoji: "reviewLikedEmoji" },
+  club_post_liked: { emoji: "clubPostLikedEmoji" },
+  comment_liked: { emoji: "commentLikedEmoji" },
+  activity_liked: { emoji: "activityLikedEmoji" },
+  thought_liked: { emoji: "thoughtLikedEmoji" },
+  post_liked: { emoji: "postLikedEmoji" },
+  club_round_liked: { emoji: "clubRoundLikedEmoji" },
+  review_commented: { excerpt: "reviewCommentedExcerpt", spoiler: "reviewCommentedSpoiler" },
+  club_post_commented: {
+    excerpt: "clubPostCommentedExcerpt",
+    spoiler: "clubPostCommentedSpoiler",
+  },
+  activity_commented: {
+    excerpt: "activityCommentedExcerpt",
+    spoiler: "activityCommentedSpoiler",
+  },
+  checkpoint_commented: {
+    excerpt: "checkpointCommentedExcerpt",
+    spoiler: "checkpointCommentedSpoiler",
+  },
+  thought_commented: { excerpt: "thoughtCommentedExcerpt", spoiler: "thoughtCommentedSpoiler" },
+  post_commented: { excerpt: "postCommentedExcerpt", spoiler: "postCommentedSpoiler" },
+  club_round_commented: {
+    excerpt: "clubRoundCommentedExcerpt",
+    spoiler: "clubRoundCommentedSpoiler",
+  },
+  mentioned: { excerpt: "mentionedExcerpt", spoiler: "mentionedSpoiler" },
+  followed_finished: { subject: "followedFinishedSubject" },
+  followed_session: { subject: "followedSessionSubject" },
+  followed_episode: { subject: "followedEpisodeSubject" },
+  followed_started: { subject: "followedStartedSubject" },
+  followed_dropped: { subject: "followedDroppedSubject" },
 };

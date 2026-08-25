@@ -158,7 +158,20 @@ describe("toggleReaction", () => {
       interactionTargetId: "target-pass",
       // Idempotencia de reacciones (spec item 9): un relike no reavisa.
       dedupeKey: "reaction:target-pass:actor",
+      context: { emoji: "❤️" },
     });
+  });
+
+  it("la notificación de reacción lleva el emoji que se puso", async () => {
+    const fake = makeActionClient({ target: passTarget });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await toggleReaction("target-pass", "🔥");
+
+    expect(mocks.notify).toHaveBeenCalledWith(
+      fake.client,
+      expect.objectContaining({ context: { emoji: "🔥" } }),
+    );
   });
 
   it("no notifica una autoacción", async () => {
@@ -346,7 +359,34 @@ describe("addComment", () => {
       actorId: "actor",
       type: "checkpoint_commented",
       interactionTargetId: "target-checkpoint",
+      context: { excerpt: "Llegué" },
     });
+  });
+
+  it("la notificación de comentario lleva un extracto", async () => {
+    const fake = makeActionClient({ target: passTarget });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await addComment("target-pass", "Lo terminé anoche y me dejó tocado");
+
+    expect(mocks.notify).toHaveBeenCalledWith(
+      fake.client,
+      expect.objectContaining({
+        context: { excerpt: "Lo terminé anoche y me dejó tocado" },
+      }),
+    );
+  });
+
+  it("la de un comentario spoiler avisa sin citar", async () => {
+    const fake = makeActionClient({ target: passTarget });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await addComment("target-pass", "Muere el protagonista", { isSpoiler: true });
+
+    expect(mocks.notify).toHaveBeenCalledWith(
+      fake.client,
+      expect.objectContaining({ context: { spoiler: true } }),
+    );
   });
 
   it("no duplica el aviso normal si una mención ya avisó al owner", async () => {
@@ -373,6 +413,7 @@ describe("addComment", () => {
       actorId: "actor",
       type: "activity_commented",
       interactionTargetId: "target-pass",
+      context: { excerpt: "@owner gran reseña" },
     });
   });
 });

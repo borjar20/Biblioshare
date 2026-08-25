@@ -1412,6 +1412,7 @@ export type Database = {
       notifications: {
         Row: {
           actor_id: string | null
+          context: Json | null
           created_at: string
           dedupe_key: string | null
           id: string
@@ -1424,6 +1425,7 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          context?: Json | null
           created_at?: string
           dedupe_key?: string | null
           id?: string
@@ -1436,6 +1438,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          context?: Json | null
           created_at?: string
           dedupe_key?: string | null
           id?: string
