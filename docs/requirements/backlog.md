@@ -186,11 +186,25 @@ petición en `/club/[slug]`). Decisiones en `decisiones.md` (2026-08-21 tarde).
 Salieron de aquí dos issues que NO se encadenan: #751 (P1: la hidratación
 perezosa de las fichas nunca corre en producción) y #750 (spec de e2e caducado).
 
-Quedan de este bloque los sueltos:
-contraste y `<main>`/skip-link (F4-022/023), security headers + rate limiting
-(S2-08/S2-11), formula injection (#681), trigger de curación (S2-14), regenerar
-`graph.json` y `database.types.ts` (#695, #701, #625), y las migraciones
-fantasma de F1-017 (5 RPCs de hidratación solo en dev).
+**Los sueltos de SEGURIDAD del bloque: HECHOS el 2026-08-25 (tarde).** S2-08 →
+**#808** (la app se servía sin ninguna cabecera: ahora CSP de enmarcado,
+`nosniff`, HSTS, `Referrer-Policy` y `Permissions-Policy`, con e2e propio),
+S2-14 → **#809** (el trigger de curación dejaba fuera `openlibrary_work_key`,
+`hydrated_at` y `editions_synced_at`: se gatea la TRANSICIÓN, no la columna, para
+no repetir #699), **#681** (formula injection en el CSV de exportación) y
+**#683** (`saveUnmatchedBatch` sin el tope `MAX_ROWS`). Decisiones en
+`decisiones.md` (2026-08-25 tarde) y el esquema en `data-model.md`.
+
+Salieron tres issues que NO se encadenan: **#810** (la CSP no puede llevar
+`script-src`: el nonce exige render dinámico y choca con Cache Components),
+**#811** (el resto del rate limiting de S2-11 — alta de catálogo, escritura
+social, RPC caras; la #684 solo cubría la búsqueda) y **#812** (la migración
+`20260878` está aplicada y verificada en dev, **no en prod**).
+
+Quedan de este bloque los sueltos que NO son de seguridad:
+contraste y `<main>`/skip-link (F4-022/023), regenerar `graph.json` y
+`database.types.ts` (#695, #701, #625), y las migraciones fantasma de F1-017
+(5 RPCs de hidratación solo en dev).
 
 ## Features que no existen (P2-P3, por dominio)
 

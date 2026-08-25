@@ -1535,3 +1535,48 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   sin prefijo («Estreno dos …», «en curso …») y eso no se puede distinguir de un dato real por el
   título. Ampliar el patrón a ciegas es la clase de limpieza que un día se lleva algo que no debía.
   Queda como issue #807: que los specs nuevos usen el prefijo, no que el barrido adivine.
+
+## 2026-08-25 (tarde) — Los sueltos de seguridad del bloque P2 de la auditoría (S2-08, S2-14, #681, #683)
+
+- **La CSP nace PARCIAL a propósito, y esa es la decisión.** No declara `default-src`,
+  `script-src` ni `style-src`: una CSP estricta de scripts exige un `nonce` por petición, y el
+  nonce obliga a render dinámico —lo dice el propio doc de Next— que es exactamente lo que
+  `cacheComponents` no puede dar (el shell estático se prerenderiza en build, cuando ese nonce
+  todavía no existe). Poner `default-src 'self'` sin `script-src` sería peor que no poner nada:
+  `script-src` heredaría de él y bloquearía los inline de Next, tirando la app entera. Lo que se
+  cierra sin nonce se cierra ya (`frame-ancestors 'none'`, `base-uri`, `object-src`,
+  `form-action`); el `script-src` con nonce queda como issue atada a la fase de Cache Components.
+- **`upgrade-insecure-requests` se omite**: en `next dev` sobre `http://localhost:3000` haría que
+  el navegador intentara subir a HTTPS los recursos propios. HSTS ya cubre el transporte donde
+  importa, que es producción.
+- **`Permissions-Policy` NO lista `camera`.** El escáner de códigos de barras es el plugin nativo
+  de Capacitor y no se ha podido verificar en dispositivo que la política del documento no le
+  afecte. No se restringe lo que no se puede probar; un `camera=()` a ciegas es la clase de
+  cabecera que rompe una feature de móvil que nadie prueba en el navegador.
+- **El arreglo de S2-14 gatea la TRANSICIÓN, no la columna.** El informe proponía «añadir esas
+  columnas al trigger o revocarles el UPDATE», y las dos cosas rompen la app: `hydrated_at`,
+  `editions_synced_at` y `openlibrary_work_key` las escribe la hidratación perezosa con el cliente
+  de la petición de un usuario cualquiera, así que cerrarlas a colaborador reproduce **#699** —la
+  hidratación muere con 42501 en silencio y las fichas se quedan sin sinopsis en prod, invisible en
+  dev porque allí se prueba con cuentas admin. Lo que se prohíbe es reescribir o borrar un valor ya
+  puesto; `null → valor` sigue abierto porque es lo único que hacen los cuatro escritores legítimos.
+  Verificado en dev por los dos lados: el `PATCH` que repunta la work key y los dos que ponen las
+  fechas a null salen bloqueados, y la secuencia completa de hidratación de un libro y una película
+  recién creados pasa igual que antes.
+- **Carrera conocida y aceptada:** dos pestañas abriendo a la vez una ficha recién creada — la
+  segunda encuentra la columna ya escrita y su UPDATE muere con la excepción del trigger. Los
+  cuatro escritores ignoran ese error a propósito desde antes (son best-effort), así que lo único
+  que se pierde es un atajo que la primera pestaña ya había ganado.
+- **La neutralización de fórmulas del CSV no toca los números.** `String(n)` no puede producir una
+  fórmula —un `-5` es un número negativo para la hoja de cálculo, no una expresión— y prefijar un
+  apóstrofo a la columna de notas o de relecturas la volvería texto para quien luego quiera
+  sumarla. El prefijo defensivo se aplica solo a las celdas de TEXTO que empiezan por
+  `= + - @`, tabulador o retorno de carro, que son las que Excel/Sheets/LibreOffice evalúan.
+- **El tope de #683 se pone aunque por la vía normal sea inalcanzable.** Las filas sin match salen
+  de un parseo ya capado a 3.000, así que ningún usuario puede llegar al guard; pero
+  `saveUnmatchedBatch` es un **Server Action**, invocable a mano con el lote que se quiera. El
+  criterio del repo ya era ese en `commitImportBatch` (mismo tope, misma razón).
+- **Las cabeceras se defienden con un e2e, no con una revisión de `next.config.ts`.** Una
+  regresión aquí no se ve en pantalla y el bloque convive con imágenes y Cache Components en el
+  mismo fichero. `e2e/cabeceras-seguridad.spec.ts` afirma la propiedad sobre la respuesta real y no
+  pide login, así que sigue verde sin cuenta de pruebas.
