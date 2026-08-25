@@ -308,7 +308,9 @@ export async function dismissPendingRow(pendingId: string) {
   revalidatePendingImports();
 }
 
-export type SaveUnmatchedBatchState = { saved: number } | { error: "generic" };
+export type SaveUnmatchedBatchState =
+  | { saved: number }
+  | { error: "generic" | "tooManyRows" };
 
 // Una entrada de la tanda: la fila del CSV y, si el matcher casó con VARIAS
 // obras (ambigua), los candidatos que encontró. Se persisten dentro del payload
@@ -336,6 +338,12 @@ export async function saveUnmatchedBatch(
   entries: UnmatchedBatchEntry[]
 ): Promise<SaveUnmatchedBatchState> {
   if (entries.length === 0) return { saved: 0 };
+
+  // Mismo tope que `parseImportFile` y `commitImportBatch` (issue #683). Por la
+  // vía normal es inalcanzable —las filas sin match salen de un parseo ya
+  // capado—, pero esto es un Server Action: se puede invocar a mano con el lote
+  // que se quiera y sembrar `pending_import_rows` sin cota.
+  if (entries.length > MAX_ROWS) return { error: "tooManyRows" };
 
   const supabase = await createClient();
   const {

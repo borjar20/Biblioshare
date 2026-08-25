@@ -359,6 +359,23 @@ activan alrededor del `UPDATE` y el trigger respeta (`current_setting('app.hydra
 `collaborator+` exactamente igual — el flag solo lo activan las RPC `SECURITY DEFINER`, nunca
 el cliente.
 
+**El trigger cubre además las columnas TÉCNICAS, y las gatea por TRANSICIÓN**
+(`20260878_catalog_technical_columns_gate.sql`, hallazgo S2-14 de la auditoría 2026-08). El grant
+por columna a `authenticated` incluye tres columnas de fontanería que el gate original no miraba:
+`books.openlibrary_work_key`, `books.editions_synced_at` y `hydrated_at` en las tres tablas. Con
+una sesión normal y un `PATCH` a PostgREST se podía repuntar un libro a otra obra de Open Library
+(la siguiente sincronización trae ediciones y portada equivocadas, y el catálogo es GLOBAL) o poner
+`hydrated_at`/`editions_synced_at` a `null` en bucle para forzar llamadas externas sin cota. **No
+se gatean a colaborador ni se revoca el UPDATE** —que es lo que proponía el informe—: las escribe
+la hidratación perezosa con el cliente de la petición de un usuario cualquiera, así que cerrarlas a
+secas repetiría el modo de fallo de #699. Lo que se prohíbe a un no-colaborador es **reescribir o
+borrar un valor ya puesto**; `null → valor` sigue abierto, que es lo único que hacen
+`hydrate-book.ts`, `hydrate-screen.ts` y `sync-editions.ts`. Reescribir sigue siendo de
+`collaborator+` (`resyncEditions`) y de las RPC, que entran por `app.hydrating`. **Aplicada en dev
+y verificada allí** (ataque bloqueado en las tres columnas; hidratación `null → valor` intacta);
+**prod PENDIENTE de aplicar** — no hay orden de despliegue que respetar, la restricción cae sobre
+caminos que el código no usa.
+
 **INSERT directo revocado.** `20260818_catalog_f_revoke_insert.sql`: `drop policy` de las tres
 `"catalog books/movies/series insertable"` (`with check(true)`) + `revoke insert on
 books/movies/series from authenticated, anon`. No había grants de INSERT por columna (a
