@@ -1087,8 +1087,10 @@ p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para re
   ranking premia «misma obra» (+2), el raíl se llenaba de avances del mismo ítem. La regla gemela para
   «Más sobre la obra» (consulta directa a `posts`, no RPC) vive en `getPostContext`
   (`.neq("kind","progressed")`), que además filtra los drafts en TS por si la base del entorno todavía
-  corre la versión previa de la función. **Estado: aplicada y verificada en DEV** (`pg_get_functiondef`
-  contiene el filtro); **PROD PENDIENTE**.
+  corre la versión previa de la función. **Aplicada y verificada en DEV y en PROD el 2026-08-26**
+  (`pg_get_functiondef` contiene el filtro; `prosecdef=false` → sigue INVOKER; grants execute a
+  `authenticated`+`anon` intactos). Smoke en prod sobre un autor real con 4 avances entre sus 73
+  posts: la función devuelve 6 filas y **0** de `kind='progressed'`.
 
 ### 5.3 Los avisos de seguimiento nacen del post, no del hecho (dev y **PROD**, 2026-08-13)
 
