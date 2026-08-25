@@ -1491,3 +1491,7 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
 - **El `page.once("dialog")` se arma antes del ÍTEM, no antes de abrir el menú.** El `confirm()`
   nativo de borrar sigue existiendo tras F3-012; lo dispara `confirmDelete`, que corre al pulsar
   la opción del desplegable. Armarlo antes de abrir el «···» deja el handler consumido a destiempo.
+- **La copia muerta `social.like` («Me gusta») se BORRA de `messages/es.json`.** No la leía nadie
+  (`grep` de `t("like")` en `src/` no devuelve nada) y era justo el rastro que hacía creer que el
+  botón seguía existiendo. Una cadena de interfaz que nombra un control retirado no es inocua:
+  es la pista falsa que el siguiente que lea el spec va a seguir.
