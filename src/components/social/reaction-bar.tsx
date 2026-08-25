@@ -16,11 +16,13 @@ import { QUICK_REACTIONS, QUICK_REACTION_NAMES } from "@/lib/social/reaction-con
 // cae entonces a <body>, que queda FUERA del div que lleva el onKeyDown de
 // Escape, así que con el chunk frío un usuario de teclado se queda varado sin
 // poder cerrar. El placeholder mantiene el tamaño aproximado del picker
-// (19rem) para que el popover no salte de tamaño al resolver.
+// (19rem/14rem en móvil, 28rem/20rem desde min-[1023px]: el mismo corte de
+// escritorio que usa emoji-picker.tsx) para que el popover no salte de
+// tamaño al resolver.
 const EmojiPicker = dynamic(() => import("./emoji-picker").then((m) => m.EmojiPicker), {
   ssr: false,
   loading: () => (
-    <div className="flex h-56 w-[19rem] max-w-[calc(100vw-2rem)] items-center justify-center text-xs text-muted-foreground">
+    <div className="flex h-56 w-[19rem] max-w-[calc(100vw-2rem)] items-center justify-center text-xs text-muted-foreground min-[1023px]:h-80 min-[1023px]:w-[28rem]">
       …
     </div>
   ),
@@ -133,7 +135,10 @@ export function ReactionBar({
             ) : (
               <div className="flex flex-col gap-1">
                 {existing.length > 0 && (
-                  <div className="flex max-w-[15rem] items-center gap-1 overflow-x-auto">
+                  // Mismo problema que la tira de categorías del picker: se
+                  // desplaza en pantallas estrechas, pero la barra no debe
+                  // verse (patrón de post-aside.tsx).
+                  <div className="flex max-w-[15rem] items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {existing.map((r) => (
                       <button
                         key={r.emoji}
