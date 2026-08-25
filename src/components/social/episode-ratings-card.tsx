@@ -73,7 +73,7 @@ export function EpisodeRatingsCard({
               {ep.episode ? `S${ep.episode.season}E${ep.episode.episode}` : ""}
             </span>
             <div className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.06em] uppercase text-foreground-faint">
+              <span className="flex items-center gap-1.5 font-mono text-[9px] tracking-[0.06em] uppercase text-muted-foreground">
                 <span className="h-1 w-1 rounded-full bg-foreground-faint" />{t("episode.watched")}
               </span>
               {ep.rating != null && (
@@ -100,7 +100,7 @@ export function EpisodeRatingsCard({
                   />
                 </div>
               )}
-              <TimeAgo iso={ep.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
+              <TimeAgo iso={ep.eventDate} className="mt-1 block font-mono text-[9.5px] text-muted-foreground" />
             </div>
           </div>
         ))}

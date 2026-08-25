@@ -49,7 +49,7 @@ function Hit({
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-semibold">{item.label}</span>
-        <span className="block font-mono text-[9px] uppercase tracking-wide text-foreground-faint">
+        <span className="block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
           {done
             ? t("routeAddAlreadyIn")
             : isBlock
@@ -103,14 +103,14 @@ export function AddStepsList({
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("routeAddSearchPlaceholder")}
           aria-label={t("routeAddSearchPlaceholder")}
-          className="w-full bg-transparent text-[13px] text-foreground placeholder:text-foreground-faint focus:outline-none"
+          className="w-full bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
       </label>
 
       {subsagas.length > 0 && (
         <div>
           <h4 className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground">
-            {t("routeAddGroupSubsagas")} <span className="text-foreground-faint">{subsagas.length}</span>
+            {t("routeAddGroupSubsagas")} <span className="text-muted-foreground">{subsagas.length}</span>
           </h4>
           <div className="grid gap-0.5">
             {subsagas.map((p) => (
@@ -123,7 +123,7 @@ export function AddStepsList({
       {items.length > 0 && (
         <div>
           <h4 className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground">
-            {t("routeAddGroupItems")} <span className="text-foreground-faint">{items.length}</span>
+            {t("routeAddGroupItems")} <span className="text-muted-foreground">{items.length}</span>
           </h4>
           <div className="grid gap-0.5">
             {items.map((p) => (

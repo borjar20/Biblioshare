@@ -59,7 +59,7 @@ export function SagaList({
                 {label}
               </span>
             )}
-            <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-foreground-faint" />
+            <ChevronRightIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </Link>
         );
       })}

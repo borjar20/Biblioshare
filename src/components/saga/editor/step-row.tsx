@@ -62,7 +62,7 @@ export function StepRow({
           <p className="truncate text-[13px] font-semibold leading-tight">{item.label}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             {isBlock ? (
-              <span className="font-mono text-[9px] uppercase tracking-wide text-foreground-faint">
+              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
                 {t("routeStepBlockMeta", { count: item.memberCount ?? 0 })}
               </span>
             ) : (
@@ -125,9 +125,9 @@ export function StepRow({
             aria-label={t("routeStepNoteLabel")}
             rows={2}
             autoFocus
-            className="w-full resize-none bg-transparent text-[12px] italic leading-snug text-foreground placeholder:not-italic placeholder:text-foreground-faint focus:outline-none"
+            className="w-full resize-none bg-transparent text-[12px] italic leading-snug text-foreground placeholder:not-italic placeholder:text-muted-foreground focus:outline-none"
           />
-          <div className="mt-1 flex items-center justify-between font-mono text-[9px] uppercase tracking-wide text-foreground-faint">
+          <div className="mt-1 flex items-center justify-between font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
             <span>{item.entry.note ? t("routeStepNoteSaved") : t("routeStepNoteWriting")}</span>
             <b>
               {(item.entry.note ?? "").length}/{NOTE_MAX_LENGTH}

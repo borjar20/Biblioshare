@@ -68,7 +68,7 @@ export function ReviewCard({
             {event.itemTitle}
           </Link>
           {event.rating != null && <div className="mt-2"><RatingDots value={event.rating} itemType={event.itemType} /></div>}
-          {meta && <p className="mt-1.5 font-mono text-[10px] text-foreground-faint">{meta}</p>}
+          {meta && <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">{meta}</p>}
         </div>
       </div>
 

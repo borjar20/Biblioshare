@@ -103,7 +103,7 @@ export function ItemDetailTabs({
                 className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
                   isActive
                     ? "text-foreground lg:font-semibold"
-                    : "text-muted-foreground hover:text-foreground lg:font-medium lg:text-foreground-faint lg:hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground lg:font-medium lg:hover:text-foreground"
                 }`}
               >
                 {labels[id]}

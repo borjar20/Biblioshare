@@ -122,11 +122,21 @@ editor de catálogo inline (banner + barra sticky).
 Base sana a proteger: `<dialog>` nativo con `showModal()` (28 ficheros),
 `:focus-visible` global, `alt`/labels sistemáticos, `aria-current` en las navs,
 `role="status"` en cargas, selects y fechas nativos, errores inline con
-`role="alert"`, cero toasts.
+`role="alert"`, cero toasts. Y desde el 2026-08-25, dos más que también son de
+armazón y por tanto valen para toda ruta nueva sin hacer nada: **`<main
+id="contenido">` y skip-link los pone `AppShell`** — no los declares por página,
+dos `<main>` anidados son otra violación de axe (#816).
 
-Deuda conocida (issues de la auditoría): contraste de `--muted-foreground`
-(3,4:1) y `--foreground-faint` (2,6:1) — axe serious en TODAS las rutas
-(F4-022); falta `<main>` + skip-link en el shell (F4-023); `FiltersDropdown`
+**Contraste (regla, no deuda): `--foreground-faint` NO colorea texto.** Da
+2,25:1 en claro y 2,16:1 en oscuro, y **no se arregla subiendo el valor**:
+cualquier color que llegue a 4,5:1 sobre papel cae en L\* 42, que es donde ya
+está `--muted-foreground` — "arreglarlo" es fundirlo con muted. Queda para
+objetos decorativos (dots `aria-hidden`). Para texto secundario,
+`--muted-foreground` (#6b6255 en claro desde #815, 5,11:1 sobre `--background`).
+`contraste-tokens.test.ts` lo comprueba en los tres bloques de tema y falla si
+vuelve a aparecer un `text-foreground-faint`.
+
+Deuda conocida que SIGUE abierta (issues de la auditoría): `FiltersDropdown`
 fullscreen sin gestión de foco (F4-024); desglose de charts solo-hover
 (F4-016); `prefers-reduced-motion` sin regla global para skeletons; fichas con
 `<h1>` duplicado (dos árboles responsive).

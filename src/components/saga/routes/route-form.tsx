@@ -71,7 +71,7 @@ export function RouteForm({
           className="flex font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground"
         >
           {t("routeNameLabel")}
-          <b className="ml-auto font-normal tracking-[0.06em] text-foreground-faint">
+          <b className="ml-auto font-normal tracking-[0.06em] text-muted-foreground">
             {name.length}/{NAME_MAX}
           </b>
         </label>
@@ -85,7 +85,7 @@ export function RouteForm({
           placeholder={t("routeNamePlaceholder")}
           aria-invalid={nameError !== null}
           aria-describedby={nameError ? `${idPrefix}-name-error` : undefined}
-          className={`rounded-lg border bg-surface-muted px-2.5 py-2 text-[13px] text-foreground placeholder:text-foreground-faint focus:outline-none focus:ring-1 focus:ring-accent ${
+          className={`rounded-lg border bg-surface-muted px-2.5 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent ${
             nameError ? "border-status-dropped" : "border-border"
           }`}
         />
@@ -103,7 +103,7 @@ export function RouteForm({
           className="flex font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground"
         >
           {t("routeSummaryLabel")}
-          <b className="ml-auto font-normal tracking-[0.06em] text-foreground-faint">
+          <b className="ml-auto font-normal tracking-[0.06em] text-muted-foreground">
             {t("routeSummaryOptional")} · {summary.length}/{SUMMARY_MAX}
           </b>
         </label>
@@ -115,7 +115,7 @@ export function RouteForm({
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           placeholder={t("routeSummaryPlaceholder")}
-          className="resize-none rounded-lg border border-border bg-surface-muted px-2.5 py-2 text-[13px] text-foreground placeholder:text-foreground-faint focus:outline-none focus:ring-1 focus:ring-accent"
+          className="resize-none rounded-lg border border-border bg-surface-muted px-2.5 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent"
         />
       </div>
 

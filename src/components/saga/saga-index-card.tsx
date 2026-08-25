@@ -92,7 +92,7 @@ export async function SagaIndexCard({
         </h3>
 
         {/* Línea meta: títulos · subsagas · autor. */}
-        <p className="flex flex-wrap items-center gap-x-2 font-mono text-[9.5px] tracking-[0.05em] text-foreground-faint uppercase">
+        <p className="flex flex-wrap items-center gap-x-2 font-mono text-[9.5px] tracking-[0.05em] text-muted-foreground uppercase">
           <span>{tSaga("count", { count: card.titleCount })}</span>
           {isUniverse && (
             <>
@@ -139,12 +139,12 @@ export async function SagaIndexCard({
               </Link>
             ))}
             {mobile.hiddenCount > 0 && (
-              <span className="inline-flex items-center rounded-md border border-dashed border-border px-[7px] py-[3px] font-mono text-[9px] whitespace-nowrap text-foreground-faint sm:hidden">
+              <span className="inline-flex items-center rounded-md border border-dashed border-border px-[7px] py-[3px] font-mono text-[9px] whitespace-nowrap text-muted-foreground sm:hidden">
                 {t("moreSubsagas", { count: mobile.hiddenCount })}
               </span>
             )}
             {desktop.hiddenCount > 0 && (
-              <span className="hidden items-center rounded-md border border-dashed border-border px-[7px] py-[3px] font-mono text-[9px] whitespace-nowrap text-foreground-faint sm:inline-flex">
+              <span className="hidden items-center rounded-md border border-dashed border-border px-[7px] py-[3px] font-mono text-[9px] whitespace-nowrap text-muted-foreground sm:inline-flex">
                 {t("moreSubsagas", { count: desktop.hiddenCount })}
               </span>
             )}

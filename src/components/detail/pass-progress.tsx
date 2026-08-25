@@ -45,7 +45,7 @@ export function PassProgress({
         </div>
       </div>
 
-      <div className="mt-[15px] flex justify-between gap-2 font-mono text-[9.5px] text-foreground-faint">
+      <div className="mt-[15px] flex justify-between gap-2 font-mono text-[9.5px] text-muted-foreground">
         <span>{t("start")}</span>
         <span>
           <b className={`font-semibold ${accent.text}`}>

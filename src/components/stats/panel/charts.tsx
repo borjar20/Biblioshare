@@ -107,7 +107,7 @@ function AxisLabel({
       data-axis-label
       className={`block h-3 w-full shrink-0 text-center font-mono text-[8.5px] leading-3 ${
         roomy ? "overflow-visible whitespace-nowrap" : "truncate"
-      } ${datum.value === null ? "text-foreground-faint" : "text-muted-foreground"}`}
+      } text-muted-foreground`}
     >
       {muted ? "" : (datum.short ?? datum.label)}
     </span>
@@ -577,7 +577,7 @@ export function GaugeChart({ spec, derived }: ChartProps) {
       </div>
       {/* La marca del objetivo, para que «dónde está la meta» no sea solo color. */}
       {target > 0 && (
-        <div className="flex justify-between font-mono text-[9px] text-foreground-faint">
+        <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
           <span>0</span>
           <span>meta {target}</span>
         </div>
@@ -658,7 +658,7 @@ export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
         {layout.months && layout.months.length > 0 && (
           <div
             aria-hidden
-            className="grid gap-px font-mono text-[8px] text-foreground-faint"
+            className="grid gap-px font-mono text-[8px] text-muted-foreground"
             style={{ gridTemplateColumns: `repeat(${layout.columns ?? 53}, minmax(0, 1fr))` }}
           >
             {layout.months.map((m) => (
@@ -736,7 +736,7 @@ export function HeatmapChart({ spec, derived, interactive }: ChartProps) {
             key={d.key}
             className={`grid aspect-square place-items-center rounded-md font-mono text-[10px] ${
               v === null
-                ? "border border-dashed border-border text-foreground-faint"
+                ? "border border-dashed border-border text-muted-foreground"
                 : v === 0
                   ? "bg-surface-muted text-muted-foreground"
                   : "font-semibold text-foreground"
@@ -1006,7 +1006,7 @@ export function WaffleChart({ spec, derived }: ChartProps) {
           />
         ))}
       </div>
-      <p className="font-mono text-[9px] text-foreground-faint">
+      <p className="font-mono text-[9px] text-muted-foreground">
         {perWork
           ? `cada celda = 1 ${spec.unit.one}`
           : `cada celda = 1 % · ${formatValue(total, spec.unit)} en total`}
@@ -1062,7 +1062,7 @@ export function LollipopChart({ spec, derived, interactive }: ChartProps) {
             {d.value === null ? (
               // Hueco: ni tallo ni punto. Un tallo de longitud cero se leería
               // como «el peor de la lista», y `null` es «no se midió».
-              <span className="text-[10px] text-foreground-faint">Sin datos</span>
+              <span className="text-[10px] text-muted-foreground">Sin datos</span>
             ) : (
               <span aria-hidden className="relative flex h-3 items-center">
                 <span
@@ -1079,7 +1079,7 @@ export function LollipopChart({ spec, derived, interactive }: ChartProps) {
             <span
               aria-hidden
               className={`font-mono text-[10.5px] tabular-nums ${
-                d.value === null ? "text-foreground-faint" : "text-foreground"
+                d.value === null ? "text-muted-foreground" : "text-foreground"
               }`}
             >
               {d.value === null ? "" : formatValue(d.value, spec.unit)}

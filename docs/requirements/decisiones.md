@@ -1646,3 +1646,35 @@ diagnóstico, que es lo que pide AGENTS.md.
 - **Lo que queda fuera, dicho a propósito:** `_global-error` se sirve sin `<main>` porque no pasa
   por el layout raíz (es el default de Next, el repo no tiene `global-error.tsx`). No es ninguna de
   las 17 rutas de la auditoría y no se toca.
+
+## 2026-08-25 (noche, 3) — Contraste: uno de los dos tokens no se arregla con un valor (#815)
+
+- **El hallazgo F4-022 eran dos tokens con DOS arreglos distintos, no uno repetido.** La auditoría
+  proponía «oscurecer `--muted-foreground` y reclasificar los usos de `--foreground-faint`» como si
+  fueran dos versiones del mismo retoque. Medidos, no lo son.
+- **`--muted-foreground`: cambia el valor, y solo en claro.** De `#877e70` (3,41:1 sobre
+  `--background`) a **`#6b6255`** — 5,11:1 sobre `--background`, 5,90 sobre `--surface`, 4,71 sobre
+  `--surface-muted`, 4,21 sobre `--surface-3`. Con 836 usos, esa línea sola es la mayor parte del
+  hallazgo. **En oscuro NO se toca**: medido, `#a99e8c` ya daba de 4,61 a 6,53 y pasa AA en los tres
+  fondos. La issue daba el modo oscuro por «sin medir»; queda medido.
+- **`--foreground-faint`: NO se puede arreglar subiendo el valor, y esto es lo nuevo.** Sobre papel
+  (`#f3ece1`), cualquier color que alcance 4,5:1 cae en **L\* 42**, que es exactamente donde queda
+  `--muted-foreground` (L\* 42,0 contra 42,6). O sea: el color «arreglado» es indistinguible de
+  muted, y el peldaño que justifica que el token exista desaparece. **Un sistema de cuatro pesos de
+  texto sobre papel no cabe entero por encima de AA.** Así que el arreglo no es retocarlo: es
+  **sacarlo del texto**.
+- **Regla mecánica en vez de juicio caso a caso.** Los 59 `text-foreground-faint` pasan a
+  `text-muted-foreground`; los 3 `bg-foreground-faint` se quedan. Se eligió la regla por la forma,
+  no por «esto informa y esto decora», porque esa clasificación es opinión y no sobrevive al
+  siguiente que edite el fichero. Los tres supervivientes son dots `aria-hidden` con el estado
+  escrito al lado, así que WCAG 1.4.11 no les aplica y no hace falta subirles nada.
+- **Lo que esto le cuesta al diseño, dicho claro:** la app pierde un peldaño de gris. Los rótulos
+  mono de 9-11 px (fechas, captions, ejes de gráfica, subtítulos) pasan de L\* 65 a L\* 42 y se ven
+  bastante más oscuros. Es un cambio visible en toda la app y es el precio de AA — si algún día se
+  quiere recuperar la jerarquía perdida, hay que hacerlo **sin color** (tamaño, peso, mayúsculas),
+  no reinventando un gris claro.
+- **Los números viven en un test, no en un comentario.** `src/app/contraste-tokens.test.ts` lee
+  `globals.css` y comprueba los ratios en los **tres** bloques de tema (`:root`, `.dark` y el
+  `@media prefers-color-scheme`, que es el defecto de quien no toca el interruptor), y falla si
+  reaparece un `text-foreground-faint`. Duplicar los valores a mano en la doc es justo lo que dejó
+  pasar el fallo original de `mark-accent`.

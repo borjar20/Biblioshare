@@ -83,7 +83,7 @@ export default async function SagasIndexPage({
         <h1 className="font-serif text-2xl font-semibold tracking-tight">{t("title")}</h1>
         {/* «38 SAGAS · 6 UNIVERSOS · SIGUES 4»: el pulso del catálogo entero,
             no el del filtro activo (ese va en el pie). */}
-        <p className="font-mono text-[10.5px] tracking-[0.06em] text-foreground-faint uppercase">
+        <p className="font-mono text-[10.5px] tracking-[0.06em] text-muted-foreground uppercase">
           {t("headCountSagas", { count: data.cards.length })}
           {` · ${t("headCountUniverses", { count: universeCount })}`}
           {data.isAuthenticated && ` · ${t("headCountFollowing", { count: data.followedIds.size })}`}

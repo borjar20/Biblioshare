@@ -59,7 +59,7 @@ export function SheetShell({
         <div className="mb-3.5 flex items-baseline gap-2.5">
           <b className="min-w-0 flex-1 truncate font-serif text-[16px] font-semibold">{title}</b>
           {caption && (
-            <span className="font-mono text-[9px] uppercase tracking-wide text-foreground-faint">{caption}</span>
+            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{caption}</span>
           )}
           <button
             type="button"

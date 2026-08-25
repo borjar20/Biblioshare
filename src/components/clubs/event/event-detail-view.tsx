@@ -310,7 +310,7 @@ export function EventDetailView({
             creado updated_at es null y una línea que dijera «actualizado» sería
             falsa. */}
         {event.updatedAt && (
-          <p className="mt-6 font-mono text-[10.5px] text-foreground-faint">
+          <p className="mt-6 font-mono text-[10.5px] text-muted-foreground">
             {t("eventUpdatedAt", {
               when: formatEventWhen(event.updatedAt, null, event.timezone) ?? "",
             })}
