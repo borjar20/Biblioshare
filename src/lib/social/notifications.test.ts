@@ -531,6 +531,109 @@ describe("escritura confiable de notificaciones", () => {
   });
 });
 
+// notify()/notifyMany() reutilizan el mismo par caller/writer que el resto del
+// fichero (makeFakeSupabase + trustedWriter.create): writerTables.notifications
+// YA expone las filas insertadas, así que no hace falta un ayudante paralelo
+// para leerlas.
+describe("contexto de notificación (spec 2026-08-25-notificaciones-con-contexto)", () => {
+  it("guarda el contexto en la fila de la notificación", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notify(caller, {
+      userId: "user-2",
+      actorId: "actor-1",
+      type: "review_liked",
+      context: { emoji: "🔥" },
+    });
+
+    expect(writerTables.notifications[0]).toMatchObject({
+      type: "review_liked",
+      context: { emoji: "🔥" },
+    });
+  });
+
+  it("sin contexto escribe null, no un objeto vacío", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notify(caller, { userId: "user-2", actorId: "actor-1", type: "new_follower" });
+
+    expect(writerTables.notifications[0]?.context).toBeNull();
+  });
+
+  it("notifyMany guarda el mismo contexto en cada fila del lote", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notifyMany(caller, {
+      userIds: ["user-2", "user-3"],
+      actorId: "actor-1",
+      type: "activity_commented",
+      interactionTargetId: "target-pass",
+      context: { excerpt: "una reseña con extracto" },
+    });
+
+    expect(writerTables.notifications).toHaveLength(2);
+    expect(
+      writerTables.notifications.every(
+        (row) => JSON.stringify(row.context) === JSON.stringify({ excerpt: "una reseña con extracto" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("listNotifications devuelve el contexto guardado en cada fila", async () => {
+    const tables = baseTables();
+    tables.notifications = [
+      {
+        id: "n-1",
+        user_id: "user-1",
+        actor_id: "actor-1",
+        type: "review_liked",
+        interaction_target_id: null,
+        target_type: null,
+        target_id: null,
+        read_at: null,
+        created_at: "2026-08-25T10:00:00Z",
+        context: { emoji: "🔥" },
+      },
+    ];
+    const supabase = makeFakeSupabase(tables);
+
+    const result = await listNotifications(supabase, "user-1");
+
+    expect(result[0]?.context).toEqual({ emoji: "🔥" });
+  });
+
+  it("el push usa notificationCopy (variante emoji) en vez de la clave genérica", async () => {
+    const callerTables = baseTables();
+    const writerTables: Record<string, Row[]> = { notifications: [] };
+    const caller = makeFakeSupabase(callerTables);
+    trustedWriter.create.mockReturnValue(makeFakeSupabase(writerTables));
+
+    await notify(caller, {
+      userId: "user-2",
+      actorId: "actor-1",
+      type: "review_liked",
+      context: { emoji: "🔥" },
+    });
+
+    expect(sendPushToUser).toHaveBeenCalledWith(
+      "user-2",
+      expect.objectContaining({
+        body: expect.stringContaining("notifications.reviewLikedEmoji"),
+      }),
+      expect.anything(),
+    );
+  });
+});
+
 describe("notificaciones canónicas — agrupación por tipo y target", () => {
   it("agrupa solo reacciones equivalentes y conserva comentarios individuales", async () => {
     const tables = baseTables();

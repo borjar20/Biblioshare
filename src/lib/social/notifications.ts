@@ -5,6 +5,8 @@ import type { ItemType } from "@/lib/catalog/types";
 import { sendPushToUser, sendPushToUsers } from "@/lib/push/send-push";
 import { NOTIFICATION_CATEGORY, type PushContent } from "@/lib/push/types";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import type { NotificationContext } from "./notification-context";
+import { notificationCopy } from "./notification-copy";
 import {
   NOTIFICATION_TYPE_KEY,
   type Notification,
@@ -41,6 +43,12 @@ export async function notify(
     // usan las reacciones (un relike no debe volver a avisar). Sin clave, el
     // comportamiento es el de siempre (insert normal).
     dedupeKey?: string;
+    /**
+     * Foto de lo ocurrido (emoji, obra, extracto). Opcional: quien no lo tenga
+     * barato lo omite y su copia se queda como está — nadie añade una consulta
+     * para rellenarlo.
+     */
+    context?: NotificationContext;
   },
 ): Promise<void> {
   try {
@@ -59,6 +67,7 @@ export async function notify(
     target_id: params.targetId ?? null,
     interaction_target_id: params.interactionTargetId ?? null,
     dedupe_key: params.dedupeKey ?? null,
+    context: params.context ?? null,
   };
   // .select() recupera el id de la fila (viaja en el data payload del push, spec
   // item 8). Con dedupeKey se hace upsert(ignoreDuplicates): si ya existía, no
@@ -101,6 +110,7 @@ async function buildPushPayload(
     targetType?: ReviewTargetType;
     targetId?: string;
     interactionTargetId?: string;
+    context?: NotificationContext;
   },
 ): Promise<PushContent | null> {
   // Sin actor (aviso del sistema) no se busca perfil y no se aborta: el enlace sale
@@ -135,13 +145,22 @@ async function buildPushPayload(
   // este cuerpo por defecto solo es el respaldo de un caso que no debería darse.
   const name = actor?.display_name || actor?.username || tCommon("appName");
 
+  // La MISMA función que la campana. Sin comprobador de emoji: en el servidor no
+  // hay canvas con el que medir, y el push lo pinta el sistema del dispositivo
+  // con sus propias fuentes, así que el emoji siempre viaja.
+  const copy = notificationCopy({
+    type: params.type,
+    context: params.context,
+    name,
+  });
+
   return {
     // La categoría se deriva del tipo (no se pasa suelta): gobierna las
     // preferencias del destinatario y el canal Android.
     category: NOTIFICATION_CATEGORY[params.type],
     type: params.type,
     title: tCommon("appName"),
-    body: t(NOTIFICATION_TYPE_KEY[params.type], { name }),
+    body: t(copy.key, copy.values),
     path: href,
     actorUserId: params.actorId ?? undefined,
   };
@@ -156,6 +175,7 @@ async function deliverPush(
     targetType?: ReviewTargetType;
     targetId?: string;
     interactionTargetId?: string;
+    context?: NotificationContext;
   },
   notificationId?: string,
 ): Promise<void> {
@@ -213,6 +233,13 @@ export async function notifyMany(
     // Cierra el self-spam de avisos por persona (#410) y el re-notify de
     // proposeRound idempotente (#409): mismo target lógico = un aviso.
     dedupeKey?: string;
+    /**
+     * Foto de lo ocurrido (emoji, obra, extracto). Opcional: quien no lo tenga
+     * barato lo omite y su copia se queda como está — nadie añade una consulta
+     * para rellenarlo. Es el MISMO contexto para todo el lote (mismo hecho,
+     * varios destinatarios), como ya lo es el resto de campos del payload.
+     */
+    context?: NotificationContext;
   },
 ): Promise<string[]> {
   const candidateIds = [...new Set(params.userIds)].filter(
@@ -247,6 +274,7 @@ export async function notifyMany(
       target_id: params.targetId ?? null,
       interaction_target_id: params.interactionTargetId ?? null,
       dedupe_key: params.dedupeKey ? `${params.dedupeKey}:${userId}` : null,
+      context: params.context ?? null,
     }));
     const { data: insertedRows, error } = params.dedupeKey
       ? await notificationWriter
@@ -502,7 +530,7 @@ export async function listNotifications(
   const { data, error } = await supabase
     .from("notifications")
     .select(
-      "id, type, actor_id, target_type, target_id, interaction_target_id, read_at, created_at",
+      "id, type, actor_id, target_type, target_id, interaction_target_id, read_at, created_at, context",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -604,6 +632,7 @@ export async function listNotifications(
         readAt: n.read_at,
         createdAt: n.created_at,
         extraActorsCount: extraActorsCount > 0 ? extraActorsCount : undefined,
+        context: (n.context ?? null) as NotificationContext | null,
       };
     })
     .filter((n): n is Notification => n !== null);
