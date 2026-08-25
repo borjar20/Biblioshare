@@ -115,11 +115,21 @@ like»*, y eso lo resuelve el emoji. Nombrar la obra en reacciones y comentarios
 (`tipo:feature`), con su coste real anotado: una consulta polimórfica por notificación, o
 desnormalizar el título en `interaction_targets`.
 
-**Regla que evita que esto se convierta en un refactor de todo: nadie añade una consulta nueva
-para rellenar el contexto.** Si un punto de llamada no tiene el título barato, lo omite y su
-copia se queda como está. Es preferible a meter una consulta extra en cada notificación de una
-app que ya nota la latencia contra Supabase (medida en ~240 ms por consulta, con picos de 1,3 s,
-según `playwright.config.ts`).
+**Regla que evita que esto se convierta en un refactor de todo: no se añaden consultas en el
+camino de notificar.** Si un punto de llamada no tiene el dato barato, lo omite y su copia se
+queda como está. La latencia contra Supabase está medida en ~240 ms por consulta con picos de
+1,3 s (`playwright.config.ts`): una consulta extra por notificación se nota.
+
+**Excepción acotada, decidida al escribir el plan:** `createPost` sí puede pagar **una** consulta
+para resolver el título de la obra. Se comprobó que ningún llamante lo tiene a mano — `createPost`
+recibe `anchorType`/`anchorId` y consulta el ancla pidiendo solo `id`, y el título vive en otra
+tabla — así que sin esa excepción `subject` no se podría rellenar **en ningún sitio** y se caería
+una de las tres cosas pedidas («terminó una obra» seguiría sin decir cuál).
+
+La excepción se sostiene porque `createPost` es una **acción de publicación**, no un camino de
+lectura: ya hace del orden de cinco consultas, corre una vez al publicar y no se repite por
+destinatario — el fan-out a seguidores ocurre después, con el título ya resuelto. Es distinto de
+añadir una consulta a `toggleReaction`, que se dispara con cada clic en un emoji.
 
 `notify()` es *best-effort* y no propaga errores — una notificación fallida no debe deshacer el
 follow o la reacción ya confirmados — y **eso no cambia**: el contexto viaja dentro de esa misma
