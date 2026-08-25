@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { tallyOf, type ReactionsByEmoji } from "@/lib/social/interactions";
@@ -46,6 +46,9 @@ export function ReactionBar({
   const [open, setOpen] = useState(false);
   const [browsing, setBrowsing] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // Posición del panel en ESCRITORIO, medida al abrir. En móvil no se usa: el
+  // panel deja de colgar del botón (ver el `className` del diálogo más abajo).
+  const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
 
   const { top, total, viewerReacted } = summarize(reactions);
   const existing = orderedReactions(reactions);
@@ -60,6 +63,34 @@ export function ReactionBar({
     setOpen(false);
     setBrowsing(false);
     triggerRef.current?.focus();
+  }
+
+  // Abre el popover y, de paso, mide dónde cabe en escritorio. Nada de
+  // useEffect (lint set-state-in-effect): se mide aquí, en el manejador del
+  // clic, con getBoundingClientRect() del propio botón — ANTES de que el
+  // panel exista, así que no hay parpadeo de reposicionamiento.
+  //
+  // Con la sangría de un hilo anidado el botón puede estar muy a la derecha;
+  // `left` se acota para que un panel de hasta 28rem (el ancho máximo, el que
+  // usa el catálogo) quepa siempre entre los bordes del viewport. El cálculo
+  // se hace aunque en ese momento estemos en móvil: el resultado solo lo lee
+  // el CSS de escritorio (`min-[1023px]:left-[var(--panel-left)]`), así que
+  // hacerlo de más no tiene coste ni efecto en móvil, donde el panel pasa a
+  // ser una hoja inferior fija sin relación con el botón.
+  function toggleOpen() {
+    if (!open) {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const PANEL_W = 448; // 28rem: ancho máx. del panel en escritorio (EmojiPicker)
+        const PANEL_H = 320; // 20rem: alto máx. del catálogo en escritorio
+        const MARGIN = 16; // separación mínima con el borde del viewport
+        setAnchor({
+          left: clamp(rect.left, MARGIN, window.innerWidth - PANEL_W - MARGIN),
+          top: clamp(rect.bottom + 4, MARGIN, window.innerHeight - PANEL_H - MARGIN),
+        });
+      }
+    }
+    setOpen((o) => !o);
   }
 
   function pick(emoji: string) {
@@ -93,7 +124,7 @@ export function ReactionBar({
         disabled={disabled}
         aria-expanded={open}
         aria-label={t("react")}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggleOpen}
         className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
           viewerReacted
             ? "border-accent text-accent"
@@ -112,18 +143,40 @@ export function ReactionBar({
 
       {open && (
         <>
-          {/* Cierra al pulsar fuera, sin useEffect (lint set-state-in-effect). */}
+          {/* Cierra al pulsar fuera, sin useEffect (lint set-state-in-effect).
+              En móvil el panel pasa a ser una hoja inferior a pantalla
+              completa (ver el diálogo de abajo), así que aquí sí se oscurece
+              el fondo — mismo criterio que event-followers.tsx. En
+              escritorio sigue siendo un popover pequeño anclado al botón y el
+              fondo se queda como estaba: transparente. */}
           <button
             type="button"
             aria-hidden
             tabIndex={-1}
             onClick={close}
-            className="fixed inset-0 z-10 cursor-default"
+            className="fixed inset-0 z-10 cursor-default bg-scrim min-[1023px]:bg-transparent"
           />
           <div
             role="dialog"
             aria-label={browsing ? t("emojiPicker.title") : t("react")}
-            className="absolute top-full left-0 z-20 mt-1 rounded-2xl border border-border bg-surface p-1.5 shadow-card"
+            // Sin useEffect: `--panel-left/top` se calculan en `toggleOpen`
+            // (el manejador de clic que abre el popover) y solo los lee el
+            // `min-[1023px]:` de abajo. En móvil el panel es una hoja
+            // inferior FIJA respecto al viewport (`inset-x-3` + `bottom-…`),
+            // sin relación con la posición del botón: por eso la sangría del
+            // hilo deja de importar del todo, no solo se acota. En
+            // escritorio sigue anclado al botón, pero con `position: fixed`
+            // y coordenadas ya acotadas al viewport, así que nunca se sale
+            // por la derecha por mucho que anide el hilo.
+            style={
+              anchor
+                ? ({
+                    "--panel-left": `${anchor.left}px`,
+                    "--panel-top": `${anchor.top}px`,
+                  } as CSSProperties)
+                : undefined
+            }
+            className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-card min-[1023px]:inset-x-auto min-[1023px]:bottom-auto min-[1023px]:left-[var(--panel-left)] min-[1023px]:top-[var(--panel-top)] min-[1023px]:max-h-none min-[1023px]:overflow-visible"
           >
             {browsing ? (
               <EmojiPicker
@@ -208,4 +261,10 @@ export function ReactionBar({
       )}
     </div>
   );
+}
+
+/** Acota `value` a `[min, max]`. En viewports de escritorio (≥1023px) `max`
+ * siempre es ≥ `min` para el uso de arriba, así que no hace falta blindarlo. */
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
