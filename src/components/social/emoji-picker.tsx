@@ -71,8 +71,16 @@ export function EmojiPicker({
   }, [query, group]);
 
   return (
-    <div className="flex w-full flex-col gap-2 min-[1023px]:w-[28rem]">
-      <div className="flex items-center gap-2">
+    // `min-h-0 flex-1` (mobile): permite que ESTE contenedor se encoja por
+    // debajo de su alto de contenido cuando el `<dialog>` padre lo topa con
+    // `max-h-[60svh]` (reaction-bar.tsx) — sin esto, un flex-item se resiste
+    // a bajar de su tamaño «natural» y el tope de arriba no llegaría a la
+    // rejilla, que es la que de verdad necesita encogerse y scrollear. En
+    // escritorio es inofensivo: el `<dialog>` no tiene `max-h` ahí
+    // (`min-[1023px]:max-h-none`), así que nunca hay hueco que repartir y
+    // `flex-1`/`min-h-0` no cambian nada.
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-2 min-[1023px]:w-[28rem]">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={onBack}
@@ -97,7 +105,9 @@ export function EmojiPicker({
         // caben en unos 300-350px), pero la barra no debe verse — mismo
         // patrón que post-aside.tsx. En escritorio (28rem) puede que ya
         // quepan todas sin scroll, pero el fix es el mismo en ambos casos.
-        <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        // `shrink-0`: esta tira nunca cede su alto — el que se encoge (y
+        // scrollea) cuando falta sitio es solo el grid de abajo.
+        <div className="flex shrink-0 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {EMOJI_GROUPS.map((g) => (
             <button
               key={g.id}
@@ -117,7 +127,7 @@ export function EmojiPicker({
       )}
 
       {atCap && (
-        <p className="text-[11px] text-muted-foreground">{t("emojiPicker.capReached")}</p>
+        <p className="shrink-0 text-[11px] text-muted-foreground">{t("emojiPicker.capReached")}</p>
       )}
 
       {results.length === 0 ? (
@@ -132,7 +142,21 @@ export function EmojiPicker({
         // poco y aparece una barra que nadie pidió — en Windows, donde las
         // barras siempre ocupan sitio, eso se suma a la vertical y a la de la
         // tira de categorías: tres barras a la vez.
-        <div className="grid max-h-56 grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-0.5 overflow-x-hidden overflow-y-auto min-[1023px]:max-h-80 min-[1023px]:grid-cols-12">
+        //
+        // Alto en móvil: `max-h-56` (14rem fijo) era el tope REAL de toda la
+        // hoja — un valor pensado para cuando esto era un popover colgado
+        // del botón, nadie lo revisó al pasar a hoja inferior, y dejaba
+        // 60-65% de la pantalla en blanco por encima con solo 4 filas
+        // visibles. Se cambia a `flex-1 min-h-0`: el grid pasa a ocupar
+        // TODO el alto que le sobra al `<dialog>` (que es quien pone el
+        // límite real ahora, `max-h-[60svh]` en reaction-bar.tsx) una vez
+        // descontados el buscador y la tira de categorías — y sigue
+        // scrolleando internamente (`overflow-y-auto`, ya estaba) lo que no
+        // quepa. En escritorio se mantiene `min-[1023px]:max-h-80` fijo, sin
+        // cambios: ahí el panel no tiene ancestro con `max-h` que repartir
+        // (`min-[1023px]:max-h-none` en el `<dialog>`), así que `flex-1` no
+        // hace nada y sigue siendo el tope de 20rem de siempre.
+        <div className="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-0.5 overflow-x-hidden overflow-y-auto min-[1023px]:max-h-80 min-[1023px]:grid-cols-12">
           {results.map((entry) => (
             <button
               key={entry.e}

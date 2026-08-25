@@ -211,6 +211,24 @@ export function ReactionBar({
             // Mismo z-50 que el backdrop: al ir después en el DOM, un empate
             // de z-index ya lo coloca por encima (orden de documento), sin
             // necesitar un número más alto todavía.
+            //
+            // `max-h-[60svh]` (no `70vh`, y no un `px`/`rem` fijo): `svh` es
+            // la unidad que ya usan las demás hojas del repo
+            // (day-sheet.tsx, agenda-reminder-sheet.tsx) para que la barra
+            // del navegador móvil no haga bailar el alto disponible —
+            // `dvh` cambiaría en vivo al mostrarse/ocultarse esa barra,
+            // `svh` se queda fija en el caso más estrecho, sin salto. 60%
+            // dejaba antes un hueco de sobra (el tope real era el `max-h-56`
+            // fijo de la rejilla de emoji-picker.tsx, pensado para un
+            // popover pequeño, no para esta hoja) y ahora sí es la hoja
+            // ENTERA (buscador + categorías + rejilla) la que se topa aquí:
+            // `flex flex-col` más `flex-1 min-h-0` en la rejilla (ver
+            // emoji-picker.tsx) hacen que sea ELLA quien absorbe el sobrante
+            // con su propio scroll, no el conjunto. Dejar el 40% restante
+            // visible es deliberado: parte del hilo se ve por encima de la
+            // hoja, que es lo que explica a qué se está reaccionando. En
+            // escritorio nada de esto aplica (`min-[1023px]:max-h-none`): ya
+            // se acota al viewport y voltea hacia arriba si no cabe.
             style={
               anchor
                 ? ({
@@ -219,7 +237,7 @@ export function ReactionBar({
                   } as CSSProperties)
                 : undefined
             }
-            className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-card min-[1023px]:inset-x-auto min-[1023px]:bottom-auto min-[1023px]:left-[var(--panel-left)] min-[1023px]:top-[var(--panel-top)] min-[1023px]:max-h-none min-[1023px]:overflow-visible"
+            className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 flex max-h-[60svh] flex-col overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-card min-[1023px]:inset-x-auto min-[1023px]:bottom-auto min-[1023px]:left-[var(--panel-left)] min-[1023px]:top-[var(--panel-top)] min-[1023px]:max-h-none min-[1023px]:overflow-visible"
           >
             {browsing ? (
               <EmojiPicker
