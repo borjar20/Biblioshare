@@ -140,11 +140,21 @@ Esta es la prueba que ningún test de TypeScript hace y la que ha fallado dos ve
 
 ```sql
 -- Inserta una notificación real con contexto y la borra. Usa dos usuarios que
--- existan; si no hay dos, coge el mismo para user_id y actor_id.
-with u as (select id from auth.users limit 2)
+-- existan; si solo hay uno, se repite para user_id y actor_id.
+--
+-- Ojo: NO sirve `min(id)`/`max(id)` sobre auth.users. `id` es uuid y Postgres
+-- no tiene agregados min/max para ese tipo — da `ERROR 42883: function
+-- min(uuid) does not exist`. Por eso se numeran las filas y se eligen por
+-- posición.
+with u as (
+  select id, row_number() over (order by id) as n from auth.users limit 2
+)
 insert into public.notifications (user_id, actor_id, type, context)
-select (select min(id) from u), (select max(id) from u), 'new_follower',
-       '{"emoji":"🔥","subject":"Dune"}'::jsonb
+select
+  (select id from u where n = 1),
+  coalesce((select id from u where n = 2), (select id from u where n = 1)),
+  'new_follower',
+  '{"emoji":"🔥","subject":"Dune"}'::jsonb
 returning id, context;
 ```
 
