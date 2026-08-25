@@ -26,7 +26,7 @@ export async function quickAddToLibrary(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned");
+  const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned", undefined, { silent: true });
   // Solo si de verdad entró algo: en `askResume` no se ha insertado nada (hay un
   // pase cerrado y decide el usuario en la ficha), así que no hay nada rancio
   // que refrescar.
@@ -59,7 +59,7 @@ export async function quickAddManyToLibrary(
   const outcomes = await Promise.all(
     items.map(async (i) => {
       try {
-        const outcome = await applyTransition(supabase, user.id, i.itemType, i.itemId, "planned");
+        const outcome = await applyTransition(supabase, user.id, i.itemType, i.itemId, "planned", undefined, { silent: true });
         return outcome.kind === "askResume" ? "needsDecision" : "added";
       } catch {
         // Reintentable: `planned` es idempotente, volver a pulsar reintenta.
