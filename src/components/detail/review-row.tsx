@@ -117,7 +117,11 @@ export function ReviewRow({
 
       {/* `.tx`: prosa, no metadato — en --foreground-soft (el #584f43 del
           handoff), no en el gris de las etiquetas. */}
-      <p className="text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
+      {/* `whitespace-pre-line`: la reseña se escribe en un textarea y sus saltos
+          de línea son del autor. Sin esto el HTML los colapsaba a un espacio y
+          una reseña de varios párrafos salía como un ladrillo. `break-words`
+          para que una URL larga no desborde la ficha. */}
+      <p className="whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
         <MentionText text={text} knownUsernames={knownUsernames} />
       </p>
 

@@ -1679,6 +1679,35 @@ diagnóstico, que es lo que pide AGENTS.md.
   reaparece un `text-foreground-faint`. Duplicar los valores a mano en la doc es justo lo que dejó
   pasar el fallo original de `mark-accent`.
 
+## 2026-08-25 (noche, 4) — Los párrafos son del autor: dónde se preserva un salto y dónde se recorta
+
+- **Tres fallos distintos con el mismo síntoma.** «Escribo dos párrafos y sale un ladrillo» tenía
+  tres causas independientes, y por eso se arreglan en tres sitios: (a) `RichTextView` pintaba una
+  línea por `<span class="block">`, y una línea VACÍA no genera caja de línea — altura 0, párrafos
+  pegados; (b) las reseñas (`MentionText`) no llevaban `whitespace-pre-line`, así que el HTML
+  colapsaba TODOS sus saltos a un espacio; (c) `/post/[id]` reusaba el extracto de 200 caracteres
+  del feed. Ninguno se ve arreglando otro.
+- **`whitespace-pre-line`, no `pre-wrap`, para prosa de textarea.** Preserva los saltos (todos,
+  también los seguidos) y sigue colapsando espacios y tabuladores. Es lo que se quiere con texto
+  pegado desde otro sitio: se respeta la intención del autor sin heredar su sangría.
+- **La clase vive en el componente de texto, no en cada llamador.** `RichTextView` se lleva
+  `whitespace-pre-line break-words` dentro. La versión anterior dependía de que cada tarjeta se
+  acordara, y tres se habían olvidado del `break-words` (una URL larga desbordaba). `MentionText`
+  sigue siendo un primitivo inline y lo pone el llamador: se usa dentro de `<p>` con estilos
+  propios y meterle una caja de bloque cambiaría el layout de quien lo use en línea.
+- **El extracto es una decisión del FEED, no del dato.** `resolvePostDrafts` gana un `fullBody`:
+  el feed y los mini-cards de contexto siguen recortando a 200 caracteres; `getPostEvent`
+  (`/post/[id]`) sirve el texto entero. Antes la ruta propia del post —el sitio al que lleva
+  «leer más» de facto— cortaba igual que el feed, y como **ninguna tarjeta tiene un «ver más»**,
+  una reseña larga no se podía leer entera en ningún sitio de la app.
+- **El «ver más» en la tarjeta del feed queda fuera a propósito** (issue aparte): es diseño, no
+  arreglo, y el corte deja de ser un callejón sin salida en cuanto la ruta del post sirve el texto
+  completo.
+- **La cobertura tiene que medir GEOMETRÍA.** `e2e/texto-multilinea.spec.ts` mide con un `Range`
+  dónde cae el segundo párrafo respecto al primero: con la línea en blanco pintada cae dos líneas
+  más abajo, sin ella una. El texto es idéntico en los dos casos, así que sin motor de layout no
+  hay nada que aseverar — un unitario no puede distinguirlos.
+
 ## 2026-08-25 (noche, 5) — El hito social lo publica la máquina, no cada llamador (#824)
 
 - **Anula la regla anterior**, escrita en `autopost.ts` y en `manage-actions.ts`: «Autopost de hito:
