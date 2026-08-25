@@ -25,7 +25,7 @@ export async function addExistingItemToLibrary(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await applyTransition(supabase, user.id, itemType, itemId, "planned");
+  await applyTransition(supabase, user.id, itemType, itemId, "planned", undefined, { silent: true });
 
   revalidateItemPage(itemType, itemId);
   // Seguir mete la obra en la biblioteca, así que /coleccion también cambia.
