@@ -1679,7 +1679,71 @@ diagnóstico, que es lo que pide AGENTS.md.
   reaparece un `text-foreground-faint`. Duplicar los valores a mano en la doc es justo lo que dejó
   pasar el fallo original de `mark-accent`.
 
-## 2026-08-25 (noche, 4) — Los avances no son material de descubrimiento
+## 2026-08-25 (noche, 4) — Los párrafos son del autor: dónde se preserva un salto y dónde se recorta
+
+- **Tres fallos distintos con el mismo síntoma.** «Escribo dos párrafos y sale un ladrillo» tenía
+  tres causas independientes, y por eso se arreglan en tres sitios: (a) `RichTextView` pintaba una
+  línea por `<span class="block">`, y una línea VACÍA no genera caja de línea — altura 0, párrafos
+  pegados; (b) las reseñas (`MentionText`) no llevaban `whitespace-pre-line`, así que el HTML
+  colapsaba TODOS sus saltos a un espacio; (c) `/post/[id]` reusaba el extracto de 200 caracteres
+  del feed. Ninguno se ve arreglando otro.
+- **`whitespace-pre-line`, no `pre-wrap`, para prosa de textarea.** Preserva los saltos (todos,
+  también los seguidos) y sigue colapsando espacios y tabuladores. Es lo que se quiere con texto
+  pegado desde otro sitio: se respeta la intención del autor sin heredar su sangría.
+- **La clase vive en el componente de texto, no en cada llamador.** `RichTextView` se lleva
+  `whitespace-pre-line break-words` dentro. La versión anterior dependía de que cada tarjeta se
+  acordara, y tres se habían olvidado del `break-words` (una URL larga desbordaba). `MentionText`
+  sigue siendo un primitivo inline y lo pone el llamador: se usa dentro de `<p>` con estilos
+  propios y meterle una caja de bloque cambiaría el layout de quien lo use en línea.
+- **El extracto es una decisión del FEED, no del dato.** `resolvePostDrafts` gana un `fullBody`:
+  el feed y los mini-cards de contexto siguen recortando a 200 caracteres; `getPostEvent`
+  (`/post/[id]`) sirve el texto entero. Antes la ruta propia del post —el sitio al que lleva
+  «leer más» de facto— cortaba igual que el feed, y como **ninguna tarjeta tiene un «ver más»**,
+  una reseña larga no se podía leer entera en ningún sitio de la app.
+- **El «ver más» en la tarjeta del feed queda fuera a propósito** (issue aparte): es diseño, no
+  arreglo, y el corte deja de ser un callejón sin salida en cuanto la ruta del post sirve el texto
+  completo.
+- **La cobertura tiene que medir GEOMETRÍA.** `e2e/texto-multilinea.spec.ts` mide con un `Range`
+  dónde cae el segundo párrafo respecto al primero: con la línea en blanco pintada cae dos líneas
+  más abajo, sin ella una. El texto es idéntico en los dos casos, así que sin motor de layout no
+  hay nada que aseverar — un unitario no puede distinguirlos.
+
+## 2026-08-25 (noche, 5) — El hito social lo publica la máquina, no cada llamador (#824)
+
+- **Anula la regla anterior**, escrita en `autopost.ts` y en `manage-actions.ts`: «Autopost de hito:
+  SOLO aquí (gesto deliberado del usuario en la ficha). NUNCA dentro de `applyTransition`, que corre
+  también en import/quick-add/bulk». Se sustituye por: **la máquina publica por defecto y quien no
+  deba publicar pide `silent`**.
+- **El motivo de la regla vieja no existía.** Verificado: la importación **no pasa por la máquina** —
+  `src/lib/import/commit-row.ts` inserta en `passes` con `status:'completed'` directamente, y
+  `applyTransition` no aparece en `src/lib/import/`. Y quick-add, alta y «seguir» solo piden
+  `planned`, para el que `milestoneFor` devuelve `null`: son inertes por construcción, no por la
+  regla. O sea, protegía de una inundación que no podía ocurrir.
+- **Lo que sí causaba: tres caminos mudos.** Un pase llega a `completed` por cuatro sitios, y solo
+  uno publicaba. Se olvidaban el auto-cierre por última página (`sessions/actions.ts`), el Select de
+  estado de la propia hoja de sesión, y el último episodio de una serie (`series/episode-actions.ts`).
+  Sin post no hay tarjeta: **la reseña escrita a continuación no llegaba al feed de nadie**. Como una
+  película solo se cierra desde la ficha, el fallo se leía como «las reseñas de libros no salen».
+- **Por qué la máquina y no parchear los tres.** «Todo cambio de estado pasa por la máquina» ya era
+  invariante del proyecto, así que `applyTransition` es el único punto por el que pasan todos los
+  caminos — incluido el que se añada mañana. Parchear llamadores conserva la forma del fallo:
+  se pasó de 1 camino a 4 y se olvidaron 3.
+- **El defecto de la bandera es la mitad de la decisión, y va al revés de lo cómodo.** Publica salvo
+  que se pida `silent`. Si fuera opt-in, un llamador olvidado **callaría en silencio** — que es
+  exactamente cómo se perdieron tres caminos durante meses. Al revés, un llamador olvidado publica de
+  más: se ve, se nota y se corrige. Hoy el radio de eso es cero (los administrativos solo piden
+  `planned`), y aun así se marcan `silent` explícitos en alta, quick-add unitario y quick-add en
+  bloque para que la intención esté escrita en la llamada.
+- **No cambia cuándo publica el camino que ya funcionaba**: la condición sigue siendo
+  `outcome.kind === "done"`, la misma que aplicaba `updateStatus`. Este cambio añade caminos, no
+  reglas. Y `askResume` (que no escribe nada) sigue sin publicar: un hito de algo que no ha pasado
+  sería mentira.
+- **La cobertura es una tabla, no un caso.** `apply-transition.test.ts` fija el contrato del ejecutor
+  (publica por defecto, calla con `silent`, no publica en `askResume`) y los tests de cada llamador
+  fijan que no silencian lo que es un gesto del usuario. Es lo único que impide que el quinto camino
+  vuelva a caerse por el mismo agujero.
+
+## 2026-08-26 — Los avances no son material de descubrimiento
 
 - **El raíl social de `/post/[id]` deja de proponer AVANCES** (`posts.kind = 'progressed'`), en sus
   dos bloques: «Más de {usuario}» y «Más sobre la obra».

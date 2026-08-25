@@ -82,7 +82,7 @@ export function EpisodeRatingsCard({
                 </div>
               )}
               {ep.reviewExcerpt && (
-                <p className="mt-1.5 border-l-2 border-accent pl-3 font-serif text-[13px] leading-relaxed">
+                <p className="mt-1.5 border-l-2 border-accent pl-3 font-serif text-[13px] leading-relaxed whitespace-pre-line break-words">
                   <MentionText text={ep.reviewExcerpt} knownUsernames={knownUsernames} />
                 </p>
               )}

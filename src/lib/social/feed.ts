@@ -216,12 +216,18 @@ function mentionTextsOf(event: { reviewExcerpt: string | null; thought: FeedEven
 // por post. Compartido por el feed (`getFeed`) y la ruta `/post/[id]`
 // (`getPostEvent`) para no duplicar el mapeo por kind. Descarta un post cuyo
 // autor o ancla no resuelvan, y —si `reviewsOnly`— un `finished` sin reseña.
+// `fullBody`: la ruta propia del post (`/post/[id]`) sirve la reseña ENTERA; el
+// feed y los mini-cards de contexto sirven el extracto de 200 caracteres. Sin
+// esta distinción una reseña larga quedaba cortada con "…" TAMBIÉN en su propia
+// página, y como no hay "ver más" en ninguna tarjeta no había forma de leerla.
 async function resolvePostDrafts(
   supabase: SupabaseServerClient,
   postRows: PostRow[],
   reviewsOnly: boolean,
+  fullBody = false,
 ): Promise<FeedEventDraft[]> {
   if (postRows.length === 0) return [];
+  const reviewOrExcerpt = (text: string | null) => (fullBody ? text?.trim() || null : excerpt(text));
 
   const anchorIdsByType: Record<AnchorType, Set<string>> = {
     book: new Set(),
@@ -401,7 +407,7 @@ async function resolvePostDrafts(
         ...base,
         verb: verbForReviewable(pass?.rating ?? null, reviewText, "finished"),
         rating: pass?.rating ?? null,
-        reviewExcerpt: excerpt(reviewText),
+        reviewExcerpt: reviewOrExcerpt(reviewText),
         reviewMeta: {
           readingDays:
             r.anchor_type === "book" && pass?.started_on && pass?.finished_on
@@ -447,7 +453,7 @@ async function resolvePostDrafts(
         ...base,
         verb: verbForReviewable(ep?.rating ?? null, ep?.review ?? null, "watchedEpisode"),
         rating: ep?.rating ?? null,
-        reviewExcerpt: excerpt(ep?.review ?? null),
+        reviewExcerpt: reviewOrExcerpt(ep?.review ?? null),
         episode: ep
           ? {
               season: ep.season_number,
@@ -657,7 +663,7 @@ export async function getPostEvent(
   if (error) throw error;
   if (!data) return null;
 
-  const drafts = await resolvePostDrafts(supabase, [data as PostRow], false);
+  const drafts = await resolvePostDrafts(supabase, [data as PostRow], false, true); // fullBody: la ruta propia sirve la reseña entera, no el extracto
   // Ancla o autor no resolubles ⇒ nada que pintar (mismo criterio que el feed).
   if (drafts.length === 0) return null;
 

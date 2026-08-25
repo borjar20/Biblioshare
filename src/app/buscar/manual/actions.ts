@@ -88,7 +88,7 @@ export async function addManualItem(
   // Alta = pase activo en planned vía la máquina (el ítem acaba de nacer,
   // así que no puede haber pase previo; la transición crea el activo).
   try {
-    await applyTransition(supabase, user.id, itemType, inserted.id, "planned");
+    await applyTransition(supabase, user.id, itemType, inserted.id, "planned", undefined, { silent: true });
   } catch {
     return { error: "generic" };
   }

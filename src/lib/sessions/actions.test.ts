@@ -290,3 +290,70 @@ describe("addSession · la sesión y el cambio de estado son la misma lectura (#
     expect(res).toEqual({ ok: true, passClosed: true });
   });
 });
+
+// #824 — La hoja de sesión cierra pases por DOS caminos y ninguno publicaba el
+// hito: el post no existía, así que la reseña escrita a continuación no llegaba
+// al feed de nadie. Ahora lo publica la máquina (`applyTransition`), de modo que
+// lo que se fija aquí es que estos caminos NO la silencian: `{ silent: true }` es
+// la salida de las acciones administrativas (alta, quick-add, bulk), no la de un
+// gesto del usuario.
+//
+// Que la máquina publique de verdad cuando no se la silencia se cubre en
+// `src/lib/passes/apply-transition.test.ts`.
+describe("addSession publica el hito de los pases que cierra (#824)", () => {
+  function opcionesDeLaTransicion(llamada: unknown[]) {
+    return llamada[6] as { silent?: boolean } | undefined;
+  }
+
+  function llamadaQueCierra() {
+    return mocks.applyTransition.mock.calls.find((c) => c[4] === "completed");
+  }
+
+  it("auto-cierre por última página: cierra por la máquina y no la silencia", async () => {
+    mocks.applyTransition.mockResolvedValue({
+      kind: "done",
+      passId: PASE_VIEJO,
+      closed: false,
+      created: false,
+    });
+    mocks.isAutoCloseable.mockResolvedValue(true);
+    mocks.getActivePass.mockResolvedValue({
+      id: PASE_VIEJO,
+      status: "in_progress",
+      position: { page: 280 },
+      editionId: null,
+    });
+    mocks.createClient.mockResolvedValue(fakeClient([]));
+
+    // 300 = el tope que devuelve el doble para `books.total_pages`.
+    const res = await addSession(PASE_VIEJO, "book", "libro-1", {}, form({ page: "300" }));
+
+    expect(res).toEqual({ ok: true, passClosed: true });
+    const cierre = llamadaQueCierra();
+    expect(cierre, "el auto-cierre tiene que pasar por la máquina").toBeTruthy();
+    expect(opcionesDeLaTransicion(cierre!)?.silent).not.toBe(true);
+  });
+
+  it("«Terminado» elegido en la propia hoja: tampoco silencia la máquina", async () => {
+    mocks.applyTransition.mockResolvedValue({
+      kind: "done",
+      passId: PASE_VIEJO,
+      closed: true,
+      created: false,
+    });
+    mocks.isAutoCloseable.mockResolvedValue(false);
+    mocks.getActivePass.mockResolvedValue({
+      id: PASE_VIEJO,
+      status: "in_progress",
+      position: { page: 100 },
+      editionId: null,
+    });
+    mocks.createClient.mockResolvedValue(fakeClient([]));
+
+    await addSession(PASE_VIEJO, "book", "libro-1", {}, form({ status: "completed", page: "120" }));
+
+    const cierre = llamadaQueCierra();
+    expect(cierre, "el cambio de estado tiene que pasar por la máquina").toBeTruthy();
+    expect(opcionesDeLaTransicion(cierre!)?.silent).not.toBe(true);
+  });
+});

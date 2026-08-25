@@ -9,7 +9,6 @@ import {
 } from "@/lib/passes/apply-transition";
 import type { MediaStatus } from "./types";
 import { revalidateReadingLog, revalidateLibrary } from "@/lib/reactivity/revalidate";
-import { maybeAutopostMilestone } from "@/lib/social/autopost";
 
 // Todo cambio de estado pasa por la máquina (planTransition) vía
 // applyTransition: nadie más escribe `status`. El resultado vuelve al
@@ -27,20 +26,12 @@ export async function updateStatus(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // El hito lo publica la MÁQUINA (applyTransition), no este llamador: terminar
+  // desde la ficha no es el único camino que cierra un pase, y los otros tres se
+  // olvidaban de publicarlo — la reseña no llegaba al feed (#824). Aquí no queda
+  // nada que hacer salvo revalidar.
   const outcome = await applyTransition(supabase, user.id, itemType, itemId, status, resume);
   if (outcome.kind === "done") {
-    // Autopost de hito: SOLO aquí (gesto deliberado del usuario en la ficha).
-    // NUNCA dentro de applyTransition, que corre también en import/quick-add/bulk
-    // ("acción administrativa nunca publica"). Best-effort, no tumba el guardado.
-    await maybeAutopostMilestone(supabase, {
-      userId: user.id,
-      passId: outcome.passId,
-      itemType,
-      itemId,
-      to: status,
-      created: outcome.created,
-      closed: outcome.closed,
-    });
     revalidateReadingLog(itemType, itemId);
   }
   return outcome;
