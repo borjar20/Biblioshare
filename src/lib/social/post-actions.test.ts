@@ -246,6 +246,34 @@ describe("createPost", () => {
     });
   });
 
+  // Task 5 pasó el input.isSpoiler REAL del pensamiento a notifyMentions, en
+  // vez del `false` fijo que sugería el brief original -- un pensamiento SÍ
+  // trae su propia marca de spoiler (thought-composer.tsx). Esta prueba
+  // ancla ese reenvío en la frontera de createPost: si alguien vuelve a fijar
+  // `isSpoiler: false` (o lo omite) en esa llamada, se rompe.
+  it("reenvía el isSpoiler real del pensamiento a notifyMentions, no un false fijo", async () => {
+    const { client } = makeClient({
+      user: { id: "actor" },
+      anchorFound: true,
+      mentionTarget: { id: "target-post-1" },
+    });
+    mocks.createClient.mockResolvedValue(client);
+    mocks.notifyMentions.mockResolvedValue(["mentioned-user"]);
+
+    await createPost({
+      kind: "thought",
+      anchorType: "book",
+      anchorId: "anchor-1",
+      body: "@otro esto va a arruinarte el final",
+      isSpoiler: true,
+    });
+
+    expect(mocks.notifyMentions).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({ isSpoiler: true }),
+    );
+  });
+
   it("si notifyMentions lanza, el post sigue publicado (ok:true)", async () => {
     const { client, insertedPosts } = makeClient({
       user: { id: "actor" },

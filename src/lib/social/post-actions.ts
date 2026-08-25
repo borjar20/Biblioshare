@@ -55,34 +55,77 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
     // `title`; sagas y personas, en `name` -- mismo criterio que feed.ts al
     // montar las tarjetas del muro.
     //
-    // La tabla se nombra literal a mano en cada rama (en vez de un Record
+    // La tabla se nombra literal en cada `case` (en vez de un Record
     // AnchorType -> tabla, como antes): un Record da el MISMO tipo de valor a
     // toda clave, así que indexarlo con un anchorType ya estrechado no
-    // estrecha el resultado, y tsc no puede validar que `name`/`title`
-    // existen de verdad en esa tabla concreta.
+    // estrecha el resultado para tsc, que no podría validar que `name`/
+    // `title` existen de verdad en esa tabla concreta. El `switch`
+    // exhaustivo (un `case` por AnchorType, con `default` inalcanzable
+    // asegurado por `never`) es lo que recupera esa validación: si algún día
+    // se añade un sexto AnchorType sin su `case`, esto deja de compilar en
+    // vez de caer en silencio en la tabla equivocada.
     let anchorFound = false;
     let subject: string | undefined;
-    if (input.anchorType === "saga" || input.anchorType === "person") {
-      const table = input.anchorType === "saga" ? "sagas" : "people";
-      const { data, error } = await supabase
-        .from(table)
-        .select("id, name")
-        .eq("id", input.anchorId)
-        .maybeSingle();
-      if (error) throw error;
-      anchorFound = Boolean(data);
-      subject = data?.name ?? undefined;
-    } else {
-      const table =
-        input.anchorType === "book" ? "books" : input.anchorType === "movie" ? "movies" : "series";
-      const { data, error } = await supabase
-        .from(table)
-        .select("id, title")
-        .eq("id", input.anchorId)
-        .maybeSingle();
-      if (error) throw error;
-      anchorFound = Boolean(data);
-      subject = data?.title ?? undefined;
+    switch (input.anchorType) {
+      case "book": {
+        const { data, error } = await supabase
+          .from("books")
+          .select("id, title")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.title ?? undefined;
+        break;
+      }
+      case "movie": {
+        const { data, error } = await supabase
+          .from("movies")
+          .select("id, title")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.title ?? undefined;
+        break;
+      }
+      case "series": {
+        const { data, error } = await supabase
+          .from("series")
+          .select("id, title")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.title ?? undefined;
+        break;
+      }
+      case "saga": {
+        const { data, error } = await supabase
+          .from("sagas")
+          .select("id, name")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.name ?? undefined;
+        break;
+      }
+      case "person": {
+        const { data, error } = await supabase
+          .from("people")
+          .select("id, name")
+          .eq("id", input.anchorId)
+          .maybeSingle();
+        if (error) throw error;
+        anchorFound = Boolean(data);
+        subject = data?.name ?? undefined;
+        break;
+      }
+      default: {
+        const _exhaustive: never = input.anchorType;
+        throw new Error(`createPost: anchorType sin resolver: ${String(_exhaustive)}`);
+      }
     }
     if (!anchorFound) return { ok: false, error: "anchor_not_found" };
 
