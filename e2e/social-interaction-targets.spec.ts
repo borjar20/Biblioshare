@@ -107,6 +107,34 @@ async function comment(locator: Locator, body: string) {
   await expect(locator.getByText(body)).toBeVisible();
 }
 
+// Reacciona con 🔥 sobre la barra de una tarjeta. El botón «Me gusta» de un solo
+// corazón ya no existe en ninguna superficie del repo: lo sustituyó el
+// `ReactionBar` de emoji libre, que arranca PLEGADO tras un disparador
+// «Reaccionar» y abre un popover que se CIERRA al elegir. Por eso hay que
+// reabrirlo para releer `aria-pressed` sobre el mismo botón de la fila rápida,
+// y por eso se cierra al final: el fondo del popover tapa la tarjeta y se
+// comería el clic siguiente.
+async function react(card: Locator) {
+  const trigger = card.getByRole("button", { name: "Reaccionar" }).first();
+  await trigger.click();
+  const fuego = card.getByRole("button", { name: "fuego" }).first();
+  await expect(fuego).toHaveAttribute("aria-pressed", "false");
+  await fuego.click();
+  await expect(card.getByRole("dialog")).toHaveCount(0);
+  await trigger.click();
+  await expect(card.getByRole("button", { name: "fuego" }).first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  // Para cerrar hay que pulsar LA CAPA que cierra (`fixed inset-0`, así se
+  // cierra sin useEffect — ver `reaction-bar.tsx`), no el disparador: mientras
+  // el popover está abierto esa capa ocupa la pantalla entera e intercepta
+  // cualquier otro clic. Mismo remedio que `cerrarPicker` en
+  // `social-optimista.spec.ts`.
+  await card.locator('button[aria-hidden="true"]').first().click();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+}
+
 test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", async ({
   page,
   request,
@@ -147,17 +175,34 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
       user_id: b.id,
       item_type: "book",
       item_id: book.id,
-      status: "planned",
+      status: "in_progress",
+      started_on: new Date().toISOString().slice(0, 10),
       is_active: true,
       is_public: true,
       position: {},
     });
     passId = pass.id;
-    const [passTarget] = await rest<Array<{ id: string }>>(
+    // El hito que el pase habría autopublicado (`maybeAutopostMilestone` con
+    // `started`), insertado por REST para no depender de las preferencias del
+    // usuario. Es lo que hace visible la actividad de `b` en el feed de `a`:
+    // desde que el feed lee `posts` (#557) un target `pass` SIN post promovido
+    // no aparece en ninguna superficie —límite asumido para v1 en #558—, y este
+    // spec seguía esperando la visibilidad antigua, por lo que salía rojo
+    // (#788). El trigger `posts_sync_interaction_target` materializa su target
+    // canónico `post` con href=/post/[id].
+    const milestonePost = await insertOne<{ id: string }>(request, "posts", {
+      author_id: b.id,
+      kind: "started",
+      anchor_type: "book",
+      anchor_id: book.id,
+      source_kind: "pass",
+      source_id: pass.id,
+    });
+    const [milestoneTarget] = await rest<Array<{ id: string }>>(
       request,
-      `interaction_targets?kind=eq.pass&source_id=eq.${pass.id}&select=id`,
+      `interaction_targets?kind=eq.post&source_id=eq.${milestonePost.id}&select=id`,
     );
-    expect(passTarget?.id).toBeTruthy();
+    expect(milestoneTarget?.id).toBeTruthy();
 
     const slug = `${prefix}-club`;
     const club = await insertOne<{ id: string }>(request, "clubs", {
@@ -232,21 +277,29 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
       snapshot: {},
     });
 
+    // `a` sigue a `b`: su hito sale en el feed. La tarjeta ya no lleva el hilo
+    // dentro (posts Spec 2b): su pie es un resumen que enlaza a `/post/[id]`,
+    // que es donde se conversa — y donde debe aterrizar el comentario, sobre el
+    // target canónico del post.
     const passComment = `Pase ${prefix}`;
     await login(page, a);
     await page.goto("/");
-    const passCard = page
+    const milestoneCard = page
       .locator("article")
       .filter({ hasText: book.title })
-      .filter({ has: page.getByRole("button", { name: /comentario/i }) })
+      .filter({ has: page.getByRole("link", { name: /ver hilo/i }) })
       .first();
-    await expect(passCard).toBeVisible();
-    await comment(passCard, passComment);
+    await expect(milestoneCard).toBeVisible();
+    await milestoneCard.getByRole("link", { name: /ver hilo/i }).click();
+    await page.waitForURL(new RegExp(`/post/${milestonePost.id}$`));
+    await page.getByPlaceholder(/escribe un comentario/i).fill(passComment);
+    await page.getByRole("button", { name: /^comentar$/i }).click();
+    await expect(page.getByText(passComment)).toBeVisible();
     await expect
       .poll(async () => {
         const rows = await rest<unknown[]>(
           request,
-          `comments?interaction_target_id=eq.${passTarget.id}&body=eq.${encodeURIComponent(passComment)}&select=id`,
+          `comments?interaction_target_id=eq.${milestoneTarget.id}&body=eq.${encodeURIComponent(passComment)}&select=id`,
         );
         return rows.length;
       })
@@ -292,11 +345,7 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
     await page.goto(`/club/${slug}`);
     let postCard = page.locator("div.shadow-card").filter({ hasText: postBody }).last();
     await expect(postCard).toBeVisible();
-    await postCard.getByRole("button", { name: "Me gusta" }).click();
-    await expect(postCard.getByRole("button", { name: "Me gusta" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await react(postCard);
     await comment(postCard, `Comentario post ${prefix}`);
     await expect
       .poll(async () => {
@@ -317,11 +366,7 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
     await login(page, c);
     await page.goto(`/club/${slug}`);
     postCard = page.locator("div.shadow-card").filter({ hasText: postBody }).last();
-    await postCard.getByRole("button", { name: "Me gusta" }).click();
-    await expect(postCard.getByRole("button", { name: "Me gusta" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await react(postCard);
     await expect
       .poll(async () => {
         const rows = await rest<unknown[]>(
@@ -334,13 +379,18 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
 
     await login(page, b);
     await page.getByRole("button", { name: /notificaciones/i }).click();
-    const passNotice = page.locator(`a[href="/libro/${book.id}"]`).filter({
-      hasText: /comentó tu actividad/i,
+    // Los avisos de comentario viajan con contexto desde «notificaciones con
+    // contexto» (#799): con un solo actor la campana pinta la variante
+    // enriquecida —«{name} en tu publicación: «{extracto}»»— en vez de la copia
+    // genérica. Se afirma sobre el EXTRACTO, que además ata el aviso a ESTE
+    // comentario y no a cualquier otro del mismo tipo.
+    const passNotice = page.locator(`a[href="/post/${milestonePost.id}"]`).filter({
+      hasText: passComment,
     });
     await expect(passNotice).toHaveCount(1);
     await expect(
       page.locator(`a[href="/club/${slug}/actividad/${activity.id}"]`).filter({
-        hasText: /comentó tu punto de control/i,
+        hasText: checkpointComment,
       }),
     ).toHaveCount(1);
     await expect(
@@ -349,8 +399,14 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
 
     await page.goto(`/club/${slug}`);
     postCard = page.locator("div.shadow-card").filter({ hasText: postBody }).last();
+    // Borrar dejó de ser un botón suelto en la tarjeta: vive detrás del «···»
+    // (F3-012, acción 7 de la auditoría 2026-08) como `role="menuitem"`. La
+    // confirmación sigue siendo el `confirm()` nativo, así que el `once(dialog)`
+    // se mantiene — pero hay que armarlo ANTES de pulsar el ítem, no antes de
+    // abrir el menú.
+    await postCard.getByRole("button", { name: "Acciones de la publicación" }).click();
     page.once("dialog", (dialog) => dialog.accept());
-    await postCard.getByRole("button", { name: /^borrar$/i }).click();
+    await postCard.getByRole("menuitem", { name: /^borrar$/i }).click();
     await expect(page.getByText(postBody)).toHaveCount(0);
 
     await expect

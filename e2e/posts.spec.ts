@@ -333,9 +333,10 @@ test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", asyn
     await page.goto(`/post/${postId}`);
     await expect(page.locator("article").filter({ hasText: bookTitle })).toBeVisible();
     // Composer del hilo siempre visible (PostThread): sin expandir.
-    await page.getByPlaceholder(/escribe un comentario/i).fill(`hola desde el comentador ${stamp}`);
+    const comentario = `hola desde el comentador ${stamp}`;
+    await page.getByPlaceholder(/escribe un comentario/i).fill(comentario);
     await page.getByRole("button", { name: /^comentar$/i }).click();
-    await expect(page.getByText(`hola desde el comentador ${stamp}`)).toBeVisible();
+    await expect(page.getByText(comentario)).toBeVisible();
 
     // El compositor de comentarios es OPTIMISTA: pinta el comentario en el DOM al
     // instante mientras la server action (addComment → notify) corre en una
@@ -358,7 +359,12 @@ test("un comentario ajeno notifica al autor y el aviso lleva a /post/[id]", asyn
     // ── El autor abre la campana, ve el aviso y al pulsarlo aterriza en /post/[id] ──
     await loginAs(page, author.email, author.password);
     await page.getByRole("button", { name: "Notificaciones" }).click();
-    const aviso = page.getByRole("link").filter({ hasText: /comentó tu publicación/i });
+    // La copia genérica («X comentó tu publicación») ya NO se pinta cuando el
+    // aviso trae contexto y tiene un solo actor: desde «notificaciones con
+    // contexto» (#799) gana `postCommentedExcerpt` — «X en tu publicación:
+    // «…»». Afirmar por el EXTRACTO no es solo lo que hoy se ve: ata el aviso a
+    // ESTE comentario y no a cualquier otro del mismo tipo.
+    const aviso = page.getByRole("link").filter({ hasText: comentario });
     await expect(aviso).toBeVisible();
     await aviso.click();
     await expect(page).toHaveURL(new RegExp(`/post/${postId}$`));
@@ -444,7 +450,13 @@ test("el hilo de /post/[id] anida una respuesta y el aviso deep-linka al subhilo
     // ── El `commenter` abre la campana y el aviso le lleva al subhilo (#c-) ──
     await loginAs(page, commenter.email, commenter.password);
     await page.getByRole("button", { name: "Notificaciones" }).click();
-    const aviso = page.getByRole("link").filter({ hasText: /comentó|respondió/i }).first();
+    // Mismo contrato que arriba (#799): el aviso de respuesta usa el
+    // `comment_notification_type` del target (post_commented) con el contexto
+    // del comentario, así que lo identifica su extracto.
+    const aviso = page
+      .getByRole("link")
+      .filter({ hasText: `Respuesta anidada ${stamp}` })
+      .first();
     await expect(aviso).toBeVisible();
     await aviso.click();
     await expect(page).toHaveURL(new RegExp(`/post/${postId}#c-`));
@@ -662,7 +674,11 @@ test("sesión compartida: quien sigue recibe el aviso y la campana abre el post"
     // ── El seguidor abre la campana y el aviso le lleva AL POST ──
     await loginAs(page, follower.email, follower.password);
     await page.getByRole("button", { name: "Notificaciones" }).click();
-    const aviso = page.getByRole("link").filter({ hasText: /compartió una sesión de lectura/i });
+    // Con contexto (#799) la copia pasa a `followedSessionSubject` — «X
+    // compartió una sesión de {obra}» — y deja de decir «de lectura». Se afirma
+    // el tramo común a las dos variantes: el título de la obra lo pone el pase
+    // fixture y este test no lo conoce.
+    const aviso = page.getByRole("link").filter({ hasText: /compartió una sesión de/i });
     await expect(aviso).toBeVisible();
     await aviso.click();
     // LA aserción del test: /post/<id>, no /libro/<id>.

@@ -1420,3 +1420,118 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   `any` para columnas que no reconoce) pero pierde la única red que detectaría un nombre de
   columna mal escrito antes de producción. El guion de cualquier tarea que añada una columna
   debe incluir este paso; queda también como issue de proceso, #798.
+
+## 2026-08-25 — Los dos e2e sociales en rojo (#787, #788)
+
+- **Los dos specs afirmaban un producto que ya no existe; se corrigen los TESTS, no la app.**
+  Ninguno de los dos fallos era una regresión: `thoughts.spec.ts` esperaba el hilo interactivo
+  desplegable dentro de la tarjeta del feed, y `social-interaction-targets.spec.ts` esperaba que
+  un pase sin post apareciera en el feed. Lo primero lo cambió posts Spec 2b a propósito (la
+  tarjeta se ojea, `/post/[id]` conversa) y lo segundo lo decidió #558 (el feed lee `posts`; los
+  targets `pass`/`progress_session` sin post promovido quedan invisibles, aceptado para v1).
+  Un test que codifica el producto viejo no protege nada: solo hace ruido rojo que enseña a
+  ignorar la suite.
+- **#558 se queda como está: no se migran los targets huérfanos para arreglar un test.** La
+  alternativa era promover a post los `pass`/`progress_session` con interacción huérfana, que es
+  una decisión de producto sobre datos de producción — no algo que se cuela para poner un e2e en
+  verde. Su opción por defecto («dejarlas») sigue vigente.
+- **Precio asumido: se pierde la única cobertura del target `pass` y del aviso
+  `activity_commented`.** Hoy ninguna superficie de la app monta un target `pass` (comprobado:
+  `resolveInteractionTargets` solo lo tiene en la unión de tipos), así que el e2e cubría una
+  ruta que el usuario no puede recorrer. La cadena que sí importa —quien sigue a alguien ve su
+  hito en el feed, entra al hilo, comenta y el autor recibe el aviso— se conserva, ahora sobre
+  el target `post`.
+- **Las aserciones de la campana pasan a afirmar el EXTRACTO, no la copia genérica.** Desde
+  «notificaciones con contexto» (#799) un aviso de comentario con un solo actor pinta la
+  variante enriquecida («{name} en tu publicación: «…»»), así que `/comentó tu actividad/` y
+  `/comentó tu punto de control/` habrían quedado obsoletas en cuanto el test volviera a
+  llegar hasta ahí. Afirmar el extracto ata además el aviso a ESE comentario y no a cualquier
+  otro del mismo tipo.
+- **Las otras seis rojas que salieron al verificar NO se encadenan a este arreglo.** Son la
+  misma familia (specs que codifican un producto ya cambiado) pero tres causas distintas, y
+  mezclarlas en una PR la hace irrevisable: quedan como **#802** (copia de la campana de #799,
+  `posts.spec.ts` ×3), **#801** («Me gusta» renombrado a «corazón rojo», `social-optimista` y
+  `social-safety:159`) y **#803** (reportar/borrar detrás del «···» por F3-012,
+  `social-safety:92`). Las tres verificadas por ejecución contra un `next dev` limpio, no por
+  lectura de código.
+- **Trampa que costó una hora y conviene no repetir:** un `next dev` cuyo proceso padre se mata
+  sigue escuchando en el 3000 y sirviendo 200, pero sus Server Actions revientan (`write EPIPE`,
+  `Jest worker … exceeding retry limit`). Con ese servidor, los tests de aviso fallan ANTES —en
+  el `expect.poll` de la fila de `notifications`— con «el aviso post_commented debe persistir»,
+  que parece un bug de producto grave y no lo es. **Un e2e rojo contra un dev tocado no es
+  evidencia de nada**: hay que relevantar el servidor y repetir.
+
+## 2026-08-25 — Los seis e2e sociales caducados (#801, #802, #803)
+
+- **Segundo pase sobre la misma familia, y otra vez el arreglo es del test.** Los seis tests que
+  salieron rojos al verificar #787/#788 tenían tres causas distintas y ninguna era un bug: la
+  copia de la campana cambió con #799, «Me gusta» dejó de existir como nombre accesible al entrar
+  el catálogo de emoji libre, y reportar/borrar se fueron detrás del «···» con F3-012. Verificado
+  por ejecución contra un `next dev` limpio: **11 de 11 en verde** en `posts.spec.ts`,
+  `social-optimista.spec.ts` y `social-safety.spec.ts` (2,3 min).
+- **El nombre accesible de un emoji se IMPORTA, no se copia.** Es la decisión que importa de este
+  pase, porque va contra la causa: `social-optimista.spec.ts` ya se arregló una vez por esto
+  mismo (#750, `7f9c3f69`) y volvió a caducar al cambio siguiente. Los specs ahora importan
+  `QUICK_REACTION_NAMES` de `src/lib/social/reaction-constants.ts`; renombrar un emoji rompe el
+  typecheck en el mismo commit, no la suite tres semanas después. El precio —un `import` de `src/`
+  dentro de `e2e/`— ya lo pagaba `club-calendario.spec.ts`, así que no estrena nada.
+- **La campana se afirma por el EXTRACTO, no por la copia genérica.** Misma decisión que en
+  #787/#788, extendida a `posts.spec.ts`: con un solo actor y contexto guardado gana la variante
+  enriquecida (`postCommentedExcerpt`), y el extracto ata además el aviso a ESE comentario. La
+  excepción es el aviso de sesión compartida: su `subject` es el título del pase fixture, que el
+  test no conoce, así que se afirma el tramo común a las dos variantes (`compartió una sesión de`).
+- **Al abrir un desplegable antes de cortar el tráfico, el corte solo alcanza a lo que se quiere
+  probar.** En «un fallo de Server Action se anuncia y revierte», abrir el `ReactionBar` es puro
+  cliente; la ruta se aborta DESPUÉS de abrirlo, así que lo único que falla es el toggle de la
+  reacción y el test sigue probando lo suyo (que el error se anuncia y el estado revierte).
+- **`Reaccionar` deja de ser único dentro de una tarjeta en cuanto el hilo se expande.** Cada
+  comentario trae su propia barra, así que los localizadores de tarjeta llevan `.first()` (el del
+  POST va primero en el DOM, `ReviewInteractions` lo pinta antes del hilo). Sin eso el modo
+  estricto de Playwright revienta al recargar con comentarios ya visibles.
+- **El `page.once("dialog")` se arma antes del ÍTEM, no antes de abrir el menú.** El `confirm()`
+  nativo de borrar sigue existiendo tras F3-012; lo dispara `confirmDelete`, que corre al pulsar
+  la opción del desplegable. Armarlo antes de abrir el «···» deja el handler consumido a destiempo.
+- **La copia muerta `social.like` («Me gusta») se BORRA de `messages/es.json`.** No la leía nadie
+  (`grep` de `t("like")` en `src/` no devuelve nada) y era justo el rastro que hacía creer que el
+  botón seguía existiendo. Una cadena de interfaz que nombra un control retirado no es inocua:
+  es la pista falsa que el siguiente que lea el spec va a seguir.
+
+## 2026-08-25 — El barrido del rastro desechable de los e2e (#800)
+
+- **El diagnóstico de la #800 era incompleto y conviene decirlo.** La issue culpaba al `finally`
+  que no corre cuando un test muere por timeout. Esa causa existe, pero **no es la que más filas
+  deja**: los `deleteUser` de los specs hacen `fetch(...)` sin mirar `res.ok`, y cinco tablas
+  (`club_posts.author_id`, `clubs.owner_id`, `club_activities.created_by`,
+  `club_activity_checkpoints.created_by`, `club_activity_items.added_by`) referencian `auth.users`
+  con **ON DELETE NO ACTION**. El borrado rebota, el test pasa en verde y el usuario se queda.
+  Medido: de los 62 usuarios `@example.com` de `dev`, los 15 `reporta*` de `social-safety.spec.ts`
+  —todos con un `club_post`— llevaban desde el 2026-07-30 pese a que ese spec termina bien.
+- **Se barre ANTES de la suite, no se le pide a cada spec que limpie mejor.** Mismo patrón que
+  `restoreQaSeed` (#215): reimponer el punto de partida en vez de confiar en que la pasada anterior
+  se portara bien. Tocar los ~19 helpers `deleteUser` habría sido más código y seguiría sin cubrir
+  el caso del timeout. Queda como issue #806 hacerlo BIEN también dentro de la pasada.
+- **La marca de «desechable» para usuarios es el dominio `@example.com`, no el prefijo del nombre.**
+  Los 19 `createUser` de la suite firman `<username>@example.com` y ninguna cuenta real usa ese
+  dominio (la de `devtest` es de Gmail). El regex de prefijos que proponía la #800
+  (`^(it|postauth|postcom)`) encontraba **6** usuarios; el dominio encuentra los **62** que había.
+  La cuenta de `TEST_USER_EMAIL` se excluye explícitamente, pase lo que pase.
+- **El barrido NO lanza; la semilla SÍ.** Son cosas distintas: correr sobre una semilla desviada
+  hace que los tests mientan (#215), así que eso tumba la suite. Que una fila desechable se resista
+  es suciedad: se avisa por consola y se sigue. Tumbar la suite entera por eso sería cambiar un
+  problema de limpieza por uno peor.
+- **Se borran también las referencias polimórficas al catálogo (`posts.anchor_id`,
+  `passes.item_id`, `pass_reviews.item_id`, `collection_items.item_id`).** No tienen FK, así que
+  nada las arrastra: borrar solo el libro dejaría el post huérfano en el feed de `devtest` — que es
+  justo lo que compite con las aserciones que usan `.first()`/`.last()` sobre el feed.
+- **Guarda de seguridad reutilizada, no inventada:** el barrido llama a `assertQaUniverse()` antes
+  de tocar nada. Escribe con la SERVICE KEY y borra usuarios; si `.env.local` apunta a otro
+  proyecto, aborta. Es la misma línea que el repo ya aceptaba para la semilla QA.
+- **Trampa de PostgREST que devuelve 200 y cero filas:** entrecomillar el patrón de `like` (el
+  reflejo, porque `[E2E]*` empieza por corchete) hace que busque las comillas DENTRO del texto.
+  No da error: da éxito vacío, que parece «no había nada que barrer». Sin comillas salen 22/21/5/5,
+  los mismos números que el `SELECT` de la issue. Cualquier filtro de barrido se comprueba contra
+  un `SELECT` conocido antes de dejarle borrar.
+- **Límite asumido:** solo se reconoce el catálogo con prefijo `E2E`/`[E2E]`. Varios specs titulan
+  sin prefijo («Estreno dos …», «en curso …») y eso no se puede distinguir de un dato real por el
+  título. Ampliar el patrón a ciegas es la clase de limpieza que un día se lleva algo que no debía.
+  Queda como issue #807: que los specs nuevos usen el prefijo, no que el barrido adivine.
