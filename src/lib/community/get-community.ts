@@ -1,7 +1,11 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { emptyReactions, type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import {
+  emptyReactions,
+  type InteractionComment,
+  type ReactionsByEmoji,
+} from "@/lib/social/interactions";
 import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import { formatEdition } from "@/lib/editions/edition-label";
@@ -31,7 +35,7 @@ export type CommunityReview = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 export type Community = {

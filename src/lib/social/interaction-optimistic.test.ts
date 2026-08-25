@@ -2,15 +2,51 @@ import { describe, it, expect, test } from "vitest";
 import { interactionReducer } from "./interaction-optimistic";
 import { emptyReactions, type InteractionComment, type InteractionSummary } from "./interactions";
 
-test("toggleTarget alterna el kind indicado y ajusta derivados", () => {
-  const base: InteractionSummary = {
-    interactionTargetId: "t", reactionCount: 0, viewerReacted: false,
-    commentCount: 0, comments: [], reactions: emptyReactions(),
+function baseSummary(): InteractionSummary {
+  return {
+    interactionTargetId: "t",
+    reactionCount: 0,
+    viewerReacted: false,
+    commentCount: 0,
+    comments: [],
+    reactions: emptyReactions(),
   };
-  const s = interactionReducer(base, { type: "toggleTarget", kind: "fire" });
-  expect(s.reactions.fire).toEqual({ count: 1, viewerReacted: true });
-  expect(s.reactionCount).toBe(1);
-  expect(s.viewerReacted).toBe(true);
+}
+
+test("toggleTarget crea la clave del emoji nuevo y suma", () => {
+  const next = interactionReducer(baseSummary(), { type: "toggleTarget", emoji: "🎉" });
+  expect(next.reactions).toEqual({ "🎉": { count: 1, viewerReacted: true } });
+  expect(next.reactionCount).toBe(1);
+  expect(next.viewerReacted).toBe(true);
+});
+
+test("quitar la última reacción BORRA la clave, no deja un cero fantasma", () => {
+  const state = { ...baseSummary(), reactions: { "🔥": { count: 1, viewerReacted: true } } };
+  const next = interactionReducer(state, { type: "toggleTarget", emoji: "🔥" });
+  expect(next.reactions).toEqual({});
+  expect(Object.keys(next.reactions)).toHaveLength(0);
+  expect(next.reactionCount).toBe(0);
+  expect(next.viewerReacted).toBe(false);
+});
+
+test("quitar la tuya con otros detrás conserva la clave y su recuento", () => {
+  const state = { ...baseSummary(), reactions: { "🔥": { count: 3, viewerReacted: true } } };
+  const next = interactionReducer(state, { type: "toggleTarget", emoji: "🔥" });
+  expect(next.reactions).toEqual({ "🔥": { count: 2, viewerReacted: false } });
+  expect(next.viewerReacted).toBe(false);
+});
+
+test("toggleTarget no toca los otros emojis", () => {
+  const state = {
+    ...baseSummary(),
+    reactions: {
+      "🔥": { count: 2, viewerReacted: false },
+      "❤️": { count: 1, viewerReacted: true },
+    },
+  };
+  const next = interactionReducer(state, { type: "toggleTarget", emoji: "🔥" });
+  expect(next.reactions["❤️"]).toEqual({ count: 1, viewerReacted: true });
+  expect(next.reactionCount).toBe(4);
 });
 
 function comment(over: Partial<InteractionComment> = {}): InteractionComment {
@@ -50,26 +86,26 @@ const base: InteractionSummary = {
       id: "c2",
       reactionCount: 3,
       viewerReacted: true,
-      reactions: { ...emptyReactions(), like: { count: 3, viewerReacted: true } },
+      reactions: { "❤️": { count: 3, viewerReacted: true } },
     }),
   ],
-  reactions: { ...emptyReactions(), like: { count: 2, viewerReacted: false } },
+  reactions: { "❤️": { count: 2, viewerReacted: false } },
 };
 
 describe("interactionReducer", () => {
   it("toggleTarget suma/resta y hace ida y vuelta", () => {
-    const on = interactionReducer(base, { type: "toggleTarget", kind: "like" });
+    const on = interactionReducer(base, { type: "toggleTarget", emoji: "❤️" });
     expect(on.interactionTargetId).toBe("target-pass-1");
     expect(on.viewerReacted).toBe(true);
     expect(on.reactionCount).toBe(3);
-    const off = interactionReducer(on, { type: "toggleTarget", kind: "like" });
+    const off = interactionReducer(on, { type: "toggleTarget", emoji: "❤️" });
     expect(off.interactionTargetId).toBe("target-pass-1");
     expect(off.viewerReacted).toBe(false);
     expect(off.reactionCount).toBe(2);
   });
 
   it("toggleComment solo afecta al comentario indicado", () => {
-    const r = interactionReducer(base, { type: "toggleComment", id: "c2", kind: "like" });
+    const r = interactionReducer(base, { type: "toggleComment", id: "c2", emoji: "❤️" });
     const c1 = r.comments.find((c) => c.id === "c1")!;
     const c2 = r.comments.find((c) => c.id === "c2")!;
     expect(c2.interactionTargetId).toBe("target-comment-1");

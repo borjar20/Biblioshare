@@ -17,17 +17,38 @@ import type { TargetType as CanonicalTargetType } from "./interaction-targets";
 
 export type TargetType = Exclude<CanonicalTargetType, "comment">;
 
-export type ReactionKind = "like" | "read" | "shock" | "fire";
-export const REACTION_KINDS: readonly ReactionKind[] = ["like", "read", "shock", "fire"];
+/**
+ * Un emoji del catálogo (`src/lib/social/emoji-catalog.data.ts`). Es un alias
+ * documental, no un tipo cerrado: la lista blanca se valida en la acción de
+ * servidor, no en el sistema de tipos.
+ */
+export type ReactionEmoji = string;
 export type ReactionTally = { count: number; viewerReacted: boolean };
-export type ReactionsByKind = Record<ReactionKind, ReactionTally>;
-export function emptyReactions(): ReactionsByKind {
-  return {
-    like: { count: 0, viewerReacted: false },
-    read: { count: 0, viewerReacted: false },
-    shock: { count: 0, viewerReacted: false },
-    fire: { count: 0, viewerReacted: false },
-  };
+/**
+ * Mapa DISPERSO: hay clave solo si alguien reaccionó con ese emoji. Indexar a
+ * pelo (`reactions["🔥"]`) puede dar `undefined` — usa siempre `tallyOf`.
+ * El orden de las claves es el de primera aparición, que es lo que
+ * `reaction-display.ts` usa como desempate estable; por eso las consultas de
+ * reacciones van ordenadas por `created_at`.
+ */
+export type ReactionsByEmoji = Record<ReactionEmoji, ReactionTally>;
+
+export function emptyReactions(): ReactionsByEmoji {
+  return {};
+}
+
+export function tallyOf(reactions: ReactionsByEmoji, emoji: string): ReactionTally {
+  return reactions[emoji] ?? { count: 0, viewerReacted: false };
+}
+
+export function totalReactions(reactions: ReactionsByEmoji): number {
+  let total = 0;
+  for (const tally of Object.values(reactions)) total += tally.count;
+  return total;
+}
+
+export function anyViewerReacted(reactions: ReactionsByEmoji): boolean {
+  return Object.values(reactions).some((tally) => tally.viewerReacted);
 }
 
 export type InteractionComment = {
@@ -48,12 +69,12 @@ export type InteractionComment = {
   isSpoiler: boolean;
   pinned: boolean;
   edited: boolean;
-  // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todos
-  // los kinds / algún kind activo del viewer) para no romper a los 9
+  // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todas
+  // las reacciones / si el viewer tiene alguna puesta) para no romper a los 9
   // callers que aún pintan el total sin desglosar por emoji.
   reactionCount: number;
   viewerReacted: boolean;
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 export type InteractionSummary = {
@@ -62,5 +83,5 @@ export type InteractionSummary = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };

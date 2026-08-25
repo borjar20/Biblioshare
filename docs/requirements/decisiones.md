@@ -1377,3 +1377,22 @@ limpieza en el `finally` para borrar la fila que el trigger le metía a la cuent
 `devtest`; esa limpieza se convierte en su contraria: se cuenta antes y se afirma que el número no
 cambia. Se compara el **delta** y no el valor absoluto porque `devtest` es compartida y puede
 arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas por unirse.
+
+## 2026-08-24 — Reacciones con cualquier emoji
+
+- **El emoji va en `reactions.kind`, no en una tabla de catálogo.** Una tabla de emojis
+  permitidos con FK sería más "correcta" en el papel y añade un JOIN a cada lectura de
+  reacciones a cambio de nada: el catálogo no se edita en runtime, se regenera con un
+  script. La integridad la dan el CHECK de forma y la lista blanca en la acción.
+- **Varias reacciones por persona, con tope de 6.** Teams permite una sola; aquí ya se
+  podían varias y quitarlo obligaba a migrar datos eligiendo cuál sobrevive. Se conserva el
+  comportamiento y se pone tope en trigger, porque emoji libre sin tope deja que una
+  persona cuelgue decenas de píldoras de un mensaje.
+- **La validación es lista blanca contra el catálogo, no `\p{RGI_Emoji}`.** El regex acepta
+  secuencias ZWJ que no sabemos nombrar; entonces la reacción no tendría `aria-label` y en
+  algunos móviles se pinta como varios monigotes. Con lista blanca, todo lo guardado se
+  puede pintar y nombrar.
+- **No se añadió `jsdom` para testear el `ReactionBar`.** La rama
+  `fase-c-estadisticas-nuevas` ya introduce el runner de `.test.tsx`; duplicarlo aquí
+  costaba un conflicto de `package.json` y lockfile. La lógica se extrajo a
+  `reaction-display.ts` (puro, testeado) y el DOM lo cubre Playwright.

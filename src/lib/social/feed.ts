@@ -4,7 +4,11 @@ import type { AnchorRef, AnchorType } from "@/lib/catalog/anchor";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { MediaStatus } from "@/lib/library/types";
 import type { PostKind } from "./post-actions";
-import { emptyReactions, type InteractionComment, type ReactionsByKind } from "./interactions";
+import {
+  emptyReactions,
+  type InteractionComment,
+  type ReactionsByEmoji,
+} from "./interactions";
 import { getInteractionSummary } from "./get-interaction-summary";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
@@ -113,7 +117,7 @@ export type FeedEvent = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 // Forma interna mientras se resuelve el target canónico en batch. Nunca cruza el

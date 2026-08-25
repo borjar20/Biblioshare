@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-24 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
+> **[Canónico · verificado contra dev el 2026-08-25 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -819,6 +819,29 @@ En comentarios y reacciones, en cambio, **el id canónico es la única identidad
   unique (interaction_target_id, user_id, kind)`, en sustitución de la que iba por el par heredado.
   El índice suelto `reactions_interaction_target_idx` se retira porque el nuevo único ya lo cubre por
   prefijo (un índice duplicado habría levantado el advisor).
+  > **Este único es lo que hace correcto el tope de 6 del trigger `reactions_cap_before_insert`**
+  > (ver más abajo): el trigger cuenta `count(*)` de filas `(target, user)`, no
+  > `count(distinct kind)`. Hoy las dos cuentas coinciden **porque** este único impide que la
+  > misma persona repita `kind` sobre el mismo target — si algún día se debilitara este índice
+  > (por ejemplo, para permitir reaccionar dos veces con el mismo emoji), el tope se rompería en
+  > silencio: seguiría contando filas, no emojis distintos, y dejaría de significar «6 emojis
+  > distintos» para significar «6 reacciones». Cualquier cambio a este único tiene que revisar el
+  > trigger a la vez.
+- **`kind` (`text`, NOT NULL) — el emoji literal** de la reacción (`❤️`, `🔥`, `🐙`). Hasta
+  2026-08-24 era una paleta cerrada de cuatro slugs (`like`/`read`/`shock`/`fire`), migrados a
+  `❤️`/`📖`/`😱`/`🔥` por `20260876_reactions_emoji_libre.sql` (**aplicada y verificada en dev y
+  en prod el 2026-08-25**, contra `pg_constraint`/`pg_trigger` y no contra el ledger). En prod
+  las 51 filas existentes se conservaron íntegras y quedaron 21 `❤️`, 13 `🔥`, 13 `😱` y 4 `📖`;
+  el dedup no llegó a borrar nada porque no había ninguna fila que ya fuese emoji.
+  - CHECK `reactions_kind_emoji`: de **forma**, no lista blanca — 1..16 caracteres, al menos uno
+    no ASCII, sin espacios. La lista blanca real es el catálogo
+    (`src/lib/social/emoji-catalog.data.ts`), validado en `toggleReaction`.
+  - Trigger `reactions_cap_before_insert` → `public.enforce_reaction_cap()`: **máximo 6 emojis
+    distintos por persona y target**. `BEFORE INSERT`, así que es grandfathering puro: una fila
+    `(target, user)` que ya tuviera más de 6 antes del trigger se queda tal cual, el tope solo
+    impide crecer. Rechaza con el mensaje `reaction_cap_reached`.
+  - El único `(interaction_target_id, user_id, kind)` de arriba sigue permitiendo varias
+    reacciones distintas de la misma persona sobre el mismo target — no se tocó.
 - **Fuera la compatibilidad expand/migrate**: se retiran los triggers
   `trg_comments_resolve_interaction_target` y `trg_reactions_resolve_interaction_target` y las
   funciones `private.resolve_comment_interaction_target`,

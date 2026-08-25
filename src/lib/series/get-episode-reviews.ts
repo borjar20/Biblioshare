@@ -1,5 +1,9 @@
 import type { createClient } from "@/lib/supabase/server";
-import { emptyReactions, type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import {
+  emptyReactions,
+  type InteractionComment,
+  type ReactionsByEmoji,
+} from "@/lib/social/interactions";
 import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
@@ -25,7 +29,7 @@ export type EpisodeReview = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 export type EpisodeReviewsResult = {

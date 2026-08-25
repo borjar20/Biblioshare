@@ -17,7 +17,7 @@ import {
 import {
   emptyReactions,
   type InteractionComment,
-  type ReactionsByKind,
+  type ReactionsByEmoji,
 } from "@/lib/social/interactions";
 import { buildCommentThreads, type CommentSort } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
@@ -57,10 +57,11 @@ export function ReviewInteractions({
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  // Paleta de reacciones (♡/📖/😱/🔥) del target. reactionCount/viewerReacted
-  // arriba se CONSERVAN como derivados -- el estado no-logueado los sigue
-  // usando para el total, sin desglosar por emoji.
-  reactions: ReactionsByKind;
+  // Reacciones del target: cualquier emoji del catálogo, sin paleta cerrada.
+  // reactionCount/viewerReacted arriba se CONSERVAN como derivados -- el
+  // estado no-logueado los sigue usando para el total, sin desglosar por
+  // emoji.
+  reactions: ReactionsByEmoji;
   viewerLoggedIn: boolean;
   // false para targets sin sentido de "me gusta" propio (p.ej. un checkpoint
   // de buddy_read, EPIC-05 Bloque H1) -- el like en comentarios individuales
@@ -254,9 +255,9 @@ export function ReviewInteractions({
                 <ReactionBar
                   reactions={c.reactions}
                   disabled={isPending}
-                  onToggle={(kind) =>
-                    run({ type: "toggleComment", id: c.id, kind }, async () => {
-                      await toggleReaction(c.interactionTargetId, kind);
+                  onToggle={(emoji) =>
+                    run({ type: "toggleComment", id: c.id, emoji }, async () => {
+                      await toggleReaction(c.interactionTargetId, emoji);
                     })
                   }
                 />
@@ -303,9 +304,9 @@ export function ReviewInteractions({
           <ReactionBar
             reactions={state.reactions}
             disabled={isPending}
-            onToggle={(kind) =>
-              run({ type: "toggleTarget", kind }, async () => {
-                await toggleReaction(interactionTargetId, kind);
+            onToggle={(emoji) =>
+              run({ type: "toggleTarget", emoji }, async () => {
+                await toggleReaction(interactionTargetId, emoji);
               })
             }
           />

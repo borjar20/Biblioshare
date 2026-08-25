@@ -13,13 +13,35 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   getCurrentUser: async () => ({ id: "viewer" }),
 }));
 
-import { REACTION_KINDS, emptyReactions } from "./interactions";
+import {
+  anyViewerReacted,
+  emptyReactions,
+  tallyOf,
+  totalReactions,
+  type ReactionsByEmoji,
+} from "./interactions";
 import { getInteractionSummary } from "./get-interaction-summary";
 
-test("emptyReactions da las 4 kinds a cero", () => {
-  const r = emptyReactions();
-  expect(REACTION_KINDS).toEqual(["like", "read", "shock", "fire"]);
-  for (const k of REACTION_KINDS) expect(r[k]).toEqual({ count: 0, viewerReacted: false });
+test("emptyReactions arranca vacío: el mapa es disperso, no un registro de claves fijas", () => {
+  expect(emptyReactions()).toEqual({});
+});
+
+test("tallyOf inventa un cero para el emoji ausente en vez de devolver undefined", () => {
+  const reactions: ReactionsByEmoji = { "🔥": { count: 2, viewerReacted: true } };
+  expect(tallyOf(reactions, "🔥")).toEqual({ count: 2, viewerReacted: true });
+  expect(tallyOf(reactions, "❤️")).toEqual({ count: 0, viewerReacted: false });
+  expect(tallyOf(emptyReactions(), "❤️")).toEqual({ count: 0, viewerReacted: false });
+});
+
+test("totalReactions y anyViewerReacted se derivan del mapa entero", () => {
+  const reactions: ReactionsByEmoji = {
+    "🔥": { count: 2, viewerReacted: false },
+    "❤️": { count: 3, viewerReacted: true },
+  };
+  expect(totalReactions(reactions)).toBe(5);
+  expect(anyViewerReacted(reactions)).toBe(true);
+  expect(totalReactions(emptyReactions())).toBe(0);
+  expect(anyViewerReacted(emptyReactions())).toBe(false);
 });
 
 type Row = Record<string, unknown>;
@@ -98,9 +120,11 @@ describe("getInteractionSummary", () => {
         { id: "target-parent-owned", kind: "diary_entry", source_id: "entry-owned" },
         { id: "target-comment-other", kind: "comment", source_id: "comment-other" },
       ],
+      // Fila con `kind` (obligatorio en el modelo emoji: una reacción sin
+      // emoji no cuenta, ver test "descarta el comentario..." más abajo).
       reactions: [
-        { interaction_target_id: "target-parent-owned", user_id: "viewer" },
-        { interaction_target_id: "target-comment-owned", user_id: "viewer" },
+        { interaction_target_id: "target-parent-owned", user_id: "viewer", kind: "❤️" },
+        { interaction_target_id: "target-comment-owned", user_id: "viewer", kind: "❤️" },
       ],
       comments: [
         {
@@ -185,41 +209,43 @@ describe("getInteractionSummary", () => {
     ).rejects.toThrow(/interaction target.*diary_entry:missing/i);
   });
 
-  it("agrupa reacciones por kind y deriva el total", async () => {
+  it("agrupa reacciones por emoji y deriva el total, sin claves para los emojis ausentes", async () => {
     const { client } = makeFakeSupabase({
       interaction_targets: [
         { id: "target-t", kind: "diary_entry", source_id: "entry-t" },
       ],
       reactions: [
-        { interaction_target_id: "target-t", user_id: "viewer", kind: "like" },
-        { interaction_target_id: "target-t", user_id: "other", kind: "like" },
-        { interaction_target_id: "target-t", user_id: "other", kind: "fire" },
+        { interaction_target_id: "target-t", user_id: "viewer", kind: "❤️" },
+        { interaction_target_id: "target-t", user_id: "other", kind: "❤️" },
+        { interaction_target_id: "target-t", user_id: "other", kind: "🔥" },
       ],
       comments: [],
       profile_identities: [],
     });
 
     const s = (await getInteractionSummary(client, "diary_entry", ["entry-t"])).get("entry-t")!;
-    expect(s.reactions.like).toEqual({ count: 2, viewerReacted: true });
-    expect(s.reactions.fire).toEqual({ count: 1, viewerReacted: false });
+    expect(tallyOf(s.reactions, "❤️")).toEqual({ count: 2, viewerReacted: true });
+    expect(tallyOf(s.reactions, "🔥")).toEqual({ count: 1, viewerReacted: false });
+    // Disperso: nadie reaccionó con "😱", no hay clave para ese emoji.
+    expect(s.reactions["😱"]).toBeUndefined();
     expect(s.reactionCount).toBe(3);
     expect(s.viewerReacted).toBe(true);
   });
 
   // Regresión posts (capa social): el resolutor es genérico por (kind,
-  // source_id), así que "post" agrega reacciones por kind y resuelve el target
+  // source_id), así que "post" agrega reacciones por emoji y resuelve el target
   // canónico de sus comentarios igual que cualquier otro target. Sin cambios de
   // lógica: solo el tipo `TargetType` (Task 2) habilita la llamada.
-  it("agrega reacciones por kind y resuelve comentarios para un target 'post'", async () => {
+  it("agrega reacciones por emoji y resuelve comentarios para un target 'post'", async () => {
     const { client } = makeFakeSupabase({
       interaction_targets: [
         { id: "target-post", kind: "post", source_id: "post-1" },
         { id: "target-comment-post", kind: "comment", source_id: "comment-1" },
       ],
       reactions: [
-        { interaction_target_id: "target-post", user_id: "viewer", kind: "like" },
-        { interaction_target_id: "target-post", user_id: "other", kind: "fire" },
-        { interaction_target_id: "target-post", user_id: "other2", kind: "fire" },
+        { interaction_target_id: "target-post", user_id: "viewer", kind: "❤️" },
+        { interaction_target_id: "target-post", user_id: "other", kind: "🔥" },
+        { interaction_target_id: "target-post", user_id: "other2", kind: "🔥" },
       ],
       comments: [
         {
@@ -238,8 +264,8 @@ describe("getInteractionSummary", () => {
     const s = (await getInteractionSummary(client, "post", ["post-1"])).get("post-1")!;
 
     expect(s.interactionTargetId).toBe("target-post");
-    expect(s.reactions.like).toEqual({ count: 1, viewerReacted: true });
-    expect(s.reactions.fire).toEqual({ count: 2, viewerReacted: false });
+    expect(tallyOf(s.reactions, "❤️")).toEqual({ count: 1, viewerReacted: true });
+    expect(tallyOf(s.reactions, "🔥")).toEqual({ count: 2, viewerReacted: false });
     expect(s.reactionCount).toBe(3);
     expect(s.viewerReacted).toBe(true);
     expect(s.commentCount).toBe(1);
@@ -261,7 +287,9 @@ describe("getInteractionSummary", () => {
         { id: "target-comment-ok", kind: "comment", source_id: "comment-ok" },
         // comment-invisible no tiene fila: el espectador no la ve.
       ],
-      reactions: [{ interaction_target_id: "target-comment-ok", user_id: "viewer" }],
+      reactions: [
+        { interaction_target_id: "target-comment-ok", user_id: "viewer", kind: "❤️" },
+      ],
       comments: [
         {
           id: "comment-ok",

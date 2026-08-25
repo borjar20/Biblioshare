@@ -2,11 +2,11 @@ import "server-only";
 import { getCurrentUser, type createClient } from "@/lib/supabase/server";
 import { getInteractionTargetRefs } from "./interaction-targets";
 import {
+  anyViewerReacted,
   emptyReactions,
-  REACTION_KINDS,
+  totalReactions,
   type InteractionComment,
   type InteractionSummary,
-  type ReactionKind,
   type TargetType,
 } from "./interactions";
 
@@ -98,7 +98,8 @@ export async function getInteractionSummary(
     supabase
       .from("reactions")
       .select("interaction_target_id, user_id, kind")
-      .in("interaction_target_id", interactionTargetIds),
+      .in("interaction_target_id", interactionTargetIds)
+      .order("created_at", { ascending: true }),
     supabase
       .from("comments")
       .select("id, interaction_target_id, author_id, body, created_at, parent_id, is_spoiler, pinned, edited_at")
@@ -113,15 +114,15 @@ export async function getInteractionSummary(
     const sourceId = sourceIdByTargetId.get(r.interaction_target_id);
     const s = sourceId ? summaries.get(sourceId) : undefined;
     if (!s) continue;
-    const kind = (r.kind ?? "like") as ReactionKind;
-    const tally = s.reactions[kind];
-    if (!tally) continue; // kind desconocido: ignora, no rompas
+    const emoji = r.kind;
+    if (!emoji) continue; // fila sin kind: ignora, no rompas
+    const tally = (s.reactions[emoji] ??= { count: 0, viewerReacted: false });
     tally.count += 1;
     if (user && r.user_id === user.id) tally.viewerReacted = true;
   }
   for (const s of summaries.values()) {
-    s.reactionCount = REACTION_KINDS.reduce((n, k) => n + s.reactions[k].count, 0);
-    s.viewerReacted = REACTION_KINDS.some((k) => s.reactions[k].viewerReacted);
+    s.reactionCount = totalReactions(s.reactions);
+    s.viewerReacted = anyViewerReacted(s.reactions);
   }
 
   const commentRows = commentsResult.data ?? [];
@@ -227,7 +228,8 @@ export async function getInteractionSummary(
     const { data: commentReactions, error: commentReactionsError } = await supabase
       .from("reactions")
       .select("interaction_target_id, user_id, kind")
-      .in("interaction_target_id", commentInteractionTargetIds);
+      .in("interaction_target_id", commentInteractionTargetIds)
+      .order("created_at", { ascending: true });
     if (commentReactionsError) throw commentReactionsError;
 
     const commentById = new Map<string, InteractionComment>();
@@ -237,15 +239,15 @@ export async function getInteractionSummary(
     for (const r of commentReactions ?? []) {
       const c = commentById.get(r.interaction_target_id);
       if (!c) continue;
-      const kind = (r.kind ?? "like") as ReactionKind;
-      const tally = c.reactions[kind];
-      if (!tally) continue;
+      const emoji = r.kind;
+      if (!emoji) continue;
+      const tally = (c.reactions[emoji] ??= { count: 0, viewerReacted: false });
       tally.count += 1;
       if (user && r.user_id === user.id) tally.viewerReacted = true;
     }
     for (const c of commentById.values()) {
-      c.reactionCount = REACTION_KINDS.reduce((n, k) => n + c.reactions[k].count, 0);
-      c.viewerReacted = REACTION_KINDS.some((k) => c.reactions[k].viewerReacted);
+      c.reactionCount = totalReactions(c.reactions);
+      c.viewerReacted = anyViewerReacted(c.reactions);
     }
   }
 

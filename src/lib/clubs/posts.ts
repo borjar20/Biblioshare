@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notifyMany } from "@/lib/social/notifications";
 import { notifyMentions } from "@/lib/social/notify-mentions";
-import { type InteractionComment, type ReactionsByKind } from "@/lib/social/interactions";
+import { type InteractionComment, type ReactionsByEmoji } from "@/lib/social/interactions";
 import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 import {
@@ -55,7 +55,7 @@ export type ClubPost = {
   viewerReacted: boolean;
   commentCount: number;
   comments: InteractionComment[];
-  reactions: ReactionsByKind;
+  reactions: ReactionsByEmoji;
 };
 
 export type ClubPostsPage = {
