@@ -278,12 +278,21 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     const ors: string[] = [];
     const ins: Array<[string, unknown[]]> = [];
     const eqs: Array<[string, unknown]> = [];
+    // `.maybeSingle()` cambia la FORMA de la respuesta: fila o null, no array.
+    // Antes se encadenaba y se ignoraba, así que `getPostEvent` —el único
+    // llamador que lo usa— recibía un array donde esperaba una fila y no se
+    // podía testear desde aquí.
+    let single = false;
 
     const builder: Record<string, unknown> = {};
     const chain = () => builder;
-    for (const method of ["neq", "not", "gte", "maybeSingle"]) {
+    for (const method of ["neq", "not", "gte"]) {
       builder[method] = chain;
     }
+    builder.maybeSingle = () => {
+      single = true;
+      return builder;
+    };
     builder.eq = (column: string, value: unknown) => {
       eqs.push([column, value]);
       return builder;
@@ -326,6 +335,13 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
         });
       }
       if (limit != null) result = result.slice(0, limit);
+      if (single) {
+        // Los `.eq` solo se APLICAN en el camino `maybeSingle` (el resto de
+        // tests se apoyan en `eqFilters` para aseverar QUÉ se pidió, y filtrar
+        // de verdad cambiaría lo que hoy devuelven).
+        for (const [column, value] of eqs) result = result.filter((r) => text(r[column]) === text(value));
+        return resolve({ data: result[0] ?? null, error: null });
+      }
       return resolve({ data: result, error: null });
     };
     return builder;
