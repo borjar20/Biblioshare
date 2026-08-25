@@ -1460,3 +1460,34 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   el `expect.poll` de la fila de `notifications`— con «el aviso post_commented debe persistir»,
   que parece un bug de producto grave y no lo es. **Un e2e rojo contra un dev tocado no es
   evidencia de nada**: hay que relevantar el servidor y repetir.
+
+## 2026-08-25 — Los seis e2e sociales caducados (#801, #802, #803)
+
+- **Segundo pase sobre la misma familia, y otra vez el arreglo es del test.** Los seis tests que
+  salieron rojos al verificar #787/#788 tenían tres causas distintas y ninguna era un bug: la
+  copia de la campana cambió con #799, «Me gusta» dejó de existir como nombre accesible al entrar
+  el catálogo de emoji libre, y reportar/borrar se fueron detrás del «···» con F3-012. Verificado
+  por ejecución contra un `next dev` limpio: **11 de 11 en verde** en `posts.spec.ts`,
+  `social-optimista.spec.ts` y `social-safety.spec.ts` (2,3 min).
+- **El nombre accesible de un emoji se IMPORTA, no se copia.** Es la decisión que importa de este
+  pase, porque va contra la causa: `social-optimista.spec.ts` ya se arregló una vez por esto
+  mismo (#750, `7f9c3f69`) y volvió a caducar al cambio siguiente. Los specs ahora importan
+  `QUICK_REACTION_NAMES` de `src/lib/social/reaction-constants.ts`; renombrar un emoji rompe el
+  typecheck en el mismo commit, no la suite tres semanas después. El precio —un `import` de `src/`
+  dentro de `e2e/`— ya lo pagaba `club-calendario.spec.ts`, así que no estrena nada.
+- **La campana se afirma por el EXTRACTO, no por la copia genérica.** Misma decisión que en
+  #787/#788, extendida a `posts.spec.ts`: con un solo actor y contexto guardado gana la variante
+  enriquecida (`postCommentedExcerpt`), y el extracto ata además el aviso a ESE comentario. La
+  excepción es el aviso de sesión compartida: su `subject` es el título del pase fixture, que el
+  test no conoce, así que se afirma el tramo común a las dos variantes (`compartió una sesión de`).
+- **Al abrir un desplegable antes de cortar el tráfico, el corte solo alcanza a lo que se quiere
+  probar.** En «un fallo de Server Action se anuncia y revierte», abrir el `ReactionBar` es puro
+  cliente; la ruta se aborta DESPUÉS de abrirlo, así que lo único que falla es el toggle de la
+  reacción y el test sigue probando lo suyo (que el error se anuncia y el estado revierte).
+- **`Reaccionar` deja de ser único dentro de una tarjeta en cuanto el hilo se expande.** Cada
+  comentario trae su propia barra, así que los localizadores de tarjeta llevan `.first()` (el del
+  POST va primero en el DOM, `ReviewInteractions` lo pinta antes del hilo). Sin eso el modo
+  estricto de Playwright revienta al recargar con comentarios ya visibles.
+- **El `page.once("dialog")` se arma antes del ÍTEM, no antes de abrir el menú.** El `confirm()`
+  nativo de borrar sigue existiendo tras F3-012; lo dispara `confirmDelete`, que corre al pulsar
+  la opción del desplegable. Armarlo antes de abrir el «···» deja el handler consumido a destiempo.

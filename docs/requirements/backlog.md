@@ -122,6 +122,15 @@ aserción. Salió además **#800** (P2): los e2e dejan catálogo desechable en `
 cuando mueren por timeout (22 libros, 5 sagas, 5 personas, 6 perfiles huérfanos,
 el más viejo del 2026-07-10).
 
+**#802, #801 y #803: cerradas también el 2026-08-25**, en un segundo pase sobre
+los mismos seis tests. Los tres arreglos son de localizador y de copia; el
+producto no se toca. Queda **#800** abierta (limpieza de `dev`, no bloquea nada).
+Lo que se lleva de aquí, y va contra la causa y no contra el síntoma: **el nombre
+accesible de un emoji es un contrato entre `reaction-constants.ts` y los specs**,
+y copiarlo a mano rompió `social-optimista.spec.ts` dos veces seguidas (#750 y
+#801). Ahora los specs importan `QUICK_REACTION_NAMES`, así que renombrar un
+emoji falla en el typecheck y no tres semanas después en la suite.
+
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
 **Acción 6 — hit-areas + RatingDots táctiles: HECHA el 2026-08-20.** F4-010

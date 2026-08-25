@@ -1,4 +1,11 @@
 import { test, expect } from "@playwright/test";
+// El nombre accesible del emoji se IMPORTA del catálogo, no se copia a mano: es
+// un contrato entre `reaction-constants.ts` y cuatro specs, y copiarlo dejó este
+// fichero en rojo dos veces seguidas (#750 y #801). Así, renombrar un emoji
+// rompe el typecheck en vez de la suite tres semanas después.
+import { QUICK_REACTION_NAMES } from "@/lib/social/reaction-constants";
+
+const REACCION = QUICK_REACTION_NAMES["❤️"];
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -21,10 +28,12 @@ function adminHeaders() {
 // mientras esté abierto ningún otro clic de la tarjeta llega a su destino.
 async function cerrarPicker(card: import("@playwright/test").Locator) {
   await card.locator('button[aria-hidden="true"]').first().click();
-  await expect(card.getByRole("button", { name: "Reaccionar" })).toHaveAttribute(
-    "aria-expanded",
-    "false",
-  );
+  // `.first()`: en cuanto el hilo se expande, cada comentario trae su propia
+  // barra de reacciones y "Reaccionar" deja de ser único dentro de la tarjeta.
+  // El primero es el del POST (ReviewInteractions lo pinta antes del hilo).
+  await expect(
+    card.getByRole("button", { name: "Reaccionar" }).first(),
+  ).toHaveAttribute("aria-expanded", "false");
 }
 
 // Fase 3: la capa optimista (like/comentario) pinta al instante ENCIMA de la
@@ -59,23 +68,30 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
 
     // La tarjeta de ESTE post: contiene su cuerpo y su botón de reacciones.
     //
-    // «Me gusta» dejó de ser un botón suelto en la tarjeta: es una de las cuatro
-    // reacciones que viven dentro del desplegable de «Reaccionar» (`7f9c3f69`).
-    // Localizar la tarjeta por él era lo que dejó este spec en rojo (#750).
+    // «Me gusta» dejó de ser un botón suelto en la tarjeta: es una de las
+    // reacciones rápidas que viven dentro del desplegable de «Reaccionar»
+    // (`7f9c3f69`), y hoy ni se llama así — el catálogo la nombra «corazón rojo».
+    // Localizar la tarjeta por él era lo que dejó este spec en rojo (#750, #801).
     const card = page
       .locator("div.shadow-card")
       .filter({ hasText: cuerpo })
       .filter({ has: page.getByRole("button", { name: "Reaccionar" }) })
       .last();
 
-    // ── Like: se marca sin recargar ──
-    // Se abre el desplegable; queda abierto tras elegir, así que el aserto de
-    // `aria-pressed` va sobre el mismo botón que se acaba de pulsar.
-    await card.getByRole("button", { name: "Reaccionar" }).click();
-    const like = card.getByRole("button", { name: "Me gusta" });
-    await expect(like).toHaveAttribute("aria-pressed", "false");
-    await like.click();
-    await expect(like).toHaveAttribute("aria-pressed", "true");
+    // ── Reacción: se marca sin recargar ──
+    // Elegir un emoji CIERRA el desplegable (tareas 7/8 de `reacciones-emoji-libre`;
+    // antes quedaba abierto y el aserto de `aria-pressed` iba sobre el mismo
+    // botón recién pulsado). Así que hay que reabrirlo para releer el estado.
+    await card.getByRole("button", { name: "Reaccionar" }).first().click();
+    const reaccion = card.getByRole("button", { name: REACCION });
+    await expect(reaccion).toHaveAttribute("aria-pressed", "false");
+    await reaccion.click();
+    await expect(card.getByRole("dialog")).toHaveCount(0);
+    await card.getByRole("button", { name: "Reaccionar" }).first().click();
+    await expect(card.getByRole("button", { name: REACCION })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     // Cerrar antes de seguir. Mientras el desplegable está abierto, la capa que
     // lo cierra ocupa la pantalla entera (`fixed inset-0`, así se cierra sin
     // useEffect — ver `reaction-bar.tsx`) e intercepta cualquier otro clic. Así
@@ -95,11 +111,11 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
       .filter({ hasText: cuerpo })
       .filter({ has: page.getByRole("button", { name: "Reaccionar" }) })
       .last();
-    // El like sigue marcado y el contador de comentarios subió a 1. Hay que
+    // La reacción sigue marcada y el contador de comentarios subió a 1. Hay que
     // reabrir el desplegable: la recarga lo devuelve a cerrado.
-    await cardTrasRecarga.getByRole("button", { name: "Reaccionar" }).click();
+    await cardTrasRecarga.getByRole("button", { name: "Reaccionar" }).first().click();
     await expect(
-      cardTrasRecarga.getByRole("button", { name: "Me gusta" }),
+      cardTrasRecarga.getByRole("button", { name: REACCION }),
     ).toHaveAttribute("aria-pressed", "true");
     await cerrarPicker(cardTrasRecarga);
     await expect(
