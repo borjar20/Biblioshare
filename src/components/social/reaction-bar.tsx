@@ -46,8 +46,9 @@ export function ReactionBar({
   const [open, setOpen] = useState(false);
   const [browsing, setBrowsing] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  // Posición del panel en ESCRITORIO, medida al abrir. En móvil no se usa: el
-  // panel deja de colgar del botón (ver el `className` del diálogo más abajo).
+  // Posición del panel en ESCRITORIO, medida en `measureDesktopPosition` (más
+  // abajo) contra el nodo real. En móvil no se usa: el panel deja de colgar
+  // del botón (ver el `className` del diálogo más abajo).
   const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
 
   const { top, total, viewerReacted } = summarize(reactions);
@@ -65,32 +66,57 @@ export function ReactionBar({
     triggerRef.current?.focus();
   }
 
-  // Abre el popover y, de paso, mide dónde cabe en escritorio. Nada de
-  // useEffect (lint set-state-in-effect): se mide aquí, en el manejador del
-  // clic, con getBoundingClientRect() del propio botón — ANTES de que el
-  // panel exista, así que no hay parpadeo de reposicionamiento.
+  // Posición del panel en ESCRITORIO: se mide el nodo YA renderizado, nunca se
+  // estima. Nada de useEffect (lint set-state-in-effect) — es un callback de
+  // `ref`, el mismo patrón que ya usa el botón «+» para el foco, salvo que
+  // aquí interesa que se dispare en CADA commit, no solo al montar: al ser una
+  // función inline (identidad nueva en cada render), React la reengancha
+  // siempre, así que también corre cuando el catálogo pasa de placeholder
+  // (`next/dynamic`, sin buscador ni tira de categorías) al panel real (con
+  // los dos, más alto) — un `key` fijo en el montaje se habría quedado con la
+  // medida vieja. El callback corre en el commit, ANTES de que el navegador
+  // pinte, así que el `setAnchor` que dispara no provoca parpadeo.
   //
-  // Con la sangría de un hilo anidado el botón puede estar muy a la derecha;
-  // `left` se acota para que un panel de hasta 28rem (el ancho máximo, el que
-  // usa el catálogo) quepa siempre entre los bordes del viewport. El cálculo
-  // se hace aunque en ese momento estemos en móvil: el resultado solo lo lee
-  // el CSS de escritorio (`min-[1023px]:left-[var(--panel-left)]`), así que
-  // hacerlo de más no tiene coste ni efecto en móvil, donde el panel pasa a
-  // ser una hoja inferior fija sin relación con el botón.
-  function toggleOpen() {
-    if (!open) {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (rect) {
-        const PANEL_W = 448; // 28rem: ancho máx. del panel en escritorio (EmojiPicker)
-        const PANEL_H = 320; // 20rem: alto máx. del catálogo en escritorio
-        const MARGIN = 16; // separación mínima con el borde del viewport
-        setAnchor({
-          left: clamp(rect.left, MARGIN, window.innerWidth - PANEL_W - MARGIN),
-          top: clamp(rect.bottom + 4, MARGIN, window.innerHeight - PANEL_H - MARGIN),
-        });
-      }
-    }
-    setOpen((o) => !o);
+  // Se mide con `getBoundingClientRect()` el panel (ancho y alto REALES, ya
+  // renderizados: nada de constantes a ojo tipo "28rem/20rem" que se
+  // desincronizan en cuanto alguien toca el selector) y el botón que lo abre.
+  // `left` se acota para que quepa entre los bordes del viewport por mucho
+  // que la sangría del hilo lo empuje a la derecha. `top` intenta ir DEBAJO
+  // del botón como siempre; si con la altura real no cabe (el caso que se
+  // detectó: el catálogo mide bastante más que la fila de reacciones
+  // rápidas), se coloca ENCIMA en su lugar.
+  //
+  // Guardia contra bucle infinito: `setAnchor` devuelve el mismo objeto
+  // `prev` si los números no cambiaron, así que React no vuelve a renderizar
+  // (bail-out por igualdad referencial) — sin esto, cada commit crearía un
+  // objeto `{left, top}` nuevo aunque los valores fueran idénticos y
+  // dispararía otro render sin parar.
+  function measureDesktopPosition(node: HTMLDivElement | null) {
+    if (!node) return; // se desmonta: nada que medir
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const triggerRect = trigger.getBoundingClientRect();
+    const panelRect = node.getBoundingClientRect();
+    const MARGIN = 16; // separación mínima con el borde del viewport
+
+    // Nombres `panelLeft`/`panelTop` (no `left`/`top` a secas) para no tapar
+    // el `top` de más arriba (los emojis más votados de `summarize()`) — son
+    // conceptos sin relación, pero comparten nombre corto.
+    const panelLeft = clamp(triggerRect.left, MARGIN, window.innerWidth - panelRect.width - MARGIN);
+
+    const spaceBelow = window.innerHeight - triggerRect.bottom - MARGIN;
+    const panelTop =
+      panelRect.height <= spaceBelow
+        ? triggerRect.bottom + 4
+        : clamp(
+            triggerRect.top - panelRect.height - 4,
+            MARGIN,
+            window.innerHeight - panelRect.height - MARGIN,
+          );
+
+    setAnchor((prev) =>
+      prev && prev.left === panelLeft && prev.top === panelTop ? prev : { left: panelLeft, top: panelTop },
+    );
   }
 
   function pick(emoji: string) {
@@ -124,7 +150,7 @@ export function ReactionBar({
         disabled={disabled}
         aria-expanded={open}
         aria-label={t("react")}
-        onClick={toggleOpen}
+        onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
           viewerReacted
             ? "border-accent text-accent"
@@ -148,26 +174,39 @@ export function ReactionBar({
               completa (ver el diálogo de abajo), así que aquí sí se oscurece
               el fondo — mismo criterio que event-followers.tsx. En
               escritorio sigue siendo un popover pequeño anclado al botón y el
-              fondo se queda como estaba: transparente. */}
+              fondo se queda como estaba: transparente.
+              z-50: el mismo número que usan las demás hojas a pantalla
+              completa sin <dialog> nativo del repo (filters-dropdown.tsx,
+              event-followers.tsx) para no inventar uno — hay que quedar por
+              ENCIMA del compositor del hilo, que es `fixed … z-30` en
+              post-thread.tsx (`lg:static` en escritorio, así que ahí ni
+              compite). El backdrop, a pantalla completa, también oscurece esa
+              barra: si se viera por encima, la hoja seguiría pareciendo que
+              cuelga por debajo de algo. */}
           <button
             type="button"
             aria-hidden
             tabIndex={-1}
             onClick={close}
-            className="fixed inset-0 z-10 cursor-default bg-scrim min-[1023px]:bg-transparent"
+            className="fixed inset-0 z-50 cursor-default bg-scrim min-[1023px]:bg-transparent"
           />
           <div
+            ref={measureDesktopPosition}
             role="dialog"
             aria-label={browsing ? t("emojiPicker.title") : t("react")}
-            // Sin useEffect: `--panel-left/top` se calculan en `toggleOpen`
-            // (el manejador de clic que abre el popover) y solo los lee el
-            // `min-[1023px]:` de abajo. En móvil el panel es una hoja
-            // inferior FIJA respecto al viewport (`inset-x-3` + `bottom-…`),
-            // sin relación con la posición del botón: por eso la sangría del
-            // hilo deja de importar del todo, no solo se acota. En
-            // escritorio sigue anclado al botón, pero con `position: fixed`
-            // y coordenadas ya acotadas al viewport, así que nunca se sale
-            // por la derecha por mucho que anide el hilo.
+            // Sin useEffect: `--panel-left/top` los calcula
+            // `measureDesktopPosition` (el callback de `ref` de arriba) y
+            // solo los lee el `min-[1023px]:` de abajo. En móvil el panel es
+            // una hoja inferior FIJA respecto al viewport (`inset-x-3` +
+            // `bottom-…`), sin relación con la posición del botón: por eso la
+            // sangría del hilo deja de importar del todo, no solo se acota.
+            // En escritorio sigue anclado al botón, pero con `position:
+            // fixed` y coordenadas ya acotadas al viewport (con el tamaño
+            // REAL del panel, medido, no estimado), así que nunca se sale ni
+            // por la derecha ni por abajo por mucho que anide el hilo.
+            // Mismo z-50 que el backdrop: al ir después en el DOM, un empate
+            // de z-index ya lo coloca por encima (orden de documento), sin
+            // necesitar un número más alto todavía.
             style={
               anchor
                 ? ({
@@ -176,7 +215,7 @@ export function ReactionBar({
                   } as CSSProperties)
                 : undefined
             }
-            className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-card min-[1023px]:inset-x-auto min-[1023px]:bottom-auto min-[1023px]:left-[var(--panel-left)] min-[1023px]:top-[var(--panel-top)] min-[1023px]:max-h-none min-[1023px]:overflow-visible"
+            className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-border bg-surface p-1.5 shadow-card min-[1023px]:inset-x-auto min-[1023px]:bottom-auto min-[1023px]:left-[var(--panel-left)] min-[1023px]:top-[var(--panel-top)] min-[1023px]:max-h-none min-[1023px]:overflow-visible"
           >
             {browsing ? (
               <EmojiPicker
