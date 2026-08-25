@@ -5,8 +5,9 @@ import { test, expect, type APIRequestContext, type Page } from "@playwright/tes
 // desaparecer, y a <1000 la OBRA se oculta (accesible por la tarjeta del post) y
 // la página queda en una columna. Además, el bloque "Más de {autor}" prioriza
 // posts del autor sobre obras EMPARENTADAS (RPC `related_posts_by_author`) y
-// NUNCA incluye el post actual. Patrón de datos desechables por REST service-role
-// (thoughts.spec.ts / posts.spec.ts), borrados en el `finally`.
+// NUNCA incluye el post actual NI un AVANCE (`kind = 'progressed'`) — ni en «Más
+// de {autor}» ni en «Más sobre la obra». Patrón de datos desechables por REST
+// service-role (thoughts.spec.ts / posts.spec.ts), borrados en el `finally`.
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -94,6 +95,9 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
 
   const ts = Date.now();
   const author = await createUser(request, `e2elayout${ts}`);
+  // Segunda cuenta: «Más sobre la obra» excluye al propio autor, así que hace
+  // falta un tercero para poblar (y para probar que su AVANCE no entra).
+  const other = await createUser(request, `e2elayoutotro${ts}`);
 
   // Libros con géneros CONTROLADOS: la obra vista comparte "Fantasía" con la
   // relacionada, no con la neutra — así el ranking del RPC es determinista.
@@ -103,6 +107,9 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
   let viewedPostId: string | null = null;
   let relatedPostId: string | null = null;
   let neutralPostId: string | null = null;
+  let authorProgressPostId: string | null = null;
+  let otherThoughtPostId: string | null = null;
+  let otherProgressPostId: string | null = null;
   let personId: string | null = null;
   const creditName = `Real Autora ${ts}`;
 
@@ -173,6 +180,34 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
     relatedPostId = (await insertOne<{ id: string }>("posts", mkPost(relatedBookId, 200))).id;
     neutralPostId = (await insertOne<{ id: string }>("posts", mkPost(neutralBookId, 100))).id;
 
+    // Los AVANCES no son material de descubrimiento. Ambos están sembrados en la
+    // posición MÁS favorable posible —misma obra que el post visto (score +2) y
+    // los más recientes—, así que si el filtro faltara ganarían el raíl.
+    authorProgressPostId = (
+      await insertOne<{ id: string }>("posts", {
+        ...mkPost(viewedBookId, 50),
+        kind: "progressed",
+        body: `Avance e2e ${ts} del autor`,
+      })
+    ).id;
+    // Y el control POSITIVO de «Más sobre la obra»: un tercero con un pensamiento
+    // (debe salir) y un avance (no debe) sobre la MISMA obra.
+    otherThoughtPostId = (
+      await insertOne<{ id: string }>("posts", {
+        ...mkPost(viewedBookId, 80),
+        author_id: other.id,
+        body: `Pensamiento e2e ${ts} de otra persona`,
+      })
+    ).id;
+    otherProgressPostId = (
+      await insertOne<{ id: string }>("posts", {
+        ...mkPost(viewedBookId, 40),
+        author_id: other.id,
+        kind: "progressed",
+        body: `Avance e2e ${ts} de otra persona`,
+      })
+    ).id;
+
     await login(page);
     await page.goto(`/post/${viewedPostId}`);
 
@@ -198,6 +233,12 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
     // post actual (requisito #12).
     await expect(social.locator(`a[href="/post/${relatedPostId}"]`).first()).toBeVisible();
     await expect(social.locator(`a[href="/post/${viewedPostId}"]`)).toHaveCount(0);
+    // «Más sobre la obra» sí trae el pensamiento del tercero (control positivo)…
+    await expect(social.locator(`a[href="/post/${otherThoughtPostId}"]`).first()).toBeVisible();
+    // …y NINGUNO de los dos avances entra en el raíl, pese a ser los más
+    // recientes y sobre la misma obra.
+    await expect(social.locator(`a[href="/post/${authorProgressPostId}"]`)).toHaveCount(0);
+    await expect(social.locator(`a[href="/post/${otherProgressPostId}"]`)).toHaveCount(0);
     await expectNoHorizontalOverflow(page, 1600);
 
     // ── Desktop compacto y muy compacto: las 3 columnas AGUANTAN ──
@@ -219,6 +260,7 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
     }
   } finally {
     await deleteUser(author.id); // cascade: borra sus posts y pases (FK a auth.users)
+    await deleteUser(other.id);
     for (const id of [viewedBookId, relatedBookId, neutralBookId]) {
       if (!id) continue;
       await rest(`credits?item_id=eq.${id}`, { method: "DELETE" }).catch(() => {});
@@ -226,6 +268,13 @@ test("la página del post reparte OBRA · CONVERSACIÓN · SOCIAL y degrada por 
       await rest(`books?id=eq.${id}`, { method: "DELETE" }).catch(() => {});
     }
     if (personId) await rest(`people?id=eq.${personId}`, { method: "DELETE" }).catch(() => {});
-    void [relatedPostId, neutralPostId, viewedPostId];
+    void [
+      relatedPostId,
+      neutralPostId,
+      viewedPostId,
+      authorProgressPostId,
+      otherThoughtPostId,
+      otherProgressPostId,
+    ];
   }
 });

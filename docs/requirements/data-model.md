@@ -1081,6 +1081,14 @@ p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para re
   (`pg_proc`: `prosecdef=false` → INVOKER, grants execute a `authenticated`+`anon`; smoke sobre un
   post real: 4 filas, no incluye el propio). Solo falta mergear el código (PR #570) que la consume —
   regla de despliegue de §5.1: migración primero (hecho), código después.
+- **Revisión 2026-08-25 — los AVANCES quedan fuera** (`20260879_related_posts_by_author_sin_avances.sql`,
+  `create or replace`, mismo cuerpo salvo `and p.kind <> 'progressed'` en el `where`). Un avance es un
+  latido de lectura, no conversación: una misma persona genera decenas sobre la MISMA obra y, como el
+  ranking premia «misma obra» (+2), el raíl se llenaba de avances del mismo ítem. La regla gemela para
+  «Más sobre la obra» (consulta directa a `posts`, no RPC) vive en `getPostContext`
+  (`.neq("kind","progressed")`), que además filtra los drafts en TS por si la base del entorno todavía
+  corre la versión previa de la función. **Estado: aplicada y verificada en DEV** (`pg_get_functiondef`
+  contiene el filtro); **PROD PENDIENTE**.
 
 ### 5.3 Los avisos de seguimiento nacen del post, no del hecho (dev y **PROD**, 2026-08-13)
 

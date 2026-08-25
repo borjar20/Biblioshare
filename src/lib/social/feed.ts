@@ -672,6 +672,13 @@ export async function getPostEvent(
 // otros posts SOBRE LA MISMA OBRA (de otra gente). No lleva interacciones (los
 // mini-cards no las pintan), así que evita el batch de reacciones/comentarios.
 // La RLS de `posts` filtra por audiencia: un tercero solo ve lo que puede ver.
+//
+// Los AVANCES (`kind = 'progressed'`) quedan FUERA de los dos raíles: son un
+// latido de lectura, no una pieza de conversación, y como una misma persona
+// genera decenas sobre la MISMA obra, saturaban el bloque con posts del mismo
+// ítem y el descubrimiento dejaba de descubrir. En «Más de {usuario}» el filtro
+// vive en la RPC (20260879) para que el `limit` cuente candidatos válidos; en
+// «Más sobre la obra», en el `.neq` de la consulta de abajo.
 export type RelatedPost = {
   postId: string;
   kind: PostKind;
@@ -739,6 +746,7 @@ export async function getPostContext(
       .eq("anchor_id", anchorId)
       .neq("author_id", event.actorId)
       .neq("id", event.postId)
+      .neq("kind", "progressed")
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(fetchLimit),
@@ -751,9 +759,14 @@ export async function getPostContext(
     resolvePostDrafts(supabase, (aboutWork.data ?? []) as PostRow[], false),
   ]);
 
+  // Segundo cinturón para los avances: si la base a la que apunta este entorno
+  // aún corre la versión previa de `related_posts_by_author` (el ledger de
+  // migraciones NO prueba qué hay desplegado), el raíl seguiría colándolos.
+  const sinAvances = (drafts: FeedEventDraft[]) => drafts.filter((d) => d.kind !== "progressed");
+
   return {
-    moreByAuthor: byAuthorDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
-    moreAboutWork: aboutWorkDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
+    moreByAuthor: sinAvances(byAuthorDrafts).slice(0, RELATED_LIMIT).map(toRelatedPost),
+    moreAboutWork: sinAvances(aboutWorkDrafts).slice(0, RELATED_LIMIT).map(toRelatedPost),
   };
 }
 

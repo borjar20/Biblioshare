@@ -1678,3 +1678,25 @@ diagnóstico, que es lo que pide AGENTS.md.
   `@media prefers-color-scheme`, que es el defecto de quien no toca el interruptor), y falla si
   reaparece un `text-foreground-faint`. Duplicar los valores a mano en la doc es justo lo que dejó
   pasar el fallo original de `mark-accent`.
+
+## 2026-08-25 (noche, 4) — Los avances no son material de descubrimiento
+
+- **El raíl social de `/post/[id]` deja de proponer AVANCES** (`posts.kind = 'progressed'`), en sus
+  dos bloques: «Más de {usuario}» y «Más sobre la obra».
+- **Por qué.** Un avance es un latido de lectura, no una pieza de conversación: quien lee a ratos
+  genera decenas sobre la MISMA obra. Y el ranking de `related_posts_by_author` premia justamente
+  «misma obra» (+2), así que los avances del propio autor sobre el ítem que ya estás mirando
+  copaban el bloque — un módulo de descubrimiento que solo descubría más de lo mismo.
+- **Dónde vive el filtro, y por qué en dos sitios.** «Más de {usuario}» sale de una RPC, así que va
+  en SQL (`20260879_related_posts_by_author_sin_avances.sql`, `create or replace` con
+  `and p.kind <> 'progressed'`): si se filtrara en TS, el `limit` de la función contaría candidatos
+  que luego se tiran. «Más sobre la obra» es una consulta directa a `posts` y lleva su `.neq`.
+  Además `getPostContext` filtra los drafts en TS como segundo cinturón, porque el ledger de
+  migraciones NO prueba qué función corre el entorno al que apunta la app.
+- **Lo que NO se tocó.** Los avances siguen apareciendo en el feed y en el perfil; esto solo cambia
+  el raíl de recomendación. Tampoco se tocaron los `watched` (episodios), que sí son una unidad de
+  conversación aunque también se repitan sobre un mismo ítem — si algún día molestan, será otra
+  decisión, no un descuido de esta.
+- **Cobertura.** `e2e/post-layout.spec.ts` siembra los dos avances en la posición MÁS favorable
+  (misma obra que el post visto, los más recientes) y exige que no salgan, con un pensamiento de un
+  tercero como control positivo para que el test no pase por tener el raíl vacío.
