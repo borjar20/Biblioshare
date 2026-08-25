@@ -1580,3 +1580,40 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   regresión aquí no se ve en pantalla y el bloque convive con imágenes y Cache Components en el
   mismo fichero. `e2e/cabeceras-seguridad.spec.ts` afirma la propiedad sobre la respuesta real y no
   pide login, así que sigue verde sin cuenta de pruebas.
+
+## 2026-08-25 (noche) — Los tres rojos crónicos de `main` (#731, #744, #805): los tres diagnósticos estaban mal
+
+Los tres llevaban semanas en la suite y **ninguno era lo que decía su issue**. Lo que se lleva de
+aquí, antes que cualquier detalle: **un rojo que sobrevive a varias sesiones deja de leerse como un
+fallo y pasa a leerse como ruido**, y entonces tapa al siguiente. Los tres se cierran corrigiendo el
+diagnóstico, que es lo que pide AGENTS.md.
+
+- **#731 — dos diagnósticos falsos encadenados, y la causa era que la tarjeta no existe.** El
+  primero («el feed filtra los `episode_watches` sin `pass_id`») ya se sabía falso: el feed lee
+  `posts`. El segundo, el del `fixme` («los posts con `created_at` atrasado no llegan al feed»), es
+  un **síntoma con causa sana**: Inicio pide los `pageSize + 1` = 21 posts más recientes de
+  devtest ∪ seguidos y recorta antes de agrupar, así que sembrar con fechas atrasadas 1-3 días
+  compite con la actividad real de `dev` —36 posts más nuevos que 2 días el día de la medición— y
+  pierde. **Al arreglar la siembra (minutos en vez de días) aparecen cuatro tarjetas, no una
+  agrupada: `group-feed-entries.ts` no lo llama nadie desde la migración a `posts`.** El spec
+  afirmaba un producto retirado. Se borra; el agrupado vuelve con #555 y el módulo muerto queda en
+  #814.
+- **Regla para los e2e del feed, que es lo reutilizable:** en la cuenta compartida **no se siembra
+  con fechas atrasadas**. La primera página del feed es un ranking contra la actividad real de
+  `devtest`, o sea contra algo que cambia cada semana; un test que depende de eso no falla por lo
+  que dice que prueba. Fechas de ahora, separadas por minutos.
+- **#744 — el comando de repro ERA el bug.** `pase-hub.spec.ts` entero sale 8/8. «Regla 2» vive en
+  un `describe.serial` y hereda `bookId` de «Regla 1»; correrla con `-g` deja fuera a su
+  predecesora, el test navega a `/libro/?tab=log` y el fallo sale 20 s después como «no encuentro el
+  botón Leyendo» — un síntoma que no nombra la causa, y que costó cuatro corridas y una acusación al
+  producto. **El arreglo es la guarda `requiereLaRegla1()`**, no un cambio de producto: falla en
+  124 ms diciendo exactamente qué pasa. Una dependencia entre tests que solo vive en un comentario
+  del `describe` es una trampa; si es real, que la imponga un assert.
+- **#805 — se borra el spec del splash.** El overlay se retiró en #446 y `src/components/splash` no
+  existe. El test que MÁS razón tenía para irse era el que estaba en verde: afirmaba `toBeHidden()`
+  sobre un elemento inexistente, o sea que pasaba sin probar nada.
+- **F1-017 («migraciones fantasma») se declara CADUCADO, no pendiente.** Comprobadas una a una las
+  88 funciones de `pg_proc` de dev contra `supabase/`: ninguna sin definición en el repo. Los cinco
+  RPC que la fase 5 daba por perdidos se rescataron con el juego de #674; las tres que no están en
+  `migrations/` viven en `schema-baseline.sql`. La comprobación cubre **funciones**, no policies ni
+  grants — se dice el límite para que nadie lea de aquí más de lo que se midió.
