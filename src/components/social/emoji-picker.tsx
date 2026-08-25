@@ -141,7 +141,23 @@ export function EmojiPicker({
               aria-label={entry.n}
               title={atCap && isDisabled?.(entry.e) ? t("emojiPicker.capReached") : entry.n}
               onClick={() => onPick(entry.e)}
-              className="rounded p-1 text-lg leading-none transition-colors hover:bg-surface-muted disabled:opacity-40"
+              // `min-h-11` (44px) es el alto REAL del botón en móvil, no un
+              // área táctil invisible: se descartó `tap-44` a propósito. Esa
+              // utilidad crece un `::after` centrado en la CAJA del control
+              // sin tocar el dibujo, pensada para un icono aislado con margen
+              // alrededor (el disparador «⋯», el cierre de una hoja). Aquí no
+              // hay margen: es una rejilla sin huecos (`gap-0.5`), así que el
+              // `::after` de 44px de una celda invadiría la fila de arriba y
+              // la de abajo — el mismo "le roba clics al vecino" que ya
+              // explica `tap-44` para el ratón, aquí con el dedo. La única
+              // forma de dar 44px reales sin pisar al vecino es que la fila
+              // ocupe 44px de verdad, así que se agranda la CAJA (con
+              // `flex items-center justify-center` para recentrar el emoji
+              // dentro), no un halo invisible encima. `min-[1023px]:min-h-0`
+              // lo revierte en escritorio: ahí el panel es de ratón y el
+              // tamaño compacto actual es la decisión ya tomada, sin motivo
+              // para agrandarlo.
+              className="flex min-h-11 items-center justify-center rounded p-1 text-lg leading-none transition-colors hover:bg-surface-muted disabled:opacity-40 min-[1023px]:min-h-0"
             >
               <span aria-hidden="true">{entry.e}</span>
             </button>
