@@ -18,10 +18,24 @@ import { isEmojiSupported } from "@/lib/social/emoji-support";
 // para 1.900 botones es complejidad que este caso no paga.
 //
 // Ancho y columnas: `min-[1023px]:` es el corte de escritorio de este repo
-// (ver post-aside.tsx), no `sm:`/`lg:`. En móvil, 19rem/8 columnas ya
-// funcionaba bien; en escritorio hay sitio de sobra y un panel de ese ancho
-// se queda pequeño sin motivo, así que crece a 28rem/12 columnas y algo más
-// de alto visible (20rem en vez de 14rem).
+// (ver post-aside.tsx), no `sm:`/`lg:`. En ESCRITORIO el panel sigue siendo
+// un popover de ancho fijo anclado al botón (28rem/12 columnas, más alto:
+// 20rem en vez de 14rem — hay sitio de sobra y quedarse en el ancho de móvil
+// sería pequeño sin motivo). En MÓVIL ya no hay un ancho propio (`w-full`):
+// el selector es una hoja inferior a ancho de pantalla (reaction-bar.tsx),
+// así que un `19rem` fijo aquí dejaba una banda en blanco a la derecha en
+// cuanto la hoja era más ancha que eso — el `w-[19rem]` original asumía que
+// el contenedor SIEMPRE medía justo eso, y dejó de ser cierto en cuanto el
+// selector pasó a colgar de la hoja en vez del botón.
+//
+// Columnas en móvil: en vez de un `grid-cols-8` fijo (pensado para los 19rem
+// de antes), `repeat(auto-fill,minmax(2.75rem,1fr))` deja que el propio grid
+// calcule cuántas caben — 2.75rem (44px) es el mismo suelo de tamaño táctil
+// que usa `tap-44` en el resto del repo. Así, cuanto más ancha la hoja, MÁS
+// columnas entran (a ~44px cada una), en vez de estirar siempre las mismas 8
+// hasta celdas gigantes en un móvil grande. En escritorio el panel es de
+// ancho fijo, así que ahí sigue teniendo sentido un número fijo de columnas
+// (12) en vez de `auto-fill`.
 export function EmojiPicker({
   onPick,
   onBack,
@@ -57,7 +71,7 @@ export function EmojiPicker({
   }, [query, group]);
 
   return (
-    <div className="flex w-[19rem] max-w-[calc(100vw-2rem)] flex-col gap-2 min-[1023px]:w-[28rem]">
+    <div className="flex w-full flex-col gap-2 min-[1023px]:w-[28rem]">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -79,10 +93,10 @@ export function EmojiPicker({
       </div>
 
       {!query.trim() && (
-        // Sigue necesitando desplazarse en móvil (9 categorías no caben en
-        // 19rem), pero la barra no debe verse — mismo patrón que
-        // post-aside.tsx. En escritorio (28rem) puede que ya quepan todas sin
-        // scroll, pero el fix es el mismo en ambos casos.
+        // Sigue necesitando desplazarse en móviles estrechos (9 categorías no
+        // caben en unos 300-350px), pero la barra no debe verse — mismo
+        // patrón que post-aside.tsx. En escritorio (28rem) puede que ya
+        // quepan todas sin scroll, pero el fix es el mismo en ambos casos.
         <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {EMOJI_GROUPS.map((g) => (
             <button
@@ -118,7 +132,7 @@ export function EmojiPicker({
         // poco y aparece una barra que nadie pidió — en Windows, donde las
         // barras siempre ocupan sitio, eso se suma a la vertical y a la de la
         // tira de categorías: tres barras a la vez.
-        <div className="grid max-h-56 grid-cols-8 gap-0.5 overflow-x-hidden overflow-y-auto min-[1023px]:max-h-80 min-[1023px]:grid-cols-12">
+        <div className="grid max-h-56 grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-0.5 overflow-x-hidden overflow-y-auto min-[1023px]:max-h-80 min-[1023px]:grid-cols-12">
           {results.map((entry) => (
             <button
               key={entry.e}

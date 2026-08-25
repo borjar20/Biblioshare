@@ -16,13 +16,17 @@ import { QUICK_REACTIONS, QUICK_REACTION_NAMES } from "@/lib/social/reaction-con
 // cae entonces a <body>, que queda FUERA del div que lleva el onKeyDown de
 // Escape, así que con el chunk frío un usuario de teclado se queda varado sin
 // poder cerrar. El placeholder mantiene el tamaño aproximado del picker
-// (19rem/14rem en móvil, 28rem/20rem desde min-[1023px]: el mismo corte de
+// (14rem de alto en móvil, 20rem desde min-[1023px]: el mismo corte de
 // escritorio que usa emoji-picker.tsx) para que el popover no salte de
-// tamaño al resolver.
+// tamaño al resolver. El ANCHO ya no se fija aquí (`w-full`, ver
+// emoji-picker.tsx): en móvil lo manda la hoja inferior de este mismo
+// componente (`inset-x-3`, más abajo), y un `w-[19rem]` fijo en el
+// placeholder dejaba una banda en blanco a la derecha en cuanto la hoja era
+// más ancha que eso.
 const EmojiPicker = dynamic(() => import("./emoji-picker").then((m) => m.EmojiPicker), {
   ssr: false,
   loading: () => (
-    <div className="flex h-56 w-[19rem] max-w-[calc(100vw-2rem)] items-center justify-center text-xs text-muted-foreground min-[1023px]:h-80 min-[1023px]:w-[28rem]">
+    <div className="flex h-56 w-full items-center justify-center text-xs text-muted-foreground min-[1023px]:h-80 min-[1023px]:w-[28rem]">
       …
     </div>
   ),
