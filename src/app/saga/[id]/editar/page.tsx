@@ -79,7 +79,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
           </Link>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-2xl font-semibold tracking-tight">{t("editTitle")}</h1>
-            <span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.09em] text-foreground-faint">
+            <span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.09em] text-muted-foreground">
               {saga.name}
             </span>
           </div>

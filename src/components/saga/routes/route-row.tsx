@@ -92,7 +92,7 @@ export function RouteRow({
             )}
           </div>
           {row.summary && <p className="mt-1 text-[12px] leading-snug text-muted-foreground">{row.summary}</p>}
-          <p className="mt-1.5 flex flex-wrap gap-2.5 font-mono text-[9px] uppercase tracking-[0.08em] text-foreground-faint">
+          <p className="mt-1.5 flex flex-wrap gap-2.5 font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
             <span>{t("routeStepsCount", { count: row.steps })}</span>
             <span>{t("routeNotesCount", { count: row.notes })}</span>
           </p>
@@ -103,7 +103,7 @@ export function RouteRow({
           onClick={onMenu}
           disabled={busy}
           aria-label={t("routeMenuLabel", { name: row.name })}
-          className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-lg text-[16px] text-foreground-faint hover:bg-surface-muted disabled:opacity-40"
+          className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-lg text-[16px] text-muted-foreground hover:bg-surface-muted disabled:opacity-40"
         >
           ⋯
         </button>

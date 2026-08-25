@@ -21,9 +21,24 @@
      --foreground, pero sin llegar a --muted-foreground, que es para etiquetas.
      En las maquetas va suelto — es el `.tx`/`.syn`/`.review .tx` del handoff. */
   --foreground-soft: #584f43;
-  --muted-foreground: #877e70;
+  /* Era #877e70 (3,41:1 sobre --background), por debajo del 4,5:1 que exige
+     WCAG AA para el TEXTO que colorea — y lo colorea en 836 sitios: hints,
+     subtítulos, fechas, metadatos. Era el hallazgo de a11y más grande por
+     volumen de toda la auditoría 2026-08 (F4-022, issue #815): axe lo sacaba
+     como `color-contrast` *serious* en las 17 rutas.
+     Este valor da 5,11:1 sobre --background, 5,90 sobre --surface, 4,71 sobre
+     --surface-muted y 4,21 sobre --surface-3 (ahí solo lo lleva un icono, que
+     pide 3:1 por 1.4.11, no 4,5). En OSCURO no se toca: #a99e8c ya daba de
+     4,61 a 6,53 y pasa. Los números viven en `contraste-tokens.test.ts`. */
+  --muted-foreground: #6b6255;
   /* Un peldaño MÁS claro que --muted-foreground: etiquetas que solo deben
-     estar (pestañas inactivas, chevrones). Es el `--faint` del handoff. */
+     estar (pestañas inactivas, chevrones). Es el `--faint` del handoff.
+     NO PARA TEXTO — 2,25:1 sobre --background. Y no se puede arreglar subiendo
+     el valor: cualquier color que llegue a 4,5:1 sobre papel cae en L* 42, que
+     es donde ya está --muted-foreground (L* 42,0 contra 42,6) — o sea que
+     "arreglarlo" es fundirlo con muted y perder el peldaño. Por eso el arreglo
+     de #815 fue sacarlo del texto, no retocarlo: lo que queda son objetos
+     decorativos y glifos `aria-hidden`. Ver `decisiones.md` (2026-08-25). */
   --foreground-faint: #a89e8d;
   --border: rgba(44, 20, 32, 0.14);
   --scrim: rgba(44, 38, 32, 0.45);

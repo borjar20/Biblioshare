@@ -68,7 +68,7 @@ export function CollectionCard({
               <Link href={itemHref(item.itemType, item.itemId)} className="font-serif text-[13.5px] leading-tight font-semibold hover:underline">
                 {item.itemTitle}
               </Link>
-              {item.itemSubtitle && <span className="text-[11px] text-foreground-faint">{item.itemSubtitle}</span>}
+              {item.itemSubtitle && <span className="text-[11px] text-muted-foreground">{item.itemSubtitle}</span>}
               {showInteractions && item.interactionTarget?.interactionTargetId && (
                 <ReviewInteractions
                   interactionTargetId={item.interactionTarget.interactionTargetId}

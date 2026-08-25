@@ -43,7 +43,7 @@ export function SequenceRow({
     >
       <span
         className={`w-6 shrink-0 text-center font-mono text-[15px] font-medium ${
-          slotNumber === null ? "text-[13px] text-foreground-faint" : "text-accent"
+          slotNumber === null ? "text-[13px] text-muted-foreground" : "text-accent"
         }`}
       >
         {slotNumber ?? "·"}
@@ -61,7 +61,7 @@ export function SequenceRow({
         <p className="truncate font-serif text-[13.5px] font-semibold leading-tight">{entry.title}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {isBlock ? (
-            <span className="font-mono text-[9px] uppercase tracking-wide text-foreground-faint">
+            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
               {t("blockMeta", { count: entry.count ?? 0 })}
             </span>
           ) : (
@@ -124,7 +124,7 @@ export function SequenceRow({
         type="button"
         onClick={onMenu}
         aria-label={t("rowMenuFor", { title: entry.title })}
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground-faint hover:bg-surface-muted"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-surface-muted"
       >
         ⋯
       </button>

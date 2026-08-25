@@ -108,7 +108,7 @@ export function ProgressTimelineCard({
                     />
                   </div>
                 ) : null}
-                <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-foreground-faint" />
+                <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-muted-foreground" />
               </div>
             </div>
           );

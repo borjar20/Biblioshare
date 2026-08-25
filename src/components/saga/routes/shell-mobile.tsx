@@ -52,7 +52,7 @@ export function ShellMobile({
         </Link>
         <div className="min-w-0 flex-1">
           <b className="block truncate font-serif text-[15px] font-semibold">{sagaName}</b>
-          <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.09em] text-foreground-faint">
+          <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-[0.09em] text-muted-foreground">
             {t("routesCrumb")}
           </span>
         </div>

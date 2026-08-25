@@ -28,7 +28,7 @@ export async function SequenceItineraries({ sagaId, routes }: { sagaId: string; 
             <li key={r.slug} className="border-t border-border first:border-t-0">
               <Link href={`/saga/${sagaId}/rutas/${r.slug}/editar`} className="flex items-center gap-2.5 py-2 text-[12.5px]">
                 <b className="min-w-0 flex-1 truncate font-semibold">{r.name}</b>
-                <span aria-hidden className="text-foreground-faint">›</span>
+                <span aria-hidden className="text-muted-foreground">›</span>
               </Link>
             </li>
           ))}

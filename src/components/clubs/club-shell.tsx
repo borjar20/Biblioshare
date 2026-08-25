@@ -174,9 +174,9 @@ export async function ClubSidebar({
                   {item.pip}
                 </span>
               ) : item.meta ? (
-                <span className="font-mono text-[11px] text-foreground-faint">{item.meta}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{item.meta}</span>
               ) : item.mark ? (
-                <span aria-hidden className="text-[11px] text-foreground-faint">◈</span>
+                <span aria-hidden className="text-[11px] text-muted-foreground">◈</span>
               ) : null}
             </Link>
           );

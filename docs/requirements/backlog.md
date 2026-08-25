@@ -207,6 +207,12 @@ en las 17 rutas) y **#816** (`<main>` + skip-link, ausentes en 15 de 17), que so
 F4-022/023 y hasta hoy no tenían issue; y regenerar `graph.json` y
 `database.types.ts` (#695, #701, #625).
 
+- [x] **#815 — contraste de los dos tokens (F4-022).** Cerrado el 2026-08-25.
+  `--muted-foreground` pasa a `#6b6255` en claro (5,11:1 sobre `--background`); en oscuro no se
+  toca, medido y ya pasaba. `--foreground-faint` **no se retoca: se saca del texto** — subirlo a
+  AA lo funde con muted (L\* 42,0 contra 42,6), así que los 59 `text-foreground-faint` pasan a
+  `text-muted-foreground` y solo quedan 3 dots `aria-hidden`. Bloqueado por
+  `contraste-tokens.test.ts` en los tres bloques de tema. Ver `decisiones.md` (2026-08-25, noche).
 - [x] **#816 — landmark `<main>` y skip-link (F4-023).** Cerrado el 2026-08-25.
   El landmark subió a `AppShell`, así que lo tienen las 17 rutas de una vez y no
   hay forma de olvidarlo al crear la siguiente; los cuatro `<main>` de página
