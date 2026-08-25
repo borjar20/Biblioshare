@@ -290,6 +290,7 @@ describe("notifyMentions", () => {
       actorId: "author",
       type: "mentioned",
       interactionTargetId: "target-1",
+      context: { excerpt: "hola @ana" },
     });
   });
 

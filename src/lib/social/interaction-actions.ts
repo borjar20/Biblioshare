@@ -6,6 +6,7 @@ import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
 import { notifyMentions } from "./notify-mentions";
 import { isAllowedEmoji } from "./emoji-catalog";
+import { commentContext } from "./notification-context";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -94,6 +95,9 @@ export async function toggleReaction(
           // Idempotencia (spec item 9): un like → unlike → like no debe avisar
           // dos veces. Misma persona + mismo target = una notificación.
           dedupeKey: `reaction:${interactionTargetId}:${user.id}`,
+          // El emoji es justo lo que la copia genérica se comía: "le gustó"
+          // aunque hubieras reaccionado con 😱.
+          context: { emoji },
         });
       } catch (notificationError) {
         console.error(notificationError);
@@ -160,6 +164,9 @@ export async function addComment(
           authorId: user.id,
           text: trimmed,
           interactionTargetId: commentTarget.id,
+          // undefined cuando no viene marcado -- notifyMentions ya lo trata
+          // como "no es spoiler" (commentContext exige un booleano estricto).
+          isSpoiler: opts?.isSpoiler,
         });
       }
     } catch (mentionError) {
@@ -173,6 +180,7 @@ export async function addComment(
           actorId: user.id,
           type: target.comment_notification_type,
           interactionTargetId,
+          context: commentContext(trimmed, opts?.isSpoiler ?? false),
         });
       } catch (notificationError) {
         console.error(notificationError);
@@ -204,6 +212,7 @@ export async function addComment(
             // genérica. Fallback al post si el target no se resolvió.
             interactionTargetId: commentTargetId ?? interactionTargetId,
             dedupeKey: `reply:${inserted.id}`,
+            context: commentContext(trimmed, opts?.isSpoiler ?? false),
           });
         }
       } catch (replyNotificationError) {

@@ -23,7 +23,15 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export async function notifyFollowersOfPost(
   supabase: SupabaseServerClient,
   authorId: string,
-  post: { postId: string; kind: PostKind; interactionTargetId: string },
+  post: {
+    postId: string;
+    kind: PostKind;
+    interactionTargetId: string;
+    // Título de la obra, cuando createPost ya lo resolvió (una única consulta
+    // autorizada por el spec, ver post-actions.ts). Sin él, la copia genérica
+    // se queda como estaba.
+    subject?: string;
+  },
 ): Promise<void> {
   try {
     const category: NotifyCategory = CATEGORY_FOR_POST_KIND[post.kind];
@@ -54,6 +62,7 @@ export async function notifyFollowersOfPost(
       // lo controla quien publica: para eso pulsó «Compartir». notifyMany añade
       // `:${userId}`.
       dedupeKey: `person:${type}:${post.postId}`,
+      context: post.subject ? { subject: post.subject } : undefined,
     });
   } catch (err) {
     console.error("notifyFollowersOfPost failed", err);

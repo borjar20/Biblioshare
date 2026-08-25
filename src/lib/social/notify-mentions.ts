@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { filterUnblockedUserIds } from "./block-state";
 import { extractMentions } from "./mentions";
 import { notifyMany } from "./notifications";
+import { commentContext } from "./notification-context";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -98,7 +99,16 @@ export async function resolveDeliverableMentions(
 // Best-effort: las menciones nunca revierten la escritura que las originó.
 export async function notifyMentions(
   supabase: SupabaseServerClient,
-  params: { authorId: string; text: string; interactionTargetId: string; usernames?: string[] },
+  params: {
+    authorId: string;
+    text: string;
+    interactionTargetId: string;
+    usernames?: string[];
+    // notifyMentions llega desde comentarios (que sí lo saben) y desde posts
+    // de pensamiento (que también). Sin marca, se asume que no es spoiler --
+    // igual que commentContext.
+    isSpoiler?: boolean;
+  },
 ): Promise<string[]> {
   try {
     const deliverables = await resolveDeliverableMentions(supabase, params);
@@ -108,6 +118,7 @@ export async function notifyMentions(
       actorId: params.authorId,
       type: "mentioned",
       interactionTargetId: params.interactionTargetId,
+      context: commentContext(params.text, params.isSpoiler ?? false),
     });
   } catch (error) {
     console.error("notifyMentions failed", error);
