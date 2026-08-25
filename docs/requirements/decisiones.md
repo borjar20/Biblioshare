@@ -1617,3 +1617,32 @@ diagnóstico, que es lo que pide AGENTS.md.
   RPC que la fase 5 daba por perdidos se rescataron con el juego de #674; las tres que no están en
   `migrations/` viven en `schema-baseline.sql`. La comprobación cubre **funciones**, no policies ni
   grants — se dice el límite para que nadie lea de aquí más de lo que se midió.
+
+## 2026-08-25 (noche, 2) — El landmark `<main>` vive en el armazón, no en cada página (#816)
+
+- **Un `<main>` en `AppShell`, y ninguno en las páginas.** El hallazgo F4-023 era «faltan 15 de 17
+  `<main>`», y la lectura fácil es «pon el que falta en cada página». Se hace al revés: el landmark
+  sube al armazón —que ya envuelve `{children}` en un `<div>`— y los **cuatro** `<main>` de página
+  (estadísticas ×2, género, notas) bajan a `<div>`. Las razones son dos y la segunda es la que
+  manda: (1) arregla las 17 rutas de una vez, y (2) **la siguiente ruta que se cree lo tiene sin que
+  nadie se acuerde.** Un requisito de a11y que hay que repetir en cada página nuevo es un requisito
+  que se pierde — la prueba es que se perdió 15 veces.
+- **O uno o el otro, nunca los dos.** Dos `<main>` anidados son otra violación de axe
+  (`landmark-one-main`), así que el cambio no se puede partir en dos PR: subir el landmark y quitar
+  los cuatro de página es un solo movimiento.
+- **El skip-link no lleva dependencia nueva, y el test tampoco.** El anillo de foco ya lo pone la
+  regla global `:focus-visible` de `globals.css`, así que el enlace solo declara `sr-only
+  focus:not-sr-only`. Y la verificación **no añade axe al repo**: las dos reglas que importan se
+  escriben como aserciones normales —«exactamente un `<main>` con `id="contenido"`» cubre a la vez
+  el caso de cero landmarks y el de dos anidados, y el orden de tabulación se comprueba con un `Tab`
+  desde la carga—. Meter una dependencia de auditoría para tres asserts habría sido pagar mucho por
+  poco.
+- **`getTranslations` en el armazón NO saca las rutas del prerender.** Era el riesgo real del
+  cambio: `AppShell` está escrito a propósito para no esperar a nada (#435), y el skip-link necesita
+  su cadena traducida. Medido contra el build de producción antes y después —`prerender-manifest`,
+  **50 rutas prerenderizadas las dos veces, ninguna perdida**—; la configuración de next-intl de
+  este repo no toca `cookies()` ni `headers()`, y por eso sale gratis. Si algún día el locale pasa a
+  depender de la petición, esto deja de ser cierto y el skip-link tendría que ser cliente.
+- **Lo que queda fuera, dicho a propósito:** `_global-error` se sirve sin `<main>` porque no pasa
+  por el layout raíz (es el default de Next, el repo no tiene `global-error.tsx`). No es ninguna de
+  las 17 rutas de la auditoría y no se toca.

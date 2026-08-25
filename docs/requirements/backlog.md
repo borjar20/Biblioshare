@@ -207,6 +207,14 @@ en las 17 rutas) y **#816** (`<main>` + skip-link, ausentes en 15 de 17), que so
 F4-022/023 y hasta hoy no tenían issue; y regenerar `graph.json` y
 `database.types.ts` (#695, #701, #625).
 
+- [x] **#816 — landmark `<main>` y skip-link (F4-023).** Cerrado el 2026-08-25.
+  El landmark subió a `AppShell`, así que lo tienen las 17 rutas de una vez y no
+  hay forma de olvidarlo al crear la siguiente; los cuatro `<main>` de página
+  (estadísticas ×2, género, notas) pasaron a `<div>` para no dejar dos anidados.
+  El skip-link es el primer enfocable de cualquier ruta. Verificado sobre el
+  build de producción —las 50 rutas prerenderizadas siguen siéndolo— y cubierto
+  por `e2e/a11y-landmark-main.spec.ts`. Ver `decisiones.md` (2026-08-25, noche).
+
 **Las «migraciones fantasma» de F1-017 ya NO son trabajo pendiente: el hallazgo
 está caducado.** Comprobado el 2026-08-25 función a función —las 88 de
 `pg_proc` en el esquema `public` de dev contra `supabase/`— y **ninguna se ha
