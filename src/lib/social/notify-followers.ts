@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { notifyMany } from "./notifications";
 import { CATEGORY_FOR_POST_KIND, POST_KIND_NOTIFICATION_TYPE, type NotifyCategory } from "./notify-categories";
+import { buildSubject } from "./notification-context";
 import type { PostKind } from "./post-kinds";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -62,7 +63,12 @@ export async function notifyFollowersOfPost(
       // lo controla quien publica: para eso pulsó «Compartir». notifyMany añade
       // `:${userId}`.
       dedupeKey: `person:${type}:${post.postId}`,
-      context: post.subject ? { subject: post.subject } : undefined,
+      // Recortado aquí, no en cada llamante (post-actions.ts es hoy el único,
+      // pero este es el punto por el que `subject` entra SIEMPRE en el
+      // contexto guardado): igual que `commentContext` acota el excerpt antes
+      // de guardarlo, este es el sitio que protege a cualquier futuro
+      // llamante sin que tenga que acordarse de recortar el título él mismo.
+      context: post.subject ? { subject: buildSubject(post.subject) } : undefined,
     });
   } catch (err) {
     console.error("notifyFollowersOfPost failed", err);

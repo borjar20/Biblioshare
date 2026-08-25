@@ -26,26 +26,47 @@ export type NotificationContext = {
 export const EXCERPT_MAX_CHARS = 140;
 
 /**
- * Recorta el cuerpo de un comentario para la notificación.
- *
- * Recorta por GRAFEMAS y no por unidades de código: un emoji ocupa varias, y
- * un `slice()` a pelo lo parte por la mitad y deja medio carácter en pantalla.
- * Y remata en el último espacio para no cortar una palabra.
+ * Un `subject` es un fragmento (el título de la obra), no la frase entera que
+ * ya acota `EXCERPT_MAX_CHARS` -- por eso lleva su propio tope, bastante más
+ * corto. Sin este límite, un `books.title` largo (ya existe uno de 166
+ * caracteres en dev, y `sagas.name` lo escriben usuarios sin tope) se pinta
+ * entero en la campana y en el CUERPO DEL PUSH.
  */
-export function buildExcerpt(body: string): string {
-  const limpio = body.replace(/\s+/gu, " ").trim();
+export const SUBJECT_MAX_CHARS = 60;
+
+/**
+ * Recorta un texto por GRAFEMAS y no por unidades de código: un emoji ocupa
+ * varias, y un `slice()` a pelo lo parte por la mitad y deja medio carácter en
+ * pantalla. Remata en el último espacio para no cortar una palabra.
+ */
+function truncarPorGrafemas(texto: string, maxGrafemas: number): string {
+  const limpio = texto.replace(/\s+/gu, " ").trim();
   if (!limpio) return "";
 
   const grafemas = [...new Intl.Segmenter("es", { granularity: "grapheme" }).segment(limpio)];
-  if (grafemas.length <= EXCERPT_MAX_CHARS) return limpio;
+  if (grafemas.length <= maxGrafemas) return limpio;
 
   const cortado = grafemas
-    .slice(0, EXCERPT_MAX_CHARS)
+    .slice(0, maxGrafemas)
     .map((g) => g.segment)
     .join("");
   const ultimoEspacio = cortado.lastIndexOf(" ");
   const base = ultimoEspacio > 0 ? cortado.slice(0, ultimoEspacio) : cortado;
   return `${base.trimEnd()}…`;
+}
+
+/** Recorta el cuerpo de un comentario para la notificación. */
+export function buildExcerpt(body: string): string {
+  return truncarPorGrafemas(body, EXCERPT_MAX_CHARS);
+}
+
+/**
+ * Recorta el título/nombre de una obra para el campo `subject` del contexto.
+ * Mismo criterio de corte que `buildExcerpt` (grafemas, sin partir palabras),
+ * pero con el tope corto de un fragmento, no de una frase.
+ */
+export function buildSubject(title: string): string {
+  return truncarPorGrafemas(title, SUBJECT_MAX_CHARS);
 }
 
 /**

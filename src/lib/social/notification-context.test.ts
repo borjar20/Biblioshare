@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildExcerpt,
+  buildSubject,
   commentContext,
   EXCERPT_MAX_CHARS,
+  SUBJECT_MAX_CHARS,
 } from "./notification-context";
 
 describe("buildExcerpt", () => {
@@ -44,6 +46,38 @@ describe("buildExcerpt", () => {
   it("de un cuerpo vacío o solo espacios saca cadena vacía", () => {
     expect(buildExcerpt("")).toBe("");
     expect(buildExcerpt("   \n  ")).toBe("");
+  });
+});
+
+describe("buildSubject", () => {
+  it("deja intacto un título corto", () => {
+    expect(buildSubject("Dune")).toBe("Dune");
+  });
+
+  it("tiene un tope más corto que el del excerpt", () => {
+    expect(SUBJECT_MAX_CHARS).toBeLessThan(EXCERPT_MAX_CHARS);
+  });
+
+  // El caso real de dev: un books.title de 166 caracteres. No hipotético (ver
+  // issue de la revisión final) -- el título de una obra se pinta entero en
+  // la campana y en el cuerpo del push si no se acota al escribir.
+  it("recorta un título largo sin partir palabras, por grafemas", () => {
+    const largo = "palabra ".repeat(30).trim(); // 30 * 8 - 1 = 239 caracteres
+    const corto = buildSubject(largo);
+    expect(corto.length).toBeLessThanOrEqual(SUBJECT_MAX_CHARS + 1);
+    expect(corto.endsWith("…")).toBe(true);
+    expect(corto.slice(0, -1).trim().endsWith("palabra")).toBe(true);
+  });
+
+  it("no parte un emoji al recortar", () => {
+    const conEmoji = `${"a".repeat(SUBJECT_MAX_CHARS - 1)}👨‍👩‍👧 final`;
+    const corto = buildSubject(conEmoji);
+    expect(corto).toContain("👨‍👩‍👧");
+  });
+
+  it("de un título vacío o solo espacios saca cadena vacía", () => {
+    expect(buildSubject("")).toBe("");
+    expect(buildSubject("   \n  ")).toBe("");
   });
 });
 
