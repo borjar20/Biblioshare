@@ -1396,3 +1396,27 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   `fase-c-estadisticas-nuevas` ya introduce el runner de `.test.tsx`; duplicarlo aquí
   costaba un conflicto de `package.json` y lockfile. La lógica se extrajo a
   `reaction-display.ts` (puro, testeado) y el DOM lo cubre Playwright.
+
+## 2026-08-25 — Notificaciones con contexto
+
+- **La notificación guarda una foto de lo ocurrido, en vez de resolverlo al leer.** Resolver al
+  leer daría siempre el dato fresco, pero los objetos son polimórficos (reseña, post, comentario,
+  actividad, ronda…) y la campana se pinta en cada carga: serían varias consultas por tanda. Se
+  guarda al escribir, como ya se hacía con el `href`. El precio, aceptado: si luego editan el
+  comentario, la notificación conserva lo de entonces — que para un aviso histórico es lo
+  correcto.
+- **Una columna `jsonb` y no tres columnas sueltas.** Los campos son opcionales y distintos según
+  el tipo, y así solo hay **un `grant` que revisar** en una tabla con permisos por columna. La
+  forma la valida TypeScript en el único sitio que la escribe.
+- **El extracto de un spoiler no se guarda siquiera.** Taparlo en la interfaz habría dejado el
+  texto en la base de datos, y de ahí al push —donde no hay «pulsa para revelar»— y a cualquier
+  lector futuro. Lo que no se guarda no se filtra.
+- **Reacciones y comentarios no nombran la obra.** `interaction_targets` no guarda ningún título,
+  así que hacerlo exigiría una consulta polimórfica por notificación. Se prefiere la copia algo
+  menos rica a pagar eso en cada aviso. Queda como issue #797.
+- **Regenerar `database.types.ts` no estaba en el plan y hacía falta igualmente.** Añadir
+  `notifications.context` sin regenerar los tipos deja los `select`/`insert` que la referencian
+  sin tipar en el sitio donde `tsc` los comprueba: compila igual (el cliente de Supabase cae a
+  `any` para columnas que no reconoce) pero pierde la única red que detectaría un nombre de
+  columna mal escrito antes de producción. El guion de cualquier tarea que añada una columna
+  debe incluir este paso; queda también como issue de proceso, #798.

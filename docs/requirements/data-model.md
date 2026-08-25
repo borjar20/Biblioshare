@@ -697,6 +697,34 @@ apuntan ya solo a `interaction_targets` — ver más abajo**), `notifications`, 
 >   patrón que las demás columnas de `notifications`. Ver `decisiones.md` (2026-08-05) y
 >   `docs/push-notifications-android.md`.
 
+> **Delta del 2026-08-25 (notificaciones con contexto): aplicado y verificado SOLO EN DEV —
+> prod espera autorización humana explícita.** Migración `20260877_notifications_context.sql`.
+> - **`notifications.context`** (COLUMNA NUEVA, `jsonb`, nullable) — **foto de lo ocurrido** al
+>   notificar, para que la copia diga qué pasó y no solo de qué tipo es:
+>   `{ emoji, subject, excerpt, spoiler }`, todos opcionales. Lo escribe `notify()` desde lo que
+>   cada punto de llamada ya tiene a mano; nadie añade una consulta para rellenarlo
+>   (`src/lib/social/notification-context.ts`).
+>   - **El extracto de un comentario spoiler NO se guarda**: se marca `spoiler: true` y el
+>     texto no llega a la base de datos, así que no puede escaparse luego por el push ni por un
+>     lector nuevo.
+>   - **Sin backfill**: las filas anteriores a 2026-08-25 lo tienen a `null` y caen a la copia
+>     genérica.
+>   - **No se actualiza** si editan el comentario o corrigen el título: es un aviso histórico.
+>   - ⚠️ Esta tabla tiene **grants por columna**. Al añadir cualquier columna hay que conceder
+>     `select`/`update` a `anon` y `authenticated`, e `insert`/`select`/`update`/`references` a
+>     `postgres` y `service_role`. Sin eso se rompe la escritura ENTERA de la tabla — ninguna
+>     notificación se emite (issue #375). **Verificado con la superficie 6 de DRIFT-CHECK contra
+>     dev el 2026-08-25**: `notifications` sale con `11 | 0 | 11` (antes `9 | 0 | 9`) — las 2
+>     columnas nuevas de este delta y del anterior (`dedupe_key`) suben `cols` y `con_update` a
+>     la par, sin abrir hueco.
+> - **`interaction_targets` no guarda ningún título**: por eso las notificaciones de reacción y
+>   comentario dicen «tu reseña» y no «tu reseña de *Dune*» — `subject` solo lo rellena
+>   `createPost` (avisos `followed_*`), que sí tiene el título a mano. Queda como issue #797.
+> - **Al añadir la columna hubo que regenerar `src/lib/supabase/database.types.ts`**: sin ese
+>   paso, `tsc` no compila los `select`/`insert` que referencian `context`. No estaba en el plan
+>   original — issue de proceso #798, para que el guion de toda tarea que añade una columna lo
+>   incluya.
+
 **Ampliado con `pass` y `progress_session`** (migraciones `20260812_feed_targets_enum.sql` y
 `20260813_feed_targets_can_view.sql`, aplicadas y verificadas en dev y en prod el 2026-07-29):
 el feed de Inicio agrupa los eventos `added`/`progressed` solo para PINTARLOS (por actor y por
