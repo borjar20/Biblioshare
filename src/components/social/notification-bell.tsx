@@ -105,68 +105,78 @@ export function NotificationBell({
             </div>
           ) : (
             <ul className="flex max-h-96 flex-col overflow-y-auto">
-              {notifications.map((n) => (
-                <li key={n.id}>
-                  <Link
-                    href={n.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-surface-muted"
-                  >
-                    {/* Un aviso del sistema (recordatorio de evento) no tiene
-                        actor: en su hueco va un glifo de campana, no un avatar de
-                        nadie. `name` cae a la marca para que la copy con {name}
-                        siga teniendo algo, aunque las claves de los avisos del
-                        sistema no lo usan. */}
-                    {n.actorId ? (
-                      <UserAvatar
-                        name={n.actorDisplayName || n.actorUsername || ""}
-                        avatarUrl={n.actorAvatarUrl}
-                        size={32}
-                      />
-                    ) : (
-                      <span
-                        aria-hidden
-                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface-muted text-accent"
-                      >
-                        <BellIcon className="h-4 w-4" />
-                      </span>
-                    )}
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="text-sm text-foreground">
-                        {(() => {
-                          // La MISMA función que usa el push. Con el comprobador
-                          // de emoji: aquí sí hay canvas, y un emoji que este
-                          // sistema no sabe pintar saldría como cuadradito
-                          // (issue #793), así que se cae a la copia sin emoji.
-                          const copy = notificationCopy({
-                            type: n.type,
-                            context: n.context,
-                            name: n.actorDisplayName || n.actorUsername || tCommon("appName"),
-                            extraActorsCount: n.extraActorsCount,
-                            canRenderEmoji: isEmojiSupported,
-                          });
-                          return t(copy.key, copy.values);
-                        })()}
-                      </span>
-                      <TimeAgo
-                        iso={n.createdAt}
-                        className="font-mono text-[10px] text-muted-foreground"
-                      />
-                    </div>
+              {notifications.map((n) => {
+                // La MISMA función que usa el push. Con el comprobador de
+                // emoji: aquí sí hay canvas, y un emoji que este sistema no
+                // sabe pintar saldría como cuadradito (issue #793), así que se
+                // cae a la copia sin emoji.
+                const copy = notificationCopy({
+                  type: n.type,
+                  context: n.context,
+                  name: n.actorDisplayName || n.actorUsername || tCommon("appName"),
+                  extraActorsCount: n.extraActorsCount,
+                  canRenderEmoji: isEmojiSupported,
+                });
+                const texto = t(copy.key, copy.values);
 
-                    {/* Punto de no leída. Se calcula sobre la lista que se trajo
-                        al ABRIR, antes de marcar nada: abrir la campana marca
-                        todo como leído, pero las que llegaron sin leer siguen
-                        señaladas mientras el desplegable está abierto. */}
-                    {!n.readAt && (
-                      <span
-                        aria-hidden
-                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
-                      />
-                    )}
-                  </Link>
-                </li>
-              ))}
+                return (
+                  <li key={n.id}>
+                    <Link
+                      href={n.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-surface-muted"
+                    >
+                      {/* Un aviso del sistema (recordatorio de evento) no tiene
+                          actor: en su hueco va un glifo de campana, no un avatar de
+                          nadie. `name` cae a la marca para que la copy con {name}
+                          siga teniendo algo, aunque las claves de los avisos del
+                          sistema no lo usan. */}
+                      {n.actorId ? (
+                        <UserAvatar
+                          name={n.actorDisplayName || n.actorUsername || ""}
+                          avatarUrl={n.actorAvatarUrl}
+                          size={32}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface-muted text-accent"
+                        >
+                          <BellIcon className="h-4 w-4" />
+                        </span>
+                      )}
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        {/* `break-words` + `line-clamp-2`: el texto ya no es
+                            una frase fija y corta, puede traer un extracto de
+                            hasta 140 grafemas escritos por otra persona
+                            (`buildExcerpt`, que no parte tokens). Una URL
+                            pegada sin puntos de corte desbordaría este panel
+                            de `w-80` -- y sin el recorte de líneas, una
+                            notificación larga empujaría a las demás fuera de
+                            la vista. */}
+                        <span className="line-clamp-2 break-words text-sm text-foreground">
+                          {texto}
+                        </span>
+                        <TimeAgo
+                          iso={n.createdAt}
+                          className="font-mono text-[10px] text-muted-foreground"
+                        />
+                      </div>
+
+                      {/* Punto de no leída. Se calcula sobre la lista que se trajo
+                          al ABRIR, antes de marcar nada: abrir la campana marca
+                          todo como leído, pero las que llegaron sin leer siguen
+                          señaladas mientras el desplegable está abierto. */}
+                      {!n.readAt && (
+                        <span
+                          aria-hidden
+                          className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                        />
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
           <div className="border-t border-border">
