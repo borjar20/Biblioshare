@@ -99,6 +99,29 @@ solitario, contra build de producción. No es una regresión de este cambio (la
 rama es byte-idéntica a `main` en `src/`); se sospecha contención sobre la cuenta
 compartida `devtest`, la misma familia que #750. Sin confirmar.
 
+**Corrección del 2026-08-25: el «cero P1» duró un día.** Ese mismo 2026-08-24, al
+cerrar la rama de reacciones con emoji libre, se abrieron **#787 y #788** — dos
+e2e sociales en rojo, ambos `P1`. **Cerrados el 2026-08-25** reparando los specs,
+no la app: ninguno era una regresión, los dos afirmaban un producto que se había
+cambiado a propósito. `thoughts.spec.ts` esperaba el hilo desplegable dentro de
+la tarjeta del feed (posts Spec 2b lo movió a `/post/[id]`) y
+`social-interaction-targets.spec.ts` esperaba un pase sin post visible en el feed
+(#558 lo dio por invisible para v1) y un botón «Me gusta» que el `ReactionBar` de
+emoji libre había sustituido. Razonamiento en `decisiones.md` (2026-08-25). La
+lección, que es la que vale para la próxima: **un cambio de superficie deja tests
+mintiendo en specs que no toca, y no se ve hasta que la suite entera corre.**
+
+Al verificar salieron **seis tests más en rojo, todos preexistentes en `main`** y
+todos de la misma familia, con tres causas distintas que NO se mezclan:
+**#802** (P1, `posts.spec.ts` ×3: la copia de la campana de #799),
+**#801** (P1, `social-optimista` + `social-safety:159`: «Me gusta» renombrado a
+«corazón rojo» por el catálogo de emoji) y **#803** (P2, `social-safety:92`:
+reportar/borrar detrás del «···» por F3-012). Ninguno es un bug de producto: el
+aviso se crea, reaccionar funciona y reportar funciona — lo que miente es la
+aserción. Salió además **#800** (P2): los e2e dejan catálogo desechable en `dev`
+cuando mueren por timeout (22 libros, 5 sagas, 5 personas, 6 perfiles huérfanos,
+el más viejo del 2026-07-10).
+
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
 **Acción 6 — hit-areas + RatingDots táctiles: HECHA el 2026-08-20.** F4-010

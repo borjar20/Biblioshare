@@ -1420,3 +1420,43 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   `any` para columnas que no reconoce) pero pierde la única red que detectaría un nombre de
   columna mal escrito antes de producción. El guion de cualquier tarea que añada una columna
   debe incluir este paso; queda también como issue de proceso, #798.
+
+## 2026-08-25 — Los dos e2e sociales en rojo (#787, #788)
+
+- **Los dos specs afirmaban un producto que ya no existe; se corrigen los TESTS, no la app.**
+  Ninguno de los dos fallos era una regresión: `thoughts.spec.ts` esperaba el hilo interactivo
+  desplegable dentro de la tarjeta del feed, y `social-interaction-targets.spec.ts` esperaba que
+  un pase sin post apareciera en el feed. Lo primero lo cambió posts Spec 2b a propósito (la
+  tarjeta se ojea, `/post/[id]` conversa) y lo segundo lo decidió #558 (el feed lee `posts`; los
+  targets `pass`/`progress_session` sin post promovido quedan invisibles, aceptado para v1).
+  Un test que codifica el producto viejo no protege nada: solo hace ruido rojo que enseña a
+  ignorar la suite.
+- **#558 se queda como está: no se migran los targets huérfanos para arreglar un test.** La
+  alternativa era promover a post los `pass`/`progress_session` con interacción huérfana, que es
+  una decisión de producto sobre datos de producción — no algo que se cuela para poner un e2e en
+  verde. Su opción por defecto («dejarlas») sigue vigente.
+- **Precio asumido: se pierde la única cobertura del target `pass` y del aviso
+  `activity_commented`.** Hoy ninguna superficie de la app monta un target `pass` (comprobado:
+  `resolveInteractionTargets` solo lo tiene en la unión de tipos), así que el e2e cubría una
+  ruta que el usuario no puede recorrer. La cadena que sí importa —quien sigue a alguien ve su
+  hito en el feed, entra al hilo, comenta y el autor recibe el aviso— se conserva, ahora sobre
+  el target `post`.
+- **Las aserciones de la campana pasan a afirmar el EXTRACTO, no la copia genérica.** Desde
+  «notificaciones con contexto» (#799) un aviso de comentario con un solo actor pinta la
+  variante enriquecida («{name} en tu publicación: «…»»), así que `/comentó tu actividad/` y
+  `/comentó tu punto de control/` habrían quedado obsoletas en cuanto el test volviera a
+  llegar hasta ahí. Afirmar el extracto ata además el aviso a ESE comentario y no a cualquier
+  otro del mismo tipo.
+- **Las otras seis rojas que salieron al verificar NO se encadenan a este arreglo.** Son la
+  misma familia (specs que codifican un producto ya cambiado) pero tres causas distintas, y
+  mezclarlas en una PR la hace irrevisable: quedan como **#802** (copia de la campana de #799,
+  `posts.spec.ts` ×3), **#801** («Me gusta» renombrado a «corazón rojo», `social-optimista` y
+  `social-safety:159`) y **#803** (reportar/borrar detrás del «···» por F3-012,
+  `social-safety:92`). Las tres verificadas por ejecución contra un `next dev` limpio, no por
+  lectura de código.
+- **Trampa que costó una hora y conviene no repetir:** un `next dev` cuyo proceso padre se mata
+  sigue escuchando en el 3000 y sirviendo 200, pero sus Server Actions revientan (`write EPIPE`,
+  `Jest worker … exceeding retry limit`). Con ese servidor, los tests de aviso fallan ANTES —en
+  el `expect.poll` de la fila de `notifications`— con «el aviso post_commented debe persistir»,
+  que parece un bug de producto grave y no lo es. **Un e2e rojo contra un dev tocado no es
+  evidencia de nada**: hay que relevantar el servidor y repetir.

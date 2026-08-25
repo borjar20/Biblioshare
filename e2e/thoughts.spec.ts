@@ -89,6 +89,8 @@ async function publishThought(
 // «Pensamiento» (Fase 6, Task 6.1): publicar anclado a una obra de biblioteca,
 // spoiler + markdown-lite, comentar y reaccionar con multi-emoji en post y
 // comentario. Repite el anclaje (solo el chip) con saga y persona.
+// El reparto de superficies es el de posts Spec 2b: la TARJETA del feed se ojea
+// (ancla, spoiler, contador) y `/post/[id]` conversa (composer, reacciones).
 // Patrón del club desechable (club-ronda.spec.ts): datos propios, creados por
 // REST con service-role y borrados en el `finally` -- nada compartido con
 // otras sesiones ni con la semilla QA.
@@ -153,41 +155,57 @@ test("publicar y comentar un pensamiento: ancla, spoiler, negrita y reacciones m
     await card.getByRole("button", { name: "Mostrar spoiler" }).click();
     await expect(card.locator("b", { hasText: "negrita" })).toBeVisible();
 
-    // ── Comentar ──
+    // ── Del feed al hilo: la conversación ya no vive en la tarjeta ──
+    // Desde el rediseño de posts (Spec 2b) el pie de la tarjeta es un RESUMEN
+    // (`PostSummary`) que enlaza a `/post/[id]`; el hilo interactivo inline
+    // desapareció. Este test esperaba un `button "0 comentarios"` que hoy es un
+    // `link "0 comentarios · Ver hilo →"`, y se quedaba colgado 150 s (#787).
+    // Comentar y reaccionar se hacen ahora donde vive la conversación, y la
+    // tarjeta solo debe reflejar el contador al volver.
     const comentario = `comentario e2e ${ts}`;
-    await card.getByRole("button", { name: /0 comentarios/i }).click();
-    await card.getByPlaceholder(/escribe un comentario/i).fill(comentario);
-    await card.getByRole("button", { name: /^comentar$/i }).click();
-    await expect(card.getByText(comentario)).toBeVisible();
-    await expect(card.getByRole("button", { name: /1 comentario/i })).toBeVisible();
+    await expect(card.getByRole("link", { name: /0 comentarios/i })).toBeVisible();
+    await card.getByRole("link", { name: /ver hilo/i }).click();
+    await page.waitForURL(/\/post\/[0-9a-f-]{36}$/i);
 
-    // ── Reaccionar con 🔥 en el post (el único "Fuego" en la tarjeta antes de
-    // que el comentario traiga su propia barra) ──
-    const postFire = card.getByRole("button", { name: "Fuego" }).first();
+    // Composer del hilo SIEMPRE visible (PostThread): no hay nada que expandir.
+    await page.getByPlaceholder(/escribe un comentario/i).fill(comentario);
+    await page.getByRole("button", { name: /^comentar$/i }).click();
+    await expect(page.getByText(comentario)).toBeVisible();
+
+    // ── Reaccionar con 🔥 en el post ──
+    // El ReactionBar arranca plegado tras el botón "Reaccionar"; elegir un emoji
+    // CIERRA el popover (Task 7/8 de "reacciones-emoji-libre"), así que el
+    // recuento se lee en el propio disparador, que pasa a mostrar "🔥 1".
+    const postReact = page.getByRole("button", { name: "Reaccionar" }).first();
+    await postReact.click();
+    const postFire = page.getByRole("button", { name: "fuego" }).first();
     await expect(postFire).toHaveAttribute("aria-pressed", "false");
     await postFire.click();
-    await expect(postFire).toHaveAttribute("aria-pressed", "true");
-    await expect(postFire.getByText("1", { exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(postReact).toContainText("1");
 
-    // ── Reaccionar con 🔥 en el comentario (el segundo "Fuego": la barra del
-    // post va primero en el DOM, la del comentario aparece debajo, dentro del
-    // hilo ya expandido) ──
-    const commentFire = card.getByRole("button", { name: "Fuego" }).last();
+    // ── Reaccionar con 🔥 en el comentario (la segunda barra: la del post va
+    // primera en el DOM —cabecera del hilo— y la del comentario cuelga del
+    // árbol, debajo del composer) ──
+    const commentReact = page.getByRole("button", { name: "Reaccionar" }).last();
+    await commentReact.click();
+    const commentFire = page.getByRole("button", { name: "fuego" }).last();
     await expect(commentFire).toHaveAttribute("aria-pressed", "false");
     await commentFire.click();
-    await expect(commentFire).toHaveAttribute("aria-pressed", "true");
-    await expect(commentFire.getByText("1", { exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(commentReact).toContainText("1");
 
-    // ── Persiste: recargar y la verdad del servidor lo confirma ──
+    // ── Persiste: recargar el hilo y la verdad del servidor lo confirma ──
     await page.reload();
+    await expect(page.getByText(comentario)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reaccionar" }).first()).toContainText("1");
+    await expect(page.getByRole("button", { name: "Reaccionar" }).last()).toContainText("1");
+
+    // ── Y de vuelta en el feed: la tarjeta refleja el contador del servidor ──
+    await page.goto("/");
     const cardTrasRecarga = page.locator("article").filter({ hasText: bookTitle });
     await expect(cardTrasRecarga).toBeVisible();
-    await expect(
-      cardTrasRecarga.getByRole("button", { name: /1 comentario/i }),
-    ).toBeVisible();
-    await expect(
-      cardTrasRecarga.getByRole("button", { name: "Fuego" }).first(),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(cardTrasRecarga.getByRole("link", { name: /1 comentario/i })).toBeVisible();
     // El cuerpo vuelve a estar velado tras recargar (SpoilerGate es estado de
     // cliente, no se persiste abierto) -- confirma que el gate es real y no
     // solo un `useState` que sobrevivió por casualidad a la sesión anterior.
