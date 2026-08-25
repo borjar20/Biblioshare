@@ -29,17 +29,24 @@ function SegmentView({ segment, knownUsernames }: { segment: Segment; knownUsern
 export function RichTextView({ text, knownUsernames = [] }: { text: string; knownUsernames?: string[] }) {
   const lines = parseRichText(text);
   return (
-    <>
+    // Un salto de línea REAL entre líneas + `whitespace-pre-line` en el
+    // contenedor, en vez de un `<span class="block">` por línea. Con los bloques,
+    // una línea VACÍA —que es exactamente como se separa un párrafo— no generaba
+    // caja de línea: altura 0, y los párrafos salían pegados como si el salto se
+    // hubiera perdido. `pre-line` respeta los `\n` (todos, también los seguidos)
+    // y sigue colapsando espacios, que es lo que se quiere en prosa pegada.
+    // `break-words` vive aquí y no en cada llamador: una URL larga sin espacios
+    // desbordaba la tarjeta en los sitios que se olvidaban de ponerlo.
+    <span className="block whitespace-pre-line break-words">
       {lines.map((line, i) => (
-        <span key={i} className="block">
+        <Fragment key={i}>
+          {i > 0 && "\n"}
           {line.isList && <span aria-hidden className="mr-1.5">•</span>}
           {line.segments.map((segment, j) => (
-            <Fragment key={j}>
-              <SegmentView segment={segment} knownUsernames={knownUsernames} />
-            </Fragment>
+            <SegmentView key={j} segment={segment} knownUsernames={knownUsernames} />
           ))}
-        </span>
+        </Fragment>
       ))}
-    </>
+    </span>
   );
 }

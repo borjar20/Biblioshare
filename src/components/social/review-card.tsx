@@ -73,7 +73,9 @@ export function ReviewCard({
       </div>
 
       {event.reviewExcerpt && (
-        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed">
+        // `whitespace-pre-line`: los saltos de línea de la reseña son del autor
+        // (textarea); sin esto el HTML los colapsa y el extracto sale de corrido.
+        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed whitespace-pre-line break-words">
           <MentionText text={event.reviewExcerpt} knownUsernames={knownUsernames} />
         </p>
       )}
