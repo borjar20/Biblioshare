@@ -6,10 +6,10 @@ import type { MediaStatus } from "@/lib/library/types";
 import type { PostKind } from "./post-actions";
 import {
   emptyReactions,
-  getInteractionSummary,
   type InteractionComment,
   type ReactionsByEmoji,
 } from "./interactions";
+import { getInteractionSummary } from "./get-interaction-summary";
 import { resolveKnownMentions } from "./resolve-mentions";
 import { getClubActivityEvents, type ClubFeedEvent } from "./club-feed";
 import type { PersonGroupEntry } from "./group-feed-entries";

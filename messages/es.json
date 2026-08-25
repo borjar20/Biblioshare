@@ -7,7 +7,7 @@
   "nav": {
     "items": {
       "home": "Inicio",
-      "collection": "Colección",
+      "collection": "Biblioteca",
       "search": "Buscar",
       "clubs": "Clubes",
       "profile": "Perfil",
@@ -16,6 +16,14 @@
     "auth": {
       "signIn": "Iniciar sesión",
       "signUp": "Crear cuenta"
+    },
+    "youLabel": "Tu cuenta",
+    "you": {
+      "profile": "Mi perfil",
+      "notes": "Cuaderno",
+      "stats": "Estadísticas",
+      "settings": "Ajustes",
+      "rowLabel": "Lo tuyo"
     }
   },
   "auth": {
@@ -152,9 +160,9 @@
     "startCta": "Empezar",
     "collectionTitle": "¿Qué empezamos?",
     "emptyTitle": "Encuentra algo para disfrutar",
-    "emptyBody": "Aún no tienes nada a medias. Busca un título o asómate a tu colección para elegir por dónde seguir.",
+    "emptyBody": "Aún no tienes nada a medias. Busca un título o asómate a tu biblioteca para elegir por dónde seguir.",
     "emptySearch": "Buscar",
-    "emptyExplore": "Explorar la colección"
+    "emptyExplore": "Explorar tu biblioteca"
   },
   "search": {
     "title": "Buscar",
@@ -171,6 +179,7 @@
     "opening": "Abriendo...",
     "added": "En tu biblioteca",
     "empty": "Escribe algo para buscar.",
+    "emptyBody": "Libros, películas y series por título, o personas por su nombre. También puedes escanear el código de barras de un libro.",
     "noResults": "No se encontraron resultados.",
     "browseSagas": "Explorar sagas",
     "scan": {
@@ -252,6 +261,8 @@
     "delta": "▲ {delta} vs. anterior",
     "deltaDown": "▼ {delta} vs. anterior",
     "delete": "Borrar pase",
+    "deleteConfirm": "Borrar este pase borra su nota, su reseña y sus sesiones. No se puede deshacer.",
+    "actionsLabel": "Acciones del pase",
     "edit": "Editar",
     "cancelEdit": "Cancelar",
     "seenBefore": "Visto en otro pase",
@@ -303,14 +314,14 @@
       "actividad": "Actividad",
       "estadisticas": "Estadísticas",
       "rincon": "Rincón",
-      "coleccion": "Colección"
+      "coleccion": "Biblioteca"
     },
     "avatar": "Avatar",
     "avatarChoose": "Elegir imagen",
     "avatarUploading": "Subiendo...",
     "avatarError": "No se pudo subir la imagen. Inténtalo de nuevo.",
-    "panelPrivateNote": "Solo tú ves este panel. Tu colección y tu actividad son públicas.",
-    "emptyTitle": "Colección vacía",
+    "panelPrivateNote": "Solo tú ves este panel. Tu biblioteca y tu actividad son públicas.",
+    "emptyTitle": "Biblioteca vacía",
     "highlights": "Destacados",
     "recentReviews": "Reseñas recientes",
     "activityToday": "Hoy",
@@ -320,6 +331,23 @@
     "activityEmptyCta": "Buscar algo que registrar",
     "settings": "Ajustes",
     "visibilityLabel": "Visibilidad"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "profileSection": "Perfil",
+    "viewProfile": "Ver perfil",
+    "accountSection": "Cuenta",
+    "emailLabel": "Correo",
+    "emailUnknown": "Sin correo asociado",
+    "changePassword": "Cambiar contraseña",
+    "dataSection": "Tus datos",
+    "dataDescription": "Tu biblioteca es tuya: puedes traerla de otro sitio y llevártela cuando quieras.",
+    "librarySection": "Biblioteca",
+    "hideDroppedLabel": "Ocultar obras abandonadas",
+    "hideDroppedHint": "Seguirán en tu biblioteca y en tus estadísticas; solo dejan de aparecer en las rejillas.",
+    "pendingLink": "{count, plural, one {Tienes 1 título pendiente de revisar} other {Tienes # títulos pendientes de revisar}}",
+    "noticesSection": "Avisos",
+    "adminSection": "Administración"
   },
   "social": {
     "follow": "Seguir",
@@ -598,7 +626,10 @@
     "editToggle": "Editar",
     "formError": "Algo falló. Inténtalo de nuevo.",
     "empty": "Todavía no tienes clubes.",
+    "emptyBody": "Un club es un sitio para leer o ver algo a la vez que otra gente, con su calendario y sus hitos. Únete a uno de abajo o crea el tuyo.",
     "emptyDiscover": "No se encontraron clubes.",
+    "emptyDiscoverBody": "No hay ningún club público que coincida. Prueba con otra búsqueda o crea el que falta.",
+    "emptyDiscoverNoQuery": "Todavía no hay clubes públicos a los que unirse. El primero puede ser el tuyo.",
     "join": "Unirse",
     "leave": "Salir",
     "leaveMenu": "Salir del club",
@@ -666,7 +697,6 @@
     "rejectRequest": "Rechazar",
     "chipPublic": "Público",
     "chipPrivate": "Privado",
-    "open": "Abrir",
     "membersCount": "Miembros · {count}",
     "round": {
       "title": "La ronda",
@@ -712,6 +742,7 @@
     "pollVotes": "{count, plural, one {# voto} other {# votos}}",
     "deletePost": "Borrar",
     "deleteConfirm": "¿Borrar esta publicación?",
+    "postActionsLabel": "Acciones de la publicación",
     "loadMore": "Cargar más",
     "empty": "Todavía no hay publicaciones en este club.",
     "noActivityToShare": "No tienes actividad reciente para compartir.",
@@ -1146,6 +1177,7 @@
     "follow": "Seguir",
     "following": "Añadiendo...",
     "unfollow": "Quitar de mi biblioteca",
+    "unfollowConfirm": "Quitarla de tu biblioteca borra TODOS sus pases, con sus notas y reseñas. No se puede deshacer.",
     "addToCollection": "Añadir a colección",
     "status": "Estado",
     "manage": "Gestionar",
@@ -1184,6 +1216,7 @@
       "add": "Registrar sesión",
       "empty": "Todavía no has registrado ninguna sesión.",
       "delete": "Eliminar",
+      "actionsLabel": "Acciones de la sesión",
       "duration": "{count} min",
       "edition": "Edición: {label}"
     }
@@ -1196,6 +1229,7 @@
     "addMovie": "Añadir versión",
     "yours": "La tuya",
     "delete": "Borrar {label}",
+    "actionsLabel": "Acciones de {label}",
     "confirmTitle": "¿Borrar esta edición?",
     "confirmBody": "Se borra del catálogo para toda la comunidad. No se puede deshacer.",
     "confirmDelete": "Borrar",
@@ -1854,7 +1888,7 @@
       "series": "{count, plural, =1 {1 serie} other {# series}}"
     },
     "moreSubsagas": "{count, plural, =1 {+1 subsaga} other {+# subsagas}}",
-    "ownedCount": "{count, plural, =1 {◐ 1 en tu colección} other {◐ # en tu colección}}",
+    "ownedCount": "{count, plural, =1 {◐ 1 en tu biblioteca} other {◐ # en tu biblioteca}}",
     "readingLabel": "leyendo por «{name}»",
     "followAria": "Seguir esta saga",
     "followingAria": "Sigues esta saga",
@@ -2055,7 +2089,7 @@
     "welcomeTitle": "Aquí verás cómo vas",
     "welcomeBody": "Tu semana de lectura, tu año y tu racha aparecerán a medida que registres lo que disfrutas.",
     "welcomeGoalCta": "Fijar una meta 2026",
-    "welcomeExploreCta": "Explorar la colección"
+    "welcomeExploreCta": "Explorar tu biblioteca"
   },
   "whoToFollow": {
     "title": "A quién seguir",
@@ -2076,6 +2110,7 @@
     "save": "Guardar",
     "saving": "Guardando...",
     "saved": "Guardado",
+    "roleConfirm": "Vas a dar el rol «{role}» a este usuario. Se aplica al momento.",
     "error": "No se pudo cambiar el rol."
   },
   "offline": {
@@ -2092,7 +2127,8 @@
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados",
-      "allGenres": "Todos los géneros"
+      "allGenres": "Todos los géneros",
+      "showDropped": "Mostrar abandonados"
     },
     "search": {
       "placeholder": "Buscar en tu biblioteca...",
@@ -2119,8 +2155,10 @@
     "unpin": "Quitar de fijados",
     "addToCollection": "Añadir a colección",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
-    "emptyTitle": "Tu colección está vacía",
-    "titlesCount": "{count, plural, one {# título} other {# títulos}}"
+    "emptyTitle": "Tu biblioteca está vacía",
+    "titlesCount": "{count, plural, one {# título} other {# títulos}}",
+    "hiddenDropped": "{count, plural, one {# abandonado oculto} other {# abandonados ocultos}}",
+    "hiddenDroppedAction": "Mostrar"
   },
   "import": {
     "title": "Importar biblioteca",
@@ -2213,6 +2251,8 @@
     "archive": "Archivar",
     "unarchive": "Reactivar",
     "delete": "Eliminar",
+    "deleteConfirm": "Se borra el reto y su histórico. No se puede deshacer.",
+    "actionsLabel": "Acciones del reto",
     "progress": "{completed} de {target}",
     "completed": "¡Completado!",
     "dateRange": "{start} – {end}",
@@ -2253,13 +2293,13 @@
     "tabs": {
       "colecciones": "Colecciones",
       "todo": "Todo",
-      "sagas": "Sagas",
-      "colas": "Colas"
+      "sagas": "Sagas"
     },
     "continue": "Continuar",
     "continueCta": "Continuar ›",
     "inProgress": "En curso",
     "titleCount": "{count, plural, one {# título} other {# títulos}}",
+    "cardEmptyHint": "Vacía · ábrela para añadir",
     "collectionsCount": "{count, plural, one {# colección} other {# colecciones}}",
     "collectionMeta": "{count, plural, one {# título} other {# títulos}} · nota media {avg}",
     "emptyDetail": "Aún no has añadido nada a esta colección.",
@@ -2353,7 +2393,7 @@
     "empty": "Guarda una cita o una nota desde una sesión o desde la ficha de una obra.",
     "kindQuote": "Cita",
     "kindNote": "Nota",
-    "savedTitle": "Notas guardadas",
+    "savedTitle": "Cuaderno",
     "savedQuotes": "Citas",
     "savedNotes": "Notas",
     "savedFavorites": "Favoritas",
@@ -2381,11 +2421,13 @@
     "saving": "Guardando…",
     "errorEmpty": "Escribe algo antes de guardar.",
     "errorGeneric": "No se pudo guardar. Inténtalo de nuevo.",
-    "sectionTitle": "Mis notas y citas",
+    "sectionTitle": "Tu cuaderno",
     "sectionEmpty": "Aún no has anotado nada de esta obra. Puedes hacerlo mientras registras una sesión.",
     "spoilerBadge": "Spoiler",
     "publicBadge": "Compartible",
     "delete": "Borrar",
+    "deleteConfirm": "Se borra la nota. No se puede deshacer.",
+    "actionsLabel": "Acciones de la nota",
     "favoriteOn": "Quitar de favoritas",
     "favoriteOff": "Marcar como favorita",
     "notebookTitle": "Cuaderno",

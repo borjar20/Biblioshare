@@ -1,12 +1,26 @@
 import { describe, expect, it, test, vi } from "vitest";
+
+// `get-interaction-summary.ts` (el lector que se separó de `interactions.ts`
+// en F1-027) lleva `server-only`, que en entorno node lanza al importarse.
+vi.mock("server-only", () => ({}));
+
+// La sesión del espectador ya no sale del cliente inyectado (F1-027): los
+// lectores RSC la piden a `getCurrentUser()`, que la memoiza por petición en
+// vez de hacer un viaje de red a /auth/v1/user por cada sitio que la consulte.
+// El `auth.getUser` del cliente falso se queda para las demás funciones.
+vi.mock("@/lib/supabase/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase/server")>()),
+  getCurrentUser: async () => ({ id: "viewer" }),
+}));
+
 import {
   anyViewerReacted,
   emptyReactions,
-  getInteractionSummary,
   tallyOf,
   totalReactions,
   type ReactionsByEmoji,
 } from "./interactions";
+import { getInteractionSummary } from "./get-interaction-summary";
 
 test("emptyReactions arranca vacío: el mapa es disperso, no un registro de claves fijas", () => {
   expect(emptyReactions()).toEqual({});

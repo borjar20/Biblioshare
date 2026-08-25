@@ -25,7 +25,7 @@ export default async function EditSagaPage({ params }: { params: Promise<{ id: s
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/saga/${id}/editar`));
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${id}`);
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) redirect(`/saga/${id}`);
 
   const { data: saga } = await supabase
     .from("sagas")

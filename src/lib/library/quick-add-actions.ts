@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { revalidateQuickAdd, revalidateQuickAddMany } from "@/lib/reactivity/revalidate";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import type { ItemType } from "@/lib/catalog/types";
 
@@ -27,7 +27,10 @@ export async function quickAddToLibrary(
   if (!user) redirect("/login");
 
   const outcome = await applyTransition(supabase, user.id, itemType, itemId, "planned");
-  revalidatePath("/");
+  // Solo si de verdad entró algo: en `askResume` no se ha insertado nada (hay un
+  // pase cerrado y decide el usuario en la ficha), así que no hay nada rancio
+  // que refrescar.
+  if (outcome.kind !== "askResume") revalidateQuickAdd(itemType, itemId);
   return outcome.kind === "askResume" ? { kind: "askResume" } : { kind: "added" };
 }
 
@@ -64,7 +67,7 @@ export async function quickAddManyToLibrary(
       }
     }),
   );
-  revalidatePath("/");
+  if (outcomes.some((o) => o === "added")) revalidateQuickAddMany();
   return {
     added: outcomes.filter((o) => o === "added").length,
     needsDecision: outcomes.filter((o) => o === "needsDecision").length,

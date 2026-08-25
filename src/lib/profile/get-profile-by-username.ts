@@ -21,10 +21,14 @@ export type Profile = {
   dailyGoalMinutes: number | null;
   // RBAC role (docs/REQUIREMENTS.md §7.35).
   role: UserRole;
+  // Preferencia de biblioteca: si true, las rejillas del usuario —y su perfil
+  // público, que enseña la misma biblioteca— omiten las obras abandonadas.
+  // NO afecta a /estadisticas ni al export CSV (spec 2026-08-24).
+  hideDropped: boolean;
 };
 
 const PROFILE_COLUMNS =
-  "user_id, username, is_public, display_name, avatar_url, bio, created_at, onboarded_at, daily_goal_minutes, role";
+  "user_id, username, is_public, display_name, avatar_url, bio, created_at, onboarded_at, daily_goal_minutes, role, hide_dropped";
 
 function toProfile(data: {
   user_id: string;
@@ -37,6 +41,7 @@ function toProfile(data: {
   onboarded_at: string | null;
   daily_goal_minutes: number | null;
   role: UserRole;
+  hide_dropped: boolean;
 }): Profile {
   return {
     userId: data.user_id,
@@ -49,6 +54,7 @@ function toProfile(data: {
     onboardedAt: data.onboarded_at,
     dailyGoalMinutes: data.daily_goal_minutes,
     role: data.role,
+    hideDropped: data.hide_dropped,
   };
 }
 

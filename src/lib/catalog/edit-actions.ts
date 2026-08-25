@@ -112,7 +112,7 @@ async function requireCollaborator(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { error: "forbidden" };
   }
   return null;

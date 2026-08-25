@@ -54,10 +54,12 @@ export async function CollectionTab({
   userId,
   basePath,
   itemType,
+  hideDropped,
 }: {
   userId: string;
   basePath: string;
   itemType?: ItemType;
+  hideDropped: boolean;
 }) {
   const t = await getTranslations("profile");
   const tLibrary = await getTranslations("library");
@@ -67,12 +69,12 @@ export async function CollectionTab({
   // Recientes primero, como el resto del producto; el visitante no reordena.
   const sort: LibrarySort = "recent";
   const [items, favorites] = await Promise.all([
-    getLibraryItems(supabase, userId, { itemType, sort }),
+    getLibraryItems(supabase, userId, { itemType, sort, hideDropped }),
     // Destacados de toda la biblioteca, no del tipo filtrado: son la portada
     // del perfil, no parte de la rejilla.
     itemType
       ? Promise.resolve([])
-      : getLibraryItems(supabase, userId, { favoritesOnly: true }),
+      : getLibraryItems(supabase, userId, { favoritesOnly: true, hideDropped }),
   ]);
 
   function typeHref(next?: ItemType): string {

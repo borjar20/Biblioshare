@@ -431,10 +431,15 @@ test.describe
     await expect(statusBadge(page, "Leyendo")).toBeVisible({ timeout: 15_000 });
     await expect(diaryEntry(page, "book", 2)).toBeVisible();
 
-    // Borrar el pase ACTIVO: la tarjeta de arriba (2.ª lectura).
+    // Borrar el pase ACTIVO: la tarjeta de arriba (2.ª lectura). Ya no es un
+    // text-link en la tarjeta: vive detrás del «···» y pregunta antes (F3-012).
+    // Playwright DESCARTA los diálogos por defecto, así que sin este handler
+    // `confirm()` devuelve false y el borrado no llega a ocurrir.
+    page.once("dialog", (d) => d.accept());
     await diaryEntry(page, "book", 2)
-      .getByRole("button", { name: "Borrar pase" })
+      .getByRole("button", { name: "Acciones del pase" })
       .click();
+    await page.getByRole("menuitem", { name: "Borrar pase" }).click();
 
     // La regresión: la obra desaparecía por completo (se quedaba sin pase
     // activo). El fix promueve el pase anterior, así que la obra SIGUE en la

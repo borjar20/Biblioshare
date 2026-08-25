@@ -22,7 +22,7 @@ export default async function AdminPage() {
 
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/admin"));
-  if (!hasMinRole(await getCurrentUserRole(supabase), "admin")) redirect("/");
+  if (!hasMinRole(await getCurrentUserRole(), "admin")) redirect("/");
 
   // La política RLS "admins select all profiles" permite leer todos (incl.
   // privados). Ordenados por rol (admins primero) y luego por nombre.

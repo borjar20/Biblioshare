@@ -89,6 +89,23 @@ export type PanelDatum = {
   value: number | null;
   /** Desglose por serie, para `stacked`. */
   parts?: PanelPart[];
+  /**
+   * El valor de PARTIDA de este punto. `value` es el de llegada. Solo lo
+   * consume `dumbbell`.
+   *
+   * `undefined` = no hay de dónde, y entonces la fila NO se dibuja. Un punto de
+   * llegada suelto solo diría «esta obra vale 4», que es otro panel.
+   */
+  from?: number;
+  /**
+   * Valor de referencia contra el que se compara ESTE punto: la mejor marca, el
+   * objetivo, la media. Solo lo consume `bullet`.
+   *
+   * `undefined` = no hay contra qué comparar, y entonces NO se dibuja marca.
+   * Inventar una —la media, el máximo de la serie— haría que el panel dijera
+   * que has batido algo que nadie llegó a fijar.
+   */
+  target?: number;
   /** Texto libre para la columna «Detalle» de la tabla. */
   detail?: string;
   /** Si la fila lleva a algún sitio, el enlace va en la tabla (no en el gráfico). */
@@ -148,6 +165,14 @@ export type PanelViz =
   | "donut"
   | "gauge"
   | "heatmap"
+  /** Ranking DIBUJADO: etiqueta, tallo, punto y cifra. Sustituye a `ranking`. */
+  | "lollipop"
+  /** Reparto en celdas CONTABLES. Sustituye a `donut`, que exigía medir un ángulo. */
+  | "waffle"
+  /** Valor contra su propia referencia (`PanelDatum.target`). Una fila ya es un bullet. */
+  | "bullet"
+  /** Variación de dos puntos: de dónde (`PanelDatum.from`) a dónde (`value`). */
+  | "dumbbell"
   | "ranking"
   | "kpi"
   | "table";
@@ -181,12 +206,47 @@ export type PanelSpec = {
   description?: string;
   context: PanelContext;
   viz: PanelViz;
+  /**
+   * El panel que preside su sección: ocupa las TRES columnas del masonry.
+   *
+   * UNO por sección como mucho, y el primero de la lista (lo afirma
+   * `specs.test.ts`). Dos héroes seguidos parten la sección en bandas y el
+   * masonry deja de repartir — que es justo el motivo por el que la rejilla se
+   * descartó en su día (ver el comentario largo de `page.tsx`).
+   *
+   * Se marca por NECESITAR EL ANCHO, no por importancia: 53 semanas de
+   * calendario en un tercio de tarjeta son ilegibles, mientras que una cifra
+   * grande no gana nada por ocupar tres veces más.
+   */
+  hero?: true;
+  /**
+   * Por qué este panel NO PUEDE tener datos, con independencia del periodo.
+   * `undefined` = sí puede tenerlos, y su vacío es cosa del filtro (nivel 2).
+   *
+   * La frase se enseña plegada a UNA LÍNEA y entra en el recuento de la página.
+   * Es el mismo criterio que `hiddenPanelCount` aplica al periodo: esconder sí,
+   * callar no — un muro que oculta en silencio miente sobre lo que existe.
+   *
+   * Ojo al criterio, que es la trampa del nivel 1: «no puede tener datos NUNCA»
+   * no se decide con una cifra que el selector de periodo acaba de recortar. Si
+   * es cero solo en el periodo, es nivel 2 y no nivel 1.
+   */
+  structurallyEmpty?: string;
   unit: Unit;
   data: PanelDatum[];
   /** Obligatorio para `stacked`; opcional en el resto para colorear. */
   series?: PanelSeries[];
   /** Objetivo de `gauge`. `null` = sin objetivo configurado. */
   target?: number | null;
+  /**
+   * Cómo se llama la referencia que dibuja `bullet` (`PanelDatum.target`), para
+   * el nombre accesible de cada fila. Por defecto, «tu marca».
+   *
+   * No es cosmético: en «Rachas» la referencia ES una marca que se bate, pero en
+   * «Dónde abandonas» es el punto más tardío al que has dejado un libro, y
+   * llamarlo «tu marca» sugiere un récord que se persigue.
+   */
+  targetName?: string;
   kpis?: PanelKpi[];
   /** Sustituye al resumen generado. Solo si ninguna regla da la frase. */
   summary?: string;
@@ -237,5 +297,16 @@ export type PanelSpec = {
   actions?: PanelAction[];
   state?: PanelState;
   /** Qué decir cuando no hay NINGÚN dato conocido. */
-  empty?: { title: string; message?: string };
+  empty?: {
+    title: string;
+    message?: string;
+    /**
+     * La cifra que SÍ existe fuera del filtro actual, con su salida.
+     *
+     * Sin ella no se ofrece salida: un enlace a un sitio donde tampoco hay nada
+     * es peor que no ofrecer ninguno. Es lo que separa «no hay datos» de «no
+     * hay datos AQUÍ, y el aquí lo acabas de elegir tú».
+     */
+    elsewhere?: { text: string; href: string; label: string };
+  };
 };

@@ -8,7 +8,7 @@ import { votePoll, deletePost } from "@/lib/clubs/posts";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { MentionText } from "@/components/social/mention-text";
 import { itemHref } from "@/lib/catalog/item-href";
-import { Button } from "@/components/ui/button";
+import { ActionMenu } from "@/components/ui/action-menu";
 
 export function ClubPostCard({
   post,
@@ -61,10 +61,23 @@ export function ClubPostCard({
         <span className="text-sm font-medium text-foreground">
           {post.authorDisplayName || post.authorUsername}
         </span>
+        {/* Detrás del «···» (F3-012): un botón «Borrar» por post convertía el
+            feed del club en una hilera de borrados a la vista, y a dedo (F4-027)
+            cae justo donde se apoya el pulgar al desplazar. La confirmación ya
+            estaba en handleDelete. */}
         {canDelete && (
-          <Button type="button" variant="ghost" disabled={isPending} onClick={handleDelete}>
-            {t("deletePost")}
-          </Button>
+          <ActionMenu
+            label={t("postActionsLabel")}
+            items={[
+              {
+                key: "delete",
+                label: t("deletePost"),
+                danger: true,
+                disabled: isPending,
+                onSelect: handleDelete,
+              },
+            ]}
+          />
         )}
       </div>
 

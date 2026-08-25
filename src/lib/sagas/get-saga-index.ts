@@ -50,7 +50,7 @@ export async function getSagaIndexData(
       user
         ? supabase.from("saga_route_choices").select("saga_id, route_slug").eq("user_id", user.id)
         : Promise.resolve({ data: [] as { saga_id: string; route_slug: string }[] }),
-      user ? getCurrentUserRole(supabase) : Promise.resolve(null),
+      user ? getCurrentUserRole() : Promise.resolve(null),
     ]);
 
   const followedIds = new Set((followsRes.data ?? []).map((f) => f.saga_id));

@@ -4,7 +4,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "@/components/social/notification-bell";
 import { Wordmark } from "@/components/ui/wordmark";
 import { TopNav } from "@/components/nav/top-nav";
-import { UserAvatar } from "@/components/social/user-avatar";
+import { UserMenu } from "@/components/nav/user-menu";
 import { buttonVariants } from "@/components/ui/button";
 
 // Topbar. En escritorio ES la navegación (P-T1): wordmark + las cuatro
@@ -40,17 +40,10 @@ export async function Header({
       <div className="flex items-center gap-1">
         {loggedIn && <NotificationBell initialUnreadCount={unreadCount} />}
         <ThemeToggle />
-        {/* El avatar es la entrada a Perfil en escritorio. En móvil sobra:
-            Perfil ya tiene su sitio en la barra inferior. */}
-        {username && (
-          <Link
-            href={`/u/${username}`}
-            aria-label={t("items.profile")}
-            className="ml-1 hidden shrink-0 rounded-full sm:block"
-          >
-            <UserAvatar name={username} avatarUrl={avatarUrl} size={34} />
-          </Link>
-        )}
+        {/* El avatar es la entrada a «Tú» en escritorio: perfil, Cuaderno,
+            Estadísticas y Ajustes (F3-010). En móvil sobra — Perfil ya tiene su
+            sitio en la barra inferior, y de ahí cuelga la misma lista. */}
+        {username && <UserMenu username={username} avatarUrl={avatarUrl} />}
         {!loggedIn && (
           <div className="ml-1 flex items-center gap-2">
             <Link href="/login" className={buttonVariants("ghost", "hidden px-3 py-1.5 text-[13px] sm:inline-flex")}>

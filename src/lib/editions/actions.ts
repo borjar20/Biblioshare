@@ -38,7 +38,7 @@ export async function createEdition(
   if (!user) redirect("/login");
 
   if (itemType === "series") return { error: "forbidden" };
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { error: "forbidden" };
   }
 

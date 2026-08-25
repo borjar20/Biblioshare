@@ -7,6 +7,7 @@ import type { LibraryItem, LibrarySort, MediaStatus } from "./types";
 import { loadGenres } from "@/lib/challenges/load-catalog-facets";
 import { labelForSlug, slugForLabel } from "@/lib/catalog/genre-vocab";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
+import { shouldHideDropped, splitDropped } from "./hide-dropped";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -293,21 +294,37 @@ export function filterByGenre<T extends { itemType: ItemType; itemId: string }>(
   );
 }
 
-export async function getLibraryItems(
+/** Filtros de una consulta de biblioteca. Se extrae a tipo con nombre porque
+ *  ahora lo comparten `getLibraryItems` y `getLibraryView`. Se llama
+ *  `LibraryQuery` y no `LibraryFilters` para no chocar con el COMPONENTE
+ *  `LibraryFilters` (src/components/library/library-filters.tsx). */
+export type LibraryQuery = {
+  itemType?: ItemType;
+  status?: MediaStatus;
+  search?: string;
+  sort?: LibrarySort;
+  favoritesOnly?: boolean;
+  /** Slug del género (@/lib/catalog/genre-vocab); filtra por su label canónica. */
+  genre?: string;
+  /** Recorta a los N primeros tras aplicar orden Y tras ocultar (D4). */
+  limit?: number;
+  /** Oculta las obras cuyo pase activo está en `dropped` (preferencia
+   *  `profiles.hide_dropped`). **Opt-in a propósito**: esta función la comparten
+   *  el export CSV, el selector de obras de clubes y los buscadores de añadir a
+   *  colección, y ninguno debe perder filas (spec D2). Sin efecto si `status`
+   *  viene puesto (D5). */
+  hideDropped?: boolean;
+};
+
+/** Lo que devuelve una consulta de biblioteca de las VISTAS PROPIAS: los ítems
+ *  y cuántas obras abandonadas se ocultaron para llegar a ellos. */
+export type LibraryView = { items: LibraryItem[]; hiddenDropped: number };
+
+export async function getLibraryView(
   supabase: SupabaseServerClient,
   userId: string,
-  filters: {
-    itemType?: ItemType;
-    status?: MediaStatus;
-    search?: string;
-    sort?: LibrarySort;
-    favoritesOnly?: boolean;
-    /** Slug del género (@/lib/catalog/genre-vocab); filtra por su label canónica. */
-    genre?: string;
-    /** Recorta a los N primeros tras aplicar orden (General = recientes). */
-    limit?: number;
-  }
-): Promise<LibraryItem[]> {
+  filters: LibraryQuery
+): Promise<LibraryView> {
   // "Entrada de biblioteca" = pase ACTIVO de la obra (§Tarea 9, hub):
   // item_type/item_id/status/position/pinned_order viven directamente en
   // diary_entries, library_entries ya no se lee. rating/notes tampoco se leen
@@ -331,7 +348,7 @@ export async function getLibraryItems(
 
   const { data: entries, error } = await query;
   if (error) throw error;
-  if (!entries || entries.length === 0) return [];
+  if (!entries || entries.length === 0) return { items: [], hiddenDropped: 0 };
 
   // La hidratación (catálogo + pase activo + rating/notes) vive en
   // `hydrateItems`, compartida con Colección (src/lib/library/collections.ts).
@@ -358,7 +375,7 @@ export async function getLibraryItems(
   // silenciosamente ignore el filtro.
   if (filters.genre) {
     const wanted = labelForSlug(filters.genre);
-    if (!wanted) return [];
+    if (!wanted) return { items: [], hiddenDropped: 0 };
     const genresByKey = await loadGenres(
       supabase,
       items.map((i) => ({ itemType: i.itemType, itemId: i.itemId }))
@@ -373,9 +390,29 @@ export async function getLibraryItems(
   }
   // "recent" (default) keeps the query's own `updated_at desc` order.
 
+  // Ocultar abandonados va AQUÍ, al final y antes de `limit`, no en la query de
+  // `passes` de arriba: `hiddenDropped` es el número que la UI enseña, y si se
+  // contara antes de búsqueda/género incluiría obras que esos filtros habrían
+  // descartado igualmente (spec D3). Y antes de `limit` para que una vista con
+  // tope devuelva N elementos, no N menos los que se ocultaron (D4).
+  const split = splitDropped(items, shouldHideDropped(filters));
+  items = split.visible;
+
   if (filters.limit !== undefined) items = items.slice(0, filters.limit);
 
-  return items;
+  return { items, hiddenDropped: split.hiddenDropped };
+}
+
+/** La biblioteca sin el recuento de ocultos. Firma intacta desde antes de la
+ *  preferencia `hide_dropped`: la usan el export CSV, el selector de obras de
+ *  clubes, los buscadores de añadir a colección y los bloques de «hoy», que no
+ *  pintan la línea de aviso. Las vistas propias usan `getLibraryView`. */
+export async function getLibraryItems(
+  supabase: SupabaseServerClient,
+  userId: string,
+  filters: LibraryQuery
+): Promise<LibraryItem[]> {
+  return (await getLibraryView(supabase, userId, filters)).items;
 }
 
 // Géneros presentes en la biblioteca del usuario (para poblar el selector: solo
@@ -388,11 +425,26 @@ export async function getLibraryItems(
 // subconjunto que la rejilla no está mostrando (si no, un chip filtra a 0
 // resultados — issue #306 para `status`, mismo defecto que ya se acotó por
 // `itemType`). Sin ellos, se cuenta la biblioteca activa completa (sin cambios).
+//
+// `hideDropped` es el mismo eje que ya vio `getLibraryView`, y reabre #306 si
+// no se propaga: con la preferencia activa, un género con obras solo
+// abandonadas seguía ofreciendo su chip (con recuento) y la rejilla se iba a
+// 0 (o mentía en el parcial). Se decide con `shouldHideDropped` — no un `if`
+// propio — porque es la MISMA regla D5 (un filtro de estado explícito manda)
+// que ya usa `getLibraryView`.
+//
+// Y aquí el filtro SÍ va en SQL (`.neq`), al revés que en `getLibraryView`
+// (que oculta en memoria, al final, tras búsqueda/género y antes de `limit`,
+// D3/D4). Esa postergación existe para que «N ocultos» no mienta — pero la
+// faceta no alimenta ningún «N ocultos» (de hecho ya ignora `search` hoy), así
+// que no hay ese motivo para retrasar el filtro. Filtrar en SQL evita traer y
+// descartar filas de obras abandonadas que no van a contar para ningún chip.
 export async function getUserGenres(
   supabase: SupabaseServerClient,
   userId: string,
   itemType?: ItemType,
-  status?: MediaStatus
+  status?: MediaStatus,
+  hideDropped = false
 ): Promise<{ slug: string; label: string; count: number }[]> {
   let query = supabase
     .from("passes")
@@ -401,6 +453,7 @@ export async function getUserGenres(
     .eq("is_active", true);
   if (itemType) query = query.eq("item_type", itemType);
   if (status) query = query.eq("status", status);
+  if (shouldHideDropped({ hideDropped, status })) query = query.neq("status", "dropped");
   const { data: entries } = await query;
 
   const refs = (entries ?? []).map((e) => ({

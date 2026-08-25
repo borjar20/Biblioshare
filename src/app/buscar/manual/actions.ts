@@ -30,7 +30,7 @@ export async function addManualItem(
   if (!user) redirect("/login");
 
   // Crear ítems a mano es contribución curada → colaborador+ (§7.35).
-  const role = await getCurrentUserRole(supabase);
+  const role = await getCurrentUserRole();
   if (!hasMinRole(role, "collaborator")) return { error: "forbidden" };
 
   const title = String(formData.get("title") ?? "").trim();

@@ -675,7 +675,708 @@ De ahí sale todo lo demás, que es mecánico:
 sin avisar. Es #737 y va aparte, porque es un no-op mudo y no un problema de a qué pase van las
 escrituras.
 
+## 2026-08-20 (noche) — Acción 6 del roadmap: puntuar a dedo y la regla de 44px (F4-010/013/015)
+
+1. **La hit-area de sistema es un pseudo-elemento, no padding + margen negativo.** La propuesta
+   de la auditoría era `p-3 -m-3`; se descarta porque sí mueve el flujo cuando el control vive
+   en un `flex` con `gap` (el `gap` se mide desde la caja de margen, así que el vecino se
+   acerca). `tap-44` centra un `::after` transparente de 44px sobre el control: la caja de
+   layout no cambia y ninguna maqueta se mueve. El precio es que no sirve con `overflow-hidden`
+   ni sobre un control ya `absolute`/`fixed` — está escrito en el propio CSS.
+
+2. **Solo bajo `(pointer: coarse)`.** Con ratón la precisión ya alcanza y un área de 44px
+   alrededor de un icono de 24 le robaría clics al vecino de al lado. Es la regla 4 de
+   UI-GUIA («capacidad, no ancho») aplicada a sí misma.
+
+3. **La regla se pone DENTRO de `ActionMenu`, no en sus cinco consumidores.** Los cinco dibujan
+   su disparador entre 24 y 34px con `triggerClassName` propio; si la clase la tuviera que
+   pedir cada sitio, el sexto nacería otra vez pequeño.
+
+4. **Puntuar en táctil pasa a ser un ARRASTRE, no una diana.** Las dos salidas que ofrecía la
+   auditoría no son equivalentes: ensanchar la hit-area a 22px por mitad obliga a 220px de fila
+   para cinco dots de 10px (34px de `gap`), que es otro dibujo y otra maqueta. El arrastre
+   mantiene el dibujo y resuelve el problema real, que no era el tamaño sino la ausencia de
+   feedback: con la nota grande visible mientras el dedo no se levanta, un target de 3,5px se
+   corrige antes de soltar. Se aplica lo que enseña el globo, no lo que caiga debajo del dedo.
+
+5. **El arrastre es solo para dedo y lápiz; el ratón no se toca.** `pointerType === "mouse"`
+   sale por arriba del handler, así que el hover y el clic sobre las mitades siguen intactos —
+   y con ellos los e2e que pulsan «10/10» y el camino de teclado, que sigue siendo el de los
+   diez `<button>` reales.
+
+6. **`touch-action: pan-y`, nunca `none`.** El eje vertical se lo queda el scroll de la página:
+   empezar a bajar con el dedo sobre la fila de dots no puede secuestrar el gesto. Es el mismo
+   error que F4-012 documentó en la tierlist, y no se repite aquí.
+
+7. **El reparto de la nota es lineal sobre TODO el ancho de la fila**, en diez tramos iguales,
+   ignorando los `gap` entre dots. Es monótono y continuo (lo que pide un arrastre) y el
+   desfase máximo contra el dot dibujado son 2-3px. Vive en `lib/rating/dots`
+   (`ratingFromFraction`) para poder probarlo sin navegador.
+
+**Cobertura:** la aritmética, en unitarios; el ÁREA y el gesto, en
+`e2e/movil-areas-tactiles.spec.ts` con emulación de dispositivo (`isMobile` es lo que pone el
+navegador en `pointer: coarse`) y eventos de dedo por CDP — `page.touchscreen` solo da toques, y
+un `dispatchEvent` sintético no vale porque `setPointerCapture` necesita un puntero activo de
+verdad. El spec no guarda nada: se queda en el formulario de edición del diario, así que no toca
+la BD compartida.
+
+**Referencia obsoleta de la auditoría:** F4-015 cita `catalog-editor.tsx:723` (✕ de 20×20). Ese
+fichero ya no existe — se lo llevó la limpieza de código muerto de la fase 5.
+
+## 2026-08-20 (tarde) — Acción 7 del roadmap: el sistema mínimo de UI (F3-006/011/012/014/015)
+
+Los cinco hallazgos van juntos porque son el mismo problema visto desde cinco sitios: **no había
+sistema**. Cada pantalla decidía por su cuenta de qué color es un botón, dónde vive un borrado,
+qué se enseña cuando una lista está vacía y cómo se llama cada cosa.
+
+1. **El CTA principal es naranja SIEMPRE, aunque la obra sea una serie.** Lo pintaba
+   `MEDIA_ACCENT[itemType].bg`, así que «Marcar episodio» era el único botón morado de la app
+   mientras el MISMO gesto, desde la pestaña Episodios, salía naranja. La regla que queda: el
+   color de tipo es del **contenido** (barras de progreso, chips, marcas del calendario); el
+   color de un botón es de su **rol**. Lo que sí cambia por tipo es el verbo, y esos verbos están
+   ahora escritos en el glosario, no repartidos por cuatro componentes.
+
+2. **Cinco variantes de `Button` y ninguna más**, con `danger` como cuarta de la jerarquía
+   (`primary` / `secondary` / `ghost` / `danger`) más `green`, que se queda porque en Paper el
+   verde es *lo social* (unirse, aprobar, aceptar) y no un quinto nivel de énfasis.
+   `danger` es rojo SÓLIDO y solo sale cuando el borrado es el asunto de la pantalla — el botón
+   que remata una hoja de confirmación. Un `variant="danger"` por fila sería exactamente el
+   patrón que la decisión 3 viene a quitar.
+
+3. **Lo destructivo se va detrás del «···», y pregunta solo cuando arrastra otros datos.**
+   Movidos a `ActionMenu` con `danger: true`: borrar un pase, borrar una sesión, borrar una nota,
+   borrar una edición, borrar un post de club, borrar un reto. Preguntan (con `confirm()`, que es
+   lo que el repo ya usaba en cinco sitios: no se trae un `<dialog>` nuevo para esto) los que se
+   llevan algo por delante — pase, edición, nota, quitar de la biblioteca, subir de rol.
+   **NO pregunta borrar una sesión suelta**: se vuelve a registrar en diez segundos, y confirmar
+   todo enseña a decir que sí sin leer. Lo reversible (archivar un reto, que tiene «Reactivar»)
+   se queda a la vista.
+
+4. **Dos excepciones registradas a propósito.** (a) «Quitar de mi biblioteca» sigue siendo un
+   enlace rojo visible al final del panel de Registro: no está sembrado por fila, es la acción
+   única de un panel de gestión al que se entra a propósito, y esconderla la haría inencontrable
+   sin reducir el misclick. Lo que le faltaba era la pregunta —borra TODOS los pases de la obra—
+   y ya la tiene, en sus dos puertas (panel de Registro y menú del hero). (b) «Editar» se queda
+   en línea junto al «···» en el diario y en los retos: es neutro, es lo que se hace a diario, y
+   esconderlo penalizaría el caso frecuente para proteger el raro.
+
+5. **El rol de admin pregunta solo al SUBIR.** `/admin` cambiaba el rol al soltar el select y
+   avisaba en la descripción de que «los cambios son inmediatos», que es un aviso *después* del
+   hecho. Ahora `user → collaborator → admin` compara rango y pregunta; bajar no pregunta,
+   porque es reversible y no reparte permisos sobre el catálogo común.
+
+6. **`EmptyState` gana una talla `panel`, y esa es la razón de que nadie lo usara.** El
+   componente existía desde la fase de Estados, pero con `py-16` y un titular serif de 20px no
+   cabe dentro de una sección — así que las listas embebidas (clubes de «Descubrir», agenda del
+   mes, búsqueda sin consulta) seguían resolviendo su vacío con un `<p>` gris suelto. La
+   anatomía no cambia entre tallas: glifo, qué pasa, y una salida; si no hay salida honesta que
+   ofrecer se omite, pero se ha pensado. La agenda del mes es justo ese caso: quien mira puede
+   no ser miembro de ningún club ese mes, y «crea un evento» sería una salida falsa.
+
+7. **Una colección vacía dibuja su abanico con tres huecos punteados**, no 168px de blanco. El
+   `covers.map` no tenía sobre qué iterar y la tarjeta parecía *a medio cargar*, no vacía — que
+   es peor que fea: hace desconfiar de que la app haya terminado de responder. Los huecos son
+   decorativos (`aria-hidden`): lo que un lector de pantalla necesita ya lo dice el «0 títulos».
+
+8. **La tarjeta de club entera es el enlace y el botón «Abrir» desaparece.** Repetía en un
+   control lo que ya hacía el bloque que lo contenía. Técnica: `after:inset-0` sobre el `<Link>`
+   del cuerpo, y `relative z-10` en lo que SÍ es otra acción (unirse, solicitar, ver invitación)
+   para que no se lo coma la capa estirada.
+
+9. **«Biblioteca» y «Cuaderno» son los términos canónicos** (decisión del dueño del repo).
+   «Colección» queda SOLO para las agrupaciones que crea el usuario, que era el choque de verdad:
+   la nav decía «Colección» para toda la biblioteca y dentro había una pestaña «Colecciones» con
+   otro significado, a un clic de distancia. **La URL `/coleccion` NO cambia**: rompería enlaces
+   compartidos y las rutas guardadas de la PWA. Deuda consciente, anotada en el glosario.
+   El vocabulario entero vive ahora en `docs/UI-GLOSARIO.md`, y se consulta *antes* de escribir
+   copy — si un concepto no está, se añade allí primero.
+
+**Cobertura:** los cambios son de forma, no de lógica, así que lo que los protege son los e2e que
+ya recorrían esos flujos, adaptados al gesto nuevo (abrir el «···» y aceptar el diálogo):
+`pase-hub` (borrar pase), `happy-path` (borrar reto), `borrado-rapido-ediciones` (borrar edición).
+`ActionMenu` gana `triggerTestId` y `testId` por item para que un spec pueda seguir agarrándose al
+control que sustituye al que había — `delete-edition` sigue existiendo, ahora sobre el `menuitem`.
+
+**Lo que NO entra:** F3-013 (unificar `WorkCard`) y F3-009 (cuatro patrones de navegación
+secundaria) son refactores de componente con su propio alcance, no parte de este sistema mínimo.
+Y «Sin sinopsis disponible.» se queda como está: es la ausencia de un CAMPO dentro de un panel
+lleno, no una lista vacía; meterle un `EmptyState` con glifo sería ruido.
+
+## 2026-08-21 — Acción 8 del roadmap: IA de navegación y página de Ajustes (F3-010/F4-007/F1-025)
+
+El diagnóstico de la auditoría era que **26 de 41 rutas colgaban solo de enlaces contextuales**:
+la nav tenía cuatro entradas y la app ocho áreas, así que lo que no cabía no estaba en ninguna
+parte. `/cuenta/contrasena` tenía **cero enlaces en `src/`** —solo se llegaba por el correo de
+recuperación, de modo que un usuario con sesión no podía cambiar su contraseña desde dentro de la
+app—, `/importar` vivía dentro de la hoja modal de «Editar perfil», y `/notas`, `/estadisticas` y
+`/sagas` colgaban de enlaces de segundo nivel.
+
+1. **La regla de reparto de la IA: si es TUYO cuelga de «Tú»; si es del catálogo, de Buscar.**
+   Es lo que decide dónde va cada cosa sin discutirlo pantalla a pantalla. Cuaderno, Estadísticas
+   y Ajustes son tuyos; **Sagas no**, aunque estuviera igual de enterrada — una saga es del
+   catálogo común, así que su sitio es Buscar, que es donde se descubre. La lista de «Tú» vive en
+   `nav-items.ts` junto a la principal (`youItems`), no dentro de un componente: se sirve en dos
+   sitios y tenía que haber uno solo que tocar.
+
+2. **La barra principal NO se toca.** La propuesta de la auditoría era rehacer las cinco entradas
+   (Inicio · Biblioteca · Descubrir · Clubes · Tú). Se descarta: «Descubrir» sería un término
+   nuevo estrenado tres días después de cerrar el glosario, y renombrar «Perfil» a «Tú» cambia la
+   etiqueta más aprendida de la app para arreglar un problema que es de SEGUNDO nivel. El agujero
+   no era que las cinco entradas estuvieran mal elegidas: era que no había nada colgando de ellas.
+
+3. **Los ajustes son una PÁGINA (`/ajustes`), no una hoja modal.** Una pantalla de configuración
+   se marca, se comparte y se vuelve a ella con el botón atrás; un `<dialog>` no hace ninguna de
+   las tres. Además había DOS hojas que se repartían lo que es configurar —«Editar perfil», que
+   escondía Importar/Exportar, y el engranaje, con visibilidad, avisos, admin y salir— y ninguna
+   de las dos tenía sitio para la contraseña. El engranaje del perfil pasa a ser un `<Link>`.
+
+4. **Criterio de reparto entre el perfil y los ajustes: el perfil es lo que otros ven de ti; los
+   ajustes son lo que tú decides sobre tu cuenta.** Por eso «Editar perfil» sigue existiendo en el
+   perfil (editar tu nombre en su contexto), pero **Importar/Exportar se van**: mover tu
+   biblioteca entera en CSV no es un rasgo de tu perfil público, y esconderlo tras «Editar perfil»
+   era exactamente por lo que nadie encontraba el importador.
+
+5. **El correo se enseña y no se edita.** Cambiarlo es un flujo de verificación por partida doble
+   que hoy no existe; enseñarlo cuesta cero y responde la pregunta «¿con qué cuenta entré?», que
+   es una de las dos que traen a esta página.
+
+6. **Un camino por viewport, no dos.** En `sm+` la lista de «Tú» es el menú del avatar de la
+   topbar; en móvil no hay avatar ahí, así que la misma lista se despliega como fila de accesos en
+   tu propio perfil (`YouRow`, `sm:hidden`). No se enseñan las dos a la vez a propósito: repetir
+   los mismos cuatro destinos dos dedos más abajo no es descubribilidad, es ruido. Lo que faltaba
+   era que en cada viewport hubiera UNO, no que hubiera dos.
+
+7. **El menú del avatar no reutiliza `ActionMenu`.** Sus items son `<button onSelect>` y estos son
+   **navegación**: un destino tiene que abrirse en pestaña nueva con ctrl+clic o con el botón
+   central, y un botón que llama a `router.push()` no hace ninguna de las dos. Se copia su
+   mecánica accesible (`aria-haspopup`, Escape, puntero fuera) sobre `<Link role="menuitem">`. Y
+   se cierra al cambiar de `pathname`: con Cache Components la navegación soft no desmonta el
+   componente y el menú se quedaría abierto sobre la página nueva (#448).
+
+8. **El enlace a Sagas pasa a tener forma de destino.** Era mono de 11px, gris y en versalitas:
+   se leía como un rótulo de sección, no como un sitio al que ir — y era lo único que separaba una
+   feature entera del olvido.
+
+9. **`/cuenta/contrasena` deja de ser un formulario suelto.** Título con `PageHeader` (el `<h1>`
+   en sans de 20px que traía el formulario iba contra la regla de titulares en serif) y vuelta a
+   Ajustes. Quien llega desde el correo de recuperación también tiene sesión, así que el enlace le
+   sirve igual.
+
+10. **F1-024 estaba caducada y no se implementa: se registra.** La auditoría decía que «desde un
+    libro no se puede llegar a la ficha de su autor» y que «el autor es texto plano
+    (`libro:433`)». Es falso hoy y ya lo era cuando se escribió: el autor enlaza a
+    `/persona/[id]` desde el **2026-08-13** (commit `2ed0dc8f`, vía `links` de
+    `metadata-sidebar.tsx`), seis días antes de la auditoría, y hay un e2e dedicado
+    (`e2e/libro-autor-enlace.spec.ts`). Lo único cierto del hallazgo es que la ficha de libro no
+    monta `CreditsSection` — y **no debe montarlo**: para libros el único rol de crew que se
+    escribe es `author` (`enrich-item.ts:216`; Open Library marca autor e ilustrador con el mismo
+    `/type/author_role` y no se pueden distinguir), así que la sección sería una fila de avatares
+    con las mismas personas que ya enlaza el panel de metadatos. Acta, no trabajo pendiente
+    (issue #748).
+
+**Cobertura:** `e2e/ia-navegacion.spec.ts`, cinco casos. Los asertos **navegan con clics desde el
+perfil**, nunca con `page.goto()` al destino, porque el fallo que se arregla es el más silencioso
+que hay: `/cuenta/contrasena` respondía 200 sin tener un solo enlace que llevara a ella, así que
+ningún test de «la ruta funciona» lo habría pillado. Se comprueba además que los items del menú
+son `<a href>` y no botones, y que los accesos móviles miden ≥44px de alto.
+
+**Lo que NO entra:** el contenedor estándar de página utilitaria (F3-002, P3) — `/importar`,
+`/admin` y la ficha de saga siguen cada una con su propio ancho y su propia cabecera; `/ajustes`
+estrena un patrón de tarjeta-por-sección que puede servirles de base cuando se aborde. Y la URL
+`/coleccion` sigue sin cambiar, por lo mismo que se anotó el 2026-08-20.
+
+## 2026-08-21 (tarde) — Acción 9 del roadmap: pasada de revalidación (F1-014/023/027/030)
+
+Los cuatro hallazgos eran del mismo tipo: **la reactividad revalidaba lo que no era.** De más en la
+campana, de menos en el alta rápida, y de nada en dos etiquetas que se declaraban y no invalidaba
+nadie. Ninguno se nota HOY, y ese es justo el problema: lo tapa el refresco-al-navegar temporal de
+Next, que sus propios docs dan por transitorio.
+
+1. **La campana no revalida NADA, y no se sustituye por un tag.** `markAllNotificationsRead` hacía
+   `revalidatePath("/", "layout")` —la revalidación más cara que existe: purga la Client Cache
+   entera— en cada apertura del desplegable, que es la acción más frecuente de la app, para
+   refrescar un número de dos dígitos. La auditoría proponía «un tag propio del contador»; se
+   descarta y se quita a secas. Motivo: **el contador no está cacheado en ninguna parte**.
+   `getUnreadCount` es una consulta viva dentro del `<Suspense>` dinámico de `SessionChrome`, así
+   que cualquier render posterior ya lee la BD; y entre medias el badge tampoco se queda rancio
+   porque la campana lo baja a 0 en el cliente y el Header vive en el layout raíz, que no se
+   desmonta al navegar. Un tag habría sido peor que inútil: un contador de no leídas depende de
+   `auth.uid()`, y cachearlo bajo etiqueta compartida es servirle a un usuario el contador de otro
+   (regla #437). **Para un dato por-usuario, lo correcto es no cachearlo.**
+
+2. **`revalidateSagaMembership` recibe TODOS los miembros, no el ítem tocado.** Es el punto entero
+   de F1-023(b): la ficha de cada obra canta «nº X de Y» y la Y es el total de la saga, así que dar
+   de alta una obra cambia el rótulo de todas las demás. Se paga una consulta extra por mutación
+   (`listSagaMemberRefs`) y es barato: son acciones de colaborador, no de usuario.
+
+3. **Y se invalida también al RENOMBRAR y al BORRAR la saga, que la auditoría no listaba.** El
+   nombre viaja dentro de `getItemSagas` (la chip «Parte de X»), así que renombrar dejaba el nombre
+   viejo en todas las fichas; borrarla dejaba la chip de una saga que ya no existe. Mismo agujero,
+   distinta puerta. Igual con `saveSequence`: escribe `position`, que es la X del «nº X de Y».
+
+4. **Dos primitivas de etiqueta, distinguidas por quién llama: `revalidate*` vs `expire*`.**
+   `updateTag` **solo es legal dentro de una server action**; el enriquecimiento perezoso corre
+   durante el RENDER de la ficha, no en una acción. Así que la curación de sagas usa `updateTag`
+   (espera al dato fresco: el que acaba de curar recarga y tiene que ver su cambio) y el
+   enriquecimiento usa `revalidateTag` desde `after()` (basta con marcar caducado: quien enriquece
+   no es el dueño del dato, es un visitante que ha rellenado catálogo compartido). Confundirlas no
+   da error de compilación: **revienta en runtime y solo en el camino que las ejecuta.**
+   `revalidateTag` en Next 16 exige un segundo argumento con el perfil de caducidad; sin
+   `{ expire: 0 }` la entrada seguiría viva su `cacheLife` completo, o sea no caducaría nada.
+
+5. **El enriquecimiento DEVUELVE lo que hay que invalidar en vez de invalidarlo.**
+   `ensureItemEnriched` pasa a devolver `EnrichmentEffects` (`wroteCredits`, `sagaMembers`) y es la
+   ficha quien agenda el `after()`. No es rodeo: las APIs de revalidación no son legales durante un
+   render, y meter el `after()` dentro de la función habría obligado a mockear `next/server` en sus
+   ocho tests unitarios. Además el agujero real que arregla no es el enriquecido que funciona —ese
+   escribe ANTES de que la misma petición lea, así que cachea bien— sino **el que falla**: si Open
+   Library no contesta, la visita cachea créditos VACÍOS durante días y la siguiente, que sí
+   consigue escribirlos, los sigue leyendo vacíos.
+
+6. **`getCurrentUserRole` pierde el parámetro `supabase` en vez de ignorarlo.** Lo pasaban 35
+   llamadas y con él hacía `auth.getUser()`, que es un viaje de red de ~240 ms, no una lectura
+   local — la ficha de película lo llamaba dos veces por render y pagaba los dos. Se podría haber
+   dejado el parámetro muerto en la firma; no se hace porque mientras esté ahí seguirá leyéndose
+   como «el rol depende del cliente que le pases», y no depende: depende de la cookie de la
+   petición.
+
+7. **`getClub` se memoiza con `cache()` detrás de un envoltorio async.** Se ejecutaba DOS veces
+   enteras por petición en `/club/[slug]` —lo llaman `generateMetadata` y el cuerpo, cada uno por
+   su lado—, hasta cuatro viajes cada una. `clubs.ts` es `"use server"` y ahí solo se pueden
+   exportar funciones async, así que la parte memoizada es una constante privada y lo exportado es
+   una función de verdad. Mismo patrón que `getCurrentUserRole` y `getOwnProfile`.
+
+8. **`interactions.ts` se parte en dos, y no era opcional.** Contenía el vocabulario (tipos,
+   `REACTION_KINDS`, `emptyReactions`) que importan tres componentes de CLIENTE **y** el lector que
+   toca BD. Solo compilaba porque su única referencia al servidor era un `import type`, que
+   desaparece al transpilar; en cuanto necesitó un import de VALOR, el build cayó con «This module
+   cannot be imported from a Client Component» por cinco caminos. El lector se muda a
+   `get-interaction-summary.ts` con `server-only`. **Un fichero que mezcla vocabulario compartido y
+   acceso a BD es una bomba con la mecha en el próximo import.**
+
+9. **La regla del módulo central pasa de comentario a test.** `revalidate.ts` decía desde el primer
+   día que «toda server action revalida a través de estos helpers»; la auditoría encontró nueve
+   llamadas sueltas en seis ficheros. Ahora `revalidate-guard.test.ts` recorre `src/` y falla con
+   el nombre del fichero infractor. Se bloquea `revalidatePath` y **no** `updateTag`/`revalidateTag`
+   a propósito: las etiquetas se declaran en el mismo fichero que las lee (`cacheTag` junto a su
+   `use cache`), así que quien las invalida tiene el contrato delante; una ruta se revalida a
+   ciegas desde cualquier sitio y nadie ve la lista completa de las que hacían falta.
+
+10. **`revalidateAppChrome()` existe para que la bomba tenga nombre.** Queda un solo uso legítimo
+    de `revalidatePath("/", "layout")` —terminar el onboarding, que estrena las barras de
+    navegación y pasa una vez en la vida de una cuenta— y vive en el módulo con nombre propio, para
+    que usarla sea una decisión y no un descuido.
+
+**Cobertura:** ocho casos nuevos en `revalidate.test.ts` más el guard. Los asertos miran
+EXACTAMENTE qué rutas y qué etiquetas, no «se llamó a algo», porque los cuatro bugs eran de alcance.
+Uno comprueba que `expireSagaMembership` usa `revalidateTag` y **nunca** `updateTag`: es la
+distinción del punto 4 y es la que cuesta un error de runtime.
+
+**Verificado contra `next start`, no contra `next dev`** — y menos mal, porque es lo único que
+destapó el bug de la issue #751 (la hidratación perezosa de las fichas lleva sin correr en
+producción: usa el cliente de la petición dentro de un `after()`). Que ese error apareciera UNA vez
+en toda la suite, con el `after()` nuevo de esta acción corriendo en cada render sin fallar, es lo
+que separó un fallo del vecino de un fallo propio.
+
+**Lo que NO entra:** el resto de F1-028 (la convención única de dónde viven las server actions).
+`interactions.ts` se parte porque el build lo exigía, no como primer paso de ese refactor; `lib/clubs`
+sigue marcando módulos de dominio enteros como `"use server"`. Y quedan ~129 `auth.getUser()` en
+server actions: ahí es un viaje por mutación y no por render, que es otro coste y otra decisión.
+
 ---
+
+## 2026-08-21 (noche) — #751: la hidratación perezosa de las fichas vuelve a correr
+
+Las tres fichas (`/libro`, `/pelicula`, `/serie`) curan la fila del catálogo en `after()` cuando
+llega sin hidratar. **Llevaban semanas sin curar ni una sola fila en producción.** Escala del
+problema medida antes de tocar nada:
+
+| | dev | prod |
+|---|---|---|
+| `books` sin `hydrated_at` | 380 / 423 | 10 / 193 |
+| `movies` | 568 / 571 | **862 / 1086** |
+| `series` | 75 / 82 | 105 / 170 |
+
+1. **El cliente de la petición no cruza a un `after()`, y eso no es evidente leyendo el código.**
+   `createClient()` resuelve `await cookies()` al construirse, pero le pasa al cliente un adaptador
+   cuyo `getAll()` corre en CADA consulta. Pasarlo por closure a un callback de `after()` es, en
+   diferido, llamar a `cookies()` dentro del callback — prohibido en Server Components. Nadie
+   escribió `cookies()` ahí: se coló dentro de una variable.
+
+2. **`createServiceRoleClient()` era la salida obvia y NO vale.** Se probó primero y se descartó
+   con evidencia, no por criterio: la RPC contesta `P0001 authentication required`. `hydrate_book`,
+   `hydrate_movie` y `hydrate_series` empiezan con `if auth.uid() is null then raise`, que es parte
+   del blindaje del catálogo (#674). `service_role` tiene los grants —EXECUTE en las tres y UPDATE
+   en `books`, verificado contra `pg_proc`/`pg_class`— pero no tiene `auth.uid()`. **Pasa el guard
+   de permisos y choca con el de sesión**, que es peor que fallar antes: parece que funciona.
+
+3. **La vía es `createTokenClient(token)`, con el token leído durante el render.** Es literalmente
+   lo que manda la doc de `after` («read request data before `after` […] and pass the values in»).
+   RLS sigue aplicando con la identidad del usuario y `auth.uid()` devuelve su id: **el arreglo no
+   cuesta ni un grant, ni relaja ni un guard.** Ese era el requisito, no un detalle — un arreglo de
+   reactividad que abriera el catálogo a escritura sin sesión habría deshecho #674.
+
+4. **`getAccessToken()` se memoiza por petición, aunque no haga red.** `getSession()` decodifica la
+   cookie y no llama al servidor de auth (a diferencia de `getUser()`), así que no se memoiza por
+   coste de red sino para no construir un cliente extra: la ficha ya pide la sesión en el mismo
+   `Promise.all`. Devuelve SOLO el token, nunca el `user` de la sesión — ese no lo ha verificado el
+   servidor de auth, y para eso está `getCurrentUser()`.
+
+5. **El guard del `after()` se limita a Server Components a propósito.** La doc de Next prohíbe las
+   request APIs dentro de `after` en páginas, layouts y `generateMetadata`, y en Route Handlers
+   enseña el caso contrario como ejemplo VÁLIDO. De las Server Actions no dice nada. Un guard que
+   prohibiera ahí se estaría inventando una regla, así que `src/app/buscar/actions.ts` —que tiene
+   la misma forma, en una server action— queda fuera y se abre como sospecha (#753), no como bug.
+
+6. **El e2e deja de conformarse con «la ficha sigue viva».** Ese aserto es exactamente el motivo de
+   que el bug durase semanas: no distingue «se hidrató» de «se tragó el error». Ahora el test
+   devuelve la fila a `hydrated_at = null` por REST, reabre la ficha y comprueba **la columna**. Se
+   mira la columna y no la sinopsis porque si la work key no resuelve, `markHydrated` marca igual la
+   fila y no habría sinopsis que ver — pero la hidratación sí corrió.
+
+**Verificación:** contra `next start`, que es la única pasada que ve el fallo. Antes del arreglo el
+test nuevo falla («la hidratación en after() no llegó a escribir hydrated_at») y el log trae
+`hydrate_book rpc failed`; después, 7/7 en verde y **cero** fallos de RPC en el log.
+
+**Corrección al diagnóstico de #751:** la issue atribuía la línea `⨯ … used cookies() inside
+after()` del log a `ensureBookHydrated`. **No era suya** — los errores de esa función los captura su
+propio `try/catch` y salen como `ensureBookHydrated failed`. La traza apunta a `NotesSection`, que
+también llama a `createClient()`. La conclusión de fondo (la hidratación no corría) era correcta y
+está arreglada; el ⨯ residual persiste tras el arreglo y se rastrea aparte (#754).
+
+**Lo que NO entra:** el ⨯ de `NotesSection`, la sospecha de `buscar/actions.ts` y el desborde de 17px
+de la barra de filtros del cuaderno a 390 px, que también salió al verificar. Tres diagnósticos
+distintos, tres issues: #754, #753 y #755.
+
+---
+
+## 2026-08-21 (noche) — #750: los dos specs de club que llevaban un mes rojos
+
+`club-reactivity.spec.ts` y `social-optimista.spec.ts` fallaban por timeout en dev y en producción
+desde que la UI cambió debajo. Ninguno de los dos protegía ya nada: agotaban los 60 s buscando
+controles que dejaron de existir.
+
+1. **Los dos arreglos son de selector, y la propiedad que protegen sigue intacta.** El feed de club
+   resiembra su primera página desde las props del servidor, así que un post nuevo sale sin
+   `page.reload()`; ese aserto llegaba en verde y el timeout ocurría después. Lo que caducó fue
+   dónde se pulsa: «Borrar» se fue tras el «···» (F3-012, `3061b6f0`) y «Me gusta» se agrupó dentro
+   del desplegable de «Reaccionar» (`7f9c3f69`).
+
+2. **La limpieza pasa a ser por PREFIJO, no por el cuerpo exacto de la pasada.** Es lo que convirtió
+   dos tests rojos en basura acumulada: cada corrida borraba lo suyo, se caía antes de llegar, y el
+   post quedaba. Se encontraron doce posts huérfanos en el club de pruebas. Con `body=like.<prefijo>%`
+   una corrida se lleva también lo que dejaron las anteriores — mismo criterio que el `globalSetup`
+   de sagas, que reimpone la línea base en vez de fiarse de la pasada previa. Tras el arreglo, cero
+   huérfanos en dev.
+
+3. **El desplegable de reacciones se cierra pulsando su propia capa, no un punto al azar.** Mientras
+   está abierto hay un `<button aria-hidden>` a pantalla completa (así se cierra sin `useEffect`),
+   y **intercepta cualquier otro clic**: pulsar «Reaccionar» otra vez, o en una esquina, no cierra
+   nada y el siguiente paso se queda esperando. El helper `cerrarPicker()` pulsa esa capa y espera a
+   que el trigger vuelva a `aria-expanded="false"`.
+
+4. **La tarjeta se ancla por `div.shadow-card`, no por `div`.** El locator viejo filtraba `div` por
+   texto, lo que casa también con los contenedores del feed: resolvía a doce menús a la vez. Ver
+   `TRAMPAS.md` §25 — el patrón viejo solo funcionaba porque «Borrar» salía en una sola tarjeta.
+
+**Lo que NO entra:** el desborde de 17 px del cuaderno a 390 px (#755), que salió en la misma
+verificación pero es un fallo de la pantalla, no del test: ahí el aserto mide bien y lo que está mal
+es la UI.
+
+---
+
+## 2026-08-21 · El muro de estadísticas deja de ser tipografía (fase A del rediseño gráfico)
+
+**El problema no era la variedad de gráficos: era que 18 de ~33 paneles no dibujaban nada.**
+Once `kpi` y siete `ranking` —tres de ellos seguidos en la misma sección— hacían que más de
+la mitad de la pantalla fuera texto. Cambiar el tipo de gráfico habría cambiado el interior
+de las tarjetas sin tocar eso.
+
+**El anillo era el único gráfico que peleaba con nuestra propia regla.** El principio 3 de
+`docs/design/paneles-estadisticos.md` prohíbe que un dato exija medir una altura, un área o
+un ángulo — y un sector de donut es exactamente eso. Había tres. Se sustituyen por `waffle`,
+cuyas celdas se **cuentan**. No escribe dentro (cien cifras no caben): su dato exacto vive en
+la leyenda, que ya viajaba a la cara, y eso es lo que le permite estar en `SELF_DESCRIBING`.
+`donut` se queda en `PanelViz` sin consumidor, como referencia del arco.
+
+**El selector de faceta que se propuso NO se hizo.** La spec quería colapsar los tres rankings
+de nota (géneros, autores, directores) en un panel con selector. Choca con el principio 9 del
+propio doc —«Los filtros van en una fila, arriba, para todo el muro. Nunca un filtro dentro de
+una tarjeta»— y con `src/lib/stats/filter.ts`. Se arregla por forma (pasan a `lollipop`) y por
+orden (dejan de ir seguidos), con un test que lo fija. Queda issue de deuda: si algún día se
+hace, `faceta` tendría que ser un filtro GLOBAL, y eso es una excepción deliberada que se
+decide antes de escribirla, no después.
+
+**El `bullet` cambió de consumidor respecto a la spec.** Iba a «Récords», que no encaja: dos
+de sus cuatro entradas son texto, la mejor racha YA es la marca, y su única comparación
+posible —el récord del periodo contra el de siempre— no existe con «Todo» puesto, que es el
+periodo por defecto. En la vista por defecto no habría dibujado ni una marca. Se lleva a
+«Rachas», donde «racha actual contra tu mejor racha» sí es valor-contra-referencia y vale en
+todo periodo.
+
+**Consecuencia de forma que hay que recordar:** el bullet compara cada fila con SU marca, no
+con las otras filas, así que **una sola fila ya es un bullet completo**. La regla heredada de
+dataviz «una sola barra ⇒ `kpi`» no le aplica, y cuando se implemente la degradación
+automática de `viz` (fase B) su mínimo tiene que ser 1, no 2.
+
+**El ancho se reserva para lo que no cabe.** `PanelSpec.hero` marca el panel que preside su
+sección y ocupa las tres columnas con `column-span: all` — que es lo que permite una tarjeta
+ancha sin volver a `grid`, descartada en su día por igualar el alto de cada fila. Solo lo
+lleva el calendario anual: 53 semanas en un tercio de tarjeta son celdas de 6 px. «Evolución
+de la pila» se barajó y se descartó, porque doce puntos de línea sí caben y ser héroe obliga a
+ir primero, lo que rompería el orden que promete la descripción de su sección.
+
+**Y un tope que solo se vio mirando la pantalla:** el waffle es una rejilla cuadrada, así que
+crecía con la columna y una tarjeta de 340 px de ancho se llevaba 340 de alto — dos veces y
+media lo que medía el anillo. Con tope de 220 px las celdas quedan en ~19 y la página baja de
+4834 a 4607 px de alto. Ningún test lo habría visto.
+
+## 2026-08-24 — El muro de estadísticas, fase B: la forma la elige el dato, y el vacío tiene tres niveles
+
+**`spec.viz` deja de ser lo que se pinta.** Es lo que el panel PIDE; lo que se dibuja es
+`derived.viz`, que `derive()` decide según cuántos puntos MEDIDOS haya. Con menos de cuatro no
+hay curva, con menos de tres no hay reparto, con menos de dos no hay comparación: el panel
+degrada a `kpi` y conserva su cifra en vez de dibujar una recta entre dos números con ejes,
+rejilla y leyenda ocupando lo que un año entero.
+
+Los umbrales están solo en 2, 3 y 4, y **nunca por estética**. Si la forma cambiara por gusto,
+el panel se vería distinto cada visita y se perdería la comparación entre visitas, que es para
+lo que existe un muro de estadísticas. `bullet` y `gauge` no degradan nunca —comparan contra
+una referencia propia, no contra otros puntos—, ni `kpi`, `ranking` y `table`, que ya son su
+forma mínima.
+
+**El invariante que hunde la fase si se rompe: `StatPanel` no lee `spec.viz` ni una sola vez.**
+Cinco sitios decidían texto, tabla, `aria-hidden` y lista de enlaces; uno que se quedara atrás
+da un panel que dice tener tabla y no la tiene, **y el typecheck no lo caza** porque ambos
+campos son `PanelViz`. Se afirma con un test que **lee el fichero** y busca la cadena. Por eso
+el motivo de la degradación viaja en `derived.degradedFrom` en vez de calcularse comparando en
+el componente: comparar exigiría leer `spec.viz` y dejaría la guardia sin poder ser absoluta.
+
+**Dos correcciones al plan, encontradas al ejecutarlo:**
+
+- **Un panel degradado CONSERVA la tabla**, contra la regla «`kpi` no lleva tabla». Sin dibujo
+  y con un indicador fabricado que solo trae el total, la tabla era lo único que dejaba los
+  puntos en el DOM: el plan los habría hecho desaparecer.
+- **La leyenda del waffle no traía sus cifras.** La fase A lo dio por hecho —`SELF_DESCRIBING`
+  obliga a que el dato exacto esté en alguna parte, y para el waffle ese sitio es la leyenda—
+  pero el flag que las pinta seguía siendo `viz === "donut"`. Los tres waffles llevaban desde
+  la fase A sin su dato exacto en ningún sitio. Corregido aquí.
+
+**El vacío deja de ser un estado y pasa a ser tres**, distinguidos por quién puede arreglarlo:
+estructural (no puede tener datos con ningún periodo, se pliega a una línea), por filtro (no
+hay datos AQUÍ, y el aquí lo elegiste tú: tarjeta atenuada con la cifra de fuera y su salida)
+y degradado (hay datos, pero pocos para esa forma: la cifra, con la frase de por qué).
+
+**El criterio del nivel 1 es lo delicado.** «No puede tener datos NUNCA» no se decide con una
+cifra que el selector de periodo acaba de recortar; se decide con `byYear`, la única señal del
+muro que ignora a la vez el periodo y el filtro de tipo. Y como `byYear` cuenta obras
+TERMINADAS, solo vale para paneles que también midan lo terminado: **`series-formato` queda
+fuera a propósito**, porque mide episodios vistos y quien lleva media temporada de tres series
+tiene datos y cero series terminadas. Plegarlo por ahí habría escondido un panel lleno.
+
+**Y el nivel 2 no ofrece salida si la salida no lleva a ningún dato.** `elsewhere` trae la
+cifra de fuera **y** el enlace, juntos y nunca por separado; devuelve nada con «Todo» puesto
+(no hay ningún fuera al que ir) y sin histórico (el destino está igual de vacío). La salida
+conserva el filtro de tipo: mandar a «todo» a quien acaba de elegir «libros» le deshace dos
+filtros cuando solo le sobraba uno. Y la cifra de fuera **no se inventa pidiendo otra
+consulta** — solo la declaran los dos paneles que ya la tienen a mano, porque convertir el
+vacío en el caso más caro de la página es lo contrario de lo que busca este nivel.
+
+**Sin `use cache` en toda la fase**, como en la A: no se ha tocado ningún getter ni añadido
+ninguna consulta. Regla #437.
+
+## 2026-08-24 — El muro de estadísticas, fase C: cinco preguntas que el esquema ya sabía contestar
+
+Ninguna de las cinco necesita una columna nueva. Todas salen de datos que llevan meses en
+producción y que ningún getter miraba.
+
+**«Cómo cambia tu nota al releer» es la que llevaba más tiempo esperando.** El esquema está
+diseñado para eso desde el principio —el pase es dueño de la nota, así que cada relectura tiene la
+suya— y lo único que se sacaba de ahí era un contador (`records.rereads`). Compara el PRIMER pase
+con el ÚLTIMO, nunca con el del medio: la pregunta es qué te parece ahora frente a la primera vez,
+no el recorrido. Y **ignora el selector de periodo a propósito**, porque una relectura son dos
+pases separados por años y recortarlos a la ventana elegida dejaría fuera justo el primero, que es
+la mitad de la comparación.
+
+**Los dos paneles de abandono solo pueden vivir en el muro privado, y no es una decisión de
+producto sino del esquema.** `passes.dropped_reason` es siempre privado, con independencia de
+`is_public`: la tabla **no concede `SELECT`** sobre esa columna a nadie, porque su RLS de SELECT es
+de visibilidad de PERFIL (`can_view_profile`), no de dueño — un grant ahí filtraría el motivo a
+cualquiera que pueda ver el perfil. La única vía de lectura es la vista `pass_reviews`,
+`SECURITY DEFINER` y enmascarada por `d.user_id = auth.uid()`. Un `select("dropped_reason")` sobre
+`passes` falla con «permission denied», y **es correcto que falle**. Hay un test que lee
+`stats-tab.tsx` y afirma que ninguno de los dos paneles se ha colado en la pestaña pública, porque
+esto no lo caza ningún tipo.
+
+**El punto de no retorno no se afirma con menos de cinco abandonos medibles.** Es un MÁXIMO, y un
+máximo sobre dos o tres muestras se mueve entero con el siguiente dato: «nunca has abandonado por
+encima del 26 %» con dos abandonos es ruido presentado como hallazgo. Cuando falta, la barra se
+queda sin marca en vez de inventarse un límite.
+
+**El bullet estrena `PanelSpec.targetName`.** «Tu marca» describe un récord que se persigue, y eso
+es exactamente lo que la racha es y lo que el punto de no retorno **no** es. Sin el campo, el
+nombre accesible de «Dónde abandonas» habría dicho «tu marca 44 %» sobre algo que nadie persigue.
+
+**Las anotaciones se normalizan por cada cien páginas y no por obra**, que es toda la diferencia:
+sin normalizar, «las obras que más te hacen escribir» sería un ranking de libros largos. Doce notas
+en un tocho de mil páginas es menos escritura que cuatro en uno de cien. Cita y nota se cuentan
+aparte porque son dos gestos distintos —copiar lo que dice el libro y decir lo tuyo— y mezclarlos
+hace que un lector de citas y otro de comentarios se vean iguales.
+
+**«Velocidad real» divide por tiempo, no por días**, y esa es la corrección: `computePagesPerDay`
+divide por días distintos, así que mezcla una sesión de tres horas con una de diez minutos.
+Contesta a «cuánto avanzas al día», que es constancia; la nueva contesta a «a qué velocidad lees»,
+que es ritmo. Las dos se quedan, porque son dos preguntas.
+
+**Y la decisión de forma que hay que recordar de esa tarea: la PRIMERA sesión de un pase solo fija
+el cursor, nunca cuenta como avance.** Es lo que separa una medida de velocidad de una inflada:
+quien empieza a registrar por la página 300 no ha leído 300 páginas en esa sesión. El plan de la
+fase pedía lo contrario (contar desde cero) y se corrigió al implementarlo — una métrica de
+velocidad que infla es peor que no tenerla. El «avance positivo por pase» pasó a un helper
+compartido con `computePagesPerDay` en vez de copiarse, para que las dos no puedan divergir.
+
+**Todas las cifras que dejan algo fuera dicen cuánto.** Relecturas sin nota en los dos extremos,
+abandonos sin motivo (el campo nació el 2026-08-14 sin backfill), abandonos sin páginas en ficha,
+anotaciones de obras sin talla, sesiones sin duración. Son cinco denominadores, y sin ellos los
+cinco paneles parecerían hablar de todo.
+
+**Sin `use cache` en ninguno de los cuatro getters nuevos**, y no es olvido: los cuatro dependen de
+`auth.uid()` vía RLS, y los de abandono además leen una vista enmascarada por dueño. Cachear
+cualquiera de ellos es una fuga de datos entre cuentas invisible en desarrollo. Regla #437.
+
+**Rendimiento medido, no supuesto.** El muro pasa de 17 a 21 consultas en un solo `Promise.all`,
+así que su reloj es el de la consulta más lenta. Medido sobre siete cargas del muro completo:
+`getFormatStats` es la más lenta en las siete (695–865 ms) y el total va siempre 3–5 ms por encima
+de ella. Los cuatro getters nuevos entran en 458–742 ms, todos por debajo. El techo no se mueve.
+
+## 2026-08-24 — El desplegable de @menciones elige lado, y por eso el arreglo no es «abrirlo hacia arriba»
+
+**El desplegable se coloca midiendo el hueco, no por una regla fija.** Se abre hacia abajo salvo
+que abajo no quepa y arriba haya más sitio; el `max-height` se recorta al hueco elegido, así que la
+caja no puede salirse por ningún borde. La alternativa barata —voltearlo siempre hacia arriba, que
+es lo que arreglaba el caso que se reportó— cambia un bug por otro: los composers que están a media
+página (la reseña del sheet de cierre, el cuaderno de la ficha, el composer de club) tienen encima
+la etiqueta y el contenido del formulario, y en pantallas cortas la lista se habría salido por
+arriba. Por eso el e2e comprueba los **dos** bordes, no solo el de abajo.
+
+**La causa raíz no era el ancho, y eso importa para el siguiente que lo lea.** El `<ul>` iba
+`absolute` **sin ancla vertical** (ni `top` ni `bottom`), así que se quedaba en su posición
+estática: justo debajo del campo. En escritorio eso se ve; en móvil el composer del hilo es `fixed
+inset-x-0 bottom-0`, de modo que la lista nacía pegada al borde inferior de la pantalla. Medido a
+360x740 en `/post/[id]`: caja en `y=734` con 202px de alto, o sea 196 de sus 202px fuera. El
+`docScrollWidth` era 360 — por los lados no desbordaba nada. Aun así la lista lleva ahora
+`max-w-full` junto al `w-56`, porque un ancho fijo sin tope en un contenedor estrecho es el
+siguiente bug esperando (el patrón bueno ya estaba en `notification-bell.tsx`).
+
+**Se mide justo antes de montar la lista, no en un efecto posterior.** La colocación se calcula en
+el mismo callback que trae los candidatos, así que el primer pintado ya sale en su sitio y no hay
+salto visible. El ancla es el propio campo, tomado del evento `onInput`: ningún caller tiene que
+pasar una ref, y el arreglo entra una sola vez en el hook compartido para los seis composers que lo
+usan (hilo de post, reseña de ficha, chat de club, post de club, sheet de cierre, cuaderno).
+
+**Límite asumido:** la colocación se decide al abrir y no se recalcula si el viewport cambia con la
+lista ya abierta (teclado del móvil, rotación, scroll). Se corrige sola en cuanto se sigue
+escribiendo, porque cada búsqueda vuelve a medir. Queda en la issue #765.
+
+**Y esto no se cubre con un unitario:** lo que distingue «se ve» de «está pintada fuera» es la caja,
+y sin motor de layout no hay caja que medir. El test vive en
+`e2e/menciones-desplegable-movil.spec.ts`.
+
+## 2026-08-24 — El editor de un comentario ocupa su fila entera, y los botones bajan debajo
+
+**En `compact`, el campo va solo en su fila y "Cancelar"/"Guardar" en una fila propia debajo.**
+Antes los tres compartían una fila flex, que es el patrón razonable en escritorio y el que hunde el
+móvil: los botones y el contador tienen ancho fijo, así que se lo comen del campo, y lo que sobra
+depende de cuánto haya sangrado el hilo. Medido a 360x740 en `/post/[id]`, editando un comentario a
+profundidad 1: el campo salía a **152px contra los 262px del comentario que estaba editando** —el
+58%—, con **35px de alto**, una sola línea (`rows={1}`). Con el campo en su fila: 262px de ancho
+(el 100%) y 92px de alto.
+
+**El contador reserva alto, no ancho.** El `pr-12` que le dejaba sitio a `0/2000` costaba ~48px de
+línea de texto; ahora se le da `pb-5` y el texto usa el ancho entero. En el modo no-`compact` se
+queda el `pr-12`, porque ahí el composer ya es de ancho completo (`fixed inset-x-0 bottom-0` en
+móvil) y quitarlo no compraría nada.
+
+**El arreglo entra en `CommentComposer`, no en el hilo.** El síntoma se reportó editando en un
+hilo, pero `compact` lo comparten tres sitios —editar un comentario del hilo, responder inline y
+editar un mensaje del chat de club—, así que arreglarlo en `post-thread.tsx` habría dejado los
+otros dos rotos igual. En el chat de club se quitó además el `max-w-[85%]` de la burbuja **solo
+mientras se edita**: recortaba el campo por debajo del ancho del mensaje que estabas corrigiendo.
+
+**La aserción del e2e compara contra el propio comentario, no contra un número de píxeles.** El
+ancho útil depende de la profundidad del hilo, del avatar y del móvil de referencia; fijar «≥200px»
+habría envejecido mal y no diría gran cosa. La regla estable es que **el campo tiene que ser tan
+ancho como el texto que edita** (>0,9). Vive en `e2e/composer-compact-movil.spec.ts`, y se comprobó
+que falla contra el código anterior (0,58) antes de darlo por bueno.
+
+**Límite conocido:** el textarea sigue en `text-xs` (12px) y Safari iOS hace zoom al enfocar
+cualquier campo de menos de 16px. No se toca aquí porque cambiaría el tamaño de fuente de los
+campos de todo el proyecto; queda en la issue #768.
+
+## 2026-08-24 — Ocultar abandonados: el filtro es opt-in por sitio de llamada
+
+`getLibraryItems` la llaman diez sitios y solo cuatro son «vistas propias». El export CSV, el
+selector de obras de clubes, los buscadores de añadir a colección y los bloques de «hoy» comparten
+esa función; hacer que ocultara por defecto habría vaciado filas del respaldo del usuario sin que
+nada lo delate. Por eso `hideDropped` es un filtro que hay que pedir, y las vistas propias usan un
+envoltorio aparte (`getLibraryView`) que además devuelve cuántas ocultó.
+
+Corolario que conviene no deshacer en un refactor: **el Resumen de la biblioteca
+(`CollectionSummary`) no filtra.** Su barra apilada por estado es el único sitio de la app donde se
+ve que existen obras abandonadas; ocultar ahí dejaría al usuario sin saber que las tiene.
+
+Spec: `docs/superpowers/specs/2026-08-24-ocultar-abandonados-biblioteca-design.md`.
+
+## 2026-08-24 — Acta: el auto-añadir a la biblioteca al unirse a una actividad de club se ELIMINA (#782, F1-003)
+
+**Decisión: se borran los dos triggers y no se reimplementa.** No es «arreglarlo más tarde»: es que
+la feature no se quiere. Si alguien lee un mockup viejo de EPIC-05 y ve prometido «al unirte a una
+actividad, sus obras aparecen en tu biblioteca», que sepa que se decidió a propósito que no.
+
+Lo que había: `autoadd_library_on_activity_join` (AFTER INSERT en `club_activity_participants`) y
+`autoadd_library_on_activity_item` (AFTER INSERT en `club_activity_items`), ambos de
+`20260713_list_challenge.sql`, insertando filas `planned` en `library_entries`.
+
+**Llevaban desde el hub de pases sin hacer nada visible.** `library_entries` está congelada y la app
+no la lee en ningún sitio — las 31 menciones que quedan en `src/` son comentarios explicando
+justamente eso. Así que el único efecto real era acumular filas huérfanas: 153 en producción, de 3
+usuarios, con la última escritura el 2026-08-18.
+
+**Por qué eliminar y no reimplementar contra `passes`.** La alternativa era que el trigger creara un
+pase `planned` por la vía canónica. Suena a una línea y no lo es: `passes` tiene máquina de estados
+e invariantes propias (estado ⟺ fechas, un solo pase abierto por obra), así que hay que decidir qué
+pasa cuando el usuario ya tiene un pase de esa obra, abierto o cerrado — y decidirlo para un trigger
+cross-user que se dispara sin que el dueño del pase esté mirando. Ese diseño cuesta más que lo que
+vale una feature que nadie ha echado de menos en 153 filas. Si algún día se quiere, se construye de
+cero desde la acción de unirse, no desde un trigger.
+
+**Y hay una razón que pesa más que el coste: el escritor vivo era el cebo.** Van cuatro episodios
+del mismo bug —PR #96, #470, #674 y este— y en todos algo seguía apuntando a la tabla muerta.
+Mientras exista un `insert into library_entries` en la base, el quinto episodio es cuestión de
+tiempo. Verificado tras la migración `20260876`: **cero funciones escriben en la tabla**, en dev y
+en prod, comprobado contra `pg_proc` y no contra el ledger de migraciones.
+
+**Las 153 filas de prod se dan por perdidas.** No se migran a `passes`. Son estados `planned` que
+ningún usuario llegó a ver nunca, así que «recuperarlas» no sería restaurar nada: sería inventarle a
+tres personas una biblioteca que no eligieron. Se quedan donde están como registro histórico.
+
+**Extra que salió al verificar: `anon` tenía `INSERT/UPDATE/DELETE` sobre la tabla congelada** y
+`authenticated` solo `SELECT` — al revés de lo que uno esperaría. **No era una fuga**: la RLS está
+activa y no existe ni una policy de escritura para `anon`, así que el grant no llegaba a nada. Pero
+un grant sin policy es una mina cargada: basta que alguien añada una permisiva algún día para
+convertirlo en escritura anónima. Se revoca en la misma migración, ahora que quitar el último
+escritor lo deja obviamente inútil. `SELECT` se queda, que ese sí tiene policy
+(`library entries select visible`).
+
+**Lo que NO se toca: `validate_club_post_ref`.** Acepta `'library_entries'` como `sourceTable`, pero
+no escribe. Es otro diagnóstico y meterlo aquí habría mezclado dos.
+
+**Dónde vive la guarda.** En `e2e/club-actividad-pc.spec.ts`, que ya sembraba un participante y un
+ítem con rol admin —o sea, los dos caminos exactos que disparaban los triggers—. Antes tenía una
+limpieza en el `finally` para borrar la fila que el trigger le metía a la cuenta compartida
+`devtest`; esa limpieza se convierte en su contraria: se cuenta antes y se afirma que el número no
+cambia. Se compara el **delta** y no el valor absoluto porque `devtest` es compartida y puede
+arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas por unirse.
 
 ## 2026-08-24 — Reacciones con cualquier emoji
 

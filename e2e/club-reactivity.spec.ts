@@ -7,6 +7,10 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const CLUB_SLUG = "test-public-club"; // devtest es miembro
 
+// Prefijo común a todas las pasadas: la limpieza barre por él, así que una
+// corrida se lleva también lo que dejaron las anteriores.
+const PREFIJO = "e2e reactividad ";
+
 function adminHeaders() {
   return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
 }
@@ -21,9 +25,10 @@ test("el feed de club refleja un post nuevo y su borrado sin recargar", async ({
 }) => {
   test.setTimeout(60_000);
 
-  const cuerpo = `e2e reactividad ${Date.now()}`;
+  const cuerpo = `${PREFIJO}${Date.now()}`;
 
-  // El borrado pide confirmación con `confirm()`: aceptarla siempre.
+  // El borrado sigue pidiendo confirmación con `confirm()` nativo, aunque ahora
+  // se pida desde el «···». Playwright descarta los diálogos por defecto.
   page.on("dialog", (dialog) => dialog.accept());
 
   try {
@@ -52,12 +57,16 @@ test("el feed de club refleja un post nuevo y su borrado sin recargar", async ({
     await expect(page.getByText(cuerpo)).toBeVisible({ timeout: 15_000 });
 
     // ── Borrarlo → desaparece SIN recargar ──
-    const tarjeta = page
-      .locator("div")
-      .filter({ hasText: cuerpo })
-      .filter({ has: page.getByRole("button", { name: /^borrar$/i }) })
-      .last();
-    await tarjeta.getByRole("button", { name: /^borrar$/i }).click();
+    // Borrar dejó de ser un botón en la tarjeta: vive tras el «···» (F3-012,
+    // `3061b6f0`). La tarjeta se localiza por el menú, no por el botón rojo que
+    // ya no existe — que es lo que dejó este spec en rojo un mes (#750).
+    // La tarjeta se ancla por su clase (`div.shadow-card`), no por `div` a
+    // secas: filtrar `div` por texto casa también con los CONTENEDORES que
+    // envuelven a todos los posts del feed, y `.last()` no salva de eso — el
+    // locator resolvía a doce menús a la vez.
+    const tarjeta = page.locator("div.shadow-card").filter({ hasText: cuerpo }).last();
+    await tarjeta.getByRole("button", { name: /acciones de la publicación/i }).click();
+    await page.getByRole("menuitem", { name: /^borrar$/i }).click();
 
     await expect(page.getByText(cuerpo)).toHaveCount(0, { timeout: 15_000 });
 
@@ -65,8 +74,14 @@ test("el feed de club refleja un post nuevo y su borrado sin recargar", async ({
   } finally {
     // Red de seguridad: si el test cae antes del borrado por UI, el post queda
     // en la base. fetch nativo (el fixture `request` muere con el contexto).
+    //
+    // Se borra por PREFIJO, no por el cuerpo exacto de esta pasada: mientras el
+    // spec estuvo en rojo cada corrida dejó su post huérfano en el club de
+    // pruebas, y una limpieza que solo se lleva lo suyo no los recoge nunca
+    // (#750). Mismo criterio que el `globalSetup` de sagas, que reimpone la
+    // línea base en vez de fiarse de que la pasada anterior limpiara.
     await fetch(
-      `${SUPABASE_URL}/rest/v1/club_posts?body=eq.${encodeURIComponent(cuerpo)}`,
+      `${SUPABASE_URL}/rest/v1/club_posts?body=like.${encodeURIComponent(`${PREFIJO}%`)}`,
       { method: "DELETE", headers: adminHeaders() },
     );
   }

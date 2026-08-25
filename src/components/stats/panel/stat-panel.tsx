@@ -37,7 +37,7 @@ import {
   formatValue,
   NO_DATA,
 } from "@/lib/stats/panel/format";
-import { buildHighlight, summaryLines } from "@/lib/stats/panel/summary";
+import { buildHighlight, degradeNote, summaryLines } from "@/lib/stats/panel/summary";
 import type { PanelKpi, PanelSpec } from "@/lib/stats/panel/types";
 import { Chart, Legend, PLAIN_VIZ } from "./charts";
 import { PanelDialog } from "./panel-dialog";
@@ -67,10 +67,21 @@ const SELF_DESCRIBING: PanelSpec["viz"][] = [
   "heatmap",
   "line",
   "area",
+  // El lollipop escribe la cifra de cada fila a la derecha y cada marca medida
+  // es focalizable con su valor en el nombre accesible. Cumple las dos mitades
+  // del invariante, así que pierde la tabla — que habría sido una copia exacta.
+  "lollipop",
+  // El waffle no escribe dentro de la rejilla (cien cifras no caben): su dato
+  // exacto vive en la LEYENDA, que lleva serie, glifo y cifra, se lee con
+  // teclado y sale también en la cara. Misma garantía por otra puerta.
+  "waffle",
+  // El bullet escribe «valor / marca» sobre cada barra y su fila es focalizable
+  // con las dos cifras —y la palabra «batida»— en el nombre accesible.
+  "bullet",
+  // El dumbbell escribe «origen → destino» y su fila lleva las TRES cifras más
+  // la palabra («sube», «baja», «no cambia») en el nombre accesible.
+  "dumbbell",
 ];
-
-/** Cuántas filas de un ranking caben en la vista compacta. */
-const RANKING_PREVIEW = 3;
 
 const CARD =
   "rounded-card border border-border bg-surface shadow-card transition-colors";
@@ -86,6 +97,28 @@ export function StatPanel({
   const state = spec.state ?? { status: "ready" };
   const titleId = `${spec.id}-title`;
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
+
+  // NIVEL 1 — vacío estructural. Va ANTES que nada, incluso que carga y error:
+  // un panel que no puede tener datos con ningún periodo tampoco los está
+  // cargando. Se pliega a una línea en vez de esconderse, y la página dice
+  // cuántos hay: esconder sí, callar no.
+  if (spec.structurallyEmpty) {
+    return (
+      <section
+        aria-labelledby={titleId}
+        className="rounded-card border border-dashed border-border bg-surface px-3.5 py-2.5"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <Heading id={titleId} className="text-[12px] font-medium text-muted-foreground">
+            {spec.title}
+          </Heading>
+          <span className="text-[11px] text-foreground-faint">
+            {spec.structurallyEmpty}
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   // Carga y error no son plegables: no hay detalle que abrir todavía.
   if (state.status === "loading" || state.status === "error") {
@@ -135,13 +168,31 @@ export function StatPanel({
     return (
       <section
         aria-labelledby={titleId}
-        className="flex flex-col gap-3 rounded-card border border-dashed border-border p-4"
+        // Relleno REDUCIDO respecto a un panel lleno: una tarjeta vacía ocupaba
+        // lo mismo que una con datos, y en un muro de treinta ahí estaba medio
+        // hueco de la pantalla.
+        className="flex flex-col gap-2 rounded-card border border-dashed border-border px-4 py-3"
       >
         <PanelHead spec={spec} titleId={titleId} Heading={Heading} />
         <div className="flex flex-col gap-1 py-1">
           <p className="text-sm text-muted-foreground">
             {spec.empty?.title ?? "Todavía no hay datos"}
           </p>
+          {/* La cifra de FUERA y su salida. Solo salen juntas: un enlace sin la
+              cifra llevaría a un sitio que puede estar igual de vacío, y eso es
+              peor que no ofrecer ninguno. Con ella, el vacío deja de ser «no hay
+              datos» y pasa a ser «no hay datos AQUÍ, y el aquí lo elegiste tú». */}
+          {spec.empty?.elsewhere && (
+            <p className="flex flex-wrap items-baseline gap-x-2 text-[11px] leading-relaxed text-foreground-soft">
+              {spec.empty.elsewhere.text}
+              <Link
+                href={spec.empty.elsewhere.href}
+                className="font-medium text-accent hover:underline"
+              >
+                {spec.empty.elsewhere.label} ›
+              </Link>
+            </p>
+          )}
           {spec.empty?.message && (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {spec.empty.message}
@@ -157,10 +208,24 @@ export function StatPanel({
   // El resto son los demás indicadores. Se descarta POR CLAVE, no por posición:
   // el que preside no tiene por qué ser el primero (ver `heroKpi`).
   const rest = spec.kpis?.filter((k) => k.key !== hero?.key) ?? [];
-  const isTextual = TEXTUAL.includes(spec.viz);
+  const isTextual = TEXTUAL.includes(derived.viz);
+  const selfDescribing = SELF_DESCRIBING.includes(derived.viz);
 
   const highlight = isTextual ? "" : buildHighlight(spec, derived);
   const warning = state.status === "partial" ? state.message : null;
+
+  // Un panel degradado lo DICE. Sin esta frase, quien vio ayer una curva y hoy
+  // ve una cifra piensa que se ha perdido el gráfico, no que aún no hay datos
+  // para dibujarlo.
+  const degraded = derived.degradedFrom ? degradeNote(derived.degradedFrom) : null;
+
+  // La tabla sale en tres casos, y va como UNA regla en vez de tres líneas
+  // sueltas: cuando el dibujo no dice sus cifras, cuando el panel ES una tabla,
+  // y cuando se ha degradado. Este último es el que hay que tener presente: sin
+  // dibujo y con un KPI fabricado que solo trae el total, la tabla es lo único
+  // que deja los puntos en el DOM.
+  const showTable =
+    derived.viz === "table" || Boolean(degraded) || (!isTextual && !selfDescribing);
 
   // Aviso y gráfico salen igual en la cara y en la capa. El titular NO: en la
   // capa está el resumen entero, que ya lo contiene — repetirlo dejaba la misma
@@ -172,7 +237,11 @@ export function StatPanel({
     </p>
   );
 
-  const selfDescribing = SELF_DESCRIBING.includes(spec.viz);
+  // Va en la cara Y en la capa, como el aviso: en la cara es donde se nota que
+  // falta el dibujo, y en la capa es donde se busca la explicación.
+  const degradedLine = degraded && (
+    <p className="text-[11px] leading-relaxed text-foreground-faint">{degraded}</p>
+  );
 
   // DOS gráficos, y no es un descuido: el de la cara es decorativo y el de la
   // capa se puede consultar punto a punto.
@@ -192,7 +261,7 @@ export function StatPanel({
   // un gráfico que ya no tiene tabla detrás dejaría su dato fuera del alcance de
   // un lector de pantalla, que es lo contrario de lo que este sistema hace.
   const plot = !isTextual && (
-    <div aria-hidden={PLAIN_VIZ.includes(spec.viz) || undefined} className="pt-0.5">
+    <div aria-hidden={PLAIN_VIZ.includes(derived.viz) || undefined} className="pt-0.5">
       <Chart spec={spec} derived={derived} interactive={selfDescribing} />
     </div>
   );
@@ -216,11 +285,11 @@ export function StatPanel({
             {highlight}
           </p>
         )}
+        {degradedLine}
         {faceplot}
         <Legend derived={derived} spec={spec} />
-        {spec.viz === "ranking" && (
-          <RankingList spec={spec} limit={RANKING_PREVIEW} />
-        )}
+        {/* La cara ya no lleva lista: el lollipop escribe el dato. Los enlaces
+            de cada fila viven en la capa, donde no los tapa el disparador. */}
         <span aria-hidden className="label-section pt-0.5 text-accent/70">
           Ampliar ↗
         </span>
@@ -252,21 +321,24 @@ export function StatPanel({
             </p>
           )}
 
+          {degradedLine}
+
           {rest.length > 0 && <KpiRow kpis={rest} />}
 
           {plot}
           <Legend derived={derived} spec={spec} />
 
-          {/* El ranking completo: la cara solo enseñaba las primeras. */}
-          {spec.viz === "ranking" && <RankingList spec={spec} />}
+          {/* El ranking completo CON SUS ENLACES. El gráfico no puede llevarlos:
+              en la cara lo tapa el disparador del modal, y aquí la lista es lo
+              único que convierte cada fila en un sitio al que ir. */}
+          {derived.viz === "lollipop" && <RankingList spec={spec} />}
 
           {/* Los valores exactos. NO los repiten ni los paneles que ya son
               texto —su lista o su `<dl>` YA son el dato— ni los gráficos que
               escriben sus cifras dentro: duplicarlos solo obliga al lector de
               pantalla a oírlo dos veces, y en el calendario anual eran 365
               filas de las que 348 decían «0». */}
-          {!isTextual && !selfDescribing && <PanelTable spec={spec} derived={derived} />}
-          {spec.viz === "table" && <PanelTable spec={spec} derived={derived} />}
+          {showTable && <PanelTable spec={spec} derived={derived} />}
 
           <p className="text-[10.5px] leading-relaxed text-foreground-faint">
             {contextSentence(spec)}

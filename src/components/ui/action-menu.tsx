@@ -11,6 +11,8 @@ export type ActionMenuItem = {
   disabled?: boolean;
   /** Rojo de acción destructiva (salir, expulsar). */
   danger?: boolean;
+  /** Asidero para los e2e cuando la etiqueta no basta (o es interpolada). */
+  testId?: string;
 };
 
 // Menú de acciones «⋯» ligero y accesible: no hay primitiva de dropdown en el
@@ -23,12 +25,15 @@ export function ActionMenu({
   label,
   items,
   triggerClassName,
+  triggerTestId,
   menuAlign = "right",
 }: {
   label: string;
   items: (ActionMenuItem | false)[];
   /** Clases del botón «⋯». Cada sitio lo enmarca distinto. */
   triggerClassName?: string;
+  /** Asidero para los e2e que antes pinchaban el control que este menú sustituye. */
+  triggerTestId?: string;
   menuAlign?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
@@ -57,14 +62,19 @@ export function ActionMenu({
     <div ref={rootRef} className="relative">
       <button
         type="button"
+        data-testid={triggerTestId}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={
+        // `tap-44` se añade SIEMPRE, también cuando el consumidor trae su
+        // propio `triggerClassName`: los cinco sitios que lo personalizan lo
+        // dibujan entre 24 y 34px, y la regla táctil no puede depender de que
+        // cada uno se acuerde de pedirla. Va al final para que gane el orden.
+        className={`${
           triggerClassName ??
           "grid h-[30px] w-[30px] place-items-center rounded-lg border border-border bg-surface text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
-        }
+        } tap-44`}
       >
         <EllipsisIcon className="h-4 w-4" />
       </button>
@@ -83,6 +93,7 @@ export function ActionMenu({
               key={it.key}
               type="button"
               role="menuitem"
+              data-testid={it.testId}
               disabled={it.disabled}
               onClick={() => {
                 setOpen(false);

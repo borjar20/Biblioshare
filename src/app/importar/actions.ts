@@ -1,9 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateImportBatch, revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import {
+  revalidateImportBatch,
+  revalidatePendingImports,
+  revalidateReadingLog,
+} from "@/lib/reactivity/revalidate";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
@@ -172,7 +175,7 @@ export async function resolveUnmatchedImportRow(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const role = await getCurrentUserRole(supabase);
+  const role = await getCurrentUserRole();
   if (!hasMinRole(role, "collaborator")) return { error: "forbidden" };
 
   const title = String(formData.get("title") ?? "").trim();
@@ -242,7 +245,7 @@ export async function resolvePendingRow(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { error: "forbidden" };
   }
 
@@ -284,7 +287,7 @@ export async function resolvePendingRow(
   // El RPC escribe pases con nota para el DUEÑO de la fila: la media cacheada
   // de esa obra hay que invalidarla igual que en el camino normal (#718).
   revalidateReadingLog(itemType, inserted.id);
-  revalidatePath("/importar/pendientes");
+  revalidatePendingImports();
   return { done: true };
 }
 
@@ -302,7 +305,7 @@ export async function dismissPendingRow(pendingId: string) {
     .eq("id", pendingId)
     .eq("user_id", user.id);
 
-  revalidatePath("/importar/pendientes");
+  revalidatePendingImports();
 }
 
 export type SaveUnmatchedBatchState = { saved: number } | { error: "generic" };
@@ -370,7 +373,7 @@ export async function resolvePendingRowWithCandidate(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) {
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) {
     return { error: "forbidden" };
   }
 
@@ -388,6 +391,6 @@ export async function resolvePendingRowWithCandidate(
   if (error) return { error: "generic" };
 
   revalidateReadingLog(itemType, catalogId);
-  revalidatePath("/importar/pendientes");
+  revalidatePendingImports();
   return { done: true };
 }

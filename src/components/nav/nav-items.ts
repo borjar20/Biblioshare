@@ -1,8 +1,11 @@
 import type { SVGProps } from "react";
 import type { ComponentType } from "react";
 import {
+  GearIcon,
   HomeIcon,
   LibraryIcon,
+  NoteIcon,
+  PollIcon,
   SearchIcon,
   UsersIcon,
   UserIcon,
@@ -72,4 +75,44 @@ export function anonNavItems(): NavItem[] {
 // botón del header, no como entrada de la barra.
 export function anonPrimaryNavItems(): NavItem[] {
   return anonNavItems().filter((i) => i.key !== "login");
+}
+
+// ---------------------------------------------------------------------------
+// «Tú»: el segundo nivel de la navegación (F3-010 / F4-007)
+// ---------------------------------------------------------------------------
+// La app tiene ~8 áreas y la barra principal cinco huecos, así que lo que no
+// cabía —Cuaderno, Estadísticas, Ajustes— no colgaba de NINGUNA navegación: se
+// llegaba a Cuaderno desde una tarjeta del Rincón, a Estadísticas desde un
+// enlace al pie de una pestaña del perfil, y a los ajustes desde un engranaje
+// que abría una hoja modal. Un tercio de la app era inalcanzable sin saberse
+// el camino de memoria.
+//
+// La regla de reparto: **si es TUYO, cuelga de Tú.** Lo que es del catálogo
+// (Sagas, Géneros) cuelga de Buscar, que es donde se descubre. Por eso Sagas NO
+// entra en esta lista aunque también estuviera enterrada: no es tuya.
+//
+// Se sirve en dos sitios y por eso vive aquí, no dentro de un componente: el
+// menú del avatar (sm+, donde el avatar ES la entrada a lo tuyo) y la fila de
+// accesos del perfil propio (móvil, donde la entrada es la pestaña Perfil de la
+// barra inferior). Misma lista, dos formas de enseñarla, un solo sitio que tocar.
+export type YouItem = {
+  key: "profile" | "notes" | "stats" | "settings";
+  href: string;
+  /** Clave de traducción bajo `nav.you`. */
+  labelKey: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
+
+export function youItems(username: string): YouItem[] {
+  return [
+    {
+      key: "profile",
+      href: `/u/${username}`,
+      labelKey: "profile",
+      Icon: UserIcon,
+    },
+    { key: "notes", href: "/notas", labelKey: "notes", Icon: NoteIcon },
+    { key: "stats", href: "/estadisticas", labelKey: "stats", Icon: PollIcon },
+    { key: "settings", href: "/ajustes", labelKey: "settings", Icon: GearIcon },
+  ];
 }

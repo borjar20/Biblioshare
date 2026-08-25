@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { Button } from "@/components/ui/button";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "@/components/detail/item-status-context";
@@ -61,7 +60,6 @@ export function ItemRailActions({
   const t = useTranslations("item");
   const { status, isSaving } = useItemStatus();
   const pathname = usePathname();
-  const accent = MEDIA_ACCENT[itemType];
   const { follow, isPending } = useFollow(itemType, itemId, isLoggedIn);
 
   // Sin pase activo la obra no está en la biblioteca: el rail enseña "Seguir",
@@ -116,10 +114,17 @@ export function ItemRailActions({
         </div>
       )}
 
+      {/* La acción más importante de la app lleva SIEMPRE el naranja del
+          primario (F3-006). Antes se pintaba con el color del tipo de medio
+          (`MEDIA_ACCENT[itemType].bg`), y eso hacía que «Marcar episodio»
+          fuese el único botón morado de la aplicación mientras el mismo gesto,
+          desde la pestaña Episodios, salía naranja. El color de tipo sigue
+          siendo del CONTENIDO (barras de progreso, chips, marcas del
+          calendario); el del CTA es el del rol, no el del medio. */}
       {ctaHref && (
         <Link
           href={ctaHref}
-          className={`flex items-center justify-center gap-2 rounded-[10px] ${accent.bg} px-4 py-3.5 text-sm font-semibold text-white transition-opacity hover:opacity-90`}
+          className="flex items-center justify-center gap-2 rounded-[10px] bg-accent px-4 py-3.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
         >
           <span aria-hidden>+</span>
           {ctaLabel}

@@ -125,7 +125,7 @@ test.describe("Inicio · estados de la columna personal", () => {
     const discovery = page.locator("section").filter({ hasText: /encuentra algo para disfrutar/i });
     await expect(discovery.getByRole("heading", { name: /encuentra algo para disfrutar/i })).toBeVisible();
     await expect(discovery.getByRole("link", { name: /^buscar$/i })).toBeVisible();
-    await expect(discovery.getByRole("link", { name: /explorar la colección/i })).toBeVisible();
+    await expect(discovery.getByRole("link", { name: /explorar tu biblioteca/i })).toBeVisible();
   });
 
   test("estado 3: solo completados ve '¿Qué empezamos?'", async ({ page }) => {

@@ -27,7 +27,11 @@ import type { LibraryHealth } from "@/lib/stats/get-library-health";
 import type { ActivityBucket, PeriodActivity } from "@/lib/stats/get-period-activity";
 import type { RatedFacets, RatedGroup } from "@/lib/stats/get-rated-facets";
 import type { RatingDistribution } from "@/lib/stats/get-rating-distribution";
+import type { DropReason, DropStats } from "@/lib/stats/get-drop-reasons";
+import type { NotesPerWork } from "@/lib/stats/get-notes-per-work";
+import type { ReadingSpeed } from "@/lib/stats/get-pace";
 import type { Records } from "@/lib/stats/get-records";
+import type { Rereads } from "@/lib/stats/get-rereads";
 import type { StatusDistribution } from "@/lib/stats/get-status-distribution";
 import type { TbrSnapshot } from "@/lib/stats/get-tbr-snapshot";
 import type { TopRatedItem } from "@/lib/stats/get-top-rated";
@@ -38,6 +42,7 @@ import {
   type ActivityMetric,
   type ItemFilter,
   itemFilterLabel,
+  itemFilterParam,
 } from "@/lib/stats/filter";
 import {
   type StatsPeriod,
@@ -45,7 +50,7 @@ import {
   previousLabel,
 } from "@/lib/stats/period";
 import { starLabel } from "@/lib/stats/rating";
-import { UNITS, type PanelKpi, type PanelSpec } from "./types";
+import { UNITS, type PanelKpi, type PanelSpec, type Unit } from "./types";
 
 export { periodLabel };
 
@@ -156,6 +161,10 @@ export type StatsInput = {
   formats: FormatStats;
   calendar: YearCalendar;
   pagesPerDay: number | null;
+  rereads: Rereads;
+  drops: DropStats;
+  annotations: NotesPerWork;
+  speed: ReadingSpeed;
 };
 
 // ══ El muro completo, por secciones ══════════════════════════════════════════
@@ -185,6 +194,66 @@ export function fitsPeriod(spec: PanelSpec, period: StatsPeriod): boolean {
   if (spec.dataWindow === "snapshot") return period === "all";
   if (spec.dataWindow === "long") return period !== "week" && period !== "month";
   return true;
+}
+
+/**
+ * ¿Has terminado alguna obra de este tipo EN TODO EL HISTÓRICO?
+ *
+ * `byYear` es la única señal del muro que ignora a la vez el periodo y el filtro
+ * de tipo —`getCompletedByYear` no recibe ninguno de los dos—, y eso es justo lo
+ * que exige el nivel 1: «no puede tener datos nunca» no se puede decidir con una
+ * cifra que el selector de periodo acaba de recortar.
+ *
+ * Cuenta obras TERMINADAS, así que solo vale para los paneles que también miden
+ * lo terminado. `series-formato` mide episodios vistos y por eso NO lo usa: quien
+ * lleva media temporada de tres series tiene datos y cero series terminadas.
+ */
+function everFinished(byYear: YearCompleted[], type: "book" | "movie"): boolean {
+  return byYear.some((y) => y[type] > 0);
+}
+
+/**
+ * Los paneles que solo existen para un tipo de obra que nunca has terminado. La
+ * frase va en primera persona del panel, no del sistema: dice qué falta, no que
+ * algo se haya escondido.
+ */
+const NEVER_BOOKS = "No has terminado ningún libro todavía";
+const NEVER_MOVIES = "No has terminado ninguna película todavía";
+
+/**
+ * La vista sin recortar por periodo, conservando el tipo elegido.
+ *
+ * Sin `?periodo=` el muro arranca en «todo el histórico» (ver `page.tsx`), así
+ * que la salida es quitar el parámetro. El de tipo se conserva a propósito:
+ * mandar a «todo» a quien acaba de elegir «libros» le deshace dos filtros
+ * cuando solo le sobraba uno.
+ */
+function allTimeHref(itemFilter: ItemFilter): string {
+  return itemFilter === "all"
+    ? "/estadisticas"
+    : `/estadisticas?tipo=${itemFilterParam(itemFilter)}`;
+}
+
+/**
+ * NIVEL 2 — la salida del vacío por filtro, cuando la hay.
+ *
+ * Devuelve `undefined` en los dos casos en que el enlace mentiría: con «Todo»
+ * puesto no hay ningún fuera al que ir, y sin histórico el sitio al que lleva
+ * está igual de vacío. Un enlace que promete un dato que no existe es peor que
+ * no ofrecer ninguno.
+ */
+function wayOutToAllTime(
+  { period, itemFilter }: StatsInput,
+  everTotal: number,
+  text: string,
+): NonNullable<PanelSpec["empty"]>["elsewhere"] | undefined {
+  if (period === "all" || everTotal <= 0) return undefined;
+  return { text, href: allTimeHref(itemFilter), label: "Ver todo el histórico" };
+}
+
+/** Obras terminadas en TODO el histórico. `byYear` no obedece a ningún filtro. */
+function everFinishedTotal(byYear: YearCompleted[]): number {
+  return byYear.reduce((n, y) => n + y.total, 0);
 }
 
 export function buildStatsSections(input: StatsInput): PanelSection[] {
@@ -217,6 +286,20 @@ export function hiddenPanelCount(input: StatsInput): number {
   return total - shown;
 }
 
+/** Cuántos paneles se pliegan por no poder tener datos nunca. */
+export function collapsedPanelCount(input: StatsInput): number {
+  return allSections(input, periodLabel(input.period), undefined)
+    .filter((s) => s.panels.some((spec) => fitsPeriod(spec, input.period)))
+    .reduce(
+      (n, s) =>
+        n +
+        s.panels.filter(
+          (spec) => spec.structurallyEmpty && fitsPeriod(spec, input.period),
+        ).length,
+      0,
+    );
+}
+
 function allSections(
   input: StatsInput,
   period: string,
@@ -234,10 +317,13 @@ function allSections(
       title: "Actividad",
       description: "Cuándo ocurrió, en qué ritmo y con qué constancia.",
       panels: [
+        // El héroe va PRIMERO (invariante de `specs.test.ts`): ocupa las tres
+        // columnas, así que cualquier panel por encima quedaría cortado a un
+        // tercio con una banda debajo.
+        yearCalendarPanel(input),
         periodActivityPanel(input, period, filter),
         completedByYearPanel(input),
         hoursPanel(input),
-        yearCalendarPanel(input),
         streaksPanel(input.streaks, "Rachas", input.itemFilter),
         recordsPanel(input.records, input.streaks, input.titles.records, period, filter),
       ],
@@ -249,6 +335,8 @@ function allSections(
       panels: [
         habitsPanel(input.habits, input.titles.habits, period, filter),
         sessionsPanel(input, period, filter),
+        speedPanel(input, period),
+        annotationsPanel(input, period),
       ],
     },
     {
@@ -259,25 +347,40 @@ function allSections(
         statusPanel(input, filter),
         tbrPanel(input.tbr, input.titles.tbr, filter),
         libraryHealthPanel(input, period),
+        dropReasonsPanel(input),
         backlogPanel(input),
+        dropPointPanel(input),
       ],
     },
     {
       id: "valoraciones",
       title: "Valoraciones",
       description: "Cómo puntúas y qué puntúas mejor.",
+      // Los tres `ratedGroupPanel` NO van seguidos, y es a propósito: son el
+      // mismo panel tres veces —mismo título, misma forma, misma frase de
+      // vacío—, y en fila se leen como una repetición aunque hablen de cosas
+      // distintas. Intercalados entre paneles de otra forma, cada uno se lee por
+      // lo que dice.
+      //
+      // Colapsarlos en UNO con selector de faceta sería lo suyo, pero choca con
+      // «nunca hay un filtro por panel» (`filter.ts`), así que se arregla por
+      // forma y por orden. Queda su issue.
       panels: [
+        // Va PRIMERO por ser el héroe de la sección, y héroe porque los títulos
+        // de obra son largos y el salto entre dos notas se lee en el ancho: en
+        // un tercio de tarjeta, «de 3,5 a 4,0» son doce píxeles de segmento.
+        rereadsPanel(input),
         ratingPanel(input.rating, input.titles.rating, period, filter),
-        topRatedPanel(input, period),
         ratedGroupPanel("nota-generos", "Géneros mejor valorados", "Género", input.facets.genres, period, filter),
-        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
-        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
         // Páginas y minutos no comparten eje, así que van en dos paneles; y con
         // un tipo elegido solo se pinta el suyo, o el otro saldría vacío al
         // lado sin más explicación que «sin datos».
         ...(input.itemFilter === "movie" || input.itemFilter === "series"
           ? []
           : [lengthVsRatingPanel(input, "book", period)]),
+        ratedGroupPanel("nota-autores", "Autores mejor valorados", "Autor", input.facets.authors, period, filter),
+        topRatedPanel(input, period),
+        ratedGroupPanel("nota-directores", "Directores mejor valorados", "Director", input.facets.directors, period, filter),
         ...(input.itemFilter === "book"
           ? []
           : [lengthVsRatingPanel(input, "screen", period)]),
@@ -571,7 +674,7 @@ function periodActivityPanel(
   period: string,
   filter: string | undefined,
 ): PanelSpec {
-  return activitySpec(
+  const spec = activitySpec(
     input.activity,
     input.metric,
     "actividad-periodo",
@@ -580,6 +683,23 @@ function periodActivityPanel(
     previousLabel(input.period),
     filter,
   );
+
+  // La salida solo se ofrece con la medida en OBRAS: el histórico que hay a
+  // mano (`byYear`) cuenta obras terminadas, y prometer «llevas 54 obras» en un
+  // panel que está midiendo minutos sería cambiarle la unidad al lector sin
+  // avisar. Con «Tiempo» puesto no hay cifra de fuera, así que no hay enlace.
+  const ever = input.metric === "time" ? 0 : everFinishedTotal(input.byYear);
+  return {
+    ...spec,
+    empty: spec.empty && {
+      ...spec.empty,
+      elsewhere: wayOutToAllTime(
+        input,
+        ever,
+        `En todo el histórico llevas ${ever} ${ever === 1 ? "obra terminada" : "obras terminadas"}`,
+      ),
+    },
+  };
 }
 
 /**
@@ -620,6 +740,8 @@ function yearCalendarPanel({ calendar, itemFilter }: StatsInput): PanelSpec {
       scope: withAllTypes(itemFilter, "año natural"),
     },
     viz: "heatmap",
+    // Preside su sección: 53 semanas en un tercio de tarjeta son celdas de 6 px.
+    hero: true,
     // Siete filas, una por día de la semana; cada columna, una semana. El
     // desplazamiento es el día de la semana del 1 de enero: sin él las filas
     // dejarían de ser lunes, martes… y el mosaico no sería un calendario.
@@ -679,9 +801,22 @@ function streaksPanel(
       period: "Ahora mismo",
       scope: withAllTypes(itemFilter, "foto del momento"),
     },
-    viz: "kpi",
+    // Bullet y no tres cifras sueltas: «racha actual contra tu mejor racha» ES
+    // valor-contra-referencia, que es exactamente lo que este gráfico dice. Con
+    // tres números había que restarlos mentalmente para saber si estabas cerca.
+    viz: "bullet",
     unit: UNITS.days,
-    data: [],
+    // Una sola fila basta: el bullet compara cada punto con SU marca, no con los
+    // otros puntos. `target` se omite si no hay mejor racha todavía — dibujar
+    // una marca en cero diría que ya la has batido.
+    data: [
+      {
+        key: "actual",
+        label: "Racha actual",
+        value: streaks.current,
+        target: streaks.best > 0 ? streaks.best : undefined,
+      },
+    ],
     kpis: [
       { key: "actual", label: "Días seguidos", value: streaks.current, unit: UNITS.days },
       {
@@ -748,6 +883,128 @@ function sessionsPanel(
     empty: {
       title: "Sin sesiones en el periodo",
       message: "Registra una sesión con su duración para empezar a acumular.",
+    },
+  };
+}
+
+// ── Velocidad ─────────────────────────────────────────────────────────────────
+/** Páginas por hora de lectura. No es `UNITS.pages`: el denominador es tiempo. */
+const PAGES_PER_HOUR: Unit = {
+  short: "págs./h",
+  one: "página por hora",
+  many: "páginas por hora",
+};
+
+/**
+ * Velocidad real: páginas por HORA, no por día.
+ *
+ * «Páginas al día» (en «Sesiones y ritmo») divide por días distintos, así que
+ * mezcla una sesión de tres horas con una de diez minutos: contesta a cuánto
+ * avanzas al día, que es constancia. Esta contesta a a qué velocidad lees.
+ *
+ * La marca de cada barra es TU media, la misma para todas: la pregunta del panel
+ * es qué libros te frenan y cuáles vuelan, y eso solo se ve contra tu propio
+ * ritmo. Compararlos entre sí ya lo hace la escala común.
+ */
+function speedPanel({ speed }: StatsInput, period: string): PanelSpec {
+  const media = speed.pagesPerHour;
+  return {
+    id: "velocidad",
+    title: "A qué velocidad lees",
+    description:
+      "Páginas por hora de lectura, solo con sesiones que traen duración. La primera sesión de un pase únicamente fija el cursor: quien empieza a registrar por la página 300 no ha leído 300 páginas en esa sesión.",
+    context: { period, filters: ["Solo libros", "Solo sesiones cronometradas"] },
+    viz: "bullet",
+    targetName: "tu media",
+    unit: PAGES_PER_HOUR,
+    labelHeader: "Obra",
+    data: speed.works.slice(0, RANK_LIMIT).map((w) => ({
+      key: w.itemId,
+      label: w.title ?? "",
+      value: w.pagesPerHour,
+      target: media ?? undefined,
+      detail: `${w.pages} págs. en ${w.minutes} min`,
+    })),
+    kpis: [
+      {
+        key: "media",
+        label: "Tu velocidad",
+        value: media,
+        unit: PAGES_PER_HOUR,
+        hint: "Sobre el tiempo de las sesiones cronometradas",
+      },
+    ],
+    note:
+      speed.withoutDuration > 0
+        ? `${speed.withoutDuration} ${speed.withoutDuration === 1 ? "avance no cuenta" : "avances no cuentan"} por no traer duración la sesión que lo cerró. Sin decirlo, esta velocidad parecería la de toda tu lectura.`
+        : undefined,
+    empty: {
+      title: "Todavía no hay ninguna sesión cronometrada",
+      message: "Registra una sesión con su duración y su página para medir tu ritmo.",
+    },
+  };
+}
+
+// ── Anotación ─────────────────────────────────────────────────────────────────
+/**
+ * Unidad propia. Va aquí y no en `UNITS` porque solo la usa este panel: meterla
+ * en el catálogo compartido invitaría a reutilizarla donde el denominador no son
+ * cien páginas.
+ */
+const PER_100_PAGES: Unit = {
+  short: "por 100 págs.",
+  one: "anotación por cada cien páginas",
+  many: "anotaciones por cada cien páginas",
+  decimals: 1,
+};
+
+/**
+ * Las obras que más te hacen escribir.
+ *
+ * **Normaliza por cada cien páginas y no por obra**, que es toda la diferencia:
+ * sin normalizar sería un ranking de libros largos. Doce notas en un tocho de mil
+ * páginas es menos escritura que cuatro en uno de cien.
+ */
+function annotationsPanel({ annotations }: StatsInput, period: string): PanelSpec {
+  const a = annotations;
+  return {
+    id: "anotacion",
+    title: "Las obras que más te hacen escribir",
+    description:
+      "Notas y citas por cada cien páginas, no por obra: sin normalizar, esto sería un ranking de libros largos.",
+    context: { period, filters: ["Solo libros con páginas en ficha"] },
+    viz: "lollipop",
+    unit: PER_100_PAGES,
+    labelHeader: "Obra",
+    data: a.works.slice(0, RANK_LIMIT).map((w) => ({
+      key: `${w.type}:${w.itemId}`,
+      label: w.title ?? "",
+      value: w.per100,
+      detail: `${w.count} en ${w.totalPages} págs.`,
+    })),
+    kpis: [
+      {
+        key: "citas",
+        label: "Citas",
+        value: a.quotes || null,
+        unit: { short: "citas", one: "cita", many: "citas" },
+        hint: "Lo que dice el libro, copiado",
+      },
+      {
+        key: "notas",
+        label: "Notas",
+        value: a.notes || null,
+        unit: { short: "notas", one: "nota", many: "notas" },
+        hint: "Lo tuyo sobre el libro",
+      },
+    ],
+    note:
+      a.unmeasurable > 0
+        ? `${a.unmeasurable} ${a.unmeasurable === 1 ? "anotación queda" : "anotaciones quedan"} fuera del gráfico: son de una obra sin páginas en ficha, o de una película o serie, que no tienen contra qué normalizarse. Siguen contando en las cifras de arriba.`
+        : undefined,
+    empty: {
+      title: "Todavía no has anotado nada",
+      message: "Guarda una nota o una cita desde la ficha de un libro y aparecerá aquí.",
     },
   };
 }
@@ -832,6 +1089,10 @@ function backlogPanel({ health, itemFilter }: StatsInput): PanelSpec {
       filter: globalFilter(itemFilter),
     },
     viz: "line",
+    // NO es héroe, aunque el diseño lo barajó: doce puntos de línea se leen bien
+    // en un tercio de tarjeta, y ser héroe obliga a ir primero en la sección —
+    // lo que rompería el orden que su descripción promete («qué tienes, qué
+    // acabas y qué se te acumula»). El ancho se reserva para lo que no cabe.
     unit: UNITS.items,
     labelHeader: "Mes",
     series: [{ key: "pending", label: "Abiertas", color: "var(--status-planned)" }],
@@ -988,7 +1249,7 @@ function ratedGroupPanel(
     description:
       "Solo entran los nombres con dos obras valoradas o más. Con una sola, el ranking premiaría el acierto de una prueba, no un gusto.",
     context: { period, filter, filters: ["Mínimo 2 obras valoradas"] },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.stars,
     labelHeader,
     valueHeader: "Nota",
@@ -1068,16 +1329,17 @@ function lengthVsRatingPanel(
 
 // ── §6 Gustos y descubrimiento ────────────────────────────────────────────────
 
-function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+function directorsPanel({ catalog, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "directores",
     title: "Directores más vistos",
+    structurallyEmpty: everFinished(byYear, "movie") ? undefined : NEVER_MOVIES,
     context: {
       period,
       filter: globalFilter(itemFilter),
       filters: ["Solo películas", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Director",
     data: catalog.directors.slice(0, RANK_LIMIT).map((d) => ({
@@ -1093,16 +1355,17 @@ function directorsPanel({ catalog, itemFilter }: StatsInput, period: string): Pa
   };
 }
 
-function publishersPanel({ catalog, itemFilter }: StatsInput, period: string): PanelSpec {
+function publishersPanel({ catalog, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "editoriales",
     title: "Editoriales",
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: {
       period,
       filter: globalFilter(itemFilter),
       filters: ["Solo libros", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Editorial",
     data: catalog.publishers.slice(0, RANK_LIMIT).map((p) => ({
@@ -1175,7 +1438,7 @@ function coverageNote(known: number, unknown: number, what: string): string | un
   } ${what} en su ficha de catálogo. Las medias son de las que sí.`;
 }
 
-function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): PanelSpec {
+function bookFormatPanel({ formats, pagesPerDay, byYear }: StatsInput, period: string): PanelSpec {
   const b = formats.books;
   const known = b.finished - b.unknown;
   const daysToEmpty =
@@ -1184,6 +1447,7 @@ function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): 
   return {
     id: "libros-formato",
     title: "Libros",
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: { period, filters: ["Solo libros"] },
     viz: "kpi",
     unit: UNITS.pages,
@@ -1231,12 +1495,13 @@ function bookFormatPanel({ formats, pagesPerDay }: StatsInput, period: string): 
   };
 }
 
-function movieFormatPanel({ formats }: StatsInput, period: string): PanelSpec {
+function movieFormatPanel({ formats, byYear }: StatsInput, period: string): PanelSpec {
   const m = formats.movies;
   const known = m.finished - m.unknown;
   return {
     id: "peliculas-formato",
     title: "Películas",
+    structurallyEmpty: everFinished(byYear, "movie") ? undefined : NEVER_MOVIES,
     context: { period, filters: ["Solo películas"] },
     viz: "kpi",
     unit: UNITS.minutes,
@@ -1602,7 +1867,7 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
       filter: globalFilter(itemFilter),
       filters: ["Ordenado por nota, de mayor a menor"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.stars,
     labelHeader: "Obra",
     valueHeader: "Nota",
@@ -1619,13 +1884,92 @@ function topRatedPanel({ topRated, titles, itemFilter }: StatsInput, period: str
   };
 }
 
+// ── Relecturas ────────────────────────────────────────────────────────────────
+/**
+ * Cómo cambia tu nota al releer.
+ *
+ * El esquema lleva esto desde el principio —el pase es dueño de la nota, así que
+ * cada relectura tiene la suya— y lo único que se sacaba de ahí era un contador.
+ *
+ * **Ignora el selector de periodo a propósito**: una relectura son dos pases
+ * separados por años, y recortarlos a la ventana elegida dejaría fuera justo el
+ * primero, que es la mitad de la comparación. Lo dice en su alcance.
+ */
+function rereadsPanel(input: StatsInput): PanelSpec {
+  const { rereads, itemFilter } = input;
+  const works = rereads.works.slice(0, RANK_LIMIT);
+  const subieron = rereads.works.filter((w) => w.change > 0).length;
+
+  return {
+    id: "relecturas",
+    dataWindow: "long",
+    // Héroe SOLO cuando hay algo que dibujar. Una tarjeta vacía ocupando las tres
+    // columnas es el peor sitio del muro para no tener datos, y encima obliga a
+    // ir primera.
+    ...(works.length > 0 ? { hero: true as const } : {}),
+    title: "Cómo cambia tu nota al releer",
+    description:
+      "Compara la nota del PRIMER pase con la del último, no con la del medio: la pregunta es qué te parece ahora frente a la primera vez.",
+    context: {
+      period: "Todo el histórico",
+      scope: withAllTypes(itemFilter, "serie histórica"),
+      filters: ["Solo obras releídas y valoradas dos veces"],
+    },
+    viz: "dumbbell",
+    unit: UNITS.stars,
+    labelHeader: "Obra",
+    data: works.map((w) => ({
+      key: `${w.type}:${w.itemId}`,
+      label: w.title ?? "",
+      from: w.first,
+      value: w.latest,
+      detail: `${w.passes} pases`,
+    })),
+    kpis: [
+      {
+        key: "media",
+        label: "Cambio medio al releer",
+        value: rereads.averageChange,
+        unit: UNITS.stars,
+        hint: "En estrellas, sobre las obras valoradas las dos veces",
+      },
+      {
+        key: "obras",
+        label: "Obras releídas",
+        value: rereads.totalRereadWorks || null,
+        unit: UNITS.works,
+      },
+      {
+        key: "mejoran",
+        label: "Te gustaron más",
+        value: rereads.works.length > 0 ? subieron : null,
+        unit: UNITS.works,
+        hint: `De ${rereads.works.length} comparables`,
+      },
+    ],
+    note:
+      rereads.unratedRereads > 0
+        ? `Hay ${rereads.unratedRereads} ${
+            rereads.unratedRereads === 1 ? "relectura" : "relecturas"
+          } fuera del gráfico por no tener nota en alguno de los dos pases. Sin decirlo, la media hablaría solo de las que sí valoraste dos veces.`
+        : undefined,
+    empty: {
+      title: "Todavía no has releído nada",
+      message:
+        "Cierra un segundo pase de una obra que ya terminaste y aparecerá aquí con sus dos notas.",
+    },
+  };
+}
+
 // ── Parte-todo: tipo de obra ──────────────────────────────────────────────────
 /**
  * Este panel ignora el filtro de tipo a propósito: es el que responde a esa
  * misma pregunta. Filtrarlo lo dejaría con un solo sector y el cien por cien,
  * que no informa de nada.
  */
-function typePanel({ type, titles, itemFilter }: StatsInput, period: string): PanelSpec {
+function typePanel(input: StatsInput, period: string): PanelSpec {
+  const { type, titles, itemFilter } = input;
+  const ever = everFinishedTotal(input.byYear);
   return {
     id: "por-tipo",
     title: titles.type,
@@ -1634,7 +1978,7 @@ function typePanel({ type, titles, itemFilter }: StatsInput, period: string): Pa
       scope: withAllTypes(itemFilter),
       filters: ["Obras terminadas"],
     },
-    viz: "donut",
+    viz: "waffle",
     unit: UNITS.works,
     labelHeader: "Tipo",
     series: TYPE_SERIES,
@@ -1647,6 +1991,11 @@ function typePanel({ type, titles, itemFilter }: StatsInput, period: string): Pa
     empty: {
       title: "Nada terminado en este periodo",
       message: "Cierra un pase para que aparezca aquí.",
+      elsewhere: wayOutToAllTime(
+        input,
+        ever,
+        `En todo el histórico llevas ${ever} ${ever === 1 ? "obra terminada" : "obras terminadas"}`,
+      ),
     },
   };
 }
@@ -1662,7 +2011,7 @@ function statusPanel({ status, titles }: StatsInput, filter: string | undefined)
       scope: "foto del momento",
       filter,
     },
-    viz: "donut",
+    viz: "waffle",
     unit: UNITS.items,
     labelHeader: "Estado",
     series: STATUS_SERIES,
@@ -1692,7 +2041,11 @@ function hoursPanel({ hours, titles, todayISO, itemFilter }: StatsInput): PanelS
       scope: withAllTypes(itemFilter, "año natural"),
       filters: ["Sesiones de lectura"],
     },
-    viz: "bars",
+    // Área, no barras: doce meses seguidos son una serie CONTINUA, y la curva
+    // dice de un vistazo la forma del año que doce columnas sueltas obligan a
+    // recomponer. De paso baja a cuatro los paneles de barras del muro, que era
+    // media docena y sonaba a repetición.
+    viz: "area",
     unit: UNITS.minutes,
     labelHeader: "Mes",
     series: [{ key: "minutes", label: "Minutos", color: "var(--accent)" }],
@@ -1783,16 +2136,17 @@ function genresPanel(
   };
 }
 
-function authorsPanel({ catalog, titles, itemFilter }: StatsInput, period: string): PanelSpec {
+function authorsPanel({ catalog, titles, itemFilter, byYear }: StatsInput, period: string): PanelSpec {
   return {
     id: "autores",
     title: titles.authors,
+    structurallyEmpty: everFinished(byYear, "book") ? undefined : NEVER_BOOKS,
     context: {
       period,
       filter: globalFilter(itemFilter),
       filters: ["Solo autores de libro", "Obras distintas"],
     },
-    viz: "ranking",
+    viz: "lollipop",
     unit: UNITS.works,
     labelHeader: "Autor",
     data: catalog.authors.slice(0, RANK_LIMIT).map((a) => ({
@@ -1960,6 +2314,149 @@ function recordsPanel(
   };
 }
 
+// ── Abandonos ─────────────────────────────────────────────────────────────────
+/**
+ * Etiqueta legible de cada motivo. La traducción vive AQUÍ y no en el getter
+ * porque es presentación: el getter devuelve el valor del enum tal cual.
+ */
+const DROP_REASON_LABEL: Record<DropReason, string> = {
+  no_enganchado: "No me enganchó",
+  aburrido: "Me aburrió",
+  no_es_momento: "No era el momento",
+  no_esperado: "No era lo que esperaba",
+  otro: "Otro motivo",
+};
+
+/**
+ * Por qué abandonas.
+ *
+ * ⚠️ Este panel solo puede vivir en `/estadisticas`, que es privada y del dueño.
+ * `passes.dropped_reason` es SIEMPRE privado, con independencia de `is_public`:
+ * la tabla no concede `SELECT` sobre esa columna a nadie y la única vía de
+ * lectura es la vista `pass_reviews`, enmascarada por dueño. Llevarlo a la
+ * pestaña pública del perfil expondría el motivo por el que alguien dejó un
+ * libro, que es exactamente lo que el esquema protege. Hay un test que lo afirma.
+ */
+function dropReasonsPanel({ drops, itemFilter }: StatsInput): PanelSpec {
+  const sinMotivo = drops.total - drops.withReason;
+  return {
+    id: "motivos-abandono",
+    // NO obedece al selector de periodo, y por eso lo dice en su alcance en vez
+    // de fingirlo. Un abandono no siempre trae fecha de cierre —`finished_on` es
+    // opcional al soltar una obra—, así que recortarlo por periodo dejaría fuera
+    // justo los que no la tienen sin que se notara. Es el histórico o nada.
+    dataWindow: "long",
+    title: "Por qué abandonas",
+    description:
+      "Solo cuenta los abandonos que llevan motivo registrado. Un cero es una respuesta —«nunca lo dejo por eso»—, no un hueco.",
+    context: {
+      period: "Todo el histórico",
+      scope: withAllTypes(itemFilter, "serie histórica"),
+      filters: ["Solo abandonos con motivo registrado"],
+    },
+    viz: "lollipop",
+    unit: UNITS.passes,
+    labelHeader: "Motivo",
+    data: DROP_REASONS_ORDER.map((r) => ({
+      key: r,
+      label: DROP_REASON_LABEL[r],
+      value: drops.byReason[r],
+    })),
+    kpis: [
+      { key: "total", label: "Abandonos", value: drops.total || null, unit: UNITS.passes },
+      {
+        key: "con-motivo",
+        label: "Con motivo registrado",
+        value: drops.withReason || null,
+        unit: UNITS.passes,
+        hint: `De ${drops.total} ${drops.total === 1 ? "abandono" : "abandonos"}`,
+      },
+    ],
+    note:
+      sinMotivo > 0
+        ? `${sinMotivo} ${sinMotivo === 1 ? "abandono no tiene" : "abandonos no tienen"} motivo: el campo nació el 14 de agosto de 2026 y no se rellenó hacia atrás. Sin decirlo, este reparto parecería hablar de todos.`
+        : undefined,
+    empty: {
+      title: "No has abandonado nada en este periodo",
+      message: "Aquí aparecerá el motivo que elijas al dejar una obra.",
+    },
+  };
+}
+
+/** Orden fijo, del motivo más frecuente al menos, para que no baile por datos. */
+const DROP_REASONS_ORDER: DropReason[] = [
+  "no_enganchado",
+  "aburrido",
+  "no_es_momento",
+  "no_esperado",
+  "otro",
+];
+
+/**
+ * Dónde abandonas, y el punto pasado el cual ya no sueltas un libro.
+ *
+ * Solo libros: es lo único con una talla comparable en la ficha. El punto de no
+ * retorno **no se afirma con pocos abandonos medidos** (ver `computeDropPoint`);
+ * cuando falta, la barra se queda sin marca en vez de inventarse un límite.
+ */
+function dropPointPanel({ drops, itemFilter }: StatsInput): PanelSpec {
+  const p = drops.point;
+  const fuera = p.unmeasurable;
+  return {
+    id: "punto-abandono",
+    // Mismo alcance que «Por qué abandonas»: sale del mismo getter, que no
+    // filtra por periodo porque un abandono no siempre trae fecha de cierre.
+    dataWindow: "long",
+    title: "Dónde abandonas",
+    description:
+      "El porcentaje del libro que llevabas al dejarlo. La marca es tu abandono más tardío: pasado ese punto, nunca has soltado un libro.",
+    context: {
+      period: "Todo el histórico",
+      scope: withAllTypes(itemFilter, "solo libros"),
+      filters: ["Libros con páginas en ficha"],
+    },
+    viz: "bullet",
+    targetName: "tu abandono más tardío",
+    unit: UNITS.percent,
+    labelHeader: "Medida",
+    data: [
+      {
+        key: "medio",
+        label: "Avance medio al abandonar",
+        value: p.averagePercent,
+        target: p.pointOfNoReturn ?? undefined,
+      },
+    ],
+    kpis: [
+      {
+        key: "medio",
+        label: "Avance medio al abandonar",
+        value: p.averagePercent,
+        unit: UNITS.percent,
+        hint: `Sobre ${p.measured} ${p.measured === 1 ? "abandono medible" : "abandonos medibles"}`,
+      },
+      {
+        key: "limite",
+        label: "Punto de no retorno",
+        value: p.pointOfNoReturn,
+        unit: UNITS.percent,
+        hint:
+          p.pointOfNoReturn === null
+            ? "Hacen falta cinco abandonos medibles para afirmarlo"
+            : "Pasado ese punto no has soltado ningún libro",
+      },
+    ],
+    note:
+      fuera > 0
+        ? `${fuera} ${fuera === 1 ? "abandono queda" : "abandonos quedan"} fuera del cálculo: sin páginas en la ficha, con la posición guardada en otro formato, o con una página por encima del final (pasa cuando la edición leída no es la de la ficha).`
+        : undefined,
+    empty: {
+      title: "No hay ningún abandono medible",
+      message: "Hace falta que el libro traiga páginas en su ficha y que la posición esté guardada.",
+    },
+  };
+}
+
 // ── Acumulado / pila ──────────────────────────────────────────────────────────
 function tbrPanel(tbr: TbrSnapshot, title: string, filter?: string): PanelSpec {
   return {
@@ -1971,7 +2468,7 @@ function tbrPanel(tbr: TbrSnapshot, title: string, filter?: string): PanelSpec {
       scope: "foto del momento",
       filter,
     },
-    viz: "donut",
+    viz: "waffle",
     unit: UNITS.items,
     labelHeader: "Tipo",
     series: TYPE_SERIES,

@@ -26,7 +26,7 @@ export default async function RouteEditorPage({
 
   const user = await getCurrentUser();
   if (!user) redirect(loginHref(`/saga/${id}/rutas/${slug}/editar`));
-  if (!hasMinRole(await getCurrentUserRole(supabase), "collaborator")) redirect(`/saga/${id}`);
+  if (!hasMinRole(await getCurrentUserRole(), "collaborator")) redirect(`/saga/${id}`);
 
   const { data: route } = await supabase
     .from("saga_routes")

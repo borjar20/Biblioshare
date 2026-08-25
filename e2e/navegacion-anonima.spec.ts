@@ -7,9 +7,10 @@ test("anónimo ve nav pública y botón de login en una página pública", async
   // CTA de login en el header (no avatar).
   await expect(page.getByRole("link", { name: /iniciar sesión/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /crear cuenta/i })).toBeVisible();
-  // Nav pública presente; Colección NO.
+  // Nav pública presente; Biblioteca NO. (La entrada se llamaba «Colección»
+  // hasta F3-011 — ver docs/UI-GLOSARIO.md.)
   await expect(page.getByRole("link", { name: /^Buscar$/ }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Colección$/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Biblioteca$/ })).toHaveCount(0);
 });
 
 test("anónimo en página gated cae en /login?next= y no pierde el destino", async ({ page }) => {
