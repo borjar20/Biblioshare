@@ -295,6 +295,20 @@ test.describe
     await cleanupBook(bookId);
   });
 
+  // Las reglas 2, 5 y 6 heredan `bookId` de la Regla 1. Filtrar la suite (p. ej.
+  // `-g "Regla 2"`) deja fuera a su predecesora: `bookId` se queda en "", el
+  // test navega a `/libro/?tab=log` —una ficha que no existe— y el fallo sale 20
+  // segundos después como «no encuentro el botón Leyendo», un síntoma que no
+  // menciona la causa. Eso costó la issue #744 entera: cuatro corridas y un
+  // diagnóstico que acusaba al producto de un fallo del comando de repro.
+  // Con esto, correrlas sueltas falla al instante y diciendo por qué.
+  function requiereLaRegla1() {
+    expect(
+      bookId,
+      'encadena con «Regla 1» (describe .serial): no se puede correr suelta con -g, hay que correr el fichero entero',
+    ).not.toBe("");
+  }
+
   test("Regla 1 — Alta: buscar y añadir un libro deja el pase en Pendiente", async ({
     page,
   }) => {
@@ -338,6 +352,7 @@ test.describe
     page,
   }) => {
     test.setTimeout(60_000);
+    requiereLaRegla1();
     await login(page);
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});
@@ -394,6 +409,7 @@ test.describe
     page,
   }) => {
     test.setTimeout(60_000);
+    requiereLaRegla1();
     await login(page);
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});
@@ -422,6 +438,7 @@ test.describe
     page,
   }) => {
     test.setTimeout(60_000);
+    requiereLaRegla1();
     await login(page);
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});

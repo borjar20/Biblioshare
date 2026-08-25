@@ -201,10 +201,24 @@ Salieron tres issues que NO se encadenan: **#810** (la CSP no puede llevar
 social, RPC caras; la #684 solo cubría la búsqueda) y **#812** (la migración
 `20260878` está aplicada y verificada en dev, **no en prod**).
 
-Quedan de este bloque los sueltos que NO son de seguridad:
-contraste y `<main>`/skip-link (F4-022/023), regenerar `graph.json` y
-`database.types.ts` (#695, #701, #625), y las migraciones fantasma de F1-017
-(5 RPCs de hidratación solo en dev).
+Quedan de este bloque los sueltos que NO son de seguridad: **#815** (contraste:
+`--muted-foreground` a 3,4:1 y `--foreground-faint` a 2,6:1 sacan axe *serious*
+en las 17 rutas) y **#816** (`<main>` + skip-link, ausentes en 15 de 17), que son
+F4-022/023 y hasta hoy no tenían issue; y regenerar `graph.json` y
+`database.types.ts` (#695, #701, #625).
+
+**Las «migraciones fantasma» de F1-017 ya NO son trabajo pendiente: el hallazgo
+está caducado.** Comprobado el 2026-08-25 función a función —las 88 de
+`pg_proc` en el esquema `public` de dev contra `supabase/`— y **ninguna se ha
+quedado sin definición en el repo**. Los cinco RPC que la fase 5 daba por
+perdidos (`hydrate_movie`/`series`/`screens_bulk`,
+`register_catalog_item(s_bulk)`) viven en `20260818_catalog_c_hydrate_screen.sql`
+y `20260818_catalog_e_register.sql` —se rescataron con el resto del juego de
+#674 el 2026-08-19— y las tres que no salen en `migrations/`
+(`has_min_role`, `current_user_role`, `enforce_role_change_admin_only`) están en
+`schema-baseline.sql`, que es su sitio. Límite de la comprobación, y conviene
+decirlo: **cubre FUNCIONES, no policies, triggers, grants ni columnas**; para eso
+sigue estando `docs/DRIFT-CHECK.md`.
 
 ## Features que no existen (P2-P3, por dominio)
 
