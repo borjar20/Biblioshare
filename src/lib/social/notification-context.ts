@@ -80,3 +80,13 @@ export function commentContext(body: string, isSpoiler: boolean): NotificationCo
   const excerpt = buildExcerpt(body);
   return excerpt ? { excerpt } : {};
 }
+
+/**
+ * Contexto de la notificación de una nota de voz: no hay texto que extractar,
+ * el excerpt dice qué es. Viaja ya localizado (locale único `es`) porque el
+ * lector (notification-copy) pinta el excerpt tal cual.
+ */
+export function voiceCommentContext(isSpoiler: boolean): NotificationContext {
+  if (isSpoiler) return { spoiler: true };
+  return { excerpt: "🎙️ Nota de voz" };
+}
