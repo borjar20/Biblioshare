@@ -1931,3 +1931,32 @@ como la escala continua que es una tierlist.
   `<comment_id>.<ext>`): el `id` del comentario no existe hasta el INSERT y la secuencia manda
   subir el objeto ANTES (validar → subir → insertar; si el insert falla, se borra el objeto).
   Un `uuid` fresco da la misma garantía de no-colisión sin depender de un id que aún no existe.
+
+## 2026-08-26 (6) — El SW solo guarda documentos que el servidor no marque como personales (#680)
+
+**Contexto.** El service worker (v3) guardaba en Cache Storage el HTML de TODA navegación con
+éxito como salvavidas offline, también las autenticadas, y nada lo purgaba al cerrar sesión. En
+un dispositivo compartido y sin red, otra persona podía recibir el HTML privado de la cuenta
+anterior (issue #680).
+
+**Decisión, en dos cinturones:**
+
+1. **La cabecera del servidor decide qué documento es cacheable, no una lista de rutas.**
+   `swCacheableDocument(ok, cacheControl)`: solo se guarda un documento con éxito cuyo
+   `Cache-Control` no lleve `no-store` ni `private`. Next sirve toda página dinámica (las que
+   leen sesión) con `no-store`, así que esa cabecera ES la línea entre «HTML igual para todos»
+   y «HTML de una cuenta». Consecuencia medida contra el build de producción: **hoy ningún
+   documento entra en caché** (el layout raíz lee sesión y hasta `/login` sale `no-store`), y
+   la navegación offline degrada a la página `/offline` genérica (pre-sembrada en `install`,
+   que no mira cabeceras). Es el comportamiento que pedía la issue, y si mañana una ruta pasa a
+   ser de verdad estática-cacheable, se cachea sola sin tocar el SW.
+2. **El logout purga el caché entero y re-siembra `/offline`.** `logout-button` manda
+   `postMessage({type:"purge-caches"})` fire-and-forget (el SW sobrevive a la navegación del
+   logout); el SW borra `CACHE_NAME` y vuelve a añadir `/offline`. No se distingue documentos
+   de estáticos: los estáticos con hash se re-cachean solos al siguiente uso.
+
+**Además:** bump a `biblioshare-v4` para que `activate` tire las copias privadas que ya están
+en disco de usuarios reales (mismo mecanismo que el v2→v3 de 2026-07-16), y evict de la copia
+vieja de una URL cuando su respuesta fresca llega marcada personal. Cubierto por
+`sw-strategy.test.ts` (5 casos nuevos sobre el fichero real en vm) y el e2e opt-in
+`e2e/sw-privado.spec.ts` (build de producción: nada autenticado en caché + purga tras logout).
