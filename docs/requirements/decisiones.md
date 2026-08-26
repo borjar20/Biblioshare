@@ -1862,3 +1862,28 @@ resultaron ser la misma decisión.
   dependencias (StrictMode) y la segunda pasada encontraba el guardia puesto y cerraba la hoja
   recién abierta. Y `showModal()` se llama solo si el `<dialog>` no está ya abierto, que es el
   idioma del resto del repo. Lo mismo puede afectar al editor de sagas: issue #839.
+
+## 2026-08-26 (4) — La columna del tier vuelve, con dos anchos; la retícula pasa a grid fluido
+
+Rectifica la entrada (2) de hoy. La banda superior resolvía el recorte pero cambiaba el dibujo del
+mockup por otro, y no convencía. Dos cambios, uno por cada mitad del problema.
+
+- **La columna de color vuelve, con DOS anchos** (`tierColumnWidth`): 44px con el serif del mockup
+  para S/A/B/C/D, y 84px con rótulo mono pequeño y envuelto en cuanto un nivel tiene nombre. El
+  error original no era la columna: era que su ancho fuera **uno solo** para un campo de texto
+  libre. La banda queda descartada.
+- **El ancho lo decide el TABLERO, no la fila.** Con el ancho por fila, las portadas de cada tier
+  arrancarían en una vertical distinta y la retícula dejaría de leerse como una tabla. Es la misma
+  razón por la que la decisión anterior también era por tablero, aunque el resultado sea otro.
+- **Las portadas pasan de `flex-wrap` con ancho fijo a un grid de columnas fluidas**
+  (`repeat(auto-fill, minmax(48px, 1fr))` + `aspect-[2/3]`). Con el flex, el sobrante de cada línea
+  se quedaba a la derecha como hueco muerto — que es lo que se veía y lo que se pidió arreglar.
+  Ahora las que caben se reparten el ancho exacto.
+- **Coste aceptado y medido:** con la columna ancha, en la fila de un tier caben 4 portadas de
+  52×78 a 360px; en la bandeja «sin clasificar», que no tiene columna, caben 5 de 57×86. La misma
+  portada se dibuja un 10% más pequeña dentro de un tier que en la bandeja. Es el precio de
+  recuperar la columna: esos 84px salen del ancho de las portadas, y no hay forma de tener las dos
+  cosas a 360px.
+- **El rótulo de cuatro líneas puede dejar huérfano el último trozo** (el ")" de "…los
+  entendidos)"). `text-wrap: balance` NO lo arregla aquí — probado: la caja es un flex container y
+  el reparto no llega al texto del `<span>`. Se deja así: se lee, que era el requisito.

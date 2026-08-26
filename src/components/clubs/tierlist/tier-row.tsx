@@ -2,25 +2,33 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import type { ActivityItem } from "@/lib/clubs/activities/core";
-import type { TierRowLayout } from "@/lib/clubs/activities/tierlist-types";
+import type { TierColumn } from "@/lib/clubs/activities/tierlist-types";
 import { TierlistItem } from "./tierlist-item";
 
-// Una fila del tablero (mockup Paper · Clubes, frame de tierlist). Dos formas:
+// Una fila del tablero (mockup Paper · Clubes, frame de tierlist): contenedor
+// único con la etiqueta del tier como columna de color a la izquierda y sus
+// portadas a la derecha. `id` es el tier ("S") o "unplaced" para la bandeja --
+// es lo que dnd-kit devuelve en `over`. La bandeja usa variant="pool": caja
+// punteada sin columna de etiqueta (su rótulo es un eyebrow del tablero).
 //
-//   - "column": contenedor único con la etiqueta del tier como columna de color
-//     a la izquierda y sus portadas a la derecha. Es el dibujo del mockup y
-//     solo vale para etiquetas cortas (S, A, B...).
-//   - "banner": la etiqueta ocupa una banda de color a lo ancho y las portadas
-//     van debajo. Para tierlists con niveles con nombre ("Perezón histórico").
+// La columna tiene DOS anchos (`column`, decidido para todo el tablero en
+// `tierColumnWidth`):
 //
-// `id` es el tier ("S") o "unplaced" para la bandeja -- es lo que dnd-kit
-// devuelve en `over`. La bandeja usa variant="pool": caja punteada sin etiqueta
-// (su rótulo es un eyebrow del tablero).
+//   - "narrow" (44px, serif a 20px) para el S/A/B/C/D del mockup.
+//   - "wide" (84px, rótulo mono pequeño y envuelto) para niveles con nombre
+//     ("Perezón histórico"). Antes esos nombres se pintaban en los 44px fijos
+//     y el `overflow-hidden` de la fila los cortaba a media palabra.
 //
-// Las filas NO recortan a sus hijos: el redondeado de la columna/banda de color
-// se declara en el propio hijo (`rounded-l-[9px]` / `rounded-t-[9px]`) en vez de
-// heredarse de un `overflow-hidden` del contenedor. Ese `overflow-hidden` era
-// justo lo que cortaba la etiqueta larga a media palabra, así que aquí no vuelve.
+// Las filas NO recortan a sus hijos: el redondeado de la columna se declara en
+// el propio hijo (`rounded-l-[9px]`) en vez de heredarse de un `overflow-hidden`
+// del contenedor. Ese `overflow-hidden` era justo lo que cortaba la etiqueta, y
+// además la columna tiene que poder EMPUJAR el alto de la fila cuando el rótulo
+// necesita cuatro líneas.
+//
+// Las portadas van en un GRID de columnas fluidas, no en un `flex-wrap`: con el
+// flex sobraba un hueco al final de cada línea (las portadas medían un ancho
+// fijo y el resto del ancho no se repartía). Con `auto-fill` + `1fr` caben las
+// que quepan a >=48px y se reparten el ancho exacto, sin hueco.
 export function TierRow({
   id,
   label,
@@ -30,7 +38,7 @@ export function TierRow({
   selectedKey,
   onSelect,
   variant = "tier",
-  layout = "column",
+  column = "narrow",
 }: {
   id: string;
   label: string;
@@ -41,7 +49,7 @@ export function TierRow({
   selectedKey: string | null;
   onSelect: (key: string) => void;
   variant?: "tier" | "pool";
-  layout?: TierRowLayout;
+  column?: TierColumn;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -55,48 +63,21 @@ export function TierRow({
     />
   ));
 
-  // Alto mínimo = portada (84px) + padding vertical (2 × 8px). Sin él, un tier
-  // vacío se queda más bajo que el resto y no se ve como sitio donde soltar.
-  const dropAreaBase = "flex min-h-[100px] flex-wrap items-center gap-1.5 p-2";
+  // `min-h` con el alto de una portada a 48px (el mínimo del grid) más el
+  // padding: sin él, un tier vacío se queda más bajo que el resto y no se ve
+  // como sitio donde soltar.
+  const dropArea =
+    "grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] content-center items-center gap-1.5 p-2 min-h-[88px]";
 
   if (variant === "pool") {
     return (
       <div
         ref={setNodeRef}
-        className={`relative ${dropAreaBase} rounded-[10px] border border-dashed ${
+        className={`relative ${dropArea} rounded-[10px] border border-dashed ${
           isOver ? "border-accent bg-accent/5" : "border-border bg-surface-muted"
         }`}
       >
         {covers}
-      </div>
-    );
-  }
-
-  const colorStyle = color
-    ? { background: color, color: "var(--tier-foreground)" }
-    : undefined;
-
-  if (layout === "banner") {
-    return (
-      <div
-        className={`relative flex flex-col rounded-[10px] border bg-surface ${
-          isOver ? "border-accent" : "border-border"
-        }`}
-      >
-        <div
-          className={`rounded-t-[9px] px-3 py-1.5 font-serif text-[15px] leading-tight font-bold break-words ${
-            color ? "" : "bg-surface-muted text-foreground"
-          }`}
-          style={colorStyle}
-        >
-          {label}
-        </div>
-        <div
-          ref={setNodeRef}
-          className={`${dropAreaBase} ${isOver ? "bg-accent/5" : ""}`}
-        >
-          {covers}
-        </div>
       </div>
     );
   }
@@ -108,17 +89,20 @@ export function TierRow({
       }`}
     >
       <div
-        className={`flex w-11 shrink-0 items-center justify-center self-stretch overflow-hidden rounded-l-[9px] px-1 text-center font-serif font-bold ${
-          label.length > 2 ? "text-base" : "text-xl"
+        className={`flex shrink-0 items-center justify-center self-stretch rounded-l-[9px] text-center ${
+          column === "wide"
+            ? "w-[84px] px-1.5 py-1.5 font-mono text-[10px] leading-[1.2] font-medium tracking-[0.06em] break-words uppercase"
+            : "w-11 px-1 font-serif text-xl font-bold"
         } ${color ? "" : "text-foreground"}`}
-        style={colorStyle}
+        style={color ? { background: color, color: "var(--tier-foreground)" } : undefined}
       >
-        <span>{label}</span>
+        {/* Un rótulo de cuatro líneas puede dejar huérfano el último trozo (el
+            ")" de "…los entendidos)"). `text-wrap: balance` NO lo arregla aquí
+            -- probado: la caja es un flex container y el reparto no llega al
+            texto del <span>. Se deja así: se lee, que es lo que se pedía. */}
+        <span className="min-w-0">{label}</span>
       </div>
-      <div
-        ref={setNodeRef}
-        className={`${dropAreaBase} flex-1 ${isOver ? "bg-accent/5" : ""}`}
-      >
+      <div ref={setNodeRef} className={`${dropArea} flex-1 ${isOver ? "bg-accent/5" : ""}`}>
         {covers}
       </div>
     </div>

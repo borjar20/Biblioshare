@@ -41,22 +41,27 @@ export const TIER_COLORS: string[] = [
   "var(--muted-foreground)",
 ];
 
-// A partir de cuántos caracteres la etiqueta deja de caber en la columna de
-// color del tablero (44px de ancho, serif bold). Medido sobre el peor caso:
-// tres glifos anchos ("PEC") llenan la caja justo, el cuarto ya se sale.
-const MAX_COLUMN_LABEL = 3;
+// A partir de cuántos caracteres la etiqueta deja de caber en la columna
+// estrecha (44px, serif a 20px). Medido sobre el peor caso: tres glifos anchos
+// ("PEC") llenan la caja justo, el cuarto ya se sale.
+const MAX_NARROW_LABEL = 3;
 
-export type TierRowLayout = "column" | "banner";
+/** Ancho de la columna de color: 44px para S/A/B, 84px para niveles con nombre. */
+export type TierColumn = "narrow" | "wide";
 
-// Decide el layout de TODAS las filas del tablero a la vez: si alguna etiqueta
-// no cabe en la columna de color, todas pasan a banda superior. Se decide por
-// tablero y no por fila a propósito -- mezclar los dos layouts en el mismo
-// tablero se lee como un fallo de maquetación, no como una decisión.
+// Decide el ancho de la columna para TODAS las filas del tablero a la vez: si
+// alguna etiqueta no cabe en los 44px, todas pasan a 84px con el rótulo
+// pequeño y envuelto.
+//
+// Es del tablero y no de cada fila por una razón de dibujo, no de gusto: las
+// portadas de todas las filas tienen que empezar en la misma vertical. Con el
+// ancho por fila, cada tier arrancaría en un sitio distinto y la retícula
+// dejaría de leerse como una tabla.
 //
 // Vive aquí y no en tier-row.tsx para poder probarla sin montar el componente
 // (ni arrastrar dnd-kit al entorno `node` de vitest).
-export function layoutForTiers(labels: string[]): TierRowLayout {
-  return labels.some((label) => label.length > MAX_COLUMN_LABEL) ? "banner" : "column";
+export function tierColumnWidth(labels: string[]): TierColumn {
+  return labels.some((label) => label.length > MAX_NARROW_LABEL) ? "wide" : "narrow";
 }
 
 export type TierlistConfig = {

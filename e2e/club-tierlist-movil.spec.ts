@@ -7,12 +7,15 @@ import { test, expect, type Page } from "@playwright/test";
 //      FIJA. Con niveles con nombre ("Perezón histórico", "Ni fu ni fa (como
 //      dirían los entendidos)") el texto se salía de esa caja y lo cortaba el
 //      `overflow-hidden` de la fila: se leía media palabra, sin forma de saber
-//      qué nivel era. Ahora, si alguna etiqueta no cabe, TODAS las filas pasan
-//      a banda superior a lo ancho (`layoutForTiers`).
+//      qué nivel era. Ahora la columna tiene dos anchos y lo elige
+//      `tierColumnWidth`: 44px para S/A/B, 84px con rótulo pequeño y envuelto
+//      en cuanto un nivel tiene nombre. El ancho es del TABLERO, no de la fila.
 //   2. Las portadas medían 34×51 y no se distinguía una de otra. Ahora la
-//      retícula son miniaturas de 56×84 y tocar una abre una HOJA con la
-//      portada grande, el tipo, el título y los botones de tier -- que antes
-//      vivían en una fila al pie del tablero, lejos de lo que colocaban.
+//      retícula es un grid de columnas FLUIDAS (las que caben se reparten el
+//      ancho exacto, sin el hueco muerto que dejaba el `flex-wrap`) y tocar una
+//      abre una HOJA con la portada grande, el tipo, el título y los botones de
+//      tier -- que antes vivían en una fila al pie del tablero, lejos de lo que
+//      colocaban.
 //
 // Ninguna aserción mira colores: miran RECTÁNGULOS. Es lo único que distingue
 // "el layout creció" de "el contenido se salió", que en una captura se parecen
@@ -185,6 +188,20 @@ async function etiquetasRecortadas(page: Page, textos: string[]) {
   }, textos);
 }
 
+/** Ancho de la caja de color de cada etiqueta, en el orden pedido. */
+async function anchosDeColumna(page: Page, textos: string[]) {
+  return page.evaluate((esperados) => {
+    return esperados.map((texto) => {
+      const span = [...document.querySelectorAll("span")]
+        .reverse()
+        .find((el) => el.textContent?.trim() === texto && el.children.length === 0);
+      // La caja de color es el padre del <span> del rótulo.
+      const caja = span?.parentElement;
+      return caja ? Math.round(caja.getBoundingClientRect().width) : -1;
+    });
+  }, textos);
+}
+
 test("tierlist en móvil: la etiqueta del nivel se lee entera y la portada se puede ampliar", async ({
   page,
 }) => {
@@ -243,16 +260,41 @@ test("tierlist en móvil: la etiqueta del nivel se lee entera y la portada se pu
     );
     expect(lateral, "el tablero no puede añadir scroll horizontal a 360px").toBeLessThanOrEqual(1);
 
-    // ── 3. La retícula es miniatura, y la hoja es donde se ve la obra ──
+    // ── 3. La retícula reparte TODO el ancho: ni un hueco muerto al final ──
     //
-    // Las dos mitades de la misma decisión: la portada del tablero puede seguir
-    // siendo pequeña PORQUE tocarla abre una hoja donde se ve grande y con el
-    // título escrito. Medir solo una de las dos dejaría pasar la regresión que
-    // importa (portada diminuta y nada que la explique).
+    // Con las portadas de ancho fijo y `flex-wrap`, el sobrante de cada línea se
+    // quedaba a la derecha como hueco vacío. Con el grid de columnas fluidas las
+    // que caben se reparten el ancho exacto, así que la última portada de una
+    // línea completa tiene que morir en el borde interior de su caja.
+    const hueco = await page.evaluate(() => {
+      const primera = document.querySelector('[data-testid="tierlist-cover"]');
+      const caja = primera?.parentElement;
+      if (!caja) return "no hay retícula que medir";
+      const r = caja.getBoundingClientRect();
+      const padding = parseFloat(getComputedStyle(caja).paddingRight);
+      const portadas = [...caja.children].map((c) => c.getBoundingClientRect());
+      // Solo la primera línea del grid: las de abajo pueden ir a medias.
+      const linea = portadas.filter((p) => Math.abs(p.top - portadas[0].top) < 1);
+      if (linea.length < 2) return `solo ${linea.length} portada(s) por línea`;
+      const sobra = r.right - padding - linea[linea.length - 1].right;
+      return Math.abs(sobra) <= 1 ? "" : `sobran ${Math.round(sobra)}px a la derecha`;
+    });
+    expect(hueco, "la última portada de la línea llega al borde de su caja").toBe("");
+
+    // Y siguen siendo portadas (2:3), no cuadrados estirados por el grid.
     const portada = page.getByTestId("tierlist-cover").first();
     const mini = (await portada.boundingBox())!;
-    expect(Math.round(mini.width)).toBe(56);
-    expect(Math.round(mini.height)).toBe(84);
+    expect(mini.width, "el grid no puede exprimirlas por debajo de su mínimo").toBeGreaterThanOrEqual(
+      48,
+    );
+    expect(mini.height / mini.width, "proporción de portada").toBeCloseTo(1.5, 1);
+
+    // ── 3b. La hoja es donde se ve la obra ──
+    //
+    // La otra mitad de la misma decisión: la portada del tablero puede seguir
+    // siendo miniatura PORQUE tocarla abre una hoja donde se ve grande y con el
+    // título escrito. Medir solo una de las dos dejaría pasar la regresión que
+    // importa (portada diminuta y nada que la explique).
 
     await portada.click();
     const hoja = page.locator("dialog[open]");
@@ -288,35 +330,25 @@ test("tierlist en móvil: la etiqueta del nivel se lee entera y la portada se pu
     await expect(page.locator("dialog[open]")).toBeHidden();
     await expect(page.getByText(/Sin clasificar · 7/)).toBeVisible();
 
-    // ── 6. La tierlist clásica conserva la columna de color ──
+    // ── 6. El ancho de la columna se elige, y es el mismo en todas las filas ──
     //
-    // El arreglo cambia el layout SOLO cuando hace falta. Si "S/A/B" acabara
-    // también en banda, el dibujo del mockup se habría perdido por el camino.
+    // Con nombres largos la columna va a 84px; con S/A/B se queda en los 44 del
+    // mockup. Y en un tablero dado TODAS las filas comparten ancho: si cada
+    // fila eligiera el suyo, las portadas de cada tier arrancarían en una
+    // vertical distinta y la retícula dejaría de leerse como una tabla.
+    expect(
+      await anchosDeColumna(page, [LARGA, "Perezón histórico", "PEC"]),
+      "con un nombre largo, las tres columnas miden 84",
+    ).toEqual([84, 84, 84]);
+
     await page.goto(`/club/${club.slug}/actividad/${clasica}`);
     await expect(page.getByText(/Sin clasificar/)).toBeVisible();
     await expect(page.getByTestId("tierlist-cover").first()).toBeVisible();
     expect(await etiquetasRecortadas(page, ["S", "A", "B"]), "S/A/B caben de sobra").toEqual([]);
-
-    const columna = await page.evaluate(() => {
-      const texto = [...document.querySelectorAll("div, span")]
-        .reverse()
-        .find((n) => n.textContent?.trim() === "S" && n.children.length === 0);
-      if (!texto) return null;
-      // La caja de color es el ancestro de ancho fijo; el <span> del texto va
-      // dentro. Se sube hasta encontrar el que mide 44.
-      let n: HTMLElement | null = texto as HTMLElement;
-      while (n && Math.round(n.getBoundingClientRect().width) !== 44) n = n.parentElement;
-      if (!n?.parentElement) return null;
-      return {
-        ancho: Math.round(n.getBoundingClientRect().width),
-        anchoFila: Math.round(n.parentElement.getBoundingClientRect().width),
-      };
-    });
-    expect(columna, "el nivel 'S' debe seguir en su columna de 44px").not.toBeNull();
     expect(
-      columna!.anchoFila,
-      "la fila tiene que ser mucho más ancha que la columna: eso es que NO es una banda",
-    ).toBeGreaterThan(columna!.ancho * 2);
+      await anchosDeColumna(page, ["S", "A", "B"]),
+      "S/A/B se quedan en la columna estrecha del mockup",
+    ).toEqual([44, 44, 44]);
   } finally {
     // fetch nativo, NO el fixture `request`: ese muere con el contexto del
     // navegador, así que un timeout dejaría el club y sus dos tierlists

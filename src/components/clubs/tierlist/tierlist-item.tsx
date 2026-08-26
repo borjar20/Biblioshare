@@ -16,10 +16,12 @@ import type { ActivityItem } from "@/lib/clubs/activities/core";
 // obligaba a mirar arriba (qué seleccioné) y tocar abajo (dónde va); ahora van
 // en la hoja, junto a la portada que se está colocando.
 //
-// Tamaño: 56×84. La retícula NO tiene que servir para reconocer una obra -- de
-// eso se encarga la hoja --, así que se queda en miniatura y prioriza que
-// quepan varias por línea (cinco a 360px). Las 34×51 originales eran otra cosa:
-// ahí no se distinguía ni el color de la portada.
+// Tamaño FLUIDO: la portada ocupa la columna que le da el grid de la fila
+// (`auto-fill` + `1fr`) y guarda la proporción 2:3. Antes medía un ancho fijo y
+// el sobrante de cada línea se quedaba como hueco muerto a la derecha; ahora las
+// que caben se reparten el ancho exacto. La retícula NO tiene que servir para
+// reconocer una obra -- de eso se encarga la hoja --, así que prioriza que
+// quepan varias por línea y que no sobre ni un píxel.
 export function TierlistItem({
   item,
   editable,
@@ -51,7 +53,7 @@ export function TierlistItem({
       aria-expanded={selected}
       title={item.itemTitle}
       data-testid="tierlist-cover"
-      className={`relative h-[84px] w-[56px] shrink-0 overflow-hidden rounded-[5px] border bg-surface-muted shadow-cover ${
+      className={`relative aspect-[2/3] w-full overflow-hidden rounded-[5px] border bg-surface-muted shadow-cover ${
         selected ? "border-accent ring-1 ring-accent" : "border-border"
       } ${isDragging ? "opacity-60" : ""} ${
         // `touch-manipulation`, no `touch-none` (#723): `none` le quita al
@@ -67,7 +69,9 @@ export function TierlistItem({
           src={item.itemCoverUrl}
           alt={item.itemTitle}
           fill
-          sizes="56px"
+          // Ancho aproximado de una columna del grid en cada tamaño: el grid
+          // no da un número fijo, así que se pide el del caso más grande.
+          sizes="(min-width: 1024px) 72px, 20vw"
           className="object-cover"
         />
       )}

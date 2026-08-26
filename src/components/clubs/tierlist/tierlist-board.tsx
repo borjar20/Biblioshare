@@ -15,7 +15,7 @@ import {
 import { useTranslations } from "next-intl";
 import type { ActivityDetail, ActivityItem } from "@/lib/clubs/activities/core";
 import { getTierlists, setPlacement, clearPlacement } from "@/lib/clubs/activities/tierlist";
-import { layoutForTiers, type TierlistView } from "@/lib/clubs/activities/tierlist-types";
+import { tierColumnWidth, type TierlistView } from "@/lib/clubs/activities/tierlist-types";
 import { UserAvatar } from "@/components/social/user-avatar";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { TierRow } from "./tier-row";
@@ -120,9 +120,10 @@ export function TierlistBoard({
   if (!board) return <Layout railExtra={railExtra} body={null} />;
 
   const editable = board.isViewer;
-  // Una etiqueta larga no cabe en la columna de color: el tablero entero pasa a
-  // filas con banda superior. Se decide aquí, con TODAS las etiquetas a la vista.
-  const rowLayout = layoutForTiers(view.tiers.map((tier) => tier.label));
+  // Una etiqueta larga no cabe en los 44px: la columna de color de TODAS las
+  // filas pasa a 84px. Se decide aquí, con todas las etiquetas a la vista, para
+  // que las portadas de todos los tiers empiecen en la misma vertical.
+  const tierColumn = tierColumnWidth(view.tiers.map((tier) => tier.label));
   const itemByKey = new Map(activity.items.map((i) => [`${i.itemType}:${i.itemId}`, i]));
   const itemsOf = (keys: string[]): ActivityItem[] =>
     keys.map((k) => itemByKey.get(k)).filter((i): i is ActivityItem => i !== undefined);
@@ -248,7 +249,7 @@ export function TierlistBoard({
                   editable={editable}
                   selectedKey={selectedKey}
                   onSelect={toggle}
-                  layout={rowLayout}
+                  column={tierColumn}
                 />
               ))}
             </div>
