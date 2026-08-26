@@ -1882,7 +1882,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_target_id: string
-          kind: string
+          kind?: string
           user_id: string
         }
         Update: {
@@ -2906,19 +2906,6 @@ export type Database = {
           external_id: string
           id: string
         }[]
-      }
-      register_manual_catalog_item: {
-        Args: {
-          p_cover_url?: string
-          p_creator?: string
-          p_isbn?: string
-          p_item_type: string
-          p_publisher?: string
-          p_title: string
-          p_total_pages?: number
-          p_year?: number
-        }
-        Returns: string
       }
       related_posts_by_author: {
         Args: {
