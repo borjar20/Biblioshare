@@ -23,6 +23,7 @@ import { buildCommentTree, MAX_THREAD_DEPTH, type CommentSort, type CommentNode 
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
 import { voiceGate } from "@/lib/voice/voice-note-limits";
+import { markVoiceTooltipSeen, useVoiceTooltipVisible } from "@/lib/voice/voice-tooltip";
 import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { RichTextView } from "./rich-text-view";
 import { SpoilerGate } from "./spoiler-gate";
@@ -35,8 +36,6 @@ import { VoiceMiniBar } from "./voice-mini-bar";
 import { VoiceRecorder } from "./voice-recorder";
 import { PendingVoiceNoteRow } from "./pending-voice-note";
 import { useVoiceNoteSubmit } from "./use-voice-note-submit";
-
-const VOICE_TOOLTIP_KEY = "biblioshare:voice-tooltip-seen";
 
 // Hilo de `/post/[id]` al estilo Reddit (posts Spec 2b): a diferencia de
 // `ReviewInteractions` —feed y superficies compartidas, aplanado a 2 niveles y
@@ -78,32 +77,16 @@ export function PostThread({
   const [spoiler, setSpoiler] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [voiceMode, setVoiceMode] = useState(false);
-  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3).
-  // Lectura de storage de un solo disparo -- no es una suscripción, así que
-  // el useState perezoso (con su try/catch para SSR/Safari privado) basta.
-  const [tooltipSeen, setTooltipSeen] = useState(() => {
-    try {
-      return window.localStorage.getItem(VOICE_TOOLTIP_KEY) != null;
-    } catch {
-      return true;
-    }
-  });
+  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3),
+  // hidratación-segura: useSyncExternalStore con getServerSnapshot fijo en
+  // false (issue #838, ver src/lib/voice/voice-tooltip.ts).
+  const tooltipVisible = useVoiceTooltipVisible();
   const voice = useVoiceNoteSubmit(interactionTargetId);
   const mention = useMentionAutocomplete({
     value: draft,
     onChange: setDraft,
     scope: { scope: "profile" },
   });
-
-  function markVoiceTooltipSeen() {
-    if (tooltipSeen) return;
-    try {
-      window.localStorage.setItem(VOICE_TOOLTIP_KEY, "1");
-    } catch {
-      // sin storage: no persiste entre sesiones, pero la sesión actual sigue bien
-    }
-    setTooltipSeen(true);
-  }
 
   // Pendientes cuentan como audios propios para el gate del cliente: evita
   // ráfagas mientras una subida sigue en vuelo (spec §7).
@@ -128,7 +111,7 @@ export function PostThread({
       >
         <MicIcon className="h-4 w-4" />
       </button>
-      {!tooltipSeen && (
+      {tooltipVisible && (
         <button
           type="button"
           onClick={markVoiceTooltipSeen}

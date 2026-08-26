@@ -23,6 +23,7 @@ import { buildCommentThreads, type CommentSort } from "@/lib/social/comment-tree
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
 import { voiceGate } from "@/lib/voice/voice-note-limits";
+import { markVoiceTooltipSeen, useVoiceTooltipVisible } from "@/lib/voice/voice-tooltip";
 import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { RichTextView } from "./rich-text-view";
 import { SpoilerGate } from "./spoiler-gate";
@@ -35,8 +36,6 @@ import { VoiceMiniBar } from "./voice-mini-bar";
 import { VoiceRecorder } from "./voice-recorder";
 import { PendingVoiceNoteRow } from "./pending-voice-note";
 import { useVoiceNoteSubmit } from "./use-voice-note-submit";
-
-const VOICE_TOOLTIP_KEY = "biblioshare:voice-tooltip-seen";
 
 // Like + hilo enriquecido de comentarios bajo una reseña (EPIC-05, Bloque B,
 // SD-3 + reestructura Tarea 7). El estado real deriva de las props que el
@@ -103,16 +102,10 @@ export function ReviewInteractions({
   // respuesta de ESE hilo (aplanado a 2 niveles, Tarea 12) está grabando. El
   // de EDICIÓN nunca lleva mic.
   const [voiceMode, setVoiceMode] = useState<"root" | string | null>(null);
-  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3).
-  // Lectura de storage de un solo disparo -- no es una suscripción, así que
-  // el useState perezoso (con su try/catch para SSR/Safari privado) basta.
-  const [tooltipSeen, setTooltipSeen] = useState(() => {
-    try {
-      return window.localStorage.getItem(VOICE_TOOLTIP_KEY) != null;
-    } catch {
-      return true;
-    }
-  });
+  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3),
+  // hidratación-segura: useSyncExternalStore con getServerSnapshot fijo en
+  // false (issue #838, ver src/lib/voice/voice-tooltip.ts).
+  const tooltipVisible = useVoiceTooltipVisible();
   const voice = useVoiceNoteSubmit(interactionTargetId);
   const mention = useMentionAutocomplete({
     value: rootDraft,
@@ -120,16 +113,6 @@ export function ReviewInteractions({
     scope: clubId ? { scope: "club", clubId } : { scope: "profile" },
   });
   const pathname = usePathname();
-
-  function markVoiceTooltipSeen() {
-    if (tooltipSeen) return;
-    try {
-      window.localStorage.setItem(VOICE_TOOLTIP_KEY, "1");
-    } catch {
-      // sin storage: no persiste entre sesiones, pero la sesión actual sigue bien
-    }
-    setTooltipSeen(true);
-  }
 
   if (!viewerLoggedIn) {
     return (
@@ -181,7 +164,7 @@ export function ReviewInteractions({
         >
           <MicIcon className="h-4 w-4" />
         </button>
-        {!tooltipSeen && (
+        {tooltipVisible && (
           <button
             type="button"
             onClick={markVoiceTooltipSeen}
