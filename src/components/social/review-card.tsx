@@ -68,12 +68,14 @@ export function ReviewCard({
             {event.itemTitle}
           </Link>
           {event.rating != null && <div className="mt-2"><RatingDots value={event.rating} itemType={event.itemType} /></div>}
-          {meta && <p className="mt-1.5 font-mono text-[10px] text-foreground-faint">{meta}</p>}
+          {meta && <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">{meta}</p>}
         </div>
       </div>
 
       {event.reviewExcerpt && (
-        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed">
+        // `whitespace-pre-line`: los saltos de línea de la reseña son del autor
+        // (textarea); sin esto el HTML los colapsa y el extracto sale de corrido.
+        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed whitespace-pre-line break-words">
           <MentionText text={event.reviewExcerpt} knownUsernames={knownUsernames} />
         </p>
       )}

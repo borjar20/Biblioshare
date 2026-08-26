@@ -1,21 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import type { ItemType } from "@/lib/catalog/types";
+import { csvCell } from "@/lib/export/csv";
 
 const ITEM_TYPE_LABEL: Record<ItemType, string> = {
   book: "libro",
   movie: "pelicula",
   series: "serie",
 };
-
-// RFC 4180: entrecomilla si hay coma, comilla, salto de línea o punto y coma
-// (este último es el separador interno de la columna de fechas de diario).
-function csvCell(value: string | number | null): string {
-  if (value === null || value === undefined) return "";
-  const s = String(value);
-  if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
-}
 
 const COLUMNS = [
   "tipo",

@@ -24,14 +24,23 @@ function milestoneFor(
   return null;
 }
 
-// Publica un post de hito tras una transición de ficha, si el usuario no lo ha
+// Publica un post de hito tras una transición, si el usuario no lo ha
 // desactivado. Best-effort: NUNCA lanza (un hito que no se publica no debe
 // tumbar el cambio de estado que el usuario sí pidió). La idempotencia ante
 // doble-click la da el índice único de `posts`, no este código.
 //
-// `created` viaja en la firma (contrato de la acción de ficha) pero el mapeo no
-// lo usa: un hito depende del estado destino y de si cerró, no de si insertó un
-// pase nuevo.
+// Su ÚNICO llamador es la máquina de estados (`applyTransition`), y eso es
+// deliberado (#824): mientras lo llamaba cada acción por su cuenta, los tres
+// caminos que cierran un pase fuera de la ficha —auto-cierre por última página,
+// Select de estado de la hoja de sesión, último episodio de una serie— se
+// olvidaban de publicar y la reseña no llegaba al feed. Quien pase por la
+// máquina sin querer publicar (alta, quick-add, bulk) pide `silent`. La regla
+// vieja («nunca desde applyTransition, que corre en import/quick-add/bulk») se
+// anuló porque su premisa era falsa: la importación no pasa por la máquina.
+// Razonado en `docs/requirements/decisiones.md`.
+//
+// `created` viaja en la firma pero el mapeo no lo usa: un hito depende del
+// estado destino y de si cerró, no de si insertó un pase nuevo.
 export async function maybeAutopostMilestone(
   supabase: SupabaseServerClient,
   input: {

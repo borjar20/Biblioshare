@@ -54,7 +54,7 @@ export function EditorShellDesktop({
           ‹
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-foreground-faint">
+          <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
             {sagaName} · {t("routesTitle")}
           </p>
           <h1 className="font-serif text-[23px] font-semibold leading-tight">{routeName}</h1>

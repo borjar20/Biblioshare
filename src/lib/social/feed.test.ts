@@ -13,7 +13,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   getCurrentUser: async () => null,
 }));
 
-import { getFeed, type FeedEntry, type FeedEvent } from "./feed";
+import { getFeed, getPostEvent, type FeedEntry, type FeedEvent } from "./feed";
 import { isAfterCursor, parseCursor } from "./feed-order";
 import {
   fakeSupabase,
@@ -147,6 +147,39 @@ describe("getFeed — fuente `posts`", () => {
       posts: [post("p1", "2026-08-09T10:00:00+00:00", { anchor_type: "book", anchor_id: "book-inexistente" })],
     });
     expect(personEvents((await getFeed(sb.client, VIEWER, {})).events)).toEqual([]);
+  });
+});
+
+describe("getPostEvent — la ruta propia del post sirve la reseña ENTERA", () => {
+  // Regresión: `/post/[id]` reusa `resolvePostDrafts` con el feed, así que una
+  // reseña larga salía cortada a 200 caracteres con "…" TAMBIÉN en su propia
+  // página — y como ninguna tarjeta tiene "ver más", no había forma de leerla
+  // entera en ningún sitio. El extracto es cosa del feed; la ruta del post no.
+  const RESENA = `Primer párrafo con su idea.\n\nSegundo párrafo que remata y que se alarga${" y se alarga".repeat(20)}.`;
+
+  function fixture() {
+    return fakeSupabase({
+      posts: [post("p1", "2026-08-09T10:00:00+00:00", {
+        kind: "finished", source_kind: "pass", source_id: "pass-1", anchor_type: "book", anchor_id: FAKE_BOOK_ID,
+      })],
+      passes: [{ id: "pass-1", rating: 4, started_on: "2026-08-01", finished_on: "2026-08-08" }],
+      passReviews: [{ id: "pass-1", review: RESENA }],
+    });
+  }
+
+  test("el feed sigue sirviendo el extracto de 200 caracteres", async () => {
+    expect(RESENA.length).toBeGreaterThan(200); // el caso pierde sentido si no
+    const [e] = personEvents((await getFeed(fixture().client, VIEWER, {})).events);
+    expect(e.reviewExcerpt).toMatch(/…$/);
+    expect(e.reviewExcerpt!.length).toBeLessThanOrEqual(201);
+  });
+
+  test("/post/[id] sirve el texto completo, con sus saltos de línea", async () => {
+    const result = await getPostEvent(fixture().client, VIEWER, "p1");
+    expect(result?.event.reviewExcerpt).toBe(RESENA);
+    // El salto de párrafo llega intacto al componente: la separación de
+    // párrafos es del autor, no ruido que se pueda colapsar.
+    expect(result?.event.reviewExcerpt).toContain("\n\n");
   });
 });
 

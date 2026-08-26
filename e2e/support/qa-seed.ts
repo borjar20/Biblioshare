@@ -34,7 +34,7 @@ export const NIETA_BASELINE = { position_in_parent: 5, placement_in_parent: "fij
 // El entorno se lee DENTRO de las funciones, no en el módulo: `playwright.config.ts`
 // carga `.env.local` a mano al evaluarse, y leerlo arriba acopla este fichero al
 // orden en que Playwright importa los módulos.
-function env() {
+export function serviceEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
@@ -44,7 +44,7 @@ function env() {
 }
 
 async function api(path: string, init?: RequestInit) {
-  const { url, key } = env();
+  const { url, key } = serviceEnv();
   const res = await fetch(`${url}/rest/v1/${path}`, {
     ...init,
     headers: {
@@ -65,7 +65,7 @@ async function api(path: string, init?: RequestInit) {
  *  alguien apunta `.env.local` a otro proyecto, o si el seed se renombra, aborta
  *  en vez de pisar datos reales. Es una comprobación de DATO, no de entorno:
  *  funciona igual apuntando a donde apunte. */
-async function assertQaUniverse() {
+export async function assertQaUniverse() {
   const rows = (await (await api(`sagas?id=eq.${ERA_UNO_ID}&select=name`)).json()) as Array<{ name: string }>;
   if (rows[0]?.name !== "[QA Sagas v2] Era Uno") {
     throw new Error(

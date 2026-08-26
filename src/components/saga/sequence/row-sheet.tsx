@@ -58,7 +58,7 @@ export function RowSheet({
         <div className="mb-3.5 flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <b className="block truncate font-serif text-[15px] font-semibold">{entry.title}</b>
-            <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-wide text-foreground-faint">
+            <span className="mt-0.5 block font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
               {slotNumber === null ? t(`zone.${zone}`) : t("slotN", { n: slotNumber })}
             </span>
           </div>

@@ -12393,7 +12393,9 @@ comment on table public.club_activity_checkpoints is 'Checkpoints ordenados de u
 
 comment on table public.club_activity_checkpoint_reads is 'Quién ha declarado haber llegado a qué checkpoint (tablero de progreso grupal). Sin política de escritura de cliente -- solo vía confirm_checkpoint() (SECURITY DEFINER), que desde #471 es autodeclarativa: exige ser participante, sin revalidación de posición (las ediciones hacen incomparables las páginas).';
 
--- === 20260878_comments_voice_notes.sql ===
+-- === 20260881_comments_voice_notes.sql ===
+-- (renumerada desde 20260878 al fusionar: main ocupó 20260878-80 con otra
+-- feature; ojo, esas tres NO están anexadas aquí — ver issue de baseline)
 
 -- Notas de voz como comentarios (spec 2026-08-26): 3 columnas en `comments`,
 -- cuerpo texto-XOR-audio, bucket privado `voice-notes` y snapshot de reporte

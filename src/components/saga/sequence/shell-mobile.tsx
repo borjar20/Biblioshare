@@ -93,7 +93,7 @@ export function ShellMobile({
             }`}
           >
             {t(`zone.${z}`)}
-            <span className="mt-0.5 block font-mono text-[9px] text-foreground-faint">{counts[z]}</span>
+            <span className="mt-0.5 block font-mono text-[9px] text-muted-foreground">{counts[z]}</span>
           </button>
         ))}
       </div>

@@ -57,7 +57,7 @@ export function MilestoneCard({
             {event.itemTitle}
           </Link>
           {event.itemSubtitle && (
-            <p className="mt-1 font-mono text-[10px] text-foreground-faint">{event.itemSubtitle}</p>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground">{event.itemSubtitle}</p>
           )}
         </div>
       </div>

@@ -1421,6 +1421,490 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   columna mal escrito antes de producción. El guion de cualquier tarea que añada una columna
   debe incluir este paso; queda también como issue de proceso, #798.
 
+## 2026-08-25 — Los dos e2e sociales en rojo (#787, #788)
+
+- **Los dos specs afirmaban un producto que ya no existe; se corrigen los TESTS, no la app.**
+  Ninguno de los dos fallos era una regresión: `thoughts.spec.ts` esperaba el hilo interactivo
+  desplegable dentro de la tarjeta del feed, y `social-interaction-targets.spec.ts` esperaba que
+  un pase sin post apareciera en el feed. Lo primero lo cambió posts Spec 2b a propósito (la
+  tarjeta se ojea, `/post/[id]` conversa) y lo segundo lo decidió #558 (el feed lee `posts`; los
+  targets `pass`/`progress_session` sin post promovido quedan invisibles, aceptado para v1).
+  Un test que codifica el producto viejo no protege nada: solo hace ruido rojo que enseña a
+  ignorar la suite.
+- **#558 se queda como está: no se migran los targets huérfanos para arreglar un test.** La
+  alternativa era promover a post los `pass`/`progress_session` con interacción huérfana, que es
+  una decisión de producto sobre datos de producción — no algo que se cuela para poner un e2e en
+  verde. Su opción por defecto («dejarlas») sigue vigente.
+- **Precio asumido: se pierde la única cobertura del target `pass` y del aviso
+  `activity_commented`.** Hoy ninguna superficie de la app monta un target `pass` (comprobado:
+  `resolveInteractionTargets` solo lo tiene en la unión de tipos), así que el e2e cubría una
+  ruta que el usuario no puede recorrer. La cadena que sí importa —quien sigue a alguien ve su
+  hito en el feed, entra al hilo, comenta y el autor recibe el aviso— se conserva, ahora sobre
+  el target `post`.
+- **Las aserciones de la campana pasan a afirmar el EXTRACTO, no la copia genérica.** Desde
+  «notificaciones con contexto» (#799) un aviso de comentario con un solo actor pinta la
+  variante enriquecida («{name} en tu publicación: «…»»), así que `/comentó tu actividad/` y
+  `/comentó tu punto de control/` habrían quedado obsoletas en cuanto el test volviera a
+  llegar hasta ahí. Afirmar el extracto ata además el aviso a ESE comentario y no a cualquier
+  otro del mismo tipo.
+- **Las otras seis rojas que salieron al verificar NO se encadenan a este arreglo.** Son la
+  misma familia (specs que codifican un producto ya cambiado) pero tres causas distintas, y
+  mezclarlas en una PR la hace irrevisable: quedan como **#802** (copia de la campana de #799,
+  `posts.spec.ts` ×3), **#801** («Me gusta» renombrado a «corazón rojo», `social-optimista` y
+  `social-safety:159`) y **#803** (reportar/borrar detrás del «···» por F3-012,
+  `social-safety:92`). Las tres verificadas por ejecución contra un `next dev` limpio, no por
+  lectura de código.
+- **Trampa que costó una hora y conviene no repetir:** un `next dev` cuyo proceso padre se mata
+  sigue escuchando en el 3000 y sirviendo 200, pero sus Server Actions revientan (`write EPIPE`,
+  `Jest worker … exceeding retry limit`). Con ese servidor, los tests de aviso fallan ANTES —en
+  el `expect.poll` de la fila de `notifications`— con «el aviso post_commented debe persistir»,
+  que parece un bug de producto grave y no lo es. **Un e2e rojo contra un dev tocado no es
+  evidencia de nada**: hay que relevantar el servidor y repetir.
+
+## 2026-08-25 — Los seis e2e sociales caducados (#801, #802, #803)
+
+- **Segundo pase sobre la misma familia, y otra vez el arreglo es del test.** Los seis tests que
+  salieron rojos al verificar #787/#788 tenían tres causas distintas y ninguna era un bug: la
+  copia de la campana cambió con #799, «Me gusta» dejó de existir como nombre accesible al entrar
+  el catálogo de emoji libre, y reportar/borrar se fueron detrás del «···» con F3-012. Verificado
+  por ejecución contra un `next dev` limpio: **11 de 11 en verde** en `posts.spec.ts`,
+  `social-optimista.spec.ts` y `social-safety.spec.ts` (2,3 min).
+- **El nombre accesible de un emoji se IMPORTA, no se copia.** Es la decisión que importa de este
+  pase, porque va contra la causa: `social-optimista.spec.ts` ya se arregló una vez por esto
+  mismo (#750, `7f9c3f69`) y volvió a caducar al cambio siguiente. Los specs ahora importan
+  `QUICK_REACTION_NAMES` de `src/lib/social/reaction-constants.ts`; renombrar un emoji rompe el
+  typecheck en el mismo commit, no la suite tres semanas después. El precio —un `import` de `src/`
+  dentro de `e2e/`— ya lo pagaba `club-calendario.spec.ts`, así que no estrena nada.
+- **La campana se afirma por el EXTRACTO, no por la copia genérica.** Misma decisión que en
+  #787/#788, extendida a `posts.spec.ts`: con un solo actor y contexto guardado gana la variante
+  enriquecida (`postCommentedExcerpt`), y el extracto ata además el aviso a ESE comentario. La
+  excepción es el aviso de sesión compartida: su `subject` es el título del pase fixture, que el
+  test no conoce, así que se afirma el tramo común a las dos variantes (`compartió una sesión de`).
+- **Al abrir un desplegable antes de cortar el tráfico, el corte solo alcanza a lo que se quiere
+  probar.** En «un fallo de Server Action se anuncia y revierte», abrir el `ReactionBar` es puro
+  cliente; la ruta se aborta DESPUÉS de abrirlo, así que lo único que falla es el toggle de la
+  reacción y el test sigue probando lo suyo (que el error se anuncia y el estado revierte).
+- **`Reaccionar` deja de ser único dentro de una tarjeta en cuanto el hilo se expande.** Cada
+  comentario trae su propia barra, así que los localizadores de tarjeta llevan `.first()` (el del
+  POST va primero en el DOM, `ReviewInteractions` lo pinta antes del hilo). Sin eso el modo
+  estricto de Playwright revienta al recargar con comentarios ya visibles.
+- **El `page.once("dialog")` se arma antes del ÍTEM, no antes de abrir el menú.** El `confirm()`
+  nativo de borrar sigue existiendo tras F3-012; lo dispara `confirmDelete`, que corre al pulsar
+  la opción del desplegable. Armarlo antes de abrir el «···» deja el handler consumido a destiempo.
+- **La copia muerta `social.like` («Me gusta») se BORRA de `messages/es.json`.** No la leía nadie
+  (`grep` de `t("like")` en `src/` no devuelve nada) y era justo el rastro que hacía creer que el
+  botón seguía existiendo. Una cadena de interfaz que nombra un control retirado no es inocua:
+  es la pista falsa que el siguiente que lea el spec va a seguir.
+
+## 2026-08-25 — El barrido del rastro desechable de los e2e (#800)
+
+- **El diagnóstico de la #800 era incompleto y conviene decirlo.** La issue culpaba al `finally`
+  que no corre cuando un test muere por timeout. Esa causa existe, pero **no es la que más filas
+  deja**: los `deleteUser` de los specs hacen `fetch(...)` sin mirar `res.ok`, y cinco tablas
+  (`club_posts.author_id`, `clubs.owner_id`, `club_activities.created_by`,
+  `club_activity_checkpoints.created_by`, `club_activity_items.added_by`) referencian `auth.users`
+  con **ON DELETE NO ACTION**. El borrado rebota, el test pasa en verde y el usuario se queda.
+  Medido: de los 62 usuarios `@example.com` de `dev`, los 15 `reporta*` de `social-safety.spec.ts`
+  —todos con un `club_post`— llevaban desde el 2026-07-30 pese a que ese spec termina bien.
+- **Se barre ANTES de la suite, no se le pide a cada spec que limpie mejor.** Mismo patrón que
+  `restoreQaSeed` (#215): reimponer el punto de partida en vez de confiar en que la pasada anterior
+  se portara bien. Tocar los ~19 helpers `deleteUser` habría sido más código y seguiría sin cubrir
+  el caso del timeout. Queda como issue #806 hacerlo BIEN también dentro de la pasada.
+- **La marca de «desechable» para usuarios es el dominio `@example.com`, no el prefijo del nombre.**
+  Los 19 `createUser` de la suite firman `<username>@example.com` y ninguna cuenta real usa ese
+  dominio (la de `devtest` es de Gmail). El regex de prefijos que proponía la #800
+  (`^(it|postauth|postcom)`) encontraba **6** usuarios; el dominio encuentra los **62** que había.
+  La cuenta de `TEST_USER_EMAIL` se excluye explícitamente, pase lo que pase.
+- **El barrido NO lanza; la semilla SÍ.** Son cosas distintas: correr sobre una semilla desviada
+  hace que los tests mientan (#215), así que eso tumba la suite. Que una fila desechable se resista
+  es suciedad: se avisa por consola y se sigue. Tumbar la suite entera por eso sería cambiar un
+  problema de limpieza por uno peor.
+- **Se borran también las referencias polimórficas al catálogo (`posts.anchor_id`,
+  `passes.item_id`, `pass_reviews.item_id`, `collection_items.item_id`).** No tienen FK, así que
+  nada las arrastra: borrar solo el libro dejaría el post huérfano en el feed de `devtest` — que es
+  justo lo que compite con las aserciones que usan `.first()`/`.last()` sobre el feed.
+- **Guarda de seguridad reutilizada, no inventada:** el barrido llama a `assertQaUniverse()` antes
+  de tocar nada. Escribe con la SERVICE KEY y borra usuarios; si `.env.local` apunta a otro
+  proyecto, aborta. Es la misma línea que el repo ya aceptaba para la semilla QA.
+- **Trampa de PostgREST que devuelve 200 y cero filas:** entrecomillar el patrón de `like` (el
+  reflejo, porque `[E2E]*` empieza por corchete) hace que busque las comillas DENTRO del texto.
+  No da error: da éxito vacío, que parece «no había nada que barrer». Sin comillas salen 22/21/5/5,
+  los mismos números que el `SELECT` de la issue. Cualquier filtro de barrido se comprueba contra
+  un `SELECT` conocido antes de dejarle borrar.
+- **Límite asumido:** solo se reconoce el catálogo con prefijo `E2E`/`[E2E]`. Varios specs titulan
+  sin prefijo («Estreno dos …», «en curso …») y eso no se puede distinguir de un dato real por el
+  título. Ampliar el patrón a ciegas es la clase de limpieza que un día se lleva algo que no debía.
+  Queda como issue #807: que los specs nuevos usen el prefijo, no que el barrido adivine.
+
+## 2026-08-25 (tarde) — Los sueltos de seguridad del bloque P2 de la auditoría (S2-08, S2-14, #681, #683)
+
+- **La CSP nace PARCIAL a propósito, y esa es la decisión.** No declara `default-src`,
+  `script-src` ni `style-src`: una CSP estricta de scripts exige un `nonce` por petición, y el
+  nonce obliga a render dinámico —lo dice el propio doc de Next— que es exactamente lo que
+  `cacheComponents` no puede dar (el shell estático se prerenderiza en build, cuando ese nonce
+  todavía no existe). Poner `default-src 'self'` sin `script-src` sería peor que no poner nada:
+  `script-src` heredaría de él y bloquearía los inline de Next, tirando la app entera. Lo que se
+  cierra sin nonce se cierra ya (`frame-ancestors 'none'`, `base-uri`, `object-src`,
+  `form-action`); el `script-src` con nonce queda como issue atada a la fase de Cache Components.
+- **`upgrade-insecure-requests` se omite**: en `next dev` sobre `http://localhost:3000` haría que
+  el navegador intentara subir a HTTPS los recursos propios. HSTS ya cubre el transporte donde
+  importa, que es producción.
+- **`Permissions-Policy` NO lista `camera`.** El escáner de códigos de barras es el plugin nativo
+  de Capacitor y no se ha podido verificar en dispositivo que la política del documento no le
+  afecte. No se restringe lo que no se puede probar; un `camera=()` a ciegas es la clase de
+  cabecera que rompe una feature de móvil que nadie prueba en el navegador.
+- **El arreglo de S2-14 gatea la TRANSICIÓN, no la columna.** El informe proponía «añadir esas
+  columnas al trigger o revocarles el UPDATE», y las dos cosas rompen la app: `hydrated_at`,
+  `editions_synced_at` y `openlibrary_work_key` las escribe la hidratación perezosa con el cliente
+  de la petición de un usuario cualquiera, así que cerrarlas a colaborador reproduce **#699** —la
+  hidratación muere con 42501 en silencio y las fichas se quedan sin sinopsis en prod, invisible en
+  dev porque allí se prueba con cuentas admin. Lo que se prohíbe es reescribir o borrar un valor ya
+  puesto; `null → valor` sigue abierto porque es lo único que hacen los cuatro escritores legítimos.
+  Verificado en dev por los dos lados: el `PATCH` que repunta la work key y los dos que ponen las
+  fechas a null salen bloqueados, y la secuencia completa de hidratación de un libro y una película
+  recién creados pasa igual que antes.
+- **Carrera conocida y aceptada:** dos pestañas abriendo a la vez una ficha recién creada — la
+  segunda encuentra la columna ya escrita y su UPDATE muere con la excepción del trigger. Los
+  cuatro escritores ignoran ese error a propósito desde antes (son best-effort), así que lo único
+  que se pierde es un atajo que la primera pestaña ya había ganado.
+- **La neutralización de fórmulas del CSV no toca los números.** `String(n)` no puede producir una
+  fórmula —un `-5` es un número negativo para la hoja de cálculo, no una expresión— y prefijar un
+  apóstrofo a la columna de notas o de relecturas la volvería texto para quien luego quiera
+  sumarla. El prefijo defensivo se aplica solo a las celdas de TEXTO que empiezan por
+  `= + - @`, tabulador o retorno de carro, que son las que Excel/Sheets/LibreOffice evalúan.
+- **El tope de #683 se pone aunque por la vía normal sea inalcanzable.** Las filas sin match salen
+  de un parseo ya capado a 3.000, así que ningún usuario puede llegar al guard; pero
+  `saveUnmatchedBatch` es un **Server Action**, invocable a mano con el lote que se quiera. El
+  criterio del repo ya era ese en `commitImportBatch` (mismo tope, misma razón).
+- **Las cabeceras se defienden con un e2e, no con una revisión de `next.config.ts`.** Una
+  regresión aquí no se ve en pantalla y el bloque convive con imágenes y Cache Components en el
+  mismo fichero. `e2e/cabeceras-seguridad.spec.ts` afirma la propiedad sobre la respuesta real y no
+  pide login, así que sigue verde sin cuenta de pruebas.
+
+## 2026-08-25 (noche) — Los tres rojos crónicos de `main` (#731, #744, #805): los tres diagnósticos estaban mal
+
+Los tres llevaban semanas en la suite y **ninguno era lo que decía su issue**. Lo que se lleva de
+aquí, antes que cualquier detalle: **un rojo que sobrevive a varias sesiones deja de leerse como un
+fallo y pasa a leerse como ruido**, y entonces tapa al siguiente. Los tres se cierran corrigiendo el
+diagnóstico, que es lo que pide AGENTS.md.
+
+- **#731 — dos diagnósticos falsos encadenados, y la causa era que la tarjeta no existe.** El
+  primero («el feed filtra los `episode_watches` sin `pass_id`») ya se sabía falso: el feed lee
+  `posts`. El segundo, el del `fixme` («los posts con `created_at` atrasado no llegan al feed»), es
+  un **síntoma con causa sana**: Inicio pide los `pageSize + 1` = 21 posts más recientes de
+  devtest ∪ seguidos y recorta antes de agrupar, así que sembrar con fechas atrasadas 1-3 días
+  compite con la actividad real de `dev` —36 posts más nuevos que 2 días el día de la medición— y
+  pierde. **Al arreglar la siembra (minutos en vez de días) aparecen cuatro tarjetas, no una
+  agrupada: `group-feed-entries.ts` no lo llama nadie desde la migración a `posts`.** El spec
+  afirmaba un producto retirado. Se borra; el agrupado vuelve con #555 y el módulo muerto queda en
+  #814.
+- **Regla para los e2e del feed, que es lo reutilizable:** en la cuenta compartida **no se siembra
+  con fechas atrasadas**. La primera página del feed es un ranking contra la actividad real de
+  `devtest`, o sea contra algo que cambia cada semana; un test que depende de eso no falla por lo
+  que dice que prueba. Fechas de ahora, separadas por minutos.
+- **#744 — el comando de repro ERA el bug.** `pase-hub.spec.ts` entero sale 8/8. «Regla 2» vive en
+  un `describe.serial` y hereda `bookId` de «Regla 1»; correrla con `-g` deja fuera a su
+  predecesora, el test navega a `/libro/?tab=log` y el fallo sale 20 s después como «no encuentro el
+  botón Leyendo» — un síntoma que no nombra la causa, y que costó cuatro corridas y una acusación al
+  producto. **El arreglo es la guarda `requiereLaRegla1()`**, no un cambio de producto: falla en
+  124 ms diciendo exactamente qué pasa. Una dependencia entre tests que solo vive en un comentario
+  del `describe` es una trampa; si es real, que la imponga un assert.
+- **#805 — se borra el spec del splash.** El overlay se retiró en #446 y `src/components/splash` no
+  existe. El test que MÁS razón tenía para irse era el que estaba en verde: afirmaba `toBeHidden()`
+  sobre un elemento inexistente, o sea que pasaba sin probar nada.
+- **F1-017 («migraciones fantasma») se declara CADUCADO, no pendiente.** Comprobadas una a una las
+  88 funciones de `pg_proc` de dev contra `supabase/`: ninguna sin definición en el repo. Los cinco
+  RPC que la fase 5 daba por perdidos se rescataron con el juego de #674; las tres que no están en
+  `migrations/` viven en `schema-baseline.sql`. La comprobación cubre **funciones**, no policies ni
+  grants — se dice el límite para que nadie lea de aquí más de lo que se midió.
+
+## 2026-08-25 (noche, 2) — El landmark `<main>` vive en el armazón, no en cada página (#816)
+
+- **Un `<main>` en `AppShell`, y ninguno en las páginas.** El hallazgo F4-023 era «faltan 15 de 17
+  `<main>`», y la lectura fácil es «pon el que falta en cada página». Se hace al revés: el landmark
+  sube al armazón —que ya envuelve `{children}` en un `<div>`— y los **cuatro** `<main>` de página
+  (estadísticas ×2, género, notas) bajan a `<div>`. Las razones son dos y la segunda es la que
+  manda: (1) arregla las 17 rutas de una vez, y (2) **la siguiente ruta que se cree lo tiene sin que
+  nadie se acuerde.** Un requisito de a11y que hay que repetir en cada página nuevo es un requisito
+  que se pierde — la prueba es que se perdió 15 veces.
+- **O uno o el otro, nunca los dos.** Dos `<main>` anidados son otra violación de axe
+  (`landmark-one-main`), así que el cambio no se puede partir en dos PR: subir el landmark y quitar
+  los cuatro de página es un solo movimiento.
+- **El skip-link no lleva dependencia nueva, y el test tampoco.** El anillo de foco ya lo pone la
+  regla global `:focus-visible` de `globals.css`, así que el enlace solo declara `sr-only
+  focus:not-sr-only`. Y la verificación **no añade axe al repo**: las dos reglas que importan se
+  escriben como aserciones normales —«exactamente un `<main>` con `id="contenido"`» cubre a la vez
+  el caso de cero landmarks y el de dos anidados, y el orden de tabulación se comprueba con un `Tab`
+  desde la carga—. Meter una dependencia de auditoría para tres asserts habría sido pagar mucho por
+  poco.
+- **`getTranslations` en el armazón NO saca las rutas del prerender.** Era el riesgo real del
+  cambio: `AppShell` está escrito a propósito para no esperar a nada (#435), y el skip-link necesita
+  su cadena traducida. Medido contra el build de producción antes y después —`prerender-manifest`,
+  **50 rutas prerenderizadas las dos veces, ninguna perdida**—; la configuración de next-intl de
+  este repo no toca `cookies()` ni `headers()`, y por eso sale gratis. Si algún día el locale pasa a
+  depender de la petición, esto deja de ser cierto y el skip-link tendría que ser cliente.
+- **Lo que queda fuera, dicho a propósito:** `_global-error` se sirve sin `<main>` porque no pasa
+  por el layout raíz (es el default de Next, el repo no tiene `global-error.tsx`). No es ninguna de
+  las 17 rutas de la auditoría y no se toca.
+
+## 2026-08-25 (noche, 3) — Contraste: uno de los dos tokens no se arregla con un valor (#815)
+
+- **El hallazgo F4-022 eran dos tokens con DOS arreglos distintos, no uno repetido.** La auditoría
+  proponía «oscurecer `--muted-foreground` y reclasificar los usos de `--foreground-faint`» como si
+  fueran dos versiones del mismo retoque. Medidos, no lo son.
+- **`--muted-foreground`: cambia el valor, y solo en claro.** De `#877e70` (3,41:1 sobre
+  `--background`) a **`#6b6255`** — 5,11:1 sobre `--background`, 5,90 sobre `--surface`, 4,71 sobre
+  `--surface-muted`, 4,21 sobre `--surface-3`. Con 836 usos, esa línea sola es la mayor parte del
+  hallazgo. **En oscuro NO se toca**: medido, `#a99e8c` ya daba de 4,61 a 6,53 y pasa AA en los tres
+  fondos. La issue daba el modo oscuro por «sin medir»; queda medido.
+- **`--foreground-faint`: NO se puede arreglar subiendo el valor, y esto es lo nuevo.** Sobre papel
+  (`#f3ece1`), cualquier color que alcance 4,5:1 cae en **L\* 42**, que es exactamente donde queda
+  `--muted-foreground` (L\* 42,0 contra 42,6). O sea: el color «arreglado» es indistinguible de
+  muted, y el peldaño que justifica que el token exista desaparece. **Un sistema de cuatro pesos de
+  texto sobre papel no cabe entero por encima de AA.** Así que el arreglo no es retocarlo: es
+  **sacarlo del texto**.
+- **Regla mecánica en vez de juicio caso a caso.** Los 59 `text-foreground-faint` pasan a
+  `text-muted-foreground`; los 3 `bg-foreground-faint` se quedan. Se eligió la regla por la forma,
+  no por «esto informa y esto decora», porque esa clasificación es opinión y no sobrevive al
+  siguiente que edite el fichero. Los tres supervivientes son dots `aria-hidden` con el estado
+  escrito al lado, así que WCAG 1.4.11 no les aplica y no hace falta subirles nada.
+- **Lo que esto le cuesta al diseño, dicho claro:** la app pierde un peldaño de gris. Los rótulos
+  mono de 9-11 px (fechas, captions, ejes de gráfica, subtítulos) pasan de L\* 65 a L\* 42 y se ven
+  bastante más oscuros. Es un cambio visible en toda la app y es el precio de AA — si algún día se
+  quiere recuperar la jerarquía perdida, hay que hacerlo **sin color** (tamaño, peso, mayúsculas),
+  no reinventando un gris claro.
+- **Los números viven en un test, no en un comentario.** `src/app/contraste-tokens.test.ts` lee
+  `globals.css` y comprueba los ratios en los **tres** bloques de tema (`:root`, `.dark` y el
+  `@media prefers-color-scheme`, que es el defecto de quien no toca el interruptor), y falla si
+  reaparece un `text-foreground-faint`. Duplicar los valores a mano en la doc es justo lo que dejó
+  pasar el fallo original de `mark-accent`.
+
+## 2026-08-25 (noche, 4) — Los párrafos son del autor: dónde se preserva un salto y dónde se recorta
+
+- **Tres fallos distintos con el mismo síntoma.** «Escribo dos párrafos y sale un ladrillo» tenía
+  tres causas independientes, y por eso se arreglan en tres sitios: (a) `RichTextView` pintaba una
+  línea por `<span class="block">`, y una línea VACÍA no genera caja de línea — altura 0, párrafos
+  pegados; (b) las reseñas (`MentionText`) no llevaban `whitespace-pre-line`, así que el HTML
+  colapsaba TODOS sus saltos a un espacio; (c) `/post/[id]` reusaba el extracto de 200 caracteres
+  del feed. Ninguno se ve arreglando otro.
+- **`whitespace-pre-line`, no `pre-wrap`, para prosa de textarea.** Preserva los saltos (todos,
+  también los seguidos) y sigue colapsando espacios y tabuladores. Es lo que se quiere con texto
+  pegado desde otro sitio: se respeta la intención del autor sin heredar su sangría.
+- **La clase vive en el componente de texto, no en cada llamador.** `RichTextView` se lleva
+  `whitespace-pre-line break-words` dentro. La versión anterior dependía de que cada tarjeta se
+  acordara, y tres se habían olvidado del `break-words` (una URL larga desbordaba). `MentionText`
+  sigue siendo un primitivo inline y lo pone el llamador: se usa dentro de `<p>` con estilos
+  propios y meterle una caja de bloque cambiaría el layout de quien lo use en línea.
+- **El extracto es una decisión del FEED, no del dato.** `resolvePostDrafts` gana un `fullBody`:
+  el feed y los mini-cards de contexto siguen recortando a 200 caracteres; `getPostEvent`
+  (`/post/[id]`) sirve el texto entero. Antes la ruta propia del post —el sitio al que lleva
+  «leer más» de facto— cortaba igual que el feed, y como **ninguna tarjeta tiene un «ver más»**,
+  una reseña larga no se podía leer entera en ningún sitio de la app.
+- **El «ver más» en la tarjeta del feed queda fuera a propósito** (issue aparte): es diseño, no
+  arreglo, y el corte deja de ser un callejón sin salida en cuanto la ruta del post sirve el texto
+  completo.
+- **La cobertura tiene que medir GEOMETRÍA.** `e2e/texto-multilinea.spec.ts` mide con un `Range`
+  dónde cae el segundo párrafo respecto al primero: con la línea en blanco pintada cae dos líneas
+  más abajo, sin ella una. El texto es idéntico en los dos casos, así que sin motor de layout no
+  hay nada que aseverar — un unitario no puede distinguirlos.
+
+## 2026-08-25 (noche, 5) — El hito social lo publica la máquina, no cada llamador (#824)
+
+- **Anula la regla anterior**, escrita en `autopost.ts` y en `manage-actions.ts`: «Autopost de hito:
+  SOLO aquí (gesto deliberado del usuario en la ficha). NUNCA dentro de `applyTransition`, que corre
+  también en import/quick-add/bulk». Se sustituye por: **la máquina publica por defecto y quien no
+  deba publicar pide `silent`**.
+- **El motivo de la regla vieja no existía.** Verificado: la importación **no pasa por la máquina** —
+  `src/lib/import/commit-row.ts` inserta en `passes` con `status:'completed'` directamente, y
+  `applyTransition` no aparece en `src/lib/import/`. Y quick-add, alta y «seguir» solo piden
+  `planned`, para el que `milestoneFor` devuelve `null`: son inertes por construcción, no por la
+  regla. O sea, protegía de una inundación que no podía ocurrir.
+- **Lo que sí causaba: tres caminos mudos.** Un pase llega a `completed` por cuatro sitios, y solo
+  uno publicaba. Se olvidaban el auto-cierre por última página (`sessions/actions.ts`), el Select de
+  estado de la propia hoja de sesión, y el último episodio de una serie (`series/episode-actions.ts`).
+  Sin post no hay tarjeta: **la reseña escrita a continuación no llegaba al feed de nadie**. Como una
+  película solo se cierra desde la ficha, el fallo se leía como «las reseñas de libros no salen».
+- **Por qué la máquina y no parchear los tres.** «Todo cambio de estado pasa por la máquina» ya era
+  invariante del proyecto, así que `applyTransition` es el único punto por el que pasan todos los
+  caminos — incluido el que se añada mañana. Parchear llamadores conserva la forma del fallo:
+  se pasó de 1 camino a 4 y se olvidaron 3.
+- **El defecto de la bandera es la mitad de la decisión, y va al revés de lo cómodo.** Publica salvo
+  que se pida `silent`. Si fuera opt-in, un llamador olvidado **callaría en silencio** — que es
+  exactamente cómo se perdieron tres caminos durante meses. Al revés, un llamador olvidado publica de
+  más: se ve, se nota y se corrige. Hoy el radio de eso es cero (los administrativos solo piden
+  `planned`), y aun así se marcan `silent` explícitos en alta, quick-add unitario y quick-add en
+  bloque para que la intención esté escrita en la llamada.
+- **No cambia cuándo publica el camino que ya funcionaba**: la condición sigue siendo
+  `outcome.kind === "done"`, la misma que aplicaba `updateStatus`. Este cambio añade caminos, no
+  reglas. Y `askResume` (que no escribe nada) sigue sin publicar: un hito de algo que no ha pasado
+  sería mentira.
+- **La cobertura es una tabla, no un caso.** `apply-transition.test.ts` fija el contrato del ejecutor
+  (publica por defecto, calla con `silent`, no publica en `askResume`) y los tests de cada llamador
+  fijan que no silencian lo que es un gesto del usuario. Es lo único que impide que el quinto camino
+  vuelva a caerse por el mismo agujero.
+
+## 2026-08-26 — Los avances no son material de descubrimiento
+
+- **El raíl social de `/post/[id]` deja de proponer AVANCES** (`posts.kind = 'progressed'`), en sus
+  dos bloques: «Más de {usuario}» y «Más sobre la obra».
+- **Por qué.** Un avance es un latido de lectura, no una pieza de conversación: quien lee a ratos
+  genera decenas sobre la MISMA obra. Y el ranking de `related_posts_by_author` premia justamente
+  «misma obra» (+2), así que los avances del propio autor sobre el ítem que ya estás mirando
+  copaban el bloque — un módulo de descubrimiento que solo descubría más de lo mismo.
+- **Dónde vive el filtro, y por qué en dos sitios.** «Más de {usuario}» sale de una RPC, así que va
+  en SQL (`20260879_related_posts_by_author_sin_avances.sql`, `create or replace` con
+  `and p.kind <> 'progressed'`): si se filtrara en TS, el `limit` de la función contaría candidatos
+  que luego se tiran. «Más sobre la obra» es una consulta directa a `posts` y lleva su `.neq`.
+  Además `getPostContext` filtra los drafts en TS como segundo cinturón, porque el ledger de
+  migraciones NO prueba qué función corre el entorno al que apunta la app.
+- **Lo que NO se tocó.** Los avances siguen apareciendo en el feed y en el perfil; esto solo cambia
+  el raíl de recomendación. Tampoco se tocaron los `watched` (episodios), que sí son una unidad de
+  conversación aunque también se repitan sobre un mismo ítem — si algún día molestan, será otra
+  decisión, no un descuido de esta.
+- **Cobertura.** `e2e/post-layout.spec.ts` siembra los dos avances en la posición MÁS favorable
+  (misma obra que el post visto, los más recientes) y exige que no salgan, con un pensamiento de un
+  tercero como control positivo para que el test no pase por tener el raíl vacío.
+## 2026-08-26 — El alta manual de catálogo vuelve por RPC (cabo suelto de #674)
+
+- **El arreglo NO fue devolver el `grant insert` sobre `books`/`movies`/`series`.** Era el
+  cambio de una línea y deshacía la pieza central de #674: el INSERT directo es justo lo que
+  permitía a cualquier `authenticated` escribir `title`/`synopsis`/`director` inventados en un
+  catálogo que ven todos. Se paga una migración más y una RPC nueva
+  (`register_manual_catalog_item`) para que la única forma de que nazca una obra siga siendo una
+  función `SECURITY DEFINER` que valida.
+- **Y tampoco fue reutilizar `register_catalog_item`.** Esa RPC nace shells a partir de un id
+  externo, y el alta manual no tiene ninguno: forzarla habría significado inventar un
+  `openlibrary_work_key` falso o admitir canónicos en la puerta de alta automática, que es
+  exactamente lo que #674 cerró. Son dos altas con contratos distintos y se quedan como dos
+  funciones distintas.
+- **El rol se comprueba en la base de datos, no solo en la server action.** Hasta hoy
+  «colaborador+» vivía en dos sitios de JS (el guard de `page.tsx` y el `hasMinRole()` de la
+  acción) y en ninguno de la base. Con el insert directo eso era discutible; con una RPC
+  `SECURITY DEFINER` —que escribe como owner y por tanto **se salta RLS**— deja de serlo: si la
+  única barrera fuera JS, cualquiera con sesión podría llamar a la RPC por REST y crear obras.
+  El check de JS se conserva, pero para dar un error legible, no para proteger.
+- **El error de la base deja de tragarse en silencio.** `if (error) return { error: "generic" }`
+  sin un `console.error` es lo que hizo que esta regresión sobreviviera meses: producción
+  llevaba el 42501 en cada intento y no había ni una línea de log. La regla que sale de aquí:
+  un error de base que se traduce a un mensaje genérico se registra ANTES de traducirlo.
+- **`revoke ... from public` no cierra a `anon`, y el escape se arregla solo en la función
+  nueva.** Supabase concede `execute` a `anon`/`authenticated` por `ALTER DEFAULT PRIVILEGES` al
+  crear la función: es un grant explícito por rol, así que revocar a `PUBLIC` lo deja intacto.
+  `register_catalog_item`/`_bulk` arrastran ese cabo suelto y `anon` conserva `execute` sobre
+  ellas en los dos entornos. Aquí se corrige solo la función nueva y lo demás se va a la issue
+  #831: es inofensivo hoy (las tres cortan por `auth.uid() is null`) y meterlo en este cambio
+  mezclaría dos diagnósticos en un diff que ya toca esquema en producción.
+- **La cobertura era el agujero de verdad, no el permiso.** #674 se desplegó con verificación
+  manual de sus propios caminos y con un e2e (`catalogo-server-authoritative.spec.ts`) que cubre
+  el alta por búsqueda; `/buscar/manual` no tenía ningún test, así que nada se puso rojo. El
+  arreglo incluye `e2e/alta-manual.spec.ts`, y se comprobó que **falla** con la RPC revocada
+  antes de darlo por bueno.
+
+## 2026-08-26 (2) — La etiqueta del tier manda sobre el layout de la fila
+
+Reportado mirando la app en móvil: en una tierlist con niveles con nombre («Perezón histórico»,
+«Ni fu ni fa (como dirían los entendidos)») se leía media palabra. Y, aparte, a 34×51 px no se
+distinguía una portada de otra.
+
+- **La columna de color de 44 px era una suposición sobre el contenido, no un dibujo.** El mockup
+  Paper enseña una tierlist S/A/B/C/D, y de ahí salió un ancho fijo con `font-serif text-xl`. Pero
+  la etiqueta es un campo LIBRE del asistente (`TierlistFields`), así que el ancho fijo solo era
+  correcto para el ejemplo del mockup. Medido a 360 px, «Perezón histórico» pedía 67 px y «Ni fu ni
+  fa…» 81 px en una caja de 44: el `overflow-hidden` de la fila hacía el resto.
+- **La decisión es del TABLERO, no de la fila** (`layoutForTiers`, en `tierlist-types.ts`). Si
+  alguna etiqueta pasa de tres caracteres, TODAS las filas pasan a banda de color superior y las
+  portadas debajo; si ninguna lo pasa, todas conservan la columna del mockup. Mezclar los dos
+  dibujos en el mismo tablero se lee como un fallo de maquetación, no como una decisión — por eso
+  no se decide etiqueta a etiqueta.
+- **Vive en el módulo plano y no en el componente** para poder probarla sin montar dnd-kit en el
+  entorno `node` de vitest (`tierlist-layout.test.ts`).
+- **Las portadas suben a 44×66 y la seleccionada CRECE (×1,6 ≈ 70×106).** Agrandar la miniatura a
+  secas obliga a elegir entre ver la portada y ver el tablero; el zoom sobre la que ya hay que
+  tocar para colocarla no cuesta ni un control nuevo ni ancho de pantalla. En tableros ajenos
+  (solo lectura, sin selección) el mismo zoom va en `hover`/`focus-visible`.
+- **Crece con la propiedad nativa `scale`, no con `transform`.** dnd-kit escribe `transform` en el
+  `style` en línea durante el arrastre y machacaría cualquier escala puesta ahí. Consecuencia que
+  hay que respetar: la portada se dibuja FUERA de su caja, así que ninguna fila del tablero puede
+  llevar `overflow-hidden` — el redondeado de la columna/banda de color se declara en el propio
+  hijo (`rounded-l-[9px]` / `rounded-t-[9px]`).
+- **La cobertura mide rectángulos, no texto** (`e2e/club-tierlist-movil.spec.ts`, 360 px). Se
+  comprobó que **falla** contra el código anterior («se sale de su fila» para las dos etiquetas
+  largas) antes de darlo por bueno. Cubre también el camino contrario: con S/A/B la columna de
+  44 px tiene que seguir ahí.
+
+## 2026-08-26 (3) — La retícula de la tierlist es un índice; la hoja es donde se ve la obra
+
+Continuación de la entrada anterior, con el tablero ya arreglado a 360 px. Dos peticiones que
+resultaron ser la misma decisión.
+
+- **Agrandar la miniatura no era la respuesta.** «A 44×66 aún cuesta reconocer la portada» y
+  «quiero poder ampliarla» empujan en la misma dirección, pero subir el tamaño de la retícula
+  obliga a elegir entre ver la obra y ver el tablero: a 360 px cada 10 px de portada son una
+  columna menos. La retícula pasa a 56×84 y se queda ahí — es un ÍNDICE, no un escaparate — y
+  tocar una portada abre una hoja donde la obra se ve grande (46vh), con su tipo y su título
+  escritos. Reconocer una obra deja de depender de la resolución de una miniatura.
+- **Los botones de tier se mudan a la hoja.** Vivían en una fila al pie del tablero: obligaba a
+  mirar arriba (qué seleccioné) y tocar abajo (dónde va), y con la portada diminuta ni siquiera se
+  sabía lo primero. Ahora el nivel se elige junto a la portada que se está colocando, y elegirlo
+  cierra la hoja. La fila del pie desaparece; queda solo el rótulo «Toca una portada para
+  colocarla», que es lo único que aportaba cuando no había nada seleccionado.
+- **El nivel actual se marca con `aria-pressed`, no deshabilitándolo.** Deshabilitar el nivel donde
+  ya está el ítem le quita al lector la única pista de dónde estaba si se equivoca de destino.
+- **Cerrar la hoja deselecciona, y volver a tocar la portada también.** «Seleccionado» ya no es un
+  estado que sobreviva a la interacción: o colocas, o cierras. Antes una portada se quedaba marcada
+  indefinidamente sin decir para qué.
+- **En tableros ajenos es la misma hoja sin botones.** El gesto significa lo mismo en los dos
+  tableros y no te saca de la actividad sin querer; el salto a la ficha sigue ahí como enlace
+  explícito dentro de la hoja.
+- **El guardia de navegación de la hoja compara la RUTA, no un booleano.** El patrón copiado de
+  `sheet-shell.tsx` (`if (!navGuard.current) { navGuard.current = true; return; }`) hacía que la
+  hoja no llegara a verse nunca en `next dev`: el efecto se invoca dos veces con las mismas
+  dependencias (StrictMode) y la segunda pasada encontraba el guardia puesto y cerraba la hoja
+  recién abierta. Y `showModal()` se llama solo si el `<dialog>` no está ya abierto, que es el
+  idioma del resto del repo. Lo mismo puede afectar al editor de sagas: issue #839.
+
+## 2026-08-26 (4) — La columna del tier vuelve, con dos anchos; la retícula pasa a grid fluido
+
+Rectifica la entrada (2) de hoy. La banda superior resolvía el recorte pero cambiaba el dibujo del
+mockup por otro, y no convencía. Dos cambios, uno por cada mitad del problema.
+
+- **La columna de color vuelve, con DOS anchos** (`tierColumnWidth`): 44px con el serif del mockup
+  para S/A/B/C/D, y 84px con rótulo mono pequeño y envuelto en cuanto un nivel tiene nombre. El
+  error original no era la columna: era que su ancho fuera **uno solo** para un campo de texto
+  libre. La banda queda descartada.
+- **El ancho lo decide el TABLERO, no la fila.** Con el ancho por fila, las portadas de cada tier
+  arrancarían en una vertical distinta y la retícula dejaría de leerse como una tabla. Es la misma
+  razón por la que la decisión anterior también era por tablero, aunque el resultado sea otro.
+- **Las portadas pasan de `flex-wrap` con ancho fijo a un grid de columnas fluidas**
+  (`repeat(auto-fill, minmax(48px, 1fr))` + `aspect-[2/3]`). Con el flex, el sobrante de cada línea
+  se quedaba a la derecha como hueco muerto — que es lo que se veía y lo que se pidió arreglar.
+  Ahora las que caben se reparten el ancho exacto.
+- **Coste aceptado y medido:** con la columna ancha, en la fila de un tier caben 4 portadas de
+  52×78 a 360px; en la bandeja «sin clasificar», que no tiene columna, caben 5 de 57×86. La misma
+  portada se dibuja un 10% más pequeña dentro de un tier que en la bandeja. Es el precio de
+  recuperar la columna: esos 84px salen del ancho de las portadas, y no hay forma de tener las dos
+  cosas a 360px.
+- **El rótulo de cuatro líneas puede dejar huérfano el último trozo** (el ")" de "…los
+  entendidos)"). `text-wrap: balance` NO lo arregla aquí — probado: la caja es un flex container y
+  el reparto no llega al texto del `<span>`. Se deja así: se lee, que era el requisito.
+
+## 2026-08-26 (5) — Los tiers van pegados: son una tabla, no tres tarjetas
+
+Cambio de forma sobre la entrada (4). Cada fila era una tarjeta con su borde, su redondeo y 8px de
+aire hasta la siguiente; las tres columnas de color quedaban como tres bloques sueltos en vez de
+como la escala continua que es una tierlist.
+
+- **El borde y el redondeo suben al contenedor del tablero**, y cada fila solo pone su línea de
+  separación (`border-b`, que la última no gasta). Así entre tier y tier hay UNA línea, no dos
+  bordes pegados, y las columnas de color forman una sola franja continua.
+- **El `overflow-hidden` vuelve, pero al contenedor**, que es lo que recorta las esquinas
+  redondeadas de las columnas de color de la primera y la última fila. Es seguro justamente porque
+  la etiqueta ya no depende de él: con la columna de 84px el rótulo cabe envuelto, y el e2e mide
+  que no se sale ni de su caja ni de su fila.
+- **El realce de «soltando aquí» pasa de borde a `outline`.** El borde ahora lo comparten dos
+  filas, así que cambiarle el color a una se lo cambiaba a su vecina; un `outline` no ocupa sitio
+  ni desplaza nada.
+
 ## 2026-08-26 — Notas de voz como comentarios
 
 - **Nota de voz = comentario (3 columnas), no tabla nueva.** `audio_path`/`audio_duration_ms`/

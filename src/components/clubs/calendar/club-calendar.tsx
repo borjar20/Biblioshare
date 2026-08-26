@@ -272,7 +272,7 @@ export function ClubCalendar({
 
 function LegendLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-mono text-[9.5px] tracking-wide text-foreground-faint uppercase">
+    <span className="font-mono text-[9.5px] tracking-wide text-muted-foreground uppercase">
       {children}
     </span>
   );

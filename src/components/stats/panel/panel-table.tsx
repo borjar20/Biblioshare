@@ -94,7 +94,7 @@ export function PanelTable({
               {cols.includes("value") && (
                 <td
                   className={`${TD} ${NUM} ${
-                    d.value === null ? "text-foreground-faint italic" : "text-foreground"
+                    d.value === null ? "text-muted-foreground italic" : "text-foreground"
                   }`}
                 >
                   {formatValue(d.value, spec.unit)}

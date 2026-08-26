@@ -70,7 +70,8 @@ export function SectionTabs({
     // vuelta. Pegado, además, el resaltado deja de ser decorativo — dice dónde
     // estás MIENTRAS scrolleas, que es cuando hace falta.
     //
-    // `-mx-4 px-4` y sus variantes deshacen el padding lateral de `<main>`: sin
+    // `-mx-4 px-4` y sus variantes deshacen el padding lateral del contenedor de
+    // la página (era un `<main>` hasta que el landmark subió al armazón, #816): sin
     // eso el fondo del índice acaba antes que el borde de la pantalla y las
     // tarjetas se ven pasar por los lados al scrollear.
     // `z-10` lo deja por debajo de la cabecera (que es `z-20`).

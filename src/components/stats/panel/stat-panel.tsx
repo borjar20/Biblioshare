@@ -112,7 +112,7 @@ export function StatPanel({
           <Heading id={titleId} className="text-[12px] font-medium text-muted-foreground">
             {spec.title}
           </Heading>
-          <span className="text-[11px] text-foreground-faint">
+          <span className="text-[11px] text-muted-foreground">
             {spec.structurallyEmpty}
           </span>
         </div>
@@ -240,7 +240,7 @@ export function StatPanel({
   // Va en la cara Y en la capa, como el aviso: en la cara es donde se nota que
   // falta el dibujo, y en la capa es donde se busca la explicación.
   const degradedLine = degraded && (
-    <p className="text-[11px] leading-relaxed text-foreground-faint">{degraded}</p>
+    <p className="text-[11px] leading-relaxed text-muted-foreground">{degraded}</p>
   );
 
   // DOS gráficos, y no es un descuido: el de la cara es decorativo y el de la
@@ -340,7 +340,7 @@ export function StatPanel({
               filas de las que 348 decían «0». */}
           {showTable && <PanelTable spec={spec} derived={derived} />}
 
-          <p className="text-[10.5px] leading-relaxed text-foreground-faint">
+          <p className="text-[10.5px] leading-relaxed text-muted-foreground">
             {contextSentence(spec)}
           </p>
 
@@ -410,7 +410,7 @@ function Hero({ kpi }: { kpi: PanelKpi }) {
     <dl className="flex flex-col gap-0.5">
       <dd
         className={`font-serif text-[32px] leading-none font-semibold tracking-tight ${
-          value === NO_DATA ? "text-foreground-faint" : "text-foreground"
+          value === NO_DATA ? "text-muted-foreground" : "text-foreground"
         }`}
       >
         {value}
@@ -447,7 +447,7 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
             <dd className="flex flex-col gap-0.5">
               <span
                 className={`font-serif text-xl leading-none font-semibold ${
-                  value === NO_DATA ? "text-foreground-faint" : "text-foreground"
+                  value === NO_DATA ? "text-muted-foreground" : "text-foreground"
                 }`}
               >
                 {value}
@@ -468,7 +468,7 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
                 </span>
               )}
               {k.hint && (
-                <span className="text-[10px] text-foreground-faint">{k.hint}</span>
+                <span className="text-[10px] text-muted-foreground">{k.hint}</span>
               )}
             </dd>
           </div>
@@ -514,7 +514,7 @@ function RankingList({ spec, limit }: { spec: PanelSpec; limit?: number }) {
         </li>
       ))}
       {limit && spec.data.length > limit && (
-        <li className="pt-1.5 text-[10.5px] text-foreground-faint">
+        <li className="pt-1.5 text-[10.5px] text-muted-foreground">
           y {formatNumber(spec.data.length - limit)} más
         </li>
       )}

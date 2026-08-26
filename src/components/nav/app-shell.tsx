@@ -4,6 +4,7 @@ import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getUnreadCount } from "@/lib/social/notifications";
 import { Header } from "@/components/header";
 import { BottomNav } from "./bottom-nav";
+import { SkipLink } from "./skip-link";
 
 // Chrome de la app. El ARMAZÓN (los divs y dónde va cada barra) es estático y no
 // espera a nada; las dos piezas que dependen de la sesión —topbar y barra
@@ -22,10 +23,20 @@ import { BottomNav } from "./bottom-nav";
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
+      <SkipLink />
       <Suspense fallback={<HeaderSkeleton />}>
         <SessionChrome />
       </Suspense>
-      <div className="flex flex-1 flex-col">{children}</div>
+      {/* El landmark <main> vive AQUÍ, en el armazón, y no en cada página: así lo
+          tienen las 17 rutas de una vez y no hay forma de olvidarlo al crear la
+          siguiente (issue #816). Las cuatro páginas que traían su propio <main>
+          pasaron a <div> en el mismo cambio — dos <main> anidados son otra
+          violación de axe, así que esto es o uno o el otro, nunca los dos.
+          `tabIndex={-1}`: sin él, saltar al ancla mueve el punto de tabulación
+          pero no el foco en todos los navegadores. */}
+      <main id="contenido" tabIndex={-1} className="flex flex-1 flex-col">
+        {children}
+      </main>
       <Suspense fallback={<BottomNavSkeleton />}>
         <SessionNav />
       </Suspense>

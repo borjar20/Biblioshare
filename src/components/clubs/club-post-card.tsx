@@ -83,7 +83,7 @@ export function ClubPostCard({
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-      <p className="whitespace-pre-wrap text-sm text-foreground">
+      <p className="whitespace-pre-wrap break-words text-sm text-foreground">
         <MentionText text={post.body} knownUsernames={knownUsernames} />
       </p>
 

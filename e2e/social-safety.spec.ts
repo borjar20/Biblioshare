@@ -1,4 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+// Importado, no copiado: el nombre accesible del emoji es un contrato del
+// catálogo y copiarlo a mano ya dejó specs en rojo dos veces (#750, #801).
+import { QUICK_REACTION_NAMES } from "@/lib/social/reaction-constants";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -142,13 +145,24 @@ test("el dueño del contenido puede reportar y moderar un comentario ajeno", asy
     await card.getByRole("button", { name: /comentario/i }).click();
     await expect(card.getByText(commentBody)).toBeVisible();
 
+    // Reportar y borrar viven detrás del «···» del comentario desde F3-012 (la
+    // acción 7 de la auditoría 2026-08): en el DOM no existen con el menú
+    // cerrado. El disparador es el ⋯ de `comment-actions.tsx`, con aria-label
+    // «Más acciones» — distinto del ⋯ del POST del club («Acciones de la
+    // publicación»), así que no hay ambigüedad dentro de la tarjeta.
+    await card.getByRole("button", { name: "Más acciones" }).click();
     await card.getByRole("button", { name: /^reportar$/i }).click();
     await card.getByLabel(/motivo/i).selectOption("spam");
     await card.getByRole("button", { name: /^enviar reporte$/i }).click();
+    // El envío cierra el menú, pero el acuse («Reporte enviado») se queda al
+    // lado del ⋯: por eso sigue siendo visible con el desplegable cerrado.
     await expect(card.getByRole("status")).toContainText(/reporte enviado/i);
 
+    await card.getByRole("button", { name: "Más acciones" }).click();
+    // El `confirm()` nativo sigue ahí, y salta al pulsar el ítem, no al abrir
+    // el menú: el handler se arma justo antes del clic que lo dispara.
     page.once("dialog", (dialog) => dialog.accept());
-    await card.getByRole("button", { name: /^borrar$/i }).last().click();
+    await card.getByRole("button", { name: /^borrar$/i }).click();
     await expect(card.getByText(commentBody)).toHaveCount(0);
   } finally {
     await deleteUser(owner.id);
@@ -161,8 +175,15 @@ test("un fallo de Server Action se anuncia y revierte", async ({ page }) => {
   const password = process.env.TEST_USER_PASSWORD!;
   await login(page, email, password);
   await page.goto(`/club/${CLUB_SLUG}`);
-  const like = page.getByRole("button", { name: "Me gusta" }).first();
-  await expect(like).toBeVisible();
+  // «Me gusta» ya no es un botón de la tarjeta: es una reacción rápida dentro
+  // del desplegable de «Reaccionar» (#801). Abrir el desplegable es puro
+  // cliente —ninguna server action—, así que se abre ANTES de cortar el tráfico
+  // y lo único que aborta la ruta es el toggle de la reacción.
+  const trigger = page.getByRole("button", { name: "Reaccionar" }).first();
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const reaccion = page.getByRole("button", { name: QUICK_REACTION_NAMES["❤️"] }).first();
+  await expect(reaccion).toBeVisible();
 
   await page.route("**/*", async (route) => {
     if (route.request().method() === "POST" && route.request().headers()["next-action"]) {
@@ -171,7 +192,7 @@ test("un fallo de Server Action se anuncia y revierte", async ({ page }) => {
     }
     await route.continue();
   });
-  await like.click();
+  await reaccion.click();
   await expect(
     page.getByRole("alert").filter({ hasText: /no se pudo guardar/i }),
   ).toBeVisible();

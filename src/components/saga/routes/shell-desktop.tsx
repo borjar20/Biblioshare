@@ -36,7 +36,7 @@ export function ShellDesktop({
           ‹
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-foreground-faint">
+          <p className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground">
             {sagaName} · {t("routesCrumb")}
           </p>
           <h1 className="font-serif text-[23px] font-semibold leading-tight">{t("routesTitle")}</h1>

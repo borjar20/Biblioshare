@@ -51,6 +51,22 @@ Convención obligatoria para los specs de `e2e/` (issues #180, #182, #215, #228)
    número de ediciones que devuelve OpenLibrary convierte un cambio de ranking
    suyo en un rojo tuyo — pasó en `busqueda-hidratacion` (#228). Comprueba la
    FORMA (`/\d+ ediciones/`, «es un enlace y no un botón»), no la cifra.
+6. **Nada de fechas atrasadas al sembrar para el feed** (#731). La primera
+   página de Inicio son los **21 posts más recientes** de `devtest` ∪ sus
+   seguidos (`pageSize + 1`, orden `created_at desc`, recorte ANTES de agrupar:
+   `src/lib/social/feed.ts:571-578` y `:610`). Un post sembrado con
+   `created_at` de hace unos días compite contra la actividad real de la cuenta
+   compartida —36 posts más nuevos que 2 días en la medición del 2026-08-25— y
+   **no llega a la página**, así que el test depende de cuánto se haya usado
+   `dev` esa semana. Siembra con fechas de AHORA, separadas por minutos si
+   necesitas orden entre ellas. Costó un `fixme` y dos diagnósticos falsos.
+7. **Si un test depende de otro, que lo imponga un assert, no un comentario**
+   (#744). `pase-hub.spec.ts` encadena tres reglas sobre un `bookId` que fija la
+   primera, dentro de un `describe.serial`. Correr una suelta con `-g` deja fuera
+   a su predecesora y el fallo sale 20 s después como «no encuentro el botón
+   Leyendo»: un síntoma que no nombra la causa y que hizo abrir una issue contra
+   el producto. Una guarda al entrar (`expect(bookId, "…").not.toBe("")`) lo
+   convierte en 124 ms y un mensaje que se explica solo.
 
 Ejemplos vivos: `e2e/sagas-v2.spec.ts` (`adminHeaders`/`deleteSagaFollow`,
 limpieza antes y después), `e2e/sagas-itinerarios.spec.ts` (`clearRouteChoice`),

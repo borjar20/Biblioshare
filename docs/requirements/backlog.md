@@ -99,6 +99,50 @@ solitario, contra build de producción. No es una regresión de este cambio (la
 rama es byte-idéntica a `main` en `src/`); se sospecha contención sobre la cuenta
 compartida `devtest`, la misma familia que #750. Sin confirmar.
 
+**Corrección del 2026-08-25: el «cero P1» duró un día.** Ese mismo 2026-08-24, al
+cerrar la rama de reacciones con emoji libre, se abrieron **#787 y #788** — dos
+e2e sociales en rojo, ambos `P1`. **Cerrados el 2026-08-25** reparando los specs,
+no la app: ninguno era una regresión, los dos afirmaban un producto que se había
+cambiado a propósito. `thoughts.spec.ts` esperaba el hilo desplegable dentro de
+la tarjeta del feed (posts Spec 2b lo movió a `/post/[id]`) y
+`social-interaction-targets.spec.ts` esperaba un pase sin post visible en el feed
+(#558 lo dio por invisible para v1) y un botón «Me gusta» que el `ReactionBar` de
+emoji libre había sustituido. Razonamiento en `decisiones.md` (2026-08-25). La
+lección, que es la que vale para la próxima: **un cambio de superficie deja tests
+mintiendo en specs que no toca, y no se ve hasta que la suite entera corre.**
+
+Al verificar salieron **seis tests más en rojo, todos preexistentes en `main`** y
+todos de la misma familia, con tres causas distintas que NO se mezclan:
+**#802** (P1, `posts.spec.ts` ×3: la copia de la campana de #799),
+**#801** (P1, `social-optimista` + `social-safety:159`: «Me gusta» renombrado a
+«corazón rojo» por el catálogo de emoji) y **#803** (P2, `social-safety:92`:
+reportar/borrar detrás del «···» por F3-012). Ninguno es un bug de producto: el
+aviso se crea, reaccionar funciona y reportar funciona — lo que miente es la
+aserción. Salió además **#800** (P2): los e2e dejan catálogo desechable en `dev`
+cuando mueren por timeout (22 libros, 5 sagas, 5 personas, 6 perfiles huérfanos,
+el más viejo del 2026-07-10).
+
+**#802, #801 y #803: cerradas también el 2026-08-25**, en un segundo pase sobre
+los mismos seis tests. Los tres arreglos son de localizador y de copia; el
+producto no se toca. Queda **#800** abierta (limpieza de `dev`, no bloquea nada).
+Lo que se lleva de aquí, y va contra la causa y no contra el síntoma: **el nombre
+accesible de un emoji es un contrato entre `reaction-constants.ts` y los specs**,
+y copiarlo a mano rompió `social-optimista.spec.ts` dos veces seguidas (#750 y
+#801). Ahora los specs importan `QUICK_REACTION_NAMES`, así que renombrar un
+emoji falla en el typecheck y no tres semanas después en la suite.
+
+**#800 también cerrada el 2026-08-25**, con el diagnóstico corregido: la issue
+culpaba al `finally` que no corre tras un timeout, y esa causa existe, pero la
+que más filas dejaba era otra — los `deleteUser` de los specs no miran `res.ok` y
+el borrado rebota contra cinco FK **ON DELETE NO ACTION**, así que el usuario se
+queda aunque el test pase en verde. `e2e/global-setup.ts` barre ahora el rastro
+desechable antes de la suite (`e2e/support/sweep-disposable.ts`): la primera
+pasada se llevó 62 usuarios, 43 libros, 5 sagas, 5 personas, 18 `club_posts` y 10
+posts huérfanos; `dev` quedó a cero en las cinco medidas. Quedan abiertas **#806**
+(que el borrado del usuario falle ruidosamente también DENTRO de la pasada),
+**#807** (catálogo sin prefijo, fuera del barrido) y **#805** (`splash.spec.ts`
+prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada).
+
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
 **Acción 6 — hit-areas + RatingDots táctiles: HECHA el 2026-08-20.** F4-010
@@ -142,11 +186,53 @@ petición en `/club/[slug]`). Decisiones en `decisiones.md` (2026-08-21 tarde).
 Salieron de aquí dos issues que NO se encadenan: #751 (P1: la hidratación
 perezosa de las fichas nunca corre en producción) y #750 (spec de e2e caducado).
 
-Quedan de este bloque los sueltos:
-contraste y `<main>`/skip-link (F4-022/023), security headers + rate limiting
-(S2-08/S2-11), formula injection (#681), trigger de curación (S2-14), regenerar
-`graph.json` y `database.types.ts` (#695, #701, #625), y las migraciones
-fantasma de F1-017 (5 RPCs de hidratación solo en dev).
+**Los sueltos de SEGURIDAD del bloque: HECHOS el 2026-08-25 (tarde).** S2-08 →
+**#808** (la app se servía sin ninguna cabecera: ahora CSP de enmarcado,
+`nosniff`, HSTS, `Referrer-Policy` y `Permissions-Policy`, con e2e propio),
+S2-14 → **#809** (el trigger de curación dejaba fuera `openlibrary_work_key`,
+`hydrated_at` y `editions_synced_at`: se gatea la TRANSICIÓN, no la columna, para
+no repetir #699), **#681** (formula injection en el CSV de exportación) y
+**#683** (`saveUnmatchedBatch` sin el tope `MAX_ROWS`). Decisiones en
+`decisiones.md` (2026-08-25 tarde) y el esquema en `data-model.md`.
+
+Salieron tres issues que NO se encadenan: **#810** (la CSP no puede llevar
+`script-src`: el nonce exige render dinámico y choca con Cache Components),
+**#811** (el resto del rate limiting de S2-11 — alta de catálogo, escritura
+social, RPC caras; la #684 solo cubría la búsqueda) y **#812** (la migración
+`20260878` está aplicada y verificada en dev, **no en prod**).
+
+Quedan de este bloque los sueltos que NO son de seguridad: **#815** (contraste:
+`--muted-foreground` a 3,4:1 y `--foreground-faint` a 2,6:1 sacan axe *serious*
+en las 17 rutas) y **#816** (`<main>` + skip-link, ausentes en 15 de 17), que son
+F4-022/023 y hasta hoy no tenían issue; y regenerar `graph.json` y
+`database.types.ts` (#695, #701, #625).
+
+- [x] **#815 — contraste de los dos tokens (F4-022).** Cerrado el 2026-08-25.
+  `--muted-foreground` pasa a `#6b6255` en claro (5,11:1 sobre `--background`); en oscuro no se
+  toca, medido y ya pasaba. `--foreground-faint` **no se retoca: se saca del texto** — subirlo a
+  AA lo funde con muted (L\* 42,0 contra 42,6), así que los 59 `text-foreground-faint` pasan a
+  `text-muted-foreground` y solo quedan 3 dots `aria-hidden`. Bloqueado por
+  `contraste-tokens.test.ts` en los tres bloques de tema. Ver `decisiones.md` (2026-08-25, noche).
+- [x] **#816 — landmark `<main>` y skip-link (F4-023).** Cerrado el 2026-08-25.
+  El landmark subió a `AppShell`, así que lo tienen las 17 rutas de una vez y no
+  hay forma de olvidarlo al crear la siguiente; los cuatro `<main>` de página
+  (estadísticas ×2, género, notas) pasaron a `<div>` para no dejar dos anidados.
+  El skip-link es el primer enfocable de cualquier ruta. Verificado sobre el
+  build de producción —las 50 rutas prerenderizadas siguen siéndolo— y cubierto
+  por `e2e/a11y-landmark-main.spec.ts`. Ver `decisiones.md` (2026-08-25, noche).
+
+**Las «migraciones fantasma» de F1-017 ya NO son trabajo pendiente: el hallazgo
+está caducado.** Comprobado el 2026-08-25 función a función —las 88 de
+`pg_proc` en el esquema `public` de dev contra `supabase/`— y **ninguna se ha
+quedado sin definición en el repo**. Los cinco RPC que la fase 5 daba por
+perdidos (`hydrate_movie`/`series`/`screens_bulk`,
+`register_catalog_item(s_bulk)`) viven en `20260818_catalog_c_hydrate_screen.sql`
+y `20260818_catalog_e_register.sql` —se rescataron con el resto del juego de
+#674 el 2026-08-19— y las tres que no salen en `migrations/`
+(`has_min_role`, `current_user_role`, `enforce_role_change_admin_only`) están en
+`schema-baseline.sql`, que es su sitio. Límite de la comprobación, y conviene
+decirlo: **cubre FUNCIONES, no policies, triggers, grants ni columnas**; para eso
+sigue estando `docs/DRIFT-CHECK.md`.
 
 ## Features que no existen (P2-P3, por dominio)
 

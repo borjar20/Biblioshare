@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-26 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`) solo en dev, prod pendiente]**
+> **[Canónico · verificado contra dev el 2026-08-26 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -359,6 +359,23 @@ activan alrededor del `UPDATE` y el trigger respeta (`current_setting('app.hydra
 `collaborator+` exactamente igual — el flag solo lo activan las RPC `SECURITY DEFINER`, nunca
 el cliente.
 
+**El trigger cubre además las columnas TÉCNICAS, y las gatea por TRANSICIÓN**
+(`20260878_catalog_technical_columns_gate.sql`, hallazgo S2-14 de la auditoría 2026-08). El grant
+por columna a `authenticated` incluye tres columnas de fontanería que el gate original no miraba:
+`books.openlibrary_work_key`, `books.editions_synced_at` y `hydrated_at` en las tres tablas. Con
+una sesión normal y un `PATCH` a PostgREST se podía repuntar un libro a otra obra de Open Library
+(la siguiente sincronización trae ediciones y portada equivocadas, y el catálogo es GLOBAL) o poner
+`hydrated_at`/`editions_synced_at` a `null` en bucle para forzar llamadas externas sin cota. **No
+se gatean a colaborador ni se revoca el UPDATE** —que es lo que proponía el informe—: las escribe
+la hidratación perezosa con el cliente de la petición de un usuario cualquiera, así que cerrarlas a
+secas repetiría el modo de fallo de #699. Lo que se prohíbe a un no-colaborador es **reescribir o
+borrar un valor ya puesto**; `null → valor` sigue abierto, que es lo único que hacen
+`hydrate-book.ts`, `hydrate-screen.ts` y `sync-editions.ts`. Reescribir sigue siendo de
+`collaborator+` (`resyncEditions`) y de las RPC, que entran por `app.hydrating`. **Aplicada en dev
+y verificada allí** (ataque bloqueado en las tres columnas; hidratación `null → valor` intacta);
+**prod PENDIENTE de aplicar** — no hay orden de despliegue que respetar, la restricción cae sobre
+caminos que el código no usa.
+
 **INSERT directo revocado.** `20260818_catalog_f_revoke_insert.sql`: `drop policy` de las tres
 `"catalog books/movies/series insertable"` (`with check(true)`) + `revoke insert on
 books/movies/series from authenticated, anon`. No había grants de INSERT por columna (a
@@ -390,6 +407,56 @@ pisar una curación existente aunque quisiera.
 > issue [#674](https://github.com/borjar20/Biblioshare/issues/674) y el efecto colateral de
 > regenerar tipos desde dev sobre los RPC de club-events, issue
 > [#701](https://github.com/borjar20/Biblioshare/issues/701).
+
+### 2.1bis Alta MANUAL de catálogo — `register_manual_catalog_item` (2026-08-26)
+
+**Cabo suelto de #674.** La parte `f` dejó `register_catalog_item` como única puerta de alta,
+pero esa RPC solo sabe nacer una shell **a partir de un id externo** (`openlibrary_work_key` /
+`tmdb_id`). El alta manual (`/buscar/manual`) no tiene ninguno: su call site
+(`src/app/buscar/manual/actions.ts`) se quedó con el `insert` directo y desde `f` moría con
+**`42501 permission denied for table books`** en cada intento — error que la server action
+traducía a `"generic"` sin registrar nada, así que el fallo era invisible en logs y la pantalla
+solo decía «algo ha ido mal». **No había ningún test de este camino**, de ahí que la regresión
+sobreviviera al despliegue de #674. Ver issue [#830](https://github.com/borjar20/Biblioshare/issues/830).
+
+`register_manual_catalog_item(p_item_type, p_title, p_creator, p_year, p_cover_url,
+p_publisher, p_total_pages, p_isbn) returns uuid` — `SECURITY DEFINER`, `search_path` fijado a
+`public, pg_temp`, `revoke all from public` + `grant execute to authenticated`. Migración
+`20260880_manual_catalog_item.sql`.
+
+A diferencia de `register_catalog_item`, esta **sí** acepta canónicos: son los que teclea un
+colaborador, no los que manda un proveedor. Eso obliga a que valide en servidor, y valida:
+
+1. `auth.uid()` no nulo → si no, `authentication required`.
+2. `coalesce(current_user_role(), 'user') not in ('collaborator','admin')` → `forbidden`. El
+   `coalesce` no es decorativo: sin él, un perfil con `role` NULL daría comparación NULL y
+   **pasaría**. El `hasMinRole()` de la server action y el guard de `page.tsx` siguen ahí, pero
+   como defensa en profundidad — la barrera es esta.
+3. `title` vacío tras `btrim` → `title required`; `p_total_pages < 0` → `invalid page count`.
+
+`hydrated_at` nace **NULL** a propósito: la fila manual entra en el curador de la ficha como
+cualquier otra — `ensureBookHydrated` ya contempla el caso «alta manual» (resuelve
+`openlibrary_work_key` por ISBN, y si no hay, la marca hidratada para no reintentarlo cada
+visita) — y `hydrate_book` es fill-only, así que nunca pisa lo que el colaborador escribió.
+
+> **Estado: aplicada y verificada en DEV y en PROD el 2026-08-26**, contra objetos reales
+> (`pg_proc`, `has_function_privilege`) y nunca contra `list_migrations`. `md5(prosrc)`
+> **idéntico** en los dos entornos (`40625dcf47cd8902cd662a005fd4bf78`), `prosecdef` true,
+> `anon` sin execute y `authenticated` con él en ambos. Prueba de las dos ramas ejecutada en
+> los dos entornos y limpiada en el mismo paso (la fila de prueba se borra dentro de la propia
+> función de sondeo, cero filas basura en el catálogo de producción): con un perfil
+> `collaborator` devuelve el uuid y la fila nace con todos los canónicos; con un perfil `user`
+> da `P0001: forbidden`. La migración es aditiva pura (función nueva + grant) y fue **delante**
+> del despliegue del código, que es el orden correcto: al revés, el código nuevo llamaría a una
+> RPC que no existe.
+>
+> **Ojo con el `revoke`.** `revoke all ... from public` NO quita el `execute` de `anon`:
+> Supabase lo concede a `anon` y `authenticated` por `ALTER DEFAULT PRIVILEGES` al crear la
+> función, y ese grant es explícito por rol, no vía `PUBLIC`. Hay que **nombrar a `anon`**. Esta
+> función lo hace; `register_catalog_item`/`_bulk` se dejaron el cabo suelto y `anon` conserva
+> `execute` sobre ellas en dev y en prod — inofensivo hoy (el `auth.uid() is null` las corta)
+> pero es defensa en profundidad que falta sobre dos funciones que se saltan RLS. Issue
+> [#831](https://github.com/borjar20/Biblioshare/issues/831).
 
 ## 3. El pase: el hub del estado
 
@@ -993,8 +1060,9 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 >
 > **Delta del 2026-08-26 (notas de voz como comentarios — spec
 > `docs/superpowers/specs/2026-08-26-respuestas-nota-de-voz-design.md`): aplicado y verificado
-> en DEV** (prod pendiente, fuera de este cierre documental), migración
-> `20260878_comments_voice_notes.sql`. `comments` gana tres columnas —`audio_path text null`,
+> en DEV y PROD el 2026-08-26** (objetos reales + superficie 6 en ambos), migración
+> `20260881_comments_voice_notes.sql` (renumerada desde 20260878 al fusionar: main ocupó
+> 20260878-80 con el alta manual y afines). `comments` gana tres columnas —`audio_path text null`,
 > `audio_duration_ms integer null`, `audio_peaks smallint[] null`— porque **una nota de voz es
 > un comentario, no una tabla nueva**: hereda hilos, spoiler, fijado, reacciones,
 > notificaciones, RLS de bloqueos y `report_comment` gratis.
@@ -1103,6 +1171,16 @@ p_exclude_post_id uuid, p_limit int default 4)`, devuelve `setof posts` (para re
   (`pg_proc`: `prosecdef=false` → INVOKER, grants execute a `authenticated`+`anon`; smoke sobre un
   post real: 4 filas, no incluye el propio). Solo falta mergear el código (PR #570) que la consume —
   regla de despliegue de §5.1: migración primero (hecho), código después.
+- **Revisión 2026-08-25 — los AVANCES quedan fuera** (`20260879_related_posts_by_author_sin_avances.sql`,
+  `create or replace`, mismo cuerpo salvo `and p.kind <> 'progressed'` en el `where`). Un avance es un
+  latido de lectura, no conversación: una misma persona genera decenas sobre la MISMA obra y, como el
+  ranking premia «misma obra» (+2), el raíl se llenaba de avances del mismo ítem. La regla gemela para
+  «Más sobre la obra» (consulta directa a `posts`, no RPC) vive en `getPostContext`
+  (`.neq("kind","progressed")`), que además filtra los drafts en TS por si la base del entorno todavía
+  corre la versión previa de la función. **Aplicada y verificada en DEV y en PROD el 2026-08-26**
+  (`pg_get_functiondef` contiene el filtro; `prosecdef=false` → sigue INVOKER; grants execute a
+  `authenticated`+`anon` intactos). Smoke en prod sobre un autor real con 4 avances entre sus 73
+  posts: la función devuelve 6 filas y **0** de `kind='progressed'`.
 
 ### 5.3 Los avisos de seguimiento nacen del post, no del hecho (dev y **PROD**, 2026-08-13)
 

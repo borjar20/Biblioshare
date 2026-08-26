@@ -97,7 +97,7 @@ export async function addToLibrary(result: SearchResult) {
 
   // Alta = pase activo en planned vía la máquina; si ya estaba en la
   // biblioteca (pase activo existente), la transición es un no-op.
-  await applyTransition(supabase, user.id, result.itemType, itemId, "planned");
+  await applyTransition(supabase, user.id, result.itemType, itemId, "planned", undefined, { silent: true });
 
   // Solo si la fila se acaba de crear: a diferencia de openCatalogItem, aquí
   // no hay ficha que abrir después, así que no hay presupuesto que esperar —

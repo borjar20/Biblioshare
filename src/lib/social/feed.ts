@@ -216,12 +216,18 @@ function mentionTextsOf(event: { reviewExcerpt: string | null; thought: FeedEven
 // por post. Compartido por el feed (`getFeed`) y la ruta `/post/[id]`
 // (`getPostEvent`) para no duplicar el mapeo por kind. Descarta un post cuyo
 // autor o ancla no resuelvan, y —si `reviewsOnly`— un `finished` sin reseña.
+// `fullBody`: la ruta propia del post (`/post/[id]`) sirve la reseña ENTERA; el
+// feed y los mini-cards de contexto sirven el extracto de 200 caracteres. Sin
+// esta distinción una reseña larga quedaba cortada con "…" TAMBIÉN en su propia
+// página, y como no hay "ver más" en ninguna tarjeta no había forma de leerla.
 async function resolvePostDrafts(
   supabase: SupabaseServerClient,
   postRows: PostRow[],
   reviewsOnly: boolean,
+  fullBody = false,
 ): Promise<FeedEventDraft[]> {
   if (postRows.length === 0) return [];
+  const reviewOrExcerpt = (text: string | null) => (fullBody ? text?.trim() || null : excerpt(text));
 
   const anchorIdsByType: Record<AnchorType, Set<string>> = {
     book: new Set(),
@@ -401,7 +407,7 @@ async function resolvePostDrafts(
         ...base,
         verb: verbForReviewable(pass?.rating ?? null, reviewText, "finished"),
         rating: pass?.rating ?? null,
-        reviewExcerpt: excerpt(reviewText),
+        reviewExcerpt: reviewOrExcerpt(reviewText),
         reviewMeta: {
           readingDays:
             r.anchor_type === "book" && pass?.started_on && pass?.finished_on
@@ -447,7 +453,7 @@ async function resolvePostDrafts(
         ...base,
         verb: verbForReviewable(ep?.rating ?? null, ep?.review ?? null, "watchedEpisode"),
         rating: ep?.rating ?? null,
-        reviewExcerpt: excerpt(ep?.review ?? null),
+        reviewExcerpt: reviewOrExcerpt(ep?.review ?? null),
         episode: ep
           ? {
               season: ep.season_number,
@@ -657,7 +663,7 @@ export async function getPostEvent(
   if (error) throw error;
   if (!data) return null;
 
-  const drafts = await resolvePostDrafts(supabase, [data as PostRow], false);
+  const drafts = await resolvePostDrafts(supabase, [data as PostRow], false, true); // fullBody: la ruta propia sirve la reseña entera, no el extracto
   // Ancla o autor no resolubles ⇒ nada que pintar (mismo criterio que el feed).
   if (drafts.length === 0) return null;
 
@@ -672,6 +678,13 @@ export async function getPostEvent(
 // otros posts SOBRE LA MISMA OBRA (de otra gente). No lleva interacciones (los
 // mini-cards no las pintan), así que evita el batch de reacciones/comentarios.
 // La RLS de `posts` filtra por audiencia: un tercero solo ve lo que puede ver.
+//
+// Los AVANCES (`kind = 'progressed'`) quedan FUERA de los dos raíles: son un
+// latido de lectura, no una pieza de conversación, y como una misma persona
+// genera decenas sobre la MISMA obra, saturaban el bloque con posts del mismo
+// ítem y el descubrimiento dejaba de descubrir. En «Más de {usuario}» el filtro
+// vive en la RPC (20260879) para que el `limit` cuente candidatos válidos; en
+// «Más sobre la obra», en el `.neq` de la consulta de abajo.
 export type RelatedPost = {
   postId: string;
   kind: PostKind;
@@ -739,6 +752,7 @@ export async function getPostContext(
       .eq("anchor_id", anchorId)
       .neq("author_id", event.actorId)
       .neq("id", event.postId)
+      .neq("kind", "progressed")
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(fetchLimit),
@@ -751,9 +765,14 @@ export async function getPostContext(
     resolvePostDrafts(supabase, (aboutWork.data ?? []) as PostRow[], false),
   ]);
 
+  // Segundo cinturón para los avances: si la base a la que apunta este entorno
+  // aún corre la versión previa de `related_posts_by_author` (el ledger de
+  // migraciones NO prueba qué hay desplegado), el raíl seguiría colándolos.
+  const sinAvances = (drafts: FeedEventDraft[]) => drafts.filter((d) => d.kind !== "progressed");
+
   return {
-    moreByAuthor: byAuthorDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
-    moreAboutWork: aboutWorkDrafts.slice(0, RELATED_LIMIT).map(toRelatedPost),
+    moreByAuthor: sinAvances(byAuthorDrafts).slice(0, RELATED_LIMIT).map(toRelatedPost),
+    moreAboutWork: sinAvances(aboutWorkDrafts).slice(0, RELATED_LIMIT).map(toRelatedPost),
   };
 }
 

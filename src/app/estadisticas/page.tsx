@@ -111,7 +111,7 @@ export default async function FullStatsPage({
   const backHref = profile ? `/u/${profile.username}?tab=estadisticas` : "/";
 
   return (
-    <main className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
+    <div className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
       <div className="mb-4">
         <PageHeader
           title={t("fullStatsTitle")}
@@ -161,7 +161,7 @@ export default async function FullStatsPage({
           metric={metric}
         />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

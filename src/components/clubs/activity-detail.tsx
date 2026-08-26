@@ -473,7 +473,7 @@ export function ActivityDetailView({
 
           {isModerator && (status === "proposed" || status === "active") && (
             <div className="ml-auto flex items-center gap-2 border-l border-border pl-3">
-              <span className="font-mono text-[8.5px] tracking-wide text-foreground-faint uppercase">
+              <span className="font-mono text-[8.5px] tracking-wide text-muted-foreground uppercase">
                 ◈ {t("modTag")}
               </span>
               {status === "proposed" && (

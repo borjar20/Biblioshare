@@ -93,4 +93,42 @@ test.describe("Desbordes horizontales en móvil (#721)", () => {
 
     expect(await anchoDeLaPagina(page)).toBeLessThanOrEqual(MOVIL.width);
   });
+
+  // El cuaderno (#833): mismo fallo exacto que tenía /buscar —input sin
+  // `w-full` dentro de una celda `flex-1` con `min-width:auto`—, medido en
+  // 407px de página en un viewport de 360. Necesita sesión, así que vive en
+  // este describe y no en el público de más abajo.
+  test("el cuaderno cabe en 360px", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize(MOVIL);
+
+    await page.goto("/notas");
+    await page.waitForLoadState("networkidle");
+
+    expect(await anchoDeLaPagina(page)).toBeLessThanOrEqual(MOVIL.width);
+  });
+});
+
+// /buscar (#721). Misma familia que los dos de arriba, distinta causa: el input
+// de la barra de búsqueda no llevaba `w-full`, así que conservaba su ancho
+// intrínseco (`size=20` → 273px) y la celda `flex-1` que lo envuelve vale
+// `min-width:auto`, que no encoge por debajo de eso. Medido: 391px de fila en
+// un viewport de 360. El modo Personas, con el MISMO markup pero con `w-full`,
+// cabía — de ahí que el desborde solo se viera en Títulos.
+//
+// Es público: no necesita sesión, a diferencia de los dos tests de arriba.
+test.describe("Desbordes horizontales en móvil · /buscar (#721)", () => {
+  test.use({ viewport: MOVIL });
+
+  for (const [nombre, url] of [
+    ["sin consulta", "/buscar"],
+    ["con resultados", "/buscar?type=book&q=dune"],
+    ["modo Personas", "/buscar?modo=personas&q=a"],
+  ] as const) {
+    test(`/buscar cabe en 360px (${nombre})`, async ({ page }) => {
+      await page.goto(url);
+      await page.waitForLoadState("networkidle");
+      expect(await anchoDeLaPagina(page)).toBeLessThanOrEqual(MOVIL.width);
+    });
+  }
 });

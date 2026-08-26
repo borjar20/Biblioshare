@@ -39,7 +39,7 @@ export default async function GeneroPage({
   const currentPage = Math.min(page, totalPages);
 
   return (
-    <main className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8`}>
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8`}>
       <PageHeader
         title={label}
         action={
@@ -68,6 +68,6 @@ export default async function GeneroPage({
       {total > PAGE_SIZE ? (
         <GenrePager slug={slug} page={currentPage} totalPages={totalPages} />
       ) : null}
-    </main>
+    </div>
   );
 }

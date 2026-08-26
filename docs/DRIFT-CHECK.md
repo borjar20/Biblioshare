@@ -264,12 +264,12 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > `column_privileges` lista una fila por columna también con grant de tabla — la vista que
 > distingue los dos casos es `role_table_grants`.
 >
-> **Nota del 2026-08-26 (notas de voz, SOLO DEV — prod pendiente).** `comments` gana 3
+> **Nota del 2026-08-26 (notas de voz, DEV y PROD verificados el mismo día).** `comments` gana 3
 > columnas (`audio_path`, `audio_duration_ms`, `audio_peaks`, migración
-> `20260878_comments_voice_notes.sql`) **SIN su `grant update`, a propósito**: una nota de voz
+> `20260881_comments_voice_notes.sql`) **SIN su `grant update`, a propósito**: una nota de voz
 > publicada es inmutable, el MVP no edita audio. `comments` no tiene grants finos de INSERT (es
 > de tabla completa), así que las 3 columnas nuevas son insertables sin tocar nada — la consulta
-> en dev da `comments | 12 | 12 | 3`, y el `3` de `con_update` sigue siendo exactamente
+> en dev Y en prod da `comments | 12 | 12 | 3`, y el `3` de `con_update` sigue siendo exactamente
 > `body`/`is_spoiler`/`edited_at` (las mismas de antes del delta, `20260838`). **Si
 > `con_update` de `comments` sube por encima de 3, es una regresión**: alguien concedió UPDATE
 > sobre una columna de audio.
@@ -277,7 +277,7 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
 | `books` | 14 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha |
-| `comments` | 12 | 12 | 3 | notas de voz (2026-08-26, solo dev): `audio_path`/`audio_duration_ms`/`audio_peaks` SIN grant update (inmutables); solo `body`/`is_spoiler`/`edited_at` editables por el autor |
+| `comments` | 12 | 12 | 3 | notas de voz (2026-08-26, dev y prod): `audio_path`/`audio_duration_ms`/`audio_peaks` SIN grant update (inmutables); solo `body`/`is_spoiler`/`edited_at` editables por el autor |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
 | `movies` | 12 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676) |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |

@@ -71,7 +71,7 @@ export default async function NotebookPage({
   const filtered = hasActiveFilters(query);
 
   return (
-    <main className={`mx-auto w-full ${SHELL_GRID} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
+    <div className={`mx-auto w-full ${SHELL_GRID} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
       <div className="mb-4">
         <PageHeader
           title={t("notebookTitle")}
@@ -134,6 +134,6 @@ export default async function NotebookPage({
       )}
 
       <NotesPager query={query} total={total} />
-    </main>
+    </div>
   );
 }

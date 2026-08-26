@@ -232,7 +232,7 @@ export async function RouteView({
                   {/* Sin número, con «·»: exactamente como el mapa pinta lo que
                       no tiene hueco (#167). Numerarlos les atribuiría un puesto
                       que el curador no les dio. */}
-                  <span className="w-6 shrink-0 text-right font-mono text-[11px] text-foreground-faint">·</span>
+                  <span className="w-6 shrink-0 text-right font-mono text-[11px] text-muted-foreground">·</span>
                   <span className="relative h-[45px] w-[30px] shrink-0 overflow-hidden rounded">
                     {m.coverUrl && <Image src={m.coverUrl} alt="" fill sizes="30px" className="object-cover" />}
                   </span>

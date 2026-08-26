@@ -98,7 +98,7 @@ export function MonthGrid({
                   esHoy
                     ? "bg-accent text-accent-foreground"
                     : cell.outside
-                      ? "text-foreground-faint"
+                      ? "text-muted-foreground"
                       : "text-foreground"
                 }`}
               >
