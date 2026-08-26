@@ -23,6 +23,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // plugin NATIVO de Capacitor (@capacitor-mlkit/barcode-scanning) y no se ha
 // podido verificar en dispositivo que la política del documento no le afecte.
 // No se restringe lo que no se puede probar.
+//
+// `microphone=(self)`, no `()`: las notas de voz graban con getUserMedia desde
+// el propio origen (composer de comentarios). `microphone=()` bloqueaba el
+// micro AUNQUE el usuario tuviera el permiso concedido — el navegador rechaza
+// getUserMedia por política del documento antes de mirar el permiso (se coló
+// al cruzarse la auditoría de cabeceras con la rama de notas de voz).
 const CSP = [
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -42,7 +48,7 @@ const SECURITY_HEADERS = [
   },
   {
     key: "Permissions-Policy",
-    value: "geolocation=(), microphone=(), payment=(), usb=()",
+    value: "geolocation=(), microphone=(self), payment=(), usb=()",
   },
 ];
 
