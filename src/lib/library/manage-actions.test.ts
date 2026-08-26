@@ -9,6 +9,14 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateReadingLog: vi.fn(),
   revalidateLibrary: vi.fn(),
 }));
+// manage-actions -> autopost -> post-actions -> storage/voice-notes (Fix 2,
+// revisión final): esa cadena carga en frío el paquete real "server-only",
+// que revienta con un throw incondicional fuera del bundler de Next (no hay
+// condición "react-server" en vitest). Ningún test de aquí llama a
+// maybeAutopostMilestone de verdad -- este mock solo evita que el IMPORT en
+// frío de la cadena tumbe el archivo entero (mismo patrón que
+// voice-notes.test.ts).
+vi.mock("server-only", () => ({}));
 
 // Fake DB en memoria que reproduce el trozo relevante del esquema real:
 //   - passes: filas borrables por (user_id, item_type, item_id).

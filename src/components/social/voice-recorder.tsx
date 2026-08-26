@@ -43,6 +43,13 @@ export function VoiceRecorder({
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const stoppingRef = useRef(false);
   const confirmReturnPhase = useRef<Phase>("recording");
+  // Espejo del `disposed` local del efecto de montaje (abajo): `rerecord()`
+  // también crea un engine de forma asíncrona, y si el componente se
+  // desmonta mientras esa promesa resuelve, el `.then` de rerecord llegaría
+  // tarde -- sin este guard dejaba el stream de micrófono abierto sin UI que
+  // lo controle (finding de revisión final). El cleanup del efecto de
+  // montaje lo pone a true; es el único que lo lee/escribe fuera de aquí.
+  const disposedRef = useRef(false);
 
   const finishToPreview = useCallback(async () => {
     if (stoppingRef.current || !engineRef.current) return;
@@ -81,6 +88,7 @@ export function VoiceRecorder({
       .catch(() => setPhase("denied"));
     return () => {
       disposed = true;
+      disposedRef.current = true;
       engineRef.current?.cancel();
       engineRef.current = null;
     };
@@ -135,8 +143,18 @@ export function VoiceRecorder({
     setElapsedMs(0);
     setLiveBars([]);
     setPhase("recording");
+    // Espejo del embudo del montaje: sin este evento, "regrabar" no contaba
+    // como un nuevo inicio y el embudo descartes/inicios quedaba sesgado.
+    logVoiceNote("recording_started");
     VoiceRecorderEngine.create()
       .then((engine) => {
+        // Mismo guard que el efecto de montaje: si el componente se
+        // desmontó mientras `create()` resolvía, no hay UI que controle este
+        // engine -- cancelarlo cierra el stream en vez de dejarlo abierto.
+        if (disposedRef.current) {
+          engine.cancel();
+          return;
+        }
         engineRef.current = engine;
         engine.start(({ elapsedMs: ms, amplitude }) => {
           setElapsedMs(ms);

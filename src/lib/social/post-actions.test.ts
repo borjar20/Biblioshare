@@ -2,15 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  createServiceRoleClient: vi.fn(),
   revalidateFeed: vi.fn(),
   notifyMentions: vi.fn(),
   notifyFollowersOfPost: vi.fn(),
+  deleteVoiceNote: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: mocks.createServiceRoleClient,
+}));
 vi.mock("@/lib/reactivity/revalidate", () => ({ revalidateFeed: mocks.revalidateFeed }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
 vi.mock("./notify-followers", () => ({ notifyFollowersOfPost: mocks.notifyFollowersOfPost }));
+vi.mock("@/lib/storage/voice-notes", () => ({ deleteVoiceNote: mocks.deleteVoiceNote }));
 
 import { createPost, deletePost } from "./post-actions";
 
@@ -321,6 +327,12 @@ function makeDeleteClient(params: {
   user: { id: string } | null;
   deletedRows?: { id: string }[];
   deleteError?: boolean;
+  // Fila de interaction_targets (kind='post') para este post -- null (por
+  // defecto) simula que no se resolvió/no hay comentarios a limpiar.
+  target?: { id: string } | null;
+  // Comentarios con audio colgando de ese target (lo que devuelve el SELECT
+  // de audio_path filtrado con `.not("audio_path", "is", null)`).
+  audioComments?: { audio_path: string | null }[];
 }) {
   const client = {
     auth: { getUser: async () => ({ data: { user: params.user } }) },
@@ -341,6 +353,45 @@ function makeDeleteClient(params: {
       return builder;
     },
   };
+
+  // Cliente service-role: resuelve el interaction_target del post y, si
+  // existe, los audio_path de sus comentarios. Ambos SELECT son de solo
+  // lectura -- ningún .single()/.delete() de por medio.
+  const serviceRoleClient = {
+    from(table: string) {
+      if (table === "interaction_targets") {
+        const builder = {
+          select() {
+            return builder;
+          },
+          eq() {
+            return builder;
+          },
+          async maybeSingle() {
+            return { data: params.target ?? null, error: null };
+          },
+        };
+        return builder;
+      }
+      if (table === "comments") {
+        const builder = {
+          select() {
+            return builder;
+          },
+          eq() {
+            return builder;
+          },
+          not() {
+            return { data: params.audioComments ?? [], error: null };
+          },
+        };
+        return builder;
+      }
+      throw new Error(`Tabla inesperada (service role): ${table}`);
+    },
+  };
+  mocks.createServiceRoleClient.mockReturnValue(serviceRoleClient);
+
   return { client };
 }
 
@@ -384,6 +435,41 @@ describe("deletePost", () => {
     const result = await deletePost("post-1");
 
     expect(result).toEqual({ ok: false, error: "unknown" });
+  });
+
+  // Fix 2 (revisión final): borrar un post limpia los audios de SUS
+  // comentarios -- la cascada de Postgres se lleva la fila pero no el objeto
+  // de Storage.
+  it("post con 2 comentarios con audio -> borra ambos objetos de Storage", async () => {
+    const { client } = makeDeleteClient({
+      user: { id: "actor" },
+      deletedRows: [{ id: "post-1" }],
+      target: { id: "target-post-1" },
+      audioComments: [{ audio_path: "u1/a.webm" }, { audio_path: "u2/b.webm" }],
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await deletePost("post-1");
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.deleteVoiceNote).toHaveBeenCalledTimes(2);
+    expect(mocks.deleteVoiceNote).toHaveBeenCalledWith("u1/a.webm");
+    expect(mocks.deleteVoiceNote).toHaveBeenCalledWith("u2/b.webm");
+  });
+
+  it("post sin audios -> no toca Storage", async () => {
+    const { client } = makeDeleteClient({
+      user: { id: "actor" },
+      deletedRows: [{ id: "post-1" }],
+      target: { id: "target-post-1" },
+      audioComments: [],
+    });
+    mocks.createClient.mockResolvedValue(client);
+
+    const result = await deletePost("post-1");
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.deleteVoiceNote).not.toHaveBeenCalled();
   });
 });
 

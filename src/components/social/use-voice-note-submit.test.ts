@@ -86,4 +86,30 @@ describe("useVoiceNoteSubmit", () => {
     // segundo intento pese al discard.
     expect(addVoiceComment).toHaveBeenCalledTimes(1);
   });
+
+  it("retry() sobre una nota ya descartada en el mismo lote no revienta (guard de attempt)", async () => {
+    // `retry` cierra sobre el `pending` de SU último render; `discard` muta
+    // optsRef de forma síncrona pero `setPending` es async/por lotes, así
+    // que llamar discard()+retry() dentro del mismo act() reproduce la
+    // ventana real: retry ve la nota (closure vieja) mientras optsRef ya no
+    // la tiene. Sin el guard, `attempt()` leía `optsRef.current.get(id)!`
+    // sobre `undefined` y tiraba un TypeError silencioso.
+    addVoiceComment.mockResolvedValue({ ok: false, error: "voice_daily_limit" });
+    const { result } = renderHook(() => useVoiceNoteSubmit("target-1"));
+    act(() => result.current.publish(rec, { parentId: null, isSpoiler: false }));
+    await waitFor(() => expect(result.current.pending[0]!.status).toBe("failed"));
+    const localId = result.current.pending[0]!.localId;
+    const callsBefore = addVoiceComment.mock.calls.length;
+
+    act(() => {
+      result.current.discard(localId);
+      result.current.retry(localId);
+    });
+
+    // El guard corta ANTES de leer `opts` -- addVoiceComment no se vuelve a
+    // llamar, y la nota ya descartada sigue fuera de `pending` (el `.map()`
+    // de retry sobre el array post-discard es un no-op).
+    expect(addVoiceComment).toHaveBeenCalledTimes(callsBefore);
+    expect(result.current.pending).toHaveLength(0);
+  });
 });

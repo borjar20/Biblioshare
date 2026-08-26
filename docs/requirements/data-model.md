@@ -1001,8 +1001,10 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 >
 > - **CHECK texto-XOR-audio.** `comments_body_canonical` se reescribe: o `body` canónico
 >   (`btrim`, 1..2000) sin audio, o `audio_path is not null` con `body = ''` — nunca ambos,
->   nunca ninguno. Nuevo constraint `comments_audio_canonical`: con audio, `audio_path`
->   trimeado y no vacío, `audio_duration_ms` entre 2000 y 60000 (2 s-60 s) y `audio_peaks` con
+>   nunca ninguno. Nuevo constraint `comments_audio_canonical`: con audio, `audio_path` no nulo
+>   y `= btrim(audio_path)` (el CHECK no prohíbe el vacío tras el trim — solo exige que sea su
+>   propia versión recortada; es la action la que solo escribe paths reales, nunca el CHECK
+>   quien lo garantiza), `audio_duration_ms` entre 2000 y 60000 (2 s-60 s) y `audio_peaks` con
 >   entre 0 y 64 elementos.
 > - **Bucket privado `voice-notes`** (`public=false`, `file_size_limit=2097152` = 2 MB,
 >   `allowed_mime_types` `audio/webm`+`audio/mp4`). **Sin policies sobre `storage.objects`** —

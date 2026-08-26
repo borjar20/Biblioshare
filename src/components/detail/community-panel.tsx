@@ -95,6 +95,7 @@ export async function CommunityPanel({
         reactions={review.reactions}
         knownUsernames={community.knownUsernames}
         viewerLoggedIn={viewerLoggedIn}
+        voiceEnabled
       />
     ) : null,
   }));

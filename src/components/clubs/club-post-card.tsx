@@ -169,6 +169,7 @@ export function ClubPostCard({
         viewerLoggedIn={viewerLoggedIn}
         clubId={post.clubId}
         knownUsernames={knownUsernames}
+        voiceEnabled
       />
     </div>
   );

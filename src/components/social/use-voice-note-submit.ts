@@ -51,6 +51,12 @@ export function useVoiceNoteSubmit(interactionTargetId: string) {
 
   const attempt = useCallback(
     async (note: PendingVoiceNote, retriesLeft: number) => {
+      // Guard: un retry() puede leer `pending` de un render aún no
+      // reflejado en optsRef (discard() muta el ref de forma síncrona pero
+      // setPending es asíncrono/por lotes) -- sin esto, `attempt()` corría
+      // sobre una nota ya descartada y el `!` de abajo reventaba con un
+      // TypeError silencioso (finding de revisión final).
+      if (!optsRef.current.has(note.localId)) return;
       const opts = optsRef.current.get(note.localId)!;
       const fd = new FormData();
       const ext = note.recording.mimeType.includes("mp4") ? "m4a" : "webm";

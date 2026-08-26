@@ -58,6 +58,7 @@ export function ReviewInteractions({
   showTargetReaction = true,
   clubId,
   knownUsernames = [],
+  voiceEnabled = false,
 }: {
   interactionTargetId: string;
   reactionCount: number;
@@ -83,6 +84,14 @@ export function ReviewInteractions({
   // cada comentario. Opcional: los callers que aún no la resuelven (fuera
   // del alcance de la Tarea 7) simplemente no linkifican, sin romper nada.
   knownUsernames?: string[];
+  // Gate de superficie (spec §1 de notas de voz): el mic SOLO en posts de
+  // club, reseñas de pase y pensamientos. Pases/registros automáticos y
+  // episodios (y checkpoints/rondas, que cuelgan de la misma superficie)
+  // quedan fuera -- default false, cada caller lo enciende a propósito. Con
+  // false no se pinta mic/VoiceRecorder/tooltip/VoiceMiniBar; el hook
+  // useVoiceNoteSubmit sigue montado (inofensivo, nunca se le llama a
+  // publish) para no bifurcar el componente en dos.
+  voiceEnabled?: boolean;
 }) {
   const t = useTranslations("social");
   const { state, isPending, failed, run } = useOptimisticAction({
@@ -144,6 +153,7 @@ export function ReviewInteractions({
   ]);
 
   function renderMicButton(mode: "root" | string) {
+    if (!voiceEnabled) return null;
     return (
       <span className="relative shrink-0">
         <button
@@ -451,7 +461,7 @@ export function ReviewInteractions({
                   </div>
                 )}
 
-                {threadPending.length > 0 && (
+                {voiceEnabled && threadPending.length > 0 && (
                   <div className="ml-4 flex flex-col gap-2 border-l border-border pl-3">
                     {threadPending.map((note) => (
                       <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
@@ -461,7 +471,7 @@ export function ReviewInteractions({
 
                 {replyingTo === thread.root.id && (
                   <div className="ml-8">
-                    {voiceMode === thread.root.id ? (
+                    {voiceEnabled && voiceMode === thread.root.id ? (
                       <VoiceRecorder
                         onCancel={() => setVoiceMode(null)}
                         onPublish={(rec) => {
@@ -499,7 +509,7 @@ export function ReviewInteractions({
           })}
 
           <div className="relative">
-            {voiceMode === "root" ? (
+            {voiceEnabled && voiceMode === "root" ? (
               <VoiceRecorder
                 onCancel={() => setVoiceMode(null)}
                 onPublish={(rec) => {
@@ -527,13 +537,14 @@ export function ReviewInteractions({
             )}
           </div>
 
-          {voice.pending
-            .filter((p) => p.parentId === null)
-            .map((note) => (
-              <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
-            ))}
+          {voiceEnabled &&
+            voice.pending
+              .filter((p) => p.parentId === null)
+              .map((note) => (
+                <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
+              ))}
 
-          <VoiceMiniBar />
+          {voiceEnabled && <VoiceMiniBar />}
         </div>
       )}
       {failed && (
