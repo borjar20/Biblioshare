@@ -1162,6 +1162,258 @@ git commit -m "feat(catalogo): hidratación v3 con política ES→EN, capa Wikid
 
 ---
 
+### Task 9bis: Hidratación en LOTE de libros (arregla las shells vacías de la ficha de autor)
+
+**Diagnóstico medido en prod el 2026-08-26.** Abrir la ficha de Brandon Sanderson
+creó 87 créditos de libro, y **61 de esas filas de `books` están completamente
+vacías**: `title`, `author`, `published_year`, `cover_url` y `hydrated_at` a NULL,
+todas con `openlibrary_work_key`. En el catálogo entero de prod hay 268 libros y
+**61 shells vacías — el 23% del catálogo, todas de esa única visita**. La ficha de
+autor las pinta leyendo `books.title`, así que salen como «Sin título» y sin año.
+
+**Causa:** `hydratePersonCredits` construye los `SearchResult` CON título, año y
+portada (`fetchAuthorWorks` los trae: medido, 100/100 con título, 100/100 con
+`first_publish_year`, 91/100 con `cover_i`) y `findOrCreateCatalogItemsBulk`
+**los tira**: su rama de hidratación arranca con
+`if (itemType !== "movie" && itemType !== "series") return;`. El comentario lo
+justifica diciendo que el lote «rara vez trae sinopsis de libro» — cierto para la
+sinopsis, falso para título/año/portada, que son justo lo que la ficha de autor
+enseña.
+
+**Por qué esto pertenece a ESTE plan y no se arregló antes:** hidratar libros en
+lote con la `hydrate_book` vieja habría sido un tiro en el pie — escribiría el
+título y marcaría `hydrated_at`, congelando para siempre un título posiblemente
+inglés y dejando la obra sin sinopsis ni géneros. Es el modo de fallo exacto de
+#730. Con `repr_meta` + fill-or-upgrade (Task 2) escribir el título del lote es
+seguro: queda etiquetado con su idioma y la visita a la ficha lo MEJORA si
+encuentra candidata española. La pieza nueva es la que hace posible el arreglo.
+
+**Files:**
+- Create: `supabase/migrations/20260887_repr_g_hydrate_books_bulk.sql`
+- Modify: `src/lib/catalog/openlibrary/normalize.ts` (regla 4 expone el idioma elegido)
+- Modify: `src/lib/catalog/openlibrary/author-books.ts` (propaga `titleLang`)
+- Modify: `src/lib/catalog/types.ts` (`SearchResult.titleLang`)
+- Modify: `src/lib/catalog/find-or-create.ts` (deja de saltarse los libros)
+- Modify: `scripts/reconcile-wikidata.ts` (Task 15) — añadir el modo `--backfill-shells`
+- Test: `src/lib/catalog/openlibrary/normalize.test.ts` (ampliar), `src/lib/catalog/find-or-create.test.ts`
+
+**Interfaces:**
+- Consumes: `repr_lang_rank` y la regla de escritura de Task 2.
+- Produces:
+  - SQL: `repr_should_write(p_current text, p_meta jsonb, p_field text, p_lang text) returns boolean` — **única implementación de la regla** (curación manda; luego vacío o mejora estricta de rango). `hydrate_book` de Task 2 se refactoriza para llamarla, de modo que no existan dos copias de la regla.
+  - SQL: `hydrate_books_bulk(p_rows jsonb) returns void` — cada fila `{book_id, title, title_lang, author, cover_url, cover_lang, published_year}`. Fill-or-upgrade por campo. **NO toca `hydrated_at`** (ver abajo).
+  - TS: `NormalizedWork` gana `titleLang: "es" | "en" | "other"`; `SearchResult` gana `titleLang?: "es" | "en" | "other"` (solo libros).
+
+**`hydrated_at` se queda NULL a propósito.** El lote solo tiene título, autor,
+año y portada — no sinopsis, géneros, páginas orientativas ni QID. Si marcara la
+obra como hidratada, la ficha nunca completaría el resto (y con el cooldown de
+`needsRepresentationReview` tardaría 30 días en reconsiderarlo). Dejándolo NULL:
+la ficha hace su trabajo completo en la primera visita, y como es fill-or-upgrade
+no destruye lo que el lote escribió — lo mejora si puede.
+
+**Seguridad (#674):** escribir canónicos aquí NO reabre el envenenamiento del
+catálogo. Es el mismo argumento que ya justifica que el lote de película/serie sí
+use los canónicos del `SearchResult`: el origen es una llamada de SERVIDOR a
+OpenLibrary por `author_key`, sin un solo campo procedente del cliente. Y la RPC
+es fill-or-upgrade, así que tampoco podría pisar una curación aunque quisiera.
+
+- [ ] **Step 1: Test failing en `normalize.ts`** — la regla 4 debe declarar de dónde salió el título:
+
+```ts
+it("declara el idioma del título elegido", () => {
+  const [work] = normalizeAuthorWorks(
+    [{ key: "/works/OL1W", title: "Words of Radiance", language: ["spa", "eng"], edition_count: 23,
+       editions: { docs: [{ title: "Palabras Radiantes", language: ["spa"] }] } }],
+    [{ key: "/works/OL1W", title: "Words of Radiance", language: ["spa", "eng"], edition_count: 23,
+       editions: { docs: [{ title: "Words of Radiance", language: ["eng"] }] } }]
+  );
+  expect(work.title).toBe("Palabras Radiantes");
+  expect(work.titleLang).toBe("es");
+});
+
+it("marca 'other' cuando cae al título de la obra", () => {
+  const [work] = normalizeAuthorWorks(
+    [{ key: "/works/OL2W", title: "Elantris", language: ["eng"], edition_count: 5 }], []
+  );
+  expect(work.titleLang).toBe("other");
+});
+```
+
+- [ ] **Step 2: Run** `npx vitest run src/lib/catalog/openlibrary/normalize.test.ts` → FAIL (`titleLang` no existe).
+
+- [ ] **Step 3: Implementar** en `normalize.ts` regla 4, sustituyendo la línea `const title = entry.es ?? entry.en ?? workTitle;` por:
+
+```ts
+    // 4. Título: español, si no inglés, si no el de la obra. El IDIOMA elegido
+    //    viaja con él: la hidratación en lote lo necesita para etiquetar
+    //    repr_meta y que una visita posterior a la ficha pueda mejorarlo
+    //    (spec 2026-08-26 §2). Sin esta etiqueta, un título inglés escrito por
+    //    el lote sería indistinguible de uno curado y quedaría congelado.
+    const title = entry.es ?? entry.en ?? workTitle;
+    const titleLang: "es" | "en" | "other" = entry.es ? "es" : entry.en ? "en" : "other";
+```
+
+y añadirlo al objeto `work` que se empuja a `candidates` (y al type `NormalizedWork`). Hacer el mismo cambio en `search-normalize.ts` regla 5, poblando `titleLang` en el `SearchResult` que devuelve — misma línea, y así los dos normalizadores coinciden.
+
+- [ ] **Step 4: Run** → PASS.
+
+- [ ] **Step 5: Migración** `20260887_repr_g_hydrate_books_bulk.sql`:
+
+```sql
+-- La regla de escritura de la representación, en UN solo sitio: la usan
+-- hydrate_book (una obra, ficha) y hydrate_books_bulk (lote, bibliografía de
+-- autor). Dos copias de esta regla se desincronizan en el primer arreglo.
+create or replace function public.repr_should_write(
+  p_current text, p_meta jsonb, p_field text, p_lang text
+) returns boolean language sql immutable as $$
+  select case
+    when coalesce(p_meta -> p_field ->> 'source', '') = 'manual' then false
+    when p_current is null or p_current = '' then true
+    else public.repr_lang_rank(p_lang) < public.repr_lang_rank(p_meta -> p_field ->> 'lang')
+  end;
+$$;
+
+-- Hidratación en LOTE de libros (spec 2026-08-26; arregla las shells vacías que
+-- deja la ficha de autor). Hermana de hydrate_screens_bulk. Escribe SOLO lo que
+-- la bibliografía sabe —título, autor, año, portada— y NO toca hydrated_at: la
+-- obra sigue pendiente de su hidratación completa (sinopsis, géneros, páginas,
+-- QID) en la primera visita a su ficha, que además puede MEJORAR estos valores.
+create or replace function public.hydrate_books_bulk(p_rows jsonb)
+returns void language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare
+  r jsonb;
+  v_row public.books%rowtype;
+  v_meta jsonb;
+begin
+  if auth.uid() is null then raise exception 'authentication required'; end if;
+  perform set_config('app.hydrating', 'on', true);
+
+  for r in select * from jsonb_array_elements(p_rows) loop
+    select * into v_row from public.books where id = (r ->> 'book_id')::uuid;
+    continue when not found;
+    v_meta := coalesce(v_row.repr_meta, '{}'::jsonb);
+
+    if (r ->> 'title') is not null and (r ->> 'title_lang') in ('es','en','other')
+       and public.repr_should_write(v_row.title, v_meta, 'title', r ->> 'title_lang') then
+      v_row.title := left(r ->> 'title', 300);
+      v_meta := v_meta || jsonb_build_object('title',
+        jsonb_build_object('lang', r ->> 'title_lang', 'source', 'openlibrary'));
+    end if;
+
+    if (r ->> 'cover_url') is not null and (r ->> 'cover_lang') in ('es','en','other')
+       and public.repr_should_write(v_row.cover_url, v_meta, 'cover', r ->> 'cover_lang') then
+      v_row.cover_url := left(r ->> 'cover_url', 2000);
+      v_meta := v_meta || jsonb_build_object('cover',
+        jsonb_build_object('lang', r ->> 'cover_lang', 'source', 'openlibrary'));
+    end if;
+
+    -- Sin dimensión de idioma: fill-only de siempre.
+    if (v_row.author is null or v_row.author = '') and (r ->> 'author') is not null then
+      v_row.author := left(r ->> 'author', 200);
+    end if;
+    if v_row.published_year is null and (r ->> 'published_year') is not null then
+      v_row.published_year := (r ->> 'published_year')::integer;
+    end if;
+
+    update public.books
+       set title = v_row.title, author = v_row.author,
+           cover_url = v_row.cover_url, published_year = v_row.published_year,
+           repr_meta = v_meta
+     where id = v_row.id;
+  end loop;
+
+  perform set_config('app.hydrating', 'off', true);
+end;
+$$;
+
+revoke all on function public.hydrate_books_bulk(jsonb) from public;
+revoke execute on function public.hydrate_books_bulk(jsonb) from anon;
+grant execute on function public.hydrate_books_bulk(jsonb) to authenticated;
+
+comment on function public.hydrate_books_bulk is
+  'Hidratación en lote de libros desde la bibliografía de autor (spec 2026-08-26). Fill-or-upgrade vía repr_should_write. NO marca hydrated_at: la ficha completa sinopsis/géneros/páginas/QID después y puede mejorar estos valores.';
+```
+
+En la misma migración, **refactorizar `hydrate_book` (Task 2) para que use `repr_should_write`** en vez de su copia inline de la condición — misma semántica, una sola implementación. `drop function` + `create` como siempre.
+
+- [ ] **Step 6: Aplicar en dev y probar** con dos filas sembradas: una shell vacía (debe rellenarse) y una con título ES ya puesto (un título EN del lote NO debe pisarlo). Verificar que `hydrated_at` sigue NULL en ambas.
+
+- [ ] **Step 7: `find-or-create.ts`** — la rama que hoy dice:
+
+```ts
+      if (itemType !== "movie" && itemType !== "series") return;
+```
+
+pasa a derivar a la RPC de libros:
+
+```ts
+      if (itemType === "book") {
+        // Título, autor, año y portada SÍ vienen en la bibliografía y son justo
+        // lo que la ficha de autor pinta; tirarlos dejaba shells vacías («Sin
+        // título», sin año) — 61 de 268 libros del catálogo de prod el
+        // 2026-08-26, todas de una sola visita. Sinopsis y géneros no vienen, y
+        // por eso la RPC NO marca hydrated_at: los completa la ficha.
+        const bookRows = externalIds
+          .map((externalId) => {
+            const result = bucket.get(externalId)!;
+            const bookId = map.get(`book:${externalId}`);
+            if (!bookId) return null;
+            return {
+              book_id: bookId,
+              title: result.title || null,
+              title_lang: result.titleLang ?? "other",
+              author: result.subtitle,
+              cover_url: result.coverUrl,
+              cover_lang: "other",
+              published_year: result.year,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null);
+        if (bookRows.length === 0) return;
+        try {
+          const { error } = await supabase.rpc("hydrate_books_bulk", { p_rows: bookRows });
+          if (error) console.error("hydrate_books_bulk failed", { count: bookRows.length, error });
+        } catch (error) {
+          console.error("hydrate_books_bulk failed", { count: bookRows.length, error });
+        }
+        return;
+      }
+      if (itemType !== "movie" && itemType !== "series") return;
+```
+
+(`cover_lang: "other"`: la portada del doc de búsqueda es la del work, no la de una edición de idioma conocido — se etiqueta como el fallback que es, para que la ficha pueda mejorarla con una portada española.)
+
+Actualizar el comentario de cabecera del módulo, que hoy afirma «Los libros SOLO se registran (shell), nunca se hidratan aquí».
+
+- [ ] **Step 8: Test** de `find-or-create` con supabase mockeado: un lote de 2 libros llama a `hydrate_books_bulk` con las filas mapeadas y `title_lang` propagado. Run → PASS.
+
+- [ ] **Step 9: Backfill de las 61 shells existentes.** No se arreglan solas: `credits_hydrated_at` de Sanderson ya está puesto, así que la bibliografía no se vuelve a pedir, y nadie va a abrir 61 fichas. Añadir a `scripts/reconcile-wikidata.ts` el modo `--backfill-shells`:
+  1. `select` de personas con `openlibrary_key` que tengan créditos de libro apuntando a filas con `title is null`.
+  2. Por persona (throttle 1/s): `fetchAuthorWorks(openlibraryKey)` — 2 llamadas, y devuelve exactamente los datos que se tiraron, ya con el título ES-preferente.
+  3. Casar por `openlibrary_work_key` con las shells vacías y llamar a `hydrate_books_bulk` en tandas de 50.
+  4. Las shells vacías que no cuelguen de ninguna persona con clave OL (hoy: cero) se listan al final para revisión manual.
+
+  La RPC exige `auth.uid()`, así que el script se autentica con un **token de usuario** (env `BIBLIOSHARE_ACCESS_TOKEN`), no con service role — es el mismo motivo por el que la ficha usa `createTokenClient` (#751).
+
+- [ ] **Step 10: Ejecutar el backfill** en dev, luego en prod. Verificar en prod:
+
+```sql
+select count(*) filter (where title is null) as vacias, count(*) as total from public.books;
+```
+
+Expected: `vacias` cae de 61 a ~0. Anotar la cifra final.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add supabase/migrations/20260887_repr_g_hydrate_books_bulk.sql src/lib/catalog/openlibrary/normalize.ts src/lib/catalog/openlibrary/search-normalize.ts src/lib/catalog/openlibrary/author-books.ts src/lib/catalog/types.ts src/lib/catalog/find-or-create.ts scripts/reconcile-wikidata.ts
+git commit -m "fix(catalogo): la bibliografía de autor hidrata sus libros en lote (61 shells vacías en prod)"
+```
+
+---
+
 ### Task 10: Muerte del sync masivo de ediciones
 
 **Files:**
@@ -1555,12 +1807,16 @@ cómo le afecta, porque es el único camino que crea shells de libro en LOTE:
   shell hidrata como «Palabras Radiantes», porque el work inglés sí tiene
   ediciones `spa` de las que sacar la candidata. La bibliografía en español
   mejora sin tocar su código.
-- **Coste:** el lote sigue creando shells SIN hidratar (comportamiento actual, no
-  cambia). Quien paga la hidratación nueva es la primera visita a la ficha de
+- **Arreglo grande, en Task 9bis:** hoy el lote crea las shells y TIRA el título,
+  el año y la portada que la bibliografía ya trae — 61 de los 268 libros de prod
+  son shells vacías, todas de una sola visita a la ficha de Sanderson. Task 9bis
+  las hidrata en lote, y solo es seguro hacerlo con la maquinaria de este plan
+  (con la RPC vieja congelaría títulos ingleses para siempre).
+- **Coste:** quien paga la hidratación nueva es la primera visita a la ficha de
   cada libro: pasa de ~3 llamadas externas a ~8 en el peor caso (work + 2
   páginas de ediciones + Inventaire + hasta 2 de GB). Es en `after()`, una vez
   por obra, y el cooldown de `needsRepresentationReview` evita repetirlo. La
-  ficha de autor **no** paga nada de esto.
+  ficha de autor **no** paga nada de esto: su lote añade una sola RPC más.
 - **Hueco conocido:** las shells del lote nacen sin `wikidata_id`. Si la dedup de
   bibliografía deja pasar un casi-duplicado (caso documentado en `normalize.ts`:
   un candidato que cruza con DOS supervivientes), quedan dos filas y ninguna
