@@ -26,7 +26,12 @@ export async function SearchForm({
 
       <form action="/buscar" className="flex gap-2">
         <input type="hidden" name="type" value={itemType} />
-        <div className="relative flex-1">
+        {/* `w-full` en el input y `min-w-0` en la celda NO son decoración: sin
+            ellos el input conserva su ancho intrínseco (`size=20`, 273px) y la
+            celda `flex-1` vale `min-width:auto`, que no encoge por debajo de
+            ese contenido — la fila medía 391px en un viewport de 360 y la
+            página entera salía con scroll lateral (#721). */}
+        <div className="relative min-w-0 flex-1">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             name="q"
@@ -35,7 +40,7 @@ export async function SearchForm({
             placeholder={t(
               itemType === "book" ? "placeholderBook" : "placeholder",
             )}
-            className="pl-10"
+            className="w-full pl-10"
           />
         </div>
         <button
