@@ -36,6 +36,11 @@ const NO_RETRY = new Set([
 export function useVoiceNoteSubmit(interactionTargetId: string) {
   const [pending, setPending] = useState<PendingVoiceNote[]>([]);
   const optsRef = useRef(new Map<string, { parentId: string | null; isSpoiler: boolean }>());
+  // Reintentos programados por localId: discard() (y el cleanup de desmontaje)
+  // necesitan poder cancelarlos -- si no, un setTimeout huérfano puede
+  // reaparecer/publicar una nota que el usuario ya descartó (issue de review,
+  // Tarea 12 finding 3).
+  const timersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   // `attempt` se llama a sí mismo (reintento) desde dentro de su propio
   // cuerpo: un `useCallback` no puede referenciarse antes de estar declarado
   // (react-hooks/immutability), así que el setTimeout llama a través de este
@@ -62,6 +67,7 @@ export function useVoiceNoteSubmit(interactionTargetId: string) {
         if (res.ok) {
           logVoiceNote("voice_note_published", { durationMs: note.recording.durationMs });
           optsRef.current.delete(note.localId);
+          timersRef.current.delete(note.localId);
           setPending((prev) => prev.filter((p) => p.localId !== note.localId));
           return;
         }
@@ -72,9 +78,19 @@ export function useVoiceNoteSubmit(interactionTargetId: string) {
 
       if (retriesLeft > 0 && !NO_RETRY.has(error)) {
         const delay = RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - retriesLeft] ?? 2500;
-        setTimeout(() => void attemptRef.current?.(note, retriesLeft - 1), delay);
+        // Un reintento previo aún pendiente para esta nota no debería darse
+        // (attempt() solo dispara desde publish/retry/su propio timeout), pero
+        // limpiamos por si acaso antes de sustituirlo.
+        const prevTimer = timersRef.current.get(note.localId);
+        if (prevTimer) clearTimeout(prevTimer);
+        const timer = setTimeout(() => {
+          timersRef.current.delete(note.localId);
+          void attemptRef.current?.(note, retriesLeft - 1);
+        }, delay);
+        timersRef.current.set(note.localId, timer);
         return;
       }
+      timersRef.current.delete(note.localId);
       setPending((prev) =>
         prev.map((p) => (p.localId === note.localId ? { ...p, status: "failed" } : p)),
       );
@@ -110,8 +126,22 @@ export function useVoiceNoteSubmit(interactionTargetId: string) {
   );
 
   const discard = useCallback((localId: string) => {
+    const timer = timersRef.current.get(localId);
+    if (timer) clearTimeout(timer);
+    timersRef.current.delete(localId);
     optsRef.current.delete(localId);
     setPending((prev) => prev.filter((p) => p.localId !== localId));
+  }, []);
+
+  // Al desmontar (navegación fuera del hilo, etc.) cancela cualquier reintento
+  // en vuelo -- si no, el timeout dispara sobre un componente ya fuera y
+  // arrastra setState de un hook que nadie observa.
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
   }, []);
 
   return { pending, publish, retry, discard };

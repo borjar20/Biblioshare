@@ -243,6 +243,10 @@ export function ReviewInteractions({
     // Prefija @autor cuando respondes a alguien distinto de ti y su username
     // existe (si no hay username no se puede mencionar, se deja vacío).
     setReplyDraft(!c.isOwn && c.authorUsername ? `@${c.authorUsername} ` : "");
+    // Cambiar de objetivo desarma la grabadora: si voiceMode seguía apuntando
+    // a OTRO hilo (o a "root"), montaría y grabaría sin que el usuario tocara
+    // el mic (issue de review, Tarea 12 finding 1).
+    setVoiceMode(null);
   }
 
   function submitReply(rootId: string) {
@@ -260,6 +264,7 @@ export function ReviewInteractions({
     setReplyingTo(null);
     setEditingId(c.id);
     setEditDraft(c.body);
+    setVoiceMode(null);
   }
 
   function submitEdit(id: string) {
@@ -479,6 +484,12 @@ export function ReviewInteractions({
                         onPublish={(rec) => {
                           voice.publish(rec, { parentId: thread.root.id, isSpoiler: false });
                           setVoiceMode(null);
+                          // Espejo de lo que hace submitReply() con el camino de
+                          // texto: cierra el contexto de respuesta y abre el
+                          // hilo para que la nota (pendiente y luego real) se
+                          // vea (finding 2).
+                          setReplyingTo(null);
+                          setOpenReplies((prev) => new Set(prev).add(thread.root.id));
                         }}
                       />
                     ) : (
@@ -489,6 +500,7 @@ export function ReviewInteractions({
                         onCancel={() => {
                           setReplyingTo(null);
                           setReplyDraft("");
+                          setVoiceMode(null);
                         }}
                         submitLabel={t("reply")}
                         placeholder={t("writeReply")}

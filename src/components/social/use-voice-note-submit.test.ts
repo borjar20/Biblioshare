@@ -65,4 +65,25 @@ describe("useVoiceNoteSubmit", () => {
     act(() => result.current.retry(result.current.pending[0]!.localId));
     await waitFor(() => expect(result.current.pending).toHaveLength(0));
   });
+
+  it("discard cancela el reintento programado: no vuelve a llamar tras el timeout", async () => {
+    vi.useFakeTimers();
+    addVoiceComment.mockResolvedValue({ ok: false, error: "unknown" });
+    const { result } = renderHook(() => useVoiceNoteSubmit("target-1"));
+    act(() => result.current.publish(rec, { parentId: null, isSpoiler: false }));
+    // Deja que el primer intento falle y programe el reintento (800ms), pero
+    // descarta ANTES de que dispare.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(addVoiceComment).toHaveBeenCalledTimes(1);
+    act(() => result.current.discard(result.current.pending[0]!.localId));
+    expect(result.current.pending).toHaveLength(0);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    // Sin el timer cancelado, el setTimeout de 800ms habría disparado un
+    // segundo intento pese al discard.
+    expect(addVoiceComment).toHaveBeenCalledTimes(1);
+  });
 });

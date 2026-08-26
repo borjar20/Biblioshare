@@ -228,12 +228,17 @@ export function PostThread({
     setEditingId(null);
     setReplyingTo(c);
     setDraft(!c.isOwn && c.authorUsername ? `@${c.authorUsername} ` : "");
+    // Cambiar de objetivo desarma la grabadora: si seguía "armada" (true) de un
+    // hilo anterior, montaría y grabaría sin que el usuario tocara el mic
+    // (issue de review, Tarea 12 finding 1).
+    setVoiceMode(false);
   }
 
   function startEdit(c: InteractionComment) {
     setReplyingTo(null);
     setEditingId(c.id);
     setEditDraft(c.body);
+    setVoiceMode(false);
   }
 
   function submitEdit(id: string) {
@@ -266,6 +271,7 @@ export function PostThread({
             onClick={() => {
               setReplyingTo(null);
               setDraft("");
+              setVoiceMode(false);
             }}
             className="ml-auto text-muted-foreground hover:text-foreground"
           >
@@ -280,6 +286,9 @@ export function PostThread({
             onPublish={(rec) => {
               voice.publish(rec, { parentId: replyingTo?.id ?? null, isSpoiler: replyingTo ? false : spoiler });
               setVoiceMode(false);
+              // Espejo de lo que hace submit() con el camino de texto: cierra el
+              // contexto de respuesta al publicar (finding 2).
+              setReplyingTo(null);
             }}
           />
         ) : (
