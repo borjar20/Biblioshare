@@ -144,6 +144,7 @@ export function ReviewInteractions({
       isSpoiler: spoiler,
       pinned: false,
       edited: false,
+      audio: null,
       reactionCount: 0,
       viewerReacted: false,
       reactions: emptyReactions(),

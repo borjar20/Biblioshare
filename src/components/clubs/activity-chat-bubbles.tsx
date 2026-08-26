@@ -98,6 +98,7 @@ export function ActivityChatBubbles({
       isSpoiler,
       pinned: false,
       edited: false,
+      audio: null,
       reactionCount: 0,
       viewerReacted: false,
       reactions: emptyReactions(),

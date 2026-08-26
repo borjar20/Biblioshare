@@ -11,6 +11,7 @@ function comment(isOwn: boolean): InteractionComment {
     // Resto del tipo real (no estaba en el brief): valores neutros, no los
     // ejercita ningún test de este fichero.
     canPin: false, parentId: null, isSpoiler: false, pinned: false, edited: false,
+    audio: null,
     reactionCount: 0, viewerReacted: false, reactions: {} as InteractionComment["reactions"],
   };
 }

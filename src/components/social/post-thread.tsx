@@ -135,6 +135,7 @@ export function PostThread({
       isSpoiler: sp,
       pinned: false,
       edited: false,
+      audio: null,
       reactionCount: 0,
       viewerReacted: false,
       reactions: emptyReactions(),

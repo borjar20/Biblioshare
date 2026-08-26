@@ -1,5 +1,6 @@
 import "server-only";
 import { getCurrentUser, type createClient } from "@/lib/supabase/server";
+import { signVoiceNoteUrls } from "@/lib/storage/voice-notes";
 import { getInteractionTargetRefs } from "./interaction-targets";
 import {
   anyViewerReacted,
@@ -102,7 +103,9 @@ export async function getInteractionSummary(
       .order("created_at", { ascending: true }),
     supabase
       .from("comments")
-      .select("id, interaction_target_id, author_id, body, created_at, parent_id, is_spoiler, pinned, edited_at")
+      .select(
+        "id, interaction_target_id, author_id, body, created_at, parent_id, is_spoiler, pinned, edited_at, audio_path, audio_duration_ms, audio_peaks",
+      )
       .in("interaction_target_id", interactionTargetIds)
       .order("created_at", { ascending: true }),
   ]);
@@ -127,12 +130,19 @@ export async function getInteractionSummary(
 
   const commentRows = commentsResult.data ?? [];
   const authorIds = [...new Set(commentRows.map((c) => c.author_id))];
-  const [nameByAuthor, commentTargetRefs] = await Promise.all([
+  const [nameByAuthor, commentTargetRefs, audioUrls] = await Promise.all([
     resolveAuthorNames(supabase, authorIds),
     getInteractionTargetRefs(
       supabase,
       commentRows.map((comment) => ({ kind: "comment", sourceId: comment.id })),
     ),
+    signVoiceNoteUrls([
+      ...new Set(
+        commentRows
+          .map((c) => c.audio_path)
+          .filter((p): p is string => p != null),
+      ),
+    ]),
   ]);
   let moderatableTargetIds = new Set<string>();
   if (user) {
@@ -197,7 +207,7 @@ export async function getInteractionSummary(
       createdAt: c.created_at,
       isOwn: user?.id === c.author_id,
       canDelete: user?.id === c.author_id || moderatableTargetIds.has(sourceId),
-      canEdit: user?.id === c.author_id,
+      canEdit: user?.id === c.author_id && c.audio_path == null,
       // Fijar es SOLO del dueño del target (no moderador/admin) — ver
       // 20260839_pin_comment_owner_only.sql. `moderatableTargetIds` se sigue
       // usando para `canDelete` (moderar = borrar sí es de admin/moderador).
@@ -206,6 +216,16 @@ export async function getInteractionSummary(
       isSpoiler: c.is_spoiler,
       pinned: c.pinned,
       edited: c.edited_at != null,
+      // Si la firma falló (objeto perdido, storage caído) el comentario se
+      // pinta como texto vacío en vez de un chip roto: audio null y a seguir.
+      audio:
+        c.audio_path && audioUrls.get(c.audio_path)
+          ? {
+              url: audioUrls.get(c.audio_path)!,
+              durationMs: c.audio_duration_ms ?? 0,
+              peaks: (c.audio_peaks ?? []).map(Number),
+            }
+          : null,
       reactionCount: 0,
       viewerReacted: false,
       reactions: emptyReactions(),

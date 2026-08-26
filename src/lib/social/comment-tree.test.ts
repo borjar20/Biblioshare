@@ -10,6 +10,7 @@ function c(over: Partial<InteractionComment> & { id: string }): InteractionComme
     isOwn: over.isOwn ?? false, canDelete: false, canEdit: false, canPin: false,
     parentId: over.parentId ?? null, isSpoiler: over.isSpoiler ?? false,
     pinned: over.pinned ?? false, edited: over.edited ?? false,
+    audio: over.audio ?? null,
     reactionCount: over.reactionCount ?? 0, viewerReacted: false,
     reactions: { like:{count:0,viewerReacted:false}, read:{count:0,viewerReacted:false}, shock:{count:0,viewerReacted:false}, fire:{count:0,viewerReacted:false} },
   };

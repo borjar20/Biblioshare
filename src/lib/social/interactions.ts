@@ -69,6 +69,11 @@ export type InteractionComment = {
   isSpoiler: boolean;
   pinned: boolean;
   edited: boolean;
+  /**
+   * Nota de voz: null en comentarios de texto. `url` es una URL FIRMADA con
+   * caducidad 1 h — no cachear más allá del render que la trajo.
+   */
+  audio: { url: string; durationMs: number; peaks: number[] } | null;
   // reactionCount/viewerReacted se conservan como DERIVADOS (suma de todas
   // las reacciones / si el viewer tiene alguna puesta) para no romper a los 9
   // callers que aún pintan el total sin desglosar por emoji.
