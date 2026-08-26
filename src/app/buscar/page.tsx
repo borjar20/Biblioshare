@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { searchCatalog } from "@/lib/catalog/search";
@@ -15,10 +16,7 @@ import { PeopleResults } from "./people-results";
 import { ResultsEyebrow } from "./results-eyebrow";
 import { COVER_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "Buscar — Biblioshare",
@@ -30,7 +28,43 @@ type SearchMode = "titles" | "people";
 
 // Buscar tiene dos modos: títulos (catálogo) y personas (la antigua /usuarios,
 // absorbida aquí en el rediseño Paper).
+//
+// El shell estático es cabecera + esqueleto (#476): todo lo demás cuelga de
+// `searchParams` (modo, tipo, consulta) y baja por debajo del <Suspense>. El
+// `getTranslations` de fuera es prerenderizable: la config de i18n es estática
+// (locale fija, sin `now` — #475).
 export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; type?: string; modo?: string }>;
+}) {
+  const t = await getTranslations("search");
+
+  return (
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+      <PageHeader title={t("title")} />
+      <Suspense fallback={<SearchBodySkeleton />}>
+        <SearchContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+// Fantasma del cuerpo: pestañas de modo + barra de búsqueda, con las alturas
+// del contenido real (pestañas: pb-3 sobre border-b; barra: input h-10).
+function SearchBodySkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-6">
+      <div className="flex gap-6 border-b border-border pb-3">
+        <SkeletonLine className="w-16" />
+        <SkeletonLine className="w-16" />
+      </div>
+      <Skeleton className="h-10 w-full rounded-md" />
+    </div>
+  );
+}
+
+async function SearchContent({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string; type?: string; modo?: string }>;
@@ -74,9 +108,7 @@ export default async function SearchPage({
   const canContribute = hasMinRole(role, "collaborator");
 
   return (
-    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      <PageHeader title={t("title")} />
-
+    <>
       <ModeSwitch mode={mode} query={query} itemType={itemType} />
 
       {mode === "people" ? (
@@ -160,7 +192,7 @@ export default async function SearchPage({
           )}
         </>
       )}
-    </div>
+    </>
   );
 }
 
