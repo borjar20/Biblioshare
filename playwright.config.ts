@@ -61,7 +61,18 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        permissions: ["microphone"],
+        launchOptions: {
+          // Micro falso: getUserMedia entrega un tono sin diálogo de permiso.
+          // Inocuo para el resto de specs (solo afecta si piden media).
+          args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"],
+        },
+      },
+    },
   ],
   // Reutiliza el `next dev` ya levantado; si no hay ninguno, lo arranca.
   webServer: {
