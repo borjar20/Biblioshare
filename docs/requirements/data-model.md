@@ -422,7 +422,7 @@ sobreviviera al despliegue de #674. Ver issue [#830](https://github.com/borjar20
 `register_manual_catalog_item(p_item_type, p_title, p_creator, p_year, p_cover_url,
 p_publisher, p_total_pages, p_isbn) returns uuid` — `SECURITY DEFINER`, `search_path` fijado a
 `public, pg_temp`, `revoke all from public` + `grant execute to authenticated`. Migración
-`20260878_manual_catalog_item.sql`.
+`20260880_manual_catalog_item.sql`.
 
 A diferencia de `register_catalog_item`, esta **sí** acepta canónicos: son los que teclea un
 colaborador, no los que manda un proveedor. Eso obliga a que valide en servidor, y valida:
