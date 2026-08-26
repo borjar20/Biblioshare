@@ -19,11 +19,16 @@ import { TierlistItem } from "./tierlist-item";
 //     ("Perezón histórico"). Antes esos nombres se pintaban en los 44px fijos
 //     y el `overflow-hidden` de la fila los cortaba a media palabra.
 //
-// Las filas NO recortan a sus hijos: el redondeado de la columna se declara en
-// el propio hijo (`rounded-l-[9px]`) en vez de heredarse de un `overflow-hidden`
-// del contenedor. Ese `overflow-hidden` era justo lo que cortaba la etiqueta, y
-// además la columna tiene que poder EMPUJAR el alto de la fila cuando el rótulo
-// necesita cuatro líneas.
+// Las filas van PEGADAS entre sí, sin separación: los tiers son una tabla, no
+// tres tarjetas sueltas. Por eso la fila no lleva borde ni redondeo propios --
+// los pone el contenedor del tablero-- y aquí solo queda la línea de separación
+// con la siguiente (`border-b`, que la última no gasta).
+//
+// El realce de "soltando aquí" es un `outline`, no un cambio de borde: el borde
+// ahora lo comparten dos filas, y un outline no ocupa sitio ni desplaza nada.
+//
+// La columna tampoco recorta a su hijo: tiene que poder EMPUJAR el alto de la
+// fila cuando el rótulo necesita cuatro líneas.
 //
 // Las portadas van en un GRID de columnas fluidas, no en un `flex-wrap`: con el
 // flex sobraba un hueco al final de cada línea (las portadas medían un ancho
@@ -84,12 +89,12 @@ export function TierRow({
 
   return (
     <div
-      className={`relative flex rounded-[10px] border bg-surface ${
-        isOver ? "border-accent" : "border-border"
+      className={`relative flex border-b border-border bg-surface last:border-b-0 ${
+        isOver ? "outline outline-1 -outline-offset-1 outline-accent" : ""
       }`}
     >
       <div
-        className={`flex shrink-0 items-center justify-center self-stretch rounded-l-[9px] text-center ${
+        className={`flex shrink-0 items-center justify-center self-stretch text-center ${
           column === "wide"
             ? "w-[84px] px-1.5 py-1.5 font-mono text-[10px] leading-[1.2] font-medium tracking-[0.06em] break-words uppercase"
             : "w-11 px-1 font-serif text-xl font-bold"

@@ -1887,3 +1887,20 @@ mockup por otro, y no convencía. Dos cambios, uno por cada mitad del problema.
 - **El rótulo de cuatro líneas puede dejar huérfano el último trozo** (el ")" de "…los
   entendidos)"). `text-wrap: balance` NO lo arregla aquí — probado: la caja es un flex container y
   el reparto no llega al texto del `<span>`. Se deja así: se lee, que era el requisito.
+
+## 2026-08-26 (5) — Los tiers van pegados: son una tabla, no tres tarjetas
+
+Cambio de forma sobre la entrada (4). Cada fila era una tarjeta con su borde, su redondeo y 8px de
+aire hasta la siguiente; las tres columnas de color quedaban como tres bloques sueltos en vez de
+como la escala continua que es una tierlist.
+
+- **El borde y el redondeo suben al contenedor del tablero**, y cada fila solo pone su línea de
+  separación (`border-b`, que la última no gasta). Así entre tier y tier hay UNA línea, no dos
+  bordes pegados, y las columnas de color forman una sola franja continua.
+- **El `overflow-hidden` vuelve, pero al contenedor**, que es lo que recorta las esquinas
+  redondeadas de las columnas de color de la primera y la última fila. Es seguro justamente porque
+  la etiqueta ya no depende de él: con la columna de 84px el rótulo cabe envuelto, y el e2e mide
+  que no se sale ni de su caja ni de su fila.
+- **El realce de «soltando aquí» pasa de borde a `outline`.** El borde ahora lo comparten dos
+  filas, así que cambiarle el color a una se lo cambiaba a su vecina; un `outline` no ocupa sitio
+  ni desplaza nada.

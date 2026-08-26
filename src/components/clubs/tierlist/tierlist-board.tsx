@@ -238,7 +238,13 @@ export function TierlistBoard({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex flex-col gap-2">
+            {/* Tiers pegados, sin `gap`: son una tabla. El borde y el redondeo
+                viven aquí y no en cada fila, así se comparte una sola línea
+                entre tier y tier en vez de dos pegadas. El `overflow-hidden`
+                es lo que recorta las esquinas de las columnas de color de la
+                primera y la última fila -- y es seguro: la etiqueta ya no
+                depende de él para no salirse (cabe, envuelta, en la columna). */}
+            <div className="flex flex-col overflow-hidden rounded-[10px] border border-border">
               {view.tiers.map((tier) => (
                 <TierRow
                   key={tier.label}
