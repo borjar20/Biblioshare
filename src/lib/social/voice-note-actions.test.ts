@@ -79,7 +79,9 @@ const h = vi.hoisted(() => {
     resetAdmin: () => (adminCall = 0),
     userClient,
     adminClient,
-    uploadVoiceNote: vi.fn(async () => ({ ok: true }) as { ok: true } | { error: true }),
+    uploadVoiceNote: vi.fn<
+      (path: string, blob: Blob, contentType: string) => Promise<{ ok: true } | { error: true }>
+    >(async () => ({ ok: true })),
     deleteVoiceNote: vi.fn(async () => {}),
     notify: vi.fn(async () => {}),
     revalidateInteraction: vi.fn(),
