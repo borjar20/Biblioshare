@@ -7,24 +7,7 @@ import { notify } from "./notifications";
 import { notifyMentions } from "./notify-mentions";
 import { isAllowedEmoji } from "./emoji-catalog";
 import { commentContext } from "./notification-context";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-async function getInteractionTarget(
-  supabase: SupabaseServerClient,
-  interactionTargetId: string,
-) {
-  const { data, error } = await supabase
-    .from("interaction_targets")
-    .select(
-      "id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
-    )
-    .eq("id", interactionTargetId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) throw new Error("interaction_target_not_found");
-  return data;
-}
+import { getInteractionTarget } from "./interaction-target-gate";
 
 export async function toggleReaction(
   interactionTargetId: string,

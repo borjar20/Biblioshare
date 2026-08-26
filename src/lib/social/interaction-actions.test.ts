@@ -15,6 +15,20 @@ vi.mock("@/lib/reactivity/revalidate", () => ({
 }));
 vi.mock("./notifications", () => ({ notify: mocks.notify }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
+vi.mock("./interaction-target-gate", () => ({
+  getInteractionTarget: async (supabase: any, interactionTargetId: string) => {
+    const { data, error } = await supabase
+      .from("interaction_targets")
+      .select(
+        "id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
+      )
+      .eq("id", interactionTargetId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error("interaction_target_not_found");
+    return data;
+  },
+}));
 
 import { addComment, deleteComment, toggleReaction } from "./interaction-actions";
 
