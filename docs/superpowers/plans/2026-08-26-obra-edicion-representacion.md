@@ -411,17 +411,30 @@ begin
     raise exception 'winner % no existe', p_winner;
   end if;
 
-  -- [PORTAR AQUÍ, tabla a tabla, los UPDATE ... SET item_id/book_id = p_winner
-  --  WHERE ... = p_loser del cuerpo de 20260870, envolviendo cada uno en
-  --  begin/exception when unique_violation then raise exception con detalle.
-  --  La lista de tablas de 20260870 es la autoritativa; no inventar.]
-
-  -- Ediciones del perdedor: repuntar respetando el único (book_id, isbn).
-  begin
-    update public.book_editions set book_id = p_winner where book_id = p_loser;
-  exception when unique_violation then
-    raise exception 'fusión abortada: edición duplicada entre % y %', p_loser, p_winner;
-  end;
+  -- DOS CLASES DE FILA, y confundirlas rompe la fusión (ver más abajo):
+  --
+  -- a) DATO DE USUARIO (passes, collection_items, saga_items…): si repuntarlo
+  --    chocara con un único, ABORTAR con detalle. Nadie decide por el usuario
+  --    qué pase suyo sobrevive.
+  -- b) DATO DERIVADO del proveedor (credits, book_editions): la fila duplicada
+  --    del perdedor SOBRA — se borra y se repunta el resto. Abortar aquí haría
+  --    IMPOSIBLE toda fusión útil: dos shells de la misma obra creadas por la
+  --    ficha de autor llevan AMBAS su credit (person_id, role='author'), así
+  --    que el choque es la norma, no la excepción.
+  --
+  -- El cuerpo de 20260870 ya implementa exactamente esto (chequeo previo de
+  -- conflictos de usuario → raise; delete de credits/book_editions duplicados
+  -- → update del resto). PORTARLO TAL CUAL, tabla por tabla, es el trabajo de
+  -- este paso: su lista es la autoritativa (17 tablas), no inventar.
+  --
+  -- Único cambio respecto al original: fuera la línea
+  -- `update book_editions set is_primary = false`, porque la columna muere en
+  -- la fase C (Task 16). Si esta migración se aplica ANTES que la fase C, la
+  -- línea debe seguir; si después, sobra. Escribirla condicionada:
+  --   if exists (select 1 from information_schema.columns
+  --              where table_name='book_editions' and column_name='is_primary')
+  --   then execute 'update public.book_editions set is_primary=false where book_id=$1' using p_loser;
+  --   end if;
 
   delete from public.books where id = p_loser;
 end;
@@ -431,7 +444,10 @@ revoke all on function public.merge_book_into(uuid, uuid) from public, anon, aut
 
 **El bloque `[PORTAR AQUÍ…]` es trabajo de este paso, no un hueco a dejar**: la migración no se commitea hasta sustituirlo por los UPDATE reales sacados de `20260870`. El repunte de `diary_entries` (passes) debe respetar cualquier único parcial que exista sobre `(user_id, item_type, item_id)`.
 
-- [ ] **Step 3: Probar en dev** con dos filas sembradas (una con pase, otra sin): fusión hacia la del pase funciona; fusión que provocaría dos pases activos de la misma obra aborta con mensaje. Limpiar filas de prueba.
+- [ ] **Step 3: Probar en dev** con tres casos sembrados, limpiando las filas al final:
+  1. Dos shells sin pases, **ambas con un credit del mismo autor y rol** (es el caso real que produce la ficha de autor): la fusión debe COMPLETARSE, borrando el credit sobrante. Si aborta, el `delete` previo de `credits` no se portó.
+  2. Fusión hacia la fila que tiene el pase: funciona, el pase queda apuntando al ganador.
+  3. Fusión que provocaría dos pases activos del mismo usuario sobre la misma obra: ABORTA con mensaje que nombra la tabla.
 
 - [ ] **Step 4: Commit**
 
@@ -1513,6 +1529,44 @@ gh issue create --label "area:catalogo,tipo:cobertura,P2" --title "Cobertura del
 - [ ] **Step 5:** `git worktree list` limpio, un solo dev server, commit final y PR según `superpowers:finishing-a-development-branch`.
 
 ---
+
+## Camino de la ficha de AUTOR (`/persona/[id]`) — qué cambia y qué no
+
+Verificado contra código y contra la API real (2026-08-26). El plan **no toca**
+`hydratePersonCredits` ni `findOrCreateCatalogItemsBulk`, pero conviene saber
+cómo le afecta, porque es el único camino que crea shells de libro en LOTE:
+
+- **La bibliografía por autor NO tiene el bug de duplicados de la búsqueda.** Su
+  dedup por *intersección de conjuntos de títulos* (`normalize.ts`, regla 5) SÍ
+  cruza idiomas: comprobado con `author_key=OL1394865A` (Sanderson), OL le
+  devuelve tanto `/works/OL16813053W` («Words of Radiance», 23 ediciones, con
+  ediciones `spa`) como `/works/OL38056408W` («Palabras Radiantes», 1 edición),
+  y la dedup funde la segunda en la primera porque la pasada `lang=es` le presta
+  a la inglesa el título de edición «Palabras Radiantes». La búsqueda no puede
+  hacer esto porque su **guarda de colisión** anula justo ese título compartido
+  (existe para que `q="hunger games"` no contamine a Mockingjay) — de ahí que el
+  colapso por QID sea necesario en búsqueda y **no** en bibliografía. **No añadir
+  Inventaire al camino de autor**: serían ~100 entidades por ficha para arreglar
+  algo que ya está arreglado.
+- **Mejora directa y visible:** la ficha de autor pinta `books.title` leído de BD
+  (`get-person-profile.ts`). Hoy, la shell superviviente de un par traducido es
+  la del work INGLÉS (gana la de más ediciones), así que al hidratarse se
+  quedaba en «Words of Radiance». Con la política ES→EN de Task 9 esa misma
+  shell hidrata como «Palabras Radiantes», porque el work inglés sí tiene
+  ediciones `spa` de las que sacar la candidata. La bibliografía en español
+  mejora sin tocar su código.
+- **Coste:** el lote sigue creando shells SIN hidratar (comportamiento actual, no
+  cambia). Quien paga la hidratación nueva es la primera visita a la ficha de
+  cada libro: pasa de ~3 llamadas externas a ~8 en el peor caso (work + 2
+  páginas de ediciones + Inventaire + hasta 2 de GB). Es en `after()`, una vez
+  por obra, y el cooldown de `needsRepresentationReview` evita repetirlo. La
+  ficha de autor **no** paga nada de esto.
+- **Hueco conocido:** las shells del lote nacen sin `wikidata_id`. Si la dedup de
+  bibliografía deja pasar un casi-duplicado (caso documentado en `normalize.ts`:
+  un candidato que cruza con DOS supervivientes), quedan dos filas y ninguna
+  tiene QID hasta que alguien abra cada ficha — y `hydrate_book` v3, ante un QID
+  ya ocupado, lo deja sin asignar a propósito (no fusiona por su cuenta). Lo
+  resuelve el barrido de Task 15. Registrarlo como issue en Task 17.
 
 ## Self-review (hecho al escribir el plan)
 
