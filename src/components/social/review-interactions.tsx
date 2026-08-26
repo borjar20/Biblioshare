@@ -29,6 +29,8 @@ import { UserAvatar } from "./user-avatar";
 import { CommentActions } from "./comment-actions";
 import { CommentComposer } from "./comment-composer";
 import { ReactionBar } from "./reaction-bar";
+import { VoiceNoteChip } from "./voice-note-chip";
+import { VoiceMiniBar } from "./voice-mini-bar";
 
 // Like + hilo enriquecido de comentarios bajo una reseña (EPIC-05, Bloque B,
 // SD-3 + reestructura Tarea 7). El estado real deriva de las props que el
@@ -242,7 +244,15 @@ export function ReviewInteractions({
           ) : (
             <>
               <div className="break-words text-muted-foreground">
-                {c.isSpoiler ? (
+                {c.audio ? (
+                  c.isSpoiler ? (
+                    <SpoilerGate>
+                      <VoiceNoteChip commentId={c.id} author={c.author} audio={c.audio} />
+                    </SpoilerGate>
+                  ) : (
+                    <VoiceNoteChip commentId={c.id} author={c.author} audio={c.audio} />
+                  )
+                ) : c.isSpoiler ? (
                   <SpoilerGate>
                     <RichTextView text={c.body} knownUsernames={knownUsernames} />
                   </SpoilerGate>
@@ -416,6 +426,8 @@ export function ReviewInteractions({
               busy={isPending}
             />
           </div>
+
+          <VoiceMiniBar />
         </div>
       )}
       {failed && (

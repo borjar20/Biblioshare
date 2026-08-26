@@ -29,6 +29,8 @@ import { UserAvatar } from "./user-avatar";
 import { CommentActions } from "./comment-actions";
 import { CommentComposer } from "./comment-composer";
 import { ReactionBar } from "./reaction-bar";
+import { VoiceNoteChip } from "./voice-note-chip";
+import { VoiceMiniBar } from "./voice-mini-bar";
 
 // Hilo de `/post/[id]` al estilo Reddit (posts Spec 2b): a diferencia de
 // `ReviewInteractions` —feed y superficies compartidas, aplanado a 2 niveles y
@@ -274,7 +276,15 @@ export function PostThread({
             ) : (
               <>
                 <div className="break-words text-[14px] leading-relaxed text-foreground">
-                  {c.isSpoiler ? (
+                  {c.audio ? (
+                    c.isSpoiler ? (
+                      <SpoilerGate>
+                        <VoiceNoteChip commentId={c.id} author={c.author} audio={c.audio} />
+                      </SpoilerGate>
+                    ) : (
+                      <VoiceNoteChip commentId={c.id} author={c.author} audio={c.audio} />
+                    )
+                  ) : c.isSpoiler ? (
                     <SpoilerGate>
                       <RichTextView text={c.body} knownUsernames={knownUsernames} />
                     </SpoilerGate>
@@ -418,6 +428,8 @@ export function PostThread({
           {t("actionError")}
         </p>
       )}
+
+      <VoiceMiniBar />
     </section>
   );
 }
