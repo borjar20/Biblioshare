@@ -59,6 +59,12 @@ const nextConfig: NextConfig = {
   // Cache Components (Fase 4, #448): habilita `use cache` + PPR por defecto.
   // Clave de nivel superior en Next 16, NO bajo `experimental`.
   cacheComponents: true,
+  // Instant Navigation (Fase 5, #448): un App Shell prefetcheado por RUTA en
+  // vez de un prefetch por enlace visible; params/searchParams se rellenan al
+  // navegar. Requiere cacheComponents. Las rutas que leen cookies() cachean su
+  // shell por sesión en el cliente (doc partialPrefetching.md). No había
+  // ningún <Link prefetch={true}> heredado que auditar (auditoría #448).
+  partialPrefetching: true,
   experimental: {
     serverActions: {
       // Goodreads exports include free-text reviews; a few hundred rows can
