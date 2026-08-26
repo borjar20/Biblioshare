@@ -95,10 +95,12 @@ export function createPlaybackStore(
       void el.play();
     },
     togglePlayback() {
+      // playing lo escriben SOLO los listeners "play"/"pause" (ver ensureAudio):
+      // no fijamos aquí un valor optimista para no pisar un evento en curso
+      // (los eventos del audio son FIFO, así que el último refleja la realidad).
       if (!audio || !snapshot.commentId) return;
       if (snapshot.playing) audio.pause();
       else void audio.play();
-      set({ playing: !snapshot.playing });
     },
     stopPlayback() {
       if (audio) audio.pause();

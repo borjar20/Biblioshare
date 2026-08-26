@@ -12,9 +12,11 @@ function fakeAudio(): AudioLike & { listeners: Map<string, () => void> } {
     listeners,
     play: vi.fn(async function (this: AudioLike) {
       (this as { paused: boolean }).paused = false;
+      listeners.get("play")?.();
     }),
     pause: vi.fn(function (this: AudioLike) {
       (this as { paused: boolean }).paused = true;
+      listeners.get("pause")?.();
     }),
     addEventListener(type: string, cb: () => void) {
       listeners.set(type, cb);
@@ -51,6 +53,34 @@ describe("playback-store", () => {
     store.togglePlayback();
     expect(store.getPlaybackSnapshot().playing).toBe(false);
     store.togglePlayback();
+    expect(store.getPlaybackSnapshot().playing).toBe(true);
+  });
+
+  it("pausa→reanuda rápido (doble toggle) deja playing:true sin que un pause quede pendiente", () => {
+    const audio = fakeAudio();
+    const store = createPlaybackStore(() => audio);
+    store.playVoiceNote(nota);
+    expect(store.getPlaybackSnapshot().playing).toBe(true);
+
+    store.togglePlayback(); // pausa
+    expect(store.getPlaybackSnapshot().playing).toBe(false);
+    store.togglePlayback(); // reanuda
+    expect(store.getPlaybackSnapshot().playing).toBe(true);
+  });
+
+  it("playing lo fijan solo los eventos: un pause tardío seguido del play real deja playing:true", () => {
+    // Simula el orden FIFO real de HTMLMediaElement: un evento "pause" que
+    // llegaba con retraso (de una pausa ya superada) se procesa, pero como
+    // togglePlayback ya no escribe estado optimista, el "play" que llega
+    // justo después (el evento real, más reciente) es quien manda al final.
+    const audio = fakeAudio();
+    const store = createPlaybackStore(() => audio);
+    store.playVoiceNote(nota);
+    expect(store.getPlaybackSnapshot().playing).toBe(true);
+
+    audio.listeners.get("pause")!(); // pause tardío/obsoleto
+    expect(store.getPlaybackSnapshot().playing).toBe(false);
+    audio.listeners.get("play")!(); // el play real, llega después
     expect(store.getPlaybackSnapshot().playing).toBe(true);
   });
 
