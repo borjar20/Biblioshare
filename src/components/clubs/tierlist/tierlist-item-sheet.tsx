@@ -86,11 +86,13 @@ export function TierlistItemSheet({
       onClick={(e) => {
         if (e.target === ref.current) ref.current?.close();
       }}
-      className="m-auto mt-auto mb-0 max-h-[92vh] w-full max-w-md rounded-t-[18px] border border-border bg-surface p-0 text-foreground backdrop:bg-scrim lg:mb-auto lg:rounded-2xl"
+      // Centrada en pantalla, no pegada abajo: aquí la portada ES el contenido
+      // y la hoja ocupa casi todo el alto, así que el gesto de "tirar de la hoja
+      // desde el pulgar" no aporta -- y anclarla abajo dejaba un hueco muerto
+      // arriba con la portada descentrada respecto al scrim.
+      className="m-auto max-h-[92vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-border bg-surface p-0 text-foreground backdrop:bg-scrim"
     >
       <div className="flex flex-col gap-3 px-4 pt-3.5 pb-5">
-        <div className="mx-auto h-1 w-9 shrink-0 rounded-full bg-surface-3 lg:hidden" aria-hidden />
-
         <div className="flex justify-end">
           <button
             type="button"
