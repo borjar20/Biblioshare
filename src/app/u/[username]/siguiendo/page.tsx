@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
@@ -6,13 +7,44 @@ import { getProfileIdentity } from "@/lib/profile/get-profile-by-username";
 import { getFollowing } from "@/lib/social/follows";
 import { UserCard } from "@/components/social/user-card";
 import { ArrowLeftIcon } from "@/components/ui/icons";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { SHELL_READ } from "@/lib/ui/layout";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
+// Shell estático = contenedor + título (traducción estática, #475); el enlace de
+// vuelta y la lista dependen de `params` y bajan tras el <Suspense> (#476).
 export default async function FollowingPage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const t = await getTranslations("social");
+
+  return (
+    <div className={`mx-auto flex w-full ${SHELL_READ} flex-col gap-4 px-4 py-8 sm:px-6`}>
+      <Suspense fallback={<FollowListSkeleton title={t("followingTitle")} />}>
+        <FollowingContent params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+// Fantasma: enlace de vuelta + título real + tarjetas. Mismas alturas que el
+// contenido (enlace text-sm, tarjetas de UserCard).
+function FollowListSkeleton({ title }: { title: string }) {
+  return (
+    <>
+      <SkeletonLine className="h-5 w-28" />
+      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+      <div aria-hidden className="grid gap-2 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[72px] w-full rounded-card" />
+        ))}
+      </div>
+    </>
+  );
+}
+
+async function FollowingContent({
   params,
 }: {
   params: Promise<{ username: string }>;
@@ -29,7 +61,7 @@ export default async function FollowingPage({
   ]);
 
   return (
-    <div className={`mx-auto flex w-full ${SHELL_READ} flex-col gap-4 px-4 py-8 sm:px-6`}>
+    <>
       <Link
         href={`/u/${username}`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -49,6 +81,6 @@ export default async function FollowingPage({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
