@@ -5,32 +5,66 @@
 // convivir en una página: club + ficha); al desmontarse la última, se detiene
 // la reproducción — eso cubre «navegar a otra ruta detiene el audio» (MVP).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { PauseIcon, PlayIcon } from "@/components/ui/icons";
 import { formatVoiceDuration } from "@/lib/voice/format";
 import { stopPlayback, togglePlayback, usePlaybackSnapshot } from "@/lib/voice/playback-store";
 
-let instances = 0;
+// Registro reactivo de instancias montadas (orden de montaje entre
+// superficies): un contador de un solo disparo no soporta desmontajes fuera
+// de orden (p.ej. dos ReviewInteractions en community-panel.tsx con
+// `expanded` independiente) — si la instancia "first" se desmonta antes que
+// una hermana, ninguna superviviente vuelve a tomar el relevo. Con esta
+// registro cada instancia se resuscribe vía useSyncExternalStore y la
+// primera de la lista se recalcula en cada cambio.
+let nextInstanceId = 0;
+const mountedInstances: number[] = [];
+const registrySubs = new Set<() => void>();
+
+function notifyRegistry() {
+  for (const cb of registrySubs) cb();
+}
+
+function registerInstance(): number {
+  const id = ++nextInstanceId;
+  mountedInstances.push(id);
+  notifyRegistry();
+  return id;
+}
+
+function unregisterInstance(id: number) {
+  const idx = mountedInstances.indexOf(id);
+  if (idx >= 0) mountedInstances.splice(idx, 1);
+  // La última superficie con hilos que se va detiene la reproducción:
+  // navegar a otra ruta no debe dejar un audio sonando sin UI (spec §4).
+  if (mountedInstances.length === 0) stopPlayback();
+  notifyRegistry();
+}
+
+function subscribeRegistry(cb: () => void): () => void {
+  registrySubs.add(cb);
+  return () => registrySubs.delete(cb);
+}
 
 export function VoiceMiniBar() {
   const t = useTranslations("social");
   const s = usePlaybackSnapshot();
-  const [isFirst, setIsFirst] = useState(false);
+  const idRef = useRef<number | null>(null);
 
   useEffect(() => {
-    instances += 1;
-    // "¿soy la primera instancia montada?" solo se sabe tras registrar el
-    // mount actual (orden de montaje entre superficies), no es derivable de
-    // props/estado ni subscribable como el resto de los stores de voice/ —
-    // mismo patrón justificado que theme-toggle.tsx / barcode-scanner.tsx.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsFirst(instances === 1);
+    idRef.current = registerInstance();
     return () => {
-      instances -= 1;
-      if (instances === 0) stopPlayback();
+      unregisterInstance(idRef.current!);
+      idRef.current = null;
     };
   }, []);
+
+  const isFirst = useSyncExternalStore(
+    subscribeRegistry,
+    () => idRef.current != null && mountedInstances[0] === idRef.current,
+    () => false,
+  );
 
   if (!isFirst || !s.commentId || s.chipVisible) return null;
 

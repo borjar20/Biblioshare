@@ -209,7 +209,7 @@ export function ReviewInteractions({
 
   function renderComment(c: InteractionComment, rootId: string, isReply: boolean) {
     return (
-      <div key={c.id} className="flex items-start gap-2 text-xs">
+      <div key={c.id} id={`c-${c.id}`} className="flex items-start gap-2 text-xs">
         <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={isReply ? 20 : 24} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex items-center gap-1.5">
