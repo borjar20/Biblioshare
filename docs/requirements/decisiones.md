@@ -1960,3 +1960,29 @@ en disco de usuarios reales (mismo mecanismo que el v2→v3 de 2026-07-16), y ev
 vieja de una URL cuando su respuesta fresca llega marcada personal. Cubierto por
 `sw-strategy.test.ts` (5 casos nuevos sobre el fichero real en vm) y el e2e opt-in
 `e2e/sw-privado.spec.ts` (build de producción: nada autenticado en caché + purga tras logout).
+
+## 2026-08-26 (7) — El barrido de `instant = false` termina en 18 opt-outs deliberados (#476)
+
+**Contexto.** El codemod de la Fase 4 (#448) puso `export const instant = false` en los 57
+segmentos para dejar el build en verde al activar `cacheComponents`. El barrido de #476 (lotes
+1–4, PRs #858/#859/#860/#861) lo retiró de las 42 rutas con tráfico, priorizadas por el
+baseline: cada una quedó con boundary (`loading.tsx` o página síncrona + `<Suspense>`) y
+esqueleto que reserva alturas. `/notas`, `/sagas` y `/login` pasaron de `ƒ Dynamic` a
+`◐ Partial Prerender`.
+
+**Decisiones que fija esto:**
+
+1. **La validación de shell estático queda activa para toda la app** desde que el layout raíz
+   perdió su `false` (lote 1): un `false` en la raíz la apagaba ENTERA (doc `instant.md`,
+   «Disabling static shell validation»). Toda ruta nueva sin opt-out propio debe producir shell
+   no vacío o su build falla — es la red que el codemod había desconectado.
+2. **Las 17 pantallas de gestión/editores conservan el opt-out a propósito** (acta #862):
+   admin, ajustes, cuenta, importar, onboarding, sagas/nueva, buscar/manual, editores de saga y
+   la ruta interceptada del modal de sesión. No es deuda: es lo que planificó la Fase 5.
+3. **`instant = false` no es un opt-out de PPR** (medido en #514): retirarlo de rutas con
+   `notFound()` no cambia la semántica del 404 en producción (ya era blando). La única
+   excepción operativa es `/genero/[slug]`, cuyo e2e asevera 404 duro: queda con opt-out hasta
+   que #468 decida (anotado en #857).
+4. **Regla nueva para e2e**: con la metadata streameada, Next pinta el `<title>` dentro del
+   `<body>` — los `getByText` laxos que casen el título de la página rompen por strict mode
+   (arreglado `navegacion-anonima:27` con `exact: true`).
