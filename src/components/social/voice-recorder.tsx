@@ -42,6 +42,7 @@ export function VoiceRecorder({
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const stoppingRef = useRef(false);
+  const confirmReturnPhase = useRef<Phase>("recording");
 
   const finishToPreview = useCallback(async () => {
     if (stoppingRef.current || !engineRef.current) return;
@@ -103,6 +104,7 @@ export function VoiceRecorder({
 
   function requestDiscard(after: () => void) {
     if (elapsedMs > VOICE_CONFIRM_DISCARD_FROM_MS && phase !== "confirm-discard") {
+      confirmReturnPhase.current = phase;
       setPhase("confirm-discard");
       pendingDiscard.current = after;
       return;
@@ -111,7 +113,14 @@ export function VoiceRecorder({
   }
   const pendingDiscard = useRef<() => void>(() => {});
 
+  function stopPreviewAudio() {
+    previewAudioRef.current?.pause();
+    previewAudioRef.current = null;
+    setPreviewPlaying(false);
+  }
+
   function discardAndClose() {
+    stopPreviewAudio();
     logVoiceNote("recording_discarded", { durationMs: elapsedMs });
     engineRef.current?.cancel();
     engineRef.current = null;
@@ -119,6 +128,7 @@ export function VoiceRecorder({
   }
 
   function rerecord() {
+    stopPreviewAudio();
     logVoiceNote("recording_discarded", { durationMs: recording?.durationMs ?? elapsedMs });
     setRecording(null);
     setPreviewUrl(null);
@@ -174,7 +184,7 @@ export function VoiceRecorder({
           </button>
           <button
             type="button"
-            onClick={() => setPhase(recording ? "preview" : "recording")}
+            onClick={() => setPhase(recording ? "preview" : confirmReturnPhase.current)}
             className="text-accent"
           >
             {t("voice.keep")}
