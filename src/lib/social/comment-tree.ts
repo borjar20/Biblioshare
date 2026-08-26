@@ -60,9 +60,11 @@ export function buildCommentThreads(comments: InteractionComment[], sort: Commen
 // y las superficies compartidas—, este conserva la jerarquía por `parentId`. La
 // UI de `/post/[id]` la renderiza anidada. La profundidad de DATOS es libre; la
 // de RENDER (sangría) la capa la vista a `MAX_THREAD_DEPTH` niveles: más adentro
-// no se sangra más, el nodo se pinta al nivel tope (con la @mención dando el
-// contexto de a quién responde).
-export const MAX_THREAD_DEPTH = 4;
+// no se sangra más, el nodo se pinta al nivel tope, con la línea «↳ En respuesta
+// a @usuario» dando el contexto de a quién responde. Capado a 2 (raíz + un nivel)
+// para que en móvil el hilo no se estreche: la cabecera de respuesta sustituye a
+// la sangría como señal de jerarquía.
+export const MAX_THREAD_DEPTH = 2;
 
 export type CommentNode = {
   comment: InteractionComment;

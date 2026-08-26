@@ -399,6 +399,7 @@
     "formatList": "Lista",
     "spoiler": "Spoiler",
     "reply": "Responder",
+    "inReplyTo": "En respuesta a",
     "moreActions": "Más acciones",
     "react": "Reaccionar",
     "editComment": "Editar comentario",
