@@ -2898,6 +2898,19 @@ export type Database = {
           id: string
         }[]
       }
+      register_manual_catalog_item: {
+        Args: {
+          p_cover_url?: string
+          p_creator?: string
+          p_isbn?: string
+          p_item_type: string
+          p_publisher?: string
+          p_title: string
+          p_total_pages?: number
+          p_year?: number
+        }
+        Returns: string
+      }
       related_posts_by_author: {
         Args: {
           p_anchor_id: string

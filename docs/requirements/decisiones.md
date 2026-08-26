@@ -1764,3 +1764,38 @@ diagnóstico, que es lo que pide AGENTS.md.
 - **Cobertura.** `e2e/post-layout.spec.ts` siembra los dos avances en la posición MÁS favorable
   (misma obra que el post visto, los más recientes) y exige que no salgan, con un pensamiento de un
   tercero como control positivo para que el test no pase por tener el raíl vacío.
+## 2026-08-26 — El alta manual de catálogo vuelve por RPC (cabo suelto de #674)
+
+- **El arreglo NO fue devolver el `grant insert` sobre `books`/`movies`/`series`.** Era el
+  cambio de una línea y deshacía la pieza central de #674: el INSERT directo es justo lo que
+  permitía a cualquier `authenticated` escribir `title`/`synopsis`/`director` inventados en un
+  catálogo que ven todos. Se paga una migración más y una RPC nueva
+  (`register_manual_catalog_item`) para que la única forma de que nazca una obra siga siendo una
+  función `SECURITY DEFINER` que valida.
+- **Y tampoco fue reutilizar `register_catalog_item`.** Esa RPC nace shells a partir de un id
+  externo, y el alta manual no tiene ninguno: forzarla habría significado inventar un
+  `openlibrary_work_key` falso o admitir canónicos en la puerta de alta automática, que es
+  exactamente lo que #674 cerró. Son dos altas con contratos distintos y se quedan como dos
+  funciones distintas.
+- **El rol se comprueba en la base de datos, no solo en la server action.** Hasta hoy
+  «colaborador+» vivía en dos sitios de JS (el guard de `page.tsx` y el `hasMinRole()` de la
+  acción) y en ninguno de la base. Con el insert directo eso era discutible; con una RPC
+  `SECURITY DEFINER` —que escribe como owner y por tanto **se salta RLS**— deja de serlo: si la
+  única barrera fuera JS, cualquiera con sesión podría llamar a la RPC por REST y crear obras.
+  El check de JS se conserva, pero para dar un error legible, no para proteger.
+- **El error de la base deja de tragarse en silencio.** `if (error) return { error: "generic" }`
+  sin un `console.error` es lo que hizo que esta regresión sobreviviera meses: producción
+  llevaba el 42501 en cada intento y no había ni una línea de log. La regla que sale de aquí:
+  un error de base que se traduce a un mensaje genérico se registra ANTES de traducirlo.
+- **`revoke ... from public` no cierra a `anon`, y el escape se arregla solo en la función
+  nueva.** Supabase concede `execute` a `anon`/`authenticated` por `ALTER DEFAULT PRIVILEGES` al
+  crear la función: es un grant explícito por rol, así que revocar a `PUBLIC` lo deja intacto.
+  `register_catalog_item`/`_bulk` arrastran ese cabo suelto y `anon` conserva `execute` sobre
+  ellas en los dos entornos. Aquí se corrige solo la función nueva y lo demás se va a la issue
+  #831: es inofensivo hoy (las tres cortan por `auth.uid() is null`) y meterlo en este cambio
+  mezclaría dos diagnósticos en un diff que ya toca esquema en producción.
+- **La cobertura era el agujero de verdad, no el permiso.** #674 se desplegó con verificación
+  manual de sus propios caminos y con un e2e (`catalogo-server-authoritative.spec.ts`) que cubre
+  el alta por búsqueda; `/buscar/manual` no tenía ningún test, así que nada se puso rojo. El
+  arreglo incluye `e2e/alta-manual.spec.ts`, y se comprobó que **falla** con la RPC revocada
+  antes de darlo por bueno.
