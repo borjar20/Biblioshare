@@ -5,10 +5,11 @@
 // (se rellena al reproducir, tap = seek) y el elemento flexible: se comprime
 // a profundidad 4; play, duración y velocidad son fijos.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MicIcon, PauseIcon, PlayIcon } from "@/components/ui/icons";
 import { formatVoiceDuration } from "@/lib/voice/format";
+import { condensePeaks } from "@/lib/voice/peaks";
 import {
   applyPlaybackRate,
   playVoiceNote,
@@ -21,6 +22,11 @@ import { cycleVoiceRate, useListened, useVoiceRate } from "@/lib/voice/voice-pre
 import { logVoiceNote } from "@/lib/voice/voice-note-analytics";
 
 const MIN_BARS = 16;
+
+// Cada barra ocupa ~2px + 1px de hueco: barras que caben = (ancho + 1) / 3.
+// Menos de 8 ya no es una waveform; por debajo, mejor pocas barras anchas.
+const BAR_STRIDE_PX = 3;
+const MIN_VISIBLE_BARS = 8;
 
 export function VoiceNoteChip({
   commentId,
@@ -36,6 +42,23 @@ export function VoiceNoteChip({
   const rate = useVoiceRate();
   const listened = useListened(commentId);
   const ref = useRef<HTMLDivElement>(null);
+  const waveRef = useRef<HTMLButtonElement>(null);
+  // Cuántas barras CABEN de verdad en el botón de la waveform. En un hilo
+  // anidado en móvil no caben las 64 persistidas: recortarlas con overflow
+  // escondía la cola del audio bajo los controles (spec §4 manda comprimir).
+  const [barCount, setBarCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!waveRef.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? 0;
+      if (width > 0) {
+        setBarCount(Math.max(MIN_VISIBLE_BARS, Math.floor((width + 1) / BAR_STRIDE_PX)));
+      }
+    });
+    observer.observe(waveRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const isActive = playback.commentId === commentId;
   const playing = isActive && playback.playing;
@@ -57,7 +80,12 @@ export function VoiceNoteChip({
   }, [isActive, commentId]);
 
   // Sin picos persistidos (fallo del cliente al grabar): barras planas.
-  const peaks = audio.peaks.length > 0 ? audio.peaks : Array.from({ length: MIN_BARS }, () => 40);
+  const storedPeaks =
+    audio.peaks.length > 0 ? audio.peaks : Array.from({ length: MIN_BARS }, () => 40);
+  // Hasta la primera medida se pintan todas (overflow-hidden tapa el exceso
+  // un frame); después, exactamente las que caben — la waveform entera
+  // comprimida, nunca recortada.
+  const peaks = barCount == null ? storedPeaks : condensePeaks(storedPeaks, barCount);
 
   function handlePlay() {
     if (isActive) togglePlayback();
@@ -92,6 +120,7 @@ export function VoiceNoteChip({
         {playing ? <PauseIcon className="h-3.5 w-3.5" /> : <PlayIcon className="h-3.5 w-3.5" />}
       </button>
       <button
+        ref={waveRef}
         type="button"
         aria-label={t("voice.seek")}
         onClick={handleSeek}

@@ -27,6 +27,28 @@ export function resamplePeaks(samples: readonly number[], count = VOICE_PEAK_COU
 }
 
 /**
+ * Reduce picos YA persistidos (enteros 0..100) a `count` cubos por máximo,
+ * SIN reescalar — a diferencia de `resamplePeaks`, que parte de amplitudes
+ * 0..1. Es la compresión de RENDER del chip: en pantallas estrechas (hilo
+ * anidado en móvil) caben menos barras de las 64 guardadas, y recortar con
+ * overflow escondía la cola de la waveform bajo los controles (spec §4: la
+ * waveform se comprime, no se recorta).
+ */
+export function condensePeaks(peaks: readonly number[], count: number): number[] {
+  if (peaks.length === 0) return [];
+  if (count < 1 || peaks.length <= count) return [...peaks];
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const start = Math.floor((i * peaks.length) / count);
+    const end = Math.max(start + 1, Math.floor(((i + 1) * peaks.length) / count));
+    let max = 0;
+    for (let j = start; j < end; j++) max = Math.max(max, peaks[j] ?? 0);
+    out.push(max);
+  }
+  return out;
+}
+
+/**
  * Valida y sanea los picos que llegan del cliente a la server action: array
  * de ≤64 números finitos, redondeados y acotados a 0..100. Cualquier otra
  * cosa → null (la nota se publica sin waveform, no se rechaza por esto).
