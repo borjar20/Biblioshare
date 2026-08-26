@@ -93,6 +93,20 @@ test.describe("Desbordes horizontales en móvil (#721)", () => {
 
     expect(await anchoDeLaPagina(page)).toBeLessThanOrEqual(MOVIL.width);
   });
+
+  // El cuaderno (#833): mismo fallo exacto que tenía /buscar —input sin
+  // `w-full` dentro de una celda `flex-1` con `min-width:auto`—, medido en
+  // 407px de página en un viewport de 360. Necesita sesión, así que vive en
+  // este describe y no en el público de más abajo.
+  test("el cuaderno cabe en 360px", async ({ page }) => {
+    await login(page);
+    await page.setViewportSize(MOVIL);
+
+    await page.goto("/notas");
+    await page.waitForLoadState("networkidle");
+
+    expect(await anchoDeLaPagina(page)).toBeLessThanOrEqual(MOVIL.width);
+  });
 });
 
 // /buscar (#721). Misma familia que los dos de arriba, distinta causa: el input
