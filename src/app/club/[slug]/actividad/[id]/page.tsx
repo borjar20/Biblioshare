@@ -9,10 +9,6 @@ import { ActivityDetailView } from "@/components/clubs/activity-detail";
 import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
 import { resolveKnownMentions } from "@/lib/social/resolve-mentions";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 // Puerta compartida por `generateMetadata` y el body. Nacieron con gates
 // distintos y el <title> filtraba el título real de una actividad que el body
 // va a 404-ear —a un no-miembro, o a un kind sin ficha (evento)— porque Next
