@@ -522,6 +522,7 @@ export function ReviewInteractions({
                 onPublish={(rec) => {
                   voice.publish(rec, { parentId: null, isSpoiler: rootSpoiler });
                   setVoiceMode(null);
+                  setRootSpoiler(false);
                 }}
               />
             ) : (

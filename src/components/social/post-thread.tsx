@@ -286,6 +286,7 @@ export function PostThread({
             onPublish={(rec) => {
               voice.publish(rec, { parentId: replyingTo?.id ?? null, isSpoiler: replyingTo ? false : spoiler });
               setVoiceMode(false);
+              setSpoiler(false);
               // Espejo de lo que hace submit() con el camino de texto: cierra el
               // contexto de respuesta al publicar (finding 2).
               setReplyingTo(null);
