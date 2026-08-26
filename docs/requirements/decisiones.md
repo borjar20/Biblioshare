@@ -1799,3 +1799,35 @@ diagnóstico, que es lo que pide AGENTS.md.
   el alta por búsqueda; `/buscar/manual` no tenía ningún test, así que nada se puso rojo. El
   arreglo incluye `e2e/alta-manual.spec.ts`, y se comprobó que **falla** con la RPC revocada
   antes de darlo por bueno.
+
+## 2026-08-26 (2) — La etiqueta del tier manda sobre el layout de la fila
+
+Reportado mirando la app en móvil: en una tierlist con niveles con nombre («Perezón histórico»,
+«Ni fu ni fa (como dirían los entendidos)») se leía media palabra. Y, aparte, a 34×51 px no se
+distinguía una portada de otra.
+
+- **La columna de color de 44 px era una suposición sobre el contenido, no un dibujo.** El mockup
+  Paper enseña una tierlist S/A/B/C/D, y de ahí salió un ancho fijo con `font-serif text-xl`. Pero
+  la etiqueta es un campo LIBRE del asistente (`TierlistFields`), así que el ancho fijo solo era
+  correcto para el ejemplo del mockup. Medido a 360 px, «Perezón histórico» pedía 67 px y «Ni fu ni
+  fa…» 81 px en una caja de 44: el `overflow-hidden` de la fila hacía el resto.
+- **La decisión es del TABLERO, no de la fila** (`layoutForTiers`, en `tierlist-types.ts`). Si
+  alguna etiqueta pasa de tres caracteres, TODAS las filas pasan a banda de color superior y las
+  portadas debajo; si ninguna lo pasa, todas conservan la columna del mockup. Mezclar los dos
+  dibujos en el mismo tablero se lee como un fallo de maquetación, no como una decisión — por eso
+  no se decide etiqueta a etiqueta.
+- **Vive en el módulo plano y no en el componente** para poder probarla sin montar dnd-kit en el
+  entorno `node` de vitest (`tierlist-layout.test.ts`).
+- **Las portadas suben a 44×66 y la seleccionada CRECE (×1,6 ≈ 70×106).** Agrandar la miniatura a
+  secas obliga a elegir entre ver la portada y ver el tablero; el zoom sobre la que ya hay que
+  tocar para colocarla no cuesta ni un control nuevo ni ancho de pantalla. En tableros ajenos
+  (solo lectura, sin selección) el mismo zoom va en `hover`/`focus-visible`.
+- **Crece con la propiedad nativa `scale`, no con `transform`.** dnd-kit escribe `transform` en el
+  `style` en línea durante el arrastre y machacaría cualquier escala puesta ahí. Consecuencia que
+  hay que respetar: la portada se dibuja FUERA de su caja, así que ninguna fila del tablero puede
+  llevar `overflow-hidden` — el redondeado de la columna/banda de color se declara en el propio
+  hijo (`rounded-l-[9px]` / `rounded-t-[9px]`).
+- **La cobertura mide rectángulos, no texto** (`e2e/club-tierlist-movil.spec.ts`, 360 px). Se
+  comprobó que **falla** contra el código anterior («se sale de su fila» para las dos etiquetas
+  largas) antes de darlo por bueno. Cubre también el camino contrario: con S/A/B la columna de
+  44 px tiene que seguir ahí.

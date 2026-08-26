@@ -15,7 +15,7 @@ import {
 import { useTranslations } from "next-intl";
 import type { ActivityDetail, ActivityItem } from "@/lib/clubs/activities/core";
 import { getTierlists, setPlacement, clearPlacement } from "@/lib/clubs/activities/tierlist";
-import type { TierlistView } from "@/lib/clubs/activities/tierlist-types";
+import { layoutForTiers, type TierlistView } from "@/lib/clubs/activities/tierlist-types";
 import { UserAvatar } from "@/components/social/user-avatar";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { TierRow } from "./tier-row";
@@ -119,6 +119,9 @@ export function TierlistBoard({
   if (!board) return <Layout railExtra={railExtra} body={null} />;
 
   const editable = board.isViewer;
+  // Una etiqueta larga no cabe en la columna de color: el tablero entero pasa a
+  // filas con banda superior. Se decide aquí, con TODAS las etiquetas a la vista.
+  const rowLayout = layoutForTiers(view.tiers.map((tier) => tier.label));
   const itemByKey = new Map(activity.items.map((i) => [`${i.itemType}:${i.itemId}`, i]));
   const itemsOf = (keys: string[]): ActivityItem[] =>
     keys.map((k) => itemByKey.get(k)).filter((i): i is ActivityItem => i !== undefined);
@@ -232,6 +235,7 @@ export function TierlistBoard({
                   editable={editable}
                   selectedKey={selectedKey}
                   onSelect={setSelectedKey}
+                  layout={rowLayout}
                 />
               ))}
             </div>

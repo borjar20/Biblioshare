@@ -2,13 +2,26 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import type { ActivityItem } from "@/lib/clubs/activities/core";
+import type { TierRowLayout } from "@/lib/clubs/activities/tierlist-types";
 import { TierlistItem } from "./tierlist-item";
 
-// Una fila del tablero (mockup Paper · Clubes, frame de tierlist): contenedor
-// único con la etiqueta del tier como columna de color a la izquierda y sus
-// portadas a la derecha. `id` es el tier ("S") o "unplaced" para la bandeja --
-// es lo que dnd-kit devuelve en `over`. La bandeja usa variant="pool": caja
-// punteada sin columna de etiqueta (su rótulo es un eyebrow del tablero).
+// Una fila del tablero (mockup Paper · Clubes, frame de tierlist). Dos formas:
+//
+//   - "column": contenedor único con la etiqueta del tier como columna de color
+//     a la izquierda y sus portadas a la derecha. Es el dibujo del mockup y
+//     solo vale para etiquetas cortas (S, A, B...).
+//   - "banner": la etiqueta ocupa una banda de color a lo ancho y las portadas
+//     van debajo. Para tierlists con niveles con nombre ("Perezón histórico").
+//
+// `id` es el tier ("S") o "unplaced" para la bandeja -- es lo que dnd-kit
+// devuelve en `over`. La bandeja usa variant="pool": caja punteada sin etiqueta
+// (su rótulo es un eyebrow del tablero).
+//
+// OJO con `overflow`: las filas NO recortan a sus hijos, porque la portada
+// seleccionada crece por encima de la caja (ver tierlist-item). Por eso el
+// redondeado de la columna/banda de color se declara en el propio hijo
+// (`rounded-l-[9px]` / `rounded-t-[9px]`) y no se hereda de un `overflow-hidden`
+// del contenedor.
 export function TierRow({
   id,
   label,
@@ -18,6 +31,7 @@ export function TierRow({
   selectedKey,
   onSelect,
   variant = "tier",
+  layout = "column",
 }: {
   id: string;
   label: string;
@@ -28,6 +42,7 @@ export function TierRow({
   selectedKey: string | null;
   onSelect: (key: string) => void;
   variant?: "tier" | "pool";
+  layout?: TierRowLayout;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -41,11 +56,14 @@ export function TierRow({
     />
   ));
 
+  // Alto mínimo = portada (66px) + padding vertical (2 × 8px).
+  const dropAreaBase = "flex min-h-[82px] flex-wrap items-center gap-1.5 p-2";
+
   if (variant === "pool") {
     return (
       <div
         ref={setNodeRef}
-        className={`flex min-h-[60px] flex-wrap items-center gap-1.5 rounded-[10px] border border-dashed p-2 ${
+        className={`relative ${dropAreaBase} rounded-[10px] border border-dashed ${
           isOver ? "border-accent bg-accent/5" : "border-border bg-surface-muted"
         }`}
       >
@@ -54,23 +72,52 @@ export function TierRow({
     );
   }
 
+  const colorStyle = color
+    ? { background: color, color: "var(--tier-foreground)" }
+    : undefined;
+
+  if (layout === "banner") {
+    return (
+      <div
+        className={`relative flex flex-col rounded-[10px] border bg-surface ${
+          isOver ? "border-accent" : "border-border"
+        }`}
+      >
+        <div
+          className={`rounded-t-[9px] px-3 py-1.5 font-serif text-[15px] leading-tight font-bold break-words ${
+            color ? "" : "bg-surface-muted text-foreground"
+          }`}
+          style={colorStyle}
+        >
+          {label}
+        </div>
+        <div
+          ref={setNodeRef}
+          className={`${dropAreaBase} ${isOver ? "bg-accent/5" : ""}`}
+        >
+          {covers}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex overflow-hidden rounded-[10px] border bg-surface ${
+      className={`relative flex rounded-[10px] border bg-surface ${
         isOver ? "border-accent" : "border-border"
       }`}
     >
       <div
-        className="flex w-11 shrink-0 items-center justify-center self-stretch font-serif text-xl font-bold"
-        style={color ? { background: color, color: "var(--tier-foreground)" } : undefined}
+        className={`flex w-11 shrink-0 items-center justify-center self-stretch overflow-hidden rounded-l-[9px] px-1 text-center font-serif font-bold ${
+          label.length > 2 ? "text-base" : "text-xl"
+        } ${color ? "" : "text-foreground"}`}
+        style={colorStyle}
       >
-        <span className={color ? "" : "text-foreground"}>{label}</span>
+        <span>{label}</span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex min-h-[60px] flex-1 flex-wrap items-center gap-1.5 p-2 ${
-          isOver ? "bg-accent/5" : ""
-        }`}
+        className={`${dropAreaBase} flex-1 ${isOver ? "bg-accent/5" : ""}`}
       >
         {covers}
       </div>

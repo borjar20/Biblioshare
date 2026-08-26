@@ -41,6 +41,24 @@ export const TIER_COLORS: string[] = [
   "var(--muted-foreground)",
 ];
 
+// A partir de cuántos caracteres la etiqueta deja de caber en la columna de
+// color del tablero (44px de ancho, serif bold). Medido sobre el peor caso:
+// tres glifos anchos ("PEC") llenan la caja justo, el cuarto ya se sale.
+const MAX_COLUMN_LABEL = 3;
+
+export type TierRowLayout = "column" | "banner";
+
+// Decide el layout de TODAS las filas del tablero a la vez: si alguna etiqueta
+// no cabe en la columna de color, todas pasan a banda superior. Se decide por
+// tablero y no por fila a propósito -- mezclar los dos layouts en el mismo
+// tablero se lee como un fallo de maquetación, no como una decisión.
+//
+// Vive aquí y no en tier-row.tsx para poder probarla sin montar el componente
+// (ni arrastrar dnd-kit al entorno `node` de vitest).
+export function layoutForTiers(labels: string[]): TierRowLayout {
+  return labels.some((label) => label.length > MAX_COLUMN_LABEL) ? "banner" : "column";
+}
+
 export type TierlistConfig = {
   tiers: TierSpec[];
 };
