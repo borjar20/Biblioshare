@@ -12,12 +12,6 @@ export type AddManualItemState = {
   error?: "titleRequired" | "invalidPageCount" | "invalidIsbn" | "forbidden" | "generic";
 };
 
-const TABLE_BY_TYPE = {
-  book: "books",
-  movie: "movies",
-  series: "series",
-} as const;
-
 export async function addManualItem(
   itemType: ItemType,
   _prevState: AddManualItemState,
@@ -43,7 +37,10 @@ export async function addManualItem(
 
   let pageCount: number | null = null;
   let isbn: string | null = null;
+  let publisher: string | null = null;
   if (itemType === "book") {
+    publisher = String(formData.get("publisher") ?? "").trim() || null;
+
     const pageCountRaw = String(formData.get("pageCount") ?? "").trim();
     if (pageCountRaw) {
       pageCount = Number(pageCountRaw);
@@ -59,37 +56,37 @@ export async function addManualItem(
     }
   }
 
-  const table = TABLE_BY_TYPE[itemType];
-  const payload =
-    itemType === "book"
-      ? {
-          title,
-          author: creator,
-          published_year: year,
-          cover_url: coverUrl,
-          publisher: String(formData.get("publisher") ?? "").trim() || null,
-          total_pages: pageCount,
-          isbn,
-        }
-      : itemType === "movie"
-        ? { title, director: creator, release_year: year, cover_url: coverUrl }
-        : { title, creator, release_year: year, cover_url: coverUrl };
+  // El alta va por RPC definer, NO por insert directo: desde #674 parte F
+  // (20260818_catalog_f_revoke_insert.sql) `authenticated` no tiene INSERT
+  // sobre books/movies/series, y este call site se quedó atrás — moría con
+  // 42501 "permission denied for table books" en cada alta manual. La RPC
+  // acepta los canónicos tecleados por el colaborador (a diferencia de
+  // `register_catalog_item`, que solo sabe nacer una shell desde un id externo)
+  // y revalida el rol en servidor.
+  const { data: itemId, error } = await supabase.rpc("register_manual_catalog_item", {
+    p_item_type: itemType,
+    p_title: title,
+    p_creator: creator ?? undefined,
+    p_year: year ?? undefined,
+    p_cover_url: coverUrl ?? undefined,
+    p_publisher: publisher ?? undefined,
+    p_total_pages: pageCount ?? undefined,
+    p_isbn: isbn ?? undefined,
+  });
 
-  // Insert shape differs per item type (picked above); same reconciliation
-  // pattern as findOrCreateCatalogItem in ../actions.ts.
-  const { data: inserted, error } = await supabase
-    .from(table)
-    .insert(payload as never)
-    .select("id")
-    .single();
-
-  if (error) return { error: "generic" };
+  // Tragarse el error sin dejar rastro es lo que hizo invisible la regresión de
+  // #674 durante meses: la pantalla decía "genérico" y los logs, nada.
+  if (error || !itemId) {
+    console.error("register_manual_catalog_item failed", { itemType, error });
+    return { error: error?.message.includes("forbidden") ? "forbidden" : "generic" };
+  }
 
   // Alta = pase activo en planned vía la máquina (el ítem acaba de nacer,
   // así que no puede haber pase previo; la transición crea el activo).
   try {
-    await applyTransition(supabase, user.id, itemType, inserted.id, "planned", undefined, { silent: true });
-  } catch {
+    await applyTransition(supabase, user.id, itemType, itemId, "planned", undefined, { silent: true });
+  } catch (transitionError) {
+    console.error("addManualItem applyTransition failed", { itemId, transitionError });
     return { error: "generic" };
   }
 

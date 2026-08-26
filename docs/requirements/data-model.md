@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-25 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
+> **[Canónico · verificado contra dev el 2026-08-26 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -407,6 +407,56 @@ pisar una curación existente aunque quisiera.
 > issue [#674](https://github.com/borjar20/Biblioshare/issues/674) y el efecto colateral de
 > regenerar tipos desde dev sobre los RPC de club-events, issue
 > [#701](https://github.com/borjar20/Biblioshare/issues/701).
+
+### 2.1bis Alta MANUAL de catálogo — `register_manual_catalog_item` (2026-08-26)
+
+**Cabo suelto de #674.** La parte `f` dejó `register_catalog_item` como única puerta de alta,
+pero esa RPC solo sabe nacer una shell **a partir de un id externo** (`openlibrary_work_key` /
+`tmdb_id`). El alta manual (`/buscar/manual`) no tiene ninguno: su call site
+(`src/app/buscar/manual/actions.ts`) se quedó con el `insert` directo y desde `f` moría con
+**`42501 permission denied for table books`** en cada intento — error que la server action
+traducía a `"generic"` sin registrar nada, así que el fallo era invisible en logs y la pantalla
+solo decía «algo ha ido mal». **No había ningún test de este camino**, de ahí que la regresión
+sobreviviera al despliegue de #674. Ver issue [#830](https://github.com/borjar20/Biblioshare/issues/830).
+
+`register_manual_catalog_item(p_item_type, p_title, p_creator, p_year, p_cover_url,
+p_publisher, p_total_pages, p_isbn) returns uuid` — `SECURITY DEFINER`, `search_path` fijado a
+`public, pg_temp`, `revoke all from public` + `grant execute to authenticated`. Migración
+`20260878_manual_catalog_item.sql`.
+
+A diferencia de `register_catalog_item`, esta **sí** acepta canónicos: son los que teclea un
+colaborador, no los que manda un proveedor. Eso obliga a que valide en servidor, y valida:
+
+1. `auth.uid()` no nulo → si no, `authentication required`.
+2. `coalesce(current_user_role(), 'user') not in ('collaborator','admin')` → `forbidden`. El
+   `coalesce` no es decorativo: sin él, un perfil con `role` NULL daría comparación NULL y
+   **pasaría**. El `hasMinRole()` de la server action y el guard de `page.tsx` siguen ahí, pero
+   como defensa en profundidad — la barrera es esta.
+3. `title` vacío tras `btrim` → `title required`; `p_total_pages < 0` → `invalid page count`.
+
+`hydrated_at` nace **NULL** a propósito: la fila manual entra en el curador de la ficha como
+cualquier otra — `ensureBookHydrated` ya contempla el caso «alta manual» (resuelve
+`openlibrary_work_key` por ISBN, y si no hay, la marca hidratada para no reintentarlo cada
+visita) — y `hydrate_book` es fill-only, así que nunca pisa lo que el colaborador escribió.
+
+> **Estado: aplicada y verificada en DEV y en PROD el 2026-08-26**, contra objetos reales
+> (`pg_proc`, `has_function_privilege`) y nunca contra `list_migrations`. `md5(prosrc)`
+> **idéntico** en los dos entornos (`40625dcf47cd8902cd662a005fd4bf78`), `prosecdef` true,
+> `anon` sin execute y `authenticated` con él en ambos. Prueba de las dos ramas ejecutada en
+> los dos entornos y limpiada en el mismo paso (la fila de prueba se borra dentro de la propia
+> función de sondeo, cero filas basura en el catálogo de producción): con un perfil
+> `collaborator` devuelve el uuid y la fila nace con todos los canónicos; con un perfil `user`
+> da `P0001: forbidden`. La migración es aditiva pura (función nueva + grant) y fue **delante**
+> del despliegue del código, que es el orden correcto: al revés, el código nuevo llamaría a una
+> RPC que no existe.
+>
+> **Ojo con el `revoke`.** `revoke all ... from public` NO quita el `execute` de `anon`:
+> Supabase lo concede a `anon` y `authenticated` por `ALTER DEFAULT PRIVILEGES` al crear la
+> función, y ese grant es explícito por rol, no vía `PUBLIC`. Hay que **nombrar a `anon`**. Esta
+> función lo hace; `register_catalog_item`/`_bulk` se dejaron el cabo suelto y `anon` conserva
+> `execute` sobre ellas en dev y en prod — inofensivo hoy (el `auth.uid() is null` las corta)
+> pero es defensa en profundidad que falta sobre dos funciones que se saltan RLS. Issue
+> [#831](https://github.com/borjar20/Biblioshare/issues/831).
 
 ## 3. El pase: el hub del estado
 
