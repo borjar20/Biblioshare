@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -13,12 +14,9 @@ import { hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
 import { NoteCard } from "@/components/notes/note-card";
 import { NOTE_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { NotesFilters } from "./notes-filters";
 import { NotesPager } from "./notes-pager";
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
 
 export const metadata: Metadata = {
   title: "Cuaderno — Biblioshare",
@@ -50,7 +48,48 @@ function groupByItem(notes: Note[]): { key: string; notes: Note[] }[] {
 // Todo el estado (filtros, búsqueda, orden, página) vive en la URL y todo el
 // trabajo se hace en el servidor: los filtros y la paginación son SQL, no un
 // array entero viajando al cliente.
-export default async function NotebookPage({
+// La página es SÍNCRONA y solo pinta el boundary (#476): todo el cuaderno es
+// del dueño (sesión + query), así que el shell estático es el contenedor con un
+// fantasma de cabecera + filtros + rejilla que reserva las alturas.
+export default function NotebookPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return (
+    <div className={`mx-auto w-full ${SHELL_GRID} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
+      <Suspense fallback={<NotebookSkeleton />}>
+        <NotebookContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+// Fantasma: cabecera (barrita + título), barra de filtros y rejilla de notas.
+function NotebookSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="mb-4 flex items-center gap-3">
+        <Skeleton className="h-[22px] w-2 shrink-0 rounded-full" />
+        <Skeleton className="h-8 w-40 rounded-md" />
+      </div>
+      <div className="mb-4">
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+      <div className={`grid items-start gap-3 ${NOTE_GRID_COLS}`}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4">
+            <SkeletonLine className="w-1/2" />
+            <SkeletonLine className="w-full" />
+            <SkeletonLine className="w-3/4" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+async function NotebookContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -71,7 +110,7 @@ export default async function NotebookPage({
   const filtered = hasActiveFilters(query);
 
   return (
-    <div className={`mx-auto w-full ${SHELL_GRID} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
+    <>
       <div className="mb-4">
         <PageHeader
           title={t("notebookTitle")}
@@ -134,6 +173,6 @@ export default async function NotebookPage({
       )}
 
       <NotesPager query={query} total={total} />
-    </div>
+    </>
   );
 }

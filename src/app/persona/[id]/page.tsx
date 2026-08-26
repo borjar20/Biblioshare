@@ -18,10 +18,6 @@ import { SHELL_PERSON } from "@/lib/ui/layout";
 // ver", "tu actividad"): es una lectura filtrada por RLS por usuario y por tanto
 // NO es cacheable en servidor (regla #437). Nada de `use cache`, ruta dinámica.
 //
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 export async function generateMetadata({
   params,
 }: {

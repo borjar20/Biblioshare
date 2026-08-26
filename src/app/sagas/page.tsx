@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -15,11 +16,8 @@ import { SagaIndexCard } from "@/components/saga/saga-index-card";
 import { SagaLoadMore } from "@/components/saga/saga-load-more";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchIcon } from "@/components/ui/icons";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { CARD_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
 
 export const metadata: Metadata = { title: "Sagas — Biblioshare" };
 
@@ -27,9 +25,7 @@ const PAGE_SIZE = 12;
 const VALID_VIEWS: SagaIndexView[] = ["todas", "sigo", "universos"];
 const VALID_TYPES: SagaIndexType[] = ["libro", "pelicula", "serie"];
 
-export default async function SagasIndexPage({
-  searchParams,
-}: {
+type SagasIndexProps = {
   searchParams: Promise<{
     q?: string;
     vista?: string;
@@ -39,7 +35,46 @@ export default async function SagasIndexPage({
     min5?: string;
     n?: string;
   }>;
-}) {
+};
+
+// Shell estático = contenedor + título (traducción estática, #475); el índice
+// entero depende de `searchParams` y de la sesión (seguidas, rol) y baja tras
+// el <Suspense> (#476).
+export default async function SagasIndexPage({ searchParams }: SagasIndexProps) {
+  const t = await getTranslations("sagaIndex");
+
+  return (
+    // 1152 px: el índice es una REJILLA (a 896 px se quedaba en dos columnas
+    // con media pantalla vacía en escritorio), no una columna de lectura como
+    // /coleccion o /buscar. El marco del mockup es de 1240 px.
+    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+      <Suspense fallback={<SagaIndexSkeleton title={t("title")} />}>
+        <SagasIndexContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
+}
+
+// Fantasma: fila de cabecera con el título real + contadores, filtros y rejilla
+// de tarjetas con las alturas del contenido.
+function SagaIndexSkeleton({ title }: { title: string }) {
+  return (
+    <>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+        <h1 className="font-serif text-2xl font-semibold tracking-tight">{title}</h1>
+        <SkeletonLine className="h-3 w-52" />
+      </div>
+      <Skeleton className="h-10 w-full rounded-lg" />
+      <div aria-hidden className={`grid grid-flow-row-dense gap-2.5 ${CARD_GRID_COLS}`}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-card" />
+        ))}
+      </div>
+    </>
+  );
+}
+
+async function SagasIndexContent({ searchParams }: SagasIndexProps) {
   const raw = await searchParams;
   const query = raw.q?.trim() ?? "";
   const filterParams: SagaIndexFilterParams = {
@@ -75,10 +110,7 @@ export default async function SagasIndexPage({
   }
 
   return (
-    // 1152 px: el índice es una REJILLA (a 896 px se quedaba en dos columnas
-    // con media pantalla vacía en escritorio), no una columna de lectura como
-    // /coleccion o /buscar. El marco del mockup es de 1240 px.
-    <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+    <>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
         <h1 className="font-serif text-2xl font-semibold tracking-tight">{t("title")}</h1>
         {/* «38 SAGAS · 6 UNIVERSOS · SIGUES 4»: el pulso del catálogo entero,
@@ -141,6 +173,6 @@ export default async function SagasIndexPage({
           )}
         </>
       )}
-    </div>
+    </>
   );
 }
