@@ -75,6 +75,7 @@ export function VoiceRecorder({
           setLiveBars((prev) => [...prev.slice(-(LIVE_BARS - 1)), amplitude]);
           if (ms >= VOICE_MAX_DURATION_MS) void finishToPreview();
         });
+        engine.onStreamEnded(() => void finishToPreview());
       })
       .catch(() => setPhase("denied"));
     return () => {
@@ -132,6 +133,7 @@ export function VoiceRecorder({
           setLiveBars((prev) => [...prev.slice(-(LIVE_BARS - 1)), amplitude]);
           if (ms >= VOICE_MAX_DURATION_MS) void finishToPreview();
         });
+        engine.onStreamEnded(() => void finishToPreview());
       })
       .catch(() => setPhase("denied"));
   }

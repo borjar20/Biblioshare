@@ -93,15 +93,16 @@ export class VoiceRecorderEngine {
 
   stop(): Promise<VoiceRecording> {
     return new Promise((resolve, reject) => {
-      this.recorder.onstop = () => {
-        this.release();
-        resolve({
-          blob: new Blob(this.chunks, { type: this.mimeType }),
-          mimeType: this.mimeType,
-          durationMs: Math.round(this.elapsedMs),
-          peaks: resamplePeaks(this.samples),
-        });
-      };
+      // El stream pudo morir a mitad (permiso revocado, dispositivo
+      // desconectado) y dejar el recorder ya "inactive" antes de que
+      // llamemos a stop(): no hay onstop que dispare, así que resolvemos
+      // con lo ya capturado en vez de reintentar recorder.stop() (lanzaría
+      // InvalidStateError y tiraríamos la grabación).
+      if (this.recorder.state === "inactive") {
+        resolve(this.finalize());
+        return;
+      }
+      this.recorder.onstop = () => resolve(this.finalize());
       this.recorder.onerror = () => {
         this.release();
         reject(new Error("recording_failed"));
@@ -115,6 +116,17 @@ export class VoiceRecorderEngine {
     });
   }
 
+  /**
+   * Aviso de que el micro murió a mitad (permiso revocado, dispositivo
+   * desconectado): el caller decide qué hacer con lo grabado — la spec manda
+   * pasar a previsualización, no descartar.
+   */
+  onStreamEnded(cb: () => void): void {
+    for (const track of this.stream.getTracks()) {
+      track.addEventListener("ended", cb, { once: true });
+    }
+  }
+
   cancel(): void {
     try {
       if (this.recorder.state !== "inactive") this.recorder.stop();
@@ -122,6 +134,16 @@ export class VoiceRecorderEngine {
       // ya estaba parado
     }
     this.release();
+  }
+
+  private finalize(): VoiceRecording {
+    this.release();
+    return {
+      blob: new Blob(this.chunks, { type: this.mimeType }),
+      mimeType: this.mimeType,
+      durationMs: Math.round(this.elapsedMs),
+      peaks: resamplePeaks(this.samples),
+    };
   }
 
   private release(): void {
