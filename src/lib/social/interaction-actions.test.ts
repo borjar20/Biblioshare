@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   revalidateInteraction: vi.fn(),
   notify: vi.fn(),
   notifyMentions: vi.fn(),
+  deleteVoiceNote: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
@@ -13,6 +14,7 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateInteraction: mocks.revalidateInteraction,
 }));
+vi.mock("@/lib/storage/voice-notes", () => ({ deleteVoiceNote: mocks.deleteVoiceNote }));
 vi.mock("./notifications", () => ({ notify: mocks.notify }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
 vi.mock("./interaction-target-gate", () => ({
@@ -432,26 +434,76 @@ describe("addComment", () => {
   });
 });
 
+// Doble encadenable para `.from("comments").delete().eq(...).select(...)`:
+// `.select` con RETURNING es lo que distingue 0 filas (RLS bloqueó) de éxito,
+// así que el doble tiene que soportar la cadena completa, no solo `.eq`.
+function commentDeleteBuilder(data: Array<{ id: string; audio_path: string | null }> | null) {
+  const eqCalls: Array<[string, string]> = [];
+  const builder = {
+    eq(column: string, value: string) {
+      eqCalls.push([column, value]);
+      return builder;
+    },
+    select(_columns: string) {
+      return builder;
+    },
+    then(resolve: (value: unknown) => void) {
+      resolve({ data, error: null });
+    },
+  };
+  return { builder, eqCalls };
+}
+
+function makeDeleteCommentClient(
+  data: Array<{ id: string; audio_path: string | null }> | null,
+  userId = "actor",
+) {
+  const { builder, eqCalls } = commentDeleteBuilder(data);
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: userId } } }) },
+    from: () => ({ delete: () => builder }),
+  };
+  return { client, eqCalls };
+}
+
 describe("deleteComment", () => {
   it("delega la autorización completa a RLS sin limitar el borrado al autor", async () => {
-    const eqCalls: Array<[string, string]> = [];
-    const builder = {
-      eq(column: string, value: string) {
-        eqCalls.push([column, value]);
-        return builder;
-      },
-      then(resolve: (value: unknown) => void) {
-        resolve({ error: null });
-      },
-    };
-    mocks.createClient.mockResolvedValue({
-      auth: { getUser: async () => ({ data: { user: { id: "moderator" } } }) },
-      from: () => ({ delete: () => builder }),
-    });
+    const { client, eqCalls } = makeDeleteCommentClient(
+      [{ id: "comment-1", audio_path: null }],
+      "moderator",
+    );
+    mocks.createClient.mockResolvedValue(client);
 
     await deleteComment("comment-1");
 
     expect(eqCalls).toEqual([["id", "comment-1"]]);
     expect(mocks.revalidateInteraction).toHaveBeenCalledOnce();
+  });
+
+  it("al borrar un comentario con audio, borra también el objeto de Storage", async () => {
+    const { client } = makeDeleteCommentClient([{ id: "c1", audio_path: "u1/a.webm" }]);
+    mocks.createClient.mockResolvedValue(client);
+
+    const res = await deleteComment("c1");
+
+    expect(res).toEqual({ ok: true });
+    expect(mocks.deleteVoiceNote).toHaveBeenCalledWith("u1/a.webm");
+  });
+
+  it("comentario de texto: no toca Storage", async () => {
+    const { client } = makeDeleteCommentClient([{ id: "c1", audio_path: null }]);
+    mocks.createClient.mockResolvedValue(client);
+
+    await deleteComment("c1");
+
+    expect(mocks.deleteVoiceNote).not.toHaveBeenCalled();
+  });
+
+  it("RLS bloquea (0 filas) → not_allowed_or_missing, no ok silencioso", async () => {
+    const { client } = makeDeleteCommentClient([]);
+    mocks.createClient.mockResolvedValue(client);
+
+    expect(await deleteComment("c1")).toEqual({ ok: false, error: "not_allowed_or_missing" });
+    expect(mocks.revalidateInteraction).not.toHaveBeenCalled();
   });
 });

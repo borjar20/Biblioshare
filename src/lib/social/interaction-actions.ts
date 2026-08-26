@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { deleteVoiceNote } from "@/lib/storage/voice-notes";
 import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
 import { notifyMentions } from "./notify-mentions";
@@ -266,8 +267,20 @@ export async function deleteComment(commentId: string): Promise<CommentActionRes
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "unauthenticated" };
 
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    // `.select` con RETURNING: distingue 0 filas (RLS bloqueó) de éxito — el
+    // delete sin select devolvía ok:true aunque no borrara nada — y trae el
+    // audio_path para limpiar Storage (la cascada de Postgres no lo hace).
+    const { data: deleted, error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId)
+      .select("id, audio_path");
     if (error) throw error;
+    if (!deleted || deleted.length === 0) {
+      return { ok: false, error: "not_allowed_or_missing" };
+    }
+    const audioPath = deleted[0]?.audio_path;
+    if (audioPath) await deleteVoiceNote(audioPath);
     revalidateInteraction();
     return { ok: true };
   } catch (e) {
