@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { loginHref } from "@/lib/auth/safe-next";
-import { HeartIcon, CommentIcon } from "@/components/ui/icons";
+import { HeartIcon, CommentIcon, MicIcon } from "@/components/ui/icons";
 import { TimeAgo } from "@/components/ui/time-ago";
 import {
   toggleReaction,
@@ -22,6 +22,7 @@ import {
 import { buildCommentThreads, type CommentSort } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
+import { voiceGate } from "@/lib/voice/voice-note-limits";
 import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { RichTextView } from "./rich-text-view";
 import { SpoilerGate } from "./spoiler-gate";
@@ -31,6 +32,11 @@ import { CommentComposer } from "./comment-composer";
 import { ReactionBar } from "./reaction-bar";
 import { VoiceNoteChip } from "./voice-note-chip";
 import { VoiceMiniBar } from "./voice-mini-bar";
+import { VoiceRecorder } from "./voice-recorder";
+import { PendingVoiceNoteRow } from "./pending-voice-note";
+import { useVoiceNoteSubmit } from "./use-voice-note-submit";
+
+const VOICE_TOOLTIP_KEY = "biblioshare:voice-tooltip-seen";
 
 // Like + hilo enriquecido de comentarios bajo una reseña (EPIC-05, Bloque B,
 // SD-3 + reestructura Tarea 7). El estado real deriva de las props que el
@@ -93,12 +99,37 @@ export function ReviewInteractions({
   const [rootDraft, setRootDraft] = useState("");
   const [replyDraft, setReplyDraft] = useState("");
   const [editDraft, setEditDraft] = useState("");
+  // "root" = el composer de raíz está grabando; un id = el composer de
+  // respuesta de ESE hilo (aplanado a 2 niveles, Tarea 12) está grabando. El
+  // de EDICIÓN nunca lleva mic.
+  const [voiceMode, setVoiceMode] = useState<"root" | string | null>(null);
+  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3).
+  // Lectura de storage de un solo disparo -- no es una suscripción, así que
+  // el useState perezoso (con su try/catch para SSR/Safari privado) basta.
+  const [tooltipSeen, setTooltipSeen] = useState(() => {
+    try {
+      return window.localStorage.getItem(VOICE_TOOLTIP_KEY) != null;
+    } catch {
+      return true;
+    }
+  });
+  const voice = useVoiceNoteSubmit(interactionTargetId);
   const mention = useMentionAutocomplete({
     value: rootDraft,
     onChange: setRootDraft,
     scope: clubId ? { scope: "club", clubId } : { scope: "profile" },
   });
   const pathname = usePathname();
+
+  function markVoiceTooltipSeen() {
+    if (tooltipSeen) return;
+    try {
+      window.localStorage.setItem(VOICE_TOOLTIP_KEY, "1");
+    } catch {
+      // sin storage: no persiste entre sesiones, pero la sesión actual sigue bien
+    }
+    setTooltipSeen(true);
+  }
 
   if (!viewerLoggedIn) {
     return (
@@ -120,6 +151,48 @@ export function ReviewInteractions({
   }
 
   const threads = buildCommentThreads(state.comments, sort);
+
+  // Pendientes cuentan como audios propios para el gate del cliente: evita
+  // ráfagas mientras una subida sigue en vuelo (spec §7). Es del HILO ENTERO
+  // (state.comments, no solo la rama que se ve), igual que en post-thread.
+  const voiceGateState = voiceGate([
+    ...state.comments.map((c) => ({ isOwn: c.isOwn, hasAudio: c.audio != null, createdAt: c.createdAt })),
+    ...voice.pending.map(() => ({ isOwn: true, hasAudio: true, createdAt: "9999" })),
+  ]);
+
+  function renderMicButton(mode: "root" | string) {
+    return (
+      <span className="relative shrink-0">
+        <button
+          type="button"
+          data-testid="voice-mic"
+          aria-label={t("voice.record")}
+          title={
+            voiceGateState.allowed
+              ? undefined
+              : t(voiceGateState.reason === "thread_limit" ? "voice.limitThread" : "voice.limitConsecutive")
+          }
+          disabled={!voiceGateState.allowed}
+          onClick={() => {
+            setVoiceMode(mode);
+            markVoiceTooltipSeen();
+          }}
+          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-surface-muted hover:text-foreground disabled:opacity-40"
+        >
+          <MicIcon className="h-4 w-4" />
+        </button>
+        {!tooltipSeen && (
+          <button
+            type="button"
+            onClick={markVoiceTooltipSeen}
+            className="absolute bottom-full right-0 z-10 mb-1.5 w-max max-w-[180px] rounded-lg bg-foreground px-2 py-1 text-left text-[11px] font-medium text-background shadow-lg"
+          >
+            {t("voice.firstTimeTip")}
+          </button>
+        )}
+      </span>
+    );
+  }
 
   // Un thunk de `run` debe RECHAZAR para que useOptimisticAction revierta; las
   // acciones ahora resuelven {ok:false} en vez de lanzar, así que lo traducimos.
@@ -366,6 +439,7 @@ export function ReviewInteractions({
 
           {threads.map((thread) => {
             const repliesOpen = openReplies.has(thread.root.id);
+            const threadPending = voice.pending.filter((p) => p.parentId === thread.root.id);
             return (
               <div key={thread.root.id} className="flex flex-col gap-2">
                 {renderComment(thread.root, thread.root.id, false)}
@@ -389,21 +463,40 @@ export function ReviewInteractions({
                   </div>
                 )}
 
+                {threadPending.length > 0 && (
+                  <div className="ml-4 flex flex-col gap-2 border-l border-border pl-3">
+                    {threadPending.map((note) => (
+                      <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
+                    ))}
+                  </div>
+                )}
+
                 {replyingTo === thread.root.id && (
                   <div className="ml-8">
-                    <CommentComposer
-                      value={replyDraft}
-                      onChange={setReplyDraft}
-                      onSubmit={() => submitReply(thread.root.id)}
-                      onCancel={() => {
-                        setReplyingTo(null);
-                        setReplyDraft("");
-                      }}
-                      submitLabel={t("reply")}
-                      placeholder={t("writeReply")}
-                      compact
-                      busy={isPending}
-                    />
+                    {voiceMode === thread.root.id ? (
+                      <VoiceRecorder
+                        onCancel={() => setVoiceMode(null)}
+                        onPublish={(rec) => {
+                          voice.publish(rec, { parentId: thread.root.id, isSpoiler: false });
+                          setVoiceMode(null);
+                        }}
+                      />
+                    ) : (
+                      <CommentComposer
+                        value={replyDraft}
+                        onChange={setReplyDraft}
+                        onSubmit={() => submitReply(thread.root.id)}
+                        onCancel={() => {
+                          setReplyingTo(null);
+                          setReplyDraft("");
+                        }}
+                        submitLabel={t("reply")}
+                        placeholder={t("writeReply")}
+                        compact
+                        busy={isPending}
+                        micSlot={renderMicButton(thread.root.id)}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -411,21 +504,38 @@ export function ReviewInteractions({
           })}
 
           <div className="relative">
-            <CommentComposer
-              value={rootDraft}
-              onChange={setRootDraft}
-              onSubmit={submitRoot}
-              onInput={mention.onInput}
-              onKeyDown={mention.onKeyDown}
-              dropdown={mention.dropdown}
-              submitLabel={t("postComment")}
-              placeholder={t("writeComment")}
-              isSpoiler={rootSpoiler}
-              onToggleSpoiler={() => setRootSpoiler((v) => !v)}
-              showFormatting
-              busy={isPending}
-            />
+            {voiceMode === "root" ? (
+              <VoiceRecorder
+                onCancel={() => setVoiceMode(null)}
+                onPublish={(rec) => {
+                  voice.publish(rec, { parentId: null, isSpoiler: rootSpoiler });
+                  setVoiceMode(null);
+                }}
+              />
+            ) : (
+              <CommentComposer
+                value={rootDraft}
+                onChange={setRootDraft}
+                onSubmit={submitRoot}
+                onInput={mention.onInput}
+                onKeyDown={mention.onKeyDown}
+                dropdown={mention.dropdown}
+                submitLabel={t("postComment")}
+                placeholder={t("writeComment")}
+                isSpoiler={rootSpoiler}
+                onToggleSpoiler={() => setRootSpoiler((v) => !v)}
+                showFormatting
+                busy={isPending}
+                micSlot={renderMicButton("root")}
+              />
+            )}
           </div>
+
+          {voice.pending
+            .filter((p) => p.parentId === null)
+            .map((note) => (
+              <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
+            ))}
 
           <VoiceMiniBar />
         </div>

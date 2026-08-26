@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { loginHref } from "@/lib/auth/safe-next";
-import { CommentIcon } from "@/components/ui/icons";
+import { CommentIcon, MicIcon } from "@/components/ui/icons";
 import { TimeAgo } from "@/components/ui/time-ago";
 import {
   toggleReaction,
@@ -22,6 +22,7 @@ import {
 import { buildCommentTree, MAX_THREAD_DEPTH, type CommentSort, type CommentNode } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
+import { voiceGate } from "@/lib/voice/voice-note-limits";
 import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { RichTextView } from "./rich-text-view";
 import { SpoilerGate } from "./spoiler-gate";
@@ -31,6 +32,11 @@ import { CommentComposer } from "./comment-composer";
 import { ReactionBar } from "./reaction-bar";
 import { VoiceNoteChip } from "./voice-note-chip";
 import { VoiceMiniBar } from "./voice-mini-bar";
+import { VoiceRecorder } from "./voice-recorder";
+import { PendingVoiceNoteRow } from "./pending-voice-note";
+import { useVoiceNoteSubmit } from "./use-voice-note-submit";
+
+const VOICE_TOOLTIP_KEY = "biblioshare:voice-tooltip-seen";
 
 // Hilo de `/post/[id]` al estilo Reddit (posts Spec 2b): a diferencia de
 // `ReviewInteractions` —feed y superficies compartidas, aplanado a 2 niveles y
@@ -71,11 +77,68 @@ export function PostThread({
   const [draft, setDraft] = useState("");
   const [spoiler, setSpoiler] = useState(false);
   const [editDraft, setEditDraft] = useState("");
+  const [voiceMode, setVoiceMode] = useState(false);
+  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3).
+  // Lectura de storage de un solo disparo -- no es una suscripción, así que
+  // el useState perezoso (con su try/catch para SSR/Safari privado) basta.
+  const [tooltipSeen, setTooltipSeen] = useState(() => {
+    try {
+      return window.localStorage.getItem(VOICE_TOOLTIP_KEY) != null;
+    } catch {
+      return true;
+    }
+  });
+  const voice = useVoiceNoteSubmit(interactionTargetId);
   const mention = useMentionAutocomplete({
     value: draft,
     onChange: setDraft,
     scope: { scope: "profile" },
   });
+
+  function markVoiceTooltipSeen() {
+    if (tooltipSeen) return;
+    try {
+      window.localStorage.setItem(VOICE_TOOLTIP_KEY, "1");
+    } catch {
+      // sin storage: no persiste entre sesiones, pero la sesión actual sigue bien
+    }
+    setTooltipSeen(true);
+  }
+
+  // Pendientes cuentan como audios propios para el gate del cliente: evita
+  // ráfagas mientras una subida sigue en vuelo (spec §7).
+  const gate = voiceGate([
+    ...state.comments.map((c) => ({ isOwn: c.isOwn, hasAudio: c.audio != null, createdAt: c.createdAt })),
+    ...voice.pending.map(() => ({ isOwn: true, hasAudio: true, createdAt: "9999" })),
+  ]);
+
+  const micButton = viewerLoggedIn ? (
+    <span className="relative shrink-0">
+      <button
+        type="button"
+        data-testid="voice-mic"
+        aria-label={t("voice.record")}
+        title={gate.allowed ? undefined : t(gate.reason === "thread_limit" ? "voice.limitThread" : "voice.limitConsecutive")}
+        disabled={!gate.allowed}
+        onClick={() => {
+          setVoiceMode(true);
+          markVoiceTooltipSeen();
+        }}
+        className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-surface-muted hover:text-foreground disabled:opacity-40"
+      >
+        <MicIcon className="h-4 w-4" />
+      </button>
+      {!tooltipSeen && (
+        <button
+          type="button"
+          onClick={markVoiceTooltipSeen}
+          className="absolute bottom-full right-0 z-10 mb-1.5 w-max max-w-[180px] rounded-lg bg-foreground px-2 py-1 text-left text-[11px] font-medium text-background shadow-lg"
+        >
+          {t("voice.firstTimeTip")}
+        </button>
+      )}
+    </span>
+  ) : undefined;
 
   // Deep-link al SUBHILO: la notificación de respuesta trae `/post/<id>#c-<cid>`
   // (target del comentario con ancla, migración 20260848). Al montar y en cada
@@ -211,20 +274,31 @@ export function PostThread({
         </div>
       )}
       <div className="relative">
-        <CommentComposer
-          value={draft}
-          onChange={setDraft}
-          onSubmit={submit}
-          onInput={mention.onInput}
-          onKeyDown={mention.onKeyDown}
-          dropdown={mention.dropdown}
-          submitLabel={t("postComment")}
-          placeholder={replyingTo ? t("writeReply") : t("writeComment")}
-          isSpoiler={replyingTo ? false : spoiler}
-          onToggleSpoiler={replyingTo ? undefined : () => setSpoiler((v) => !v)}
-          showFormatting
-          busy={isPending}
-        />
+        {voiceMode ? (
+          <VoiceRecorder
+            onCancel={() => setVoiceMode(false)}
+            onPublish={(rec) => {
+              voice.publish(rec, { parentId: replyingTo?.id ?? null, isSpoiler: replyingTo ? false : spoiler });
+              setVoiceMode(false);
+            }}
+          />
+        ) : (
+          <CommentComposer
+            value={draft}
+            onChange={setDraft}
+            onSubmit={submit}
+            onInput={mention.onInput}
+            onKeyDown={mention.onKeyDown}
+            dropdown={mention.dropdown}
+            submitLabel={t("postComment")}
+            placeholder={replyingTo ? t("writeReply") : t("writeComment")}
+            isSpoiler={replyingTo ? false : spoiler}
+            onToggleSpoiler={replyingTo ? undefined : () => setSpoiler((v) => !v)}
+            showFormatting
+            busy={isPending}
+            micSlot={micButton}
+          />
+        )}
       </div>
     </div>
   );
@@ -421,6 +495,9 @@ export function PostThread({
           columna, no aquí. */}
       <div className="flex flex-col gap-1">
         {nodes.map(renderNode)}
+        {voice.pending.map((note) => (
+          <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
+        ))}
       </div>
 
       {failed && (
