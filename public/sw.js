@@ -10,7 +10,14 @@
 // quedaba anulado. Subir el nombre del caché es PARTE del arreglo: `activate`
 // borra los que no coincidan, y así se tira el v2 envenenado que los usuarios ya
 // tienen en disco.
-const CACHE_NAME = "biblioshare-v3";
+//
+// v4 (2026-08-26, #680): v3 guardaba el HTML de TODA navegación con éxito,
+// también las autenticadas, y nada lo purgaba al cerrar sesión: en un
+// dispositivo compartido y sin red, otra persona podía recibir el HTML privado
+// de la cuenta anterior. Ahora solo se guardan documentos que el servidor no
+// marca como personales (ver swCacheableDocument) y el logout purga el caché.
+// El bump a v4 tira las copias privadas que ya estén en disco.
+const CACHE_NAME = "biblioshare-v4";
 const OFFLINE_URL = "/offline";
 
 // Estáticos de Next: el nombre lleva el hash del contenido, así que la copia en
@@ -52,9 +59,22 @@ function swStrategy(request, origin) {
   return "skip";
 }
 
+// ¿Puede este documento guardarse como salvavidas offline? Solo si es un éxito
+// y el servidor no lo marca como personal: Next sirve las páginas dinámicas
+// (las que llevan sesión) con `Cache-Control: no-store` (o `private`), y esa
+// cabecera es lo que separa «HTML igual para todos» de «HTML de una cuenta».
+// PURA (estado + cabecera) por lo mismo que swStrategy: se prueba en vitest
+// cargando este mismo fichero — ver src/lib/pwa/sw-strategy.test.ts.
+function swCacheableDocument(ok, cacheControl) {
+  if (!ok) return false;
+  const directives = (cacheControl || "").toLowerCase();
+  return !directives.includes("no-store") && !directives.includes("private");
+}
+
 // Solo para el test unitario (src/lib/pwa/sw-strategy.test.ts), que carga este
-// fichero en un vm. En el navegador es una propiedad inerte.
+// fichero en un vm. En el navegador son propiedades inertes.
 self.swStrategy = swStrategy;
+self.swCacheableDocument = swCacheableDocument;
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -86,8 +106,14 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          if (swCacheableDocument(response.ok, response.headers.get("Cache-Control"))) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          } else {
+            // Si el documento es personal hoy, la copia pública de ayer para la
+            // misma URL tampoco debe sobrevivir.
+            caches.open(CACHE_NAME).then((cache) => cache.delete(request));
+          }
           return response;
         })
         .catch(async () => {
@@ -107,6 +133,21 @@ self.addEventListener("fetch", (event) => {
         return response;
       });
     })
+  );
+});
+
+// Purga al cerrar sesión (#680): la página avisa (logout-button) y se tira el
+// caché entero — distinguir documentos de estáticos no compensa, los estáticos
+// se re-cachean solos al siguiente uso. Se re-siembra /offline para no perder
+// el salvavidas.
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "purge-caches") return;
+  event.waitUntil(
+    caches
+      .delete(CACHE_NAME)
+      .then(() => caches.open(CACHE_NAME))
+      .then((cache) => cache.add(OFFLINE_URL))
+      .catch(() => {})
   );
 });
 
