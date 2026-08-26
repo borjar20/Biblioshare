@@ -876,6 +876,9 @@ export type Database = {
       }
       comments: {
         Row: {
+          audio_duration_ms: number | null
+          audio_path: string | null
+          audio_peaks: number[] | null
           author_id: string
           body: string
           created_at: string
@@ -887,6 +890,9 @@ export type Database = {
           pinned: boolean
         }
         Insert: {
+          audio_duration_ms?: number | null
+          audio_path?: string | null
+          audio_peaks?: number[] | null
           author_id: string
           body: string
           created_at?: string
@@ -898,6 +904,9 @@ export type Database = {
           pinned?: boolean
         }
         Update: {
+          audio_duration_ms?: number | null
+          audio_path?: string | null
+          audio_peaks?: number[] | null
           author_id?: string
           body?: string
           created_at?: string
@@ -1873,7 +1882,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_target_id: string
-          kind?: string
+          kind: string
           user_id: string
         }
         Update: {
@@ -2897,6 +2906,19 @@ export type Database = {
           external_id: string
           id: string
         }[]
+      }
+      register_manual_catalog_item: {
+        Args: {
+          p_cover_url?: string
+          p_creator?: string
+          p_isbn?: string
+          p_item_type: string
+          p_publisher?: string
+          p_title: string
+          p_total_pages?: number
+          p_year?: number
+        }
+        Returns: string
       }
       related_posts_by_author: {
         Args: {
