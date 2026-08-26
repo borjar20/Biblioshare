@@ -1799,3 +1799,108 @@ diagnóstico, que es lo que pide AGENTS.md.
   el alta por búsqueda; `/buscar/manual` no tenía ningún test, así que nada se puso rojo. El
   arreglo incluye `e2e/alta-manual.spec.ts`, y se comprobó que **falla** con la RPC revocada
   antes de darlo por bueno.
+
+## 2026-08-26 (2) — La etiqueta del tier manda sobre el layout de la fila
+
+Reportado mirando la app en móvil: en una tierlist con niveles con nombre («Perezón histórico»,
+«Ni fu ni fa (como dirían los entendidos)») se leía media palabra. Y, aparte, a 34×51 px no se
+distinguía una portada de otra.
+
+- **La columna de color de 44 px era una suposición sobre el contenido, no un dibujo.** El mockup
+  Paper enseña una tierlist S/A/B/C/D, y de ahí salió un ancho fijo con `font-serif text-xl`. Pero
+  la etiqueta es un campo LIBRE del asistente (`TierlistFields`), así que el ancho fijo solo era
+  correcto para el ejemplo del mockup. Medido a 360 px, «Perezón histórico» pedía 67 px y «Ni fu ni
+  fa…» 81 px en una caja de 44: el `overflow-hidden` de la fila hacía el resto.
+- **La decisión es del TABLERO, no de la fila** (`layoutForTiers`, en `tierlist-types.ts`). Si
+  alguna etiqueta pasa de tres caracteres, TODAS las filas pasan a banda de color superior y las
+  portadas debajo; si ninguna lo pasa, todas conservan la columna del mockup. Mezclar los dos
+  dibujos en el mismo tablero se lee como un fallo de maquetación, no como una decisión — por eso
+  no se decide etiqueta a etiqueta.
+- **Vive en el módulo plano y no en el componente** para poder probarla sin montar dnd-kit en el
+  entorno `node` de vitest (`tierlist-layout.test.ts`).
+- **Las portadas suben a 44×66 y la seleccionada CRECE (×1,6 ≈ 70×106).** Agrandar la miniatura a
+  secas obliga a elegir entre ver la portada y ver el tablero; el zoom sobre la que ya hay que
+  tocar para colocarla no cuesta ni un control nuevo ni ancho de pantalla. En tableros ajenos
+  (solo lectura, sin selección) el mismo zoom va en `hover`/`focus-visible`.
+- **Crece con la propiedad nativa `scale`, no con `transform`.** dnd-kit escribe `transform` en el
+  `style` en línea durante el arrastre y machacaría cualquier escala puesta ahí. Consecuencia que
+  hay que respetar: la portada se dibuja FUERA de su caja, así que ninguna fila del tablero puede
+  llevar `overflow-hidden` — el redondeado de la columna/banda de color se declara en el propio
+  hijo (`rounded-l-[9px]` / `rounded-t-[9px]`).
+- **La cobertura mide rectángulos, no texto** (`e2e/club-tierlist-movil.spec.ts`, 360 px). Se
+  comprobó que **falla** contra el código anterior («se sale de su fila» para las dos etiquetas
+  largas) antes de darlo por bueno. Cubre también el camino contrario: con S/A/B la columna de
+  44 px tiene que seguir ahí.
+
+## 2026-08-26 (3) — La retícula de la tierlist es un índice; la hoja es donde se ve la obra
+
+Continuación de la entrada anterior, con el tablero ya arreglado a 360 px. Dos peticiones que
+resultaron ser la misma decisión.
+
+- **Agrandar la miniatura no era la respuesta.** «A 44×66 aún cuesta reconocer la portada» y
+  «quiero poder ampliarla» empujan en la misma dirección, pero subir el tamaño de la retícula
+  obliga a elegir entre ver la obra y ver el tablero: a 360 px cada 10 px de portada son una
+  columna menos. La retícula pasa a 56×84 y se queda ahí — es un ÍNDICE, no un escaparate — y
+  tocar una portada abre una hoja donde la obra se ve grande (46vh), con su tipo y su título
+  escritos. Reconocer una obra deja de depender de la resolución de una miniatura.
+- **Los botones de tier se mudan a la hoja.** Vivían en una fila al pie del tablero: obligaba a
+  mirar arriba (qué seleccioné) y tocar abajo (dónde va), y con la portada diminuta ni siquiera se
+  sabía lo primero. Ahora el nivel se elige junto a la portada que se está colocando, y elegirlo
+  cierra la hoja. La fila del pie desaparece; queda solo el rótulo «Toca una portada para
+  colocarla», que es lo único que aportaba cuando no había nada seleccionado.
+- **El nivel actual se marca con `aria-pressed`, no deshabilitándolo.** Deshabilitar el nivel donde
+  ya está el ítem le quita al lector la única pista de dónde estaba si se equivoca de destino.
+- **Cerrar la hoja deselecciona, y volver a tocar la portada también.** «Seleccionado» ya no es un
+  estado que sobreviva a la interacción: o colocas, o cierras. Antes una portada se quedaba marcada
+  indefinidamente sin decir para qué.
+- **En tableros ajenos es la misma hoja sin botones.** El gesto significa lo mismo en los dos
+  tableros y no te saca de la actividad sin querer; el salto a la ficha sigue ahí como enlace
+  explícito dentro de la hoja.
+- **El guardia de navegación de la hoja compara la RUTA, no un booleano.** El patrón copiado de
+  `sheet-shell.tsx` (`if (!navGuard.current) { navGuard.current = true; return; }`) hacía que la
+  hoja no llegara a verse nunca en `next dev`: el efecto se invoca dos veces con las mismas
+  dependencias (StrictMode) y la segunda pasada encontraba el guardia puesto y cerraba la hoja
+  recién abierta. Y `showModal()` se llama solo si el `<dialog>` no está ya abierto, que es el
+  idioma del resto del repo. Lo mismo puede afectar al editor de sagas: issue #839.
+
+## 2026-08-26 (4) — La columna del tier vuelve, con dos anchos; la retícula pasa a grid fluido
+
+Rectifica la entrada (2) de hoy. La banda superior resolvía el recorte pero cambiaba el dibujo del
+mockup por otro, y no convencía. Dos cambios, uno por cada mitad del problema.
+
+- **La columna de color vuelve, con DOS anchos** (`tierColumnWidth`): 44px con el serif del mockup
+  para S/A/B/C/D, y 84px con rótulo mono pequeño y envuelto en cuanto un nivel tiene nombre. El
+  error original no era la columna: era que su ancho fuera **uno solo** para un campo de texto
+  libre. La banda queda descartada.
+- **El ancho lo decide el TABLERO, no la fila.** Con el ancho por fila, las portadas de cada tier
+  arrancarían en una vertical distinta y la retícula dejaría de leerse como una tabla. Es la misma
+  razón por la que la decisión anterior también era por tablero, aunque el resultado sea otro.
+- **Las portadas pasan de `flex-wrap` con ancho fijo a un grid de columnas fluidas**
+  (`repeat(auto-fill, minmax(48px, 1fr))` + `aspect-[2/3]`). Con el flex, el sobrante de cada línea
+  se quedaba a la derecha como hueco muerto — que es lo que se veía y lo que se pidió arreglar.
+  Ahora las que caben se reparten el ancho exacto.
+- **Coste aceptado y medido:** con la columna ancha, en la fila de un tier caben 4 portadas de
+  52×78 a 360px; en la bandeja «sin clasificar», que no tiene columna, caben 5 de 57×86. La misma
+  portada se dibuja un 10% más pequeña dentro de un tier que en la bandeja. Es el precio de
+  recuperar la columna: esos 84px salen del ancho de las portadas, y no hay forma de tener las dos
+  cosas a 360px.
+- **El rótulo de cuatro líneas puede dejar huérfano el último trozo** (el ")" de "…los
+  entendidos)"). `text-wrap: balance` NO lo arregla aquí — probado: la caja es un flex container y
+  el reparto no llega al texto del `<span>`. Se deja así: se lee, que era el requisito.
+
+## 2026-08-26 (5) — Los tiers van pegados: son una tabla, no tres tarjetas
+
+Cambio de forma sobre la entrada (4). Cada fila era una tarjeta con su borde, su redondeo y 8px de
+aire hasta la siguiente; las tres columnas de color quedaban como tres bloques sueltos en vez de
+como la escala continua que es una tierlist.
+
+- **El borde y el redondeo suben al contenedor del tablero**, y cada fila solo pone su línea de
+  separación (`border-b`, que la última no gasta). Así entre tier y tier hay UNA línea, no dos
+  bordes pegados, y las columnas de color forman una sola franja continua.
+- **El `overflow-hidden` vuelve, pero al contenedor**, que es lo que recorta las esquinas
+  redondeadas de las columnas de color de la primera y la última fila. Es seguro justamente porque
+  la etiqueta ya no depende de él: con la columna de 84px el rótulo cabe envuelto, y el e2e mide
+  que no se sale ni de su caja ni de su fila.
+- **El realce de «soltando aquí» pasa de borde a `outline`.** El borde ahora lo comparten dos
+  filas, así que cambiarle el color a una se lo cambiaba a su vecina; un `outline` no ocupa sitio
+  ni desplaza nada.

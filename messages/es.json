@@ -930,6 +930,7 @@
     "tierlistSelectItem": "Toca una portada para colocarla.",
     "tierlistPickTier": "Elige el tier:",
     "tierlistUnplace": "Quitar",
+    "tierlistItemSheetClose": "Cerrar",
     "pageSubtitle": "Organiza y participa en actividades del club",
     "groupHistory": "Historial · {count}",
     "navOngoing": "En curso",
