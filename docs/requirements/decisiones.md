@@ -1420,3 +1420,30 @@ arrastrar filas históricas de esa obra; lo que no puede es ganar filas nuevas p
   `any` para columnas que no reconoce) pero pierde la única red que detectaría un nombre de
   columna mal escrito antes de producción. El guion de cualquier tarea que añada una columna
   debe incluir este paso; queda también como issue de proceso, #798.
+
+## 2026-08-26 — Notas de voz como comentarios
+
+- **Nota de voz = comentario (3 columnas), no tabla nueva.** `audio_path`/`audio_duration_ms`/
+  `audio_peaks` en `comments`, con CHECK texto-XOR-audio. Todo el aparato social se hereda
+  gratis: hilos, spoiler, fijado, reacciones, notificaciones, RLS de bloqueos, `report_comment`.
+  Construir una tabla `voice_notes` aparte habría duplicado ese aparato entero solo para
+  distinguir un tipo de cuerpo.
+- **Bucket privado + URL firmada de 1 h, primer uso de `createSignedUrls` en el repo.** Sin
+  policies sobre `storage.objects` — ni SELECT ni INSERT para `anon`/`authenticated`, solo
+  service-role. La reproducción respeta bloqueos y privacidad exactamente igual que el
+  comentario que la contiene, porque solo se llega al audio firmando su URL al renderizar el
+  hilo, nunca por acceso directo al objeto.
+- **Los frenos (3 por hilo, no consecutivo, 20/día) viven en la server action, no en un
+  trigger** — a diferencia del tope de reacciones, que sí vive en trigger. La diferencia es que
+  `addVoiceComment` es la ÚNICA vía de escritura de una nota de voz (no hay upsert directo desde
+  cliente contra `comments` con audio), y los frenos consultan agregados por usuario
+  (`count`/`gte created_at`) que un trigger de fila no puede mirar sin una consulta extra por
+  INSERT; hacerlo en la action evita esa vuelta y mantiene la lógica junto a la validación de
+  tamaño/duración/mime que de todos modos vive ahí.
+- **Audio inmutable: sin `grant update` en las 3 columnas de audio.** Una nota de voz publicada
+  no se edita (el MVP no edita audio, spec §9); igual que `passes.dropped_reason*`, un hueco de
+  UPDATE es intencionado y queda documentado en DRIFT-CHECK superficie 6, no un olvido.
+- **Path de Storage `<user_id>/<uuid>.<ext>`, desviación deliberada de la spec** (que pedía
+  `<comment_id>.<ext>`): el `id` del comentario no existe hasta el INSERT y la secuencia manda
+  subir el objeto ANTES (validar → subir → insertar; si el insert falla, se borra el objeto).
+  Un `uuid` fresco da la misma garantía de no-colisión sin depender de un id que aún no existe.
