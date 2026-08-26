@@ -1,7 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { revalidateFeed } from "@/lib/reactivity/revalidate";
+import { deleteVoiceNote } from "@/lib/storage/voice-notes";
 import type { AnchorType, AnchorRef } from "@/lib/catalog/anchor";
 import { notifyMentions } from "./notify-mentions";
 import { notifyFollowersOfPost } from "./notify-followers";
@@ -234,6 +236,42 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "unauthenticated" };
 
+    // Recupera los audio_path de TODOS los comentarios colgados de este post
+    // ANTES de borrarlo -- la cascada de Postgres se lleva la fila de
+    // `comments` pero no el objeto de Storage (mismo motivo que deleteComment
+    // en interaction-actions.ts), y tras el delete el interaction_target del
+    // post ya no resuelve para poder filtrar. Los comentarios anidados
+    // (respuestas) cuelgan del MISMO interaction_target que la raíz -- un
+    // solo SELECT los trae a todos. Service-role: esto es limpieza de
+    // sistema, no una lectura que la RLS del viewer deba decidir.
+    const serviceRole = createServiceRoleClient();
+    let audioPaths: string[] = [];
+    try {
+      const { data: target, error: targetError } = await serviceRole
+        .from("interaction_targets")
+        .select("id")
+        .eq("kind", "post")
+        .eq("source_id", postId)
+        .maybeSingle();
+      if (targetError) throw targetError;
+      if (target) {
+        const { data: comments, error: commentsError } = await serviceRole
+          .from("comments")
+          .select("audio_path")
+          .eq("interaction_target_id", target.id)
+          .not("audio_path", "is", null);
+        if (commentsError) throw commentsError;
+        audioPaths = (comments ?? [])
+          .map((c) => c.audio_path)
+          .filter((path): path is string => path != null);
+      }
+    } catch (lookupError) {
+      // Best-effort: un fallo aquí no debe impedir borrar el post. Deja
+      // objetos huérfanos en el peor caso (ver issue de barrido periódico),
+      // nunca bloquea al usuario.
+      console.error("deletePost: audio_path lookup failed", lookupError);
+    }
+
     const { data, error } = await supabase
       .from("posts")
       .delete()
@@ -241,6 +279,10 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) return { ok: false, error: "not_allowed_or_missing" };
+
+    for (const path of audioPaths) {
+      await deleteVoiceNote(path);
+    }
 
     revalidateFeed();
     return { ok: true };

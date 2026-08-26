@@ -876,6 +876,9 @@ export type Database = {
       }
       comments: {
         Row: {
+          audio_duration_ms: number | null
+          audio_path: string | null
+          audio_peaks: number[] | null
           author_id: string
           body: string
           created_at: string
@@ -887,6 +890,9 @@ export type Database = {
           pinned: boolean
         }
         Insert: {
+          audio_duration_ms?: number | null
+          audio_path?: string | null
+          audio_peaks?: number[] | null
           author_id: string
           body: string
           created_at?: string
@@ -898,6 +904,9 @@ export type Database = {
           pinned?: boolean
         }
         Update: {
+          audio_duration_ms?: number | null
+          audio_path?: string | null
+          audio_peaks?: number[] | null
           author_id?: string
           body?: string
           created_at?: string

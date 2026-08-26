@@ -5,6 +5,7 @@ import {
   commentContext,
   EXCERPT_MAX_CHARS,
   SUBJECT_MAX_CHARS,
+  voiceCommentContext,
 } from "./notification-context";
 
 describe("buildExcerpt", () => {
@@ -96,5 +97,14 @@ describe("commentContext", () => {
 
   it("de un cuerpo vacío saca un contexto vacío, no un extracto vacío", () => {
     expect(commentContext("   ", false)).toEqual({});
+  });
+});
+
+describe("voiceCommentContext", () => {
+  it("sin spoiler: extracto fijo de nota de voz", () => {
+    expect(voiceCommentContext(false)).toEqual({ excerpt: "🎙️ Nota de voz" });
+  });
+  it("spoiler: se marca y no se dice nada más (mismo criterio que commentContext)", () => {
+    expect(voiceCommentContext(true)).toEqual({ spoiler: true });
   });
 });

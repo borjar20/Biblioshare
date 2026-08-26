@@ -2,29 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { deleteVoiceNote } from "@/lib/storage/voice-notes";
 import { revalidateInteraction } from "@/lib/reactivity/revalidate";
 import { notify } from "./notifications";
 import { notifyMentions } from "./notify-mentions";
 import { isAllowedEmoji } from "./emoji-catalog";
 import { commentContext } from "./notification-context";
-
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-async function getInteractionTarget(
-  supabase: SupabaseServerClient,
-  interactionTargetId: string,
-) {
-  const { data, error } = await supabase
-    .from("interaction_targets")
-    .select(
-      "id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
-    )
-    .eq("id", interactionTargetId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) throw new Error("interaction_target_not_found");
-  return data;
-}
+import { getInteractionTarget } from "./interaction-target-gate";
 
 export async function toggleReaction(
   interactionTargetId: string,
@@ -283,8 +267,20 @@ export async function deleteComment(commentId: string): Promise<CommentActionRes
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "unauthenticated" };
 
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    // `.select` con RETURNING: distingue 0 filas (RLS bloqueó) de éxito — el
+    // delete sin select devolvía ok:true aunque no borrara nada — y trae el
+    // audio_path para limpiar Storage (la cascada de Postgres no lo hace).
+    const { data: deleted, error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId)
+      .select("id, audio_path");
     if (error) throw error;
+    if (!deleted || deleted.length === 0) {
+      return { ok: false, error: "not_allowed_or_missing" };
+    }
+    const audioPath = deleted[0]?.audio_path;
+    if (audioPath) await deleteVoiceNote(audioPath);
     revalidateInteraction();
     return { ok: true };
   } catch (e) {

@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-26 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»]**
+> **[Canónico · verificado contra dev el 2026-08-26 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -1057,6 +1057,46 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 > unicidad; los NULL siguen distintos). El código de lectura (`PostThread`, feed → `PostSummary`) va
 > en la rama `feat/posts-spec2-compartir`. Diferidos: 500 anon de `/post/[id]` (#561, preexistente),
 > copy del aviso de respuesta (#562). Ver `decisiones.md` (2026-08-10).
+>
+> **Delta del 2026-08-26 (notas de voz como comentarios — spec
+> `docs/superpowers/specs/2026-08-26-respuestas-nota-de-voz-design.md`): aplicado y verificado
+> en DEV y PROD el 2026-08-26** (objetos reales + superficie 6 en ambos), migración
+> `20260881_comments_voice_notes.sql` (renumerada desde 20260878 al fusionar: main ocupó
+> 20260878-80 con el alta manual y afines). `comments` gana tres columnas —`audio_path text null`,
+> `audio_duration_ms integer null`, `audio_peaks smallint[] null`— porque **una nota de voz es
+> un comentario, no una tabla nueva**: hereda hilos, spoiler, fijado, reacciones,
+> notificaciones, RLS de bloqueos y `report_comment` gratis.
+>
+> - **CHECK texto-XOR-audio.** `comments_body_canonical` se reescribe: o `body` canónico
+>   (`btrim`, 1..2000) sin audio, o `audio_path is not null` con `body = ''` — nunca ambos,
+>   nunca ninguno. Nuevo constraint `comments_audio_canonical`: con audio, `audio_path` no nulo
+>   y `= btrim(audio_path)` (el CHECK no prohíbe el vacío tras el trim — solo exige que sea su
+>   propia versión recortada; es la action la que solo escribe paths reales, nunca el CHECK
+>   quien lo garantiza), `audio_duration_ms` entre 2000 y 60000 (2 s-60 s) y `audio_peaks` con
+>   entre 0 y 64 elementos.
+> - **Bucket privado `voice-notes`** (`public=false`, `file_size_limit=2097152` = 2 MB,
+>   `allowed_mime_types` `audio/webm`+`audio/mp4`). **Sin policies sobre `storage.objects`** —
+>   ni SELECT ni INSERT para `anon`/`authenticated`; solo service-role. La subida
+>   (`uploadVoiceNote`) y la lectura en lote (`signVoiceNoteUrls`, TTL 3600 s — primer uso de
+>   `createSignedUrls` en el repo) van con el cliente de service-role desde la server action,
+>   nunca con el cliente de la petición.
+> - **Grants por columna (DRIFT-CHECK superficie 6, #375): las 3 columnas de audio quedan SIN
+>   `grant update`, a propósito.** Una nota de voz publicada es inmutable — el MVP no edita
+>   audio (spec §9, fuera de alcance). `comments` no tiene grants finos de INSERT (es de tabla
+>   completa), así que las 3 columnas nuevas son insertables sin tocar nada.
+> - **Snapshot de reporte.** `private.prepare_content_report` se recrea (misma firma, mismo
+>   `search_path`) para que la rama `when 'comment'` incluya `audio_path` y
+>   `audio_duration_ms` en el `jsonb`: sin esto, reportar una nota de voz llegaría con snapshot
+>   vacío y el moderador no podría escuchar el audio si el autor borra el comentario después.
+> - **Path de Storage `<user_id>/<uuid>.<ext>`, desviación deliberada de la spec** (que pedía
+>   `<comment_id>.<ext>`): el `id` del comentario no existe hasta el INSERT y la secuencia
+>   manda subir el objeto ANTES (validar → subir objeto → insertar fila; si el insert falla, se
+>   borra el objeto — cero huérfanos). Un `uuid` fresco da la misma garantía de no-colisión sin
+>   depender de un id que todavía no existe.
+>
+> Verificado en dev contra objetos reales: `comments` → 12 columnas, INSERT completo (12),
+> UPDATE en 3 (`body`, `is_spoiler`, `edited_at` — las mismas de antes del delta; las columnas
+> de audio no suman UPDATE). Detalle de la decisión en `decisiones.md` (2026-08-26).
 
 Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
 La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de

@@ -80,6 +80,11 @@ con i18n (`next-intl`) desde el inicio.
   pensamientos con ancla; feed de Inicio ordenado por publicación con cursor.
 - **Interacciones**: reacciones multi-emoji, comentarios con hilos y pin,
   menciones @usuario con gate de visibilidad, deep-link `#c-<id>`.
+- **Notas de voz**: comentario de audio (grabadora inline con pausa/preview/cancelar,
+  cap 60 s) en posts de club, reseñas y pensamientos; chip reproductor con velocidad y
+  waveform, bucket privado con URL firmada; hereda hilos, reacciones, notificaciones,
+  bloqueos y moderación del comentario de texto. BD migrada en dev y prod; el wrapper
+  Android necesita release nueva del APK (permiso `RECORD_AUDIO`, issue #842).
 - **Moderación**: bloqueos bidireccionales (`user_blocks`), reportes
   (`content_reports`) con cola de revisión.
 - **Notificaciones**: in-app (`notifications`, campana) + push unificado Web

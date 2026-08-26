@@ -58,6 +58,7 @@ export function CommentComposer({
   showFormatting,
   busy = false,
   compact = false,
+  micSlot,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -73,6 +74,10 @@ export function CommentComposer({
   showFormatting?: boolean;
   busy?: boolean;
   compact?: boolean;
+  // Mic de nota de voz (Tarea 12): con el campo vacío se pinta EN LUGAR de
+  // «Enviar» (spec §3: el mic vive donde Enviar); al teclear, Enviar lo
+  // sustituye. `undefined` en el composer de EDICIÓN (nunca lleva mic).
+  micSlot?: React.ReactNode;
 }) {
   const t = useTranslations("social");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -172,14 +177,18 @@ export function CommentComposer({
               {t("cancel")}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={busy || !value.trim()}
-            className={`shrink-0 text-xs font-medium text-accent disabled:opacity-50${compact ? " px-1 py-1" : ""}`}
-          >
-            {submitLabel}
-          </button>
+          {micSlot && !value.trim() ? (
+            micSlot
+          ) : (
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={busy || !value.trim()}
+              className={`shrink-0 text-xs font-medium text-accent disabled:opacity-50${compact ? " px-1 py-1" : ""}`}
+            >
+              {submitLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

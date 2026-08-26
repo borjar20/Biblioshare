@@ -68,6 +68,7 @@ function comment(over: Partial<InteractionComment> = {}): InteractionComment {
     isSpoiler: false,
     pinned: false,
     edited: false,
+    audio: null,
     reactionCount: 0,
     viewerReacted: false,
     reactions: emptyReactions(),

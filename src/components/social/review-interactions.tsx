@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { loginHref } from "@/lib/auth/safe-next";
-import { HeartIcon, CommentIcon } from "@/components/ui/icons";
+import { HeartIcon, CommentIcon, MicIcon } from "@/components/ui/icons";
 import { TimeAgo } from "@/components/ui/time-ago";
 import {
   toggleReaction,
@@ -22,6 +22,8 @@ import {
 import { buildCommentThreads, type CommentSort } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
+import { voiceGate } from "@/lib/voice/voice-note-limits";
+import { markVoiceTooltipSeen, useVoiceTooltipVisible } from "@/lib/voice/voice-tooltip";
 import { useMentionAutocomplete } from "./use-mention-autocomplete";
 import { RichTextView } from "./rich-text-view";
 import { SpoilerGate } from "./spoiler-gate";
@@ -29,6 +31,11 @@ import { UserAvatar } from "./user-avatar";
 import { CommentActions } from "./comment-actions";
 import { CommentComposer } from "./comment-composer";
 import { ReactionBar } from "./reaction-bar";
+import { VoiceNoteChip } from "./voice-note-chip";
+import { VoiceMiniBar } from "./voice-mini-bar";
+import { VoiceRecorder } from "./voice-recorder";
+import { PendingVoiceNoteRow } from "./pending-voice-note";
+import { useVoiceNoteSubmit } from "./use-voice-note-submit";
 
 // Like + hilo enriquecido de comentarios bajo una reseña (EPIC-05, Bloque B,
 // SD-3 + reestructura Tarea 7). El estado real deriva de las props que el
@@ -51,6 +58,7 @@ export function ReviewInteractions({
   showTargetReaction = true,
   clubId,
   knownUsernames = [],
+  voiceEnabled = false,
 }: {
   interactionTargetId: string;
   reactionCount: number;
@@ -76,6 +84,14 @@ export function ReviewInteractions({
   // cada comentario. Opcional: los callers que aún no la resuelven (fuera
   // del alcance de la Tarea 7) simplemente no linkifican, sin romper nada.
   knownUsernames?: string[];
+  // Gate de superficie (spec §1 de notas de voz): el mic SOLO en posts de
+  // club, reseñas de pase y pensamientos. Pases/registros automáticos y
+  // episodios (y checkpoints/rondas, que cuelgan de la misma superficie)
+  // quedan fuera -- default false, cada caller lo enciende a propósito. Con
+  // false no se pinta mic/VoiceRecorder/tooltip/VoiceMiniBar; el hook
+  // useVoiceNoteSubmit sigue montado (inofensivo, nunca se le llama a
+  // publish) para no bifurcar el componente en dos.
+  voiceEnabled?: boolean;
 }) {
   const t = useTranslations("social");
   const { state, isPending, failed, run } = useOptimisticAction({
@@ -91,6 +107,15 @@ export function ReviewInteractions({
   const [rootDraft, setRootDraft] = useState("");
   const [replyDraft, setReplyDraft] = useState("");
   const [editDraft, setEditDraft] = useState("");
+  // "root" = el composer de raíz está grabando; un id = el composer de
+  // respuesta de ESE hilo (aplanado a 2 niveles, Tarea 12) está grabando. El
+  // de EDICIÓN nunca lleva mic.
+  const [voiceMode, setVoiceMode] = useState<"root" | string | null>(null);
+  // Bubble de "ahora puedes responder con voz" solo la primera vez (spec §3),
+  // hidratación-segura: useSyncExternalStore con getServerSnapshot fijo en
+  // false (issue #838, ver src/lib/voice/voice-tooltip.ts).
+  const tooltipVisible = useVoiceTooltipVisible();
+  const voice = useVoiceNoteSubmit(interactionTargetId);
   const mention = useMentionAutocomplete({
     value: rootDraft,
     onChange: setRootDraft,
@@ -119,6 +144,49 @@ export function ReviewInteractions({
 
   const threads = buildCommentThreads(state.comments, sort);
 
+  // Pendientes cuentan como audios propios para el gate del cliente: evita
+  // ráfagas mientras una subida sigue en vuelo (spec §7). Es del HILO ENTERO
+  // (state.comments, no solo la rama que se ve), igual que en post-thread.
+  const voiceGateState = voiceGate([
+    ...state.comments.map((c) => ({ isOwn: c.isOwn, hasAudio: c.audio != null, createdAt: c.createdAt })),
+    ...voice.pending.map(() => ({ isOwn: true, hasAudio: true, createdAt: "9999" })),
+  ]);
+
+  function renderMicButton(mode: "root" | string) {
+    if (!voiceEnabled) return null;
+    return (
+      <span className="relative shrink-0">
+        <button
+          type="button"
+          data-testid="voice-mic"
+          aria-label={t("voice.record")}
+          title={
+            voiceGateState.allowed
+              ? undefined
+              : t(voiceGateState.reason === "thread_limit" ? "voice.limitThread" : "voice.limitConsecutive")
+          }
+          disabled={!voiceGateState.allowed}
+          onClick={() => {
+            setVoiceMode(mode);
+            markVoiceTooltipSeen();
+          }}
+          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-surface-muted hover:text-foreground disabled:opacity-40"
+        >
+          <MicIcon className="h-4 w-4" />
+        </button>
+        {tooltipVisible && (
+          <button
+            type="button"
+            onClick={markVoiceTooltipSeen}
+            className="absolute bottom-full right-0 z-10 mb-1.5 w-max max-w-[180px] rounded-lg bg-foreground px-2 py-1 text-left text-[11px] font-medium text-background shadow-lg"
+          >
+            {t("voice.firstTimeTip")}
+          </button>
+        )}
+      </span>
+    );
+  }
+
   // Un thunk de `run` debe RECHAZAR para que useOptimisticAction revierta; las
   // acciones ahora resuelven {ok:false} en vez de lanzar, así que lo traducimos.
   const throwIfFailed = (res: { ok: true } | { ok: false; error: string }) => {
@@ -144,6 +212,7 @@ export function ReviewInteractions({
       isSpoiler: spoiler,
       pinned: false,
       edited: false,
+      audio: null,
       reactionCount: 0,
       viewerReacted: false,
       reactions: emptyReactions(),
@@ -167,6 +236,10 @@ export function ReviewInteractions({
     // Prefija @autor cuando respondes a alguien distinto de ti y su username
     // existe (si no hay username no se puede mencionar, se deja vacío).
     setReplyDraft(!c.isOwn && c.authorUsername ? `@${c.authorUsername} ` : "");
+    // Cambiar de objetivo desarma la grabadora: si voiceMode seguía apuntando
+    // a OTRO hilo (o a "root"), montaría y grabaría sin que el usuario tocara
+    // el mic (issue de review, Tarea 12 finding 1).
+    setVoiceMode(null);
   }
 
   function submitReply(rootId: string) {
@@ -184,6 +257,7 @@ export function ReviewInteractions({
     setReplyingTo(null);
     setEditingId(c.id);
     setEditDraft(c.body);
+    setVoiceMode(null);
   }
 
   function submitEdit(id: string) {
@@ -206,7 +280,7 @@ export function ReviewInteractions({
 
   function renderComment(c: InteractionComment, rootId: string, isReply: boolean) {
     return (
-      <div key={c.id} className="flex items-start gap-2 text-xs">
+      <div key={c.id} id={`c-${c.id}`} className="flex items-start gap-2 text-xs">
         <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={isReply ? 20 : 24} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex items-center gap-1.5">
@@ -241,7 +315,15 @@ export function ReviewInteractions({
           ) : (
             <>
               <div className="break-words text-muted-foreground">
-                {c.isSpoiler ? (
+                {c.audio ? (
+                  c.isSpoiler ? (
+                    <SpoilerGate>
+                      <VoiceNoteChip commentId={c.id} author={c.author} audio={c.audio} />
+                    </SpoilerGate>
+                  ) : (
+                    <VoiceNoteChip commentId={c.id} author={c.author} audio={c.audio} />
+                  )
+                ) : c.isSpoiler ? (
                   <SpoilerGate>
                     <RichTextView text={c.body} knownUsernames={knownUsernames} />
                   </SpoilerGate>
@@ -355,6 +437,7 @@ export function ReviewInteractions({
 
           {threads.map((thread) => {
             const repliesOpen = openReplies.has(thread.root.id);
+            const threadPending = voice.pending.filter((p) => p.parentId === thread.root.id);
             return (
               <div key={thread.root.id} className="flex flex-col gap-2">
                 {renderComment(thread.root, thread.root.id, false)}
@@ -378,21 +461,47 @@ export function ReviewInteractions({
                   </div>
                 )}
 
+                {voiceEnabled && threadPending.length > 0 && (
+                  <div className="ml-4 flex flex-col gap-2 border-l border-border pl-3">
+                    {threadPending.map((note) => (
+                      <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
+                    ))}
+                  </div>
+                )}
+
                 {replyingTo === thread.root.id && (
                   <div className="ml-8">
-                    <CommentComposer
-                      value={replyDraft}
-                      onChange={setReplyDraft}
-                      onSubmit={() => submitReply(thread.root.id)}
-                      onCancel={() => {
-                        setReplyingTo(null);
-                        setReplyDraft("");
-                      }}
-                      submitLabel={t("reply")}
-                      placeholder={t("writeReply")}
-                      compact
-                      busy={isPending}
-                    />
+                    {voiceEnabled && voiceMode === thread.root.id ? (
+                      <VoiceRecorder
+                        onCancel={() => setVoiceMode(null)}
+                        onPublish={(rec) => {
+                          voice.publish(rec, { parentId: thread.root.id, isSpoiler: false });
+                          setVoiceMode(null);
+                          // Espejo de lo que hace submitReply() con el camino de
+                          // texto: cierra el contexto de respuesta y abre el
+                          // hilo para que la nota (pendiente y luego real) se
+                          // vea (finding 2).
+                          setReplyingTo(null);
+                          setOpenReplies((prev) => new Set(prev).add(thread.root.id));
+                        }}
+                      />
+                    ) : (
+                      <CommentComposer
+                        value={replyDraft}
+                        onChange={setReplyDraft}
+                        onSubmit={() => submitReply(thread.root.id)}
+                        onCancel={() => {
+                          setReplyingTo(null);
+                          setReplyDraft("");
+                          setVoiceMode(null);
+                        }}
+                        submitLabel={t("reply")}
+                        placeholder={t("writeReply")}
+                        compact
+                        busy={isPending}
+                        micSlot={renderMicButton(thread.root.id)}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -400,21 +509,42 @@ export function ReviewInteractions({
           })}
 
           <div className="relative">
-            <CommentComposer
-              value={rootDraft}
-              onChange={setRootDraft}
-              onSubmit={submitRoot}
-              onInput={mention.onInput}
-              onKeyDown={mention.onKeyDown}
-              dropdown={mention.dropdown}
-              submitLabel={t("postComment")}
-              placeholder={t("writeComment")}
-              isSpoiler={rootSpoiler}
-              onToggleSpoiler={() => setRootSpoiler((v) => !v)}
-              showFormatting
-              busy={isPending}
-            />
+            {voiceEnabled && voiceMode === "root" ? (
+              <VoiceRecorder
+                onCancel={() => setVoiceMode(null)}
+                onPublish={(rec) => {
+                  voice.publish(rec, { parentId: null, isSpoiler: rootSpoiler });
+                  setVoiceMode(null);
+                  setRootSpoiler(false);
+                }}
+              />
+            ) : (
+              <CommentComposer
+                value={rootDraft}
+                onChange={setRootDraft}
+                onSubmit={submitRoot}
+                onInput={mention.onInput}
+                onKeyDown={mention.onKeyDown}
+                dropdown={mention.dropdown}
+                submitLabel={t("postComment")}
+                placeholder={t("writeComment")}
+                isSpoiler={rootSpoiler}
+                onToggleSpoiler={() => setRootSpoiler((v) => !v)}
+                showFormatting
+                busy={isPending}
+                micSlot={renderMicButton("root")}
+              />
+            )}
           </div>
+
+          {voiceEnabled &&
+            voice.pending
+              .filter((p) => p.parentId === null)
+              .map((note) => (
+                <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
+              ))}
+
+          {voiceEnabled && <VoiceMiniBar />}
         </div>
       )}
       {failed && (
