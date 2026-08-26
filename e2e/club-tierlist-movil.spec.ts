@@ -9,8 +9,10 @@ import { test, expect, type Page } from "@playwright/test";
 //      `overflow-hidden` de la fila: se leía media palabra, sin forma de saber
 //      qué nivel era. Ahora, si alguna etiqueta no cabe, TODAS las filas pasan
 //      a banda superior a lo ancho (`layoutForTiers`).
-//   2. Las portadas medían 34×51 y no se distinguía una de otra. Ahora son
-//      44×66 y la seleccionada crece (~70×106) para poder verla.
+//   2. Las portadas medían 34×51 y no se distinguía una de otra. Ahora la
+//      retícula son miniaturas de 56×84 y tocar una abre una HOJA con la
+//      portada grande, el tipo, el título y los botones de tier -- que antes
+//      vivían en una fila al pie del tablero, lejos de lo que colocaban.
 //
 // Ninguna aserción mira colores: miran RECTÁNGULOS. Es lo único que distingue
 // "el layout creció" de "el contenido se salió", que en una captura se parecen
@@ -227,7 +229,7 @@ test("tierlist en móvil: la etiqueta del nivel se lee entera y la portada se pu
     // carga propio), y ese cartel comparte pantalla con el resto de la ficha.
     await expect(page.getByText(/Sin clasificar/)).toBeVisible();
     await expect(page.getByText(LARGA).first()).toBeVisible();
-    await expect(page.locator("button[aria-pressed]").first()).toBeVisible();
+    await expect(page.getByTestId("tierlist-cover").first()).toBeVisible();
 
     // ── 1. Ninguna etiqueta de nivel queda recortada ──
     expect(
@@ -241,33 +243,58 @@ test("tierlist en móvil: la etiqueta del nivel se lee entera y la portada se pu
     );
     expect(lateral, "el tablero no puede añadir scroll horizontal a 360px").toBeLessThanOrEqual(1);
 
-    // ── 3. La portada mide lo que se decidió, y crece al seleccionarla ──
+    // ── 3. La retícula es miniatura, y la hoja es donde se ve la obra ──
     //
-    // El zoom es la respuesta a "a este tamaño no distingo una portada de
-    // otra": sin él hay que elegir entre ver la portada y ver el tablero. Se
-    // mide el rectángulo REAL porque crece con la propiedad `scale`, que no
-    // cambia la caja de layout -- un test que mirase `offsetWidth` no vería nada.
-    const portada = page.locator("button[aria-pressed]").first();
-    const antes = (await portada.boundingBox())!;
-    expect(Math.round(antes.width)).toBe(44);
-    expect(Math.round(antes.height)).toBe(66);
+    // Las dos mitades de la misma decisión: la portada del tablero puede seguir
+    // siendo pequeña PORQUE tocarla abre una hoja donde se ve grande y con el
+    // título escrito. Medir solo una de las dos dejaría pasar la regresión que
+    // importa (portada diminuta y nada que la explique).
+    const portada = page.getByTestId("tierlist-cover").first();
+    const mini = (await portada.boundingBox())!;
+    expect(Math.round(mini.width)).toBe(56);
+    expect(Math.round(mini.height)).toBe(84);
 
     await portada.click();
-    await expect(portada).toHaveAttribute("aria-pressed", "true");
-    await page.waitForTimeout(300); // la transición de `scale`
-    const despues = (await portada.boundingBox())!;
+    const hoja = page.locator("dialog[open]");
+    await expect(hoja).toBeVisible();
+    // El título de la obra está escrito en la hoja: es lo que faltaba para
+    // saber qué se estaba colocando.
+    const titulo = await hoja.locator("b").first().textContent();
+    expect(titulo?.trim().length, "la hoja tiene que decir de qué obra es").toBeGreaterThan(0);
+    const grande = (await hoja.locator("img").first().boundingBox())!;
     expect(
-      despues.width,
-      "la portada seleccionada tiene que verse más grande que sin seleccionar",
-    ).toBeGreaterThan(antes.width * 1.4);
+      grande.height,
+      "la portada de la hoja tiene que ser MUCHO mayor que la miniatura",
+    ).toBeGreaterThan(mini.height * 2);
 
-    // ── 4. La tierlist clásica conserva la columna de color ──
+    // ── 4. Se coloca desde la hoja, y al colocar se cierra ──
+    //
+    // Antes había que mirar arriba (qué seleccioné) y tocar abajo (dónde va).
+    // Si los botones de tier volvieran a salir de la hoja, esto se pone rojo.
+    await hoja.getByRole("button", { name: "Perezón histórico" }).click();
+    await expect(hoja).toBeHidden();
+    await expect(
+      page.getByText(/Sin clasificar · 7/),
+      "el ítem colocado sale de la bandeja",
+    ).toBeVisible();
+
+    // ── 5. Se puede deseleccionar sin colocar nada ──
+    //
+    // Cerrar la hoja NO puede dejar el ítem colocado ni el tablero en un estado
+    // "a medias": abrir y cerrar es una operación sin efecto.
+    await page.getByTestId("tierlist-cover").first().click();
+    await expect(page.locator("dialog[open]")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("dialog[open]")).toBeHidden();
+    await expect(page.getByText(/Sin clasificar · 7/)).toBeVisible();
+
+    // ── 6. La tierlist clásica conserva la columna de color ──
     //
     // El arreglo cambia el layout SOLO cuando hace falta. Si "S/A/B" acabara
     // también en banda, el dibujo del mockup se habría perdido por el camino.
     await page.goto(`/club/${club.slug}/actividad/${clasica}`);
     await expect(page.getByText(/Sin clasificar/)).toBeVisible();
-    await expect(page.locator("button[aria-pressed]").first()).toBeVisible();
+    await expect(page.getByTestId("tierlist-cover").first()).toBeVisible();
     expect(await etiquetasRecortadas(page, ["S", "A", "B"]), "S/A/B caben de sobra").toEqual([]);
 
     const columna = await page.evaluate(() => {

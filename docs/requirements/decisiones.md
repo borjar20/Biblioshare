@@ -1831,3 +1831,34 @@ distinguía una portada de otra.
   comprobó que **falla** contra el código anterior («se sale de su fila» para las dos etiquetas
   largas) antes de darlo por bueno. Cubre también el camino contrario: con S/A/B la columna de
   44 px tiene que seguir ahí.
+
+## 2026-08-26 (3) — La retícula de la tierlist es un índice; la hoja es donde se ve la obra
+
+Continuación de la entrada anterior, con el tablero ya arreglado a 360 px. Dos peticiones que
+resultaron ser la misma decisión.
+
+- **Agrandar la miniatura no era la respuesta.** «A 44×66 aún cuesta reconocer la portada» y
+  «quiero poder ampliarla» empujan en la misma dirección, pero subir el tamaño de la retícula
+  obliga a elegir entre ver la obra y ver el tablero: a 360 px cada 10 px de portada son una
+  columna menos. La retícula pasa a 56×84 y se queda ahí — es un ÍNDICE, no un escaparate — y
+  tocar una portada abre una hoja donde la obra se ve grande (46vh), con su tipo y su título
+  escritos. Reconocer una obra deja de depender de la resolución de una miniatura.
+- **Los botones de tier se mudan a la hoja.** Vivían en una fila al pie del tablero: obligaba a
+  mirar arriba (qué seleccioné) y tocar abajo (dónde va), y con la portada diminuta ni siquiera se
+  sabía lo primero. Ahora el nivel se elige junto a la portada que se está colocando, y elegirlo
+  cierra la hoja. La fila del pie desaparece; queda solo el rótulo «Toca una portada para
+  colocarla», que es lo único que aportaba cuando no había nada seleccionado.
+- **El nivel actual se marca con `aria-pressed`, no deshabilitándolo.** Deshabilitar el nivel donde
+  ya está el ítem le quita al lector la única pista de dónde estaba si se equivoca de destino.
+- **Cerrar la hoja deselecciona, y volver a tocar la portada también.** «Seleccionado» ya no es un
+  estado que sobreviva a la interacción: o colocas, o cierras. Antes una portada se quedaba marcada
+  indefinidamente sin decir para qué.
+- **En tableros ajenos es la misma hoja sin botones.** El gesto significa lo mismo en los dos
+  tableros y no te saca de la actividad sin querer; el salto a la ficha sigue ahí como enlace
+  explícito dentro de la hoja.
+- **El guardia de navegación de la hoja compara la RUTA, no un booleano.** El patrón copiado de
+  `sheet-shell.tsx` (`if (!navGuard.current) { navGuard.current = true; return; }`) hacía que la
+  hoja no llegara a verse nunca en `next dev`: el efecto se invoca dos veces con las mismas
+  dependencias (StrictMode) y la segunda pasada encontraba el guardia puesto y cerraba la hoja
+  recién abierta. Y `showModal()` se llama solo si el `<dialog>` no está ya abierto, que es el
+  idioma del resto del repo. Lo mismo puede afectar al editor de sagas: issue #839.

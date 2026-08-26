@@ -19,6 +19,7 @@ import { layoutForTiers, type TierlistView } from "@/lib/clubs/activities/tierli
 import { UserAvatar } from "@/components/social/user-avatar";
 import type { ActivityLayoutProps } from "@/components/clubs/activity-layout";
 import { TierRow } from "./tier-row";
+import { TierlistItemSheet } from "./tierlist-item-sheet";
 
 const UNPLACED = "unplaced";
 
@@ -125,6 +126,18 @@ export function TierlistBoard({
   const itemByKey = new Map(activity.items.map((i) => [`${i.itemType}:${i.itemId}`, i]));
   const itemsOf = (keys: string[]): ActivityItem[] =>
     keys.map((k) => itemByKey.get(k)).filter((i): i is ActivityItem => i !== undefined);
+
+  // Portada tocada = hoja abierta. `selectedKey` sigue siendo el estado porque
+  // el arrastre y el teclado lo comparten, pero ya no hay "selección" que dure
+  // más que la hoja: cerrarla (✕, Escape, fondo) deselecciona.
+  const selectedItem = selectedKey ? (itemByKey.get(selectedKey) ?? null) : null;
+  // Toggle: volver a tocar la misma portada la deselecciona. Con la hoja abierta
+  // el fondo es `inert` y no llega el segundo toque, pero el arrastre y el
+  // teclado sí pasan por aquí, y "seleccionar" tiene que poder deshacerse.
+  const toggle = (key: string) => setSelectedKey((prev) => (prev === key ? null : key));
+  const currentTierOf = (key: string): string | null =>
+    view.tiers.find((tier) => (board.itemKeysByTier[tier.label] ?? []).includes(key))?.label ??
+    null;
 
   // Mueve un ítem a un tier (o a la bandeja) y persiste. Optimista con rollback: si la escritura
   // falla, se restaura el estado anterior.
@@ -234,7 +247,7 @@ export function TierlistBoard({
                   items={itemsOf(board.itemKeysByTier[tier.label] ?? [])}
                   editable={editable}
                   selectedKey={selectedKey}
-                  onSelect={setSelectedKey}
+                  onSelect={toggle}
                   layout={rowLayout}
                 />
               ))}
@@ -250,45 +263,29 @@ export function TierlistBoard({
               items={itemsOf(board.unplacedItemKeys)}
               editable={editable}
               selectedKey={selectedKey}
-              onSelect={setSelectedKey}
+              onSelect={toggle}
             />
           </DndContext>
 
-          {/* Camino táctil y accesible: seleccionas una portada y eliges tier aquí. */}
           {editable && (
-            <div className="flex flex-col gap-1">
-              <p className="text-[11px] text-muted-foreground">
-                {selectedKey ? t("tierlistPickTier") : t("tierlistSelectItem")}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {view.tiers.map((tier) => (
-                  <button
-                    key={tier.label}
-                    type="button"
-                    disabled={!selectedKey}
-                    onClick={() => selectedKey && move(selectedKey, tier.label)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs text-foreground hover:bg-surface-muted disabled:opacity-40"
-                  >
-                    {tier.color && (
-                      <span
-                        aria-hidden
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: tier.color }}
-                      />
-                    )}
-                    {tier.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  disabled={!selectedKey}
-                  onClick={() => selectedKey && move(selectedKey, UNPLACED)}
-                  className="rounded-md border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-surface-muted disabled:opacity-40"
-                >
-                  {t("tierlistUnplace")}
-                </button>
-              </div>
-            </div>
+            <p className="text-[11px] text-muted-foreground">{t("tierlistSelectItem")}</p>
+          )}
+
+          {/* Camino táctil y accesible: tocas una portada y la hoja trae a la vez
+              la portada grande (para saber QUÉ estás colocando) y los botones de
+              tier (para colocarlo sin buscar otro control). Antes esos botones
+              vivían en una fila al pie del tablero: obligaba a mirar arriba y
+              tocar abajo, y con la portada a 34px ni siquiera se sabía qué se
+              había seleccionado. */}
+          {selectedItem && (
+            <TierlistItemSheet
+              item={selectedItem}
+              tiers={view.tiers}
+              currentTier={currentTierOf(selectedKey!)}
+              editable={editable}
+              onPlace={(tier) => move(selectedKey!, tier ?? UNPLACED)}
+              onClose={() => setSelectedKey(null)}
+            />
           )}
         </div>
       }

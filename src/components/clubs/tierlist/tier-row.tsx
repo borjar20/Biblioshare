@@ -17,11 +17,10 @@ import { TierlistItem } from "./tierlist-item";
 // devuelve en `over`. La bandeja usa variant="pool": caja punteada sin etiqueta
 // (su rótulo es un eyebrow del tablero).
 //
-// OJO con `overflow`: las filas NO recortan a sus hijos, porque la portada
-// seleccionada crece por encima de la caja (ver tierlist-item). Por eso el
-// redondeado de la columna/banda de color se declara en el propio hijo
-// (`rounded-l-[9px]` / `rounded-t-[9px]`) y no se hereda de un `overflow-hidden`
-// del contenedor.
+// Las filas NO recortan a sus hijos: el redondeado de la columna/banda de color
+// se declara en el propio hijo (`rounded-l-[9px]` / `rounded-t-[9px]`) en vez de
+// heredarse de un `overflow-hidden` del contenedor. Ese `overflow-hidden` era
+// justo lo que cortaba la etiqueta larga a media palabra, así que aquí no vuelve.
 export function TierRow({
   id,
   label,
@@ -56,8 +55,9 @@ export function TierRow({
     />
   ));
 
-  // Alto mínimo = portada (66px) + padding vertical (2 × 8px).
-  const dropAreaBase = "flex min-h-[82px] flex-wrap items-center gap-1.5 p-2";
+  // Alto mínimo = portada (84px) + padding vertical (2 × 8px). Sin él, un tier
+  // vacío se queda más bajo que el resto y no se ve como sitio donde soltar.
+  const dropAreaBase = "flex min-h-[100px] flex-wrap items-center gap-1.5 p-2";
 
   if (variant === "pool") {
     return (
