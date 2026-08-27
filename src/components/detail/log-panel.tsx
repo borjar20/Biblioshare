@@ -19,6 +19,7 @@ import { NewPassSheet } from "@/components/detail/new-pass-sheet";
 import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import { EditionPicker } from "@/components/detail/edition-picker";
+import { shouldAskForEdition } from "@/components/detail/edition-question";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { formatPosition, type Position } from "@/lib/library/position";
@@ -594,7 +595,7 @@ function PassDataPanel({
   }
 
   // Pregunta pendiente "¿qué edición estás leyendo?" (Tarea 3, Paso 2): solo
-  // tiene sentido si hay más de una edición entre las que elegir y el pase
+  // tiene sentido si hay algo que ofrecer y el pase
   // abierto todavía no tiene una asignada. Elegir una edición de verdad la
   // hace desaparecer sola (openPass.editionId deja de ser null). La salida
   // "No lo sé" no fija edición, así que sin recordarla se repetiría en cada
@@ -604,11 +605,16 @@ function PassDataPanel({
   // ManagedLog), así este inicializador se ejecuta de nuevo con cada pase
   // distinto sin releer localStorage durante el render.
   const [answered, setAnswered] = useState(() => readEditionAsked(openPass.id));
-  const pendingEditionQuestion =
-    itemType !== "series" &&
-    editions.length > 1 &&
-    openPass.editionId === null &&
-    !answered;
+  // La regla vive en edition-question.ts, pura y testeada: cuándo hay algo que
+  // ofrecer dejó de ser «más de una edición en la ficha» al morir el sync
+  // masivo, y ese umbral tapaba el selector justo en los libros que más lo
+  // necesitan. El porqué completo, en la cabecera de ese fichero.
+  const pendingEditionQuestion = shouldAskForEdition({
+    itemType,
+    editionCount: editions.length,
+    passEditionId: openPass.editionId,
+    answered,
+  });
 
   // El `.panel` del frame 3 (y el `.desk-panel` del 10): fondo --surface (NO
   // --surface-muted, que es el --surface-2 del handoff — con el panel un
@@ -653,6 +659,10 @@ function PassDataPanel({
               title={tEditions("whichEditionReading")}
               disabled={isPending}
               canContribute={canContribute}
+              // Con el pase delante, el selector puede ofrecer además las dos
+              // vías que ESCRIBEN contra él: escanear el ISBN (exacta) y las
+              // candidatas en vivo de OpenLibrary (aproximada).
+              passId={openPass.id}
               onPick={(editionId) => {
                 setAnswered(true);
                 startTransition(() =>
@@ -666,6 +676,10 @@ function PassDataPanel({
                 writeEditionAsked(openPass.id);
                 setAnswered(true);
               }}
+              // La candidata ya quedó registrada y asociada al pase en el
+              // servidor (chooseEditionCandidate); aquí solo se cierra la
+              // pregunta, sin un segundo setPassEdition que la repita.
+              onCandidatePicked={() => setAnswered(true)}
             />
           </div>
         )}

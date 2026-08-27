@@ -310,6 +310,30 @@ export async function fetchWorkEditions(workKey: string): Promise<OpenLibraryEdi
   }
 }
 
+// Las ediciones reales de una obra para enseñárselas AL USUARIO en el momento
+// (el selector, cuando despliega «Más ediciones»), no para el sync masivo.
+//
+// Se separa de fetchWorkEditions por el presupuesto de tiempo, no por el
+// filtro: aquí hay alguien esperando delante de la pantalla, así que se escanea
+// con MAX_REPRESENTATION_PAGES (2 páginas, 200 ediciones) igual que
+// fetchRepresentationCandidates, no con las 5 del sync. Filtro, dedup y orden
+// (ES → EN → resto) son EXACTAMENTE los de pickEditions: no hay una segunda
+// lista negra ni un segundo criterio que mantener.
+//
+// NO PERSISTE NADA. Nunca lanza: sin red, la lista sale vacía y el selector
+// enseña su estado vacío.
+export async function fetchLiveWorkEditions(
+  workKey: string,
+  limit: number
+): Promise<OpenLibraryEdition[]> {
+  try {
+    const entries = await fetchEditionDocs(workKey, MAX_REPRESENTATION_PAGES);
+    return pickEditions(entries, limit);
+  } catch {
+    return [];
+  }
+}
+
 // Candidata de representación: título, portada y páginas de UNA edición
 // concreta (no de la obra). "Mejor" según el mismo orden que ya aplica
 // pickEditions (idioma, luego portada, luego datos, luego año) — no se

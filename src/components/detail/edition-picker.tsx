@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useActionState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Edition } from "@/lib/editions/types";
@@ -9,8 +10,13 @@ import type { Pass } from "@/lib/passes/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { formatEditionDetails } from "@/lib/editions/edition-label";
 import { createEdition, type CreateEditionState } from "@/lib/editions/actions";
+import {
+  chooseEditionCandidate,
+  fetchEditionCandidates,
+  type EditionCandidate,
+} from "@/lib/editions/fetch-candidates";
 import { EditionFields } from "./edition-fields";
-import { SearchIcon } from "@/components/ui/icons";
+import { ChevronDownIcon, SearchIcon } from "@/components/ui/icons";
 
 const initialCreateState: CreateEditionState = {};
 
@@ -54,8 +60,10 @@ export function EditionPicker({
   title,
   disabled = false,
   canContribute = false,
+  passId,
   onPick,
   onUnknown,
+  onCandidatePicked,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -65,9 +73,22 @@ export function EditionPicker({
   title: string;
   disabled?: boolean;
   canContribute?: boolean;
+  /**
+   * Pase que se está identificando. Solo con él (y en libros) se ofrecen los
+   * bloques 2 y 3 — escanear el ISBN y las candidatas de OpenLibrary — porque
+   * ambos terminan escribiendo en un pase concreto. Sin pase, el selector es
+   * el de siempre: elegir entre lo que ya está en la ficha.
+   */
+  passId?: string;
   onPick: (editionId: string) => void;
   /** Si se pasa, se ofrece la salida "No lo sé" (no fija edición). */
   onUnknown?: () => void;
+  /**
+   * Elegir una candidata de OpenLibrary YA la persistió y la asoció al pase en
+   * el servidor (`chooseEditionCandidate`), así que esto no es un `onPick`: no
+   * hay que volver a guardar nada, solo cerrar la pregunta.
+   */
+  onCandidatePicked?: () => void;
 }) {
   const t = useTranslations("editions");
   const tStatus = useTranslations("library.status");
@@ -75,6 +96,14 @@ export function EditionPicker({
   const accent = MEDIA_ACCENT[itemType];
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Bloque 3, «Más ediciones (OpenLibrary)». `null` = todavía no se ha pedido:
+  // es lo que distingue "aún no se ha desplegado" de "se desplegó y no hay
+  // ninguna", que se pintan distinto.
+  const [candidates, setCandidates] = useState<EditionCandidate[] | null>(null);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [choosingIsbn, setChoosingIsbn] = useState<string | null>(null);
+  const [candidateError, setCandidateError] = useState<string | null>(null);
 
   const createAction = createEdition.bind(null, itemType, itemId);
   const [createState, createFormAction, createPending] = useActionState(
@@ -116,6 +145,8 @@ export function EditionPicker({
   const used = editions.filter((e) => usage.has(e.id) && matches(e));
   const rest = editions.filter((e) => !usage.has(e.id) && matches(e));
 
+  const showOpenLibraryBlocks = itemType === "book" && Boolean(passId);
+
   // El verbo por tipo, como en la píldora del hero ("Leyendo"/"Leído" — el
   // genérico "En curso" no existe en la ficha, decisión del plan 06 §6).
   function statusWord(status: Pass["status"]): string {
@@ -138,6 +169,89 @@ export function EditionPicker({
           </>
         )}
       </>
+    );
+  }
+
+  // Perezoso A PROPÓSITO: se dispara al DESPLEGAR, no al abrir el selector.
+  // Cargarlo siempre convertiría cada apertura del panel de progreso en una
+  // llamada a OpenLibrary, y la inmensa mayoría de las veces el usuario elige
+  // en el bloque 1 sin bajar hasta aquí. Una sola vez por montaje: si ya hay
+  // lista (aunque esté vacía) no se vuelve a pedir al plegar y desplegar.
+  async function loadCandidates() {
+    if (candidates !== null || loadingCandidates) return;
+    setLoadingCandidates(true);
+    setCandidateError(null);
+    try {
+      setCandidates(await fetchEditionCandidates(itemId));
+    } catch {
+      // fetchEditionCandidates ya se traga sus fallos y devuelve []; esto cubre
+      // que se caiga la propia llamada a la server action (red del cliente).
+      setCandidateError("generic");
+      setCandidates([]);
+    } finally {
+      setLoadingCandidates(false);
+    }
+  }
+
+  async function pickCandidate(candidate: EditionCandidate) {
+    if (!passId) return;
+    setChoosingIsbn(candidate.isbn);
+    setCandidateError(null);
+    const result = await chooseEditionCandidate(passId, itemId, candidate);
+    setChoosingIsbn(null);
+    if (result.ok) {
+      onCandidatePicked?.();
+      return;
+    }
+    setCandidateError(result.reason);
+  }
+
+  function candidateCard(c: EditionCandidate) {
+    const busy = choosingIsbn === c.isbn;
+    const meta = [c.year, c.language?.toUpperCase(), c.pages ? `${c.pages} p` : null]
+      .filter(Boolean)
+      .join(" · ");
+    return (
+      <button
+        key={c.isbn}
+        type="button"
+        disabled={disabled || choosingIsbn !== null}
+        onClick={() => void pickCandidate(c)}
+        className={`flex w-full items-center gap-3 rounded-[10px] border border-border bg-surface px-[13px] py-3 text-left transition-colors disabled:opacity-60 ${HOVER_BORDER[itemType]}`}
+      >
+        {c.coverUrl ? (
+          // Portada de una edición que aún NO tiene fila propia: viene de
+          // covers.openlibrary.org, mismo criterio que las otras tarjetas de
+          // catálogo (item-picker.tsx).
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={c.coverUrl}
+            alt=""
+            loading="lazy"
+            className="h-10 w-7 shrink-0 rounded object-cover"
+          />
+        ) : (
+          <span aria-hidden className="h-10 w-7 shrink-0 rounded bg-surface-muted" />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="inline-block rounded-[4px] bg-surface-muted px-1.5 py-0.5 font-mono text-[9px] tracking-[0.05em] text-muted-foreground uppercase">
+            {c.label}
+          </span>
+          {c.publisher && (
+            <span className="mt-[5px] block truncate text-[12.5px] leading-[1.25] font-semibold text-foreground">
+              {c.publisher}
+            </span>
+          )}
+          <span className="mt-1 block font-mono text-[9.5px] leading-[1.5] text-muted-foreground">
+            {meta ? `${meta} · ISBN ${c.isbn}` : `ISBN ${c.isbn}`}
+          </span>
+        </span>
+        {busy && (
+          <span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
+            {t("choosingCandidate")}
+          </span>
+        )}
+      </button>
     );
   }
 
@@ -233,6 +347,12 @@ export function EditionPicker({
       {rest.length > 0 && (
         <>
           <div className="flex items-baseline">
+            {/* «Ediciones de la ficha», no «Todas las ediciones»: ese título
+                era de cuando la ficha sincronizaba todo el catálogo de
+                OpenLibrary. Con el bloque «Más ediciones (OpenLibrary)» justo
+                debajo, prometer «todas» aquí se contradice en la misma
+                pantalla. El número de al lado es el total de la ficha, que es
+                exactamente lo que el título nombra. */}
             <span className="font-mono text-[10px] tracking-[0.05em] text-muted-foreground/70 uppercase">
               {t("allEditions")}
             </span>
@@ -243,6 +363,76 @@ export function EditionPicker({
           <div className="flex max-h-[240px] flex-col gap-2 overflow-y-auto pr-[3px]">
             {rest.map(card)}
           </div>
+        </>
+      )}
+
+      {/* Bloques 2 y 3, solo al identificar el pase de un LIBRO: los dos
+          escriben contra un pase, y una película no tiene ISBN que escanear
+          ni obra en OpenLibrary de la que sacar candidatas. */}
+      {showOpenLibraryBlocks && (
+        <>
+          {/* Bloque 2 — la vía RECOMENDADA, y por eso va antes que la lista de
+              candidatas y con el peso visual del acento: el código de barras
+              identifica el ejemplar EXACTO que el usuario tiene en la mano.
+              Todo lo de abajo es aproximar a ojo entre tiradas parecidas. */}
+          <Link
+            href="/buscar?type=book"
+            className={`flex w-full items-center justify-center gap-[7px] rounded-[10px] border px-[13px] py-3 text-[12.5px] font-semibold ${accent.border} ${accent.text}`}
+          >
+            <SearchIcon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+            {t("scanCta")}
+          </Link>
+          <p className="text-[11px] leading-[1.5] text-muted-foreground">
+            {t("scanCtaHint")}
+          </p>
+
+          {/* Bloque 3 — `<details>` nativo (mismo patrón que el panel de
+              progreso): el navegador ya trae el estado, el teclado y la
+              semántica. Nace CERRADO, y ese es el punto: la llamada a
+              OpenLibrary solo ocurre si alguien lo abre. */}
+          <details
+            className="rounded-[10px] border border-dashed border-border"
+            onToggle={(event) => {
+              if (event.currentTarget.open) void loadCandidates();
+            }}
+          >
+            <summary className="group flex cursor-pointer list-none items-center justify-between px-[13px] py-3 text-[12.5px] font-semibold text-foreground">
+              {t("moreFromOpenLibrary")}
+              <ChevronDownIcon
+                aria-hidden
+                className="h-3 w-3 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0"
+              />
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-border px-[13px] pt-3 pb-3">
+              <p className="text-[11px] leading-[1.5] text-muted-foreground">
+                {t("candidateHint")}
+              </p>
+
+              {loadingCandidates && (
+                <p className="font-mono text-[10px] text-muted-foreground/70">
+                  {t("candidatesLoading")}
+                </p>
+              )}
+
+              {!loadingCandidates && candidates?.length === 0 && (
+                <p className="text-[11.5px] text-muted-foreground">
+                  {t("candidatesEmpty")}
+                </p>
+              )}
+
+              {candidates && candidates.length > 0 && (
+                <div className="flex max-h-[240px] flex-col gap-2 overflow-y-auto pr-[3px]">
+                  {candidates.map(candidateCard)}
+                </div>
+              )}
+
+              {candidateError && (
+                <p className="text-sm text-status-dropped">
+                  {t(`candidateErrors.${candidateError}`)}
+                </p>
+              )}
+            </div>
+          </details>
         </>
       )}
 

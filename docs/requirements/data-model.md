@@ -770,6 +770,19 @@ en dev el 2026-08-27 contra `pg_proc`, el gate de rol corta ANTES de la comproba
 y relanza `ensureBookHydrated` con la fila releída, que es quien de verdad decide qué
 título/portada/sinopsis mejorar (§2.1ter).
 
+**«La eligió en el picker» ya tiene código detrás (Task 13, 2026-08-27).** Hasta aquí el picker
+solo dejaba elegir entre las filas que YA estaban en `book_editions`; ahora tiene un tercer
+bloque, «Más ediciones (OpenLibrary)», que consulta las candidatas EN VIVO
+(`fetchEditionCandidates`, `src/lib/editions/fetch-candidates.ts` → `fetchLiveWorkEditions`,
+2 páginas / 200 ediciones, mismos filtros y mismo orden ES→EN→resto que `pickEditions`) y **no
+escribe nada al enseñarlas**: se cargan al DESPLEGAR el bloque, no al abrir el selector. La
+escritura la dispara `chooseEditionCandidate` cuando el usuario elige una — cuarto y último
+llamador de `register_book_edition`, junto a `ensureBookEdition` (`find-or-create.ts`) y el alta
+manual (`src/app/buscar/manual/actions.ts`). Las candidatas excluyen los ISBN ya persistidos del
+libro (normalizados con `normalizeIsbn` en los dos lados) para que la misma tirada no salga en
+dos bloques. Verificado en dev el 2026-08-27: abrir la ficha de un libro y desplegar las 30
+candidatas deja `book_editions` en 481 filas, las mismas que antes.
+
 **La columna `books.editions_synced_at` NO se ha dropeado**: sigue en el esquema (fase
 destructiva, Task 16, después del despliegue) pero el código de aplicación ya no la lee ni la
 escribe en ningún sitio — solo sobrevive en el tipo generado de Supabase

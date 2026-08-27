@@ -2186,3 +2186,70 @@ como la escala continua que es una tierlist.
   libro conforme se visitan las fichas — no es una regresión permanente, es una que se cierra
   sola con tráfico. Consultas, alcance completo y propuesta de backfill puntual al desplegar:
   issue #902 (relacionada con #900 y #901).
+
+- **El picker de edición consulta candidatas de OpenLibrary EN VIVO y solo persiste la elegida**
+  (2026-08-27, Task 13, rama `feat/obra-edicion-representacion`). Es la cara visible del modelo
+  que estrenó la Task 10: `book_editions` ya no se llena sola al abrir la ficha, así que el
+  usuario necesitaba una vía para decir cuál es SU tirada sin que el catálogo volviera a
+  engordar. El selector queda en tres bloques y **el orden es la decisión**: (1) las ediciones ya
+  persistidas del libro, con las de pases anteriores destacadas arriba —comportamiento que ya
+  existía y se conserva—; (2) el CTA «Escanea o teclea el ISBN», que va ANTES que las candidatas
+  porque es el único camino EXACTO (el código de barras identifica el ejemplar que se tiene en la
+  mano; todo lo demás es aproximar entre tiradas parecidas); (3) «Más ediciones (OpenLibrary)».
+
+  Cuatro cosas que se decidieron a propósito y conviene no deshacer sin leer esto:
+
+  - **El bloque 3 carga al DESPLEGARLO, no al abrir el selector** (`<details onToggle>`, una sola
+    vez por montaje). Cargarlo siempre convertiría cada apertura del panel de progreso en una
+    llamada a OpenLibrary, y la mayoría de las veces el usuario elige en el bloque 1 sin bajar.
+  - **`fetchEditionCandidates` no escribe NADA**; la escritura la dispara `chooseEditionCandidate`
+    con un clic explícito. Y excluye de las candidatas los ISBN ya persistidos del libro
+    (normalizados con `normalizeIsbn` en los dos lados, porque `createEdition` guarda lo que
+    teclea el colaborador, guiones incluidos): sin eso la misma edición saldría dos veces, en dos
+    bloques distintos. El escaneo pide `30 + persistidas` para que el tope de 30 se aplique
+    DESPUÉS de excluir, y no acabe enseñando menos justo en los libros con más ediciones
+    identificadas.
+  - **El presupuesto de páginas es el interactivo, no el del sync**: `fetchLiveWorkEditions`
+    (nuevo, en `src/lib/catalog/openlibrary/editions.ts`) escanea con `MAX_REPRESENTATION_PAGES`
+    (2 páginas, 200 ediciones) como `fetchRepresentationCandidates`, no con las 5 de
+    `fetchWorkEditions`. Filtro, dedup y orden ES→EN→resto son los de `pickEditions`, sin una
+    segunda lista negra que mantener.
+  - **El `NULL` de `register_book_edition` NO es un fallo.** La RPC es idempotente (`on conflict
+    do nothing`) y devuelve `NULL` cuando otro usuario ya identificó esa misma tirada. Tratarlo
+    como error dejaría al usuario sin poder elegir precisamente la edición más común del libro:
+    se resuelve re-seleccionando por el índice único `(book_id, isbn)` y se sigue. Un `error` de
+    la RPC, en cambio, sí corta — y NO cae en ese rescate, o un rechazo del servidor se
+    convertiría en un éxito silencioso.
+
+  **Desviación del plan escrito, deliberada:** las claves i18n nuevas van al namespace `editions`
+  (`editions.scanCta`, `editions.moreFromOpenLibrary`, `editions.candidateHint`…), no a un
+  `editionPicker.*` propio: `EditionPicker` ya hace `useTranslations("editions")` y abrir un
+  segundo namespace para el mismo componente solo repartía sus cadenas en dos sitios.
+
+- **El umbral que decidía si se pregunta «¿qué edición estás leyendo?» baja de «más de una» a
+  «siempre, en libros»** (2026-08-27, Task 13). Encontrado revisando el copy de la propia Task 13,
+  y sin arreglarlo la tarea entera no se veía en pantalla. `log-panel.tsx` montaba el
+  `EditionPicker` con `editions.length > 1`. Ese umbral era correcto cuando abrir la ficha
+  sincronizaba cientos de ediciones desde OpenLibrary: con una sola no había nada que elegir. Con
+  el sync muerto (Task 10) `book_editions` solo tiene lo que alguien identificó, así que **0 o 1
+  ediciones es el caso NORMAL de un libro recién añadido** — y es justo donde hacen falta el
+  escaneo del ISBN y las candidatas en vivo. El bloque nuevo de la Task 13 vive dentro de ese
+  `if`, así que con el umbral viejo no se pintaba jamás en los libros que más lo necesitan.
+
+  La regla se extrae a `src/components/detail/edition-question.ts` (`shouldAskForEdition`), pura y
+  con test, mismo patrón que `tab-visibility.ts`: era una condición de cuatro términos escondida
+  en medio de un componente cliente de 900 líneas, que es exactamente por lo que se pudrió sin que
+  nadie lo notara. **Las películas se quedan en `> 1`**: `movie_versions` no tiene ISBN que
+  escanear ni obra en OpenLibrary de la que sacar candidatas, así que con menos de dos versiones
+  la pregunta sigue sin tener respuesta posible. Las series, nunca (su unidad son los episodios).
+
+  Consecuencia asumida: ahora se pregunta la edición en **todo** pase de libro sin ella, no solo
+  en los libros con catálogo gordo. Es el precio de que la pregunta exista; «No lo sé» se sigue
+  recordando por `passId`, así que quien no quiera contestar lo dice una vez por pase.
+
+- **`editions.allEditions` deja de ser «Todas las ediciones» y pasa a «Ediciones de la ficha»**
+  (2026-08-27, Task 13). Otra promesa vieja del sync masivo: cuando la ficha bajaba el catálogo
+  entero de OpenLibrary, «todas» era cierto. Hoy es una lista de lo identificado — y con el bloque
+  «Más ediciones (OpenLibrary)» justo debajo, la pantalla se contradecía a sí misma. El número que
+  va al lado del título es `editions.length`, el total de la ficha, que es exactamente lo que el
+  título nuevo nombra.
