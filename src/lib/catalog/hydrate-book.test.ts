@@ -496,34 +496,173 @@ describe("ensureBookHydrated · guardia de revisión y QID (I4)", () => {
   });
 });
 
-// ───────────────── Identidad: el QID solo con el autor verificado ─────────
+// ─────── Identidad: el QID exige autor verificado Y título corroborado ──────
+//
+// #914. El QID que se escribe aquí NO se queda quieto: `wikidata-collapse` lo
+// respeta por encima del match de título de hoy, y `scripts/reconcile-wikidata`
+// agrupa por él y llama a `merge_book_into`, que BORRA filas de `books`. Por eso
+// esta caja es la misma que la del barrido —`resolveQid`— y no una variante
+// propia: la regla laxa («la primera entidad cuyo autor case») ya se midió
+// contra dev y produjo 2 identidades erróneas de 13.
 describe("ensureBookHydrated · QID de Wikidata", () => {
-  it("acepta la entidad cuyo autor casa y manda su QID", async () => {
-    mocks.searchInventaireEntities.mockResolvedValue([
-      { uri: "wd:Q9", labels: { es: "Palabras radiantes" }, authorNames: ["Brandon Sanderson"] },
-    ]);
+  // Los labels de una entidad de Wikidata son MULTILINGÜES y `titleMatches` los
+  // prueba todos: por eso el título inglés del work casa con la entidad aunque
+  // el label que se acabe usando para `pickField` sea el español.
+  const wordsOfRadiance = {
+    uri: "wd:Q9",
+    labels: { es: "Palabras radiantes", en: "Words of Radiance" },
+    authorNames: ["Brandon Sanderson"],
+  };
+
+  it("acepta la entidad cuyo autor y título casan, y manda su QID", async () => {
+    mocks.searchInventaireEntities.mockResolvedValue([wordsOfRadiance]);
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
     expect(rpcArgs(service).p_wikidata_id).toBe("Q9");
   });
 
-  // Un QID equivocado FUSIONA dos obras: sin autor verificado, hueco.
-  it("descarta la entidad cuyo autor NO casa", async () => {
+  // Un QID equivocado FUSIONA dos obras: sin autor verificado, hueco. El título
+  // de la entidad casa A PROPÓSITO —es el mismo `Words of Radiance` del work—
+  // para que lo único que rechace la entidad sea el autor: con un label que
+  // tampoco casara, el test pasaría igual con el filtro de autor borrado y no
+  // mataría esa mutación.
+  it("descarta la entidad cuyo autor NO casa, aunque el título sea idéntico", async () => {
     mocks.searchInventaireEntities.mockResolvedValue([
-      { uri: "wd:Q9", labels: { es: "Otra obra" }, authorNames: ["Patrick Rothfuss"] },
+      { uri: "wd:Q9", labels: { en: "Words of Radiance" }, authorNames: ["Patrick Rothfuss"] },
     ]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+  });
+
+  // Sin autor conocido no se acepta NINGUNA entidad: un título puede repetirse
+  // entre obras distintas y el QID es identidad.
+  it("sin autor resuelto no se acepta ninguna entidad", async () => {
+    mocks.fetchWork.mockResolvedValue(workSinAutores);
+    mocks.searchInventaireEntities.mockResolvedValue([wordsOfRadiance]);
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
     expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
   });
 
   it("una uri inv: (sin equivalente en Wikidata) no ancla identidad", async () => {
+    mocks.searchInventaireEntities.mockResolvedValue([{ ...wordsOfRadiance, uri: "inv:abc" }]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+  });
+
+  // ── Los dos pares REALES que midió la Task 15, congelados también aquí ──
+  //
+  // Son los dos casos que la regla vieja de este módulo escribía mal. Están ya
+  // congelados del lado del barrido (`wikidata-reconcile.test.ts`); se repiten
+  // aquí porque el barrido no es quien ESCRIBE el QID: esta función sí.
+  //
+  // MUTACIÓN QUE MATAN: quitar la corroboración de título de `resolveQid` (o
+  // volver al `entities.find(autor)` de antes) hace pasar el QID ajeno y estos
+  // dos tests fallan.
+  it("«Shadows Beneath» NO recibe el QID de «Shadows of Self» (mismo autor, otra obra)", async () => {
+    mocks.fetchWork.mockResolvedValue({
+      title: "Shadows Beneath",
+      description: null,
+      subjects: [],
+      coverUrl: null,
+      authorKeys: ["OL1A"],
+      firstPublishYear: 2014,
+    });
+    // Lo que devuelve de verdad la búsqueda difusa de Inventaire para ese título.
     mocks.searchInventaireEntities.mockResolvedValue([
-      { uri: "inv:abc", labels: { es: "Palabras radiantes" }, authorNames: ["Brandon Sanderson"] },
+      {
+        uri: "wd:Q16387049",
+        labels: { en: "Shadows of Self", es: "Sombras de identidad" },
+        authorNames: ["Brandon Sanderson"],
+      },
     ]);
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
     expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+  });
+
+  it("un tomo de La Rueda del Tiempo NO recibe el QID de «Words of Radiance»", async () => {
+    mocks.fetchWork.mockResolvedValue({
+      title: "Das Rad der Zeit 34. Der Traum des Wolfs",
+      description: null,
+      subjects: [],
+      coverUrl: null,
+      authorKeys: ["OL1A"],
+      firstPublishYear: 2014,
+    });
+    mocks.searchInventaireEntities.mockResolvedValue([wordsOfRadiance]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+  });
+
+  // La contención de cadenas (`isSameTitle`) SÍ casaría este par: es justo el
+  // error por el que `titleMatchesLabel` compara conjuntos de palabras.
+  it("un trozo («Words of Radiance, Part Two») no hereda el QID de la obra completa", async () => {
+    mocks.fetchWork.mockResolvedValue({
+      title: "Words of Radiance, Part Two",
+      description: null,
+      subjects: [],
+      coverUrl: null,
+      authorKeys: ["OL1A"],
+      firstPublishYear: 2014,
+    });
+    mocks.searchInventaireEntities.mockResolvedValue([wordsOfRadiance]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+  });
+
+  // Ambigüedad = sin match: con dos QID distintos no hay forma de saber cuál, y
+  // equivocarse aquí acaba borrando una fila en el barrido.
+  it("dos entidades con QID distintos que casan las dos: ninguna se elige", async () => {
+    mocks.searchInventaireEntities.mockResolvedValue([
+      wordsOfRadiance,
+      { ...wordsOfRadiance, uri: "wd:Q10" },
+    ]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+  });
+
+  // El QID se resuelve PRIMERO y la entidad sale de él: si se invirtiera el
+  // orden (quedarse con la primera entidad y luego mirar su QID), los labels de
+  // `pickField` vendrían de una entidad que no identifica a esta obra.
+  it("los labels que alimentan pickField salen de la entidad que resolvió el QID", async () => {
+    mocks.searchInventaireEntities.mockResolvedValue([
+      // Primera de la lista, mismo autor, pero es OTRA obra: ni su QID ni su
+      // label pueden acabar en la fila.
+      {
+        uri: "wd:Q16387049",
+        labels: { es: "Sombras de identidad" },
+        authorNames: ["Brandon Sanderson"],
+      },
+      wordsOfRadiance,
+    ]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBe("Q9");
+    expect((rpcArgs(service).p_fields as Fields).title).toEqual({
+      value: "Palabras radiantes",
+      lang: "es",
+      source: "wikidata",
+    });
+  });
+
+  // No es un estado terminal: `needsRepresentationReview` trata la ausencia de
+  // QID como hueco reevaluable, así que la obra que se queda sin él por la regla
+  // estricta se vuelve a intentar pasado el cooldown (test de arriba, I4).
+  it("sin QID la fila sigue hidratándose: el resto de campos se escriben igual", async () => {
+    mocks.searchInventaireEntities.mockResolvedValue([
+      { uri: "wd:Q9", labels: { en: "Otra obra" }, authorNames: ["Brandon Sanderson"] },
+    ]);
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_wikidata_id).toBeUndefined();
+    expect(rpcArgs(service).p_author).toBe("Brandon Sanderson");
+    expect((rpcArgs(service).p_fields as Fields).title.value).toBe("Words of Radiance");
   });
 });
 

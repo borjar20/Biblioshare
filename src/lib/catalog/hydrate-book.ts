@@ -8,7 +8,6 @@ import { searchInventaireEntities, qidFromUri } from "./inventaire/client";
 import { findBestVolume, type GoogleVolume } from "./googlebooks/client";
 import { mapSubjectsToGenres } from "./genres";
 import {
-  authorMatches,
   langRank,
   needsRepresentationReview,
   pickField,
@@ -17,6 +16,7 @@ import {
   type HydrateFields,
   type ReprMeta,
 } from "./representation";
+import { resolveQid } from "./wikidata-reconcile";
 import type { SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -96,7 +96,8 @@ const MAX_GOOGLE_BOOKS_CALLS = 2;
 //  1. Ediciones reales de OpenLibrary (fetchRepresentationCandidates): la mejor
 //     edición española y la mejor inglesa, en vivo y sin persistir.
 //  2. Wikidata vía Inventaire: labels multilingües y el QID, que es el ancla de
-//     identidad inter-idioma. Solo se acepta la entidad cuyo AUTOR casa.
+//     identidad inter-idioma. Solo se acepta la entidad cuyo AUTOR **y** cuyo
+//     TÍTULO casan, vía `resolveQid` (#914).
 //  3. Google Books: solo para los huecos que quedan (sinopsis española, sobre
 //     todo), acotado a MAX_GOOGLE_BOOKS_CALLS.
 //
@@ -163,14 +164,37 @@ export async function ensureBookHydrated(
       titleForLookups ? searchInventaireEntities(titleForLookups) : Promise.resolve([]),
     ]);
 
-    // Entidad fiable = con el autor verificado (spec §6). Sin autor conocido no
-    // se acepta ninguna: un título puede repetirse entre obras distintas, y de
-    // aquí sale el QID, que es identidad — un QID equivocado FUSIONA dos obras.
-    const entity =
-      entities.find((candidate) =>
-        candidate.authorNames.some((name) => authorMatches(name, author))
-      ) ?? null;
-    const qid = entity ? qidFromUri(entity.uri) : null;
+    // Entidad fiable = autor verificado **Y título corroborado** (spec §6). De
+    // aquí sale el QID, que es IDENTIDAD: `wikidata-collapse` lo respeta por
+    // encima del match de título de hoy, y `scripts/reconcile-wikidata.ts`
+    // agrupa por él y llama a `merge_book_into`, que BORRA filas de `books`. Un
+    // QID equivocado escrito aquí es la semilla con la que un barrido posterior
+    // destruye la obra correcta.
+    //
+    // #914: hasta aquí la regla era «la primera entidad cuyo autor case», sin
+    // mirar el título — que es EXACTAMENTE la regla que se midió y se descartó
+    // en el barrido (ver la cabecera de `resolveQid`). Como
+    // `searchInventaireEntities` busca en difuso, para «Shadows Beneath»
+    // devuelve también «Shadows of Self»: mismo autor, otra obra, y `find` se
+    // quedaba con la primera. Contra dev daba 2 identidades erróneas de 13.
+    //
+    // Se REUSA `resolveQid` en vez de escribir una tercera variante de la
+    // comparación (ya hay dos `authorMatches` en este directorio, y confundirlos
+    // fue justo lo que dejó pasar este fallo). Exige las tres cosas: autor,
+    // título contra los labels multilingües (por conjunto de palabras) y QID no
+    // ambiguo.
+    //
+    // ORDEN: primero el QID y de ahí la entidad, no al revés — `entity` se sigue
+    // usando abajo para `labels.es` / `labels.en` en `pickField`, y esos labels
+    // solo valen si vienen de la entidad que de verdad identifica a esta obra.
+    //
+    // La regla es más estricta, así que algunas obras se quedan sin QID donde
+    // antes recibían uno (equivocado). Es el lado correcto por el que fallar
+    // —«ante la duda, no fusionar»— y no es un estado terminal:
+    // `needsRepresentationReview` trata la ausencia de QID como hueco
+    // reevaluable, así que se reintenta pasado el cooldown.
+    const qid = resolveQid({ title: titleForLookups, author }, entities);
+    const entity = qid ? (entities.find((e) => qidFromUri(e.uri) === qid) ?? null) : null;
 
     const fields: HydrateFields = {};
     // El ORDEN de estas listas es la política ES → EN → otro: gana la primera

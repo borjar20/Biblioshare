@@ -2401,3 +2401,37 @@ cero y **perdía contra una vacía**. La decimoséptima, `credits`, se deja fuer
 metadato de catálogo que escribe la hidratación, no rastro de persona, y contarlo invertiría el
 criterio justo en el caso que importa —una fila hidratada dos veces le ganaría a la fila donde
 alguien escribió una nota a mano—.
+
+## 2026-08-28 (2) — Quien ESCRIBE el QID usa la misma caja que el barrido: `resolveQid` (#914)
+
+**Contexto.** La entrada anterior dejó el corolario abierto: el barrido de reconciliación ya exigía
+autor + título + QID no ambiguo, pero `hydrate-book.ts` —que es quien **escribe**
+`books.wikidata_id`— seguía con la regla vieja, «la primera entidad cuyo autor case», sin corroborar
+el título. Era la más laxa de las dos, y la que persiste el dato.
+
+**Por qué era P1 y no cosmético.** El QID es identidad, y no se queda quieto: `wikidata-collapse.ts`
+lo respeta **por encima** del match de título de hoy, y `scripts/reconcile-wikidata.ts` agrupa por él
+y termina en `merge_book_into`, que **borra filas de `books`**. La hidratación estaba sembrando el
+dato con el que un barrido posterior destruiría la obra correcta. El error viajaba de un sitio donde
+solo ensucia a otro donde borra. La RPC no protege de esto: `wikidata_id` es `null → valor` y se
+traga la colisión, o sea que ampara del QID *duplicado*, nunca del *equivocado*.
+
+**Decisión: reusar `resolveQid`, no escribir una tercera variante.** Es la tentación evidente
+—«aquí solo hace falta añadir una comparación de título»— y este plan ya ha caído dos veces en ella
+con la comparación de nombres: hay **dos** `authorMatches` exportados en `src/lib/catalog/` con la
+misma intención y firmas distintas (`representation.ts` toma dos cadenas; `wikidata-reconcile.ts`
+toma `(author, entity)` y parte la lista por comas), y esa ambigüedad es justo lo que hizo que la
+línea mala se leyera como correcta durante toda una revisión. La regla que decide identidad vive en
+un sitio, con sus 16 casos medidos, y los dos lados —el que escribe y el que borra— la comparten.
+
+**Orden, que no es indiferente:** primero el QID y de ahí la entidad, no al revés. `entity` se sigue
+usando para `labels.es` / `labels.en` en `pickField`, y esos labels solo valen si vienen de la
+entidad que de verdad identifica a la obra; quedarse con la primera entidad y mirar luego su QID
+dejaría el título de otra obra en la fila.
+
+**Coste asumido y declarado**: la regla nueva es más estricta, así que hay obras que dejan de
+recibir QID donde antes recibían uno (equivocado). Es el lado correcto por el que fallar —«ante la
+duda, no fusionar»— y **no es terminal**: `needsRepresentationReview` ya trata la ausencia de QID
+como hueco reevaluable (`!wikidataId` entra en `improvable`), así que se reintenta pasado el
+cooldown de 30 días. En dev el coste medido es **cero**: 0 de 397 filas tienen `wikidata_id`
+asignado hoy (44 hidratadas, todas sin QID), coherente con el 429 de Inventaire de #911.
