@@ -13,7 +13,12 @@ const h = vi.hoisted(() => {
     setPassEditionThrows: false,
   };
 
-  const rpc = vi.fn(async () => state.rpcResult);
+  // Se tipa la FIRMA (aunque la implementación ignore los argumentos) para
+  // poder inspeccionar `rpc.mock.calls[0][1]`: ahí es donde se comprueba QUÉ
+  // metadatos se escriben en el catálogo comunitario.
+  const rpc = vi.fn<
+    (name: string, args: Record<string, unknown>) => Promise<typeof state.rpcResult>
+  >(async () => state.rpcResult);
   const setPassEdition = vi.fn(async () => {
     if (state.setPassEditionThrows) throw new Error("boom");
   });
@@ -136,6 +141,20 @@ describe("fetchEditionCandidates", () => {
     expect(h.tables).toEqual(["books"]);
   });
 
+  // Al exportarse de un módulo "use server" esto es un endpoint POST abierto:
+  // sin la guarda, cualquiera puede quemar la cuota de OpenLibrary de nuestra
+  // IP a 2 peticiones por llamada. No es fuga de datos (lo que devuelve es
+  // público), es amplificación.
+  it("sin sesión no llega ni a mirar el libro ni a OpenLibrary", async () => {
+    h.state.user = null;
+    const fetchMock = respondWith([doc(VALID[0])]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await fetchEditionCandidates("book-1")).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(h.tables).toEqual([]);
+  });
+
   it("con work key sí pregunta a OpenLibrary (control del caso de arriba)", async () => {
     const fetchMock = respondWith([doc(VALID[0])]);
     vi.stubGlobal("fetch", fetchMock);
@@ -226,28 +245,37 @@ describe("fetchEditionCandidates", () => {
 });
 
 describe("chooseEditionCandidate", () => {
-  const candidate = {
-    isbn: VALID[0],
-    label: "Bolsillo",
-    publisher: "Anagrama",
-    year: 2019,
-    pages: 300,
-    coverUrl: "https://covers.openlibrary.org/b/id/123-L.jpg",
-    language: "ES",
-  };
+  // Lo que OpenLibrary dice de esta tirada. Es la ÚNICA fuente de los
+  // metadatos que se escriben, porque del cliente solo llega el ISBN.
+  const OL_PUBLISHER = "Editorial Real";
+  const OL_COVER = "https://covers.openlibrary.org/b/id/999-L.jpg";
+
+  function stubOpenLibrary(
+    entries: Array<Record<string, unknown>> = [
+      doc(VALID[0], { publishers: [OL_PUBLISHER], covers: [999] }),
+    ]
+  ) {
+    const fetchMock = respondWith(entries);
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  beforeEach(() => {
+    stubOpenLibrary();
+  });
 
   it("registra la edición y la asocia al pase", async () => {
-    const result = await chooseEditionCandidate("pass-1", "book-1", candidate);
+    const result = await chooseEditionCandidate("pass-1", "book-1", VALID[0]);
 
     expect(result).toEqual({ ok: true });
     expect(h.rpc).toHaveBeenCalledWith("register_book_edition", {
       p_book_id: "book-1",
       p_isbn: VALID[0],
       p_label: "Bolsillo",
-      p_publisher: "Anagrama",
+      p_publisher: OL_PUBLISHER,
       p_year: 2019,
       p_pages: 300,
-      p_cover_url: "https://covers.openlibrary.org/b/id/123-L.jpg",
+      p_cover_url: OL_COVER,
     });
     expect(h.setPassEdition).toHaveBeenCalledWith(
       "pass-1",
@@ -257,11 +285,95 @@ describe("chooseEditionCandidate", () => {
     );
   });
 
+  // ── El agujero que cierra la firma nueva (I1) ───────────────────────────
+  // `register_book_edition` es SECURITY DEFINER y solo exige sesión: lo que
+  // llegue en `p_publisher`/`p_cover_url` acaba en el catálogo COMUNITARIO y
+  // se le pinta a todo el mundo. Por eso del navegador solo puede venir el
+  // ISBN, y el servidor re-deriva el resto contra OpenLibrary.
+
+  it("una candidata falsificada por el cliente no llega a la RPC", async () => {
+    // Un atacante manda el objeto candidata entero (la forma vieja de la
+    // firma) con editorial y portada de su elección.
+    const forged = {
+      isbn: VALID[0],
+      label: "<script>",
+      publisher: "EDITORIAL FALSIFICADA",
+      year: 1000,
+      pages: 99999,
+      coverUrl: "https://evil.example/portada.jpg",
+      language: "ES",
+    };
+
+    const result = await chooseEditionCandidate(
+      "pass-1",
+      "book-1",
+      forged as unknown as string
+    );
+
+    // No cuela ni a medias: la firma solo acepta un ISBN, así que la llamada
+    // muere antes de tocar la RPC.
+    expect(result).toEqual({ ok: false, reason: "invalidIsbn" });
+    expect(h.rpc).not.toHaveBeenCalled();
+  });
+
+  it("lo escrito son los metadatos de OpenLibrary, no los que el navegador tuviera", async () => {
+    // La lista del navegador pudo haberse manipulado para enseñar otra
+    // editorial y otra portada; da igual, porque esos campos no viajan.
+    await chooseEditionCandidate("pass-1", "book-1", VALID[0]);
+
+    const args = h.rpc.mock.calls[0][1] as Record<string, unknown>;
+    expect(args.p_publisher).toBe(OL_PUBLISHER);
+    expect(args.p_cover_url).toBe(OL_COVER);
+    expect(args.p_label).toBe("Bolsillo");
+    expect(args.p_year).toBe(2019);
+    expect(args.p_pages).toBe(300);
+    // Y la portada solo puede ser de covers.openlibrary.org, porque la
+    // construye `buildCoverUrl` en servidor.
+    expect(String(args.p_cover_url)).toMatch(/^https:\/\/covers\.openlibrary\.org\//);
+  });
+
+  it("un ISBN válido que OpenLibrary no da para esta obra se rechaza; no se inventa la fila", async () => {
+    // La obra solo ofrece VALID[0]; se pide VALID[1].
+    const result = await chooseEditionCandidate("pass-1", "book-1", VALID[1]);
+
+    expect(result).toEqual({ ok: false, reason: "unknownCandidate" });
+    expect(h.rpc).not.toHaveBeenCalled();
+    expect(h.setPassEdition).not.toHaveBeenCalled();
+  });
+
+  it("si OpenLibrary no responde no se escribe nada: sin metadatos de confianza no hay fila", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false })));
+
+    expect(await chooseEditionCandidate("pass-1", "book-1", VALID[0])).toEqual({
+      ok: false,
+      reason: "unknownCandidate",
+    });
+    expect(h.rpc).not.toHaveBeenCalled();
+  });
+
+  it("libro sin work key: tampoco hay de dónde re-derivar", async () => {
+    h.state.workKey = null;
+
+    expect(await chooseEditionCandidate("pass-1", "book-1", VALID[0])).toEqual({
+      ok: false,
+      reason: "unknownCandidate",
+    });
+    expect(h.rpc).not.toHaveBeenCalled();
+  });
+
+  it("el ISBN del cliente se normaliza antes de casarlo (guiones incluidos)", async () => {
+    const result = await chooseEditionCandidate("pass-1", "book-1", "978-84-339-2042-3");
+
+    expect(result).toEqual({ ok: true });
+    expect(h.rpc.mock.calls[0][1]).toMatchObject({ p_isbn: VALID[0] });
+  });
+  // ───────────────────────────────────────────────────────────────────────
+
   it("la RPC devuelve NULL (ya existía): re-selecciona por (book_id, isbn) y NO falla", async () => {
     h.state.rpcResult = { data: null, error: null };
     h.state.existingByIsbn = { id: "edition-vieja" };
 
-    const result = await chooseEditionCandidate("pass-1", "book-1", candidate);
+    const result = await chooseEditionCandidate("pass-1", "book-1", VALID[0]);
 
     expect(result).toEqual({ ok: true });
     expect(h.setPassEdition).toHaveBeenCalledWith(
@@ -276,27 +388,27 @@ describe("chooseEditionCandidate", () => {
     h.state.rpcResult = { data: null, error: null };
     h.state.existingByIsbn = null;
 
-    expect(await chooseEditionCandidate("pass-1", "book-1", candidate)).toEqual({
+    expect(await chooseEditionCandidate("pass-1", "book-1", VALID[0])).toEqual({
       ok: false,
       reason: "registerFailed",
     });
     expect(h.setPassEdition).not.toHaveBeenCalled();
   });
 
-  it("ISBN inválido no llega a la RPC", async () => {
-    const result = await chooseEditionCandidate("pass-1", "book-1", {
-      ...candidate,
-      isbn: "1234567890123",
-    });
+  it("ISBN inválido no llega ni a preguntarle a OpenLibrary", async () => {
+    const fetchMock = stubOpenLibrary();
+
+    const result = await chooseEditionCandidate("pass-1", "book-1", "1234567890123");
 
     expect(result).toEqual({ ok: false, reason: "invalidIsbn" });
     expect(h.rpc).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("sin sesión devuelve {ok:false} en vez de lanzar", async () => {
     h.state.user = null;
 
-    expect(await chooseEditionCandidate("pass-1", "book-1", candidate)).toEqual({
+    expect(await chooseEditionCandidate("pass-1", "book-1", VALID[0])).toEqual({
       ok: false,
       reason: "unauthenticated",
     });
@@ -310,7 +422,7 @@ describe("chooseEditionCandidate", () => {
     // vieja convertiría un rechazo del servidor en un éxito silencioso.
     h.state.existingByIsbn = { id: "edition-que-no-toca" };
 
-    expect(await chooseEditionCandidate("pass-1", "book-1", candidate)).toEqual({
+    expect(await chooseEditionCandidate("pass-1", "book-1", VALID[0])).toEqual({
       ok: false,
       reason: "registerFailed",
     });
@@ -320,7 +432,7 @@ describe("chooseEditionCandidate", () => {
   it("si asociar el pase revienta devuelve {ok:false}, nunca lanza", async () => {
     h.state.setPassEditionThrows = true;
 
-    expect(await chooseEditionCandidate("pass-1", "book-1", candidate)).toEqual({
+    expect(await chooseEditionCandidate("pass-1", "book-1", VALID[0])).toEqual({
       ok: false,
       reason: "generic",
     });

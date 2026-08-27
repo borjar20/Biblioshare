@@ -2253,3 +2253,45 @@ como la escala continua que es una tierlist.
   «Más ediciones (OpenLibrary)» justo debajo, la pantalla se contradecía a sí misma. El número que
   va al lado del título es `editions.length`, el total de la ficha, que es exactamente lo que el
   título nuevo nombra.
+
+- **Del navegador a la RPC del catálogo comunitario solo viaja el ISBN: el servidor RE-DERIVA la
+  candidata** (2026-08-27, revisión de la Task 13). `chooseEditionCandidate` recibía el objeto
+  `EditionCandidate` entero desde el cliente y solo revalidaba el `isbn`; `publisher`, `coverUrl`,
+  `label`, `year` y `pages` iban tal cual a `register_book_edition`, que es `SECURITY DEFINER` y
+  solo exige `auth.uid() is not null`. Es decir: **cualquier usuario autenticado podía crear una
+  fila en `book_editions` de cualquier libro con editorial y portada arbitrarias**, y el
+  `publisher` se le pinta hoy a toda la comunidad (`formatEditionDetails`). Antes de este selector,
+  meter metadatos a mano exigía `collaborator+` (`createEdition`) — era un ensanchamiento de
+  privilegio, no un detalle de validación.
+
+  Se arregla por la vía buena y no por la barata: **la firma acepta solo el ISBN** y el servidor
+  vuelve a pedirle a OpenLibrary las ediciones de la obra (`fetchLiveWorkEditions`) y casa por ISBN
+  normalizado. Si no aparece, `{ok:false, reason:"unknownCandidate"}` y no se escribe nada. La
+  alternativa barata —dejar viajar los metadatos y solo exigir que `coverUrl` empiece por
+  `https://covers.openlibrary.org/` y capar `publisher`— se descartó: sigue dejando al cliente
+  elegir *qué* editorial se le enseña a la comunidad, y una lista blanca de prefijos envejece peor
+  que una re-derivación.
+
+  **Coste asumido, medido a ojo y a propósito:** una llamada extra a OpenLibrary por elección.
+  Es una acción iniciada por el usuario y poco frecuente (solo al elegir una candidata, no al
+  listarlas), contra cerrar un agujero de escritura en el catálogo compartido. El tope de escaneo
+  de la re-derivación es 200 (`MAX_DERIVATION_SCAN`), a propósito mucho mayor que las 30
+  candidatas que se enseñan: tiene que ser un **superconjunto** de lo que el picker pudo pintar,
+  porque aquel escanea con holgura (30 + las ya persistidas) y la re-derivación no excluye nada.
+
+  Es el patrón que más veces ha mordido en este plan (#674 y dos recaídas en la misma rama): datos
+  del cliente llegando al catálogo compartido. **Y no se puede confiar en que lo sanee la RPC**:
+  verificado contra `pg_proc` en dev, `sane_int` se aplica solo a `p_year` y `p_pages`;
+  `p_publisher` y `p_cover_url` entran crudos. El comentario del código que afirmaba lo contrario
+  se corrigió en el mismo cambio — era justo el tipo de falsedad que hace que el siguiente lector
+  no mire.
+
+- **El fallo de CARGAR candidatas no se cuenta con el mensaje de GUARDAR** (2026-08-27, revisión de
+  la Task 13). El `catch` de `loadCandidates` reutilizaba `candidateErrors.generic` («No se pudo
+  guardar la edición.») cuando nunca se había intentado guardar nada, y como esa misma rama deja
+  `candidates` en `[]`, la pantalla afirmaba a la vez «No hay más ediciones que ofrecerte para esta
+  obra» — una afirmación que tampoco consta, porque la lista no llegó. Dos frases, una falsa y otra
+  contradiciéndola. Ahora hay una clave propia (`editions.candidatesFailed`) y una bandera
+  `candidatesFailed` que **suprime el estado vacío**: el vacío solo se afirma cuando la lista llegó
+  de verdad. Regla general: un estado vacío es una afirmación sobre el mundo, y tras un error no
+  sabemos nada del mundo.

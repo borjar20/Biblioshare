@@ -1333,10 +1333,12 @@
     "candidateHint": "Ediciones que OpenLibrary conoce de esta obra. Solo se guarda la que elijas.",
     "candidatesLoading": "Buscando ediciones…",
     "candidatesEmpty": "No hay más ediciones que ofrecerte para esta obra.",
+    "candidatesFailed": "No se pudieron cargar las ediciones de OpenLibrary. Inténtalo de nuevo más tarde.",
     "choosingCandidate": "Guardando…",
     "candidateErrors": {
       "unauthenticated": "Vuelve a iniciar sesión para guardar la edición.",
       "invalidIsbn": "Esa edición no trae un ISBN válido, así que no se puede guardar.",
+      "unknownCandidate": "Esa edición ya no aparece entre las que OpenLibrary da para esta obra. Vuelve a abrir la lista.",
       "registerFailed": "No se pudo registrar la edición.",
       "generic": "No se pudo guardar la edición."
     }

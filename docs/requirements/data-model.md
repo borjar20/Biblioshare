@@ -783,6 +783,26 @@ libro (normalizados con `normalizeIsbn` en los dos lados) para que la misma tira
 dos bloques. Verificado en dev el 2026-08-27: abrir la ficha de un libro y desplegar las 30
 candidatas deja `book_editions` en 481 filas, las mismas que antes.
 
+**Del navegador solo viaja el ISBN (revisión de la Task 13, 2026-08-27).**
+`chooseEditionCandidate` recibía la candidata ENTERA desde el cliente y solo revalidaba el
+`isbn`: como `register_book_edition` es `SECURITY DEFINER` y su único requisito es
+`auth.uid() is not null`, cualquier usuario autenticado podía escribir `publisher`, `cover_url`
+y `label` arbitrarios en el catálogo COMUNITARIO de cualquier libro — un ensanchamiento de
+privilegio frente a `createEdition`, que exige `collaborator+`. Ahora la firma acepta **solo el
+ISBN** y el servidor **re-deriva** la candidata: vuelve a pedirle a OpenLibrary las ediciones de
+la obra (`fetchLiveWorkEditions`, tope de escaneo 200 — superconjunto de lo que el picker pudo
+enseñar) y casa por ISBN normalizado; si no aparece, devuelve `unknownCandidate` y no escribe
+nada. Ni un metadato del cliente llega a la RPC. `fetchEditionCandidates` exige además sesión: al
+exportarse de un módulo `"use server"` es un endpoint POST abierto y cada llamada gasta hasta 2
+peticiones de la cuota de OpenLibrary de nuestra IP (no es fuga de datos — `books` y
+`book_editions` son `SELECT USING (true)` y por eso las lee un cliente sin sesión, regla #437).
+
+**Lo que `register_book_edition` NO sanea** (verificado en dev el 2026-08-27 contra `pg_proc`):
+`public.sane_int` se aplica **solo** a `p_year` (1400-2200) y `p_pages` (1-20000). `p_publisher`
+y `p_cover_url` se insertan **crudos**; `p_label` solo pasa por un `trim` con valor por defecto
+`'Edición'`. El dígito de control del ISBN sí lo comprueba la función, en las dos formas (10 y
+13). Es la razón por la que esos tres campos no pueden volver a venir del navegador.
+
 **La columna `books.editions_synced_at` NO se ha dropeado**: sigue en el esquema (fase
 destructiva, Task 16, después del despliegue) pero el código de aplicación ya no la lee ni la
 escribe en ningún sitio — solo sobrevive en el tipo generado de Supabase

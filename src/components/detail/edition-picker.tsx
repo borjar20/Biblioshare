@@ -104,6 +104,11 @@ export function EditionPicker({
   const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [choosingIsbn, setChoosingIsbn] = useState<string | null>(null);
   const [candidateError, setCandidateError] = useState<string | null>(null);
+  // Se separa del error de GUARDAR (`candidateError`) porque no es lo mismo ni
+  // dice lo mismo: aquí no se llegó a intentar guardar nada. Además, la rama
+  // de fallo deja `candidates` en `[]`, y sin esta bandera se pintaría a la vez
+  // «no hay más ediciones» —una afirmación que no consta— y el error.
+  const [candidatesFailed, setCandidatesFailed] = useState(false);
 
   const createAction = createEdition.bind(null, itemType, itemId);
   const [createState, createFormAction, createPending] = useActionState(
@@ -181,12 +186,15 @@ export function EditionPicker({
     if (candidates !== null || loadingCandidates) return;
     setLoadingCandidates(true);
     setCandidateError(null);
+    setCandidatesFailed(false);
     try {
       setCandidates(await fetchEditionCandidates(itemId));
     } catch {
       // fetchEditionCandidates ya se traga sus fallos y devuelve []; esto cubre
       // que se caiga la propia llamada a la server action (red del cliente).
-      setCandidateError("generic");
+      // Lo que falló fue CARGAR, no guardar: no se reutiliza el error de
+      // guardar, que diría algo que no ha pasado.
+      setCandidatesFailed(true);
       setCandidates([]);
     } finally {
       setLoadingCandidates(false);
@@ -197,7 +205,10 @@ export function EditionPicker({
     if (!passId) return;
     setChoosingIsbn(candidate.isbn);
     setCandidateError(null);
-    const result = await chooseEditionCandidate(passId, itemId, candidate);
+    // Solo el ISBN: el servidor re-deriva la candidata contra OpenLibrary. Si
+    // se le mandara el objeto entero, sus metadatos acabarían en el catálogo
+    // comunitario tal como los tuviera el navegador.
+    const result = await chooseEditionCandidate(passId, itemId, candidate.isbn);
     setChoosingIsbn(null);
     if (result.ok) {
       onCandidatePicked?.();
@@ -390,13 +401,17 @@ export function EditionPicker({
               progreso): el navegador ya trae el estado, el teclado y la
               semántica. Nace CERRADO, y ese es el punto: la llamada a
               OpenLibrary solo ocurre si alguien lo abre. */}
+          {/* `group` va en el `<details>`, no en el `<summary>`: `group-open:`
+              mira el `[open]` del elemento que lleva `.group`, y `open` solo lo
+              tiene el `<details>` (mismo patrón que log-panel y
+              list-challenge-board). En el `<summary>` el chevron no giraba. */}
           <details
-            className="rounded-[10px] border border-dashed border-border"
+            className="group rounded-[10px] border border-dashed border-border"
             onToggle={(event) => {
               if (event.currentTarget.open) void loadCandidates();
             }}
           >
-            <summary className="group flex cursor-pointer list-none items-center justify-between px-[13px] py-3 text-[12.5px] font-semibold text-foreground">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-[13px] py-3 text-[12.5px] font-semibold text-foreground">
               {t("moreFromOpenLibrary")}
               <ChevronDownIcon
                 aria-hidden
@@ -414,10 +429,16 @@ export function EditionPicker({
                 </p>
               )}
 
-              {!loadingCandidates && candidates?.length === 0 && (
+              {/* El vacío solo se afirma cuando la lista llegó de verdad: tras
+                  un fallo de carga no sabemos si hay ediciones o no. */}
+              {!loadingCandidates && !candidatesFailed && candidates?.length === 0 && (
                 <p className="text-[11.5px] text-muted-foreground">
                   {t("candidatesEmpty")}
                 </p>
+              )}
+
+              {candidatesFailed && (
+                <p className="text-sm text-status-dropped">{t("candidatesFailed")}</p>
               )}
 
               {candidates && candidates.length > 0 && (
