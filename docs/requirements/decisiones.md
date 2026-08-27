@@ -1989,3 +1989,61 @@ como la escala continua que es una tierlist.
   comas es lo único que se añade encima, para que «Brandon Sanderson, Rafael Marín» (autor +
   traductor) siga casando con «Brandon Sanderson». Verificado contra Inventaire real: de las 20
   entidades que devuelve la búsqueda «The Name of the Wind», solo Q1195989 pasa la verificación.
+
+- **Google Books se pide en cuanto la sinopsis no está en español, y su resultado se etiqueta con el
+  idioma REAL del volumen** (2026-08-27, revisión de la task 9 del plan de edición de obra; cierra
+  #886 y el hallazgo I3). Son dos decisiones que van juntas y en este orden, porque la segunda hace
+  segura a la primera.
+
+  **1. El umbral.** El gate de Google Books era `langRank(current.lang) <= 1` y el de
+  `needsRepresentationReview` es `> 0`: en medio caía justo la sinopsis inglesa, que es el caso
+  COMÚN (`synopsisLang` etiqueta `en` toda sinopsis de Open Library, y OL sí suele traer
+  descripción). De las dos salidas que planteaba #886 se elige la primera —bajar el gate de GB a
+  «solo se salta si YA es español»— y no la segunda —dar por buena la sinopsis inglesa—, porque la
+  spec §4 contrata a Google Books precisamente para ese campo («OL casi nunca tiene sinopsis en
+  español; GB con `langRestrict=es` es el proveedor realista»). Con el umbral viejo, la
+  reevaluación de cada 30 días era un **no-op demostrable**: se marcaba la obra mejorable, se
+  gastaban ~10 peticiones externas por libro y mes, y por construcción no podía cambiar nada.
+  El coste asumido es una llamada a Google Books por obra con sinopsis inglesa, dentro del tope de
+  `MAX_GOOGLE_BOOKS_CALLS`. **El umbral sigue apareciendo en dos sitios** (aquí y en
+  `needsRepresentationReview`) y por eso ambos comentarios se citan mutuamente: si uno se mueve, el
+  otro también.
+
+  **2. La etiqueta.** `langRestrict=es` es una **pista, no una garantía** — Google Books cuela
+  volúmenes en otro idioma. Se etiqueta con `volume.language`, que `mapVolume` ya extraía y aquí se
+  ignoraba, y solo se cae al idioma pedido cuando el volumen no declara ninguno. Se elige
+  ETIQUETAR y no DESCARTAR el volumen: uno inglés sigue sirviendo para rellenar un hueco vacío, y
+  con su idioma declarado honestamente la RPC sabe que se puede mejorar más adelante.
+  **Por qué esto no es cosmético:** el rango 0 (español) es un estado TERMINAL, porque la RPC solo
+  acepta mejora ESTRICTA. Medido en dev sobre una fila con una sinopsis inglesa marcada `es`: ni
+  una sinopsis española posterior ni una inglesa honesta la reemplazan — el valor queda congelado
+  para siempre y `needsRepresentationReview` deja además de marcarlo mejorable. Es el modo de
+  congelación de #730 por una puerta nueva, y aflojar el gate del punto 1 sin esto lo habría
+  activado. Encima se añade una guarda de mejora estricta también en TypeScript: un volumen inglés
+  no sustituye una sinopsis inglesa de OL, porque la RPC lo rechazaría igual y de paso se perdería
+  la procedencia mejor.
+
+- **El QID cuenta como hueco en `needsRepresentationReview`** (2026-08-27, misma revisión, hallazgo
+  I4). `books.wikidata_id` es el ancla de identidad inter-idioma y **no vive en `repr_meta`**, así
+  que el barrido de campos del predicado no lo veía. Hasta ahora una obra sin QID se reintentaba
+  **de casualidad**: la sinopsis, etiquetada `en`, siempre quedaba mejorable. En cuanto Google
+  Books empieza a llenar sinopsis españolas (decisión de arriba), esa casualidad desaparece y un
+  libro todo-ES sin QID no se reconsideraría jamás. Y «sin QID» no es un caso raro: Inventaire
+  expiró en 2 de las 4 ejecuciones reales medidas. El cooldown de 30 días sigue aplicando, así que
+  el coste es acotado; la palanca para reducir esas expiraciones es el timeout por llamada de la
+  issue #889, no este predicado.
+
+- **Los campos del `SearchResult` que llegan a la hidratación de un ítem recién creado van a `null`**
+  (2026-08-27, misma revisión, hallazgo C1, refuerza #674). `openCatalogItem` y `addToLibrary` son
+  **server actions**: su `SearchResult` lo deserializa el servidor de lo que manda el NAVEGADOR, así
+  que ninguno de sus campos es un dato del proveedor — son entrada de usuario con forma de resultado
+  de búsqueda. Es exactamente por eso que `findOrCreateCatalogItem` se queda solo con
+  `p_external_id`, y el dispatcher de hidratación se había saltado esa regla pasando `title` y
+  `author`. Los dos llegaban a escritura sobre el catálogo COMPARTIDO: `author` acaba en `p_author`,
+  que es fill-only y por tanto acepta SIEMPRE en una fila recién nacida; `title` es la consulta que
+  va a Inventaire, de donde sale el QID, y un QID equivocado FUSIONA dos obras. Con `hydrated_at`
+  ya marcado, el curador no reintenta: la basura sería permanente hasta curación manual. No se
+  pierde nada, porque ahí se conoce el `openlibrary_work_key` y `fetchWork` da título y autor de
+  verdad. **La regla general, para no rediscutirla:** un valor solo entra en el catálogo compartido
+  si su origen es un proveedor al que llamó el servidor; si pasó por el cliente, se descarta aunque
+  «venga de la búsqueda».

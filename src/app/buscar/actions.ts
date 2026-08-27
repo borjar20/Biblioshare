@@ -30,13 +30,33 @@ function hydrateNewItem(supabase: Supa, itemId: string, result: SearchResult) {
         isbn: result.matchedIsbn ?? null,
         hydrated_at: null,
         // La fila acaba de nacer vacía (#674): no tiene representación previa
-        // que mejorar ni QID. Título y autoría SÍ se pasan —son los del
-        // resultado que el usuario acaba de pulsar— porque sirven de consulta
-        // para Wikidata y Google Books cuando la obra no tiene work key.
+        // que mejorar ni QID.
         repr_meta: null,
         wikidata_id: null,
-        title: result.title || null,
-        author: result.subtitle,
+        // TÍTULO Y AUTORÍA VAN A NULL A PROPÓSITO — no los "arregles" de vuelta.
+        //
+        // `openCatalogItem` y `addToLibrary` son SERVER ACTIONS: este
+        // `SearchResult` lo deserializa el servidor de lo que manda EL
+        // NAVEGADOR, así que ninguno de sus campos es un dato del proveedor —
+        // son entrada de usuario con forma de resultado de búsqueda. Es el
+        // envenenamiento de catálogo de #674, y por eso `findOrCreateCatalogItem`
+        // se queda solo con `p_external_id` y tira el resto (ver su cabecera:
+        // ahí los canónicos SÍ valen porque el origen es TMDB, servidor
+        // fiable, no un cliente).
+        //
+        // Los dos llegan a ESCRITURA sobre el catálogo COMPARTIDO:
+        //  · `author` acaba en `p_author`, que es fill-only — y como la fila
+        //    acaba de nacer con `author` NULL, el fill-only lo acepta SIEMPRE.
+        //  · `title` es la consulta que se le manda a Inventaire, de donde sale
+        //    el QID; un QID equivocado FUSIONA dos obras.
+        // Y la RPC marca `hydrated_at`, así que el curador no reintenta: la
+        // basura sería permanente hasta curación manual.
+        //
+        // No se pierde nada real: aquí se conoce el `openlibrary_work_key`, así
+        // que `fetchWork` da título y autor de VERDAD, y el `after()` de la
+        // ficha rehidrata igualmente si esta pasada no llega a tiempo.
+        title: null,
+        author: null,
         total_pages: null,
       })
     : result.itemType === "movie"

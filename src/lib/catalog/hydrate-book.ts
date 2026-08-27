@@ -13,6 +13,7 @@ import {
   needsRepresentationReview,
   pickField,
   synopsisLang,
+  toReprLang,
   type HydrateFields,
   type ReprMeta,
 } from "./representation";
@@ -66,7 +67,7 @@ export async function ensureBookHydrated(
 ): Promise<void> {
   try {
     const meta = (book.repr_meta ?? null) as ReprMeta | null;
-    if (!needsRepresentationReview(book.hydrated_at, meta)) return;
+    if (!needsRepresentationReview(book.hydrated_at, meta, book.wikidata_id)) return;
 
     let workKey = book.openlibrary_work_key;
 
@@ -148,10 +149,28 @@ export async function ensureBookHydrated(
       { value: synopsis, lang: synopsisLang(synopsis), source: "openlibrary" },
     ]);
 
-    // Google Books por campo, y solo si el mejor candidato quedó vacío o con
-    // rango peor que inglés. La consulta es la misma para los dos campos, así
-    // que se memoiza: el tope de MAX_GOOGLE_BOOKS_CALLS sigue valiendo, pero en
-    // la práctica se gasta una sola llamada.
+    // Google Books por campo, y solo si el mejor candidato NO es ya español.
+    //
+    // #886: el gate era `langRank(current.lang) <= 1`, o sea que saltaba
+    // también con el campo en INGLÉS — y ahí cae justo la sinopsis inglesa, que
+    // es el caso COMÚN (`synopsisLang` etiqueta `en` toda sinopsis de OL, y OL
+    // sí suele traer descripción). Consecuencia: Google Books no llegaba nunca
+    // al único campo para el que la spec lo contrata («OL casi nunca tiene
+    // sinopsis en español; GB con langRestrict=es es el proveedor realista»), y
+    // la reevaluación de cada 30 días era un NO-OP demostrable —
+    // `needsRepresentationReview` marcaba mejorable todo lo que no fuera
+    // español (rango > 0), se gastaban ~10 peticiones externas por libro y mes,
+    // y por construcción no podía cambiar nada. La base ya aceptaba la mejora:
+    // para en→es la RPC evalúa `0 >= 1` = falso, o sea que ESCRIBE. Era solo
+    // este gate el que se negaba a pedirlo.
+    //
+    // La consulta es la misma para los dos campos, así que se memoiza. OJO
+    // (m5): con las dos entradas del bucle pidiendo `wanted: "es"` hay UNA sola
+    // clave en el Map, así que `gbCalls` nunca pasa de 1 y el tope de
+    // MAX_GOOGLE_BOOKS_CALLS es hoy INALCANZABLE. No es un bug —el tope es la
+    // red de seguridad, no el mecanismo—, pero quien añada un idioma al bucle o
+    // "arregle" el memo estará duplicando el presupuesto de llamadas sin
+    // enterarse. Ese tope es lo único que lo frena.
     const volumeByLang = new Map<string, GoogleVolume | null>();
     let gbCalls = 0;
     let gbVolumeId: string | null = null;
@@ -161,7 +180,7 @@ export async function ensureBookHydrated(
     ] as const) {
       if (!titleForLookups) break;
       const current = fields[field];
-      if (current && langRank(current.lang) <= 1) continue;
+      if (current && langRank(current.lang) === 0) continue;
 
       let volume = volumeByLang.get(wanted) ?? null;
       if (!volumeByLang.has(wanted)) {
@@ -174,13 +193,42 @@ export async function ensureBookHydrated(
 
       gbVolumeId = gbVolumeId ?? volume.volumeId;
       const value = field === "synopsis" ? volume.synopsis : volume.coverUrl;
-      if (value) fields[field] = { value, lang: wanted, source: "google_books" };
+      if (!value) continue;
+
+      // I3: `langRestrict` es una PISTA, no una garantía — Google Books cuela
+      // volúmenes en otro idioma. Se etiqueta con el idioma REAL que declara el
+      // volumen, no con el pedido. Etiquetar de `es` una sinopsis inglesa la
+      // sella en rango 0, que es un estado TERMINAL (la RPC solo acepta mejora
+      // ESTRICTA): no se corregiría nunca, y `needsRepresentationReview`
+      // dejaría además de marcarla mejorable. Es el modo de congelación de #730
+      // por una puerta nueva.
+      //
+      // Se ETIQUETA en vez de DESCARTAR el volumen: un volumen inglés sigue
+      // sirviendo para rellenar un hueco vacío, y con su idioma real declarado
+      // la RPC ya sabe que se puede mejorar más adelante. Lo que no vale es
+      // mentir sobre el idioma. Sin `language` declarado se mantiene el pedido,
+      // que es lo único que se sabe.
+      const lang = volume.language ? toReprLang(volume.language) : wanted;
+      // Y solo se propone si MEJORA de verdad: cambiar una sinopsis inglesa de
+      // OL por otra inglesa de GB no es una mejora (la RPC la rechazaría por no
+      // ser estricta) y de paso perdería la procedencia mejor.
+      if (current && langRank(lang) >= langRank(current.lang)) continue;
+      fields[field] = { value, lang, source: "google_books" };
     }
 
     const genres = work ? mapSubjectsToGenres(work.subjects) : [];
     // La mediana de páginas puede caer en .5 (número par de ediciones) y el
     // parámetro de la RPC es `integer`: sin redondear, PostgREST rechaza la
     // llamada entera.
+    //
+    // m9, y NO se arregla a propósito: si la fila ya trae `total_pages` pero
+    // `repr_meta` no tiene entrada `pages`, esa procedencia se queda vacía para
+    // siempre (la RPC solo estampa `pages` dentro de la rama `total_pages is
+    // null`). Rellenarla exigiría estampar `openlibrary` sobre un número cuyo
+    // origen NO conocemos —pudo venir de la edición que identificó el usuario,
+    // de un import o de una curación—, o sea INVENTAR la procedencia, que es
+    // peor que dejar el hueco: la procedencia es un hecho verificable, no una
+    // heurística (mismo criterio que la lista blanca de `source` en la RPC).
     const pagesMedian =
       book.total_pages == null && candidates.pagesMedian != null
         ? Math.round(candidates.pagesMedian)

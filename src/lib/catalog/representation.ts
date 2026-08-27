@@ -62,24 +62,36 @@ function readEntry(meta: ReprMeta | null, field: (typeof REVIEWED_FIELDS)[number
 // ¿Merece la pena gastar llamadas externas en esta obra?
 //
 // Nunca hidratada → siempre. Ya hidratada → solo si queda algo mejorable
-// (un campo sin entrada, o con un idioma peor que el español) Y ha pasado el
-// cooldown. Sin el cooldown, una obra que solo existe en inglés volvería a
-// pedirle lo mismo a OpenLibrary, Inventaire y Google Books en CADA visita a su
-// ficha, para siempre y sin cambiar nada.
+// (un campo sin entrada, con un idioma peor que el español, o sin el QID que
+// ancla su identidad) Y ha pasado el cooldown. Sin el cooldown, una obra que
+// solo existe en inglés volvería a pedirle lo mismo a OpenLibrary, Inventaire y
+// Google Books en CADA visita a su ficha, para siempre y sin cambiar nada.
 export function needsRepresentationReview(
   hydratedAt: string | null,
   meta: ReprMeta | null,
+  wikidataId: string | null,
 ): boolean {
   if (hydratedAt === null) return true;
 
-  const improvable = REVIEWED_FIELDS.some((field) => {
-    const entry = readEntry(meta, field);
-    if (!entry) return true;
-    // La curación manual es intocable para la RPC: mirar si "se puede mejorar"
-    // sería gastar llamadas en una escritura que se va a rechazar seguro.
-    if (entry.source === "manual") return false;
-    return langRank(entry.lang) > 0;
-  });
+  // El QID es un HUECO más, y hay que mirarlo aparte porque NO vive en
+  // `repr_meta`: vive en su propia columna, así que el barrido de campos de
+  // abajo no lo ve. Hasta ahora un libro sin QID se reintentaba de casualidad
+  // —la sinopsis, etiquetada `en` por `synopsisLang`, siempre quedaba
+  // mejorable—; en cuanto Google Books empiece a llenar sinopsis españolas
+  // (#886) esa casualidad desaparece y un libro todo-ES sin QID no se
+  // reconsideraría JAMÁS. Y «sin QID» no es raro: Inventaire expiró en 2 de 4
+  // ejecuciones reales. Se mira `!wikidataId` para tratar la cadena vacía como
+  // ausente.
+  const improvable =
+    !wikidataId ||
+    REVIEWED_FIELDS.some((field) => {
+      const entry = readEntry(meta, field);
+      if (!entry) return true;
+      // La curación manual es intocable para la RPC: mirar si "se puede mejorar"
+      // sería gastar llamadas en una escritura que se va a rechazar seguro.
+      if (entry.source === "manual") return false;
+      return langRank(entry.lang) > 0;
+    });
   if (!improvable) return false;
 
   const at = Date.parse(hydratedAt);
@@ -112,6 +124,18 @@ export function pickField(
     fields[key] = { value, lang: option.lang, source: option.source };
     return;
   }
+}
+
+// Un código de idioma tal y como lo declara una API externa (Google Books
+// devuelve BCP-47: «es», «en», «en-GB», «es-419») traducido al vocabulario de
+// la política. Solo cuenta el subtag primario; lo que no sea español ni inglés
+// es «other», y un código ausente o vacío también (falla al rango peor, que es
+// el que NO pisa nada).
+export function toReprLang(code: string | null | undefined): ReprLang {
+  const primary = (code ?? "").trim().toLowerCase().split(/[-_]/)[0];
+  if (primary === "es") return "es";
+  if (primary === "en") return "en";
+  return "other";
 }
 
 // Heurística mínima y deliberada (spec §4): OpenLibrary casi nunca trae sinopsis
