@@ -701,8 +701,16 @@ y hace depender el alta de un trigger en vez del dato. Solo la rama de libro: `r
 > service_role=X/postgres}` (ni `anon` ni `authenticated`, con `anon` **nombrado** en el
 > `revoke` por #831) y `proconfig = {"search_path=public, pg_temp"}`.
 >
-> **PROD: sin verificar.** Esta rama no se ha desplegado y la lectura de producción no se hizo
-> en esta sesión. Antes de aplicar nada de aquí a prod, leer el aviso de la issue
+> **PROD: NADA DE ESTO ESTÁ APLICADO** (verificado contra `pg_proc` el 2026-08-27). De las ocho
+> funciones de esta cadena, producción solo tiene las dos VIEJAS: `hydrate_book` con su firma v2
+> (`p_book_id, p_synopsis, p_genres, p_cover_url, p_title, p_author, p_published_year` — o sea
+> fill-only y ejecutable por `authenticated`) y `register_manual_catalog_item` sin la marca de
+> curación. No existen allí `hydrate_books_bulk`, `repr_should_write`, `repr_lang_rank`,
+> `merge_book_into`, `register_catalog_item_by_volume` ni `stamp_repr_manual_on_curation`.
+> La cadena `20260882`–`20260891` se despliega ENTERA y detrás del código, nunca a trozos: el
+> código nuevo llama con firmas que prod todavía no tiene.
+>
+> Antes de aplicar nada de aquí a prod, leer el aviso de la issue
 > [#894](https://github.com/borjar20/Biblioshare/issues/894): sobre las filas que dejó el
 > backfill de `20260882` en rango 3, el lote **sí pisa** título y portada con candidatas de
 > rango 2 (`other`, que puede ser cualquier idioma). Es la semántica decidida, pero el efecto
