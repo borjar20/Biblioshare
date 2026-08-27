@@ -30,7 +30,7 @@
 **Files:** ninguno (operación de BD vía MCP supabase; sin `psql` en esta máquina).
 
 **Interfaces:**
-- Produces: esquema `backup_obra_edicion_20260826` en dev y prod con copias de `books`, `book_editions` y `diary_entries` (nombre físico de `passes`).
+- Produces: esquema `backup_obra_edicion_20260826` en dev y prod con copias de `books`, `book_editions` y `passes`.
 
 - [ ] **Step 1: Crear el esquema de respaldo en dev** (`mcp__supabase-dev__execute_sql` o el conector claude.ai con project_id `tyvzpuhxfwxrnkcpzxyg`):
 
@@ -38,7 +38,7 @@
 create schema if not exists backup_obra_edicion_20260826;
 create table backup_obra_edicion_20260826.books as select * from public.books;
 create table backup_obra_edicion_20260826.book_editions as select * from public.book_editions;
-create table backup_obra_edicion_20260826.passes as select * from public.diary_entries;
+create table backup_obra_edicion_20260826.passes as select * from public.passes;
 revoke all on all tables in schema backup_obra_edicion_20260826 from anon, authenticated;
 ```
 
@@ -47,7 +47,7 @@ revoke all on all tables in schema backup_obra_edicion_20260826 from anon, authe
 ```sql
 select 'books' t, (select count(*) from public.books) src, (select count(*) from backup_obra_edicion_20260826.books) bak
 union all select 'book_editions', (select count(*) from public.book_editions), (select count(*) from backup_obra_edicion_20260826.book_editions)
-union all select 'passes', (select count(*) from public.diary_entries), (select count(*) from backup_obra_edicion_20260826.passes);
+union all select 'passes', (select count(*) from public.passes), (select count(*) from backup_obra_edicion_20260826.passes);
 ```
 
 Expected: `src = bak` en las tres filas. Si no, PARAR.
@@ -392,7 +392,7 @@ git commit -m "feat(catalogo): alta GB-only por volume id y edición real en el 
 **Interfaces:**
 - Produces: `merge_book_into(p_loser uuid, p_winner uuid) returns void` — repunta referencias polimórficas del perdedor al ganador y borra el perdedor; **aborta** (raise) si el repunte chocara con un único de tabla de usuario. Solo `service_role`/admin (sin grant a `authenticated`).
 
-- [ ] **Step 1: Leer `20260870_books_openlibrary_work_key_unique.sql`** y extraer la lista de tablas que repunta (passes/diary_entries, collection_items, interaction_targets, club_activity_items, saga_items, credits, notes vía passes… la lista del fichero manda).
+- [ ] **Step 1: Leer `20260870_books_openlibrary_work_key_unique.sql`** y extraer la lista de tablas que repunta (passes, collection_items, interaction_targets, club_activity_items, saga_items, credits, notes vía passes… la lista del fichero manda).
 
 - [ ] **Step 2: Escribir la función** portando esa lógica tal cual, parametrizada:
 
@@ -442,7 +442,7 @@ $$;
 revoke all on function public.merge_book_into(uuid, uuid) from public, anon, authenticated;
 ```
 
-**El bloque `[PORTAR AQUÍ…]` es trabajo de este paso, no un hueco a dejar**: la migración no se commitea hasta sustituirlo por los UPDATE reales sacados de `20260870`. El repunte de `diary_entries` (passes) debe respetar cualquier único parcial que exista sobre `(user_id, item_type, item_id)`.
+**El bloque `[PORTAR AQUÍ…]` es trabajo de este paso, no un hueco a dejar**: la migración no se commitea hasta sustituirlo por los UPDATE reales sacados de `20260870`. El repunte de `passes` debe respetar cualquier único parcial que exista sobre `(user_id, item_type, item_id)`.
 
 - [ ] **Step 3: Probar en dev** con tres casos sembrados, limpiando las filas al final:
   1. Dos shells sin pases, **ambas con un credit del mismo autor y rol** (es el caso real que produce la ficha de autor): la fusión debe COMPLETARSE, borrando el credit sobrante. Si aborta, el `delete` previo de `credits` no se portó.
@@ -1682,7 +1682,7 @@ async function main() {
   console.table(plan);
   if (!apply) return;
   // aplicar: updates set-qid; merges con ganador por nº de pases (consultar
-  // diary_entries por item_id), vía rpc merge_book_into; recoger aborts.
+  // passes por item_id), vía rpc merge_book_into; recoger aborts.
 }
 main();
 ```
@@ -1719,7 +1719,7 @@ git commit -m "feat(catalogo): barrido de reconciliación QID y fusión de dupli
 -- nadie referencia. Se conservan: referenciadas por pases, y las creadas por
 -- colaborador/admin (curación). Ante duda, conservar.
 delete from public.book_editions e
-where not exists (select 1 from public.diary_entries p where p.edition_id = e.id)
+where not exists (select 1 from public.passes p where p.edition_id = e.id)
   and not exists (
     select 1 from public.profiles pr
     where pr.id = e.created_by and pr.role in ('collaborator','admin')
