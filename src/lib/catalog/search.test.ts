@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   searchLocalCatalog: vi.fn(),
   lookupIsbn: vi.fn(),
   findVolumeByIsbn: vi.fn(),
+  searchWorks: vi.fn(),
+  searchInventaireEntities: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
@@ -18,6 +20,10 @@ vi.mock("./local-search", () => ({
 }));
 vi.mock("./openlibrary/isbn-lookup", () => ({ lookupIsbn: mocks.lookupIsbn }));
 vi.mock("./googlebooks/client", () => ({ findVolumeByIsbn: mocks.findVolumeByIsbn }));
+vi.mock("./openlibrary/work-search", () => ({ searchWorks: mocks.searchWorks }));
+vi.mock("./inventaire/client", () => ({
+  searchInventaireEntities: mocks.searchInventaireEntities,
+}));
 
 import { searchCatalog } from "./search";
 
@@ -143,5 +149,21 @@ describe("searchCatalog - rama ISBN", () => {
     });
 
     expect(await searchCatalog("book", ISBN)).toEqual([]);
+  });
+});
+
+describe("searchCatalog - rama texto", () => {
+  // Invariante crítica (spec §4): Google Books NUNCA nace obra desde una
+  // búsqueda por TEXTO, solo desde un ISBN exacto (rama de arriba). Si alguien
+  // añade esa llamada a la rama de texto, este test debe fallar solo.
+  it("búsqueda por texto no llama a findVolumeByIsbn ni produce resultados con googleVolumeId", async () => {
+    mocks.searchLocalCatalog.mockResolvedValue([]);
+    mocks.searchWorks.mockResolvedValue([]);
+    mocks.searchInventaireEntities.mockResolvedValue([]);
+
+    const results = await searchCatalog("book", "dune");
+
+    expect(mocks.findVolumeByIsbn).not.toHaveBeenCalled();
+    expect(results.every((r) => !("googleVolumeId" in r))).toBe(true);
   });
 });

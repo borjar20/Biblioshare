@@ -17,6 +17,10 @@ type BookRow = {
   wikidata_id: string | null;
 };
 
+// Solo para desempatar duplicados en `findLocalBookByIsbn` (ver su cabecera).
+// No forma parte de `BOOK_COLUMNS`: nunca sale en un `SearchResult`.
+type BookRowWithCreatedAt = BookRow & { created_at: string };
+
 type ScreenRow = {
   id: string;
   tmdb_id: number | null;
@@ -86,24 +90,38 @@ function mapScreenRow(itemType: "movie" | "series", row: ScreenRow): SearchResul
 // de leerla. Inner join a propósito: una edición huérfana (su `book_id` fue
 // borrado, o el borrado en cascada aún no corrió) no es un resultado de
 // búsqueda válido.
+//
+// El índice único de `book_editions` es `(book_id, isbn)`, NO `isbn` global: el
+// mismo ISBN puede estar atado a dos `book_id` distintos cuando hay libros
+// duplicados sin fusionar (issue #899, hermana de #898 — aquí en dev hay 13
+// ISBN así, p. ej. "Dune" existe dos veces). Por eso NO se puede pedir un solo
+// resultado sin más: se traen todas las ediciones con ese ISBN y, si hay más de
+// un libro, se desempata quedándose con el más antiguo (`created_at` de
+// `books`, ya viene en el mismo join, no complica la query) — es la mejor
+// aproximación barata a "el libro que la gente ya tiene en su biblioteca",
+// hasta que alguien pase `merge_book_into` sobre el duplicado.
 export async function findLocalBookByIsbn(
   supabase: SupabaseServerClient,
   isbn: string
 ): Promise<SearchResult | null> {
   const { data } = await supabase
     .from("book_editions")
-    .select(`isbn, book:books!inner(${BOOK_COLUMNS})`)
-    .eq("isbn", isbn)
-    .limit(1)
-    .maybeSingle();
-  if (!data?.book) return null;
+    .select(`isbn, book:books!inner(${BOOK_COLUMNS}, created_at)`)
+    .eq("isbn", isbn);
+  if (!data || data.length === 0) return null;
 
   // postgrest-js tipa el join como array cuando no puede probar la
   // cardinalidad, igual que en event-detail.ts y calendar.ts.
-  const book = Array.isArray(data.book) ? data.book[0] : data.book;
-  if (!book) return null;
+  const books = data
+    .map((row) => (Array.isArray(row.book) ? row.book[0] : row.book))
+    .filter((book): book is BookRowWithCreatedAt => Boolean(book));
+  if (books.length === 0) return null;
 
-  return { ...mapBookRow(book as BookRow), matchedIsbn: isbn };
+  const oldest = books.reduce((a, b) =>
+    new Date(a.created_at).getTime() <= new Date(b.created_at).getTime() ? a : b
+  );
+
+  return { ...mapBookRow(oldest), matchedIsbn: isbn };
 }
 
 // Búsqueda difusa por título en nuestro catálogo. Ya no SUSTITUYE a la de la API:
