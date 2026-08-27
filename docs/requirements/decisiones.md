@@ -2295,3 +2295,27 @@ como la escala continua que es una tierlist.
   `candidatesFailed` que **suprime el estado vacío**: el vacío solo se afirma cuando la lista llegó
   de verdad. Regla general: un estado vacío es una afirmación sobre el mundo, y tras un error no
   sabemos nada del mundo.
+
+- **El ISBN de una fila importada identifica la tirada de TODOS los pases que nacen de esa fila, no
+  solo del activo** (2026-08-27, Task 14). `findOrCreateCatalogItem` recibía `userId` en el resto del
+  catálogo pero no desde `match-row.ts`, así que `ensureBookEdition` salía por la puerta de atrás
+  (`register_book_edition` exige `auth.uid()`) y ningún ISBN de un CSV llegaba nunca a
+  `book_editions` — se perdía entero, aunque el usuario hubiera catalogado deliberadamente ESE
+  ejemplar. Se arregla propagando `userId` desde `commitImportRow` (viene de `auth.getUser()` en
+  `src/app/importar/actions.ts`, nunca del cliente) hasta `matchBook`, y anotando en `ImportMatch`
+  el `matchedIsbn` cuando la fila casó por ISBN (local o vía `lookupIsbn`) para que
+  `commit-row.ts` resuelva `book_editions.id` por `(book_id, isbn)` — la RPC es idempotente y no
+  devuelve el id en el camino "ya existía", mismo patrón que `chooseEditionCandidate`.
+
+  **Decisión no dictada literalmente por el plan**: el `edition_id` resuelto se escribe tanto en el
+  pase activo como en cada pase histórico (relectura) que nace de la MISMA fila del CSV, no solo en
+  el activo. Un CSV con varias fechas de relectura describe la MISMA tirada en la mano del usuario
+  para todas ellas — no hay ninguna señal en el CSV de que cambiara de edición entre lecturas — así
+  que negarle el dato a los históricos habría sido una pérdida de información arbitraria, no una
+  cautela.
+
+  **Degradación explícita, verificada por test**: un ISBN con dígito de control inválido en el CSV
+  no rompe la fila. `register_book_edition` lanza `invalid isbn13`/`invalid isbn10` dentro de la
+  RPC, pero `ensureBookEdition` (find-or-create.ts) ya se tragaba ese error de antes de esta tarea;
+  lo nuevo es que `resolveEditionId` simplemente no encuentra fila que resolver y cae a `null` — el
+  pase se crea igual, sin edición, que es el mismo estado legítimo que una fila sin ISBN.
