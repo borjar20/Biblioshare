@@ -2047,3 +2047,23 @@ como la escala continua que es una tierlist.
   verdad. **La regla general, para no rediscutirla:** un valor solo entra en el catálogo compartido
   si su origen es un proveedor al que llamó el servidor; si pasó por el cliente, se descarta aunque
   «venga de la búsqueda».
+
+- **Sin `volume.language` declarado, Google Books se etiqueta `other`, nunca el idioma pedido**
+  (2026-08-27, tercera revisión de la Task 9, hallazgo I-1). El fallback `wanted` (siempre `"es"` en
+  el único punto de llamada) reabría exactamente la congelación que el punto anterior («la etiqueta
+  es el idioma real, no el pedido») vino a cerrar: un volumen sin idioma declarado —que `mapVolume`
+  deja con relativa frecuencia— quedaba sellado `es` = rango 0 = TERMINAL, y una sinopsis
+  potencialmente inglesa no se corregía nunca. `toReprLang(null)` ya caía a `"other"` (rango 2, el
+  que NO pisa nada) — bastaba con no bypasear esa función a mano en el call site. Regla general: en
+  un estado terminal, ante la duda se falla hacia el lado recuperable.
+
+- **El shell de libro para un ítem recién creado se construye en `hydrate-book.ts`, no en
+  `buscar/actions.ts`** (2026-08-27, misma revisión, hallazgo I-2). El invariante de C1 (título y
+  autor a `null`, nunca el dato del navegador) no tenía test porque `actions.ts` es `"use server"`,
+  donde cualquier export nuevo se convierte en un endpoint público — premisa correcta, pero la
+  conclusión de dejarlo sin guarda no se seguía: bastaba con extraer el constructor
+  (`bookShellFromSearchResult(itemId, result): HydratableBook`) a un fichero que SÍ admite exports
+  normales. `actions.ts` pasó a llamar `ensureBookHydrated(supabase,
+  bookShellFromSearchResult(itemId, result))`. Se descartó la alternativa (guarda por texto de
+  fuente, al estilo `after-guard.test.ts` de la #751) porque aquí SÍ hay una refactorización barata
+  disponible; esa alternativa se reserva para invariantes que de verdad no admiten extracción.

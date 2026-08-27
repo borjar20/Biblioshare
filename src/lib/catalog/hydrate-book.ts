@@ -17,6 +17,7 @@ import {
   type HydrateFields,
   type ReprMeta,
 } from "./representation";
+import type { SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -33,6 +34,51 @@ export type HydratableBook = {
   // fill-only allí, así que mandarlas cuando la fila ya las trae es ruido.
   total_pages: number | null;
 };
+
+// I-2: el shell con el que nace una fila de libro creada desde un resultado de
+// búsqueda. Vive AQUÍ y no en `buscar/actions.ts` (que es "use server", donde
+// cada export se convierte en un endpoint público) para que el invariante de
+// C1 tenga un test: `title` y `author` van a `null` a propósito, NUNCA al
+// `result` que llega del navegador.
+//
+// `openCatalogItem` y `addToLibrary` son server actions: el `SearchResult`
+// que reciben lo deserializa el servidor de lo que manda EL NAVEGADOR, así que
+// ninguno de sus campos de texto libre es un dato de proveedor fiable — son
+// entrada de usuario con forma de resultado de búsqueda (envenenamiento de
+// catálogo de #674). `findOrCreateCatalogItem` ya se queda solo con
+// `p_external_id` por la misma razón (ver su cabecera).
+//
+// Los dos que SÍ se leen de `result` son seguros hoy por construcción, y por
+// qué:
+//  - `openlibrary_work_key: result.externalId` es la identidad con la que
+//    `findOrCreateCatalogItem` creó o localizó esta misma fila: el cliente
+//    solo puede dirigir la hidratación a la obra que él mismo pidió abrir.
+//  - `isbn: result.matchedIsbn` solo se LEE dentro de `ensureBookHydrated` en
+//    la rama `if (!workKey && book.isbn)` — inalcanzable aquí mientras
+//    `externalId` no venga vacío, que es el caso normal.
+//
+// `title`/`author` no tienen ese blindaje (se usan directos: `author` acaba en
+// `p_author`, fill-only sobre una fila recién nacida sin autor, así que
+// SIEMPRE se aceptaría; `title` es la consulta que resuelve el QID de
+// Wikidata, y un QID equivocado FUSIONA dos obras) — por eso van a `null` y no
+// al dato del navegador. No se pierde nada real: aquí se conoce el
+// `openlibrary_work_key`, así que `fetchWork` trae título y autor de VERDAD
+// dentro de la propia `ensureBookHydrated`.
+export function bookShellFromSearchResult(itemId: string, result: SearchResult): HydratableBook {
+  return {
+    id: itemId,
+    openlibrary_work_key: result.externalId,
+    isbn: result.matchedIsbn ?? null,
+    hydrated_at: null,
+    // La fila acaba de nacer vacía (#674): no tiene representación previa que
+    // mejorar ni QID.
+    repr_meta: null,
+    wikidata_id: null,
+    title: null,
+    author: null,
+    total_pages: null,
+  };
+}
 
 // Máximo de llamadas a Google Books por evaluación (spec §4): es el
 // enriquecedor, no la fuente — dos huecos como mucho (sinopsis y portada) y a
@@ -206,9 +252,18 @@ export async function ensureBookHydrated(
       // Se ETIQUETA en vez de DESCARTAR el volumen: un volumen inglés sigue
       // sirviendo para rellenar un hueco vacío, y con su idioma real declarado
       // la RPC ya sabe que se puede mejorar más adelante. Lo que no vale es
-      // mentir sobre el idioma. Sin `language` declarado se mantiene el pedido,
-      // que es lo único que se sabe.
-      const lang = volume.language ? toReprLang(volume.language) : wanted;
+      // mentir sobre el idioma.
+      //
+      // I-1: sin `language` declarado NO se asume `wanted` ("es") — eso es
+      // justo la mentira de arriba, solo que con el idioma PEDIDO en vez del
+      // real. `toReprLang(null)` cae a "other" (rango 2, el que NO pisa nada):
+      // rellena un hueco vacío pero nunca sella rango 0. `es` es TERMINAL (la
+      // RPC solo acepta mejora estricta), así que etiquetar aquí un volumen sin
+      // idioma declarado como español congelaría PARA SIEMPRE una sinopsis que
+      // bien podría ser inglesa — la propia mapVolume de Google Books deja
+      // `language: null` con relativa frecuencia. En un estado terminal se
+      // falla hacia el lado recuperable.
+      const lang = toReprLang(volume.language);
       // Y solo se propone si MEJORA de verdad: cambiar una sinopsis inglesa de
       // OL por otra inglesa de GB no es una mejora (la RPC la rechazaría por no
       // ser estricta) y de paso perdería la procedencia mejor.

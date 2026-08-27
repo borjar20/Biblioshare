@@ -50,8 +50,9 @@ vi.mock("./inventaire/client", async (importOriginal) => ({
 }));
 vi.mock("./googlebooks/client", () => ({ findBestVolume: mocks.findBestVolume }));
 
-import { ensureBookHydrated, type HydratableBook } from "./hydrate-book";
+import { ensureBookHydrated, bookShellFromSearchResult, type HydratableBook } from "./hydrate-book";
 import type { GoogleVolume } from "./googlebooks/client";
+import type { SearchResult } from "./types";
 
 // Dos clientes DISTINTOS a propósito (M2): el de la petición, que es el que
 // recibe `ensureBookHydrated` como argumento, y el de service_role, que la
@@ -326,12 +327,16 @@ describe("ensureBookHydrated · Google Books declara su idioma (I3)", () => {
     expect(fields.synopsis).toEqual({ value: "Una sinopsis", lang: "es", source: "google_books" });
   });
 
-  it("sin idioma declarado se mantiene el pedido (es lo único que se sabe)", async () => {
+  // I-1: sin `language` declarado NO se asume "es" (el idioma pedido) — eso
+  // sellaría rango 0, que es TERMINAL (la RPC solo acepta mejora estricta), y
+  // una sinopsis en realidad inglesa quedaría congelada como española para
+  // siempre. `toReprLang(null)` cae a "other": rellena el hueco sin cerrarlo.
+  it("sin idioma declarado se etiqueta other, NUNCA es (rango 0 es terminal)", async () => {
     mocks.findBestVolume.mockResolvedValue(volume({ synopsis: "Una sinopsis", language: null }));
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
     const fields = rpcArgs(service).p_fields as Fields;
-    expect(fields.synopsis?.lang).toBe("es");
+    expect(fields.synopsis?.lang).toBe("other");
   });
 
   it("un volumen inglés NO pisa una sinopsis inglesa de OpenLibrary", async () => {
@@ -394,23 +399,60 @@ describe("ensureBookHydrated · gate de Google Books (#886)", () => {
     });
   });
 
+  // m-2: el `volume()` stub trae `coverUrl: null` por defecto, así que sin
+  // dársela aquí la aserción de `fields.cover` pasaría por `if (!value)
+  // continue` sin haber decidido NADA sobre el gate — y encima el memo (una
+  // sola clave de Map para "es") ya garantiza una llamada aunque el gate de
+  // `cover` desaparezca del todo. Con `coverUrl` puesta, esta prueba SÍ muere
+  // si alguien aplica el gate solo a `synopsis` y deja `cover` desprotegida.
   it("con la portada YA española no se vuelve a llamar a Google Books por ella", async () => {
     mocks.fetchRepresentationCandidates.mockResolvedValue({
       es: { title: "Palabras radiantes", coverUrl: "https://covers/es.jpg", pages: 1200 },
       en: null,
       pagesMedian: null,
     });
-    mocks.findBestVolume.mockResolvedValue(volume({ synopsis: "Una sinopsis", language: "es" }));
+    mocks.findBestVolume.mockResolvedValue(
+      volume({ synopsis: "Una sinopsis", coverUrl: "https://covers/gb-es.jpg", language: "es" }),
+    );
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
     // Una sola llamada: la de la sinopsis. La portada ya está en español.
     expect(mocks.findBestVolume).toHaveBeenCalledTimes(1);
     const fields = rpcArgs(service).p_fields as Fields;
+    // Sigue siendo la portada de OpenLibrary, NO la de Google Books: el gate
+    // de `cover` bloqueó la propuesta aunque la llamada se hiciera (por la
+    // sinopsis) y trajera una portada española de sobra.
     expect(fields.cover).toEqual({
       value: "https://covers/es.jpg",
       lang: "es",
       source: "openlibrary",
     });
+  });
+
+  // m-1: la memoización (`volumeByLang`) es lo único que mantiene el
+  // presupuesto en UNA llamada cuando los dos huecos del bucle piden el mismo
+  // idioma. Sustituir `if (!volumeByLang.has(wanted))` por `if (true)`
+  // sobrevivía toda la suite hasta este caso: sin candidatas ES/EN ni sinopsis
+  // de OpenLibrary, `synopsis` y `cover` entran los DOS al cuerpo del bucle
+  // (ninguno tiene `current`, así que el gate no bloquea a ninguno), y el
+  // memo debe colapsar sus dos peticiones de "es" en una sola llamada real.
+  it("sin candidatas ES/EN ni sinopsis, los dos huecos piden es: UNA sola llamada (memo)", async () => {
+    mocks.fetchWork.mockResolvedValue({
+      title: "Words of Radiance",
+      description: null,
+      subjects: [],
+      coverUrl: null,
+      authorKeys: ["OL1A"],
+      firstPublishYear: null,
+    });
+    mocks.fetchRepresentationCandidates.mockResolvedValue({ es: null, en: null, pagesMedian: null });
+    mocks.findBestVolume.mockResolvedValue(
+      volume({ synopsis: "Una sinopsis", coverUrl: "https://covers/gb-es.jpg", language: "es" }),
+    );
+    const { request } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(mocks.findBestVolume).toHaveBeenCalledTimes(1);
+    expect(mocks.findBestVolume).toHaveBeenCalledWith("Words of Radiance", "Brandon Sanderson", "es");
   });
 });
 
@@ -513,5 +555,46 @@ describe("ensureBookHydrated · work key", () => {
     );
     expect(mocks.searchInventaireEntities).toHaveBeenCalledWith("Palabras radiantes");
     expect(service.rpc).toHaveBeenCalled();
+  });
+});
+
+// ───────── I-2 · el shell de libro nunca lleva título/autor del navegador ─────────
+describe("bookShellFromSearchResult (mata C1: devolver result.title/author)", () => {
+  const searchResult = (over: Partial<SearchResult> = {}): SearchResult => ({
+    itemType: "book",
+    externalId: "/works/OL1W",
+    title: "Un título que manda el navegador",
+    subtitle: "Un autor que manda el navegador",
+    coverUrl: null,
+    year: null,
+    synopsis: null,
+    genres: null,
+    ...over,
+  });
+
+  it("title y author van a null, nunca al dato del SearchResult", () => {
+    const shell = bookShellFromSearchResult("b1", searchResult());
+    expect(shell.title).toBeNull();
+    expect(shell.author).toBeNull();
+  });
+
+  it("openlibrary_work_key es el externalId (identidad con la que nació la fila)", () => {
+    const shell = bookShellFromSearchResult("b1", searchResult({ externalId: "/works/OL9W" }));
+    expect(shell.openlibrary_work_key).toBe("/works/OL9W");
+  });
+
+  it("isbn es el matchedIsbn, o null si no vino ninguno", () => {
+    expect(bookShellFromSearchResult("b1", searchResult({ matchedIsbn: "9788466657662" })).isbn).toBe(
+      "9788466657662",
+    );
+    expect(bookShellFromSearchResult("b1", searchResult()).isbn).toBeNull();
+  });
+
+  it("nace sin hidratar, sin repr_meta y sin QID (fila recién creada, #674)", () => {
+    const shell = bookShellFromSearchResult("b1", searchResult());
+    expect(shell.hydrated_at).toBeNull();
+    expect(shell.repr_meta).toBeNull();
+    expect(shell.wikidata_id).toBeNull();
+    expect(shell.total_pages).toBeNull();
   });
 });

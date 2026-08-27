@@ -6,7 +6,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
+import { ensureBookHydrated, bookShellFromSearchResult } from "@/lib/catalog/hydrate-book";
 import { ensureMovieHydrated, ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
 import { itemHref } from "@/lib/catalog/item-href";
 import { loginHref } from "@/lib/auth/safe-next";
@@ -19,46 +19,24 @@ const HYDRATION_BUDGET_MS = 1200;
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 
-// Dispatcher común: la fila recién creada por findOrCreateCatalogItem nace
-// SIEMPRE con hydrated_at null (shell sin hidratar, #674) — por eso va fijo
-// aquí y no se lee de la fila. Ninguna de las tres ensure*Hydrated lanza.
+// Dispatcher común. El shell de libro (título/autor a null, work key e ISBN
+// del propio `result`, y por qué eso es seguro) vive en
+// `bookShellFromSearchResult` (hydrate-book.ts): ese fichero NO es "use
+// server", así que el invariante de C1 tiene test unitario ahí — aquí, en un
+// fichero "use server", cualquier export nuevo sería un endpoint público.
+//
+// m-4: `hydrated_at: null` para películas/series va fijo aquí porque
+// `findOrCreateCatalogItem` puede CREAR la fila (shell sin hidratar, #674) o
+// ENCONTRARLA por external_id ya existente (`register_catalog_item` es
+// on-conflict-do-nothing con re-select) — en el camino *find* la fila puede
+// llevar tiempo hidratada. Fijarlo en null aquí se salta su cooldown de 30
+// días en ese caso. No hay riesgo de datos (la RPC es fill-or-upgrade y las
+// propuestas salen de la work key de la propia fila; el ángulo de abuso ya
+// está en #811), pero conviene saber que no es "recién creada", es "recién
+// creada o encontrada". Ninguna de las tres ensure*Hydrated lanza.
 function hydrateNewItem(supabase: Supa, itemId: string, result: SearchResult) {
   return result.itemType === "book"
-    ? ensureBookHydrated(supabase, {
-        id: itemId,
-        openlibrary_work_key: result.externalId,
-        isbn: result.matchedIsbn ?? null,
-        hydrated_at: null,
-        // La fila acaba de nacer vacía (#674): no tiene representación previa
-        // que mejorar ni QID.
-        repr_meta: null,
-        wikidata_id: null,
-        // TÍTULO Y AUTORÍA VAN A NULL A PROPÓSITO — no los "arregles" de vuelta.
-        //
-        // `openCatalogItem` y `addToLibrary` son SERVER ACTIONS: este
-        // `SearchResult` lo deserializa el servidor de lo que manda EL
-        // NAVEGADOR, así que ninguno de sus campos es un dato del proveedor —
-        // son entrada de usuario con forma de resultado de búsqueda. Es el
-        // envenenamiento de catálogo de #674, y por eso `findOrCreateCatalogItem`
-        // se queda solo con `p_external_id` y tira el resto (ver su cabecera:
-        // ahí los canónicos SÍ valen porque el origen es TMDB, servidor
-        // fiable, no un cliente).
-        //
-        // Los dos llegan a ESCRITURA sobre el catálogo COMPARTIDO:
-        //  · `author` acaba en `p_author`, que es fill-only — y como la fila
-        //    acaba de nacer con `author` NULL, el fill-only lo acepta SIEMPRE.
-        //  · `title` es la consulta que se le manda a Inventaire, de donde sale
-        //    el QID; un QID equivocado FUSIONA dos obras.
-        // Y la RPC marca `hydrated_at`, así que el curador no reintenta: la
-        // basura sería permanente hasta curación manual.
-        //
-        // No se pierde nada real: aquí se conoce el `openlibrary_work_key`, así
-        // que `fetchWork` da título y autor de VERDAD, y el `after()` de la
-        // ficha rehidrata igualmente si esta pasada no llega a tiempo.
-        title: null,
-        author: null,
-        total_pages: null,
-      })
+    ? ensureBookHydrated(supabase, bookShellFromSearchResult(itemId, result))
     : result.itemType === "movie"
       ? ensureMovieHydrated(supabase, {
           id: itemId,
