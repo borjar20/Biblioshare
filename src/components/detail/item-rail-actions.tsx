@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { Button } from "@/components/ui/button";
+import { PlusIcon } from "@/components/ui/icons";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "@/components/detail/item-status-context";
 import { useFollow } from "@/components/detail/use-follow";
@@ -126,7 +127,10 @@ export function ItemRailActions({
           href={ctaHref}
           className="flex items-center justify-center gap-2 rounded-[10px] bg-accent px-4 py-3.5 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
         >
-          <span aria-hidden>+</span>
+          {/* Icono del set, no el carácter «+»: el sistema declara trazo 1.8 en
+              currentColor y un glifo de texto ni hereda ese grosor ni renderiza
+              igual entre plataformas. Es el mismo icono que el CTA del hero. */}
+          <PlusIcon aria-hidden className="h-4 w-4" />
           {ctaLabel}
         </Link>
       )}

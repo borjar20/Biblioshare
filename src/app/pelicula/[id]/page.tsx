@@ -232,6 +232,8 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
             itemId={movie.id}
             isLoggedIn={Boolean(user)}
             statusLabels={statusLabels}
+            ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
+            ctaLabel={tDetail("rail.cta.movie")}
           />
         }
         menuSlot={

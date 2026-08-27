@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { PlusIcon } from "@/components/ui/icons";
 import { useItemStatus, StatusBadgeLive } from "./item-status-context";
 import { useFollow } from "./use-follow";
 
@@ -22,18 +24,48 @@ export function HeroStatusOrFollow({
   itemId,
   isLoggedIn,
   statusLabels,
+  ctaHref,
+  ctaLabel,
 }: {
   itemType: ItemType;
   itemId: string;
   isLoggedIn: boolean;
   statusLabels: Record<MediaStatus, string>;
+  /**
+   * El MISMO CTA del rail (`ItemRailActions`), que en móvil no existía: el rail
+   * es `hidden lg:block`, así que una obra con pase abierto se quedaba sin
+   * ninguna acción primaria en las tres pestañas — medido a 390px, cero
+   * elementos con fondo de acento visibles. Y la asimetría era la mala: la obra
+   * que NO tienes sí pintaba su terracota («Seguir»); la que estás leyendo, no.
+   * Registrar es el gesto que da nombre al producto y el móvil es donde se
+   * captura, así que el CTA vive en las dos caras. Null = sin pase activo (el
+   * hueco lo ocupa «Seguir») o el tipo no ofrece acción.
+   */
+  ctaHref?: string | null;
+  ctaLabel?: string;
 }) {
   const t = useTranslations("item");
   const { status } = useItemStatus();
   const { follow, isPending } = useFollow(itemType, itemId, isLoggedIn);
 
   if (status !== null) {
-    return <StatusBadgeLive labels={statusLabels} />;
+    return (
+      <>
+        <StatusBadgeLive labels={statusLabels} />
+        {ctaHref && ctaLabel && (
+          <Link
+            href={ctaHref}
+            // Píldora, no la caja de 10px del rail: este botón comparte hueco
+            // con «Seguir» y con la píldora de estado, y la regla de forma dice
+            // que lo que se pulsa es píldora.
+            className={buttonVariants("primary", "gap-1.5 whitespace-nowrap")}
+          >
+            <PlusIcon aria-hidden className="h-4 w-4" />
+            {ctaLabel}
+          </Link>
+        )}
+      </>
+    );
   }
 
   return (

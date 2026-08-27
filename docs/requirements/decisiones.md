@@ -1986,3 +1986,39 @@ esqueleto que reserva alturas. `/notas`, `/sagas` y `/login` pasaron de `ƒ Dyna
 4. **Regla nueva para e2e**: con la metadata streameada, Next pinta el `<title>` dentro del
    `<body>` — los `getByText` laxos que casen el título de la página rompen por strict mode
    (arreglado `navegacion-anonima:27` con `exact: true`).
+
+## 2026-08-27 (1) — El CTA del pase vive en las DOS caras de la ficha, y un primario por vista deja de ser aspiración
+
+**Contexto.** La crítica de diseño de Inicio, Colección y la ficha (snapshots en
+`.impeccable/critique/`) midió lo mismo en las tres: a 390 px, la app no tiene acción primaria
+donde `PRODUCT.md` dice que se juega el producto. En la ficha, con pase abierto, había **cero
+elementos con fondo de acento y caja visible** en las tres pestañas — el raíl que llevaba el CTA
+es `hidden lg:block`. La asimetría era la mala: la obra que NO tienes sí pintaba su terracota
+(«Seguir»); la que estás leyendo, no. En Colección, la pantalla que se llama «Mi Biblioteca» no
+ofrecía ninguna forma de añadir nada en cuanto tenías una obra. Y en el arranque en frío de
+Inicio se pintaban TRES primarios naranjas a la vez, ante quien no tiene ni idea de por dónde
+empezar.
+
+**Decisiones que fija esto:**
+
+1. **El CTA del pase es de las dos caras, no del raíl.** `HeroStatusOrFollow` acepta
+   `ctaHref`/`ctaLabel` y, con pase activo, pinta la píldora de estado **y** el CTA. Los valores
+   son los mismos que ya recibía `ItemRailActions` en las tres rutas, así que no hay dos fuentes
+   de verdad: si cambia el destino, cambia en la página y las dos caras lo heredan. La forma sí
+   difiere a propósito — píldora en el hero (comparte hueco con «Seguir» y con la píldora de
+   estado, y lo que se pulsa es píldora), caja de 10 px en el raíl, que es su lenguaje.
+2. **Un primario por vista se aplica al ARRANQUE EN FRÍO, no solo al estado cálido.** El único
+   naranja del Inicio vacío es el de la columna personal: fijar una meta o seguir gente no valen
+   de nada sin obras que contar. `stats-welcome` y el vacío de `feed-list` bajan a `secondary`.
+   Mismo criterio en Colección: la alta va en primario en la cabecera y el botón del estado vacío
+   de la rejilla baja a `secondary`, porque es la misma acción 200 px más arriba.
+3. **La acción de alta de la biblioteca vive en la cabecera de página**, no solo dentro del
+   estado vacío: en las tres pestañas y sin depender del scroll (la rejilla mide 23.062 px en
+   móvil). Término del glosario: «Añadir obra», no «ítem».
+4. **Los glifos Unicode no hacen de iconos.** El `+` del CTA del raíl pasa a `PlusIcon` del set
+   propio. Un carácter de texto ni hereda el trazo de 1.8 ni renderiza igual entre plataformas.
+
+**Lo que NO decide esto.** Inicio sigue sin primario en estado **cálido** (la tarjeta destacada
+ofrece «Sesión» y «Registrar», ninguno en acento). Cuál de los dos merece el naranja —o si la
+respuesta correcta a «¿Qué has disfrutado hoy?» es un tercer botón— es una decisión de producto
+que no se cuela en un arreglo de consistencia. Queda como issue.

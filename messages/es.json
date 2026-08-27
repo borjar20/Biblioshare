@@ -2349,6 +2349,7 @@
   },
   "collection": {
     "title": "Mi Biblioteca",
+    "addWork": "Añadir obra",
     "tabs": {
       "colecciones": "Colecciones",
       "todo": "Todo",

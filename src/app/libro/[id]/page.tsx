@@ -258,6 +258,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             itemId={book.id}
             isLoggedIn={Boolean(user)}
             statusLabels={statusLabels}
+            ctaHref={activePass ? `/sesion/${activePass.id}` : null}
+            ctaLabel={tDetail("rail.cta.book")}
           />
         }
         menuSlot={
