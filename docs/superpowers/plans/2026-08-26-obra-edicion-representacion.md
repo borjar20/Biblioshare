@@ -1742,6 +1742,32 @@ where not exists (select 1 from public.passes p where p.edition_id = e.id)
 
 Antes de aplicar: `select count(*)` con el mismo `where` en dev y prod, y anotar la cifra en el mensaje del commit. Comprobar si alguna tabla más referencia `book_editions.id` (`select conrelid::regclass from pg_constraint where confrelid = 'public.book_editions'::regclass` + grep `edition_id` en el esquema) y añadir esos `not exists` si aparecen.
 
+- [ ] **Step 1bis (NUEVO, va ANTES de los drops): sembrar las ediciones que solo viven en `books.isbn`.**
+
+Descubierto al ejecutar la Task 11 (issue [#898](https://github.com/borjar20/Biblioshare/issues/898)):
+hay libros con `books.isbn` relleno y **ninguna fila en `book_editions`** — típicamente altas
+manuales o importaciones anteriores a esta pieza. Desde la Task 11 la búsqueda local por ISBN va
+contra `book_editions`, así que esos libros **ya no se encuentran por su ISBN**, y al dropear la
+columna se perdería el dato para siempre.
+
+Antes de cualquier `drop`, sembrar la edición que falta a partir de la propia obra:
+
+```sql
+-- El ISBN de books era el espejo de la edición primaria. Donde no hay ninguna
+-- edición con ese ISBN, la fila de books ES la única constancia de esa tirada:
+-- se materializa como edición antes de que la columna desaparezca.
+insert into public.book_editions (book_id, label, isbn, publisher, published_year, total_pages, cover_url)
+select b.id, 'Edición principal', b.isbn, b.publisher, b.published_year, b.total_pages, b.cover_url
+  from public.books b
+ where b.isbn is not null and btrim(b.isbn) <> ''
+   and not exists (select 1 from public.book_editions e where e.book_id = b.id and e.isbn = b.isbn);
+```
+
+Contar antes y después, y dejar la cifra en el mensaje del commit. **Ojo con el orden dentro de la
+propia fase**: esto va antes de la purga del Step 1 (si no, la purga borraría lo recién sembrado por
+no estar referenciado por ningún pase) — o bien se excluyen estas filas de la purga. Decídelo a
+propósito y déjalo escrito.
+
 - [ ] **Step 2: Drops** (`20260891_repr_f_drops.sql`):
 
 ```sql
