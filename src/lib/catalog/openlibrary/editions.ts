@@ -220,7 +220,7 @@ type EditionsResponse = {
   size?: number; // total real de ediciones de la obra, lo traiga o no la propia página
 };
 
-const EDITIONS_PAGE_SIZE = 100;
+export const EDITIONS_PAGE_SIZE = 100;
 // Tope de páginas a pedir para obras muy reeditadas (los clásicos, que son
 // justo el caso que falla si solo se mira una página: las primeras 100
 // entradas de un work con miles de ediciones suelen ser reimpresiones POD
@@ -253,7 +253,7 @@ async function fetchEditionsPage(key: string, offset: number): Promise<EditionsR
 // constante con MAX_EDITIONS_PAGES a propósito: son límites de dos rutas con
 // presupuestos de tiempo distintos, y esta puede subir o bajar sin tocar la
 // otra.
-const MAX_REPRESENTATION_PAGES = 2;
+export const MAX_REPRESENTATION_PAGES = 2;
 
 // Núcleo de paginación compartido por fetchWorkEditions y
 // fetchRepresentationCandidates: ambos piden la primera página, miran `size`

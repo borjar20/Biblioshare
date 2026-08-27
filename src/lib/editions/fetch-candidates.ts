@@ -4,6 +4,8 @@ import { createClient, createPublicClient } from "@/lib/supabase/server";
 import {
   fetchLiveWorkEditions,
   type OpenLibraryEdition,
+  EDITIONS_PAGE_SIZE,
+  MAX_REPRESENTATION_PAGES,
 } from "@/lib/catalog/openlibrary/editions";
 import { isValidIsbnCheckDigit, normalizeIsbn } from "@/lib/catalog/isbn";
 import { setPassEdition } from "@/lib/passes/actions";
@@ -46,7 +48,12 @@ const MAX_CANDIDATES = 30;
 // no excluye nada. 200 es lo máximo que `fetchLiveWorkEditions` llega a mirar
 // (2 páginas de 100), así que cualquier candidata que se haya pintado cae
 // dentro.
-const MAX_DERIVATION_SCAN = 200;
+// DERIVADO, no fijado a mano: tiene que ser un superconjunto de lo que el picker
+// llegó a enseñar, y eso lo decide `fetchRepresentationCandidates`. Escribir 200
+// aquí funcionaba hasta que alguien subiera las páginas de aquel lado: entonces
+// habría candidatas visibles que la re-derivación no encontraría, y el usuario
+// vería `unknownCandidate` al elegirlas. Atarlo al origen quita la trampa.
+const MAX_DERIVATION_SCAN = MAX_REPRESENTATION_PAGES * EDITIONS_PAGE_SIZE;
 
 function toCandidate(edition: OpenLibraryEdition): EditionCandidate {
   return {
