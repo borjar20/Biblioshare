@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { pickEditions, type OpenLibraryEditionDoc } from "./editions";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fetchRepresentationCandidates, pickEditions, type OpenLibraryEditionDoc } from "./editions";
 
 function doc(over: Partial<OpenLibraryEditionDoc> = {}): OpenLibraryEditionDoc {
   return {
@@ -86,3 +86,119 @@ const VALID_ISBNS = [
   "9788499080479",
   "9788401023743",
 ];
+
+// Stub de fetch para el endpoint editions.json: `entriesByOffset` simula lo
+// que devolvería cada página (offset -> entries), y `size` es el total
+// declarado por OpenLibrary que decide cuántas páginas más se piden.
+function stubEditionsPages(entriesByOffset: Record<number, OpenLibraryEditionDoc[]>, size: number) {
+  const calls: string[] = [];
+  const fetchMock = vi.fn(async (input: unknown) => {
+    const url = String(input);
+    calls.push(url);
+    const match = url.match(/offset=(\d+)/);
+    const offset = match ? Number(match[1]) : 0;
+    const entries = entriesByOffset[offset] ?? [];
+    return { ok: true, json: async () => ({ entries, size }) };
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return { calls, fetchMock };
+}
+
+describe("fetchRepresentationCandidates", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("elige la mejor candidata ES y EN (idioma, luego portada) y la mediana de paginas", async () => {
+    const esConPortada = doc({
+      isbn_13: [VALID_ISBNS[0]],
+      title: "El nombre del viento",
+      number_of_pages: 662,
+      covers: [1],
+      languages: [{ key: "/languages/spa" }],
+    });
+    // Misma obra, otra edicion espanola sin portada: pickEditions ya la deja
+    // detras de la que si tiene, asi que la candidata ES debe salir de la
+    // primera, no de esta.
+    const esSinPortada = doc({
+      isbn_13: [VALID_ISBNS[1]],
+      title: "El nombre del viento (bolsillo)",
+      number_of_pages: 700,
+      covers: undefined,
+      languages: [{ key: "/languages/spa" }],
+    });
+    const en = doc({
+      isbn_13: [VALID_ISBNS[2]],
+      title: "The Name of the Wind",
+      number_of_pages: 662,
+      covers: [2],
+      languages: [{ key: "/languages/eng" }],
+    });
+    const otroIdioma = doc({
+      isbn_13: [VALID_ISBNS[3]],
+      title: "Le Nom du vent",
+      number_of_pages: 500,
+      covers: [3],
+      languages: [{ key: "/languages/fre" }],
+    });
+
+    stubEditionsPages({ 0: [esConPortada, esSinPortada, en, otroIdioma] }, 4);
+
+    const result = await fetchRepresentationCandidates("OL12345W");
+
+    expect(result.es).toEqual({
+      title: "El nombre del viento",
+      coverUrl: "https://covers.openlibrary.org/b/id/1-L.jpg",
+      pages: 662,
+    });
+    expect(result.en).toEqual({
+      title: "The Name of the Wind",
+      coverUrl: "https://covers.openlibrary.org/b/id/2-L.jpg",
+      pages: 662,
+    });
+    // Paginas filtradas: [662, 700, 662, 500] -> ordenadas [500, 662, 662, 700]
+    // -> mediana = (662 + 662) / 2 = 662.
+    expect(result.pagesMedian).toBe(662);
+  });
+
+  it("una obra sin ediciones no tiene candidatas ni mediana", async () => {
+    stubEditionsPages({ 0: [] }, 0);
+
+    const result = await fetchRepresentationCandidates("OL99999W");
+
+    expect(result).toEqual({ es: null, en: null, pagesMedian: null });
+  });
+
+  it("un fallo de red nunca lanza: degrada a los tres campos null", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      })
+    );
+
+    const result = await fetchRepresentationCandidates("OL1W");
+
+    expect(result).toEqual({ es: null, en: null, pagesMedian: null });
+  });
+
+  it("acota el escaneo a 2 paginas (200 ediciones) aunque la obra tenga muchas mas", async () => {
+    // Con `size` grande el codigo pediria hasta MAX_EDITIONS_PAGES (5) si
+    // reutilizase ese tope; aqui debe frenar en 2 paginas (offset 0 y 100) y
+    // no llegar nunca al offset 200.
+    const { calls } = stubEditionsPages(
+      {
+        0: [doc({ isbn_13: [VALID_ISBNS[0]] })],
+        100: [doc({ isbn_13: [VALID_ISBNS[1]] })],
+        200: [doc({ isbn_13: [VALID_ISBNS[2]] })],
+      },
+      1000
+    );
+
+    await fetchRepresentationCandidates("OL1W");
+
+    expect(calls.some((u) => u.includes("offset=0"))).toBe(true);
+    expect(calls.some((u) => u.includes("offset=100"))).toBe(true);
+    expect(calls.some((u) => u.includes("offset=200"))).toBe(false);
+  });
+});
