@@ -315,7 +315,7 @@ git commit -m "feat(catalogo): hydrate_book v3 fill-or-upgrade por rango de idio
 ### Task 3: Migración A3 — alta GB-only y alta manual con edición
 
 **Files:**
-- Create: `supabase/migrations/20260884_repr_c_alta_gbonly.sql`
+- Create: `supabase/migrations/20260886_repr_e_alta_gbonly.sql`
 - Modify: `src/app/buscar/manual/actions.ts` (tras el `register_manual_catalog_item`, registrar la edición)
 
 **Interfaces:**
@@ -377,7 +377,7 @@ if (isbn) {
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20260884_repr_c_alta_gbonly.sql src/app/buscar/manual/actions.ts
+git add supabase/migrations/20260886_repr_e_alta_gbonly.sql src/app/buscar/manual/actions.ts
 git commit -m "feat(catalogo): alta GB-only por volume id y edición real en el alta manual con ISBN"
 ```
 
@@ -386,7 +386,7 @@ git commit -m "feat(catalogo): alta GB-only por volume id y edición real en el 
 ### Task 4: Migración A4 — `merge_book_into` (fusión cobarde como función)
 
 **Files:**
-- Create: `supabase/migrations/20260885_repr_d_merge_books_fn.sql`
+- Create: `supabase/migrations/20260887_repr_f_merge_books_fn.sql`
 - Read first: `supabase/migrations/20260870_books_openlibrary_work_key_unique.sql` (la fusión inline que esta función generaliza — copiar su lista de tablas EXACTA, que es la autoritativa)
 
 **Interfaces:**
@@ -452,7 +452,7 @@ revoke all on function public.merge_book_into(uuid, uuid) from public, anon, aut
 - [ ] **Step 4: Commit**
 
 ```bash
-git add supabase/migrations/20260885_repr_d_merge_books_fn.sql
+git add supabase/migrations/20260887_repr_f_merge_books_fn.sql
 git commit -m "feat(catalogo): merge_book_into, fusión cobarde reutilizable de obras"
 ```
 
@@ -1189,7 +1189,7 @@ seguro: queda etiquetado con su idioma y la visita a la ficha lo MEJORA si
 encuentra candidata española. La pieza nueva es la que hace posible el arreglo.
 
 **Files:**
-- Create: `supabase/migrations/20260887_repr_g_hydrate_books_bulk.sql`
+- Create: `supabase/migrations/20260889_repr_g_hydrate_books_bulk.sql`
 - Modify: `src/lib/catalog/openlibrary/normalize.ts` (regla 4 expone el idioma elegido)
 - Modify: `src/lib/catalog/openlibrary/author-books.ts` (propaga `titleLang`)
 - Modify: `src/lib/catalog/types.ts` (`SearchResult.titleLang`)
@@ -1257,7 +1257,7 @@ y añadirlo al objeto `work` que se empuja a `candidates` (y al type `Normalized
 
 - [ ] **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Migración** `20260887_repr_g_hydrate_books_bulk.sql`:
+- [ ] **Step 5: Migración** `20260889_repr_g_hydrate_books_bulk.sql`:
 
 ```sql
 -- La regla de escritura de la representación, en UN solo sitio: la usan
@@ -1408,7 +1408,7 @@ Expected: `vacias` cae de 61 a ~0. Anotar la cifra final.
 - [ ] **Step 11: Commit**
 
 ```bash
-git add supabase/migrations/20260887_repr_g_hydrate_books_bulk.sql src/lib/catalog/openlibrary/normalize.ts src/lib/catalog/openlibrary/search-normalize.ts src/lib/catalog/openlibrary/author-books.ts src/lib/catalog/types.ts src/lib/catalog/find-or-create.ts scripts/reconcile-wikidata.ts
+git add supabase/migrations/20260889_repr_g_hydrate_books_bulk.sql src/lib/catalog/openlibrary/normalize.ts src/lib/catalog/openlibrary/search-normalize.ts src/lib/catalog/openlibrary/author-books.ts src/lib/catalog/types.ts src/lib/catalog/find-or-create.ts scripts/reconcile-wikidata.ts
 git commit -m "fix(catalogo): la bibliografía de autor hidrata sus libros en lote (61 shells vacías en prod)"
 ```
 
@@ -1537,7 +1537,7 @@ git commit -m "feat(busqueda): ISBN contra book_editions y alta GB-only de últi
 
 **Files:**
 - Modify: `src/lib/editions/edition-label.ts` (borrar `primaryEdition`), `src/lib/sessions/actions.ts`, `src/lib/sessions/load-context.ts`, `src/components/detail/log-panel.tsx`, `src/lib/library/get-library-items.ts`, `src/lib/pace/fetch-catalog-meta.ts`, `src/app/libro/[id]/page.tsx` (rail de PC)
-- Create: `supabase/migrations/20260886_widget_snapshot_two_level.sql` (reescribir la función del snapshot del widget quitando el peldaño de primaria — leer antes `20260806_widget_snapshot_edition_pages.sql` y conservar el resto del cuerpo tal cual)
+- Create: `supabase/migrations/20260888_widget_snapshot_two_level.sql` (reescribir la función del snapshot del widget quitando el peldaño de primaria — leer antes `20260806_widget_snapshot_edition_pages.sql` y conservar el resto del cuerpo tal cual)
 - Delete: `src/lib/passes/edition-choice.ts` y su lector en `log-panel.tsx` (código muerto verificado)
 - Test: ajustar los tests de esos módulos que mencionen `primaryEdition`/`is_primary` (grep)
 
@@ -1573,7 +1573,7 @@ export function pagesForPass(
 - [ ] **Step 7: Commit**
 
 ```bash
-git add -A src/lib src/components src/app supabase/migrations/20260886_widget_snapshot_two_level.sql
+git add -A src/lib src/components src/app supabase/migrations/20260888_widget_snapshot_two_level.sql
 git commit -m "feat(progreso): precedencia de páginas a 2 niveles; muere la edición primaria en código"
 ```
 
@@ -1765,6 +1765,13 @@ git commit -m "feat(catalogo): fase destructiva — purga de ediciones huérfana
 - [ ] **Step 1: e2e** (contra build de producción, `npm run build && npm run start`): cubrir — alta desde `/buscar` y ficha con datos; identificar edición vía picker; búsqueda del mismo libro por título ES y EN no muestra dos tarjetas (usar `MOCK_EXTERNAL_APIS` con fixtures que incluyan el caso de dos works + entidad, ampliando el mock si hace falta); import con ISBN puebla `edition_id`. Ejecutar `npm run test:e2e` → verde.
 
 - [ ] **Step 2: `data-model.md`**: actualizar §2 (columnas nuevas de `books` con su semántica, muerte de primaria/espejos, `hydrate_book` v3, precedencia 2 niveles del widget) + fecha de verificación. DRIFT-CHECK superficie 6 sobre las columnas nuevas.
+
+  **Lo que la revisión de Task 2 dejó mintiendo y hay que corregir aquí, punto por punto** (todo verificado como falso a día de hoy):
+  - `data-model.md:155`, `:344-354` y `:440` describen `hydrate_book` como **fill-only puro** con grant a `authenticated`, y la línea 440 dice literalmente que «nunca pisa lo que el colaborador escribió». Las tres afirmaciones son ahora falsas: es fill-or-upgrade por rango de idioma y su ejecución es **solo de `service_role`**.
+  - El comentario VIVO de la columna `books.repr_meta` (puesto por `20260882`) dice «Escrito solo por RPCs de hidratación y actions de colaborador». Lo escribe además un **trigger**, y las actions no lo tocan nunca. Corregirlo con `comment on column`.
+  - `src/lib/supabase/server.ts:84` y `src/app/libro/[id]/page.tsx:168` documentan el guard `authentication required` de `hydrate_book`, que ya no existe (ahora el guard es del rol invocador).
+  - La cabecera de `20260880_manual_catalog_item.sql` justifica dejar `hydrated_at` a NULL diciendo «hydrate_book es fill-only, nunca pisa lo que el colaborador escribió» — la premisa que rompió esta pieza, y el origen de los dos Critical de la revisión. Corregir el comentario donde esté vivo.
+  - Documentar en §2 el trigger `trg_stamp_books_repr_manual` y su regla (estampa `source:'manual'` cuando cambia una columna de representación **con sesión de usuario y fuera de `app.hydrating`**), y que el alta manual nace ya marcada.
 
 - [ ] **Step 3: `decisiones.md`** (append, con fecha): política ES→EN→otro fill-or-upgrade; muerte de la edición primaria; papel de GB; capa Wikidata/Inventaire como identidad blanda; fusión siempre cobarde con autor verificado.
 
