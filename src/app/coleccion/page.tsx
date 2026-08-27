@@ -22,7 +22,7 @@ import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { InboxIcon } from "@/components/ui/icons";
+import { InboxIcon, PlusIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { CollectionTabs, KNOWN_TABS, type KnownTab } from "./collection-tabs";
@@ -185,7 +185,25 @@ export default async function CollectionPage({
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
           da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
-      <PageHeader title={t("title")} />
+      {/* La acción de alta vive AQUÍ, no solo dentro del estado vacío de la
+          rejilla: hasta ahora, en cuanto tenías una obra, la pantalla que se
+          llama «Mi Biblioteca» dejaba de ofrecer forma alguna de añadir nada, y
+          había que saber que se hace desde «Buscar». Para quien llega de
+          Goodreads, añadir es LA acción. Va en la cabecera para estar en las
+          tres pestañas y no depender del scroll: la rejilla mide 23.062px en
+          móvil. */}
+      <PageHeader
+        title={t("title")}
+        action={
+          <Link
+            href="/buscar"
+            className={buttonVariants("primary", "gap-1.5 whitespace-nowrap")}
+          >
+            <PlusIcon aria-hidden className="h-4 w-4" />
+            {t("addWork")}
+          </Link>
+        }
+      />
 
       <CollectionTabs active={tab} />
 
@@ -378,7 +396,11 @@ async function LibraryGrid({
           title={emptyTitle}
           message={emptyLabel}
           action={
-            <Link href="/buscar" className={buttonVariants("primary")}>
+            // `secondary`: la misma acción ya va en primario en la cabecera de
+            // la página, y la regla es un primario por vista. Aquí el vacío
+            // sigue explicando y ofreciendo; lo que no hace es duplicar el
+            // naranja de algo que está 200px más arriba.
+            <Link href="/buscar" className={buttonVariants("secondary")}>
               {emptyCta}
             </Link>
           }

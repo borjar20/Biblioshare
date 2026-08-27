@@ -265,6 +265,8 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             itemId={series.id}
             isLoggedIn={Boolean(user)}
             statusLabels={statusLabels}
+            ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
+            ctaLabel={tDetail("rail.cta.series")}
           />
         }
         menuSlot={
