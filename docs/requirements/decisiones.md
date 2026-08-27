@@ -2319,3 +2319,38 @@ como la escala continua que es una tierlist.
   RPC, pero `ensureBookEdition` (find-or-create.ts) ya se tragaba ese error de antes de esta tarea;
   lo nuevo es que `resolveEditionId` simplemente no encuentra fila que resolver y cae a `null` — el
   pase se crea igual, sin edición, que es el mismo estado legítimo que una fila sin ISBN.
+
+- **La reconciliación de identidad Wikidata exige título Y autor, y el ganador de la fusión es el de
+  más rastro de usuario** (2026-08-27, Task 15). `scripts/reconcile-wikidata.ts` asigna a cada obra
+  su QID vía Inventaire y fusiona las que colisionan con `merge_book_into`. Dos decisiones que no
+  venían dictadas así:
+
+  **1. La corroboración de título es OBLIGATORIA, no un desempate.** El pseudocódigo del plan se
+  quedaba con «la primera entidad cuyo autor case», y la primera implementación lo suavizó (el
+  título solo desempataba si había varias candidatas del mismo autor). El barrido en seco contra dev
+  lo desmintió: de 13 fusiones propuestas, **dos eran obras distintas del mismo autor** — «Shadows
+  Beneath» (`/works/OL31714961W`, la antología de *Writing Excuses*) se iba a fundir con «Shadows of
+  Self» (`/works/OL17349393W`), y «Das Rad der Zeit 34. Der Traum des Wolfs» (*La Rueda del Tiempo*)
+  con «Words of Radiance». Un 15% de fusiones erróneas no lo compensa ningún match ganado: manda la
+  regla del spec §6 («ante la duda, no fusionar; un duplicado que sobrevive es recuperable, una
+  fusión errónea destruye»). **Coste asumido**: un duplicado cuyo título no case con ningún label de
+  la entidad —el caso «La Biblioteca de Medianoche» / «La biblioteca de la medianoche», que
+  `isSameTitle` no casa ni por igualdad ni por contención— sobrevive al barrido. Es el lado bueno
+  por el que fallar.
+
+  **2. Gana la fila con más rastro de usuario, con un desempate más que el que pedía el plan.** El
+  plan decía «más pases, y a igualdad la más antigua». Se intercala un segundo criterio —el resto
+  del rastro: `posts`, `notes`, `collection_items`, `library_entries`, `saga_items`— porque con dos
+  filas a cero pases la antigüedad es una moneda al aire y la fila que lleva la **reseña** del
+  usuario puede ser perfectamente la nueva. Sin rastro de ningún tipo por ninguna parte, queda
+  exactamente el criterio del plan. Es el razonamiento de la migración `20260870`: un dato de
+  catálogo se vuelve a bajar de OpenLibrary; un pase, no. Y el ganador se elige **cerrando el grupo
+  primero**, no según quién reclame el QID antes: en el pseudocódigo del plan el orden de escaneo
+  decidía qué pases había que repuntar.
+
+  **Nota operativa que no es un detalle**: Inventaire corta con `429` y `retry-after: 1800` sobre las
+  ~200 peticiones (~65 libros a 3 peticiones cada uno) y no lo documenta. `searchInventaireEntities`
+  es dependencia blanda y degrada a `[]`, así que un `429` es **indistinguible de «no está en
+  Wikidata»** desde dentro del cliente. El script lo compensa por fuera: sondeo previo con `fetch`
+  pelado, cortafuegos por racha de vacíos, `--apply` bloqueado si el barrido se cortó, y `--max=N`
+  para barrer en tandas (los 397 libros de dev necesitan ~6 ventanas de media hora).
