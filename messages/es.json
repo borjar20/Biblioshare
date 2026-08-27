@@ -1326,7 +1326,7 @@
     "cancelNew": "Cancelar",
     "whichEditionReading": "¿Qué edición estás leyendo?",
     "unknownEdition": "No lo sé",
-    "unknownEditionHint": "Tu progreso se medirá contra la edición principal. Puedes cambiarlo cuando quieras."
+    "unknownEditionHint": "Tu progreso se medirá contra las páginas orientativas de la obra. Puedes cambiarlo cuando quieras."
   },
   "catalogEdit": {
     "edit": "Editar ficha",

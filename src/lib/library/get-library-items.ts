@@ -244,9 +244,10 @@ export async function hydrateItems(
       if (!meta) return null;
       const activePass = activePassByKey.get(itemKey);
       if (!activePass) return null;
-      // El total de páginas manda desde la edición del pase (o la primaria),
-      // no desde books.total_pages: bolsillo y tapa dura no tienen las mismas
-      // páginas, y muchos libros solo las tienen en `book_editions`.
+      // El total de páginas manda desde la edición del pase, y si no hay
+      // ninguna identificada, desde books.total_pages (páginas orientativas
+      // de la obra): bolsillo y tapa dura no tienen las mismas páginas, y
+      // muchos libros solo las tienen en `book_editions`.
       const pageCount =
         key.item_type === "book"
           ? pickEditionPages(

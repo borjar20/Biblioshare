@@ -2157,3 +2157,32 @@ como la escala continua que es una tierlist.
   **De regalo se borra `src/lib/passes/edition-choice.ts`**: código muerto verificado — nadie
   escribía esa clave de localStorage, así que el efecto de `log-panel.tsx` que la leía no aplicó
   jamás una edición a ningún pase.
+
+- **Corrección de alcance de «La precedencia de páginas del progreso baja a DOS peldaños; la
+  «edición primaria» muere como criterio»** (2026-08-27, revisión de la Task 12). La entrada
+  anterior decía que un libro sin edición identificada y sin `books.total_pages` vuelve a «sin
+  estimar» **«en el sorteo»**. El alcance real es mayor: `pickEditionPages` tiene DOS
+  llamadores, no uno — el segundo es `get-library-items.ts:252`, que alimenta el porcentaje de
+  progreso de **portada y de Colección**. Esos ítems no pasan a «sin estimar» (ese estado es
+  propio del sorteo): **pierden directamente la barra de progreso**, y eso no estaba escrito
+  en ninguna parte.
+
+  Medido contra prod (`vmutcradmodhiltuohys`, solo lectura, 2026-08-27): pases de libro con
+  `edition_id` null, `books.total_pages` null y al menos una edición hermana CON páginas — la
+  población que el peldaño eliminado rescataba:
+
+  | estado | pierden el número | total pases del estado |
+  |---|---|---|
+  | `planned` | 29 | 41 (71% cae fuera de los tramos ‹2h / 2–5h / +5h del sorteo) |
+  | `in_progress` | 1 | 4 |
+  | `completed` | 38 | 60 |
+  | **total** | **68** | **105** |
+
+  La decisión de fondo sigue en pie —un número coherente en toda la app vale más que uno
+  optimista solo en un sitio—, pero 68 de 105 no se despachaba con una frase sin cifra.
+  **Mitigación que ya existe y que la entrada original no citaba:** `hydrate_book`
+  (`src/lib/catalog/hydrate-book.ts:288`) estampa `books.total_pages` desde la mediana de
+  páginas (`pagesMedian`) cuando la fila lo tiene a null, así que esto se autocura libro a
+  libro conforme se visitan las fichas — no es una regresión permanente, es una que se cierra
+  sola con tráfico. Consultas, alcance completo y propuesta de backfill puntual al desplegar:
+  issue #902 (relacionada con #900 y #901).

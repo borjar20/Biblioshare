@@ -552,8 +552,8 @@ function ManagedLog({
 // updatePass, que siempre escribe finished_on y cerraría el pase de tapadillo
 // (ver el comentario en src/lib/passes/actions.ts). La página actual sale de
 // `entry.position` (passes.position del pase activo), comparada contra las
-// páginas de la edición del pase — o la primaria si el pase no tiene una
-// asignada todavía.
+// páginas de la edición del pase — o las páginas orientativas de la obra si
+// el pase no tiene una edición asignada todavía.
 function PassDataPanel({
   itemType,
   itemId,

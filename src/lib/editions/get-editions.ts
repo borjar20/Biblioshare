@@ -5,14 +5,16 @@ import type { Edition } from "./types";
 // Las series no tienen ediciones: su unidad de progreso son los episodios.
 //
 // `freshRead` rompe deliberadamente la memoización de fetch de Next: la
-// ficha de libro llama a getEditions DOS VECES en la misma request (una para
-// los consumidores síncronos — editor, registro — y otra dentro de
-// loadBookEditions, para la tira que streamea por <Suspense>). Sin
-// diferenciarlas, ambas llamadas son byte-a-byte la misma petición GET (mismo
-// método, misma URL), y Next serviría la segunda desde la caché de la
-// primera. Añadir `id` como desempate no cambia el resultado (ya era
-// determinista sin él) pero sí cambia la URL de la petición, así que ninguna
-// llamada sirve una respuesta cacheada de la otra.
+// ficha de libro llama a getEditions TRES VECES en la misma request
+// (page.tsx:224 y page.tsx:365, ambas para consumidores síncronos — editor,
+// registro — con freshRead=false por defecto, y una tercera dentro de
+// loadBookEditions, para la tira que streamea por <Suspense>, con
+// freshRead=true). Las dos primeras son byte-a-byte la misma petición GET
+// (mismo método, misma URL): Next las deduplica solo a ellas vía la
+// memoización de fetch, así que en la práctica son una sola llamada de red.
+// La tercera lleva `id` como desempate para que su URL sea distinta y no
+// sirva (ni reciba) una respuesta cacheada de las otras dos — necesario
+// porque loadBookEditions pide una lectura fresca a propósito.
 // Cliente SIN sesión (`book_editions`/`movie_versions` son `SELECT USING (true)`):
 // resultado idéntico para todos → cacheable en Fase 4 (#436). loadBookEditions
 // solo LEE (Tarea 10: el sync masivo de ediciones murió), así que hoy las dos
