@@ -458,17 +458,17 @@ visita) — y `hydrate_book` es fill-only, así que nunca pisa lo que el colabor
 > pero es defensa en profundidad que falta sobre dos funciones que se saltan RLS. Issue
 > [#831](https://github.com/borjar20/Biblioshare/issues/831).
 
-### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev, 2026-08-27)
+### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev, verificado 2026-08-27)
 
 OpenLibrary cataloga cada traducción como una obra distinta, así que `books` acumula filas que
 son la misma obra. `merge_book_into(p_loser uuid, p_winner uuid) returns void` repunta al
 ganador todo lo que colgaba del perdedor y borra el perdedor. `SECURITY DEFINER`, `search_path`
 fijado a `public, pg_temp`, **solo `service_role`** (`revoke all ... from public, anon,
 authenticated`, nombrando los roles — ver #831). Quién gana lo decide el llamador, no la
-función. Migración `20260888_repr_g_merge_books_completo.sql`, que sustituye a
-`20260887_repr_f_merge_books_fn.sql`.
+función. Migración `20260889_repr_h_merge_books_href.sql`, que sustituye a
+`20260888_repr_g_merge_books_completo.sql` (y esta a `20260887_repr_f_merge_books_fn.sql`).
 
-**Las referencias polimórficas a libro son 17, y NO tienen FK.** Este es el punto que hay que
+**Las referencias a libro son 18, y NO tienen FK.** Este es el punto que hay que
 entender antes de tocar nada: la integridad de la fusión no la sostiene ningún constraint. La
 única FK real a `books` en todo el esquema es `book_editions.book_id`. Todo lo demás es
 `(_type, _id)` sin FK, así que **una tabla que falte en la función deja filas de usuario
@@ -478,17 +478,92 @@ apuntando a una obra inexistente y no lo detecta nadie** — la app las esconde 
 |---|---|
 | 13 con `item_type`/`item_id` | `credits`, `passes`, `collection_items`, `library_entries`, `notes`, `saga_items`, `saga_optional_skips`, `saga_placement_windows`, `saga_route_entries`, `club_activity_items`, `club_activity_opinions`, `club_activity_placements`, `club_rounds` |
 | 4 con OTRO nombre | `posts.anchor_type`/`anchor_id` (enum `post_anchor_type`), `saga_placement_windows.after_item_*`, `saga_placement_windows.before_item_*`, `club_activities.spawned_from_item_*` |
+| 1 con el **id incrustado en texto** | `interaction_targets.href` — `text` con la URL `/libro/<uuid>` dentro, escrita por `private.item_interaction_href()` (`20260730212803`). 232 filas en prod. |
 
 Esas 4 son las que faltaban en `20260887`, que copió su lista de `20260870` sin verificarla:
 esa lista **no es autoritativa**, solo cubre las columnas llamadas literalmente
 `item_type`/`item_id`. Issue [#876](https://github.com/borjar20/Biblioshare/issues/876).
+
+#### El barrido que hay que correr, porque el de tipos se queda corto
+
+La 18ª (`interaction_targets.href`) faltaba **en las dos revisiones anteriores**, y no por
+descuido: las dos barrieron **por TIPO de columna** (enums con la etiqueta `'book'`, columnas
+`*_type` de texto, columnas jsonb, `pg_constraint` para las FK reales). Ese método tiene un punto
+ciego estructural — **un id incrustado dentro de una cadena no tiene tipo que lo delate**. La
+revisión de `20260888` llegó a mirar `interaction_targets`, descartó `kind`/`source_id` con razón
+(el enum `target_kind` no tiene etiqueta `'book'`) y no volvió a mirar la tabla: la referencia
+estaba dos columnas más allá.
+
+El barrido que sí la encuentra está **guiado por DATOS**: no pregunta «¿qué columna *parece* una
+referencia a libro?» sino «¿qué columna *contiene* hoy un id de libro?». Serializa la fila entera
+con `to_jsonb(t)`, saca por regex todos los uuid de cualquier valor y los cruza con `books.id`, así
+que atrapa uuid en texto libre, dentro de URLs y dentro de jsonb. **Córrelo antes de dar por
+cerrada cualquier lista de referencias a libro — es la tercera vez que esta lista se queda corta:**
+
+```sql
+select c.relname as tabla,
+       (xpath('/row/c/text()', y))[1]::text as columna,
+       (xpath('/row/f/text()', y))[1]::text::bigint as filas
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
+cross join lateral unnest(xpath('/table/row', query_to_xml(format($q$
+      select kv.key as c, count(distinct t.ctid) as f
+        from public.%I t
+        cross join lateral jsonb_each_text(to_jsonb(t)) kv
+        cross join lateral regexp_matches(kv.value,
+             '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', 'g') m
+        join public.books b on b.id::text = m[1]
+       group by 1$q$, c.relname), false, false, ''))) as t(y)
+where c.relkind = 'r'
+order by 1, 2;
+```
+
+Contra **producción** (2026-08-27) devuelve 18 filas: `interaction_targets.href` (232),
+`books.cover_url` (158, el id del propio libro) y `books.id` (268, la PK), `book_editions.book_id`
+(372, la única FK real), y las 14 columnas `_id` polimórficas que hoy tienen datos.
+
+> **Su límite, dicho en voz alta: está guiado por DATOS, así que solo ve lo que tiene filas hoy.**
+> Una tabla vacía no aparece (en el barrido de prod no salen `club_rounds`,
+> `saga_optional_skips` ni `club_activities.spawned_from_item_id`, que sí son referencias reales).
+> **No sustituye al barrido por tipos: lo COMPLETA. Se corren los dos.**
+
+Y hay que fijarse en `books.cover_url`: sale del barrido porque cada libro guarda su propia
+portada como `book/<su_id>.webp`. No es una referencia cruzada (`cover_url` nunca apunta al id de
+otro libro: 0 filas en prod), pero sí es la pista de la fuga de Storage de la fusión — issue
+[#880](https://github.com/borjar20/Biblioshare/issues/880).
+
+#### Por qué solo 74 de las 232 filas de `href` se rompían
+
+`trg_passes_sync_interaction_targets` dispara con `UPDATE OF user_id, item_type, item_id`, así que
+al repuntar `passes` los targets que nacen del pase **se regeneran solos** con el href del ganador.
+Los otros dos no tienen quien los regenere (medido en prod, 2026-08-27):
+
+| `kind` | Filas | ¿Se cura sola? | Por qué |
+|---|---|---|---|
+| `pass` | 106 | **Sí** | el trigger de `passes` la reescribe |
+| `diary_entry` | 52 | **Sí** | ídem (su href lleva además `?tab=community`) |
+| `progress_session` | 67 | **No** | `trg_progress_sessions_sync_interaction_target` es `AFTER INSERT OR UPDATE OF user_id, pass_id`: toma el href del pase al insertar y no reacciona a que cambie el ítem |
+| `comment` | 7 | **No** | `trg_comments_sync_interaction_target` es `AFTER INSERT` a secas; hereda el href del padre y nunca lo revisa |
+
+Esas 74 filas quedaban apuntando a `/libro/<id-borrado>`, y `src/app/libro/[id]/page.tsx:140` hace
+`notFound()`: la notificación «X comentó tu sesión» llevaba a un 404 permanente. La función lo
+parchea con un `replace` sobre `href` **sin guarda** (verificado: los únicos índices únicos de
+`interaction_targets` son `(id)` y `(kind, source_id)`; `href` no entra en ninguno), colocado
+**después** del repunte de `passes` para que las 158 filas ya auto-curadas no casen el `like`.
+
+> **El modo de fallo de fondo sigue vivo.** Esto arregla el href *desde la fusión*; cualquier otra
+> cosa que cambie el ítem de un pase vuelve a dejar los `progress_session` y `comment` apuntando al
+> ítem viejo. Issue [#879](https://github.com/borjar20/Biblioshare/issues/879).
 
 **Descartadas tras verificarlas una a una** (para que nadie las re-investigue):
 `challenges.item_type` y `pending_import_rows.item_type` NO tienen `item_id` (son un filtro y
 una fila cruda de CSV, no referencias); `notifications.target_type` es texto y nunca vale
 `'book'`; `content_reports.target_type` e `interaction_targets.kind` son el enum `target_kind`,
 que no tiene etiqueta `'book'`; el enum `thought_anchor_type` **sí** contiene `'book'` pero
-ninguna columna del esquema lo usa (tipo muerto, resto de §6.2b); `pass_reviews` es una vista de
+ninguna columna del esquema lo usa (tipo muerto, resto de §6.2b); `profiles.interests`
+(`item_type[]`) **sí** contiene la etiqueta `'book'`, pero es un filtro de intereses del perfil
+(«me interesan los libros») sin `item_id` ni columna que lo acompañe — no es una referencia y no
+hay nada que repuntar (2 perfiles la usan en prod); `pass_reviews` es una vista de
 solo lectura. Queda fuera **a propósito** `club_activities.config->'item'->>'itemId'` (JSONB,
 hoy latente: cero eventos de libro en prod) — issue
 [#875](https://github.com/borjar20/Biblioshare/issues/875).
