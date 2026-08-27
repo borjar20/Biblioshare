@@ -8,6 +8,7 @@ import { searchLocalCatalog, findLocalBookByIsbn } from "./local-search";
 import { mergeByExternalId } from "./merge-results";
 import { searchInventaireEntities } from "./inventaire/client";
 import { collapseByWikidata } from "./wikidata-collapse";
+import { findVolumeByIsbn } from "./googlebooks/client";
 import type { ItemType, SearchResult } from "./types";
 
 // PELDAÑO 1 de la escalera de hidratación (ver docs/REQUIREMENTS.md §7.32 y el
@@ -45,7 +46,28 @@ export async function searchCatalog(
       if (cached) return [cached];
 
       const found = await lookupIsbn(isbn);
-      return found ? [found] : [];
+      if (found) return [found];
+
+      // Último recurso (spec §4): el ISBN identifica sin ambigüedad; si Open
+      // Library no lo conoce pero Google Books sí, la obra nace GB-only, sin
+      // work key. Es el ÚNICO camino donde GB crea obra — se justifica
+      // precisamente porque viene de un ISBN, no de un título.
+      const volume = await findVolumeByIsbn(isbn);
+      if (!volume?.title) return [];
+      return [
+        {
+          itemType: "book",
+          externalId: "",
+          googleVolumeId: volume.volumeId,
+          title: volume.title,
+          subtitle: volume.authors.join(", ") || null,
+          coverUrl: volume.coverUrl,
+          year: null,
+          synopsis: volume.synopsis,
+          genres: null,
+          matchedIsbn: isbn,
+        },
+      ];
     }
 
     // Tercera pasada, en paralelo con las otras dos: Inventaire, que es la

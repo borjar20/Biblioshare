@@ -264,4 +264,102 @@ describe("findOrCreateCatalogItem", () => {
       p_external_id: "129",
     });
   });
+
+  // Camino GB-only (spec §4, Task 11): sin work key pero con volumen de Google
+  // Books -> nace por register_catalog_item_by_volume, no por
+  // register_catalog_item (que exige `openlibrary_work_key`, aquí vacío).
+  it("libro GB-only (sin externalId, con googleVolumeId) -> register_catalog_item_by_volume", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-gb-1", error: null });
+    const supabase = { rpc } as never;
+
+    const id = await findOrCreateCatalogItem(
+      supabase,
+      book("", "GB Only", { googleVolumeId: "vol-1", matchedIsbn: "9788410138407" }),
+      "user-1"
+    );
+
+    expect(id).toBe("book-gb-1");
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_item_by_volume", {
+      p_volume_id: "vol-1",
+    });
+  });
+
+  it("libro con work key -> usa register_catalog_item aunque venga (por error) un googleVolumeId", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-ol-1", error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(
+      supabase,
+      book("/works/OL1W", "Con work key", { googleVolumeId: "vol-1" }),
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_item", {
+      p_item_type: "book",
+      p_external_id: "/works/OL1W",
+    });
+  });
+
+  it("película/serie con externalId vacío nunca usa la RPC de volumen (solo aplica a libros)", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "movie-id-2", error: null });
+    const supabase = { rpc } as never;
+
+    // googleVolumeId puesto A PROPÓSITO (no debería darse en la realidad):
+    // sin el guard de itemType, esta llamada tomaría la rama de volumen.
+    await findOrCreateCatalogItem(
+      supabase,
+      movie("", "Sin id externo", { googleVolumeId: "vol-x" }),
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_item", {
+      p_item_type: "movie",
+      p_external_id: "",
+    });
+  });
+
+  // ensureBookEdition (Task 11): el único automatismo de creación de ediciones
+  // que queda vivo, y solo dispara con matchedIsbn + userId autenticado.
+  it("libro con matchedIsbn y usuario -> registra la edición explícita", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: "book-1", error: null }) // register_catalog_item
+      .mockResolvedValueOnce({ data: "edition-1", error: null }); // register_book_edition
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(
+      supabase,
+      book("/works/OL1W", "T", { matchedIsbn: "9788410138407", coverUrl: "c" }),
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenNthCalledWith(2, "register_book_edition", {
+      p_book_id: "book-1",
+      p_isbn: "9788410138407",
+      p_cover_url: "c",
+    });
+  });
+
+  it("libro sin matchedIsbn (alta por búsqueda de texto) -> NO registra edición", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-1", error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(supabase, book("/works/OL1W", "T"), "user-1");
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).not.toHaveBeenCalledWith("register_book_edition", expect.anything());
+  });
+
+  it("libro con matchedIsbn pero SIN usuario autenticado -> NO registra edición", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-1", error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(
+      supabase,
+      book("/works/OL1W", "T", { matchedIsbn: "9788410138407" })
+      // sin userId
+    );
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
 });

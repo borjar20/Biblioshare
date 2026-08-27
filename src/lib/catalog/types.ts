@@ -56,6 +56,13 @@ export type SearchResult = {
   // Libros, SOLO en el lookup por ISBN (escáner, importador): la tirada exacta
   // que se escaneó, para registrarla como edición al añadir el libro.
   matchedIsbn?: string;
+  // Libros, SOLO camino ISBN-GB (spec §4): id del volumen de Google Books
+  // cuando el resultado nace GB-only (Open Library no conoce el ISBN pero
+  // Google Books sí). `externalId` va vacío en ese caso —no hay work key de
+  // OpenLibrary— y `findOrCreateCatalogItem` usa este campo para decidir la
+  // RPC de alta (`register_catalog_item_by_volume` en vez de
+  // `register_catalog_item`). Ausente en cualquier otro resultado.
+  googleVolumeId?: string;
   // Libros: QID de Wikidata cuando la capa de identidad lo resolvió (columna
   // books.wikidata_id en local, o match Inventaire en búsqueda). Es la clave
   // del colapso inter-idioma: dos works de OL con el mismo QID son LA MISMA

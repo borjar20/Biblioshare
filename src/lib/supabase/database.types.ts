@@ -2914,6 +2914,10 @@ export type Database = {
         Args: { p_external_id: string; p_item_type: string }
         Returns: string
       }
+      register_catalog_item_by_volume: {
+        Args: { p_volume_id: string }
+        Returns: string
+      }
       register_catalog_items_bulk: {
         Args: { p_external_ids: string[]; p_item_type: string }
         Returns: {

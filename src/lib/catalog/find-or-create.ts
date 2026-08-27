@@ -206,10 +206,21 @@ export async function findOrCreateCatalogItem(
   result: SearchResult,
   userId?: string | null
 ): Promise<string> {
-  const { data: id, error } = await supabase.rpc("register_catalog_item", {
-    p_item_type: result.itemType,
-    p_external_id: result.externalId,
-  });
+  // Camino GB-only (spec §4): sin work key pero con volumen de Google Books —
+  // solo lo produce la rama ISBN de `searchCatalog` cuando Open Library no
+  // conoce el ISBN. `register_catalog_item` exige `openlibrary_work_key`, así
+  // que aquí la RPC de alta es la que nace del volumen, no de la work key.
+  const useVolumeRpc =
+    result.itemType === "book" && !result.externalId && !!result.googleVolumeId;
+
+  const { data: id, error } = useVolumeRpc
+    ? await supabase.rpc("register_catalog_item_by_volume", {
+        p_volume_id: result.googleVolumeId!,
+      })
+    : await supabase.rpc("register_catalog_item", {
+        p_item_type: result.itemType,
+        p_external_id: result.externalId,
+      });
   if (error || !id) throw error ?? new Error("register_catalog_item returned no id");
 
   // La edición del libro (ISBN escaneado) sigue su camino validado server-side.
@@ -220,11 +231,24 @@ export async function findOrCreateCatalogItem(
 }
 
 // Registra la tirada que el usuario tiene EN LA MANO como edición de la obra.
-// Solo el lookup por ISBN (escáner de código de barras, importador de Goodreads)
-// sabe cuál es: una búsqueda por texto devuelve la obra y punto, sin tirada
-// identificada — sus candidatas se consultan en vivo (fetchRepresentationCandidates)
-// pero no se persisten hasta que alguien las identifique. De ahí que la única
-// fuente aquí sea `matchedIsbn`.
+// Solo el lookup por ISBN (escáner de código de barras, importador de Goodreads,
+// tecleo manual, y ahora el camino GB-only) sabe cuál es: una búsqueda por texto
+// devuelve la obra y punto, sin tirada identificada — sus candidatas se
+// consultan en vivo (fetchRepresentationCandidates) pero no se persisten hasta
+// que alguien las identifique. De ahí que la única fuente aquí sea
+// `matchedIsbn`.
+//
+// Es, a propósito, el ÚNICO automatismo de creación de ediciones que queda vivo
+// en todo el catálogo (spec §3): todo lo demás (bulk, hidratación) nace o se
+// hidrata SIN escribir en `book_editions`, porque inventar una tirada a partir
+// de datos agregados de la obra fue justo el bug que esta pieza corrige (ver la
+// cabecera de `find-or-create-bulk.ts`). Este caso es distinto porque un ISBN
+// buscado explícitamente —escaneado, tecleado, o traído por una fila de CSV— ES
+// una identificación deliberada de una tirada concreta por parte del usuario,
+// no una inferencia nuestra: no hay nada que "inventar", el usuario ya dijo
+// cuál es. Una búsqueda por texto nunca trae `matchedIsbn`, así que esta
+// función no registra nada en ese camino — comportamiento correcto, no un
+// descuido.
 //
 // El insert directo a book_editions no es una opción: dejaba a cualquier
 // autenticado escribir editorial/portada/páginas inventadas en cualquier libro
