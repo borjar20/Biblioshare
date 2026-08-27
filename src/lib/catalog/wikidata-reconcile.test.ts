@@ -4,6 +4,7 @@ import {
   chooseWinner,
   planReconciliation,
   resolveQid,
+  titleMatchesLabel,
   type BookRow,
 } from "./wikidata-reconcile";
 import type { InventaireEntity } from "./inventaire/client";
@@ -54,6 +55,45 @@ describe("authorMatches", () => {
   it("no casa un nombre corto contenido en otro más largo", () => {
     // La otra trampa: «Ana» dentro de «Susana Fortes».
     expect(authorMatches("Ana", entity("wd:Q1", {}, ["Susana Fortes"]))).toBe(false);
+  });
+});
+
+describe("titleMatchesLabel", () => {
+  it("iguala mayúsculas, acentos y puntuación", () => {
+    expect(titleMatchesLabel("Sombras de Identidad", "Sombras de identidad")).toBe(true);
+    expect(titleMatchesLabel("Words of Radiance", "Words  of, Radiance")).toBe(true);
+  });
+
+  it("una palabra de más NO casa, esté donde esté", () => {
+    // Es la diferencia con `isSameTitle` y la razón de ser de esta función:
+    // la contención aceptaba el sufijo y BORRABA la fila de la obra completa.
+    expect(titleMatchesLabel("Words of Radiance, Part 2", "Words of Radiance")).toBe(false);
+    expect(titleMatchesLabel("The Stormlight Archive 1", "The Stormlight Archive")).toBe(false);
+    expect(titleMatchesLabel("Elantris: edición aniversario", "Elantris")).toBe(false);
+  });
+
+  it("una palabra de MENOS tampoco casa, que es la dirección habitual", () => {
+    // El label de Inventaire suele ser el canónico LARGO y el título del
+    // catálogo el corto, así que ésta es la dirección que más se da. Sin la
+    // comprobación de tamaño, `{tress}` estaría contenido en `{tress, of, the,
+    // emerald, sea}` y casaría: «Tress» se fundiría con «Tress of the Emerald
+    // Sea», que son la misma obra… pero por la misma puerta se colaría
+    // cualquier título de una palabra dentro de cualquier saga que la contenga.
+    expect(titleMatchesLabel("Tress", "Tress of the Emerald Sea")).toBe(false);
+    expect(titleMatchesLabel("Words of Radiance", "Words of Radiance, Part 2")).toBe(false);
+  });
+
+  it("una palabra repetida en medio SÍ casa: es un conjunto, no una secuencia", () => {
+    expect(titleMatchesLabel("La Biblioteca de Medianoche", "La biblioteca de la medianoche")).toBe(true);
+  });
+
+  it("un título que normaliza a vacío no casa con nada, ni consigo mismo", () => {
+    // Sin esta guarda, dos obras en un alfabeto que `normalizeTitle` no conserva
+    // producirían el conjunto vacío las dos y se fundirían entre sí. Dev tiene
+    // cuatro títulos así (§8 del informe de Task 15).
+    expect(titleMatchesLabel("חוק ומסג", "מסע אחר")).toBe(false);
+    expect(titleMatchesLabel("—", "…")).toBe(false);
+    expect(titleMatchesLabel("Elantris", "—")).toBe(false);
   });
 });
 
@@ -122,18 +162,68 @@ describe("resolveQid", () => {
     );
   });
 
-  it("el subtítulo de una edición partida no rompe el match", () => {
-    // `isSameTitle` acepta contención cuando el más corto es ≥65% del más largo:
-    // «Words of Radiance, Part Two» sigue casando con «Words of Radiance».
-    expect(resolveQid({ title: "Words of Radiance, Part Two", author: "Brandon Sanderson" }, [wor])).toBe(
-      "Q8034469"
+  // LOS CUATRO PARES CONGELADOS. Con la regla vieja (`isSameTitle`, contención
+  // con cota del 65%) estos títulos resolvían el QID de la obra COMPLETA, y
+  // `planReconciliation` proponía `merge_book_into`: la fila del trozo y la de
+  // la obra entera se fundían y una de las dos se BORRABA. Medido contra las
+  // filas reales de dev, donde las seis `Words of Radiance%` producían cinco
+  // fusiones y sobrevivía «Part Two». No es un caso hipotético.
+  it.each([
+    ["Words of Radiance (1 of 5)"],
+    ["Words of Radiance Part One"],
+    ["Words of Radiance, Part 1"],
+    ["Words of Radiance, Part 2"],
+    ["Words of Radiance, Part Two"],
+  ])("un trozo o volumen NO casa con la obra completa: %s", (title) => {
+    expect(resolveQid({ title, author: "Brandon Sanderson" }, [wor])).toBeNull();
+  });
+
+  it("un número de volumen pegado al título de la saga NO casa (ratio 0.92)", () => {
+    // El más traicionero de todos: por contención da 0.92, muy por encima del
+    // 65%, así que la regla vieja lo fusionaba sin dudar.
+    const saga = entity("wd:Q3253490", { en: "The Stormlight Archive" }, ["Brandon Sanderson"]);
+    expect(resolveQid({ title: "The Stormlight Archive 1", author: "Brandon Sanderson" }, [saga])).toBeNull();
+    expect(resolveQid({ title: "The Stormlight Archive", author: "Brandon Sanderson" }, [saga])).toBe(
+      "Q3253490"
     );
+  });
+
+  it("un ordinal romano de volumen NO casa con la obra base", () => {
+    const lotr = entity("wd:Q15228", { es: "El Señor de los Anillos" }, ["J. R. R. Tolkien"]);
+    expect(resolveQid({ title: "El Señor de los Anillos I", author: "J. R. R. Tolkien" }, [lotr])).toBeNull();
+  });
+
+  it("recupera el falso negativo que motivaba dejar el título suelto", () => {
+    // «La Biblioteca de Medianoche» (alta manual, sin la segunda «la») contra el
+    // label «La biblioteca de la medianoche». `isSameTitle` fallaba porque el
+    // «la» extra va EN MEDIO: la contención no se cumple y el umbral del 65% ni
+    // se llega a consultar (el ratio, 0.90, es irrelevante). Por conjunto de
+    // palabras es el mismo título. Ver la cabecera de `resolveQid`.
+    const medianoche = entity("wd:Q100152091", { es: "La biblioteca de la medianoche" }, ["Matt Haig"]);
+    expect(resolveQid({ title: "La Biblioteca de Medianoche", author: "Matt Haig" }, [medianoche])).toBe(
+      "Q100152091"
+    );
+  });
+
+  it("el precio asumido: un subtítulo legítimo deja de casar, y falla del lado seguro", () => {
+    // Documentado a propósito. «Elantris: edición aniversario» sale como
+    // `sin-match`: no escribe nada y no borra nada — el duplicado sobrevive y
+    // sigue siendo recuperable. Al revés (fusionar de más) no lo es.
+    const elantris = entity("wd:Q1328405", { es: "Elantris" }, ["Brandon Sanderson"]);
+    expect(
+      resolveQid({ title: "Elantris: edición aniversario", author: "Brandon Sanderson" }, [elantris])
+    ).toBeNull();
   });
 
   it("dos entidades distintas del mismo autor y mismo título tampoco se eligen", () => {
     const a = entity("wd:Q1", { es: "Dune" }, ["Frank Herbert"]);
     const b = entity("wd:Q2", { es: "Dune" }, ["Frank Herbert"]);
     expect(resolveQid({ title: "Dune", author: "Frank Herbert" }, [a, b])).toBeNull();
+  });
+
+  it("dos títulos en alfabeto no latino no se funden por el conjunto vacío", () => {
+    const otra = entity("wd:Q1", { he: "מסע אחר" }, ["Frank Herbert"]);
+    expect(resolveQid({ title: "חוק ומסג", author: "Frank Herbert" }, [otra])).toBeNull();
   });
 
   it("un libro sin título no casa", () => {

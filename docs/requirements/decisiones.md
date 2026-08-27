@@ -2354,3 +2354,50 @@ como la escala continua que es una tierlist.
   Wikidata»** desde dentro del cliente. El script lo compensa por fuera: sondeo previo con `fetch`
   pelado, cortafuegos por racha de vacíos, `--apply` bloqueado si el barrido se cortó, y `--max=N`
   para barrer en tandas (los 397 libros de dev necesitan ~6 ventanas de media hora).
+
+## 2026-08-28 — El barrido QID compara títulos por CONJUNTO DE PALABRAS, con un comparador local
+
+Revisión del barrido de reconciliación (Task 15). La corroboración de título se apoyaba en
+`isSameTitle` (`src/lib/catalog/title-match.ts`), que acepta la **contención** cuando el más corto
+mide ≥65 % del más largo. Contra las filas reales de dev eso no era un límite: era un **falso
+positivo que borraba filas**. Un marcador de volumen o de parte pegado al título base cae dentro de
+la cota, así que el trozo casaba con la obra completa y `planReconciliation` proponía
+`merge_book_into` — las seis filas `Words of Radiance%` producían **cinco fusiones**, y como
+comparten `created_at` y tienen cero pases, el desempate por `id` dejaba viva «Part Two» y mataba la
+fila de la **obra completa**.
+
+Lo decisivo del diagnóstico no es el fallo, es que **saltara o no era cuestión de suerte de
+longitudes, no de datos**: `Oathbringer Part Two` / `Oathbringer` da 0.55 y se salvaba por poco,
+mientras que `The Stormlight Archive 1` / `The Stormlight Archive` da 0.92 y borraba la fila. Un
+criterio que decide qué se borra no puede depender de cuánto mida el título base.
+
+**Decisión: comparación por conjunto de palabras normalizadas** (igualdad exacta de conjuntos), en
+un `titleMatchesLabel` **local a `src/lib/catalog/wikidata-reconcile.ts`**. Medido sobre los 16
+casos conocidos: tokenSet 16/16; `isSameTitle` fallaba 8 (7 falsos positivos + 1 falso negativo).
+
+**Por qué local y no en `title-match.ts`**, que era la tentación obvia: ese `isSameTitle` lo
+comparten `wikidata-collapse.ts` y el matching de TMDB, y **allí la tolerancia al subtítulo es lo
+que se quiere** — equivocarse esconde una tarjeta, que es recuperable, no borra una fila. La
+asimetría de consecuencias justifica dos comparadores distintos con el mismo nombre conceptual. Se
+reutiliza solo `normalizeTitle` (la normalización), no la comparación.
+
+**De propina recupera el falso negativo** que motivaba el spec: «La Biblioteca de Medianoche» contra
+el label «La biblioteca de la medianoche». Y con el diagnóstico correcto, que antes se daba por otro:
+el `la` extra va **en medio**, así que la contención falla y **el umbral del 65 % ni se llega a
+consultar** (el ratio, 0.90, es irrelevante).
+
+**Coste asumido y declarado**: se pierden los subtítulos legítimos («Elantris: edición aniversario»
+ya no resuelve el QID de «Elantris»). Falla del lado seguro — produce un `sin-match`, que no escribe
+nada y deja vivo un duplicado recuperable. Queda en #913.
+
+**Corolario que NO se arregla aquí**: `hydrate-book.ts`, que es quien **escribe** `books.wikidata_id`,
+sigue eligiendo la entidad **solo por autor**, sin corroborar el título — la misma regla que ya
+produjo dos fusiones erróneas. Vive como #914 (P1), porque siembra el dato con el que un barrido
+posterior borra la obra equivocada.
+
+**El rastro de usuario cuenta 16 de las 17 referencias que repunta `merge_book_into`**, no 6. No era
+pérdida de datos (se repuntan igual), pero una obra que solo llevara la opinión de un club puntuaba
+cero y **perdía contra una vacía**. La decimoséptima, `credits`, se deja fuera **a propósito**: es
+metadato de catálogo que escribe la hidratación, no rastro de persona, y contarlo invertiría el
+criterio justo en el caso que importa —una fila hidratada dos veces le ganaría a la fila donde
+alguien escribió una nota a mano—.

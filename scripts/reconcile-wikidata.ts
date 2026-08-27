@@ -30,6 +30,18 @@
 //       DRY-RUN (por defecto). Imprime la tabla de acciones y NO escribe nada.
 //   npx tsx --env-file=.env.local scripts/reconcile-wikidata.ts --apply
 //       Escribe: fusiona y asigna QID.
+//
+//       ⚠ ANTES DE `--apply`: HAZ EL BACKUP. Lo exige la Fase 0 del spec y el
+//       script NO lo comprueba ni puede — no hay forma de preguntarle a
+//       Supabase «¿tengo un backup reciente?» desde aquí. Se dice en voz alta
+//       porque el precedente engaña: `backfill-book-shells.ts` tampoco lo pide,
+//       pero aquél solo AÑADE filas y este las BORRA (`merge_book_into` hace
+//       `delete from books`). Una fusión errónea no se deshace con otra
+//       ejecución: se deshace con el backup o no se deshace.
+//
+//       `--dry-run` NO es un flag: el dry-run es el comportamiento por defecto
+//       (la ausencia de `--apply`). Escribirlo junto a `--apply` es un error
+//       ABORTA — ver el guard de `main`.
 //   … --max=60
 //       Corta la tanda a 60 libros. OBLIGATORIO en la práctica para un catálogo
 //       grande: ver «tandas» abajo.
@@ -63,6 +75,11 @@ import {
 } from "../src/lib/catalog/wikidata-reconcile";
 
 const APPLY = process.argv.includes("--apply");
+// `--dry-run` NO se reconoce: el dry-run es la ausencia de `--apply`. Sin este
+// guard, `--dry-run --apply` ESCRIBE —el flag que parecía protegerte se ignora
+// en silencio y el otro manda—, y lo que escribe son borrados de filas de
+// `books`. Dos líneas por si alguien lo teclea creyendo que se anulan.
+const DRY_RUN_EXPLICITO = process.argv.includes("--dry-run");
 const ONLY = new Set(
   (process.argv.find((a) => a.startsWith("--only="))?.slice("--only=".length) ?? "")
     .split(",")
@@ -105,6 +122,60 @@ const MAX_POR_TANDA_SUGERIDO = 60;
 // paginadas o el recuento saldría mal en silencio.
 const PAGE = 1000;
 
+/**
+ * EL RASTRO DE USUARIO, tabla por tabla. Tiene que ser LA MISMA lista que
+ * repunta `merge_book_into` (`20260889_repr_h_merge_books_href.sql`), porque de
+ * este recuento sale el ganador de la fusión: **una referencia que no se cuenta
+ * aquí sí se repunta allí, así que no se pierde el dato — pero la fila que la
+ * llevaba puntúa como si estuviera vacía y PIERDE contra una que lo está de
+ * verdad.** La primera versión contaba 6 de 17 y ese era exactamente el fallo:
+ * una obra que solo llevara la opinión de un club sacaba 0 y moría.
+ *
+ * `merge_book_into` repunta 17 referencias polimórficas. Aquí están las 16 que
+ * son rastro de PERSONA; `passes` va aparte porque es el desempate fuerte.
+ *
+ * LA QUE FALTA A PROPÓSITO — `credits` (autoría/rol de la obra). Es la
+ * decimoséptima y NO se cuenta, porque no es rastro de usuario: es metadato de
+ * CATÁLOGO que escribe la hidratación desde OpenLibrary, no una persona.
+ * Contarlo invertiría el criterio justo en el caso que importa —una fila
+ * hidratada dos veces, con más `credits` automáticos, le ganaría a la fila donde
+ * alguien escribió una nota a mano—, y el criterio del repo (migración
+ * `20260870`) es explícito: gana el rastro de usuario, no lo completo del
+ * catálogo. Un dato de catálogo se vuelve a bajar; una nota, no. `book_editions`
+ * queda fuera por lo mismo (además es FK real, no referencia polimórfica).
+ *
+ * La cuarta columna es la CLAVE PRIMARIA, para que la paginación tenga un orden
+ * total. Ver `countByBook`: cuatro de estas tablas no tienen columna `id`.
+ */
+const RASTRO_RESTANTE = [
+  // Lo que la persona escribe y se ve en el feed o en su ficha.
+  ["posts", "anchor_id", "anchor_type", ["id"]],
+  ["notes", "item_id", "item_type", ["id"]],
+  ["collection_items", "item_id", "item_type", ["collection_id", "item_type", "item_id"]],
+  ["library_entries", "item_id", "item_type", ["id"]],
+  // Sagas: el orden de lectura que alguien curó a mano.
+  ["saga_items", "item_id", "item_type", ["id"]],
+  ["saga_route_entries", "item_id", "item_type", ["id"]],
+  ["saga_optional_skips", "item_id", "item_type", ["user_id", "saga_id", "item_type", "item_id"]],
+  // Las TRES columnas de la ventana de colocación: el sujeto y sus dos extremos
+  // («este libro va DESPUÉS de X y ANTES de Y»). Son tres referencias distintas
+  // a libro en la misma tabla, y `merge_book_into` repunta las tres.
+  ["saga_placement_windows", "item_id", "item_type", ["id"]],
+  ["saga_placement_windows", "after_item_id", "after_item_type", ["id"]],
+  ["saga_placement_windows", "before_item_id", "before_item_type", ["id"]],
+  // Clubes: la lectura de un grupo entero de gente.
+  ["club_activity_items", "item_id", "item_type", ["id"]],
+  ["club_activity_opinions", "item_id", "item_type", ["activity_id", "user_id", "item_type", "item_id"]],
+  [
+    "club_activity_placements",
+    "item_id",
+    "item_type",
+    ["activity_id", "user_id", "item_type", "item_id"],
+  ],
+  ["club_rounds", "item_id", "item_type", ["id"]],
+  ["club_activities", "spawned_from_item_id", "spawned_from_item_type", ["id"]],
+] as const satisfies ReadonlyArray<readonly [string, string, string, readonly string[]]>;
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -139,21 +210,41 @@ async function inventaireCortando(): Promise<number | null> {
   }
 }
 
-/** Cuenta filas por libro en una tabla polimórfica, paginando. */
+/**
+ * Cuenta filas por libro en una tabla polimórfica, paginando.
+ *
+ * `orderBy` NO es decorativo y NO puede ser siempre `"id"`. `range` es
+ * `offset/limit`, y en Postgres un `offset/limit` SIN orden explícito puede
+ * REPETIR o SALTARSE filas entre páginas: el planificador no garantiza que dos
+ * ejecuciones de la misma consulta devuelvan las filas en el mismo orden.
+ * Repetir infla el rastro de un libro, saltarse lo desinfla — y de este recuento
+ * sale el GANADOR de la fusión, o sea QUÉ FILA SE BORRA. Con las tablas de hoy
+ * (ninguna llega a 1000 filas) el bucle da una sola vuelta y no muerde; muerde
+ * el día que crezcan, y en silencio.
+ *
+ * El orden tiene que ser TOTAL, así que se ordena por la CLAVE PRIMARIA. Y no
+ * vale `"id"` a secas: cuatro de estas tablas no tienen columna `id` —
+ * `collection_items`, `saga_optional_skips`, `club_activity_opinions` y
+ * `club_activity_placements` tienen PK compuesta (verificado contra `pg_constraint`
+ * en dev, 2026-08-28)—, así que `.order("id")` reventaría con un 400 de PostgREST.
+ * Por eso la clave viaja en la tabla de abajo en vez de estar cableada aquí.
+ */
 async function countByBook(
   supabase: SupabaseClient,
   table: string,
   idColumn: string,
-  typeColumn: string
+  typeColumn: string,
+  orderBy: readonly string[]
 ): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
+    let query = supabase
       .from(table)
       .select(idColumn)
       .eq(typeColumn, "book")
-      .not(idColumn, "is", null)
-      .range(from, from + PAGE - 1);
+      .not(idColumn, "is", null);
+    for (const column of orderBy) query = query.order(column);
+    const { data, error } = await query.range(from, from + PAGE - 1);
     if (error) throw new Error(`${table}: ${error.message}`);
     const rows = (data ?? []) as unknown as Array<Record<string, string | null>>;
     for (const row of rows) {
@@ -219,6 +310,13 @@ async function main() {
         "Este script corre fuera de Next: lánzalo con `npx tsx --env-file=.env.local …`."
     );
   }
+  if (DRY_RUN_EXPLICITO && APPLY) {
+    throw new Error(
+      "`--dry-run` y `--apply` a la vez: no se ejecuta nada.\n" +
+        "`--dry-run` no es un flag de este script — el dry-run es lo que pasa SIN `--apply`.\n" +
+        "Si querías simular, quita `--apply`. Si querías escribir, quita `--dry-run`."
+    );
+  }
   const supabase = createClient(url, key);
   console.log(`Proyecto: ${url}`);
   console.log(APPLY ? "MODO: --apply (ESCRIBE)" : "MODO: dry-run (no escribe nada)");
@@ -237,6 +335,7 @@ async function main() {
     const { data, error } = await supabase
       .from("books")
       .select("id, title, author, created_at, wikidata_id")
+      .order("id") // Mismo motivo que en `countByBook`: sin orden, `offset/limit` puede saltarse libros.
       .range(from, from + PAGE - 1);
     if (error) throw error;
     const rows = (data ?? []) as typeof libros;
@@ -246,17 +345,12 @@ async function main() {
 
   // 2. Rastro de usuario por libro. Decide el GANADOR de cada fusión: la fila
   //    con más rastro, no la más completa (precedente de `20260870`). Un dato de
-  //    catálogo se vuelve a bajar de OpenLibrary; un pase, no.
-  const pases = await countByBook(supabase, "passes", "item_id", "item_type");
+  //    catálogo se vuelve a bajar de OpenLibrary; un pase, no. Las tablas y por
+  //    qué son ESAS y no otras, en `RASTRO_RESTANTE`.
+  const pases = await countByBook(supabase, "passes", "item_id", "item_type", ["id"]);
   const otros = new Map<string, number>();
-  for (const [tabla, idCol, tipoCol] of [
-    ["posts", "anchor_id", "anchor_type"],
-    ["notes", "item_id", "item_type"],
-    ["collection_items", "item_id", "item_type"],
-    ["library_entries", "item_id", "item_type"],
-    ["saga_items", "item_id", "item_type"],
-  ] as const) {
-    for (const [id, n] of await countByBook(supabase, tabla, idCol, tipoCol)) {
+  for (const [tabla, idCol, tipoCol, orden] of RASTRO_RESTANTE) {
+    for (const [id, n] of await countByBook(supabase, tabla, idCol, tipoCol, orden)) {
       otros.set(id, (otros.get(id) ?? 0) + n);
     }
   }
@@ -270,15 +364,21 @@ async function main() {
 
   // 3. Resolución. Solo se pregunta por los que no tienen QID y tienen título;
   //    los demás entran con el QID que ya llevan.
+  const sinQidEnCatalogo = filas.filter((f) => !f.wikidata_id && f.title);
+  // Con `--only`, `pendientes` es un SUBCONJUNTO: se informa de los dos números
+  // por separado. La versión anterior imprimía solo este como «sin QID: N», y
+  // con `--only=<un uuid>` decía «sin QID: 1» de un catálogo con 397 sin QID —
+  // que es justo el número que uno mira para saber cuántas tandas quedan.
   const pendientes = filas.filter(
     (f) => !f.wikidata_id && f.title && (ONLY.size === 0 || ONLY.has(f.id))
   );
   const aResolver = MAX > 0 ? pendientes.slice(0, MAX) : pendientes;
   const yaConQid = filas.filter((f) => f.wikidata_id);
   console.log(
-    `Libros en el catálogo: ${filas.length} · con QID: ${yaConQid.length} · sin QID: ${pendientes.length}` +
+    `Libros en el catálogo: ${filas.length} · con QID: ${yaConQid.length}` +
+      ` · sin QID: ${sinQidEnCatalogo.length}` +
+      (ONLY.size > 0 ? ` (de ellos ${pendientes.length} en este --only de ${ONLY.size})` : "") +
       ` · a consultar en Inventaire ahora: ${aResolver.length}` +
-      (ONLY.size > 0 ? ` (--only con ${ONLY.size})` : "") +
       (MAX > 0 && pendientes.length > aResolver.length
         ? `\n  TANDA: quedan ${pendientes.length - aResolver.length} para la siguiente pasada (~30 min).`
         : "")
@@ -372,7 +472,7 @@ async function main() {
   for (const entry of grupos) {
     if (entry.action.kind !== "conserva") continue;
     const winner = entry.book;
-    let pendientes = 0;
+    let abortadasDelGrupo = 0;
     for (const loserId of entry.action.loserIds) {
       const { error } = await supabase.rpc("merge_book_into", {
         p_loser: loserId,
@@ -382,7 +482,7 @@ async function main() {
         // El caso previsto: `merge_book_into` aborta sin escribir nada porque
         // repuntar un dato de USUARIO chocaría con un único (y nombra la tabla).
         // No se muere el barrido: se anota y se sigue.
-        pendientes += 1;
+        abortadasDelGrupo += 1;
         const loser = porId.get(loserId);
         abortadas.push(
           `${loserId} («${loser?.title ?? "?"}») → ${winner.id} («${winner.title ?? "?"}») [${entry.qid}]: ${error.message}`
@@ -394,10 +494,12 @@ async function main() {
       console.log(`  fusionada ${loserId} → ${winner.id} (${entry.qid})`);
     }
     if (winner.wikidata_id === entry.qid) continue;
-    if (pendientes > 0) {
+    if (abortadasDelGrupo > 0) {
       // Si un perdedor sobrevivió puede seguir siendo el dueño del QID, y el
       // update chocaría con el único. Se deja el grupo entero para revisión.
-      fallosQid.push(`${winner.id}: ${entry.qid} no asignado, ${pendientes} fusión(es) abortada(s)`);
+      fallosQid.push(
+        `${winner.id}: ${entry.qid} no asignado, ${abortadasDelGrupo} fusión(es) abortada(s)`
+      );
       continue;
     }
     const { error } = await supabase
