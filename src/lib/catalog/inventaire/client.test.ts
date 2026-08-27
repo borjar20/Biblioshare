@@ -41,9 +41,23 @@ describe("searchInventaireEntities", () => {
   });
 
   it("devuelve [] si la respuesta HTTP no es ok", async () => {
+    // El cuerpo del 500 trae datos VÁLIDOS a propósito, y el segundo mock
+    // resolvería la entidad. Si la implementación dejara de mirar `res.ok`,
+    // seguiría adelante y devolvería esa entidad en vez de []. Con un cuerpo
+    // vacío el test pasaba igual sin la comprobación: no distinguía nada.
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 500 }))
+      vi.fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ results: [{ uri: "wd:Q8034469" }] }), { status: 500 })
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              entities: { "wd:Q8034469": { labels: { es: "Palabras radiantes" } } },
+            })
+          )
+        )
     );
     expect(await searchInventaireEntities("palabras radiantes")).toEqual([]);
   });
