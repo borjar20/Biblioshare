@@ -48,4 +48,9 @@ export type SearchResult = {
   // Libros, SOLO en el lookup por ISBN (escáner, importador): la tirada exacta
   // que se escaneó, para registrarla como edición al añadir el libro.
   matchedIsbn?: string;
+  // Libros: QID de Wikidata cuando la capa de identidad lo resolvió (columna
+  // books.wikidata_id en local, o match Inventaire en búsqueda). Es la clave
+  // del colapso inter-idioma: dos works de OL con el mismo QID son LA MISMA
+  // obra. Ver spec 2026-08-26 §6.
+  wikidataId?: string;
 };

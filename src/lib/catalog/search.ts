@@ -6,6 +6,8 @@ import { MOCK_BOOKS, MOCK_MOVIES, MOCK_SERIES } from "./mock-data";
 import { normalizeIsbn } from "./isbn";
 import { searchLocalCatalog, findLocalBookByIsbn } from "./local-search";
 import { mergeByExternalId } from "./merge-results";
+import { searchInventaireEntities } from "./inventaire/client";
+import { collapseByWikidata } from "./wikidata-collapse";
 import type { ItemType, SearchResult } from "./types";
 
 // PELDAÑO 1 de la escalera de hidratación (ver docs/REQUIREMENTS.md §7.32 y el
@@ -46,11 +48,17 @@ export async function searchCatalog(
       return found ? [found] : [];
     }
 
-    const [local, api] = await Promise.all([
+    // Tercera pasada, en paralelo con las otras dos: Inventaire, que es la
+    // única fuente que sabe que un work en español y otro en inglés son la
+    // MISMA obra (comparten entidad de Wikidata). Dependencia BLANDA — ver
+    // inventaire/client.ts — así que su fallo no tumba la búsqueda: se degrada
+    // a búsqueda sin colapso, con los duplicados que ya había antes de esto.
+    const [local, api, entities] = await Promise.all([
       searchLocalCatalog(supabase, "book", trimmed),
       searchWorks(trimmed),
+      searchInventaireEntities(trimmed).catch(() => []),
     ]);
-    return mergeByExternalId(local, api);
+    return collapseByWikidata(mergeByExternalId(local, api), entities);
   }
 
   // Películas y series: TMDB ya devuelve datos limpios y géneros de vocabulario

@@ -15,6 +15,7 @@ type BookRow = {
   isbn: string | null;
   synopsis: string | null;
   genres: string[] | null;
+  wikidata_id: string | null;
 };
 
 type ScreenRow = {
@@ -36,7 +37,7 @@ const SCREEN_COLUMNS =
 // Sin `publisher` ni `total_pages`: son datos de la tirada, viven en
 // `book_editions` y una tarjeta de búsqueda no los muestra.
 const BOOK_COLUMNS =
-  "id, openlibrary_work_key, title, author, cover_url, published_year, isbn, synopsis, genres";
+  "id, openlibrary_work_key, title, author, cover_url, published_year, isbn, synopsis, genres, wikidata_id";
 
 function mapBookRow(row: BookRow): SearchResult {
   return {
@@ -55,6 +56,9 @@ function mapBookRow(row: BookRow): SearchResult {
     // `books.isbn` es el espejo de la edición primaria. Se conserva aquí para que
     // el lookup por ISBN de un libro ya cacheado siga sabiendo qué tirada es.
     ...(row.isbn ? { matchedIsbn: row.isbn } : {}),
+    // Un QID ya persistido ancla la identidad sin depender de que el título
+    // case con un label de Inventaire hoy (ver wikidata-collapse.ts).
+    ...(row.wikidata_id ? { wikidataId: row.wikidata_id } : {}),
   };
 }
 
