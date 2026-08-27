@@ -8,7 +8,7 @@ import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getLibraryItems } from "@/lib/library/get-library-items";
 import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { getProgress } from "@/lib/library/progress";
+import { getProgress, passPercent } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { TodayCard } from "./today-card";
 import { TodayPicker } from "./today-picker";
@@ -160,9 +160,9 @@ async function MiniCard({ pass }: { pass: TodayPass }) {
   const { item } = pass;
   const accent = MEDIA_ACCENT[item.itemType];
   const progress = getProgress(item);
-  const percent = progress
-    ? Math.min(100, Math.round((progress.current / progress.total) * 100))
-    : 0;
+  // Mismo cálculo que el destacado (`today-card.tsx`): esta mini es la misma
+  // obra vista de lejos y las dos cifras no pueden discrepar.
+  const percent = progress ? passPercent(progress.current, progress.total) : 0;
 
   // Ya no es un enlace: el botón que la envuelve (TodayPicker) la sube al
   // destacado. A la ficha se va desde el destacado.

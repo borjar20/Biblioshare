@@ -38,6 +38,7 @@ export type TodayActionsLabels = {
   timerLabel: string;
   nextEpisode: string | null;
   markSeen: string;
+  markDone: string;
 };
 
 export function TodayActions({
@@ -46,6 +47,7 @@ export function TodayActions({
   itemId,
   seriesId,
   nextEpisode,
+  reachedEnd,
   sessionHref,
   logHref,
   labels,
@@ -57,21 +59,40 @@ export function TodayActions({
   itemId: string;
   seriesId: string;
   nextEpisode: { season: number; episode: number } | null;
+  /**
+   * El pase ha llegado a su última página / último episodio y SIGUE abierto.
+   * Pasa cuando el auto-cierre no llegó a dispararse (la posición se puso a
+   * mano desde Progreso, o el total de la obra no es el de tu edición, que es
+   * el único que mira `saveSession`).
+   */
+  reachedEnd: boolean;
   /** La hoja de sesión: destino del cronómetro y también de "Registrar". */
   sessionHref: string | null;
   /** La pestaña Registro de la ficha: solo el respaldo de "Registrar". */
   logHref: string;
   labels: TodayActionsLabels;
 }) {
-  const canTime = itemType === "book" && passId !== null && sessionHref !== null;
-  const canMark = itemType === "series" && nextEpisode !== null;
-  // Película en el foco = elección del sorteo «para ver»: un toque la marca Vista.
-  const canSeen = itemType === "movie" && passId !== null;
+  const hasTimer = itemType === "book" && passId !== null && sessionHref !== null;
 
   // El hook va incondicional (regla de los hooks); sin pase, readTimer devuelve
   // el reloj a cero y nadie lo mira.
   const timer = useTimerState(passId ?? "");
-  const timing = canTime && hasTime(timer);
+  const timing = hasTimer && hasTime(timer);
+
+  // Un pase que ha llegado al final y sigue abierto se quedaba SIN SALIDA: la
+  // tarjeta anunciaba el final y las dos únicas acciones eran «Sesión» y
+  // «Registrar», así que la respuesta más probable —«lo he terminado»— no
+  // tenía botón, y el feed de al lado ya podía estar diciendo «FINALIZADO».
+  // Cuando aparece, se come el hueco de la acción por tipo: ni cronómetro
+  // (un libro en su última página no necesita reloj) ni «marcar episodio»
+  // (no queda ninguno). Con el cronómetro EN MARCHA no aparece: primero se
+  // registra la sesión en vuelo, que es la que cerrará el pase sola.
+  const canFinish = reachedEnd && passId !== null && itemType !== "movie" && !timing;
+
+  const canTime = hasTimer && !canFinish;
+  const canMark = itemType === "series" && nextEpisode !== null && !canFinish;
+  // Película en el foco = elección del sorteo «para ver»: un toque la marca Vista.
+  const canSeen = itemType === "movie" && passId !== null;
 
   // Con el cronómetro abierto, la fila es suya: si no, se verían DOS
   // "Registrar" a la vez con destinos distintos (el del reloj va a la vista de
@@ -88,6 +109,9 @@ export function TodayActions({
         />
       )}
       {canSeen && <MarkSeen itemId={itemId} label={labels.markSeen} />}
+      {canFinish && (
+        <MarkDone itemType={itemType} itemId={itemId} label={labels.markDone} />
+      )}
 
       {/* «Registrar» de respaldo: no para películas, que ya tienen su acción
           propia (Marcar Vista) — dos botones a la vez confundirían. */}
@@ -103,6 +127,50 @@ export function TodayActions({
         </Link>
       )}
     </div>
+  );
+}
+
+// «Marcar terminada» del pase que ya llegó al final. Misma máquina que en la
+// ficha y que en la fila de una persona (`work-status-control.tsx`): cierra por
+// `updateStatus` y encadena la hoja de puntuar/reseñar EN LA FICHA con
+// `?cerrar=<passId>`. Por qué en la ficha y no aquí: al completar, la obra deja
+// de ser in_progress y la revalidación saca su tarjeta del foco — un modal
+// incrustado en esa tarjeta se desmontaría en el acto (misma razón que MarkSeen).
+function MarkDone({
+  itemType,
+  itemId,
+  label,
+}: {
+  itemType: "book" | "series";
+  itemId: string;
+  label: string;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={isPending}
+      onClick={() =>
+        startTransition(async () => {
+          const outcome = await updateStatus(itemType, itemId, "completed");
+          if (outcome.kind === "done" && outcome.closed && outcome.passId) {
+            router.push(`${itemHref(itemType, itemId)}?cerrar=${outcome.passId}&tab=log`);
+          } else if (outcome.kind === "askResume") {
+            // No debería pasar (hay pase abierto), pero si la máquina pide
+            // decidir continuar/reempezar, esa decisión vive en la ficha.
+            router.push(itemHref(itemType, itemId));
+          } else {
+            router.refresh();
+          }
+        })
+      }
+      className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"
+    >
+      <CheckIcon className="h-4 w-4" />
+      {label}
+    </button>
   );
 }
 

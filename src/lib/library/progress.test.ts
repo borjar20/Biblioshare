@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getProgress } from "./progress";
+import { getProgress, passPercent } from "./progress";
 import type { LibraryItem } from "./types";
 
 // Base mínima: getProgress solo mira tipo, posición y los dos contadores.
@@ -63,5 +63,39 @@ describe("getProgress · libro (sin cambios)", () => {
         item({ itemType: "book", position: { page: 120 }, pageCount: 300, watchedEpisodes: null }),
       ),
     ).toEqual({ current: 120, total: 300, label: "120/300" });
+  });
+});
+
+describe("passPercent", () => {
+  // El caso que dio origen al helper: el destacado de Inicio anunciaba «100 %»
+  // sobre un pase al que le quedaba una página, mientras el feed de al lado
+  // mostraba el mismo título como FINALIZADO.
+  it("no redondea hacia arriba hasta 100", () => {
+    expect(passPercent(668, 669)).toBe(99);
+    expect(passPercent(999, 1000)).toBe(99);
+    expect(passPercent(59, 60)).toBe(98);
+  });
+
+  it("reserva el 100 para el final alcanzado", () => {
+    expect(passPercent(669, 669)).toBe(100);
+    // Una edición más corta que la del pase puede pasarse del total.
+    expect(passPercent(700, 669)).toBe(100);
+  });
+
+  it("no dice 0 % habiendo empezado", () => {
+    expect(passPercent(1, 669)).toBe(1);
+    expect(passPercent(3, 1000)).toBe(1);
+  });
+
+  it("0 y totales imposibles dan 0", () => {
+    expect(passPercent(0, 669)).toBe(0);
+    expect(passPercent(10, 0)).toBe(0);
+    expect(passPercent(-5, 100)).toBe(0);
+  });
+
+  it("trunca, no redondea, en el tramo intermedio", () => {
+    // 50.9 % era 51 con Math.round; el cursor nunca debe adelantar al lector.
+    expect(passPercent(509, 1000)).toBe(50);
+    expect(passPercent(120, 300)).toBe(40);
   });
 });

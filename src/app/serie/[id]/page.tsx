@@ -8,6 +8,7 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { passPercent } from "@/lib/library/progress";
 import {
   createClient,
   createTokenClient,
@@ -235,15 +236,12 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const railProgress =
     activePass && totalEpisodes > 0
       ? {
-          percent: Math.min(
-            100,
-            Math.round((watchedEpisodes / totalEpisodes) * 100),
-          ),
+          percent: passPercent(watchedEpisodes, totalEpisodes),
           left: tDetail("rail.episodes", {
             watched: watchedEpisodes,
             total: totalEpisodes,
           }),
-          right: `${Math.min(100, Math.round((watchedEpisodes / totalEpisodes) * 100))}%`,
+          right: `${passPercent(watchedEpisodes, totalEpisodes)}%`,
         }
       : null;
 
