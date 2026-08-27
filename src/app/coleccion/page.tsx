@@ -43,6 +43,7 @@ import {
   CollectionsGridSkeleton,
   SagasPanelSkeleton,
 } from "@/components/library/collection-skeletons";
+import { LoadMore } from "@/components/ui/load-more";
 import { NewCollectionButton } from "@/components/library/new-collection-button";
 import { UncollectedShelf } from "@/components/library/uncollected-shelf";
 import { getCollectionsOverview } from "@/lib/library/collections";
@@ -59,6 +60,20 @@ const VALID_STATUSES: MediaStatus[] = [
 ];
 const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
+
+// La rejilla de «Todo» se pintaba ENTERA: con 138 obras eran 23.066px a 390px
+// de ancho —27 pantallas— y la barra de filtros, que vive arriba y no es
+// sticky, quedaba a 22.000px de scroll de quien llegaba al final. Se pagina por
+// URL con el mismo mecanismo que el índice de sagas (`?n=`), no con scroll
+// infinito: el enlace es real, la posición es compartible y el botón «Atrás»
+// vuelve a la misma cantidad de obras.
+//
+// 24 y no 12 (el de sagas) porque la celda es una PORTADA, mucho más baja que
+// una tarjeta de saga: 24 son 12 filas en móvil y 3 en la escalera más ancha
+// (`2xl:grid-cols-8`). Divide exacto en 2, 3, 4, 6 y 8 columnas — todas las
+// paradas de `COVER_GRID_COLS` menos `lg` — así que ninguna página deja una
+// fila coja salvo ahí.
+const PAGE_SIZE = 24;
 
 // Mi Biblioteca (Colección v2, Sesión 1 + F5 Task 4): gira en torno a
 // colecciones que crea el usuario, no a estados. Tres subpestañas visibles —
@@ -83,6 +98,7 @@ export default async function CollectionPage({
     type?: string;
     genero?: string;
     abandonados?: string;
+    n?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -97,6 +113,9 @@ export default async function CollectionPage({
     ? (params.status as MediaStatus)
     : undefined;
   const search = params.q?.trim() || undefined;
+  // Cuántas obras enseña «Todo». `Math.max` contra el suelo: un `?n=0` o un
+  // `?n=basura` de una URL manipulada no puede dejar la rejilla en blanco.
+  const shown = Math.max(PAGE_SIZE, Number(params.n) || PAGE_SIZE);
   const sort: LibrarySort = VALID_SORTS.includes(params.sort as LibrarySort)
     ? (params.sort as LibrarySort)
     : "recent";
@@ -181,6 +200,20 @@ export default async function CollectionPage({
     const qs = new URLSearchParams({ tab: "todo", type: ALL_TYPES_PARAM });
     if (sort !== "recent") qs.set("sort", sort);
     if (showDropped) qs.set(SHOW_DROPPED_PARAM, "1");
+    return `/coleccion?${qs.toString()}`;
+  }
+
+  // La MISMA vista con un tope mayor. Conserva todos los filtros: si «Cargar
+  // más» los perdiera, el segundo lote traería obras que el primero descartó.
+  function loadMoreHref(): string {
+    const qs = new URLSearchParams({ tab: "todo" });
+    if (params.type) qs.set("type", params.type);
+    if (status) qs.set("status", status);
+    if (sort !== "recent") qs.set("sort", sort);
+    if (genre) qs.set("genero", genre);
+    if (search) qs.set("q", search);
+    if (showDropped) qs.set(SHOW_DROPPED_PARAM, "1");
+    qs.set("n", String(shown + PAGE_SIZE));
     return `/coleccion?${qs.toString()}`;
   }
 
@@ -287,6 +320,9 @@ export default async function CollectionPage({
               sort={sort}
               genre={genre}
               hideDropped={hideDropped}
+              limit={shown}
+              loadMoreHref={loadMoreHref()}
+              pageSize={PAGE_SIZE}
               showDroppedHref={showDroppedHref()}
               clearHref={hasFilters ? clearAllHref() : null}
               emptyTitle={tLibrary("emptyTitle")}
@@ -379,6 +415,8 @@ async function LibraryGrid({
   sort,
   genre,
   limit,
+  loadMoreHref,
+  pageSize,
   hideDropped,
   showDroppedHref,
   clearHref,
@@ -393,6 +431,9 @@ async function LibraryGrid({
   sort: LibrarySort;
   genre?: string;
   limit?: number;
+  /** La misma vista con el tope subido en `pageSize`. */
+  loadMoreHref: string;
+  pageSize: number;
   hideDropped: boolean;
   showDroppedHref: string;
   /**
@@ -409,7 +450,7 @@ async function LibraryGrid({
     getTranslations("library"),
     getTranslations("collection"),
   ]);
-  const { items, hiddenDropped } = await getLibraryView(supabase, userId, {
+  const { items, hiddenDropped, total } = await getLibraryView(supabase, userId, {
     itemType,
     status,
     search,
@@ -453,6 +494,8 @@ async function LibraryGrid({
     );
   }
 
+  const pending = total - items.length;
+
   return (
     <div className="flex flex-col gap-4">
       <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
@@ -460,6 +503,26 @@ async function LibraryGrid({
           <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
         ))}
       </div>
+      {pending > 0 ? (
+        <LoadMore
+          href={loadMoreHref}
+          label={tLibrary("loadMore")}
+          showingLabel={tLibrary("showingCount", { shown: items.length, total })}
+          pendingPreview={
+            <SkeletonCoverGrid
+              count={Math.min(pageSize, pending)}
+              cols={COVER_GRID_COLS}
+            />
+          }
+        />
+      ) : (
+        // El «N de N» se queda también cuando ya no falta nada: es la señal de
+        // que la rejilla se acabó, no de que quede algo cargando. Sin él, el
+        // último lote parecía cortado a mitad.
+        <p className="border-t border-border pt-4 text-[12.5px] text-muted-foreground">
+          {tLibrary("showingCount", { shown: items.length, total })}
+        </p>
+      )}
       <HiddenDroppedNote count={hiddenDropped} href={showDroppedHref} />
     </div>
   );

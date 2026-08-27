@@ -2177,3 +2177,47 @@ escáner, no de la app.
   contra lo que avisa el comentario de `tap-44` en `globals.css`.
 - **El wordmark se queda a 4,31:1.** «Biblio**share**» es nombre de marca, y 1.4.3 exime
   explícitamente logotipos y nombres de marca. No es deuda: es la excepción.
+
+## 2026-08-27 (5) — La rejilla de Colección se pagina; el cuarteto de estado, corregido
+
+**Contexto.** Cuarto P1 de la crítica de diseño: `/coleccion?tab=todo` pintaba la biblioteca
+**entera** en una sola página. Medido a 390px con 138 obras: **23.066 px de alto — 27,3
+pantallas — y 4.492 nodos de DOM**. La barra de filtros vive arriba y no era `sticky`, así que
+quien llegaba al final la tenía a 22.000 px de scroll.
+
+1. **Se pagina por URL (`?n=`), no con scroll infinito.** Mismo mecanismo que el índice de sagas,
+   que ya lo resolvió así: el enlace es real, la posición es compartible y «Atrás» vuelve a la
+   misma cantidad de obras. El scroll infinito no da ninguna de las tres y además deja sin final
+   a la página. `LibraryGrid` ya declaraba un prop `limit` — **nunca se le pasaba nada**; ahora
+   sí.
+2. **La página es de 24, no de 12 como en sagas.** La celda es una PORTADA, mucho más baja que
+   una tarjeta de saga: 24 son 12 filas en móvil y 3 en la escalera más ancha
+   (`2xl:grid-cols-8`), y divide exacto en 2, 3, 4, 6 y 8 columnas — todas las paradas de
+   `COVER_GRID_COLS` menos `lg`.
+3. **`getLibraryView` devuelve `total`.** Con tope, `items.length` no puede contestar ni «¿queda
+   algo?» ni el «N de M» del pie. Se cuenta **después** de ocultar abandonados y **antes** de
+   recortar: contarlo antes haría que el pie prometiera obras que la rejilla no va a pintar
+   nunca — esas ya las cuenta `hiddenDropped`, aparte.
+4. **La mecánica de «Cargar más» sube a `components/ui/load-more.tsx`.** Entre el pie de sagas y
+   el de Colección lo único que cambiaba era el dibujo de las filas fantasma; el resto —`scroll:
+   false` para no perder el sitio, `useTransition` para poder pintar el pendiente fuera del
+   `<Link>`, y el paso limpio del clic con modificador— es la parte razonada, y duplicarla habría
+   duplicado justo eso. `SagaLoadMore` queda como envoltorio con su esqueleto.
+5. **La barra de filtros se pega a partir de `sm`, NO en móvil, y es una decisión con número.**
+   Apilada mide **81 px**, que sobre los 59 de la topbar serían 140 px —el **17 %** de una
+   pantalla de 844— de cromo permanente. En una sola fila mide 63 px y el coste es asumible. En
+   móvil el alcance lo arregla la paginación, que dejó la página en **5,7 pantallas**: el
+   problema de alcance era una CONSECUENCIA de las 27, no una causa aparte.
+6. **El «N de M» se queda cuando ya no falta nada.** Es la señal de que la rejilla se acabó; sin
+   él, el último lote parecía cortado a mitad.
+
+**Corrección a la entrada (4).** Las cifras del cuarteto de estado que dejó apuntadas aquella
+entrada estaban medidas sobre fondos de chip, no sobre los fondos donde cada token pinta de
+verdad, y **el recuento inducía a error**. Medido correctamente (issue #892): de los 129
+`text-status-*` del repo, **122 son `text-status-dropped`** — el rojo de error de formulario,
+sobre `--surface`— y dan **5,38:1 en claro y 5,10:1 en oscuro**: están bien y no hay que
+tocarlos. Quedan **7 usos de texto**. El grueso del problema no es texto: es el **punto** de la
+rejilla, que con `dotOnly` es el único portador visual del estado y se queda en **2,00:1**
+(`planned`) y **2,50:1** (`in-progress`) contra su anillo en tema claro — por debajo del 3:1 de
+**WCAG 1.4.11**, que es AA. El trabajo es más pequeño de lo que decía la entrada (4) y un trozo
+es un incumplimiento más serio.

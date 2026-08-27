@@ -116,7 +116,16 @@ export async function LibraryFilters({
     // Barra de una sola fila en sm+: buscador a la izquierda (topado, que a
     // 1600px de shell ancho un `w-full` daba una píldora de metro y medio) y
     // «Filtros» pegado al borde derecho de la rejilla. En móvil siguen apilados.
-    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+    //
+    // Se pega bajo la topbar A PARTIR DE `sm`, no en móvil, y es una decisión
+    // con número: apilada mide 81px, que sobre los 59px de la topbar serían
+    // 140px —el 17% de una pantalla de 844— de cromo permanente. En una sola
+    // fila mide ~40px y el coste es asumible. En móvil el alcance lo arregla la
+    // paginación (`?n=`), que dejó la página en 5,7 pantallas en vez de 27.
+    // `-mx`/`px` replican el padding del contenedor de la página (`px-4 sm:px-6
+    // lg:px-8`) para que el fondo llegue a los bordes y las portadas no se vean
+    // pasar por el hueco.
+    <div className="flex flex-col gap-2.5 sm:sticky sm:top-[var(--topbar-h)] sm:z-10 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:border-b sm:border-border sm:bg-background/90 sm:px-6 sm:py-3 sm:backdrop-blur lg:-mx-8 lg:px-8">
       {/* Búsqueda: píldora con la lupa dentro y SIN botón aparte (Enter envía) —
           ocupa una fila menos. */}
       <form action={basePath} className="relative w-full sm:max-w-xl sm:flex-1">
