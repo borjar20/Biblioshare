@@ -161,6 +161,44 @@ describe("fetchRepresentationCandidates", () => {
     expect(result.pagesMedian).toBe(662);
   });
 
+  // La mediana alimenta el progreso por paginas de cualquier pase SIN edicion
+  // identificada, asi que un indice desplazado sale en la barra de progreso de
+  // todo el mundo sin que nada falle. El caso par ya esta cubierto arriba; estos
+  // dos cubren los otros dos tamanos posibles.
+  it("con un numero IMPAR de candidatas, la mediana es el elemento central", async () => {
+    stubEditionsPages(
+      {
+        0: [
+          doc({ isbn_13: [VALID_ISBNS[0]], number_of_pages: 100, languages: [{ key: "/languages/spa" }] }),
+          doc({ isbn_13: [VALID_ISBNS[1]], number_of_pages: 900, languages: [{ key: "/languages/eng" }] }),
+          doc({ isbn_13: [VALID_ISBNS[2]], number_of_pages: 300, languages: [{ key: "/languages/spa" }] }),
+        ],
+      },
+      3
+    );
+
+    const result = await fetchRepresentationCandidates("OL777W");
+
+    // Ordenadas: [100, 300, 900] -> el central es 300. Ni 100 ni 900, que es lo
+    // que daria un indice mal calculado, ni 433 que seria la media.
+    expect(result.pagesMedian).toBe(300);
+  });
+
+  it("con una sola candidata, la mediana son sus paginas", async () => {
+    stubEditionsPages(
+      {
+        0: [
+          doc({ isbn_13: [VALID_ISBNS[0]], number_of_pages: 442, languages: [{ key: "/languages/spa" }] }),
+        ],
+      },
+      1
+    );
+
+    const result = await fetchRepresentationCandidates("OL778W");
+
+    expect(result.pagesMedian).toBe(442);
+  });
+
   it("una obra sin ediciones no tiene candidatas ni mediana", async () => {
     stubEditionsPages({ 0: [] }, 0);
 
