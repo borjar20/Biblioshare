@@ -88,3 +88,5 @@ next-env.d.ts
 *.dump
 *.sql.gz
 /images/*
+# Impeccable: la configuracion local (consentimientos, toggles de sesion) no se comparte.
+.impeccable/config.local.json
