@@ -1953,3 +1953,16 @@ como la escala continua que es una tierlist.
   colgado de un `->>'itemType'` de texto libre se queda mudo, que es justo el fallo silencioso
   que motivó todo esto. Hoy es latente (cero eventos de club sobre libros en producción). El
   arreglo preferido no es tocar el JSONB sino mover el ítem a columnas tipadas — issue #875.
+
+- **`books.google.com` entra en la allowlist de portadas oficiales** (2026-08-27, task 7 del plan
+  de edición de obra). La entrada de 2026-08-02 más arriba enumera el conjunto de entonces
+  (`image.tmdb.org`, `covers.openlibrary.org`); a partir de hoy son tres. El motivo es que Google
+  Books es el enriquecedor de portada cuando Open Library no la da, y sus `imageLinks` se sirven
+  desde ese host — verificado con una llamada real, no supuesto.
+  **El matiz que hay que aceptar por escrito:** la allowlist es por HOST, no por ruta. Así que
+  desde hoy un colaborador puede fijar en `cover_url` del catálogo COMPARTIDO cualquier URL bajo
+  `https://books.google.com/…`, no solo las de `/books/content`. Se acepta con el mismo criterio
+  que los dos hosts que ya estaban —dominio de Google, sin contenido subido por usuarios— pero se
+  registra aquí porque amplía la superficie de confianza y no debe colarse en la lectura de la
+  entrada vieja, que ya no enumera la lista completa. Cubierto en `official-covers.test.ts`
+  (host exacto, http rechazado, `.evil.com`/`@evil.com`, y el caso de ruta libre).
