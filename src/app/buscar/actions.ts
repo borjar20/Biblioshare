@@ -29,6 +29,15 @@ function hydrateNewItem(supabase: Supa, itemId: string, result: SearchResult) {
         openlibrary_work_key: result.externalId,
         isbn: result.matchedIsbn ?? null,
         hydrated_at: null,
+        // La fila acaba de nacer vacía (#674): no tiene representación previa
+        // que mejorar ni QID. Título y autoría SÍ se pasan —son los del
+        // resultado que el usuario acaba de pulsar— porque sirven de consulta
+        // para Wikidata y Google Books cuando la obra no tiene work key.
+        repr_meta: null,
+        wikidata_id: null,
+        title: result.title || null,
+        author: result.subtitle,
+        total_pages: null,
       })
     : result.itemType === "movie"
       ? ensureMovieHydrated(supabase, {

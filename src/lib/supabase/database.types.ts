@@ -2805,11 +2805,12 @@ export type Database = {
         Args: {
           p_author?: string
           p_book_id: string
-          p_cover_url?: string
+          p_fields?: Json
           p_genres?: string[]
+          p_pages_source?: string
           p_published_year?: number
-          p_synopsis?: string
-          p_title?: string
+          p_total_pages?: number
+          p_wikidata_id?: string
         }
         Returns: undefined
       }

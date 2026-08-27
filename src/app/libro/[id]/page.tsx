@@ -97,7 +97,7 @@ function fetchBook(supabase: Supa, id: string) {
   return supabase
     .from("books")
     .select(
-      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at",
+      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at, repr_meta, wikidata_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -149,11 +149,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // streaming vía loadBookEditions (ver editionsPromise, dentro del <Suspense>
   // de EditionsSection), así que la primera visita SÍ las ve tras el streaming.
   //
-  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión): un
-  // visitante anónimo no puede escribir —el grant es de `authenticated` y la
-  // RPC además exige `auth.uid()`—, y sin este guardia cada visita anónima a
-  // una ficha sin hidratar programaría en segundo plano hasta cinco llamadas a
-  // OpenLibrary para tirarlas a la basura.
+  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión). Ya no es
+  // una restricción del grant —la RPC la llama service_role—, sino de coste:
+  // sin este guardia, cada visita anónima a una ficha sin hidratar programaría
+  // en segundo plano un puñado de llamadas a OpenLibrary, Inventaire y Google
+  // Books. Hidratar es trabajo que se hace para quien está usando la app.
   //
   // El cliente NO es el de la petición, y esto es el arreglo de #751: aquel
   // resuelve `cookies()` en CADA consulta, no al construirse, así que pasarlo
@@ -164,10 +164,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // render y se le pasa como valor, que es el patrón que manda la doc de
   // `after`. Guard en `src/lib/reactivity/after-guard.test.ts`.
   //
-  // Se conserva la identidad del usuario en vez de tirar de service_role a
-  // propósito: `hydrate_book` corta con «authentication required» si no hay
-  // `auth.uid()`, y ese guard es parte del blindaje del catálogo (#674). El
-  // arreglo del `after()` no puede costar un grant.
+  // El cliente de la petición (con la identidad del usuario) sigue sirviendo
+  // para los updates de columnas técnicas, pero la RPC `hydrate_book` YA NO la
+  // puede llamar: al pasar a fill-or-upgrade dejó de tener grant para
+  // `authenticated` y es de service_role (ver la cabecera de hydrate-book.ts,
+  // #871). Ese cliente lo construye la propia función; aquí no cambia nada.
   if (accessToken) {
     after(() =>
       ensureBookHydrated(createTokenClient(accessToken), {
@@ -175,6 +176,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
         openlibrary_work_key: book.openlibrary_work_key,
         isbn: book.isbn,
         hydrated_at: book.hydrated_at,
+        repr_meta: book.repr_meta,
+        wikidata_id: book.wikidata_id,
+        title: book.title,
+        author: book.author,
+        total_pages: book.total_pages,
       }),
     );
   }

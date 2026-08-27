@@ -1966,3 +1966,26 @@ como la escala continua que es una tierlist.
   registra aquí porque amplía la superficie de confianza y no debe colarse en la lectura de la
   entrada vieja, que ya no enumera la lista completa. Cubierto en `official-covers.test.ts`
   (host exacto, http rechazado, `.evil.com`/`@evil.com`, y el caso de ruta libre).
+
+- **La hidratación de una obra llama a `hydrate_book` con `service_role`, y solo a ella** (2026-08-27,
+  task 9 del plan de edición de obra, cierra #871). La RPC pasó de fill-only a fill-or-upgrade y con
+  el bypass `app.hydrating` cualquier usuario autenticado podría haber reescrito el catálogo
+  COMPARTIDO, así que perdió el `execute` de `authenticated` (precedente #725). `ensureBookHydrated`
+  construye por su cuenta el cliente de service_role **solo para esa llamada**: las lecturas y los
+  `update` de columnas técnicas (`openlibrary_work_key`, `google_books_volume_id`) siguen yendo con
+  el cliente del llamante, que es quien tiene la identidad del usuario y a quien le aplica RLS. Es
+  deliberado que el privilegio se acote a una línea y no se derrame por la función entera.
+  **El modo de fallo que esto cierra vale más que la regla:** el `42501` que devolvía el cliente de
+  la petición se lo tragaba el `console.error` de la propia función —que nunca lanza, por contrato—,
+  así que la hidratación no corría y ninguna ficha daba error. Medido en dev antes del arreglo:
+  `permission denied for function hydrate_book`. Es la tercera vez que un fallo de escritura se
+  esconde detrás de ese contrato (#699, #751, #871): cuando `ensureBookHydrated` deje de hidratar,
+  mirar primero el rol del cliente.
+- **La comparación de nombres de autoría es `isSameTitle`, partiendo por comas** (2026-08-27, misma
+  task). No se escribe un helper propio con contención bidireccional sobre el normalizado: esa forma
+  exacta se propuso dos veces en este plan y falla en los dos extremos — sin cota, «Ana» casa con
+  «Susana Fortes»; con cadena vacía, un autor «—» casa con cualquiera y desactiva la verificación
+  entera. `isSameTitle` ya trae la cota del 65% y el rechazo del normalizado vacío. El corte por
+  comas es lo único que se añade encima, para que «Brandon Sanderson, Rafael Marín» (autor +
+  traductor) siga casando con «Brandon Sanderson». Verificado contra Inventaire real: de las 20
+  entidades que devuelve la búsqueda «The Name of the Wind», solo Q1195989 pasa la verificación.
