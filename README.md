@@ -41,6 +41,7 @@ gobernanza de abajo para saber cuál manda.**
 | [**Seguridad**](docs/SEGURIDAD.md) | Modelo de permisos: RLS, roles, grants, excepciones | Canónico |
 | [**Guía de UI**](docs/UI-GUIA.md) | Patrones de UI y principios de diseño (derivados de la auditoría 2026-08) | Canónico |
 | [**Glosario de UI**](docs/UI-GLOSARIO.md) | Cómo se llama cada concepto de cara al usuario. Se consulta ANTES de escribir copy | Canónico |
+| [**Sistema de diseño**](DESIGN.md) | Los tokens: color, tipografía, forma, elevación, layout y los primitivos, con el porqué de cada uno. Formato [DESIGN.md](https://github.com/google-labs-code/design.md), legible por agentes | Canónico · vs `globals.css` |
 | [Visión y alcance](docs/requirements/vision.md) | Qué es el producto y su MVP | Canónico · estable |
 | [Backlog](docs/requirements/backlog.md) | Qué está hecho y qué queda | Estado vivo |
 | [Decisiones](docs/requirements/decisiones.md) | Decisiones vigentes (consolidado 2026-08-19; historial completo en `docs/superpowers/decisiones-historicas-2026-08.md`) | Consolidado |
@@ -48,7 +49,7 @@ gobernanza de abajo para saber cuál manda.**
 | [Testing](docs/TESTING.md) | Cómo se verifica | Convención |
 | [Auditoría 2026-08](docs/audit/AUDIT-2026-08.md) | Auditoría integral 2026-08 (hallazgos y roadmap) | Estado vivo |
 | [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño 2026-07 (cerrada) | Histórico · congelado |
-| [Referencia visual para prototipos](docs/REFERENCIA-VISUAL.md) | Sistema visual actual y capturas base para nuevos prototipos | Canónico · vs código/capturas |
+| [Referencia visual para prototipos](docs/REFERENCIA-VISUAL.md) | **Las capturas** de cada zona y el flujo para prototipar contra ellas. Los tokens NO: para eso manda [`DESIGN.md`](DESIGN.md) | Canónico · vs código/capturas |
 | [Baseline de rendimiento](docs/perf-baseline.md) | Baseline de rendimiento (congelado a propósito) | Baseline congelado |
 | [Push Android](docs/push-notifications-android.md) | Arquitectura push Web/FCM | Canónico |
 | [CI de release Android](docs/ci-firebase-app-distribution.md) | CI de release Android (firma y distribución) | Canónico |
@@ -59,6 +60,15 @@ gobernanza de abajo para saber cuál manda.**
 `docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y
 congelado. Explican *por qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de
 la tabla, mandan estos.
+
+**Los tres docs de diseño no compiten: se reparten la pantalla.** `DESIGN.md` manda sobre los
+**tokens** (qué color, qué tamaño, qué radio, qué sombra, y el porqué medido de cada uno);
+`docs/UI-GUIA.md` manda sobre los **patrones** (cuántas columnas, dónde vive lo destructivo, qué
+es tab y qué es pill); `docs/REFERENCIA-VISUAL.md` guarda las **capturas** y el flujo de
+prototipado. Un valor de color o de tipografía se cambia en `globals.css` y se refleja en
+`DESIGN.md`; una regla de composición se discute en `UI-GUIA.md`. `PRODUCT.md`, en la raíz, es la
+verdad de **producto** (usuarios, plataforma, restricciones, accesibilidad) y no contiene nada
+visual.
 
 ### Gobernanza documental (cómo NO desincronizarse)
 

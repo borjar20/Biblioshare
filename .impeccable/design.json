@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "title": "Design System: Biblioshare",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Papel Cálido",
+        "canonical": "#f3ece1",
+        "dark": "#1f1a16",
+        "tonalRamp": ["#2c2620", "#4a4136", "#6b6255", "#8f8474", "#b3a894", "#d3c9b8", "#e8dfd0", "#f8f4ec"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Papel de Ficha",
+        "canonical": "#fffdf8",
+        "dark": "#2a231d"
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Papel Hundido",
+        "canonical": "#ece3d4",
+        "dark": "#332b23"
+      },
+      "surface-3": {
+        "role": "neutral",
+        "displayName": "Papel Hundido Profundo",
+        "canonical": "#e2d7c4",
+        "dark": "#3d342b"
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "#2c2620",
+        "dark": "#f0e8db"
+      },
+      "foreground-soft": {
+        "role": "neutral",
+        "displayName": "Tinta Suave",
+        "canonical": "#584f43",
+        "dark": "#cabfb0"
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Tinta Apagada",
+        "canonical": "#6b6255",
+        "dark": "#a99e8c"
+      },
+      "foreground-faint": {
+        "role": "neutral",
+        "displayName": "Tinta Fantasma",
+        "canonical": "#a89e8d",
+        "dark": "#6f665a"
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Terracota de Imprenta",
+        "canonical": "#b0542f",
+        "dark": "#d98a5c",
+        "tonalRamp": ["#3a1a0f", "#5c2a18", "#7e3a21", "#9a4526", "#b0542f", "#c9754c", "#dfa47f", "#f3d8c6"]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Terracota de Texto",
+        "canonical": "#a44e2c",
+        "dark": "#d98a5c"
+      },
+      "accent-foreground": {
+        "role": "primary",
+        "displayName": "Papel de Acento",
+        "canonical": "#fff5ef",
+        "dark": "#1f1409"
+      },
+      "gold": {
+        "role": "secondary",
+        "displayName": "Oro de Progreso",
+        "canonical": "#c98a2b",
+        "dark": "#e0a94a",
+        "tonalRamp": ["#3a2708", "#5a3c0f", "#7a5316", "#a06e20", "#c98a2b", "#dda751", "#eec687", "#f8e6c4"]
+      },
+      "gold-ink": {
+        "role": "secondary",
+        "displayName": "Oro de Tinta",
+        "canonical": "#8a5a12",
+        "dark": "#e0a94a"
+      },
+      "gold-graphic": {
+        "role": "secondary",
+        "displayName": "Oro Gráfico",
+        "canonical": "#b57c27",
+        "dark": "#e0a94a"
+      },
+      "green": {
+        "role": "secondary",
+        "displayName": "Verde de Encuentro",
+        "canonical": "#5c7052",
+        "dark": "#8ba57b",
+        "tonalRamp": ["#1a2116", "#2b3624", "#3d4c33", "#4d5e42", "#5c7052", "#7c9070", "#a3b699", "#d2ddcb"]
+      },
+      "type-book": {
+        "role": "tertiary",
+        "displayName": "Teja de Libro",
+        "canonical": "#a15a34",
+        "dark": "#cf8a54"
+      },
+      "type-movie": {
+        "role": "tertiary",
+        "displayName": "Teal de Película",
+        "canonical": "#3f6b6e",
+        "dark": "#6bb0b4"
+      },
+      "type-series": {
+        "role": "tertiary",
+        "displayName": "Violeta de Serie",
+        "canonical": "#7a5676",
+        "dark": "#b592bd"
+      },
+      "status-planned": {
+        "role": "tertiary",
+        "displayName": "Arena Pendiente",
+        "canonical": "#b3a894",
+        "dark": "#8a8072"
+      },
+      "status-in-progress": {
+        "role": "tertiary",
+        "displayName": "Oro en Curso",
+        "canonical": "#c98a2b",
+        "dark": "#e0a94a"
+      },
+      "status-completed": {
+        "role": "tertiary",
+        "displayName": "Oliva Terminado",
+        "canonical": "#5c7052",
+        "dark": "#8ba57b"
+      },
+      "status-dropped": {
+        "role": "tertiary",
+        "displayName": "Teja Abandonada",
+        "canonical": "#b0492f",
+        "dark": "#d97a63"
+      },
+      "spine": {
+        "role": "tertiary",
+        "displayName": "Beige de Nexo",
+        "canonical": "#b8a98f",
+        "dark": "#8a7d63"
+      },
+      "event-highlight": {
+        "role": "tertiary",
+        "displayName": "Azul de Fecha",
+        "canonical": "#456895",
+        "dark": "#7fa8d8"
+      },
+      "event-meetup": {
+        "role": "tertiary",
+        "displayName": "Caqui de Encuentro",
+        "canonical": "#756747",
+        "dark": "#a89c85"
+      },
+      "map-itinerary-jump": {
+        "role": "tertiary",
+        "displayName": "Azul de Salto",
+        "canonical": "#5b8dbf",
+        "dark": "#5b8dbf"
+      },
+      "map-tandem": {
+        "role": "tertiary",
+        "displayName": "Violeta de Tándem",
+        "canonical": "#7a5676",
+        "dark": "#7a5676"
+      },
+      "map-window": {
+        "role": "tertiary",
+        "displayName": "Teal de Ventana",
+        "canonical": "#5b989c",
+        "dark": "#5b989c"
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Línea de Papel",
+        "canonical": "rgba(44, 20, 32, 0.14)",
+        "dark": "rgba(240, 232, 219, 0.12)"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "El <h1> de página, siempre vía ui/page-header.tsx. 24px, 28px en lg."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Titular de un vacío a talla page y encabezados de sección grandes."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Títulos de tarjeta y de obra; el subtítulo va en Fraunces itálica 12px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Lectura por defecto de la interfaz (14px). En móvil los campos suben a 16px por regla global."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Rótulo de sección en mono mayúsculas. Utilidad label-section; nunca escrito a mano."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-card",
+        "value": "0 6px 16px -12px rgba(60, 35, 15, 0.4)",
+        "purpose": "Asienta la tarjeta sobre el papel. Sombra por defecto de todo contenedor rounded-card."
+      },
+      {
+        "name": "shadow-cover",
+        "value": "0 8px 18px -8px rgba(60, 35, 15, 0.5)",
+        "purpose": "Da grosor físico a la portada, el único objeto que debe parecer una cosa y no una superficie."
+      }
+    ],
+    "motion": [
+      {
+        "name": "transition-colors",
+        "value": "color 150ms, background-color 150ms, border-color 150ms",
+        "purpose": "La transición por defecto del sistema (148 usos): hover y estado de todo control."
+      },
+      {
+        "name": "cover-hover",
+        "value": "transform 200ms",
+        "purpose": "scale(1.05) de la portada al hover del grupo. La única animación de contenido en reposo."
+      },
+      {
+        "name": "sorteo-flip-in",
+        "value": "650ms cubic-bezier(0.34, 1.4, 0.64, 1)",
+        "purpose": "Flip de revelado del sorteo «sacar un lomo». Se anula bajo prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "home-3col", "value": "1100px" },
+      { "name": "post-3col", "value": "1023px" },
+      { "name": "person-2col", "value": "1000px" },
+      { "name": "person-3col", "value": "1600px" },
+      { "name": "wide", "value": "1440px" }
+    ],
+    "constants": [
+      { "name": "--topbar-h", "value": "59px", "purpose": "Altura constante de la topbar sticky; las barras que se pegan debajo la leen." },
+      { "name": "--radius-chip", "value": "6px" },
+      { "name": "--radius-cover", "value": "10px" },
+      { "name": "--radius-card", "value": "14px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "El único primario de la app: terracota sólida en píldora. Uno por vista.",
+      "html": "<button class=\"ds-btn-primary\">Registrar sesión</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--accent, #b0542f); color: var(--accent-foreground, #fff5ef); border: none; border-radius: 9999px; padding: 8px 20px; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 150ms; } .ds-btn-primary:hover { background: var(--accent-hover, #9a4526); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #b0542f); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.6; cursor: default; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Contorno sobre papel. La acción que acompaña al primario sin competir con él.",
+      "html": "<button class=\"ds-btn-secondary\">Ver todos</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: var(--foreground, #2c2620); border: 1px solid var(--border, rgba(44,20,32,0.14)); border-radius: 9999px; padding: 8px 20px; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 150ms; } .ds-btn-secondary:hover { background: var(--surface-muted, #ece3d4); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent, #b0542f); outline-offset: 2px; }"
+    },
+    {
+      "name": "Green Button",
+      "kind": "button",
+      "refersTo": "button-green",
+      "description": "Lo social que se acepta: unirse a un club, aprobar, aceptar. La única variante no terracota.",
+      "html": "<button class=\"ds-btn-green\">Unirme al club</button>",
+      "css": ".ds-btn-green { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--green, #5c7052); color: var(--accent-foreground, #fff5ef); border: none; border-radius: 9999px; padding: 8px 20px; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 150ms; } .ds-btn-green:hover { opacity: 0.9; } .ds-btn-green:focus-visible { outline: 2px solid var(--accent, #b0542f); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de 6px con anillo de acento al foco. En móvil se pinta a 16px por regla global.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Buscar una obra…\" />",
+      "css": ".ds-input { border: 1px solid var(--border, rgba(44,20,32,0.14)); background: var(--surface, #fffdf8); color: var(--foreground, #2c2620); border-radius: 6px; padding: 8px 12px; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 14px; width: 260px; } .ds-input::placeholder { color: var(--muted-foreground, #6b6255); } .ds-input:focus { outline: none; border-color: var(--accent, #b0542f); box-shadow: 0 0 0 1px var(--accent, #b0542f); } .ds-input:focus-visible { outline: 2px solid var(--accent, #b0542f); outline-offset: 2px; }"
+    },
+    {
+      "name": "Section Label",
+      "kind": "custom",
+      "refersTo": "typography.label",
+      "description": "El rótulo mono que encabeza cada bloque. Utilidad label-section; lleva el color dentro.",
+      "html": "<span class=\"ds-label-section\">En curso</span>",
+      "css": ".ds-label-section { font-family: var(--font-geist-mono, ui-monospace, monospace); font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-foreground, #6b6255); }"
+    },
+    {
+      "name": "Genre Chip",
+      "kind": "chip",
+      "refersTo": "chip-genre",
+      "description": "Etiqueta de género en mono mayúsculas. Enlaza si pertenece al vocabulario canónico.",
+      "html": "<a class=\"ds-chip-genre\" href=\"#\">Ciencia ficción</a>",
+      "css": ".ds-chip-genre { display: inline-flex; align-items: center; border: 1px solid var(--border, rgba(44,20,32,0.14)); background: var(--surface-muted, #ece3d4); color: var(--muted-foreground, #6b6255); border-radius: 6px; padding: 2px 8px; font-family: var(--font-geist-mono, ui-monospace, monospace); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; text-decoration: none; white-space: nowrap; transition: color 150ms; } .ds-chip-genre:hover { color: var(--foreground, #2c2620); }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Píldora de estado con dot de color. Tres contextos: chip, hero (con borde) y overlay (translúcido sobre portada).",
+      "html": "<span class=\"ds-status-badge\"><span class=\"ds-status-dot\"></span>Leyendo</span>",
+      "css": ".ds-status-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-muted, #ece3d4); color: var(--foreground, #2c2620); border-radius: 9999px; padding: 4px 10px; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 12px; font-weight: 500; } .ds-status-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--status-in-progress, #c98a2b); }"
+    },
+    {
+      "name": "Cover Card",
+      "kind": "card",
+      "refersTo": "cover",
+      "description": "EL componente del sistema: portada 2/3 con grosor, título serif a dos líneas y subtítulo en itálica.",
+      "html": "<a class=\"ds-cover\" href=\"#\"><span class=\"ds-cover-art\"></span><span class=\"ds-cover-title\">Los desposeídos</span><span class=\"ds-cover-sub\">Ursula K. Le Guin</span></a>",
+      "css": ".ds-cover { display: flex; flex-direction: column; gap: 8px; width: 160px; text-decoration: none; } .ds-cover-art { display: block; aspect-ratio: 2 / 3; width: 100%; border: 1px solid var(--border, rgba(44,20,32,0.14)); background: var(--surface-muted, #ece3d4); border-radius: 10px; box-shadow: 0 8px 18px -8px rgba(60, 35, 15, 0.5); transition: transform 200ms; } .ds-cover:hover .ds-cover-art { transform: scale(1.05); } .ds-cover-title { font-family: var(--font-fraunces, Georgia, serif); font-size: 14px; font-weight: 600; color: var(--foreground, #2c2620); } .ds-cover-sub { font-family: var(--font-fraunces, Georgia, serif); font-style: italic; font-size: 12px; color: var(--muted-foreground, #6b6255); } .ds-cover:focus-visible { outline: 2px solid var(--accent, #b0542f); outline-offset: 2px; }"
+    },
+    {
+      "name": "Content Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "El contenedor por defecto: esquina de 14px, papel de ficha, borde de línea y sombra de tarjeta.",
+      "html": "<div class=\"ds-card\"><span class=\"ds-label-section\">Mis clubes</span><p class=\"ds-card-body\">Tres lecturas conjuntas en marcha.</p></div>",
+      "css": ".ds-card { background: var(--surface, #fffdf8); border: 1px solid var(--border, rgba(44,20,32,0.14)); border-radius: 14px; padding: 16px; box-shadow: 0 6px 16px -12px rgba(60, 35, 15, 0.4); max-width: 320px; } .ds-card-body { margin: 6px 0 0; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 14px; line-height: 1.55; color: var(--foreground-soft, #584f43); }"
+    },
+    {
+      "name": "Page Header",
+      "kind": "nav",
+      "refersTo": "typography.display",
+      "description": "La firma de cada pantalla: barrita de acento (aria-hidden) + título en Fraunces + acción opcional.",
+      "html": "<div class=\"ds-page-header\"><span class=\"ds-page-bar\" aria-hidden=\"true\"></span><h1 class=\"ds-page-title\">Colección</h1></div>",
+      "css": ".ds-page-header { display: flex; align-items: center; gap: 12px; } .ds-page-bar { width: 8px; height: 22px; border-radius: 9999px; background: var(--accent, #b0542f); flex-shrink: 0; } .ds-page-title { margin: 0; font-family: var(--font-fraunces, Georgia, serif); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground, #2c2620); }"
+    },
+    {
+      "name": "Empty State (panel)",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Talla panel del vacío: glifo en caja, qué pasa y una salida. Sin ella, cada sección improvisaba un <p> gris.",
+      "html": "<div class=\"ds-empty\"><span class=\"ds-empty-glyph\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"20\" height=\"20\"><path d=\"M4 5.5A1.5 1.5 0 0 1 5.5 4H10v16H5.5A1.5 1.5 0 0 1 4 18.5Z\"/><path d=\"M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14Z\"/></svg></span><h2 class=\"ds-empty-title\">Aún no hay clubes</h2><p class=\"ds-empty-msg\">Cuando te unas a uno, sus lecturas aparecerán aquí.</p></div>",
+      "css": ".ds-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 4px; padding: 32px 16px; } .ds-empty-glyph { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 10px; border: 1px solid var(--border, rgba(44,20,32,0.14)); background: var(--surface, #fffdf8); border-radius: 14px; color: var(--accent, #b0542f); } .ds-empty-title { margin: 0; font-family: var(--font-fraunces, Georgia, serif); font-size: 16px; font-weight: 600; color: var(--foreground, #2c2620); } .ds-empty-msg { margin: 0; max-width: 24rem; font-family: var(--font-geist-sans, system-ui, sans-serif); font-size: 13px; line-height: 1.5; color: var(--muted-foreground, #6b6255); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La mesa de lectura",
+    "overview": "La interfaz es la mesa: papel cálido, quieta, sin brillo propio. Las obras son los objetos que dejas encima, y son ellas —las portadas— quienes ponen el color. Todo lo que el sistema decide sale de ahí: el fondo es papel y no blanco de pantalla; el cromo se apaga en tonos tostados para que una carátula turquesa o un lomo rojo no compitan con un botón; el acento terracota se raciona porque sobre una mesa llena de portadas, un color que aparece en todas partes deja de señalar nada.\n\nEl carácter es editorial y táctil: titulares en Fraunces con la irregularidad de un serif de imprenta, rótulos en Geist Mono a 10px y 0.12em que suenan a etiqueta de fichero, y una regla de forma que separa el gesto del contenido — lo que se pulsa es píldora, lo que contiene es caja de 14px. El oscuro no es un negativo: es la misma mesa en espresso, con la terracota subida a un tono más luminoso para seguir siendo tinta y no mancha.\n\nDensidad alta, admitida a propósito: esta app se usa para registrar y curar, y la información apretada es su servicio. Lo que compensa la densidad no es el aire, es la jerarquía tipográfica — serif para lo que titula, sans para lo que se lee, mono en mayúsculas para lo que rotula.",
+    "keyCharacteristics": [
+      "Papel cálido y espresso, nunca blanco puro ni gris azulado.",
+      "Un solo primario en toda la app; el color de tipo pertenece al contenido, no al rol.",
+      "Portada como material: aspect-[2/3], esquina de 10px y una sombra que le da grosor.",
+      "Serif titula, sans lee, mono rotula. Tres papeles, sin solapamiento.",
+      "Cuatro escalones de superficie antes que cualquier sombra.",
+      "Sin toasts, sin emojis de sistema, sin adorno que no sea un dato."
+    ],
+    "rules": [
+      {
+        "name": "La Regla de la Tinta Única",
+        "body": "Hay un primario en toda la app y es la terracota. Una vista con dos naranjas significa que una de las dos acciones no era primaria. El color por tipo de medio es del contenido; el CTA de una serie sigue siendo terracota.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla de la Tinta Fantasma",
+        "body": "--foreground-faint no colorea texto — da 2,25:1 — y no se arregla subiendo el valor: cualquier tono que llegue a 4,5:1 sobre papel cae donde ya está la Tinta Apagada. El texto secundario usa --muted-foreground y el test contraste-tokens.test.ts falla si vuelve a aparecer un text-foreground-faint.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla del Par por Tema",
+        "body": "Un color no se deriva del claro por fórmula: se declara en los tres bloques (:root, .dark, y el espejo de prefers-color-scheme: dark). Un token que cambia en uno y no en los otros dos es un bug que mark-accent.test.ts caza token a token.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla del Frío Prestado",
+        "body": "Los únicos fríos de la paleta son datos: teal de película, violeta de serie, azul de itinerario y de fecha destacada. Ningún gris azulado, ningún glow ambiental, ningún cromo frío.",
+        "section": "colors"
+      },
+      {
+        "name": "La Regla de los Tres Papeles",
+        "body": "Serif titula, sans lee, mono rotula. Un rótulo de sección en sans es deriva; un párrafo en serif también.",
+        "section": "typography"
+      },
+      {
+        "name": "La Regla del Rótulo Único",
+        "body": "Todo encabezado de bloque usa label-section. Llegó a haber quince variantes de la misma idea —de 8,5 a 12px y diez valores de tracking—, así que la misma etiqueta salía a 12px en Clubes y a 10px en Inicio.",
+        "section": "typography"
+      },
+      {
+        "name": "La Regla del Cero Overflow",
+        "body": "min-width: 0 (o minmax(0, 1fr)) en toda celda de grid o flex cuyo contenido deba encoger. Sin ella, un título sin espacios fuerza scroll horizontal en toda la página — ya rompió dos vistas.",
+        "section": "layout"
+      },
+      {
+        "name": "La Regla de la Segunda Columna",
+        "body": "En desktop, una página con contenido + contexto se diseña a dos columnas mínimo. La columna única centrada (max-w ~720px) queda para formularios utilitarios. Ninguna pantalla deja un tercio del viewport vacío sistemáticamente.",
+        "section": "layout"
+      },
+      {
+        "name": "La Regla de las Dos Sombras",
+        "body": "Hay dos sombras y tienen nombre. Una sombra nueva —o un shadow-lg de Tailwind colado en una tarjeta— es deriva, y necesita entrada en decisiones.md antes que código.",
+        "section": "elevation"
+      },
+      {
+        "name": "La Regla del Tono Primero",
+        "body": "Antes de añadir sombra, pregunta si el escalón de superficie resuelve la separación. Casi siempre lo hace.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do usar la terracota como único primario, y reservarla para el CTA, el foco, el progreso y la selección. Si aparece en todas partes, deja de señalar.",
+      "Do declarar cada color nuevo en los tres bloques de tema (:root, .dark y el espejo de prefers-color-scheme), o el test lo caza.",
+      "Do pintar el texto secundario en --muted-foreground y dejar --foreground-faint para objetos decorativos aria-hidden.",
+      "Do encabezar todo bloque con label-section, no con una combinación font-mono … uppercase escrita a mano.",
+      "Do poner min-width: 0 en cada celda de grid o flex que deba encoger.",
+      "Do elegir el contenedor y la escalera de columnas a la vez, de src/lib/ui/layout.ts.",
+      "Do dejar el foco de teclado a globals.css: ya está resuelto para toda la app.",
+      "Do dibujar el hueco (borde discontinuo, tres huecos punteados) en vez de dejar aire en blanco donde falta contenido."
+    ],
+    "donts": [
+      "Don't usar emojis como iconografía. El set es de línea, monocromo y en currentColor; los emojis solo existen como reacciones que escribe el usuario.",
+      "Don't introducir toasts. El feedback vive inline, con role=\"status\" o role=\"alert\"; un aviso flotante que se va solo no es una respuesta.",
+      "Don't usar el color de tipo de medio (libro/película/serie) para el rol de un control. Es del contenido: barras, chips, marcas. El CTA de una serie sigue siendo terracota.",
+      "Don't añadir una tercera sombra ni colar un shadow-lg en una tarjeta. Hay dos sombras y tienen nombre.",
+      "Don't sembrar acciones destructivas inline: van tras el «···» y solo preguntan cuando son irreversibles Y arrastran otros datos.",
+      "Don't escribir focus:outline-none esperando que apague algo — la regla global de foco va sin capa y gana.",
+      "Don't poner maximum-scale=1 ni user-scalable=no: mata el zoom de accesibilidad para todo el mundo."
+    ]
+  }
+}

@@ -3,8 +3,14 @@
 > [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-08-04]
 
 Este es el punto de partida para cualquier prototipo funcional nuevo de
-Biblioshare. Resume el lenguaje visual actual para evitar redescubrirlo en cada
-iteración. El código y `globals.css` mandan si algo difiere de esta guía.
+Biblioshare. Manda para las **capturas de referencia** y el **flujo de
+prototipado**. El código y `globals.css` mandan si algo difiere de esta guía.
+
+> **Desde el 2026-08-27, los tokens viven en [`DESIGN.md`](../DESIGN.md)** (raíz del repo):
+> valores de color con su pareja clara/oscura, los cinco papeles tipográficos, la escala de
+> forma, las dos sombras, los cuatro shells y los primitivos, cada uno con el porqué medido.
+> El resumen de «Sistema Paper» de más abajo se queda como orientación rápida; cuando los dos
+> difieran, manda `DESIGN.md` — y si `DESIGN.md` difiere de `globals.css`, manda `globals.css`.
 
 ## Referencias de pantalla
 
