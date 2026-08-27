@@ -69,6 +69,15 @@ export type NormalizedWork = {
   /** "/works/OL5735363W" — el formato que guarda `books.openlibrary_work_key`. */
   workKey: string;
   title: string;
+  /**
+   * De dónde salió `title`: de una edición española, de una inglesa, o del
+   * título de la OBRA (`other`, porque el de la obra puede estar en cualquier
+   * idioma — «Fatta Eld» es sueco). Viaja con el título porque la hidratación
+   * en lote lo escribe en `repr_meta`, y ese rango de idioma es lo que
+   * permite que una visita posterior a la ficha lo MEJORE en vez de quedarse
+   * congelado. Ver spec 2026-08-26 §2.
+   */
+  titleLang: "es" | "en" | "other";
   year: number | null;
   coverUrl: string | null;
 };
@@ -177,8 +186,14 @@ export function normalizeAuthorWorks(
     // 3. Omnibus.
     if (isOmnibus(allTitles)) continue;
 
-    // 4. Título: español, si no inglés, si no el de la obra.
+    // 4. Título: español, si no inglés, si no el de la obra. El IDIOMA elegido
+    //    viaja con él: la hidratación en lote lo necesita para etiquetar
+    //    `repr_meta` y que una visita posterior a la ficha pueda mejorarlo
+    //    (spec 2026-08-26 §2). Sin esta etiqueta, un título inglés escrito por
+    //    el lote sería indistinguible de uno curado y quedaría congelado —
+    //    el modo de fallo de #730.
     const title = entry.es ?? entry.en ?? workTitle;
+    const titleLang: "es" | "en" | "other" = entry.es ? "es" : entry.en ? "en" : "other";
 
     // Un título hecho solo de puntuación («!!!», «—», «...») normaliza a la
     // cadena vacía. `acceptEditionTitle` ya blinda su propia salida, pero
@@ -193,6 +208,7 @@ export function normalizeAuthorWorks(
       work: {
         workKey: doc.key as string,
         title,
+        titleLang,
         year: typeof doc.first_publish_year === "number" ? doc.first_publish_year : null,
         coverUrl: buildCoverUrl(doc.cover_i),
       },

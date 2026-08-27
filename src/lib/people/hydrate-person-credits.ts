@@ -78,6 +78,11 @@ export async function hydratePersonCredits(
           itemType: "book",
           externalId: w.workKey,
           title: w.title,
+          // El IDIOMA del título viaja con él hasta `hydrate_books_bulk`, que
+          // lo escribe en `repr_meta`. Sin esta etiqueta, el título del lote
+          // sería indistinguible de uno curado y quedaría congelado (#730);
+          // con ella, la visita a la ficha puede MEJORARLO.
+          titleLang: w.titleLang,
           // `subtitle` acaba en `books.author`. Lo sabemos —es la persona cuya
           // ficha estamos hidratando—, y dejarlo a null haría nacer el libro sin
           // autor: la ficha lo mostraría vacío.

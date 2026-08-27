@@ -89,6 +89,12 @@ describe("hydratePersonCredits · libros", () => {
       itemType: "book",
       externalId: "/works/OL1W",
       title: "Los juegos del hambre",
+      // El IDIOMA del título tiene que llegar hasta aquí: es lo que
+      // `findOrCreateCatalogItemsBulk` reenvía a `hydrate_books_bulk` para
+      // etiquetar `repr_meta`. Si se pierde por el camino, el lote escribe el
+      // título con `title_lang: "other"` y una candidata española posterior ya
+      // no lo mejora — el título se queda congelado, que es #730 otra vez.
+      titleLang: "es",
       year: 2008,
       coverUrl: "https://covers.openlibrary.org/b/id/111-M.jpg",
     });

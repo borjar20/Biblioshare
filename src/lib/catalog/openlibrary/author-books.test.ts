@@ -55,6 +55,9 @@ describe("fetchAuthorWorks", () => {
       {
         workKey: "/works/OL1W",
         title: "Los juegos del hambre",
+        // El idioma del título elegido llega HASTA AQUÍ (no se queda en el
+        // normalizador): es lo que `hydrate_books_bulk` escribe en `repr_meta`.
+        titleLang: "es",
         year: 2008,
         coverUrl: "https://covers.openlibrary.org/b/id/111-M.jpg",
       },

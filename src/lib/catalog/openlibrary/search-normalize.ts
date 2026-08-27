@@ -149,8 +149,13 @@ export function normalizeSearchWorks(
     // 4. Omnibus.
     if (isOmnibus(allTitles)) continue;
 
-    // 5. Título: español, si no inglés, si no el de la obra.
+    // 5. Título: español, si no inglés, si no el de la obra. Igual que la
+    //    regla 4 de `normalize.ts`, el IDIOMA elegido viaja con el título:
+    //    los dos normalizadores tienen que coincidir, porque `titleLang` es lo
+    //    que etiqueta `repr_meta` cuando el título se escribe en lote y lo que
+    //    deja que la ficha lo mejore después (spec 2026-08-26 §2).
     const title = entry.es ?? entry.en ?? workTitle;
+    const titleLang: "es" | "en" | "other" = entry.es ? "es" : entry.en ? "en" : "other";
 
     // La clave de fusión del paso 6: título de obra Y autoría. Solo con el
     // título, «México en llamas» de Anabel Hernández y «Mexico en llamas» de
@@ -173,7 +178,7 @@ export function normalizeSearchWorks(
         : "";
 
     candidates.push({
-      result: { ...mapWorkDoc(doc), title, altTitles: allTitles },
+      result: { ...mapWorkDoc(doc), title, titleLang, altTitles: allTitles },
       dedupKey,
       editions: typeof doc.edition_count === "number" ? doc.edition_count : 0,
       order: entry.order,

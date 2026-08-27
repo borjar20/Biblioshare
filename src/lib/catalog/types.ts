@@ -36,6 +36,14 @@ export type SearchResult = {
   // `["Fatta Eld", "En llamas"]`. Lo usa `match-row.ts` para casar una fila de
   // CSV cuyo título coincide con uno de estos y no con el `title` mostrado.
   altTitles?: string[];
+  // Libros: de dónde salió `title` — de una edición española, de una inglesa,
+  // o del título de la OBRA de Open Library (`other`, porque ese puede estar en
+  // cualquier idioma: «Fatta Eld» es sueco). Lo rellenan los dos
+  // normalizadores de Open Library y lo consume la hidratación en LOTE, que lo
+  // escribe como `repr_meta.title.lang`: sin él, un título inglés escrito por
+  // el lote sería indistinguible de uno curado y quedaría congelado (#730).
+  // Ausente en películas, series y catálogo local.
+  titleLang?: "es" | "en" | "other";
   coverUrl: string | null;
   year: number | null;
   // Películas/series: TMDB los da ya en la búsqueda. Libros: SIEMPRE null — la

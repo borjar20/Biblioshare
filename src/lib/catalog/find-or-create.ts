@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import type { SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -27,9 +28,19 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * `SearchResult` — quedan sin hidratar en el lote y los completa la apertura
  * de ficha (`ensureMovieHydrated`/`ensureSeriesHydrated`).
  *
- * Los libros SOLO se registran (shell), nunca se hidratan aquí: la ficha de
- * libro hidrata (`ensureBookHydrated`) y el lote de créditos de persona rara
- * vez trae sinopsis de libro de todos modos.
+ * Los libros se registran Y se hidratan PARCIALMENTE (`hydrate_books_bulk`):
+ * título, autor, año y portada, que es lo que la bibliografía de autor SÍ trae
+ * y justo lo que la ficha de persona pinta. Sinopsis, géneros, páginas y QID no
+ * vienen en el lote, y por eso esa RPC NO marca `hydrated_at`: la obra sigue
+ * pendiente de su hidratación COMPLETA en la primera visita a su ficha
+ * (`ensureBookHydrated`), que además puede MEJORAR lo que el lote escribió.
+ *
+ * Esa rama va con `createServiceRoleClient()`, no con el cliente de la
+ * petición, y no es una preferencia: el trigger `trg_stamp_books_repr_manual`
+ * distingue curación de automatismo por `app.hydrating`, así que un escritor
+ * MASIVO corriendo con el cliente del usuario marcaría `manual` el catálogo
+ * entero. Mismo criterio que `hydratePersonCredits` con `credits` (#725) y que
+ * `ensureBookHydrated` con `hydrate_book` (#871).
  *
  * NO registra ediciones de libro (`ensureBookEdition`): eso necesita el ISBN de
  * la tirada que el usuario tiene en la mano y un userId, y el lote no tiene ni
@@ -84,6 +95,57 @@ export async function findOrCreateCatalogItemsBulk(
           count: externalIds.length,
           error,
         });
+        return;
+      }
+
+      if (itemType === "book") {
+        // El título, el autor, el año y la portada SÍ vienen en la bibliografía
+        // (medido sobre las 100 obras de Sanderson: 100/100 con título, 100/100
+        // con `first_publish_year`, 91/100 con `cover_i`) y son exactamente lo
+        // que la ficha de autor pinta. Tirarlos dejaba shells vacías: 61 de los
+        // 268 libros del catálogo de PROD el 2026-08-26 —el 23%—, todas de una
+        // sola visita a una ficha de autor, saliendo como «Sin título».
+        //
+        // Se puede escribir el título AHORA y no antes porque `repr_meta` lo
+        // etiqueta con su idioma: un título inglés del lote ya no queda
+        // congelado, la ficha lo mejora si encuentra candidata española. Sin esa
+        // etiqueta esto sería el modo de fallo de #730.
+        const bookRows = externalIds
+          .map((externalId) => {
+            const result = bucket.get(externalId)!;
+            const bookId = map.get(`book:${externalId}`);
+            if (!bookId) return null;
+            return {
+              book_id: bookId,
+              title: result.title || null,
+              // Sin idioma declarado, "other" (rango 2): rellena un hueco vacío
+              // pero nunca sella rango 0. Mentir aquí diciendo "es" congelaría
+              // el título para siempre.
+              title_lang: result.titleLang ?? "other",
+              author: result.subtitle,
+              cover_url: result.coverUrl,
+              // La portada del doc de búsqueda es la de la OBRA, no la de una
+              // edición de idioma conocido: se etiqueta como el fallback que
+              // es, para que la ficha pueda mejorarla con una portada española.
+              cover_lang: "other",
+              published_year: result.year,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null);
+
+        if (bookRows.length === 0) return;
+
+        try {
+          // service_role: ver la cabecera del módulo.
+          const { error } = await createServiceRoleClient().rpc("hydrate_books_bulk", {
+            p_rows: bookRows,
+          });
+          if (error) {
+            console.error("hydrate_books_bulk failed", { count: bookRows.length, error });
+          }
+        } catch (error) {
+          console.error("hydrate_books_bulk failed", { count: bookRows.length, error });
+        }
         return;
       }
 

@@ -2814,6 +2814,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      hydrate_books_bulk: {
+        Args: { p_rows: Json }
+        Returns: undefined
+      }
       hydrate_movie: {
         Args: {
           p_cover_url?: string
