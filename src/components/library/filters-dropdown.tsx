@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon, XIcon } from "@/components/ui/icons";
 
 // Caparazón del desplegable de filtros: el botón «Filtros ▾» (con badge del nº
@@ -22,6 +22,9 @@ export function FiltersDropdown({
   children: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -30,7 +33,11 @@ export function FiltersDropdown({
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      // Escape devuelve el foco al disparador: si no, se queda en un panel que
+      // acaba de desaparecer y cae a <body>.
+      triggerRef.current?.focus();
     }
     document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
@@ -40,16 +47,47 @@ export function FiltersDropdown({
     };
   }, [open]);
 
+  // El foco entra en el panel al abrirlo. En móvil el panel es `fixed inset-0`
+  // y tapa la página entera: sin esto, el foco seguía en el disparador que
+  // había DEBAJO de la hoja, y un Shift+Tab llevaba a controles invisibles
+  // tapados por una superficie opaca.
+  useEffect(() => {
+    if (!open) return;
+    panelRef.current?.focus();
+  }, [open]);
+
+  // Y al salir el foco del conjunto, la hoja se cierra en vez de dejar al
+  // usuario navegando a ciegas por lo que hay detrás. Es también la salida
+  // natural del último control con Tab.
+  function onBlurCapture(e: React.FocusEvent) {
+    if (!open) return;
+    const next = e.relatedTarget as Node | null;
+    if (next && rootRef.current?.contains(next)) return;
+    if (next === null) return; // clic fuera de la ventana: lo trata onPointer
+    setOpen(false);
+  }
+
   return (
-    <div ref={rootRef} className="relative flex items-center justify-between gap-3">
+    <div
+      ref={rootRef}
+      onBlurCapture={onBlurCapture}
+      className="relative flex items-center justify-between gap-3"
+    >
       <span className="font-mono text-[11px] tracking-wide text-muted-foreground">
         {activeCount > 0 && countLabel ? countLabel : ""}
       </span>
 
+      {/* No es un menú: dentro hay grupos rotulados de enlaces y botones de
+          filtro, no `menuitem`s. Con `role="menu"` un lector de pantalla entra
+          en modo aplicación y espera navegación por flechas entre opciones —
+          aquí lo único que funciona es el Tab, y los hijos no son opciones.
+          Lo que esto es, y ahora lo declara, es un DESPLEGABLE: un botón que
+          expande un grupo (`aria-expanded` + `aria-controls`). */}
       <button
+        ref={triggerRef}
         type="button"
-        aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-surface-muted"
       >
@@ -70,7 +108,11 @@ export function FiltersDropdown({
         // cuando hay muchos géneros. En sm+ sigue siendo el desplegable anclado
         // al botón de siempre.
         <div
-          role="menu"
+          ref={panelRef}
+          id={panelId}
+          role="group"
+          aria-label={label}
+          tabIndex={-1}
           className="fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:absolute sm:inset-auto sm:top-[42px] sm:right-0 sm:w-[min(280px,92vw)] sm:overflow-visible sm:rounded-xl sm:border sm:border-border sm:p-3.5 sm:shadow-card"
         >
           <div className="flex items-center justify-between gap-3 sm:hidden">
@@ -90,7 +132,10 @@ export function FiltersDropdown({
             </span>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                triggerRef.current?.focus();
+              }}
               aria-label="Cerrar"
               className="-mr-1 flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
             >

@@ -505,6 +505,7 @@ async function BookTabs({
   return (
     <ItemDetailTabs
       itemType="book"
+      tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         community: tDetail("tabCommunity"),

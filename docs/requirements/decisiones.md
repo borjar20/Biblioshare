@@ -2111,3 +2111,69 @@ lo reaplica. Poner una preferencia persistente —o un umbral por el que el lock
 decisión de producto con esquema detrás, y va como issue. Tampoco se toca la longitud de la
 página (23.062 px a 390 sin paginar ni `sticky` en los filtros): es el cuarto P1 de esa crítica y
 es otro frente.
+
+## 2026-08-27 (4) — El suelo AA declarado se aplica: roles, foco y la tinta que se componía por debajo
+
+**Contexto.** Cuarto frente de la crítica de las tres vistas. `PRODUCT.md` declara **WCAG 2.1 AA
+como suelo**, y las tres vistas lo incumplían en sitios concretos y medibles. Se midió con un
+escáner propio que resuelve el color en un canvas: el primer intento parseaba `getComputedStyle`
+a mano y daba ratios inventados, porque **Tailwind v4 emite `oklab(...)` para `/70` y para
+`color-mix`** y esos números no son RGB. Media docena de «fallos» de la primera pasada eran del
+escáner, no de la app.
+
+**Decisiones que fija esto:**
+
+1. **Las pestañas de la ficha son un `tablist` de verdad, flechas incluidas.** Eran cuatro
+   `<button>` pelados —sin `role`, sin `aria-selected`, con el subrayado de la activa marcado
+   `aria-hidden`—: para un lector de pantalla no había pestañas ni una activa. Y el patrón no se
+   puede dejar a medias: `role="tab"` **anuncia** navegación por flechas, así que sin ←/→/Inicio/
+   Fin y sin `tabIndex` móvil se prometería un teclado que no existe.
+2. **Una interacción que reordena la pantalla mueve el foco y lo dice.** Destacar una obra en
+   Inicio desmontaba el botón pulsado y remontaba el destacado: el foco caía a `<body>` y la
+   página no tenía **ni un** `aria-live`. Ahora el foco va al destacado (`tabIndex={-1}`) y un
+   `role="status"` anuncia «{título}, ahora en el destacado». El foco solo se mueve tras un clic
+   del usuario —un `ref` guarda esa distinción— para no robarlo en el primer render.
+3. **Lo que navega lleva `aria-current="page"`; lo que despliega, `aria-expanded`.** Subpestañas
+   de Colección, chips del feed y los cinco grupos del desplegable de filtros marcaban la opción
+   activa **solo por color**. Y el panel de filtros decía `role="menu"` con hijos que no son
+   `menuitem`: eso mete al lector en modo aplicación esperando flechas entre opciones, cuando lo
+   único que funciona ahí es el Tab. Es un **desplegable**, y ahora lo declara. De paso, el foco
+   entra en el panel al abrirlo, Escape lo devuelve al disparador, y **salir el foco del conjunto
+   lo cierra** — que es lo que arregla el Shift+Tab que se iba detrás de la hoja opaca en móvil.
+4. **La Tinta Fantasma se aplica también a la composición, no solo al token.** El repo ya
+   legislaba el contraste y tiene test, pero **el test mira el token y la pantalla pinta el
+   resultado**. Tres formas de romperlo, las tres retiradas: `opacity-60` en los recuentos de
+   género (2,55:1), `text-muted-foreground/70` en la hoja de ediciones (3,08:1) y `opacity-80`
+   sobre la tarjeta de un pase viejo (3,23:1). La regla operativa: **se atenúa el papel, nunca la
+   tinta** — el pase viejo pasa de `opacity-80` a `bg-surface-muted/50`, misma jerarquía y el
+   contraste SUBE.
+5. **La triada de medio tiene par de tinta.** `--type-book/movie/series` son colores de GRÁFICO
+   (3:1: barras, puntos, filos, lomos del logo) y como texto se quedaban en 3,64:1 sobre su
+   propio tinte. No se oscurecen enteros —los comparte media app—, así que va un par oscuro solo
+   para texto: `--type-*-ink`, al que apunta `MEDIA_ACCENT.text`. **Mismo patrón que
+   `--accent-ink` y `--gold-ink`, que ya estaban ahí por la misma razón.** Calibrados contra los
+   quince fondos sobre los que llegan a pintarse, con margen: un tinte sobre otro tinte ya había
+   tirado de 4,5 a 4,47 en el historial de pases.
+6. **El chip activo del feed no se rellena.** Ni `--accent` (3,8:1) ni `--accent-ink` (4,27:1)
+   llegan sobre el tinte del propio acento. Se quita el relleno y la tinta cae sobre superficie
+   limpia (4,88:1) — que además es lo que decía la maqueta desde el principio: «se tiñe de accent
+   en texto y borde **en vez de rellenarse**».
+7. **Encabezados sin saltos.** `pass-diary` y `episode-list` pasan de `h3` a `h2`: el único nivel
+   por encima es el `h1` del título de la obra, y el índice de encabezados es cómo se mueve por
+   la página quien no la ve (1.3.1).
+
+**Lo que NO decide esto, y los números para quien lo recoja.**
+
+- **El cuarteto de estado no tiene par de tinta y lo necesita.** Medido sobre sus fondos reales:
+  `--status-planned` **1,75:1**, `--status-in-progress` **2,14:1**, `--status-completed`
+  **3,77:1**, `--status-dropped` **3,78:1** — y `text-status-dropped` es el rojo de **todos** los
+  errores de formulario. No se arregla oscureciendo los tokens: harían falta k≈0,42 y k≈0,36, que
+  cambian la identidad del estado (el oro «en curso» dejaría de ser oro). Pide pares `-ink` y una
+  revisión de los 128 `text-status-*` del repo, uno por uno. Va como issue.
+- **El tamaño de diana no es del suelo declarado.** Los 32 px de la tarjeta de biblioteca no
+  incumplen WCAG 2.1 AA (el 44 es 2.5.5, que es **AAA**; el mínimo AA de WCAG 2.2 son 24 px). Se
+  les pone `tap-44` igualmente porque es convención del repo, y el `gap` sube de 6 a 12 px: con 6
+  las dos áreas de 44 se solapaban y la de arriba le robaba pulsaciones a su vecina, que es justo
+  contra lo que avisa el comentario de `tap-44` en `globals.css`.
+- **El wordmark se queda a 4,31:1.** «Biblio**share**» es nombre de marca, y 1.4.3 exime
+  explícitamente logotipos y nombres de marca. No es deuda: es la excepción.

@@ -106,6 +106,21 @@
   --type-book: #a15a34;
   --type-movie: #3f6b6e;
   --type-series: #7a5676;
+  /* Los tres de arriba son de GRAFICO (barras, puntos, filos, degradados,
+     marcas del calendario): ahi WCAG 1.4.1 pide 3:1 y los tres pasan de sobra.
+     Como TEXTO no llegaban: medido en la ficha, `--type-book` da 3,64:1 sobre
+     su propio tinte al 10% y 4,44:1 sobre el papel, por debajo del 4,5:1 de
+     1.4.3. Y no se pueden oscurecer enteros —los comparte media app— asi que
+     va un par mas oscuro SOLO para texto, mismo patron que --accent-ink y
+     --gold-ink. Calibrados contra los quince fondos reales sobre los que llegan
+     a pintarse —papel, superficie, superficie apagada, las dos mezclas al 50%
+     que salen de atenuar una tarjeta, y el tinte del propio tipo al 10% y al
+     16% sobre cada una—: minimo 4,56:1. El margen no sobra: un tinte sobre
+     otro tinte ya habia tirado del 4,5 al 4,47 en el historial de pases.
+     `MEDIA_ACCENT.text` apunta aqui; `.bg`, `.border` y `.varName`, arriba. */
+  --type-book-ink: #844a2b;
+  --type-movie-ink: #375e61;
+  --type-series-ink: #6e4d6a;
 
   /* Azul de "fecha destacada" en el calendario del club. Token propio y no un
      reciclado: los otros siete de la leyenda ya están comprometidos (green =
@@ -178,6 +193,11 @@
   --type-book: #cf8a54;
   --type-movie: #6bb0b4;
   --type-series: #b592bd;
+  /* En oscuro faltaba menos, pero faltaba: `--type-book` daba 4,20:1 sobre su
+     tinte. Aqui el par va hacia el BLANCO, no hacia el negro. */
+  --type-book-ink: #d79d6f;
+  --type-movie-ink: #75b5b9;
+  --type-series-ink: #bea0c5;
   --event-highlight: #7fa8d8;
   /* Ya NO es el valor de --spine (#8a7d63): ese daba 3.39:1 sobre su propio
      tinte al 10% (#342c24), por debajo del 4.5:1 que exige el TEXTO que este
@@ -229,6 +249,9 @@
     --type-book: #cf8a54;
     --type-movie: #6bb0b4;
     --type-series: #b592bd;
+    --type-book-ink: #d79d6f;
+    --type-movie-ink: #75b5b9;
+    --type-series-ink: #bea0c5;
     --event-highlight: #7fa8d8;
     --event-meetup: #a89c85;
 
@@ -276,6 +299,9 @@
   --color-type-book: var(--type-book);
   --color-type-movie: var(--type-movie);
   --color-type-series: var(--type-series);
+  --color-type-book-ink: var(--type-book-ink);
+  --color-type-movie-ink: var(--type-movie-ink);
+  --color-type-series-ink: var(--type-series-ink);
   --color-event-highlight: var(--event-highlight);
   --color-event-meetup: var(--event-meetup);
 

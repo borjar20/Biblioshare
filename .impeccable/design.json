@@ -116,6 +116,24 @@
         "canonical": "#7a5676",
         "dark": "#b592bd"
       },
+      "type-book-ink": {
+        "role": "tertiary",
+        "displayName": "Teja de Libro (tinta)",
+        "canonical": "#844a2b",
+        "dark": "#d79d6f"
+      },
+      "type-movie-ink": {
+        "role": "tertiary",
+        "displayName": "Teal de Película (tinta)",
+        "canonical": "#375e61",
+        "dark": "#75b5b9"
+      },
+      "type-series-ink": {
+        "role": "tertiary",
+        "displayName": "Violeta de Serie (tinta)",
+        "canonical": "#6e4d6a",
+        "dark": "#bea0c5"
+      },
       "status-planned": {
         "role": "tertiary",
         "displayName": "Arena Pendiente",

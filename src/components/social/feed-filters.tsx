@@ -9,10 +9,15 @@ import type { FeedFilter } from "@/lib/social/feed";
 // aquí eso importa: los cinco chips caben en UNA fila a 400px por los pelos
 // (360px de ancho útil). Con px-3 y tracking-wider, "Clubes" se caía a una
 // segunda fila.
+// El chip activo: `text-accent-ink` y SIN relleno. El acento puro daba 3,8:1
+// sobre su propio tinte al 10 %, y hasta `--accent-ink` se queda en 4,27:1 ahí
+// — por debajo del 4,5:1 de WCAG 1.4.3. Quitar el tinte deja la tinta sobre la
+// superficie limpia (4,88:1) y además es lo que decía la maqueta desde el
+// principio: «se tiñe de accent en texto y borde EN VEZ de rellenarse».
 function pillClass(active: boolean) {
   return `rounded-chip border px-[11px] py-1.5 font-mono text-[10.5px] font-medium tracking-[0.03em] uppercase transition-colors ${
     active
-      ? "border-accent bg-accent/10 text-accent"
+      ? "border-accent bg-surface text-accent-ink"
       : "border-border bg-surface text-muted-foreground hover:text-foreground"
   }`;
 }
@@ -35,14 +40,21 @@ export async function FeedFilters({ filter }: { filter?: FeedFilter }) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-[7px]">
-      <Link href={href()} className={pillClass(!filter)}>
+    // El filtro activo se marcaba SOLO por color: para un lector de pantalla
+    // los cinco chips eran indistinguibles entre sí.
+    <div role="group" aria-label={t("label")} className="flex flex-wrap items-center gap-[7px]">
+      <Link
+        href={href()}
+        aria-current={!filter ? "page" : undefined}
+        className={pillClass(!filter)}
+      >
         {t("all")}
       </Link>
       {OPTIONS.map((option) => (
         <Link
           key={option.filter}
           href={href(option.filter)}
+          aria-current={filter === option.filter ? "page" : undefined}
           className={pillClass(filter === option.filter)}
         >
           {t(option.key)}

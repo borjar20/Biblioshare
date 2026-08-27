@@ -178,7 +178,7 @@ export function EditionPicker({
             {formatEditionDetails(e, itemType, { withPublisher: false })}
           </span>
         </span>
-        <span className="shrink-0 text-right font-mono text-[10px] leading-[1.4] text-muted-foreground/70">
+        <span className="shrink-0 text-right font-mono text-[10px] leading-[1.4] text-muted-foreground">
           {pgnLabel(e)}
         </span>
       </button>
@@ -203,13 +203,13 @@ export function EditionPicker({
         <label className="flex items-center gap-2 rounded-[9px] border border-border bg-surface px-[11px] py-[9px]">
           <SearchIcon
             aria-hidden
-            className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
           />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="w-full bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground/70"
+            className="w-full bg-transparent text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
       )}
@@ -217,7 +217,7 @@ export function EditionPicker({
       {used.length > 0 && (
         <>
           <div className="flex items-baseline gap-2">
-            <span className="font-mono text-[10px] tracking-[0.05em] text-muted-foreground/70 uppercase">
+            <span className="font-mono text-[10px] tracking-[0.05em] text-muted-foreground uppercase">
               {t("usedBefore")}
             </span>
             <span
@@ -233,10 +233,10 @@ export function EditionPicker({
       {rest.length > 0 && (
         <>
           <div className="flex items-baseline">
-            <span className="font-mono text-[10px] tracking-[0.05em] text-muted-foreground/70 uppercase">
+            <span className="font-mono text-[10px] tracking-[0.05em] text-muted-foreground uppercase">
               {t("allEditions")}
             </span>
-            <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
+            <span className="ml-auto font-mono text-[10px] text-muted-foreground">
               {editions.length}
             </span>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
@@ -18,6 +18,7 @@ import {
 // y por defecto sigue siendo "info" si no hay query param, igual que antes.
 export function ItemDetailTabs({
   itemType,
+  tablistLabel,
   labels,
   info,
   episodes,
@@ -25,6 +26,8 @@ export function ItemDetailTabs({
   log,
 }: {
   itemType: ItemType;
+  /** Nombre accesible del grupo de pestañas («Secciones de la ficha»). */
+  tablistLabel: string;
   labels: Partial<Record<DetailTabId, string>>;
   info: ReactNode;
   episodes?: ReactNode;
@@ -82,6 +85,28 @@ export function ItemDetailTabs({
     });
   }
 
+  // Las pestañas eran cuatro <button> pelados: sin `role`, sin `aria-selected`,
+  // y con el subrayado de la activa marcado `aria-hidden`. Para un lector de
+  // pantalla no había pestañas ni una activa — solo cuatro botones sueltos.
+  // El patrón completo incluye el teclado: con `role="tab"` se ANUNCIAN flechas,
+  // así que sin implementarlas se prometería una navegación que no existe. De
+  // ahí el tabIndex móvil (solo la activa entra en el orden de tabulación) y el
+  // manejador de ←/→/Inicio/Fin.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  function onTabKey(e: React.KeyboardEvent, index: number) {
+    const delta =
+      e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    let next: number | null = null;
+    if (delta !== 0) next = (index + delta + order.length) % order.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = order.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    const id = order[next];
+    selectTab(id);
+    tabRefs.current[id]?.focus();
+  }
+
   return (
     <div className="flex flex-col">
       {/* Sans (NO el mono de las subtabs — aquí la maqueta escribe Geist),
@@ -92,13 +117,26 @@ export function ItemDetailTabs({
           Sin scroll horizontal: caben (comprobado con 4 pestañas a 390).
           .desk-tabs de "Web - Ficha de titulo (PC).html". */}
       <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:bg-background/80 lg:backdrop-blur-[10px]">
-        <div className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-7 lg:px-11">
-          {order.map((id) => {
+        <div
+          role="tablist"
+          aria-label={tablistLabel}
+          className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-7 lg:px-11"
+        >
+          {order.map((id, index) => {
             const isActive = tab === id;
             return (
               <button
                 key={id}
                 type="button"
+                role="tab"
+                id={`item-tab-${id}`}
+                aria-selected={isActive}
+                aria-controls={`item-tabpanel-${id}`}
+                tabIndex={isActive ? 0 : -1}
+                ref={(el) => {
+                  tabRefs.current[id] = el;
+                }}
+                onKeyDown={(e) => onTabKey(e, index)}
                 onClick={() => selectTab(id)}
                 className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
                   isActive
@@ -119,7 +157,17 @@ export function ItemDetailTabs({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:max-w-none lg:px-11 lg:pt-[34px] lg:pb-[42px]">
+      {/* Un solo panel montado (el resto son slots que no se pintan), así que
+          `id`/`aria-labelledby` van en el contenedor y cambian con la pestaña.
+          `tabIndex={0}`: el panel no siempre empieza con algo enfocable, y sin
+          esto el Tab desde la pestaña activa se saltaría el contenido entero. */}
+      <div
+        role="tabpanel"
+        id={`item-tabpanel-${tab}`}
+        aria-labelledby={`item-tab-${tab}`}
+        tabIndex={0}
+        className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:max-w-none lg:px-11 lg:pt-[34px] lg:pb-[42px]"
+      >
         {slots[tab]}
       </div>
     </div>

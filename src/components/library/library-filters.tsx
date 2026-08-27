@@ -183,11 +183,20 @@ export async function LibraryFilters({
               {/* «Todos los tipos» emite el centinela `type=todos`, no la
                   ausencia de `type`: solo así escapa del tipo preferido del
                   onboarding en la pestaña Todo (issue #313). */}
-              <Link href={buildHref({ type: ALL_TYPES_PARAM })} className={pillClass(!itemType)}>
+              <Link
+                href={buildHref({ type: ALL_TYPES_PARAM })}
+                aria-current={!itemType ? "page" : undefined}
+                className={pillClass(!itemType)}
+              >
                 {t("library.filters.allTypes")}
               </Link>
               {TYPES.map((type) => (
-                <Link key={type} href={buildHref({ type })} className={pillClass(itemType === type)}>
+                <Link
+                  key={type}
+                  href={buildHref({ type })}
+                  aria-current={itemType === type ? "page" : undefined}
+                  className={pillClass(itemType === type)}
+                >
                   <span
                     aria-hidden
                     className={`h-1.5 w-1.5 rounded-full ${itemType === type ? "bg-accent-foreground" : MEDIA_ACCENT[type].bg}`}
@@ -204,11 +213,20 @@ export async function LibraryFilters({
             {t("collection.filterStatus")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
-            <Link href={buildHref({ status: undefined })} className={segClass(!status)}>
+            <Link
+              href={buildHref({ status: undefined })}
+              aria-current={!status ? "page" : undefined}
+              className={segClass(!status)}
+            >
               {t("library.filters.allStatuses")}
             </Link>
             {(itemType === "movie" ? MOVIE_STATUSES : STATUSES).map((s) => (
-              <Link key={s} href={buildHref({ status: s })} className={segClass(status === s)}>
+              <Link
+                key={s}
+                href={buildHref({ status: s })}
+                aria-current={status === s ? "page" : undefined}
+                className={segClass(status === s)}
+              >
                 {/* El verbo "completado" cambia por medio: en película es
                     "Vista", igual que el control de Registro (StatusSegments) y
                     el badge del hero. El filtro genérico usa library.status.*
@@ -240,12 +258,28 @@ export async function LibraryFilters({
               {t("collection.filterGenre")}
             </span>
             <div className="flex flex-wrap items-center gap-0.5">
-              <Link href={buildHref({ genre: undefined })} className={segClass(!genre)}>
+              <Link
+                href={buildHref({ genre: undefined })}
+                aria-current={!genre ? "page" : undefined}
+                className={segClass(!genre)}
+              >
                 {t("library.filters.allGenres")}
               </Link>
               {genres.map((g) => (
-                <Link key={g.slug} href={buildHref({ genre: g.slug })} className={segClass(genre === g.slug)}>
-                  {g.label} <span className="opacity-60">{g.count}</span>
+                <Link
+                  key={g.slug}
+                  href={buildHref({ genre: g.slug })}
+                  aria-current={genre === g.slug ? "page" : undefined}
+                  className={segClass(genre === g.slug)}
+                >
+                  {/* El recuento iba en `opacity-60`, que sobre un token que SÍ
+                      cumple daba 2,55:1 en claro y 3,03:1 en oscuro: la Regla
+                      de la Tinta Fantasma dice atenuar el PAPEL, nunca la
+                      tinta, y el test de contraste del repo mira el token, no
+                      el resultado tras componer la opacidad. El número informa
+                      la decisión («Drama 56» vs «Clásicos 1»), no es adorno:
+                      se separa por PESO, que no cuesta contraste. */}
+                  {g.label} <span className="font-normal">{g.count}</span>
                 </Link>
               ))}
             </div>
@@ -258,7 +292,12 @@ export async function LibraryFilters({
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
             {SORTS.map((s) => (
-              <Link key={s} href={buildHref({ sort: s })} className={segClass(sort === s)}>
+              <Link
+                key={s}
+                href={buildHref({ sort: s })}
+                aria-current={sort === s ? "page" : undefined}
+                className={segClass(sort === s)}
+              >
                 {t(`library.sort.${s}`)}
               </Link>
             ))}
