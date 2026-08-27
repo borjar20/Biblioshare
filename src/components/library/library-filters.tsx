@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { SearchIcon } from "@/components/ui/icons";
+import { SearchIcon, XIcon } from "@/components/ui/icons";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
 import { ALL_TYPES_PARAM } from "@/lib/library/effective-type";
 import { pillClass, segClass } from "@/lib/ui/control-classes";
@@ -23,6 +23,7 @@ const SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 export async function LibraryFilters({
   itemType,
+  lockedType,
   status,
   search,
   sort = "recent",
@@ -35,6 +36,14 @@ export async function LibraryFilters({
   extraParams,
 }: {
   itemType?: ItemType;
+  /**
+   * El tipo que la vista aplica SIN que el usuario lo haya pedido (interés
+   * único del onboarding). Se pintaba solo como el «1» de la píldora de
+   * Filtros; aquí sale como chip quitable, porque el usuario no puede quitar
+   * —ni sospechar— un filtro que no ve. Un `?type=` puesto a mano NO viene por
+   * aquí: ese ya se ve marcado dentro del desplegable.
+   */
+  lockedType?: ItemType;
   status?: MediaStatus;
   search?: string;
   sort?: LibrarySort;
@@ -84,6 +93,10 @@ export async function LibraryFilters({
   // tipo/estado/orden/género.
   function clearHref() {
     const params = new URLSearchParams(extraParams);
+    // Con el tipo bloqueado por onboarding hay que emitir el centinela: quitar
+    // `type` es "arranque por defecto", y el arranque por defecto vuelve a
+    // aplicar el preferido — «Limpiar» dejaba el filtro puesto (issue #313).
+    if (lockedType) params.set("type", ALL_TYPES_PARAM);
     if (search) params.set("q", search);
     // La anulación NO es un filtro: sobrevive a «Limpiar» por el mismo motivo
     // que la búsqueda — el usuario acaba de pedirla a mano (spec D8).
@@ -138,7 +151,29 @@ export async function LibraryFilters({
       {/* Tipo · estado · orden plegados en un desplegable «Filtros» (igual que el
           detalle de colección). Los controles son enlaces: el filtrado de Todo
           es server-side por la URL (getLibraryItems). */}
-      <FiltersDropdown label={t("collection.filters")} activeCount={activeCount}>
+      <div className="flex items-center gap-2">
+        {/* El filtro que nadie puso, dicho en voz alta y con su salida. Va
+            FUERA del desplegable a propósito: dentro seguiría siendo invisible
+            hasta abrirlo, que es exactamente el problema. */}
+        {lockedType && (
+          <Link
+            href={buildHref({ type: ALL_TYPES_PARAM })}
+            aria-label={t("library.filters.clearOnlyType", {
+              type: t(`search.types.${lockedType}`),
+            })}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 rounded-full ${MEDIA_ACCENT[lockedType].bg}`}
+            />
+            {t("library.filters.onlyType", {
+              type: t(`search.types.${lockedType}`),
+            })}
+            <XIcon aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+        )}
+        <FiltersDropdown label={t("collection.filters")} activeCount={activeCount}>
         {showTypeFilter && (
           <div className="flex flex-col gap-1.5">
             <span className="label-section">
@@ -238,7 +273,8 @@ export async function LibraryFilters({
             {t("collection.clearFilters")}
           </Link>
         )}
-      </FiltersDropdown>
+        </FiltersDropdown>
+      </div>
     </div>
   );
 }

@@ -45,6 +45,7 @@ import {
 } from "@/components/library/collection-skeletons";
 import { NewCollectionButton } from "@/components/library/new-collection-button";
 import { UncollectedShelf } from "@/components/library/uncollected-shelf";
+import { getCollectionsOverview } from "@/lib/library/collections";
 
 export const metadata: Metadata = {
   title: "Mi Biblioteca — Biblioshare",
@@ -164,6 +165,25 @@ export default async function CollectionPage({
   // horizontal).
   const shell = SHELL_GRID;
 
+  // El tipo que la vista aplica SIN que nadie lo haya pedido: el interés único
+  // del onboarding. Se pintaba solo como un «1» en la píldora de Filtros, así
+  // que una cuenta con 9 libros y 129 películas entraba viendo 9 obras de 138
+  // —el 93 % escondido— sin una sola palabra que lo dijera. Va a la barra como
+  // chip quitable; el `?type=` explícito de la URL NO lo es (ese lo puso el
+  // usuario y ya se ve en el desplegable).
+  const lockedType = !isExplicitType ? itemType : undefined;
+
+  // La misma vista sin NADA filtrando. `type=todos` y no la ausencia de `type`:
+  // omitirlo devolvería el arranque por defecto, que vuelve a aplicar el
+  // preferido del onboarding — «Limpiar» dejaría el filtro puesto (issue #313).
+  const hasFilters = Boolean(itemType || status || search || genre);
+  function clearAllHref(): string {
+    const qs = new URLSearchParams({ tab: "todo", type: ALL_TYPES_PARAM });
+    if (sort !== "recent") qs.set("sort", sort);
+    if (showDropped) qs.set(SHOW_DROPPED_PARAM, "1");
+    return `/coleccion?${qs.toString()}`;
+  }
+
   // Enlace «Mostrar» de la nota: la MISMA vista más `?abandonados=1`. Se
   // construye aquí y no en el componente porque el componente es genérico y no
   // conoce los filtros de esta página.
@@ -250,6 +270,7 @@ export default async function CollectionPage({
             genres={genres}
             basePath="/coleccion"
             showTypeFilter
+            lockedType={lockedType}
             hideDroppedPref={hideDroppedPref}
             showDropped={showDropped}
             extraParams={{ tab: "todo" }}
@@ -267,6 +288,7 @@ export default async function CollectionPage({
               genre={genre}
               hideDropped={hideDropped}
               showDroppedHref={showDroppedHref()}
+              clearHref={hasFilters ? clearAllHref() : null}
               emptyTitle={tLibrary("emptyTitle")}
               emptyLabel={tLibrary("empty")}
               emptyCta={tLibrary("emptyCta")}
@@ -286,23 +308,22 @@ export default async function CollectionPage({
 
 // Cabecera de la rejilla de Colecciones (frame A): «N colecciones · M
 // títulos». Consulta propia, en Suspense aparte, para no bloquear el grid.
+//
+// El segundo número es el de títulos DENTRO de alguna colección, no el de la
+// biblioteca: decía «22 colecciones · 138 títulos» sobre una rejilla que sumaba
+// 2, con «136 títulos sin organizar» al pie de la misma pestaña. Ahora los dos
+// números del pie y el de aquí cierran la resta.
 async function CollectionsHeader({ userId }: { userId: string }) {
   const supabase = await createClient();
-  // Recuento ligero: `head:true` + `count:exact` no trae filas ni portadas —
-  // el grid (CollectionsGrid) es quien hidrata los abanicos, no este header.
-  const [{ count }, summary, t] = await Promise.all([
-    supabase
-      .from("collections")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId),
-    getLibrarySummary(supabase, userId),
+  const [overview, t] = await Promise.all([
+    getCollectionsOverview(supabase, userId),
     getTranslations("collection"),
   ]);
   return (
     <p className="font-mono text-xs tracking-wide text-muted-foreground">
-      {t("collectionsCount", { count: count ?? 0 })}
+      {t("collectionsCount", { count: overview.collections })}
       {" · "}
-      {t("titleCount", { count: summary.total })}
+      {t("collectedCount", { count: overview.titles })}
     </p>
   );
 }
@@ -360,6 +381,7 @@ async function LibraryGrid({
   limit,
   hideDropped,
   showDroppedHref,
+  clearHref,
   emptyTitle,
   emptyLabel,
   emptyCta,
@@ -373,11 +395,20 @@ async function LibraryGrid({
   limit?: number;
   hideDropped: boolean;
   showDroppedHref: string;
+  /**
+   * La misma vista sin búsqueda ni filtros. `null` = no hay ninguno puesto, y
+   * entonces cero resultados sí significa «tu biblioteca está vacía».
+   */
+  clearHref: string | null;
   emptyTitle: string;
   emptyLabel: string;
   emptyCta: string;
 }) {
   const supabase = await createClient();
+  const [tLibrary, tCollection] = await Promise.all([
+    getTranslations("library"),
+    getTranslations("collection"),
+  ]);
   const { items, hiddenDropped } = await getLibraryView(supabase, userId, {
     itemType,
     status,
@@ -389,19 +420,28 @@ async function LibraryGrid({
   });
 
   if (items.length === 0) {
+    // Con filtros puestos, «Tu biblioteca está vacía · Aún no has añadido nada ·
+    // Buscar algo» eran TRES líneas falsas a la vez sobre una biblioteca de 138
+    // obras, y el botón mandaba al catálogo común cuando lo que había que hacer
+    // era quitar el filtro. Cero resultados solo significa «vacía» cuando no hay
+    // nada filtrando.
+    const filtered = clearHref !== null;
     return (
       <div className="flex flex-col gap-3">
         <EmptyState
           glyph={<InboxIcon className="h-7 w-7" />}
-          title={emptyTitle}
-          message={emptyLabel}
+          title={filtered ? tLibrary("noMatchTitle") : emptyTitle}
+          message={filtered ? tCollection("noMatch") : emptyLabel}
           action={
             // `secondary`: la misma acción ya va en primario en la cabecera de
             // la página, y la regla es un primario por vista. Aquí el vacío
             // sigue explicando y ofreciendo; lo que no hace es duplicar el
             // naranja de algo que está 200px más arriba.
-            <Link href="/buscar" className={buttonVariants("secondary")}>
-              {emptyCta}
+            <Link
+              href={filtered ? clearHref : "/buscar"}
+              className={buttonVariants("secondary")}
+            >
+              {filtered ? tLibrary("seeEverything") : emptyCta}
             </Link>
           }
         />
