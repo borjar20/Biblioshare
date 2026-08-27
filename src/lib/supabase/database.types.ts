@@ -74,15 +74,18 @@ export type Database = {
           created_at: string
           editions_synced_at: string | null
           genres: string[] | null
+          google_books_volume_id: string | null
           hydrated_at: string | null
           id: string
           isbn: string | null
           openlibrary_work_key: string | null
           published_year: number | null
           publisher: string | null
+          repr_meta: Json | null
           synopsis: string | null
           title: string | null
           total_pages: number | null
+          wikidata_id: string | null
         }
         Insert: {
           author?: string | null
@@ -90,15 +93,18 @@ export type Database = {
           created_at?: string
           editions_synced_at?: string | null
           genres?: string[] | null
+          google_books_volume_id?: string | null
           hydrated_at?: string | null
           id?: string
           isbn?: string | null
           openlibrary_work_key?: string | null
           published_year?: number | null
           publisher?: string | null
+          repr_meta?: Json | null
           synopsis?: string | null
           title?: string | null
           total_pages?: number | null
+          wikidata_id?: string | null
         }
         Update: {
           author?: string | null
@@ -106,15 +112,18 @@ export type Database = {
           created_at?: string
           editions_synced_at?: string | null
           genres?: string[] | null
+          google_books_volume_id?: string | null
           hydrated_at?: string | null
           id?: string
           isbn?: string | null
           openlibrary_work_key?: string | null
           published_year?: number | null
           publisher?: string | null
+          repr_meta?: Json | null
           synopsis?: string | null
           title?: string | null
           total_pages?: number | null
+          wikidata_id?: string | null
         }
         Relationships: []
       }
