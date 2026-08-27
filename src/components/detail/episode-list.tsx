@@ -62,9 +62,9 @@ export function EpisodeList(props: EpisodeListProps) {
           {t("allSeasons")}
         </button>
 
-        <h3 className="font-serif text-[20px] font-semibold text-foreground">
+        <h2 className="font-serif text-[20px] font-semibold text-foreground">
           {t("season", { n: group.season })}
-        </h3>
+        </h2>
         <p className="mt-1.5 mb-2.5 flex items-center gap-1 font-mono text-[10.5px] text-muted-foreground">
           <span>{t("episodeCount", { count: stat.total })}</span>
           {stat.avg !== null && (
@@ -209,7 +209,7 @@ function EpisodeItem({
               {source === "mine" && episode.own.seenBefore && (
                 <span
                   title={tPasses("seenBefore")}
-                  className="shrink-0 rounded-full bg-muted-foreground/10 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground/70"
+                  className="shrink-0 rounded-full bg-muted-foreground/10 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground"
                 >
                   {tPasses("seenBefore")}
                 </span>

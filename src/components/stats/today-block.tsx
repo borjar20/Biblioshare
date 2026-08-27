@@ -128,7 +128,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
             </span>
             <Link
               href="/coleccion?status=in_progress"
-              className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.06em] uppercase text-accent hover:underline"
+              className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.06em] uppercase text-accent-ink hover:underline"
             >
               {t("seeAll", { count: focus.total })}
               <ChevronRightIcon className="h-3 w-3" />
@@ -138,6 +138,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
         entries={passes.map((pass) => ({
           id: pass.item.entryId,
           focusLabel: t("focusMini", { title: pass.item.title }),
+          announceLabel: t("focusedMini", { title: pass.item.title }),
           card: (
             <TodayCard
               pass={pass}

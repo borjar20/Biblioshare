@@ -212,6 +212,8 @@ skeletons son client-safe y el anuncio i18n va aparte.
 - **Acentos por tipo**: `lib/catalog/media-accent.ts` — libro `#a15a34`, película `#3f6b6e`,
   serie `#7a5676`. Las clases se escriben **enteras**, nunca interpoladas, para que el JIT de
   Tailwind las vea.
+  `.text` NO apunta a esos tres sino a su par de tinta (`--type-*-ink`): el color puro es de
+  gráfico (3:1) y como texto se quedaba en 3,64:1 sobre su propio tinte. Ver `DESIGN.md`.
 
 ## 6. Verificación
 

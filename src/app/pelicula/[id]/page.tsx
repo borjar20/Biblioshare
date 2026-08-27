@@ -423,6 +423,7 @@ async function MovieTabs({
   return (
     <ItemDetailTabs
       itemType="movie"
+      tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         community: tDetail("tabCommunity"),

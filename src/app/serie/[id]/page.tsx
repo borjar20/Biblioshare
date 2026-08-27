@@ -476,6 +476,7 @@ async function SeriesTabs({
   return (
     <ItemDetailTabs
       itemType="series"
+      tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         ...(hasEpisodes && { episodes: tDetail("tabEpisodes") }),

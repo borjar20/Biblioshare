@@ -28,6 +28,9 @@ colors:
   type-book: "#a15a34"
   type-movie: "#3f6b6e"
   type-series: "#7a5676"
+  type-book-ink: "#844a2b"
+  type-movie-ink: "#375e61"
+  type-series-ink: "#6e4d6a"
   event-highlight: "#456895"
   event-meetup: "#756747"
   map-itinerary-jump: "#5b8dbf"
@@ -210,6 +213,10 @@ existe en pareja claro/oscuro; el oscuro no se deriva, se declara.
 - **Triada de medio** — **Teja de Libro** (`#a15a34`), **Teal de Película** (`#3f6b6e`),
   **Violeta de Serie** (`#7a5676`): identifican **contenido**. Barras, chips, marcas de
   calendario, los tres lomos del logo. Prohibido usarlos para el rol de un control.
+  Los tres son de **gráfico** (3:1). Para **texto** existe su par oscuro —`type-book-ink`
+  `#844a2b`, `type-movie-ink` `#375e61`, `type-series-ink` `#6e4d6a`— porque el puro se queda
+  en 3,64:1 sobre su propio tinte al 10 %. Es a esos a los que apunta `MEDIA_ACCENT.text`;
+  mismo patrón que `accent`/`accent-ink` y `gold`/`gold-ink`.
 - **Cuarteto de estado** — **Arena Pendiente** (`#b3a894`), **Oro en Curso** (`#c98a2b`),
   **Oliva Terminado** (`#5c7052`), **Teja Abandonada** (`#b0492f`): el dot de estado y, el
   último, el rojo de error de formulario y del botón `danger`. No hay un segundo rojo.

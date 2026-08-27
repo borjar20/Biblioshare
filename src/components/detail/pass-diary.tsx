@@ -56,10 +56,15 @@ export function PassDiary({
 
   return (
     <div className="flex flex-col">
-      {/* `.h5` del frame: mono, versalitas, apagado (igual que Sesiones). */}
-      <h3 className="mb-[11px] label-section lg:mb-[15px]">
+      {/* `.h5` del frame: mono, versalitas, apagado (igual que Sesiones).
+          `h2` y no `h3`: el único encabezado por encima es el `h1` del título
+          de la obra, así que un `h3` saltaba un nivel — el índice de
+          encabezados es la forma en que un lector de pantalla se mueve por la
+          página (WCAG 1.3.1). Mismo nivel que `community-panel` e `info-panel`,
+          que son sus hermanos dentro de otra pestaña. */}
+      <h2 className="mb-[11px] label-section lg:mb-[15px]">
         {t("diaryTitle")}
-      </h3>
+      </h2>
 
       {passes.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("empty")}</p>
@@ -185,8 +190,12 @@ function PassCard({
       // activo (§2.13): sin un asidero propio, un getByText por ese texto
       // casaría con los dos y el e2e reventaría por modo estricto.
       data-testid="diary-entry"
-      className={`flex flex-col rounded-[10px] border border-border bg-surface-muted p-[13px] text-xs ${
-        isOld ? "opacity-80" : ""
+      // Los pases viejos se atenúan atenuando el PAPEL, no la tinta:
+      // `opacity-80` sobre la tarjeta entera bajaba su texto a 3,23:1 en claro
+      // y 3,89:1 en oscuro (medido), por debajo del 4,5:1 de WCAG 1.4.3.
+      // Rebajar el relleno da la misma jerarquía y SUBE el contraste.
+      className={`flex flex-col rounded-[10px] border border-border p-[13px] text-xs ${
+        isOld ? "bg-surface-muted/50" : "bg-surface-muted"
       }`}
     >
       <div className="mb-1.5 flex items-center gap-2">
