@@ -387,8 +387,15 @@ se gatean a colaborador ni se revoca el UPDATE** —que es lo que proponía el i
 la hidratación perezosa con el cliente de la petición de un usuario cualquiera, así que cerrarlas a
 secas repetiría el modo de fallo de #699. Lo que se prohíbe a un no-colaborador es **reescribir o
 borrar un valor ya puesto**; `null → valor` sigue abierto, que es lo único que hacen
-`hydrate-book.ts`, `hydrate-screen.ts` y `sync-editions.ts`. Reescribir sigue siendo de
-`collaborator+` (`resyncEditions`) y de las RPC, que entran por `app.hydrating`. **Aplicada en dev
+`hydrate-book.ts` y `hydrate-screen.ts`. Reescribir sigue siendo de `collaborator+` y de las RPC,
+que entran por `app.hydrating`.
+>
+> ⚠️ **Actualización del 2026-08-27 (§2.1quater).** Dos de los nombres que este párrafo citaba ya
+> no existen. **`sync-editions.ts` está borrado**: el sync masivo de ediciones murió, así que
+> `editions_synced_at` ya no la escribe nadie — la columna sigue en la tabla solo hasta la fase
+> destructiva. Y **`resyncEditions` se llama ahora `reevaluateRepresentation`**: en vez de poner
+> `editions_synced_at` a null pone **`hydrated_at`** a null y relanza la hidratación. Lo que el
+> párrafo dice del gate sigue siendo cierto; lo que cambia es quién escribe qué. **Aplicada en dev
 y verificada allí** (ataque bloqueado en las tres columnas; hidratación `null → valor` intacta);
 **prod PENDIENTE de aplicar** — no hay orden de despliegue que respetar, la restricción cae sobre
 caminos que el código no usa.
