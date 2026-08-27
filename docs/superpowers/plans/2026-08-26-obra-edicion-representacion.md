@@ -1773,12 +1773,23 @@ propósito y déjalo escrito.
       existe es un **`42703` en producción**, no una degradación. Inventario hecho el 2026-08-27
       (rehazlo antes de dropear, puede haber crecido):
 
-  - `src/app/importar/actions.ts:268` — `commitManualImportRow` (alta manual desde una fila del CSV
-    que no casó) escribe `isbn: row.isbn` en `books` y **nunca registra la edición**. Es la issue
-    [#910](https://github.com/borjar20/Biblioshare/issues/910). Hay que migrarlo al mismo camino que
-    el resto: crear la obra y registrar la edición con `register_book_edition`.
-  - **`register_manual_catalog_item`** escribe `p_isbn`/`p_publisher` en `books`. Ya está previsto
-    redefinirla en esta fase; hazlo **antes** del `drop`, no después.
+  Son **TRES** caminos, no dos, y son código duplicado entre sí (el comentario de uno dice
+  literalmente «misma forma por tipo que `commitManualImportRow`»). El primer inventario de este
+  plan citaba una línea atribuyéndola a la función equivocada; corregido tras la revisión de la
+  Task 14:
+
+  - **`src/lib/import/commit-row.ts:336-352`** — `commitManualImportRow` (alta manual desde una fila
+    del CSV que no casó): escribe `publisher` e `isbn` en `books` y **nunca registra la edición**.
+    Issue [#910](https://github.com/borjar20/Biblioshare/issues/910).
+  - **`src/app/importar/actions.ts:258-272`** — `resolvePendingRow` (la cola de revisión del
+    colaborador): **el mismo insert crudo**, y tampoco registra edición. Verificado además que la
+    RPC `resolve_pending_import` no toca `edition_id` en ningún punto. Este es el que faltaba.
+  - **`register_manual_catalog_item`** escribe `p_isbn`/`p_publisher` en `books`.
+
+  Los tres hay que migrarlos al camino único: crear la obra y registrar la tirada con
+  `register_book_edition`.
+  La redefinición de `register_manual_catalog_item` ya estaba prevista en esta fase: hazla **antes**
+  del `drop`, no después.
 
   Comando para rehacer el inventario:
 
