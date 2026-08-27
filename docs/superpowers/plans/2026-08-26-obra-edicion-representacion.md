@@ -22,6 +22,13 @@
 - Fases: 0 (backup) → A (migraciones aditivas) → B (código) → C (destructiva, SOLO tras verde en prod). No adelantar C.
 - Un solo `next dev` en puerto 3000; Playwright reutiliza el que haya.
 - Al terminar cada tarea: commit. Al terminar el plan: sincronizar `data-model.md`, `decisiones.md`, backlog e issues (Task 17).
+- **Toda comparación de nombres o títulos pasa por `isSameTitle` de `src/lib/catalog/title-match.ts`.**
+  Prohibido escribir una variante nueva a base de `normalizeTitleForComparison` + `includes`
+  bidireccional: ha sido un hallazgo bloqueante en dos tareas de este mismo plan, la segunda
+  reintroduciendo palabra por palabra el código que el commit anterior acababa de borrar.
+- **Los tests se validan por MUTACIÓN antes de darlos por buenos**: rompe la comprobación que el test
+  dice cubrir y confirma que el test falla. En este plan han aparecido ya varios tests que pasaban
+  igual con la implementación rota. Incluye la tabla de mutaciones en el informe de la tarea.
 
 ---
 
@@ -1082,7 +1089,7 @@ export async function ensureBookHydrated(
 
     // Entidad fiable = autor verificado (spec §6).
     const entity = entities.find(
-      (e) => author && e.authorNames.some((n) => authorLooselyMatches(n, author))
+      (e) => author && e.authorNames.some((n) => isSameTitle(n, author))
     ) ?? null;
     const qid = entity ? qidFromUri(entity.uri) : null;
 
@@ -1143,7 +1150,14 @@ export async function ensureBookHydrated(
 
 Helpers en el mismo fichero (código completo en implementación, comportamiento fijado aquí):
 - `pickField(fields, key, options)`: primera opción con `value` no vacío gana; guarda `{value, lang, source}`.
-- `authorLooselyMatches(a, b)`: `normalizeTitleForComparison`, contención bidireccional.
+- **Comparación de autor: usa `isSameTitle` de `src/lib/catalog/title-match.ts`.** NO escribas un helper
+  nuevo con `normalizeTitleForComparison` + contención bidireccional: esa forma exacta ya se ha
+  reintroducido DOS veces en este plan y las dos fue un defecto bloqueante (Task 6 y Task 7). Falla de
+  dos maneras: sin cota de longitud, «Ana» casa con «Susana Fortes» (la normalización pega las
+  palabras, así que la contención cruza fronteras de palabra); y un autor que normaliza a cadena vacía
+  («—», «...») casa con cualquiera, porque `x.includes("")` es siempre true. `isSameTitle` ya trae las
+  dos guardas (umbral 65% y rechazo de cadena vacía). Compara nombre a nombre, partiendo por comas,
+  para no romper el caso «autor, traductor».
 - `synopsisLang(text)`: heurística mínima — `"other"` si `null`; si no, `"en"` (OL casi nunca tiene sinopsis ES; no intentar detectar idioma por contenido — YAGNI, y un falso "es" bloquearía el upgrade de GB).
 - `type HydrateFields = Partial<Record<"title" | "cover" | "synopsis", { value: string; lang: ReprLang; source: ReprSource }>>`.
 
@@ -1671,7 +1685,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 1000));
     const entities = await searchInventaireEntities(book.title!);
     const entity = entities.find((e) =>
-      book.author && e.authorNames.some((n) => looselyMatches(n, book.author!))
+      book.author && e.authorNames.some((n) => isSameTitle(n, book.author!))
     );
     const qid = entity ? qidFromUri(entity.uri) : null;
     if (!qid) { plan.push({ id: book.id, title: book.title!, qid: null, action: "sin-match" }); continue; }
@@ -1687,7 +1701,7 @@ async function main() {
 main();
 ```
 
-(El bloque de `--apply` y `looselyMatches` se completan en la implementación con la misma semántica que Task 6/9; el ganador del merge se decide consultando `count(*)` de pases por obra — más pases gana, empate → `created_at` más antiguo.)
+(El bloque de `--apply` se completa en la implementación; la comparación de autor usa `isSameTitle` de `src/lib/catalog/title-match.ts`, igual que Task 6 y Task 9 —escribir un helper propio con contención bidireccional ha sido un defecto bloqueante dos veces—; el ganador del merge se decide consultando `count(*)` de pases por obra — más pases gana, empate → `created_at` más antiguo.)
 
 - [ ] **Step 2:** `npx tsx scripts/reconcile-wikidata.ts` (dry-run) contra **dev**. Revisar la tabla A MANO: ningún `merge-into` sospechoso.
 
