@@ -2974,6 +2974,11 @@ export type Database = {
         Args: { p_comment_id: string; p_details?: string; p_reason: string }
         Returns: string
       }
+      repr_lang_rank: { Args: { p_lang: string }; Returns: number }
+      repr_should_write: {
+        Args: { p_current: string; p_field: string; p_lang: string; p_meta: Json }
+        Returns: boolean
+      }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined

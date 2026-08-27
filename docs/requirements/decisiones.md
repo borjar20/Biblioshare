@@ -2067,3 +2067,43 @@ como la escala continua que es una tierlist.
   bookShellFromSearchResult(itemId, result))`. Se descartó la alternativa (guarda por texto de
   fuente, al estilo `after-guard.test.ts` de la #751) porque aquí SÍ hay una refactorización barata
   disponible; esa alternativa se reserva para invariantes que de verdad no admiten extracción.
+
+
+- **La regla de escritura de la representación se extrae a `repr_should_write`, implementación
+  ÚNICA** (2026-08-27, Task 9bis, migración `20260890`). Vivía inline dentro de `hydrate_book`
+  (`20260884`) y funcionaba; lo que la hizo insostenible fue la SEGUNDA escritora. Con
+  `hydrate_books_bulk` habría dos copias de la misma regla, y esa regla tiene bordes que ya
+  costaron un hallazgo cada uno —la entrada de `repr_meta` malformada se trata como PROTEGIDA y
+  no como desconocida, el empate de rango NO pisa, y el orden entre esas dos comprobaciones
+  importa—, así que las dos copias se desincronizarían en el primer arreglo y el que quedase
+  atrás sería el que escribe 87 filas de golpe. Se extrajo **sin cambiar ni un caso**: la regla
+  se verificó contra 270 combinaciones sin una sola divergencia con la v4 inline. Se descartó
+  dejarla como texto duplicado con un comentario «mantener en sync»: eso es exactamente lo que
+  no se cumple. Corolario para quien toque la política de idioma: **se toca en `repr_should_write`
+  y en ningún otro sitio.**
+
+- **`hydrate_books_bulk` deja `hydrated_at` en NULL a propósito** (2026-08-27, Task 9bis). El
+  lote de bibliografía de autor solo sabe título, autor, año y portada: no trae sinopsis,
+  géneros, páginas ni QID. La opción «natural» —marcar la obra como hidratada, igual que hace
+  `hydrate_book`— es justo la que reproduce el modo de fallo de #730: el curador no reintenta lo
+  que ya está marcado hidratado, así que la obra se quedaría a medias PARA SIEMPRE, y con el
+  cooldown de `needsRepresentationReview` (`REVIEW_COOLDOWN_DAYS = 30`) ni siquiera se
+  reconsideraría antes de un mes. Dejándolo NULL, la ficha hace su trabajo completo en la primera
+  visita, y como todo es fill-or-upgrade **mejora** lo que el lote escribió en vez de chocar con
+  ello. Esto solo es seguro porque existe `repr_meta`: con la `hydrate_book` anterior, hidratar
+  en lote habría congelado un título posiblemente inglés sin forma de corregirlo. Consecuencia
+  asumida: `hydrated_at is null` sigue siendo el marcador de «sin procesar», y una fila tocada
+  por el lote se cuenta como no procesada — que es lo correcto, porque le falta más de la mitad.
+
+- **El backfill de shells de libro pasa de token de usuario a `service_role`** (2026-08-27, Task
+  9bis, `scripts/backfill-book-shells.ts`). El brief original decía «token de usuario, como la
+  ficha (#751)». Ya no es posible ni deseable: `hydrate_books_bulk` **no acepta `auth.uid()`** —
+  no tiene el guard de sesión, tiene el del GUC `role`, y con `authenticated` lanza. Y no es un
+  detalle de permisos que se pudiera revertir: la RPC es de `service_role` porque el trigger
+  `trg_stamp_books_repr_manual` distingue curación de automatismo por la presencia de sesión, así
+  que un escritor MASIVO corriendo con el cliente de la petición marcaría `source:'manual'` el
+  catálogo ENTERO, en silencio y sin vuelta atrás para todo automatismo posterior. **Regla
+  general que sale de aquí: todo escritor masivo de `books` va con `service_role`; es requisito,
+  no preferencia.** El script exige por tanto `SUPABASE_SERVICE_ROLE_KEY`, y su guard de entorno
+  se comprueba ANTES de construir el cliente (si no, `createClient` lanza `supabaseUrl is
+  required` en el import y el mensaje en castellano no llega a verse nunca).

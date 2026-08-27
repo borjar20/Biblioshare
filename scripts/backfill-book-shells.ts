@@ -41,9 +41,8 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchAuthorWorks } from "../src/lib/catalog/openlibrary/author-books";
 
 const APPLY = process.argv.includes("--apply");
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(url, key);
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Open Library no tiene aquí ni caché de Next ni rate limit declarado, pero sus
 // recortes bajo carga están medidos (39/37/34/33 obras en cuatro llamadas
@@ -62,11 +61,17 @@ function decir(real: string, seco: string) {
 type Shell = { id: string; openlibrary_work_key: string };
 
 async function main() {
+  // El guard va ANTES de `createClient`, y el cliente se crea AQUÍ y no a nivel
+  // de módulo: `createClient(url, key)` lanza `supabaseUrl is required` en el
+  // import, así que con el entorno a medias el usuario veía ese error en inglés
+  // —de una librería que no ha llamado— en vez de este mensaje, y el guard no
+  // llegaba a ejecutarse nunca.
   if (!url || !key) {
     throw new Error(
       "Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el entorno."
     );
   }
+  const supabase = createClient(url, key);
 
   // 1. Las shells vacías. `title is null` es el síntoma que ve el usuario
   //    («Sin título»); sin `openlibrary_work_key` no hay por dónde casarlas.

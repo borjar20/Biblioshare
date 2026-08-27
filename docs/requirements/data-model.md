@@ -154,10 +154,8 @@ son de una tirada, no de la obra.
 Las escrituras de esos peldaños pasan por RPCs `SECURITY DEFINER`, no por UPDATE directo:
 **`hydrate_book`** (`20260715_book_hydration.sql`; `revoke` a `anon` en
 `20260715_book_hydration_revoke_anon.sql`; firma ampliada en
-`20260871_hydrate_book_title_author.sql`) rellena
-**título/autor/año**/sinopsis/géneros/portada **solo donde la fila estaba vacía** — cualquier
-`authenticated` completa una obra hueca al abrir su ficha sin poder pisar lo que un colaborador
-curó a mano — y **`register_book_edition`**
+`20260871_hydrate_book_title_author.sql`; **reescrita a fondo por la rama de representación —
+ver §2.1ter**) escribe **título/autor/año**/sinopsis/géneros/portada, y **`register_book_edition`**
 (`20260714_editions_c_register.sql`) registra la tirada concreta en `book_editions`. En dev
 existen además **`hydrate_movie` / `hydrate_series` / `hydrate_screens_bulk`** y
 **`register_catalog_item` / `register_catalog_items_bulk`** con el mismo patrón, pero **sin
@@ -165,6 +163,14 @@ fichero de migración en el repo** (verificadas contra `pg_proc` el 2026-08-19 �
 libros tiene fichero; las de pantalla y registro se rescataron después en
 `20260818_catalog_c_hydrate_screen.sql` y `20260818_catalog_e_register.sql`). Las seis
 `hydrate_*`/`register_catalog_*` ya llevan `pg_temp` desde el barrido de #726 (§8).
+
+⚠️ **`hydrate_book` ya NO es la de ese párrafo, y lo que decía aquí era exactamente lo
+CONTRARIO de lo que hace.** No «rellena solo donde la fila estaba vacía»: es
+**fill-or-upgrade** por rango de idioma (`20260883`) — una candidata española PISA un título
+inglés. Y no la ejecuta «cualquier `authenticated`»: es **solo `service_role`** desde
+`20260884`; con `authenticated` cualquiera reescribía el catálogo COMPARTIDO. Lo mismo vale
+para el bloque «FILL-ONLY pura» de §2.1, que quedó superado para libros. **Antes de tocar
+nada de hidratación de libros, §2.1ter.**
 
 `people` + `credits` guardan autoría/dirección/reparto, también polimórfico por
 `(item_type, item_id)`. `credits` tiene índice **único** sobre
@@ -334,17 +340,28 @@ La pieza se probó con películas y a los libros les faltaban las dos mitades:
 distinta, `create or replace` **no reemplaza: crea una sobrecarga**, y PostgREST se queda con
 dos `hydrate_book` sin saber cuál llamar.
 
-**Semántica de la hidratación: FILL-ONLY pura, no "autoritativa-si-no-hidratada".** El spec
+**Semántica de la hidratación: FILL-ONLY pura, no "autoritativa-si-no-hidratada".**
+⚠️ **Este bloque vale para `hydrate_movie`/`hydrate_series`, NO para `hydrate_book`, que
+dejó de ser fill-only el 2026-08-26 (§2.1ter).** Se conserva porque explica de dónde venía la
+regla. El spec
 original (§3c) pedía que una shell sin hidratar (`hydrated_at IS NULL`) aceptara una escritura
 AUTORITATIVA (pisando cualquier valor) y que, ya hidratada, pasara a fill-only. Verificado
 contra el modelo implementado, esa distinción es innecesaria e incompatible: con alta =
 `register_catalog_item` + INSERT revocado, una shell **nace siempre vacía** — no hay ningún
 valor "envenenado" que pisar en la primera hidratación — y el trigger de curación
 (`enforce_catalog_edit_collaborator_only`) ya impide que una hidratación automática sobrescriba
-un valor→valor curado por un colaborador. `hydrate_movie`/`hydrate_series`/`hydrate_book` son,
-pues, **fill-only puro** en las tres tablas: solo rellenan columnas `NULL`/vacías, nunca pisan
-un valor existente. `hydrate_book` no cambia de comportamiento observable (ya era fill-only),
-pero el motivo pasa a ser explícito: se alinea con sus hermanas en vez de ser una regla aislada.
+un valor→valor curado por un colaborador. `hydrate_movie`/`hydrate_series` son,
+pues, **fill-only puro** en sus dos tablas: solo rellenan columnas `NULL`/vacías, nunca pisan
+un valor existente.
+
+> **Y `hydrate_book` dejó de serlo.** Este párrafo llegó a decir que la RPC de libros era
+> «fill-only puro» y que «no cambia de comportamiento observable (ya era fill-only)». Cierto
+> cuando se escribió; **falso desde `20260883`**: la v3+ PISA un valor existente cuando la
+> candidata trae mejor rango de idioma, y lo que protege la curación ya no es «no pisar
+> nunca» sino la marca `source:'manual'` de `repr_meta` (§2.1ter). Esa premisa caducada no es
+> teórica: se usó como justificación en dos sitios y rompió los dos — el bypass
+> `app.hydrating` de `20260818` (arreglado en `20260884`, C1) y el alta manual, que nacía sin
+> protección y perdía título y portada en la primera hidratación (arreglado en `20260885`).
 
 **El bug preexistente que #674 destapó y arregla ([#699](https://github.com/borjar20/Biblioshare/issues/699)).**
 El trigger `enforce_catalog_edit_collaborator_only` (preexistente, gate de curación manual)
@@ -437,7 +454,17 @@ colaborador, no los que manda un proveedor. Eso obliga a que valide en servidor,
 `hydrated_at` nace **NULL** a propósito: la fila manual entra en el curador de la ficha como
 cualquier otra — `ensureBookHydrated` ya contempla el caso «alta manual» (resuelve
 `openlibrary_work_key` por ISBN, y si no hay, la marca hidratada para no reintentarlo cada
-visita) — y `hydrate_book` es fill-only, así que nunca pisa lo que el colaborador escribió.
+visita).
+
+> ⚠️ **La razón que este párrafo daba —«y `hydrate_book` es fill-only, así que nunca pisa lo
+> que el colaborador escribió»— dejó de ser cierta con `20260883`,** y la consecuencia se
+> midió en dev con la RPC real y una cuenta colaboradora real: el alta manual nacía **sin
+> `repr_meta`** (rango 3) y la primera hidratación con una candidata española DESTRUÍA el
+> título y la portada tecleados. Desde `20260885` la RPC escribe `repr_meta` con
+> `source:'manual'` para `title` y —si viene— `cover` **en el mismo INSERT**, y es esa marca,
+> no el «fill-only», lo que protege lo curado. `hydrated_at` sigue naciendo NULL por la
+> primera mitad de la razón, que sí se sostiene: la ficha tiene que completar la obra.
+> Ver §2.1ter.
 
 > **Estado: aplicada y verificada en DEV y en PROD el 2026-08-26**, contra objetos reales
 > (`pg_proc`, `has_function_privilege`) y nunca contra `list_migrations`. `md5(prosrc)`
@@ -457,6 +484,229 @@ visita) — y `hydrate_book` es fill-only, así que nunca pisa lo que el colabor
 > `execute` sobre ellas en dev y en prod — inofensivo hoy (el `auth.uid() is null` las corta)
 > pero es defensa en profundidad que falta sobre dos funciones que se saltan RLS. Issue
 > [#831](https://github.com/borjar20/Biblioshare/issues/831).
+
+### 2.1ter Representación de obra: `repr_meta` y la regla de escritura (dev, verificado 2026-08-27)
+
+**Esta subsección MANDA sobre lo que §2 y §2.1 dicen de `hydrate_book`.** Diez migraciones
+(`20260882`…`20260891`) cambiaron a fondo cómo se escribe el catálogo de libros, y lo que
+quedaba escrito antes no estaba incompleto: decía lo CONTRARIO.
+
+**El problema que resuelve.** OpenLibrary y Google Books devuelven la misma obra en varios
+idiomas y no marcan cuál es la buena. Con la regla vieja, la primera hidratación que llegase
+congelaba lo que trajera —normalmente inglés— y no había forma de mejorarlo después, porque
+«no pisar nunca un valor» también prohíbe mejorarlo. La regla nueva no es «no pisar» sino
+**pisar SOLO hacia mejor idioma, y jamás lo curado a mano**. Para eso hay que guardar, junto a
+cada valor representable, de dónde salió y en qué idioma está.
+
+#### Las columnas (`20260882_repr_a_columns.sql`)
+
+| Columna | Qué es |
+|---|---|
+| `books.repr_meta` | `jsonb`. Procedencia por campo: `{"title":{"lang":"es","source":"openlibrary"},"cover":…,"synopsis":…,"pages":{"source":…}}`. `lang`: `es` \| `en` \| `other` \| `unknown`. `source`: `openlibrary` \| `google_books` \| `wikidata` \| `manual` |
+| `books.google_books_volume_id` | `text`, índice **único sin predicado** (`books_google_books_volume_id_key`) |
+| `books.wikidata_id` | `text`, índice **único sin predicado** (`books_wikidata_id_key`). Ancla de identidad ENTRE idiomas |
+
+Los únicos van **sin predicado**, mismo criterio que `books_openlibrary_work_key_key`: los NULL
+no chocan entre sí y `ON CONFLICT` los necesita únicos.
+
+Ninguna de las tres lleva grant de cliente: **`authenticated` no puede hacer UPDATE de
+`repr_meta`.** No es un olvido — es lo que obliga a que la marca `manual` la ponga un trigger y
+no una server action.
+
+`20260882` hizo además un **backfill**: toda fila con valor quedó en
+`{"lang":"unknown","source":"openlibrary"}`, o sea **rango 3, mejorable (= pisable) por
+cualquier candidata `es`/`en`/`other`**. Limitación asumida en el spec §7: la curación manual
+anterior a esa migración es indistinguible de un valor de proveedor.
+
+⚠️ **`repr_meta is null` NO significa «fila sin procesar».** El marcador de sin procesar sigue
+siendo **`hydrated_at is null`**, y eso no ha cambiado. `repr_meta` NULL significa solo que
+ningún campo representable tiene procedencia registrada: una shell recién nacida de
+`register_catalog_item`/`_bulk` (que no escriben esa columna), o una fila anterior al backfill
+que tenía **todos** los campos representables vacíos. Y desde `20260885` un alta manual **nunca**
+nace con NULL aquí. En dev, el 2026-08-27, 0 de 397 filas de `books` tienen `repr_meta` NULL.
+
+#### La regla vive en UN sitio: `repr_should_write` (`20260890`)
+
+`repr_should_write(p_current text, p_meta jsonb, p_field text, p_lang text) returns boolean` —
+`immutable`, `search_path = public, pg_temp`, **solo `service_role`**. Es la **ÚNICA**
+implementación de la regla de escritura, y la llaman las dos RPC: `hydrate_book` y
+`hydrate_books_bulk`. Hasta `20260890` vivía copiada dentro de `hydrate_book`; con una segunda
+escritora serían dos copias, y dos copias se desincronizan en el primer arreglo.
+
+Se apoya en `repr_lang_rank(p_lang)` (`20260883`, endurecida en `20260884`):
+**`es`=0 < `en`=1 < `other`=2 < cualquier otra cosa=3.** NULL, `'fr'`, `'es-ES'` y `'spa'` caen
+todos en 3 a propósito: rellenan un hueco vacío, nunca pisan un valor de idioma conocido.
+También `immutable`, `public, pg_temp` y **solo `service_role`**.
+
+La tabla de verdad completa, para no tener que reconstruirla leyendo el `case`:
+
+| entrada de `repr_meta` para ese campo | valor actual vacío | valor actual con contenido |
+|---|---|---|
+| ausente | escribe | escribe si `rank(nuevo) < 3` |
+| **malformada** (no es un objeto) | escribe | **NO escribe** |
+| objeto con `source = 'manual'` | **NO escribe** | **NO escribe** |
+| objeto, cualquier otro `source` | escribe | escribe si `rank(nuevo) < rank(guardado)` |
+
+Dos bordes que costaron un hallazgo cada uno y que **no** son arbitrarios:
+
+- **El empate de rango NO pisa.** Es `<`, no `<=`: dos candidatas españolas no se pelean por la
+  fila, gana la primera que llegó.
+- **Entrada malformada = PROTEGIDA, no desconocida.** Con `repr_meta = '{"title":"manual"}'` (un
+  escalar donde debía haber un objeto), `-> 'source'` daba NULL y el guard fallaba **ABIERTO**.
+  Se trata como rango −1, imposible de mejorar: no sabemos de dónde salió ese valor y ante la
+  duda no se pisa. El hueco vacío sí se rellena —eso no destruye nada— y de paso reescribe la
+  entrada bien formada, así que se auto-cura. **El orden importa: esta comprobación va ANTES
+  que la de `manual`.**
+
+#### `hydrate_book` v5 — una obra, desde su ficha
+
+`hydrate_book(p_book_id uuid, p_fields jsonb, p_genres text[], p_published_year integer,
+p_total_pages integer, p_pages_source text, p_wikidata_id text, p_author text) returns void`.
+`SECURITY DEFINER`, `search_path = public, pg_temp`. Migraciones `20260883` (v3) → `20260884`
+(v4) → `20260890` (v5, que solo saca la regla a `repr_should_write`).
+
+🔒 **SOLO `service_role`** (`20260884`, hallazgo C1). Este es el punto que la doc vieja tenía
+del revés: no es que «cualquier `authenticated` complete una obra hueca al abrir su ficha» —
+es que con `authenticated` **cualquier cuenta reescribía el catálogo COMPARTIDO**, porque
+`app.hydrating='on'` hace que `enforce_catalog_edit_collaborator_only` devuelva `new` **antes**
+de mirar el rol, y ese bypass (`20260818`) se autorizó con el argumento textual «la RPC es
+fill-only y no pisa nada», premisa que v3 rompió. Agravante: con el backfill dejando todo en
+rango 3, bastaba declarar `"lang":"es"` para pisar cualquier fila. Reproducido en dev con
+`set local role authenticated` y un perfil `role='user'`.
+
+Y por eso **desapareció el `auth.uid() is null → raise`**: con `service_role` no hay
+`auth.uid()`, así que ese guard fallaría SIEMPRE para el único invocador legítimo. Lo sustituye
+la comprobación del GUC **`role`** —el que fija PostgREST con `set local role`—, porque dentro
+de una `SECURITY DEFINER` `current_user`/`session_user` valen el **dueño** (`postgres`), no
+quien llama. `role = 'none'`/vacío (conexión directa de mantenimiento, sin `set role`) se
+acepta solo si ese `session_user` es miembro de `service_role`, para no dejar la función
+inejecutable. El grant es la primera barrera; esto es defensa en profundidad que además deja
+el motivo escrito en el error.
+
+Qué escribe, y cómo:
+
+- **`title` / `cover` / `synopsis`** — fill-or-upgrade vía `repr_should_write`. Un `source`
+  fuera de `openlibrary|google_books|wikidata` **rechaza** la escritura (la procedencia es un
+  hecho verificable); un `lang` ausente o fuera del vocabulario **no** rechaza, se normaliza a
+  `unknown` (el idioma es una heurística). Truncados a 300 / 2000 / 5000.
+- **`author` / `published_year` / `genres` / `total_pages`** — **fill-only de siempre**: no
+  tienen dimensión de idioma. `total_pages` solo entre 1 y 20000, y estampa
+  `repr_meta.pages.source`. `author` volvió en `20260884` (I6): v3 lo había perdido, y como la
+  RPC marca `hydrated_at` igualmente, un libro hidratado desde la ficha se quedaba con
+  `author = NULL` **para siempre** — recaída exacta de #730.
+- **`hydrated_at = now()` incondicional**, aunque no haya cambiado nada. Minor conocido y
+  asumido: con la RPC restringida a `service_role`, su vector de abuso desapareció.
+- **`wikidata_id` solo `null → valor`.** Si el QID ya lo tiene OTRA obra, la `unique_violation`
+  se traga y la fila se queda sin QID; lo resuelve la fusión cobarde (§2.2). **La hidratación
+  nunca destruye por su cuenta.**
+
+#### `hydrate_books_bulk` — la bibliografía de un autor, en lote
+
+`hydrate_books_bulk(p_rows jsonb) returns void`. `SECURITY DEFINER`, `public, pg_temp`, **solo
+`service_role`** con el mismo guard del GUC `role`. Migración `20260890`, endurecida por
+`20260891`.
+
+Nace de un dato medido **en prod** el 2026-08-26: abrir la ficha de Brandon Sanderson creó 87
+créditos de libro y dejó **61 filas de `books` completamente vacías** —el 23% del catálogo
+entero de producción (268 libros), todas de esa única visita—, que la ficha pintaba como «Sin
+título». La causa no era falta de datos: `fetchAuthorWorks` los traía y
+`findOrCreateCatalogItemsBulk` los tiraba.
+
+Cada elemento de `p_rows` es
+`{book_id, title, title_lang, author, cover_url, cover_lang, published_year}`. Escribe **solo
+título / autor / año / portada**, fill-or-upgrade vía `repr_should_write`, y **sin UPDATE si no
+cambió nada** (una segunda pasada no debe generar 87 versiones nuevas de fila).
+
+⚠️ **NO toca `hydrated_at`, y es deliberado.** El lote no trae sinopsis, géneros, páginas ni
+QID. Si marcara la obra como hidratada, la ficha no completaría nunca el resto — y con el
+cooldown de `needsRepresentationReview` (`REVIEW_COOLDOWN_DAYS = 30`) tardaría 30 días en
+reconsiderarlo. Dejándolo NULL, la ficha hace su trabajo completo en la primera visita y, como
+todo es fill-or-upgrade, **MEJORA** lo que el lote escribió en vez de chocar con ello.
+
+**Ninguna fila mala tumba el lote:**
+
+| campo malo | qué pasa |
+|---|---|
+| `book_id` ausente, vacío o **que no sea un uuid** | se salta **esa fila** (`20260891`) |
+| `book_id` que no existe en `books` | se salta esa fila |
+| `published_year` que no es número JSON, o fuera de `[-4000, 2200]` | se ignora **ese campo** |
+| `title_lang` / `cover_lang` fuera de `es｜en｜other` | se ignora **ese campo** |
+
+`book_id` era el único sin guarda hasta `20260891`: `(r ->> 'book_id')::uuid` reventaba con
+`22P02 invalid input syntax for type uuid` y, sin bloque de excepción, abortaba la función
+entera — 87 libros perdidos por uno malo, justo lo que la cabecera de `20260890` declaraba que
+no podía pasar. No era alcanzable con los llamadores de hoy (ambos mandan ids leídos de
+`books.id`), pero el argumento con el que se blindaron los otros campos es el mismo y no
+depende del llamador de hoy: **PostgREST no valida NADA de lo que va dentro de un `jsonb`**, a
+diferencia de un parámetro `uuid` declarado, que rechazaría la llamada antes de entrar.
+
+⚠️ **Ojo a una asimetría a propósito: en el lote, un `*_lang` fuera del vocabulario RECHAZA el
+campo; en `hydrate_book` se normaliza a `unknown`.** No es una incoherencia: en el camino del
+lote el valor lo pone código nuestro (`normalizeAuthorWorks`), así que un `lang` inesperado
+significa que algo está roto, no que el idioma se desconozca.
+
+#### Quién estampa `source:'manual'`: el trigger `trg_stamp_books_repr_manual`
+
+`BEFORE UPDATE` en `books`, función `stamp_repr_manual_on_curation()` (`20260884`, endurecida
+en `20260885`). Si una persona **autenticada** cambia `title`/`cover_url`/`synopsis` **fuera de
+`app.hydrating`**, estampa `{"source":"manual"}` en la entrada de ese campo; y si el campo se
+**vacía**, BORRA la entrada — la procedencia describe el valor que hay, y estampar `manual`
+sobre un hueco lo cerraría para siempre, incluso para el simple relleno.
+
+Por qué un trigger y no las actions de curación: `authenticated` no tiene grant de UPDATE sobre
+`repr_meta`, así que **las actions no pueden escribirla** (y de hecho no la tocan nunca);
+un `BEFORE` trigger, en cambio, modifica `NEW` sin que Postgres compruebe privilegios de
+columna. De regalo, es imposible de olvidar el día que alguien añada un campo curable.
+
+**Falla CERRADO: sin `auth.uid()` no estampa nada** (`20260885`). Las DOS comprobaciones
+(`app.hydrating` **y** `auth.uid()`) están a propósito. La señal fiable no es el flag —que se
+puede olvidar— sino la sesión: la curación SIEMPRE la hace una persona; un automatismo con
+`service_role` no tiene `auth.uid()`. Sin ese cierre, al primer escritor masivo que olvidara el
+`set_config` el trigger marcaría `manual` el **catálogo ENTERO**, en silencio y de forma
+irreversible para todo automatismo posterior. **Corolario que no es una preferencia de estilo:
+todo escritor masivo de `books` va con `service_role`** — el guard es `auth.uid()`, no «es un
+automatismo», así que un bulk que corriera con el cliente de la petición SÍ marcaría `manual`.
+
+**No hereda el `lang` viejo** (`20260885`, hallazgo M): sobre un título curado en castellano
+quedaba `{"lang":"en","source":"manual"}` — inerte (el guard corta antes de mirar el rango)
+pero MENTIRA, y el comentario de la columna dice que ese campo ES el idioma del valor.
+`repr_lang_rank(NULL) = 3` deja el comportamiento idéntico.
+
+**Orden de los `BEFORE` triggers, que se ejecutan por orden ALFABÉTICO de nombre:**
+`trg_enforce_books_edit_collaborator_only` (`e`) corre PRIMERO,
+`trg_stamp_books_repr_manual` (`s`) DESPUÉS. Es el orden que se quiere: si el gate de
+colaborador va a rechazar la edición, no se estampa nada. Y el estampado no puede reactivar ese
+gate, porque `repr_meta` no está entre las columnas que vigila (`20260878`).
+
+#### El alta manual nace ya protegida (`20260885`)
+
+`register_manual_catalog_item`, **en la rama de libro y en el MISMO INSERT**, escribe
+`repr_meta` con `source:'manual'` para `title` y —solo si viene— `cover`. Sin `lang`: nadie ha
+declarado en qué idioma tecleó el colaborador, y `repr_lang_rank(NULL)=3` da igual porque
+`source='manual'` corta antes de mirar el rango. **No** se hace con un UPDATE posterior dentro
+de la función: ese UPDATE sí dispararía el trigger, pero abre una ventana entre INSERT y UPDATE
+y hace depender el alta de un trigger en vez del dato. Solo la rama de libro: `repr_meta` existe
+únicamente en `books`, y `movies`/`series` quedan exactamente igual.
+
+> El `md5(prosrc)` `40625dcf47cd8902cd662a005fd4bf78` que §2.1bis registra como idéntico en dev
+> y prod **ya no vale para dev**: `20260885` redefinió la función entera (dev, 2026-08-27:
+> `95ea60c5d6bebc0f72a6d45e1509396e`). Prod no se ha reverificado en esta rama.
+
+#### Estado
+
+> **Aplicadas y verificadas en DEV el 2026-08-27**, contra objetos reales (`pg_proc.proacl`,
+> `pg_proc.proconfig`, `col_description`) y nunca contra `list_migrations`. Las cinco funciones
+> —`hydrate_book`, `hydrate_books_bulk`, `repr_should_write`, `repr_lang_rank`,
+> `stamp_repr_manual_on_curation`— tienen `proacl = {postgres=X/postgres,
+> service_role=X/postgres}` (ni `anon` ni `authenticated`, con `anon` **nombrado** en el
+> `revoke` por #831) y `proconfig = {"search_path=public, pg_temp"}`.
+>
+> **PROD: sin verificar.** Esta rama no se ha desplegado y la lectura de producción no se hizo
+> en esta sesión. Antes de aplicar nada de aquí a prod, leer el aviso de la issue
+> [#894](https://github.com/borjar20/Biblioshare/issues/894): sobre las filas que dejó el
+> backfill de `20260882` en rango 3, el lote **sí pisa** título y portada con candidatas de
+> rango 2 (`other`, que puede ser cualquier idioma). Es la semántica decidida, pero el efecto
+> pasa de «una ficha» a «87 libros por cada visita a una ficha de autor».
 
 ### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev, verificado 2026-08-27)
 

@@ -47,7 +47,9 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * lo uno ni lo otro. Ese camino se queda en `findOrCreateCatalogItem`.
  *
  * NUNCA lanza: el llamador es un render de lectura. Un fallo (incl. "sin
- * sesión" — la RPC exige `auth.uid()` y lanza si no hay— o cualquier error de
+ * sesión" — `register_catalog_items_bulk` sí exige `auth.uid()` y lanza si no
+ * hay; la hidratación de libro NO, va por `service_role` desde 20260890 y lo
+ * que rechaza es cualquier invocador que no lo sea — o cualquier error de
  * red) se registra con `console.error` y ese tipo se devuelve sin resolver;
  * el resto de tipos sigue su camino porque cada uno corre en su propio
  * try/catch dentro del `Promise.all`.
