@@ -1395,7 +1395,7 @@ Actualizar el comentario de cabecera del módulo, que hoy afirma «Los libros SO
   3. Casar por `openlibrary_work_key` con las shells vacías y llamar a `hydrate_books_bulk` en tandas de 50.
   4. Las shells vacías que no cuelguen de ninguna persona con clave OL (hoy: cero) se listan al final para revisión manual.
 
-  La RPC exige `auth.uid()`, así que el script se autentica con un **token de usuario** (env `BIBLIOSHARE_ACCESS_TOKEN`), no con service role — es el mismo motivo por el que la ficha usa `createTokenClient` (#751).
+  La RPC es **solo para `service_role`** (decisión de la revisión de Task 2, ver «Endurecimiento» más abajo), así que el script usa `SUPABASE_SERVICE_ROLE_KEY` de `.env.local` — el mismo cliente que ya usa para leer. No hace falta ningún token de usuario.
 
 - [ ] **Step 10: Ejecutar el backfill** en dev, luego en prod. Verificar en prod:
 
@@ -1781,6 +1781,32 @@ gh issue create --label "area:catalogo,tipo:cobertura,P2" --title "Cobertura del
 - [ ] **Step 5:** `git worktree list` limpio, un solo dev server, commit final y PR según `superpowers:finishing-a-development-branch`.
 
 ---
+
+## Endurecimiento decidido en la revisión de Task 2 (2026-08-27) — vincula a Tasks 9 y 9bis
+
+La revisión de Task 2 encontró, y el controlador confirmó reproduciéndolo en dev, que
+`hydrate_book` v3 permitía a **cualquier `authenticated` con rol `user` reescribir el catálogo
+compartido**: el bypass `app.hydrating` salta el trigger de curación, y ese bypass se había
+autorizado con el argumento «la RPC es fill-only y no pisa nada» — premisa que fill-or-upgrade
+rompe. Con el backfill de Task 1 dejando todas las filas en `lang:'unknown'` (rango 3), bastaba
+declarar `"lang":"es"` para pisar cualquier libro.
+
+**Dos decisiones del dueño, ya implementadas en `20260884_repr_c_hydrate_hardening.sql`:**
+
+1. **Las RPC de hidratación de libros son SOLO para `service_role`.** `authenticated` pierde el
+   execute. El precedente es #725: las escrituras que el servidor deriva del proveedor, sin un
+   solo campo del cliente, las respalda el servidor. Consecuencias que estas tasks DEBEN aplicar:
+   - **Task 9:** `ensureBookHydrated` llama a `hydrate_book` con **`createServiceRoleClient()`**,
+     no con el cliente de la petición ni con `createTokenClient`. El resto de la función (lecturas,
+     `openlibrary_work_key`, `google_books_volume_id`) sigue como esté especificado.
+   - **Task 9bis:** `hydrate_books_bulk` nace igualmente **solo para `service_role`**, y la rama de
+     libros de `findOrCreateCatalogItemsBulk` la invoca con el cliente de service role. Encaja con
+     que `hydratePersonCredits` ya escribe `credits` con `createServiceRoleClient()` desde #725.
+   - **Task 15 / backfill:** el script usa la service role key, sin token de usuario.
+2. **La curación se marca sola.** Un trigger `BEFORE UPDATE` en `books` estampa
+   `repr_meta[campo].source='manual'` cuando una columna de representación cambia FUERA de
+   `app.hydrating`. Sin grants nuevos y sin tocar las actions de edición: ningún camino de curación
+   puede olvidarse de marcar la procedencia, ni ahora ni cuando se añada un campo curable.
 
 ## Camino de la ficha de AUTOR (`/persona/[id]`) — qué cambia y qué no
 
