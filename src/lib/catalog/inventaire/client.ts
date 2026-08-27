@@ -3,7 +3,11 @@
 // que «Words of Radiance» y «Palabras Radiantes» son la misma obra. Dependencia
 // BLANDA: cualquier fallo degrada a [] y la búsqueda sigue sin colapso.
 const API = "https://inventaire.io/api";
+// Los QIDs de Wikidata son estables durante meses: una hora de caché evita
+// pegarle a Inventaire en cada tecla sin arriesgar datos obsoletos.
 const REVALIDATE_SECONDS = 3600;
+// Dependencia BLANDA (ver arriba): 4s es margen de sobra para una API externa
+// sin bloquear la búsqueda si Inventaire no contesta.
 const FETCH_TIMEOUT_MS = 4000;
 const MAX_ENTITIES = 5;
 
@@ -50,6 +54,11 @@ export async function searchInventaireEntities(query: string): Promise<Inventair
     );
     if (!works?.entities) return [];
 
+    // SEGUNDA ronda de `by-uris`, aparte, porque la respuesta de la primera
+    // (las obras) trae el autor como URI en `wdt:P50` (una referencia, no el
+    // nombre): hay que resolver esa URI contra la propia API de entidades para
+    // obtener su label. No hay forma de pedir "tráeme la obra con el autor ya
+    // resuelto" en una sola llamada.
     const authorUris = new Set<string>();
     for (const entity of Object.values(works.entities)) {
       for (const a of (entity.claims?.["wdt:P50"] ?? []) as string[]) {
@@ -69,7 +78,10 @@ export async function searchInventaireEntities(query: string): Promise<Inventair
 
     return uris.flatMap((uri) => {
       const raw = works.entities?.[uri];
-      if (!raw?.labels) return [];
+      // `labels: {}` es tan inútil como su ausencia: sin ningún label no hay
+      // título con el que mostrar la entidad ni fusionar duplicados, así que
+      // se descarta igual que si el campo faltara.
+      if (!raw?.labels || Object.keys(raw.labels).length === 0) return [];
       const names = ((raw.claims?.["wdt:P50"] ?? []) as string[])
         .map(authorName)
         .filter((n): n is string => Boolean(n));
