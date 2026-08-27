@@ -276,7 +276,7 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
-| `books` | 14 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha |
+| `books` | 17 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha. **Subió de 14 a 17 el 2026-08-27** (`20260882`): `repr_meta`/`google_books_volume_id`/`wikidata_id` nacen SIN grant de cliente a propósito — las escriben las RPC de hidratación y las actions de colaborador |
 | `comments` | 12 | 12 | 3 | notas de voz (2026-08-26, dev y prod): `audio_path`/`audio_duration_ms`/`audio_peaks` SIN grant update (inmutables); solo `body`/`is_spoiler`/`edited_at` editables por el autor |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
 | `movies` | 12 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676) |
