@@ -9,7 +9,18 @@ const REVALIDATE_SECONDS = 3600;
 // Dependencia BLANDA (ver arriba): 4s es margen de sobra para una API externa
 // sin bloquear la búsqueda si Inventaire no contesta.
 const FETCH_TIMEOUT_MS = 4000;
-const MAX_ENTITIES = 5;
+// Debe igualar MAX_RESULTS de openlibrary/search-normalize.ts: solo las obras
+// que estén entre las MAX_ENTITIES entidades de Inventaire pueden anclar un
+// colapso (wikidata-collapse.ts), así que con un tope menor que las tarjetas
+// que la búsqueda puede mostrar, los duplicados que caigan fuera del tope no
+// se funden — sin que nada en pantalla explique por qué unas veces sí y otras
+// no. Subirlo no añade llamadas HTTP: `by-uris` acepta la lista entera en una
+// sola petición, tanto para las obras como para sus autores (segunda ronda);
+// solo engorda el payload de esas dos llamadas, no las multiplica. Medido
+// contra la API real (2026-08-27): "Brandon Sanderson" con limit=20 sigue
+// devolviendo la entidad de "Palabras radiantes" (en 3ª posición) en la misma
+// llamada.
+const MAX_ENTITIES = 20;
 
 export type InventaireEntity = {
   uri: string;

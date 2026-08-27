@@ -37,4 +37,72 @@ describe("collapseByWikidata", () => {
     expect(out).toHaveLength(1);
     expect(out[0].catalogId).toBe("uuid-2");
   });
+
+  // 🔴 Critical: un subtítulo de solo puntuación normaliza a la cadena vacía,
+  // y una guarda puesta solo del lado del nombre de la entidad (`n.length > 0`)
+  // deja pasar `"".includes(n)` como si fuera un match universal.
+  it("NO funde si el subtítulo normaliza a vacío (solo puntuación)", () => {
+    const a: SearchResult = { ...base, externalId: "/works/OL1W", title: "Palabras radiantes", subtitle: "—" };
+    const b: SearchResult = { ...base, externalId: "/works/OL2W", title: "Words of Radiance", subtitle: "Brandon Sanderson" };
+    expect(collapseByWikidata([a, b], [entity])).toHaveLength(2);
+  });
+
+  // 🟠 Important: la contención de substring sin cota de longitud cruza
+  // fronteras de nombre ("susanafortes".includes("ana")). El caso bueno
+  // (traductor incluido en la lista de autoría) debe seguir casando.
+  it("NO funde por contención de substring sin cota (autor corto contenido en uno distinto)", () => {
+    const otherEntity = {
+      uri: "wd:Q999",
+      labels: { es: "Un Libro", en: "A Book" },
+      authorNames: ["Susana Fortes"],
+    };
+    const a: SearchResult = { ...base, externalId: "/works/OL1W", title: "Un Libro", subtitle: "Ana" };
+    const b: SearchResult = { ...base, externalId: "/works/OL2W", title: "A Book", subtitle: "Susana Fortes" };
+    expect(collapseByWikidata([a, b], [otherEntity])).toHaveLength(2);
+  });
+
+  it("SIGUE fundiendo cuando el subtítulo incluye traductor además del autor", () => {
+    const a: SearchResult = { ...base, externalId: "/works/OL1W", title: "Palabras Radiantes",
+      subtitle: "Brandon Sanderson, Rafael Marín" };
+    const b: SearchResult = { ...base, externalId: "/works/OL2W", title: "Words of Radiance",
+      subtitle: "Brandon Sanderson" };
+    expect(collapseByWikidata([a, b], [entity])).toHaveLength(1);
+  });
+
+  // 🟠 Important: la regla del superviviente no tenía ningún test que la
+  // distinguiera de "gana siempre el primero de la lista".
+  it("el local con catalogId en SEGUNDA posición sigue ganando", () => {
+    const api: SearchResult = { ...base, externalId: "/works/OL38056408W", title: "Palabras Radiantes",
+      subtitle: "Brandon Sanderson", editionCount: 5 };
+    const local: SearchResult = { ...base, externalId: "/works/OL16813053W", catalogId: "uuid-9",
+      title: "Palabras Radiantes", subtitle: "Brandon Sanderson", editionCount: 1 };
+    const out = collapseByWikidata([api, local], [entity]);
+    expect(out).toHaveLength(1);
+    expect(out[0].catalogId).toBe("uuid-9");
+  });
+
+  it("sin catalogId en ninguno, el empate se resuelve por editionCount", () => {
+    const a: SearchResult = { ...base, externalId: "/works/OL1W", title: "Palabras Radiantes",
+      subtitle: "Brandon Sanderson", editionCount: 2 };
+    const b: SearchResult = { ...base, externalId: "/works/OL2W", title: "Words of Radiance",
+      subtitle: "Brandon Sanderson", editionCount: 9 };
+    const out = collapseByWikidata([a, b], [entity]);
+    expect(out).toHaveLength(1);
+    expect(out[0].externalId).toBe("/works/OL2W");
+  });
+
+  it("el fundido hereda altTitles de ambos y el editionCount mayor, aunque el ganador tenga menos ediciones", () => {
+    const local: SearchResult = { ...base, externalId: "/works/OL1W", catalogId: "uuid-7",
+      title: "Palabras Radiantes", subtitle: "Brandon Sanderson",
+      altTitles: ["Palabras Radiantes", "PR alt"], editionCount: 1 };
+    const api: SearchResult = { ...base, externalId: "/works/OL2W", title: "Words of Radiance",
+      subtitle: "Brandon Sanderson", altTitles: ["Words of Radiance"], editionCount: 12 };
+    const out = collapseByWikidata([local, api], [entity]);
+    expect(out).toHaveLength(1);
+    expect(out[0].catalogId).toBe("uuid-7");
+    expect(out[0].editionCount).toBe(12);
+    expect(new Set(out[0].altTitles)).toEqual(
+      new Set(["Palabras Radiantes", "PR alt", "Words of Radiance"])
+    );
+  });
 });

@@ -1,5 +1,6 @@
 import type { SearchResult } from "./types";
 import { normalizeTitleForComparison } from "./openlibrary/normalize";
+import { isSameTitle } from "./title-match";
 import { qidFromUri, type InventaireEntity } from "./inventaire/client";
 
 // Colapso por entidad de Wikidata (spec 2026-08-26 §6). OpenLibrary cataloga
@@ -17,13 +18,27 @@ import { qidFromUri, type InventaireEntity } from "./inventaire/client";
 //
 // PURO: no toca red ni base de datos. Recibe los resultados ya fusionados por
 // `mergeByExternalId` y las entidades que trajo `searchInventaireEntities`.
+
+// `subtitle` es la autoría del resultado tal cual la da OpenLibrary: una lista
+// separada por comas que puede incluir traductor/ilustrador además del autor
+// ("Brandon Sanderson, Rafael Marín"). Se compara persona a persona —nunca la
+// cadena entera contra el nombre de la entidad— por dos razones:
+// 1. Comparar la cadena entera rompería el caso del traductor: la porción que
+//    aporta la autoría real ("Brandon Sanderson") queda por debajo del umbral
+//    de longitud de `isSameTitle` una vez diluida por el resto de la lista.
+// 2. `isSameTitle` (title-match.ts) ya trae las dos guardas que este módulo
+//    necesitaba y no tenía: un nombre que normaliza a vacío (subtítulo de solo
+//    puntuación — «—», «...») nunca casa con nada, y la contención entre
+//    nombres exige que el más corto sea al menos el 65% del más largo, así que
+//    "Ana" ya no casa con "Susana Fortes" solo por ser substring.
 function authorsMatch(subtitle: string | null, entity: InventaireEntity): boolean {
   if (!subtitle || entity.authorNames.length === 0) return false;
-  const have = normalizeTitleForComparison(subtitle);
-  return entity.authorNames.some((name) => {
-    const n = normalizeTitleForComparison(name);
-    return n.length > 0 && (have.includes(n) || n.includes(have));
-  });
+  const haveNames = subtitle
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (haveNames.length === 0) return false;
+  return entity.authorNames.some((name) => haveNames.some((have) => isSameTitle(have, name)));
 }
 
 // Busca el QID de la entidad que identifica a `result`. Si el resultado ya
@@ -91,7 +106,9 @@ export function collapseByWikidata(
     out[twinIndex] = {
       ...winner,
       wikidataId: qid,
-      altTitles: [...new Set([...(winner.altTitles ?? []), ...(loser.altTitles ?? []), loser.title])],
+      altTitles: [
+        ...new Set([...(winner.altTitles ?? []), ...(loser.altTitles ?? []), winner.title, loser.title]),
+      ],
       editionCount: Math.max(winner.editionCount ?? 0, loser.editionCount ?? 0) || undefined,
     };
   }
