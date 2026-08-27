@@ -131,6 +131,46 @@ export async function getCollectionsForItem(
 }
 
 /**
+ * Los dos números de la cabecera de la pestaña Colecciones: cuántas colecciones
+ * hay y cuántos TÍTULOS DISTINTOS están dentro de alguna.
+ *
+ * El segundo número era el total de la biblioteca (`getLibrarySummary`), así
+ * que la cabecera decía «22 colecciones · 138 títulos» sobre una rejilla cuyas
+ * colecciones sumaban 2, y al pie de la misma pestaña «136 títulos sin
+ * organizar»: tres cifras que no cuadraban entre sí (crítica de Colección,
+ * 2026-08-27). Ahora `titles + uncollected == biblioteca`, que es la única
+ * lectura que un usuario puede comprobar con los ojos.
+ *
+ * Distintos, no filas: el mismo libro en tres colecciones es UN título dentro,
+ * y contar filas lo haría sumar 3 y volvería a romper la resta de arriba.
+ */
+export function countDistinctItems(
+  rows: { item_type: string; item_id: string }[],
+): number {
+  return new Set(rows.map((r) => `${r.item_type}:${r.item_id}`)).size;
+}
+
+export async function getCollectionsOverview(
+  supabase: SupabaseServerClient,
+  userId: string,
+): Promise<{ collections: number; titles: number }> {
+  const { data: cols } = await supabase
+    .from("collections")
+    .select("id")
+    .eq("user_id", userId);
+  if (!cols || cols.length === 0) return { collections: 0, titles: 0 };
+
+  const { data: rows } = await supabase
+    .from("collection_items")
+    .select("item_type, item_id")
+    .in(
+      "collection_id",
+      cols.map((c) => c.id),
+    );
+  return { collections: cols.length, titles: countDistinctItems(rows ?? []) };
+}
+
+/**
  * Lo que está en la biblioteca del usuario pero en NINGUNA de sus colecciones —
  * la tira «Sin colección» al pie de la pestaña. Devuelve el total (para el
  * encabezado) y solo las `limit` más recientes hidratadas (para las portadas):

@@ -2188,7 +2188,9 @@
       "allTypes": "Todo",
       "allStatuses": "Todos los estados",
       "allGenres": "Todos los géneros",
-      "showDropped": "Mostrar abandonados"
+      "showDropped": "Mostrar abandonados",
+      "onlyType": "Solo {type}",
+      "clearOnlyType": "Quitar el filtro: solo {type}"
     },
     "search": {
       "placeholder": "Buscar en tu biblioteca...",
@@ -2216,6 +2218,8 @@
     "addToCollection": "Añadir a colección",
     "pinError": "Ya tienes 6 fijados como máximo — quita uno antes de añadir otro.",
     "emptyTitle": "Tu biblioteca está vacía",
+    "noMatchTitle": "Nada que enseñar aquí",
+    "seeEverything": "Ver toda la biblioteca",
     "titlesCount": "{count, plural, one {# título} other {# títulos}}",
     "hiddenDropped": "{count, plural, one {# abandonado oculto} other {# abandonados ocultos}}",
     "hiddenDroppedAction": "Mostrar"
@@ -2362,6 +2366,7 @@
     "titleCount": "{count, plural, one {# título} other {# títulos}}",
     "cardEmptyHint": "Vacía · ábrela para añadir",
     "collectionsCount": "{count, plural, one {# colección} other {# colecciones}}",
+    "collectedCount": "{count, plural, one {# título dentro} other {# títulos dentro}}",
     "collectionMeta": "{count, plural, one {# título} other {# títulos}} · nota media {avg}",
     "emptyDetail": "Aún no has añadido nada a esta colección.",
     "filters": "Filtros",

@@ -2071,3 +2071,43 @@ anota para que nadie salga a cazar un bug de estado que no existe.
 **Lo que NO decide esto.** Sigue sin tocarse el resto de porcentajes de la app —metas, encuestas
 de club, avance de sagas y de retos—, que cuentan ítems terminados y no la posición dentro de una
 obra: ahí el 100 sí es cierto cuando el contador lo dice.
+
+## 2026-08-27 (3) — Los tres números de Colección dejan de contradecirse
+
+**Contexto.** Tercera tanda de P1 de la crítica de diseño, todas en `/coleccion` y todas de la
+misma familia: cifras que no cuadran con lo que la pantalla enseña. Medido en la cuenta de dev
+(138 pases activos: 127 películas, 9 libros, 2 series; 22 colecciones con 2 títulos dentro).
+
+**Decisiones que fija esto:**
+
+1. **Un filtro que el usuario no ha puesto se dice en voz alta y con su salida.**
+   `resolveEffectiveType` aplica el interés único declarado en el onboarding (issue #313), así que
+   una cuenta con `interests = {book}` entraba viendo **9 obras de 138** —el 93 % escondido— y la
+   única señal era el «1» de la píldora de Filtros. Ahora la barra pinta un chip **fuera** del
+   desplegable —«● Solo Libros ×», enlace a `?type=todos`— con `aria-label` propio. Dentro del
+   desplegable no vale: ahí sigue siendo invisible hasta abrirlo, que es justo el problema.
+   La regla general: **el `?type=` que puso el usuario se ve en el desplegable; el que puso la app
+   se ve en la barra.**
+2. **«Limpiar» tiene que limpiar también lo que no se ve.** `clearHref` emitía la AUSENCIA de
+   `type`, y la ausencia es «arranque por defecto», que vuelve a aplicar el preferido: pulsar
+   Limpiar dejaba el filtro puesto. Con tipo bloqueado emite el centinela `type=todos`.
+3. **Cero resultados solo significa «vacía» si no hay nada filtrando.** Buscar algo inexistente
+   devolvía «Tu biblioteca está vacía», «Aún no has añadido nada» y «Buscar algo» —tres líneas
+   falsas a la vez sobre 138 obras—, y el botón mandaba al catálogo común cuando lo que había que
+   hacer era quitar el filtro. `LibraryGrid` recibe `clearHref: string | null`: con filtros
+   puestos dice «Nada que enseñar aquí» y ofrece «Ver toda la biblioteca».
+4. **La cabecera de Colecciones cuenta lo que hay DENTRO, no la biblioteca entera.** Decía «22
+   colecciones · 138 títulos» sobre una rejilla que sumaba 2, con «136 títulos sin organizar» al
+   pie de la misma pestaña: tres cifras incompatibles. Ahora es «22 colecciones · 2 títulos
+   dentro», y **2 + 136 = 138** cierra a ojo. Se cuentan títulos DISTINTOS (`countDistinctItems`),
+   no filas: el mismo libro en tres colecciones es un título dentro, y contar filas volvería a
+   romper la resta.
+
+**Lo que NO decide esto.** Sigue abierto **cuándo debe dejar de aplicarse el lock del onboarding**.
+Hoy se aplica siempre que haya exactamente un interés declarado, sin mirar qué hay en la
+biblioteca; con 129 obras de otros tipos dentro, el interés declarado hace meses ya no describe a
+este usuario. El chip lo hace visible y quitable, pero **no se recuerda**: volver a `/coleccion`
+lo reaplica. Poner una preferencia persistente —o un umbral por el que el lock caduque— es una
+decisión de producto con esquema detrás, y va como issue. Tampoco se toca la longitud de la
+página (23.062 px a 390 sin paginar ni `sticky` en los filtros): es el cuarto P1 de esa crítica y
+es otro frente.
