@@ -155,6 +155,7 @@
     "timerLabel": "Tiempo de esta sesión",
     "markEpisode": "T{season} · E{episode}",
     "markSeen": "Marcar Vista",
+    "markDone": "Marcar terminada",
     "pickToWatch": "Para ver",
     "focusMini": "Poner {title} arriba",
     "nextUpTitle": "¿Qué te apetece hoy?",

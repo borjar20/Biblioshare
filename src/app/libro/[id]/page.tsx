@@ -8,6 +8,7 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { passPercent } from "@/lib/library/progress";
 import {
   createClient,
   createTokenClient,
@@ -234,9 +235,9 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   const railProgress =
     totalPages > 0
       ? {
-          percent: Math.min(100, Math.round((currentPage / totalPages) * 100)),
+          percent: passPercent(currentPage, totalPages),
           left: tDetail("rail.pages", { page: currentPage, total: totalPages }),
-          right: `${Math.min(100, Math.round((currentPage / totalPages) * 100))}%`,
+          right: `${passPercent(currentPage, totalPages)}%`,
         }
       : null;
 

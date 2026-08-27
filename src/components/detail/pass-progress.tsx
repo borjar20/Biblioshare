@@ -1,5 +1,6 @@
 import { useTranslations } from "next-intl";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
+import { passPercent } from "@/lib/library/progress";
 import type { ItemType } from "@/lib/catalog/types";
 
 // La barra de progreso del pase (.prg del frame 3): track grueso con relleno
@@ -24,7 +25,7 @@ export function PassProgress({
 }) {
   const t = useTranslations("detail.log.progress");
   const accent = MEDIA_ACCENT[itemType];
-  const percent = Math.min(100, Math.round((page / total) * 100));
+  const percent = passPercent(page, total);
 
   return (
     <div className="flex flex-col">

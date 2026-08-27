@@ -3,6 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { FeedEvent, FeedVerb } from "./feed";
 import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
+import { passPercent } from "@/lib/library/progress";
 
 // Resuelve UNA fila concreta (no un fan-out por seguidos) a la misma forma
 // FeedEvent que usa el feed personal (Bloque C, SD-1) -- usado por
@@ -191,7 +192,7 @@ export async function resolveSharedActivity(
     const pos = (row.position ?? {}) as { page?: number };
     const page = typeof pos.page === "number" ? pos.page : null;
     const percent =
-      page != null && totalPages ? Math.min(100, Math.round((page / totalPages) * 100)) : null;
+      page != null && totalPages ? passPercent(page, totalPages) : null;
     return {
       id: `progress_sessions:${row.id}`,
       actorId: row.user_id,

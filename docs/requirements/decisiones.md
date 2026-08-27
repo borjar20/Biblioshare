@@ -2022,3 +2022,52 @@ empezar.
 ofrece «Sesión» y «Registrar», ninguno en acento). Cuál de los dos merece el naranja —o si la
 respuesta correcta a «¿Qué has disfrutado hoy?» es un tercer botón— es una decisión de producto
 que no se cuela en un arreglo de consistencia. Queda como issue.
+
+## 2026-08-27 (2) — El 100 % se reserva para el final alcanzado, y un pase que llega al final tiene salida
+
+**Contexto.** Segunda incidencia P1 de la crítica de Inicio. La tarjeta destacada decía
+«Pág. 668 / 669», «100 %» y «En curso» a la vez, y sus dos únicas acciones eran «Sesión» y
+«Registrar». `Math.round((668/669)*100)` da **100**: un pase al que le quedaba una página se
+anunciaba como completo. La interfaz preguntaba «¿Qué has disfrutado hoy?» y **no tenía botón
+para la respuesta más probable** —«lo he terminado»—; mientras tanto, el feed de al lado mostraba
+el mismo título como FINALIZADO. La pantalla se contradecía a sí misma en el mismo golpe de
+vista, en el instante de mayor atención, y quien lo veía no podía saber si su registro se guardó.
+
+**Decisiones que fija esto:**
+
+1. **Un porcentaje de progreso nunca redondea hacia arriba hasta 100.** El 100 se RESERVA para
+   `current >= total`; por debajo se trunca a 99 como mucho, y no baja de 1 habiendo empezado.
+   La regla no es nueva —ya la aplicaban `libraryPercent` (`derive-person-works.ts`) y
+   `deriveWorkProgress` (`people/work-progress.ts`)—; lo que faltaba era un sitio único donde
+   vivir. Ahora es `passPercent`, en `src/lib/library/progress.ts`, al lado de `getProgress`.
+   Lo usan el destacado de Inicio y su mini, el raíl de libro y serie, la barra del pase de la
+   ficha y los dos generadores de eventos de feed. **Trunca en vez de redondear en todo el
+   tramo**: el cursor no debe adelantar al lector en ningún punto, no solo al final.
+2. **Un pase que llega a su final y sigue abierto tiene salida desde donde se está mirando.**
+   `TodayActions` pinta «Marcar terminada» cuando el progreso está completo, con la misma máquina
+   que la ficha (`updateStatus` → hoja de puntuar/reseñar en la ficha vía `?cerrar=<passId>`,
+   igual que ya hacían `MarkSeen` y `work-status-control`). No se encadena la hoja *dentro* de la
+   tarjeta porque al completar la obra deja de ser `in_progress` y la revalidación la saca del
+   foco: el modal se desmontaría en el acto.
+3. **La salida se come el hueco de la acción por tipo, no se suma a ella.** Con «Marcar
+   terminada» en pantalla desaparecen el cronómetro (un libro en su última página no necesita
+   reloj) y «marcar episodio» (no queda ninguno): dos botones de 174 px a 390, no tres
+   apretados. Con el cronómetro **en marcha** no aparece — primero se registra la sesión en
+   vuelo, que es la que cerrará el pase sola por el auto-cierre.
+
+**Por qué queda ese estado si existe el auto-cierre.** `saveSession` cierra el pase cuando la
+sesión alcanza `maxPosition`, que es el total de TU edición. Un pase puede quedarse en su última
+página sin que salte: si la posición se puso a mano desde Progreso, o si el total de la obra no
+es el de la edición del pase. La salida manual es la red para esos casos, no un duplicado del
+auto-cierre.
+
+**Media crítica era falsa, y conviene dejarlo escrito.** El informe leía el feed diciendo
+«terminó The Final Empire · FINALIZADO» junto a un destacado «En curso» y lo daba por una
+contradicción de datos. No lo es: hay **dos pases** de esa obra (uno `completed` del 15/7 y otro
+abierto desde esa misma tarde), el post del feed es del primero y la tarjeta lo dice —«2.ª
+LECTURA»— en su primera línea. Verificado en `passes` de dev. Lo único roto era el número. Se
+anota para que nadie salga a cazar un bug de estado que no existe.
+
+**Lo que NO decide esto.** Sigue sin tocarse el resto de porcentajes de la app —metas, encuestas
+de club, avance de sagas y de retos—, que cuentan ítems terminados y no la posición dentro de una
+obra: ahí el 100 sí es cierto cuando el contador lo dice.
