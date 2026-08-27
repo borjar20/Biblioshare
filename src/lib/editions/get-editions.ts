@@ -30,9 +30,8 @@ export async function getEditions(
   if (itemType === "book") {
     let query = supabase
       .from("book_editions")
-      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url, is_primary")
+      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url")
       .eq("book_id", itemId)
-      .order("is_primary", { ascending: false })
       .order("published_year", { ascending: false });
     if (freshRead) query = query.order("id", { ascending: true });
     const { data } = await query;
@@ -46,15 +45,13 @@ export async function getEditions(
       totalUnits: r.total_pages,
       isbn: r.isbn,
       coverUrl: r.cover_url,
-      isPrimary: r.is_primary,
     }));
   }
 
   const { data } = await supabase
     .from("movie_versions")
-    .select("id, label, release_year, duration_minutes, is_primary")
+    .select("id, label, release_year, duration_minutes")
     .eq("movie_id", itemId)
-    .order("is_primary", { ascending: false })
     .order("release_year", { ascending: false });
 
   return (data ?? []).map((r) => ({
@@ -66,6 +63,5 @@ export async function getEditions(
     totalUnits: r.duration_minutes,
     isbn: null,
     coverUrl: null,
-    isPrimary: r.is_primary,
   }));
 }

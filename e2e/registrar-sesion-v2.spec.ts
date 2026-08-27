@@ -88,14 +88,29 @@ async function resolveBookFixture(userId: string): Promise<BookFixture> {
   const [pass] = (await passRes.json()) as { id: string }[];
   if (!pass) throw new Error('devtest no tiene pase activo sobre "The Final Empire"');
 
-  // El total contra el que valida addSession es la EDICIÓN primaria, no
-  // books.total_pages (mismo criterio que maxBookPosition en pase-hub.spec.ts).
-  const editionRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/book_editions?book_id=eq.${book.id}&is_primary=eq.true&select=total_pages&limit=1`,
+  // El total contra el que valida addSession son las páginas de la edición QUE
+  // EL PASE IDENTIFICÓ y, sin ella, `books.total_pages` (`pagesForPass`, spec
+  // 2026-08-26 §5 — mismo criterio que maxBookPosition en pase-hub.spec.ts; la
+  // «edición primaria» dejó de ser un peldaño).
+  const passEditionRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/passes?id=eq.${pass.id}&select=edition_id`,
     { headers: headers() },
   );
-  const [edition] = (await editionRes.json()) as { total_pages: number | null }[];
-  const total = edition?.total_pages ?? book.total_pages;
+  const [passRow] = (await passEditionRes.json()) as {
+    edition_id: string | null;
+  }[];
+  let editionPages: number | null = null;
+  if (passRow?.edition_id) {
+    const editionRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/book_editions?id=eq.${passRow.edition_id}&select=total_pages`,
+      { headers: headers() },
+    );
+    const [edition] = (await editionRes.json()) as {
+      total_pages: number | null;
+    }[];
+    editionPages = edition?.total_pages ?? null;
+  }
+  const total = editionPages ?? book.total_pages;
   if (!total) throw new Error('sin total_pages resoluble para "The Final Empire"');
 
   return { itemId: book.id, passId: pass.id, total };

@@ -84,12 +84,12 @@ export async function hydrateItems(
     idsByType.book.length
       ? supabase
           .from("book_editions")
-          .select("id, book_id, total_pages, is_primary")
+          .select("id, book_id, total_pages")
           .in("book_id", idsByType.book)
       : Promise.resolve({ data: [] }),
   ]);
 
-  const editionsByBook = new Map<string, { id: string; total_pages: number | null; is_primary: boolean }[]>();
+  const editionsByBook = new Map<string, { id: string; total_pages: number | null }[]>();
   for (const row of editions.data ?? []) {
     const list = editionsByBook.get(row.book_id);
     if (list) list.push(row);
@@ -249,8 +249,11 @@ export async function hydrateItems(
       // páginas, y muchos libros solo las tienen en `book_editions`.
       const pageCount =
         key.item_type === "book"
-          ? (pickEditionPages(editionsByBook.get(key.item_id) ?? [], activePass.editionId) ??
-            meta.pageCount)
+          ? pickEditionPages(
+              editionsByBook.get(key.item_id) ?? [],
+              activePass.editionId,
+              meta.pageCount,
+            )
           : meta.pageCount;
       return {
         // entryId/activePassId son ahora el MISMO id: el pase activo es la

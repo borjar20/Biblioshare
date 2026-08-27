@@ -142,9 +142,28 @@ Tres tablas de "tirada concreta" cuelgan del catálogo:
 
 | Tabla | De | Para qué |
 |---|---|---|
-| `book_editions` | `books` | ISBN, editorial, páginas, idioma, portada de **esa** edición. `is_primary` marca la canónica |
+| `book_editions` | `books` | ISBN, editorial, páginas, idioma, portada de **esa** edición. `is_primary` sigue en la tabla pero **YA NO LA LEE NADIE** (ver abajo) |
 | `movie_versions` | `movies` | Montajes/versiones |
 | `series_episodes` | `series` | Catálogo por episodio, cache-as-you-go desde TMDB |
+
+**`is_primary` está muerta como criterio desde 2026-08-27 (Task 12).** La columna, sus triggers
+(`ensure_primary_book_edition`, `promote_primary_edition_after_delete`) y su índice único parcial
+siguen existiendo y siguen manteniéndose solos, pero **ningún consumidor —código ni SQL— la lee
+ya**. Nunca fue una decisión: la ponía un trigger sobre la PRIMERA fila que entrara, que con el
+sync masivo vivo era la primera de hasta 500 filas bajadas de OpenLibrary. Su muerte física
+(columna + triggers, issue [#877](https://github.com/borjar20/Biblioshare/issues/877)) es la fase
+destructiva, Task 16, posterior al despliegue.
+
+**Precedencia de páginas del progreso: DOS peldaños, y solo dos** (spec 2026-08-26 §5). La
+edición que el usuario **identificó en su pase** (`passes.edition_id` → `book_editions.total_pages`)
+manda; sin ella —o si esa edición no trae páginas— valen las páginas **orientativas de la obra**
+(`books.total_pages`). Regla única en `pagesForPass` (`src/lib/editions/edition-label.ts`), con
+`pickEditionPages` (`src/lib/pace/fetch-catalog-meta.ts`) como envoltorio para filas crudas en
+lote y una réplica en SQL dentro de `get_widget_snapshot()`. Antes había un tercer peldaño (la
+«edición primaria») y, solo en `pickEditionPages`, un cuarto («cualquier edición con páginas»):
+el mismo libro podía enseñar 736 páginas en el sorteo y 684 en la barra de progreso, sin que nada
+avisara. **Si tocas uno de los consumidores, tócalos todos:** un consumidor rezagado no falla, da
+un número distinto.
 
 **La escalera de hidratación** (spec de 2026-07-14) manda aquí: la búsqueda **no escribe en
 BD**. Son tres peldaños — tarjeta de resultado (memoria) → ficha de obra (se crea al abrirla)
@@ -1057,10 +1076,15 @@ finales de pase; minutos de hoy = solo `duration_minutes` de libros—; (2) "hoy
 **`Europe/Madrid`** (convención de `club_rounds`), no UTC. **En prod desde 2026-08-06**
 (verificada bajo rol `authenticated` con RLS: JSON v2 correcto para un usuario real de 2 pases
 en curso). **Fix 2026-08-06 (`20260806_widget_snapshot_edition_pages.sql`, dev+prod):** el total de
-páginas del libro sale de la EDICIÓN del pase (`book_editions`, precedencia edición del pase →
-primaria → cualquiera con total → y solo si no, `books.total_pages`), réplica en SQL del arreglo
-web `e6dec32`/`pickEditionPages`; antes salía «Sin progreso» porque `books.total_pages` casi
-siempre es null (la búsqueda ya no lo escribe). Riesgo vivo: como la web sigue usando el TS, widget
+páginas del libro sale de la EDICIÓN del pase (`book_editions`) y no de `books.total_pages`, que
+casi siempre es null (la búsqueda ya no lo escribe); antes salía «Sin progreso».
+**Precedencia a dos peldaños 2026-08-27 (`20260892_widget_snapshot_two_level.sql`, Task 12 — DEV;
+prod pendiente del despliegue):** el `LATERAL` de `cat` ya solo mira `passes.edition_id`
+(`be.id = ip.edition_id`, la PK: como mucho una fila, sin desempate) y cae a `books.total_pages`;
+mueren el peldaño de la «edición primaria» y el de «cualquier edición con total». Es la misma
+regla que `pagesForPass` en el código web (§2). Verificado en dev sobre un usuario sintético en
+`begin/rollback`: con edición en el pase da lo mismo que antes (736), sin edición pasa de 684 (la
+primaria) a 1200 (la obra). Riesgo vivo: como la web sigue usando el TS, widget
 y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver
 `decisiones.md` e issue de reconciliación.
 

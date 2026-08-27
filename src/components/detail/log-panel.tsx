@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -27,9 +27,8 @@ import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
 import { updateStatus, removeFromLibrary } from "@/lib/library/manage-actions";
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
-import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
+import { formatEdition, pagesForPass } from "@/lib/editions/edition-label";
 import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
-import { editionChoiceStorageKey } from "@/lib/passes/edition-choice";
 
 // Lee si a este pase ya se le preguntó "¿qué edición estás leyendo?" y el
 // usuario contestó "No lo sé". Se llama solo desde el inicializador de
@@ -299,11 +298,13 @@ function ManagedLog({
   // también el activo (el índice passes_one_active no permite lo contrario),
   // así que cuando existe openPass son el mismo pase.
   const openPass = passes.find((p) => p.finishedOn === null) ?? null;
-  const openPassEdition = openPass
-    ? ((openPass.editionId
-        ? (editions.find((e) => e.id === openPass.editionId) ?? null)
-        : null) ?? primaryEdition(editions))
-    : null;
+  // La edición del pase, y solo esa: la que el usuario identificó. Sin ella no
+  // se busca una sustituta (la «edición primaria» murió, spec 2026-08-26 §5) —
+  // manda `workTotalUnits`, las páginas orientativas de la obra.
+  const openPassEdition =
+    openPass?.editionId != null
+      ? (editions.find((e) => e.id === openPass.editionId) ?? null)
+      : null;
 
   // Página del pase y su total. Se calculan AQUÍ, en el antecesor común, y no
   // dentro del panel: en PC la barra se queda en la columna izquierda y el
@@ -320,9 +321,7 @@ function ManagedLog({
   // La edición del pase manda; si no trae páginas (pasa, y mucho: OpenLibrary
   // no siempre las da), cae al total de la obra. Mismo criterio que addSession.
   const totalPages =
-    itemType === "book"
-      ? (openPassEdition?.totalUnits ?? workTotalUnits ?? null)
-      : null;
+    itemType === "book" ? pagesForPass(openPassEdition, workTotalUnits) : null;
 
   return (
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
@@ -610,38 +609,6 @@ function PassDataPanel({
     editions.length > 1 &&
     openPass.editionId === null &&
     !answered;
-
-  // Aplica la elección de edición guardada AL SEGUIR (Hallazgo 3 de la
-  // revisión final): si en localStorage hay una edición elegida para este
-  // ítem y este pase recién abierto todavía no tiene una propia, se aplica
-  // aquí con setPassEdition y se olvida la elección — el usuario ya la
-  // contestó al seguir, no debe volver a verla. No sincroniza ningún estado
-  // local (no llama a ningún setState de este componente): solo dispara una
-  // escritura de servidor, así que vive en un efecto imperativo, no en el
-  // ajuste "durante el render" de más arriba (mismo criterio que el
-  // scrollIntoView de EditionStrip). Deliberadamente solo al montar: el
-  // componente está keyed por openPass.id (ver ManagedLog), así que un pase
-  // nuevo (p. ej. una relectura) vuelve a montar este efecto y lee de nuevo.
-  useEffect(() => {
-    if (openPass.editionId !== null) return;
-    let choice: string | null = null;
-    try {
-      choice = window.localStorage.getItem(editionChoiceStorageKey(itemId));
-    } catch {
-      return;
-    }
-    if (!choice) return;
-    try {
-      window.localStorage.removeItem(editionChoiceStorageKey(itemId));
-    } catch {
-      // Si no se puede borrar, en el peor caso se reintenta en la próxima
-      // recarga: no rompe nada más.
-    }
-    startTransition(() =>
-      setPassEdition(openPass.id, itemType, itemId, choice),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // El `.panel` del frame 3 (y el `.desk-panel` del 10): fondo --surface (NO
   // --surface-muted, que es el --surface-2 del handoff — con el panel un

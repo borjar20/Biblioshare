@@ -8,5 +8,4 @@ export type Edition = {
   totalUnits: number | null;
   isbn: string | null;
   coverUrl: string | null;
-  isPrimary: boolean;
 };

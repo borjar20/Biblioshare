@@ -2125,3 +2125,35 @@ como la escala continua que es una tierlist.
   `books.editions_synced_at` se queda en el esquema (se dropea en la fase destructiva, Task 16);
   el código de aplicación deja de leerla y escribirla, y solo sobrevive en el tipo generado de
   Supabase hasta que esa columna desaparezca de verdad.
+
+- **La precedencia de páginas del progreso baja a DOS peldaños; la «edición primaria» muere como
+  criterio** (2026-08-27, Task 12 del plan de edición de obra). Hasta hoy había tres niveles
+  —edición del pase → `book_editions.is_primary` → `books.total_pages`— y la primaria **nunca fue
+  una decisión de nadie**: la marcaba un trigger sobre la PRIMERA fila que entrara, que con el
+  sync masivo vivo (muerto en la Task 10) era literalmente la primera de hasta 500 filas bajadas
+  de OpenLibrary. Ahora que una edición solo existe si alguien identificó su tirada, la
+  precedencia correcta es la que el usuario dijo: **su edición manda; sin ella, las páginas
+  orientativas de la obra**. Regla única en `pagesForPass` (`src/lib/editions/edition-label.ts`),
+  aplicada por los SIETE consumidores que la tenían copiada y por el snapshot SQL del widget
+  (`20260892_widget_snapshot_two_level.sql`).
+  **Dos cambios de comportamiento que se deciden a propósito, no se cuelan:**
+  1. **`pickEditionPages` pierde su cuarto peldaño** («cualquier edición con páginas»), que era
+     deliberado: el sorteo solo alimenta los tramos ‹2 h / 2–5 h / +5 h, donde una tirada
+     aproximada era mejor que «sin estimar». Se cambia igualmente porque convertía a esa función
+     en el ÚNICO consumidor con precedencia propia: el mismo libro salía con 736 páginas en el
+     sorteo y 684 en la barra de progreso, y **un consumidor rezagado no falla, da otro número**.
+     Se prefiere un número coherente en toda la app a uno más optimista solo en un sitio.
+  2. **Un libro sin edición identificada y sin `books.total_pages` vuelve a «sin estimar»**
+     aunque tenga ediciones hermanas con páginas. Es el precio del punto 1 y es el
+     comportamiento correcto bajo la regla nueva.
+  **El tipo `Edition` pierde `isPrimary`** y `getEditions` deja de ordenar por `is_primary`: las
+  tiras y el picker ya no destacan ninguna como «principal», que es lo que se quería. **La
+  columna `book_editions.is_primary`, sus triggers y su índice NO se tocan aquí**: eso es la fase
+  destructiva (Task 16) y borrar la columna sin borrar antes los triggers rompe CUALQUIER
+  inserción de edición (issue #877).
+  **El helper se llama `pagesForPass` pero su campo es `totalUnits`, no `totalPages`**: `Edition`
+  es el tipo compartido con las versiones de película (allí son minutos) y con las series (allí
+  son episodios), y duplicar la regla por medio era peor que el nombre imperfecto.
+  **De regalo se borra `src/lib/passes/edition-choice.ts`**: código muerto verificado — nadie
+  escribía esa clave de localStorage, así que el efecto de `log-panel.tsx` que la leía no aplicó
+  jamás una edición a ningún pase.

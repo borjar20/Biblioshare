@@ -73,7 +73,7 @@ async function loadEditionLabels(
   if (itemType === "book") {
     const { data } = await supabase
       .from("book_editions")
-      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url, is_primary")
+      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url")
       .in("id", editionIds);
     return new Map(
       (data ?? []).map((r) => [
@@ -88,7 +88,6 @@ async function loadEditionLabels(
             totalUnits: r.total_pages,
             isbn: r.isbn,
             coverUrl: r.cover_url,
-            isPrimary: r.is_primary,
           },
           itemType
         ),
@@ -98,7 +97,7 @@ async function loadEditionLabels(
 
   const { data } = await supabase
     .from("movie_versions")
-    .select("id, label, release_year, duration_minutes, is_primary")
+    .select("id, label, release_year, duration_minutes")
     .in("id", editionIds);
   return new Map(
     (data ?? []).map((r) => [
@@ -113,7 +112,6 @@ async function loadEditionLabels(
           totalUnits: r.duration_minutes,
           isbn: null,
           coverUrl: null,
-          isPrimary: r.is_primary,
         },
         itemType
       ),

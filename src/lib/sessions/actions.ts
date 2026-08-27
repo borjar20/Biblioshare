@@ -9,7 +9,7 @@ import { getActivePass, isAutoCloseable } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import { todayISO } from "@/lib/stats/dates";
 import { getEditions } from "@/lib/editions/get-editions";
-import { primaryEdition } from "@/lib/editions/edition-label";
+import { pagesForPass } from "@/lib/editions/edition-label";
 import {
   markEpisodeWatched,
   rollSeriesProgress,
@@ -105,27 +105,31 @@ export async function addSession(
     currentStatus = "in_progress";
   }
 
-  // El total contra el que se valida la página sale de la EDICIÓN del pase
-  // (o de la primaria si el pase no tiene ninguna asignada), no de
-  // books.total_pages: la de bolsillo y la de tapa dura no tienen las mismas
-  // páginas, así que "hasta la 240" solo es válido contra tu edición. Las
-  // series no necesitan este total: los episodios marcados se validan contra
-  // series_episodes dentro de markEpisodeWatched (mismo guard que la pestaña
-  // Episodios), no aquí.
+  // El total contra el que se valida la página sale de la EDICIÓN QUE EL
+  // USUARIO IDENTIFICÓ en su pase; sin ella, de las páginas orientativas de la
+  // obra (`books.total_pages`). Bolsillo y tapa dura no tienen las mismas
+  // páginas, así que "hasta la 240" solo es válido contra tu edición. Dos
+  // peldaños y solo dos: `pagesForPass` es la regla, la misma que load-context,
+  // el panel de registro, la colección, el sorteo y el snapshot del widget.
+  // Las series no necesitan este total: los episodios marcados se validan
+  // contra series_episodes dentro de markEpisodeWatched (mismo guard que la
+  // pestaña Episodios), no aquí.
   let maxPosition: number | null = null;
   if (itemType === "book") {
-    const editions = await getEditions("book", itemId);
-    const edition =
-      editions.find((e) => e.id === pass.editionId) ?? primaryEdition(editions);
-    maxPosition = edition?.totalUnits ?? null;
-    if (maxPosition === null) {
+    const editions = pass.editionId ? await getEditions("book", itemId) : [];
+    const passEdition = editions.find((e) => e.id === pass.editionId) ?? null;
+    // `books.total_pages` solo se consulta si de verdad hace falta: con una
+    // edición identificada y con páginas, el segundo peldaño no se pisa.
+    let workTotalPages: number | null = null;
+    if (passEdition?.totalUnits == null) {
       const { data: book } = await supabase
         .from("books")
         .select("total_pages")
         .eq("id", itemId)
         .maybeSingle();
-      maxPosition = book?.total_pages ?? null;
+      workTotalPages = book?.total_pages ?? null;
     }
+    maxPosition = pagesForPass(passEdition, workTotalPages);
   }
 
   // Position reached in this session. Optional: a time-only session (no
