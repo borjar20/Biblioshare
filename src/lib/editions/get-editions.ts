@@ -7,19 +7,17 @@ import type { Edition } from "./types";
 // `freshRead` rompe deliberadamente la memoización de fetch de Next: la
 // ficha de libro llama a getEditions DOS VECES en la misma request (una para
 // los consumidores síncronos — editor, registro — y otra dentro de
-// loadBookEditions, DESPUÉS de sincronizar con OpenLibrary, para la tira que
-// streamea por <Suspense>). Sin diferenciarlas, ambas llamadas son
-// byte-a-byte la misma petición GET (mismo método, misma URL), y Next sirve
-// la segunda desde la caché de la primera — es decir, devuelve la lista
-// VACÍA de antes de sincronizar, aunque para entonces la sincronización ya
-// haya escrito ediciones reales en la base de datos. El bug se veía como "la
-// tira nunca sale de su placeholder salvo que recargues", pese a que la fila
-// en la base de datos era correcta. Añadir `id` como desempate no cambia el
-// resultado (ya era determinista sin él) pero sí cambia la URL de la
-// petición, así que ninguna llamada sirve una respuesta cacheada de la otra.
+// loadBookEditions, para la tira que streamea por <Suspense>). Sin
+// diferenciarlas, ambas llamadas son byte-a-byte la misma petición GET (mismo
+// método, misma URL), y Next serviría la segunda desde la caché de la
+// primera. Añadir `id` como desempate no cambia el resultado (ya era
+// determinista sin él) pero sí cambia la URL de la petición, así que ninguna
+// llamada sirve una respuesta cacheada de la otra.
 // Cliente SIN sesión (`book_editions`/`movie_versions` son `SELECT USING (true)`):
-// resultado idéntico para todos → cacheable en Fase 4 (#436). El SYNC de ediciones
-// (que sí escribe y exige sesión) vive en loadBookEditions, no aquí.
+// resultado idéntico para todos → cacheable en Fase 4 (#436). loadBookEditions
+// solo LEE (Tarea 10: el sync masivo de ediciones murió), así que hoy las dos
+// llamadas devolverían lo mismo aunque compartieran caché — el desempate se
+// deja igualmente, por si alguna de las dos rutas vuelve a escribir.
 export async function getEditions(
   itemType: ItemType,
   itemId: string,

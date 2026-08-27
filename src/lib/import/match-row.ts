@@ -31,8 +31,9 @@ async function matchBook(
     // ISBN-scoped result directly, even when its canonical title differs
     // from the CSV's shorthand title (e.g. "Nineteen Eighty-Four" vs
     // "1984"). No title check here (same as the interactive search flow).
-    // El lookup devuelve la OBRA (con matchedIsbn anotado); sus ediciones las
-    // traerá ensureBookEditions cuando alguien abra la ficha.
+    // El lookup devuelve la OBRA (con matchedIsbn anotado); findOrCreateCatalogItem
+    // registra esa tirada como edición identificada (ensureBookEdition) — ya no
+    // hay sync masivo que traiga el resto al abrir la ficha.
     const found = await lookupIsbn(row.isbn);
     if (found) {
       return { kind: "matched", catalogId: await findOrCreateCatalogItem(supabase, found) };

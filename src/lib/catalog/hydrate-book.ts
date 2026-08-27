@@ -104,9 +104,9 @@ const MAX_GOOGLE_BOOKS_CALLS = 2;
 // y la RPC es fill-or-upgrade: rellena huecos, mejora idioma, y NUNCA pisa lo
 // que un colaborador escribió a mano.
 //
-// Hermano de ensureItemEnriched (créditos) y ensureBookEditions (tiradas), con
-// el mismo contrato: idempotente, guarded, y NUNCA lanza — un fallo de una API
-// externa no puede tumbar el render de la ficha.
+// Hermano de ensureItemEnriched (créditos), con el mismo contrato:
+// idempotente, guarded, y NUNCA lanza — un fallo de una API externa no puede
+// tumbar el render de la ficha.
 export async function ensureBookHydrated(
   supabase: SupabaseServerClient,
   book: HydratableBook

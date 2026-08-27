@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
-import { ensureBookEditions } from "@/lib/editions/sync-editions";
+import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
 import { revalidateItemPage } from "@/lib/reactivity/revalidate";
 import { uploadPublicImage } from "@/lib/storage/upload-public-image";
 import { getPosterPaths } from "@/lib/catalog/tmdb";
@@ -44,7 +44,7 @@ const COVER_EXTENSION: Record<string, string> = {
 const ITEM_TYPES = new Set<ItemType>(["book", "movie", "series"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// uploadCover, deleteEdition y resyncEditions se llaman de forma DIRECTA
+// uploadCover, deleteEdition y reevaluateRepresentation se llaman de forma DIRECTA
 // desde el cliente (no vía .bind() en la action de un <form>, que es lo que
 // Next cifra): sus argumentos viajan tal cual en el body del POST y son
 // 100% manipulables por quien controle el cliente. El tipo ItemType de
@@ -417,12 +417,25 @@ export async function deleteEdition(
   return { ok: true };
 }
 
-// Fuerza una nueva sincronización de ediciones: pone `editions_synced_at` a
-// null y deja que ensureBookEditions (Tarea 6, src/lib/editions/sync-editions.ts)
-// vuelva a preguntarle a OpenLibrary, exactamente como si fuera la primera
-// visita a la ficha. Solo aplica a libros (las ediciones de película no se
-// sincronizan desde una API externa).
-export async function resyncEditions(bookId: string): Promise<EditItemState> {
+// Fuerza una nueva evaluación de la REPRESENTACIÓN (Tarea 10, muerte del sync
+// masivo de ediciones): pone `hydrated_at` a null y deja que ensureBookHydrated
+// (src/lib/catalog/hydrate-book.ts) vuelva a correr la escalera completa —
+// candidatas de OpenLibrary en vivo, Wikidata/Inventaire y Google Books —
+// exactamente como si fuera la primera visita a la ficha. Solo aplica a libros
+// (las versiones de película no tienen representación que reevaluar). Esto NO
+// resincroniza `book_editions`: esa tabla ahora solo la escribe el picker, el
+// ISBN escaneado o un colaborador — nunca un job automático.
+//
+// `hydrated_at = null` es una reescritura valor → null sobre una columna
+// técnica: el trigger `enforce_catalog_edit_collaborator_only` (S2-14) la
+// permite a partir de `collaborator+`, que es justo el gate de
+// `requireCollaborator` de arriba — se hace con el cliente de la petición, no
+// con service_role. `ensureBookHydrated` sí exige service_role, pero para eso
+// construye su propio cliente internamente al llamar a la RPC `hydrate_book`
+// (ver su cabecera, #871): el cliente de la petición que le pasamos aquí solo
+// sirve para las lecturas y los updates de columnas técnicas, que sí tiene
+// permitidos.
+export async function reevaluateRepresentation(bookId: string): Promise<EditItemState> {
   // Validación de runtime antes de tocar nada (ver comentario de
   // isValidItemType más arriba); aquí solo hay itemId (siempre "book").
   if (!isValidUuid(bookId)) return { error: "generic" };
@@ -433,14 +446,16 @@ export async function resyncEditions(bookId: string): Promise<EditItemState> {
 
   const { data: book, error } = await supabase
     .from("books")
-    .update({ editions_synced_at: null })
+    .update({ hydrated_at: null })
     .eq("id", bookId)
-    .select("id, openlibrary_work_key, isbn, editions_synced_at")
+    .select(
+      "id, openlibrary_work_key, isbn, hydrated_at, repr_meta, wikidata_id, title, author, total_pages"
+    )
     .single();
 
   if (error || !book) return { error: "generic" };
 
-  await ensureBookEditions(supabase, book);
+  await ensureBookHydrated(supabase, book);
 
   revalidateItemPage("book", bookId);
   return { ok: true };

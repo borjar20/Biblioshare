@@ -221,9 +221,10 @@ export async function findOrCreateCatalogItem(
 
 // Registra la tirada que el usuario tiene EN LA MANO como edición de la obra.
 // Solo el lookup por ISBN (escáner de código de barras, importador de Goodreads)
-// sabe cuál es: una búsqueda por texto devuelve la obra y punto, y sus ediciones
-// las trae ensureBookEditions al abrir la ficha. De ahí que la única fuente aquí
-// sea `matchedIsbn`.
+// sabe cuál es: una búsqueda por texto devuelve la obra y punto, sin tirada
+// identificada — sus candidatas se consultan en vivo (fetchRepresentationCandidates)
+// pero no se persisten hasta que alguien las identifique. De ahí que la única
+// fuente aquí sea `matchedIsbn`.
 //
 // El insert directo a book_editions no es una opción: dejaba a cualquier
 // autenticado escribir editorial/portada/páginas inventadas en cualquier libro

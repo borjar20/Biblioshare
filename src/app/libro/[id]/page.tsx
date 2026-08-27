@@ -97,7 +97,7 @@ function fetchBook(supabase: Supa, id: string) {
   return supabase
     .from("books")
     .select(
-      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at, repr_meta, wikidata_id",
+      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, hydrated_at, repr_meta, wikidata_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -145,9 +145,10 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // resultado), así que esto es sobre todo curador de filas viejas (`hydrated_at`
   // null) que se arreglan solas la primera vez que se abren.
   //
-  // Las EDICIONES ya NO se sincronizan aquí en after(): se resuelven por
-  // streaming vía loadBookEditions (ver editionsPromise, dentro del <Suspense>
-  // de EditionsSection), así que la primera visita SÍ las ve tras el streaming.
+  // Las EDICIONES ya no se sincronizan masivamente desde OpenLibrary (Tarea
+  // 10, spec 2026-08-26 §1): solo existen las IDENTIFICADAS (picker, ISBN
+  // escaneado, alta de colaborador). loadBookEditions (ver editionsPromise,
+  // dentro del <Suspense> de EditionsSection) se limita a leerlas.
   //
   // Solo con sesión (`accessToken` lo hay si y solo si hay sesión). Ya no es
   // una restricción del grant —la RPC la llama service_role—, sino de coste:
@@ -377,19 +378,10 @@ async function BookTabs({
     if (enriched.wroteCredits) expireItemCredits("book", book.id);
   });
 
-  // Ediciones del DISPLAY: se resuelven por streaming (sync-si-hace-falta + lee)
-  // dentro del <Suspense> de EditionsSection. NO se await aquí: eso bloquearía la
-  // página, que es justo lo que evitábamos con after().
-  const editionsPromise = loadBookEditions(
-    supabase,
-    {
-      id: book.id,
-      openlibrary_work_key: book.openlibrary_work_key,
-      isbn: book.isbn,
-      editions_synced_at: book.editions_synced_at,
-    },
-    Boolean(userId),
-  );
+  // Ediciones del DISPLAY: solo las persistidas (identificadas), leídas por
+  // streaming dentro del <Suspense> de EditionsSection. NO se await aquí: eso
+  // bloquearía la página, que es justo lo que evitábamos con after().
+  const editionsPromise = loadBookEditions(book.id);
   // Autores como enlaces a su ficha; si no se pudo enriquecer, texto plano.
   const authorCredits = credits.crew.filter((c) => c.role === "author");
 

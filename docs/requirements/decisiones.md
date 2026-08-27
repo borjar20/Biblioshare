@@ -2107,3 +2107,21 @@ como la escala continua que es una tierlist.
   no preferencia.** El script exige por tanto `SUPABASE_SERVICE_ROLE_KEY`, y su guard de entorno
   se comprueba ANTES de construir el cliente (si no, `createClient` lanza `supabaseUrl is
   required` en el import y el mensaje en castellano no llega a verse nunca).
+
+- **Muere el sync masivo de ediciones al abrir la ficha** (2026-08-27, Task 10,
+  `src/lib/editions/sync-editions.ts` BORRADO). `ensureBookEditions` traía hasta 20 ediciones de
+  OpenLibrary y las registraba en `book_editions` en la primera visita sin sesión de nadie
+  detrás — era justo el origen del ruido de ediciones que motivó el spec de representación
+  (§1, `docs/superpowers/specs/2026-08-26-obra-edicion-representacion-design.md`): tiradas que
+  nadie había identificado, coladas en la tabla compartida solo porque alguien miró la ficha. Con
+  las candidatas de representación resolviéndose EN VIVO (`fetchRepresentationCandidates`, ya
+  implementado antes de esta tarea) el automatismo ya no tenía trabajo que hacer: lo único que
+  puede dar de alta una edición real es quien la identificó de verdad (picker, ISBN escaneado, alta
+  de colaborador). `loadBookEditions` queda como lectura pura, sin `supabase` ni `canSync` en la
+  firma — se simplificó la firma en vez de dejar un parámetro fantasma, tal y como pedía el propio
+  brief de la tarea. La acción de colaborador `resyncEditions` se renombra a
+  `reevaluateRepresentation`: ya no reintenta el sync, pone `hydrated_at = null` y relanza
+  `ensureBookHydrated`, que es quien de verdad decide qué mejorar. La columna
+  `books.editions_synced_at` se queda en el esquema (se dropea en la fase destructiva, Task 16);
+  el código de aplicación deja de leerla y escribirla, y solo sobrevive en el tipo generado de
+  Supabase hasta que esa columna desaparezca de verdad.

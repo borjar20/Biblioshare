@@ -716,6 +716,40 @@ y hace depender el alta de un trigger en vez del dato. Solo la rama de libro: `r
 > rango 2 (`other`, que puede ser cualquier idioma). Es la semántica decidida, pero el efecto
 > pasa de «una ficha» a «87 libros por cada visita a una ficha de autor».
 
+#### Muerte del sync masivo de ediciones (Task 10, código, dev, 2026-08-27)
+
+**La «escalera de hidratación de tres peldaños» de §2 (tarjeta → ficha → edición) pierde su
+peldaño automático.** Hasta esta tarea, abrir la ficha de un libro sin `editions_synced_at`
+disparaba `ensureBookEditions` (`src/lib/editions/sync-editions.ts`, ya BORRADO): traía hasta
+20 ediciones de OpenLibrary (`fetchWorkEditions`) y las registraba una a una vía
+`register_book_edition`. Era el origen del ruido de ediciones que motivó el spec de
+representación (`docs/superpowers/specs/2026-08-26-obra-edicion-representacion-design.md` §1):
+tiradas nunca vistas por nadie, coladas en `book_editions` solo porque alguien abrió la ficha.
+
+**Modelo nuevo: una `book_editions` solo existe si alguien la IDENTIFICÓ de verdad** — la
+eligió en el picker, escaneó/tecleó su ISBN, o la creó un colaborador (`register_book_edition`,
+`ensureBookEdition` en `find-or-create.ts`, `createEdition` en `src/lib/editions/actions.ts`).
+Las candidatas de OpenLibrary para elegir representación (título/portada/sinopsis, §2.1ter) se
+siguen consultando EN VIVO —`fetchRepresentationCandidates`, dentro de `ensureBookHydrated`— pero
+ya NUNCA se persisten en `book_editions`. `loadBookEditions` (`src/lib/editions/load-editions.ts`)
+queda reducido a una lectura pura de `getEditions("book", bookId, true)`, sin escribir nada ni
+tomar `supabase`/`canSync` como parámetro.
+
+La acción de colaborador que antes se llamaba `resyncEditions` (ficha → «Volver a buscar
+ediciones») se renombra a **`reevaluateRepresentation`** (`src/lib/catalog/edit-actions.ts`):
+ya no toca `editions_synced_at` ni vuelve a preguntarle a OpenLibrary por ediciones — pone
+`hydrated_at = null` con el cliente de la petición (reescritura valor→null que el trigger
+`enforce_catalog_edit_collaborator_only`, §8, permite a partir de `collaborator+` — verificado
+en dev el 2026-08-27 contra `pg_proc`, el gate de rol corta ANTES de la comprobación de columna)
+y relanza `ensureBookHydrated` con la fila releída, que es quien de verdad decide qué
+título/portada/sinopsis mejorar (§2.1ter).
+
+**La columna `books.editions_synced_at` NO se ha dropeado**: sigue en el esquema (fase
+destructiva, Task 16, después del despliegue) pero el código de aplicación ya no la lee ni la
+escribe en ningún sitio — solo sobrevive en el tipo generado de Supabase
+(`src/lib/supabase/database.types.ts`), que refleja el esquema real y se regenerará solo cuando
+la columna se borre de verdad.
+
 ### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev, verificado 2026-08-27)
 
 OpenLibrary cataloga cada traducción como una obra distinta, así que `books` acumula filas que

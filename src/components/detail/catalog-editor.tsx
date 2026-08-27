@@ -27,7 +27,7 @@ import {
   setOfficialCover,
   updateEdition,
   deleteEdition,
-  resyncEditions,
+  reevaluateRepresentation,
   type EditItemState,
   type DeleteEditionState,
 } from "@/lib/catalog/edit-actions";
@@ -417,18 +417,19 @@ function CatalogEditorForm({
     initialCreateState
   );
 
-  // Resincronizar ediciones (Tarea 12): solo libros, las versiones de
-  // película no vienen de OpenLibrary. resyncEditions no tiene la firma
-  // (prevState, formData) de una server action de formulario -- se llama
-  // directamente desde una transición, igual que el borrado de edición.
-  const [resyncPending, startResyncTransition] = useTransition();
-  const [resyncError, setResyncError] = useState(false);
+  // Reevaluar representación (Tarea 10): solo libros, las versiones de
+  // película no tienen representación que reevaluar. reevaluateRepresentation
+  // no tiene la firma (prevState, formData) de una server action de
+  // formulario -- se llama directamente desde una transición, igual que el
+  // borrado de edición.
+  const [reevaluatePending, startReevaluateTransition] = useTransition();
+  const [reevaluateError, setReevaluateError] = useState(false);
 
-  function handleResync() {
-    setResyncError(false);
-    startResyncTransition(async () => {
-      const result = await resyncEditions(itemId);
-      if (result.error) setResyncError(true);
+  function handleReevaluate() {
+    setReevaluateError(false);
+    startReevaluateTransition(async () => {
+      const result = await reevaluateRepresentation(itemId);
+      if (result.error) setReevaluateError(true);
     });
   }
 
@@ -754,21 +755,21 @@ function CatalogEditorForm({
               <span className="label-section">
                 {isMovie ? tEditions("titleMovie") : tEditions("titleBook")}
               </span>
-              {/* Solo libros: útil porque el filtro de OpenLibrary (Tarea 5)
-                  va a cambiar con el tiempo, y esto deja repetir la búsqueda
-                  sin tocar la base de datos a mano. */}
+              {/* Solo libros: deja forzar una nueva evaluación de la
+                  representación (título/portada/sinopsis) sin tocar la base
+                  de datos a mano. */}
               {itemType === "book" && (
                 <button
                   type="button"
-                  disabled={resyncPending}
-                  onClick={handleResync}
+                  disabled={reevaluatePending}
+                  onClick={handleReevaluate}
                   className="label-section hover:text-foreground disabled:opacity-60"
                 >
-                  {resyncPending ? t("resyncing") : t("resync")}
+                  {reevaluatePending ? t("resyncing") : t("resync")}
                 </button>
               )}
             </div>
-            {resyncError && (
+            {reevaluateError && (
               <p className="text-sm text-status-dropped">{t("errors.generic")}</p>
             )}
 
