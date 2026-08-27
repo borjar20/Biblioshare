@@ -2223,6 +2223,8 @@
     "emptyTitle": "Tu biblioteca está vacía",
     "noMatchTitle": "Nada que enseñar aquí",
     "seeEverything": "Ver toda la biblioteca",
+    "loadMore": "Cargar más",
+    "showingCount": "{shown} de {total, plural, one {# obra} other {# obras}}",
     "titlesCount": "{count, plural, one {# título} other {# títulos}}",
     "hiddenDropped": "{count, plural, one {# abandonado oculto} other {# abandonados ocultos}}",
     "hiddenDroppedAction": "Mostrar"
