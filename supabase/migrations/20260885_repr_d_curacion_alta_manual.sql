@@ -32,8 +32,14 @@
 -- SIEMPRE la hace una persona autenticada; una escritura `service_role` no tiene
 -- `auth.uid()`. Es exactamente el mismo discriminante que ya usa el trigger hermano
 -- `enforce_catalog_edit_collaborator_only` (20260878: `if auth.uid() is null …
--- return new`). Con esto, olvidar el flag deja de poder envenenar nada: como mucho se
--- pierde la procedencia del proveedor, que es recuperable.
+-- return new`). Con esto, un automatismo SIN sesión que olvide el flag ya no puede
+-- envenenar nada: como mucho se pierde la procedencia del proveedor, que es recuperable.
+--
+-- OJO, el guard es `auth.uid()`, no «es un automatismo»: un escritor que corra CON el
+-- cliente de la petición (una server action, un bulk mal cableado) y olvide el flag SÍ
+-- marcaría `manual`. Es exactamente lo que hace hoy `src/lib/catalog/hydrate-book.ts`
+-- antes de que la Task 9 lo pase a `createServiceRoleClient()`. Todo escritor masivo
+-- de `books` va con service_role: es requisito, no preferencia.
 --
 -- Se conservan las DOS comprobaciones, no una sola: `app.hydrating` sigue haciendo
 -- falta porque la hidratación puede acabar corriendo en un contexto CON sesión (es
@@ -66,7 +72,8 @@ begin
   -- Sin sesión de usuario no hay curación que estampar: es un automatismo
   -- (`service_role`, script de backfill, mantenimiento del dueño). Fallar CERRADO
   -- aquí es lo que impide que un `app.hydrating` olvidado marque `manual` el
-  -- catálogo entero. Mismo discriminante que 20260878.
+  -- catálogo entero. Mismo discriminante que 20260878. No protege, en cambio, a un
+  -- escritor masivo que corra con el cliente de la petición: ese guard es el de arriba.
   if auth.uid() is null then
     return new;
   end if;
