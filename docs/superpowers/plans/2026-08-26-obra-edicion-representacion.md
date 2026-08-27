@@ -1772,6 +1772,7 @@ git commit -m "feat(catalogo): fase destructiva — purga de ediciones huérfana
   - `src/lib/supabase/server.ts:84` y `src/app/libro/[id]/page.tsx:168` documentan el guard `authentication required` de `hydrate_book`, que ya no existe (ahora el guard es del rol invocador).
   - La cabecera de `20260880_manual_catalog_item.sql` justifica dejar `hydrated_at` a NULL diciendo «hydrate_book es fill-only, nunca pisa lo que el colaborador escribió» — la premisa que rompió esta pieza, y el origen de los dos Critical de la revisión. Corregir el comentario donde esté vivo.
   - Documentar en §2 el trigger `trg_stamp_books_repr_manual` y su regla (estampa `source:'manual'` cuando cambia una columna de representación **con sesión de usuario y fuera de `app.hydrating`**), y que el alta manual nace ya marcada.
+  - Dejar escrito que, desde `20260885`, **`repr_meta is null` ya no significa «fila sin procedencia»** sino «fila nacida antes de esa migración»: un alta manual de libro nace siempre con al menos la clave `title`. El marcador de «fila sin procesar» sigue siendo `hydrated_at is null`.
 
 - [ ] **Step 3: `decisiones.md`** (append, con fecha): política ES→EN→otro fill-or-upgrade; muerte de la edición primaria; papel de GB; capa Wikidata/Inventaire como identidad blanda; fusión siempre cobarde con autor verificado.
 
@@ -1809,6 +1810,10 @@ declarar `"lang":"es"` para pisar cualquier libro.
    - **Task 9bis:** `hydrate_books_bulk` nace igualmente **solo para `service_role`**, y la rama de
      libros de `findOrCreateCatalogItemsBulk` la invoca con el cliente de service role. Encaja con
      que `hydratePersonCredits` ya escribe `credits` con `createServiceRoleClient()` desde #725.
+     **Y es requisito, no preferencia:** el trigger de estampado distingue curación de automatismo
+     por `auth.uid()`, así que un escritor masivo que corriera con el cliente de la petición y
+     olvidara `app.hydrating` marcaría **`manual` el catálogo entero**, en silencio y sin vuelta
+     atrás para todo automatismo posterior. Con `service_role` (sin `auth.uid()`) eso es imposible.
    - **Task 15 / backfill:** el script usa la service role key, sin token de usuario.
 2. **La curación se marca sola.** Un trigger `BEFORE UPDATE` en `books` estampa
    `repr_meta[campo].source='manual'` cuando una columna de representación cambia FUERA de
