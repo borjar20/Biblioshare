@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-26 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-08-27 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
@@ -457,6 +457,64 @@ visita) — y `hydrate_book` es fill-only, así que nunca pisa lo que el colabor
 > `execute` sobre ellas en dev y en prod — inofensivo hoy (el `auth.uid() is null` las corta)
 > pero es defensa en profundidad que falta sobre dos funciones que se saltan RLS. Issue
 > [#831](https://github.com/borjar20/Biblioshare/issues/831).
+
+### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev, 2026-08-27)
+
+OpenLibrary cataloga cada traducción como una obra distinta, así que `books` acumula filas que
+son la misma obra. `merge_book_into(p_loser uuid, p_winner uuid) returns void` repunta al
+ganador todo lo que colgaba del perdedor y borra el perdedor. `SECURITY DEFINER`, `search_path`
+fijado a `public, pg_temp`, **solo `service_role`** (`revoke all ... from public, anon,
+authenticated`, nombrando los roles — ver #831). Quién gana lo decide el llamador, no la
+función. Migración `20260888_repr_g_merge_books_completo.sql`, que sustituye a
+`20260887_repr_f_merge_books_fn.sql`.
+
+**Las referencias polimórficas a libro son 17, y NO tienen FK.** Este es el punto que hay que
+entender antes de tocar nada: la integridad de la fusión no la sostiene ningún constraint. La
+única FK real a `books` en todo el esquema es `book_editions.book_id`. Todo lo demás es
+`(_type, _id)` sin FK, así que **una tabla que falte en la función deja filas de usuario
+apuntando a una obra inexistente y no lo detecta nadie** — la app las esconde en silencio.
+
+| Grupo | Columnas |
+|---|---|
+| 13 con `item_type`/`item_id` | `credits`, `passes`, `collection_items`, `library_entries`, `notes`, `saga_items`, `saga_optional_skips`, `saga_placement_windows`, `saga_route_entries`, `club_activity_items`, `club_activity_opinions`, `club_activity_placements`, `club_rounds` |
+| 4 con OTRO nombre | `posts.anchor_type`/`anchor_id` (enum `post_anchor_type`), `saga_placement_windows.after_item_*`, `saga_placement_windows.before_item_*`, `club_activities.spawned_from_item_*` |
+
+Esas 4 son las que faltaban en `20260887`, que copió su lista de `20260870` sin verificarla:
+esa lista **no es autoritativa**, solo cubre las columnas llamadas literalmente
+`item_type`/`item_id`. Issue [#876](https://github.com/borjar20/Biblioshare/issues/876).
+
+**Descartadas tras verificarlas una a una** (para que nadie las re-investigue):
+`challenges.item_type` y `pending_import_rows.item_type` NO tienen `item_id` (son un filtro y
+una fila cruda de CSV, no referencias); `notifications.target_type` es texto y nunca vale
+`'book'`; `content_reports.target_type` e `interaction_targets.kind` son el enum `target_kind`,
+que no tiene etiqueta `'book'`; el enum `thought_anchor_type` **sí** contiene `'book'` pero
+ninguna columna del esquema lo usa (tipo muerto, resto de §6.2b); `pass_reviews` es una vista de
+solo lectura. Queda fuera **a propósito** `club_activities.config->'item'->>'itemId'` (JSONB,
+hoy latente: cero eventos de libro en prod) — issue
+[#875](https://github.com/borjar20/Biblioshare/issues/875).
+
+**Dos clases de fila, y la fusión es cobarde con una.** Si repuntar un DATO DE USUARIO chocara
+con un índice único, la función **aborta nombrando la tabla y sin haber escrito nada**: nadie
+decide por el usuario cuál de sus dos pases sobrevive. En cambio el DATO DERIVADO del proveedor
+(`credits`, `book_editions`) duplicado se borra — sin ese borrado la fusión normal sería
+imposible, porque dos shells de la misma obra llevan ambas su `credits (person_id,
+role='author')`. La guarda cubre también «un pase usa una edición del perdedor que habría que
+borrar por ISBN duplicado», que antes salía como un `P0001 edition_in_use` crudo desde dentro
+del `delete` y ya con escrituras hechas.
+
+**Invariante que la función mantiene:** un libro con ediciones tiene exactamente una primaria.
+Si el ganador no tenía ediciones y el perdedor sí, al moverlas quedaría `ediciones=N
+primarias=0` (`ensure_primary_book_edition` es BEFORE INSERT y no lo arregla en un UPDATE), así
+que la función promociona una con el mismo criterio que
+`promote_primary_edition_after_delete`: `published_year desc nulls last, created_at desc`.
+
+> **Aviso para la fase C (Task 16), que elimina `book_editions.is_primary`.** Las ramas que
+> tocan `is_primary` van condicionadas y por `execute` dinámico, pero eso **solo protege a esta
+> función**. Borrar únicamente la columna rompe la base: `ensure_primary_book_edition` (BEFORE
+> INSERT) revienta en **cualquier `INSERT` de edición**, y `promote_primary_edition_after_delete`
+> (AFTER DELETE) revienta con `record "old" has no field "is_primary"`. Hay que borrar también
+> esos triggers. Issue [#877](https://github.com/borjar20/Biblioshare/issues/877).
+
 
 ## 3. El pase: el hub del estado
 
@@ -3663,4 +3721,4 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > `enumlabel` devuelve `fijo`, `libre`, `anclado`, en ese orden. **Producción queda
 > pendiente a propósito**: la aplicación está reservada al controlador de la rama en el
 > momento del merge, no a esta tarea de cierre. Ver §7.4 para la semántica del valor nuevo y
-> `decisiones.md` (2026-08-15).
+> `decisiones.md` (2026-08-15).

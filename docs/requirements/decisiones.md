@@ -1931,3 +1931,25 @@ como la escala continua que es una tierlist.
   `<comment_id>.<ext>`): el `id` del comentario no existe hasta el INSERT y la secuencia manda
   subir el objeto ANTES (validar → subir → insertar; si el insert falla, se borra el objeto).
   Un `uuid` fresco da la misma garantía de no-colisión sin depender de un id que aún no existe.
+
+- **La fusión de obras aborta ANTES de escribir, no a mitad.** Todo conflicto de dato de usuario
+  —incluido «un pase usa la edición del perdedor que habría que borrar por ISBN duplicado»— se
+  decide en una guarda previa que solo lee. Antes ese caso concreto salía como un `P0001
+  edition_in_use` crudo lanzado por un trigger desde dentro del `delete`, con un mensaje que no
+  nombraba ni la tabla ni la fusión, y **después** de haber apagado ya las primarias del
+  perdedor. Que un `raise` deshaga la transacción no lo hace equivalente: el llamador es un
+  barrido que fusiona en lote y necesita saber qué par saltarse *y por qué*, con la tabla
+  nombrada, no un código de error de tres palabras.
+- **Las referencias polimórficas a libro se enumeran contra el esquema, nunca copiando una lista
+  previa.** `20260887` copió la de `20260870` (que es lo que el plan mandaba) y se dejó 4 de 17:
+  `posts.anchor_id`, los dos extremos `after_`/`before_` de `saga_placement_windows` y
+  `club_activities.spawned_from_item_id`. Como esas referencias **no tienen FK**, nada lo
+  detecta: el post desaparece del feed en silencio. El método bueno —barrer `pg_attribute` ×
+  `pg_type` buscando columnas de enums que contengan la etiqueta `'book'`, más las `*_type` de
+  texto y las jsonb— queda escrito en la cabecera de `20260888` con las candidatas descartadas
+  una a una, para que la próxima persona no tenga que decidir en qué lista fiarse.
+- **La referencia por JSONB (`club_activities.config->'item'`) se deja fuera de la fusión a
+  propósito.** Repuntar una columna tipada falla en voz alta si el nombre cambia; un `jsonb_set`
+  colgado de un `->>'itemType'` de texto libre se queda mudo, que es justo el fallo silencioso
+  que motivó todo esto. Hoy es latente (cero eventos de club sobre libros en producción). El
+  arreglo preferido no es tocar el JSONB sino mover el ítem a columnas tipadas — issue #875.
