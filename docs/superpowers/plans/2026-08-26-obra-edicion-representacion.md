@@ -1768,6 +1768,32 @@ propia fase**: esto va antes de la purga del Step 1 (si no, la purga borraría l
 no estar referenciado por ningún pase) — o bien se excluyen estas filas de la purga. Decídelo a
 propósito y déjalo escrito.
 
+- [ ] **Step 1ter (NUEVO, BLOQUEANTE): ningún código puede seguir escribiendo `books.isbn` ni
+      `books.publisher` cuando caiga el `drop`.** Un `insert`/`update` sobre una columna que ya no
+      existe es un **`42703` en producción**, no una degradación. Inventario hecho el 2026-08-27
+      (rehazlo antes de dropear, puede haber crecido):
+
+  - `src/app/importar/actions.ts:268` — `commitManualImportRow` (alta manual desde una fila del CSV
+    que no casó) escribe `isbn: row.isbn` en `books` y **nunca registra la edición**. Es la issue
+    [#910](https://github.com/borjar20/Biblioshare/issues/910). Hay que migrarlo al mismo camino que
+    el resto: crear la obra y registrar la edición con `register_book_edition`.
+  - **`register_manual_catalog_item`** escribe `p_isbn`/`p_publisher` en `books`. Ya está previsto
+    redefinirla en esta fase; hazlo **antes** del `drop`, no después.
+
+  Comando para rehacer el inventario:
+
+  ```sh
+  grep -rn "isbn\|publisher" src/ --include=*.ts --include=*.tsx | grep -v "book_editions\|matchedIsbn\|test"
+  grep -rn "books.isbn\|books.publisher" supabase/migrations/ | tail -20
+  ```
+
+  Y comprobar en la base qué funciones las tocan todavía:
+
+  ```sql
+  select proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and (p.prosrc like '%books%isbn%' or p.prosrc like '%books%publisher%');
+  ```
+
 - [ ] **Step 2: Drops** (`20260891_repr_f_drops.sql`):
 
 ```sql
