@@ -162,6 +162,18 @@ export async function ensureBookHydrated(
       }
     }
 
+    // Las candidatas solo dependen de la work key, no del work: se lanzan YA,
+    // en paralelo con fetchWork. Esta cadena corre detrás de la ficha (after())
+    // pero también dentro del presupuesto de 1200 ms de openCatalogItem, así
+    // que cada ronda serial de menos es una ficha que llega a nacer completa.
+    // fetchRepresentationCandidates nunca rechaza (degrada a nulls), así que la
+    // promesa huérfana del `return` temprano de abajo no deja rechazo sin
+    // manejar — solo una llamada desaprovechada en el caso raro de que el work
+    // falle.
+    const candidatesPromise = workKey
+      ? fetchRepresentationCandidates(workKey)
+      : Promise.resolve({ es: null, en: null, pagesMedian: null });
+
     // Sin work key ya NO se abandona: la obra puede seguir siendo enriquecible
     // por título (Google Books) o reconciliable por Wikidata. Lo que antes se
     // hacía aquí —marcarla hidratada y punto— la dejaba vacía para siempre.
@@ -170,26 +182,32 @@ export async function ensureBookHydrated(
     // visita. Mientras tanto, la ficha se pinta con lo que haya.
     if (workKey && !work) return;
 
-    // El nombre del autor NO viene en el work: el work lista claves, y el nombre
-    // está en la ficha de cada autor. Se resuelve solo el primero —`books.author`
-    // es un texto único, y el reparto completo lo escribe ensureItemEnriched en
-    // `credits`— y solo si la obra declara alguno. La llamada la sirve la caché
-    // de fetch de Next casi siempre: ensureItemEnriched pide esa misma ficha.
     const authorKey = work?.authorKeys[0];
-    const author =
-      (authorKey ? (await fetchOpenLibraryAuthorByKey(authorKey))?.name : null) ??
-      book.author ??
-      null;
     const titleForLookups = work?.title ?? book.title ?? null;
 
-    // Candidatas por idioma, en paralelo (spec §2): ediciones de OL en vivo y
-    // entidad de Wikidata. Google Books va DESPUÉS y solo si quedan huecos.
-    const [candidates, entities] = await Promise.all([
-      workKey
-        ? fetchRepresentationCandidates(workKey)
-        : Promise.resolve({ es: null, en: null, pagesMedian: null }),
+    // Segunda ronda en paralelo: todo lo que ya solo depende del work.
+    //  - Autor: el nombre NO viene en el work (el work lista claves; el nombre
+    //    está en la ficha de cada autor). Se resuelve solo el primero
+    //    —`books.author` es un texto único, y el reparto completo lo escribe
+    //    ensureItemEnriched en `credits`— y solo si la obra declara alguno. La
+    //    llamada la sirve la caché de fetch de Next casi siempre:
+    //    ensureItemEnriched pide esa misma ficha.
+    //  - Candidatas por idioma (spec §2): lanzadas arriba, aquí se recogen.
+    //  - Entidad de Wikidata vía Inventaire, por título.
+    //  - Sinopsis de respaldo: solo si el work no trae la suya (una llamada
+    //    extra, y solo en este caso). Antes iba en serie detrás de todo esto.
+    // Google Books va DESPUÉS y solo si quedan huecos.
+    const [authorName, candidates, entities, fallbackSynopsis] = await Promise.all([
+      authorKey
+        ? fetchOpenLibraryAuthorByKey(authorKey).then((a) => a?.name ?? null)
+        : Promise.resolve(null),
+      candidatesPromise,
       titleForLookups ? searchInventaireEntities(titleForLookups) : Promise.resolve([]),
+      workKey && work && !work.description
+        ? fetchFirstEditionDescription(workKey)
+        : Promise.resolve(null),
     ]);
+    const author = authorName ?? book.author ?? null;
 
     // Entidad fiable = autor verificado **Y título corroborado** (spec §6). De
     // aquí sale el QID, que es IDENTIDAD: `wikidata-collapse` lo respeta por
@@ -238,10 +256,9 @@ export async function ensureBookHydrated(
       { value: candidates.en?.coverUrl, lang: "en", source: "openlibrary" },
       { value: work?.coverUrl, lang: "other", source: "openlibrary" },
     ]);
-    // La obra manda; si no trae sinopsis, se cae a la de alguna de sus ediciones
-    // (una llamada extra, y solo en este caso).
-    const synopsis =
-      work?.description ?? (workKey ? await fetchFirstEditionDescription(workKey) : null);
+    // La obra manda; si no trae sinopsis, se cae a la de alguna de sus
+    // ediciones (resuelta ya en la ronda paralela de arriba).
+    const synopsis = work?.description ?? fallbackSynopsis;
     pickField(fields, "synopsis", [
       { value: synopsis, lang: synopsisLang(synopsis), source: "openlibrary" },
     ]);

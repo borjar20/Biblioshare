@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getTranslations } from "next-intl/server";
 import type { SearchResult } from "@/lib/catalog/types";
 import { itemHref } from "@/lib/catalog/item-href";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
@@ -9,11 +8,10 @@ import { OpenResultButton } from "./open-result-button";
 // La tarjeta muestra portada, título, autoría y año — y nada más. Editorial y
 // páginas ya no salen: son de una tirada concreta, no de la obra, y la mediana
 // que se pintaba antes no era el número de páginas de ningún libro real. Ver el
-// spec de 2026-07-14 (escalera de hidratación, peldaño 1).
-export async function SearchResultCard({ result }: { result: SearchResult }) {
-  const t = await getTranslations("search");
-  const editionCount = result.editionCount ?? 1;
-
+// spec de 2026-07-14 (escalera de hidratación, peldaño 1). El contador de
+// ediciones tampoco: era el `edition_count` de OpenLibrary, que no coincide
+// con las ediciones identificadas del catálogo propio.
+export function SearchResultCard({ result }: { result: SearchResult }) {
   const content = (
     <>
       {/* El borde de la portada se tiñe del tipo (`.rc .cvw`, 1.5px al 40% del
@@ -34,11 +32,6 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
           <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
             {result.title}
           </div>
-        )}
-        {editionCount > 1 && (
-          <span className="absolute right-1.5 top-1.5 rounded-full border border-border bg-surface/90 px-2 py-0.5 font-mono text-[10px] font-medium text-foreground backdrop-blur">
-            {t("editions", { count: editionCount })}
-          </span>
         )}
       </div>
       <div className="flex flex-col">
@@ -65,6 +58,7 @@ export async function SearchResultCard({ result }: { result: SearchResult }) {
   return (
     <Link
       href={itemHref(result.itemType, result.catalogId)}
+      data-testid="search-result-card"
       className="group flex flex-col gap-2 rounded-lg transition hover:-translate-y-0.5"
     >
       {content}

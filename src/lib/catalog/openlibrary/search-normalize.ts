@@ -47,7 +47,6 @@ export function mapWorkDoc(doc: OpenLibrarySearchDoc): SearchResult {
     // La obra se hidrata al abrir su ficha (ensureBookHydrated), no aquí.
     synopsis: null,
     genres: null,
-    editionCount: typeof doc.edition_count === "number" ? doc.edition_count : 1,
   };
 }
 

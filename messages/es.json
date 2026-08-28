@@ -214,7 +214,6 @@
         "generic": "Algo salió mal. Inténtalo de nuevo."
       }
     },
-    "editions": "{count, plural, one {# edición} other {# ediciones}}",
     "addToQueue": "Añadir a cola",
     "chooseQueue": "¿En qué cola?",
     "noQueueOption": "Sin cola",

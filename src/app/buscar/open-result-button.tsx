@@ -28,6 +28,7 @@ export function OpenResultButton({
       onClick={() => startTransition(() => openCatalogItem(result))}
       disabled={isPending}
       aria-busy={isPending}
+      data-testid="search-result-card"
       className="group relative flex w-full flex-col gap-2 rounded-lg text-left transition hover:-translate-y-0.5"
     >
       {children}

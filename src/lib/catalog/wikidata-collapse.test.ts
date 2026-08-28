@@ -17,7 +17,7 @@ describe("collapseByWikidata", () => {
     const local: SearchResult = { ...base, externalId: "/works/OL16813053W", catalogId: "uuid-1",
       title: "Palabras Radiantes", subtitle: "Brandon Sanderson", altTitles: ["Palabras Radiantes"] };
     const api: SearchResult = { ...base, externalId: "/works/OL38056408W",
-      title: "Palabras Radiantes", subtitle: "Brandon Sanderson", altTitles: ["Palabras Radiantes"], editionCount: 1 };
+      title: "Palabras Radiantes", subtitle: "Brandon Sanderson", altTitles: ["Palabras Radiantes"] };
     const out = collapseByWikidata([local, api], [entity]);
     expect(out).toHaveLength(1);
     expect(out[0].catalogId).toBe("uuid-1");
@@ -73,34 +73,33 @@ describe("collapseByWikidata", () => {
   // distinguiera de "gana siempre el primero de la lista".
   it("el local con catalogId en SEGUNDA posición sigue ganando", () => {
     const api: SearchResult = { ...base, externalId: "/works/OL38056408W", title: "Palabras Radiantes",
-      subtitle: "Brandon Sanderson", editionCount: 5 };
+      subtitle: "Brandon Sanderson" };
     const local: SearchResult = { ...base, externalId: "/works/OL16813053W", catalogId: "uuid-9",
-      title: "Palabras Radiantes", subtitle: "Brandon Sanderson", editionCount: 1 };
+      title: "Palabras Radiantes", subtitle: "Brandon Sanderson" };
     const out = collapseByWikidata([api, local], [entity]);
     expect(out).toHaveLength(1);
     expect(out[0].catalogId).toBe("uuid-9");
   });
 
-  it("sin catalogId en ninguno, el empate se resuelve por editionCount", () => {
+  it("sin catalogId en ninguno, el empate lo gana el primero visto (mejor relevancia)", () => {
     const a: SearchResult = { ...base, externalId: "/works/OL1W", title: "Palabras Radiantes",
-      subtitle: "Brandon Sanderson", editionCount: 2 };
+      subtitle: "Brandon Sanderson" };
     const b: SearchResult = { ...base, externalId: "/works/OL2W", title: "Words of Radiance",
-      subtitle: "Brandon Sanderson", editionCount: 9 };
+      subtitle: "Brandon Sanderson" };
     const out = collapseByWikidata([a, b], [entity]);
     expect(out).toHaveLength(1);
-    expect(out[0].externalId).toBe("/works/OL2W");
+    expect(out[0].externalId).toBe("/works/OL1W");
   });
 
-  it("el fundido hereda altTitles de ambos y el editionCount mayor, aunque el ganador tenga menos ediciones", () => {
+  it("el fundido hereda altTitles de ambos", () => {
     const local: SearchResult = { ...base, externalId: "/works/OL1W", catalogId: "uuid-7",
       title: "Palabras Radiantes", subtitle: "Brandon Sanderson",
-      altTitles: ["Palabras Radiantes", "PR alt"], editionCount: 1 };
+      altTitles: ["Palabras Radiantes", "PR alt"] };
     const api: SearchResult = { ...base, externalId: "/works/OL2W", title: "Words of Radiance",
-      subtitle: "Brandon Sanderson", altTitles: ["Words of Radiance"], editionCount: 12 };
+      subtitle: "Brandon Sanderson", altTitles: ["Words of Radiance"] };
     const out = collapseByWikidata([local, api], [entity]);
     expect(out).toHaveLength(1);
     expect(out[0].catalogId).toBe("uuid-7");
-    expect(out[0].editionCount).toBe(12);
     expect(new Set(out[0].altTitles)).toEqual(
       new Set(["Palabras Radiantes", "PR alt", "Words of Radiance"])
     );

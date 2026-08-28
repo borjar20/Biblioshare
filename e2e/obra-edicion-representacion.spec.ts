@@ -87,10 +87,7 @@ test.describe("obra / edición / representación", () => {
     // nazca como nace en producción. Cuál sea el título da igual: lo que se
     // mide es la fila que queda detrás.
     await page.goto("/buscar?type=book&q=hyperion+dan+simmons");
-    const card = page
-      .getByRole("button", { name: /ediciones/ })
-      .or(page.locator('a[href*="/libro/"]'))
-      .first();
+    const card = page.getByTestId("search-result-card").first();
     await expect(card).toBeVisible({ timeout: 20_000 });
     await card.click();
     await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });

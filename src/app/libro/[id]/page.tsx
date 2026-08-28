@@ -42,6 +42,7 @@ import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
 import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
+import { HydrationWatch } from "@/components/detail/hydration-watch";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import {
   getRatingSummary,
@@ -272,6 +273,12 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      {/* Fila aún sin hidratar (recién creada, o su hidratación falló y el
+          after() de arriba la acaba de relanzar): la isla sonda hydrated_at y
+          refresca la ficha cuando la hidratación de fondo termina — sin ella,
+          la ficha nacía vacía y así se quedaba hasta recargar a mano. Solo con
+          sesión, por el mismo guardia de coste que el propio after(). */}
+      {user && !book.hydrated_at && <HydrationWatch bookId={book.id} />}
       <ItemShell
         itemType="book"
         mediaLabel={tDetail("mediaLabel.book")}

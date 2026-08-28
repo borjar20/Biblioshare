@@ -2847,3 +2847,30 @@ vaciar la tabla. La limpieza se hará a mano, caso por caso, sin prisa.
 
 **Consecuencia operativa**: el esquema `backup_obra_edicion_20260826` (#866) no se borra mientras
 quede limpieza manual pendiente — es la red de esa limpieza, no solo la del despliegue.
+
+## 2026-08-28 (5) — La búsqueda deja de enseñar el contador de ediciones; la ficha recién nacida se refresca sola
+
+**Fuera el badge «N ediciones» de las tarjetas de búsqueda.** El número era el `edition_count` de
+OpenLibrary — todas las tiradas que OL conoce de la obra —, no las ediciones identificadas del
+catálogo propio, y con el modelo de ediciones vivo esa cifra miente al usuario. Se quitó del tipo
+`SearchResult` entero (tarjeta, enriquecimiento en `mergeByExternalId`, desempate de
+`collapseByWikidata` — ahora gana el local y, sin local, el primero visto por relevancia). **El
+campo `edition_count` SÍ se sigue pidiendo a OL** (`work-search.ts`): la regla 6 del normalizador lo
+usa para elegir el doc superviviente al desduplicar. Quitarlo de ahí sería un cambio de
+comportamiento del normalizador, no limpieza.
+
+**La ficha sin hidratar se refresca sola (isla `HydrationWatch`).** Diagnóstico: una obra recién
+creada navegaba a su ficha con la fila vacía (el presupuesto de 1200 ms de `openCatalogItem` casi
+nunca alcanza a la cadena de fuentes) y NADA la refrescaba al terminar el `after()` — la ficha vacía
+quedaba hasta recarga manual. La isla sonda `books.hydrated_at` (RLS `USING (true)`, delays
+crecientes, ~46 s de ventana) y hace UN `router.refresh()` cuando la marca aparece; se rinde en
+silencio si la hidratación falló (la cura la visita siguiente, como siempre). Solo se monta con
+sesión y con `hydrated_at` null. Verificado e2e contra APIs reales (`hidratacion-auto-refresh.spec.ts`):
+sondeo visible en red, refresh RSC sin recarga, fila hidratada detrás.
+
+**Y la cadena de hidratación pierde dos rondas seriales.** `fetchRepresentationCandidates` solo
+necesita la work key: corre en paralelo con `fetchWork`. El autor y la sinopsis de respaldo
+(`fetchFirstEditionDescription`) entran en el `Promise.all` de Inventaire. De hasta 6 rondas de red
+a 4; Google Books queda serial porque su gate depende de los campos ya resueltos. Seguro porque
+ningún fetcher rechaza (degradan a null): la promesa adelantada no deja rechazos huérfanos si el
+work falla y se retorna temprano.

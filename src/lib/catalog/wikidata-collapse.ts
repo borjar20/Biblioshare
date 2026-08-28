@@ -95,13 +95,13 @@ export function collapseByWikidata(
       continue;
     }
     const twin = out[twinIndex];
-    // Superviviente: (1) el que ya tiene fila en catálogo (`catalogId`) — así
-    // el clic no crea una fila nueva cuando ya teníamos la obra —, y si
-    // empatan en eso, (2) el de más ediciones.
+    // Superviviente: el que ya tiene fila en catálogo (`catalogId`) — así el
+    // clic no crea una fila nueva cuando ya teníamos la obra. Si empatan en
+    // eso, el primero visto, que llegó en mejor posición de relevancia.
     const winner =
       (twin.catalogId ? 1 : 0) !== (tagged.catalogId ? 1 : 0)
         ? (twin.catalogId ? twin : tagged)
-        : (twin.editionCount ?? 0) >= (tagged.editionCount ?? 0) ? twin : tagged;
+        : twin;
     const loser = winner === twin ? tagged : twin;
     out[twinIndex] = {
       ...winner,
@@ -109,7 +109,6 @@ export function collapseByWikidata(
       altTitles: [
         ...new Set([...(winner.altTitles ?? []), ...(loser.altTitles ?? []), winner.title, loser.title]),
       ],
-      editionCount: Math.max(winner.editionCount ?? 0, loser.editionCount ?? 0) || undefined,
     };
   }
   return out;

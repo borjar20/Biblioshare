@@ -64,13 +64,10 @@ test.describe("búsqueda e hidratación de libros", () => {
       page.getByText("Children of Dune", { exact: true }),
     ).toHaveCount(1);
 
-    // El contador es el edition_count real de OpenLibrary. NO se fija el número:
-    // el ranking y el recuento son de la API, no nuestros, y clavarlos convierte
-    // un cambio suyo en un rojo nuestro (ver la trampa de cabecera). Que la
-    // tarjeta pinte "N ediciones" ya prueba lo que importa: el dato viene de la
-    // API y no está inventado — `search-result-card.tsx:38` solo lo dibuja con
-    // `editionCount > 1`, y el fallback de `mapWorkDoc` es justo 1.
-    await expect(page.getByText(/\d+ ediciones/).first()).toBeVisible();
+    // La tarjeta ya NO lleva contador de ediciones: era el `edition_count` de
+    // OpenLibrary, que no coincide con las ediciones identificadas del catálogo
+    // propio y por eso se quitó (2026-08-28).
+    await expect(page.getByText(/\d+ ediciones/)).toHaveCount(0);
 
     // La tarjeta NO pinta datos de edición: ni editorial ni páginas.
     await expect(page.getByText(/págs\./)).toHaveCount(0);
@@ -97,10 +94,7 @@ test.describe("búsqueda e hidratación de libros", () => {
     await page.goto("/buscar?type=book&q=hyperion+dan+simmons");
     // Tarjeta = botón (sin crear) o enlace (ya cacheado de una corrida previa):
     // se acepta cualquiera, porque lo que se verifica es la ficha resultante.
-    const firstCard = page
-      .getByRole("button", { name: /ediciones/ })
-      .or(page.locator('a[href*="/libro/"]'))
-      .first();
+    const firstCard = page.getByTestId("search-result-card").first();
     await expect(firstCard).toBeVisible({ timeout: 20_000 });
 
     await firstCard.click();
@@ -133,9 +127,10 @@ test.describe("búsqueda e hidratación de libros", () => {
     await page.goto("/buscar?type=book&q=dune");
 
     const dune = page
-      .getByRole("button", { name: /^Dune \d+ ediciones/ })
-      .or(page.getByRole("link", { name: /^Dune \d+ ediciones/ }))
+      .getByTestId("search-result-card")
+      .filter({ has: page.getByText("Dune", { exact: true }) })
       .first();
+    await expect(dune).toBeVisible({ timeout: 20_000 });
     await dune.click();
     await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
 
@@ -144,7 +139,7 @@ test.describe("búsqueda e hidratación de libros", () => {
     await expect(page.getByText(/^Editorial$/i)).toHaveCount(0);
   });
 
-  test("una obra ya cacheada aparece como enlace, con su contador, sin ocultar a las demás", async ({
+  test("una obra ya cacheada aparece como enlace, sin ocultar a las demás", async ({
     page,
   }) => {
     await login(page);
@@ -154,17 +149,18 @@ test.describe("búsqueda e hidratación de libros", () => {
     // permanente desde que OpenLibrary dejó de devolverla: hoy `q=dune` no la
     // trae ni entre los 100 primeros (comprobado contra search.json el
     // 2026-07-29; la obra existe, `/works/OL893415W.json` responde 200 — es su
-    // buscador). Sin gemela en la respuesta de la API no hay `edition_count` que
-    // fusionar, así que la fila local salía SIN contador y el locator no
-    // enganchaba nada. El producto estaba bien: en esa misma página, las otras
-    // obras cacheadas sí salían como enlace con su contador.
+    // buscador).
     //
     // "Children of Dune" es hoy el PRIMER resultado de `q=dune` y está en el
     // catálogo dev con la misma work key (`/works/OL893516W`), que es lo que
     // este test necesita: una obra que esté en las dos fuentes a la vez.
+    //
+    // (El contador de ediciones que este test también vigilaba dejó de existir:
+    // la tarjeta ya no lo pinta — 2026-08-28.)
     await page.goto("/buscar?type=book&q=dune");
     const asButton = page
-      .getByRole("button", { name: /^Children of Dune \d+ ediciones/ })
+      .locator('button[data-testid="search-result-card"]')
+      .filter({ has: page.getByText("Children of Dune", { exact: true }) })
       .first();
     if (await asButton.isVisible().catch(() => false)) {
       await asButton.click();
@@ -172,12 +168,10 @@ test.describe("búsqueda e hidratación de libros", () => {
       await page.goto("/buscar?type=book&q=dune");
     }
 
-    // Ya cacheada: es un ENLACE a su ficha, y CONSERVA su contador de ediciones
-    // — que solo lo sabe la API, no la fila local (`books` no guarda
-    // `edition_count`). Sin el fix de mergeByExternalId, aquí salía sin
-    // contador. El número no se fija: lo manda OpenLibrary.
+    // Ya cacheada: es un ENLACE a su ficha.
     const cached = page
-      .getByRole("link", { name: /^Children of Dune \d+ ediciones/ })
+      .locator('a[data-testid="search-result-card"]')
+      .filter({ has: page.getByText("Children of Dune", { exact: true }) })
       .first();
     await expect(cached).toBeVisible({ timeout: 20_000 });
 
@@ -191,7 +185,7 @@ test.describe("búsqueda e hidratación de libros", () => {
     // no crea filas). Se comprueba la FORMA, no un título concreto — cuál sea
     // depende del ranking de OpenLibrary, que es justo lo que rompió este test.
     await expect(
-      page.getByRole("button", { name: /\d+ ediciones/ }).first(),
+      page.locator('button[data-testid="search-result-card"]').first(),
     ).toBeVisible();
   });
 

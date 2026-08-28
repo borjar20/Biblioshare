@@ -20,6 +20,10 @@ type WorkSearchResponse = {
   docs?: OpenLibrarySearchDoc[];
 };
 
+// `edition_count` ya no se enseña (la tarjeta dejó de llevar contador de
+// ediciones: era el de OpenLibrary, no el del catálogo propio), pero se sigue
+// pidiendo porque la regla 6 del normalizador lo usa para elegir el doc
+// superviviente al desduplicar (ver search-normalize.ts).
 const SEARCH_FIELDS =
   "key,title,author_name,author_key,cover_i,first_publish_year,edition_count,language,editions,editions.title,editions.language";
 const REVALIDATE_SECONDS = 3600;

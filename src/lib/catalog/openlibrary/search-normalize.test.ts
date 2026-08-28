@@ -25,7 +25,6 @@ describe("mapWorkDoc", () => {
       year: 1965,
       synopsis: null,
       genres: null,
-      editionCount: 312,
     });
   });
 
@@ -39,7 +38,6 @@ describe("mapWorkDoc", () => {
     expect(result.subtitle).toBe("Terry Pratchett, Neil Gaiman");
     expect(result.coverUrl).toBeNull();
     expect(result.year).toBeNull();
-    expect(result.editionCount).toBe(1);
   });
 });
 

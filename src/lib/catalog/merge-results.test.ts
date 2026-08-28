@@ -61,18 +61,4 @@ describe("mergeByExternalId", () => {
     const api = [book("/works/OL1W", "Dune")];
     expect(mergeByExternalId([], api)).toEqual(api);
   });
-
-  // Visto en el navegador: una obra perdía su contador de ediciones en cuanto
-  // entraba en el catálogo. `books` no guarda el edition_count de OpenLibrary,
-  // así que ese dato solo lo trae el gemelo de la API — y la fusión lo tiraba.
-  it("el local se queda el nº de ediciones que solo sabe la API", () => {
-    const local = [book("/works/OL1W", "Dune", "uuid-1")];
-    const api = [{ ...book("/works/OL1W", "Dune"), editionCount: 120 }];
-
-    const merged = mergeByExternalId(local, api);
-
-    expect(merged).toHaveLength(1);
-    expect(merged[0].catalogId).toBe("uuid-1");
-    expect(merged[0].editionCount).toBe(120);
-  });
 });

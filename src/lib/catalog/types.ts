@@ -50,9 +50,6 @@ export type SearchResult = {
   // obra se hidrata al abrir su ficha (ensureBookHydrated).
   synopsis: string | null;
   genres: string[] | null;
-  // Libros: nº real de ediciones de la obra según OpenLibrary (`edition_count`).
-  // Ver docs/REQUIREMENTS.md §7.2.
-  editionCount?: number;
   // Libros, SOLO en el lookup por ISBN (escáner, importador): la tirada exacta
   // que se escaneó, para registrarla como edición al añadir el libro.
   matchedIsbn?: string;

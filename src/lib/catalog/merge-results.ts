@@ -14,22 +14,9 @@ export function mergeByExternalId(
   local: SearchResult[],
   api: SearchResult[]
 ): SearchResult[] {
-  const apiByExternalId = new Map(
-    api.filter((result) => result.externalId.length > 0).map((r) => [r.externalId, r])
-  );
-
-  // El local gana... salvo en el nº de ediciones, que solo lo sabe la API: la
-  // fila de `books` no guarda el `edition_count` de OpenLibrary. Sin esto, una
-  // obra perdía su contador de ediciones en cuanto entraba en el catálogo, y la
-  // misma búsqueda enseñaba "120 ediciones" antes de tenerla y nada después.
-  const enriched = local.map((result) => {
-    const twin = result.externalId ? apiByExternalId.get(result.externalId) : undefined;
-    return twin?.editionCount ? { ...result, editionCount: twin.editionCount } : result;
-  });
-
   const localIds = new Set(
     local.map((result) => result.externalId).filter((id) => id.length > 0)
   );
 
-  return [...enriched, ...api.filter((result) => !localIds.has(result.externalId))];
+  return [...local, ...api.filter((result) => !localIds.has(result.externalId))];
 }

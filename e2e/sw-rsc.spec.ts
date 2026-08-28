@@ -37,10 +37,7 @@ test.describe("service worker y payloads RSC", () => {
     });
 
     await page.goto("/buscar?type=book&q=dune");
-    const card = page
-      .locator('a[href*="/libro/"]')
-      .or(page.getByRole("button", { name: /ediciones/ }))
-      .first();
+    const card = page.getByTestId("search-result-card").first();
     await expect(card).toBeVisible({ timeout: 20_000 });
     await card.click();
     await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
