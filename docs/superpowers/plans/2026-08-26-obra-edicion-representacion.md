@@ -1721,12 +1721,18 @@ git commit -m "feat(catalogo): barrido de reconciliación QID y fusión de dupli
 ### Task 16: Fase C — purga y drops (SOLO tras deploy verde en prod)
 
 **Files:**
-- Create: `supabase/migrations/20260890_repr_e_purge_editions.sql`
-- Create: `supabase/migrations/20260891_repr_f_drops.sql`
+- Create: `supabase/migrations/20260893_repr_k_purge_editions.sql`
+- Create: `supabase/migrations/20260894_repr_l_drops.sql`
 
 **Gate:** no empezar hasta que fase B esté desplegada en prod y estable (búsqueda, ficha, picker, import verificados en prod). Confirmar con el dueño en el chat antes de aplicar en prod.
 
-- [ ] **Step 1: Purga conservadora** (`20260890_repr_e_purge_editions.sql`):
+> ⚠️ **Comprueba los números antes de crear estos ficheros.** Ya se han renumerado dos veces durante
+> la ejecución: los prefijos que este plan reservaba originalmente (`20260884`…`20260891`) los fueron
+> ocupando las migraciones que salieron de las revisiones. Haz `ls supabase/migrations/ | tail` y usa
+> el siguiente libre. Esto importa **aquí más que en ninguna otra tarea**, porque es la fase que
+> borra y se ejecuta contra producción.
+
+- [ ] **Step 1: Purga conservadora** (`20260893_repr_k_purge_editions.sql`):
 
 ```sql
 -- Purga conservadora (spec §7 fase c): fuera las ediciones del sync masivo que
@@ -1805,7 +1811,7 @@ propósito y déjalo escrito.
    where n.nspname = 'public' and (p.prosrc like '%books%isbn%' or p.prosrc like '%books%publisher%');
   ```
 
-- [ ] **Step 2: Drops** (`20260891_repr_f_drops.sql`):
+- [ ] **Step 2: Drops** (`20260894_repr_l_drops.sql`):
 
 ```sql
 drop trigger if exists books_create_primary_edition on public.books;
@@ -1828,7 +1834,7 @@ Además, en la misma migración: ajustar el gate de columnas técnicas (`2026087
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20260890_repr_e_purge_editions.sql supabase/migrations/20260891_repr_f_drops.sql src/lib/supabase/database.types.ts
+git add supabase/migrations/20260893_repr_k_purge_editions.sql supabase/migrations/20260894_repr_l_drops.sql src/lib/supabase/database.types.ts
 git commit -m "feat(catalogo): fase destructiva — purga de ediciones huérfanas y muerte de is_primary/isbn/publisher/editions_synced_at"
 ```
 
