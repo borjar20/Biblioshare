@@ -81,9 +81,17 @@ export function createPublicClient() {
 //
 // No confundir con `createServiceRoleClient()`: aquí RLS sigue aplicando con la
 // identidad del usuario y `auth.uid()` devuelve su id, así que las RPC con
-// guard de sesión (`hydrate_book` y hermanas: `raise 'authentication required'`
-// si no hay uid) siguen funcionando igual que desde una server action. Ese es
-// el punto — el arreglo no debía relajar ni un grant.
+// guard de sesión (p. ej. `register_manual_catalog_item`: `raise 'authentication
+// required'` si no hay uid) siguen funcionando igual que desde una server
+// action. Ese es el punto — el arreglo no debía relajar ni un grant.
+//
+// `hydrate_book` YA NO es uno de esos ejemplos, y conviene no volver a citarlo
+// aquí: al pasar de fill-only a fill-or-upgrade (`20260883`) perdió el execute
+// de `authenticated` y es **solo de `service_role`** (`20260884`, #871), así que
+// su guard dejó de ser «hay uid» para ser «quién invoca». Con este cliente
+// devuelve 42501. Quien la llama construye su propio cliente de service role
+// (ver la cabecera de `hydrate-book.ts`); lo que sigue yendo con ESTE cliente
+// son las lecturas y los updates de columnas técnicas.
 export function createTokenClient(accessToken: string) {
   return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

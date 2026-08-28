@@ -1,4 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
+import {
+  FINAL_EMPIRE_FILTER,
+  FINAL_EMPIRE_WORK_KEY,
+} from "./support/book-fixture";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -19,7 +23,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 //
 // Independiente de pase-hub.spec.ts a propósito: no usa test.describe.serial
 // ni depende de un bookId que otro test haya creado antes. Usa fixtures
-// REALES y persistentes de la cuenta `devtest` ("The Final Empire",
+// REALES y persistentes de la cuenta `devtest` (el libro de Mistborn,
 // "Juego de tronos"), resueltas por título/consulta — nunca por UUID fijo —
 // para sobrevivir a un reset de la base de datos de dev. headers()/
 // devtestId() están copiados de pase-hub.spec.ts (no se importan: los specs
@@ -61,25 +65,27 @@ async function login(page: Page) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // Fixtures reales de devtest, resueltas por título (no por UUID fijo, para
-// sobrevivir a un reset de dev). "The Final Empire" es normalmente
+// sobrevivir a un reset de dev; el LIBRO va por work key, ver
+// `support/book-fixture.ts`, porque su título ya no es estable). Es normalmente
 // in_progress con position={}; "Juego de tronos" normalmente completed con
 // 8 temporadas — ver contexto de la Tarea 8. Preparar datos por la UI es
 // frágil (docs/TRAMPAS.md §15): estos helpers solo LEEN por REST, la UI es
 // para verificar.
 // ─────────────────────────────────────────────────────────────────────────
 
-type BookFixture = { itemId: string; passId: string; total: number };
+type BookFixture = { itemId: string; passId: string; total: number; title: string };
 
 async function resolveBookFixture(userId: string): Promise<BookFixture> {
   const bookRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/books?title=eq.${encodeURIComponent("The Final Empire")}&select=id,total_pages`,
+    `${SUPABASE_URL}/rest/v1/books?${FINAL_EMPIRE_FILTER}&select=id,title,total_pages`,
     { headers: headers() },
   );
   const [book] = (await bookRes.json()) as {
     id: string;
+    title: string;
     total_pages: number | null;
   }[];
-  if (!book) throw new Error('no se encontró el libro fixture "The Final Empire" en catálogo');
+  if (!book) throw new Error(`no se encontró el libro fixture ${FINAL_EMPIRE_WORK_KEY} en catálogo`);
 
   const passRes = await fetch(
     `${SUPABASE_URL}/rest/v1/passes?user_id=eq.${userId}&item_type=eq.book&item_id=eq.${book.id}&is_active=eq.true&select=id`,
@@ -113,7 +119,7 @@ async function resolveBookFixture(userId: string): Promise<BookFixture> {
   const total = editionPages ?? book.total_pages;
   if (!total) throw new Error('sin total_pages resoluble para "The Final Empire"');
 
-  return { itemId: book.id, passId: pass.id, total };
+  return { itemId: book.id, passId: pass.id, total, title: book.title };
 }
 
 type SeriesFixture = { itemId: string; passId: string };
@@ -227,7 +233,7 @@ test("el enlace de la ficha abre un dialog con la pagina de origen detras; la na
   test.setTimeout(60_000);
   await login(page);
   const userId = await devtestId();
-  const { itemId, passId } = await resolveBookFixture(userId);
+  const { itemId, passId, title } = await resolveBookFixture(userId);
 
   const originUrl = `/libro/${itemId}?tab=log`;
   await page.goto(originUrl);
@@ -242,8 +248,12 @@ test("el enlace de la ficha abre un dialog con la pagina de origen detras; la na
   // La página de origen sigue MONTADA detrás del modal (soft nav de la ruta
   // interceptada, no un hard nav a /sesion): su h1 sigue en el árbol aunque
   // el diseño lo tape.
+  // El título se LEE de la fila, no se escribe aquí: desde `20260883` la
+  // hidratación es fill-or-upgrade por rango de idioma y puede traducirlo sin
+  // que nadie toque el código (hoy en dev es «El imperio final»). Clavarlo
+  // convertiría una traducción —comportamiento deseado— en un rojo nuestro.
   await expect(
-    page.getByRole("heading", { name: "The Final Empire", level: 1 }),
+    page.getByRole("heading", { name: title, level: 1 }),
   ).toHaveCount(1);
 
   const deepLinkUrl = page.url();
@@ -262,7 +272,7 @@ test("escape, clic en el fondo y el boton X cierran el modal con UN SOLO salto d
   test.setTimeout(60_000);
   await login(page);
   const userId = await devtestId();
-  const { itemId, passId } = await resolveBookFixture(userId);
+  const { itemId, passId, title } = await resolveBookFixture(userId);
   const originUrl = `/libro/${itemId}?tab=log`;
   const dialog = page.getByRole("dialog");
 
@@ -304,7 +314,7 @@ test("guardar una sesion normal (sin autocierre) cierra el modal con un solo sal
   test.setTimeout(60_000);
   await login(page);
   const userId = await devtestId();
-  const { itemId, passId } = await resolveBookFixture(userId);
+  const { itemId, passId, title } = await resolveBookFixture(userId);
   const originUrl = `/libro/${itemId}?tab=log`;
 
   const passSnapshot = await snapshotPass(passId);
@@ -425,7 +435,7 @@ test("la hoja de libro tiene exactamente un input de pagina y uno de duracion, c
   test.setTimeout(60_000);
   await login(page);
   const userId = await devtestId();
-  const { itemId, passId } = await resolveBookFixture(userId);
+  const { itemId, passId, title } = await resolveBookFixture(userId);
 
   await page.goto(`/libro/${itemId}?tab=log`);
   await sessionLink(page, passId).click();
@@ -503,7 +513,7 @@ test("guardar desde el inicio vuelve al inicio y no deja la hoja pintada", async
   test.setTimeout(60_000);
   await login(page);
   const userId = await devtestId();
-  const { itemId, passId } = await resolveBookFixture(userId);
+  const { itemId, passId, title } = await resolveBookFixture(userId);
 
   const passSnapshot = await snapshotPass(passId);
   const sessionsBefore = await sessionIds(passId);

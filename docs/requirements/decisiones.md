@@ -2435,3 +2435,49 @@ duda, no fusionar»— y **no es terminal**: `needsRepresentationReview` ya trat
 como hueco reevaluable (`!wikidataId` entra en `improvable`), así que se reintenta pasado el
 cooldown de 30 días. En dev el coste medido es **cero**: 0 de 397 filas tienen `wikidata_id`
 asignado hoy (44 hidratadas, todas sin QID), coherente con el 429 de Inventaire de #911.
+
+## 2026-08-28 (3) — Cierre del plan obra/edición/representación: las dos políticas que lo gobiernan
+
+Las entradas de arriba (2026-08-27 y 2026-08-28) recogen tarea a tarea lo que se decidió mientras
+se construía. Esta cierra la pieza dejando escritas las **dos reglas de nivel de política** de las
+que cuelga todo lo demás, porque están repartidas entre quince entradas de detalle y ninguna las
+enuncia entera.
+
+**1. La representación de una obra se elige por RANGO DE IDIOMA, y solo mejora hacia arriba.**
+`es (0) < en (1) < other (2) < unknown (3)`. Un campo se escribe si el candidato tiene rango
+**estrictamente mejor** que lo que hay, y la procedencia de cada campo viaja en `books.repr_meta`
+(`{lang, source}` por `title`/`cover`/`synopsis`/`pages`). Es lo que convierte la hidratación de
+*fill-only* en *fill-or-upgrade*: un título español PISA a uno inglés, y nada más pisa nada.
+
+La alternativa que se descartó era la obvia —«el primero que llegue gana, como hasta ahora»— y se
+descartó porque el catálogo lo llena OpenLibrary, donde el work superviviente de un par traducido
+es casi siempre el INGLÉS (gana el de más ediciones). Con la regla vieja, un lector español acababa
+con «Words of Radiance» en su biblioteca para siempre: no había ningún camino por el que el título
+español pudiera entrar después.
+
+El precio, y hay que decirlo: **la regla solo es segura porque `source:'manual'` es intocable**, y
+esa marca la pone un trigger, no las actions. Los dos Critical de la revisión de la Task 2 salieron
+exactamente de ahí — se autorizó el *upgrade* con el argumento «es fill-only, no pisa nada», que
+era la premisa que el propio cambio rompía. De ahí las dos consecuencias que no son negociables: la
+curación se estampa sola (`trg_stamp_books_repr_manual`) y **las RPC de hidratación de libros son
+solo de `service_role`**, porque el trigger distingue curación de automatismo por `auth.uid()` y un
+escritor masivo con el cliente de la petición marcaría `manual` el catálogo entero, en silencio y
+sin vuelta atrás.
+
+**2. Toda fusión de obras es COBARDE: ante la duda, no se fusiona.**
+Vale para `merge_book_into`, para el colapso por QID en búsqueda y para el barrido de
+reconciliación. La condición no es «se parecen»: es **QID coincidente Y autoría verificada**, y
+cualquier fallo de la verificación —incluido no poder verificar— cuenta como «no fusionar».
+`hydrate_book`, ante un QID ya ocupado por otra fila, lo deja **sin asignar** en vez de fusionar por
+su cuenta.
+
+El asimétrico está elegido a propósito: **un duplicado que sobrevive es un fastidio visible que
+alguien reporta; una fusión equivocada mezcla los pases de dos obras distintas y no hay quien la
+deshaga.** El coste asumido es que quedan duplicados vivos (los que no casan por título con ningún
+label — #913) y que un QID puede quedarse sin asignar; ambos son reevaluables pasado el cooldown de
+30 días, ninguno es terminal.
+
+**Lo que este cierre NO decide, y conviene no leer de más:** nada de esto está en producción. La
+fase destructiva (Task 16) no se ejecutó y ninguna migración de la rama está aplicada en prod, así
+que ahí siguen vivas `book_editions.is_primary`, `books.isbn` y la hidratación vieja. El despliegue
+es #900, y su orden —dev primero, verificar contra objetos reales, luego prod— no cambia.

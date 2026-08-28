@@ -1,6 +1,22 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-27 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-08-28 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+>
+> **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
+> sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
+> Comprobado contra objetos reales de dev (`pg_proc`, `has_function_privilege`,
+> `col_description`, `has_column_privilege`), nunca contra `list_migrations`:
+> `hydrate_book`, `hydrate_books_bulk` y `merge_book_into` son `SECURITY DEFINER` y **solo
+> `service_role`** (`anon` y `authenticated` sin execute); `register_book_edition` y
+> `register_manual_catalog_item` siguen con execute para `authenticated`; el comentario vivo de
+> `books.repr_meta` ya nombra al trigger y niega que lo escriban las actions; y la superficie 6
+> de `DRIFT-CHECK.md` da `books | 17 | 0 | 9` en dev. **Nada de esto está en prod todavía**
+> (fase destructiva sin ejecutar, issues #900 y #912): prod sigue con `books` en 14 columnas,
+> sin `repr_meta`/`wikidata_id` y con `get_widget_snapshot` nombrando `is_primary`.
+> Las dos afirmaciones falsas que quedaban vivas estaban FUERA de esta doc y se corrigieron en
+> el mismo commit: la cabecera de `createTokenClient` (`src/lib/supabase/server.ts`), que
+> seguía citando `hydrate_book` como RPC con guard `authentication required`, y la de
+> `20260880_manual_catalog_item.sql`, que justificaba el `hydrated_at` NULL con el «fill-only».
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.

@@ -1,4 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
+import {
+  FINAL_EMPIRE_FILTER,
+  FINAL_EMPIRE_WORK_KEY,
+} from "./support/book-fixture";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -83,12 +87,12 @@ async function login(page: Page) {
 
 async function resolveBookFixture(userId: string) {
   const bookRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/books?title=eq.${encodeURIComponent("The Final Empire")}&select=id`,
+    `${SUPABASE_URL}/rest/v1/books?${FINAL_EMPIRE_FILTER}&select=id`,
     { headers: headers() },
   );
-  await assertOk(bookRes, 'resolveBookFixture: GET books?title="The Final Empire"');
+  await assertOk(bookRes, `resolveBookFixture: GET books?${FINAL_EMPIRE_FILTER}`);
   const [book] = (await bookRes.json()) as { id: string }[];
-  if (!book) throw new Error('no se encontró el libro fixture "The Final Empire"');
+  if (!book) throw new Error(`no se encontró el libro fixture ${FINAL_EMPIRE_WORK_KEY}`);
 
   const passRes = await fetch(
     `${SUPABASE_URL}/rest/v1/passes?user_id=eq.${userId}&item_type=eq.book&item_id=eq.${book.id}&is_active=eq.true&select=id,status,position`,

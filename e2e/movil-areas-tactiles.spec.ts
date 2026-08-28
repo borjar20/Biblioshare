@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { FINAL_EMPIRE_FILTER } from "./support/book-fixture";
 
 // Áreas táctiles (F4-010/013/015 de la auditoría 2026-08). La auditoría midió
 // en vivo que el 60-80% de los controles de cada vista baja de 40px en su lado
@@ -43,7 +44,7 @@ async function login(page: Page) {
 // (patrón de notas-captura.spec.ts): sobrevive a un reset de dev.
 async function libroConPase(): Promise<string | null> {
   const bookRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/books?title=eq.${encodeURIComponent("The Final Empire")}&select=id`,
+    `${SUPABASE_URL}/rest/v1/books?${FINAL_EMPIRE_FILTER}&select=id`,
     { headers: headers() },
   );
   if (!bookRes.ok) return null;
