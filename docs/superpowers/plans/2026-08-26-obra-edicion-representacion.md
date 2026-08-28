@@ -1749,6 +1749,15 @@ git commit -m "feat(catalogo): barrido de reconciliación QID y fusión de dupli
 > el siguiente libre. Esto importa **aquí más que en ninguna otra tarea**, porque es la fase que
 > borra y se ejecuta contra producción.
 
+> 🔴 **EL CRITERIO DE ESTE PASO ESTÁ MAL — NO LO EJECUTES SIN LEER [#928](https://github.com/borjar20/Biblioshare/issues/928).**
+> Medido contra producción el 2026-08-28: conservar «las de `created_by` con rol colaborador/admin»
+> preserva **300 de las que creó el sync masivo** (porque `register_book_edition` firma con el
+> `auth.uid()` de quien navegaba, y la cuenta del dueño es admin) y borra solo 58, casi todas filas
+> «Edición principal» del trigger. Hace lo contrario de lo que pretendía. Y **no hay señal limpia**
+> que distinga lo curado a mano de lo importado: ni `created_by` ni `label` (sus valores son nombres
+> de editorial reales). Hay que elegir a propósito entre purgar todo lo no referenciado por un pase
+> (quedan 14 de 372) o no purgar nada histórico. La issue lo desarrolla.
+
 - [ ] **Step 1: Purga conservadora** (`20260893_repr_k_purge_editions.sql`):
 
 ```sql
