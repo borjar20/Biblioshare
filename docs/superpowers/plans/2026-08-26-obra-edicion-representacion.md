@@ -1749,30 +1749,43 @@ git commit -m "feat(catalogo): barrido de reconciliación QID y fusión de dupli
 > el siguiente libre. Esto importa **aquí más que en ninguna otra tarea**, porque es la fase que
 > borra y se ejecuta contra producción.
 
-> 🔴 **EL CRITERIO DE ESTE PASO ESTÁ MAL — NO LO EJECUTES SIN LEER [#928](https://github.com/borjar20/Biblioshare/issues/928).**
-> Medido contra producción el 2026-08-28: conservar «las de `created_by` con rol colaborador/admin»
-> preserva **300 de las que creó el sync masivo** (porque `register_book_edition` firma con el
-> `auth.uid()` de quien navegaba, y la cuenta del dueño es admin) y borra solo 58, casi todas filas
-> «Edición principal» del trigger. Hace lo contrario de lo que pretendía. Y **no hay señal limpia**
-> que distinga lo curado a mano de lo importado: ni `created_by` ni `label` (sus valores son nombres
-> de editorial reales). Hay que elegir a propósito entre purgar todo lo no referenciado por un pase
-> (quedan 14 de 372) o no purgar nada histórico. La issue lo desarrolla.
+### ⛔ Step 1 — Purga automática: DESCARTADA (decisión del dueño, 2026-08-28)
 
-- [ ] **Step 1: Purga conservadora** (`20260893_repr_k_purge_editions.sql`):
+**No se escribe migración de purga. No hay que hacer nada en este paso.** La limpieza de ediciones
+se hará **a mano, con el tiempo**. Esto es un acta: está aquí para que nadie la reimplemente leyendo
+la versión anterior de este plan.
 
-```sql
--- Purga conservadora (spec §7 fase c): fuera las ediciones del sync masivo que
--- nadie referencia. Se conservan: referenciadas por pases, y las creadas por
--- colaborador/admin (curación). Ante duda, conservar.
-delete from public.book_editions e
-where not exists (select 1 from public.passes p where p.edition_id = e.id)
-  and not exists (
-    select 1 from public.profiles pr
-    where pr.id = e.created_by and pr.role in ('collaborator','admin')
-  );
-```
+**Por qué se descartó.** El criterio que este plan proponía —conservar las referenciadas por un pase
+y las de `created_by` con rol colaborador/admin— no medía lo que creía medir. Medido contra
+producción el 2026-08-28:
 
-Antes de aplicar: `select count(*)` con el mismo `where` en dev y prod, y anotar la cifra en el mensaje del commit. Comprobar si alguna tabla más referencia `book_editions.id` (`select conrelid::regclass from pg_constraint where confrelid = 'public.book_editions'::regclass` + grep `edition_id` en el esquema) y añadir esos `not exists` si aparecen.
+| origen de la fila | total | sin referenciar |
+|---|---|---|
+| `created_by` = cuenta colaborador/admin | 312 | **300** |
+| creada por el trigger (`created_by` null) | 59 | 57 |
+| `created_by` = usuario normal | 1 | 1 |
+| **total** | **372** | 358 |
+
+Habría borrado 58 y **conservado las ~300 que creó el sync masivo**, porque `register_book_edition`
+firma `created_by` con el `auth.uid()` de quien estuviera navegando y la cuenta del dueño es admin:
+cada edición que el sync creó mientras él miraba fichas quedó marcada como si la hubiera curado él.
+
+**Y no hay señal limpia que distinga lo curado a mano de lo importado.** Ni `created_by` (los dos
+caminos acaban con un id de usuario puesto) ni `label`: sus valores son nombres de editorial reales
+—`Edición` (124), `Bolsillo` (38), `DEBOLS!LLO` (25), `Minotauro` (16), `Gigamesh Omnium` (14)—,
+metadatos legítimos que resulta que llegaron en masa. Es el mismo problema que obligó a inventar
+`repr_meta.source = 'manual'` para la curación de campos.
+
+**Por qué a mano y no «purgar todo lo no referenciado».** Esa alternativa dejaba 14 filas de 372: un
+borrón y cuenta nueva coherente con el modelo, pero que tira metadatos correctos de ediciones que
+alguien podría querer. Con el sync ya muerto **el ruido deja de crecer solo**, así que no hay prisa,
+y borrar a mano permite mirar caso por caso. La urgencia era detener la hemorragia, no vaciar la
+tabla.
+
+**El backup sigue siendo la red**: esquema `backup_obra_edicion_20260826` en dev y prod (#866). No
+lo borres mientras quede limpieza manual pendiente.
+
+Ver issue [#928](https://github.com/borjar20/Biblioshare/issues/928).
 
 - [ ] **Step 1bis (NUEVO, va ANTES de los drops): sembrar las ediciones que solo viven en `books.isbn`.**
 
@@ -1795,10 +1808,8 @@ select b.id, 'Edición principal', b.isbn, b.publisher, b.published_year, b.tota
    and not exists (select 1 from public.book_editions e where e.book_id = b.id and e.isbn = b.isbn);
 ```
 
-Contar antes y después, y dejar la cifra en el mensaje del commit. **Ojo con el orden dentro de la
-propia fase**: esto va antes de la purga del Step 1 (si no, la purga borraría lo recién sembrado por
-no estar referenciado por ningún pase) — o bien se excluyen estas filas de la purga. Decídelo a
-propósito y déjalo escrito.
+Contar antes y después, y dejar la cifra en el mensaje del commit. (La trampa de orden que esto
+tenía —que la purga borrase lo recién sembrado— **desapareció al descartarse la purga**.)
 
 - [ ] **Step 1ter (NUEVO, BLOQUEANTE): ningún código puede seguir escribiendo `books.isbn` ni
       `books.publisher` cuando caiga el `drop`.** Un `insert`/`update` sobre una columna que ya no

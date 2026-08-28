@@ -2532,3 +2532,28 @@ es #900, y su orden —dev primero, verificar contra objetos reales, luego prod�
   precondición que el código vecino ya viola es peor que no tener comentario, porque el siguiente
   revisor deja de mirar. Cubierto por mutación: neutralizar el predicado, quitar el filtro `.is` o
   volver a propagar el `matchedIsbn` tumban tests distintos.
+
+
+## 2026-08-28 — La purga de ediciones históricas se descarta: se hará a mano (#928)
+
+**No habrá migración de purga.** El plan de obra/edición proponía borrar en la fase destructiva las
+ediciones que el sync masivo dejó, conservando las referenciadas por un pase y las de `created_by`
+con rol colaborador/admin. **Ese criterio no medía lo que creía medir**, y medirlo contra producción
+lo desmontó: de 372 ediciones, habría borrado 58 y **conservado las ~300 del sync**, porque
+`register_book_edition` firma `created_by` con el `auth.uid()` de quien estuviera navegando y la
+cuenta del dueño es admin — cada edición que el automatismo creó mientras él miraba fichas quedó
+indistinguible de una curada por él.
+
+**No existe señal en la tabla que separe lo curado de lo importado.** Ni `created_by` (los dos
+caminos dejan un id de usuario) ni `label`, cuyos valores son nombres de editorial reales
+(`Bolsillo`, `DEBOLS!LLO`, `Minotauro`, `Gigamesh Omnium`): metadatos correctos que resulta que
+llegaron en masa. Es la misma carencia que obligó a inventar `repr_meta.source = 'manual'` para la
+curación de campos, y aquí no se resolvió: se asumió.
+
+**Se descarta también la alternativa agresiva** (borrar todo lo no referenciado por un pase, que
+dejaba 14 filas de 372): tira metadatos correctos de ediciones que alguien podría querer, y con el
+sync masivo ya muerto **el ruido deja de crecer solo**. La urgencia era detener la hemorragia, no
+vaciar la tabla. La limpieza se hará a mano, caso por caso, sin prisa.
+
+**Consecuencia operativa**: el esquema `backup_obra_edicion_20260826` (#866) no se borra mientras
+quede limpieza manual pendiente — es la red de esa limpieza, no solo la del despliegue.
