@@ -3,6 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { AnchorRef, AnchorType } from "@/lib/catalog/anchor";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import type { MediaStatus } from "@/lib/library/types";
+import { passPercent } from "@/lib/library/progress";
 import type { PostKind } from "./post-actions";
 import {
   emptyReactions,
@@ -423,7 +424,7 @@ async function resolvePostDrafts(
       const pos = (session?.position ?? {}) as { page?: number; season?: number; episode?: number };
       const page = typeof pos.page === "number" ? pos.page : null;
       const totalPages = catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.totalPages ?? null;
-      const percent = page != null && totalPages ? Math.min(100, Math.round((page / totalPages) * 100)) : null;
+      const percent = page != null && totalPages ? passPercent(page, totalPages) : null;
       // Series: el avance es por episodio, no por página ni minutos. La sesión
       // guarda position={season, episode} (episodio más alto marcado) y la
       // tarjeta lo pinta "S#E#", igual que un 'watched'. Sin este mapeo el post

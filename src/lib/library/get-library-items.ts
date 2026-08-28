@@ -321,8 +321,19 @@ export type LibraryQuery = {
 };
 
 /** Lo que devuelve una consulta de biblioteca de las VISTAS PROPIAS: los ítems
- *  y cuántas obras abandonadas se ocultaron para llegar a ellos. */
-export type LibraryView = { items: LibraryItem[]; hiddenDropped: number };
+ *  y cuántas obras abandonadas se ocultaron para llegar a ellos.
+ *
+ *  `total` = cuántas obras pasan los filtros ANTES de aplicar `limit`. Es lo
+ *  que una vista paginada necesita para dos cosas que `items.length` no puede
+ *  contestar cuando hay tope: si queda algo por traer, y el «N de M» del pie.
+ *  Sin `limit` coincide con `items.length`. Se cuenta DESPUÉS de ocultar
+ *  abandonados, igual que `items`: si no, el pie prometería obras que la
+ *  rejilla no va a pintar nunca — esas ya las cuenta `hiddenDropped`, aparte. */
+export type LibraryView = {
+  items: LibraryItem[];
+  hiddenDropped: number;
+  total: number;
+};
 
 export async function getLibraryView(
   supabase: SupabaseServerClient,
@@ -352,7 +363,7 @@ export async function getLibraryView(
 
   const { data: entries, error } = await query;
   if (error) throw error;
-  if (!entries || entries.length === 0) return { items: [], hiddenDropped: 0 };
+  if (!entries || entries.length === 0) return { items: [], hiddenDropped: 0, total: 0 };
 
   // La hidratación (catálogo + pase activo + rating/notes) vive en
   // `hydrateItems`, compartida con Colección (src/lib/library/collections.ts).
@@ -379,7 +390,7 @@ export async function getLibraryView(
   // silenciosamente ignore el filtro.
   if (filters.genre) {
     const wanted = labelForSlug(filters.genre);
-    if (!wanted) return { items: [], hiddenDropped: 0 };
+    if (!wanted) return { items: [], hiddenDropped: 0, total: 0 };
     const genresByKey = await loadGenres(
       supabase,
       items.map((i) => ({ itemType: i.itemType, itemId: i.itemId }))
@@ -402,9 +413,13 @@ export async function getLibraryView(
   const split = splitDropped(items, shouldHideDropped(filters));
   items = split.visible;
 
+  // El total se toma AQUÍ, entre ocultar abandonados y recortar: es exactamente
+  // el conjunto que la rejilla pintaría si no hubiera tope.
+  const total = items.length;
+
   if (filters.limit !== undefined) items = items.slice(0, filters.limit);
 
-  return { items, hiddenDropped: split.hiddenDropped };
+  return { items, hiddenDropped: split.hiddenDropped, total };
 }
 
 /** La biblioteca sin el recuento de ocultos. Firma intacta desde antes de la

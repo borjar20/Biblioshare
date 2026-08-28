@@ -60,7 +60,7 @@ describe("filterByGenre", () => {
 // Cliente falso que devuelve N pases activos y corta la hidratación: `books`,
 // `movies`, `series` y `book_editions` resuelven vacío, así que hydrateItems
 // descarta todas las claves y devuelve []. Sirve para comprobar el CONTRATO de
-// getLibraryView (que existe, que devuelve las dos propiedades y que no
+// getLibraryView (que existe, que devuelve las tres propiedades y que no
 // explota), no el filtrado — eso lo cubren los tests puros de splitDropped.
 function fakeEmptyLibrary() {
   const builder: Record<string, unknown> = {
@@ -77,14 +77,24 @@ function fakeEmptyLibrary() {
 // OJO: con este cliente falso la función sale por su primer `return` temprano
 // (biblioteca sin pases activos) y NUNCA llega a `splitDropped` — así que
 // estos dos tests solo comprueban la FORMA del contrato (que existe, que
-// devuelve `{items, hiddenDropped}`, que una biblioteca vacía no revienta),
+// devuelve `{items, hiddenDropped, total}`, que una biblioteca vacía no
+// revienta),
 // no que `hideDropped` esté bien cableado en el pipeline. Es a propósito: un
 // mock por tabla para ejercitar el pipeline completo no compensa aquí — esa
 // cobertura real la da el e2e `e2e/biblioteca-ocultar-abandonados.spec.ts`.
 describe("getLibraryView (solo contrato de forma, ver nota arriba)", () => {
-  it("con biblioteca vacía devuelve {items: [], hiddenDropped: 0}", async () => {
+  it("con biblioteca vacía devuelve {items: [], hiddenDropped: 0, total: 0}", async () => {
     const view = await getLibraryView(fakeEmptyLibrary(), "u1", {});
-    expect(view).toEqual({ items: [], hiddenDropped: 0 });
+    expect(view).toEqual({ items: [], hiddenDropped: 0, total: 0 });
+  });
+
+  // `total` es lo que la vista paginada usa para decidir si pinta «Cargar
+  // más». Con la biblioteca vacía tiene que ser 0, no `undefined`: un
+  // `total - items.length` sobre `undefined` da NaN, y `NaN > 0` es false —
+  // el botón no saldría nunca y el fallo pasaría desapercibido.
+  it("con biblioteca vacía, total es 0 y no undefined", async () => {
+    const view = await getLibraryView(fakeEmptyLibrary(), "u1", {});
+    expect(view.total).toBe(0);
   });
 
   it("con biblioteca vacía, hideDropped no inventa ocultos (no llega a splitDropped)", async () => {

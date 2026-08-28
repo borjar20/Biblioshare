@@ -39,6 +39,17 @@ export function LogoutButton() {
               // best-effort
             }
           }
+          // El SW guarda documentos como salvavidas offline; al salir se purga
+          // su caché para que no quede HTML de esta cuenta en un dispositivo
+          // compartido (#680). Fire-and-forget: el SW sobrevive a la
+          // navegación del logout y procesa el mensaje aunque la página cambie.
+          try {
+            navigator.serviceWorker?.controller?.postMessage({
+              type: "purge-caches",
+            });
+          } catch {
+            // best-effort
+          }
           await logout();
         })
       }

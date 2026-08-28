@@ -3,10 +3,6 @@ import { loadSessionContext, parseMinutes } from "@/lib/sessions/load-context";
 import { parseStartedAt } from "@/lib/sessions/parse-started-at";
 import { SessionSheet } from "@/components/session/session-sheet";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 export const metadata: Metadata = {
   title: "Guardar sesión — Biblioshare",
 };

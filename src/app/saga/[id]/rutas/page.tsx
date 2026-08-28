@@ -8,10 +8,6 @@ import { sagaHref } from "@/lib/catalog/item-href";
 import { RoutesManager } from "@/components/saga/routes/routes-manager";
 import type { RouteRowData } from "@/components/saga/routes/route-row";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 // Curación de itinerarios. Gate DURO collaborator+, igual que
 // /saga/[id]/editar: gestionar rutas SÍ es curación (a diferencia de
 // adoptar una, que es preferencia personal).

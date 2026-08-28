@@ -27,7 +27,10 @@ test("anónimo en página gated cae en /login?next= y no pierde el destino", asy
 test("anónimo abre un perfil público sin error (grants de los helpers de bloqueo)", async ({ page }) => {
   const res = await page.goto("/u/devtest");
   expect(res?.status()).toBe(200);
-  await expect(page.getByText("@devtest")).toBeVisible();
+  // `exact`: con el shell estático del perfil (#476), la metadata llega por
+  // streaming y Next pinta el <title> dentro del <body> — sin exact, el
+  // locator casa también «@devtest — Biblioshare» y rompe el strict mode.
+  await expect(page.getByText("@devtest", { exact: true })).toBeVisible();
 });
 
 // Acciones in-page (issue #358): para el anónimo, seguir un perfil es un ENLACE

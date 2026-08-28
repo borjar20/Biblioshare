@@ -40,7 +40,8 @@ import { useVoiceNoteSubmit } from "./use-voice-note-submit";
 // Hilo de `/post/[id]` al estilo Reddit (posts Spec 2b): a diferencia de
 // `ReviewInteractions` —feed y superficies compartidas, aplanado a 2 niveles y
 // colapsado tras un clic— aquí la conversación es el contenido principal: árbol
-// ANIDADO (buildCommentTree) con sangría corta capada a MAX_THREAD_DEPTH, cada
+// ANIDADO (buildCommentTree) con sangría corta capada a MAX_THREAD_DEPTH (2:
+// raíz + un nivel; más adentro, cabecera «↳ En respuesta a @usuario»), cada
 // comentario con su ancla DOM `id="c-<id>"` para el deep-link de las
 // notificaciones (#c-<id>), un composer ÚNICO que en móvil va anclado abajo y al
 // responder se contextualiza («Respondiendo a @X») SIN encogerse a la columna
@@ -234,6 +235,9 @@ export function PostThread({
   }
 
   const nodes = buildCommentTree(state.comments, sort);
+  // Para la línea «↳ En respuesta a @usuario» de los nodos aplanados (depth ≥
+  // MAX_THREAD_DEPTH - 1): resuelve el padre por id sin recorrer el árbol.
+  const commentsById = new Map(state.comments.map((cm) => [cm.id, cm]));
 
   // Composer ÚNICO. Sin responder = comentario raíz en la cabecera del hilo; al
   // responder SALTA inline bajo el comentario (renderNode), a su altura, para no
@@ -304,16 +308,34 @@ export function PostThread({
   function renderNode(node: CommentNode) {
     const c = node.comment;
     const isRoot = node.depth === 0;
+    // A partir del tope de sangría el padre ya no es visualmente obvio: la
+    // cabecera «↳ En respuesta a @usuario» recupera ese contexto.
+    const flattenedParent =
+      node.depth >= MAX_THREAD_DEPTH && c.parentId ? commentsById.get(c.parentId) : undefined;
     return (
       <div
         key={c.id}
         id={`c-${c.id}`}
         className="scroll-mt-24 rounded-lg transition-colors data-[hl=on]:bg-accent/10 data-[hl=on]:ring-1 data-[hl=on]:ring-accent/40"
       >
-        <div className="flex items-start gap-2.5 px-1 py-1.5">
-          <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={isRoot ? 26 : 22} />
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <div className="flex items-center gap-2 text-[12.5px]">
+        <div className="px-1 py-1.5">
+          {flattenedParent && (
+            <div className="mb-1 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+              <span aria-hidden>↳</span>
+              <span className="min-w-0 truncate">
+                {t("inReplyTo")}{" "}
+                <span className="font-medium text-accent">
+                  @{flattenedParent.authorUsername ?? flattenedParent.author}
+                </span>
+              </span>
+            </div>
+          )}
+          {/* Cabecera: avatar + nombre + fecha. El cuerpo va DEBAJO, a ancho
+              completo y alineado con el avatar — sin la sangría del ancho del
+              avatar, que en móvil estrechaba cada nivel. */}
+          <div className="flex items-center gap-2.5">
+            <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={isRoot ? 26 : 22} />
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-[12.5px]">
               {c.authorUsername ? (
                 <Link href={`/u/${c.authorUsername}`} className="min-w-0 truncate font-semibold hover:underline">
                   {c.author}
@@ -324,7 +346,9 @@ export function PostThread({
               {c.pinned && <span className="shrink-0 text-[10px] text-muted-foreground">📌 {t("pinned")}</span>}
               <TimeAgo iso={c.createdAt} className="shrink-0 text-[10.5px] text-muted-foreground" />
             </div>
+          </div>
 
+          <div className="mt-1 flex min-w-0 flex-col gap-1">
             {editingId === c.id ? (
               <CommentComposer
                 value={editDraft}
@@ -409,7 +433,7 @@ export function PostThread({
           // Respuesta INLINE, a la altura del comentario (no en la cabecera): en
           // escritorio evita subir a lo alto del hilo; en móvil sigue anclado
           // abajo (fixed). Se alinea con el comentario (sangría del nivel, corta
-          // y capada a 4). `id` para enfocarlo al abrir.
+          // y capada a MAX_THREAD_DEPTH). `id` para enfocarlo al abrir.
           <div id="reply-composer" className="lg:mt-1">
             {composerWrapper}
           </div>
@@ -423,8 +447,9 @@ export function PostThread({
               {node.children.map(renderNode)}
             </div>
           ) : (
-            // Tope de 4 niveles: más adentro no se sangra; los hijos siguen al
-            // mismo nivel (la @mención da el contexto de a quién responden).
+            // Tope de sangría (MAX_THREAD_DEPTH): más adentro no se sangra; los
+            // hijos siguen al mismo nivel con la cabecera «↳ En respuesta a
+            // @usuario» dando el contexto de a quién responden.
             <div className="flex flex-col gap-1">{node.children.map(renderNode)}</div>
           ))}
       </div>

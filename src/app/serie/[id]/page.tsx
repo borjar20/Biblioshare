@@ -8,6 +8,7 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { passPercent } from "@/lib/library/progress";
 import {
   createClient,
   createTokenClient,
@@ -72,10 +73,6 @@ import {
 import { NotesSection } from "@/components/notes/notes-section";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -239,15 +236,12 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const railProgress =
     activePass && totalEpisodes > 0
       ? {
-          percent: Math.min(
-            100,
-            Math.round((watchedEpisodes / totalEpisodes) * 100),
-          ),
+          percent: passPercent(watchedEpisodes, totalEpisodes),
           left: tDetail("rail.episodes", {
             watched: watchedEpisodes,
             total: totalEpisodes,
           }),
-          right: `${Math.min(100, Math.round((watchedEpisodes / totalEpisodes) * 100))}%`,
+          right: `${passPercent(watchedEpisodes, totalEpisodes)}%`,
         }
       : null;
 
@@ -269,6 +263,8 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             itemId={series.id}
             isLoggedIn={Boolean(user)}
             statusLabels={statusLabels}
+            ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
+            ctaLabel={tDetail("rail.cta.series")}
           />
         }
         menuSlot={
@@ -480,6 +476,7 @@ async function SeriesTabs({
   return (
     <ItemDetailTabs
       itemType="series"
+      tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         ...(hasEpisodes && { episodes: tDetail("tabEpisodes") }),

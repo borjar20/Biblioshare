@@ -1932,6 +1932,296 @@ como la escala continua que es una tierlist.
   subir el objeto ANTES (validar → subir → insertar; si el insert falla, se borra el objeto).
   Un `uuid` fresco da la misma garantía de no-colisión sin depender de un id que aún no existe.
 
+## 2026-08-26 (6) — El SW solo guarda documentos que el servidor no marque como personales (#680)
+
+**Contexto.** El service worker (v3) guardaba en Cache Storage el HTML de TODA navegación con
+éxito como salvavidas offline, también las autenticadas, y nada lo purgaba al cerrar sesión. En
+un dispositivo compartido y sin red, otra persona podía recibir el HTML privado de la cuenta
+anterior (issue #680).
+
+**Decisión, en dos cinturones:**
+
+1. **La cabecera del servidor decide qué documento es cacheable, no una lista de rutas.**
+   `swCacheableDocument(ok, cacheControl)`: solo se guarda un documento con éxito cuyo
+   `Cache-Control` no lleve `no-store` ni `private`. Next sirve toda página dinámica (las que
+   leen sesión) con `no-store`, así que esa cabecera ES la línea entre «HTML igual para todos»
+   y «HTML de una cuenta». Consecuencia medida contra el build de producción: **hoy ningún
+   documento entra en caché** (el layout raíz lee sesión y hasta `/login` sale `no-store`), y
+   la navegación offline degrada a la página `/offline` genérica (pre-sembrada en `install`,
+   que no mira cabeceras). Es el comportamiento que pedía la issue, y si mañana una ruta pasa a
+   ser de verdad estática-cacheable, se cachea sola sin tocar el SW.
+2. **El logout purga el caché entero y re-siembra `/offline`.** `logout-button` manda
+   `postMessage({type:"purge-caches"})` fire-and-forget (el SW sobrevive a la navegación del
+   logout); el SW borra `CACHE_NAME` y vuelve a añadir `/offline`. No se distingue documentos
+   de estáticos: los estáticos con hash se re-cachean solos al siguiente uso.
+
+**Además:** bump a `biblioshare-v4` para que `activate` tire las copias privadas que ya están
+en disco de usuarios reales (mismo mecanismo que el v2→v3 de 2026-07-16), y evict de la copia
+vieja de una URL cuando su respuesta fresca llega marcada personal. Cubierto por
+`sw-strategy.test.ts` (5 casos nuevos sobre el fichero real en vm) y el e2e opt-in
+`e2e/sw-privado.spec.ts` (build de producción: nada autenticado en caché + purga tras logout).
+
+## 2026-08-26 (7) — El barrido de `instant = false` termina en 18 opt-outs deliberados (#476)
+
+**Contexto.** El codemod de la Fase 4 (#448) puso `export const instant = false` en los 57
+segmentos para dejar el build en verde al activar `cacheComponents`. El barrido de #476 (lotes
+1–4, PRs #858/#859/#860/#861) lo retiró de las 42 rutas con tráfico, priorizadas por el
+baseline: cada una quedó con boundary (`loading.tsx` o página síncrona + `<Suspense>`) y
+esqueleto que reserva alturas. `/notas`, `/sagas` y `/login` pasaron de `ƒ Dynamic` a
+`◐ Partial Prerender`.
+
+**Decisiones que fija esto:**
+
+1. **La validación de shell estático queda activa para toda la app** desde que el layout raíz
+   perdió su `false` (lote 1): un `false` en la raíz la apagaba ENTERA (doc `instant.md`,
+   «Disabling static shell validation»). Toda ruta nueva sin opt-out propio debe producir shell
+   no vacío o su build falla — es la red que el codemod había desconectado.
+2. **Las 17 pantallas de gestión/editores conservan el opt-out a propósito** (acta #862):
+   admin, ajustes, cuenta, importar, onboarding, sagas/nueva, buscar/manual, editores de saga y
+   la ruta interceptada del modal de sesión. No es deuda: es lo que planificó la Fase 5.
+3. **`instant = false` no es un opt-out de PPR** (medido en #514): retirarlo de rutas con
+   `notFound()` no cambia la semántica del 404 en producción (ya era blando). La única
+   excepción operativa es `/genero/[slug]`, cuyo e2e asevera 404 duro: queda con opt-out hasta
+   que #468 decida (anotado en #857).
+4. **Regla nueva para e2e**: con la metadata streameada, Next pinta el `<title>` dentro del
+   `<body>` — los `getByText` laxos que casen el título de la página rompen por strict mode
+   (arreglado `navegacion-anonima:27` con `exact: true`).
+
+## 2026-08-27 (1) — El CTA del pase vive en las DOS caras de la ficha, y un primario por vista deja de ser aspiración
+
+**Contexto.** La crítica de diseño de Inicio, Colección y la ficha (snapshots en
+`.impeccable/critique/`) midió lo mismo en las tres: a 390 px, la app no tiene acción primaria
+donde `PRODUCT.md` dice que se juega el producto. En la ficha, con pase abierto, había **cero
+elementos con fondo de acento y caja visible** en las tres pestañas — el raíl que llevaba el CTA
+es `hidden lg:block`. La asimetría era la mala: la obra que NO tienes sí pintaba su terracota
+(«Seguir»); la que estás leyendo, no. En Colección, la pantalla que se llama «Mi Biblioteca» no
+ofrecía ninguna forma de añadir nada en cuanto tenías una obra. Y en el arranque en frío de
+Inicio se pintaban TRES primarios naranjas a la vez, ante quien no tiene ni idea de por dónde
+empezar.
+
+**Decisiones que fija esto:**
+
+1. **El CTA del pase es de las dos caras, no del raíl.** `HeroStatusOrFollow` acepta
+   `ctaHref`/`ctaLabel` y, con pase activo, pinta la píldora de estado **y** el CTA. Los valores
+   son los mismos que ya recibía `ItemRailActions` en las tres rutas, así que no hay dos fuentes
+   de verdad: si cambia el destino, cambia en la página y las dos caras lo heredan. La forma sí
+   difiere a propósito — píldora en el hero (comparte hueco con «Seguir» y con la píldora de
+   estado, y lo que se pulsa es píldora), caja de 10 px en el raíl, que es su lenguaje.
+2. **Un primario por vista se aplica al ARRANQUE EN FRÍO, no solo al estado cálido.** El único
+   naranja del Inicio vacío es el de la columna personal: fijar una meta o seguir gente no valen
+   de nada sin obras que contar. `stats-welcome` y el vacío de `feed-list` bajan a `secondary`.
+   Mismo criterio en Colección: la alta va en primario en la cabecera y el botón del estado vacío
+   de la rejilla baja a `secondary`, porque es la misma acción 200 px más arriba.
+3. **La acción de alta de la biblioteca vive en la cabecera de página**, no solo dentro del
+   estado vacío: en las tres pestañas y sin depender del scroll (la rejilla mide 23.062 px en
+   móvil). Término del glosario: «Añadir obra», no «ítem».
+4. **Los glifos Unicode no hacen de iconos.** El `+` del CTA del raíl pasa a `PlusIcon` del set
+   propio. Un carácter de texto ni hereda el trazo de 1.8 ni renderiza igual entre plataformas.
+
+**Lo que NO decide esto.** Inicio sigue sin primario en estado **cálido** (la tarjeta destacada
+ofrece «Sesión» y «Registrar», ninguno en acento). Cuál de los dos merece el naranja —o si la
+respuesta correcta a «¿Qué has disfrutado hoy?» es un tercer botón— es una decisión de producto
+que no se cuela en un arreglo de consistencia. Queda como issue.
+
+## 2026-08-27 (2) — El 100 % se reserva para el final alcanzado, y un pase que llega al final tiene salida
+
+**Contexto.** Segunda incidencia P1 de la crítica de Inicio. La tarjeta destacada decía
+«Pág. 668 / 669», «100 %» y «En curso» a la vez, y sus dos únicas acciones eran «Sesión» y
+«Registrar». `Math.round((668/669)*100)` da **100**: un pase al que le quedaba una página se
+anunciaba como completo. La interfaz preguntaba «¿Qué has disfrutado hoy?» y **no tenía botón
+para la respuesta más probable** —«lo he terminado»—; mientras tanto, el feed de al lado mostraba
+el mismo título como FINALIZADO. La pantalla se contradecía a sí misma en el mismo golpe de
+vista, en el instante de mayor atención, y quien lo veía no podía saber si su registro se guardó.
+
+**Decisiones que fija esto:**
+
+1. **Un porcentaje de progreso nunca redondea hacia arriba hasta 100.** El 100 se RESERVA para
+   `current >= total`; por debajo se trunca a 99 como mucho, y no baja de 1 habiendo empezado.
+   La regla no es nueva —ya la aplicaban `libraryPercent` (`derive-person-works.ts`) y
+   `deriveWorkProgress` (`people/work-progress.ts`)—; lo que faltaba era un sitio único donde
+   vivir. Ahora es `passPercent`, en `src/lib/library/progress.ts`, al lado de `getProgress`.
+   Lo usan el destacado de Inicio y su mini, el raíl de libro y serie, la barra del pase de la
+   ficha y los dos generadores de eventos de feed. **Trunca en vez de redondear en todo el
+   tramo**: el cursor no debe adelantar al lector en ningún punto, no solo al final.
+2. **Un pase que llega a su final y sigue abierto tiene salida desde donde se está mirando.**
+   `TodayActions` pinta «Marcar terminada» cuando el progreso está completo, con la misma máquina
+   que la ficha (`updateStatus` → hoja de puntuar/reseñar en la ficha vía `?cerrar=<passId>`,
+   igual que ya hacían `MarkSeen` y `work-status-control`). No se encadena la hoja *dentro* de la
+   tarjeta porque al completar la obra deja de ser `in_progress` y la revalidación la saca del
+   foco: el modal se desmontaría en el acto.
+3. **La salida se come el hueco de la acción por tipo, no se suma a ella.** Con «Marcar
+   terminada» en pantalla desaparecen el cronómetro (un libro en su última página no necesita
+   reloj) y «marcar episodio» (no queda ninguno): dos botones de 174 px a 390, no tres
+   apretados. Con el cronómetro **en marcha** no aparece — primero se registra la sesión en
+   vuelo, que es la que cerrará el pase sola por el auto-cierre.
+
+**Por qué queda ese estado si existe el auto-cierre.** `saveSession` cierra el pase cuando la
+sesión alcanza `maxPosition`, que es el total de TU edición. Un pase puede quedarse en su última
+página sin que salte: si la posición se puso a mano desde Progreso, o si el total de la obra no
+es el de la edición del pase. La salida manual es la red para esos casos, no un duplicado del
+auto-cierre.
+
+**Media crítica era falsa, y conviene dejarlo escrito.** El informe leía el feed diciendo
+«terminó The Final Empire · FINALIZADO» junto a un destacado «En curso» y lo daba por una
+contradicción de datos. No lo es: hay **dos pases** de esa obra (uno `completed` del 15/7 y otro
+abierto desde esa misma tarde), el post del feed es del primero y la tarjeta lo dice —«2.ª
+LECTURA»— en su primera línea. Verificado en `passes` de dev. Lo único roto era el número. Se
+anota para que nadie salga a cazar un bug de estado que no existe.
+
+**Lo que NO decide esto.** Sigue sin tocarse el resto de porcentajes de la app —metas, encuestas
+de club, avance de sagas y de retos—, que cuentan ítems terminados y no la posición dentro de una
+obra: ahí el 100 sí es cierto cuando el contador lo dice.
+
+## 2026-08-27 (3) — Los tres números de Colección dejan de contradecirse
+
+**Contexto.** Tercera tanda de P1 de la crítica de diseño, todas en `/coleccion` y todas de la
+misma familia: cifras que no cuadran con lo que la pantalla enseña. Medido en la cuenta de dev
+(138 pases activos: 127 películas, 9 libros, 2 series; 22 colecciones con 2 títulos dentro).
+
+**Decisiones que fija esto:**
+
+1. **Un filtro que el usuario no ha puesto se dice en voz alta y con su salida.**
+   `resolveEffectiveType` aplica el interés único declarado en el onboarding (issue #313), así que
+   una cuenta con `interests = {book}` entraba viendo **9 obras de 138** —el 93 % escondido— y la
+   única señal era el «1» de la píldora de Filtros. Ahora la barra pinta un chip **fuera** del
+   desplegable —«● Solo Libros ×», enlace a `?type=todos`— con `aria-label` propio. Dentro del
+   desplegable no vale: ahí sigue siendo invisible hasta abrirlo, que es justo el problema.
+   La regla general: **el `?type=` que puso el usuario se ve en el desplegable; el que puso la app
+   se ve en la barra.**
+2. **«Limpiar» tiene que limpiar también lo que no se ve.** `clearHref` emitía la AUSENCIA de
+   `type`, y la ausencia es «arranque por defecto», que vuelve a aplicar el preferido: pulsar
+   Limpiar dejaba el filtro puesto. Con tipo bloqueado emite el centinela `type=todos`.
+3. **Cero resultados solo significa «vacía» si no hay nada filtrando.** Buscar algo inexistente
+   devolvía «Tu biblioteca está vacía», «Aún no has añadido nada» y «Buscar algo» —tres líneas
+   falsas a la vez sobre 138 obras—, y el botón mandaba al catálogo común cuando lo que había que
+   hacer era quitar el filtro. `LibraryGrid` recibe `clearHref: string | null`: con filtros
+   puestos dice «Nada que enseñar aquí» y ofrece «Ver toda la biblioteca».
+4. **La cabecera de Colecciones cuenta lo que hay DENTRO, no la biblioteca entera.** Decía «22
+   colecciones · 138 títulos» sobre una rejilla que sumaba 2, con «136 títulos sin organizar» al
+   pie de la misma pestaña: tres cifras incompatibles. Ahora es «22 colecciones · 2 títulos
+   dentro», y **2 + 136 = 138** cierra a ojo. Se cuentan títulos DISTINTOS (`countDistinctItems`),
+   no filas: el mismo libro en tres colecciones es un título dentro, y contar filas volvería a
+   romper la resta.
+
+**Lo que NO decide esto.** Sigue abierto **cuándo debe dejar de aplicarse el lock del onboarding**.
+Hoy se aplica siempre que haya exactamente un interés declarado, sin mirar qué hay en la
+biblioteca; con 129 obras de otros tipos dentro, el interés declarado hace meses ya no describe a
+este usuario. El chip lo hace visible y quitable, pero **no se recuerda**: volver a `/coleccion`
+lo reaplica. Poner una preferencia persistente —o un umbral por el que el lock caduque— es una
+decisión de producto con esquema detrás, y va como issue. Tampoco se toca la longitud de la
+página (23.062 px a 390 sin paginar ni `sticky` en los filtros): es el cuarto P1 de esa crítica y
+es otro frente.
+
+## 2026-08-27 (4) — El suelo AA declarado se aplica: roles, foco y la tinta que se componía por debajo
+
+**Contexto.** Cuarto frente de la crítica de las tres vistas. `PRODUCT.md` declara **WCAG 2.1 AA
+como suelo**, y las tres vistas lo incumplían en sitios concretos y medibles. Se midió con un
+escáner propio que resuelve el color en un canvas: el primer intento parseaba `getComputedStyle`
+a mano y daba ratios inventados, porque **Tailwind v4 emite `oklab(...)` para `/70` y para
+`color-mix`** y esos números no son RGB. Media docena de «fallos» de la primera pasada eran del
+escáner, no de la app.
+
+**Decisiones que fija esto:**
+
+1. **Las pestañas de la ficha son un `tablist` de verdad, flechas incluidas.** Eran cuatro
+   `<button>` pelados —sin `role`, sin `aria-selected`, con el subrayado de la activa marcado
+   `aria-hidden`—: para un lector de pantalla no había pestañas ni una activa. Y el patrón no se
+   puede dejar a medias: `role="tab"` **anuncia** navegación por flechas, así que sin ←/→/Inicio/
+   Fin y sin `tabIndex` móvil se prometería un teclado que no existe.
+2. **Una interacción que reordena la pantalla mueve el foco y lo dice.** Destacar una obra en
+   Inicio desmontaba el botón pulsado y remontaba el destacado: el foco caía a `<body>` y la
+   página no tenía **ni un** `aria-live`. Ahora el foco va al destacado (`tabIndex={-1}`) y un
+   `role="status"` anuncia «{título}, ahora en el destacado». El foco solo se mueve tras un clic
+   del usuario —un `ref` guarda esa distinción— para no robarlo en el primer render.
+3. **Lo que navega lleva `aria-current="page"`; lo que despliega, `aria-expanded`.** Subpestañas
+   de Colección, chips del feed y los cinco grupos del desplegable de filtros marcaban la opción
+   activa **solo por color**. Y el panel de filtros decía `role="menu"` con hijos que no son
+   `menuitem`: eso mete al lector en modo aplicación esperando flechas entre opciones, cuando lo
+   único que funciona ahí es el Tab. Es un **desplegable**, y ahora lo declara. De paso, el foco
+   entra en el panel al abrirlo, Escape lo devuelve al disparador, y **salir el foco del conjunto
+   lo cierra** — que es lo que arregla el Shift+Tab que se iba detrás de la hoja opaca en móvil.
+4. **La Tinta Fantasma se aplica también a la composición, no solo al token.** El repo ya
+   legislaba el contraste y tiene test, pero **el test mira el token y la pantalla pinta el
+   resultado**. Tres formas de romperlo, las tres retiradas: `opacity-60` en los recuentos de
+   género (2,55:1), `text-muted-foreground/70` en la hoja de ediciones (3,08:1) y `opacity-80`
+   sobre la tarjeta de un pase viejo (3,23:1). La regla operativa: **se atenúa el papel, nunca la
+   tinta** — el pase viejo pasa de `opacity-80` a `bg-surface-muted/50`, misma jerarquía y el
+   contraste SUBE.
+5. **La triada de medio tiene par de tinta.** `--type-book/movie/series` son colores de GRÁFICO
+   (3:1: barras, puntos, filos, lomos del logo) y como texto se quedaban en 3,64:1 sobre su
+   propio tinte. No se oscurecen enteros —los comparte media app—, así que va un par oscuro solo
+   para texto: `--type-*-ink`, al que apunta `MEDIA_ACCENT.text`. **Mismo patrón que
+   `--accent-ink` y `--gold-ink`, que ya estaban ahí por la misma razón.** Calibrados contra los
+   quince fondos sobre los que llegan a pintarse, con margen: un tinte sobre otro tinte ya había
+   tirado de 4,5 a 4,47 en el historial de pases.
+6. **El chip activo del feed no se rellena.** Ni `--accent` (3,8:1) ni `--accent-ink` (4,27:1)
+   llegan sobre el tinte del propio acento. Se quita el relleno y la tinta cae sobre superficie
+   limpia (4,88:1) — que además es lo que decía la maqueta desde el principio: «se tiñe de accent
+   en texto y borde **en vez de rellenarse**».
+7. **Encabezados sin saltos.** `pass-diary` y `episode-list` pasan de `h3` a `h2`: el único nivel
+   por encima es el `h1` del título de la obra, y el índice de encabezados es cómo se mueve por
+   la página quien no la ve (1.3.1).
+
+**Lo que NO decide esto, y los números para quien lo recoja.**
+
+- **El cuarteto de estado no tiene par de tinta y lo necesita.** Medido sobre sus fondos reales:
+  `--status-planned` **1,75:1**, `--status-in-progress` **2,14:1**, `--status-completed`
+  **3,77:1**, `--status-dropped` **3,78:1** — y `text-status-dropped` es el rojo de **todos** los
+  errores de formulario. No se arregla oscureciendo los tokens: harían falta k≈0,42 y k≈0,36, que
+  cambian la identidad del estado (el oro «en curso» dejaría de ser oro). Pide pares `-ink` y una
+  revisión de los 128 `text-status-*` del repo, uno por uno. Va como issue.
+- **El tamaño de diana no es del suelo declarado.** Los 32 px de la tarjeta de biblioteca no
+  incumplen WCAG 2.1 AA (el 44 es 2.5.5, que es **AAA**; el mínimo AA de WCAG 2.2 son 24 px). Se
+  les pone `tap-44` igualmente porque es convención del repo, y el `gap` sube de 6 a 12 px: con 6
+  las dos áreas de 44 se solapaban y la de arriba le robaba pulsaciones a su vecina, que es justo
+  contra lo que avisa el comentario de `tap-44` en `globals.css`.
+- **El wordmark se queda a 4,31:1.** «Biblio**share**» es nombre de marca, y 1.4.3 exime
+  explícitamente logotipos y nombres de marca. No es deuda: es la excepción.
+
+## 2026-08-27 (5) — La rejilla de Colección se pagina; el cuarteto de estado, corregido
+
+**Contexto.** Cuarto P1 de la crítica de diseño: `/coleccion?tab=todo` pintaba la biblioteca
+**entera** en una sola página. Medido a 390px con 138 obras: **23.066 px de alto — 27,3
+pantallas — y 4.492 nodos de DOM**. La barra de filtros vive arriba y no era `sticky`, así que
+quien llegaba al final la tenía a 22.000 px de scroll.
+
+1. **Se pagina por URL (`?n=`), no con scroll infinito.** Mismo mecanismo que el índice de sagas,
+   que ya lo resolvió así: el enlace es real, la posición es compartible y «Atrás» vuelve a la
+   misma cantidad de obras. El scroll infinito no da ninguna de las tres y además deja sin final
+   a la página. `LibraryGrid` ya declaraba un prop `limit` — **nunca se le pasaba nada**; ahora
+   sí.
+2. **La página es de 24, no de 12 como en sagas.** La celda es una PORTADA, mucho más baja que
+   una tarjeta de saga: 24 son 12 filas en móvil y 3 en la escalera más ancha
+   (`2xl:grid-cols-8`), y divide exacto en 2, 3, 4, 6 y 8 columnas — todas las paradas de
+   `COVER_GRID_COLS` menos `lg`.
+3. **`getLibraryView` devuelve `total`.** Con tope, `items.length` no puede contestar ni «¿queda
+   algo?» ni el «N de M» del pie. Se cuenta **después** de ocultar abandonados y **antes** de
+   recortar: contarlo antes haría que el pie prometiera obras que la rejilla no va a pintar
+   nunca — esas ya las cuenta `hiddenDropped`, aparte.
+4. **La mecánica de «Cargar más» sube a `components/ui/load-more.tsx`.** Entre el pie de sagas y
+   el de Colección lo único que cambiaba era el dibujo de las filas fantasma; el resto —`scroll:
+   false` para no perder el sitio, `useTransition` para poder pintar el pendiente fuera del
+   `<Link>`, y el paso limpio del clic con modificador— es la parte razonada, y duplicarla habría
+   duplicado justo eso. `SagaLoadMore` queda como envoltorio con su esqueleto.
+5. **La barra de filtros se pega a partir de `sm`, NO en móvil, y es una decisión con número.**
+   Apilada mide **81 px**, que sobre los 59 de la topbar serían 140 px —el **17 %** de una
+   pantalla de 844— de cromo permanente. En una sola fila mide 63 px y el coste es asumible. En
+   móvil el alcance lo arregla la paginación, que dejó la página en **5,7 pantallas**: el
+   problema de alcance era una CONSECUENCIA de las 27, no una causa aparte.
+6. **El «N de M» se queda cuando ya no falta nada.** Es la señal de que la rejilla se acabó; sin
+   él, el último lote parecía cortado a mitad.
+
+**Corrección a la entrada (4).** Las cifras del cuarteto de estado que dejó apuntadas aquella
+entrada estaban medidas sobre fondos de chip, no sobre los fondos donde cada token pinta de
+verdad, y **el recuento inducía a error**. Medido correctamente (issue #892): de los 129
+`text-status-*` del repo, **122 son `text-status-dropped`** — el rojo de error de formulario,
+sobre `--surface`— y dan **5,38:1 en claro y 5,10:1 en oscuro**: están bien y no hay que
+tocarlos. Quedan **7 usos de texto**. El grueso del problema no es texto: es el **punto** de la
+rejilla, que con `dotOnly` es el único portador visual del estado y se queda en **2,00:1**
+(`planned`) y **2,50:1** (`in-progress`) contra su anillo en tema claro — por debajo del 3:1 de
+**WCAG 1.4.11**, que es AA. El trabajo es más pequeño de lo que decía la entrada (4) y un trozo
+es un incumplimiento más serio.
+
 - **La fusión de obras aborta ANTES de escribir, no a mitad.** Todo conflicto de dato de usuario
   —incluido «un pase usa la edición del perdedor que habría que borrar por ISBN duplicado»— se
   decide en una guarda previa que solo lee. Antes ese caso concreto salía como un `P0001
@@ -2534,7 +2824,7 @@ es #900, y su orden —dev primero, verificar contra objetos reales, luego prod�
   volver a propagar el `matchedIsbn` tumban tests distintos.
 
 
-## 2026-08-28 — La purga de ediciones históricas se descarta: se hará a mano (#928)
+## 2026-08-28 (4) — La purga de ediciones históricas se descarta: se hará a mano (#928)
 
 **No habrá migración de purga.** El plan de obra/edición proponía borrar en la fase destructiva las
 ediciones que el sync masivo dejó, conservando las referenciadas por un pase y las de `created_by`

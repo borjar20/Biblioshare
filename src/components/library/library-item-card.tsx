@@ -73,7 +73,18 @@ export function LibraryItemCard({
         </div>
 
         {isOwner && (
-          <div className="absolute right-1.5 bottom-1.5 flex items-center gap-1.5">
+          <div
+            // `gap-3` y no `gap-1.5`: los dos disparadores dibujan 32 px y con
+            // `tap-44` cada uno crece a un área táctil de 44. Con 6 px de
+            // separación esas dos áreas se solapaban y la de arriba en el orden
+            // de pintado le robaba pulsaciones a su vecina — el propio
+            // comentario de `tap-44` en globals.css avisa justo de esto. A 12 px
+            // los centros quedan a 44 y las áreas se tocan sin invadirse.
+            // Alcance: 32 px NO incumple el suelo declarado (WCAG 2.1 AA no
+            // legisla tamaño de diana; el 44 es 2.5.5, que es AAA). Se aplica
+            // porque `tap-44` es convención del repo, no por el suelo.
+            className="absolute right-1.5 bottom-1.5 flex items-center gap-3"
+          >
             <button
               type="button"
               disabled={isPending}
@@ -88,7 +99,7 @@ export function LibraryItemCard({
                   if (result.error) throw new Error("pin_failed");
                 })
               }
-              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border shadow-card transition-colors disabled:opacity-60 ${
+              className={`tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-lg border shadow-card transition-colors disabled:opacity-60 ${
                 pinned
                   ? "border-gold/50 bg-gold/90 text-white"
                   : "border-border bg-surface/90 text-foreground backdrop-blur hover:bg-surface"
@@ -108,7 +119,7 @@ export function LibraryItemCard({
                   onClick={open}
                   aria-label={t("addToCollection")}
                   title={t("addToCollection")}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface/90 text-[15px] text-foreground shadow-card backdrop-blur transition-colors hover:bg-surface"
+                  className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface/90 text-[15px] text-foreground shadow-card backdrop-blur transition-colors hover:bg-surface"
                 >
                   <span aria-hidden>▤</span>
                 </button>

@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import type { TodayPass } from "@/lib/stats/get-today-focus";
 import type { DayActivity } from "@/lib/stats/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { getProgress } from "@/lib/library/progress";
+import { getProgress, passPercent } from "@/lib/library/progress";
 import { itemHref } from "@/lib/catalog/item-href";
 import { TodayActions } from "./today-actions";
 
@@ -35,9 +35,11 @@ export async function TodayCard({
   const { item } = pass;
   const accent = MEDIA_ACCENT[item.itemType];
   const progress = getProgress(item);
-  const percent = progress
-    ? Math.min(100, Math.round((progress.current / progress.total) * 100))
-    : null;
+  const percent = progress ? passPercent(progress.current, progress.total) : null;
+  // El pase de esta tarjeta está ABIERTO por definición (el destacado solo
+  // pinta `in_progress`), así que el 100 solo aparece con el final alcanzado —
+  // y entonces la fila de acciones ofrece «Marcar terminada».
+  const reachedEnd = progress !== null && progress.current >= progress.total;
 
   const todayMinutes = weekly[weekly.length - 1]?.minutes ?? 0;
   const goalPercent = dailyGoalMinutes
@@ -56,6 +58,7 @@ export async function TodayCard({
       itemId={item.itemId}
       seriesId={item.itemId}
       nextEpisode={nextEpisode}
+      reachedEnd={reachedEnd}
       sessionHref={sessionHref}
       logHref={`${itemHref(item.itemType, item.itemId)}?tab=log`}
       labels={{
@@ -66,6 +69,7 @@ export async function TodayCard({
         notes: t("timerNotes"),
         timerLabel: t("timerLabel"),
         markSeen: t("markSeen"),
+        markDone: t("markDone"),
         nextEpisode: nextEpisode
           ? t("markEpisode", { season: nextEpisode.season, episode: nextEpisode.episode })
           : null,

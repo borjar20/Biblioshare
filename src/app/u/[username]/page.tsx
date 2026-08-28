@@ -35,10 +35,6 @@ import { RinconTab } from "./_tabs/rincon-tab";
 import { YouRow } from "@/components/nav/you-row";
 import { SHELL_APP } from "@/lib/ui/layout";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 const VALID_TABS: SectionTab[] = [
   "actividad",
   "estadisticas",
@@ -58,10 +54,7 @@ export async function generateMetadata({
   return { title: `@${username} — Biblioshare` };
 }
 
-export default async function PublicProfilePage({
-  params,
-  searchParams,
-}: {
+type PublicProfileProps = {
   params: Promise<{ username: string }>;
   searchParams: Promise<{
     tab?: string;
@@ -75,7 +68,49 @@ export default async function PublicProfilePage({
     medida?: string;
     archivados?: string;
   }>;
-}) {
+};
+
+// La página es SÍNCRONA y solo pinta el boundary (#476, patrón de #442): la
+// lectura de `params`/`searchParams` y la sesión bajan a ProfileContent, por
+// debajo del <Suspense>. Así todos los enlaces a /u/* comparten shell estático.
+export default function PublicProfilePage(props: PublicProfileProps) {
+  return (
+    <Suspense fallback={<ProfileShellSkeleton />}>
+      <ProfileContent {...props} />
+    </Suspense>
+  );
+}
+
+// Fantasma del shell del perfil: cabecera (avatar 60/84 + nombre + chips),
+// pestañas y el esqueleto genérico de sección. Mismo contenedor que el real
+// para que el intercambio no mueva nada (CLS, #284).
+function ProfileShellSkeleton() {
+  return (
+    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+      <div className="flex flex-col gap-3 lg:gap-4">
+        <div className="flex items-start gap-4 lg:gap-[18px]">
+          <Skeleton className="h-[60px] w-[60px] shrink-0 rounded-full lg:h-[84px] lg:w-[84px]" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Skeleton className="h-7 w-44 rounded-md lg:h-8" />
+            <SkeletonLine className="mt-2 h-3 w-28" />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {["w-20", "w-24", "w-20", "w-28"].map((w, i) => (
+            <Skeleton key={i} className={`h-6 rounded-full ${w}`} />
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-6 border-b border-border pb-3">
+        <SkeletonLine className="w-20" />
+        <SkeletonLine className="w-24" />
+      </div>
+      <ProfileSectionSkeleton />
+    </div>
+  );
+}
+
+async function ProfileContent({ params, searchParams }: PublicProfileProps) {
   const { username } = await params;
   const parsedParams = await searchParams;
 

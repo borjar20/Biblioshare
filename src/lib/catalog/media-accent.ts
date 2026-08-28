@@ -5,7 +5,11 @@ import type { ItemType } from "./types";
 // Class strings are written out in full (never interpolated) so Tailwind's JIT
 // can see them. See docs/REQUIREMENTS.md — media colour identities.
 export type MediaAccent = {
-  /** text-type-* */
+  /**
+   * `text-type-*-ink`, NO `text-type-*`: el color de tipo puro es de gráfico
+   * (3:1) y como texto se quedaba en 3,64:1 sobre su propio tinte. El par
+   * oscuro vive en globals.css, misma pareja que --accent/--accent-ink.
+   */
   text: string;
   /** solid bg-type-x (progress fills, dots) */
   bg: string;
@@ -29,7 +33,7 @@ export type MediaAccent = {
 
 export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
   book: {
-    text: "text-type-book",
+    text: "text-type-book-ink",
     bg: "bg-type-book",
     bgSoft: "bg-type-book/10",
     border: "border-type-book",
@@ -38,7 +42,7 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     varName: "--type-book",
   },
   movie: {
-    text: "text-type-movie",
+    text: "text-type-movie-ink",
     bg: "bg-type-movie",
     bgSoft: "bg-type-movie/10",
     border: "border-type-movie",
@@ -47,7 +51,7 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     varName: "--type-movie",
   },
   series: {
-    text: "text-type-series",
+    text: "text-type-series-ink",
     bg: "bg-type-series",
     bgSoft: "bg-type-series/10",
     border: "border-type-series",

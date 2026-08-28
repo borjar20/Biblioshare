@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { SearchIcon } from "@/components/ui/icons";
+import { SearchIcon, XIcon } from "@/components/ui/icons";
 import { FiltersDropdown } from "@/components/library/filters-dropdown";
 import { ALL_TYPES_PARAM } from "@/lib/library/effective-type";
 import { pillClass, segClass } from "@/lib/ui/control-classes";
@@ -23,6 +23,7 @@ const SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 export async function LibraryFilters({
   itemType,
+  lockedType,
   status,
   search,
   sort = "recent",
@@ -35,6 +36,14 @@ export async function LibraryFilters({
   extraParams,
 }: {
   itemType?: ItemType;
+  /**
+   * El tipo que la vista aplica SIN que el usuario lo haya pedido (interés
+   * único del onboarding). Se pintaba solo como el «1» de la píldora de
+   * Filtros; aquí sale como chip quitable, porque el usuario no puede quitar
+   * —ni sospechar— un filtro que no ve. Un `?type=` puesto a mano NO viene por
+   * aquí: ese ya se ve marcado dentro del desplegable.
+   */
+  lockedType?: ItemType;
   status?: MediaStatus;
   search?: string;
   sort?: LibrarySort;
@@ -84,6 +93,10 @@ export async function LibraryFilters({
   // tipo/estado/orden/género.
   function clearHref() {
     const params = new URLSearchParams(extraParams);
+    // Con el tipo bloqueado por onboarding hay que emitir el centinela: quitar
+    // `type` es "arranque por defecto", y el arranque por defecto vuelve a
+    // aplicar el preferido — «Limpiar» dejaba el filtro puesto (issue #313).
+    if (lockedType) params.set("type", ALL_TYPES_PARAM);
     if (search) params.set("q", search);
     // La anulación NO es un filtro: sobrevive a «Limpiar» por el mismo motivo
     // que la búsqueda — el usuario acaba de pedirla a mano (spec D8).
@@ -103,7 +116,16 @@ export async function LibraryFilters({
     // Barra de una sola fila en sm+: buscador a la izquierda (topado, que a
     // 1600px de shell ancho un `w-full` daba una píldora de metro y medio) y
     // «Filtros» pegado al borde derecho de la rejilla. En móvil siguen apilados.
-    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+    //
+    // Se pega bajo la topbar A PARTIR DE `sm`, no en móvil, y es una decisión
+    // con número: apilada mide 81px, que sobre los 59px de la topbar serían
+    // 140px —el 17% de una pantalla de 844— de cromo permanente. En una sola
+    // fila mide ~40px y el coste es asumible. En móvil el alcance lo arregla la
+    // paginación (`?n=`), que dejó la página en 5,7 pantallas en vez de 27.
+    // `-mx`/`px` replican el padding del contenedor de la página (`px-4 sm:px-6
+    // lg:px-8`) para que el fondo llegue a los bordes y las portadas no se vean
+    // pasar por el hueco.
+    <div className="flex flex-col gap-2.5 sm:sticky sm:top-[var(--topbar-h)] sm:z-10 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:border-b sm:border-border sm:bg-background/90 sm:px-6 sm:py-3 sm:backdrop-blur lg:-mx-8 lg:px-8">
       {/* Búsqueda: píldora con la lupa dentro y SIN botón aparte (Enter envía) —
           ocupa una fila menos. */}
       <form action={basePath} className="relative w-full sm:max-w-xl sm:flex-1">
@@ -138,7 +160,29 @@ export async function LibraryFilters({
       {/* Tipo · estado · orden plegados en un desplegable «Filtros» (igual que el
           detalle de colección). Los controles son enlaces: el filtrado de Todo
           es server-side por la URL (getLibraryItems). */}
-      <FiltersDropdown label={t("collection.filters")} activeCount={activeCount}>
+      <div className="flex items-center gap-2">
+        {/* El filtro que nadie puso, dicho en voz alta y con su salida. Va
+            FUERA del desplegable a propósito: dentro seguiría siendo invisible
+            hasta abrirlo, que es exactamente el problema. */}
+        {lockedType && (
+          <Link
+            href={buildHref({ type: ALL_TYPES_PARAM })}
+            aria-label={t("library.filters.clearOnlyType", {
+              type: t(`search.types.${lockedType}`),
+            })}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 rounded-full ${MEDIA_ACCENT[lockedType].bg}`}
+            />
+            {t("library.filters.onlyType", {
+              type: t(`search.types.${lockedType}`),
+            })}
+            <XIcon aria-hidden className="h-3.5 w-3.5" />
+          </Link>
+        )}
+        <FiltersDropdown label={t("collection.filters")} activeCount={activeCount}>
         {showTypeFilter && (
           <div className="flex flex-col gap-1.5">
             <span className="label-section">
@@ -148,11 +192,20 @@ export async function LibraryFilters({
               {/* «Todos los tipos» emite el centinela `type=todos`, no la
                   ausencia de `type`: solo así escapa del tipo preferido del
                   onboarding en la pestaña Todo (issue #313). */}
-              <Link href={buildHref({ type: ALL_TYPES_PARAM })} className={pillClass(!itemType)}>
+              <Link
+                href={buildHref({ type: ALL_TYPES_PARAM })}
+                aria-current={!itemType ? "page" : undefined}
+                className={pillClass(!itemType)}
+              >
                 {t("library.filters.allTypes")}
               </Link>
               {TYPES.map((type) => (
-                <Link key={type} href={buildHref({ type })} className={pillClass(itemType === type)}>
+                <Link
+                  key={type}
+                  href={buildHref({ type })}
+                  aria-current={itemType === type ? "page" : undefined}
+                  className={pillClass(itemType === type)}
+                >
                   <span
                     aria-hidden
                     className={`h-1.5 w-1.5 rounded-full ${itemType === type ? "bg-accent-foreground" : MEDIA_ACCENT[type].bg}`}
@@ -169,11 +222,20 @@ export async function LibraryFilters({
             {t("collection.filterStatus")}
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
-            <Link href={buildHref({ status: undefined })} className={segClass(!status)}>
+            <Link
+              href={buildHref({ status: undefined })}
+              aria-current={!status ? "page" : undefined}
+              className={segClass(!status)}
+            >
               {t("library.filters.allStatuses")}
             </Link>
             {(itemType === "movie" ? MOVIE_STATUSES : STATUSES).map((s) => (
-              <Link key={s} href={buildHref({ status: s })} className={segClass(status === s)}>
+              <Link
+                key={s}
+                href={buildHref({ status: s })}
+                aria-current={status === s ? "page" : undefined}
+                className={segClass(status === s)}
+              >
                 {/* El verbo "completado" cambia por medio: en película es
                     "Vista", igual que el control de Registro (StatusSegments) y
                     el badge del hero. El filtro genérico usa library.status.*
@@ -205,12 +267,28 @@ export async function LibraryFilters({
               {t("collection.filterGenre")}
             </span>
             <div className="flex flex-wrap items-center gap-0.5">
-              <Link href={buildHref({ genre: undefined })} className={segClass(!genre)}>
+              <Link
+                href={buildHref({ genre: undefined })}
+                aria-current={!genre ? "page" : undefined}
+                className={segClass(!genre)}
+              >
                 {t("library.filters.allGenres")}
               </Link>
               {genres.map((g) => (
-                <Link key={g.slug} href={buildHref({ genre: g.slug })} className={segClass(genre === g.slug)}>
-                  {g.label} <span className="opacity-60">{g.count}</span>
+                <Link
+                  key={g.slug}
+                  href={buildHref({ genre: g.slug })}
+                  aria-current={genre === g.slug ? "page" : undefined}
+                  className={segClass(genre === g.slug)}
+                >
+                  {/* El recuento iba en `opacity-60`, que sobre un token que SÍ
+                      cumple daba 2,55:1 en claro y 3,03:1 en oscuro: la Regla
+                      de la Tinta Fantasma dice atenuar el PAPEL, nunca la
+                      tinta, y el test de contraste del repo mira el token, no
+                      el resultado tras componer la opacidad. El número informa
+                      la decisión («Drama 56» vs «Clásicos 1»), no es adorno:
+                      se separa por PESO, que no cuesta contraste. */}
+                  {g.label} <span className="font-normal">{g.count}</span>
                 </Link>
               ))}
             </div>
@@ -223,7 +301,12 @@ export async function LibraryFilters({
           </span>
           <div className="flex flex-wrap items-center gap-0.5">
             {SORTS.map((s) => (
-              <Link key={s} href={buildHref({ sort: s })} className={segClass(sort === s)}>
+              <Link
+                key={s}
+                href={buildHref({ sort: s })}
+                aria-current={sort === s ? "page" : undefined}
+                className={segClass(sort === s)}
+              >
                 {t(`library.sort.${s}`)}
               </Link>
             ))}
@@ -238,7 +321,8 @@ export async function LibraryFilters({
             {t("collection.clearFilters")}
           </Link>
         )}
-      </FiltersDropdown>
+        </FiltersDropdown>
+      </div>
     </div>
   );
 }

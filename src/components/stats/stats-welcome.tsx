@@ -27,7 +27,13 @@ export async function StatsWelcome({
         {t("welcomeBody")}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Link href={`/u/${username}?tab=rincon`} className={buttonVariants("primary")}>
+        {/* `secondary`, no `primary`: en el arranque en frío esta tarjeta se
+            pinta a la vez que el CTA de la columna personal y que el del feed
+            vacío, y eran TRES naranjas simultáneos ante quien no tiene ni idea
+            de por dónde empezar — justo el caso en el que el primario tenía que
+            servir de brújula. El único primario de la vista es el de la columna
+            personal: fijar una meta no vale de nada sin obras que contar. */}
+        <Link href={`/u/${username}?tab=rincon`} className={buttonVariants("secondary")}>
           {t("welcomeGoalCta")}
         </Link>
         {!compact && (

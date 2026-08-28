@@ -59,10 +59,14 @@ export function FeedList({
         glyph={<UsersIcon className="h-7 w-7" />}
         title={t("emptyTitle")}
         message={t("empty")}
+        // `secondary` por la misma razón que `stats-welcome`: en el arranque en
+        // frío este vacío convive con el CTA de la columna personal, y la regla
+        // es un primario por vista. Seguir a gente sin tener nada propio
+        // registrado deja el feed igual de vacío.
         action={
           <Link
             href="/buscar?modo=personas"
-            className={buttonVariants("primary")}
+            className={buttonVariants("secondary")}
           >
             {t("emptyCta")}
           </Link>

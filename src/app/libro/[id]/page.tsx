@@ -8,6 +8,7 @@ import {
   statusVerbs,
 } from "@/lib/library/hero-status-labels";
 import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { passPercent } from "@/lib/library/progress";
 import {
   createClient,
   createTokenClient,
@@ -71,10 +72,6 @@ import type { MediaStatus } from "@/lib/library/types";
 import { NotesSection } from "@/components/notes/notes-section";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
 
 export async function generateMetadata({
   params,
@@ -267,9 +264,9 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   const railProgress =
     totalPages > 0
       ? {
-          percent: Math.min(100, Math.round((currentPage / totalPages) * 100)),
+          percent: passPercent(currentPage, totalPages),
           left: tDetail("rail.pages", { page: currentPage, total: totalPages }),
-          right: `${Math.min(100, Math.round((currentPage / totalPages) * 100))}%`,
+          right: `${passPercent(currentPage, totalPages)}%`,
         }
       : null;
 
@@ -291,6 +288,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             itemId={book.id}
             isLoggedIn={Boolean(user)}
             statusLabels={statusLabels}
+            ctaHref={activePass ? `/sesion/${activePass.id}` : null}
+            ctaLabel={tDetail("rail.cta.book")}
           />
         }
         menuSlot={
@@ -526,6 +525,7 @@ async function BookTabs({
   return (
     <ItemDetailTabs
       itemType="book"
+      tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         community: tDetail("tabCommunity"),

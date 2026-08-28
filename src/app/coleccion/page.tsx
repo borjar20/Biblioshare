@@ -22,7 +22,7 @@ import { LibraryFilters } from "@/components/library/library-filters";
 import { LibraryItemCard } from "@/components/library/library-item-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { InboxIcon } from "@/components/ui/icons";
+import { InboxIcon, PlusIcon } from "@/components/ui/icons";
 import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { CollectionTabs, KNOWN_TABS, type KnownTab } from "./collection-tabs";
@@ -43,12 +43,10 @@ import {
   CollectionsGridSkeleton,
   SagasPanelSkeleton,
 } from "@/components/library/collection-skeletons";
+import { LoadMore } from "@/components/ui/load-more";
 import { NewCollectionButton } from "@/components/library/new-collection-button";
 import { UncollectedShelf } from "@/components/library/uncollected-shelf";
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
+import { getCollectionsOverview } from "@/lib/library/collections";
 
 export const metadata: Metadata = {
   title: "Mi Biblioteca — Biblioshare",
@@ -62,6 +60,20 @@ const VALID_STATUSES: MediaStatus[] = [
 ];
 const VALID_SORTS: LibrarySort[] = ["recent", "rating", "title"];
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
+
+// La rejilla de «Todo» se pintaba ENTERA: con 138 obras eran 23.066px a 390px
+// de ancho —27 pantallas— y la barra de filtros, que vive arriba y no es
+// sticky, quedaba a 22.000px de scroll de quien llegaba al final. Se pagina por
+// URL con el mismo mecanismo que el índice de sagas (`?n=`), no con scroll
+// infinito: el enlace es real, la posición es compartible y el botón «Atrás»
+// vuelve a la misma cantidad de obras.
+//
+// 24 y no 12 (el de sagas) porque la celda es una PORTADA, mucho más baja que
+// una tarjeta de saga: 24 son 12 filas en móvil y 3 en la escalera más ancha
+// (`2xl:grid-cols-8`). Divide exacto en 2, 3, 4, 6 y 8 columnas — todas las
+// paradas de `COVER_GRID_COLS` menos `lg` — así que ninguna página deja una
+// fila coja salvo ahí.
+const PAGE_SIZE = 24;
 
 // Mi Biblioteca (Colección v2, Sesión 1 + F5 Task 4): gira en torno a
 // colecciones que crea el usuario, no a estados. Tres subpestañas visibles —
@@ -86,6 +98,7 @@ export default async function CollectionPage({
     type?: string;
     genero?: string;
     abandonados?: string;
+    n?: string;
   }>;
 }) {
   const supabase = await createClient();
@@ -100,6 +113,9 @@ export default async function CollectionPage({
     ? (params.status as MediaStatus)
     : undefined;
   const search = params.q?.trim() || undefined;
+  // Cuántas obras enseña «Todo». `Math.max` contra el suelo: un `?n=0` o un
+  // `?n=basura` de una URL manipulada no puede dejar la rejilla en blanco.
+  const shown = Math.max(PAGE_SIZE, Number(params.n) || PAGE_SIZE);
   const sort: LibrarySort = VALID_SORTS.includes(params.sort as LibrarySort)
     ? (params.sort as LibrarySort)
     : "recent";
@@ -168,6 +184,39 @@ export default async function CollectionPage({
   // horizontal).
   const shell = SHELL_GRID;
 
+  // El tipo que la vista aplica SIN que nadie lo haya pedido: el interés único
+  // del onboarding. Se pintaba solo como un «1» en la píldora de Filtros, así
+  // que una cuenta con 9 libros y 129 películas entraba viendo 9 obras de 138
+  // —el 93 % escondido— sin una sola palabra que lo dijera. Va a la barra como
+  // chip quitable; el `?type=` explícito de la URL NO lo es (ese lo puso el
+  // usuario y ya se ve en el desplegable).
+  const lockedType = !isExplicitType ? itemType : undefined;
+
+  // La misma vista sin NADA filtrando. `type=todos` y no la ausencia de `type`:
+  // omitirlo devolvería el arranque por defecto, que vuelve a aplicar el
+  // preferido del onboarding — «Limpiar» dejaría el filtro puesto (issue #313).
+  const hasFilters = Boolean(itemType || status || search || genre);
+  function clearAllHref(): string {
+    const qs = new URLSearchParams({ tab: "todo", type: ALL_TYPES_PARAM });
+    if (sort !== "recent") qs.set("sort", sort);
+    if (showDropped) qs.set(SHOW_DROPPED_PARAM, "1");
+    return `/coleccion?${qs.toString()}`;
+  }
+
+  // La MISMA vista con un tope mayor. Conserva todos los filtros: si «Cargar
+  // más» los perdiera, el segundo lote traería obras que el primero descartó.
+  function loadMoreHref(): string {
+    const qs = new URLSearchParams({ tab: "todo" });
+    if (params.type) qs.set("type", params.type);
+    if (status) qs.set("status", status);
+    if (sort !== "recent") qs.set("sort", sort);
+    if (genre) qs.set("genero", genre);
+    if (search) qs.set("q", search);
+    if (showDropped) qs.set(SHOW_DROPPED_PARAM, "1");
+    qs.set("n", String(shown + PAGE_SIZE));
+    return `/coleccion?${qs.toString()}`;
+  }
+
   // Enlace «Mostrar» de la nota: la MISMA vista más `?abandonados=1`. Se
   // construye aquí y no en el componente porque el componente es genérico y no
   // conoce los filtros de esta página.
@@ -189,7 +238,25 @@ export default async function CollectionPage({
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
           da su header «N colecciones · M títulos» y en `Todo` el Resumen. */}
-      <PageHeader title={t("title")} />
+      {/* La acción de alta vive AQUÍ, no solo dentro del estado vacío de la
+          rejilla: hasta ahora, en cuanto tenías una obra, la pantalla que se
+          llama «Mi Biblioteca» dejaba de ofrecer forma alguna de añadir nada, y
+          había que saber que se hace desde «Buscar». Para quien llega de
+          Goodreads, añadir es LA acción. Va en la cabecera para estar en las
+          tres pestañas y no depender del scroll: la rejilla mide 23.062px en
+          móvil. */}
+      <PageHeader
+        title={t("title")}
+        action={
+          <Link
+            href="/buscar"
+            className={buttonVariants("primary", "gap-1.5 whitespace-nowrap")}
+          >
+            <PlusIcon aria-hidden className="h-4 w-4" />
+            {t("addWork")}
+          </Link>
+        }
+      />
 
       <CollectionTabs active={tab} />
 
@@ -236,6 +303,7 @@ export default async function CollectionPage({
             genres={genres}
             basePath="/coleccion"
             showTypeFilter
+            lockedType={lockedType}
             hideDroppedPref={hideDroppedPref}
             showDropped={showDropped}
             extraParams={{ tab: "todo" }}
@@ -252,7 +320,11 @@ export default async function CollectionPage({
               sort={sort}
               genre={genre}
               hideDropped={hideDropped}
+              limit={shown}
+              loadMoreHref={loadMoreHref()}
+              pageSize={PAGE_SIZE}
               showDroppedHref={showDroppedHref()}
+              clearHref={hasFilters ? clearAllHref() : null}
               emptyTitle={tLibrary("emptyTitle")}
               emptyLabel={tLibrary("empty")}
               emptyCta={tLibrary("emptyCta")}
@@ -272,23 +344,22 @@ export default async function CollectionPage({
 
 // Cabecera de la rejilla de Colecciones (frame A): «N colecciones · M
 // títulos». Consulta propia, en Suspense aparte, para no bloquear el grid.
+//
+// El segundo número es el de títulos DENTRO de alguna colección, no el de la
+// biblioteca: decía «22 colecciones · 138 títulos» sobre una rejilla que sumaba
+// 2, con «136 títulos sin organizar» al pie de la misma pestaña. Ahora los dos
+// números del pie y el de aquí cierran la resta.
 async function CollectionsHeader({ userId }: { userId: string }) {
   const supabase = await createClient();
-  // Recuento ligero: `head:true` + `count:exact` no trae filas ni portadas —
-  // el grid (CollectionsGrid) es quien hidrata los abanicos, no este header.
-  const [{ count }, summary, t] = await Promise.all([
-    supabase
-      .from("collections")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId),
-    getLibrarySummary(supabase, userId),
+  const [overview, t] = await Promise.all([
+    getCollectionsOverview(supabase, userId),
     getTranslations("collection"),
   ]);
   return (
     <p className="font-mono text-xs tracking-wide text-muted-foreground">
-      {t("collectionsCount", { count: count ?? 0 })}
+      {t("collectionsCount", { count: overview.collections })}
       {" · "}
-      {t("titleCount", { count: summary.total })}
+      {t("collectedCount", { count: overview.titles })}
     </p>
   );
 }
@@ -344,8 +415,11 @@ async function LibraryGrid({
   sort,
   genre,
   limit,
+  loadMoreHref,
+  pageSize,
   hideDropped,
   showDroppedHref,
+  clearHref,
   emptyTitle,
   emptyLabel,
   emptyCta,
@@ -357,14 +431,26 @@ async function LibraryGrid({
   sort: LibrarySort;
   genre?: string;
   limit?: number;
+  /** La misma vista con el tope subido en `pageSize`. */
+  loadMoreHref: string;
+  pageSize: number;
   hideDropped: boolean;
   showDroppedHref: string;
+  /**
+   * La misma vista sin búsqueda ni filtros. `null` = no hay ninguno puesto, y
+   * entonces cero resultados sí significa «tu biblioteca está vacía».
+   */
+  clearHref: string | null;
   emptyTitle: string;
   emptyLabel: string;
   emptyCta: string;
 }) {
   const supabase = await createClient();
-  const { items, hiddenDropped } = await getLibraryView(supabase, userId, {
+  const [tLibrary, tCollection] = await Promise.all([
+    getTranslations("library"),
+    getTranslations("collection"),
+  ]);
+  const { items, hiddenDropped, total } = await getLibraryView(supabase, userId, {
     itemType,
     status,
     search,
@@ -375,15 +461,28 @@ async function LibraryGrid({
   });
 
   if (items.length === 0) {
+    // Con filtros puestos, «Tu biblioteca está vacía · Aún no has añadido nada ·
+    // Buscar algo» eran TRES líneas falsas a la vez sobre una biblioteca de 138
+    // obras, y el botón mandaba al catálogo común cuando lo que había que hacer
+    // era quitar el filtro. Cero resultados solo significa «vacía» cuando no hay
+    // nada filtrando.
+    const filtered = clearHref !== null;
     return (
       <div className="flex flex-col gap-3">
         <EmptyState
           glyph={<InboxIcon className="h-7 w-7" />}
-          title={emptyTitle}
-          message={emptyLabel}
+          title={filtered ? tLibrary("noMatchTitle") : emptyTitle}
+          message={filtered ? tCollection("noMatch") : emptyLabel}
           action={
-            <Link href="/buscar" className={buttonVariants("primary")}>
-              {emptyCta}
+            // `secondary`: la misma acción ya va en primario en la cabecera de
+            // la página, y la regla es un primario por vista. Aquí el vacío
+            // sigue explicando y ofreciendo; lo que no hace es duplicar el
+            // naranja de algo que está 200px más arriba.
+            <Link
+              href={filtered ? clearHref : "/buscar"}
+              className={buttonVariants("secondary")}
+            >
+              {filtered ? tLibrary("seeEverything") : emptyCta}
             </Link>
           }
         />
@@ -395,6 +494,8 @@ async function LibraryGrid({
     );
   }
 
+  const pending = total - items.length;
+
   return (
     <div className="flex flex-col gap-4">
       <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
@@ -402,6 +503,26 @@ async function LibraryGrid({
           <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
         ))}
       </div>
+      {pending > 0 ? (
+        <LoadMore
+          href={loadMoreHref}
+          label={tLibrary("loadMore")}
+          showingLabel={tLibrary("showingCount", { shown: items.length, total })}
+          pendingPreview={
+            <SkeletonCoverGrid
+              count={Math.min(pageSize, pending)}
+              cols={COVER_GRID_COLS}
+            />
+          }
+        />
+      ) : (
+        // El «N de N» se queda también cuando ya no falta nada: es la señal de
+        // que la rejilla se acabó, no de que quede algo cargando. Sin él, el
+        // último lote parecía cortado a mitad.
+        <p className="border-t border-border pt-4 text-[12.5px] text-muted-foreground">
+          {tLibrary("showingCount", { shown: items.length, total })}
+        </p>
+      )}
       <HiddenDroppedNote count={hiddenDropped} href={showDroppedHref} />
     </div>
   );

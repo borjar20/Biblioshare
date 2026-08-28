@@ -28,7 +28,10 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
     // Sin `overflow-x-auto`: con solo dos subpestañas siempre caben, y ese
     // overflow forzaba también `overflow-y:auto` (regla del spec), que sacaba
     // una barra de scroll fantasma al desbordar el borde inferior 1px.
-    <div className="flex gap-6 border-b border-border">
+    // Enlaces que NAVEGAN, así que `aria-current="page"` y no el patrón
+    // tablist: la activa se marcaba solo por color de texto y borde, que es
+    // exactamente lo que un lector de pantalla no ve.
+    <nav aria-label={t("navLabel")} className="flex gap-6 border-b border-border">
       {COLLECTION_TABS.map((tab) => {
         const href = tab === "todo" ? "/coleccion" : `/coleccion?tab=${tab}`;
         const isActive = tab === active;
@@ -36,6 +39,7 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
           <Link
             key={tab}
             href={href}
+            aria-current={isActive ? "page" : undefined}
             className={`-mb-px shrink-0 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
               isActive
                 ? "border-accent text-foreground"
@@ -46,6 +50,6 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

@@ -73,10 +73,6 @@ import { NotesSection } from "@/components/notes/notes-section";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 export async function generateMetadata({
   params,
 }: {
@@ -236,6 +232,8 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
             itemId={movie.id}
             isLoggedIn={Boolean(user)}
             statusLabels={statusLabels}
+            ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
+            ctaLabel={tDetail("rail.cta.movie")}
           />
         }
         menuSlot={
@@ -425,6 +423,7 @@ async function MovieTabs({
   return (
     <ItemDetailTabs
       itemType="movie"
+      tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         community: tDetail("tabCommunity"),
