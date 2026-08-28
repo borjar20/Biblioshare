@@ -84,12 +84,12 @@ export async function hydrateItems(
     idsByType.book.length
       ? supabase
           .from("book_editions")
-          .select("id, book_id, total_pages, is_primary")
+          .select("id, book_id, total_pages")
           .in("book_id", idsByType.book)
       : Promise.resolve({ data: [] }),
   ]);
 
-  const editionsByBook = new Map<string, { id: string; total_pages: number | null; is_primary: boolean }[]>();
+  const editionsByBook = new Map<string, { id: string; total_pages: number | null }[]>();
   for (const row of editions.data ?? []) {
     const list = editionsByBook.get(row.book_id);
     if (list) list.push(row);
@@ -244,13 +244,17 @@ export async function hydrateItems(
       if (!meta) return null;
       const activePass = activePassByKey.get(itemKey);
       if (!activePass) return null;
-      // El total de páginas manda desde la edición del pase (o la primaria),
-      // no desde books.total_pages: bolsillo y tapa dura no tienen las mismas
-      // páginas, y muchos libros solo las tienen en `book_editions`.
+      // El total de páginas manda desde la edición del pase, y si no hay
+      // ninguna identificada, desde books.total_pages (páginas orientativas
+      // de la obra): bolsillo y tapa dura no tienen las mismas páginas, y
+      // muchos libros solo las tienen en `book_editions`.
       const pageCount =
         key.item_type === "book"
-          ? (pickEditionPages(editionsByBook.get(key.item_id) ?? [], activePass.editionId) ??
-            meta.pageCount)
+          ? pickEditionPages(
+              editionsByBook.get(key.item_id) ?? [],
+              activePass.editionId,
+              meta.pageCount,
+            )
           : meta.pageCount;
       return {
         // entryId/activePassId son ahora el MISMO id: el pase activo es la

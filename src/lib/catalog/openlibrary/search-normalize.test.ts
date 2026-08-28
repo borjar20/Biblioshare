@@ -88,6 +88,40 @@ describe("normalizeSearchWorks · guarda de colisión", () => {
   });
 });
 
+// El idioma del título elegido, igual que en la bibliografía (`normalize.ts`).
+// Los dos normalizadores tienen que coincidir: `titleLang` es lo que etiqueta
+// `repr_meta` cuando el título se escribe en lote.
+describe("normalizeSearchWorks · titleLang", () => {
+  it("marca 'es' cuando gana el título de la edición española", () => {
+    const results = normalizeSearchWorks(
+      [doc("/works/OL2W", "Fatta Eld", "En llamas", "spa", 116)],
+      []
+    );
+    expect(results[0].title).toBe("En llamas");
+    expect(results[0].titleLang).toBe("es");
+  });
+
+  it("marca 'en' cuando solo hay título de edición inglesa", () => {
+    const results = normalizeSearchWorks(
+      [],
+      [doc("/works/OL1W", "Mockingjay", "Mockingjay: Special Edition", "eng", 98)]
+    );
+    expect(results[0].title).toBe("Mockingjay: Special Edition");
+    expect(results[0].titleLang).toBe("en");
+  });
+
+  it("marca 'other' cuando cae al título de la OBRA, que puede ser de cualquier idioma", () => {
+    // «Fatta Eld» es sueco: el título de la obra NO es inglés por defecto, y
+    // por eso el fallback es 'other' (rango 2) y no 'en' (rango 1).
+    const results = normalizeSearchWorks(
+      [],
+      [{ key: "/works/OL2W", title: "Fatta Eld", edition_count: 116, language: ["eng", "spa"] }]
+    );
+    expect(results[0].title).toBe("Fatta Eld");
+    expect(results[0].titleLang).toBe("other");
+  });
+});
+
 describe("normalizeSearchWorks · idioma, omnibus y desduplicación", () => {
   it("descarta la obra sin ninguna edición en español ni inglés", () => {
     const results = normalizeSearchWorks(

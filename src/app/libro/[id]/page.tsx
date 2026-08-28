@@ -50,6 +50,7 @@ import {
   type RatingSummary,
 } from "@/lib/community/get-community";
 import { getEditions } from "@/lib/editions/get-editions";
+import { pagesForPass } from "@/lib/editions/edition-label";
 import { loadBookEditions } from "@/lib/editions/load-editions";
 import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { EditionsLoading } from "@/components/detail/editions-loading";
@@ -94,7 +95,7 @@ function fetchBook(supabase: Supa, id: string) {
   return supabase
     .from("books")
     .select(
-      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, editions_synced_at, hydrated_at",
+      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, hydrated_at, repr_meta, wikidata_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -142,15 +143,16 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // resultado), así que esto es sobre todo curador de filas viejas (`hydrated_at`
   // null) que se arreglan solas la primera vez que se abren.
   //
-  // Las EDICIONES ya NO se sincronizan aquí en after(): se resuelven por
-  // streaming vía loadBookEditions (ver editionsPromise, dentro del <Suspense>
-  // de EditionsSection), así que la primera visita SÍ las ve tras el streaming.
+  // Las EDICIONES ya no se sincronizan masivamente desde OpenLibrary (Tarea
+  // 10, spec 2026-08-26 §1): solo existen las IDENTIFICADAS (picker, ISBN
+  // escaneado, alta de colaborador). loadBookEditions (ver editionsPromise,
+  // dentro del <Suspense> de EditionsSection) se limita a leerlas.
   //
-  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión): un
-  // visitante anónimo no puede escribir —el grant es de `authenticated` y la
-  // RPC además exige `auth.uid()`—, y sin este guardia cada visita anónima a
-  // una ficha sin hidratar programaría en segundo plano hasta cinco llamadas a
-  // OpenLibrary para tirarlas a la basura.
+  // Solo con sesión (`accessToken` lo hay si y solo si hay sesión). Ya no es
+  // una restricción del grant —la RPC la llama service_role—, sino de coste:
+  // sin este guardia, cada visita anónima a una ficha sin hidratar programaría
+  // en segundo plano un puñado de llamadas a OpenLibrary, Inventaire y Google
+  // Books. Hidratar es trabajo que se hace para quien está usando la app.
   //
   // El cliente NO es el de la petición, y esto es el arreglo de #751: aquel
   // resuelve `cookies()` en CADA consulta, no al construirse, así que pasarlo
@@ -161,10 +163,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // render y se le pasa como valor, que es el patrón que manda la doc de
   // `after`. Guard en `src/lib/reactivity/after-guard.test.ts`.
   //
-  // Se conserva la identidad del usuario en vez de tirar de service_role a
-  // propósito: `hydrate_book` corta con «authentication required» si no hay
-  // `auth.uid()`, y ese guard es parte del blindaje del catálogo (#674). El
-  // arreglo del `after()` no puede costar un grant.
+  // El cliente de la petición (con la identidad del usuario) sigue sirviendo
+  // para los updates de columnas técnicas, pero la RPC `hydrate_book` YA NO la
+  // puede llamar: al pasar a fill-or-upgrade dejó de tener grant para
+  // `authenticated` y es de service_role (ver la cabecera de hydrate-book.ts,
+  // #871). Ese cliente lo construye la propia función; aquí no cambia nada.
   if (accessToken) {
     after(() =>
       ensureBookHydrated(createTokenClient(accessToken), {
@@ -172,6 +175,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
         openlibrary_work_key: book.openlibrary_work_key,
         isbn: book.isbn,
         hydrated_at: book.hydrated_at,
+        repr_meta: book.repr_meta,
+        wikidata_id: book.wikidata_id,
+        title: book.title,
+        author: book.author,
+        total_pages: book.total_pages,
       }),
     );
   }
@@ -185,12 +193,21 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // viaje. Con Supabase remoto lo caro es la ida y vuelta, no las columnas.
   // El rol viaja en el mismo Promise.all (paralelo, coste cero en serie): el
   // menú ⋯ del hero (P2) necesita saber si puede ofrecer "Editar ficha".
-  const [ratingSummary, activePass, shellRole] = await Promise.all([
+  //
+  // Las ediciones viajan en el MISMO Promise.all (no en serie detrás del pase):
+  // el rail necesita las páginas de la edición que el usuario identificó en su
+  // pase, y `passes.edition_id` no tiene FK a `book_editions` (el trigger de
+  // 20260714_passes_integrity es la integridad), así que no hay embed de
+  // PostgREST que las traiga en la misma fila. Es un SELECT plano sobre una
+  // tabla `USING (true)`, y BookTabs vuelve a llamar a `getEditions` con los
+  // mismos argumentos: la memoización de fetch de Next sirve la segunda desde
+  // esta (ver la cabecera de get-editions.ts), así que no es un viaje de más.
+  const [ratingSummary, activePass, shellRole, heroEditions] = await Promise.all([
     getRatingSummary("book", book.id),
     user
       ? supabase
           .from("passes")
-          .select("id, status, rating, position")
+          .select("id, status, rating, position, edition_id")
           .eq("user_id", user.id)
           .eq("item_type", "book")
           .eq("item_id", book.id)
@@ -199,6 +216,9 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
           .then(({ data }) => data)
       : Promise.resolve(null),
     user ? getCurrentUserRole() : Promise.resolve(null),
+    // Solo con sesión: sin pase no hay rail de progreso que resolver, y una
+    // visita anónima no debe pagar la consulta.
+    user ? getEditions("book", book.id) : Promise.resolve([]),
   ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
@@ -231,7 +251,16 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
     activePass?.position,
   ) as BookPosition;
   const currentPage = bookPosition.page ?? 0;
-  const totalPages = book.total_pages ?? 0;
+  // MISMA precedencia que el resto de la app (`pagesForPass`, spec 2026-08-26
+  // §5): la edición que el usuario identificó en su pase manda; sin ella, las
+  // páginas orientativas de la obra. Antes el rail leía `book.total_pages` a
+  // secas y podía enseñar un porcentaje distinto del de la barra del Registro,
+  // que sí resolvía la edición, para el MISMO pase.
+  const railPassEdition =
+    activePass?.edition_id != null
+      ? (heroEditions.find((e) => e.id === activePass.edition_id) ?? null)
+      : null;
+  const totalPages = pagesForPass(railPassEdition, book.total_pages) ?? 0;
   const railProgress =
     totalPages > 0
       ? {
@@ -370,19 +399,10 @@ async function BookTabs({
     if (enriched.wroteCredits) expireItemCredits("book", book.id);
   });
 
-  // Ediciones del DISPLAY: se resuelven por streaming (sync-si-hace-falta + lee)
-  // dentro del <Suspense> de EditionsSection. NO se await aquí: eso bloquearía la
-  // página, que es justo lo que evitábamos con after().
-  const editionsPromise = loadBookEditions(
-    supabase,
-    {
-      id: book.id,
-      openlibrary_work_key: book.openlibrary_work_key,
-      isbn: book.isbn,
-      editions_synced_at: book.editions_synced_at,
-    },
-    Boolean(userId),
-  );
+  // Ediciones del DISPLAY: solo las persistidas (identificadas), leídas por
+  // streaming dentro del <Suspense> de EditionsSection. NO se await aquí: eso
+  // bloquearía la página, que es justo lo que evitábamos con after().
+  const editionsPromise = loadBookEditions(book.id);
   // Autores como enlaces a su ficha; si no se pudo enriquecer, texto plano.
   const authorCredits = credits.crew.filter((c) => c.role === "author");
 

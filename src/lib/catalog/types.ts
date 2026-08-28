@@ -36,6 +36,14 @@ export type SearchResult = {
   // `["Fatta Eld", "En llamas"]`. Lo usa `match-row.ts` para casar una fila de
   // CSV cuyo título coincide con uno de estos y no con el `title` mostrado.
   altTitles?: string[];
+  // Libros: de dónde salió `title` — de una edición española, de una inglesa,
+  // o del título de la OBRA de Open Library (`other`, porque ese puede estar en
+  // cualquier idioma: «Fatta Eld» es sueco). Lo rellenan los dos
+  // normalizadores de Open Library y lo consume la hidratación en LOTE, que lo
+  // escribe como `repr_meta.title.lang`: sin él, un título inglés escrito por
+  // el lote sería indistinguible de uno curado y quedaría congelado (#730).
+  // Ausente en películas, series y catálogo local.
+  titleLang?: "es" | "en" | "other";
   coverUrl: string | null;
   year: number | null;
   // Películas/series: TMDB los da ya en la búsqueda. Libros: SIEMPRE null — la
@@ -48,4 +56,30 @@ export type SearchResult = {
   // Libros, SOLO en el lookup por ISBN (escáner, importador): la tirada exacta
   // que se escaneó, para registrarla como edición al añadir el libro.
   matchedIsbn?: string;
+  // Libros, SOLO camino ISBN-GB (spec §4): id del volumen de Google Books
+  // cuando el resultado nace GB-only (Open Library no conoce el ISBN pero
+  // Google Books sí). `externalId` va vacío en ese caso —no hay work key de
+  // OpenLibrary— y `findOrCreateCatalogItem` usa este campo para decidir la
+  // RPC de alta (`register_catalog_item_by_volume` en vez de
+  // `register_catalog_item`). Ausente en cualquier otro resultado.
+  googleVolumeId?: string;
+  // Libros: QID de Wikidata cuando la capa de identidad lo resolvió (columna
+  // books.wikidata_id en local, o match Inventaire en búsqueda). Es la clave
+  // del colapso inter-idioma: dos works de OL con el mismo QID son LA MISMA
+  // obra. Ver spec 2026-08-26 §6.
+  wikidataId?: string;
 };
+
+// Camino GB-only (spec §4): el resultado nace de un ISBN que Open Library NO
+// conoce y Google Books sí, así que NO trae work key (`externalId` vacío) y su
+// única identidad es el volumen de Google Books.
+//
+// Vive AQUÍ, y no duplicado en cada consumidor, porque la contradicción de C2
+// nació justo de eso: `find-or-create.ts` decidía la RPC de alta con esta
+// condición mientras `bookShellFromSearchResult` documentaba —y asumía— que
+// `externalId` NUNCA venía vacío. Las dos afirmaciones convivieron en la misma
+// rama y solo una podía ser cierta. Con un único predicado, quien cambie la
+// forma del camino GB-only cambia las dos lecturas a la vez.
+export function isVolumeOnlyResult(result: SearchResult): boolean {
+  return result.itemType === "book" && !result.externalId && !!result.googleVolumeId;
+}

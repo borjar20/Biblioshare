@@ -5,21 +5,21 @@ import type { Edition } from "./types";
 // Las series no tienen ediciones: su unidad de progreso son los episodios.
 //
 // `freshRead` rompe deliberadamente la memoización de fetch de Next: la
-// ficha de libro llama a getEditions DOS VECES en la misma request (una para
-// los consumidores síncronos — editor, registro — y otra dentro de
-// loadBookEditions, DESPUÉS de sincronizar con OpenLibrary, para la tira que
-// streamea por <Suspense>). Sin diferenciarlas, ambas llamadas son
-// byte-a-byte la misma petición GET (mismo método, misma URL), y Next sirve
-// la segunda desde la caché de la primera — es decir, devuelve la lista
-// VACÍA de antes de sincronizar, aunque para entonces la sincronización ya
-// haya escrito ediciones reales en la base de datos. El bug se veía como "la
-// tira nunca sale de su placeholder salvo que recargues", pese a que la fila
-// en la base de datos era correcta. Añadir `id` como desempate no cambia el
-// resultado (ya era determinista sin él) pero sí cambia la URL de la
-// petición, así que ninguna llamada sirve una respuesta cacheada de la otra.
+// ficha de libro llama a getEditions TRES VECES en la misma request
+// (page.tsx:224 y page.tsx:365, ambas para consumidores síncronos — editor,
+// registro — con freshRead=false por defecto, y una tercera dentro de
+// loadBookEditions, para la tira que streamea por <Suspense>, con
+// freshRead=true). Las dos primeras son byte-a-byte la misma petición GET
+// (mismo método, misma URL): Next las deduplica solo a ellas vía la
+// memoización de fetch, así que en la práctica son una sola llamada de red.
+// La tercera lleva `id` como desempate para que su URL sea distinta y no
+// sirva (ni reciba) una respuesta cacheada de las otras dos — necesario
+// porque loadBookEditions pide una lectura fresca a propósito.
 // Cliente SIN sesión (`book_editions`/`movie_versions` son `SELECT USING (true)`):
-// resultado idéntico para todos → cacheable en Fase 4 (#436). El SYNC de ediciones
-// (que sí escribe y exige sesión) vive en loadBookEditions, no aquí.
+// resultado idéntico para todos → cacheable en Fase 4 (#436). loadBookEditions
+// solo LEE (Tarea 10: el sync masivo de ediciones murió), así que hoy las dos
+// llamadas devolverían lo mismo aunque compartieran caché — el desempate se
+// deja igualmente, por si alguna de las dos rutas vuelve a escribir.
 export async function getEditions(
   itemType: ItemType,
   itemId: string,
@@ -32,9 +32,8 @@ export async function getEditions(
   if (itemType === "book") {
     let query = supabase
       .from("book_editions")
-      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url, is_primary")
+      .select("id, label, publisher, published_year, language, total_pages, isbn, cover_url")
       .eq("book_id", itemId)
-      .order("is_primary", { ascending: false })
       .order("published_year", { ascending: false });
     if (freshRead) query = query.order("id", { ascending: true });
     const { data } = await query;
@@ -48,15 +47,13 @@ export async function getEditions(
       totalUnits: r.total_pages,
       isbn: r.isbn,
       coverUrl: r.cover_url,
-      isPrimary: r.is_primary,
     }));
   }
 
   const { data } = await supabase
     .from("movie_versions")
-    .select("id, label, release_year, duration_minutes, is_primary")
+    .select("id, label, release_year, duration_minutes")
     .eq("movie_id", itemId)
-    .order("is_primary", { ascending: false })
     .order("release_year", { ascending: false });
 
   return (data ?? []).map((r) => ({
@@ -68,6 +65,5 @@ export async function getEditions(
     totalUnits: r.duration_minutes,
     isbn: null,
     coverUrl: null,
-    isPrimary: r.is_primary,
   }));
 }

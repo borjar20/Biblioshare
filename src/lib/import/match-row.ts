@@ -21,21 +21,33 @@ const MAX_CANDIDATES = 6;
 // the interactive search flow, src/lib/catalog/search.ts).
 async function matchBook(
   supabase: SupabaseServerClient,
-  row: ImportRow
+  row: ImportRow,
+  userId?: string | null
 ): Promise<ImportMatch> {
   if (row.isbn) {
     const local = await findLocalBookByIsbn(supabase, row.isbn);
-    if (local) return { kind: "matched", catalogId: local.catalogId! };
+    // `local.matchedIsbn` siempre está poblado aquí (findLocalBookByIsbn lo
+    // anota con el propio ISBN buscado): la edición YA existe en
+    // `book_editions` con ese `(book_id, isbn)` — no hace falta userId para
+    // encontrarla, solo para registrar una NUEVA (rama de abajo).
+    if (local) return { kind: "matched", catalogId: local.catalogId!, matchedIsbn: local.matchedIsbn };
 
     // An ISBN precisely identifies the edition — trust Open Library's
     // ISBN-scoped result directly, even when its canonical title differs
     // from the CSV's shorthand title (e.g. "Nineteen Eighty-Four" vs
     // "1984"). No title check here (same as the interactive search flow).
-    // El lookup devuelve la OBRA (con matchedIsbn anotado); sus ediciones las
-    // traerá ensureBookEditions cuando alguien abra la ficha.
+    // El lookup devuelve la OBRA (con matchedIsbn anotado); findOrCreateCatalogItem
+    // registra esa tirada como edición identificada (ensureBookEdition) — ya no
+    // hay sync masivo que traiga el resto al abrir la ficha. userId viene de la
+    // sesión de importación (commitImportRow); sin él, ensureBookEdition no
+    // registra nada (register_book_edition exige auth.uid()).
     const found = await lookupIsbn(row.isbn);
     if (found) {
-      return { kind: "matched", catalogId: await findOrCreateCatalogItem(supabase, found) };
+      return {
+        kind: "matched",
+        catalogId: await findOrCreateCatalogItem(supabase, found, userId),
+        matchedIsbn: found.matchedIsbn,
+      };
     }
   }
 
@@ -53,7 +65,13 @@ async function matchBook(
     [r.title, ...(r.altTitles ?? [])].some((title) => isSameTitle(title, row.title))
   );
   if (apiTitleMatch) {
-    return { kind: "matched", catalogId: await findOrCreateCatalogItem(supabase, apiTitleMatch) };
+    // Match por título, sin ISBN: no hay tirada identificada (matchedIsbn
+    // ausente), así que findOrCreateCatalogItem no registra ninguna edición
+    // aunque se le pase userId — es inofensivo pasarlo por consistencia.
+    return {
+      kind: "matched",
+      catalogId: await findOrCreateCatalogItem(supabase, apiTitleMatch, userId),
+    };
   }
 
   return { kind: "unmatched" };
@@ -194,9 +212,10 @@ async function matchMovie(
 export async function matchImportRow(
   supabase: SupabaseServerClient,
   itemType: ItemType,
-  row: ImportRow
+  row: ImportRow,
+  userId?: string | null
 ): Promise<ImportMatch> {
-  if (itemType === "book") return matchBook(supabase, row);
+  if (itemType === "book") return matchBook(supabase, row, userId);
   if (itemType === "movie") return matchMovie(supabase, row);
   return { kind: "unmatched" };
 }

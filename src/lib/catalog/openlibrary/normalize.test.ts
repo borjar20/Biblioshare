@@ -105,6 +105,60 @@ describe("normalizeAuthorWorks · título", () => {
     expect(titulos(collins)).toContain("Gregor and the Code of Claw");
     expect(titulos(collins)).not.toContain("Gregor");
   });
+
+  // El idioma del título elegido VIAJA con el título. Sin esta etiqueta, la
+  // hidratación en lote no puede decir a `repr_meta` de dónde salió y un
+  // título inglés escrito por el lote quedaría congelado (modo de fallo #730).
+  it("declara el idioma del título elegido", () => {
+    const [work] = normalizeAuthorWorks(
+      [
+        {
+          key: "/works/OL1W",
+          title: "Words of Radiance",
+          language: ["spa", "eng"],
+          edition_count: 23,
+          editions: { docs: [{ title: "Palabras Radiantes", language: ["spa"] }] },
+        },
+      ],
+      [
+        {
+          key: "/works/OL1W",
+          title: "Words of Radiance",
+          language: ["spa", "eng"],
+          edition_count: 23,
+          editions: { docs: [{ title: "Words of Radiance", language: ["eng"] }] },
+        },
+      ]
+    );
+    expect(work.title).toBe("Palabras Radiantes");
+    expect(work.titleLang).toBe("es");
+  });
+
+  it("marca 'en' cuando solo hay título de edición inglesa", () => {
+    const [work] = normalizeAuthorWorks(
+      [],
+      [
+        {
+          key: "/works/OL3W",
+          title: "Elantris",
+          language: ["eng"],
+          edition_count: 5,
+          editions: { docs: [{ title: "Elantris: Tenth Anniversary", language: ["eng"] }] },
+        },
+      ]
+    );
+    expect(work.title).toBe("Elantris: Tenth Anniversary");
+    expect(work.titleLang).toBe("en");
+  });
+
+  it("marca 'other' cuando cae al título de la obra", () => {
+    const [work] = normalizeAuthorWorks(
+      [{ key: "/works/OL2W", title: "Elantris", language: ["eng"], edition_count: 5 }],
+      []
+    );
+    expect(work.title).toBe("Elantris");
+    expect(work.titleLang).toBe("other");
+  });
 });
 
 describe("normalizeAuthorWorks · filtros", () => {

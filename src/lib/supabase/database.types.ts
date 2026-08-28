@@ -74,15 +74,18 @@ export type Database = {
           created_at: string
           editions_synced_at: string | null
           genres: string[] | null
+          google_books_volume_id: string | null
           hydrated_at: string | null
           id: string
           isbn: string | null
           openlibrary_work_key: string | null
           published_year: number | null
           publisher: string | null
+          repr_meta: Json | null
           synopsis: string | null
           title: string | null
           total_pages: number | null
+          wikidata_id: string | null
         }
         Insert: {
           author?: string | null
@@ -90,15 +93,18 @@ export type Database = {
           created_at?: string
           editions_synced_at?: string | null
           genres?: string[] | null
+          google_books_volume_id?: string | null
           hydrated_at?: string | null
           id?: string
           isbn?: string | null
           openlibrary_work_key?: string | null
           published_year?: number | null
           publisher?: string | null
+          repr_meta?: Json | null
           synopsis?: string | null
           title?: string | null
           total_pages?: number | null
+          wikidata_id?: string | null
         }
         Update: {
           author?: string | null
@@ -106,15 +112,18 @@ export type Database = {
           created_at?: string
           editions_synced_at?: string | null
           genres?: string[] | null
+          google_books_volume_id?: string | null
           hydrated_at?: string | null
           id?: string
           isbn?: string | null
           openlibrary_work_key?: string | null
           published_year?: number | null
           publisher?: string | null
+          repr_meta?: Json | null
           synopsis?: string | null
           title?: string | null
           total_pages?: number | null
+          wikidata_id?: string | null
         }
         Relationships: []
       }
@@ -2796,12 +2805,17 @@ export type Database = {
         Args: {
           p_author?: string
           p_book_id: string
-          p_cover_url?: string
+          p_fields?: Json
           p_genres?: string[]
+          p_pages_source?: string
           p_published_year?: number
-          p_synopsis?: string
-          p_title?: string
+          p_total_pages?: number
+          p_wikidata_id?: string
         }
+        Returns: undefined
+      }
+      hydrate_books_bulk: {
+        Args: { p_rows: Json }
         Returns: undefined
       }
       hydrate_movie: {
@@ -2900,6 +2914,10 @@ export type Database = {
         Args: { p_external_id: string; p_item_type: string }
         Returns: string
       }
+      register_catalog_item_by_volume: {
+        Args: { p_volume_id: string }
+        Returns: string
+      }
       register_catalog_items_bulk: {
         Args: { p_external_ids: string[]; p_item_type: string }
         Returns: {
@@ -2959,6 +2977,11 @@ export type Database = {
       report_comment: {
         Args: { p_comment_id: string; p_details?: string; p_reason: string }
         Returns: string
+      }
+      repr_lang_rank: { Args: { p_lang: string }; Returns: number }
+      repr_should_write: {
+        Args: { p_current: string; p_field: string; p_lang: string; p_meta: Json }
+        Returns: boolean
       }
       resolve_pending_import: {
         Args: { p_catalog_item_id: string; p_pending_id: string }

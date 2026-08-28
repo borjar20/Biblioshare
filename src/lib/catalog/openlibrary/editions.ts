@@ -24,6 +24,11 @@ export type OpenLibraryEdition = {
   language: string | null;
   totalPages: number | null;
   coverUrl: string | null;
+  // Título tal cual lo trae ESTA edición (puede ser una traducción distinta
+  // del título de la obra). Lo usan las candidatas de representación
+  // (fetchRepresentationCandidates); el sync masivo a `book_editions` no lo
+  // necesita y lo ignora.
+  title: string | null;
 };
 
 const DEFAULT_LIMIT = 20;
@@ -184,6 +189,7 @@ export function pickEditions(
       language: extractLanguage(doc),
       totalPages: typeof doc.number_of_pages === "number" ? doc.number_of_pages : null,
       coverUrl: buildCoverUrl(doc.covers?.[0], "L"),
+      title: doc.title ?? null,
     });
   }
 
@@ -214,7 +220,7 @@ type EditionsResponse = {
   size?: number; // total real de ediciones de la obra, lo traiga o no la propia página
 };
 
-const EDITIONS_PAGE_SIZE = 100;
+export const EDITIONS_PAGE_SIZE = 100;
 // Tope de páginas a pedir para obras muy reeditadas (los clásicos, que son
 // justo el caso que falla si solo se mira una página: las primeras 100
 // entradas de un work con miles de ediciones suelen ser reimpresiones POD
@@ -239,6 +245,51 @@ async function fetchEditionsPage(key: string, offset: number): Promise<EditionsR
   }
 }
 
+// Tope de páginas para el escaneo en vivo de fetchRepresentationCandidates
+// (candidatas de representación ES/EN al identificar un pase): a diferencia
+// del sync masivo de arriba, esto corre síncrono en una petición del usuario
+// (no en background), así que 2 páginas (200 ediciones) es el límite de lo
+// que se puede pedir sin que la identificación se note lenta. No comparte
+// constante con MAX_EDITIONS_PAGES a propósito: son límites de dos rutas con
+// presupuestos de tiempo distintos, y esta puede subir o bajar sin tocar la
+// otra.
+export const MAX_REPRESENTATION_PAGES = 2;
+
+// Núcleo de paginación compartido por fetchWorkEditions y
+// fetchRepresentationCandidates: ambos piden la primera página, miran `size`
+// para saber si hace falta pedir más, y traen el resto EN PARALELO
+// (Promise.allSettled, tolerando que alguna falle) — solo cambia hasta
+// cuántas páginas está dispuesto a llegar cada uno. Devuelve los documentos
+// en bruto, sin pasar por pickEditions: cada llamante decide qué límite final
+// aplicar.
+async function fetchEditionDocs(workKey: string, maxPages: number): Promise<OpenLibraryEditionDoc[]> {
+  const key = workKey.replace(/^\/?works\//, "").replace(/^\//, "");
+  if (!key) return [];
+
+  const first = await fetchEditionsPage(key, 0);
+  if (!first) return [];
+
+  const entries: OpenLibraryEditionDoc[] = Array.isArray(first.entries) ? [...first.entries] : [];
+  const total = typeof first.size === "number" ? first.size : entries.length;
+
+  if (total > EDITIONS_PAGE_SIZE) {
+    const pagesToFetch = Math.min(maxPages, Math.ceil(total / EDITIONS_PAGE_SIZE)) - 1;
+    const offsets = Array.from({ length: pagesToFetch }, (_, i) => (i + 1) * EDITIONS_PAGE_SIZE);
+
+    const results = await Promise.allSettled(
+      offsets.map((offset) => fetchEditionsPage(key, offset))
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value?.entries) {
+        entries.push(...result.value.entries);
+      }
+    }
+  }
+
+  return entries;
+}
+
 // Trae las ediciones reales de una obra desde OpenLibrary. Nunca lanza: si la
 // API falla, tarda más de 5s o devuelve algo inesperado, la ficha del libro
 // no puede caerse por ello, así que se degrada a lista vacía.
@@ -252,33 +303,99 @@ async function fetchEditionsPage(key: string, offset: number): Promise<EditionsR
 // la ficha sin ediciones, simplemente se trabaja con lo que llegó a tiempo.
 export async function fetchWorkEditions(workKey: string): Promise<OpenLibraryEdition[]> {
   try {
-    const key = workKey.replace(/^\/?works\//, "").replace(/^\//, "");
-    if (!key) return [];
-
-    const first = await fetchEditionsPage(key, 0);
-    if (!first) return [];
-
-    const entries: OpenLibraryEditionDoc[] = Array.isArray(first.entries) ? [...first.entries] : [];
-    const total = typeof first.size === "number" ? first.size : entries.length;
-
-    if (total > EDITIONS_PAGE_SIZE) {
-      const pagesToFetch = Math.min(MAX_EDITIONS_PAGES, Math.ceil(total / EDITIONS_PAGE_SIZE)) - 1;
-      const offsets = Array.from({ length: pagesToFetch }, (_, i) => (i + 1) * EDITIONS_PAGE_SIZE);
-
-      const results = await Promise.allSettled(
-        offsets.map((offset) => fetchEditionsPage(key, offset))
-      );
-
-      for (const result of results) {
-        if (result.status === "fulfilled" && result.value?.entries) {
-          entries.push(...result.value.entries);
-        }
-      }
-    }
-
+    const entries = await fetchEditionDocs(workKey, MAX_EDITIONS_PAGES);
     return pickEditions(entries);
   } catch {
     return [];
+  }
+}
+
+// Las ediciones reales de una obra para enseñárselas AL USUARIO en el momento
+// (el selector, cuando despliega «Más ediciones»), no para el sync masivo.
+//
+// Se separa de fetchWorkEditions por el presupuesto de tiempo, no por el
+// filtro: aquí hay alguien esperando delante de la pantalla, así que se escanea
+// con MAX_REPRESENTATION_PAGES (2 páginas, 200 ediciones) igual que
+// fetchRepresentationCandidates, no con las 5 del sync. Filtro, dedup y orden
+// (ES → EN → resto) son EXACTAMENTE los de pickEditions: no hay una segunda
+// lista negra ni un segundo criterio que mantener.
+//
+// NO PERSISTE NADA. Nunca lanza: sin red, la lista sale vacía y el selector
+// enseña su estado vacío.
+export async function fetchLiveWorkEditions(
+  workKey: string,
+  limit: number
+): Promise<OpenLibraryEdition[]> {
+  try {
+    const entries = await fetchEditionDocs(workKey, MAX_REPRESENTATION_PAGES);
+    return pickEditions(entries, limit);
+  } catch {
+    return [];
+  }
+}
+
+// Candidata de representación: título, portada y páginas de UNA edición
+// concreta (no de la obra). "Mejor" según el mismo orden que ya aplica
+// pickEditions (idioma, luego portada, luego datos, luego año) — no se
+// reinventa el criterio, solo se lee el primer resultado por idioma.
+export type EditionCandidate = {
+  title: string | null;
+  coverUrl: string | null;
+  pages: number | null;
+};
+
+function toCandidate(edition: OpenLibraryEdition | null): EditionCandidate | null {
+  if (!edition) return null;
+  return { title: edition.title, coverUrl: edition.coverUrl, pages: edition.totalPages };
+}
+
+// Mediana, no media: unas pocas ediciones atípicas (ómnibus, "edición del
+// coleccionista" con extras) bastan para disparar la media muy por encima de
+// lo que de verdad tiene la mayoría de tiradas, y este número se usa como
+// estimación de progreso cuando el pase no tiene edición identificada — ahí
+// un valor inflado por un outlier es peor que uno ligeramente corto.
+function median(numbers: number[]): number | null {
+  if (numbers.length === 0) return null;
+  const sorted = [...numbers].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
+
+// Candidatas de representación (título + portada preferidos) para la ficha de
+// una obra, mirando las ediciones reales de OpenLibrary: la mejor española,
+// la mejor inglesa (spec: ES → EN → resto), y una mediana de páginas
+// orientativa para cuando el pase no tenga edición propia identificada.
+//
+// NO PERSISTE NADA: a diferencia de fetchWorkEditions (que alimenta el sync
+// masivo a `book_editions`), esto es una vista previa en vivo — las ediciones
+// solo se guardan cuando el usuario identifica la suya. Escaneo acotado a
+// MAX_REPRESENTATION_PAGES (200 ediciones) y reutiliza pickEditions sin
+// límite de resultado (ya viene acotado por lo escaneado) para que la
+// mediana se calcule sobre todo lo filtrado, no solo sobre el primer puñado.
+// Nunca lanza: cualquier fallo (red, parseo) degrada a los tres campos null.
+export async function fetchRepresentationCandidates(
+  workKey: string
+): Promise<{ es: EditionCandidate | null; en: EditionCandidate | null; pagesMedian: number | null }> {
+  try {
+    const entries = await fetchEditionDocs(workKey, MAX_REPRESENTATION_PAGES);
+    // Sin límite de resultado: ya viene acotado por lo escaneado
+    // (MAX_REPRESENTATION_PAGES), y con `entries` vacío pickEditions ya
+    // devuelve `[]` por sí solo, sin necesitar un caso especial aparte.
+    const editions = pickEditions(entries, entries.length);
+
+    const es = toCandidate(editions.find((edition) => edition.language === "ES") ?? null);
+    const en = toCandidate(editions.find((edition) => edition.language === "EN") ?? null);
+
+    const pages = editions
+      .map((edition) => edition.totalPages)
+      .filter((value): value is number => value !== null);
+
+    return { es, en, pagesMedian: median(pages) };
+  } catch {
+    // Defensa igual que fetchWorkEditions: si pickEditions o fetchEditionDocs
+    // llegaran a lanzar (hoy no lo hacen, ver sus propios comentarios), esto
+    // no puede tirar la identificación del pase.
+    return { es: null, en: null, pagesMedian: null };
   }
 }
 

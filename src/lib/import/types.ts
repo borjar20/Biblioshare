@@ -61,6 +61,15 @@ export type ImportRowResult = {
 // Lo que devuelve el matcher. Tres desenlaces, no dos: además de acertar o no
 // acertar, puede acertar DEMASIADO (varias obras válidas) y ceder la decisión.
 export type ImportMatch =
-  | { kind: "matched"; catalogId: string }
+  | {
+      kind: "matched";
+      catalogId: string;
+      // Presente SOLO cuando la fila casó por ISBN (local o vía lookupIsbn):
+      // es la identificación deliberada de una tirada concreta que
+      // commit-row.ts usa para resolver `book_editions.id` y clavarlo en el
+      // pase. Un match por título nunca lo trae — no identifica tirada
+      // ninguna (ver el comentario de `matchedIsbn` en find-or-create.ts).
+      matchedIsbn?: string;
+    }
   | { kind: "ambiguous"; candidates: ImportCandidate[] }
   | { kind: "unmatched" };

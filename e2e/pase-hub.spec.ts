@@ -204,19 +204,31 @@ async function dismissCloseSheetIfOpen(page: Page) {
   }
 }
 
-// Máximo contra el que valida addSession (src/lib/sessions/actions.ts): la
-// edición PRIMARIA del pase si tiene páginas, si no `books.total_pages`. Se
-// consulta justo antes de usarlo (no al crear el libro) para no competir con
-// la sincronización de ediciones en segundo plano (after()) de la ficha.
-async function maxBookPosition(itemId: string): Promise<number> {
-  const primaryRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/book_editions?book_id=eq.${itemId}&is_primary=eq.true&select=total_pages&limit=1`,
+// Máximo contra el que valida addSession (src/lib/sessions/actions.ts): las
+// páginas de la edición QUE EL PASE IDENTIFICÓ y, sin ella, `books.total_pages`
+// (`pagesForPass`, spec 2026-08-26 §5 — la «edición primaria» ya no es un
+// peldaño). Se consulta justo antes de usarlo (no al crear el libro) para no
+// competir con nada que la ficha escriba en segundo plano.
+async function maxBookPosition(
+  itemId: string,
+  userId: string,
+): Promise<number> {
+  const passRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/passes?item_type=eq.book&item_id=eq.${itemId}&user_id=eq.${userId}&is_active=eq.true&select=edition_id`,
     { headers: adminHeaders() },
   );
-  const primaryRows = (await primaryRes.json()) as {
-    total_pages: number | null;
-  }[];
-  if (primaryRows[0]?.total_pages) return primaryRows[0].total_pages;
+  const editionId = ((await passRes.json()) as { edition_id: string | null }[])[0]
+    ?.edition_id;
+
+  if (editionId) {
+    const edRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/book_editions?id=eq.${editionId}&select=total_pages`,
+      { headers: adminHeaders() },
+    );
+    const pages = ((await edRes.json()) as { total_pages: number | null }[])[0]
+      ?.total_pages;
+    if (pages) return pages;
+  }
 
   const bookRes = await fetch(
     `${SUPABASE_URL}/rest/v1/books?id=eq.${itemId}&select=total_pages`,
@@ -363,7 +375,7 @@ test.describe
       .first();
     await expect(addSessionLink).toBeVisible({ timeout: 15_000 });
 
-    const maxPage = await maxBookPosition(bookId);
+    const maxPage = await maxBookPosition(bookId, await devtestId());
 
     await addSessionLink.click();
     await page.waitForURL(/\/sesion\//, { timeout: 15_000 });

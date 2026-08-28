@@ -81,6 +81,25 @@ export async function addManualItem(
     return { error: error?.message.includes("forbidden") ? "forbidden" : "generic" };
   }
 
+  // Alta manual con ISBN → deja además una edición real colgada de la obra
+  // (mismo camino validado que `ensureBookEdition`, no un insert directo).
+  // Es una MEJORA, no un requisito: el alta de la obra ya está hecha arriba,
+  // así que cualquier fallo aquí se traga con console.error y no rompe el
+  // flujo (patrón de src/lib/catalog/find-or-create.ts).
+  if (itemType === "book" && isbn) {
+    const { error: editionError } = await supabase.rpc("register_book_edition", {
+      p_book_id: itemId,
+      p_isbn: isbn,
+      p_publisher: publisher ?? undefined,
+      p_year: year ?? undefined,
+      p_pages: pageCount ?? undefined,
+      p_cover_url: coverUrl ?? undefined,
+    });
+    if (editionError) {
+      console.error("register_book_edition (alta manual)", { itemId, editionError });
+    }
+  }
+
   // Alta = pase activo en planned vía la máquina (el ítem acaba de nacer,
   // así que no puede haber pase previo; la transición crea el activo).
   try {

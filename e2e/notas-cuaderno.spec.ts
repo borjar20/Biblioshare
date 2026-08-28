@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { resolveFinalEmpire } from "./support/book-fixture";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -91,6 +92,15 @@ async function resolveItem(table: "books" | "series", title: string): Promise<st
   return row.id;
 }
 
+// El libro fixture NO se resuelve por título: desde `20260883` la hidratación es
+// fill-or-upgrade por rango de idioma y le cambió el nombre a «El imperio
+// final». Ver `e2e/support/book-fixture.ts`. Las series siguen resolviéndose por
+// título — `hydrate_series` no tiene política de representación.
+async function resolveBookFixtureId(): Promise<string> {
+  const row = await resolveFinalEmpire<{ id: string }>(SUPABASE_URL, headers(), "id");
+  return row.id;
+}
+
 type SeedNote = {
   itemType: "book" | "series";
   itemId: string;
@@ -136,7 +146,7 @@ test("el cuaderno filtra por tipo, por favoritas y busca en el texto", async ({ 
   test.setTimeout(90_000);
   await login(page);
   const userId = await devtestId();
-  const bookId = await resolveItem("books", "The Final Empire");
+  const bookId = await resolveBookFixtureId();
 
   const QUOTE = "e2e cuaderno · la cita del acantilado";
   const NOTE = "e2e cuaderno · la nota preferida";
@@ -227,7 +237,7 @@ test("la paginacion parte el resultado y no repite ni se salta notas", async ({ 
   test.setTimeout(120_000);
   await login(page);
   const userId = await devtestId();
-  const bookId = await resolveItem("books", "The Final Empire");
+  const bookId = await resolveBookFixtureId();
 
   // 25 notas → dos páginas de 20 + 5. Numeradas para poder comprobar que la
   // unión de las dos páginas son las 25, sin repetidas.
@@ -272,7 +282,7 @@ test("a 390x700 la barra de filtros no desborda la pantalla", async ({ page }) =
   await page.setViewportSize({ width: 390, height: 700 });
   await login(page);
   const userId = await devtestId();
-  const bookId = await resolveItem("books", "The Final Empire");
+  const bookId = await resolveBookFixtureId();
   const BODY = "e2e cuaderno · medida en movil";
 
   try {
@@ -300,7 +310,7 @@ test("la etiqueta de una tarjeta es un filtro y se puede quitar", async ({ page 
   test.setTimeout(90_000);
   await login(page);
   const userId = await devtestId();
-  const bookId = await resolveItem("books", "The Final Empire");
+  const bookId = await resolveBookFixtureId();
   const BODY = "e2e cuaderno · nota etiquetada";
 
   try {

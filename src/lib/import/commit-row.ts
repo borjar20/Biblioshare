@@ -55,7 +55,8 @@ async function ensureActivePass(
   userId: string,
   itemType: ItemType,
   itemId: string,
-  row: ImportRow
+  row: ImportRow,
+  editionId: string | null
 ): Promise<ActivePassResult> {
   const position: Position = row.bookFormat ? { format: row.bookFormat } : {};
   const isClosedStatus = row.status === "completed" || row.status === "dropped";
@@ -86,6 +87,10 @@ async function ensureActivePass(
       rating: row.rating,
       started_on: historical?.startedOn ?? null,
       finished_on: finishedOn,
+      // La tirada que el usuario identificó al catalogar esta fila (fila con
+      // ISBN); null en toda fila sin ISBN, que es un estado legítimo y
+      // permanente, no un "pendiente" (ver commitImportRow).
+      edition_id: editionId,
       // Mismo valor por defecto que abrir un pase a mano (Hallazgo 3): sin
       // esto, el default de columna (false) dejaba el pase importado fuera
       // del feed de quien te sigue.
@@ -138,7 +143,8 @@ async function addHistoricalPasses(
   itemType: ItemType,
   itemId: string,
   row: ImportRow,
-  skip: ImportDiaryDate | null
+  skip: ImportDiaryDate | null,
+  editionId: string | null
 ) {
   for (const date of row.diaryDates) {
     if (skip && date.finishedOn === skip.finishedOn) continue;
@@ -165,6 +171,9 @@ async function addHistoricalPasses(
       rating: row.rating,
       is_public: true,
       created_at: historicalCreatedAt(date),
+      // Misma tirada identificada que el pase activo de esta fila: una
+      // relectura de la MISMA fila del CSV es la MISMA edición en la mano.
+      edition_id: editionId,
     });
     // 23505 = el índice `passes_one_pass_per_day` acaba de rechazar un pase que
     // ya existía para esa obra y ese día. Es el mismo «ya estaba» que busca el
@@ -181,9 +190,10 @@ async function commitPasses(
   userId: string,
   itemType: ItemType,
   itemId: string,
-  row: ImportRow
+  row: ImportRow,
+  editionId: string | null = null
 ): Promise<ImportRowResult> {
-  const activeResult = await ensureActivePass(supabase, userId, itemType, itemId, row);
+  const activeResult = await ensureActivePass(supabase, userId, itemType, itemId, row, editionId);
   if ("error" in activeResult) {
     return {
       rowNumber: row.rowNumber,
@@ -202,7 +212,7 @@ async function commitPasses(
   // caso pasan todas por el camino histórico, que ya es idempotente: comprueba
   // si hay un pase con ese finished_on antes de insertar.
   const skip = activeResult.isNew ? activeResult.historicalDate : null;
-  await addHistoricalPasses(supabase, userId, itemType, itemId, row, skip);
+  await addHistoricalPasses(supabase, userId, itemType, itemId, row, skip, editionId);
 
   return {
     rowNumber: row.rowNumber,
@@ -213,6 +223,29 @@ async function commitPasses(
   };
 }
 
+// La edición que `matchImportRow` identificó por ISBN ya se intentó registrar
+// (ensureBookEdition, dentro de findOrCreateCatalogItem que corrió DENTRO del
+// match). La RPC es idempotente (`on conflict do nothing`) y devuelve NULL
+// tanto si la edición ya existía como si el registro falló (p.ej. un ISBN con
+// dígito de control inválido en el CSV) — en ambos casos hay que resolver el
+// id por el índice único `(book_id, isbn)`, mismo patrón que
+// `chooseEditionCandidate` en src/lib/editions/fetch-candidates.ts. Si tras
+// eso sigue sin aparecer, se degrada a `null`: el pase se crea igual, sin
+// edición — nunca se relanza el error de la RPC hacia arriba.
+async function resolveEditionId(
+  supabase: SupabaseServerClient,
+  bookId: string,
+  isbn: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("book_editions")
+    .select("id")
+    .eq("book_id", bookId)
+    .eq("isbn", isbn)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function commitImportRow(
   supabase: SupabaseServerClient,
   userId: string,
@@ -220,7 +253,7 @@ export async function commitImportRow(
   row: ImportRow
 ): Promise<ImportRowResult> {
   try {
-    const match = await matchImportRow(supabase, itemType, row);
+    const match = await matchImportRow(supabase, itemType, row, userId);
     if (match.kind === "unmatched") {
       return { rowNumber: row.rowNumber, title: row.title, outcome: "unmatched" };
     }
@@ -235,7 +268,15 @@ export async function commitImportRow(
       };
     }
 
-    return await commitPasses(supabase, userId, itemType, match.catalogId, row);
+    // Solo el match por ISBN trae `matchedIsbn` (ver ImportMatch en types.ts):
+    // una fila sin ISBN, o casada por título, no identifica tirada ninguna, y
+    // el pase nace con `edition_id` NULL a propósito (estado legítimo y
+    // permanente, no un "pendiente").
+    const editionId = match.matchedIsbn
+      ? await resolveEditionId(supabase, match.catalogId, match.matchedIsbn)
+      : null;
+
+    return await commitPasses(supabase, userId, itemType, match.catalogId, row, editionId);
   } catch (err) {
     return {
       rowNumber: row.rowNumber,

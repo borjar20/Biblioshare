@@ -2221,3 +2221,629 @@ rejilla, que con `dotOnly` es el único portador visual del estado y se queda en
 (`planned`) y **2,50:1** (`in-progress`) contra su anillo en tema claro — por debajo del 3:1 de
 **WCAG 1.4.11**, que es AA. El trabajo es más pequeño de lo que decía la entrada (4) y un trozo
 es un incumplimiento más serio.
+
+- **La fusión de obras aborta ANTES de escribir, no a mitad.** Todo conflicto de dato de usuario
+  —incluido «un pase usa la edición del perdedor que habría que borrar por ISBN duplicado»— se
+  decide en una guarda previa que solo lee. Antes ese caso concreto salía como un `P0001
+  edition_in_use` crudo lanzado por un trigger desde dentro del `delete`, con un mensaje que no
+  nombraba ni la tabla ni la fusión, y **después** de haber apagado ya las primarias del
+  perdedor. Que un `raise` deshaga la transacción no lo hace equivalente: el llamador es un
+  barrido que fusiona en lote y necesita saber qué par saltarse *y por qué*, con la tabla
+  nombrada, no un código de error de tres palabras.
+- **Las referencias polimórficas a libro se enumeran contra el esquema, nunca copiando una lista
+  previa.** `20260887` copió la de `20260870` (que es lo que el plan mandaba) y se dejó 4 de 17:
+  `posts.anchor_id`, los dos extremos `after_`/`before_` de `saga_placement_windows` y
+  `club_activities.spawned_from_item_id`. Como esas referencias **no tienen FK**, nada lo
+  detecta: el post desaparece del feed en silencio. El método bueno —barrer `pg_attribute` ×
+  `pg_type` buscando columnas de enums que contengan la etiqueta `'book'`, más las `*_type` de
+  texto y las jsonb— queda escrito en la cabecera de `20260888` con las candidatas descartadas
+  una a una, para que la próxima persona no tenga que decidir en qué lista fiarse.
+- **La referencia por JSONB (`club_activities.config->'item'`) se deja fuera de la fusión a
+  propósito.** Repuntar una columna tipada falla en voz alta si el nombre cambia; un `jsonb_set`
+  colgado de un `->>'itemType'` de texto libre se queda mudo, que es justo el fallo silencioso
+  que motivó todo esto. Hoy es latente (cero eventos de club sobre libros en producción). El
+  arreglo preferido no es tocar el JSONB sino mover el ítem a columnas tipadas — issue #875.
+
+- **`books.google.com` entra en la allowlist de portadas oficiales** (2026-08-27, task 7 del plan
+  de edición de obra). La entrada de 2026-08-02 más arriba enumera el conjunto de entonces
+  (`image.tmdb.org`, `covers.openlibrary.org`); a partir de hoy son tres. El motivo es que Google
+  Books es el enriquecedor de portada cuando Open Library no la da, y sus `imageLinks` se sirven
+  desde ese host — verificado con una llamada real, no supuesto.
+  **El matiz que hay que aceptar por escrito:** la allowlist es por HOST, no por ruta. Así que
+  desde hoy un colaborador puede fijar en `cover_url` del catálogo COMPARTIDO cualquier URL bajo
+  `https://books.google.com/…`, no solo las de `/books/content`. Se acepta con el mismo criterio
+  que los dos hosts que ya estaban —dominio de Google, sin contenido subido por usuarios— pero se
+  registra aquí porque amplía la superficie de confianza y no debe colarse en la lectura de la
+  entrada vieja, que ya no enumera la lista completa. Cubierto en `official-covers.test.ts`
+  (host exacto, http rechazado, `.evil.com`/`@evil.com`, y el caso de ruta libre).
+
+- **La hidratación de una obra llama a `hydrate_book` con `service_role`, y solo a ella** (2026-08-27,
+  task 9 del plan de edición de obra, cierra #871). La RPC pasó de fill-only a fill-or-upgrade y con
+  el bypass `app.hydrating` cualquier usuario autenticado podría haber reescrito el catálogo
+  COMPARTIDO, así que perdió el `execute` de `authenticated` (precedente #725). `ensureBookHydrated`
+  construye por su cuenta el cliente de service_role **solo para esa llamada**: las lecturas y los
+  `update` de columnas técnicas (`openlibrary_work_key`, `google_books_volume_id`) siguen yendo con
+  el cliente del llamante, que es quien tiene la identidad del usuario y a quien le aplica RLS. Es
+  deliberado que el privilegio se acote a una línea y no se derrame por la función entera.
+  **El modo de fallo que esto cierra vale más que la regla:** el `42501` que devolvía el cliente de
+  la petición se lo tragaba el `console.error` de la propia función —que nunca lanza, por contrato—,
+  así que la hidratación no corría y ninguna ficha daba error. Medido en dev antes del arreglo:
+  `permission denied for function hydrate_book`. Es la tercera vez que un fallo de escritura se
+  esconde detrás de ese contrato (#699, #751, #871): cuando `ensureBookHydrated` deje de hidratar,
+  mirar primero el rol del cliente.
+- **La comparación de nombres de autoría es `isSameTitle`, partiendo por comas** (2026-08-27, misma
+  task). No se escribe un helper propio con contención bidireccional sobre el normalizado: esa forma
+  exacta se propuso dos veces en este plan y falla en los dos extremos — sin cota, «Ana» casa con
+  «Susana Fortes»; con cadena vacía, un autor «—» casa con cualquiera y desactiva la verificación
+  entera. `isSameTitle` ya trae la cota del 65% y el rechazo del normalizado vacío. El corte por
+  comas es lo único que se añade encima, para que «Brandon Sanderson, Rafael Marín» (autor +
+  traductor) siga casando con «Brandon Sanderson». Verificado contra Inventaire real: de las 20
+  entidades que devuelve la búsqueda «The Name of the Wind», solo Q1195989 pasa la verificación.
+
+- **Google Books se pide en cuanto la sinopsis no está en español, y su resultado se etiqueta con el
+  idioma REAL del volumen** (2026-08-27, revisión de la task 9 del plan de edición de obra; cierra
+  #886 y el hallazgo I3). Son dos decisiones que van juntas y en este orden, porque la segunda hace
+  segura a la primera.
+
+  **1. El umbral.** El gate de Google Books era `langRank(current.lang) <= 1` y el de
+  `needsRepresentationReview` es `> 0`: en medio caía justo la sinopsis inglesa, que es el caso
+  COMÚN (`synopsisLang` etiqueta `en` toda sinopsis de Open Library, y OL sí suele traer
+  descripción). De las dos salidas que planteaba #886 se elige la primera —bajar el gate de GB a
+  «solo se salta si YA es español»— y no la segunda —dar por buena la sinopsis inglesa—, porque la
+  spec §4 contrata a Google Books precisamente para ese campo («OL casi nunca tiene sinopsis en
+  español; GB con `langRestrict=es` es el proveedor realista»). Con el umbral viejo, la
+  reevaluación de cada 30 días era un **no-op demostrable**: se marcaba la obra mejorable, se
+  gastaban ~10 peticiones externas por libro y mes, y por construcción no podía cambiar nada.
+  El coste asumido es una llamada a Google Books por obra con sinopsis inglesa, dentro del tope de
+  `MAX_GOOGLE_BOOKS_CALLS`. **El umbral sigue apareciendo en dos sitios** (aquí y en
+  `needsRepresentationReview`) y por eso ambos comentarios se citan mutuamente: si uno se mueve, el
+  otro también.
+
+  **2. La etiqueta.** `langRestrict=es` es una **pista, no una garantía** — Google Books cuela
+  volúmenes en otro idioma. Se etiqueta con `volume.language`, que `mapVolume` ya extraía y aquí se
+  ignoraba, y solo se cae al idioma pedido cuando el volumen no declara ninguno. Se elige
+  ETIQUETAR y no DESCARTAR el volumen: uno inglés sigue sirviendo para rellenar un hueco vacío, y
+  con su idioma declarado honestamente la RPC sabe que se puede mejorar más adelante.
+  **Por qué esto no es cosmético:** el rango 0 (español) es un estado TERMINAL, porque la RPC solo
+  acepta mejora ESTRICTA. Medido en dev sobre una fila con una sinopsis inglesa marcada `es`: ni
+  una sinopsis española posterior ni una inglesa honesta la reemplazan — el valor queda congelado
+  para siempre y `needsRepresentationReview` deja además de marcarlo mejorable. Es el modo de
+  congelación de #730 por una puerta nueva, y aflojar el gate del punto 1 sin esto lo habría
+  activado. Encima se añade una guarda de mejora estricta también en TypeScript: un volumen inglés
+  no sustituye una sinopsis inglesa de OL, porque la RPC lo rechazaría igual y de paso se perdería
+  la procedencia mejor.
+
+- **El QID cuenta como hueco en `needsRepresentationReview`** (2026-08-27, misma revisión, hallazgo
+  I4). `books.wikidata_id` es el ancla de identidad inter-idioma y **no vive en `repr_meta`**, así
+  que el barrido de campos del predicado no lo veía. Hasta ahora una obra sin QID se reintentaba
+  **de casualidad**: la sinopsis, etiquetada `en`, siempre quedaba mejorable. En cuanto Google
+  Books empieza a llenar sinopsis españolas (decisión de arriba), esa casualidad desaparece y un
+  libro todo-ES sin QID no se reconsideraría jamás. Y «sin QID» no es un caso raro: Inventaire
+  expiró en 2 de las 4 ejecuciones reales medidas. El cooldown de 30 días sigue aplicando, así que
+  el coste es acotado; la palanca para reducir esas expiraciones es el timeout por llamada de la
+  issue #889, no este predicado.
+
+- **Los campos del `SearchResult` que llegan a la hidratación de un ítem recién creado van a `null`**
+  (2026-08-27, misma revisión, hallazgo C1, refuerza #674). `openCatalogItem` y `addToLibrary` son
+  **server actions**: su `SearchResult` lo deserializa el servidor de lo que manda el NAVEGADOR, así
+  que ninguno de sus campos es un dato del proveedor — son entrada de usuario con forma de resultado
+  de búsqueda. Es exactamente por eso que `findOrCreateCatalogItem` se queda solo con
+  `p_external_id`, y el dispatcher de hidratación se había saltado esa regla pasando `title` y
+  `author`. Los dos llegaban a escritura sobre el catálogo COMPARTIDO: `author` acaba en `p_author`,
+  que es fill-only y por tanto acepta SIEMPRE en una fila recién nacida; `title` es la consulta que
+  va a Inventaire, de donde sale el QID, y un QID equivocado FUSIONA dos obras. Con `hydrated_at`
+  ya marcado, el curador no reintenta: la basura sería permanente hasta curación manual. No se
+  pierde nada, porque ahí se conoce el `openlibrary_work_key` y `fetchWork` da título y autor de
+  verdad. **La regla general, para no rediscutirla:** un valor solo entra en el catálogo compartido
+  si su origen es un proveedor al que llamó el servidor; si pasó por el cliente, se descarta aunque
+  «venga de la búsqueda».
+
+- **Sin `volume.language` declarado, Google Books se etiqueta `other`, nunca el idioma pedido**
+  (2026-08-27, tercera revisión de la Task 9, hallazgo I-1). El fallback `wanted` (siempre `"es"` en
+  el único punto de llamada) reabría exactamente la congelación que el punto anterior («la etiqueta
+  es el idioma real, no el pedido») vino a cerrar: un volumen sin idioma declarado —que `mapVolume`
+  deja con relativa frecuencia— quedaba sellado `es` = rango 0 = TERMINAL, y una sinopsis
+  potencialmente inglesa no se corregía nunca. `toReprLang(null)` ya caía a `"other"` (rango 2, el
+  que NO pisa nada) — bastaba con no bypasear esa función a mano en el call site. Regla general: en
+  un estado terminal, ante la duda se falla hacia el lado recuperable.
+
+- **El shell de libro para un ítem recién creado se construye en `hydrate-book.ts`, no en
+  `buscar/actions.ts`** (2026-08-27, misma revisión, hallazgo I-2). El invariante de C1 (título y
+  autor a `null`, nunca el dato del navegador) no tenía test porque `actions.ts` es `"use server"`,
+  donde cualquier export nuevo se convierte en un endpoint público — premisa correcta, pero la
+  conclusión de dejarlo sin guarda no se seguía: bastaba con extraer el constructor
+  (`bookShellFromSearchResult(itemId, result): HydratableBook`) a un fichero que SÍ admite exports
+  normales. `actions.ts` pasó a llamar `ensureBookHydrated(supabase,
+  bookShellFromSearchResult(itemId, result))`. Se descartó la alternativa (guarda por texto de
+  fuente, al estilo `after-guard.test.ts` de la #751) porque aquí SÍ hay una refactorización barata
+  disponible; esa alternativa se reserva para invariantes que de verdad no admiten extracción.
+
+
+- **La regla de escritura de la representación se extrae a `repr_should_write`, implementación
+  ÚNICA** (2026-08-27, Task 9bis, migración `20260890`). Vivía inline dentro de `hydrate_book`
+  (`20260884`) y funcionaba; lo que la hizo insostenible fue la SEGUNDA escritora. Con
+  `hydrate_books_bulk` habría dos copias de la misma regla, y esa regla tiene bordes que ya
+  costaron un hallazgo cada uno —la entrada de `repr_meta` malformada se trata como PROTEGIDA y
+  no como desconocida, el empate de rango NO pisa, y el orden entre esas dos comprobaciones
+  importa—, así que las dos copias se desincronizarían en el primer arreglo y el que quedase
+  atrás sería el que escribe 87 filas de golpe. Se extrajo **sin cambiar ni un caso**: la regla
+  se verificó contra 270 combinaciones sin una sola divergencia con la v4 inline. Se descartó
+  dejarla como texto duplicado con un comentario «mantener en sync»: eso es exactamente lo que
+  no se cumple. Corolario para quien toque la política de idioma: **se toca en `repr_should_write`
+  y en ningún otro sitio.**
+
+- **`hydrate_books_bulk` deja `hydrated_at` en NULL a propósito** (2026-08-27, Task 9bis). El
+  lote de bibliografía de autor solo sabe título, autor, año y portada: no trae sinopsis,
+  géneros, páginas ni QID. La opción «natural» —marcar la obra como hidratada, igual que hace
+  `hydrate_book`— es justo la que reproduce el modo de fallo de #730: el curador no reintenta lo
+  que ya está marcado hidratado, así que la obra se quedaría a medias PARA SIEMPRE, y con el
+  cooldown de `needsRepresentationReview` (`REVIEW_COOLDOWN_DAYS = 30`) ni siquiera se
+  reconsideraría antes de un mes. Dejándolo NULL, la ficha hace su trabajo completo en la primera
+  visita, y como todo es fill-or-upgrade **mejora** lo que el lote escribió en vez de chocar con
+  ello. Esto solo es seguro porque existe `repr_meta`: con la `hydrate_book` anterior, hidratar
+  en lote habría congelado un título posiblemente inglés sin forma de corregirlo. Consecuencia
+  asumida: `hydrated_at is null` sigue siendo el marcador de «sin procesar», y una fila tocada
+  por el lote se cuenta como no procesada — que es lo correcto, porque le falta más de la mitad.
+
+- **El backfill de shells de libro pasa de token de usuario a `service_role`** (2026-08-27, Task
+  9bis, `scripts/backfill-book-shells.ts`). El brief original decía «token de usuario, como la
+  ficha (#751)». Ya no es posible ni deseable: `hydrate_books_bulk` **no acepta `auth.uid()`** —
+  no tiene el guard de sesión, tiene el del GUC `role`, y con `authenticated` lanza. Y no es un
+  detalle de permisos que se pudiera revertir: la RPC es de `service_role` porque el trigger
+  `trg_stamp_books_repr_manual` distingue curación de automatismo por la presencia de sesión, así
+  que un escritor MASIVO corriendo con el cliente de la petición marcaría `source:'manual'` el
+  catálogo ENTERO, en silencio y sin vuelta atrás para todo automatismo posterior. **Regla
+  general que sale de aquí: todo escritor masivo de `books` va con `service_role`; es requisito,
+  no preferencia.** El script exige por tanto `SUPABASE_SERVICE_ROLE_KEY`, y su guard de entorno
+  se comprueba ANTES de construir el cliente (si no, `createClient` lanza `supabaseUrl is
+  required` en el import y el mensaje en castellano no llega a verse nunca).
+
+- **Muere el sync masivo de ediciones al abrir la ficha** (2026-08-27, Task 10,
+  `src/lib/editions/sync-editions.ts` BORRADO). `ensureBookEditions` traía hasta 20 ediciones de
+  OpenLibrary y las registraba en `book_editions` en la primera visita sin sesión de nadie
+  detrás — era justo el origen del ruido de ediciones que motivó el spec de representación
+  (§1, `docs/superpowers/specs/2026-08-26-obra-edicion-representacion-design.md`): tiradas que
+  nadie había identificado, coladas en la tabla compartida solo porque alguien miró la ficha. Con
+  las candidatas de representación resolviéndose EN VIVO (`fetchRepresentationCandidates`, ya
+  implementado antes de esta tarea) el automatismo ya no tenía trabajo que hacer: lo único que
+  puede dar de alta una edición real es quien la identificó de verdad (picker, ISBN escaneado, alta
+  de colaborador). `loadBookEditions` queda como lectura pura, sin `supabase` ni `canSync` en la
+  firma — se simplificó la firma en vez de dejar un parámetro fantasma, tal y como pedía el propio
+  brief de la tarea. La acción de colaborador `resyncEditions` se renombra a
+  `reevaluateRepresentation`: ya no reintenta el sync, pone `hydrated_at = null` y relanza
+  `ensureBookHydrated`, que es quien de verdad decide qué mejorar. La columna
+  `books.editions_synced_at` se queda en el esquema (se dropea en la fase destructiva, Task 16);
+  el código de aplicación deja de leerla y escribirla, y solo sobrevive en el tipo generado de
+  Supabase hasta que esa columna desaparezca de verdad.
+
+- **La precedencia de páginas del progreso baja a DOS peldaños; la «edición primaria» muere como
+  criterio** (2026-08-27, Task 12 del plan de edición de obra). Hasta hoy había tres niveles
+  —edición del pase → `book_editions.is_primary` → `books.total_pages`— y la primaria **nunca fue
+  una decisión de nadie**: la marcaba un trigger sobre la PRIMERA fila que entrara, que con el
+  sync masivo vivo (muerto en la Task 10) era literalmente la primera de hasta 500 filas bajadas
+  de OpenLibrary. Ahora que una edición solo existe si alguien identificó su tirada, la
+  precedencia correcta es la que el usuario dijo: **su edición manda; sin ella, las páginas
+  orientativas de la obra**. Regla única en `pagesForPass` (`src/lib/editions/edition-label.ts`),
+  aplicada por los SIETE consumidores que la tenían copiada y por el snapshot SQL del widget
+  (`20260892_widget_snapshot_two_level.sql`).
+  **Dos cambios de comportamiento que se deciden a propósito, no se cuelan:**
+  1. **`pickEditionPages` pierde su cuarto peldaño** («cualquier edición con páginas»), que era
+     deliberado: el sorteo solo alimenta los tramos ‹2 h / 2–5 h / +5 h, donde una tirada
+     aproximada era mejor que «sin estimar». Se cambia igualmente porque convertía a esa función
+     en el ÚNICO consumidor con precedencia propia: el mismo libro salía con 736 páginas en el
+     sorteo y 684 en la barra de progreso, y **un consumidor rezagado no falla, da otro número**.
+     Se prefiere un número coherente en toda la app a uno más optimista solo en un sitio.
+  2. **Un libro sin edición identificada y sin `books.total_pages` vuelve a «sin estimar»**
+     aunque tenga ediciones hermanas con páginas. Es el precio del punto 1 y es el
+     comportamiento correcto bajo la regla nueva.
+  **El tipo `Edition` pierde `isPrimary`** y `getEditions` deja de ordenar por `is_primary`: las
+  tiras y el picker ya no destacan ninguna como «principal», que es lo que se quería. **La
+  columna `book_editions.is_primary`, sus triggers y su índice NO se tocan aquí**: eso es la fase
+  destructiva (Task 16) y borrar la columna sin borrar antes los triggers rompe CUALQUIER
+  inserción de edición (issue #877).
+  **El helper se llama `pagesForPass` pero su campo es `totalUnits`, no `totalPages`**: `Edition`
+  es el tipo compartido con las versiones de película (allí son minutos) y con las series (allí
+  son episodios), y duplicar la regla por medio era peor que el nombre imperfecto.
+  **De regalo se borra `src/lib/passes/edition-choice.ts`**: código muerto verificado — nadie
+  escribía esa clave de localStorage, así que el efecto de `log-panel.tsx` que la leía no aplicó
+  jamás una edición a ningún pase.
+
+- **Corrección de alcance de «La precedencia de páginas del progreso baja a DOS peldaños; la
+  «edición primaria» muere como criterio»** (2026-08-27, revisión de la Task 12). La entrada
+  anterior decía que un libro sin edición identificada y sin `books.total_pages` vuelve a «sin
+  estimar» **«en el sorteo»**. El alcance real es mayor: `pickEditionPages` tiene DOS
+  llamadores, no uno — el segundo es `get-library-items.ts:252`, que alimenta el porcentaje de
+  progreso de **portada y de Colección**. Esos ítems no pasan a «sin estimar» (ese estado es
+  propio del sorteo): **pierden directamente la barra de progreso**, y eso no estaba escrito
+  en ninguna parte.
+
+  Medido contra prod (`vmutcradmodhiltuohys`, solo lectura, 2026-08-27): pases de libro con
+  `edition_id` null, `books.total_pages` null y al menos una edición hermana CON páginas — la
+  población que el peldaño eliminado rescataba:
+
+  | estado | pierden el número | total pases del estado |
+  |---|---|---|
+  | `planned` | 29 | 41 (71% cae fuera de los tramos ‹2h / 2–5h / +5h del sorteo) |
+  | `in_progress` | 1 | 4 |
+  | `completed` | 38 | 60 |
+  | **total** | **68** | **105** |
+
+  La decisión de fondo sigue en pie —un número coherente en toda la app vale más que uno
+  optimista solo en un sitio—, pero 68 de 105 no se despachaba con una frase sin cifra.
+  **Mitigación que ya existe y que la entrada original no citaba:** `hydrate_book`
+  (`src/lib/catalog/hydrate-book.ts:288`) estampa `books.total_pages` desde la mediana de
+  páginas (`pagesMedian`) cuando la fila lo tiene a null, así que esto se autocura libro a
+  libro conforme se visitan las fichas — no es una regresión permanente, es una que se cierra
+  sola con tráfico. Consultas, alcance completo y propuesta de backfill puntual al desplegar:
+  issue #902 (relacionada con #900 y #901).
+
+- **El picker de edición consulta candidatas de OpenLibrary EN VIVO y solo persiste la elegida**
+  (2026-08-27, Task 13, rama `feat/obra-edicion-representacion`). Es la cara visible del modelo
+  que estrenó la Task 10: `book_editions` ya no se llena sola al abrir la ficha, así que el
+  usuario necesitaba una vía para decir cuál es SU tirada sin que el catálogo volviera a
+  engordar. El selector queda en tres bloques y **el orden es la decisión**: (1) las ediciones ya
+  persistidas del libro, con las de pases anteriores destacadas arriba —comportamiento que ya
+  existía y se conserva—; (2) el CTA «Escanea o teclea el ISBN», que va ANTES que las candidatas
+  porque es el único camino EXACTO (el código de barras identifica el ejemplar que se tiene en la
+  mano; todo lo demás es aproximar entre tiradas parecidas); (3) «Más ediciones (OpenLibrary)».
+
+  Cuatro cosas que se decidieron a propósito y conviene no deshacer sin leer esto:
+
+  - **El bloque 3 carga al DESPLEGARLO, no al abrir el selector** (`<details onToggle>`, una sola
+    vez por montaje). Cargarlo siempre convertiría cada apertura del panel de progreso en una
+    llamada a OpenLibrary, y la mayoría de las veces el usuario elige en el bloque 1 sin bajar.
+  - **`fetchEditionCandidates` no escribe NADA**; la escritura la dispara `chooseEditionCandidate`
+    con un clic explícito. Y excluye de las candidatas los ISBN ya persistidos del libro
+    (normalizados con `normalizeIsbn` en los dos lados, porque `createEdition` guarda lo que
+    teclea el colaborador, guiones incluidos): sin eso la misma edición saldría dos veces, en dos
+    bloques distintos. El escaneo pide `30 + persistidas` para que el tope de 30 se aplique
+    DESPUÉS de excluir, y no acabe enseñando menos justo en los libros con más ediciones
+    identificadas.
+  - **El presupuesto de páginas es el interactivo, no el del sync**: `fetchLiveWorkEditions`
+    (nuevo, en `src/lib/catalog/openlibrary/editions.ts`) escanea con `MAX_REPRESENTATION_PAGES`
+    (2 páginas, 200 ediciones) como `fetchRepresentationCandidates`, no con las 5 de
+    `fetchWorkEditions`. Filtro, dedup y orden ES→EN→resto son los de `pickEditions`, sin una
+    segunda lista negra que mantener.
+  - **El `NULL` de `register_book_edition` NO es un fallo.** La RPC es idempotente (`on conflict
+    do nothing`) y devuelve `NULL` cuando otro usuario ya identificó esa misma tirada. Tratarlo
+    como error dejaría al usuario sin poder elegir precisamente la edición más común del libro:
+    se resuelve re-seleccionando por el índice único `(book_id, isbn)` y se sigue. Un `error` de
+    la RPC, en cambio, sí corta — y NO cae en ese rescate, o un rechazo del servidor se
+    convertiría en un éxito silencioso.
+
+  **Desviación del plan escrito, deliberada:** las claves i18n nuevas van al namespace `editions`
+  (`editions.scanCta`, `editions.moreFromOpenLibrary`, `editions.candidateHint`…), no a un
+  `editionPicker.*` propio: `EditionPicker` ya hace `useTranslations("editions")` y abrir un
+  segundo namespace para el mismo componente solo repartía sus cadenas en dos sitios.
+
+- **El umbral que decidía si se pregunta «¿qué edición estás leyendo?» baja de «más de una» a
+  «siempre, en libros»** (2026-08-27, Task 13). Encontrado revisando el copy de la propia Task 13,
+  y sin arreglarlo la tarea entera no se veía en pantalla. `log-panel.tsx` montaba el
+  `EditionPicker` con `editions.length > 1`. Ese umbral era correcto cuando abrir la ficha
+  sincronizaba cientos de ediciones desde OpenLibrary: con una sola no había nada que elegir. Con
+  el sync muerto (Task 10) `book_editions` solo tiene lo que alguien identificó, así que **0 o 1
+  ediciones es el caso NORMAL de un libro recién añadido** — y es justo donde hacen falta el
+  escaneo del ISBN y las candidatas en vivo. El bloque nuevo de la Task 13 vive dentro de ese
+  `if`, así que con el umbral viejo no se pintaba jamás en los libros que más lo necesitan.
+
+  La regla se extrae a `src/components/detail/edition-question.ts` (`shouldAskForEdition`), pura y
+  con test, mismo patrón que `tab-visibility.ts`: era una condición de cuatro términos escondida
+  en medio de un componente cliente de 900 líneas, que es exactamente por lo que se pudrió sin que
+  nadie lo notara. **Las películas se quedan en `> 1`**: `movie_versions` no tiene ISBN que
+  escanear ni obra en OpenLibrary de la que sacar candidatas, así que con menos de dos versiones
+  la pregunta sigue sin tener respuesta posible. Las series, nunca (su unidad son los episodios).
+
+  Consecuencia asumida: ahora se pregunta la edición en **todo** pase de libro sin ella, no solo
+  en los libros con catálogo gordo. Es el precio de que la pregunta exista; «No lo sé» se sigue
+  recordando por `passId`, así que quien no quiera contestar lo dice una vez por pase.
+
+- **`editions.allEditions` deja de ser «Todas las ediciones» y pasa a «Ediciones de la ficha»**
+  (2026-08-27, Task 13). Otra promesa vieja del sync masivo: cuando la ficha bajaba el catálogo
+  entero de OpenLibrary, «todas» era cierto. Hoy es una lista de lo identificado — y con el bloque
+  «Más ediciones (OpenLibrary)» justo debajo, la pantalla se contradecía a sí misma. El número que
+  va al lado del título es `editions.length`, el total de la ficha, que es exactamente lo que el
+  título nuevo nombra.
+
+- **Del navegador a la RPC del catálogo comunitario solo viaja el ISBN: el servidor RE-DERIVA la
+  candidata** (2026-08-27, revisión de la Task 13). `chooseEditionCandidate` recibía el objeto
+  `EditionCandidate` entero desde el cliente y solo revalidaba el `isbn`; `publisher`, `coverUrl`,
+  `label`, `year` y `pages` iban tal cual a `register_book_edition`, que es `SECURITY DEFINER` y
+  solo exige `auth.uid() is not null`. Es decir: **cualquier usuario autenticado podía crear una
+  fila en `book_editions` de cualquier libro con editorial y portada arbitrarias**, y el
+  `publisher` se le pinta hoy a toda la comunidad (`formatEditionDetails`). Antes de este selector,
+  meter metadatos a mano exigía `collaborator+` (`createEdition`) — era un ensanchamiento de
+  privilegio, no un detalle de validación.
+
+  Se arregla por la vía buena y no por la barata: **la firma acepta solo el ISBN** y el servidor
+  vuelve a pedirle a OpenLibrary las ediciones de la obra (`fetchLiveWorkEditions`) y casa por ISBN
+  normalizado. Si no aparece, `{ok:false, reason:"unknownCandidate"}` y no se escribe nada. La
+  alternativa barata —dejar viajar los metadatos y solo exigir que `coverUrl` empiece por
+  `https://covers.openlibrary.org/` y capar `publisher`— se descartó: sigue dejando al cliente
+  elegir *qué* editorial se le enseña a la comunidad, y una lista blanca de prefijos envejece peor
+  que una re-derivación.
+
+  **Coste asumido, medido a ojo y a propósito:** una llamada extra a OpenLibrary por elección.
+  Es una acción iniciada por el usuario y poco frecuente (solo al elegir una candidata, no al
+  listarlas), contra cerrar un agujero de escritura en el catálogo compartido. El tope de escaneo
+  de la re-derivación es 200 (`MAX_DERIVATION_SCAN`), a propósito mucho mayor que las 30
+  candidatas que se enseñan: tiene que ser un **superconjunto** de lo que el picker pudo pintar,
+  porque aquel escanea con holgura (30 + las ya persistidas) y la re-derivación no excluye nada.
+
+  Es el patrón que más veces ha mordido en este plan (#674 y dos recaídas en la misma rama): datos
+  del cliente llegando al catálogo compartido. **Y no se puede confiar en que lo sanee la RPC**:
+  verificado contra `pg_proc` en dev, `sane_int` se aplica solo a `p_year` y `p_pages`;
+  `p_publisher` y `p_cover_url` entran crudos. El comentario del código que afirmaba lo contrario
+  se corrigió en el mismo cambio — era justo el tipo de falsedad que hace que el siguiente lector
+  no mire.
+
+- **El fallo de CARGAR candidatas no se cuenta con el mensaje de GUARDAR** (2026-08-27, revisión de
+  la Task 13). El `catch` de `loadCandidates` reutilizaba `candidateErrors.generic` («No se pudo
+  guardar la edición.») cuando nunca se había intentado guardar nada, y como esa misma rama deja
+  `candidates` en `[]`, la pantalla afirmaba a la vez «No hay más ediciones que ofrecerte para esta
+  obra» — una afirmación que tampoco consta, porque la lista no llegó. Dos frases, una falsa y otra
+  contradiciéndola. Ahora hay una clave propia (`editions.candidatesFailed`) y una bandera
+  `candidatesFailed` que **suprime el estado vacío**: el vacío solo se afirma cuando la lista llegó
+  de verdad. Regla general: un estado vacío es una afirmación sobre el mundo, y tras un error no
+  sabemos nada del mundo.
+
+- **El ISBN de una fila importada identifica la tirada de TODOS los pases que nacen de esa fila, no
+  solo del activo** (2026-08-27, Task 14). `findOrCreateCatalogItem` recibía `userId` en el resto del
+  catálogo pero no desde `match-row.ts`, así que `ensureBookEdition` salía por la puerta de atrás
+  (`register_book_edition` exige `auth.uid()`) y ningún ISBN de un CSV llegaba nunca a
+  `book_editions` — se perdía entero, aunque el usuario hubiera catalogado deliberadamente ESE
+  ejemplar. Se arregla propagando `userId` desde `commitImportRow` (viene de `auth.getUser()` en
+  `src/app/importar/actions.ts`, nunca del cliente) hasta `matchBook`, y anotando en `ImportMatch`
+  el `matchedIsbn` cuando la fila casó por ISBN (local o vía `lookupIsbn`) para que
+  `commit-row.ts` resuelva `book_editions.id` por `(book_id, isbn)` — la RPC es idempotente y no
+  devuelve el id en el camino "ya existía", mismo patrón que `chooseEditionCandidate`.
+
+  **Decisión no dictada literalmente por el plan**: el `edition_id` resuelto se escribe tanto en el
+  pase activo como en cada pase histórico (relectura) que nace de la MISMA fila del CSV, no solo en
+  el activo. Un CSV con varias fechas de relectura describe la MISMA tirada en la mano del usuario
+  para todas ellas — no hay ninguna señal en el CSV de que cambiara de edición entre lecturas — así
+  que negarle el dato a los históricos habría sido una pérdida de información arbitraria, no una
+  cautela.
+
+  **Degradación explícita, verificada por test**: un ISBN con dígito de control inválido en el CSV
+  no rompe la fila. `register_book_edition` lanza `invalid isbn13`/`invalid isbn10` dentro de la
+  RPC, pero `ensureBookEdition` (find-or-create.ts) ya se tragaba ese error de antes de esta tarea;
+  lo nuevo es que `resolveEditionId` simplemente no encuentra fila que resolver y cae a `null` — el
+  pase se crea igual, sin edición, que es el mismo estado legítimo que una fila sin ISBN.
+
+- **La reconciliación de identidad Wikidata exige título Y autor, y el ganador de la fusión es el de
+  más rastro de usuario** (2026-08-27, Task 15). `scripts/reconcile-wikidata.ts` asigna a cada obra
+  su QID vía Inventaire y fusiona las que colisionan con `merge_book_into`. Dos decisiones que no
+  venían dictadas así:
+
+  **1. La corroboración de título es OBLIGATORIA, no un desempate.** El pseudocódigo del plan se
+  quedaba con «la primera entidad cuyo autor case», y la primera implementación lo suavizó (el
+  título solo desempataba si había varias candidatas del mismo autor). El barrido en seco contra dev
+  lo desmintió: de 13 fusiones propuestas, **dos eran obras distintas del mismo autor** — «Shadows
+  Beneath» (`/works/OL31714961W`, la antología de *Writing Excuses*) se iba a fundir con «Shadows of
+  Self» (`/works/OL17349393W`), y «Das Rad der Zeit 34. Der Traum des Wolfs» (*La Rueda del Tiempo*)
+  con «Words of Radiance». Un 15% de fusiones erróneas no lo compensa ningún match ganado: manda la
+  regla del spec §6 («ante la duda, no fusionar; un duplicado que sobrevive es recuperable, una
+  fusión errónea destruye»). **Coste asumido**: un duplicado cuyo título no case con ningún label de
+  la entidad —el caso «La Biblioteca de Medianoche» / «La biblioteca de la medianoche», que
+  `isSameTitle` no casa ni por igualdad ni por contención— sobrevive al barrido. Es el lado bueno
+  por el que fallar.
+
+  **2. Gana la fila con más rastro de usuario, con un desempate más que el que pedía el plan.** El
+  plan decía «más pases, y a igualdad la más antigua». Se intercala un segundo criterio —el resto
+  del rastro: `posts`, `notes`, `collection_items`, `library_entries`, `saga_items`— porque con dos
+  filas a cero pases la antigüedad es una moneda al aire y la fila que lleva la **reseña** del
+  usuario puede ser perfectamente la nueva. Sin rastro de ningún tipo por ninguna parte, queda
+  exactamente el criterio del plan. Es el razonamiento de la migración `20260870`: un dato de
+  catálogo se vuelve a bajar de OpenLibrary; un pase, no. Y el ganador se elige **cerrando el grupo
+  primero**, no según quién reclame el QID antes: en el pseudocódigo del plan el orden de escaneo
+  decidía qué pases había que repuntar.
+
+  **Nota operativa que no es un detalle**: Inventaire corta con `429` y `retry-after: 1800` sobre las
+  ~200 peticiones (~65 libros a 3 peticiones cada uno) y no lo documenta. `searchInventaireEntities`
+  es dependencia blanda y degrada a `[]`, así que un `429` es **indistinguible de «no está en
+  Wikidata»** desde dentro del cliente. El script lo compensa por fuera: sondeo previo con `fetch`
+  pelado, cortafuegos por racha de vacíos, `--apply` bloqueado si el barrido se cortó, y `--max=N`
+  para barrer en tandas (los 397 libros de dev necesitan ~6 ventanas de media hora).
+
+## 2026-08-28 — El barrido QID compara títulos por CONJUNTO DE PALABRAS, con un comparador local
+
+Revisión del barrido de reconciliación (Task 15). La corroboración de título se apoyaba en
+`isSameTitle` (`src/lib/catalog/title-match.ts`), que acepta la **contención** cuando el más corto
+mide ≥65 % del más largo. Contra las filas reales de dev eso no era un límite: era un **falso
+positivo que borraba filas**. Un marcador de volumen o de parte pegado al título base cae dentro de
+la cota, así que el trozo casaba con la obra completa y `planReconciliation` proponía
+`merge_book_into` — las seis filas `Words of Radiance%` producían **cinco fusiones**, y como
+comparten `created_at` y tienen cero pases, el desempate por `id` dejaba viva «Part Two» y mataba la
+fila de la **obra completa**.
+
+Lo decisivo del diagnóstico no es el fallo, es que **saltara o no era cuestión de suerte de
+longitudes, no de datos**: `Oathbringer Part Two` / `Oathbringer` da 0.55 y se salvaba por poco,
+mientras que `The Stormlight Archive 1` / `The Stormlight Archive` da 0.92 y borraba la fila. Un
+criterio que decide qué se borra no puede depender de cuánto mida el título base.
+
+**Decisión: comparación por conjunto de palabras normalizadas** (igualdad exacta de conjuntos), en
+un `titleMatchesLabel` **local a `src/lib/catalog/wikidata-reconcile.ts`**. Medido sobre los 16
+casos conocidos: tokenSet 16/16; `isSameTitle` fallaba 8 (7 falsos positivos + 1 falso negativo).
+
+**Por qué local y no en `title-match.ts`**, que era la tentación obvia: ese `isSameTitle` lo
+comparten `wikidata-collapse.ts` y el matching de TMDB, y **allí la tolerancia al subtítulo es lo
+que se quiere** — equivocarse esconde una tarjeta, que es recuperable, no borra una fila. La
+asimetría de consecuencias justifica dos comparadores distintos con el mismo nombre conceptual. Se
+reutiliza solo `normalizeTitle` (la normalización), no la comparación.
+
+**De propina recupera el falso negativo** que motivaba el spec: «La Biblioteca de Medianoche» contra
+el label «La biblioteca de la medianoche». Y con el diagnóstico correcto, que antes se daba por otro:
+el `la` extra va **en medio**, así que la contención falla y **el umbral del 65 % ni se llega a
+consultar** (el ratio, 0.90, es irrelevante).
+
+**Coste asumido y declarado**: se pierden los subtítulos legítimos («Elantris: edición aniversario»
+ya no resuelve el QID de «Elantris»). Falla del lado seguro — produce un `sin-match`, que no escribe
+nada y deja vivo un duplicado recuperable. Queda en #913.
+
+**Corolario que NO se arregla aquí**: `hydrate-book.ts`, que es quien **escribe** `books.wikidata_id`,
+sigue eligiendo la entidad **solo por autor**, sin corroborar el título — la misma regla que ya
+produjo dos fusiones erróneas. Vive como #914 (P1), porque siembra el dato con el que un barrido
+posterior borra la obra equivocada.
+
+**El rastro de usuario cuenta 16 de las 17 referencias que repunta `merge_book_into`**, no 6. No era
+pérdida de datos (se repuntan igual), pero una obra que solo llevara la opinión de un club puntuaba
+cero y **perdía contra una vacía**. La decimoséptima, `credits`, se deja fuera **a propósito**: es
+metadato de catálogo que escribe la hidratación, no rastro de persona, y contarlo invertiría el
+criterio justo en el caso que importa —una fila hidratada dos veces le ganaría a la fila donde
+alguien escribió una nota a mano—.
+
+## 2026-08-28 (2) — Quien ESCRIBE el QID usa la misma caja que el barrido: `resolveQid` (#914)
+
+**Contexto.** La entrada anterior dejó el corolario abierto: el barrido de reconciliación ya exigía
+autor + título + QID no ambiguo, pero `hydrate-book.ts` —que es quien **escribe**
+`books.wikidata_id`— seguía con la regla vieja, «la primera entidad cuyo autor case», sin corroborar
+el título. Era la más laxa de las dos, y la que persiste el dato.
+
+**Por qué era P1 y no cosmético.** El QID es identidad, y no se queda quieto: `wikidata-collapse.ts`
+lo respeta **por encima** del match de título de hoy, y `scripts/reconcile-wikidata.ts` agrupa por él
+y termina en `merge_book_into`, que **borra filas de `books`**. La hidratación estaba sembrando el
+dato con el que un barrido posterior destruiría la obra correcta. El error viajaba de un sitio donde
+solo ensucia a otro donde borra. La RPC no protege de esto: `wikidata_id` es `null → valor` y se
+traga la colisión, o sea que ampara del QID *duplicado*, nunca del *equivocado*.
+
+**Decisión: reusar `resolveQid`, no escribir una tercera variante.** Es la tentación evidente
+—«aquí solo hace falta añadir una comparación de título»— y este plan ya ha caído dos veces en ella
+con la comparación de nombres: hay **dos** `authorMatches` exportados en `src/lib/catalog/` con la
+misma intención y firmas distintas (`representation.ts` toma dos cadenas; `wikidata-reconcile.ts`
+toma `(author, entity)` y parte la lista por comas), y esa ambigüedad es justo lo que hizo que la
+línea mala se leyera como correcta durante toda una revisión. La regla que decide identidad vive en
+un sitio, con sus 16 casos medidos, y los dos lados —el que escribe y el que borra— la comparten.
+
+**Orden, que no es indiferente:** primero el QID y de ahí la entidad, no al revés. `entity` se sigue
+usando para `labels.es` / `labels.en` en `pickField`, y esos labels solo valen si vienen de la
+entidad que de verdad identifica a la obra; quedarse con la primera entidad y mirar luego su QID
+dejaría el título de otra obra en la fila.
+
+**Coste asumido y declarado**: la regla nueva es más estricta, así que hay obras que dejan de
+recibir QID donde antes recibían uno (equivocado). Es el lado correcto por el que fallar —«ante la
+duda, no fusionar»— y **no es terminal**: `needsRepresentationReview` ya trata la ausencia de QID
+como hueco reevaluable (`!wikidataId` entra en `improvable`), así que se reintenta pasado el
+cooldown de 30 días. En dev el coste medido es **cero**: 0 de 397 filas tienen `wikidata_id`
+asignado hoy (44 hidratadas, todas sin QID), coherente con el 429 de Inventaire de #911.
+
+## 2026-08-28 (3) — Cierre del plan obra/edición/representación: las dos políticas que lo gobiernan
+
+Las entradas de arriba (2026-08-27 y 2026-08-28) recogen tarea a tarea lo que se decidió mientras
+se construía. Esta cierra la pieza dejando escritas las **dos reglas de nivel de política** de las
+que cuelga todo lo demás, porque están repartidas entre quince entradas de detalle y ninguna las
+enuncia entera.
+
+**1. La representación de una obra se elige por RANGO DE IDIOMA, y solo mejora hacia arriba.**
+`es (0) < en (1) < other (2) < unknown (3)`. Un campo se escribe si el candidato tiene rango
+**estrictamente mejor** que lo que hay, y la procedencia de cada campo viaja en `books.repr_meta`
+(`{lang, source}` por `title`/`cover`/`synopsis`/`pages`). Es lo que convierte la hidratación de
+*fill-only* en *fill-or-upgrade*: un título español PISA a uno inglés, y nada más pisa nada.
+
+La alternativa que se descartó era la obvia —«el primero que llegue gana, como hasta ahora»— y se
+descartó porque el catálogo lo llena OpenLibrary, donde el work superviviente de un par traducido
+es casi siempre el INGLÉS (gana el de más ediciones). Con la regla vieja, un lector español acababa
+con «Words of Radiance» en su biblioteca para siempre: no había ningún camino por el que el título
+español pudiera entrar después.
+
+El precio, y hay que decirlo: **la regla solo es segura porque `source:'manual'` es intocable**, y
+esa marca la pone un trigger, no las actions. Los dos Critical de la revisión de la Task 2 salieron
+exactamente de ahí — se autorizó el *upgrade* con el argumento «es fill-only, no pisa nada», que
+era la premisa que el propio cambio rompía. De ahí las dos consecuencias que no son negociables: la
+curación se estampa sola (`trg_stamp_books_repr_manual`) y **las RPC de hidratación de libros son
+solo de `service_role`**, porque el trigger distingue curación de automatismo por `auth.uid()` y un
+escritor masivo con el cliente de la petición marcaría `manual` el catálogo entero, en silencio y
+sin vuelta atrás.
+
+**2. Toda fusión de obras es COBARDE: ante la duda, no se fusiona.**
+Vale para `merge_book_into`, para el colapso por QID en búsqueda y para el barrido de
+reconciliación. La condición no es «se parecen»: es **QID coincidente Y autoría verificada**, y
+cualquier fallo de la verificación —incluido no poder verificar— cuenta como «no fusionar».
+`hydrate_book`, ante un QID ya ocupado por otra fila, lo deja **sin asignar** en vez de fusionar por
+su cuenta.
+
+El asimétrico está elegido a propósito: **un duplicado que sobrevive es un fastidio visible que
+alguien reporta; una fusión equivocada mezcla los pases de dos obras distintas y no hay quien la
+deshaga.** El coste asumido es que quedan duplicados vivos (los que no casan por título con ningún
+label — #913) y que un QID puede quedarse sin asignar; ambos son reevaluables pasado el cooldown de
+30 días, ninguno es terminal.
+
+**Lo que este cierre NO decide, y conviene no leer de más:** nada de esto está en producción. La
+fase destructiva (Task 16) no se ejecutó y ninguna migración de la rama está aplicada en prod, así
+que ahí siguen vivas `book_editions.is_primary`, `books.isbn` y la hidratación vieja. El despliegue
+es #900, y su orden —dev primero, verificar contra objetos reales, luego prod— no cambia.
+
+- **`google_books_volume_id` lo escribe `service_role`, no el cliente de la petición** (2026-08-28,
+  condición de merge C1 de la rama obra/edición/representación). **Corrige por escrito la entrada
+  del 2026-08-27 de más arriba** («la hidratación llama a `hydrate_book` con `service_role`»), que
+  cerraba diciendo que los `update` de columnas técnicas —y nombraba `openlibrary_work_key` **y
+  `google_books_volume_id`**— «siguen yendo con el cliente del llamante». De las dos, solo
+  `openlibrary_work_key` tiene grant de `authenticated`. `google_books_volume_id` **nunca lo tuvo**:
+  nace sin él en `20260882`, a propósito.
+  **Lo que de verdad pasaba:** ese update devolvía `42501 permission denied for table books` en
+  TODAS las llamadas, y el `await` no destructuraba `error`, así que no dejaba ni una línea de log.
+  Sondeado en dev dentro de `begin; … rollback;`: como `authenticated`, `42501`; como `service_role`,
+  `OK` y la columna con valor. Y el efecto acumulado era medible sin sondear nada: **397 filas en
+  `books`, 397 con la columna a null.**
+  **Por qué no se arregla concediendo el grant, que era la otra salida:** esa columna es el único
+  ancla entre una obra nacida en OpenLibrary y su volumen de Google Books. Vacía, un ISBN que OL no
+  conoce y que no esté en `book_editions` no encuentra la obra existente y
+  `register_catalog_item_by_volume` **acuña una obra duplicada** — justo lo que esta rama existe
+  para eliminar. Concederlo abriría además a cualquier autenticado un identificador del catálogo
+  COMPARTIDO con índice único. El privilegio se acota, como en #871, a las escrituras del catálogo
+  compartido: la RPC `hydrate_book` y este sello. `openlibrary_work_key` sigue con el cliente del
+  llamante, que es quien lleva la identidad y a quien le aplica RLS.
+  **La regla general que deja, y que vale más que el arreglo:** «la transición es null→valor» es un
+  argumento sobre el **trigger**, no sobre los **grants**. Son dos puertas distintas y una columna
+  puede fallar la primera. Cuando `docs/DRIFT-CHECK.md` justifica un hueco de grants nombrando a
+  quién escribe la columna, esa frase es una afirmación sobre el CÓDIGO: la superficie 6 compara
+  números, no escritores, y por eso no cazó esto.
+
+- **Un `SearchResult` sin work key no propaga su `matchedIsbn` al shell de hidratación** (2026-08-28,
+  condición de merge C2 de la misma rama). El predicado del camino GB-only vive ahora UNA sola vez,
+  en `isVolumeOnlyResult` (`src/lib/catalog/types.ts`), y lo leen los dos sitios que dependían de él
+  por separado: `findOrCreateCatalogItem`, para elegir la RPC de alta, y `bookShellFromSearchResult`,
+  para NO propagar el ISBN.
+  **El fallo que cierra es una contradicción interna de la rama, no un bug heredado:** una tarea
+  documentó que `isbn: result.matchedIsbn` era seguro porque la rama que lo lee es «inalcanzable
+  mientras `externalId` no venga vacío», y OTRA tarea de la MISMA rama introdujo el alta GB-only,
+  que devuelve `externalId: ""` **por construcción**. Con la precondición falsa, el navegador
+  controlaba a la vez `googleVolumeId` (que elige la FILA) y `matchedIsbn` (que elige la OBRA), sin
+  que el servidor cruzase los dos: work key ajena estampada ⇒ título, autor, portada, sinopsis,
+  géneros y **QID** re-derivados de otra obra ⇒ el barrido agrupa por QID y llama a
+  `merge_book_into`, que BORRA filas. Clase #674.
+  **Dos mitades, a propósito.** La del shell depende de que el llamante nos pase un shell honesto;
+  la otra no: el `update` de la work key lleva `.is("openlibrary_work_key", null)`, así que la
+  condición la evalúa la BASE sobre la fila real. Hace falta porque
+  `enforce_catalog_edit_collaborator_only` solo protege esa columna cuando
+  `old.openlibrary_work_key is not null` — verificado contra la definición real de la función en
+  dev, no supuesto.
+  **Y lo que se corrige además del código es el COMENTARIO.** #674 se ha reabierto dos veces, y las
+  dos porque un comentario declaraba el problema imposible; un comentario que afirma una
+  precondición que el código vecino ya viola es peor que no tener comentario, porque el siguiente
+  revisor deja de mirar. Cubierto por mutación: neutralizar el predicado, quitar el filtro `.is` o
+  volver a propagar el `matchedIsbn` tumban tests distintos.
+
+
+## 2026-08-28 (4) — La purga de ediciones históricas se descarta: se hará a mano (#928)
+
+**No habrá migración de purga.** El plan de obra/edición proponía borrar en la fase destructiva las
+ediciones que el sync masivo dejó, conservando las referenciadas por un pase y las de `created_by`
+con rol colaborador/admin. **Ese criterio no medía lo que creía medir**, y medirlo contra producción
+lo desmontó: de 372 ediciones, habría borrado 58 y **conservado las ~300 del sync**, porque
+`register_book_edition` firma `created_by` con el `auth.uid()` de quien estuviera navegando y la
+cuenta del dueño es admin — cada edición que el automatismo creó mientras él miraba fichas quedó
+indistinguible de una curada por él.
+
+**No existe señal en la tabla que separe lo curado de lo importado.** Ni `created_by` (los dos
+caminos dejan un id de usuario) ni `label`, cuyos valores son nombres de editorial reales
+(`Bolsillo`, `DEBOLS!LLO`, `Minotauro`, `Gigamesh Omnium`): metadatos correctos que resulta que
+llegaron en masa. Es la misma carencia que obligó a inventar `repr_meta.source = 'manual'` para la
+curación de campos, y aquí no se resolvió: se asumió.
+
+**Se descarta también la alternativa agresiva** (borrar todo lo no referenciado por un pase, que
+dejaba 14 filas de 372): tira metadatos correctos de ediciones que alguien podría querer, y con el
+sync masivo ya muerto **el ruido deja de crecer solo**. La urgencia era detener la hemorragia, no
+vaciar la tabla. La limpieza se hará a mano, caso por caso, sin prisa.
+
+**Consecuencia operativa**: el esquema `backup_obra_edicion_20260826` (#866) no se borra mientras
+quede limpieza manual pendiente — es la red de esa limpieza, no solo la del despliegue.

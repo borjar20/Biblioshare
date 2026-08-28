@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -19,6 +19,7 @@ import { NewPassSheet } from "@/components/detail/new-pass-sheet";
 import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import { EditionPicker } from "@/components/detail/edition-picker";
+import { shouldAskForEdition } from "@/components/detail/edition-question";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { formatPosition, type Position } from "@/lib/library/position";
@@ -27,9 +28,8 @@ import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
 import { updateStatus, removeFromLibrary } from "@/lib/library/manage-actions";
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
-import { formatEdition, primaryEdition } from "@/lib/editions/edition-label";
+import { formatEdition, pagesForPass } from "@/lib/editions/edition-label";
 import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
-import { editionChoiceStorageKey } from "@/lib/passes/edition-choice";
 
 // Lee si a este pase ya se le preguntó "¿qué edición estás leyendo?" y el
 // usuario contestó "No lo sé". Se llama solo desde el inicializador de
@@ -299,11 +299,13 @@ function ManagedLog({
   // también el activo (el índice passes_one_active no permite lo contrario),
   // así que cuando existe openPass son el mismo pase.
   const openPass = passes.find((p) => p.finishedOn === null) ?? null;
-  const openPassEdition = openPass
-    ? ((openPass.editionId
-        ? (editions.find((e) => e.id === openPass.editionId) ?? null)
-        : null) ?? primaryEdition(editions))
-    : null;
+  // La edición del pase, y solo esa: la que el usuario identificó. Sin ella no
+  // se busca una sustituta (la «edición primaria» murió, spec 2026-08-26 §5) —
+  // manda `workTotalUnits`, las páginas orientativas de la obra.
+  const openPassEdition =
+    openPass?.editionId != null
+      ? (editions.find((e) => e.id === openPass.editionId) ?? null)
+      : null;
 
   // Página del pase y su total. Se calculan AQUÍ, en el antecesor común, y no
   // dentro del panel: en PC la barra se queda en la columna izquierda y el
@@ -320,9 +322,7 @@ function ManagedLog({
   // La edición del pase manda; si no trae páginas (pasa, y mucho: OpenLibrary
   // no siempre las da), cae al total de la obra. Mismo criterio que addSession.
   const totalPages =
-    itemType === "book"
-      ? (openPassEdition?.totalUnits ?? workTotalUnits ?? null)
-      : null;
+    itemType === "book" ? pagesForPass(openPassEdition, workTotalUnits) : null;
 
   return (
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
@@ -553,8 +553,8 @@ function ManagedLog({
 // updatePass, que siempre escribe finished_on y cerraría el pase de tapadillo
 // (ver el comentario en src/lib/passes/actions.ts). La página actual sale de
 // `entry.position` (passes.position del pase activo), comparada contra las
-// páginas de la edición del pase — o la primaria si el pase no tiene una
-// asignada todavía.
+// páginas de la edición del pase — o las páginas orientativas de la obra si
+// el pase no tiene una edición asignada todavía.
 function PassDataPanel({
   itemType,
   itemId,
@@ -595,7 +595,7 @@ function PassDataPanel({
   }
 
   // Pregunta pendiente "¿qué edición estás leyendo?" (Tarea 3, Paso 2): solo
-  // tiene sentido si hay más de una edición entre las que elegir y el pase
+  // tiene sentido si hay algo que ofrecer y el pase
   // abierto todavía no tiene una asignada. Elegir una edición de verdad la
   // hace desaparecer sola (openPass.editionId deja de ser null). La salida
   // "No lo sé" no fija edición, así que sin recordarla se repetiría en cada
@@ -605,43 +605,16 @@ function PassDataPanel({
   // ManagedLog), así este inicializador se ejecuta de nuevo con cada pase
   // distinto sin releer localStorage durante el render.
   const [answered, setAnswered] = useState(() => readEditionAsked(openPass.id));
-  const pendingEditionQuestion =
-    itemType !== "series" &&
-    editions.length > 1 &&
-    openPass.editionId === null &&
-    !answered;
-
-  // Aplica la elección de edición guardada AL SEGUIR (Hallazgo 3 de la
-  // revisión final): si en localStorage hay una edición elegida para este
-  // ítem y este pase recién abierto todavía no tiene una propia, se aplica
-  // aquí con setPassEdition y se olvida la elección — el usuario ya la
-  // contestó al seguir, no debe volver a verla. No sincroniza ningún estado
-  // local (no llama a ningún setState de este componente): solo dispara una
-  // escritura de servidor, así que vive en un efecto imperativo, no en el
-  // ajuste "durante el render" de más arriba (mismo criterio que el
-  // scrollIntoView de EditionStrip). Deliberadamente solo al montar: el
-  // componente está keyed por openPass.id (ver ManagedLog), así que un pase
-  // nuevo (p. ej. una relectura) vuelve a montar este efecto y lee de nuevo.
-  useEffect(() => {
-    if (openPass.editionId !== null) return;
-    let choice: string | null = null;
-    try {
-      choice = window.localStorage.getItem(editionChoiceStorageKey(itemId));
-    } catch {
-      return;
-    }
-    if (!choice) return;
-    try {
-      window.localStorage.removeItem(editionChoiceStorageKey(itemId));
-    } catch {
-      // Si no se puede borrar, en el peor caso se reintenta en la próxima
-      // recarga: no rompe nada más.
-    }
-    startTransition(() =>
-      setPassEdition(openPass.id, itemType, itemId, choice),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // La regla vive en edition-question.ts, pura y testeada: cuándo hay algo que
+  // ofrecer dejó de ser «más de una edición en la ficha» al morir el sync
+  // masivo, y ese umbral tapaba el selector justo en los libros que más lo
+  // necesitan. El porqué completo, en la cabecera de ese fichero.
+  const pendingEditionQuestion = shouldAskForEdition({
+    itemType,
+    editionCount: editions.length,
+    passEditionId: openPass.editionId,
+    answered,
+  });
 
   // El `.panel` del frame 3 (y el `.desk-panel` del 10): fondo --surface (NO
   // --surface-muted, que es el --surface-2 del handoff — con el panel un
@@ -686,6 +659,10 @@ function PassDataPanel({
               title={tEditions("whichEditionReading")}
               disabled={isPending}
               canContribute={canContribute}
+              // Con el pase delante, el selector puede ofrecer además las dos
+              // vías que ESCRIBEN contra él: escanear el ISBN (exacta) y las
+              // candidatas en vivo de OpenLibrary (aproximada).
+              passId={openPass.id}
               onPick={(editionId) => {
                 setAnswered(true);
                 startTransition(() =>
@@ -699,6 +676,10 @@ function PassDataPanel({
                 writeEditionAsked(openPass.id);
                 setAnswered(true);
               }}
+              // La candidata ya quedó registrada y asociada al pase en el
+              // servidor (chooseEditionCandidate); aquí solo se cierra la
+              // pregunta, sin un segundo setPassEdition que la repita.
+              onCandidatePicked={() => setAnswered(true)}
             />
           </div>
         )}

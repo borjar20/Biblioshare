@@ -1,12 +1,16 @@
 # Backlog — trabajo pendiente
 
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
-> reverificadas contra issues y BD el 2026-08-24]**
+> reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
+> 2026-08-28]**
 >
-> **Las issues SON el backlog operativo** (regla de AGENTS.md): **264 abiertas a
-> 2026-08-24** —**0 P0, 0 P1**, 179 P2, 85 P3—, todas con área/tipo/prioridad;
-> la suma cuadra con el total, así que no hay ninguna sin etiquetar. Es la
-> primera vez que el repo se queda sin ningún P1 abierto. Este doc es
+> **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
+> 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
+> la suma cuadra con el total, así que no hay ninguna sin etiquetar. Las 66 que
+> entran respecto al 2026-08-24 son casi todas del plan obra/edición/
+> representación (bloque de abajo): una rama que abre 37 issues no es una rama
+> que fuera mal, es el precio de trocear una pieza grande sin encadenar
+> hallazgos a la PR en curso. Siguen sin haber P0. Este doc es
 > el mapa de medio plazo: qué features NO existen aún y por dónde empezar. **Lo hecho ya no vive aquí**: el mapa de lo que existe es
 > `docs/PROYECTO.md`. La narrativa de cómo se hizo cada cosa, en
 > `docs/superpowers/specs/`.
@@ -233,6 +237,47 @@ y `20260818_catalog_e_register.sql` —se rescataron con el resto del juego de
 `schema-baseline.sql`, que es su sitio. Límite de la comprobación, y conviene
 decirlo: **cubre FUNCIONES, no policies, triggers, grants ni columnas**; para eso
 sigue estando `docs/DRIFT-CHECK.md`.
+
+### Obra / edición / representación — HECHO en código el 2026-08-28, SIN desplegar
+
+Plan `docs/superpowers/plans/2026-08-26-obra-edicion-representacion.md` (spec del mismo nombre
+en `superpowers/specs/`). Catálogo work-first: la búsqueda sigue sin escribir, la obra se
+representa ES→EN→otro con procedencia por campo, y las ediciones dejan de sincronizarse en masa.
+Lo cerrado, con la migración o el fichero que lo sostiene:
+
+- [x] **Representación ES→EN→otro con procedencia.** `books.repr_meta` (`20260882`) guarda por
+  campo (`title`/`cover`/`synopsis`/`pages`) su idioma y su fuente. `hydrate_book` pasó de
+  fill-only a **fill-or-upgrade por rango de idioma** (`20260883`) — un título español pisa a uno
+  inglés, y solo eso.
+- [x] **La curación se marca sola.** Trigger `trg_stamp_books_repr_manual` (`20260884`): estampa
+  `source:'manual'` cuando cambia una columna de representación con sesión de usuario y fuera de
+  `app.hydrating`. Ningún camino de curación puede olvidarse de marcar la procedencia, tampoco
+  los que se añadan después. Y el alta manual **nace ya marcada** (`20260885`).
+- [x] **Las RPC de hidratación de libros son solo de `service_role`** (`20260884`, precedente
+  #725). Con fill-or-upgrade, el bypass de `app.hydrating` habría dejado a cualquier
+  `authenticated` reescribir el catálogo COMPARTIDO declarando `"lang":"es"`. Verificado contra
+  `has_function_privilege`, no contra el ledger.
+- [x] **Muere el sync masivo de ediciones y con él la edición primaria como criterio.**
+  `book_editions.is_primary` sigue en la tabla pero **ya no la lee nadie**; la precedencia de
+  páginas queda en 2 niveles (edición del pase → `books.total_pages` orientativas). El selector
+  consulta OpenLibrary **en vivo** y persiste **solo la tirada elegida**.
+- [x] **Identidad inter-idioma (Wikidata/Inventaire) y fusión de obras.** Tercera pasada de
+  búsqueda con colapso por QID, y `merge_book_into` (fusión cobarde, repunta las 18 referencias
+  a libro) más el barrido de reconciliación.
+- [x] **Google Books como enriquecedor**, no como fuente primaria: sinopsis en español y, en
+  último recurso, alta por ISBN cuando OpenLibrary no lo conoce.
+- [x] **Cobertura e2e de los tres flujos nuevos** (`e2e/obra-edicion-representacion.spec.ts`,
+  2026-08-28): alta desde `/buscar` dejando procedencia en `repr_meta`, identificar la edición
+  eligiendo una candidata en vivo, e importar un CSV con ISBN poblando `passes.edition_id`. Los
+  tres validados por MUTACIÓN.
+
+**Lo que NO está hecho, y es lo que hay que mirar antes de dar la pieza por cerrada:** la **fase
+destructiva (Task 16) no se ejecutó** y **ninguna migración de la rama está en prod**. Prod sigue
+con `books` en 14 columnas, sin `repr_meta` ni `wikidata_id`, con `get_widget_snapshot` nombrando
+`is_primary` y con las 61 shells vacías sin hidratar. Eso vive en **#900** (aplicar `20260892`),
+**#912** (barrido QID), **#894** (backfill de shells), **#877** (borrar los triggers de primaria)
+y **#866** (borrar el esquema de respaldo). El resto de lo que quedó abierto está etiquetado y
+es rastreable por `area:catalogo`.
 
 ## Features que no existen (P2-P3, por dominio)
 

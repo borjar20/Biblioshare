@@ -1,6 +1,24 @@
-import { describe, expect, it, vi } from "vitest";
-import { findOrCreateCatalogItem, findOrCreateCatalogItemsBulk } from "./find-or-create";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SearchResult } from "./types";
+
+// La hidratación de LIBROS en lote va con `service_role` a propósito, no con el
+// cliente de la petición: el trigger `trg_stamp_books_repr_manual` distingue
+// curación de automatismo por la ausencia de `app.hydrating`, así que un
+// escritor masivo con el cliente del usuario marcaría `manual` el catálogo
+// entero. Por eso el mock del cliente de servicio es SEPARADO del `supabase`
+// que recibe la función: los tests comprueban por cuál de los dos sale cada
+// RPC, que es justo lo que una mutación rompería en silencio (#871).
+const mocks = vi.hoisted(() => ({ serviceRpc: vi.fn() }));
+vi.mock("@/lib/supabase/service-role", () => ({
+  createServiceRoleClient: () => ({ rpc: mocks.serviceRpc }),
+}));
+
+import { findOrCreateCatalogItem, findOrCreateCatalogItemsBulk } from "./find-or-create";
+
+beforeEach(() => {
+  mocks.serviceRpc.mockReset();
+  mocks.serviceRpc.mockResolvedValue({ data: null, error: null });
+});
 
 function movie(externalId: string, title: string, extra: Partial<SearchResult> = {}): SearchResult {
   return {
@@ -17,7 +35,11 @@ function movie(externalId: string, title: string, extra: Partial<SearchResult> =
   } as SearchResult;
 }
 
-function book(externalId: string, title: string): SearchResult {
+function book(
+  externalId: string,
+  title: string,
+  extra: Partial<SearchResult> = {}
+): SearchResult {
   return {
     itemType: "book",
     externalId,
@@ -27,6 +49,7 @@ function book(externalId: string, title: string): SearchResult {
     year: null,
     synopsis: null,
     genres: null,
+    ...extra,
   } as SearchResult;
 }
 
@@ -89,17 +112,100 @@ describe("findOrCreateCatalogItemsBulk", () => {
     });
   });
 
-  it("libros: registra la shell pero NO hidrata (la ficha de libro lo hace)", async () => {
+  // 61 de los 268 libros del catálogo de PROD eran shells vacías el 2026-08-26
+  // («Sin título», sin año), todas de una sola visita a la ficha de Sanderson,
+  // porque esta rama tiraba el título/año/portada que la bibliografía SÍ trae.
+  it("libros: hidrata en lote con los datos de la bibliografía, y por service_role", async () => {
     const rpc = vi.fn().mockResolvedValueOnce({
-      data: [{ external_id: "/works/OL1W", id: "book-1" }],
+      data: [
+        { external_id: "/works/OL1W", id: "book-1" },
+        { external_id: "/works/OL2W", id: "book-2" },
+      ],
       error: null,
     });
     const supabase = { rpc } as never;
 
-    const map = await findOrCreateCatalogItemsBulk(supabase, [book("/works/OL1W", "Libro")]);
+    const map = await findOrCreateCatalogItemsBulk(supabase, [
+      book("/works/OL1W", "En llamas", {
+        titleLang: "es",
+        coverUrl: "https://covers/1.jpg",
+        year: 2009,
+      }),
+      book("/works/OL2W", "Mockingjay", { titleLang: "en", coverUrl: null, year: 2010 }),
+    ]);
 
     expect(map.get("book:/works/OL1W")).toBe("book-1");
-    expect(rpc).toHaveBeenCalledTimes(1); // solo el register, ningún hydrate_screens_bulk
+    // El cliente de la PETICIÓN solo registra las shells: ni un hydrate.
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls[0][0]).toBe("register_catalog_items_bulk");
+    // La hidratación sale por el cliente de SERVICIO.
+    expect(mocks.serviceRpc).toHaveBeenCalledTimes(1);
+    expect(mocks.serviceRpc.mock.calls[0][0]).toBe("hydrate_books_bulk");
+    expect(mocks.serviceRpc.mock.calls[0][1]).toEqual({
+      p_rows: [
+        {
+          book_id: "book-1",
+          title: "En llamas",
+          title_lang: "es",
+          author: "Autora",
+          cover_url: "https://covers/1.jpg",
+          cover_lang: "other",
+          published_year: 2009,
+        },
+        {
+          book_id: "book-2",
+          title: "Mockingjay",
+          title_lang: "en",
+          author: "Autora",
+          cover_url: null,
+          cover_lang: "other",
+          published_year: 2010,
+        },
+      ],
+    });
+  });
+
+  // Sin `titleLang` no se puede etiquetar `repr_meta`, y un título sin etiqueta
+  // que la RPC diera por bueno quedaría CONGELADO (#730). "other" es rango 2:
+  // rellena hueco, nunca sella. Cae aquí el catálogo local y el modo mock.
+  it("libros sin titleLang: cae a 'other', que rellena hueco pero no sella rango", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: [{ external_id: "/works/OL9W", id: "book-9" }],
+      error: null,
+    });
+
+    await findOrCreateCatalogItemsBulk({ rpc } as never, [book("/works/OL9W", "Sin idioma")]);
+
+    expect(mocks.serviceRpc.mock.calls[0][1].p_rows[0].title_lang).toBe("other");
+  });
+
+  it("libros: si el register no resolvió el id, esa fila no viaja a la RPC", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: [{ external_id: "/works/OL1W", id: "book-1" }],
+      error: null,
+    });
+
+    await findOrCreateCatalogItemsBulk({ rpc } as never, [
+      book("/works/OL1W", "Sí"),
+      book("/works/OL404W", "No resuelto"),
+    ]);
+
+    expect(mocks.serviceRpc.mock.calls[0][1].p_rows).toHaveLength(1);
+    expect(mocks.serviceRpc.mock.calls[0][1].p_rows[0].book_id).toBe("book-1");
+  });
+
+  it("libros: hydrate_books_bulk falla -> el map se conserva, no lanza", async () => {
+    const rpc = vi.fn().mockResolvedValueOnce({
+      data: [{ external_id: "/works/OL1W", id: "book-1" }],
+      error: null,
+    });
+    mocks.serviceRpc.mockRejectedValueOnce(new Error("42501"));
+
+    const map = await findOrCreateCatalogItemsBulk({ rpc } as never, [
+      book("/works/OL1W", "Libro"),
+    ]);
+
+    expect(map.get("book:/works/OL1W")).toBe("book-1");
   });
 
   it("sin sesión: register_catalog_items_bulk lanza (raise exception) -> se traga, no lanza", async () => {
@@ -157,5 +263,103 @@ describe("findOrCreateCatalogItem", () => {
       p_item_type: "movie",
       p_external_id: "129",
     });
+  });
+
+  // Camino GB-only (spec §4, Task 11): sin work key pero con volumen de Google
+  // Books -> nace por register_catalog_item_by_volume, no por
+  // register_catalog_item (que exige `openlibrary_work_key`, aquí vacío).
+  it("libro GB-only (sin externalId, con googleVolumeId) -> register_catalog_item_by_volume", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-gb-1", error: null });
+    const supabase = { rpc } as never;
+
+    const id = await findOrCreateCatalogItem(
+      supabase,
+      book("", "GB Only", { googleVolumeId: "vol-1", matchedIsbn: "9788410138407" }),
+      "user-1"
+    );
+
+    expect(id).toBe("book-gb-1");
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_item_by_volume", {
+      p_volume_id: "vol-1",
+    });
+  });
+
+  it("libro con work key -> usa register_catalog_item aunque venga (por error) un googleVolumeId", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-ol-1", error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(
+      supabase,
+      book("/works/OL1W", "Con work key", { googleVolumeId: "vol-1" }),
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_item", {
+      p_item_type: "book",
+      p_external_id: "/works/OL1W",
+    });
+  });
+
+  it("película/serie con externalId vacío nunca usa la RPC de volumen (solo aplica a libros)", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "movie-id-2", error: null });
+    const supabase = { rpc } as never;
+
+    // googleVolumeId puesto A PROPÓSITO (no debería darse en la realidad):
+    // sin el guard de itemType, esta llamada tomaría la rama de volumen.
+    await findOrCreateCatalogItem(
+      supabase,
+      movie("", "Sin id externo", { googleVolumeId: "vol-x" }),
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "register_catalog_item", {
+      p_item_type: "movie",
+      p_external_id: "",
+    });
+  });
+
+  // ensureBookEdition (Task 11): el único automatismo de creación de ediciones
+  // que queda vivo, y solo dispara con matchedIsbn + userId autenticado.
+  it("libro con matchedIsbn y usuario -> registra la edición explícita", async () => {
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: "book-1", error: null }) // register_catalog_item
+      .mockResolvedValueOnce({ data: "edition-1", error: null }); // register_book_edition
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(
+      supabase,
+      book("/works/OL1W", "T", { matchedIsbn: "9788410138407", coverUrl: "c" }),
+      "user-1"
+    );
+
+    expect(rpc).toHaveBeenNthCalledWith(2, "register_book_edition", {
+      p_book_id: "book-1",
+      p_isbn: "9788410138407",
+      p_cover_url: "c",
+    });
+  });
+
+  it("libro sin matchedIsbn (alta por búsqueda de texto) -> NO registra edición", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-1", error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(supabase, book("/works/OL1W", "T"), "user-1");
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).not.toHaveBeenCalledWith("register_book_edition", expect.anything());
+  });
+
+  it("libro con matchedIsbn pero SIN usuario autenticado -> NO registra edición", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: "book-1", error: null });
+    const supabase = { rpc } as never;
+
+    await findOrCreateCatalogItem(
+      supabase,
+      book("/works/OL1W", "T", { matchedIsbn: "9788410138407" })
+      // sin userId
+    );
+
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

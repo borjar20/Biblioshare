@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { commitImportRow } from "./commit-row";
+import { matchImportRow } from "./match-row";
 import type { ImportRow } from "./types";
 
 // commit-row.ts delega el matching de catálogo a match-row.ts (búsquedas
@@ -19,12 +20,40 @@ vi.mock("./match-row", () => ({
 // histórica, un select().eq()...maybeSingle() de "ya existe" (siempre "no")
 // seguido de un insert() sin encadenar select — se espera directamente (el
 // insert de Supabase es awaitable por sí mismo).
-function createFakeSupabase() {
+function createFakeSupabase(options: { editions?: Record<string, string> } = {}) {
   const insertedRows: Record<string, unknown>[] = [];
   let activeIdCounter = 0;
+  const editions = options.editions ?? {};
 
   const client = {
-    from(_table: string) {
+    from(table: string) {
+      // Resolución de `resolveEditionId` (commit-row.ts): busca por el índice
+      // único (book_id, isbn). `editions` simula lo que register_book_edition
+      // dejó realmente escrito — vacío simula tanto "todavía no existía y el
+      // registro falló" (ISBN con dígito de control inválido) como "ya
+      // existía y la RPC devolvió NULL": desde aquí son indistinguibles, y a
+      // los dos hay que resolverlos igual.
+      if (table === "book_editions") {
+        return {
+          select() {
+            const builder = {
+              bookId: undefined as string | undefined,
+              isbn: undefined as string | undefined,
+              eq(column: string, value: string) {
+                if (column === "book_id") builder.bookId = value;
+                if (column === "isbn") builder.isbn = value;
+                return builder;
+              },
+              async maybeSingle() {
+                const id = editions[`${builder.bookId}:${builder.isbn}`];
+                return { data: id ? { id } : null, error: null };
+              },
+            };
+            return builder;
+          },
+        };
+      }
+
       return {
         insert(payload: Record<string, unknown>) {
           insertedRows.push(payload);
@@ -232,5 +261,72 @@ describe("commitImportRow — invariante estado ⟺ fechas", () => {
 
     expect(insertedRows[0]!.finished_on).toBe("2019-01-20");
     expect(insertedRows[0]!.started_on).toBe("2019-01-01");
+  });
+});
+
+// Task 14: una fila con ISBN es una identificación deliberada de una tirada
+// concreta (el usuario catalogó ESE ejemplar) — el pase que nace de ella debe
+// apuntar a esa edición, no perderla.
+describe("commitImportRow — el ISBN de la fila identifica la edición del pase", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("fila CON ISBN: el pase activo nace con edition_id resuelto por (book_id, isbn)", async () => {
+    vi.mocked(matchImportRow).mockResolvedValueOnce({
+      kind: "matched",
+      catalogId: "catalog-item-1",
+      matchedIsbn: "9780441172719",
+    });
+    const { client, insertedRows } = createFakeSupabase({
+      editions: { "catalog-item-1:9780441172719": "edition-abc" },
+    });
+
+    const result = await commitImportRow(client as never, "user-1", "book", baseRow());
+
+    expect(result.outcome).toBe("imported");
+    expect(insertedRows).toHaveLength(1);
+    expect(insertedRows[0]!.edition_id).toBe("edition-abc");
+  });
+
+  it("fila SIN ISBN (match por título): el pase nace con edition_id null — estado legítimo, no pendiente", async () => {
+    vi.mocked(matchImportRow).mockResolvedValueOnce({
+      kind: "matched",
+      catalogId: "catalog-item-1",
+    });
+    const { client, insertedRows } = createFakeSupabase();
+
+    const result = await commitImportRow(client as never, "user-1", "book", baseRow());
+
+    expect(result.outcome).toBe("imported");
+    expect(insertedRows[0]!.edition_id).toBeNull();
+  });
+
+  it("ISBN con dígito de control inválido: la fila SE IMPORTA IGUAL, sin edición — degrada, no rompe la fila", async () => {
+    // register_book_edition (la RPC) lanza `invalid isbn13` para un checksum
+    // malo, pero ensureBookEdition (find-or-create.ts) se traga ese error: no
+    // llega ninguna excepción hasta aquí. Lo único observable desde
+    // commit-row.ts es que la edición nunca se escribió, así que
+    // resolveEditionId no la encuentra — se simula con un `editions` vacío.
+    vi.mocked(matchImportRow).mockResolvedValueOnce({
+      kind: "matched",
+      catalogId: "catalog-item-1",
+      matchedIsbn: "9780441172710", // dígito de control incorrecto
+    });
+    const { client, insertedRows } = createFakeSupabase();
+
+    const result = await commitImportRow(client as never, "user-1", "book", baseRow());
+
+    expect(result.outcome).toBe("imported");
+    expect(insertedRows).toHaveLength(1);
+    expect(insertedRows[0]!.edition_id).toBeNull();
+  });
+
+  it("propaga el userId de la sesión de importación a matchImportRow (lo necesita ensureBookEdition)", async () => {
+    const { client } = createFakeSupabase();
+
+    await commitImportRow(client as never, "user-42", "book", baseRow());
+
+    expect(matchImportRow).toHaveBeenCalledWith(client, "book", expect.anything(), "user-42");
   });
 });

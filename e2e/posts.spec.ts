@@ -1,4 +1,8 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import {
+  FINAL_EMPIRE_FILTER,
+  FINAL_EMPIRE_WORK_KEY,
+} from "./support/book-fixture";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -120,9 +124,9 @@ async function publishThought(page: Page, opts: { anchorTitle: string; body: str
 //    copian los helpers. ──
 async function resolveBookFixture(userId: string): Promise<{ itemId: string; passId: string }> {
   const [book] = await rest<{ id: string }[]>(
-    `books?title=eq.${encodeURIComponent("The Final Empire")}&select=id`,
+    `books?${FINAL_EMPIRE_FILTER}&select=id`,
   );
-  if (!book) throw new Error('no se encontró el libro fixture "The Final Empire" en catálogo');
+  if (!book) throw new Error(`no se encontró el libro fixture ${FINAL_EMPIRE_WORK_KEY} en catálogo`);
   const [pass] = await rest<{ id: string }[]>(
     `passes?user_id=eq.${userId}&item_type=eq.book&item_id=eq.${book.id}&is_active=eq.true&select=id`,
   );

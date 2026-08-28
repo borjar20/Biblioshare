@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   isAutoCloseable: vi.fn(),
   applyTransition: vi.fn(),
   getEditions: vi.fn(),
-  primaryEdition: vi.fn(),
   markEpisodeWatched: vi.fn(),
   rollSeriesProgress: vi.fn(),
   revalidateReadingLog: vi.fn(),
@@ -31,7 +30,6 @@ vi.mock("@/lib/passes/get-passes", () => ({
 }));
 vi.mock("@/lib/passes/apply-transition", () => ({ applyTransition: mocks.applyTransition }));
 vi.mock("@/lib/editions/get-editions", () => ({ getEditions: mocks.getEditions }));
-vi.mock("@/lib/editions/edition-label", () => ({ primaryEdition: mocks.primaryEdition }));
 vi.mock("@/lib/series/episode-watch-store", () => ({
   markEpisodeWatched: mocks.markEpisodeWatched,
   rollSeriesProgress: mocks.rollSeriesProgress,
@@ -118,7 +116,6 @@ beforeEach(() => {
   });
   mocks.isAutoCloseable.mockResolvedValue(false);
   mocks.getEditions.mockResolvedValue([]);
-  mocks.primaryEdition.mockReturnValue(undefined);
   mocks.rollSeriesProgress.mockResolvedValue({ reachedEnd: false });
   mocks.markEpisodeWatched.mockResolvedValue(true);
   mocks.createPost.mockResolvedValue({ ok: true });

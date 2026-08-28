@@ -52,6 +52,23 @@ export function formatEditionDetails(
   return parts.join(" · ");
 }
 
-export function primaryEdition(editions: Edition[]): Edition | null {
-  return editions.find((e) => e.isPrimary) ?? null;
+// Precedencia de páginas del progreso (spec 2026-08-26 §5): manda la edición
+// que el USUARIO identificó en su pase; sin ella, las páginas orientativas de
+// la obra (`books.total_pages`). No hay tercer peldaño.
+//
+// La «edición primaria» (`book_editions.is_primary`) murió aquí. Nunca fue una
+// decisión: la marcaba un trigger sobre la PRIMERA fila que entrara, y con el
+// sync masivo vivo eso era literalmente la primera de hasta 500 filas bajadas
+// de OpenLibrary. Hoy las ediciones solo existen cuando alguien identificó su
+// tirada, así que el peldaño intermedio solo servía para que dos pantallas
+// enseñaran totales distintos del mismo libro.
+//
+// El campo se llama `totalUnits` y no `totalPages` porque `Edition` es el tipo
+// compartido con las versiones de película (allí son minutos): la regla es la
+// misma y no se duplica por medio.
+export function pagesForPass(
+  passEdition: { totalUnits: number | null } | null | undefined,
+  workTotalUnits: number | null | undefined,
+): number | null {
+  return passEdition?.totalUnits ?? workTotalUnits ?? null;
 }

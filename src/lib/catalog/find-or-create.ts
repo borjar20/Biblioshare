@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
-import type { SearchResult } from "./types";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { isVolumeOnlyResult, type SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,16 +28,28 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * `SearchResult` — quedan sin hidratar en el lote y los completa la apertura
  * de ficha (`ensureMovieHydrated`/`ensureSeriesHydrated`).
  *
- * Los libros SOLO se registran (shell), nunca se hidratan aquí: la ficha de
- * libro hidrata (`ensureBookHydrated`) y el lote de créditos de persona rara
- * vez trae sinopsis de libro de todos modos.
+ * Los libros se registran Y se hidratan PARCIALMENTE (`hydrate_books_bulk`):
+ * título, autor, año y portada, que es lo que la bibliografía de autor SÍ trae
+ * y justo lo que la ficha de persona pinta. Sinopsis, géneros, páginas y QID no
+ * vienen en el lote, y por eso esa RPC NO marca `hydrated_at`: la obra sigue
+ * pendiente de su hidratación COMPLETA en la primera visita a su ficha
+ * (`ensureBookHydrated`), que además puede MEJORAR lo que el lote escribió.
+ *
+ * Esa rama va con `createServiceRoleClient()`, no con el cliente de la
+ * petición, y no es una preferencia: el trigger `trg_stamp_books_repr_manual`
+ * distingue curación de automatismo por `app.hydrating`, así que un escritor
+ * MASIVO corriendo con el cliente del usuario marcaría `manual` el catálogo
+ * entero. Mismo criterio que `hydratePersonCredits` con `credits` (#725) y que
+ * `ensureBookHydrated` con `hydrate_book` (#871).
  *
  * NO registra ediciones de libro (`ensureBookEdition`): eso necesita el ISBN de
  * la tirada que el usuario tiene en la mano y un userId, y el lote no tiene ni
  * lo uno ni lo otro. Ese camino se queda en `findOrCreateCatalogItem`.
  *
  * NUNCA lanza: el llamador es un render de lectura. Un fallo (incl. "sin
- * sesión" — la RPC exige `auth.uid()` y lanza si no hay— o cualquier error de
+ * sesión" — `register_catalog_items_bulk` sí exige `auth.uid()` y lanza si no
+ * hay; la hidratación de libro NO, va por `service_role` desde 20260890 y lo
+ * que rechaza es cualquier invocador que no lo sea — o cualquier error de
  * red) se registra con `console.error` y ese tipo se devuelve sin resolver;
  * el resto de tipos sigue su camino porque cada uno corre en su propio
  * try/catch dentro del `Promise.all`.
@@ -84,6 +97,57 @@ export async function findOrCreateCatalogItemsBulk(
           count: externalIds.length,
           error,
         });
+        return;
+      }
+
+      if (itemType === "book") {
+        // El título, el autor, el año y la portada SÍ vienen en la bibliografía
+        // (medido sobre las 100 obras de Sanderson: 100/100 con título, 100/100
+        // con `first_publish_year`, 91/100 con `cover_i`) y son exactamente lo
+        // que la ficha de autor pinta. Tirarlos dejaba shells vacías: 61 de los
+        // 268 libros del catálogo de PROD el 2026-08-26 —el 23%—, todas de una
+        // sola visita a una ficha de autor, saliendo como «Sin título».
+        //
+        // Se puede escribir el título AHORA y no antes porque `repr_meta` lo
+        // etiqueta con su idioma: un título inglés del lote ya no queda
+        // congelado, la ficha lo mejora si encuentra candidata española. Sin esa
+        // etiqueta esto sería el modo de fallo de #730.
+        const bookRows = externalIds
+          .map((externalId) => {
+            const result = bucket.get(externalId)!;
+            const bookId = map.get(`book:${externalId}`);
+            if (!bookId) return null;
+            return {
+              book_id: bookId,
+              title: result.title || null,
+              // Sin idioma declarado, "other" (rango 2): rellena un hueco vacío
+              // pero nunca sella rango 0. Mentir aquí diciendo "es" congelaría
+              // el título para siempre.
+              title_lang: result.titleLang ?? "other",
+              author: result.subtitle,
+              cover_url: result.coverUrl,
+              // La portada del doc de búsqueda es la de la OBRA, no la de una
+              // edición de idioma conocido: se etiqueta como el fallback que
+              // es, para que la ficha pueda mejorarla con una portada española.
+              cover_lang: "other",
+              published_year: result.year,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null);
+
+        if (bookRows.length === 0) return;
+
+        try {
+          // service_role: ver la cabecera del módulo.
+          const { error } = await createServiceRoleClient().rpc("hydrate_books_bulk", {
+            p_rows: bookRows,
+          });
+          if (error) {
+            console.error("hydrate_books_bulk failed", { count: bookRows.length, error });
+          }
+        } catch (error) {
+          console.error("hydrate_books_bulk failed", { count: bookRows.length, error });
+        }
         return;
       }
 
@@ -142,10 +206,24 @@ export async function findOrCreateCatalogItem(
   result: SearchResult,
   userId?: string | null
 ): Promise<string> {
-  const { data: id, error } = await supabase.rpc("register_catalog_item", {
-    p_item_type: result.itemType,
-    p_external_id: result.externalId,
-  });
+  // Camino GB-only (spec §4): sin work key pero con volumen de Google Books —
+  // solo lo produce la rama ISBN de `searchCatalog` cuando Open Library no
+  // conoce el ISBN. `register_catalog_item` exige `openlibrary_work_key`, así
+  // que aquí la RPC de alta es la que nace del volumen, no de la work key.
+  //
+  // El predicado vive en `types.ts` porque `bookShellFromSearchResult` lo lee
+  // TAMBIÉN, para no propagarle el `matchedIsbn` del navegador a un shell sin
+  // work key (C2). Si esta condición cambia y la otra no, vuelve #674.
+  const useVolumeRpc = isVolumeOnlyResult(result);
+
+  const { data: id, error } = useVolumeRpc
+    ? await supabase.rpc("register_catalog_item_by_volume", {
+        p_volume_id: result.googleVolumeId!,
+      })
+    : await supabase.rpc("register_catalog_item", {
+        p_item_type: result.itemType,
+        p_external_id: result.externalId,
+      });
   if (error || !id) throw error ?? new Error("register_catalog_item returned no id");
 
   // La edición del libro (ISBN escaneado) sigue su camino validado server-side.
@@ -156,10 +234,24 @@ export async function findOrCreateCatalogItem(
 }
 
 // Registra la tirada que el usuario tiene EN LA MANO como edición de la obra.
-// Solo el lookup por ISBN (escáner de código de barras, importador de Goodreads)
-// sabe cuál es: una búsqueda por texto devuelve la obra y punto, y sus ediciones
-// las trae ensureBookEditions al abrir la ficha. De ahí que la única fuente aquí
-// sea `matchedIsbn`.
+// Solo el lookup por ISBN (escáner de código de barras, importador de Goodreads,
+// tecleo manual, y ahora el camino GB-only) sabe cuál es: una búsqueda por texto
+// devuelve la obra y punto, sin tirada identificada — sus candidatas se
+// consultan en vivo (fetchRepresentationCandidates) pero no se persisten hasta
+// que alguien las identifique. De ahí que la única fuente aquí sea
+// `matchedIsbn`.
+//
+// Es, a propósito, el ÚNICO automatismo de creación de ediciones que queda vivo
+// en todo el catálogo (spec §3): todo lo demás (bulk, hidratación) nace o se
+// hidrata SIN escribir en `book_editions`, porque inventar una tirada a partir
+// de datos agregados de la obra fue justo el bug que esta pieza corrige (ver la
+// cabecera de `find-or-create-bulk.ts`). Este caso es distinto porque un ISBN
+// buscado explícitamente —escaneado, tecleado, o traído por una fila de CSV— ES
+// una identificación deliberada de una tirada concreta por parte del usuario,
+// no una inferencia nuestra: no hay nada que "inventar", el usuario ya dijo
+// cuál es. Una búsqueda por texto nunca trae `matchedIsbn`, así que esta
+// función no registra nada en ese camino — comportamiento correcto, no un
+// descuido.
 //
 // El insert directo a book_editions no es una opción: dejaba a cualquier
 // autenticado escribir editorial/portada/páginas inventadas en cualquier libro

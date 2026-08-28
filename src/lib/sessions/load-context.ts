@@ -5,7 +5,7 @@ import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getActivePass } from "@/lib/passes/get-passes";
 import { getEditions } from "@/lib/editions/get-editions";
-import { primaryEdition } from "@/lib/editions/edition-label";
+import { pagesForPass } from "@/lib/editions/edition-label";
 import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 
@@ -116,12 +116,17 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
     }));
   }
 
-  // El total sale de la EDICIÓN del pase (o la primaria), no de
-  // books.total_pages: bolsillo y tapa dura no tienen las mismas páginas.
+  // El total sale de la EDICIÓN QUE EL USUARIO IDENTIFICÓ en su pase; sin ella,
+  // de las páginas orientativas de la obra (bolsillo y tapa dura no tienen las
+  // mismas páginas). Dos peldaños, `pagesForPass`: la «edición primaria» ya no
+  // existe como criterio (spec 2026-08-26 §5).
   const editions = await getEditions(itemType, itemId);
-  const edition =
-    editions.find((e) => e.id === activePass.editionId) ?? primaryEdition(editions);
-  const total = edition?.totalUnits ?? book?.total_pages ?? series?.total_episodes ?? null;
+  const passEdition =
+    editions.find((e) => e.id === activePass.editionId) ?? null;
+  const total = pagesForPass(
+    passEdition,
+    book?.total_pages ?? series?.total_episodes ?? null,
+  );
 
   return {
     passId: activePass.id,

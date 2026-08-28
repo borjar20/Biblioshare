@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { matchImportRow } from "./match-row";
-import { searchLocalCatalog } from "@/lib/catalog/local-search";
+import { findLocalBookByIsbn, searchLocalCatalog } from "@/lib/catalog/local-search";
 import { searchWorks } from "@/lib/catalog/openlibrary/work-search";
+import { lookupIsbn } from "@/lib/catalog/openlibrary/isbn-lookup";
 import { getMovieAsSearchResult, searchMoviesForImport } from "@/lib/catalog/tmdb";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import type { ImportCandidate, ImportRow } from "./types";
@@ -417,5 +418,117 @@ describe("matchBook: los títulos alternativos de una obra", () => {
     ]);
 
     expect(await matchImportRow(client, "book", bookRow())).toEqual({ kind: "unmatched" });
+  });
+});
+
+describe("matchBook: el ISBN identifica una tirada concreta", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(findLocalBookByIsbn).mockResolvedValue(null);
+    vi.mocked(lookupIsbn).mockResolvedValue(null);
+  });
+
+  it("casa por ISBN vía OpenLibrary y propaga matchedIsbn + userId a findOrCreateCatalogItem", async () => {
+    const found: SearchResult = {
+      itemType: "book",
+      externalId: "/works/OL1W",
+      title: "Fundación",
+      subtitle: null,
+      coverUrl: null,
+      year: 1951,
+      synopsis: null,
+      genres: null,
+      matchedIsbn: "9788445006927",
+    };
+    vi.mocked(lookupIsbn).mockResolvedValue(found);
+
+    const result = await matchImportRow(
+      client,
+      "book",
+      bookRow({ isbn: "9788445006927" }),
+      "user-1"
+    );
+
+    expect(result).toEqual({
+      kind: "matched",
+      catalogId: "created-id",
+      matchedIsbn: "9788445006927",
+    });
+    expect(findOrCreateCatalogItem).toHaveBeenCalledWith(expect.anything(), found, "user-1");
+  });
+
+  it("sin userId, sigue casando y propagando matchedIsbn (findOrCreateCatalogItem se encarga de degradar)", async () => {
+    const found: SearchResult = {
+      itemType: "book",
+      externalId: "/works/OL1W",
+      title: "Fundación",
+      subtitle: null,
+      coverUrl: null,
+      year: 1951,
+      synopsis: null,
+      genres: null,
+      matchedIsbn: "9788445006927",
+    };
+    vi.mocked(lookupIsbn).mockResolvedValue(found);
+
+    const result = await matchImportRow(client, "book", bookRow({ isbn: "9788445006927" }));
+
+    expect(result).toEqual({
+      kind: "matched",
+      catalogId: "created-id",
+      matchedIsbn: "9788445006927",
+    });
+    expect(findOrCreateCatalogItem).toHaveBeenCalledWith(expect.anything(), found, undefined);
+  });
+
+  it("casa por ISBN ya presente en el catálogo local y propaga matchedIsbn sin dar de alta nada", async () => {
+    vi.mocked(findLocalBookByIsbn).mockResolvedValue({
+      itemType: "book",
+      externalId: "/works/OL1W",
+      catalogId: "local-book-1",
+      title: "Fundación",
+      subtitle: null,
+      coverUrl: null,
+      year: 1951,
+      synopsis: null,
+      genres: null,
+      matchedIsbn: "9788445006927",
+    });
+
+    const result = await matchImportRow(
+      client,
+      "book",
+      bookRow({ isbn: "9788445006927" }),
+      "user-1"
+    );
+
+    expect(result).toEqual({
+      kind: "matched",
+      catalogId: "local-book-1",
+      matchedIsbn: "9788445006927",
+    });
+    expect(lookupIsbn).not.toHaveBeenCalled();
+    expect(findOrCreateCatalogItem).not.toHaveBeenCalled();
+  });
+
+  it("un match por título (sin ISBN) no trae matchedIsbn", async () => {
+    const work: SearchResult = {
+      itemType: "book",
+      externalId: "/works/OL36410330W",
+      title: "Fatta Eld",
+      altTitles: ["Fatta Eld", "En llamas"],
+      subtitle: "Suzanne Collins",
+      coverUrl: null,
+      year: 2009,
+      synopsis: null,
+      genres: null,
+    };
+    vi.mocked(searchWorks).mockResolvedValue([work]);
+    vi.mocked(searchLocalCatalog).mockResolvedValue([]);
+
+    const result = await matchImportRow(client, "book", bookRow());
+
+    expect(result).toEqual({ kind: "matched", catalogId: "created-id" });
+    expect("matchedIsbn" in result && result.matchedIsbn).toBeFalsy();
   });
 });

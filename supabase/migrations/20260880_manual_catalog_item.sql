@@ -17,6 +17,19 @@
 -- de la ficha igual que cualquier otra (ensureBookHydrated ya contempla el caso
 -- "alta manual" — resuelve work key por ISBN o la marca hidratada), y hydrate_book
 -- es fill-only, nunca pisa lo que el colaborador escribió.
+--
+-- ⚠️ CORRECCIÓN (2026-08-28, cierre del plan obra/edición/representación). La
+-- SEGUNDA mitad de esa frase dejó de ser cierta: 20260883 convirtió hydrate_book
+-- en fill-or-upgrade por rango de idioma, y el alta manual nacía SIN repr_meta
+-- (rango 3), así que la primera hidratación con una candidata española DESTRUÍA
+-- el título y la portada tecleados — se reprodujo en dev con la RPC real. Fue el
+-- origen de los dos Critical de la revisión de la Task 2. Desde 20260885 esta
+-- función escribe repr_meta con source:'manual' para title (y cover, si viene) en
+-- el MISMO insert, y es esa marca la que protege lo curado. La PRIMERA mitad
+-- —hydrated_at a null— sigue siendo correcta y por la misma razón: la ficha
+-- todavía tiene que completar la obra. No se toca el SQL de abajo: está aplicada
+-- en dev y prod (md5(prosrc) idéntico) y una migración aplicada es historia.
+-- Ver data-model.md §2.1ter y decisiones.md.
 create or replace function public.register_manual_catalog_item(
   p_item_type text,
   p_title text,

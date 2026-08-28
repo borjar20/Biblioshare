@@ -2,9 +2,11 @@
 
 > **[Procedimiento · a demanda]** No corre solo. Se lanza cuando quieras verificar que los
 > docs canónicos siguen coincidiendo con la realidad (prod + dev + repo). Última ejecución:
-> 2026-08-19 (superficies 6 y 7, tras cerrar los cuatro P0 de la auditoría: dev y prod quedan
-> idénticos en grants de catálogo y sin vistas escribibles). Antes, 2026-07-21 (superficie 5 —
-> issues #118, #121, #122)
+> 2026-08-28 (superficie 6, cierre del plan obra/edición/representación: `books` cuadra en
+> dev con las 3 columnas nuevas, y se anota la deriva ajena a esa rama). Antes, 2026-08-19
+> (superficies 6 y 7, tras cerrar los cuatro P0 de la auditoría: dev y prod quedan idénticos
+> en grants de catálogo y sin vistas escribibles) y 2026-07-21 (superficie 5 — issues #118,
+> #121, #122)
 
 El objetivo es detectar **antes de que muerda** el patrón "la doc dice X, el proyecto es Y".
 Compara siete superficies y reporta solo lo que **no cuadra**.
@@ -274,9 +276,47 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > `con_update` de `comments` sube por encima de 3, es una regresión**: alguien concedió UPDATE
 > sobre una columna de audio.
 
+> **Nota del 2026-08-28 (cierre del plan obra/edición/representación).** Corrida completa en
+> **dev y prod**. Lo que se venía a comprobar cuadra: `books` da **`17 | 0 | 9` en dev** —las
+> tres columnas de `20260882` (`repr_meta`, `google_books_volume_id`, `wikidata_id`) subieron
+> `cols` de 14 a 17 **sin tocar `con_update`**, que es justo lo que se quería (nacen sin grant
+> de cliente)— y `14 | 0 | 9` en prod, porque la fase destructiva del plan (Task 16) **no se
+> ha ejecutado y ninguna migración de la rama está en prod** (#900, #912). Esa diferencia es
+> esperada y se cierra al desplegar, no es un hueco de grants.
+>
+> **Deriva AJENA a esta rama, detectada de paso y sin reconciliar** (idéntica en dev y prod,
+> así que no es divergencia de entornos sino que la tabla de abajo se quedó vieja):
+> `notifications` devuelve `11 | 0 | 11` y no `9 | 0 | 9`; `post_preferences` (`5 | 4 | 3`) y
+> `posts` (`11 | 8 | 2`) **aparecen en la consulta y no están en la tabla**; `people` y
+> `series_episodes` **están en la tabla y ya no aparecen**. Los números NO se han reescrito a
+> propósito: que `posts` asome puede ser tanto una fila que faltaba documentar como un grant
+> que alguien quitó, y bendecirlo aquí sin auditarlo taparía la segunda posibilidad — que es
+> exactamente el fallo que esta superficie existe para cazar. Registrado en **#917** para
+> auditarlo tabla por tabla. Las filas de `books`, `comments`, `content_reports`, `movies`,
+> `passes`, `progress_sessions`, `series` y `user_blocks` sí están verificadas hoy.
+>
+> **Mientras #917 siga abierta, esta superficie detecta menos de lo que promete:** la regla «si la
+> consulta no devuelve exactamente la tabla de abajo, hay bug» no se puede aplicar tal cual,
+> porque hoy ya no coinciden por un motivo conocido. Compara fila a fila contra las ocho
+> verificadas y trata las otras cinco como pendientes de auditoría, no como línea base.
+>
+> **Límite estructural de esta superficie, aprendido el 2026-08-28 (condición de merge C1).**
+> La consulta compara **números** de grants, no **escritores**: una columna sin grant sigue dando
+> el mismo `con_update` tanto si el código respeta ese hueco como si un `update` del cliente de la
+> petición se estrella contra él. Eso permitió que la doc dijera «esas columnas las escriben las
+> RPC `SECURITY DEFINER`» mientras `hydrate-book.ts` escribía `google_books_volume_id` con el
+> cliente de la petición: **42501 en todas las llamadas, y sin log porque el `await` no
+> destructuraba `error`** — 397 filas en `books` en dev, 397 con la columna a null.
+>
+> **Corolario operativo:** cuando esta tabla justifique un hueco diciendo *quién* escribe una
+> columna, esa frase es una afirmación sobre el CÓDIGO y hay que verificarla en el código, no en
+> los grants. Un `grep` de la columna sobre `src/` que devuelva un `.update({…})` colgando de un
+> cliente de petición es la regresión, aunque los números cuadren. Y toda escritura de este tipo
+> debe destructurar `error`: sin eso, la superficie no falla — se queda muda (#871, y ahora C1).
+
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
-| `books` | 14 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha |
+| `books` | 17 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha. **Subió de 14 a 17 el 2026-08-27** (`20260882`, solo dev; prod sigue en 14 hasta desplegar): `repr_meta`/`google_books_volume_id`/`wikidata_id` nacen SIN grant de cliente a propósito. Quién las escribe (**precisado el 2026-08-28, C1**): `wikidata_id` y `repr_meta`, la RPC `hydrate_book` (`SECURITY DEFINER`), y `repr_meta` además el trigger `trg_stamp_books_repr_manual`; `google_books_volume_id`, **`ensureBookHydrated` con el cliente de `service_role`** — no es una RPC, pero tampoco es el cliente de la petición. **Ninguna action de colaborador las toca** — las de edición solo las LEEN, y la marca de curación la pone el trigger justo para que ningún camino pueda olvidarse de ponerla |
 | `comments` | 12 | 12 | 3 | notas de voz (2026-08-26, dev y prod): `audio_path`/`audio_duration_ms`/`audio_peaks` SIN grant update (inmutables); solo `body`/`is_spoiler`/`edited_at` editables por el autor |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
 | `movies` | 12 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676) |
