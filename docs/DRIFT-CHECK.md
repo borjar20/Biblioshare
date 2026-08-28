@@ -299,10 +299,24 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > consulta no devuelve exactamente la tabla de abajo, hay bug» no se puede aplicar tal cual,
 > porque hoy ya no coinciden por un motivo conocido. Compara fila a fila contra las ocho
 > verificadas y trata las otras cinco como pendientes de auditoría, no como línea base.
+>
+> **Límite estructural de esta superficie, aprendido el 2026-08-28 (condición de merge C1).**
+> La consulta compara **números** de grants, no **escritores**: una columna sin grant sigue dando
+> el mismo `con_update` tanto si el código respeta ese hueco como si un `update` del cliente de la
+> petición se estrella contra él. Eso permitió que la doc dijera «esas columnas las escriben las
+> RPC `SECURITY DEFINER`» mientras `hydrate-book.ts` escribía `google_books_volume_id` con el
+> cliente de la petición: **42501 en todas las llamadas, y sin log porque el `await` no
+> destructuraba `error`** — 397 filas en `books` en dev, 397 con la columna a null.
+>
+> **Corolario operativo:** cuando esta tabla justifique un hueco diciendo *quién* escribe una
+> columna, esa frase es una afirmación sobre el CÓDIGO y hay que verificarla en el código, no en
+> los grants. Un `grep` de la columna sobre `src/` que devuelva un `.update({…})` colgando de un
+> cliente de petición es la regresión, aunque los números cuadren. Y toda escritura de este tipo
+> debe destructurar `error`: sin eso, la superficie no falla — se queda muda (#871, y ahora C1).
 
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
-| `books` | 17 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha. **Subió de 14 a 17 el 2026-08-27** (`20260882`, solo dev; prod sigue en 14 hasta desplegar): `repr_meta`/`google_books_volume_id`/`wikidata_id` nacen SIN grant de cliente a propósito. Las escriben las RPC de hidratación (`SECURITY DEFINER`) y, en el caso de `repr_meta`, el trigger `trg_stamp_books_repr_manual`; **ninguna action de colaborador las toca** — las de edición solo las LEEN, y la marca de curación la pone el trigger justo para que ningún camino pueda olvidarse de ponerla |
+| `books` | 17 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha. **Subió de 14 a 17 el 2026-08-27** (`20260882`, solo dev; prod sigue en 14 hasta desplegar): `repr_meta`/`google_books_volume_id`/`wikidata_id` nacen SIN grant de cliente a propósito. Quién las escribe (**precisado el 2026-08-28, C1**): `wikidata_id` y `repr_meta`, la RPC `hydrate_book` (`SECURITY DEFINER`), y `repr_meta` además el trigger `trg_stamp_books_repr_manual`; `google_books_volume_id`, **`ensureBookHydrated` con el cliente de `service_role`** — no es una RPC, pero tampoco es el cliente de la petición. **Ninguna action de colaborador las toca** — las de edición solo las LEEN, y la marca de curación la pone el trigger justo para que ningún camino pueda olvidarse de ponerla |
 | `comments` | 12 | 12 | 3 | notas de voz (2026-08-26, dev y prod): `audio_path`/`audio_duration_ms`/`audio_peaks` SIN grant update (inmutables); solo `body`/`is_spoiler`/`edited_at` editables por el autor |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
 | `movies` | 12 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676) |

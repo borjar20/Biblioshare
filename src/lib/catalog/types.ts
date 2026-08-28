@@ -69,3 +69,17 @@ export type SearchResult = {
   // obra. Ver spec 2026-08-26 §6.
   wikidataId?: string;
 };
+
+// Camino GB-only (spec §4): el resultado nace de un ISBN que Open Library NO
+// conoce y Google Books sí, así que NO trae work key (`externalId` vacío) y su
+// única identidad es el volumen de Google Books.
+//
+// Vive AQUÍ, y no duplicado en cada consumidor, porque la contradicción de C2
+// nació justo de eso: `find-or-create.ts` decidía la RPC de alta con esta
+// condición mientras `bookShellFromSearchResult` documentaba —y asumía— que
+// `externalId` NUNCA venía vacío. Las dos afirmaciones convivieron en la misma
+// rama y solo una podía ser cierta. Con un único predicado, quien cambie la
+// forma del camino GB-only cambia las dos lecturas a la vez.
+export function isVolumeOnlyResult(result: SearchResult): boolean {
+  return result.itemType === "book" && !result.externalId && !!result.googleVolumeId;
+}

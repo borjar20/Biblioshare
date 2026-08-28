@@ -17,7 +17,7 @@ import {
   type ReprMeta,
 } from "./representation";
 import { resolveQid } from "./wikidata-reconcile";
-import type { SearchResult } from "./types";
+import { isVolumeOnlyResult, type SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -48,14 +48,31 @@ export type HydratableBook = {
 // catálogo de #674). `findOrCreateCatalogItem` ya se queda solo con
 // `p_external_id` por la misma razón (ver su cabecera).
 //
-// Los dos que SÍ se leen de `result` son seguros hoy por construcción, y por
-// qué:
+// Los dos que SÍ se leen de `result`, y por qué son seguros:
 //  - `openlibrary_work_key: result.externalId` es la identidad con la que
 //    `findOrCreateCatalogItem` creó o localizó esta misma fila: el cliente
 //    solo puede dirigir la hidratación a la obra que él mismo pidió abrir.
-//  - `isbn: result.matchedIsbn` solo se LEE dentro de `ensureBookHydrated` en
-//    la rama `if (!workKey && book.isbn)` — inalcanzable aquí mientras
-//    `externalId` no venga vacío, que es el caso normal.
+//    Se normaliza a `null` cuando viene vacío, que es lo que de verdad tiene
+//    la fila en el camino GB-only — un `""` aquí sería mentir sobre el estado.
+//  - `isbn: result.matchedIsbn` solo se propaga cuando el resultado NO es
+//    GB-only (`isVolumeOnlyResult`). No es un adorno: ese ISBN es lo único que
+//    lee `ensureBookHydrated` en la rama `if (!workKey && book.isbn)`, que
+//    RESUELVE UNA WORK KEY Y LA ESTAMPA en la fila.
+//
+//    C2 (esta misma rama): el comentario que había aquí declaraba esa rama
+//    «inalcanzable mientras `externalId` no venga vacío» — y el alta GB-only
+//    de `search.ts` devuelve `externalId: ""` POR CONSTRUCCIÓN, así que la
+//    precondición era literalmente falsa desde el mismo commit que la escribió.
+//    Con ella falsa, el navegador controlaba a la vez `googleVolumeId` (que
+//    elige la FILA) y `matchedIsbn` (que elige la OBRA), sin que el servidor
+//    cruzase los dos: work key equivocada ⇒ título, autor, portada, sinopsis,
+//    géneros y **QID** re-derivados de otra obra, y el barrido de
+//    reconciliación agrupa por QID y llama a `merge_book_into`, que BORRA
+//    filas. Clase #674, P0 reabierto dos veces — las dos porque un comentario
+//    daba el problema por imposible.
+//
+//    No se pierde nada real: si estamos en GB-only es precisamente porque Open
+//    Library NO conoce ese ISBN, así que `resolveWorkKey` habría devuelto null.
 //
 // `title`/`author` no tienen ese blindaje (se usan directos: `author` acaba en
 // `p_author`, fill-only sobre una fila recién nacida sin autor, así que
@@ -67,8 +84,8 @@ export type HydratableBook = {
 export function bookShellFromSearchResult(itemId: string, result: SearchResult): HydratableBook {
   return {
     id: itemId,
-    openlibrary_work_key: result.externalId,
-    isbn: result.matchedIsbn ?? null,
+    openlibrary_work_key: result.externalId || null,
+    isbn: isVolumeOnlyResult(result) ? null : (result.matchedIsbn ?? null),
     hydrated_at: null,
     // La fila acaba de nacer vacía (#674): no tiene representación previa que
     // mejorar ni QID.
@@ -125,13 +142,23 @@ export async function ensureBookHydrated(
     // ignorar: 23505, cuando esa work key ya la tiene otra fila del catálogo
     // (índice único). En los dos casos la hidratación sigue con la key resuelta
     // en memoria; lo único que se pierde es el atajo de no re-resolverla.
+    //
+    // El `.is("openlibrary_work_key", null)` es la SEGUNDA mitad de C2, y es la
+    // que no depende de que el llamante nos pase un shell honesto: el trigger
+    // `enforce_catalog_edit_collaborator_only` solo protege esta columna cuando
+    // `old.openlibrary_work_key is not null`, así que la transición null→valor
+    // está abierta a cualquier `authenticated` (verificado en dev). Sin este
+    // filtro bastaba con que el shell viniera con la key en null —o con `""`—
+    // para reasignarle la obra a una fila que YA tenía la suya. Con él, la
+    // condición la evalúa la BASE sobre la fila real, no la memoria del proceso.
     if (!workKey && book.isbn) {
       workKey = await resolveWorkKey(book.isbn);
       if (workKey) {
         await supabase
           .from("books")
           .update({ openlibrary_work_key: workKey })
-          .eq("id", book.id);
+          .eq("id", book.id)
+          .is("openlibrary_work_key", null);
       }
     }
 
@@ -318,9 +345,15 @@ export async function ensureBookHydrated(
     // cualquier usuario podría haber reescrito el catálogo COMPARTIDO —
     // precedente #725). El cliente de la petición devuelve 42501 aquí, y como el
     // error solo se registra, la hidratación quedaba rota EN SILENCIO (#871).
-    // Las lecturas y los updates de columnas técnicas de abajo siguen yendo con
-    // el cliente del llamante: son null → valor y están permitidos.
-    const { error } = await createServiceRoleClient().rpc("hydrate_book", {
+    //
+    // El privilegio se acota a las escrituras del CATÁLOGO COMPARTIDO: esta RPC
+    // y el sello de `google_books_volume_id` de abajo. Las lecturas y el update
+    // de `openlibrary_work_key` (null → valor, con grant de `authenticated`)
+    // siguen yendo con el cliente del llamante, que es quien lleva la identidad
+    // del usuario y a quien le aplica RLS.
+    const admin = createServiceRoleClient();
+
+    const { error } = await admin.rpc("hydrate_book", {
       p_book_id: book.id,
       p_fields: Object.keys(fields).length > 0 ? (fields as Json) : undefined,
       p_genres: genres.length > 0 ? genres : undefined,
@@ -337,12 +370,36 @@ export async function ensureBookHydrated(
     if (error) console.error("hydrate_book rpc failed", { bookId: book.id, error });
 
     if (gbVolumeId) {
-      // null → valor: permitido para el cliente de la petición.
-      await supabase
+      // C1: NO es "null → valor y por tanto permitido". `authenticated` no
+      // tiene grant de UPDATE sobre esta columna —nace sin él a propósito
+      // (`20260882`), y así lo dice la superficie 6 de docs/DRIFT-CHECK.md—,
+      // así que con el cliente de la petición esto devolvía **42501 permission
+      // denied for table books** SIEMPRE. Y el `await` no destructuraba
+      // `error`: fallaba sin una sola línea de log, que es exactamente el modo
+      // de fallo de #871 repetido dos líneas más abajo del arreglo de #871.
+      // Medido en dev: 397 filas en `books`, 397 con la columna a null.
+      //
+      // Por qué NO se arregla concediendo el grant: esta columna es el único
+      // ancla entre una obra nacida en OpenLibrary y su volumen de Google
+      // Books. Si se queda vacía, un ISBN que OL no conoce y que no esté en
+      // `book_editions` no encuentra la obra existente y
+      // `register_catalog_item_by_volume` ACUÑA UNA OBRA DUPLICADA — justo lo
+      // que esta rama existe para eliminar. Darle el grant al cliente sería
+      // además abrir a cualquier autenticado un identificador del catálogo
+      // compartido con índice único, en contra de todo el endurecimiento de la
+      // rama. Se escribe con service_role, como la RPC.
+      const { error: volumeIdError } = await admin
         .from("books")
         .update({ google_books_volume_id: gbVolumeId })
         .eq("id", book.id)
         .is("google_books_volume_id", null);
+
+      if (volumeIdError) {
+        console.error("google_books_volume_id update failed", {
+          bookId: book.id,
+          error: volumeIdError,
+        });
+      }
     }
   } catch (error) {
     console.error("ensureBookHydrated failed", { bookId: book.id, error });

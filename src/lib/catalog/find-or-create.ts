@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import type { SearchResult } from "./types";
+import { isVolumeOnlyResult, type SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -210,8 +210,11 @@ export async function findOrCreateCatalogItem(
   // solo lo produce la rama ISBN de `searchCatalog` cuando Open Library no
   // conoce el ISBN. `register_catalog_item` exige `openlibrary_work_key`, así
   // que aquí la RPC de alta es la que nace del volumen, no de la work key.
-  const useVolumeRpc =
-    result.itemType === "book" && !result.externalId && !!result.googleVolumeId;
+  //
+  // El predicado vive en `types.ts` porque `bookShellFromSearchResult` lo lee
+  // TAMBIÉN, para no propagarle el `matchedIsbn` del navegador a un shell sin
+  // work key (C2). Si esta condición cambia y la otra no, vuelve #674.
+  const useVolumeRpc = isVolumeOnlyResult(result);
 
   const { data: id, error } = useVolumeRpc
     ? await supabase.rpc("register_catalog_item_by_volume", {

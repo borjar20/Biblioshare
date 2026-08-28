@@ -2481,3 +2481,54 @@ label — #913) y que un QID puede quedarse sin asignar; ambos son reevaluables 
 fase destructiva (Task 16) no se ejecutó y ninguna migración de la rama está aplicada en prod, así
 que ahí siguen vivas `book_editions.is_primary`, `books.isbn` y la hidratación vieja. El despliegue
 es #900, y su orden —dev primero, verificar contra objetos reales, luego prod— no cambia.
+
+- **`google_books_volume_id` lo escribe `service_role`, no el cliente de la petición** (2026-08-28,
+  condición de merge C1 de la rama obra/edición/representación). **Corrige por escrito la entrada
+  del 2026-08-27 de más arriba** («la hidratación llama a `hydrate_book` con `service_role`»), que
+  cerraba diciendo que los `update` de columnas técnicas —y nombraba `openlibrary_work_key` **y
+  `google_books_volume_id`**— «siguen yendo con el cliente del llamante». De las dos, solo
+  `openlibrary_work_key` tiene grant de `authenticated`. `google_books_volume_id` **nunca lo tuvo**:
+  nace sin él en `20260882`, a propósito.
+  **Lo que de verdad pasaba:** ese update devolvía `42501 permission denied for table books` en
+  TODAS las llamadas, y el `await` no destructuraba `error`, así que no dejaba ni una línea de log.
+  Sondeado en dev dentro de `begin; … rollback;`: como `authenticated`, `42501`; como `service_role`,
+  `OK` y la columna con valor. Y el efecto acumulado era medible sin sondear nada: **397 filas en
+  `books`, 397 con la columna a null.**
+  **Por qué no se arregla concediendo el grant, que era la otra salida:** esa columna es el único
+  ancla entre una obra nacida en OpenLibrary y su volumen de Google Books. Vacía, un ISBN que OL no
+  conoce y que no esté en `book_editions` no encuentra la obra existente y
+  `register_catalog_item_by_volume` **acuña una obra duplicada** — justo lo que esta rama existe
+  para eliminar. Concederlo abriría además a cualquier autenticado un identificador del catálogo
+  COMPARTIDO con índice único. El privilegio se acota, como en #871, a las escrituras del catálogo
+  compartido: la RPC `hydrate_book` y este sello. `openlibrary_work_key` sigue con el cliente del
+  llamante, que es quien lleva la identidad y a quien le aplica RLS.
+  **La regla general que deja, y que vale más que el arreglo:** «la transición es null→valor» es un
+  argumento sobre el **trigger**, no sobre los **grants**. Son dos puertas distintas y una columna
+  puede fallar la primera. Cuando `docs/DRIFT-CHECK.md` justifica un hueco de grants nombrando a
+  quién escribe la columna, esa frase es una afirmación sobre el CÓDIGO: la superficie 6 compara
+  números, no escritores, y por eso no cazó esto.
+
+- **Un `SearchResult` sin work key no propaga su `matchedIsbn` al shell de hidratación** (2026-08-28,
+  condición de merge C2 de la misma rama). El predicado del camino GB-only vive ahora UNA sola vez,
+  en `isVolumeOnlyResult` (`src/lib/catalog/types.ts`), y lo leen los dos sitios que dependían de él
+  por separado: `findOrCreateCatalogItem`, para elegir la RPC de alta, y `bookShellFromSearchResult`,
+  para NO propagar el ISBN.
+  **El fallo que cierra es una contradicción interna de la rama, no un bug heredado:** una tarea
+  documentó que `isbn: result.matchedIsbn` era seguro porque la rama que lo lee es «inalcanzable
+  mientras `externalId` no venga vacío», y OTRA tarea de la MISMA rama introdujo el alta GB-only,
+  que devuelve `externalId: ""` **por construcción**. Con la precondición falsa, el navegador
+  controlaba a la vez `googleVolumeId` (que elige la FILA) y `matchedIsbn` (que elige la OBRA), sin
+  que el servidor cruzase los dos: work key ajena estampada ⇒ título, autor, portada, sinopsis,
+  géneros y **QID** re-derivados de otra obra ⇒ el barrido agrupa por QID y llama a
+  `merge_book_into`, que BORRA filas. Clase #674.
+  **Dos mitades, a propósito.** La del shell depende de que el llamante nos pase un shell honesto;
+  la otra no: el `update` de la work key lleva `.is("openlibrary_work_key", null)`, así que la
+  condición la evalúa la BASE sobre la fila real. Hace falta porque
+  `enforce_catalog_edit_collaborator_only` solo protege esa columna cuando
+  `old.openlibrary_work_key is not null` — verificado contra la definición real de la función en
+  dev, no supuesto.
+  **Y lo que se corrige además del código es el COMENTARIO.** #674 se ha reabierto dos veces, y las
+  dos porque un comentario declaraba el problema imposible; un comentario que afirma una
+  precondición que el código vecino ya viola es peor que no tener comentario, porque el siguiente
+  revisor deja de mirar. Cubierto por mutación: neutralizar el predicado, quitar el filtro `.is` o
+  volver a propagar el `matchedIsbn` tumban tests distintos.

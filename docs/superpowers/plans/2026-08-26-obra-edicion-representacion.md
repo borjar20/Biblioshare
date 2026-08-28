@@ -1161,7 +1161,24 @@ Helpers en el mismo fichero (código completo en implementación, comportamiento
 - `synopsisLang(text)`: heurística mínima — `"other"` si `null`; si no, `"en"` (OL casi nunca tiene sinopsis ES; no intentar detectar idioma por contenido — YAGNI, y un falso "es" bloquearía el upgrade de GB).
 - `type HydrateFields = Partial<Record<"title" | "cover" | "synopsis", { value: string; lang: ReprLang; source: ReprSource }>>`.
 
-Nota: `google_books_volume_id` es null→valor con el cliente de la petición; para que el gate de columnas técnicas (patrón S2-14, `20260878`) lo cubra hay que **añadir la columna a ese gate** — hacerlo en la migración de Task 16 (fase C) junto al ajuste de `editions_synced_at`; hasta entonces la columna no está gateada (igual que estuvo `openlibrary_work_key` antes de #809 — aceptable durante el rollout, ya que la escritura es null→valor idéntica).
+Nota: ~~`google_books_volume_id` es null→valor con el cliente de la petición~~ **— CORREGIDO el
+2026-08-28 (condición de merge C1). Esta nota era FALSA y el código la siguió al pie de la letra.**
+`authenticated` **no tiene grant de UPDATE** sobre esa columna: nace sin él a propósito en
+`20260882`, y así lo dice `docs/DRIFT-CHECK.md` (superficie 6, `books | 17 | 0 | 9`). Con el cliente
+de la petición el update devolvía **42501 permission denied for table books** SIEMPRE — sondeado en
+dev: 397 filas en `books`, 397 con la columna a null — y como el `await` no destructuraba `error`,
+fallaba **sin una sola línea de log** (el modo de fallo de #871, repetido dos líneas por debajo del
+arreglo de #871). Se escribe con `createServiceRoleClient()`, igual que la RPC `hydrate_book`, y el
+error se registra.
+
+Que «null→valor» esté permitido por el *trigger* no implica que lo esté por los *grants*: son dos
+puertas distintas y esta columna solo pasa la primera. Ese fue el atajo mental que produjo la
+contradicción — la base siguió a la doc y el código siguió a esta nota, y la superficie 6 no lo cazó
+porque compara **números** de grants, no **escritores**.
+
+Consecuencia para el gate de columnas técnicas (patrón S2-14, `20260878`): añadir la columna a ese
+gate en Task 16 sigue siendo defensa en profundidad razonable, pero **ya no es lo que la protege** —
+hoy la protege la ausencia de grant, que es la puerta anterior y no depende de desplegar nada.
 
 - [ ] **Step 6: Actualizar call sites** de `HydratableBook` (ficha `src/app/libro/[id]/page.tsx`, `src/app/buscar/actions.ts` `hydrateNewItem`, y cualquiera que salga en el grep): ampliar el select con las columnas nuevas.
 
@@ -1825,7 +1842,7 @@ alter table public.books drop column if exists isbn;
 alter table public.books drop column if exists publisher;
 ```
 
-Además, en la misma migración: ajustar el gate de columnas técnicas (`20260878`) — quitar `editions_synced_at` de su lista y **añadir `google_books_volume_id` y `wikidata_id`** (transición null→valor libre, reescritura colaborador+), y revisar `register_manual_catalog_item` para que deje de escribir `books.isbn/publisher` (nueva versión de la función en esta migración, mismo `drop function` + `create`).
+Además, en la misma migración: ajustar el gate de columnas técnicas (`20260878`) — quitar `editions_synced_at` de su lista y **añadir `google_books_volume_id` y `wikidata_id`** (~~transición null→valor libre, reescritura colaborador+~~ — **matizado el 2026-08-28, C1:** ninguna de las dos tiene grant de `authenticated`, así que hoy el cliente no puede escribirlas ni en null→valor; añadirlas al gate es defensa en profundidad por si algún día se concede el grant, no lo que las protege), y revisar `register_manual_catalog_item` para que deje de escribir `books.isbn/publisher` (nueva versión de la función en esta migración, mismo `drop function` + `create`).
 
 - [ ] **Step 3:** Aplicar en dev → `npx tsc --noEmit`, `npx vitest run`, `npm run build && npm run start` + e2e contra build de producción → verde. Regenerar tipos.
 

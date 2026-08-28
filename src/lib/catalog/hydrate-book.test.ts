@@ -56,22 +56,61 @@ import type { SearchResult } from "./types";
 
 // Dos clientes DISTINTOS a propósito (M2): el de la petición, que es el que
 // recibe `ensureBookHydrated` como argumento, y el de service_role, que la
-// función construye por su cuenta. Si la RPC se llamara con el equivocado, las
-// dos aserciones del bloque de M2 lo dicen.
+// función construye por su cuenta. Si una escritura fuera con el cliente
+// equivocado, las aserciones del bloque de M2 lo dicen.
+//
+// Los updates se registran con SUS FILTROS, no solo con los valores: las dos
+// guardas de C2/C1 (`.is("openlibrary_work_key", null)` y
+// `.is("google_books_volume_id", null)`) viven en el filtro, así que un mock
+// que solo mirase los valores no podría distinguir la versión correcta de la
+// que reasigna la obra de una fila ajena.
+type UpdateCall = { values: Record<string, unknown>; filters: string[] };
+type UpdateChain = PromiseLike<{ error: unknown }> & {
+  eq: (column: string, value?: unknown) => UpdateChain;
+  is: (column: string, value: unknown) => UpdateChain;
+};
+
 function makeClients() {
   const ok = { error: null };
   const build = (rpc: ReturnType<typeof vi.fn>) => {
     const updates: Array<Record<string, unknown>> = [];
+    const updateCalls: UpdateCall[] = [];
+    // Mutable: algún test hace que el update falle para comprobar que se
+    // registra (si no, volvemos al fallo mudo de #871).
+    const state = { error: null as unknown };
+
+    // La cadena real es `.update().eq()` y, para las columnas técnicas,
+    // `.update().eq().is()`. Un thenable que se devuelve a sí mismo cubre
+    // cualquier longitud de cadena y anota por dónde ha pasado.
+    const chain = (call: UpdateCall): UpdateChain => {
+      const settled: Promise<{ error: unknown }> = Promise.resolve(
+        state.error ? { error: state.error } : ok,
+      );
+      return Object.assign(settled, {
+        eq: (column: string) => {
+          call.filters.push(`eq:${column}`);
+          return chain(call);
+        },
+        is: (column: string, value: unknown) => {
+          call.filters.push(`is:${column}=${String(value)}`);
+          return chain(call);
+        },
+      });
+    };
+
     return {
       rpc,
       updates,
+      updateCalls,
+      failUpdates: (error: unknown) => {
+        state.error = error;
+      },
       from: () => ({
         update: (values: Record<string, unknown>) => {
+          const call: UpdateCall = { values, filters: [] };
           updates.push(values);
-          // La cadena real es `.update().eq()` y, para las columnas técnicas,
-          // `.update().eq().is()`. Una promesa con `.is` colgado cubre ambas.
-          const eq = Object.assign(Promise.resolve(ok), { is: () => Promise.resolve(ok) });
-          return { eq: () => eq };
+          updateCalls.push(call);
+          return chain(call);
         },
       }),
     };
@@ -201,14 +240,48 @@ describe("ensureBookHydrated · cliente de la RPC (mata M2: service_role)", () =
     expect(request.rpc).not.toHaveBeenCalled();
   });
 
-  // La otra mitad del contrato: las columnas técnicas (null → valor) SÍ siguen
-  // yendo con el cliente del llamante, que es lo que RLS permite.
-  it("el update de google_books_volume_id va con el cliente de la petición", async () => {
+  // C1: `authenticated` NO tiene grant de UPDATE sobre `google_books_volume_id`
+  // (nace sin él en `20260882`, y la superficie 6 de DRIFT-CHECK lo bendice).
+  // Con el cliente de la petición este update devolvía 42501 SIEMPRE — sondeado
+  // en dev: 397 filas en `books`, 397 con la columna a null. Y como el `await`
+  // no destructuraba el error, fallaba sin log: #871 otra vez, dos líneas por
+  // debajo del arreglo de #871.
+  //
+  // Que la columna se quede vacía no es cosmético: es el único ancla entre una
+  // obra nacida en OpenLibrary y su volumen de Google Books, y sin ella
+  // `register_catalog_item_by_volume` acuña una obra DUPLICADA la próxima vez
+  // que alguien escanee ese ISBN.
+  it("el update de google_books_volume_id va con service_role, NO con el cliente de la petición", async () => {
     mocks.findBestVolume.mockResolvedValue(volume({ synopsis: "Sinopsis", language: "es" }));
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
-    expect(request.updates).toEqual([{ google_books_volume_id: "gb-1" }]);
-    expect(service.updates).toEqual([]);
+    expect(service.updates).toEqual([{ google_books_volume_id: "gb-1" }]);
+    expect(request.updates).toEqual([]);
+  });
+
+  // La guarda sigue siendo null → valor aunque ahora escriba service_role: el
+  // sello no puede pisar un volumen ya anclado (índice único sin predicado).
+  it("el sello del volumen solo escribe sobre la columna vacía", async () => {
+    mocks.findBestVolume.mockResolvedValue(volume({ synopsis: "Sinopsis", language: "es" }));
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, book());
+    expect(service.updateCalls[0].filters).toEqual(["eq:id", "is:google_books_volume_id=null"]);
+  });
+
+  // El modo de fallo de #871 es el SILENCIO, no el 42501. Si esta escritura
+  // vuelve a romperse (un grant que cambia, un índice único que choca), tiene
+  // que dejar rastro.
+  it("un fallo del sello del volumen se registra, no se traga", async () => {
+    mocks.findBestVolume.mockResolvedValue(volume({ synopsis: "Sinopsis", language: "es" }));
+    const { request, service } = makeClients();
+    service.failUpdates({ code: "42501", message: "permission denied for table books" });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await ensureBookHydrated(request as never, book());
+    expect(spy).toHaveBeenCalledWith(
+      "google_books_volume_id update failed",
+      expect.objectContaining({ bookId: "b1" }),
+    );
+    spy.mockRestore();
   });
 
   it("un error de la RPC no lanza ni tumba el render", async () => {
@@ -679,6 +752,25 @@ describe("ensureBookHydrated · work key", () => {
     expect(mocks.fetchWork).toHaveBeenCalledWith("/works/OL7W");
   });
 
+  // C2, segunda mitad. El trigger `enforce_catalog_edit_collaborator_only` solo
+  // protege esta columna cuando `old.openlibrary_work_key is not null`, así que
+  // la transición null → valor está abierta a cualquier `authenticated`
+  // (verificado en dev sobre la definición real de la función). Sin este filtro,
+  // un shell con la key en null bastaba para REASIGNAR LA OBRA de una fila que
+  // ya tenía la suya — y de ahí se re-derivan título, autor, portada, sinopsis,
+  // géneros y el QID, que es lo que el barrido usa para llamar a
+  // `merge_book_into`, que BORRA filas. La condición la tiene que evaluar la
+  // BASE sobre la fila real, no la memoria del proceso.
+  it("el sello de la work key solo escribe sobre la fila que aún no tiene ninguna", async () => {
+    mocks.resolveWorkKey.mockResolvedValue("/works/OL7W");
+    const { request } = makeClients();
+    await ensureBookHydrated(
+      request as never,
+      book({ openlibrary_work_key: null, isbn: "9788466657662" }),
+    );
+    expect(request.updateCalls[0].filters).toEqual(["eq:id", "is:openlibrary_work_key=null"]);
+  });
+
   it("con work key pero el work no responde NO se escribe nada (se reintenta)", async () => {
     mocks.fetchWork.mockResolvedValue(null);
     const { request, service } = makeClients();
@@ -727,6 +819,51 @@ describe("bookShellFromSearchResult (mata C1: devolver result.title/author)", ()
       "9788466657662",
     );
     expect(bookShellFromSearchResult("b1", searchResult()).isbn).toBeNull();
+  });
+
+  // ── C2 · el resultado GB-only NO propaga el ISBN del navegador ──
+  //
+  // El alta GB-only (`search.ts`) devuelve `externalId: ""` POR CONSTRUCCIÓN,
+  // así que la rama `if (!workKey && book.isbn)` de `ensureBookHydrated` —que
+  // RESUELVE UNA WORK KEY Y LA ESTAMPA— pasó de "inalcanzable" a alcanzable
+  // dentro de esta misma rama. Con ella alcanzable, el navegador controlaba a
+  // la vez `googleVolumeId` (que elige la FILA) y `matchedIsbn` (que elige la
+  // OBRA), sin que el servidor cruzase los dos.
+  const gbOnly = (over: Partial<SearchResult> = {}): SearchResult =>
+    searchResult({
+      externalId: "",
+      googleVolumeId: "gb-9",
+      matchedIsbn: "9788466657662",
+      ...over,
+    });
+
+  it("en el camino GB-only el matchedIsbn NO llega al shell", () => {
+    expect(bookShellFromSearchResult("b1", gbOnly()).isbn).toBeNull();
+  });
+
+  it("en el camino GB-only la work key es null, no la cadena vacía", () => {
+    expect(bookShellFromSearchResult("b1", gbOnly()).openlibrary_work_key).toBeNull();
+  });
+
+  // La cota del corte: con work key, el ISBN escaneado SÍ se propaga aunque
+  // venga también un googleVolumeId — ahí no es GB-only y el ISBN es útil.
+  it("con work key el matchedIsbn sigue propagándose", () => {
+    const shell = bookShellFromSearchResult(
+      "b1",
+      gbOnly({ externalId: "/works/OL1W" }),
+    );
+    expect(shell.isbn).toBe("9788466657662");
+  });
+
+  // La prueba de que las dos mitades encajan: aunque OpenLibrary SÍ conociera
+  // ese ISBN (que es el escenario del ataque, no el legítimo), la hidratación
+  // de un alta GB-only no estampa work key ninguna.
+  it("un alta GB-only nunca estampa work key, aunque el ISBN resuelva una", async () => {
+    mocks.resolveWorkKey.mockResolvedValue("/works/OL7W");
+    const { request } = makeClients();
+    await ensureBookHydrated(request as never, bookShellFromSearchResult("b1", gbOnly()));
+    expect(mocks.resolveWorkKey).not.toHaveBeenCalled();
+    expect(request.updates).toEqual([]);
   });
 
   it("nace sin hidratar, sin repr_meta y sin QID (fila recién creada, #674)", () => {
