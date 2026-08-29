@@ -27,6 +27,15 @@ export type PlayEvent<T extends string = string, P = unknown> = {
   payload: P;
 };
 
+// Neutro respecto a la herramienta (finding 2 de la revisión final): {key,
+// params} es la forma que necesita CUALQUIER describe() del registro de
+// tools.ts para etiquetar un evento en la pantalla instrumento, no un
+// concepto propio de Commander. Vivía en commander/selectors.ts y una
+// segunda herramienta habría tenido que importar de `commander/` solo para
+// nombrar el tipo de su propio describe() — exactamente lo que el registro
+// existe para evitar.
+export type EventDescription = { key: string; params: Record<string, string | number> };
+
 // Fuente de verdad histórica = committed. Estado vivo = committed + pending.
 // pending es la ráfaga de coalescing: todavía NO forma parte del log canónico (spec §2-3).
 export type EventLog = {

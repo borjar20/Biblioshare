@@ -1,8 +1,8 @@
-import type { PlayEvent, ToolId } from "./core/types";
+import type { EventDescription, PlayEvent, ToolId } from "./core/types";
 import type { CommanderState } from "./commander/types";
 import { COMMANDER_EVENT_TYPES, type CommanderEvent, type GameStartedEvent } from "./commander/events";
 import { commanderReducer, initialCommanderState } from "./commander/reducer";
-import { describeEvent, type EventDescription } from "./commander/selectors";
+import { describeEvent } from "./commander/selectors";
 
 // Registro de DOMINIO: puro, sin React. El registro de UI (tablero, setup,
 // resumen por toolId) es un fichero aparte en src/components/play/ — spec §6.

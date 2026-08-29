@@ -1,5 +1,11 @@
 import type { CommanderState } from "./types";
 import type { CommanderEvent } from "./events";
+import type { EventDescription } from "@/lib/play/core/types";
+
+// Re-exportado por compatibilidad: EventDescription vive en core/types.ts
+// (finding 2 de la revisión final) porque es tool-neutral, no propio de
+// Commander; este módulo la sigue exponiendo para no romper imports existentes.
+export type { EventDescription };
 
 export type RankingEntry = { participantId: string; position: number };
 
@@ -25,8 +31,6 @@ export function finalRanking(state: CommanderState): RankingEntry[] {
   }
   return out;
 }
-
-export type EventDescription = { key: string; params: Record<string, string | number> };
 
 // Estructurado para i18n: la UI traduce `play.log.<key>` con estos params.
 // Aquí no hay ni una cadena en español (inv-t-no-cruza + motor sin next-intl).
