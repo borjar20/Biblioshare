@@ -3,6 +3,17 @@
 
 export type ToolId = "commander";
 
+// Forma base que TODA herramienta extiende (finding 6 de la revisión final): la
+// pantalla instrumento compartida y el banner "partida en curso" necesitan leer
+// toolId/status sin conocer la herramienta concreta. Parametrizado por T para que
+// cada herramienta conserve su literal (p. ej. "commander") en vez de ensanchar a
+// ToolId genérico — así el discriminante sigue funcionando cuando PlayGameState
+// pase a ser una unión de verdad.
+export type ToolGameState<T extends ToolId = ToolId> = {
+  toolId: T;
+  status: "active" | "finished";
+};
+
 // Unión discriminada: un invitado con userId o un usuario sin él no compilan
 // (spec §2, revisión: los estados imposibles no viven en comentarios).
 export type Participant =

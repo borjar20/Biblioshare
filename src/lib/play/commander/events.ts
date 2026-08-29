@@ -23,3 +23,21 @@ export type CommanderEvent =
   | PlayerEliminatedEvent
   | PlayerRestoredEvent
   | GameFinishedEvent;
+
+// Espejo en runtime de la unión de arriba, solo para el guard del registro
+// (finding 8 de la revisión final): describeEvent hace un switch exhaustivo
+// sobre CommanderEvent a propósito (tipo nuevo sin `case` = error de compilación),
+// así que la comprobación "¿esto ES un CommanderEvent?" no puede vivir dentro del
+// switch — necesita su propia lista, mantenida a mano junto a la unión de arriba.
+export const COMMANDER_EVENT_TYPES: ReadonlySet<CommanderEvent["type"]> = new Set([
+  "game_started",
+  "life_changed",
+  "commander_damage",
+  "poison_changed",
+  "turn_passed",
+  "monarch_changed",
+  "initiative_changed",
+  "player_eliminated",
+  "player_restored",
+  "game_finished",
+]);

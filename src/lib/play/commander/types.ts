@@ -1,4 +1,4 @@
-import type { Participant } from "@/lib/play/core/types";
+import type { Participant, ToolGameState } from "@/lib/play/core/types";
 
 // La herramienta especializa al participante neutro del core (spec §2).
 export type CommanderParticipant = Participant & {
@@ -25,9 +25,9 @@ export type CommanderPlayerState = {
   elimination: { order: number; round: number | null; reason?: EliminationReason } | null;
 };
 
-export type CommanderState = {
-  toolId: "commander";
-  status: "active" | "finished";
+// Extiende la forma base del core (finding 6): toolId/status se heredan, no se
+// redeclaran, para que un cambio en ToolGameState no pueda desincronizarse aquí.
+export type CommanderState = ToolGameState<"commander"> & {
   setup: CommanderSetup;
   players: CommanderPlayerState[]; // mismo orden que setup.participants (asientos)
   activeSeat: number;
