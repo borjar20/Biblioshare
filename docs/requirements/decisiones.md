@@ -2916,3 +2916,29 @@ YAGNI — una partida son unos pocos cientos de eventos, el replay completo es i
 día que un profiler la pida, no antes. No se pierde la garantía que la spec perseguía: el gate de
 Fase 2 (`docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md` §8, «Reconstrucción») sigue
 fijando que aplicación incremental ≡ re-reduce completo desde `game_started`.
+
+## 2026-08-29 (6) — La consola de la partida: banda en vertical, flotante en horizontal (#931)
+
+**Fase 1a, canvas de diseño.** La franja de deshacer / turno / crono / menú tiene DOS tratamientos
+según la orientación, y no es un capricho estético sino aritmética de píxeles:
+
+- **Vertical**: banda a todo el ancho entre las dos filas. Se probaron una cápsula centrada y una
+  versión sin banda: recuperaban 10 y 14 px repartidos entre dos filas. No compensa.
+- **Horizontal**: la banda son **68 px, el 17 % del alto**, y salen enteros del número de vidas
+  (58 px en vez de 70). Ahí la consola sale del hueco horizontal y va flotando en el centro sobre
+  paneles a pantalla completa, con 5 px de junta de fieltro.
+
+Dos invariantes que hay que respetar al implementarla, las dos aprendidas descartando alternativas:
+
+1. **El hueco de la consola flotante se RESERVA, no se supone.** Las cuatro cabeceras llevan padding
+   lateral fijo. La variante que confiaba en que bajo la consola no hubiera nada se cae en cuanto
+   hay un nombre largo o una insignia de monarca.
+2. **Deshacer nunca pierde la etiqueta de QUÉ deshace.** Puede perder la palabra «Deshacer» (la
+   flecha ya lo dice) pero no el «Ana −1»: sin eso hay que pulsar y mirar, que son dos acciones
+   donde había una. El texto completo va en el `aria-label`.
+
+El crono se deriva de `startedAt` — ni evento ni campo nuevos — y **vive aislado en su propio
+componente**: un reloj dentro del componente que escucha el store repinta el tablero entero cada
+segundo durante horas y con wake lock puesto.
+
+Lo descartado y su medida, en la issue `tipo:acta` correspondiente y en el apéndice del canvas.
