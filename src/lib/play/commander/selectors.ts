@@ -43,7 +43,12 @@ export function describeEvent(event: CommanderEvent, state: CommanderState): Eve
     }
     case "commander_damage": {
       const { source, target, delta } = event.payload;
-      return { key: "commanderDamage", params: { source: name(source), target: name(target), amount: delta } };
+      // El signo se normaliza igual que en life_changed/poison_changed: la UI
+      // nunca debe recibir un amount negativo, la dirección la lleva la key
+      // (un delta negativo es alcanzable: corrige una tacada de daño excesiva).
+      return delta >= 0
+        ? { key: "commanderDamage", params: { source: name(source), target: name(target), amount: delta } }
+        : { key: "commanderDamageHealed", params: { source: name(source), target: name(target), amount: -delta } };
     }
     case "poison_changed": {
       const { target, delta } = event.payload;

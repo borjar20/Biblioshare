@@ -6,9 +6,13 @@ import type {
   CommanderDamageEvent,
   CommanderEvent,
   GameFinishedEvent,
+  InitiativeChangedEvent,
   LifeChangedEvent,
+  MonarchChangedEvent,
   PlayerEliminatedEvent,
   PlayerRestoredEvent,
+  PoisonChangedEvent,
+  TurnPassedEvent,
 } from "./events";
 
 function play(events: CommanderEvent[]) {
@@ -69,5 +73,55 @@ describe("describeEvent", () => {
     expect(
       describeEvent(ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: 5 }, 2000), base),
     ).toEqual({ key: "commanderDamage", params: { source: "carlos", target: "borja", amount: 5 } });
+  });
+
+  it("commander_damage con delta negativo (corrección de una tacada) normaliza el signo: amount siempre positivo", () => {
+    expect(
+      describeEvent(ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: -3 }, 2000), base),
+    ).toEqual({ key: "commanderDamageHealed", params: { source: "carlos", target: "borja", amount: 3 } });
+  });
+
+  it("poison_changed en ambas direcciones normaliza el signo igual que life_changed", () => {
+    expect(describeEvent(ev<PoisonChangedEvent>("poison_changed", { target: "ana", delta: 2 }, 2000), base))
+      .toEqual({ key: "poisonGained", params: { name: "ana", amount: 2 } });
+    expect(describeEvent(ev<PoisonChangedEvent>("poison_changed", { target: "ana", delta: -1 }, 2000), base))
+      .toEqual({ key: "poisonHealed", params: { name: "ana", amount: 1 } });
+  });
+
+  it("turn_passed reporta la ronda tomada del estado, no del evento", () => {
+    expect(describeEvent(ev<TurnPassedEvent>("turn_passed", {}, 2000), base))
+      .toEqual({ key: "turnPassed", params: { round: base.round } });
+  });
+
+  it("monarch_changed: nombra al nuevo monarca o señala que se ha limpiado", () => {
+    expect(describeEvent(ev<MonarchChangedEvent>("monarch_changed", { holder: "ana" }, 2000), base))
+      .toEqual({ key: "monarch", params: { name: "ana" } });
+    expect(describeEvent(ev<MonarchChangedEvent>("monarch_changed", { holder: null }, 2000), base))
+      .toEqual({ key: "monarchCleared", params: {} });
+  });
+
+  it("initiative_changed: nombra al nuevo poseedor o señala que se ha limpiado", () => {
+    expect(describeEvent(ev<InitiativeChangedEvent>("initiative_changed", { holder: "ana" }, 2000), base))
+      .toEqual({ key: "initiative", params: { name: "ana" } });
+    expect(describeEvent(ev<InitiativeChangedEvent>("initiative_changed", { holder: null }, 2000), base))
+      .toEqual({ key: "initiativeCleared", params: {} });
+  });
+
+  it("player_eliminated y player_restored describen al jugador afectado", () => {
+    expect(describeEvent(ev<PlayerEliminatedEvent>("player_eliminated", { target: "laura" }, 2000), base))
+      .toEqual({ key: "eliminated", params: { name: "laura" } });
+    expect(describeEvent(ev<PlayerRestoredEvent>("player_restored", { target: "laura" }, 2000), base))
+      .toEqual({ key: "restored", params: { name: "laura" } });
+  });
+
+  it("game_finished y game_started no llevan params: solo marcan el hito", () => {
+    expect(describeEvent(ev<GameFinishedEvent>("game_finished", {}, 2000), base))
+      .toEqual({ key: "finished", params: {} });
+    expect(describeEvent(started(1000), base)).toEqual({ key: "started", params: {} });
+  });
+
+  it("un id de participante que no está en el estado cae de vuelta al propio id como nombre", () => {
+    expect(describeEvent(ev<LifeChangedEvent>("life_changed", { target: "fantasma", delta: 4 }, 2000), base))
+      .toEqual({ key: "lifeGained", params: { name: "fantasma", amount: 4 } });
   });
 });
