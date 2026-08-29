@@ -28,16 +28,27 @@ export type CommanderEvent =
 // (finding 8 de la revisión final): describeEvent hace un switch exhaustivo
 // sobre CommanderEvent a propósito (tipo nuevo sin `case` = error de compilación),
 // así que la comprobación "¿esto ES un CommanderEvent?" no puede vivir dentro del
-// switch — necesita su propia lista, mantenida a mano junto a la unión de arriba.
-export const COMMANDER_EVENT_TYPES: ReadonlySet<CommanderEvent["type"]> = new Set([
-  "game_started",
-  "life_changed",
-  "commander_damage",
-  "poison_changed",
-  "turn_passed",
-  "monarch_changed",
-  "initiative_changed",
-  "player_eliminated",
-  "player_restored",
-  "game_finished",
-]);
+// switch — necesita su propia lista, mantenida aparte de la unión de arriba.
+//
+// La lista es un objeto, no un Set directo, PRECISAMENTE para que el olvido
+// pese igual que un `case` que falta: `satisfies Record<..., true>` obliga a
+// que las claves cubran el tipo entero de CommanderEvent["type"] — añadir un
+// evento nuevo a la unión y olvidar su entrada aquí ya no produce un
+// `{key: "unknown"}` silencioso en el log en vivo, produce un error de
+// compilación, exactamente como el switch de describeEvent.
+const COMMANDER_EVENT_TYPE_MAP = {
+  game_started: true,
+  life_changed: true,
+  commander_damage: true,
+  poison_changed: true,
+  turn_passed: true,
+  monarch_changed: true,
+  initiative_changed: true,
+  player_eliminated: true,
+  player_restored: true,
+  game_finished: true,
+} satisfies Record<CommanderEvent["type"], true>;
+
+export const COMMANDER_EVENT_TYPES: ReadonlySet<CommanderEvent["type"]> = new Set(
+  Object.keys(COMMANDER_EVENT_TYPE_MAP) as CommanderEvent["type"][],
+);
