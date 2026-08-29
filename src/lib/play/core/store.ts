@@ -1,3 +1,5 @@
+"use client";
+
 import { append, appendTap, BURST_WINDOW_MS, emptyLog, flushPending, undoLast } from "./log";
 import { replay } from "./replay";
 import type { ActiveGameSnapshot, EventLog, PlayEvent } from "./types";
@@ -7,6 +9,15 @@ import type { PlayGameState } from "@/lib/play/tools";
 // el IO abajo con try/catch (modo privado o cuota llena degradan a memoria,
 // nunca rompen la partida — spec §4). Este fichero es el ÚNICO del motor que
 // toca navegador, y siempre con guardas.
+//
+// "use client" (finding 5 de la revisión final): este módulo guarda un Map a
+// nivel de módulo, `stores`, indexado por identidad. En un componente de
+// servidor (páginas de este repo son shells de servidor, spec §5) ese Map
+// sería un singleton por proceso compartido entre TODAS las peticiones — la
+// forma exacta de fuga entre cuentas que regla #437 prohíbe. Hoy nada
+// server-side importa este fichero, así que no hay fuga real todavía; la
+// directiva es preventiva: si algún día alguien lo importa desde un Server
+// Component, el bundler falla en vez de crear el singleton en silencio.
 
 export const SNAPSHOT_VERSION = 1 as const;
 
@@ -66,12 +77,22 @@ export function parseSnapshot(raw: string | null): EventLog | null {
 
 export type ActiveGame = { log: EventLog; state: PlayGameState };
 
+// Señal de fallo de start/tap/dispatch (finding 1 de la revisión final): las
+// tres devuelven boolean — true si el evento se aplicó. Un evento rechazado
+// por el reducer (doble eliminación, evento tras game_finished, participante
+// desconocido...) es una condición ALCANZABLE desde una UI correcta (doble
+// tap antes de re-render, botón obsoleto tras acabar la partida) y NO debe
+// tumbar el render ni persistirse a medias: la UI decide qué hacer con
+// `false` (p. ej. mostrar "acción no válida"). start() sigue LANZANDO, pero
+// solo cuando ya hay una partida activa — eso es un error de programación
+// (la UI debe comprobarlo antes de llamar, no una entrada de usuario) y por
+// tanto no comparte canal de señal con un evento inválido.
 export type PlayStore = {
   subscribe(callback: () => void): () => void;
   getSnapshot(): ActiveGame | null;
-  start(event: PlayEvent): void;
-  tap(event: PlayEvent): void;
-  dispatch(event: PlayEvent): void;
+  start(event: PlayEvent): boolean;
+  tap(event: PlayEvent): boolean;
+  dispatch(event: PlayEvent): boolean;
   undo(): PlayEvent | null;
   flush(): void;
   discard(): void;
@@ -79,23 +100,28 @@ export type PlayStore = {
 
 function createPlayStore(identity: string): PlayStore {
   const key = playStorageKey(identity);
-  let log: EventLog | null = readStorage();
-  let cached: ActiveGame | null = null;
-  let dirty = true;
-  const listeners = new Set<() => void>();
-  let sealTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function readStorage(): EventLog | null {
+  function readStorage(): ActiveGame | null {
     try {
-      return parseSnapshot(globalThis.localStorage?.getItem(key) ?? null);
+      const log = parseSnapshot(globalThis.localStorage?.getItem(key) ?? null);
+      if (!log) return null;
+      // parseSnapshot ya replayó para validar forma+semántica (spec §4); este
+      // segundo replay solo obtiene el estado a cachear. Va blindado igual:
+      // getSnapshot es estructuralmente incapaz de lanzar (finding 1), incluso
+      // en la rehidratación, así que ni aquí se deja escapar una excepción.
+      return { log, state: replay(log.committed, log.pending) };
     } catch {
       return null;
     }
   }
 
+  let game: ActiveGame | null = readStorage();
+  const listeners = new Set<() => void>();
+  let sealTimer: ReturnType<typeof setTimeout> | null = null;
+
   function persist() {
     try {
-      if (log) globalThis.localStorage?.setItem(key, serializeSnapshot(log));
+      if (game) globalThis.localStorage?.setItem(key, serializeSnapshot(game.log));
       else globalThis.localStorage?.removeItem(key);
     } catch {
       // sin storage se sigue jugando en memoria (spec §4)
@@ -103,7 +129,6 @@ function createPlayStore(identity: string): PlayStore {
   }
 
   function emit() {
-    dirty = true;
     persist();
     for (const callback of listeners) callback();
   }
@@ -124,10 +149,30 @@ function createPlayStore(identity: string): PlayStore {
 
   function sealNow() {
     clearSealTimer();
-    if (log?.pending) {
-      log = flushPending(log);
+    if (game?.log.pending) {
+      // Solo mueve el evento de pending a committed: el estado cacheado ya
+      // incluía el efecto del pending (se derivó junto con él al commitear),
+      // así que no hace falta re-derivar.
+      game = { log: flushPending(game.log), state: game.state };
       emit();
     }
+  }
+
+  // Único punto de commit real (finding 1): deriva el estado del candidato
+  // ANTES de tocar `game`, storage o listeners. Si el reducer lo rechaza
+  // (PlayEventError), no se asigna nada, no se persiste nada, no se notifica
+  // a nadie — el store queda exactamente como estaba. Si lo acepta, log y
+  // estado se cachean juntos y getSnapshot() solo tiene que devolverlos.
+  function tryCommit(candidateLog: EventLog): boolean {
+    let state: PlayGameState;
+    try {
+      state = replay(candidateLog.committed, candidateLog.pending);
+    } catch {
+      return false;
+    }
+    game = { log: candidateLog, state };
+    emit();
+    return true;
   }
 
   // Estos listeners nunca se retiran (no hay destroy()): asume que el store
@@ -148,43 +193,47 @@ function createPlayStore(identity: string): PlayStore {
       listeners.add(callback);
       return () => listeners.delete(callback);
     },
+    // Ya no deriva nada: el estado se calcula al commitear (tryCommit) o al
+    // rehidratar (readStorage). Devolver la referencia cacheada es lo único
+    // que hace falta para que esto sea estructuralmente incapaz de lanzar.
     getSnapshot() {
-      if (dirty) {
-        cached = log ? { log, state: replay(log.committed, log.pending) } : null;
-        dirty = false;
-      }
-      return cached;
+      return game;
     },
     start(event) {
-      if (log) throw new Error("ya hay una partida activa; la UI debe interceptar antes (spec §4)");
-      log = emptyLog(event);
-      emit();
+      if (game) throw new Error("ya hay una partida activa; la UI debe interceptar antes (spec §4)");
+      // Aquí SÍ puede llegar un evento inválido (game_started con un setup
+      // fuera de rango, o directamente un evento que no es game_started): se
+      // trata igual que tap/dispatch, no como el caso de arriba.
+      return tryCommit(emptyLog(event));
     },
     tap(event) {
-      if (!log) return;
-      log = appendTap(log, event);
-      scheduleSeal();
-      emit();
+      if (!game) return false;
+      const applied = tryCommit(appendTap(game.log, event));
+      if (applied) scheduleSeal();
+      return applied;
     },
     dispatch(event) {
-      if (!log) return;
-      clearSealTimer();
-      log = append(log, event);
-      emit();
+      if (!game) return false;
+      const applied = tryCommit(append(game.log, event));
+      if (applied) clearSealTimer();
+      return applied;
     },
     undo() {
-      if (!log) return null;
+      if (!game) return null;
       clearSealTimer();
-      const result = undoLast(log);
+      const result = undoLast(game.log);
       if (result.undone === null) return null;
-      log = result.log;
+      // Deshacer siempre deja un PREFIJO de un log que ya era válido (nunca
+      // añade eventos), así que el replay aquí no puede fallar — a diferencia
+      // de start/tap/dispatch no hace falta pasar por tryCommit.
+      game = { log: result.log, state: replay(result.log.committed, result.log.pending) };
       emit();
       return result.undone;
     },
     flush: sealNow,
     discard() {
       clearSealTimer();
-      log = null;
+      game = null;
       emit();
     },
   };

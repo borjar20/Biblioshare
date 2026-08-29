@@ -9,7 +9,7 @@ import {
   SNAPSHOT_VERSION,
   __resetPlayStoresForTests,
 } from "./store";
-import { started } from "@/lib/play/commander/test-fixtures";
+import { makeSetup, started } from "@/lib/play/commander/test-fixtures";
 import type { CommanderState } from "@/lib/play/commander/types";
 import type { EventLog } from "./types";
 
@@ -162,5 +162,120 @@ describe("ráfagas y suscripción", () => {
     store.discard();
     expect(store.getSnapshot()).toBeNull();
     expect(storage.getItem(playStorageKey("anon"))).toBeNull();
+  });
+});
+
+describe("eventos inválidos: commit condicional (finding 1 de la revisión final)", () => {
+  it("start() con un setup inválido (menos de 2 participantes) no crea partida ni persiste nada", () => {
+    const store = getPlayStore("anon");
+    const applied = store.start(started(1000, makeSetup(["ana"])));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBeNull();
+    expect(storage.getItem(playStorageKey("anon"))).toBeNull();
+  });
+
+  it("start() con un evento que no es game_started no crea partida ni persiste nada", () => {
+    const store = getPlayStore("anon");
+    const applied = store.start(tap(-1, 1000));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBeNull();
+    expect(storage.getItem(playStorageKey("anon"))).toBeNull();
+  });
+
+  it("tap() con un participante desconocido deja el store exactamente como estaba", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    const before = store.getSnapshot();
+    const beforeRaw = storage.getItem(playStorageKey("anon"));
+    const applied = store.tap(makeEvent("life_changed", { target: "fantasma", delta: -1 }, 2000, "t-bad"));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBe(before); // misma referencia: nada se reasignó
+    expect(storage.getItem(playStorageKey("anon"))).toBe(beforeRaw);
+  });
+
+  it("dispatch() de un evento tras game_finished se rechaza y el store queda intacto", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "last_standing" }, 2000, "e-fin"));
+    const before = store.getSnapshot();
+    const beforeRaw = storage.getItem(playStorageKey("anon"));
+    const applied = store.dispatch(makeEvent("turn_passed", {}, 3000, "e-turn"));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
+    expect(storage.getItem(playStorageKey("anon"))).toBe(beforeRaw);
+  });
+
+  it("repro de la revisión: doble player_eliminated no revienta getSnapshot ni corrompe lo persistido", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2000, "e-elim-1"));
+    const before = store.getSnapshot();
+    const beforeRaw = storage.getItem(playStorageKey("anon"));
+    const applied = store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 3000, "e-elim-2"));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
+    expect(storage.getItem(playStorageKey("anon"))).toBe(beforeRaw);
+    // Antes del arreglo esto lanzaba y el snapshot en disco quedaba envenenado
+    // (la segunda eliminación se había persistido igualmente).
+    expect(() => store.getSnapshot()).not.toThrow();
+    const persisted = JSON.parse(storage.getItem(playStorageKey("anon")) ?? "null") as { committed: { type: string }[] };
+    expect(persisted.committed.map((e) => e.type)).toEqual(["game_started", "player_eliminated"]);
+  });
+
+  it("dispatch() de restaurar a un jugador vivo se rechaza y el store queda intacto", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    const before = store.getSnapshot();
+    const beforeRaw = storage.getItem(playStorageKey("anon"));
+    const applied = store.dispatch(makeEvent("player_restored", { target: "ana" }, 2000, "e-restore"));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
+    expect(storage.getItem(playStorageKey("anon"))).toBe(beforeRaw);
+  });
+
+  it("dispatch() de declarar ganador a un jugador eliminado se rechaza y el store queda intacto", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2000, "e-elim"));
+    const before = store.getSnapshot();
+    const beforeRaw = storage.getItem(playStorageKey("anon"));
+    const applied = store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "card" }, 3000, "e-fin"));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
+    expect(storage.getItem(playStorageKey("anon"))).toBe(beforeRaw);
+  });
+
+  it("dispatch() de un participante desconocido se rechaza y el store queda intacto", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    const before = store.getSnapshot();
+    const beforeRaw = storage.getItem(playStorageKey("anon"));
+    const applied = store.dispatch(makeEvent("player_eliminated", { target: "fantasma" }, 2000, "e-ghost"));
+    expect(applied).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
+    expect(storage.getItem(playStorageKey("anon"))).toBe(beforeRaw);
+  });
+
+  it("tras un dispatch rechazado, una acción válida se sigue aplicando con normalidad", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2000, "e-elim-1"));
+    const rejected = store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2500, "e-elim-2"));
+    expect(rejected).toBe(false);
+    const applied = store.dispatch(makeEvent("player_restored", { target: "ana" }, 3000, "e-restore"));
+    expect(applied).toBe(true);
+    expect((store.getSnapshot()?.state as CommanderState).players[0].elimination).toBeNull();
+  });
+
+  it("el estado sobrevive a una rehidratación tras un dispatch rechazado", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2000, "e-elim-1"));
+    store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2500, "e-elim-2")); // rechazado, no persistido
+    __resetPlayStoresForTests();
+    const reborn = getPlayStore("anon");
+    const state = reborn.getSnapshot()?.state as CommanderState;
+    expect(state.players[0].elimination).toEqual({ order: 1, round: null, reason: undefined });
+    expect(state.players.filter((p) => p.elimination).map((p) => p.participant.id)).toEqual(["ana"]);
   });
 });
