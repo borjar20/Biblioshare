@@ -13,6 +13,10 @@ function Probe({ identity }: { identity: string }) {
 
 beforeEach(() => {
   __resetPlayStoresForTests();
+  // jsdom conserva un único localStorage real para todo el fichero: sin este
+  // clear, la partida persistida por un test "gotea" al siguiente al releerse
+  // desde disco en el primer getPlayStore() de esa identidad.
+  localStorage.clear();
   // React 19: act necesita el flag en el entorno de test
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
@@ -27,6 +31,28 @@ describe("useActiveGame", () => {
     const { getPlayStore } = await import("./store");
     await act(async () => getPlayStore("anon").start(started(1000)));
     expect(host.textContent).toBe("partida");
+    await act(async () => root.unmount());
+  });
+
+  it("al cambiar de identidad refleja el store de la nueva identidad, sin mezclar partidas ni destruir la anterior", async () => {
+    const host = document.createElement("div");
+    const root = createRoot(host);
+    const { getPlayStore } = await import("./store");
+
+    await act(async () => root.render(<Probe identity="anon" />));
+    await act(async () => getPlayStore("anon").start(started(1000)));
+    expect(host.textContent).toBe("partida");
+
+    // Misma instancia del componente, identidad distinta: debe leer el store
+    // de "otro-uid" (sin partida), no seguir sirviendo el de "anon".
+    await act(async () => root.render(<Probe identity="otro-uid" />));
+    expect(host.textContent).toBe("vacio");
+
+    // Volver a "anon" muestra su partida de nuevo: el cambio de identidad no
+    // destruyó el store anterior, solo dejó de suscribirse a él.
+    await act(async () => root.render(<Probe identity="anon" />));
+    expect(host.textContent).toBe("partida");
+
     await act(async () => root.unmount());
   });
 });

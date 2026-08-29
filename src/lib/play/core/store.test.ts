@@ -1,9 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeEvent } from "./events";
 import { BURST_WINDOW_MS } from "./log";
-import { getPlayStore, parseSnapshot, playStorageKey, serializeSnapshot, __resetPlayStoresForTests } from "./store";
+import {
+  getPlayStore,
+  parseSnapshot,
+  playStorageKey,
+  serializeSnapshot,
+  SNAPSHOT_VERSION,
+  __resetPlayStoresForTests,
+} from "./store";
 import { started } from "@/lib/play/commander/test-fixtures";
 import type { CommanderState } from "@/lib/play/commander/types";
+import type { EventLog } from "./types";
 
 class FakeStorage {
   private map = new Map<string, string>();
@@ -63,6 +71,52 @@ describe("persistencia y aislamiento", () => {
     // semánticamente inválido: no empieza por game_started
     storage.setItem(playStorageKey("x"), serializeSnapshot({ committed: [tap(-1, 1)], pending: null }));
     expect(getPlayStore("x").getSnapshot()).toBeNull();
+  });
+});
+
+describe("parseSnapshot", () => {
+  it("round-trip: parseSnapshot(serializeSnapshot(log)) devuelve los eventos commiteados esperados y sella la ráfaga pendiente", () => {
+    const log: EventLog = { committed: [started(1000)], pending: tap(-3, 2000) };
+    const parsed = parseSnapshot(serializeSnapshot(log));
+    // flushPending (spec §3) mueve la ráfaga pendiente a committed tal cual,
+    // sin re-coalescerla: así rehidrata el store al releer localStorage.
+    expect(parsed).toEqual({ committed: [started(1000), tap(-3, 2000)], pending: null });
+  });
+
+  it("raw null devuelve null", () => {
+    expect(parseSnapshot(null)).toBeNull();
+  });
+
+  it("cadena vacía devuelve null", () => {
+    expect(parseSnapshot("")).toBeNull();
+  });
+
+  it("JSON malformado devuelve null en vez de lanzar", () => {
+    expect(parseSnapshot("{esto no es json")).toBeNull();
+  });
+
+  it("una versión de snapshot distinta a SNAPSHOT_VERSION devuelve null", () => {
+    const raw = JSON.stringify({ v: SNAPSHOT_VERSION + 1, committed: [started(1000)], pending: null });
+    expect(parseSnapshot(raw)).toBeNull();
+  });
+
+  it("forma correcta pero semánticamente imposible (el log no empieza por game_started) devuelve null", () => {
+    const raw = serializeSnapshot({ committed: [tap(-1, 1000)], pending: null });
+    expect(parseSnapshot(raw)).toBeNull();
+  });
+
+  it("un evento con 'at' no finito devuelve null", () => {
+    const raw = JSON.stringify({
+      v: SNAPSHOT_VERSION,
+      committed: [{ ...started(1000), at: Number.POSITIVE_INFINITY }],
+      pending: null,
+    });
+    expect(parseSnapshot(raw)).toBeNull();
+  });
+
+  it("un evento con 'at' no positivo devuelve null", () => {
+    const raw = JSON.stringify({ v: SNAPSHOT_VERSION, committed: [{ ...started(1000), at: 0 }], pending: null });
+    expect(parseSnapshot(raw)).toBeNull();
   });
 });
 
