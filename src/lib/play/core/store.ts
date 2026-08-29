@@ -13,6 +13,15 @@ export const SNAPSHOT_VERSION = 1 as const;
 // Aislada por identidad: sin esto la partida del usuario A aparece en la
 // cuenta B del mismo dispositivo (misma clase de fuga que el arreglo #680).
 export function playStorageKey(identity: string): string {
+  // Una identidad vacía (o solo espacios) colapsaría la clave a un valor
+  // compartido ("biblioshare:play::active"): si dos cuentas reales pasaran
+  // por aquí con identity="" —p. ej. la UI renderizando antes de que resuelva
+  // el auth— sus partidas se fusionarían bajo la misma clave, justo la fuga
+  // entre cuentas que este aislamiento por identidad existe para evitar. Las
+  // llamadoras pasan un uid real o el literal "anon", nunca una cadena vacía.
+  if (identity.trim() === "") {
+    throw new Error("playStorageKey: identity no puede estar vacía");
+  }
   return `biblioshare:play:${identity}:active`;
 }
 
@@ -121,6 +130,12 @@ function createPlayStore(identity: string): PlayStore {
     }
   }
 
+  // Estos listeners nunca se retiran (no hay destroy()): asume que el store
+  // se crea una sola vez por identidad y vive lo que dure la página
+  // (getPlayStore los cachea en `stores`). Si algún día un test con jsdom
+  // recrea stores para la misma identidad, esto acumulará un par de
+  // listeners por recreación — hoy es invisible porque el entorno "node" de
+  // este suite no tiene `document`.
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") sealNow();

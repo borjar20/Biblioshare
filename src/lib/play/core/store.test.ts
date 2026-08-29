@@ -34,6 +34,18 @@ describe("persistencia y aislamiento", () => {
     expect(getPlayStore("uid-borja").getSnapshot()).toBeNull();
   });
 
+  it("playStorageKey rechaza una identidad vacía", () => {
+    expect(() => playStorageKey("")).toThrow();
+  });
+
+  it("playStorageKey rechaza una identidad de solo espacios", () => {
+    expect(() => playStorageKey("   ")).toThrow();
+  });
+
+  it("playStorageKey con una identidad normal produce la clave esperada", () => {
+    expect(playStorageKey("uid-borja")).toBe("biblioshare:play:uid-borja:active");
+  });
+
   it("persiste también la ráfaga abierta y rehidrata (sellándola) tras un 'cierre'", () => {
     const store = getPlayStore("anon");
     store.start(started(1000));
@@ -85,7 +97,9 @@ describe("ráfagas y suscripción", () => {
     store.tap(tap(-5, 2000));
     const undone = store.undo();
     expect(undone?.payload).toEqual({ target: "ana", delta: -5 });
-    expect(seen.length).toBeGreaterThanOrEqual(3);
+    // start() emite 1 vez; el primer tap() abre la ráfaga (no coalesca) y emite
+    // 1 vez; undo() descarta la ráfaga aún abierta y emite 1 vez. Total: 3.
+    expect(seen.length).toBe(3);
   });
 
   it("discard borra la clave y deja el snapshot a null", () => {
