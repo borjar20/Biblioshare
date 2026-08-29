@@ -3,7 +3,7 @@ import { PlayEventError } from "@/lib/play/core/errors";
 import { commanderReducer, initialCommanderState } from "./reducer";
 import { ev, makeSetup, started } from "./test-fixtures";
 import type { CommanderDamageEvent, LifeChangedEvent, PoisonChangedEvent } from "./events";
-import type { MonarchChangedEvent, PlayerEliminatedEvent, TurnPassedEvent } from "./events";
+import type { MonarchChangedEvent, PlayerEliminatedEvent, TurnPassedEvent, InitiativeChangedEvent } from "./events";
 
 describe("initialCommanderState", () => {
   it("arranca con las vidas del setup, sin veneno y con el asiento inicial activo", () => {
@@ -125,8 +125,38 @@ describe("commanderReducer — monarca e iniciativa", () => {
   it("asigna, reasigna y limpia con null", () => {
     let s = commanderReducer(base, ev<MonarchChangedEvent>("monarch_changed", { holder: "ana" }, 2000));
     expect(s.monarch).toBe("ana");
+    s = commanderReducer(s, ev<MonarchChangedEvent>("monarch_changed", { holder: "carlos" }, 2050));
+    expect(s.monarch).toBe("carlos");
     s = commanderReducer(s, ev<MonarchChangedEvent>("monarch_changed", { holder: null }, 2100));
     expect(s.monarch).toBeNull();
+  });
+
+  it("asigna titular de iniciativa", () => {
+    const s = commanderReducer(base, ev<InitiativeChangedEvent>("initiative_changed", { holder: "ana" }, 2000));
+    expect(s.initiative).toBe("ana");
+    // Valida que no escriba en monarca por confusión de campos
+    expect(s.monarch).toBeNull();
+  });
+
+  it("limpia titular de iniciativa con null", () => {
+    let s = commanderReducer(base, ev<InitiativeChangedEvent>("initiative_changed", { holder: "ana" }, 2000));
+    expect(s.initiative).toBe("ana");
+    s = commanderReducer(s, ev<InitiativeChangedEvent>("initiative_changed", { holder: null }, 2100));
+    expect(s.initiative).toBeNull();
+  });
+
+  it("rechaza un poseedor desconocido en iniciativa", () => {
+    expect(() => commanderReducer(base, ev<InitiativeChangedEvent>("initiative_changed", { holder: "nadie" }, 2000)))
+      .toThrow(PlayEventError);
+  });
+
+  it("iniciativa: asigna, reasigna y limpia con null", () => {
+    let s = commanderReducer(base, ev<InitiativeChangedEvent>("initiative_changed", { holder: "ana" }, 2000));
+    expect(s.initiative).toBe("ana");
+    s = commanderReducer(s, ev<InitiativeChangedEvent>("initiative_changed", { holder: "carlos" }, 2050));
+    expect(s.initiative).toBe("carlos");
+    s = commanderReducer(s, ev<InitiativeChangedEvent>("initiative_changed", { holder: null }, 2100));
+    expect(s.initiative).toBeNull();
   });
 
   it("rechaza un poseedor desconocido", () => {
