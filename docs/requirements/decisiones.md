@@ -2897,3 +2897,22 @@ catálogo. Detalle en `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.m
 `anon`) y dispositivo, con clave de localStorage aislada por identidad para no filtrar la partida
 entre cuentas del mismo dispositivo — misma clase de fuga que el arreglo #680 del service worker.
 Decidido en `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`.
+
+## 2026-08-29 (4) — Los selectores de Commander viven en `commander/selectors.ts`, no en `core/` (#931)
+
+**Desviación del árbol de la spec.** `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`
+§2 dibujaba `core/selectors.ts`, pero `describeEvent`, `finalRanking` y `lossConditions` dependen de
+`CommanderState` (vidas, veneno, daño de comandante) y el `core/` tiene que quedarse neutro, sin
+conceptos de Magic — es la misma regla que ya separa `commander/types.ts` de `core/types.ts`. Viven
+en `src/lib/play/commander/selectors.ts`; `core/` no gana un fichero con ese nombre.
+
+## 2026-08-29 (5) — El store re-deriva por replay completo en cada cambio, no memoiza incrementalmente (#931)
+
+**Revierte a propósito una frase explícita de la spec** («El store memoiza incrementalmente»,
+§2). `src/lib/play/core/store.ts` llama a `replay(committed, pending)` entero tras cada tap,
+sellado o undo, en vez de aplicar solo el evento entrante sobre el estado ya derivado. Razón:
+YAGNI — una partida son unos pocos cientos de eventos, el replay completo es imperceptible en un
+`life_changed` o un `commander_damage`, y la ruta incremental es una optimización que se añade el
+día que un profiler la pida, no antes. No se pierde la garantía que la spec perseguía: el gate de
+Fase 2 (`docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md` §8, «Reconstrucción») sigue
+fijando que aplicación incremental ≡ re-reduce completo desde `game_started`.
