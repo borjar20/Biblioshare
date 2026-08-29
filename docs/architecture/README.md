@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Derivado · generado desde el código el 2026-07-29]**
+> **[Derivado · generado desde el código el 2026-08-29]**
 
 Dos vistas de lo mismo, pensadas para lectores distintos:
 

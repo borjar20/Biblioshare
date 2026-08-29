@@ -43,6 +43,16 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón |
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
 | **Tu cuenta** | Mi cuenta, Tú (como etiqueta visible) | El **agrupador** de lo tuyo (perfil, Cuaderno, Estadísticas, Ajustes). Es el nombre del menú del avatar; en el código el concepto se llama «Tú» (`youItems`), pero al usuario no se le enseña esa palabra suelta. | menú del avatar (`sm+`), fila «Lo tuyo» del perfil (móvil) |
+| **Partida** | Juego | Una sesión de juego concreta; la unidad principal del dominio. | dominio `play`, `/partidas` |
+| **Herramienta** | Tracker, Módulo | Cada tracker del hub de Partidas (Commander, puntuación por rondas…). | `/partidas` (hub principal) |
+| **Jugador** | Usuario, Participante | Quien participa en una partida, sea cuenta Biblioshare, habitual o invitado; su origen no se distingue durante la partida. | dominio `play` |
+| **Invitado** | — | Jugador temporal que no persiste tras la partida. | dominio `play` |
+| **Jugador habitual** | Contacto, Amigo | Persona sin cuenta que acumula historial; vinculable a una cuenta solo manualmente (nunca por nombre). | dominio `play` |
+| **Comandante** | — | Carta comandante de un mazo en Commander; texto libre, sin catálogo. | herramienta Commander (`/partidas/commander`) |
+| **Daño de comandante** | — | Daño acumulado que un comandante concreto ha hecho a un jugador (21 = condición de derrota). | herramienta Commander |
+| **Veneno** | — | Contadores de veneno (10 = condición de derrota). | herramienta Commander |
+| **Monarca** / **Iniciativa** | — | Estados globales de mesa con un único poseedor. | herramienta Commander |
+| **Ronda** | Turno (como conteo) | Vuelta completa de turnos; es el número que la UI muestra como «Turno N». | herramienta Commander |
 
 ## Reglas de escritura que se derivan
 

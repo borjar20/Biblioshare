@@ -127,7 +127,7 @@ Exactamente **una de cada dimensión**, ni más ni menos:
 
 | Dimensión | Valores |
 |---|---|
-| **Área** | `area:sagas` · `area:clubes` · `area:social` · `area:catalogo` · `area:ui` · `area:infra` |
+| **Área** | `area:sagas` · `area:clubes` · `area:social` · `area:catalogo` · `area:ui` · `area:infra` · `area:play` |
 | **Tipo** | `tipo:bug` · `tipo:deuda` · `tipo:cobertura` · `tipo:feature` · `tipo:acta` · `tipo:sospecha` |
 | **Prioridad** | `P0` · `P1` · `P2` · `P3` |
 

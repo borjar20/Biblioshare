@@ -2874,3 +2874,45 @@ necesita la work key: corre en paralelo con `fetchWork`. El autor y la sinopsis 
 a 4; Google Books queda serial porque su gate depende de los campos ya resueltos. Seguro porque
 ningún fetcher rechaza (degradan a null): la promesa adelantada no deja rechazos huérfanos si el
 work falla y se retorna temprano.
+
+## 2026-08-29 — El dominio `play` es una excepción explícita a `inv-passes-hub` (#931)
+
+**`play` no deriva su estado de `passes`.** La regla «cualquier estado del usuario se deriva de
+`passes`» (invariante `inv-passes-hub`) no aplica al nuevo dominio `play` (Partidas / BiblioPlay):
+en las Fases 0–3 es local-first sin backend, y cuando tenga backend (Fase 5) su fuente de verdad
+serán sus propias tablas, no `passes`. Decidido a propósito en la spec
+`docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`, para que un futuro agente que
+encuentre `play` sin pases lo lea como la excepción registrada aquí, no como un bug.
+
+## 2026-08-29 (2) — Play tiene identidad visual de subapp (#931)
+
+**Matiza el «no crear estética gaming independiente» de la issue #931.** BiblioPlay parte del
+fundamento Paper (tokens, modo claro/oscuro) pero con acento cromático propio, más movimiento y una
+escala de instrumento: debe expresar «estás jugando» por sí misma, no leer como una ficha más del
+catálogo. Detalle en `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`.
+
+## 2026-08-29 (3) — `/partidas*` es accesible sin sesión desde Fase 1 (#931)
+
+**No hace falta cuenta para jugar.** La partida se identifica por identidad (`uid` de sesión o
+`anon`) y dispositivo, con clave de localStorage aislada por identidad para no filtrar la partida
+entre cuentas del mismo dispositivo — misma clase de fuga que el arreglo #680 del service worker.
+Decidido en `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`.
+
+## 2026-08-29 (4) — Los selectores de Commander viven en `commander/selectors.ts`, no en `core/` (#931)
+
+**Desviación del árbol de la spec.** `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`
+§2 dibujaba `core/selectors.ts`, pero `describeEvent`, `finalRanking` y `lossConditions` dependen de
+`CommanderState` (vidas, veneno, daño de comandante) y el `core/` tiene que quedarse neutro, sin
+conceptos de Magic — es la misma regla que ya separa `commander/types.ts` de `core/types.ts`. Viven
+en `src/lib/play/commander/selectors.ts`; `core/` no gana un fichero con ese nombre.
+
+## 2026-08-29 (5) — El store re-deriva por replay completo en cada cambio, no memoiza incrementalmente (#931)
+
+**Revierte a propósito una frase explícita de la spec** («El store memoiza incrementalmente»,
+§2). `src/lib/play/core/store.ts` llama a `replay(committed, pending)` entero tras cada tap,
+sellado o undo, en vez de aplicar solo el evento entrante sobre el estado ya derivado. Razón:
+YAGNI — una partida son unos pocos cientos de eventos, el replay completo es imperceptible en un
+`life_changed` o un `commander_damage`, y la ruta incremental es una optimización que se añade el
+día que un profiler la pida, no antes. No se pierde la garantía que la spec perseguía: el gate de
+Fase 2 (`docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md` §8, «Reconstrucción») sigue
+fijando que aplicación incremental ≡ re-reduce completo desde `game_started`.

@@ -3,7 +3,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-07-29",
+    "generatedAt": "2026-08-29",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab)",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -29,14 +29,15 @@
       "Usa `nodes[].files` como punto de entrada de lectura; `nodes[].gotchas` avisa de lo que ya ha costado horas.",
       "Antes de tocar el esquema, lee `docs/requirements/data-model.md`: este JSON resume, no manda.",
       "Este fichero es DERIVADO. Si contradice al código, manda el código; regenera este mapa y actualiza `meta.generatedAt`.",
-      "Reglas duras del proyecto que se repiten en varios nodos: (1) el estado vivo del usuario vive en `passes`, nunca en `library_entries`; (2) los componentes derivan de props y reconcilian con revalidatePath/router.refresh(); (3) las clases Tailwind se escriben enteras, nunca interpoladas."
+      "Reglas duras del proyecto que se repiten en varios nodos: (1) el estado vivo del usuario vive en `passes`, nunca en `library_entries` (excepción: `play`/m-play, ver meta.invariants.inv-passes-hub.exception); (2) los componentes derivan de props y reconcilian con revalidatePath/router.refresh(); (3) las clases Tailwind se escriben enteras, nunca interpoladas."
     ],
     "invariants": [
       {
         "id": "inv-passes-hub",
         "rule": "Cualquier estado del usuario se deriva de `passes`. `library_entries` está CONGELADA (solo conserva `pinned_order`); su `status`/`position` llevan meses sin actualizarse.",
         "evidence": "docs/requirements/data-model.md §0, §3",
-        "brokenBy": "PR #96 — avance de sagas al 0% por leer library_entries"
+        "brokenBy": "PR #96 — avance de sagas al 0% por leer library_entries",
+        "exception": "`play` (Partidas/BiblioPlay, m-play) NO deriva de `passes`: es local-first sin backend en fases 0-3 y, cuando tenga backend (Fase 5), su fuente de verdad serán sus propias tablas. Excepción registrada a propósito, no un bug — ver docs/requirements/decisiones.md §2026-08-29 «El dominio play es una excepción explícita a inv-passes-hub (#931)» y docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md."
       },
       {
         "id": "inv-search-no-write",
@@ -941,6 +942,22 @@
       "files": [
         "src/i18n",
         "messages/es.json"
+      ]
+    },
+    {
+      "id": "m-play",
+      "label": "lib/play",
+      "layer": "domain",
+      "kind": "module",
+      "size": 14,
+      "summary": "Motor puro de BiblioPlay (Partidas), dominio nuevo e independiente (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y la primera herramienta especializada, Commander (commander/). Solo store.ts toca el navegador: snapshot en localStorage, aislado por identidad. Sin backend en fases 0-3 — excepción explícita a inv-passes-hub (ver meta.invariants).",
+      "files": [
+        "src/lib/play/tools.ts",
+        "src/lib/play/core/log.ts",
+        "src/lib/play/core/replay.ts",
+        "src/lib/play/core/store.ts",
+        "src/lib/play/commander/reducer.ts",
+        "src/lib/play/commander/selectors.ts"
       ]
     },
     {

@@ -313,6 +313,9 @@ es rastreable por `area:catalogo`.
 **Infra futura**
 - Offline-first con escritura; IGDB/videojuegos como cuarto tipo.
 
+**Partidas (play)**
+- [ ] BiblioPlay (dominio `play`): motor de eventos + prototipo Commander local-first — EPIC #931, spec `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`
+
 ## Deuda transversal priorizada por la auditoría 2026-08
 
 El informe (`docs/audit/AUDIT-2026-08.md`, resumen ejecutivo final) ordena el
