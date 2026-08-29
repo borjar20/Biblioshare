@@ -2,6 +2,7 @@
 
 import { append, appendTap, BURST_WINDOW_MS, emptyLog, flushPending, undoLast } from "./log";
 import { replay } from "./replay";
+import { PlayEventError } from "./errors";
 import type { ActiveGameSnapshot, EventLog, PlayEvent } from "./types";
 import type { PlayGameState } from "@/lib/play/tools";
 
@@ -167,7 +168,15 @@ function createPlayStore(identity: string): PlayStore {
     let state: PlayGameState;
     try {
       state = replay(candidateLog.committed, candidateLog.pending);
-    } catch {
+    } catch (error) {
+      // PlayEventError es el reducer rechazando el evento por las reglas del
+      // juego: una condición alcanzable desde una UI correcta (doble tap,
+      // botón obsoleto) y el único caso que debe degradar a `false` en
+      // silencio. Cualquier OTRA excepción (TypeError por un payload
+      // malformado, etc.) es un defecto real, no un "double-tap" del
+      // usuario, y debe propagarse — atraparla aquí la confundiría con un
+      // evento inválido y la escondería del log de errores.
+      if (!(error instanceof PlayEventError)) throw error;
       return false;
     }
     game = { log: candidateLog, state };
