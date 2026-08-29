@@ -1,0 +1,32 @@
+// Tipos del motor de partidas. El core es neutro: no conoce conceptos de MTG
+// (spec §2 — la especialización vive en cada herramienta).
+
+export type ToolId = "commander";
+
+// Unión discriminada: un invitado con userId o un usuario sin él no compilan
+// (spec §2, revisión: los estados imposibles no viven en comentarios).
+export type Participant =
+  | { id: string; kind: "user"; name: string; userId: string }
+  | { id: string; kind: "regular" | "guest"; name: string };
+
+export type PlayEvent<T extends string = string, P = unknown> = {
+  id: string; // UUID: idempotencia de la sync futura (Fase 5)
+  type: T;
+  at: number; // epoch ms, informativo: el orden verdadero es la posición en el log
+  payload: P;
+};
+
+// Fuente de verdad histórica = committed. Estado vivo = committed + pending.
+// pending es la ráfaga de coalescing: todavía NO forma parte del log canónico (spec §2-3).
+export type EventLog = {
+  committed: PlayEvent[];
+  pending: PlayEvent | null;
+};
+
+// Lo que se persiste en localStorage. Sin toolId: se deriva de
+// committed[0].payload.toolId durante el replay de rehidratación (spec §2).
+export type ActiveGameSnapshot = {
+  v: 1;
+  committed: PlayEvent[];
+  pending: PlayEvent | null;
+};
