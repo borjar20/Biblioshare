@@ -11,6 +11,7 @@ import {
 } from "./store";
 import { makeSetup, started } from "@/lib/play/commander/test-fixtures";
 import type { CommanderState } from "@/lib/play/commander/types";
+import { playTools } from "@/lib/play/tools";
 import type { EventLog } from "./types";
 
 class FakeStorage {
@@ -277,5 +278,68 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     const state = reborn.getSnapshot()?.state as CommanderState;
     expect(state.players[0].elimination).toEqual({ order: 1, round: null, reason: undefined });
     expect(state.players.filter((p) => p.elimination).map((p) => p.participant.id)).toEqual(["ana"]);
+  });
+});
+
+describe("catch acotado en tryCommit: un bug real no se confunde con un rechazo de usuario (finding 3 de la revisión final)", () => {
+  it("una excepción que NO es PlayEventError durante el reduce se propaga en vez de tragarse como false", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    // No hay ninguna regla de Commander hoy que un tap fusionado pueda violar
+    // (vida y daño de comandante no tienen tope, el veneno se clampa), así que
+    // para provocar un error "de verdad" en el reduce se sustituye el módulo de
+    // herramienta por un espía que lanza un TypeError — el defecto que este
+    // arreglo existe para no esconder, no un rechazo de reglas.
+    const boom = new TypeError("payload malformado: reduce no debería haber llegado aquí");
+    const reduceSpy = vi.spyOn(playTools.commander, "reduce").mockImplementation(() => {
+      throw boom;
+    });
+    const before = store.getSnapshot();
+    try {
+      const dispatchTurnPassed = () => store.dispatch(makeEvent("turn_passed", {}, 2000, "e-turn"));
+      expect(dispatchTurnPassed).toThrow(TypeError);
+      expect(dispatchTurnPassed).toThrow("payload malformado: reduce no debería haber llegado aquí");
+    } finally {
+      reduceSpy.mockRestore();
+    }
+    // Ni siquiera se reasignó `game`: el throw ocurre en tryCommit ANTES de tocar el store.
+    expect(store.getSnapshot()).toBe(before);
+  });
+});
+
+describe("timer de sellado frente a un input rechazado (spec §3, sin cobertura hasta ahora)", () => {
+  it("un tap rechazado no reprograma el timer ya armado: el burst pendiente sella en su plazo ORIGINAL", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.tap(tap(-3, 2000)); // arma el timer de sellado: BURST_WINDOW_MS desde AHORA (reloj falso)
+    const pendingBeforeReject = store.getSnapshot()?.log.pending;
+    vi.advanceTimersByTime(1000); // dentro de la ventana original, aún no sella
+    // Participante desconocido: el reducer lo rechaza (seatOf lanza PlayEventError).
+    // Al ser rechazado, tap() no llama a scheduleSeal() — si este test fallara
+    // reprogramando el timer, el segundo advance de abajo NO llegaría a sellar.
+    const rejected = store.tap(makeEvent("life_changed", { target: "fantasma", delta: -1 }, 3000, "t-bad"));
+    expect(rejected).toBe(false);
+    // La ráfaga pendiente es exactamente la de antes del rechazo: el intento
+    // inválido no la tocó ni tampoco su timer.
+    expect(store.getSnapshot()?.log.pending).toEqual(pendingBeforeReject);
+    vi.advanceTimersByTime(500); // completa los 1500 ms ORIGINALES (1000 + 500), no 1500 desde el rechazo
+    expect(store.getSnapshot()?.log.pending).toBeNull();
+    expect(store.getSnapshot()?.log.committed).toEqual([started(1000), tap(-3, 2000)]);
+  });
+
+  it("un dispatch rechazado no cancela el timer armado: el burst pendiente sigue vivo y sella a su hora", () => {
+    const store = getPlayStore("anon");
+    store.start(started(1000));
+    store.tap(tap(-3, 2000)); // arma el timer de sellado
+    vi.advanceTimersByTime(1000); // dentro de la ventana, timer todavía vivo
+    // player_eliminated sobre un participante desconocido: seatOf lo rechaza.
+    // dispatch() solo llama a clearSealTimer() cuando `applied` es true, así
+    // que un dispatch rechazado no debe cancelar el timer del burst en curso.
+    const rejected = store.dispatch(makeEvent("player_eliminated", { target: "fantasma" }, 3000, "e-ghost"));
+    expect(rejected).toBe(false);
+    expect(store.getSnapshot()?.log.pending).toEqual(tap(-3, 2000));
+    vi.advanceTimersByTime(500); // completa los 1500 ms del timer que NUNCA se canceló
+    expect(store.getSnapshot()?.log.pending).toBeNull();
+    expect(store.getSnapshot()?.log.committed).toEqual([started(1000), tap(-3, 2000)]);
   });
 });
