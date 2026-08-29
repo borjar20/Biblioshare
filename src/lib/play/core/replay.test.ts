@@ -3,30 +3,30 @@ import { PlayEventError } from "./errors";
 import { appendTap, emptyLog, flushPending } from "./log";
 import { makeEvent } from "./events";
 import { replay } from "./replay";
-import { commanderReducer, initialCommanderState } from "@/lib/play/commander/reducer";
-import { ev, started } from "@/lib/play/commander/test-fixtures";
-import type { CommanderState } from "@/lib/play/commander/types";
+import { mtgReducer, initialMtgState } from "@/lib/play/mtg/reducer";
+import { ev, started } from "@/lib/play/mtg/test-fixtures";
+import type { MtgState } from "@/lib/play/mtg/types";
 import type {
   CommanderDamageEvent,
-  CommanderEvent,
+  MtgEvent,
   LifeChangedEvent,
   PlayerEliminatedEvent,
   PoisonChangedEvent,
   TurnPassedEvent,
-} from "@/lib/play/commander/events";
+} from "@/lib/play/mtg/events";
 
 describe("replay", () => {
   it("gate Fase 2: aplicar incremental === re-reduce completo desde game_started", () => {
-    const events: CommanderEvent[] = [
+    const events: MtgEvent[] = [
       ev<LifeChangedEvent>("life_changed", { target: "ana", delta: -4 }, 2000),
-      ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: 7 }, 2500),
+      ev<CommanderDamageEvent>("commander_damage", { source: "carlos-c1", target: "borja", delta: 7 }, 2500),
       ev<TurnPassedEvent>("turn_passed", {}, 3000),
       ev<PlayerEliminatedEvent>("player_eliminated", { target: "laura", reason: "concede" }, 3500),
       ev<TurnPassedEvent>("turn_passed", {}, 4000),
       ev<LifeChangedEvent>("life_changed", { target: "carlos", delta: 2 }, 4500),
     ];
     // incremental: evento a evento, como hace el store en vivo
-    const incremental = events.reduce(commanderReducer, initialCommanderState(started(1000)));
+    const incremental = events.reduce(mtgReducer, initialMtgState(started(1000)));
     // replay: desde el log persistido, como hace la rehidratación
     const state = replay([started(1000), ...events]);
     expect(state).toEqual(incremental);
@@ -41,7 +41,7 @@ describe("replay", () => {
     let log = emptyLog(started(1000));
     log = flushPending(appendTap(log, ev<PoisonChangedEvent>("poison_changed", { target: "ana", delta: 2 }, 2000)));
     log = appendTap(log, ev<PoisonChangedEvent>("poison_changed", { target: "ana", delta: -5 }, 4000));
-    const state = replay(log.committed, log.pending) as CommanderState;
+    const state = replay(log.committed, log.pending) as MtgState;
     // Orden correcto (committed +2 -> poison 2, luego pending -5 clampado): poison = 0.
     // Si pending se aplicara antes (o entrelazado): -5 clampado a 0 primero, luego +2 -> poison = 2.
     expect(state.players[0].poison).toBe(0);

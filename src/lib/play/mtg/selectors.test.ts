@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { commanderReducer, initialCommanderState } from "./reducer";
+import { mtgReducer, initialMtgState } from "./reducer";
 import { describeEvent, finalRanking } from "./selectors";
 import { ev, started } from "./test-fixtures";
 import type {
   CommanderDamageEvent,
-  CommanderEvent,
+  MtgEvent,
   GameFinishedEvent,
   InitiativeChangedEvent,
   LifeChangedEvent,
@@ -15,8 +15,8 @@ import type {
   TurnPassedEvent,
 } from "./events";
 
-function play(events: CommanderEvent[]) {
-  return events.reduce(commanderReducer, initialCommanderState(started(1000)));
+function play(events: MtgEvent[]) {
+  return events.reduce(mtgReducer, initialMtgState(started(1000)));
 }
 
 describe("finalRanking", () => {
@@ -63,7 +63,7 @@ describe("finalRanking", () => {
 });
 
 describe("describeEvent", () => {
-  const base = initialCommanderState(started(1000));
+  const base = initialMtgState(started(1000));
 
   it("describe con nombre resuelto y cantidad positiva", () => {
     expect(describeEvent(ev<LifeChangedEvent>("life_changed", { target: "ana", delta: -5 }, 2000), base))
@@ -71,13 +71,13 @@ describe("describeEvent", () => {
     expect(describeEvent(ev<LifeChangedEvent>("life_changed", { target: "ana", delta: 3 }, 2000), base))
       .toEqual({ key: "lifeGained", params: { name: "ana", amount: 3 } });
     expect(
-      describeEvent(ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: 5 }, 2000), base),
+      describeEvent(ev<CommanderDamageEvent>("commander_damage", { source: "carlos-c1", target: "borja", delta: 5 }, 2000), base),
     ).toEqual({ key: "commanderDamage", params: { source: "carlos", target: "borja", amount: 5 } });
   });
 
   it("commander_damage con delta negativo (corrección de una tacada) normaliza el signo: amount siempre positivo", () => {
     expect(
-      describeEvent(ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: -3 }, 2000), base),
+      describeEvent(ev<CommanderDamageEvent>("commander_damage", { source: "carlos-c1", target: "borja", delta: -3 }, 2000), base),
     ).toEqual({ key: "commanderDamageHealed", params: { source: "carlos", target: "borja", amount: 3 } });
   });
 
