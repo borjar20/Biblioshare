@@ -24,7 +24,7 @@ Fase 5 y aquí solo se anotan sus necesidades (§10).
 | Layout 4 jugadores | **Rotado estilo mesa**: móvil en el centro, fila superior a 180°, cada jugador toca su esquina |
 | Undo | **Multi-paso, sin redo** (pop del último evento, repetible; rehacer = repetir la acción a mano) |
 | Auth | **Anónimo desde Fase 1**: `/partidas*` accesible sin sesión (partida por dispositivo) |
-| Ráfagas de taps | **Coalescing en el log**: taps consecutivos sobre el mismo contador en ≤1,5 s se funden en un evento |
+| Ráfagas de taps | **Coalescing en ráfaga pendiente**: taps consecutivos en ≤1,5 s se funden ANTES de entrar al log; el log ya committeado es inmutable (§3) |
 | Arquitectura | **Motor puro desde el día 1** (opción B): `src/lib/play/` se escribe antes que la UI; la Fase 2 de la issue pasa de «extraer» a «endurecer» |
 | Victoria/derrota por carta | Soportadas: «Declarar ganador» directo y eliminación con `reason` (§4) |
 | Identidad visual | Fundamento Paper + **identidad propia de subapp** (§7) — matiza el «sin estética gaming» de la issue, decidido a propósito |
@@ -58,11 +58,16 @@ src/lib/play/
 en Vitest node. Modelo a imitar: `src/lib/passes/transitions.ts` (máquina pura +
 test hermano) y `src/lib/sessions/timer.ts` (separación puro/IO).
 
-**Fuente de verdad = `{ setup, events[] }`.** El estado actual SIEMPRE se deriva:
-`reduce(initialState(setup), events)`. Nunca se muta un snapshot de estado. El store
-memoiza incrementalmente (aplica solo el evento entrante; re-reduce completo tras
-undo o rehidratación). Esto habilita: undo fiable, reconstrucción, estadísticas,
-sync futura con idempotencia y resolución de conflictos (Fase 9).
+**Fuente de verdad = `events[]`, y nada más.** No hay un `setup` aparte: el primer
+evento del log es SIEMPRE `game_started` y lleva `{toolId, setup}` como payload.
+El estado actual se deriva: `reduce(events)`. Nunca se muta un snapshot de estado.
+El store memoiza incrementalmente (aplica solo el evento entrante; re-reduce
+completo tras undo o rehidratación). Esto habilita: undo fiable, reconstrucción,
+estadísticas, sync futura con idempotencia y resolución de conflictos (Fase 9).
+
+**`toolId` explícito** (`"commander"`, `"score"`…): viaja en `game_started` y en el
+snapshot. Es lo que permite a `/partida/activa` y al reducer despachar a la
+herramienta correcta sin adivinar.
 
 ### Sobre de evento
 
@@ -98,24 +103,37 @@ La vinculación jugador habitual → usuario será siempre manual, nunca por nom
 
 | Evento | Payload | Efecto en el reducer |
 |---|---|---|
-| `game_started` | setup completo | Estado inicial; 40 vidas por defecto |
+| `game_started` | `{toolId, setup}` | Estado inicial; 40 vidas por defecto. Primer evento obligatorio del log |
 | `life_changed` | `{target, delta}` | Vidas ± delta |
 | `commander_damage` | `{source, target, delta}` | Vidas −delta **y** daño de comandante source→target +delta. Un solo evento semántico: nunca se exige al usuario tocar dos contadores |
 | `poison_changed` | `{target, delta}` | Veneno ± delta |
-| `turn_passed` | `{}` | Activo → siguiente jugador vivo; incrementa nº de turno al cerrar la ronda |
+| `turn_passed` | `{}` | Activo → siguiente asiento no eliminado (ver semántica de turnos abajo) |
 | `monarch_changed` | `{holder: id \| null}` | Reasigna monarca |
 | `initiative_changed` | `{holder: id \| null}` | Reasigna iniciativa |
 | `player_eliminated` | `{target, reason?}` | Marca eliminado + turno actual; el jugador sigue visible |
 | `player_restored` | `{target}` | Revierte la eliminación |
-| `game_finished` | `{winner?, ranking?, reason?}` | Cierra la partida; duración derivada de los `at` |
+| `game_finished` | `{winner?, reason?}` | Cierra la partida; duración derivada de los `at`. El ranking NO viaja en el evento: es 100% derivado (selector, ver abajo) |
 
 ```ts
 type EliminationReason = "life" | "poison" | "commander_damage" | "card" | "concede";
 type FinishReason = "last_standing" | "card" | "time" | "abandoned";
 ```
 
-- **Turnos opcionales**: si nunca hay `turn_passed`, el contador funciona igual y la
-  UI de turno muestra un vacío discreto. Registrar turnos habilita estadísticas.
+- **Semántica de turnos (precisa)**: los asientos son el orden de `setup.participants`
+  (orden de mesa). `turn_passed` mueve el activo al **siguiente asiento no
+  eliminado** en ese orden. El **número de turno mostrado es el de ronda**: empieza
+  en 1 y se incrementa cada vez que el avance cruza la POSICIÓN DE ASIENTO del
+  jugador inicial (aunque ese jugador ya esté eliminado — el límite de ronda es el
+  asiento, no la persona). `player_eliminated` NUNCA cambia el jugador activo (en
+  Magic puedes morir en tu propio turno y el turno termina con normalidad): si el
+  activo es eliminado, el siguiente `turn_passed` salta desde su asiento.
+  Turnos opcionales: si nunca hay `turn_passed`, el contador funciona igual y la UI
+  de turno muestra un vacío discreto. Registrar turnos habilita estadísticas.
+- **Ranking 100% derivado, con empates**: selector `finalRanking(state)` — nada de
+  ranking en payloads. Ganador = 1º; vivos no ganadores comparten la siguiente
+  posición (empate explícito); eliminados en orden inverso de eliminación.
+  Numeración de competición estándar (1, 2, 2, 4). El resumen y las estadísticas
+  futuras consumen este selector, nunca un dato almacenado.
 - **Condiciones de derrota** (`commander/rules.ts`): selector
   `lossConditions(state, playerId)` → subconjunto de `["life","poison","commander_damage"]`
   (≤0 vidas / ≥10 veneno / ≥21 del mismo comandante). **Solo señaliza**: la UI
@@ -132,24 +150,52 @@ type FinishReason = "last_standing" | "card" | "time" | "abandoned";
 
 ### Log: coalescing y undo (`core/log.ts`)
 
-- **Coalescing**: `append(log, event)` puro. Si el evento nuevo tiene mismo `type`
-  y mismo target (y mismo source en `commander_damage`) que el último del log, y
-  `at − último.at ≤ 1500 ms`, se funden: se suman los deltas y se refresca `at`.
-  Delta neto 0 elimina el evento. Resultado: 5 taps de −1 = un `life_changed −5`,
+**El log committeado es inmutable: solo append, nunca se reescribe ni se borra un
+evento ya committeado** (salvo undo, que es pop del final — ver abajo). Esto es lo
+que garantiza idempotencia y replay en la sync de Fase 5: un evento con su `id` no
+cambia de significado después de existir.
+
+El coalescing por tanto NO toca el log: vive en una **ráfaga pendiente** delante
+de él. Estado del log: `{ committed: PlayEvent[], pending?: PlayEvent }`.
+
+- Un tap crea/actualiza `pending`: si tiene mismo `type` y mismo target (y mismo
+  source en `commander_damage`) y han pasado ≤1500 ms desde el último tap, se
+  suman los deltas y se refresca `at`. Delta neto 0 descarta la ráfaga.
+- La ráfaga **se sella** (pasa a `committed`, ya intocable) cuando: vence la
+  ventana de 1,5 s, llega una acción de otro tipo/target, se pide undo, se
+  finaliza la partida, o se rehidrata un snapshot.
+- El estado derivado aplica `committed` + `pending`: la UI responde al instante,
+  el sellado es invisible para el usuario.
+- Resultado idéntico al buscado: 5 taps de −1 = un `life_changed −5` en el log,
   historial legible, undo con sentido («↶ Carlos perdió 5 vidas»).
-- **Undo multi-paso, sin redo**: pop del último evento + re-reduce. Repetible hasta
-  vaciar el log. `game_started` no es deshacible. `describeEvent` (selector) da la
-  etiqueta legible; la traducción vive en la UI (namespace `play`).
+
+**Undo multi-paso, sin redo**: si hay `pending`, el primer undo la descarta; si no,
+pop del último evento committeado + re-reduce. Repetible hasta vaciar el log.
+`game_started` no es deshacible. El pop del final es la única resta permitida sobre
+`committed` y solo existe en el dispositivo local antes de cualquier sync (en Fase
+5+ un undo ya sincronizado tendrá que modelarse como evento de compensación — se
+decide entonces). `describeEvent` (selector) da la etiqueta legible; la traducción
+vive en la UI (namespace `play`).
 
 ## 4. Store y persistencia local (Fase 1)
 
 `core/store.ts`, anatomía calcada de `src/lib/sessions/timer.ts` (el patrón
 local-first ya probado del repo):
 
-- Estado en memoria `{ setup, events[] }` + derivado memoizado.
-- **Snapshot a localStorage tras cada append/undo**, clave `biblioshare:play:active`.
-  Se serializa el log, no el estado derivado.
-- Validador de forma al leer (`isActiveGameSnapshot`) + `try/catch` en lectura y
+- Estado en memoria `{ committed[], pending? }` + derivado memoizado.
+- **Snapshot a localStorage tras cada cambio (tap, sellado, undo)** — también con
+  ráfaga abierta, para no perder los taps de la ventana de 1,5 s si la app muere.
+  Clave **aislada por identidad**: `biblioshare:play:<uid|anon>:active` (uid de Supabase con sesión;
+  `anon` sin ella). Sin aislamiento, la partida del usuario A aparecería en la
+  cuenta B del mismo dispositivo — misma clase de fuga que el arreglo #680 del SW.
+  Cambiar de identidad no destruye la partida de la otra: cada clave vive su vida.
+  Adopción de una partida `anon` al iniciar sesión: no en Fase 1, issue futura.
+  Se serializa el log (committed + pending sin sellar), no el estado derivado.
+- **Validación al leer, de forma Y semántica**: `isActiveGameSnapshot` comprueba la
+  forma; después la rehidratación ES un replay — primer evento `game_started`,
+  `at` no decrecientes, y el reducer acepta cada evento (participantes conocidos,
+  partida no cerrada a mitad de log…). Si el replay falla, el snapshot se descarta
+  con aviso: nunca se monta una partida a medio validar. `try/catch` en lectura y
   escritura: modo privado o cuota llena degradan a memoria pura, nunca rompen la
   partida en curso.
 - Bus de suscripción propio + `useSyncExternalStore` (hook `useActiveGame`), con
@@ -161,10 +207,9 @@ local-first ya probado del repo):
 
 ### Una partida activa (restricción v1)
 
-La clave única `biblioshare:play:active` lo impone físicamente. «Nueva partida» con
-una activa → sheet «Tienes una partida en curso»: Continuar / Finalizar / Descartar.
-Por dispositivo; con sesión es de facto por usuario en ese dispositivo (suficiente
-hasta Fase 5).
+Una clave `…:active` única **por identidad** lo impone físicamente. «Nueva partida»
+con una activa → sheet «Tienes una partida en curso»: Continuar / Finalizar /
+Descartar. Por identidad y dispositivo (suficiente hasta Fase 5).
 
 ### Ciclo de vida
 
@@ -209,18 +254,25 @@ src/app/partida/
 
 ## 6. Estructura hub + herramientas
 
+- **Dos registros, separados por pureza**:
+  - `src/lib/play/tools.ts` — **registro de dominio**, puro: `toolId`, módulos de
+    motor (reducer, rules, initialState), clave de i18n, ruta de setup. Sin React.
+  - `src/components/play/tool-views.tsx` — **registro de UI**: `toolId` → tablero,
+    formulario de setup, resumen, icono. Es el único que importa componentes.
+  El motor nunca conoce React; la UI resuelve por `toolId` (el mismo que viaja en
+  `game_started` y el snapshot, §2).
 - **Hub principal** (`/partidas`): rejilla de herramientas + banner «partida en
-  curso». Se pinta desde el **registro** `src/lib/play/tools.ts`: cada herramienta
-  declara id, nombre, icono, ruta de setup y sus módulos de motor. Añadir
-  «Puntuación por rondas» (Fase 4) = registrar + su módulo; cero cambios en el hub.
-  Materializa la Fase 10 de la epic desde el día 1.
+  curso», pintado desde los registros. Añadir «Puntuación por rondas» (Fase 4) =
+  una entrada en cada registro + su módulo; cero cambios en el hub. Materializa la
+  Fase 10 de la epic desde el día 1.
 - **Hub por herramienta** (`/partidas/commander`): plantilla compartida
-  `PlayToolHub` — CTA «Nueva partida», sección historial, sección estadísticas.
-  En Fase 1 historial/estadísticas son `EmptyState` («todavía no hay partidas
-  guardadas»); la estructura existe desde el día 1, el contenido llega en fases 5–7.
-  Commander no es especial: es la primera instancia de la plantilla.
-- **Instrumento único**: `/partida/activa` renderiza el tablero que la herramienta
-  activa declara en el registro.
+  `PlayToolHub` con secciones por capacidad — CTA «Nueva partida» siempre;
+  historial y estadísticas **solo se renderizan cuando la capacidad existe**
+  (fases 5–7). En Fase 1 NO se enseñan secciones vacías prometiendo lo que aún no
+  se puede hacer: la plantilla tiene los huecos, la UI no los pinta. Commander no
+  es especial: es la primera instancia de la plantilla.
+- **Instrumento único**: `/partida/activa` resuelve el tablero por el `toolId` del
+  snapshot activo contra el registro de UI.
 
 ### Navegación
 
@@ -290,8 +342,16 @@ empieza. Botón Empezar → `game_started`.
   eliminado, declarar ganador, finalizar, descartar.
 - **Wake lock**: Screen Wake Lock API mientras hay partida activa. Best-effort
   (`try/catch`), re-adquirir en `visibilitychange`.
-- **Finalización**: resumen en la misma ruta — ganador, ranking, duración, turnos.
-  Fase 1: solo «Descartar».
+- **Finalización**: resumen en la misma ruta — ganador, ranking derivado
+  (`finalRanking`, con empates), duración, turnos. Fase 1: solo «Descartar».
+- **Accesibilidad en fullscreen**: la rotación de paneles es SOLO visual (CSS
+  `transform` no altera el orden del DOM — orden lógico = orden de asientos);
+  todos los botones con etiqueta (`aria-label` en −/+, chips y undo, no solo el
+  símbolo); región `aria-live="polite"` única para anunciar el último evento
+  (`describeEvent`) y el cambio de turno; micro-interacciones y celebraciones tras
+  `prefers-reduced-motion`; sin topbar ni bottom nav la salida y el menú deben ser
+  visibles y alcanzables por teclado (foco no atrapado fuera de los `<dialog>`);
+  contraste de los tokens nuevos cubierto por `contraste-tokens.test.ts`.
 
 Presupuesto de interacción (gate de la issue): acciones frecuentes 1 toque
 (±1 vida, pasar turno, undo); moderadas ≤2–3 (cambio grande, daño de comandante,
@@ -312,14 +372,21 @@ se registran en `docs/UI-GLOSARIO.md` **antes** de escribir `messages/es.json`.
 ## 8. Tests
 
 - **Vitest (node), junto al código**: `reducer.test.ts` (cada evento;
-  `commander_damage` toca dos contadores), `log.test.ts` (coalescing: fusión
-  ≤1,5 s, delta neto 0 borra, no fusión entre targets; undo multi-paso;
-  `game_started` no deshacible), `rules.test.ts` (umbrales exactos 0/10/21),
-  `selectors.test.ts` (`describeEvent`, ranking con vivos no ganadores).
+  `commander_damage` toca dos contadores; turnos: salto de eliminados, límite de
+  ronda por asiento aunque el inicial esté eliminado, eliminación no cambia el
+  activo), `log.test.ts` (ráfaga pendiente: fusión ≤1,5 s, delta neto 0 descarta,
+  no fusión entre targets/tipos, sellado por ventana/acción distinta/undo/finish/
+  rehidratación; **inmutabilidad: ningún evento committeado cambia jamás**; undo
+  multi-paso con y sin pending; `game_started` no deshacible), `rules.test.ts`
+  (umbrales exactos 0/10/21), `selectors.test.ts` (`describeEvent`;
+  `finalRanking`: empates de vivos no ganadores, numeración 1-2-2-4, orden inverso
+  de eliminación).
 - **Reconstrucción (gate Fase 2)**: secuencias de eventos generadas → aplicación
   incremental === re-reduce completo desde `game_started`.
-- **Store**: partes puras con localStorage falso; el validador rechaza snapshots
-  corruptos o de versión vieja sin lanzar.
+- **Store**: partes puras con localStorage falso; la validación rechaza sin lanzar
+  snapshots corruptos, de versión vieja o **semánticamente inválidos** (replay que
+  falla); aislamiento por identidad: la clave de `anon` no se lee con sesión y
+  viceversa.
 - **e2e** `e2e/partidas-commander.spec.ts`: crear → jugar (vidas, cmd damage,
   veneno, turnos, eliminar) → undo → finalizar → descartar. Sin backend: la
   limpieza es borrar localStorage — sin maquinaria REST.
@@ -349,9 +416,12 @@ se registran en `docs/UI-GLOSARIO.md` **antes** de escribir `messages/es.json`.
 ## 10. Necesidades futuras de persistencia (NO diseñar ahora)
 
 Solo garantías que el modelo ya da para la Fase 5: eventos con `id` (UUID) →
-idempotencia de sync; `at` + orden del log → ordering; log inmutable → replay en
-servidor; `Participant.kind`/`userId` → vinculación de jugadores habituales
-(Fase 6, siempre manual); partidas privadas por defecto, RLS por ownership.
+idempotencia de sync; `at` + orden del log → ordering; **log committeado inmutable
+(el coalescing ocurre antes de committear, §3) → replay seguro en servidor**; el
+undo-como-pop solo existe pre-sync — tras sincronizar se modelará como evento de
+compensación (decisión de Fase 5/9); `Participant.kind`/`userId` → vinculación de
+jugadores habituales (Fase 6, siempre manual); partidas privadas por defecto, RLS
+por ownership; pendiente: adopción de partida `anon` al iniciar sesión (issue).
 Nombres tentativos de la issue (`play_games`, `play_participants`, `play_events`,
 `play_players`) NO son definitivos. Regla #437 aplicará: nada de datos de partida
 en `use cache` compartido.
