@@ -155,7 +155,7 @@
       "Usa `nodes[].files` como punto de entrada de lectura; `nodes[].gotchas` avisa de lo que ya ha costado horas.",
       "Antes de tocar el esquema, lee `docs/requirements/data-model.md`: este JSON resume, no manda.",
       "Este fichero es DERIVADO. Si contradice al código, manda el código; regenera este mapa y actualiza `meta.generatedAt`.",
-      "Reglas duras del proyecto que se repiten en varios nodos: (1) el estado vivo del usuario vive en `passes`, nunca en `library_entries`; (2) los componentes derivan de props y reconcilian con revalidatePath/router.refresh(); (3) las clases Tailwind se escriben enteras, nunca interpoladas."
+      "Reglas duras del proyecto que se repiten en varios nodos: (1) el estado vivo del usuario vive en `passes`, nunca en `library_entries` (excepción: `play`/m-play, ver meta.invariants.inv-passes-hub.exception); (2) los componentes derivan de props y reconcilian con revalidatePath/router.refresh(); (3) las clases Tailwind se escriben enteras, nunca interpoladas."
     ],
     "invariants": [
       {
@@ -3515,6 +3515,7 @@
       <div class="px-2 pb-2 space-y-1">
         <p class="text-[11px] text-slate-400 leading-relaxed">${esc(inv.rule)}</p>
         <p class="mono text-[10px] text-sky-300/70 break-all">${esc(inv.evidence)}</p>
+        ${inv.exception ? `<p class="text-[10px] text-amber-300/80 leading-relaxed">Excepción: ${esc(inv.exception)}</p>` : ''}
         ${inv.brokenBy ? `<p class="text-[10px] text-red-400/80">Ya se rompió en:${esc(inv.brokenBy)}</p>` : ''}
       </div></details>`;
     invList.appendChild(li);
