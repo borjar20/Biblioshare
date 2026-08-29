@@ -26,6 +26,24 @@ describe("appendTap — coalescing en la ráfaga pendiente", () => {
     expect(log.committed).toHaveLength(1);
   });
 
+  it("dos tipos coalescables DISTINTOS sobre el mismo target no se funden (burstKey incluye el tipo)", () => {
+    // Gap de la revisión final (finding 10): life_changed y poison_changed son
+    // ambos coalescables, y el test de arriba solo pinsa que un target distinto
+    // sella. Esto pinsa que el TIPO también forma parte de la clave de ráfaga:
+    // sin el prefijo `event.type` en burstKey, un -1 de vida seguido de un +1 de
+    // veneno sobre "ana" se fundirían en un delta absurdo de payloads distintos.
+    let log = appendTap(fresh(), tap(-1, 2000));
+    log = appendTap(
+      log,
+      makeEvent("poison_changed", { target: "ana", delta: 1 }, 2100, "p-2100"),
+    );
+    expect(log.committed).toHaveLength(2); // game_started + el life_changed sellado
+    expect(log.committed[1].type).toBe("life_changed");
+    expect(log.committed[1].payload).toEqual({ target: "ana", delta: -1 });
+    expect(log.pending?.type).toBe("poison_changed");
+    expect(log.pending?.payload).toEqual({ target: "ana", delta: 1 });
+  });
+
   it("target distinto sella la ráfaga anterior y abre otra", () => {
     let log = appendTap(fresh(), tap(-1, 2000));
     log = appendTap(log, tap(-1, 2100, "borja"));

@@ -57,6 +57,13 @@ export function describeEvent(event: CommanderEvent, state: CommanderState): Eve
         : { key: "poisonHealed", params: { name: name(target), amount: -delta } };
     }
     case "turn_passed":
+      // Ambigüedad deliberada (finding 9 de la revisión final): state.round es
+      // el del estado que se le pase, no el del evento. La llamadora (log en
+      // vivo) debe pasar el estado POSTERIOR al evento -> aquí sale la ronda
+      // NUEVA, que es lo que quiere leer alguien mirando "qué acaba de pasar".
+      // Si algún día se describe un evento sobre el estado post-undo, la ronda
+      // que sale es la ANTERIOR (defendible también, pero distinto): decídelo a
+      // propósito, no lo cambies sin tocar este comentario.
       return { key: "turnPassed", params: { round: state.round } };
     case "monarch_changed": {
       const { holder } = event.payload;
