@@ -950,14 +950,14 @@
       "layer": "domain",
       "kind": "module",
       "size": 14,
-      "summary": "Motor puro de BiblioPlay (Partidas), dominio nuevo e independiente (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y la primera herramienta especializada, Commander (commander/). Solo store.ts toca el navegador: snapshot en localStorage, aislado por identidad. Sin backend en fases 0-3 — excepción explícita a inv-passes-hub (ver meta.invariants).",
+      "summary": "Motor puro de BiblioPlay (Partidas), dominio nuevo e independiente (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y la primera herramienta especializada, Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. Solo store.ts toca el navegador: snapshot en localStorage, aislado por identidad. Sin backend en fases 0-3 — excepción explícita a inv-passes-hub (ver meta.invariants).",
       "files": [
         "src/lib/play/tools.ts",
         "src/lib/play/core/log.ts",
         "src/lib/play/core/replay.ts",
         "src/lib/play/core/store.ts",
-        "src/lib/play/commander/reducer.ts",
-        "src/lib/play/commander/selectors.ts"
+        "src/lib/play/mtg/reducer.ts",
+        "src/lib/play/mtg/selectors.ts"
       ]
     },
     {

@@ -1,16 +1,37 @@
 import { PlayEventError } from "@/lib/play/core/errors";
-import type { CommanderPlayerState, CommanderState } from "./types";
-import type { CommanderEvent, GameStartedEvent } from "./events";
+import { commanderOwners, type MtgPlayerState, type MtgState } from "./types";
+import { modeConfig } from "./modes";
+import type { MtgEvent, GameStartedEvent } from "./events";
 
-export function initialCommanderState(event: GameStartedEvent): CommanderState {
+export function initialMtgState(event: GameStartedEvent): MtgState {
   const { setup } = event.payload;
+  const cfg = modeConfig(setup.mode);
   const n = setup.participants.length;
-  if (n < 2 || n > 6) throw new PlayEventError(`Commander admite 2-6 jugadores, no ${n}`);
+  if (n < cfg.minPlayers || n > cfg.maxPlayers) {
+    throw new PlayEventError(`${setup.mode} admite ${cfg.minPlayers}-${cfg.maxPlayers} jugadores, no ${n}`);
+  }
   const ids = new Set(setup.participants.map((p) => p.id));
   if (ids.size !== n) throw new PlayEventError("ids de participante duplicados");
   if (setup.startingSeat < 0 || setup.startingSeat >= n) throw new PlayEventError("startingSeat fuera de rango");
+
+  // Los comandantes son las CLAVES del daño acumulado, así que sus ids tienen
+  // que ser únicos en toda la mesa: dos asientos con el mismo id mezclarían dos
+  // contadores distintos y el umbral de 21 dejaría de significar nada.
+  const commanderIds = new Set<string>();
+  for (const p of setup.participants) {
+    if (p.commanders.length < 1 || p.commanders.length > cfg.maxCommanders) {
+      throw new PlayEventError(
+        `${p.id}: ${setup.mode} admite 1-${cfg.maxCommanders} comandantes, no ${p.commanders.length}`,
+      );
+    }
+    for (const c of p.commanders) {
+      if (commanderIds.has(c.id)) throw new PlayEventError(`id de comandante duplicado: ${c.id}`);
+      commanderIds.add(c.id);
+    }
+  }
+
   return {
-    toolId: "commander",
+    toolId: "mtg",
     status: "active",
     setup,
     players: setup.participants.map((participant) => ({
@@ -33,24 +54,24 @@ export function initialCommanderState(event: GameStartedEvent): CommanderState {
   };
 }
 
-function seatOf(state: CommanderState, id: string): number {
+function seatOf(state: MtgState, id: string): number {
   const i = state.players.findIndex((p) => p.participant.id === id);
   if (i < 0) throw new PlayEventError(`participante desconocido: ${id}`);
   return i;
 }
 
 function withPlayer(
-  state: CommanderState,
+  state: MtgState,
   id: string,
-  fn: (p: CommanderPlayerState) => CommanderPlayerState,
-): CommanderState {
+  fn: (p: MtgPlayerState) => MtgPlayerState,
+): MtgState {
   const i = seatOf(state, id);
   const players = state.players.slice();
   players[i] = fn(players[i]);
   return { ...state, players };
 }
 
-export function commanderReducer(state: CommanderState, event: CommanderEvent): CommanderState {
+export function mtgReducer(state: MtgState, event: MtgEvent): MtgState {
   // Rechazar es lo que hace fiable la validación por replay al rehidratar (spec §4).
   if (state.status === "finished") throw new PlayEventError(`evento tras game_finished: ${event.type}`);
 
@@ -65,7 +86,14 @@ export function commanderReducer(state: CommanderState, event: CommanderEvent): 
 
     case "commander_damage": {
       const { source, target, delta } = event.payload;
-      seatOf(state, source); // valida que el atacante exista
+      if (!modeConfig(state.setup.mode).hasCommanderDamage) {
+        throw new PlayEventError(`el modo ${state.setup.mode} no lleva daño de comandante`);
+      }
+      // `source` es un COMANDANTE, no un jugador: los 21 son de cada comandante
+      // por separado y con partner sumarlos mataría antes de tiempo.
+      const owner = commanderOwners(state).get(source);
+      if (owner === undefined) throw new PlayEventError(`comandante desconocido: ${source}`);
+      if (owner === target) throw new PlayEventError(`un comandante no se hace daño a sí mismo: ${source}`);
       // Un solo evento semántico toca vidas Y daño de comandante: nunca se pide
       // al usuario mantener dos contadores a mano (issue #931).
       return withPlayer(state, target, (p) => ({
@@ -86,7 +114,7 @@ export function commanderReducer(state: CommanderState, event: CommanderEvent): 
 }
 
 // Turnos y estados globales — el ciclo de vida (eliminación/fin) se completa en la Task 6.
-function lifecycleReducer(state: CommanderState, event: CommanderEvent): CommanderState {
+function lifecycleReducer(state: MtgState, event: MtgEvent): MtgState {
   switch (event.type) {
     case "turn_passed": {
       if (state.players.every((p) => p.elimination)) throw new PlayEventError("no queda nadie vivo");
@@ -124,7 +152,7 @@ function lifecycleReducer(state: CommanderState, event: CommanderEvent): Command
 }
 
 // Eliminación, restauración y finalización — Task 6.
-function endgameReducer(state: CommanderState, event: CommanderEvent): CommanderState {
+function endgameReducer(state: MtgState, event: MtgEvent): MtgState {
   switch (event.type) {
     case "player_eliminated": {
       const { target, reason } = event.payload;

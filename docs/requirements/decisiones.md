@@ -2916,3 +2916,79 @@ YAGNI — una partida son unos pocos cientos de eventos, el replay completo es i
 día que un profiler la pida, no antes. No se pierde la garantía que la spec perseguía: el gate de
 Fase 2 (`docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md` §8, «Reconstrucción») sigue
 fijando que aplicación incremental ≡ re-reduce completo desde `game_started`.
+
+## 2026-08-29 (6) — La consola de la partida: banda en vertical, flotante en horizontal (#931)
+
+**Fase 1a, canvas de diseño.** La franja de deshacer / turno / crono / menú tiene DOS tratamientos
+según la orientación, y no es un capricho estético sino aritmética de píxeles:
+
+- **Vertical**: banda a todo el ancho entre las dos filas. Se probaron una cápsula centrada y una
+  versión sin banda: recuperaban 10 y 14 px repartidos entre dos filas. No compensa.
+- **Horizontal**: la banda son **68 px, el 17 % del alto**, y salen enteros del número de vidas
+  (58 px en vez de 70). Ahí la consola sale del hueco horizontal y va flotando en el centro sobre
+  paneles a pantalla completa, con 5 px de junta de fieltro.
+
+Dos invariantes que hay que respetar al implementarla, las dos aprendidas descartando alternativas:
+
+1. **El hueco de la consola flotante se RESERVA, no se supone.** Las cuatro cabeceras llevan padding
+   lateral fijo. La variante que confiaba en que bajo la consola no hubiera nada se cae en cuanto
+   hay un nombre largo o una insignia de monarca.
+2. **Deshacer nunca pierde la etiqueta de QUÉ deshace.** Puede perder la palabra «Deshacer» (la
+   flecha ya lo dice) pero no el «Ana −1»: sin eso hay que pulsar y mirar, que son dos acciones
+   donde había una. El texto completo va en el `aria-label`.
+
+El crono se deriva de `startedAt` — ni evento ni campo nuevos — y **vive aislado en su propio
+componente**: un reloj dentro del componente que escucha el store repinta el tablero entero cada
+segundo durante horas y con wake lock puesto.
+
+Lo descartado y su medida, en la issue `tipo:acta` correspondiente y en el apéndice del canvas.
+
+## 2026-08-29 (7) — La herramienta es Magic; Commander es un modo (#931)
+
+**Deroga en este punto a `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`**
+(§2, §3, §5, §6), que quedó congelada antes de la fase 1a de diseño. Donde la spec
+diga `commander`, manda esto.
+
+`ToolId` pasa de `"commander"` a **`"mtg"`** y `src/lib/play/commander/` a
+`src/lib/play/mtg/`. El `ToolId` identifica el JUEGO; lo que varía entre modos vive
+en `mtg/modes.ts`:
+
+| | vidas | daño cmd | umbral cmd | veneno | jugadores | comandantes |
+|---|---|---|---|---|---|---|
+| `commander` | 40 | sí | 21 | 10 | 2–6 | 1–2 |
+| `duel` | 20 | **no** | — | 10 | 2 | 1 |
+
+`setup.mode` viaja en `game_started`. `rules.ts` lee de la tabla en vez de tener 21 y
+10 a pelo; el reducer saca de ahí los límites y **rechaza `commander_damage` en un
+modo que no lo lleva** — configuración, no `if` sueltos.
+
+**Añadir un modo es una fila mientras las reglas quepan en esa forma.** El día que un
+modo necesite algo que no expresa —**Dos cabezas comparte vidas por EQUIPO**— deja de
+ser configuración y pasa a ser motor. La señal es tener que inventar un campo que
+ningún otro modo usa: no se fuerza en la tabla.
+
+## 2026-08-29 (8) — El daño de comandante se cuenta por comandante, no por jugador (#931)
+
+**Corrección de reglas, no preferencia.** Con partner, indexar `commanderDamage` por
+jugador suma los dos comandantes contra el mismo umbral de 21 y **mata a alguien que
+en la mesa seguiría vivo**. En Magic son 21 de CADA comandante por separado.
+
+- `commander_damage.source` es un **id de comandante**, no un participantId.
+- El participante lleva `commanders: MtgCommander[]` (1..`maxCommanders`), cada uno
+  con **id propio**: el nombre es texto libre, se puede editar y dos jugadores pueden
+  llevar el mismo comandante, así que no sirve de clave.
+- Se materializa **siempre al menos uno**, aunque nadie escriba nada. Si no existiera,
+  el daño no tendría a qué atribuirse y el reducer necesitaría un caso especial para
+  los asientos sin rellenar. Dos entradas cubren partner, background y companion sin
+  inventar tres conceptos.
+- Los ids de comandante son únicos en toda la mesa: dos iguales mezclarían dos
+  contadores y el umbral dejaría de significar nada. Validado en `initialMtgState`.
+- Un comandante no puede hacerse daño a su propio dueño.
+
+`commanderDamageBreakdown(state, playerId)` da el desglose que pinta el panel: una
+fila por comandante con daño > 0, en orden de asiento. **Ni la suma ni solo el
+máximo** — sumar es falso, y enseñar solo el peor esconde a los que se acercan.
+
+`cardBackground` entra en el participante como **referencia** (id de tinte, y en el
+futuro una URL), nunca bytes: un data-URI acabaría en el log de eventos y en el
+snapshot de `localStorage` (issue #942).

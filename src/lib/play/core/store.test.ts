@@ -9,8 +9,8 @@ import {
   SNAPSHOT_VERSION,
   __resetPlayStoresForTests,
 } from "./store";
-import { makeSetup, started } from "@/lib/play/commander/test-fixtures";
-import type { CommanderState } from "@/lib/play/commander/types";
+import { makeSetup, started } from "@/lib/play/mtg/test-fixtures";
+import type { MtgState } from "@/lib/play/mtg/types";
 import { playTools } from "@/lib/play/tools";
 import type { EventLog } from "./types";
 
@@ -63,7 +63,7 @@ describe("persistencia y aislamiento", () => {
     __resetPlayStoresForTests();
     const reborn = getPlayStore("anon");
     const game = reborn.getSnapshot();
-    expect((game?.state as CommanderState).players[0].life).toBe(37);
+    expect((game?.state as MtgState).players[0].life).toBe(37);
   });
 
   it("un snapshot corrupto o inválido se descarta sin lanzar", () => {
@@ -265,7 +265,7 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     expect(rejected).toBe(false);
     const applied = store.dispatch(makeEvent("player_restored", { target: "ana" }, 3000, "e-restore"));
     expect(applied).toBe(true);
-    expect((store.getSnapshot()?.state as CommanderState).players[0].elimination).toBeNull();
+    expect((store.getSnapshot()?.state as MtgState).players[0].elimination).toBeNull();
   });
 
   it("el estado sobrevive a una rehidratación tras un dispatch rechazado", () => {
@@ -275,7 +275,7 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2500, "e-elim-2")); // rechazado, no persistido
     __resetPlayStoresForTests();
     const reborn = getPlayStore("anon");
-    const state = reborn.getSnapshot()?.state as CommanderState;
+    const state = reborn.getSnapshot()?.state as MtgState;
     expect(state.players[0].elimination).toEqual({ order: 1, round: null, reason: undefined });
     expect(state.players.filter((p) => p.elimination).map((p) => p.participant.id)).toEqual(["ana"]);
   });
@@ -291,7 +291,7 @@ describe("catch acotado en tryCommit: un bug real no se confunde con un rechazo 
     // herramienta por un espía que lanza un TypeError — el defecto que este
     // arreglo existe para no esconder, no un rechazo de reglas.
     const boom = new TypeError("payload malformado: reduce no debería haber llegado aquí");
-    const reduceSpy = vi.spyOn(playTools.commander, "reduce").mockImplementation(() => {
+    const reduceSpy = vi.spyOn(playTools.mtg, "reduce").mockImplementation(() => {
       throw boom;
     });
     const before = store.getSnapshot();

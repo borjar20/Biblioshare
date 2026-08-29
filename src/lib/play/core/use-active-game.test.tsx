@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetPlayStoresForTests } from "./store";
 import { useActiveGame } from "./use-active-game";
-import { started } from "@/lib/play/commander/test-fixtures";
+import { started } from "@/lib/play/mtg/test-fixtures";
 
 function Probe({ identity }: { identity: string }) {
   const { game } = useActiveGame(identity);
