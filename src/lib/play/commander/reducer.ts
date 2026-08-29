@@ -85,7 +85,45 @@ export function commanderReducer(state: CommanderState, event: CommanderEvent): 
   }
 }
 
-// Turnos, estados globales y ciclo de vida — se completa en las Tasks 5 y 6.
+// Turnos y estados globales — el ciclo de vida (eliminación/fin) se completa en la Task 6.
 function lifecycleReducer(state: CommanderState, event: CommanderEvent): CommanderState {
+  switch (event.type) {
+    case "turn_passed": {
+      if (state.players.every((p) => p.elimination)) throw new PlayEventError("no queda nadie vivo");
+      const seats = state.players.length;
+      let round = state.round;
+      let seat = state.activeSeat;
+      // El límite de ronda es la POSICIÓN de asiento del inicial, no la persona:
+      // si el inicial está eliminado la ronda sigue avanzando (spec §3).
+      for (let i = 1; i <= seats; i++) {
+        const candidate = (state.activeSeat + i) % seats;
+        if (candidate === state.setup.startingSeat) round += 1;
+        if (!state.players[candidate].elimination) {
+          seat = candidate;
+          break;
+        }
+      }
+      return { ...state, activeSeat: seat, round, turnCount: state.turnCount + 1 };
+    }
+
+    case "monarch_changed": {
+      const { holder } = event.payload;
+      if (holder !== null) seatOf(state, holder);
+      return { ...state, monarch: holder };
+    }
+
+    case "initiative_changed": {
+      const { holder } = event.payload;
+      if (holder !== null) seatOf(state, holder);
+      return { ...state, initiative: holder };
+    }
+
+    default:
+      return endgameReducer(state, event);
+  }
+}
+
+// Eliminación, restauración y finalización — Task 6.
+function endgameReducer(state: CommanderState, event: CommanderEvent): CommanderState {
   throw new PlayEventError(`evento desconocido: ${event.type}`);
 }

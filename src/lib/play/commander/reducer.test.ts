@@ -3,6 +3,7 @@ import { PlayEventError } from "@/lib/play/core/errors";
 import { commanderReducer, initialCommanderState } from "./reducer";
 import { ev, makeSetup, started } from "./test-fixtures";
 import type { CommanderDamageEvent, LifeChangedEvent, PoisonChangedEvent } from "./events";
+import type { MonarchChangedEvent, PlayerEliminatedEvent, TurnPassedEvent } from "./events";
 
 describe("initialCommanderState", () => {
   it("arranca con las vidas del setup, sin veneno y con el asiento inicial activo", () => {
@@ -93,5 +94,43 @@ describe("commanderReducer — contadores", () => {
     expect(() =>
       initialCommanderState(started(1000, { ...makeSetup(), startingSeat: 9 })),
     ).toThrow(PlayEventError);
+  });
+});
+
+describe("commanderReducer — turnos", () => {
+  const turn = (at: number) => ev<TurnPassedEvent>("turn_passed", {}, at);
+  const base = initialCommanderState(started(1000));
+
+  it("avanza al siguiente asiento y sube de ronda al cruzar el asiento inicial", () => {
+    let s = base; // activo: asiento 0 (ana), ronda 1
+    s = commanderReducer(s, turn(2000)); // borja
+    s = commanderReducer(s, turn(2001)); // carlos
+    s = commanderReducer(s, turn(2002)); // laura
+    expect(s.activeSeat).toBe(3);
+    expect(s.round).toBe(1);
+    s = commanderReducer(s, turn(2003)); // vuelve a ana: cruza el asiento 0
+    expect(s.activeSeat).toBe(0);
+    expect(s.round).toBe(2);
+    expect(s.turnCount).toBe(4);
+  });
+
+  // Los casos de turnos que dependen de player_eliminated (saltar eliminados,
+  // ronda posicional con el inicial eliminado, un solo vivo) se añaden en la
+  // Task 6, cuando la eliminación exista: cada task acaba con la suite verde.
+});
+
+describe("commanderReducer — monarca e iniciativa", () => {
+  const base = initialCommanderState(started(1000));
+
+  it("asigna, reasigna y limpia con null", () => {
+    let s = commanderReducer(base, ev<MonarchChangedEvent>("monarch_changed", { holder: "ana" }, 2000));
+    expect(s.monarch).toBe("ana");
+    s = commanderReducer(s, ev<MonarchChangedEvent>("monarch_changed", { holder: null }, 2100));
+    expect(s.monarch).toBeNull();
+  });
+
+  it("rechaza un poseedor desconocido", () => {
+    expect(() => commanderReducer(base, ev<MonarchChangedEvent>("monarch_changed", { holder: "nadie" }, 2000)))
+      .toThrow(PlayEventError);
   });
 });
