@@ -58,16 +58,19 @@ src/lib/play/
 en Vitest node. Modelo a imitar: `src/lib/passes/transitions.ts` (máquina pura +
 test hermano) y `src/lib/sessions/timer.ts` (separación puro/IO).
 
-**Fuente de verdad = `events[]`, y nada más.** No hay un `setup` aparte: el primer
-evento del log es SIEMPRE `game_started` y lleva `{toolId, setup}` como payload.
-El estado actual se deriva: `reduce(events)`. Nunca se muta un snapshot de estado.
-El store memoiza incrementalmente (aplica solo el evento entrante; re-reduce
-completo tras undo o rehidratación). Esto habilita: undo fiable, reconstrucción,
-estadísticas, sync futura con idempotencia y resolución de conflictos (Fase 9).
+**Fuente de verdad histórica = `committed[]`. Estado vivo = `committed` +
+`pending`.** La ráfaga `pending` (§3) todavía NO forma parte del log canónico: es
+la antesala. No hay un `setup` aparte: el primer evento committeado es SIEMPRE
+`game_started` y lleva `{toolId, setup}` como payload. El estado se deriva:
+`reduce(committed, pending)`. Nunca se muta un snapshot de estado. El store
+memoiza incrementalmente (aplica solo el evento entrante; re-reduce completo tras
+undo o rehidratación). Esto habilita: undo fiable, reconstrucción, estadísticas,
+sync futura con idempotencia y resolución de conflictos (Fase 9).
 
-**`toolId` explícito** (`"commander"`, `"score"`…): viaja en `game_started` y en el
-snapshot. Es lo que permite a `/partida/activa` y al reducer despachar a la
-herramienta correcta sin adivinar.
+**`toolId` explícito** (`"commander"`, `"score"`…): vive en
+`game_started.payload.toolId` y SOLO ahí — el snapshot no lo repite; se deriva en
+la rehidratación (que ya es un replay, §4). Es lo que permite a `/partida/activa`
+y al reducer despachar a la herramienta correcta sin adivinar.
 
 ### Sobre de evento
 
@@ -82,13 +85,19 @@ type PlayEvent<T extends string = string, P = unknown> = {
 
 ### Participante
 
+El core es neutro — no conoce conceptos de MTG. Unión discriminada: los tipos
+imposibles (guest con `userId`, user sin él) no compilan, en vez de vivir en un
+comentario.
+
 ```ts
-type Participant = {
-  id: string;
-  kind: "user" | "regular" | "guest";
-  name: string;
-  userId?: string;      // solo kind=user; regular/guest sin id externo en fases 0-2
-  deckName?: string;    // opcional, texto libre (sin catálogo MTG)
+// core/types.ts
+type Participant =
+  | { id: string; kind: "user"; name: string; userId: string }
+  | { id: string; kind: "regular" | "guest"; name: string };
+
+// commander/types.ts — la herramienta especializa
+type CommanderParticipant = Participant & {
+  deckName?: string;      // texto libre (sin catálogo MTG)
   commanderName?: string;
 };
 ```
@@ -132,8 +141,12 @@ type FinishReason = "last_standing" | "card" | "time" | "abandoned";
 - **Ranking 100% derivado, con empates**: selector `finalRanking(state)` — nada de
   ranking en payloads. Ganador = 1º; vivos no ganadores comparten la siguiente
   posición (empate explícito); eliminados en orden inverso de eliminación.
-  Numeración de competición estándar (1, 2, 2, 4). El resumen y las estadísticas
-  futuras consumen este selector, nunca un dato almacenado.
+  Numeración de competición estándar (1, 2, 2, 4). **Solo cuenta la eliminación
+  vigente**: `player_restored` borra la posición de eliminación del jugador y una
+  eliminación posterior establece una nueva (Ana eliminada → restaurada → Carlos
+  eliminado → Ana eliminada: Ana cae por su segunda eliminación, la primera no
+  existe para el ranking). El resumen y las estadísticas futuras consumen este
+  selector, nunca un dato almacenado.
 - **Condiciones de derrota** (`commander/rules.ts`): selector
   `lossConditions(state, playerId)` → subconjunto de `["life","poison","commander_damage"]`
   (≤0 vidas / ≥10 veneno / ≥21 del mismo comandante). **Solo señaliza**: la UI
@@ -159,11 +172,17 @@ El coalescing por tanto NO toca el log: vive en una **ráfaga pendiente** delant
 de él. Estado del log: `{ committed: PlayEvent[], pending?: PlayEvent }`.
 
 - Un tap crea/actualiza `pending`: si tiene mismo `type` y mismo target (y mismo
-  source en `commander_damage`) y han pasado ≤1500 ms desde el último tap, se
-  suman los deltas y se refresca `at`. Delta neto 0 descarta la ráfaga.
+  source en `commander_damage`) y `0 ≤ nuevoAt − últimoAt ≤ 1500 ms`, se suman
+  los deltas y se refresca `at`. Delta neto 0 descarta la ráfaga. **Un `at` que
+  retrocede (reloj corregido) sella la ráfaga en vez de mantenerla abierta.**
 - La ráfaga **se sella** (pasa a `committed`, ya intocable) cuando: vence la
   ventana de 1,5 s, llega una acción de otro tipo/target, se pide undo, se
-  finaliza la partida, o se rehidrata un snapshot.
+  finaliza la partida, la app pasa a segundo plano (`visibilitychange` → hidden /
+  `pagehide`), o se rehidrata un snapshot.
+- **Frontera puro/impuro del reloj**: `log.ts` es puro y no tiene timers — expone
+  `appendTap(log, event)` y `flushPending(log)` y decide solo comparando los `at`
+  que recibe. El **store** es quien programa/cancela/reprograma el `setTimeout`
+  de 1,5 s y quien escucha `visibilitychange`/`pagehide`, llamando al puro.
 - El estado derivado aplica `committed` + `pending`: la UI responde al instante,
   el sellado es invisible para el usuario.
 - Resultado idéntico al buscado: 5 taps de −1 = un `life_changed −5` en el log,
@@ -193,9 +212,12 @@ local-first ya probado del repo):
   Se serializa el log (committed + pending sin sellar), no el estado derivado.
 - **Validación al leer, de forma Y semántica**: `isActiveGameSnapshot` comprueba la
   forma; después la rehidratación ES un replay — primer evento `game_started`,
-  `at` no decrecientes, y el reducer acepta cada evento (participantes conocidos,
-  partida no cerrada a mitad de log…). Si el replay falla, el snapshot se descarta
-  con aviso: nunca se monta una partida a medio validar. `try/catch` en lectura y
+  cada `at` un timestamp finito razonable, y el reducer acepta cada evento
+  (participantes conocidos, partida no cerrada a mitad de log…). **NO se exige
+  `at` monotónico**: el reloj del sistema puede corregirse o retroceder con la
+  partida abierta; el orden verdadero es la posición en el log, no el timestamp.
+  Si el replay falla, el snapshot se descarta con aviso: nunca se monta una
+  partida a medio validar. `try/catch` en lectura y
   escritura: modo privado o cuota llena degradan a memoria pura, nunca rompen la
   partida en curso.
 - Bus de suscripción propio + `useSyncExternalStore` (hook `useActiveGame`), con
@@ -380,7 +402,9 @@ se registran en `docs/UI-GLOSARIO.md` **antes** de escribir `messages/es.json`.
   multi-paso con y sin pending; `game_started` no deshacible), `rules.test.ts`
   (umbrales exactos 0/10/21), `selectors.test.ts` (`describeEvent`;
   `finalRanking`: empates de vivos no ganadores, numeración 1-2-2-4, orden inverso
-  de eliminación).
+  de eliminación, y el caso restauración — Ana eliminada → restaurada → Carlos
+  eliminado → Ana eliminada: solo cuenta la eliminación vigente). En `log.test.ts`
+  además: un `at` que retrocede sella la ráfaga, no la mantiene abierta.
 - **Reconstrucción (gate Fase 2)**: secuencias de eventos generadas → aplicación
   incremental === re-reduce completo desde `game_started`.
 - **Store**: partes puras con localStorage falso; la validación rechaza sin lanzar
@@ -416,7 +440,8 @@ se registran en `docs/UI-GLOSARIO.md` **antes** de escribir `messages/es.json`.
 ## 10. Necesidades futuras de persistencia (NO diseñar ahora)
 
 Solo garantías que el modelo ya da para la Fase 5: eventos con `id` (UUID) →
-idempotencia de sync; `at` + orden del log → ordering; **log committeado inmutable
+idempotencia de sync; la posición en el log → ordering (los `at` son informativos,
+no se garantizan monotónicos); **log committeado inmutable
 (el coalescing ocurre antes de committear, §3) → replay seguro en servidor**; el
 undo-como-pop solo existe pre-sync — tras sincronizar se modelará como evento de
 compensación (decisión de Fase 5/9); `Participant.kind`/`userId` → vinculación de
