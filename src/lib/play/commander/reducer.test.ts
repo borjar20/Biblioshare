@@ -248,6 +248,21 @@ describe("commanderReducer — turnos con eliminados", () => {
     expect(s.activeSeat).toBe(2);
     s = commanderReducer(s, turn(2100)); // envuelve la mesa entera y cruza el asiento 0
     expect(s.activeSeat).toBe(2);
-    expect(s.round).toBeGreaterThan(1);
+    expect(s.round).toBe(2);
+  });
+
+  it("registra la ronda exacta al eliminar cuando el tracker de turnos está activo (ronda > 1)", () => {
+    // Completar una vuelta entera para llegar a ronda 2: tras 4 pases desde asiento 0
+    // cruzamos startingSeat (0) en el 4o pase, avanzando de ronda 1 a ronda 2
+    let s = base; // round = 1, turnCount = 0, activeSeat = 0
+    s = commanderReducer(s, turn(2000)); // asiento 1 (borja), round = 1
+    s = commanderReducer(s, turn(2001)); // asiento 2 (carlos), round = 1
+    s = commanderReducer(s, turn(2002)); // asiento 3 (laura), round = 1
+    s = commanderReducer(s, turn(2003)); // asiento 0 (ana): cruza startingSeat → round = 2
+    expect(s.round).toBe(2);
+    expect(s.turnCount).toBe(4);
+    // Eliminar en ronda 2 registra el valor exacto de la ronda, no la inicial
+    const s2 = commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "carlos", reason: "poison" }, 2100));
+    expect(s2.players[2].elimination).toEqual({ order: 1, round: 2, reason: "poison" });
   });
 });
