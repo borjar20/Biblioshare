@@ -125,5 +125,49 @@ function lifecycleReducer(state: CommanderState, event: CommanderEvent): Command
 
 // Eliminación, restauración y finalización — Task 6.
 function endgameReducer(state: CommanderState, event: CommanderEvent): CommanderState {
-  throw new PlayEventError(`evento desconocido: ${event.type}`);
+  switch (event.type) {
+    case "player_eliminated": {
+      const { target, reason } = event.payload;
+      const i = seatOf(state, target);
+      if (state.players[i].elimination) throw new PlayEventError(`ya eliminado: ${target}`);
+      const order = state.eliminationCounter + 1;
+      const players = state.players.slice();
+      players[i] = {
+        ...players[i],
+        // ronda solo si el tracker de turnos se está usando (es opcional, spec §3)
+        elimination: { order, round: state.turnCount > 0 ? state.round : null, reason },
+      };
+      // Eliminar NUNCA cambia el jugador activo: en Magic puedes morir en tu turno.
+      return { ...state, players, eliminationCounter: order };
+    }
+
+    case "player_restored": {
+      const { target } = event.payload;
+      const i = seatOf(state, target);
+      if (!state.players[i].elimination) throw new PlayEventError(`no está eliminado: ${target}`);
+      const players = state.players.slice();
+      players[i] = { ...players[i], elimination: null };
+      return { ...state, players };
+    }
+
+    case "game_finished": {
+      const { winner, reason } = event.payload;
+      if (winner !== undefined) {
+        const i = seatOf(state, winner);
+        // Victoria por carta: NO se exige que el resto esté eliminado (spec §3),
+        // pero un ganador eliminado sí es contradictorio.
+        if (state.players[i].elimination) throw new PlayEventError("el ganador no puede estar eliminado");
+      }
+      return {
+        ...state,
+        status: "finished",
+        winner: winner ?? null,
+        finishReason: reason ?? null,
+        finishedAt: event.at,
+      };
+    }
+
+    default:
+      throw new PlayEventError(`evento desconocido: ${(event as { type: string }).type}`);
+  }
 }

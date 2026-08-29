@@ -4,6 +4,7 @@ import { commanderReducer, initialCommanderState } from "./reducer";
 import { ev, makeSetup, started } from "./test-fixtures";
 import type { CommanderDamageEvent, LifeChangedEvent, PoisonChangedEvent } from "./events";
 import type { MonarchChangedEvent, PlayerEliminatedEvent, TurnPassedEvent, InitiativeChangedEvent } from "./events";
+import type { GameFinishedEvent, PlayerRestoredEvent } from "./events";
 
 describe("initialCommanderState", () => {
   it("arranca con las vidas del setup, sin veneno y con el asiento inicial activo", () => {
@@ -162,5 +163,91 @@ describe("commanderReducer — monarca e iniciativa", () => {
   it("rechaza un poseedor desconocido", () => {
     expect(() => commanderReducer(base, ev<MonarchChangedEvent>("monarch_changed", { holder: "nadie" }, 2000)))
       .toThrow(PlayEventError);
+  });
+});
+
+describe("commanderReducer — eliminación y final", () => {
+  const base = initialCommanderState(started(1000));
+
+  it("elimina con orden y motivo, sin ronda si el tracker de turnos no se usó", () => {
+    const s = commanderReducer(
+      base,
+      ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana", reason: "poison" }, 2000),
+    );
+    expect(s.players[0].elimination).toEqual({ order: 1, round: null, reason: "poison" });
+  });
+
+  it("restaurar limpia la eliminación; reeliminar estrena order nuevo", () => {
+    let s = commanderReducer(base, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana" }, 2000));
+    s = commanderReducer(s, ev<PlayerRestoredEvent>("player_restored", { target: "ana" }, 2100));
+    expect(s.players[0].elimination).toBeNull();
+    s = commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "carlos" }, 2200));
+    s = commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana" }, 2300));
+    expect(s.players[2].elimination?.order).toBe(2);
+    expect(s.players[0].elimination?.order).toBe(3); // la primera eliminación de ana no existe ya
+  });
+
+  it("rechaza eliminar dos veces y restaurar a un vivo", () => {
+    const s = commanderReducer(base, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana" }, 2000));
+    expect(() => commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana" }, 2100)))
+      .toThrow(PlayEventError);
+    expect(() => commanderReducer(base, ev<PlayerRestoredEvent>("player_restored", { target: "ana" }, 2000)))
+      .toThrow(PlayEventError);
+  });
+
+  it("game_finished admite ganador con rivales vivos (victoria por carta) y cierra la partida", () => {
+    const s = commanderReducer(
+      base,
+      ev<GameFinishedEvent>("game_finished", { winner: "carlos", reason: "card" }, 9000),
+    );
+    expect(s.status).toBe("finished");
+    expect(s.winner).toBe("carlos");
+    expect(s.finishReason).toBe("card");
+    expect(s.finishedAt).toBe(9000);
+    // tras finalizar, nada más entra
+    expect(() => commanderReducer(s, ev<LifeChangedEvent>("life_changed", { target: "ana", delta: 1 }, 9100)))
+      .toThrow(PlayEventError);
+  });
+
+  it("rechaza un ganador eliminado", () => {
+    const s = commanderReducer(base, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana" }, 2000));
+    expect(() => commanderReducer(s, ev<GameFinishedEvent>("game_finished", { winner: "ana" }, 9000)))
+      .toThrow(PlayEventError);
+  });
+});
+
+// Casos de turnos que necesitaban player_eliminated (venían anunciados en la Task 5).
+describe("commanderReducer — turnos con eliminados", () => {
+  const turn = (at: number) => ev<TurnPassedEvent>("turn_passed", {}, at);
+  const base = initialCommanderState(started(1000));
+
+  it("salta eliminados, y la ronda sube por POSICIÓN aunque el inicial esté eliminado", () => {
+    let s = commanderReducer(base, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana" }, 1500));
+    s = commanderReducer(s, turn(2000)); // activo era 0 -> borja
+    s = commanderReducer(s, turn(2001)); // carlos
+    s = commanderReducer(s, turn(2002)); // laura
+    s = commanderReducer(s, turn(2003)); // cruza asiento 0 (ana, eliminada) -> borja, ronda 2
+    expect(s.activeSeat).toBe(1);
+    expect(s.round).toBe(2);
+  });
+
+  it("eliminar al jugador activo NO cambia el activo; el siguiente pase salta desde su asiento", () => {
+    let s = commanderReducer(base, turn(2000)); // activo: borja (asiento 1)
+    s = commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "borja" }, 2100));
+    expect(s.activeSeat).toBe(1); // sigue siendo su turno: en Magic puedes morir en tu turno
+    s = commanderReducer(s, turn(2200));
+    expect(s.activeSeat).toBe(2); // carlos
+  });
+
+  it("con un solo vivo, el turno vuelve a él y la ronda avanza al envolver", () => {
+    let s = base;
+    for (const id of ["ana", "borja", "laura"]) {
+      s = commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: id }, 1500));
+    }
+    s = commanderReducer(s, turn(2000)); // solo carlos (asiento 2) vivo
+    expect(s.activeSeat).toBe(2);
+    s = commanderReducer(s, turn(2100)); // envuelve la mesa entera y cruza el asiento 0
+    expect(s.activeSeat).toBe(2);
+    expect(s.round).toBeGreaterThan(1);
   });
 });
