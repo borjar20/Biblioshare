@@ -55,4 +55,43 @@ describe("commanderReducer — contadores", () => {
       .toThrow(PlayEventError);
     expect(() => commanderReducer(base, started(2000))).toThrow(PlayEventError);
   });
+
+  it("acumula daño de comandante en múltiples golpes del mismo atacante", () => {
+    // Verificar que (tally ?? 0) + delta acumula y no sobrescribe
+    let s = commanderReducer(
+      base,
+      ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: 5 }, 2000),
+    );
+    expect(s.players[1].commanderDamage).toEqual({ carlos: 5 });
+    expect(s.players[1].life).toBe(35);
+
+    s = commanderReducer(
+      s,
+      ev<CommanderDamageEvent>("commander_damage", { source: "carlos", target: "borja", delta: 8 }, 2100),
+    );
+    expect(s.players[1].commanderDamage).toEqual({ carlos: 13 });
+    expect(s.players[1].life).toBe(27);
+  });
+
+  it("rechaza atacante desconocido en commander_damage", () => {
+    expect(() =>
+      commanderReducer(
+        base,
+        ev<CommanderDamageEvent>("commander_damage", { source: "fantasma", target: "borja", delta: 5 }, 2000),
+      ),
+    ).toThrow(PlayEventError);
+  });
+
+  it("rechaza eventos cuando la partida está cerrada", () => {
+    const finished = { ...base, status: "finished" as const };
+    expect(() =>
+      commanderReducer(finished, ev<LifeChangedEvent>("life_changed", { target: "ana", delta: 1 }, 2000)),
+    ).toThrow(PlayEventError);
+  });
+
+  it("rechaza asiento inicial fuera de rango en initialCommanderState", () => {
+    expect(() =>
+      initialCommanderState(started(1000, { ...makeSetup(), startingSeat: 9 })),
+    ).toThrow(PlayEventError);
+  });
 });
