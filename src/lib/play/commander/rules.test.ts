@@ -42,4 +42,21 @@ describe("lossConditions", () => {
     s = commanderReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "ana", reason: "life" }, 2100));
     expect(lossConditions(s, "ana")).toEqual([]);
   });
+
+  it("un id desconocido (no participante) retorna vacío", () => {
+    expect(lossConditions(base, "unknown-id-not-in-state")).toEqual([]);
+  });
+
+  it("las tres condiciones pueden ocurrir a la vez y se reportan en orden: vida, veneno, daño de comandante", () => {
+    // Derivación del estado:
+    // - Partimos con vida=40, veneno=0, daño_comandante={}
+    // - Aplicamos veneno +10 → vida=40, veneno=10
+    // - Aplicamos daño de comandante +21 de "ana" → vida=19, veneno=10, daño["ana"]=21
+    // - Aplicamos daño de vida -20 → vida=-1, veneno=10, daño["ana"]=21
+    // Esperado: ["life", "poison", "commander_damage"]
+    let s = commanderReducer(base, ev<PoisonChangedEvent>("poison_changed", { target: "carlos", delta: 10 }, 2000));
+    s = commanderReducer(s, ev<CommanderDamageEvent>("commander_damage", { source: "ana", target: "carlos", delta: 21 }, 2100));
+    s = commanderReducer(s, ev<LifeChangedEvent>("life_changed", { target: "carlos", delta: -20 }, 2200));
+    expect(lossConditions(s, "carlos")).toEqual(["life", "poison", "commander_damage"]);
+  });
 });
