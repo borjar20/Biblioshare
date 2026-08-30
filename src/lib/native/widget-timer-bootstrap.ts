@@ -4,9 +4,14 @@ import { clearTimer, readTimer, timerStateFromWidget, writeTimer } from "@/lib/s
 
 // Sincroniza nativo→app al volver a primer plano (best-effort, no bloqueante):
 //
-//  1. Lápida (#493): si el widget descartó/registró la sesión mientras la app
-//     estaba cerrada, y la app aún guarda ESE mismo reloj sembrado, apágalo —
-//     si no, el reloj fantasma seguiría vivo al reabrir la hoja de sesión.
+//  1. Lápida (#493): si el widget DESCARTÓ la sesión mientras la app estaba
+//     cerrada, y la app aún guarda ESE mismo reloj sembrado, apágalo — si no,
+//     el reloj fantasma seguiría vivo al reabrir la hoja de sesión.
+//     Desde el fix widget→sesión offline, «Registrar» YA NO deja lápida (solo
+//     pausa; el clear nativo llega cuando la web confirma el guardado vía
+//     clearRunningTimer). Así este barrido solo sigue a un descarte explícito
+//     del usuario y nunca borra prematuramente la copia local de una sesión
+//     todavía sin registrar.
 //  2. Siembra: si el widget dejó un cronómetro corriendo (arrancado SIN abrir
 //     la app) y la app no tiene reloj propio para ese pase, adopta el nativo.
 //

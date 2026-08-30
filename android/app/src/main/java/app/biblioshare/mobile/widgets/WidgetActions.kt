@@ -125,8 +125,13 @@ fun registerHref(r: TimerLogic.Running, now: Long): String {
 class RegisterTimerAction : ActionCallback {
     override suspend fun onAction(c: Context, id: GlanceId, p: ActionParameters) {
         val r = TimerStore.get(c) ?: return
-        val href = registerHref(r, System.currentTimeMillis())
-        TimerStore.clearFromWidget(c)
+        val now = System.currentTimeMillis()
+        val href = registerHref(r, now)
+        // NO clearFromWidget (fix widget→sesión offline): igual que finishFromNotification — solo
+        // pausar. El clear llega cuando la web confirma el guardado
+        // (clearRunningTimer); si la web no carga (sin red), el widget sigue
+        // mostrando la sesión pausada y se puede reintentar sin perder nada.
+        TimerStore.pause(c, now)
         ReadingSessionController.sync(c)
         refreshWidgets(c, "RegisterTimer")
         c.startActivity(WidgetDeepLinks.intentFor(c, href))

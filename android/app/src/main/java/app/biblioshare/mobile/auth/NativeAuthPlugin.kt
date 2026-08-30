@@ -16,6 +16,11 @@ import org.json.JSONObject
 // aparte (NetworkOnMainThread) y se responde el estado. La web es la única que
 // pasa url+anonKey (los toma de NEXT_PUBLIC_*), así que el nativo no cablea
 // configuración que pueda desincronizarse.
+//
+// TODO hilo lleva try/catch: una excepción sin capturar en un Thread{} crudo
+// dispara el UncaughtExceptionHandler por defecto de Android y MATA el proceso
+// entero (así se cerraba la app en modo avión). Ante lo inesperado, se rechaza
+// la llamada y el hilo termina limpio.
 @CapacitorPlugin(name = "NativeAuth")
 class NativeAuthPlugin : Plugin() {
 
@@ -29,34 +34,48 @@ class NativeAuthPlugin : Plugin() {
             return
         }
         Thread {
-            val userId = NativeSupabase.establish(context, url, anonKey, tokenHash)
-            if (userId != null) {
-                // Con sesión: refresco periódico en segundo plano + primer
-                // pintado inmediato tirando de Supabase (no esperamos al WebView).
-                WidgetWork.schedulePeriodic(context)
-                WidgetSync.refresh(context)
+            try {
+                val userId = NativeSupabase.establish(context, url, anonKey, tokenHash)
+                if (userId != null) {
+                    // Con sesión: refresco periódico en segundo plano + primer
+                    // pintado inmediato tirando de Supabase (no esperamos al WebView).
+                    WidgetWork.schedulePeriodic(context)
+                    WidgetSync.refresh(context)
+                }
+                resolveStatus(call)
+            } catch (e: Exception) {
+                call.reject(e.message ?: "establishSession falló")
             }
-            resolveStatus(call)
         }.start()
     }
 
     @PluginMethod
     fun signOut(call: PluginCall) {
         Thread {
-            NativeSupabase.signOut(context)
-            // Sin sesión no hay refrescos, y el widget se vacía (no dejar datos
-            // de la cuenta anterior a la vista).
-            WidgetWork.cancel(context)
-            WidgetSnapshotStore.clear(context)
-            WidgetRefresh.updateAll(context)
-            call.resolve()
+            try {
+                NativeSupabase.signOut(context)
+                // Sin sesión no hay refrescos, y el widget se vacía (no dejar datos
+                // de la cuenta anterior a la vista).
+                WidgetWork.cancel(context)
+                WidgetSnapshotStore.clear(context)
+                WidgetRefresh.updateAll(context)
+                call.resolve()
+            } catch (e: Exception) {
+                call.reject(e.message ?: "signOut falló")
+            }
         }.start()
     }
 
     /** Estado actual: prueba de vida real (whoAmI), no solo "hay tokens guardados". */
     @PluginMethod
     fun status(call: PluginCall) {
-        Thread { resolveStatus(call) }.start()
+        Thread {
+            try {
+                resolveStatus(call)
+            } catch (e: Exception) {
+                call.reject(e.message ?: "status falló")
+            }
+        }.start()
     }
 
     private fun resolveStatus(call: PluginCall) {
