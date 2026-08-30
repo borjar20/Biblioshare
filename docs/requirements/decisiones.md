@@ -3087,3 +3087,19 @@ pero no son un pulgar ni una mesa):
    deshacer, queda solo la flecha) y las filas del overlay de daño truncaban el nombre a favor de
    los botones (ahora son dos líneas: el nombre manda en la suya, y los botones suben a 44 px,
    que además les tocaba por `tap-44`).
+
+## 2026-08-30 (5) — El selector manda sobre la orientación; el sensor del móvil, no (#931)
+
+Pregunta directa del usuario: ¿se puede bloquear el giro de pantalla y que sea el selector de
+presets quien gire la mesa? Respuesta: sí, y sin pedir permisos — **contra-rotación por CSS del
+escenario entero**, no `screen.orientation.lock()` (que solo existe en fullscreen y en iOS no
+existe en absoluto). Si el preset pide una orientación y el viewport tiene la otra, el tablero se
+gira 90°; si el SO ya rotó la pantalla, no se gira dos veces. Funciona igual en pestaña, PWA y APK.
+
+La regla fina: **«Automático» sigue al viewport y no gira nunca** — sin esa excepción, un
+escritorio apaisado saldría de canto por el default `portrait` de las preferencias. De regalo,
+auto en pantalla ancha ahora reparte tumbado (consola flotante) en vez de suponer un móvil de pie.
+
+Las hojas (`<dialog>` en el top layer) quedan fuera del transform del ancestro por cómo funciona el
+top layer: salen derechas para quien coge el móvil. El overlay de daño sí gira con su panel — mira
+a quien está sentado ahí.

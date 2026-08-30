@@ -125,6 +125,31 @@ test("terminar y revancha: la mesa vuelve puesta y el turno rota un asiento", as
   expect(await snapshot(page)).not.toBeNull();
 });
 
+test("el selector manda sobre la orientación: «tumbado» gira el tablero sin girar el móvil", async ({
+  page,
+}) => {
+  await empezarPartida(page);
+
+  // El viewport es vertical (390x844) y el giro del sistema da igual: elegir un
+  // preset tumbado contra-rota el escenario entero por CSS.
+  await page.getByRole("button", { name: "Acciones de la partida" }).click();
+  await page.getByRole("button", { name: /en filas · móvil tumbado/i }).click();
+  await page.getByRole("button", { name: "Cerrar" }).click();
+
+  await expect(page.locator("[data-rotated]")).toHaveCount(1);
+
+  // Y el tablero girado sigue siendo un instrumento, no un dibujo: los toques
+  // atraviesan el transform.
+  await page.getByRole("button", { name: "Quitar una vida a Jugador 1" }).click();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
+
+  // Volver a «de pie» deshace el giro.
+  await page.getByRole("button", { name: "Acciones de la partida" }).click();
+  await page.getByRole("button", { name: /en filas · móvil de pie/i }).click();
+  await page.getByRole("button", { name: "Cerrar" }).click();
+  await expect(page.locator("[data-rotated]")).toHaveCount(0);
+});
+
 test("salir de la mesa conserva la partida, y el hub la ofrece para seguir", async ({ page }) => {
   await empezarPartida(page);
   await page.getByRole("button", { name: "Quitar una vida a Jugador 1" }).click();

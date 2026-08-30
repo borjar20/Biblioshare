@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
 import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
@@ -61,12 +61,68 @@ export function GameBoard({
   );
   useWakeLock(prefs.keepAwake);
 
+  // El tamaño REAL del viewport, medido igual que en player-panel (el observer
+  // dispara su primera medida solo; nada de setState síncrono en el efecto).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize((prev) =>
+        prev && Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1
+          ? prev
+          : { width, height },
+      );
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // **Un preset explícito manda sobre la orientación; «Automático» sigue al
+  // viewport.** Si el preset pide una orientación y el viewport tiene la otra, el
+  // ESCENARIO entero se gira 90° por CSS: eliges «tumbado», apoyas el móvil de lado
+  // y la mesa sale derecha, tenga el sistema el giro bloqueado o no. Y si el SO sí
+  // rota la pantalla, el viewport ya viene apaisado y no se gira dos veces. Es la
+  // vía que funciona en TODAS partes — `screen.orientation.lock()` no existe fuera
+  // de fullscreen y en iOS no existe en absoluto.
+  //
+  // En «Automático» NO se gira nunca: se reparte para la forma que el viewport ya
+  // tiene (sin esto, un escritorio apaisado saldría de canto por el default
+  // `portrait` de las preferencias — y de regalo, auto en pantalla ancha ahora
+  // reparte tumbado en vez de suponer un móvil de pie).
+  //
+  // Las hojas (`<dialog>` con showModal) viven en el top layer, al que el transform
+  // de un ancestro NO alcanza: salen derechas para quien coge el móvil, que es lo
+  // que se quiere. El overlay de daño sí gira con su panel, y también es lo que se
+  // quiere: mira a quien está sentado ahí.
+  const auto = prefs.layout === "auto";
+  const viewportLandscape = size !== null && size.width > size.height;
+  const orientation: typeof prefs.orientation = auto
+    ? viewportLandscape
+      ? "landscape"
+      : "portrait"
+    : prefs.orientation;
+  const rotated =
+    !auto && size !== null && (prefs.orientation === "landscape") !== viewportLandscape;
+  const stageStyle = rotated
+    ? {
+        position: "absolute" as const,
+        top: 0,
+        left: 0,
+        width: size.height,
+        height: size.width,
+        transform: "rotate(-90deg) translateX(-100%)",
+        transformOrigin: "top left",
+      }
+    : { width: "100%", height: "100%" };
+
   const layout = useMemo(() => {
     const players = state.players.length;
-    const family =
-      prefs.layout === "auto" ? defaultLayout(players, prefs.orientation) : prefs.layout;
-    return resolveLayout(players, prefs.orientation, family);
-  }, [state.players.length, prefs.layout, prefs.orientation]);
+    const family = prefs.layout === "auto" ? defaultLayout(players, orientation) : prefs.layout;
+    return resolveLayout(players, orientation, family);
+  }, [state.players.length, prefs.layout, orientation]);
 
   // Una sola región que anuncia: la que lee el último movimiento. Una por panel
   // convertiría cada tap en cuatro anuncios.
@@ -80,7 +136,12 @@ export function GameBoard({
   }
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-play-felt p-1.5">
+    <div ref={rootRef} className="relative h-dvh w-full overflow-hidden bg-play-felt">
+      <div
+        className="relative p-1.5"
+        style={stageStyle}
+        data-rotated={rotated ? "" : undefined}
+      >
       <div
         className="grid h-full w-full gap-1.5"
         style={{
@@ -140,6 +201,7 @@ export function GameBoard({
         />
       )}
       {menuOpen && <GameSheet game={game} store={store} onClose={() => setMenuOpen(false)} />}
+      </div>
     </div>
   );
 }

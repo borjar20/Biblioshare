@@ -65,6 +65,9 @@ export function BoardPresets({
                   key={option}
                   type="button"
                   aria-pressed={selected}
+                  // El texto visible se repite entre grupos («En filas» sale de pie
+                  // y tumbado): el nombre accesible lleva el grupo para distinguir.
+                  aria-label={`${t(`gameSheet.layout${capitalize(option)}`)} · ${t(group.labelKey)}`}
                   onClick={() => onSelect(group.orientation, option)}
                   className={`flex flex-col items-center gap-1 rounded-[10px] border p-2 transition-colors ${
                     selected ? "border-accent bg-accent/10" : "border-border"
