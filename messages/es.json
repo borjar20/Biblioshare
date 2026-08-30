@@ -2062,7 +2062,8 @@
       "invalidPosition": "La posición introducida no es válida o supera el máximo disponible.",
       "invalidDuration": "El tiempo debe ser un número de minutos válido.",
       "generic": "Algo salió mal. Inténtalo de nuevo.",
-      "futureDate": "No puedes registrar una sesión con fecha futura."
+      "futureDate": "No puedes registrar una sesión con fecha futura.",
+      "network": "Sin conexión: la sesión sigue aquí, reintenta cuando vuelva la red."
     }
   },
   "stats": {
@@ -2195,6 +2196,8 @@
     "title": "Sin conexión",
     "description": "No se pudo cargar esta página porque no tienes conexión. Podrás verla en cuanto vuelvas a estar en línea; mientras tanto puedes seguir navegando lo que ya cargaste antes.",
     "retry": "Reintentar",
+    "retrySession": "Reintentar el registro",
+    "sessionSafe": "Ibas a registrar una sesión de lectura. No se ha perdido nada: los datos siguen en esta pantalla y en la notificación. Reintenta cuando vuelva la conexión.",
     "backHome": "Ir al inicio"
   },
   "library": {
