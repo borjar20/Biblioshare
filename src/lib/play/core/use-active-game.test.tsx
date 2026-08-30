@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
+import "fake-indexeddb/auto";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { __resetDbForTests } from "./db";
 import { __resetPlayStoresForTests } from "./store";
 import { useActiveGame } from "./use-active-game";
 import { started } from "@/lib/play/mtg/test-fixtures";
 
 function Probe({ identity }: { identity: string }) {
-  const { game } = useActiveGame(identity);
+  const { snapshot, game } = useActiveGame(identity);
+  if (snapshot.status === "loading") return <output>cargando</output>;
   return <output>{game ? "partida" : "vacio"}</output>;
 }
 
@@ -18,6 +21,9 @@ beforeEach(async () => {
   // primer getPlayStore() de este test — se reutilizaba su partida en vez de
   // arrancar en vacío.
   await __resetPlayStoresForTests();
+  // BD nueva por test (fase 3, #931): sin esto un test podía hidratar contra
+  // los registros que dejó el anterior.
+  await __resetDbForTests();
   // jsdom conserva un único localStorage real para todo el fichero: sin este
   // clear, la partida persistida por un test "gotea" al siguiente al releerse
   // desde disco en el primer getPlayStore() de esa identidad.
@@ -28,11 +34,13 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("useActiveGame", () => {
-  it("arranca vacío y se re-renderiza cuando el store cambia", async () => {
+  it("arranca en loading, hidrata a vacío y se re-renderiza cuando el store cambia", async () => {
     const host = document.createElement("div");
     const root = createRoot(host);
     await act(async () => root.render(<Probe identity="anon" />));
-    expect(host.textContent).toBe("vacio");
+    // La hidratación (IndexedDB) es async: la UI nunca debe leer loading como
+    // vacío, así que el primer render puede seguir en "cargando".
+    await vi.waitFor(() => expect(host.textContent).toBe("vacio"));
     const { getPlayStore } = await import("./store");
     await act(async () => getPlayStore("anon").start(started(1000)));
     expect(host.textContent).toBe("partida");
@@ -45,13 +53,14 @@ describe("useActiveGame", () => {
     const { getPlayStore } = await import("./store");
 
     await act(async () => root.render(<Probe identity="anon" />));
+    await vi.waitFor(() => expect(host.textContent).toBe("vacio"));
     await act(async () => getPlayStore("anon").start(started(1000)));
     expect(host.textContent).toBe("partida");
 
     // Misma instancia del componente, identidad distinta: debe leer el store
     // de "otro-uid" (sin partida), no seguir sirviendo el de "anon".
     await act(async () => root.render(<Probe identity="otro-uid" />));
-    expect(host.textContent).toBe("vacio");
+    await vi.waitFor(() => expect(host.textContent).toBe("vacio"));
 
     // Volver a "anon" muestra su partida de nuevo: el cambio de identidad no
     // destruyó el store anterior, solo dejó de suscribirse a él.
