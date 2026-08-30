@@ -75,13 +75,31 @@ describe("limitReached", () => {
 });
 
 describe("describeEvent", () => {
-  it("etiqueta las rondas con su número humano (1-based)", () => {
-    const s = conRondas([[1, 2, 3]]);
+  it("etiqueta la ronda YA APLICADA con su número humano (1-based) — así la usa game-sheet/consola: describe(último evento, game.state tras aplicarlo)", () => {
+    let s = initialScoreState(
+      makeEvent<GameStartedEvent["type"], GameStartedEvent["payload"]>(
+        "game_started",
+        { toolId: "score", setup: { participants: gente(3), direction: "highest" } },
+        1000,
+      ),
+    );
     const scored = makeEvent<RoundScoredEvent["type"], RoundScoredEvent["payload"]>(
       "round_scored",
       { scores: [1, 2, 3] },
-      5000,
+      2000,
     );
-    expect(describeEvent(scored, s)).toEqual({ key: "roundScored", params: { round: 2 } });
+    s = scoreReducer(s, scored);
+    // Tras aplicar la primera ronda, rounds.length ya vale 1: ese es su número humano.
+    expect(describeEvent(scored, s)).toEqual({ key: "roundScored", params: { round: 1 } });
+  });
+
+  it("game_started y game_finished reusan las claves neutras de mtg", () => {
+    const startedEvent = makeEvent<GameStartedEvent["type"], GameStartedEvent["payload"]>(
+      "game_started",
+      { toolId: "score", setup: { participants: gente(3), direction: "highest" } },
+      1000,
+    );
+    const s = initialScoreState(startedEvent);
+    expect(describeEvent(startedEvent, s)).toEqual({ key: "started", params: {} });
   });
 });

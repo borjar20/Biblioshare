@@ -2,8 +2,11 @@ import type { ComponentType } from "react";
 import type { ToolId } from "@/lib/play/core/types";
 import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
 import { MtgTableMark } from "./marks/mtg-table-mark";
+import { ScoreTableMark } from "./marks/score-table-mark";
 import { GameBoard } from "./game-board";
 import { GameSummary } from "./game-summary";
+import { ScoreBoard } from "./score/score-board";
+import { ScoreSummary } from "./score/score-summary";
 
 /**
  * Registro de UI, hermano del registro de DOMINIO (`src/lib/play/tools.ts`). La
@@ -33,5 +36,11 @@ export const toolViews: Record<ToolId, ToolView> = {
     hubRoute: "/partidas/mtg",
     Board: GameBoard,
     Summary: GameSummary,
+  },
+  score: {
+    Illustration: ScoreTableMark,
+    hubRoute: "/partidas/puntuacion",
+    Board: ScoreBoard,
+    Summary: ScoreSummary,
   },
 };

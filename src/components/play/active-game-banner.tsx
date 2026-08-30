@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useActiveGame } from "@/lib/play/core/use-active-game";
+import type { MtgState } from "@/lib/play/mtg/types";
 import { seatAccent } from "@/lib/play/ui/seats";
 
 /**
@@ -21,7 +22,13 @@ export function ActiveGameBanner({ identity }: { identity: string }) {
   const { game } = useActiveGame(identity);
   if (!game) return null;
 
-  const state = game.state;
+  // Cast explícito para seguir compilando ahora que ToolId crece a "score"
+  // (PlayGameState pasa a ser unión). Esta miniatura sigue siendo
+  // mtg-específica de verdad (vidas, asientos, ganador) pese a lo que sugiere
+  // el comentario de core/types.ts: con una partida de "score" activa lee
+  // campos que no existen — issue #962, sin arreglar aquí (fuera del alcance
+  // de la task 5, que solo registra `score`, no generaliza este banner).
+  const state = game.state as MtgState;
   const finished = state.status === "finished";
   const active = state.players[state.activeSeat];
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeEvent } from "@/lib/play/core/events";
+import { replay } from "@/lib/play/core/replay";
 import type { Participant } from "@/lib/play/core/types";
 import type { GameStartedEvent, RoundEditedEvent, RoundScoredEvent, GameFinishedEvent } from "./events";
 import { initialScoreState, scoreReducer } from "./reducer";
@@ -55,17 +56,15 @@ describe("reconstrucción", () => {
       replayA = scoreReducer(replayA, events[i]);
     }
 
-    // Replay completo: aplicar la MISMA secuencia dos veces desde cero.
-    // NOTA: mismo bucle, no motor distinto — el gate REAL (comparar contra
-    // core/replay.ts) no puede correr hasta que `score` entre en el registro
-    // playTools (PR-B); sustituir este assert entonces.
-    let replayB = initialScoreState(startedEvent);
-    for (let i = 1; i < events.length; i++) {
-      replayB = scoreReducer(replayB, events[i]);
-    }
+    // Replay completo, pero contra el motor REAL (core/replay.ts) y no contra
+    // otra pasada del mismo bucle: `score` ya está en el registro playTools
+    // (PR-B), así que este es el gate de verdad — reconstruye vía
+    // `playTools.score.init/reduce`, exactamente como hace el store al
+    // rehidratar desde el snapshot.
+    const replayFromEngine = replay(events);
 
     // Determinismo total: mismo input, mismo estado profundo
-    expect(replayA).toEqual(replayB);
+    expect(replayFromEngine).toEqual(replayA);
 
     // Undo por prefijo: quitar el último evento = estado anterior REAL
     const beforeLastEvent = events.slice(0, -1);

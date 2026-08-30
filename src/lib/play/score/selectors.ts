@@ -41,22 +41,27 @@ export function limitReached(state: ScoreState): boolean {
 }
 
 // Etiquetas para la consola de deshacer y el log. `round` humano, 1-based.
+//
+// `game_started`/`game_finished` reusan las claves NEUTRAS de mtg ("started",
+// "finished" — "Empieza la partida"/"Fin de la partida" valen igual para una
+// puntuación) en vez de duplicar el mismo texto bajo una clave propia
+// (tools.ts describe §6).
 export function describeEvent(event: ScoreEvent, state: ScoreState): EventDescription {
   switch (event.type) {
     case "game_started":
-      return { key: "gameStarted", params: {} };
+      return { key: "started", params: {} };
     case "round_scored":
-      // El evento describe la PRÓXIMA ronda si aún no se aplicó, pero en la
-      // consola siempre se describe el último evento YA aplicado: la ronda
-      // que añadió es la última — su número humano es rounds.length... salvo
-      // que el estado no lo incluya todavía (describe de un pending ajeno).
-      // Criterio simple y estable: número = rondas actuales + 1 si el evento
-      // no está aplicado no es distinguible aquí; se etiqueta con el total
-      // actual + 1 para pending y la UI del log histórico no lo usa.
-      return { key: "roundScored", params: { round: state.rounds.length + 1 } };
+      // El único llamador real (game-sheet/consola) describe SIEMPRE el
+      // último evento YA APLICADO sobre el estado que ese mismo evento
+      // produjo (game.state tras el commit) — nunca un evento pendiente de
+      // aplicar sobre un estado previo. Con esa invariante, la ronda que
+      // `round_scored` acaba de añadir es la ÚLTIMA de `state.rounds`, y su
+      // número humano es exactamente `state.rounds.length` (1-based porque
+      // length ya cuenta la que se acaba de añadir), no `+1`.
+      return { key: "roundScored", params: { round: state.rounds.length } };
     case "round_edited":
       return { key: "roundEdited", params: { round: event.payload.round + 1 } };
     case "game_finished":
-      return { key: "gameFinished", params: {} };
+      return { key: "finished", params: {} };
   }
 }
