@@ -11,6 +11,7 @@ import { defaultLayout, resolveLayout } from "@/lib/play/ui/layout";
 import { preferencesStore, DEFAULT_PREFERENCES } from "@/lib/play/ui/preferences";
 import { PlayerPanel } from "./player-panel";
 import { PanelActions } from "./panel-actions";
+import { CenterConsole } from "./center-console";
 import { useWakeLock } from "./use-wake-lock";
 
 const getServerPreferences = () => DEFAULT_PREFERENCES;
@@ -49,6 +50,7 @@ export function GameBoard({
   const t = useTranslations("play");
   const state = game.state as MtgState;
   const [openSheetSeat, setOpenSheetSeat] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const prefs = useSyncExternalStore(
     preferencesStore.subscribe,
@@ -103,23 +105,35 @@ export function GameBoard({
           );
         })}
 
-        {/* El hueco de la consola. De pie mide lo que ocupa la banda; tumbado mide
-            cero y la consola flota encima (decisión 2026-08-29 (6)). */}
-        <div style={{ gridArea: layout.consoleArea }} />
+        {/* El hueco de la consola. De pie la banda vive DENTRO de la rejilla; tumbado
+            el hueco mide cero y la consola flota sobre los paneles, con el sitio ya
+            reservado por el padding de las cabeceras (decisión 2026-08-29 (6)). */}
+        <div style={{ gridArea: layout.consoleArea }} className="flex items-center">
+          {layout.consoleMode === "band" && (
+            <CenterConsole game={game} store={store} mode="band" onOpenMenu={() => setMenuOpen(true)} />
+          )}
+        </div>
       </div>
+
+      {layout.consoleMode === "floating" && (
+        <CenterConsole game={game} store={store} mode="floating" onOpenMenu={() => setMenuOpen(true)} />
+      )}
 
       {/* Lo que acaba de pasar, para quien no puede verlo. `polite`: no interrumpe. */}
       <p aria-live="polite" className="sr-only">
         {described ? t(`log.${described.key}`, described.params) : ""}
       </p>
 
-      {/* La hoja del jugador llega en su propia pieza; de momento el estado existe
-          para que la cabecera tenga a dónde abrir. */}
-      {openSheetSeat !== null && (
+      {/* Las dos hojas llegan en su propia pieza; de momento el estado existe para
+          que la cabecera y el menú tengan a dónde abrir. */}
+      {(openSheetSeat !== null || menuOpen) && (
         <button
           type="button"
           className="sr-only"
-          onClick={() => setOpenSheetSeat(null)}
+          onClick={() => {
+            setOpenSheetSeat(null);
+            setMenuOpen(false);
+          }}
           aria-label={t("board.close")}
         />
       )}
