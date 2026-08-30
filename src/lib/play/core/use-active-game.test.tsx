@@ -11,8 +11,13 @@ function Probe({ identity }: { identity: string }) {
   return <output>{game ? "partida" : "vacio"}</output>;
 }
 
-beforeEach(() => {
-  __resetPlayStoresForTests();
+beforeEach(async () => {
+  // __resetPlayStoresForTests() es async (#931): espera a que la cola de
+  // escrituras de cada store drene antes de destruirlo y limpiar el Map. Sin
+  // el await, el Map seguía teniendo los stores del test anterior en el
+  // primer getPlayStore() de este test — se reutilizaba su partida en vez de
+  // arrancar en vacío.
+  await __resetPlayStoresForTests();
   // jsdom conserva un único localStorage real para todo el fichero: sin este
   // clear, la partida persistida por un test "gotea" al siguiente al releerse
   // desde disco en el primer getPlayStore() de esa identidad.

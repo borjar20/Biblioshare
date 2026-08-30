@@ -29,19 +29,16 @@ let storage: FakeStorage;
 beforeEach(async () => {
   storage = new FakeStorage();
   vi.stubGlobal("localStorage", storage);
-  __resetPlayStoresForTests();
-  // Un store destruido puede dejar varias escrituras en vuelo, encadenadas
-  // una tras otra (writeChain fuera de nuestro control: destroy() no las
-  // cancela, por diseño — spec fases 0-2 §4; un test con start+tap+tap+sello
-  // deja hasta 4). Un margen generoso de ticks reales deja que TODAS aterricen
-  // contra SU BD antes de cambiarla; si no, su propio openDb() —que resuelve
-  // tarde— podría acabar devolviendo la conexión NUEVA de abajo y filtrar
-  // datos al test siguiente. Cada tick es submilisegundo; el margen es barato.
-  for (let i = 0; i < 40; i++) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
+  // __resetPlayStoresForTests() ahora espera (#931) a que la cola de
+  // escrituras de CADA store drene contra SU BD antes de destruirlo: un
+  // store destruido puede dejar varias escrituras en vuelo, encadenadas una
+  // tras otra (writeChain fuera de nuestro control: destroy() no las cancela,
+  // por diseño — spec fases 0-2 §4; un test con start+tap+tap+sello deja
+  // hasta 4). Antes este await no existía y el margen se cubría con un bucle
+  // de 40 ticks heurístico aquí; con el drenaje real ya no hace falta.
+  await __resetPlayStoresForTests();
   // Fábrica de IndexedDB nueva por test, no solo la BD borrada: aísla del
-  // todo cualquier resto que sobreviviera al margen de arriba.
+  // todo cualquier resto que sobreviviera al drenaje de arriba.
   vi.stubGlobal("indexedDB", new IDBFactory());
   // ANTES de activar los timers falsos: fake-indexeddb dispara sus eventos
   // vía setTimeout real, y con los timers ya mockeados esa promesa no
@@ -106,7 +103,7 @@ describe("persistencia y aislamiento", () => {
       if (!record || record.rev < 2) throw new Error("la escritura del tap aún no aterrizó");
     });
     // 'cierre': un store nuevo lee lo persistido sin que haya habido flush
-    __resetPlayStoresForTests();
+    await __resetPlayStoresForTests();
     const reborn = getPlayStore("anon");
     await vi.waitFor(() => {
       const snapshot = reborn.getSnapshot();
@@ -237,6 +234,9 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     const applied = store.start(started(1000, makeSetup(["ana"])));
     expect(applied).toBe(false);
     expect(store.getSnapshot().game).toBeNull();
+    // tryCommit rechaza ANTES de llamar a persistCurrent(): no hay nada que
+    // drenar, la ausencia de escritura es inmediata (finding 1).
+    expect(await readActive("anon")).toBeNull();
   });
 
   it("start() con un evento que no es game_started no crea partida ni persiste nada", async () => {
@@ -245,16 +245,23 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     const applied = store.start(tap(-1, 1000));
     expect(applied).toBe(false);
     expect(store.getSnapshot().game).toBeNull();
+    expect(await readActive("anon")).toBeNull();
   });
 
   it("tap() con un participante desconocido deja el store exactamente como estaba", async () => {
     const store = getPlayStore("anon");
     await ready(store);
     store.start(started(1000));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record) throw new Error("el start aún no aterrizó");
+    });
     const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
     const applied = store.tap(makeEvent("life_changed", { target: "fantasma", delta: -1 }, 2000, "t-bad"));
     expect(applied).toBe(false);
     expect(store.getSnapshot()).toBe(before); // misma referencia: nada se reasignó
+    expect(await readActive("anon")).toEqual(persistedBefore); // tampoco se persistió nada
   });
 
   it("dispatch() de un evento tras game_finished se rechaza y el store queda intacto", async () => {
@@ -262,10 +269,16 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     await ready(store);
     store.start(started(1000));
     store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "last_standing" }, 2000, "e-fin"));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record || record.rev < 2) throw new Error("la escritura del game_finished aún no aterrizó");
+    });
     const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
     const applied = store.dispatch(makeEvent("turn_passed", {}, 3000, "e-turn"));
     expect(applied).toBe(false);
     expect(store.getSnapshot()).toBe(before);
+    expect(await readActive("anon")).toEqual(persistedBefore); // el evento rechazado nunca llega a disco
   });
 
   it("repro de la revisión: doble player_eliminated no revienta getSnapshot ni corrompe el log", async () => {
@@ -273,7 +286,12 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     await ready(store);
     store.start(started(1000));
     store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2000, "e-elim-1"));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record || record.rev < 2) throw new Error("la escritura de la eliminación aún no aterrizó");
+    });
     const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
     const applied = store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 3000, "e-elim-2"));
     expect(applied).toBe(false);
     expect(store.getSnapshot()).toBe(before);
@@ -284,16 +302,25 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
       "game_started",
       "player_eliminated",
     ]);
+    // ...y tampoco corrompe lo persistido: la segunda eliminación (rechazada)
+    // nunca llega a disco.
+    expect(await readActive("anon")).toEqual(persistedBefore);
   });
 
   it("dispatch() de restaurar a un jugador vivo se rechaza y el store queda intacto", async () => {
     const store = getPlayStore("anon");
     await ready(store);
     store.start(started(1000));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record) throw new Error("el start aún no aterrizó");
+    });
     const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
     const applied = store.dispatch(makeEvent("player_restored", { target: "ana" }, 2000, "e-restore"));
     expect(applied).toBe(false);
     expect(store.getSnapshot()).toBe(before);
+    expect(await readActive("anon")).toEqual(persistedBefore);
   });
 
   it("dispatch() de declarar ganador a un jugador eliminado se rechaza y el store queda intacto", async () => {
@@ -301,20 +328,32 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
     await ready(store);
     store.start(started(1000));
     store.dispatch(makeEvent("player_eliminated", { target: "ana" }, 2000, "e-elim"));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record || record.rev < 2) throw new Error("la escritura de la eliminación aún no aterrizó");
+    });
     const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
     const applied = store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "card" }, 3000, "e-fin"));
     expect(applied).toBe(false);
     expect(store.getSnapshot()).toBe(before);
+    expect(await readActive("anon")).toEqual(persistedBefore);
   });
 
   it("dispatch() de un participante desconocido se rechaza y el store queda intacto", async () => {
     const store = getPlayStore("anon");
     await ready(store);
     store.start(started(1000));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record) throw new Error("el start aún no aterrizó");
+    });
     const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
     const applied = store.dispatch(makeEvent("player_eliminated", { target: "fantasma" }, 2000, "e-ghost"));
     expect(applied).toBe(false);
     expect(store.getSnapshot()).toBe(before);
+    expect(await readActive("anon")).toEqual(persistedBefore);
   });
 
   it("tras un dispatch rechazado, una acción válida se sigue aplicando con normalidad", async () => {
@@ -342,7 +381,7 @@ describe("eventos inválidos: commit condicional (finding 1 de la revisión fina
       const record = await readActive("anon");
       if (!record || record.rev < 2) throw new Error("la escritura de la eliminación aún no aterrizó");
     });
-    __resetPlayStoresForTests();
+    await __resetPlayStoresForTests();
     const reborn = getPlayStore("anon");
     await vi.waitFor(() => {
       const snapshot = reborn.getSnapshot();
@@ -441,7 +480,15 @@ describe("hidratación asíncrona (fase 3)", () => {
     const store = getPlayStore("anon");
     await ready(store);
     expect(store.start(started(1000))).toBe(true);
-    __resetPlayStoresForTests();
+    // hydrate() ya no añade un tick artificial (revertido, #931): sin esperar
+    // aquí a que la escritura del start() aterrice, __resetPlayStoresForTests()
+    // podría destruir el store ANTES de que persistCurrent() hubiera abierto
+    // siquiera su transacción, y el store renacido leería una BD todavía vacía.
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record || record.rev < 1) throw new Error("la escritura del start aún no aterrizó");
+    });
+    await __resetPlayStoresForTests();
     const reborn = getPlayStore("anon");
     await vi.waitFor(() => {
       const snapshot = reborn.getSnapshot();
@@ -459,9 +506,93 @@ describe("hidratación asíncrona (fase 3)", () => {
     expect(globalThis.localStorage.getItem(playStorageKey("anon"))).toBeNull();
   });
 
+  it("borra la clave legada aunque ya haya un registro migrado en IDB (issue #931)", async () => {
+    // Sesión anterior: ya migró, hay un registro real en IDB.
+    const store = getPlayStore("anon");
+    await ready(store);
+    store.start(started(1000));
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record) throw new Error("el start aún no aterrizó");
+    });
+    await __resetPlayStoresForTests();
+    // Una clave legada huérfana sobrevive de todos modos (p. ej. una
+    // importación de fase 1 muy antigua que nunca llegó a borrarla). Antes
+    // del arreglo, hydrate() la dejaba intacta para siempre porque devolvía
+    // pronto en cuanto encontraba el registro de IDB.
+    const legacy = { v: 1, committed: [started(2000)], pending: null };
+    globalThis.localStorage.setItem(playStorageKey("anon"), JSON.stringify(legacy));
+    const reborn = getPlayStore("anon");
+    await ready(reborn);
+    const snapshot = reborn.getSnapshot();
+    // El registro de IDB manda: no se importa el legado por encima de él.
+    expect(snapshot.status === "ready" && snapshot.game?.log.committed[0].at).toBe(1000);
+    // ...pero la clave legada SÍ se borra, en este camino igual que en el otro.
+    expect(globalThis.localStorage.getItem(playStorageKey("anon"))).toBeNull();
+  });
+
   it("destroy() cierra sin fugas y el reset destruye stores (#935)", async () => {
     const store = __createPlayStoreForTests("anon");
     await ready(store);
     store.destroy(); // no debe lanzar; listeners y canal quedan retirados
+  });
+});
+
+describe("save() (sin cobertura hasta ahora)", () => {
+  it("una partida terminada se guarda y la activa se limpia", async () => {
+    const store = getPlayStore("anon");
+    await ready(store);
+    store.start(started(1000));
+    expect(
+      store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "last_standing" }, 2000, "e-fin")),
+    ).toBe(true);
+    const ok = await store.save();
+    expect(ok).toBe(true);
+    expect(store.getSnapshot().game).toBeNull();
+  });
+
+  it("una partida activa (no terminada) no se guarda: devuelve false y el store queda intacto", async () => {
+    const store = getPlayStore("anon");
+    await ready(store);
+    store.start(started(1000));
+    const before = store.getSnapshot();
+    const ok = await store.save();
+    expect(ok).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
+  });
+
+  it("si saveFinished falla (BD no disponible), save() devuelve false y no toca la partida activa", async () => {
+    const store = getPlayStore("anon");
+    await ready(store);
+    store.start(started(1000));
+    expect(
+      store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "last_standing" }, 2000, "e-fin")),
+    ).toBe(true);
+    // Espera a que la escritura del game_finished aterrice ANTES de tocar la
+    // BD: si no, el enqueue de esa escritura (todavía pendiente) podría abrir
+    // su propia conexión DESPUÉS del reset de abajo y volver a dejar
+    // dbPromise apuntando a una BD real, enmascarando el fallo que este test
+    // quiere forzar.
+    await vi.waitFor(async () => {
+      const record = await readActive("anon");
+      if (!record || record.rev < 2) throw new Error("la escritura del game_finished aún no aterrizó");
+    });
+    // Mecanismo elegido para forzar el fallo de saveFinished() (el menos
+    // invasivo de los barajados): NO se mockea código propio (ni db.ts ni
+    // store.ts), se simula el mismo escenario de plataforma que el store ya
+    // sabe degradar en producción — modo privado o BD indisponible (spec §4).
+    // __resetDbForTests() limpia la conexión cacheada mientras indexedDB
+    // TODAVÍA es real (lo necesita para poder borrar la BD); solo DESPUÉS se
+    // stubea indexedDB a undefined, así openDb() —al no tener conexión
+    // cacheada que reutilizar— cae en su propia guarda ("IndexedDB no
+    // disponible") sin tocar la BD real. El orden importa: stubear undefined
+    // ANTES de __resetDbForTests() haría que este último lanzase al intentar
+    // borrar la BD con un indexedDB inexistente.
+    await __resetDbForTests();
+    vi.stubGlobal("indexedDB", undefined);
+    const before = store.getSnapshot();
+    const ok = await store.save();
+    expect(ok).toBe(false);
+    expect(store.getSnapshot()).toBe(before);
   });
 });

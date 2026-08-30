@@ -121,7 +121,16 @@ export type PlayStore = {
   destroy(): void;
 };
 
-function createPlayStore(identity: string): PlayStore {
+// Solo para tests (#931): expone la cola de escrituras interna para poder
+// esperar a que TODAS las escrituras en vuelo aterricen antes de, por
+// ejemplo, recrear el store o cambiar de fábrica de IndexedDB entre tests.
+// NO forma parte del contrato público — PlayStore no gana miembros nuevos;
+// solo la fábrica de test (__createPlayStoreForTests) devuelve este tipo.
+export type PlayStoreWithTestHooks = PlayStore & {
+  __drainWritesForTests(): Promise<void>;
+};
+
+function createPlayStore(identity: string): PlayStoreWithTestHooks {
   const legacyKey = playStorageKey(identity);
   let snapshot: PlayStoreSnapshot = { status: "loading", game: null };
   let rev = 0;
@@ -156,6 +165,10 @@ function createPlayStore(identity: string): PlayStore {
 
   // Otra pestaña ganó el CAS o publicó por el canal: su registro es la verdad.
   function adoptRecord(record: ActiveGameRecord) {
+    // Un timer de sellado armado para LA ráfaga local no debe sobrevivir a
+    // adoptar un registro ajeno: si disparase después, sealNow() sellaría
+    // sobre un log que ya no es el que abrió la ráfaga (finding 7).
+    clearSealTimer();
     const game = parseLog(record.committed, record.pending);
     rev = record.rev;
     snapshot = { status: "ready", game };
@@ -193,6 +206,8 @@ function createPlayStore(identity: string): PlayStore {
     }
   }
 
+  // El puro (log.ts) no tiene reloj: la ventana de 1,5 s la programa el store
+  // y también sella al ocultarse la página (spec §3, frontera puro/impuro).
   function scheduleSeal() {
     clearSealTimer();
     sealTimer = setTimeout(sealNow, BURST_WINDOW_MS);
@@ -201,6 +216,9 @@ function createPlayStore(identity: string): PlayStore {
   function sealNow() {
     clearSealTimer();
     if (snapshot.status === "ready" && snapshot.game?.log.pending) {
+      // Solo mueve el evento de pending a committed: el estado cacheado ya
+      // incluía el efecto del pending (se derivó junto con él al commitear),
+      // así que no hace falta re-derivar.
       rev += 1;
       snapshot = {
         status: "ready",
@@ -239,17 +257,19 @@ function createPlayStore(identity: string): PlayStore {
   }
 
   async function hydrate() {
-    // Un microtask de más a propósito: persistCurrent() encola sus escrituras
-    // vía writeChain.then(work), lo que le añade un tick antes de abrir su
-    // propia transacción de IndexedDB. Sin igualar aquí ese hop, un store
-    // recién creado en el MISMO tick que un start()/tap() anterior (el caso
-    // de recrear el store justo tras escribir, en test o en producción)
-    // pediría su lectura ANTES de que la escritura pidiera su transacción —y
-    // la ganaría viendo la BD todavía vacía, perdiendo la partida recién
-    // guardada aunque el commit ya se había aplicado en memoria.
-    const record = await Promise.resolve().then(() => readActive(identity));
+    const record = await readActive(identity);
     if (controller.signal.aborted) return;
     if (record) {
+      // La clave legada de fase 1 se borra en TODO camino de hidratación, no
+      // solo cuando no hay nada en IDB: si no, un usuario que ya migró se la
+      // queda para siempre (hydrate() vuelve a pasar por aquí en cada carga,
+      // issue #931). La IMPORTACIÓN del legado, en cambio, solo tiene sentido
+      // más abajo, cuando no hay registro en IDB.
+      try {
+        globalThis.localStorage?.removeItem(legacyKey);
+      } catch {
+        // sin storage no hay nada que borrar
+      }
       adoptRecord(record);
       return;
     }
@@ -293,7 +313,15 @@ function createPlayStore(identity: string): PlayStore {
       const msgRev = (event.data as { rev?: number } | null)?.rev;
       if (typeof msgRev !== "number") return;
       if (snapshot.status !== "ready" || msgRev <= rev) return;
-      void readActive(identity).then((record) => {
+      // La lectura del espejo se encola detrás de writeChain (misma cola que
+      // persistCurrent) a propósito: si ESTA pestaña tiene una escritura
+      // propia en vuelo, leer ya podría ver la BD todavía sin esa escritura
+      // aterrizada y confundir "no hay registro todavía" con "no hay
+      // partida" — la rama `!record` de abajo borraría entonces una partida
+      // local viva que solo estaba pendiente de guardarse (issue #931).
+      // Esperar a que la cola local drene primero cierra esa carrera.
+      enqueue(async () => {
+        const record = await readActive(identity);
         if (controller.signal.aborted) return;
         if (record && record.rev > rev) {
           adoptRecord(record);
@@ -321,6 +349,9 @@ function createPlayStore(identity: string): PlayStore {
       if (snapshot.game) {
         throw new Error("ya hay una partida activa; la UI debe interceptar antes (spec §4)");
       }
+      // Aquí SÍ puede llegar un evento inválido (game_started con un setup
+      // fuera de rango, o directamente un evento que no es game_started): se
+      // trata igual que tap/dispatch, no como el caso de arriba.
       return tryCommit(emptyLog(event));
     },
     tap(event) {
@@ -340,6 +371,9 @@ function createPlayStore(identity: string): PlayStore {
       clearSealTimer();
       const result = undoLast(snapshot.game.log);
       if (result.undone === null) return null;
+      // Deshacer siempre deja un PREFIJO de un log que ya era válido (nunca
+      // añade eventos), así que el replay aquí no puede fallar — a diferencia
+      // de start/tap/dispatch no hace falta pasar por tryCommit.
       rev += 1;
       snapshot = {
         status: "ready",
@@ -383,6 +417,12 @@ function createPlayStore(identity: string): PlayStore {
       controller.abort();
       channel?.close();
     },
+    // Solo para tests: la promesa actual de la cola de escrituras. writeChain
+    // nunca rechaza (enqueue la envuelve en .catch), así que await siempre
+    // resuelve cuando toda la cola encolada HASTA este punto ha terminado.
+    __drainWritesForTests() {
+      return writeChain;
+    },
   };
 }
 
@@ -397,13 +437,22 @@ export function getPlayStore(identity: string): PlayStore {
   return store;
 }
 
-// Solo para tests: stores vírgenes, destruyendo los viejos (#935).
-export function __resetPlayStoresForTests(): void {
+// Solo para tests: stores vírgenes, destruyendo los viejos (#935). Antes de
+// destruir, espera a que la cola de escrituras de CADA store drene (#931):
+// sin esto, una escritura del test anterior podía seguir en vuelo cuando el
+// siguiente test cambia de fábrica de IndexedDB y aterrizar contra la BD
+// equivocada — el motivo por el que este fichero necesitaba antes un margen
+// de ticks heurístico en su beforeEach.
+export async function __resetPlayStoresForTests(): Promise<void> {
+  const draining = Array.from(stores.values()).map((store) =>
+    (store as PlayStoreWithTestHooks).__drainWritesForTests().catch(() => {}),
+  );
+  await Promise.all(draining);
   for (const store of stores.values()) store.destroy();
   stores.clear();
 }
 
 // Solo para tests que necesitan DOS stores de la misma identidad (espejo).
-export function __createPlayStoreForTests(identity: string): PlayStore {
+export function __createPlayStoreForTests(identity: string): PlayStoreWithTestHooks {
   return createPlayStore(identity);
 }
