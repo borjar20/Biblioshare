@@ -138,13 +138,17 @@ describe("resolveLayout", () => {
     expect(new Set(canto.map((s) => s.rotation)).size).toBe(2);
   });
 
-  it("la consola es banda de pie y flotante tumbada (decisión 2026-08-29 (6))", () => {
+  it("la consola tiene fila propia en TODA combinación: sin flotar no puede tapar cabeceras (decisión 2026-08-30 (9))", () => {
     for (const players of MESAS) {
-      for (const family of layoutOptions(players, "portrait")) {
-        expect(resolveLayout(players, "portrait", family).consoleMode).toBe("band");
-      }
-      for (const family of layoutOptions(players, "landscape")) {
-        expect(resolveLayout(players, "landscape", family).consoleMode).toBe("floating");
+      for (const orientation of ["portrait", "landscape"] as const) {
+        for (const family of layoutOptions(players, orientation)) {
+          const layout = resolveLayout(players, orientation, family);
+          expect(layout.areas).toContain(layout.consoleArea);
+          // Su fila mide `auto`, nunca `0px`: la variante flotante reservaba una
+          // fila vacía y ponía la consola encima de los paneles.
+          expect(layout.rows.split(" ")).toContain("auto");
+          expect(layout.rows).not.toContain("0px");
+        }
       }
     }
   });

@@ -13,7 +13,7 @@ import type {
   PlayerRestoredEvent,
 } from "@/lib/play/mtg/events";
 import type { MtgState } from "@/lib/play/mtg/types";
-import { PlaySheet, SheetRow } from "./play-sheet";
+import { PlaySheet, SheetGroup, SheetRow } from "./play-sheet";
 
 // Fábricas fuera del componente: `Date.now()` es impuro y no puede vivir en el render.
 const at = () => Date.now();
@@ -126,8 +126,8 @@ export function PlayerSheet({
       caption={t("playerSheet.caption", { seat: seat + 1, life: player.life })}
       onClose={onClose}
     >
-      <div className="flex flex-col">
-        <div className="mb-2 flex items-center gap-2 px-3">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 px-3">
           <input
             value={exactLife}
             onChange={(e) => setExactLife(e.target.value)}
@@ -144,16 +144,18 @@ export function PlayerSheet({
           </button>
         </div>
 
-        <SheetRow
-          label={t("playerSheet.giveMonarch")}
-          value={holderName(state.monarch)}
-          onClick={() => give("monarch")}
-        />
-        <SheetRow
-          label={t("playerSheet.giveInitiative")}
-          value={holderName(state.initiative)}
-          onClick={() => give("initiative")}
-        />
+        <SheetGroup>
+          <SheetRow
+            label={t("playerSheet.giveMonarch")}
+            value={holderName(state.monarch)}
+            onClick={() => give("monarch")}
+          />
+          <SheetRow
+            label={t("playerSheet.giveInitiative")}
+            value={holderName(state.initiative)}
+            onClick={() => give("initiative")}
+          />
+        </SheetGroup>
 
         {/* El fondo de la tarjeta NO está aquí, aunque el canvas lo pusiera: viaja
             dentro de `game_started` y no hay evento que lo cambie con la partida
@@ -161,14 +163,17 @@ export function PlayerSheet({
             puede expresar. Un control apagado que nadie sabe por qué está apagado es
             peor que no tenerlo. */}
 
-        <SheetRow label={t("playerSheet.declareWinner")} onClick={declareWinner} />
-        <SheetRow
-          label={
-            player.elimination ? t("playerSheet.restore") : t("playerSheet.markEliminated")
-          }
-          onClick={toggleElimination}
-          danger={!player.elimination}
-        />
+        {/* Las que sacan a alguien de la partida, en su propia caja. */}
+        <SheetGroup>
+          <SheetRow label={t("playerSheet.declareWinner")} onClick={declareWinner} />
+          <SheetRow
+            label={
+              player.elimination ? t("playerSheet.restore") : t("playerSheet.markEliminated")
+            }
+            onClick={toggleElimination}
+            danger={!player.elimination}
+          />
+        </SheetGroup>
       </div>
     </PlaySheet>
   );

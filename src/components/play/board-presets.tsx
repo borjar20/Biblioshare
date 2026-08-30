@@ -110,9 +110,7 @@ function MiniBoard({ layout, orientation }: { layout: BoardLayout; orientation: 
           className={`${seatAccent(placement.seat).bar} rounded-[3px] opacity-70`}
         />
       ))}
-      {layout.consoleMode === "band" && (
-        <span style={{ gridArea: layout.consoleArea }} className="h-[3px] self-center rounded-full bg-border" />
-      )}
+      <span style={{ gridArea: layout.consoleArea }} className="h-[3px] self-center rounded-full bg-border" />
     </span>
   );
 }

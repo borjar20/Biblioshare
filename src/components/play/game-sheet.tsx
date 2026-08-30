@@ -12,7 +12,7 @@ import { nextAliveSeat } from "@/lib/play/mtg/rules";
 import { formatElapsed } from "@/lib/play/ui/clock";
 import { preferencesStore, writePreferences, type BoardPreferences } from "@/lib/play/ui/preferences";
 import { BoardPresets } from "./board-presets";
-import { PlaySheet, SheetRow } from "./play-sheet";
+import { PlaySheet, SheetGroup, SheetRow } from "./play-sheet";
 
 const at = () => Date.now();
 
@@ -62,27 +62,29 @@ export function GameSheet({
       })}
       onClose={onClose}
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col gap-1">
         <p className="px-3 pb-1 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
           {t("gameSheet.sectionTurn")}
         </p>
-        <SheetRow
-          label={t("console.undo", { event: undoLabel })}
-          onClick={() => {
-            store.undo();
-            onClose();
-          }}
-          disabled={!undoable}
-        />
-        <SheetRow
-          label={t("console.passTurn", { name: nextName })}
-          onClick={() => {
-            store.dispatch(
-              makeEvent<TurnPassedEvent["type"], TurnPassedEvent["payload"]>("turn_passed", {}, at()),
-            );
-            onClose();
-          }}
-        />
+        <SheetGroup>
+          <SheetRow
+            label={t("console.undo", { event: undoLabel })}
+            onClick={() => {
+              store.undo();
+              onClose();
+            }}
+            disabled={!undoable}
+          />
+          <SheetRow
+            label={t("console.passTurn", { name: nextName })}
+            onClick={() => {
+              store.dispatch(
+                makeEvent<TurnPassedEvent["type"], TurnPassedEvent["payload"]>("turn_passed", {}, at()),
+              );
+              onClose();
+            }}
+          />
+        </SheetGroup>
 
         <p className="px-3 pb-1 pt-3 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
           {t("gameSheet.sectionGame")}
@@ -97,47 +99,56 @@ export function GameSheet({
           family={prefs.layout}
           onSelect={(orientation, family) => update({ orientation, layout: family })}
         />
-        <SheetRow
-          label={t("gameSheet.keepAwake")}
-          value={prefs.keepAwake ? t("gameSheet.yes") : t("gameSheet.no")}
-          onClick={() => update({ keepAwake: !prefs.keepAwake })}
-        />
-        {/* La única salida del tablero que CONSERVA la partida. El tablero se come
-            el chrome entero, así que sin este ítem la app instalada (PWA/APK, sin
-            botón de atrás en iOS) no tiene forma de volver al hub sin descartar. El
-            valor lo dice explícito: salir no borra nada. */}
-        <SheetRow
-          label={t("gameSheet.leave")}
-          value={t("gameSheet.leaveValue")}
-          onClick={() => router.push("/partidas")}
-        />
-        <SheetRow
-          label={t("gameSheet.finish")}
-          onClick={() => {
-            // Sin ganador declarado: la mesa puede terminarla sin que nadie gane.
-            store.dispatch(
-              makeEvent<GameFinishedEvent["type"], GameFinishedEvent["payload"]>(
-                "game_finished",
-                { reason: "abandoned" },
-                at(),
-              ),
-            );
-            onClose();
-          }}
-        />
-        <SheetRow
-          label={confirmDiscard ? t("gameSheet.discardConfirm") : t("gameSheet.discard")}
-          onClick={() => {
-            // Dos toques: borra la partida entera y no hay deshacer que la traiga.
-            if (!confirmDiscard) {
-              setConfirmDiscard(true);
-              return;
-            }
-            store.discard();
-            onClose();
-          }}
-          danger
-        />
+        <SheetGroup>
+          <SheetRow
+            label={t("gameSheet.keepAwake")}
+            value={prefs.keepAwake ? t("gameSheet.yes") : t("gameSheet.no")}
+            onClick={() => update({ keepAwake: !prefs.keepAwake })}
+          />
+          {/* La única salida del tablero que CONSERVA la partida. El tablero se come
+              el chrome entero, así que sin este ítem la app instalada (PWA/APK, sin
+              botón de atrás en iOS) no tiene forma de volver al hub sin descartar. El
+              valor lo dice explícito: salir no borra nada. */}
+          <SheetRow
+            label={t("gameSheet.leave")}
+            value={t("gameSheet.leaveValue")}
+            onClick={() => router.push("/partidas")}
+          />
+        </SheetGroup>
+
+        {/* Las que ACABAN la partida, en su propia caja: que terminar o borrar no
+            comparta frontera con ajustar el brillo. */}
+        <div className="pt-2">
+          <SheetGroup>
+            <SheetRow
+              label={t("gameSheet.finish")}
+              onClick={() => {
+                // Sin ganador declarado: la mesa puede terminarla sin que nadie gane.
+                store.dispatch(
+                  makeEvent<GameFinishedEvent["type"], GameFinishedEvent["payload"]>(
+                    "game_finished",
+                    { reason: "abandoned" },
+                    at(),
+                  ),
+                );
+                onClose();
+              }}
+            />
+            <SheetRow
+              label={confirmDiscard ? t("gameSheet.discardConfirm") : t("gameSheet.discard")}
+              onClick={() => {
+                // Dos toques: borra la partida entera y no hay deshacer que la traiga.
+                if (!confirmDiscard) {
+                  setConfirmDiscard(true);
+                  return;
+                }
+                store.discard();
+                onClose();
+              }}
+              danger
+            />
+          </SheetGroup>
+        </div>
       </div>
     </PlaySheet>
   );

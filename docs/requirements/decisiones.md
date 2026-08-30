@@ -3147,3 +3147,26 @@ Dos arreglos más de la misma partida real:
 2. **La rejilla del daño usa `auto-rows-fr`**: las filas se reparten el alto disponible, quepan 2
    o 5, y el desplazamiento desaparece por construcción — la altura fija por celda (64 px) seguía
    desbordando los paneles cortos del reparto tumbado.
+
+## 2026-08-30 (9) — La consola flotante se retira: banda con fila propia en TODAS las orientaciones
+
+La decisión 2026-08-29 (6) puso la consola FLOTANDO en el centro cuando la mesa va
+tumbada, para no gastar 68 px de alto. En la partida real del 2026-08-30 se vio el
+fallo estructural: tumbada, TODAS las cabeceras pegan sus nombres a la franja
+central — exactamente donde flota la consola (z-20) — y los nombres quedaban
+intocables: sus hojas eran inaccesibles. Ninguna reserva de padding lo arregla
+(la consola mide ~300 px; el px-9 reservaba 36).
+
+Resolución: la consola es SIEMPRE banda con fila `auto` en la rejilla, en las tres
+familias y las dos orientaciones — con fila propia no puede tapar nada, por
+construcción. Se compacta (py-1, menú 32 px) para que el coste tumbada sea mínimo:
+el número de vidas baja de 78 a ~76 px, medido con `lifeFontSize`. El px-9 de las
+cabeceras que reservaba el hueco se recupera (px-2.5). `ConsoleMode` desaparece
+del módulo de layout.
+
+En la misma pasada, afordancia de las hojas (feedback de la misma partida: «los
+botones no parecen accionables, están todos mezclados»): las filas de acción van
+en grupos `SheetGroup` — caja con borde, separadores `divide-y` entre filas y
+chevron `›` en cada una. Las acciones que acaban la partida (finalizar, descartar;
+gana/eliminado en la hoja de jugador) van en su propia caja, separadas de los
+ajustes.

@@ -170,19 +170,15 @@ export function GameBoard({
           );
         })}
 
-        {/* El hueco de la consola. De pie la banda vive DENTRO de la rejilla; tumbado
-            el hueco mide cero y la consola flota sobre los paneles, con el sitio ya
-            reservado por el padding de las cabeceras (decisión 2026-08-29 (6)). */}
+        {/* La banda de la consola vive DENTRO de la rejilla en las tres familias y
+            en las dos orientaciones: con fila propia no puede tapar nada. La
+            variante flotante se retiró (decisión 2026-08-30 (9)): flotaba sobre la
+            franja donde todas las cabeceras pegan al centro y dejaba los nombres
+            intocables. */}
         <div style={{ gridArea: layout.consoleArea }} className="flex items-center">
-          {layout.consoleMode === "band" && (
-            <CenterConsole game={game} store={store} mode="band" onOpenMenu={() => setMenuOpen(true)} />
-          )}
+          <CenterConsole game={game} store={store} onOpenMenu={() => setMenuOpen(true)} />
         </div>
       </div>
-
-      {layout.consoleMode === "floating" && (
-        <CenterConsole game={game} store={store} mode="floating" onOpenMenu={() => setMenuOpen(true)} />
-      )}
 
       {/* Lo que acaba de pasar, para quien no puede verlo. `polite`: no interrumpe. */}
       <p aria-live="polite" className="sr-only">
