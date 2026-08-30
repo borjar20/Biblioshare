@@ -1,4 +1,4 @@
-import type { Participant, ToolGameState } from "@/lib/play/core/types";
+import type { Participant } from "@/lib/play/core/types";
 
 // La herramienta NO especializa al participante (a diferencia de mtg): una
 // puntuación solo necesita nombre y asiento. Si algún día hace falta más,
@@ -19,7 +19,15 @@ export type ScoreSetup = {
   target?: ScoreTarget;
 };
 
-export type ScoreState = ToolGameState<"score"> & {
+// Forma ESTRUCTURAL de ToolGameState<"score">, escrita a mano a propósito:
+// `ToolGameState<T>` acota T a ToolId, y la unión ToolId no crece hasta que el
+// registro entra con la UI (la PR del registro cambia esta cabecera por
+// `ToolGameState<"score"> &`). Escribir aquí la unión antes de tiempo dejaría
+// `Record<ToolId, ...>` mintiendo en playTools/toolViews con stubs vacíos.
+export type ScoreState = {
+  toolId: "score";
+  status: "active" | "finished";
+} & {
   setup: ScoreSetup;
   rounds: number[][]; // rounds[i][seat]; totales y ranking son SELECTORES
   startedAt: number;
