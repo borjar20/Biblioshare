@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
 import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
@@ -40,6 +40,7 @@ export function ScoreBoard({
   // "closed": nada abierto. "new": alta de ronda. un número: edición de esa ronda.
   const [sheetRound, setSheetRound] = useState<"closed" | "new" | number>("closed");
   const [menuOpen, setMenuOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const prefs = useSyncExternalStore(
     preferencesStore.subscribe,
@@ -50,6 +51,14 @@ export function ScoreBoard({
 
   const sums = totals(state);
   const finishable = limitReached(state);
+
+  // Al apuntar, la ronda nueva entra en pantalla: el contenedor se desplaza a
+  // su borde derecho, donde queda la última ronda (TOTAL sigue fijo, sticky-right).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.scrollWidth });
+  }, [state.rounds.length]);
 
   // Igual que game-board.tsx: una única región que anuncia el último movimiento.
   const lastEvent = game.log.pending ?? game.log.committed[game.log.committed.length - 1];
@@ -97,7 +106,10 @@ export function ScoreBoard({
         </div>
       )}
 
-      <div className="mt-2 flex-1 overflow-x-auto rounded-[14px] border border-border bg-surface">
+      <div
+        ref={scrollRef}
+        className="mt-2 flex-1 overflow-x-auto rounded-[14px] border border-border bg-surface"
+      >
         <table className="w-full min-w-max border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-border">
@@ -112,7 +124,10 @@ export function ScoreBoard({
                   {t("scoreBoard.round", { round: round + 1 })}
                 </th>
               ))}
-              <th className="px-3 py-2 text-right font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+              {/* TOTAL siempre visible: sticky-right con el mismo tratamiento
+                  que la columna de jugador (fondo propio para que las rondas
+                  no se transparenten al hacer scroll por debajo). */}
+              <th className="sticky right-0 z-10 bg-surface px-3 py-2 text-right font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
                 {t("scoreBoard.total")}
               </th>
             </tr>
@@ -141,7 +156,9 @@ export function ScoreBoard({
                     </button>
                   </td>
                 ))}
-                <td className="px-3 py-2 text-right font-semibold tabular-nums">{sums[seat]}</td>
+                <td className="sticky right-0 z-10 bg-surface px-3 py-2 text-right font-semibold tabular-nums">
+                  {sums[seat]}
+                </td>
               </tr>
             ))}
           </tbody>

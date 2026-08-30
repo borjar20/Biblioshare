@@ -120,10 +120,13 @@ test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloqu
   await expect(page.getByText(/se alcanzó el límite/i)).toBeVisible();
 
   // Con la banda visible, añadir OTRA ronda sigue funcionando: el límite es
-  // informativo, no bloquea la mesa (spec §2/§4).
-  await nuevaRonda(page, [0, 0, 0, 0]);
-  await expect(totalDe(page, 0)).toHaveText("21");
+  // informativo, no bloquea la mesa (spec §2/§4). Valores no nulos para que
+  // el assert no pueda colar un submit que en realidad no hizo nada.
+  await nuevaRonda(page, [1, 1, 1, 1]);
+  await expect(totalDe(page, 0)).toHaveText("22");
   await expect(page.getByText(/se alcanzó el límite/i)).toBeVisible();
+  // Control de que la ronda 3 realmente aterrizó (no solo que el total cambió).
+  await expect(page.getByRole("button", { name: "Editar ronda 3" }).first()).toBeVisible();
 
   // Finalizar desde el botón de la propia banda.
   await page.getByRole("button", { name: "Finalizar", exact: true }).click();

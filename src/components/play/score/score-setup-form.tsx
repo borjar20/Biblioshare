@@ -149,6 +149,14 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
     // Con el store hidratando no se arranca: podría pisar una activa aún no
     // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
     if (snapshot.status === "loading") return;
+    // Guarda ANTES de descartar: si el límite está activo con un valor que el
+    // reducer rechaza (no entero >= 1, p. ej. el campo vaciado a mano), no se
+    // toca nada — descartar aquí y que store.start() falle después borraría
+    // la partida activa sin arrancar otra (issue #964, caso alcanzable desde
+    // puntuación).
+    if (draft.targetActive && (!Number.isInteger(draft.targetValue) || draft.targetValue < 1)) {
+      return;
+    }
     const setup = toScoreSetup(draft, (i) => t("setup.playerN", { n: i + 1 }));
     // Una sola partida activa (spec §4): `start()` LANZA si ya hay una, así
     // que la vieja se descarta aquí — pulsar «Empezar» ES pedir sustituirla.
@@ -235,8 +243,17 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
             <input
               type="number"
               inputMode="numeric"
+              min={1}
               value={draft.targetValue}
               onChange={(e) => setEdited({ ...draft, targetValue: Number(e.target.value) || 0 })}
+              onBlur={() => {
+                // El reducer rechaza un target que no sea entero >= 1 (issue
+                // #964): sin esto un campo vaciado a mano dejaría un valor
+                // inválido que `start()` no puede arrancar.
+                if (!Number.isInteger(draft.targetValue) || draft.targetValue < 1) {
+                  setEdited({ ...draft, targetValue: 1 });
+                }
+              }}
               aria-label={t("scoreSetup.targetValue")}
               className={`${FIELD} w-20 text-right font-mono tabular-nums`}
             />

@@ -2626,11 +2626,11 @@
           },
           "rondas": {
             "name": "A N rondas",
-            "detail": "Termina al llegar"
+            "detail": "Aviso al llegar"
           },
           "puntos": {
             "name": "A X puntos",
-            "detail": "Termina al llegar"
+            "detail": "Aviso al llegar"
           }
         },
         "howItWorks": {
