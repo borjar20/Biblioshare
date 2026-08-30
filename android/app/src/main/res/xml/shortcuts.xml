@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  App shortcuts estáticos (mantener pulsado el icono del launcher). Espejo del
+  shortcut de la PWA en src/app/manifest.ts — si cambia allí, cambia aquí (#950).
+
+  Mecanismo: NO se hardcodea la URL de Vercel. Cada intent lleva el extra
+  `biblioshareWidgetPath` (WidgetDeepLinks.EXTRA_PATH): MainActivity ya lo
+  resuelve en onCreate/onNewIntent vía WidgetDeepLinks.handle(), que valida el
+  path (espejo de safe-path.ts) y navega el WebView a `server.url + path`. Así
+  el shortcut sigue funcionando aunque server.url cambie (p. ej. el swap a
+  10.0.2.2 para probar en local) y no hace falta ni plugin ni código web.
+
+  El primero de la lista es el de menor rank (el más cercano al icono).
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- «Nueva partida» → hub de Magic. Idéntico al shortcut de la PWA. -->
+    <shortcut
+        android:shortcutId="nueva_partida"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_nueva_partida"
+        android:shortcutShortLabel="@string/shortcut_nueva_partida_short"
+        android:shortcutLongLabel="@string/shortcut_nueva_partida_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.biblioshare.mobile"
+            android:targetClass="app.biblioshare.mobile.MainActivity">
+            <extra
+                android:name="biblioshareWidgetPath"
+                android:value="/partidas/mtg" />
+        </intent>
+    </shortcut>
+
+    <!-- «Partidas» → portada de la zona de juego. Partidas no está en la
+         navegación pública a propósito (decisiones.md 2026-08-30 (3)):
+         el shortcut ES el acceso, no un atajo redundante. -->
+    <shortcut
+        android:shortcutId="partidas"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_partidas"
+        android:shortcutShortLabel="@string/shortcut_partidas_short"
+        android:shortcutLongLabel="@string/shortcut_partidas_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.biblioshare.mobile"
+            android:targetClass="app.biblioshare.mobile.MainActivity">
+            <extra
+                android:name="biblioshareWidgetPath"
+                android:value="/partidas" />
+        </intent>
+    </shortcut>
+</shortcuts>

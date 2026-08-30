@@ -10,7 +10,8 @@ import com.getcapacitor.Bridge
 // esquema propio (biblioshare://) ni App Links — un path interno validado es
 // exactamente lo mismo que ya usa el push (safe-path.ts). Este objeto es el
 // ÚNICO punto de entrada: los widgets construyen el intent aquí y MainActivity
-// lo resuelve aquí.
+// lo resuelve aquí. Los app shortcuts estáticos (res/xml/shortcuts.xml, #950)
+// usan el mismo EXTRA_PATH, declarado como <extra> en su intent.
 object WidgetDeepLinks {
     const val EXTRA_PATH = "biblioshareWidgetPath"
 

@@ -30,8 +30,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // Mantener pulsado el icono de la PWA → «Nueva partida». Es el acceso directo a
     // Partidas para quien está en la mesa con el móvil (revisión UX 2026-08-30): la
     // subapp no tiene hueco en la navegación principal (decisión: shortcuts antes
-    // que nav pública). El equivalente para la APK de Capacitor va aparte, con su
-    // plugin nativo — ver la issue de app shortcuts Android.
+    // que nav pública). El equivalente para la APK de Capacitor son los app
+    // shortcuts nativos de android/app/src/main/res/xml/shortcuts.xml (#950):
+    // si cambias algo aquí, espeja el cambio allí.
     shortcuts: [
       {
         name: "Nueva partida",

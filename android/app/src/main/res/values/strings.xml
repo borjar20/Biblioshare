@@ -5,6 +5,13 @@
     <string name="package_name">app.biblioshare.mobile</string>
     <string name="custom_url_scheme">app.biblioshare.mobile</string>
 
+    <!-- App shortcuts (mantener pulsado el icono del launcher). Espejo del
+         shortcut de la PWA (src/app/manifest.ts) — ver res/xml/shortcuts.xml. -->
+    <string name="shortcut_nueva_partida_short">Partida</string>
+    <string name="shortcut_nueva_partida_long">Nueva partida</string>
+    <string name="shortcut_partidas_short">Partidas</string>
+    <string name="shortcut_partidas_long">Zona de partidas</string>
+
     <!-- Widgets (app mono-idioma es: sin variantes de locale, ver AGENTS.md) -->
     <string name="widget_current_progress_label">En curso</string>
     <string name="widget_current_progress_desc">Tu libro, película o serie a medias, con su progreso.</string>

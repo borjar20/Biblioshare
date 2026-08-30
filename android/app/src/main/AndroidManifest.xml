@@ -24,6 +24,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- App shortcuts estáticos (mantener pulsado el icono): acceso
+                 directo a Partidas, espejo del shortcut de la PWA (#950). -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
         </activity>
 
         <!-- Widgets nativos (Jetpack Glance). exported=false: solo el sistema

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono del shortcut «Partidas»: triángulo de play (mismo glifo que
+     ic_widget_play) sobre disco claro, glifo 24dp en lienzo 48dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+  <path android:fillColor="#FFF8F0"
+      android:pathData="M24,24m-22,0a22,22 0,1 1,44 0a22,22 0,1 1,-44 0" />
+  <group android:translateX="12" android:translateY="12">
+    <path android:fillColor="#B0542F"
+        android:pathData="M8,5 L19,12 L8,19 Z" />
+  </group>
+</vector>
