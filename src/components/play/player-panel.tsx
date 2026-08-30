@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { lifeFontSize, type SeatPlacement } from "@/lib/play/ui/layout";
-import { seatAccent } from "@/lib/play/ui/seats";
+import { cardBackgroundTint, seatAccent } from "@/lib/play/ui/seats";
 import type { MtgPlayerState } from "@/lib/play/mtg/types";
 
 /**
@@ -23,6 +23,8 @@ export function PlayerPanel({
   seat,
   placement,
   isActive,
+  isMonarch,
+  hasInitiative,
   onLife,
   onOpenSheet,
   children,
@@ -31,6 +33,8 @@ export function PlayerPanel({
   seat: number;
   placement: SeatPlacement;
   isActive: boolean;
+  isMonarch: boolean;
+  hasInitiative: boolean;
   /** ±1 desde las mitades. Coalescido por el store: una ráfaga = un evento. */
   onLife: (delta: number) => void;
   onOpenSheet: () => void;
@@ -74,6 +78,7 @@ export function PlayerPanel({
     ? lifeFontSize({ width: inner.width, height: inner.height, digits: String(Math.abs(life)).length })
     : undefined;
 
+  const background = cardBackgroundTint(player.participant.cardBackground);
   const name = player.participant.name;
   const commanders = player.participant.commanders
     .map((commander) => commander.name?.trim())
@@ -88,6 +93,11 @@ export function PlayerPanel({
         isActive ? `ring-2 ${accent.ring}` : ""
       }`}
     >
+      {/* El fondo de la tarjeta es del JUGADOR; el color de asiento, del sistema. Por
+          eso el tinte va DEBAJO de todo y la barra del asiento no desaparece nunca.
+          Cuando lleguen las imágenes irán aquí, siempre bajo un velo de la propia
+          superficie: el número se lee por el velo, no por la suerte de la imagen. */}
+      {background && <span aria-hidden className={`absolute inset-0 ${background}`} />}
       <div
         className="absolute left-1/2 top-1/2"
         style={{
@@ -114,6 +124,21 @@ export function PlayerPanel({
             <span className="min-w-0 truncate font-serif text-[13px] font-semibold">{name}</span>
             {commanders && (
               <span className="min-w-0 truncate text-[10px] text-muted-foreground">{commanders}</span>
+            )}
+            {/* Monarca e iniciativa no son contadores: son un testigo que solo tiene
+                una persona y se pasa una vez cada muchos turnos. Como botón sobraban,
+                así que aquí queda solo la INSIGNIA y la acción vive en la hoja. */}
+            {isMonarch && (
+              <span title={t("board.monarch")} className="shrink-0 text-[11px]">
+                <span className="sr-only">{t("board.monarch")}</span>
+                <span aria-hidden>♛</span>
+              </span>
+            )}
+            {hasInitiative && (
+              <span title={t("board.initiative")} className="shrink-0 text-[11px]">
+                <span className="sr-only">{t("board.initiative")}</span>
+                <span aria-hidden>⚑</span>
+              </span>
             )}
           </button>
 

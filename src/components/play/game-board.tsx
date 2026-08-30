@@ -12,6 +12,8 @@ import { preferencesStore, DEFAULT_PREFERENCES } from "@/lib/play/ui/preferences
 import { PlayerPanel } from "./player-panel";
 import { PanelActions } from "./panel-actions";
 import { CenterConsole } from "./center-console";
+import { PlayerSheet } from "./player-sheet";
+import { GameSheet } from "./game-sheet";
 import { useWakeLock } from "./use-wake-lock";
 
 const getServerPreferences = () => DEFAULT_PREFERENCES;
@@ -97,6 +99,8 @@ export function GameBoard({
               seat={seat}
               placement={placement}
               isActive={state.activeSeat === seat}
+              isMonarch={state.monarch === player.participant.id}
+              hasInitiative={state.initiative === player.participant.id}
               onLife={(delta) => changeLife(player.participant.id, delta)}
               onOpenSheet={() => setOpenSheetSeat(seat)}
             >
@@ -124,19 +128,18 @@ export function GameBoard({
         {described ? t(`log.${described.key}`, described.params) : ""}
       </p>
 
-      {/* Las dos hojas llegan en su propia pieza; de momento el estado existe para
-          que la cabecera y el menú tengan a dónde abrir. */}
-      {(openSheetSeat !== null || menuOpen) && (
-        <button
-          type="button"
-          className="sr-only"
-          onClick={() => {
-            setOpenSheetSeat(null);
-            setMenuOpen(false);
-          }}
-          aria-label={t("board.close")}
+      {/* Las hojas NO giran: salen de abajo y derechas, porque las abre quien tiene
+          el móvil en la mano. La que sí gira es el overlay de daño, que vive dentro
+          del panel. */}
+      {openSheetSeat !== null && (
+        <PlayerSheet
+          state={state}
+          store={store}
+          seat={openSheetSeat}
+          onClose={() => setOpenSheetSeat(null)}
         />
       )}
+      {menuOpen && <GameSheet game={game} store={store} onClose={() => setMenuOpen(false)} />}
     </div>
   );
 }

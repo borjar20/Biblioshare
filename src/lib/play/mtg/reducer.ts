@@ -122,7 +122,10 @@ function lifecycleReducer(state: MtgState, event: MtgEvent): MtgState {
       let round = state.round;
       let seat = state.activeSeat;
       // El límite de ronda es la POSICIÓN de asiento del inicial, no la persona:
-      // si el inicial está eliminado la ronda sigue avanzando (spec §3).
+      // si el inicial está eliminado la ronda sigue avanzando (spec §3). Por eso el
+      // bucle sigue aquí y no se sustituye por `nextAliveSeat`: esa función responde
+      // A QUIÉN le toca (y la UI la usa para nombrarlo), pero la ronda hay que
+      // contarla por los asientos que se ATRAVIESAN, eliminados incluidos.
       for (let i = 1; i <= seats; i++) {
         const candidate = (state.activeSeat + i) % seats;
         if (candidate === state.setup.startingSeat) round += 1;

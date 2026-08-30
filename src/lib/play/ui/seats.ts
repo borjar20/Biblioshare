@@ -78,3 +78,23 @@ export const SEAT_ACCENT: SeatAccent[] = [
 export function seatAccent(seat: number): SeatAccent {
   return SEAT_ACCENT[((seat % SEAT_COUNT) + SEAT_COUNT) % SEAT_COUNT];
 }
+
+/**
+ * Ids de los fondos de tarjeta predefinidos: `seat-1`..`seat-6`. Son una REFERENCIA
+ * que viaja dentro de `game_started` (`participant.cardBackground`), nunca bytes —
+ * un data-URI acabaría en el log de eventos y en el snapshot de `localStorage`
+ * (issue #942). El avatar del perfil y el arte del comandante llegarán como URL por
+ * la misma puerta, cuando haya red.
+ */
+export const CARD_BACKGROUND_IDS = SEAT_ACCENT.map((_, i) => `seat-${i + 1}`);
+
+/**
+ * Fondo -> clase de tinte, o `null` si el id no se reconoce (una partida guardada por
+ * una versión futura con fondos que esta no sabe pintar). El panel cae entonces a su
+ * superficie normal en vez de quedarse en blanco.
+ */
+export function cardBackgroundTint(id: string | undefined): string | null {
+  if (!id) return null;
+  const index = CARD_BACKGROUND_IDS.indexOf(id);
+  return index === -1 ? null : SEAT_ACCENT[index].tint;
+}

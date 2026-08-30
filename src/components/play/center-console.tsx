@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
@@ -6,6 +6,7 @@ import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
 import type { TurnPassedEvent } from "@/lib/play/mtg/events";
 import type { MtgState } from "@/lib/play/mtg/types";
 import { playTools } from "@/lib/play/tools";
+import { nextAliveSeat } from "@/lib/play/mtg/rules";
 import type { ConsoleMode } from "@/lib/play/ui/layout";
 import { GameClock } from "./game-clock";
 
@@ -50,7 +51,7 @@ export function CenterConsole({
   const label = described ? t(`log.${described.key}`, described.params) : "";
 
   const active = state.players[state.activeSeat];
-  const nextAlive = nextSeat(state);
+  const nextAlive = state.players[nextAliveSeat(state)];
 
   return (
     <div
@@ -105,12 +106,3 @@ export function CenterConsole({
   );
 }
 
-/** A quién le tocaría: mismo salto de eliminados que hace el reducer. */
-function nextSeat(state: MtgState) {
-  const seats = state.players.length;
-  for (let i = 1; i <= seats; i++) {
-    const candidate = state.players[(state.activeSeat + i) % seats];
-    if (!candidate.elimination) return candidate;
-  }
-  return state.players[state.activeSeat];
-}
