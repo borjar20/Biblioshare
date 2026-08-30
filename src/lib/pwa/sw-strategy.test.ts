@@ -197,3 +197,33 @@ describe("swOfflineShellRoute", () => {
     expect(strategyFor(req(`${ORIGIN}/partidas?_rsc=1a2b3`), ORIGIN)).toBe("skip");
   });
 });
+
+describe("PLAY_SHELL_URLS (siembra en install)", () => {
+  // Dentro de la app se navega BLANDO: el documento de /partida/activa podía
+  // no pedirse nunca y el salvavidas quedaba vacío (visto en dispositivo,
+  // 2026-08-31). La siembra cubre ese hueco — y cada URL sembrada tiene que
+  // ser reconocida por swOfflineShellRoute, o el fetch handler la borraría en
+  // la primera respuesta rara.
+  it("toda URL sembrada es un shell de Play reconocido", () => {
+    const sw = loadSw();
+    const urls = sw.PLAY_SHELL_URLS as string[] | undefined;
+    // La lista vive dentro del SW; se expone igual que las funciones puras.
+    expect(Array.isArray(urls)).toBe(true);
+    const shell = loadOfflineShellRoute();
+    for (const url of urls as string[]) {
+      expect(shell(url), url).toBe(true);
+    }
+  });
+
+  it("la siembra cubre el tablero, los hubs y los setups", () => {
+    const urls = loadSw().PLAY_SHELL_URLS as string[];
+    for (const esperado of [
+      "/partida/activa",
+      "/partidas",
+      "/partidas/mtg/nueva",
+      "/partidas/puntuacion/nueva",
+    ]) {
+      expect(urls).toContain(esperado);
+    }
+  });
+});
