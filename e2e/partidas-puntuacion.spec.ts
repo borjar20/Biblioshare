@@ -103,11 +103,15 @@ test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloqu
   await page.goto("/partidas/puntuacion");
   await page.getByRole("button", { name: /a x puntos/i }).click();
   await page.getByRole("link", { name: /^configurar la mesa$/i }).click();
-  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos$/);
+  // El chooser arrastra jugadores y N por query (revisión 2026-08-31).
+  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos&jugadores=4&n=100$/);
 
   // El preset prefija 100; se cambia a 20 para que dos rondas basten para
   // alcanzarlo (spec §5: el preset SOLO prefija, se puede tocar).
-  await page.getByLabel("Valor del límite").fill("20");
+  // `filter({ visible: true })`: el input del chooser sigue en el DOM de la
+  // ruta anterior (la isla se congela en navegación soft) con el mismo
+  // aria-label — sin el filtro el locator resuelve a dos.
+  await page.getByLabel("Valor del límite").filter({ visible: true }).fill("20");
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
   await expect(page.getByRole("button", { name: /^añadir ronda$/i })).toBeVisible();

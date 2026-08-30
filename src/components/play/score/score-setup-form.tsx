@@ -123,6 +123,11 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
   const searchParams = useSearchParams();
   const preset = parseScorePreset(searchParams.get("preset"));
   const isRematch = searchParams.get("revancha") === "1";
+  // El chooser arrastra sus números por query para que las dos pantallas no
+  // se contradigan (revisión 2026-08-31). Valores basura se ignoran: caen al
+  // prefill del preset.
+  const requestedPlayers = Number(searchParams.get("jugadores"));
+  const requestedTarget = Number(searchParams.get("n"));
 
   const { snapshot, store } = useActiveGame(identity);
 
@@ -134,10 +139,17 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
     return snapshot.game.state.toolId === "score" ? snapshot.game.state.setup : null;
   }, [isRematch, snapshot]);
 
-  const base = useMemo<ScoreDraft>(
-    () => (rematchSetup ? draftFromScoreSetup(rematchSetup) : newScoreDraft(preset)),
-    [rematchSetup, preset],
-  );
+  const base = useMemo<ScoreDraft>(() => {
+    if (rematchSetup) return draftFromScoreSetup(rematchSetup);
+    let draft = newScoreDraft(preset);
+    if (Number.isInteger(requestedPlayers) && requestedPlayers >= MIN_PLAYERS && requestedPlayers <= MAX_PLAYERS) {
+      draft = setPlayerCount(draft, requestedPlayers);
+    }
+    if (draft.targetActive && Number.isInteger(requestedTarget) && requestedTarget >= 1) {
+      draft = { ...draft, targetValue: requestedTarget };
+    }
+    return draft;
+  }, [rematchSetup, preset, requestedPlayers, requestedTarget]);
 
   const [edited, setEdited] = useState<ScoreDraft | null>(null);
   const draft = edited ?? base;

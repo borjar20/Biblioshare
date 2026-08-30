@@ -34,10 +34,24 @@ export function PlaySheet({
   const openedAt = useRef(pathname);
 
   useEffect(() => {
-    // Idempotente: `showModal()` sobre un diálogo ya abierto lanza InvalidStateError,
-    // y en desarrollo React monta los efectos DOS veces (StrictMode).
-    if (!ref.current?.open) ref.current?.showModal();
-  }, []);
+    const dialog = ref.current;
+    if (!dialog) return;
+    // Reactivación tras navegar (la isla se congela con la hoja abierta y los
+    // efectos vuelven a correr al VOLVER): el atributo `open` sobrevive pero el
+    // top layer no — el dialog queda abierto EN FLUJO, sin backdrop, roto
+    // (visto en partida real, 2026-08-31). Se cierra del todo y se avisa al
+    // padre para que desmonte: volver a la mesa no debe saludarte con el menú
+    // abierto. `:modal` distingue este estado del abierto sano.
+    if (dialog.open && !dialog.matches(":modal")) {
+      dialog.close();
+      onClose();
+      return;
+    }
+    // Idempotente: `showModal()` sobre un diálogo ya abierto lanza
+    // InvalidStateError, y en desarrollo React monta los efectos DOS veces
+    // (StrictMode).
+    if (!dialog.open) dialog.showModal();
+  }, [onClose]);
 
   // Con Cache Components la hoja NO se desmonta en navegación soft: el `<dialog>`
   // quedaría con `open=true` pero fuera del top layer al volver, roto e incerrable
@@ -50,7 +64,13 @@ export function PlaySheet({
   useEffect(() => {
     if (openedAt.current === pathname) return;
     ref.current?.close();
-  }, [pathname]);
+    // `close()` sobre un dialog que ya perdió el top layer (la isla se congela
+    // al salir y el evento `close` nativo no llega a disparar) deja al padre
+    // con su estado «hoja abierta» intacto: al VOLVER a la ruta, la hoja se
+    // re-renderiza en flujo, sin backdrop y rota (visto en partida real,
+    // 2026-08-31). Sincronizar el estado React SIEMPRE, dispare o no el evento.
+    onClose();
+  }, [pathname, onClose]);
 
   return (
     <dialog
