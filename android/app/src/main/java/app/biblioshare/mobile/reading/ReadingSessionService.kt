@@ -41,13 +41,24 @@ object ReadingSessionController {
     }
 
     /** Terminar desde la notificación: resuelve el deep-link con el elapsed REAL
-     *  en el momento del toque, apaga la sesión y devuelve el href a abrir (o null
-     *  si ya no hay sesión). Lo llama MainActivity — un getActivity directo, no un
-     *  trampolín de notificación (prohibido en targetSdk 31+). */
+     *  en el momento del toque y devuelve el href a abrir (o null si ya no hay
+     *  sesión). Lo llama MainActivity — un getActivity directo, no un trampolín
+     *  de notificación (prohibido en targetSdk 31+).
+     *
+     *  NO borra nada (fix widget→sesión offline, ver
+     *  .superpowers/sdd/widget-sesion-offline-diagnosis.md): el registro real depende de que el WebView cargue
+     *  la web CON RED y el usuario reenvíe el form. Borrar aquí hacía que la
+     *  notificación desapareciera y el widget se reseteara SIN haber tocado la
+     *  red — «confirmación» falsa con pérdida total si la carga fallaba. Ahora
+     *  solo se PAUSA (congela el elapsed que viaja en la URL) y el clear llega
+     *  únicamente cuando la web confirma el guardado vía clearRunningTimer
+     *  (BiblioshareWidgetPlugin). Si la carga falla, notificación y widget
+     *  siguen mostrando la sesión pausada: se puede reintentar sin perder nada. */
     fun finishFromNotification(context: Context): String? {
         val r = TimerStore.get(context) ?: return null
-        val href = registerHref(r, System.currentTimeMillis())
-        TimerStore.clearFromWidget(context)
+        val now = System.currentTimeMillis()
+        val href = registerHref(r, now)
+        TimerStore.pause(context, now)
         sync(context)
         WidgetRefresh.updateAll(context)
         return href

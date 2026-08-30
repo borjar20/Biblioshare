@@ -9,9 +9,10 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import type { MediaStatus } from "@/lib/library/types";
 import { addSession, type AddSessionState } from "@/lib/sessions/actions";
+import { withNetworkCatch } from "@/lib/sessions/network-catch";
 import { checkCelebrations } from "@/lib/celebrations/preference";
 import { itemHref } from "@/lib/catalog/item-href";
-import { timerStorageKey } from "@/lib/sessions/timer";
+import { clearTimer } from "@/lib/sessions/timer";
 import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
 import type { SessionContext } from "@/lib/sessions/load-context";
 import { useModalClose } from "./session-modal";
@@ -80,8 +81,12 @@ export function SessionSheet({
   }, [mode, modalClose, router, itemType, itemId]);
 
   const boundAddSession = addSession.bind(null, passId, itemType, itemId);
+  // withNetworkCatch: si el POST de la action ni llega (sin red al pulsar
+  // Guardar), el rechazo NO sube al error boundary (que desmontaría el form
+  // con lo tecleado) — se vuelve `state.error = "network"` y la hoja sigue
+  // montada con los datos intactos (diagnóstico widget→sesión offline, P2).
   const [state, formAction, pending] = useActionState(
-    boundAddSession,
+    withNetworkCatch(boundAddSession),
     initialState,
   );
 
@@ -112,9 +117,16 @@ export function SessionSheet({
     // aquí y no en el bloque de derivación porque disparar un evento es un
     // efecto, no estado derivado. Se pide también cuando el pase se cierra.
     checkCelebrations();
+    // SOLO con el guardado CONFIRMADO se apaga el cronómetro: localStorage y,
+    // vía el espejo app→nativo de timer.ts (clearRunningTimer), el TimerStore
+    // de Android — la notificación/widget dejan de mostrar la sesión cuando
+    // hay fila en BD, no antes (antes se borraba en onSubmit y, en nativo, al
+    // tocar «Registrar»: si el envío fallaba sin red, la única copia moría).
+    // Idempotente si no había cronómetro; el espejo se autoguarda de plataforma.
+    if (itemType === "book") clearTimer(passId);
     if (state.passClosed) return;
     closeSheet();
-  }, [state, closeSheet]);
+  }, [state, closeSheet, itemType, passId]);
 
   // Opening a session on a "planned" item means you're starting it now.
   const defaultStatus = status === "planned" ? "in_progress" : status;
@@ -161,20 +173,10 @@ export function SessionSheet({
         ? { kind: "episode", season: lastEpisode.season, episode: lastEpisode.episode }
         : { kind: "none" };
 
-  // Al guardar, limpia siempre el localStorage del cronómetro de este pase:
-  // si estaba activo, su valor ya viajó en el FormData a través del input
-  // oculto de SessionTimer (dentro de BookProgressField), así que no hace
-  // falta conservarlo; si no estaba activo, el remove es idempotente. Este
-  // componente ya no sabe qué modo de duración eligió el usuario — vive
-  // encapsulado en BookProgressField — así que no hay nada que consultar.
-  function handleSubmit() {
-    if (itemType !== "book") return;
-    try {
-      window.localStorage.removeItem(timerStorageKey(passId));
-    } catch {
-      // Almacenamiento inaccesible: nada que limpiar.
-    }
-  }
+  // OJO: aquí NO hay limpieza en onSubmit. La hubo (borraba el localStorage
+  // del cronómetro al enviar) y era parte del bug de pérdida offline: si la
+  // action fallaba, la copia local ya no existía. La limpieza vive ahora en el
+  // efecto de `state.ok` de arriba — solo tras confirmar el guardado.
 
   return (
     <>
@@ -209,7 +211,6 @@ export function SessionSheet({
           exactamente como antes de este fix. */}
       <form
         action={formAction}
-        onSubmit={handleSubmit}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         {/* `shrink-0`: cabecera, hero y footer son hermanos flex de este

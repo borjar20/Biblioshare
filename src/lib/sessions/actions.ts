@@ -30,7 +30,11 @@ const VALID_STATUSES: MediaStatus[] = [
 // directa. `passClosed` avisa de que la sesión completó el pase: el cliente
 // encadena la hoja de cierre en vez de irse (D4 de la spec).
 export type AddSessionState = {
-  error?: "invalidPosition" | "invalidDuration" | "futureDate" | "generic";
+  // "network" NUNCA lo devuelve el servidor: lo pone el wrapper cliente
+  // (network-catch.ts) cuando el POST de la action ni llega — sin él, el
+  // rechazo subiría al error boundary y desmontaría el form con lo tecleado
+  // (diagnóstico widget→sesión offline, P2).
+  error?: "invalidPosition" | "invalidDuration" | "futureDate" | "generic" | "network";
   ok?: boolean;
   passClosed?: boolean;
 };
