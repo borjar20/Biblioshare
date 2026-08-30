@@ -538,6 +538,112 @@ describe("hidratación asíncrona (fase 3)", () => {
   });
 });
 
+describe("espejo entre pestañas (#932)", () => {
+  // Verificado aparte (no committeado): en este entorno (vitest + node,
+  // incluso con setTimeout/setInterval mockeados como en el beforeEach de
+  // arriba) el BroadcastChannel global de Node SÍ entrega mensajes entre dos
+  // instancias del mismo nombre — su entrega no pasa por los timers que
+  // fakeamos, igual que fake-indexeddb (nota del beforeEach). Los tres tests
+  // de abajo cubren el espejo real, no solo el CAS aislado.
+  it("un commit en una pestaña aparece en la otra", async () => {
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      expect(a.start(started(1000))).toBe(true);
+      // Deja aterrizar la escritura de `a` antes de esperar el espejo: si no,
+      // vi.waitFor de abajo también vale (reintenta), pero drenar primero
+      // hace la carrera determinista en vez de depender solo del polling.
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        const snapshot = b.getSnapshot();
+        if (snapshot.status !== "ready" || snapshot.game === null) throw new Error("sin espejo");
+      });
+      expect(b.getSnapshot().game?.log.committed).toEqual([started(1000)]);
+    } finally {
+      // Drena ANTES de destruir: un destroy() con una lectura de espejo o una
+      // escritura propia todavía en vuelo dejaría esa promesa corriendo sola
+      // hasta el siguiente test (aviso del brief sobre cross-talk).
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+
+  it("descartar en una pestaña limpia la otra", async () => {
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      a.start(started(1000));
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        if (b.getSnapshot().game === null) throw new Error("sin espejo");
+      });
+      a.discard();
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        if (b.getSnapshot().game !== null) throw new Error("sigue viva");
+      });
+    } finally {
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+
+  it("el CAS impide que una escritura vieja pise una nueva", async () => {
+    // Directo contra db.ts con dos revs, ya cubierto en db.test.ts — aquí el
+    // caso integrado: dos stores commitean; el que pierde adopta al ganador.
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      a.start(started(1000));
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        if (b.getSnapshot().game === null) throw new Error("sin espejo");
+      });
+      // Ambos despachan «a la vez»: ambos commitean en memoria de forma
+      // síncrona e independiente (rev local 1 -> 2 en cada uno) antes de que
+      // ninguna de las dos escrituras haya tocado la BD todavía — la carrera
+      // real que el CAS de writeActive (db.ts) tiene que resolver.
+      a.dispatch(life(2000, "ana", -1));
+      b.dispatch(life(2001, "ana", -2));
+      // OJO: justo tras los dos dispatch(), ga.log.committed.length YA vale 2
+      // en ambos — cada uno commiteó en memoria de forma síncrona, antes de
+      // que ninguna escritura haya tocado la BD. Comparar solo longitudes
+      // aquí daría un verde falso en el primer tick del waitFor, sin haber
+      // esperado a que el CAS real (db.ts) resuelva nada. Se compara el id
+      // del ÚLTIMO evento: mientras cada uno se quede con SU propio dispatch
+      // los ids difieren; solo coinciden cuando el perdedor de verdad adoptó
+      // el registro del ganador.
+      await vi.waitFor(() => {
+        const ga = a.getSnapshot().game;
+        const gb = b.getSnapshot().game;
+        if (!ga || !gb) throw new Error("perdida");
+        const lastA = ga.log.committed.at(-1)?.id;
+        const lastB = gb.log.committed.at(-1)?.id;
+        if (lastA !== lastB) throw new Error("divergen");
+      });
+      // El que pierde el CAS no se queda con un log corrupto ni a medias:
+      // adopta el log completo del ganador (winner-takes-all, comportamiento
+      // aceptado — no arregla la jugada perdida, la sustituye entera).
+      expect(a.getSnapshot().game?.log.committed).toEqual(b.getSnapshot().game?.log.committed);
+    } finally {
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+});
+
 describe("save() (sin cobertura hasta ahora)", () => {
   it("una partida terminada se guarda y la activa se limpia", async () => {
     const store = getPlayStore("anon");
