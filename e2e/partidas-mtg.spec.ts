@@ -77,6 +77,11 @@ test("daño de comandante: la celda ES el control — cada toque +1, y la ráfag
   await empezarPartida(page);
 
   await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
+
+  // El comandante PROPIO también está en la rejilla (puede hacerte los 21), marcado
+  // como «tuyo» y al final.
+  await expect(page.getByText("tuyo")).toBeVisible();
+
   const celda = page.getByRole("button", { name: "Jugador 2 +1" });
   for (let i = 0; i < 5; i++) await celda.click();
 

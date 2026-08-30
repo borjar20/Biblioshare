@@ -12,6 +12,8 @@ export type DamageTarget = {
   ownerName: string;
   seat: number;
   amount: number;
+  /** Comandante del PROPIO afectado: también cuenta (robos, peleas, redirecciones). */
+  self: boolean;
 };
 
 /** Mantener pulsado este tiempo revela las mitades de −/+. */
@@ -50,19 +52,27 @@ export function DamageOverlay({
   const owners = commanderOwners(state);
   // El umbral letal es del MODO (rules lo lee de la misma tabla), no un 21 escrito.
   const threshold = modeConfig(state.setup.mode).commanderDamageThreshold;
+  // Los rivales primero y el comandante PROPIO al final: también puede hacerte los
+  // 21 (te lo roban, una pelea, una redirección — la regla cuenta el daño del
+  // comandante, no quién lo controla), pero es el caso raro y no debe estar donde
+  // caen los pulgares.
   const targets: DamageTarget[] = [];
-  state.players.forEach((player, seat) => {
-    if (player.participant.id === victimId) return;
-    for (const commander of player.participant.commanders) {
-      targets.push({
-        commanderId: commander.id,
-        label: commander.name?.trim() || player.participant.name,
-        ownerName: player.participant.name,
-        seat,
-        amount: victim.commanderDamage[commander.id] ?? 0,
-      });
-    }
-  });
+  for (const pass of ["rivals", "own"] as const) {
+    state.players.forEach((player, seat) => {
+      const self = player.participant.id === victimId;
+      if ((pass === "own") !== self) return;
+      for (const commander of player.participant.commanders) {
+        targets.push({
+          commanderId: commander.id,
+          label: commander.name?.trim() || player.participant.name,
+          ownerName: player.participant.name,
+          seat,
+          amount: victim.commanderDamage[commander.id] ?? 0,
+          self,
+        });
+      }
+    });
+  }
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-surface">
@@ -80,16 +90,20 @@ export function DamageOverlay({
         </button>
       </div>
 
-      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-1.5 overflow-y-auto px-2 pb-2">
+      {/* `auto-rows-fr` reparte el ALTO disponible entre las filas: quepan 2 o 5,
+          nunca hay que desplazarse — desplazarse con la mesa llena era justo lo que
+          esta rejilla vino a quitar. */}
+      <ul className="grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-1.5 px-2 pb-2">
         {targets.map((target) => {
           const owner = owners.get(target.commanderId);
           const showOwner = target.label !== target.ownerName && owner !== undefined;
+          const detail = target.self ? t("board.you") : showOwner ? target.ownerName : null;
           return (
             <DamageCell
               key={target.commanderId}
               target={target}
               accent={seatAccent(target.seat)}
-              showOwner={showOwner}
+              detail={detail}
               lethal={target.amount >= threshold}
               onDamage={(delta) => onDamage(target.commanderId, delta)}
             />
@@ -107,13 +121,14 @@ const LETHAL_STRIPES =
 function DamageCell({
   target,
   accent,
-  showOwner,
+  detail,
   lethal,
   onDamage,
 }: {
   target: DamageTarget;
   accent: SeatAccent;
-  showOwner: boolean;
+  /** Lo que va tras el nombre: el dueño del comandante, o «tuyo» si es el propio. */
+  detail: string | null;
   lethal: boolean;
   onDamage: (delta: number) => void;
 }) {
@@ -142,14 +157,14 @@ function DamageCell({
     onDamage(1);
   }
 
-  const frame = `relative flex h-16 select-none flex-col items-center justify-center overflow-hidden rounded-[10px] border ${
+  const frame = `relative flex min-h-0 select-none flex-col items-center justify-center overflow-hidden rounded-[10px] border ${
     lethal ? "border-play-danger bg-play-danger/20 text-play-danger" : "border-border bg-surface-muted"
   }`;
   const caption = (
     <span className="flex max-w-full items-center gap-1 px-1 text-[11px] leading-tight">
       <span aria-hidden className={`${accent.bar} h-3 w-1 shrink-0 rounded-full`} />
       <span className="truncate font-semibold">{target.label}</span>
-      {showOwner && <span className="truncate text-muted-foreground">· {target.ownerName}</span>}
+      {detail && <span className="truncate text-muted-foreground">· {detail}</span>}
     </span>
   );
   const amount = (

@@ -93,7 +93,11 @@ export function mtgReducer(state: MtgState, event: MtgEvent): MtgState {
       // por separado y con partner sumarlos mataría antes de tiempo.
       const owner = commanderOwners(state).get(source);
       if (owner === undefined) throw new PlayEventError(`comandante desconocido: ${source}`);
-      if (owner === target) throw new PlayEventError(`un comandante no se hace daño a sí mismo: ${source}`);
+      // El dueño SÍ puede recibir daño de su propio comandante: la regla de los 21
+      // cuenta el daño de combate de UN comandante, dé igual quién lo controle en
+      // ese momento (te lo roban, una pelea, una redirección). Hubo aquí una
+      // validación que lo prohibía y era una regla inventada (partida real,
+      // 2026-08-30).
       // Un solo evento semántico toca vidas Y daño de comandante: nunca se pide
       // al usuario mantener dos contadores a mano (issue #931).
       return withPlayer(state, target, (p) => ({

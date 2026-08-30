@@ -75,6 +75,15 @@ describe("mtgReducer — contadores", () => {
     expect(s.players[1].life).toBe(27);
   });
 
+  it("tu propio comandante puede hacerte daño de comandante (robos, peleas, redirecciones)", () => {
+    const s = mtgReducer(
+      base,
+      ev<CommanderDamageEvent>("commander_damage", { source: "borja-c1", target: "borja", delta: 4 }, 2000),
+    );
+    expect(s.players[1].life).toBe(36);
+    expect(s.players[1].commanderDamage).toEqual({ "borja-c1": 4 });
+  });
+
   it("rechaza atacante desconocido en commander_damage", () => {
     expect(() =>
       mtgReducer(

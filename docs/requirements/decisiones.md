@@ -3132,3 +3132,18 @@ La pulsación larga rompe a sabiendas la regla de «un toque, no una pulsación 
 player-panel sobre abrir la hoja): aquí es aceptable porque NO es la única vía — el camino sin
 puntero es tocar (+1, botón accesible) y deshacer desde la consola, y una vez reveladas las mitades
 son botones de verdad, enfocables. El umbral letal sale de `modeConfig`, no de un 21 escrito.
+
+## 2026-08-30 (8) — El daño del PROPIO comandante vale, y la rejilla nunca se desplaza (#931)
+
+Dos arreglos más de la misma partida real:
+
+1. **El reducer prohibía el daño de un comandante a su propio dueño, y era una regla inventada**
+   (había hasta un test defendiéndola). Los 21 cuentan el daño de combate de UN comandante dé
+   igual quién lo controle: te lo roban, una pelea, una redirección. Se quita la validación, el
+   desglose (`commanderDamageBreakdown`) incluye al propio, y en la rejilla del overlay el
+   comandante propio va AL FINAL marcado «tuyo» — posible, pero fuera de donde caen los pulgares.
+   Lección: una validación de reglas de juego se contrasta con las reglas, no con la intuición.
+
+2. **La rejilla del daño usa `auto-rows-fr`**: las filas se reparten el alto disponible, quepan 2
+   o 5, y el desplazamiento desaparece por construcción — la altura fija por celda (64 px) seguía
+   desbordando los paneles cortos del reparto tumbado.
