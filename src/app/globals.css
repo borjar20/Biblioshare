@@ -157,6 +157,30 @@
   --tier-bad: #a6432f;
   --tier-garbage: #6f5570;
   --tier-foreground: #fff5ef;
+
+  /* BiblioPlay (issue #931). Familia propia de la subapp: el fieltro de la mesa,
+     el filete que separa paneles, el rojo de condicion cumplida y los seis
+     colores de asiento. Valores cerrados en el canvas de la fase 1a.
+     --play-danger NO reutiliza --status-dropped (#b0492f): ese y el oxido del
+     asiento 1 eran casi el mismo tono y a metro y medio de la mesa no se
+     distinguian. Aqui el asiento 1 se va al ambar y el peligro al carmesi -- y
+     aun asi el estado letal nunca se anuncia SOLO con color (rayado + regla bajo
+     el numero), que es lo que pide WCAG 1.4.1. */
+  --play-felt: #e7dcc9;
+  --play-rail: rgba(44, 20, 32, 0.2);
+  --play-danger: #97272c;
+  /* Oxido y ambar van un peldano por debajo de lo que traia el canvas (#bb6a33 y
+     #a8781f): sobre el fieltro claro daban 2,96:1 y 2,88:1, por debajo del 3:1 que
+     WCAG 1.4.11 pide a un objeto grafico -- y la barra de asiento se lee contra el
+     fieltro, que es sobre lo que flotan los paneles. Los otros cuatro pasaban ya.
+     Medido: ahora 3,38 y 3,28, sin acercarlos entre si (dE 19,6, el par mas junto
+     de la paleta y el mismo que ya tenia). */
+  --play-seat-1: #b1602e;
+  --play-seat-2: #2f6f7e;
+  --play-seat-3: #5f7a3f;
+  --play-seat-4: #7d4f76;
+  --play-seat-5: #9d6f1c;
+  --play-seat-6: #45598c;
 }
 
 .dark {
@@ -211,6 +235,19 @@
   --tier-bad: #d97a63;
   --tier-garbage: #b592bd;
   --tier-foreground: #1f1409;
+
+  /* BiblioPlay en oscuro: el fieltro se va casi al negro (la mesa es lo que
+     rodea a los paneles, no papel donde se lee) y los seis asientos suben de
+     luminosidad para seguir separandose de el. */
+  --play-felt: #171310;
+  --play-rail: rgba(240, 232, 219, 0.16);
+  --play-danger: #f4736e;
+  --play-seat-1: #e6a878;
+  --play-seat-2: #6fb4c0;
+  --play-seat-3: #9dbf7a;
+  --play-seat-4: #c096c5;
+  --play-seat-5: #e0a94a;
+  --play-seat-6: #8fa5da;
 }
 
 /* OJO: este bloque ESPEJA .dark entero. Cualquier token que cambie arriba tiene
@@ -262,6 +299,16 @@
     --tier-bad: #d97a63;
     --tier-garbage: #b592bd;
     --tier-foreground: #1f1409;
+
+    --play-felt: #171310;
+    --play-rail: rgba(240, 232, 219, 0.16);
+    --play-danger: #f4736e;
+    --play-seat-1: #e6a878;
+    --play-seat-2: #6fb4c0;
+    --play-seat-3: #9dbf7a;
+    --play-seat-4: #c096c5;
+    --play-seat-5: #e0a94a;
+    --play-seat-6: #8fa5da;
   }
 }
 
@@ -304,6 +351,19 @@
   --color-type-series-ink: var(--type-series-ink);
   --color-event-highlight: var(--event-highlight);
   --color-event-meetup: var(--event-meetup);
+
+  /* BiblioPlay (#931): la tabla literal de src/lib/play/ui/seats.ts escribe
+     `bg-play-seat-1` y compania, asi que los seis tienen que existir como
+     utilidad -- una clase que el JIT no ve no llega al CSS final. */
+  --color-play-felt: var(--play-felt);
+  --color-play-rail: var(--play-rail);
+  --color-play-danger: var(--play-danger);
+  --color-play-seat-1: var(--play-seat-1);
+  --color-play-seat-2: var(--play-seat-2);
+  --color-play-seat-3: var(--play-seat-3);
+  --color-play-seat-4: var(--play-seat-4);
+  --color-play-seat-5: var(--play-seat-5);
+  --color-play-seat-6: var(--play-seat-6);
 
   --color-tier-foreground: var(--tier-foreground);
 
