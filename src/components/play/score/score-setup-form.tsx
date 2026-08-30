@@ -122,7 +122,12 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preset = parseScorePreset(searchParams.get("preset"));
-  const isRematch = searchParams.get("revancha") === "1";
+  // Revancha (desde el resumen) y reconfiguración (desde la hoja, con la
+  // partida viva) comparten prefill: la mesa actual entera. La diferencia es
+  // solo desde dónde llegas — en ambos casos entrar no descarta nada y
+  // «Empezar» es lo que reinicia.
+  const isRematch =
+    searchParams.get("revancha") === "1" || searchParams.get("reconfigurar") === "1";
   // El chooser arrastra sus números por query para que las dos pantallas no
   // se contradigan (revisión 2026-08-31). Valores basura se ignoran: caen al
   // prefill del preset.

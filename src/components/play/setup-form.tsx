@@ -51,6 +51,11 @@ export function SetupForm({ identity }: { identity: string }) {
   const searchParams = useSearchParams();
   const mode = parseMode(searchParams.get("modo"));
   const isRematch = searchParams.get("revancha") === "1";
+  // Reconfigurar desde la hoja de partida: misma mesa prefijada que la
+  // revancha pero SIN rotar el asiento inicial — se viene a corregir un fallo
+  // del setup, no a empezar la siguiente (revisión 2026-08-31). Entrar no
+  // descarta nada; «Empezar» es lo que reinicia.
+  const isReconfigure = searchParams.get("reconfigurar") === "1";
   // `?jugadores=` conserva la elección hecha en el hub: elegir 5 allí y abrir esto
   // con 4 sería desdecirse. `newDraft` acota el número a lo que el modo admite.
   // Sin parámetro tiene que quedar `undefined`, no `Number(null) === 0`: un 0 se
@@ -67,6 +72,9 @@ export function SetupForm({ identity }: { identity: string }) {
   // —prohibido por lint y con un primer render equivocado—, el borrador se DERIVA
   // mientras nadie ha tocado nada, y el estado toma el mando en la primera edición.
   const base = useMemo<SetupDraft>(() => {
+    if (isReconfigure && remembered && remembered.mode === mode) {
+      return draftFromSetup(remembered);
+    }
     if (isRematch && remembered && remembered.mode === mode) {
       return draftFromSetup(rotateStartingSeat(remembered));
     }
@@ -76,7 +84,7 @@ export function SetupForm({ identity }: { identity: string }) {
         ? requestedPlayers
         : undefined,
     );
-  }, [isRematch, remembered, mode, requestedPlayers]);
+  }, [isRematch, isReconfigure, remembered, mode, requestedPlayers]);
 
   const [edited, setEdited] = useState<SetupDraft | null>(null);
   const draft = edited ?? base;
@@ -165,7 +173,7 @@ export function SetupForm({ identity }: { identity: string }) {
           a esta pantalla se viene justo a repasar quién sigue sentado. El summary
           enseña los nombres para decidir si hace falta abrir. */}
       <details
-        open={isRematch}
+        open={isRematch || isReconfigure}
         className="rounded-card border border-border bg-surface px-3 py-2.5"
       >
         <summary className="cursor-pointer text-[13px] font-semibold">

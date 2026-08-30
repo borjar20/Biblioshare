@@ -72,6 +72,15 @@ export function ScoreGameSheet({
             value={prefs.keepAwake ? t("gameSheet.yes") : t("gameSheet.no")}
             onClick={() => update(!prefs.keepAwake)}
           />
+          {/* Un fallo del setup (nombre mal, jugador de más, límite equivocado)
+              no debe costar reescribir la mesa entera: la configuración se abre
+              PREFIJADA con la partida actual. Entrar no descarta nada — solo
+              «Empezar» reinicia (revisión 2026-08-31). */}
+          <SheetRow
+            label={t("gameSheet.reconfigure")}
+            value={t("gameSheet.reconfigureValue")}
+            onClick={() => router.push("/partidas/puntuacion/nueva?reconfigurar=1")}
+          />
           {/* Misma razón que en mtg: la única salida que CONSERVA la partida. */}
           <SheetRow
             label={t("gameSheet.leave")}

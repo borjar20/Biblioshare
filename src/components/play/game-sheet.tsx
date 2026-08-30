@@ -105,6 +105,15 @@ export function GameSheet({
             value={prefs.keepAwake ? t("gameSheet.yes") : t("gameSheet.no")}
             onClick={() => update({ keepAwake: !prefs.keepAwake })}
           />
+          {/* Un fallo del setup no debe costar reescribir la mesa entera: la
+              configuración abre PREFIJADA con la mesa actual, sin rotar el
+              asiento inicial (eso es de revancha). Entrar no descarta nada —
+              solo «Empezar» reinicia (revisión 2026-08-31). */}
+          <SheetRow
+            label={t("gameSheet.reconfigure")}
+            value={t("gameSheet.reconfigureValue")}
+            onClick={() => router.push(`/partidas/mtg/nueva?modo=${state.setup.mode}&reconfigurar=1`)}
+          />
           {/* La única salida del tablero que CONSERVA la partida. El tablero se come
               el chrome entero, así que sin este ítem la app instalada (PWA/APK, sin
               botón de atrás en iOS) no tiene forma de volver al hub sin descartar. El

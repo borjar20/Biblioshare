@@ -2745,6 +2745,8 @@
       "keepAwake": "Mantener la pantalla encendida",
       "leave": "Salir de la mesa",
       "leaveValue": "se queda guardada",
+      "reconfigure": "Reconfigurar la mesa",
+      "reconfigureValue": "se reinicia al empezar",
       "finish": "Finalizar la partida",
       "discard": "Descartar la partida",
       "discardConfirm": "Se borra la partida entera. ¿Seguro?",
