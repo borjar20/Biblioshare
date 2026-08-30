@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 import type { ToolId } from "@/lib/play/core/types";
+import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
 import { MtgTableMark } from "./marks/mtg-table-mark";
+import { GameBoard } from "./game-board";
 
 /**
  * Registro de UI, hermano del registro de DOMINIO (`src/lib/play/tools.ts`). La
@@ -12,12 +14,17 @@ import { MtgTableMark } from "./marks/mtg-table-mark";
  * resumen llegan con ellos—; declarar hoy un campo que apunta a un componente que
  * no existe dejaría el registro roto hasta que exista.
  */
+/** Props de toda pantalla de partida: las mismas para tablero y resumen, para que
+ *  `game-screen.tsx` elija una u otra por `status` sin cambiar de forma nada. */
+export type ToolScreenProps = { game: ActiveGame; store: PlayStore; identity: string };
+
 export type ToolView = {
   /** La marca de la herramienta es el dibujo de su mesa, no un párrafo explicándola. */
   Illustration: ComponentType<{ className?: string }>;
   hubRoute: string;
+  Board: ComponentType<ToolScreenProps>;
 };
 
 export const toolViews: Record<ToolId, ToolView> = {
-  mtg: { Illustration: MtgTableMark, hubRoute: "/partidas/mtg" },
+  mtg: { Illustration: MtgTableMark, hubRoute: "/partidas/mtg", Board: GameBoard },
 };

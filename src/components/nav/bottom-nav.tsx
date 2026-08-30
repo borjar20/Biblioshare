@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { anonNavItems, navItems, isNavItemActive } from "./nav-items";
+import { isFullscreenRoute } from "./fullscreen-routes";
 
 // Barra inferior (solo móvil). En sm+ la sustituyen las entradas de la topbar
 // (TopNav) más el avatar; aquí Perfil sí es una entrada más, como la tabbar de
@@ -14,7 +15,10 @@ export function BottomNav({ username }: { username: string | null }) {
   // En /post/[id] (posts Spec 2b) el composer del hilo va anclado al borde
   // inferior en móvil; la nav le cedería el sitio o se solaparían, así que se
   // retira en esa pantalla-conversación (se vuelve por el back de la topbar).
-  if (pathname.startsWith("/post/")) return null;
+  // Y en el tablero de una partida, que se come el marco entero (#931). Va aquí
+  // ADEMÁS de en `ChromeGate` a propósito: el gate quita el árbol desde el armazón,
+  // y esto deja el componente correcto aunque alguien lo monte por su cuenta.
+  if (pathname.startsWith("/post/") || isFullscreenRoute(pathname)) return null;
   const items = username ? navItems(username) : anonNavItems();
 
   return (
