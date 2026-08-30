@@ -3103,3 +3103,19 @@ auto en pantalla ancha ahora reparte tumbado (consola flotante) en vez de supone
 Las hojas (`<dialog>` en el top layer) quedan fuera del transform del ancestro por cómo funciona el
 top layer: salen derechas para quien coge el móvil. El overlay de daño sí gira con su panel — mira
 a quien está sentado ahí.
+
+## 2026-08-30 (6) — Segunda ronda sobre partida real: geometría sin medidas y contadores de esquina (#931)
+
+1. **A 0° y 180° el panel NO se mide: va en flujo con `h-full w-full`.** `rotate(180deg)` deja la
+   caja idéntica, así que solo los laterales (±90) necesitan la caja medida e intercambiada. La
+   versión que centraba TODAS las rotaciones con la medida del ResizeObserver se descuadraba en
+   móvil real (barra de color y botonera desplazadas o cortadas) cuando la barra del navegador
+   aparecía o se escondía y la medida llegaba un frame tarde. Regla: la medida solo puede decidir
+   cosas que toleren un frame de retraso (el tamaño del número, sí; la geometría, no).
+
+2. **Los contadores son chips de esquina, no medias filas.** Veneno y daño de comandante ocupaban
+   el ancho entero del panel siendo situacionales. Ahora: ancho al contenido, 44 px de alto (son
+   el objetivo del pulgar; `tap-44` no sirve dentro del overflow del panel), y a cero solo el
+   icono atenuado. El racimo es el sitio donde entrarán los contadores genéricos (energía,
+   experiencia, tesoros…) cuando el motor los tenga — diseño acordado sobre la app de referencia
+   del usuario: chip solo cuando el contador existe, picker en la hoja del jugador (issue #953).

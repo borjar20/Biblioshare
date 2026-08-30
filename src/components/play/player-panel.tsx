@@ -69,6 +69,15 @@ export function PlayerPanel({
   const lateral = placement.rotation === 90 || placement.rotation === -90;
   // `transform: rotate()` NO cambia la caja de layout: para poner un panel de canto
   // hay que darle a la caja interior las dimensiones INTERCAMBIADAS antes de girarla.
+  //
+  // SOLO los laterales (±90) usan esa caja medida y centrada. A 0 y a 180 la caja
+  // girada es IDÉNTICA a la original, así que el contenido va en flujo normal con
+  // `h-full w-full`: la geometría no depende de ninguna medida. La versión que
+  // centraba TODAS las rotaciones con la medida del ResizeObserver se descuadraba
+  // en móvil real —barra y botonera desplazadas o sobresaliendo— cuando la barra
+  // del navegador aparecía o se escondía y la medida llegaba un frame tarde
+  // (visto en la partida real del 2026-08-30; la medida queda solo para el tamaño
+  // del número, donde un frame de retraso es invisible).
   const inner = lateral
     ? { width: size?.height ?? 0, height: size?.width ?? 0 }
     : { width: size?.width ?? 0, height: size?.height ?? 0 };
@@ -106,12 +115,20 @@ export function PlayerPanel({
           superficie: el número se lee por el velo, no por la suerte de la imagen. */}
       <span aria-hidden className={`absolute inset-0 ${background}`} />
       <div
-        className="absolute left-1/2 top-1/2"
-        style={{
-          width: inner.width || undefined,
-          height: inner.height || undefined,
-          transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
-        }}
+        className={
+          lateral
+            ? "absolute left-1/2 top-1/2"
+            : `h-full w-full ${placement.rotation === 180 ? "rotate-180" : ""}`
+        }
+        style={
+          lateral
+            ? {
+                width: inner.width || undefined,
+                height: inner.height || undefined,
+                transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
+              }
+            : undefined
+        }
       >
         <div className="relative flex h-full w-full flex-col">
           {/* La barra del asiento mira siempre al centro de la mesa: va arriba del

@@ -2660,7 +2660,6 @@
       "poison": "Veneno de {name}: {count}",
       "commanderDamage": "Daño de comandante de {name}",
       "damageTitle": "Daño de comandante",
-      "noDamage": "sin daño",
       "more": "+{count}",
       "monarch": "Monarca",
       "initiative": "Iniciativa",
