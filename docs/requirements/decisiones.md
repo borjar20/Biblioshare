@@ -3170,3 +3170,42 @@ en grupos `SheetGroup` — caja con borde, separadores `divide-y` entre filas y
 chevron `›` en cada una. Las acciones que acaban la partida (finalizar, descartar;
 gana/eliminado en la hoja de jugador) van en su propia caja, separadas de los
 ajustes.
+
+## 2026-08-30 (10) — El store de Play hidrata asíncrono: loading no es «no hay partida»
+
+Fase 3 de #931 mueve la partida activa de `localStorage` (síncrono) a IndexedDB
+(asíncrono, `src/lib/play/core/db.ts`). Eso cambia el contrato que la UI recibe del
+store: `getSnapshot()` ya no puede devolver directamente `game: ActiveGame | null`
+porque en el primer render no se sabe todavía si hay partida — IndexedDB no se lee
+antes de pintar. `PlayStoreSnapshot` (`src/lib/play/core/store.ts`) queda como:
+
+```ts
+type PlayStoreSnapshot =
+  | { status: "loading"; game: null }
+  | { status: "ready"; game: ActiveGame | null };
+```
+
+`status: "loading"` y `status: "ready", game: null` NO son el mismo estado y la UI
+no puede tratarlos igual. `GameScreen` (`src/components/play/game-screen.tsx`)
+pinta fieltro vacío sin mensaje mientras hidrata, y solo enseña el vacío de «no hay
+ninguna partida en curso» (`play.empty.noActiveGame`) una vez `status === "ready"`
+confirma que no hay nada que recuperar. Tratar `loading` como «no hay partida»
+sería el parpadeo que la spec de fase 3 prohíbe: un frame de vacío-con-salida (o
+peor, una redirección) antes de que la lectura a IndexedDB complete, en CADA
+recarga de `/partida/activa` — el camino más común de esta pantalla.
+
+**El CAS por `rev` (`writeActive` en `db.ts`) es la única defensa contra pestañas
+concurrentes.** Sin backend ni locks reales, dos pestañas de la misma partida
+(la sesión sobrevive a cerrar una pestaña, no solo a recargar) pueden escribir
+casi a la vez; `rev` es un contador monótono por registro y la escritura ocurre
+DENTRO de la transacción de IndexedDB — si el registro en BD ya tiene un `rev`
+igual o mayor, la escritura entrante pierde y no pisa el estado más nuevo. No hay
+merge: gana la escritura cuyo `rev` de partida es más alto, tal cual ya lo
+observa el mirror por `BroadcastChannel` entre pestañas.
+
+`parseSnapshot` (antes separaba parseo de forma y replay de semántica en dos
+pasadas) ahora se apoya en `parseLog`, que valida forma, sella la ráfaga
+`pending` y hace UN solo `replay`, devolviendo `{ log, state }` juntos en una
+pasada (cierra #936). Evita el caso en que una forma válida pero una semántica
+inconsistente (evento que el reducer rechaza) se detectara tarde, en un segundo
+paso separado del parseo.
