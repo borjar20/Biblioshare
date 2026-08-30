@@ -43,13 +43,22 @@ describe("reconstrucción", () => {
       fin(9000),
     ];
 
-    // Aplicar toda la secuencia
+    // Aplicar toda la secuencia, CAPTURANDO el estado real previo al último
+    // evento: la invariante de undo por prefijo se comprueba contra lo que de
+    // verdad existió, no contra el estado final reparcheado a mano (que solo
+    // probaría «qué campos toca game_finished», y quedaría rancio si el
+    // reducer creciera).
     let replayA = initialScoreState(startedEvent);
+    let beforeFin = replayA;
     for (let i = 1; i < events.length; i++) {
+      beforeFin = replayA;
       replayA = scoreReducer(replayA, events[i]);
     }
 
-    // Replay completo: aplicar la MISMA secuencia dos veces desde cero
+    // Replay completo: aplicar la MISMA secuencia dos veces desde cero.
+    // NOTA: mismo bucle, no motor distinto — el gate REAL (comparar contra
+    // core/replay.ts) no puede correr hasta que `score` entre en el registro
+    // playTools (PR-B); sustituir este assert entonces.
     let replayB = initialScoreState(startedEvent);
     for (let i = 1; i < events.length; i++) {
       replayB = scoreReducer(replayB, events[i]);
@@ -58,15 +67,13 @@ describe("reconstrucción", () => {
     // Determinismo total: mismo input, mismo estado profundo
     expect(replayA).toEqual(replayB);
 
-    // Undo por prefijo: quitar el último evento = estado anterior
+    // Undo por prefijo: quitar el último evento = estado anterior REAL
     const beforeLastEvent = events.slice(0, -1);
     let stateBeforeLast = initialScoreState(startedEvent);
     for (let i = 1; i < beforeLastEvent.length; i++) {
       stateBeforeLast = scoreReducer(stateBeforeLast, beforeLastEvent[i]);
     }
 
-    // El estado antes del último evento debe ser igual al estado replayA sin el fin
-    const replayAWithoutFin = { ...replayA, status: "active" as const, finishedAt: null };
-    expect(stateBeforeLast).toEqual(replayAWithoutFin);
+    expect(stateBeforeLast).toEqual(beforeFin);
   });
 });
