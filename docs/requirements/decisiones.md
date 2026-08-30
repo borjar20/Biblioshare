@@ -3119,3 +3119,16 @@ a quien está sentado ahí.
    icono atenuado. El racimo es el sitio donde entrarán los contadores genéricos (energía,
    experiencia, tesoros…) cuando el motor los tenga — diseño acordado sobre la app de referencia
    del usuario: chip solo cuando el contador existe, picker en la hoja del jugador (issue #953).
+
+## 2026-08-30 (7) — En el daño de comandante, el número ES el control (#931)
+
+Tercera ronda sobre partida real. Las filas del overlay (nombre + contador + botones +1/+5) eran
+tan altas que con la mesa llena había que desplazarse. Ahora es una rejilla de celdas compactas —
+TODOS los rivales a la vez— y la celda entera es el control: **tocar suma 1** (la ráfaga sigue
+fundiendo toques en un evento) y **mantener pulsado revela las mitades de −/+**, la misma anatomía
+que las vidas del panel.
+
+La pulsación larga rompe a sabiendas la regla de «un toque, no una pulsación larga» (comentario en
+player-panel sobre abrir la hoja): aquí es aceptable porque NO es la única vía — el camino sin
+puntero es tocar (+1, botón accesible) y deshacer desde la consola, y una vez reveladas las mitades
+son botones de verdad, enfocables. El umbral letal sale de `modeConfig`, no de un 21 escrito.

@@ -71,11 +71,14 @@ test("la partida sobrevive a cerrar la pestaña", async ({ page }) => {
   await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
 });
 
-test("daño de comandante: tres toques, un evento, y las vidas bajan a la vez", async ({ page }) => {
+test("daño de comandante: la celda ES el control — cada toque +1, y la ráfaga es un evento", async ({
+  page,
+}) => {
   await empezarPartida(page);
 
   await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
-  await page.getByRole("button", { name: "Jugador 2 +5" }).click();
+  const celda = page.getByRole("button", { name: "Jugador 2 +1" });
+  for (let i = 0; i < 5; i++) await celda.click();
 
   await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("35");
 
@@ -87,11 +90,30 @@ test("daño de comandante: tres toques, un evento, y las vidas bajan a la vez", 
   expect(dmg[0].payload).toMatchObject({ source: "p2-c1", target: "p1", delta: 5 });
 });
 
+test("mantener pulsada la celda revela las mitades, y la izquierda resta", async ({ page }) => {
+  await empezarPartida(page);
+  await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
+
+  const celda = page.getByRole("button", { name: "Jugador 2 +1" });
+  await celda.click();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
+
+  // Pulsación larga (el click va con el botón 600 ms apretado): expande la celda en
+  // dos mitades SIN sumar de rebote.
+  await celda.click({ delay: 600 });
+  const menos = page.getByRole("button", { name: "Jugador 2 −1" });
+  await expect(menos).toBeVisible();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
+
+  await menos.click();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("40");
+});
+
 test("21 de un mismo comandante se avisa, pero no elimina a nadie", async ({ page }) => {
   await empezarPartida(page);
   await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
-  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Jugador 2 +5" }).click();
-  await page.getByRole("button", { name: "Jugador 2 +1" }).click();
+  const celda = page.getByRole("button", { name: "Jugador 2 +1" });
+  for (let i = 0; i < 21; i++) await celda.click();
   await page.getByRole("button", { name: "Cerrar" }).click();
 
   // El botón queda en estado letal, pero el jugador sigue en la mesa: avisa, no

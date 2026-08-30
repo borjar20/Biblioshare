@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { commanderOwners, type MtgState } from "@/lib/play/mtg/types";
-import { seatAccent } from "@/lib/play/ui/seats";
+import { modeConfig } from "@/lib/play/mtg/modes";
+import { seatAccent, type SeatAccent } from "@/lib/play/ui/seats";
 
 export type DamageTarget = {
   commanderId: string;
@@ -12,17 +14,23 @@ export type DamageTarget = {
   amount: number;
 };
 
+/** Mantener pulsado este tiempo revela las mitades de −/+. */
+const LONG_PRESS_MS = 425;
+
 /**
  * Reparto de daño de comandante, DENTRO del panel: hereda su rotación, así que quien
  * está sentado ahí lo ve derecho.
  *
- * Una fila por comandante rival, **no por jugador**: con partner, Tymna y Thrasios
- * son dos cuentas de 21 distintas y sumarlas mataría antes de tiempo. Por eso la
- * lista se ordena por comandante y el nombre de quien lo lleva va detrás, en gris:
- * lo que hace el daño es la criatura.
+ * Una celda por comandante rival, **no por jugador**: con partner, Tymna y Thrasios
+ * son dos cuentas de 21 distintas y sumarlas mataría antes de tiempo.
  *
- * `+1` y `+5` por fila: tres toques para «Carlos → Atraxa → +5», y sale UN solo
- * evento porque la ráfaga los funde.
+ * **El número ES el control** (revisión sobre partida real, 2026-08-30): tocar la
+ * celda suma 1 —la ráfaga funde los toques seguidos en un solo evento— y MANTENERLA
+ * pulsada revela las mitades de −/+, la misma anatomía que las vidas del panel. Las
+ * celdas van en rejilla compacta para que TODOS los rivales quepan a la vez sin
+ * desplazarse. La pulsación larga no tiene equivalente de teclado; el camino sin
+ * puntero es tocar (+1, accesible como botón) y deshacer desde la consola — y una
+ * vez reveladas, las mitades son botones de verdad, enfocables.
  */
 export function DamageOverlay({
   state,
@@ -40,6 +48,8 @@ export function DamageOverlay({
   if (!victim) return null;
 
   const owners = commanderOwners(state);
+  // El umbral letal es del MODO (rules lo lee de la misma tabla), no un 21 escrito.
+  const threshold = modeConfig(state.setup.mode).commanderDamageThreshold;
   const targets: DamageTarget[] = [];
   state.players.forEach((player, seat) => {
     if (player.participant.id === victimId) return;
@@ -70,52 +80,140 @@ export function DamageOverlay({
         </button>
       </div>
 
-      <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 pb-2">
+      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-1.5 overflow-y-auto px-2 pb-2">
         {targets.map((target) => {
-          const accent = seatAccent(target.seat);
-          // El nombre del comandante manda; el del jugador va detrás y solo si son
-          // distintos (sin comandante escrito, ya se está enseñando su nombre).
           const owner = owners.get(target.commanderId);
           const showOwner = target.label !== target.ownerName && owner !== undefined;
           return (
-            // Dos líneas por fila, no una: el overlay vive dentro de un panel de
-            // media pantalla y en una sola línea el nombre quedaba en «Juga…» tras
-            // ceder sitio a los botones (visto en la primera partida real,
-            // 2026-08-30). El nombre manda en su línea; contador y botones en la
-            // suya, con 44 px de alto — son EL objetivo del gesto.
-            <li
+            <DamageCell
               key={target.commanderId}
-              className="flex flex-col gap-1 rounded-[10px] border border-border/60 px-2 py-1.5"
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <span aria-hidden className={`${accent.bar} h-4 w-1 shrink-0 rounded-full`} />
-                <span className="min-w-0 flex-1 break-words text-[13px] leading-tight">
-                  <span className="font-semibold">{target.label}</span>
-                  {showOwner && (
-                    <span className="text-muted-foreground"> · {target.ownerName}</span>
-                  )}
-                </span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="flex-1 pl-3 font-mono text-[13px] tabular-nums text-muted-foreground">
-                  {target.amount}
-                </span>
-                {[1, 5].map((delta) => (
-                  <button
-                    key={delta}
-                    type="button"
-                    onClick={() => onDamage(target.commanderId, delta)}
-                    aria-label={`${target.label} +${delta}`}
-                    className="tap-44 h-10 w-14 shrink-0 rounded-chip border border-border font-mono text-[13px]"
-                  >
-                    +{delta}
-                  </button>
-                ))}
-              </span>
-            </li>
+              target={target}
+              accent={seatAccent(target.seat)}
+              showOwner={showOwner}
+              lethal={target.amount >= threshold}
+              onDamage={(delta) => onDamage(target.commanderId, delta)}
+            />
           );
         })}
       </ul>
     </div>
+  );
+}
+
+/** Rayado del estado letal: el color NUNCA es el único medio (WCAG 1.4.1). */
+const LETHAL_STRIPES =
+  "repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,0.22) 6px 12px)";
+
+function DamageCell({
+  target,
+  accent,
+  showOwner,
+  lethal,
+  onDamage,
+}: {
+  target: DamageTarget;
+  accent: SeatAccent;
+  showOwner: boolean;
+  lethal: boolean;
+  onDamage: (delta: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const timer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+
+  function press() {
+    longPressed.current = false;
+    timer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      setExpanded(true);
+    }, LONG_PRESS_MS);
+  }
+  function release() {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  }
+  function tap() {
+    // El click llega DESPUÉS de la pulsación larga que acaba de expandir: ese no
+    // debe sumar además un +1.
+    if (longPressed.current) {
+      longPressed.current = false;
+      return;
+    }
+    onDamage(1);
+  }
+
+  const frame = `relative flex h-16 select-none flex-col items-center justify-center overflow-hidden rounded-[10px] border ${
+    lethal ? "border-play-danger bg-play-danger/20 text-play-danger" : "border-border bg-surface-muted"
+  }`;
+  const caption = (
+    <span className="flex max-w-full items-center gap-1 px-1 text-[11px] leading-tight">
+      <span aria-hidden className={`${accent.bar} h-3 w-1 shrink-0 rounded-full`} />
+      <span className="truncate font-semibold">{target.label}</span>
+      {showOwner && <span className="truncate text-muted-foreground">· {target.ownerName}</span>}
+    </span>
+  );
+  const amount = (
+    <span
+      className={`font-mono text-[20px] font-medium tabular-nums leading-none ${
+        lethal ? "underline decoration-2 underline-offset-4" : ""
+      }`}
+    >
+      {target.amount}
+    </span>
+  );
+
+  if (expanded) {
+    return (
+      <li
+        className={frame}
+        style={lethal ? { backgroundImage: LETHAL_STRIPES } : undefined}
+      >
+        {/* Mitades como las de las vidas: izquierda resta, derecha suma. Botones de
+            verdad — una vez reveladas, el teclado también llega. */}
+        <button
+          type="button"
+          onClick={() => onDamage(-1)}
+          aria-label={`${target.label} −1`}
+          className="absolute inset-y-0 left-0 w-1/2"
+        >
+          <span aria-hidden className="absolute left-2 top-1/2 -translate-y-1/2 font-mono opacity-45">
+            −
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onDamage(1)}
+          aria-label={`${target.label} +1`}
+          className="absolute inset-y-0 right-0 w-1/2"
+        >
+          <span aria-hidden className="absolute right-2 top-1/2 -translate-y-1/2 font-mono opacity-45">
+            +
+          </span>
+        </button>
+        <span className="pointer-events-none flex flex-col items-center gap-0.5">
+          {caption}
+          {amount}
+        </span>
+      </li>
+    );
+  }
+
+  return (
+    <li className="contents">
+      <button
+        type="button"
+        onClick={tap}
+        onPointerDown={press}
+        onPointerUp={release}
+        onPointerLeave={release}
+        onContextMenu={(e) => e.preventDefault()}
+        aria-label={`${target.label} +1`}
+        className={frame}
+        style={lethal ? { backgroundImage: LETHAL_STRIPES } : undefined}
+      >
+        {caption}
+        {amount}
+      </button>
+    </li>
   );
 }
