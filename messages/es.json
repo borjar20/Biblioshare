@@ -2613,7 +2613,35 @@
         }
       },
       "score": {
-        "name": "Puntuación por rondas"
+        "name": "Puntuación por rondas",
+        "hubTitle": "Puntuación",
+        "presetsTitle": "Cómo jugáis",
+        "footnote": "El límite avisa cuando se alcanza, pero no cierra la partida: seguís jugando o finalizáis cuando queráis.",
+        "playNow": "Jugar ya",
+        "configure": "Configurar la mesa",
+        "presets": {
+          "libre": {
+            "name": "Libre",
+            "detail": "Sin límite"
+          },
+          "rondas": {
+            "name": "A N rondas",
+            "detail": "Termina al llegar"
+          },
+          "puntos": {
+            "name": "A X puntos",
+            "detail": "Termina al llegar"
+          }
+        },
+        "howItWorks": {
+          "title": "Cómo funciona",
+          "step1Title": "Elige cómo jugáis",
+          "step1Detail": "Libre, a N rondas o a X puntos: el número se puede cambiar al configurar.",
+          "step2Title": "Empieza sin configurar",
+          "step2Detail": "Los nombres son opcionales: la mesa sale puesta con «Jugador 1», «Jugador 2»…",
+          "step3Title": "Apunta ronda a ronda",
+          "step3Detail": "Cada ronda queda en el registro y se puede editar después."
+        }
       }
     },
     "rememberedTable": {
@@ -2654,6 +2682,17 @@
       "start": "Empezar",
       "emptyIsFine": "Puedes empezar sin escribir nada: los nombres son opcionales.",
       "rematchSeat": "Ahora empieza {name}, un asiento más allá."
+    },
+    "scoreSetup": {
+      "captionHighest": "Gana quien más suma",
+      "captionLowest": "Gana quien menos suma",
+      "direction": "Quién gana",
+      "highest": "El que más suma",
+      "lowest": "El que menos suma",
+      "target": "Límite",
+      "targetRounds": "Hasta N rondas",
+      "targetPoints": "Hasta X puntos",
+      "targetValue": "Valor del límite"
     },
     "board": {
       "life": "Vidas de {name}",
@@ -2748,6 +2787,9 @@
     "scoreSummary": {
       "tie": "Empate",
       "rounds": "Rondas"
+    },
+    "scoreBanner": {
+      "roundsPlayed": "{rounds, plural, =0 {Sin rondas todavía} one {# ronda jugada} other {# rondas jugadas}}"
     },
     "log": {
       "started": "Empieza la partida",
