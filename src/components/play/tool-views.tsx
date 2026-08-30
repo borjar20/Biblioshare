@@ -3,6 +3,7 @@ import type { ToolId } from "@/lib/play/core/types";
 import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
 import { MtgTableMark } from "./marks/mtg-table-mark";
 import { GameBoard } from "./game-board";
+import { GameSummary } from "./game-summary";
 
 /**
  * Registro de UI, hermano del registro de DOMINIO (`src/lib/play/tools.ts`). La
@@ -23,8 +24,14 @@ export type ToolView = {
   Illustration: ComponentType<{ className?: string }>;
   hubRoute: string;
   Board: ComponentType<ToolScreenProps>;
+  Summary: ComponentType<ToolScreenProps>;
 };
 
 export const toolViews: Record<ToolId, ToolView> = {
-  mtg: { Illustration: MtgTableMark, hubRoute: "/partidas/mtg", Board: GameBoard },
+  mtg: {
+    Illustration: MtgTableMark,
+    hubRoute: "/partidas/mtg",
+    Board: GameBoard,
+    Summary: GameSummary,
+  },
 };

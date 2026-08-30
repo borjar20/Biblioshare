@@ -31,6 +31,9 @@ export function GameScreen({ identity }: { identity: string }) {
     );
   }
 
-  const { Board } = toolViews[game.state.toolId];
-  return <Board game={game} store={store} identity={identity} />;
+  // Terminada, la misma ruta enseña el resumen: la partida no desaparece al acabar,
+  // porque de ahí sale la revancha (spec §7, «Finalización»).
+  const { Board, Summary } = toolViews[game.state.toolId];
+  const Screen = game.state.status === "finished" ? Summary : Board;
+  return <Screen game={game} store={store} identity={identity} />;
 }
