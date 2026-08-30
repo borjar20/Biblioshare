@@ -27,8 +27,25 @@
 // las islas (el estado de juego se hidrata de IndexedDB en el cliente), y el
 // purge de logout ya tira este caché entero, así que la copia muere con la
 // sesión igual que el resto. El bump re-siembra en clientes viejos.
-const CACHE_NAME = "biblioshare-v5";
+const CACHE_NAME = "biblioshare-v6";
 const OFFLINE_URL = "/offline";
+
+// Shells de Play que se SIEMBRAN al instalar, sin esperar a una navegación
+// dura: dentro de la app se llega al tablero por navegación BLANDA (cliente),
+// así que el documento de /partida/activa podía no cachearse nunca y el
+// primer modo avión caía a /offline con la partida sana en IndexedDB (visto
+// en dispositivo real, 2026-08-31). Mismo argumento #680 que
+// swOfflineShellRoute: solo el id de identidad viaja en ese HTML y el purge
+// de logout tira el caché entero. Lista literal, no patrón: sembrar es un
+// fetch real por URL y las rutas de Play son finitas y conocidas.
+const PLAY_SHELL_URLS = [
+  "/partidas",
+  "/partidas/mtg",
+  "/partidas/mtg/nueva",
+  "/partidas/puntuacion",
+  "/partidas/puntuacion/nueva",
+  "/partida/activa",
+];
 
 // Estáticos de Next: el nombre lleva el hash del contenido, así que la copia en
 // caché no puede quedarse rancia.
@@ -97,10 +114,27 @@ self.swStrategy = swStrategy;
 self.swCacheableDocument = swCacheableDocument;
 self.swOfflineShellRoute = swOfflineShellRoute;
 
+// Siembra un shell de Play: fetch con credenciales (el documento se sirve por
+// sesión) y put solo si el servidor respondió bien. Mejor esfuerzo: una ruta
+// que falle no impide sembrar las demás ni instala el SW a medias.
+function seedPlayShells(cache) {
+  return Promise.allSettled(
+    PLAY_SHELL_URLS.map((url) =>
+      fetch(url, { credentials: "same-origin" }).then((response) => {
+        if (response.ok) return cache.put(url, response);
+      })
+    )
+  );
+}
+self.swSeedPlayShells = seedPlayShells; // inerte en el navegador; lo carga el test
+self.PLAY_SHELL_URLS = PLAY_SHELL_URLS;
+
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_URL))
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => Promise.all([cache.add(OFFLINE_URL), seedPlayShells(cache)]))
   );
 });
 
@@ -166,15 +200,17 @@ self.addEventListener("fetch", (event) => {
 
 // Purga al cerrar sesión (#680): la página avisa (logout-button) y se tira el
 // caché entero — distinguir documentos de estáticos no compensa, los estáticos
-// se re-cachean solos al siguiente uso. Se re-siembra /offline para no perder
-// el salvavidas.
+// se re-cachean solos al siguiente uso. Se re-siembran /offline y los shells
+// de Play (ya como anónimo: la petición viaja sin la sesión que acaba de
+// morir) — sin re-siembra, tras un logout la navegación blanda volvería a
+// dejar a Play sin salvavidas hasta el siguiente bump del SW.
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "purge-caches") return;
   event.waitUntil(
     caches
       .delete(CACHE_NAME)
       .then(() => caches.open(CACHE_NAME))
-      .then((cache) => cache.add(OFFLINE_URL))
+      .then((cache) => Promise.all([cache.add(OFFLINE_URL), seedPlayShells(cache)]))
       .catch(() => {})
   );
 });
