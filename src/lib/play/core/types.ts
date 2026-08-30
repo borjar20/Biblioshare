@@ -5,7 +5,7 @@
 // que Duelo (issue #931, fase 1a). Lo que varía entre modos —vidas iniciales,
 // si aplican los 21 de comandante, cuánta gente cabe— es configuración y vive en
 // `mtg/modes.ts`; el `ToolId` solo crece cuando entra un juego distinto.
-export type ToolId = "mtg";
+export type ToolId = "mtg" | "score";
 
 // Forma base que TODA herramienta extiende (finding 6 de la revisión final): la
 // pantalla instrumento compartida y el banner "partida en curso" necesitan leer

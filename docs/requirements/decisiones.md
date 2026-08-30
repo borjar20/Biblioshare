@@ -3232,3 +3232,59 @@ Verificado en la re-review final de fase 3: toda mutación de `rev`/`snapshot` o
 encola su propia persistencia de reemplazo detrás de la tarea saltada (misma FIFO), o
 es una adopción tras la cual la BD ya coincide — no existe camino que invalide una
 tarea sin dejar reemplazo. Origen: review final de la rama de fase 3 (PR #957/#958).
+
+## 2026-08-30 (12) — Puntuación por rondas: target informativo y presets que solo prefijan
+
+Fase 4 de #931 añade la segunda herramienta de Play. Tres decisiones de forma, más el
+resultado del gate «¿cuánto tocó del core?» que la fase llevaba como condición de éxito.
+
+**El límite (`ScoreTarget`, `src/lib/play/score/types.ts`) es informativo, no un fin de
+partida.** `scoreReducer` (`src/lib/play/score/reducer.ts`) no conoce el target: nunca
+fuerza `status: "finished"` al alcanzarlo. Quien decide que se ha llegado es el selector
+`limitReached` (`src/lib/play/score/selectors.ts`), y la única consecuencia es que
+`ScoreBoard` (`src/components/play/score/score-board.tsx`) muestra una banda con un botón
+«Finalizar» — no bloqueante: se puede seguir apuntando rondas con la banda visible, tal
+como cubre el tercer test de `e2e/partidas-puntuacion.spec.ts`. La semántica funciona en
+ambas direcciones porque `target.kind === "points"` compara con `>=` sobre los totales
+sin mirar `direction`: con `"highest"` llegar te da la victoria (UNO a 500); con
+`"lowest"` llegar te condena y gana quien menos tiene (golf, dominó). Es la misma lectura
+que ya dejó el comentario de `ScoreTarget` en `types.ts`, confirmada aquí por el test.
+
+**Los presets (`ScorePresetId` en `score-preset-chooser.tsx`) son prefill puro, nunca
+modos.** A diferencia de mtg (donde el modo decide vidas iniciales y si aplican los 21 de
+comandante, algo que el motor sí valida), «Libre», «A N rondas» y «A X puntos» solo
+deciden qué número trae precargado el formulario de configuración
+(`SCORE_PRESET_PREFILL`) y el target de «Jugar ya». `ScoreSetupForm` deja cambiar ese
+número o desactivar el límite sin que el motor rechace nada: hay una sola herramienta de
+puntuación, no tres. El tercer test del spec lo ejercita end-to-end: preset «A X puntos»
+(prefill 100) se reconfigura a 20 en el formulario y el motor arranca con exactamente ese
+valor.
+
+**Una ronda entera es un evento, no una celda.** `round_scored` da de alta una ronda con
+una puntuación por asiento; `round_edited` la sustituye entera (`reducer.ts`, caso
+`round_edited`). En la UI, tocar CUALQUIER celda de la columna de una ronda abre la misma
+hoja con los valores de esa ronda completa (`ScoreBoard`, `setSheetRound(index)` no
+depende de qué asiento se tocó) — no hay edición por celda suelta. La consecuencia
+gratuita es que deshacer una edición es deshacer LA RONDA: como el store reconstruye el
+estado por replay del log (`undoLast` en `core/log.ts`) y no por reversión manual de
+campos, quitar el evento `round_edited` basta para que la ronda vuelva a sus valores
+anteriores sin lógica de deshacer específica de puntuación. Verificado en el primer test
+del spec (editar la ronda 2, deshacer, comprobar que el total vuelve al de antes).
+
+**Resultado del gate del core.** La condición de éxito de la fase era que añadir una
+segunda herramienta NO obligara a tocar el motor genérico (`src/lib/play/core/`), solo
+los registros. Verificado con `git diff main...HEAD --stat -- src/lib/play/core`: el
+único cambio de las nueve fases-tarea es
+
+```
+src/lib/play/core/types.ts | 2 +-
+1 file changed, 1 insertion(+), 1 deletion(-)
+```
+
+— la línea `export type ToolId = "mtg" | "score";`. Nada de `store.ts`, `log.ts`,
+`db.ts` ni `game-screen.tsx` cambió: la pantalla instrumento compartida y la persistencia
+resolvieron la herramienta nueva enteramente a través de los dos registros
+(`src/lib/play/tools.ts` de dominio y `src/components/play/tool-views.tsx` de UI), tal
+como preveía la spec de fase 4. Es la confirmación práctica de que la frontera
+core/herramienta trazada en fases 0-3 aguanta una segunda herramienta con reglas propias
+(target informativo, sin turno, sin asientos rotables) sin ensancharse.
