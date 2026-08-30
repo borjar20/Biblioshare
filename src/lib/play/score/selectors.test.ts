@@ -3,7 +3,7 @@ import { makeEvent } from "@/lib/play/core/events";
 import type { Participant } from "@/lib/play/core/types";
 import type { GameStartedEvent, RoundScoredEvent } from "./events";
 import { initialScoreState, scoreReducer } from "./reducer";
-import { describeEvent, limitReached, scoreRanking, totals } from "./selectors";
+import { describeEvent, limitReached, runningTotals, scoreRanking, totals } from "./selectors";
 import type { ScoreSetup, ScoreState } from "./types";
 
 const gente = (n: number): Participant[] =>
@@ -32,6 +32,25 @@ describe("totals", () => {
   it("suma por asiento; sin rondas, todo ceros", () => {
     expect(totals(conRondas([[12, 4, 9], [8, 15, 6], [5, 11, 8]]))).toEqual([25, 30, 23]);
     expect(totals(conRondas([]))).toEqual([0, 0, 0]);
+  });
+});
+
+describe("runningTotals", () => {
+  it("acumula ronda a ronda por asiento, negativos incluidos", () => {
+    expect(runningTotals(conRondas([[1, 2, 0], [3, -5, 4]]))).toEqual([
+      [1, 2, 0],
+      [4, -3, 4],
+    ]);
+  });
+
+  it("sin rondas, serie vacía (el gráfico no pinta nada)", () => {
+    expect(runningTotals(conRondas([]))).toEqual([]);
+  });
+
+  it("la última fila coincide con totals: misma verdad, dos formas", () => {
+    const state = conRondas([[12, 4, 9], [8, 15, 6], [5, 11, 8]]);
+    const running = runningTotals(state);
+    expect(running[running.length - 1]).toEqual(totals(state));
   });
 });
 

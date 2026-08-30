@@ -2757,7 +2757,9 @@
       "total": "Total",
       "addRound": "Añadir ronda",
       "limitReached": "Se alcanzó el límite: la partida se puede finalizar cuando queráis.",
-      "finish": "Finalizar"
+      "finish": "Finalizar",
+      "chartTitle": "Evolución",
+      "chartEmpty": "Con la primera ronda aparece aquí la evolución de la partida."
     },
     "roundSheet": {
       "title": "Nueva ronda",

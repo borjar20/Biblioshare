@@ -14,6 +14,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { GameClock } from "../game-clock";
 import { useWakeLock } from "../use-wake-lock";
 import { RoundSheet } from "./round-sheet";
+import { ScoreChart } from "./score-chart";
 import { ScoreGameSheet } from "./score-game-sheet";
 
 const getServerPreferences = () => DEFAULT_PREFERENCES;
@@ -106,9 +107,12 @@ export function ScoreBoard({
         </div>
       )}
 
+      {/* La tabla ya no acapara todo el alto (era todo hueco vacío bajo dos
+          filas): crece con sus jugadores hasta la mitad de la pantalla y el
+          resto es del gráfico de evolución. */}
       <div
         ref={scrollRef}
-        className="mt-2 flex-1 overflow-x-auto rounded-[14px] border border-border bg-surface"
+        className="mt-2 max-h-[50dvh] shrink-0 overflow-x-auto overflow-y-auto rounded-[14px] border border-border bg-surface"
       >
         <table className="w-full min-w-max border-collapse text-[13px]">
           <thead>
@@ -164,6 +168,15 @@ export function ScoreBoard({
           </tbody>
         </table>
       </div>
+
+      <section className="mt-2 flex min-h-0 flex-1 flex-col rounded-[14px] border border-border bg-surface p-3">
+        <h2 className="mb-2 shrink-0 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+          {t("scoreBoard.chartTitle")}
+        </h2>
+        <div className="min-h-0 flex-1">
+          <ScoreChart state={state} />
+        </div>
+      </section>
 
       <button
         type="button"
