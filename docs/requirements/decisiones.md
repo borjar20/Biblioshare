@@ -3065,3 +3065,25 @@ Una revisión de producto sobre la fase 1 recién construida dejó tres decision
 **Y un agujero que la revisión encontró:** el tablero se come el chrome entero y no tenía salida que
 CONSERVARA la partida — en PWA/APK instalada (sin botón atrás en iOS) solo se podía descartar. La
 hoja de la partida gana «Salir de la mesa · se queda guardada».
+
+## 2026-08-30 (4) — Lo que enseñó la primera partida real en un móvil (#931)
+
+Tres arreglos que salieron de jugar de verdad, no de los e2e (que corren en viewport de móvil
+pero no son un pulgar ni una mesa):
+
+1. **El color del asiento tiñe el panel POR DEFECTO.** El setup enseñaba el swatch del asiento
+   como elegido (`?? seat-N`), pero el borrador solo lo guardaba si lo TOCABAS: con «Jugar ya» o
+   sin tocar nada, `cardBackground` llegaba `undefined` y la mesa salía monocroma. El fallback
+   vive en el PANEL (no en `toSetup`): así repara también las partidas ya guardadas.
+
+2. **El reparto de la mesa se elige por presets VISIBLES, no alternando dos atributos.** «Girar»
+   y «repartir» por separado obligaban a ciclar a ciegas. Ahora la hoja de la partida enseña
+   miniaturas del tablero real —salen de `resolveLayout`, el mismo módulo que pinta la mesa, así
+   que no pueden mentir— agrupadas en «móvil de pie» / «móvil tumbado», con los asientos en su
+   color. Elegir una fija orientación y familia a la vez; «Automático» sigue siendo el primero.
+
+3. **Los textos no pueden quedar en «Juga…».** En un móvil estrecho, la consola cedía el nombre
+   del turno al hueco del deshacer aunque no hubiera nada que deshacer (ahora, sin nada que
+   deshacer, queda solo la flecha) y las filas del overlay de daño truncaban el nombre a favor de
+   los botones (ahora son dos líneas: el nombre manda en la suya, y los botones suben a 44 px,
+   que además les tocaba por `tap-44`).

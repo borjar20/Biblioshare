@@ -71,8 +71,11 @@ export function CenterConsole({
         <span aria-hidden className="shrink-0 text-[13px]">
           ↶
         </span>
-        {/* La etiqueta puede quedarse sin la palabra «Deshacer», nunca sin el qué. */}
-        <span className="min-w-0 truncate text-muted-foreground">{label}</span>
+        {/* La etiqueta puede quedarse sin la palabra «Deshacer», nunca sin el qué.
+            Pero cuando NO hay nada que deshacer, el texto solo roba sitio al nombre
+            del turno — en un móvil estrecho lo dejaba en «Juga…» —, así que ahí la
+            flecha atenuada basta. */}
+        {undoable && <span className="min-w-0 truncate text-muted-foreground">{label}</span>}
       </button>
 
       <button
@@ -81,7 +84,7 @@ export function CenterConsole({
         aria-label={t("console.passTurn", { name: nextAlive.participant.name })}
         className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-chip bg-surface-muted px-2 py-1.5"
       >
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("console.turn", { round: state.round })}
         </span>
         <span className="min-w-0 truncate font-serif text-[13px] font-semibold">

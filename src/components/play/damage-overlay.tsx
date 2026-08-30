@@ -78,28 +78,40 @@ export function DamageOverlay({
           const owner = owners.get(target.commanderId);
           const showOwner = target.label !== target.ownerName && owner !== undefined;
           return (
-            <li key={target.commanderId} className="flex items-center gap-2">
-              <span aria-hidden className={`${accent.bar} h-6 w-1 shrink-0 rounded-full`} />
-              <span className="min-w-0 flex-1 truncate text-[12px]">
-                <span className="font-semibold">{target.label}</span>
-                {showOwner && (
-                  <span className="text-muted-foreground"> · {target.ownerName}</span>
-                )}
+            // Dos líneas por fila, no una: el overlay vive dentro de un panel de
+            // media pantalla y en una sola línea el nombre quedaba en «Juga…» tras
+            // ceder sitio a los botones (visto en la primera partida real,
+            // 2026-08-30). El nombre manda en su línea; contador y botones en la
+            // suya, con 44 px de alto — son EL objetivo del gesto.
+            <li
+              key={target.commanderId}
+              className="flex flex-col gap-1 rounded-[10px] border border-border/60 px-2 py-1.5"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span aria-hidden className={`${accent.bar} h-4 w-1 shrink-0 rounded-full`} />
+                <span className="min-w-0 flex-1 break-words text-[13px] leading-tight">
+                  <span className="font-semibold">{target.label}</span>
+                  {showOwner && (
+                    <span className="text-muted-foreground"> · {target.ownerName}</span>
+                  )}
+                </span>
               </span>
-              <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
-                {target.amount}
+              <span className="flex items-center gap-1.5">
+                <span className="flex-1 pl-3 font-mono text-[13px] tabular-nums text-muted-foreground">
+                  {target.amount}
+                </span>
+                {[1, 5].map((delta) => (
+                  <button
+                    key={delta}
+                    type="button"
+                    onClick={() => onDamage(target.commanderId, delta)}
+                    aria-label={`${target.label} +${delta}`}
+                    className="tap-44 h-10 w-14 shrink-0 rounded-chip border border-border font-mono text-[13px]"
+                  >
+                    +{delta}
+                  </button>
+                ))}
               </span>
-              {[1, 5].map((delta) => (
-                <button
-                  key={delta}
-                  type="button"
-                  onClick={() => onDamage(target.commanderId, delta)}
-                  aria-label={`${target.label} +${delta}`}
-                  className="h-9 w-9 shrink-0 rounded-chip border border-border font-mono text-[12px]"
-                >
-                  +{delta}
-                </button>
-              ))}
             </li>
           );
         })}

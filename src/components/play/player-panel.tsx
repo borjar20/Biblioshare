@@ -78,7 +78,14 @@ export function PlayerPanel({
     ? lifeFontSize({ width: inner.width, height: inner.height, digits: String(Math.abs(life)).length })
     : undefined;
 
-  const background = cardBackgroundTint(player.participant.cardBackground);
+  // Sin fondo elegido, el panel se tiñe del color de SU asiento — no se queda en la
+  // superficie plana. Es lo que el setup ya enseñaba como elegido por defecto, pero
+  // el borrador solo guardaba el fondo si lo TOCABAS: con «Jugar ya» o sin tocar los
+  // swatches, cardBackground llegaba undefined y la mesa salía monocroma (bug
+  // encontrado en la primera partida real, 2026-08-30). El fallback vive aquí y no
+  // en toSetup para que también repare partidas ya guardadas.
+  const background =
+    cardBackgroundTint(player.participant.cardBackground) ?? accent.tint;
   const name = player.participant.name;
   const commanders = player.participant.commanders
     .map((commander) => commander.name?.trim())
@@ -97,7 +104,7 @@ export function PlayerPanel({
           eso el tinte va DEBAJO de todo y la barra del asiento no desaparece nunca.
           Cuando lleguen las imágenes irán aquí, siempre bajo un velo de la propia
           superficie: el número se lee por el velo, no por la suerte de la imagen. */}
-      {background && <span aria-hidden className={`absolute inset-0 ${background}`} />}
+      <span aria-hidden className={`absolute inset-0 ${background}`} />
       <div
         className="absolute left-1/2 top-1/2"
         style={{
