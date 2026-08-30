@@ -1075,15 +1075,17 @@
       "label": "lib/play",
       "layer": "domain",
       "kind": "module",
-      "size": 14,
-      "summary": "Motor puro de BiblioPlay (Partidas), dominio nuevo e independiente (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y la primera herramienta especializada, Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. Solo store.ts toca el navegador: snapshot en localStorage, aislado por identidad. Sin backend en fases 0-3 — excepción explícita a inv-passes-hub (ver meta.invariants).",
+      "size": 22,
+      "summary": "Motor puro de BiblioPlay (Partidas), dominio nuevo e independiente (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y la primera herramienta especializada, Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. En ui/ vive la lógica de la pantalla que NO es React: reparto de la mesa, tamaño del número de vidas, borrador de configuración, memoria de la última mesa y preferencias de vista. Solo store.ts, ui/preferences.ts y ui/table-memory.ts tocan el navegador (localStorage, con guardas); el log va aislado por identidad. Sin backend en fases 0-3 — excepción explícita a inv-passes-hub (ver meta.invariants).",
       "files": [
         "src/lib/play/tools.ts",
         "src/lib/play/core/log.ts",
-        "src/lib/play/core/replay.ts",
         "src/lib/play/core/store.ts",
         "src/lib/play/mtg/reducer.ts",
-        "src/lib/play/mtg/selectors.ts"
+        "src/lib/play/mtg/rules.ts",
+        "src/lib/play/ui/layout.ts",
+        "src/lib/play/ui/setup-draft.ts",
+        "src/lib/play/ui/table-memory.ts"
       ]
     },
     {
@@ -1375,6 +1377,36 @@
       "layer": "external",
       "kind": "external",
       "summary": "Servicio de push del navegador; el sw recibe el evento y pinta la notificación del SO."
+    },
+    {
+      "id": "c-play",
+      "label": "components/play",
+      "layer": "ui",
+      "kind": "ui",
+      "summary": "UI de Partidas: hubs, configuración, tablero a pantalla completa (paneles, overlay de daño, consola), las dos hojas y el resumen. Resuelve la herramienta por toolId contra tool-views.tsx, hermano del registro de dominio. Toda la lógica con criterio vive en lib/play/ui.",
+      "files": [
+        "src/components/play"
+      ]
+    },
+    {
+      "id": "r-partidas",
+      "label": "/partidas",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Hub de Partidas, hub por herramienta (/partidas/mtg) y configuración de partida. Accesible sin sesión.",
+      "files": [
+        "src/app/partidas"
+      ]
+    },
+    {
+      "id": "r-partida",
+      "label": "/partida/activa",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Tablero de la partida en curso y resumen final. Única pantalla sin topbar ni barra de cinco (ChromeGate).",
+      "files": [
+        "src/app/partida"
+      ]
     }
   ],
   "edges": [
@@ -2297,6 +2329,21 @@
     {
       "from": "c-clubs",
       "to": "m-clubs",
+      "kind": "calls"
+    },
+    {
+      "from": "r-partidas",
+      "to": "c-play",
+      "kind": "renders"
+    },
+    {
+      "from": "r-partida",
+      "to": "c-play",
+      "kind": "renders"
+    },
+    {
+      "from": "c-play",
+      "to": "m-play",
       "kind": "calls"
     }
   ],

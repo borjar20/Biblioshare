@@ -2992,3 +2992,47 @@ máximo** — sumar es falso, y enseñar solo el peor esconde a los que se acerc
 `cardBackground` entra en el participante como **referencia** (id de tinte, y en el
 futuro una URL), nunca bytes: un data-URI acabaría en el log de eventos y en el
 snapshot de `localStorage` (issue #942).
+
+## 2026-08-30 — El tablero se come el marco, y eso obliga a declarar el prerender (#931)
+
+**Mecanismo, no estilo.** `/partida/activa` es la unica pantalla de Biblioshare sin topbar ni barra
+de cinco: la mesa ocupa el dispositivo entero, y ese corte es lo que separa «configurar» de «jugar».
+Lo decide `isFullscreenRoute(pathname)` (`src/components/nav/fullscreen-routes.ts`) y lo aplica un
+componente cliente, `ChromeGate`, que envuelve las dos piezas de sesion del armazon —`Header` es de
+servidor y no puede mirar la ruta por su cuenta—. La comprobacion vive **tambien** dentro de
+`BottomNav`: el gate quita el arbol desde el armazon, y la copia deja el componente correcto aunque
+alguien lo monte por su lado. Ojo con el prefijo: `/partidas` (los hubs) comparte las ocho primeras
+letras con `/partida` y un `startsWith` a secas dejaria los hubs sin navegacion (hay test).
+
+**Consecuencia que no se veia venir:** `/partidas` es la primera ruta del repo cuyo armazon llega a
+prerenderarse de verdad, y ahi el chequeo de expiracion del token de Supabase —un `Date.now()` dentro
+de `getCurrentUser`— aborta la ruta con «unstable value `Date.now()` while prerendering». Por eso
+`app-shell.tsx` llama a `await connection()` antes de leer la sesion: declara ese subarbol como de
+peticion. **No saca a nadie del shell estatico** —topbar y barra inferior ya viven bajo su
+`<Suspense>` justo para eso (#435)— y no se ve en `/clubes` ni en `/buscar` porque esas paginas
+son dinamicas enteras.
+
+Regla que se deriva, y que costara tiempo a quien la ignore: **con Cache Components, leer la sesion o
+`searchParams` en el cuerpo de una pagina saca la ruta entera del prerender.** El `?modo=` del hub
+de Magic lo lee la ISLA con `useSearchParams`, no la pagina, por lo mismo.
+
+## 2026-08-30 (2) — Dos cosas del canvas de la fase 1a que la implementacion movio de sitio (#931)
+
+**Ambas por el mismo motivo: el contrato de eventos no las expresa.**
+
+1. **El fondo de la tarjeta se elige en la CONFIGURACION, no en la hoja del jugador.** El canvas lo
+   ponia en la hoja, pero `cardBackground` viaja dentro de `game_started` y no hay evento que
+   cambie los datos de un participante con la partida empezada (issue #943). En la hoja solo podia
+   salir apagado, y un control apagado que nadie sabe por que lo esta es peor que no tenerlo. Sigue
+   siendo una REFERENCIA (`seat-1`..`seat-6`), nunca bytes: un data-URI acabaria en el log de
+   eventos y en el snapshot de `localStorage` (#942). El panel lo pinta debajo de todo, para que la
+   barra del asiento —que es del sistema, no del jugador— no desaparezca nunca.
+2. **El resumen final NO celebra todavia.** `CelebrationEvent` es una union cerrada de cuatro
+   eventos y sus tres alcances (`day`, `milestone`, `ever`) **deduplican**: respaldan una
+   restriccion UNIQUE por usuario y clave. Ganar una partida se celebra TODAS las veces, asi que no
+   cabe sin un alcance nuevo o una via solo-cliente. Es una decision del sistema de celebraciones, no
+   un detalle de esa pantalla.
+
+**Y una regla de UI que salio de un bug real:** las mitades tactiles de ±1 estan posicionadas, y en CSS
+un elemento posicionado pinta por ENCIMA de los que estan en flujo aunque vayan antes en el DOM. Por eso
+la botonera de veneno y comandante lleva `relative`: sin ella, tocar «veneno» sumaba vida.

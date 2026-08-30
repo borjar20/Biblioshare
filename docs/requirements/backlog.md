@@ -314,7 +314,8 @@ es rastreable por `area:catalogo`.
 - Offline-first con escritura; IGDB/videojuegos como cuarto tipo.
 
 **Partidas (play)**
-- [ ] BiblioPlay (dominio `play`): motor de eventos + prototipo Commander local-first — EPIC #931, spec `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md`
+- [x] BiblioPlay fase 1 (dominio `play`): motor de eventos, store local-first y UI de Magic — partida de 2 a 6 jugadores jugable sin cuenta y sin red. EPIC #931, spec `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md` (fases 0–2) y plan `docs/superpowers/plans/2026-08-30-play-ui-fase-1.md` (UI). Lo vigente del contrato está en `decisiones.md` 2026-08-29 (6)–(8) y 2026-08-30.
+- [ ] BiblioPlay fases 3+: historial de partidas, backend y jugadores habituales.
 
 ## Deuda transversal priorizada por la auditoría 2026-08
 
