@@ -1,4 +1,5 @@
 import { Suspense, type ReactNode } from "react";
+import { connection } from "next/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getUnreadCount } from "@/lib/social/notifications";
@@ -50,6 +51,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 // así que sin la condición de onboarded se le pintaría la barra de navegación
 // ENCIMA del asistente. Ambas barras derivan showNav de aquí para no divergir.
 async function readChromeIdentity() {
+  // `connection()` declara este subárbol como de PETICIÓN antes de tocar la sesión.
+  // Sin él, en una ruta cuyo armazón SÍ llega a prerenderarse (la primera fue
+  // /partidas, #931) el chequeo de expiración del token de Supabase —un `Date.now()`
+  // dentro de `getCurrentUser`— aborta la ruta con «unstable value Date.now() while
+  // prerendering». No saca a nadie del shell estático: topbar y barra inferior ya
+  // viven cada una bajo su `<Suspense>` justo para eso (#435).
+  await connection();
   const user = await getCurrentUser();
   if (!user) {
     return { user: null, username: null as string | null, avatarUrl: null as string | null, showNav: false };

@@ -44,15 +44,24 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
 | **Tu cuenta** | Mi cuenta, Tú (como etiqueta visible) | El **agrupador** de lo tuyo (perfil, Cuaderno, Estadísticas, Ajustes). Es el nombre del menú del avatar; en el código el concepto se llama «Tú» (`youItems`), pero al usuario no se le enseña esa palabra suelta. | menú del avatar (`sm+`), fila «Lo tuyo» del perfil (móvil) |
 | **Partida** | Juego | Una sesión de juego concreta; la unidad principal del dominio. | dominio `play`, `/partidas` |
-| **Herramienta** | Tracker, Módulo | Cada tracker del hub de Partidas (Commander, puntuación por rondas…). | `/partidas` (hub principal) |
+| **Herramienta** | Tracker, Módulo | Cada tracker del hub de Partidas, y es el **juego**, no el modo: «Magic: The Gathering», no «Commander». Nadie se pregunta «¿tendrá Commander?», se pregunta «¿tendrá Magic?». | `/partidas` (hub principal) |
 | **Jugador** | Usuario, Participante | Quien participa en una partida, sea cuenta Biblioshare, habitual o invitado; su origen no se distingue durante la partida. | dominio `play` |
 | **Invitado** | — | Jugador temporal que no persiste tras la partida. | dominio `play` |
 | **Jugador habitual** | Contacto, Amigo | Persona sin cuenta que acumula historial; vinculable a una cuenta solo manualmente (nunca por nombre). | dominio `play` |
-| **Comandante** | — | Carta comandante de un mazo en Commander; texto libre, sin catálogo. | herramienta Commander (`/partidas/commander`) |
-| **Daño de comandante** | — | Daño acumulado que un comandante concreto ha hecho a un jugador (21 = condición de derrota). | herramienta Commander |
-| **Veneno** | — | Contadores de veneno (10 = condición de derrota). | herramienta Commander |
-| **Monarca** / **Iniciativa** | — | Estados globales de mesa con un único poseedor. | herramienta Commander |
-| **Ronda** | Turno (como conteo) | Vuelta completa de turnos; es el número que la UI muestra como «Turno N». | herramienta Commander |
+| **Modo** | Variante, Formato | Cada forma de jugar dentro de una herramienta (Commander, Duelo). La herramienta es el JUEGO; el modo aporta configuración —vidas, si hay daño de comandante—, no un motor nuevo. | `/partidas/mtg`, `mtg/modes.ts` |
+| **Mesa** | Tablero, Partida (como sitio) | El conjunto de jugadores de una partida y su disposición en pantalla. «La mesa decide» = las personas, no la app. | `/partida/activa` |
+| **Asiento** | Posición, Puesto, Slot | El sitio de un jugador en la mesa. Su orden **es** el orden de turnos y da el color con el que se le reconoce. | `setup.participants` (el orden) |
+| **Reparto** | Layout, Distribución, Disposición | Cómo se colocan los asientos en pantalla: en filas, con cabecera o todos igual. Es preferencia de vista, no estado de partida. | hoja de partida, `ui/layout.ts` |
+| **Mazo** | Baraja, Deck | El mazo con el que juega alguien; texto libre, sin catálogo de cartas. | `participant.deckName` |
+| **Comandante** | — | Carta comandante de un mazo; texto libre, sin catálogo. Un asiento lleva uno o dos. | herramienta Magic (`/partidas/mtg`) |
+| **Partner** | Compañero, Segundo comandante | El segundo comandante de un asiento. En la interfaz es «añadir comandante», no un campo aparte: el mismo hueco sirve para partner, background y companion. | ficha del jugador |
+| **Daño de comandante** | — | Daño acumulado que un comandante **concreto** ha hecho a un jugador (21 de uno mismo = condición de derrota). Nunca se suma entre comandantes. | herramienta Magic |
+| **Veneno** | — | Contadores de veneno (10 = condición de derrota). | herramienta Magic |
+| **Monarca** / **Iniciativa** | — | Estados globales de mesa con un único poseedor. | herramienta Magic |
+| **Ronda** | Turno (como conteo) | Vuelta completa de turnos; es el número que la UI muestra como «Turno N». | herramienta Magic |
+| **Eliminado** | Muerto, Fuera, Perdedor | Quien ya no juega. La app **avisa** de que se cumple una condición de derrota, pero eliminar siempre lo decide la mesa. | panel de jugador, hoja de jugador |
+| **Consola** | Barra, Controles, HUD | La franja central con deshacer, turno, crono y menú. Se lee desde cualquier lado de la mesa. | `/partida/activa` |
+| **Revancha** | Repetir, Otra vez, Rematch | Empezar otra partida con la mesa ya puesta y el turno inicial rotado un asiento. Pasa por la configuración, no arranca sola. | resumen final |
 
 ## Reglas de escritura que se derivan
 

@@ -444,6 +444,23 @@ export function PlayIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/**
+ * Partidas (BiblioPlay, #931). No reutiliza `PlayIcon`: ese triángulo es
+ * «reproducir» en las notas de voz, siempre emparejado con `PauseIcon`, y el
+ * mismo glifo con dos significados a un clic de distancia es lo que el glosario
+ * existe para evitar. Un dado dice «juego» sin ambigüedad.
+ */
+export function DiceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <circle cx="8.5" cy="8.5" r="1.35" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.35" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.35" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function PauseIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" {...props}>

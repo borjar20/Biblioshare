@@ -24,7 +24,8 @@
       "notes": "Cuaderno",
       "stats": "Estadísticas",
       "settings": "Ajustes",
-      "rowLabel": "Lo tuyo"
+      "rowLabel": "Lo tuyo",
+      "play": "Partidas"
     }
   },
   "auth": {
@@ -562,7 +563,7 @@
       "metaPages": "{count} pág."
     },
     "filters": {
-        "label": "Filtrar el feed",
+      "label": "Filtrar el feed",
       "all": "Todo",
       "reviews": "Reseñas",
       "books": "Libros",
@@ -2578,5 +2579,156 @@
     "sorteoCtaDone": "✓ En curso",
     "sorteoCtaError": "No se pudo empezar. Ábrelo desde su ficha.",
     "sorteoGoToItem": "Ver ficha"
+  },
+  "play": {
+    "hubTitle": "Partidas",
+    "hubSubtitle": "Lleva la cuenta de lo que juegas en la mesa",
+    "soon": "Pronto",
+    "soonTool": "Más herramientas",
+    "soonToolDetail": "Puntuación por rondas, dados… próximamente",
+    "resume": "Seguir",
+    "activeGame": "Partida en curso",
+    "turnOf": "Turno {round} · {name}",
+    "tools": {
+      "mtg": {
+        "name": "Magic: The Gathering",
+        "hubTitle": "Magic",
+        "modesTitle": "Modo",
+        "moreModes": "Más modos",
+        "moreModesDetail": "Brawl, Dos cabezas… próximamente",
+        "footnote": "Avisa cuando alguien cumple una condición de derrota, pero no elimina a nadie: la mesa decide.",
+        "newGame": "Nueva partida de {mode}",
+        "lifeUnit": "vidas",
+        "modes": {
+          "commander": {
+            "name": "Commander",
+            "detail": "2–6 · daño de comandante"
+          },
+          "duel": {
+            "name": "Duelo",
+            "detail": "1 vs 1 · sin comandante"
+          }
+        }
+      }
+    },
+    "setup": {
+      "title": "Nueva partida",
+      "modeAndLife": "{mode} · {life} vidas",
+      "table": "En la mesa",
+      "players": "Jugadores",
+      "playerN": "Jugador {n}",
+      "noDeck": "Sin mazo",
+      "noCommander": "Sin comandante",
+      "commander": "Comandante",
+      "commanderN": "Comandante {n}",
+      "addCommander": "Añadir comandante",
+      "removeCommander": "Quitar comandante",
+      "deck": "Mazo",
+      "name": "Nombre",
+      "edit": "Editar {name}",
+      "background": "Fondo de la tarjeta",
+      "advanced": "Personalizar",
+      "advancedSummary": "{life} vidas · empieza {name}",
+      "startingLife": "Vidas iniciales",
+      "startingSeat": "Quién empieza",
+      "start": "Empezar",
+      "emptyIsFine": "Puedes empezar sin escribir nada: los nombres son opcionales.",
+      "rematchSeat": "Ahora empieza {name}, un asiento más allá."
+    },
+    "board": {
+      "life": "Vidas de {name}",
+      "plusOne": "Sumar una vida a {name}",
+      "minusOne": "Quitar una vida a {name}",
+      "openSheet": "Acciones de {name}",
+      "poison": "Veneno de {name}: {count}",
+      "commanderDamage": "Daño de comandante de {name}",
+      "damageTitle": "Daño de comandante",
+      "noDamage": "sin daño",
+      "more": "+{count}",
+      "monarch": "Monarca",
+      "initiative": "Iniciativa",
+      "eliminated": "Eliminado",
+      "close": "Cerrar",
+      "setLife": "Fijar las vidas de {name}",
+      "lastEvent": "Último movimiento: {event}"
+    },
+    "console": {
+      "undo": "Deshacer: {event}",
+      "nothingToUndo": "Nada que deshacer",
+      "passTurn": "Pasar el turno a {name}",
+      "turn": "Turno {round}",
+      "elapsed": "Tiempo de partida: {time}",
+      "menu": "Acciones de la partida"
+    },
+    "playerSheet": {
+      "caption": "Asiento {seat} · {life} vidas",
+      "setLife": "Fijar vidas exactas",
+      "giveMonarch": "Darle el monarca",
+      "giveInitiative": "Darle la iniciativa",
+      "background": "Fondo de la tarjeta",
+      "declareWinner": "Gana la partida",
+      "markEliminated": "Marcar como eliminado",
+      "restore": "Devolver a la partida",
+      "nobody": "nadie"
+    },
+    "gameSheet": {
+      "title": "La partida",
+      "caption": "{mode} · {time}",
+      "sectionTurn": "Turno",
+      "sectionGame": "Partida",
+      "rotate": "Girar la mesa",
+      "layout": "Repartir la mesa",
+      "layoutAuto": "Automático",
+      "layoutRows": "En filas",
+      "layoutHead": "Cabecera",
+      "layoutFlat": "Todos igual",
+      "keepAwake": "Mantener la pantalla encendida",
+      "finish": "Finalizar la partida",
+      "discard": "Descartar la partida",
+      "discardConfirm": "Se borra la partida entera. ¿Seguro?",
+      "orientationPortrait": "vertical",
+      "orientationLandscape": "horizontal",
+      "yes": "sí",
+      "no": "no"
+    },
+    "summary": {
+      "title": "Fin de la partida",
+      "winner": "Gana {name}",
+      "noWinner": "Partida terminada",
+      "reason": {
+        "last_standing": "Último en pie",
+        "card": "Por una carta",
+        "time": "Por tiempo",
+        "abandoned": "Abandonada"
+      },
+      "ranking": "Clasificación",
+      "position": "{position}.º",
+      "duration": "Duración",
+      "turns": "Turnos",
+      "rematch": "Revancha",
+      "discard": "Descartar"
+    },
+    "log": {
+      "started": "Empieza la partida",
+      "lifeGained": "{name} +{amount} vida",
+      "lifeLost": "{name} −{amount} vida",
+      "commanderDamage": "{source} → {target} +{amount}",
+      "commanderDamageHealed": "{source} → {target} −{amount}",
+      "poisonGained": "{name} +{amount} veneno",
+      "poisonHealed": "{name} −{amount} veneno",
+      "turnPassed": "Turno {round}",
+      "monarch": "Monarca: {name}",
+      "monarchCleared": "Sin monarca",
+      "initiative": "Iniciativa: {name}",
+      "initiativeCleared": "Sin iniciativa",
+      "eliminated": "{name} eliminado",
+      "restored": "{name} vuelve a la partida",
+      "finished": "Fin de la partida",
+      "unknown": "Acción"
+    },
+    "empty": {
+      "noActiveGame": "No hay ninguna partida en curso",
+      "goToHub": "Ir a Partidas"
+    }
   }
 }
