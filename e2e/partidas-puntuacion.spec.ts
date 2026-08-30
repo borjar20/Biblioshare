@@ -103,11 +103,15 @@ test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloqu
   await page.goto("/partidas/puntuacion");
   await page.getByRole("button", { name: /a x puntos/i }).click();
   await page.getByRole("link", { name: /^configurar la mesa$/i }).click();
-  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos$/);
+  // El chooser arrastra jugadores y N por query (revisión 2026-08-31).
+  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos&jugadores=4&n=100$/);
 
   // El preset prefija 100; se cambia a 20 para que dos rondas basten para
   // alcanzarlo (spec §5: el preset SOLO prefija, se puede tocar).
-  await page.getByLabel("Valor del límite").fill("20");
+  // `filter({ visible: true })`: el input del chooser sigue en el DOM de la
+  // ruta anterior (la isla se congela en navegación soft) con el mismo
+  // aria-label — sin el filtro el locator resuelve a dos.
+  await page.getByLabel("Valor del límite").filter({ visible: true }).fill("20");
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
   await expect(page.getByRole("button", { name: /^añadir ronda$/i })).toBeVisible();
@@ -131,4 +135,30 @@ test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloqu
   // Finalizar desde el botón de la propia banda.
   await page.getByRole("button", { name: "Finalizar", exact: true }).click();
   await expect(page.getByRole("heading", { name: /gana jugador 1/i })).toBeVisible();
+});
+
+test("reconfigurar desde dentro: la mesa llega prefijada y Empezar reinicia", async ({ page }) => {
+  await page.goto("/partidas/puntuacion/nueva?preset=libre");
+  await page.getByRole("button", { name: /^empezar$/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
+  await nuevaRonda(page, [5, 3, 2, 1]);
+  await expect(totalDe(page, 0)).toHaveText("5");
+
+  // Hoja de partida → Reconfigurar: entra en la configuración SIN descartar.
+  await page.getByRole("button", { name: /acciones de la partida/i }).click();
+  await page.getByRole("button", { name: /reconfigurar la mesa/i }).click();
+  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?reconfigurar=1$/);
+  // La mesa llega PUESTA: el nombre materializado al arrancar («Jugador 1»)
+  // viene como VALOR del campo, no como placeholder — eso es el prefill.
+  await expect(page.getByLabel("Nombre").first()).toHaveValue("Jugador 1");
+
+  // Corregir un fallo (el nombre) y reiniciar.
+  await page.getByLabel("Nombre").first().fill("Anna");
+  await page.getByRole("button", { name: /^empezar$/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
+  // Partida NUEVA: sin rondas (el total vuelve a 0) y con el nombre corregido.
+  // exact: el DOM congelado de la ruta anterior lista los nombres en su summary.
+  await expect(page.getByText("Anna", { exact: true })).toBeVisible();
+  await expect(totalDe(page, 0)).toHaveText("0");
+  await expect(page.getByRole("button", { name: "Editar ronda 1" })).toHaveCount(0);
 });

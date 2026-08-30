@@ -10,6 +10,16 @@ export function totals(state: ScoreState): number[] {
   return out;
 }
 
+/**
+ * Total acumulado tras CADA ronda, por asiento: `runningTotals(s)[i][seat]` es
+ * lo que ese jugador sumaba al cerrar la ronda i. Es la serie del gráfico de
+ * evolución del tablero — derivada, nunca almacenada, como todos los totales.
+ */
+export function runningTotals(state: ScoreState): number[][] {
+  const acc = state.setup.participants.map(() => 0);
+  return state.rounds.map((round) => round.map((value, seat) => (acc[seat] += value)));
+}
+
 // Empate comparte posición y la siguiente salta (1,1,3): mismo criterio que
 // finalRanking de mtg. El "mejor" lo decide direction.
 export function scoreRanking(state: ScoreState): { seat: number; total: number; position: number }[] {
