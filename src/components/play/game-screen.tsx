@@ -16,7 +16,13 @@ import { buttonVariants } from "@/components/ui/button";
  */
 export function GameScreen({ identity }: { identity: string }) {
   const t = useTranslations("play");
-  const { game, store } = useActiveGame(identity);
+  const { snapshot, game, store } = useActiveGame(identity);
+
+  // Hidratando: fieltro vacío, sin mensaje. Pintar «no hay partida» aquí un
+  // frame antes de saberlo es el parpadeo que la spec fase 3 §3 prohíbe.
+  if (snapshot.status === "loading") {
+    return <div className="h-dvh w-full bg-play-felt" />;
+  }
 
   if (!game) {
     return (

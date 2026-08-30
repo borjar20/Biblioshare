@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
-import { getPlayStore } from "@/lib/play/core/store";
+import { useActiveGame } from "@/lib/play/core/use-active-game";
 import { rememberTable, rotateStartingSeat } from "@/lib/play/ui/table-memory";
 import { seatAccent } from "@/lib/play/ui/seats";
 import { buttonVariants } from "@/components/ui/button";
@@ -28,15 +28,18 @@ export function RememberedTableCard({ identity }: { identity: string }) {
   const t = useTranslations("play");
   const router = useRouter();
   const remembered = useRememberedTable(identity);
+  const { snapshot, store } = useActiveGame(identity);
   if (!remembered) return null;
 
   const rotated = rotateStartingSeat(remembered);
 
   function play() {
     if (!remembered) return;
-    const store = getPlayStore(identity);
+    // Con el store hidratando no se arranca: podría pisar una activa aún no
+    // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
+    if (snapshot.status === "loading") return;
     // Mismo contrato que cualquier arranque: empezar ES pedir sustituir la activa.
-    if (store.getSnapshot()) store.discard();
+    if (snapshot.game) store.discard();
     const setup = rotateStartingSeat(remembered);
     if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
       return;
@@ -75,6 +78,7 @@ export function RememberedTableCard({ identity }: { identity: string }) {
         <button
           type="button"
           onClick={play}
+          disabled={snapshot.status === "loading"}
           className={buttonVariants("primary", "w-full justify-center py-2.5")}
         >
           {t("rememberedTable.play")}
