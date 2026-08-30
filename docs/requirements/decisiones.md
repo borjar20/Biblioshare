@@ -3209,3 +3209,26 @@ pasadas) ahora se apoya en `parseLog`, que valida forma, sella la ráfaga
 pasada (cierra #936). Evita el caso en que una forma válida pero una semántica
 inconsistente (evento que el reducer rechaza) se detectara tarde, en un segundo
 paso separado del parseo.
+
+## 2026-08-30 (11) — La cola de escrituras de Play solo ejecuta lo que sigue vigente
+
+Una tarea encolada en `writeChain` (src/lib/play/core/store.ts, `persistCurrent`) se
+serializa al encolarse pero se ejecuta más tarde; entre medias puede haber pasado un
+commit local posterior o una adopción por CAS/espejo. Decisión: **la tarea comprueba al
+ejecutarse que el estado que serializó sigue siendo el vigente** (`snapshot !== current`
+→ se salta). Consecuencias deliberadas:
+
+- Una escritura intermedia superada por un commit local posterior NO se ejecuta: la
+  siguiente lleva el log completo (superset), así que la BD alcanza el estado actual
+  antes y la ventana de crash se estrecha.
+- Tras perder un CAS y adoptar el registro ganador, las escrituras rancias que quedaban
+  en cola NO resucitan en la BD un estado que la memoria ya no muestra. Invariante que
+  se gana: **la BD nunca contradice la memoria local**.
+- Coste asumido: una escritura intermedia saltada ya no detecta su conflicto entre
+  pestañas; lo detecta la final. Sigue dentro del sobre «winner takes all» documentado
+  en los tests del espejo.
+
+Verificado en la re-review final de fase 3: toda mutación de `rev`/`snapshot` o bien
+encola su propia persistencia de reemplazo detrás de la tarea saltada (misma FIFO), o
+es una adopción tras la cual la BD ya coincide — no existe camino que invalide una
+tarea sin dejar reemplazo. Origen: review final de la rama de fase 3 (PR #957/#958).

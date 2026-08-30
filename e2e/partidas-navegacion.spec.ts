@@ -1,15 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { waitForActiveRecord } from "./support/play-db";
 
-// BiblioPlay, fase 1 (#931). Sin backend: la partida vive en localStorage, así que
-// no hay maquinaria REST que limpiar (spec §8) — y tampoco hace falta limpiar el
-// storage: Playwright da un contexto nuevo por test, así que cada uno empieza con el
-// almacenamiento vacío.
+// BiblioPlay (#931). Sin backend: desde fase 3 la partida vive en IndexedDB (BD
+// `biblioshare-play`, almacén `active`), no en localStorage, así que no hay
+// maquinaria REST que limpiar (spec §8) — y tampoco hace falta limpiar el
+// almacenamiento: Playwright da un contexto nuevo por test, así que cada uno empieza
+// con la BD vacía.
 //
-// Aquí HUBO un `addInitScript` que borraba las claves `biblioshare:play*`, y era un
-// bug: ese script corre en CADA navegación, así que al pasar de la configuración al
-// tablero se llevaba por delante la partida que se acababa de crear, y los tests
-// fallaban acusando al código.
+// Aquí HUBO un `addInitScript` que borraba las claves `biblioshare:play*` de
+// localStorage (el storage de fase 1), y era un bug: ese script corre en CADA
+// navegación, así que al pasar de la configuración al tablero se llevaba por delante
+// la partida que se acababa de crear, y los tests fallaban acusando al código.
 
 test("anónimo llega a Partidas y puede empezar una partida sin cuenta", async ({ page }) => {
   // No hace falta cuenta para jugar (decisión 2026-08-29 (3)): ni redirección a

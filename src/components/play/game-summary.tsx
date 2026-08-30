@@ -24,8 +24,10 @@ import { buttonVariants } from "@/components/ui/button";
  *    resumen sigue ahí; la partida vieja se sustituye cuando la nueva arranca de
  *    verdad, que es lo que exige la regla de una sola partida activa.
  *
- * Guardar el historial llega en la fase 5 y NO se pinta deshabilitado: un botón
- * apagado que nadie sabe por qué está apagado es peor que no tenerlo.
+ * Guardar existe desde la fase 3: `store.save()` sella la partida terminada en el
+ * almacén local `saved` (IndexedDB) y limpia la activa. Es solo local — no hay
+ * sincronización con el servidor. La LISTA de partidas guardadas es fase 7; hasta
+ * entonces, guardar no tiene dónde consultarse todavía.
  */
 export function GameSummary({ game, store }: { game: ActiveGame; store: PlayStore }) {
   const t = useTranslations("play");
@@ -104,6 +106,18 @@ export function GameSummary({ game, store }: { game: ActiveGame; store: PlayStor
         >
           {t("summary.rematch")}
         </button>
+        <button
+          type="button"
+          onClick={async () => {
+            // Si el guardado falla (BD indisponible), la activa NO se toca y nos
+            // quedamos en el resumen: no se pierde una partida por un fallo de disco.
+            if (await store.save()) router.push("/partidas");
+          }}
+          className={buttonVariants("secondary", "w-full justify-center py-2.5 text-[14px]")}
+        >
+          {t("summary.save")}
+        </button>
+        <p className="text-center text-[11px] text-muted-foreground">{t("summary.saveHint")}</p>
         <button
           type="button"
           onClick={() => {

@@ -3,7 +3,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeEvent } from "./events";
 import { BURST_WINDOW_MS } from "./log";
-import { __resetDbForTests, readActive } from "./db";
+import { __resetDbForTests, readActive, writeActive, type ActiveGameRecord } from "./db";
 import {
   getPlayStore,
   parseSnapshot,
@@ -535,6 +535,172 @@ describe("hidratación asíncrona (fase 3)", () => {
     const store = __createPlayStoreForTests("anon");
     await ready(store);
     store.destroy(); // no debe lanzar; listeners y canal quedan retirados
+  });
+});
+
+describe("espejo entre pestañas (#932)", () => {
+  // Verificado aparte (no committeado): en este entorno (vitest + node,
+  // incluso con setTimeout/setInterval mockeados como en el beforeEach de
+  // arriba) el BroadcastChannel global de Node SÍ entrega mensajes entre dos
+  // instancias del mismo nombre — su entrega no pasa por los timers que
+  // fakeamos, igual que fake-indexeddb (nota del beforeEach). Los tres tests
+  // de abajo cubren el espejo real, no solo el CAS aislado.
+  it("un commit en una pestaña aparece en la otra", async () => {
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      expect(a.start(started(1000))).toBe(true);
+      // Deja aterrizar la escritura de `a` antes de esperar el espejo: si no,
+      // vi.waitFor de abajo también vale (reintenta), pero drenar primero
+      // hace la carrera determinista en vez de depender solo del polling.
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        const snapshot = b.getSnapshot();
+        if (snapshot.status !== "ready" || snapshot.game === null) throw new Error("sin espejo");
+      });
+      expect(b.getSnapshot().game?.log.committed).toEqual([started(1000)]);
+    } finally {
+      // Drena ANTES de destruir: un destroy() con una lectura de espejo o una
+      // escritura propia todavía en vuelo dejaría esa promesa corriendo sola
+      // hasta el siguiente test (aviso del brief sobre cross-talk).
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+
+  it("descartar en una pestaña limpia la otra", async () => {
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      a.start(started(1000));
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        if (b.getSnapshot().game === null) throw new Error("sin espejo");
+      });
+      a.discard();
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        if (b.getSnapshot().game !== null) throw new Error("sigue viva");
+      });
+    } finally {
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+
+  it("el CAS impide que una escritura vieja pise una nueva", async () => {
+    // Directo contra db.ts con dos revs, ya cubierto en db.test.ts — aquí el
+    // caso integrado: dos stores commitean; el que pierde adopta al ganador.
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      a.start(started(1000));
+      await a.__drainWritesForTests();
+      await vi.waitFor(() => {
+        if (b.getSnapshot().game === null) throw new Error("sin espejo");
+      });
+      // Ambos despachan «a la vez»: ambos commitean en memoria de forma
+      // síncrona e independiente (rev local 1 -> 2 en cada uno) antes de que
+      // ninguna de las dos escrituras haya tocado la BD todavía — la carrera
+      // real que el CAS de writeActive (db.ts) tiene que resolver.
+      a.dispatch(life(2000, "ana", -1));
+      b.dispatch(life(2001, "ana", -2));
+      // OJO: justo tras los dos dispatch(), ga.log.committed.length YA vale 2
+      // en ambos — cada uno commiteó en memoria de forma síncrona, antes de
+      // que ninguna escritura haya tocado la BD. Comparar solo longitudes
+      // aquí daría un verde falso en el primer tick del waitFor, sin haber
+      // esperado a que el CAS real (db.ts) resuelva nada. Se compara el id
+      // del ÚLTIMO evento: mientras cada uno se quede con SU propio dispatch
+      // los ids difieren; solo coinciden cuando el perdedor de verdad adoptó
+      // el registro del ganador.
+      await vi.waitFor(() => {
+        const ga = a.getSnapshot().game;
+        const gb = b.getSnapshot().game;
+        if (!ga || !gb) throw new Error("perdida");
+        const lastA = ga.log.committed.at(-1)?.id;
+        const lastB = gb.log.committed.at(-1)?.id;
+        if (lastA !== lastB) throw new Error("divergen");
+      });
+      // El que pierde el CAS no se queda con un log corrupto ni a medias:
+      // adopta el log completo del ganador (winner-takes-all, comportamiento
+      // aceptado — no arregla la jugada perdida, la sustituye entera).
+      expect(a.getSnapshot().game?.log.committed).toEqual(b.getSnapshot().game?.log.committed);
+    } finally {
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+
+  it("una escritura ya encolada no resucita tras adoptar el registro de otra pestaña (#931)", async () => {
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      expect(a.start(started(1000))).toBe(true);
+      await a.__drainWritesForTests();
+
+      // La OTRA pestaña deja su rev 2 en la BD. Se escribe por db.ts en lugar
+      // de por un segundo store a propósito: así el aterrizaje es
+      // DETERMINISTA. Si dos stores compitieran por el mismo rev, quién gana
+      // el CAS lo decidiría el orden real de las transacciones y este test
+      // pasaría o no según el día — justo lo que no debe hacer un test de una
+      // carrera. Y tampoco publica por el canal, que es el caso interesante:
+      // el aviso del espejo puede llegar tarde o no llegar, y entonces la
+      // única defensa que queda es el CAS.
+      const ajeno: ActiveGameRecord = {
+        identity: "anon",
+        v: SNAPSHOT_VERSION,
+        committed: [started(1000), life(1500, "ana", -7)],
+        pending: null,
+        rev: 2,
+      };
+      expect(await writeActive(ajeno)).toEqual({ ok: true });
+
+      // `a` commitea DOS veces seguidas: deja encoladas de golpe la rev 2 y la
+      // rev 3. La rev 2 choca con la del ajeno; el bug era que la rev 3 —
+      // encolada ANTES de saberlo, con su registro ya capturado— se ejecutaba
+      // igual, ganaba el CAS (3 > 2) y dejaba en la BD una partida que la
+      // memoria de `a` ya no mostraba.
+      expect(a.dispatch(life(2000, "ana", -1))).toBe(true);
+      expect(a.dispatch(life(2001, "ana", -2))).toBe(true);
+      await a.__drainWritesForTests();
+      await a.__drainWritesForTests(); // una adopción puede encolar más trabajo
+
+      // Lo que se afirma NO es quién gana (winner-takes-all sigue siendo el
+      // comportamiento aceptado, y con el arreglo la escritura intermedia ni
+      // siquiera llega a ejecutarse): lo que no puede pasar es que la BD y la
+      // memoria cuenten partidas distintas.
+      const enMemoria = a.getSnapshot().game?.log.committed;
+      expect(enMemoria).toBeDefined();
+      const record = await readActive("anon");
+      expect(record).not.toBeNull();
+      expect(record?.committed).toEqual(enMemoria);
+      // Y la otra pestaña acaba en lo mismo por el espejo.
+      await vi.waitFor(() => {
+        const gb = b.getSnapshot().game;
+        if (!gb) throw new Error("sin partida");
+        if (gb.log.committed.at(-1)?.id !== enMemoria?.at(-1)?.id) throw new Error("divergen");
+      });
+      expect(b.getSnapshot().game?.log.committed).toEqual(enMemoria);
+    } finally {
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
   });
 });
 

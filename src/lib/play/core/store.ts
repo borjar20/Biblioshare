@@ -180,16 +180,38 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
     const current = snapshot;
     if (current.status !== "ready") return;
     const currentRev = rev;
+    // Invariante de la cola (#931): una escritura encolada solo se EJECUTA si
+    // el estado que serializó sigue siendo el estado del store. Entre encolar
+    // y correr pasa tiempo, y pueden haber cambiado dos cosas:
+    //
+    //  - Commiteamos otra vez: la escritura de detrás lleva ya un
+    //    superconjunto de este estado, así que esta es trabajo muerto.
+    //  - **Adoptamos el registro de otra pestaña** tras perder el CAS: ahí
+    //    `rev` RETROCEDE al del ganador. Una escritura nuestra ya encolada con
+    //    un rev mayor ganaría entonces el CAS (su rev > el adoptado) y dejaría
+    //    en la BD una partida que la memoria local ya no muestra — la BD y la
+    //    pantalla diciendo cosas distintas, que es el peor final posible.
+    //
+    // Por eso se comprueba en el momento de ejecutar, no al encolar: la
+    // identidad del snapshot (estable entre commits) más el rev capturado.
+    const isStale = () => snapshot !== current || rev !== currentRev;
     if (current.game === null) {
       enqueue(async () => {
+        if (isStale()) return;
         await deleteActive(identity);
+        if (controller.signal.aborted) return;
         channel?.postMessage({ rev: currentRev });
       });
       return;
     }
     const record = recordFromGame(current.game, currentRev);
     enqueue(async () => {
+      if (isStale()) return;
       const result = await writeActive(record);
+      // El store pudo destruirse mientras la escritura estaba en vuelo (#935):
+      // ni se adopta nada en un store ya muerto (nadie escucha, y adoptRecord
+      // reasignaría snapshot y emitiría) ni se publica por un canal cerrado.
+      if (controller.signal.aborted) return;
       if (result.ok) {
         channel?.postMessage({ rev: record.rev });
       } else if (result.reason === "conflict") {
@@ -406,6 +428,14 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
         savedAt: Date.now(),
       });
       if (!ok) return false;
+      // Mientras la BD guardaba, el espejo pudo adoptar el registro de otra
+      // pestaña (p. ej. la otra descartó y empezó una partida nueva): el
+      // snapshot que se serializó arriba ya no es el del store. Seguir aquí
+      // borraría de memoria —y de la BD, porque el borrado de persistCurrent
+      // NO lleva CAS— una partida adoptada que nadie pidió tirar. Las
+      // referencias de snapshot son estables entre commits, así que comparar
+      // identidad es una comprobación de rancidez válida.
+      if (snapshot !== current) return false;
       rev += 1;
       snapshot = { status: "ready", game: null };
       persistCurrent();

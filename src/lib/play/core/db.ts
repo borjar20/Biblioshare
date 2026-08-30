@@ -52,8 +52,34 @@ function openDb(): Promise<IDBDatabase> {
           saved.createIndex("identity", "identity");
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const db = request.result;
+        // La conexión cacheada puede morir sin que nadie la cierre desde aquí:
+        // iOS Safari cierra POR LA FUERZA las conexiones IndexedDB de las
+        // pestañas en segundo plano (y el navegador puede pedir cerrar por un
+        // cambio de versión desde otra pestaña). Sin esto, `dbPromise` seguiría
+        // apuntando a esa conexión muerta para siempre: TODA transacción
+        // posterior lanzaría, el store degradaría a memoria en silencio y la
+        // partida dejaría de guardarse durante el resto de la vida de la página
+        // — pérdida sin tope. Al soltar la caché, la siguiente operación
+        // reabre la BD de forma transparente, sin que el store se entere.
+        db.onclose = () => {
+          dbPromise = null;
+        };
+        db.onversionchange = () => {
+          db.close();
+          dbPromise = null;
+        };
+        resolve(db);
+      };
       request.onerror = () => reject(request.error ?? new Error("open falló"));
+      // Hoy DB_VERSION es 1 y `onblocked` no puede dispararse; el día que suba,
+      // una pestaña vieja con la BD abierta bloquearía el open y esta promesa
+      // se quedaría colgada para siempre (y con ella toda la cola de
+      // escrituras). Rechazar la deja caer por el camino ya previsto: sin BD,
+      // se sigue jugando en memoria.
+      request.onblocked = () =>
+        reject(new Error("open bloqueado por otra conexión con una versión anterior"));
     });
     // Un open fallido no se cachea: el siguiente intento vuelve a probar
     // (p. ej. Safari en privado a veces deja abrir más tarde).
