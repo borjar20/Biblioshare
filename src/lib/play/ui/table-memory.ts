@@ -80,6 +80,26 @@ export function rememberTable(identity: string, setup: MtgSetup): void {
   } catch {
     // Sin storage se juega igual; solo se pierde el prerrelleno de la siguiente.
   }
+  snapshots.delete(identity);
+}
+
+/**
+ * Igual que `readRememberedTable` pero devolviendo SIEMPRE la misma referencia
+ * mientras no se reescriba la mesa. Lo necesita `useSyncExternalStore`, que es como
+ * se lee `localStorage` en este repo (leerlo con `useState`+`useEffect` está
+ * prohibido por lint y además pinta un primer render con el valor equivocado): un
+ * objeto nuevo en cada llamada mete a React en un bucle de re-render.
+ */
+const snapshots = new Map<string, MtgSetup | null>();
+
+export function rememberedTableSnapshot(identity: string): MtgSetup | null {
+  if (!snapshots.has(identity)) snapshots.set(identity, readRememberedTable(identity));
+  return snapshots.get(identity) ?? null;
+}
+
+/** Solo para tests: olvida lo cacheado, no lo guardado. */
+export function __resetTableSnapshotsForTests(): void {
+  snapshots.clear();
 }
 
 export function readRememberedTable(identity: string): MtgSetup | null {

@@ -6,8 +6,10 @@ import { makeEvent } from "@/lib/play/core/events";
 import type { GameStartedEvent } from "@/lib/play/mtg/events";
 import type { MtgSetup } from "@/lib/play/mtg/types";
 import {
+  __resetTableSnapshotsForTests,
   readRememberedTable,
   rememberTable,
+  rememberedTableSnapshot,
   rotateStartingSeat,
   tableMemoryKey,
 } from "./table-memory";
@@ -19,6 +21,7 @@ const arrancar = (setup: MtgSetup) =>
 
 beforeEach(() => {
   localStorage.clear();
+  __resetTableSnapshotsForTests();
 });
 
 describe("memoria de la última mesa", () => {
@@ -95,6 +98,19 @@ describe("memoria de la última mesa", () => {
   it("descarta una versión de snapshot que no reconoce", () => {
     localStorage.setItem(tableMemoryKey("anon"), JSON.stringify({ v: 99, setup: makeSetup() }));
     expect(readRememberedTable("anon")).toBeNull();
+  });
+
+  it("el snapshot devuelve la MISMA referencia hasta que se reescribe la mesa", () => {
+    // Lo consume `useSyncExternalStore`, que entra en bucle de re-render si el
+    // snapshot es un objeto nuevo en cada llamada.
+    rememberTable("anon", makeSetup());
+    const primera = rememberedTableSnapshot("anon");
+    expect(rememberedTableSnapshot("anon")).toBe(primera);
+
+    rememberTable("anon", { ...makeSetup(), startingSeat: 2 });
+    const segunda = rememberedTableSnapshot("anon");
+    expect(segunda).not.toBe(primera);
+    expect(segunda?.startingSeat).toBe(2);
   });
 
   it("la revancha rota el turno inicial un asiento y vuelve al principio", () => {
