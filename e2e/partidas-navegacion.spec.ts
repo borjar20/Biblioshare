@@ -1,14 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { waitForActiveRecord } from "./support/play-db";
 
-// BiblioPlay, fase 1 (#931). Sin backend: la partida vive en localStorage, así que
-// no hay maquinaria REST que limpiar (spec §8) — y tampoco hace falta limpiar el
-// storage: Playwright da un contexto nuevo por test, así que cada uno empieza con el
-// almacenamiento vacío.
+// BiblioPlay (#931). Sin backend: desde fase 3 la partida vive en IndexedDB (BD
+// `biblioshare-play`, almacén `active`), no en localStorage, así que no hay
+// maquinaria REST que limpiar (spec §8) — y tampoco hace falta limpiar el
+// almacenamiento: Playwright da un contexto nuevo por test, así que cada uno empieza
+// con la BD vacía.
 //
-// Aquí HUBO un `addInitScript` que borraba las claves `biblioshare:play*`, y era un
-// bug: ese script corre en CADA navegación, así que al pasar de la configuración al
-// tablero se llevaba por delante la partida que se acababa de crear, y los tests
-// fallaban acusando al código.
+// Aquí HUBO un `addInitScript` que borraba las claves `biblioshare:play*` de
+// localStorage (el storage de fase 1), y era un bug: ese script corre en CADA
+// navegación, así que al pasar de la configuración al tablero se llevaba por delante
+// la partida que se acababa de crear, y los tests fallaban acusando al código.
 
 test("anónimo llega a Partidas y puede empezar una partida sin cuenta", async ({ page }) => {
   // No hace falta cuenta para jugar (decisión 2026-08-29 (3)): ni redirección a
@@ -30,11 +32,10 @@ test("anónimo llega a Partidas y puede empezar una partida sin cuenta", async (
   await expect(page).toHaveURL(/\/partida\/activa$/);
 
   // La partida quedó guardada bajo la identidad anónima, no bajo una vacía.
-  const stored = await page.evaluate(() => window.localStorage.getItem("biblioshare:play:anon:active"));
-  expect(stored, "la partida del anónimo se guarda en su propia clave").not.toBeNull();
-  const snapshot = JSON.parse(stored!);
-  expect(snapshot.committed[0].type).toBe("game_started");
-  expect(snapshot.committed[0].payload.toolId).toBe("mtg");
+  const record = await waitForActiveRecord(page, (r) => r !== null);
+  expect(record, "la partida del anónimo se guarda en su propia identidad").not.toBeNull();
+  expect(record!.committed[0].type).toBe("game_started");
+  expect((record!.committed[0].payload as { toolId: string }).toolId).toBe("mtg");
 });
 
 test("el hub enseña la partida en curso con su forma, y vuelve a ella", async ({ page }) => {
@@ -64,10 +65,8 @@ test("el modo manda: Duelo son 20 vidas y exactamente dos asientos", async ({ pa
   await expect(page.getByPlaceholder("Jugador 3")).toHaveCount(0);
 
   await page.getByRole("button", { name: /^empezar$/i }).click();
-  const stored = await page.evaluate(() =>
-    window.localStorage.getItem("biblioshare:play:anon:active"),
-  );
-  const setup = JSON.parse(stored!).committed[0].payload.setup;
+  const record = await waitForActiveRecord(page, (r) => r !== null);
+  const setup = (record!.committed[0].payload as { setup: Record<string, unknown> }).setup;
   expect(setup.mode).toBe("duel");
   expect(setup.startingLife).toBe(20);
   expect(setup.participants).toHaveLength(2);
@@ -87,10 +86,12 @@ test("lo escrito en la mesa llega a la partida, y la mesa se recuerda", async ({
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
 
-  const setup = await page.evaluate(() => {
-    const raw = window.localStorage.getItem("biblioshare:play:anon:active");
-    return JSON.parse(raw!).committed[0].payload.setup;
-  });
+  const record = await waitForActiveRecord(page, (r) => r !== null);
+  const setup = (
+    record!.committed[0].payload as {
+      setup: { participants: { name: string; commanders: { id: string; name?: string }[] }[] };
+    }
+  ).setup;
   expect(setup.participants[0].name).toBe("Ana");
   // Dos comandantes, dos contadores de 21 independientes, ids distintos.
   expect(setup.participants[0].commanders.map((c: { name?: string }) => c.name)).toEqual([
@@ -118,10 +119,10 @@ test("«Jugar ya»: del hub de Magic a la mesa en dos toques, sin pasar por conf
   await page.getByRole("button", { name: /^jugar ya$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
 
-  const setup = await page.evaluate(() => {
-    const raw = window.localStorage.getItem("biblioshare:play:anon:active");
-    return JSON.parse(raw!).committed[0].payload.setup;
-  });
+  const record = await waitForActiveRecord(page, (r) => r !== null);
+  const setup = (
+    record!.committed[0].payload as { setup: { mode: string; participants: unknown[] } }
+  ).setup;
   expect(setup.mode).toBe("commander");
   expect(setup.participants).toHaveLength(5);
 });
@@ -138,10 +139,17 @@ test("la mesa habitual reaparece en el hub y arranca con el turno rotado", async
   await page.getByRole("button", { name: /jugar con esta mesa/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
 
-  // Empieza el siguiente: la convención de revancha, también aquí.
-  const setup = await page.evaluate(() => {
-    const raw = window.localStorage.getItem("biblioshare:play:anon:active");
-    return JSON.parse(raw!).committed[0].payload.setup;
-  });
+  // Empieza el siguiente: la convención de revancha, también aquí. Esta es ya
+  // la SEGUNDA partida de la sesión (la primera fue el "jugar ya" de arriba),
+  // así que no basta con "no nulo": el registro viejo también lo es. Se
+  // espera al valor concreto que solo puede traer la partida nueva.
+  const record = await waitForActiveRecord(
+    page,
+    (r) =>
+      !!r &&
+      (r.committed[0]?.payload as { setup?: { startingSeat?: number } } | undefined)?.setup
+        ?.startingSeat === 1,
+  );
+  const setup = (record!.committed[0].payload as { setup: { startingSeat: number } }).setup;
   expect(setup.startingSeat).toBe(1);
 });

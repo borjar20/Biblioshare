@@ -315,7 +315,8 @@ es rastreable por `area:catalogo`.
 
 **Partidas (play)**
 - [x] BiblioPlay fase 1 (dominio `play`): motor de eventos, store local-first y UI de Magic — partida de 2 a 6 jugadores jugable sin cuenta y sin red. EPIC #931, spec `docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md` (fases 0–2) y plan `docs/superpowers/plans/2026-08-30-play-ui-fase-1.md` (UI). Lo vigente del contrato está en `decisiones.md` 2026-08-29 (6)–(8) y 2026-08-30.
-- [ ] BiblioPlay fases 3+: historial de partidas, backend y jugadores habituales.
+- [x] BiblioPlay fase 3 (persistencia IndexedDB): store asíncrono con CAS, espejo entre pestañas por BroadcastChannel, migración desde el puente `localStorage` y «Guardar partida». EPIC #931, spec `docs/superpowers/specs/2026-08-30-play-fase-3-persistencia-design.md`.
+- [ ] BiblioPlay fases 5+: backend Supabase, jugadores habituales e historial de partidas guardadas.
 
 ## Deuda transversal priorizada por la auditoría 2026-08
 

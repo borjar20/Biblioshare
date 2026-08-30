@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
-import { getPlayStore } from "@/lib/play/core/store";
+import { useActiveGame } from "@/lib/play/core/use-active-game";
 import { modeConfig, MTG_MODES, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
 import { rememberTable } from "@/lib/play/ui/table-memory";
 import { newDraft, toSetup } from "@/lib/play/ui/setup-draft";
@@ -45,6 +45,7 @@ export function MtgModeChooser({ identity }: { identity: string }) {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<MtgMode>(() => parseMode(searchParams.get("modo")));
   const [players, setPlayers] = useState(4);
+  const { snapshot, store } = useActiveGame(identity);
 
   const config = modeConfig(mode);
   // El estado guarda la ÚLTIMA elección del usuario; el modo la acota. Así cambiar a
@@ -52,11 +53,13 @@ export function MtgModeChooser({ identity }: { identity: string }) {
   const count = Math.min(Math.max(players, config.minPlayers), config.maxPlayers);
 
   function playNow() {
+    // Con el store hidratando no se arranca: podría pisar una activa aún no
+    // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
+    if (snapshot.status === "loading") return;
     const setup = toSetup(newDraft(mode, count), (i) => t("setup.playerN", { n: i + 1 }));
-    const store = getPlayStore(identity);
     // Mismo contrato que «Empezar» en la configuración: arrancar ES pedir sustituir
     // la partida que hubiera (spec §4, una sola activa).
-    if (store.getSnapshot()) store.discard();
+    if (snapshot.game) store.discard();
     if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
       return;
     }
@@ -142,6 +145,7 @@ export function MtgModeChooser({ identity }: { identity: string }) {
         <button
           type="button"
           onClick={playNow}
+          disabled={snapshot.status === "loading"}
           className={buttonVariants("primary", "w-full justify-center py-3 text-[15px]")}
         >
           {t("tools.mtg.playNow")}

@@ -2724,6 +2724,8 @@
       "duration": "Duración",
       "turns": "Turnos",
       "rematch": "Revancha",
+      "save": "Guardar partida",
+      "saveHint": "Se guarda solo en este dispositivo.",
       "discard": "Descartar"
     },
     "log": {

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
-import { getPlayStore } from "@/lib/play/core/store";
+import { useActiveGame } from "@/lib/play/core/use-active-game";
 import { modeConfig, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
 import { rememberTable, rotateStartingSeat } from "@/lib/play/ui/table-memory";
 import { CARD_BACKGROUND_IDS, seatAccent } from "@/lib/play/ui/seats";
@@ -60,6 +60,7 @@ export function SetupForm({ identity }: { identity: string }) {
   const config = modeConfig(mode);
 
   const remembered = useRememberedTable(identity);
+  const { snapshot, store } = useActiveGame(identity);
 
   // La mesa recordada llega DESPUÉS de hidratar (vive en localStorage), así que no
   // se puede sembrar el `useState` con ella. En vez de sincronizar con un efecto
@@ -84,12 +85,14 @@ export function SetupForm({ identity }: { identity: string }) {
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
 
   function start() {
+    // Con el store hidratando no se arranca: podría pisar una activa aún no
+    // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
+    if (snapshot.status === "loading") return;
     const setup = toSetup(draft, (i) => t("setup.playerN", { n: i + 1 }));
-    const store = getPlayStore(identity);
     // Una sola partida activa (spec §4): `start()` LANZA si ya hay una, así que la
     // vieja se descarta aquí — pulsar «Empezar» ES pedir sustituirla, y es lo que
     // hace que la revancha no borre nada hasta que la siguiente arranca de verdad.
-    if (store.getSnapshot()) store.discard();
+    if (snapshot.game) store.discard();
     if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
       return; // setup que el motor rechaza: no se navega a un tablero que no existe
     }
@@ -146,6 +149,7 @@ export function SetupForm({ identity }: { identity: string }) {
         <button
           type="button"
           onClick={start}
+          disabled={snapshot.status === "loading"}
           className={buttonVariants("primary", "w-full justify-center py-3 text-[15px]")}
         >
           {t("setup.start")}

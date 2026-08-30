@@ -1,17 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
+import { allEvents, waitForActiveRecord } from "./support/play-db";
 
 // La mesa se juega en móvil: ese es el gate de la fase 1 (#931).
 test.use({ viewport: { width: 390, height: 844 } });
-
-const ACTIVE_KEY = "biblioshare:play:anon:active";
-
-/** El snapshot tal y como vive en localStorage: es la única persistencia que hay. */
-async function snapshot(page: Page) {
-  return page.evaluate((key) => {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  }, ACTIVE_KEY);
-}
 
 async function empezarPartida(page: Page) {
   await page.goto("/partidas/mtg/nueva?modo=commander");
@@ -55,9 +46,11 @@ test("la ráfaga funde los toques seguidos en un solo evento", async ({ page }) 
 
   // Un `life_changed` de -3, no tres de -1: es lo que hace que deshacer no vaya de
   // uno en uno.
-  const snap = await snapshot(page);
-  const eventos = [...snap.committed, ...(snap.pending ? [snap.pending] : [])];
-  const vidas = eventos.filter((e: { type: string }) => e.type === "life_changed");
+  const record = await waitForActiveRecord(page, (r) =>
+    !!r && allEvents(r).some((e) => e.type === "life_changed"),
+  );
+  const eventos = allEvents(record!);
+  const vidas = eventos.filter((e) => e.type === "life_changed");
   expect(vidas).toHaveLength(1);
   expect(vidas[0].payload).toMatchObject({ target: "p2", delta: -3 });
 });
@@ -87,9 +80,11 @@ test("daño de comandante: la celda ES el control — cada toque +1, y la ráfag
 
   await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("35");
 
-  const snap = await snapshot(page);
-  const eventos = [...snap.committed, ...(snap.pending ? [snap.pending] : [])];
-  const dmg = eventos.filter((e: { type: string }) => e.type === "commander_damage");
+  const record = await waitForActiveRecord(page, (r) =>
+    !!r && allEvents(r).some((e) => e.type === "commander_damage"),
+  );
+  const eventos = allEvents(record!);
+  const dmg = eventos.filter((e) => e.type === "commander_damage");
   expect(dmg).toHaveLength(1);
   // La fuente es el COMANDANTE, no el jugador: son 21 de cada uno por separado.
   expect(dmg[0].payload).toMatchObject({ source: "p2-c1", target: "p1", delta: 5 });
@@ -124,9 +119,15 @@ test("21 de un mismo comandante se avisa, pero no elimina a nadie", async ({ pag
   // El botón queda en estado letal, pero el jugador sigue en la mesa: avisa, no
   // elimina — la decisión es de la mesa.
   await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("19");
-  const snap = await snapshot(page);
-  const eventos = [...snap.committed, ...(snap.pending ? [snap.pending] : [])];
-  expect(eventos.some((e: { type: string }) => e.type === "player_eliminated")).toBe(false);
+  // Espera a que la ráfaga entera (21 toques fundidos en un evento) haya
+  // aterrizado en IDB antes de comprobar la ausencia: si se lee a mitad de
+  // ráfaga, la ausencia de `player_eliminated` no prueba nada.
+  const record = await waitForActiveRecord(page, (r) =>
+    !!r &&
+    allEvents(r).some((e) => e.type === "commander_damage" && (e.payload as { delta?: number }).delta === 21),
+  );
+  const eventos = allEvents(record!);
+  expect(eventos.some((e) => e.type === "player_eliminated")).toBe(false);
 });
 
 test("el turno pasa en un toque y nombra a quien le toca", async ({ page }) => {
@@ -149,7 +150,7 @@ test("terminar y revancha: la mesa vuelve puesta y el turno rota un asiento", as
   await expect(page.getByText(/ahora empieza jugador 2/i)).toBeVisible();
 
   // Revancha NO descarta: la partida terminada sigue ahí hasta que arranque otra.
-  expect(await snapshot(page)).not.toBeNull();
+  expect(await waitForActiveRecord(page, (r) => r !== null)).not.toBeNull();
 });
 
 test("el selector manda sobre la orientación: «tumbado» gira el tablero sin girar el móvil", async ({
@@ -186,12 +187,16 @@ test("salir de la mesa conserva la partida, y el hub la ofrece para seguir", asy
   await expect(page).toHaveURL(/\/partidas$/);
 
   // Salir NO es descartar: la partida sigue guardada y el hub la ofrece.
-  expect(await snapshot(page)).not.toBeNull();
+  expect(await waitForActiveRecord(page, (r) => r !== null)).not.toBeNull();
   await expect(page.getByRole("link", { name: /partida en curso/i })).toBeVisible();
 });
 
 test("descartar borra la partida y deja el vacío con salida", async ({ page }) => {
   await empezarPartida(page);
+  // Precondición: el registro EXISTE antes de descartar. Sin esto, si la
+  // escritura inicial aún no aterrizó, el assert final de null pasaría sin
+  // que deleteActive corriera — el mismo "pase accidental" que se arregló.
+  await waitForActiveRecord(page, (r) => r !== null);
   await page.getByRole("button", { name: "Acciones de la partida" }).click();
   await page.getByRole("button", { name: /^descartar la partida$/i }).click();
   // Dos toques: borra la partida entera y no hay deshacer que la traiga.
@@ -199,7 +204,7 @@ test("descartar borra la partida y deja el vacío con salida", async ({ page }) 
 
   await expect(page.getByText(/no hay ninguna partida en curso/i)).toBeVisible();
   await expect(page.getByRole("link", { name: /ir a partidas/i })).toBeVisible();
-  expect(await snapshot(page)).toBeNull();
+  expect(await waitForActiveRecord(page, (r) => r === null)).toBeNull();
 });
 
 test("accesibilidad del tablero: orden de asientos, etiquetas y una sola región que anuncia", async ({
