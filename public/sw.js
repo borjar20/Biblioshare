@@ -17,7 +17,17 @@
 // de la cuenta anterior. Ahora solo se guardan documentos que el servidor no
 // marca como personales (ver swCacheableDocument) y el logout purga el caché.
 // El bump a v4 tira las copias privadas que ya estén en disco.
-const CACHE_NAME = "biblioshare-v4";
+//
+// v5 (2026-08-30): Play es local-first (la partida vive en IndexedDB), pero sus
+// pantallas no sobrevivían al modo avión: Next las sirve con `no-store` (llevan
+// un boundary de sesión) y swCacheableDocument las rechazaba, así que sin red
+// el SW caía a /offline. Ahora el documento de /partidas* y /partida/* se
+// guarda aunque venga marcado personal (ver swOfflineShellRoute). No reabre
+// #680: lo único por-usuario en ese HTML es el id de identidad que se pasa a
+// las islas (el estado de juego se hidrata de IndexedDB en el cliente), y el
+// purge de logout ya tira este caché entero, así que la copia muere con la
+// sesión igual que el resto. El bump re-siembra en clientes viejos.
+const CACHE_NAME = "biblioshare-v5";
 const OFFLINE_URL = "/offline";
 
 // Estáticos de Next: el nombre lleva el hash del contenido, así que la copia en
@@ -71,10 +81,21 @@ function swCacheableDocument(ok, cacheControl) {
   return !directives.includes("no-store") && !directives.includes("private");
 }
 
+// ¿Es esta ruta un shell de Play? Play funciona sin red a propósito (la partida
+// vive en IndexedDB), así que su documento se guarda como salvavidas AUNQUE el
+// servidor lo marque personal: lo único por-usuario del HTML es el id de
+// identidad serializado hacia las islas, y el purge de logout (#680) ya tira
+// este caché entero. PURA (solo pathname): se prueba en vitest — ver
+// src/lib/pwa/sw-strategy.test.ts.
+function swOfflineShellRoute(pathname) {
+  return /^\/partida(s)?(\/|$)/.test(pathname);
+}
+
 // Solo para el test unitario (src/lib/pwa/sw-strategy.test.ts), que carga este
 // fichero en un vm. En el navegador son propiedades inertes.
 self.swStrategy = swStrategy;
 self.swCacheableDocument = swCacheableDocument;
+self.swOfflineShellRoute = swOfflineShellRoute;
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -103,15 +124,22 @@ self.addEventListener("fetch", (event) => {
   if (strategy === "skip") return;
 
   if (strategy === "network-first") {
+    const isPlayShell = swOfflineShellRoute(new URL(request.url).pathname);
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (swCacheableDocument(response.ok, response.headers.get("Cache-Control"))) {
+          if (
+            swCacheableDocument(response.ok, response.headers.get("Cache-Control")) ||
+            (response.ok && isPlayShell)
+          ) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          } else {
+          } else if (!isPlayShell) {
             // Si el documento es personal hoy, la copia pública de ayer para la
-            // misma URL tampoco debe sobrevivir.
+            // misma URL tampoco debe sobrevivir. Excepción: un shell de Play no
+            // se borra por un error transitorio del servidor — perder el
+            // salvavidas dejaría la partida (que está sana en IndexedDB) sin
+            // pantalla en el próximo modo avión.
             caches.open(CACHE_NAME).then((cache) => cache.delete(request));
           }
           return response;
