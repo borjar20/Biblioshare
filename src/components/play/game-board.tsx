@@ -10,6 +10,7 @@ import { playTools } from "@/lib/play/tools";
 import { defaultLayout, resolveLayout } from "@/lib/play/ui/layout";
 import { preferencesStore, DEFAULT_PREFERENCES } from "@/lib/play/ui/preferences";
 import { PlayerPanel } from "./player-panel";
+import { PanelActions } from "./panel-actions";
 import { useWakeLock } from "./use-wake-lock";
 
 const getServerPreferences = () => DEFAULT_PREFERENCES;
@@ -96,7 +97,9 @@ export function GameBoard({
               isActive={state.activeSeat === seat}
               onLife={(delta) => changeLife(player.participant.id, delta)}
               onOpenSheet={() => setOpenSheetSeat(seat)}
-            />
+            >
+              <PanelActions state={state} player={player} store={store} />
+            </PlayerPanel>
           );
         })}
 
