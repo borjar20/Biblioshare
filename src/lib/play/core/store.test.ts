@@ -3,7 +3,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeEvent } from "./events";
 import { BURST_WINDOW_MS } from "./log";
-import { __resetDbForTests, readActive } from "./db";
+import { __resetDbForTests, readActive, writeActive, type ActiveGameRecord } from "./db";
 import {
   getPlayStore,
   parseSnapshot,
@@ -635,6 +635,66 @@ describe("espejo entre pestañas (#932)", () => {
       // adopta el log completo del ganador (winner-takes-all, comportamiento
       // aceptado — no arregla la jugada perdida, la sustituye entera).
       expect(a.getSnapshot().game?.log.committed).toEqual(b.getSnapshot().game?.log.committed);
+    } finally {
+      await a.__drainWritesForTests();
+      await b.__drainWritesForTests();
+      a.destroy();
+      b.destroy();
+    }
+  });
+
+  it("una escritura ya encolada no resucita tras adoptar el registro de otra pestaña (#931)", async () => {
+    const a = __createPlayStoreForTests("anon");
+    const b = __createPlayStoreForTests("anon");
+    try {
+      await ready(a);
+      await ready(b);
+      expect(a.start(started(1000))).toBe(true);
+      await a.__drainWritesForTests();
+
+      // La OTRA pestaña deja su rev 2 en la BD. Se escribe por db.ts en lugar
+      // de por un segundo store a propósito: así el aterrizaje es
+      // DETERMINISTA. Si dos stores compitieran por el mismo rev, quién gana
+      // el CAS lo decidiría el orden real de las transacciones y este test
+      // pasaría o no según el día — justo lo que no debe hacer un test de una
+      // carrera. Y tampoco publica por el canal, que es el caso interesante:
+      // el aviso del espejo puede llegar tarde o no llegar, y entonces la
+      // única defensa que queda es el CAS.
+      const ajeno: ActiveGameRecord = {
+        identity: "anon",
+        v: SNAPSHOT_VERSION,
+        committed: [started(1000), life(1500, "ana", -7)],
+        pending: null,
+        rev: 2,
+      };
+      expect(await writeActive(ajeno)).toEqual({ ok: true });
+
+      // `a` commitea DOS veces seguidas: deja encoladas de golpe la rev 2 y la
+      // rev 3. La rev 2 choca con la del ajeno; el bug era que la rev 3 —
+      // encolada ANTES de saberlo, con su registro ya capturado— se ejecutaba
+      // igual, ganaba el CAS (3 > 2) y dejaba en la BD una partida que la
+      // memoria de `a` ya no mostraba.
+      expect(a.dispatch(life(2000, "ana", -1))).toBe(true);
+      expect(a.dispatch(life(2001, "ana", -2))).toBe(true);
+      await a.__drainWritesForTests();
+      await a.__drainWritesForTests(); // una adopción puede encolar más trabajo
+
+      // Lo que se afirma NO es quién gana (winner-takes-all sigue siendo el
+      // comportamiento aceptado, y con el arreglo la escritura intermedia ni
+      // siquiera llega a ejecutarse): lo que no puede pasar es que la BD y la
+      // memoria cuenten partidas distintas.
+      const enMemoria = a.getSnapshot().game?.log.committed;
+      expect(enMemoria).toBeDefined();
+      const record = await readActive("anon");
+      expect(record).not.toBeNull();
+      expect(record?.committed).toEqual(enMemoria);
+      // Y la otra pestaña acaba en lo mismo por el espejo.
+      await vi.waitFor(() => {
+        const gb = b.getSnapshot().game;
+        if (!gb) throw new Error("sin partida");
+        if (gb.log.committed.at(-1)?.id !== enMemoria?.at(-1)?.id) throw new Error("divergen");
+      });
+      expect(b.getSnapshot().game?.log.committed).toEqual(enMemoria);
     } finally {
       await a.__drainWritesForTests();
       await b.__drainWritesForTests();
