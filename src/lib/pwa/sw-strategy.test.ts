@@ -55,6 +55,14 @@ function loadCacheableDocument(): (ok: boolean, cacheControl: string | null) => 
   return cacheable as (ok: boolean, cacheControl: string | null) => boolean;
 }
 
+function loadOfflineShellRoute(): (pathname: string) => boolean {
+  const shell = loadSw().swOfflineShellRoute;
+  if (typeof shell !== "function") {
+    throw new Error("public/sw.js no expone self.swOfflineShellRoute");
+  }
+  return shell as (pathname: string) => boolean;
+}
+
 function req(
   url: string,
   init: { method?: string; mode?: string; headers?: Record<string, string> } = {},
@@ -156,5 +164,36 @@ describe("swCacheableDocument", () => {
   it("guarda un documento sin cabecera Cache-Control", () => {
     const cacheable = loadCacheableDocument();
     expect(cacheable(true, null)).toBe(true);
+  });
+});
+
+describe("swOfflineShellRoute", () => {
+  // Play es local-first: su shell se guarda aunque Next lo marque no-store
+  // (lleva un boundary de sesión). No reabre #680 porque lo único por-usuario
+  // del HTML es el id de identidad, y el purge de logout tira el caché entero.
+  it.each([
+    "/partidas",
+    "/partidas/mtg",
+    "/partidas/mtg/nueva",
+    "/partidas/puntuacion",
+    "/partidas/puntuacion/nueva",
+    "/partida/activa",
+  ])("reconoce %s como shell de Play", (pathname) => {
+    expect(loadOfflineShellRoute()(pathname)).toBe(true);
+  });
+
+  it.each(["/", "/coleccion", "/partidario", "/partidas2", "/libro/abc"])(
+    "no confunde %s con un shell de Play",
+    (pathname) => {
+      expect(loadOfflineShellRoute()(pathname)).toBe(false);
+    },
+  );
+
+  // El payload RSC de una ruta de Play sigue sin tocarse: la excepción es solo
+  // para el DOCUMENTO. Offline, Next cae a navegación completa y esa sí la
+  // sirve el caché.
+  it("un payload RSC de /partidas sigue siendo skip", () => {
+    const strategyFor = loadStrategy();
+    expect(strategyFor(req(`${ORIGIN}/partidas?_rsc=1a2b3`), ORIGIN)).toBe("skip");
   });
 });

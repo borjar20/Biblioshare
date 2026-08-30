@@ -3288,3 +3288,26 @@ resolvieron la herramienta nueva enteramente a través de los dos registros
 como preveía la spec de fase 4. Es la confirmación práctica de que la frontera
 core/herramienta trazada en fases 0-3 aguanta una segunda herramienta con reglas propias
 (target informativo, sin turno, sin asientos rotables) sin ensancharse.
+
+## 2026-08-30 — Los shells de Play se cachean en el SW aunque Next los marque personales
+
+**El problema.** Play es local-first a propósito (la partida vive en IndexedDB, funciona en
+modo avión), pero sus pantallas no: `/partidas*` y `/partida/activa` llevan un boundary de
+sesión (`connection()` + `getCurrentUser` para la clave de identidad del store), Next las
+sirve con `Cache-Control: private, no-store`, y `swCacheableDocument` (#680) rechazaba
+guardarlas — sin red, el SW servía `/offline` y el dominio sobrevivía al avión pero sus
+pantallas no. Aplica igual a la PWA y al APK (mismo SW en el WebView remoto).
+
+**La decisión.** Excepción quirúrgica en `public/sw.js` (v5): un documento cuya ruta pasa
+`swOfflineShellRoute` (`/^\/partida(s)?(\/|$)/`) se guarda como salvavidas aunque venga
+marcado `no-store`, y no se borra del caché por un error transitorio del servidor. NO
+reabre #680 porque (a) lo único por-usuario en ese HTML es el id de identidad serializado
+hacia las islas — el estado de juego se hidrata de IndexedDB en el cliente —, y (b) el
+purge de logout ya tira `CACHE_NAME` entero, así que la copia muere con la sesión, igual
+que el resto de documentos. Los payloads RSC siguen sin tocarse: verificado que offline
+Next degrada la navegación cliente a navegación completa y esa sí la sirve el caché.
+Verificación con Playwright contra build de producción (tablero con su partida tras
+recarga offline, hub, setups; `/coleccion` sigue cayendo a `/offline`; el purge deja solo
+`/offline`). No se añade e2e permanente: exigiría build de producción como `sw-rsc.spec.ts`
+(opt-in `SW_E2E=1`) y el guardado en Cache Storage es asíncrono respecto a la navegación —
+demasiado flaky para el harness normal.

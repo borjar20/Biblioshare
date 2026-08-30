@@ -55,6 +55,16 @@ revalida y el SW sigue entregando lo viejo hasta que recargas a mano. No es
 teórico: la v2 del caché lo hacía, y por eso registrabas una sesión, cambiabas
 de pestaña en la ficha y lo registrado desaparecía (arreglado 2026-07-16).
 
+**Única excepción (v5, 2026-08-30): los shells de Play** (`/partidas*`,
+`/partida/*`). Play es local-first — la partida vive en IndexedDB y funciona
+sin red — pero Next sirve esas páginas con `no-store` (llevan un boundary de
+sesión), así que sin la excepción el SW caía a `/offline` en modo avión. Su
+documento se guarda aunque venga marcado personal porque lo único por-usuario
+del HTML es el id de identidad que se pasa a las islas, y el purge de logout
+(#680) tira el caché entero: la copia muere con la sesión. Los payloads RSC de
+Play siguen sin cacharse — offline, Next cae solo a navegación completa y esa
+sí la sirve el caché.
+
 Si tocas la estrategia del SW, `src/lib/pwa/sw-strategy.test.ts` carga el
 fichero real y fija la decisión para cada tipo de petición; el defecto es NO
 cachear. El SW se registra **solo en producción**
