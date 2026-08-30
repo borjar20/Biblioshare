@@ -193,6 +193,10 @@ test("salir de la mesa conserva la partida, y el hub la ofrece para seguir", asy
 
 test("descartar borra la partida y deja el vacío con salida", async ({ page }) => {
   await empezarPartida(page);
+  // Precondición: el registro EXISTE antes de descartar. Sin esto, si la
+  // escritura inicial aún no aterrizó, el assert final de null pasaría sin
+  // que deleteActive corriera — el mismo "pase accidental" que se arregló.
+  await waitForActiveRecord(page, (r) => r !== null);
   await page.getByRole("button", { name: "Acciones de la partida" }).click();
   await page.getByRole("button", { name: /^descartar la partida$/i }).click();
   // Dos toques: borra la partida entera y no hay deshacer que la traiga.
