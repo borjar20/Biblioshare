@@ -8,6 +8,11 @@ import type { ReactNode } from "react";
  *
  * `modes` también es opcional: una herramienta de un solo modo simplemente no lo
  * declara y la sección no sale.
+ *
+ * `aside` es la columna lateral de escritorio (revisión UX 2026-08-30): en móvil se
+ * apila debajo y en `lg` se tiende a la derecha. Lleva lo que acompaña a la elección
+ * —la mesa habitual, cómo funciona— y es donde el historial encajará sin recolocar
+ * nada. Sin `aside`, la plantilla queda a una columna como antes.
  */
 export function PlayToolHub({
   title,
@@ -16,6 +21,7 @@ export function PlayToolHub({
   footnote,
   history,
   stats,
+  aside,
 }: {
   title: string;
   modes?: ReactNode;
@@ -23,8 +29,9 @@ export function PlayToolHub({
   footnote?: string;
   history?: ReactNode;
   stats?: ReactNode;
+  aside?: ReactNode;
 }) {
-  return (
+  const main = (
     <section className="flex flex-col gap-6">
       <h1 className="font-serif text-[26px] font-semibold">{title}</h1>
       {modes}
@@ -33,5 +40,14 @@ export function PlayToolHub({
       {stats}
       {footnote && <p className="text-[13px] leading-relaxed text-muted-foreground">{footnote}</p>}
     </section>
+  );
+
+  if (!aside) return main;
+
+  return (
+    <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-10">
+      {main}
+      <aside className="flex flex-col gap-4">{aside}</aside>
+    </div>
   );
 }

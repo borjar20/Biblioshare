@@ -2597,6 +2597,8 @@
         "moreModes": "Más modos",
         "moreModesDetail": "Brawl, Dos cabezas… próximamente",
         "footnote": "Avisa cuando alguien cumple una condición de derrota, pero no elimina a nadie: la mesa decide.",
+        "playNow": "Jugar ya",
+        "configure": "Configurar la mesa",
         "newGame": "Nueva partida de {mode}",
         "lifeUnit": "vidas",
         "modes": {
@@ -2610,6 +2612,21 @@
           }
         }
       }
+    },
+    "rememberedTable": {
+      "title": "Tu mesa habitual",
+      "play": "Jugar con esta mesa",
+      "adjust": "Ajustar antes de jugar",
+      "startsNext": "Empieza {name}, un asiento más allá."
+    },
+    "howItWorks": {
+      "title": "Cómo funciona",
+      "step1Title": "Elige juego y modo",
+      "step1Detail": "Las vidas y las reglas de la mesa se ponen solas.",
+      "step2Title": "Empieza sin configurar",
+      "step2Detail": "Nombres, mazos y comandantes son opcionales: la mesa sale puesta.",
+      "step3Title": "El móvil, al centro",
+      "step3Detail": "Cada asiento mira hacia su jugador y todo queda en el registro."
     },
     "setup": {
       "title": "Nueva partida",
@@ -2643,7 +2660,7 @@
       "poison": "Veneno de {name}: {count}",
       "commanderDamage": "Daño de comandante de {name}",
       "damageTitle": "Daño de comandante",
-      "noDamage": "sin daño",
+      "you": "tuyo",
       "more": "+{count}",
       "monarch": "Monarca",
       "initiative": "Iniciativa",
@@ -2676,18 +2693,19 @@
       "caption": "{mode} · {time}",
       "sectionTurn": "Turno",
       "sectionGame": "Partida",
-      "rotate": "Girar la mesa",
-      "layout": "Repartir la mesa",
       "layoutAuto": "Automático",
+      "autoDetail": "la mesa se reparte sola",
+      "standing": "Móvil de pie",
+      "lying": "Móvil tumbado",
       "layoutRows": "En filas",
       "layoutHead": "Cabecera",
       "layoutFlat": "Todos igual",
       "keepAwake": "Mantener la pantalla encendida",
+      "leave": "Salir de la mesa",
+      "leaveValue": "se queda guardada",
       "finish": "Finalizar la partida",
       "discard": "Descartar la partida",
       "discardConfirm": "Se borra la partida entera. ¿Seguro?",
-      "orientationPortrait": "vertical",
-      "orientationLandscape": "horizontal",
       "yes": "sí",
       "no": "no"
     },

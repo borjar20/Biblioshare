@@ -71,11 +71,19 @@ test("la partida sobrevive a cerrar la pestaña", async ({ page }) => {
   await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
 });
 
-test("daño de comandante: tres toques, un evento, y las vidas bajan a la vez", async ({ page }) => {
+test("daño de comandante: la celda ES el control — cada toque +1, y la ráfaga es un evento", async ({
+  page,
+}) => {
   await empezarPartida(page);
 
   await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
-  await page.getByRole("button", { name: "Jugador 2 +5" }).click();
+
+  // El comandante PROPIO también está en la rejilla (puede hacerte los 21), marcado
+  // como «tuyo» y al final.
+  await expect(page.getByText("tuyo")).toBeVisible();
+
+  const celda = page.getByRole("button", { name: "Jugador 2 +1" });
+  for (let i = 0; i < 5; i++) await celda.click();
 
   await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("35");
 
@@ -87,11 +95,30 @@ test("daño de comandante: tres toques, un evento, y las vidas bajan a la vez", 
   expect(dmg[0].payload).toMatchObject({ source: "p2-c1", target: "p1", delta: 5 });
 });
 
+test("mantener pulsada la celda revela las mitades, y la izquierda resta", async ({ page }) => {
+  await empezarPartida(page);
+  await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
+
+  const celda = page.getByRole("button", { name: "Jugador 2 +1" });
+  await celda.click();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
+
+  // Pulsación larga (el click va con el botón 600 ms apretado): expande la celda en
+  // dos mitades SIN sumar de rebote.
+  await celda.click({ delay: 600 });
+  const menos = page.getByRole("button", { name: "Jugador 2 −1" });
+  await expect(menos).toBeVisible();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
+
+  await menos.click();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("40");
+});
+
 test("21 de un mismo comandante se avisa, pero no elimina a nadie", async ({ page }) => {
   await empezarPartida(page);
   await page.getByRole("button", { name: "Daño de comandante de Jugador 1" }).click();
-  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Jugador 2 +5" }).click();
-  await page.getByRole("button", { name: "Jugador 2 +1" }).click();
+  const celda = page.getByRole("button", { name: "Jugador 2 +1" });
+  for (let i = 0; i < 21; i++) await celda.click();
   await page.getByRole("button", { name: "Cerrar" }).click();
 
   // El botón queda en estado letal, pero el jugador sigue en la mesa: avisa, no
@@ -123,6 +150,44 @@ test("terminar y revancha: la mesa vuelve puesta y el turno rota un asiento", as
 
   // Revancha NO descarta: la partida terminada sigue ahí hasta que arranque otra.
   expect(await snapshot(page)).not.toBeNull();
+});
+
+test("el selector manda sobre la orientación: «tumbado» gira el tablero sin girar el móvil", async ({
+  page,
+}) => {
+  await empezarPartida(page);
+
+  // El viewport es vertical (390x844) y el giro del sistema da igual: elegir un
+  // preset tumbado contra-rota el escenario entero por CSS.
+  await page.getByRole("button", { name: "Acciones de la partida" }).click();
+  await page.getByRole("button", { name: /en filas · móvil tumbado/i }).click();
+  await page.getByRole("button", { name: "Cerrar" }).click();
+
+  await expect(page.locator("[data-rotated]")).toHaveCount(1);
+
+  // Y el tablero girado sigue siendo un instrumento, no un dibujo: los toques
+  // atraviesan el transform.
+  await page.getByRole("button", { name: "Quitar una vida a Jugador 1" }).click();
+  await expect(page.getByLabel("Vidas de Jugador 1")).toHaveText("39");
+
+  // Volver a «de pie» deshace el giro.
+  await page.getByRole("button", { name: "Acciones de la partida" }).click();
+  await page.getByRole("button", { name: /en filas · móvil de pie/i }).click();
+  await page.getByRole("button", { name: "Cerrar" }).click();
+  await expect(page.locator("[data-rotated]")).toHaveCount(0);
+});
+
+test("salir de la mesa conserva la partida, y el hub la ofrece para seguir", async ({ page }) => {
+  await empezarPartida(page);
+  await page.getByRole("button", { name: "Quitar una vida a Jugador 1" }).click();
+
+  await page.getByRole("button", { name: "Acciones de la partida" }).click();
+  await page.getByRole("button", { name: /salir de la mesa/i }).click();
+  await expect(page).toHaveURL(/\/partidas$/);
+
+  // Salir NO es descartar: la partida sigue guardada y el hub la ofrece.
+  expect(await snapshot(page)).not.toBeNull();
+  await expect(page.getByRole("link", { name: /partida en curso/i })).toBeVisible();
 });
 
 test("descartar borra la partida y deja el vacío con salida", async ({ page }) => {

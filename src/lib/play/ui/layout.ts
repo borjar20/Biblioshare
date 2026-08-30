@@ -14,7 +14,6 @@
  */
 export type BoardOrientation = "portrait" | "landscape";
 export type LayoutFamily = "rows" | "head" | "flat";
-export type ConsoleMode = "band" | "floating";
 
 export type SeatPlacement = {
   seat: number;
@@ -32,7 +31,6 @@ export type BoardLayout = {
   /** `grid-template-areas` */
   areas: string;
   consoleArea: string;
-  consoleMode: ConsoleMode;
   seats: SeatPlacement[];
 };
 
@@ -40,18 +38,14 @@ const areaOf = (seat: number) => `s${seat}`;
 const CONSOLE_AREA = "cons";
 
 /**
- * La consola sale del hueco SOLO tumbada. De pie la banda a todo el ancho cuesta
- * 14 px repartidos entre dos filas y no compensa; tumbada son 68 px, el 17 % del
- * alto, y salen enteros del número de vidas (decisión 2026-08-29 (6)).
+ * La consola SIEMPRE tiene fila propia (`auto`), también tumbada. La variante
+ * flotante (decisión 2026-08-29 (6)) se retiró en la (9): flotaba justo sobre la
+ * franja donde TODAS las cabeceras pegan al centro y dejaba los nombres —y sus
+ * hojas— intocables; ninguna reserva de padding aguanta una consola de ~300 px.
+ * El coste real de la banda compacta tumbada es que el número de vidas baja de
+ * 78 a ~76 px: se paga.
  */
-function consoleModeFor(orientation: BoardOrientation): ConsoleMode {
-  return orientation === "landscape" ? "floating" : "band";
-}
-
-/** Altura de la fila de la consola: ocupa sitio de pie, cero tumbada (ahí flota). */
-function consoleTrack(mode: ConsoleMode): string {
-  return mode === "band" ? "auto" : "0px";
-}
+const CONSOLE_TRACK = "auto";
 
 /**
  * Reparte `areas` a lo largo de `columns` celdas repitiendo las que sobran. Sirve
@@ -68,19 +62,18 @@ function spread(areas: string[], columns: number): string[] {
 const fr = (n: number) => Array.from({ length: n }, () => "1fr").join(" ");
 const quote = (cells: string[]) => `"${cells.join(" ")}"`;
 
-function rowsLayout(players: number, orientation: BoardOrientation): BoardLayout {
+function rowsLayout(players: number): BoardLayout {
   // El sobrante de un impar va ABAJO: es el lado de quien tiene el móvil en la mano.
   const top = Math.ceil(players / 2);
   const bottom = players - top;
   const columns = Math.max(top, bottom, 1);
   const topSeats = Array.from({ length: top }, (_, i) => i);
   const bottomSeats = Array.from({ length: bottom }, (_, i) => top + i);
-  const consoleMode = consoleModeFor(orientation);
 
   const areaRows = [quote(spread(topSeats.map(areaOf), columns))];
   const trackRows = ["1fr"];
   areaRows.push(quote(Array.from({ length: columns }, () => CONSOLE_AREA)));
-  trackRows.push(consoleTrack(consoleMode));
+  trackRows.push(CONSOLE_TRACK);
   if (bottom > 0) {
     areaRows.push(quote(spread(bottomSeats.map(areaOf), columns)));
     trackRows.push("1fr");
@@ -92,7 +85,6 @@ function rowsLayout(players: number, orientation: BoardOrientation): BoardLayout
     rows: trackRows.join(" "),
     areas: areaRows.join(" "),
     consoleArea: CONSOLE_AREA,
-    consoleMode,
     seats: [
       ...topSeats.map((seat) => ({ seat, area: areaOf(seat), rotation: 180 as const })),
       ...bottomSeats.map((seat) => ({ seat, area: areaOf(seat), rotation: 0 as const })),
@@ -100,7 +92,7 @@ function rowsLayout(players: number, orientation: BoardOrientation): BoardLayout
   };
 }
 
-function headLayout(players: number, orientation: BoardOrientation): BoardLayout {
+function headLayout(players: number): BoardLayout {
   // A cinco entra UN lateral (el 2x2 se queda intacto y el quinto se sienta en la
   // cabecera); a cuatro y a seis, dos — uno en cada extremo de la mesa.
   const lateralCount = players === 5 ? 1 : 2;
@@ -108,7 +100,6 @@ function headLayout(players: number, orientation: BoardOrientation): BoardLayout
   const centerTop = Math.ceil(centerCount / 2);
   const centerBottom = centerCount - centerTop;
   const centerColumns = Math.max(centerTop, centerBottom, 1);
-  const consoleMode = consoleModeFor(orientation);
 
   const topSeats = Array.from({ length: centerTop }, (_, i) => i);
   const bottomSeats = Array.from({ length: centerBottom }, (_, i) => centerTop + i);
@@ -124,7 +115,7 @@ function headLayout(players: number, orientation: BoardOrientation): BoardLayout
   const areaRows = [wrap(spread(topSeats.map(areaOf), centerColumns))];
   const trackRows = ["1fr"];
   areaRows.push(wrap(Array.from({ length: centerColumns }, () => CONSOLE_AREA)));
-  trackRows.push(consoleTrack(consoleMode));
+  trackRows.push(CONSOLE_TRACK);
   if (centerBottom > 0) {
     areaRows.push(wrap(spread(bottomSeats.map(areaOf), centerColumns)));
     trackRows.push("1fr");
@@ -140,7 +131,6 @@ function headLayout(players: number, orientation: BoardOrientation): BoardLayout
     rows: trackRows.join(" "),
     areas: areaRows.join(" "),
     consoleArea: CONSOLE_AREA,
-    consoleMode,
     seats: [
       ...topSeats.map((seat) => ({ seat, area: areaOf(seat), rotation: 180 as const })),
       ...bottomSeats.map((seat) => ({ seat, area: areaOf(seat), rotation: 0 as const })),
@@ -155,7 +145,7 @@ function headLayout(players: number, orientation: BoardOrientation): BoardLayout
   };
 }
 
-function flatLayout(players: number, orientation: BoardOrientation): BoardLayout {
+function flatLayout(players: number): BoardLayout {
   // Nadie girado. Con pocos jugadores va en una columna; a partir de cuatro, en dos.
   const columns = players <= 3 ? 1 : 2;
   const rowCount = Math.ceil(players / columns);
@@ -164,7 +154,6 @@ function flatLayout(players: number, orientation: BoardOrientation): BoardLayout
     area: areaOf(seat),
     rotation: 0 as const,
   }));
-  const consoleMode = consoleModeFor(orientation);
 
   const areaRows: string[] = [];
   const trackRows: string[] = [];
@@ -176,7 +165,7 @@ function flatLayout(players: number, orientation: BoardOrientation): BoardLayout
     // que todo el mundo alcanza, y así el reparto accesible no pierde el deshacer.
     if (r === 0) {
       areaRows.push(quote(Array.from({ length: columns }, () => CONSOLE_AREA)));
-      trackRows.push(consoleTrack(consoleMode));
+      trackRows.push(CONSOLE_TRACK);
     }
   }
 
@@ -186,7 +175,6 @@ function flatLayout(players: number, orientation: BoardOrientation): BoardLayout
     rows: trackRows.join(" "),
     areas: areaRows.join(" "),
     consoleArea: CONSOLE_AREA,
-    consoleMode,
     seats,
   };
 }
@@ -222,9 +210,9 @@ export function resolveLayout(
   const usable = layoutOptions(players, orientation).includes(family)
     ? family
     : defaultLayout(players, orientation);
-  if (usable === "head") return headLayout(players, orientation);
-  if (usable === "flat") return flatLayout(players, orientation);
-  return rowsLayout(players, orientation);
+  if (usable === "head") return headLayout(players);
+  if (usable === "flat") return flatLayout(players);
+  return rowsLayout(players);
 }
 
 /** Techo, suelo y holgura del número de vidas, en px. */

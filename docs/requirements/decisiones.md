@@ -3036,3 +3036,137 @@ de Magic lo lee la ISLA con `useSearchParams`, no la pagina, por lo mismo.
 **Y una regla de UI que salio de un bug real:** las mitades tactiles de ±1 estan posicionadas, y en CSS
 un elemento posicionado pinta por ENCIMA de los que estan en flujo aunque vayan antes en el DOM. Por eso
 la botonera de veneno y comandante lleva `relative`: sin ella, tocar «veneno» sumaba vida.
+
+## 2026-08-30 (3) — Revisión UX de la fase 1: jugar es lo primario, configurar es lo opcional (#931)
+
+Una revisión de producto sobre la fase 1 recién construida dejó tres decisiones de forma:
+
+1. **«Jugar ya» es el camino primario y la configuración es opcional DE VERDAD.** El hub de Magic
+   arranca la partida él mismo (modo + cuántos sois, dos toques hasta el tablero); la pantalla de
+   configuración pasa a ser el camino secundario y se reordena: «Empezar» arriba siempre activo, y
+   nombres/mazos/comandantes plegados en un `<details>` cuyo resumen enseña la mesa. Antes el botón
+   quedaba bajo cuatro tarjetas de campos y la pantalla entera se leía como un formulario
+   obligatorio que había que dejar en blanco. En revancha la mesa abre desplegada: a esa pantalla
+   se viene justo a repasar quién sigue sentado.
+
+2. **El acceso a Partidas va por shortcuts, no por la navegación pública.** Decisión explícita del
+   usuario: shortcut en el manifest de la PWA (mantener pulsado el icono → «Nueva partida») y su
+   equivalente nativo para la APK de Capacitor (issue aparte, plugin de app shortcuts). La entrada
+   del menú «Tú» se queda como está y la barra de cinco no se toca. Consecuencia asumida: el
+   anónimo que navega la web sigue sin ver Partidas en ninguna navegación — llega por URL o por
+   shortcut.
+
+3. **El vacío de los hubs en escritorio se llena con contenido real, no con promesas.** «Tu mesa
+   habitual» (la última mesa de `table-memory`, jugable en un toque con el turno rotado — la
+   convención de revancha) y «Cómo funciona» en tres pasos. La plantilla del hub gana una columna
+   `aside` en `lg` donde el historial (fase 7) encajará sin recolocar nada. Sigue vigente la regla
+   de no pintar secciones que no existen: sin mesa recordada, la tarjeta no sale.
+
+**Y un agujero que la revisión encontró:** el tablero se come el chrome entero y no tenía salida que
+CONSERVARA la partida — en PWA/APK instalada (sin botón atrás en iOS) solo se podía descartar. La
+hoja de la partida gana «Salir de la mesa · se queda guardada».
+
+## 2026-08-30 (4) — Lo que enseñó la primera partida real en un móvil (#931)
+
+Tres arreglos que salieron de jugar de verdad, no de los e2e (que corren en viewport de móvil
+pero no son un pulgar ni una mesa):
+
+1. **El color del asiento tiñe el panel POR DEFECTO.** El setup enseñaba el swatch del asiento
+   como elegido (`?? seat-N`), pero el borrador solo lo guardaba si lo TOCABAS: con «Jugar ya» o
+   sin tocar nada, `cardBackground` llegaba `undefined` y la mesa salía monocroma. El fallback
+   vive en el PANEL (no en `toSetup`): así repara también las partidas ya guardadas.
+
+2. **El reparto de la mesa se elige por presets VISIBLES, no alternando dos atributos.** «Girar»
+   y «repartir» por separado obligaban a ciclar a ciegas. Ahora la hoja de la partida enseña
+   miniaturas del tablero real —salen de `resolveLayout`, el mismo módulo que pinta la mesa, así
+   que no pueden mentir— agrupadas en «móvil de pie» / «móvil tumbado», con los asientos en su
+   color. Elegir una fija orientación y familia a la vez; «Automático» sigue siendo el primero.
+
+3. **Los textos no pueden quedar en «Juga…».** En un móvil estrecho, la consola cedía el nombre
+   del turno al hueco del deshacer aunque no hubiera nada que deshacer (ahora, sin nada que
+   deshacer, queda solo la flecha) y las filas del overlay de daño truncaban el nombre a favor de
+   los botones (ahora son dos líneas: el nombre manda en la suya, y los botones suben a 44 px,
+   que además les tocaba por `tap-44`).
+
+## 2026-08-30 (5) — El selector manda sobre la orientación; el sensor del móvil, no (#931)
+
+Pregunta directa del usuario: ¿se puede bloquear el giro de pantalla y que sea el selector de
+presets quien gire la mesa? Respuesta: sí, y sin pedir permisos — **contra-rotación por CSS del
+escenario entero**, no `screen.orientation.lock()` (que solo existe en fullscreen y en iOS no
+existe en absoluto). Si el preset pide una orientación y el viewport tiene la otra, el tablero se
+gira 90°; si el SO ya rotó la pantalla, no se gira dos veces. Funciona igual en pestaña, PWA y APK.
+
+La regla fina: **«Automático» sigue al viewport y no gira nunca** — sin esa excepción, un
+escritorio apaisado saldría de canto por el default `portrait` de las preferencias. De regalo,
+auto en pantalla ancha ahora reparte tumbado (consola flotante) en vez de suponer un móvil de pie.
+
+Las hojas (`<dialog>` en el top layer) quedan fuera del transform del ancestro por cómo funciona el
+top layer: salen derechas para quien coge el móvil. El overlay de daño sí gira con su panel — mira
+a quien está sentado ahí.
+
+## 2026-08-30 (6) — Segunda ronda sobre partida real: geometría sin medidas y contadores de esquina (#931)
+
+1. **A 0° y 180° el panel NO se mide: va en flujo con `h-full w-full`.** `rotate(180deg)` deja la
+   caja idéntica, así que solo los laterales (±90) necesitan la caja medida e intercambiada. La
+   versión que centraba TODAS las rotaciones con la medida del ResizeObserver se descuadraba en
+   móvil real (barra de color y botonera desplazadas o cortadas) cuando la barra del navegador
+   aparecía o se escondía y la medida llegaba un frame tarde. Regla: la medida solo puede decidir
+   cosas que toleren un frame de retraso (el tamaño del número, sí; la geometría, no).
+
+2. **Los contadores son chips de esquina, no medias filas.** Veneno y daño de comandante ocupaban
+   el ancho entero del panel siendo situacionales. Ahora: ancho al contenido, 44 px de alto (son
+   el objetivo del pulgar; `tap-44` no sirve dentro del overflow del panel), y a cero solo el
+   icono atenuado. El racimo es el sitio donde entrarán los contadores genéricos (energía,
+   experiencia, tesoros…) cuando el motor los tenga — diseño acordado sobre la app de referencia
+   del usuario: chip solo cuando el contador existe, picker en la hoja del jugador (issue #953).
+
+## 2026-08-30 (7) — En el daño de comandante, el número ES el control (#931)
+
+Tercera ronda sobre partida real. Las filas del overlay (nombre + contador + botones +1/+5) eran
+tan altas que con la mesa llena había que desplazarse. Ahora es una rejilla de celdas compactas —
+TODOS los rivales a la vez— y la celda entera es el control: **tocar suma 1** (la ráfaga sigue
+fundiendo toques en un evento) y **mantener pulsado revela las mitades de −/+**, la misma anatomía
+que las vidas del panel.
+
+La pulsación larga rompe a sabiendas la regla de «un toque, no una pulsación larga» (comentario en
+player-panel sobre abrir la hoja): aquí es aceptable porque NO es la única vía — el camino sin
+puntero es tocar (+1, botón accesible) y deshacer desde la consola, y una vez reveladas las mitades
+son botones de verdad, enfocables. El umbral letal sale de `modeConfig`, no de un 21 escrito.
+
+## 2026-08-30 (8) — El daño del PROPIO comandante vale, y la rejilla nunca se desplaza (#931)
+
+Dos arreglos más de la misma partida real:
+
+1. **El reducer prohibía el daño de un comandante a su propio dueño, y era una regla inventada**
+   (había hasta un test defendiéndola). Los 21 cuentan el daño de combate de UN comandante dé
+   igual quién lo controle: te lo roban, una pelea, una redirección. Se quita la validación, el
+   desglose (`commanderDamageBreakdown`) incluye al propio, y en la rejilla del overlay el
+   comandante propio va AL FINAL marcado «tuyo» — posible, pero fuera de donde caen los pulgares.
+   Lección: una validación de reglas de juego se contrasta con las reglas, no con la intuición.
+
+2. **La rejilla del daño usa `auto-rows-fr`**: las filas se reparten el alto disponible, quepan 2
+   o 5, y el desplazamiento desaparece por construcción — la altura fija por celda (64 px) seguía
+   desbordando los paneles cortos del reparto tumbado.
+
+## 2026-08-30 (9) — La consola flotante se retira: banda con fila propia en TODAS las orientaciones
+
+La decisión 2026-08-29 (6) puso la consola FLOTANDO en el centro cuando la mesa va
+tumbada, para no gastar 68 px de alto. En la partida real del 2026-08-30 se vio el
+fallo estructural: tumbada, TODAS las cabeceras pegan sus nombres a la franja
+central — exactamente donde flota la consola (z-20) — y los nombres quedaban
+intocables: sus hojas eran inaccesibles. Ninguna reserva de padding lo arregla
+(la consola mide ~300 px; el px-9 reservaba 36).
+
+Resolución: la consola es SIEMPRE banda con fila `auto` en la rejilla, en las tres
+familias y las dos orientaciones — con fila propia no puede tapar nada, por
+construcción. Se compacta (py-1, menú 32 px) para que el coste tumbada sea mínimo:
+el número de vidas baja de 78 a ~76 px, medido con `lifeFontSize`. El px-9 de las
+cabeceras que reservaba el hueco se recupera (px-2.5). `ConsoleMode` desaparece
+del módulo de layout.
+
+En la misma pasada, afordancia de las hojas (feedback de la misma partida: «los
+botones no parecen accionables, están todos mezclados»): las filas de acción van
+en grupos `SheetGroup` — caja con borde, separadores `divide-y` entre filas y
+chevron `›` en cada una. Las acciones que acaban la partida (finalizar, descartar;
+gana/eliminado en la hoja de jugador) van en su propia caja, separadas de los
+ajustes.

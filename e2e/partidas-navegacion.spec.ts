@@ -20,11 +20,12 @@ test("anónimo llega a Partidas y puede empezar una partida sin cuenta", async (
   await page.getByRole("link", { name: /magic/i }).first().click();
   await expect(page).toHaveURL(/\/partidas\/mtg$/);
 
-  await page.getByRole("link", { name: /nueva partida/i }).click();
+  await page.getByRole("link", { name: /configurar la mesa/i }).click();
   await expect(page).toHaveURL(/\/partidas\/mtg\/nueva/);
 
-  // Cero es un camino de primera: se empieza sin escribir nada.
-  await expect(page.getByPlaceholder("Jugador 4")).toBeVisible();
+  // Cero es un camino de primera: «Empezar» está activo sin abrir nada, y la mesa
+  // plegada enseña en su resumen a los cuatro de la mesa.
+  await expect(page.getByText(/jugador 4/i).first()).toBeVisible();
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
 
@@ -53,11 +54,12 @@ test("el hub enseña la partida en curso con su forma, y vuelve a ella", async (
 test("el modo manda: Duelo son 20 vidas y exactamente dos asientos", async ({ page }) => {
   await page.goto("/partidas/mtg");
   await page.getByRole("button", { name: /duelo/i }).click();
-  await page.getByRole("link", { name: /nueva partida de duelo/i }).click();
+  await page.getByRole("link", { name: /configurar la mesa/i }).click();
 
   // La cabecera, no el resumen de «Personalizar»: «20 vidas» sale en los dos sitios.
   await expect(page.getByText(/duelo · 20 vidas/i)).toBeVisible();
   // Duelo no ofrece elegir cuánta gente: min y max son 2.
+  await page.getByText("En la mesa").click();
   await expect(page.getByPlaceholder("Jugador 2")).toBeVisible();
   await expect(page.getByPlaceholder("Jugador 3")).toHaveCount(0);
 
@@ -74,6 +76,8 @@ test("el modo manda: Duelo son 20 vidas y exactamente dos asientos", async ({ pa
 test("lo escrito en la mesa llega a la partida, y la mesa se recuerda", async ({ page }) => {
   await page.goto("/partidas/mtg/nueva?modo=commander");
 
+  // Los campos son lo opcional y viven plegados: se abre la mesa para escribir.
+  await page.getByText("En la mesa").click();
   await page.getByPlaceholder("Jugador 1").fill("Ana");
   // Partner: el comandante es una lista de uno o dos, no un campo aparte.
   await page.getByRole("button", { name: /añadir comandante/i }).first().click();
@@ -103,4 +107,41 @@ test("lo escrito en la mesa llega a la partida, y la mesa se recuerda", async ({
     window.localStorage.getItem("biblioshare:play:anon:table"),
   );
   expect(JSON.parse(table!).setup.participants[0].name).toBe("Ana");
+});
+
+test("«Jugar ya»: del hub de Magic a la mesa en dos toques, sin pasar por configurar", async ({
+  page,
+}) => {
+  await page.goto("/partidas/mtg");
+  // Cuántos sois es la única pregunta del camino rápido.
+  await page.getByRole("button", { name: "5", exact: true }).click();
+  await page.getByRole("button", { name: /^jugar ya$/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
+
+  const setup = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("biblioshare:play:anon:active");
+    return JSON.parse(raw!).committed[0].payload.setup;
+  });
+  expect(setup.mode).toBe("commander");
+  expect(setup.participants).toHaveLength(5);
+});
+
+test("la mesa habitual reaparece en el hub y arranca con el turno rotado", async ({ page }) => {
+  // Primera partida de la tarde: quick start de 4.
+  await page.goto("/partidas/mtg");
+  await page.getByRole("button", { name: /^jugar ya$/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
+
+  // De vuelta al hub, la mesa quedó recordada y se ofrece como tarjeta.
+  await page.goto("/partidas/mtg");
+  await expect(page.getByText(/tu mesa habitual/i)).toBeVisible();
+  await page.getByRole("button", { name: /jugar con esta mesa/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
+
+  // Empieza el siguiente: la convención de revancha, también aquí.
+  const setup = await page.evaluate(() => {
+    const raw = window.localStorage.getItem("biblioshare:play:anon:active");
+    return JSON.parse(raw!).committed[0].payload.setup;
+  });
+  expect(setup.startingSeat).toBe(1);
 });

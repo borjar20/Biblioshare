@@ -82,25 +82,38 @@ export function PanelActions({
       {/* `relative` NO es decoración: las mitades de ±1 están posicionadas, y en CSS
           un elemento posicionado pinta por ENCIMA de los que están en flujo aunque
           vayan antes en el DOM. Sin esto, tocar «veneno» o «comandante» sumaba vida.
-          Con `relative`, ambos están en la misma capa y manda el orden del DOM. */}
-      <div className="relative flex shrink-0 flex-wrap gap-1 px-1.5 pb-1.5">
+          Con `relative`, ambos están en la misma capa y manda el orden del DOM.
+
+          **Chips de esquina, no medias filas** (revisión sobre partida real,
+          2026-08-30): los contadores son situacionales y a lo ancho pesaban como si
+          fueran lo principal. Ancho al contenido y alineados a la izquierda; los
+          44 px de ALTO se quedan — son el objetivo del pulgar (`tap-44` aquí no
+          sirve: su pseudo-elemento lo recorta el overflow del panel). Un contador a
+          cero enseña solo el icono, atenuado: sitio mínimo hasta que exista. Este
+          racimo es donde los contadores genéricos (energía, experiencia…) entrarán
+          como chips cuando el motor los tenga — ver la issue de contadores. */}
+      <div className="relative flex shrink-0 flex-wrap items-center gap-1 px-1.5 pb-1.5">
         <button
           type="button"
           onClick={addPoison}
           aria-label={t("board.poison", { name, count: player.poison })}
           style={poisonLethal ? { backgroundImage: LETHAL_STRIPES } : undefined}
-          className={`flex h-11 min-w-[88px] flex-1 items-center justify-center gap-1.5 rounded-chip border text-[13px] ${
+          className={`flex h-11 items-center gap-1.5 rounded-chip border px-3 text-[13px] ${
             poisonLethal
               ? "border-play-danger bg-play-danger/20 text-play-danger"
-              : "border-border bg-surface-muted"
+              : player.poison > 0
+                ? "border-border bg-surface-muted"
+                : "border-transparent bg-surface-muted/60 text-muted-foreground"
           }`}
         >
           <PoisonIcon className="h-4 w-4" />
-          <span
-            className={`font-mono tabular-nums ${poisonLethal ? "underline decoration-2 underline-offset-4" : ""}`}
-          >
-            {player.poison}
-          </span>
+          {player.poison > 0 && (
+            <span
+              className={`font-mono tabular-nums ${poisonLethal ? "underline decoration-2 underline-offset-4" : ""}`}
+            >
+              {player.poison}
+            </span>
+          )}
         </button>
 
         {config.hasCommanderDamage && (
@@ -109,16 +122,16 @@ export function PanelActions({
             onClick={() => setShowDamage(true)}
             aria-label={t("board.commanderDamage", { name })}
             style={damageLethal ? { backgroundImage: LETHAL_STRIPES } : undefined}
-            className={`flex h-11 min-w-[88px] flex-1 items-center gap-1.5 overflow-hidden rounded-chip border px-2 text-[13px] ${
+            className={`flex h-11 items-center gap-1.5 rounded-chip border px-3 text-[13px] ${
               damageLethal
                 ? "border-play-danger bg-play-danger/20 text-play-danger"
-                : "border-border bg-surface-muted"
+                : visible.length > 0
+                  ? "border-border bg-surface-muted"
+                  : "border-transparent bg-surface-muted/60 text-muted-foreground"
             }`}
           >
             <SwordIcon className="h-4 w-4 shrink-0" />
-            {visible.length === 0 ? (
-              <span className="text-[11px] text-muted-foreground">{t("board.noDamage")}</span>
-            ) : (
+            {visible.length > 0 && (
               <span className="flex min-w-0 items-center gap-1.5">
                 {visible.map((row) => {
                   const owner = state.players.findIndex((p) => p.participant.id === row.sourceId);

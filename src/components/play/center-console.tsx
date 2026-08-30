@@ -7,7 +7,6 @@ import type { TurnPassedEvent } from "@/lib/play/mtg/events";
 import type { MtgState } from "@/lib/play/mtg/types";
 import { playTools } from "@/lib/play/tools";
 import { nextAliveSeat } from "@/lib/play/mtg/rules";
-import type { ConsoleMode } from "@/lib/play/ui/layout";
 import { GameClock } from "./game-clock";
 
 function turnEvent(): TurnPassedEvent {
@@ -15,15 +14,10 @@ function turnEvent(): TurnPassedEvent {
 }
 
 /**
- * La consola: deshacer, turno, crono y menú. Dos tratamientos según la orientación,
- * y no es capricho estético sino aritmética (decisión 2026-08-29 (6)):
- *
- * - **De pie** (`band`): banda a todo el ancho entre las dos filas. Quitarla
- *   recuperaba 14 px repartidos entre dos filas y no compensa.
- * - **Tumbado** (`floating`): la banda serían 68 px, el 17 % del alto, y salen
- *   enteros del número de vidas. Ahí la consola sale del hueco y flota en el centro
- *   sobre paneles a pantalla completa — el hueco ya lo reservan las cabeceras con
- *   su padding, no se supone vacío.
+ * La consola: deshacer, turno, crono y menú. SIEMPRE es banda con fila propia en la
+ * rejilla, también tumbada. La variante flotante (decisión 2026-08-29 (6)) se retiró
+ * en la (9): flotaba exactamente sobre la franja central donde todas las cabeceras
+ * pegan sus nombres, y los dejaba intocables — sus hojas eran inaccesibles.
  *
  * **Deshacer nunca pierde la etiqueta de QUÉ deshace.** Puede perder la palabra
  * «Deshacer» —la flecha ya lo dice— pero no el «Jugador 1 −1»: sin eso hay que
@@ -32,12 +26,10 @@ function turnEvent(): TurnPassedEvent {
 export function CenterConsole({
   game,
   store,
-  mode,
   onOpenMenu,
 }: {
   game: ActiveGame;
   store: PlayStore;
-  mode: ConsoleMode;
   onOpenMenu: () => void;
 }) {
   const t = useTranslations("play");
@@ -54,34 +46,31 @@ export function CenterConsole({
   const nextAlive = state.players[nextAliveSeat(state)];
 
   return (
-    <div
-      className={`flex items-center gap-2 rounded-[14px] border border-border bg-surface px-2 py-1.5 ${
-        mode === "floating"
-          ? "pointer-events-auto absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 shadow-lg"
-          : "w-full"
-      }`}
-    >
+    <div className="flex w-full items-center gap-2 rounded-[14px] border border-border bg-surface px-2 py-1">
       <button
         type="button"
         disabled={!undoable}
         onClick={() => store.undo()}
         aria-label={undoable ? t("console.undo", { event: label }) : t("console.nothingToUndo")}
-        className="flex min-w-0 max-w-[46%] items-center gap-1.5 rounded-chip px-2 py-1.5 text-[12px] disabled:opacity-40"
+        className="flex min-w-0 max-w-[46%] items-center gap-1.5 rounded-chip px-2 py-1 text-[12px] disabled:opacity-40"
       >
         <span aria-hidden className="shrink-0 text-[13px]">
           ↶
         </span>
-        {/* La etiqueta puede quedarse sin la palabra «Deshacer», nunca sin el qué. */}
-        <span className="min-w-0 truncate text-muted-foreground">{label}</span>
+        {/* La etiqueta puede quedarse sin la palabra «Deshacer», nunca sin el qué.
+            Pero cuando NO hay nada que deshacer, el texto solo roba sitio al nombre
+            del turno — en un móvil estrecho lo dejaba en «Juga…» —, así que ahí la
+            flecha atenuada basta. */}
+        {undoable && <span className="min-w-0 truncate text-muted-foreground">{label}</span>}
       </button>
 
       <button
         type="button"
         onClick={() => store.dispatch(turnEvent())}
         aria-label={t("console.passTurn", { name: nextAlive.participant.name })}
-        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-chip bg-surface-muted px-2 py-1.5"
+        className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-chip bg-surface-muted px-2 py-1"
       >
-        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("console.turn", { round: state.round })}
         </span>
         <span className="min-w-0 truncate font-serif text-[13px] font-semibold">
@@ -98,7 +87,7 @@ export function CenterConsole({
         type="button"
         onClick={onOpenMenu}
         aria-label={t("console.menu")}
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-chip border border-border text-[13px]"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-chip border border-border text-[13px]"
       >
         •••
       </button>

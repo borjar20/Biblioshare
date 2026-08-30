@@ -86,7 +86,22 @@ export function PlaySheet({
   );
 }
 
-/** Fila de acción de una hoja: icono opcional, etiqueta y el estado actual a la derecha. */
+/**
+ * Grupo de filas de acción: caja con borde y separadores entre filas. Es lo que hace
+ * que las filas SE VEAN accionables — sueltas sobre la hoja parecían texto corrido,
+ * sin frontera entre una acción y la siguiente (revisión sobre partida real,
+ * 2026-08-30). Las etiquetas de sección van FUERA del grupo: así lo accionable
+ * (dentro de la caja) y lo que solo rotula (fuera) no se confunden.
+ */
+export function SheetGroup({ children }: { children: ReactNode }) {
+  return (
+    <div className="divide-y divide-border overflow-hidden rounded-[12px] border border-border">
+      {children}
+    </div>
+  );
+}
+
+/** Fila de acción de una hoja: etiqueta, el estado actual a la derecha y chevron. */
 export function SheetRow({
   label,
   value,
@@ -105,14 +120,20 @@ export function SheetRow({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-chip px-3 py-2.5 text-left text-[14px] transition-colors hover:bg-surface-muted disabled:opacity-40 ${
+      className={`flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-[14px] transition-colors hover:bg-surface-muted active:bg-surface-muted disabled:opacity-40 ${
         danger ? "text-play-danger" : ""
       }`}
     >
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {value && (
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{value}</span>
+        <span className="min-w-0 shrink truncate font-mono text-[11px] text-muted-foreground">
+          {value}
+        </span>
       )}
+      {/* El chevron dice «esto se toca» sin decir nada nuevo: es afordancia pura. */}
+      <span aria-hidden className="shrink-0 text-[13px] text-muted-foreground">
+        ›
+      </span>
     </button>
   );
 }

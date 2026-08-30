@@ -53,7 +53,9 @@ export function commanderDamageBreakdown(
 
   const out: { commanderId: string; commanderName?: string; sourceId: string; amount: number; lethal: boolean }[] = [];
   for (const other of state.players) {
-    if (other.participant.id === participantId) continue;
+    // El PROPIO comandante también entra: puede hacerte los 21 (robos, peleas,
+    // redirecciones) y el reducer lo acepta. Como solo salen los que tienen daño
+    // > 0, no añade ruido a la tira en el caso normal.
     for (const commander of other.participant.commanders) {
       const amount = player.commanderDamage[commander.id] ?? 0;
       if (amount <= 0) continue;

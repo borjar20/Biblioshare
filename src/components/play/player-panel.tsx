@@ -14,9 +14,9 @@ import type { MtgPlayerState } from "@/lib/play/mtg/types";
  *    no genérico.
  * 2. **La rotación es solo visual.** El orden del DOM es el de asientos siempre, así
  *    que quien navega con teclado o lector recorre la mesa en orden (spec §7).
- * 3. **La cabecera reserva el hueco de la consola flotante con padding**, no supone
- *    que ahí no haya nada: la variante que lo suponía se cae con un nombre largo o
- *    una insignia de monarca (decisión 2026-08-29 (6), invariante 1).
+ * 3. **La consola nunca se superpone al panel.** Es banda con fila propia en la
+ *    rejilla en todas las orientaciones; la variante flotante que tapaba las
+ *    cabeceras se retiró (decisión 2026-08-30 (9)).
  */
 export function PlayerPanel({
   player,
@@ -69,6 +69,15 @@ export function PlayerPanel({
   const lateral = placement.rotation === 90 || placement.rotation === -90;
   // `transform: rotate()` NO cambia la caja de layout: para poner un panel de canto
   // hay que darle a la caja interior las dimensiones INTERCAMBIADAS antes de girarla.
+  //
+  // SOLO los laterales (±90) usan esa caja medida y centrada. A 0 y a 180 la caja
+  // girada es IDÉNTICA a la original, así que el contenido va en flujo normal con
+  // `h-full w-full`: la geometría no depende de ninguna medida. La versión que
+  // centraba TODAS las rotaciones con la medida del ResizeObserver se descuadraba
+  // en móvil real —barra y botonera desplazadas o sobresaliendo— cuando la barra
+  // del navegador aparecía o se escondía y la medida llegaba un frame tarde
+  // (visto en la partida real del 2026-08-30; la medida queda solo para el tamaño
+  // del número, donde un frame de retraso es invisible).
   const inner = lateral
     ? { width: size?.height ?? 0, height: size?.width ?? 0 }
     : { width: size?.width ?? 0, height: size?.height ?? 0 };
@@ -78,7 +87,14 @@ export function PlayerPanel({
     ? lifeFontSize({ width: inner.width, height: inner.height, digits: String(Math.abs(life)).length })
     : undefined;
 
-  const background = cardBackgroundTint(player.participant.cardBackground);
+  // Sin fondo elegido, el panel se tiñe del color de SU asiento — no se queda en la
+  // superficie plana. Es lo que el setup ya enseñaba como elegido por defecto, pero
+  // el borrador solo guardaba el fondo si lo TOCABAS: con «Jugar ya» o sin tocar los
+  // swatches, cardBackground llegaba undefined y la mesa salía monocroma (bug
+  // encontrado en la primera partida real, 2026-08-30). El fallback vive aquí y no
+  // en toSetup para que también repare partidas ya guardadas.
+  const background =
+    cardBackgroundTint(player.participant.cardBackground) ?? accent.tint;
   const name = player.participant.name;
   const commanders = player.participant.commanders
     .map((commander) => commander.name?.trim())
@@ -97,14 +113,22 @@ export function PlayerPanel({
           eso el tinte va DEBAJO de todo y la barra del asiento no desaparece nunca.
           Cuando lleguen las imágenes irán aquí, siempre bajo un velo de la propia
           superficie: el número se lee por el velo, no por la suerte de la imagen. */}
-      {background && <span aria-hidden className={`absolute inset-0 ${background}`} />}
+      <span aria-hidden className={`absolute inset-0 ${background}`} />
       <div
-        className="absolute left-1/2 top-1/2"
-        style={{
-          width: inner.width || undefined,
-          height: inner.height || undefined,
-          transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
-        }}
+        className={
+          lateral
+            ? "absolute left-1/2 top-1/2"
+            : `h-full w-full ${placement.rotation === 180 ? "rotate-180" : ""}`
+        }
+        style={
+          lateral
+            ? {
+                width: inner.width || undefined,
+                height: inner.height || undefined,
+                transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
+              }
+            : undefined
+        }
       >
         <div className="relative flex h-full w-full flex-col">
           {/* La barra del asiento mira siempre al centro de la mesa: va arriba del
@@ -113,13 +137,14 @@ export function PlayerPanel({
 
           {/* Tocar la cabecera abre la hoja del jugador. Un toque, no una pulsación
               larga: no se descubre, no tiene equivalente con teclado y en móvil
-              compite con los gestos nativos del navegador. El padding lateral RESERVA
-              el hueco de la consola flotante. */}
+              compite con los gestos nativos del navegador. (El px-9 que reservaba el
+              hueco de la consola flotante se fue con ella, decisión 2026-08-30 (9):
+              la consola ya no puede tapar nada.) */}
           <button
             type="button"
             onClick={onOpenSheet}
             aria-label={t("board.openSheet", { name })}
-            className="flex min-w-0 shrink-0 items-baseline gap-1.5 px-9 pt-1.5 text-left"
+            className="flex min-w-0 shrink-0 items-baseline gap-1.5 px-2.5 pt-1.5 text-left"
           >
             <span className="min-w-0 truncate font-serif text-[13px] font-semibold">{name}</span>
             {commanders && (

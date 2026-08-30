@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { MTG_MODES, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
+import { makeEvent } from "@/lib/play/core/events";
+import { getPlayStore } from "@/lib/play/core/store";
+import { modeConfig, MTG_MODES, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
+import { rememberTable } from "@/lib/play/ui/table-memory";
+import { newDraft, toSetup } from "@/lib/play/ui/setup-draft";
 import { buttonVariants } from "@/components/ui/button";
 
 function parseMode(value: string | null): MtgMode {
@@ -13,26 +17,52 @@ function parseMode(value: string | null): MtgMode {
 
 /** Reserva la altura exacta del selector: sin esto, el hub da un salto al hidratar. */
 export function MtgModeChooserSkeleton() {
-  return <div aria-hidden className="h-[232px]" />;
+  return <div aria-hidden className="h-[418px]" />;
 }
 
 /**
- * Selector de modo + CTA. Lo que de verdad distingue un modo de otro es con cuántas
- * vidas empiezas, así que el número ES la tarjeta. Va en Fraunces, no en la mono del
- * tablero: el hub es un sitio donde se lee y se elige, no un instrumento.
+ * Selector de modo + arranque. Lo que de verdad distingue un modo de otro es con
+ * cuántas vidas empiezas, así que el número ES la tarjeta. Va en Fraunces, no en la
+ * mono del tablero: el hub es un sitio donde se lee y se elige, no un instrumento.
  *
- * Se elige el modo y se empieza: dos toques.
+ * **«Jugar ya» es el camino primario** (revisión UX 2026-08-30): modo + cuántos sois
+ * y a la mesa, sin pasar por la pantalla de configuración. Configurar nombres y
+ * mazos es lo OPCIONAL, y por eso es el enlace secundario — antes era al revés y la
+ * configuración parecía un formulario obligatorio que había que dejar en blanco.
+ *
+ * Necesita `identity` porque arranca la partida él mismo: el store se aísla por
+ * identidad para no filtrar la partida entre cuentas del mismo dispositivo (#680).
  *
  * La lista sale de `MTG_MODES`, no de un array a mano: añadir un modo es una fila en
  * esa tabla y esta pantalla no se toca (mientras sus reglas quepan en la tabla — el
  * día que llegue Dos cabezas, que comparte vidas por EQUIPO, eso es motor nuevo).
  */
-export function MtgModeChooser() {
+export function MtgModeChooser({ identity }: { identity: string }) {
   const t = useTranslations("play");
+  const router = useRouter();
   // El `?modo=` lo lee la isla y no la página: leerlo en el servidor sacaría la ruta
   // entera del prerender por un parámetro que solo decide qué botón sale marcado.
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<MtgMode>(() => parseMode(searchParams.get("modo")));
+  const [players, setPlayers] = useState(4);
+
+  const config = modeConfig(mode);
+  // El estado guarda la ÚLTIMA elección del usuario; el modo la acota. Así cambiar a
+  // Duelo (2 exactos) y volver a Commander recupera los 4 sin estado extra.
+  const count = Math.min(Math.max(players, config.minPlayers), config.maxPlayers);
+
+  function playNow() {
+    const setup = toSetup(newDraft(mode, count), (i) => t("setup.playerN", { n: i + 1 }));
+    const store = getPlayStore(identity);
+    // Mismo contrato que «Empezar» en la configuración: arrancar ES pedir sustituir
+    // la partida que hubiera (spec §4, una sola activa).
+    if (store.getSnapshot()) store.discard();
+    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
+      return;
+    }
+    rememberTable(identity, setup);
+    router.push("/partida/activa");
+  }
 
   return (
     <>
@@ -78,12 +108,53 @@ export function MtgModeChooser() {
         </div>
       </section>
 
-      <Link
-        href={`/partidas/mtg/nueva?modo=${mode}`}
-        className={buttonVariants("primary", "w-full justify-center py-3 text-[15px]")}
-      >
-        {t("tools.mtg.newGame", { mode: t(`tools.mtg.modes.${mode}.name`) })}
-      </Link>
+      {/* Cuántos sois. Solo si el modo admite más de uno: en Duelo son exactamente
+          dos y un selector de un solo valor es ruido. */}
+      {config.minPlayers !== config.maxPlayers && (
+        <fieldset>
+          <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+            {t("setup.players")}
+          </legend>
+          <div className="flex gap-2">
+            {Array.from(
+              { length: config.maxPlayers - config.minPlayers + 1 },
+              (_, i) => config.minPlayers + i,
+            ).map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-pressed={count === n}
+                onClick={() => setPlayers(n)}
+                className={`tap-44 h-11 min-w-11 flex-1 rounded-chip border font-mono text-[15px] tabular-nums transition-colors ${
+                  count === n
+                    ? "border-accent bg-accent/10 text-accent-ink"
+                    : "border-border bg-surface"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={playNow}
+          className={buttonVariants("primary", "w-full justify-center py-3 text-[15px]")}
+        >
+          {t("tools.mtg.playNow")}
+        </button>
+        {/* El `?jugadores=` conserva la elección al saltar a configurar: elegir 5 y
+            que la configuración abra con 4 sería desdecirse. */}
+        <Link
+          href={`/partidas/mtg/nueva?modo=${mode}&jugadores=${count}`}
+          className={buttonVariants("secondary", "w-full justify-center py-3 text-[15px]")}
+        >
+          {t("tools.mtg.configure")}
+        </Link>
+      </div>
     </>
   );
 }

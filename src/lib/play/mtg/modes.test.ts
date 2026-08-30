@@ -60,13 +60,19 @@ describe("partner: el daño se cuenta por comandante", () => {
     expect(lossConditions(s, "carlos")).toEqual(["commander_damage"]);
   });
 
-  it("rechaza un comandante que no existe y el daño de un comandante a su propio dueño", () => {
+  it("rechaza un comandante que no existe; el daño al PROPIO dueño sí vale", () => {
     expect(() =>
       mtgReducer(base, ev<CommanderDamageEvent>("commander_damage", { source: "fantasma-c1", target: "borja", delta: 5 }, 2000)),
     ).toThrow(PlayEventError);
-    expect(() =>
-      mtgReducer(base, ev<CommanderDamageEvent>("commander_damage", { source: "ana-c1", target: "ana", delta: 5 }, 2000)),
-    ).toThrow(PlayEventError);
+    // Aquí HUBO un throw para el daño a su propio dueño, y era una regla inventada:
+    // los 21 cuentan el daño de combate de un comandante dé igual quién lo controle
+    // (te lo roban, una pelea, una redirección). Partida real, 2026-08-30.
+    const s = mtgReducer(
+      base,
+      ev<CommanderDamageEvent>("commander_damage", { source: "ana-c1", target: "ana", delta: 5 }, 2000),
+    );
+    expect(s.players[0].commanderDamage).toEqual({ "ana-c1": 5 });
+    expect(s.players[0].life).toBe(35);
   });
 
   it("ids de comandante duplicados entre asientos no arrancan: mezclarían dos contadores", () => {
@@ -101,5 +107,15 @@ describe("commanderDamageBreakdown", () => {
 
   it("sin daño recibido, la lista va vacía", () => {
     expect(commanderDamageBreakdown(base, "borja")).toEqual([]);
+  });
+
+  it("el propio comandante entra en el desglose cuando ha hecho daño", () => {
+    const s = mtgReducer(
+      base,
+      ev<CommanderDamageEvent>("commander_damage", { source: "borja-c1", target: "borja", delta: 6 }, 2000),
+    );
+    const rows = commanderDamageBreakdown(s, "borja");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ commanderId: "borja-c1", sourceId: "borja", amount: 6 });
   });
 });
