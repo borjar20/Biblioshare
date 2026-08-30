@@ -33,7 +33,16 @@ class BiblioshareWidgetPlugin : Plugin() {
     @PluginMethod
     fun syncNow(call: PluginCall) {
         Thread {
-            WidgetSync.refresh(context)
+            // try/catch obligatorio: una excepción sin capturar en un Thread{}
+            // crudo mata el proceso entero (así se cerraba la app en modo avión,
+            // vía visibilitychange → syncWidgets sin red). Un widget que no puede
+            // sincronizar simplemente lo deja pasar: ni crash ni UI de error —
+            // se resuelve igual y ya reintentará el siguiente refresco.
+            try {
+                WidgetSync.refresh(context)
+            } catch (e: Exception) {
+                Log.w("BiblioshareWidgets", "syncNow falló (¿sin red?), se omite", e)
+            }
             call.resolve()
         }.start()
     }

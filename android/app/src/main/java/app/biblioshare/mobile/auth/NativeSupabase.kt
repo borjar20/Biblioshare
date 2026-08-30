@@ -1,9 +1,11 @@
 package app.biblioshare.mobile.auth
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -164,15 +166,24 @@ object NativeSupabase {
 
     // ── HTTP (HttpURLConnection + org.json, cero dependencias nuevas) ──────────
 
+    // Sin red la llamada NO devuelve un código de error: LANZA. Modo avión lanza
+    // UnknownHostException (o ConnectException/SocketTimeoutException); sin este
+    // catch la excepción sube por rpc()/refresh()/whoAmI() hasta el Thread{} del
+    // plugin llamante, el hilo muere sin handler y Android mata el proceso
+    // entero (KillApplicationHandler) — "la app se cierra sola" al activar el
+    // modo avión. Se devuelve 0 to "": ∉2xx (los llamantes devuelven null) y
+    // ∉4xx (refresh() lo trata como transitorio y CONSERVA los tokens para
+    // reintentar con red). Solo IOException: un error de programación (NPE, JSON
+    // malformado…) debe seguir petando en desarrollo, no camuflarse como "sin red".
     private fun request(
         method: String,
         urlStr: String,
         apiKey: String,
         bearer: String?,
         body: String?,
-    ): Pair<Int, String> {
+    ): Pair<Int, String> = try {
         val conn = URL(urlStr).openConnection() as HttpURLConnection
-        return try {
+        try {
             conn.requestMethod = method
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
@@ -190,5 +201,8 @@ object NativeSupabase {
         } finally {
             conn.disconnect()
         }
+    } catch (e: IOException) {
+        Log.w("NativeSupabase", "fallo de red en $method $urlStr (¿sin conexión?)", e)
+        0 to ""
     }
 }

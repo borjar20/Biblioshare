@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
@@ -76,14 +77,21 @@ class ReadingSessionService : Service() {
     private fun loadCoverAndRefresh(model: ReadingNotificationModel) {
         val url = model.coverUrl ?: return
         Thread {
-            WidgetImageCache.ensureDownloaded(this, url)
-            val cover = WidgetImageCache.loadBitmap(this, url) ?: return@Thread
-            val current = TimerStore.get(this)
-            if (current == null || current.passId != model.passId) return@Thread // sesión terminada o cambiada
-            // La MISMA notificación (NOTIF_ID) con la portada. En 33+ requiere
-            // POST_NOTIFICATIONS; si falta, la notif del FGS ya está puesta y
-            // esto solo la enriquece — se ignora el fallo.
-            runCatching { NotificationManagerCompat.from(this).notify(NOTIF_ID, buildNotification(this, model, cover)) }
+            // try/catch obligatorio: una excepción sin capturar en un Thread{} crudo
+            // mata el proceso entero (modo avión). La portada es puro adorno: si
+            // falla, la notificación sin portada ya está puesta — se sale limpio.
+            try {
+                WidgetImageCache.ensureDownloaded(this, url)
+                val cover = WidgetImageCache.loadBitmap(this, url) ?: return@Thread
+                val current = TimerStore.get(this)
+                if (current == null || current.passId != model.passId) return@Thread // sesión terminada o cambiada
+                // La MISMA notificación (NOTIF_ID) con la portada. En 33+ requiere
+                // POST_NOTIFICATIONS; si falta, la notif del FGS ya está puesta y
+                // esto solo la enriquece — se ignora el fallo.
+                runCatching { NotificationManagerCompat.from(this).notify(NOTIF_ID, buildNotification(this, model, cover)) }
+            } catch (e: Exception) {
+                Log.w("ReadingSession", "carga de portada falló, la notificación queda sin portada", e)
+            }
         }.start()
     }
 
