@@ -125,6 +125,19 @@ test("terminar y revancha: la mesa vuelve puesta y el turno rota un asiento", as
   expect(await snapshot(page)).not.toBeNull();
 });
 
+test("salir de la mesa conserva la partida, y el hub la ofrece para seguir", async ({ page }) => {
+  await empezarPartida(page);
+  await page.getByRole("button", { name: "Quitar una vida a Jugador 1" }).click();
+
+  await page.getByRole("button", { name: "Acciones de la partida" }).click();
+  await page.getByRole("button", { name: /salir de la mesa/i }).click();
+  await expect(page).toHaveURL(/\/partidas$/);
+
+  // Salir NO es descartar: la partida sigue guardada y el hub la ofrece.
+  expect(await snapshot(page)).not.toBeNull();
+  await expect(page.getByRole("link", { name: /partida en curso/i })).toBeVisible();
+});
+
 test("descartar borra la partida y deja el vacío con salida", async ({ page }) => {
   await empezarPartida(page);
   await page.getByRole("button", { name: "Acciones de la partida" }).click();

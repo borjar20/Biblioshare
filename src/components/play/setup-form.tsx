@@ -30,18 +30,20 @@ function parseMode(value: string | null): MtgMode {
 }
 
 /**
- * Configuración de partida. Dos cosas la gobiernan:
+ * Configuración de partida. Tres cosas la gobiernan:
  *
- * 1. **Cero es un camino de primera.** Abre con cuatro asientos rellenos y el botón
- *    activo: la gente monta esto con la mesa puesta y las cartas repartidas, así que
- *    escribir nombres es opcional y el pie lo dice literalmente.
+ * 1. **Configurar es OPCIONAL, y el orden de la pantalla lo dice.** «Empezar» va
+ *    arriba, activo desde el primer píxel; nombres y mazos viven plegados debajo.
+ *    Antes el botón quedaba bajo cuatro tarjetas de campos y la pantalla entera se
+ *    leía como un formulario que rellenar (revisión UX 2026-08-30) — el aviso de
+ *    «puedes empezar sin escribir nada» estaba DESPUÉS del botón que justificaba.
  * 2. **La fricción está en la segunda partida.** Por eso «Revancha» trae la mesa
  *    entera puesta y pasa por AQUÍ en vez de arrancar sola: entre dos partidas casi
- *    siempre cambia algo, y corregirlo con la partida ya empezada es peor.
- *
- * El color de asiento se reparte aquí para que el salto al tablero no sorprenda: el
- * que era ciruela en la lista es ciruela en la mesa. Y el orden de esta lista ES el
- * orden de turnos.
+ *    siempre cambia algo, y corregirlo con la partida ya empezada es peor. En
+ *    revancha la mesa abre DESPLEGADA: se viene justo a mirar los nombres.
+ * 3. El color de asiento se reparte aquí para que el salto al tablero no sorprenda:
+ *    el que era ciruela en la lista es ciruela en la mesa. Y el orden de esta lista
+ *    ES el orden de turnos.
  */
 export function SetupForm({ identity }: { identity: string }) {
   const t = useTranslations("play");
@@ -49,6 +51,12 @@ export function SetupForm({ identity }: { identity: string }) {
   const searchParams = useSearchParams();
   const mode = parseMode(searchParams.get("modo"));
   const isRematch = searchParams.get("revancha") === "1";
+  // `?jugadores=` conserva la elección hecha en el hub: elegir 5 allí y abrir esto
+  // con 4 sería desdecirse. `newDraft` acota el número a lo que el modo admite.
+  // Sin parámetro tiene que quedar `undefined`, no `Number(null) === 0`: un 0 se
+  // acotaría al mínimo del modo y abriría la mesa con 2 en vez de con 4.
+  const rawPlayers = searchParams.get("jugadores");
+  const requestedPlayers = rawPlayers === null ? undefined : Number(rawPlayers);
   const config = modeConfig(mode);
 
   const remembered = useRememberedTable(identity);
@@ -61,8 +69,13 @@ export function SetupForm({ identity }: { identity: string }) {
     if (isRematch && remembered && remembered.mode === mode) {
       return draftFromSetup(rotateStartingSeat(remembered));
     }
-    return newDraft(mode);
-  }, [isRematch, remembered, mode]);
+    return newDraft(
+      mode,
+      requestedPlayers !== undefined && Number.isInteger(requestedPlayers)
+        ? requestedPlayers
+        : undefined,
+    );
+  }, [isRematch, remembered, mode, requestedPlayers]);
 
   const [edited, setEdited] = useState<SetupDraft | null>(null);
   const draft = edited ?? base;
@@ -127,12 +140,38 @@ export function SetupForm({ identity }: { identity: string }) {
         </fieldset>
       )}
 
-      <section>
-        <h2 className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-          {t("setup.table")}
-        </h2>
+      {/* El botón ANTES que los campos: empezar no exige leerlos, y el pie que lo
+          dice va pegado al botón, no perdido al final de la página. */}
+      <div>
+        <button
+          type="button"
+          onClick={start}
+          className={buttonVariants("primary", "w-full justify-center py-3 text-[15px]")}
+        >
+          {t("setup.start")}
+        </button>
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          {isRematch && remembered
+            ? t("setup.rematchSeat", { name: seatName(draft.startingSeat) })
+            : t("setup.emptyIsFine")}
+        </p>
+      </div>
 
-        <ul className="flex flex-col gap-2">
+      {/* La mesa, plegada: es la parte opcional. En revancha abre desplegada porque
+          a esta pantalla se viene justo a repasar quién sigue sentado. El summary
+          enseña los nombres para decidir si hace falta abrir. */}
+      <details
+        open={isRematch}
+        className="rounded-card border border-border bg-surface px-3 py-2.5"
+      >
+        <summary className="cursor-pointer text-[13px] font-semibold">
+          {t("setup.table")}{" "}
+          <span className="font-normal text-muted-foreground">
+            · {draft.players.map((_, i) => seatName(i)).join(", ")}
+          </span>
+        </summary>
+
+        <ul className="mt-3 flex flex-col gap-2">
           {draft.players.map((player, i) => {
             const accent = seatAccent(i);
             return (
@@ -227,7 +266,7 @@ export function SetupForm({ identity }: { identity: string }) {
             );
           })}
         </ul>
-      </section>
+      </details>
 
       {/* Lo avanzado, plegado pero enseñando su estado: es lo único que hace falta
           saber para decidir si abrirlo. */}
@@ -272,20 +311,6 @@ export function SetupForm({ identity }: { identity: string }) {
           </label>
         </div>
       </details>
-
-      <button
-        type="button"
-        onClick={start}
-        className={buttonVariants("primary", "w-full justify-center py-3 text-[15px]")}
-      >
-        {t("setup.start")}
-      </button>
-
-      <p className="text-[12px] text-muted-foreground">
-        {isRematch && remembered
-          ? t("setup.rematchSeat", { name: seatName(draft.startingSeat) })
-          : t("setup.emptyIsFine")}
-      </p>
     </div>
   );
 }

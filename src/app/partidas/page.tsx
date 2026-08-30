@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { PlayFrame } from "@/components/play/play-frame";
 import { ToolGrid } from "@/components/play/tool-grid";
 import { ActiveGameBanner } from "@/components/play/active-game-banner";
+import { HowItWorks } from "@/components/play/how-it-works";
 
 export const metadata: Metadata = { title: "Partidas — Biblioshare" };
 
@@ -35,13 +36,17 @@ export default async function PlayHubPage() {
 
       {/* La sesión se lee bajo su propio boundary: así el armazón de la página no
           espera a las cookies y la ruta sigue produciendo shell estático (#435). */}
-      {/* La sesión se lee bajo su propio boundary: así el armazón de la página no
-          espera a las cookies y la ruta sigue produciendo shell estático (#435). */}
       <Suspense fallback={null}>
         <Banner />
       </Suspense>
 
       <ToolGrid />
+
+      {/* En tres columnas a lo ancho: es lo que llena el hub en escritorio con
+          información en vez de con aire (revisión UX 2026-08-30). */}
+      <div className="mt-8">
+        <HowItWorks columns />
+      </div>
     </PlayFrame>
   );
 }

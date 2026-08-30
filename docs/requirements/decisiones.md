@@ -3036,3 +3036,32 @@ de Magic lo lee la ISLA con `useSearchParams`, no la pagina, por lo mismo.
 **Y una regla de UI que salio de un bug real:** las mitades tactiles de ±1 estan posicionadas, y en CSS
 un elemento posicionado pinta por ENCIMA de los que estan en flujo aunque vayan antes en el DOM. Por eso
 la botonera de veneno y comandante lleva `relative`: sin ella, tocar «veneno» sumaba vida.
+
+## 2026-08-30 (3) — Revisión UX de la fase 1: jugar es lo primario, configurar es lo opcional (#931)
+
+Una revisión de producto sobre la fase 1 recién construida dejó tres decisiones de forma:
+
+1. **«Jugar ya» es el camino primario y la configuración es opcional DE VERDAD.** El hub de Magic
+   arranca la partida él mismo (modo + cuántos sois, dos toques hasta el tablero); la pantalla de
+   configuración pasa a ser el camino secundario y se reordena: «Empezar» arriba siempre activo, y
+   nombres/mazos/comandantes plegados en un `<details>` cuyo resumen enseña la mesa. Antes el botón
+   quedaba bajo cuatro tarjetas de campos y la pantalla entera se leía como un formulario
+   obligatorio que había que dejar en blanco. En revancha la mesa abre desplegada: a esa pantalla
+   se viene justo a repasar quién sigue sentado.
+
+2. **El acceso a Partidas va por shortcuts, no por la navegación pública.** Decisión explícita del
+   usuario: shortcut en el manifest de la PWA (mantener pulsado el icono → «Nueva partida») y su
+   equivalente nativo para la APK de Capacitor (issue aparte, plugin de app shortcuts). La entrada
+   del menú «Tú» se queda como está y la barra de cinco no se toca. Consecuencia asumida: el
+   anónimo que navega la web sigue sin ver Partidas en ninguna navegación — llega por URL o por
+   shortcut.
+
+3. **El vacío de los hubs en escritorio se llena con contenido real, no con promesas.** «Tu mesa
+   habitual» (la última mesa de `table-memory`, jugable en un toque con el turno rotado — la
+   convención de revancha) y «Cómo funciona» en tres pasos. La plantilla del hub gana una columna
+   `aside` en `lg` donde el historial (fase 7) encajará sin recolocar nada. Sigue vigente la regla
+   de no pintar secciones que no existen: sin mesa recordada, la tarjeta no sale.
+
+**Y un agujero que la revisión encontró:** el tablero se come el chrome entero y no tenía salida que
+CONSERVARA la partida — en PWA/APK instalada (sin botón atrás en iOS) solo se podía descartar. La
+hoja de la partida gana «Salir de la mesa · se queda guardada».

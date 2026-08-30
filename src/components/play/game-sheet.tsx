@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
 import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
@@ -32,6 +33,7 @@ export function GameSheet({
   onClose: () => void;
 }) {
   const t = useTranslations("play");
+  const router = useRouter();
   const state = game.state as MtgState;
   const prefs = preferencesStore.getSnapshot();
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -120,6 +122,15 @@ export function GameSheet({
           label={t("gameSheet.keepAwake")}
           value={prefs.keepAwake ? t("gameSheet.yes") : t("gameSheet.no")}
           onClick={() => update({ keepAwake: !prefs.keepAwake })}
+        />
+        {/* La única salida del tablero que CONSERVA la partida. El tablero se come
+            el chrome entero, así que sin este ítem la app instalada (PWA/APK, sin
+            botón de atrás en iOS) no tiene forma de volver al hub sin descartar. El
+            valor lo dice explícito: salir no borra nada. */}
+        <SheetRow
+          label={t("gameSheet.leave")}
+          value={t("gameSheet.leaveValue")}
+          onClick={() => router.push("/partidas")}
         />
         <SheetRow
           label={t("gameSheet.finish")}
