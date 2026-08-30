@@ -5,6 +5,7 @@ import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getUnreadCount } from "@/lib/social/notifications";
 import { Header } from "@/components/header";
 import { BottomNav } from "./bottom-nav";
+import { ChromeGate } from "./chrome-gate";
 import { SkipLink } from "./skip-link";
 
 // Chrome de la app. El ARMAZÓN (los divs y dónde va cada barra) es estático y no
@@ -25,8 +26,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <SkipLink />
+      {/* `/partida/activa` se come el marco: es la única pantalla de la app sin
+          topbar ni barra de cinco, y ese corte es lo que separa «configurar» de
+          «jugar» (#931).
+          El gate va DENTRO del `<Suspense>`, no envolviéndolo: lee la ruta con
+          `usePathname`, y un hook de cliente sin boundary por encima bloquea el
+          prerender de TODA ruta que llegue a prerenderarse (`CLIENT_HOOK_DYNAMIC`) —
+          `next build` se cae, aunque `next dev` no diga nada. Dentro del boundary es
+          exactamente lo que ya hacía `BottomNav` con `/post/*`. */}
       <Suspense fallback={<HeaderSkeleton />}>
-        <SessionChrome />
+        <ChromeGate>
+          <SessionChrome />
+        </ChromeGate>
       </Suspense>
       {/* El landmark <main> vive AQUÍ, en el armazón, y no en cada página: así lo
           tienen las 17 rutas de una vez y no hay forma de olvidarlo al crear la
@@ -39,7 +50,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <Suspense fallback={<BottomNavSkeleton />}>
-        <SessionNav />
+        <ChromeGate>
+          <SessionNav />
+        </ChromeGate>
       </Suspense>
     </div>
   );

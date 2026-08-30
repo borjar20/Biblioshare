@@ -7,7 +7,7 @@ import { makeEvent } from "@/lib/play/core/events";
 import { getPlayStore } from "@/lib/play/core/store";
 import { modeConfig, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
 import { rememberTable, rotateStartingSeat } from "@/lib/play/ui/table-memory";
-import { seatAccent } from "@/lib/play/ui/seats";
+import { CARD_BACKGROUND_IDS, seatAccent } from "@/lib/play/ui/seats";
 import {
   addCommander,
   draftFromSetup,
@@ -190,6 +190,28 @@ export function SetupForm({ identity }: { identity: string }) {
                       )}
                     </div>
                   ))}
+
+                  {/* El fondo de la tarjeta se elige AQUÍ y no en la partida: viaja
+                      dentro de `game_started` y no hay evento que lo cambie después
+                      (#943). Es una referencia —un id de tinte—, nunca bytes: un
+                      data-URI acabaría en el log y en el snapshot (#942). */}
+                  <div className="flex gap-1.5 pt-0.5">
+                    {CARD_BACKGROUND_IDS.map((id, tint) => {
+                      const chosen = (player.cardBackground ?? `seat-${i + 1}`) === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setEdited(updatePlayer(draft, i, { cardBackground: id }))}
+                          aria-label={t("setup.background")}
+                          aria-pressed={chosen}
+                          className={`h-6 w-6 rounded-chip ${seatAccent(tint).tint} ${
+                            chosen ? `ring-2 ${seatAccent(tint).ring}` : ""
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
 
                   {player.commanders.length < config.maxCommanders && (
                     <button

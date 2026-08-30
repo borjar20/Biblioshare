@@ -1,8 +1,46 @@
 import { describe, expect, it } from "vitest";
 import { mtgReducer, initialMtgState } from "./reducer";
-import { lossConditions } from "./rules";
+import { lossConditions, nextAliveSeat } from "./rules";
 import { ev, started } from "./test-fixtures";
-import type { CommanderDamageEvent, LifeChangedEvent, PlayerEliminatedEvent, PoisonChangedEvent } from "./events";
+import type {
+  CommanderDamageEvent,
+  LifeChangedEvent,
+  PlayerEliminatedEvent,
+  PoisonChangedEvent,
+  TurnPassedEvent,
+} from "./events";
+
+describe("nextAliveSeat", () => {
+  const base = initialMtgState(started(1000)); // ana, borja, carlos, laura
+
+  it("el siguiente asiento cuando están todos vivos", () => {
+    expect(nextAliveSeat(base)).toBe(1);
+    expect(nextAliveSeat({ ...base, activeSeat: 3 })).toBe(0);
+  });
+
+  it("salta a los eliminados", () => {
+    const s = mtgReducer(base, ev<PlayerEliminatedEvent>("player_eliminated", { target: "borja" }, 2000));
+    expect(nextAliveSeat(s)).toBe(2);
+  });
+
+  it("dice EXACTAMENTE a quién pondrá activo el reducer", () => {
+    // Es la razón de que exista: la consola nombra a quien le toca, y si esta regla
+    // y la del reducer se separan, la UI miente sobre lo que va a pasar al pulsar.
+    let s = mtgReducer(base, ev<PlayerEliminatedEvent>("player_eliminated", { target: "borja" }, 2000));
+    s = mtgReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target: "carlos" }, 2100));
+    const esperado = nextAliveSeat(s);
+    const despues = mtgReducer(s, ev<TurnPassedEvent>("turn_passed", {}, 2200));
+    expect(despues.activeSeat).toBe(esperado);
+  });
+
+  it("con nadie más vivo devuelve el asiento activo, no da vueltas", () => {
+    let s = base;
+    for (const target of ["borja", "carlos", "laura"]) {
+      s = mtgReducer(s, ev<PlayerEliminatedEvent>("player_eliminated", { target }, 2000));
+    }
+    expect(nextAliveSeat(s)).toBe(0);
+  });
+});
 
 describe("lossConditions", () => {
   const base = initialMtgState(started(1000));

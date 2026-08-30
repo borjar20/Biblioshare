@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEAT_ACCENT, SEAT_COUNT, seatAccent } from "./seats";
+import { CARD_BACKGROUND_IDS, SEAT_ACCENT, SEAT_COUNT, cardBackgroundTint, seatAccent } from "./seats";
 
 describe("colores de asiento", () => {
   it("hay exactamente uno por asiento del máximo actual", () => {
@@ -40,5 +40,27 @@ describe("colores de asiento", () => {
 
   it("un índice negativo tampoco rompe", () => {
     expect(seatAccent(-1)).toBe(SEAT_ACCENT[5]);
+  });
+});
+
+describe("fondos de tarjeta", () => {
+  it("hay un fondo predefinido por asiento, con id estable", () => {
+    // El id viaja DENTRO de game_started: cambiarlo rompería partidas guardadas.
+    expect(CARD_BACKGROUND_IDS).toEqual(["seat-1", "seat-2", "seat-3", "seat-4", "seat-5", "seat-6"]);
+  });
+
+  it("sin fondo elegido no hay tinte: el panel se queda en su superficie", () => {
+    expect(cardBackgroundTint(undefined)).toBeNull();
+  });
+
+  it("un id que esta versión no conoce cae a «sin tinte», no a una pantalla en blanco", () => {
+    // Alcanzable: una partida guardada por una versión futura con fondos nuevos
+    // (el avatar del perfil o el arte del comandante llegarán como URL).
+    expect(cardBackgroundTint("https://ejemplo/arte.jpg")).toBeNull();
+    expect(cardBackgroundTint("seat-9")).toBeNull();
+  });
+
+  it("cada id predefinido da el tinte de su asiento", () => {
+    expect(cardBackgroundTint("seat-3")).toBe(SEAT_ACCENT[2].tint);
   });
 });

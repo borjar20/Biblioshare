@@ -19,6 +19,24 @@ export function lossConditions(state: MtgState, participantId: string): Eliminat
 }
 
 /**
+ * A qué asiento le toca después del activo, saltando eliminados. Vive aquí y no
+ * duplicado en la UI porque la consola («pasar el turno a…») y la hoja de partida
+ * tienen que nombrar EXACTAMENTE a quien el reducer va a poner activo: dos copias de
+ * esta regla se desincronizan a la primera eliminación.
+ *
+ * Si no queda nadie más vivo, devuelve el asiento activo: no es sitio para decidir
+ * que la partida acabó — eso lo hace la mesa.
+ */
+export function nextAliveSeat(state: MtgState): number {
+  const seats = state.players.length;
+  for (let i = 1; i <= seats; i++) {
+    const candidate = (state.activeSeat + i) % seats;
+    if (!state.players[candidate].elimination) return candidate;
+  }
+  return state.activeSeat;
+}
+
+/**
  * Daño de comandante recibido, DESGLOSADO por comandante atacante y en orden de
  * asiento (fijo, para que los números no bailen entre toques). Solo los que han
  * hecho daño: un rival a cero no aporta nada y una mesa de 6 con partner daría
