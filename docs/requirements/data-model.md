@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-28 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-08-31 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3612,7 +3612,27 @@ la RPC, anima una vez y sella `displayed_at`. Migración
 #460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
 `annual_challenge_completed` y `club_activity_completed`.
 
-## 8. Seguridad
+## 8. Play — `play_games` (dev, 2026-08-31)
+
+Partidas guardadas de las herramientas de juego (fase 5 de BiblioPlay, #931). Una fila por partida,
+log íntegro en JSONB (sin tabla de eventos por filas hasta el multiplayer de fase 9).
+**Privada total: RLS por ownership, sin acceso anon ni lectura de terceros.**
+
+**La tabla** `play_games`: `id` (uuid, PK; gameId del cliente = `committed[0].id`), `owner_id`
+(uuid, FK `auth.users` con `on delete cascade`), `tool_id` (text; `"mtg" | "score"`, sin enum para
+permitir crecimiento de herramientas), `started_at` (timestamptz), `finished_at` (timestamptz),
+`saved_at` (timestamptz), `summary` (jsonb), `events` (jsonb; historial íntegro de eventos),
+`created_at` (timestamptz, default `now()`), `updated_at` (timestamptz, default `now()`).
+Índice `play_games_owner_saved on (owner_id, saved_at desc)` para la lista ordenada por usuario.
+
+**RLS**: cuatro políticas de solo lectura/escritura/actualización/borrado de las propias
+(`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
+privada total.**
+
+**Migración** `supabase/migrations/20260893_play_games.sql` — por aplicar en dev y prod tras
+validar en e2e (Tasks 5–6 las consumen; la aplicación a prod es tarea 8, tras pasar los e2e).
+
+## 9. Seguridad
 
 Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
 2026-08-19; prod por reverificar). Patrones:
@@ -3782,7 +3802,7 @@ derivado del proveedor y se rehidrata solo. Medición previa: **prod 0 huérfano
 4436 filas (79 %), limpiados en la misma migración. Quedan **once tablas más** con referencia
 polimórfica sin guard (issue #708).
 
-## 9. Enums
+## 10. Enums
 
 **29 enums en `public`** (recontados contra `pg_type` de dev el 2026-08-19):
 
@@ -3821,10 +3841,10 @@ Los tipos `saga_edge_type`/`saga_node_level` **ya no existen**: `20260729_drop_s
 incluye su `drop type if exists` y `pg_type` de dev no los devuelve (verificado el 2026-08-19).
 Una versión anterior de esta tabla los daba por «huérfanos vivos» y era falso.
 
-## 10. Migraciones
+## 11. Migraciones
 
-186 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
-2026-08-19).
+187 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+2026-08-31).
 Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
 pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
 `supabase/schema-baseline.sql` es el replay ordenado para levantar un entorno limpio.
