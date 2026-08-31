@@ -2881,6 +2881,30 @@
         "heads": "Cara",
         "tails": "Cruz"
       },
+      "players": {
+        "regulars": "Tus habituales",
+        "nameLabel": "Nombre del jugador",
+        "namePlaceholder": "Añadir jugador…",
+        "add": "Añadir",
+        "remove": "Quitar a {name}",
+        "hint": "Añade al menos 2 jugadores para sortear.",
+        "first": "Primer jugador",
+        "order": "Orden aleatorio",
+        "teams": "Equipos",
+        "teamCount": "Número de equipos"
+      },
+      "bag": {
+        "itemName": "Tipo de ficha",
+        "namePlaceholder": "Rojo, Azul…",
+        "itemCount": "Cantidad",
+        "add": "Añadir",
+        "remove": "Quitar {name}",
+        "hint": "Añade tipos de ficha con su cantidad.",
+        "withReplacement": "Con reemplazo (no descuenta)",
+        "draw": "Sacar ficha",
+        "remaining": "Quedan {n}",
+        "reset": "Reiniciar bolsa"
+      },
       "feed": {
         "title": "Últimos resultados",
         "empty": "Aún no hay resultados.",

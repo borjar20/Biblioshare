@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useCompanion } from "@/lib/play/random/use-companion";
 import { DiceSection } from "./dice-section";
 import { CoinSection } from "./coin-section";
+import { PlayersSection } from "./players-section";
+import { BagSection } from "./bag-section";
 import { ResultFeed } from "./result-feed";
 
 type Tab = "dice" | "coin" | "players" | "bag";
@@ -59,9 +61,29 @@ export function RandomScreen({ identity }: { identity: string }) {
             onEmit={(payload) => companion.emit("coin_flipped", payload)}
           />
         ) : null}
-        {/* players y bag llegan en la siguiente task */}
-        {tab === "players" ? <div /> : null}
-        {tab === "bag" ? <div /> : null}
+        {tab === "players" ? (
+          <PlayersSection
+            identity={identity}
+            players={companion.state.players}
+            lastResult={companion.feed.find(
+              (e) => e.type === "first_picked" || e.type === "order_drawn" || e.type === "teams_drawn",
+            )}
+            onSetPlayers={(players) => companion.emit("players_set", { players })}
+            onFirst={(players, picked) => companion.emit("first_picked", { players, picked })}
+            onOrder={(players, order) => companion.emit("order_drawn", { players, order })}
+            onTeams={(players, teams) => companion.emit("teams_drawn", { players, teams })}
+          />
+        ) : null}
+        {tab === "bag" ? (
+          <BagSection
+            bag={companion.state.bag}
+            lastDrawn={lastOf("bag_drawn")}
+            onBagSet={(items, withReplacement) =>
+              companion.emit("bag_set", { items, withReplacement })
+            }
+            onDraw={(name) => companion.emit("bag_drawn", { name })}
+          />
+        ) : null}
       </div>
 
       <ResultFeed
