@@ -91,7 +91,9 @@ function Facets({ kind }: { kind: DieShapeKind }) {
  */
 export function DieShape({ sides, value, size }: { sides: number; value: string; size: number }) {
   const kind = dieShapeFor(sides);
-  const shapeProps = { fill: "var(--surface-3)", stroke: "var(--border)", strokeWidth: 3 };
+  // Contorno en --foreground-soft (más definido que --border); las aristas
+  // internas de Facets se quedan en --border, más suaves que el borde.
+  const shapeProps = { fill: "var(--surface-3)", stroke: "var(--foreground-soft)", strokeWidth: 2.5 };
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
       {kind === "d6" ? (
@@ -103,6 +105,7 @@ export function DieShape({ sides, value, size }: { sides: number; value: string;
       )}
       <Facets kind={kind} />
       <text
+        className="font-serif"
         x="50"
         y={TEXT_Y[kind]}
         textAnchor="middle"
