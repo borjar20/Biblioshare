@@ -2874,11 +2874,12 @@
         "bag": "Bolsa"
       },
       "dice": {
-        "countLabel": "Cuántos",
-        "sidesLabel": "Caras",
-        "roll": "Tirar",
         "result": "{rolls} = {total}",
-        "tap": "Tirar el dado"
+        "tap": "Tirar el dado",
+        "hint": "Toca el dado para tirar",
+        "fewer": "Un dado menos",
+        "more": "Un dado más",
+        "customSides": "Caras personalizadas"
       },
       "coin": {
         "flip": "Lanzar moneda",
