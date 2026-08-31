@@ -3,13 +3,18 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   __resetDbForTests,
   deleteActive,
+  deletePlayer,
   deleteSaved,
   DB_NAME,
+  listPlayers,
   listSaved,
+  putPlayer,
   readActive,
+  readPlayer,
   saveFinished,
   writeActive,
   type ActiveGameRecord,
+  type PlayerRecord,
   type SavedGameRecord,
 } from "./db";
 import { makeEvent } from "./events";
@@ -92,6 +97,43 @@ async function seedV1(
   });
 }
 
+// Siembra una BD versión 2 (esquema/registros crudos, sin pasar por el
+// módulo) para probar la migración v2->v3 real del onupgradeneeded: el
+// almacén `players` no existe aún, `saved` ya tiene registros v2.
+async function seedV2(records: SavedGameRecord[]): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 2);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("active")) {
+        db.createObjectStore("active", { keyPath: "identity" });
+      }
+      if (!db.objectStoreNames.contains("saved")) {
+        const saved = db.createObjectStore("saved", { keyPath: "gameId" });
+        saved.createIndex("identity", "identity");
+      }
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction("saved", "readwrite");
+      for (const r of records) tx.objectStore("saved").put(r);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function playerRecord(
+  overrides: { playerId: string; identity: string; name: string } & Partial<PlayerRecord>,
+): PlayerRecord {
+  return { v: 1, syncStatus: "pending", deletedAt: null, ...overrides };
+}
+
 beforeEach(async () => {
   await __resetDbForTests();
 });
@@ -156,6 +198,10 @@ describe("saved v2", () => {
     expect(migrated[0].syncStatus).toBe("pending");
     expect(migrated[0].deletedAt).toBeNull();
     expect(migrated[0].summary.toolId).toBe("score");
+    // Salto directo v1→v3: el MISMO upgrade crea también el almacén players
+    // (onupgradeneeded corre una sola vez con el oldVersion real) — aserción
+    // explícita para no depender solo de la semántica de IndexedDB.
+    expect(await listPlayers("anon")).toEqual([]);
   });
 
   it("migración v1→v2: un log corrupto se descarta en vez de romper el upgrade", async () => {
@@ -170,5 +216,25 @@ describe("saved v2", () => {
       },
     ]);
     expect(await listSaved("anon")).toEqual([]);
+  });
+});
+
+describe("players (fase 6)", () => {
+  it("putPlayer/listPlayers aíslan por identidad y deletePlayer borra", async () => {
+    await putPlayer(playerRecord({ playerId: "j1", identity: "uid-1", name: "Pablo" }));
+    await putPlayer(playerRecord({ playerId: "j2", identity: "uid-2", name: "Otro" }));
+    expect((await listPlayers("uid-1")).map((p) => p.name)).toEqual(["Pablo"]);
+    await deletePlayer("j1");
+    expect(await listPlayers("uid-1")).toEqual([]);
+  });
+
+  it("readPlayer devuelve null si no existe", async () => {
+    expect(await readPlayer("nadie")).toBeNull();
+  });
+
+  it("migración v2→v3: crea el almacén players sin tocar las guardadas", async () => {
+    await seedV2([savedRecordV2({ gameId: "g1", identity: "anon" })]);
+    expect((await listSaved("anon")).map((r) => r.gameId)).toEqual(["g1"]);
+    expect(await listPlayers("anon")).toEqual([]);
   });
 });

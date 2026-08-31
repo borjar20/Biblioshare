@@ -5,6 +5,7 @@ import type { GameStartedEvent } from "@/lib/play/mtg/events";
 import type { MtgSetup } from "@/lib/play/mtg/types";
 import {
   addCommander,
+  assignRegular,
   draftFromSetup,
   newDraft,
   removeCommander,
@@ -141,5 +142,32 @@ describe("borrador de configuración", () => {
     const setup = toSetup(draft, nombrePorDefecto);
     expect(setup.participants[0].cardBackground).toBe("seat-3");
     expect(toSetup(draftFromSetup(setup), nombrePorDefecto)).toEqual(setup);
+  });
+});
+
+describe("habituales en el borrador (fase 6)", () => {
+  it("assignRegular fija nombre y playerId; toSetup emite kind regular", () => {
+    const draft = assignRegular(newDraft("commander"), 0, { playerId: "j1", name: "Pablo" });
+    expect(draft.players[0]).toMatchObject({ name: "Pablo", playerId: "j1" });
+    const setup = toSetup(draft, (i) => `J${i + 1}`);
+    expect(setup.participants[0]).toMatchObject({ kind: "regular", name: "Pablo", playerId: "j1" });
+    expect(setup.participants[1].kind).toBe("guest");
+  });
+
+  it("editar el nombre de un asiento asignado lo degrada a invitado", () => {
+    const draft = assignRegular(newDraft("commander"), 0, { playerId: "j1", name: "Pablo" });
+    const edited = updatePlayer(draft, 0, { name: "Pablo M" });
+    expect(edited.players[0].playerId).toBeUndefined();
+    expect(toSetup(edited, (i) => `J${i + 1}`).participants[0].kind).toBe("guest");
+  });
+
+  it("editar el mazo NO degrada (solo el nombre identifica)", () => {
+    const draft = assignRegular(newDraft("commander"), 0, { playerId: "j1", name: "Pablo" });
+    expect(updatePlayer(draft, 0, { deckName: "Vampiros" }).players[0].playerId).toBe("j1");
+  });
+
+  it("draftFromSetup conserva playerId de los regular", () => {
+    const setup = toSetup(assignRegular(newDraft("commander"), 0, { playerId: "j1", name: "Pablo" }), (i) => `J${i + 1}`);
+    expect(draftFromSetup(setup).players[0].playerId).toBe("j1");
   });
 });

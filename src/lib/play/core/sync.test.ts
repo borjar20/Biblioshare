@@ -58,13 +58,13 @@ beforeEach(async () => {
 
 describe("planSync", () => {
   it("pending sin remoto → push", () => {
-    const plan = planSync([rec({ gameId: "a", syncStatus: "pending" })], []);
+    const plan = planSync([rec({ gameId: "a", syncStatus: "pending" })], [], (r) => r.gameId);
     expect(plan.push.map((r) => r.gameId)).toEqual(["a"]);
     expect(plan.adoptLocal).toEqual([]);
   });
 
   it("pending CON remoto → push igualmente, y el remoto NO se adopta (jamás pisar un pending)", () => {
-    const plan = planSync([rec({ gameId: "a", syncStatus: "pending" })], [row({ id: "a" })]);
+    const plan = planSync([rec({ gameId: "a", syncStatus: "pending" })], [row({ id: "a" })], (r) => r.gameId);
     expect(plan.push.map((r) => r.gameId)).toEqual(["a"]);
     expect(plan.adoptLocal).toEqual([]);
     expect(plan.deleteLocal).toEqual([]);
@@ -75,23 +75,27 @@ describe("planSync", () => {
       rec({ gameId: "a", deletedAt: 1 }),
       rec({ gameId: "b", deletedAt: 1 }),
     ];
-    const plan = planSync(local, [row({ id: "a" })]);
+    const plan = planSync(local, [row({ id: "a" })], (r) => r.gameId);
     expect(plan.deleteRemote).toEqual(["a"]);
     expect(plan.dropLocal).toEqual(["b"]);
   });
 
   it("remoto nuevo → adoptLocal; remoto sobre synced local → adoptLocal (el servidor manda)", () => {
-    const plan = planSync([rec({ gameId: "a", syncStatus: "synced" })], [row({ id: "a" }), row({ id: "c" })]);
+    const plan = planSync(
+      [rec({ gameId: "a", syncStatus: "synced" })],
+      [row({ id: "a" }), row({ id: "c" })],
+      (r) => r.gameId,
+    );
     expect(plan.adoptLocal.map((r) => r.id).sort()).toEqual(["a", "c"]);
   });
 
   it("synced local ausente en remoto → deleteLocal (lo borró otro dispositivo)", () => {
-    const plan = planSync([rec({ gameId: "a", syncStatus: "synced" })], []);
+    const plan = planSync([rec({ gameId: "a", syncStatus: "synced" })], [], (r) => r.gameId);
     expect(plan.deleteLocal).toEqual(["a"]);
   });
 
   it("un tombstone nunca se adopta del remoto aunque exista la fila", () => {
-    const plan = planSync([rec({ gameId: "a", deletedAt: 1 })], [row({ id: "a" })]);
+    const plan = planSync([rec({ gameId: "a", deletedAt: 1 })], [row({ id: "a" })], (r) => r.gameId);
     expect(plan.adoptLocal).toEqual([]);
   });
 
@@ -99,6 +103,7 @@ describe("planSync", () => {
     const withRemote = planSync(
       [rec({ gameId: "a", deletedAt: 1, syncStatus: "pending" })],
       [row({ id: "a" })],
+      (r) => r.gameId,
     );
     expect(withRemote.deleteRemote).toEqual(["a"]);
     expect(withRemote.dropLocal).toEqual([]);
@@ -107,6 +112,7 @@ describe("planSync", () => {
     const withoutRemote = planSync(
       [rec({ gameId: "a", deletedAt: 1, syncStatus: "pending" })],
       [],
+      (r) => r.gameId,
     );
     expect(withoutRemote.dropLocal).toEqual(["a"]);
     expect(withoutRemote.deleteRemote).toEqual([]);

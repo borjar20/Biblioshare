@@ -2838,6 +2838,18 @@
       "adoptDismiss": "Ahora no",
       "targetRounds": "A {value, plural, one {# ronda} other {# rondas}}",
       "targetPoints": "Hasta {value} puntos"
+    },
+    "players": {
+      "remember": "Recordar como habitual",
+      "chipsLabel": "Tus jugadores",
+      "title": "Tus jugadores",
+      "count": "{count, plural, =0 {Ninguno todavía} one {# jugador} other {# jugadores}}",
+      "empty": "Crea habituales desde una mesa con «Recordar como habitual», o desde aquí cuando montes la próxima.",
+      "pending": "Pendiente de subir",
+      "rename": "Renombrar",
+      "renameConfirm": "Guardar",
+      "delete": "Eliminar",
+      "deleteConfirm": "Sus partidas guardadas conservan su nombre. ¿Eliminar?"
     }
   }
 }

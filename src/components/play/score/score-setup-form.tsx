@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
 import { useActiveGame } from "@/lib/play/core/use-active-game";
+import { usePlayers } from "@/lib/play/core/use-players";
 import type { Participant } from "@/lib/play/core/types";
 import type { ScoreDirection, ScoreSetup, ScoreTarget } from "@/lib/play/score/types";
 import { seatAccent } from "@/lib/play/ui/seats";
 import { buttonVariants } from "@/components/ui/button";
+import { RegularPicker } from "../regular-picker";
 import { parseScorePreset, scoreTargetForPreset, type ScorePresetId } from "./score-preset-chooser";
 
 const FIELD =
@@ -18,7 +20,7 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
 const DEFAULT_PLAYERS = 4;
 
-type DraftPlayer = { id: string; name: string };
+type DraftPlayer = { id: string; name: string; playerId?: string };
 
 /**
  * Borrador de la configuración. Espejo ALIGERADO de `setup-draft.ts`: sin
@@ -61,7 +63,11 @@ function draftFromScoreSetup(setup: ScoreSetup): ScoreDraft {
     targetKind: setup.target?.kind ?? "rounds",
     targetValue: setup.target?.value ?? 10,
     targetActive: setup.target !== undefined,
-    players: setup.participants.map((participant, i) => ({ id: playerId(i), name: participant.name })),
+    players: setup.participants.map((participant, i) => ({
+      id: playerId(i),
+      name: participant.name,
+      ...(participant.kind === "regular" ? { playerId: participant.playerId } : {}),
+    })),
   };
 }
 
@@ -81,7 +87,31 @@ function setPlayerCount(draft: ScoreDraft, count: number): ScoreDraft {
 }
 
 function updatePlayerName(draft: ScoreDraft, index: number, name: string): ScoreDraft {
-  const players = draft.players.map((player, i) => (i === index ? { ...player, name } : player));
+  const players = draft.players.map((player, i) => {
+    if (i !== index) return player;
+    // Igual que setup-draft.ts: editar el nombre de un asiento asignado lo
+    // degrada a invitado -- el nombre es lo único que identifica al
+    // habitual en pantalla (spec §6).
+    if (player.playerId !== undefined) {
+      const { playerId: _playerId, ...rest } = player;
+      return { ...rest, name };
+    }
+    return { ...player, name };
+  });
+  return { ...draft, players };
+}
+
+/** Asigna un habitual a un asiento: fija nombre y `playerId` -- espejo de
+ * `assignRegular` de `setup-draft.ts` (mtg), aligerado al `DraftPlayer` de
+ * puntuación (fase 6). */
+function assignRegular(
+  draft: ScoreDraft,
+  index: number,
+  player: { playerId: string; name: string },
+): ScoreDraft {
+  const players = draft.players.map((p, i) =>
+    i === index ? { ...p, name: player.name, playerId: player.playerId } : p,
+  );
   return { ...draft, players };
 }
 
@@ -91,11 +121,11 @@ function trimmed(value: string): string | undefined {
 }
 
 function toScoreSetup(draft: ScoreDraft, fallbackName: (index: number) => string): ScoreSetup {
-  const participants: Participant[] = draft.players.map((player, i) => ({
-    id: player.id,
-    kind: "guest",
-    name: trimmed(player.name) ?? fallbackName(i),
-  }));
+  const participants: Participant[] = draft.players.map((player, i) => {
+    const name = trimmed(player.name) ?? fallbackName(i);
+    if (player.playerId) return { id: player.id, kind: "regular", name, playerId: player.playerId };
+    return { id: player.id, kind: "guest", name };
+  });
   const target: ScoreTarget | undefined = draft.targetActive
     ? { kind: draft.targetKind, value: draft.targetValue }
     : undefined;
@@ -158,6 +188,42 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
 
   const [edited, setEdited] = useState<ScoreDraft | null>(null);
   const draft = edited ?? base;
+
+  // UNA sola suscripción al espejo de habituales por pantalla (mismo criterio
+  // que setup-form.tsx): se baja por props a cada `RegularPicker`.
+  const { players: regulars, loaded: regularsLoaded } = usePlayers(identity);
+
+  // Degradación de prefill (spec §6), espejo de setup-form.tsx: un asiento
+  // que llega con `playerId` de una revancha/reconfiguración cuyo habitual ya
+  // no existe se limpia a invitado conservando el nombre. Una sola vez por
+  // hidratación, y solo cuando el espejo ya respondió -- ver el comentario
+  // gemelo en setup-form.tsx para el porqué de cada guarda.
+  const degradedRef = useRef(false);
+  useEffect(() => {
+    degradedRef.current = false;
+  }, [base]);
+  useEffect(() => {
+    // Espejo vacío = posiblemente frío (IDB evacuada, habituales sanos en el
+    // servidor): no degradar ni consumir el ref; la pasada re-corre cuando el
+    // pull puebla la lista (review final fase 6, mismo guard que setup-form).
+    if (!regularsLoaded || regulars.length === 0 || degradedRef.current) return;
+    degradedRef.current = true;
+    const ids = new Set(regulars.map((r) => r.playerId));
+    const current = edited ?? base;
+    if (current.players.some((p) => p.playerId && !ids.has(p.playerId))) {
+      setEdited({
+        ...current,
+        players: current.players.map((p) =>
+          p.playerId && !ids.has(p.playerId) ? { ...p, playerId: undefined } : p,
+        ),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- degradedRef guarda la única corrida por hidratación
+  }, [regularsLoaded, regulars, base]);
+
+  const takenIds = draft.players
+    .map((p) => p.playerId)
+    .filter((id): id is string => id !== undefined);
 
   const seatName = (index: number) =>
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
@@ -307,16 +373,27 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
             return (
               <li
                 key={player.id}
-                className="flex items-center gap-3 overflow-hidden rounded-card border border-border bg-surface"
+                className="flex gap-3 overflow-hidden rounded-card border border-border bg-surface"
               >
                 <span aria-hidden className={`${accent.bar} w-1.5 shrink-0 self-stretch`} />
-                <input
-                  value={player.name}
-                  onChange={(e) => setEdited(updatePlayerName(draft, i, e.target.value))}
-                  placeholder={t("setup.playerN", { n: i + 1 })}
-                  aria-label={t("setup.name")}
-                  className={`${FIELD} my-2.5 mr-3 font-serif text-[15px] font-semibold`}
-                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-2.5 pr-3">
+                  <input
+                    value={player.name}
+                    onChange={(e) => setEdited(updatePlayerName(draft, i, e.target.value))}
+                    placeholder={t("setup.playerN", { n: i + 1 })}
+                    aria-label={t("setup.name")}
+                    className={`${FIELD} font-serif text-[15px] font-semibold`}
+                  />
+                  <RegularPicker
+                    identity={identity}
+                    players={regulars}
+                    takenIds={takenIds}
+                    query={player.name}
+                    assigned={player.playerId !== undefined}
+                    onPick={(regular) => setEdited(assignRegular(draft, i, regular))}
+                    onRemembered={(regular) => setEdited(assignRegular(draft, i, regular))}
+                  />
+                </div>
               </li>
             );
           })}

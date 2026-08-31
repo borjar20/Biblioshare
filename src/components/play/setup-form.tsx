@@ -1,15 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
 import { useActiveGame } from "@/lib/play/core/use-active-game";
+import { usePlayers } from "@/lib/play/core/use-players";
 import { modeConfig, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
 import { rememberTable, rotateStartingSeat } from "@/lib/play/ui/table-memory";
 import { CARD_BACKGROUND_IDS, seatAccent } from "@/lib/play/ui/seats";
 import {
   addCommander,
+  assignRegular,
   draftFromSetup,
   newDraft,
   removeCommander,
@@ -20,6 +22,7 @@ import {
   type SetupDraft,
 } from "@/lib/play/ui/setup-draft";
 import { buttonVariants } from "@/components/ui/button";
+import { RegularPicker } from "./regular-picker";
 import { useRememberedTable } from "./use-remembered-table";
 
 const FIELD =
@@ -88,6 +91,46 @@ export function SetupForm({ identity }: { identity: string }) {
 
   const [edited, setEdited] = useState<SetupDraft | null>(null);
   const draft = edited ?? base;
+
+  // UNA sola suscripción al espejo de habituales por pantalla: se baja por
+  // props a cada `RegularPicker` en vez de que cada asiento monte la suya.
+  const { players: regulars, loaded: regularsLoaded } = usePlayers(identity);
+
+  // Degradación de prefill (spec §6): un asiento que llega con `playerId` de
+  // una mesa recordada/revancha/reconfiguración pero cuyo habitual ya no
+  // existe (lo borraron en otro dispositivo) se limpia a invitado
+  // conservando el nombre. Corre UNA sola vez por hidratación -- el ref
+  // evita repetirse en cada reload() del espejo y pisar ediciones del
+  // usuario -- y solo cuando el espejo YA respondió: antes de eso `regulars`
+  // está vacío por estar cargando, no porque no haya habituales, y degradar
+  // ahí borraría asignaciones válidas.
+  const degradedRef = useRef(false);
+  useEffect(() => {
+    degradedRef.current = false;
+  }, [base]);
+  useEffect(() => {
+    // Espejo VACÍO es indistinguible de espejo frío (IDB evacuada con los
+    // habituales sanos en el servidor): con [] no se degrada nada y el ref no
+    // se consume, así que cuando el pull puebla el espejo y el canal refresca,
+    // esta pasada vuelve a correr contra la lista real (review final fase 6).
+    if (!regularsLoaded || regulars.length === 0 || degradedRef.current) return;
+    degradedRef.current = true;
+    const ids = new Set(regulars.map((r) => r.playerId));
+    const current = edited ?? base;
+    if (current.players.some((p) => p.playerId && !ids.has(p.playerId))) {
+      setEdited({
+        ...current,
+        players: current.players.map((p) =>
+          p.playerId && !ids.has(p.playerId) ? { ...p, playerId: undefined } : p,
+        ),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- degradedRef guarda la única corrida por hidratación
+  }, [regularsLoaded, regulars, base]);
+
+  const takenIds = draft.players
+    .map((p) => p.playerId)
+    .filter((id): id is string => id !== undefined);
 
   const seatName = (index: number) =>
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
@@ -202,6 +245,16 @@ export function SetupForm({ identity }: { identity: string }) {
                     placeholder={t("setup.playerN", { n: i + 1 })}
                     aria-label={t("setup.name")}
                     className={`${FIELD} font-serif text-[15px] font-semibold`}
+                  />
+
+                  <RegularPicker
+                    identity={identity}
+                    players={regulars}
+                    takenIds={takenIds}
+                    query={player.name}
+                    assigned={player.playerId !== undefined}
+                    onPick={(regular) => setEdited(assignRegular(draft, i, regular))}
+                    onRemembered={(regular) => setEdited(assignRegular(draft, i, regular))}
                   />
 
                   <div className="flex gap-1.5">

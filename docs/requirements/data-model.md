@@ -3612,11 +3612,13 @@ la RPC, anima una vez y sella `displayed_at`. Migración
 #460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
 `annual_challenge_completed` y `club_activity_completed`.
 
-## 8. Play — `play_games` (dev y **prod**, 2026-08-31)
+## 8. Play
 
 > (Sección nueva, insertada el 2026-08-31 entre «7bis. Celebraciones» y la antigua «8. Seguridad»:
 > Seguridad pasa a ser §9, Enums a §10 y Migraciones a §11. Se revisó el resto del doc en busca de
 > referencias `§8`/`§9`/`§10` que apuntaran mal por el desplazamiento y se corrigieron.)
+
+### 8.1. `play_games` (dev y **prod**, 2026-08-31)
 
 Partidas guardadas de las herramientas de juego (fase 5 de BiblioPlay, #931). Una fila por partida,
 log íntegro en JSONB (sin tabla de eventos por filas hasta el multiplayer de fase 9).
@@ -3634,6 +3636,26 @@ permitir crecimiento de herramientas), `started_at` (timestamptz), `finished_at`
 privada total.**
 
 **Migración** `supabase/migrations/20260893_play_games.sql` — **aplicada y verificada en dev y
+prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
+`pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
+misma pasada (ANEXO 2026-08-31), como manda §11.
+
+### 8.2. `play_players` (dev y **prod**, 2026-08-31)
+
+Jugadores habituales del entorno del usuario (fase 6 de BiblioPlay, #931). Personas persistentes
+sin cuenta Biblioshare. **Privada total: RLS por ownership, sin acceso anon ni lectura de terceros.**
+
+**La tabla** `play_players`: `id` (uuid, PK; generado en cliente con `crypto.randomUUID()`),
+`owner_id` (uuid, FK `auth.users` con `on delete cascade`), `name` (text), `linked_user_id`
+(uuid, FK `auth.users` con `on delete set null` — reservado para vinculación futura, NINGUNA
+lógica lo lee actualmente), `created_at` (timestamptz, default `now()`), `updated_at`
+(timestamptz, default `now()`). Índice `play_players_owner on (owner_id)`.
+
+**RLS**: cuatro políticas de solo lectura/escritura/actualización/borrado de los propios
+(`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
+privada total.**
+
+**Migración** `supabase/migrations/20260894_play_players.sql` — **aplicada y verificada en dev y
 prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
@@ -3849,7 +3871,7 @@ Una versión anterior de esta tabla los daba por «huérfanos vivos» y era fals
 
 ## 11. Migraciones
 
-226 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+227 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
 2026-08-31).
 Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
 pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.

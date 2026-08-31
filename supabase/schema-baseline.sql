@@ -12565,3 +12565,32 @@ create policy "play_games_delete" on public.play_games
   for delete using (owner_id = (select auth.uid()));
 
 grant select, insert, update, delete on public.play_games to authenticated;
+
+-- ANEXO 2026-08-31 — BiblioPlay fase 6: jugadores habituales (epic #931, migración
+-- 20260894_play_players.sql; aplicada en dev y prod ese mismo día). Personas
+-- persistentes del entorno del usuario sin cuenta; privada total por RLS.
+-- linked_user_id reservado para la vinculación futura, sin lógica que lo lea.
+create table public.play_players (
+  id uuid primary key,                    -- generado en cliente (crypto.randomUUID)
+  owner_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  linked_user_id uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index play_players_owner on public.play_players (owner_id);
+
+alter table public.play_players enable row level security;
+
+create policy "play_players_select" on public.play_players
+  for select using (owner_id = (select auth.uid()));
+create policy "play_players_insert" on public.play_players
+  for insert with check (owner_id = (select auth.uid()));
+create policy "play_players_update" on public.play_players
+  for update using (owner_id = (select auth.uid()))
+  with check (owner_id = (select auth.uid()));
+create policy "play_players_delete" on public.play_players
+  for delete using (owner_id = (select auth.uid()));
+
+grant select, insert, update, delete on public.play_players to authenticated;

@@ -19,10 +19,15 @@ export type ToolGameState<T extends ToolId = ToolId> = {
 };
 
 // Unión discriminada: un invitado con userId o un usuario sin él no compilan
-// (spec §2, revisión: los estados imposibles no viven en comentarios).
+// (spec §2, revisión: los estados imposibles no viven en comentarios). El
+// brazo "regular" referencia un habitual de `play_players` por `playerId`;
+// la copia de `name` viaja EMBEBIDA en el evento/summary a propósito —
+// renombrar o borrar el habitual en `play_players` no toca logs pasados ni
+// resúmenes ya guardados (fase 6).
 export type Participant =
   | { id: string; kind: "user"; name: string; userId: string }
-  | { id: string; kind: "regular" | "guest"; name: string };
+  | { id: string; kind: "regular"; name: string; playerId: string }
+  | { id: string; kind: "guest"; name: string };
 
 export type PlayEvent<T extends string = string, P = unknown> = {
   id: string; // UUID: idempotencia de la sync futura (Fase 5)
@@ -62,6 +67,7 @@ export type SavedParticipant = {
   kind: "user" | "regular" | "guest";
   name: string;
   userId?: string;
+  playerId?: string; // solo kind regular
 };
 
 export type SavedGameSummary = {

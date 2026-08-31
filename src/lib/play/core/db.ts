@@ -10,7 +10,7 @@ import { buildSavedSummary } from "../tools";
 // degrada a memoria, igual que hacía el localStorage de fase 1.
 
 export const DB_NAME = "biblioshare-play";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export type ActiveGameRecord = {
   identity: string; // uid real o "anon": mismo aislamiento que la clave de fase 1
@@ -29,6 +29,18 @@ export type SavedGameRecord = {
   committed: PlayEvent[];
   savedAt: number; // epoch ms
   summary: SavedGameSummary; // el mismo objeto que sube a play_games.summary
+  syncStatus: "pending" | "synced";
+  deletedAt: number | null; // tombstone: borrado pendiente de replicar
+};
+
+// PlayerRecord llega en fase 6: el almacén `players` es el ESPEJO local de
+// play_players, con el mismo patrón que `saved` (identity + syncStatus +
+// tombstone).
+export type PlayerRecord = {
+  playerId: string; // = play_players.id
+  identity: string; // uid real; NUNCA "anon"
+  v: 1;
+  name: string;
   syncStatus: "pending" | "synced";
   deletedAt: number | null; // tombstone: borrado pendiente de replicar
 };
@@ -57,6 +69,10 @@ function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("saved")) {
           const saved = db.createObjectStore("saved", { keyPath: "gameId" });
           saved.createIndex("identity", "identity");
+        }
+        if (!db.objectStoreNames.contains("players")) {
+          const players = db.createObjectStore("players", { keyPath: "playerId" });
+          players.createIndex("identity", "identity");
         }
         // v1 → v2: los guardados de fase 3/4 ganan summary (derivado por replay,
         // UNA vez, aquí) y quedan pendientes de subir. Un log que no re-juega
@@ -112,11 +128,11 @@ function openDb(): Promise<IDBDatabase> {
         resolve(db);
       };
       request.onerror = () => reject(request.error ?? new Error("open falló"));
-      // Con DB_VERSION en 2, una pestaña vieja con la BD abierta en v1 puede
-      // bloquear este open de verdad: sin este handler la promesa se quedaría
-      // colgada para siempre (y con ella toda la cola de escrituras).
-      // Rechazar la deja caer por el camino ya previsto: sin BD, se sigue
-      // jugando en memoria.
+      // Con DB_VERSION al alza, una pestaña vieja con la BD abierta en una
+      // versión anterior puede bloquear este open de verdad: sin este
+      // handler la promesa se quedaría colgada para siempre (y con ella toda
+      // la cola de escrituras). Rechazar la deja caer por el camino ya
+      // previsto: sin BD, se sigue jugando en memoria.
       request.onblocked = () =>
         reject(new Error("open bloqueado por otra conexión con una versión anterior"));
     });
@@ -240,6 +256,67 @@ export async function deleteSaved(gameId: string): Promise<void> {
     await new Promise<void>((resolve) => {
       const tx = db.transaction("saved", "readwrite");
       tx.objectStore("saved").delete(gameId);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // sin BD no hay nada que borrar
+  }
+}
+
+export async function listPlayers(identity: string): Promise<PlayerRecord[]> {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const request = db
+        .transaction("players", "readonly")
+        .objectStore("players")
+        .index("identity")
+        .getAll(identity);
+      request.onsuccess = () => resolve((request.result as PlayerRecord[]) ?? []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function readPlayer(playerId: string): Promise<PlayerRecord | null> {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction("players", "readonly").objectStore("players").get(playerId);
+      request.onsuccess = () =>
+        resolve((request.result as PlayerRecord | undefined) ?? null);
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function putPlayer(record: PlayerRecord): Promise<boolean> {
+  try {
+    const db = await openDb();
+    return await new Promise<boolean>((resolve) => {
+      const tx = db.transaction("players", "readwrite");
+      tx.objectStore("players").put(record);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+      tx.onabort = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
+export async function deletePlayer(playerId: string): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction("players", "readwrite");
+      tx.objectStore("players").delete(playerId);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();

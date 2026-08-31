@@ -18,6 +18,9 @@ export type DraftPlayer = {
   commanders: DraftCommander[];
   /** Id de tinte predefinido. REFERENCIA, nunca bytes (issue #942). */
   cardBackground?: string;
+  /** Habitual asignado a este asiento (fase 6). Editar el nombre lo degrada
+   * a invitado -- ver `updatePlayer`. */
+  playerId?: string;
 };
 
 export type SetupDraft = {
@@ -70,6 +73,7 @@ export function draftFromSetup(setup: MtgSetup): SetupDraft {
         name: commander.name ?? "",
       })),
       cardBackground: participant.cardBackground,
+      ...(participant.kind === "regular" ? { playerId: participant.playerId } : {}),
     })),
   };
 }
@@ -79,7 +83,30 @@ export function updatePlayer(
   index: number,
   patch: Partial<Omit<DraftPlayer, "id" | "commanders">>,
 ): SetupDraft {
-  const players = draft.players.map((player, i) => (i === index ? { ...player, ...patch } : player));
+  const players = draft.players.map((player, i) => {
+    if (i !== index) return player;
+    // Editar el nombre de un asiento asignado lo degrada a invitado: el
+    // nombre es lo único que identifica al habitual en pantalla, así que
+    // tocarlo rompe esa identificación (spec §6). El mazo, comandantes y
+    // fondo NO degradan -- no identifican a nadie.
+    if (patch.name !== undefined && player.playerId !== undefined) {
+      const { playerId: _playerId, ...rest } = player;
+      return { ...rest, ...patch };
+    }
+    return { ...player, ...patch };
+  });
+  return { ...draft, players };
+}
+
+/** Asigna un habitual a un asiento: fija nombre y `playerId` (fase 6). */
+export function assignRegular(
+  draft: SetupDraft,
+  index: number,
+  player: { playerId: string; name: string },
+): SetupDraft {
+  const players = draft.players.map((p, i) =>
+    i === index ? { ...p, name: player.name, playerId: player.playerId } : p,
+  );
   return { ...draft, players };
 }
 
@@ -186,17 +213,32 @@ function trimmed(value: string): string | undefined {
  * — la regla del repo es que `src/lib/play/**` no conoce React ni i18n.
  */
 export function toSetup(draft: SetupDraft, fallbackName: (index: number) => string): MtgSetup {
-  const participants: MtgParticipant[] = draft.players.map((player, i) => ({
-    id: player.id,
-    kind: "guest",
-    name: trimmed(player.name) ?? fallbackName(i),
-    deckName: trimmed(player.deckName),
-    commanders: player.commanders.map((commander) => ({
+  const participants: MtgParticipant[] = draft.players.map((player, i) => {
+    const commanders = player.commanders.map((commander) => ({
       id: commander.id,
       name: trimmed(commander.name),
-    })),
-    cardBackground: player.cardBackground,
-  }));
+    }));
+    const name = trimmed(player.name) ?? fallbackName(i);
+    if (player.playerId) {
+      return {
+        id: player.id,
+        kind: "regular",
+        name,
+        playerId: player.playerId,
+        deckName: trimmed(player.deckName),
+        commanders,
+        cardBackground: player.cardBackground,
+      };
+    }
+    return {
+      id: player.id,
+      kind: "guest",
+      name,
+      deckName: trimmed(player.deckName),
+      commanders,
+      cardBackground: player.cardBackground,
+    };
+  });
 
   return {
     mode: draft.mode,

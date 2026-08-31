@@ -7,6 +7,7 @@ import { PlayFrame } from "@/components/play/play-frame";
 import { ToolGrid } from "@/components/play/tool-grid";
 import { ActiveGameBanner } from "@/components/play/active-game-banner";
 import { SavedGames } from "@/components/play/saved-games";
+import { PlayersManager } from "@/components/play/players-manager";
 import { HowItWorks } from "@/components/play/how-it-works";
 
 export const metadata: Metadata = { title: "Partidas — Biblioshare" };
@@ -29,10 +30,17 @@ async function Banner() {
 
 // Mismo boundary de petición que Banner, y por la misma razón (#435): la
 // identidad depende de la sesión, que no se puede leer durante el prerender.
+// Guardadas y habituales comparten boundary porque comparten la MISMA lectura
+// de sesión (Task 7): separarlas solo duplicaría el `await connection()`.
 async function Saved() {
   await connection();
-  const user = await getCurrentUser();
-  return <SavedGames identity={user?.id ?? "anon"} />;
+  const identity = (await getCurrentUser())?.id ?? "anon";
+  return (
+    <>
+      <SavedGames identity={identity} />
+      <PlayersManager identity={identity} />
+    </>
+  );
 }
 
 export default async function PlayHubPage() {

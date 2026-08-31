@@ -3319,3 +3319,12 @@ demasiado flaky para el harness normal.
 - Una tabla JSONB (log íntegro en `events`) en vez de eventos por filas: las
   filas por evento solo pagan cuando llegue el multiplayer (fase 9).
 - Adopción de partidas anon: banner explícito al entrar, nunca automática.
+
+## 2026-08-31 — Play fase 6: jugadores habituales
+- Habituales solo con sesión: anon monta mesa con invitados, sin espejo anon ni adopción.
+- El log y el summary embeben COPIA del nombre: renombrar/borrar un habitual no reescribe
+  partidas guardadas. Las stats futuras agregan por playerId.
+- planSync y el ejecutor de espejo son genéricos y los comparten guardadas y jugadores:
+  un fix de reconciliación se hace UNA vez.
+- Editar el nombre de un asiento asignado degrada a invitado; el habitual se renombra solo
+  desde gestión (regla visible, sin renombrados por accidente).
