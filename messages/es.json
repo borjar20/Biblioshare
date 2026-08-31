@@ -2842,6 +2842,7 @@
     "players": {
       "remember": "Recordar como habitual",
       "chipsLabel": "Tus jugadores",
+      "self": "Yo",
       "title": "Tus jugadores",
       "count": "{count, plural, =0 {Ninguno todavía} one {# jugador} other {# jugadores}}",
       "empty": "Crea habituales desde una mesa con «Recordar como habitual», o desde aquí cuando montes la próxima.",

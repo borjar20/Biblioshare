@@ -20,7 +20,7 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
 const DEFAULT_PLAYERS = 4;
 
-type DraftPlayer = { id: string; name: string; playerId?: string };
+type DraftPlayer = { id: string; name: string; playerId?: string; userId?: string };
 
 /**
  * Borrador de la configuración. Espejo ALIGERADO de `setup-draft.ts`: sin
@@ -67,6 +67,7 @@ function draftFromScoreSetup(setup: ScoreSetup): ScoreDraft {
       id: playerId(i),
       name: participant.name,
       ...(participant.kind === "regular" ? { playerId: participant.playerId } : {}),
+      ...(participant.kind === "user" ? { userId: participant.userId } : {}),
     })),
   };
 }
@@ -91,9 +92,9 @@ function updatePlayerName(draft: ScoreDraft, index: number, name: string): Score
     if (i !== index) return player;
     // Igual que setup-draft.ts: editar el nombre de un asiento asignado lo
     // degrada a invitado -- el nombre es lo único que identifica al
-    // habitual en pantalla (spec §6).
-    if (player.playerId !== undefined) {
-      const { playerId: _playerId, ...rest } = player;
+    // habitual (o a ti, #985) en pantalla (spec §6).
+    if (player.playerId !== undefined || player.userId !== undefined) {
+      const { playerId: _playerId, userId: _userId, ...rest } = player;
       return { ...rest, name };
     }
     return { ...player, name };
@@ -110,7 +111,19 @@ function assignRegular(
   player: { playerId: string; name: string },
 ): ScoreDraft {
   const players = draft.players.map((p, i) =>
-    i === index ? { ...p, name: player.name, playerId: player.playerId } : p,
+    i === index ? { ...p, name: player.name, playerId: player.playerId, userId: undefined } : p,
+  );
+  return { ...draft, players };
+}
+
+/** Asigna TU cuenta a un asiento (kind "user", issue #985). Excluyente con playerId. */
+function assignSelf(
+  draft: ScoreDraft,
+  index: number,
+  self: { userId: string; name: string },
+): ScoreDraft {
+  const players = draft.players.map((p, i) =>
+    i === index ? { ...p, name: self.name, userId: self.userId, playerId: undefined } : p,
   );
   return { ...draft, players };
 }
@@ -123,6 +136,7 @@ function trimmed(value: string): string | undefined {
 function toScoreSetup(draft: ScoreDraft, fallbackName: (index: number) => string): ScoreSetup {
   const participants: Participant[] = draft.players.map((player, i) => {
     const name = trimmed(player.name) ?? fallbackName(i);
+    if (player.userId) return { id: player.id, kind: "user", name, userId: player.userId };
     if (player.playerId) return { id: player.id, kind: "regular", name, playerId: player.playerId };
     return { id: player.id, kind: "guest", name };
   });
@@ -147,7 +161,7 @@ function toScoreSetup(draft: ScoreDraft, fallbackName: (index: number) => string
  * - Sin asiento inicial: puntuación no tiene turno que rotar, así que la
  *   revancha no necesita el equivalente a `rotateStartingSeat`.
  */
-export function ScoreSetupForm({ identity }: { identity: string }) {
+export function ScoreSetupForm({ identity, selfName }: { identity: string; selfName?: string }) {
   const t = useTranslations("play");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -224,6 +238,14 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
   const takenIds = draft.players
     .map((p) => p.playerId)
     .filter((id): id is string => id !== undefined);
+
+  // Tu propia cuenta como asiento (issue #985): un solo «Yo» por mesa. El
+  // nombre viene del perfil (server) y cae a la etiqueta «Yo» si no hay.
+  const selfSeated = draft.players.some((p) => p.userId === identity);
+  const self =
+    identity !== "anon" && !selfSeated
+      ? { userId: identity, name: (selfName ?? "").trim() || t("players.self") }
+      : undefined;
 
   const seatName = (index: number) =>
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
@@ -389,9 +411,11 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
                     players={regulars}
                     takenIds={takenIds}
                     query={player.name}
-                    assigned={player.playerId !== undefined}
+                    assigned={player.playerId !== undefined || player.userId !== undefined}
                     onPick={(regular) => setEdited(assignRegular(draft, i, regular))}
                     onRemembered={(regular) => setEdited(assignRegular(draft, i, regular))}
+                    self={self}
+                    onPickSelf={(me) => setEdited(assignSelf(draft, i, me))}
                   />
                 </div>
               </li>

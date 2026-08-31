@@ -18,6 +18,8 @@ export type DraftPlayer = {
   commanders: DraftCommander[];
   /** Id de tinte predefinido. REFERENCIA, nunca bytes (issue #942). */
   cardBackground?: string;
+  /** Asiento = tu propia cuenta (kind "user", issue #985). Excluyente con playerId. */
+  userId?: string;
   /** Habitual asignado a este asiento (fase 6). Editar el nombre lo degrada
    * a invitado -- ver `updatePlayer`. */
   playerId?: string;
@@ -74,6 +76,7 @@ export function draftFromSetup(setup: MtgSetup): SetupDraft {
       })),
       cardBackground: participant.cardBackground,
       ...(participant.kind === "regular" ? { playerId: participant.playerId } : {}),
+      ...(participant.kind === "user" ? { userId: participant.userId } : {}),
     })),
   };
 }
@@ -86,11 +89,11 @@ export function updatePlayer(
   const players = draft.players.map((player, i) => {
     if (i !== index) return player;
     // Editar el nombre de un asiento asignado lo degrada a invitado: el
-    // nombre es lo único que identifica al habitual en pantalla, así que
-    // tocarlo rompe esa identificación (spec §6). El mazo, comandantes y
-    // fondo NO degradan -- no identifican a nadie.
-    if (patch.name !== undefined && player.playerId !== undefined) {
-      const { playerId: _playerId, ...rest } = player;
+    // nombre es lo único que identifica al habitual (o a ti, #985) en
+    // pantalla, así que tocarlo rompe esa identificación (spec §6). El mazo,
+    // comandantes y fondo NO degradan -- no identifican a nadie.
+    if (patch.name !== undefined && (player.playerId !== undefined || player.userId !== undefined)) {
+      const { playerId: _playerId, userId: _userId, ...rest } = player;
       return { ...rest, ...patch };
     }
     return { ...player, ...patch };
@@ -98,14 +101,27 @@ export function updatePlayer(
   return { ...draft, players };
 }
 
-/** Asigna un habitual a un asiento: fija nombre y `playerId` (fase 6). */
+/** Asigna un habitual a un asiento: fija nombre y `playerId` (fase 6).
+ * Excluyente con `userId`: pisar un asiento «Yo» con un habitual lo limpia. */
 export function assignRegular(
   draft: SetupDraft,
   index: number,
   player: { playerId: string; name: string },
 ): SetupDraft {
   const players = draft.players.map((p, i) =>
-    i === index ? { ...p, name: player.name, playerId: player.playerId } : p,
+    i === index ? { ...p, name: player.name, playerId: player.playerId, userId: undefined } : p,
+  );
+  return { ...draft, players };
+}
+
+/** Asigna TU cuenta a un asiento (kind "user", issue #985). Excluyente con playerId. */
+export function assignSelf(
+  draft: SetupDraft,
+  index: number,
+  self: { userId: string; name: string },
+): SetupDraft {
+  const players = draft.players.map((p, i) =>
+    i === index ? { ...p, name: self.name, userId: self.userId, playerId: undefined } : p,
   );
   return { ...draft, players };
 }
@@ -219,6 +235,17 @@ export function toSetup(draft: SetupDraft, fallbackName: (index: number) => stri
       name: trimmed(commander.name),
     }));
     const name = trimmed(player.name) ?? fallbackName(i);
+    if (player.userId) {
+      return {
+        id: player.id,
+        kind: "user",
+        name,
+        userId: player.userId,
+        deckName: trimmed(player.deckName),
+        commanders,
+        cardBackground: player.cardBackground,
+      };
+    }
     if (player.playerId) {
       return {
         id: player.id,

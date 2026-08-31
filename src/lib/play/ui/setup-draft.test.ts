@@ -6,6 +6,7 @@ import type { MtgSetup } from "@/lib/play/mtg/types";
 import {
   addCommander,
   assignRegular,
+  assignSelf,
   draftFromSetup,
   newDraft,
   removeCommander,
@@ -169,5 +170,45 @@ describe("habituales en el borrador (fase 6)", () => {
   it("draftFromSetup conserva playerId de los regular", () => {
     const setup = toSetup(assignRegular(newDraft("commander"), 0, { playerId: "j1", name: "Pablo" }), (i) => `J${i + 1}`);
     expect(draftFromSetup(setup).players[0].playerId).toBe("j1");
+  });
+});
+
+describe("asiento «Yo» (issue #985)", () => {
+  it("assignSelf fija nombre y userId; toSetup emite kind user con extras mtg", () => {
+    let draft = assignSelf(newDraft("commander"), 0, { userId: "uid-1", name: "Borja" });
+    draft = updatePlayer(draft, 0, { deckName: "Vampiros" });
+    const setup = toSetup(draft, (i) => `J${i + 1}`);
+    expect(setup.participants[0]).toMatchObject({
+      kind: "user",
+      name: "Borja",
+      userId: "uid-1",
+      deckName: "Vampiros",
+    });
+  });
+
+  it("editar el nombre degrada el asiento «Yo» a invitado", () => {
+    const draft = assignSelf(newDraft("commander"), 0, { userId: "uid-1", name: "Borja" });
+    const edited = updatePlayer(draft, 0, { name: "Otro" });
+    expect(edited.players[0].userId).toBeUndefined();
+    expect(toSetup(edited, (i) => `J${i + 1}`).participants[0].kind).toBe("guest");
+  });
+
+  it("userId y playerId son excluyentes: asignar uno limpia el otro", () => {
+    const asSelf = assignSelf(
+      assignRegular(newDraft("commander"), 0, { playerId: "j1", name: "Pablo" }),
+      0,
+      { userId: "uid-1", name: "Borja" },
+    );
+    expect(asSelf.players[0]).toMatchObject({ userId: "uid-1" });
+    expect(asSelf.players[0].playerId).toBeUndefined();
+
+    const backToRegular = assignRegular(asSelf, 0, { playerId: "j1", name: "Pablo" });
+    expect(backToRegular.players[0]).toMatchObject({ playerId: "j1" });
+    expect(backToRegular.players[0].userId).toBeUndefined();
+  });
+
+  it("draftFromSetup conserva userId de los user (mesa recordada)", () => {
+    const setup = toSetup(assignSelf(newDraft("commander"), 0, { userId: "uid-1", name: "Borja" }), (i) => `J${i + 1}`);
+    expect(draftFromSetup(setup).players[0].userId).toBe("uid-1");
   });
 });

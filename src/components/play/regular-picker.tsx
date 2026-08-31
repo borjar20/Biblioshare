@@ -27,15 +27,20 @@ export function RegularPicker(props: {
   assigned: boolean;
   onPick(player: { playerId: string; name: string }): void;
   onRemembered(player: { playerId: string; name: string }): void;
+  /** Tu propia cuenta como asiento (issue #985); undefined = anon o «Yo» ya sentado. */
+  self?: { userId: string; name: string };
+  onPickSelf?(self: { userId: string; name: string }): void;
 }) {
-  const { identity, players, takenIds, query, assigned, onPick, onRemembered } = props;
+  const { identity, players, takenIds, query, assigned, onPick, onRemembered, self, onPickSelf } =
+    props;
   const t = useTranslations("play");
 
   if (identity === "anon" || assigned) return null;
 
   const suggestions = chipSuggestions(players, takenIds, query).slice(0, MAX_CHIPS);
   const remember = canRemember(players, query);
-  if (suggestions.length === 0 && !remember) return null;
+  const showSelf = self !== undefined && onPickSelf !== undefined;
+  if (suggestions.length === 0 && !remember && !showSelf) return null;
 
   async function handleRemember() {
     const playerId = crypto.randomUUID();
@@ -59,6 +64,15 @@ export function RegularPicker(props: {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5" aria-label={t("players.chipsLabel")}>
+      {showSelf && (
+        <button
+          type="button"
+          onClick={() => onPickSelf(self)}
+          className="tap-44 rounded-chip border border-accent-ink/40 bg-surface px-2 py-1 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-surface-muted"
+        >
+          {t("players.self")}
+        </button>
+      )}
       {suggestions.map((player) => (
         <button
           key={player.playerId}

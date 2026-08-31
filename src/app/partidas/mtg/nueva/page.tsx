@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { getSelfName } from "@/lib/play/self-name";
 import { PlayFrame } from "@/components/play/play-frame";
 import { SetupForm } from "@/components/play/setup-form";
 
@@ -15,7 +16,8 @@ export const metadata: Metadata = { title: "Nueva partida — Biblioshare" };
 async function Form() {
   await connection();
   const user = await getCurrentUser();
-  return <SetupForm identity={user?.id ?? "anon"} />;
+  const selfName = user ? await getSelfName(user.id) : null;
+  return <SetupForm identity={user?.id ?? "anon"} selfName={selfName ?? undefined} />;
 }
 
 export default function NewMtgGamePage() {

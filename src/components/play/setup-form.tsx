@@ -12,6 +12,7 @@ import { CARD_BACKGROUND_IDS, seatAccent } from "@/lib/play/ui/seats";
 import {
   addCommander,
   assignRegular,
+  assignSelf,
   draftFromSetup,
   newDraft,
   removeCommander,
@@ -48,7 +49,7 @@ function parseMode(value: string | null): MtgMode {
  *    el que era ciruela en la lista es ciruela en la mesa. Y el orden de esta lista
  *    ES el orden de turnos.
  */
-export function SetupForm({ identity }: { identity: string }) {
+export function SetupForm({ identity, selfName }: { identity: string; selfName?: string }) {
   const t = useTranslations("play");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -131,6 +132,14 @@ export function SetupForm({ identity }: { identity: string }) {
   const takenIds = draft.players
     .map((p) => p.playerId)
     .filter((id): id is string => id !== undefined);
+
+  // Tu propia cuenta como asiento (issue #985): un solo «Yo» por mesa. El
+  // nombre viene del perfil (server) y cae a la etiqueta «Yo» si no hay.
+  const selfSeated = draft.players.some((p) => p.userId === identity);
+  const self =
+    identity !== "anon" && !selfSeated
+      ? { userId: identity, name: (selfName ?? "").trim() || t("players.self") }
+      : undefined;
 
   const seatName = (index: number) =>
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
@@ -252,9 +261,11 @@ export function SetupForm({ identity }: { identity: string }) {
                     players={regulars}
                     takenIds={takenIds}
                     query={player.name}
-                    assigned={player.playerId !== undefined}
+                    assigned={player.playerId !== undefined || player.userId !== undefined}
                     onPick={(regular) => setEdited(assignRegular(draft, i, regular))}
                     onRemembered={(regular) => setEdited(assignRegular(draft, i, regular))}
+                    self={self}
+                    onPickSelf={(me) => setEdited(assignSelf(draft, i, me))}
                   />
 
                   <div className="flex gap-1.5">
