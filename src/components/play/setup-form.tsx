@@ -299,6 +299,7 @@ export function SetupForm({ identity }: { identity: string }) {
             <input
               type="number"
               inputMode="numeric"
+              onFocus={(e) => e.currentTarget.select()}
               value={draft.startingLife}
               onChange={(e) =>
                 setEdited({ ...draft, startingLife: Number(e.target.value) || 0 })

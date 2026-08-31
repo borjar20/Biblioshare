@@ -41,9 +41,13 @@ export function RoundSheet({
   onClose: () => void;
 }) {
   const t = useTranslations("play");
+  // Alta: campos VACÍOS con el 0 solo de placeholder — un valor físico obliga a
+  // borrarlo antes de escribir (refinado 2026-08-31). parseScore ya trata "" como
+  // 0, así que confirmar sin tocar un campo sigue puntuando 0. La edición sí
+  // precarga los valores reales: ahí son dato, no relleno.
   const [values, setValues] = useState<string[]>(() =>
     round === null
-      ? state.setup.participants.map(() => "0")
+      ? state.setup.participants.map(() => "")
       : state.rounds[round].map((score) => String(score)),
   );
 
@@ -87,6 +91,8 @@ export function RoundSheet({
                 next[seat] = e.target.value;
                 setValues(next);
               }}
+              onFocus={(e) => e.currentTarget.select()}
+              placeholder="0"
               inputMode="numeric"
               aria-label={t("roundSheet.scoreOf", { name: participant.name })}
               className="w-20 rounded-chip border border-border bg-background px-2.5 py-2 text-right font-mono tabular-nums"

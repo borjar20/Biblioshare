@@ -131,6 +131,7 @@ export function PlayerSheet({
           <input
             value={exactLife}
             onChange={(e) => setExactLife(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             inputMode="numeric"
             aria-label={t("board.setLife", { name })}
             className="w-24 rounded-chip border border-border bg-background px-2.5 py-2 text-right font-mono tabular-nums"

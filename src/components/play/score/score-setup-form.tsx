@@ -261,6 +261,7 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
               type="number"
               inputMode="numeric"
               min={1}
+              onFocus={(e) => e.currentTarget.select()}
               value={draft.targetValue}
               onChange={(e) => setEdited({ ...draft, targetValue: Number(e.target.value) || 0 })}
               onBlur={() => {

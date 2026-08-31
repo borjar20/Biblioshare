@@ -159,6 +159,7 @@ export function ScorePresetChooser({ identity }: { identity: string }) {
               type="number"
               inputMode="numeric"
               min={1}
+              onFocus={(e) => e.currentTarget.select()}
               value={targetValue ?? 1}
               onChange={(e) =>
                 setTargetValues({ ...targetValues, [preset]: Number(e.target.value) || 0 })
