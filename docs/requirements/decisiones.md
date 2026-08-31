@@ -3356,3 +3356,16 @@ delante del teatro ~1 s, asumido). Se descartó emitir al terminar la animación
 de animación (+30 kB para lo que CSS 3D ya hace). El azar visual de relleno vive
 en los componentes, jamás en el reducer. Spec:
 docs/superpowers/specs/2026-08-31-play-randomizer-visual-design.md
+
+## Aleatorio: coins_flipped conserva a coin_flipped, y el feed lee feedRow (2026-08-31)
+
+Las monedas múltiples entraron como evento NUEVO `coins_flipped` {count, results[]}
+(una tirada = una entrada de feed y un deshacer) en vez de ensanchar el payload
+de `coin_flipped`: los logs persistidos en IDB deben re-jugar, así que el evento
+viejo se conserva válido en el reducer para siempre aunque la UI ya no lo emita.
+Misma iteración: `describeRandomEvent` y el namespace i18n `play.random.log`
+murieron a favor del selector `feedRow` (etiqueta/valor/desglose estructurados)
+— una sola fuente para el feed visual; el switch se dejó exhaustivo sin default
+para que un evento nuevo rompa la compilación y no pinte una fila en blanco.
+Specs: 2026-08-31-play-random-multi-design.md y
+2026-08-31-play-random-hierarchy-design.md.
