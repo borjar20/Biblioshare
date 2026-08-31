@@ -3311,3 +3311,11 @@ recarga offline, hub, setups; `/coleccion` sigue cayendo a `/offline`; el purge 
 `/offline`). No se añade e2e permanente: exigiría build de producción como `sw-rsc.spec.ts`
 (opt-in `SW_E2E=1`) y el guardado en Cache Storage es asíncrono respecto a la navegación —
 demasiado flaky para el harness normal.
+
+## 2026-08-31 — Play fase 5: espejo local como fuente del historial
+- La UI de «Guardadas» lee SOLO IndexedDB; un sincronizador de fondo (push/pull)
+  la iguala a `play_games`. El servidor manda sobre lo synced; un pending local
+  jamás es pisado por el pull.
+- Una tabla JSONB (log íntegro en `events`) en vez de eventos por filas: las
+  filas por evento solo pagan cuando llegue el multiplayer (fase 9).
+- Adopción de partidas anon: banner explícito al entrar, nunca automática.
