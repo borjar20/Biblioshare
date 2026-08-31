@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { drawFromBag } from "@/lib/play/random/draws";
 import type { BagItem, RandomState } from "@/lib/play/random/types";
 import type { RandomEvent } from "@/lib/play/random/events";
+import { BagStage, TokenPile } from "./stage/bag-stage";
 
 /**
  * Bolsa virtual (spec §4): editar tipos, sacar ficha (ponderado por
@@ -47,11 +48,18 @@ export function BagSection({
     setCount("");
   }
 
-  const drawn = lastDrawn && lastDrawn.type === "bag_drawn" ? lastDrawn.payload.name : null;
+  const drawn = lastDrawn && lastDrawn.type === "bag_drawn" ? lastDrawn : null;
 
   return (
     <div>
-      <div className="flex gap-2">
+      <BagStage
+        drawn={drawn ? { id: drawn.id, name: drawn.payload.name } : null}
+        onDraw={() => onDraw(drawFromBag(bag.items))}
+        label={t("draw")}
+        disabled={remaining === 0}
+      />
+
+      <div className="mt-4 flex gap-2">
         <input
           value={name}
           placeholder={t("namePlaceholder")}
@@ -84,8 +92,8 @@ export function BagSection({
         <ul className="mt-3 space-y-1">
           {bag.items.map((item) => (
             <li key={item.name} className="flex items-center justify-between text-[14px]">
-              <span>
-                {item.name} <span className="text-muted-foreground">×{item.count}</span>
+              <span className="flex items-center gap-2">
+                {item.name} <TokenPile name={item.name} count={item.count} />
               </span>
               <button
                 type="button"
@@ -114,14 +122,6 @@ export function BagSection({
       </label>
 
       <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          disabled={remaining === 0}
-          onClick={() => onDraw(drawFromBag(bag.items))}
-          className="rounded-chip border border-border px-4 py-2 text-[14px] font-semibold disabled:opacity-40"
-        >
-          {t("draw")}
-        </button>
         <span className="text-[13px] text-muted-foreground">{t("remaining", { n: remaining })}</span>
         <button
           type="button"
@@ -132,12 +132,6 @@ export function BagSection({
           {t("reset")}
         </button>
       </div>
-
-      {drawn ? (
-        <p className="mt-4 font-serif text-[22px] font-semibold" data-testid="bag-result">
-          {drawn}
-        </p>
-      ) : null}
     </div>
   );
 }
