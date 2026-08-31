@@ -2695,7 +2695,10 @@
       "target": "Límite",
       "targetRounds": "Hasta N rondas",
       "targetPoints": "Hasta X puntos",
-      "targetValue": "Valor del límite"
+      "targetValue": "Valor del límite",
+      "gameName": "¿A qué jugáis?",
+      "gameNamePlaceholder": "UNO, dominó, chinchón…",
+      "gameNameChips": "Juegos anteriores"
     },
     "board": {
       "life": "Vidas de {name}",
