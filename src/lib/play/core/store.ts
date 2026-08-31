@@ -11,7 +11,7 @@ import {
   type ActiveGameRecord,
 } from "./db";
 import type { ActiveGameSnapshot, EventLog, PlayEvent } from "./types";
-import type { PlayGameState } from "@/lib/play/tools";
+import { buildSavedSummary, type PlayGameState } from "@/lib/play/tools";
 
 // Store local-first. Anatomía de src/lib/sessions/timer.ts: lo puro arriba,
 // el IO abajo con try/catch (modo privado o cuota llena degradan a memoria,
@@ -423,9 +423,12 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
       const ok = await saveFinished({
         gameId: game.log.committed[0].id,
         identity,
-        v: SNAPSHOT_VERSION,
+        v: 2,
         committed: game.log.committed,
         savedAt: Date.now(),
+        summary: buildSavedSummary(game.state),
+        syncStatus: "pending",
+        deletedAt: null,
       });
       if (!ok) return false;
       // Mientras la BD guardaba, el espejo pudo adoptar el registro de otra
