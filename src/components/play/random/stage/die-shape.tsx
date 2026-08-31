@@ -41,7 +41,9 @@ export function DieShape({ sides, value, size }: { sides: number; value: string;
         y={TEXT_Y[kind]}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize={value.length >= 3 ? 26 : 35}
+        // Suelo de legibilidad en tamaños mini: a size 30, 35 unidades de
+        // viewBox son ~10.5px reales — menos que los 14px del cubo anterior.
+        fontSize={size <= 30 ? (value.length >= 3 ? 34 : 44) : value.length >= 3 ? 26 : 35}
         fontWeight="600"
         style={{ fontVariantNumeric: "tabular-nums" }}
         fill="var(--foreground)"
