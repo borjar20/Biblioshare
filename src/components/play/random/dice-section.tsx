@@ -5,13 +5,14 @@ import { useTranslations } from "next-intl";
 import { DICE_MAX_COUNT, DICE_MAX_SIDES, rollDice } from "@/lib/play/random/draws";
 import type { RandomEvent } from "@/lib/play/random/events";
 import { describeRandomEvent } from "@/lib/play/random/selectors";
+import { DiceStage } from "./stage/dice-stage";
 
 const QUICK_DICE = [4, 6, 8, 10, 12, 20];
 
 /**
- * Dados: botones rápidos d4–d20 (un toque = 1dX) y tirada libre NdX. El azar
- * se resuelve AQUÍ (rollDice) y el resultado viaja en el payload (spec §2).
- * Inputs numéricos con placeholder visual y select-on-focus, como los del score.
+ * Dados: el cubo del escenario tira con la config actual de los inputs NdX
+ * (vacíos = 1d6); los chips d4–d20 y el botón «Tirar» también disparan. El
+ * azar se resuelve AQUÍ (rollDice) y el resultado viaja en el payload.
  */
 export function DiceSection({
   lastRoll,
@@ -39,11 +40,22 @@ export function DiceSection({
     parsedSides >= 2 &&
     parsedSides <= DICE_MAX_SIDES;
 
-  const last = lastRoll && lastRoll.type === "dice_rolled" ? describeRandomEvent(lastRoll) : null;
+  const last = lastRoll && lastRoll.type === "dice_rolled" ? lastRoll : null;
+  const resultText = last ? t("result", describeRandomEvent(last).params) : null;
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <DiceStage
+        roll={
+          last
+            ? { id: last.id, sides: last.payload.sides, results: last.payload.results }
+            : null
+        }
+        resultText={resultText}
+        onRoll={() => (customValid ? roll(parsedCount, parsedSides) : roll(1, 6))}
+        label={t("tap")}
+      />
+      <div className="mt-4 flex flex-wrap gap-2">
         {QUICK_DICE.map((d) => (
           <button
             key={d}
@@ -93,11 +105,6 @@ export function DiceSection({
           {t("roll")}
         </button>
       </div>
-      {last ? (
-        <p className="mt-4 font-serif text-[22px] font-semibold" data-testid="dice-result">
-          {t("result", last.params)}
-        </p>
-      ) : null}
     </div>
   );
 }

@@ -2877,7 +2877,8 @@
         "countLabel": "Cuántos",
         "sidesLabel": "Caras",
         "roll": "Tirar",
-        "result": "{rolls} = {total}"
+        "result": "{rolls} = {total}",
+        "tap": "Tirar el dado"
       },
       "coin": {
         "flip": "Lanzar moneda",

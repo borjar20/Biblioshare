@@ -1,0 +1,304 @@
+/* src/components/play/random/stage/stage.module.css
+   Escenarios del Aleatorio (spec visual). Solo tokens existentes. Las
+   duraciones son las de la spec; reduced-motion anula todo al final. */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 260px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      ellipse at 50% 38%,
+      color-mix(in srgb, var(--surface-muted) 70%, transparent),
+      transparent 72%
+    ),
+    var(--surface);
+  overflow: hidden;
+}
+
+.objectButton {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 16px;
+}
+.objectButton:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+.objectButton:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.resultZone {
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pop {
+  animation: pop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---- dados ---- */
+.cubeScene {
+  display: block;
+  width: 96px;
+  height: 96px;
+  perspective: 480px;
+}
+.cubeSpin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.tumble {
+  animation: tumble 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes tumble {
+  from {
+    transform: rotateX(660deg) rotateY(810deg);
+  }
+  to {
+    transform: none;
+  }
+}
+.cube {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-3);
+  backface-visibility: hidden;
+}
+.miniRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.miniDie {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-3);
+  animation: pop 250ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ---- moneda ---- */
+.coinScene {
+  display: block;
+  width: 110px;
+  height: 110px;
+  perspective: 600px;
+}
+.coinSpin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.coinFlip {
+  animation: coinflip 1100ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+@keyframes coinflip {
+  from {
+    transform: rotateX(1800deg);
+  }
+  to {
+    transform: none;
+  }
+}
+.coin {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.coinFace {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 50%;
+}
+.coinBack {
+  transform: rotateX(180deg);
+}
+
+/* ---- ruleta ---- */
+.wheelWrap {
+  position: relative;
+  display: block;
+  width: 220px;
+  height: 220px;
+}
+.wheel {
+  width: 100%;
+  height: 100%;
+  transition: transform 2200ms cubic-bezier(0.12, 0.8, 0.2, 1);
+  will-change: transform;
+}
+.wheelArrow {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 14px solid var(--foreground);
+  z-index: 1;
+}
+
+/* ---- revelados (orden y equipos) ---- */
+.reveal {
+  animation: rise 300ms ease-out both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card {
+  animation: flipin 400ms ease-out both;
+}
+@keyframes flipin {
+  from {
+    opacity: 0;
+    transform: rotateY(90deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- bolsa ---- */
+.bagShake {
+  animation: shake 500ms ease-in-out both;
+  transform-origin: 50% 88%;
+}
+@keyframes shake {
+  0% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(-8deg);
+  }
+  40% {
+    transform: rotate(7deg);
+  }
+  60% {
+    transform: rotate(-5deg);
+  }
+  80% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+.tokenPop {
+  animation: tokenup 400ms 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes tokenup {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--surface);
+}
+.pile {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.pileDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+
+/* Reduced motion: sin teatro; el gating de aterrizaje lo salta el hook. */
+@media (prefers-reduced-motion: reduce) {
+  .tumble,
+  .coinFlip,
+  .pop,
+  .miniDie,
+  .reveal,
+  .card,
+  .bagShake,
+  .tokenPop {
+    animation: none;
+  }
+  .wheel {
+    transition: none;
+  }
+}
