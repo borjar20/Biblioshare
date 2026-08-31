@@ -10,7 +10,7 @@ import { buildSavedSummary } from "../tools";
 // degrada a memoria, igual que hacía el localStorage de fase 1.
 
 export const DB_NAME = "biblioshare-play";
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 export type ActiveGameRecord = {
   identity: string; // uid real o "anon": mismo aislamiento que la clave de fase 1
@@ -45,6 +45,24 @@ export type PlayerRecord = {
   deletedAt: number | null; // tombstone: borrado pendiente de replicar
 };
 
+// CompanionRecord llega con el randomizer (spec randomizer §5): el almacén
+// `companion` guarda el estado del acompañante «Aleatorio» FUERA del slot
+// `active` — una partida activa y el randomizer conviven. `base` es el estado
+// re-basado por la compactación; viaja como `unknown` porque db.ts es neutro
+// y no importa tipos de `random/` (quien lee valida por replay).
+export type CompanionRecord = {
+  identity: string; // uid real o "anon", mismo aislamiento que `active`
+  v: 1;
+  base: unknown; // RandomState serializado o null
+  log: PlayEvent[];
+  rev: number; // CAS, como ActiveGameRecord
+};
+
+export type CompanionWriteResult =
+  | { ok: true }
+  | { ok: false; reason: "conflict"; current: CompanionRecord }
+  | { ok: false; reason: "unavailable" };
+
 export type WriteResult =
   | { ok: true }
   | { ok: false; reason: "conflict"; current: ActiveGameRecord }
@@ -73,6 +91,9 @@ function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("players")) {
           const players = db.createObjectStore("players", { keyPath: "playerId" });
           players.createIndex("identity", "identity");
+        }
+        if (!db.objectStoreNames.contains("companion")) {
+          db.createObjectStore("companion", { keyPath: "identity" });
         }
         // v1 → v2: los guardados de fase 3/4 ganan summary (derivado por replay,
         // UNA vez, aquí) y quedan pendientes de subir. Un log que no re-juega
@@ -192,6 +213,64 @@ export async function deleteActive(identity: string): Promise<void> {
     await new Promise<void>((resolve) => {
       const tx = db.transaction("active", "readwrite");
       tx.objectStore("active").delete(identity);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // sin BD no hay nada que borrar
+  }
+}
+
+export async function readCompanion(identity: string): Promise<CompanionRecord | null> {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const request = db
+        .transaction("companion", "readonly")
+        .objectStore("companion")
+        .get(identity);
+      request.onsuccess = () =>
+        resolve((request.result as CompanionRecord | undefined) ?? null);
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Mismo CAS que writeActive (db.ts:165): el rev en BD igual o mayor gana y se
+// devuelve para que quien escribe lo adopte.
+export async function writeCompanion(record: CompanionRecord): Promise<CompanionWriteResult> {
+  try {
+    const db = await openDb();
+    return await new Promise<CompanionWriteResult>((resolve) => {
+      const tx = db.transaction("companion", "readwrite");
+      const store = tx.objectStore("companion");
+      const get = store.get(record.identity);
+      get.onsuccess = () => {
+        const current = (get.result as CompanionRecord | undefined) ?? null;
+        if (current && current.rev >= record.rev) {
+          resolve({ ok: false, reason: "conflict", current });
+          return;
+        }
+        store.put(record);
+      };
+      tx.oncomplete = () => resolve({ ok: true });
+      tx.onerror = () => resolve({ ok: false, reason: "unavailable" });
+      tx.onabort = () => resolve({ ok: false, reason: "unavailable" });
+    });
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
+}
+
+export async function deleteCompanion(identity: string): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction("companion", "readwrite");
+      tx.objectStore("companion").delete(identity);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
