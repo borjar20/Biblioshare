@@ -3612,7 +3612,7 @@ la RPC, anima una vez y sella `displayed_at`. Migración
 #460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
 `annual_challenge_completed` y `club_activity_completed`.
 
-## 8. Play — `play_games` (dev, 2026-08-31; prod pendiente de e2e)
+## 8. Play — `play_games` (dev y **prod**, 2026-08-31)
 
 > (Sección nueva, insertada el 2026-08-31 entre «7bis. Celebraciones» y la antigua «8. Seguridad»:
 > Seguridad pasa a ser §9, Enums a §10 y Migraciones a §11. Se revisó el resto del doc en busca de
@@ -3633,10 +3633,10 @@ permitir crecimiento de herramientas), `started_at` (timestamptz), `finished_at`
 (`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
 privada total.**
 
-**Migración** `supabase/migrations/20260893_play_games.sql` — **aplicada y verificada en dev el
-2026-08-31**: tabla, las cuatro políticas y el índice comprobados contra `pg_class`/`pg_policies`.
-**Prod queda pendiente**, no de nada en dev: solo prod espera a pasar los e2e (Tasks 5–6 la
-ejercitan; aplicar a prod es la Task 8).
+**Migración** `supabase/migrations/20260893_play_games.sql` — **aplicada y verificada en dev y
+prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
+`pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
+misma pasada (ANEXO 2026-08-31), como manda §11.
 
 ## 9. Seguridad
 

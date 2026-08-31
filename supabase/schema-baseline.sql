@@ -12533,3 +12533,35 @@ begin
   return new;
 end;
 $function$;
+
+-- ANEXO 2026-08-31 — BiblioPlay fase 5: partidas guardadas (epic #931, migración
+-- 20260893_play_games.sql; aplicada en dev y prod ese mismo día). Una fila por
+-- partida con el log íntegro en JSONB; privada total por RLS de ownership.
+create table public.play_games (
+  id uuid primary key,                    -- gameId del cliente (= committed[0].id)
+  owner_id uuid not null references auth.users (id) on delete cascade,
+  tool_id text not null,                  -- "mtg" | "score"; sin enum, las herramientas crecen
+  started_at timestamptz not null,
+  finished_at timestamptz not null,
+  saved_at timestamptz not null,
+  summary jsonb not null,
+  events jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index play_games_owner_saved on public.play_games (owner_id, saved_at desc);
+
+alter table public.play_games enable row level security;
+
+create policy "play_games_select" on public.play_games
+  for select using (owner_id = (select auth.uid()));
+create policy "play_games_insert" on public.play_games
+  for insert with check (owner_id = (select auth.uid()));
+create policy "play_games_update" on public.play_games
+  for update using (owner_id = (select auth.uid()))
+  with check (owner_id = (select auth.uid()));
+create policy "play_games_delete" on public.play_games
+  for delete using (owner_id = (select auth.uid()));
+
+grant select, insert, update, delete on public.play_games to authenticated;
