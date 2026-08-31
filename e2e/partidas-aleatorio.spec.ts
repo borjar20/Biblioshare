@@ -19,7 +19,7 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   // aparece en tiradas múltiples — el "4 = 4" viejo no lo satisface.
   await page.getByRole("button", { name: "Un dado más" }).click();
   await page.getByRole("button", { name: "Un dado más" }).click();
-  await page.getByRole("button", { name: "Tirar el dado" }).click();
+  await page.getByRole("button", { name: "Tirar 3d6" }).click();
   await expect(page.getByTestId("dice-result")).toContainText("+");
 
   // 3 monedas: recuento "N caras, M cruces" — solo el formato múltiple lleva
@@ -27,7 +27,7 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   await page.getByRole("tab", { name: "Moneda" }).click();
   await page.getByRole("button", { name: "Una moneda más" }).click();
   await page.getByRole("button", { name: "Una moneda más" }).click();
-  await page.getByRole("button", { name: /^lanzar moneda$/i }).click();
+  await page.getByRole("button", { name: "Lanzar 3 monedas" }).click();
   await expect(page.getByTestId("coin-result")).toContainText(/\d/);
 
   // El feed acumula los tres resultados; deshacer quita el último (las monedas).

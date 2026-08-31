@@ -1,4 +1,4 @@
-import type { EventDescription, PlayEvent } from "@/lib/play/core/types";
+import type { PlayEvent } from "@/lib/play/core/types";
 import type { RandomEvent } from "./events";
 
 // Eventos que el feed enseña: los de RESULTADO. Configuración (players_set,
@@ -26,51 +26,6 @@ export function resultFeed(log: PlayEvent[], max: number): RandomEvent[] {
     }
   }
   return out;
-}
-
-// {key, params} contra el namespace play.random.log.* — mismo contrato que los
-// describe() de mtg/score.
-export function describeRandomEvent(event: RandomEvent): EventDescription {
-  switch (event.type) {
-    case "dice_rolled": {
-      const { count, sides, results } = event.payload;
-      return {
-        key: "dice",
-        params: {
-          expr: `${count}d${sides}`,
-          rolls: results.join(" + "),
-          total: results.reduce((a, b) => a + b, 0),
-        },
-      };
-    }
-    case "coin_flipped":
-      return { key: event.payload.result === "heads" ? "coinHeads" : "coinTails", params: {} };
-    case "coins_flipped": {
-      const { results } = event.payload;
-      if (results.length === 1) {
-        return { key: results[0] === "heads" ? "coinHeads" : "coinTails", params: {} };
-      }
-      const heads = results.filter((r) => r === "heads").length;
-      return { key: "coins", params: { heads, tails: results.length - heads } };
-    }
-    case "first_picked":
-      return { key: "first", params: { picked: event.payload.picked } };
-    case "order_drawn":
-      return { key: "order", params: { order: event.payload.order.join(", ") } };
-    case "teams_drawn":
-      return {
-        key: "teams",
-        params: { teams: event.payload.teams.map((t) => t.join(", ")).join(" — ") },
-      };
-    case "players_set":
-      return { key: "playersSet", params: { count: event.payload.players.length } };
-    case "bag_set":
-      return { key: "bagSet", params: {} };
-    case "bag_drawn":
-      return { key: "bagDrawn", params: { name: event.payload.name } };
-    case "cleared":
-      return { key: "cleared", params: {} };
-  }
 }
 
 // Fila del feed visual: etiqueta (mono), valor protagonista (serif) y desglose

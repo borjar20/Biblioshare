@@ -9,7 +9,7 @@ import {
   randomReducer,
   replayRandom,
 } from "./reducer";
-import { describeRandomEvent, feedRow, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
+import { feedRow, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
 import type { RandomEvent } from "./events";
 
 const t0 = 1000;
@@ -171,35 +171,8 @@ describe("compactIfNeeded", () => {
   });
 });
 
-describe("describeRandomEvent", () => {
-  it("etiqueta dados con expresión y total", () => {
-    const d = describeRandomEvent(dice([4, 2, 6]) as RandomEvent);
-    expect(d.key).toBe("dice");
-    expect(d.params).toEqual({ expr: "3d6", rolls: "4 + 2 + 6", total: 12 });
-  });
-  it("un solo dado omite la suma redundante en rolls", () => {
-    const d = describeRandomEvent(dice([5]) as RandomEvent);
-    expect(d.params).toEqual({ expr: "1d6", rolls: "5", total: 5 });
-  });
-  it("etiqueta el resto de resultados", () => {
-    expect(describeRandomEvent(makeEvent("coin_flipped", { result: "heads" as const }, t0) as RandomEvent).key).toBe("coinHeads");
-    expect(describeRandomEvent(makeEvent("coin_flipped", { result: "tails" as const }, t0) as RandomEvent).key).toBe("coinTails");
-    const first = describeRandomEvent(
-      makeEvent("first_picked", { players: ["a", "b"], picked: "b" }, t0) as RandomEvent,
-    );
-    expect(first).toEqual({ key: "first", params: { picked: "b" } });
-    const order = describeRandomEvent(
-      makeEvent("order_drawn", { players: ["a", "b"], order: ["b", "a"] }, t0) as RandomEvent,
-    );
-    expect(order).toEqual({ key: "order", params: { order: "b, a" } });
-    const teams = describeRandomEvent(
-      makeEvent("teams_drawn", { players: ["a", "b", "c"], teams: [["a"], ["b", "c"]] }, t0) as RandomEvent,
-    );
-    expect(teams).toEqual({ key: "teams", params: { teams: "a — b, c" } });
-    const drawn = describeRandomEvent(bagDrawn("Rojo") as RandomEvent);
-    expect(drawn).toEqual({ key: "bagDrawn", params: { name: "Rojo" } });
-  });
-  it("RESULT_EVENT_TYPES contiene exactamente los 7 eventos de resultado", () => {
+describe("RESULT_EVENT_TYPES", () => {
+  it("contiene exactamente los 7 eventos de resultado", () => {
     expect([...RESULT_EVENT_TYPES].sort()).toEqual(
       [
         "bag_drawn",
@@ -255,14 +228,6 @@ describe("coins_flipped", () => {
     expect(() => randomReducer(s, bad({ count: 6, results: Array(6).fill("heads") }))).toThrow();
     expect(() => randomReducer(s, bad({ count: 2, results: ["heads"] }))).toThrow();
     expect(() => randomReducer(s, bad({ count: 1, results: ["edge"] }))).toThrow();
-  });
-  it("describe: una moneda reusa la copia de siempre; varias, recuentos", () => {
-    expect(describeRandomEvent(coins(["heads"])).key).toBe("coinHeads");
-    expect(describeRandomEvent(coins(["tails"])).key).toBe("coinTails");
-    expect(describeRandomEvent(coins(["heads", "tails", "heads"]))).toEqual({
-      key: "coins",
-      params: { heads: 2, tails: 1 },
-    });
   });
 });
 

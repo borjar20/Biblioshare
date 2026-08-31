@@ -2926,18 +2926,13 @@
         "clear": "Limpiar todo",
         "clearConfirm": "¿Seguro? Borra todo"
       },
-      "log": {
-        "dice": "{expr}: {rolls} = {total}",
-        "coinHeads": "Moneda: cara",
-        "coinTails": "Moneda: cruz",
-        "coins": "Monedas: {heads, plural, one {# cara} other {# caras}}, {tails, plural, one {# cruz} other {# cruces}}",
-        "first": "Empieza {picked}",
-        "order": "Orden: {order}",
-        "teams": "Equipos: {teams}",
-        "playersSet": "Jugadores actualizados ({count})",
-        "bagSet": "Bolsa configurada",
-        "bagDrawn": "Ficha: {name}",
-        "cleared": "Todo limpio"
+      "row": {
+        "coin": "Moneda",
+        "coins": "{count} monedas",
+        "first": "Primero",
+        "order": "Orden",
+        "teams": "Equipos",
+        "bag": "Bolsa"
       }
     }
   }
