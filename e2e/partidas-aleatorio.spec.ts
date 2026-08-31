@@ -15,18 +15,20 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   await expect(page.getByTestId("dice-result")).toBeVisible();
   await expect(page.getByText("Toca el dado para tirar")).toHaveCount(0);
 
-  // 3d6 vía stepper: el resultado formatea "a + b + c = total".
+  // 3d6 vía stepper: el resultado formatea "a + b + c = total". El "+" solo
+  // aparece en tiradas múltiples — el "4 = 4" viejo no lo satisface.
   await page.getByRole("button", { name: "Un dado más" }).click();
   await page.getByRole("button", { name: "Un dado más" }).click();
   await page.getByRole("button", { name: "Tirar el dado" }).click();
-  await expect(page.getByTestId("dice-result")).toContainText("=");
+  await expect(page.getByTestId("dice-result")).toContainText("+");
 
-  // 3 monedas: recuento "N caras, M cruces" (o singular).
+  // 3 monedas: recuento "N caras, M cruces" — solo el formato múltiple lleva
+  // dígitos (el singular es "Cara"/"Cruz" a secas).
   await page.getByRole("tab", { name: "Moneda" }).click();
   await page.getByRole("button", { name: "Una moneda más" }).click();
   await page.getByRole("button", { name: "Una moneda más" }).click();
   await page.getByRole("button", { name: /^lanzar moneda$/i }).click();
-  await expect(page.getByTestId("coin-result")).toContainText(/cara|cruz/i);
+  await expect(page.getByTestId("coin-result")).toContainText(/\d/);
 
   // El feed acumula los tres resultados; deshacer quita el último (las monedas).
   const feed = page.locator('section[aria-label="Últimos resultados"] li');
