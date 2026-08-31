@@ -2838,6 +2838,10 @@
       "adoptDismiss": "Ahora no",
       "targetRounds": "A {value, plural, one {# ronda} other {# rondas}}",
       "targetPoints": "Hasta {value} puntos"
+    },
+    "players": {
+      "remember": "Recordar como habitual",
+      "chipsLabel": "Tus jugadores"
     }
   }
 }
