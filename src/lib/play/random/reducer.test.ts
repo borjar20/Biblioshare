@@ -245,6 +245,7 @@ describe("coins_flipped", () => {
   it("válido no cambia el estado", () => {
     const s = initialRandomState();
     expect(randomReducer(s, coins(["heads", "tails", "heads"]))).toBe(s);
+    expect(randomReducer(s, coins(["heads"]))).toBe(s);
   });
   it("rechaza count fuera de 1..5, results descuadrados y valores inválidos", () => {
     const s = initialRandomState();

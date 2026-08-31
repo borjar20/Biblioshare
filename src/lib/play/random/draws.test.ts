@@ -112,7 +112,8 @@ describe("flipCoins", () => {
     expect(() => flipCoins(6, seq(0))).toThrow();
     expect(() => flipCoins(1.5, seq(0))).toThrow();
   });
-  it("acepta el máximo exacto (5)", () => {
+  it("acepta los extremos exactos (1 y 5)", () => {
+    expect(flipCoins(1, () => 0)).toEqual(["heads"]);
     expect(flipCoins(5, () => 0)).toEqual(Array(5).fill("heads"));
   });
 });
