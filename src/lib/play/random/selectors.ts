@@ -6,6 +6,7 @@ import type { RandomEvent } from "./events";
 export const RESULT_EVENT_TYPES: ReadonlySet<RandomEvent["type"]> = new Set([
   "dice_rolled",
   "coin_flipped",
+  "coins_flipped",
   "first_picked",
   "order_drawn",
   "teams_drawn",
@@ -44,6 +45,14 @@ export function describeRandomEvent(event: RandomEvent): EventDescription {
     }
     case "coin_flipped":
       return { key: event.payload.result === "heads" ? "coinHeads" : "coinTails", params: {} };
+    case "coins_flipped": {
+      const { results } = event.payload;
+      if (results.length === 1) {
+        return { key: results[0] === "heads" ? "coinHeads" : "coinTails", params: {} };
+      }
+      const heads = results.filter((r) => r === "heads").length;
+      return { key: "coins", params: { heads, tails: results.length - heads } };
+    }
     case "first_picked":
       return { key: "first", params: { picked: event.payload.picked } };
     case "order_drawn":

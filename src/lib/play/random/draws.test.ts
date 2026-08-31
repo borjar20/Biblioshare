@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { drawFromBag, drawTeams, flipCoin, pickFirst, rollDice, shuffle } from "./draws";
+import { drawFromBag, drawTeams, flipCoin, flipCoins, pickFirst, rollDice, shuffle } from "./draws";
 import type { BagItem } from "./types";
 
 // RNG determinista para tests: devuelve la secuencia dada, cíclica.
@@ -100,5 +100,19 @@ describe("drawFromBag", () => {
   it("bolsa vacía lanza", () => {
     expect(() => drawFromBag([], () => 0)).toThrow();
     expect(() => drawFromBag([{ name: "Rojo", count: 0 }], () => 0)).toThrow();
+  });
+});
+
+describe("flipCoins", () => {
+  it("respeta count y mapea el rng por moneda", () => {
+    expect(flipCoins(3, seq(0.2, 0.7, 0.2))).toEqual(["heads", "tails", "heads"]);
+  });
+  it("rechaza count fuera de 1..5", () => {
+    expect(() => flipCoins(0, seq(0))).toThrow();
+    expect(() => flipCoins(6, seq(0))).toThrow();
+    expect(() => flipCoins(1.5, seq(0))).toThrow();
+  });
+  it("acepta el máximo exacto (5)", () => {
+    expect(flipCoins(5, () => 0)).toEqual(Array(5).fill("heads"));
   });
 });

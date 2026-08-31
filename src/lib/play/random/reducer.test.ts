@@ -18,6 +18,8 @@ const dice = (results: number[], sides = 6) =>
 const bagSet = (items: { name: string; count: number }[], withReplacement = false) =>
   makeEvent("bag_set", { items, withReplacement }, t0) as RandomEvent;
 const bagDrawn = (name: string) => makeEvent("bag_drawn", { name }, t0) as RandomEvent;
+const coins = (results: ("heads" | "tails")[]) =>
+  makeEvent("coins_flipped", { count: results.length, results }, t0) as RandomEvent;
 
 describe("randomReducer — eventos de resultado", () => {
   it("dice_rolled coherente no cambia el estado", () => {
@@ -197,9 +199,17 @@ describe("describeRandomEvent", () => {
     const drawn = describeRandomEvent(bagDrawn("Rojo") as RandomEvent);
     expect(drawn).toEqual({ key: "bagDrawn", params: { name: "Rojo" } });
   });
-  it("RESULT_EVENT_TYPES contiene exactamente los 6 eventos de resultado", () => {
+  it("RESULT_EVENT_TYPES contiene exactamente los 7 eventos de resultado", () => {
     expect([...RESULT_EVENT_TYPES].sort()).toEqual(
-      ["bag_drawn", "coin_flipped", "dice_rolled", "first_picked", "order_drawn", "teams_drawn"].sort(),
+      [
+        "bag_drawn",
+        "coin_flipped",
+        "coins_flipped",
+        "dice_rolled",
+        "first_picked",
+        "order_drawn",
+        "teams_drawn",
+      ].sort(),
     );
   });
 });
@@ -228,5 +238,29 @@ describe("resultFeed", () => {
     const log: PlayEvent[] = [dice([1]), makeEvent("cleared", {}, t0)];
     expect(resultFeed(log, 20)).toEqual([]);
     expect(resultFeed(log.slice(0, -1), 20)).toHaveLength(1);
+  });
+});
+
+describe("coins_flipped", () => {
+  it("válido no cambia el estado", () => {
+    const s = initialRandomState();
+    expect(randomReducer(s, coins(["heads", "tails", "heads"]))).toBe(s);
+  });
+  it("rechaza count fuera de 1..5, results descuadrados y valores inválidos", () => {
+    const s = initialRandomState();
+    const bad = (payload: unknown) =>
+      makeEvent("coins_flipped", payload as { count: number; results: ("heads" | "tails")[] }, t0) as RandomEvent;
+    expect(() => randomReducer(s, bad({ count: 0, results: [] }))).toThrow();
+    expect(() => randomReducer(s, bad({ count: 6, results: Array(6).fill("heads") }))).toThrow();
+    expect(() => randomReducer(s, bad({ count: 2, results: ["heads"] }))).toThrow();
+    expect(() => randomReducer(s, bad({ count: 1, results: ["edge"] }))).toThrow();
+  });
+  it("describe: una moneda reusa la copia de siempre; varias, recuentos", () => {
+    expect(describeRandomEvent(coins(["heads"])).key).toBe("coinHeads");
+    expect(describeRandomEvent(coins(["tails"])).key).toBe("coinTails");
+    expect(describeRandomEvent(coins(["heads", "tails", "heads"]))).toEqual({
+      key: "coins",
+      params: { heads: 2, tails: 1 },
+    });
   });
 });

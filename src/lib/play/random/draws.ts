@@ -28,6 +28,15 @@ export function flipCoin(rng: Rng = Math.random): "heads" | "tails" {
   return rng() < 0.5 ? "heads" : "tails";
 }
 
+export const COIN_MAX_COUNT = 5;
+
+export function flipCoins(count: number, rng: Rng = Math.random): ("heads" | "tails")[] {
+  if (!Number.isInteger(count) || count < 1 || count > COIN_MAX_COUNT) {
+    throw new RangeError(`count fuera de 1..${COIN_MAX_COUNT}`);
+  }
+  return Array.from({ length: count }, () => flipCoin(rng));
+}
+
 // Fisher-Yates sobre copia: la entrada no se muta.
 export function shuffle<T>(items: readonly T[], rng: Rng = Math.random): T[] {
   const out = [...items];
