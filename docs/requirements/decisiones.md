@@ -3345,3 +3345,14 @@ demasiado flaky para el harness normal.
   `active`; sin Supabase ni historial (una tirada no es una partida).
 - El log se compacta al pasar 200 eventos re-basando el estado y conservando los
   últimos 20 (el feed enseña 20; deshacer más allá no tiene caso de uso).
+
+## Aleatorio visual: la animación es teatro hacia un resultado ya emitido (2026-08-31)
+
+Los escenarios animados del Aleatorio (cubo 3D, moneda, ruleta, bolsa) se montan
+como capa de presentación pura: el azar se resuelve y se emite ANTES de animar,
+y la animación coreografía hacia ese resultado (crash-safe; el feed va por
+delante del teatro ~1 s, asumido). Se descartó emitir al terminar la animación
+(estado «pending» nuevo en el motor, tiradas perdibles al cerrar) y las librerías
+de animación (+30 kB para lo que CSS 3D ya hace). El azar visual de relleno vive
+en los componentes, jamás en el reducer. Spec:
+docs/superpowers/specs/2026-08-31-play-randomizer-visual-design.md

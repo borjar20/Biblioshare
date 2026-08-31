@@ -99,3 +99,11 @@ test("convive con una partida de puntuación activa", async ({ page }) => {
   await page.goto("/partidas");
   await expect(page.getByRole("link", { name: /seguir/i })).toBeVisible();
 });
+
+test("con reduced motion el resultado aparece al instante", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/partidas/aleatorio");
+  await page.getByRole("button", { name: "d6", exact: true }).click();
+  // Sin teatro: nada de esperar los ~900 ms del cubo.
+  await expect(page.getByTestId("dice-result")).toBeVisible({ timeout: 1500 });
+});
