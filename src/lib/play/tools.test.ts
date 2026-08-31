@@ -69,6 +69,55 @@ const mtgFinishedLog: PlayEvent[] = [
   makeEvent("game_finished", { winner: "ana", reason: "last_standing" as const }, 2000),
 ];
 
+// Empate a 3: dos totales iguales con direction "highest" (ronda [7, 7, 3]).
+// Cubre la mutación "gana solo el primero" (winners = [ranking[0].seat]).
+const tieScoreSetup: ScoreSetup = {
+  participants: [
+    { id: "ana", kind: "guest", name: "Ana" },
+    { id: "beto", kind: "guest", name: "Beto" },
+    { id: "carlos", kind: "guest", name: "Carlos" },
+  ],
+  direction: "highest",
+};
+
+const tieScoreFinishedLog: PlayEvent[] = [
+  makeEvent("game_started", { toolId: "score" as const, setup: tieScoreSetup }, 1000),
+  makeEvent("round_scored", { scores: [7, 7, 3] }, 1500),
+  makeEvent("game_finished", { reason: "manual" as const }, 2000),
+];
+
+// Log SIN game_finished: partida activa (replay del log en vivo antes del
+// cierre). buildSavedSummary no exige finished -- es legal invocarla aquí.
+const scoreActiveLog: PlayEvent[] = [
+  makeEvent("game_started", { toolId: "score" as const, setup: scoreSetup }, 1000),
+  makeEvent("round_scored", { scores: [5, 3] }, 1500),
+];
+
+// Partner (dos comandantes con nombre) y comandante sin nombre, en el mismo
+// fixture: cubre las dos ramas de `commanders` en summarizeMtg.
+const partnerMtgSetup: MtgSetup = {
+  mode: "commander",
+  participants: [
+    {
+      id: "ana",
+      kind: "guest",
+      name: "Ana",
+      commanders: [
+        { id: "ana-c1", name: "Kraum" },
+        { id: "ana-c2", name: "Tymna" },
+      ],
+    },
+    { id: "beto", kind: "guest", name: "Beto", commanders: [{ id: "beto-c1" }] },
+  ],
+  startingLife: 40,
+  startingSeat: 0,
+};
+
+const partnerMtgFinishedLog: PlayEvent[] = [
+  makeEvent("game_started", { toolId: "mtg" as const, setup: partnerMtgSetup }, 1000),
+  makeEvent("game_finished", { winner: "ana", reason: "last_standing" as const }, 2000),
+];
+
 describe("buildSavedSummary", () => {
   it("score: ganador por dirección, participantes planos, duración del estado", () => {
     // partida score de 2 jugadores, direction highest, una ronda [5, 3], finalizada
@@ -82,7 +131,24 @@ describe("buildSavedSummary", () => {
     ]);
     expect(summary.participants.map((p) => p.name)).toEqual(["Ana", "Beto"]);
     expect(summary.tool).toMatchObject({ rounds: 1, direction: "highest", totals: [5, 3] });
-    expect(summary.durationMs).toBeGreaterThanOrEqual(0);
+    // durationMs = finishedAt - startedAt, calculado de los `at` del fixture
+    // (game_finished.at - game_started.at), no una desigualdad tautológica.
+    expect(summary.durationMs).toBe(scoreFinishedLog[2].at - scoreFinishedLog[0].at);
+  });
+
+  it("score: empate a 3 (direction highest) reparte position 1 entre AMBOS asientos, no solo el primero", () => {
+    const summary = buildSavedSummary(replay(tieScoreFinishedLog));
+    expect(summary.winners).toEqual([0, 1]);
+    expect(summary.ranking).toEqual([
+      { seat: 0, position: 1 },
+      { seat: 1, position: 1 },
+      { seat: 2, position: 3 },
+    ]);
+  });
+
+  it("score: partida activa (sin game_finished) -- durationMs es 0, no revienta", () => {
+    const summary = buildSavedSummary(replay(scoreActiveLog));
+    expect(summary.durationMs).toBe(0);
   });
 
   it("mtg: ranking por asiento (no por participantId) y comandantes por nombre", () => {
@@ -90,8 +156,16 @@ describe("buildSavedSummary", () => {
     const summary = buildSavedSummary(state);
     expect(summary.toolId).toBe("mtg");
     expect(summary.winners).toEqual([0]);
-    expect(summary.ranking[0]).toEqual({ seat: 0, position: 1 });
+    expect(summary.ranking).toEqual([
+      { seat: 0, position: 1 },
+      { seat: 1, position: 2 },
+    ]);
     expect((summary.tool.commanders as (string | null)[]).length).toBe(2);
+  });
+
+  it("mtg: partner se junta con ' / ' y comandante sin nombre da null", () => {
+    const summary = buildSavedSummary(replay(partnerMtgFinishedLog));
+    expect(summary.tool.commanders).toEqual(["Kraum / Tymna", null]);
   });
 
   it("un participante user conserva userId; regular/guest no lo llevan", () => {
