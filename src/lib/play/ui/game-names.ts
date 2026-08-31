@@ -5,7 +5,9 @@ const MAX_SUGGESTIONS = 6;
 
 /** Juegos ya usados en la herramienta de puntuación, para los chips del setup:
  * únicos (case/acentos-insensible, gana la grafía más reciente), por recencia,
- * filtrados por la query, máx 6. PURA: se prueba sin IDB. */
+ * filtrados por la query, máx 6. PURA: se prueba sin IDB. Empate de savedAt
+ * entre dos grafías: gana la primera del array (comparación estricta >) —
+ * determinista, y con savedAt en epoch ms el empate real es anecdótico. */
 export function gameNameSuggestions(saved: SavedGameRecord[], query: string): string[] {
   const byKey = new Map<string, { name: string; savedAt: number }>();
   for (const record of saved) {
