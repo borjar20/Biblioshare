@@ -36,13 +36,15 @@ export function CoinSection({
       : t("result", { heads, tails: results.length - heads })
     : null;
 
+  const flip = () => onEmit({ count, results: flipCoins(count) });
+
   return (
     <div>
       <CoinStage
         flip={lastFlip && results ? { id: lastFlip.id, results } : null}
         idleCount={count}
         resultText={resultText}
-        onFlip={() => onEmit({ count, results: flipCoins(count) })}
+        onFlip={flip}
         label={t("flip")}
         hint={t("hint")}
       />
@@ -74,7 +76,7 @@ export function CoinSection({
       </div>
       <button
         type="button"
-        onClick={() => onEmit({ count, results: flipCoins(count) })}
+        onClick={flip}
         className={buttonVariants("primary", "mt-3 w-full justify-center py-3 text-[15px]")}
       >
         {t("flipCta", { count })}

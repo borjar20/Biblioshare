@@ -74,8 +74,12 @@ export function feedRow(event: RandomEvent): FeedRow {
       };
     case "bag_drawn":
       return { label: { key: "row.bag" }, primary: event.payload.name };
-    default:
-      // players_set / bag_set / cleared no llegan al feed (RESULT_EVENT_TYPES).
+    // Casos explícitos y sin default: un evento nuevo que no se liste aquí
+    // rompe la compilación en vez de pintar una fila en blanco (review final).
+    case "players_set":
+    case "bag_set":
+    case "cleared":
+      // No llegan al feed (RESULT_EVENT_TYPES los filtra); fila inerte.
       return { label: "", primary: "" };
   }
 }

@@ -26,12 +26,14 @@ export function ResultFeed({
   const [confirming, setConfirming] = useState(false);
   const text = (v: FeedText) => (typeof v === "string" ? v : t(v.key, v.params));
 
+  // p-2/-my-2 en los ghosts: área táctil ≥24px (WCAG 2.5.8) sin mover el
+  // layout vertical.
   const undoButton = (
     <button
       type="button"
       onClick={onUndo}
       disabled={!canUndo}
-      className="ml-auto shrink-0 text-[12px] text-muted-foreground underline disabled:opacity-40"
+      className="ml-auto shrink-0 p-2 -my-2 text-[12px] text-muted-foreground underline disabled:opacity-40"
     >
       {t("feed.undo")}
     </button>
@@ -50,7 +52,7 @@ export function ResultFeed({
               onClear();
               setConfirming(false);
             }}
-            className="text-[12px] text-play-danger underline"
+            className="p-2 -my-2 text-[12px] text-play-danger underline"
           >
             {t("feed.clearConfirm")}
           </button>
@@ -59,7 +61,7 @@ export function ResultFeed({
             type="button"
             onClick={() => setConfirming(true)}
             disabled={!canUndo}
-            className="text-[12px] text-muted-foreground underline disabled:opacity-40"
+            className="p-2 -my-2 text-[12px] text-muted-foreground underline disabled:opacity-40"
           >
             {t("feed.clear")}
           </button>
