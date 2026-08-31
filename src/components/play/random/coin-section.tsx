@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 import { flipCoin } from "@/lib/play/random/draws";
 import type { RandomEvent } from "@/lib/play/random/events";
+import { CoinStage } from "./stage/coin-stage";
 
+// La moneda no tiene configuración: el escenario ES la sección entera.
 export function CoinSection({
   lastFlip,
   onEmit,
@@ -12,22 +14,14 @@ export function CoinSection({
   onEmit: (payload: { result: "heads" | "tails" }) => void;
 }) {
   const t = useTranslations("play.random.coin");
-  const result = lastFlip && lastFlip.type === "coin_flipped" ? lastFlip.payload.result : null;
+  const last = lastFlip && lastFlip.type === "coin_flipped" ? lastFlip : null;
 
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => onEmit({ result: flipCoin() })}
-        className="rounded-chip border border-border px-4 py-2 text-[14px] font-semibold"
-      >
-        {t("flip")}
-      </button>
-      {result ? (
-        <p className="mt-4 font-serif text-[22px] font-semibold" data-testid="coin-result">
-          {t(result)}
-        </p>
-      ) : null}
-    </div>
+    <CoinStage
+      flip={last ? { id: last.id, result: last.payload.result } : null}
+      resultText={last ? t(last.payload.result) : null}
+      onFlip={() => onEmit({ result: flipCoin() })}
+      label={t("flip")}
+    />
   );
 }
