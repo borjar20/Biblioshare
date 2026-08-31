@@ -3612,11 +3612,13 @@ la RPC, anima una vez y sella `displayed_at`. Migración
 #460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
 `annual_challenge_completed` y `club_activity_completed`.
 
-## 8. Play — `play_games` (dev y **prod**, 2026-08-31)
+## 8. Play
 
 > (Sección nueva, insertada el 2026-08-31 entre «7bis. Celebraciones» y la antigua «8. Seguridad»:
 > Seguridad pasa a ser §9, Enums a §10 y Migraciones a §11. Se revisó el resto del doc en busca de
 > referencias `§8`/`§9`/`§10` que apuntaran mal por el desplazamiento y se corrigieron.)
+
+### 8.1. `play_games` (dev y **prod**, 2026-08-31)
 
 Partidas guardadas de las herramientas de juego (fase 5 de BiblioPlay, #931). Una fila por partida,
 log íntegro en JSONB (sin tabla de eventos por filas hasta el multiplayer de fase 9).
@@ -3653,8 +3655,10 @@ lógica lo lee actualmente), `created_at` (timestamptz, default `now()`), `updat
 (`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
 privada total.**
 
-**Migración** `supabase/migrations/20260894_play_players.sql` — creada, pendiente de aplicar a
-dev y prod como parte del e2e de la fase 6 (carga manual el controlador tras verificación).
+**Migración** `supabase/migrations/20260894_play_players.sql` — **aplicada y verificada en dev
+el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
+`pg_class`/`pg_policies`). Prod queda pendiente solo de pasar los e2e de la fase 6; al aplicarla,
+anexo a `schema-baseline.sql` en la misma pasada (§11).
 
 ## 9. Seguridad
 
@@ -3867,7 +3871,7 @@ Una versión anterior de esta tabla los daba por «huérfanos vivos» y era fals
 
 ## 11. Migraciones
 
-226 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+227 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
 2026-08-31).
 Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
 pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
