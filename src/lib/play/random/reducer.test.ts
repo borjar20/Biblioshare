@@ -30,6 +30,14 @@ describe("randomReducer — eventos de resultado", () => {
     expect(() => randomReducer(s, { ...dice([7]), payload: { count: 1, sides: 6, results: [7] } } as RandomEvent)).toThrow();
     expect(() => randomReducer(s, { ...dice([0]), payload: { count: 1, sides: 6, results: [0] } } as RandomEvent)).toThrow();
   });
+  it("dice_rolled valida los límites de count y sides en el propio payload", () => {
+    // Caza al mutante que relaja los rangos del reducer (el log no se fía de la UI).
+    const s = initialRandomState();
+    expect(() => randomReducer(s, { ...dice([1]), payload: { count: 0, sides: 6, results: [] } } as RandomEvent)).toThrow();
+    expect(() => randomReducer(s, { ...dice([1]), payload: { count: 21, sides: 6, results: Array(21).fill(1) } } as RandomEvent)).toThrow();
+    expect(() => randomReducer(s, { ...dice([1]), payload: { count: 1, sides: 1, results: [1] } } as RandomEvent)).toThrow();
+    expect(() => randomReducer(s, { ...dice([1]), payload: { count: 1, sides: 1001, results: [1] } } as RandomEvent)).toThrow();
+  });
   it("first_picked exige picked dentro de players y al menos 2", () => {
     const s = initialRandomState();
     const ok = makeEvent("first_picked", { players: ["a", "b"], picked: "a" }, t0) as RandomEvent;
