@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { playTools } from "@/lib/play/tools";
 import type { ToolId } from "@/lib/play/core/types";
 import { toolViews } from "./tool-views";
+import { RandomTableMark } from "./marks/random-table-mark";
 
 /**
  * Rejilla de herramientas del hub. Sale ENTERA de los dos registros: el de dominio
@@ -35,6 +36,21 @@ export async function ToolGrid() {
           </li>
         );
       })}
+
+      {/* El Aleatorio vive FUERA del registro de herramientas a propósito (spec
+          randomizer §2): es un acompañante sin partida — no ocupa el slot activo
+          ni aparece en guardadas. Por eso su tarjeta es estática y no sale del map. */}
+      <li>
+        <Link
+          href="/partidas/aleatorio"
+          className="flex flex-col items-center gap-3 rounded-card border border-border bg-surface p-4 transition-colors hover:bg-surface-muted"
+        >
+          <RandomTableMark className="h-16 w-16" />
+          <span className="text-center font-serif text-[15px] font-semibold">
+            {t("tools.random.name")}
+          </span>
+        </Link>
+      </li>
 
       <li>
         <div className="flex h-full flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border p-4 opacity-55">

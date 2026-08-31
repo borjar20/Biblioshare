@@ -2645,6 +2645,9 @@
           "step3Title": "Apunta ronda a ronda",
           "step3Detail": "Cada ronda queda en el registro y se puede editar después."
         }
+      },
+      "random": {
+        "name": "Aleatorio"
       }
     },
     "rememberedTable": {
