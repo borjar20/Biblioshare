@@ -131,7 +131,6 @@ export function PlayersSection({
           {t("order")}
         </button>
         <label className="flex items-end gap-2">
-          <span className="sr-only">{t("teamCount")}</span>
           <input
             type="number"
             inputMode="numeric"

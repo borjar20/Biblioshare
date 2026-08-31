@@ -28,6 +28,11 @@ export function BagSection({
   const [count, setCount] = useState("");
 
   const remaining = bag.items.reduce((sum, i) => sum + i.count, 0);
+  // Toda edición emite bag_set con la foto completa, y bag_set exige counts
+  // >= 1: un tipo agotado por extracciones (count 0) haría que el reducer
+  // rechazara la edición EN SILENCIO. La foto que se emite excluye los
+  // agotados — reiniciar sigue usando `initial`, que nunca tiene ceros.
+  const alive = () => bag.items.filter((i) => i.count > 0).map((i) => ({ ...i }));
   const parsedCount = Number(count || "1");
   const addValid =
     name.trim() !== "" &&
@@ -37,7 +42,7 @@ export function BagSection({
 
   function addItem() {
     if (!addValid) return;
-    onBagSet([...bag.items, { name: name.trim(), count: parsedCount }], bag.withReplacement);
+    onBagSet([...alive(), { name: name.trim(), count: parsedCount }], bag.withReplacement);
     setName("");
     setCount("");
   }
@@ -85,7 +90,7 @@ export function BagSection({
               <button
                 type="button"
                 onClick={() =>
-                  onBagSet(bag.items.filter((i) => i.name !== item.name), bag.withReplacement)
+                  onBagSet(alive().filter((i) => i.name !== item.name), bag.withReplacement)
                 }
                 aria-label={t("remove", { name: item.name })}
                 className="rounded-chip border border-border px-2 py-0.5 text-[12px]"
@@ -103,7 +108,7 @@ export function BagSection({
         <input
           type="checkbox"
           checked={bag.withReplacement}
-          onChange={(e) => onBagSet(bag.items.map((i) => ({ ...i })), e.target.checked)}
+          onChange={(e) => onBagSet(alive(), e.target.checked)}
         />
         {t("withReplacement")}
       </label>
