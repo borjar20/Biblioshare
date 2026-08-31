@@ -13,7 +13,11 @@ export const metadata: Metadata = { title: "Aleatorio — Biblioshare" };
 async function Screen() {
   await connection();
   const identity = (await getCurrentUser())?.id ?? "anon";
-  return <RandomScreen identity={identity} />;
+  // key: si la sesión cambia en caliente (login/logout + refresh), el hook
+  // entero se REMONTA — sin esto, el snapshot de la identidad anterior queda
+  // en pantalla y el primer emit lo persistiría bajo la clave de la nueva
+  // (contaminación entre cuentas del mismo dispositivo, clase #680).
+  return <RandomScreen key={identity} identity={identity} />;
 }
 
 export default function RandomPage() {
