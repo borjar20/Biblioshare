@@ -24,6 +24,10 @@ describe("rollDice", () => {
     expect(() => rollDice(1.5, 6, seq(0))).toThrow();
     expect(() => rollDice(1, 6.5, seq(0))).toThrow();
   });
+  it("acepta los máximos exactos (20d1000)", () => {
+    // Caza al mutante que estrecha el rango en uno (> MAX-1).
+    expect(rollDice(20, 1000, () => 0)).toEqual(Array(20).fill(1));
+  });
 });
 
 describe("flipCoin", () => {
@@ -31,13 +35,16 @@ describe("flipCoin", () => {
     expect(flipCoin(() => 0.2)).toBe("heads");
     expect(flipCoin(() => 0.7)).toBe("tails");
   });
+  it("el borde exacto 0.5 es cruz (el corte es estricto <0.5)", () => {
+    expect(flipCoin(() => 0.5)).toBe("tails");
+  });
 });
 
 describe("shuffle", () => {
-  it("con rng constante 0 rota de forma conocida y conserva los elementos", () => {
-    const result = shuffle(["a", "b", "c", "d"], () => 0);
-    expect([...result].sort()).toEqual(["a", "b", "c", "d"]);
-    expect(result).not.toBe(undefined);
+  it("con rng constante 0 rota de forma conocida (un shuffle no-op no pasa)", () => {
+    // Fisher-Yates con j=0 en cada paso: [a,b,c,d] → [b,c,d,a]. Verificado a
+    // mano; una identidad que devuelva la entrada intacta falla aquí.
+    expect(shuffle(["a", "b", "c", "d"], () => 0)).toEqual(["b", "c", "d", "a"]);
   });
   it("no muta la entrada", () => {
     const input = ["a", "b", "c"];
@@ -67,6 +74,11 @@ describe("drawTeams", () => {
   it("rechaza menos de 2 o más de n-1 equipos", () => {
     expect(() => drawTeams(["a", "b", "c"], 1, seq(0))).toThrow();
     expect(() => drawTeams(["a", "b", "c"], 3, seq(0))).toThrow();
+  });
+  it("acepta el máximo exacto n-1", () => {
+    const teams = drawTeams(["a", "b", "c"], 2, seq(0));
+    expect(teams).toHaveLength(2);
+    expect(teams.flat().sort()).toEqual(["a", "b", "c"]);
   });
 });
 
