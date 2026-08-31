@@ -19,6 +19,10 @@ type ScoreSummaryTool = {
   // M1: no es un número suelto -- es el mismo ScoreTarget de score/types.ts
   // (summarizeScore lo copia tal cual desde state.setup.target).
   target: { kind: "rounds" | "points"; value: number } | null;
+  // Opcional: los summaries de partidas guardadas ANTES de esta feature no
+  // traen la clave -- el cast igual las tipa, así que el campo se lee con
+  // tolerancia (nunca asumir que está presente).
+  gameName?: string | null;
 };
 
 // Horas y minutos, sin segundos (spec task 7): "1 h 38 min" / "12 min". Deliberadamente
@@ -33,6 +37,16 @@ function formatDuration(ms: number): string {
 
 function toolName(t: T, toolId: SavedGameRecord["summary"]["toolId"]): string {
   return t(`tools.${playTools[toolId].i18nKey}.name`);
+}
+
+// En la fila: una partida de puntuación etiquetada («UNO») muestra el juego
+// en vez del nombre genérico de la herramienta; sin etiquetar, como siempre.
+function rowName(t: T, record: SavedGameRecord): string {
+  if (record.summary.toolId === "score") {
+    const gameName = (record.summary.tool as ScoreSummaryTool).gameName;
+    if (gameName) return gameName;
+  }
+  return toolName(t, record.summary.toolId);
 }
 
 // Historial local-first (fase 5): lee SOLO IndexedDB — el sync de fondo la
@@ -157,7 +171,7 @@ export function SavedGames({ identity }: { identity: string }) {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="min-w-0 flex-1 truncate font-serif text-[14px] font-semibold">
-                        {toolName(t, summary.toolId)}
+                        {rowName(t, record)}
                       </span>
                       {pending && (
                         <span className="shrink-0 rounded-chip bg-surface-muted px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
@@ -248,12 +262,21 @@ function SavedGameDetail({
         </p>
       )}
 
-      {scoreTool?.target && (
-        <p className="mt-3 text-[13px] text-muted-foreground">
-          {scoreTool.target.kind === "rounds"
-            ? t("saved.targetRounds", { value: scoreTool.target.value })
-            : t("saved.targetPoints", { value: scoreTool.target.value })}
-        </p>
+      {scoreTool && (scoreTool.gameName || scoreTool.target) && (
+        <div className="mt-3 flex flex-col gap-1 text-[13px] text-muted-foreground">
+          {scoreTool.gameName && (
+            <p>
+              {t("saved.game")}: {scoreTool.gameName}
+            </p>
+          )}
+          {scoreTool.target && (
+            <p>
+              {scoreTool.target.kind === "rounds"
+                ? t("saved.targetRounds", { value: scoreTool.target.value })
+                : t("saved.targetPoints", { value: scoreTool.target.value })}
+            </p>
+          )}
+        </div>
       )}
 
       <dl className="mt-4 flex gap-6 border-t border-border pt-3 font-mono text-[11px]">

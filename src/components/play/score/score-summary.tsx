@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { makeEvent } from "@/lib/play/core/events";
 import type { ActiveGame, PlayStore } from "@/lib/play/core/store";
+import type { GameLabeledEvent } from "@/lib/play/score/events";
 import type { ScoreState } from "@/lib/play/score/types";
 import { scoreRanking } from "@/lib/play/score/selectors";
 import { formatElapsed } from "@/lib/play/ui/clock";
@@ -27,6 +30,28 @@ export function ScoreSummary({ game, store }: { game: ActiveGame; store: PlaySto
 
   const duration = formatElapsed((state.finishedAt ?? state.startedAt) - state.startedAt);
 
+  // Igual que el renombrar de `players-manager.tsx`: `editing` es puramente de
+  // esta sesión de edición, no algo que el store necesite conocer.
+  const [editingGame, setEditingGame] = useState(false);
+  const [gameDraft, setGameDraft] = useState(state.setup.gameName ?? "");
+
+  function startEditingGame() {
+    setGameDraft(state.setup.gameName ?? "");
+    setEditingGame(true);
+  }
+
+  // Vacío confirma también: es la forma de quitar la etiqueta (payload "").
+  function confirmGameLabel() {
+    store.dispatch(
+      makeEvent<GameLabeledEvent["type"], GameLabeledEvent["payload"]>(
+        "game_labeled",
+        { gameName: gameDraft.trim() },
+        Date.now(),
+      ),
+    );
+    setEditingGame(false);
+  }
+
   return (
     <div className="flex h-dvh w-full flex-col items-center justify-center gap-6 bg-play-felt px-5 py-8">
       <div className="w-full max-w-md rounded-[20px] border border-border bg-surface p-5">
@@ -36,6 +61,45 @@ export function ScoreSummary({ game, store }: { game: ActiveGame; store: PlaySto
         <h1 className="mt-1 font-serif text-[24px] font-semibold">
           {tie ? t("scoreSummary.tie") : t("summary.winner", { name: leader.name })}
         </h1>
+
+        {editingGame ? (
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="text"
+              value={gameDraft}
+              onChange={(e) => setGameDraft(e.target.value)}
+              onFocus={(e) => e.currentTarget.select()}
+              autoFocus
+              className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-2 py-1 text-[13px]"
+            />
+            <button
+              type="button"
+              onClick={confirmGameLabel}
+              className="tap-44 shrink-0 px-1 text-[13px] font-semibold text-accent-ink"
+            >
+              {t("scoreSummary.saveGame")}
+            </button>
+          </div>
+        ) : state.setup.gameName ? (
+          <p className="mt-1 flex items-center gap-2 text-[13px] text-muted-foreground">
+            <span className="min-w-0 flex-1 truncate">{state.setup.gameName}</span>
+            <button
+              type="button"
+              onClick={startEditingGame}
+              className="tap-44 shrink-0 px-1 text-[13px] text-accent-ink"
+            >
+              {t("scoreSummary.editGame")}
+            </button>
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={startEditingGame}
+            className="mt-1 text-[13px] text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {t("scoreSummary.addGame")}
+          </button>
+        )}
 
         <ol className="mt-4 flex flex-col gap-1">
           {ranking.map((entry) => {
