@@ -2889,7 +2889,8 @@
         "hint": "Toca la moneda para lanzar",
         "fewer": "Una moneda menos",
         "more": "Una moneda más",
-        "result": "{heads, plural, one {# cara} other {# caras}}, {tails, plural, one {# cruz} other {# cruces}}"
+        "result": "{heads, plural, one {# cara} other {# caras}}, {tails, plural, one {# cruz} other {# cruces}}",
+        "flipCta": "{count, plural, one {Lanzar la moneda} other {Lanzar # monedas}}"
       },
       "players": {
         "regulars": "Tus habituales",
