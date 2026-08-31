@@ -80,6 +80,7 @@ function summarizeScore(state: ScoreState): Pick<SavedGameSummary, "winners" | "
       direction: state.setup.direction,
       totals: totals(state),
       target: state.setup.target ?? null,
+      gameName: state.setup.gameName ?? null,
     },
   };
 }

@@ -17,6 +17,9 @@ export type ScoreSetup = {
   participants: Participant[]; // 2..8; el orden ES el orden de filas
   direction: ScoreDirection;
   target?: ScoreTarget;
+  /** A qué se juega («UNO», «dominó»…). Opcional, texto libre con trim de la
+   * UI; diferencia las stats futuras dentro de la herramienta genérica. */
+  gameName?: string;
 };
 
 export type ScoreState = ToolGameState<"score"> & {
