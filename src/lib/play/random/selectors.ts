@@ -72,3 +72,55 @@ export function describeRandomEvent(event: RandomEvent): EventDescription {
       return { key: "cleared", params: {} };
   }
 }
+
+// Fila del feed visual: etiqueta (mono), valor protagonista (serif) y desglose
+// opcional. `string` = literal ya resuelto (números, nombres); `{key}` = clave
+// i18n relativa a play.random que la UI traduce.
+export type FeedText = string | { key: string; params?: Record<string, string | number> };
+export type FeedRow = { label: FeedText; primary: FeedText; detail?: string };
+
+export function feedRow(event: RandomEvent): FeedRow {
+  switch (event.type) {
+    case "dice_rolled": {
+      const { count, sides, results } = event.payload;
+      return {
+        label: `${count}d${sides}`,
+        primary: String(results.reduce((a, b) => a + b, 0)),
+        ...(count > 1 ? { detail: results.join(" · ") } : {}),
+      };
+    }
+    case "coin_flipped":
+      return {
+        label: { key: "row.coin" },
+        primary: { key: event.payload.result === "heads" ? "coin.heads" : "coin.tails" },
+      };
+    case "coins_flipped": {
+      const { results } = event.payload;
+      if (results.length === 1) {
+        return {
+          label: { key: "row.coin" },
+          primary: { key: results[0] === "heads" ? "coin.heads" : "coin.tails" },
+        };
+      }
+      const heads = results.filter((r) => r === "heads").length;
+      return {
+        label: { key: "row.coins", params: { count: results.length } },
+        primary: { key: "coin.result", params: { heads, tails: results.length - heads } },
+      };
+    }
+    case "first_picked":
+      return { label: { key: "row.first" }, primary: event.payload.picked };
+    case "order_drawn":
+      return { label: { key: "row.order" }, primary: event.payload.order.join(", ") };
+    case "teams_drawn":
+      return {
+        label: { key: "row.teams" },
+        primary: event.payload.teams.map((team) => team.join(", ")).join(" — "),
+      };
+    case "bag_drawn":
+      return { label: { key: "row.bag" }, primary: event.payload.name };
+    default:
+      // players_set / bag_set / cleared no llegan al feed (RESULT_EVENT_TYPES).
+      return { label: "", primary: "" };
+  }
+}

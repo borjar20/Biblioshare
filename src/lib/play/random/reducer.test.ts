@@ -9,7 +9,7 @@ import {
   randomReducer,
   replayRandom,
 } from "./reducer";
-import { describeRandomEvent, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
+import { describeRandomEvent, feedRow, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
 import type { RandomEvent } from "./events";
 
 const t0 = 1000;
@@ -263,5 +263,39 @@ describe("coins_flipped", () => {
       key: "coins",
       params: { heads: 2, tails: 1 },
     });
+  });
+});
+
+describe("feedRow", () => {
+  it("dados: expresión, total y desglose solo con más de un dado", () => {
+    expect(feedRow(dice([4, 2, 6]))).toEqual({ label: "3d6", primary: "12", detail: "4 · 2 · 6" });
+    expect(feedRow(dice([5]))).toEqual({ label: "1d6", primary: "5" });
+  });
+  it("monedas: una reusa cara/cruz; varias, recuento", () => {
+    expect(feedRow(coins(["tails"]))).toEqual({
+      label: { key: "row.coin" },
+      primary: { key: "coin.tails" },
+    });
+    expect(feedRow(coins(["heads", "tails", "heads"]))).toEqual({
+      label: { key: "row.coins", params: { count: 3 } },
+      primary: { key: "coin.result", params: { heads: 2, tails: 1 } },
+    });
+    expect(
+      feedRow(makeEvent("coin_flipped", { result: "heads" as const }, t0) as RandomEvent),
+    ).toEqual({ label: { key: "row.coin" }, primary: { key: "coin.heads" } });
+  });
+  it("jugadores y bolsa", () => {
+    expect(
+      feedRow(makeEvent("first_picked", { players: ["a", "b"], picked: "b" }, t0) as RandomEvent),
+    ).toEqual({ label: { key: "row.first" }, primary: "b" });
+    expect(
+      feedRow(makeEvent("order_drawn", { players: ["a", "b"], order: ["b", "a"] }, t0) as RandomEvent),
+    ).toEqual({ label: { key: "row.order" }, primary: "b, a" });
+    expect(
+      feedRow(
+        makeEvent("teams_drawn", { players: ["a", "b", "c"], teams: [["a"], ["b", "c"]] }, t0) as RandomEvent,
+      ),
+    ).toEqual({ label: { key: "row.teams" }, primary: "a — b, c" });
+    expect(feedRow(bagDrawn("Rojo"))).toEqual({ label: { key: "row.bag" }, primary: "Rojo" });
   });
 });
