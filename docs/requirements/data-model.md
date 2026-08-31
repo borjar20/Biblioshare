@@ -3640,7 +3640,7 @@ prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados cont
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
 
-### 8.2. `play_players` (dev 2026-08-31; prod pendiente de e2e)
+### 8.2. `play_players` (dev y **prod**, 2026-08-31)
 
 Jugadores habituales del entorno del usuario (fase 6 de BiblioPlay, #931). Personas persistentes
 sin cuenta Biblioshare. **Privada total: RLS por ownership, sin acceso anon ni lectura de terceros.**
@@ -3655,10 +3655,10 @@ lógica lo lee actualmente), `created_at` (timestamptz, default `now()`), `updat
 (`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
 privada total.**
 
-**Migración** `supabase/migrations/20260894_play_players.sql` — **aplicada y verificada en dev
-el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
-`pg_class`/`pg_policies`). Prod queda pendiente solo de pasar los e2e de la fase 6; al aplicarla,
-anexo a `schema-baseline.sql` en la misma pasada (§11).
+**Migración** `supabase/migrations/20260894_play_players.sql` — **aplicada y verificada en dev y
+prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
+`pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
+misma pasada (ANEXO 2026-08-31), como manda §11.
 
 ## 9. Seguridad
 
