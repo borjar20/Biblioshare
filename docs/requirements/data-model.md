@@ -3638,6 +3638,24 @@ prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados cont
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
 
+### 8.2. `play_players` (dev 2026-08-31; prod pendiente de e2e)
+
+Jugadores habituales del entorno del usuario (fase 6 de BiblioPlay, #931). Personas persistentes
+sin cuenta Biblioshare. **Privada total: RLS por ownership, sin acceso anon ni lectura de terceros.**
+
+**La tabla** `play_players`: `id` (uuid, PK; generado en cliente con `crypto.randomUUID()`),
+`owner_id` (uuid, FK `auth.users` con `on delete cascade`), `name` (text), `linked_user_id`
+(uuid, FK `auth.users` con `on delete set null` — reservado para vinculación futura, NINGUNA
+lógica lo lee actualmente), `created_at` (timestamptz, default `now()`), `updated_at`
+(timestamptz, default `now()`). Índice `play_players_owner on (owner_id)`.
+
+**RLS**: cuatro políticas de solo lectura/escritura/actualización/borrado de los propios
+(`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
+privada total.**
+
+**Migración** `supabase/migrations/20260894_play_players.sql` — creada, pendiente de aplicar a
+dev y prod como parte del e2e de la fase 6 (carga manual el controlador tras verificación).
+
 ## 9. Seguridad
 
 Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
