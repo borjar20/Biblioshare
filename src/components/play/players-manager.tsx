@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePlayers } from "@/lib/play/core/use-players";
-import { deletePlayer, putPlayer, type PlayerRecord } from "@/lib/play/core/db";
+import { putPlayer, type PlayerRecord } from "@/lib/play/core/db";
 import { requestPlayersSync } from "@/lib/play/core/players-sync";
 import { PlaySheet, SheetGroup } from "./play-sheet";
 
@@ -98,13 +98,12 @@ function PlayersSheet({
 
   async function handleDelete(record: PlayerRecord) {
     if (!window.confirm(t("players.deleteConfirm"))) return;
-    if (record.syncStatus === "pending") {
-      // Nunca subió: no hay copia remota que tumbstonear.
-      await deletePlayer(record.playerId);
-    } else {
-      await putPlayer({ ...record, deletedAt: Date.now() });
-    }
-    if (editing === record.playerId) setEditing(null);
+    // SIEMPRE tombstone: `pending` no significa «nunca subió» — un rename
+    // devuelve a pending un registro que SÍ tiene copia remota, y borrarlo en
+    // duro dejaría la fila huérfana en el servidor y el pull lo resucitaría.
+    // El motor ya distingue solo: tombstone sin copia remota acaba en
+    // dropLocal (borrado local sin red), con copia en deleteRemote.
+    await putPlayer({ ...record, deletedAt: Date.now() });
     await reload();
     requestPlayersSync(identity);
   }
