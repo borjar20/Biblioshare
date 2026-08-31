@@ -54,3 +54,21 @@ export type ActiveGameSnapshot = {
   committed: PlayEvent[];
   pending: PlayEvent | null;
 };
+
+// Resumen sellado al guardar (fase 5): la lista y el detalle del historial
+// renderizan SOLO esto — nunca replay. Es el MISMO objeto que sube a
+// play_games.summary, así que cambiarlo es cambiar el contrato con el servidor.
+export type SavedParticipant = {
+  kind: "user" | "regular" | "guest";
+  name: string;
+  userId?: string;
+};
+
+export type SavedGameSummary = {
+  toolId: ToolId;
+  participants: SavedParticipant[]; // orden = asientos
+  winners: number[]; // asientos con position 1 (empate posible en score)
+  ranking: { seat: number; position: number }[];
+  durationMs: number;
+  tool: Record<string, unknown>; // extensión por herramienta (mtg: mode/turns/commanders; score: rounds/direction/totals/target)
+};
