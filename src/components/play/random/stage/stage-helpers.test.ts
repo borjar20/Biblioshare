@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dieShapeFor,
   faceRotation,
   fillerFaces,
   stableColor,
@@ -54,5 +55,22 @@ describe("fillerFaces", () => {
   it("respeta el rango 1..sides con RNG inyectado", () => {
     expect(fillerFaces(6, 3, () => 0)).toEqual([1, 1, 1]);
     expect(fillerFaces(6, 2, () => 0.999)).toEqual([6, 6]);
+  });
+});
+
+describe("dieShapeFor", () => {
+  it("mapea las familias clásicas y el percentil", () => {
+    expect(dieShapeFor(4)).toBe("d4");
+    expect(dieShapeFor(6)).toBe("d6");
+    expect(dieShapeFor(8)).toBe("d8");
+    expect(dieShapeFor(10)).toBe("d10");
+    expect(dieShapeFor(100)).toBe("d10");
+    expect(dieShapeFor(12)).toBe("d12");
+    expect(dieShapeFor(20)).toBe("d20");
+  });
+  it("cualquier otro número de caras cae en round", () => {
+    expect(dieShapeFor(2)).toBe("round");
+    expect(dieShapeFor(7)).toBe("round");
+    expect(dieShapeFor(1000)).toBe("round");
   });
 });

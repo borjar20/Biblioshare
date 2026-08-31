@@ -76,3 +76,27 @@ export function fillerFaces(
 export function buzz(): void {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(30);
 }
+
+export type DieShapeKind = "d4" | "d6" | "d8" | "d10" | "d12" | "d20" | "round";
+
+// Silueta por familia clásica de mesa; 100 es el percentil (usa el d10). El
+// resto (2, 7, 30, 1000…) cae en círculo.
+export function dieShapeFor(sides: number): DieShapeKind {
+  switch (sides) {
+    case 4:
+      return "d4";
+    case 6:
+      return "d6";
+    case 8:
+      return "d8";
+    case 10:
+    case 100:
+      return "d10";
+    case 12:
+      return "d12";
+    case 20:
+      return "d20";
+    default:
+      return "round";
+  }
+}
