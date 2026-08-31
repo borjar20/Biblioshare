@@ -57,8 +57,10 @@ export function RandomScreen({ identity }: { identity: string }) {
         ) : null}
         {tab === "coin" ? (
           <CoinSection
-            lastFlip={lastOf("coin_flipped")}
-            onEmit={(payload) => companion.emit("coin_flipped", payload)}
+            lastFlip={companion.feed.find(
+              (e) => e.type === "coins_flipped" || e.type === "coin_flipped",
+            )}
+            onEmit={(payload) => companion.emit("coins_flipped", payload)}
           />
         ) : null}
         {tab === "players" ? (

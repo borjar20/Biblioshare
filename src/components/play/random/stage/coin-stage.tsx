@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import styles from "./stage.module.css";
-import { buzz } from "./stage-helpers";
-import { useReducedMotion } from "./use-reduced-motion";
+import { useLandingGate } from "./use-landing-gate";
+
+const COIN_VISIBLE_MAX = 5;
+
+function coinSize(n: number): number {
+  if (n <= 1) return 110;
+  if (n === 2) return 88;
+  return 64;
+}
 
 // Cara: sol. Cruz: aspa con laurel. Misma familia visual que random-table-mark.
 function HeadsFace() {
@@ -51,48 +57,59 @@ function TailsFace() {
   );
 }
 
-/** Moneda 3D: varias revoluciones y cae del lado emitido. */
+/**
+ * Monedas 3D: varias revoluciones (stagger 60 ms) y cada una cae del lado
+ * emitido. Revelación única al aterrizar la última (useLandingGate). En
+ * reposo enseña tantas monedas como el stepper y el hint que centra.
+ */
 export function CoinStage({
   flip,
+  idleCount,
   resultText,
   onFlip,
   label,
+  hint,
 }: {
-  flip: { id: string; result: "heads" | "tails" } | null;
+  flip: { id: string; results: ("heads" | "tails")[] } | null;
+  idleCount: number;
   resultText: string | null;
   onFlip: () => void;
   label: string;
+  hint: string;
 }) {
-  const reduced = useReducedMotion();
-  const [landedId, setLandedId] = useState<string | null>(null);
-  const landed = flip !== null && (reduced || landedId === flip.id);
+  const visible = Math.min(flip ? flip.results.length : idleCount, COIN_VISIBLE_MAX);
+  const { landed, reduced, onOneEnd } = useLandingGate(flip?.id ?? null, visible);
+  const size = coinSize(visible);
 
   return (
     <div className={styles.stage}>
       <button type="button" aria-label={label} onClick={onFlip} className={styles.objectButton}>
-        <span className={styles.coinScene}>
-          <span
-            key={flip?.id ?? "idle"}
-            className={flip && !reduced ? `${styles.coinSpin} ${styles.coinFlip}` : styles.coinSpin}
-            onAnimationEnd={(e) => {
-              if (e.target === e.currentTarget && flip) {
-                setLandedId(flip.id);
-                buzz();
-              }
-            }}
-          >
+        <span className={styles.coinRow}>
+          {Array.from({ length: visible }, (_, i) => (
             <span
-              className={styles.coin}
-              style={flip?.result === "tails" ? { transform: "rotateX(180deg)" } : undefined}
+              key={`${flip?.id ?? "idle"}-${i}`}
+              className={styles.coinScene}
+              style={{ width: size, height: size }}
             >
-              <span className={styles.coinFace}>
-                <HeadsFace />
-              </span>
-              <span className={`${styles.coinFace} ${styles.coinBack}`}>
-                <TailsFace />
+              <span
+                className={flip && !reduced ? `${styles.coinSpin} ${styles.coinFlip}` : styles.coinSpin}
+                style={{ animationDelay: `${i * 60}ms` }}
+                onAnimationEnd={onOneEnd}
+              >
+                <span
+                  className={styles.coin}
+                  style={flip && flip.results[i] === "tails" ? { transform: "rotateX(180deg)" } : undefined}
+                >
+                  <span className={styles.coinFace}>
+                    <HeadsFace />
+                  </span>
+                  <span className={`${styles.coinFace} ${styles.coinBack}`}>
+                    <TailsFace />
+                  </span>
+                </span>
               </span>
             </span>
-          </span>
+          ))}
         </span>
       </button>
       <div aria-live="polite" className={styles.resultZone}>
@@ -100,6 +117,8 @@ export function CoinStage({
           <p className={`${styles.pop} font-serif text-[24px] font-semibold`} data-testid="coin-result">
             {resultText}
           </p>
+        ) : !flip ? (
+          <p className="text-[14px] text-muted-foreground">{hint}</p>
         ) : null}
       </div>
     </div>
