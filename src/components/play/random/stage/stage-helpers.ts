@@ -1,0 +1,78 @@
+// Helpers puros de la capa de escenarios del Aleatorio (spec visual §6).
+// Solo geometría, hashes y vibración: nada de estado, nada de DOM (salvo
+// buzz, que degrada a no-op), nada del motor.
+
+const PALETTE_SIZE = 6;
+
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+// Color estable por nombre sobre los 6 tokens de asiento de Play. Dos nombres
+// distintos PUEDEN chocar (paleta de 6): asumido, el color es apoyo visual.
+export function stableColor(name: string): string {
+  return `var(--play-seat-${(hashString(name) % PALETTE_SIZE) + 1})`;
+}
+
+// Cara del cubo (0..5) en la que aterriza una tirada, estable por id de evento.
+export function stableFace(id: string): number {
+  return hashString(id) % 6;
+}
+
+// Rotación del cubo que trae la cara `face` al frente. Consistente con
+// FACE_TRANSFORMS de dice-stage: 0 front, 1 back, 2 right, 3 left, 4 top, 5 bottom.
+export function faceRotation(face: number): { x: number; y: number } {
+  switch (face) {
+    case 1:
+      return { x: 0, y: 180 };
+    case 2:
+      return { x: 0, y: -90 };
+    case 3:
+      return { x: 0, y: 90 };
+    case 4:
+      return { x: -90, y: 0 };
+    case 5:
+      return { x: 90, y: 0 };
+    default:
+      return { x: 0, y: 0 };
+  }
+}
+
+// Sectores de la ruleta. Convención: 0° arriba, crece en sentido horario.
+export function wheelSectors(
+  players: string[],
+): { name: string; start: number; end: number; color: string }[] {
+  const step = 360 / players.length;
+  return players.map((name, i) => ({
+    name,
+    start: i * step,
+    end: (i + 1) * step,
+    color: stableColor(name),
+  }));
+}
+
+// Ángulo final (turns vueltas enteras + resto) que deja el CENTRO del sector
+// de `picked` bajo la flecha (arriba). Girar la rueda +r mueve los sectores r
+// grados en horario, así que para subir el centro c se gira 360-c.
+export function wheelTargetAngle(players: string[], picked: string, turns: number): number {
+  const i = Math.max(0, players.indexOf(picked));
+  const step = 360 / players.length;
+  const center = i * step + step / 2;
+  return turns * 360 + ((360 - center) % 360);
+}
+
+// Números de relleno para las caras no ganadoras del cubo (teatro visual).
+export function fillerFaces(
+  sides: number,
+  count: number,
+  rng: () => number = Math.random,
+): number[] {
+  return Array.from({ length: count }, () => 1 + Math.floor(rng() * sides));
+}
+
+// Vibración sutil al aterrizar. No-op donde no hay soporte (iOS Safari, SSR).
+export function buzz(): void {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(30);
+}
