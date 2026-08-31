@@ -239,7 +239,7 @@ export async function readCompanion(identity: string): Promise<CompanionRecord |
   }
 }
 
-// Mismo CAS que writeActive (db.ts:165): el rev en BD igual o mayor gana y se
+// Mismo CAS que writeActive: el rev en BD igual o mayor gana y se
 // devuelve para que quien escribe lo adopte.
 export async function writeCompanion(record: CompanionRecord): Promise<CompanionWriteResult> {
   try {
