@@ -1630,6 +1630,45 @@ export type Database = {
         }
         Relationships: []
       }
+      play_games: {
+        Row: {
+          created_at: string
+          events: Json
+          finished_at: string
+          id: string
+          owner_id: string
+          saved_at: string
+          started_at: string
+          summary: Json
+          tool_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          events: Json
+          finished_at: string
+          id: string
+          owner_id: string
+          saved_at: string
+          started_at: string
+          summary: Json
+          tool_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          events?: Json
+          finished_at?: string
+          id?: string
+          owner_id?: string
+          saved_at?: string
+          started_at?: string
+          summary?: Json
+          tool_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_preferences: {
         Row: {
           autopost_dropped: boolean

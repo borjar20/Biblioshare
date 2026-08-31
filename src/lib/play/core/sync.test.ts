@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { planSync, rowFromRecord, recordFromRow, type PlayGameRow } from "./sync";
-import type { SavedGameRecord } from "./db";
+import "fake-indexeddb/auto";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  planSync,
+  rowFromRecord,
+  recordFromRow,
+  runSavedSync,
+  type PlayGameRow,
+  type PlayGamesApi,
+} from "./sync";
+import { __resetDbForTests, listSaved, saveFinished, type SavedGameRecord } from "./db";
 import { makeEvent } from "./events";
 import { replay } from "./replay";
 import { buildSavedSummary } from "../tools";
@@ -44,6 +52,10 @@ function row(overrides: Partial<PlayGameRow> & { id: string }): PlayGameRow {
   return { ...rowFromRecord(rec({ gameId: overrides.id })), ...overrides };
 }
 
+beforeEach(async () => {
+  await __resetDbForTests();
+});
+
 describe("planSync", () => {
   it("pending sin remoto → push", () => {
     const plan = planSync([rec({ gameId: "a", syncStatus: "pending" })], []);
@@ -82,6 +94,24 @@ describe("planSync", () => {
     const plan = planSync([rec({ gameId: "a", deletedAt: 1 })], [row({ id: "a" })]);
     expect(plan.adoptLocal).toEqual([]);
   });
+
+  it("tombstone + pending a la vez: el tombstone gana SIEMPRE, nunca push", () => {
+    const withRemote = planSync(
+      [rec({ gameId: "a", deletedAt: 1, syncStatus: "pending" })],
+      [row({ id: "a" })],
+    );
+    expect(withRemote.deleteRemote).toEqual(["a"]);
+    expect(withRemote.dropLocal).toEqual([]);
+    expect(withRemote.push).toEqual([]);
+
+    const withoutRemote = planSync(
+      [rec({ gameId: "a", deletedAt: 1, syncStatus: "pending" })],
+      [],
+    );
+    expect(withoutRemote.dropLocal).toEqual(["a"]);
+    expect(withoutRemote.deleteRemote).toEqual([]);
+    expect(withoutRemote.push).toEqual([]);
+  });
 });
 
 describe("conversores", () => {
@@ -97,5 +127,69 @@ describe("conversores", () => {
     expect(back.syncStatus).toBe("synced");
     expect(back.deletedAt).toBeNull();
     expect(back.committed).toEqual(record.committed);
+  });
+});
+
+function fakeApi(initialRows: PlayGameRow[] = []) {
+  const rows = new Map(initialRows.map((r) => [r.id, r]));
+  const calls: string[] = [];
+  const api: PlayGamesApi = {
+    async selectAll() {
+      calls.push("selectAll");
+      return { rows: [...rows.values()] };
+    },
+    async upsert(incoming) {
+      calls.push("upsert");
+      for (const r of incoming) rows.set(r.id, r);
+      return { error: false };
+    },
+    async remove(ids) {
+      calls.push("remove");
+      for (const id of ids) rows.delete(id);
+      return { error: false };
+    },
+  };
+  return { api, rows, calls };
+}
+
+describe("runSavedSync", () => {
+  it("push de pending: sube y marca synced", async () => {
+    await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "pending" }));
+    const { api, rows } = fakeApi();
+    await runSavedSync("uid-1", api);
+    expect(rows.has("a")).toBe(true);
+    expect((await listSaved("uid-1"))[0].syncStatus).toBe("synced");
+  });
+
+  it("tombstone: borra remoto y luego local; si el remove falla, el tombstone sobrevive", async () => {
+    await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "synced", deletedAt: 5 }));
+    const { api } = fakeApi([row({ id: "a" })]);
+    await runSavedSync("uid-1", api);
+    expect(await listSaved("uid-1")).toEqual([]);
+
+    await saveFinished(rec({ gameId: "b", identity: "uid-1", syncStatus: "synced", deletedAt: 5 }));
+    const failing = { ...fakeApi([row({ id: "b" })]).api, remove: async () => ({ error: true }) };
+    await runSavedSync("uid-1", failing);
+    expect((await listSaved("uid-1"))[0].deletedAt).toBe(5);
+  });
+
+  it("pull: adopta remotas nuevas como synced y borra las synced ausentes", async () => {
+    await saveFinished(rec({ gameId: "vieja", identity: "uid-1", syncStatus: "synced" }));
+    const { api } = fakeApi([row({ id: "nueva" })]);
+    await runSavedSync("uid-1", api);
+    const ids = (await listSaved("uid-1")).map((r) => r.gameId);
+    expect(ids).toEqual(["nueva"]);
+  });
+
+  it("selectAll con error: no toca NADA local", async () => {
+    await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "pending" }));
+    await runSavedSync("uid-1", { ...fakeApi().api, selectAll: async () => ({ error: true as const }) });
+    expect((await listSaved("uid-1"))[0].syncStatus).toBe("pending");
+  });
+
+  it("upsert con error: los pending siguen pending", async () => {
+    await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "pending" }));
+    await runSavedSync("uid-1", { ...fakeApi().api, upsert: async () => ({ error: true }) });
+    expect((await listSaved("uid-1"))[0].syncStatus).toBe("pending");
   });
 });
