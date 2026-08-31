@@ -2860,6 +2860,45 @@
       "renameConfirm": "Guardar",
       "delete": "Eliminar",
       "deleteConfirm": "Sus partidas guardadas conservan su nombre. ¿Eliminar?"
+    },
+    "random": {
+      "title": "Aleatorio",
+      "subtitle": "Dados, moneda, sorteos y bolsa para cualquier juego.",
+      "tabs": {
+        "dice": "Dados",
+        "coin": "Moneda",
+        "players": "Jugadores",
+        "bag": "Bolsa"
+      },
+      "dice": {
+        "countLabel": "Cuántos",
+        "sidesLabel": "Caras",
+        "roll": "Tirar",
+        "result": "{rolls} = {total}"
+      },
+      "coin": {
+        "flip": "Lanzar moneda",
+        "heads": "Cara",
+        "tails": "Cruz"
+      },
+      "feed": {
+        "title": "Últimos resultados",
+        "empty": "Aún no hay resultados.",
+        "undo": "Deshacer",
+        "clear": "Limpiar todo",
+        "clearConfirm": "¿Seguro? Borra todo"
+      },
+      "log": {
+        "dice": "{expr}: {rolls} = {total}",
+        "coinHeads": "Moneda: cara",
+        "coinTails": "Moneda: cruz",
+        "first": "Empieza {picked}",
+        "order": "Orden: {order}",
+        "teams": "Equipos: {teams}",
+        "playersSet": "Jugadores actualizados ({count})",
+        "bagSet": "Bolsa configurada",
+        "bagDrawn": "Ficha: {name}"
+      }
     }
   }
 }
