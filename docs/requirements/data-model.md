@@ -197,7 +197,7 @@ existen además **`hydrate_movie` / `hydrate_series` / `hydrate_screens_bulk`** 
 fichero de migración en el repo** (verificadas contra `pg_proc` el 2026-08-19 — solo la de
 libros tiene fichero; las de pantalla y registro se rescataron después en
 `20260818_catalog_c_hydrate_screen.sql` y `20260818_catalog_e_register.sql`). Las seis
-`hydrate_*`/`register_catalog_*` ya llevan `pg_temp` desde el barrido de #726 (§8).
+`hydrate_*`/`register_catalog_*` ya llevan `pg_temp` desde el barrido de #726 (§9).
 
 ⚠️ **`hydrate_book` ya NO es la de ese párrafo, y lo que decía aquí era exactamente lo
 CONTRARIO de lo que hace.** No «rellena solo donde la fila estaba vacía»: es
@@ -781,7 +781,7 @@ La acción de colaborador que antes se llamaba `resyncEditions` (ficha → «Vol
 ediciones») se renombra a **`reevaluateRepresentation`** (`src/lib/catalog/edit-actions.ts`):
 ya no toca `editions_synced_at` ni vuelve a preguntarle a OpenLibrary por ediciones — pone
 `hydrated_at = null` con el cliente de la petición (reescritura valor→null que el trigger
-`enforce_catalog_edit_collaborator_only`, §8, permite a partir de `collaborator+` — verificado
+`enforce_catalog_edit_collaborator_only`, §9, permite a partir de `collaborator+` — verificado
 en dev el 2026-08-27 contra `pg_proc`, el gate de rol corta ANTES de la comprobación de columna)
 y relanza `ensureBookHydrated` con la fila releída, que es quien de verdad decide qué
 título/portada/sinopsis mejorar (§2.1ter).
@@ -3364,7 +3364,7 @@ hoy no expresa. Medido contra producción el 2026-07-27 (detalle completo en
   fue posterior al despliegue y a esa comprobación, nunca antes. `saga_nodes`, `saga_edges` y
   `save_saga_graph` **ya no existen** en ningún entorno — verificado con `to_regclass` (`null` para
   las dos tablas, en dev y en prod) y contra `pg_proc` (sin ninguna fila `save_saga_graph`). Los dos
-  tipos enum que usaban esas tablas (`saga_edge_type`, `saga_node_level`, §9) **sí siguen
+  tipos enum que usaban esas tablas (`saga_edge_type`, `saga_node_level`, §10) **sí siguen
   existiendo**: el `DROP` no incluyó `DROP TYPE` y ninguna columna los usa ya (verificado contra
   `pg_attribute`) — quedan huérfanos, no borrados. La ficha del Cosmere en producción sigue
   funcionando tras el borrado: 7 bloques, sus líneas de ventana y su pestaña de mapa.
@@ -3612,7 +3612,11 @@ la RPC, anima una vez y sella `displayed_at`. Migración
 #460 la preferencia vive en localStorage (no cross-device); #461 faltan los eventos
 `annual_challenge_completed` y `club_activity_completed`.
 
-## 8. Play — `play_games` (dev, 2026-08-31)
+## 8. Play — `play_games` (dev, 2026-08-31; prod pendiente de e2e)
+
+> (Sección nueva, insertada el 2026-08-31 entre «7bis. Celebraciones» y la antigua «8. Seguridad»:
+> Seguridad pasa a ser §9, Enums a §10 y Migraciones a §11. Se revisó el resto del doc en busca de
+> referencias `§8`/`§9`/`§10` que apuntaran mal por el desplazamiento y se corrigieron.)
 
 Partidas guardadas de las herramientas de juego (fase 5 de BiblioPlay, #931). Una fila por partida,
 log íntegro en JSONB (sin tabla de eventos por filas hasta el multiplayer de fase 9).
@@ -3629,8 +3633,10 @@ permitir crecimiento de herramientas), `started_at` (timestamptz), `finished_at`
 (`auth.uid() = owner_id`). Sin acceso para `anon`. **Grant de tabla entera a `authenticated`;
 privada total.**
 
-**Migración** `supabase/migrations/20260893_play_games.sql` — por aplicar en dev y prod tras
-validar en e2e (Tasks 5–6 las consumen; la aplicación a prod es tarea 8, tras pasar los e2e).
+**Migración** `supabase/migrations/20260893_play_games.sql` — **aplicada y verificada en dev el
+2026-08-31**: tabla, las cuatro políticas y el índice comprobados contra `pg_class`/`pg_policies`.
+**Prod queda pendiente**, no de nada en dev: solo prod espera a pasar los e2e (Tasks 5–6 la
+ejercitan; aplicar a prod es la Task 8).
 
 ## 9. Seguridad
 
@@ -3644,7 +3650,7 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
 - **`SECURITY DEFINER` deliberado** donde la función *es* la política: tableros de
   actividad (un participante de perfil privado debe ser visible a sus compañeros),
   `save_saga_sequence` (§7.5/§7.6), `save_saga_route` (§7.2), `link_tmdb_saga_item`,
-  `sync_tmdb_saga_items` (§7.1 — **desde el 2026-08-19 solo `service_role`**, ver §8.1),
+  `sync_tmdb_saga_items` (§7.1 — **desde el 2026-08-19 solo `service_role`**, ver §9.1),
   `create_club_poll`, `confirm_checkpoint`,
   `unconfirm_checkpoint`. Los advisors los marcan
   como WARN y **está aceptado**: llevan gate interno de rol. `save_saga_graph` estuvo en esta lista
@@ -3694,7 +3700,7 @@ Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_
 - **Storage no valida JWT ES256**: las subidas de imagen van por service-role en server
   actions, no desde el cliente.
 
-### 8.1 Endurecimiento de la barrida P1 (DEV Y **PROD**, 2026-08-19)
+### 9.1 Endurecimiento de la barrida P1 (DEV Y **PROD**, 2026-08-19)
 
 Cuatro cambios de esquema, todos verificados contra objetos reales (`pg_proc`,
 `information_schema.column_privileges`, `pg_constraint`, `pg_default_acl`, `pg_class.relacl`),
@@ -3843,7 +3849,7 @@ Una versión anterior de esta tabla los daba por «huérfanos vivos» y era fals
 
 ## 11. Migraciones
 
-187 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
+226 ficheros en `supabase/migrations/` (recontado con `ls supabase/migrations/*.sql | wc -l` el
 2026-08-31).
 Este número **envejece en silencio** cada vez que se añade una migración y no hay chequeo que lo
 pille (`DRIFT-CHECK.md` compara objetos, no cardinalidades en prosa): recontar, no restar.
@@ -3898,7 +3904,7 @@ comprobó en el DATO, no solo en el DDL: al migrar, prod tenía 3 itinerarios y 
 servía en producción; `pg_proc` devuelve **una sola** firma de `save_saga_sequence`, la de seis
 argumentos, en dev y en prod; **tanda de seguridad del 2026-07-29 (issues #130, #176, #133)
 aplicada y verificada en dev Y EN PROD** — cuatro migraciones (`20260808`…`20260811`), ninguna
-toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` en esa tanda (§8; **desactualizado, ver el detalle en §8: a 2026-08-13 son 69 funciones, 62 con `pg_temp`**),
+toca datos: 55/55 funciones `SECURITY DEFINER` con `pg_temp` en el `search_path` en esa tanda (§9; **desactualizado, ver el detalle en §9: a 2026-08-13 son 69 funciones, 62 con `pg_temp`**),
 `save_saga_route` validando el subárbol en servidor (§7.2) y las RPCs de evento con longitudes,
 defaults y errores snake_case (§6). Medido contra `pg_proc` en los dos entornos, no contra
 `list_migrations`: mismo digest normalizado de las cinco funciones tocadas y cero ACL con
@@ -3943,7 +3949,7 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > pendiente del merge de `feat/feed-tarjetas-por-tipo`.
 > **Delta del 2026-07-30 (normalización de géneros, §2): vocabulario canónico, índices
 > GIN y backfill aplicados y verificados en DEV **y en PROD** el 2026-07-30 (PR #312).
-> **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §9): valor `mentioned` del enum
+> **Delta del 2026-07-30 (menciones `@usuario`, E5.K3, §10): valor `mentioned` del enum
 > `notification_type` aplicado y verificado en DEV **y en PROD** contra `pg_enum` (sin
 > tabla nueva — el texto crudo con `@usuario` es la fuente de verdad, ver
 > `decisiones.md`). Al entrar esta mejora, las políticas RLS de `notifications` aún incluían
@@ -3959,7 +3965,7 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > (DROP + CREATE, `CREATE OR REPLACE` no permite cambiar el tipo de retorno), aplicada y
 > verificada en DEV **y en PROD** contra `pg_proc.prorettype` (no solo el ledger) — grants y
 > `search_path = public, pg_temp` intactos en ambos entornos.
-> **Delta del 2026-07-30 (Social fase 0, §5/§8/§9): aplicado y verificado en DEV y PROD.**
+> **Delta del 2026-07-30 (Social fase 0, §5/§9/§10): aplicado y verificado en DEV y PROD.**
 > `user_blocks` y `content_reports` dejan ambos entornos con 47 tablas públicas, todas con RLS.
 > Son siete migraciones:
 > `20260730190602_social_phase0_integrity.sql`,
@@ -3978,7 +3984,7 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > forma atómica, desplegó el bundle `8589601` y solo entonces cerró el INSERT heredado y añadió
 > el índice de reviewer; [#332](https://github.com/borjar20/Biblioshare/issues/332) conserva la
 > evidencia operativa.
-> **Delta del 2026-08-01 (Social fase 1, §5/§8/§9): aplicado y verificado en DEV, y desde el
+> **Delta del 2026-08-01 (Social fase 1, §5/§9/§10): aplicado y verificado en DEV, y desde el
 > 2026-08-02 también en PROD (ver el corte de producción más abajo).**
 > `interaction_targets` eleva dev a 48 tablas públicas, todas con RLS; la corrección
 > `20260801115944_social_interaction_targets_checkpoint_owner_fix.sql` deriva el owner de
