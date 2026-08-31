@@ -60,13 +60,16 @@ export function BagSection({
         hint={t("drawHint")}
       />
 
+      {/* min-w-0 en el input de nombre: sin él, min-width:auto le impide
+          encoger bajo su ancho intrínseco (~20 chars) y la fila desborda el
+          viewport móvil de 390px (scroll lateral). */}
       <div className="mt-4 flex gap-2">
         <input
           value={name}
           placeholder={t("namePlaceholder")}
           onChange={(e) => setName(e.target.value)}
           aria-label={t("itemName")}
-          className="flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
+          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
         />
         <input
           type="number"

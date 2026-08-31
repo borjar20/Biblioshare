@@ -72,6 +72,13 @@ test("bolsa sin reemplazo se agota, se desactiva y se reinicia", async ({ page }
   await page.goto("/partidas/aleatorio");
   await page.getByRole("tab", { name: "Bolsa" }).click();
 
+  // Sin scroll lateral en móvil: el input de nombre debe poder encoger
+  // (min-w-0) o el formulario de añadir desborda el viewport de 390px.
+  const overflow = await page.evaluate(
+    () => document.scrollingElement!.scrollWidth - document.scrollingElement!.clientWidth,
+  );
+  expect(overflow).toBe(0);
+
   await page.getByLabel("Tipo de ficha").fill("Rojo");
   await page.getByLabel("Cantidad").fill("1");
   await page.getByRole("button", { name: /^añadir$/i }).click();
