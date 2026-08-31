@@ -119,6 +119,13 @@ export function useCompanion(identity: string): {
       const current = snapRef.current;
       const compacted = compactIfNeeded({ base: current.base, log });
       const next: Snapshot = { ...compacted, rev: current.rev + 1 };
+      // Síncrono a propósito: un segundo emit/undo en el MISMO tick debe ver
+      // este commit, no el snapshot de antes del render (si no, dos commits
+      // compartirían rev y el CAS perdería uno en silencio). Mutar un ref en
+      // un event handler es legal para react-hooks/refs; lo prohibido es en
+      // render. El useEffect de arriba sigue cubriendo los setSnapshot que no
+      // pasan por aquí (carga inicial y adopción por conflicto).
+      snapRef.current = next;
       setSnapshot(next);
       void persist(next);
     },
