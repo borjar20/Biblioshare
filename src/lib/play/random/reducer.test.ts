@@ -9,7 +9,7 @@ import {
   randomReducer,
   replayRandom,
 } from "./reducer";
-import { describeRandomEvent, RESULT_EVENT_TYPES } from "./selectors";
+import { describeRandomEvent, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
 import type { RandomEvent } from "./events";
 
 const t0 = 1000;
@@ -201,5 +201,32 @@ describe("describeRandomEvent", () => {
     expect([...RESULT_EVENT_TYPES].sort()).toEqual(
       ["bag_drawn", "coin_flipped", "dice_rolled", "first_picked", "order_drawn", "teams_drawn"].sort(),
     );
+  });
+});
+
+describe("resultFeed", () => {
+  it("newest-first, filtra eventos de configuración y respeta el máximo", () => {
+    const log: PlayEvent[] = [
+      dice([1]),
+      makeEvent("players_set", { players: ["Ana", "Beto"] }, t0),
+      dice([2]),
+      dice([3]),
+    ];
+    expect(resultFeed(log, 2).map((e) => (e.payload as { results: number[] }).results[0])).toEqual([
+      3, 2,
+    ]);
+  });
+  it("cleared corta el feed: solo se enseñan resultados posteriores al último", () => {
+    const log: PlayEvent[] = [dice([1]), dice([2]), makeEvent("cleared", {}, t0), dice([3])];
+    expect(resultFeed(log, 20).map((e) => (e.payload as { results: number[] }).results[0])).toEqual([
+      3,
+    ]);
+    // cleared como último evento del log: feed vacío aunque haya historia detrás.
+    expect(resultFeed([dice([1]), makeEvent("cleared", {}, t0)], 20)).toEqual([]);
+  });
+  it("quitar el cleared del log (deshacer) recupera el feed anterior", () => {
+    const log: PlayEvent[] = [dice([1]), makeEvent("cleared", {}, t0)];
+    expect(resultFeed(log, 20)).toEqual([]);
+    expect(resultFeed(log.slice(0, -1), 20)).toHaveLength(1);
   });
 });

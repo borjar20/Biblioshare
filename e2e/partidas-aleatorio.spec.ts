@@ -31,6 +31,13 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   // El estado sobrevive a una recarga (store companion en IDB).
   await page.reload();
   await expect(page.locator('section[aria-label="Últimos resultados"] li')).toHaveCount(2);
+
+  // Limpiar todo (dos toques) vacía el feed; deshacer el cleared lo recupera.
+  await page.getByRole("button", { name: /^limpiar todo$/i }).click();
+  await page.getByRole("button", { name: /borra todo/i }).click();
+  await expect(page.locator('section[aria-label="Últimos resultados"] li')).toHaveCount(0);
+  await page.getByRole("button", { name: /^deshacer$/i }).click();
+  await expect(page.locator('section[aria-label="Últimos resultados"] li')).toHaveCount(2);
 });
 
 test("jugadores: primero, orden y equipos", async ({ page }) => {

@@ -1,4 +1,4 @@
-import type { EventDescription } from "@/lib/play/core/types";
+import type { EventDescription, PlayEvent } from "@/lib/play/core/types";
 import type { RandomEvent } from "./events";
 
 // Eventos que el feed enseña: los de RESULTADO. Configuración (players_set,
@@ -11,6 +11,21 @@ export const RESULT_EVENT_TYPES: ReadonlySet<RandomEvent["type"]> = new Set([
   "teams_drawn",
   "bag_drawn",
 ] as RandomEvent["type"][]);
+
+// Feed de resultados, del más nuevo al más viejo. Se detiene en el último
+// cleared: «limpiar todo» borra el feed visible aunque el log conserve la
+// historia — así deshacer el cleared lo recupera entero.
+export function resultFeed(log: PlayEvent[], max: number): RandomEvent[] {
+  const out: RandomEvent[] = [];
+  for (let i = log.length - 1; i >= 0 && out.length < max; i--) {
+    const event = log[i];
+    if (event.type === "cleared") break;
+    if ((RESULT_EVENT_TYPES as ReadonlySet<string>).has(event.type)) {
+      out.push(event as RandomEvent);
+    }
+  }
+  return out;
+}
 
 // {key, params} contra el namespace play.random.log.* — mismo contrato que los
 // describe() de mtg/score.

@@ -12,7 +12,7 @@ import {
 import type { RandomState } from "./types";
 import type { RandomEvent } from "./events";
 import { compactIfNeeded, randomReducer, replayRandom } from "./reducer";
-import { RESULT_EVENT_TYPES } from "./selectors";
+import { resultFeed } from "./selectors";
 
 type Snapshot = { base: RandomState | null; log: PlayEvent[]; rev: number };
 
@@ -169,14 +169,7 @@ export function useCompanion(identity: string): {
     emit("cleared", {});
   }, [emit]);
 
-  const feed = useMemo(
-    () =>
-      [...snapshot.log]
-        .reverse()
-        .filter((e): e is RandomEvent => (RESULT_EVENT_TYPES as ReadonlySet<string>).has(e.type))
-        .slice(0, FEED_MAX),
-    [snapshot.log],
-  );
+  const feed = useMemo(() => resultFeed(snapshot.log, FEED_MAX), [snapshot.log]);
 
   return {
     state,
