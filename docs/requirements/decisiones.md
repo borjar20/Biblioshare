@@ -3334,3 +3334,14 @@ demasiado flaky para el harness normal.
   en finished): nunca edición a mano del summary guardado — el summary siempre se deriva.
 - Chips de juegos anteriores derivados del historial local; sin entidad «juego» ni sync.
 - Agrupación case-insensitive de stats: decisión diferida a la fase de estadísticas.
+
+## 2026-08-31 — Randomizer como acompañante fuera del slot de partida
+
+- El «Aleatorio» usa el estilo de motor de Play (eventos + reducer puro; el azar
+  se resuelve al despachar y el resultado viaja en el payload) pero NO entra en
+  ToolId/playTools: el slot `active` es único por identidad y el randomizer se
+  usa durante otra partida — entrar al registro la pisaría.
+- Persistencia en store IDB propio `companion` (DB v4) con el mismo CAS que
+  `active`; sin Supabase ni historial (una tirada no es una partida).
+- El log se compacta al pasar 200 eventos re-basando el estado y conservando los
+  últimos 20 (el feed enseña 20; deshacer más allá no tiene caso de uso).

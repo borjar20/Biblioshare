@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   __resetDbForTests,
   deleteActive,
+  deleteCompanion,
   deletePlayer,
   deleteSaved,
   DB_NAME,
@@ -10,10 +11,13 @@ import {
   listSaved,
   putPlayer,
   readActive,
+  readCompanion,
   readPlayer,
   saveFinished,
   writeActive,
+  writeCompanion,
   type ActiveGameRecord,
+  type CompanionRecord,
   type PlayerRecord,
   type SavedGameRecord,
 } from "./db";
@@ -236,5 +240,40 @@ describe("players (fase 6)", () => {
     await seedV2([savedRecordV2({ gameId: "g1", identity: "anon" })]);
     expect((await listSaved("anon")).map((r) => r.gameId)).toEqual(["g1"]);
     expect(await listPlayers("anon")).toEqual([]);
+  });
+});
+
+describe("companion (DB v4)", () => {
+  function companion(rev: number): CompanionRecord {
+    return {
+      identity: "anon",
+      v: 1,
+      base: null,
+      log: [{ id: "e1", type: "dice_rolled", at: 1000, payload: { count: 1, sides: 6, results: [4] } }],
+      rev,
+    };
+  }
+
+  it("write + read redondo", async () => {
+    expect(await writeCompanion(companion(1))).toEqual({ ok: true });
+    expect(await readCompanion("anon")).toEqual(companion(1));
+  });
+
+  it("aísla por identidad", async () => {
+    await writeCompanion(companion(1));
+    expect(await readCompanion("uid-x")).toBeNull();
+  });
+
+  it("CAS: rev igual o menor no pisa y devuelve el vigente", async () => {
+    await writeCompanion(companion(2));
+    const result = await writeCompanion(companion(2));
+    expect(result).toEqual({ ok: false, reason: "conflict", current: companion(2) });
+    expect(await writeCompanion(companion(3))).toEqual({ ok: true });
+  });
+
+  it("delete borra y read devuelve null", async () => {
+    await writeCompanion(companion(1));
+    await deleteCompanion("anon");
+    expect(await readCompanion("anon")).toBeNull();
   });
 });

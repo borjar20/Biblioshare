@@ -2645,6 +2645,9 @@
           "step3Title": "Apunta ronda a ronda",
           "step3Detail": "Cada ronda queda en el registro y se puede editar después."
         }
+      },
+      "random": {
+        "name": "Aleatorio"
       }
     },
     "rememberedTable": {
@@ -2860,6 +2863,70 @@
       "renameConfirm": "Guardar",
       "delete": "Eliminar",
       "deleteConfirm": "Sus partidas guardadas conservan su nombre. ¿Eliminar?"
+    },
+    "random": {
+      "title": "Aleatorio",
+      "subtitle": "Dados, moneda, sorteos y bolsa para cualquier juego.",
+      "tabs": {
+        "dice": "Dados",
+        "coin": "Moneda",
+        "players": "Jugadores",
+        "bag": "Bolsa"
+      },
+      "dice": {
+        "countLabel": "Cuántos",
+        "sidesLabel": "Caras",
+        "roll": "Tirar",
+        "result": "{rolls} = {total}"
+      },
+      "coin": {
+        "flip": "Lanzar moneda",
+        "heads": "Cara",
+        "tails": "Cruz"
+      },
+      "players": {
+        "regulars": "Tus habituales",
+        "nameLabel": "Nombre del jugador",
+        "namePlaceholder": "Añadir jugador…",
+        "add": "Añadir",
+        "remove": "Quitar a {name}",
+        "hint": "Añade al menos 2 jugadores para sortear.",
+        "first": "Primer jugador",
+        "order": "Orden aleatorio",
+        "teams": "Equipos",
+        "teamCount": "Número de equipos"
+      },
+      "bag": {
+        "itemName": "Tipo de ficha",
+        "namePlaceholder": "Rojo, Azul…",
+        "itemCount": "Cantidad",
+        "add": "Añadir",
+        "remove": "Quitar {name}",
+        "hint": "Añade tipos de ficha con su cantidad.",
+        "withReplacement": "Con reemplazo (no descuenta)",
+        "draw": "Sacar ficha",
+        "remaining": "Quedan {n}",
+        "reset": "Reiniciar bolsa"
+      },
+      "feed": {
+        "title": "Últimos resultados",
+        "empty": "Aún no hay resultados.",
+        "undo": "Deshacer",
+        "clear": "Limpiar todo",
+        "clearConfirm": "¿Seguro? Borra todo"
+      },
+      "log": {
+        "dice": "{expr}: {rolls} = {total}",
+        "coinHeads": "Moneda: cara",
+        "coinTails": "Moneda: cruz",
+        "first": "Empieza {picked}",
+        "order": "Orden: {order}",
+        "teams": "Equipos: {teams}",
+        "playersSet": "Jugadores actualizados ({count})",
+        "bagSet": "Bolsa configurada",
+        "bagDrawn": "Ficha: {name}",
+        "cleared": "Todo limpio"
+      }
     }
   }
 }
