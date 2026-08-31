@@ -79,7 +79,7 @@ export function ScoreBoard({
     <div className="flex h-dvh w-full flex-col bg-play-felt p-2">
       <header className="flex items-center gap-2 rounded-[14px] border border-border bg-surface px-3 py-2">
         <b className="min-w-0 flex-1 truncate font-serif text-[15px] font-semibold">
-          {t("tools.score.name")}
+          {state.setup.gameName ?? t("tools.score.name")}
         </b>
         <GameClock startedAt={state.startedAt} />
         <button

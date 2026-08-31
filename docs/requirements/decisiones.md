@@ -3328,3 +3328,9 @@ demasiado flaky para el harness normal.
   un fix de reconciliación se hace UNA vez.
 - Editar el nombre de un asiento asignado degrada a invitado; el habitual se renombra solo
   desde gestión (regla visible, sin renombrados por accidente).
+
+## 2026-08-31 — Play: etiqueta de juego en puntuación
+- La etiqueta viaja en el LOG (gameName en setup + evento game_labeled, aceptado también
+  en finished): nunca edición a mano del summary guardado — el summary siempre se deriva.
+- Chips de juegos anteriores derivados del historial local; sin entidad «juego» ni sync.
+- Agrupación case-insensitive de stats: decisión diferida a la fase de estadísticas.

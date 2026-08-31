@@ -86,6 +86,15 @@ const tieScoreFinishedLog: PlayEvent[] = [
   makeEvent("game_finished", { reason: "manual" as const }, 2000),
 ];
 
+// Mismo log que scoreFinishedLog pero con un game_labeled ANTES de guardar
+// (spec etiqueta §2: el caso principal es etiquetar desde el resumen).
+const scoreLabeledFinishedLog: PlayEvent[] = [
+  makeEvent("game_started", { toolId: "score" as const, setup: scoreSetup }, 1000),
+  makeEvent("round_scored", { scores: [5, 3] }, 1500),
+  makeEvent("game_labeled", { gameName: "UNO" }, 1750),
+  makeEvent("game_finished", { reason: "manual" as const }, 2000),
+];
+
 // Log SIN game_finished: partida activa (replay del log en vivo antes del
 // cierre). buildSavedSummary no exige finished -- es legal invocarla aquí.
 const scoreActiveLog: PlayEvent[] = [
@@ -149,6 +158,13 @@ describe("buildSavedSummary", () => {
   it("score: partida activa (sin game_finished) -- durationMs es 0, no revienta", () => {
     const summary = buildSavedSummary(replay(scoreActiveLog));
     expect(summary.durationMs).toBe(0);
+  });
+
+  it("score: gameName viaja al resumen si se etiquetó antes de guardar; sin etiqueta, null", () => {
+    const labeled = buildSavedSummary(replay(scoreLabeledFinishedLog));
+    expect(labeled.tool.gameName).toBe("UNO");
+    const unlabeled = buildSavedSummary(replay(scoreFinishedLog));
+    expect(unlabeled.tool.gameName).toBeNull();
   });
 
   it("mtg: ranking por asiento (no por participantId) y comandantes por nombre", () => {

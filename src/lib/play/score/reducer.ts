@@ -35,7 +35,9 @@ export function initialScoreState(event: GameStartedEvent): ScoreState {
 }
 
 export function scoreReducer(state: ScoreState, event: ScoreEvent): ScoreState {
-  if (state.status === "finished") {
+  // Excepción única al candado de finished: etiquetar no es jugar, y el caso
+  // principal es ponerle nombre al juego desde el RESUMEN (spec etiqueta §2).
+  if (state.status === "finished" && event.type !== "game_labeled") {
     throw new PlayEventError(`evento ${event.type} sobre una partida terminada`);
   }
   switch (event.type) {
@@ -56,5 +58,9 @@ export function scoreReducer(state: ScoreState, event: ScoreEvent): ScoreState {
     }
     case "game_finished":
       return { ...state, status: "finished", finishedAt: event.at };
+    case "game_labeled": {
+      const gameName = event.payload.gameName === "" ? undefined : event.payload.gameName;
+      return { ...state, setup: { ...state.setup, gameName } };
+    }
   }
 }

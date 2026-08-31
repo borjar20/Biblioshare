@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { listSaved, type SavedGameRecord } from "@/lib/play/core/db";
 import { makeEvent } from "@/lib/play/core/events";
 import { useActiveGame } from "@/lib/play/core/use-active-game";
 import { usePlayers } from "@/lib/play/core/use-players";
 import type { Participant } from "@/lib/play/core/types";
 import type { ScoreDirection, ScoreSetup, ScoreTarget } from "@/lib/play/score/types";
+import { gameNameSuggestions } from "@/lib/play/ui/game-names";
 import { seatAccent } from "@/lib/play/ui/seats";
 import { buttonVariants } from "@/components/ui/button";
 import { RegularPicker } from "../regular-picker";
@@ -36,6 +38,8 @@ type ScoreDraft = {
   targetValue: number;
   targetActive: boolean;
   players: DraftPlayer[];
+  /** A qué se juega. String simple, "" = sin etiqueta (spec task 3). */
+  gameName: string;
 };
 
 const playerId = (index: number) => `p${index + 1}`;
@@ -53,6 +57,7 @@ function newScoreDraft(preset: ScorePresetId): ScoreDraft {
     targetValue: target?.value ?? 10,
     targetActive: target !== undefined,
     players: emptyPlayers(DEFAULT_PLAYERS),
+    gameName: "",
   };
 }
 
@@ -69,6 +74,7 @@ function draftFromScoreSetup(setup: ScoreSetup): ScoreDraft {
       ...(participant.kind === "regular" ? { playerId: participant.playerId } : {}),
       ...(participant.kind === "user" ? { userId: participant.userId } : {}),
     })),
+    gameName: setup.gameName ?? "",
   };
 }
 
@@ -143,7 +149,7 @@ function toScoreSetup(draft: ScoreDraft, fallbackName: (index: number) => string
   const target: ScoreTarget | undefined = draft.targetActive
     ? { kind: draft.targetKind, value: draft.targetValue }
     : undefined;
-  return { participants, direction: draft.direction, target };
+  return { participants, direction: draft.direction, target, gameName: trimmed(draft.gameName) };
 }
 
 /**
@@ -206,6 +212,26 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   // UNA sola suscripción al espejo de habituales por pantalla (mismo criterio
   // que setup-form.tsx): se baja por props a cada `RegularPicker`.
   const { players: regulars, loaded: regularsLoaded } = usePlayers(identity);
+
+  // Partidas guardadas para los chips de "a qué jugáis" (Task 3): UNA carga
+  // al montar, sin canal -- los guardados no cambian mientras configuras
+  // (issue #856, mismo criterio que el resto del fichero: no crece la deuda
+  // con más de una instancia de setState-en-efecto). anon también carga: la
+  // etiqueta no exige cuenta.
+  const [savedRecords, setSavedRecords] = useState<SavedGameRecord[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listSaved(identity).then((records) => {
+      if (!cancelled) setSavedRecords(records);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [identity]);
+  const gameNameChoices = useMemo(
+    () => gameNameSuggestions(savedRecords, draft.gameName),
+    [savedRecords, draft.gameName],
+  );
 
   // Degradación de prefill (spec §6), espejo de setup-form.tsx: un asiento
   // que llega con `playerId` de una revancha/reconfiguración cuyo habitual ya
@@ -365,6 +391,33 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
             />
           )}
         </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <label className="flex flex-col gap-1 text-[13px]">
+          {t("scoreSetup.gameName")}
+          <input
+            value={draft.gameName}
+            onChange={(e) => setEdited({ ...draft, gameName: e.target.value })}
+            onFocus={(e) => e.currentTarget.select()}
+            placeholder={t("scoreSetup.gameNamePlaceholder")}
+            className={FIELD}
+          />
+        </label>
+        {gameNameChoices.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("scoreSetup.gameNameChips")}>
+            {gameNameChoices.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => setEdited({ ...draft, gameName: name })}
+                className="tap-44 rounded-chip border border-border bg-surface px-2 py-1 text-[12px] text-foreground transition-colors hover:bg-surface-muted"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
       </fieldset>
 
       {/* El botón ANTES que los nombres: empezar no exige leerlos (mismo

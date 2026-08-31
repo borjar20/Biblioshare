@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeEvent } from "@/lib/play/core/events";
 import type { Participant } from "@/lib/play/core/types";
-import type { GameStartedEvent, RoundScoredEvent } from "./events";
+import type { GameLabeledEvent, GameStartedEvent, RoundScoredEvent } from "./events";
 import { initialScoreState, scoreReducer } from "./reducer";
 import { describeEvent, limitReached, runningTotals, scoreRanking, totals } from "./selectors";
 import type { ScoreSetup, ScoreState } from "./types";
@@ -120,5 +120,21 @@ describe("describeEvent", () => {
     );
     const s = initialScoreState(startedEvent);
     expect(describeEvent(startedEvent, s)).toEqual({ key: "started", params: {} });
+  });
+
+  it("game_labeled con nombre da 'labeled'; con \"\" da 'unlabeled'", () => {
+    const s = conRondas([]);
+    const labeled = makeEvent<GameLabeledEvent["type"], GameLabeledEvent["payload"]>(
+      "game_labeled",
+      { gameName: "UNO" },
+      2000,
+    );
+    expect(describeEvent(labeled, s)).toEqual({ key: "labeled", params: { gameName: "UNO" } });
+    const unlabeled = makeEvent<GameLabeledEvent["type"], GameLabeledEvent["payload"]>(
+      "game_labeled",
+      { gameName: "" },
+      3000,
+    );
+    expect(describeEvent(unlabeled, s)).toEqual({ key: "unlabeled", params: {} });
   });
 });

@@ -73,5 +73,9 @@ export function describeEvent(event: ScoreEvent, state: ScoreState): EventDescri
       return { key: "roundEdited", params: { round: event.payload.round + 1 } };
     case "game_finished":
       return { key: "finished", params: {} };
+    case "game_labeled":
+      return event.payload.gameName === ""
+        ? { key: "unlabeled", params: {} }
+        : { key: "labeled", params: { gameName: event.payload.gameName } };
   }
 }

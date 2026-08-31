@@ -2695,7 +2695,10 @@
       "target": "Límite",
       "targetRounds": "Hasta N rondas",
       "targetPoints": "Hasta X puntos",
-      "targetValue": "Valor del límite"
+      "targetValue": "Valor del límite",
+      "gameName": "¿A qué jugáis?",
+      "gameNamePlaceholder": "UNO, dominó, chinchón…",
+      "gameNameChips": "Juegos anteriores"
     },
     "board": {
       "life": "Vidas de {name}",
@@ -2793,7 +2796,10 @@
     },
     "scoreSummary": {
       "tie": "Empate",
-      "rounds": "Rondas"
+      "rounds": "Rondas",
+      "addGame": "Añadir juego",
+      "editGame": "Editar juego",
+      "saveGame": "Guardar"
     },
     "scoreBanner": {
       "roundsPlayed": "{rounds, plural, =0 {Sin rondas todavía} one {# ronda jugada} other {# rondas jugadas}}"
@@ -2816,6 +2822,8 @@
       "finished": "Fin de la partida",
       "roundScored": "Ronda {round} apuntada",
       "roundEdited": "Ronda {round} editada",
+      "labeled": "Partida etiquetada: {gameName}",
+      "unlabeled": "Etiqueta quitada",
       "unknown": "Acción"
     },
     "empty": {
@@ -2837,7 +2845,8 @@
       "adopt": "Añadir a mi cuenta",
       "adoptDismiss": "Ahora no",
       "targetRounds": "A {value, plural, one {# ronda} other {# rondas}}",
-      "targetPoints": "Hasta {value} puntos"
+      "targetPoints": "Hasta {value} puntos",
+      "game": "Juego"
     },
     "players": {
       "remember": "Recordar como habitual",

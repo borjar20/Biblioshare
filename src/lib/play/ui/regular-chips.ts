@@ -7,12 +7,28 @@ import type { PlayerRecord } from "../core/db";
 
 // case/acentos-insensible: NFD separa la letra de su diacrítico y el rango
 // combinante se descarta, así "Marta" == "MARTA" == "María" (por prefijo).
-function normalize(value: string): string {
+// Exportado porque game-names.ts (Task 2) reutiliza el mismo criterio de
+// normalización para las claves de unicidad de sus sugerencias.
+export function normalize(value: string): string {
   return value
     .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
+}
+
+/**
+ * ¿Alguna palabra de `value` EMPIEZA por `query` (prefijo, no substring),
+ * case/acentos-insensible? Query vacía siempre coincide (descubribilidad).
+ * Compartido con game-names.ts -- mismo criterio de filtro que los chips.
+ */
+export function matchesWordPrefix(value: string, query: string): boolean {
+  const q = normalize(query);
+  if (q === "") return true;
+  return normalize(value)
+    .split(/\s+/)
+    .filter(Boolean)
+    .some((word) => word.startsWith(q));
 }
 
 /**
@@ -28,15 +44,10 @@ export function chipSuggestions(
   query: string,
 ): PlayerRecord[] {
   const taken = new Set(takenIds);
-  const q = normalize(query);
   return players.filter((player) => {
     if (player.deletedAt !== null) return false;
     if (taken.has(player.playerId)) return false;
-    if (q === "") return true;
-    return normalize(player.name)
-      .split(/\s+/)
-      .filter(Boolean)
-      .some((word) => word.startsWith(q));
+    return matchesWordPrefix(player.name, query);
   });
 }
 

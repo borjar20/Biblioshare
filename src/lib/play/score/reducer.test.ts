@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { makeEvent } from "@/lib/play/core/events";
 import { PlayEventError } from "@/lib/play/core/errors";
 import type { Participant } from "@/lib/play/core/types";
-import type { GameStartedEvent, RoundEditedEvent, RoundScoredEvent, GameFinishedEvent } from "./events";
+import type {
+  GameStartedEvent,
+  RoundEditedEvent,
+  RoundScoredEvent,
+  GameFinishedEvent,
+  GameLabeledEvent,
+} from "./events";
 import { initialScoreState, scoreReducer } from "./reducer";
 import type { ScoreSetup } from "./types";
 
@@ -30,6 +36,9 @@ const edita = (round: number, scores: number[], at = 3000) =>
 
 const fin = (at = 9000) =>
   makeEvent<GameFinishedEvent["type"], GameFinishedEvent["payload"]>("game_finished", { reason: "manual" }, at);
+
+const label = (gameName: string, at = 2000) =>
+  makeEvent<GameLabeledEvent["type"], GameLabeledEvent["payload"]>("game_labeled", { gameName }, at);
 
 describe("initialScoreState", () => {
   it("nace activa, sin rondas, con el setup y startedAt del evento", () => {
@@ -132,5 +141,34 @@ describe("game_finished", () => {
   it("un game_started sobre una partida ya iniciada se rechaza", () => {
     const s = initialScoreState(started());
     expect(() => scoreReducer(s, started())).toThrow(PlayEventError);
+  });
+});
+
+describe("game_labeled", () => {
+  it("fija la etiqueta con la partida activa", () => {
+    let s = initialScoreState(started(setup({ participants: gente(2) })));
+    s = scoreReducer(s, label("UNO"));
+    expect(s.setup.gameName).toBe("UNO");
+  });
+
+  it("también con la partida TERMINADA (excepción: etiquetar no es jugar)", () => {
+    let s = initialScoreState(started(setup({ participants: gente(2) })));
+    s = scoreReducer(s, fin(2000));
+    const labeled = scoreReducer(s, label("dominó", 3000));
+    expect(labeled.setup.gameName).toBe("dominó");
+    expect(labeled.status).toBe("finished"); // etiquetar no revive nada
+  });
+
+  it("cadena vacía QUITA la etiqueta", () => {
+    let s = initialScoreState(started(setup({ participants: gente(2) })));
+    s = scoreReducer(s, label("UNO"));
+    const cleared = scoreReducer(s, label("", 3000));
+    expect(cleared.setup.gameName).toBeUndefined();
+  });
+
+  it("cualquier OTRO evento sobre terminada sigue rechazándose", () => {
+    let s = initialScoreState(started(setup({ participants: gente(2) })));
+    s = scoreReducer(s, fin(2000));
+    expect(() => scoreReducer(s, ronda([1, 1], 3000))).toThrow();
   });
 });
