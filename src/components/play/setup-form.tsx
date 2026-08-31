@@ -109,7 +109,11 @@ export function SetupForm({ identity }: { identity: string }) {
     degradedRef.current = false;
   }, [base]);
   useEffect(() => {
-    if (!regularsLoaded || degradedRef.current) return;
+    // Espejo VACÍO es indistinguible de espejo frío (IDB evacuada con los
+    // habituales sanos en el servidor): con [] no se degrada nada y el ref no
+    // se consume, así que cuando el pull puebla el espejo y el canal refresca,
+    // esta pasada vuelve a correr contra la lista real (review final fase 6).
+    if (!regularsLoaded || regulars.length === 0 || degradedRef.current) return;
     degradedRef.current = true;
     const ids = new Set(regulars.map((r) => r.playerId));
     const current = edited ?? base;

@@ -40,7 +40,7 @@ export function RegularPicker(props: {
   async function handleRemember() {
     const playerId = crypto.randomUUID();
     const name = query.trim();
-    await putPlayer({
+    const saved = await putPlayer({
       playerId,
       identity,
       v: 1,
@@ -48,6 +48,11 @@ export function RegularPicker(props: {
       syncStatus: "pending",
       deletedAt: null,
     });
+    // Sin BD el put devuelve false: asignar igualmente dejaría el asiento
+    // apuntando a un playerId que no existe en ningún sitio y jamás se
+    // sincronizará (spec §7: IDB indisponible → el setup sigue con
+    // invitados). El asiento se queda como invitado con su texto.
+    if (!saved) return;
     requestPlayersSync(identity);
     onRemembered({ playerId, name });
   }

@@ -203,7 +203,10 @@ export function ScoreSetupForm({ identity }: { identity: string }) {
     degradedRef.current = false;
   }, [base]);
   useEffect(() => {
-    if (!regularsLoaded || degradedRef.current) return;
+    // Espejo vacío = posiblemente frío (IDB evacuada, habituales sanos en el
+    // servidor): no degradar ni consumir el ref; la pasada re-corre cuando el
+    // pull puebla la lista (review final fase 6, mismo guard que setup-form).
+    if (!regularsLoaded || regulars.length === 0 || degradedRef.current) return;
     degradedRef.current = true;
     const ids = new Set(regulars.map((r) => r.playerId));
     const current = edited ?? base;
