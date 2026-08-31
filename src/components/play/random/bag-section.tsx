@@ -57,6 +57,7 @@ export function BagSection({
         onDraw={() => onDraw(drawFromBag(bag.items))}
         label={t("draw")}
         disabled={remaining === 0}
+        hint={t("drawHint")}
       />
 
       <div className="mt-4 flex gap-2">

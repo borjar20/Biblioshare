@@ -37,11 +37,13 @@ export function BagStage({
   onDraw,
   label,
   disabled,
+  hint,
 }: {
   drawn: { id: string; name: string } | null;
   onDraw: () => void;
   label: string;
   disabled: boolean;
+  hint: string;
 }) {
   const reduced = useReducedMotion();
 
@@ -72,7 +74,9 @@ export function BagStage({
           >
             <span data-testid="bag-result">{drawn.name}</span>
           </span>
-        ) : null}
+        ) : (
+          <p className="text-[14px] text-muted-foreground">{hint}</p>
+        )}
       </div>
     </div>
   );

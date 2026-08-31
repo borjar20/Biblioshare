@@ -2898,6 +2898,7 @@
         "remove": "Quitar a {name}",
         "hint": "Añade al menos 2 jugadores para sortear.",
         "first": "Primer jugador",
+        "wheelHint": "Toca la ruleta para sortear",
         "team": "Equipo {n}",
         "order": "Orden aleatorio",
         "teams": "Equipos",
@@ -2912,6 +2913,7 @@
         "hint": "Añade tipos de ficha con su cantidad.",
         "withReplacement": "Con reemplazo (no descuenta)",
         "draw": "Sacar ficha",
+        "drawHint": "Toca la bolsa para sacar ficha",
         "remaining": "Quedan {n}",
         "reset": "Reiniciar bolsa"
       },

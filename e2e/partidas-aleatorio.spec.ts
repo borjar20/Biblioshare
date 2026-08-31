@@ -9,20 +9,26 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   await page.goto("/partidas/aleatorio");
   await expect(page.getByRole("heading", { name: "Aleatorio" })).toBeVisible();
 
-  await page.getByRole("button", { name: "d6", exact: true }).click();
+  // Reposo: hint que centra el escenario. Tirar = tocar el dado.
+  await expect(page.getByText("Toca el dado para tirar")).toBeVisible();
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
   await expect(page.getByTestId("dice-result")).toBeVisible();
+  await expect(page.getByText("Toca el dado para tirar")).toHaveCount(0);
 
-  // Tirada libre 3d6: el resultado formatea "a + b + c = total".
-  await page.getByLabel("Cuántos").fill("3");
-  await page.getByLabel("Caras").fill("6");
-  await page.getByRole("button", { name: /^tirar$/i }).click();
+  // 3d6 vía stepper: el resultado formatea "a + b + c = total".
+  await page.getByRole("button", { name: "Un dado más" }).click();
+  await page.getByRole("button", { name: "Un dado más" }).click();
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
   await expect(page.getByTestId("dice-result")).toContainText("=");
 
+  // 3 monedas: recuento "N caras, M cruces" (o singular).
   await page.getByRole("tab", { name: "Moneda" }).click();
+  await page.getByRole("button", { name: "Una moneda más" }).click();
+  await page.getByRole("button", { name: "Una moneda más" }).click();
   await page.getByRole("button", { name: /^lanzar moneda$/i }).click();
-  await expect(page.getByTestId("coin-result")).toHaveText(/^(Cara|Cruz)$/);
+  await expect(page.getByTestId("coin-result")).toContainText(/cara|cruz/i);
 
-  // El feed acumula los tres resultados; deshacer quita el último (la moneda).
+  // El feed acumula los tres resultados; deshacer quita el último (las monedas).
   const feed = page.locator('section[aria-label="Últimos resultados"] li');
   await expect(feed).toHaveCount(3);
   await page.getByRole("button", { name: /^deshacer$/i }).click();
@@ -89,7 +95,7 @@ test("convive con una partida de puntuación activa", async ({ page }) => {
 
   // ...usar el Aleatorio en medio...
   await page.goto("/partidas/aleatorio");
-  await page.getByRole("button", { name: "d6", exact: true }).click();
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
   await expect(page.getByTestId("dice-result")).toBeVisible();
 
   // ...y la partida sigue viva: el hub enseña el banner de partida en curso
@@ -103,7 +109,7 @@ test("convive con una partida de puntuación activa", async ({ page }) => {
 test("con reduced motion el resultado aparece al instante", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/partidas/aleatorio");
-  await page.getByRole("button", { name: "d6", exact: true }).click();
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
   // Sin teatro: nada de esperar los ~900 ms del cubo.
   await expect(page.getByTestId("dice-result")).toBeVisible({ timeout: 1500 });
 });

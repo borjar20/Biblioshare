@@ -29,12 +29,14 @@ export function PlayersWheel({
   onSpin,
   label,
   disabled,
+  hint,
 }: {
   players: string[];
   spin: { id: string; picked: string } | null;
   onSpin: () => void;
   label: string;
   disabled: boolean;
+  hint: string;
 }) {
   const reduced = useReducedMotion();
   const [rotation, setRotation] = useState(0);
@@ -117,6 +119,8 @@ export function PlayersWheel({
           <p className={`${styles.pop} font-serif text-[24px] font-semibold`} data-testid="players-result">
             {spin.picked}
           </p>
+        ) : !spin ? (
+          <p className="text-[14px] text-muted-foreground">{hint}</p>
         ) : null}
       </div>
     </div>

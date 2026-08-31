@@ -63,6 +63,7 @@ export function PlayersSection({
         onSpin={() => onFirst(players, pickFirst(players))}
         label={t("first")}
         disabled={!canDraw}
+        hint={t("wheelHint")}
       />
 
       {lastResult?.type === "order_drawn" ? (
