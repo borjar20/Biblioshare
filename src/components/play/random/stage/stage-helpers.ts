@@ -16,30 +16,6 @@ export function stableColor(name: string): string {
   return `var(--play-seat-${(hashString(name) % PALETTE_SIZE) + 1})`;
 }
 
-// Cara del cubo (0..5) en la que aterriza una tirada, estable por id de evento.
-export function stableFace(id: string): number {
-  return hashString(id) % 6;
-}
-
-// Rotación del cubo que trae la cara `face` al frente. Consistente con
-// FACE_TRANSFORMS de dice-stage: 0 front, 1 back, 2 right, 3 left, 4 top, 5 bottom.
-export function faceRotation(face: number): { x: number; y: number } {
-  switch (face) {
-    case 1:
-      return { x: 0, y: 180 };
-    case 2:
-      return { x: 0, y: -90 };
-    case 3:
-      return { x: 0, y: 90 };
-    case 4:
-      return { x: -90, y: 0 };
-    case 5:
-      return { x: 90, y: 0 };
-    default:
-      return { x: 0, y: 0 };
-  }
-}
-
 // Sectores de la ruleta. Convención: 0° arriba, crece en sentido horario.
 export function wheelSectors(
   players: string[],
@@ -61,15 +37,6 @@ export function wheelTargetAngle(players: string[], picked: string, turns: numbe
   const step = 360 / players.length;
   const center = i * step + step / 2;
   return turns * 360 + ((360 - center) % 360);
-}
-
-// Números de relleno para las caras no ganadoras del cubo (teatro visual).
-export function fillerFaces(
-  sides: number,
-  count: number,
-  rng: () => number = Math.random,
-): number[] {
-  return Array.from({ length: count }, () => 1 + Math.floor(rng() * sides));
 }
 
 // Vibración sutil al aterrizar. No-op donde no hay soporte (iOS Safari, SSR).

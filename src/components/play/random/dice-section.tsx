@@ -51,6 +51,7 @@ export function DiceSection({
             ? { id: last.id, sides: last.payload.sides, results: last.payload.results }
             : null
         }
+        idleSides={customValid ? parsedSides : 6}
         resultText={resultText}
         onRoll={() => (customValid ? roll(parsedCount, parsedSides) : roll(1, 6))}
         label={t("tap")}
