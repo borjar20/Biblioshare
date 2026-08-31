@@ -2835,7 +2835,9 @@
       "adoptTitle": "{count, plural, one {# partida guardada} other {# partidas guardadas}} en este dispositivo",
       "adoptBody": "¿Añadirlas a tu cuenta?",
       "adopt": "Añadir a mi cuenta",
-      "adoptDismiss": "Ahora no"
+      "adoptDismiss": "Ahora no",
+      "targetRounds": "A {value, plural, one {# ronda} other {# rondas}}",
+      "targetPoints": "Hasta {value} puntos"
     }
   }
 }

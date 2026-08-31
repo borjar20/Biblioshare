@@ -12,7 +12,14 @@ import { PlaySheet, SheetGroup, SheetRow } from "./play-sheet";
 type T = ReturnType<typeof useTranslations>;
 
 type MtgSummaryTool = { mode: string; turns: number; commanders: (string | null)[] };
-type ScoreSummaryTool = { rounds: number; direction: string; totals: number[]; target: number | null };
+type ScoreSummaryTool = {
+  rounds: number;
+  direction: string;
+  totals: number[];
+  // M1: no es un número suelto -- es el mismo ScoreTarget de score/types.ts
+  // (summarizeScore lo copia tal cual desde state.setup.target).
+  target: { kind: "rounds" | "points"; value: number } | null;
+};
 
 // Horas y minutos, sin segundos (spec task 7): "1 h 38 min" / "12 min". Deliberadamente
 // distinto de `formatElapsed` (mm:ss) de la consola en vivo — ahí importa el segundo,
@@ -238,6 +245,14 @@ function SavedGameDetail({
         <p className="mt-3 text-[13px] text-muted-foreground">
           {t(`tools.mtg.modes.${mtgTool.mode}.name`)}
           {winnerCommander ? ` · ${winnerCommander}` : ""}
+        </p>
+      )}
+
+      {scoreTool?.target && (
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {scoreTool.target.kind === "rounds"
+            ? t("saved.targetRounds", { value: scoreTool.target.value })
+            : t("saved.targetPoints", { value: scoreTool.target.value })}
         </p>
       )}
 
