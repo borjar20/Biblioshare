@@ -53,11 +53,11 @@ test("jugadores: primero, orden y equipos", async ({ page }) => {
   await expect(page.getByTestId("players-result")).toContainText(/Ana|Beto|Carla|Dario/);
 
   await page.getByRole("button", { name: /^orden aleatorio$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText("Orden:");
+  await expect(page.getByTestId("players-result")).toContainText("1.");
 
   await page.getByLabel("Número de equipos").fill("2");
   await page.getByRole("button", { name: /^equipos$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText("Equipos:");
+  await expect(page.getByTestId("players-result")).toContainText("Equipo 1");
 });
 
 test("bolsa sin reemplazo se agota, se desactiva y se reinicia", async ({ page }) => {

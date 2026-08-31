@@ -2893,6 +2893,7 @@
         "remove": "Quitar a {name}",
         "hint": "Añade al menos 2 jugadores para sortear.",
         "first": "Primer jugador",
+        "team": "Equipo {n}",
         "order": "Orden aleatorio",
         "teams": "Equipos",
         "teamCount": "Número de equipos"
