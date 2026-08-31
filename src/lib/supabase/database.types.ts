@@ -1669,6 +1669,33 @@ export type Database = {
         }
         Relationships: []
       }
+      play_players: {
+        Row: {
+          created_at: string
+          id: string
+          linked_user_id: string | null
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          linked_user_id?: string | null
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          linked_user_id?: string | null
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_preferences: {
         Row: {
           autopost_dropped: boolean
