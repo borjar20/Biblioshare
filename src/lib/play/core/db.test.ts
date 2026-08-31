@@ -198,6 +198,10 @@ describe("saved v2", () => {
     expect(migrated[0].syncStatus).toBe("pending");
     expect(migrated[0].deletedAt).toBeNull();
     expect(migrated[0].summary.toolId).toBe("score");
+    // Salto directo v1→v3: el MISMO upgrade crea también el almacén players
+    // (onupgradeneeded corre una sola vez con el oldVersion real) — aserción
+    // explícita para no depender solo de la semántica de IndexedDB.
+    expect(await listPlayers("anon")).toEqual([]);
   });
 
   it("migración v1→v2: un log corrupto se descarta en vez de romper el upgrade", async () => {
