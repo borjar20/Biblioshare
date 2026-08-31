@@ -175,4 +175,25 @@ describe("buildSavedSummary", () => {
       else expect("userId" in p).toBe(false);
     }
   });
+
+  it("un participante regular conserva playerId; guest/user no lo llevan", () => {
+    const regularScoreSetup: ScoreSetup = {
+      participants: [
+        { id: "ana", kind: "user", name: "Ana", userId: "user-ana-1" },
+        { id: "pablo", kind: "regular", name: "Pablo", playerId: "j1" },
+        { id: "beto", kind: "guest", name: "Beto" },
+      ],
+      direction: "highest",
+    };
+    const regularScoreLog: PlayEvent[] = [
+      makeEvent("game_started", { toolId: "score" as const, setup: regularScoreSetup }, 1000),
+      makeEvent("round_scored", { scores: [5, 3, 1] }, 1500),
+      makeEvent("game_finished", { reason: "manual" as const }, 2000),
+    ];
+    const summary = buildSavedSummary(replay(regularScoreLog));
+    expect(summary.participants[1]).toMatchObject({ kind: "regular", playerId: "j1" });
+    for (const p of summary.participants) {
+      if (p.kind !== "regular") expect("playerId" in p).toBe(false);
+    }
+  });
 });

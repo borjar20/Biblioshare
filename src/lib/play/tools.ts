@@ -109,11 +109,11 @@ export function buildSavedSummary(state: PlayGameState): SavedGameSummary {
   const partial = playTools[state.toolId].summarize(state);
   return {
     toolId: state.toolId,
-    participants: state.setup.participants.map((p) =>
-      p.kind === "user"
-        ? { kind: p.kind, name: p.name, userId: p.userId }
-        : { kind: p.kind, name: p.name },
-    ),
+    participants: state.setup.participants.map((p) => {
+      if (p.kind === "user") return { kind: p.kind, name: p.name, userId: p.userId };
+      if (p.kind === "regular") return { kind: p.kind, name: p.name, playerId: p.playerId };
+      return { kind: p.kind, name: p.name };
+    }),
     durationMs: (state.finishedAt ?? state.startedAt) - state.startedAt,
     ...partial,
   };

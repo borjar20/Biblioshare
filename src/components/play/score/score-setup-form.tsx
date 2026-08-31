@@ -18,7 +18,7 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 8;
 const DEFAULT_PLAYERS = 4;
 
-type DraftPlayer = { id: string; name: string };
+type DraftPlayer = { id: string; name: string; playerId?: string };
 
 /**
  * Borrador de la configuración. Espejo ALIGERADO de `setup-draft.ts`: sin
@@ -61,7 +61,11 @@ function draftFromScoreSetup(setup: ScoreSetup): ScoreDraft {
     targetKind: setup.target?.kind ?? "rounds",
     targetValue: setup.target?.value ?? 10,
     targetActive: setup.target !== undefined,
-    players: setup.participants.map((participant, i) => ({ id: playerId(i), name: participant.name })),
+    players: setup.participants.map((participant, i) => ({
+      id: playerId(i),
+      name: participant.name,
+      ...(participant.kind === "regular" ? { playerId: participant.playerId } : {}),
+    })),
   };
 }
 
@@ -81,7 +85,17 @@ function setPlayerCount(draft: ScoreDraft, count: number): ScoreDraft {
 }
 
 function updatePlayerName(draft: ScoreDraft, index: number, name: string): ScoreDraft {
-  const players = draft.players.map((player, i) => (i === index ? { ...player, name } : player));
+  const players = draft.players.map((player, i) => {
+    if (i !== index) return player;
+    // Igual que setup-draft.ts: editar el nombre de un asiento asignado lo
+    // degrada a invitado -- el nombre es lo único que identifica al
+    // habitual en pantalla (spec §6).
+    if (player.playerId !== undefined) {
+      const { playerId: _playerId, ...rest } = player;
+      return { ...rest, name };
+    }
+    return { ...player, name };
+  });
   return { ...draft, players };
 }
 
@@ -91,11 +105,11 @@ function trimmed(value: string): string | undefined {
 }
 
 function toScoreSetup(draft: ScoreDraft, fallbackName: (index: number) => string): ScoreSetup {
-  const participants: Participant[] = draft.players.map((player, i) => ({
-    id: player.id,
-    kind: "guest",
-    name: trimmed(player.name) ?? fallbackName(i),
-  }));
+  const participants: Participant[] = draft.players.map((player, i) => {
+    const name = trimmed(player.name) ?? fallbackName(i);
+    if (player.playerId) return { id: player.id, kind: "regular", name, playerId: player.playerId };
+    return { id: player.id, kind: "guest", name };
+  });
   const target: ScoreTarget | undefined = draft.targetActive
     ? { kind: draft.targetKind, value: draft.targetValue }
     : undefined;
