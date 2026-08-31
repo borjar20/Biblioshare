@@ -82,11 +82,13 @@ export function BagStage({
 export function TokenPile({ name, count }: { name: string; count: number }) {
   if (count === 0) return <span className="text-muted-foreground">×0</span>;
   return (
-    <span className={styles.pile} aria-label={`×${count}`}>
+    // role="img": aria-label sobre un span genérico lo ignoran muchos lectores
+    // de pantalla — con img el recuento «×N» vuelve a anunciarse (review final).
+    <span className={styles.pile} role="img" aria-label={`×${count}`}>
       {Array.from({ length: Math.min(count, 8) }, (_, i) => (
         <span key={i} className={styles.pileDot} style={{ background: stableColor(name) }} />
       ))}
-      {count > 8 ? <span className="text-[12px] text-muted-foreground">×{count}</span> : null}
+      {count > 8 ? <span className="text-[12px] text-muted-foreground" aria-hidden="true">×{count}</span> : null}
     </span>
   );
 }
