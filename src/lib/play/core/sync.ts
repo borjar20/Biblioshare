@@ -1,6 +1,6 @@
 import type { PlayEvent, SavedGameSummary } from "./types";
 import type { SavedGameRecord } from "./db";
-import { deleteSaved, listSaved, saveFinished } from "./db";
+import { deleteSaved, listSaved, readSaved, saveFinished } from "./db";
 
 // Fila de `play_games` tal y como la ve el motor: SIN owner_id -- lo inyecta
 // el adaptador Supabase (Task 6), RLS ya filtra por auth.uid().
@@ -96,11 +96,14 @@ function notifySavedChanged(identity: string) {
   }
 }
 
-// Una pasada completa (spec §5): tombstones → push → pull/reconciliar.
+// Una pasada completa (spec §5): TODO sale de un único snapshot remoto (un
+// solo selectAll, tomado antes de escribir nada); las escrituras que siguen
+// van en orden tombstones → push → pull/reconciliar.
 // Cualquier fallo remoto deja el estado local como estaba: la próxima pasada
 // reintenta. Nunca lanza.
 export async function runSavedSync(identity: string, api: PlayGamesApi): Promise<void> {
   const local = await listSaved(identity);
+  const localById = new Map(local.map((r) => [r.gameId, r] as const));
   const result = await api.selectAll();
   if ("error" in result) return;
   const plan = planSync(local, result.rows);
@@ -114,11 +117,28 @@ export async function runSavedSync(identity: string, api: PlayGamesApi): Promise
   if (plan.push.length > 0) {
     const { error } = await api.upsert(plan.push.map(rowFromRecord));
     if (!error) {
-      for (const record of plan.push) await saveFinished({ ...record, syncStatus: "synced" });
+      for (const record of plan.push) {
+        // El usuario pudo tombstonear o borrar en duro este registro (desde
+        // el historial, en otra pestaña) mientras el upsert estaba en vuelo:
+        // releer antes de marcar synced y no resucitar nada (mismo espíritu
+        // que el CAS de writeActive sobre `active`).
+        const current = await readSaved(record.gameId);
+        if (current === null || current.deletedAt !== null) continue;
+        await saveFinished({ ...current, syncStatus: "synced" });
+      }
     }
   }
 
-  for (const adopted of plan.adoptLocal) await saveFinished(recordFromRow(adopted, identity));
+  for (const adopted of plan.adoptLocal) {
+    // Misma guarda de rancidez para el pull: releer antes de adoptar. Si ya
+    // no existe y el snapshot del plan SÍ tenía un local (synced) para este
+    // id, es que lo borraron durante la pasada — no resucitar. Si nunca hubo
+    // local (fila remota nueva de verdad), sí se escribe.
+    const current = await readSaved(adopted.id);
+    if (current !== null && (current.deletedAt !== null || current.syncStatus === "pending")) continue;
+    if (current === null && localById.has(adopted.id)) continue;
+    await saveFinished(recordFromRow(adopted, identity));
+  }
   for (const id of plan.deleteLocal) await deleteSaved(id);
 
   notifySavedChanged(identity);

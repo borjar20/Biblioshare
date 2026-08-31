@@ -8,7 +8,7 @@ import {
   type PlayGameRow,
   type PlayGamesApi,
 } from "./sync";
-import { __resetDbForTests, listSaved, saveFinished, type SavedGameRecord } from "./db";
+import { __resetDbForTests, deleteSaved, listSaved, saveFinished, type SavedGameRecord } from "./db";
 import { makeEvent } from "./events";
 import { replay } from "./replay";
 import { buildSavedSummary } from "../tools";
@@ -191,5 +191,46 @@ describe("runSavedSync", () => {
     await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "pending" }));
     await runSavedSync("uid-1", { ...fakeApi().api, upsert: async () => ({ error: true }) });
     expect((await listSaved("uid-1"))[0].syncStatus).toBe("pending");
+  });
+
+  // I2: el ejecutor relee antes de escribir en vez de pisar con lo que vio al
+  // planificar (mismo motivo que la guarda de sesión de I1: hay una ventana de
+  // red entre leer y escribir en la que el usuario puede cambiar el registro).
+
+  it("tombstone puesto DURANTE la pasada (en el hueco de red del pull): el adoptLocal no resucita la partida", async () => {
+    await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "synced" }));
+    const { api } = fakeApi([row({ id: "a" })]);
+    const racy: PlayGamesApi = {
+      ...api,
+      async selectAll() {
+        const result = await api.selectAll();
+        // El usuario borra "a" (que era synced) desde el historial, en otra
+        // pestaña o la misma, MIENTRAS esta pasada ya tiene el snapshot remoto
+        // pero todavía no ha escrito el adoptLocal correspondiente.
+        await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "synced", deletedAt: 9000 }));
+        return result;
+      },
+    };
+    await runSavedSync("uid-1", racy);
+    const after = (await listSaved("uid-1")).find((r) => r.gameId === "a");
+    expect(after?.deletedAt).toBe(9000);
+  });
+
+  it("pending borrado en duro DURANTE la pasada (en el hueco de red del push): el mark-synced no lo re-escribe", async () => {
+    await saveFinished(rec({ gameId: "a", identity: "uid-1", syncStatus: "pending" }));
+    const { api } = fakeApi();
+    const racy: PlayGamesApi = {
+      ...api,
+      async upsert(incoming) {
+        const result = await api.upsert(incoming);
+        // Un pending nunca tuvo copia remota: borrarlo mientras estaba pending
+        // es un borrado directo (ver handleDelete en saved-games.tsx), no un
+        // tombstone. Simula que ocurre mientras el upsert está en vuelo.
+        await deleteSaved("a");
+        return result;
+      },
+    };
+    await runSavedSync("uid-1", racy);
+    expect((await listSaved("uid-1")).find((r) => r.gameId === "a")).toBeUndefined();
   });
 });

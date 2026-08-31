@@ -200,6 +200,23 @@ export async function saveFinished(record: SavedGameRecord): Promise<boolean> {
   }
 }
 
+// Para la guarda de rancidez del ejecutor de sync (I2): releer el registro
+// actual justo antes de escribir, para no pisar un borrado/tombstone que
+// ocurrió mientras la pasada estaba en vuelo.
+export async function readSaved(gameId: string): Promise<SavedGameRecord | null> {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction("saved", "readonly").objectStore("saved").get(gameId);
+      request.onsuccess = () =>
+        resolve((request.result as SavedGameRecord | undefined) ?? null);
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function listSaved(identity: string): Promise<SavedGameRecord[]> {
   try {
     const db = await openDb();
