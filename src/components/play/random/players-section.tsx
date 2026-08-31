@@ -5,13 +5,15 @@ import { useTranslations } from "next-intl";
 import { usePlayers } from "@/lib/play/core/use-players";
 import { drawTeams, pickFirst, shuffle } from "@/lib/play/random/draws";
 import type { RandomEvent } from "@/lib/play/random/events";
-import { describeRandomEvent } from "@/lib/play/random/selectors";
+import { PlayersWheel } from "./stage/players-wheel";
+import { OrderReveal } from "./stage/order-reveal";
+import { TeamsReveal } from "./stage/teams-reveal";
 
 /**
- * Lista compartida de jugadores + tres sorteos (spec §4). Los chips de
- * habituales solo salen con sesión (usePlayers con "anon" devuelve []); el
- * texto libre funciona siempre. Cada cambio de lista emite players_set con la
- * foto completa; cada sorteo resuelve el azar AQUÍ y emite el resultado.
+ * Lista compartida de jugadores + tres sorteos. La ruleta ES el sorteo de
+ * primer jugador (tap para girar); orden y equipos animan su revelado bajo
+ * ella. Solo un players-result montado a la vez: la ruleta pinta el suyo si el
+ * último sorteo es first_picked; si no, lo pinta el revelado correspondiente.
  */
 export function PlayersSection({
   identity,
@@ -31,7 +33,6 @@ export function PlayersSection({
   onTeams: (players: string[], teams: string[][]) => void;
 }) {
   const t = useTranslations("play.random.players");
-  const tLog = useTranslations("play.random");
   const { players: regulars } = usePlayers(identity);
   const [name, setName] = useState("");
   const [teamCount, setTeamCount] = useState("");
@@ -49,18 +50,35 @@ export function PlayersSection({
     Number.isInteger(parsedTeams) && parsedTeams >= 2 && parsedTeams <= players.length - 1;
   const canDraw = players.length >= 2;
 
-  const last =
-    lastResult &&
-    (lastResult.type === "first_picked" ||
-      lastResult.type === "order_drawn" ||
-      lastResult.type === "teams_drawn")
-      ? describeRandomEvent(lastResult)
+  const spin =
+    lastResult && lastResult.type === "first_picked"
+      ? { id: lastResult.id, picked: lastResult.payload.picked }
       : null;
 
   return (
     <div>
+      <PlayersWheel
+        players={players}
+        spin={spin}
+        onSpin={() => onFirst(players, pickFirst(players))}
+        label={t("first")}
+        disabled={!canDraw}
+        hint={t("wheelHint")}
+      />
+
+      {lastResult?.type === "order_drawn" ? (
+        <OrderReveal id={lastResult.id} order={lastResult.payload.order} />
+      ) : null}
+      {lastResult?.type === "teams_drawn" ? (
+        <TeamsReveal
+          id={lastResult.id}
+          teams={lastResult.payload.teams}
+          teamLabel={(n) => t("team", { n })}
+        />
+      ) : null}
+
       {chips.length > 0 ? (
-        <div className="flex flex-wrap gap-2" aria-label={t("regulars")}>
+        <div className="mt-4 flex flex-wrap gap-2" aria-label={t("regulars")}>
           {chips.map((r) => (
             <button
               key={r.playerId}
@@ -117,14 +135,6 @@ export function PlayersSection({
         <button
           type="button"
           disabled={!canDraw}
-          onClick={() => onFirst(players, pickFirst(players))}
-          className="rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
-        >
-          {t("first")}
-        </button>
-        <button
-          type="button"
-          disabled={!canDraw}
           onClick={() => onOrder(players, shuffle(players))}
           className="rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
         >
@@ -152,13 +162,6 @@ export function PlayersSection({
           </button>
         </label>
       </div>
-
-      {last ? (
-        <p className="mt-4 font-serif text-[18px] font-semibold" data-testid="players-result">
-          {/* la clave del log ya formatea el resultado completo */}
-          {tLog(`log.${last.key}`, last.params)}
-        </p>
-      ) : null}
     </div>
   );
 }

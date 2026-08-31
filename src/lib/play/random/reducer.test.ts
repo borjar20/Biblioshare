@@ -9,7 +9,7 @@ import {
   randomReducer,
   replayRandom,
 } from "./reducer";
-import { describeRandomEvent, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
+import { feedRow, RESULT_EVENT_TYPES, resultFeed } from "./selectors";
 import type { RandomEvent } from "./events";
 
 const t0 = 1000;
@@ -18,6 +18,8 @@ const dice = (results: number[], sides = 6) =>
 const bagSet = (items: { name: string; count: number }[], withReplacement = false) =>
   makeEvent("bag_set", { items, withReplacement }, t0) as RandomEvent;
 const bagDrawn = (name: string) => makeEvent("bag_drawn", { name }, t0) as RandomEvent;
+const coins = (results: ("heads" | "tails")[]) =>
+  makeEvent("coins_flipped", { count: results.length, results }, t0) as RandomEvent;
 
 describe("randomReducer — eventos de resultado", () => {
   it("dice_rolled coherente no cambia el estado", () => {
@@ -169,37 +171,18 @@ describe("compactIfNeeded", () => {
   });
 });
 
-describe("describeRandomEvent", () => {
-  it("etiqueta dados con expresión y total", () => {
-    const d = describeRandomEvent(dice([4, 2, 6]) as RandomEvent);
-    expect(d.key).toBe("dice");
-    expect(d.params).toEqual({ expr: "3d6", rolls: "4 + 2 + 6", total: 12 });
-  });
-  it("un solo dado omite la suma redundante en rolls", () => {
-    const d = describeRandomEvent(dice([5]) as RandomEvent);
-    expect(d.params).toEqual({ expr: "1d6", rolls: "5", total: 5 });
-  });
-  it("etiqueta el resto de resultados", () => {
-    expect(describeRandomEvent(makeEvent("coin_flipped", { result: "heads" as const }, t0) as RandomEvent).key).toBe("coinHeads");
-    expect(describeRandomEvent(makeEvent("coin_flipped", { result: "tails" as const }, t0) as RandomEvent).key).toBe("coinTails");
-    const first = describeRandomEvent(
-      makeEvent("first_picked", { players: ["a", "b"], picked: "b" }, t0) as RandomEvent,
-    );
-    expect(first).toEqual({ key: "first", params: { picked: "b" } });
-    const order = describeRandomEvent(
-      makeEvent("order_drawn", { players: ["a", "b"], order: ["b", "a"] }, t0) as RandomEvent,
-    );
-    expect(order).toEqual({ key: "order", params: { order: "b, a" } });
-    const teams = describeRandomEvent(
-      makeEvent("teams_drawn", { players: ["a", "b", "c"], teams: [["a"], ["b", "c"]] }, t0) as RandomEvent,
-    );
-    expect(teams).toEqual({ key: "teams", params: { teams: "a — b, c" } });
-    const drawn = describeRandomEvent(bagDrawn("Rojo") as RandomEvent);
-    expect(drawn).toEqual({ key: "bagDrawn", params: { name: "Rojo" } });
-  });
-  it("RESULT_EVENT_TYPES contiene exactamente los 6 eventos de resultado", () => {
+describe("RESULT_EVENT_TYPES", () => {
+  it("contiene exactamente los 7 eventos de resultado", () => {
     expect([...RESULT_EVENT_TYPES].sort()).toEqual(
-      ["bag_drawn", "coin_flipped", "dice_rolled", "first_picked", "order_drawn", "teams_drawn"].sort(),
+      [
+        "bag_drawn",
+        "coin_flipped",
+        "coins_flipped",
+        "dice_rolled",
+        "first_picked",
+        "order_drawn",
+        "teams_drawn",
+      ].sort(),
     );
   });
 });
@@ -228,5 +211,56 @@ describe("resultFeed", () => {
     const log: PlayEvent[] = [dice([1]), makeEvent("cleared", {}, t0)];
     expect(resultFeed(log, 20)).toEqual([]);
     expect(resultFeed(log.slice(0, -1), 20)).toHaveLength(1);
+  });
+});
+
+describe("coins_flipped", () => {
+  it("válido no cambia el estado", () => {
+    const s = initialRandomState();
+    expect(randomReducer(s, coins(["heads", "tails", "heads"]))).toBe(s);
+    expect(randomReducer(s, coins(["heads"]))).toBe(s);
+  });
+  it("rechaza count fuera de 1..5, results descuadrados y valores inválidos", () => {
+    const s = initialRandomState();
+    const bad = (payload: unknown) =>
+      makeEvent("coins_flipped", payload as { count: number; results: ("heads" | "tails")[] }, t0) as RandomEvent;
+    expect(() => randomReducer(s, bad({ count: 0, results: [] }))).toThrow();
+    expect(() => randomReducer(s, bad({ count: 6, results: Array(6).fill("heads") }))).toThrow();
+    expect(() => randomReducer(s, bad({ count: 2, results: ["heads"] }))).toThrow();
+    expect(() => randomReducer(s, bad({ count: 1, results: ["edge"] }))).toThrow();
+  });
+});
+
+describe("feedRow", () => {
+  it("dados: expresión, total y desglose solo con más de un dado", () => {
+    expect(feedRow(dice([4, 2, 6]))).toEqual({ label: "3d6", primary: "12", detail: "4 · 2 · 6" });
+    expect(feedRow(dice([5]))).toEqual({ label: "1d6", primary: "5" });
+  });
+  it("monedas: una reusa cara/cruz; varias, recuento", () => {
+    expect(feedRow(coins(["tails"]))).toEqual({
+      label: { key: "row.coin" },
+      primary: { key: "coin.tails" },
+    });
+    expect(feedRow(coins(["heads", "tails", "heads"]))).toEqual({
+      label: { key: "row.coins", params: { count: 3 } },
+      primary: { key: "coin.result", params: { heads: 2, tails: 1 } },
+    });
+    expect(
+      feedRow(makeEvent("coin_flipped", { result: "heads" as const }, t0) as RandomEvent),
+    ).toEqual({ label: { key: "row.coin" }, primary: { key: "coin.heads" } });
+  });
+  it("jugadores y bolsa", () => {
+    expect(
+      feedRow(makeEvent("first_picked", { players: ["a", "b"], picked: "b" }, t0) as RandomEvent),
+    ).toEqual({ label: { key: "row.first" }, primary: "b" });
+    expect(
+      feedRow(makeEvent("order_drawn", { players: ["a", "b"], order: ["b", "a"] }, t0) as RandomEvent),
+    ).toEqual({ label: { key: "row.order" }, primary: "b, a" });
+    expect(
+      feedRow(
+        makeEvent("teams_drawn", { players: ["a", "b", "c"], teams: [["a"], ["b", "c"]] }, t0) as RandomEvent,
+      ),
+    ).toEqual({ label: { key: "row.teams" }, primary: "a — b, c" });
+    expect(feedRow(bagDrawn("Rojo"))).toEqual({ label: { key: "row.bag" }, primary: "Rojo" });
   });
 });

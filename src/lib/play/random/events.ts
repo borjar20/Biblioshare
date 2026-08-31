@@ -9,6 +9,13 @@ export type DiceRolledEvent = PlayEvent<
   { count: number; sides: number; results: number[] }
 >;
 export type CoinFlippedEvent = PlayEvent<"coin_flipped", { result: "heads" | "tails" }>;
+// Varias monedas en un solo evento (una tirada = una entrada de feed y un
+// deshacer). coin_flipped se conserva por los logs persistidos: la UI ya no
+// lo emite, pero el replay lo sigue aceptando.
+export type CoinsFlippedEvent = PlayEvent<
+  "coins_flipped",
+  { count: number; results: ("heads" | "tails")[] }
+>;
 export type FirstPickedEvent = PlayEvent<"first_picked", { players: string[]; picked: string }>;
 export type OrderDrawnEvent = PlayEvent<"order_drawn", { players: string[]; order: string[] }>;
 export type TeamsDrawnEvent = PlayEvent<"teams_drawn", { players: string[]; teams: string[][] }>;
@@ -23,6 +30,7 @@ export type ClearedEvent = PlayEvent<"cleared", Record<string, never>>;
 export type RandomEvent =
   | DiceRolledEvent
   | CoinFlippedEvent
+  | CoinsFlippedEvent
   | FirstPickedEvent
   | OrderDrawnEvent
   | TeamsDrawnEvent
@@ -35,6 +43,7 @@ export type RandomEvent =
 const RANDOM_EVENT_TYPE_MAP = {
   dice_rolled: true,
   coin_flipped: true,
+  coins_flipped: true,
   first_picked: true,
   order_drawn: true,
   teams_drawn: true,

@@ -2867,6 +2867,7 @@
     "random": {
       "title": "Aleatorio",
       "subtitle": "Dados, moneda, sorteos y bolsa para cualquier juego.",
+      "quantity": "Cantidad",
       "tabs": {
         "dice": "Dados",
         "coin": "Moneda",
@@ -2874,15 +2875,22 @@
         "bag": "Bolsa"
       },
       "dice": {
-        "countLabel": "Cuántos",
-        "sidesLabel": "Caras",
-        "roll": "Tirar",
-        "result": "{rolls} = {total}"
+        "tap": "Tirar el dado",
+        "rollCta": "Tirar {expr}",
+        "hint": "Toca el dado para tirar",
+        "fewer": "Un dado menos",
+        "more": "Un dado más",
+        "customSides": "Caras personalizadas"
       },
       "coin": {
         "flip": "Lanzar moneda",
         "heads": "Cara",
-        "tails": "Cruz"
+        "tails": "Cruz",
+        "hint": "Toca la moneda para lanzar",
+        "fewer": "Una moneda menos",
+        "more": "Una moneda más",
+        "result": "{heads, plural, one {# cara} other {# caras}}, {tails, plural, one {# cruz} other {# cruces}}",
+        "flipCta": "{count, plural, one {Lanzar la moneda} other {Lanzar # monedas}}"
       },
       "players": {
         "regulars": "Tus habituales",
@@ -2892,6 +2900,8 @@
         "remove": "Quitar a {name}",
         "hint": "Añade al menos 2 jugadores para sortear.",
         "first": "Primer jugador",
+        "wheelHint": "Toca la ruleta para sortear",
+        "team": "Equipo {n}",
         "order": "Orden aleatorio",
         "teams": "Equipos",
         "teamCount": "Número de equipos"
@@ -2905,6 +2915,7 @@
         "hint": "Añade tipos de ficha con su cantidad.",
         "withReplacement": "Con reemplazo (no descuenta)",
         "draw": "Sacar ficha",
+        "drawHint": "Toca la bolsa para sacar ficha",
         "remaining": "Quedan {n}",
         "reset": "Reiniciar bolsa"
       },
@@ -2915,17 +2926,13 @@
         "clear": "Limpiar todo",
         "clearConfirm": "¿Seguro? Borra todo"
       },
-      "log": {
-        "dice": "{expr}: {rolls} = {total}",
-        "coinHeads": "Moneda: cara",
-        "coinTails": "Moneda: cruz",
-        "first": "Empieza {picked}",
-        "order": "Orden: {order}",
-        "teams": "Equipos: {teams}",
-        "playersSet": "Jugadores actualizados ({count})",
-        "bagSet": "Bolsa configurada",
-        "bagDrawn": "Ficha: {name}",
-        "cleared": "Todo limpio"
+      "row": {
+        "coin": "Moneda",
+        "coins": "{count} monedas",
+        "first": "Primero",
+        "order": "Orden",
+        "teams": "Equipos",
+        "bag": "Bolsa"
       }
     }
   }

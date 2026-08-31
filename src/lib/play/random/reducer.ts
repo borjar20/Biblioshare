@@ -20,6 +20,15 @@ function assertDice(payload: { count: number; sides: number; results: number[] }
   }
 }
 
+function assertCoins(payload: { count: number; results: ("heads" | "tails")[] }): void {
+  const { count, results } = payload;
+  if (!Number.isInteger(count) || count < 1 || count > 5) throw new Error("count inválido");
+  if (results.length !== count) throw new Error("results no cuadra con count");
+  for (const r of results) {
+    if (r !== "heads" && r !== "tails") throw new Error("resultado inválido");
+  }
+}
+
 function assertSameMembers(a: readonly string[], b: readonly string[]): void {
   if (a.length !== b.length) throw new Error("no es permutación");
   const left = [...a].sort();
@@ -53,6 +62,9 @@ export function randomReducer(state: RandomState, event: RandomEvent): RandomSta
       assertDice(event.payload);
       return state;
     case "coin_flipped":
+      return state;
+    case "coins_flipped":
+      assertCoins(event.payload);
       return state;
     case "first_picked": {
       const { players, picked } = event.payload;

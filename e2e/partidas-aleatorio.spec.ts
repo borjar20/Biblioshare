@@ -9,20 +9,28 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   await page.goto("/partidas/aleatorio");
   await expect(page.getByRole("heading", { name: "Aleatorio" })).toBeVisible();
 
-  await page.getByRole("button", { name: "d6", exact: true }).click();
+  // Reposo: hint que centra el escenario. Tirar = tocar el dado.
+  await expect(page.getByText("Toca el dado para tirar")).toBeVisible();
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
   await expect(page.getByTestId("dice-result")).toBeVisible();
+  await expect(page.getByText("Toca el dado para tirar")).toHaveCount(0);
 
-  // Tirada libre 3d6: el resultado formatea "a + b + c = total".
-  await page.getByLabel("Cuántos").fill("3");
-  await page.getByLabel("Caras").fill("6");
-  await page.getByRole("button", { name: /^tirar$/i }).click();
-  await expect(page.getByTestId("dice-result")).toContainText("=");
+  // 3d6 vía stepper: el resultado formatea "a + b + c = total". El "+" solo
+  // aparece en tiradas múltiples — el "4 = 4" viejo no lo satisface.
+  await page.getByRole("button", { name: "Un dado más" }).click();
+  await page.getByRole("button", { name: "Un dado más" }).click();
+  await page.getByRole("button", { name: "Tirar 3d6" }).click();
+  await expect(page.getByTestId("dice-result")).toContainText("+");
 
+  // 3 monedas: recuento "N caras, M cruces" — solo el formato múltiple lleva
+  // dígitos (el singular es "Cara"/"Cruz" a secas).
   await page.getByRole("tab", { name: "Moneda" }).click();
-  await page.getByRole("button", { name: /^lanzar moneda$/i }).click();
-  await expect(page.getByTestId("coin-result")).toHaveText(/^(Cara|Cruz)$/);
+  await page.getByRole("button", { name: "Una moneda más" }).click();
+  await page.getByRole("button", { name: "Una moneda más" }).click();
+  await page.getByRole("button", { name: "Lanzar 3 monedas" }).click();
+  await expect(page.getByTestId("coin-result")).toContainText(/\d/);
 
-  // El feed acumula los tres resultados; deshacer quita el último (la moneda).
+  // El feed acumula los tres resultados; deshacer quita el último (las monedas).
   const feed = page.locator('section[aria-label="Últimos resultados"] li');
   await expect(feed).toHaveCount(3);
   await page.getByRole("button", { name: /^deshacer$/i }).click();
@@ -53,16 +61,23 @@ test("jugadores: primero, orden y equipos", async ({ page }) => {
   await expect(page.getByTestId("players-result")).toContainText(/Ana|Beto|Carla|Dario/);
 
   await page.getByRole("button", { name: /^orden aleatorio$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText("Orden:");
+  await expect(page.getByTestId("players-result")).toContainText("1.");
 
   await page.getByLabel("Número de equipos").fill("2");
   await page.getByRole("button", { name: /^equipos$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText("Equipos:");
+  await expect(page.getByTestId("players-result")).toContainText("Equipo 1");
 });
 
 test("bolsa sin reemplazo se agota, se desactiva y se reinicia", async ({ page }) => {
   await page.goto("/partidas/aleatorio");
   await page.getByRole("tab", { name: "Bolsa" }).click();
+
+  // Sin scroll lateral en móvil: el input de nombre debe poder encoger
+  // (min-w-0) o el formulario de añadir desborda el viewport de 390px.
+  const overflow = await page.evaluate(
+    () => document.scrollingElement!.scrollWidth - document.scrollingElement!.clientWidth,
+  );
+  expect(overflow).toBe(0);
 
   await page.getByLabel("Tipo de ficha").fill("Rojo");
   await page.getByLabel("Cantidad").fill("1");
@@ -89,7 +104,7 @@ test("convive con una partida de puntuación activa", async ({ page }) => {
 
   // ...usar el Aleatorio en medio...
   await page.goto("/partidas/aleatorio");
-  await page.getByRole("button", { name: "d6", exact: true }).click();
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
   await expect(page.getByTestId("dice-result")).toBeVisible();
 
   // ...y la partida sigue viva: el hub enseña el banner de partida en curso
@@ -98,4 +113,12 @@ test("convive con una partida de puntuación activa", async ({ page }) => {
   // "Seguir" (play.resume) — no "continuar", que no existe en la copia real.
   await page.goto("/partidas");
   await expect(page.getByRole("link", { name: /seguir/i })).toBeVisible();
+});
+
+test("con reduced motion el resultado aparece al instante", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/partidas/aleatorio");
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
+  // Sin teatro: nada de esperar los ~900 ms del cubo.
+  await expect(page.getByTestId("dice-result")).toBeVisible({ timeout: 1500 });
 });
