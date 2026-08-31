@@ -2,18 +2,19 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { buttonVariants } from "@/components/ui/button";
 import { DICE_MAX_SIDES, rollDice } from "@/lib/play/random/draws";
 import type { RandomEvent } from "@/lib/play/random/events";
-import { describeRandomEvent } from "@/lib/play/random/selectors";
 import { DiceStage } from "./stage/dice-stage";
 
 const QUICK_DICE = [4, 6, 8, 10, 12, 20];
 const STEPPER_MAX = 8;
 
 /**
- * Dados: los chips SELECCIONAN el tipo (d? abre caras libres, inválido cae a
- * d6) y el stepper la cantidad; tirar es tocar el escenario. El azar se
- * resuelve AQUÍ (rollDice) y el resultado viaja en el payload.
+ * Dados en dos bloques: los chips SELECCIONAN el tipo (d? abre caras libres,
+ * inválido cae a d6) y la fila «Cantidad» el número; el CTA primario tira
+ * (también tocar el escenario). El azar se resuelve AQUÍ (rollDice) y el
+ * resultado viaja en el payload.
  */
 export function DiceSection({
   lastRoll,
@@ -23,6 +24,7 @@ export function DiceSection({
   onEmit: (payload: { count: number; sides: number; results: number[] }) => void;
 }) {
   const t = useTranslations("play.random.dice");
+  const tr = useTranslations("play.random");
   const [sides, setSides] = useState(6);
   const [custom, setCustom] = useState(false);
   const [customSides, setCustomSides] = useState("");
@@ -34,7 +36,8 @@ export function DiceSection({
   const effectiveSides = custom ? (customValid ? parsedCustom : 6) : sides;
 
   const last = lastRoll && lastRoll.type === "dice_rolled" ? lastRoll : null;
-  const resultText = last ? t("result", describeRandomEvent(last).params) : null;
+
+  const roll = () => onEmit({ count, sides: effectiveSides, results: rollDice(count, effectiveSides) });
 
   const chipClass = (selected: boolean) =>
     `rounded-chip border px-4 py-2 text-[14px] font-semibold ${
@@ -51,8 +54,7 @@ export function DiceSection({
         }
         idleSides={effectiveSides}
         idleCount={count}
-        resultText={resultText}
-        onRoll={() => onEmit({ count, sides: effectiveSides, results: rollDice(count, effectiveSides) })}
+        onRoll={roll}
         label={t("tap")}
         hint={t("hint")}
       />
@@ -94,7 +96,12 @@ export function DiceSection({
             className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px] text-foreground"
           />
         ) : null}
-        <span className="ml-auto inline-flex items-center gap-1">
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {tr("quantity")}
+        </span>
+        <span className="inline-flex items-center gap-1">
           <button
             type="button"
             aria-label={t("fewer")}
@@ -116,6 +123,13 @@ export function DiceSection({
           </button>
         </span>
       </div>
+      <button
+        type="button"
+        onClick={roll}
+        className={buttonVariants("primary", "mt-3 w-full justify-center py-3 text-[15px]")}
+      >
+        {t("rollCta", { expr: `${count}d${effectiveSides}` })}
+      </button>
     </div>
   );
 }

@@ -2867,6 +2867,7 @@
     "random": {
       "title": "Aleatorio",
       "subtitle": "Dados, moneda, sorteos y bolsa para cualquier juego.",
+      "quantity": "Cantidad",
       "tabs": {
         "dice": "Dados",
         "coin": "Moneda",
@@ -2874,8 +2875,8 @@
         "bag": "Bolsa"
       },
       "dice": {
-        "result": "{rolls} = {total}",
         "tap": "Tirar el dado",
+        "rollCta": "Tirar {expr}",
         "hint": "Toca el dado para tirar",
         "fewer": "Un dado menos",
         "more": "Un dado más",

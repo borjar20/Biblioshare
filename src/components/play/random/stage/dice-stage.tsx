@@ -18,14 +18,13 @@ function dieSize(n: number): number {
  * Dados SVG que giran a la vez (stagger 60 ms) y aterrizan cada uno en su
  * resultado (teatro determinista: la tirada ya está emitida). En reposo
  * enseña la config del stepper con «?» y el hint que centra el escenario.
- * Más de VISIBLE_MAX resultados (logs antiguos): giran 8 y el texto con el
- * total manda.
+ * Más de VISIBLE_MAX resultados (logs antiguos): giran 8 y el desglose y el
+ * total mandan.
  */
 export function DiceStage({
   roll,
   idleSides,
   idleCount,
-  resultText,
   onRoll,
   label,
   hint,
@@ -33,7 +32,6 @@ export function DiceStage({
   roll: { id: string; sides: number; results: number[] } | null;
   idleSides: number;
   idleCount: number;
-  resultText: string | null;
   onRoll: () => void;
   label: string;
   hint: string;
@@ -59,11 +57,19 @@ export function DiceStage({
           ))}
         </span>
       </button>
-      <div aria-live="polite" className={styles.resultZone}>
+      <div aria-live="polite" className={`${styles.resultZone} text-center`}>
         {landed && roll ? (
-          <p className={`${styles.pop} font-serif text-[24px] font-semibold`} data-testid="dice-result">
-            {resultText}
-          </p>
+          <div className={styles.pop} data-testid="dice-result">
+            <p className="font-serif text-[40px] font-semibold leading-none">
+              {roll.results.reduce((a, b) => a + b, 0)}
+            </p>
+            <p className="mt-1 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+              {roll.results.length}d{roll.sides}
+            </p>
+            {roll.results.length > 1 ? (
+              <p className="mt-0.5 text-[14px] text-muted-foreground">{roll.results.join(" + ")}</p>
+            ) : null}
+          </div>
         ) : !roll ? (
           <p className="text-[14px] text-muted-foreground">{hint}</p>
         ) : null}
