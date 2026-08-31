@@ -3,7 +3,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeEvent } from "./events";
 import { BURST_WINDOW_MS } from "./log";
-import { __resetDbForTests, readActive, writeActive, type ActiveGameRecord } from "./db";
+import { __resetDbForTests, listSaved, readActive, writeActive, type ActiveGameRecord } from "./db";
 import {
   getPlayStore,
   parseSnapshot,
@@ -715,6 +715,23 @@ describe("save() (sin cobertura hasta ahora)", () => {
     const ok = await store.save();
     expect(ok).toBe(true);
     expect(store.getSnapshot().game).toBeNull();
+  });
+
+  it("save() sella summary y nace pendiente de subir", async () => {
+    const identity = "anon";
+    const store = getPlayStore(identity);
+    await ready(store);
+    store.start(started(1000));
+    expect(
+      store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "last_standing" }, 2000, "e-fin")),
+    ).toBe(true);
+    await store.save();
+    const [record] = await listSaved(identity);
+    expect(record.v).toBe(2);
+    expect(record.syncStatus).toBe("pending");
+    expect(record.deletedAt).toBeNull();
+    expect(record.summary.toolId).toBe((record.committed[0].payload as { toolId: string }).toolId);
+    expect(record.summary.winners.length).toBeGreaterThan(0);
   });
 
   it("una partida activa (no terminada) no se guarda: devuelve false y el store queda intacto", async () => {

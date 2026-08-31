@@ -2821,6 +2821,23 @@
     "empty": {
       "noActiveGame": "No hay ninguna partida en curso",
       "goToHub": "Ir a Partidas"
+    },
+    "saved": {
+      "title": "Guardadas",
+      "empty": "Las partidas que guardes aparecerán aquí.",
+      "pending": "Pendiente de subir",
+      "players": "{count, plural, one {# jugador} other {# jugadores}}",
+      "winner": "Ganó {name}",
+      "winnerTie": "Empate",
+      "detailTitle": "Partida guardada",
+      "delete": "Eliminar partida",
+      "deleteConfirm": "Se elimina del historial (y del servidor si estaba subida). ¿Seguro?",
+      "adoptTitle": "{count, plural, one {# partida guardada} other {# partidas guardadas}} en este dispositivo",
+      "adoptBody": "¿Añadirlas a tu cuenta?",
+      "adopt": "Añadir a mi cuenta",
+      "adoptDismiss": "Ahora no",
+      "targetRounds": "A {value, plural, one {# ronda} other {# rondas}}",
+      "targetPoints": "Hasta {value} puntos"
     }
   }
 }

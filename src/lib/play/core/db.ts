@@ -1,6 +1,8 @@
 "use client";
 
-import type { PlayEvent } from "./types";
+import type { PlayEvent, SavedGameSummary } from "./types";
+import { replay } from "./replay";
+import { buildSavedSummary } from "../tools";
 
 // Único fichero del motor que habla el idioma de IndexedDB (spec fase 3 §2).
 // El store consume promesas; los fallos (modo privado, cuota, BD bloqueada)
@@ -8,7 +10,7 @@ import type { PlayEvent } from "./types";
 // degrada a memoria, igual que hacía el localStorage de fase 1.
 
 export const DB_NAME = "biblioshare-play";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export type ActiveGameRecord = {
   identity: string; // uid real o "anon": mismo aislamiento que la clave de fase 1
@@ -18,12 +20,17 @@ export type ActiveGameRecord = {
   rev: number; // contador de escritura, monótono por registro: la base del CAS
 };
 
+// SavedGameRecord pasa a v2 (fase 5): el almacén `saved` es el ESPEJO del
+// servidor y la única fuente de la UI del historial.
 export type SavedGameRecord = {
   gameId: string; // = committed[0].id (el game_started)
   identity: string;
-  v: 1;
+  v: 2;
   committed: PlayEvent[];
   savedAt: number; // epoch ms
+  summary: SavedGameSummary; // el mismo objeto que sube a play_games.summary
+  syncStatus: "pending" | "synced";
+  deletedAt: number | null; // tombstone: borrado pendiente de replicar
 };
 
 export type WriteResult =
@@ -42,7 +49,7 @@ function openDb(): Promise<IDBDatabase> {
         return;
       }
       const request = idb.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result;
         if (!db.objectStoreNames.contains("active")) {
           db.createObjectStore("active", { keyPath: "identity" });
@@ -50,6 +57,38 @@ function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("saved")) {
           const saved = db.createObjectStore("saved", { keyPath: "gameId" });
           saved.createIndex("identity", "identity");
+        }
+        // v1 → v2: los guardados de fase 3/4 ganan summary (derivado por replay,
+        // UNA vez, aquí) y quedan pendientes de subir. Un log que no re-juega
+        // está roto también para la UI: se descarta, no se arrastra.
+        if (event.oldVersion > 0 && event.oldVersion < 2) {
+          const saved = request.transaction!.objectStore("saved");
+          saved.openCursor().onsuccess = (e) => {
+            const cursor = (e.target as IDBRequest<IDBCursorWithValue | null>).result;
+            if (!cursor) return;
+            const old = cursor.value as {
+              gameId: string;
+              identity: string;
+              committed: PlayEvent[];
+              savedAt: number;
+            };
+            try {
+              const summary = buildSavedSummary(replay(old.committed));
+              cursor.update({
+                gameId: old.gameId,
+                identity: old.identity,
+                v: 2,
+                committed: old.committed,
+                savedAt: old.savedAt,
+                summary,
+                syncStatus: "pending",
+                deletedAt: null,
+              } satisfies SavedGameRecord);
+            } catch {
+              cursor.delete();
+            }
+            cursor.continue();
+          };
         }
       };
       request.onsuccess = () => {
@@ -73,11 +112,11 @@ function openDb(): Promise<IDBDatabase> {
         resolve(db);
       };
       request.onerror = () => reject(request.error ?? new Error("open falló"));
-      // Hoy DB_VERSION es 1 y `onblocked` no puede dispararse; el día que suba,
-      // una pestaña vieja con la BD abierta bloquearía el open y esta promesa
-      // se quedaría colgada para siempre (y con ella toda la cola de
-      // escrituras). Rechazar la deja caer por el camino ya previsto: sin BD,
-      // se sigue jugando en memoria.
+      // Con DB_VERSION en 2, una pestaña vieja con la BD abierta en v1 puede
+      // bloquear este open de verdad: sin este handler la promesa se quedaría
+      // colgada para siempre (y con ella toda la cola de escrituras).
+      // Rechazar la deja caer por el camino ya previsto: sin BD, se sigue
+      // jugando en memoria.
       request.onblocked = () =>
         reject(new Error("open bloqueado por otra conexión con una versión anterior"));
     });
@@ -158,6 +197,55 @@ export async function saveFinished(record: SavedGameRecord): Promise<boolean> {
     });
   } catch {
     return false;
+  }
+}
+
+// Para la guarda de rancidez del ejecutor de sync (I2): releer el registro
+// actual justo antes de escribir, para no pisar un borrado/tombstone que
+// ocurrió mientras la pasada estaba en vuelo.
+export async function readSaved(gameId: string): Promise<SavedGameRecord | null> {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction("saved", "readonly").objectStore("saved").get(gameId);
+      request.onsuccess = () =>
+        resolve((request.result as SavedGameRecord | undefined) ?? null);
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function listSaved(identity: string): Promise<SavedGameRecord[]> {
+  try {
+    const db = await openDb();
+    return await new Promise((resolve, reject) => {
+      const request = db
+        .transaction("saved", "readonly")
+        .objectStore("saved")
+        .index("identity")
+        .getAll(identity);
+      request.onsuccess = () => resolve((request.result as SavedGameRecord[]) ?? []);
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function deleteSaved(gameId: string): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction("saved", "readwrite");
+      tx.objectStore("saved").delete(gameId);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // sin BD no hay nada que borrar
   }
 }
 

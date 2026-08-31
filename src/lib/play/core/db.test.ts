@@ -3,11 +3,20 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   __resetDbForTests,
   deleteActive,
+  deleteSaved,
+  DB_NAME,
+  listSaved,
   readActive,
   saveFinished,
   writeActive,
   type ActiveGameRecord,
+  type SavedGameRecord,
 } from "./db";
+import { makeEvent } from "./events";
+import { replay } from "./replay";
+import { buildSavedSummary } from "../tools";
+import type { PlayEvent } from "./types";
+import type { ScoreSetup } from "../score/types";
 
 function record(rev: number): ActiveGameRecord {
   return {
@@ -17,6 +26,70 @@ function record(rev: number): ActiveGameRecord {
     pending: null,
     rev,
   };
+}
+
+// Log mínimo válido (game_started + game_finished, herramienta "score") para
+// que buildSavedSummary/replay no revienten -- mismo patrón que tools.test.ts.
+const scoreSetup: ScoreSetup = {
+  participants: [
+    { id: "ana", kind: "user", name: "Ana", userId: "user-ana-1" },
+    { id: "beto", kind: "guest", name: "Beto" },
+  ],
+  direction: "highest",
+};
+
+function scoreLog(gameId: string): PlayEvent[] {
+  return [
+    makeEvent("game_started", { toolId: "score" as const, setup: scoreSetup }, 1000, gameId),
+    makeEvent("round_scored", { scores: [5, 3] }, 1500),
+    makeEvent("game_finished", { reason: "manual" as const }, 2000),
+  ];
+}
+
+function savedRecordV2(overrides: { gameId: string; identity: string }): SavedGameRecord {
+  const committed = scoreLog(overrides.gameId);
+  return {
+    gameId: overrides.gameId,
+    identity: overrides.identity,
+    v: 2,
+    committed,
+    savedAt: 3000,
+    summary: buildSavedSummary(replay(committed)),
+    syncStatus: "pending",
+    deletedAt: null,
+  };
+}
+
+// Siembra una BD versión 1 (esquema/registros crudos, sin pasar por el
+// módulo) para probar la migración v1->v2 real del onupgradeneeded.
+async function seedV1(
+  records: Array<{ gameId: string; identity: string; v: 1; committed: PlayEvent[]; savedAt: number }>,
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("active")) {
+        db.createObjectStore("active", { keyPath: "identity" });
+      }
+      if (!db.objectStoreNames.contains("saved")) {
+        const saved = db.createObjectStore("saved", { keyPath: "gameId" });
+        saved.createIndex("identity", "identity");
+      }
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction("saved", "readwrite");
+      for (const r of records) tx.objectStore("saved").put(r);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    };
+    request.onerror = () => reject(request.error);
+  });
 }
 
 beforeEach(async () => {
@@ -59,13 +132,43 @@ describe("active", () => {
 
 describe("saved", () => {
   it("guarda una partida terminada", async () => {
-    const ok = await saveFinished({
-      gameId: "e1",
-      identity: "anon",
-      v: 1,
-      committed: [{ id: "e1", type: "game_started", at: 1000, payload: {} }],
-      savedAt: 2000,
-    });
+    const ok = await saveFinished(savedRecordV2({ gameId: "e1", identity: "anon" }));
     expect(ok).toBe(true);
+  });
+});
+
+describe("saved v2", () => {
+  it("listSaved devuelve solo los registros de la identidad, y deleteSaved borra", async () => {
+    await saveFinished(savedRecordV2({ gameId: "g1", identity: "anon" }));
+    await saveFinished(savedRecordV2({ gameId: "g2", identity: "uid-1" }));
+    const anon = await listSaved("anon");
+    expect(anon.map((r) => r.gameId)).toEqual(["g1"]);
+    await deleteSaved("g1");
+    expect(await listSaved("anon")).toEqual([]);
+  });
+
+  it("migración v1→v2: el registro gana summary derivado y queda pending", async () => {
+    // Sembrar una BD versión 1 con un registro v1 (sin summary/syncStatus),
+    // cerrar, reabrir con el módulo (DB_VERSION 2) y leer.
+    await seedV1([{ gameId: "g1", identity: "anon", v: 1, committed: scoreLog("g1"), savedAt: 3000 }]);
+    const migrated = await listSaved("anon");
+    expect(migrated[0].v).toBe(2);
+    expect(migrated[0].syncStatus).toBe("pending");
+    expect(migrated[0].deletedAt).toBeNull();
+    expect(migrated[0].summary.toolId).toBe("score");
+  });
+
+  it("migración v1→v2: un log corrupto se descarta en vez de romper el upgrade", async () => {
+    // registro v1 cuyo committed no empieza por game_started → tras migrar, no está
+    await seedV1([
+      {
+        gameId: "bad",
+        identity: "anon",
+        v: 1,
+        committed: [makeEvent("round_scored", { scores: [1, 2] }, 1000, "bad")],
+        savedAt: 3000,
+      },
+    ]);
+    expect(await listSaved("anon")).toEqual([]);
   });
 });

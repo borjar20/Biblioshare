@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { PlayFrame } from "@/components/play/play-frame";
 import { ToolGrid } from "@/components/play/tool-grid";
 import { ActiveGameBanner } from "@/components/play/active-game-banner";
+import { SavedGames } from "@/components/play/saved-games";
 import { HowItWorks } from "@/components/play/how-it-works";
 
 export const metadata: Metadata = { title: "Partidas — Biblioshare" };
@@ -26,6 +27,14 @@ async function Banner() {
   return <ActiveGameBanner identity={user?.id ?? "anon"} />;
 }
 
+// Mismo boundary de petición que Banner, y por la misma razón (#435): la
+// identidad depende de la sesión, que no se puede leer durante el prerender.
+async function Saved() {
+  await connection();
+  const user = await getCurrentUser();
+  return <SavedGames identity={user?.id ?? "anon"} />;
+}
+
 export default async function PlayHubPage() {
   const t = await getTranslations("play");
 
@@ -41,6 +50,12 @@ export default async function PlayHubPage() {
       </Suspense>
 
       <ToolGrid />
+
+      <div className="mt-8">
+        <Suspense fallback={null}>
+          <Saved />
+        </Suspense>
+      </div>
 
       {/* En tres columnas a lo ancho: es lo que llena el hub en escritorio con
           información en vez de con aire (revisión UX 2026-08-30). */}
