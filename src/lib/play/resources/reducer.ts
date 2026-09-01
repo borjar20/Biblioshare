@@ -73,6 +73,18 @@ export function resourcesReducer(state: ResourcesState, event: ResourcesEvent): 
       const defs = state.defs.filter((d) => d.name !== name);
       return { ...state, defs, values: reconcile(state.players, defs, state.values) };
     }
+    case "resource_updated": {
+      const { name, initial, shared } = event.payload;
+      if (!state.defs.some((d) => d.name === name)) throw new Error("recurso inexistente");
+      if (!Number.isInteger(initial) || initial < RESOURCE_VALUE_MIN || initial > RESOURCE_VALUE_MAX) {
+        throw new Error("initial fuera de rango");
+      }
+      // Solo cambia la definición: los valores que ya había se conservan y
+      // «Reiniciar valores» es quien aplica el nuevo inicial. Cambiar de
+      // dueño reconcilia (banco = una entrada; jugadores = una por cabeza).
+      const defs = state.defs.map((d) => (d.name === name ? { ...d, initial, shared } : d));
+      return { ...state, defs, values: reconcile(state.players, defs, state.values) };
+    }
     case "adjusted": {
       const { resource, owner, delta } = event.payload;
       const def = state.defs.find((d) => d.name === resource);

@@ -22,6 +22,8 @@ const addRes = (name: string, initial = 0, shared = false, emoji = "") =>
   ev("resource_added", { name, emoji, initial, shared });
 const adjust = (resource: string, owner: string | null, delta: number) =>
   ev("adjusted", { resource, owner, delta });
+const update = (name: string, initial: number, shared: boolean) =>
+  ev("resource_updated", { name, initial, shared });
 
 function run(events: ResourcesEvent[], base: ResourcesState | null = null): ResourcesState {
   return events.reduce(resourcesReducer, base ?? initialResourcesState());
@@ -149,6 +151,27 @@ describe("values_reset y cleared", () => {
     const log: ResourcesEvent[] = [players(["Ana"]), addRes("Madera", 5), ev("cleared", {})];
     expect(replayResources(null, log)).toEqual(initialResourcesState());
     expect(valueOf(replayResources(null, log.slice(0, -1)), "Madera", "Ana")).toBe(5);
+  });
+});
+
+describe("resource_updated", () => {
+  it("cambia la definición y conserva los valores que ya había", () => {
+    const s = run([players(["Ana"]), addRes("Madera", 5), adjust("Madera", "Ana", 2), update("Madera", 9, false)]);
+    expect(s.defs[0]).toEqual({ name: "Madera", emoji: "", initial: 9, shared: false });
+    expect(valueOf(s, "Madera", "Ana")).toBe(7);
+  });
+  it("pasar a banco reconcilia: una sola entrada compartida a initial", () => {
+    const s = run([players(["Ana", "Beto"]), addRes("Oro", 1), update("Oro", 3, true)]);
+    expect(s.values).toEqual([{ resource: "Oro", owner: null, value: 3 }]);
+  });
+  it("values_reset aplica el nuevo inicial", () => {
+    const s = run([players(["Ana"]), addRes("Madera", 5), update("Madera", 9, false), ev("values_reset", {})]);
+    expect(valueOf(s, "Madera", "Ana")).toBe(9);
+  });
+  it("recurso inexistente o initial fuera de rango lanza", () => {
+    const base = run([players(["Ana"]), addRes("Madera", 5)]);
+    expect(() => resourcesReducer(base, update("Oro", 1, false))).toThrow("recurso inexistente");
+    expect(() => resourcesReducer(base, update("Madera", -10_000, false))).toThrow("initial fuera de rango");
   });
 });
 

@@ -6,6 +6,10 @@ import type { ResourceDef } from "./types";
 export type ResourcesPlayersSetEvent = PlayEvent<"players_set", { players: string[] }>;
 export type ResourceAddedEvent = PlayEvent<"resource_added", ResourceDef>;
 export type ResourceRemovedEvent = PlayEvent<"resource_removed", { name: string }>;
+export type ResourceUpdatedEvent = PlayEvent<
+  "resource_updated",
+  { name: string; initial: number; shared: boolean }
+>;
 export type AdjustedEvent = PlayEvent<
   "adjusted",
   { resource: string; owner: string | null; delta: number }
@@ -17,6 +21,7 @@ export type ResourcesEvent =
   | ResourcesPlayersSetEvent
   | ResourceAddedEvent
   | ResourceRemovedEvent
+  | ResourceUpdatedEvent
   | AdjustedEvent
   | ValuesResetEvent
   | ResourcesClearedEvent;
@@ -26,6 +31,7 @@ const RESOURCES_EVENT_TYPE_MAP = {
   players_set: true,
   resource_added: true,
   resource_removed: true,
+  resource_updated: true,
   adjusted: true,
   values_reset: true,
   cleared: true,
