@@ -3448,3 +3448,33 @@ Consecuencia en la mesa de puntuación: con las fichas arriba, los chips de `Reg
 bajo el campo repetían a la misma gente. Ahí los chips pasan a salir solo AL ESCRIBIR
 (`suggestOnEmpty={false}`); en mtg siguen saliendo con el campo vacío, porque allí no hay
 fichas y los chips son lo único que hace descubribles a los habituales (spec fase 6 §6).
+
+## La ficha de asiento se toca para abrir, nunca para quitar (2026-09-01)
+
+En los acompañantes tocar una ficha quitaba al jugador y en puntuación la abría: la misma forma con dos
+acciones opuestas, y la primera sin deshacer. Se unifica en `SeatRow`: tocar selecciona y abre el panel;
+quitar vive dentro. Los acompañantes no renombran (identifican por nombre; renombrar sería quitar+añadir).
+
+## Los recursos llevan glifo propio y se ajustan con `resource_updated` (2026-09-01)
+
+Los iconos eran emoji del sistema: `🪙`/`🪨` son Emoji 13 y salían en blanco en Windows 10 y Android < 11,
+además de contravenir DESIGN.md. Diez glifos SVG en `resource-icons.tsx`; el id viaja en el campo `emoji`
+(≤ 8 chars, reducer intacto) y los eventos viejos siguen pintando su texto. Los presets crean de un toque
+(inicial 0, jugadores) y el panel de la ficha emite `resource_updated`, que solo toca la definición: los
+valores ya ajustados se conservan; los que seguían en el inicial viejo pasan al nuevo, para que configurar
+después de crear deje a todos en el inicial.
+
+## Sin `type=number`, `select` ni `checkbox` en BiblioPlay (2026-09-01)
+
+Tras la critique visual (25/40): la hoja de ronda va con chips ±5/±10/±20 y −/+ con mantener, el límite
+de puntuación es Libre/Rondas/Puntos con `TargetStepper` (paso 1 rondas, 5 puntos) en hub y config, la
+config de MTG son fichas con panel + chips de vidas + fichas de quién empieza, el equipo de Aleatorio se
+elige con chips 2..N-1 y la bolsa se rellena tras un «+». Única excepción: las caras del `d?` del
+Aleatorio, ya tras su chip.
+
+## El número del stepper no lleva aria-live en setups ni hubs (2026-09-01)
+
+El e2e del tablero (`/partida/activa`) cuenta exactamente una live region. Con Cache Components el DOM de
+la ruta anterior queda congelado y oculto (`display:none`) tras `router.push`, así que un `aria-live` en
+una pantalla de setup o de hub se suma a esa cuenta aunque esté invisible (issue #1003). Los steppers
+llevan `aria-label` en sus botones y en el número visible, sin `aria-live`.
