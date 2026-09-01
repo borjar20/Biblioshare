@@ -133,8 +133,8 @@ reloj no es narrativa; reconfigurar y reset cubren los errores).
 - Setup y juego en una pantalla: chips preset 30 s / 1 / 2 / 5 / 10 min + custom (5 s..2 h);
   aro de progreso SVG (stroke-dashoffset proporcional a `remainingAt`) con el tiempo en el
   centro (serif tabular); CTA primario «Empezar» / «Pausar» / «Reanudar» según estado;
-  «Reiniciar» ghost. Al llegar a 0: `buzz()`, aro completo en `--play-danger`, tiempo sigue
-  a 0 fijo (la cuenta atrás NO va a negativo: se detiene sola liquidando a 0 —
+  «Reiniciar» ghost. Al llegar a 0: `buzz()`, el aro se vacía del todo y el tiempo central
+  pasa a `--play-danger`, tiempo sigue a 0 fijo (la cuenta atrás NO va a negativo: se detiene sola liquidando a 0 —
   `countdownRunning` pasa a false en la LIQUIDACIÓN del selector visual y con el siguiente
   evento en el estado).
 - Cambiar de preset con la cuenta parada re-emite `countdown_configured`.
