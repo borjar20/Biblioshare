@@ -3369,3 +3369,17 @@ murieron a favor del selector `feedRow` (etiqueta/valor/desglose estructurados)
 para que un evento nuevo rompa la compilación y no pinte una fila en blanco.
 Specs: 2026-08-31-play-random-multi-design.md y
 2026-08-31-play-random-hierarchy-design.md.
+
+## Reloj de partida: el tiempo se deriva de timestamps, nunca de un contador vivo (2026-09-01)
+
+El segundo acompañante (reloj de ajedrez + cuenta atrás) guarda en el log los TOQUES
+(turn_passed, pausa…) con su timestamp, y el reducer «liquida» el tiempo transcurrido
+entre eventos; el tick de pantalla es solo UI (`remainingAt(state, now)`). Cerrar la app
+a mitad de turno no pierde tiempo. Se descartó el contador con setInterval + persist
+periódico (pierde el intervalo final y rompe el patrón de companions). Consecuencias
+asumidas: un reloj del sistema hacia atrás se CLAVA al `lastEventAt` vigente al emitir
+(el replay de logs guardados sí lanza ante `at` no monotónico — registro corrupto se
+descarta), y la monotonía es parte del contrato del log. De paso, el hook del Aleatorio
+se generalizó a `useCompanionStore` (core) con la clave vieja intacta; el reloj usa
+`{identity}:clock` en el mismo almacén `companion`. Spec:
+docs/superpowers/specs/2026-09-01-play-clock-design.md.

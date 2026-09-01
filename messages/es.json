@@ -2648,6 +2648,9 @@
       },
       "random": {
         "name": "Aleatorio"
+      },
+      "clock": {
+        "name": "Reloj"
       }
     },
     "rememberedTable": {
@@ -2934,6 +2937,35 @@
         "teams": "Equipos",
         "bag": "Bolsa"
       }
+    },
+    "clock": {
+      "title": "Reloj",
+      "subtitle": "Reloj de ajedrez y cuenta atrás para cualquier juego.",
+      "tabs": { "chess": "Ajedrez", "countdown": "Cuenta atrás" },
+      "nameLabel": "Nombre del jugador",
+      "namePlaceholder": "Añadir jugador…",
+      "remove": "Quitar a {name}",
+      "playersHint": "Añade entre 2 y 6 jugadores.",
+      "initial": "Tiempo inicial",
+      "increment": "Incremento",
+      "minutes": "{n} min",
+      "fewerMinutes": "Un minuto menos",
+      "moreMinutes": "Un minuto más",
+      "addPlayer": "Añadir jugador",
+      "startExpr": "Empezar {expr}",
+      "noIncrement": "Sin incremento",
+      "plusSeconds": "+{n} s",
+      "start": "Empezar",
+      "pause": "Pausa",
+      "resume": "Reanudar",
+      "reset": "Reiniciar",
+      "resetConfirm": "¿Seguro? Reinicia el reloj",
+      "flag": "Sin tiempo",
+      "duration": "Duración",
+      "seconds": "{n} s",
+      "addThirty": "Añadir 30 segundos",
+      "blockedByChess": "Reinicia el reloj de ajedrez para configurar la cuenta atrás.",
+      "blockedByCountdown": "Pausa o reinicia la cuenta atrás para empezar."
     }
   }
 }

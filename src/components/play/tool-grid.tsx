@@ -4,6 +4,7 @@ import { playTools } from "@/lib/play/tools";
 import type { ToolId } from "@/lib/play/core/types";
 import { toolViews } from "./tool-views";
 import { RandomTableMark } from "./marks/random-table-mark";
+import { ClockTableMark } from "./marks/clock-table-mark";
 
 /**
  * Rejilla de herramientas del hub. Sale ENTERA de los dos registros: el de dominio
@@ -48,6 +49,20 @@ export async function ToolGrid() {
           <RandomTableMark className="h-16 w-16" />
           <span className="text-center font-serif text-[15px] font-semibold">
             {t("tools.random.name")}
+          </span>
+        </Link>
+      </li>
+
+      {/* El Reloj, como el Aleatorio, vive FUERA del registro (acompañante sin
+          partida): tarjeta estática. */}
+      <li>
+        <Link
+          href="/partidas/reloj"
+          className="flex flex-col items-center gap-3 rounded-card border border-border bg-surface p-4 transition-colors hover:bg-surface-muted"
+        >
+          <ClockTableMark className="h-16 w-16" />
+          <span className="text-center font-serif text-[15px] font-semibold">
+            {t("tools.clock.name")}
           </span>
         </Link>
       </li>
