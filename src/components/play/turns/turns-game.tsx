@@ -110,9 +110,12 @@ export function TurnsGame({
         })}
 
         {/* Flecha de dirección, arriba y dentro del anillo. */}
+        {/* En la banda libre entre la etiqueta de la ficha de arriba (~y74) y
+            el botón central (y92): a top-[52px] pisaba la ficha 0, activa en
+            el primer frame de cada partida (review Task 3). */}
         <svg
           viewBox="0 0 60 24"
-          className="absolute left-1/2 top-[52px] h-6 w-14 -translate-x-1/2"
+          className="absolute left-1/2 top-[74px] h-4 w-12 -translate-x-1/2"
           aria-hidden="true"
           style={state.direction === -1 ? { transform: "translateX(-50%) scaleX(-1)" } : undefined}
         >
@@ -196,7 +199,10 @@ export function TurnsGame({
         </button>
         <button
           type="button"
-          onClick={() => emit("turn_skipped", {})}
+          onClick={() => {
+            emit("turn_skipped", {});
+            setPendingEliminate(null);
+          }}
           className="rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold"
         >
           {t("skip")}
