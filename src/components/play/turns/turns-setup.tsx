@@ -3,21 +3,16 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
-import { usePlayers } from "@/lib/play/core/use-players";
+import { SeatPicker } from "@/components/play/ui/seat-picker";
 import { shuffle } from "@/lib/play/random/draws";
 import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { TurnsEvent } from "@/lib/play/turns/events";
 import type { TurnsState } from "@/lib/play/turns/types";
 import { TURNS_MAX_PHASES, TURNS_MAX_PLAYERS } from "@/lib/play/turns/reducer";
-import { SEAT_ACCENT } from "@/lib/play/ui/seats";
 
 // Fases habituales de mesa: se ENCIENDEN en el orden en que se tocan. Solo
 // español (única locale); un set custom entra por la píldora «+».
 const PHASE_PRESETS = ["Mantenimiento", "Robar", "Acción", "Construir", "Combate", "Final"];
-
-function initials(name: string): string {
-  return name.trim().slice(0, 2).toUpperCase();
-}
 
 /**
  * Setup del tracker (spec turnos §2): cero inputs a la vista — jugadores como
@@ -37,26 +32,10 @@ export function TurnsSetup({
   emit: CompanionEmit<TurnsEvent>;
 }) {
   const t = useTranslations("play.turns");
-  const { players: regulars } = usePlayers(identity);
   const [players, setPlayers] = useState<string[]>(state.players);
-  const [name, setName] = useState("");
-  const [adding, setAdding] = useState(false);
   const [phasesOn, setPhasesOn] = useState<string[]>(state.phases);
   const [phaseName, setPhaseName] = useState("");
   const [addingPhase, setAddingPhase] = useState(false);
-
-  function addPlayer(candidate: string, fromInput = false) {
-    const trimmed = candidate.trim();
-    if (trimmed === "" || players.includes(trimmed) || players.length >= TURNS_MAX_PLAYERS) {
-      return;
-    }
-    setPlayers([...players, trimmed]);
-    // Solo el alta DESDE el input limpia y cierra (memoria visual-first).
-    if (fromInput) {
-      setName("");
-      setAdding(false);
-    }
-  }
 
   function togglePhase(phase: string) {
     setPhasesOn(
@@ -82,7 +61,6 @@ export function TurnsSetup({
     setAddingPhase(false);
   }
 
-  const regularTokens = regulars.filter((r) => !players.includes(r.name)).slice(0, 6);
   const customPhases = phasesOn.filter((p) => !PHASE_PRESETS.includes(p));
 
   const pillClass = (selected: boolean) =>
@@ -95,67 +73,16 @@ export function TurnsSetup({
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {t("players")}
       </p>
-      <div className="mt-2 flex flex-wrap items-start gap-3">
-        {players.map((p, i) => (
-          <span key={p} className="flex w-14 flex-col items-center gap-1">
-            <button
-              type="button"
-              aria-label={t("removeToken", { name: p })}
-              title={p}
-              onClick={() => setPlayers(players.filter((x) => x !== p))}
-              className="flex h-11 w-11 select-none items-center justify-center rounded-full text-[14px] font-semibold text-surface"
-              style={{ background: `var(${SEAT_ACCENT[i % SEAT_ACCENT.length].varName})` }}
-            >
-              {initials(p)}
-            </button>
-            <span className="max-w-full truncate text-[10px] text-muted-foreground">{p}</span>
-          </span>
-        ))}
-        {regularTokens.map((r) => (
-          <span key={r.playerId} className="flex w-14 flex-col items-center gap-1">
-            <button
-              type="button"
-              onClick={() => addPlayer(r.name)}
-              aria-label={r.name}
-              title={r.name}
-              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[14px] font-semibold text-muted-foreground opacity-70"
-            >
-              {initials(r.name)}
-            </button>
-            <span className="max-w-full truncate text-[10px] text-muted-foreground">{r.name}</span>
-          </span>
-        ))}
-        {players.length < TURNS_MAX_PLAYERS ? (
-          <span className="flex w-14 flex-col items-center gap-1">
-            <button
-              type="button"
-              aria-label={t("addPlayer")}
-              aria-expanded={adding}
-              aria-controls="turns-add-player"
-              onClick={() => setAdding(!adding)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[18px] font-semibold text-muted-foreground"
-            >
-              +
-            </button>
-            <span className="text-[10px] text-muted-foreground">{t("addPlayer")}</span>
-          </span>
-        ) : null}
+      {/* El ORDEN de las fichas es el orden de turno; «Barajar» lo sortea. */}
+      <div className="mt-2">
+        <SeatPicker
+          identity={identity}
+          players={players}
+          max={TURNS_MAX_PLAYERS}
+          onChange={setPlayers}
+          idPrefix="turns"
+        />
       </div>
-      {adding ? (
-        <div id="turns-add-player" className="mt-2 flex justify-center">
-          <input
-            autoFocus
-            value={name}
-            placeholder={t("namePlaceholder")}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") addPlayer(name, true);
-            }}
-            aria-label={t("nameLabel")}
-            className="w-48 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-          />
-        </div>
-      ) : null}
       <div className="mt-2 flex items-center gap-3">
         <button
           type="button"

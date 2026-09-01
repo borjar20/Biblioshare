@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePlayers } from "@/lib/play/core/use-players";
 import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
+import { SeatPicker } from "@/components/play/ui/seat-picker";
+import { initials } from "@/components/play/ui/seat-token";
 import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { ResourcesEvent } from "@/lib/play/resources/events";
 import type { ResourcesState } from "@/lib/play/resources/types";
@@ -14,13 +15,8 @@ import {
   RESOURCE_VALUE_MIN,
 } from "@/lib/play/resources/reducer";
 import { stableColor } from "@/components/play/random/stage/stage-helpers";
-import { SEAT_ACCENT } from "@/lib/play/ui/seats";
 
 const EMOJI_OPTIONS = ["🪙", "🌲", "💎", "❤️", "⚡", "🧱", "🐑", "🌾", "🪨", "⭐"];
-
-function initials(name: string): string {
-  return name.trim().slice(0, 2).toUpperCase();
-}
 
 /**
  * Configuración visual del gestor (spec recursos-visual §2): jugadores como
@@ -40,9 +36,6 @@ export function ResourcesConfig({
   emit: CompanionEmit<ResourcesEvent>;
 }) {
   const t = useTranslations("play.resources");
-  const { players: regulars } = usePlayers(identity);
-  const [name, setName] = useState("");
-  const [adding, setAdding] = useState(false);
   const [resName, setResName] = useState("");
   const [emoji, setEmoji] = useState("");
   const [initial, setInitial] = useState(0);
@@ -62,21 +55,6 @@ export function ResourcesConfig({
     onPreview: setInitialPreview,
     onCommit: commitInitial,
   });
-
-  function addPlayer(candidate: string, fromInput = false) {
-    const trimmed = candidate.trim();
-    if (trimmed === "" || state.players.includes(trimmed)) return;
-    if (state.players.length >= RESOURCES_MAX_PLAYERS) return;
-    emit("players_set", { players: [...state.players, trimmed] });
-    // Solo el alta DESDE el input limpia y cierra: tocar un habitual con un
-    // nombre a medio escribir no se traga el borrador (lección del reloj).
-    if (fromInput) {
-      setName("");
-      setAdding(false);
-    }
-  }
-
-  const regularTokens = regulars.filter((r) => !state.players.includes(r.name)).slice(0, 6);
 
   const trimmedRes = resName.trim();
   const addValid =
@@ -104,69 +82,17 @@ export function ResourcesConfig({
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {t("players")}
       </p>
-      <div className="mt-2 flex flex-wrap items-start gap-3">
-        {state.players.map((p, i) => (
-          <span key={p} className="flex w-14 flex-col items-center gap-1">
-            <button
-              type="button"
-              aria-label={t("removePlayer", { name: p })}
-              title={p}
-              onClick={() =>
-                emit("players_set", { players: state.players.filter((x) => x !== p) })
-              }
-              className="flex h-11 w-11 select-none items-center justify-center rounded-full text-[14px] font-semibold text-surface"
-              style={{ background: `var(${SEAT_ACCENT[i % SEAT_ACCENT.length].varName})` }}
-            >
-              {initials(p)}
-            </button>
-            <span className="max-w-full truncate text-[10px] text-muted-foreground">{p}</span>
-          </span>
-        ))}
-        {regularTokens.map((r) => (
-          <span key={r.playerId} className="flex w-14 flex-col items-center gap-1">
-            <button
-              type="button"
-              onClick={() => addPlayer(r.name)}
-              aria-label={r.name}
-              title={r.name}
-              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[14px] font-semibold text-muted-foreground opacity-70"
-            >
-              {initials(r.name)}
-            </button>
-            <span className="max-w-full truncate text-[10px] text-muted-foreground">{r.name}</span>
-          </span>
-        ))}
-        {state.players.length < RESOURCES_MAX_PLAYERS ? (
-          <span className="flex w-14 flex-col items-center gap-1">
-            <button
-              type="button"
-              aria-label={t("addPlayer")}
-              aria-expanded={adding}
-              aria-controls="resources-add-player"
-              onClick={() => setAdding(!adding)}
-              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[18px] font-semibold text-muted-foreground"
-            >
-              +
-            </button>
-            <span className="text-[10px] text-muted-foreground">{t("addPlayer")}</span>
-          </span>
-        ) : null}
+      {/* Quitar un jugador REESCRIBE la lista entera: el reducer reconcilia
+          los valores conservando a los supervivientes. */}
+      <div className="mt-2">
+        <SeatPicker
+          identity={identity}
+          players={state.players}
+          max={RESOURCES_MAX_PLAYERS}
+          onChange={(players) => emit("players_set", { players })}
+          idPrefix="resources"
+        />
       </div>
-      {adding ? (
-        <div id="resources-add-player" className="mt-2 flex justify-center">
-          <input
-            autoFocus
-            value={name}
-            placeholder={t("namePlaceholder")}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") addPlayer(name, true);
-            }}
-            aria-label={t("nameLabel")}
-            className="w-48 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-          />
-        </div>
-      ) : null}
 
       <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {t("resources")}

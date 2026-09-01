@@ -7,14 +7,11 @@ import type { TurnsEvent } from "@/lib/play/turns/events";
 import type { TurnsState } from "@/lib/play/turns/types";
 import { aliveCount } from "@/lib/play/turns/selectors";
 import { buzz } from "@/components/play/random/stage/stage-helpers";
+import { initials } from "@/components/play/ui/seat-token";
 import { SEAT_ACCENT } from "@/lib/play/ui/seats";
 
 const RING = 280; // lado del contenedor en px
 const RADIUS = 108; // radio de las fichas desde el centro
-
-function initials(name: string): string {
-  return name.trim().slice(0, 2).toUpperCase();
-}
 
 /**
  * Juego del tracker (spec turnos §2): anillo de fichas con la activa grande y
