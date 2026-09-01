@@ -26,7 +26,7 @@ export function HoldRepeatButton({
       type="button"
       aria-label={label}
       {...handlers}
-      className="h-10 w-10 select-none rounded-chip border border-border text-[18px] font-semibold [touch-action:manipulation]"
+      className="h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold [touch-action:manipulation]"
     >
       {direction > 0 ? "+" : "−"}
     </button>

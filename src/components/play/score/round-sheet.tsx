@@ -86,7 +86,7 @@ export function RoundSheet({
               aria-label={t("roundSheet.quick", { n: delta > 0 ? `+${delta}` : String(delta), name: activeName })}
               className="tap-44 h-11 min-w-11 rounded-chip border border-border bg-surface px-3 font-mono text-[14px] tabular-nums"
             >
-              {delta > 0 ? `+${delta}` : delta}
+              {delta > 0 ? `+${delta}` : `−${Math.abs(delta)}`}
             </button>
           ))}
         </div>

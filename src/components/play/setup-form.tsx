@@ -384,7 +384,10 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
             >
               −
             </button>
-            <span className="w-14 text-center font-serif text-[22px] font-semibold tabular-nums" aria-live="polite">
+            {/* Sin aria-live: con Cache Components el DOM de esta pantalla queda congelado
+                y oculto tras el router.push a /partida/activa, y una región viva aquí se
+                cuela en el recuento de aria-live del e2e del tablero (issue #1003). */}
+            <span className="w-14 text-center font-serif text-[22px] font-semibold tabular-nums">
               {shownLife}
             </span>
             <button
