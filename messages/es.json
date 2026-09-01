@@ -2934,6 +2934,33 @@
         "teams": "Equipos",
         "bag": "Bolsa"
       }
+    },
+    "clock": {
+      "title": "Reloj",
+      "subtitle": "Reloj de ajedrez y cuenta atrás para cualquier juego.",
+      "tabs": { "chess": "Ajedrez", "countdown": "Cuenta atrás" },
+      "regulars": "Tus habituales",
+      "nameLabel": "Nombre del jugador",
+      "namePlaceholder": "Añadir jugador…",
+      "add": "Añadir",
+      "remove": "Quitar a {name}",
+      "playersHint": "Añade entre 2 y 6 jugadores.",
+      "initial": "Tiempo inicial",
+      "increment": "Incremento",
+      "minutes": "{n} min",
+      "customMinutes": "Minutos personalizados",
+      "noIncrement": "Sin incremento",
+      "plusSeconds": "+{n} s",
+      "customIncrement": "Segundos de incremento",
+      "start": "Empezar",
+      "pause": "Pausa",
+      "resume": "Reanudar",
+      "reset": "Reiniciar",
+      "resetConfirm": "¿Seguro? Reinicia el reloj",
+      "flag": "Sin tiempo",
+      "duration": "Duración",
+      "seconds": "{n} s",
+      "customSeconds": "Segundos personalizados"
     }
   }
 }
