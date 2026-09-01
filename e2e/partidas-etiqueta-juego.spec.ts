@@ -11,6 +11,8 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 test("la etiqueta viaja del setup al historial y los chips la recuerdan", async ({ page }) => {
   await page.goto("/partidas/puntuacion/nueva");
+  // El campo vive tras el «+» (juguete sobre formulario, spec visual-first §5).
+  await page.getByRole("button", { name: "Otro juego" }).click();
   await page.getByLabel("¿A qué jugáis?").fill("UNO");
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
@@ -48,11 +50,13 @@ test("la etiqueta viaja del setup al historial y los chips la recuerdan", async 
 
   // Volver al setup con una navegación dura (evita el DOM congelado de una
   // transición blanda): el chip de "juegos anteriores" recuerda UNO y, al
-  // tocarlo, rellena el campo.
+  // tocarlo, rellena el campo (el «+» solo abre el disclosure para mirar el
+  // valor confirmado -- tocar el chip ya basta para fijarlo).
   await page.goto("/partidas/puntuacion/nueva");
   const chips = page.locator('[aria-label="Juegos anteriores"]');
   await expect(chips.getByRole("button", { name: "UNO" })).toBeVisible();
   await chips.getByRole("button", { name: "UNO" }).click();
+  await page.getByRole("button", { name: "Otro juego" }).click();
   await expect(page.getByLabel("¿A qué jugáis?")).toHaveValue("UNO");
 });
 

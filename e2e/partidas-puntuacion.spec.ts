@@ -113,21 +113,22 @@ test("una partida de puntuacion sobrevive al reload", async ({ page }) => {
   await expect(totalDe(page, 0)).toHaveText("9");
 });
 
+test("configurar la mesa arrastra jugadores y N por query", async ({ page }) => {
+  await page.goto("/partidas/puntuacion");
+  await page.getByRole("button", { name: /a x puntos/i }).click();
+  // El chooser arrastra jugadores y N por query (revisión 2026-08-31).
+  await page.getByRole("link", { name: /^configurar la mesa$/i }).click();
+  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos&jugadores=4&n=100$/);
+});
+
 test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloquea", async ({
   page,
 }) => {
-  await page.goto("/partidas/puntuacion");
-  await page.getByRole("button", { name: /a x puntos/i }).click();
-  await page.getByRole("link", { name: /^configurar la mesa$/i }).click();
-  // El chooser arrastra jugadores y N por query (revisión 2026-08-31).
-  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos&jugadores=4&n=100$/);
-
-  // El preset prefija 100; se cambia a 20 para que dos rondas basten para
-  // alcanzarlo (spec §5: el preset SOLO prefija, se puede tocar).
-  // `filter({ visible: true })`: el input del chooser sigue en el DOM de la
-  // ruta anterior (la isla se congela en navegación soft) con el mismo
-  // aria-label — sin el filtro el locator resuelve a dos.
-  await page.getByLabel("Valor del límite").filter({ visible: true }).fill("20");
+  // El preset prefija 100; se navega directo con n=20 para que dos rondas
+  // basten para alcanzarlo (spec §5: el preset SOLO prefija, se puede tocar
+  // -- aquí sin input, con el stepper solo hay −/+ y mantener).
+  await page.goto("/partidas/puntuacion/nueva?preset=puntos&jugadores=4&n=20");
+  await expect(page.getByLabel("Valor del límite").filter({ visible: true })).toHaveText("20");
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
   await expect(page.getByRole("button", { name: /^añadir ronda$/i })).toBeVisible();
@@ -151,6 +152,18 @@ test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloqu
   // Finalizar desde el botón de la propia banda.
   await page.getByRole("button", { name: "Finalizar", exact: true }).click();
   await expect(page.getByRole("heading", { name: /gana jugador 1/i })).toBeVisible();
+});
+
+test("config: Libre → Puntos con el stepper, y el juego tras el «+»", async ({ page }) => {
+  await page.goto("/partidas/puntuacion/nueva");
+  await expect(page.getByLabel("¿A qué jugáis?")).toHaveCount(0);
+  await page.getByRole("button", { name: "Puntos", exact: true }).click();
+  await page.getByRole("button", { name: "Subir límite" }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("105");
+  await page.getByRole("button", { name: "Otro juego" }).click();
+  await page.getByLabel("¿A qué jugáis?").fill("Chinchón");
+  await page.getByRole("button", { name: /^empezar$/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
 });
 
 test("reconfigurar desde dentro: la mesa llega prefijada y Empezar reinicia", async ({ page }) => {

@@ -2722,9 +2722,15 @@
       "targetRounds": "Hasta N rondas",
       "targetPoints": "Hasta X puntos",
       "targetValue": "Valor del límite",
+      "free": "Libre",
+      "rounds": "Rondas",
+      "points": "Puntos",
+      "fewer": "Bajar límite",
+      "more": "Subir límite",
       "gameName": "¿A qué jugáis?",
       "gameNamePlaceholder": "UNO, dominó, chinchón…",
-      "gameNameChips": "Juegos anteriores"
+      "gameNameChips": "Juegos anteriores",
+      "addGame": "Otro juego"
     },
     "board": {
       "life": "Vidas de {name}",

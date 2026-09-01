@@ -11,10 +11,16 @@ import type { Participant } from "@/lib/play/core/types";
 import type { ScoreDirection, ScoreSetup, ScoreTarget } from "@/lib/play/score/types";
 import { gameNameSuggestions } from "@/lib/play/ui/game-names";
 import { buttonVariants } from "@/components/ui/button";
-import { SeatToken, initials } from "../ui/seat-token";
-import { RegularTokens } from "../ui/regular-tokens";
+import { initials } from "../ui/seat-token";
+import { SeatRow } from "../ui/seat-row";
 import { RegularPicker } from "../regular-picker";
-import { parseScorePreset, scoreTargetForPreset, type ScorePresetId } from "./score-preset-chooser";
+import {
+  parseScorePreset,
+  scoreTargetForPreset,
+  SCORE_PRESET_PREFILL,
+  type ScorePresetId,
+} from "./score-preset-chooser";
+import { TargetStepper } from "./target-stepper";
 
 const FIELD =
   "w-full rounded-chip border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground";
@@ -225,6 +231,9 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   // vistazo en las fichas y solo se despliega el que se toca (nada de ocho
   // tarjetas de campos plegadas tras un <details>).
   const [openSeat, setOpenSeat] = useState<string | null>(null);
+  // Disclosure del único input del bloque «a qué jugáis» -- juguete sobre
+  // formulario (spec visual-first §5): el campo solo asoma tras el «+».
+  const [addingGame, setAddingGame] = useState(false);
 
   // UNA sola suscripción al espejo de habituales por pantalla (mismo criterio
   // que setup-form.tsx): se baja por props a cada `RegularPicker`.
@@ -369,37 +378,26 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
           de tarjetas de campos — el número de jugadores ES el número de
           fichas. Un asiento sin nombre enseña su número y vale así: empezar
           sin escribir nada sigue siendo el camino corto. */}
-      <fieldset>
-        <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <section>
+        <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
           {t("setup.players")}
-        </legend>
-        <div className="flex flex-wrap items-start gap-3">
-          {draft.players.map((player, i) => (
-            <SeatToken
-              key={player.id}
-              variant="seat"
-              seat={i}
-              caption={seatName(i)}
-              label={t("seats.edit", { name: seatName(i) })}
-              selected={player.id === openSeat}
-              expanded={player.id === openSeat}
-              controls="score-seat"
-              onClick={() => setOpenSeat(player.id === openSeat ? null : player.id)}
-            >
-              {player.name.trim() === "" ? i + 1 : initials(player.name)}
-            </SeatToken>
-          ))}
-          <RegularTokens regulars={availableRegulars} onSeat={seatRegular} />
-          {draft.players.length < MAX_PLAYERS ? (
-            <SeatToken
-              variant="add"
-              caption={t("seats.add")}
-              label={t("seats.addPlayer")}
-              onClick={addSeat}
-            />
-          ) : null}
-        </div>
-      </fieldset>
+        </p>
+        <SeatRow
+          seats={draft.players.map((player, i) => ({
+            id: player.id,
+            caption: seatName(i),
+            content: player.name.trim() === "" ? i + 1 : initials(player.name),
+            selected: player.id === openSeat,
+          }))}
+          onSeatTap={(id) => setOpenSeat(id === openSeat ? null : id)}
+          panelId="score-seat"
+          regulars={availableRegulars}
+          onSeatRegular={seatRegular}
+          canAdd={draft.players.length < MAX_PLAYERS}
+          onAdd={addSeat}
+          addControls="score-seat"
+        />
+      </section>
 
       {openIndex >= 0 ? (
         <div id="score-seat" className="rounded-card border border-border bg-surface p-3">
@@ -449,10 +447,10 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
         </div>
       ) : null}
 
-      <fieldset>
-        <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("scoreSetup.direction")}
-        </legend>
+        </p>
         <div className="flex gap-2">
           {(["highest", "lowest"] as const).map((direction) => (
             <button
@@ -461,83 +459,114 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
               aria-pressed={draft.direction === direction}
               onClick={() => setEdited({ ...draft, direction })}
               className={`h-11 flex-1 rounded-chip border px-3 text-[13px] transition-colors ${
-                draft.direction === direction
-                  ? "border-accent bg-accent/10 text-accent-ink"
-                  : "border-border bg-surface"
+                draft.direction === direction ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
               }`}
             >
               {t(direction === "highest" ? "scoreSetup.highest" : "scoreSetup.lowest")}
             </button>
           ))}
         </div>
-      </fieldset>
+      </section>
 
-      <fieldset>
-        <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      {/* Límite: Libre / Rondas / Puntos de un toque, y el N como stepper. Antes
+          no había forma de cambiar rondas por puntos: el tipo solo venía del preset. */}
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("scoreSetup.target")}
-        </legend>
-        <div className="flex items-center gap-2">
+        </p>
+        <div className="flex gap-2" role="group" aria-label={t("scoreSetup.target")}>
+          {(["free", "rounds", "points"] as const).map((option) => {
+            const on = option === "free" ? !draft.targetActive : draft.targetActive && draft.targetKind === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={on}
+                onClick={() =>
+                  setEdited(
+                    option === "free"
+                      ? { ...draft, targetActive: false }
+                      : {
+                          ...draft,
+                          targetActive: true,
+                          targetKind: option,
+                          // Cambiar de tipo trae SU prefill (10 rondas, 100
+                          // puntos) si el valor en pantalla era el del otro
+                          // tipo -- sin esto, pasar de Rondas a Puntos
+                          // arrastraba un 10 que nadie eligió para puntuar.
+                          targetValue:
+                            draft.targetKind === option
+                              ? draft.targetValue
+                              : SCORE_PRESET_PREFILL[option === "rounds" ? "rondas" : "puntos"],
+                        },
+                  )
+                }
+                className={`h-11 flex-1 rounded-chip border px-3 text-[13px] transition-colors ${
+                  on ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
+                }`}
+              >
+                {t(`scoreSetup.${option}`)}
+              </button>
+            );
+          })}
+        </div>
+        {draft.targetActive ? (
+          <div className="mt-3">
+            <TargetStepper
+              kind={draft.targetKind}
+              value={draft.targetValue}
+              onChange={(targetValue) => setEdited({ ...draft, targetValue })}
+            />
+          </div>
+        ) : null}
+      </section>
+
+      {/* A qué se juega: chips de lo guardado y un «+» para el único input. */}
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {t("scoreSetup.gameName")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("scoreSetup.gameNameChips")}>
+          {[...new Set([...(draft.gameName.trim() ? [draft.gameName.trim()] : []), ...gameNameChoices])].map((name) => (
+            <button
+              key={name}
+              type="button"
+              aria-pressed={draft.gameName.trim() === name}
+              onClick={() => setEdited({ ...draft, gameName: draft.gameName.trim() === name ? "" : name })}
+              className={`tap-44 h-11 rounded-chip border px-3 text-[13px] transition-colors ${
+                draft.gameName.trim() === name ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
+              }`}
+            >
+              {name}
+            </button>
+          ))}
           <button
             type="button"
-            aria-pressed={draft.targetActive}
-            onClick={() => setEdited({ ...draft, targetActive: !draft.targetActive })}
-            className={`h-11 shrink-0 rounded-chip border px-3 text-[13px] transition-colors ${
-              draft.targetActive
-                ? "border-accent bg-accent/10 text-accent-ink"
-                : "border-border bg-surface"
-            }`}
+            aria-label={t("scoreSetup.addGame")}
+            aria-expanded={addingGame}
+            aria-controls="score-game-name"
+            onClick={() => setAddingGame(!addingGame)}
+            className="tap-44 h-11 w-11 rounded-chip border border-dashed border-border text-[18px] text-muted-foreground"
           >
-            {t(draft.targetKind === "rounds" ? "scoreSetup.targetRounds" : "scoreSetup.targetPoints")}
+            +
           </button>
-          {draft.targetActive && (
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              onFocus={(e) => e.currentTarget.select()}
-              value={draft.targetValue}
-              onChange={(e) => setEdited({ ...draft, targetValue: Number(e.target.value) || 0 })}
-              onBlur={() => {
-                // El reducer rechaza un target que no sea entero >= 1 (issue
-                // #964): sin esto un campo vaciado a mano dejaría un valor
-                // inválido que `start()` no puede arrancar.
-                if (!Number.isInteger(draft.targetValue) || draft.targetValue < 1) {
-                  setEdited({ ...draft, targetValue: 1 });
-                }
-              }}
-              aria-label={t("scoreSetup.targetValue")}
-              className={`${FIELD} w-20 text-right font-mono tabular-nums`}
-            />
-          )}
         </div>
-      </fieldset>
-
-      <fieldset className="flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-[13px]">
-          {t("scoreSetup.gameName")}
-          <input
-            value={draft.gameName}
-            onChange={(e) => setEdited({ ...draft, gameName: e.target.value })}
-            onFocus={(e) => e.currentTarget.select()}
-            placeholder={t("scoreSetup.gameNamePlaceholder")}
-            className={FIELD}
-          />
-        </label>
-        {gameNameChoices.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("scoreSetup.gameNameChips")}>
-            {gameNameChoices.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setEdited({ ...draft, gameName: name })}
-                className="tap-44 rounded-chip border border-border bg-surface px-2 py-1 text-[12px] text-foreground transition-colors hover:bg-surface-muted"
-              >
-                {name}
-              </button>
-            ))}
+        {addingGame ? (
+          <div id="score-game-name" className="mt-2">
+            <input
+              autoFocus
+              value={draft.gameName}
+              onChange={(e) => setEdited({ ...draft, gameName: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setAddingGame(false);
+              }}
+              placeholder={t("scoreSetup.gameNamePlaceholder")}
+              aria-label={t("scoreSetup.gameName")}
+              className={`${FIELD} w-56`}
+            />
           </div>
-        )}
-      </fieldset>
+        ) : null}
+      </section>
 
       {/* El botón ANTES que los nombres: empezar no exige leerlos (mismo
           criterio que setup-form.tsx tras la revisión UX 2026-08-30). */}
