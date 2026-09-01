@@ -21,8 +21,11 @@ test("ajedrez: configurar, pasar turno, pausar y sobrevivir a la recarga", async
   await page.getByTestId("clock-zone-0").click();
   await expect(page.getByTestId("clock-zone-1")).toHaveAttribute("data-active", "true");
 
-  // Pausar congela el número.
+  // Pausar congela el número. Se espera a que la pausa esté COMMITEADA
+  // (aparece «Reanudar») antes de leer el tiempo congelado — sin esto hay una
+  // carrera teórica entre el click y la captura (review Task 6).
   await page.getByRole("button", { name: /^pausa$/i }).click();
+  await expect(page.getByRole("button", { name: /^reanudar$/i })).toBeVisible();
   const frozen = await page.getByTestId("clock-time-1").innerText();
   await page.waitForTimeout(1200);
   await expect(page.getByTestId("clock-time-1")).toHaveText(frozen);
