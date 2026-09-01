@@ -10,8 +10,8 @@ import { usePlayers } from "@/lib/play/core/use-players";
 import type { Participant } from "@/lib/play/core/types";
 import type { ScoreDirection, ScoreSetup, ScoreTarget } from "@/lib/play/score/types";
 import { gameNameSuggestions } from "@/lib/play/ui/game-names";
-import { seatAccent } from "@/lib/play/ui/seats";
 import { buttonVariants } from "@/components/ui/button";
+import { SeatToken, initials } from "../ui/seat-token";
 import { RegularPicker } from "../regular-picker";
 import { parseScorePreset, scoreTargetForPreset, type ScorePresetId } from "./score-preset-chooser";
 
@@ -43,6 +43,18 @@ type ScoreDraft = {
 };
 
 const playerId = (index: number) => `p${index + 1}`;
+
+/**
+ * Primer id de asiento libre. El índice NO sirve como id desde que se pueden
+ * quitar asientos por el medio: quitar el 2 de 3 y añadir daría dos `p3`, y el
+ * id viaja al motor como `participant.id`.
+ */
+function nextSeatId(players: DraftPlayer[]): string {
+  const used = new Set(players.map((p) => p.id));
+  let n = 1;
+  while (used.has(`p${n}`)) n++;
+  return `p${n}`;
+}
 
 function emptyPlayers(count: number): DraftPlayer[] {
   return Array.from({ length: count }, (_, i) => ({ id: playerId(i), name: "" }));
@@ -208,6 +220,10 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
 
   const [edited, setEdited] = useState<ScoreDraft | null>(null);
   const draft = edited ?? base;
+  // Asiento abierto en el panel de edición. Uno cada vez: la mesa se lee de un
+  // vistazo en las fichas y solo se despliega el que se toca (nada de ocho
+  // tarjetas de campos plegadas tras un <details>).
+  const [openSeat, setOpenSeat] = useState<string | null>(null);
 
   // UNA sola suscripción al espejo de habituales por pantalla (mismo criterio
   // que setup-form.tsx): se baja por props a cada `RegularPicker`.
@@ -276,6 +292,46 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   const seatName = (index: number) =>
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
 
+  const openIndex = draft.players.findIndex((p) => p.id === openSeat);
+  const regularTokens = regulars.filter((r) => !takenIds.includes(r.playerId)).slice(0, 6);
+
+  /** Asiento nuevo, vacío y abierto para escribir. */
+  function addSeat() {
+    if (draft.players.length >= MAX_PLAYERS) return;
+    const seat = { id: nextSeatId(draft.players), name: "" };
+    setEdited({ ...draft, players: [...draft.players, seat] });
+    setOpenSeat(seat.id);
+  }
+
+  function removeSeat(index: number) {
+    if (draft.players.length <= MIN_PLAYERS) return;
+    setEdited({ ...draft, players: draft.players.filter((_, i) => i !== index) });
+    setOpenSeat(null);
+  }
+
+  /**
+   * Tocar un habitual lo sienta en el primer asiento LIBRE en vez de añadir
+   * uno: la mesa llega prefijada con cuatro anónimos, y añadir dejaría a los
+   * cuatro «Jugador N» colgando junto al recién llegado.
+   */
+  function seatRegular(regular: { playerId: string; name: string }) {
+    const free = draft.players.findIndex(
+      (p) => p.name.trim() === "" && p.playerId === undefined && p.userId === undefined,
+    );
+    if (free >= 0) {
+      setEdited(assignRegular(draft, free, regular));
+      return;
+    }
+    if (draft.players.length >= MAX_PLAYERS) return;
+    setEdited({
+      ...draft,
+      players: [
+        ...draft.players,
+        { id: nextSeatId(draft.players), name: regular.name, playerId: regular.playerId },
+      ],
+    });
+  }
+
   function start() {
     // Con el store hidratando no se arranca: podría pisar una activa aún no
     // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
@@ -307,28 +363,97 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
         </p>
       </header>
 
+      {/* La mesa, como fichas: el mismo selector que los acompañantes (Reloj,
+          Recursos, Turnos, Aleatorio). Sustituye al contador 2-8 y al pliegue
+          de tarjetas de campos — el número de jugadores ES el número de
+          fichas. Un asiento sin nombre enseña su número y vale así: empezar
+          sin escribir nada sigue siendo el camino corto. */}
       <fieldset>
         <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
           {t("setup.players")}
         </legend>
-        <div className="flex gap-2">
-          {Array.from({ length: MAX_PLAYERS - MIN_PLAYERS + 1 }, (_, i) => MIN_PLAYERS + i).map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-pressed={draft.players.length === n}
-              onClick={() => setEdited(setPlayerCount(draft, n))}
-              className={`tap-44 h-11 min-w-11 flex-1 rounded-chip border font-mono text-[15px] tabular-nums transition-colors ${
-                draft.players.length === n
-                  ? "border-accent bg-accent/10 text-accent-ink"
-                  : "border-border bg-surface"
-              }`}
+        <div className="flex flex-wrap items-start gap-3">
+          {draft.players.map((player, i) => (
+            <SeatToken
+              key={player.id}
+              variant="seat"
+              seat={i}
+              caption={seatName(i)}
+              label={t("seats.edit", { name: seatName(i) })}
+              selected={player.id === openSeat}
+              expanded={player.id === openSeat}
+              controls="score-seat"
+              onClick={() => setOpenSeat(player.id === openSeat ? null : player.id)}
             >
-              {n}
-            </button>
+              {player.name.trim() === "" ? i + 1 : initials(player.name)}
+            </SeatToken>
           ))}
+          {regularTokens.map((r) => (
+            <SeatToken
+              key={r.playerId}
+              variant="regular"
+              caption={r.name}
+              label={t("seats.seat", { name: r.name })}
+              onClick={() => seatRegular({ playerId: r.playerId, name: r.name })}
+            >
+              {initials(r.name)}
+            </SeatToken>
+          ))}
+          {draft.players.length < MAX_PLAYERS ? (
+            <SeatToken
+              variant="add"
+              caption={t("seats.add")}
+              label={t("seats.addPlayer")}
+              onClick={addSeat}
+            />
+          ) : null}
         </div>
       </fieldset>
+
+      {openIndex >= 0 ? (
+        <div id="score-seat" className="rounded-card border border-border bg-surface p-3">
+          <div className="flex items-center gap-2">
+            <input
+              // `key`: cambiar de ficha REMONTA el campo, y así el autoFocus
+              // vuelve a dispararse en el asiento recién abierto.
+              key={draft.players[openIndex].id}
+              autoFocus
+              value={draft.players[openIndex].name}
+              onChange={(e) => setEdited(updatePlayerName(draft, openIndex, e.target.value))}
+              placeholder={t("setup.playerN", { n: openIndex + 1 })}
+              aria-label={t("setup.name")}
+              // min-w-0: sin él el input no encoge por debajo de su ancho de
+              // contenido y el panel desborda el móvil (lección de la bolsa
+              // del Aleatorio).
+              className={`${FIELD} min-w-0 font-serif text-[15px] font-semibold`}
+            />
+            <button
+              type="button"
+              disabled={draft.players.length <= MIN_PLAYERS}
+              onClick={() => removeSeat(openIndex)}
+              className="tap-44 shrink-0 rounded-chip border border-border px-3 py-1.5 text-[13px] text-muted-foreground disabled:opacity-40"
+            >
+              {t("seats.removeSeat")}
+            </button>
+          </div>
+          <div className="mt-2">
+            <RegularPicker
+              identity={identity}
+              players={regulars}
+              takenIds={takenIds}
+              query={draft.players[openIndex].name}
+              assigned={
+                draft.players[openIndex].playerId !== undefined ||
+                draft.players[openIndex].userId !== undefined
+              }
+              onPick={(regular) => setEdited(assignRegular(draft, openIndex, regular))}
+              onRemembered={(regular) => setEdited(assignRegular(draft, openIndex, regular))}
+              self={self}
+              onPickSelf={(me) => setEdited(assignSelf(draft, openIndex, me))}
+            />
+          </div>
+        </div>
+      ) : null}
 
       <fieldset>
         <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
@@ -434,48 +559,6 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
         <p className="mt-2 text-[12px] text-muted-foreground">{t("setup.emptyIsFine")}</p>
       </div>
 
-      <details open={isRematch} className="rounded-card border border-border bg-surface px-3 py-2.5">
-        <summary className="cursor-pointer text-[13px] font-semibold">
-          {t("setup.table")}{" "}
-          <span className="font-normal text-muted-foreground">
-            · {draft.players.map((_, i) => seatName(i)).join(", ")}
-          </span>
-        </summary>
-
-        <ul className="mt-3 flex flex-col gap-2">
-          {draft.players.map((player, i) => {
-            const accent = seatAccent(i);
-            return (
-              <li
-                key={player.id}
-                className="flex gap-3 overflow-hidden rounded-card border border-border bg-surface"
-              >
-                <span aria-hidden className={`${accent.bar} w-1.5 shrink-0 self-stretch`} />
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-2.5 pr-3">
-                  <input
-                    value={player.name}
-                    onChange={(e) => setEdited(updatePlayerName(draft, i, e.target.value))}
-                    placeholder={t("setup.playerN", { n: i + 1 })}
-                    aria-label={t("setup.name")}
-                    className={`${FIELD} font-serif text-[15px] font-semibold`}
-                  />
-                  <RegularPicker
-                    identity={identity}
-                    players={regulars}
-                    takenIds={takenIds}
-                    query={player.name}
-                    assigned={player.playerId !== undefined || player.userId !== undefined}
-                    onPick={(regular) => setEdited(assignRegular(draft, i, regular))}
-                    onRemembered={(regular) => setEdited(assignRegular(draft, i, regular))}
-                    self={self}
-                    onPickSelf={(me) => setEdited(assignSelf(draft, i, me))}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </details>
     </div>
   );
 }

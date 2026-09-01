@@ -149,16 +149,37 @@ test("reconfigurar desde dentro: la mesa llega prefijada y Empezar reinicia", as
   await page.getByRole("button", { name: /reconfigurar la mesa/i }).click();
   await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?reconfigurar=1$/);
   // La mesa llega PUESTA: el nombre materializado al arrancar («Jugador 1»)
-  // viene como VALOR del campo, no como placeholder — eso es el prefill.
-  await expect(page.getByLabel("Nombre").first()).toHaveValue("Jugador 1");
+  // viene como VALOR del campo, no como placeholder — eso es el prefill. El
+  // campo vive en el panel del asiento, que se abre tocando su ficha.
+  await page.getByRole("button", { name: "Editar a Jugador 1" }).click();
+  await expect(page.getByLabel("Nombre")).toHaveValue("Jugador 1");
 
   // Corregir un fallo (el nombre) y reiniciar.
-  await page.getByLabel("Nombre").first().fill("Anna");
+  await page.getByLabel("Nombre").fill("Anna");
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
   // Partida NUEVA: sin rondas (el total vuelve a 0) y con el nombre corregido.
-  // exact: el DOM congelado de la ruta anterior lista los nombres en su summary.
-  await expect(page.getByText("Anna", { exact: true })).toBeVisible();
+  // Acotado a la tabla: el DOM congelado de la ruta anterior conserva la ficha
+  // del asiento, cuyo rótulo es también exactamente «Anna».
+  await expect(page.getByRole("table").getByText("Anna")).toBeVisible();
   await expect(totalDe(page, 0)).toHaveText("0");
   await expect(page.getByRole("button", { name: "Editar ronda 1" })).toHaveCount(0);
+});
+
+test("la mesa de fichas cabe en movil con ocho asientos y el panel abierto", async ({ page }) => {
+  // El caso más ancho de la pantalla: ocho fichas (envuelven) más el panel del
+  // asiento, que lleva campo + «Quitar asiento» en la misma fila. Sin `min-w-0`
+  // el campo no encoge y el panel desborda los 390px (mismo fallo que la bolsa
+  // del Aleatorio).
+  await page.goto("/partidas/puntuacion/nueva?jugadores=8");
+  await page.getByRole("button", { name: "Editar a Jugador 8" }).click();
+  await expect(page.getByLabel("Nombre")).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => document.scrollingElement!.scrollWidth - document.scrollingElement!.clientWidth,
+  );
+  expect(overflow).toBe(0);
+
+  // Con ocho asientos ya no cabe otro: la ficha «+» desaparece (MAX_PLAYERS).
+  await expect(page.getByRole("button", { name: "Añadir jugador" })).toHaveCount(0);
 });

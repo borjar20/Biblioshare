@@ -3408,3 +3408,26 @@ el mínimo vivo y el siguiente avance siempre sube) — un salto suma como mucho
 Eliminar al activo avanza ANTES de marcarlo (con su ronda si envuelve). La spec §4 se
 enmendó al descubrirlo en review: prometía testear «skip que envuelve dos veces», caso
 inalcanzable. Spec: docs/superpowers/specs/2026-09-01-play-turns-design.md.
+
+## El selector de jugadores es UNO solo, y la mesa de puntuación son fichas (2026-09-01)
+
+Elegir jugadores se hacía de cinco maneras distintas: fichas de asiento copiadas y pegadas
+en Reloj, Recursos y Turnos; input + botón «Añadir» + lista de chips en Aleatorio; y un
+contador 2-8 con tarjetas de campos plegadas tras «En la mesa» en Puntuación. El selector
+vive ahora en `SeatToken` (átomo: círculo de 44px con su rótulo) y `SeatPicker` (fichas de
+color que quitan, habituales atenuados que sientan, ficha «+» que despliega el único
+input), y los cuatro acompañantes lo comparten. Triplicado tenía un coste real: el rótulo
+del «+» («Añadir jugador», dos palabras en una columna de 56px sin `text-center`) se partía
+en dos líneas pegadas a la izquierda, descolgado del círculo, y había que arreglarlo tres
+veces; el cuarto acompañante ni siquiera tenía fichas.
+
+Puntuación NO puede usar `SeatPicker` —sus asientos llevan identidad (`playerId`/`userId`)
+y admiten nombre vacío—, así que compone `SeatToken` con su propia lógica: el número de
+fichas ES el número de jugadores (adiós al contador 2-8), un asiento sin nombre enseña su
+número y sigue valiendo «Jugador N» (empezar sin escribir nada, decisión de 2026-08-30, se
+conserva), tocar una ficha abre el panel de ESE asiento (nombre + `RegularPicker` +
+«Quitar asiento») y tocar un habitual lo sienta en el primer asiento libre en vez de añadir
+uno —añadir dejaría a los cuatro anónimos del prefill colgando junto al recién llegado—.
+Con add/remove por el medio el id de asiento ya no puede derivarse del índice (`p3`
+duplicado): `nextSeatId` toma el primer libre. MTG se queda como estaba: sus asientos
+llevan mazo, uno o dos comandantes y fondo de tarjeta, y eso no cabe en una ficha.
