@@ -65,6 +65,17 @@ describe("turn_advanced — dirección, eliminados y ronda envolvente", () => {
     let s = run([cfg(), ev("direction_toggled", {})]);
     s = turnsReducer(s, ev("turn_advanced", {})); // de Ana (0) a Carla (2): envuelve
     expect(s).toMatchObject({ active: 2, round: 2, direction: -1 });
+    // Y de Carla (2) a Beto (1) hacia atrás NO envuelve (rama next < active).
+    s = turnsReducer(s, ev("turn_advanced", {}));
+    expect(s).toMatchObject({ active: 1, round: 2 });
+  });
+  it("acepta el mínimo exacto (2 jugadores) y alterna con ronda por vuelta", () => {
+    let s = run([cfg(["Ana", "Beto"])]);
+    expect(s.players).toHaveLength(2);
+    s = turnsReducer(s, ev("turn_advanced", {}));
+    expect(s).toMatchObject({ active: 1, round: 1 });
+    s = turnsReducer(s, ev("turn_advanced", {}));
+    expect(s).toMatchObject({ active: 0, round: 2 });
   });
   it("salta eliminados y resetea la fase", () => {
     let s = run([
