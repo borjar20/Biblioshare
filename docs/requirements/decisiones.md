@@ -3383,3 +3383,15 @@ descarta), y la monotonía es parte del contrato del log. De paso, el hook del A
 se generalizó a `useCompanionStore` (core) con la clave vieja intacta; el reloj usa
 `{identity}:clock` en el mismo almacén `companion`. Spec:
 docs/superpowers/specs/2026-09-01-play-clock-design.md.
+
+## Recursos: reconciliación por nombre y clamp en vez de rechazo (2026-09-01)
+
+El gestor de recursos guarda el invariante de `values` (una entrada por def compartida y
+una por def×jugador) RECONCILIANDO en cada evento que cambia jugadores o defs: quien
+permanece conserva su valor, lo nuevo nace al inicial, lo que desaparece se borra. Renombrar
+= quitar y crear (pierde el valor, asumido y en spec). Y `adjusted` CLAMPA el resultado a
+−9999..9999 en vez de lanzar: un ajuste de mesa nunca muere en silencio por pasarse — la
+excepción deliberada a la regla «payload inválido lanza» de los companions (combinación
+inexistente o delta 0 sí lanzan). El gesto de mantener acumula en LOCAL y emite un único
+evento al soltar: un gesto = un deshacer, y el log no se llena de ±1. Spec:
+docs/superpowers/specs/2026-09-01-play-resources-design.md.
