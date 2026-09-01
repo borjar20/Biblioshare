@@ -51,8 +51,14 @@ export function TurnsGame({
   const onLastPhase = !hasPhases || state.phase >= state.phases.length - 1;
 
   function advance() {
-    if (hasPhases && !onLastPhase) emit("phase_advanced", {});
-    else emit("turn_advanced", {});
+    if (hasPhases && !onLastPhase) {
+      // Doble toque rapidísimo en la penúltima fase: si el estado ya avanzó y
+      // phase_advanced es inválido, cae a turn_advanced — sin rechazo mudo
+      // (review final).
+      if (!emit("phase_advanced", {})) emit("turn_advanced", {});
+    } else {
+      emit("turn_advanced", {});
+    }
     setPendingEliminate(null);
   }
 
@@ -192,6 +198,7 @@ export function TurnsGame({
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
+          aria-pressed={state.direction === -1}
           onClick={() => emit("direction_toggled", {})}
           className="rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold"
         >

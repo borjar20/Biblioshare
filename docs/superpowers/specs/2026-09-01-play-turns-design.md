@@ -34,7 +34,7 @@ export function initialTurnsState(): TurnsState;
 | `turns_configured` | `{ players: string[]; phases: string[] }` | Atómico (setup local + Empezar, como el reloj): players 2..8 únicos recortados, phases 0..6 únicas recortadas. active=0, phase=0, round=1, direction=1, eliminated=[]. |
 | `turn_advanced` | `{}` | Pasa al siguiente VIVO según `direction` (fase a 0). La **ronda sube al envolver**: con dir 1, cuando el índice nuevo ≤ índice viejo entre vivos; con dir −1, simétrico. Inválido sin configurar o con <2 vivos. |
 | `phase_advanced` | `{}` | `phase+1`. Inválido sin fases o ya en la última (la UI encadena: en la última, el centro emite `turn_advanced`). |
-| `turn_skipped` | `{}` | El SIGUIENTE pierde su turno: equivale a dos avances (rondas incluidas si envuelve dos veces). Mismas precondiciones que `turn_advanced`. |
+| `turn_skipped` | `{}` | El SIGUIENTE pierde su turno: equivale a dos avances (ronda incluida si alguno envuelve; dos envolturas consecutivas son imposibles con la regla posicional). Mismas precondiciones que `turn_advanced`. |
 | `direction_toggled` | `{}` | Invierte `direction`. Inválido sin configurar. |
 | `player_eliminated` | `{ name }` | Sale de la rotación (conserva asiento y color). Si era el activo, se avanza primero. Inválido si no existe, ya está eliminado, o dejaría <2 vivos. |
 | `player_restored` | `{ name }` | Vuelve a la rotación en su asiento. Inválido si no estaba eliminado. |
@@ -108,7 +108,7 @@ por turno (Reloj). Fases distintas por jugador. Historial visible.
 ## 4. Testing
 
 - **Unit reducer**: avance con eliminados y ambas direcciones; ronda que envuelve (dir 1 y
-  −1); skip que envuelve dos veces; eliminar al activo avanza; eliminar hasta <2 lanza;
+  −1); skip desde el último asiento (envuelve una vez — con la regla posicional dos envolturas consecutivas son imposibles); eliminar al activo avanza; eliminar hasta <2 lanza;
   restaurar en asiento; fases encadenadas; reset conserva config; validaciones y
   compactación round-trip. `nextAlive` directo.
 - **e2e** (`e2e/partidas-turnos.spec.ts`): configurar 3 jugadores + 2 fases preset; el centro

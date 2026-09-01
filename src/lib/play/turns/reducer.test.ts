@@ -98,6 +98,12 @@ describe("turn_skipped", () => {
     let s = run([cfg(["Ana", "Beto"])]);
     s = turnsReducer(s, ev("turn_skipped", {})); // Beto pierde: Ana→Beto→Ana, envuelve una vez
     expect(s).toMatchObject({ active: 0, round: 2 });
+    // Desde el último asiento el salto envuelve UNA vez: con la regla
+    // posicional, dos envolturas consecutivas son imposibles (cada envoltura
+    // aterriza en el mínimo vivo y el siguiente avance siempre sube).
+    s = turnsReducer(s, ev("turn_advanced", {})); // a Beto (último), sin envolver
+    s = turnsReducer(s, ev("turn_skipped", {})); // Beto→Ana (envuelve)→Beto
+    expect(s).toMatchObject({ active: 1, round: 3 });
   });
 });
 

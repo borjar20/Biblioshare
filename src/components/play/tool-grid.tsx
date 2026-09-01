@@ -12,7 +12,7 @@ import { TurnsTableMark } from "./marks/turns-table-mark";
  * Rejilla de herramientas del hub. Las HERRAMIENTAS (con partida) salen de los
  * dos registros: el de dominio pone la clave de i18n y la ruta, el de UI la
  * marca — añadir una herramienta nueva no toca este fichero. Los ACOMPAÑANTES
- * (Aleatorio, Reloj, Recursos) son excepción deliberada: tarjetas estáticas
+ * (Aleatorio, Reloj, Recursos, Turnos) son excepción deliberada: tarjetas estáticas
  * aquí abajo, fuera del registro, porque no ocupan el slot activo.
  *
  * La tarjeta de «más herramientas» va atenuada y SIN enlace: enseña la forma del
