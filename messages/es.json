@@ -3001,6 +3001,34 @@
       "resetConfirm": "¿Seguro? Todos a su inicial",
       "clear": "Empezar de cero",
       "clearConfirm": "¿Seguro? Borra jugadores y recursos"
+    },
+    "turns": {
+      "title": "Turnos",
+      "subtitle": "Orden de turno, rondas y fases para cualquier juego.",
+      "players": "Jugadores",
+      "addPlayer": "Añadir jugador",
+      "nameLabel": "Nombre del jugador",
+      "namePlaceholder": "Añadir jugador…",
+      "removeToken": "Quitar a {name}",
+      "playersHint": "Añade entre 2 y 8 jugadores.",
+      "shuffle": "Barajar",
+      "phases": "Fases (opcional)",
+      "addPhase": "Añadir fase",
+      "phaseLabel": "Nombre de la fase",
+      "phasePlaceholder": "Nombre de la fase…",
+      "start": "Empezar",
+      "round": "R{n}",
+      "nextPhase": "Siguiente fase",
+      "nextPlayer": "Siguiente jugador",
+      "invert": "Invertir",
+      "skip": "Saltar siguiente",
+      "eliminateToken": "Eliminar a {name}",
+      "restoreToken": "Restaurar a {name}",
+      "eliminateConfirm": "¿Eliminar a {name}?",
+      "cancel": "Cancelar",
+      "undo": "Deshacer",
+      "reset": "Reiniciar",
+      "resetConfirm": "¿Seguro? Vuelve a la configuración"
     }
   }
 }
