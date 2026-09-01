@@ -2651,6 +2651,9 @@
       },
       "clock": {
         "name": "Reloj"
+      },
+      "resources": {
+        "name": "Recursos"
       }
     },
     "rememberedTable": {
@@ -2966,6 +2969,38 @@
       "addThirty": "Añadir 30 segundos",
       "blockedByChess": "Reinicia el reloj de ajedrez para configurar la cuenta atrás.",
       "blockedByCountdown": "Pausa o reinicia la cuenta atrás para empezar."
+    },
+    "resources": {
+      "title": "Recursos",
+      "subtitle": "Contadores de monedas, puntos o materiales para cualquier juego.",
+      "configure": "Configurar",
+      "emptyHint": "Configura jugadores y recursos para empezar.",
+      "players": "Jugadores",
+      "nameLabel": "Nombre del jugador",
+      "namePlaceholder": "Añadir jugador…",
+      "addPlayer": "Añadir jugador",
+      "emojiPicker": "Icono",
+      "emojiOption": "Icono {emoji}",
+      "fewerInitial": "Uno menos de inicio",
+      "moreInitial": "Uno más de inicio",
+      "owner": "Dueño",
+      "ownerPlayers": "Jugadores",
+      "ownerBank": "Banco",
+      "create": "Crear ficha",
+      "removePlayer": "Quitar a {name}",
+      "resources": "Recursos",
+      "resourceName": "Nombre del recurso",
+      "resourcePlaceholder": "Madera, Oro…",
+      "removeResource": "Quitar {name}",
+      "bank": "Banco",
+      "increase": "Sumar {name}",
+      "decrease": "Restar {name}",
+      "quick": "Cantidades rápidas de {name}",
+      "undo": "Deshacer",
+      "reset": "Reiniciar valores",
+      "resetConfirm": "¿Seguro? Todos a su inicial",
+      "clear": "Empezar de cero",
+      "clearConfirm": "¿Seguro? Borra jugadores y recursos"
     }
   }
 }
