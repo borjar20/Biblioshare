@@ -16,13 +16,13 @@ test("puntuación: sin sesión, no hay «Recordar como habitual» ni chips de ha
   page,
 }) => {
   await page.goto("/partidas/puntuacion/nueva");
-  // La mesa vive plegada tras un <details>; se abre por su summary, no por rol
-  // (mismo criterio que partidas-navegacion.spec.ts).
-  await page.getByText("En la mesa").click();
+  // La mesa son fichas: el campo del asiento vive en el panel que abre su
+  // ficha (el pliegue «En la mesa» solo queda en mtg).
+  await page.getByRole("button", { name: "Editar a Jugador 1" }).click();
   // Se escribe un nombre real: es justo la señal que, con sesión, dispara
   // chips de sugerencia y el botón «Recordar» -- probar la ausencia con el
   // campo vacío no demostraría nada.
-  await page.getByLabel("Nombre").first().fill("Ana");
+  await page.getByLabel("Nombre").fill("Ana");
 
   await expect(page.getByRole("button", { name: /recordar como habitual/i })).toHaveCount(0);
   // La fila de chips lleva el aria-label como atributo del contenedor (no es

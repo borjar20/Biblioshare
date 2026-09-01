@@ -30,14 +30,34 @@ export function RegularPicker(props: {
   /** Tu propia cuenta como asiento (issue #985); undefined = anon o «Yo» ya sentado. */
   self?: { userId: string; name: string };
   onPickSelf?(self: { userId: string; name: string }): void;
+  /**
+   * Con `false`, los chips de sugerencia solo salen AL ESCRIBIR. Es para la
+   * mesa de puntuación, donde la fila de fichas ya enseña a los habituales:
+   * repetirlos como chips bajo el campo era la misma gente dos veces. Donde no
+   * hay fichas (mtg) se queda en `true` — con la query vacía los chips son lo
+   * que hace descubribles a los habituales (spec fase 6 §6).
+   */
+  suggestOnEmpty?: boolean;
 }) {
-  const { identity, players, takenIds, query, assigned, onPick, onRemembered, self, onPickSelf } =
-    props;
+  const {
+    identity,
+    players,
+    takenIds,
+    query,
+    assigned,
+    onPick,
+    onRemembered,
+    self,
+    onPickSelf,
+    suggestOnEmpty = true,
+  } = props;
   const t = useTranslations("play");
 
   if (identity === "anon" || assigned) return null;
 
-  const suggestions = chipSuggestions(players, takenIds, query).slice(0, MAX_CHIPS);
+  const suggestions = (
+    suggestOnEmpty || query.trim() !== "" ? chipSuggestions(players, takenIds, query) : []
+  ).slice(0, MAX_CHIPS);
   const remember = canRemember(players, query);
   const showSelf = self !== undefined && onPickSelf !== undefined;
   if (suggestions.length === 0 && !remember && !showSelf) return null;

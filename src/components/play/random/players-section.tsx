@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { usePlayers } from "@/lib/play/core/use-players";
+import { SeatPicker } from "@/components/play/ui/seat-picker";
 import { drawTeams, pickFirst, shuffle } from "@/lib/play/random/draws";
 import type { RandomEvent } from "@/lib/play/random/events";
 import { PlayersWheel } from "./stage/players-wheel";
@@ -33,18 +33,8 @@ export function PlayersSection({
   onTeams: (players: string[], teams: string[][]) => void;
 }) {
   const t = useTranslations("play.random.players");
-  const { players: regulars } = usePlayers(identity);
-  const [name, setName] = useState("");
   const [teamCount, setTeamCount] = useState("");
 
-  function add(candidate: string) {
-    const trimmed = candidate.trim();
-    if (trimmed === "" || players.includes(trimmed)) return;
-    onSetPlayers([...players, trimmed]);
-    setName("");
-  }
-
-  const chips = regulars.filter((r) => !players.includes(r.name)).slice(0, 6);
   const parsedTeams = Number(teamCount || "2");
   const teamsValid =
     Number.isInteger(parsedTeams) && parsedTeams >= 2 && parsedTeams <= players.length - 1;
@@ -77,59 +67,21 @@ export function PlayersSection({
         />
       ) : null}
 
-      {chips.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2" aria-label={t("regulars")}>
-          {chips.map((r) => (
-            <button
-              key={r.playerId}
-              type="button"
-              onClick={() => add(r.name)}
-              className="rounded-chip border border-border px-3 py-1 text-[13px]"
-            >
-              {r.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-3 flex gap-2">
-        <input
-          value={name}
-          placeholder={t("namePlaceholder")}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") add(name);
-          }}
-          aria-label={t("nameLabel")}
-          className="flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
+      {/* Mismo selector de fichas que Reloj, Recursos y Turnos: la ruleta ya es
+          el juguete de esta pantalla, la lista de jugadores no puede ser un
+          formulario. Sin tope: aquí no hay mesa que quepa. */}
+      <div className="mt-4">
+        <SeatPicker
+          identity={identity}
+          players={players}
+          onChange={onSetPlayers}
+          idPrefix="random"
         />
-        <button
-          type="button"
-          onClick={() => add(name)}
-          className="rounded-chip border border-border px-3 py-1.5 text-[13px]"
-        >
-          {t("add")}
-        </button>
       </div>
 
-      {players.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {players.map((p) => (
-            <li key={p}>
-              <button
-                type="button"
-                onClick={() => onSetPlayers(players.filter((x) => x !== p))}
-                aria-label={t("remove", { name: p })}
-                className="rounded-chip border border-border px-3 py-1 text-[13px]"
-              >
-                {p} ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
+      {players.length < 2 ? (
         <p className="mt-3 text-[13px] text-muted-foreground">{t("hint")}</p>
-      )}
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <button

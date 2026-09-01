@@ -52,6 +52,30 @@ export function chipSuggestions(
 }
 
 /**
+ * Fichas de habitual que pinta el selector, y cuántas quedan por enseñar.
+ *
+ * El tope existe para no plantar un muro de fichas nada más abrir, NO para
+ * esconder a nadie: por eso lo que sobra se cuenta y se ofrece («+7»), y
+ * buscando no se corta. Enseñar 6 de 20 en silencio fue justo la queja — la
+ * fila del selector no coincidía con la lista de «Tus jugadores».
+ *
+ * El llamador entrega la lista YA sin los que están puestos en la mesa (por
+ * nombre en los acompañantes, por `playerId` en puntuación).
+ */
+export function visibleRegulars(
+  players: PlayerRecord[],
+  query: string,
+  expanded: boolean,
+  cap: number,
+): { shown: PlayerRecord[]; hidden: number } {
+  const matching = players.filter(
+    (player) => player.deletedAt === null && matchesWordPrefix(player.name, query),
+  );
+  if (expanded || normalize(query) !== "") return { shown: matching, hidden: 0 };
+  return { shown: matching.slice(0, cap), hidden: Math.max(0, matching.length - cap) };
+}
+
+/**
  * «Recordar» solo tiene sentido con texto escrito que NO sea ya, letra a
  * letra (salvo mayúsculas/espacios), el nombre de un habitual existente --
  * si no, el botón ofrecería crear un duplicado del que ya está.

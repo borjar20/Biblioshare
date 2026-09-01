@@ -52,9 +52,12 @@ test("jugadores: primero, orden y equipos", async ({ page }) => {
   await page.goto("/partidas/aleatorio");
   await page.getByRole("tab", { name: "Jugadores" }).click();
 
+  // Mismo selector de fichas que Reloj, Recursos y Turnos: el input vive tras
+  // la ficha «+» y el alta se confirma con Enter (SeatPicker).
   for (const name of ["Ana", "Beto", "Carla", "Dario"]) {
+    await page.getByRole("button", { name: "Añadir jugador" }).click();
     await page.getByLabel("Nombre del jugador").fill(name);
-    await page.getByRole("button", { name: /^añadir$/i }).click();
+    await page.getByLabel("Nombre del jugador").press("Enter");
   }
 
   await page.getByRole("button", { name: /^primer jugador$/i }).click();

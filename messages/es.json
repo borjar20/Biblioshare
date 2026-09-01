@@ -2654,6 +2654,9 @@
       },
       "resources": {
         "name": "Recursos"
+      },
+      "turns": {
+        "name": "Turnos"
       }
     },
     "rememberedTable": {
@@ -2694,6 +2697,18 @@
       "start": "Empezar",
       "emptyIsFine": "Puedes empezar sin escribir nada: los nombres son opcionales.",
       "rematchSeat": "Ahora empieza {name}, un asiento más allá."
+    },
+    "seats": {
+      "add": "Añadir",
+      "addPlayer": "Añadir jugador",
+      "namePlaceholder": "Añadir jugador…",
+      "nameLabel": "Nombre del jugador",
+      "remove": "Quitar a {name}",
+      "seat": "Sentar a {name}",
+      "edit": "Editar a {name}",
+      "removeSeat": "Quitar asiento",
+      "more": "Ver más",
+      "moreRegulars": "Ver {n} habituales más"
     },
     "scoreSetup": {
       "captionHighest": "Gana quien más suma",
@@ -2899,11 +2914,6 @@
         "flipCta": "{count, plural, one {Lanzar la moneda} other {Lanzar # monedas}}"
       },
       "players": {
-        "regulars": "Tus habituales",
-        "nameLabel": "Nombre del jugador",
-        "namePlaceholder": "Añadir jugador…",
-        "add": "Añadir",
-        "remove": "Quitar a {name}",
         "hint": "Añade al menos 2 jugadores para sortear.",
         "first": "Primer jugador",
         "wheelHint": "Toca la ruleta para sortear",
@@ -2944,17 +2954,16 @@
     "clock": {
       "title": "Reloj",
       "subtitle": "Reloj de ajedrez y cuenta atrás para cualquier juego.",
-      "tabs": { "chess": "Ajedrez", "countdown": "Cuenta atrás" },
-      "nameLabel": "Nombre del jugador",
-      "namePlaceholder": "Añadir jugador…",
-      "remove": "Quitar a {name}",
+      "tabs": {
+        "chess": "Ajedrez",
+        "countdown": "Cuenta atrás"
+      },
       "playersHint": "Añade entre 2 y 6 jugadores.",
       "initial": "Tiempo inicial",
       "increment": "Incremento",
       "minutes": "{n} min",
       "fewerMinutes": "Un minuto menos",
       "moreMinutes": "Un minuto más",
-      "addPlayer": "Añadir jugador",
       "startExpr": "Empezar {expr}",
       "noIncrement": "Sin incremento",
       "plusSeconds": "+{n} s",
@@ -2976,9 +2985,6 @@
       "configure": "Configurar",
       "emptyHint": "Configura jugadores y recursos para empezar.",
       "players": "Jugadores",
-      "nameLabel": "Nombre del jugador",
-      "namePlaceholder": "Añadir jugador…",
-      "addPlayer": "Añadir jugador",
       "emojiPicker": "Icono",
       "emojiOption": "Icono {emoji}",
       "fewerInitial": "Uno menos de inicio",
@@ -2987,7 +2993,6 @@
       "ownerPlayers": "Jugadores",
       "ownerBank": "Banco",
       "create": "Crear ficha",
-      "removePlayer": "Quitar a {name}",
       "resources": "Recursos",
       "resourceName": "Nombre del recurso",
       "resourcePlaceholder": "Madera, Oro…",
@@ -3001,6 +3006,30 @@
       "resetConfirm": "¿Seguro? Todos a su inicial",
       "clear": "Empezar de cero",
       "clearConfirm": "¿Seguro? Borra jugadores y recursos"
+    },
+    "turns": {
+      "title": "Turnos",
+      "subtitle": "Orden de turno, rondas y fases para cualquier juego.",
+      "players": "Jugadores",
+      "playersHint": "Añade entre 2 y 8 jugadores.",
+      "shuffle": "Barajar",
+      "phases": "Fases (opcional)",
+      "addPhase": "Añadir fase",
+      "phaseLabel": "Nombre de la fase",
+      "phasePlaceholder": "Nombre de la fase…",
+      "start": "Empezar",
+      "round": "R{n}",
+      "nextPhase": "Siguiente fase",
+      "nextPlayer": "Siguiente jugador",
+      "invert": "Invertir",
+      "skip": "Saltar siguiente",
+      "eliminateToken": "Eliminar a {name}",
+      "restoreToken": "Restaurar a {name}",
+      "eliminateConfirm": "¿Eliminar a {name}?",
+      "cancel": "Cancelar",
+      "undo": "Deshacer",
+      "reset": "Reiniciar",
+      "resetConfirm": "¿Seguro? Vuelve a la configuración"
     }
   }
 }
