@@ -127,6 +127,7 @@ export function ResourcesConfig({
             <button
               type="button"
               onClick={() => addPlayer(r.name)}
+              aria-label={r.name}
               title={r.name}
               className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[14px] font-semibold text-muted-foreground opacity-70"
             >
