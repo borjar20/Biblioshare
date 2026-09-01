@@ -58,12 +58,16 @@ export function ChessSetup({
   const stepUp = useHoldRepeat({ step: 1, onPreview: setMinutesPreview, onCommit: commitStep });
   const stepDown = useHoldRepeat({ step: -1, onPreview: setMinutesPreview, onCommit: commitStep });
 
-  function add(candidate: string) {
+  function add(candidate: string, fromInput = false) {
     const trimmed = candidate.trim();
     if (trimmed === "" || players.includes(trimmed) || players.length >= CLOCK_MAX_PLAYERS) return;
     setPlayers([...players, trimmed]);
-    setName("");
-    setAdding(false);
+    // Solo el alta DESDE el input limpia y cierra: tocar un habitual con un
+    // nombre a medio escribir no se traga el borrador (review final).
+    if (fromInput) {
+      setName("");
+      setAdding(false);
+    }
   }
 
   const regularTokens = regulars.filter((r) => !players.includes(r.name)).slice(0, 6);
@@ -123,6 +127,7 @@ export function ChessSetup({
               type="button"
               aria-label={t("addPlayer")}
               aria-expanded={adding}
+              aria-controls="clock-add-player"
               onClick={() => setAdding(!adding)}
               className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[18px] font-semibold text-muted-foreground"
             >
@@ -133,14 +138,14 @@ export function ChessSetup({
         ) : null}
       </div>
       {adding ? (
-        <div className="mt-2 flex justify-center">
+        <div id="clock-add-player" className="mt-2 flex justify-center">
           <input
             autoFocus
             value={name}
             placeholder={t("namePlaceholder")}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") add(name);
+              if (e.key === "Enter") add(name, true);
             }}
             aria-label={t("nameLabel")}
             className="w-48 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"

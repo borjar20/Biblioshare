@@ -56,6 +56,8 @@ test("cuenta atrás: preset, aro que suma, corre y se congela en pausa", async (
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page.getByTestId("countdown-time")).not.toHaveText("1:00", { timeout: 3000 });
   await page.getByRole("button", { name: /^pausa$/i }).click();
+  // Pausa COMMITEADA antes de leer (misma carrera que el test de ajedrez).
+  await expect(page.getByRole("button", { name: /^reanudar$/i })).toBeVisible();
   const frozen = await page.getByTestId("countdown-time").textContent();
   await page.waitForTimeout(1200);
   await expect(page.getByTestId("countdown-time")).toHaveText(frozen ?? "");

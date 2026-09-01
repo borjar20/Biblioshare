@@ -52,6 +52,12 @@ export function CountdownPanel({
     step: RING_STEP_MS,
     onPreview: setRingPreview,
     onCommit: (total) => {
+      // Guard extra al disabled: si el estado cambió a mitad de gesto (otra
+      // pestaña arrancó la cuenta), no se emite nada (review final).
+      if (!ringTappable) {
+        setRingPreview(0);
+        return;
+      }
       setRingPreview(0);
       emit("countdown_configured", { durationMs: clampDuration(state.durationMs + total) });
     },
@@ -68,7 +74,9 @@ export function CountdownPanel({
     if (!done) buzzedFor.current = null;
   }, [done, state.lastEventAt]);
 
-  const shownLeft = left + (ringTappable ? ringPreview : 0);
+  // Clavado también EN PREVIEW: sin esto, mantener desde 1:00:00 pasea el
+  // número por encima de 2 h y da un latigazo al soltar (review final).
+  const shownLeft = ringTappable ? clampDuration(left + ringPreview) : left;
   const progress =
     configured && state.durationMs > 0 ? Math.min(1, left / state.durationMs) : 1;
 
