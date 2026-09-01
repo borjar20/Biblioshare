@@ -48,11 +48,12 @@ borra el borrador — lección de la review del reloj). Cada cambio emite `playe
 
 Mueren: `resources.emojiLabel`, `resources.initialLabel` (el stepper usa claves nuevas).
 Entran: `resources.emojiPicker` («Icono»), `resources.emojiOption` («Icono {emoji}»),
-`resources.noEmoji` («Sin icono»), `resources.fewerInitial` («Uno menos de inicio»),
-`resources.moreInitial` («Uno más de inicio»), `resources.ownerPlayers` («Jugadores»),
-`resources.ownerBank` («Banco»), `resources.create` («Crear ficha»), `resources.addPlayer`
-(«Añadir jugador»). `sharedLabel` muere con el checkbox. `add`/`nameLabel`/`namePlaceholder`
-se conservan (input de nombre de jugador).
+`resources.fewerInitial` («Uno menos de inicio»), `resources.moreInitial` («Uno más de
+inicio»), `resources.owner` («Dueño», etiqueta del grupo del toggle), `resources.ownerPlayers`
+(«Jugadores»), `resources.ownerBank` («Banco»), `resources.create` («Crear ficha»),
+`resources.addPlayer` («Añadir jugador»). `sharedLabel` muere con el checkbox (quitar el emoji
+elegido = tocarlo de nuevo, sin botón «sin icono»). `add` muere también (el alta de jugador va
+por Enter en el input de la ficha «+»); `nameLabel`/`namePlaceholder` se conservan.
 
 ## 3. Sin cambios
 
