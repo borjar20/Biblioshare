@@ -6,6 +6,7 @@ import { toolViews } from "./tool-views";
 import { RandomTableMark } from "./marks/random-table-mark";
 import { ClockTableMark } from "./marks/clock-table-mark";
 import { ResourcesTableMark } from "./marks/resources-table-mark";
+import { TurnsTableMark } from "./marks/turns-table-mark";
 
 /**
  * Rejilla de herramientas del hub. Las HERRAMIENTAS (con partida) salen de los
@@ -79,6 +80,19 @@ export async function ToolGrid() {
           <ResourcesTableMark className="h-16 w-16" />
           <span className="text-center font-serif text-[15px] font-semibold">
             {t("tools.resources.name")}
+          </span>
+        </Link>
+      </li>
+
+      {/* Turnos: cuarto acompañante sin partida — tarjeta estática. */}
+      <li>
+        <Link
+          href="/partidas/turnos"
+          className="flex flex-col items-center gap-3 rounded-card border border-border bg-surface p-4 transition-colors hover:bg-surface-muted"
+        >
+          <TurnsTableMark className="h-16 w-16" />
+          <span className="text-center font-serif text-[15px] font-semibold">
+            {t("tools.turns.name")}
           </span>
         </Link>
       </li>

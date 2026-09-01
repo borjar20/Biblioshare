@@ -2654,6 +2654,9 @@
       },
       "resources": {
         "name": "Recursos"
+      },
+      "turns": {
+        "name": "Turnos"
       }
     },
     "rememberedTable": {
