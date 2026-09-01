@@ -64,6 +64,26 @@ describe("resource_added / resource_removed — reconciliación", () => {
     expect(valueOf(s, "Max", null)).toBe(9_999);
     expect(valueOf(s, "Min", null)).toBe(-9_999);
   });
+  it("emoji: acepta 8 unidades y rechaza 9", () => {
+    const s = run([
+      makeEvent(
+        "resource_added",
+        { name: "Ok", emoji: "12345678", initial: 0, shared: true },
+        t0,
+      ) as ResourcesEvent,
+    ]);
+    expect(s.defs[0].emoji).toBe("12345678");
+    expect(() =>
+      resourcesReducer(
+        initialResourcesState(),
+        makeEvent(
+          "resource_added",
+          { name: "No", emoji: "123456789", initial: 0, shared: true },
+          t0,
+        ) as ResourcesEvent,
+      ),
+    ).toThrow();
+  });
 });
 
 describe("players_set — reconciliación por nombre", () => {
@@ -86,6 +106,9 @@ describe("players_set — reconciliación por nombre", () => {
     expect(() => run([players(["Ana", "Ana"])])).toThrow();
     expect(() => run([players(["Ana", " "])])).toThrow();
   });
+  it("acepta exactamente 6 jugadores (caza el mutante > vs >=)", () => {
+    expect(run([players(["a", "b", "c", "d", "e", "f"])]).players).toHaveLength(6);
+  });
 });
 
 describe("adjusted — clamp y validación", () => {
@@ -98,6 +121,9 @@ describe("adjusted — clamp y validación", () => {
   it("rechaza delta 0, no entero, fuera de rango, y combinaciones inexistentes", () => {
     const s = run([players(["Ana"]), addRes("Madera", 0), addRes("Oro", 0, true)]);
     expect(() => resourcesReducer(s, adjust("Madera", "Ana", 0))).toThrow();
+    // Extremo exacto valido del delta (caza el mutante > vs >=).
+    expect(() => resourcesReducer(s, adjust("Madera", "Ana", 9_999))).not.toThrow();
+    expect(() => resourcesReducer(s, adjust("Madera", "Ana", -9_999))).not.toThrow();
     expect(() => resourcesReducer(s, adjust("Madera", "Ana", 1.5))).toThrow();
     expect(() => resourcesReducer(s, adjust("Madera", "Ana", 10_000))).toThrow();
     expect(() => resourcesReducer(s, adjust("NoExiste", "Ana", 1))).toThrow();
