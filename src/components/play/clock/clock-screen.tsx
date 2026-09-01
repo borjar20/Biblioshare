@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useClock } from "@/lib/play/clock/use-clock";
 import { ChessSetup } from "./chess-setup";
 import { ChessGame } from "./chess-game";
+import { CountdownPanel } from "./countdown-panel";
 
 type Tab = "chess" | "countdown";
 const TABS: Tab[] = ["chess", "countdown"];
@@ -51,7 +52,7 @@ export function ClockScreen({ identity }: { identity: string }) {
             <ChessSetup identity={identity} state={clock.state} emit={clock.emit} />
           )
         ) : null}
-        {/* countdown: Task 5 */}
+        {tab === "countdown" ? <CountdownPanel state={clock.state} emit={clock.emit} /> : null}
       </div>
     </div>
   );
