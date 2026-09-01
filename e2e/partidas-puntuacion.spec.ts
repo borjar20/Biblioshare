@@ -166,6 +166,22 @@ test("config: Libre → Puntos con el stepper, y el juego tras el «+»", async 
   await expect(page).toHaveURL(/\/partida\/activa$/);
 });
 
+test("config: cambiar Rondas <-> Puntos conserva el N de cada tipo (review)", async ({ page }) => {
+  await page.goto("/partidas/puntuacion/nueva");
+  await page.getByRole("button", { name: "Rondas", exact: true }).click();
+  await page.getByRole("button", { name: "Subir límite" }).click();
+  await page.getByRole("button", { name: "Subir límite" }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("12");
+
+  // Puntos trae SU prefill (100), no arrastra el 12 de Rondas.
+  await page.getByRole("button", { name: "Puntos", exact: true }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("100");
+
+  // Volver a Rondas recupera el 12 que se había escrito, no un prefill fresco.
+  await page.getByRole("button", { name: "Rondas", exact: true }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("12");
+});
+
 test("reconfigurar desde dentro: la mesa llega prefijada y Empezar reinicia", async ({ page }) => {
   await page.goto("/partidas/puntuacion/nueva?preset=libre");
   await page.getByRole("button", { name: /^empezar$/i }).click();

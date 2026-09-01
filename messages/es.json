@@ -2719,8 +2719,6 @@
       "highest": "El que más suma",
       "lowest": "El que menos suma",
       "target": "Límite",
-      "targetRounds": "Hasta N rondas",
-      "targetPoints": "Hasta X puntos",
       "targetValue": "Valor del límite",
       "free": "Libre",
       "rounds": "Rondas",

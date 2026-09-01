@@ -44,6 +44,9 @@ type ScoreDraft = {
   targetKind: "rounds" | "points";
   targetValue: number;
   targetActive: boolean;
+  /** Memoria por tipo de límite: cambiar Rondas <-> Puntos no debe borrar el
+   * número que ya se había escrito para el tipo que se abandona (review). */
+  targetValues: { rounds: number; points: number };
   players: DraftPlayer[];
   /** A qué se juega. String simple, "" = sin etiqueta (spec task 3). */
   gameName: string;
@@ -67,14 +70,23 @@ function emptyPlayers(count: number): DraftPlayer[] {
   return Array.from({ length: count }, (_, i) => ({ id: playerId(i), name: "" }));
 }
 
+/** Los dos prefills, indexados por tipo (`rounds`/`points`) en vez de por
+ * preset (`rondas`/`puntos`) -- el shape que consume `ScoreDraft.targetValues`. */
+function defaultTargetValues(): { rounds: number; points: number } {
+  return { rounds: SCORE_PRESET_PREFILL.rondas, points: SCORE_PRESET_PREFILL.puntos };
+}
+
 /** Borrador nuevo, prefijado por el preset (spec §5: el preset SOLO prefija). */
 function newScoreDraft(preset: ScorePresetId): ScoreDraft {
   const target = scoreTargetForPreset(preset);
+  const targetValues = defaultTargetValues();
+  if (target) targetValues[target.kind] = target.value;
   return {
     direction: "highest",
     targetKind: target?.kind ?? "rounds",
     targetValue: target?.value ?? 10,
     targetActive: target !== undefined,
+    targetValues,
     players: emptyPlayers(DEFAULT_PLAYERS),
     gameName: "",
   };
@@ -82,11 +94,14 @@ function newScoreDraft(preset: ScorePresetId): ScoreDraft {
 
 /** Revancha: la mesa entera puesta, leída de la partida en curso/terminada. */
 function draftFromScoreSetup(setup: ScoreSetup): ScoreDraft {
+  const targetValues = defaultTargetValues();
+  if (setup.target) targetValues[setup.target.kind] = setup.target.value;
   return {
     direction: setup.direction,
     targetKind: setup.target?.kind ?? "rounds",
     targetValue: setup.target?.value ?? 10,
     targetActive: setup.target !== undefined,
+    targetValues,
     players: setup.participants.map((participant, i) => ({
       id: playerId(i),
       name: participant.name,
@@ -220,7 +235,11 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
       draft = setPlayerCount(draft, requestedPlayers);
     }
     if (draft.targetActive && Number.isInteger(requestedTarget) && requestedTarget >= 1) {
-      draft = { ...draft, targetValue: requestedTarget };
+      draft = {
+        ...draft,
+        targetValue: requestedTarget,
+        targetValues: { ...draft.targetValues, [draft.targetKind]: requestedTarget },
+      };
     }
     return draft;
   }, [rematchSetup, preset, requestedPlayers, requestedTarget]);
@@ -254,9 +273,13 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
       cancelled = true;
     };
   }, [identity]);
+  // Filtro por lo escrito SOLO mientras el input está abierto (review): con el
+  // disclosure cerrado los chips deben enseñar TODO lo guardado, no solo lo
+  // que empieza por el nombre ya elegido -- si no, tocar "UNO" hacía
+  // desaparecer "Chinchón" y no había forma de tocarlo después.
   const gameNameChoices = useMemo(
-    () => gameNameSuggestions(savedRecords, draft.gameName),
-    [savedRecords, draft.gameName],
+    () => gameNameSuggestions(savedRecords, addingGame ? draft.gameName : ""),
+    [savedRecords, addingGame, draft.gameName],
   );
 
   // Degradación de prefill (spec §6), espejo de setup-form.tsx: un asiento
@@ -379,7 +402,7 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
           fichas. Un asiento sin nombre enseña su número y vale así: empezar
           sin escribir nada sigue siendo el camino corto. */}
       <section>
-        <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("setup.players")}
         </p>
         <SeatRow
@@ -487,17 +510,13 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
                     option === "free"
                       ? { ...draft, targetActive: false }
                       : {
+                          // Cada tipo recuerda SU propio número (review): pasar
+                          // de Rondas a Puntos y volver a Rondas recupera el
+                          // 250 que había, no el prefill de Puntos.
                           ...draft,
                           targetActive: true,
                           targetKind: option,
-                          // Cambiar de tipo trae SU prefill (10 rondas, 100
-                          // puntos) si el valor en pantalla era el del otro
-                          // tipo -- sin esto, pasar de Rondas a Puntos
-                          // arrastraba un 10 que nadie eligió para puntuar.
-                          targetValue:
-                            draft.targetKind === option
-                              ? draft.targetValue
-                              : SCORE_PRESET_PREFILL[option === "rounds" ? "rondas" : "puntos"],
+                          targetValue: draft.targetValues[option],
                         },
                   )
                 }
@@ -515,7 +534,13 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
             <TargetStepper
               kind={draft.targetKind}
               value={draft.targetValue}
-              onChange={(targetValue) => setEdited({ ...draft, targetValue })}
+              onChange={(targetValue) =>
+                setEdited({
+                  ...draft,
+                  targetValue,
+                  targetValues: { ...draft.targetValues, [draft.targetKind]: targetValue },
+                })
+              }
             />
           </div>
         ) : null}
