@@ -33,11 +33,13 @@ export function PlayersSection({
   onTeams: (players: string[], teams: string[][]) => void;
 }) {
   const t = useTranslations("play.random.players");
-  const [teamCount, setTeamCount] = useState("");
+  const [teamCount, setTeamCount] = useState(2);
 
-  const parsedTeams = Number(teamCount || "2");
-  const teamsValid =
-    Number.isInteger(parsedTeams) && parsedTeams >= 2 && parsedTeams <= players.length - 1;
+  // Cantidades válidas de equipos: 2..jugadores-1 (un equipo por jugador, o
+  // uno solo, no cuentan como reparto). Chips, no un input numérico -- tocar
+  // el botón no puede robarle el foco al campo (#visual-first).
+  const teamOptions = Array.from({ length: Math.max(0, players.length - 2) }, (_, i) => i + 2);
+  const teamsValid = teamOptions.includes(teamCount);
   const canDraw = players.length >= 2;
 
   const spin =
@@ -83,36 +85,38 @@ export function PlayersSection({
         <p className="mt-3 text-[13px] text-muted-foreground">{t("hint")}</p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-end gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={!canDraw}
           onClick={() => onOrder(players, shuffle(players))}
-          className="rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
+          className="tap-44 rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
         >
           {t("order")}
         </button>
-        <label className="flex items-end gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            min={2}
-            value={teamCount}
-            placeholder="2"
-            onChange={(e) => setTeamCount(e.target.value)}
-            onFocus={(e) => e.currentTarget.select()}
-            aria-label={t("teamCount")}
-            className="w-16 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-          />
-          <button
-            type="button"
-            disabled={!canDraw || !teamsValid}
-            onClick={() => onTeams(players, drawTeams(players, parsedTeams))}
-            className="rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
-          >
-            {t("teams")}
-          </button>
-        </label>
+        <span className="inline-flex gap-1" role="group" aria-label={t("teamCount")}>
+          {teamOptions.map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={teamCount === n}
+              onClick={() => setTeamCount(n)}
+              className={`tap-44 h-11 min-w-11 rounded-chip border px-3 font-mono text-[15px] tabular-nums ${
+                teamCount === n ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </span>
+        <button
+          type="button"
+          disabled={!canDraw || !teamsValid}
+          onClick={() => onTeams(players, drawTeams(players, teamCount))}
+          className="tap-44 rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
+        >
+          {t("teams")}
+        </button>
       </div>
     </div>
   );

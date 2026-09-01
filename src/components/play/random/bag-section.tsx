@@ -30,8 +30,12 @@ export function BagSection({
   const [count, setCount] = useState(1);
   const [preview, setPreview] = useState(0);
   const [adding, setAdding] = useState(false);
+  // Mismo recorte que target-stepper: el número en pantalla no puede correrse
+  // de 1..99 mientras se mantiene pulsado, y disabled debe leer ese recorte
+  // (no el count ya comprometido) o el botón se reactiva un tick tarde.
+  const clampCount = (n: number) => Math.min(99, Math.max(1, n));
   const commitCount = (total: number) => {
-    setCount((c) => Math.min(99, Math.max(1, c + total)));
+    setCount((c) => clampCount(c + total));
     setPreview(0);
   };
   const up = useHoldRepeat({ step: 1, onPreview: setPreview, onCommit: commitCount });
@@ -102,9 +106,9 @@ export function BagSection({
             className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
           />
           <span className="inline-flex items-center gap-1">
-            <button type="button" aria-label={t("fewer")} disabled={count <= 1} {...down.handlers} className={stepBtn}>−</button>
-            <span className="w-8 text-center text-[14px] font-semibold tabular-nums" aria-label={t("itemCount")}>{count + preview}</span>
-            <button type="button" aria-label={t("more")} disabled={count >= 99} {...up.handlers} className={stepBtn}>+</button>
+            <button type="button" aria-label={t("fewer")} disabled={clampCount(count + preview) <= 1} {...down.handlers} className={stepBtn}>−</button>
+            <span className="w-8 text-center text-[14px] font-semibold tabular-nums" aria-label={t("itemCount")}>{clampCount(count + preview)}</span>
+            <button type="button" aria-label={t("more")} disabled={clampCount(count + preview) >= 99} {...up.handlers} className={stepBtn}>+</button>
           </span>
           <button
             type="button"

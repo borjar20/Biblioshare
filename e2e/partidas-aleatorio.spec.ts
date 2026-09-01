@@ -66,7 +66,7 @@ test("jugadores: primero, orden y equipos", async ({ page }) => {
   await page.getByRole("button", { name: /^orden aleatorio$/i }).click();
   await expect(page.getByTestId("players-result")).toContainText("1.");
 
-  await page.getByLabel("Número de equipos").fill("2");
+  await page.getByRole("group", { name: "Número de equipos" }).getByRole("button", { name: "2", exact: true }).click();
   await page.getByRole("button", { name: /^equipos$/i }).click();
   await expect(page.getByTestId("players-result")).toContainText("Equipo 1");
 });
