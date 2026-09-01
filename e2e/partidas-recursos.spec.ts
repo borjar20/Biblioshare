@@ -21,6 +21,7 @@ test("configurar, ajustar, chips rápidos, recargar, deshacer y reiniciar", asyn
   for (let i = 0; i < 5; i++) {
     await page.getByRole("button", { name: "Uno más de inicio" }).click();
   }
+  await page.getByRole("button", { name: "Jugadores", exact: true }).click();
   await page.getByRole("button", { name: "Crear ficha" }).click();
   await page.getByLabel("Nombre del recurso").fill("Oro");
   await page.getByRole("button", { name: "Banco", exact: true }).click();

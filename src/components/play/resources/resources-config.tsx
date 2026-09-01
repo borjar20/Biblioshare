@@ -174,12 +174,21 @@ export function ResourcesConfig({
 
       {/* Ficha viva: la preview se construye con lo elegido. */}
       <div className="mt-2 flex items-center gap-4">
+        {/* Vacía: fondo --surface-3 y texto atenuado (el «?» sobre el fondo de
+            la tarjeta era invisible — review final). Con nombre: color estable
+            y texto claro, como las mini-fichas. */}
         <span
           aria-hidden
-          className={`flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-full text-surface ${
-            trimmedRes === "" ? "border-2 border-dashed border-border" : ""
+          className={`flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-full ${
+            trimmedRes === ""
+              ? "border-2 border-dashed border-border text-muted-foreground"
+              : "text-surface"
           }`}
-          style={trimmedRes === "" ? undefined : { background: stableColor(trimmedRes) }}
+          style={
+            trimmedRes === ""
+              ? { background: "var(--surface-3)" }
+              : { background: stableColor(trimmedRes) }
+          }
         >
           <span className="text-[24px] leading-none">
             {emoji || (trimmedRes ? initials(trimmedRes) : "?")}
@@ -287,7 +296,7 @@ export function ResourcesConfig({
               </button>
               <span className="max-w-full truncate text-[10px] text-muted-foreground">
                 {d.name}
-                {d.shared ? ` · ${t("bank")}` : ""}
+                {d.shared ? ` · ${t("bank")}` : ""} ×
               </span>
             </li>
           ))}
