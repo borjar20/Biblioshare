@@ -160,6 +160,16 @@ describe("resource_updated", () => {
     expect(s.defs[0]).toEqual({ name: "Madera", emoji: "", initial: 9, shared: false });
     expect(valueOf(s, "Madera", "Ana")).toBe(7);
   });
+  it("el ajustado se conserva y el sin tocar sigue al nuevo inicial", () => {
+    const s = run([
+      players(["Ana", "Beto"]),
+      addRes("Madera", 5),
+      adjust("Madera", "Ana", 2),
+      update("Madera", 9, false),
+    ]);
+    expect(valueOf(s, "Madera", "Ana")).toBe(7);
+    expect(valueOf(s, "Madera", "Beto")).toBe(9);
+  });
   it("pasar a banco reconcilia: una sola entrada compartida a initial", () => {
     const s = run([players(["Ana", "Beto"]), addRes("Oro", 1), update("Oro", 3, true)]);
     expect(s.values).toEqual([{ resource: "Oro", owner: null, value: 3 }]);
