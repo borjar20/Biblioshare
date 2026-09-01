@@ -46,6 +46,15 @@ describe("chess_configured", () => {
     expect(() => clockReducer(s, chess(1000, ["Ana", "Beto"], 5_000))).toThrow();
     expect(() => clockReducer(s, chess(1000, ["Ana", "Beto"], 60_000, 61_000))).toThrow();
     expect(() => clockReducer(s, chess(1000, ["Ana", "Beto"], 60_000, -1))).toThrow();
+    expect(() => clockReducer(s, chess(1000, ["Ana", "Beto"], 7_300_000))).toThrow();
+  });
+  it("acepta los extremos exactos (6 jugadores, 2 h)", () => {
+    const s = clockReducer(
+      initialClockState(),
+      chess(1000, ["a", "b", "c", "d", "e", "f"], 7_200_000, 60_000),
+    );
+    expect(s.players).toHaveLength(6);
+    expect(s.players[0].bankMs).toBe(7_200_000);
   });
 });
 
@@ -145,6 +154,9 @@ describe("cuenta atrás", () => {
     expect(() =>
       clockReducer(s, ev("countdown_configured", 1000, { durationMs: 8_000_000 })),
     ).toThrow();
+    // Máximo exacto válido (2 h): caza al mutante que estrecha el rango.
+    const max = clockReducer(s, ev("countdown_configured", 1000, { durationMs: 7_200_000 }));
+    expect(max.countdownLeftMs).toBe(7_200_000);
   });
 });
 
