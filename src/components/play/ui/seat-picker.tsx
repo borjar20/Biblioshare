@@ -3,22 +3,18 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePlayers } from "@/lib/play/core/use-players";
-import { SeatToken, initials } from "./seat-token";
-import { RegularTokens } from "./regular-tokens";
+import { initials } from "./seat-token";
+import { SeatRow } from "./seat-row";
 
 /**
  * Selector de jugadores de los acompañantes (Aleatorio, Reloj, Recursos,
- * Turnos): fichas en vez de formulario. Tocar una ficha de color quita a ese
- * jugador; tocar un habitual atenuado lo sienta; el «+» despliega el ÚNICO
- * input de la pantalla (regla «juguete sobre formulario» — decisiones.md).
+ * Turnos): fichas en vez de formulario. Tocar una ficha de color la abre en
+ * un panel con «Quitar de la mesa» — nunca quita al toque (un roce en la mesa
+ * borraba a alguien sin deshacer). Tocar un habitual atenuado lo sienta; el
+ * «+» despliega el ÚNICO input de la pantalla.
  *
- * Vive aquí, y no copiado en cada acompañante, porque los cuatro tienen que
- * verse iguales: cuando estaba triplicado, cada arreglo (el rótulo del «+»
- * descentrado) había que hacerlo tres veces y el cuarto ni siquiera tenía
- * fichas.
- *
- * El alta DESDE el input limpia y cierra; tocar un habitual con un nombre a
- * medio escribir NO se traga el borrador.
+ * No se renombra aquí: los acompañantes identifican al jugador por nombre y
+ * renombrar sería quitar + añadir (Recursos perdería sus valores).
  */
 export function SeatPicker({
   identity,
@@ -30,18 +26,18 @@ export function SeatPicker({
 }: {
   identity: string;
   players: string[];
-  /** Tope de jugadores. Sin él no hay límite (Aleatorio no lo tiene). */
   max?: number;
   onChange: (players: string[]) => void;
   align?: "start" | "center";
-  /** Prefijo del id del input, para `aria-controls` sin colisiones. */
   idPrefix: string;
 }) {
   const t = useTranslations("play.seats");
   const { players: regulars } = usePlayers(identity);
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
+  const [open, setOpen] = useState<string | null>(null);
   const inputId = `${idPrefix}-add-player`;
+  const panelId = `${idPrefix}-seat`;
 
   function add(candidate: string, fromInput = false) {
     const trimmed = candidate.trim();
@@ -54,50 +50,49 @@ export function SeatPicker({
     }
   }
 
+  function remove(target: string) {
+    onChange(players.filter((x) => x !== target));
+    setOpen(null);
+  }
+
   const available = regulars.filter((r) => !players.includes(r.name));
   const full = max !== undefined && players.length >= max;
-  const justify = align === "center" ? "justify-center" : "";
+  const opened = open !== null && players.includes(open) ? open : null;
 
   return (
     <>
-      <div className={`flex flex-wrap items-start gap-3 ${justify}`}>
-        {players.map((p, i) => (
-          <SeatToken
-            key={p}
-            variant="seat"
-            seat={i}
-            caption={p}
-            label={t("remove", { name: p })}
-            onClick={() => onChange(players.filter((x) => x !== p))}
+      <SeatRow
+        seats={players.map((p) => ({ id: p, caption: p, content: initials(p), selected: p === opened }))}
+        onSeatTap={(id) => setOpen(id === opened ? null : id)}
+        panelId={panelId}
+        regulars={available}
+        regularsQuery={adding ? name : ""}
+        onSeatRegular={(r) => add(r.name)}
+        canAdd={!full}
+        adding={adding}
+        onAdd={() => setAdding(!adding)}
+        addControls={inputId}
+        align={align}
+      />
+      {opened !== null ? (
+        <div
+          id={panelId}
+          className={`mt-2 flex items-center justify-between gap-3 rounded-card border border-border bg-surface px-3 py-2 ${
+            align === "center" ? "mx-auto w-fit" : ""
+          }`}
+        >
+          <span className="text-[14px] font-semibold">{opened}</span>
+          <button
+            type="button"
+            onClick={() => remove(opened)}
+            className="tap-44 rounded-chip border border-border px-3 py-1.5 text-[13px] text-muted-foreground"
           >
-            {initials(p)}
-          </SeatToken>
-        ))}
-        {/* Con la mesa llena no se ofrece sentar a nadie más: el motor lo
-            rechazaría y una ficha que no hace nada al tocarla miente. */}
-        {full ? null : (
-          <>
-            {/* Escribiendo en el «+», los habituales se filtran por prefijo:
-                con veinte, buscar es más rápido que recorrer la fila — y evita
-                crear un invitado duplicado de alguien que ya es habitual. */}
-            <RegularTokens
-              regulars={available}
-              query={adding ? name : ""}
-              onSeat={(r) => add(r.name)}
-            />
-            <SeatToken
-              variant="add"
-              caption={t("add")}
-              label={t("addPlayer")}
-              expanded={adding}
-              controls={inputId}
-              onClick={() => setAdding(!adding)}
-            />
-          </>
-        )}
-      </div>
+            {t("remove", { name: opened })}
+          </button>
+        </div>
+      ) : null}
       {adding ? (
-        <div id={inputId} className={`mt-2 flex ${justify}`}>
+        <div id={inputId} className={`mt-2 flex ${align === "center" ? "justify-center" : ""}`}>
           <input
             autoFocus
             value={name}

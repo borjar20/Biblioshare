@@ -39,6 +39,7 @@ export function SeatToken({
   disabled = false,
   expanded,
   controls,
+  size = "md",
   onClick,
 }: {
   variant: SeatTokenVariant;
@@ -54,11 +55,14 @@ export function SeatToken({
   disabled?: boolean;
   expanded?: boolean;
   controls?: string;
+  /** 44 px por defecto; `sm` (32 px) para filas secundarias como «quién empieza». */
+  size?: "md" | "sm";
   onClick: () => void;
 }) {
   const filled = variant === "seat";
+  const dims = size === "sm" ? "h-8 w-8 text-[12px]" : "h-11 w-11";
   return (
-    <span className="flex w-14 flex-col items-center gap-1">
+    <span className={`flex ${size === "sm" ? "w-10" : "w-14"} flex-col items-center gap-1`}>
       <button
         type="button"
         onClick={onClick}
@@ -67,12 +71,12 @@ export function SeatToken({
         aria-controls={controls}
         title={caption}
         disabled={disabled}
-        className={`flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-full font-semibold transition-all disabled:opacity-40 [touch-action:manipulation] ${
+        className={`flex ${dims} shrink-0 select-none items-center justify-center rounded-full font-semibold transition-all disabled:opacity-40 [touch-action:manipulation] ${
           filled
             ? "text-surface"
             : "border-2 border-dashed border-border text-muted-foreground"
         } ${variant === "regular" ? "opacity-70" : ""} ${
-          variant === "add" ? "text-[18px]" : "text-[14px]"
+          variant === "add" ? "text-[18px]" : size === "sm" ? "" : "text-[14px]"
         }`}
         style={
           filled

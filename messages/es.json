@@ -2703,7 +2703,7 @@
       "addPlayer": "Añadir jugador",
       "namePlaceholder": "Añadir jugador…",
       "nameLabel": "Nombre del jugador",
-      "remove": "Quitar a {name}",
+      "remove": "Quitar a {name} de la mesa",
       "seat": "Sentar a {name}",
       "edit": "Editar a {name}",
       "removeSeat": "Quitar asiento",
