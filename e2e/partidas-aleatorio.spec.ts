@@ -76,18 +76,20 @@ test("bolsa sin reemplazo se agota, se desactiva y se reinicia", async ({ page }
   await page.getByRole("tab", { name: "Bolsa" }).click();
 
   // Sin scroll lateral en móvil: el input de nombre debe poder encoger
-  // (min-w-0) o el formulario de añadir desborda el viewport de 390px.
+  // (min-w-0) o el formulario de añadir desborda el viewport de 390px. Se
+  // abre el «+» antes de medir para que la fila del input esté cubierta.
+  await page.getByRole("button", { name: "Añadir tipo" }).click();
   const overflow = await page.evaluate(
     () => document.scrollingElement!.scrollWidth - document.scrollingElement!.clientWidth,
   );
   expect(overflow).toBe(0);
+  await page.getByRole("button", { name: "Añadir tipo" }).click();
 
-  await page.getByLabel("Tipo de ficha").fill("Rojo");
-  await page.getByLabel("Cantidad").fill("1");
-  await page.getByRole("button", { name: /^añadir$/i }).click();
-  await page.getByLabel("Tipo de ficha").fill("Azul");
-  await page.getByLabel("Cantidad").fill("1");
-  await page.getByRole("button", { name: /^añadir$/i }).click();
+  for (const tipo of ["Rojo", "Azul"]) {
+    await page.getByRole("button", { name: "Añadir tipo" }).click();
+    await page.getByLabel("Tipo de ficha").fill(tipo);
+    await page.getByRole("button", { name: /^añadir$/i }).click();
+  }
 
   await expect(page.getByText("Quedan 2")).toBeVisible();
   await page.getByRole("button", { name: /^sacar ficha$/i }).click();
