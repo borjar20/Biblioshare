@@ -9,16 +9,22 @@ test("configurar, ajustar, chips rápidos, recargar, deshacer y reiniciar", asyn
   await expect(page.getByRole("heading", { name: "Recursos" })).toBeVisible();
   await expect(page.getByText("Configura jugadores y recursos para empezar.")).toBeVisible();
 
+  // Jugadores como fichas: la ficha «+» abre el input; Enter añade y cierra.
   for (const name of ["Ana", "Beto"]) {
+    await page.getByRole("button", { name: "Añadir jugador" }).click();
     await page.getByLabel("Nombre del jugador").fill(name);
-    await page.getByRole("button", { name: "Añadir", exact: true }).click();
+    await page.getByLabel("Nombre del jugador").press("Enter");
   }
+  // Ficha viva: Madera 🌲 a 5 para jugadores; Oro al banco.
   await page.getByLabel("Nombre del recurso").fill("Madera");
-  await page.getByLabel("Valor inicial").fill("5");
-  await page.getByRole("button", { name: "Añadir recurso" }).click();
+  await page.getByRole("button", { name: "Icono 🌲" }).click();
+  for (let i = 0; i < 5; i++) {
+    await page.getByRole("button", { name: "Uno más de inicio" }).click();
+  }
+  await page.getByRole("button", { name: "Crear ficha" }).click();
   await page.getByLabel("Nombre del recurso").fill("Oro");
-  await page.getByLabel("Compartido (banco)").check();
-  await page.getByRole("button", { name: "Añadir recurso" }).click();
+  await page.getByRole("button", { name: "Banco", exact: true }).click();
+  await page.getByRole("button", { name: "Crear ficha" }).click();
 
   // Tablero: banco primero, luego Ana (res-0) y Beto. Madera de Ana a 5.
   await expect(page.getByTestId("res-0-Madera")).toHaveText("5");
