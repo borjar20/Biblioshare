@@ -2797,7 +2797,12 @@
       "title": "Nueva ronda",
       "edit": "Editar ronda {round}",
       "confirm": "Apuntar",
-      "scoreOf": "Puntos de {name}"
+      "scoreOf": "Puntos de {name}",
+      "activate": "Puntuar a {name}",
+      "plus": "Sumar uno a {name}",
+      "minus": "Restar uno a {name}",
+      "quick": "Sumar {n} a {name}",
+      "quickFor": "Cantidades rápidas para {name}"
     },
     "summary": {
       "title": "Fin de la partida",

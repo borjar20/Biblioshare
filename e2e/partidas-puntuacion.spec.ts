@@ -7,11 +7,27 @@ import { waitForActiveRecord } from "./support/play-db";
 // diferencia de partidas-navegacion.spec.ts que solo cruza pantallas.
 test.use({ viewport: { width: 390, height: 844 } });
 
-/** Abre la hoja de ronda (alta o edición ya abierta por el llamador), rellena una
- *  puntuación por jugador en orden de asiento y confirma con «Apuntar». */
+/** Compone `target` para un asiento con chips (+20/+10/+5/−5/−10) y ±1. */
+async function ponerPuntos(page: Page, seat: number, target: number) {
+  const name = `Jugador ${seat + 1}`;
+  await page.getByRole("button", { name: `Puntuar a ${name}` }).click();
+  let value = Number(await page.getByLabel(`Puntos de ${name}`).textContent());
+  const chip = async (label: string) =>
+    page.getByRole("button", { name: `Sumar ${label} a ${name}` }).click();
+  while (target - value >= 20) { await chip("+20"); value += 20; }
+  while (target - value >= 10) { await chip("+10"); value += 10; }
+  while (target - value >= 5) { await chip("+5"); value += 5; }
+  while (value - target >= 10) { await chip("-10"); value -= 10; }
+  while (value - target >= 5) { await chip("-5"); value -= 5; }
+  while (value < target) { await page.getByRole("button", { name: `Sumar uno a ${name}` }).click(); value++; }
+  while (value > target) { await page.getByRole("button", { name: `Restar uno a ${name}` }).click(); value--; }
+  await expect(page.getByLabel(`Puntos de ${name}`)).toHaveText(String(target));
+}
+
+/** Hoja de ronda ya abierta: pone cada puntuación en orden de asiento y confirma. */
 async function apuntarValores(page: Page, scores: number[]) {
   for (let seat = 0; seat < scores.length; seat++) {
-    await page.getByLabel(`Puntos de Jugador ${seat + 1}`).fill(String(scores[seat]));
+    await ponerPuntos(page, seat, scores[seat]);
   }
   await page.getByRole("button", { name: /^apuntar$/i }).click();
 }
