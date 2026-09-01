@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { ClockEvent } from "@/lib/play/clock/events";
 import type { ClockState } from "@/lib/play/clock/types";
+import { CLOCK_DURATION_MS_MAX, CLOCK_DURATION_MS_MIN } from "@/lib/play/clock/reducer";
 import { flaggedAt, formatMs, remainingAt } from "@/lib/play/clock/selectors";
 import { buzz } from "@/components/play/random/stage/stage-helpers";
 import { useNow } from "./use-now";
@@ -18,7 +19,8 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 /**
  * Cuenta atrás compartida: presets + custom, aro de progreso SVG y CTA de
  * estado (Empezar/Pausar/Reanudar). Al llegar a 0 el motor la clava (no hay
- * negativo): buzz una vez y el aro queda completo en danger.
+ * negativo): buzz una vez, el aro se vacía del todo y el tiempo central pasa
+ * a danger.
  */
 export function CountdownPanel({
   state,
@@ -35,7 +37,9 @@ export function CountdownPanel({
 
   const left = configured ? remainingAt(state, now) : state.durationMs;
   const done = configured && flaggedAt(state, now);
-  const buzzedFor = useRef<number | null>(null);
+  // Sembrado con el evento vigente si YA está agotada al montar: remontar
+  // (cambiar de pestaña y volver) no re-vibra (misma lección que chess-game).
+  const buzzedFor = useRef<number | null>(done ? state.lastEventAt : null);
   useEffect(() => {
     if (done && buzzedFor.current !== state.lastEventAt) {
       buzzedFor.current = state.lastEventAt;
@@ -48,6 +52,18 @@ export function CountdownPanel({
 
   function configure(durationMs: number) {
     emit("countdown_configured", { durationMs });
+  }
+
+  // El custom se CLAVA al rango del motor antes de emitir: un 3 configura 5 s
+  // (feedback visible en el aro) en vez de morir en silencio en la validación
+  // del reducer — el anti-patrón del rechazo mudo de la bolsa (336f8fd2).
+  function configureCustom() {
+    if (!Number.isInteger(parsedCustom)) return;
+    const clamped = Math.min(
+      Math.max(parsedCustom * 1000, CLOCK_DURATION_MS_MIN),
+      CLOCK_DURATION_MS_MAX,
+    );
+    configure(clamped);
   }
 
   const parsedCustom = Number(customSeconds);
@@ -81,12 +97,10 @@ export function CountdownPanel({
           disabled={running}
           onChange={(e) => setCustomSeconds(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && Number.isInteger(parsedCustom)) configure(parsedCustom * 1000);
+            if (e.key === "Enter") configureCustom();
           }}
           onBlur={() => {
-            if (customSeconds !== "" && Number.isInteger(parsedCustom)) {
-              configure(parsedCustom * 1000);
-            }
+            if (customSeconds !== "") configureCustom();
           }}
           onFocus={(e) => e.currentTarget.select()}
           aria-label={t("customSeconds")}

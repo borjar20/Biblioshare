@@ -12,8 +12,8 @@ const TABS: Tab[] = ["chess", "countdown"];
 
 /**
  * Pantalla del acompañante «Reloj» (spec reloj §2): pestañas-chip como el
- * Aleatorio. En ajedrez, setup o juego según haya chess_configured vigente.
- * La pestaña de cuenta atrás entra en la tarea siguiente.
+ * Aleatorio. En ajedrez, setup o juego según haya chess_configured vigente;
+ * la pestaña de cuenta atrás monta CountdownPanel.
  */
 export function ClockScreen({ identity }: { identity: string }) {
   const t = useTranslations("play.clock");
