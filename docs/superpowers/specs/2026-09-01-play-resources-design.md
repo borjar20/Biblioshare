@@ -62,7 +62,8 @@ Página server idéntica al patrón (connection + identidad + key). `ResourcesSc
 
 ### Configuración (arriba, colapsable)
 
-- Colapsada por defecto cuando ya hay ≥1 def Y (≥1 jugador o solo defs compartidas); expandida
+- Colapsada por defecto cuando ya hay ≥1 def Y (≥1 jugador o ≥1 def compartida — con mezcla y
+  0 jugadores el banco es operable y el tablero se enseña); expandida
   si no. Botón chip «Configurar» la abre/cierra (aria-expanded).
 - **Jugadores**: patrón reloj — chips de habituales (`usePlayers`), input + añadir (min-w-0),
   quitar con ×. 0..6. Cada cambio emite `players_set`.

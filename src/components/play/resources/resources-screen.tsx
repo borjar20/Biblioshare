@@ -19,9 +19,11 @@ export function ResourcesScreen({ identity }: { identity: string }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
+  // `some` y no `every`: con mezcla de defs y 0 jugadores el BANCO sí es
+  // operable — se enseña el tablero (con solo la tarjeta Banco) y no el hint.
   const hasBoard =
     res.state.defs.length > 0 &&
-    (res.state.players.length > 0 || res.state.defs.every((d) => d.shared));
+    (res.state.players.length > 0 || res.state.defs.some((d) => d.shared));
 
   // Latch: se decide una vez al cargar (persistido con tablero → colapsada).
   useEffect(() => {

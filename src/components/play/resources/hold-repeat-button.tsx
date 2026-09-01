@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 const HOLD_DELAY_MS = 400;
 const REPEAT_MS = 120;
@@ -38,7 +38,21 @@ export function HoldRepeatButton({
     repeat.current = null;
   }
 
+  // Limpieza al desmontar: una fila que desaparece a mitad de mantener (p. ej.
+  // la otra pestaña borró el recurso vía CAS) no deja el interval vivo.
+  useEffect(() => {
+    return () => {
+      if (delay.current) clearTimeout(delay.current);
+      if (repeat.current) clearInterval(repeat.current);
+    };
+  }, []);
+
   function start() {
+    // Un segundo pointerdown (multitouch accidental) no debe huérfanear el
+    // interval anterior, y un justHeld pegado (click suprimido por el menú
+    // contextual) no debe tragarse el siguiente toque (review final).
+    stopTimers();
+    justHeld.current = false;
     held.current = false;
     acc.current = 0;
     delay.current = setTimeout(() => {
@@ -72,13 +86,18 @@ export function HoldRepeatButton({
     }
   }
 
+  // Hardening táctil de la casa (damage-overlay): onContextMenu preventDefault
+  // mata el menú del long-press en Android, select-none la selección de texto
+  // y touch-action:manipulation el zoom por doble toque en iOS.
   return (
     <button
       type="button"
       aria-label={label}
+      onContextMenu={(e) => e.preventDefault()}
       onPointerDown={start}
       onPointerUp={finish}
       onPointerLeave={cancel}
+      onPointerCancel={cancel}
       onClick={() => {
         if (justHeld.current) {
           justHeld.current = false;
@@ -86,7 +105,7 @@ export function HoldRepeatButton({
         }
         onCommit(direction);
       }}
-      className="h-10 w-10 rounded-chip border border-border text-[18px] font-semibold"
+      className="h-10 w-10 select-none rounded-chip border border-border text-[18px] font-semibold [touch-action:manipulation]"
     >
       {direction > 0 ? "+" : "−"}
     </button>
