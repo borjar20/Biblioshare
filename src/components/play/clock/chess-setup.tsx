@@ -4,24 +4,30 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
 import { usePlayers } from "@/lib/play/core/use-players";
+import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
 import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { ClockEvent } from "@/lib/play/clock/events";
 import type { ClockState } from "@/lib/play/clock/types";
-import {
-  CLOCK_INCREMENT_MS_MAX,
-  CLOCK_INITIAL_MS_MAX,
-  CLOCK_INITIAL_MS_MIN,
-  CLOCK_MAX_PLAYERS,
-} from "@/lib/play/clock/reducer";
+import { CLOCK_MAX_PLAYERS } from "@/lib/play/clock/reducer";
+import { SEAT_ACCENT } from "@/lib/play/ui/seats";
+import { ClockFace } from "./clock-face";
 
 const TIME_PRESETS_MIN = [1, 3, 5, 10, 15, 30];
 const INCREMENT_PRESETS_S = [0, 5, 10, 30];
+const MINUTES_MIN = 1;
+const MINUTES_MAX = 120;
+
+function initials(name: string): string {
+  return name.trim().slice(0, 2).toUpperCase();
+}
 
 /**
- * Setup del reloj de ajedrez: lista propia de jugadores (habituales a un
- * toque), tiempo inicial e incremento Fischer. «Empezar» emite
- * chess_configured. Tras un reset, el estado conserva la config anterior y
- * este formulario la precarga.
+ * Setup visual del reloj (spec reloj-visual §2): esfera viva que refleja el
+ * tiempo elegido, jugadores como fichas de asiento (tocar quita; habituales
+ * atenuados se encienden; la ficha «+» despliega el único input que queda) y
+ * stepper de minutos con mantener. «Empezar 5+5» emite chess_configured —
+ * el motor no cambia. El rango 1..120 min por construcción hace innecesaria
+ * la validación de rangos aquí.
  */
 export function ChessSetup({
   identity,
@@ -36,41 +42,34 @@ export function ChessSetup({
   const { players: regulars } = usePlayers(identity);
   const [players, setPlayers] = useState<string[]>(state.players.map((p) => p.name));
   const [name, setName] = useState("");
-  const [minutes, setMinutes] = useState(Math.round(state.initialMs / 60_000) || 5);
-  const [customMinutes, setCustomMinutes] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [minutes, setMinutes] = useState(() =>
+    Math.min(MINUTES_MAX, Math.max(MINUTES_MIN, Math.round(state.initialMs / 60_000) || 5)),
+  );
+  const [minutesPreview, setMinutesPreview] = useState(0);
   const [incrementS, setIncrementS] = useState(Math.round(state.incrementMs / 1000));
-  const [customIncrement, setCustomIncrement] = useState("");
+
+  const clampMin = (n: number) => Math.min(MINUTES_MAX, Math.max(MINUTES_MIN, n));
+  const shownMinutes = clampMin(minutes + minutesPreview);
+  const commitStep = (total: number) => {
+    setMinutes((m) => clampMin(m + total));
+    setMinutesPreview(0);
+  };
+  const stepUp = useHoldRepeat({ step: 1, onPreview: setMinutesPreview, onCommit: commitStep });
+  const stepDown = useHoldRepeat({ step: -1, onPreview: setMinutesPreview, onCommit: commitStep });
 
   function add(candidate: string) {
     const trimmed = candidate.trim();
     if (trimmed === "" || players.includes(trimmed) || players.length >= CLOCK_MAX_PLAYERS) return;
     setPlayers([...players, trimmed]);
     setName("");
+    setAdding(false);
   }
 
-  const chips = regulars.filter((r) => !players.includes(r.name)).slice(0, 6);
-
-  const parsedCustomMin = Number(customMinutes);
-  const initialMs =
-    customMinutes !== "" && Number.isFinite(parsedCustomMin)
-      ? Math.round(parsedCustomMin * 60_000)
-      : minutes * 60_000;
-  const parsedCustomInc = Number(customIncrement);
-  const incrementMs =
-    customIncrement !== "" && Number.isFinite(parsedCustomInc)
-      ? Math.round(parsedCustomInc * 1000)
-      : incrementS * 1000;
-
+  const regularTokens = regulars.filter((r) => !players.includes(r.name)).slice(0, 6);
   const blockedByCountdown = state.mode === "countdown" && state.countdownRunning;
-
-  const valid =
-    players.length >= 2 &&
-    Number.isInteger(initialMs) &&
-    initialMs >= CLOCK_INITIAL_MS_MIN &&
-    initialMs <= CLOCK_INITIAL_MS_MAX &&
-    Number.isInteger(incrementMs) &&
-    incrementMs >= 0 &&
-    incrementMs <= CLOCK_INCREMENT_MS_MAX;
+  const valid = players.length >= 2;
+  const expr = incrementS > 0 ? `${shownMinutes}+${incrementS}` : t("minutes", { n: shownMinutes });
 
   const chipClass = (selected: boolean) =>
     `rounded-chip border px-3 py-1.5 text-[13px] font-semibold ${
@@ -79,59 +78,78 @@ export function ChessSetup({
 
   return (
     <div>
-      {chips.length > 0 ? (
-        <div className="flex flex-wrap gap-2" aria-label={t("regulars")}>
-          {chips.map((r) => (
-            <button
-              key={r.playerId}
-              type="button"
-              onClick={() => add(r.name)}
-              className="rounded-chip border border-border px-3 py-1 text-[13px]"
-            >
-              {r.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-3 flex gap-2">
-        <input
-          value={name}
-          placeholder={t("namePlaceholder")}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") add(name);
-          }}
-          aria-label={t("nameLabel")}
-          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-        />
-        <button
-          type="button"
-          onClick={() => add(name)}
-          className="rounded-chip border border-border px-3 py-1.5 text-[13px]"
-        >
-          {t("add")}
-        </button>
+      <div className="flex flex-col items-center">
+        <ClockFace minutes={shownMinutes} />
+        <p className="mt-1 font-serif text-[20px] font-semibold tabular-nums">
+          {t("minutes", { n: shownMinutes })}
+          {incrementS > 0 ? ` · +${incrementS} s` : ""}
+        </p>
       </div>
 
-      {players.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {players.map((p) => (
-            <li key={p}>
-              <button
-                type="button"
-                onClick={() => setPlayers(players.filter((x) => x !== p))}
-                aria-label={t("remove", { name: p })}
-                className="rounded-chip border border-border px-3 py-1 text-[13px]"
-              >
-                {p} ×
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-3 text-[13px] text-muted-foreground">{t("playersHint")}</p>
-      )}
+      {/* Fichas: jugadores en su color de asiento (tocar quita), habituales
+          atenuados (tocar añade) y la ficha «+» que abre el input de nombre. */}
+      <div className="mt-4 flex flex-wrap items-start justify-center gap-3">
+        {players.map((p, i) => (
+          <span key={p} className="flex w-14 flex-col items-center gap-1">
+            <button
+              type="button"
+              aria-label={t("remove", { name: p })}
+              title={p}
+              onClick={() => setPlayers(players.filter((x) => x !== p))}
+              className="flex h-11 w-11 select-none items-center justify-center rounded-full text-[14px] font-semibold text-surface"
+              style={{ background: `var(${SEAT_ACCENT[i % SEAT_ACCENT.length].varName})` }}
+            >
+              {initials(p)}
+            </button>
+            <span className="max-w-full truncate text-[10px] text-muted-foreground">{p}</span>
+          </span>
+        ))}
+        {regularTokens.map((r) => (
+          <span key={r.playerId} className="flex w-14 flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => add(r.name)}
+              title={r.name}
+              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[14px] font-semibold text-muted-foreground opacity-70"
+            >
+              {initials(r.name)}
+            </button>
+            <span className="max-w-full truncate text-[10px] text-muted-foreground">{r.name}</span>
+          </span>
+        ))}
+        {players.length < CLOCK_MAX_PLAYERS ? (
+          <span className="flex w-14 flex-col items-center gap-1">
+            <button
+              type="button"
+              aria-label={t("addPlayer")}
+              aria-expanded={adding}
+              onClick={() => setAdding(!adding)}
+              className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-border text-[18px] font-semibold text-muted-foreground"
+            >
+              +
+            </button>
+            <span className="text-[10px] text-muted-foreground">{t("addPlayer")}</span>
+          </span>
+        ) : null}
+      </div>
+      {adding ? (
+        <div className="mt-2 flex justify-center">
+          <input
+            autoFocus
+            value={name}
+            placeholder={t("namePlaceholder")}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") add(name);
+            }}
+            aria-label={t("nameLabel")}
+            className="w-48 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
+          />
+        </div>
+      ) : null}
+      {players.length < 2 ? (
+        <p className="mt-2 text-center text-[13px] text-muted-foreground">{t("playersHint")}</p>
+      ) : null}
 
       <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         {t("initial")}
@@ -141,28 +159,36 @@ export function ChessSetup({
           <button
             key={m}
             type="button"
-            aria-pressed={customMinutes === "" && minutes === m}
+            aria-pressed={shownMinutes === m}
             onClick={() => {
-              setCustomMinutes("");
               setMinutes(m);
+              setMinutesPreview(0);
             }}
-            className={chipClass(customMinutes === "" && minutes === m)}
+            className={chipClass(shownMinutes === m)}
           >
             {t("minutes", { n: m })}
           </button>
         ))}
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={120}
-          value={customMinutes}
-          placeholder="min"
-          onChange={(e) => setCustomMinutes(e.target.value)}
-          onFocus={(e) => e.currentTarget.select()}
-          aria-label={t("customMinutes")}
-          className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-        />
+        <span className="ml-auto inline-flex items-center gap-1">
+          <button
+            type="button"
+            aria-label={t("fewerMinutes")}
+            disabled={minutes <= MINUTES_MIN}
+            {...stepDown.handlers}
+            className="h-9 w-9 select-none rounded-chip border border-border text-[16px] font-semibold disabled:opacity-40 [touch-action:manipulation]"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            aria-label={t("moreMinutes")}
+            disabled={minutes >= MINUTES_MAX}
+            {...stepUp.handlers}
+            className="h-9 w-9 select-none rounded-chip border border-border text-[16px] font-semibold disabled:opacity-40 [touch-action:manipulation]"
+          >
+            +
+          </button>
+        </span>
       </div>
 
       <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -173,28 +199,13 @@ export function ChessSetup({
           <button
             key={sec}
             type="button"
-            aria-pressed={customIncrement === "" && incrementS === sec}
-            onClick={() => {
-              setCustomIncrement("");
-              setIncrementS(sec);
-            }}
-            className={chipClass(customIncrement === "" && incrementS === sec)}
+            aria-pressed={incrementS === sec}
+            onClick={() => setIncrementS(sec)}
+            className={chipClass(incrementS === sec)}
           >
             {sec === 0 ? t("noIncrement") : t("plusSeconds", { n: sec })}
           </button>
         ))}
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={60}
-          value={customIncrement}
-          placeholder="s"
-          onChange={(e) => setCustomIncrement(e.target.value)}
-          onFocus={(e) => e.currentTarget.select()}
-          aria-label={t("customIncrement")}
-          className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-        />
       </div>
 
       {blockedByCountdown ? (
@@ -203,10 +214,16 @@ export function ChessSetup({
       <button
         type="button"
         disabled={!valid || blockedByCountdown}
-        onClick={() => emit("chess_configured", { players, initialMs, incrementMs })}
+        onClick={() =>
+          emit("chess_configured", {
+            players,
+            initialMs: minutes * 60_000,
+            incrementMs: incrementS * 1000,
+          })
+        }
         className={buttonVariants("primary", "mt-5 w-full justify-center py-3 text-[15px]")}
       >
-        {t("start")}
+        {t("startExpr", { expr })}
       </button>
     </div>
   );
