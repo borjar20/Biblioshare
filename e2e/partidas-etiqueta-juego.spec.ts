@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 // Etiqueta de juego en puntuación (#931, spec §2-§6, Task 5). La etiqueta viaja
 // en el LOG (gameName en setup + evento game_labeled) hasta el resumen, el
@@ -8,6 +8,34 @@ import { test, expect } from "@playwright/test";
 // sin red de Supabase que montar. Viewport móvil porque ambos guiones
 // interactúan con el tablero real para poder finalizar una partida.
 test.use({ viewport: { width: 390, height: 844 } });
+
+// La hoja de ronda usa chips (+20/+10/+5/-5/-10) y ±1, no inputs (d594ffcb).
+// Helpers duplicados de partidas-puntuacion.spec.ts -- los specs de Playwright
+// no comparten helpers, y son solo dos funciones pequeñas.
+/** Compone `target` para un asiento con chips (+20/+10/+5/−5/−10) y ±1. */
+async function ponerPuntos(page: Page, seat: number, target: number) {
+  const name = `Jugador ${seat + 1}`;
+  await page.getByRole("button", { name: `Puntuar a ${name}` }).click();
+  let value = Number(await page.getByLabel(`Puntos de ${name}`).textContent());
+  const chip = async (label: string) =>
+    page.getByRole("button", { name: `Sumar ${label} a ${name}` }).click();
+  while (target - value >= 20) { await chip("+20"); value += 20; }
+  while (target - value >= 10) { await chip("+10"); value += 10; }
+  while (target - value >= 5) { await chip("+5"); value += 5; }
+  while (value - target >= 10) { await chip("-10"); value -= 10; }
+  while (value - target >= 5) { await chip("-5"); value -= 5; }
+  while (value < target) { await page.getByRole("button", { name: `Sumar uno a ${name}` }).click(); value++; }
+  while (value > target) { await page.getByRole("button", { name: `Restar uno a ${name}` }).click(); value--; }
+  await expect(page.getByLabel(`Puntos de ${name}`)).toHaveText(String(target));
+}
+
+/** Hoja de ronda ya abierta: pone cada puntuación en orden de asiento y confirma. */
+async function apuntarValores(page: Page, scores: number[]) {
+  for (let seat = 0; seat < scores.length; seat++) {
+    await ponerPuntos(page, seat, scores[seat]);
+  }
+  await page.getByRole("button", { name: /^apuntar$/i }).click();
+}
 
 test("la etiqueta viaja del setup al historial y los chips la recuerdan", async ({ page }) => {
   await page.goto("/partidas/puntuacion/nueva");
@@ -23,19 +51,21 @@ test("la etiqueta viaja del setup al historial y los chips la recuerdan", async 
 
   await expect(page.getByRole("button", { name: /^añadir ronda$/i })).toBeVisible();
   await page.getByRole("button", { name: /^añadir ronda$/i }).click();
-  await page.getByLabel("Puntos de Jugador 1").fill("5");
-  await page.getByLabel("Puntos de Jugador 2").fill("3");
-  await page.getByLabel("Puntos de Jugador 3").fill("2");
-  await page.getByLabel("Puntos de Jugador 4").fill("1");
-  await page.getByRole("button", { name: /^apuntar$/i }).click();
+  await apuntarValores(page, [5, 3, 2, 1]);
 
   await page.getByRole("button", { name: "Acciones de la partida" }).click();
   await page.getByRole("button", { name: /^finalizar la partida$/i }).click();
   await expect(page.getByRole("heading", { name: /gana jugador 1/i })).toBeVisible();
 
   // Resumen: la etiqueta viaja sola, sin tocar "Añadir juego" -- ese botón
-  // solo aparece cuando NO hay etiqueta (segundo test).
-  await expect(page.getByText("UNO", { exact: true })).toBeVisible();
+  // solo aparece cuando NO hay etiqueta (segundo test). El DOM congelado de
+  // la ruta anterior (#1003, mismo criterio que
+  // partidas-puntuacion.spec.ts:191-193) vive dentro del MISMO <main> que el
+  // resumen -- no hay landmark que lo separe -- y conserva el chip "UNO" del
+  // picker de "juegos anteriores". Acotado al <p> que envuelve "Editar
+  // juego" (único, sin homólogo congelado) para desambiguar.
+  const etiquetaResumen = page.locator("p").filter({ has: page.getByRole("button", { name: "Editar juego" }) });
+  await expect(etiquetaResumen.getByText("UNO", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Editar juego" })).toBeVisible();
 
   // "Guardar partida" (finalizar el guardado) vs "Guardar" (confirmar la
@@ -69,11 +99,7 @@ test("añadir la etiqueta desde el resumen de una partida sin ella", async ({ pa
   await expect(page.getByRole("button", { name: /^añadir ronda$/i })).toBeVisible();
 
   await page.getByRole("button", { name: /^añadir ronda$/i }).click();
-  await page.getByLabel("Puntos de Jugador 1").fill("5");
-  await page.getByLabel("Puntos de Jugador 2").fill("3");
-  await page.getByLabel("Puntos de Jugador 3").fill("2");
-  await page.getByLabel("Puntos de Jugador 4").fill("1");
-  await page.getByRole("button", { name: /^apuntar$/i }).click();
+  await apuntarValores(page, [5, 3, 2, 1]);
 
   await page.getByRole("button", { name: "Acciones de la partida" }).click();
   await page.getByRole("button", { name: /^finalizar la partida$/i }).click();
