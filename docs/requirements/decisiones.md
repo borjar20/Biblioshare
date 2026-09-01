@@ -3395,3 +3395,16 @@ excepción deliberada a la regla «payload inválido lanza» de los companions (
 inexistente o delta 0 sí lanzan). El gesto de mantener acumula en LOCAL y emite un único
 evento al soltar: un gesto = un deshacer, y el log no se llena de ±1. Spec:
 docs/superpowers/specs/2026-09-01-play-resources-design.md.
+
+## Turnos: la ronda sube al envolver POSICIONES, no al contar vueltas (2026-09-01)
+
+El tracker de turnos decide el cambio de ronda con una regla puramente posicional: con
+dirección 1 la ronda sube cuando el índice nuevo (entre vivos) es ≤ que el viejo; con
+dirección −1, simétrico. Ventajas: determinista bajo eliminados y cambios de dirección,
+gratis en el replay, y sin estado extra («quién abrió la ronda» se descartó porque el
+starter puede caer eliminado). Consecuencias asumidas: retroceder hacia el asiento 0 no
+completa vuelta, y dos envolturas consecutivas son IMPOSIBLES (cada envoltura aterriza en
+el mínimo vivo y el siguiente avance siempre sube) — un salto suma como mucho una ronda.
+Eliminar al activo avanza ANTES de marcarlo (con su ronda si envuelve). La spec §4 se
+enmendó al descubrirlo en review: prometía testear «skip que envuelve dos veces», caso
+inalcanzable. Spec: docs/superpowers/specs/2026-09-01-play-turns-design.md.
