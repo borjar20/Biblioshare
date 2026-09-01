@@ -27,8 +27,12 @@ export function ChessGame({
   const running = state.active !== null && !state.paused;
   const now = useNow(running);
   const [confirming, setConfirming] = useState(false);
-  // Buzz al cruzar 0: una vez por jugador y configuración.
-  const buzzed = useRef<Set<number>>(new Set());
+  // Buzz al cruzar 0: una vez por jugador y configuración. Sembrado con las
+  // banderas YA liquidadas para que remontar (cambiar de pestaña y volver) no
+  // re-vibre por un caído antiguo — solo cruces nuevos (review Task 4).
+  const buzzed = useRef<Set<number>>(
+    new Set(state.players.flatMap((p, i) => (p.flagged ? [i] : []))),
+  );
   useEffect(() => {
     state.players.forEach((_, i) => {
       if (flaggedAt(state, now, i) && !buzzed.current.has(i)) {
