@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useTurns } from "@/lib/play/turns/use-turns";
 import { TurnsSetup } from "./turns-setup";
+import { TurnsGame } from "./turns-game";
 
 /**
  * Pantalla del acompañante «Turnos» (spec turnos §2): setup o juego según
@@ -23,7 +24,14 @@ export function TurnsScreen({ identity }: { identity: string }) {
         {turns.state.active === null ? (
           <TurnsSetup identity={identity} state={turns.state} emit={turns.emit} />
         ) : null}
-        {/* juego: Task 3 */}
+        {turns.state.active !== null ? (
+          <TurnsGame
+            state={turns.state}
+            emit={turns.emit}
+            undo={turns.undo}
+            canUndo={turns.canUndo}
+          />
+        ) : null}
       </div>
     </div>
   );
