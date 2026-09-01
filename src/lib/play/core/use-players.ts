@@ -37,7 +37,14 @@ export function usePlayers(identity: string): {
       setLoaded(true);
       return;
     }
-    const own = (await listPlayers(identity)).filter((r) => r.deletedAt === null);
+    // Alfabético: `getAll` devuelve el orden de la clave primaria (un UUID),
+    // o sea arbitrario. Ordenar AQUÍ, en la única fuente, hace que la hoja
+    // «Tus jugadores», los chips del setup y las fichas del selector enseñen
+    // a la misma gente en el mismo orden -- que es lo que se espera de dos
+    // listas que dicen ser la misma.
+    const own = (await listPlayers(identity))
+      .filter((r) => r.deletedAt === null)
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
     setPlayers(own);
     setLoaded(true);
   }, [identity]);

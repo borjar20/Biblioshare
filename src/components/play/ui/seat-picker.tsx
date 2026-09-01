@@ -4,10 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePlayers } from "@/lib/play/core/use-players";
 import { SeatToken, initials } from "./seat-token";
-
-// Cuántos habituales se ofrecen como ficha: los mismos que `RegularPicker`
-// enseña como chips. Más convierten el selector en una lista de contactos.
-const MAX_REGULARS = 6;
+import { RegularTokens } from "./regular-tokens";
 
 /**
  * Selector de jugadores de los acompañantes (Aleatorio, Reloj, Recursos,
@@ -57,7 +54,7 @@ export function SeatPicker({
     }
   }
 
-  const regularTokens = regulars.filter((r) => !players.includes(r.name)).slice(0, MAX_REGULARS);
+  const available = regulars.filter((r) => !players.includes(r.name));
   const full = max !== undefined && players.length >= max;
   const justify = align === "center" ? "justify-center" : "";
 
@@ -76,26 +73,27 @@ export function SeatPicker({
             {initials(p)}
           </SeatToken>
         ))}
-        {regularTokens.map((r) => (
-          <SeatToken
-            key={r.playerId}
-            variant="regular"
-            caption={r.name}
-            label={t("seat", { name: r.name })}
-            onClick={() => add(r.name)}
-          >
-            {initials(r.name)}
-          </SeatToken>
-        ))}
+        {/* Con la mesa llena no se ofrece sentar a nadie más: el motor lo
+            rechazaría y una ficha que no hace nada al tocarla miente. */}
         {full ? null : (
-          <SeatToken
-            variant="add"
-            caption={t("add")}
-            label={t("addPlayer")}
-            expanded={adding}
-            controls={inputId}
-            onClick={() => setAdding(!adding)}
-          />
+          <>
+            {/* Escribiendo en el «+», los habituales se filtran por prefijo:
+                con veinte, buscar es más rápido que recorrer la fila — y evita
+                crear un invitado duplicado de alguien que ya es habitual. */}
+            <RegularTokens
+              regulars={available}
+              query={adding ? name : ""}
+              onSeat={(r) => add(r.name)}
+            />
+            <SeatToken
+              variant="add"
+              caption={t("add")}
+              label={t("addPlayer")}
+              expanded={adding}
+              controls={inputId}
+              onClick={() => setAdding(!adding)}
+            />
+          </>
         )}
       </div>
       {adding ? (

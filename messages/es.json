@@ -2706,7 +2706,9 @@
       "remove": "Quitar a {name}",
       "seat": "Sentar a {name}",
       "edit": "Editar a {name}",
-      "removeSeat": "Quitar asiento"
+      "removeSeat": "Quitar asiento",
+      "more": "Ver más",
+      "moreRegulars": "Ver {n} habituales más"
     },
     "scoreSetup": {
       "captionHighest": "Gana quien más suma",

@@ -3431,3 +3431,20 @@ uno —añadir dejaría a los cuatro anónimos del prefill colgando junto al rec
 Con add/remove por el medio el id de asiento ya no puede derivarse del índice (`p3`
 duplicado): `nextSeatId` toma el primer libre. MTG se queda como estaba: sus asientos
 llevan mazo, uno o dos comandantes y fondo de tarjeta, y eso no cabe en una ficha.
+
+## Las fichas de habitual no se cortan en silencio (2026-09-01)
+
+El selector enseñaba los seis primeros habituales y callaba el resto — con más de seis, la
+fila no coincidía con la lista de «Tus jugadores», que es lo que reportó el usuario. Y el
+orden venía de `getAll` sobre la clave primaria (un UUID), o sea arbitrario: cuáles eran
+«los seis» cambiaba sin criterio. Tres cambios: `usePlayers` ordena alfabéticamente en la
+ÚNICA fuente, así que la hoja del hub, los chips del setup y las fichas enseñan a la misma
+gente en el mismo orden; lo que no cabe en la primera tanda se ofrece en una ficha «+N» que
+despliega el resto (`visibleRegulars`, pura y testeada); y escribiendo en el «+» de los
+acompañantes se filtra por prefijo SIN tope, que con veinte habituales es más rápido que
+recorrer la fila y de paso evita crear un invitado duplicado de alguien que ya es habitual.
+
+Consecuencia en la mesa de puntuación: con las fichas arriba, los chips de `RegularPicker`
+bajo el campo repetían a la misma gente. Ahí los chips pasan a salir solo AL ESCRIBIR
+(`suggestOnEmpty={false}`); en mtg siguen saliendo con el campo vacío, porque allí no hay
+fichas y los chips son lo único que hace descubribles a los habituales (spec fase 6 §6).

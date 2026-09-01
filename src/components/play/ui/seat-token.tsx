@@ -87,7 +87,7 @@ export function SeatToken({
             : undefined
         }
       >
-        {variant === "add" ? "+" : children}
+        {variant === "add" ? (children ?? "+") : children}
       </button>
       <span className="w-full truncate text-center text-[10px] text-muted-foreground">
         {caption}

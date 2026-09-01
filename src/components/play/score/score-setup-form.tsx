@@ -12,6 +12,7 @@ import type { ScoreDirection, ScoreSetup, ScoreTarget } from "@/lib/play/score/t
 import { gameNameSuggestions } from "@/lib/play/ui/game-names";
 import { buttonVariants } from "@/components/ui/button";
 import { SeatToken, initials } from "../ui/seat-token";
+import { RegularTokens } from "../ui/regular-tokens";
 import { RegularPicker } from "../regular-picker";
 import { parseScorePreset, scoreTargetForPreset, type ScorePresetId } from "./score-preset-chooser";
 
@@ -293,7 +294,7 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
     draft.players[index].name.trim() || t("setup.playerN", { n: index + 1 });
 
   const openIndex = draft.players.findIndex((p) => p.id === openSeat);
-  const regularTokens = regulars.filter((r) => !takenIds.includes(r.playerId)).slice(0, 6);
+  const availableRegulars = regulars.filter((r) => !takenIds.includes(r.playerId));
 
   /** Asiento nuevo, vacío y abierto para escribir. */
   function addSeat() {
@@ -388,17 +389,7 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
               {player.name.trim() === "" ? i + 1 : initials(player.name)}
             </SeatToken>
           ))}
-          {regularTokens.map((r) => (
-            <SeatToken
-              key={r.playerId}
-              variant="regular"
-              caption={r.name}
-              label={t("seats.seat", { name: r.name })}
-              onClick={() => seatRegular({ playerId: r.playerId, name: r.name })}
-            >
-              {initials(r.name)}
-            </SeatToken>
-          ))}
+          <RegularTokens regulars={availableRegulars} onSeat={seatRegular} />
           {draft.players.length < MAX_PLAYERS ? (
             <SeatToken
               variant="add"
@@ -450,6 +441,9 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
               onRemembered={(regular) => setEdited(assignRegular(draft, openIndex, regular))}
               self={self}
               onPickSelf={(me) => setEdited(assignSelf(draft, openIndex, me))}
+              // Las fichas de arriba ya enseñan a los habituales: aquí los
+              // chips solo aparecen al escribir (buscar entre muchos).
+              suggestOnEmpty={false}
             />
           </div>
         </div>
