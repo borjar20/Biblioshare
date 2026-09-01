@@ -25,8 +25,8 @@ test("anónimo llega a Partidas y puede empezar una partida sin cuenta", async (
   await page.getByRole("link", { name: /configurar la mesa/i }).click();
   await expect(page).toHaveURL(/\/partidas\/mtg\/nueva/);
 
-  // Cero es un camino de primera: «Empezar» está activo sin abrir nada, y la mesa
-  // plegada enseña en su resumen a los cuatro de la mesa.
+  // Cero es un camino de primera: «Empezar» está activo sin abrir nada, y la
+  // fila de fichas ya enseña el rótulo de los cuatro asientos.
   await expect(page.getByText(/jugador 4/i).first()).toBeVisible();
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
@@ -57,12 +57,14 @@ test("el modo manda: Duelo son 20 vidas y exactamente dos asientos", async ({ pa
   await page.getByRole("button", { name: /duelo/i }).click();
   await page.getByRole("link", { name: /configurar la mesa/i }).click();
 
-  // La cabecera, no el resumen de «Personalizar»: «20 vidas» sale en los dos sitios.
+  // La cabecera: «20 vidas» sale ahí y en los chips de vidas iniciales.
   await expect(page.getByText(/duelo · 20 vidas/i)).toBeVisible();
-  // Duelo no ofrece elegir cuánta gente: min y max son 2.
-  await page.getByText("En la mesa").click();
-  await expect(page.getByPlaceholder("Jugador 2")).toBeVisible();
-  await expect(page.getByPlaceholder("Jugador 3")).toHaveCount(0);
+  // Duelo no ofrece elegir cuánta gente ni añadir un tercer asiento: min y max
+  // son 2, así que no hay ficha «+» ni panel con «Quitar asiento».
+  await expect(page.getByRole("button", { name: "Editar a Jugador 3" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Editar a Jugador 1" }).click();
+  await expect(page.getByLabel("Nombre")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quitar asiento" })).toHaveCount(0);
 
   await page.getByRole("button", { name: /^empezar$/i }).click();
   const record = await waitForActiveRecord(page, (r) => r !== null);
@@ -75,13 +77,14 @@ test("el modo manda: Duelo son 20 vidas y exactamente dos asientos", async ({ pa
 test("lo escrito en la mesa llega a la partida, y la mesa se recuerda", async ({ page }) => {
   await page.goto("/partidas/mtg/nueva?modo=commander");
 
-  // Los campos son lo opcional y viven plegados: se abre la mesa para escribir.
-  await page.getByText("En la mesa").click();
-  await page.getByPlaceholder("Jugador 1").fill("Ana");
+  // Los campos son lo opcional y viven en el panel de la ficha: se abre el
+  // asiento tocando su ficha, no un pliegue «En la mesa».
+  await page.getByRole("button", { name: "Editar a Jugador 1" }).click();
+  await page.getByLabel("Nombre").fill("Ana");
   // Partner: el comandante es una lista de uno o dos, no un campo aparte.
-  await page.getByRole("button", { name: /añadir comandante/i }).first().click();
-  await page.getByLabel("Comandante 1").first().fill("Tymna");
-  await page.getByLabel("Comandante 2").first().fill("Thrasios");
+  await page.getByRole("button", { name: /añadir comandante/i }).click();
+  await page.getByLabel("Comandante 1").fill("Tymna");
+  await page.getByLabel("Comandante 2").fill("Thrasios");
 
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
