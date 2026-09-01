@@ -2992,8 +2992,16 @@
       "configure": "Configurar",
       "emptyHint": "Configura jugadores y recursos para empezar.",
       "players": "Jugadores",
-      "emojiPicker": "Icono",
-      "emojiOption": "Icono {emoji}",
+      "iconPicker": "Icono",
+      "iconOption": "Icono {name}",
+      "preset": "Crear {name}",
+      "editResource": "Editar {name}",
+      "custom": "A medida",
+      "customResource": "Recurso a medida",
+      "presets": {
+        "gold": "Oro", "wood": "Madera", "stone": "Piedra", "wheat": "Trigo", "sheep": "Oveja",
+        "brick": "Ladrillo", "gem": "Gema", "heart": "Vida", "bolt": "Energía", "star": "Puntos"
+      },
       "fewerInitial": "Uno menos de inicio",
       "moreInitial": "Uno más de inicio",
       "owner": "Dueño",
