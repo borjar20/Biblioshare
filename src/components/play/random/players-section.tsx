@@ -94,7 +94,7 @@ export function PlayersSection({
         >
           {t("order")}
         </button>
-        <span className="inline-flex gap-1" role="group" aria-label={t("teamCount")}>
+        <span className="flex flex-wrap gap-1" role="group" aria-label={t("teamCount")}>
           {teamOptions.map((n) => (
             <button
               key={n}
