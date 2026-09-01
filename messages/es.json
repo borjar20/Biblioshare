@@ -2651,6 +2651,35 @@
       },
       "clock": {
         "name": "Reloj"
+      },
+      "resources": {
+        "title": "Recursos",
+        "subtitle": "Contadores de monedas, puntos o materiales para cualquier juego.",
+        "configure": "Configurar",
+        "emptyHint": "Configura jugadores y recursos para empezar.",
+        "players": "Jugadores",
+        "regulars": "Tus habituales",
+        "nameLabel": "Nombre del jugador",
+        "namePlaceholder": "Añadir jugador…",
+        "add": "Añadir",
+        "removePlayer": "Quitar a {name}",
+        "resources": "Recursos",
+        "resourceName": "Nombre del recurso",
+        "resourcePlaceholder": "Madera, Oro…",
+        "emojiLabel": "Emoji (opcional)",
+        "initialLabel": "Valor inicial",
+        "sharedLabel": "Compartido (banco)",
+        "addResource": "Añadir recurso",
+        "removeResource": "Quitar {name}",
+        "bank": "Banco",
+        "increase": "Sumar {name}",
+        "decrease": "Restar {name}",
+        "quick": "Cantidades rápidas de {name}",
+        "undo": "Deshacer",
+        "reset": "Reiniciar valores",
+        "resetConfirm": "¿Seguro? Todos a su inicial",
+        "clear": "Empezar de cero",
+        "clearConfirm": "¿Seguro? Borra jugadores y recursos"
       }
     },
     "rememberedTable": {
