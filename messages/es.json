@@ -2648,6 +2648,9 @@
       },
       "random": {
         "name": "Aleatorio"
+      },
+      "clock": {
+        "name": "Reloj"
       }
     },
     "rememberedTable": {
