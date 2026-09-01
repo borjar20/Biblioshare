@@ -18,9 +18,12 @@ const TABS: Tab[] = ["chess", "countdown"];
 export function ClockScreen({ identity }: { identity: string }) {
   const t = useTranslations("play.clock");
   const clock = useClock(identity);
-  const [tab, setTab] = useState<Tab>("chess");
+  const [tabChoice, setTabChoice] = useState<Tab | null>(null);
 
   if (!clock.loaded) return null;
+
+  // Recargar con una cuenta atrás corriendo aterriza en su pestaña.
+  const tab: Tab = tabChoice ?? (clock.state.mode === "countdown" ? "countdown" : "chess");
 
   return (
     <div>
@@ -34,7 +37,7 @@ export function ClockScreen({ identity }: { identity: string }) {
             role="tab"
             aria-selected={tab === id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => setTabChoice(id)}
             className={`rounded-chip border px-3 py-1.5 text-[13px] ${
               tab === id ? "border-foreground bg-surface-muted font-semibold" : "border-border"
             }`}

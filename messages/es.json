@@ -2963,7 +2963,9 @@
       "flag": "Sin tiempo",
       "duration": "Duración",
       "seconds": "{n} s",
-      "customSeconds": "Segundos personalizados"
+      "customSeconds": "Segundos personalizados",
+      "blockedByChess": "Reinicia el reloj de ajedrez para configurar la cuenta atrás.",
+      "blockedByCountdown": "Pausa o reinicia la cuenta atrás para empezar."
     }
   }
 }

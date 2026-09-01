@@ -28,10 +28,11 @@ export function ChessGame({
   const now = useNow(running);
   const [confirming, setConfirming] = useState(false);
   // Buzz al cruzar 0: una vez por jugador y configuración. Sembrado con las
-  // banderas YA liquidadas para que remontar (cambiar de pestaña y volver) no
-  // re-vibre por un caído antiguo — solo cruces nuevos (review Task 4).
+  // banderas vigentes (liquidadas O en vivo) para que remontar (cambiar de
+  // pestaña y volver) no re-vibre por un caído antiguo — solo cruces nuevos
+  // (review Task 4).
   const buzzed = useRef<Set<number>>(
-    new Set(state.players.flatMap((p, i) => (p.flagged ? [i] : []))),
+    new Set(state.players.flatMap((_, i) => (flaggedAt(state, now, i) ? [i] : []))),
   );
   useEffect(() => {
     state.players.forEach((_, i) => {
@@ -55,6 +56,7 @@ export function ChessGame({
               type="button"
               data-testid={`clock-zone-${i}`}
               data-active={active}
+              aria-pressed={active}
               onClick={() => {
                 if (active && !state.paused) emit("turn_passed", {});
               }}
@@ -70,7 +72,11 @@ export function ChessGame({
                   style={{ background: `var(${seat.varName})` }}
                 />
                 {p.name}
-                {flagged ? <span aria-label={t("flag")}>⚑</span> : null}
+                {flagged ? (
+                  <span role="img" aria-label={t("flag")}>
+                    ⚑
+                  </span>
+                ) : null}
               </span>
               <span
                 data-testid={`clock-time-${i}`}

@@ -35,6 +35,9 @@ export function useCompanionStore<S, E extends PlayEvent>(opts: {
   compact: (input: { base: S | null; log: PlayEvent[] }) => { base: S | null; log: PlayEvent[] };
   feed?: (log: PlayEvent[], max: number) => E[];
   feedMax?: number;
+  /** timestamp del evento; por defecto Date.now(). Permite a un companion
+   * clavar el tiempo a la monotonía de su estado. */
+  at?: (state: S) => number;
 }): {
   state: S;
   feed: E[];
@@ -43,7 +46,7 @@ export function useCompanionStore<S, E extends PlayEvent>(opts: {
   canUndo: boolean;
   loaded: boolean;
 } {
-  const { storageKey, replay, reducer, compact, feed: feedFn, feedMax = 20 } = opts;
+  const { storageKey, replay, reducer, compact, feed: feedFn, feedMax = 20, at: atFn } = opts;
   const [snapshot, setSnapshot] = useState<Snapshot<S>>({ base: null, log: [], rev: 0 });
   const [loaded, setLoaded] = useState(false);
   // Rev vivo para la cadena de escrituras: los setState son asíncronos y dos
@@ -140,10 +143,12 @@ export function useCompanionStore<S, E extends PlayEvent>(opts: {
   const emit = useCallback(
     <T extends E["type"]>(type: T, payload: Extract<E, { type: T }>["payload"]): boolean => {
       const current = snapRef.current;
-      const event = makeEvent(type, payload, Date.now()) as unknown as E;
+      const stateNow = replay(current.base, current.log);
+      const at = atFn ? atFn(stateNow) : Date.now();
+      const event = makeEvent(type, payload, at) as unknown as E;
       try {
         // Validación ANTES de comprometer: el reducer lanza ante payload inválido.
-        reducer(replay(current.base, current.log), event);
+        reducer(stateNow, event);
       } catch {
         return false;
       }

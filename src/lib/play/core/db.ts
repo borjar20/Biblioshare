@@ -46,10 +46,13 @@ export type PlayerRecord = {
 };
 
 // CompanionRecord llega con el randomizer (spec randomizer §5): el almacén
-// `companion` guarda el estado del acompañante «Aleatorio» FUERA del slot
-// `active` — una partida activa y el randomizer conviven. `base` es el estado
+// `companion` guarda el estado de CUALQUIER acompañante (Aleatorio, Reloj…)
+// FUERA del slot `active` — una partida activa y los companions conviven.
+// La clave es `identity` (storageKey del hook) — el Aleatorio usa la
+// identidad a secas (clave histórica) y el Reloj `${identity}:clock`; el
+// campo se sigue llamando `identity` por herencia. `base` es el estado
 // re-basado por la compactación; viaja como `unknown` porque db.ts es neutro
-// y no importa tipos de `random/` (quien lee valida por replay).
+// y no importa tipos de `random/` ni `clock/` (quien lee valida por replay).
 export type CompanionRecord = {
   identity: string; // uid real o "anon", mismo aislamiento que `active`
   v: 1;

@@ -32,6 +32,7 @@ export function CountdownPanel({
   const t = useTranslations("play.clock");
   const configured = state.mode === "countdown";
   const running = configured && state.countdownRunning && !state.paused;
+  const blockedByChess = state.mode === "chess";
   const now = useNow(running);
   const [customSeconds, setCustomSeconds] = useState("");
 
@@ -58,9 +59,9 @@ export function CountdownPanel({
   // (feedback visible en el aro) en vez de morir en silencio en la validación
   // del reducer — el anti-patrón del rechazo mudo de la bolsa (336f8fd2).
   function configureCustom() {
-    if (!Number.isInteger(parsedCustom)) return;
+    if (!Number.isFinite(parsedCustom)) return;
     const clamped = Math.min(
-      Math.max(parsedCustom * 1000, CLOCK_DURATION_MS_MIN),
+      Math.max(Math.round(parsedCustom * 1000), CLOCK_DURATION_MS_MIN),
       CLOCK_DURATION_MS_MAX,
     );
     configure(clamped);
@@ -74,13 +75,16 @@ export function CountdownPanel({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        {t("duration")}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         {PRESETS_S.map((sec) => (
           <button
             key={sec}
             type="button"
             aria-pressed={configured && state.durationMs === sec * 1000}
-            disabled={running}
+            disabled={running || blockedByChess}
             onClick={() => configure(sec * 1000)}
             className={chipClass(configured && state.durationMs === sec * 1000)}
           >
@@ -94,7 +98,7 @@ export function CountdownPanel({
           max={7200}
           value={customSeconds}
           placeholder="s"
-          disabled={running}
+          disabled={running || blockedByChess}
           onChange={(e) => setCustomSeconds(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") configureCustom();
@@ -107,6 +111,9 @@ export function CountdownPanel({
           className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
         />
       </div>
+      {blockedByChess ? (
+        <p className="mt-2 text-[13px] text-muted-foreground">{t("blockedByChess")}</p>
+      ) : null}
 
       <div className="mt-5 flex justify-center">
         <svg viewBox="0 0 200 200" className="h-56 w-56" aria-hidden="true">
@@ -139,6 +146,7 @@ export function CountdownPanel({
           </text>
         </svg>
       </div>
+      <p className="sr-only">{formatMs(left)}</p>
 
       {/* `|| done`: en vivo (sin evento posterior) el estado aún dice
           countdownRunning=true con left=0 — el CTA honesto es «Empezar», que

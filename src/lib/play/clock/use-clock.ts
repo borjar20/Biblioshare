@@ -25,5 +25,9 @@ export function useClock(identity: string): {
     replay: replayClock,
     reducer: clockReducer,
     compact: compactClockIfNeeded,
+    // Reloj del sistema hacia atrás (NTP) no puede dejar muerto el reloj — el
+    // evento se clava al lastEventAt vigente; el throw estricto sigue
+    // protegiendo el replay de logs guardados.
+    at: (s) => Math.max(Date.now(), s.lastEventAt),
   });
 }

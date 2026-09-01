@@ -61,6 +61,8 @@ export function ChessSetup({
       ? Math.round(parsedCustomInc * 1000)
       : incrementS * 1000;
 
+  const blockedByCountdown = state.mode === "countdown" && state.countdownRunning;
+
   const valid =
     players.length >= 2 &&
     Number.isInteger(initialMs) &&
@@ -195,9 +197,12 @@ export function ChessSetup({
         />
       </div>
 
+      {blockedByCountdown ? (
+        <p className="mt-4 text-[13px] text-muted-foreground">{t("blockedByCountdown")}</p>
+      ) : null}
       <button
         type="button"
-        disabled={!valid}
+        disabled={!valid || blockedByCountdown}
         onClick={() => emit("chess_configured", { players, initialMs, incrementMs })}
         className={buttonVariants("primary", "mt-5 w-full justify-center py-3 text-[15px]")}
       >
