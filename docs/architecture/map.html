@@ -129,7 +129,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-08-29",
+    "generatedAt": "2026-09-02",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab)",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -1089,6 +1089,41 @@
       ]
     },
     {
+      "id": "m-pet",
+      "label": "lib/pet",
+      "layer": "domain",
+      "kind": "module",
+      "size": 12,
+      "summary": "Mascota RPG (spec 2026-09-02, fase 1). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration.",
+      "files": [
+        "src/lib/pet/actions.ts",
+        "src/lib/pet/derive.ts",
+        "src/lib/pet/balance.ts",
+        "src/lib/pet/classes.ts",
+        "src/lib/pet/manifest.ts",
+        "src/lib/pet/get-companion-state.ts",
+        "src/lib/pet/get-pet-snapshot.ts",
+        "src/lib/pet/get-pet-counts.ts"
+      ],
+      "gotchas": [
+        "No hay cron que detecte la subida de nivel: solo se calcula al abrir /mascota (issue #1020)."
+      ]
+    },
+    {
+      "id": "m-celebrations",
+      "label": "lib/celebrations",
+      "layer": "domain",
+      "kind": "module",
+      "size": 6,
+      "summary": "Motor genérico de celebraciones (rachas, subida de nivel/evolución de la mascota...): earn.ts registra un logro idempotente en user_celebrations; registry.ts es el catálogo de tipos y umbrales (p. ej. STREAK_MILESTONES). Otros dominios lo invocan puntualmente (earnCelebration); no escucha eventos ni tiene ganchos automáticos en cada escritura — la lección de #459.",
+      "files": [
+        "src/lib/celebrations/earn.ts",
+        "src/lib/celebrations/registry.ts",
+        "src/lib/celebrations/preference.ts",
+        "src/lib/celebrations/pull-actions.ts"
+      ]
+    },
+    {
       "id": "sb-server",
       "label": "supabase/server.ts",
       "layer": "data",
@@ -1406,6 +1441,42 @@
       "summary": "Tablero de la partida en curso y resumen final. Única pantalla sin topbar ni barra de cinco (ChromeGate).",
       "files": [
         "src/app/partida"
+      ]
+    },
+    {
+      "id": "c-pet",
+      "label": "components/pet",
+      "layer": "ui",
+      "kind": "ui",
+      "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite con rig por partes en CSS).",
+      "files": [
+        "src/components/pet"
+      ]
+    },
+    {
+      "id": "r-mascota",
+      "label": "/mascota",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Eclosión si no hay mascota; ficha derivada (atributos, nivel, etapa, humor) si ya la hay.",
+      "files": [
+        "src/app/mascota"
+      ]
+    },
+    {
+      "id": "t-pet",
+      "label": "pet_state",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Una fila por usuario, solo decisiones. XP/nivel/etapa NO están aquí — se derivan en m-pet. last_level/last_stage existen solo para detectar la subida al calcular.",
+      "columns": [
+        "user_id",
+        "name",
+        "class",
+        "hatched_at",
+        "companion_hidden",
+        "last_level",
+        "last_stage"
       ]
     }
   ],
@@ -2345,6 +2416,60 @@
       "from": "c-play",
       "to": "m-play",
       "kind": "calls"
+    },
+    {
+      "from": "proxy",
+      "to": "r-mascota",
+      "kind": "renders"
+    },
+    {
+      "from": "r-mascota",
+      "to": "c-pet",
+      "kind": "renders"
+    },
+    {
+      "from": "r-mascota",
+      "to": "m-pet",
+      "kind": "reads"
+    },
+    {
+      "from": "c-nav",
+      "to": "c-pet",
+      "kind": "renders",
+      "label": "compañera flotante en el chrome"
+    },
+    {
+      "from": "c-nav",
+      "to": "m-pet",
+      "kind": "reads",
+      "label": "getCompanionState (lectura ligera)"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-stats",
+      "kind": "reads",
+      "label": "getStreaks"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-celebrations",
+      "kind": "calls",
+      "label": "earnCelebration (pet_level_up / pet_evolved)"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-reactivity",
+      "kind": "revalidates"
+    },
+    {
+      "from": "m-pet",
+      "to": "sb-server",
+      "kind": "writes"
+    },
+    {
+      "from": "sb-server",
+      "to": "t-pet",
+      "kind": "writes"
     }
   ],
   "flows": [
@@ -3081,6 +3206,49 @@
           "node": "m-reactivity",
           "action": "revalidateClubPages() refresca muro, calendario y la ficha del evento",
           "file": "src/lib/reactivity/revalidate.ts"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-hatch",
+      "name": "Eclosionar mascota",
+      "category": "core",
+      "summary": "Nombre + clase → fila en pet_state → ficha derivada. Sin mascota, /mascota enseña el formulario de eclosión; con ella, la ficha con atributos/nivel/etapa/humor derivados en el momento.",
+      "entrypoint": "src/lib/pet/actions.ts:31",
+      "steps": [
+        {
+          "node": "c-pet",
+          "action": "hatch-form: el usuario elige nombre y clase (class-picker)",
+          "file": "src/components/pet/hatch-form.tsx"
+        },
+        {
+          "node": "m-pet",
+          "action": "hatchPet valida nombre/clase y hace INSERT en pet_state; 23505 (fila ya existe, PK user_id) se traduce a error `exists`",
+          "file": "src/lib/pet/actions.ts:31"
+        },
+        {
+          "node": "sb-server",
+          "action": "INSERT en pet_state (user_id, name, class)",
+          "file": "src/lib/supabase/server.ts"
+        },
+        {
+          "node": "t-pet",
+          "action": "Fila nueva; hatched_at, last_level y last_stage a sus valores por defecto"
+        },
+        {
+          "node": "m-reactivity",
+          "action": "revalidatePetPage() invalida /mascota y el chrome raíz — la compañera flotante vive en el layout, no en /mascota",
+          "file": "src/lib/reactivity/revalidate.ts:154"
+        },
+        {
+          "node": "r-mascota",
+          "action": "La página repinta con pet-detail (atributos/nivel/etapa derivados en el momento) en vez del formulario",
+          "file": "src/app/mascota/page.tsx"
+        },
+        {
+          "node": "c-nav",
+          "action": "La compañera flotante aparece en el resto del chrome (ausente en /partida/activa, pantalla a sangre)",
+          "file": "src/components/nav/app-shell.tsx"
         }
       ]
     }

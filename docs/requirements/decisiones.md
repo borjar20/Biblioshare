@@ -3478,3 +3478,32 @@ El e2e del tablero (`/partida/activa`) cuenta exactamente una live region. Con C
 la ruta anterior queda congelado y oculto (`display:none`) tras `router.push`, así que un `aria-live` en
 una pantalla de setup o de hub se suma a esa cuenta aunque esté invisible (issue #1003). Los steppers
 llevan `aria-label` en sus botones y en el número visible, sin `aria-live`.
+
+## 2026-09-02 — Mascota RPG: todo lo derivable se deriva
+
+Cierre de la fase 1 (spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`). Los tres porqués
+que fijan el contrato:
+
+- **Derivado vs libro mayor.** XP, atributos, nivel y etapa se calculan cada vez a partir de las tablas
+  que ya existen (`progress_sessions`, `passes`, `notes`, posts de club…); no hay una tabla de XP que
+  sumar. Consecuencia directa: los usuarios con historial no empiezan de cero, rebalancear pesos es
+  cambiar `balance.ts` y no hay ganchos nuevos que mantener en cada escritura del dominio — la lección
+  de #459 con las celebraciones, donde los ganchos se olvidan.
+- **Rig por partes vs frames.** Se compararon tres formas de animar el companion: cuerpo rígido (barato
+  pero muerto), frames por capa (sprite sheet clásico, coste = clases × capas × animaciones × frames, y
+  la IA falla manteniendo coherencia entre frames) y rig por partes. Gana el rig porque una animación se
+  define una vez (`transform` + `transform-origin` sobre cada pieza) y vale para las seis clases.
+- **Humor sin castigo.** La mascota es un espejo, no una máquina de culpa: nunca pierde nivel ni
+  atributos por inactividad. Lo único que baja sin uso es el humor (capa cara + animación idle), y
+  vuelve al entrar. No hay bocadillos espontáneos ni avisos de «te echo de menos» — el humor se ve, no
+  se anuncia.
+
+**Calibración contra prod (solo lectura, 9 perfiles reales, Task 10).** Con la fórmula aproximada de la
+spec (minutos/10 + terminados×10 + notas×3 + posts×3 + días activos×2, activos ≈ nº de sesiones) el
+usuario más activo de prod rondaba 1 600 XP estimados. El divisor de referencia de la spec (50, nivel 10
+= 4 050 XP) lo dejaba en nivel 6; ni siquiera el ejemplo de la propia spec (25, nivel 10 = 2 025 XP)
+llegaba (nivel 9). Se baja `BALANCE.level.divisor` a **15** (nivel 10 = 1 215 XP): el usuario más activo
+queda en nivel 11 (adulta) con margen, y como el resto de fuentes de XP de la spec (valoraciones, votos,
+rachas, sagas completadas…) no entran en esta estimación aproximada, el XP real solo puede ser mayor —
+el margen es conservador, no ajustado al límite. Detalle de la tabla y el cálculo en el informe de
+Task 10 (`.superpowers/sdd/task-10-report.md`).
