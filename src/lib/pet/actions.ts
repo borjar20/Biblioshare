@@ -3,16 +3,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePetPage } from "@/lib/reactivity/revalidate";
-import { isPetClass } from "./classes";
+import { isPetClass, NAME_MAX } from "./classes";
 
 export type PetActionState = {
   error?: "invalidName" | "invalidClass" | "exists" | "generic";
 };
 
-export const NAME_MAX = 24;
-
-// Espejo del CHECK de BD (char_length entre 1 y 24). Se recorta y se colapsan
-// espacios: "  Nuez  " es "Nuez".
+// Se recorta y se colapsan espacios: "  Nuez  " es "Nuez". El límite (NAME_MAX)
+// vive en classes.ts: este módulo es "use server" y solo puede exportar
+// funciones async, así que una constante aquí rompe la build.
 function parseName(raw: FormDataEntryValue | null): string | null {
   const name = String(raw ?? "").trim().replace(/\s+/g, " ");
   if (name.length < 1 || name.length > NAME_MAX) return null;

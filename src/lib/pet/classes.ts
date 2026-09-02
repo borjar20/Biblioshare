@@ -30,3 +30,8 @@ export type PetMood = "happy" | "neutral" | "sleepy" | "sad";
 export function isPetClass(x: unknown): x is PetClass {
   return typeof x === "string" && (PET_CLASSES as readonly string[]).includes(x);
 }
+
+// Espejo del CHECK de BD (char_length entre 1 y 24). Vive aquí y no en
+// actions.ts: ese módulo es "use server" y solo puede exportar funciones
+// async — una constante ahí rompe la build (server actions must be async).
+export const NAME_MAX = 24;
