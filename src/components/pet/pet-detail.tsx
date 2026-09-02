@@ -7,7 +7,9 @@ import { changeClass } from "@/lib/pet/actions";
 import { CLASS_PRIMARY, PET_ATTRIBUTES, type PetClass } from "@/lib/pet/classes";
 import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import { buttonVariants } from "@/components/ui/button";
+import { AchievementGrid } from "./achievement-grid";
 import { ClassPicker } from "./class-picker";
+import { MissionBoard } from "./mission-board";
 import { PetSprite } from "./pet-sprite";
 import { RenameForm } from "./rename-form";
 
@@ -23,8 +25,8 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
   // La subida/evolución se gana en el servidor al calcular el snapshot; en una
   // navegación suave el provider no se remonta, así que hay que pedirle el drenado.
   useEffect(() => {
-    if (pet.leveledUp || pet.evolved) checkCelebrations();
-  }, [pet.leveledUp, pet.evolved]);
+    if (pet.leveledUp || pet.evolved || pet.missionsCompletedNow || pet.achievementsUnlockedNow) checkCelebrations();
+  }, [pet.leveledUp, pet.evolved, pet.missionsCompletedNow, pet.achievementsUnlockedNow]);
 
   function confirmClass(cls: PetClass) {
     if (!window.confirm(t("changeClass.confirm", { cls: t(`classes.${cls}`) }))) return;
@@ -91,6 +93,9 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
           ))}
         </ul>
       </section>
+
+      <MissionBoard missions={pet.missions} />
+      <AchievementGrid achievements={pet.achievements} />
 
       <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card">
         <RenameForm name={pet.name} />
