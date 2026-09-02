@@ -16,6 +16,16 @@ export const BALANCE = {
   // Un día de alta con este número de pases o más es un volcado (importación
   // o carga manual del historial): todos sus pases cuentan como historial.
   history: { burstMin: 10 },
+  // Misiones diarias (spec fase 2 §1). La XP de cada plantilla NO se lista
+  // aquí: se deriva de los pesos de arriba en missions/templates.ts.
+  missions: {
+    targets: { session_minutes: 20, session_pages: 30, episodes: 2 },
+    // finish_pass elegible: libro con posición >= 70 % de sus páginas o serie
+    // con <= 2 episodios sin ver. review elegible: terminado en los últimos 7 días.
+    finishThreshold: 0.7,
+    seriesEpisodesLeft: 2,
+    reviewWindowDays: 7,
+  },
   classBonus: 1.5,
   // nivel = floor(sqrt(xp / divisor)) + 1  → nivel 10 = 1 215 XP, nivel 40 = 22 815.
   // Calibrado contra prod (Task 10, 2026-09-02) y recalibrado el mismo día al
