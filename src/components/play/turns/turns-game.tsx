@@ -122,14 +122,30 @@ export function TurnsGame({
           aria-hidden="true"
           style={state.direction === -1 ? { transform: "translateX(-50%) scaleX(-1)" } : undefined}
         >
+          {/* La punta va como marker con orient="auto": el navegador la alinea
+              con la tangente del arco. El polígono a mano llegaba horizontal a
+              un arco que entra a 27° y se veía descolgado (visto en móvil). */}
+          <defs>
+            <marker
+              id="turn-arrow-head"
+              viewBox="0 0 10 10"
+              refX="7"
+              refY="5"
+              markerWidth="4"
+              markerHeight="4"
+              orient="auto"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-ink)" />
+            </marker>
+          </defs>
           <path
-            d="M 8 18 Q 30 4 50 14"
+            d="M 8 18 Q 30 4 46 12"
             fill="none"
             stroke="var(--accent-ink)"
             strokeWidth="2.5"
             strokeLinecap="round"
+            markerEnd="url(#turn-arrow-head)"
           />
-          <polygon points="50,14 42,10 45,19" fill="var(--accent-ink)" />
         </svg>
 
         {/* El centro es el botón de avance. */}
