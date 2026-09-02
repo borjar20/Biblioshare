@@ -120,8 +120,6 @@ export async function getPetSnapshot(
     if (evolved) await earnCelebration(supabase, userId, { event: "pet_evolved", milestone: STAGE_INDEX[stage] });
   }
 
-  const t = await getTranslations("pet");
-
   // Logros por familias: una fila por nivel; solo se gana lo NUEVO.
   const earnedRows = earned.data ?? [];
   const earnedAt = new Map<string, string>(); // "familia:tier" → first_triggered_at
@@ -140,6 +138,7 @@ export async function getPetSnapshot(
   const progress = familyProgress(counts, level);
   const plan = planAchievementEarns(progress, new Set(earnedAt.keys()), backfill);
   if (plan.length > 0) {
+    const t = await getTranslations("pet");
     const now = new Date().toISOString();
     await Promise.all(
       plan.map((e) =>
