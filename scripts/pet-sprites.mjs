@@ -46,8 +46,6 @@ function shade(g, from, dark, light) {
   }
   return out;
 }
-function merge(...layers) { const g = grid(); for (const l of layers) for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (l[y][x]) g[y][x] = l[y][x]; return g; }
-
 // ---- PNG RGBA sin dependencias ----
 const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
 const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
