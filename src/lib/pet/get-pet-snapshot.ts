@@ -1,14 +1,25 @@
 import type { createClient } from "@/lib/supabase/server";
 import { earnCelebration } from "@/lib/celebrations/earn";
 import { todayISO, toISODate } from "@/lib/stats/dates";
-import { isPetClass, type PetAttributes, type PetClass, type PetMood, type PetStage } from "./classes";
+import { achievementProgress, isAchievementId, type AchievementId } from "./achievements";
+import { CLASS_PRIMARY, isPetClass, type PetAttributes, type PetClass, type PetMood, type PetStage } from "./classes";
 import { daysBetweenISO, type PetCounts } from "./counts";
 import { deriveAttributes, levelFor, moodFor, stageFor, xpFor, xpForLevel } from "./derive";
 import { getPetCounts } from "./get-pet-counts";
+import { syncDailyMissions, type MissionView } from "./missions/sync";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export const STAGE_INDEX: Record<PetStage, number> = { acorn: 0, young: 1, adult: 2, veteran: 3 };
+
+export interface AchievementView {
+  id: AchievementId;
+  value: number;
+  threshold: number;
+  unlocked: boolean;
+  /** ISO de user_celebrations.first_triggered_at; null si bloqueado. */
+  unlockedAt: string | null;
+}
 
 export interface PetSnapshot {
   name: string;
@@ -28,6 +39,11 @@ export interface PetSnapshot {
   /** true en la lectura que detecta la subida/evolución (para animar). */
   leveledUp: boolean;
   evolved: boolean;
+  missions: MissionView[];
+  achievements: AchievementView[];
+  /** true en la lectura que completa una misión / desbloquea un logro (para pedir el drenado). */
+  missionsCompletedNow: boolean;
+  achievementsUnlockedNow: boolean;
 }
 
 // Lectura COMPLETA (spec §8): solo /mascota. Deriva todo y, si el nivel o la
@@ -46,7 +62,7 @@ export async function getPetSnapshot(
   if (error) throw error;
   if (!pet || !isPetClass(pet.class)) return null;
 
-  const { counts, lastActivityISO } = await getPetCounts(supabase, userId);
+  const { counts, lastActivityISO, days, eligibility } = await getPetCounts(supabase, userId);
   const attributes = deriveAttributes(counts);
   const xp = xpFor(attributes, pet.class);
   const level = levelFor(xp);
@@ -75,6 +91,38 @@ export async function getPetSnapshot(
     if (evolved) await earnCelebration(supabase, userId, { event: "pet_evolved", milestone: STAGE_INDEX[stage] });
   }
 
+  // Misiones del día (spec fase 2 §4): generar si faltan, evaluar hoy y ayer.
+  const { missions, completedNow } = await syncDailyMissions(supabase, userId, {
+    today: todayISO(),
+    primary: CLASS_PRIMARY[pet.class],
+    attributes,
+    eligibility,
+    days,
+  });
+
+  // Logros: solo se gana lo NUEVO (ninguna escritura en una visita sin novedades).
+  const { data: earnedRows, error: earnedErr } = await supabase
+    .from("user_celebrations")
+    .select("event_key, first_triggered_at")
+    .eq("user_id", userId)
+    .eq("event_type", "pet_achievement");
+  if (earnedErr) throw earnedErr;
+  const earnedAt = new Map<string, string>();
+  for (const r of earnedRows ?? []) {
+    const id = r.event_key.replace(/^pet_achievement:/, "");
+    if (isAchievementId(id)) earnedAt.set(id, r.first_triggered_at);
+  }
+  const progressList = achievementProgress(counts, level);
+  let achievementsUnlockedNow = false;
+  for (const a of progressList) {
+    if (a.unlocked && !earnedAt.has(a.id)) {
+      achievementsUnlockedNow = true;
+      await earnCelebration(supabase, userId, { event: "pet_achievement", key: a.id, metadata: { threshold: a.threshold } });
+      earnedAt.set(a.id, new Date().toISOString());
+    }
+  }
+  const achievements: AchievementView[] = progressList.map((a) => ({ ...a, unlockedAt: earnedAt.get(a.id) ?? null }));
+
   return {
     name: pet.name,
     petClass: pet.class,
@@ -91,5 +139,9 @@ export async function getPetSnapshot(
     lastActivityISO,
     leveledUp,
     evolved,
+    missions,
+    achievements,
+    missionsCompletedNow: completedNow,
+    achievementsUnlockedNow,
   };
 }
