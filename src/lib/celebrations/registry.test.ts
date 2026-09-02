@@ -46,3 +46,15 @@ describe("eventos de la mascota", () => {
     expect(CELEBRATIONS.pet_evolved.intensity).toBe("high");
   });
 });
+
+describe("scope key (misiones y logros de la mascota)", () => {
+  it("la clave es evento:key", () => {
+    expect(getCelebrationKey({ event: "pet_mission_done", key: "2026-09-03:1" })).toBe("pet_mission_done:2026-09-03:1");
+    expect(getCelebrationKey({ event: "pet_achievement", key: "notes_50" })).toBe("pet_achievement:notes_50");
+    expect(CELEBRATIONS.pet_mission_done.scope).toBe("key");
+    expect(CELEBRATIONS.pet_achievement.scope).toBe("key");
+  });
+  it("falla si falta key", () => {
+    expect(() => getCelebrationKey({ event: "pet_mission_done" })).toThrow();
+  });
+});
