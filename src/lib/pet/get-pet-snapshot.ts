@@ -132,7 +132,11 @@ export async function getPetSnapshot(
   // Volcado inicial: ver el comentario de la fase 2 — el primer lote se gana ya
   // mostrado. Además, subir varios niveles de golpe anima solo el más alto de
   // cada familia; los intermedios se ganan sellados (quedan con fecha).
-  const backfill = earnedRows.length === 0;
+  // Se cuenta earnedAt (claves que SÍ parsearon), no earnedRows: una fila
+  // huérfana (event_key con formato viejo/corrupto) haría fallar el parse y
+  // dejaría earnedAt vacío aunque earnedRows no lo esté, y backfill=true
+  // volvería a animar de golpe el nivel más alto de TODAS las familias.
+  const backfill = earnedAt.size === 0;
   const progress = familyProgress(counts, level);
   const plan = planAchievementEarns(progress, new Set(earnedAt.keys()), backfill);
   if (plan.length > 0) {
