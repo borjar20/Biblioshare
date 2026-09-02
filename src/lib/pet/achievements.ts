@@ -9,7 +9,7 @@ export type Ladder = { steps: readonly number[]; then: number | null };
 
 export type AchievementFamily = keyof typeof BALANCE.achievements;
 
-export const ACHIEVEMENT_FAMILIES = Object.keys(BALANCE.achievements) as AchievementFamily[];
+export const ACHIEVEMENT_FAMILIES = Object.keys(BALANCE.achievements) as readonly AchievementFamily[];
 
 export function isAchievementFamily(s: string): s is AchievementFamily {
   return Object.prototype.hasOwnProperty.call(BALANCE.achievements, s);
@@ -38,12 +38,15 @@ const VALUE_OF: Record<AchievementFamily, (c: PetCounts, level: number) => numbe
 export function thresholdFor(ladder: Ladder, tier: number): number | null {
   if (!Number.isInteger(tier) || tier < 1) return null;
   if (tier <= ladder.steps.length) return ladder.steps[tier - 1];
-  if (ladder.then == null) return null;
+  // `then` no finito o <= 0 no puede sumar hacia arriba: escalera degenerada,
+  // se trata como cerrada (fail-closed) en vez de colgarse o retroceder.
+  if (ladder.then == null || !Number.isFinite(ladder.then) || ladder.then <= 0) return null;
   return ladder.steps[ladder.steps.length - 1] + ladder.then * (tier - ladder.steps.length);
 }
 
 /** Mayor nivel cuyo umbral <= value. 0 = ninguno. Termina porque los umbrales crecen. */
 export function tierFor(ladder: Ladder, value: number): number {
+  if (!Number.isFinite(value)) return 0;
   let tier = 0;
   for (;;) {
     const next = thresholdFor(ladder, tier + 1);

@@ -30,6 +30,9 @@ describe("thresholdFor", () => {
     expect(thresholdFor(posts, -1)).toBeNull();
     expect(thresholdFor(posts, 1.5)).toBeNull();
   });
+  it("`then` no positivo más allá de steps se trata como cerrada", () => {
+    expect(thresholdFor({ steps: [10], then: 0 }, 2)).toBeNull();
+  });
 });
 
 describe("tierFor", () => {
@@ -47,6 +50,13 @@ describe("tierFor", () => {
     expect(tierFor(stage, 10)).toBe(1);
     expect(tierFor(stage, 40)).toBe(2);
     expect(tierFor(stage, 10_000)).toBe(2);
+  });
+  it("escalera degenerada (`then` no positivo) se cierra en vez de colgarse", () => {
+    expect(tierFor({ steps: [10], then: 0 }, 1e9)).toBe(1);
+    expect(tierFor({ steps: [10], then: -5 }, 1e9)).toBe(1);
+  });
+  it("valor no finito nunca sube de nivel", () => {
+    expect(tierFor(posts, Number.NaN)).toBe(0);
   });
 });
 
