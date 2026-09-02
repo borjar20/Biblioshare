@@ -968,7 +968,7 @@
       "layer": "domain",
       "kind": "module",
       "size": 14,
-      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`).",
+      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor): UNA consulta, el RPC `get_companion_state()` (20260905), que devuelve pet_state y el último día con actividad VIVIDA (misma regla que lastActivityISO: el historial volcado no es actividad, #1041); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`).",
       "files": [
         "src/lib/pet/actions.ts",
         "src/lib/pet/derive.ts",
@@ -987,8 +987,9 @@
       ],
       "gotchas": [
         "No hay cron que detecte la subida de nivel: solo se calcula al abrir /mascota (issue #1020).",
-        "get-pet-snapshot.ts deriva attributes/xp/level de getPetCounts() ANTES de llamar a syncDailyMissions: la XP de una misión completada en ESA MISMA visita no entra en la barra hasta la siguiente (issue #1029).",
-        "missions/sync.ts (syncDailyMissions) relee pet_daily_missions con el MISMO SELECT justo después de insertar las misiones del día: la memoización automática de fetch de Next 16 (misma URL+opciones dentro de un render) devuelve el resultado cacheado DE ANTES del insert, así que la primera visita del día que genera las misiones las guarda pero el tablón sale vacío hasta la siguiente visita (issue #1028)."
+        "getPetCounts().eligibility es PEREZOSA (thunk memoizado): solo la llama syncDailyMissions en la rama que genera las misiones del día. Si la necesitas fuera, cuesta 2-3 consultas más (#1037).",
+        "El RPC get_companion_state() replica en SQL las tres reglas de splitPassHistory (counts.ts) y el burstMin (10) de balance.ts: si cambian en TS, cambia el SQL (20260905).",
+        "hatchPet inicializa last_level con el nivel REAL (getPetCounts + derive) para que la primera visita a /mascota de alguien con historial no celebre una subida de golpe (#1042); last_stage nace en acorn y la salida de la bellota sí se celebra."
       ]
     },
     {
@@ -3168,8 +3169,9 @@
       "summary": "Fase 2 (spec 2026-09-02-mascota-misiones-logros). Único punto de escritura de pet_daily_missions: si hoy no tiene filas, las genera (sorteo determinista por userId+día) e inserta; evalúa hoy Y ayer sin completar; sella completed_at y gana pet_mission_done. Después, deriva familyProgress sobre PetCounts (familias con escalera abierta) y gana pet_achievement:<familia>:<tier> para el nivel NUEVO, una fila por nivel: los niveles intermedios se ganan sellados y solo el más alto anima.",
       "entrypoint": "src/lib/pet/get-pet-snapshot.ts:getPetSnapshot",
       "notes": [
-        "attributes/xp/level se derivan de getPetCounts() ANTES de llamar a syncDailyMissions: la XP de una misión completada en esta misma visita no entra en la barra hasta la siguiente (issue #1029).",
-        "syncDailyMissions relee pet_daily_missions con el MISMO SELECT justo tras el upsert; la memoización de fetch de Next 16 devuelve el resultado de ANTES del insert, así que la primera visita del día que genera las misiones las guarda pero el tablón sale vacío hasta la siguiente visita (issue #1028)."
+        "El sync de misiones va ANTES de derivar el nivel: la XP de una misión completada en esta misma visita entra en la barra (cerró #1029).",
+        "syncDailyMissions usa las filas que devuelve el propio upsert (.select()) y, si otra pestaña ganó la carrera, relee con una consulta de forma distinta para esquivar la memoización de fetch de Next 16 (cerró #1028; fragilidad en #1040).",
+        "La elegibilidad (candidatas de finish_pass y review) solo se consulta el primer render del día: getPetCounts la entrega como thunk perezoso (#1037). finish_pass elige la candidata con MENOS resto en la escala de su tipo (finishRemaining, #1036): una serie con 0 de 2 vistos sí es candidata."
       ],
       "steps": [
         {

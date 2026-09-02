@@ -1,3 +1,4 @@
+import { BALANCE } from "../balance";
 import { PET_ATTRIBUTES, type PetAttribute, type PetAttributes } from "../classes";
 import {
   MISSION_ATTR,
@@ -26,6 +27,27 @@ export interface MissionEligibility {
   finishCandidate: MissionCandidate | null;
   /** Terminado en los últimos 7 días sin reseña, o null. */
   reviewCandidate: MissionCandidate | null;
+}
+
+/** Cuánto le queda a una candidata de `finish_pass`, en la escala PROPIA de su
+ *  tipo: 0 = terminada, 1 = justo en el umbral de elegibilidad; null = no es
+ *  candidata. Libro: fracción de páginas que faltan sobre el tramo elegible
+ *  (`1 - finishThreshold`); serie: episodios sin ver sobre `seriesEpisodesLeft`.
+ *  Comparar los dos tipos en una misma variable de "ratio" descartaba la serie
+ *  con 0 de 2 vistos (ratio 0 nunca superaba al inicial 0) y hacía ganar a un
+ *  libro al 95 % sobre una serie a un episodio del final (issue #1036). Gana la
+ *  candidata con MENOS resto; en empate, la primera encontrada. */
+export function finishRemaining(
+  input: { kind: "book"; ratio: number } | { kind: "series"; left: number },
+): number | null {
+  if (input.kind === "book") {
+    const { ratio } = input;
+    if (!Number.isFinite(ratio) || ratio < BALANCE.missions.finishThreshold) return null;
+    return Math.max(0, (1 - ratio) / (1 - BALANCE.missions.finishThreshold));
+  }
+  const { left } = input;
+  if (!Number.isInteger(left) || left < 0 || left > BALANCE.missions.seriesEpisodesLeft) return null;
+  return left / BALANCE.missions.seriesEpisodesLeft;
 }
 
 export interface MissionPick {

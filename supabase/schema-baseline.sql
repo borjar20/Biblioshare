@@ -12802,3 +12802,64 @@ from (values
 ) as m(old_key, new_key)
 where c.event_type = 'pet_achievement'
   and c.event_key = 'pet_achievement:' || m.old_key;
+
+-- 20260905_get_companion_state
+drop function if exists public.get_companion_state();
+create or replace function public.get_companion_state(p_tz text default 'UTC')
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  with pet as (
+    select name, class, hatched_at, companion_hidden, last_level
+    from public.pet_state
+    where user_id = auth.uid()
+  ),
+  mine as (
+    select finished_on,
+           created_at,
+           (timezone(p_tz, created_at))::date as created_day
+    from public.passes
+    where user_id = auth.uid()
+  ),
+  bursts as (
+    select created_day from mine group by created_day having count(*) >= 10
+  ),
+  lived as (
+    select finished_on
+    from mine
+    where finished_on is not null
+      and finished_on >= created_day
+      and created_at <> (date_trunc('day', created_at at time zone 'utc') at time zone 'utc')
+      and created_day not in (select created_day from bursts)
+  ),
+  last_activity as (
+    select max(d) as day
+    from (
+      select max(session_date) as d from public.progress_sessions where user_id = auth.uid()
+      union all
+      select max(finished_on) from lived
+      union all
+      select max((timezone(p_tz, created_at))::date) from public.club_posts where author_id = auth.uid()
+      union all
+      select max((timezone(p_tz, voted_at))::date) from public.club_poll_votes where user_id = auth.uid()
+    ) x
+  )
+  select jsonb_build_object(
+    'name', pet.name,
+    'class', pet.class,
+    'hatched_at', to_char(pet.hatched_at at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'companion_hidden', pet.companion_hidden,
+    'last_level', pet.last_level,
+    'last_activity', to_char((select day from last_activity), 'YYYY-MM-DD')
+  )
+  from pet;
+$$;
+
+comment on function public.get_companion_state(text) is
+  'Mascota: pet_state + último día con actividad VIVIDA (misma regla que get-pet-counts.ts, días en la zona p_tz del servidor de la app) en una consulta para el shell. null sin mascota.';
+
+revoke all on function public.get_companion_state(text) from public, anon;
+grant execute on function public.get_companion_state(text) to authenticated;

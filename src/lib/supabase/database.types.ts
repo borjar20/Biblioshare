@@ -2922,6 +2922,7 @@ export type Database = {
           round_prompt: string
         }[]
       }
+      get_companion_state: { Args: { p_tz?: string }; Returns: Json }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {

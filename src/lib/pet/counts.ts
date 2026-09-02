@@ -130,6 +130,32 @@ export function petActiveDays(
   return days;
 }
 
+/** Último día LOCAL "YYYY-MM-DD" con actividad VIVIDA —sesión, cierre de un
+ *  pase vivido, post o voto— o null si nunca la hubo. Alimenta el humor y la
+ *  salida de la bellota. Deliberadamente sobre `livedPasses`, no sobre todos
+ *  los pases (issue #1041): un import con *Date Read* vacío cierra con la fecha
+ *  del import y pondría a la mascota contenta por un volcado. El RPC
+ *  get_companion_state() (20260905) replica esta misma regla en SQL. */
+export function lastActivityFrom(
+  rows: {
+    sessions: readonly { session_date: string }[];
+    livedPasses: readonly { finished_on: string | null }[];
+    posts: readonly { created_at: string }[];
+    votes: readonly { voted_at: string }[];
+  },
+  dayOf: (timestamptz: string) => string,
+): string | null {
+  let last: string | null = null;
+  const bump = (d: string | null | undefined) => {
+    if (d != null && (last == null || d > last)) last = d;
+  };
+  for (const s of rows.sessions) bump(s.session_date);
+  for (const p of rows.livedPasses) bump(p.finished_on);
+  for (const p of rows.posts) bump(dayOf(p.created_at));
+  for (const v of rows.votes) bump(dayOf(v.voted_at));
+  return last;
+}
+
 export type SessionRow = {
   pass_id: string;
   duration_minutes: number | null;

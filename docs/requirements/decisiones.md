@@ -3622,3 +3622,33 @@ planas; los primeros pasos de cada escalera se eligieron para que casen con los 
 se pierda ninguna fecha. Aplicada en dev el 2026-09-02; prod: aplicada y verificada el mismo día (2
 filas renombradas, selladas), en versión idempotente (borra la clave vieja si la nueva ya existe)
 porque la preview de Vercel corre contra prod.
+
+
+## 2026-09-02 — Mascota: tanda de deuda tras el merge de la fase 2 (#1023, #1036, #1037, #1041, #1042)
+
+Rama `fix/mascota-deuda`, tras mergear #1027. Cinco decisiones pequeñas, todas en la línea «espejo,
+no máquina de culpa» y «todo lo derivable se deriva»:
+
+- **El historial volcado tampoco es "última actividad"** (#1041). `lastActivityISO` (humor y salida
+  de la bellota) se calcula sobre los pases VIVIDOS, la misma regla que los días activos y la racha.
+  Un import con *Date Read* vacío ya no pone la ardilla contenta el día del import.
+- **La compañera se lee con un RPC** (`get_companion_state()`, `20260905`): una consulta por página en
+  vez de cinco (#1023). Replica en SQL las reglas de `splitPassHistory` y el `burstMin`; el precio es
+  mantener dos copias de la regla, y se acepta porque la alternativa era leer todos los pases del
+  usuario en cada página. **El día se agrupa en la zona que pasa la app** (`p_tz` = la del proceso de
+  Node, la misma que `toISODate()`), NO en Europe/Madrid fijo como `get_widget_snapshot`: la revisión
+  midió 7 pases de prod que caían en días distintos según la zona (cerrados a las 23:5x UTC) y la
+  compañera habría salido triste o en bellota con `/mascota` contenta. Aplicada en dev y en prod el
+  mismo día (aditiva: función nueva que `main` aún no llama), verificada contra `pg_proc`.
+- **`finish_pass` compara en la escala de cada tipo** (#1036): `finishRemaining` devuelve «cuánto
+  queda» normalizado (libro: páginas que faltan sobre el tramo elegible; serie: episodios sobre el
+  tope) y gana la de MENOS resto. Antes un `ratio` compartido descartaba la serie con 0 de 2 vistos y
+  hacía ganar a un libro al 95 % sobre una serie a un episodio del final.
+- **La elegibilidad de misiones es perezosa** (#1037): solo la paga el primer render del día. Los
+  libros se leen una sola vez por visita (unión de vividos y abiertos) y ediciones, series y el título
+  de la candidata a reseña salen en un único `Promise.all`.
+- **`last_level` nace con el nivel real** (#1042): `hatchPet` deriva el nivel al eclosionar, así la
+  primera visita de alguien con historial no celebra una subida de golpe; si contar falla, no eclosiona
+  (antes que guardar un 1 que celebraría la subida igual). `last_stage` sigue naciendo en `acorn`: la
+  salida de la bellota (primera actividad tras eclosionar) se celebra UNA vez, aterrice en `young` o
+  directamente en `adult` si el nivel ya lo es. Es la única celebración de primera visita que queda.
