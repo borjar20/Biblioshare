@@ -3507,3 +3507,15 @@ queda en nivel 11 (adulta) con margen, y como el resto de fuentes de XP de la sp
 rachas, sagas completadas…) no entran en esta estimación aproximada, el XP real solo puede ser mayor —
 el margen es conservador, no ajustado al límite. Detalle de la tabla y el cálculo en el informe de
 Task 10 (`.superpowers/sdd/task-10-report.md`).
+
+## 2026-09-02 — Mascota: «Qué la sube» enseña totales, no los últimos siete días (acta)
+
+La spec (`docs/superpowers/specs/2026-09-02-mascota-rpg-design.md` §7) pedía que la sección «Qué la
+sube» mostrara, por atributo, lo aportado en los últimos siete días. La fase 1 enseña totales de
+siempre: `PetCounts` (`src/lib/pet/counts.ts`) no lleva ventana temporal, y `getPetCounts` ya hace
+~12 `select` por página; una franja de siete días exige una segunda pasada filtrada por fecha sobre
+las mismas tablas, coste que no compensaba para el cierre de fase 1. El objetivo de la sección — que
+la mascota no parezca arbitraria — lo cubren los totales junto con el fichero de balance
+(`balance.ts`, calibrado contra prod): el usuario ve de dónde sale cada punto, aunque no acotado a la
+semana. Se registra como issue #1022 para que nadie lea la spec y dé la ventana de siete días por
+implementada.
