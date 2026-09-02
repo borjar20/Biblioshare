@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 
 const MIN = 1;
 const MAX = 9999;
-export const clampTarget = (n: number) => Math.min(MAX, Math.max(MIN, Math.trunc(n)));
+const clampTarget = (n: number) => Math.min(MAX, Math.max(MIN, Math.trunc(n)));
 
 /**
  * El N del límite como número grande con −/+ y mantener (spec visual-first §5).
@@ -29,15 +29,15 @@ export function TargetStepper({
     setPreview(0);
     onChange(clampTarget(value + total));
   };
-  const up = useHoldRepeat({ step, onPreview: setPreview, onCommit: commit });
-  const down = useHoldRepeat({ step: -step, onPreview: setPreview, onCommit: commit });
-  const btn =
-    "h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold disabled:opacity-40 [touch-action:manipulation]";
   return (
     <div className="flex items-center gap-2">
-      <button type="button" aria-label={t("fewer")} disabled={value <= MIN} {...down.handlers} className={btn}>
-        −
-      </button>
+      <HoldRepeatButton
+        direction={-1}
+        label={t("fewer")}
+        disabled={value <= MIN}
+        onPreview={(acc) => setPreview(acc * step)}
+        onCommit={(delta) => commit(delta * step)}
+      />
       <span
         className="min-w-16 text-center font-serif text-[34px] font-semibold leading-none tabular-nums"
         aria-label={t("targetValue")}
@@ -48,9 +48,13 @@ export function TargetStepper({
       >
         {clampTarget(value + preview)}
       </span>
-      <button type="button" aria-label={t("more")} disabled={value >= MAX} {...up.handlers} className={btn}>
-        +
-      </button>
+      <HoldRepeatButton
+        direction={1}
+        label={t("more")}
+        disabled={value >= MAX}
+        onPreview={(acc) => setPreview(acc * step)}
+        onCommit={(delta) => commit(delta * step)}
+      />
       <span className="text-[13px] text-muted-foreground">{t(kind === "rounds" ? "rounds" : "points").toLowerCase()}</span>
     </div>
   );

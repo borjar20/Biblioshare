@@ -8,7 +8,7 @@ import type { ResourceDef, ResourcesState } from "@/lib/play/resources/types";
 import { valueOf } from "@/lib/play/resources/selectors";
 import { stableColor } from "@/components/play/random/stage/stage-helpers";
 import { SEAT_ACCENT } from "@/lib/play/ui/seats";
-import { HoldRepeatButton } from "./hold-repeat-button";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 import { ResourceGlyph } from "./resource-icons";
 
 const QUICK_DELTAS = [5, 10, -5, -10];

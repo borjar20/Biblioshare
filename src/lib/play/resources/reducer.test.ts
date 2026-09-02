@@ -174,6 +174,13 @@ describe("resource_updated", () => {
     const s = run([players(["Ana", "Beto"]), addRes("Oro", 1), update("Oro", 3, true)]);
     expect(s.values).toEqual([{ resource: "Oro", owner: null, value: 3 }]);
   });
+  it("pasar de banco a jugadores reconcilia: se reparte al NUEVO inicial, la entrada de banco desaparece", () => {
+    const s = run([players(["Ana", "Beto"]), addRes("Oro", 3, true), update("Oro", 5, false)]);
+    expect(s.values).toEqual([
+      { resource: "Oro", owner: "Ana", value: 5 },
+      { resource: "Oro", owner: "Beto", value: 5 },
+    ]);
+  });
   it("values_reset aplica el nuevo inicial", () => {
     const s = run([players(["Ana"]), addRes("Madera", 5), update("Madera", 9, false), ev("values_reset", {})]);
     expect(valueOf(s, "Madera", "Ana")).toBe(9);

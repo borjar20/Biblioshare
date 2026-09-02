@@ -11,7 +11,10 @@ test.use({ viewport: { width: 390, height: 844 } });
 async function ponerPuntos(page: Page, seat: number, target: number) {
   const name = `Jugador ${seat + 1}`;
   await page.getByRole("button", { name: `Puntuar a ${name}` }).click();
-  let value = Number(await page.getByLabel(`Puntos de ${name}`).textContent());
+  // El U+2212 del signo negativo (fix review final) no lo parsea Number().
+  let value = Number(
+    (await page.getByLabel(`Puntos de ${name}`).textContent())?.replace("−", "-"),
+  );
   const chip = async (label: string) =>
     page.getByRole("button", { name: `Sumar ${label} a ${name}` }).click();
   while (target - value >= 20) { await chip("+20"); value += 20; }

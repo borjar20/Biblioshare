@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { drawFromBag } from "@/lib/play/random/draws";
 import type { BagItem, RandomState } from "@/lib/play/random/types";
 import type { RandomEvent } from "@/lib/play/random/events";
-import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 import { BagStage, TokenPile } from "./stage/bag-stage";
 
 /**
@@ -31,16 +31,14 @@ export function BagSection({
   const [preview, setPreview] = useState(0);
   const [adding, setAdding] = useState(false);
   // Mismo recorte que target-stepper: el número en pantalla no puede correrse
-  // de 1..99 mientras se mantiene pulsado, y disabled debe leer ese recorte
-  // (no el count ya comprometido) o el botón se reactiva un tick tarde.
+  // de 1..99 mientras se mantiene pulsado. `disabled` lee el `count` YA
+  // COMPROMETIDO, nunca la preview: un botón que se desactiva a mitad de
+  // mantener le deja el timer varado (review final, Important 1).
   const clampCount = (n: number) => Math.min(99, Math.max(1, n));
   const commitCount = (total: number) => {
     setCount((c) => clampCount(c + total));
     setPreview(0);
   };
-  const up = useHoldRepeat({ step: 1, onPreview: setPreview, onCommit: commitCount });
-  const down = useHoldRepeat({ step: -1, onPreview: setPreview, onCommit: commitCount });
-  const stepBtn = "h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold disabled:opacity-40 [touch-action:manipulation]";
   const seg = (on: boolean) => `tap-44 rounded-chip border px-3 py-1.5 text-[13px] font-semibold ${on ? "border-foreground bg-surface-muted" : "border-border"}`;
 
   const remaining = bag.items.reduce((sum, i) => sum + i.count, 0);
@@ -106,9 +104,21 @@ export function BagSection({
             className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
           />
           <span className="inline-flex items-center gap-1">
-            <button type="button" aria-label={t("fewer")} disabled={clampCount(count + preview) <= 1} {...down.handlers} className={stepBtn}>−</button>
+            <HoldRepeatButton
+              direction={-1}
+              label={t("fewer")}
+              disabled={count <= 1}
+              onPreview={setPreview}
+              onCommit={commitCount}
+            />
             <span className="w-8 text-center text-[14px] font-semibold tabular-nums" aria-label={t("itemCount")}>{clampCount(count + preview)}</span>
-            <button type="button" aria-label={t("more")} disabled={clampCount(count + preview) >= 99} {...up.handlers} className={stepBtn}>+</button>
+            <HoldRepeatButton
+              direction={1}
+              label={t("more")}
+              disabled={count >= 99}
+              onPreview={setPreview}
+              onCommit={commitCount}
+            />
           </span>
           <button
             type="button"

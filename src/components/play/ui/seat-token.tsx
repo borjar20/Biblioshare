@@ -38,6 +38,7 @@ export function SeatToken({
   selected = false,
   disabled = false,
   expanded,
+  pressed,
   controls,
   size = "md",
   onClick,
@@ -54,6 +55,8 @@ export function SeatToken({
   selected?: boolean;
   disabled?: boolean;
   expanded?: boolean;
+  /** aria-pressed: SOLO para fichas de selección (no disclosure — esas usan `expanded`). */
+  pressed?: boolean;
   controls?: string;
   /** 44 px por defecto; `sm` (32 px) para filas secundarias como «quién empieza». */
   size?: "md" | "sm";
@@ -62,12 +65,13 @@ export function SeatToken({
   const filled = variant === "seat";
   const dims = size === "sm" ? "h-8 w-8 text-[12px]" : "h-11 w-11";
   return (
-    <span className={`flex ${size === "sm" ? "w-10" : "w-14"} flex-col items-center gap-1`}>
+    <span className="flex w-14 flex-col items-center gap-1">
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
         aria-expanded={expanded}
+        aria-pressed={pressed}
         aria-controls={controls}
         title={caption}
         disabled={disabled}

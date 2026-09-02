@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 import { SeatPicker } from "@/components/play/ui/seat-picker";
 import { SeatToken, initials } from "@/components/play/ui/seat-token";
 import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
@@ -208,35 +208,29 @@ function DefPanel({
     setPreview(0);
     if (initial !== def.initial) emit("resource_updated", { name: def.name, initial, shared: def.shared });
   };
-  const up = useHoldRepeat({ step: 1, onPreview: setPreview, onCommit: commit });
-  const down = useHoldRepeat({ step: -1, onPreview: setPreview, onCommit: commit });
   const seg = (on: boolean) =>
     `tap-44 rounded-chip border px-3 py-1.5 text-[13px] font-semibold ${on ? "border-foreground bg-surface-muted" : "border-border"}`;
 
   return (
     <div id="resources-def" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-3">
       <span className="inline-flex items-center gap-1">
-        <button
-          type="button"
-          aria-label={t("fewerInitial")}
+        <HoldRepeatButton
+          direction={-1}
+          label={t("fewerInitial")}
           disabled={def.initial <= RESOURCE_VALUE_MIN}
-          {...down.handlers}
-          className="h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold disabled:opacity-40 [touch-action:manipulation]"
-        >
-          −
-        </button>
+          onPreview={setPreview}
+          onCommit={commit}
+        />
         <span className="w-14 text-center font-serif text-[20px] font-semibold tabular-nums">
           {clampInitial(def.initial + preview)}
         </span>
-        <button
-          type="button"
-          aria-label={t("moreInitial")}
+        <HoldRepeatButton
+          direction={1}
+          label={t("moreInitial")}
           disabled={def.initial >= RESOURCE_VALUE_MAX}
-          {...up.handlers}
-          className="h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold disabled:opacity-40 [touch-action:manipulation]"
-        >
-          +
-        </button>
+          onPreview={setPreview}
+          onCommit={commit}
+        />
       </span>
       <span className="inline-flex gap-1" role="group" aria-label={t("owner")}>
         <button type="button" aria-pressed={!def.shared} onClick={() => def.shared && emit("resource_updated", { name: def.name, initial: def.initial, shared: false })} className={seg(!def.shared)}>

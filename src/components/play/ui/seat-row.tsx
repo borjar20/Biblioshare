@@ -22,7 +22,8 @@ export function SeatRow({
   regularsQuery = "",
   onSeatRegular,
   canAdd,
-  adding = false,
+  canSeatRegulars,
+  adding,
   onAdd,
   addControls,
   align = "start",
@@ -35,6 +36,10 @@ export function SeatRow({
   regularsQuery?: string;
   onSeatRegular?: (regular: { playerId: string; name: string }) => void;
   canAdd: boolean;
+  /** Cuándo enseñar fichas de habituales por sentar; por defecto sigue a `canAdd`
+   * (mesa llena sin asiento libre nunca las enseña), pero puede seguir su propia
+   * regla — p. ej. mesa llena que aún tiene un asiento vacío por nombrar. */
+  canSeatRegulars?: boolean;
   adding?: boolean;
   onAdd: () => void;
   /** id de lo que despliega el «+» (aria-controls). */
@@ -59,7 +64,7 @@ export function SeatRow({
           {seat.content}
         </SeatToken>
       ))}
-      {canAdd && onSeatRegular ? (
+      {(canSeatRegulars ?? canAdd) && onSeatRegular ? (
         <RegularTokens regulars={regulars} query={regularsQuery} onSeat={onSeatRegular} />
       ) : null}
       {canAdd ? (

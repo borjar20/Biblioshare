@@ -417,6 +417,10 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
           regulars={availableRegulars}
           onSeatRegular={seatRegular}
           canAdd={draft.players.length < MAX_PLAYERS}
+          canSeatRegulars={
+            draft.players.length < MAX_PLAYERS ||
+            draft.players.some((p) => p.name.trim() === "" && !p.playerId && !p.userId)
+          }
           onAdd={addSeat}
           addControls="score-seat"
         />

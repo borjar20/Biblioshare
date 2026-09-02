@@ -8,7 +8,7 @@ import type { RoundEditedEvent, RoundScoredEvent } from "@/lib/play/score/events
 import { applyDelta, QUICK_DELTAS } from "@/lib/play/score/round-draft";
 import type { ScoreState } from "@/lib/play/score/types";
 import { buttonVariants } from "@/components/ui/button";
-import { HoldRepeatButton } from "../resources/hold-repeat-button";
+import { HoldRepeatButton } from "../ui/hold-repeat-button";
 import { SeatToken, initials } from "../ui/seat-token";
 import { PlaySheet } from "../play-sheet";
 
@@ -42,6 +42,10 @@ export function RoundSheet({
 
   const shown = (seat: number) =>
     values[seat] + (preview && preview.seat === seat ? preview.delta : 0);
+
+  // U+2212 (menos matemático), no el guion ASCII de `String(n)`: mismo signo
+  // que ya usan los chips ±5/±10/±20 de esta hoja.
+  const formatScore = (n: number) => (n < 0 ? `−${Math.abs(n)}` : String(n));
 
   function bump(seat: number, delta: number) {
     setActive(seat);
@@ -102,6 +106,7 @@ export function RoundSheet({
               caption={participant.name}
               label={t("roundSheet.activate", { name: participant.name })}
               selected={seat === active}
+              pressed={seat === active}
               onClick={() => setActive(seat)}
             >
               {initials(participant.name)}
@@ -110,7 +115,7 @@ export function RoundSheet({
               className="min-w-0 flex-1 text-right font-serif text-[24px] font-semibold tabular-nums"
               aria-label={t("roundSheet.scoreOf", { name: participant.name })}
             >
-              {shown(seat)}
+              {formatScore(shown(seat))}
             </span>
             <HoldRepeatButton
               direction={-1}

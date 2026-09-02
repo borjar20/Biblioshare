@@ -2677,7 +2677,6 @@
     "setup": {
       "title": "Nueva partida",
       "modeAndLife": "{mode} · {life} vidas",
-      "table": "En la mesa",
       "players": "Jugadores",
       "playerN": "Jugador {n}",
       "noDeck": "Sin mazo",

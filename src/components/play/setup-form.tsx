@@ -9,7 +9,7 @@ import { usePlayers } from "@/lib/play/core/use-players";
 import { modeConfig, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
 import { rememberTable, rotateStartingSeat } from "@/lib/play/ui/table-memory";
 import { CARD_BACKGROUND_IDS, seatAccent } from "@/lib/play/ui/seats";
-import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 import {
   addCommander,
   addPlayer,
@@ -150,8 +150,6 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
     setEdited({ ...draft, startingLife: clampLife(draft.startingLife + total) });
     setLifePreview(0);
   };
-  const lifeUp = useHoldRepeat({ step: 1, onPreview: setLifePreview, onCommit: commitLife });
-  const lifeDown = useHoldRepeat({ step: -1, onPreview: setLifePreview, onCommit: commitLife });
   const shownLife = clampLife(draft.startingLife + lifePreview);
   const availableRegulars = regulars.filter((r) => !takenIds.includes(r.playerId));
 
@@ -251,6 +249,10 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
           regulars={availableRegulars}
           onSeatRegular={seatRegular}
           canAdd={draft.players.length < config.maxPlayers}
+          canSeatRegulars={
+            draft.players.length < config.maxPlayers ||
+            draft.players.some((p) => p.name.trim() === "" && !p.playerId && !p.userId)
+          }
           onAdd={addSeat}
           addControls="mtg-seat"
         />
@@ -376,38 +378,36 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
             </button>
           ))}
           <span className="ml-auto inline-flex items-center gap-1">
-            <button
-              type="button"
-              aria-label={t("setup.lifeFewer")}
-              {...lifeDown.handlers}
-              className="h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold [touch-action:manipulation]"
-            >
-              −
-            </button>
+            <HoldRepeatButton
+              direction={-1}
+              label={t("setup.lifeFewer")}
+              disabled={draft.startingLife <= LIFE_MIN}
+              onPreview={setLifePreview}
+              onCommit={commitLife}
+            />
             {/* Sin aria-live: con Cache Components el DOM de esta pantalla queda congelado
                 y oculto tras el router.push a /partida/activa, y una región viva aquí se
                 cuela en el recuento de aria-live del e2e del tablero (issue #1003). */}
             <span className="w-14 text-center font-serif text-[22px] font-semibold tabular-nums">
               {shownLife}
             </span>
-            <button
-              type="button"
-              aria-label={t("setup.lifeMore")}
-              {...lifeUp.handlers}
-              className="h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold [touch-action:manipulation]"
-            >
-              +
-            </button>
+            <HoldRepeatButton
+              direction={1}
+              label={t("setup.lifeMore")}
+              disabled={draft.startingLife >= LIFE_MAX}
+              onPreview={setLifePreview}
+              onCommit={commitLife}
+            />
           </span>
         </div>
       </section>
 
       {/* Quién empieza: la misma fila de fichas, en pequeño; la elegida con halo. */}
       <section>
-        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <p id="mtg-starting-seat" className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("setup.startingSeat")}
         </p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t("setup.startingSeat")}>
+        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="mtg-starting-seat">
           {draft.players.map((p, i) => (
             <SeatToken
               key={p.id}
@@ -417,6 +417,7 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
               caption={seatName(i)}
               label={t("setup.startsWith", { name: seatName(i) })}
               selected={draft.startingSeat === i}
+              pressed={draft.startingSeat === i}
               onClick={() => setEdited({ ...draft, startingSeat: i })}
             >
               {p.name.trim() === "" ? i + 1 : initials(p.name)}
