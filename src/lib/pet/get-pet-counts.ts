@@ -15,7 +15,7 @@ import {
   type SagaItemRow,
   type SessionRow,
 } from "./counts";
-import type { MissionCandidate, MissionEligibility } from "./missions/generate";
+import { finishRemaining, type MissionCandidate, type MissionEligibility } from "./missions/generate";
 import { dayCounts, type DayRows, type PetDayCounts } from "./missions/progress";
 import { isMissionTemplate, MISSION_ATTR } from "./missions/templates";
 
@@ -23,11 +23,17 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export interface PetCountsResult {
   counts: PetCounts;
-  /** Último día "YYYY-MM-DD" con actividad global, o null. */
+  /** Último día "YYYY-MM-DD" con actividad VIVIDA (sesión, pase vivido cerrado,
+   *  post o voto), o null. El historial volcado no cuenta (issue #1041): es la
+   *  misma regla que los días activos, para que el humor y la salida de la
+   *  bellota no dependan de un import. */
   lastActivityISO: string | null;
   /** Contadores de hoy y de ayer (las misiones de ayer sin completar se evalúan también). */
   days: { today: PetDayCounts; yesterday: PetDayCounts };
-  eligibility: MissionEligibility;
+  /** PEREZOSA y memoizada: cuesta 2-3 consultas más y solo la necesita
+   *  `pickDailyMissions`, o sea la primera visita del día (issue #1037). Las
+   *  demás visitas no la llaman y no pagan esas consultas. */
+  eligibility: () => Promise<MissionEligibility>;
   /** El día LOCAL con el que se han calculado `days` y `eligibility`. Se
    *  devuelve para que quien llama NO vuelva a pedir `todayISO()`: dos lecturas
    *  a los lados de la medianoche darían días distintos en la misma petición. */
@@ -88,20 +94,13 @@ export async function getPetCounts(
   // real de la columna (database.types.ts). Para "páginas avanzadas" solo
   // tiene sentido para libros; se extrae `page` cuando existe y si no, se
   // trata como sin posición (0 páginas, como si `position` fuera null).
-  const sessionRows: SessionRow[] = (sessions.data ?? []).map((s) => {
-    const raw = s.position;
-    const page =
-      raw && typeof raw === "object" && !Array.isArray(raw) && typeof (raw as { page?: unknown }).page === "number"
-        ? (raw as { page: number }).page
-        : null;
-    return {
-      pass_id: s.pass_id,
-      duration_minutes: s.duration_minutes,
-      position: page,
-      session_date: s.session_date,
-      started_at: s.started_at,
-    };
-  });
+  const sessionRows: SessionRow[] = (sessions.data ?? []).map((s) => ({
+    pass_id: s.pass_id,
+    duration_minutes: s.duration_minutes,
+    position: pageOf(s.position),
+    session_date: s.session_date,
+    started_at: s.started_at,
+  }));
   const passRows = passes.data ?? [];
   // Historial (importado o con fecha pasada) frente a vivido en la app: el
   // historial solo entra como dote con tope (decisiones.md 2026-09-02). Día
@@ -133,44 +132,54 @@ export async function getPetCounts(
   const completedKeys = new Set(
     passRows.filter((p) => p.status === "completed").map((p) => `${p.item_type}:${p.item_id}`),
   );
+  const openPasses = passRows.filter((p) => p.status === "in_progress");
+  const openBooks = openPasses.filter((p) => p.item_type === "book");
 
-  // Sagas completadas: solo las que sigues (spec §2: INT). Ítems de esas sagas
-  // y comprobación en JS con el helper puro.
-  let completedSagas = 0;
+  // Segunda tanda, en paralelo: ítems de las sagas seguidas y los libros. Los
+  // libros salen en UNA consulta para las dos cosas que los necesitan —
+  // géneros/autores de los pases VIVIDOS (INT/DES) y título/páginas de los
+  // ABIERTOS para la candidata de finish_pass— en vez de dos lecturas de la
+  // misma tabla por visita (issue #1037). Un pase abierto puede ser historial
+  // (volcado sin cerrar), así que es la unión, no un subconjunto.
   const sagaIds = (sagaFollows.data ?? []).map((r) => r.saga_id);
-  if (sagaIds.length > 0) {
-    const { data: items, error } = await supabase
-      .from("saga_items")
-      .select("saga_id, item_type, item_id, optional")
-      .in("saga_id", sagaIds);
-    if (error) throw error;
-    completedSagas = countCompletedSagas((items ?? []) as SagaItemRow[], completedKeys);
-  }
+  const bookIds = [
+    ...new Set([...livedPasses.filter((p) => p.item_type === "book"), ...openBooks].map((p) => p.item_id)),
+  ];
+  const [sagaItems, books] = await Promise.all([
+    sagaIds.length > 0
+      ? supabase.from("saga_items").select("saga_id, item_type, item_id, optional").in("saga_id", sagaIds)
+      : Promise.resolve({ data: [] as SagaItemRow[], error: null }),
+    bookIds.length > 0
+      ? supabase.from("books").select("id, title, author, genres, total_pages").in("id", bookIds)
+      : Promise.resolve({ data: [] as BookRow[], error: null }),
+  ]);
+  if (sagaItems.error) throw sagaItems.error;
+  if (books.error) throw books.error;
+
+  // Sagas completadas: solo las que sigues (spec §2: INT).
+  const completedSagas = countCompletedSagas((sagaItems.data ?? []) as SagaItemRow[], completedKeys);
 
   // Géneros distintos y autores: de los libros con pase VIVIDO (cualquier
   // estado para autores/obras = DES "exploración"; solo terminados para
   // géneros = INT).
-  const bookIds = [...new Set(livedPasses.filter((p) => p.item_type === "book").map((p) => p.item_id))];
+  const bookById = new Map<string, BookRow>((books.data ?? []).map((b) => [b.id, b]));
   const genres = new Set<string>();
   const authors = new Set<string>();
-  if (bookIds.length > 0) {
-    const completedBookIds = new Set(completedPasses.filter((p) => p.item_type === "book").map((p) => p.item_id));
-    const { data: books, error } = await supabase
-      .from("books")
-      .select("id, author, genres")
-      .in("id", bookIds);
-    if (error) throw error;
-    for (const b of books ?? []) {
-      if (b.author) authors.add(b.author.trim().toLowerCase());
-      if (completedBookIds.has(b.id)) for (const g of b.genres ?? []) genres.add(g);
-    }
+  const completedBookIds = new Set(completedPasses.filter((p) => p.item_type === "book").map((p) => p.item_id));
+  for (const p of livedPasses) {
+    if (p.item_type !== "book") continue;
+    const b = bookById.get(p.item_id);
+    if (!b) continue;
+    if (b.author) authors.add(b.author.trim().toLowerCase());
+    if (completedBookIds.has(b.id)) for (const g of b.genres ?? []) genres.add(g);
   }
 
   const postRows = posts.data ?? [];
-  // timestamptz → día LOCAL, la misma convención que session_date y todayISO()
+  // timestamptz → día LOCAL, la misma convención que session_date y todayISO().
+  // Pases: solo los VIVIDOS (issue #1041); el historial no es actividad.
   const lastDates = [
     ...sessionRows.map((s) => s.session_date),
-    ...passRows.map((p) => p.finished_on).filter((d): d is string => d != null),
+    ...livedPasses.map((p) => p.finished_on).filter((d): d is string => d != null),
     ...postRows.map((p) => toISODate(new Date(p.created_at))),
     ...(votes.data ?? []).map((v) => toISODate(new Date(v.voted_at))),
   ].sort();
@@ -222,6 +231,9 @@ export async function getPetCounts(
   const today = todayISO();
   const yesterday = addDaysISO(today, -1);
   const livedIds = new Set(livedPasses.map((p) => p.id));
+  const reviewedKeys = (reviewRows.data ?? [])
+    .filter((r) => (r.review ?? "").trim().length > 0)
+    .map((r) => `${r.item_type}:${r.item_id}`);
   const dayRows: DayRows = {
     sessions: sessionRows,
     episodes: (episodes.data ?? []).map((e) => ({ watched_on: e.watched_on, rating: e.rating })),
@@ -238,37 +250,45 @@ export async function getPetCounts(
     notes: (notes.data ?? []).map((n) => ({ kind: n.kind, created_at: n.created_at })),
     posts: postRows.map((p) => ({ kind: p.kind, created_at: p.created_at })),
     votes: (votes.data ?? []).map((v) => ({ voted_at: v.voted_at })),
-    reviewedKeys: (reviewRows.data ?? [])
-      .filter((r) => (r.review ?? "").trim().length > 0)
-      .map((r) => `${r.item_type}:${r.item_id}`),
+    reviewedKeys,
   };
   const toDay = (ts: string) => toISODate(new Date(ts));
   const days = { today: dayCounts(dayRows, today, toDay), yesterday: dayCounts(dayRows, yesterday, toDay) };
 
-  const eligibility = await missionEligibility(supabase, {
-    passRows,
-    livedIds,
-    episodeRows: (episodes.data ?? []).map((e) => ({ pass_id: e.pass_id })),
-    reviewedKeys: new Set(dayRows.reviewedKeys),
-    dailyGoal: goal,
-    hasClub: (clubMember.data ?? []).length > 0,
-    today,
-  });
+  let eligibilityPromise: Promise<MissionEligibility> | null = null;
+  const eligibility = () =>
+    (eligibilityPromise ??= missionEligibility(supabase, {
+      passRows,
+      openPasses,
+      livedIds,
+      bookById,
+      episodeRows: (episodes.data ?? []).map((e) => ({ pass_id: e.pass_id })),
+      reviewedKeys: new Set(reviewedKeys),
+      dailyGoal: goal,
+      hasClub: (clubMember.data ?? []).length > 0,
+      today,
+    }));
 
   return { counts, lastActivityISO: lastDates.at(-1) ?? null, days, eligibility, today };
 }
 
+type BookRow = { id: string; title: string | null; author: string | null; genres: string[] | null; total_pages: number | null };
+
+type PassLite = {
+  id: string;
+  item_type: string;
+  item_id: string;
+  status: string;
+  finished_on: string | null;
+  position: unknown;
+  edition_id: string | null;
+};
+
 type EligibilityInput = {
-  passRows: {
-    id: string;
-    item_type: string;
-    item_id: string;
-    status: string;
-    finished_on: string | null;
-    position: unknown;
-    edition_id: string | null;
-  }[];
+  passRows: PassLite[];
+  openPasses: PassLite[];
   livedIds: Set<string>;
+  bookById: Map<string, BookRow>;
   episodeRows: { pass_id: string | null }[];
   reviewedKeys: Set<string>;
   dailyGoal: number | null;
@@ -276,63 +296,25 @@ type EligibilityInput = {
   today: string;
 };
 
+/** `page` de una posición JSONB de libro, o null si no la trae. */
+function pageOf(raw: unknown): number | null {
+  return raw && typeof raw === "object" && !Array.isArray(raw) && typeof (raw as { page?: unknown }).page === "number"
+    ? (raw as { page: number }).page
+    : null;
+}
+
 // Qué misiones tienen sentido HOY (spec fase 2 §1.2). Las candidatas de las
 // duras salen del estado: libro >= 70 % de sus páginas (regla de páginas =
 // pagesForPass: edición del pase o books.total_pages), serie con <= 2
 // episodios sin ver (series.total_episodes − vistos del pase), y terminado en
-// los últimos 7 días sin reseña. Una consulta por tipo, solo si hay pases abiertos de ese tipo.
+// los últimos 7 días sin reseña. Los libros ya vienen leídos (bookById); lo que
+// falta —ediciones, series y el título de la candidata a reseña— sale en un
+// único viaje, porque no depende entre sí (issue #1037).
 async function missionEligibility(supabase: SupabaseServerClient, input: EligibilityInput): Promise<MissionEligibility> {
-  const { passRows, livedIds, episodeRows, reviewedKeys, dailyGoal, hasClub, today } = input;
-  const open = passRows.filter((p) => p.status === "in_progress");
-  const openBooks = open.filter((p) => p.item_type === "book");
-  const openSeries = open.filter((p) => p.item_type === "series");
-
-  let finishCandidate: MissionCandidate | null = null;
-  let bestRatio = 0;
-
-  if (openBooks.length > 0) {
-    const editionIds = openBooks.map((p) => p.edition_id).filter((id): id is string => id != null);
-    const [books, editions] = await Promise.all([
-      supabase.from("books").select("id, title, total_pages").in("id", openBooks.map((p) => p.item_id)),
-      editionIds.length > 0
-        ? supabase.from("book_editions").select("id, total_pages").in("id", editionIds)
-        : Promise.resolve({ data: [] as { id: string; total_pages: number | null }[], error: null }),
-    ]);
-    if (books.error) throw books.error;
-    if (editions.error) throw editions.error;
-    const bookById = new Map((books.data ?? []).map((b) => [b.id, b]));
-    const editionPages = new Map((editions.data ?? []).map((e) => [e.id, e.total_pages]));
-    for (const p of openBooks) {
-      const raw = p.position;
-      const page = raw && typeof raw === "object" && !Array.isArray(raw) && typeof (raw as { page?: unknown }).page === "number" ? (raw as { page: number }).page : null;
-      const book = bookById.get(p.item_id);
-      const total = pagesForPass(p.edition_id ? { totalUnits: editionPages.get(p.edition_id) ?? null } : null, book?.total_pages);
-      if (page == null || !total || total <= 0 || !book) continue;
-      const ratio = page / total;
-      if (ratio >= BALANCE.missions.finishThreshold && ratio > bestRatio) {
-        bestRatio = ratio;
-        finishCandidate = { itemType: "book", itemId: p.item_id, title: book.title ?? UNTITLED_FALLBACK };
-      }
-    }
-  }
-
-  if (openSeries.length > 0) {
-    const { data: series, error } = await supabase.from("series").select("id, title, total_episodes").in("id", openSeries.map((p) => p.item_id));
-    if (error) throw error;
-    const watchedByPass = new Map<string, number>();
-    for (const e of episodeRows) if (e.pass_id) watchedByPass.set(e.pass_id, (watchedByPass.get(e.pass_id) ?? 0) + 1);
-    for (const p of openSeries) {
-      const s = (series ?? []).find((x) => x.id === p.item_id);
-      if (!s || !s.total_episodes || s.total_episodes <= 0) continue;
-      const watched = watchedByPass.get(p.id) ?? 0;
-      const left = s.total_episodes - watched;
-      const ratio = watched / s.total_episodes;
-      if (left >= 0 && left <= BALANCE.missions.seriesEpisodesLeft && ratio > bestRatio) {
-        bestRatio = ratio;
-        finishCandidate = { itemType: "series", itemId: p.item_id, title: s.title ?? UNTITLED_FALLBACK };
-      }
-    }
-  }
+  const { passRows, openPasses, livedIds, bookById, episodeRows, reviewedKeys, dailyGoal, hasClub, today } = input;
+  const openBooks = openPasses.filter((p) => p.item_type === "book");
+  const openSeries = openPasses.filter((p) => p.item_type === "series");
+  const editionIds = openBooks.map((p) => p.edition_id).filter((id): id is string => id != null);
 
   // review: el terminado más reciente de los últimos 7 días sin reseña (solo vividos).
   const since = addDaysISO(today, -BALANCE.missions.reviewWindowDays);
@@ -340,25 +322,70 @@ async function missionEligibility(supabase: SupabaseServerClient, input: Eligibi
     .filter((p) => p.status === "completed" && p.finished_on != null && p.finished_on >= since && livedIds.has(p.id))
     .filter((p) => !reviewedKeys.has(`${p.item_type}:${p.item_id}`))
     .sort((a, b) => (b.finished_on ?? "").localeCompare(a.finished_on ?? ""));
-  let reviewCandidate: MissionCandidate | null = null;
-  if (recent.length > 0) {
-    const p = recent[0];
-    let data: { title: string | null } | null = null;
-    if (p.item_type === "book") {
-      const res = await supabase.from("books").select("title").eq("id", p.item_id).maybeSingle();
-      if (res.error) throw res.error;
-      data = res.data;
-    } else if (p.item_type === "movie") {
-      const res = await supabase.from("movies").select("title").eq("id", p.item_id).maybeSingle();
-      if (res.error) throw res.error;
-      data = res.data;
-    } else {
-      const res = await supabase.from("series").select("title").eq("id", p.item_id).maybeSingle();
-      if (res.error) throw res.error;
-      data = res.data;
+  const reviewPass = recent.at(0) ?? null;
+
+  const none = <T,>(data: T) => Promise.resolve({ data, error: null });
+  const [editions, series, reviewTitle] = await Promise.all([
+    editionIds.length > 0
+      ? supabase.from("book_editions").select("id, total_pages").in("id", editionIds)
+      : none([] as { id: string; total_pages: number | null }[]),
+    openSeries.length > 0
+      ? supabase.from("series").select("id, title, total_episodes").in("id", openSeries.map((p) => p.item_id))
+      : none([] as { id: string; title: string | null; total_episodes: number | null }[]),
+    reviewPass == null
+      ? none<{ title: string | null } | null>(null)
+      : reviewPass.item_type === "book"
+        ? none<{ title: string | null } | null>(bookById.get(reviewPass.item_id) ?? null)
+        : reviewPass.item_type === "movie"
+          ? supabase.from("movies").select("title").eq("id", reviewPass.item_id).maybeSingle()
+          : supabase.from("series").select("title").eq("id", reviewPass.item_id).maybeSingle(),
+  ]);
+  if (editions.error) throw editions.error;
+  if (series.error) throw series.error;
+  if (reviewTitle.error) throw reviewTitle.error;
+
+  // finish_pass: la candidata con MENOS resto en la escala de su tipo
+  // (finishRemaining, issue #1036). Empate: la primera encontrada (libros antes).
+  let finishCandidate: MissionCandidate | null = null;
+  let bestRemaining = Number.POSITIVE_INFINITY;
+  const consider = (remaining: number | null, candidate: MissionCandidate) => {
+    if (remaining != null && remaining < bestRemaining) {
+      bestRemaining = remaining;
+      finishCandidate = candidate;
     }
-    if (data) reviewCandidate = { itemType: p.item_type, itemId: p.item_id, title: data.title ?? UNTITLED_FALLBACK };
+  };
+
+  const editionPages = new Map((editions.data ?? []).map((e) => [e.id, e.total_pages]));
+  for (const p of openBooks) {
+    const page = pageOf(p.position);
+    const book = bookById.get(p.item_id);
+    const total = pagesForPass(p.edition_id ? { totalUnits: editionPages.get(p.edition_id) ?? null } : null, book?.total_pages);
+    if (page == null || !total || total <= 0 || !book) continue;
+    consider(finishRemaining({ kind: "book", ratio: page / total }), {
+      itemType: "book",
+      itemId: p.item_id,
+      title: book.title ?? UNTITLED_FALLBACK,
+    });
   }
+
+  const watchedByPass = new Map<string, number>();
+  for (const e of episodeRows) if (e.pass_id) watchedByPass.set(e.pass_id, (watchedByPass.get(e.pass_id) ?? 0) + 1);
+  const seriesById = new Map((series.data ?? []).map((s) => [s.id, s]));
+  for (const p of openSeries) {
+    const s = seriesById.get(p.item_id);
+    if (!s || !s.total_episodes || s.total_episodes <= 0) continue;
+    const left = s.total_episodes - (watchedByPass.get(p.id) ?? 0);
+    consider(finishRemaining({ kind: "series", left }), {
+      itemType: "series",
+      itemId: p.item_id,
+      title: s.title ?? UNTITLED_FALLBACK,
+    });
+  }
+
+  const reviewCandidate: MissionCandidate | null =
+    reviewPass && reviewTitle.data
+      ? { itemType: reviewPass.item_type, itemId: reviewPass.item_id, title: reviewTitle.data.title ?? UNTITLED_FALLBACK }
+      : null;
 
   return { hasClub, hasOpenSeries: openSeries.length > 0, dailyGoal, finishCandidate, reviewCandidate };
 }

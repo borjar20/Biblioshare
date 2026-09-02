@@ -24,7 +24,9 @@ export interface SyncInput {
   today: string;
   primary: PetAttribute;
   attributes: PetAttributes;
-  eligibility: MissionEligibility;
+  /** Perezosa: solo se llama en la rama que GENERA las misiones del día
+   *  (issue #1037); las visitas siguientes no pagan sus consultas. */
+  eligibility: () => Promise<MissionEligibility>;
   days: { today: PetDayCounts; yesterday: PetDayCounts };
 }
 
@@ -73,7 +75,7 @@ export async function syncDailyMissions(
 
   let rows = await read();
   if (!rows.some((r) => r.day === today)) {
-    const picks = pickDailyMissions(`${userId}:${today}`, input.primary, input.attributes, input.eligibility);
+    const picks = pickDailyMissions(`${userId}:${today}`, input.primary, input.attributes, await input.eligibility());
     const { data: inserted, error } = await supabase
       .from("pet_daily_missions")
       .upsert(
