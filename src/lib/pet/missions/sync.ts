@@ -32,6 +32,10 @@ export interface SyncResult {
   missions: MissionView[];
   /** true si ESTA lectura ha completado alguna (para pedir el drenado en cliente). */
   completedNow: boolean;
+  /** Las que ESTA lectura acaba de completar (hoy o ayer). Su XP todavía no
+   *  está en los contadores —se leyeron antes del sync—, así que quien llama
+   *  tiene que sumarla antes de derivar el nivel (issue #1029). */
+  justCompleted: { template: MissionTemplate; xp: number }[];
 }
 
 // Único punto de escritura de las misiones (spec fase 2 §4):
@@ -99,7 +103,7 @@ export async function syncDailyMissions(
     }
   }
 
-  let completedNow = false;
+  const justCompleted: { template: MissionTemplate; xp: number }[] = [];
   const views: MissionView[] = [];
   for (const r of rows) {
     if (!isMissionTemplate(r.template)) continue; // plantilla retirada: se ignora
@@ -120,7 +124,7 @@ export async function syncDailyMissions(
       if (error) console.error("syncDailyMissions update", error);
       else if ((updated ?? []).length > 0) {
         completed = true;
-        completedNow = true;
+        justCompleted.push({ template: r.template, xp: r.xp });
         await earnCelebration(supabase, userId, {
           event: "pet_mission_done",
           key: `${r.day}:${r.slot}`,
@@ -143,5 +147,5 @@ export async function syncDailyMissions(
       });
     }
   }
-  return { missions: views, completedNow };
+  return { missions: views, completedNow: justCompleted.length > 0, justCompleted };
 }

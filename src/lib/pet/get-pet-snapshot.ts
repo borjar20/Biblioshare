@@ -1,12 +1,13 @@
 import type { createClient } from "@/lib/supabase/server";
 import { earnCelebration } from "@/lib/celebrations/earn";
-import { todayISO, toISODate } from "@/lib/stats/dates";
+import { toISODate } from "@/lib/stats/dates";
 import { achievementProgress, isAchievementId, type AchievementId } from "./achievements";
 import { CLASS_PRIMARY, isPetClass, type PetAttributes, type PetClass, type PetMood, type PetStage } from "./classes";
 import { daysBetweenISO, type PetCounts } from "./counts";
 import { deriveAttributes, levelFor, moodFor, stageFor, xpFor, xpForLevel } from "./derive";
 import { getPetCounts } from "./get-pet-counts";
 import { syncDailyMissions, type MissionView } from "./missions/sync";
+import { MISSION_ATTR } from "./missions/templates";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -62,15 +63,37 @@ export async function getPetSnapshot(
   if (error) throw error;
   if (!pet || !isPetClass(pet.class)) return null;
 
-  const { counts, lastActivityISO, days, eligibility } = await getPetCounts(supabase, userId);
-  const attributes = deriveAttributes(counts);
-  const xp = xpFor(attributes, pet.class);
-  const level = levelFor(xp);
+  const { counts, lastActivityISO, days, eligibility, today } = await getPetCounts(supabase, userId);
   // timestamptz → día LOCAL, la misma convención que session_date y todayISO()
   const hatchedISO = toISODate(new Date(pet.hatched_at));
   const hasActivitySinceHatch = lastActivityISO != null && lastActivityISO >= hatchedISO;
+
+  // El sync de misiones va ANTES de derivar el nivel (issue #1029): la XP de
+  // una misión completada en ESTA lectura no está en los contadores —se leyeron
+  // antes— y, derivando primero, la subida de nivel que provoca no se veía
+  // hasta la visita siguiente. La GENERACIÓN sí usa los atributos PRE-sync: son
+  // el estado con el que se sortean las misiones del día.
+  // El día lo trae getPetCounts: pedir `todayISO()` otra vez podría dar otro día
+  // en la misma petición si el render cruza la medianoche.
+  const preSyncAttributes = deriveAttributes(counts);
+  const sync = await syncDailyMissions(supabase, userId, {
+    today,
+    primary: CLASS_PRIMARY[pet.class],
+    attributes: preSyncAttributes,
+    eligibility,
+    days,
+  });
+  const { missions, completedNow } = sync;
+
+  for (const m of sync.justCompleted) {
+    counts.missionXp[MISSION_ATTR[m.template]] += m.xp;
+    counts.missionsCompleted += 1;
+  }
+  const attributes = deriveAttributes(counts);
+  const xp = xpFor(attributes, pet.class);
+  const level = levelFor(xp);
   const stage = stageFor(level, hasActivitySinceHatch);
-  const mood = moodFor(lastActivityISO ? daysBetweenISO(lastActivityISO, todayISO()) : null);
+  const mood = moodFor(lastActivityISO ? daysBetweenISO(lastActivityISO, today) : null);
 
   const leveledUp = level > pet.last_level;
   // last_stage es text sin CHECK: un valor desconocido da undefined y evolved=false (fail-closed; la app solo escribe valores de stageFor).
@@ -90,15 +113,6 @@ export async function getPetSnapshot(
     if (leveledUp) await earnCelebration(supabase, userId, { event: "pet_level_up", milestone: level });
     if (evolved) await earnCelebration(supabase, userId, { event: "pet_evolved", milestone: STAGE_INDEX[stage] });
   }
-
-  // Misiones del día (spec fase 2 §4): generar si faltan, evaluar hoy y ayer.
-  const { missions, completedNow } = await syncDailyMissions(supabase, userId, {
-    today: todayISO(),
-    primary: CLASS_PRIMARY[pet.class],
-    attributes,
-    eligibility,
-    days,
-  });
 
   // Logros: solo se gana lo NUEVO (ninguna escritura en una visita sin novedades).
   const { data: earnedRows, error: earnedErr } = await supabase

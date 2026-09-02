@@ -27,6 +27,10 @@ export interface PetCountsResult {
   /** Contadores de hoy y de ayer (las misiones de ayer sin completar se evalúan también). */
   days: { today: PetDayCounts; yesterday: PetDayCounts };
   eligibility: MissionEligibility;
+  /** El día LOCAL con el que se han calculado `days` y `eligibility`. Se
+   *  devuelve para que quien llama NO vuelva a pedir `todayISO()`: dos lecturas
+   *  a los lados de la medianoche darían días distintos en la misma petición. */
+  today: string;
 }
 
 // Lee los contadores de las tablas que YA existen (spec §8). Es la lectura
@@ -249,7 +253,7 @@ export async function getPetCounts(
     today,
   });
 
-  return { counts, lastActivityISO: lastDates.at(-1) ?? null, days, eligibility };
+  return { counts, lastActivityISO: lastDates.at(-1) ?? null, days, eligibility, today };
 }
 
 type EligibilityInput = {
