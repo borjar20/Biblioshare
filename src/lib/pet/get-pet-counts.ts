@@ -183,6 +183,9 @@ export async function getPetCounts(
     newAuthors: authors.size,
     historicalPasses: historicalPasses.filter((p) => p.status === "completed").length,
     historicalWorks: new Set(historicalPasses.map((p) => `${p.item_type}:${p.item_id}`)).size,
+    missionXp: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 },
+    missionsCompleted: 0,
+    bestStreak: streaks.best,
   };
 
   return { counts, lastActivityISO: lastDates.at(-1) ?? null };

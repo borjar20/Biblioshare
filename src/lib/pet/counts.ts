@@ -1,5 +1,7 @@
 // Contadores brutos que alimentan deriveAttributes. Los lee get-pet-counts.ts
 // de las tablas existentes; aquí solo la forma, para que la derivación sea pura.
+import type { PetAttribute } from "./classes";
+
 export interface PetCounts {
   /** Σ por sesión de max(floor(min/10), floor(páginas/10)). */
   sessionUnits: number;
@@ -25,6 +27,11 @@ export interface PetCounts {
   historicalPasses: number;
   /** Obras distintas con algún pase del historial: dote de DES con tope. */
   historicalWorks: number;
+  /** XP ganada con misiones completadas, ya agrupada por el atributo de su plantilla. */
+  missionXp: Record<PetAttribute, number>;
+  missionsCompleted: number;
+  /** Mejor racha de días activos (getStreaks().best). */
+  bestStreak: number;
 }
 
 export const EMPTY_COUNTS: PetCounts = {
@@ -49,6 +56,9 @@ export const EMPTY_COUNTS: PetCounts = {
   newAuthors: 0,
   historicalPasses: 0,
   historicalWorks: 0,
+  missionXp: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 },
+  missionsCompleted: 0,
+  bestStreak: 0,
 };
 
 export type PassRow = {

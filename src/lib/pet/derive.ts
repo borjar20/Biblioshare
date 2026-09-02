@@ -16,32 +16,38 @@ import type { PetCounts } from "./counts";
 
 export function deriveAttributes(c: PetCounts): PetAttributes {
   const B = BALANCE;
+  const m = c.missionXp;
   return {
-    FUE: c.sessionUnits * B.FUE.perSessionUnit + c.episodes * B.FUE.perEpisode,
+    FUE: c.sessionUnits * B.FUE.perSessionUnit + c.episodes * B.FUE.perEpisode + m.FUE,
     CON:
       c.activeDays * B.CON.perActiveDay +
       c.dailyGoalDays * B.CON.perDailyGoalDay +
-      c.streakMilestones * B.CON.perStreakMilestone,
+      c.streakMilestones * B.CON.perStreakMilestone +
+      m.CON,
     INT:
       c.finishedPasses * B.INT.perFinishedPass +
       c.completedSagas * B.INT.perCompletedSaga +
       c.distinctGenres * B.INT.perDistinctGenre +
-      Math.min(c.historicalPasses, B.INT.historicalPassCap) * B.INT.perHistoricalPass,
+      Math.min(c.historicalPasses, B.INT.historicalPassCap) * B.INT.perHistoricalPass +
+      m.INT,
     SAB:
       c.notes * B.SAB.perNote +
       c.quotes * B.SAB.perQuote +
       c.reviews * B.SAB.perReview +
-      c.ratings * B.SAB.perRating,
+      c.ratings * B.SAB.perRating +
+      m.SAB,
     CAR:
       c.posts * B.CAR.perPost +
       c.votes * B.CAR.perVote +
       c.polls * B.CAR.perPoll +
       c.events * B.CAR.perEvent +
-      c.follows * B.CAR.perFollow,
+      c.follows * B.CAR.perFollow +
+      m.CAR,
     DES:
       c.newWorks * B.DES.perNewWork +
       c.newAuthors * B.DES.perNewAuthor +
-      Math.min(c.historicalWorks, B.DES.historicalWorkCap) * B.DES.perHistoricalWork,
+      Math.min(c.historicalWorks, B.DES.historicalWorkCap) * B.DES.perHistoricalWork +
+      m.DES,
   };
 }
 

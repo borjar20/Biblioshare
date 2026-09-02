@@ -42,6 +42,12 @@ describe("deriveAttributes", () => {
     // Un solo pase vivido pesa más que uno del historial.
     expect(BALANCE.INT.perFinishedPass).toBeGreaterThan(BALANCE.INT.perHistoricalPass);
   });
+
+  it("la XP de misiones entra en su atributo sin tope", () => {
+    const a = deriveAttributes({ ...EMPTY_COUNTS, missionXp: { FUE: 0, CON: 0, INT: 0, SAB: 7, CAR: 0, DES: 100_000 } });
+    expect(a.SAB).toBe(7);
+    expect(a.DES).toBe(100_000);
+  });
 });
 
 describe("xpFor", () => {
