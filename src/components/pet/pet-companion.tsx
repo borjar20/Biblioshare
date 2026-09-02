@@ -23,6 +23,9 @@ export function PetCompanion({ state }: { state: CompanionState }) {
     const off = onCelebrationsShown((items: CelebrationPayload[]) => {
       const last = items.at(-1);
       if (!last) return;
+      // Un evento nuevo reinicia la reacción: los temporizadores del anterior no deben cortarla antes de tiempo.
+      for (const id of timers.current) window.clearTimeout(id);
+      timers.current = [];
       setReaction("joy");
       setBubble(t(`pet.bubble.${last.event}`, { milestone: last.milestone ?? "" }));
       timers.current.push(window.setTimeout(() => setReaction(null), JOY_MS));
