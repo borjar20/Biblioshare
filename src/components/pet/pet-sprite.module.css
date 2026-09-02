@@ -1,0 +1,59 @@
+/* Rig por partes (spec §5). Cada pieza gira/se mueve sobre su pivote; la ropa
+   viaja con la pieza a la que está pegada. Solo transform: barato y sin frames. */
+.root {
+  position: relative;
+  display: inline-block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.part {
+  position: absolute;
+  inset: 0;
+}
+.part img,
+.root > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* idle según humor */
+.root[data-mood="happy"] [data-part="tail"],
+.root[data-mood="neutral"] [data-part="tail"] { animation: tail 1.8s ease-in-out infinite; }
+.root[data-mood="happy"] [data-part="head"],
+.root[data-mood="neutral"] [data-part="head"] { animation: head 1.8s ease-in-out infinite; }
+.root[data-mood="happy"] [data-part="body"],
+.root[data-mood="neutral"] [data-part="body"] { animation: body 1.8s ease-in-out infinite; }
+.root[data-mood="sleepy"] [data-part="body"] { animation: body 3.6s ease-in-out infinite; }
+.root[data-mood="sleepy"] [data-part="head"] { animation: doze 3.6s ease-in-out infinite; }
+/* triste: quieta; solo el parpadeo de abajo */
+
+.blink { animation: blink 4s linear infinite; opacity: 0; }
+
+/* reacciones */
+.root[data-reaction="joy"] [data-part="head"] { animation: headJoy 0.7s ease-out; }
+.root[data-reaction="joy"] [data-part="tail"] { animation: tailJoy 0.7s ease-out; }
+.root[data-reaction="joy"] [data-part="body"] { animation: bodyJoy 0.7s ease-out; }
+.root[data-reaction="evolve"] { animation: evolve 1.2s ease-out; }
+
+@keyframes tail { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
+@keyframes head { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-2%) rotate(-3deg); } }
+@keyframes body { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.03, 0.97); } }
+@keyframes doze { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(3%) rotate(4deg); } }
+@keyframes blink { 0%, 92%, 100% { opacity: 0; } 93%, 97% { opacity: 1; } }
+@keyframes headJoy { 0% { transform: translateY(0); } 30% { transform: translateY(-12%) rotate(-8deg); } 60% { transform: translateY(-7%) rotate(8deg); } 100% { transform: translateY(0); } }
+@keyframes tailJoy { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 50% { transform: rotate(-10deg); } 75% { transform: rotate(12deg); } }
+@keyframes bodyJoy { 0%, 100% { transform: scale(1, 1); } 30% { transform: scale(1.08, 0.9); } 60% { transform: scale(0.96, 1.06); } }
+@keyframes evolve { 0% { filter: brightness(1); transform: scale(1); } 40% { filter: brightness(2.2); transform: scale(1.15); } 100% { filter: brightness(1); transform: scale(1); } }
+
+/* Cuerpo rígido con movimiento reducido: sin balanceo de piezas, solo parpadeo. */
+@media (prefers-reduced-motion: reduce) {
+  .root [data-part] { animation: none !important; }
+  .root[data-reaction="joy"] { animation: nudge 0.4s ease-out; }
+  /* La evolución con movimiento reducido es un fundido corto, sin escala ni destello. */
+  .root[data-reaction="evolve"] { animation: fadeIn 0.6s ease-out; }
+  @keyframes nudge { 50% { transform: translateY(-4%); } }
+  @keyframes fadeIn { from { opacity: 0.4; } to { opacity: 1; } }
+}

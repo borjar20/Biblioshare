@@ -12594,3 +12594,211 @@ create policy "play_players_delete" on public.play_players
   for delete using (owner_id = (select auth.uid()));
 
 grant select, insert, update, delete on public.play_players to authenticated;
+
+-- ANEXO 2026-09-02: pet_state (migración 20260902_pet_state.sql)
+-- Mascota RPG (spec 2026-09-02-mascota-rpg-design.md, §8).
+--
+-- Solo DECISIONES del usuario: nombre, clase, ocultar la compañera y el último
+-- nivel/etapa que la app calculó (para detectar subidas). XP, atributos, nivel y
+-- etapa NO se guardan: se derivan de progress_sessions, passes, notes, club_*…
+-- en src/lib/pet/derive.ts. Una fila por usuario (PK = user_id).
+
+create table public.pet_state (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 24),
+  -- text, no enum: añadir una clase no exige migración de tipo. Los valores
+  -- válidos los fija src/lib/pet/classes.ts.
+  class text not null,
+  hatched_at timestamptz not null default now(),
+  companion_hidden boolean not null default false,
+  last_level integer not null default 1,
+  last_stage text not null default 'acorn',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+comment on table public.pet_state is
+  'Mascota RPG: decisiones del usuario (nombre, clase, ocultar) y último nivel/etapa visto. XP y atributos se derivan en la app (src/lib/pet). Ver spec 2026-09-02.';
+
+alter table public.pet_state enable row level security;
+
+create policy "pet_state select own" on public.pet_state
+  for select to authenticated using ((select auth.uid()) = user_id);
+
+create policy "pet_state insert own" on public.pet_state
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+
+create policy "pet_state update own" on public.pet_state
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+-- Sin DELETE: la mascota se va con la cuenta (cascade), no se borra a mano.
+
+-- Grant POR COLUMNA (issue #375): una columna nueva sin su grant rompe la
+-- escritura entera de la tabla. Al añadir una columna, añádela aquí y pasa la
+-- superficie 6 de docs/DRIFT-CHECK.md.
+revoke all on public.pet_state from anon, authenticated;
+grant select on public.pet_state to authenticated;
+grant insert (user_id, name, class, hatched_at, companion_hidden, last_level, last_stage)
+  on public.pet_state to authenticated;
+grant update (name, class, companion_hidden, last_level, last_stage, updated_at)
+  on public.pet_state to authenticated;
+
+-- 20260903_pet_daily_missions
+-- Mascota fase 2 (spec 2026-09-02-mascota-misiones-logros-design.md, §3).
+--
+-- La única DECISIÓN que se guarda de las misiones: qué tres te tocaron hoy
+-- (si se derivaran, mutarían a mediodía al cambiar de clase o subir un
+-- atributo). Progreso y XP se derivan en src/lib/pet/missions. `completed_at`
+-- lo pone getPetSnapshot cuando el progreso del día alcanza `target`.
+-- Objetivo, XP y título se CONGELAN al asignar para que un cambio de balance
+-- o de catálogo no reescriba una misión ya vista.
+
+create table public.pet_daily_missions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  -- Día LOCAL del usuario (todayISO()), como session_date.
+  day date not null,
+  slot smallint not null check (slot between 0 and 2),
+  -- text, no enum: los ids válidos los fija src/lib/pet/missions/templates.ts.
+  template text not null,
+  target integer not null check (target > 0),
+  xp integer not null check (xp >= 0),
+  -- Solo las duras con obra («Termina Dune»): sin FK porque una obra fusionada
+  -- o borrada no debe borrar la misión; se compara como "tipo:id".
+  item_type text,
+  item_id uuid,
+  item_title text,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (user_id, day, slot)
+);
+
+comment on table public.pet_daily_missions is
+  'Mascota fase 2: las tres misiones asignadas por día y usuario. Progreso y XP se derivan (src/lib/pet/missions); completed_at lo sella getPetSnapshot. Ver spec 2026-09-02-mascota-misiones-logros.';
+
+-- Suma de XP de misiones completadas por usuario (getPetCounts).
+create index pet_daily_missions_user_completed_idx
+  on public.pet_daily_missions (user_id, completed_at);
+
+alter table public.pet_daily_missions enable row level security;
+
+create policy "pet_daily_missions select own" on public.pet_daily_missions
+  for select to authenticated using ((select auth.uid()) = user_id);
+
+create policy "pet_daily_missions insert own" on public.pet_daily_missions
+  for insert to authenticated with check ((select auth.uid()) = user_id);
+
+create policy "pet_daily_missions update own" on public.pet_daily_missions
+  for update to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+
+-- Sin DELETE: las misiones caducan solas (solo se evalúan hoy y ayer).
+
+-- Grant POR COLUMNA (issue #375): una columna nueva sin su grant rompe la
+-- escritura entera de la tabla. Al añadir una columna, añádela aquí y pasa la
+-- superficie 6 de docs/DRIFT-CHECK.md.
+revoke all on public.pet_daily_missions from anon, authenticated;
+grant select on public.pet_daily_missions to authenticated;
+grant insert (user_id, day, slot, template, target, xp, item_type, item_id, item_title)
+  on public.pet_daily_missions to authenticated;
+grant update (completed_at) on public.pet_daily_missions to authenticated;
+
+-- 20260904_pet_achievement_tiers
+-- Logros por familias (spec 2026-09-02-mascota-logros-niveles §2). Las claves
+-- planas de la fase 2 (pet_achievement:finished_10…) pasan a familia:nivel.
+-- Los primeros pasos de cada escalera coinciden con los umbrales viejos, así
+-- que ninguna fecha se pierde ni nada se vuelve a animar. Aditiva sobre datos:
+-- no toca esquema ni grants.
+--
+-- Idempotente frente a un replay tardío: si el usuario YA tiene la clave nueva
+-- (la app con familias escribió antes de aplicar esto), renombrar la vieja
+-- chocaría con el UNIQUE (user_id, event_type, event_key). Se borra primero la
+-- vieja cuyo destino exista.
+--
+-- La fila que sobrevive (la nueva, familia:nivel) es la POSTERIOR: la escribió
+-- la app cuando ya usaba claves de familia, DESPUÉS de la fecha real de
+-- desbloqueo que quedó en la vieja. Sin este update, al borrar la vieja sin
+-- más, el first_triggered_at de la superviviente se queda con esa fecha
+-- posterior y la fecha de desbloqueo SE ADELANTA (avanza respecto a la real).
+update public.user_celebrations n
+set first_triggered_at = least(n.first_triggered_at, o.first_triggered_at),
+    displayed_at = case
+      when n.displayed_at is null and o.displayed_at is not null then o.displayed_at
+      else n.displayed_at
+    end
+from public.user_celebrations o,
+  (values
+    ('finished_10', 'finished:1'),
+    ('finished_50', 'finished:2'),
+    ('finished_100', 'finished:3'),
+    ('sessions_100', 'sessions:1'),
+    ('episodes_100', 'episodes:1'),
+    ('notes_50', 'notes:1'),
+    ('reviews_10', 'reviews:1'),
+    ('genres_10', 'genres:1'),
+    ('streak_30', 'streak:1'),
+    ('streak_100', 'streak:2'),
+    ('posts_50', 'posts:1'),
+    ('sagas_3', 'sagas:1'),
+    ('missions_50', 'missions:1'),
+    ('adult', 'stage:1'),
+    ('veteran', 'stage:2')
+  ) as m(old_key, new_key)
+where n.event_type = 'pet_achievement'
+  and n.event_key = 'pet_achievement:' || m.new_key
+  and o.event_type = 'pet_achievement'
+  and o.user_id = n.user_id
+  and o.event_key = 'pet_achievement:' || m.old_key;
+
+delete from public.user_celebrations c
+using (values
+  ('finished_10', 'finished:1'),
+  ('finished_50', 'finished:2'),
+  ('finished_100', 'finished:3'),
+  ('sessions_100', 'sessions:1'),
+  ('episodes_100', 'episodes:1'),
+  ('notes_50', 'notes:1'),
+  ('reviews_10', 'reviews:1'),
+  ('genres_10', 'genres:1'),
+  ('streak_30', 'streak:1'),
+  ('streak_100', 'streak:2'),
+  ('posts_50', 'posts:1'),
+  ('sagas_3', 'sagas:1'),
+  ('missions_50', 'missions:1'),
+  ('adult', 'stage:1'),
+  ('veteran', 'stage:2')
+) as m(old_key, new_key)
+where c.event_type = 'pet_achievement'
+  and c.event_key = 'pet_achievement:' || m.old_key
+  and exists (
+    select 1 from public.user_celebrations n
+    where n.user_id = c.user_id
+      and n.event_type = 'pet_achievement'
+      and n.event_key = 'pet_achievement:' || m.new_key
+  );
+
+update public.user_celebrations c
+set event_key = 'pet_achievement:' || m.new_key,
+    payload = c.payload || jsonb_build_object('key', m.new_key)
+from (values
+  ('finished_10', 'finished:1'),
+  ('finished_50', 'finished:2'),
+  ('finished_100', 'finished:3'),
+  ('sessions_100', 'sessions:1'),
+  ('episodes_100', 'episodes:1'),
+  ('notes_50', 'notes:1'),
+  ('reviews_10', 'reviews:1'),
+  ('genres_10', 'genres:1'),
+  ('streak_30', 'streak:1'),
+  ('streak_100', 'streak:2'),
+  ('posts_50', 'posts:1'),
+  ('sagas_3', 'sagas:1'),
+  ('missions_50', 'missions:1'),
+  ('adult', 'stage:1'),
+  ('veteran', 'stage:2')
+) as m(old_key, new_key)
+where c.event_type = 'pet_achievement'
+  and c.event_key = 'pet_achievement:' || m.old_key;

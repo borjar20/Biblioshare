@@ -461,6 +461,18 @@ export function DiceIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Bellota: la mascota (Mascota RPG fase 1). Cuelga de «Tú» junto al resto de
+// lo que es tuyo.
+export function AcornIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M6 10h12c0 5-2.5 9-6 11-3.5-2-6-6-6-11Z" />
+      <path d="M5 10c0-2 3-3.5 7-3.5s7 1.5 7 3.5" />
+      <path d="M12 6.5V3" />
+    </svg>
+  );
+}
+
 export function PauseIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" {...props}>

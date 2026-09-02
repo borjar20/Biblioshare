@@ -1,0 +1,33 @@
+.badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 3px solid var(--badge-ring, #b9b2a8);
+  background: var(--badge-bg, transparent);
+  box-sizing: border-box;
+}
+.img { image-rendering: pixelated; display: block; }
+.tier {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: var(--badge-ring, #b9b2a8);
+  color: #fffdf8;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+/* Marco por nivel: (tier − 1) mod 4 → bronce, plata, oro, leyenda. */
+.bronze { --badge-ring: #b0542f; }
+.silver { --badge-ring: #8a94a0; }
+.gold { --badge-ring: #d8a83a; }
+.legend { --badge-ring: #6a4c8a; }
+.none { --badge-ring: #b9b2a8; }
+.next { filter: grayscale(1); opacity: 0.5; }

@@ -327,6 +327,13 @@ es rastreable por `area:catalogo`.
 - [x] BiblioPlay — pasada visual-first tras la critique (25/40): hoja de ronda con chips y steppers, config de MTG con fichas y panel, presets de Recursos con glifos SVG propios y `resource_updated`, límite Libre/Rondas/Puntos con `TargetStepper` y juego tras «+», bolsa sin inputs, ficha unificada «tocar abre panel» (`SeatRow`). EPIC #931, spec `docs/superpowers/specs/2026-09-01-play-visual-first-design.md`, plan `docs/superpowers/plans/2026-09-01-play-visual-first.md`. Actas en `decisiones.md` 2026-09-01.
 - [ ] BiblioPlay fases 7+: estadísticas derivadas del log por `playerId`, vinculación habitual→usuario Biblioshare, sync en tiempo real multi-dispositivo de la partida activa.
 
+**Mascota**
+- [x] Mascota RPG fase 1 (núcleo): tabla `pet_state` (dev), eclosión (nombre + clase), ficha derivada de la actividad real —nunca un libro mayor de XP—, compañera flotante en el shell (ausente en `/partida/activa`) y ocultable desde ajustes. Spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`, e2e `e2e/mascota.spec.ts`. Calibración y decisión de cierre en `decisiones.md` 2026-09-02.
+- [x] Mascota fase 2: misiones diarias generadas + logros permanentes (#1013) — rama `feat/mascota-rpg`, pendiente de merge; logros por familias con escalera abierta e insignias (spec 2026-09-02-mascota-logros-niveles).
+- [ ] Mascota fase 3: avisos push por humor y racha (#1014).
+- [ ] Mascota fase 4: jefes PvE sobre challenges con motor de combate stats vs stats (#1015).
+- [ ] Mascota fase 5: PvP asíncrono entre seguidos (#1016).
+
 ## Deuda transversal priorizada por la auditoría 2026-08
 
 El informe (`docs/audit/AUDIT-2026-08.md`, resumen ejecutivo final) ordena el

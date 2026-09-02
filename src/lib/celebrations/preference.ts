@@ -1,4 +1,4 @@
-import type { CelebrationPreference } from "./types";
+import type { CelebrationPayload, CelebrationPreference } from "./types";
 
 // La preferencia de celebraciones vive en localStorage, como el tema: sin
 // latencia, sin columna de perfil, sin round-trip en el provider. Si algún día
@@ -46,4 +46,20 @@ export function checkCelebrations(): void {
 export function onCelebrationCheck(handler: () => void): () => void {
   window.addEventListener(CHECK_EVENT, handler);
   return () => window.removeEventListener(CHECK_EVENT, handler);
+}
+
+// Señal "se acaban de encolar celebraciones para mostrar", con su payload. La
+// compañera (src/components/pet/pet-companion.tsx) la escucha para saltar: es
+// un consumidor más del canal ganar → drenar, sin tocar la cola del provider.
+const SHOWN_EVENT = "celebrations:shown";
+
+export function emitCelebrationsShown(items: CelebrationPayload[]): void {
+  if (typeof window === "undefined" || items.length === 0) return;
+  window.dispatchEvent(new CustomEvent<CelebrationPayload[]>(SHOWN_EVENT, { detail: items }));
+}
+
+export function onCelebrationsShown(handler: (items: CelebrationPayload[]) => void): () => void {
+  const listener = (e: Event) => handler((e as CustomEvent<CelebrationPayload[]>).detail ?? []);
+  window.addEventListener(SHOWN_EVENT, listener);
+  return () => window.removeEventListener(SHOWN_EVENT, listener);
 }

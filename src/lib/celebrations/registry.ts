@@ -36,6 +36,39 @@ export const CELEBRATIONS: Record<CelebrationEvent, CelebrationConfig> = {
     scope: "ever",
     reducedMotionFallback: "fade",
   },
+  // Mascota (spec 2026-09-02 §8): se ganan al calcular el snapshot en /mascota
+  // cuando level > last_level o cambia la etapa. `milestone` = nivel / índice
+  // de etapa (STAGE_INDEX en src/lib/pet/get-pet-snapshot.ts).
+  pet_level_up: {
+    event: "pet_level_up",
+    intensity: "medium",
+    durationMs: 1600,
+    scope: "milestone",
+    reducedMotionFallback: "fade",
+  },
+  pet_evolved: {
+    event: "pet_evolved",
+    intensity: "high",
+    durationMs: 1800,
+    scope: "milestone",
+    reducedMotionFallback: "static",
+  },
+  // Mascota fase 2 (spec 2026-09-02-mascota-misiones-logros): se ganan en
+  // getPetSnapshot. `key` = "<day>:<slot>" para misiones, id del logro para logros.
+  pet_mission_done: {
+    event: "pet_mission_done",
+    intensity: "medium",
+    durationMs: 1400,
+    scope: "key",
+    reducedMotionFallback: "fade",
+  },
+  pet_achievement: {
+    event: "pet_achievement",
+    intensity: "high",
+    durationMs: 1800,
+    scope: "key",
+    reducedMotionFallback: "static",
+  },
 };
 
 // Hitos de racha que se celebran. Fuera de esta lista, ningún día dispara nada.
@@ -57,6 +90,8 @@ export function reachedMilestone(streak: number): number | null {
 //   daily_goal_completed:2026-08-05
 //   streak_milestone:30
 //   first_club_participation
+//   pet_mission_done:2026-09-03:1
+//   pet_achievement:notes_50
 export function getCelebrationKey(payload: CelebrationPayload): string {
   const config = CELEBRATIONS[payload.event];
   switch (config.scope) {
@@ -71,6 +106,12 @@ export function getCelebrationKey(payload: CelebrationPayload): string {
         throw new Error(`${payload.event} necesita 'milestone' para su clave`);
       }
       return `${payload.event}:${payload.milestone}`;
+    }
+    case "key": {
+      if (!payload.key) {
+        throw new Error(`${payload.event} necesita 'key' para su clave`);
+      }
+      return `${payload.event}:${payload.key}`;
     }
     case "ever":
       return payload.event;

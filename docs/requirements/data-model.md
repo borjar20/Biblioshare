@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-31 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-02 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3659,6 +3659,58 @@ privada total.**
 prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
+
+## 8bis. Mascota
+
+> (Sección insertada el 2026-09-02 entre «8. Play» y «9. Seguridad», sin renumerar el resto.)
+
+### 8bis.1. `pet_state` (dev y **prod**, 2026-09-02)
+
+Mascota RPG (spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`). Una fila por usuario
+con SOLO decisiones: `user_id` (PK, FK `auth.users` cascade), `name` (text, 1-24, CHECK),
+`class` (text; valores en `src/lib/pet/classes.ts`, sin enum a propósito), `hatched_at`,
+`companion_hidden` (bool), `last_level` (int, default 1), `last_stage` (text, default `acorn`),
+`created_at`, `updated_at`.
+
+**XP, atributos, nivel y etapa NO están en la tabla**: se derivan en `src/lib/pet/derive.ts` de
+`progress_sessions`, `passes`, `episode_watches`, `notes`, `club_posts`, `club_poll_votes`,
+`club_activity_participants`, `follows`, `pending_import_rows` y `books.genres`. Rebalancear es
+cambiar `src/lib/pet/balance.ts`. `last_level`/`last_stage` existen solo para detectar subida y
+evolución al calcular (`get-pet-snapshot.ts`) y ganar `pet_level_up` / `pet_evolved` en
+`user_celebrations`.
+
+**RLS**: select/insert/update propias; sin delete (cascade con la cuenta). **Grant por columna**
+(superficie 6 de DRIFT-CHECK): insert sin `created_at`/`updated_at`; update sin `user_id`,
+`hatched_at`, `created_at`. Migración `supabase/migrations/20260902_pet_state.sql`. **Aplicada y verificada en prod el 2026-09-02** contra `pg_class`/`pg_policies`/`has_column_privilege`: RLS activa, 3 políticas, 9 columnas, 7 con INSERT, 6 con UPDATE, 0 legibles por `anon` (mismo `9 | 7 | 6` que dev, superficie 6 de DRIFT-CHECK).
+
+### 8bis.2. `pet_daily_missions` (dev y **prod**, 2026-09-02)
+
+Mascota fase 2 (spec `docs/superpowers/specs/2026-09-02-mascota-misiones-logros-design.md`). Tres
+filas por usuario y día: `id`, `user_id` (FK cascade), `day` (date, **día local** del usuario),
+`slot` (0-2, CHECK), `template` (text; ids en `src/lib/pet/missions/templates.ts`, sin enum),
+`target`, `xp` (congelados al asignar), `item_type`/`item_id`/`item_title` (solo las duras con obra;
+sin FK a propósito), `completed_at` (lo sella `getPetSnapshot`), `created_at`.
+`unique (user_id, day, slot)`; índice `(user_id, completed_at)`.
+
+**Solo la asignación es decisión.** Progreso (`src/lib/pet/missions/progress.ts`) y XP
+(`missionXp` en `PetCounts`) se derivan; los logros no tienen tabla: su rastro es la celebración
+`pet_achievement:<id>` en `user_celebrations`. Las misiones se evalúan para hoy y ayer; más atrás
+caducan sin más.
+
+**RLS**: select/insert/update propias; sin delete. **Grant por columna** (superficie 6): insert
+sin `id`/`completed_at`/`created_at`; update solo `completed_at`. Migración
+`supabase/migrations/20260903_pet_daily_missions.sql`. Verificado en dev: 12 columnas, 9 con
+INSERT, 1 con UPDATE, 0 para `anon`, 3 políticas, RLS activa. **Aplicada y verificada en prod el
+2026-09-02** (mismo `12 | 9 | 1 | 0 | 3 | true` contra `information_schema.column_privileges`,
+`pg_policies` y `pg_class`), antes de mergear la rama: la preview de Vercel de la PR apunta a prod y
+`/mascota` fallaba con la tabla ausente. Aditiva pura (tabla nueva, solo FK a `auth.users`): el código
+de `main` no la toca.
+
+**Logros por familias (2026-09-02).** El rastro de un logro es `user_celebrations` con
+`event_type = 'pet_achievement'` y `event_key = 'pet_achievement:<familia>:<tier>'` (una fila por
+nivel). La migración de datos `20260904_pet_achievement_tiers.sql` renombró las claves planas de la
+fase 2 (`finished_10` → `finished:1`, …); verificación: cero filas `pet_achievement` sin dos `:`.
+Aplicada en dev el 2026-09-02; prod: ver `decisiones.md`.
 
 ## 9. Seguridad
 

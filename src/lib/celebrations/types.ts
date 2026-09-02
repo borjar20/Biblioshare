@@ -7,13 +7,18 @@ export type CelebrationEvent =
   | "first_activity_of_day"
   | "daily_goal_completed"
   | "streak_milestone"
-  | "first_club_participation";
+  | "first_club_participation"
+  | "pet_level_up"
+  | "pet_evolved"
+  | "pet_mission_done"
+  | "pet_achievement";
 
 /** Cómo se deduplica: qué parte del payload forma la clave única por usuario. */
 export type CelebrationScope =
   | "day" // una vez al día — clave incluye la fecha
   | "milestone" // una vez por hito — clave incluye el número
-  | "ever"; // una sola vez por usuario
+  | "ever" // una sola vez por usuario
+  | "key"; // una vez por clave libre — clave incluye payload.key (misión del día y hueco, id de logro)
 
 export interface CelebrationConfig {
   event: CelebrationEvent;
@@ -39,6 +44,8 @@ export interface CelebrationPayload {
   milestone?: number;
   /** Fecha "YYYY-MM-DD" para los eventos de alcance diario. */
   date?: string;
+  /** Clave libre para los eventos de alcance `key` ("2026-09-03:1", "notes_50"). */
+  key?: string;
   metadata?: Record<string, unknown>;
 }
 

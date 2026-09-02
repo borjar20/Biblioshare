@@ -136,14 +136,24 @@ export function revalidateOnboarding(): void {
  *
  *  Es la revalidación más cara que hay —purga la Client Cache y todo lo
  *  cacheado bajo el layout raíz—, así que vive aquí con nombre propio para que
- *  usarla sea una decisión y no un descuido. Solo tiene un caso legítimo:
- *  terminar el onboarding, que hace aparecer las barras de navegación por
- *  primera vez y ocurre UNA vez en la vida de una cuenta.
+ *  usarla sea una decisión y no un descuido. Dos casos legítimos:
+ *  - terminar el onboarding, que hace aparecer las barras de navegación por
+ *    primera vez y ocurre UNA vez en la vida de una cuenta;
+ *  - la mascota (Fase 1), cuya compañera flotante vive en el layout raíz y
+ *    por tanto se pinta en cualquier ruta, no solo en /mascota.
  *
  *  Lo que NO es caso: refrescar un contador de la topbar (era F1-014, en la
  *  campana). Un dato por-usuario no se cachea, así que no hay nada que purgar. */
 export function revalidateAppChrome(): void {
   revalidatePath("/", "layout");
+}
+
+/** La ficha de la mascota (/mascota). Purga también el chrome raíz: la
+ *  compañera flotante que refleja el mismo estado vive en el layout raíz, no
+ *  en /mascota. */
+export function revalidatePetPage(): void {
+  revalidatePath("/mascota");
+  revalidateAppChrome();
 }
 
 // --- Helpers compuestos por forma de mutación ---

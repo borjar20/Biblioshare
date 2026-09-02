@@ -3,7 +3,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-08-29",
+    "generatedAt": "2026-09-02",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab)",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -963,6 +963,49 @@
       ]
     },
     {
+      "id": "m-pet",
+      "label": "lib/pet",
+      "layer": "domain",
+      "kind": "module",
+      "size": 14,
+      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`).",
+      "files": [
+        "src/lib/pet/actions.ts",
+        "src/lib/pet/derive.ts",
+        "src/lib/pet/balance.ts",
+        "src/lib/pet/classes.ts",
+        "src/lib/pet/manifest.ts",
+        "src/lib/pet/get-companion-state.ts",
+        "src/lib/pet/get-pet-snapshot.ts",
+        "src/lib/pet/get-pet-counts.ts",
+        "src/lib/pet/achievements.ts",
+        "src/lib/pet/badges.ts",
+        "src/lib/pet/missions/templates.ts",
+        "src/lib/pet/missions/generate.ts",
+        "src/lib/pet/missions/progress.ts",
+        "src/lib/pet/missions/sync.ts"
+      ],
+      "gotchas": [
+        "No hay cron que detecte la subida de nivel: solo se calcula al abrir /mascota (issue #1020).",
+        "get-pet-snapshot.ts deriva attributes/xp/level de getPetCounts() ANTES de llamar a syncDailyMissions: la XP de una misión completada en ESA MISMA visita no entra en la barra hasta la siguiente (issue #1029).",
+        "missions/sync.ts (syncDailyMissions) relee pet_daily_missions con el MISMO SELECT justo después de insertar las misiones del día: la memoización automática de fetch de Next 16 (misma URL+opciones dentro de un render) devuelve el resultado cacheado DE ANTES del insert, así que la primera visita del día que genera las misiones las guarda pero el tablón sale vacío hasta la siguiente visita (issue #1028)."
+      ]
+    },
+    {
+      "id": "m-celebrations",
+      "label": "lib/celebrations",
+      "layer": "domain",
+      "kind": "module",
+      "size": 6,
+      "summary": "Motor genérico de celebraciones (rachas, subida de nivel/evolución de la mascota...): earn.ts registra un logro idempotente en user_celebrations; registry.ts es el catálogo de tipos y umbrales (p. ej. STREAK_MILESTONES). Otros dominios lo invocan puntualmente (earnCelebration); no escucha eventos ni tiene ganchos automáticos en cada escritura — la lección de #459.",
+      "files": [
+        "src/lib/celebrations/earn.ts",
+        "src/lib/celebrations/registry.ts",
+        "src/lib/celebrations/preference.ts",
+        "src/lib/celebrations/pull-actions.ts"
+      ]
+    },
+    {
       "id": "sb-server",
       "label": "supabase/server.ts",
       "layer": "data",
@@ -1280,6 +1323,63 @@
       "summary": "Tablero de la partida en curso y resumen final. Única pantalla sin topbar ni barra de cinco (ChromeGate).",
       "files": [
         "src/app/partida"
+      ]
+    },
+    {
+      "id": "c-pet",
+      "label": "components/pet",
+      "layer": "ui",
+      "kind": "ui",
+      "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite con rig por partes en CSS).",
+      "files": [
+        "src/components/pet"
+      ]
+    },
+    {
+      "id": "r-mascota",
+      "label": "/mascota",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Eclosión si no hay mascota; ficha derivada (atributos, nivel, etapa, humor) si ya la hay.",
+      "files": [
+        "src/app/mascota"
+      ]
+    },
+    {
+      "id": "t-pet",
+      "label": "pet_state",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Una fila por usuario, solo decisiones. XP/nivel/etapa NO están aquí — se derivan en m-pet. last_level/last_stage existen solo para detectar la subida al calcular.",
+      "columns": [
+        "user_id",
+        "name",
+        "class",
+        "hatched_at",
+        "companion_hidden",
+        "last_level",
+        "last_stage"
+      ]
+    },
+    {
+      "id": "t-pet-missions",
+      "label": "pet_daily_missions",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Fase 2 (spec 2026-09-02-mascota-misiones-logros, SOLO EN DEV: migración 20260903_pet_daily_missions.sql, se aplica en prod al mergear feat/mascota-rpg). Única DECISIÓN que se guarda de las misiones: qué tres tocaron hoy — target/xp/item_title se CONGELAN al asignar para que un cambio de balance o de catálogo no reescriba una misión ya vista. Progreso y XP se derivan (m-pet/missions); completed_at lo sella syncDailyMissions. unique(user_id, day, slot); sin DELETE, las misiones caducan solas (solo se evalúan hoy y ayer).",
+      "columns": [
+        "id",
+        "user_id",
+        "day",
+        "slot",
+        "template",
+        "target",
+        "xp",
+        "item_type",
+        "item_id",
+        "item_title",
+        "completed_at",
+        "created_at"
       ]
     }
   ],
@@ -2219,6 +2319,66 @@
       "from": "c-play",
       "to": "m-play",
       "kind": "calls"
+    },
+    {
+      "from": "proxy",
+      "to": "r-mascota",
+      "kind": "renders"
+    },
+    {
+      "from": "r-mascota",
+      "to": "c-pet",
+      "kind": "renders"
+    },
+    {
+      "from": "r-mascota",
+      "to": "m-pet",
+      "kind": "reads"
+    },
+    {
+      "from": "c-nav",
+      "to": "c-pet",
+      "kind": "renders",
+      "label": "compañera flotante en el chrome"
+    },
+    {
+      "from": "c-nav",
+      "to": "m-pet",
+      "kind": "reads",
+      "label": "getCompanionState (lectura ligera)"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-stats",
+      "kind": "reads",
+      "label": "getStreaks"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-celebrations",
+      "kind": "calls",
+      "label": "earnCelebration (pet_level_up / pet_evolved)"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-reactivity",
+      "kind": "revalidates"
+    },
+    {
+      "from": "m-pet",
+      "to": "sb-server",
+      "kind": "writes"
+    },
+    {
+      "from": "sb-server",
+      "to": "t-pet",
+      "kind": "writes"
+    },
+    {
+      "from": "sb-server",
+      "to": "t-pet-missions",
+      "kind": "writes",
+      "label": "syncDailyMissions: genera, evalúa y sella completed_at"
     }
   ],
   "flows": [
@@ -2955,6 +3115,97 @@
           "node": "m-reactivity",
           "action": "revalidateClubPages() refresca muro, calendario y la ficha del evento",
           "file": "src/lib/reactivity/revalidate.ts"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-hatch",
+      "name": "Eclosionar mascota",
+      "category": "core",
+      "summary": "Nombre + clase → fila en pet_state → ficha derivada. Sin mascota, /mascota enseña el formulario de eclosión; con ella, la ficha con atributos/nivel/etapa/humor derivados en el momento.",
+      "entrypoint": "src/lib/pet/actions.ts:31",
+      "steps": [
+        {
+          "node": "c-pet",
+          "action": "hatch-form: el usuario elige nombre y clase (class-picker)",
+          "file": "src/components/pet/hatch-form.tsx"
+        },
+        {
+          "node": "m-pet",
+          "action": "hatchPet valida nombre/clase y hace INSERT en pet_state; 23505 (fila ya existe, PK user_id) se traduce a error `exists`",
+          "file": "src/lib/pet/actions.ts:31"
+        },
+        {
+          "node": "sb-server",
+          "action": "INSERT en pet_state (user_id, name, class)",
+          "file": "src/lib/supabase/server.ts"
+        },
+        {
+          "node": "t-pet",
+          "action": "Fila nueva; hatched_at, last_level y last_stage a sus valores por defecto"
+        },
+        {
+          "node": "m-reactivity",
+          "action": "revalidatePetPage() invalida /mascota y el chrome raíz — la compañera flotante vive en el layout, no en /mascota",
+          "file": "src/lib/reactivity/revalidate.ts:154"
+        },
+        {
+          "node": "r-mascota",
+          "action": "La página repinta con pet-detail (atributos/nivel/etapa derivados en el momento) en vez del formulario",
+          "file": "src/app/mascota/page.tsx"
+        },
+        {
+          "node": "c-nav",
+          "action": "La compañera flotante aparece en el resto del chrome (ausente en /partida/activa, pantalla a sangre)",
+          "file": "src/components/nav/app-shell.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-missions",
+      "name": "Abrir /mascota: genera y evalúa las misiones del día, gana logros nuevos",
+      "category": "core",
+      "summary": "Fase 2 (spec 2026-09-02-mascota-misiones-logros). Único punto de escritura de pet_daily_missions: si hoy no tiene filas, las genera (sorteo determinista por userId+día) e inserta; evalúa hoy Y ayer sin completar; sella completed_at y gana pet_mission_done. Después, deriva familyProgress sobre PetCounts (familias con escalera abierta) y gana pet_achievement:<familia>:<tier> para el nivel NUEVO, una fila por nivel: los niveles intermedios se ganan sellados y solo el más alto anima.",
+      "entrypoint": "src/lib/pet/get-pet-snapshot.ts:getPetSnapshot",
+      "notes": [
+        "attributes/xp/level se derivan de getPetCounts() ANTES de llamar a syncDailyMissions: la XP de una misión completada en esta misma visita no entra en la barra hasta la siguiente (issue #1029).",
+        "syncDailyMissions relee pet_daily_missions con el MISMO SELECT justo tras el upsert; la memoización de fetch de Next 16 devuelve el resultado de ANTES del insert, así que la primera visita del día que genera las misiones las guarda pero el tablón sale vacío hasta la siguiente visita (issue #1028)."
+      ],
+      "steps": [
+        {
+          "node": "r-mascota",
+          "action": "PetContent pide la ficha completa del usuario",
+          "file": "src/app/mascota/page.tsx"
+        },
+        {
+          "node": "m-pet",
+          "action": "getPetSnapshot deriva attributes/xp/level/stage de getPetCounts (días, elegibilidad) y detecta subida/evolución",
+          "file": "src/lib/pet/get-pet-snapshot.ts"
+        },
+        {
+          "node": "m-pet",
+          "action": "syncDailyMissions: si hoy no tiene filas, pickDailyMissions sortea las tres (hueco 0 primario, hueco 1 el atributo más flojo, hueco 2 azar/dura elegible) y hace upsert; evalúa progreso de hoy y ayer con missionProgress y sella completed_at cuando progress >= target",
+          "file": "src/lib/pet/missions/sync.ts"
+        },
+        {
+          "node": "sb-server",
+          "action": "upsert/select en pet_daily_missions (RLS: dueño); update completed_at solo si sigue null",
+          "file": "src/lib/supabase/server.ts"
+        },
+        {
+          "node": "t-pet-missions",
+          "action": "Fila por (user_id, day, slot); template/target/xp/item_title congelados al asignar",
+          "file": "supabase/migrations/20260903_pet_daily_missions.sql"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Cada misión recién completada gana pet_mission_done:<day>:<slot>; deriva familyProgress sobre PetCounts (familias con escalera abierta) y gana pet_achievement:<familia>:<tier> para el nivel NUEVO, una fila por nivel: los niveles intermedios se ganan sellados y solo el más alto anima (dedupe por key, así que repetir la lectura no la gana dos veces)",
+          "file": "src/lib/celebrations/earn.ts"
+        },
+        {
+          "node": "c-pet",
+          "action": "MissionBoard y AchievementGrid pintan el tablón del día y una tarjeta por familia con la insignia conseguida y la siguiente",
+          "file": "src/components/pet/mission-board.tsx"
         }
       ]
     }

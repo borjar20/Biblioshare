@@ -3478,3 +3478,147 @@ El e2e del tablero (`/partida/activa`) cuenta exactamente una live region. Con C
 la ruta anterior queda congelado y oculto (`display:none`) tras `router.push`, así que un `aria-live` en
 una pantalla de setup o de hub se suma a esa cuenta aunque esté invisible (issue #1003). Los steppers
 llevan `aria-label` en sus botones y en el número visible, sin `aria-live`.
+
+## 2026-09-02 — Mascota RPG: todo lo derivable se deriva
+
+Cierre de la fase 1 (spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`). Los tres porqués
+que fijan el contrato:
+
+- **Derivado vs libro mayor.** XP, atributos, nivel y etapa se calculan cada vez a partir de las tablas
+  que ya existen (`progress_sessions`, `passes`, `notes`, posts de club…); no hay una tabla de XP que
+  sumar. Consecuencia directa: los usuarios con historial no empiezan de cero, rebalancear pesos es
+  cambiar `balance.ts` y no hay ganchos nuevos que mantener en cada escritura del dominio — la lección
+  de #459 con las celebraciones, donde los ganchos se olvidan.
+- **Rig por partes vs frames.** Se compararon tres formas de animar el companion: cuerpo rígido (barato
+  pero muerto), frames por capa (sprite sheet clásico, coste = clases × capas × animaciones × frames, y
+  la IA falla manteniendo coherencia entre frames) y rig por partes. Gana el rig porque una animación se
+  define una vez (`transform` + `transform-origin` sobre cada pieza) y vale para las seis clases.
+- **Humor sin castigo.** La mascota es un espejo, no una máquina de culpa: nunca pierde nivel ni
+  atributos por inactividad. Lo único que baja sin uso es el humor (capa cara + animación idle), y
+  vuelve al entrar. No hay bocadillos espontáneos ni avisos de «te echo de menos» — el humor se ve, no
+  se anuncia.
+
+**Calibración contra prod (solo lectura, 9 perfiles reales, Task 10).** Con la fórmula aproximada de la
+spec (minutos/10 + terminados×10 + notas×3 + posts×3 + días activos×2, activos ≈ nº de sesiones) el
+usuario más activo de prod rondaba 1 600 XP estimados. El divisor de referencia de la spec (50, nivel 10
+= 4 050 XP) lo dejaba en nivel 6; ni siquiera el ejemplo de la propia spec (25, nivel 10 = 2 025 XP)
+llegaba (nivel 9). Se baja `BALANCE.level.divisor` a **15** (nivel 10 = 1 215 XP): el usuario más activo
+queda en nivel 11 (adulta) con margen, y como el resto de fuentes de XP de la spec (valoraciones, votos,
+rachas, sagas completadas…) no entran en esta estimación aproximada, el XP real solo puede ser mayor —
+el margen es conservador, no ajustado al límite. Detalle de la tabla y el cálculo en el informe de
+Task 10 (`.superpowers/sdd/task-10-report.md`).
+
+## 2026-09-02 — Mascota: «Qué la sube» enseña totales, no los últimos siete días (acta)
+
+La spec (`docs/superpowers/specs/2026-09-02-mascota-rpg-design.md` §7) pedía que la sección «Qué la
+sube» mostrara, por atributo, lo aportado en los últimos siete días. La fase 1 enseña totales de
+siempre: `PetCounts` (`src/lib/pet/counts.ts`) no lleva ventana temporal, y `getPetCounts` ya hace
+~12 `select` por página; una franja de siete días exige una segunda pasada filtrada por fecha sobre
+las mismas tablas, coste que no compensaba para el cierre de fase 1. El objetivo de la sección — que
+la mascota no parezca arbitraria — lo cubren los totales junto con el fichero de balance
+(`balance.ts`, calibrado contra prod): el usuario ve de dónde sale cada punto, aunque no acotado a la
+semana. Se registra como issue #1022 para que nadie lea la spec y dé la ventana de siete días por
+implementada.
+
+## 2026-09-02 — Mascota: el historial volcado es una dote con tope, no actividad
+
+**Problema.** `deriveAttributes` contaba todo pase `completed` como obra terminada (INT ×10), y
+lo mismo con las valoraciones de pase (SAB), las obras y autores nuevos (DES) y los géneros (INT).
+Quien llega de Goodreads/Letterboxd o vuelca a mano lo que leyó hace años entra con cientos de pases
+de golpe. En prod (2026-09-02) dos de los cuatro usuarios con pases tenían ~148 terminados y el 95 %
+eran retroactivos o nacidos en un día de ráfaga: INT ~1 500 frente a decenas en el resto, `suggestClass`
+proponía wizard a todo el mundo y la calibración del divisor (entrada anterior) se había hecho sobre
+ese XP inflado. La mascota debe crecer con lo que haces EN la app, no con lo que ya habías leído.
+
+**Decisión.** `splitPassHistory` (`src/lib/pet/counts.ts`, pura, con tests) separa cada pase en
+*vivido* u *historial* sin columna nueva —`passes` no marca el origen y añadir una columna no
+arreglaría las filas ya existentes—. Es historial si cumple cualquiera de:
+
+- `finished_on` anterior al día LOCAL de `created_at` (se registró hoy una lectura pasada);
+- `created_at` a medianoche UTC exacta (solo el importador inserta sin hora, al fechar relecturas
+  pasadas con `historicalCreatedAt`; en prod hoy no hay ninguna, pero el camino existe);
+- su día de alta tiene `BALANCE.history.burstMin` (10) pases o más: un volcado. Tapa el hueco del
+  importador, que cierra con la fecha del import los CSV sin *Date Read* y por eso no parecen
+  retroactivos. Diez es holgado frente a las ráfagas reales (138-143) y no pilla a quien apila cinco
+  libros una tarde.
+
+Lo vivido pesa como antes. El historial solo entra como **dote con tope**: `INT.perHistoricalPass`
+2 × hasta 50 terminados (máx. 100 INT) y `DES.perHistoricalWork` 1 × hasta 50 obras distintas (máx.
+50 DES). Reconoce que leíste sin decidir la clase. Valoraciones, autores y géneros del historial no
+suman. Excepción: para dar por completada una saga vale cualquier pase terminado, también histórico,
+porque seguir la saga ya es un acto en la app y el número de sagas está acotado.
+
+**Efectos colaterales.** Desaparece `DES.perImportedRow`/`importedRowCap`: contaba
+`pending_import_rows` resueltas, que en prod eran cero para todo el mundo (el importador normal no
+pasa por ahí); la dote de obras del historial lo sustituye con los mismos números. Como el nivel se
+deriva y este cambio lo BAJA, `getPetSnapshot` ahora también guarda `last_level`/`last_stage` cuando
+descienden —sin celebración—, para que la siguiente subida real se celebre y no quede tapada por un
+nivel guardado más alto.
+
+**Recalibración.** Con la fórmula aproximada nueva el usuario más activo de prod ronda 1 300 XP con
+bonus de clase (nivel 10 con divisor 15: adulta, justo); los otros dos con historial volcado quedan
+en ~7 y ~4. El divisor se queda en 15: la entrada anterior lo justificaba con 1 600 XP inflados, esta
+lo sostiene con actividad real. Si la spec (§3, congelada) o `balance.ts` discrepan, manda esta
+entrada y el código.
+
+**Ampliación (rama `feat/mascota-rpg`, fase 2).** La primera versión de esto dejaba un agujero: CON
+seguía saliendo de `getStreaks()`, que cuenta como día activo CUALQUIER `finished_on`, también el de
+un pase histórico. Quien volcaba 148 lecturas con sus fechas entraba con ~148 días activos, la mejor
+racha de otra app y, con ella, los logros `streak_30`/`streak_100` desbloqueados sin haber abierto
+la app dos días seguidos. Desde este commit, los **días activos, la mejor racha y los hitos de racha
+de la mascota** salen de `petActiveDays(sessionRows, livedPasses)` (`src/lib/pet/counts.ts`, pura,
+con test): días de `progress_sessions.session_date` ∪ `finished_on` de los pases **vividos**. Es la
+misma regla que el resto de la entrada —el historial es dote, no actividad— aplicada al último sitio
+donde no lo era. `getStreaks()` **no se toca**: sigue siendo la racha global del panel de perfil, que
+sí quiere reconocer todo lo que terminaste. Que las dos cifras puedan diferir es deliberado: miden
+cosas distintas y solo la de la mascota decide XP.
+
+## 2026-09-03 — Mascota fase 2: misiones con asignación guardada, progreso derivado; logros sin tabla
+
+Spec `docs/superpowers/specs/2026-09-02-mascota-misiones-logros-design.md`. Se guarda SOLO qué tres
+misiones tocaron hoy (`pet_daily_missions`): derivarlas haría que mutaran a mediodía al cambiar de
+clase o subir un atributo. Progreso (`missions/progress.ts`), XP (`missionXp` en `PetCounts`) y
+logros (`achievements.ts`) se derivan; el rastro de un logro es la celebración
+`pet_achievement:<id>`, cuya `first_triggered_at` es la fecha de la galería. Celebraciones ganan un
+scope `key` (clave libre) porque ni `day` ni `milestone` distinguen «misión 2 del 3 de septiembre».
+
+**XP de misión = la orgánica de la acción, duplicada** (`missionXp()` en `templates.ts` lee los pesos
+de `BALANCE`; no hay tabla de premios aparte): bonus, no motor. **Las duras solo se asignan si son
+alcanzables hoy** (libro ≥ 70 %, serie con ≤ 2 episodios, terminado en 7 días sin reseña) y cuentan
+sobre la obra asignada. Máximo una dura al día, siempre en el hueco de azar.
+
+**Desviación de la spec**: la tabla lleva `item_title` congelado al asignar, para pintar «Termina
+*Dune*» sin consultar el catálogo en cada visita ni perder el título si la obra se fusiona.
+
+**Límite conocido, registrado como issue:** la XP de una misión que se completa en la misma lectura de
+`/mascota` no entra en la barra hasta la siguiente visita (los contadores se leen antes de sellar
+`completed_at`). Se corrige en la revisión final de la rama re-derivando tras el sync.
+
+**Límite asumido**: todo se detecta al abrir `/mascota` (#1020). Las misiones de ayer sin completar
+se evalúan también; a los dos días caducan.
+
+**Migración en dev y, desde el mismo día, en prod.** La intención era dejarla solo en dev hasta mergear,
+pero la preview de Vercel de la PR corre contra Supabase prod y `/mascota` reventaba con la tabla
+ausente. Como es aditiva pura (tabla nueva, sin tocar nada que use `main`), el usuario autorizó
+aplicarla en prod antes del merge; verificada `12 | 9 | 1 | 0 | 3 | true`, igual que dev.
+
+
+## 2026-09-02 — Mascota: logros por familias con escalera abierta e insignias
+
+Spec `docs/superpowers/specs/2026-09-02-mascota-logros-niveles-design.md`. Los logros planos de la
+fase 2 pasan a **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** en `BALANCE.achievements`:
+primeros niveles a mano y después `+then` por nivel, sin tope (`stage` es la única cerrada). Nivel =
+función pura del valor; el rastro sigue siendo `pet_achievement:<familia>:<tier>`, una fila por nivel.
+La vitrina enseña, por familia, la última insignia conseguida y la siguiente por conseguir.
+
+**Insignias**: una PNG 32×32 por familia (`public/pet/badges/`, `scripts/pet-badges.mjs`, manifiesto
+con test), el nivel se pinta con número y marco que cicla bronce/plata/oro/leyenda. Se descartó a
+propósito arte por nivel: N familias de arte IA, no N × niveles. El codificador PNG pasa a
+`scripts/lib/png.mjs`, compartido con los sprites.
+
+**Subir varios niveles de golpe** gana todos los intermedios sellados (con fecha) y anima solo el más
+alto de la familia. **Migración de datos** `20260904_pet_achievement_tiers.sql` renombra las claves
+planas; los primeros pasos de cada escalera se eligieron para que casen con los umbrales viejos y no
+se pierda ninguna fecha. Aplicada en dev el 2026-09-02; prod: aplicada y verificada el mismo día (2
+filas renombradas, selladas), en versión idempotente (borra la clave vieja si la nueva ya existe)
+porque la preview de Vercel corre contra prod.
