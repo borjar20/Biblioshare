@@ -81,7 +81,14 @@ test("abrir /mascota crea tres misiones del día y pinta la galería de logros",
   expect(new Set(rows.map((r) => r.template)).size).toBe(3);
 
   await expect(page.getByTestId("achievement-grid")).toBeVisible();
-  await expect(page.getByTestId("achievement-finished_100")).toHaveAttribute("data-unlocked", "false");
+  // Una tarjeta por familia, con su nivel y el siguiente umbral visible.
+  const cards = page.getByTestId("achievement-grid").locator("li[data-testid^='achievement-']");
+  await expect(cards).toHaveCount(11);
+  await expect(page.getByTestId("achievement-posts")).toHaveAttribute("data-tier", /^\d+$/);
+  await expect(page.getByTestId("achievement-posts").getByText("Siguiente")).toBeVisible();
+  // Tras la migración 20260904 no queda ninguna clave plana.
+  const flat = (await (await api(`user_celebrations?user_id=eq.${userId}&event_type=eq.pet_achievement&event_key=not.like.pet_achievement:*:*&select=event_key`)).json()) as unknown[];
+  expect(flat).toHaveLength(0);
 });
 
 test("una sesión de 20 minutos cumple session_minutes y se gana la celebración", async ({ page }) => {

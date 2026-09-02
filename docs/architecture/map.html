@@ -1094,7 +1094,7 @@
       "layer": "domain",
       "kind": "module",
       "size": 14,
-      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado); achievements.ts deriva logros permanentes por umbral sobre PetCounts, sin tabla propia — su rastro es la celebración pet_achievement:<id>.",
+      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`).",
       "files": [
         "src/lib/pet/actions.ts",
         "src/lib/pet/derive.ts",
@@ -1105,6 +1105,7 @@
         "src/lib/pet/get-pet-snapshot.ts",
         "src/lib/pet/get-pet-counts.ts",
         "src/lib/pet/achievements.ts",
+        "src/lib/pet/badges.ts",
         "src/lib/pet/missions/templates.ts",
         "src/lib/pet/missions/generate.ts",
         "src/lib/pet/missions/progress.ts",

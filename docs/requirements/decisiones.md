@@ -3602,3 +3602,23 @@ pero la preview de Vercel de la PR corre contra Supabase prod y `/mascota` reven
 ausente. Como es aditiva pura (tabla nueva, sin tocar nada que use `main`), el usuario autorizó
 aplicarla en prod antes del merge; verificada `12 | 9 | 1 | 0 | 3 | true`, igual que dev.
 
+
+## 2026-09-02 — Mascota: logros por familias con escalera abierta e insignias
+
+Spec `docs/superpowers/specs/2026-09-02-mascota-logros-niveles-design.md`. Los logros planos de la
+fase 2 pasan a **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** en `BALANCE.achievements`:
+primeros niveles a mano y después `+then` por nivel, sin tope (`stage` es la única cerrada). Nivel =
+función pura del valor; el rastro sigue siendo `pet_achievement:<familia>:<tier>`, una fila por nivel.
+La vitrina enseña, por familia, la última insignia conseguida y la siguiente por conseguir.
+
+**Insignias**: una PNG 32×32 por familia (`public/pet/badges/`, `scripts/pet-badges.mjs`, manifiesto
+con test), el nivel se pinta con número y marco que cicla bronce/plata/oro/leyenda. Se descartó a
+propósito arte por nivel: N familias de arte IA, no N × niveles. El codificador PNG pasa a
+`scripts/lib/png.mjs`, compartido con los sprites.
+
+**Subir varios niveles de golpe** gana todos los intermedios sellados (con fecha) y anima solo el más
+alto de la familia. **Migración de datos** `20260904_pet_achievement_tiers.sql` renombra las claves
+planas; los primeros pasos de cada escalera se eligieron para que casen con los umbrales viejos y no
+se pierda ninguna fecha. Aplicada en dev el 2026-09-02; prod: aplicada y verificada el mismo día (2
+filas renombradas, selladas), en versión idempotente (borra la clave vieja si la nueva ya existe)
+porque la preview de Vercel corre contra prod.
