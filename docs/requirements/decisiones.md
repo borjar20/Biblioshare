@@ -3597,6 +3597,8 @@ sobre la obra asignada. Máximo una dura al día, siempre en el hueco de azar.
 **Límite asumido**: todo se detecta al abrir `/mascota` (#1020). Las misiones de ayer sin completar
 se evalúan también; a los dos días caducan.
 
-**Migración solo en dev** por decisión del usuario (la rama no sube hasta estar estable). Se aplica en
-prod al mergear `feat/mascota-rpg` y se actualiza `data-model.md` §8bis.2 entonces.
+**Migración en dev y, desde el mismo día, en prod.** La intención era dejarla solo en dev hasta mergear,
+pero la preview de Vercel de la PR corre contra Supabase prod y `/mascota` reventaba con la tabla
+ausente. Como es aditiva pura (tabla nueva, sin tocar nada que use `main`), el usuario autorizó
+aplicarla en prod antes del merge; verificada `12 | 9 | 1 | 0 | 3 | true`, igual que dev.
 
