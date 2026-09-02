@@ -146,7 +146,11 @@ export function pickDailyMissions(
   }
 
   // Red de seguridad: si algún hueco quedó vacío (elegibilidad mínima), rellena
-  // con cualquier plantilla no usada, aunque repita atributo.
+  // con cualquier plantilla no usada, aunque repita atributo. Se cree
+  // inalcanzable: las plantillas siempre elegibles (rating, new_work,
+  // any_activity, session_minutes) cubren cuatro atributos distintos (SAB,
+  // DES, CON, FUE), así que huecos 0/1/2 nunca deberían quedarse sin
+  // candidata; se mantiene solo como guarda.
   while (picks.length < 3) {
     const rest = eligible.filter((t) => !usedTemplates.has(t) && MISSION_COST[t] !== "hard");
     if (rest.length === 0) break;

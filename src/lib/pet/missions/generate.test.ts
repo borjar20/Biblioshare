@@ -73,6 +73,22 @@ describe("pickDailyMissions", () => {
     expect(MISSION_COST[picks[2].template]).not.toBe("hard");
   });
 
+  it("sin duras ni medias elegibles para los atributos libres, el hueco 2 cae a ligera", () => {
+    // Elegibles con NONE: rating(SAB,light), new_work(DES,light), any_activity(CON,light),
+    // session_minutes(FUE,light), note(SAB,medium), quote(SAB,medium), session_pages(FUE,medium).
+    // Primario FUE y SAB a 0 (resto 10): el hueco 0 consume FUE, el hueco 1 (el más
+    // flojo, SAB) consume SAB. Los atributos libres quedan CON, INT, CAR, DES, cuyas
+    // únicas plantillas elegibles son ligeras (any_activity, new_work): no hay ni
+    // duras ni medias para ellos, así que el hueco 2 cae al fallback ligero.
+    const attrs: PetAttributes = { ...flat, SAB: 0 };
+    const picks = pickDailyMissions("u1:2026-09-03", "FUE", attrs, NONE);
+    expect(picks).toHaveLength(3);
+    expect(MISSION_ATTR[picks[0].template]).toBe("FUE");
+    expect(MISSION_ATTR[picks[1].template]).toBe("SAB");
+    expect(["any_activity", "new_work"]).toContain(picks[2].template);
+    expect(MISSION_COST[picks[2].template]).toBe("light");
+  });
+
   it("si el flojo empata, gana el primero en el orden de PET_ATTRIBUTES distinto del primario", () => {
     const picks = pickDailyMissions("u1:2026-09-03", "FUE", flat, ALL);
     // Todos empatan: el primero distinto de FUE en el orden es CON.
@@ -87,9 +103,22 @@ describe("pickDailyMissions", () => {
   });
 
   it("congela objetivo y XP: daily_goal copia el objetivo del perfil", () => {
-    const picks = pickDailyMissions("u1:2026-09-03", "CON", { ...flat, CON: 0 }, { ...NONE, dailyGoal: 45 });
-    const dg = picks.find((p) => p.template === "daily_goal");
-    if (dg) expect(dg.target).toBe(45);
-    for (const p of picks) expect(p.xp).toBe(missionXp(p.template));
+    // any_activity (CON, light) siempre es elegible, así que daily_goal (CON,
+    // medium) no sale en todos los seeds: se muestrea para garantizar que
+    // alguno lo elija, en vez de dejar el assert dentro de un `if` que podría
+    // no ejecutarse nunca.
+    const eligibility = { ...NONE, dailyGoal: 45 };
+    const attrs: PetAttributes = { ...flat, CON: 0 };
+    let foundDailyGoal = false;
+    for (let i = 0; i < 30; i++) {
+      const picks = pickDailyMissions(`u${i}:2026-09-03`, "CON", attrs, eligibility);
+      const dg = picks.find((p) => p.template === "daily_goal");
+      if (dg) {
+        foundDailyGoal = true;
+        expect(dg.target).toBe(45);
+      }
+      for (const p of picks) expect(p.xp).toBe(missionXp(p.template));
+    }
+    expect(foundDailyGoal).toBe(true);
   });
 });
