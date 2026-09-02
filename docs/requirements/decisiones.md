@@ -3560,3 +3560,31 @@ bonus de clase (nivel 10 con divisor 15: adulta, justo); los otros dos con histo
 en ~7 y ~4. El divisor se queda en 15: la entrada anterior lo justificaba con 1 600 XP inflados, esta
 lo sostiene con actividad real. Si la spec (§3, congelada) o `balance.ts` discrepan, manda esta
 entrada y el código.
+
+## 2026-09-03 — Mascota fase 2: misiones con asignación guardada, progreso derivado; logros sin tabla
+
+Spec `docs/superpowers/specs/2026-09-02-mascota-misiones-logros-design.md`. Se guarda SOLO qué tres
+misiones tocaron hoy (`pet_daily_missions`): derivarlas haría que mutaran a mediodía al cambiar de
+clase o subir un atributo. Progreso (`missions/progress.ts`), XP (`missionXp` en `PetCounts`) y
+logros (`achievements.ts`) se derivan; el rastro de un logro es la celebración
+`pet_achievement:<id>`, cuya `first_triggered_at` es la fecha de la galería. Celebraciones ganan un
+scope `key` (clave libre) porque ni `day` ni `milestone` distinguen «misión 2 del 3 de septiembre».
+
+**XP de misión = la orgánica de la acción, duplicada** (`missionXp()` en `templates.ts` lee los pesos
+de `BALANCE`; no hay tabla de premios aparte): bonus, no motor. **Las duras solo se asignan si son
+alcanzables hoy** (libro ≥ 70 %, serie con ≤ 2 episodios, terminado en 7 días sin reseña) y cuentan
+sobre la obra asignada. Máximo una dura al día, siempre en el hueco de azar.
+
+**Desviación de la spec**: la tabla lleva `item_title` congelado al asignar, para pintar «Termina
+*Dune*» sin consultar el catálogo en cada visita ni perder el título si la obra se fusiona.
+
+**Límite conocido, registrado como issue:** la XP de una misión que se completa en la misma lectura de
+`/mascota` no entra en la barra hasta la siguiente visita (los contadores se leen antes de sellar
+`completed_at`). Se corrige en la revisión final de la rama re-derivando tras el sync.
+
+**Límite asumido**: todo se detecta al abrir `/mascota` (#1020). Las misiones de ayer sin completar
+se evalúan también; a los dos días caducan.
+
+**Migración solo en dev** por decisión del usuario (la rama no sube hasta estar estable). Se aplica en
+prod al mergear `feat/mascota-rpg` y se actualiza `data-model.md` §8bis.2 entonces.
+

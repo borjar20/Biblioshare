@@ -330,6 +330,7 @@ es rastreable por `area:catalogo`.
 **Mascota**
 - [x] Mascota RPG fase 1 (núcleo): tabla `pet_state` (dev), eclosión (nombre + clase), ficha derivada de la actividad real —nunca un libro mayor de XP—, compañera flotante en el shell (ausente en `/partida/activa`) y ocultable desde ajustes. Spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`, e2e `e2e/mascota.spec.ts`. Calibración y decisión de cierre en `decisiones.md` 2026-09-02.
 - [ ] Mascota fase 2: misiones diarias generadas + logros permanentes (#1013).
+- [x] Fase 2: misiones diarias + logros (spec 2026-09-02-mascota-misiones-logros; rama feat/mascota-rpg, pendiente de merge)
 - [ ] Mascota fase 3: avisos push por humor y racha (#1014).
 - [ ] Mascota fase 4: jefes PvE sobre challenges con motor de combate stats vs stats (#1015).
 - [ ] Mascota fase 5: PvP asíncrono entre seguidos (#1016).
