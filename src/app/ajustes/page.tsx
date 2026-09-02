@@ -17,6 +17,8 @@ import { CelebrationPreferenceToggle } from "@/components/celebrations/celebrati
 import { NotificationPreferences } from "@/components/push/notification-preferences";
 import { PostPreferences } from "@/components/social/post-preferences";
 import { HideDroppedToggle } from "@/components/settings/hide-dropped-toggle";
+import { PetCompanionToggle } from "@/components/settings/pet-companion-toggle";
+import { RouteMessages } from "@/components/route-messages";
 import { VisibilityToggle } from "./visibility-toggle";
 import { LogoutButton } from "./logout-button";
 
@@ -58,6 +60,12 @@ export default async function AjustesPage() {
     getTranslations("admin"),
   ]);
   const tProfile = await getTranslations("profile");
+
+  const { data: pet } = await supabase
+    .from("pet_state")
+    .select("companion_hidden")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const name = profile.displayName || profile.username;
 
@@ -156,6 +164,11 @@ export default async function AjustesPage() {
         <NotificationPreferences />
         <PostPreferences />
         <CelebrationPreferenceToggle />
+        {pet ? (
+          <RouteMessages ns={["pet"]}>
+            <PetCompanionToggle hidden={pet.companion_hidden} />
+          </RouteMessages>
+        ) : null}
       </Section>
 
       {profile.role === "admin" && (

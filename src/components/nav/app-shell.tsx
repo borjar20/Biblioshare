@@ -3,7 +3,9 @@ import { connection } from "next/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getUnreadCount } from "@/lib/social/notifications";
+import { getCompanionState } from "@/lib/pet/get-companion-state";
 import { Header } from "@/components/header";
+import { PetCompanion } from "@/components/pet/pet-companion";
 import { BottomNav } from "./bottom-nav";
 import { ChromeGate } from "./chrome-gate";
 import { SkipLink } from "./skip-link";
@@ -52,6 +54,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Suspense fallback={<BottomNavSkeleton />}>
         <ChromeGate>
           <SessionNav />
+        </ChromeGate>
+      </Suspense>
+      {/* Compañera flotante (spec mascota §6). Bajo su propio <Suspense> y dentro
+          del gate por lo mismo que las barras: lee sesión y no puede bloquear el
+          armazón; no aparece en pantallas a sangre. Fallback null: no reserva
+          sitio porque flota. */}
+      <Suspense fallback={null}>
+        <ChromeGate>
+          <SessionCompanion />
         </ChromeGate>
       </Suspense>
     </div>
@@ -145,4 +156,15 @@ function BottomNavSkeleton() {
       </div>
     </div>
   );
+}
+
+// Solo con el usuario DENTRO (showNav) y con mascota eclosionada y no oculta.
+// La lectura es la ligera (pet_state + última actividad), no la derivación.
+async function SessionCompanion() {
+  const { user, showNav } = await readChromeIdentity();
+  if (!user || !showNav) return null;
+  const supabase = await createClient();
+  const state = await getCompanionState(supabase, user.id).catch(() => null);
+  if (!state || state.hidden) return null;
+  return <PetCompanion state={state} />;
 }
