@@ -1,4 +1,4 @@
-import type { SessionRow } from "../counts";
+import { forEachSessionAdvance, type SessionRow } from "../counts";
 import type { MissionTemplate } from "./templates";
 
 // Contadores de UN día local y progreso de una misión (spec fase 2 §1.4).
@@ -50,24 +50,10 @@ export interface DayRows {
  *  sessionUnits (diferencia con la sesión anterior del MISMO pase, retroceso =
  *  0 y no baja la referencia), pero sumando solo las del día. */
 function pagesOn(rows: SessionRow[], dayISO: string): number {
-  const byPass = new Map<string, SessionRow[]>();
-  for (const r of rows) {
-    const list = byPass.get(r.pass_id) ?? [];
-    list.push(r);
-    byPass.set(r.pass_id, list);
-  }
   let pages = 0;
-  for (const list of byPass.values()) {
-    list.sort((a, b) =>
-      `${a.session_date}${a.started_at ?? ""}`.localeCompare(`${b.session_date}${b.started_at ?? ""}`),
-    );
-    let prev = 0;
-    for (const r of list) {
-      const advanced = r.position == null ? 0 : Math.max(0, r.position - prev);
-      if (r.position != null) prev = Math.max(prev, r.position);
-      if (r.session_date === dayISO) pages += advanced;
-    }
-  }
+  forEachSessionAdvance(rows, (r, advanced) => {
+    if (r.session_date === dayISO) pages += advanced;
+  });
   return pages;
 }
 

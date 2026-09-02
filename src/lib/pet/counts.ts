@@ -119,19 +119,19 @@ export type SessionRow = {
   started_at: string | null;
 };
 
-/** Σ por sesión de max(floor(min/10), floor(páginasAvanzadas/10)). Las páginas
- *  avanzadas son la diferencia de `position` con la sesión anterior del MISMO
- *  pase (position es acumulada); un retroceso cuenta 0 páginas y NO baja la
- *  referencia, para que las páginas intermedias no se cuenten dos veces en la
- *  siguiente sesión. */
-export function sessionUnits(rows: SessionRow[]): number {
+/** Recorre las sesiones agrupadas por pase en orden cronológico y entrega, por
+ *  sesión, las páginas avanzadas con la regla única: diferencia con la sesión
+ *  anterior del MISMO pase, retroceso = 0 y no baja la referencia. */
+export function forEachSessionAdvance(
+  rows: SessionRow[],
+  visit: (row: SessionRow, pagesAdvanced: number) => void,
+): void {
   const byPass = new Map<string, SessionRow[]>();
   for (const r of rows) {
     const list = byPass.get(r.pass_id) ?? [];
     list.push(r);
     byPass.set(r.pass_id, list);
   }
-  let units = 0;
   for (const list of byPass.values()) {
     list.sort((a, b) =>
       `${a.session_date}${a.started_at ?? ""}`.localeCompare(`${b.session_date}${b.started_at ?? ""}`),
@@ -140,10 +140,22 @@ export function sessionUnits(rows: SessionRow[]): number {
     for (const r of list) {
       const pages = r.position == null ? 0 : Math.max(0, r.position - prev);
       if (r.position != null) prev = Math.max(prev, r.position);
-      const minutes = r.duration_minutes ?? 0;
-      units += Math.max(Math.floor(minutes / 10), Math.floor(pages / 10));
+      visit(r, pages);
     }
   }
+}
+
+/** Σ por sesión de max(floor(min/10), floor(páginasAvanzadas/10)). Las páginas
+ *  avanzadas son la diferencia de `position` con la sesión anterior del MISMO
+ *  pase (position es acumulada); un retroceso cuenta 0 páginas y NO baja la
+ *  referencia, para que las páginas intermedias no se cuenten dos veces en la
+ *  siguiente sesión. */
+export function sessionUnits(rows: SessionRow[]): number {
+  let units = 0;
+  forEachSessionAdvance(rows, (r, pages) => {
+    const minutes = r.duration_minutes ?? 0;
+    units += Math.max(Math.floor(minutes / 10), Math.floor(pages / 10));
+  });
   return units;
 }
 
