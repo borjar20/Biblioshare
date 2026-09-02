@@ -2931,6 +2931,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_companion_state: { Args: never; Returns: Json }
       get_widget_snapshot: { Args: never; Returns: Json }
       has_min_club_role: {
         Args: {
