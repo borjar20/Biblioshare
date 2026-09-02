@@ -15,9 +15,16 @@
 --   * created_at es medianoche UTC exacta (solo lo escribe el importador);
 --   * su día de alta tiene >= 10 pases (volcado). 10 = BALANCE.history.burstMin
 --     (src/lib/pet/balance.ts): si cambia allí, cambia aquí.
--- "Día" = Europe/Madrid, la misma convención que get_widget_snapshot y
--- club_rounds (la app en TS usa el día local del servidor).
-create or replace function public.get_companion_state()
+-- "Día" = la zona horaria que pasa quien llama (`p_tz`): la app en TS agrupa
+-- por el día LOCAL del proceso de Node (toISODate, src/lib/stats/dates.ts) y
+-- get-companion-state.ts manda esa misma zona, así SQL y TS trazan los días
+-- por la misma línea. NO es Europe/Madrid fijo como get_widget_snapshot: en
+-- prod Node corre en UTC y un pase cerrado a las 01:52 de Madrid (23:52 UTC)
+-- caía en días distintos en cada lado —vivido en /mascota, historial en el
+-- shell— y la compañera salía triste o en bellota sin motivo (revisión de
+-- fix/mascota-deuda). Zona inválida: error (la app siempre manda una IANA).
+drop function if exists public.get_companion_state();
+create or replace function public.get_companion_state(p_tz text default 'UTC')
 returns jsonb
 language sql
 stable
@@ -32,7 +39,7 @@ as $$
   mine as (
     select finished_on,
            created_at,
-           (timezone('Europe/Madrid', created_at))::date as created_day
+           (timezone(p_tz, created_at))::date as created_day
     from public.passes
     where user_id = auth.uid()
   ),
@@ -54,9 +61,9 @@ as $$
       union all
       select max(finished_on) from lived
       union all
-      select max((timezone('Europe/Madrid', created_at))::date) from public.club_posts where author_id = auth.uid()
+      select max((timezone(p_tz, created_at))::date) from public.club_posts where author_id = auth.uid()
       union all
-      select max((timezone('Europe/Madrid', voted_at))::date) from public.club_poll_votes where user_id = auth.uid()
+      select max((timezone(p_tz, voted_at))::date) from public.club_poll_votes where user_id = auth.uid()
     ) x
   )
   select jsonb_build_object(
@@ -70,8 +77,8 @@ as $$
   from pet;
 $$;
 
-comment on function public.get_companion_state() is
-  'Mascota: pet_state + último día con actividad VIVIDA (misma regla que get-pet-counts.ts) en una consulta para el shell. null sin mascota.';
+comment on function public.get_companion_state(text) is
+  'Mascota: pet_state + último día con actividad VIVIDA (misma regla que get-pet-counts.ts, días en la zona p_tz del servidor de la app) en una consulta para el shell. null sin mascota.';
 
-revoke all on function public.get_companion_state() from public, anon;
-grant execute on function public.get_companion_state() to authenticated;
+revoke all on function public.get_companion_state(text) from public, anon;
+grant execute on function public.get_companion_state(text) to authenticated;

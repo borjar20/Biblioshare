@@ -8,6 +8,7 @@ import { BALANCE } from "./balance";
 import type { PetAttribute } from "./classes";
 import {
   countCompletedSagas,
+  lastActivityFrom,
   petActiveDays,
   sessionUnits,
   splitPassHistory,
@@ -69,7 +70,11 @@ export async function getPetCounts(
     supabase
       .from("passes")
       .select("id, item_type, item_id, status, finished_on, rating, created_at, updated_at, position, edition_id")
-      .eq("user_id", userId),
+      .eq("user_id", userId)
+      // Orden estable: la candidata de finish_pass se elige por "menos resto" y
+      // en empate gana la primera; sin order, PostgREST no garantiza el orden y
+      // dos renders del mismo día podrían congelar misiones distintas.
+      .order("id"),
     supabase.from("episode_watches").select("id, rating, pass_id, watched_on").eq("user_id", userId),
     supabase.from("notes").select("kind, created_at").eq("user_id", userId),
     supabase.from("club_posts").select("kind, created_at").eq("author_id", userId),
@@ -142,6 +147,9 @@ export async function getPetCounts(
   // misma tabla por visita (issue #1037). Un pase abierto puede ser historial
   // (volcado sin cerrar), así que es la unión, no un subconjunto.
   const sagaIds = (sagaFollows.data ?? []).map((r) => r.saga_id);
+  // Va en la URL del GET (~38 bytes por uuid): con varios cientos de libros
+  // distintos se acerca al límite del gateway. Hoy el máximo en prod son 158
+  // pases; si algún día se supera, trocear el `.in()`.
   const bookIds = [
     ...new Set([...livedPasses.filter((p) => p.item_type === "book"), ...openBooks].map((p) => p.item_id)),
   ];
@@ -175,14 +183,12 @@ export async function getPetCounts(
   }
 
   const postRows = posts.data ?? [];
-  // timestamptz → día LOCAL, la misma convención que session_date y todayISO().
-  // Pases: solo los VIVIDOS (issue #1041); el historial no es actividad.
-  const lastDates = [
-    ...sessionRows.map((s) => s.session_date),
-    ...livedPasses.map((p) => p.finished_on).filter((d): d is string => d != null),
-    ...postRows.map((p) => toISODate(new Date(p.created_at))),
-    ...(votes.data ?? []).map((v) => toISODate(new Date(v.voted_at))),
-  ].sort();
+  const toDay = (ts: string) => toISODate(new Date(ts));
+  // Solo pases VIVIDOS (issue #1041): el historial no es actividad.
+  const lastActivityISO = lastActivityFrom(
+    { sessions: sessionRows, livedPasses, posts: postRows, votes: votes.data ?? [] },
+    toDay,
+  );
 
   // XP de misiones completadas, agrupada por el atributo de la plantilla. Una
   // plantilla retirada del catálogo (isMissionTemplate=false) no suma: su XP se
@@ -252,9 +258,10 @@ export async function getPetCounts(
     votes: (votes.data ?? []).map((v) => ({ voted_at: v.voted_at })),
     reviewedKeys,
   };
-  const toDay = (ts: string) => toISODate(new Date(ts));
   const days = { today: dayCounts(dayRows, today, toDay), yesterday: dayCounts(dayRows, yesterday, toDay) };
 
+  // Memoiza también el fallo: si la elegibilidad revienta, cada llamada de la
+  // misma petición relanza el mismo error en vez de repetir las consultas.
   let eligibilityPromise: Promise<MissionEligibility> | null = null;
   const eligibility = () =>
     (eligibilityPromise ??= missionEligibility(supabase, {
@@ -269,7 +276,7 @@ export async function getPetCounts(
       today,
     }));
 
-  return { counts, lastActivityISO: lastDates.at(-1) ?? null, days, eligibility, today };
+  return { counts, lastActivityISO, days, eligibility, today };
 }
 
 type BookRow = { id: string; title: string | null; author: string | null; genres: string[] | null; total_pages: number | null };

@@ -164,7 +164,12 @@ async function SessionCompanion() {
   const { user, showNav } = await readChromeIdentity();
   if (!user || !showNav) return null;
   const supabase = await createClient();
-  const state = await getCompanionState(supabase, user.id).catch(() => null);
+  // Best-effort: sin compañera antes que sin página. Pero con rastro: un RPC
+  // ausente (preview contra una BD sin la migración) no debe ser invisible.
+  const state = await getCompanionState(supabase).catch((e: unknown) => {
+    console.error("SessionCompanion", e);
+    return null;
+  });
   if (!state || state.hidden) return null;
   return <PetCompanion state={state} />;
 }

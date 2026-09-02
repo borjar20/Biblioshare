@@ -2922,6 +2922,7 @@ export type Database = {
           round_prompt: string
         }[]
       }
+      get_companion_state: { Args: { p_tz?: string }; Returns: Json }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
@@ -2931,7 +2932,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_companion_state: { Args: never; Returns: Json }
       get_widget_snapshot: { Args: never; Returns: Json }
       has_min_club_role: {
         Args: {

@@ -12804,6 +12804,8 @@ where c.event_type = 'pet_achievement'
   and c.event_key = 'pet_achievement:' || m.old_key;
 
 -- 20260905_get_companion_state
+drop function if exists public.get_companion_state();
+create or replace function public.get_companion_state(p_tz text default 'UTC')
 returns jsonb
 language sql
 stable
@@ -12818,7 +12820,7 @@ as $$
   mine as (
     select finished_on,
            created_at,
-           (timezone('Europe/Madrid', created_at))::date as created_day
+           (timezone(p_tz, created_at))::date as created_day
     from public.passes
     where user_id = auth.uid()
   ),
@@ -12840,9 +12842,9 @@ as $$
       union all
       select max(finished_on) from lived
       union all
-      select max((timezone('Europe/Madrid', created_at))::date) from public.club_posts where author_id = auth.uid()
+      select max((timezone(p_tz, created_at))::date) from public.club_posts where author_id = auth.uid()
       union all
-      select max((timezone('Europe/Madrid', voted_at))::date) from public.club_poll_votes where user_id = auth.uid()
+      select max((timezone(p_tz, voted_at))::date) from public.club_poll_votes where user_id = auth.uid()
     ) x
   )
   select jsonb_build_object(
@@ -12856,8 +12858,8 @@ as $$
   from pet;
 $$;
 
-comment on function public.get_companion_state() is
-  'Mascota: pet_state + último día con actividad VIVIDA (misma regla que get-pet-counts.ts) en una consulta para el shell. null sin mascota.';
+comment on function public.get_companion_state(text) is
+  'Mascota: pet_state + último día con actividad VIVIDA (misma regla que get-pet-counts.ts, días en la zona p_tz del servidor de la app) en una consulta para el shell. null sin mascota.';
 
-revoke all on function public.get_companion_state() from public, anon;
-grant execute on function public.get_companion_state() to authenticated;
+revoke all on function public.get_companion_state(text) from public, anon;
+grant execute on function public.get_companion_state(text) to authenticated;

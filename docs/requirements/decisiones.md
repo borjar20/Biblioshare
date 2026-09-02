@@ -3635,7 +3635,11 @@ no máquina de culpa» y «todo lo derivable se deriva»:
 - **La compañera se lee con un RPC** (`get_companion_state()`, `20260905`): una consulta por página en
   vez de cinco (#1023). Replica en SQL las reglas de `splitPassHistory` y el `burstMin`; el precio es
   mantener dos copias de la regla, y se acepta porque la alternativa era leer todos los pases del
-  usuario en cada página. «Día» en Europe/Madrid, como `get_widget_snapshot`.
+  usuario en cada página. **El día se agrupa en la zona que pasa la app** (`p_tz` = la del proceso de
+  Node, la misma que `toISODate()`), NO en Europe/Madrid fijo como `get_widget_snapshot`: la revisión
+  midió 7 pases de prod que caían en días distintos según la zona (cerrados a las 23:5x UTC) y la
+  compañera habría salido triste o en bellota con `/mascota` contenta. Aplicada en dev y en prod el
+  mismo día (aditiva: función nueva que `main` aún no llama), verificada contra `pg_proc`.
 - **`finish_pass` compara en la escala de cada tipo** (#1036): `finishRemaining` devuelve «cuánto
   queda» normalizado (libro: páginas que faltan sobre el tramo elegible; serie: episodios sobre el
   tope) y gana la de MENOS resto. Antes un `ratio` compartido descartaba la serie con 0 de 2 vistos y
@@ -3644,5 +3648,7 @@ no máquina de culpa» y «todo lo derivable se deriva»:
   libros se leen una sola vez por visita (unión de vividos y abiertos) y ediciones, series y el título
   de la candidata a reseña salen en un único `Promise.all`.
 - **`last_level` nace con el nivel real** (#1042): `hatchPet` deriva el nivel al eclosionar, así la
-  primera visita de alguien con historial no celebra una subida de golpe. `last_stage` sigue naciendo
-  en `acorn`: la salida de la bellota (primera actividad tras eclosionar) sí se celebra, a propósito.
+  primera visita de alguien con historial no celebra una subida de golpe; si contar falla, no eclosiona
+  (antes que guardar un 1 que celebraría la subida igual). `last_stage` sigue naciendo en `acorn`: la
+  salida de la bellota (primera actividad tras eclosionar) se celebra UNA vez, aterrice en `young` o
+  directamente en `adult` si el nivel ya lo es. Es la única celebración de primera visita que queda.

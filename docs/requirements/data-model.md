@@ -3712,16 +3712,20 @@ nivel). La migración de datos `20260904_pet_achievement_tiers.sql` renombró la
 fase 2 (`finished_10` → `finished:1`, …); verificación: cero filas `pet_achievement` sin dos `:`.
 Aplicada en dev el 2026-09-02; prod: ver `decisiones.md`.
 
-### 8bis.3. RPC `get_companion_state()` (dev 2026-09-02; prod: ver `decisiones.md`)
+### 8bis.3. RPC `get_companion_state()` (dev y **prod**, 2026-09-02)
 
 Lectura LIGERA de la compañera para el shell (`src/lib/pet/get-companion-state.ts`), en **una**
 consulta en vez de cinco (issue #1023). `language sql`, `stable`, **security invoker** (RLS del que
-llama, `auth.uid()`), sin argumentos; devuelve `jsonb` con `name`, `class`, `hatched_at`,
+llama, `auth.uid()`), argumento `p_tz text default 'UTC'` (zona IANA en la que agrupar los días: la
+app pasa la del proceso de Node, la misma de `toISODate()`; **no** Europe/Madrid fijo como
+`get_widget_snapshot`, porque en prod Node corre en UTC y divergían); devuelve `jsonb` con `name`, `class`, `hatched_at`,
 `companion_hidden`, `last_level` y `last_activity` (`YYYY-MM-DD` en Europe/Madrid o null), o `null`
 sin mascota. «Última actividad» = día de sesión ∪ cierre de un pase **vivido** ∪ post ∪ voto: replica
 en SQL las tres reglas de `splitPassHistory` (`src/lib/pet/counts.ts`) y el `burstMin` (10) de
 `balance.ts` — **si cambian en TS, cambia el SQL**. Grant `execute` solo a `authenticated`.
-Migración `supabase/migrations/20260905_get_companion_state.sql`.
+Migración `supabase/migrations/20260905_get_companion_state.sql`. **Aplicada y verificada en prod el
+2026-09-02** contra `pg_proc`: `security invoker`, `stable`, `execute` para `authenticated` y no para
+`anon`. Aditiva pura (función nueva): el código de `main` no la llama hasta mergear.
 
 ## 9. Seguridad
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countCompletedSagas, daysBetweenISO, petActiveDays, sessionUnits, splitPassHistory, type PassRow } from "./counts";
+import { countCompletedSagas, daysBetweenISO, lastActivityFrom, petActiveDays, sessionUnits, splitPassHistory, type PassRow } from "./counts";
 
 describe("sessionUnits", () => {
   it("por sesión toma el máximo entre minutos/10 y páginas avanzadas/10", () => {
@@ -132,5 +132,34 @@ describe("petActiveDays", () => {
     expect(petActiveDays([], lived).size).toBe(1);
     // Y si se colaran, serían 12 días más: por eso el filtro va antes.
     expect(petActiveDays([], [...lived, ...historical]).size).toBe(13);
+  });
+});
+
+describe("lastActivityFrom (#1041)", () => {
+  const dayOf = (ts: string) => ts.slice(0, 10); // en el test el timestamp ya es UTC medianoche
+  const none = { sessions: [], livedPasses: [], posts: [], votes: [] };
+
+  it("sin nada devuelve null", () => {
+    expect(lastActivityFrom(none, dayOf)).toBeNull();
+  });
+
+  it("el máximo entre sesión, pase vivido, post y voto", () => {
+    expect(
+      lastActivityFrom(
+        {
+          sessions: [{ session_date: "2026-08-01" }],
+          livedPasses: [{ finished_on: "2026-08-10" }, { finished_on: null }],
+          posts: [{ created_at: "2026-08-05T10:00:00Z" }],
+          votes: [{ voted_at: "2026-08-07T10:00:00Z" }],
+        },
+        dayOf,
+      ),
+    ).toBe("2026-08-10");
+  });
+
+  it("solo mira los pases que le pasan: el historial se filtra antes y no cuenta", () => {
+    // Quien llama pasa `lived` de splitPassHistory; un pase de historial con
+    // finished_on = hoy (import sin Date Read) no llega aquí.
+    expect(lastActivityFrom({ ...none, livedPasses: [{ finished_on: "2026-01-01" }] }, dayOf)).toBe("2026-01-01");
   });
 });

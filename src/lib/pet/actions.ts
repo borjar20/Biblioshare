@@ -42,13 +42,17 @@ export async function hatchPet(_prev: PetActionState, formData: FormData): Promi
   // la primera visita a /mascota lo celebraría como una subida de nivel de
   // golpe (issue #1042). La etapa sí nace en `acorn`: hasta la primera
   // actividad tras eclosionar no sale de la bellota, y ESA evolución sí se
-  // celebra. Best-effort: si contar falla, nivel 1 y que /mascota lo suba.
-  const level = await getPetCounts(supabase, user.id)
-    .then(({ counts }) => levelFor(xpFor(deriveAttributes(counts), cls)))
-    .catch((e: unknown) => {
-      console.error("hatchPet counts", e);
-      return 1;
-    });
+  // celebra. Si contar falla NO se eclosiona con nivel 1: quedaría guardado y
+  // la siguiente visita celebraría la subida de golpe igual; mejor "inténtalo
+  // otra vez" (la misma lectura la haría /mascota justo después).
+  let level: number;
+  try {
+    const { counts } = await getPetCounts(supabase, user.id);
+    level = levelFor(xpFor(deriveAttributes(counts), cls));
+  } catch (e) {
+    console.error("hatchPet counts", e);
+    return { error: "generic" };
+  }
   const { error } = await supabase
     .from("pet_state")
     .insert({ user_id: user.id, name, class: cls, last_level: level });
