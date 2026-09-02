@@ -3683,6 +3683,26 @@ evolución al calcular (`get-pet-snapshot.ts`) y ganar `pet_level_up` / `pet_evo
 (superficie 6 de DRIFT-CHECK): insert sin `created_at`/`updated_at`; update sin `user_id`,
 `hatched_at`, `created_at`. Migración `supabase/migrations/20260902_pet_state.sql`. **Aplicada y verificada en prod el 2026-09-02** contra `pg_class`/`pg_policies`/`has_column_privilege`: RLS activa, 3 políticas, 9 columnas, 7 con INSERT, 6 con UPDATE, 0 legibles por `anon` (mismo `9 | 7 | 6` que dev, superficie 6 de DRIFT-CHECK).
 
+### 8bis.2. `pet_daily_missions` (**solo dev**, 2026-09-03 — prod al mergear `feat/mascota-rpg`)
+
+Mascota fase 2 (spec `docs/superpowers/specs/2026-09-02-mascota-misiones-logros-design.md`). Tres
+filas por usuario y día: `id`, `user_id` (FK cascade), `day` (date, **día local** del usuario),
+`slot` (0-2, CHECK), `template` (text; ids en `src/lib/pet/missions/templates.ts`, sin enum),
+`target`, `xp` (congelados al asignar), `item_type`/`item_id`/`item_title` (solo las duras con obra;
+sin FK a propósito), `completed_at` (lo sella `getPetSnapshot`), `created_at`.
+`unique (user_id, day, slot)`; índice `(user_id, completed_at)`.
+
+**Solo la asignación es decisión.** Progreso (`src/lib/pet/missions/progress.ts`) y XP
+(`missionXp` en `PetCounts`) se derivan; los logros no tienen tabla: su rastro es la celebración
+`pet_achievement:<id>` en `user_celebrations`. Las misiones se evalúan para hoy y ayer; más atrás
+caducan sin más.
+
+**RLS**: select/insert/update propias; sin delete. **Grant por columna** (superficie 6): insert
+sin `id`/`completed_at`/`created_at`; update solo `completed_at`. Migración
+`supabase/migrations/20260903_pet_daily_missions.sql`. Verificado en dev: 12 columnas, 9 con
+INSERT, 1 con UPDATE, 0 para `anon`, 3 políticas, RLS activa. **Pendiente en prod** hasta mergear la
+rama.
+
 ## 9. Seguridad
 
 Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el

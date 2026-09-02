@@ -1630,6 +1630,51 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_daily_missions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          day: string
+          id: string
+          item_id: string | null
+          item_title: string | null
+          item_type: string | null
+          slot: number
+          target: number
+          template: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          day: string
+          id?: string
+          item_id?: string | null
+          item_title?: string | null
+          item_type?: string | null
+          slot: number
+          target: number
+          template: string
+          user_id: string
+          xp: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          day?: string
+          id?: string
+          item_id?: string | null
+          item_title?: string | null
+          item_type?: string | null
+          slot?: number
+          target?: number
+          template?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
       pet_state: {
         Row: {
           class: string
