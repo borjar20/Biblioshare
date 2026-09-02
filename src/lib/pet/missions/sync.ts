@@ -92,13 +92,14 @@ export async function syncDailyMissions(
       )
       .select(select);
     if (error) throw error;
-    if ((inserted ?? []).length > 0) {
+    if ((inserted ?? []).length === picks.length) {
       rows = [...rows.filter((r) => r.day !== today), ...(inserted ?? [])].sort(
         (a, b) => a.day.localeCompare(b.day) || a.slot - b.slot,
       );
     } else {
-      // Otra pestaña ganó la carrera: con `ignoreDuplicates` el upsert no
-      // devuelve nada, así que hay que releer — y con la consulta distinta.
+      // Otra pestaña ganó la carrera (total o parcialmente): con
+      // `ignoreDuplicates` el upsert solo devuelve lo que insertó ESTA
+      // llamada, así que hay que releer — y con la consulta distinta.
       rows = await read(true);
     }
   }

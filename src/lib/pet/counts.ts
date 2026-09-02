@@ -30,7 +30,7 @@ export interface PetCounts {
   /** XP ganada con misiones completadas, ya agrupada por el atributo de su plantilla. */
   missionXp: Record<PetAttribute, number>;
   missionsCompleted: number;
-  /** Mejor racha de días activos (getStreaks().best). */
+  /** Mejor racha de días activos VIVIDOS (petActiveDays en get-pet-counts.ts; NO getStreaks(), que cuenta el historial). */
   bestStreak: number;
 }
 
