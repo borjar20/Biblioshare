@@ -10,17 +10,6 @@ import { expect, test, type Page } from "@playwright/test";
 // duration_minutes, session_date, position son las columnas que escribe addSession;
 // started_at es nullable (20260717_progress_sessions_started_at.sql — `add column
 // started_at timestamptz;` sin NOT NULL) así que el POST de test no lo necesita.
-//
-// Adaptación (bug real, no de datos — issue #1028): syncDailyMissions()
-// (src/lib/pet/missions/sync.ts) relee `pet_daily_missions` con el MISMO
-// GET justo después de insertar las misiones del día; la memoización
-// automática de fetch de Next.js 16 (misma URL+opciones dentro del mismo
-// render) devuelve el resultado cacheado DE ANTES del insert, así que la
-// primera visita del día que genera las misiones las guarda pero el tablón
-// sale vacío. Confirmado por SQL directo (las filas sí existen) y por un
-// script de depuración: 1ª visita vacía, 2ª visita con las tres. El primer
-// test navega dos veces por eso — no es un `waitFor` flojo, es el workaround
-// documentado hasta que #1028 se arregle.
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -83,11 +72,9 @@ test("abrir /mascota crea tres misiones del día y pinta la galería de logros",
   await login(page);
   await page.goto("/mascota");
   await expect(page.getByTestId("mission-board")).toBeVisible();
-  // 1ª visita: genera e inserta las misiones de hoy, pero el propio render
-  // las lee con el resultado memoizado DE ANTES del insert (issue #1028) y
-  // el tablón sale vacío. 2ª visita: nuevo render, nueva memoización, lee las
-  // filas ya guardadas — así es como lo ve de verdad un usuario que recarga.
-  await page.goto("/mascota");
+  // La MISMA visita que genera las misiones ya las pinta (#1028: antes había
+  // que recargar porque el render releía el resultado memoizado de antes del
+  // insert). Si esto vuelve a necesitar un segundo goto, el bug ha vuelto.
   await expect(page.getByTestId("mission-board").locator("li")).toHaveCount(3);
   const rows = (await (await api(`pet_daily_missions?user_id=eq.${userId}&day=eq.${localDay()}&select=slot,template`)).json()) as Array<{ slot: number; template: string }>;
   expect(rows).toHaveLength(3);
@@ -102,12 +89,22 @@ test("una sesión de 20 minutos cumple session_minutes y se gana la celebración
   await page.goto("/mascota");
   await expect(page.getByTestId("mission-board")).toBeVisible();
 
-  // Fuerza que el hueco 0 sea session_minutes (el sorteo es determinista pero
-  // depende del usuario de prueba): la fila manda sobre el generador.
-  await api(`pet_daily_missions?user_id=eq.${userId}&day=eq.${localDay()}&slot=eq.0`, {
-    method: "PATCH",
-    body: JSON.stringify({ template: "session_minutes", target: 20, xp: 2, item_type: null, item_id: null, item_title: null, completed_at: null }),
-  });
+  // Fija las TRES plantillas del día (el sorteo es determinista pero depende
+  // del usuario de prueba): la fila manda sobre el generador. Se parchean los
+  // tres huecos, no solo el 0, porque si el sorteo ya había puesto
+  // session_minutes en otro hueco habría DOS filas con esa plantilla y
+  // `mission-session_minutes` resolvería dos elementos (fallo por estricto).
+  const fixed = [
+    { slot: 0, template: "session_minutes", target: 20 },
+    { slot: 1, template: "note", target: 1 },
+    { slot: 2, template: "quote", target: 1 },
+  ];
+  for (const f of fixed) {
+    await api(`pet_daily_missions?user_id=eq.${userId}&day=eq.${localDay()}&slot=eq.${f.slot}`, {
+      method: "PATCH",
+      body: JSON.stringify({ template: f.template, target: f.target, xp: 2, item_type: null, item_id: null, item_title: null, completed_at: null }),
+    });
+  }
 
   // Un pase abierto cualquiera del usuario para colgar la sesión.
   const passes = (await (await api(`passes?user_id=eq.${userId}&status=eq.in_progress&select=id&limit=1`)).json()) as Array<{ id: string }>;
