@@ -15,10 +15,22 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // Best-effort a propósito, como los fan-outs de notificaciones: si falla, la
 // escritura de dominio que la disparó ya está hecha y no se deshace por esto.
 // NUNCA lanza: un error aquí no puede tumbar el registro de una sesión.
+export interface EarnOptions {
+  /** Gana la celebración ya sellada (`displayed_at`): queda el rastro y la fecha
+   *  en la BD, pero el drenado NO la devolverá y no se anima. Es para volcados —
+   *  hitos que el usuario ya tenía ganados antes de que existiera la función que
+   *  los detecta—, donde animarlos sería una avalancha de fuegos artificiales
+   *  por cosas de hace meses. `user_celebrations` tiene grant de INSERT de tabla
+   *  entera para authenticated (20260805_user_celebrations.sql), así que mandar
+   *  esta columna no rompe la escritura. */
+  alreadyDisplayed?: boolean;
+}
+
 export async function earnCelebration(
   supabase: SupabaseServerClient,
   userId: string,
   payload: CelebrationPayload,
+  options?: EarnOptions,
 ): Promise<void> {
   try {
     const eventKey = getCelebrationKey(payload);
@@ -28,6 +40,9 @@ export async function earnCelebration(
         event_type: payload.event,
         event_key: eventKey,
         payload: payload as unknown as Json,
+        // Solo se manda cuando toca: con `ignoreDuplicates` un conflicto no
+        // escribe nada, así que esto nunca puede desellar una fila existente.
+        ...(options?.alreadyDisplayed ? { displayed_at: new Date().toISOString() } : {}),
       },
       { onConflict: "user_id,event_type,event_key", ignoreDuplicates: true },
     );

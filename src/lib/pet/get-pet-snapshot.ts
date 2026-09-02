@@ -76,13 +76,22 @@ export async function getPetSnapshot(
   // El día lo trae getPetCounts: pedir `todayISO()` otra vez podría dar otro día
   // en la misma petición si el render cruza la medianoche.
   const preSyncAttributes = deriveAttributes(counts);
-  const sync = await syncDailyMissions(supabase, userId, {
-    today,
-    primary: CLASS_PRIMARY[pet.class],
-    attributes: preSyncAttributes,
-    eligibility,
-    days,
-  });
+  const [sync, earned] = await Promise.all([
+    syncDailyMissions(supabase, userId, {
+      today,
+      primary: CLASS_PRIMARY[pet.class],
+      attributes: preSyncAttributes,
+      eligibility,
+      days,
+    }),
+    // Los logros ya ganados no dependen del sync: mismo viaje, no dos seguidos.
+    supabase
+      .from("user_celebrations")
+      .select("event_key, first_triggered_at")
+      .eq("user_id", userId)
+      .eq("event_type", "pet_achievement"),
+  ]);
+  if (earned.error) throw earned.error;
   const { missions, completedNow } = sync;
 
   for (const m of sync.justCompleted) {
@@ -115,26 +124,39 @@ export async function getPetSnapshot(
   }
 
   // Logros: solo se gana lo NUEVO (ninguna escritura en una visita sin novedades).
-  const { data: earnedRows, error: earnedErr } = await supabase
-    .from("user_celebrations")
-    .select("event_key, first_triggered_at")
-    .eq("user_id", userId)
-    .eq("event_type", "pet_achievement");
-  if (earnedErr) throw earnedErr;
+  const earnedRows = earned.data ?? [];
   const earnedAt = new Map<string, string>();
-  for (const r of earnedRows ?? []) {
+  for (const r of earnedRows) {
     const id = r.event_key.replace(/^pet_achievement:/, "");
     if (isAchievementId(id)) earnedAt.set(id, r.first_triggered_at);
   }
+  // Volcado inicial: la mascota se deriva de un historial que YA existía, así
+  // que la primera visita desbloquea de golpe todo lo que el usuario llevaba
+  // ganado desde hace meses. Animarlo sería una avalancha de celebraciones de
+  // hitos viejos, así que ese primer lote se gana YA MOSTRADO (displayed_at) y
+  // no pide drenado: queda el rastro y la fecha en la galería, sin fuegos
+  // artificiales. Coste asumido: si el PRIMER logro de la vida de un usuario se
+  // desbloquea con la tabla aún vacía, ese tampoco se anima (pasa una vez).
+  const backfill = earnedRows.length === 0;
   const progressList = achievementProgress(counts, level);
-  let achievementsUnlockedNow = false;
-  for (const a of progressList) {
-    if (a.unlocked && !earnedAt.has(a.id)) {
-      achievementsUnlockedNow = true;
-      await earnCelebration(supabase, userId, { event: "pet_achievement", key: a.id, metadata: { threshold: a.threshold } });
-      earnedAt.set(a.id, new Date().toISOString());
-    }
+  const newlyUnlocked = progressList.filter((a) => a.unlocked && !earnedAt.has(a.id));
+  if (newlyUnlocked.length > 0) {
+    const now = new Date().toISOString();
+    // earnCelebration nunca lanza (best-effort), así que Promise.all no puede
+    // dejar a medias el resto: se ganan en paralelo, no una detrás de otra.
+    await Promise.all(
+      newlyUnlocked.map((a) =>
+        earnCelebration(
+          supabase,
+          userId,
+          { event: "pet_achievement", key: a.id, metadata: { threshold: a.threshold } },
+          { alreadyDisplayed: backfill },
+        ),
+      ),
+    );
+    for (const a of newlyUnlocked) earnedAt.set(a.id, now);
   }
+  const achievementsUnlockedNow = !backfill && newlyUnlocked.length > 0;
   const achievements: AchievementView[] = progressList.map((a) => ({ ...a, unlockedAt: earnedAt.get(a.id) ?? null }));
 
   return {
