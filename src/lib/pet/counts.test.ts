@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countCompletedSagas, daysBetweenISO, sessionUnits } from "./counts";
+import { countCompletedSagas, daysBetweenISO, sessionUnits, splitPassHistory, type PassRow } from "./counts";
 
 describe("sessionUnits", () => {
   it("por sesión toma el máximo entre minutos/10 y páginas avanzadas/10", () => {
@@ -55,5 +55,58 @@ describe("daysBetweenISO", () => {
   it("cuenta días de calendario", () => {
     expect(daysBetweenISO("2026-09-01", "2026-09-01")).toBe(0);
     expect(daysBetweenISO("2026-08-30", "2026-09-02")).toBe(3);
+  });
+});
+
+describe("splitPassHistory", () => {
+  const day = (iso: string) => iso.slice(0, 10);
+  const pass = (over: Partial<PassRow>): PassRow => ({
+    item_type: "book",
+    item_id: "b",
+    status: "completed",
+    finished_on: null,
+    rating: null,
+    created_at: "2026-09-02T10:15:00.123Z",
+    ...over,
+  });
+
+  it("un pase cerrado el mismo día del alta, o después, es vivido", () => {
+    const rows = [
+      pass({ finished_on: "2026-09-02" }),
+      pass({ item_id: "c", finished_on: "2026-09-05" }),
+      pass({ item_id: "d", status: "reading", finished_on: null }),
+    ];
+    const r = splitPassHistory(rows, day, 10);
+    expect(r.lived).toHaveLength(3);
+    expect(r.historical).toHaveLength(0);
+  });
+
+  it("un pase cerrado ANTES del día del alta es historial (lectura pasada registrada hoy)", () => {
+    const r = splitPassHistory([pass({ finished_on: "2024-01-31" })], day, 10);
+    expect(r.historical).toHaveLength(1);
+    expect(r.lived).toHaveLength(0);
+  });
+
+  it("created_at a medianoche UTC exacta es historial (relectura fechada por el importador)", () => {
+    const rows = [
+      pass({ created_at: "2024-03-01T00:00:00+00:00", finished_on: "2024-03-01" }),
+      pass({ item_id: "c", created_at: "2026-09-02T00:00:00.001Z", finished_on: "2026-09-02" }),
+    ];
+    const r = splitPassHistory(rows, day, 10);
+    expect(r.historical.map((p) => p.item_id)).toEqual(["b"]);
+    expect(r.lived.map((p) => p.item_id)).toEqual(["c"]);
+  });
+
+  it("un día de alta con burstMin pases o más es un volcado: todos historial, aunque no sean retroactivos", () => {
+    const burst = Array.from({ length: 10 }, (_, i) =>
+      pass({ item_id: `x${i}`, status: i % 2 ? "completed" : "planned", finished_on: i % 2 ? "2026-09-02" : null }),
+    );
+    const other = pass({ item_id: "y", created_at: "2026-09-03T09:00:00.5Z", finished_on: "2026-09-03" });
+    const r = splitPassHistory([...burst, other], day, 10);
+    expect(r.historical).toHaveLength(10);
+    expect(r.lived.map((p) => p.item_id)).toEqual(["y"]);
+    // Un pase menos y el día ya no es volcado.
+    const r2 = splitPassHistory([...burst.slice(1), other], day, 10);
+    expect(r2.historical).toHaveLength(0);
   });
 });

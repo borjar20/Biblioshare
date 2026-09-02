@@ -35,9 +35,12 @@ describe("deriveAttributes", () => {
     expect(a.DES).toBe(5 * BALANCE.DES.perNewWork);
   });
 
-  it("las filas importadas topan en importedRowCap", () => {
-    const a = deriveAttributes({ ...EMPTY_COUNTS, importedRows: 10_000 });
-    expect(a.DES).toBe(BALANCE.DES.importedRowCap * BALANCE.DES.perImportedRow);
+  it("el historial es una dote con tope: no manda la clase por muchos pases que traiga", () => {
+    const a = deriveAttributes({ ...EMPTY_COUNTS, historicalPasses: 10_000, historicalWorks: 10_000 });
+    expect(a.INT).toBe(BALANCE.INT.historicalPassCap * BALANCE.INT.perHistoricalPass);
+    expect(a.DES).toBe(BALANCE.DES.historicalWorkCap * BALANCE.DES.perHistoricalWork);
+    // Un solo pase vivido pesa más que uno del historial.
+    expect(BALANCE.INT.perFinishedPass).toBeGreaterThan(BALANCE.INT.perHistoricalPass);
   });
 });
 

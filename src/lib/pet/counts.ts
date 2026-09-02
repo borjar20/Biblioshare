@@ -21,7 +21,10 @@ export interface PetCounts {
   follows: number;
   newWorks: number;
   newAuthors: number;
-  importedRows: number;
+  /** Pases `completed` del historial (no vividos en la app): dote de INT con tope. */
+  historicalPasses: number;
+  /** Obras distintas con algún pase del historial: dote de DES con tope. */
+  historicalWorks: number;
 }
 
 export const EMPTY_COUNTS: PetCounts = {
@@ -44,8 +47,59 @@ export const EMPTY_COUNTS: PetCounts = {
   follows: 0,
   newWorks: 0,
   newAuthors: 0,
-  importedRows: 0,
+  historicalPasses: 0,
+  historicalWorks: 0,
 };
+
+export type PassRow = {
+  item_type: string;
+  item_id: string;
+  status: string;
+  finished_on: string | null;
+  rating: number | null;
+  /** timestamptz ISO tal cual viene de `passes.created_at`. */
+  created_at: string;
+};
+
+export interface PassHistorySplit {
+  /** Pases que el usuario vivió con la app abierta: suman como actividad. */
+  lived: PassRow[];
+  /** Pases volcados de otra app o añadidos con fecha pasada: solo dote. */
+  historical: PassRow[];
+}
+
+/** Separa historial de vivido SIN columna nueva (`passes` no marca el origen).
+ *  Un pase es historial si cumple cualquiera de:
+ *  - se cerró ANTES del día en que se dio de alta (`finished_on < created_at`):
+ *    alguien registró hoy una lectura pasada;
+ *  - `created_at` es medianoche UTC exacta: nada in-app inserta sin hora, solo
+ *    el importador al fechar relecturas pasadas (`historicalCreatedAt` en
+ *    src/lib/import/commit-row.ts);
+ *  - su día de alta tiene `burstMin` pases o más: un volcado (importación o
+ *    carga manual). Cubre el hueco del importador, que cierra con la fecha del
+ *    import los CSV sin *Date Read* y por tanto no parecen retroactivos.
+ *  `createdDayOf` convierte el timestamptz al día LOCAL (misma convención que
+ *  session_date); se inyecta para que esto siga siendo puro. */
+export function splitPassHistory(
+  rows: PassRow[],
+  createdDayOf: (createdAt: string) => string,
+  burstMin: number,
+): PassHistorySplit {
+  const perDay = new Map<string, number>();
+  const dayOf = rows.map((r) => createdDayOf(r.created_at));
+  for (const d of dayOf) perDay.set(d, (perDay.get(d) ?? 0) + 1);
+
+  const lived: PassRow[] = [];
+  const historical: PassRow[] = [];
+  rows.forEach((r, i) => {
+    const day = dayOf[i];
+    const retroactive = r.finished_on != null && r.finished_on < day;
+    const midnightUTC = new Date(r.created_at).getTime() % 86_400_000 === 0;
+    const burst = (perDay.get(day) ?? 0) >= burstMin;
+    (retroactive || midnightUTC || burst ? historical : lived).push(r);
+  });
+  return { lived, historical };
+}
 
 export type SessionRow = {
   pass_id: string;

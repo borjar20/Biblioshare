@@ -2,9 +2,11 @@ import type { createClient } from "@/lib/supabase/server";
 import { STREAK_MILESTONES } from "@/lib/celebrations/registry";
 import { toISODate } from "@/lib/stats/dates";
 import { getStreaks } from "@/lib/stats/get-streaks";
+import { BALANCE } from "./balance";
 import {
   countCompletedSagas,
   sessionUnits,
+  splitPassHistory,
   type PetCounts,
   type SagaItemRow,
   type SessionRow,
@@ -34,7 +36,6 @@ export async function getPetCounts(
     votes,
     events,
     follows,
-    imports,
     profile,
     streaks,
     sagaFollows,
@@ -46,7 +47,7 @@ export async function getPetCounts(
       .eq("user_id", userId),
     supabase
       .from("passes")
-      .select("item_type, item_id, status, finished_on, rating")
+      .select("item_type, item_id, status, finished_on, rating, created_at")
       .eq("user_id", userId),
     supabase.from("episode_watches").select("id, rating").eq("user_id", userId),
     supabase.from("notes").select("kind").eq("user_id", userId),
@@ -54,7 +55,6 @@ export async function getPetCounts(
     supabase.from("club_poll_votes").select("voted_at").eq("user_id", userId),
     supabase.from("club_activity_participants").select("activity_id").eq("user_id", userId),
     supabase.from("follows").select("followee_id").eq("follower_id", userId).eq("status", "accepted"),
-    supabase.from("pending_import_rows").select("id").eq("user_id", userId).eq("status", "resolved"),
     supabase.from("profiles").select("daily_goal_minutes").eq("user_id", userId).maybeSingle(),
     getStreaks(supabase, userId),
     supabase.from("saga_follows").select("saga_id").eq("user_id", userId),
@@ -62,7 +62,7 @@ export async function getPetCounts(
     supabase.from("pass_reviews").select("id, review").eq("user_id", userId),
   ]);
 
-  for (const r of [sessions, passes, episodes, notes, posts, votes, events, follows, imports, profile, sagaFollows, reviewRows]) {
+  for (const r of [sessions, passes, episodes, notes, posts, votes, events, follows, profile, sagaFollows, reviewRows]) {
     if (r.error) throw r.error;
   }
 
@@ -87,6 +87,14 @@ export async function getPetCounts(
     };
   });
   const passRows = passes.data ?? [];
+  // Historial (importado o con fecha pasada) frente a vivido en la app: el
+  // historial solo entra como dote con tope (decisiones.md 2026-09-02). Día
+  // de alta LOCAL, misma convención que session_date.
+  const { lived: livedPasses, historical: historicalPasses } = splitPassHistory(
+    passRows,
+    (createdAt) => toISODate(new Date(createdAt)),
+    BALANCE.history.burstMin,
+  );
 
   // Objetivo diario: días cuyos minutos de sesión alcanzan el objetivo
   // ACTUAL. Misma regla que earnDailyLoopCelebrations (todas las
@@ -103,8 +111,12 @@ export async function getPetCounts(
     for (const m of minutesByDay.values()) if (m >= goal) dailyGoalDays++;
   }
 
-  const completedPasses = passRows.filter((p) => p.status === "completed");
-  const completedKeys = new Set(completedPasses.map((p) => `${p.item_type}:${p.item_id}`));
+  const completedPasses = livedPasses.filter((p) => p.status === "completed");
+  // Para cerrar una saga vale cualquier pase terminado, también del historial:
+  // seguir la saga ya es un acto en la app y el número de sagas está acotado.
+  const completedKeys = new Set(
+    passRows.filter((p) => p.status === "completed").map((p) => `${p.item_type}:${p.item_id}`),
+  );
 
   // Sagas completadas: solo las que sigues (spec §2: INT). Ítems de esas sagas
   // y comprobación en JS con el helper puro.
@@ -119,9 +131,10 @@ export async function getPetCounts(
     completedSagas = countCompletedSagas((items ?? []) as SagaItemRow[], completedKeys);
   }
 
-  // Géneros distintos y autores: de los libros con pase (cualquier estado para
-  // autores/obras = DES "exploración"; solo terminados para géneros = INT).
-  const bookIds = [...new Set(passRows.filter((p) => p.item_type === "book").map((p) => p.item_id))];
+  // Géneros distintos y autores: de los libros con pase VIVIDO (cualquier
+  // estado para autores/obras = DES "exploración"; solo terminados para
+  // géneros = INT).
+  const bookIds = [...new Set(livedPasses.filter((p) => p.item_type === "book").map((p) => p.item_id))];
   const genres = new Set<string>();
   const authors = new Set<string>();
   if (bookIds.length > 0) {
@@ -159,16 +172,17 @@ export async function getPetCounts(
     quotes: (notes.data ?? []).filter((n) => n.kind === "quote").length,
     reviews: (reviewRows.data ?? []).filter((p) => (p.review ?? "").trim().length > 0).length,
     ratings:
-      passRows.filter((p) => p.rating != null).length +
+      livedPasses.filter((p) => p.rating != null).length +
       (episodes.data ?? []).filter((e) => e.rating != null).length,
     posts: postRows.filter((p) => p.kind !== "poll").length,
     polls: postRows.filter((p) => p.kind === "poll").length,
     votes: (votes.data ?? []).length,
     events: (events.data ?? []).length,
     follows: (follows.data ?? []).length,
-    newWorks: new Set(passRows.map((p) => `${p.item_type}:${p.item_id}`)).size,
+    newWorks: new Set(livedPasses.map((p) => `${p.item_type}:${p.item_id}`)).size,
     newAuthors: authors.size,
-    importedRows: (imports.data ?? []).length,
+    historicalPasses: historicalPasses.filter((p) => p.status === "completed").length,
+    historicalWorks: new Set(historicalPasses.map((p) => `${p.item_type}:${p.item_id}`)).size,
   };
 
   return { counts, lastActivityISO: lastDates.at(-1) ?? null };

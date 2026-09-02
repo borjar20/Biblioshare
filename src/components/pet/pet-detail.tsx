@@ -38,10 +38,10 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
   const sources: Record<(typeof PET_ATTRIBUTES)[number], string> = {
     FUE: t("sources.FUE", { units: c.sessionUnits, episodes: c.episodes }),
     CON: t("sources.CON", { days: c.activeDays, goalDays: c.dailyGoalDays, milestones: c.streakMilestones }),
-    INT: t("sources.INT", { passes: c.finishedPasses, sagas: c.completedSagas, genres: c.distinctGenres }),
+    INT: t("sources.INT", { passes: c.finishedPasses, sagas: c.completedSagas, genres: c.distinctGenres, historical: c.historicalPasses }),
     SAB: t("sources.SAB", { notes: c.notes, quotes: c.quotes, reviews: c.reviews, ratings: c.ratings }),
     CAR: t("sources.CAR", { posts: c.posts, votes: c.votes, polls: c.polls, events: c.events, follows: c.follows }),
-    DES: t("sources.DES", { works: c.newWorks, authors: c.newAuthors, imports: c.importedRows }),
+    DES: t("sources.DES", { works: c.newWorks, authors: c.newAuthors, historical: c.historicalWorks }),
   };
 
   return (

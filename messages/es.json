@@ -3128,10 +3128,10 @@
       "title": "Qué la sube",
       "FUE": "{units} unidades de sesión · {episodes} episodios",
       "CON": "{days} días activos · {goalDays} con objetivo · {milestones} hitos de racha",
-      "INT": "{passes} obras terminadas · {sagas} sagas · {genres} géneros",
+      "INT": "{passes} obras terminadas · {sagas} sagas · {genres} géneros · {historical} del historial",
       "SAB": "{notes} notas · {quotes} citas · {reviews} reseñas · {ratings} valoraciones",
       "CAR": "{posts} posts · {votes} votos · {polls} encuestas · {events} quedadas · {follows} seguidos",
-      "DES": "{works} obras · {authors} autores · {imports} filas importadas"
+      "DES": "{works} obras · {authors} autores · {historical} obras del historial"
     },
     "rename": { "label": "Renombrar", "submit": "Guardar" },
     "changeClass": {

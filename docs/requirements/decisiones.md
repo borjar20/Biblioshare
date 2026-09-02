@@ -3519,3 +3519,44 @@ la mascota no parezca arbitraria — lo cubren los totales junto con el fichero 
 (`balance.ts`, calibrado contra prod): el usuario ve de dónde sale cada punto, aunque no acotado a la
 semana. Se registra como issue #1022 para que nadie lea la spec y dé la ventana de siete días por
 implementada.
+
+## 2026-09-02 — Mascota: el historial volcado es una dote con tope, no actividad
+
+**Problema.** `deriveAttributes` contaba todo pase `completed` como obra terminada (INT ×10), y
+lo mismo con las valoraciones de pase (SAB), las obras y autores nuevos (DES) y los géneros (INT).
+Quien llega de Goodreads/Letterboxd o vuelca a mano lo que leyó hace años entra con cientos de pases
+de golpe. En prod (2026-09-02) dos de los cuatro usuarios con pases tenían ~148 terminados y el 95 %
+eran retroactivos o nacidos en un día de ráfaga: INT ~1 500 frente a decenas en el resto, `suggestClass`
+proponía wizard a todo el mundo y la calibración del divisor (entrada anterior) se había hecho sobre
+ese XP inflado. La mascota debe crecer con lo que haces EN la app, no con lo que ya habías leído.
+
+**Decisión.** `splitPassHistory` (`src/lib/pet/counts.ts`, pura, con tests) separa cada pase en
+*vivido* u *historial* sin columna nueva —`passes` no marca el origen y añadir una columna no
+arreglaría las filas ya existentes—. Es historial si cumple cualquiera de:
+
+- `finished_on` anterior al día LOCAL de `created_at` (se registró hoy una lectura pasada);
+- `created_at` a medianoche UTC exacta (solo el importador inserta sin hora, al fechar relecturas
+  pasadas con `historicalCreatedAt`; en prod hoy no hay ninguna, pero el camino existe);
+- su día de alta tiene `BALANCE.history.burstMin` (10) pases o más: un volcado. Tapa el hueco del
+  importador, que cierra con la fecha del import los CSV sin *Date Read* y por eso no parecen
+  retroactivos. Diez es holgado frente a las ráfagas reales (138-143) y no pilla a quien apila cinco
+  libros una tarde.
+
+Lo vivido pesa como antes. El historial solo entra como **dote con tope**: `INT.perHistoricalPass`
+2 × hasta 50 terminados (máx. 100 INT) y `DES.perHistoricalWork` 1 × hasta 50 obras distintas (máx.
+50 DES). Reconoce que leíste sin decidir la clase. Valoraciones, autores y géneros del historial no
+suman. Excepción: para dar por completada una saga vale cualquier pase terminado, también histórico,
+porque seguir la saga ya es un acto en la app y el número de sagas está acotado.
+
+**Efectos colaterales.** Desaparece `DES.perImportedRow`/`importedRowCap`: contaba
+`pending_import_rows` resueltas, que en prod eran cero para todo el mundo (el importador normal no
+pasa por ahí); la dote de obras del historial lo sustituye con los mismos números. Como el nivel se
+deriva y este cambio lo BAJA, `getPetSnapshot` ahora también guarda `last_level`/`last_stage` cuando
+descienden —sin celebración—, para que la siguiente subida real se celebre y no quede tapada por un
+nivel guardado más alto.
+
+**Recalibración.** Con la fórmula aproximada nueva el usuario más activo de prod ronda 1 300 XP con
+bonus de clase (nivel 10 con divisor 15: adulta, justo); los otros dos con historial volcado quedan
+en ~7 y ~4. El divisor se queda en 15: la entrada anterior lo justificaba con 1 600 XP inflados, esta
+lo sostiene con actividad real. Si la spec (§3, congelada) o `balance.ts` discrepan, manda esta
+entrada y el código.

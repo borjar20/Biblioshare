@@ -60,7 +60,12 @@ export async function getPetSnapshot(
   // last_stage es text sin CHECK: un valor desconocido da undefined y evolved=false (fail-closed; la app solo escribe valores de stageFor).
   const evolved = STAGE_INDEX[stage] > STAGE_INDEX[pet.last_stage as PetStage];
 
-  if (leveledUp || evolved) {
+  // Rebalancear el balance puede BAJAR el nivel o la etapa (todo se deriva).
+  // Sin celebración, pero se guarda: si no, last_level quedaría por encima del
+  // real y la siguiente subida de verdad no se celebraría hasta superarlo.
+  const droppedDown = level < pet.last_level || STAGE_INDEX[stage] < (STAGE_INDEX[pet.last_stage as PetStage] ?? 0);
+
+  if (leveledUp || evolved || droppedDown) {
     const { error: upErr } = await supabase
       .from("pet_state")
       .update({ last_level: level, last_stage: stage, updated_at: new Date().toISOString() })

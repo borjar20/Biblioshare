@@ -25,7 +25,8 @@ export function deriveAttributes(c: PetCounts): PetAttributes {
     INT:
       c.finishedPasses * B.INT.perFinishedPass +
       c.completedSagas * B.INT.perCompletedSaga +
-      c.distinctGenres * B.INT.perDistinctGenre,
+      c.distinctGenres * B.INT.perDistinctGenre +
+      Math.min(c.historicalPasses, B.INT.historicalPassCap) * B.INT.perHistoricalPass,
     SAB:
       c.notes * B.SAB.perNote +
       c.quotes * B.SAB.perQuote +
@@ -40,7 +41,7 @@ export function deriveAttributes(c: PetCounts): PetAttributes {
     DES:
       c.newWorks * B.DES.perNewWork +
       c.newAuthors * B.DES.perNewAuthor +
-      Math.min(c.importedRows, B.DES.importedRowCap) * B.DES.perImportedRow,
+      Math.min(c.historicalWorks, B.DES.historicalWorkCap) * B.DES.perHistoricalWork,
   };
 }
 
