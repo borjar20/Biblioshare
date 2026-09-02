@@ -26,6 +26,24 @@ export const BALANCE = {
     seriesEpisodesLeft: 2,
     reviewWindowDays: 7,
   },
+  // Logros por familias con escalera ABIERTA (spec logros-niveles §1): los
+  // primeros niveles a mano (`steps`), después último + `then` por nivel.
+  // `then: null` = escalera cerrada (no hay nivel más allá de `steps`). Los
+  // primeros pasos coinciden con los umbrales planos antiguos para que la
+  // migración 20260904 no pierda ninguna fecha.
+  achievements: {
+    finished: { steps: [10, 50, 100, 200], then: 100 },
+    sessions: { steps: [100, 250, 500, 1000], then: 500 },
+    episodes: { steps: [100, 250, 500, 1000], then: 500 },
+    notes: { steps: [50, 100, 200, 400], then: 200 },
+    reviews: { steps: [10, 25, 50, 100], then: 50 },
+    genres: { steps: [10, 15, 20, 30], then: 10 },
+    streak: { steps: [30, 100, 200, 365], then: 365 },
+    posts: { steps: [50, 100, 150, 300], then: 300 },
+    sagas: { steps: [3, 5, 10, 20], then: 10 },
+    missions: { steps: [50, 100, 200, 400], then: 400 },
+    stage: { steps: [10, 40], then: null },
+  },
   classBonus: 1.5,
   // nivel = floor(sqrt(xp / divisor)) + 1  → nivel 10 = 1 215 XP, nivel 40 = 22 815.
   // Calibrado contra prod (Task 10, 2026-09-02) y recalibrado el mismo día al

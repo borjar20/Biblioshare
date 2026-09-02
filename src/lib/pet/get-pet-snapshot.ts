@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import { earnCelebration } from "@/lib/celebrations/earn";
 import { toISODate } from "@/lib/stats/dates";
-import { achievementProgress, isAchievementId, type AchievementId } from "./achievements";
+import { familyProgress, parseAchievementKey, type AchievementFamily } from "./achievements";
 import { CLASS_PRIMARY, isPetClass, type PetAttributes, type PetClass, type PetMood, type PetStage } from "./classes";
 import { daysBetweenISO, type PetCounts } from "./counts";
 import { deriveAttributes, levelFor, moodFor, stageFor, xpFor, xpForLevel } from "./derive";
@@ -14,7 +14,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export const STAGE_INDEX: Record<PetStage, number> = { acorn: 0, young: 1, adult: 2, veteran: 3 };
 
 export interface AchievementView {
-  id: AchievementId;
+  id: string;
   value: number;
   threshold: number;
   unlocked: boolean;
@@ -127,8 +127,8 @@ export async function getPetSnapshot(
   const earnedRows = earned.data ?? [];
   const earnedAt = new Map<string, string>();
   for (const r of earnedRows) {
-    const id = r.event_key.replace(/^pet_achievement:/, "");
-    if (isAchievementId(id)) earnedAt.set(id, r.first_triggered_at);
+    const parsed = parseAchievementKey(r.event_key);
+    if (parsed) earnedAt.set(`${parsed.family}:${parsed.tier}`, r.first_triggered_at);
   }
   // Volcado inicial: la mascota se deriva de un historial que YA existía, así
   // que la primera visita desbloquea de golpe todo lo que el usuario llevaba
@@ -138,7 +138,12 @@ export async function getPetSnapshot(
   // artificiales. Coste asumido: si el PRIMER logro de la vida de un usuario se
   // desbloquea con la tabla aún vacía, ese tampoco se anima (pasa una vez).
   const backfill = earnedRows.length === 0;
-  const progressList = achievementProgress(counts, level);
+  const progressList = familyProgress(counts, level).map((f) => ({
+    id: `${f.family}:${f.tier || 1}`,
+    value: f.value,
+    threshold: f.threshold ?? f.nextThreshold ?? 0,
+    unlocked: f.tier > 0,
+  }));
   const newlyUnlocked = progressList.filter((a) => a.unlocked && !earnedAt.has(a.id));
   if (newlyUnlocked.length > 0) {
     const now = new Date().toISOString();
