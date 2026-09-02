@@ -107,7 +107,7 @@ pickDailyMissions(seed, primary, attributes, eligible): MissionPick[3]
 | `finishedKeys` | `passes.finished_on = hoy`, como `"tipo:id"` (para las duras con obra) |
 | `notes`, `quotes` | `notes.created_at` a día local = hoy |
 | `ratings` | pases con `rating` y `updated_at` a día local = hoy, más episodios con `rating` vistos hoy |
-| `reviewedKeys` | `pass_reviews` con reseña no vacía y `updated_at` a día local = hoy |
+| `reviewedKeys` | `pass_reviews` con reseña no vacía, como `"tipo:id"` (la vista no expone `updated_at`; `review` se cumple por ESTADO: la obra asignada, que no tenía reseña al asignar, la tiene ahora) |
 | `posts`, `votes` | `club_posts.created_at` / `club_poll_votes.voted_at` a día local = hoy |
 | `newWorks` | pases vividos con `created_at` a día local = hoy |
 
@@ -115,9 +115,9 @@ Requiere añadir `updated_at`/`watched_on`/`created_at` a los `select` de `getPe
 número de consultas. «Día local» = `toISODate(new Date(ts))`, la convención de `session_date` y
 `todayISO()`.
 
-Trampa asumida: `ratings` y `reviewedKeys` usan `updated_at`, que también se mueve al editar otro
-campo del pase. Una edición sin cambio de nota puede contar como «valoración de hoy». Es un falso
-positivo raro y a favor del usuario; se documenta, no se corrige en esta fase.
+Trampa asumida: `ratings` usa `passes.updated_at`, que también se mueve al editar otro campo del
+pase. Una edición sin cambio de nota puede contar como «valoración de hoy». Es un falso positivo raro
+y a favor del usuario; se documenta, no se corrige en esta fase.
 
 ## 2. Logros
 
@@ -223,8 +223,8 @@ Textos en `messages/es.json`, namespaces `pet.missions.<template>` (con `{title}
 - **Vitest**: `pickDailyMissions` (reparto primario/flojo/azar; sin repetir atributo ni plantilla;
   dura solo si elegible, máximo una y en el hueco 2; determinismo por seed; flojo = primario toma el
   siguiente; atributo sin plantilla elegible); `missionProgress` por plantilla, incluidas las duras
-  sobre la obra asignada; `PetDayCounts` con filas de ayer y hoy y con `updated_at` a caballo de
-  medianoche local; `unlockedAchievements` en los umbrales; `deriveAttributes` con `missionXp`;
+  sobre la obra asignada y `review` cumplida por estado; `PetDayCounts` con filas de ayer y hoy y
+  con `updated_at` a caballo de medianoche local; `unlockedAchievements` en los umbrales; `deriveAttributes` con `missionXp`;
   `getCelebrationKey` con scope `key` (y error si falta `key`); hash determinista.
 - **E2E** (contra `next build` + `next start`, Supabase dev): abrir `/mascota` crea tres misiones y
   las pinta; registrar una sesión de 20 minutos y volver marca `session_minutes` completada y la
@@ -241,4 +241,4 @@ Cada línea, una issue al cerrar esta spec:
 - Escalado de objetivos por nivel o por historial del usuario.
 - `finish_pass` para películas (hoy solo libros y series tienen «a punto de acabar»).
 - Push por misión pendiente (fase 3, #1014).
-- Falso positivo de `ratings`/`reviewedKeys` por `updated_at` (si molesta, columna `rated_at`).
+- Falso positivo de `ratings` por `updated_at` (si molesta, columna `rated_at`).
