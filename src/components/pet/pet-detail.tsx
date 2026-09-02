@@ -13,12 +13,11 @@ import { RenameForm } from "./rename-form";
 export function PetDetail({ pet }: { pet: PetSnapshot }) {
   const t = useTranslations("pet");
   const [picking, setPicking] = useState(false);
-  const [pendingClass, setPendingClass] = useState<PetClass | null>(null);
   const [, startTransition] = useTransition();
   const primary = CLASS_PRIMARY[pet.petClass];
   const max = Math.max(1, ...PET_ATTRIBUTES.map((a) => pet.attributes[a]));
   const span = Math.max(1, pet.nextLevelXp - pet.levelFloorXp);
-  const progress = Math.min(100, Math.round(((pet.xp - pet.levelFloorXp) / span) * 100));
+  const progress = Math.max(0, Math.min(100, Math.round(((pet.xp - pet.levelFloorXp) / span) * 100)));
 
   function confirmClass(cls: PetClass) {
     if (!window.confirm(t("changeClass.confirm", { cls: t(`classes.${cls}`) }))) return;
@@ -89,7 +88,12 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
       <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card">
         <RenameForm name={pet.name} />
         {picking ? (
-          <ClassPicker value={pendingClass ?? pet.petClass} onChange={(cls) => { setPendingClass(cls); confirmClass(cls); }} stage={pet.stage} name="newClass" />
+          <div className="flex flex-col gap-3">
+            <ClassPicker value={pet.petClass} onChange={confirmClass} stage={pet.stage} name="newClass" />
+            <button type="button" onClick={() => setPicking(false)} className={buttonVariants("ghost", "self-start px-4")}>
+              {t("changeClass.cancel")}
+            </button>
+          </div>
         ) : (
           <button type="button" onClick={() => setPicking(true)} className={buttonVariants("secondary", "self-start px-4")}>
             {t("changeClass.label")}

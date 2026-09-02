@@ -3136,7 +3136,8 @@
     "rename": { "label": "Renombrar", "submit": "Guardar" },
     "changeClass": {
       "label": "Cambiar de clase",
-      "confirm": "Cambiar a {cls}: cambia su aspecto y su bonus, no sus atributos."
+      "confirm": "Cambiar a {cls}: cambia su aspecto y su bonus, no sus atributos.",
+      "cancel": "Cancelar"
     },
     "companion": {
       "label": "Compañera flotante",
