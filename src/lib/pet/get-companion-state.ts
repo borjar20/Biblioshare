@@ -1,5 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
-import { todayISO } from "@/lib/stats/dates";
+import { todayISO, toISODate } from "@/lib/stats/dates";
 import { isPetClass, type PetClass, type PetMood, type PetStage } from "./classes";
 import { daysBetweenISO } from "./counts";
 import { moodFor, stageFor } from "./derive";
@@ -15,15 +15,16 @@ export interface CompanionState {
 }
 
 // Lectura LIGERA (spec §8): corre en cada página del shell, así que no deriva
-// atributos. La etapa sale de `last_stage` (lo último que calculó /mascota) y
-// el humor de la última actividad, que son cuatro consultas de una fila.
+// atributos. La etapa sale de `last_level` (lo último que calculó /mascota)
+// vía `stageFor`, y el humor de la última actividad, que son cuatro
+// consultas de una fila.
 export async function getCompanionState(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<CompanionState | null> {
   const { data: pet, error } = await supabase
     .from("pet_state")
-    .select("name, class, hatched_at, companion_hidden, last_level, last_stage")
+    .select("name, class, hatched_at, companion_hidden, last_level")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
@@ -36,17 +37,23 @@ export async function getCompanionState(
     supabase.from("club_poll_votes").select("voted_at").eq("user_id", userId).order("voted_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
+  for (const r of [session, finished, post, vote]) {
+    if (r.error) throw r.error;
+  }
+
+  // timestamptz → día LOCAL, la misma convención que session_date y todayISO()
   const last = [
     session.data?.session_date,
     finished.data?.finished_on,
-    post.data?.created_at?.slice(0, 10),
-    vote.data?.voted_at?.slice(0, 10),
+    post.data?.created_at ? toISODate(new Date(post.data.created_at)) : undefined,
+    vote.data?.voted_at ? toISODate(new Date(vote.data.voted_at)) : undefined,
   ]
     .filter((d): d is string => Boolean(d))
     .sort()
     .at(-1) ?? null;
 
-  const hatchedISO = pet.hatched_at.slice(0, 10);
+  // timestamptz → día LOCAL, la misma convención que session_date y todayISO()
+  const hatchedISO = toISODate(new Date(pet.hatched_at));
   const hasActivitySinceHatch = last != null && last >= hatchedISO;
   const today = todayISO();
 

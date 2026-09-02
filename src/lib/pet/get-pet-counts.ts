@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { STREAK_MILESTONES } from "@/lib/celebrations/registry";
+import { toISODate } from "@/lib/stats/dates";
 import { getStreaks } from "@/lib/stats/get-streaks";
 import {
   countCompletedSagas,
@@ -84,9 +85,11 @@ export async function getPetCounts(
   });
   const passRows = passes.data ?? [];
 
-  // Objetivo diario: días cuyos minutos (solo sesiones de lectura) alcanzan el
-  // objetivo ACTUAL. Se usa el objetivo de hoy para todo el historial: es lo
-  // que hay, y rebalancear no exige historia.
+  // Objetivo diario: días cuyos minutos de sesión alcanzan el objetivo
+  // ACTUAL. Misma regla que earnDailyLoopCelebrations (todas las
+  // progress_sessions del día; las series no tienen sesiones). Se usa el
+  // objetivo de hoy para todo el historial: es lo que hay, y rebalancear no
+  // exige historia.
   const goal = profile.data?.daily_goal_minutes ?? null;
   let dailyGoalDays = 0;
   if (goal && goal > 0) {
@@ -132,11 +135,12 @@ export async function getPetCounts(
   }
 
   const postRows = posts.data ?? [];
+  // timestamptz → día LOCAL, la misma convención que session_date y todayISO()
   const lastDates = [
     ...sessionRows.map((s) => s.session_date),
     ...passRows.map((p) => p.finished_on).filter((d): d is string => d != null),
-    ...postRows.map((p) => p.created_at.slice(0, 10)),
-    ...(votes.data ?? []).map((v) => v.voted_at.slice(0, 10)),
+    ...postRows.map((p) => toISODate(new Date(p.created_at))),
+    ...(votes.data ?? []).map((v) => toISODate(new Date(v.voted_at))),
   ].sort();
 
   const counts: PetCounts = {
