@@ -15,17 +15,16 @@ test("configurar, ajustar, chips rápidos, recargar, deshacer y reiniciar", asyn
     await page.getByLabel("Nombre del jugador").fill(name);
     await page.getByLabel("Nombre del jugador").press("Enter");
   }
-  // Ficha viva: Madera 🌲 a 5 para jugadores; Oro al banco.
-  await page.getByLabel("Nombre del recurso").fill("Madera");
-  await page.getByRole("button", { name: "Icono 🌲" }).click();
+  // Presets: un toque crea Madera (jugadores, 0); su ficha abre el panel
+  // donde el inicial sube a 5. Oro se crea y pasa al banco.
+  await page.getByRole("button", { name: "Crear Madera" }).click();
+  await page.getByRole("button", { name: "Editar Madera" }).click();
   for (let i = 0; i < 5; i++) {
     await page.getByRole("button", { name: "Uno más de inicio" }).click();
   }
-  await page.getByRole("button", { name: "Jugadores", exact: true }).click();
-  await page.getByRole("button", { name: "Crear ficha" }).click();
-  await page.getByLabel("Nombre del recurso").fill("Oro");
+  await page.getByRole("button", { name: "Crear Oro" }).click();
+  await page.getByRole("button", { name: "Editar Oro" }).click();
   await page.getByRole("button", { name: "Banco", exact: true }).click();
-  await page.getByRole("button", { name: "Crear ficha" }).click();
 
   // Tablero: banco primero, luego Ana (res-0) y Beto. Madera de Ana a 5.
   await expect(page.getByTestId("res-0-Madera")).toHaveText("5");
@@ -61,4 +60,15 @@ test("la tarjeta del hub navega a recursos", async ({ page }) => {
   await page.getByRole("link", { name: "Recursos", exact: true }).click();
   await expect(page).toHaveURL(/\/partidas\/recursos$/);
   await expect(page.getByRole("heading", { name: "Recursos" })).toBeVisible();
+});
+
+test("recurso a medida: el «+» abre el único input y crea con glifo", async ({ page }) => {
+  await page.goto("/partidas/recursos");
+  await expect(page.getByLabel("Nombre del recurso")).toHaveCount(0);
+  await page.getByRole("button", { name: "Recurso a medida" }).click();
+  await page.getByLabel("Nombre del recurso").fill("Maná");
+  await page.getByRole("button", { name: "Icono Energía" }).click();
+  await page.getByRole("button", { name: "Crear ficha" }).click();
+  await expect(page.getByRole("button", { name: "Editar Maná" })).toBeVisible();
+  await expect(page.getByLabel("Nombre del recurso")).toHaveCount(0);
 });

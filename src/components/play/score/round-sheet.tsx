@@ -5,29 +5,21 @@ import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
 import type { PlayStore } from "@/lib/play/core/store";
 import type { RoundEditedEvent, RoundScoredEvent } from "@/lib/play/score/events";
+import { applyDelta, QUICK_DELTAS } from "@/lib/play/score/round-draft";
 import type { ScoreState } from "@/lib/play/score/types";
 import { buttonVariants } from "@/components/ui/button";
+import { HoldRepeatButton } from "../ui/hold-repeat-button";
+import { SeatToken, initials } from "../ui/seat-token";
 import { PlaySheet } from "../play-sheet";
 
 const at = () => Date.now();
 
-/** Texto de un input -> puntuación entera. Vacío cuenta 0; lo no numérico también
- *  (mismo trato tolerante que `player-sheet.tsx` con las vidas exactas), y el
- *  reducer sigue siendo quien decide si el resultado es válido. */
-function parseScore(raw: string): number {
-  const trimmed = raw.trim();
-  if (trimmed === "") return 0;
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
-}
-
 /**
- * Hoja de UNA ronda: un input por jugador, positivo o negativo. `round === null` es
- * alta (todo a cero); un número es edición de esa ronda, precargada con sus valores.
- *
- * Igual que `player-sheet.tsx` con las vidas exactas: el input es texto, no
- * `type="number"` — así el `-` de un negativo se escribe sin que el navegador lo
- * bloquee ni redondee los steppers nativos.
+ * Hoja de UNA ronda, sin teclado del sistema: chips ±5/±10/±20 que aplican al
+ * asiento ACTIVO (el último tocado) y, por fila, ficha + número + −/+ con
+ * mantener. Con N `<input>` apilados el teclado tapaba «Apuntar» a partir de
+ * seis jugadores, y era el gesto más repetido de la herramienta (critique
+ * 2026-09-01). `round === null` es alta (todo a cero); un número es edición.
  */
 export function RoundSheet({
   state,
@@ -41,39 +33,47 @@ export function RoundSheet({
   onClose: () => void;
 }) {
   const t = useTranslations("play");
-  // Alta: campos VACÍOS con el 0 solo de placeholder — un valor físico obliga a
-  // borrarlo antes de escribir (refinado 2026-08-31). parseScore ya trata "" como
-  // 0, así que confirmar sin tocar un campo sigue puntuando 0. La edición sí
-  // precarga los valores reales: ahí son dato, no relleno.
-  const [values, setValues] = useState<string[]>(() =>
-    round === null
-      ? state.setup.participants.map(() => "")
-      : state.rounds[round].map((score) => String(score)),
+  const [values, setValues] = useState<number[]>(() =>
+    round === null ? state.setup.participants.map(() => 0) : [...state.rounds[round]],
   );
+  const [active, setActive] = useState(0);
+  // Mantener pulsado acumula en local y se pinta encima del valor hasta soltar.
+  const [preview, setPreview] = useState<{ seat: number; delta: number } | null>(null);
+
+  const shown = (seat: number) =>
+    values[seat] + (preview && preview.seat === seat ? preview.delta : 0);
+
+  // U+2212 (menos matemático), no el guion ASCII de `String(n)`: mismo signo
+  // que ya usan los chips ±5/±10/±20 de esta hoja.
+  const formatScore = (n: number) => (n < 0 ? `−${Math.abs(n)}` : String(n));
+
+  function bump(seat: number, delta: number) {
+    setActive(seat);
+    setPreview(null);
+    setValues((v) => applyDelta(v, seat, delta));
+  }
 
   function confirm() {
-    const scores = values.map(parseScore);
-    // Si el reducer rechaza la ronda (longitud imposible aquí, pero la regla es la
-    // misma que en las hojas de mtg: un `dispatch` fallido NO cierra), la hoja se
-    // queda abierta para que se pueda corregir sin perder lo escrito.
     const applied =
       round === null
         ? store.dispatch(
             makeEvent<RoundScoredEvent["type"], RoundScoredEvent["payload"]>(
               "round_scored",
-              { scores },
+              { scores: values },
               at(),
             ),
           )
         : store.dispatch(
             makeEvent<RoundEditedEvent["type"], RoundEditedEvent["payload"]>(
               "round_edited",
-              { round, scores },
+              { round, scores: values },
               at(),
             ),
           );
     if (applied) onClose();
   }
+
+  const activeName = state.setup.participants[active]?.name ?? "";
 
   return (
     <PlaySheet
@@ -81,31 +81,66 @@ export function RoundSheet({
       onClose={onClose}
     >
       <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2 px-3" role="group" aria-label={t("roundSheet.quickFor", { name: activeName })}>
+          {QUICK_DELTAS.map((delta) => (
+            <button
+              key={delta}
+              type="button"
+              onClick={() => bump(active, delta)}
+              aria-label={t("roundSheet.quick", { n: delta > 0 ? `+${delta}` : String(delta), name: activeName })}
+              className="tap-44 h-11 min-w-11 rounded-chip border border-border bg-surface px-3 font-mono text-[14px] tabular-nums"
+            >
+              {delta > 0 ? `+${delta}` : `−${Math.abs(delta)}`}
+            </button>
+          ))}
+        </div>
+
         {state.setup.participants.map((participant, seat) => (
-          <div key={participant.id} className="flex items-center gap-2.5 px-3">
-            <span className="min-w-0 flex-1 truncate text-[14px]">{participant.name}</span>
-            <input
-              value={values[seat]}
-              onChange={(e) => {
-                const next = [...values];
-                next[seat] = e.target.value;
-                setValues(next);
-              }}
-              onFocus={(e) => e.currentTarget.select()}
-              placeholder="0"
-              inputMode="numeric"
+          <div
+            key={participant.id}
+            className={`flex items-center gap-2 rounded-card px-2 py-2 ${seat === active ? "bg-surface-muted" : ""}`}
+          >
+            <SeatToken
+              variant="seat"
+              seat={seat}
+              caption={participant.name}
+              label={t("roundSheet.activate", { name: participant.name })}
+              selected={seat === active}
+              pressed={seat === active}
+              onClick={() => setActive(seat)}
+            >
+              {initials(participant.name)}
+            </SeatToken>
+            <span
+              className="min-w-0 flex-1 text-right font-serif text-[24px] font-semibold tabular-nums"
               aria-label={t("roundSheet.scoreOf", { name: participant.name })}
-              className="w-20 rounded-chip border border-border bg-background px-2.5 py-2 text-right font-mono tabular-nums"
+            >
+              {formatScore(shown(seat))}
+            </span>
+            <HoldRepeatButton
+              direction={-1}
+              label={t("roundSheet.minus", { name: participant.name })}
+              onPreview={(acc) => setPreview({ seat, delta: acc })}
+              onCommit={(delta) => bump(seat, delta)}
+            />
+            <HoldRepeatButton
+              direction={1}
+              label={t("roundSheet.plus", { name: participant.name })}
+              onPreview={(acc) => setPreview({ seat, delta: acc })}
+              onCommit={(delta) => bump(seat, delta)}
             />
           </div>
         ))}
-        <button
-          type="button"
-          onClick={confirm}
-          className={buttonVariants("primary", "mt-2 w-full justify-center py-2.5 text-[14px]")}
-        >
-          {t("roundSheet.confirm")}
-        </button>
+
+        <div className="sticky bottom-0 bg-surface pt-2">
+          <button
+            type="button"
+            onClick={confirm}
+            className={buttonVariants("primary", "w-full justify-center py-2.5 text-[14px]")}
+          >
+            {t("roundSheet.confirm")}
+          </button>
+        </div>
       </div>
     </PlaySheet>
   );

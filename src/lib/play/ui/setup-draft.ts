@@ -197,6 +197,30 @@ export function setPlayerCount(draft: SetupDraft, count: number): SetupDraft {
   };
 }
 
+/** Primer `p{n}` libre: quitar por el medio y volver a añadir no puede duplicar. */
+function nextSeatIndex(players: readonly DraftPlayer[]): number {
+  const used = new Set(players.map((p) => p.id));
+  let n = 0;
+  while (used.has(playerId(n))) n++;
+  return n;
+}
+
+/** Un asiento vacío más, si el modo lo admite (fichas de la mesa, 2026-09-01). */
+export function addPlayer(draft: SetupDraft): SetupDraft {
+  if (draft.players.length >= modeConfig(draft.mode).maxPlayers) return draft;
+  return { ...draft, players: [...draft.players, emptyPlayer(nextSeatIndex(draft.players))] };
+}
+
+/** Quita un asiento y recoloca quién empieza: el quitado pasa al primero, los de detrás bajan uno. */
+export function removePlayer(draft: SetupDraft, index: number): SetupDraft {
+  if (draft.players.length <= modeConfig(draft.mode).minPlayers) return draft;
+  if (index < 0 || index >= draft.players.length) return draft;
+  const players = draft.players.filter((_, i) => i !== index);
+  const startingSeat =
+    draft.startingSeat === index ? 0 : draft.startingSeat > index ? draft.startingSeat - 1 : draft.startingSeat;
+  return { ...draft, players, startingSeat };
+}
+
 export function setMode(draft: SetupDraft, mode: MtgMode): SetupDraft {
   const config = modeConfig(mode);
   // El modo manda sobre las vidas y sobre cuánta gente y cuántos comandantes caben:

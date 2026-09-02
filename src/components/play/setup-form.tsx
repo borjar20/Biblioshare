@@ -9,14 +9,16 @@ import { usePlayers } from "@/lib/play/core/use-players";
 import { modeConfig, MTG_MODE_IDS, type MtgMode } from "@/lib/play/mtg/modes";
 import { rememberTable, rotateStartingSeat } from "@/lib/play/ui/table-memory";
 import { CARD_BACKGROUND_IDS, seatAccent } from "@/lib/play/ui/seats";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 import {
   addCommander,
+  addPlayer,
   assignRegular,
   assignSelf,
   draftFromSetup,
   newDraft,
   removeCommander,
-  setPlayerCount,
+  removePlayer,
   toSetup,
   updateCommander,
   updatePlayer,
@@ -24,10 +26,16 @@ import {
 } from "@/lib/play/ui/setup-draft";
 import { buttonVariants } from "@/components/ui/button";
 import { RegularPicker } from "./regular-picker";
+import { SeatRow } from "./ui/seat-row";
+import { SeatToken, initials } from "./ui/seat-token";
 import { useRememberedTable } from "./use-remembered-table";
 
 const FIELD =
   "w-full rounded-chip border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground";
+
+const LIFE_CHIPS = [20, 30, 40] as const;
+const LIFE_MIN = 1;
+const LIFE_MAX = 999;
 
 function parseMode(value: string | null): MtgMode {
   return MTG_MODE_IDS.includes(value as MtgMode) ? (value as MtgMode) : "commander";
@@ -43,8 +51,9 @@ function parseMode(value: string | null): MtgMode {
  *    «puedes empezar sin escribir nada» estaba DESPUÉS del botón que justificaba.
  * 2. **La fricción está en la segunda partida.** Por eso «Revancha» trae la mesa
  *    entera puesta y pasa por AQUÍ en vez de arrancar sola: entre dos partidas casi
- *    siempre cambia algo, y corregirlo con la partida ya empezada es peor. En
- *    revancha la mesa abre DESPLEGADA: se viene justo a mirar los nombres.
+ *    siempre cambia algo, y corregirlo con la partida ya empezada es peor. La fila
+ *    de fichas ya enseña los nombres sin abrir nada: no hace falta desplegar un
+ *    panel por asiento para decidir si hay que tocarlo.
  * 3. El color de asiento se reparte aquí para que el salto al tablero no sorprenda:
  *    el que era ciruela en la lista es ciruela en la mesa. Y el orden de esta lista
  *    ES el orden de turnos.
@@ -133,6 +142,37 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
     .map((p) => p.playerId)
     .filter((id): id is string => id !== undefined);
 
+  const [openSeat, setOpenSeat] = useState<string | null>(null);
+  const openIndex = draft.players.findIndex((p) => p.id === openSeat);
+  const [lifePreview, setLifePreview] = useState(0);
+  const clampLife = (n: number) => Math.min(LIFE_MAX, Math.max(LIFE_MIN, n));
+  const commitLife = (total: number) => {
+    setEdited({ ...draft, startingLife: clampLife(draft.startingLife + total) });
+    setLifePreview(0);
+  };
+  const shownLife = clampLife(draft.startingLife + lifePreview);
+  const availableRegulars = regulars.filter((r) => !takenIds.includes(r.playerId));
+
+  function seatRegular(regular: { playerId: string; name: string }) {
+    const free = draft.players.findIndex(
+      (p) => p.name.trim() === "" && p.playerId === undefined && p.userId === undefined,
+    );
+    if (free >= 0) {
+      setEdited(assignRegular(draft, free, regular));
+      return;
+    }
+    const grown = addPlayer(draft);
+    if (grown === draft) return;
+    setEdited(assignRegular(grown, grown.players.length - 1, regular));
+  }
+
+  function addSeat() {
+    const grown = addPlayer(draft);
+    if (grown === draft) return;
+    setEdited(grown);
+    setOpenSeat(grown.players[grown.players.length - 1].id);
+  }
+
   // Tu propia cuenta como asiento (issue #985): un solo «Yo» por mesa. El
   // nombre viene del perfil (server) y cae a la etiqueta «Yo» si no hay.
   const selfSeated = draft.players.some((p) => p.userId === identity);
@@ -173,38 +213,7 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
         </p>
       </header>
 
-      {/* Número de jugadores. Solo sale si el modo admite más de uno: en Duelo son
-          exactamente dos y un selector de un solo valor es ruido. */}
-      {config.minPlayers !== config.maxPlayers && (
-        <fieldset>
-          <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
-            {t("setup.players")}
-          </legend>
-          <div className="flex gap-2">
-            {Array.from(
-              { length: config.maxPlayers - config.minPlayers + 1 },
-              (_, i) => config.minPlayers + i,
-            ).map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={draft.players.length === n}
-                onClick={() => setEdited(setPlayerCount(draft, n))}
-                className={`tap-44 h-11 min-w-11 flex-1 rounded-chip border font-mono text-[15px] tabular-nums transition-colors ${
-                  draft.players.length === n
-                    ? "border-accent bg-accent/10 text-accent-ink"
-                    : "border-border bg-surface"
-                }`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      )}
-
-      {/* El botón ANTES que los campos: empezar no exige leerlos, y el pie que lo
-          dice va pegado al botón, no perdido al final de la página. */}
+      {/* El botón ANTES que la mesa: empezar no exige tocarla. */}
       <div>
         <button
           type="button"
@@ -221,173 +230,201 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
         </p>
       </div>
 
-      {/* La mesa, plegada: es la parte opcional. En revancha abre desplegada porque
-          a esta pantalla se viene justo a repasar quién sigue sentado. El summary
-          enseña los nombres para decidir si hace falta abrir. */}
-      <details
-        open={isRematch || isReconfigure}
-        className="rounded-card border border-border bg-surface px-3 py-2.5"
-      >
-        <summary className="cursor-pointer text-[13px] font-semibold">
-          {t("setup.table")}{" "}
-          <span className="font-normal text-muted-foreground">
-            · {draft.players.map((_, i) => seatName(i)).join(", ")}
-          </span>
-        </summary>
+      {/* La mesa como fichas: el número de jugadores ES el número de fichas.
+          Tocar una abre SU panel; antes eran 3-4 campos por asiento y el
+          pliegue abría desplegado en revancha (14 controles con cuatro). */}
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {t("setup.players")}
+        </p>
+        <SeatRow
+          seats={draft.players.map((p, i) => ({
+            id: p.id,
+            caption: seatName(i),
+            content: p.name.trim() === "" ? i + 1 : initials(p.name),
+            selected: p.id === openSeat,
+          }))}
+          onSeatTap={(id) => setOpenSeat(id === openSeat ? null : id)}
+          panelId="mtg-seat"
+          regulars={availableRegulars}
+          onSeatRegular={seatRegular}
+          canAdd={draft.players.length < config.maxPlayers}
+          canSeatRegulars={
+            draft.players.length < config.maxPlayers ||
+            draft.players.some((p) => p.name.trim() === "" && !p.playerId && !p.userId)
+          }
+          onAdd={addSeat}
+          addControls="mtg-seat"
+        />
 
-        <ul className="mt-3 flex flex-col gap-2">
-          {draft.players.map((player, i) => {
-            const accent = seatAccent(i);
-            return (
-              <li
-                key={player.id}
-                className="flex gap-3 overflow-hidden rounded-card border border-border bg-surface"
-              >
-                {/* La barra del asiento, con su color: el que era ciruela aquí lo es
-                    también en la mesa. */}
-                <span aria-hidden className={`${accent.bar} w-1.5 shrink-0`} />
-
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-2.5 pr-3">
-                  <input
-                    value={player.name}
-                    onChange={(e) => setEdited(updatePlayer(draft, i, { name: e.target.value }))}
-                    placeholder={t("setup.playerN", { n: i + 1 })}
-                    aria-label={t("setup.name")}
-                    className={`${FIELD} font-serif text-[15px] font-semibold`}
-                  />
-
-                  <RegularPicker
-                    identity={identity}
-                    players={regulars}
-                    takenIds={takenIds}
-                    query={player.name}
-                    assigned={player.playerId !== undefined || player.userId !== undefined}
-                    onPick={(regular) => setEdited(assignRegular(draft, i, regular))}
-                    onRemembered={(regular) => setEdited(assignRegular(draft, i, regular))}
-                    self={self}
-                    onPickSelf={(me) => setEdited(assignSelf(draft, i, me))}
-                  />
-
-                  <div className="flex gap-1.5">
-                    <input
-                      value={player.deckName}
-                      onChange={(e) =>
-                        setEdited(updatePlayer(draft, i, { deckName: e.target.value }))
-                      }
-                      placeholder={t("setup.noDeck")}
-                      aria-label={t("setup.deck")}
-                      className={FIELD}
-                    />
-                  </div>
-
-                  {/* Partner sin campo nuevo: el comandante es una LISTA de uno o
-                      dos. Para el motor son dos comandantes con su propio contador
-                      de 21, así que el mismo hueco sirve para partner, background y
-                      companion sin inventar tres conceptos. */}
-                  {player.commanders.map((commander, j) => (
-                    <div key={commander.id} className="flex gap-1.5">
-                      <input
-                        value={commander.name}
-                        onChange={(e) => setEdited(updateCommander(draft, i, j, e.target.value))}
-                        placeholder={t("setup.noCommander")}
-                        aria-label={t("setup.commanderN", { n: j + 1 })}
-                        className={FIELD}
-                      />
-                      {player.commanders.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setEdited(removeCommander(draft, i, j))}
-                          aria-label={t("setup.removeCommander")}
-                          className="tap-44 h-8 w-8 shrink-0 rounded-chip border border-border text-[13px] text-muted-foreground"
-                        >
-                          −
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* El fondo de la tarjeta se elige AQUÍ y no en la partida: viaja
-                      dentro de `game_started` y no hay evento que lo cambie después
-                      (#943). Es una referencia —un id de tinte—, nunca bytes: un
-                      data-URI acabaría en el log y en el snapshot (#942). */}
-                  <div className="flex gap-1.5 pt-0.5">
-                    {CARD_BACKGROUND_IDS.map((id, tint) => {
-                      const chosen = (player.cardBackground ?? `seat-${i + 1}`) === id;
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => setEdited(updatePlayer(draft, i, { cardBackground: id }))}
-                          aria-label={t("setup.background")}
-                          aria-pressed={chosen}
-                          className={`h-6 w-6 rounded-chip ${seatAccent(tint).tint} ${
-                            chosen ? `ring-2 ${seatAccent(tint).ring}` : ""
-                          }`}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {player.commanders.length < config.maxCommanders && (
-                    <button
-                      type="button"
-                      onClick={() => setEdited(addCommander(draft, i))}
-                      className="self-start font-mono text-[10px] uppercase tracking-widest text-accent-ink"
-                    >
-                      + {t("setup.addCommander")}
-                    </button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </details>
-
-      {/* Lo avanzado, plegado pero enseñando su estado: es lo único que hace falta
-          saber para decidir si abrirlo. */}
-      <details className="rounded-card border border-border bg-surface px-3 py-2.5">
-        <summary className="cursor-pointer text-[13px] font-semibold">
-          {t("setup.advanced")}{" "}
-          <span className="font-normal text-muted-foreground">
-            · {t("setup.advancedSummary", {
-              life: draft.startingLife,
-              name: seatName(draft.startingSeat),
-            })}
-          </span>
-        </summary>
-
-        <div className="mt-3 flex flex-col gap-3">
-          <label className="flex items-center justify-between gap-3 text-[13px]">
-            {t("setup.startingLife")}
-            <input
-              type="number"
-              inputMode="numeric"
-              onFocus={(e) => e.currentTarget.select()}
-              value={draft.startingLife}
-              onChange={(e) =>
-                setEdited({ ...draft, startingLife: Number(e.target.value) || 0 })
+        {openIndex >= 0 ? (
+          <div id="mtg-seat" className="mt-3 flex flex-col gap-2 rounded-card border border-border bg-surface p-3">
+            <div className="flex items-center gap-2">
+              <input
+                key={draft.players[openIndex].id}
+                autoFocus
+                value={draft.players[openIndex].name}
+                onChange={(e) => setEdited(updatePlayer(draft, openIndex, { name: e.target.value }))}
+                placeholder={t("setup.playerN", { n: openIndex + 1 })}
+                aria-label={t("setup.name")}
+                className={`${FIELD} min-w-0 font-serif text-[15px] font-semibold`}
+              />
+              {config.minPlayers !== config.maxPlayers ? (
+                <button
+                  type="button"
+                  disabled={draft.players.length <= config.minPlayers}
+                  onClick={() => {
+                    setEdited(removePlayer(draft, openIndex));
+                    setOpenSeat(null);
+                  }}
+                  className="tap-44 shrink-0 rounded-chip border border-border px-3 py-1.5 text-[13px] text-muted-foreground disabled:opacity-40"
+                >
+                  {t("seats.removeSeat")}
+                </button>
+              ) : null}
+            </div>
+            <RegularPicker
+              identity={identity}
+              players={regulars}
+              takenIds={takenIds}
+              query={draft.players[openIndex].name}
+              assigned={
+                draft.players[openIndex].playerId !== undefined ||
+                draft.players[openIndex].userId !== undefined
               }
-              className={`${FIELD} w-24 text-right font-mono tabular-nums`}
+              onPick={(regular) => setEdited(assignRegular(draft, openIndex, regular))}
+              onRemembered={(regular) => setEdited(assignRegular(draft, openIndex, regular))}
+              self={self}
+              onPickSelf={(me) => setEdited(assignSelf(draft, openIndex, me))}
+              suggestOnEmpty={false}
             />
-          </label>
+            <input
+              value={draft.players[openIndex].deckName}
+              onChange={(e) => setEdited(updatePlayer(draft, openIndex, { deckName: e.target.value }))}
+              placeholder={t("setup.noDeck")}
+              aria-label={t("setup.deck")}
+              className={FIELD}
+            />
+            {draft.players[openIndex].commanders.map((commander, j) => (
+              <div key={commander.id} className="flex gap-1.5">
+                <input
+                  value={commander.name}
+                  onChange={(e) => setEdited(updateCommander(draft, openIndex, j, e.target.value))}
+                  placeholder={t("setup.noCommander")}
+                  aria-label={t("setup.commanderN", { n: j + 1 })}
+                  className={FIELD}
+                />
+                {draft.players[openIndex].commanders.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setEdited(removeCommander(draft, openIndex, j))}
+                    aria-label={t("setup.removeCommander")}
+                    className="tap-44 h-11 w-11 shrink-0 rounded-chip border border-border text-[16px] text-muted-foreground"
+                  >
+                    −
+                  </button>
+                )}
+              </div>
+            ))}
+            {draft.players[openIndex].commanders.length < config.maxCommanders && (
+              <button
+                type="button"
+                onClick={() => setEdited(addCommander(draft, openIndex))}
+                className="tap-44 self-start font-mono text-[10px] uppercase tracking-widest text-accent-ink"
+              >
+                + {t("setup.addCommander")}
+              </button>
+            )}
+            {/* El fondo se elige AQUÍ: viaja en game_started y no hay evento
+                para cambiarlo después (#943). Referencia, nunca bytes (#942). */}
+            <div className="flex gap-2 pt-1" role="group" aria-label={t("setup.background")}>
+              {CARD_BACKGROUND_IDS.map((id, tint) => {
+                const chosen = (draft.players[openIndex].cardBackground ?? `seat-${openIndex + 1}`) === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setEdited(updatePlayer(draft, openIndex, { cardBackground: id }))}
+                    aria-label={t("setup.backgroundN", { n: tint + 1 })}
+                    aria-pressed={chosen}
+                    className={`h-11 w-11 rounded-chip ${seatAccent(tint).tint} ${
+                      chosen ? `ring-2 ${seatAccent(tint).ring}` : ""
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </section>
 
-          <label className="flex items-center justify-between gap-3 text-[13px]">
-            {t("setup.startingSeat")}
-            <select
-              value={draft.startingSeat}
-              onChange={(e) => setEdited({ ...draft, startingSeat: Number(e.target.value) })}
-              className={`${FIELD} w-40`}
+      {/* Vidas: chips de los tres valores de siempre + stepper con mantener. */}
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {t("setup.startingLife")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {LIFE_CHIPS.map((life) => (
+            <button
+              key={life}
+              type="button"
+              aria-pressed={draft.startingLife === life}
+              onClick={() => setEdited({ ...draft, startingLife: life })}
+              className={`tap-44 h-11 min-w-11 rounded-chip border px-3 font-mono text-[15px] tabular-nums transition-colors ${
+                draft.startingLife === life ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
+              }`}
             >
-              {draft.players.map((player, i) => (
-                <option key={player.id} value={i}>
-                  {seatName(i)}
-                </option>
-              ))}
-            </select>
-          </label>
+              {life}
+            </button>
+          ))}
+          <span className="ml-auto inline-flex items-center gap-1">
+            <HoldRepeatButton
+              direction={-1}
+              label={t("setup.lifeFewer")}
+              disabled={draft.startingLife <= LIFE_MIN}
+              onPreview={setLifePreview}
+              onCommit={commitLife}
+            />
+            {/* Sin aria-live: con Cache Components el DOM de esta pantalla queda congelado
+                y oculto tras el router.push a /partida/activa, y una región viva aquí se
+                cuela en el recuento de aria-live del e2e del tablero (issue #1003). */}
+            <span className="w-14 text-center font-serif text-[22px] font-semibold tabular-nums">
+              {shownLife}
+            </span>
+            <HoldRepeatButton
+              direction={1}
+              label={t("setup.lifeMore")}
+              disabled={draft.startingLife >= LIFE_MAX}
+              onPreview={setLifePreview}
+              onCommit={commitLife}
+            />
+          </span>
         </div>
-      </details>
+      </section>
+
+      {/* Quién empieza: la misma fila de fichas, en pequeño; la elegida con halo. */}
+      <section>
+        <p id="mtg-starting-seat" className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {t("setup.startingSeat")}
+        </p>
+        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="mtg-starting-seat">
+          {draft.players.map((p, i) => (
+            <SeatToken
+              key={p.id}
+              variant="seat"
+              seat={i}
+              size="sm"
+              caption={seatName(i)}
+              label={t("setup.startsWith", { name: seatName(i) })}
+              selected={draft.startingSeat === i}
+              pressed={draft.startingSeat === i}
+              onClick={() => setEdited({ ...draft, startingSeat: i })}
+            >
+              {p.name.trim() === "" ? i + 1 : initials(p.name)}
+            </SeatToken>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

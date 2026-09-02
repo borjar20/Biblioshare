@@ -11,10 +11,16 @@ import type { Participant } from "@/lib/play/core/types";
 import type { ScoreDirection, ScoreSetup, ScoreTarget } from "@/lib/play/score/types";
 import { gameNameSuggestions } from "@/lib/play/ui/game-names";
 import { buttonVariants } from "@/components/ui/button";
-import { SeatToken, initials } from "../ui/seat-token";
-import { RegularTokens } from "../ui/regular-tokens";
+import { initials } from "../ui/seat-token";
+import { SeatRow } from "../ui/seat-row";
 import { RegularPicker } from "../regular-picker";
-import { parseScorePreset, scoreTargetForPreset, type ScorePresetId } from "./score-preset-chooser";
+import {
+  parseScorePreset,
+  scoreTargetForPreset,
+  SCORE_PRESET_PREFILL,
+  type ScorePresetId,
+} from "./score-preset-chooser";
+import { TargetStepper } from "./target-stepper";
 
 const FIELD =
   "w-full rounded-chip border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground";
@@ -38,6 +44,9 @@ type ScoreDraft = {
   targetKind: "rounds" | "points";
   targetValue: number;
   targetActive: boolean;
+  /** Memoria por tipo de límite: cambiar Rondas <-> Puntos no debe borrar el
+   * número que ya se había escrito para el tipo que se abandona (review). */
+  targetValues: { rounds: number; points: number };
   players: DraftPlayer[];
   /** A qué se juega. String simple, "" = sin etiqueta (spec task 3). */
   gameName: string;
@@ -61,14 +70,23 @@ function emptyPlayers(count: number): DraftPlayer[] {
   return Array.from({ length: count }, (_, i) => ({ id: playerId(i), name: "" }));
 }
 
+/** Los dos prefills, indexados por tipo (`rounds`/`points`) en vez de por
+ * preset (`rondas`/`puntos`) -- el shape que consume `ScoreDraft.targetValues`. */
+function defaultTargetValues(): { rounds: number; points: number } {
+  return { rounds: SCORE_PRESET_PREFILL.rondas, points: SCORE_PRESET_PREFILL.puntos };
+}
+
 /** Borrador nuevo, prefijado por el preset (spec §5: el preset SOLO prefija). */
 function newScoreDraft(preset: ScorePresetId): ScoreDraft {
   const target = scoreTargetForPreset(preset);
+  const targetValues = defaultTargetValues();
+  if (target) targetValues[target.kind] = target.value;
   return {
     direction: "highest",
     targetKind: target?.kind ?? "rounds",
     targetValue: target?.value ?? 10,
     targetActive: target !== undefined,
+    targetValues,
     players: emptyPlayers(DEFAULT_PLAYERS),
     gameName: "",
   };
@@ -76,11 +94,14 @@ function newScoreDraft(preset: ScorePresetId): ScoreDraft {
 
 /** Revancha: la mesa entera puesta, leída de la partida en curso/terminada. */
 function draftFromScoreSetup(setup: ScoreSetup): ScoreDraft {
+  const targetValues = defaultTargetValues();
+  if (setup.target) targetValues[setup.target.kind] = setup.target.value;
   return {
     direction: setup.direction,
     targetKind: setup.target?.kind ?? "rounds",
     targetValue: setup.target?.value ?? 10,
     targetActive: setup.target !== undefined,
+    targetValues,
     players: setup.participants.map((participant, i) => ({
       id: playerId(i),
       name: participant.name,
@@ -214,7 +235,11 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
       draft = setPlayerCount(draft, requestedPlayers);
     }
     if (draft.targetActive && Number.isInteger(requestedTarget) && requestedTarget >= 1) {
-      draft = { ...draft, targetValue: requestedTarget };
+      draft = {
+        ...draft,
+        targetValue: requestedTarget,
+        targetValues: { ...draft.targetValues, [draft.targetKind]: requestedTarget },
+      };
     }
     return draft;
   }, [rematchSetup, preset, requestedPlayers, requestedTarget]);
@@ -225,6 +250,9 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   // vistazo en las fichas y solo se despliega el que se toca (nada de ocho
   // tarjetas de campos plegadas tras un <details>).
   const [openSeat, setOpenSeat] = useState<string | null>(null);
+  // Disclosure del único input del bloque «a qué jugáis» -- juguete sobre
+  // formulario (spec visual-first §5): el campo solo asoma tras el «+».
+  const [addingGame, setAddingGame] = useState(false);
 
   // UNA sola suscripción al espejo de habituales por pantalla (mismo criterio
   // que setup-form.tsx): se baja por props a cada `RegularPicker`.
@@ -245,9 +273,13 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
       cancelled = true;
     };
   }, [identity]);
+  // Filtro por lo escrito SOLO mientras el input está abierto (review): con el
+  // disclosure cerrado los chips deben enseñar TODO lo guardado, no solo lo
+  // que empieza por el nombre ya elegido -- si no, tocar "UNO" hacía
+  // desaparecer "Chinchón" y no había forma de tocarlo después.
   const gameNameChoices = useMemo(
-    () => gameNameSuggestions(savedRecords, draft.gameName),
-    [savedRecords, draft.gameName],
+    () => gameNameSuggestions(savedRecords, addingGame ? draft.gameName : ""),
+    [savedRecords, addingGame, draft.gameName],
   );
 
   // Degradación de prefill (spec §6), espejo de setup-form.tsx: un asiento
@@ -369,37 +401,30 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
           de tarjetas de campos — el número de jugadores ES el número de
           fichas. Un asiento sin nombre enseña su número y vale así: empezar
           sin escribir nada sigue siendo el camino corto. */}
-      <fieldset>
-        <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("setup.players")}
-        </legend>
-        <div className="flex flex-wrap items-start gap-3">
-          {draft.players.map((player, i) => (
-            <SeatToken
-              key={player.id}
-              variant="seat"
-              seat={i}
-              caption={seatName(i)}
-              label={t("seats.edit", { name: seatName(i) })}
-              selected={player.id === openSeat}
-              expanded={player.id === openSeat}
-              controls="score-seat"
-              onClick={() => setOpenSeat(player.id === openSeat ? null : player.id)}
-            >
-              {player.name.trim() === "" ? i + 1 : initials(player.name)}
-            </SeatToken>
-          ))}
-          <RegularTokens regulars={availableRegulars} onSeat={seatRegular} />
-          {draft.players.length < MAX_PLAYERS ? (
-            <SeatToken
-              variant="add"
-              caption={t("seats.add")}
-              label={t("seats.addPlayer")}
-              onClick={addSeat}
-            />
-          ) : null}
-        </div>
-      </fieldset>
+        </p>
+        <SeatRow
+          seats={draft.players.map((player, i) => ({
+            id: player.id,
+            caption: seatName(i),
+            content: player.name.trim() === "" ? i + 1 : initials(player.name),
+            selected: player.id === openSeat,
+          }))}
+          onSeatTap={(id) => setOpenSeat(id === openSeat ? null : id)}
+          panelId="score-seat"
+          regulars={availableRegulars}
+          onSeatRegular={seatRegular}
+          canAdd={draft.players.length < MAX_PLAYERS}
+          canSeatRegulars={
+            draft.players.length < MAX_PLAYERS ||
+            draft.players.some((p) => p.name.trim() === "" && !p.playerId && !p.userId)
+          }
+          onAdd={addSeat}
+          addControls="score-seat"
+        />
+      </section>
 
       {openIndex >= 0 ? (
         <div id="score-seat" className="rounded-card border border-border bg-surface p-3">
@@ -449,10 +474,10 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
         </div>
       ) : null}
 
-      <fieldset>
-        <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("scoreSetup.direction")}
-        </legend>
+        </p>
         <div className="flex gap-2">
           {(["highest", "lowest"] as const).map((direction) => (
             <button
@@ -461,83 +486,116 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
               aria-pressed={draft.direction === direction}
               onClick={() => setEdited({ ...draft, direction })}
               className={`h-11 flex-1 rounded-chip border px-3 text-[13px] transition-colors ${
-                draft.direction === direction
-                  ? "border-accent bg-accent/10 text-accent-ink"
-                  : "border-border bg-surface"
+                draft.direction === direction ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
               }`}
             >
               {t(direction === "highest" ? "scoreSetup.highest" : "scoreSetup.lowest")}
             </button>
           ))}
         </div>
-      </fieldset>
+      </section>
 
-      <fieldset>
-        <legend className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+      {/* Límite: Libre / Rondas / Puntos de un toque, y el N como stepper. Antes
+          no había forma de cambiar rondas por puntos: el tipo solo venía del preset. */}
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           {t("scoreSetup.target")}
-        </legend>
-        <div className="flex items-center gap-2">
+        </p>
+        <div className="flex gap-2" role="group" aria-label={t("scoreSetup.target")}>
+          {(["free", "rounds", "points"] as const).map((option) => {
+            const on = option === "free" ? !draft.targetActive : draft.targetActive && draft.targetKind === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={on}
+                onClick={() =>
+                  setEdited(
+                    option === "free"
+                      ? { ...draft, targetActive: false }
+                      : {
+                          // Cada tipo recuerda SU propio número (review): pasar
+                          // de Rondas a Puntos y volver a Rondas recupera el
+                          // 250 que había, no el prefill de Puntos.
+                          ...draft,
+                          targetActive: true,
+                          targetKind: option,
+                          targetValue: draft.targetValues[option],
+                        },
+                  )
+                }
+                className={`h-11 flex-1 rounded-chip border px-3 text-[13px] transition-colors ${
+                  on ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
+                }`}
+              >
+                {t(`scoreSetup.${option}`)}
+              </button>
+            );
+          })}
+        </div>
+        {draft.targetActive ? (
+          <div className="mt-3">
+            <TargetStepper
+              kind={draft.targetKind}
+              value={draft.targetValue}
+              onChange={(targetValue) =>
+                setEdited({
+                  ...draft,
+                  targetValue,
+                  targetValues: { ...draft.targetValues, [draft.targetKind]: targetValue },
+                })
+              }
+            />
+          </div>
+        ) : null}
+      </section>
+
+      {/* A qué se juega: chips de lo guardado y un «+» para el único input. */}
+      <section>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          {t("scoreSetup.gameName")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("scoreSetup.gameNameChips")}>
+          {[...new Set([...(draft.gameName.trim() ? [draft.gameName.trim()] : []), ...gameNameChoices])].map((name) => (
+            <button
+              key={name}
+              type="button"
+              aria-pressed={draft.gameName.trim() === name}
+              onClick={() => setEdited({ ...draft, gameName: draft.gameName.trim() === name ? "" : name })}
+              className={`tap-44 h-11 rounded-chip border px-3 text-[13px] transition-colors ${
+                draft.gameName.trim() === name ? "border-accent bg-accent/10 text-accent-ink" : "border-border bg-surface"
+              }`}
+            >
+              {name}
+            </button>
+          ))}
           <button
             type="button"
-            aria-pressed={draft.targetActive}
-            onClick={() => setEdited({ ...draft, targetActive: !draft.targetActive })}
-            className={`h-11 shrink-0 rounded-chip border px-3 text-[13px] transition-colors ${
-              draft.targetActive
-                ? "border-accent bg-accent/10 text-accent-ink"
-                : "border-border bg-surface"
-            }`}
+            aria-label={t("scoreSetup.addGame")}
+            aria-expanded={addingGame}
+            aria-controls="score-game-name"
+            onClick={() => setAddingGame(!addingGame)}
+            className="tap-44 h-11 w-11 rounded-chip border border-dashed border-border text-[18px] text-muted-foreground"
           >
-            {t(draft.targetKind === "rounds" ? "scoreSetup.targetRounds" : "scoreSetup.targetPoints")}
+            +
           </button>
-          {draft.targetActive && (
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              onFocus={(e) => e.currentTarget.select()}
-              value={draft.targetValue}
-              onChange={(e) => setEdited({ ...draft, targetValue: Number(e.target.value) || 0 })}
-              onBlur={() => {
-                // El reducer rechaza un target que no sea entero >= 1 (issue
-                // #964): sin esto un campo vaciado a mano dejaría un valor
-                // inválido que `start()` no puede arrancar.
-                if (!Number.isInteger(draft.targetValue) || draft.targetValue < 1) {
-                  setEdited({ ...draft, targetValue: 1 });
-                }
-              }}
-              aria-label={t("scoreSetup.targetValue")}
-              className={`${FIELD} w-20 text-right font-mono tabular-nums`}
-            />
-          )}
         </div>
-      </fieldset>
-
-      <fieldset className="flex flex-col gap-2">
-        <label className="flex flex-col gap-1 text-[13px]">
-          {t("scoreSetup.gameName")}
-          <input
-            value={draft.gameName}
-            onChange={(e) => setEdited({ ...draft, gameName: e.target.value })}
-            onFocus={(e) => e.currentTarget.select()}
-            placeholder={t("scoreSetup.gameNamePlaceholder")}
-            className={FIELD}
-          />
-        </label>
-        {gameNameChoices.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5" aria-label={t("scoreSetup.gameNameChips")}>
-            {gameNameChoices.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setEdited({ ...draft, gameName: name })}
-                className="tap-44 rounded-chip border border-border bg-surface px-2 py-1 text-[12px] text-foreground transition-colors hover:bg-surface-muted"
-              >
-                {name}
-              </button>
-            ))}
+        {addingGame ? (
+          <div id="score-game-name" className="mt-2">
+            <input
+              autoFocus
+              value={draft.gameName}
+              onChange={(e) => setEdited({ ...draft, gameName: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setAddingGame(false);
+              }}
+              placeholder={t("scoreSetup.gameNamePlaceholder")}
+              aria-label={t("scoreSetup.gameName")}
+              className={`${FIELD} w-56`}
+            />
           </div>
-        )}
-      </fieldset>
+        ) : null}
+      </section>
 
       {/* El botón ANTES que los nombres: empezar no exige leerlos (mismo
           criterio que setup-form.tsx tras la revisión UX 2026-08-30). */}

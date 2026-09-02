@@ -14,19 +14,24 @@ export function HoldRepeatButton({
   label,
   onPreview,
   onCommit,
+  disabled,
+  className = "",
 }: {
   direction: 1 | -1;
   label: string;
   onPreview: (accumulated: number) => void;
   onCommit: (delta: number) => void;
+  disabled?: boolean;
+  className?: string;
 }) {
   const { handlers } = useHoldRepeat({ step: direction, onPreview, onCommit });
   return (
     <button
       type="button"
       aria-label={label}
+      disabled={disabled}
       {...handlers}
-      className="h-10 w-10 select-none rounded-chip border border-border text-[18px] font-semibold [touch-action:manipulation]"
+      className={`h-11 w-11 select-none rounded-chip border border-border text-[18px] font-semibold disabled:opacity-40 [touch-action:manipulation] ${className}`}
     >
       {direction > 0 ? "+" : "−"}
     </button>

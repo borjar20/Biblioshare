@@ -5,11 +5,13 @@ import type { GameStartedEvent } from "@/lib/play/mtg/events";
 import type { MtgSetup } from "@/lib/play/mtg/types";
 import {
   addCommander,
+  addPlayer,
   assignRegular,
   assignSelf,
   draftFromSetup,
   newDraft,
   removeCommander,
+  removePlayer,
   setMode,
   setPlayerCount,
   toSetup,
@@ -210,5 +212,38 @@ describe("asiento «Yo» (issue #985)", () => {
   it("draftFromSetup conserva userId de los user (mesa recordada)", () => {
     const setup = toSetup(assignSelf(newDraft("commander"), 0, { userId: "uid-1", name: "Borja" }), (i) => `J${i + 1}`);
     expect(draftFromSetup(setup).players[0].userId).toBe("uid-1");
+  });
+});
+
+describe("addPlayer / removePlayer", () => {
+  it("añade un asiento vacío con el primer id libre, hasta el máximo del modo", () => {
+    let d = newDraft("commander", 2);
+    d = addPlayer(d);
+    expect(d.players.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+    expect(d.players[2].commanders[0].id).toBe("p3-c1");
+    d = addPlayer(addPlayer(addPlayer(d)));
+    expect(d.players).toHaveLength(6);
+    expect(addPlayer(d).players).toHaveLength(6);
+  });
+  it("quitar por el medio no duplica ids al volver a añadir", () => {
+    let d = newDraft("commander", 3);
+    d = removePlayer(d, 1);
+    expect(d.players.map((p) => p.id)).toEqual(["p1", "p3"]);
+    d = addPlayer(d);
+    expect(d.players.map((p) => p.id)).toEqual(["p1", "p3", "p2"]);
+  });
+  it("no baja del mínimo del modo", () => {
+    const d = newDraft("commander", 2);
+    expect(removePlayer(d, 0).players).toHaveLength(2);
+  });
+  it("recoloca quién empieza: el quitado pasa a 0, los de detrás bajan uno", () => {
+    const d = { ...newDraft("commander", 4), startingSeat: 3 };
+    expect(removePlayer(d, 3).startingSeat).toBe(0);
+    expect(removePlayer(d, 1).startingSeat).toBe(2);
+    expect(removePlayer({ ...d, startingSeat: 0 }, 2).startingSeat).toBe(0);
+  });
+  it("lo que sale de toSetup tras añadir y quitar arranca en el motor", () => {
+    const d = addPlayer(removePlayer(newDraft("commander", 4), 1));
+    expect(() => arrancar(toSetup(d, nombrePorDefecto))).not.toThrow();
   });
 });

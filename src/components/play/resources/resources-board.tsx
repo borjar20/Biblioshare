@@ -8,7 +8,8 @@ import type { ResourceDef, ResourcesState } from "@/lib/play/resources/types";
 import { valueOf } from "@/lib/play/resources/selectors";
 import { stableColor } from "@/components/play/random/stage/stage-helpers";
 import { SEAT_ACCENT } from "@/lib/play/ui/seats";
-import { HoldRepeatButton } from "./hold-repeat-button";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
+import { ResourceGlyph } from "./resource-icons";
 
 const QUICK_DELTAS = [5, 10, -5, -10];
 
@@ -38,7 +39,7 @@ function Row({
           style={{ background: stableColor(def.name) }}
         />
         <span className="min-w-0 flex-1 truncate text-[14px]">
-          {def.emoji ? `${def.emoji} ` : ""}
+          <ResourceGlyph icon={def.emoji} className="mr-1 inline h-4 w-4 align-[-2px]" />
           {def.name}
         </span>
         <HoldRepeatButton

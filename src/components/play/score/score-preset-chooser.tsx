@@ -9,6 +9,7 @@ import { useActiveGame } from "@/lib/play/core/use-active-game";
 import type { Participant } from "@/lib/play/core/types";
 import type { ScoreSetup, ScoreTarget } from "@/lib/play/score/types";
 import { buttonVariants } from "@/components/ui/button";
+import { TargetStepper } from "./target-stepper";
 
 export type ScorePresetId = "libre" | "rondas" | "puntos";
 
@@ -147,29 +148,11 @@ export function ScorePresetChooser({ identity }: { identity: string }) {
 
         {/* El N del límite, editable sin pasar por la configuración. */}
         {preset !== "libre" && (
-          <div className="mt-3 flex items-center gap-2">
-            <label
-              htmlFor="preset-target"
-              className="shrink-0 text-[13px] font-semibold"
-            >
-              {t(preset === "rondas" ? "scoreSetup.targetRounds" : "scoreSetup.targetPoints")}
-            </label>
-            <input
-              id="preset-target"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              onFocus={(e) => e.currentTarget.select()}
+          <div className="mt-3">
+            <TargetStepper
+              kind={preset === "rondas" ? "rounds" : "points"}
               value={targetValue ?? 1}
-              onChange={(e) =>
-                setTargetValues({ ...targetValues, [preset]: Number(e.target.value) || 0 })
-              }
-              onBlur={() => {
-                // El reducer rechaza un target no entero >= 1 (issue #964).
-                if (!targetValid) setTargetValues({ ...targetValues, [preset]: 1 });
-              }}
-              aria-label={t("scoreSetup.targetValue")}
-              className="w-24 rounded-chip border border-border bg-background px-2.5 py-1.5 text-right font-mono text-[15px] tabular-nums"
+              onChange={(n) => setTargetValues({ ...targetValues, [preset]: n })}
             />
           </div>
         )}

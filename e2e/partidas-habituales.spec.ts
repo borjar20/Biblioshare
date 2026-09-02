@@ -36,8 +36,8 @@ test("mtg: sin sesión, no hay «Recordar como habitual» ni chips de habituales
   page,
 }) => {
   await page.goto("/partidas/mtg/nueva");
-  await page.getByText("En la mesa").click();
-  await page.getByLabel("Nombre").first().fill("Ana");
+  await page.getByRole("button", { name: "Editar a Jugador 1" }).click();
+  await page.getByLabel("Nombre").fill("Ana");
 
   await expect(page.getByRole("button", { name: /recordar como habitual/i })).toHaveCount(0);
   await expect(page.locator('[aria-label="Tus jugadores"]')).toHaveCount(0);

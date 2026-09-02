@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useHoldRepeat } from "@/components/play/ui/use-hold-repeat";
+import { HoldRepeatButton } from "@/components/play/ui/hold-repeat-button";
 import { SeatPicker } from "@/components/play/ui/seat-picker";
-import { initials } from "@/components/play/ui/seat-token";
+import { SeatToken, initials } from "@/components/play/ui/seat-token";
 import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { ResourcesEvent } from "@/lib/play/resources/events";
-import type { ResourcesState } from "@/lib/play/resources/types";
+import type { ResourceDef, ResourcesState } from "@/lib/play/resources/types";
 import {
   RESOURCES_MAX_DEFS,
   RESOURCES_MAX_PLAYERS,
@@ -15,16 +15,16 @@ import {
   RESOURCE_VALUE_MIN,
 } from "@/lib/play/resources/reducer";
 import { stableColor } from "@/components/play/random/stage/stage-helpers";
+import { RESOURCE_ICON_IDS, RESOURCE_PRESETS, ResourceGlyph } from "./resource-icons";
 
-const EMOJI_OPTIONS = ["🪙", "🌲", "💎", "❤️", "⚡", "🧱", "🐑", "🌾", "🪨", "⭐"];
+const clampInitial = (n: number) => Math.min(RESOURCE_VALUE_MAX, Math.max(RESOURCE_VALUE_MIN, n));
 
 /**
- * Configuración visual del gestor (spec recursos-visual §2): jugadores como
- * fichas de asiento (mismo lenguaje que el reloj — tocar quita, habituales
- * atenuados se encienden, la ficha «+» abre el input) y alta de recurso como
- * FICHA VIVA: la preview se construye al teclear/tocar (emoji del picker,
- * inicial con stepper con mantener, dueño con toggle segmentado). Cada cambio
- * emite: la config vive en el log como todo lo demás.
+ * Configuración del gestor (spec visual-first §4): jugadores como fichas,
+ * recursos como PRESETS que se crean de un toque (fichas fantasma con glifo),
+ * ficha creada que se toca para ajustar inicial/dueño/quitar, y un «+» que
+ * abre el constructor de recurso libre — el único input de la pantalla.
+ * Antes arrancaba en un campo de texto vacío con emojis del sistema.
  */
 export function ResourcesConfig({
   identity,
@@ -36,54 +36,35 @@ export function ResourcesConfig({
   emit: CompanionEmit<ResourcesEvent>;
 }) {
   const t = useTranslations("play.resources");
+  const [open, setOpen] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [resName, setResName] = useState("");
-  const [emoji, setEmoji] = useState("");
-  const [initial, setInitial] = useState(0);
-  const [initialPreview, setInitialPreview] = useState(0);
-  const [shared, setShared] = useState(false);
+  const [icon, setIcon] = useState("");
 
-  const clampInitial = (n: number) =>
-    Math.min(RESOURCE_VALUE_MAX, Math.max(RESOURCE_VALUE_MIN, n));
-  const shownInitial = clampInitial(initial + initialPreview);
-  const commitInitial = (total: number) => {
-    setInitial((v) => clampInitial(v + total));
-    setInitialPreview(0);
-  };
-  const stepUp = useHoldRepeat({ step: 1, onPreview: setInitialPreview, onCommit: commitInitial });
-  const stepDown = useHoldRepeat({
-    step: -1,
-    onPreview: setInitialPreview,
-    onCommit: commitInitial,
-  });
+  const taken = new Set(state.defs.map((d) => d.name));
+  const full = state.defs.length >= RESOURCES_MAX_DEFS;
+  const presets = RESOURCE_PRESETS.map((p) => ({ ...p, name: t(p.nameKey) })).filter((p) => !taken.has(p.name));
+  const opened = state.defs.find((d) => d.name === open) ?? null;
 
   const trimmedRes = resName.trim();
-  const addValid =
-    trimmedRes !== "" &&
-    !state.defs.some((d) => d.name === trimmedRes) &&
-    state.defs.length < RESOURCES_MAX_DEFS;
+  const addValid = trimmedRes !== "" && !taken.has(trimmedRes) && !full;
 
-  function addResource() {
-    if (!addValid) return;
-    emit("resource_added", { name: trimmedRes, emoji, initial, shared });
-    setResName("");
-    setEmoji("");
-    setInitial(0);
-    setInitialPreview(0);
-    setShared(false);
+  function createPreset(name: string, id: string) {
+    if (full || taken.has(name)) return;
+    emit("resource_added", { name, emoji: id, initial: 0, shared: false });
   }
 
-  const segClass = (selected: boolean) =>
-    `rounded-chip border px-3 py-1.5 text-[13px] font-semibold ${
-      selected ? "border-foreground bg-surface-muted" : "border-border"
-    }`;
+  function createCustom() {
+    if (!addValid) return;
+    emit("resource_added", { name: trimmedRes, emoji: icon, initial: 0, shared: false });
+    setResName("");
+    setIcon("");
+    setAdding(false);
+  }
 
   return (
     <div className="rounded-card border border-border bg-surface p-4">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {t("players")}
-      </p>
-      {/* Quitar un jugador REESCRIBE la lista entera: el reducer reconcilia
-          los valores conservando a los supervivientes. */}
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("players")}</p>
       <div className="mt-2">
         <SeatPicker
           identity={identity}
@@ -94,140 +75,181 @@ export function ResourcesConfig({
         />
       </div>
 
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {t("resources")}
-      </p>
-
-      {/* Ficha viva: la preview se construye con lo elegido. */}
-      <div className="mt-2 flex items-center gap-4">
-        {/* Vacía: fondo --surface-3 y texto atenuado (el «?» sobre el fondo de
-            la tarjeta era invisible — review final). Con nombre: color estable
-            y texto claro, como las mini-fichas. */}
-        <span
-          aria-hidden
-          className={`flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-full ${
-            trimmedRes === ""
-              ? "border-2 border-dashed border-border text-muted-foreground"
-              : "text-surface"
-          }`}
-          style={
-            trimmedRes === ""
-              ? { background: "var(--surface-3)" }
-              : { background: stableColor(trimmedRes) }
-          }
-        >
-          <span className="text-[24px] leading-none">
-            {emoji || (trimmedRes ? initials(trimmedRes) : "?")}
-          </span>
-          <span
-            className={`text-[13px] font-semibold tabular-nums ${
-              trimmedRes === "" ? "text-muted-foreground" : ""
-            }`}
-          >
-            {shownInitial}
-          </span>
-        </span>
-        <input
-          value={resName}
-          placeholder={t("resourcePlaceholder")}
-          onChange={(e) => setResName(e.target.value)}
-          aria-label={t("resourceName")}
-          className="min-w-0 flex-1 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
-        />
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={t("emojiPicker")}>
-        {EMOJI_OPTIONS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            aria-pressed={emoji === e}
-            aria-label={t("emojiOption", { emoji: e })}
-            onClick={() => setEmoji(emoji === e ? "" : e)}
-            className={`flex h-10 w-10 items-center justify-center rounded-chip border text-[20px] ${
-              emoji === e ? "border-foreground bg-surface-muted" : "border-border"
-            }`}
-          >
-            {e}
-          </button>
+      <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("resources")}</p>
+      <div className="mt-2 flex flex-wrap items-start gap-3">
+        {state.defs.map((d) => (
+          <SeatTokenLike
+            key={d.name}
+            def={d}
+            selected={d.name === open}
+            label={t("editResource", { name: d.name })}
+            onClick={() => setOpen(open === d.name ? null : d.name)}
+          />
         ))}
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-1">
-          <button
-            type="button"
-            aria-label={t("fewerInitial")}
-            disabled={initial <= RESOURCE_VALUE_MIN}
-            {...stepDown.handlers}
-            className="h-9 w-9 select-none rounded-chip border border-border text-[16px] font-semibold disabled:opacity-40 [touch-action:manipulation]"
-          >
-            −
-          </button>
-          <span className="w-14 text-center text-[14px] font-semibold tabular-nums">
-            {shownInitial}
-          </span>
-          <button
-            type="button"
-            aria-label={t("moreInitial")}
-            disabled={initial >= RESOURCE_VALUE_MAX}
-            {...stepUp.handlers}
-            className="h-9 w-9 select-none rounded-chip border border-border text-[16px] font-semibold disabled:opacity-40 [touch-action:manipulation]"
-          >
-            +
-          </button>
-        </span>
-        <span className="inline-flex gap-1" role="group" aria-label={t("owner")}>
-          <button
-            type="button"
-            aria-pressed={!shared}
-            onClick={() => setShared(false)}
-            className={segClass(!shared)}
-          >
-            {t("ownerPlayers")}
-          </button>
-          <button
-            type="button"
-            aria-pressed={shared}
-            onClick={() => setShared(true)}
-            className={segClass(shared)}
-          >
-            {t("ownerBank")}
-          </button>
-        </span>
-        <button
-          type="button"
-          disabled={!addValid}
-          onClick={addResource}
-          className="rounded-chip border border-border px-4 py-2 text-[13px] font-semibold disabled:opacity-40"
-        >
-          {t("create")}
-        </button>
-      </div>
-
-      {state.defs.length > 0 ? (
-        <ul className="mt-3 flex flex-wrap gap-3">
-          {state.defs.map((d) => (
-            <li key={d.name} className="flex w-16 flex-col items-center gap-1">
-              <button
-                type="button"
-                aria-label={t("removeResource", { name: d.name })}
-                title={d.name}
-                onClick={() => emit("resource_removed", { name: d.name })}
-                className="flex h-11 w-11 flex-col items-center justify-center rounded-full text-surface"
-                style={{ background: stableColor(d.name) }}
+        {full
+          ? null
+          : presets.map((p) => (
+              <SeatToken
+                key={p.id}
+                variant="regular"
+                caption={p.name}
+                label={t("preset", { name: p.name })}
+                onClick={() => createPreset(p.name, p.id)}
               >
-                <span className="text-[16px] leading-none">{d.emoji || initials(d.name)}</span>
-                <span className="text-[10px] font-semibold tabular-nums">{d.initial}</span>
+                <ResourceGlyph icon={p.id} className="h-5 w-5" />
+              </SeatToken>
+            ))}
+        {full ? null : (
+          <SeatToken
+            variant="add"
+            caption={t("custom")}
+            label={t("customResource")}
+            expanded={adding}
+            controls="resources-custom"
+            onClick={() => setAdding(!adding)}
+          />
+        )}
+      </div>
+
+      {opened ? <DefPanel def={opened} emit={emit} onRemoved={() => setOpen(null)} /> : null}
+
+      {adding ? (
+        <div id="resources-custom" className="mt-3 flex flex-col gap-2 rounded-card border border-border bg-surface p-3">
+          <input
+            autoFocus
+            value={resName}
+            placeholder={t("resourcePlaceholder")}
+            onChange={(e) => setResName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") createCustom();
+            }}
+            aria-label={t("resourceName")}
+            className="min-w-0 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
+          />
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t("iconPicker")}>
+            {RESOURCE_ICON_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={icon === id}
+                aria-label={t("iconOption", { name: t(`presets.${id}`) })}
+                onClick={() => setIcon(icon === id ? "" : id)}
+                className={`flex h-11 w-11 items-center justify-center rounded-chip border ${
+                  icon === id ? "border-foreground bg-surface-muted" : "border-border"
+                }`}
+              >
+                <ResourceGlyph icon={id} className="h-5 w-5" />
               </button>
-              <span className="max-w-full truncate text-[10px] text-muted-foreground">
-                {d.name}
-                {d.shared ? ` · ${t("bank")}` : ""} ×
-              </span>
-            </li>
-          ))}
-        </ul>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={!addValid}
+            onClick={createCustom}
+            className="tap-44 self-start rounded-chip border border-border px-4 py-2 text-[13px] font-semibold disabled:opacity-40"
+          >
+            {t("create")}
+          </button>
+        </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Ficha de un recurso creado: color estable, glifo o inicial, y el inicial debajo. */
+function SeatTokenLike({
+  def,
+  selected,
+  label,
+  onClick,
+}: {
+  def: ResourceDef;
+  selected: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <span className="flex w-14 flex-col items-center gap-1">
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={selected}
+        aria-controls="resources-def"
+        title={def.name}
+        onClick={onClick}
+        className="flex h-11 w-11 flex-col items-center justify-center rounded-full text-surface [touch-action:manipulation]"
+        style={{
+          background: stableColor(def.name),
+          ...(selected ? { boxShadow: "0 0 0 2px var(--background), 0 0 0 4px var(--accent-ink)" } : {}),
+        }}
+      >
+        <ResourceGlyph icon={def.emoji || initials(def.name)} className="h-5 w-5" />
+        <span className="text-[10px] font-semibold tabular-nums">{def.initial}</span>
+      </button>
+      <span className="w-full truncate text-center text-[10px] text-muted-foreground">{def.name}</span>
+    </span>
+  );
+}
+
+/** Panel de un recurso: inicial con mantener, dueño segmentado y quitar. Cada cambio emite. */
+function DefPanel({
+  def,
+  emit,
+  onRemoved,
+}: {
+  def: ResourceDef;
+  emit: CompanionEmit<ResourcesEvent>;
+  onRemoved: () => void;
+}) {
+  const t = useTranslations("play.resources");
+  const [preview, setPreview] = useState(0);
+  const commit = (total: number) => {
+    const initial = clampInitial(def.initial + total);
+    setPreview(0);
+    if (initial !== def.initial) emit("resource_updated", { name: def.name, initial, shared: def.shared });
+  };
+  const seg = (on: boolean) =>
+    `tap-44 rounded-chip border px-3 py-1.5 text-[13px] font-semibold ${on ? "border-foreground bg-surface-muted" : "border-border"}`;
+
+  return (
+    <div id="resources-def" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-3">
+      <span className="inline-flex items-center gap-1">
+        <HoldRepeatButton
+          direction={-1}
+          label={t("fewerInitial")}
+          disabled={def.initial <= RESOURCE_VALUE_MIN}
+          onPreview={setPreview}
+          onCommit={commit}
+        />
+        <span className="w-14 text-center font-serif text-[20px] font-semibold tabular-nums">
+          {clampInitial(def.initial + preview)}
+        </span>
+        <HoldRepeatButton
+          direction={1}
+          label={t("moreInitial")}
+          disabled={def.initial >= RESOURCE_VALUE_MAX}
+          onPreview={setPreview}
+          onCommit={commit}
+        />
+      </span>
+      <span className="inline-flex gap-1" role="group" aria-label={t("owner")}>
+        <button type="button" aria-pressed={!def.shared} onClick={() => def.shared && emit("resource_updated", { name: def.name, initial: def.initial, shared: false })} className={seg(!def.shared)}>
+          {t("ownerPlayers")}
+        </button>
+        <button type="button" aria-pressed={def.shared} onClick={() => !def.shared && emit("resource_updated", { name: def.name, initial: def.initial, shared: true })} className={seg(def.shared)}>
+          {t("ownerBank")}
+        </button>
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          emit("resource_removed", { name: def.name });
+          onRemoved();
+        }}
+        className="tap-44 rounded-chip border border-border px-3 py-1.5 text-[13px] text-muted-foreground"
+      >
+        {t("removeResource", { name: def.name })}
+      </button>
     </div>
   );
 }

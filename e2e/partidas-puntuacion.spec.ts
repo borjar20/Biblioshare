@@ -7,11 +7,30 @@ import { waitForActiveRecord } from "./support/play-db";
 // diferencia de partidas-navegacion.spec.ts que solo cruza pantallas.
 test.use({ viewport: { width: 390, height: 844 } });
 
-/** Abre la hoja de ronda (alta o edición ya abierta por el llamador), rellena una
- *  puntuación por jugador en orden de asiento y confirma con «Apuntar». */
+/** Compone `target` para un asiento con chips (+20/+10/+5/−5/−10) y ±1. */
+async function ponerPuntos(page: Page, seat: number, target: number) {
+  const name = `Jugador ${seat + 1}`;
+  await page.getByRole("button", { name: `Puntuar a ${name}` }).click();
+  // El U+2212 del signo negativo (fix review final) no lo parsea Number().
+  let value = Number(
+    (await page.getByLabel(`Puntos de ${name}`).textContent())?.replace("−", "-"),
+  );
+  const chip = async (label: string) =>
+    page.getByRole("button", { name: `Sumar ${label} a ${name}` }).click();
+  while (target - value >= 20) { await chip("+20"); value += 20; }
+  while (target - value >= 10) { await chip("+10"); value += 10; }
+  while (target - value >= 5) { await chip("+5"); value += 5; }
+  while (value - target >= 10) { await chip("-10"); value -= 10; }
+  while (value - target >= 5) { await chip("-5"); value -= 5; }
+  while (value < target) { await page.getByRole("button", { name: `Sumar uno a ${name}` }).click(); value++; }
+  while (value > target) { await page.getByRole("button", { name: `Restar uno a ${name}` }).click(); value--; }
+  await expect(page.getByLabel(`Puntos de ${name}`)).toHaveText(String(target));
+}
+
+/** Hoja de ronda ya abierta: pone cada puntuación en orden de asiento y confirma. */
 async function apuntarValores(page: Page, scores: number[]) {
   for (let seat = 0; seat < scores.length; seat++) {
-    await page.getByLabel(`Puntos de Jugador ${seat + 1}`).fill(String(scores[seat]));
+    await ponerPuntos(page, seat, scores[seat]);
   }
   await page.getByRole("button", { name: /^apuntar$/i }).click();
 }
@@ -97,21 +116,22 @@ test("una partida de puntuacion sobrevive al reload", async ({ page }) => {
   await expect(totalDe(page, 0)).toHaveText("9");
 });
 
+test("configurar la mesa arrastra jugadores y N por query", async ({ page }) => {
+  await page.goto("/partidas/puntuacion");
+  await page.getByRole("button", { name: /a x puntos/i }).click();
+  // El chooser arrastra jugadores y N por query (revisión 2026-08-31).
+  await page.getByRole("link", { name: /^configurar la mesa$/i }).click();
+  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos&jugadores=4&n=100$/);
+});
+
 test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloquea", async ({
   page,
 }) => {
-  await page.goto("/partidas/puntuacion");
-  await page.getByRole("button", { name: /a x puntos/i }).click();
-  await page.getByRole("link", { name: /^configurar la mesa$/i }).click();
-  // El chooser arrastra jugadores y N por query (revisión 2026-08-31).
-  await expect(page).toHaveURL(/\/partidas\/puntuacion\/nueva\?preset=puntos&jugadores=4&n=100$/);
-
-  // El preset prefija 100; se cambia a 20 para que dos rondas basten para
-  // alcanzarlo (spec §5: el preset SOLO prefija, se puede tocar).
-  // `filter({ visible: true })`: el input del chooser sigue en el DOM de la
-  // ruta anterior (la isla se congela en navegación soft) con el mismo
-  // aria-label — sin el filtro el locator resuelve a dos.
-  await page.getByLabel("Valor del límite").filter({ visible: true }).fill("20");
+  // El preset prefija 100; se navega directo con n=20 para que dos rondas
+  // basten para alcanzarlo (spec §5: el preset SOLO prefija, se puede tocar
+  // -- aquí sin input, con el stepper solo hay −/+ y mantener).
+  await page.goto("/partidas/puntuacion/nueva?preset=puntos&jugadores=4&n=20");
+  await expect(page.getByLabel("Valor del límite").filter({ visible: true })).toHaveText("20");
   await page.getByRole("button", { name: /^empezar$/i }).click();
   await expect(page).toHaveURL(/\/partida\/activa$/);
   await expect(page.getByRole("button", { name: /^añadir ronda$/i })).toBeVisible();
@@ -135,6 +155,34 @@ test("a X puntos: la banda de finalizar aparece al alcanzar el limite y no bloqu
   // Finalizar desde el botón de la propia banda.
   await page.getByRole("button", { name: "Finalizar", exact: true }).click();
   await expect(page.getByRole("heading", { name: /gana jugador 1/i })).toBeVisible();
+});
+
+test("config: Libre → Puntos con el stepper, y el juego tras el «+»", async ({ page }) => {
+  await page.goto("/partidas/puntuacion/nueva");
+  await expect(page.getByLabel("¿A qué jugáis?")).toHaveCount(0);
+  await page.getByRole("button", { name: "Puntos", exact: true }).click();
+  await page.getByRole("button", { name: "Subir límite" }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("105");
+  await page.getByRole("button", { name: "Otro juego" }).click();
+  await page.getByLabel("¿A qué jugáis?").fill("Chinchón");
+  await page.getByRole("button", { name: /^empezar$/i }).click();
+  await expect(page).toHaveURL(/\/partida\/activa$/);
+});
+
+test("config: cambiar Rondas <-> Puntos conserva el N de cada tipo (review)", async ({ page }) => {
+  await page.goto("/partidas/puntuacion/nueva");
+  await page.getByRole("button", { name: "Rondas", exact: true }).click();
+  await page.getByRole("button", { name: "Subir límite" }).click();
+  await page.getByRole("button", { name: "Subir límite" }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("12");
+
+  // Puntos trae SU prefill (100), no arrastra el 12 de Rondas.
+  await page.getByRole("button", { name: "Puntos", exact: true }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("100");
+
+  // Volver a Rondas recupera el 12 que se había escrito, no un prefill fresco.
+  await page.getByRole("button", { name: "Rondas", exact: true }).click();
+  await expect(page.getByLabel("Valor del límite")).toHaveText("12");
 });
 
 test("reconfigurar desde dentro: la mesa llega prefijada y Empezar reinicia", async ({ page }) => {
