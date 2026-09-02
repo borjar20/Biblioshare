@@ -215,11 +215,7 @@ export async function getPetCounts(
 
   const today = todayISO();
   const yesterday = addDaysISO(today, -1);
-  // `livedPasses` viene de splitPassHistory tipado como PassRow[] (sin `id`),
-  // pero son las MISMAS referencias que `passRows` (splitPassHistory no clona
-  // filas): identidad de objeto para recuperar el `id` sin tocar counts.ts.
-  const livedRefs = new Set<object>(livedPasses);
-  const livedIds = new Set(passRows.filter((p) => livedRefs.has(p)).map((p) => p.id));
+  const livedIds = new Set(livedPasses.map((p) => p.id));
   const dayRows: DayRows = {
     sessions: sessionRows,
     episodes: (episodes.data ?? []).map((e) => ({ watched_on: e.watched_on, rating: e.rating })),

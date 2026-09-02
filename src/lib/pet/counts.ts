@@ -71,11 +71,14 @@ export type PassRow = {
   created_at: string;
 };
 
-export interface PassHistorySplit {
+/** Genérica en la fila: quien llame con filas que traen más columnas (`id`, por
+ *  ejemplo) las recupera tipadas en los dos lados, sin volver a cruzarlas con
+ *  el array original. */
+export interface PassHistorySplit<T extends PassRow = PassRow> {
   /** Pases que el usuario vivió con la app abierta: suman como actividad. */
-  lived: PassRow[];
+  lived: T[];
   /** Pases volcados de otra app o añadidos con fecha pasada: solo dote. */
-  historical: PassRow[];
+  historical: T[];
 }
 
 /** Separa historial de vivido SIN columna nueva (`passes` no marca el origen).
@@ -90,17 +93,17 @@ export interface PassHistorySplit {
  *    import los CSV sin *Date Read* y por tanto no parecen retroactivos.
  *  `createdDayOf` convierte el timestamptz al día LOCAL (misma convención que
  *  session_date); se inyecta para que esto siga siendo puro. */
-export function splitPassHistory(
-  rows: PassRow[],
+export function splitPassHistory<T extends PassRow>(
+  rows: T[],
   createdDayOf: (createdAt: string) => string,
   burstMin: number,
-): PassHistorySplit {
+): PassHistorySplit<T> {
   const perDay = new Map<string, number>();
   const dayOf = rows.map((r) => createdDayOf(r.created_at));
   for (const d of dayOf) perDay.set(d, (perDay.get(d) ?? 0) + 1);
 
-  const lived: PassRow[] = [];
-  const historical: PassRow[] = [];
+  const lived: T[] = [];
+  const historical: T[] = [];
   rows.forEach((r, i) => {
     const day = dayOf[i];
     const retroactive = r.finished_on != null && r.finished_on < day;
