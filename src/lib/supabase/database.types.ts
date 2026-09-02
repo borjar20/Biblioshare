@@ -1630,6 +1630,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_state: {
+        Row: {
+          class: string
+          companion_hidden: boolean
+          created_at: string
+          hatched_at: string
+          last_level: number
+          last_stage: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          class: string
+          companion_hidden?: boolean
+          created_at?: string
+          hatched_at?: string
+          last_level?: number
+          last_stage?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          class?: string
+          companion_hidden?: boolean
+          created_at?: string
+          hatched_at?: string
+          last_level?: number
+          last_stage?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       play_games: {
         Row: {
           created_at: string
@@ -1957,7 +1993,7 @@ export type Database = {
           created_at?: string
           id?: string
           interaction_target_id: string
-          kind?: string
+          kind: string
           user_id: string
         }
         Update: {
@@ -2880,10 +2916,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      hydrate_books_bulk: {
-        Args: { p_rows: Json }
-        Returns: undefined
-      }
+      hydrate_books_bulk: { Args: { p_rows: Json }; Returns: undefined }
       hydrate_movie: {
         Args: {
           p_cover_url?: string
@@ -2939,6 +2972,10 @@ export type Database = {
           prompt: string
           round_id: string
         }[]
+      }
+      merge_book_into: {
+        Args: { p_loser: string; p_winner: string }
+        Returns: undefined
       }
       moderatable_target_ids: {
         Args: {
@@ -3046,7 +3083,12 @@ export type Database = {
       }
       repr_lang_rank: { Args: { p_lang: string }; Returns: number }
       repr_should_write: {
-        Args: { p_current: string; p_field: string; p_lang: string; p_meta: Json }
+        Args: {
+          p_current: string
+          p_field: string
+          p_lang: string
+          p_meta: Json
+        }
         Returns: boolean
       }
       resolve_pending_import: {
@@ -3280,12 +3322,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3309,11 +3351,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3334,11 +3376,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3359,11 +3401,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3376,11 +3418,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

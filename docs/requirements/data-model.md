@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-08-31 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-02 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3659,6 +3659,29 @@ privada total.**
 prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados contra
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
+
+## 8bis. Mascota
+
+> (Sección insertada el 2026-09-02 entre «8. Play» y «9. Seguridad», sin renumerar el resto.)
+
+### 8bis.1. `pet_state` (dev 2026-09-02; prod pendiente)
+
+Mascota RPG (spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`). Una fila por usuario
+con SOLO decisiones: `user_id` (PK, FK `auth.users` cascade), `name` (text, 1-24, CHECK),
+`class` (text; valores en `src/lib/pet/classes.ts`, sin enum a propósito), `hatched_at`,
+`companion_hidden` (bool), `last_level` (int, default 1), `last_stage` (text, default `acorn`),
+`created_at`, `updated_at`.
+
+**XP, atributos, nivel y etapa NO están en la tabla**: se derivan en `src/lib/pet/derive.ts` de
+`progress_sessions`, `passes`, `episode_watches`, `notes`, `club_posts`, `club_poll_votes`,
+`club_activity_participants`, `follows`, `pending_import_rows` y `books.genres`. Rebalancear es
+cambiar `src/lib/pet/balance.ts`. `last_level`/`last_stage` existen solo para detectar subida y
+evolución al calcular (`get-pet-snapshot.ts`) y ganar `pet_level_up` / `pet_evolved` en
+`user_celebrations`.
+
+**RLS**: select/insert/update propias; sin delete (cascade con la cuenta). **Grant por columna**
+(superficie 6 de DRIFT-CHECK): insert sin `created_at`/`updated_at`; update sin `user_id`,
+`hatched_at`, `created_at`. Migración `supabase/migrations/20260902_pet_state.sql`.
 
 ## 9. Seguridad
 
