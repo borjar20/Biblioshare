@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BALANCE } from "../balance";
 import { PET_ATTRIBUTES, type PetAttributes } from "../classes";
-import { eligibleTemplates, hashSeed, pickDailyMissions, type MissionEligibility } from "./generate";
+import { eligibleTemplates, finishRemaining, hashSeed, pickDailyMissions, type MissionEligibility } from "./generate";
 import { MISSION_ATTR, MISSION_COST, missionXp } from "./templates";
 
 const ALL: MissionEligibility = {
@@ -120,5 +120,38 @@ describe("pickDailyMissions", () => {
       for (const p of picks) expect(p.xp).toBe(missionXp(p.template));
     }
     expect(foundDailyGoal).toBe(true);
+  });
+});
+
+describe("finishRemaining (#1036)", () => {
+  it("una serie con 0 de 2 vistos ES candidata: le quedan 2 → resto 1", () => {
+    expect(finishRemaining({ kind: "series", left: 2 })).toBe(1);
+  });
+
+  it("serie a un episodio del final: resto 0.5; con todos vistos y el pase abierto: 0", () => {
+    expect(finishRemaining({ kind: "series", left: 1 })).toBe(0.5);
+    expect(finishRemaining({ kind: "series", left: 0 })).toBe(0);
+  });
+
+  it("serie con más episodios pendientes que el tope, o resto negativo, no es candidata", () => {
+    expect(finishRemaining({ kind: "series", left: BALANCE.missions.seriesEpisodesLeft + 1 })).toBeNull();
+    expect(finishRemaining({ kind: "series", left: -1 })).toBeNull();
+  });
+
+  it("libro justo en el umbral: resto 1; al 100 %: 0; por debajo del umbral: null", () => {
+    expect(finishRemaining({ kind: "book", ratio: BALANCE.missions.finishThreshold })).toBeCloseTo(1);
+    expect(finishRemaining({ kind: "book", ratio: 1 })).toBe(0);
+    expect(finishRemaining({ kind: "book", ratio: BALANCE.missions.finishThreshold - 0.01 })).toBeNull();
+    expect(finishRemaining({ kind: "book", ratio: Number.NaN })).toBeNull();
+  });
+
+  it("libro leído más allá de la última página no da resto negativo", () => {
+    expect(finishRemaining({ kind: "book", ratio: 1.2 })).toBe(0);
+  });
+
+  it("una serie a un episodio del final gana a un libro al 80 %: escalas propias, no un ratio compartido", () => {
+    const series = finishRemaining({ kind: "series", left: 1 })!;
+    const book = finishRemaining({ kind: "book", ratio: 0.8 })!;
+    expect(series).toBeLessThan(book);
   });
 });
