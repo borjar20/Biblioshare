@@ -74,8 +74,9 @@ filas fantasma, en el despachador porque es su contrato.
   arbitrario, así que no puede ser pública. `get_companion_state()` **no** se toca en esta fase
   (tiene `p_tz` y corre con la sesión); queda como issue unificar las dos si molesta mantener dos
   copias.
-- **`private.claim_pet_nudges(p_day date) returns table (user_id uuid, name text, kind text,
-  streak integer)`**: en una sola sentencia calcula, para cada candidato (§1), su último día vivido
+- **`public.claim_pet_nudges(p_day date) returns table (user_id uuid, name text, kind text,
+  streak integer)`** (en `public`, no en `private`: PostgREST solo expone `public`, y `admin.rpc()`
+  no llega a otro esquema — mismo motivo por el que `claim_due_event_reminders` vive en `public`): en una sola sentencia calcula, para cada candidato (§1), su último día vivido
   y su racha hasta `p_day − 1`, decide el `kind`, e inserta en `pet_nudges` con
   `on conflict (user_id, day) do nothing` devolviendo **solo las filas nuevas** (`returning`). Un
   segundo claim el mismo día devuelve cero filas. `security definer`, `set search_path = ''`,
