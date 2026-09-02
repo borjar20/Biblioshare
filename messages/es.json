@@ -3160,7 +3160,6 @@
       "next": "Siguiente",
       "none": "Sin nivel aún",
       "complete": "Completa",
-      "earnedOn": "{date}",
       "threshold": "{value} / {threshold}",
       "badge": "{family}, nivel {tier}",
       "badgeNext": "{family}, siguiente nivel {tier}",
