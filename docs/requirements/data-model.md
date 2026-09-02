@@ -3664,7 +3664,7 @@ misma pasada (ANEXO 2026-08-31), como manda §11.
 
 > (Sección insertada el 2026-09-02 entre «8. Play» y «9. Seguridad», sin renumerar el resto.)
 
-### 8bis.1. `pet_state` (dev 2026-09-02; prod pendiente)
+### 8bis.1. `pet_state` (dev y **prod**, 2026-09-02)
 
 Mascota RPG (spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`). Una fila por usuario
 con SOLO decisiones: `user_id` (PK, FK `auth.users` cascade), `name` (text, 1-24, CHECK),
@@ -3681,7 +3681,7 @@ evolución al calcular (`get-pet-snapshot.ts`) y ganar `pet_level_up` / `pet_evo
 
 **RLS**: select/insert/update propias; sin delete (cascade con la cuenta). **Grant por columna**
 (superficie 6 de DRIFT-CHECK): insert sin `created_at`/`updated_at`; update sin `user_id`,
-`hatched_at`, `created_at`. Migración `supabase/migrations/20260902_pet_state.sql`.
+`hatched_at`, `created_at`. Migración `supabase/migrations/20260902_pet_state.sql`. **Aplicada y verificada en prod el 2026-09-02** contra `pg_class`/`pg_policies`/`has_column_privilege`: RLS activa, 3 políticas, 9 columnas, 7 con INSERT, 6 con UPDATE, 0 legibles por `anon` (mismo `9 | 7 | 6` que dev, superficie 6 de DRIFT-CHECK).
 
 ## 9. Seguridad
 
