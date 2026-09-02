@@ -25,7 +25,19 @@
       "stats": "Estadísticas",
       "settings": "Ajustes",
       "rowLabel": "Lo tuyo",
-      "play": "Partidas"
+      "play": "Partidas",
+      "pet": "Mascota"
+    },
+    "pet": {
+      "companionLabel": "{name}, tu mascota. Abrir su página",
+      "bubble": {
+        "first_activity_of_day": "¡Buenos días!",
+        "daily_goal_completed": "¡Objetivo!",
+        "streak_milestone": "¡Racha {milestone}!",
+        "first_club_participation": "¡Al club!",
+        "pet_level_up": "¡Nivel {milestone}!",
+        "pet_evolved": "¡He crecido!"
+      }
     }
   },
   "auth": {
@@ -3053,6 +3065,83 @@
       "undo": "Deshacer",
       "reset": "Reiniciar",
       "resetConfirm": "¿Seguro? Vuelve a la configuración"
+    }
+  },
+  "pet": {
+    "title": "Mascota",
+    "hatch": {
+      "title": "Una bellota te espera",
+      "intro": "Ponle nombre y elige su clase. Crecerá con lo que ya haces en Biblioshare: leer, escribir, hablar en los clubes.",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nuez",
+      "classLabel": "Clase",
+      "suggested": "Sugerida por tu historial",
+      "submit": "Eclosionar",
+      "errors": {
+        "invalidName": "El nombre necesita entre 1 y 24 caracteres.",
+        "invalidClass": "Elige una clase.",
+        "exists": "Ya tienes una mascota.",
+        "generic": "No se ha podido guardar. Inténtalo de nuevo."
+      }
+    },
+    "classes": {
+      "barbarian": "Bárbaro",
+      "fighter": "Guerrera",
+      "wizard": "Maga",
+      "cleric": "Clérigo",
+      "bard": "Bardo",
+      "ranger": "Ranger"
+    },
+    "classHints": {
+      "barbarian": "Devora: minutos, páginas, episodios.",
+      "fighter": "Constancia: rachas y objetivo diario.",
+      "wizard": "Obras terminadas, sagas completas, géneros.",
+      "cleric": "Notas, citas, reseñas, valoraciones.",
+      "bard": "Clubes: posts, votos, encuestas, quedadas.",
+      "ranger": "Exploración: obras y autores nuevos, importar."
+    },
+    "attributes": {
+      "FUE": "Fuerza",
+      "CON": "Constitución",
+      "INT": "Inteligencia",
+      "SAB": "Sabiduría",
+      "CAR": "Carisma",
+      "DES": "Destreza"
+    },
+    "stages": {
+      "acorn": "Bellota",
+      "young": "Cría",
+      "adult": "Adulta",
+      "veteran": "Veterana"
+    },
+    "moods": {
+      "happy": "contenta",
+      "neutral": "tranquila",
+      "sleepy": "dormida",
+      "sad": "triste"
+    },
+    "level": "Nivel {level}",
+    "xpToNext": "{current} / {next} XP",
+    "primary": "Atributo principal",
+    "acornHint": "Sigue siendo una bellota: eclosionará con tu próxima actividad.",
+    "sources": {
+      "title": "Qué la sube",
+      "FUE": "{units} unidades de sesión · {episodes} episodios",
+      "CON": "{days} días activos · {goalDays} con objetivo · {milestones} hitos de racha",
+      "INT": "{passes} obras terminadas · {sagas} sagas · {genres} géneros",
+      "SAB": "{notes} notas · {quotes} citas · {reviews} reseñas · {ratings} valoraciones",
+      "CAR": "{posts} posts · {votes} votos · {polls} encuestas · {events} quedadas · {follows} seguidos",
+      "DES": "{works} obras · {authors} autores · {imports} filas importadas"
+    },
+    "rename": { "label": "Renombrar", "submit": "Guardar" },
+    "changeClass": {
+      "label": "Cambiar de clase",
+      "confirm": "Cambiar a {cls}: cambia su aspecto y su bonus, no sus atributos."
+    },
+    "companion": {
+      "label": "Compañera flotante",
+      "hint": "La ardilla pequeña en la esquina. Reacciona a lo que registras.",
+      "cta": "Abrir mi mascota"
     }
   }
 }
