@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // E2E de la mascota (spec 2026-09-02): eclosión, compañera en el shell (y su
-// ausencia en pantallas a sangre), reacción al registrar actividad y ocultar
+// ausencia en pantallas a sangre), y ocultar
 // desde ajustes. Mismo patrón de sesión/limpieza que
 // biblioteca-ocultar-abandonados.spec.ts: fetch nativo con service-role y la
 // fila devuelta a como estaba.
@@ -35,7 +35,7 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
-type PetRow = { user_id: string; name: string; class: string; companion_hidden: boolean; last_level: number; last_stage: string };
+type PetRow = { user_id: string; name: string; class: string; hatched_at: string; companion_hidden: boolean; last_level: number; last_stage: string };
 
 let userId: string;
 let baseline: PetRow | null = null;
@@ -44,7 +44,7 @@ test.beforeAll(async () => {
   const perfiles = (await (await api(`profiles?username=eq.${USERNAME}&select=user_id`)).json()) as Array<{ user_id: string }>;
   if (perfiles.length !== 1) throw new Error(`no encuentro el perfil de ${USERNAME}`);
   userId = perfiles[0].user_id;
-  const rows = (await (await api(`pet_state?user_id=eq.${userId}&select=user_id,name,class,companion_hidden,last_level,last_stage`)).json()) as PetRow[];
+  const rows = (await (await api(`pet_state?user_id=eq.${userId}&select=user_id,name,class,hatched_at,companion_hidden,last_level,last_stage`)).json()) as PetRow[];
   baseline = rows[0] ?? null;
   // Arranca SIN mascota para probar la eclosión.
   await api(`pet_state?user_id=eq.${userId}`, { method: "DELETE" });
