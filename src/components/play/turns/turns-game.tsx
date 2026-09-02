@@ -120,11 +120,14 @@ export function TurnsGame({
           viewBox="0 0 60 24"
           className="absolute left-1/2 top-[74px] h-4 w-12 -translate-x-1/2"
           aria-hidden="true"
-          style={state.direction === -1 ? { transform: "translateX(-50%) scaleX(-1)" } : undefined}
         >
-          {/* La punta va como marker con orient="auto": el navegador la alinea
-              con la tangente del arco. El polígono a mano llegaba horizontal a
-              un arco que entra a 27° y se veía descolgado (visto en móvil). */}
+          {/* Sin transform CSS para invertir: Tailwind 4 centra con la propiedad
+              `translate`, y un `transform: translateX(-50%) scaleX(-1)` inline
+              sumaba OTRO -50% -- la flecha invertida salía 24 px a la izquierda
+              del anillo (visto en móvil). La punta es un marker con
+              orient="auto-start-reverse", puesto en el extremo que toque y
+              alineado con la tangente del arco (el polígono a mano llegaba
+              horizontal a un arco inclinado y se veía descolgado). */}
           <defs>
             <marker
               id="turn-arrow-head"
@@ -133,18 +136,19 @@ export function TurnsGame({
               refY="5"
               markerWidth="4"
               markerHeight="4"
-              orient="auto"
+              orient="auto-start-reverse"
             >
               <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-ink)" />
             </marker>
           </defs>
           <path
-            d="M 8 18 Q 30 4 46 12"
+            d="M 12 17 Q 30 2 48 17"
             fill="none"
             stroke="var(--accent-ink)"
             strokeWidth="2.5"
             strokeLinecap="round"
-            markerEnd="url(#turn-arrow-head)"
+            markerEnd={state.direction === 1 ? "url(#turn-arrow-head)" : undefined}
+            markerStart={state.direction === -1 ? "url(#turn-arrow-head)" : undefined}
           />
         </svg>
 
