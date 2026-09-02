@@ -57,7 +57,9 @@ export type SessionRow = {
 
 /** Σ por sesión de max(floor(min/10), floor(páginasAvanzadas/10)). Las páginas
  *  avanzadas son la diferencia de `position` con la sesión anterior del MISMO
- *  pase (position es acumulada); un retroceso vale 0, no resta. */
+ *  pase (position es acumulada); un retroceso cuenta 0 páginas y NO baja la
+ *  referencia, para que las páginas intermedias no se cuenten dos veces en la
+ *  siguiente sesión. */
 export function sessionUnits(rows: SessionRow[]): number {
   const byPass = new Map<string, SessionRow[]>();
   for (const r of rows) {
@@ -73,7 +75,7 @@ export function sessionUnits(rows: SessionRow[]): number {
     let prev = 0;
     for (const r of list) {
       const pages = r.position == null ? 0 : Math.max(0, r.position - prev);
-      if (r.position != null) prev = r.position;
+      if (r.position != null) prev = Math.max(prev, r.position);
       const minutes = r.duration_minutes ?? 0;
       units += Math.max(Math.floor(minutes / 10), Math.floor(pages / 10));
     }

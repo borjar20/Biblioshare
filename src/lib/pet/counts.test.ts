@@ -21,6 +21,16 @@ describe("sessionUnits", () => {
     ];
     expect(sessionUnits(rows)).toBe(20);
   });
+
+  it("tras un retroceso la referencia no baja: las páginas no se cuentan dos veces", () => {
+    const rows = [
+      { pass_id: "A", duration_minutes: null, position: 200, session_date: "2026-09-01", started_at: null },
+      { pass_id: "A", duration_minutes: null, position: 50, session_date: "2026-09-02", started_at: null },
+      { pass_id: "A", duration_minutes: null, position: 220, session_date: "2026-09-03", started_at: null },
+    ];
+    // 200 → 20; retroceso → 0; 220 − 200 = 20 → 2. Total 22 (no 20 + 17).
+    expect(sessionUnits(rows)).toBe(22);
+  });
 });
 
 describe("countCompletedSagas", () => {

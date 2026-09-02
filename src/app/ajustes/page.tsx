@@ -54,18 +54,19 @@ export default async function AjustesPage() {
   const profile = await getOwnProfile(user.id);
   if (!profile?.username) redirect("/onboarding");
 
-  const [pendingCount, t, tAdmin] = await Promise.all([
+  const [pendingCount, t, tAdmin, petRow] = await Promise.all([
     countMyPending(supabase, user.id),
     getTranslations("settings"),
     getTranslations("admin"),
+    supabase
+      .from("pet_state")
+      .select("companion_hidden")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
   const tProfile = await getTranslations("profile");
 
-  const { data: pet } = await supabase
-    .from("pet_state")
-    .select("companion_hidden")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const pet = petRow.data;
 
   const name = profile.displayName || profile.username;
 
