@@ -1,9 +1,8 @@
 // Genera los PNG PROVISIONALES de la mascota en public/pet/ (spec §5). Mismos
 // nombres que espera src/lib/pet/manifest.ts; el arte IA curado los sustituye.
 //   node scripts/pet-sprites.mjs
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { deflateSync } from "node:zlib";
+import { join } from "node:path";
+import { writePng } from "./lib/png.mjs";
 
 const W = 40, H = 40;
 const C = {
@@ -46,24 +45,8 @@ function shade(g, from, dark, light) {
   }
   return out;
 }
-// ---- PNG RGBA sin dependencias ----
-const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
-const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const cc = Buffer.alloc(4); cc.writeUInt32BE(crc(td)); return Buffer.concat([l, td, cc]); };
-function png(g, file) {
-  const raw = Buffer.alloc((W * 4 + 1) * H);
-  for (let y = 0; y < H; y++) {
-    raw[y * (W * 4 + 1)] = 0;
-    for (let x = 0; x < W; x++) {
-      const i = y * (W * 4 + 1) + 1 + x * 4, c = g[y][x];
-      if (!c) continue;
-      raw[i] = parseInt(c.slice(1, 3), 16); raw[i + 1] = parseInt(c.slice(3, 5), 16); raw[i + 2] = parseInt(c.slice(5, 7), 16); raw[i + 3] = 255;
-    }
-  }
-  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(W, 0); ihdr.writeUInt32BE(H, 4); ihdr[8] = 8; ihdr[9] = 6;
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]));
-}
+// ---- PNG RGBA sin dependencias (codificador compartido, scripts/lib/png.mjs) ----
+const png = (g, file) => writePng(g, W, H, file);
 
 // ---- Etapas: proporciones (spec §1). Pivotes del manifiesto: cabeza [15,25], cuerpo [15,35], cola [27,33], mano [11,27]. ----
 const STAGES = {
