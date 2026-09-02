@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePetPage } from "@/lib/reactivity/revalidate";
 import { isPetClass, NAME_MAX } from "./classes";
+import { deriveAttributes, levelFor, xpFor } from "./derive";
+import { getPetCounts } from "./get-pet-counts";
 
 export type PetActionState = {
   error?: "invalidName" | "invalidClass" | "exists" | "generic";
@@ -35,7 +37,21 @@ export async function hatchPet(_prev: PetActionState, formData: FormData): Promi
   const cls = formData.get("class");
   if (!isPetClass(cls)) return { error: "invalidClass" };
 
-  const { error } = await supabase.from("pet_state").insert({ user_id: user.id, name, class: cls });
+  // last_level nace con el nivel REAL, no con 1: quien eclosiona con historial
+  // (un import de 150 lecturas) ya está en nivel ~10, y si last_level fuera 1
+  // la primera visita a /mascota lo celebraría como una subida de nivel de
+  // golpe (issue #1042). La etapa sí nace en `acorn`: hasta la primera
+  // actividad tras eclosionar no sale de la bellota, y ESA evolución sí se
+  // celebra. Best-effort: si contar falla, nivel 1 y que /mascota lo suba.
+  const level = await getPetCounts(supabase, user.id)
+    .then(({ counts }) => levelFor(xpFor(deriveAttributes(counts), cls)))
+    .catch((e: unknown) => {
+      console.error("hatchPet counts", e);
+      return 1;
+    });
+  const { error } = await supabase
+    .from("pet_state")
+    .insert({ user_id: user.id, name, class: cls, last_level: level });
   if (error) {
     // 23505 = unique_violation sobre la PK: ya había mascota.
     if (error.code === "23505") return { error: "exists" };
