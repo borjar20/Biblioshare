@@ -3706,6 +3706,12 @@ INSERT, 1 con UPDATE, 0 para `anon`, 3 políticas, RLS activa. **Aplicada y veri
 `/mascota` fallaba con la tabla ausente. Aditiva pura (tabla nueva, solo FK a `auth.users`): el código
 de `main` no la toca.
 
+**Logros por familias (2026-09-02).** El rastro de un logro es `user_celebrations` con
+`event_type = 'pet_achievement'` y `event_key = 'pet_achievement:<familia>:<tier>'` (una fila por
+nivel). La migración de datos `20260904_pet_achievement_tiers.sql` renombró las claves planas de la
+fase 2 (`finished_10` → `finished:1`, …); verificación: cero filas `pet_achievement` sin dos `:`.
+Aplicada en dev el 2026-09-02; prod: ver `decisiones.md`.
+
 ## 9. Seguridad
 
 Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
