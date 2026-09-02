@@ -98,7 +98,7 @@ export function RoundSheet({
         {state.setup.participants.map((participant, seat) => (
           <div
             key={participant.id}
-            className={`flex items-center gap-2 rounded-card px-3 py-1 ${seat === active ? "bg-surface-muted" : ""}`}
+            className={`flex items-center gap-2 rounded-card px-2 py-2 ${seat === active ? "bg-surface-muted" : ""}`}
           >
             <SeatToken
               variant="seat"
