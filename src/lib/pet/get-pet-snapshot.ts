@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { earnCelebration } from "@/lib/celebrations/earn";
-import { todayISO } from "@/lib/stats/dates";
+import { todayISO, toISODate } from "@/lib/stats/dates";
 import { isPetClass, type PetAttributes, type PetClass, type PetMood, type PetStage } from "./classes";
 import { daysBetweenISO, type PetCounts } from "./counts";
 import { deriveAttributes, levelFor, moodFor, stageFor, xpFor, xpForLevel } from "./derive";
@@ -50,12 +50,14 @@ export async function getPetSnapshot(
   const attributes = deriveAttributes(counts);
   const xp = xpFor(attributes, pet.class);
   const level = levelFor(xp);
-  const hatchedISO = pet.hatched_at.slice(0, 10);
+  // timestamptz → día LOCAL, la misma convención que session_date y todayISO()
+  const hatchedISO = toISODate(new Date(pet.hatched_at));
   const hasActivitySinceHatch = lastActivityISO != null && lastActivityISO >= hatchedISO;
   const stage = stageFor(level, hasActivitySinceHatch);
   const mood = moodFor(lastActivityISO ? daysBetweenISO(lastActivityISO, todayISO()) : null);
 
   const leveledUp = level > pet.last_level;
+  // last_stage es text sin CHECK: un valor desconocido da undefined y evolved=false (fail-closed; la app solo escribe valores de stageFor).
   const evolved = STAGE_INDEX[stage] > STAGE_INDEX[pet.last_stage as PetStage];
 
   if (leveledUp || evolved) {

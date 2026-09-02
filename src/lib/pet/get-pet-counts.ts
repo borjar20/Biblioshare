@@ -38,6 +38,7 @@ export async function getPetCounts(
     profile,
     streaks,
     sagaFollows,
+    reviewRows,
   ] = await Promise.all([
     supabase
       .from("progress_sessions")
@@ -45,7 +46,7 @@ export async function getPetCounts(
       .eq("user_id", userId),
     supabase
       .from("passes")
-      .select("item_type, item_id, status, finished_on, rating, review")
+      .select("item_type, item_id, status, finished_on, rating")
       .eq("user_id", userId),
     supabase.from("episode_watches").select("id, rating").eq("user_id", userId),
     supabase.from("notes").select("kind").eq("user_id", userId),
@@ -57,9 +58,11 @@ export async function getPetCounts(
     supabase.from("profiles").select("daily_goal_minutes").eq("user_id", userId).maybeSingle(),
     getStreaks(supabase, userId),
     supabase.from("saga_follows").select("saga_id").eq("user_id", userId),
+    // Las reseñas se leen SIEMPRE por la vista pass_reviews: passes.review no tiene grant select para authenticated a propósito (20260714_passes_review_privacy.sql); leerla en la tabla revienta la consulta entera con 42501.
+    supabase.from("pass_reviews").select("id, review").eq("user_id", userId),
   ]);
 
-  for (const r of [sessions, passes, episodes, notes, posts, votes, events, follows, imports, profile, sagaFollows]) {
+  for (const r of [sessions, passes, episodes, notes, posts, votes, events, follows, imports, profile, sagaFollows, reviewRows]) {
     if (r.error) throw r.error;
   }
 
@@ -154,7 +157,7 @@ export async function getPetCounts(
     distinctGenres: genres.size,
     notes: (notes.data ?? []).filter((n) => n.kind === "note").length,
     quotes: (notes.data ?? []).filter((n) => n.kind === "quote").length,
-    reviews: passRows.filter((p) => (p.review ?? "").trim().length > 0).length,
+    reviews: (reviewRows.data ?? []).filter((p) => (p.review ?? "").trim().length > 0).length,
     ratings:
       passRows.filter((p) => p.rating != null).length +
       (episodes.data ?? []).filter((e) => e.rating != null).length,
