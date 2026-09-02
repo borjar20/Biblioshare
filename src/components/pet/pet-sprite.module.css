@@ -52,5 +52,8 @@
 @media (prefers-reduced-motion: reduce) {
   .root [data-part] { animation: none !important; }
   .root[data-reaction="joy"] { animation: nudge 0.4s ease-out; }
+  /* La evolución con movimiento reducido es un fundido corto, sin escala ni destello. */
+  .root[data-reaction="evolve"] { animation: fadeIn 0.6s ease-out; }
   @keyframes nudge { 50% { transform: translateY(-4%); } }
+  @keyframes fadeIn { from { opacity: 0.4; } to { opacity: 1; } }
 }
