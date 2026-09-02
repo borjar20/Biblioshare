@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countCompletedSagas, daysBetweenISO, sessionUnits, splitPassHistory, type PassRow } from "./counts";
+import { countCompletedSagas, daysBetweenISO, petActiveDays, sessionUnits, splitPassHistory, type PassRow } from "./counts";
 
 describe("sessionUnits", () => {
   it("por sesión toma el máximo entre minutos/10 y páginas avanzadas/10", () => {
@@ -108,5 +108,29 @@ describe("splitPassHistory", () => {
     // Un pase menos y el día ya no es volcado.
     const r2 = splitPassHistory([...burst.slice(1), other], day, 10);
     expect(r2.historical).toHaveLength(0);
+  });
+});
+
+describe("petActiveDays", () => {
+  it("un día de sesión y un día de cierre vivido cuentan, y no se duplican", () => {
+    const days = petActiveDays(
+      [{ session_date: "2026-09-01" }, { session_date: "2026-09-02" }, { session_date: "2026-09-02" }],
+      [{ finished_on: "2026-09-02" }, { finished_on: "2026-09-03" }, { finished_on: null }],
+    );
+    expect([...days].sort()).toEqual(["2026-09-01", "2026-09-02", "2026-09-03"]);
+  });
+
+  it("148 finished_on del HISTORIAL no suben los días activos de la mascota", () => {
+    // El caso real de prod (decisiones.md 2026-09-02): un volcado de 148
+    // lecturas con sus fechas. Como splitPassHistory las deja fuera de
+    // `lived`, no llegan aquí y la CON de la mascota no se infla: solo cuenta
+    // el día que SÍ se vivió en la app.
+    const historical = Array.from({ length: 148 }, (_, i) => ({
+      finished_on: `2019-${String((i % 12) + 1).padStart(2, "0")}-01`,
+    }));
+    const lived = [{ finished_on: "2026-09-02" }];
+    expect(petActiveDays([], lived).size).toBe(1);
+    // Y si se colaran, serían 12 días más: por eso el filtro va antes.
+    expect(petActiveDays([], [...lived, ...historical]).size).toBe(13);
   });
 });

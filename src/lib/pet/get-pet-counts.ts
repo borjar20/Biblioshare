@@ -3,11 +3,12 @@ import { STREAK_MILESTONES } from "@/lib/celebrations/registry";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import { pagesForPass } from "@/lib/editions/edition-label";
 import { addDaysISO, todayISO, toISODate } from "@/lib/stats/dates";
-import { getStreaks } from "@/lib/stats/get-streaks";
+import { bestStreak } from "@/lib/stats/streak";
 import { BALANCE } from "./balance";
 import type { PetAttribute } from "./classes";
 import {
   countCompletedSagas,
+  petActiveDays,
   sessionUnits,
   splitPassHistory,
   type PetCounts,
@@ -50,7 +51,6 @@ export async function getPetCounts(
     events,
     follows,
     profile,
-    streaks,
     sagaFollows,
     reviewRows,
     missions,
@@ -71,7 +71,6 @@ export async function getPetCounts(
     supabase.from("club_activity_participants").select("activity_id").eq("user_id", userId),
     supabase.from("follows").select("followee_id").eq("follower_id", userId).eq("status", "accepted"),
     supabase.from("profiles").select("daily_goal_minutes").eq("user_id", userId).maybeSingle(),
-    getStreaks(supabase, userId),
     supabase.from("saga_follows").select("saga_id").eq("user_id", userId),
     // Las reseñas se leen SIEMPRE por la vista pass_reviews: passes.review no tiene grant select para authenticated a propósito (20260714_passes_review_privacy.sql); leerla en la tabla revienta la consulta entera con 42501.
     supabase.from("pass_reviews").select("id, item_type, item_id, review").eq("user_id", userId),
@@ -179,6 +178,13 @@ export async function getPetCounts(
   // XP de misiones completadas, agrupada por el atributo de la plantilla. Una
   // plantilla retirada del catálogo (isMissionTemplate=false) no suma: su XP se
   // pierde a propósito, igual que un peso que se pone a cero.
+  // Días activos y rachas DE LA MASCOTA: solo lo vivido en la app (I3). No sale
+  // de getStreaks() —que mira todos los finished_on y sigue siendo la racha del
+  // panel de perfil— porque un volcado de 148 lecturas con sus fechas entraría
+  // como 148 días activos y con las rachas de otra app.
+  const activeDaySet = petActiveDays(sessionRows, livedPasses);
+  const petBestStreak = bestStreak(activeDaySet);
+
   const missionXp: Record<PetAttribute, number> = { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 };
   for (const m of missions.data ?? []) {
     if (isMissionTemplate(m.template)) missionXp[MISSION_ATTR[m.template]] += m.xp;
@@ -187,9 +193,9 @@ export async function getPetCounts(
   const counts: PetCounts = {
     sessionUnits: sessionUnits(sessionRows),
     episodes: (episodes.data ?? []).length,
-    activeDays: streaks.activeDays,
+    activeDays: activeDaySet.size,
     dailyGoalDays,
-    streakMilestones: STREAK_MILESTONES.filter((m) => m <= streaks.best).length,
+    streakMilestones: STREAK_MILESTONES.filter((m) => m <= petBestStreak).length,
     finishedPasses: completedPasses.length,
     completedSagas,
     distinctGenres: genres.size,
@@ -210,7 +216,7 @@ export async function getPetCounts(
     historicalWorks: new Set(historicalPasses.map((p) => `${p.item_type}:${p.item_id}`)).size,
     missionXp,
     missionsCompleted: (missions.data ?? []).length,
-    bestStreak: streaks.best,
+    bestStreak: petBestStreak,
   };
 
   const today = todayISO();

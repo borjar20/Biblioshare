@@ -114,6 +114,22 @@ export function splitPassHistory<T extends PassRow>(
   return { lived, historical };
 }
 
+/** Días LOCALES con actividad VIVIDA en la app, para la CON y las rachas de la
+ *  mascota: día de sesión ∪ día de cierre de un pase VIVIDO. Deliberadamente
+ *  NO es `getStreaks()` (que sí mira todos los `finished_on`, y así se queda
+ *  para el panel de perfil): el historial volcado no es actividad, o quien
+ *  importa 148 lecturas con sus fechas entra con 148 días activos y las rachas
+ *  de otra app (decisiones.md 2026-09-02). */
+export function petActiveDays(
+  sessions: readonly { session_date: string }[],
+  livedPasses: readonly { finished_on: string | null }[],
+): Set<string> {
+  const days = new Set<string>();
+  for (const s of sessions) days.add(s.session_date);
+  for (const p of livedPasses) if (p.finished_on != null) days.add(p.finished_on);
+  return days;
+}
+
 export type SessionRow = {
   pass_id: string;
   duration_minutes: number | null;

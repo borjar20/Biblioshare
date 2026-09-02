@@ -3561,6 +3561,18 @@ en ~7 y ~4. El divisor se queda en 15: la entrada anterior lo justificaba con 1 
 lo sostiene con actividad real. Si la spec (§3, congelada) o `balance.ts` discrepan, manda esta
 entrada y el código.
 
+**Ampliación (rama `feat/mascota-rpg`, fase 2).** La primera versión de esto dejaba un agujero: CON
+seguía saliendo de `getStreaks()`, que cuenta como día activo CUALQUIER `finished_on`, también el de
+un pase histórico. Quien volcaba 148 lecturas con sus fechas entraba con ~148 días activos, la mejor
+racha de otra app y, con ella, los logros `streak_30`/`streak_100` desbloqueados sin haber abierto
+la app dos días seguidos. Desde este commit, los **días activos, la mejor racha y los hitos de racha
+de la mascota** salen de `petActiveDays(sessionRows, livedPasses)` (`src/lib/pet/counts.ts`, pura,
+con test): días de `progress_sessions.session_date` ∪ `finished_on` de los pases **vividos**. Es la
+misma regla que el resto de la entrada —el historial es dote, no actividad— aplicada al último sitio
+donde no lo era. `getStreaks()` **no se toca**: sigue siendo la racha global del panel de perfil, que
+sí quiere reconocer todo lo que terminaste. Que las dos cifras puedan diferir es deliberado: miden
+cosas distintas y solo la de la mascota decide XP.
+
 ## 2026-09-03 — Mascota fase 2: misiones con asignación guardada, progreso derivado; logros sin tabla
 
 Spec `docs/superpowers/specs/2026-09-02-mascota-misiones-logros-design.md`. Se guarda SOLO qué tres
