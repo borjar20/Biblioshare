@@ -36,6 +36,23 @@ export const CELEBRATIONS: Record<CelebrationEvent, CelebrationConfig> = {
     scope: "ever",
     reducedMotionFallback: "fade",
   },
+  // Mascota (spec 2026-09-02 §8): se ganan al calcular el snapshot en /mascota
+  // cuando level > last_level o cambia la etapa. `milestone` = nivel / índice
+  // de etapa (STAGE_INDEX en src/lib/pet/get-pet-snapshot.ts).
+  pet_level_up: {
+    event: "pet_level_up",
+    intensity: "medium",
+    durationMs: 1600,
+    scope: "milestone",
+    reducedMotionFallback: "fade",
+  },
+  pet_evolved: {
+    event: "pet_evolved",
+    intensity: "high",
+    durationMs: 1800,
+    scope: "milestone",
+    reducedMotionFallback: "static",
+  },
 };
 
 // Hitos de racha que se celebran. Fuera de esta lista, ningún día dispara nada.

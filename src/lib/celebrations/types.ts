@@ -7,7 +7,9 @@ export type CelebrationEvent =
   | "first_activity_of_day"
   | "daily_goal_completed"
   | "streak_milestone"
-  | "first_club_participation";
+  | "first_club_participation"
+  | "pet_level_up"
+  | "pet_evolved";
 
 /** Cómo se deduplica: qué parte del payload forma la clave única por usuario. */
 export type CelebrationScope =

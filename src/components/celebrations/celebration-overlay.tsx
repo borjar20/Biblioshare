@@ -21,6 +21,10 @@ function messageFor(p: CelebrationPayload): string {
       return `¡Racha de ${p.milestone ?? ""} días!`;
     case "first_club_participation":
       return "Ya formas parte de la conversación del club.";
+    case "pet_level_up":
+      return `Tu mascota sube a nivel ${p.milestone ?? ""}.`;
+    case "pet_evolved":
+      return "¡Tu mascota ha evolucionado!";
   }
 }
 
@@ -34,6 +38,10 @@ function staticGlyph(p: CelebrationPayload): string {
       return String(p.milestone ?? "★");
     case "first_club_participation":
       return "👥";
+    case "pet_level_up":
+      return String(p.milestone ?? "↑");
+    case "pet_evolved":
+      return "✦";
   }
 }
 
@@ -76,6 +84,16 @@ function Visual({ payload }: { payload: CelebrationPayload }) {
           <div className={`${styles.avatar} ${styles.b}`}>M</div>
           <div className={`${styles.avatar} ${styles.c}`}>L</div>
           <div className={styles.core}>♣</div>
+        </div>
+      );
+    case "pet_level_up":
+    case "pet_evolved":
+      return (
+        <div className={styles.stack} aria-hidden="true">
+          <div className={styles.spine} />
+          <div className={styles.spine} />
+          <div className={styles.spine} />
+          <div className={styles.stackNum}>{payload.event === "pet_level_up" ? payload.milestone : "✦"}</div>
         </div>
       );
   }

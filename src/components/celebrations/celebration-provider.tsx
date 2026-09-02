@@ -13,6 +13,7 @@ import { pullPendingCelebrations } from "@/lib/celebrations/pull-actions";
 import { CELEBRATIONS } from "@/lib/celebrations/registry";
 import { logCelebration } from "@/lib/celebrations/analytics";
 import {
+  emitCelebrationsShown,
   onCelebrationCheck,
   readCelebrationPreference,
   subscribeCelebrationPreference,
@@ -65,7 +66,10 @@ export function CelebrationProvider({
 
   const enqueue = useCallback((items: CelebrationPayload[]) => {
     const valid = items.filter((p) => CELEBRATIONS[p.event]);
-    if (valid.length) setQueue((q) => [...q, ...valid]);
+    if (valid.length) {
+      setQueue((q) => [...q, ...valid]);
+      emitCelebrationsShown(valid);
+    }
   }, []);
 
   const pull = useCallback(async () => {
