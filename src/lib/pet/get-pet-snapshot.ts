@@ -1,7 +1,8 @@
+import { getTranslations } from "next-intl/server";
 import type { createClient } from "@/lib/supabase/server";
 import { earnCelebration } from "@/lib/celebrations/earn";
 import { toISODate } from "@/lib/stats/dates";
-import { familyProgress, parseAchievementKey, type AchievementFamily } from "./achievements";
+import { achievementKey, familyProgress, parseAchievementKey, planAchievementEarns, type FamilyProgress } from "./achievements";
 import { CLASS_PRIMARY, isPetClass, type PetAttributes, type PetClass, type PetMood, type PetStage } from "./classes";
 import { daysBetweenISO, type PetCounts } from "./counts";
 import { deriveAttributes, levelFor, moodFor, stageFor, xpFor, xpForLevel } from "./derive";
@@ -13,12 +14,8 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 export const STAGE_INDEX: Record<PetStage, number> = { acorn: 0, young: 1, adult: 2, veteran: 3 };
 
-export interface AchievementView {
-  id: string;
-  value: number;
-  threshold: number;
-  unlocked: boolean;
-  /** ISO de user_celebrations.first_triggered_at; null si bloqueado. */
+export interface FamilyView extends FamilyProgress {
+  /** ISO de first_triggered_at del nivel ACTUAL; null con nivel 0. */
   unlockedAt: string | null;
 }
 
@@ -41,7 +38,7 @@ export interface PetSnapshot {
   leveledUp: boolean;
   evolved: boolean;
   missions: MissionView[];
-  achievements: AchievementView[];
+  achievements: FamilyView[];
   /** true en la lectura que completa una misión / desbloquea un logro (para pedir el drenado). */
   missionsCompletedNow: boolean;
   achievementsUnlockedNow: boolean;
@@ -123,46 +120,45 @@ export async function getPetSnapshot(
     if (evolved) await earnCelebration(supabase, userId, { event: "pet_evolved", milestone: STAGE_INDEX[stage] });
   }
 
-  // Logros: solo se gana lo NUEVO (ninguna escritura en una visita sin novedades).
+  const t = await getTranslations("pet");
+
+  // Logros por familias: una fila por nivel; solo se gana lo NUEVO.
   const earnedRows = earned.data ?? [];
-  const earnedAt = new Map<string, string>();
+  const earnedAt = new Map<string, string>(); // "familia:tier" → first_triggered_at
   for (const r of earnedRows) {
     const parsed = parseAchievementKey(r.event_key);
-    if (parsed) earnedAt.set(`${parsed.family}:${parsed.tier}`, r.first_triggered_at);
+    if (parsed) earnedAt.set(achievementKey(parsed.family, parsed.tier), r.first_triggered_at);
   }
-  // Volcado inicial: la mascota se deriva de un historial que YA existía, así
-  // que la primera visita desbloquea de golpe todo lo que el usuario llevaba
-  // ganado desde hace meses. Animarlo sería una avalancha de celebraciones de
-  // hitos viejos, así que ese primer lote se gana YA MOSTRADO (displayed_at) y
-  // no pide drenado: queda el rastro y la fecha en la galería, sin fuegos
-  // artificiales. Coste asumido: si el PRIMER logro de la vida de un usuario se
-  // desbloquea con la tabla aún vacía, ese tampoco se anima (pasa una vez).
+  // Volcado inicial: ver el comentario de la fase 2 — el primer lote se gana ya
+  // mostrado. Además, subir varios niveles de golpe anima solo el más alto de
+  // cada familia; los intermedios se ganan sellados (quedan con fecha).
   const backfill = earnedRows.length === 0;
-  const progressList = familyProgress(counts, level).map((f) => ({
-    id: `${f.family}:${f.tier || 1}`,
-    value: f.value,
-    threshold: f.threshold ?? f.nextThreshold ?? 0,
-    unlocked: f.tier > 0,
-  }));
-  const newlyUnlocked = progressList.filter((a) => a.unlocked && !earnedAt.has(a.id));
-  if (newlyUnlocked.length > 0) {
+  const progress = familyProgress(counts, level);
+  const plan = planAchievementEarns(progress, new Set(earnedAt.keys()), backfill);
+  if (plan.length > 0) {
     const now = new Date().toISOString();
-    // earnCelebration nunca lanza (best-effort), así que Promise.all no puede
-    // dejar a medias el resto: se ganan en paralelo, no una detrás de otra.
     await Promise.all(
-      newlyUnlocked.map((a) =>
+      plan.map((e) =>
         earnCelebration(
           supabase,
           userId,
-          { event: "pet_achievement", key: a.id, metadata: { threshold: a.threshold } },
-          { alreadyDisplayed: backfill },
+          {
+            event: "pet_achievement",
+            key: e.key,
+            title: `${t(`achievements.${e.family}`)} · ${t("achievements.tier", { tier: e.tier })}`,
+            metadata: { family: e.family, tier: e.tier },
+          },
+          { alreadyDisplayed: !e.animate },
         ),
       ),
     );
-    for (const a of newlyUnlocked) earnedAt.set(a.id, now);
+    for (const e of plan) earnedAt.set(e.key, now);
   }
-  const achievementsUnlockedNow = !backfill && newlyUnlocked.length > 0;
-  const achievements: AchievementView[] = progressList.map((a) => ({ ...a, unlockedAt: earnedAt.get(a.id) ?? null }));
+  const achievementsUnlockedNow = plan.some((e) => e.animate);
+  const achievements: FamilyView[] = progress.map((f) => ({
+    ...f,
+    unlockedAt: f.tier > 0 ? (earnedAt.get(achievementKey(f.family, f.tier)) ?? null) : null,
+  }));
 
   return {
     name: pet.name,
