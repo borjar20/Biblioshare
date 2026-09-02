@@ -18,8 +18,8 @@ export const ACHIEVEMENTS = [
   { id: "posts_50", threshold: 50, value: (c: PetCounts) => c.posts },
   { id: "sagas_3", threshold: 3, value: (c: PetCounts) => c.completedSagas },
   { id: "missions_50", threshold: 50, value: (c: PetCounts) => c.missionsCompleted },
-  { id: "adult", threshold: 10, value: (_c: PetCounts, level: number) => (level >= 10 ? level : 0) },
-  { id: "veteran", threshold: 40, value: (_c: PetCounts, level: number) => (level >= 40 ? level : 0) },
+  { id: "adult", threshold: 10, value: (_c: PetCounts, level: number) => level },
+  { id: "veteran", threshold: 40, value: (_c: PetCounts, level: number) => level },
 ] as const;
 
 export type AchievementId = (typeof ACHIEVEMENTS)[number]["id"];

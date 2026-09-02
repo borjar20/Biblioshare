@@ -7,7 +7,11 @@ describe("achievements", () => {
     expect(unlockedAchievements(EMPTY_COUNTS, 1)).toEqual([]);
     const p = achievementProgress(EMPTY_COUNTS, 1);
     expect(p).toHaveLength(ACHIEVEMENTS.length);
-    expect(p.every((a) => a.value === 0 && a.threshold > 0 && !a.unlocked)).toBe(true);
+    expect(p.every((a) => a.threshold > 0 && !a.unlocked)).toBe(true);
+    const levelBased = new Set(["adult", "veteran"]);
+    for (const a of p) {
+      expect(a.value).toBe(levelBased.has(a.id) ? 1 : 0);
+    }
   });
 
   it("umbrales: justo debajo no, en el umbral sí", () => {
