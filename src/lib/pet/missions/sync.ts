@@ -49,14 +49,20 @@ export async function syncDailyMissions(
   const yesterday = addDaysISO(today, -1);
   const select = "id, day, slot, template, target, xp, item_type, item_id, item_title, completed_at";
 
-  const read = async () => {
-    const { data, error } = await supabase
+  // Next.js 16 memoiza los GET idénticos dentro de un mismo render, y las
+  // consultas de Supabase son GET: releer con la MISMA consulta justo después
+  // de insertar devolvía el resultado de ANTES del insert y el tablón salía
+  // vacío la primera visita del día (issue #1028). Por eso el camino normal usa
+  // las filas que devuelve el propio upsert (POST, no memoizado) y el camino de
+  // carrera relee con `bustCache`, que añade un filtro que no filtra nada
+  // (`slot >= 0`) solo para que la URL NO coincida con la del primer GET.
+  const read = async (bustCache = false) => {
+    const base = supabase
       .from("pet_daily_missions")
       .select(select)
       .eq("user_id", userId)
-      .in("day", [yesterday, today])
-      .order("day")
-      .order("slot");
+      .in("day", [yesterday, today]);
+    const { data, error } = await (bustCache ? base.gte("slot", 0) : base).order("day").order("slot");
     if (error) throw error;
     return data ?? [];
   };
@@ -64,22 +70,33 @@ export async function syncDailyMissions(
   let rows = await read();
   if (!rows.some((r) => r.day === today)) {
     const picks = pickDailyMissions(`${userId}:${today}`, input.primary, input.attributes, input.eligibility);
-    const { error } = await supabase.from("pet_daily_missions").upsert(
-      picks.map((p, slot) => ({
-        user_id: userId,
-        day: today,
-        slot,
-        template: p.template,
-        target: p.target,
-        xp: p.xp,
-        item_type: p.itemType ?? null,
-        item_id: p.itemId ?? null,
-        item_title: p.title ?? null,
-      })),
-      { onConflict: "user_id,day,slot", ignoreDuplicates: true },
-    );
+    const { data: inserted, error } = await supabase
+      .from("pet_daily_missions")
+      .upsert(
+        picks.map((p, slot) => ({
+          user_id: userId,
+          day: today,
+          slot,
+          template: p.template,
+          target: p.target,
+          xp: p.xp,
+          item_type: p.itemType ?? null,
+          item_id: p.itemId ?? null,
+          item_title: p.title ?? null,
+        })),
+        { onConflict: "user_id,day,slot", ignoreDuplicates: true },
+      )
+      .select(select);
     if (error) throw error;
-    rows = await read();
+    if ((inserted ?? []).length > 0) {
+      rows = [...rows.filter((r) => r.day !== today), ...(inserted ?? [])].sort(
+        (a, b) => a.day.localeCompare(b.day) || a.slot - b.slot,
+      );
+    } else {
+      // Otra pestaña ganó la carrera: con `ignoreDuplicates` el upsert no
+      // devuelve nada, así que hay que releer — y con la consulta distinta.
+      rows = await read(true);
+    }
   }
 
   let completedNow = false;
@@ -90,13 +107,18 @@ export async function syncDailyMissions(
     const progress = missionProgress({ template: r.template, target: r.target, item_type: r.item_type, item_id: r.item_id }, counts);
     let completed = r.completed_at != null;
     if (!completed && progress >= r.target) {
-      const { error } = await supabase
+      // `.select("id")`: el UPDATE es condicional (`completed_at is null`), así
+      // que "sin error" NO significa "yo la he completado" — si otra pestaña se
+      // adelantó, no toca ninguna fila y no devuelve ninguna. Solo la escritura
+      // que de verdad marcó la fila gana la celebración.
+      const { data: updated, error } = await supabase
         .from("pet_daily_missions")
         .update({ completed_at: new Date().toISOString() })
         .eq("id", r.id)
-        .is("completed_at", null);
+        .is("completed_at", null)
+        .select("id");
       if (error) console.error("syncDailyMissions update", error);
-      else {
+      else if ((updated ?? []).length > 0) {
         completed = true;
         completedNow = true;
         await earnCelebration(supabase, userId, {
