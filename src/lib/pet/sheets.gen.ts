@@ -634,11 +634,11 @@ export const PET_SHEETS = {
           "frames": 4
         },
         "sleepy": {
-          "row": 3,
+          "row": 2,
           "frames": 9
         },
         "sad": {
-          "row": 2,
+          "row": 3,
           "frames": 9
         },
         "joy": {

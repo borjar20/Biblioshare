@@ -50,16 +50,16 @@
         "row": 2,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "43deeb4f-bdf3-48a5-82a1-28020e282ea7",
+        "animation": "sleepy",
+        "animation_group_id": "7c8ff3b6-1173-4052-8859-2704f059d8b0",
         "direction": "south"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "7c8ff3b6-1173-4052-8859-2704f059d8b0",
+        "animation": "sad",
+        "animation_group_id": "ca8fe78c-e864-406c-a318-0e63bb860c42",
         "direction": "south"
       },
       {
@@ -73,5 +73,5 @@
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T09:21:54.219657+00:00"
+  "export_date": "2026-09-03T09:37:10.835825+00:00"
 }
