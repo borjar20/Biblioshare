@@ -2192,6 +2192,7 @@
     "navLabel": "Admin",
     "title": "Gestión de usuarios",
     "description": "Cambia el rol de cada usuario. Los cambios son inmediatos.",
+    "petLink": "Animaciones de la mascota",
     "colUser": "Usuario",
     "colRole": "Rol",
     "colSince": "Desde",
@@ -2204,7 +2205,21 @@
     "saving": "Guardando...",
     "saved": "Guardado",
     "roleConfirm": "Vas a dar el rol «{role}» a este usuario. Se aplica al momento.",
-    "error": "No se pudo cambiar el rol."
+    "error": "No se pudo cambiar el rol.",
+    "pet": {
+      "title": "Animaciones de la mascota",
+      "description": "Las 18 combinaciones etapa × clase y la bellota, con el componente real. Pausa y avanza frame a frame para revisar re-rolls.",
+      "scale": "Escala",
+      "anim": "Animación",
+      "anims": { "idle": "Idle", "sleepy": "Dormida", "sad": "Triste", "joy": "Alegría" },
+      "direction": "Dirección",
+      "acornReady": "Bellota lista",
+      "evolve": "Evolución",
+      "play": "Reproducir",
+      "pause": "Pausar",
+      "prevFrame": "Frame anterior",
+      "nextFrame": "Frame siguiente"
+    }
   },
   "offline": {
     "title": "Sin conexión",
