@@ -1,22 +1,37 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { sheetEntry } from "@/lib/pet/manifest";
+import { acornEntry, sheetEntry } from "@/lib/pet/manifest";
 import { PetSprite } from "./pet-sprite";
 
 afterEach(cleanup);
 
 describe("PetSprite", () => {
-  it("bellota: una sola imagen y sin sheet", () => {
+  it("bellota: sheet de la bellota, fila idle, sin img", () => {
+    const e = acornEntry();
     const { container } = render(<PetSprite stage="acorn" petClass="wizard" mood="neutral" scale={2} label="Bellota" />);
-    const imgs = container.querySelectorAll("img");
-    expect(imgs.length).toBe(1);
-    expect(imgs[0].getAttribute("src")).toBe("/pet/acorn.png");
     const root = container.firstElementChild as HTMLElement;
+    expect(container.querySelectorAll("img").length).toBe(0);
+    expect(root.style.backgroundImage).toContain("/pet/sheets/acorn.png");
+    expect(root.style.width).toBe(`${e.cell * 2}px`);
+    expect(root.getAttribute("data-anim")).toBe("idle");
     expect(root.getAttribute("aria-label")).toBe("Bellota");
-    expect(root.style.backgroundImage).toBe("");
-    expect(root.getAttribute("data-anim")).toBeNull();
-    expect(root.style.animationName).toBe("");
+    expect(root.style.animationName).toContain("stripIdle");
+  });
+
+  it("bellota lista para eclosionar: fila ready", () => {
+    const e = acornEntry();
+    const { container } = render(<PetSprite stage="acorn" petClass="wizard" mood="neutral" scale={3} hatchReady label="Bellota" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.getAttribute("data-anim")).toBe("ready");
+    expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.anims.ready.row));
+    expect(root.style.animationName).toContain("stripReady");
+    expect(root.style.animationDuration).toBe(`${e.anims.ready.frames / 6}s`);
+  });
+
+  it("hatchReady se ignora fuera de la bellota", () => {
+    const { container } = render(<PetSprite stage="adult" petClass="bard" mood="happy" scale={1} hatchReady label="Lira" />);
+    expect(container.firstElementChild!.getAttribute("data-anim")).toBe("idle");
   });
 
   it("adulta maga contenta: sheet de maga adulta, fila idle, caja = celda × escala", () => {

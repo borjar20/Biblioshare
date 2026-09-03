@@ -1,7 +1,7 @@
 /* Sprite sheet de PixelLab (spec sprites-personaje §6). Una celda visible; la animación
    recorre la fila con steps(). Variables que pone el componente para posicionar la celda:
    --pet-cell (px), --pet-row, --pet-col, --pet-frames (fila animada, para los @keyframes
-   stripIdle/stripSleepy/stripSad/stripJoy). Los parámetros que dependen de datos (duración,
+   stripIdle/stripSleepy/stripSad/stripJoy, y stripReady para la bellota). Los parámetros que dependen de datos (duración,
    timing-function, nº de iteraciones) NO viven aquí: el componente los pone como longhands
    `animation-*` en línea (ver pet-sprite.tsx) porque un var() dentro del shorthand
    `animation` se invalida en tiempo de cómputo si el elemento no tiene esa custom property
@@ -11,13 +11,6 @@
   display: inline-block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-}
-.root > img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  image-rendering: pixelated;
 }
 .sheet {
   background-repeat: no-repeat;
@@ -33,8 +26,8 @@
    que ya hace con `styles.root` para la clase — en vez de escribir el literal, que no
    encontraría ninguna regla y dejaría el sprite congelado.
 
-   Son CUATRO @keyframes con el mismo cuerpo (uno por fila de animación: idle, sleepy, sad,
-   joy) y no uno solo reutilizado por nombre: CSS solo reinicia una animación cuando la
+   Son CINCO @keyframes con el mismo cuerpo (uno por fila de animación: idle, sleepy, sad,
+   joy… y ready para la bellota) y no uno solo reutilizado por nombre: CSS solo reinicia una animación cuando la
    lista `animation-name` CAMBIA de valor. pet-companion.tsx monta con reaction=null (fila
    idle, 1s, infinita) y más tarde pasa a reaction="joy" (fila joy, 0.9s, una vez) SIN
    desmontarse — si las dos filas compartiesen nombre de keyframe, el navegador vería el
@@ -56,6 +49,10 @@
   to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
 }
 @keyframes stripJoy {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripReady {
   from { background-position-x: 0; }
   to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
 }
