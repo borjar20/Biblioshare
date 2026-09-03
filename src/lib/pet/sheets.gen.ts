@@ -1,5 +1,5 @@
 // GENERADO por scripts/pet-pixellab/fetch-character.mjs — no editar a mano.
-// Layout de cada spritesheet de public/pet/sheets/<stage>/<class>.png (spec sprites-personaje §5).
+// Layout de cada spritesheet de public/pet/sheets/<stage>/<class>.png y acorn.png (spec sprites-personaje §5).
 export type PetAnimName = "idle" | "sleepy" | "sad" | "joy";
 export type SheetRow = { row: number; frames: number };
 export type SheetEntry = {
@@ -11,6 +11,8 @@ export type SheetEntry = {
   rotationsRow: number;
   anims: Record<PetAnimName, SheetRow>;
 };
+export type AcornAnimName = "idle" | "ready";
+export type AcornSheetEntry = { cell: number; width: number; height: number; columns: number; anims: Record<AcornAnimName, SheetRow> };
 export const PET_SHEETS = {
   "young": {
     "barbarian": {
@@ -647,5 +649,21 @@ export const PET_SHEETS = {
         }
       }
     }
+  },
+  "acorn": {
+    "cell": 40,
+    "width": 360,
+    "height": 120,
+    "columns": 9,
+    "anims": {
+      "idle": {
+        "row": 1,
+        "frames": 9
+      },
+      "ready": {
+        "row": 2,
+        "frames": 9
+      }
+    }
   }
-} as const satisfies Record<"young" | "adult" | "veteran", Record<string, SheetEntry>>;
+} as const satisfies Record<"young" | "adult" | "veteran", Record<string, SheetEntry>> & { acorn: AcornSheetEntry };

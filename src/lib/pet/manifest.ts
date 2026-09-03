@@ -1,5 +1,5 @@
 import type { PetClass, PetMood, PetStage } from "./classes";
-import { PET_SHEETS, type PetAnimName, type SheetEntry } from "./sheets.gen";
+import { PET_SHEETS, type AcornAnimName, type AcornSheetEntry, type PetAnimName, type SheetEntry } from "./sheets.gen";
 
 // Fuente de verdad de qué sheet va dónde y qué animación toca (spec
 // sprites-personaje §5). El layout de cada sheet lo genera fetch-character.mjs
@@ -9,7 +9,9 @@ export type PetDirection = "south" | "south-east" | "east" | "north-east" | "nor
 export const DRAWN_STAGES = ["young", "adult", "veteran"] as const satisfies readonly DrawnStage[];
 
 export const PET_MANIFEST = {
-  acorn: { src: "/pet/acorn.png" },
+  // La bellota es un sheet más (empaquetado por pack-strip.mjs): `idle` siempre, `ready` solo en
+  // la eclosión con el formulario completo (spec bellota-visor §2).
+  acorn: { anims: { idle: { fps: 4, loop: true }, ready: { fps: 6, loop: true } } satisfies Record<AcornAnimName, { fps: number; loop: boolean }> },
   anims: {
     idle: { fps: 4, loop: true },
     sleepy: { fps: 3, loop: true },
@@ -27,6 +29,16 @@ export function sheetSrc(stage: DrawnStage, cls: PetClass): string {
 export function sheetEntry(stage: DrawnStage, cls: PetClass): SheetEntry {
   const e = PET_SHEETS[stage][cls];
   if (!e) throw new Error(`sheets.gen.ts sin entrada para ${stage}/${cls}: corre fetch-character.mjs`);
+  return e;
+}
+
+export function acornSrc(): string {
+  return "/pet/sheets/acorn.png";
+}
+
+export function acornEntry(): AcornSheetEntry {
+  const e = PET_SHEETS.acorn;
+  if (!e) throw new Error("sheets.gen.ts sin entrada acorn: corre pack-strip.mjs y fetch-character.mjs --gen");
   return e;
 }
 
