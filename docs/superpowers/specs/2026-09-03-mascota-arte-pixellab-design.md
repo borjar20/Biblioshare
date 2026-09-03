@@ -77,7 +77,7 @@ Lienzo 40×40, `no_background: true`, vista `low top-down`.
 
 **El rig por partes murió el 2026-09-03** (spec `2026-09-03-mascota-sprites-personaje-design.md`):
 un personaje frontal de 4 piezas compuestas con `transform` no rota ni admite animación por
-frames, y el producto quiere que la mascota pasee (issue paseo) y pelee (#1015). Se borraron
+frames, y el producto quiere que la mascota pasee (#1057) y pelee (#1015). Se borraron
 `public/pet/{young,adult,veteran,face,class}/`, `scripts/pet-sprites.mjs` y los scripts del rig
 (`compose.mjs`, `slice.mjs`, `extract-layer.mjs`, `rig.mjs`). No revivir sin releer esa spec.
 
