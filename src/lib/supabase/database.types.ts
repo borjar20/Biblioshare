@@ -1678,6 +1678,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_nudges: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          kind: string
+          streak: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          kind: string
+          streak?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          kind?: string
+          streak?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       pet_state: {
         Row: {
           class: string
@@ -2793,6 +2820,15 @@ export type Database = {
           organizer_id: string
           starts_at: string
           title: string
+          user_id: string
+        }[]
+      }
+      claim_pet_nudges: {
+        Args: { p_day?: string }
+        Returns: {
+          kind: string
+          name: string
+          streak: number | null
           user_id: string
         }[]
       }

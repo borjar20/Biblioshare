@@ -26,6 +26,10 @@ export const BALANCE = {
     seriesEpisodesLeft: 2,
     reviewWindowDays: 7,
   },
+  // Avisos push (spec fase 3): racha mínima para avisar de que se acaba. Los
+  // umbrales de humor son mood.sleepyFrom / sadFrom. claim_pet_nudges()
+  // (20260906) lleva los tres COPIADOS: si cambian aquí, cambia el SQL.
+  nudges: { streakMin: 3 },
   // Logros por familias con escalera ABIERTA (spec logros-niveles §1): los
   // primeros niveles a mano (`steps`), después último + `then` por nivel.
   // `then: null` = escalera cerrada (no hay nivel más allá de `steps`). Los
