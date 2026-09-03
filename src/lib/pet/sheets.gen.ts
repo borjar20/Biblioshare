@@ -16,9 +16,9 @@ export type AcornSheetEntry = { cell: number; width: number; height: number; col
 export const PET_SHEETS = {
   "young": {
     "barbarian": {
-      "cell": 52,
-      "width": 468,
-      "height": 260,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -33,27 +33,27 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 1,
+          "row": 4,
           "frames": 4
         },
         "sleepy": {
-          "row": 3,
+          "row": 2,
           "frames": 9
         },
         "sad": {
-          "row": 4,
+          "row": 3,
           "frames": 9
         },
         "joy": {
-          "row": 2,
+          "row": 1,
           "frames": 9
         }
       }
     },
     "fighter": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 96,
+      "width": 864,
+      "height": 480,
       "columns": 9,
       "directions": [
         "south",
@@ -68,27 +68,27 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 4,
+          "row": 2,
           "frames": 4
         },
         "sleepy": {
-          "row": 1,
+          "row": 4,
           "frames": 9
         },
         "sad": {
-          "row": 3,
+          "row": 1,
           "frames": 9
         },
         "joy": {
-          "row": 2,
+          "row": 3,
           "frames": 9
         }
       }
     },
     "wizard": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -103,11 +103,11 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 3,
+          "row": 4,
           "frames": 4
         },
         "sleepy": {
-          "row": 4,
+          "row": 3,
           "frames": 9
         },
         "sad": {
@@ -121,9 +121,9 @@ export const PET_SHEETS = {
       }
     },
     "cleric": {
-      "cell": 52,
-      "width": 468,
-      "height": 260,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -138,7 +138,7 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 4,
+          "row": 3,
           "frames": 4
         },
         "sleepy": {
@@ -146,19 +146,19 @@ export const PET_SHEETS = {
           "frames": 9
         },
         "sad": {
-          "row": 3,
+          "row": 1,
           "frames": 9
         },
         "joy": {
-          "row": 1,
+          "row": 4,
           "frames": 9
         }
       }
     },
     "bard": {
-      "cell": 52,
-      "width": 468,
-      "height": 260,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -173,27 +173,27 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 2,
+          "row": 1,
           "frames": 4
         },
         "sleepy": {
-          "row": 4,
+          "row": 2,
           "frames": 9
         },
         "sad": {
-          "row": 1,
+          "row": 3,
           "frames": 9
         },
         "joy": {
-          "row": 3,
+          "row": 4,
           "frames": 9
         }
       }
     },
     "ranger": {
-      "cell": 52,
-      "width": 468,
-      "height": 260,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -208,15 +208,15 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 3,
+          "row": 1,
           "frames": 4
         },
         "sleepy": {
-          "row": 1,
+          "row": 2,
           "frames": 9
         },
         "sad": {
-          "row": 2,
+          "row": 3,
           "frames": 9
         },
         "joy": {

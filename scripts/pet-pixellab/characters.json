@@ -1,5 +1,63 @@
 {
-  "young": { "base": "026d7194-f23f-4a03-84b3-04b0fa4d00a9", "classes": {} },
+  "young": {
+    "base": "026d7194-f23f-4a03-84b3-04b0fa4d00a9",
+    "classes": {
+      "barbarian": {
+        "character_id": "fb833e00-e7e7-4053-904f-73a558f09df5",
+        "anims": {
+          "idle": "fe785aaf-f6b1-48b7-a069-c4b4e53cb462",
+          "sleepy": "c81d0031-644f-44f3-95db-f0eca48471a2",
+          "sad": "cab4c8ca-e29e-4cd7-b826-9b10fdec97ad",
+          "joy": "4cc8b133-d1c3-4d39-a000-14e79982d900"
+        }
+      },
+      "fighter": {
+        "character_id": "bbbbea6c-55d0-4d11-92cd-dd7e99578b7c",
+        "anims": {
+          "idle": "4bc7096e-b6db-4275-a072-9e6a369edc77",
+          "sleepy": "a7a93e80-35fc-4a9d-8e30-35ad614368b5",
+          "sad": "155d16fd-41a8-46ea-9302-48613ae9631b",
+          "joy": "78a82465-3f80-40b7-9054-e66acffd4d0d"
+        }
+      },
+      "wizard": {
+        "character_id": "15b917c8-3130-4046-aa04-2d6868fd825d",
+        "anims": {
+          "idle": "c5269e2a-91f8-47e3-9cb3-96ea678212d9",
+          "sleepy": "c1e0275e-682a-4fb6-8b1c-d3632e7c17f2",
+          "sad": "894fde6a-0221-4c97-b52c-c9a04a1cc745",
+          "joy": "6cada4ee-bc73-4c29-84ba-9a6f5805ffa4"
+        }
+      },
+      "cleric": {
+        "character_id": "2c77431e-0757-455b-b3a9-dc29ae59b8c8",
+        "anims": {
+          "idle": "4d4e23c6-d2df-49db-9ca5-95bb0dc42699",
+          "sleepy": "250b07cc-68c1-4d4a-8255-58d490cc3493",
+          "sad": "18e3ecb2-56fd-4595-b272-562efd44b5bc",
+          "joy": "8aaa99c9-0841-43dd-a0ec-9b9f8de104e2"
+        }
+      },
+      "bard": {
+        "character_id": "feba0913-fec6-48a0-8491-956436d95b96",
+        "anims": {
+          "idle": "072ba224-1d39-4151-b055-f4950f7ad522",
+          "sleepy": "2d8171c4-857a-49b8-a403-215e81e8aa5e",
+          "sad": "46156937-f536-4349-8f97-cb199d488dc7",
+          "joy": "9b21de8a-c032-4c33-b40f-c59bbffc2489"
+        }
+      },
+      "ranger": {
+        "character_id": "e29cf7c9-c380-43c1-931f-ae94956b4175",
+        "anims": {
+          "idle": "447f46a0-8560-4b23-bd27-4009e0c5079c",
+          "sleepy": "6ae23a9f-8b4b-4ee0-a29c-e7667202985a",
+          "sad": "89c12958-9cc2-44b9-b057-65eeab0c1d3e",
+          "joy": "ff78415f-093e-4b26-95d0-75506b861627"
+        }
+      }
+    }
+  },
   "adult": { "base": "9de30514-20d9-4948-b1f3-9cdf30c13dea", "classes": {} },
   "veteran": { "base": "094f2826-8838-4354-8e6e-5aceafa3cbd5", "classes": {} }
 }
