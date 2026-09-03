@@ -68,7 +68,13 @@ function entryFrom(stage, cls, layout) {
   if (s.cell_size.width !== s.cell_size.height) throw new Error(`celda no cuadrada en ${stage}/${cls}`);
   const anims = {};
   for (const name of ANIMS) {
-    const r = s.rows.find((x) => x.type === "animation" && x.animation === name && x.direction === FACING);
+    let r = s.rows.find((x) => x.type === "animation" && x.animation === name && x.direction === FACING);
+    if (!r) {
+      // TRANSITORIO (migración a 64 px): los sheets aún no regenerados solo tienen filas "south".
+      // Se quita en Task 6 del plan 2026-09-03-mascota-64px-heroe, cuando las 18 estén en FACING.
+      r = s.rows.find((x) => x.type === "animation" && x.animation === name && x.direction === "south");
+      if (r) console.warn(`aviso: ${stage}/${cls} ${name} sin fila ${FACING}, usando south (sheet pendiente de regenerar)`);
+    }
     if (!r) throw new Error(`falta animación ${name} (${FACING}) en ${stage}/${cls}`);
     anims[name] = { row: r.row, frames: r.frame_count };
   }
