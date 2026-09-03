@@ -1,47 +1,31 @@
 import type { PetClass, PetMood, PetStage } from "./classes";
+import { PET_SHEETS, type PetAnimName, type SheetEntry } from "./sheets.gen";
 
-// Fuente de verdad de qué imagen va dónde (spec §5). Coordenadas en el lienzo
-// lógico de 40×40. Los PNG de esta fase los genera scripts/pet-sprites.mjs; el
-// arte IA curado los sustituirá CON LOS MISMOS NOMBRES. manifest.test.ts
-// comprueba que cada fichero existe.
-export const CANVAS = 40;
-
-export type PieceSpec = { src: string; pivot: [number, number]; z: number };
-export type StageSpec = { head: PieceSpec; body: PieceSpec; tail: PieceSpec; hand: PieceSpec };
+// Fuente de verdad de qué sheet va dónde y qué animación toca (spec
+// sprites-personaje §5). El layout de cada sheet lo genera fetch-character.mjs
+// en sheets.gen.ts; manifest.test.ts comprueba que existe cada PNG.
 export type DrawnStage = Exclude<PetStage, "acorn">;
-export type ClassLayer = "outfit" | "accessory";
-
-const stage = (name: DrawnStage): StageSpec => ({
-  tail: { src: `/pet/${name}/tail.png`, pivot: [27, 33], z: 1 },
-  body: { src: `/pet/${name}/body.png`, pivot: [15, 35], z: 2 },
-  head: { src: `/pet/${name}/head.png`, pivot: [15, 25], z: 3 },
-  hand: { src: `/pet/${name}/hand.png`, pivot: [11, 27], z: 4 },
-});
+export type PetDirection = "south" | "south-east" | "east" | "north-east" | "north" | "north-west" | "west" | "south-west";
+export const DRAWN_STAGES = ["young", "adult", "veteran"] as const satisfies readonly DrawnStage[];
 
 export const PET_MANIFEST = {
   acorn: { src: "/pet/acorn.png" },
-  stages: {
-    young: stage("young"),
-    adult: stage("adult"),
-    veteran: stage("veteran"),
-  } satisfies Record<DrawnStage, StageSpec>,
-  faces: {
-    happy: "/pet/face/happy.png",
-    neutral: "/pet/face/neutral.png",
-    sleepy: "/pet/face/sleepy.png",
-    sad: "/pet/face/sad.png",
-    blink: "/pet/face/blink.png",
-  } satisfies Record<PetMood | "blink", string>,
-  classes: {
-    barbarian: { outfit: { attach: "hat" }, accessory: { attach: "hand" } },
-    fighter: { outfit: { attach: "hat" }, accessory: { attach: "hand" } },
-    wizard: { outfit: { attach: "hat" }, accessory: { attach: "hand" } },
-    cleric: { outfit: { attach: "torso" }, accessory: { attach: "hand" } },
-    bard: { outfit: { attach: "hat" }, accessory: { attach: "hand" } },
-    ranger: { outfit: { attach: "hat" }, accessory: { attach: "hand" } },
-  } satisfies Record<PetClass, { outfit: { attach: "hat" | "torso" }; accessory: { attach: "hand" } }>,
+  anims: {
+    idle: { fps: 4, loop: true },
+    sleepy: { fps: 3, loop: true },
+    sad: { fps: 3, loop: true },
+    joy: { fps: 10, loop: false },
+  } satisfies Record<PetAnimName, { fps: number; loop: boolean }>,
+  // El humor ya no es una capa de cara: es la animación que se reproduce.
+  moodAnim: { happy: "idle", neutral: "idle", sleepy: "sleepy", sad: "sad" } satisfies Record<PetMood, PetAnimName>,
 } as const;
 
-export function classLayerSrc(cls: PetClass, stage: DrawnStage, layer: ClassLayer): string {
-  return `/pet/class/${cls}/${stage}/${layer}.png`;
+export function sheetSrc(stage: DrawnStage, cls: PetClass): string {
+  return `/pet/sheets/${stage}/${cls}.png`;
+}
+
+export function sheetEntry(stage: DrawnStage, cls: PetClass): SheetEntry {
+  const e = (PET_SHEETS[stage] as Record<string, SheetEntry>)[cls];
+  if (!e) throw new Error(`sheets.gen.ts sin entrada para ${stage}/${cls}: corre fetch-character.mjs`);
+  return e;
 }
