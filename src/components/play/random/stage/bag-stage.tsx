@@ -2,7 +2,7 @@
 
 import styles from "./stage.module.css";
 import { buzz, stableColor } from "./stage-helpers";
-import { useReducedMotion } from "./use-reduced-motion";
+import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
 
 function BagSvg() {
   return (

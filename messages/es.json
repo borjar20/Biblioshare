@@ -2218,7 +2218,8 @@
       "play": "Reproducir",
       "pause": "Pausar",
       "prevFrame": "Frame anterior",
-      "nextFrame": "Frame siguiente"
+      "nextFrame": "Frame siguiente",
+      "replay": "Repetir"
     }
   },
   "offline": {

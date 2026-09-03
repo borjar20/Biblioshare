@@ -1,13 +1,30 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { acornEntry, sheetEntry } from "@/lib/pet/manifest";
 
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 
 import { PetGallery } from "./pet-gallery";
 
-afterEach(cleanup);
+// jsdom no implementa `window.matchMedia`: por defecto simulamos "sin reducir movimiento"
+// para no romper los tests que no le prestan atención; los tests de reduced-motion
+// sobrescriben este stub con su propio mock.
+beforeEach(() => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockReturnValue({
+      matches: false,
+      media: "(prefers-reduced-motion: reduce)",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  );
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 const sprites = () => screen.getAllByRole("img");
 
 describe("PetGallery", () => {
@@ -39,5 +56,42 @@ describe("PetGallery", () => {
     fireEvent.change(screen.getByTestId("pet-gallery-direction"), { target: { value: "east" } });
     expect(sprites()[0].getAttribute("data-anim")).toBeNull();
     expect(sprites()[0].getAttribute("data-col")).toBe("2");
+  });
+
+  it("con prefers-reduced-motion, los controles de transporte quedan deshabilitados", () => {
+    const matchMediaMock = vi.fn().mockReturnValue({
+      matches: true,
+      media: "(prefers-reduced-motion: reduce)",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("matchMedia", matchMediaMock);
+    render(<PetGallery />);
+    expect((screen.getByTestId("pet-gallery-play") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("pet-gallery-prev") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("pet-gallery-next") as HTMLButtonElement).disabled).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("sin prefers-reduced-motion, los controles de transporte quedan habilitados", () => {
+    const matchMediaMock = vi.fn().mockReturnValue({
+      matches: false,
+      media: "(prefers-reduced-motion: reduce)",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("matchMedia", matchMediaMock);
+    render(<PetGallery />);
+    expect((screen.getByTestId("pet-gallery-play") as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTestId("pet-gallery-prev") as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTestId("pet-gallery-next") as HTMLButtonElement).disabled).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("«Repetir» reinicia las animaciones de joy sin romper y vuelve a mostrar Pausar", () => {
+    render(<PetGallery />);
+    fireEvent.change(screen.getByTestId("pet-gallery-anim"), { target: { value: "joy" } });
+    expect(() => fireEvent.click(screen.getByTestId("pet-gallery-replay"))).not.toThrow();
+    expect(screen.getByTestId("pet-gallery-play").textContent).toBe("pet.pause");
   });
 });

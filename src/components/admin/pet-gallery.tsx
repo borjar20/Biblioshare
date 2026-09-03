@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { PET_CLASSES, type PetMood } from "@/lib/pet/classes";
 import { DRAWN_STAGES, REACTION_MS, type PetDirection } from "@/lib/pet/manifest";
 import { PetSprite, type PetReaction } from "@/components/pet/pet-sprite";
+import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
 
 type GalleryAnim = "idle" | "sleepy" | "sad" | "joy";
 const ANIMS: GalleryAnim[] = ["idle", "sleepy", "sad", "joy"];
@@ -24,6 +25,7 @@ export function PetGallery() {
   const [evolve, setEvolve] = useState(false);
   const [paused, setPaused] = useState(false);
   const grid = useRef<HTMLDivElement>(null);
+  const reducedMotion = useReducedMotion();
 
   // jsdom no implementa `getAnimations`: sin esta guarda el useEffect de abajo rompería
   // el test bajo @vitest-environment jsdom.
@@ -34,6 +36,11 @@ export function PetGallery() {
         )
       : [];
 
+  // Sin array de dependencias a propósito: cambiar `animationName` (p. ej. al cambiar de
+  // animación o dirección) destruye y recrea la animación CSS, que nace en marcha. Este efecto
+  // reaplica `paused` a las animaciones que existan en ESTE render; con `[paused]` como
+  // dependencia, un cambio de animación dejaría el sprite corriendo aunque el botón mostrara
+  // «Reproducir».
   useEffect(() => {
     for (const a of animations()) {
       if (paused) a.pause();
@@ -46,7 +53,7 @@ export function PetGallery() {
     for (const a of animations()) {
       const el = (a.effect as KeyframeEffect | null)?.target as HTMLElement | null;
       const frames = Number(el?.getAttribute("data-frames") ?? 1);
-      const duration = Number((a.effect?.getTiming().duration as number) ?? 0);
+      const duration = Number(a.effect?.getComputedTiming().duration ?? 0);
       if (!frames || !duration) continue;
       const frameMs = duration / frames;
       const now = Number(a.currentTime ?? 0);
@@ -58,6 +65,14 @@ export function PetGallery() {
   const triggerEvolve = () => {
     setEvolve(true);
     window.setTimeout(() => setEvolve(false), REACTION_MS.evolve);
+  };
+
+  const replay = () => {
+    for (const a of animations()) {
+      a.currentTime = 0;
+      a.play();
+    }
+    setPaused(false);
   };
 
   const reaction: PetReaction = evolve ? "evolve" : anim === "joy" ? "joy" : null;
@@ -86,9 +101,10 @@ export function PetGallery() {
         </label>
         <button type="button" data-testid="pet-gallery-evolve" onClick={triggerEvolve} className="rounded-md border border-border px-2 py-1">{t("pet.evolve")}</button>
         <span className="ml-auto flex items-center gap-1">
-          <button type="button" data-testid="pet-gallery-prev" onClick={() => step(-1)} aria-label={t("pet.prevFrame")} className="rounded-md border border-border px-2 py-1">⏮</button>
-          <button type="button" data-testid="pet-gallery-play" onClick={() => setPaused((p) => !p)} className="rounded-md border border-border px-2 py-1">{paused ? t("pet.play") : t("pet.pause")}</button>
-          <button type="button" data-testid="pet-gallery-next" onClick={() => step(1)} aria-label={t("pet.nextFrame")} className="rounded-md border border-border px-2 py-1">⏭</button>
+          <button type="button" data-testid="pet-gallery-prev" onClick={() => step(-1)} disabled={reducedMotion} aria-label={t("pet.prevFrame")} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">⏮</button>
+          <button type="button" data-testid="pet-gallery-play" onClick={() => setPaused((p) => !p)} disabled={reducedMotion} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">{paused ? t("pet.play") : t("pet.pause")}</button>
+          <button type="button" data-testid="pet-gallery-next" onClick={() => step(1)} disabled={reducedMotion} aria-label={t("pet.nextFrame")} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">⏭</button>
+          <button type="button" data-testid="pet-gallery-replay" onClick={replay} className="rounded-md border border-border px-2 py-1">{t("pet.replay")}</button>
         </span>
       </div>
 
