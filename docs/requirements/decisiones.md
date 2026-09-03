@@ -3701,8 +3701,8 @@ días en **Europe/Madrid fijo** — el barrido es un evento del reloj de Madrid,
 la app (UTC en prod), por la decisión del 2026-09-02. Una acción entre las 22:00 y las 24:00 UTC
 puede caer en días distintos en los dos sitios: la pantalla de la mascota puede mostrarla contenta
 mientras sale un `mood_sleepy`, o al revés. **Se acepta para esta fase**: el arreglo de verdad no es
-elegir una zona en el claim, sino tomar una decisión de zona horaria para toda la app (hay issue
-abierta al respecto; ver el cierre de esta rama). Queda anotado en el comentario de
+elegir una zona en el claim, sino tomar una decisión de zona horaria para toda la app (issue **#1051**,
+zona horaria de la app: Node en UTC frente a SQL en Europe/Madrid). Queda anotado en el comentario de
 `private.pet_lived_activity_days` y en §8bis.4 del modelo de datos.
 
 **Detalle de la revisión ya corregido:** el «último día vivido» se calcula con
@@ -3713,7 +3713,8 @@ usuario** sin que nada lo delatara.
 **Segunda copia de la regla de historial en SQL.** `private.pet_lived_activity_days` repite lo que
 ya está en `splitPassHistory` (TS) y en `get_companion_state()` (SQL): tres copias de «qué cuenta
 como actividad vivida». Se asume en esta fase — la alternativa era refactorizar `get_companion_state`
-(que tiene `p_tz` y corre con la sesión) en mitad de la fase — y queda como issue de unificación.
+(que tiene `p_tz` y corre con la sesión) en mitad de la fase — y queda como issue de unificación
+(**#1049**).
 
 **Estado de despliegue.** `20260906_pet_nudges.sql` **aplicada y verificada en dev el 2026-09-03**
 (`1 | true | 1 | 0 | false | true | 1`: columna, RLS, 1 política, 0 INSERT para `authenticated`,

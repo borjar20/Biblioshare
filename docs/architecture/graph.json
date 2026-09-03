@@ -3267,7 +3267,7 @@
       ],
       "steps": [
         {
-          "node": "t-pet-nudges",
+          "node": "r-cron",
           "action": "pg_cron ('0 * * * *') llama a private.dispatch_pet_nudges(), que sale sin hacer nada salvo a las 20:00 de Madrid y, si es la hora, hace net.http_post con el cron_secret de Vault",
           "file": "supabase/migrations/20260906_pet_nudges.sql"
         },

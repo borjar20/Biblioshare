@@ -65,6 +65,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
+  if (!userId) return;
   // El interruptor apagado silencia los avisos del usuario de pruebas para
   // siempre si el test muere a mitad: la fila vuelve a como estaba (o se borra,
   // si no había ninguna).

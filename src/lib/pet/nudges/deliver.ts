@@ -10,6 +10,8 @@ type AdminClient = ReturnType<typeof createServiceRoleClient>;
 /** Fila que devuelve claim_pet_nudges() (20260906). */
 export type ClaimRow = { user_id: string; name: string; kind: string; streak: number | null };
 
+// `sent` = envíos INTENTADOS (sendPushToUser nunca lanza; la entrega real se
+// ve en push_devices.last_success_at/last_error), ver #1052.
 export type NudgeReport = { claimed: number; sent: number };
 
 type Deps = {

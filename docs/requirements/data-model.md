@@ -3811,8 +3811,8 @@ prod sí están los dos secretos de Vault y ya corren `pg_cron`/`pg_net` con el 
 
 ## 9. Seguridad
 
-Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
-2026-08-19; prod por reverificar). Patrones:
+Las **60 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
+2026-09-03; prod por reverificar). Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
