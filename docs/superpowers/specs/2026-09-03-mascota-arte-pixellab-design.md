@@ -70,6 +70,12 @@ Lienzo 40×40, `no_background: true`, vista `low top-down`.
    `public/pet/sheets/<stage>/<cls>.*` y regenera `src/lib/pet/sheets.gen.ts` a partir de **todos**
    los JSON presentes. Falla a propósito (`falta animación <name> (south) en <stage>/<cls>`) si
    falta una de las 4.
+
+   **Regenerar cualquier sheet exige subir `CACHE_NAME` en `public/sw.js`.** El PNG se llama
+   igual tras un re-roll y el service worker lo sirve cache-primero (`ASSET_EXT`); sin el bump,
+   un cliente que ya tenía el PNG viejo en caché sigue sirviéndolo mientras `sheets.gen.ts` (que
+   sí va hasheado en el JS) ya espera las filas nuevas — la mascota anima mal hasta que ese
+   cliente purgue el caché a mano.
 6. **Comprobar.** `npx vitest run src/lib/pet` (existe PNG y entrada generada por combinación, cada
    una con las 4 animaciones en sur) y mirar `/mascota` a 1× y 3×.
 

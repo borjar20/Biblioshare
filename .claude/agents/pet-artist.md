@@ -43,6 +43,11 @@ stage with a state per class and sprite-sheet animations) and of BiblioPlay with
 - **After generating or re-rolling anything**: `node scripts/pet-pixellab/fetch-character.mjs
   <stage> <cls>` (downloads the sheet, regenerates `src/lib/pet/sheets.gen.ts`), then
   `npx vitest run src/lib/pet`.
+- **Regenerating any sheet requires bumping `CACHE_NAME` in `public/sw.js`.** The PNG filename
+  doesn't change on a re-roll (`public/pet/sheets/<stage>/<cls>.png`) but the service worker
+  caches it cache-first (`ASSET_EXT`), so a returning client keeps serving the OLD png against
+  the NEW row indices the just-shipped `sheets.gen.ts` expects — bumping `CACHE_NAME` is what
+  forces that client to fetch the fresh PNG instead of drawing the wrong animation row.
 - **Consistency across stages/classes**: `create_character`/`create_character_state` need no
   shared `seed` — PixelLab keeps identity from the `character_id`/base. For flat reference images
   (`create_image_pixflux`), `reduce_colors` with a shared palette image over all frames of a batch

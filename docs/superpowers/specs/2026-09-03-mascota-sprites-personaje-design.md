@@ -68,6 +68,9 @@ desbordan el lienzo), fila 0 = rotaciones en orden S, SE, E, NE, N, NW, W, SW, u
 animación y dirección. No se recorta a 40: la celda es la unidad de dibujo y el `scale` del
 componente multiplica la celda (1× = 52 px; la compañera crece de 40 a 52 px, aceptable).
 
+[Corrección 2026-09-03: PixelLab exporta 52 o 56 px según el estado; el componente lee
+`entry.cell`.]
+
 `scripts/pet-pixellab/fetch-character.mjs <stage> <class> <character_id>` descarga el zip, deja
 PNG + JSON en su sitio y actualiza `characters.json`.
 

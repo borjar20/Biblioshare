@@ -3763,3 +3763,19 @@ no rota.
 **Consecuencia.** Se borran piezas, caras, capas de clase y sus scripts. La celda del sheet es la
 unidad de dibujo (52 px para un personaje de 40): la compañera crece de 40 a 52 px a 1×. Añadir
 una dirección o animación no exige regenerar la base: ids en `scripts/pet-pixellab/characters.json`.
+
+## 2026-09-03 — Mascota: la celda del sheet es 52 o 56 px según el estado
+
+**Hecho.** PixelLab no exporta una celda uniforme de 52×52 como asumía la spec de sprites de
+personaje: según el estado exporta 52 **o** 56 px. Datos reales (`src/lib/pet/sheets.gen.ts`,
+orden de `PET_CLASSES` — barbarian, fighter, wizard, cleric, bard, ranger): `young`
+52/56/56/52/52/52; `adult` 52/56/56/52/56/52; `veteran` las 6 a 56×56. El componente ya lee
+`entry.cell` (nunca un literal), así que cada sprite se pinta bien por sí solo.
+
+**Consecuencia.** `class-picker` (y cualquier sitio que muestre dos sprites a la vez, o un cambio
+de clase/evolución) mezcla celdas de 52 y 56 px: a 2× eso es 104 px frente a 112 px, ~8 % de
+diferencia de tamaño perceptible entre un sprite y otro aunque `scale` sea el mismo.
+
+**Aceptado por ahora, con seguimiento.** No se corrige en esta pasada — issue #1059, con dos
+arreglos sugeridos: caja fija `MAX_CELL × scale` con el sprite centrado, o normalizar la celda al
+exportar en `fetch-character.mjs`.
