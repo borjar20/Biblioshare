@@ -1,10 +1,13 @@
 // Hoja de contacto ×6 con etiquetas, para comparar candidatos a ojo (o pegarla en una issue).
-//   node scripts/pet-pixellab/sheet.mjs <out.png> etiqueta=fichero.png [etiqueta=fichero.png ...]
+//   node scripts/pet-pixellab/sheet.mjs <out.png> [--cell N] etiqueta=fichero.png ...   (celda por defecto 64)
 import sharp from "sharp";
 
-const [out, ...items] = process.argv.slice(2);
-if (!out || items.length === 0) { console.error("uso: sheet.mjs <out.png> etiqueta=fichero.png ..."); process.exit(1); }
-const S = 6, C = 40, PAD = 8, LABEL = 18;
+const args = process.argv.slice(2);
+const ci = args.indexOf("--cell");
+const C = ci >= 0 ? Number(args.splice(ci, 2)[1]) : 64;
+const [out, ...items] = args;
+if (!out || items.length === 0) { console.error("uso: sheet.mjs <out.png> [--cell N] etiqueta=fichero.png ..."); process.exit(1); }
+const S = 6, PAD = 8, LABEL = 18;
 const cells = items.map((i) => { const [label, file] = i.split("="); return { label, file }; });
 const W = cells.length * (C * S + PAD) + PAD, H = C * S + PAD * 2 + LABEL;
 const comps = [];
