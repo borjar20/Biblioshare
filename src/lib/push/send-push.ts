@@ -57,7 +57,7 @@ export async function sendPushToUsers(
   const { data: prefRows } = await supabase
     .from("notification_preferences")
     .select(
-      "user_id, web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system",
+      "user_id, web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system, category_pet",
     )
     .in("user_id", uniqueIds);
   const prefsByUser = new Map<string, NotificationPreferences>(

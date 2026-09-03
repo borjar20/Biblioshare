@@ -15,6 +15,7 @@ const ALLOWED_KEYS = [
   "category_clubs",
   "category_progress",
   "category_system",
+  "category_pet",
 ] as const satisfies readonly (keyof NotificationPreferences)[];
 
 // Una server action es un endpoint POST público: se filtra a las claves booleanas
@@ -39,7 +40,7 @@ export async function loadMyPreferences(): Promise<NotificationPreferences> {
   const { data } = await supabase
     .from("notification_preferences")
     .select(
-      "web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system",
+      "web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system, category_pet",
     )
     .eq("user_id", user.id)
     .maybeSingle();

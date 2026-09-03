@@ -30,3 +30,13 @@ describe("isPushAllowed", () => {
     expect(isPushAllowed(p, "social", "web_push")).toBe(true);
   });
 });
+
+describe("categoría pet (mascota fase 3)", () => {
+  it("está activa por defecto y se apaga con category_pet=false", () => {
+    expect(isPushAllowed(prefs(), "pet", "web_push")).toBe(true);
+    expect(isPushAllowed(prefs({ category_pet: false }), "pet", "web_push")).toBe(false);
+    expect(isPushAllowed(prefs({ category_pet: false }), "pet", "fcm_android")).toBe(false);
+    // apagar la mascota no toca al resto
+    expect(isPushAllowed(prefs({ category_pet: false }), "social", "web_push")).toBe(true);
+  });
+});

@@ -35,6 +35,7 @@ async function ensureChannels(): Promise<void> {
     clubs: "Clubes",
     progress: "Progreso",
     system: "Sistema",
+    pet: "Mascota",
   };
   await Promise.all(
     (Object.keys(names) as PushCategory[]).map((cat) =>

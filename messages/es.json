@@ -1238,7 +1238,9 @@
     "categorySocial": "Social",
     "categoryClubs": "Clubes",
     "categoryProgress": "Progreso",
-    "categorySystem": "Sistema"
+    "categorySystem": "Sistema",
+    "categoryPet": "Mascota",
+    "categoryPetHint": "Tu racha en peligro y cuando lleve días sin verte. Si escondes a la compañera, tampoco te escribe."
   },
   "item": {
     "pages": "págs.",

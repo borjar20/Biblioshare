@@ -40,6 +40,7 @@ describe("buildFcmMessage", () => {
       clubs: "biblioshare_clubs",
       progress: "biblioshare_progress",
       system: "biblioshare_system",
+      pet: "biblioshare_pet",
     };
     for (const [category, channel] of Object.entries(expected) as [PushCategory, string][]) {
       const msg = buildFcmMessage("tok", event({ category }));

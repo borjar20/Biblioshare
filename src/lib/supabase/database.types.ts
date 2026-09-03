@@ -1395,6 +1395,7 @@ export type Database = {
         Row: {
           android_push_enabled: boolean
           category_clubs: boolean
+          category_pet: boolean
           category_progress: boolean
           category_social: boolean
           category_system: boolean
@@ -1406,6 +1407,7 @@ export type Database = {
         Insert: {
           android_push_enabled?: boolean
           category_clubs?: boolean
+          category_pet?: boolean
           category_progress?: boolean
           category_social?: boolean
           category_system?: boolean
@@ -1417,6 +1419,7 @@ export type Database = {
         Update: {
           android_push_enabled?: boolean
           category_clubs?: boolean
+          category_pet?: boolean
           category_progress?: boolean
           category_social?: boolean
           category_system?: boolean
