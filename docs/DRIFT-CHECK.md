@@ -333,6 +333,25 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 Si aparece una tabla que **no** está en esta lista, o a una de estas le sube `cols` sin
 subir el grant correspondiente, eso es el bug: falta el `grant ... (columna_nueva)`.
 
+> **Trampa: una tabla de SOLO LECTURA no sale en esta consulta, y eso no es un hueco.**
+> El `in (...)` interior filtra por tablas donde `authenticated` tiene ALGÚN grant de
+> INSERT/UPDATE en `column_privileges`. Una tabla con `revoke all` + `grant select` a secas no
+> aparece ahí, así que no llega a la consulta ni con `0 | 0`. Es el caso de **`pet_nudges`**
+> (mascota fase 3, `20260906`, dev el 2026-09-03): 6 columnas, `authenticated` solo la lee (RLS
+> `select` propio) y las filas las escribe **`claim_pet_nudges()`** (`SECURITY DEFINER`, `execute`
+> solo para `service_role`) desde el barrido de las 20:00. **No añadirla a la tabla de arriba es
+> deliberado**: la regla «si la consulta no devuelve exactamente esa tabla, hay bug» dejaría de
+> valer. Su control es otro y se pasó el 2026-09-03: `0` privilegios de INSERT/UPDATE para
+> `authenticated`, `authenticated` **sin** `execute` sobre `claim_pet_nudges` y `service_role`
+> **con** él; y en el código, el único escritor de `pet_nudges` en `src/` es esa RPC llamada con
+> el cliente de `service_role` de `/api/cron/pet-nudges` (corolario de C1: la frase sobre *quién*
+> escribe se verifica en el código, no en los grants).
+>
+> **Lo que sí hay que vigilar de la fase 3** es `notification_preferences`: ganó `category_pet` y
+> pasa a **10 columnas**, pero tiene grant de TABLA ENTERA (`10 | 10 | 10`), así que el `having`
+> la sigue dejando fuera. **Si algún día asoma en esta consulta, es la regresión**: alguien
+> convirtió sus grants en finos y una columna se quedó sin el suyo.
+
 > **Ojo con `movies`/`series` desde el 2026-08-19 (#676):** su `con_update` bajó A PROPÓSITO.
 > Las columnas de TAMAÑO (`total_seasons`, `total_episodes`, `episode_runtime_minutes`,
 > `duration_minutes`) ya no las escribe nadie directo: van por `hydrate_movie`/`hydrate_series`.

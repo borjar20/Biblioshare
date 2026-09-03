@@ -3652,3 +3652,72 @@ no máquina de culpa» y «todo lo derivable se deriva»:
   (antes que guardar un 1 que celebraría la subida igual). `last_stage` sigue naciendo en `acorn`: la
   salida de la bellota (primera actividad tras eclosionar) se celebra UNA vez, aterrice en `young` o
   directamente en `adult` si el nivel ya lo es. Es la única celebración de primera visita que queda.
+
+
+## 2026-09-03 — Mascota fase 3: avisos push por racha y humor (#1014)
+
+Rama `feat/mascota-push`, spec `docs/superpowers/specs/2026-09-02-mascota-avisos-push-design.md`.
+El criterio de siempre: **espejo, no máquina de culpa**. Un aviso de la mascota es una nota corta
+que muere con la pantalla — no se acumula, no se repite, no escala.
+
+- **Alcance: racha en peligro + humor, nada más.** Fuera «tienes misiones sin hacer» (se solapa con
+  la racha y es ruido) y «has subido de nivel» (#1020: exigiría derivar el XP de TODOS los usuarios
+  cada noche). Cada descarte queda como issue.
+- **Hora fija, 20:00 Europe/Madrid.** Configurable por usuario es fase futura, no fase 3.
+- **El humor solo avisa en la TRANSICIÓN**: a los 2 días (`mood_sleepy`) y a los 4 (`mood_sad`), y
+  nunca más. A los 3, a los 5 y a los 10 no hay regla. Repetir el aviso cada N días se descartó a
+  propósito: eso es exactamente la máquina de culpa.
+- **La racha avisa desde 3 días** (`BALANCE.nudges.streakMin`). Por debajo no hay nada que perder.
+- **Categoría propia «Mascota»** (`notification_preferences.category_pet`, quinto interruptor de
+  ajustes) en vez de colarlo en `progress`: quien quiere los avisos de la mascota puede no querer
+  los de progreso, y al revés. **Y compañera oculta = silencio**: esconderla ya es la respuesta a
+  «no me hables de esto», así que no hace falta apagar además la categoría. Bajo el interruptor lo
+  dice la propia UI (`push.categoryPetHint`).
+- **Solo push, sin fila en la campana.** Un aviso caducado no debe seguir ahí mañana. Por eso los
+  tres `PetNudgeType` **no** entran en el enum `notification_type` de la BD ni en
+  `NOTIFICATION_CATEGORY`: nunca se inserta en `notifications`. El `type` viaja en el `data` del
+  push solo como etiqueta; lo que se usa es la ruta (`/mascota`).
+- **Claim en SQL, envío en Node**, calcado de los recordatorios de club: `claim_pet_nudges(p_day)`
+  decide e inserta en `pet_nudges` con `on conflict (user_id, day) do nothing` devolviendo solo lo
+  nuevo, y `/api/cron/pet-nudges` envía. El `unique (user_id, day)` es lo que garantiza «un push al
+  día», sin lógica en Node. **La ruta no calcula ningún día**: corre en Vercel en UTC y `todayISO()`
+  usa la zona de Node, así que el día lo pone el `default` de la función.
+- **`pet_nudges` NO es un registro de entregas.** Una fila = «el claim decidió avisar hoy». Si el
+  envío falla después del claim, **no se reintenta ese día**: un aviso de racha a las 23:00 por un
+  reintento es peor que ninguno.
+- **El cron corre cada hora y la función mira el reloj.** pg_cron programa en UTC; un `0 19 * * *`
+  se desplazaría solo con el cambio de hora. `dispatch_pet_nudges()` sale sin hacer nada salvo que
+  sean las 20 en Europe/Madrid. Reutiliza los secretos de Vault que ya existen (`app_base_url`,
+  `cron_secret`): **no hay secretos nuevos**. En dev no están, así que allí la función avisa con
+  `raise warning` y no despacha — es lo esperado, no un fallo.
+- **`claim_pet_nudges` vive en `public`, no en `private`**, aunque solo la ejecute `service_role`:
+  PostgREST solo expone `public` y `admin.rpc()` no llega a otro esquema. Mismo motivo por el que
+  `claim_due_event_reminders` está donde está. `private.pet_lived_activity_days(uuid)` sí queda en
+  `private`, porque recibe un `user_id` arbitrario.
+
+**Divergencia de zona horaria, aceptada a sabiendas (hallazgo de la revisión).** El claim agrupa los
+días en **Europe/Madrid fijo** — el barrido es un evento del reloj de Madrid, como
+`get_widget_snapshot` — mientras que `get_companion_state(p_tz)` agrupa en la zona del servidor de
+la app (UTC en prod), por la decisión del 2026-09-02. Una acción entre las 22:00 y las 24:00 UTC
+puede caer en días distintos en los dos sitios: la pantalla de la mascota puede mostrarla contenta
+mientras sale un `mood_sleepy`, o al revés. **Se acepta para esta fase**: el arreglo de verdad no es
+elegir una zona en el claim, sino tomar una decisión de zona horaria para toda la app (hay issue
+abierta al respecto; ver el cierre de esta rama). Queda anotado en el comentario de
+`private.pet_lived_activity_days` y en §8bis.4 del modelo de datos.
+
+**Detalle de la revisión ya corregido:** el «último día vivido» se calcula con
+`max(day) filter (where day <= p_day)`. Sin ese filtro, un `finished_on` futuro (un dedazo en la
+fecha) dejaba `last_day` por delante de hoy para siempre y **silenciaba todos los avisos de ese
+usuario** sin que nada lo delatara.
+
+**Segunda copia de la regla de historial en SQL.** `private.pet_lived_activity_days` repite lo que
+ya está en `splitPassHistory` (TS) y en `get_companion_state()` (SQL): tres copias de «qué cuenta
+como actividad vivida». Se asume en esta fase — la alternativa era refactorizar `get_companion_state`
+(que tiene `p_tz` y corre con la sesión) en mitad de la fase — y queda como issue de unificación.
+
+**Estado de despliegue.** `20260906_pet_nudges.sql` **aplicada y verificada en dev el 2026-09-03**
+(`1 | true | 1 | 0 | false | true | 1`: columna, RLS, 1 política, 0 INSERT para `authenticated`,
+`authenticated` sin execute, `service_role` con execute, job `pet-nudges` presente; más 11 casos
+sembrados del claim). **Prod: pendiente**, se aplica tras mergear la rama. A diferencia de las fases
+1 y 2, aquí no corre prisa por la preview de Vercel: la migración es aditiva y el único llamador es
+un cron que en prod todavía no existe.

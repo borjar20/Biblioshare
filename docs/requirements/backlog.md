@@ -330,7 +330,7 @@ es rastreable por `area:catalogo`.
 **Mascota**
 - [x] Mascota RPG fase 1 (núcleo): tabla `pet_state` (dev), eclosión (nombre + clase), ficha derivada de la actividad real —nunca un libro mayor de XP—, compañera flotante en el shell (ausente en `/partida/activa`) y ocultable desde ajustes. Spec `docs/superpowers/specs/2026-09-02-mascota-rpg-design.md`, e2e `e2e/mascota.spec.ts`. Calibración y decisión de cierre en `decisiones.md` 2026-09-02.
 - [x] Mascota fase 2: misiones diarias generadas + logros permanentes (#1013) — rama `feat/mascota-rpg`, pendiente de merge; logros por familias con escalera abierta e insignias (spec 2026-09-02-mascota-logros-niveles).
-- [ ] Mascota fase 3: avisos push por humor y racha (#1014).
+- [x] Mascota fase 3: avisos push por humor y racha (#1014) — spec `docs/superpowers/specs/2026-09-02-mascota-avisos-push-design.md`, rama `feat/mascota-push`. Un push al día como mucho a las 20:00 de Madrid (racha en peligro ≥ 3 días, o humor en la transición a los 2 y a los 4 días); categoría propia «Mascota» en preferencias, compañera oculta = silencio, sin fila en la campana. Claim en SQL (`claim_pet_nudges`), envío en Node (`/api/cron/pet-nudges`). Migración `20260906_pet_nudges.sql` aplicada en dev; **prod pendiente**, ver `decisiones.md` 2026-09-03.
 - [ ] Mascota fase 4: jefes PvE sobre challenges con motor de combate stats vs stats (#1015).
 - [ ] Mascota fase 5: PvP asíncrono entre seguidos (#1016).
 

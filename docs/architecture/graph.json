@@ -3,8 +3,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-02",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab)",
+    "generatedAt": "2026-09-03",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -366,16 +366,18 @@
     },
     {
       "id": "r-cron",
-      "label": "POST /api/cron/event-reminders",
+      "label": "POST /api/cron/*",
       "layer": "route",
       "kind": "api",
-      "summary": "El extremo del PRIMER trabajo programado del repo. Lo llama pg_cron cada 5 min vía pg_net, nunca un navegador. Drena los recordatorios vencidos y los entrega por notifyMany + push.",
+      "summary": "Los extremos de los trabajos PROGRAMADOS del repo. Los llama pg_cron vía pg_net, nunca un navegador. event-reminders (cada 5 min) drena los recordatorios de evento vencidos y los entrega por notifyMany + push. pet-nudges (cada hora, pero la función SQL solo despacha a las 20:00 de Europe/Madrid) reclama y envía los avisos de la mascota.",
       "files": [
-        "src/app/api/cron/event-reminders/route.ts"
+        "src/app/api/cron/event-reminders/route.ts",
+        "src/app/api/cron/pet-nudges/route.ts"
       ],
       "gotchas": [
         "Si falta CRON_SECRET la ruta responde 503 y queda CERRADA, no abierta: un despliegue sin la variable no debe dejar un extremo público que vacíe la cola de recordatorios.",
-        "El barrido llama a notifyMany con systemDelivery: sin eso, filter_unblocked_user_ids devuelve un array VACÍO (porque auth.uid() es null con service_role) y NINGÚN recordatorio se entrega jamás. Medido: claimed 3, delivered 0."
+        "El barrido llama a notifyMany con systemDelivery: sin eso, filter_unblocked_user_ids devuelve un array VACÍO (porque auth.uid() es null con service_role) y NINGÚN recordatorio se entrega jamás. Medido: claimed 3, delivered 0.",
+        "El job pet-nudges corre CADA HORA a propósito: pg_cron programa en UTC y una hora fija se desplazaría con el cambio de hora, así que quien mira el reloj de Madrid es private.dispatch_pet_nudges(). Si en dev no pasa nada a las 20:00 es esperado: allí no están los secretos de Vault y la función avisa y sale."
       ]
     },
     {
@@ -967,8 +969,8 @@
       "label": "lib/pet",
       "layer": "domain",
       "kind": "module",
-      "size": 14,
-      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor): UNA consulta, el RPC `get_companion_state()` (20260905), que devuelve pet_state y el último día con actividad VIVIDA (misma regla que lastActivityISO: el historial volcado no es actividad, #1041); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`).",
+      "size": 17,
+      "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor): UNA consulta, el RPC `get_companion_state()` (20260905), que devuelve pet_state y el último día con actividad VIVIDA (misma regla que lastActivityISO: el historial volcado no es actividad, #1041); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`). Fase 3 (spec 2026-09-02-mascota-avisos-push): nudges/ entrega los avisos push que reclama claim_pet_nudges() — deliver.ts llama al claim con el cliente de service_role y manda un push por fila (título = nombre de la mascota, ruta /mascota); copy.ts resuelve el texto por kind. NO se inserta ninguna fila en notifications: el aviso muere con la pantalla.",
       "files": [
         "src/lib/pet/actions.ts",
         "src/lib/pet/derive.ts",
@@ -983,13 +985,18 @@
         "src/lib/pet/missions/templates.ts",
         "src/lib/pet/missions/generate.ts",
         "src/lib/pet/missions/progress.ts",
-        "src/lib/pet/missions/sync.ts"
+        "src/lib/pet/missions/sync.ts",
+        "src/lib/pet/nudges/types.ts",
+        "src/lib/pet/nudges/copy.ts",
+        "src/lib/pet/nudges/deliver.ts"
       ],
       "gotchas": [
         "No hay cron que detecte la subida de nivel: solo se calcula al abrir /mascota (issue #1020).",
         "getPetCounts().eligibility es PEREZOSA (thunk memoizado): solo la llama syncDailyMissions en la rama que genera las misiones del día. Si la necesitas fuera, cuesta 2-3 consultas más (#1037).",
         "El RPC get_companion_state() replica en SQL las tres reglas de splitPassHistory (counts.ts) y el burstMin (10) de balance.ts: si cambian en TS, cambia el SQL (20260905).",
-        "hatchPet inicializa last_level con el nivel REAL (getPetCounts + derive) para que la primera visita a /mascota de alguien con historial no celebre una subida de golpe (#1042); last_stage nace en acorn y la salida de la bellota sí se celebra."
+        "hatchPet inicializa last_level con el nivel REAL (getPetCounts + derive) para que la primera visita a /mascota de alguien con historial no celebre una subida de golpe (#1042); last_stage nace en acorn y la salida de la bellota sí se celebra.",
+        "El barrido de avisos (claim_pet_nudges, 20260906) agrupa los días en Europe/Madrid FIJO, mientras que get_companion_state(p_tz) usa la zona del servidor de la app (UTC en prod): una acción entre las 22:00 y las 24:00 UTC puede caer en días distintos y la pantalla contradecir al push. Aceptado a sabiendas; ver decisiones.md 2026-09-03.",
+        "private.pet_lived_activity_days repite POR TERCERA VEZ la regla de «actividad vivida» (splitPassHistory en TS, get_companion_state en SQL). Si cambia en TS, cambian las dos funciones SQL."
       ]
     },
     {
@@ -1381,6 +1388,24 @@
         "item_title",
         "completed_at",
         "created_at"
+      ]
+    },
+    {
+      "id": "t-pet-nudges",
+      "label": "pet_nudges",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Un aviso push de la mascota por usuario y día (unique user_id, day): de ahí sale «un push al día» sin lógica en Node. La escribe SOLO claim_pet_nudges() (SECURITY DEFINER, execute para service_role); authenticated solo lee la suya.",
+      "columns": [
+        "id",
+        "user_id",
+        "day",
+        "kind",
+        "streak",
+        "created_at"
+      ],
+      "gotchas": [
+        "NO es un registro de entregas: una fila significa que el claim decidió avisar ese día, no que el push llegara. Si el envío falla tras el claim no hay reintento ese día (un aviso de racha a las 23:00 es peor que ninguno)."
       ]
     }
   ],
@@ -2380,6 +2405,24 @@
       "to": "t-pet-missions",
       "kind": "writes",
       "label": "syncDailyMissions: genera, evalúa y sella completed_at"
+    },
+    {
+      "from": "r-cron",
+      "to": "m-pet",
+      "kind": "calls",
+      "label": "deliverPetNudges (avisos de la mascota)"
+    },
+    {
+      "from": "m-pet",
+      "to": "m-push",
+      "kind": "calls",
+      "label": "sendPushToUser (un aviso por fila reclamada)"
+    },
+    {
+      "from": "sb-server",
+      "to": "t-pet-nudges",
+      "kind": "writes",
+      "label": "claim_pet_nudges (service_role)"
     }
   ],
   "flows": [
@@ -3208,6 +3251,63 @@
           "node": "c-pet",
           "action": "MissionBoard y AchievementGrid pintan el tablón del día y una tarjeta por familia con la insignia conseguida y la siguiente",
           "file": "src/components/pet/mission-board.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-nudges",
+      "name": "Barrido de las 20:00: reclama y envía los avisos de la mascota",
+      "category": "core",
+      "summary": "Fase 3 (spec 2026-09-02-mascota-avisos-push, #1014). pg_cron dispara cada hora; la función SQL solo actúa a las 20:00 de Europe/Madrid. El claim decide TODO en una sentencia (candidatos, último día vivido, racha, kind) e inserta en pet_nudges devolviendo solo lo nuevo; Node solo traduce el texto y envía. Sin fila en notifications.",
+      "entrypoint": "src/app/api/cron/pet-nudges/route.ts:POST",
+      "notes": [
+        "Un push al día por el unique (user_id, day); si el envío falla tras el claim NO se reintenta ese día.",
+        "La ruta no calcula ningún día: corre en UTC y el día lo pone el default de claim_pet_nudges (Europe/Madrid).",
+        "Candidato = mascota visible (companion_hidden = false) + algún push_devices.enabled + category_pet no apagada. Esconder la compañera ya es silencio: no hace falta apagar además la categoría."
+      ],
+      "steps": [
+        {
+          "node": "t-pet-nudges",
+          "action": "pg_cron ('0 * * * *') llama a private.dispatch_pet_nudges(), que sale sin hacer nada salvo a las 20:00 de Madrid y, si es la hora, hace net.http_post con el cron_secret de Vault",
+          "file": "supabase/migrations/20260906_pet_nudges.sql"
+        },
+        {
+          "node": "r-cron",
+          "action": "POST /api/cron/pet-nudges: 503 sin CRON_SECRET, 401 si el x-cron-secret no casa (timingSafeEqual); nunca cacheada",
+          "file": "src/app/api/cron/pet-nudges/route.ts"
+        },
+        {
+          "node": "m-pet",
+          "action": "deliverPetNudges llama a claim_pet_nudges() con el cliente de service_role y recibe SOLO las filas nuevas (user_id, name, kind, streak)",
+          "file": "src/lib/pet/nudges/deliver.ts"
+        },
+        {
+          "node": "t-pet-nudges",
+          "action": "Una fila por usuario y día; on conflict do nothing hace idempotente el segundo claim del mismo día",
+          "file": "supabase/migrations/20260906_pet_nudges.sql"
+        },
+        {
+          "node": "m-pet",
+          "action": "petNudgeCopy(kind, streak) resuelve el cuerpo; el título es el NOMBRE de la mascota y la ruta /mascota",
+          "file": "src/lib/pet/nudges/copy.ts"
+        },
+        {
+          "node": "m-push",
+          "action": "sendPushToUser filtra por category_pet y por canal, firma con VAPID y envía a cada endpoint guardado",
+          "file": "src/lib/push/send-push.ts"
+        },
+        {
+          "node": "t-push",
+          "action": "Endpoints Web Push del usuario (los deshabilitados no reciben)"
+        },
+        {
+          "node": "x-webpush",
+          "action": "El servicio de push entrega el mensaje"
+        },
+        {
+          "node": "sw",
+          "action": "El service worker pinta la notificación del sistema; al tocarla abre /mascota",
+          "file": "public/sw.js"
         }
       ]
     }
