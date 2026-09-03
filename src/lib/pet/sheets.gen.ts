@@ -121,9 +121,9 @@ export const PET_SHEETS = {
       }
     },
     "cleric": {
-      "cell": 84,
-      "width": 756,
-      "height": 420,
+      "cell": 96,
+      "width": 864,
+      "height": 480,
       "columns": 9,
       "directions": [
         "south",
@@ -146,11 +146,11 @@ export const PET_SHEETS = {
           "frames": 9
         },
         "sad": {
-          "row": 4,
+          "row": 1,
           "frames": 9
         },
         "joy": {
-          "row": 1,
+          "row": 4,
           "frames": 9
         }
       }

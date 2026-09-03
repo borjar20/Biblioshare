@@ -1,11 +1,11 @@
 {
   "character": {
-    "id": "2c77431e-0757-455b-b3a9-dc29ae59b8c8",
+    "id": "bd3bccc3-c61d-4c13-8d60-26e601b97d80",
     "name": "cleric",
     "prompt": "young red squirrel kit mascot, oversized head about half of total height, small body, standing upright on two feet, body angled three-quarter view like a classic RPG sprite, head and eyes looking to the viewer's left, not straight at the camera, short fluffy tail, cream belly, round cheeks, no beard, no clothes, no backpack, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 64,
-      "height": 64
+      "width": 80,
+      "height": 80
     },
     "directions": 8,
     "view": "low top-down"
@@ -13,12 +13,12 @@
   "spritesheet": {
     "path": "Cria-cleric.png",
     "cell_size": {
-      "width": 84,
-      "height": 84
+      "width": 96,
+      "height": 96
     },
     "sheet_size": {
-      "width": 756,
-      "height": 420
+      "width": 864,
+      "height": 480
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,8 +42,8 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "396a44d3-3457-4b29-b3c0-2aafc397a302",
+        "animation": "sad",
+        "animation_group_id": "b29a672d-4df7-4c5e-836e-3136ff421137",
         "direction": "south-west"
       },
       {
@@ -51,7 +51,7 @@
         "type": "animation",
         "frame_count": 9,
         "animation": "sleepy",
-        "animation_group_id": "9b2d6c4d-9b2f-4722-8e83-c8c1cee3b466",
+        "animation_group_id": "c7c20ba3-e5d7-4e20-9249-890de6dc6f58",
         "direction": "south-west"
       },
       {
@@ -59,19 +59,19 @@
         "type": "animation",
         "frame_count": 9,
         "animation": "idle",
-        "animation_group_id": "9fc89461-bfe4-44ef-be6c-1c6aca2de7c3",
+        "animation_group_id": "c82bc064-6864-4661-b1d0-3222438d108e",
         "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "c4dea48b-514e-4200-bb76-0a092f86f1f7",
+        "animation": "joy",
+        "animation_group_id": "e1f308b1-1e76-4e9d-8427-1046b3330be0",
         "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T22:14:07.462905+00:00"
+  "export_date": "2026-09-03T22:27:42.359716+00:00"
 }

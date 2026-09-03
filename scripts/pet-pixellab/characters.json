@@ -30,12 +30,12 @@
         }
       },
       "cleric": {
-        "character_id": "2c77431e-0757-455b-b3a9-dc29ae59b8c8",
+        "character_id": "bd3bccc3-c61d-4c13-8d60-26e601b97d80",
         "anims": {
-          "idle": "9fc89461-bfe4-44ef-be6c-1c6aca2de7c3",
-          "sleepy": "9b2d6c4d-9b2f-4722-8e83-c8c1cee3b466",
-          "sad": "c4dea48b-514e-4200-bb76-0a092f86f1f7",
-          "joy": "396a44d3-3457-4b29-b3c0-2aafc397a302"
+          "idle": "c82bc064-6864-4661-b1d0-3222438d108e",
+          "sleepy": "c7c20ba3-e5d7-4e20-9249-890de6dc6f58",
+          "sad": "b29a672d-4df7-4c5e-836e-3136ff421137",
+          "joy": "e1f308b1-1e76-4e9d-8427-1046b3330be0"
         }
       },
       "bard": {
