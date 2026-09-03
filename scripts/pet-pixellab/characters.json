@@ -1,0 +1,6 @@
+{
+  "young":   { "base": null, "classes": {} },
+  "adult":   { "base": "72a0972d-3e0b-4a08-b856-b175ab542235",
+               "classes": { "wizard": { "character_id": "f19a4575-f675-4410-9853-e6a4310da6b3", "anims": {} } } },
+  "veteran": { "base": null, "classes": {} }
+}
