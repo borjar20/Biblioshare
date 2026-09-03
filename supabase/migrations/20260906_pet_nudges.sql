@@ -27,7 +27,7 @@ create table public.pet_nudges (
 );
 
 comment on table public.pet_nudges is
-  'Mascota fase 3: un aviso push por usuario y día (racha en peligro o humor). Lo escribe SOLO claim_pet_nudges() (service_role). Ver spec 2026-09-02-mascota-avisos-push.';
+  'Mascota fase 3: un aviso push por usuario y día (racha en peligro o humor). Lo escribe SOLO claim_pet_nudges() (service_role). Ver spec 2026-09-02-mascota-avisos-push. Una fila = el claim decidió avisar ese día; NO prueba que el push se entregó (si la ruta falla tras el claim, no se reintenta ese día, igual que los recordatorios de club).';
 
 alter table public.pet_nudges enable row level security;
 
@@ -37,11 +37,17 @@ create policy "pet_nudges select own" on public.pet_nudges
 revoke all on public.pet_nudges from anon, authenticated;
 grant select on public.pet_nudges to authenticated;
 
--- 3. Días con actividad VIVIDA de un usuario dado. Misma regla que
---    get_companion_state() (20260905) y splitPassHistory (src/lib/pet/counts.ts):
---    historial = finished_on < día de alta, o created_at medianoche UTC exacta,
---    o día de alta con >= 10 pases (BALANCE.history.burstMin). Recibe un user_id
---    arbitrario: en `private` y sin execute para anon/authenticated.
+-- 3. Días con actividad VIVIDA de un usuario dado. El SPLIT vivido/historial es
+--    la misma regla que get_companion_state() (20260905) y splitPassHistory
+--    (src/lib/pet/counts.ts): historial = finished_on < día de alta, o
+--    created_at medianoche UTC exacta, o día de alta con >= 10 pases
+--    (BALANCE.history.burstMin). El LÍMITE DE DÍA aquí sí es distinto y a
+--    propósito: fijo a Europe/Madrid, porque el barrido es un evento del reloj
+--    de Madrid (como get_widget_snapshot), mientras que get_companion_state(p_tz)
+--    agrupa según la zona del servidor de la app (UTC en prod); una acción entre
+--    las 22:00 y las 24:00 UTC puede caer en días distintos en los dos sitios,
+--    y eso se acepta y queda anotado en docs/requirements/decisiones.md. Recibe
+--    un user_id arbitrario: en `private` y sin execute para anon/authenticated.
 create or replace function private.pet_lived_activity_days(p_user uuid)
 returns table (day date)
 language sql
@@ -116,8 +122,12 @@ as $$
     from candidates c
     cross join lateral private.pet_lived_activity_days(c.user_id) a
   ),
+  -- Solo días hasta p_day: un finished_on futuro (error al teclear) no puede
+  -- silenciar los avisos para siempre.
+  -- Sin ningún día vivido no hay fila aquí y por tanto ningún aviso: sin
+  -- «última actividad» no hay D−2 ni D−4.
   last_day as (
-    select user_id, name, max(day) as last_day
+    select user_id, name, max(day) filter (where day <= p_day) as last_day
     from activity
     group by user_id, name
   ),
