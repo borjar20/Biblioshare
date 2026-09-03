@@ -83,9 +83,10 @@ Lienzo 40×40, `no_background: true`, vista `low top-down`.
 
 La bellota **no** es un personaje PixelLab: es un frame único rediseñado con `create_image_pixflux`
 (img2img, fuerza 150) o `create_image_pixen` desde texto, y **dos animaciones** con `animate_image`
-(no `animate_character`) sobre ese frame, 8 frames cada una, `no_background`: `idle` (`gentle idle
-loop`, siempre) y `ready` (`about to hatch`, solo cuando `hatch-form` tiene nombre válido y clase
-elegida — ver `2026-09-03-mascota-bellota-visor-admin-design.md` §2).
+(no `animate_character`) sobre ese frame, 8 frames cada una (9 guardados: 8 generados + el frame de
+referencia), `no_background`: `idle` (`gentle idle loop`, siempre) y `ready` (`about to hatch`, solo
+cuando `hatch-form` tiene nombre válido y clase elegida — ver
+`2026-09-03-mascota-bellota-visor-admin-design.md` §2).
 
 `animate_image` devuelve frames sueltos, no un sheet: `scripts/pet-pixellab/pack-strip.mjs
 <out-basename> <cell> idle=<dir> ready=<dir>` los empaqueta con el mismo formato de layout que

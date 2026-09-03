@@ -7,7 +7,6 @@
    `animation` se invalida en tiempo de cómputo si el elemento no tiene esa custom property
    (ramas bellota y dirección estática). Aquí solo quedan los @keyframes y las reglas fijas. */
 .root {
-  position: relative;
   display: inline-block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;

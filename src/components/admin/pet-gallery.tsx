@@ -99,7 +99,7 @@ export function PetGallery() {
         <label className="flex items-center gap-1">
           <input type="checkbox" data-testid="pet-gallery-ready" checked={ready} onChange={(e) => setReady(e.target.checked)} /> {t("pet.acornReady")}
         </label>
-        <button type="button" data-testid="pet-gallery-evolve" onClick={triggerEvolve} className="rounded-md border border-border px-2 py-1">{t("pet.evolve")}</button>
+        <button type="button" data-testid="pet-gallery-evolve" onClick={triggerEvolve} disabled={reducedMotion} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">{t("pet.evolve")}</button>
         <span className="ml-auto flex items-center gap-1">
           <button type="button" data-testid="pet-gallery-prev" onClick={() => step(-1)} disabled={reducedMotion} aria-label={t("pet.prevFrame")} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">⏮</button>
           <button type="button" data-testid="pet-gallery-play" onClick={() => setPaused((p) => !p)} disabled={reducedMotion} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">{paused ? t("pet.play") : t("pet.pause")}</button>

@@ -71,6 +71,7 @@ describe("PetGallery", () => {
     expect((screen.getByTestId("pet-gallery-prev") as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId("pet-gallery-next") as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByTestId("pet-gallery-replay") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByTestId("pet-gallery-evolve") as HTMLButtonElement).disabled).toBe(true);
     vi.unstubAllGlobals();
   });
 
@@ -87,6 +88,7 @@ describe("PetGallery", () => {
     expect((screen.getByTestId("pet-gallery-prev") as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByTestId("pet-gallery-next") as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByTestId("pet-gallery-replay") as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByTestId("pet-gallery-evolve") as HTMLButtonElement).disabled).toBe(false);
     vi.unstubAllGlobals();
   });
 

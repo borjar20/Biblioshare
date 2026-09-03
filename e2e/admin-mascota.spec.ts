@@ -9,7 +9,7 @@ test("anónimo: /admin/mascota redirige al login con next", async ({ page }) => 
   await expect(page).toHaveURL(/\/login\?next=%2Fadmin%2Fmascota/);
 });
 
-test("admin: 19 sprites y la escala triplica el ancho", async ({ page }) => {
+test("admin: 19 sprites, la escala 3× ensancha el sprite y los controles mueven la animación", async ({ page }) => {
   await page.goto("/login");
   await page.fill('input[name="email"]', EMAIL);
   await page.fill('input[name="password"]', PASSWORD);
@@ -24,4 +24,12 @@ test("admin: 19 sprites y la escala triplica el ancho", async ({ page }) => {
   expect(after).toBeCloseTo(before * 1.5, 0); // 2× → 3×
   await page.getByTestId("pet-gallery-ready").check();
   await expect(sprites.last()).toHaveAttribute("data-anim", "ready");
+
+  const beforeFrame = await sprites.first().evaluate((el) => el.getAnimations()[0]?.currentTime ?? null);
+  await page.getByTestId("pet-gallery-next").click();
+  const state = await sprites.first().evaluate((el) => ({ playState: el.getAnimations()[0]?.playState, t: el.getAnimations()[0]?.currentTime }));
+  expect(state.playState).toBe("paused");
+  expect(state.t).not.toBe(beforeFrame);
+  await page.getByTestId("pet-gallery-replay").click();
+  expect(await sprites.first().evaluate((el) => el.getAnimations()[0]?.playState)).toBe("running");
 });
