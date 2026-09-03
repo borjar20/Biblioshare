@@ -6,6 +6,7 @@
 // el registro nativo (cliente, para leer type/path del data payload).
 
 import type { NotificationType } from "@/lib/social/notification-types";
+import type { PetNudgeType } from "@/lib/pet/nudges/types";
 
 export type { NotificationType };
 
@@ -17,7 +18,9 @@ export type PushPlatform = "web_push" | "fcm_android" | "apns_ios";
 // Categoría de un aviso: gobierna las preferencias (notification_preferences) y
 // el canal Android (biblioshare_<category>). Se deriva del tipo, no se pasa
 // suelta, para que no puedan divergir — ver NOTIFICATION_CATEGORY.
-export type PushCategory = "social" | "clubs" | "progress" | "system";
+// `pet` = avisos de la mascota (fase 3); no hay `NotificationType` que la
+// produzca: llega por `PetNudgeType`.
+export type PushCategory = "social" | "clubs" | "progress" | "system" | "pet";
 
 // El evento lógico. `type: NotificationType` (más fuerte que el `string` de la
 // spec); `path` es SIEMPRE una ruta interna ya validada (ver safe-path.ts).
@@ -25,7 +28,7 @@ export type NotificationEvent = {
   notificationId?: string;
   recipientUserId: string;
   category: PushCategory;
-  type: NotificationType;
+  type: NotificationType | PetNudgeType;
   title: string;
   body: string;
   path: string;
@@ -131,4 +134,5 @@ export const ANDROID_CHANNEL_BY_CATEGORY: Record<PushCategory, string> = {
   clubs: "biblioshare_clubs",
   progress: "biblioshare_progress",
   system: "biblioshare_system",
+  pet: "biblioshare_pet",
 };

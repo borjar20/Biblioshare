@@ -1395,6 +1395,7 @@ export type Database = {
         Row: {
           android_push_enabled: boolean
           category_clubs: boolean
+          category_pet: boolean
           category_progress: boolean
           category_social: boolean
           category_system: boolean
@@ -1406,6 +1407,7 @@ export type Database = {
         Insert: {
           android_push_enabled?: boolean
           category_clubs?: boolean
+          category_pet?: boolean
           category_progress?: boolean
           category_social?: boolean
           category_system?: boolean
@@ -1417,6 +1419,7 @@ export type Database = {
         Update: {
           android_push_enabled?: boolean
           category_clubs?: boolean
+          category_pet?: boolean
           category_progress?: boolean
           category_social?: boolean
           category_system?: boolean
@@ -1672,6 +1675,33 @@ export type Database = {
           template?: string
           user_id?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      pet_nudges: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          kind: string
+          streak: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          kind: string
+          streak?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          kind?: string
+          streak?: number | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -2790,6 +2820,15 @@ export type Database = {
           organizer_id: string
           starts_at: string
           title: string
+          user_id: string
+        }[]
+      }
+      claim_pet_nudges: {
+        Args: { p_day?: string }
+        Returns: {
+          kind: string
+          name: string
+          streak: number | null
           user_id: string
         }[]
       }

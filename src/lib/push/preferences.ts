@@ -10,6 +10,7 @@ export type NotificationPreferences = {
   category_clubs: boolean;
   category_progress: boolean;
   category_system: boolean;
+  category_pet: boolean;
 };
 
 // Opt-out: sin fila = todo activo (no cambia el comportamiento previo, donde
@@ -22,6 +23,7 @@ export const DEFAULT_PREFERENCES: NotificationPreferences = {
   category_clubs: true,
   category_progress: true,
   category_system: true,
+  category_pet: true,
 };
 
 const CATEGORY_COLUMN: Record<PushCategory, keyof NotificationPreferences> = {
@@ -29,6 +31,7 @@ const CATEGORY_COLUMN: Record<PushCategory, keyof NotificationPreferences> = {
   clubs: "category_clubs",
   progress: "category_progress",
   system: "category_system",
+  pet: "category_pet",
 };
 
 // ¿Se entrega este push? Un aviso llega si SU categoría está activa Y SU canal

@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-09-02 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-03 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3727,10 +3727,92 @@ Migración `supabase/migrations/20260905_get_companion_state.sql`. **Aplicada y 
 2026-09-02** contra `pg_proc`: `security invoker`, `stable`, `execute` para `authenticated` y no para
 `anon`. Aditiva pura (función nueva): el código de `main` no la llama hasta mergear.
 
+### 8bis.4. `pet_nudges`, `category_pet` y el cron de avisos (dev 2026-09-03; **prod: pendiente, ver `decisiones.md`**)
+
+Mascota fase 3 (spec `docs/superpowers/specs/2026-09-02-mascota-avisos-push-design.md`, issue
+#1014). Migración `supabase/migrations/20260906_pet_nudges.sql`, **una sola migración** con la
+columna, la tabla, dos funciones y el job. La mascota escribe al usuario **como mucho una vez al
+día**, a las 20:00 de Europe/Madrid, cuando su racha está en peligro o cuando lleva días sin verle.
+
+**`public.pet_nudges`** — el rastro y la idempotencia. `id` (uuid PK), `user_id` (FK `auth.users`
+cascade), `day` (date, **día local Europe/Madrid** del barrido que lo decidió), `kind` (text con
+CHECK: `streak_at_risk` | `mood_sleepy` | `mood_sad`), `streak` (int, null salvo en la racha),
+`created_at`. `unique (user_id, day)` — de ahí sale «un push al día» sin lógica en Node.
+
+**No es un registro de entregas.** Una fila significa «el claim decidió avisar ese día», **no** que
+el push se entregara: si la ruta falla después del claim, la fila queda y **no se reintenta ese
+día** (un recordatorio de racha a las 23:00 por un reintento es peor que ninguno; misma regla que
+los recordatorios de club). El `comment on table` lo dice también en la BD.
+
+**RLS** activa, **una** política: `select` propio para `authenticated` (ajustes y e2e). **Sin**
+insert/update/delete para `authenticated` — solo escribe `claim_pet_nudges()`, que es
+`security definer`. `revoke all … from anon, authenticated; grant select … to authenticated`.
+Por eso **no aparece en la superficie 6 de `DRIFT-CHECK.md`** (esa consulta solo mira tablas donde
+`authenticated` tiene algún grant de INSERT/UPDATE) y **no se ha añadido a su tabla de referencia**:
+está anotada aparte, con el control que sí le toca.
+
+**`notification_preferences.category_pet`** (boolean not null default true): quinta categoría de
+push, «Mascota». La tabla tiene **grant de tabla entera** (20260829), no por columna: la columna
+nueva no exige `grant` adicional (la trampa de la superficie 6 de `DRIFT-CHECK.md` no aplica aquí,
+pero se pasó igualmente). Sin fila en la tabla = categoría activa, como el resto de categorías.
+Cliente: `DEFAULT_PREFERENCES`, `CATEGORY_COLUMN.pet`, `ALLOWED_KEYS` de `preference-actions.ts` y
+el `select` de `send-push.ts`.
+
+**`private.pet_lived_activity_days(p_user uuid) returns table (day date)`** — los días con actividad
+**vivida** de un usuario: día de sesión ∪ cierre de pase vivido ∪ post ∪ voto, con la regla de
+historial de §8bis.3 (retroactivo, medianoche UTC exacta, día de alta con ≥ 10 pases =
+`BALANCE.history.burstMin`) **copiada por segunda vez en SQL**. `security definer`,
+`set search_path = ''`, en el esquema **`private`** y sin `execute` para `anon`/`authenticated`:
+recibe un `user_id` arbitrario, así que no puede ser pública. Agrupa los días en **Europe/Madrid
+fijo**, a diferencia de `get_companion_state(p_tz)` — divergencia aceptada y anotada en
+`decisiones.md`.
+
+**`public.claim_pet_nudges(p_day date default (timezone('Europe/Madrid', now()))::date)
+returns table (user_id uuid, name text, kind text, streak integer)`** — el claim. En **una sola
+sentencia**: candidatos (`pet_state` con `companion_hidden = false` ∧ algún `push_devices.enabled`
+∧ `category_pet` no apagada), su último día vivido **≤ `p_day`** y la racha que termina en
+`p_day − 1`, decide el `kind` e inserta con `on conflict (user_id, day) do nothing` devolviendo
+**solo las filas nuevas**. Un segundo claim el mismo día devuelve cero filas.
+
+| `kind` | Condición (día local D) | Umbral, y de dónde sale |
+|---|---|---|
+| `streak_at_risk` | último día vivido = D−1 y racha ≥ 3 | `BALANCE.nudges.streakMin` |
+| `mood_sleepy` | último día vivido = D−2 | `BALANCE.mood.sleepyFrom` |
+| `mood_sad` | último día vivido = D−4 | `BALANCE.mood.sadFrom` |
+
+Los tres umbrales van **copiados** en el SQL (como el `burstMin`): si cambian en
+`src/lib/pet/balance.ts`, cambia la función. Vive en **`public` y no en `private`** porque PostgREST
+solo expone `public` y `admin.rpc()` no llega a otro esquema — mismo motivo que
+`claim_due_event_reminders`. `security definer`, `set search_path = ''`, `execute` **solo para
+`service_role`** (revocada de `public`, `anon`, `authenticated`).
+
+**Programación**, calcada de `20260824_club_event_reminder_scheduler.sql`:
+`private.dispatch_pet_nudges()` lee `app_base_url` y `cron_secret` de **Vault** (secretos ya
+existentes: no hay ninguno nuevo) y hace `net.http_post` a `/api/cron/pet-nudges`. El job
+`pet-nudges` corre **cada hora** (`0 * * * *`) y la función **solo despacha si
+`extract(hour from timezone('Europe/Madrid', now())) = 20`**: pg_cron programa en UTC y una hora
+fija se movería con el cambio de hora; mirar la hora local dentro de la función lo evita sin tocar
+el job. Sin los secretos, la función **avisa (`raise warning`) y no hace nada** — que es
+exactamente lo que pasa en dev, donde no están en Vault.
+
+**Verificación en dev (2026-09-03)**, contra objetos reales (`information_schema.columns`,
+`pg_class`, `pg_policies`, `has_function_privilege`, `cron.job`), nunca contra `list_migrations`:
+`1 | true | 1 | 0 | false | true | 1` = existe `category_pet`, RLS activa en `pet_nudges`, 1
+política, **0 privilegios de INSERT** para `authenticated` en `pet_nudges`, `authenticated` **no**
+puede ejecutar `claim_pet_nudges`, `service_role` **sí**, y hay 1 job `pet-nudges`. Además, 11
+casos sembrados del claim se comportaron como dice la spec: racha de 3 → `streak_at_risk`
+(`streak = 3`); racha de 2 → nada; actividad hoy → nada; última actividad hace 2 días →
+`mood_sleepy`; hace 3 → nada; hace 4 → `mood_sad`; segundo claim el mismo día → 0 filas;
+compañera oculta → nada; sin dispositivo activo → nada; `category_pet = false` → nada; y un pase
+cerrado hace 2 días pero **retroactivo** (`finished_on` < día de alta) no cuenta como actividad.
+
+**Prod: pendiente.** La migración se aplica después de mergear la rama (ver `decisiones.md`); en
+prod sí están los dos secretos de Vault y ya corren `pg_cron`/`pg_net` con el job `event-reminders`.
+
 ## 9. Seguridad
 
-Las **55 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
-2026-08-19; prod por reverificar). Patrones:
+Las **60 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
+2026-09-03; prod por reverificar). Patrones:
 
 - **Catálogo**: SELECT abierto (incl. anónimo), escritura autenticada.
 - **Contenido de perfil**: el dueño siempre; los demás según `can_view_profile()`.
