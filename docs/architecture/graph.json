@@ -334,7 +334,7 @@
       "label": "/cuenta · /admin",
       "layer": "route",
       "kind": "route",
-      "summary": "Ajustes de cuenta y panel de administración (rol admin).",
+      "summary": "Ajustes de cuenta y panel de administración (rol admin); /admin/mascota es el visor de todas las animaciones de la mascota con el componente PetSprite real.",
       "files": [
         "src/app/cuenta/contrasena",
         "src/app/admin"
