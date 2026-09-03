@@ -3727,3 +3727,22 @@ un cron que en prod todavía no existe.
 antes del merge de #1054 y verificada con la misma consulta que dev (`1 | true | 1 | 0 | false | true
 | 1`, `secrets = 2`, `pet_nudges` vacía). El job `pet-nudges` queda activo desde ese momento; la
 ruta existe en prod con el deploy del merge.
+
+## 2026-09-03 — Mascota: PixelLab es la herramienta por defecto para los sprites (#1021)
+
+**Decisión.** Todo el arte pixel de la mascota (y de BiblioPlay) se genera con **PixelLab** vía
+MCP, con suscripción Tier 2 (5 000 generaciones/mes). Lo usa el agente `pet-artist`
+(`.claude/agents/pet-artist.md`); el pipeline y el brief por pieza están en
+`docs/superpowers/specs/2026-09-03-mascota-arte-pixellab-design.md`; los scripts de apoyo
+(aplanar, trocear, extraer capa, recomponer, hoja de contacto) en `scripts/pet-pixellab/`.
+
+**Por qué.** Prueba del 2026-09-03 con el trial (28 generaciones): img2img sobre la ardilla
+procedural aplanada, a fuerza 150, da sprites muy por encima del procedural y respeta composición y
+pivotes; trocear ese plano con las máscaras del procedural devuelve piezas del rig que encajan; y
+un híbrido (ardilla IA + prenda procedural, fuerza 200) pule las capas de clase sin mover la
+ardilla. Lo que no funciona quedó anotado en la spec para no repetirlo (piezas aisladas,
+instrucciones a fuerza ≥ 250, diferencia píxel a píxel).
+
+**Consecuencia.** El procedural (`scripts/pet-sprites.mjs`) no muere: es el esqueleto que fija
+posición y máscaras y el `init_image` de cada generación. El arte IA sustituye PNG **con los mismos
+nombres**; `manifest.test.ts` sigue siendo la red. Cada tanda anota generaciones gastadas.
