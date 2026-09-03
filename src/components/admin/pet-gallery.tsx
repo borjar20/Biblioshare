@@ -104,7 +104,7 @@ export function PetGallery() {
           <button type="button" data-testid="pet-gallery-prev" onClick={() => step(-1)} disabled={reducedMotion} aria-label={t("pet.prevFrame")} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">⏮</button>
           <button type="button" data-testid="pet-gallery-play" onClick={() => setPaused((p) => !p)} disabled={reducedMotion} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">{paused ? t("pet.play") : t("pet.pause")}</button>
           <button type="button" data-testid="pet-gallery-next" onClick={() => step(1)} disabled={reducedMotion} aria-label={t("pet.nextFrame")} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">⏭</button>
-          <button type="button" data-testid="pet-gallery-replay" onClick={replay} className="rounded-md border border-border px-2 py-1">{t("pet.replay")}</button>
+          <button type="button" data-testid="pet-gallery-replay" onClick={replay} disabled={reducedMotion} className="rounded-md border border-border px-2 py-1 disabled:opacity-50">{t("pet.replay")}</button>
         </span>
       </div>
 
