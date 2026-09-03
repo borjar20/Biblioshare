@@ -3727,7 +3727,7 @@ Migración `supabase/migrations/20260905_get_companion_state.sql`. **Aplicada y 
 2026-09-02** contra `pg_proc`: `security invoker`, `stable`, `execute` para `authenticated` y no para
 `anon`. Aditiva pura (función nueva): el código de `main` no la llama hasta mergear.
 
-### 8bis.4. `pet_nudges`, `category_pet` y el cron de avisos (dev 2026-09-03; **prod: pendiente, ver `decisiones.md`**)
+### 8bis.4. `pet_nudges`, `category_pet` y el cron de avisos (dev y **prod**, 2026-09-03)
 
 Mascota fase 3 (spec `docs/superpowers/specs/2026-09-02-mascota-avisos-push-design.md`, issue
 #1014). Migración `supabase/migrations/20260906_pet_nudges.sql`, **una sola migración** con la
@@ -3806,8 +3806,11 @@ casos sembrados del claim se comportaron como dice la spec: racha de 3 → `stre
 compañera oculta → nada; sin dispositivo activo → nada; `category_pet = false` → nada; y un pase
 cerrado hace 2 días pero **retroactivo** (`finished_on` < día de alta) no cuenta como actividad.
 
-**Prod: pendiente.** La migración se aplica después de mergear la rama (ver `decisiones.md`); en
-prod sí están los dos secretos de Vault y ya corren `pg_cron`/`pg_net` con el job `event-reminders`.
+**Aplicada y verificada en prod el 2026-09-03**, justo antes de mergear la PR #1054: misma consulta
+que en dev → `1 | true | 1 | 0 | false | true | 1`, más `secrets = 2` (los dos de Vault ya existían por el
+cron de clubes) y `pet_nudges` vacía. El job `pet-nudges` está activo; el primer barrido real es a las
+20:00 de Madrid del mismo día y se comprueba en `pet_nudges` y en `net._http_response` (un 200 de
+`/api/cron/pet-nudges`; «sin filas» solo es éxito si hay 200).
 
 ## 9. Seguridad
 

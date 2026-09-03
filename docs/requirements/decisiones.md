@@ -3722,3 +3722,8 @@ como actividad vivida». Se asume en esta fase — la alternativa era refactoriz
 sembrados del claim). **Prod: pendiente**, se aplica tras mergear la rama. A diferencia de las fases
 1 y 2, aquí no corre prisa por la preview de Vercel: la migración es aditiva y el único llamador es
 un cron que en prod todavía no existe.
+
+**Prod (2026-09-03, tras la revisión final):** migración `20260906_pet_nudges.sql` aplicada en prod
+antes del merge de #1054 y verificada con la misma consulta que dev (`1 | true | 1 | 0 | false | true
+| 1`, `secrets = 2`, `pet_nudges` vacía). El job `pet-nudges` queda activo desde ese momento; la
+ruta existe en prod con el deploy del merge.
