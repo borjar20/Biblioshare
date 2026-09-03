@@ -24,6 +24,14 @@
   background-position-x: calc(var(--pet-col) * var(--pet-cell) * -1);
   background-position-y: calc(var(--pet-row) * var(--pet-cell) * -1);
 }
+/* IMPORTANTE: los nombres de estos @keyframes son identificadores locales del CSS Module
+   (se hashean, igual que .root o .sheet arriba) — Lightning CSS (el motor de CSS de este
+   Next.js con Turbopack) no admite `:global()` como nombre de @keyframes, solo como
+   pseudoclase de selector, así que NO se puede sacar el nombre del hash con ese truco.
+   El componente necesita poner `animationName` en línea (longhand, ver pet-sprite.tsx) y
+   por eso importa el nombre YA hasheado desde `styles.strip` / `styles.evolve` — igual que
+   ya hace con `styles.root` para la clase — en vez de escribir el literal "strip", que no
+   encontraría ninguna regla y dejaría el sprite congelado. */
 @keyframes strip {
   from { background-position-x: 0; }
   to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
@@ -31,9 +39,11 @@
 
 /* Reacción de evolución: destello + escala sobre la celda entera. Esta regla solo tiene
    efecto en las ramas SIN animación en línea (bellota, y sheet con dirección estática):
-   en la rama animada (sur) el componente ya pone "strip, evolve" en `animationName` (y el
-   resto de longhands en línea), y el inline gana siempre a esta regla — por eso ahí las
-   dos animaciones corren juntas en vez de que "evolve" sustituya a "strip". */
+   en la rama animada (sur) el componente ya pone `${styles.strip}, ${styles.evolve}` en
+   `animationName` (y el resto de longhands en línea), y el inline gana siempre a esta
+   regla — por eso ahí las dos animaciones corren juntas en vez de que "evolve" sustituya
+   a "strip". Aquí, dentro del mismo módulo, basta el identificador tal cual: Lightning CSS
+   resuelve la referencia local a local sin ayuda de JS. */
 .root[data-reaction="evolve"] { animation: evolve 1.2s ease-out; }
 @keyframes evolve { 0% { filter: brightness(1); transform: scale(1); } 40% { filter: brightness(2.2); transform: scale(1.15); } 100% { filter: brightness(1); transform: scale(1); } }
 

@@ -59,9 +59,15 @@ export function PetSprite({ stage, petClass, mood, scale, reaction = null, direc
   // siempre ganan a cualquier regla de la hoja de estilos que no sea `!important`. Solo la
   // rama animada (dirección sur) los necesita — --pet-frames también, para el @keyframes
   // strip; el resto de ramas no animan nada por CSS var, así que no se emiten. Con
-  // `reaction="evolve"` se añade "evolve" como segunda animación en cada longhand (listas
-  // separadas por comas) para que las dos corran a la vez, en vez de que el shorthand de
-  // evolve (una sola animación) sustituya al de strip y congele el sprite en el frame 0.
+  // `reaction="evolve"` se añade `styles.evolve` como segunda animación en cada longhand
+  // (listas separadas por comas) para que las dos corran a la vez, en vez de que el
+  // shorthand de evolve (una sola animación) sustituya al de strip y congele el sprite en
+  // el frame 0. `animationName` puesto en línea se compara contra el nombre YA hasheado
+  // por CSS Modules (Lightning CSS/Turbopack escala también los `@keyframes`, igual que
+  // las clases) — por eso se lee de `styles.strip` / `styles.evolve` en vez de escribir el
+  // literal "strip": ese literal no encontraría ninguna regla y el sprite se quedaría
+  // congelado. `:global()` en el nombre del @keyframes NO es una alternativa aquí: Lightning
+  // CSS solo lo admite como pseudoclase de selector, no como nombre de @keyframes.
   if (animated) {
     const { fps, loop } = PET_MANIFEST.anims[anim];
     style["--pet-frames"] = row.frames;
@@ -69,12 +75,12 @@ export function PetSprite({ stage, petClass, mood, scale, reaction = null, direc
     const timing = `steps(${row.frames})`;
     const iterations = loop ? "infinite" : 1;
     if (reaction === "evolve") {
-      style.animationName = "strip, evolve";
+      style.animationName = `${styles.strip}, ${styles.evolve}`;
       style.animationDuration = `${duration}, 1.2s`;
       style.animationTimingFunction = `${timing}, ease-out`;
       style.animationIterationCount = `${iterations}, 1`;
     } else {
-      style.animationName = "strip";
+      style.animationName = styles.strip;
       style.animationDuration = duration;
       style.animationTimingFunction = timing;
       style.animationIterationCount = iterations;
