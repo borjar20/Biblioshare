@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "b32cbd66-1105-4d15-a92e-b030f699b849",
+    "name": "barbarian-adult",
+    "prompt": "cute chibi red squirrel mascot, big fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_adulta-barbarian-adult.png",
+    "cell_size": {
+      "width": 52,
+      "height": 52
+    },
+    "sheet_size": {
+      "width": 468,
+      "height": 260
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "806644f6-9aed-43f5-bd06-912a69929771",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "916e2606-9a73-4bf3-8f2a-01842032e496",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "981a8a49-7403-4224-9dc4-6cc7581a144b",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "c9e07f85-e10d-4731-984f-ffa4241eef8e",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:15:53.319363+00:00"
+}

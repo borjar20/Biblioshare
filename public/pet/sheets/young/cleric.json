@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "64166d59-2ce4-4c3a-b12b-a898ae73d28a",
+    "name": "cleric-young",
+    "prompt": "baby chibi red squirrel mascot with oversized head and tiny body, small fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_cria-cleric-young.png",
+    "cell_size": {
+      "width": 52,
+      "height": 52
+    },
+    "sheet_size": {
+      "width": 468,
+      "height": 260
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "21b04472-7455-464b-bfcc-85ae57d86618",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "2596f932-3264-4ebf-8ef3-8e9befa1bbf7",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "eb9bc7a1-73ce-4e5a-a834-24e688ae03c6",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "f98158c4-401f-4c53-ba91-2c6cc9f475b8",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:07:04.970131+00:00"
+}

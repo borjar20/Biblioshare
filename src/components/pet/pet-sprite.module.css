@@ -1,16 +1,17 @@
-/* Rig por partes (spec §5). Cada pieza gira/se mueve sobre su pivote; la ropa
-   viaja con la pieza a la que está pegada. Solo transform: barato y sin frames. */
+/* Sprite sheet de PixelLab (spec sprites-personaje §6). Una celda visible; la animación
+   recorre la fila con steps(). Variables que pone el componente para posicionar la celda:
+   --pet-cell (px), --pet-row, --pet-col, --pet-frames (fila animada, para los @keyframes
+   stripIdle/stripSleepy/stripSad/stripJoy). Los parámetros que dependen de datos (duración,
+   timing-function, nº de iteraciones) NO viven aquí: el componente los pone como longhands
+   `animation-*` en línea (ver pet-sprite.tsx) porque un var() dentro del shorthand
+   `animation` se invalida en tiempo de cómputo si el elemento no tiene esa custom property
+   (ramas bellota y dirección estática). Aquí solo quedan los @keyframes y las reglas fijas. */
 .root {
   position: relative;
   display: inline-block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
-.part {
-  position: absolute;
-  inset: 0;
-}
-.part img,
 .root > img {
   position: absolute;
   inset: 0;
@@ -18,42 +19,63 @@
   height: 100%;
   image-rendering: pixelated;
 }
+.sheet {
+  background-repeat: no-repeat;
+  background-position-x: calc(var(--pet-col) * var(--pet-cell) * -1);
+  background-position-y: calc(var(--pet-row) * var(--pet-cell) * -1);
+}
+/* IMPORTANTE: los nombres de estos @keyframes son identificadores locales del CSS Module
+   (se hashean, igual que .root o .sheet arriba) — Lightning CSS (el motor de CSS de este
+   Next.js con Turbopack) no admite `:global()` como nombre de @keyframes, solo como
+   pseudoclase de selector, así que NO se puede sacar el nombre del hash con ese truco.
+   El componente necesita poner `animationName` en línea (longhand, ver pet-sprite.tsx) y
+   por eso importa el nombre YA hasheado desde `styles.stripIdle` / `styles.evolve` — igual
+   que ya hace con `styles.root` para la clase — en vez de escribir el literal, que no
+   encontraría ninguna regla y dejaría el sprite congelado.
 
-/* idle según humor */
-.root[data-mood="happy"] [data-part="tail"],
-.root[data-mood="neutral"] [data-part="tail"] { animation: tail 1.8s ease-in-out infinite; }
-.root[data-mood="happy"] [data-part="head"],
-.root[data-mood="neutral"] [data-part="head"] { animation: head 1.8s ease-in-out infinite; }
-.root[data-mood="happy"] [data-part="body"],
-.root[data-mood="neutral"] [data-part="body"] { animation: body 1.8s ease-in-out infinite; }
-.root[data-mood="sleepy"] [data-part="body"] { animation: body 3.6s ease-in-out infinite; }
-.root[data-mood="sleepy"] [data-part="head"] { animation: doze 3.6s ease-in-out infinite; }
-/* triste: quieta; solo el parpadeo de abajo */
+   Son CUATRO @keyframes con el mismo cuerpo (uno por fila de animación: idle, sleepy, sad,
+   joy) y no uno solo reutilizado por nombre: CSS solo reinicia una animación cuando la
+   lista `animation-name` CAMBIA de valor. pet-companion.tsx monta con reaction=null (fila
+   idle, 1s, infinita) y más tarde pasa a reaction="joy" (fila joy, 0.9s, una vez) SIN
+   desmontarse — si las dos filas compartiesen nombre de keyframe, el navegador vería el
+   mismo animation-name de antes y no reiniciaría nada: seguiría el `currentTime` que ya
+   llevaba corriendo (minutos), muy por delante de la duración corta de joy, y con
+   fill-mode por defecto (none) la fila se pinta congelada en su último frame. Cambiar el
+   nombre del keyframe es lo único que garantiza el reinicio en cualquier transición de
+   fila, así que cada fila tiene el suyo aunque el cuerpo sea idéntico. */
+@keyframes stripIdle {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripSleepy {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripSad {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripJoy {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
 
-.blink { animation: blink 4s linear infinite; opacity: 0; }
-
-/* reacciones */
-.root[data-reaction="joy"] [data-part="head"] { animation: headJoy 0.7s ease-out; }
-.root[data-reaction="joy"] [data-part="tail"] { animation: tailJoy 0.7s ease-out; }
-.root[data-reaction="joy"] [data-part="body"] { animation: bodyJoy 0.7s ease-out; }
+/* Reacción de evolución: destello + escala sobre la celda entera. Esta regla solo tiene
+   efecto en las ramas SIN animación en línea (bellota, y sheet con dirección estática):
+   en la rama animada (sur) el componente ya pone `${styles.strip}, ${styles.evolve}` en
+   `animationName` (y el resto de longhands en línea), y el inline gana siempre a esta
+   regla — por eso ahí las dos animaciones corren juntas en vez de que "evolve" sustituya
+   a "strip". Aquí, dentro del mismo módulo, basta el identificador tal cual: Lightning CSS
+   resuelve la referencia local a local sin ayuda de JS. */
 .root[data-reaction="evolve"] { animation: evolve 1.2s ease-out; }
-
-@keyframes tail { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
-@keyframes head { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-2%) rotate(-3deg); } }
-@keyframes body { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.03, 0.97); } }
-@keyframes doze { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(3%) rotate(4deg); } }
-@keyframes blink { 0%, 92%, 100% { opacity: 0; } 93%, 97% { opacity: 1; } }
-@keyframes headJoy { 0% { transform: translateY(0); } 30% { transform: translateY(-12%) rotate(-8deg); } 60% { transform: translateY(-7%) rotate(8deg); } 100% { transform: translateY(0); } }
-@keyframes tailJoy { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 50% { transform: rotate(-10deg); } 75% { transform: rotate(12deg); } }
-@keyframes bodyJoy { 0%, 100% { transform: scale(1, 1); } 30% { transform: scale(1.08, 0.9); } 60% { transform: scale(0.96, 1.06); } }
 @keyframes evolve { 0% { filter: brightness(1); transform: scale(1); } 40% { filter: brightness(2.2); transform: scale(1.15); } 100% { filter: brightness(1); transform: scale(1); } }
 
-/* Cuerpo rígido con movimiento reducido: sin balanceo de piezas, solo parpadeo. */
+/* Movimiento reducido: la rama animada cancela su animación en línea — como es inline,
+   hace falta !important para ganarle desde CSS. Evolución = fundido corto siempre (sin
+   strip), con !important + mayor especificidad para ganar tanto al inline como a la regla
+   de arriba. */
 @media (prefers-reduced-motion: reduce) {
-  .root [data-part] { animation: none !important; }
-  .root[data-reaction="joy"] { animation: nudge 0.4s ease-out; }
-  /* La evolución con movimiento reducido es un fundido corto, sin escala ni destello. */
-  .root[data-reaction="evolve"] { animation: fadeIn 0.6s ease-out; }
-  @keyframes nudge { 50% { transform: translateY(-4%); } }
+  .animated { animation: none !important; }
+  .root[data-reaction="evolve"] { animation: fadeIn 0.6s ease-out !important; }
   @keyframes fadeIn { from { opacity: 0.4; } to { opacity: 1; } }
 }

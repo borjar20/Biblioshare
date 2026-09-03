@@ -3727,3 +3727,55 @@ un cron que en prod todavía no existe.
 antes del merge de #1054 y verificada con la misma consulta que dev (`1 | true | 1 | 0 | false | true
 | 1`, `secrets = 2`, `pet_nudges` vacía). El job `pet-nudges` queda activo desde ese momento; la
 ruta existe en prod con el deploy del merge.
+
+## 2026-09-03 — Mascota: PixelLab es la herramienta por defecto para los sprites (#1021)
+
+**Decisión.** Todo el arte pixel de la mascota (y de BiblioPlay) se genera con **PixelLab** vía
+MCP, con suscripción Tier 2 (5 000 generaciones/mes). Lo usa el agente `pet-artist`
+(`.claude/agents/pet-artist.md`); el pipeline y el brief por pieza están en
+`docs/superpowers/specs/2026-09-03-mascota-arte-pixellab-design.md`; los scripts de apoyo
+(aplanar, trocear, extraer capa, recomponer, hoja de contacto) en `scripts/pet-pixellab/`.
+
+**Por qué.** Prueba del 2026-09-03 con el trial (28 generaciones): img2img sobre la ardilla
+procedural aplanada, a fuerza 150, da sprites muy por encima del procedural y respeta composición y
+pivotes; trocear ese plano con las máscaras del procedural devuelve piezas del rig que encajan; y
+un híbrido (ardilla IA + prenda procedural, fuerza 200) pule las capas de clase sin mover la
+ardilla. Lo que no funciona quedó anotado en la spec para no repetirlo (piezas aisladas,
+instrucciones a fuerza ≥ 250, diferencia píxel a píxel).
+
+**Consecuencia.** El procedural (`scripts/pet-sprites.mjs`) no muere: es el esqueleto que fija
+posición y máscaras y el `init_image` de cada generación. El arte IA sustituye PNG **con los mismos
+nombres**; `manifest.test.ts` sigue siendo la red. Cada tanda anota generaciones gastadas.
+
+## 2026-09-03 — Mascota: el rig por partes muere; sprites de personaje PixelLab
+
+**Decisión.** `<PetSprite>` pinta sprite sheets de un personaje PixelLab (3 personajes base por
+etapa, 18 estados de clase, 8 rotaciones y 4 animaciones sur cada uno) en vez de componer piezas
+con `transform`. El humor es la animación que se reproduce, no una capa de cara. Spec:
+`2026-09-03-mascota-sprites-personaje-design.md`.
+
+**Por qué.** La fase 1 eligió rig porque la IA no daba coherencia entre frames y las capas hacían
+barata cada animación. Con la suscripción a PixelLab, `create_character` v3 da 8 rotaciones
+coherentes por 1-2 generaciones y `create_character_state` la clase en las 8 direcciones sin
+capas. Y el producto quiere que la mascota pasee (issue #1057) y pelee (#1015): un rig frontal
+no rota.
+
+**Consecuencia.** Se borran piezas, caras, capas de clase y sus scripts. La celda del sheet es la
+unidad de dibujo (52 px para un personaje de 40): la compañera crece de 40 a 52 px a 1×. Añadir
+una dirección o animación no exige regenerar la base: ids en `scripts/pet-pixellab/characters.json`.
+
+## 2026-09-03 — Mascota: la celda del sheet es 52 o 56 px según el estado
+
+**Hecho.** PixelLab no exporta una celda uniforme de 52×52 como asumía la spec de sprites de
+personaje: según el estado exporta 52 **o** 56 px. Datos reales (`src/lib/pet/sheets.gen.ts`,
+orden de `PET_CLASSES` — barbarian, fighter, wizard, cleric, bard, ranger): `young`
+52/56/56/52/52/52; `adult` 52/56/56/52/56/52; `veteran` las 6 a 56×56. El componente ya lee
+`entry.cell` (nunca un literal), así que cada sprite se pinta bien por sí solo.
+
+**Consecuencia.** `class-picker` (y cualquier sitio que muestre dos sprites a la vez, o un cambio
+de clase/evolución) mezcla celdas de 52 y 56 px: a 2× eso es 104 px frente a 112 px, ~8 % de
+diferencia de tamaño perceptible entre un sprite y otro aunque `scale` sea el mismo.
+
+**Aceptado por ahora, con seguimiento.** No se corrige en esta pasada — issue #1059, con dos
+arreglos sugeridos: caja fija `MAX_CELL × scale` con el sprite centrado, o normalizar la celda al
+exportar en `fetch-character.mjs`.

@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "6de05f90-37f2-4ed2-8de4-ec6f0ffc8b6e",
+    "name": "cleric-veteran",
+    "prompt": "old veteran chibi red squirrel mascot, big fluffy tail with grey white streaks of age, small scar over one eyebrow, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_veterana-cleric-veteran.png",
+    "cell_size": {
+      "width": 56,
+      "height": 56
+    },
+    "sheet_size": {
+      "width": 504,
+      "height": 280
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "38bd214e-2a41-404d-a985-7a3880ac45f5",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "81eff1a2-91a2-41e1-b2e1-56466fef8205",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "88502d13-f63d-4fe7-a458-624b04663816",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "98a001b3-05ee-4dd0-88ff-59e8297df6e4",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:19:10.962353+00:00"
+}

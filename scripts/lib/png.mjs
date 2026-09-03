@@ -1,5 +1,5 @@
-// Codificador PNG RGBA sin dependencias, compartido por pet-sprites.mjs y
-// pet-badges.mjs. `grid[y][x]` es "#rrggbb" o null (transparente).
+// Codificador PNG RGBA sin dependencias, usado por pet-badges.mjs.
+// `grid[y][x]` es "#rrggbb" o null (transparente).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { deflateSync } from "node:zlib";

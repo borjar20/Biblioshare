@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "c6051424-4c7c-4818-8a7c-ee266b47ec29",
+    "name": "ranger-veteran",
+    "prompt": "old veteran chibi red squirrel mascot, big fluffy tail with grey white streaks of age, small scar over one eyebrow, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_veterana-ranger-veteran.png",
+    "cell_size": {
+      "width": 56,
+      "height": 56
+    },
+    "sheet_size": {
+      "width": 504,
+      "height": 280
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "123b792b-e23e-40c6-a183-f0067710511e",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "7c8ff3b6-1173-4052-8859-2704f059d8b0",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "ca8fe78c-e864-406c-a318-0e63bb860c42",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "e546e160-ae2c-410a-83c4-2b05ecb489d8",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:37:10.835825+00:00"
+}

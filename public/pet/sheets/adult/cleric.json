@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "23383a93-47d9-41bc-8f44-4dea418ee05d",
+    "name": "cleric-adult",
+    "prompt": "cute chibi red squirrel mascot, big fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_adulta-cleric-adult.png",
+    "cell_size": {
+      "width": 52,
+      "height": 52
+    },
+    "sheet_size": {
+      "width": 468,
+      "height": 260
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "1e63d15b-bb23-40f1-a9c5-06f4ed09a4f2",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "58d8a9c6-9c41-4a76-ad41-54818be1fe7a",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "c3b6349b-5572-497f-bbf2-6eb71031b71e",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "df84869e-a8c9-4163-ae39-7af13724d81e",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:12:41.363947+00:00"
+}

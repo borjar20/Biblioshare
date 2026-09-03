@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "45dab425-59f1-4540-b717-aec870181242",
+    "name": "bard-young",
+    "prompt": "baby chibi red squirrel mascot with oversized head and tiny body, small fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_cria-bard-young.png",
+    "cell_size": {
+      "width": 52,
+      "height": 52
+    },
+    "sheet_size": {
+      "width": 468,
+      "height": 260
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "4122016f-331b-4c92-bf3b-837b8aabfd89",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "43049257-27cd-484b-a9fb-e37a24740a65",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "9da6f330-09e0-4001-8747-4e6b01b02d9d",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "b41b6dfa-dcdd-42aa-a881-f989d905bc0a",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:07:10.764984+00:00"
+}

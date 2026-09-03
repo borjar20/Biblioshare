@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "b4bf4561-03f1-447d-8fa5-bb914181027f",
+    "name": "ranger-adult-r2",
+    "prompt": "cute chibi red squirrel mascot, big fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_adulta-ranger-adult-r2.png",
+    "cell_size": {
+      "width": 52,
+      "height": 52
+    },
+    "sheet_size": {
+      "width": 468,
+      "height": 260
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "27b7bf23-a65e-47f8-aba7-9c6e717dee64",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "90aca121-3d9a-445c-84e3-3ff797e93c5c",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "a52ca511-bbca-4bfb-9a9b-96c1b76468fc",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "cf795433-5167-4484-bd4c-b73a19443d09",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:14:24.571532+00:00"
+}

@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "8618d412-abac-4719-8a5c-43cc7495510f",
+    "name": "wizard-young",
+    "prompt": "baby chibi red squirrel mascot with oversized head and tiny body, small fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_cria-wizard-young.png",
+    "cell_size": {
+      "width": 56,
+      "height": 56
+    },
+    "sheet_size": {
+      "width": 504,
+      "height": 280
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "4410cbb9-14f0-4371-86ae-be95ba0f87a8",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "76dc1c81-3999-4d01-94d7-e781a69e7b4e",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "78687d3d-8615-408f-8150-7e4820bd139a",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "cea6e0dc-4f54-4569-9264-f602f56163ab",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:06:12.179905+00:00"
+}

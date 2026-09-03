@@ -1338,7 +1338,7 @@
       "label": "components/pet",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite con rig por partes en CSS).",
+      "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite pinta sprite sheets de personaje PixelLab en public/pet/sheets + sheets.gen.ts; el humor es la fila de animación que se reproduce).",
       "files": [
         "src/components/pet"
       ]

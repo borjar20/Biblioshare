@@ -1,0 +1,77 @@
+{
+  "character": {
+    "id": "bc7f757e-b856-4c5c-a4c5-525fd21f44ba",
+    "name": "fighter-veteran",
+    "prompt": "old veteran chibi red squirrel mascot, big fluffy tail with grey white streaks of age, small scar over one eyebrow, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Ardilla_base_veterana-fighter-veteran.png",
+    "cell_size": {
+      "width": 56,
+      "height": 56
+    },
+    "sheet_size": {
+      "width": 504,
+      "height": 280
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "4ef62559-b83b-4acf-8235-cae99450acf4",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "60341b51-41f3-4b9c-81dc-389a31ed711e",
+        "direction": "south"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "78922173-b786-4456-ba20-4c8d466d16b2",
+        "direction": "south"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 4,
+        "animation": "idle",
+        "animation_group_id": "dab9292a-0a92-4b05-b5b1-4ce6b112edbb",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T09:17:19.699367+00:00"
+}

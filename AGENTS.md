@@ -183,3 +183,15 @@ limpia.** Y si te encuentras el entorno sucio al empezar, límpialo antes de tra
 Estado limpio = puerto 3000 libre (o un único `next dev` tuyo) y cero worktrees huérfanos en
 `.claude/worktrees/`.
 <!-- END:biblioshare-cleanup -->
+
+<!-- BEGIN:biblioshare-pixel-art -->
+# Arte pixel (mascota, BiblioPlay): PixelLab es la herramienta por defecto
+
+Cualquier sprite nuevo o sustituido en `public/pet/` se genera con el MCP `pixellab` (suscripción
+de pago) siguiendo `docs/superpowers/specs/2026-09-03-mascota-arte-pixellab-design.md` — usa el
+agente `pet-artist`. El arte es un personaje PixelLab con estados por clase y sprite sheets
+(`fetch-character.mjs`); no vuelvas a capas ni a piezas: está probado y descartado (spec
+sprites-personaje §1). Los scripts de apoyo están en
+`scripts/pet-pixellab/`; los candidatos van a `.superpowers/brainstorm/<fecha>/`, a `public/pet/`
+solo lo elegido, con los nombres del manifiesto.
+<!-- END:biblioshare-pixel-art -->
