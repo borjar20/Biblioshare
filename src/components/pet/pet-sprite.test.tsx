@@ -12,7 +12,10 @@ describe("PetSprite", () => {
     const imgs = container.querySelectorAll("img");
     expect(imgs.length).toBe(1);
     expect(imgs[0].getAttribute("src")).toBe("/pet/acorn.png");
-    expect(container.firstElementChild!.getAttribute("aria-label")).toBe("Bellota");
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.getAttribute("aria-label")).toBe("Bellota");
+    expect(root.style.backgroundImage).toBe("");
+    expect(root.getAttribute("data-anim")).toBeNull();
   });
 
   it("adulta maga contenta: sheet de maga adulta, fila idle, caja = celda × escala", () => {
@@ -25,6 +28,11 @@ describe("PetSprite", () => {
     expect(root.getAttribute("data-anim")).toBe("idle");
     expect(root.getAttribute("data-frames")).toBe(String(e.anims.idle.frames));
     expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.anims.idle.row));
+    expect(root.style.getPropertyValue("--pet-cell")).toBe(`${e.cell * 2}px`);
+    expect(root.style.backgroundSize).toBe(`${e.width * 2}px ${e.height * 2}px`);
+    expect(root.style.animationDuration).toBe("1s");
+    expect(root.style.animationTimingFunction).toBe("steps(4)");
+    expect(root.style.animationIterationCount).toBe("infinite");
   });
 
   it("dormida usa la fila sleepy; triste la fila sad", () => {
@@ -37,10 +45,19 @@ describe("PetSprite", () => {
 
   it("la reacción de alegría manda sobre el humor", () => {
     const { container } = render(<PetSprite stage="adult" petClass="cleric" mood="sad" scale={1} reaction="joy" label="Fray" />);
-    const root = container.firstElementChild!;
+    const root = container.firstElementChild as HTMLElement;
     expect(root.getAttribute("data-anim")).toBe("joy");
     expect(root.getAttribute("data-reaction")).toBe("joy");
     expect(root.getAttribute("data-mood")).toBe("sad");
+    expect(root.style.animationIterationCount).toBe("1");
+  });
+
+  it("la reacción de evolución no cancela la animación de la fila: ambas corren a la vez", () => {
+    const { container } = render(<PetSprite stage="adult" petClass="cleric" mood="happy" scale={1} reaction="evolve" label="Fray" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.getAttribute("data-reaction")).toBe("evolve");
+    expect(root.style.animationName).toContain("strip");
+    expect(root.style.animationName).toContain("evolve");
   });
 
   it("otra dirección: frame estático de la fila de rotaciones, sin animación", () => {

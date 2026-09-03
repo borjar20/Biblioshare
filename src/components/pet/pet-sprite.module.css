@@ -1,6 +1,11 @@
-/* Sprite sheet de PixelLab (spec sprites-personaje §6). Una celda visible; la
-   animación recorre la fila con steps(). Variables que pone el componente:
-   --pet-cell (px), --pet-row, --pet-col, --pet-frames, --pet-duration, --pet-loop. */
+/* Sprite sheet de PixelLab (spec sprites-personaje §6). Una celda visible; la animación
+   recorre la fila con steps(). Variables que pone el componente para posicionar la celda:
+   --pet-cell (px), --pet-row, --pet-col, --pet-frames (fila animada, para @keyframes
+   strip). Los parámetros que dependen de datos (duración, timing-function, nº de
+   iteraciones) NO viven aquí: el componente los pone como longhands `animation-*` en
+   línea (ver pet-sprite.tsx) porque un var() dentro del shorthand `animation` se invalida
+   en tiempo de cómputo si el elemento no tiene esa custom property (ramas bellota y
+   dirección estática). Aquí solo quedan los @keyframes y las reglas fijas. */
 .root {
   position: relative;
   display: inline-block;
@@ -19,21 +24,25 @@
   background-position-x: calc(var(--pet-col) * var(--pet-cell) * -1);
   background-position-y: calc(var(--pet-row) * var(--pet-cell) * -1);
 }
-.animated {
-  animation: strip var(--pet-duration) steps(var(--pet-frames)) var(--pet-loop);
-}
 @keyframes strip {
   from { background-position-x: 0; }
   to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
 }
 
-/* reacción de evolución: destello + escala sobre la celda entera */
+/* Reacción de evolución: destello + escala sobre la celda entera. Esta regla solo tiene
+   efecto en las ramas SIN animación en línea (bellota, y sheet con dirección estática):
+   en la rama animada (sur) el componente ya pone "strip, evolve" en `animationName` (y el
+   resto de longhands en línea), y el inline gana siempre a esta regla — por eso ahí las
+   dos animaciones corren juntas en vez de que "evolve" sustituya a "strip". */
 .root[data-reaction="evolve"] { animation: evolve 1.2s ease-out; }
 @keyframes evolve { 0% { filter: brightness(1); transform: scale(1); } 40% { filter: brightness(2.2); transform: scale(1.15); } 100% { filter: brightness(1); transform: scale(1); } }
 
-/* Movimiento reducido: frame 0 quieto; evolución = fundido corto. */
+/* Movimiento reducido: la rama animada cancela su animación en línea — como es inline,
+   hace falta !important para ganarle desde CSS. Evolución = fundido corto siempre (sin
+   strip), con !important + mayor especificidad para ganar tanto al inline como a la regla
+   de arriba. */
 @media (prefers-reduced-motion: reduce) {
-  .animated { animation: none; }
-  .root[data-reaction="evolve"] { animation: fadeIn 0.6s ease-out; }
+  .animated { animation: none !important; }
+  .root[data-reaction="evolve"] { animation: fadeIn 0.6s ease-out !important; }
   @keyframes fadeIn { from { opacity: 0.4; } to { opacity: 1; } }
 }

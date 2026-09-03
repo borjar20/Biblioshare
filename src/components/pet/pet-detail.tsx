@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { checkCelebrations } from "@/lib/celebrations/preference";
 import { changeClass } from "@/lib/pet/actions";
@@ -10,8 +10,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { AchievementGrid } from "./achievement-grid";
 import { ClassPicker } from "./class-picker";
 import { MissionBoard } from "./mission-board";
-import { PetSprite } from "./pet-sprite";
+import { PetSprite, type PetReaction } from "./pet-sprite";
 import { RenameForm } from "./rename-form";
+
+const EVOLVE_MS = 1200;
+const JOY_MS = 900;
 
 export function PetDetail({ pet }: { pet: PetSnapshot }) {
   const t = useTranslations("pet");
@@ -27,6 +30,26 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
   useEffect(() => {
     if (pet.leveledUp || pet.evolved || pet.missionsCompletedNow || pet.achievementsUnlockedNow) checkCelebrations();
   }, [pet.leveledUp, pet.evolved, pet.missionsCompletedNow, pet.achievementsUnlockedNow]);
+
+  // El snapshot es estático (sin timer propio): sin esto la reacción de un solo disparo
+  // (joy/evolve) se queda pegada en pantalla el resto de la vida de la página, congelada
+  // en el frame 0 de esa fila. Se inicializa desde el snapshot y se apaga sola, como en
+  // pet-companion.tsx.
+  const initialReaction: PetReaction = pet.evolved ? "evolve" : pet.leveledUp ? "joy" : null;
+  const [reaction, setReaction] = useState<PetReaction>(initialReaction);
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => {
+    if (!initialReaction) return;
+    const ms = initialReaction === "evolve" ? EVOLVE_MS : JOY_MS;
+    const id = window.setTimeout(() => setReaction(null), ms);
+    timers.current.push(id);
+    return () => {
+      for (const timerId of timers.current) window.clearTimeout(timerId);
+      timers.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe correr una vez, al montar con la reacción inicial del snapshot.
+  }, []);
 
   function confirmClass(cls: PetClass) {
     if (!window.confirm(t("changeClass.confirm", { cls: t(`classes.${cls}`) }))) return;
@@ -54,7 +77,7 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
           petClass={pet.petClass}
           mood={pet.mood}
           scale={3}
-          reaction={pet.evolved ? "evolve" : pet.leveledUp ? "joy" : null}
+          reaction={reaction}
           label={pet.name}
         />
         <h2 className="font-serif text-2xl font-semibold text-foreground" data-testid="pet-name">{pet.name}</h2>
