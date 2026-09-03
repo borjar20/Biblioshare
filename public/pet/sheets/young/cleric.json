@@ -13,12 +13,12 @@
   "spritesheet": {
     "path": "Cria-cleric.png",
     "cell_size": {
-      "width": 92,
-      "height": 92
+      "width": 84,
+      "height": 84
     },
     "sheet_size": {
-      "width": 828,
-      "height": 460
+      "width": 756,
+      "height": 420
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,36 +42,36 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "18e3ecb2-56fd-4595-b272-562efd44b5bc",
-        "direction": "south"
+        "animation": "joy",
+        "animation_group_id": "396a44d3-3457-4b29-b3c0-2aafc397a302",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
         "animation": "sleepy",
-        "animation_group_id": "250b07cc-68c1-4d4a-8255-58d490cc3493",
-        "direction": "south"
+        "animation_group_id": "9b2d6c4d-9b2f-4722-8e83-c8c1cee3b466",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
-        "frame_count": 4,
+        "frame_count": 9,
         "animation": "idle",
-        "animation_group_id": "4d4e23c6-d2df-49db-9ca5-95bb0dc42699",
-        "direction": "south"
+        "animation_group_id": "9fc89461-bfe4-44ef-be6c-1c6aca2de7c3",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "8aaa99c9-0841-43dd-a0ec-9b9f8de104e2",
-        "direction": "south"
+        "animation": "sad",
+        "animation_group_id": "c4dea48b-514e-4200-bb76-0a092f86f1f7",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T21:38:00.507780+00:00"
+  "export_date": "2026-09-03T22:14:07.462905+00:00"
 }

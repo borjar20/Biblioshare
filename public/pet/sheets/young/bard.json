@@ -41,37 +41,37 @@
       {
         "row": 1,
         "type": "animation",
-        "frame_count": 4,
-        "animation": "idle",
-        "animation_group_id": "072ba224-1d39-4151-b055-f4950f7ad522",
-        "direction": "south"
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "8d03dca5-3a74-409f-a7bb-48b4fab5fe75",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
         "animation": "sleepy",
-        "animation_group_id": "2d8171c4-857a-49b8-a403-215e81e8aa5e",
-        "direction": "south"
+        "animation_group_id": "d83feb9b-d250-4206-ba61-e7cd1679f72c",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "46156937-f536-4349-8f97-cb199d488dc7",
-        "direction": "south"
+        "animation": "joy",
+        "animation_group_id": "ee30ca46-b640-410d-8486-351bd8f59713",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "9b21de8a-c032-4c33-b40f-c59bbffc2489",
-        "direction": "south"
+        "animation": "idle",
+        "animation_group_id": "f2d4bd24-4db4-4b34-b6a7-184a7aa3c4f3",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T21:38:04.509588+00:00"
+  "export_date": "2026-09-03T22:14:10.654371+00:00"
 }

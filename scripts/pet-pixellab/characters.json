@@ -5,55 +5,55 @@
       "barbarian": {
         "character_id": "fb833e00-e7e7-4053-904f-73a558f09df5",
         "anims": {
-          "idle": "fe785aaf-f6b1-48b7-a069-c4b4e53cb462",
-          "sleepy": "c81d0031-644f-44f3-95db-f0eca48471a2",
-          "sad": "cab4c8ca-e29e-4cd7-b826-9b10fdec97ad",
-          "joy": "4cc8b133-d1c3-4d39-a000-14e79982d900"
+          "idle": "0c79964c-e41d-4b8c-8ca4-1571c75bf6bb",
+          "sleepy": "4415e1d4-4718-4496-a1a2-f82225ca55ef",
+          "sad": "c89629ec-b3de-4abe-9214-0fea43a0d082",
+          "joy": "e574239a-dc96-475d-830a-f5c66da1fbdc"
         }
       },
       "fighter": {
         "character_id": "bbbbea6c-55d0-4d11-92cd-dd7e99578b7c",
         "anims": {
-          "idle": "4bc7096e-b6db-4275-a072-9e6a369edc77",
-          "sleepy": "a7a93e80-35fc-4a9d-8e30-35ad614368b5",
-          "sad": "155d16fd-41a8-46ea-9302-48613ae9631b",
-          "joy": "78a82465-3f80-40b7-9054-e66acffd4d0d"
+          "idle": "2e3f347f-704a-4dad-9a80-aee27aaeac55",
+          "sleepy": "b47a1a6e-e159-4665-987c-4b806493f38b",
+          "sad": "4d3d606e-df52-4fc1-a779-0c52ce91acd2",
+          "joy": "d379c3aa-f6c4-437a-88b5-6fd135d70179"
         }
       },
       "wizard": {
         "character_id": "15b917c8-3130-4046-aa04-2d6868fd825d",
         "anims": {
-          "idle": "c5269e2a-91f8-47e3-9cb3-96ea678212d9",
-          "sleepy": "c1e0275e-682a-4fb6-8b1c-d3632e7c17f2",
-          "sad": "894fde6a-0221-4c97-b52c-c9a04a1cc745",
-          "joy": "6cada4ee-bc73-4c29-84ba-9a6f5805ffa4"
+          "idle": "329af946-d252-428b-b4cf-b189ede41365",
+          "sleepy": "7434444e-5ae5-4382-8fed-0dd034dbc036",
+          "sad": "d121c300-56b1-4366-9800-7ba70f9d5596",
+          "joy": "ab0f89a2-5148-4812-b4ac-1efec0f9ceff"
         }
       },
       "cleric": {
         "character_id": "2c77431e-0757-455b-b3a9-dc29ae59b8c8",
         "anims": {
-          "idle": "4d4e23c6-d2df-49db-9ca5-95bb0dc42699",
-          "sleepy": "250b07cc-68c1-4d4a-8255-58d490cc3493",
-          "sad": "18e3ecb2-56fd-4595-b272-562efd44b5bc",
-          "joy": "8aaa99c9-0841-43dd-a0ec-9b9f8de104e2"
+          "idle": "9fc89461-bfe4-44ef-be6c-1c6aca2de7c3",
+          "sleepy": "9b2d6c4d-9b2f-4722-8e83-c8c1cee3b466",
+          "sad": "c4dea48b-514e-4200-bb76-0a092f86f1f7",
+          "joy": "396a44d3-3457-4b29-b3c0-2aafc397a302"
         }
       },
       "bard": {
         "character_id": "feba0913-fec6-48a0-8491-956436d95b96",
         "anims": {
-          "idle": "072ba224-1d39-4151-b055-f4950f7ad522",
-          "sleepy": "2d8171c4-857a-49b8-a403-215e81e8aa5e",
-          "sad": "46156937-f536-4349-8f97-cb199d488dc7",
-          "joy": "9b21de8a-c032-4c33-b40f-c59bbffc2489"
+          "idle": "f2d4bd24-4db4-4b34-b6a7-184a7aa3c4f3",
+          "sleepy": "d83feb9b-d250-4206-ba61-e7cd1679f72c",
+          "sad": "8d03dca5-3a74-409f-a7bb-48b4fab5fe75",
+          "joy": "ee30ca46-b640-410d-8486-351bd8f59713"
         }
       },
       "ranger": {
         "character_id": "e29cf7c9-c380-43c1-931f-ae94956b4175",
         "anims": {
-          "idle": "447f46a0-8560-4b23-bd27-4009e0c5079c",
-          "sleepy": "6ae23a9f-8b4b-4ee0-a29c-e7667202985a",
-          "sad": "89c12958-9cc2-44b9-b057-65eeab0c1d3e",
-          "joy": "ff78415f-093e-4b26-95d0-75506b861627"
+          "idle": "f26ea16c-06b4-4087-bbb6-acf3824d80d3",
+          "sleepy": "9a432876-6f5a-4043-8e2c-90ff4dc4a205",
+          "sad": "0dbdd6e9-e5d9-4405-b737-e1522149d115",
+          "joy": "2c9d9ab2-eb96-434e-8356-c64b33cf3f33"
         }
       }
     }

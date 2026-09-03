@@ -13,12 +13,12 @@
   "spritesheet": {
     "path": "Cria-fighter.png",
     "cell_size": {
-      "width": 96,
-      "height": 96
+      "width": 100,
+      "height": 100
     },
     "sheet_size": {
-      "width": 864,
-      "height": 480
+      "width": 900,
+      "height": 500
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,36 +42,36 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "155d16fd-41a8-46ea-9302-48613ae9631b",
-        "direction": "south"
+        "animation": "idle",
+        "animation_group_id": "2e3f347f-704a-4dad-9a80-aee27aaeac55",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
-        "frame_count": 4,
-        "animation": "idle",
-        "animation_group_id": "4bc7096e-b6db-4275-a072-9e6a369edc77",
-        "direction": "south"
+        "frame_count": 9,
+        "animation": "sad",
+        "animation_group_id": "4d3d606e-df52-4fc1-a779-0c52ce91acd2",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "78a82465-3f80-40b7-9054-e66acffd4d0d",
-        "direction": "south"
+        "animation": "sleepy",
+        "animation_group_id": "b47a1a6e-e159-4665-987c-4b806493f38b",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "a7a93e80-35fc-4a9d-8e30-35ad614368b5",
-        "direction": "south"
+        "animation": "joy",
+        "animation_group_id": "d379c3aa-f6c4-437a-88b5-6fd135d70179",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T21:37:51.855971+00:00"
+  "export_date": "2026-09-03T22:14:00.445386+00:00"
 }
