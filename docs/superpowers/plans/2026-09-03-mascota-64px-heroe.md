@@ -285,6 +285,10 @@ Expected: con los sheets de 40 el test **falla** (`expected 52 to be greater tha
 
 `public/sw.js` línea 31: `const CACHE_NAME = "biblioshare-v7";` → `"biblioshare-v8"`. Motivo (canónica §3.5): las rutas de los PNG no cambian y el SW los sirve cache-first.
 
+- [ ] **Step 3b: Quitar el fallback transitorio de `fetch-character.mjs`**
+
+En `entryFrom`, dejar solo la búsqueda por `FACING` (borrar el bloque `if (!r) { … "south" … console.warn }` marcado TRANSITORIO). `fnm exec --using=22 node scripts/pet-pixellab/fetch-character.mjs --gen` debe terminar sin ningún `aviso:` y `sheets.gen.ts` no cambiar (`git diff --quiet src/lib/pet/sheets.gen.ts`).
+
 - [ ] **Step 4: Borrar referencias de 40**
 
 ```sh
