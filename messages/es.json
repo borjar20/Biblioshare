@@ -3155,6 +3155,11 @@
       "review": "Reseña «{title}»",
       "finish_pass": "Termina «{title}»"
     },
+    "nudges": {
+      "streakAtRisk": "Tu racha de {n} días se acaba a medianoche",
+      "sleepy": "Lleva dos días dormida. Un ratito y se despierta",
+      "sad": "Lleva cuatro días triste. Te echa de menos"
+    },
     "achievements": {
       "title": "Logros",
       "tier": "Nivel {tier}",
