@@ -25,7 +25,14 @@ export function sheetSrc(stage: DrawnStage, cls: PetClass): string {
 }
 
 export function sheetEntry(stage: DrawnStage, cls: PetClass): SheetEntry {
-  const e = (PET_SHEETS[stage] as Record<string, SheetEntry>)[cls];
+  const e = PET_SHEETS[stage][cls];
   if (!e) throw new Error(`sheets.gen.ts sin entrada para ${stage}/${cls}: corre fetch-character.mjs`);
   return e;
 }
+
+// Duración (ms) de cada reacción de un solo disparo, para los `setTimeout` que la apagan en
+// pet-detail.tsx y pet-companion.tsx (antes duplicada en los dos componentes, desacoplada del
+// manifiesto). `joy` = 9 frames @ 10 fps de PET_MANIFEST.anims.joy (manifest.test.ts lo
+// comprueba); `evolve` no tiene fila propia — es el destello fijo de 1.2s de la regla
+// `@keyframes evolve` en pet-sprite.module.css, así que aquí es un literal.
+export const REACTION_MS = { joy: 900, evolve: 1200 } as const;

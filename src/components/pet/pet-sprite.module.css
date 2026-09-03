@@ -1,11 +1,11 @@
 /* Sprite sheet de PixelLab (spec sprites-personaje §6). Una celda visible; la animación
    recorre la fila con steps(). Variables que pone el componente para posicionar la celda:
-   --pet-cell (px), --pet-row, --pet-col, --pet-frames (fila animada, para @keyframes
-   strip). Los parámetros que dependen de datos (duración, timing-function, nº de
-   iteraciones) NO viven aquí: el componente los pone como longhands `animation-*` en
-   línea (ver pet-sprite.tsx) porque un var() dentro del shorthand `animation` se invalida
-   en tiempo de cómputo si el elemento no tiene esa custom property (ramas bellota y
-   dirección estática). Aquí solo quedan los @keyframes y las reglas fijas. */
+   --pet-cell (px), --pet-row, --pet-col, --pet-frames (fila animada, para los @keyframes
+   stripIdle/stripSleepy/stripSad/stripJoy). Los parámetros que dependen de datos (duración,
+   timing-function, nº de iteraciones) NO viven aquí: el componente los pone como longhands
+   `animation-*` en línea (ver pet-sprite.tsx) porque un var() dentro del shorthand
+   `animation` se invalida en tiempo de cómputo si el elemento no tiene esa custom property
+   (ramas bellota y dirección estática). Aquí solo quedan los @keyframes y las reglas fijas. */
 .root {
   position: relative;
   display: inline-block;
@@ -29,10 +29,33 @@
    Next.js con Turbopack) no admite `:global()` como nombre de @keyframes, solo como
    pseudoclase de selector, así que NO se puede sacar el nombre del hash con ese truco.
    El componente necesita poner `animationName` en línea (longhand, ver pet-sprite.tsx) y
-   por eso importa el nombre YA hasheado desde `styles.strip` / `styles.evolve` — igual que
-   ya hace con `styles.root` para la clase — en vez de escribir el literal "strip", que no
-   encontraría ninguna regla y dejaría el sprite congelado. */
-@keyframes strip {
+   por eso importa el nombre YA hasheado desde `styles.stripIdle` / `styles.evolve` — igual
+   que ya hace con `styles.root` para la clase — en vez de escribir el literal, que no
+   encontraría ninguna regla y dejaría el sprite congelado.
+
+   Son CUATRO @keyframes con el mismo cuerpo (uno por fila de animación: idle, sleepy, sad,
+   joy) y no uno solo reutilizado por nombre: CSS solo reinicia una animación cuando la
+   lista `animation-name` CAMBIA de valor. pet-companion.tsx monta con reaction=null (fila
+   idle, 1s, infinita) y más tarde pasa a reaction="joy" (fila joy, 0.9s, una vez) SIN
+   desmontarse — si las dos filas compartiesen nombre de keyframe, el navegador vería el
+   mismo animation-name de antes y no reiniciaría nada: seguiría el `currentTime` que ya
+   llevaba corriendo (minutos), muy por delante de la duración corta de joy, y con
+   fill-mode por defecto (none) la fila se pinta congelada en su último frame. Cambiar el
+   nombre del keyframe es lo único que garantiza el reinicio en cualquier transición de
+   fila, así que cada fila tiene el suyo aunque el cuerpo sea idéntico. */
+@keyframes stripIdle {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripSleepy {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripSad {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
+}
+@keyframes stripJoy {
   from { background-position-x: 0; }
   to { background-position-x: calc(var(--pet-frames) * var(--pet-cell) * -1); }
 }

@@ -6,15 +6,13 @@ import { checkCelebrations } from "@/lib/celebrations/preference";
 import { changeClass } from "@/lib/pet/actions";
 import { CLASS_PRIMARY, PET_ATTRIBUTES, type PetClass } from "@/lib/pet/classes";
 import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
+import { REACTION_MS } from "@/lib/pet/manifest";
 import { buttonVariants } from "@/components/ui/button";
 import { AchievementGrid } from "./achievement-grid";
 import { ClassPicker } from "./class-picker";
 import { MissionBoard } from "./mission-board";
 import { PetSprite, type PetReaction } from "./pet-sprite";
 import { RenameForm } from "./rename-form";
-
-const EVOLVE_MS = 1200;
-const JOY_MS = 900;
 
 export function PetDetail({ pet }: { pet: PetSnapshot }) {
   const t = useTranslations("pet");
@@ -41,7 +39,7 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
 
   useEffect(() => {
     if (!initialReaction) return;
-    const ms = initialReaction === "evolve" ? EVOLVE_MS : JOY_MS;
+    const ms = initialReaction === "evolve" ? REACTION_MS.evolve : REACTION_MS.joy;
     const id = window.setTimeout(() => setReaction(null), ms);
     timers.current.push(id);
     return () => {

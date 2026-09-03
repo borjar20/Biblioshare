@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PET_CLASSES } from "./classes";
-import { DRAWN_STAGES, PET_MANIFEST, sheetEntry, sheetSrc } from "./manifest";
+import { DRAWN_STAGES, PET_MANIFEST, REACTION_MS, sheetEntry, sheetSrc } from "./manifest";
 
 const PUBLIC = join(process.cwd(), "public");
 const exists = (src: string) => existsSync(join(PUBLIC, src));
@@ -36,5 +36,12 @@ describe("manifiesto de la mascota", () => {
       expect(PET_MANIFEST.anims[anim].fps).toBeGreaterThan(0);
     }
     expect(PET_MANIFEST.anims.joy.loop).toBe(false);
+  });
+
+  // REACTION_MS.joy es un literal compartido por pet-detail.tsx y pet-companion.tsx para
+  // apagar la reacción de un solo disparo; que no se desacople en silencio de la fila real.
+  it("REACTION_MS.joy coincide con la duración real de la fila joy (frames/fps)", () => {
+    const e = sheetEntry("adult", "wizard");
+    expect(REACTION_MS.joy).toBe(Math.round(1000 * (e.anims.joy.frames / PET_MANIFEST.anims.joy.fps)));
   });
 });

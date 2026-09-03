@@ -6,9 +6,9 @@ import { useTranslations } from "next-intl";
 import { onCelebrationsShown } from "@/lib/celebrations/preference";
 import type { CelebrationPayload } from "@/lib/celebrations/types";
 import type { CompanionState } from "@/lib/pet/get-companion-state";
+import { REACTION_MS } from "@/lib/pet/manifest";
 import { PetSprite, type PetReaction } from "./pet-sprite";
 
-const JOY_MS = 900;
 const BUBBLE_MS = 2200;
 
 // Compañera flotante (spec §6). Cero ruido: solo reacciona a lo que acabas de
@@ -28,7 +28,7 @@ export function PetCompanion({ state }: { state: CompanionState }) {
       timers.current = [];
       setReaction("joy");
       setBubble(t(`pet.bubble.${last.event}`, { milestone: last.milestone ?? "" }));
-      timers.current.push(window.setTimeout(() => setReaction(null), JOY_MS));
+      timers.current.push(window.setTimeout(() => setReaction(null), REACTION_MS.joy));
       timers.current.push(window.setTimeout(() => setBubble(null), BUBBLE_MS));
     });
     return () => {

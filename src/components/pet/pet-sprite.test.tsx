@@ -16,6 +16,7 @@ describe("PetSprite", () => {
     expect(root.getAttribute("aria-label")).toBe("Bellota");
     expect(root.style.backgroundImage).toBe("");
     expect(root.getAttribute("data-anim")).toBeNull();
+    expect(root.style.animationName).toBe("");
   });
 
   it("adulta maga contenta: sheet de maga adulta, fila idle, caja = celda × escala", () => {
@@ -33,6 +34,7 @@ describe("PetSprite", () => {
     expect(root.style.animationDuration).toBe("1s");
     expect(root.style.animationTimingFunction).toBe("steps(4)");
     expect(root.style.animationIterationCount).toBe("infinite");
+    expect(root.style.animationName).not.toBe("");
   });
 
   it("dormida usa la fila sleepy; triste la fila sad", () => {
@@ -51,6 +53,23 @@ describe("PetSprite", () => {
     expect(root.getAttribute("data-mood")).toBe("sad");
     expect(root.style.animationIterationCount).toBe("1");
     expect(root.style.animationDuration).toBe("0.9s"); // 9 frames @ 10 fps: distingue frames/fps de fps/frames
+  });
+
+  // CSS solo reinicia una animación cuando cambia la lista `animation-name`: si idle y joy
+  // comparten nombre de @keyframes, un componente que pasa de reaction=null (idle) a
+  // reaction="joy" sin desmontarse (pet-companion.tsx) no reinicia nada — el navegador ve el
+  // mismo animation-name y sigue el `currentTime` que ya llevaba, minutos por delante de la
+  // duración corta de joy, así que la fila se queda congelada en el último frame. Cada fila
+  // necesita su propio nombre de keyframe para que el cambio de fila SIEMPRE reinicie el strip.
+  it("idle y joy usan nombres de keyframe distintos: el cambio de nombre es lo que reinicia la animación", () => {
+    const idle = render(<PetSprite stage="adult" petClass="cleric" mood="happy" scale={1} reaction={null} label="Fray" />);
+    const idleName = (idle.container.firstElementChild as HTMLElement).style.animationName;
+    cleanup();
+    const joy = render(<PetSprite stage="adult" petClass="cleric" mood="happy" scale={1} reaction="joy" label="Fray" />);
+    const joyName = (joy.container.firstElementChild as HTMLElement).style.animationName;
+    expect(idleName).not.toBe("");
+    expect(joyName).not.toBe("");
+    expect(idleName).not.toBe(joyName);
   });
 
   it("la reacción de evolución no cancela la animación de la fila: ambas corren a la vez", () => {
