@@ -1,103 +1,151 @@
 # Mascota: arte pixel con PixelLab (herramienta por defecto y pipeline)
 
 > **[Canónico · verificado 2026-09-03]** Cómo se genera el arte de la mascota (y de BiblioPlay)
-> con PixelLab. Es el «brief de IA» que la spec de fase 1
-> (`2026-09-02-mascota-rpg-design.md`, §5) dejaba pendiente, más lo aprendido en la prueba del
-> 2026-09-03 (issue #1021). Si el pipeline cambia, se cambia aquí y se actualiza la fecha.
+> con PixelLab. Pipeline de **personaje** (sprite sheets PixelLab: base + estado de clase +
+> animaciones), no de rig por partes — el rig murió el 2026-09-03, ver §4 y la spec
+> `2026-09-03-mascota-sprites-personaje-design.md` (el porqué del cambio, congelada). Si el
+> pipeline cambia, se cambia aquí y se actualiza la fecha.
 
 ## 1. Decisión
 
 **PixelLab (MCP `pixellab`) es la herramienta por defecto para todo sprite del proyecto.**
 Suscripción Tier 2 «Pixel Artisan» (5 000 generaciones/mes, se renuevan el día 3). El agente
 `.claude/agents/pet-artist.md` la usa; los scripts de apoyo viven en `scripts/pet-pixellab/`.
-Los sprites procedurales (`scripts/pet-sprites.mjs`, `scripts/pet-badges.mjs`) **siguen siendo el
-esqueleto**: fijan posición, pivotes y máscaras, y son el `init_image` de cada generación. El arte
-IA los sustituye en `public/pet/` **con los mismos nombres** (`manifest.test.ts` vigila).
 
-Se descartó dibujar a mano (no hay ilustrador) y generar con un modelo genérico (sin control de
-lienzo ni de transparencia; PixelLab devuelve 40×40 exactos con alpha).
+El arte de la mascota es **un personaje PixelLab por etapa** (cría, adulta, veterana), con un
+**estado de clase** por cada una de las 6 clases y **4 animaciones** (`idle`, `sleepy`, `sad`,
+`joy`) en dirección sur. `<PetSprite>` pinta el spritesheet que exporta PixelLab
+(`public/pet/sheets/<stage>/<class>.{png,json}`); no compone piezas con `transform` ni superpone
+capas. `scripts/pet-pixellab/fetch-character.mjs` descarga cada sheet y regenera
+`src/lib/pet/sheets.gen.ts`.
+
+Se descartó dibujar a mano (no hay ilustrador), un modelo genérico de texto-a-imagen (sin control
+de lienzo ni de transparencia) y **el rig por partes con capas IA** (probado, funcionaba, pero un
+personaje frontal de 4 piezas no rota ni puede animarse por frames — ver §4).
 
 ## 2. Coste por herramienta (lo que importa al decidir)
 
 | Herramienta | Coste | Para qué la usamos |
 |---|---|---|
-| `create_image_pixflux` (img2img) | 1 gen | Todo el pipeline base: sprite plano por etapa, refinado de capas |
-| `create_image_pixen` (texto) | 1 gen | Exploración de look; sin control de posición |
-| `reduce_colors`, `correct_pixelart` | 0,1 gen | Paleta común de una tanda, limpieza |
-| `edit_image` | 20-40 gens | Añadir prenda/objeto a la ardilla desnuda IA (capas de clase) |
-| `inpaint_image` | 20-40 gens | Caras: regenerar solo la zona de los ojos |
-| `create_image_pro` | 20-40 gens | Candidatos en lote cuando el look no convence |
+| `create_character` (v3) | 1-2 gens | Personaje base por etapa, a partir de la ardilla plana de referencia |
+| `create_character_state` | 20-40 gens | Estado de clase (prenda + objeto) sobre el personaje base de la etapa |
+| `animate_character` (plantilla, p. ej. `breathing-idle`) | 1 gen | `idle` |
+| `animate_character` (v3 custom, `action_description`) | 1 gen | `sleepy`, `sad`, `joy` |
+| `create_image_pixflux` (img2img) | 1 gen | Ardilla plana de referencia por etapa (`ref/<stage>.png`), bellota |
+| `reduce_colors`, `correct_pixelart` | 0,1 gen | Limpieza puntual |
 
-Con 5 000 gens/mes cabe el arte completo varias veces; aun así, cada tanda apunta lo gastado.
+Con 5 000 gens/mes cabe el arte completo varias veces; aun así, cada tanda apunta lo gastado
+(`get_balance`).
 
 ## 3. Pipeline por etapa
 
-Lienzo 40×40, `no_background: true`, `outline: single color black outline`, `shading: basic`,
-`view: side`, **misma `seed` en toda la tanda** (la prueba usó 11).
+Lienzo 40×40, `no_background: true`, vista `low top-down`.
 
-1. **Ardilla desnuda de la etapa.** `node scripts/pet-pixellab/compose.mjs <stage> none none src.png`
-   → `create_image_pixflux(init_image=src.png, init_image_strength=150, description=<brief §5>)`.
-   A 150 respeta composición y pivotes aproximados y redibuja con calidad. Guardar como
-   `nude_<stage>.png`.
-2. **Trocear en piezas del rig.** `node scripts/pet-pixellab/slice.mjs nude_<stage>.png <stage> out/`
-   → `tail/body/head/hand.png`. Usa los alphas procedurales dilatados 2 px como máscaras por orden
-   z (mano > cabeza > cuerpo > cola). La recomposición es idéntica al plano.
-3. **Capas de clase (×6).** Dos vías, comparar y quedarse con la mejor:
-   - *Barata (probada):* componer `nude` + `outfit.png` + `accessory.png` procedurales
-     (`rig.mjs`), pasar a `pixflux` a **fuerza 200** con «keep the squirrel exactly as is, only
-     refine the hat and staff», y extraer cada capa con
-     `extract-layer.mjs nude.png edited.png <prenda procedural>.png out.png 2 60`.
-   - *Cara (pendiente de probar con suscripción):* `edit_image(nude.png, "add a blue wizard hat
-     with gold stars and a wooden staff with a purple crystal in the left paw")` y extraer igual.
-4. **Caras (×5, comunes).** La ardilla IA trae ojos. Pintar a mano las cinco caras sobre la cabeza
-   IA (~20 px) o `inpaint_image` sobre el rectángulo de los ojos con la descripción del humor.
-   Nunca superponer `face/*.png` procedural sobre cabeza IA: doble ojos.
-5. **Paleta común.** `reduce_colors` con **todas** las piezas de la tanda en una sola llamada
-   (quantizar una a una desalinea colores entre piezas).
-6. **Comprobar.** `rig.mjs` para recomponer, `sheet.mjs` para la hoja de contacto, copiar a
-   `public/pet/` con los nombres del manifiesto, `npx vitest run src/lib/pet`, mirar `/mascota`.
+1. **Ardilla plana de referencia.** `create_image_pixflux` desde el procedural aplanado (histórico:
+   `compose.mjs`, borrado — ver §4), fuerza 150. Se guarda en
+   `scripts/pet-pixellab/ref/<stage>.png` (ya existe para las 3 etapas).
+2. **Personaje base por etapa (×3).** `create_character(mode="v3", view="low top-down",
+   reference_image_base64=<ref/<stage>.png>, description=<brief §5>)`. 1-2 generaciones da 8
+   rotaciones coherentes (S, SE, E, NE, N, NW, W, SW). Verificar con `get_character` + hoja de
+   contacto (`sheet.mjs`) de las 8 direcciones: misma ardilla, etapa distinguible (cabezona /
+   canas). Si no, `delete_character` y repetir — la redacción del `description` pesa más que la
+   `seed`.
+3. **Estado de clase (×18 = 3 etapas × 6 clases).** `create_character_state(character_id=<base de
+   la etapa>, edit_description=<brief §5>)`. 20-40 generaciones; también aquí la redacción manda:
+   el objeto del guerrero (espada) solo apareció al pedir «raised upright… blade clearly visible
+   beside the head» — descripciones más vagas la dejaban fuera de cuadro o tapada por el brazo.
+   Verificar prenda/objeto visibles en las 8 direcciones antes de anotar el `character_id`.
+4. **4 animaciones sur por estado (×72 base, +re-rolls).** `animate_character(character_id=<id>,
+   directions=["south"], animation_name="idle|sleepy|sad|joy")`:
+   - `idle`: `template_animation_id="breathing-idle"` (1 gen).
+   - `sleepy`, `sad`, `joy`: `mode="v3"`, `frame_count=8`, `action_description` (§5bis, 1 gen
+     cada una). El sheet exportado guarda 9 frames por animación (8 + el frame de referencia).
 
-## 4. Lo que NO funciona (probado el 2026-09-03, no repetir)
+   `animate_character` **no tiene parámetro `seed`**: un re-roll no es reproducible, solo se puede
+   repetir con otra redacción y comparar. PixelLab ordena las filas de animación del sheet por
+   fecha de creación, así que regenerar una animación **cambia el `row`** de esa entrada en
+   `sheets.gen.ts` al volver a exportar — esperado, no un bug.
+5. **Descargar y generar.** `node scripts/pet-pixellab/fetch-character.mjs <stage> <cls>` por cada
+   combinación (o tras cualquier re-roll): descarga el zip, deja PNG + JSON en
+   `public/pet/sheets/<stage>/<cls>.*` y regenera `src/lib/pet/sheets.gen.ts` a partir de **todos**
+   los JSON presentes. Falla a propósito (`falta animación <name> (south) en <stage>/<cls>`) si
+   falta una de las 4.
+6. **Comprobar.** `npx vitest run src/lib/pet` (existe PNG y entrada generada por combinación, cada
+   una con las 4 animaciones en sur) y mirar `/mascota` a 1× y 3×.
 
-- **Piezas aisladas desde el procedural** («only the head of a squirrel»): a fuerza 220 devuelve el
-  procedural intacto; a 120 la cabeza pasa pero la cola sale sucia. Sin contexto se pierde.
+## 4. Probado, descartado
+
+**El rig por partes murió el 2026-09-03** (spec `2026-09-03-mascota-sprites-personaje-design.md`):
+un personaje frontal de 4 piezas compuestas con `transform` no rota ni admite animación por
+frames, y el producto quiere que la mascota pasee (issue paseo) y pelee (#1015). Se borraron
+`public/pet/{young,adult,veteran,face,class}/`, `scripts/pet-sprites.mjs` y los scripts del rig
+(`compose.mjs`, `slice.mjs`, `extract-layer.mjs`, `rig.mjs`). No revivir sin releer esa spec.
+
+Lo que se probó dentro de ese pipeline, para no repetirlo si algún día se retoma un híbrido de
+capas:
+
+- **Piezas aisladas desde el procedural** («only the head of a squirrel»): a fuerza 220 devuelve
+  el procedural intacto; a 120 la cabeza pasa pero la cola sale sucia. Sin contexto se pierde.
 - **Instrucciones de añadir cosas a fuerza ≥ 250** («now wearing a hat», «eyes closed»): las
   ignora y devuelve la misma ardilla. Por debajo de 150 añade pero mueve todo.
-- **Diferencia píxel a píxel** entre dos generaciones: casi todo difiere. Extraer capas exige
-  máscara (alpha del procedural dilatado) más tolerancia de color (60).
+- **Capas de clase por composición + `pixflux` a fuerza 200 + extracción por máscara**
+  (`extract-layer.mjs`, alpha del procedural dilatado + tolerancia de color 60): funcionaba, pero
+  no daba rotación ni frames — quedó reemplazado por `create_character_state`.
+- **Caras pintadas o `inpaint_image` sobre la cabeza IA**: quedó reemplazado por las animaciones
+  (§3.4) — el humor ya no es una capa de cara, es la animación que se reproduce.
 
 ## 5. Brief por pieza (prompts base)
 
-Prefijo común: `cute chibi red squirrel mascot facing front, big fluffy tail on the right, cream
-belly, pixel art, black outline, flat shading, warm palette`.
+Prefijo común: `cute chibi red squirrel mascot, big fluffy tail, cream belly, pixel art, black
+outline, flat shading, warm palette`. Se usan como `description` de `create_character` (base) o
+`edit_description` de `create_character_state` (clase).
 
 | Pieza | Añadir al prefijo |
 |---|---|
-| Cría | `baby … with oversized head and tiny body, small fluffy tail` |
-| Adulta | prefijo tal cual, `neutral expression`, `no clothes, no items` |
-| Veterana | `old veteran …, tail with grey white streaks of age, small scar over one eyebrow` |
-| Mago | `wearing a blue pointed wizard hat with gold stars, holding a thin wooden staff with a purple crystal` |
-| Bárbaro | `wearing a grey iron horned helmet, holding a small iron mace` |
-| Guerrero | `wearing a steel helmet with a red plume, holding a short sword` |
-| Clérigo | `wearing a white tabard with a gold cross over the torso, holding a small wooden holy symbol` |
-| Bardo | `wearing a green feathered cap, holding a small lute` |
-| Explorador | `wearing a green hood, holding a short bow` |
-| Caras | `sleepy: both eyes closed as thin curved lines, small yawning mouth` · `sad: downturned eyes and mouth` · `happy: big open eyes, wide smile` · `blink: eyes closed as flat lines` |
+| Cría | `baby … with oversized head and tiny body, small fluffy tail, standing on two feet, game character` |
+| Adulta | prefijo tal cual, `standing on two feet, game character`, sin ropa ni objetos |
+| Veterana | `old veteran …, tail with grey white streaks of age, small scar over one eyebrow, standing on two feet, game character` |
+| Mago (`wizard`) | `wearing a blue pointed wizard hat with gold stars and holding a thin wooden staff with a glowing purple crystal` |
+| Bárbaro (`barbarian`) | `wearing a grey iron horned helmet and holding a small iron mace in the left paw` |
+| Guerrero (`fighter`) | `wearing a steel helmet with a red plume and holding a short sword raised upright, blade clearly visible beside the head` |
+| Clérigo (`cleric`) | `wearing a white tabard with a gold cross over the torso and holding a small wooden holy symbol in the left paw` |
+| Bardo (`bard`) | `wearing a green feathered cap and holding a small lute` |
+| Explorador (`ranger`) | `wearing a green hood and holding a short bow in the left paw` |
 
-Bellota (`acorn.png`) e insignias (`badges/*.png`): `pixen` o `pixflux` desde el procedural a
-fuerza 150, mismo lienzo.
+Bellota (`acorn.png`): `pixflux` desde el procedural a fuerza 150, mismo lienzo 40×40.
+
+## 5bis. `action_description` de las animaciones (v3 custom, sur, `frame_count=8`)
+
+| Animación | `action_description` |
+|---|---|
+| `sleepy` | `dozing off: eyes closed, head nodding slowly, slow breathing, tail drooping` |
+| `sad` | `sad and droopy: ears down, head lowered, tail hanging low, slow sigh` |
+| `joy` | `happy celebration: hops up with both paws raised, tail flicks up, lands back in the same spot` |
+
+(`idle` no lleva `action_description`: usa la plantilla `breathing-idle`.)
 
 ## 6. Trampas
 
-- ESM no lee `NODE_PATH`; los scripts viven dentro del repo para importar `sharp` sin trucos.
-- La URL `…/mcp/images/<job>/download` tarda unos segundos en existir tras `completed`: reintentar.
-- Sin `no_background: true` PixelLab mete fondo opaco.
-- `init_image_strength` es «cuánto se conserva» (al revés que la mayoría de APIs img2img).
+- ESM no lee `NODE_PATH`; los scripts viven dentro del repo para importar `sharp`/`tar` sin
+  trucos.
+- El endpoint de descarga del sheet (`/mcp/characters/<id>/spritesheet`) devuelve 423 mientras
+  haya jobs en curso para ese personaje: `fetch-character.mjs` reintenta cada 15 s.
+- Sin `no_background: true` PixelLab mete fondo opaco (aplica a `create_image_pixflux`, no a
+  `create_character`/`create_character_state`, que ya recortan alpha).
+- La celda del sheet exportado **no es fija**: 52 o 56 px según cuánto desborde la animación al
+  personaje de 40 px. El componente lee `entry.cell` del JSON generado, nunca asume un tamaño.
+- `animate_character` no acepta `seed`: para repetir un resultado hay que ajustar el
+  `action_description`, no relanzar igual.
 - Los candidatos y hojas de contacto van a `.superpowers/brainstorm/<fecha>/` (ignorado por git);
-  a `public/pet/` solo va lo elegido.
+  a `public/pet/sheets/` solo va lo que ya pasó `fetch-character.mjs`.
 
 ## 7. Estado
 
-- 2026-09-03: prueba con 28 gens del trial (adulta/cría/veterana desnudas, mago híbrido). Resultados
-  en `.superpowers/brainstorm/pixellab-2026-09-03/` (local). Suscripción Tier 2 contratada el mismo
-  día. Generación del arte completo: issue #1021.
+- 2026-09-03: pipeline de personaje completo — 3 personajes base, 18 estados de clase, 74
+  animaciones (72 + 2 re-rolls) generados y descargados. Coste de esta fase: **~620
+  generaciones**. Suscripción Tier 2 contratada el 2026-09-03 (issue #1021, cerrada por esta
+  rama).
+- Pendiente conocido tras esta fase: #1055 (clérigo adulto/veterano sin objeto visible en sur),
+  #1056 (idle por plantilla restiliza a la ardilla; probar `animate_character` v3 por clase).
+- Fase de arte anterior (rig por partes, prueba con el trial): histórico, ver §4 y
+  `2026-09-03-mascota-sprites-personaje-design.md`.

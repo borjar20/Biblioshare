@@ -3746,3 +3746,20 @@ instrucciones a fuerza ≥ 250, diferencia píxel a píxel).
 **Consecuencia.** El procedural (`scripts/pet-sprites.mjs`) no muere: es el esqueleto que fija
 posición y máscaras y el `init_image` de cada generación. El arte IA sustituye PNG **con los mismos
 nombres**; `manifest.test.ts` sigue siendo la red. Cada tanda anota generaciones gastadas.
+
+## 2026-09-03 — Mascota: el rig por partes muere; sprites de personaje PixelLab
+
+**Decisión.** `<PetSprite>` pinta sprite sheets de un personaje PixelLab (3 personajes base por
+etapa, 18 estados de clase, 8 rotaciones y 4 animaciones sur cada uno) en vez de componer piezas
+con `transform`. El humor es la animación que se reproduce, no una capa de cara. Spec:
+`2026-09-03-mascota-sprites-personaje-design.md`.
+
+**Por qué.** La fase 1 eligió rig porque la IA no daba coherencia entre frames y las capas hacían
+barata cada animación. Con la suscripción a PixelLab, `create_character` v3 da 8 rotaciones
+coherentes por 1-2 generaciones y `create_character_state` la clase en las 8 direcciones sin
+capas. Y el producto quiere que la mascota pasee (issue #1057) y pelee (#1015): un rig frontal
+no rota.
+
+**Consecuencia.** Se borran piezas, caras, capas de clase y sus scripts. La celda del sheet es la
+unidad de dibujo (52 px para un personaje de 40): la compañera crece de 40 a 52 px a 1×. Añadir
+una dirección o animación no exige regenerar la base: ids en `scripts/pet-pixellab/characters.json`.

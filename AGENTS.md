@@ -189,8 +189,9 @@ Estado limpio = puerto 3000 libre (o un único `next dev` tuyo) y cero worktrees
 
 Cualquier sprite nuevo o sustituido en `public/pet/` se genera con el MCP `pixellab` (suscripción
 de pago) siguiendo `docs/superpowers/specs/2026-09-03-mascota-arte-pixellab-design.md` — usa el
-agente `pet-artist`. No pidas piezas sueltas al modelo ni superpongas caras procedurales sobre
-cabezas IA: las dos cosas están probadas y fallan (spec §4). Los scripts de apoyo están en
+agente `pet-artist`. El arte es un personaje PixelLab con estados por clase y sprite sheets
+(`fetch-character.mjs`); no vuelvas a capas ni a piezas: está probado y descartado (spec
+sprites-personaje §1). Los scripts de apoyo están en
 `scripts/pet-pixellab/`; los candidatos van a `.superpowers/brainstorm/<fecha>/`, a `public/pet/`
 solo lo elegido, con los nombres del manifiesto.
 <!-- END:biblioshare-pixel-art -->
