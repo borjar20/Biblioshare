@@ -15,7 +15,7 @@ Spec: `docs/superpowers/specs/2026-09-03-mascota-64px-heroe-design.md` (seccione
 - Todo sprite se genera con el MCP `pixellab` vía agente `pet-artist` (`.claude/agents/pet-artist.md`); candidatos y hojas de contacto en `.superpowers/brainstorm/2026-09-03-hero64/` (no versionado); a `public/pet/sheets/` solo lo que pasó `fetch-character.mjs`.
 - `create_character`: `mode="v3"`, `view="low top-down"`, `size=64`, `body_type="humanoid"`, **sin** `reference_image`. Briefs literales de la spec §5. **Ninguna negación** en un brief («no backpack» produce mochila): se describe lo que se quiere.
 - `create_character_state`: `edit_description` literal de la spec §5; se acepta solo si prenda y objeto se ven en las 8 rotaciones y la cara es la de la base. Si el objeto grande queda cortado, reintentar con `override_width=80, override_height=80` antes de reescribir.
-- Animaciones: `animation_name` exactamente `idle | sleepy | sad | joy`, `directions=["south"]`. `idle` = `template_animation_id="breathing-idle"`; `sleepy`/`sad`/`joy` = `mode="v3"`, `frame_count=8`, `action_description` de la canónica §5bis (copiadas en Task 2).
+- Animaciones (**enmienda 2026-09-03, tras Task 2**): `animation_name` exactamente `idle | sleepy | sad | joy`, **`directions=["south-west"]`** (la mascota se muestra y anima a 3/4 mirando a la izquierda del espectador, `PET_FACING`). **Las cuatro en `mode="v3"`, `frame_count=8`**: la plantilla `breathing-idle` pierde el objeto (casco, escudo, arma) en todas las clases (#1056), así que `idle` también es v3 con `action_description="breathing idle: subtle breathing, slight bob of the head, holding the prop still"`. `sleepy`/`sad`/`joy` con las `action_description` de la canónica §5bis (copiadas en Task 2). Ninguna animación se acepta si un frame pierde prenda u objeto: `delete_animation` y relanzar.
 - Node: el shell trae v20 (rompe vitest); usar `fnm use 22` o `fnm exec --using=22 …` antes de `node`/`npx`.
 - Cada tarea anota gens gastadas (`get_balance` antes/después) en su resumen. Cortar y avisar si el saldo baja de 1 000 (reserva de #1057).
 - Ningún cambio se da por hecho sin `npx vitest run src/lib/pet src/components/pet` en verde.
@@ -95,6 +95,31 @@ git commit -m "feat(pet): bases de la mascota a 64 px (héroe) y sheet.mjs con c
 ```
 
 **Puerta:** el hilo principal enseña `bases_south.png` y las tres `rot_*.png` al usuario y espera su OK antes de Task 2 (spec §7: los estados cuestan 20-40 gens cada uno).
+
+---
+
+### Task 2b (enmienda): dirección animada configurable — `PET_FACING = "south-west"`
+
+**Files:**
+- Modify: `src/lib/pet/manifest.ts` (exportar `PET_FACING`)
+- Modify: `scripts/pet-pixellab/fetch-character.mjs` (`entryFrom` busca las filas de animación con `direction === "south-west"`)
+- Modify: `src/components/pet/pet-sprite.tsx` (`direction` por defecto y rama animada = `PET_FACING`)
+- Modify: `src/components/pet/pet-sprite.test.tsx`, `src/lib/pet/manifest.test.ts`
+- Modify: `src/components/admin/pet-gallery.tsx` solo si fija `"south"` como valor inicial del selector de dirección (pasar a `PET_FACING`)
+
+**Interfaces:**
+- Produces: `export const PET_FACING = "south-west" as const satisfies PetDirection;` en `manifest.ts`. `fetch-character.mjs` exige las 4 animaciones en `south-west` (mensaje `falta animación <name> (south-west) en <stage>/<cls>`); la bellota sigue en `south` (`acornEntryFrom` no cambia). `<PetSprite direction?>` por defecto `PET_FACING`; anima solo cuando `direction === PET_FACING`; otra dirección pinta el frame de rotación quieto.
+
+- [ ] **Step 1: Tests en rojo.** En `pet-sprite.test.tsx`: renderizar `<PetSprite stage="adult" petClass="wizard" mood="happy" scale={2} label="Nuez" />` sin `direction` y comprobar `root.style.getPropertyValue("--pet-row")` igual a `String(sheetEntry("adult","wizard").anims.idle.row)` y que tiene `animationName`; con `direction="south"` comprobar `--pet-row` = `rotationsRow` y `--pet-col` = `"0"` y sin `animationName`; con `direction="south-west"` explícito, igual que sin prop. En `manifest.test.ts`: `expect(PET_FACING).toBe("south-west")` y que `DIRECTIONS`/`sheetEntry(...).directions` contiene `PET_FACING`.
+- [ ] **Step 2: Implementar** las tres modificaciones. En `fetch-character.mjs`: `const FACING = "south-west";` junto a `ANIMS`, y en `entryFrom` `x.direction === FACING` con el mensaje de error usando `FACING`. En `pet-sprite.tsx`: `direction = PET_FACING` en la desestructuración y `const animated = isAcorn || direction === PET_FACING;`; actualizar el comentario de la prop («Solo `PET_FACING` tiene animaciones…»).
+- [ ] **Step 3:** `fnm exec --using=22 npx vitest run src/lib/pet src/components/pet` verde; `fnm exec --using=22 npx tsc --noEmit` limpio. **No** ejecutar `fetch-character.mjs` en esta tarea (los sheets aún tienen filas `south`; `sheets.gen.ts` no se toca).
+- [ ] **Step 4: Commit** `feat(pet): dirección animada configurable (PET_FACING = south-west)`.
+
+### Task 2c (enmienda): cría — regenerar las 24 animaciones en south-west con idle v3
+
+Sobre los 6 `character_id` de `characters.json.young.classes`: `delete_animation` de los 4 grupos `south` de cada clase; 4 `animate_character` v3 `frame_count=8` `directions=["south-west"]` por clase (`idle` con la `action_description` de la enmienda de Global Constraints; `sleepy`/`sad`/`joy` con las de Task 2 Step 3); aceptar solo si todos los frames conservan prenda y objeto (revisar tira de frames por animación); anotar los grupos nuevos en `characters.json`; `fetch-character.mjs young <cls>` ×6 (ahora exige `south-west`); vitest verde; hoja `young_anim_rows.png` (frame 0 y 4 de cada animación por clase); commit `feat(pet): cría — animaciones en south-west, idle v3 que conserva el objeto`. Coste ~24 gens.
+
+Tasks 3 y 4 heredan la enmienda: animaciones en `south-west`, las cuatro v3, y `fetch-character.mjs` ya exige esa dirección.
 
 ---
 
