@@ -1,6 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import type { PetClass, PetMood, PetStage } from "@/lib/pet/classes";
-import { CANVAS, classLayerSrc, PET_MANIFEST, type PieceSpec } from "@/lib/pet/manifest";
+import { PET_MANIFEST, sheetEntry, sheetSrc, type PetDirection } from "@/lib/pet/manifest";
 import styles from "./pet-sprite.module.css";
 
 export type PetReaction = "joy" | "evolve" | null;
@@ -9,80 +9,61 @@ export interface PetSpriteProps {
   stage: PetStage;
   petClass: PetClass;
   mood: PetMood;
-  /** 1 = 40 px (compañera), 2 = 80 px (página), 3 = 120 px (eclosión). */
+  /** 1 = una celda (52 px), 2 = página, 3 = eclosión. */
   scale: 1 | 2 | 3;
   reaction?: PetReaction;
+  /** Solo la sur tiene animaciones en esta fase; otra dirección pinta el frame de rotación quieto. */
+  direction?: PetDirection;
   /** Nombre accesible (el nombre de la mascota). */
   label: string;
 }
 
-// Compone piezas y capas a partir del manifiesto: NADIE más sabe de PNG. Sin
-// "use client": no tiene estado; las animaciones son CSS puro y la reacción
-// llega por prop desde quien sí tiene estado (la compañera / la página).
-export function PetSprite({ stage, petClass, mood, scale, reaction = null, label }: PetSpriteProps) {
-  const size = CANVAS * scale;
-  const box: CSSProperties = { width: size, height: size };
-
+// Pinta UNA celda del spritesheet de PixelLab (spec sprites-personaje §6). Sin
+// "use client": no tiene estado; la animación es CSS (`background-position-x`
+// con steps()) y la reacción llega por prop desde quien sí tiene estado.
+export function PetSprite({ stage, petClass, mood, scale, reaction = null, direction = "south", label }: PetSpriteProps) {
   if (stage === "acorn") {
+    const size = 40 * scale;
     return (
-      <div className={styles.root} style={box} role="img" aria-label={label} data-mood={mood} data-reaction={reaction ?? undefined}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal */}
+      <div className={styles.root} style={{ width: size, height: size }} role="img" aria-label={label} data-mood={mood} data-reaction={reaction ?? undefined}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- pixel art: next/image reescalaría con filtro bilineal */}
         <img src={PET_MANIFEST.acorn.src} alt="" width={size} height={size} />
       </div>
     );
   }
 
-  const spec = PET_MANIFEST.stages[stage];
-  const cls = PET_MANIFEST.classes[petClass];
-  const outfit = classLayerSrc(petClass, stage, "outfit");
-  const accessory = classLayerSrc(petClass, stage, "accessory");
+  const entry = sheetEntry(stage, petClass);
+  const px = entry.cell * scale;
+  const animated = direction === "south";
+  const anim = reaction === "joy" ? "joy" : PET_MANIFEST.moodAnim[mood];
+  const row = animated ? entry.anims[anim] : { row: entry.rotationsRow, frames: 1 };
+  const col = animated ? 0 : Math.max(0, entry.directions.indexOf(direction));
+  const { fps, loop } = PET_MANIFEST.anims[anim];
 
-  const part = (name: "tail" | "body" | "head" | "hand", piece: PieceSpec, extra: ReactNode = null) => (
-    <div
-      key={name}
-      data-part={name}
-      className={styles.part}
-      style={{ zIndex: piece.z, transformOrigin: `${piece.pivot[0] * scale}px ${piece.pivot[1] * scale}px` }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal */}
-      <img src={piece.src} alt="" width={size} height={size} />
-      {extra}
-    </div>
-  );
+  const style = {
+    width: px,
+    height: px,
+    backgroundImage: `url(${sheetSrc(stage, petClass)})`,
+    backgroundSize: `${entry.width * scale}px ${entry.height * scale}px`,
+    "--pet-cell": `${px}px`,
+    "--pet-row": row.row,
+    "--pet-col": col,
+    "--pet-frames": row.frames,
+    "--pet-duration": `${row.frames / fps}s`,
+    "--pet-loop": loop ? "infinite" : "1",
+  } as CSSProperties;
 
   return (
-    <div className={styles.root} style={box} role="img" aria-label={label} data-mood={mood} data-reaction={reaction ?? undefined}>
-      {part("tail", spec.tail)}
-      {part(
-        "body",
-        spec.body,
-        cls.outfit.attach === "torso" ? (
-          // eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal
-          <img src={outfit} alt="" width={size} height={size} />
-        ) : null,
-      )}
-      {part(
-        "head",
-        spec.head,
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal */}
-          <img src={PET_MANIFEST.faces[mood]} alt="" width={size} height={size} />
-          {mood !== "sleepy" ? (
-            // eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal
-            <img className={styles.blink} src={PET_MANIFEST.faces.blink} alt="" width={size} height={size} />
-          ) : null}
-          {cls.outfit.attach === "hat" ? (
-            // eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal
-            <img src={outfit} alt="" width={size} height={size} />
-          ) : null}
-        </>,
-      )}
-      {part(
-        "hand",
-        spec.hand,
-        // eslint-disable-next-line @next/next/no-img-element -- pixel art 40×40: next/image reescalaría con filtro bilineal
-        <img src={accessory} alt="" width={size} height={size} />,
-      )}
-    </div>
+    <div
+      className={`${styles.root} ${styles.sheet}${animated ? ` ${styles.animated}` : ""}`}
+      style={style}
+      role="img"
+      aria-label={label}
+      data-mood={mood}
+      data-reaction={reaction ?? undefined}
+      data-anim={animated ? anim : undefined}
+      data-frames={animated ? row.frames : undefined}
+      data-col={animated ? undefined : col}
+    />
   );
 }
