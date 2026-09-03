@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PET_CLASSES } from "./classes";
-import { acornEntry, acornSrc, DRAWN_STAGES, PET_MANIFEST, REACTION_MS, sheetEntry, sheetSrc } from "./manifest";
+import { acornEntry, acornSrc, DRAWN_STAGES, PET_FACING, PET_MANIFEST, REACTION_MS, sheetEntry, sheetSrc } from "./manifest";
 
 const PUBLIC = join(process.cwd(), "public");
 const exists = (src: string) => existsSync(join(PUBLIC, src));
@@ -50,5 +50,17 @@ describe("manifiesto de la mascota", () => {
   it("REACTION_MS.joy coincide con la duración real de la fila joy (frames/fps)", () => {
     const e = sheetEntry("adult", "wizard");
     expect(REACTION_MS.joy).toBe(Math.round(1000 * (e.anims.joy.frames / PET_MANIFEST.anims.joy.fps)));
+  });
+
+  // PET_FACING es la única dirección animada (enmienda 2026-09-03, Task 2b): south-west, no
+  // south. PetSprite y fetch-character.mjs la leen de aquí, nunca del literal "south".
+  it("PET_FACING es south-west, la dirección con animaciones", () => {
+    expect(PET_FACING).toBe("south-west");
+  });
+
+  it("PET_FACING está entre las direcciones de rotación de cada sheet", () => {
+    for (const stage of DRAWN_STAGES) for (const cls of PET_CLASSES) {
+      expect(sheetEntry(stage, cls).directions, `${stage}/${cls}`).toContain(PET_FACING);
+    }
   });
 });

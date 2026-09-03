@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PET_CLASSES, type PetMood } from "@/lib/pet/classes";
-import { DRAWN_STAGES, REACTION_MS, type PetDirection } from "@/lib/pet/manifest";
+import { DRAWN_STAGES, PET_FACING, REACTION_MS, type PetDirection } from "@/lib/pet/manifest";
 import { PetSprite, type PetReaction } from "@/components/pet/pet-sprite";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
 
@@ -20,7 +20,7 @@ export function PetGallery() {
   const t = useTranslations("admin");
   const [scale, setScale] = useState<1 | 2 | 3>(2);
   const [anim, setAnim] = useState<GalleryAnim>("idle");
-  const [direction, setDirection] = useState<PetDirection>("south");
+  const [direction, setDirection] = useState<PetDirection>(PET_FACING);
   const [ready, setReady] = useState(false);
   const [evolve, setEvolve] = useState(false);
   const [paused, setPaused] = useState(false);

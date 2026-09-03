@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { PetClass, PetMood, PetStage } from "@/lib/pet/classes";
-import { acornEntry, acornSrc, PET_MANIFEST, sheetEntry, sheetSrc, type PetDirection } from "@/lib/pet/manifest";
+import { acornEntry, acornSrc, PET_FACING, PET_MANIFEST, sheetEntry, sheetSrc, type PetDirection } from "@/lib/pet/manifest";
 import type { AcornAnimName, AcornSheetEntry, PetAnimName, SheetEntry } from "@/lib/pet/sheets.gen";
 import styles from "./pet-sprite.module.css";
 
@@ -26,7 +26,7 @@ export interface PetSpriteProps {
   /** 1 = una celda (52–56 px según la entrada), 2 = página, 3 = eclosión. */
   scale: 1 | 2 | 3;
   reaction?: PetReaction;
-  /** Solo la sur tiene animaciones en esta fase; otra dirección pinta el frame de rotación quieto. */
+  /** Solo `PET_FACING` tiene animaciones en esta fase; otra dirección pinta el frame de rotación quieto. */
   direction?: PetDirection;
   /** Solo la bellota: `true` = fila «a punto de eclosionar» (la pone hatch-form con nombre + clase). */
   hatchReady?: boolean;
@@ -37,7 +37,7 @@ export interface PetSpriteProps {
 // Pinta UNA celda del spritesheet de PixelLab (spec sprites-personaje §6). Sin
 // "use client": no tiene estado; la animación es CSS (`background-position-x`
 // con steps()) y la reacción llega por prop desde quien sí tiene estado.
-export function PetSprite({ stage, petClass, mood, scale, reaction = null, direction = "south", hatchReady = false, label }: PetSpriteProps) {
+export function PetSprite({ stage, petClass, mood, scale, reaction = null, direction = PET_FACING, hatchReady = false, label }: PetSpriteProps) {
   // La bellota es un sheet como los demás pero con su propio conjunto de filas (idle/ready) y sin
   // rotaciones; no tiene humor ni reacción ni dirección (spec bellota-visor §2). `entry` se calcula
   // una sola vez aquí y se reutiliza (con cast puntual) en vez de volver a llamar a
@@ -45,9 +45,9 @@ export function PetSprite({ stage, petClass, mood, scale, reaction = null, direc
   const isAcorn = stage === "acorn";
   const entry = isAcorn ? acornEntry() : sheetEntry(stage, petClass);
   const px = entry.cell * scale;
-  // `direction` sin llamadores hoy (todo el mundo pasa "south", el valor por defecto):
+  // `direction` sin llamadores hoy (todo el mundo pasa PET_FACING, el valor por defecto):
   // la lleva el paseo de la mascota, #1057. La bellota siempre anima (no tiene rotaciones).
-  const animated = isAcorn || direction === "south";
+  const animated = isAcorn || direction === PET_FACING;
   const anim: PetAnimName | AcornAnimName = isAcorn
     ? hatchReady
       ? "ready"
