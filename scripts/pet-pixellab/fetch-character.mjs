@@ -72,6 +72,19 @@ function entryFrom(stage, cls, layout) {
   return { cell: s.cell_size.width, width: s.sheet_size.width, height: s.sheet_size.height, columns: s.columns, directions: rot.directions, rotationsRow: rot.row, anims };
 }
 
+const ACORN_ANIMS = ["idle", "ready"];
+function acornEntryFrom(layout) {
+  const s = layout.spritesheet;
+  if (s.cell_size.width !== s.cell_size.height) throw new Error("celda no cuadrada en acorn");
+  const anims = {};
+  for (const name of ACORN_ANIMS) {
+    const r = s.rows.find((x) => x.type === "animation" && x.animation === name && x.direction === "south");
+    if (!r) throw new Error(`falta animación ${name} (south) en acorn`);
+    anims[name] = { row: r.row, frames: r.frame_count };
+  }
+  return { cell: s.cell_size.width, width: s.sheet_size.width, height: s.sheet_size.height, columns: s.columns, anims };
+}
+
 function generate() {
   const out = {};
   for (const stage of STAGES) {
@@ -82,9 +95,13 @@ function generate() {
       out[stage][cls] = entryFrom(stage, cls, JSON.parse(readFileSync(f, "utf8")));
     }
   }
+  // La bellota no tiene etapa/clase ni rotaciones de 8 direcciones: es un sheet aparte
+  // empaquetado por pack-strip.mjs (ver acornEntryFrom), de ahí que viva fuera del bucle.
+  const acornJson = join(SHEETS, "acorn.json");
+  if (existsSync(acornJson)) out.acorn = acornEntryFrom(JSON.parse(readFileSync(acornJson, "utf8")));
   const body = JSON.stringify(out, null, 2);
   const ts = `// GENERADO por scripts/pet-pixellab/fetch-character.mjs — no editar a mano.
-// Layout de cada spritesheet de public/pet/sheets/<stage>/<class>.png (spec sprites-personaje §5).
+// Layout de cada spritesheet de public/pet/sheets/<stage>/<class>.png y acorn.png (spec sprites-personaje §5).
 export type PetAnimName = "idle" | "sleepy" | "sad" | "joy";
 export type SheetRow = { row: number; frames: number };
 export type SheetEntry = {
@@ -96,10 +113,12 @@ export type SheetEntry = {
   rotationsRow: number;
   anims: Record<PetAnimName, SheetRow>;
 };
-export const PET_SHEETS = ${body} as const satisfies Record<"young" | "adult" | "veteran", Record<string, SheetEntry>>;
+export type AcornAnimName = "idle" | "ready";
+export type AcornSheetEntry = { cell: number; width: number; height: number; columns: number; anims: Record<AcornAnimName, SheetRow> };
+export const PET_SHEETS = ${body} as const satisfies Record<"young" | "adult" | "veteran", Record<string, SheetEntry>> & { acorn: AcornSheetEntry };
 `;
   writeFileSync(GEN, ts);
-  const n = Object.values(out).reduce((a, s) => a + Object.keys(s).length, 0);
+  const n = STAGES.reduce((a, stage) => a + Object.keys(out[stage]).length, 0);
   console.log("ok", "src/lib/pet/sheets.gen.ts", n, "combinaciones");
 }
 

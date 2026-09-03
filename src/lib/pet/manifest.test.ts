@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PET_CLASSES } from "./classes";
-import { DRAWN_STAGES, PET_MANIFEST, REACTION_MS, sheetEntry, sheetSrc } from "./manifest";
+import { acornEntry, acornSrc, DRAWN_STAGES, PET_MANIFEST, REACTION_MS, sheetEntry, sheetSrc } from "./manifest";
 
 const PUBLIC = join(process.cwd(), "public");
 const exists = (src: string) => existsSync(join(PUBLIC, src));
@@ -11,8 +11,15 @@ const ANIMS = ["idle", "sleepy", "sad", "joy"] as const;
 // Que falte un sheet o una animación en prod se caza AQUÍ, no mirando la app
 // (spec sprites-personaje §5).
 describe("manifiesto de la mascota", () => {
-  it("existe la bellota", () => {
-    expect(exists(PET_MANIFEST.acorn.src)).toBe(true);
+  it("la bellota tiene sheet y las animaciones idle y ready", () => {
+    expect(exists(acornSrc())).toBe(true);
+    expect(acornSrc()).toBe("/pet/sheets/acorn.png");
+    const e = acornEntry();
+    expect(e.cell).toBeGreaterThanOrEqual(40);
+    expect(e.anims.idle.frames).toBeGreaterThan(0);
+    expect(e.anims.ready.frames).toBeGreaterThan(0);
+    expect(PET_MANIFEST.acorn.anims.idle.fps).toBeGreaterThan(0);
+    expect(PET_MANIFEST.acorn.anims.ready.fps).toBeGreaterThan(0);
   });
 
   it("existe el sheet PNG de cada etapa × clase", () => {

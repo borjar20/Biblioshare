@@ -79,6 +79,27 @@ Lienzo 40×40, `no_background: true`, vista `low top-down`.
 6. **Comprobar.** `npx vitest run src/lib/pet` (existe PNG y entrada generada por combinación, cada
    una con las 4 animaciones en sur) y mirar `/mascota` a 1× y 3×.
 
+## 3bis. Bellota: dos animaciones, no un personaje
+
+La bellota **no** es un personaje PixelLab: es un frame único rediseñado con `create_image_pixflux`
+(img2img, fuerza 150) o `create_image_pixen` desde texto, y **dos animaciones** con `animate_image`
+(no `animate_character`) sobre ese frame, 8 frames cada una (9 guardados: 8 generados + el frame de
+referencia), `no_background`: `idle` (`gentle idle loop`, siempre) y `ready` (`about to hatch`, solo
+cuando `hatch-form` tiene nombre válido y clase elegida — ver
+`2026-09-03-mascota-bellota-visor-admin-design.md` §2).
+
+`animate_image` devuelve frames sueltos, no un sheet: `scripts/pet-pixellab/pack-strip.mjs
+<out-basename> <cell> idle=<dir> ready=<dir>` los empaqueta con el mismo formato de layout que
+exporta PixelLab (`spritesheet.cell_size`, `columns`, `rows[]`) en `public/pet/sheets/acorn.png` +
+`acorn.json`; `public/pet/acorn.png` (el PNG estático viejo) se borra. `node
+scripts/pet-pixellab/fetch-character.mjs --gen` regenera `src/lib/pet/sheets.gen.ts` a partir de
+los JSON presentes, incluida la entrada `acorn` (tipo `AcornSheetEntry`, sin `directions`).
+
+**La regla de `CACHE_NAME` de §3 paso 5 también aplica aquí**: `acorn.png` cambia de ruta
+(`public/pet/acorn.png` → `public/pet/sheets/acorn.png`) y de contenido en cualquier re-roll;
+sin subir `CACHE_NAME` en `public/sw.js` un cliente que ya tenía el PNG en caché sigue sirviendo
+la versión vieja contra las filas nuevas de `sheets.gen.ts`.
+
 ## 4. Probado, descartado
 
 **El rig por partes murió el 2026-09-03** (spec `2026-09-03-mascota-sprites-personaje-design.md`):

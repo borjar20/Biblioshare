@@ -27,7 +27,8 @@
 // las islas (el estado de juego se hidrata de IndexedDB en el cliente), y el
 // purge de logout ya tira este caché entero, así que la copia muere con la
 // sesión igual que el resto. El bump re-siembra en clientes viejos.
-const CACHE_NAME = "biblioshare-v6";
+// v7 (2026-09-03): la bellota pasa de /pet/acorn.png a /pet/sheets/acorn.png.
+const CACHE_NAME = "biblioshare-v7";
 const OFFLINE_URL = "/offline";
 
 // Shells de Play que se SIEMBRAN al instalar, sin esperar a una navegación

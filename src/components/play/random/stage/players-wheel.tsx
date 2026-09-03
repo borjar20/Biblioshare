@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./stage.module.css";
 import { buzz, wheelSectors, wheelTargetAngle } from "./stage-helpers";
-import { useReducedMotion } from "./use-reduced-motion";
+import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
 
 function polar(r: number, angle: number): { x: number; y: number } {
   const rad = ((angle - 90) * Math.PI) / 180; // 0° arriba, horario

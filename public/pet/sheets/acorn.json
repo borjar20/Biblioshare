@@ -1,0 +1,51 @@
+{
+  "character": {
+    "name": "acorn",
+    "size": {
+      "width": 40,
+      "height": 40
+    },
+    "directions": 1,
+    "view": "side"
+  },
+  "spritesheet": {
+    "path": "acorn.png",
+    "cell_size": {
+      "width": 40,
+      "height": 40
+    },
+    "sheet_size": {
+      "width": 360,
+      "height": 120
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 1,
+        "directions": [
+          "south"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "idle",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "ready",
+        "direction": "south"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-09-03T12:19:32.098Z",
+  "packed_by": "scripts/pet-pixellab/pack-strip.mjs"
+}

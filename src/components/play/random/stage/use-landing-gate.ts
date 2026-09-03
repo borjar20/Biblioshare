@@ -2,7 +2,7 @@
 
 import { useRef, useState, type AnimationEvent } from "react";
 import { buzz } from "./stage-helpers";
-import { useReducedMotion } from "./use-reduced-motion";
+import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
 
 /**
  * Puerta de aterrizaje multi-objeto: cuenta los animationend de `total`

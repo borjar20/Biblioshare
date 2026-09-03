@@ -3779,3 +3779,19 @@ diferencia de tamaño perceptible entre un sprite y otro aunque `scale` sea el m
 **Aceptado por ahora, con seguimiento.** No se corrige en esta pasada — issue #1059, con dos
 arreglos sugeridos: caja fija `MAX_CELL × scale` con el sprite centrado, o normalizar la celda al
 exportar en `fetch-character.mjs`.
+
+## 2026-09-03 — Mascota: la bellota es un sheet con idle y ready; visor de animaciones en /admin/mascota
+
+**Decisión.** La bellota deja de ser un PNG estático: PixelLab (`animate_image`) genera `idle` y
+`ready`, `pack-strip.mjs` las empaqueta con el layout de PixelLab y `PetSprite` la pinta como a
+las demás etapas (prop `hatchReady`, solo en la eclosión con nombre y clase). `/admin/mascota`
+enseña las 18 combinaciones y la bellota con el componente real, con pausa y paso frame a frame por
+Web Animations API. Spec: `2026-09-03-mascota-bellota-visor-admin-design.md`.
+
+**Por qué.** La bellota es lo primero que ve todo el mundo y era lo único quieto; `ready` como
+feedback del formulario no exige estado nuevo (la etapa `acorn` es derivada y no existe «bellota
+con actividad»). El visor usa el componente de producción a propósito: un bug del keyframe como el
+de #1063 se habría visto aquí antes de la PR.
+
+**Consecuencia.** `public/pet/acorn.png` desaparece (`CACHE_NAME` v7). Un re-roll de la bellota
+es `animate_image` + `pack-strip` + `--gen`, no `animate_character`.

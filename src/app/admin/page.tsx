@@ -37,6 +37,7 @@ export default async function AdminPage() {
       <div className="flex flex-col gap-1">
         <PageHeader title={t("title")} />
         <p className="text-sm text-muted-foreground">{t("description")}</p>
+        <Link href="/admin/mascota" className="text-sm underline underline-offset-2">{t("petLink")}</Link>
       </div>
 
       <div className="overflow-x-auto">

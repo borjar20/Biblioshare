@@ -28,6 +28,9 @@ stage with a state per class and sprite-sheet animations) and of BiblioPlay with
 
 ## Hard rules
 
+- **The acorn is not a character.** It is one PixelLab frame (`create_image_pixflux`/`create_image_pixen`)
+  plus two `animate_image` animations (`idle`, `ready`), packed into a sheet with
+  `scripts/pet-pixellab/pack-strip.mjs` — never `create_character`/`animate_character` (spec §3bis).
 - **Character and states, never layers.** The mascot is a PixelLab character per stage
   (`create_character`, v3, `reference_image_base64` from `scripts/pet-pixellab/ref/<stage>.png`)
   plus a `create_character_state` per class. Do not compose pieces, do not extract layers by mask,
