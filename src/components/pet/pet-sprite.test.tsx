@@ -50,6 +50,7 @@ describe("PetSprite", () => {
     expect(root.getAttribute("data-reaction")).toBe("joy");
     expect(root.getAttribute("data-mood")).toBe("sad");
     expect(root.style.animationIterationCount).toBe("1");
+    expect(root.style.animationDuration).toBe("0.9s"); // 9 frames @ 10 fps: distingue frames/fps de fps/frames
   });
 
   it("la reacción de evolución no cancela la animación de la fila: ambas corren a la vez", () => {
