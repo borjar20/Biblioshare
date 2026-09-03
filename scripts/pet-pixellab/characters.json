@@ -1,6 +1,89 @@
 {
-  "young":   { "base": null, "classes": {} },
-  "adult":   { "base": "72a0972d-3e0b-4a08-b856-b175ab542235",
-               "classes": { "wizard": { "character_id": "f19a4575-f675-4410-9853-e6a4310da6b3", "anims": {} } } },
-  "veteran": { "base": null, "classes": {} }
+  "young": {
+    "base": "635e0dda-be68-45f1-9708-d4e6892d653d",
+    "classes": {
+      "barbarian": {
+        "character_id": "150a171b-d4d1-4134-86f6-3318146187bd",
+        "anims": {}
+      },
+      "fighter": {
+        "character_id": "705a2f8d-7652-4b38-8d21-b0b576421a75",
+        "anims": {}
+      },
+      "wizard": {
+        "character_id": "8618d412-abac-4719-8a5c-43cc7495510f",
+        "anims": {}
+      },
+      "cleric": {
+        "character_id": "64166d59-2ce4-4c3a-b12b-a898ae73d28a",
+        "anims": {}
+      },
+      "bard": {
+        "character_id": "45dab425-59f1-4540-b717-aec870181242",
+        "anims": {}
+      },
+      "ranger": {
+        "character_id": "1d9d8415-038f-444c-a449-68c40e336da7",
+        "anims": {}
+      }
+    }
+  },
+  "adult": {
+    "base": "72a0972d-3e0b-4a08-b856-b175ab542235",
+    "classes": {
+      "wizard": {
+        "character_id": "f19a4575-f675-4410-9853-e6a4310da6b3",
+        "anims": {}
+      },
+      "barbarian": {
+        "character_id": "b32cbd66-1105-4d15-a92e-b030f699b849",
+        "anims": {}
+      },
+      "fighter": {
+        "character_id": "a331678e-6d2a-4325-b0a6-80cc53155b0e",
+        "anims": {}
+      },
+      "cleric": {
+        "character_id": "23383a93-47d9-41bc-8f44-4dea418ee05d",
+        "anims": {}
+      },
+      "bard": {
+        "character_id": "fc878b3f-a8c7-49bd-b3a7-72fa49d32374",
+        "anims": {}
+      },
+      "ranger": {
+        "character_id": "b4bf4561-03f1-447d-8fa5-bb914181027f",
+        "anims": {}
+      }
+    }
+  },
+  "veteran": {
+    "base": "8446df96-ac3f-463d-a4e1-514ccf2bec5a",
+    "classes": {
+      "barbarian": {
+        "character_id": "26dfab63-5ffc-4ba6-9b2d-60a97fcb760c",
+        "anims": {}
+      },
+      "fighter": {
+        "character_id": "bc7f757e-b856-4c5c-a4c5-525fd21f44ba",
+        "anims": {}
+      },
+      "wizard": {
+        "character_id": "d9491239-91f5-4f69-9aa6-8bcc73f6024c",
+        "anims": {}
+      },
+      "cleric": {
+        "character_id": "6de05f90-37f2-4ed2-8de4-ec6f0ffc8b6e",
+        "anims": {}
+      },
+      "bard": {
+        "character_id": "02c5ce1a-e01e-4a60-bbfd-388dc23e8ac2",
+        "anims": {}
+      },
+      "ranger": {
+        "character_id": "c6051424-4c7c-4818-8a7c-ee266b47ec29",
+        "anims": {}
+      }
+    }
+  }
 }
