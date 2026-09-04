@@ -23,7 +23,7 @@ export interface PetSpriteProps {
   stage: PetStage;
   petClass: PetClass;
   mood: PetMood;
-  /** 1 = una celda (88–96 px según la entrada; esquina y picker), 2 = ficha y eclosión, 3 = solo /admin/mascota. */
+  /** 1 = una celda (92–104 px según la entrada; esquina y picker), 2 = ficha y eclosión, 3 = solo /admin/mascota. */
   scale: 1 | 2 | 3;
   reaction?: PetReaction;
   /** Solo `PET_FACING` tiene animaciones en esta fase; otra dirección pinta el frame de rotación quieto. */

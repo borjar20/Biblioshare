@@ -1,7 +1,7 @@
 // Empaqueta frames sueltos (p. ej. los de animate_image) en un sheet con el MISMO layout JSON que
 // exporta PixelLab, para que fetch-character.mjs --gen los trate como cualquier otro sheet.
 //   node scripts/pet-pixellab/pack-strip.mjs <out-basename> <cell> <anim>=<dir> [<anim>=<dir> ...]
-// Ej.: node scripts/pet-pixellab/pack-strip.mjs public/pet/sheets/acorn 40 idle=scripts/pet-pixellab/ref/acorn/idle ready=scripts/pet-pixellab/ref/acorn/ready
+// Ej.: node scripts/pet-pixellab/pack-strip.mjs public/pet/sheets/acorn 64 idle=scripts/pet-pixellab/ref/acorn/idle ready=scripts/pet-pixellab/ref/acorn/ready
 // Fila 0 = "rotations" con una sola dirección south (frame 0 de la primera animación); una fila por animación.
 import sharp from "sharp";
 import { readdirSync, writeFileSync } from "node:fs";

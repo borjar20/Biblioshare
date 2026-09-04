@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PET_CLASSES } from "./classes";
@@ -61,6 +61,28 @@ describe("manifiesto de la mascota", () => {
   it("PET_FACING está entre las direcciones de rotación de cada sheet", () => {
     for (const stage of DRAWN_STAGES) for (const cls of PET_CLASSES) {
       expect(sheetEntry(stage, cls).directions, `${stage}/${cls}`).toContain(PET_FACING);
+    }
+  });
+
+  // El JSON que exporta PixelLab es la fuente; sheets.gen.ts es derivado por fetch-character.mjs.
+  // Sin este cruce, un re-roll sin `--gen` (PixelLab reordena las filas por fecha) o un sheet viejo
+  // con filas "south" compila, pasa el resto de tests y la mascota reproduce la fila equivocada.
+  it("cada fila animada del JSON está en PET_FACING y coincide con sheets.gen.ts", () => {
+    type Row = { type: string; animation?: string; direction?: string; row: number; frame_count: number };
+    for (const stage of DRAWN_STAGES) for (const cls of PET_CLASSES) {
+      const s = JSON.parse(readFileSync(join(PUBLIC, "pet", "sheets", stage, `${cls}.json`), "utf8")).spritesheet as {
+        cell_size: { width: number };
+        sheet_size: { width: number; height: number };
+        rows: Row[];
+      };
+      const e = sheetEntry(stage, cls);
+      for (const a of ANIMS) {
+        const r = s.rows.find((x) => x.type === "animation" && x.animation === a && x.direction === PET_FACING);
+        expect(r, `${stage}/${cls} ${a} en ${PET_FACING}`).toBeDefined();
+        expect({ row: r!.row, frames: r!.frame_count }, `${stage}/${cls} ${a}`).toEqual(e.anims[a]);
+      }
+      expect(s.cell_size.width, `${stage}/${cls} cell`).toBe(e.cell);
+      expect(s.sheet_size, `${stage}/${cls} sheet_size`).toEqual({ width: e.width, height: e.height });
     }
   });
 });
