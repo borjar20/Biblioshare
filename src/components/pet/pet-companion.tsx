@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { onCelebrationsShown } from "@/lib/celebrations/preference";
 import type { CelebrationPayload } from "@/lib/celebrations/types";
+import type { CSSProperties } from "react";
 import type { CompanionState } from "@/lib/pet/get-companion-state";
-import { REACTION_MS } from "@/lib/pet/manifest";
+import { REACTION_MS, spriteBox } from "@/lib/pet/manifest";
 import { PetSprite, type PetReaction } from "./pet-sprite";
 
 const BUBBLE_MS = 2200;
@@ -38,19 +39,39 @@ export function PetCompanion({ state }: { state: CompanionState }) {
     };
   }, [t]);
 
+  // Zona táctil = el personaje, no la celda (#1074). El enlace mide `box` (la caja real del
+  // personaje dentro de la celda, sheets.gen.ts); el sprite entero se desplaza dentro con
+  // `pointer-events: none`, así que su relleno transparente deja pasar los taps a lo que haya
+  // debajo (compositor del hilo, barra de voz). El relleno derecho e inferior de la celda se suma
+  // al desplazamiento (--pet-pad-r/--pet-pad-b) para que el personaje quede EXACTAMENTE donde
+  // estaba antes en pantalla: solo cambia dónde se puede tocar.
+  const { cell, box } = spriteBox(state.stage, state.petClass);
+  const linkStyle = {
+    width: box.w,
+    height: box.h,
+    "--pet-pad-r": `${cell - box.x - box.w}px`,
+    "--pet-pad-b": `${cell - box.y - box.h}px`,
+  } as CSSProperties;
+
   return (
     <Link
       href="/mascota"
       aria-label={t("pet.companionLabel", { name: state.name })}
       data-testid="pet-companion"
-      className="fixed right-3 z-30 flex flex-col items-end gap-1 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:bottom-4"
+      className="fixed z-30 block right-[calc(0.75rem+var(--pet-pad-r))] bottom-[calc(4.75rem+env(safe-area-inset-bottom)+var(--pet-pad-b))] sm:bottom-[calc(1rem+var(--pet-pad-b))]"
+      style={linkStyle}
     >
       {bubble ? (
-        <span role="status" className="rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] text-foreground shadow-card">
+        <span
+          role="status"
+          className="absolute bottom-full right-0 mb-1 whitespace-nowrap rounded-full border border-border bg-surface px-2.5 py-1 text-[12px] text-foreground shadow-card"
+        >
           {bubble}
         </span>
       ) : null}
-      <PetSprite stage={state.stage} petClass={state.petClass} mood={state.mood} scale={1} reaction={reaction} label={state.name} />
+      <div className="absolute" style={{ left: -box.x, top: -box.y, pointerEvents: "none" }}>
+        <PetSprite stage={state.stage} petClass={state.petClass} mood={state.mood} scale={1} reaction={reaction} label={state.name} />
+      </div>
     </Link>
   );
 }
