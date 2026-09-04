@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -5,7 +6,12 @@ import { PET_CLASSES } from "./classes";
 import { acornEntry, acornSrc, DRAWN_STAGES, PET_FACING, PET_MANIFEST, REACTION_MS, sheetEntry, sheetSrc } from "./manifest";
 
 const PUBLIC = join(process.cwd(), "public");
-const exists = (src: string) => existsSync(join(PUBLIC, src));
+// `sheetSrc()`/`acornSrc()` llevan `?v=<hash>` (#1058): para mirar el disco se quita la query.
+const pathOf = (src: string) => src.split("?")[0];
+const exists = (src: string) => existsSync(join(PUBLIC, pathOf(src)));
+// Mismo hash que calcula fetch-character.mjs (sha1 del PNG, 10 hex): el test lo recalcula desde
+// el fichero para cazar un PNG regenerado sin `--gen`.
+const fileHash = (src: string) => createHash("sha1").update(readFileSync(join(PUBLIC, pathOf(src)))).digest("hex").slice(0, 10);
 const ANIMS = ["idle", "sleepy", "sad", "joy"] as const;
 
 // Que falte un sheet o una animación en prod se caza AQUÍ, no mirando la app
@@ -13,7 +19,7 @@ const ANIMS = ["idle", "sleepy", "sad", "joy"] as const;
 describe("manifiesto de la mascota", () => {
   it("la bellota tiene sheet y las animaciones idle y ready", () => {
     expect(exists(acornSrc())).toBe(true);
-    expect(acornSrc()).toBe("/pet/sheets/acorn.png");
+    expect(pathOf(acornSrc())).toBe("/pet/sheets/acorn.png");
     const e = acornEntry();
     expect(e.cell).toBeGreaterThanOrEqual(64);
     expect(e.anims.idle.frames).toBeGreaterThan(0);
@@ -35,6 +41,43 @@ describe("manifiesto de la mascota", () => {
       expect(e.directions[0]).toBe("south");
       expect(e.cell).toBeGreaterThanOrEqual(64);
       for (const a of ANIMS) expect(e.anims[a].frames, `${stage}/${cls} ${a}`).toBeGreaterThan(0);
+    }
+  });
+
+  // #1058: el SW cachea los PNG caché-primero por URL. Sin hash en la URL, un re-roll cambia el
+  // contenido del PNG y los índices de fila de sheets.gen.ts pero no la URL, y un cliente que
+  // vuelve pinta las filas nuevas sobre el PNG viejo. El hash viaja en sheets.gen.ts (dentro del
+  // JS hasheado de Next) y se recalcula aquí desde el disco: un PNG regenerado sin `--gen` falla.
+  it("sheetSrc lleva ?v=<hash> y el hash es el sha1 del PNG en disco", () => {
+    for (const stage of DRAWN_STAGES) for (const cls of PET_CLASSES) {
+      const e = sheetEntry(stage, cls);
+      const src = sheetSrc(stage, cls);
+      expect(src, `${stage}/${cls}`).toBe(`/pet/sheets/${stage}/${cls}.png?v=${e.hash}`);
+      expect(e.hash, `${stage}/${cls} hash`).toMatch(/^[0-9a-f]{10}$/);
+      expect(e.hash, `${stage}/${cls} hash desincronizado del PNG: corre fetch-character.mjs --gen`).toBe(fileHash(src));
+    }
+  });
+
+  it("acornSrc lleva ?v=<hash> del PNG de la bellota", () => {
+    const e = acornEntry();
+    expect(acornSrc()).toBe(`/pet/sheets/acorn.png?v=${e.hash}`);
+    expect(e.hash).toBe(fileHash(acornSrc()));
+  });
+
+  // #1074: la celda (92-104 px) lleva un 30-40 % de relleno transparente alrededor del personaje
+  // (~64 px). `box` es la caja real del personaje dentro de la celda (unión de todos los frames),
+  // para que la zona táctil de la compañera sea el personaje y no la celda.
+  it("cada entrada trae la caja del personaje, más pequeña que la celda y dentro de ella", () => {
+    for (const stage of DRAWN_STAGES) for (const cls of PET_CLASSES) {
+      const { box, cell } = sheetEntry(stage, cls);
+      expect(box.x, `${stage}/${cls} x`).toBeGreaterThanOrEqual(0);
+      expect(box.y, `${stage}/${cls} y`).toBeGreaterThanOrEqual(0);
+      expect(box.w, `${stage}/${cls} w`).toBeGreaterThan(0);
+      expect(box.h, `${stage}/${cls} h`).toBeGreaterThan(0);
+      expect(box.x + box.w, `${stage}/${cls} x+w`).toBeLessThanOrEqual(cell);
+      expect(box.y + box.h, `${stage}/${cls} y+h`).toBeLessThanOrEqual(cell);
+      expect(box.w, `${stage}/${cls} w < cell`).toBeLessThan(cell);
+      expect(box.h, `${stage}/${cls} h < cell`).toBeLessThan(cell);
     }
   });
 

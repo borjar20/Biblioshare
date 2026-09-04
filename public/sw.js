@@ -32,7 +32,11 @@
 // (antes 40-56); las rutas de los PNG no cambian y el SW los sirve caché-primero,
 // así que el bump es lo único que fuerza a los clientes ya instalados a bajar los
 // nuevos bytes en vez de seguir sirviendo los sprites antiguos desde disco.
-const CACHE_NAME = "biblioshare-v8";
+// v9 (2026-09-04): los sheets pasan a paleta (#1072) y su URL lleva `?v=<hash>` del
+// PNG (sheetSrc(), #1058). Desde aquí un re-roll de un sheet ya NO exige bump: la
+// URL nueva es una entrada nueva en la caché. Este bump solo tira las entradas
+// viejas sin query, que nadie volverá a pedir.
+const CACHE_NAME = "biblioshare-v9";
 const OFFLINE_URL = "/offline";
 
 // Shells de Play que se SIEMBRAN al instalar, sin esperar a una navegación

@@ -1,13 +1,16 @@
-// Descarga el spritesheet de un *state* de PixelLab y lo deja en public/pet/sheets/<stage>/<cls>.{png,json};
-// después regenera src/lib/pet/sheets.gen.ts a partir de TODOS los JSON presentes.
+// Descarga el spritesheet de un *state* de PixelLab y lo deja en public/pet/sheets/<stage>/<cls>.{png,json}
+// (ya en paleta, sin pérdida: sheet-postprocess.mjs); después regenera src/lib/pet/sheets.gen.ts a partir de
+// TODOS los JSON presentes, con el hash y la caja del personaje de cada PNG.
 //   node scripts/pet-pixellab/fetch-character.mjs <stage> <class>        # usa characters.json
 //   node scripts/pet-pixellab/fetch-character.mjs --gen                  # solo regenerar sheets.gen.ts
+//   node scripts/pet-pixellab/fetch-character.mjs --compress             # paleta sobre todos los sheets + --gen
 // Reintenta mientras el endpoint devuelva 423 (jobs en curso). Necesita `tar` (bsdtar de Windows 10 / macOS / Linux)
 // para el zip; si el `tar` del PATH no soporta zip (p. ej. GNU tar en Git Bash), recurre a `unzip`.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { cellBox, compressSheet, sheetHash } from "./sheet-postprocess.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..", "..");
@@ -58,7 +61,45 @@ async function fetchSheet(stage, cls) {
   renameSync(join(tmp, png), join(dir, `${cls}.png`));
   renameSync(join(tmp, json), join(dir, `${cls}.json`));
   rmSync(tmp, { recursive: true, force: true });
+  await compressAndReport(join(dir, `${cls}.png`), `${stage}/${cls}`);
   console.log("ok", `public/pet/sheets/${stage}/${cls}.{png,json}`);
+}
+
+// Paleta sin pérdida (#1072): PixelLab exporta RGBA truecolor con < 256 colores; a paleta pesa
+// ~1/3. Si un sheet superase los 256 colores se deja como está (y se avisa: cuantizar sería con
+// pérdida).
+async function compressAndReport(png, label) {
+  const r = await compressSheet(png);
+  const pct = r.before ? Math.round((1 - r.after / r.before) * 100) : 0;
+  console.log(r.palette ? "paleta" : "SIN paleta (>256 colores)", label, `${r.colours} colores`, `${r.before} → ${r.after} B (−${pct} %)`);
+  return r;
+}
+
+function sheetPngs() {
+  const out = [];
+  for (const stage of STAGES) for (const cls of CLASSES) {
+    const png = join(SHEETS, stage, `${cls}.png`);
+    if (existsSync(png)) out.push({ png, label: `${stage}/${cls}` });
+  }
+  const acorn = join(SHEETS, "acorn.png");
+  if (existsSync(acorn)) out.push({ png: acorn, label: "acorn" });
+  return out;
+}
+
+async function compressAll() {
+  let before = 0, after = 0;
+  for (const { png, label } of sheetPngs()) {
+    const r = await compressAndReport(png, label);
+    before += r.before;
+    after += r.after;
+  }
+  console.log("total", `${before} → ${after} B (−${before ? Math.round((1 - after / before) * 100) : 0} %)`);
+}
+
+// Derivados del PNG que viajan en sheets.gen.ts: hash para `?v=` en sheetSrc() (#1058) y caja
+// real del personaje dentro de la celda para la zona táctil de la compañera (#1074).
+async function derivedFrom(png, cell) {
+  return { hash: sheetHash(png), box: await cellBox(png, cell) };
 }
 
 function entryFrom(stage, cls, layout) {
@@ -88,25 +129,32 @@ function acornEntryFrom(layout) {
   return { cell: s.cell_size.width, width: s.sheet_size.width, height: s.sheet_size.height, columns: s.columns, anims };
 }
 
-function generate() {
+async function generate() {
   const out = {};
   for (const stage of STAGES) {
     out[stage] = {};
     for (const cls of CLASSES) {
       const f = join(SHEETS, stage, `${cls}.json`);
       if (!existsSync(f)) continue; // todavía no descargado: el test del manifiesto lo delatará
-      out[stage][cls] = entryFrom(stage, cls, JSON.parse(readFileSync(f, "utf8")));
+      const entry = entryFrom(stage, cls, JSON.parse(readFileSync(f, "utf8")));
+      out[stage][cls] = { ...entry, ...(await derivedFrom(join(SHEETS, stage, `${cls}.png`), entry.cell)) };
     }
   }
   // La bellota no tiene etapa/clase ni rotaciones de 8 direcciones: es un sheet aparte
   // empaquetado por pack-strip.mjs (ver acornEntryFrom), de ahí que viva fuera del bucle.
   const acornJson = join(SHEETS, "acorn.json");
-  if (existsSync(acornJson)) out.acorn = acornEntryFrom(JSON.parse(readFileSync(acornJson, "utf8")));
+  if (existsSync(acornJson)) {
+    const entry = acornEntryFrom(JSON.parse(readFileSync(acornJson, "utf8")));
+    out.acorn = { ...entry, ...(await derivedFrom(join(SHEETS, "acorn.png"), entry.cell)) };
+  }
   const body = JSON.stringify(out, null, 2);
   const ts = `// GENERADO por scripts/pet-pixellab/fetch-character.mjs — no editar a mano.
-// Layout de cada spritesheet de public/pet/sheets/<stage>/<class>.png y acorn.png (spec sprites-personaje §5).
+// Layout de cada spritesheet de public/pet/sheets/<stage>/<class>.png y acorn.png (spec sprites-personaje §5),
+// más dos derivados del PNG: \`hash\` (sha1 corto; sheetSrc() lo pone en \`?v=\`, #1058) y \`box\` (caja real del
+// personaje dentro de la celda, unión de todos los frames; zona táctil de la compañera, #1074).
 export type PetAnimName = "idle" | "sleepy" | "sad" | "joy";
 export type SheetRow = { row: number; frames: number };
+export type SheetBox = { x: number; y: number; w: number; h: number };
 export type SheetEntry = {
   cell: number;
   width: number;
@@ -115,9 +163,11 @@ export type SheetEntry = {
   directions: readonly string[];
   rotationsRow: number;
   anims: Record<PetAnimName, SheetRow>;
+  hash: string;
+  box: SheetBox;
 };
 export type AcornAnimName = "idle" | "ready";
-export type AcornSheetEntry = { cell: number; width: number; height: number; columns: number; anims: Record<AcornAnimName, SheetRow> };
+export type AcornSheetEntry = { cell: number; width: number; height: number; columns: number; anims: Record<AcornAnimName, SheetRow>; hash: string; box: SheetBox };
 export const PET_SHEETS = ${body} as const satisfies Record<"young" | "adult" | "veteran", Record<string, SheetEntry>> & { acorn: AcornSheetEntry };
 `;
   writeFileSync(GEN, ts);
@@ -126,6 +176,7 @@ export const PET_SHEETS = ${body} as const satisfies Record<"young" | "adult" | 
 }
 
 const [a, b] = process.argv.slice(2);
-if (a === "--gen") generate();
-else if (STAGES.includes(a) && CLASSES.includes(b)) { await fetchSheet(a, b); generate(); }
-else { console.error("uso: fetch-character.mjs <stage> <class> | --gen"); process.exit(1); }
+if (a === "--gen") await generate();
+else if (a === "--compress") { await compressAll(); await generate(); }
+else if (STAGES.includes(a) && CLASSES.includes(b)) { await fetchSheet(a, b); await generate(); }
+else { console.error("uso: fetch-character.mjs <stage> <class> | --gen | --compress"); process.exit(1); }

@@ -114,6 +114,15 @@ describe("swStrategy", () => {
     expect(strategyFor(req(`${ORIGIN}/icon-192.png`), ORIGIN)).toBe("cache-first");
   });
 
+  // #1058: los sheets de la mascota llevan `?v=<hash>` en la URL (sheetSrc). La estrategia se
+  // decide por `pathname`, así que siguen yendo caché-primero — y como la caché del SW se indexa
+  // por URL completa, un hash nuevo es una entrada nueva: el re-roll ya no necesita subir
+  // CACHE_NAME para que un cliente que vuelve pida el PNG fresco.
+  it("un PNG con ?v=<hash> sigue yendo caché-primero (la query cambia la clave, no la estrategia)", () => {
+    const strategyFor = loadStrategy();
+    expect(strategyFor(req(`${ORIGIN}/pet/sheets/adult/wizard.png?v=0123abcdef`), ORIGIN)).toBe("cache-first");
+  });
+
   it("no toca otro origen (Supabase, portadas, APIs de catálogo)", () => {
     const strategyFor = loadStrategy();
     expect(strategyFor(req("https://xyz.supabase.co/rest/v1/books"), ORIGIN)).toBe("skip");
