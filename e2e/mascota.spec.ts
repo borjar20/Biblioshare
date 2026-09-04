@@ -68,7 +68,23 @@ test("eclosión: nombre + clase → detalle; compañera en el shell; ausente en 
   await expect(page.getByTestId("pet-name")).toHaveText("Nuez");
 
   await page.goto("/coleccion");
-  await expect(page.getByTestId("pet-companion")).toBeVisible();
+  const companion = page.getByTestId("pet-companion");
+  await expect(companion).toBeVisible();
+  // #1074: la zona táctil (el enlace) es la caja del personaje, no la celda del sheet; el sprite
+  // sigue pintado donde estaba (esquina inferior derecha, a 0.75rem del borde derecho y 1rem del
+  // inferior en ≥ sm), y el enlace queda dentro del sprite.
+  const link = await companion.boundingBox();
+  const sprite = await companion.getByRole("img").boundingBox();
+  const viewport = await page.evaluate(() => ({ w: document.documentElement.clientWidth, h: document.documentElement.clientHeight }));
+  expect(link && sprite).toBeTruthy();
+  expect(link!.width).toBeLessThan(sprite!.width);
+  expect(link!.height).toBeLessThan(sprite!.height);
+  expect(link!.x).toBeGreaterThanOrEqual(sprite!.x);
+  expect(link!.y).toBeGreaterThanOrEqual(sprite!.y);
+  expect(link!.x + link!.width).toBeLessThanOrEqual(sprite!.x + sprite!.width);
+  expect(link!.y + link!.height).toBeLessThanOrEqual(sprite!.y + sprite!.height);
+  expect(Math.abs(sprite!.x + sprite!.width - (viewport.w - 12))).toBeLessThanOrEqual(1);
+  expect(Math.abs(sprite!.y + sprite!.height - (viewport.h - 16))).toBeLessThanOrEqual(1);
 
   await page.goto("/partida/activa");
   await expect(page.getByTestId("pet-companion")).toHaveCount(0);

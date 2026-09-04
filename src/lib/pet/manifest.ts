@@ -1,5 +1,5 @@
 import type { PetClass, PetMood, PetStage } from "./classes";
-import { PET_SHEETS, type AcornAnimName, type AcornSheetEntry, type PetAnimName, type SheetEntry } from "./sheets.gen";
+import { PET_SHEETS, type AcornAnimName, type AcornSheetEntry, type PetAnimName, type SheetBox, type SheetEntry } from "./sheets.gen";
 
 // Fuente de verdad de qué sheet va dónde y qué animación toca (spec
 // sprites-personaje §5). El layout de cada sheet lo genera fetch-character.mjs
@@ -27,8 +27,12 @@ export const PET_MANIFEST = {
   moodAnim: { happy: "idle", neutral: "idle", sleepy: "sleepy", sad: "sad" } satisfies Record<PetMood, PetAnimName>,
 } as const;
 
+// `?v=<hash>` (#1058): el SW cachea los PNG caché-primero por URL completa. El nombre del fichero no
+// cambia en un re-roll pero el hash (sha1 del PNG, en sheets.gen.ts, que viaja dentro del JS hasheado
+// de Next) sí, así que un cliente que vuelve pide el PNG nuevo en vez de pintar las filas nuevas
+// sobre el PNG viejo. Ya no hace falta subir CACHE_NAME al regenerar un sheet.
 export function sheetSrc(stage: DrawnStage, cls: PetClass): string {
-  return `/pet/sheets/${stage}/${cls}.png`;
+  return `/pet/sheets/${stage}/${cls}.png?v=${sheetEntry(stage, cls).hash}`;
 }
 
 export function sheetEntry(stage: DrawnStage, cls: PetClass): SheetEntry {
@@ -38,13 +42,21 @@ export function sheetEntry(stage: DrawnStage, cls: PetClass): SheetEntry {
 }
 
 export function acornSrc(): string {
-  return "/pet/sheets/acorn.png";
+  return `/pet/sheets/acorn.png?v=${acornEntry().hash}`;
 }
 
 export function acornEntry(): AcornSheetEntry {
   const e = PET_SHEETS.acorn;
   if (!e) throw new Error("sheets.gen.ts sin entrada acorn: corre pack-strip.mjs y fetch-character.mjs --gen");
   return e;
+}
+
+// Caja real del personaje dentro de la celda (unión de todos los frames del sheet, en px de celda a
+// escala 1). La compañera la usa como zona táctil (#1074): la celda de 92-104 px lleva un 30-40 % de
+// relleno transparente que no debe interceptar taps sobre lo que haya debajo.
+export function spriteBox(stage: PetStage, cls: PetClass): { cell: number; box: SheetBox } {
+  const e = stage === "acorn" ? acornEntry() : sheetEntry(stage, cls);
+  return { cell: e.cell, box: e.box };
 }
 
 // Duración (ms) de cada reacción de un solo disparo, para los `setTimeout` que la apagan en
