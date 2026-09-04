@@ -3850,3 +3850,28 @@ seguramente no se verían, pero es una decisión de arte con pérdida y va en is
 **Consecuencia.** La regla «regenerar un sheet exige subir `CACHE_NAME`» desaparece de la canónica
 §3 paso 5, de §3bis y de `.claude/agents/pet-artist.md`. Copiar un PNG a mano a
 `public/pet/sheets/` sin `--gen` deja de compilar en verde: falla `manifest.test.ts`.
+
+## 2026-09-04 — Mascota fase 4: combate tipo El Bruto, jefes derivados del reto (spec aparcada)
+
+**Decisión.** El combate de la mascota sigue la fórmula de **El Bruto**: autobattle observado,
+motor determinista en servidor (PRNG con seed, `BattleEvent[]`, checksum, `rulesetVersion`), el
+cliente solo reproduce. Referencia: GDD «Arena Zero» del dueño del proyecto, copiado a
+`docs/reference/2026-09-02-arena-zero-gdd.md`. Fase 4 = motor + jefes de reto **sin destino**
+(ni armas ni habilidades por nivel); el motor nace simétrico para el PvP (#1016). Un intento de
+combate por obra terminada que cuente para el reto (el jefe conserva el daño); lo lanza el usuario
+eligiendo actitud; una criatura por tipo de reto; celebración + logros, sin XP. Vista de combate en
+perfil: mascota a la izquierda mirando `east`, rival a la derecha mirando `west`; el rival PvP se
+espeja por CSS. Jefe **derivado** (vida máxima desde el reto, restante = máxima − daño guardado en
+`pet_battles`; intentos = obras del reto − combates): sin tabla de jefes. Spec:
+`2026-09-04-mascota-jefes-combate-design.md`.
+
+**Por qué.** «Jugabilidad», no solo una visualización del progreso; y el motor autoritativo y
+reproducible es la única forma de que el PvP no sea trucable. Jefe derivado y no tabla: dos fuentes
+de verdad (vida y batallas) se desincronizan al rebalancear; con «todo lo derivable se deriva» un
+cambio de `BALANCE` recalcula a todos, como con los atributos. Intentos por obra terminada y no
+cupo diario: la mascota no pide atención; el combate es la celebración de terminar.
+
+**Consecuencia.** La spec queda **aparcada** sin presentar el diseño sección a sección: su §11
+lista lo que decidió el agente sin validar (mapa atributo → stat, fórmulas, técnicas de clase,
+criaturas, calibración) y hay que repasarlo antes del plan. Las animaciones de combate se generan
+en `east` (~190 gens con las 4 criaturas), no en `south-west` como las de humor.
