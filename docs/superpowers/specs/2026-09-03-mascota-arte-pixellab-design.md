@@ -270,7 +270,7 @@ frames.
 **Modelo resultante:** cada etapa × clase tiene **dos estados** PixelLab derivados de la misma
 base — `biped` (idle/sleepy/sad/joy, ataques) y `quad` (walk/run). El sheet del quad va aparte, en
 `public/pet/sheets/<stage>/<class>.quad.png`, y su id en
-`characters.json.<stage>.classes.<cls>.quad` (clave opcional, hoy vacía).
+`characters.json.<stage>.classes.<cls>.quad` (clave que aún no existe: se añade al ejecutar #1057).
 
 **Coste:** ~20 gens por estado quad (≈ 360 por las 18 combinaciones) + 1 gen por animación y
 dirección (144 para `walk` en 8 direcciones × 18).
