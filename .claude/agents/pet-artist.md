@@ -28,21 +28,33 @@ stage with a state per class and sprite-sheet animations) and of BiblioPlay with
 
 ## Hard rules
 
-- **The acorn is not a character.** It is one PixelLab frame (`create_image_pixflux`/`create_image_pixen`)
-  plus two `animate_image` animations (`idle`, `ready`), packed into a sheet with
-  `scripts/pet-pixellab/pack-strip.mjs` — never `create_character`/`animate_character` (spec §3bis).
+- **The acorn is not a character.** It is one 64×64 PixelLab frame (`create_image_pixen` from
+  text, `no_background`) plus two `animate_image` animations (`idle`, `ready`), packed into a
+  sheet with `scripts/pet-pixellab/pack-strip.mjs` — never `create_character`/`animate_character`
+  (spec §3bis). Ask for a `plain acorn with no face`: "cute acorn" grows a face on every seed. If
+  `animate_image` is missing from your tool list even though the frontmatter has it, the MCP tool
+  list is cached — reconnect or run it from the main session.
 - **Character and states, never layers.** The mascot is a PixelLab character per stage
-  (`create_character`, v3, `reference_image_base64` from `scripts/pet-pixellab/ref/<stage>.png`)
-  plus a `create_character_state` per class. Do not compose pieces, do not extract layers by mask,
-  do not paint faces by hand: that pipeline is tested and discarded (spec §4).
-- **Canvas 40×40, `low top-down` view.** Wording carries more weight than `seed` — be literal and
-  specific about pose and position (e.g. a raised sword needs "raised upright… blade clearly
-  visible beside the head", not just "holding a sword").
-- **Animations**: `animation_name` exactly `idle | sleepy | sad | joy`, `directions=["south"]`
-  only. `idle` uses `template_animation_id="breathing-idle"`; the other three are `mode="v3"`,
-  `frame_count=8`, with the `action_description` from the spec §5bis. `animate_character` has no
-  `seed`: a re-roll is never reproducible, only re-wordable. Re-rolling one animation shifts that
-  entry's `row` in the regenerated `sheets.gen.ts` — expected, not a bug.
+  (`create_character`, v3, `size=64`, from scratch — no reference image: with a reference PixelLab
+  ignores `size`) plus a `create_character_state` per class. Do not compose pieces, do not extract
+  layers by mask, do not paint faces by hand: that pipeline is tested and discarded (spec §4).
+- **Canvas 64×64 (`size=64`), `low top-down` view. Describe, never negate** ("no backpack" yields
+  a backpack; "adventurer" adds one unasked). Wording carries more weight than `seed` — be literal
+  and specific about pose and position. Class states are a full outfit plus a large prop with an
+  explicit position ("held upright beside the body, clearly visible above the head"), and are
+  requested with `override_width=80, override_height=80` from the first try: at 64 a tall prop
+  (staff, bow, mace) touches row 0 and gets clipped flat. Exported cells then come out 92-104 px.
+- **Animations**: `animation_name` exactly `idle | sleepy | sad | joy`,
+  `directions=["south-west"]` only (that is `PET_FACING` in `src/lib/pet/manifest.ts` — the
+  direction the app shows and animates; only the acorn stays on `south`). All four are `mode="v3"`,
+  `frame_count=8`, with the `action_description` from the spec §5bis — including `idle`
+  (`"breathing idle: subtle breathing, slight bob of the head, holding the prop still"`): the
+  `breathing-idle` template drops the held prop and the barbarian's horns in every class (#1056).
+  `animate_character` has no `seed`: a re-roll is never reproducible, only re-wordable. Re-rolling
+  one animation shifts that entry's `row` in the regenerated `sheets.gen.ts` — expected, not a bug.
+- **Quadruped movement is a second state, not an animation.** `animate_character` cannot put a
+  humanoid character on all fours; for #1057 create a `create_character_state("down on all four
+  paws…")` of the biped class state and animate that (canonical spec §8).
 - **After generating or re-rolling anything**: `node scripts/pet-pixellab/fetch-character.mjs
   <stage> <cls>` (downloads the sheet, regenerates `src/lib/pet/sheets.gen.ts`), then
   `npx vitest run src/lib/pet`.
@@ -61,4 +73,7 @@ stage with a state per class and sprite-sheet animations) and of BiblioPlay with
 
 ## Summary format
 
-List: generations spent, which files in `public/pet/` changed, the contact sheet path, and anything that still looks off (open an issue for it — see `AGENTS.md`).
+List: generations spent — and the real generations charged per `create_character_state` (the tier
+is resolved at generation time, so it can bill more than it reserved) — which files in
+`public/pet/` changed, the contact sheet path, and anything that still looks off (open an issue
+for it — see `AGENTS.md`).

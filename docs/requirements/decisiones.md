@@ -3795,3 +3795,24 @@ de #1063 se habría visto aquí antes de la PR.
 
 **Consecuencia.** `public/pet/acorn.png` desaparece (`CACHE_NAME` v7). Un re-roll de la bellota
 es `animate_image` + `pack-strip` + `--gen`, no `animate_character`.
+
+## 2026-09-03 — Mascota: de 40 px chibi a 64 px «héroe»; bípeda y cuadrúpeda son dos estados
+
+**Decisión.** El arte de la mascota pasa a 64 px con identidad nueva: proporción héroe (cabeza
+~40 %), etapas distinguibles por edad (cría a 3/4 cabezona, adulta con mechón, veterana con barba
+blanca), clases con atuendo completo + objeto grande. Bellota también a 64. Spec:
+`2026-09-03-mascota-64px-heroe-design.md`; comparativa 40/64/80/128 en #1068.
+
+**Por qué.** A 40 px ojos, báculo y cristal no se leen. 64 es el mayor salto por píxel que sigue
+cabiendo en la esquina a escala entera. Subir de resolución obliga a rediseñar: `create_character`
+con referencia ignora `size`, y from scratch sale otra ardilla — se aprovechó para quitarle lo
+genérico.
+
+**Consecuencia.** Celda 92-104 px: compañera en esquina ≈ 90 px (antes 55); ficha y eclosión a 2×,
+picker a 1×. `CACHE_NAME` v8. `ref/<stage>.png` desaparece (reproducibilidad = `characters.json`).
+Al rehacer se cambiaron además dos cosas de la propia generación: las animaciones se piden en
+`south-west` (`PET_FACING`, la rotación que la app enseña y anima; la bellota se queda en `south`)
+y las cuatro son v3 custom, `idle` incluida, porque la plantilla `breathing-idle` pierde el objeto
+en mano y los cuernos del bárbaro (#1056). Para el paseo (#1057) la mascota corre a cuatro patas:
+no se consigue animando al personaje humanoide, sí con un `create_character_state` «all four paws»
+sobre el estado de clase — cada etapa × clase tendrá dos estados PixelLab (`biped`, `quad`).
