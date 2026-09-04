@@ -58,6 +58,67 @@
       }
     }
   },
-  "adult": { "base": "9de30514-20d9-4948-b1f3-9cdf30c13dea", "classes": {} },
-  "veteran": { "base": "094f2826-8838-4354-8e6e-5aceafa3cbd5", "classes": {} }
+  "adult": {
+    "base": "9de30514-20d9-4948-b1f3-9cdf30c13dea",
+    "classes": {
+      "barbarian": {
+        "character_id": "03810b94-a74e-481e-87ab-62a4bd3d4dc8",
+        "anims": {
+          "idle": "c3ac174f-db8c-4269-bbef-6a561b7a0220",
+          "sleepy": "70a7d68f-3412-459b-b2cd-6dbdbe6674b9",
+          "sad": "0edc8c93-d032-47eb-b37c-d2cd538eb154",
+          "joy": "248f1d3b-cf11-49da-ab32-502cb7eb09ce"
+        }
+      },
+      "fighter": {
+        "character_id": "7c14ddcf-a9a6-4733-b146-90aaa53c3ae9",
+        "anims": {
+          "idle": "91ad57c5-df6f-447b-a690-346c046694ba",
+          "sleepy": "73850777-a896-4b62-b726-c18e47323f47",
+          "sad": "6e4aef9b-4e48-46a8-92bc-a1bc34ddedf1",
+          "joy": "35f48869-797a-4716-b3af-7a9cd69d146d"
+        }
+      },
+      "wizard": {
+        "character_id": "37ca9eb5-300e-42d0-b68e-07c4bc969e28",
+        "anims": {
+          "idle": "999d0f84-002f-46e2-9e62-0e7be15e745f",
+          "sleepy": "aabb8984-66ba-4af8-abae-39f49198cf0b",
+          "sad": "857308d4-c9a0-4507-9780-e72585050041",
+          "joy": "62ce1667-955e-4df4-9d4e-6be882954a0c"
+        }
+      },
+      "cleric": {
+        "character_id": "5f4a4e13-32c2-453a-b931-bc3fa81c008b",
+        "anims": {
+          "idle": "ba7e7c0e-33b1-46a9-84b1-725d66bc19a0",
+          "sleepy": "a9cc229d-f28b-4858-9a9c-45d713e5caa0",
+          "sad": "be50c025-c676-4fd2-b880-5fe66882ea1a",
+          "joy": "b0e350d8-bfe7-46bf-8efb-1abf47c2aa42"
+        }
+      },
+      "bard": {
+        "character_id": "f14be0f8-3c40-446d-b770-d1c407e028a3",
+        "anims": {
+          "idle": "f800a3e0-dc62-47b6-93f6-88e7d461a73e",
+          "sleepy": "d50eedc2-3999-4fc0-b6a8-c01ae332d524",
+          "sad": "9a20e8b2-879f-4c76-88f5-562746ad5916",
+          "joy": "48098910-ce87-44ee-acb6-ff5b3863abed"
+        }
+      },
+      "ranger": {
+        "character_id": "3240d006-b670-49bd-b3a4-de42b32ddd15",
+        "anims": {
+          "idle": "572418f3-027e-4383-822c-c776125ac513",
+          "sleepy": "5662b5cb-da0a-417f-bac0-b7c05208bbb9",
+          "sad": "a731685c-2f81-4868-bab3-8970a59caa35",
+          "joy": "c897926b-b8f4-44c2-ac43-ae57a8590307"
+        }
+      }
+    }
+  },
+  "veteran": {
+    "base": "094f2826-8838-4354-8e6e-5aceafa3cbd5",
+    "classes": {}
+  }
 }

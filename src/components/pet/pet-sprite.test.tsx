@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { acornEntry, PET_FACING, sheetEntry } from "@/lib/pet/manifest";
+import { acornEntry, PET_FACING, PET_MANIFEST, sheetEntry } from "@/lib/pet/manifest";
 import { PetSprite } from "./pet-sprite";
 
 afterEach(cleanup);
@@ -46,8 +46,10 @@ describe("PetSprite", () => {
     expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.anims.idle.row));
     expect(root.style.getPropertyValue("--pet-cell")).toBe(`${e.cell * 2}px`);
     expect(root.style.backgroundSize).toBe(`${e.width * 2}px ${e.height * 2}px`);
-    expect(root.style.animationDuration).toBe("1s");
-    expect(root.style.animationTimingFunction).toBe("steps(4)");
+    // Duración y steps salen del sheet (9 frames desde el idle v3 de 64 px) y del fps del
+    // manifiesto, nunca de un número fijo: un re-roll cambia los frames y no debe romper esto.
+    expect(root.style.animationDuration).toBe(`${e.anims.idle.frames / PET_MANIFEST.anims.idle.fps}s`);
+    expect(root.style.animationTimingFunction).toBe(`steps(${e.anims.idle.frames})`);
     expect(root.style.animationIterationCount).toBe("infinite");
     expect(root.style.animationName).not.toBe("");
   });
