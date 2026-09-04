@@ -3816,3 +3816,37 @@ y las cuatro son v3 custom, `idle` incluida, porque la plantilla `breathing-idle
 en mano y los cuernos del bárbaro (#1056). Para el paseo (#1057) la mascota corre a cuatro patas:
 no se consigue animando al personaje humanoide, sí con un `create_character_state` «all four paws»
 sobre el estado de clase — cada etapa × clase tendrá dos estados PixelLab (`biped`, `quad`).
+
+## 2026-09-04 — Mascota: el sheet lleva su hash en la URL; paleta sin pérdida; la zona táctil es el personaje
+
+**Decisión.** Tres cambios de la deuda de salida del arte de 64 px (#1058, #1072, #1074), todos
+en `scripts/pet-pixellab/sheet-postprocess.mjs` + `fetch-character.mjs` y derivados a
+`src/lib/pet/sheets.gen.ts`:
+
+1. **`?v=<hash>` en `sheetSrc()`/`acornSrc()`** (sha1 corto del PNG, calculado por
+   `fetch-character.mjs --gen` y guardado en `sheets.gen.ts`). Regenerar un sheet **ya no exige
+   subir `CACHE_NAME`** en `public/sw.js`: la caché del SW se indexa por URL completa y la URL
+   nueva es una entrada nueva. `manifest.test.ts` recalcula el hash desde el disco: un PNG
+   cambiado sin `--gen` falla los tests, que es justo el olvido que #1058 describía. El bump a v9
+   de esta rama es el último por re-roll; los siguientes solo si cambia una *ruta*.
+2. **PNG de paleta cuando cabe en 256 colores**, truecolor recomprimido cuando no. Siempre sin
+   pérdida: el script decodifica el resultado y lo compara píxel a píxel antes de escribir. 12 de
+   19 sheets pasan a ~1/3; 7 (262-356 colores) se quedan truecolor. `public/pet/sheets` pasa de
+   3,07 MB a 1,83 MB (−40 %, no el −66 % que #1072 extrapolaba de un solo sheet).
+3. **La compañera se toca por su caja, no por su celda.** `box` (unión de los píxeles opacos de
+   todos los frames, en px de celda) viaja en `sheets.gen.ts`; el `<Link>` mide `box` y el sprite
+   entero va dentro con `pointer-events: none`. El relleno derecho e inferior de la celda se suma
+   al desplazamiento para que el personaje quede **exactamente** donde la QA de 64 px lo vio: solo
+   cambia dónde responde al tap (la caja es el 43-57 % de la celda).
+
+**Por qué así y no de otra forma.** Hash en la query y no en el nombre del fichero: el nombre
+estable es lo que permite que `fetch-character.mjs` sobrescriba y que los JSON de layout sigan
+apuntando al mismo PNG; `swStrategy` decide por `pathname`, así que la query no cambia la
+estrategia (test en `sw-strategy.test.ts`). Caja calculada en el pipeline y no `clip-path` en el
+componente: `clip-path` recorta el pintado del hijo pero no encoge el área del enlace, que era el
+problema. Truecolor y no cuantizar los 7 que sobran: los colores de más ocupan 7-376 píxeles y
+seguramente no se verían, pero es una decisión de arte con pérdida y va en issue aparte.
+
+**Consecuencia.** La regla «regenerar un sheet exige subir `CACHE_NAME`» desaparece de la canónica
+§3 paso 5, de §3bis y de `.claude/agents/pet-artist.md`. Copiar un PNG a mano a
+`public/pet/sheets/` sin `--gen` deja de compilar en verde: falla `manifest.test.ts`.

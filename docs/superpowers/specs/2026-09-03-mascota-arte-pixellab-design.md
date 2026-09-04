@@ -32,7 +32,7 @@ personaje frontal de 4 piezas no rota ni puede animarse por frames — ver §4).
 |---|---|---|
 | `create_character` (v3) | 1-2 gens | Personaje base por etapa, **from scratch** a `size=64` (sin referencia) |
 | `create_character_state` | 20-40 gens | Estado de clase (atuendo completo + objeto grande) sobre la base de la etapa |
-| `animate_character` (v3 custom, `action_description`) | 1 gen | Las 4 animaciones: `idle`, `sleepy`, `sad`, `joy` |
+| `animate_character` (v3 custom, `action_description`) | 1 gen a 64; **2 sobre un estado de 80** (la herramienta anuncia 1; medido el 2026-09-04, #1070) | Las 4 animaciones: `idle`, `sleepy`, `sad`, `joy` |
 | `create_image_pixen` (texto) | 1 gen | Frame único de la bellota (64×64) |
 | `animate_image` | 1 gen | Las 2 animaciones de la bellota (`idle`, `ready`) |
 | `reduce_colors`, `correct_pixelart` | 0,1 gen | Limpieza puntual |
@@ -83,15 +83,23 @@ Lienzo 64×64 (`size=64`), `no_background: true` en las herramientas de imagen, 
    `sheets.gen.ts` al volver a exportar — esperado, no un bug.
 5. **Descargar y generar.** `node scripts/pet-pixellab/fetch-character.mjs <stage> <cls>` por cada
    combinación (o tras cualquier re-roll): descarga el zip, deja PNG + JSON en
-   `public/pet/sheets/<stage>/<cls>.*` y regenera `src/lib/pet/sheets.gen.ts` a partir de **todos**
-   los JSON presentes. Falla a propósito (`falta animación <name> (south-west) en <stage>/<cls>`)
-   si falta una de las 4.
+   `public/pet/sheets/<stage>/<cls>.*`, **post-procesa el PNG** (`sheet-postprocess.mjs`) y
+   regenera `src/lib/pet/sheets.gen.ts` a partir de **todos** los JSON presentes. Falla a
+   propósito (`falta animación <name> (south-west) en <stage>/<cls>`) si falta una de las 4.
 
-   **Regenerar cualquier sheet exige subir `CACHE_NAME` en `public/sw.js`.** El PNG se llama
-   igual tras un re-roll y el service worker lo sirve cache-primero (`ASSET_EXT`); sin el bump,
-   un cliente que ya tenía el PNG viejo en caché sigue sirviéndolo mientras `sheets.gen.ts` (que
-   sí va hasheado en el JS) ya espera las filas nuevas — la mascota anima mal hasta que ese
-   cliente purgue el caché a mano.
+   El post-proceso (2026-09-04, #1072/#1058/#1074) es sin pérdida y deja tres cosas:
+   - **Paleta.** PixelLab exporta RGBA truecolor; con ≤ 256 colores se reescribe como PNG de
+     paleta (~1/3 del peso). Con más de 256 se queda truecolor recomprimido (a paleta sería con
+     pérdida; el script lo dice: `SIN paleta (>256 colores)`). En ambos casos se decodifica el
+     resultado y se compara píxel a píxel antes de escribir. `fetch-character.mjs --compress`
+     lo aplica a todos los sheets presentes.
+   - **`hash`** (sha1 corto del PNG) en cada entrada de `sheets.gen.ts`: `sheetSrc()` lo pone en
+     la URL (`/pet/sheets/<stage>/<cls>.png?v=<hash>`). La caché del service worker se indexa por
+     URL completa, así que un re-roll es una entrada nueva y **ya no hace falta subir
+     `CACHE_NAME`** al regenerar un sheet (`manifest.test.ts` recalcula el hash desde el disco y
+     falla si el PNG cambió sin `--gen`).
+   - **`box`**: caja real del personaje dentro de la celda (unión de todos los frames). La
+     compañera la usa como zona táctil en vez de la celda entera.
 6. **Comprobar.** `npx vitest run src/lib/pet` (existe PNG y entrada generada por combinación, cada
    una con las 4 animaciones en `south-west`) y mirar `/mascota` a 1× y 2×.
 
@@ -116,10 +124,9 @@ exporta PixelLab (`spritesheet.cell_size`, `columns`, `rows[]`) en `public/pet/s
 scripts/pet-pixellab/fetch-character.mjs --gen` regenera `src/lib/pet/sheets.gen.ts` a partir de
 los JSON presentes, incluida la entrada `acorn` (tipo `AcornSheetEntry`, sin `directions`).
 
-**La regla de `CACHE_NAME` de §3 paso 5 también aplica aquí**: `acorn.png` cambia de ruta
-(`public/pet/acorn.png` → `public/pet/sheets/acorn.png`) y de contenido en cualquier re-roll;
-sin subir `CACHE_NAME` en `public/sw.js` un cliente que ya tenía el PNG en caché sigue sirviendo
-la versión vieja contra las filas nuevas de `sheets.gen.ts`.
+El post-proceso de §3 paso 5 también aplica a la bellota: `--gen` calcula su `hash` y su `box`, y
+`acornSrc()` lleva `?v=<hash>`, así que un re-roll de la bellota tampoco exige subir `CACHE_NAME`.
+`--compress` la pasa a paleta como a los demás sheets.
 
 ## 4. Probado, descartado
 
@@ -219,6 +226,9 @@ plantilla pierde el objeto en mano y los cuernos del bárbaro — #1056.)
   lo reservado; deja 40 gens de margen.
 - Los candidatos y hojas de contacto van a `.superpowers/brainstorm/<fecha>/` (ignorado por git);
   a `public/pet/sheets/` solo va lo que ya pasó `fetch-character.mjs`.
+- **No todo sheet cabe en 256 colores.** El 2026-09-04, 7 de los 19 tenían 262-356 (los colores
+  sobrantes ocupan 7-376 píxeles de ~450 000): se quedan truecolor. Cuantizarlos es una decisión
+  de arte, no un paso del pipeline — issue aparte, no lo hagas «de paso».
 
 ## 7. Estado
 
@@ -240,11 +250,16 @@ plantilla pierde el objeto en mano y los cuernos del bárbaro — #1056.)
 
   Aparte, ~126 gens de exploración previa 64/80/128 en #1068. Saldo tras la rama: **3 499** el
   2026-09-04 (se renueva el 2026-10-03).
-- Pendiente conocido: #1070 (el cristal de la maga adulta queda cortado 1-2 px arriba — estado
-  reutilizado de la exploración, generado antes de la regla de `override_width/height=80`) y
-  #1071 (el explorador adulto sale con la capucha bajada; cría y veterana la llevan puesta).
-  #1055 y #1056 quedan cerradas por este rehecho
-  (clérigo con maza visible; `idle` ya no usa plantilla). #1069 cerrada en la rama.
+- 2026-09-04 (rama `fix/mascota-deuda-64px`): **maga adulta regenerada a 80×80** (#1070; estado
+  `94df862d-…`, celda 96; el viejo `37ca9eb5-…` se conserva en PixelLab por si hay que volver).
+  28 gens (saldo 3 499 → 3 471): el estado cobró 20, y **cada animación v3 sobre un lienzo de 80
+  cobró 2, no 1** (la herramienta anuncia 1); un job `sad` murió con 502 sin cobrar y se relanzó
+  igual. De paso: sheets a paleta sin pérdida, `hash` y `box` en `sheets.gen.ts` (§3 paso 5).
+- Pendiente conocido: #1071 (el explorador adulto sale con la capucha bajada; cría y veterana la
+  llevan puesta), #1076 (`sad` de la maga casi igual que `sleepy`: la cola no baja — igual en el
+  estado viejo, es el baseline del pipeline) y #1077 (7 sheets con más de 256 colores se quedan
+  truecolor). #1055 y #1056 quedan cerradas por el rehecho a 64 px (clérigo con maza visible;
+  `idle` ya no usa plantilla). #1069 cerrada en la rama.
 - Fase de arte anterior a 64 px (pipeline de personaje a 40 px, ~620 generaciones): histórico, ver
   §4 y `2026-09-03-mascota-sprites-personaje-design.md`.
 - Fase de arte anterior a esa (rig por partes, prueba con el trial): histórico, ver §4.

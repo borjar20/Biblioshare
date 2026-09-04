@@ -56,13 +56,16 @@ stage with a state per class and sprite-sheet animations) and of BiblioPlay with
   humanoid character on all fours; for #1057 create a `create_character_state("down on all four
   paws…")` of the biped class state and animate that (canonical spec §8).
 - **After generating or re-rolling anything**: `node scripts/pet-pixellab/fetch-character.mjs
-  <stage> <cls>` (downloads the sheet, regenerates `src/lib/pet/sheets.gen.ts`), then
-  `npx vitest run src/lib/pet`.
-- **Regenerating any sheet requires bumping `CACHE_NAME` in `public/sw.js`.** The PNG filename
-  doesn't change on a re-roll (`public/pet/sheets/<stage>/<cls>.png`) but the service worker
-  caches it cache-first (`ASSET_EXT`), so a returning client keeps serving the OLD png against
-  the NEW row indices the just-shipped `sheets.gen.ts` expects — bumping `CACHE_NAME` is what
-  forces that client to fetch the fresh PNG instead of drawing the wrong animation row.
+  <stage> <cls>` (downloads the sheet, converts it to a palette PNG losslessly, regenerates
+  `src/lib/pet/sheets.gen.ts` with the PNG's `hash` and the character's `box`), then
+  `npx vitest run src/lib/pet`. Never copy a PNG into `public/pet/sheets/` by hand: `sheetSrc()`
+  puts the hash in the URL (`?v=<hash>`, that is what makes returning service-worker clients
+  fetch the new PNG, #1058) and `manifest.test.ts` recomputes it from disk, so a PNG changed
+  without `--gen` fails the tests. Bumping `CACHE_NAME` in `public/sw.js` is no longer needed for
+  a re-roll (it still is when a PNG *path* changes).
+- If `fetch-character.mjs` prints `SIN paleta (>256 colores)` the sheet stays truecolor: that is
+  expected for some states (canonical spec §6). Do not quantize it to force a palette — that is
+  lossy and a separate decision.
 - **Consistency across stages/classes**: `create_character`/`create_character_state` need no
   shared `seed` — PixelLab keeps identity from the `character_id`/base. For flat reference images
   (`create_image_pixflux`), `reduce_colors` with a shared palette image over all frames of a batch
