@@ -1,24 +1,24 @@
 {
   "character": {
-    "id": "26dfab63-5ffc-4ba6-9b2d-60a97fcb760c",
-    "name": "barbarian-veteran",
-    "prompt": "old veteran chibi red squirrel mascot, big fluffy tail with grey white streaks of age, small scar over one eyebrow, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "id": "01a30a20-23b2-4c3c-be25-58968c17398d",
+    "name": "barbarian",
+    "prompt": "old veteran red squirrel adventurer mascot, standing upright on two feet in a confident hero pose, head about one third of total height, long white beard, grey streaks in the fur and tail, small scar over one eyebrow, big fluffy tail with a white tip, cream belly, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 40,
-      "height": 40
+      "width": 80,
+      "height": 80
     },
     "directions": 8,
     "view": "low top-down"
   },
   "spritesheet": {
-    "path": "Ardilla_base_veterana-barbarian-veteran.png",
+    "path": "Veterana-barbarian.png",
     "cell_size": {
-      "width": 56,
-      "height": 56
+      "width": 104,
+      "height": 104
     },
     "sheet_size": {
-      "width": 504,
-      "height": 280
+      "width": 936,
+      "height": 520
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,36 +42,36 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "2b7763f9-6df0-4407-9102-b8906624a353",
-        "direction": "south"
+        "animation": "sad",
+        "animation_group_id": "7f6112d7-9454-45ed-bcf4-2a9fff3102b7",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
-        "frame_count": 4,
-        "animation": "idle",
-        "animation_group_id": "5250684a-a274-4707-9862-e0259b1d6734",
-        "direction": "south"
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "94f790c9-193b-4be4-9311-9b26264dd6ef",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "72c8b77a-df93-4c21-adaa-cf10f0097a8b",
-        "direction": "south"
+        "animation": "sleepy",
+        "animation_group_id": "96679415-3de3-4fc4-877d-46ac3954ffa1",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "9f388d9b-9078-4f22-987b-68daa2cd90fc",
-        "direction": "south"
+        "animation": "idle",
+        "animation_group_id": "9f166e3c-0e69-4c25-ad47-24528da25a8d",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T09:16:32.717328+00:00"
+  "export_date": "2026-09-04T06:49:56.504590+00:00"
 }

@@ -440,9 +440,9 @@ export const PET_SHEETS = {
   },
   "veteran": {
     "barbarian": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 104,
+      "width": 936,
+      "height": 520,
       "columns": 9,
       "directions": [
         "south",
@@ -457,27 +457,27 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 2,
-          "frames": 4
-        },
-        "sleepy": {
-          "row": 1,
-          "frames": 9
-        },
-        "sad": {
           "row": 4,
           "frames": 9
         },
-        "joy": {
+        "sleepy": {
           "row": 3,
+          "frames": 9
+        },
+        "sad": {
+          "row": 1,
+          "frames": 9
+        },
+        "joy": {
+          "row": 2,
           "frames": 9
         }
       }
     },
     "fighter": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 100,
+      "width": 900,
+      "height": 500,
       "columns": 9,
       "directions": [
         "south",
@@ -492,8 +492,8 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 4,
-          "frames": 4
+          "row": 1,
+          "frames": 9
         },
         "sleepy": {
           "row": 3,
@@ -504,15 +504,15 @@ export const PET_SHEETS = {
           "frames": 9
         },
         "joy": {
-          "row": 1,
+          "row": 4,
           "frames": 9
         }
       }
     },
     "wizard": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -527,27 +527,27 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 3,
-          "frames": 4
-        },
-        "sleepy": {
           "row": 4,
           "frames": 9
         },
+        "sleepy": {
+          "row": 2,
+          "frames": 9
+        },
         "sad": {
-          "row": 1,
+          "row": 3,
           "frames": 9
         },
         "joy": {
-          "row": 2,
+          "row": 1,
           "frames": 9
         }
       }
     },
     "cleric": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 92,
+      "width": 828,
+      "height": 460,
       "columns": 9,
       "directions": [
         "south",
@@ -562,15 +562,15 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 3,
-          "frames": 4
-        },
-        "sleepy": {
           "row": 2,
           "frames": 9
         },
-        "sad": {
+        "sleepy": {
           "row": 4,
+          "frames": 9
+        },
+        "sad": {
+          "row": 3,
           "frames": 9
         },
         "joy": {
@@ -580,9 +580,9 @@ export const PET_SHEETS = {
       }
     },
     "bard": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 104,
+      "width": 936,
+      "height": 520,
       "columns": 9,
       "directions": [
         "south",
@@ -597,11 +597,11 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 2,
-          "frames": 4
+          "row": 4,
+          "frames": 9
         },
         "sleepy": {
-          "row": 4,
+          "row": 1,
           "frames": 9
         },
         "sad": {
@@ -609,15 +609,15 @@ export const PET_SHEETS = {
           "frames": 9
         },
         "joy": {
-          "row": 1,
+          "row": 2,
           "frames": 9
         }
       }
     },
     "ranger": {
-      "cell": 56,
-      "width": 504,
-      "height": 280,
+      "cell": 104,
+      "width": 936,
+      "height": 520,
       "columns": 9,
       "directions": [
         "south",
@@ -632,11 +632,11 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 1,
-          "frames": 4
+          "row": 2,
+          "frames": 9
         },
         "sleepy": {
-          "row": 2,
+          "row": 1,
           "frames": 9
         },
         "sad": {

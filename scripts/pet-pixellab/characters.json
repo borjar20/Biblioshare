@@ -119,6 +119,61 @@
   },
   "veteran": {
     "base": "094f2826-8838-4354-8e6e-5aceafa3cbd5",
-    "classes": {}
+    "classes": {
+      "barbarian": {
+        "character_id": "01a30a20-23b2-4c3c-be25-58968c17398d",
+        "anims": {
+          "idle": "9f166e3c-0e69-4c25-ad47-24528da25a8d",
+          "sleepy": "96679415-3de3-4fc4-877d-46ac3954ffa1",
+          "sad": "7f6112d7-9454-45ed-bcf4-2a9fff3102b7",
+          "joy": "94f790c9-193b-4be4-9311-9b26264dd6ef"
+        }
+      },
+      "fighter": {
+        "character_id": "22d9eb51-fc62-4517-8af0-ad835408151b",
+        "anims": {
+          "idle": "59c2b73f-841a-42c4-ba00-dae1c2e85b91",
+          "sleepy": "b503a021-c0c9-4193-9105-cb6bc42ad54a",
+          "sad": "5c3c8e6f-b6d9-4ea5-badb-7af2e1912011",
+          "joy": "ebfd61e6-b47f-43d0-bb3c-f62ebb4241b7"
+        }
+      },
+      "wizard": {
+        "character_id": "72d5d692-897b-43fb-bf99-7afad5d65c9a",
+        "anims": {
+          "idle": "b07038f9-b0f0-454c-adbb-073d667d6e77",
+          "sleepy": "1ed949d0-5cfa-4a23-8068-291a481deb13",
+          "sad": "4a3ba756-cd64-44fd-999b-20b06000e0f5",
+          "joy": "1bafdaf4-abb0-4c40-8913-dadb06a60937"
+        }
+      },
+      "cleric": {
+        "character_id": "1b915c98-7d18-43c5-9f21-42951d99948f",
+        "anims": {
+          "idle": "4a104c70-d837-4c3b-a7d8-d7e8bf459f80",
+          "sleepy": "a5872ff9-8ec8-425d-8634-49b161eaa9fd",
+          "sad": "825777a6-0065-45fb-b4f5-d2813ece1542",
+          "joy": "2edc3583-6707-4c63-ad2c-3b5a8ef2db56"
+        }
+      },
+      "bard": {
+        "character_id": "d8fe4586-50a3-4be4-a3f3-a5c5e4a39b50",
+        "anims": {
+          "idle": "f31f6def-7dc1-4f21-aa09-8ca84c14453e",
+          "sleepy": "568bf398-5715-4c3a-869a-ea40f4ce39aa",
+          "sad": "e4dd86e3-aaff-43f6-a86a-133073b36045",
+          "joy": "990be2b0-129f-427a-a382-ed9d594f6480"
+        }
+      },
+      "ranger": {
+        "character_id": "ec0cea29-787f-4c75-afc9-48b1a4a15db3",
+        "anims": {
+          "idle": "83314132-05a9-447c-b5e7-0851cd6592c6",
+          "sleepy": "23c2a40e-7fba-419a-b1c6-bdc8f293f590",
+          "sad": "86aebde4-4327-486a-b691-306ac7fa892c",
+          "joy": "a036535d-ffaa-4479-ab9e-f34ca31feb84"
+        }
+      }
+    }
   }
 }
