@@ -359,9 +359,9 @@ export const PET_SHEETS = {
       }
     },
     "wizard": {
-      "cell": 92,
-      "width": 828,
-      "height": 460,
+      "cell": 96,
+      "width": 864,
+      "height": 480,
       "columns": 9,
       "directions": [
         "south",
@@ -376,28 +376,28 @@ export const PET_SHEETS = {
       "rotationsRow": 0,
       "anims": {
         "idle": {
-          "row": 3,
+          "row": 1,
           "frames": 9
         },
         "sleepy": {
-          "row": 4,
-          "frames": 9
-        },
-        "sad": {
           "row": 2,
           "frames": 9
         },
+        "sad": {
+          "row": 3,
+          "frames": 9
+        },
         "joy": {
-          "row": 1,
+          "row": 4,
           "frames": 9
         }
       },
-      "hash": "ba2b4957f8",
+      "hash": "c12ff1bb19",
       "box": {
-        "x": 12,
-        "y": 11,
-        "w": 67,
-        "h": 65
+        "x": 13,
+        "y": 8,
+        "w": 70,
+        "h": 70
       }
     },
     "cleric": {

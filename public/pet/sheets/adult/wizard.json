@@ -1,24 +1,24 @@
 {
   "character": {
-    "id": "37ca9eb5-300e-42d0-b68e-07c4bc969e28",
-    "name": "hero64-adult-wizard",
+    "id": "94df862d-d6af-4bf9-a71e-3f2237af3f13",
+    "name": "Wizard 80",
     "prompt": "cute red squirrel adventurer mascot, standing upright on two feet in a confident hero pose, head about one third of total height, visible arms and legs, big fluffy tail behind the body, cream belly, small tuft of fur on the chin, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 64,
-      "height": 64
+      "width": 80,
+      "height": 80
     },
     "directions": 8,
     "view": "low top-down"
   },
   "spritesheet": {
-    "path": "Adulta-hero64-adult-wizard.png",
+    "path": "Adulta-Wizard_80.png",
     "cell_size": {
-      "width": 92,
-      "height": 92
+      "width": 96,
+      "height": 96
     },
     "sheet_size": {
-      "width": 828,
-      "height": 460
+      "width": 864,
+      "height": 480
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,36 +42,36 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "62ce1667-955e-4df4-9d4e-6be882954a0c",
+        "animation": "idle",
+        "animation_group_id": "3133e513-ca17-4d0c-829b-dd3fa6e2c89e",
         "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "857308d4-c9a0-4507-9780-e72585050041",
+        "animation": "sleepy",
+        "animation_group_id": "3247c2e6-03b9-479f-8a00-ab62d621a182",
         "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
-        "animation": "idle",
-        "animation_group_id": "999d0f84-002f-46e2-9e62-0e7be15e745f",
+        "animation": "sad",
+        "animation_group_id": "6e62e3ae-a632-488d-8e6a-3fe9196ed761",
         "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "aabb8984-66ba-4af8-abae-39f49198cf0b",
+        "animation": "joy",
+        "animation_group_id": "b6bb9190-1885-41ea-9dc6-8ca2d8a9322f",
         "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-04T06:27:50.015779+00:00"
+  "export_date": "2026-09-04T08:32:49.054115+00:00"
 }

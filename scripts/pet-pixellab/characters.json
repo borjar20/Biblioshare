@@ -80,12 +80,12 @@
         }
       },
       "wizard": {
-        "character_id": "37ca9eb5-300e-42d0-b68e-07c4bc969e28",
+        "character_id": "94df862d-d6af-4bf9-a71e-3f2237af3f13",
         "anims": {
-          "idle": "999d0f84-002f-46e2-9e62-0e7be15e745f",
-          "sleepy": "aabb8984-66ba-4af8-abae-39f49198cf0b",
-          "sad": "857308d4-c9a0-4507-9780-e72585050041",
-          "joy": "62ce1667-955e-4df4-9d4e-6be882954a0c"
+          "idle": "3133e513-ca17-4d0c-829b-dd3fa6e2c89e",
+          "sleepy": "3247c2e6-03b9-479f-8a00-ab62d621a182",
+          "sad": "6e62e3ae-a632-488d-8e6a-3fe9196ed761",
+          "joy": "b6bb9190-1885-41ea-9dc6-8ca2d8a9322f"
         }
       },
       "cleric": {
