@@ -17,6 +17,9 @@ const CHARS = join(HERE, "characters.json");
 const STAGES = ["young", "adult", "veteran"];
 const CLASSES = ["barbarian", "fighter", "wizard", "cleric", "bard", "ranger"];
 const ANIMS = ["idle", "sleepy", "sad", "joy"];
+// Única dirección animada (enmienda 2026-09-03, Task 2b) — debe coincidir con PET_FACING de
+// src/lib/pet/manifest.ts. La bellota (acornEntryFrom) no cambia: sigue en "south".
+const FACING = "south-west";
 
 function extractZip(zip, dir) {
   try {
@@ -65,8 +68,8 @@ function entryFrom(stage, cls, layout) {
   if (s.cell_size.width !== s.cell_size.height) throw new Error(`celda no cuadrada en ${stage}/${cls}`);
   const anims = {};
   for (const name of ANIMS) {
-    const r = s.rows.find((x) => x.type === "animation" && x.animation === name && x.direction === "south");
-    if (!r) throw new Error(`falta animación ${name} (south) en ${stage}/${cls}`);
+    const r = s.rows.find((x) => x.type === "animation" && x.animation === name && x.direction === FACING);
+    if (!r) throw new Error(`falta animación ${name} (${FACING}) en ${stage}/${cls}`);
     anims[name] = { row: r.row, frames: r.frame_count };
   }
   return { cell: s.cell_size.width, width: s.sheet_size.width, height: s.sheet_size.height, columns: s.columns, directions: rot.directions, rotationsRow: rot.row, anims };

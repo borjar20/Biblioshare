@@ -1,24 +1,24 @@
 {
   "character": {
-    "id": "23383a93-47d9-41bc-8f44-4dea418ee05d",
-    "name": "cleric-adult",
-    "prompt": "cute chibi red squirrel mascot, big fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "id": "5f4a4e13-32c2-453a-b931-bc3fa81c008b",
+    "name": "cleric",
+    "prompt": "cute red squirrel adventurer mascot, standing upright on two feet in a confident hero pose, head about one third of total height, visible arms and legs, big fluffy tail behind the body, cream belly, small tuft of fur on the chin, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 40,
-      "height": 40
+      "width": 80,
+      "height": 80
     },
     "directions": 8,
     "view": "low top-down"
   },
   "spritesheet": {
-    "path": "Ardilla_base_adulta-cleric-adult.png",
+    "path": "Adulta-cleric.png",
     "cell_size": {
-      "width": 52,
-      "height": 52
+      "width": 104,
+      "height": 104
     },
     "sheet_size": {
-      "width": 468,
-      "height": 260
+      "width": 936,
+      "height": 520
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -43,35 +43,35 @@
         "type": "animation",
         "frame_count": 9,
         "animation": "sleepy",
-        "animation_group_id": "1e63d15b-bb23-40f1-a9c5-06f4ed09a4f2",
-        "direction": "south"
+        "animation_group_id": "a9cc229d-f28b-4858-9a9c-45d713e5caa0",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "58d8a9c6-9c41-4a76-ad41-54818be1fe7a",
-        "direction": "south"
+        "animation": "joy",
+        "animation_group_id": "b0e350d8-bfe7-46bf-8efb-1abf47c2aa42",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
-        "frame_count": 4,
+        "frame_count": 9,
         "animation": "idle",
-        "animation_group_id": "c3b6349b-5572-497f-bbf2-6eb71031b71e",
-        "direction": "south"
+        "animation_group_id": "ba7e7c0e-33b1-46a9-84b1-725d66bc19a0",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "df84869e-a8c9-4163-ae39-7af13724d81e",
-        "direction": "south"
+        "animation": "sad",
+        "animation_group_id": "be50c025-c676-4fd2-b880-5fe66882ea1a",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T09:12:41.363947+00:00"
+  "export_date": "2026-09-04T06:27:53.100842+00:00"
 }

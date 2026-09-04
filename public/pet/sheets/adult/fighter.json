@@ -1,24 +1,24 @@
 {
   "character": {
-    "id": "1ac9e980-a8bd-4df2-b705-50f36c9543ad",
-    "name": "fighter-adult",
-    "prompt": "cute chibi red squirrel mascot, big fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "id": "7c14ddcf-a9a6-4733-b146-90aaa53c3ae9",
+    "name": "fighter",
+    "prompt": "cute red squirrel adventurer mascot, standing upright on two feet in a confident hero pose, head about one third of total height, visible arms and legs, big fluffy tail behind the body, cream belly, small tuft of fur on the chin, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 40,
-      "height": 40
+      "width": 80,
+      "height": 80
     },
     "directions": 8,
     "view": "low top-down"
   },
   "spritesheet": {
-    "path": "Ardilla_base_adulta-fighter-adult.png",
+    "path": "Adulta-fighter.png",
     "cell_size": {
-      "width": 56,
-      "height": 56
+      "width": 100,
+      "height": 100
     },
     "sheet_size": {
-      "width": 504,
-      "height": 280
+      "width": 900,
+      "height": 500
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,36 +42,36 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "06213340-9268-45f3-ad14-499237b58349",
-        "direction": "south"
+        "animation": "joy",
+        "animation_group_id": "35f48869-797a-4716-b3af-7a9cd69d146d",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "14dd45c8-2ba8-4c9d-89be-2266ea8e29df",
-        "direction": "south"
+        "animation": "sad",
+        "animation_group_id": "6e4aef9b-4e48-46a8-92bc-a1bc34ddedf1",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
-        "frame_count": 4,
-        "animation": "idle",
-        "animation_group_id": "5aabd9f2-a0f6-44b2-abb8-b946fb84747b",
-        "direction": "south"
+        "frame_count": 9,
+        "animation": "sleepy",
+        "animation_group_id": "73850777-a896-4b62-b726-c18e47323f47",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "e7750937-aaf3-47ae-9b23-91242746a58b",
-        "direction": "south"
+        "animation": "idle",
+        "animation_group_id": "91ad57c5-df6f-447b-a690-346c046694ba",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T09:11:35.127684+00:00"
+  "export_date": "2026-09-04T06:27:46.777290+00:00"
 }

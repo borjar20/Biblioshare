@@ -74,7 +74,7 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
           stage={pet.stage}
           petClass={pet.petClass}
           mood={pet.mood}
-          scale={3}
+          scale={2}
           reaction={reaction}
           label={pet.name}
         />

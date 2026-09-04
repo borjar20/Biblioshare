@@ -22,7 +22,7 @@ export function HatchForm({ suggested }: { suggested: PetClass | null }) {
   return (
     <form action={action} className="flex flex-col gap-6" data-testid="hatch-form">
       <div className="flex flex-col items-center gap-3">
-        <PetSprite stage="acorn" petClass={cls ?? "wizard"} mood="neutral" scale={3} hatchReady={hatchReady} label={t("stages.acorn")} />
+        <PetSprite stage="acorn" petClass={cls ?? "wizard"} mood="neutral" scale={2} hatchReady={hatchReady} label={t("stages.acorn")} />
         <h2 className="font-serif text-xl font-semibold text-foreground">{t("hatch.title")}</h2>
         <p className="max-w-prose text-center text-sm text-muted-foreground">{t("hatch.intro")}</p>
       </div>

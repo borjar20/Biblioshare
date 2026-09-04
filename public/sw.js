@@ -28,7 +28,11 @@
 // purge de logout ya tira este caché entero, así que la copia muere con la
 // sesión igual que el resto. El bump re-siembra en clientes viejos.
 // v7 (2026-09-03): la bellota pasa de /pet/acorn.png a /pet/sheets/acorn.png.
-const CACHE_NAME = "biblioshare-v7";
+// v8 (2026-09-04): los 18 sheets etapa×clase y la bellota se regeneraron a 64 px
+// (antes 40-56); las rutas de los PNG no cambian y el SW los sirve caché-primero,
+// así que el bump es lo único que fuerza a los clientes ya instalados a bajar los
+// nuevos bytes en vez de seguir sirviendo los sprites antiguos desde disco.
+const CACHE_NAME = "biblioshare-v8";
 const OFFLINE_URL = "/offline";
 
 // Shells de Play que se SIEMBRAN al instalar, sin esperar a una navegación

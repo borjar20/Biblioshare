@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { acornEntry, sheetEntry } from "@/lib/pet/manifest";
+import { acornEntry, PET_FACING, PET_MANIFEST, sheetEntry } from "@/lib/pet/manifest";
 import { PetSprite } from "./pet-sprite";
 
 afterEach(cleanup);
@@ -46,8 +46,10 @@ describe("PetSprite", () => {
     expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.anims.idle.row));
     expect(root.style.getPropertyValue("--pet-cell")).toBe(`${e.cell * 2}px`);
     expect(root.style.backgroundSize).toBe(`${e.width * 2}px ${e.height * 2}px`);
-    expect(root.style.animationDuration).toBe("1s");
-    expect(root.style.animationTimingFunction).toBe("steps(4)");
+    // Duración y steps salen del sheet (9 frames desde el idle v3 de 64 px) y del fps del
+    // manifiesto, nunca de un número fijo: un re-roll cambia los frames y no debe romper esto.
+    expect(root.style.animationDuration).toBe(`${e.anims.idle.frames / PET_MANIFEST.anims.idle.fps}s`);
+    expect(root.style.animationTimingFunction).toBe(`steps(${e.anims.idle.frames})`);
     expect(root.style.animationIterationCount).toBe("infinite");
     expect(root.style.animationName).not.toBe("");
   });
@@ -102,5 +104,32 @@ describe("PetSprite", () => {
     expect(root.getAttribute("data-anim")).toBeNull();
     expect(root.getAttribute("data-col")).toBe(String(e.directions.indexOf("east")));
     expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.rotationsRow));
+  });
+
+  // PET_FACING (south-west, enmienda 2026-09-03 Task 2b) es la única dirección animada; south
+  // ya no lo es aunque siga siendo la primera de `directions`.
+  it("sin direction explícita anima con PET_FACING, el valor por defecto", () => {
+    const e = sheetEntry("adult", "wizard");
+    const { container } = render(<PetSprite stage="adult" petClass="wizard" mood="happy" scale={2} label="Nuez" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.anims.idle.row));
+    expect(root.style.animationName).not.toBe("");
+  });
+
+  it('direction="south" ya no anima: pinta el frame estático de la fila de rotaciones', () => {
+    const e = sheetEntry("adult", "wizard");
+    const { container } = render(<PetSprite stage="adult" petClass="wizard" mood="happy" scale={2} direction="south" label="Nuez" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.rotationsRow));
+    expect(root.style.getPropertyValue("--pet-col")).toBe("0");
+    expect(root.style.animationName).toBe("");
+  });
+
+  it("direction=PET_FACING explícita anima igual que sin la prop", () => {
+    const e = sheetEntry("adult", "wizard");
+    const { container } = render(<PetSprite stage="adult" petClass="wizard" mood="happy" scale={2} direction={PET_FACING} label="Nuez" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.getPropertyValue("--pet-row")).toBe(String(e.anims.idle.row));
+    expect(root.style.animationName).not.toBe("");
   });
 });

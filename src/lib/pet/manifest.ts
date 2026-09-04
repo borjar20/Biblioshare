@@ -7,6 +7,11 @@ import { PET_SHEETS, type AcornAnimName, type AcornSheetEntry, type PetAnimName,
 export type DrawnStage = Exclude<PetStage, "acorn">;
 export type PetDirection = "south" | "south-east" | "east" | "north-east" | "north" | "north-west" | "west" | "south-west";
 export const DRAWN_STAGES = ["young", "adult", "veteran"] as const satisfies readonly DrawnStage[];
+// Única dirección con animaciones (enmienda 2026-09-03, Task 2b): la mascota se muestra y anima
+// a 3/4 mirando a la izquierda del espectador. PetSprite y fetch-character.mjs la leen de aquí,
+// nunca de un literal "south"/"south-west" propio — la bellota (acornEntryFrom) es la excepción:
+// sigue en "south", no tiene rotaciones de 8 direcciones.
+export const PET_FACING = "south-west" as const satisfies PetDirection;
 
 export const PET_MANIFEST = {
   // La bellota es un sheet más (empaquetado por pack-strip.mjs): `idle` siempre, `ready` solo en

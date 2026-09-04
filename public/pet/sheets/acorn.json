@@ -2,8 +2,8 @@
   "character": {
     "name": "acorn",
     "size": {
-      "width": 40,
-      "height": 40
+      "width": 64,
+      "height": 64
     },
     "directions": 1,
     "view": "side"
@@ -11,12 +11,12 @@
   "spritesheet": {
     "path": "acorn.png",
     "cell_size": {
-      "width": 40,
-      "height": 40
+      "width": 64,
+      "height": 64
     },
     "sheet_size": {
-      "width": 360,
-      "height": 120
+      "width": 576,
+      "height": 192
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -46,6 +46,6 @@
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T12:19:32.098Z",
+  "export_date": "2026-09-04T07:01:41.278Z",
   "packed_by": "scripts/pet-pixellab/pack-strip.mjs"
 }

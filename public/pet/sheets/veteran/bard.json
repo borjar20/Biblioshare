@@ -1,24 +1,24 @@
 {
   "character": {
-    "id": "02c5ce1a-e01e-4a60-bbfd-388dc23e8ac2",
-    "name": "bard-veteran",
-    "prompt": "old veteran chibi red squirrel mascot, big fluffy tail with grey white streaks of age, small scar over one eyebrow, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "id": "d8fe4586-50a3-4be4-a3f3-a5c5e4a39b50",
+    "name": "bard",
+    "prompt": "old veteran red squirrel adventurer mascot, standing upright on two feet in a confident hero pose, head about one third of total height, long white beard, grey streaks in the fur and tail, small scar over one eyebrow, big fluffy tail with a white tip, cream belly, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 40,
-      "height": 40
+      "width": 80,
+      "height": 80
     },
     "directions": 8,
     "view": "low top-down"
   },
   "spritesheet": {
-    "path": "Ardilla_base_veterana-bard-veteran.png",
+    "path": "Veterana-bard.png",
     "cell_size": {
-      "width": 56,
-      "height": 56
+      "width": 104,
+      "height": 104
     },
     "sheet_size": {
-      "width": 504,
-      "height": 280
+      "width": 936,
+      "height": 520
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,36 +42,36 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "0ee1b59a-a600-464b-bb63-2678542d2e59",
-        "direction": "south"
+        "animation": "sleepy",
+        "animation_group_id": "568bf398-5715-4c3a-869a-ea40f4ce39aa",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
-        "frame_count": 4,
-        "animation": "idle",
-        "animation_group_id": "162a24d1-c5b7-4c2e-8b6c-504510fbb322",
-        "direction": "south"
+        "frame_count": 9,
+        "animation": "joy",
+        "animation_group_id": "990be2b0-129f-427a-a382-ed9d594f6480",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
         "animation": "sad",
-        "animation_group_id": "247a86ee-9128-4805-aba9-c2e68a51b85d",
-        "direction": "south"
+        "animation_group_id": "e4dd86e3-aaff-43f6-a86a-133073b36045",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "7fe7cc73-cdc4-465d-83d3-5971de3d20b6",
-        "direction": "south"
+        "animation": "idle",
+        "animation_group_id": "f31f6def-7dc1-4f21-aa09-8ca84c14453e",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T09:20:00.698647+00:00"
+  "export_date": "2026-09-04T06:50:09.435852+00:00"
 }

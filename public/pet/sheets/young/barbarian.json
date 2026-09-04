@@ -1,24 +1,24 @@
 {
   "character": {
-    "id": "150a171b-d4d1-4134-86f6-3318146187bd",
-    "name": "barbarian-young",
-    "prompt": "baby chibi red squirrel mascot with oversized head and tiny body, small fluffy tail, cream belly, standing on two feet, game character, pixel art, black outline, flat shading",
+    "id": "fb833e00-e7e7-4053-904f-73a558f09df5",
+    "name": "barbarian",
+    "prompt": "young red squirrel kit mascot, oversized head about half of total height, small body, standing upright on two feet, body angled three-quarter view like a classic RPG sprite, head and eyes looking to the viewer's left, not straight at the camera, short fluffy tail, cream belly, round cheeks, no beard, no clothes, no backpack, pixel art, black outline, flat shading, warm palette, game character",
     "size": {
-      "width": 40,
-      "height": 40
+      "width": 64,
+      "height": 64
     },
     "directions": 8,
     "view": "low top-down"
   },
   "spritesheet": {
-    "path": "Ardilla_base_cria-barbarian-young.png",
+    "path": "Cria-barbarian.png",
     "cell_size": {
-      "width": 52,
-      "height": 52
+      "width": 92,
+      "height": 92
     },
     "sheet_size": {
-      "width": 468,
-      "height": 260
+      "width": 828,
+      "height": 460
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -41,37 +41,37 @@
       {
         "row": 1,
         "type": "animation",
-        "frame_count": 4,
+        "frame_count": 9,
         "animation": "idle",
-        "animation_group_id": "3d8c7dc5-f4c4-49ec-a104-3c3426f9e4ff",
-        "direction": "south"
+        "animation_group_id": "0c79964c-e41d-4b8c-8ca4-1571c75bf6bb",
+        "direction": "south-west"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
-        "animation": "joy",
-        "animation_group_id": "8592c2ac-fb33-4dff-888d-fe769cefb1c0",
-        "direction": "south"
+        "animation": "sleepy",
+        "animation_group_id": "4415e1d4-4718-4496-a1a2-f82225ca55ef",
+        "direction": "south-west"
       },
       {
         "row": 3,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sleepy",
-        "animation_group_id": "d11872d7-8702-4647-894c-9d9477ad0a06",
-        "direction": "south"
+        "animation": "sad",
+        "animation_group_id": "c89629ec-b3de-4abe-9214-0fea43a0d082",
+        "direction": "south-west"
       },
       {
         "row": 4,
         "type": "animation",
         "frame_count": 9,
-        "animation": "sad",
-        "animation_group_id": "d53e8833-2ee1-4ad4-88d1-a1e3bc1cf08a",
-        "direction": "south"
+        "animation": "joy",
+        "animation_group_id": "e574239a-dc96-475d-830a-f5c66da1fbdc",
+        "direction": "south-west"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-09-03T09:04:35.062741+00:00"
+  "export_date": "2026-09-03T22:13:56.825721+00:00"
 }

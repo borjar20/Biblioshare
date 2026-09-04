@@ -4,7 +4,9 @@
 > el rig por partes con CSS `transform` (fase 1, `2026-09-02-mascota-rpg-design.md` §5) se
 > sustituye por **sprite sheets de un personaje PixelLab** (8 direcciones + animaciones por
 > frames). Explica el *porqué*; el estado de hoy manda en el código. Cómo se genera cada asset
-> vive en la spec canónica `2026-09-03-mascota-arte-pixellab-design.md`.
+> vive en la spec canónica `2026-09-03-mascota-arte-pixellab-design.md`. **El arte de 40 px
+> descrito aquí se sustituyó el 2026-09-03 por la familia de 64 px
+> (`2026-09-03-mascota-64px-heroe-design.md`); el motor (sheets + `<PetSprite>`) sigue vigente.**
 
 ## 1. Por qué se cambia
 
