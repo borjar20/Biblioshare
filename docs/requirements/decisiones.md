@@ -3850,3 +3850,33 @@ seguramente no se verían, pero es una decisión de arte con pérdida y va en is
 **Consecuencia.** La regla «regenerar un sheet exige subir `CACHE_NAME`» desaparece de la canónica
 §3 paso 5, de §3bis y de `.claude/agents/pet-artist.md`. Copiar un PNG a mano a
 `public/pet/sheets/` sin `--gen` deja de compilar en verde: falla `manifest.test.ts`.
+
+## 2026-09-04 — Enlace estable al perfil: `/go/<uuid>` en la app y redirector en GitHub Pages, sin dominio aún
+
+**Contexto.** Se quiere grabar el perfil de una persona en una tarjeta NFC de regalo. La URL de
+perfil (`biblioshare-nine.vercel.app/u/<username>`) tiene tres piezas que pueden cambiar —dominio
+automático de Vercel, esquema de rutas y username— y una tarjeta grabada con la URL literal queda
+muda con cualquiera de ellas. No se quiere comprar dominio todavía. Spec:
+`docs/superpowers/specs/2026-09-04-enlace-estable-perfil-nfc-design.md`.
+
+**Decisión.** Tres capas, cada una cubre lo que la anterior no:
+
+1. **Redirector en GitHub Pages (`borjar20/go`)**, un `index.html` por tarjeta con `meta refresh`
+   + `location.replace`. Es lo que va grabado en el tag. Absorbe cambio de dominio y de rutas;
+   editar el destino es editar un fichero desde el móvil.
+2. **Route handler `GET /go/[id]`**: uuid → `307` a `/u/<username>` leyendo `profile_identities`
+   con el cliente sin sesión. Absorbe cambio de username sin que nadie toque nada.
+3. **El tag no se bloquea**: último recurso reescribible con NFC Tools.
+
+**Por qué así y no de otra forma.** Sin dominio propio, el único punto fijo es una cuenta que no se
+va a cerrar; GitHub sobrevive a cualquier cambio de hosting o framework, no tiene plan gratuito que
+caduque y no requiere infra. Un proxy propio (Worker o proyecto Vercel aparte) es una cosa más que
+mantener y en `*.workers.dev` / `*.vercel.app` vuelve a heredar el problema del dominio. Un
+acortador de terceros puede cerrar o paywallear el edit. Route handler y no página: un tap debe
+recibir redirección HTTP, no un shell que redirige después; 307 y no 308 porque el destino puede
+cambiar; cliente sin sesión porque el par id → username es igual para todo el mundo (regla #437) y
+`profile_identities` ya expone la identidad de perfiles privados para el stub de seguir.
+
+**Consecuencia.** Cuando haya dominio propio, se cambia el destino en el repo `go` (un commit) y las
+tarjetas repartidas no se tocan. La ruta `/go/<uuid>` es un contrato: no se renombra ni se
+cambia a 308 sin pasar por aquí.
