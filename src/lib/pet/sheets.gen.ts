@@ -651,9 +651,9 @@ export const PET_SHEETS = {
     }
   },
   "acorn": {
-    "cell": 40,
-    "width": 360,
-    "height": 120,
+    "cell": 64,
+    "width": 576,
+    "height": 192,
     "columns": 9,
     "anims": {
       "idle": {
