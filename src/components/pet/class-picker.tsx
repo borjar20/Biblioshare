@@ -39,7 +39,7 @@ export function ClassPicker({
               onChange={() => onChange(cls)}
               className="sr-only"
             />
-            <PetSprite stage={stage === "acorn" ? "adult" : stage} petClass={cls} mood="happy" scale={2} label={t(`classes.${cls}`)} />
+            <PetSprite stage={stage === "acorn" ? "adult" : stage} petClass={cls} mood="happy" scale={1} label={t(`classes.${cls}`)} />
             <span className="text-sm font-semibold text-foreground">{t(`classes.${cls}`)}</span>
             <span className="text-[12px] text-muted-foreground">{t(`classHints.${cls}`)}</span>
             {suggested === cls ? (

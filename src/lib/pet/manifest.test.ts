@@ -15,7 +15,7 @@ describe("manifiesto de la mascota", () => {
     expect(exists(acornSrc())).toBe(true);
     expect(acornSrc()).toBe("/pet/sheets/acorn.png");
     const e = acornEntry();
-    expect(e.cell).toBeGreaterThanOrEqual(40);
+    expect(e.cell).toBeGreaterThanOrEqual(64);
     expect(e.anims.idle.frames).toBeGreaterThan(0);
     expect(e.anims.ready.frames).toBeGreaterThan(0);
     expect(PET_MANIFEST.acorn.anims.idle.fps).toBeGreaterThan(0);
@@ -33,7 +33,7 @@ describe("manifiesto de la mascota", () => {
       const e = sheetEntry(stage, cls);
       expect(e.directions.length, `${stage}/${cls} direcciones`).toBe(8);
       expect(e.directions[0]).toBe("south");
-      expect(e.cell).toBeGreaterThanOrEqual(40);
+      expect(e.cell).toBeGreaterThanOrEqual(64);
       for (const a of ANIMS) expect(e.anims[a].frames, `${stage}/${cls} ${a}`).toBeGreaterThan(0);
     }
   });
