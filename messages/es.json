@@ -3198,7 +3198,10 @@
       "missions": "Misiones",
       "stage": "Etapa"
     },
-    "rename": { "label": "Renombrar", "submit": "Guardar" },
+    "rename": {
+      "label": "Renombrar",
+      "submit": "Guardar"
+    },
     "changeClass": {
       "label": "Cambiar de clase",
       "confirm": "Cambiar a {cls}: cambia su aspecto y su bonus, no sus atributos.",
@@ -3208,6 +3211,66 @@
       "label": "Compañera flotante",
       "hint": "La ardilla pequeña en la esquina. Reacciona a lo que registras.",
       "cta": "Abrir mi mascota"
+    },
+    "training": {
+      "title": "Entrenamiento",
+      "intro": "Practica con el Brote de zarza. Gratis, sin recompensas y tantas veces como quieras. Tu mascota ataca sola; tú eliges cuándo usar su habilidad.",
+      "start": "Empezar combate",
+      "starting": "Preparando combate…",
+      "retryStart": "Reintentar el mismo combate",
+      "error": "No se ha podido completar la operación. Puedes reintentar sin perder tus decisiones.",
+      "enemy": "Brote de zarza",
+      "finished": "Combate terminado",
+      "time": "{seconds} s",
+      "replaying": "Repetición",
+      "skill": "Habilidad",
+      "queued": "Habilidad preparada",
+      "cooldown": "Habilidad en {seconds} s",
+      "recharge": "Recarga de habilidad",
+      "resume": "Continuar",
+      "pause": "Pausar",
+      "paused": "Combate en pausa. La habilidad tampoco se recarga.",
+      "speed": "Velocidad",
+      "resolving": "Comprobando el resultado…",
+      "retryResolve": "Reintentar guardar el resultado",
+      "damage": "Has causado {dealt} de daño y recibido {taken}.",
+      "replay": "Ver repetición",
+      "repeat": "Nuevo combate",
+      "log": "Detalle del combate",
+      "phases": {
+        "idle": "El brote se prepara para su siguiente movimiento.",
+        "windup": "¡Está cargando un ataque! Puedes interrumpirlo con tu habilidad.",
+        "guard": "¡Está en guardia! Usar la habilidad ahora te hará daño.",
+        "stagger": "¡Interrumpido! El brote está aturdido."
+      },
+      "outcomes": {
+        "win": "¡Victoria!",
+        "lose": "Derrota",
+        "draw": "Empate"
+      },
+      "causes": {
+        "charges_landed": "Las cargas del brote te han causado mucho daño.",
+        "skill_wasted_on_guard": "Has usado la habilidad durante su guardia y recibido el contraataque.",
+        "skill_unused": "No has usado la habilidad para detener sus cargas.",
+        "charges_interrupted": "Interrumpir sus cargas ha marcado la diferencia.",
+        "steady_damage": "Tus ataques constantes han vencido al brote.",
+        "time_limit": "Se ha agotado el tiempo: decide la proporción de vida restante."
+      },
+      "events": {
+        "BATTLE_STARTED": "Empieza el combate.",
+        "PET_BASIC": "Tu mascota causa {damage} de daño.",
+        "ENEMY_BASIC": "El brote causa {damage} de daño.",
+        "charge": "El brote prepara una carga.",
+        "guard": "El brote se pone en guardia.",
+        "TELEGRAPH_RESOLVED": "Termina el movimiento del brote: {damage} de daño.",
+        "interrupt": "Interrumpes la carga y causas {damage} de daño.",
+        "hit": "Tu habilidad causa {damage} de daño.",
+        "wasted": "La guardia devuelve tu habilidad: recibes un contraataque.",
+        "SKILL_IGNORED": "La habilidad aún estaba recargando.",
+        "STATUS_APPLIED": "El brote queda aturdido.",
+        "STATUS_EXPIRED": "El brote se recupera.",
+        "BATTLE_ENDED": "Termina el combate."
+      }
     }
   }
 }
