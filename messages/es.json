@@ -3087,6 +3087,19 @@
   },
   "pet": {
     "title": "Mascota",
+    "burrow": {
+      "title": "Madriguera",
+      "yours": "La tuya",
+      "showMore": "Mostrar más",
+      "limit": "Mostrando {shown} de {total} mascotas de tus seguidos",
+      "emptyNoFollows": "Las mascotas de la gente que sigas te harán compañía aquí.",
+      "findPeople": "Buscar personas",
+      "emptyNoPets": "Todavía no hay mascotas de tus seguidos que puedas ver aquí.",
+      "spriteLabel": "{name}, {class}, {stage}, de @{owner}",
+      "ownLabel": "{name}, {class}, {stage}, tu mascota",
+      "detail": "Detalle de la mascota",
+      "error": "No se ha podido cargar la madriguera."
+    },
     "hatch": {
       "title": "Una bellota te espera",
       "intro": "Ponle nombre y elige su clase. Crecerá con lo que ya haces en Biblioshare: leer, escribir, hablar en los clubes.",

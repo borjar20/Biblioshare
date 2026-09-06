@@ -1172,3 +1172,8 @@ commit;
 begin;
 \ir migrations/20260907_pet_battles.sql
 commit;
+
+-- 20260906170958_get_burrow_pets
+begin;
+\ir migrations/20260906170958_get_burrow_pets.sql
+commit;

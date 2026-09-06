@@ -4069,3 +4069,33 @@ entrada al registro. Las anteriores no se regeneran. No cambia el digest ni el
 esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
 Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
 del combate histórico junto a una versión posterior con otro balance.
+
+## 2026-09-06 — Madriguera: límite explícito y acceso antes de eclosionar (#1083)
+
+**Estado.** Diseño confirmado por el usuario; implementación y pruebas pendientes en #1083.
+
+**Decisión.** S1 mantiene un máximo de 60 vecinas cargadas, sin paginación. El botón se
+llama «Mostrar más» y expande las vecinas ya cargadas. Si el total supera 60, la escena
+expandida explica el límite con «Mostrando 60 de N mascotas de tus seguidos»; ese recuento
+excluye la propia. Sustituye «Ver las N», que prometía mostrar un total que no se cargaba.
+
+Las doce mascotas visibles inicialmente incluyen la propia: una propia y hasta once
+vecinas. Sin mascota propia se muestran hasta doce vecinas. Al expandir, la propia
+permanece primera y se muestran hasta 60 vecinas adicionales.
+
+La madriguera también aparece debajo del formulario para eclosionar cuando el espectador
+todavía no tiene mascota. No se inventa una bellota propia ni se crea una mascota por
+visitar la sección. Una bellota es una etapa de una mascota existente; no representa a
+una persona que todavía no ha eclosionado. Los estados vacíos siguen distinguiendo entre
+no seguir a nadie y no disponer de mascotas vecinas visibles.
+
+**Por qué.** El límite mantiene acotada la primera entrega y el texto describe lo que se
+puede mostrar. Contar la propia dentro de doce fija el tamaño inicial de la escena.
+Permitir ver vecinas antes de eclosionar deja descubrir la parte social sin obligar a
+crear una mascota.
+
+**Verificación prevista.** Cubrir escenas con y sin mascota propia, el paso de once a
+doce vecinas con mascota propia, el paso de doce a trece sin ella, expansión con total
+superior a 60 y el recuento que excluye la propia. El acceso antes de eclosionar conserva
+el formulario y no crea `pet_state`. Se mantienen la matriz de visibilidad y las demás
+pruebas de S1. Este acuerdo no cierra la issue ni acredita verificaciones de ejecución.
