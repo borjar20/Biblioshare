@@ -1136,6 +1136,33 @@
       ]
     },
     {
+      "id": "m-pet-battle",
+      "label": "lib/pet/battle",
+      "layer": "domain",
+      "kind": "module",
+      "size": 13,
+      "summary": "Motor de combate de la mascota (R1, spec 2026-09-06-mascota-r1-contratos-combate). PURO: xoshiro128** sembrado por un seed de 128 bits del servidor, reloj de 100 ms, log de inputs (seq, tick, action, payload), eventos derivados, resultado con causas. El cliente lo ejecuta para animar (stepBattle + viewOf) y el servidor para decidir (resimulate): digest = sha256 del JSON canónico de registro + eventos, sin circularidad. content.ts es el único sitio con números; cambiar uno = subir RULESET.version y regenerar __fixtures__/normative.json. CLI: scripts/pet-battle/simulate.ts (run, calibrate, replay, golden).",
+      "files": [
+        "src/lib/pet/battle/prng.ts",
+        "src/lib/pet/battle/canonical.ts",
+        "src/lib/pet/battle/hash.ts",
+        "src/lib/pet/battle/types.ts",
+        "src/lib/pet/battle/content.ts",
+        "src/lib/pet/battle/power.ts",
+        "src/lib/pet/battle/profiles.ts",
+        "src/lib/pet/battle/inputs.ts",
+        "src/lib/pet/battle/engine.ts",
+        "src/lib/pet/battle/policies.ts",
+        "src/lib/pet/battle/calibration.ts",
+        "src/lib/pet/battle/record.ts",
+        "src/lib/pet/battle/minigame.ts"
+      ],
+      "gotchas": [
+        "Ningún fichero del motor puede importar Supabase, React, Date ni Math.random: purity.test.ts lo vigila.",
+        "Los eventos NO se guardan en pet_battles: reproducir eventos guardados no es re-simular."
+      ]
+    },
+    {
       "id": "m-celebrations",
       "label": "lib/celebrations",
       "layer": "domain",
@@ -1543,9 +1570,48 @@
       "gotchas": [
         "NO es un registro de entregas: una fila significa que el claim decidió avisar ese día, no que el push llegara. Si el envío falla tras el claim no hay reintento ese día (un aviso de racha a las 23:00 es peor que ninguno)."
       ]
+    },
+    {
+      "id": "t-pet-battles",
+      "label": "pet_battles",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Un combate como hecho: seed, snapshot inmutable, versión, hash del contenido, log de inputs, resultado re-simulado y digest. authenticated solo lee los suyos; escribe únicamente el servidor con service_role tras re-simular. unique (user_id, intent_id) = idempotencia por intención.",
+      "columns": [
+        "id",
+        "user_id",
+        "intent_id",
+        "kind",
+        "enemy_id",
+        "ruleset_version",
+        "content_hash",
+        "seed",
+        "snapshot",
+        "status",
+        "inputs",
+        "result",
+        "digest",
+        "created_at",
+        "resolved_at"
+      ],
+      "gotchas": [
+        "Sin grants de INSERT/UPDATE/DELETE para authenticated ni anon a propósito (#1081 R1): no aparece en la superficie 6 de DRIFT-CHECK."
+      ]
     }
   ],
   "edges": [
+    {
+      "from": "m-pet-battle",
+      "to": "m-pet",
+      "kind": "reads",
+      "label": "deriveAttributes / levelFor (poder sin bonus)"
+    },
+    {
+      "from": "m-pet-battle",
+      "to": "t-pet-battles",
+      "kind": "writes",
+      "label": "R2: service_role tras resimulate"
+    },
     {
       "from": "browser",
       "to": "proxy",

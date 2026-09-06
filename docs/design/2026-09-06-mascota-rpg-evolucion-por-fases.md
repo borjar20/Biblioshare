@@ -698,7 +698,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 
 | Hito | Entrega | Contrato | Arte |
 |---|---|---|---|
-| R1 Contratos y modelo de combate | la spec ejecutable de R2 | criterios | ninguno |
+| R1 Contratos y modelo de combate | la spec ejecutable de R2 — **cerrado 2026-09-06** | criterios | ninguno |
 | R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento | criterios | ninguno: sprites actuales como marcador |
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
 | R4 Aventuras y primer botín | aventuras derivadas, límites antifarm, dos ranuras y 4–6 objetos agnósticos | criterios | iconos y VFX de los objetos |
@@ -742,6 +742,10 @@ necesita; la economía y la procedencia de aventuras se contratan en R4, y los j
 - Test de integración: un JWT normal que intenta fabricar una victoria es rechazado; otra cuenta,
   también.
 - Simulador por CLI con perfiles sintéticos que ejecuta la re-simulación sin UI.
+
+**Cerrado el 2026-09-06** (rama `feat/mascota-r1-contratos`): spec
+`docs/superpowers/specs/2026-09-06-mascota-r1-contratos-combate-design.md`; motor, CLI, tabla y
+tests en el repo. Hito activo: R2.
 
 ## R2 — Combate mínimo universal
 
@@ -926,7 +930,7 @@ o que la clase afín da ventaja no compensable. Regla de migración: nadie baja 
 
 | Issue | Papel en este roadmap |
 |---|---|
-| #1081 | contratos: R1 cierra sus R1, R4, R5 y R6; R7 cierra sus R2, R3 y R7 |
+| #1081 | contratos: cerrada el 2026-09-06 con R1 (sus R1, R4, R5 y R6); sus R2, R3 y R7 pasan a #1084 para R7 |
 | #1082 | seguimiento y validación del prototipo |
 | #1015 | jefes de reto, en R7 |
 | #1017 | cosméticos y economía: R5 en parte, R10 lo cierra |

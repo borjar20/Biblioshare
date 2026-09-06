@@ -3812,6 +3812,26 @@ cron de clubes) y `pet_nudges` vacía. El job `pet-nudges` está activo; el prim
 20:00 de Madrid del mismo día y se comprueba en `pet_nudges` y en `net._http_response` (un 200 de
 `/api/cron/pet-nudges`; «sin filas» solo es éxito si hay 200).
 
+### 8bis.5. `pet_battles` (dev 2026-09-06; prod pendiente hasta mergear)
+
+Mascota R1 (spec `docs/superpowers/specs/2026-09-06-mascota-r1-contratos-combate-design.md`,
+issue #1081). Migración `supabase/migrations/20260907_pet_battles.sql`. Un combate es un
+**hecho**: `seed` (32 hex), `snapshot` (jsonb inmutable de la mascota), `ruleset_version`,
+`content_hash`, `inputs` (jsonb, el log `(seq, tick, action, payload)`), `result` (jsonb) y
+`digest` (sha256 del registro más los eventos re-simulados). **Los eventos no se guardan**:
+se derivan re-simulando. `intent_id` + `unique (user_id, intent_id)` = idempotencia por
+intención (#1081 R4). `status` `open` → `resolved` con CHECK de coherencia. `kind` texto
+sin CHECK (`training` hoy).
+
+**RLS** activa, **una** política: `select` propio para `authenticated`. **Sin**
+insert/update/delete para `authenticated` ni `anon`: escribe solo el servidor con
+`service_role` tras re-simular (contrato C1). Como `pet_nudges`, **no aparece en la
+superficie 6 de `DRIFT-CHECK.md`** (solo mira tablas donde `authenticated` tiene algún
+grant de escritura); se anota aquí con su control. Verificación en dev (2026-09-06) contra
+objetos reales: `true | 1 | true | false | false | false | false | true | 1` (RLS, políticas,
+select/insert/update/delete de `authenticated`, select de `anon`, insert de `service_role`,
+índice). El e2e `e2e/mascota-batallas-autoridad.spec.ts` lo comprueba desde PostgREST.
+
 ## 9. Seguridad
 
 Las **60 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el
