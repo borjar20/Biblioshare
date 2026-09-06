@@ -52,12 +52,16 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 export async function searchInventaireEntities(query: string): Promise<InventaireEntity[]> {
-  return (await searchInventaireEntitiesOrNull(query)) ?? [];
+  return (await lookupEntities(query, false)) ?? [];
 }
 
 // Writers must distinguish a completed lookup from an unavailable provider.
 // No retries here: a 429 must not turn into more traffic during the block.
 export async function searchInventaireEntitiesOrNull(query: string): Promise<InventaireEntity[] | null> {
+  return lookupEntities(query, true);
+}
+
+async function lookupEntities(query: string, requireComplete: boolean): Promise<InventaireEntity[] | null> {
   const trimmed = query.trim();
   if (!trimmed) return [];
   try {
@@ -76,6 +80,9 @@ export async function searchInventaireEntitiesOrNull(query: string): Promise<Inv
     );
     if (!works?.entities || typeof works.entities !== "object") {
       throw new Error("Invalid Inventaire works response");
+    }
+    if (requireComplete && !containsRequestedEntities(works.entities, uris)) {
+      throw new Error("Incomplete Inventaire works response");
     }
 
     // SEGUNDA ronda de `by-uris`, aparte, porque la respuesta de la primera
@@ -97,6 +104,9 @@ export async function searchInventaireEntitiesOrNull(query: string): Promise<Inv
 
     if (authorUris.size && (!authors?.entities || typeof authors.entities !== "object")) {
       throw new Error("Invalid Inventaire authors response");
+    }
+    if (requireComplete && authorUris.size && !containsRequestedEntities(authors?.entities, [...authorUris])) {
+      throw new Error("Incomplete Inventaire authors response");
     }
     const authorName = (uri: string): string | null => {
       const labels = authors?.entities?.[uri]?.labels ?? {};
@@ -120,4 +130,12 @@ export async function searchInventaireEntitiesOrNull(query: string): Promise<Inv
     });
     return null;
   }
+}
+
+function containsRequestedEntities(entities: unknown, uris: string[]): boolean {
+  if (!entities || typeof entities !== "object" || Array.isArray(entities)) return false;
+  return uris.every((uri) => {
+    const entity: unknown = Object.hasOwn(entities, uri) ? (entities as Record<string, unknown>)[uri] : null;
+    return entity !== null && typeof entity === "object" && !Array.isArray(entity);
+  });
 }

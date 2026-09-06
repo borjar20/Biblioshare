@@ -10,6 +10,30 @@ describe("qidFromUri", () => {
 });
 
 describe("searchInventaireEntities", () => {
+  it.each(["missing-work", "partial-works", "missing-author", "partial-authors"])("keeps %s incomplete for hydration", async (stage) => {
+    const works = {
+      "wd:Q1": { labels: { en: "Dune" }, claims: { "wdt:P50": ["wd:Q2", "wd:Q3"] } },
+      "wd:Q4": { labels: { en: "Other work" } },
+    };
+    const responses: unknown[] = [
+      { results: [{ uri: "wd:Q1" }, { uri: "wd:Q4" }] },
+      { entities: stage === "missing-work" ? {} : stage === "partial-works" ? { "wd:Q1": works["wd:Q1"] } : works },
+      { entities: stage === "missing-author" ? {} : { "wd:Q2": { labels: { en: "Frank Herbert" } } } },
+    ];
+    const fetchMock = vi.fn();
+    for (const body of responses) fetchMock.mockResolvedValueOnce(Response.json(body));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await searchInventaireEntitiesOrNull("Dune")).toBeNull();
+  });
+
+  it("completes a lookup with all requested works and authors", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ results: [{ uri: "wd:Q1" }] }))
+      .mockResolvedValueOnce(Response.json({ entities: { "wd:Q1": { labels: { en: "Dune" }, claims: { "wdt:P50": ["wd:Q2"] } } } }))
+      .mockResolvedValueOnce(Response.json({ entities: { "wd:Q2": { labels: { en: "Frank Herbert" } } } }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await searchInventaireEntitiesOrNull("Dune")).toEqual([{ uri: "wd:Q1", labels: { en: "Dune" }, authorNames: ["Frank Herbert"] }]);
+  });
   it.each(["search", "works", "authors"])("no da por completa una respuesta inválida de %s", async (stage) => {
     const responses = [
       { results: [{ uri: "wd:Q1" }] },

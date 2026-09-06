@@ -4083,3 +4083,44 @@ queda incompleta. Se conserva la representación anterior y no se estampa `hydra
 porque esa RPC marca como revisada la obra en cada llamada. También se posponen las
 mejoras de otros proveedores de esa evaluación; la siguiente visita puede reintentarlas.
 No cambia la firma de las RPC ni los permisos de catálogo.
+## 2026-09-06 — Mascota R2: ingreso estricto y replay histórico congelado
+
+**Decisión.** La capa actual `src/lib/pet/training/` valida el snapshot y exige que los
+inputs lleven payload vacío antes de aceptar un entrenamiento. Rechaza datos inválidos
+con `INVALID_SNAPSHOT` (incluidos desbordamientos de enteros) y `NONEMPTY_PAYLOAD`.
+El motor histórico `src/lib/pet/battle/versions/r2.2/` permanece congelado.
+
+**Por qué.** Endurecer la entrada de combates nuevos no debe cambiar los bytes ni las
+reglas con los que se reproduce un combate histórico. El replay usa la versión guardada
+y los eventos verificados por el servidor, comprobando el digest. El arreglo de #1085
+queda implementado, pendiente de integrar la PR; no requiere cambio de esquema.
+
+## 2026-09-06 — Mascota R2: una intención, un resultado y autoridad del dueño
+
+**Decisión.** El servidor autentica al usuario y crea seed y snapshot. La intención se
+reutiliza en reintentos; la resolución escribe con compare-and-set sobre `status = open`.
+Si otro intento resolvió primero, se recupera ese primer resultado. Las operaciones
+privilegiadas de `service_role` acotan siempre el combate por su dueño autenticado.
+
+**Por qué.** La simulación local permite jugar sin esperar cada tick, pero no concede
+autoridad al cliente. Ni peticiones concurrentes ni otra cuenta pueden sobrescribir el
+resultado. Playwright contra build de producción lo verifica con dos cuentas desechables,
+inicio y resolución concurrentes, reintentos, acceso ajeno y replay.
+
+## 2026-09-06 — Mascota R2: implementación técnica y aceptación humana separadas
+
+**Decisión.** R2 está implementado y verificado técnicamente; la aceptación tras veinte
+combates sigue abierta en #1082. R2 continúa activo. R3 y la generación de su arte esperan
+esa aceptación. El entrenamiento no concede recompensas ni consume recursos.
+
+**Por qué.** Los tests de autoridad, determinismo y UI no prueban que la decisión de
+guardar o gastar la habilidad siga siendo interesante después de veinte combates. Esa
+condición de producto exige observar a personas y no se da por satisfecha con el build.
+
+## 2026-09-06 — Inventaire: comprobar cobertura de las entidades solicitadas (#911)
+
+Una respuesta HTTP correcta que omite una obra o un autor solicitado sigue siendo
+incompleta para hidratación. Se exige una entidad objeto por cada URI solicitada,
+incluidos lotes parcialmente devueltos. La búsqueda conserva su comportamiento
+anterior con resultados parciales; solo el consumidor que persiste exige completitud.
+Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.

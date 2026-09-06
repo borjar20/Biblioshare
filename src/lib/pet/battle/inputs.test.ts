@@ -19,14 +19,21 @@ describe("validateInputs", () => {
     expect(validateInputs([], RULESET).ok).toBe(true);
   });
 
-  it("copia un payload no vacío en un objeto nuevo", () => {
+  it("rechaza un payload no vacío", () => {
     const raw = [{ seq: 0, tick: 1, action: "skill", payload: { hp: 5, tag: "x" } }];
     const v = validateInputs(raw, RULESET);
-    expect(v.ok).toBe(true);
-    if (v.ok) {
-      expect(v.inputs[0].payload).toEqual({ hp: 5, tag: "x" });
-      expect(v.inputs[0].payload).not.toBe(raw[0].payload);
-    }
+    expect(v).toEqual({ ok: false, code: "NONEMPTY_PAYLOAD", index: 0 });
+  });
+
+  it.each([new Date(0), Object.create({ inherited: 1 }), { [Symbol("hidden")]: 1 }])("rejects non-plain or hidden payload data: %#", (payload) => {
+    expect(validateInputs([{ seq: 0, tick: 0, action: "skill", payload }], RULESET))
+      .toEqual({ ok: false, code: "BAD_PAYLOAD", index: 0 });
+  });
+
+  it("rechaza la reproducción de un payload con 300 campos de 5000 caracteres", () => {
+    const payload = Object.fromEntries(Array.from({ length: 300 }, (_, i) => [`field${i}`, "x".repeat(5000)]));
+    const raw = [{ ...ok([0])[0], payload }];
+    expect(validateInputs(raw, RULESET)).toEqual({ ok: false, code: "NONEMPTY_PAYLOAD", index: 0 });
   });
 
   it.each([
