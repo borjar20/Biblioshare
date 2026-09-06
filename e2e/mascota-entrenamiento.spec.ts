@@ -49,6 +49,7 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
       });
       expect(seed.ok()).toBe(true);
     }
+    await page.setViewportSize({ width: 320, height: 844 });
     await login(page, a);
     const panel = page.getByRole("region", { name: "Entrenamiento", exact: true });
     await expect(panel).toBeVisible();
@@ -65,6 +66,24 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
     await panel.screenshot({ path: ".superpowers/r2-training-desktop.png" });
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
+    // Track the real button through text, countdown and feedback changes.
+    // Panel-relative coordinates exclude scrolling and browser scroll anchoring.
+    const layout = panel.locator('button[aria-describedby="training-skill-help"]').evaluate(button => new Promise<{ deltaY: number; deltaHeight: number; phases: number; minY: number; count: number }>(resolve => {
+      const ys: number[] = [], heights: number[] = [];
+      const phases = new Set<string>();
+      const sample = () => {
+        if (!button.isConnected) {
+          resolve({ deltaY: Math.max(...ys) - Math.min(...ys), deltaHeight: Math.max(...heights) - Math.min(...heights), phases: phases.size, minY: Math.min(...ys), count: ys.length });
+          return;
+        }
+        const rect = button.getBoundingClientRect();
+        ys.push(rect.top - button.closest("section")!.getBoundingClientRect().top);
+        heights.push(rect.height);
+        phases.add(document.querySelector('[data-enemy-phase]')?.getAttribute('data-enemy-phase') ?? "");
+        requestAnimationFrame(sample);
+      };
+      sample();
+    }));
     await panel.getByRole("button", { name: "Continuar", exact: true }).click();
     await panel.getByRole("button", { name: /Golpe interruptor.*Usar habilidad/ }).click();
     await expect(panel.getByText(/La habilidad se activa al pulsar, nunca sola/)).toBeVisible();
@@ -74,6 +93,12 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     const resolve = await resolveRequest;
     const resolveAction = resolve.headers()["next-action"];
     await expect(panel.getByRole("button", { name: "Ver repetición", exact: true })).toBeVisible({ timeout: 20_000 });
+    const geometry = await layout;
+    console.log("Training layout geometry", geometry);
+    expect(geometry.phases).toBeGreaterThan(1);
+    expect(geometry.count).toBeGreaterThan(50);
+    expect(geometry.deltaY, "skill button must not move as combat messages change").toBeLessThan(1);
+    expect(geometry.deltaHeight, "skill button must keep its touch target").toBeLessThan(1);
     const [played] = await rows(request, a.id, uiIntent);
     expect(played.status).toBe("resolved");
     expect(played.inputs.length).toBeGreaterThan(0);
