@@ -179,3 +179,35 @@ describe("resimulate", () => {
     expect(await resimulate({ ...record, result }, c)).toEqual({ ok: false, code: "RESULT_MISMATCH" });
   });
 });
+
+describe("validación de snapshot antes del motor (#1085)", () => {
+  it.each([null, [], {}, { ...snapshot, atk: "x" }, { ...snapshot, hpMax: 0 },
+    { ...snapshot, tier: 1.5 }, { ...snapshot, name: undefined },
+    { ...snapshot, petClass: "missing" }, { ...snapshot, stage: "missing" },
+    { ...snapshot, attributes: { ...snapshot.attributes, FUE: -1 } },
+    { ...snapshot, attributes: { ...snapshot.attributes, DES: NaN } },
+    { ...snapshot, extra: undefined },
+  ])("rechaza snapshot malformado: %j", async (bad) => {
+    const { record } = await makeRecord();
+    await expect(resimulate({ ...record, snapshot: bad } as unknown as ResimInput, await content()))
+      .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
+  });
+
+  it("rechaza payload no vacío también al resolver", async () => {
+    const { record } = await makeRecord();
+    const inputs = [{ seq: 0, tick: 0, action: "skill" as const, payload: { tag: "x" } }];
+    await expect(resimulate({ ...record, inputs, result: null }, await content()))
+      .resolves.toEqual({ ok: false, code: "INVALID_INPUTS" });
+  });
+
+  it("conserva estadísticas guardadas aunque difieran de las fórmulas actuales", async () => {
+    const { record } = await makeRecord();
+    const saved = { ...snapshot, hpMax: 137, atk: 19, tier: 3 };
+    const input = { ...record, snapshot: saved, inputs: [], result: null };
+    const before = JSON.stringify(input);
+    const out = await resimulate(input, await content());
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.result.petHpMax).toBe(137);
+    expect(JSON.stringify(input)).toBe(before);
+  });
+});
