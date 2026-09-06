@@ -41,6 +41,8 @@ export function validateInputs(
     }
     const copy: Record<string, number | string> = {};
     for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+      // "__proto__" no crea propiedad propia (dispara el setter heredado): se perdería en silencio.
+      if (key === "__proto__") return { ok: false, code: "BAD_PAYLOAD", index: i };
       if (typeof value === "string" || Number.isSafeInteger(value)) copy[key] = value as number | string;
       else return { ok: false, code: "BAD_PAYLOAD", index: i };
     }
