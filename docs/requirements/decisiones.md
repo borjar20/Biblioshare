@@ -4207,6 +4207,29 @@ Comprobación real de Inventaire el 2026-09-06: «The Name of the Wind» devolvi
 `wd:Q1195989` para Patrick Rothfuss. Es una medición de esa consulta, no una
 prueba universal de identidad. #923 queda preparado para adoptar este criterio.
 
+## 2026-09-06 — Estado visible y tintas de estado (#892)
+
+La rejilla de /coleccion ya pasaba `inCollection` y mostraba la etiqueta: esa
+parte del diagnóstico de #892 estaba desactualizada. La tarjeta compartida
+mostraba solo un punto en la pestaña Colección del perfil. Ahora conserva la
+etiqueta en todos sus consumidores, con el badge overlay existente, y se retira
+el parámetro de presentación que permitía ocultarla.
+
+Los cuatro estados tienen ahora un par `status-*-ink` para texto. Las tintas se
+verifican sobre background, surface, surface-muted y surface-3 en los tres bloques
+de tema. Los colores de gráficos y puntos permanecen separados de esas tintas.
+Se migran los textos de éxito, estadísticas, cambios de nota y autoría; los
+mensajes de error sobre surface mantienen su color existente, ya contrastado.
+
+## 2026-09-06 — Contraste de tintas sobre fondos semitransparentes (#1105)
+
+La comprobación en navegador detectó ratios entre 4,31 y 4,49 en combinaciones
+con fondos de estado al 10 % sobre surface-3. Se oscurecen las tintas oro y roja
+en claro y se aclara la roja en oscuro, incluido el tema del sistema.
+El E2E mide las clases CSS compiladas sobre las cuatro superficies, además de
+las etiquetas reales de colección propia y perfil público: cuatro estados,
+tres temas y dos anchos. Todas las combinaciones comprobadas alcanzan 4,5:1.
+
 ## 2026-09-06 — Madriguera: límite explícito y acceso antes de eclosionar (#1083)
 
 **Estado.** Diseño confirmado por el usuario; implementación y pruebas pendientes en #1083.
