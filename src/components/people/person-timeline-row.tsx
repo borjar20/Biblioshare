@@ -13,8 +13,8 @@ import { ROLE_KEY, STATUS_KEY, TYPE_KEY } from "./role-labels";
 const ROLE_TAG: Record<CreditRole, string> = {
   director: "border-accent/40 bg-accent/10 text-accent",
   creator: "border-accent/40 bg-accent/10 text-accent",
-  writer: "border-status-in-progress/40 bg-status-in-progress/10 text-status-in-progress",
-  author: "border-status-in-progress/40 bg-status-in-progress/10 text-status-in-progress",
+  writer: "border-status-in-progress/40 bg-status-in-progress/10 text-status-in-progress-ink",
+  author: "border-status-in-progress/40 bg-status-in-progress/10 text-status-in-progress-ink",
   cast: "border-border bg-surface-muted text-muted-foreground",
 };
 

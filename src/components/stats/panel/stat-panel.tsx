@@ -422,7 +422,7 @@ function Hero({ kpi }: { kpi: PanelKpi }) {
             good === undefined
               ? "text-muted-foreground"
               : good
-                ? "text-status-completed"
+                ? "text-status-completed-ink"
                 : "text-status-dropped"
           }`}
         >
@@ -458,7 +458,7 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
                     good === undefined
                       ? "text-muted-foreground"
                       : good
-                        ? "text-status-completed"
+                        ? "text-status-completed-ink"
                         : "text-status-dropped"
                   }`}
                 >

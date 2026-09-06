@@ -4069,3 +4069,17 @@ entrada al registro. Las anteriores no se regeneran. No cambia el digest ni el
 esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
 Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
 del combate histórico junto a una versión posterior con otro balance.
+
+## 2026-09-06 — Estado visible y tintas de estado (#892)
+
+La rejilla de /coleccion ya pasaba `inCollection` y mostraba la etiqueta: esa
+parte del diagnóstico de #892 estaba desactualizada. La tarjeta compartida
+mostraba solo un punto en la pestaña Colección del perfil. Ahora conserva la
+etiqueta en todos sus consumidores, con el badge overlay existente, y se retira
+el parámetro de presentación que permitía ocultarla.
+
+Los cuatro estados tienen ahora un par `status-*-ink` para texto. Las tintas se
+verifican sobre background, surface, surface-muted y surface-3 en los tres bloques
+de tema. Los colores de gráficos y puntos permanecen separados de esas tintas.
+Se migran los textos de éxito, estadísticas, cambios de nota y autoría; los
+mensajes de error sobre surface mantienen su color existente, ya contrastado.
