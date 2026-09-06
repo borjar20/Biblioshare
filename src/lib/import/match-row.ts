@@ -5,6 +5,7 @@ import { lookupIsbn } from "@/lib/catalog/openlibrary/isbn-lookup";
 import { getMovieAsSearchResult, searchMoviesForImport } from "@/lib/catalog/tmdb";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { isSameTitle, normalizeTitle } from "@/lib/catalog/title-match";
+import { authorListMatchesName } from "@/lib/catalog/person-name";
 import type { ItemType } from "@/lib/catalog/types";
 import type { ImportCandidate, ImportMatch, ImportRow } from "./types";
 
@@ -51,30 +52,37 @@ async function matchBook(
     }
   }
 
-  const localTitleResults = await searchLocalCatalog(supabase, "book", row.title);
-  const localTitleMatch = localTitleResults.find((r) => isSameTitle(r.title, row.title));
-  if (localTitleMatch) return { kind: "matched", catalogId: localTitleMatch.catalogId! };
-
+  const matchesAuthor = (candidate: ImportCandidate) => !row.author?.trim() ||
+    Boolean(candidate.subtitle && authorListMatchesName(candidate.subtitle, row.author));
   // Un libro tiene hasta TRES títulos que nos pueden llegar: el del work de
   // Open Library —que es arbitrario: OL36410330W se llama «Fatta Eld»— y los
   // de sus mejores ediciones en español y en inglés. Comparar solo contra el
   // mostrado dejaba sin casar toda fila española cuyo work esté titulado en
   // otro idioma. Mismo patrón que `matchMovie` con sus tres títulos.
-  const apiTitleResults = await searchWorks(row.title);
-  const apiTitleMatch = apiTitleResults.find((r) =>
-    [r.title, ...(r.altTitles ?? [])].some((title) => isSameTitle(title, row.title))
+  // Se comparan ambas fuentes antes de elegir: un resultado local parcial
+  // no debe ocultar una coincidencia exacta de Open Library (#923).
+  const [localTitleResults, apiTitleResults] = await Promise.all([
+    searchLocalCatalog(supabase, "book", row.title),
+    searchWorks(row.title),
+  ]);
+  const candidates = [...localTitleResults, ...apiTitleResults].filter((r) =>
+    matchesAuthor(r) && [r.title, ...(r.altTitles ?? [])].some((title) => isSameTitle(title, row.title))
   );
-  if (apiTitleMatch) {
-    // Match por título, sin ISBN: no hay tirada identificada (matchedIsbn
-    // ausente), así que findOrCreateCatalogItem no registra ninguna edición
-    // aunque se le pase userId — es inofensivo pasarlo por consistencia.
-    return {
-      kind: "matched",
-      catalogId: await findOrCreateCatalogItem(supabase, apiTitleMatch, userId),
-    };
-  }
-
-  return { kind: "unmatched" };
+  const preferred = preferExactTitle(candidates, row.title);
+  const unique = preferred.filter((candidate, index) => !preferred.slice(0, index).some((other) =>
+    (candidate.catalogId && candidate.catalogId === other.catalogId) ||
+    (candidate.externalId && candidate.externalId === other.externalId)
+  ));
+  // La fila queda en la resolución manual existente; nunca se desempata por
+  // el orden del proveedor entre obras diferentes que cumplen las defensas.
+  if (unique.length !== 1) return { kind: "unmatched" };
+  const chosen = unique[0];
+  // Sin ISBN no hay tirada identificada: findOrCreateCatalogItem no registra
+  // ninguna edición, aunque se le pase userId.
+  return {
+    kind: "matched",
+    catalogId: chosen.catalogId ?? await findOrCreateCatalogItem(supabase, chosen, userId),
+  };
 }
 
 function ambiguous(candidates: ImportCandidate[]): ImportMatch {
@@ -115,7 +123,7 @@ export async function catalogIdForMovieCandidate(
 function preferExactTitle(candidates: ImportCandidate[], csvTitle: string): ImportCandidate[] {
   const target = normalizeTitle(csvTitle);
   const exact = candidates.filter((c) =>
-    [c.title, c.originalTitle, c.englishTitle].some(
+    (c.itemType === "book" ? [c.title, ...(c.altTitles ?? [])] : [c.title, c.originalTitle, c.englishTitle]).some(
       (title) => title != null && normalizeTitle(title) === target
     )
   );

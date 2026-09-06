@@ -1,4 +1,5 @@
 import { normalizeTitle } from "./title-match";
+import { normalizeTitleForComparison } from "./openlibrary/normalize";
 import { authorListMatchesName } from "./person-name";
 import { qidFromUri, type InventaireEntity } from "./inventaire/client";
 
@@ -26,68 +27,22 @@ export function authorMatches(author: string | null, entity: InventaireEntity): 
 }
 
 /**
- * ¿El título de la fila y un label de la entidad nombran a la MISMA obra?
+ * Una propuesta de fusión exige igualdad del título normalizado, conservando
+ * orden y repeticiones (#921). La búsqueda puede tolerar más; el barrido no.
+ * No se cambia el comparador difuso compartido con películas y búsquedas.
  *
- * Compara **conjuntos de palabras**, no contención de cadenas, y esa es la
- * única diferencia con `isSameTitle` — que es justo por lo que no se reutiliza
- * aquí (ver el bloque de abajo).
- *
- * POR QUÉ NO VALE `isSameTitle` PARA ESTO, que era la versión anterior y
- * BORRABA FILAS. `isSameTitle` acepta la contención cuando el más corto mide
- * ≥65% del más largo. Un marcador de volumen o de parte pegado al título base
- * cae dentro de esa cota, así que el trozo casaba con la obra completa y el
- * barrido proponía `merge_book_into`. Medido contra las filas REALES de dev
- * (2026-08-28) con la entidad real `Q8034469` («Words of Radiance»):
- *
- *   Words of Radiance, Part Two / Words of Radiance   ratio 0.68 → CASABA
- *   The Stormlight Archive 1    / The Stormlight Archive  ratio 0.92 → CASABA
- *   El Señor de los Anillos I   / El Señor de los Anillos           → CASABA
- *   Oathbringer Part Two        / Oathbringer          ratio 0.55 → no, POR POCO
- *
- * Las seis filas `Words of Radiance%` de dev resolvían el mismo QID y
- * `planReconciliation` proponía CINCO fusiones: cinco filas de `books`
- * borradas. Y como las seis comparten `created_at` y tienen cero pases, el
- * desempate por `id` dejaba viva «Part Two» y mataba la fila de la obra
- * completa. Que saltara o no era **cuestión de suerte de longitudes, no de
- * datos** — la lista de arriba lo enseña: el mismo error de tipo cae a un lado
- * o al otro del 0.65 según cuánto mida el título base. Un criterio que decide
- * qué se borra no puede depender de eso.
- *
- * Y DE PROPINA RECUPERA UN FALSO NEGATIVO. «La Biblioteca de Medianoche» (alta
- * manual) contra el label «La biblioteca de la medianoche» NO casaba, y el
- * porqué no era el umbral: el `la` extra va EN MEDIO, así que la contención
- * falla y el 65% ni se llega a consultar (el ratio es 0.90, irrelevante). Por
- * conjuntos, `{la, biblioteca, de, medianoche}` es el mismo a los dos lados.
- *
- * PRECIO ASUMIDO, que es del lado seguro: un subtítulo legítimo deja de casar
- * («Elantris: edición aniversario» ya no resuelve el QID de «Elantris»). Eso
- * produce un `sin-match`, que no escribe nada y no borra nada — el duplicado
- * sobrevive y es recuperable. La regla del spec §6 manda: ante la duda, no
- * fusionar.
- *
- * LOCAL A PROPÓSITO: no se toca `title-match.ts`. Ese `isSameTitle` lo comparten
- * `wikidata-collapse.ts` y el matching de TMDB, donde la tolerancia al subtítulo
- * es lo que se quiere y donde equivocarse NO borra filas. Aquí sí las borra.
+ * Baseline de dev (2026-09-06): de las seis filas Words of Radiance*, solo
+ * Words of Radiance casa con el label Q8034469; las cinco partes sobreviven.
+ * «La Biblioteca de Medianoche» ya no casa automáticamente con «La biblioteca
+ * de la medianoche»: ese duplicado exige revisión, no una fusión por conjuntos.
  */
 export function titleMatchesLabel(title: string, label: string): boolean {
-  const tokensA = tokenSet(title);
-  const tokensB = tokenSet(label);
-  // Un título que normaliza a vacío —puntuación sola («—», «...»), o un
-  // alfabeto que `normalizeTitle` no conserva— no casa con nada. Sin esta
-  // guarda, dos obras en hebreo se fundirían entre sí por el conjunto vacío.
-  if (tokensA.size === 0 || tokensB.size === 0) return false;
-  if (tokensA.size !== tokensB.size) return false;
-  for (const token of tokensA) if (!tokensB.has(token)) return false;
-  return true;
-}
-
-function tokenSet(value: string): Set<string> {
-  // `normalizeTitle` (title-match.ts) ya deja minúsculas sin acentos y convierte
-  // TODO lo que no sea `[a-z0-9]` en espacio, así que «Words of Radiance, Part 1»
-  // y «Words of Radiance Part 1» producen el mismo conjunto. Se reutiliza esa
-  // normalización —no la comparación— para que este módulo y el resto del
-  // catálogo entiendan «acento», «guion» y «coma» igual.
-  return new Set(normalizeTitle(value).split(" ").filter(Boolean));
+  const normalized = normalizeTitle(title);
+  // El normalizador ASCII compartido puede perder parte de un título mixto.
+  // Exigir también la igualdad Unicode de la búsqueda impide que el barrido
+  // acepte una identidad que el colapso visual rechazaría.
+  return normalized.length > 0 && normalized === normalizeTitle(label) &&
+    normalizeTitleForComparison(title) === normalizeTitleForComparison(label);
 }
 
 function titleMatches(title: string, entity: InventaireEntity): boolean {
@@ -107,7 +62,7 @@ function titleMatches(title: string, entity: InventaireEntity): boolean {
  * 2. **Título contra los labels** de la entidad, que son multilingües: por eso
  *    «Palabras Radiantes» casa con la entidad de «Words of Radiance» y
  *    «Sombras de Identidad» con la de «Shadows of Self». La comparación es
- *    `titleMatchesLabel` —conjunto de palabras—, NO `isSameTitle`: ver su
+ *    `titleMatchesLabel` —igualdad normalizada—, NO `isSameTitle`: ver su
  *    cabecera, que es la que impide fundir un trozo con su obra completa.
  *
  * 3. **Ambigüedad = sin match.** Si lo que sobrevive apunta a más de un QID
@@ -138,9 +93,8 @@ function titleMatches(title: string, entity: InventaireEntity): boolean {
  * que un duplicado cuyo título no case con ningún label sobrevive al barrido,
  * que es exactamente el lado por el que hay que fallar.
  *
- * (Y el caso de «La Biblioteca de Medianoche» que motivaba dejar el título
- * suelto ya no se pierde: `titleMatchesLabel` lo casa por conjunto de palabras,
- * así que el filtro obligatorio sale gratis en ese caso.)
+ * El antiguo caso de «La Biblioteca de Medianoche» queda ahora para revisión
+ * manual: #921 ya no elimina palabras repetidas para decidir una identidad.
  */
 export function resolveQid(
   book: { title: string | null; author: string | null },

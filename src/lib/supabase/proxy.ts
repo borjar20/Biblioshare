@@ -24,7 +24,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -32,21 +32,35 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
+          Object.entries(headers).forEach(([name, value]) => response.headers.set(name, value));
         },
       },
     }
   );
 
-  // Refreshes the auth token if expired; required for Server Components to read a valid session.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verifica el JWT y refresca si caducó. Con firma asimétrica, la verificación
+  // evita consultar /auth/v1/user antes de cada render (#929). El SDK conserva
+  // la validación remota para firmas simétricas y el refresh cuando haga falta.
+  // La autorización de datos y acciones sigue en el servidor y en RLS.
+  const { data, error } = await supabase.auth.getClaims();
+  const userId = error ? null : data?.claims.sub;
+
+  // Los redirects también deben entregar las cookies que el SDK renovó.
+  function redirect(path: string) {
+    const redirected = NextResponse.redirect(new URL(path, request.url));
+    response.cookies.getAll().forEach((cookie) => redirected.cookies.set(cookie));
+    for (const name of ["cache-control", "expires", "pragma"]) {
+      const value = response.headers.get(name);
+      if (value) redirected.headers.set(name, value);
+    }
+    return redirected;
+  }
 
   const { pathname } = request.nextUrl;
 
-  if (!user) {
+  if (!userId) {
     if (pathname === ONBOARDING_PATH) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return redirect("/login");
     }
     return response;
   }
@@ -64,14 +78,14 @@ export async function updateSession(request: NextRequest) {
   // de /onboarding.
   let hasProfile: boolean;
   let isOnboarded: boolean;
-  if (request.cookies.get(ONBOARDED_COOKIE)?.value === user.id) {
+  if (request.cookies.get(ONBOARDED_COOKIE)?.value === userId) {
     hasProfile = true;
     isOnboarded = true;
   } else {
     const { data: profile } = await supabase
       .from("profiles")
       .select("user_id, onboarded_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle();
     hasProfile = profile !== null;
     isOnboarded = profile?.onboarded_at != null;
@@ -79,7 +93,7 @@ export async function updateSession(request: NextRequest) {
     // el asistente re-consulta en cada navegación: es una ventana corta y es lo
     // que hace que terminar surta efecto de inmediato.
     if (isOnboarded) {
-      response.cookies.set(ONBOARDED_COOKIE, user.id, {
+      response.cookies.set(ONBOARDED_COOKIE, userId, {
         httpOnly: true,
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 30,
@@ -92,17 +106,17 @@ export async function updateSession(request: NextRequest) {
     pathname !== ONBOARDING_PATH &&
     !RECOVERY_PATHS.includes(pathname)
   ) {
-    return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url));
+    return redirect(ONBOARDING_PATH);
   }
 
   // Solo se echa de /onboarding a quien YA lo terminó, no a quien simplemente
   // tiene perfil: el asistente vive precisamente en ese hueco.
   if (isOnboarded && pathname === ONBOARDING_PATH) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return redirect("/");
   }
 
   if (hasProfile && AUTH_PATHS.includes(pathname)) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return redirect("/");
   }
 
   return response;

@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -10,8 +10,8 @@
 > `service_role`** (`anon` y `authenticated` sin execute); `register_book_edition` y
 > `register_manual_catalog_item` siguen con execute para `authenticated`; el comentario vivo de
 > `books.repr_meta` ya nombra al trigger y niega que lo escriban las actions; y la superficie 6
-> de `DRIFT-CHECK.md` da `books | 17 | 0 | 9` en dev. **Nada de esto está en prod todavía**
-> (fase destructiva sin ejecutar, issues #900 y #912): prod sigue con `books` en 14 columnas,
+> de `DRIFT-CHECK.md` da `books | 17 | 0 | 9` en dev. **Estado histórico del 2026-08-28, no una comprobación actual:** nada de esto estaba en prod todavía
+> (fase destructiva sin ejecutar en aquella revisión): se describió prod con `books` en 14 columnas,
 > sin `repr_meta`/`wikidata_id` y con `get_widget_snapshot` nombrando `is_primary`.
 > Las dos afirmaciones falsas que quedaban vivas estaban FUERA de esta doc y se corrigieron en
 > el mismo commit: la cabecera de `createTokenClient` (`src/lib/supabase/server.ts`), que
@@ -21,7 +21,19 @@
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
 
-> **Bootstrap local, 2026-09-06:** el esquema inicial y las 232 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+> **Bootstrap local, 2026-09-06:** el esquema inicial y las 235 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+
+> **Verificación #900, 2026-09-06:** `get_widget_snapshot()` ya coincide en dev y producción:
+> `md5(prosrc) = 358c7aa6950f1b71a5790541fe39a89b`, 10083 caracteres, sin `is_primary`.
+> Es exactamente la función prevista por `20260892`; no se reaplica. Esta lectura de `pg_proc`
+> sustituye el pendiente de #900 y no verifica el resto de la fase destructiva.
+>
+> **#879, aplicada en dev y producción 2026-09-06:** `20260906201847_pass_interaction_hrefs.sql`
+> conserva el trigger de `passes` y propaga cambios reales de `item_type/item_id` a los href
+> de sesiones, comentarios y respuestas; conserva query de comunidad y anclas. Repara también
+> enlaces antiguos mediante `private.refresh_pass_interaction_hrefs(uuid)`, sin EXECUTE para
+> roles API. No cambia propietarios, audiencias ni políticas. Verificación local mediante
+> `supabase/tests/pass_interaction_hrefs.sql`; funciones y permisos verificados en ambos entornos.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -920,8 +932,8 @@ parchea con un `replace` sobre `href` **sin guarda** (verificado: los únicos í
 `interaction_targets` son `(id)` y `(kind, source_id)`; `href` no entra en ninguno), colocado
 **después** del repunte de `passes` para que las 158 filas ya auto-curadas no casen el `like`.
 
-> **El modo de fallo de fondo sigue vivo.** Esto arregla el href *desde la fusión*; cualquier otra
-> cosa que cambie el ítem de un pase vuelve a dejar los `progress_session` y `comment` apuntando al
+> **Nota histórica, resuelta por #879 el 2026-09-06 en dev y producción.** El parche original arreglaba el href *desde la fusión*; cualquier otra
+> cosa que cambiase el ítem de un pase volvía a dejar los `progress_session` y `comment` apuntando al
 > ítem viejo. Issue [#879](https://github.com/borjar20/Biblioshare/issues/879).
 
 **Descartadas tras verificarlas una a una** (para que nadie las re-investigue):
@@ -1129,8 +1141,7 @@ finales de pase; minutos de hoy = solo `duration_minutes` de libros—; (2) "hoy
 en curso). **Fix 2026-08-06 (`20260806_widget_snapshot_edition_pages.sql`, dev+prod):** el total de
 páginas del libro sale de la EDICIÓN del pase (`book_editions`) y no de `books.total_pages`, que
 casi siempre es null (la búsqueda ya no lo escribe); antes salía «Sin progreso».
-**Precedencia a dos peldaños 2026-08-27 (`20260892_widget_snapshot_two_level.sql`, Task 12 — DEV;
-prod pendiente del despliegue):** el `LATERAL` de `cat` ya solo mira `passes.edition_id`
+**Precedencia a dos peldaños 2026-08-27 (`20260892_widget_snapshot_two_level.sql`, Task 12 — DEV + PROD, reverificado el 2026-09-06):** el `LATERAL` de `cat` ya solo mira `passes.edition_id`
 (`be.id = ip.edition_id`, la PK: como mucho una fila, sin desempate) y cae a `books.total_pages`;
 mueren el peldaño de la «edición primaria» y el de «cualquier edición con total». Es la misma
 regla que `pagesForPass` en el código web (§2). Verificado en dev sobre un usuario sintético en

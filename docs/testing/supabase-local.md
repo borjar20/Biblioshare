@@ -67,6 +67,11 @@ Si no cambian, `supabase --workdir .superpowers/supabase-local db reset --local 
 repite las migraciones en la instancia desechable. Ambos comandos destruyen únicamente los
 datos locales de pruebas. No usar `--all` ni reutilizar este directorio para una base con datos.
 
+## Verificación actual (2026-09-06)
+
+Con #879: 236 pasos (inicial + 235 migraciones). El gate incluye la regresión SQL de
+enlaces de pases, sesiones y comentarios, con datos sintéticos y rollback.
+
 ## Verificación inicial (2026-09-06)
 
 En main `bdcdd7c`: 233 pasos (inicial + 232 migraciones) aplicados sin errores mediante

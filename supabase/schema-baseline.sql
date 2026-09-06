@@ -1177,3 +1177,8 @@ commit;
 begin;
 \ir migrations/20260906170958_get_burrow_pets.sql
 commit;
+
+-- 20260906201847_pass_interaction_hrefs
+begin;
+\ir migrations/20260906201847_pass_interaction_hrefs.sql
+commit;

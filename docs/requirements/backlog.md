@@ -271,13 +271,11 @@ Lo cerrado, con la migración o el fichero que lo sostiene:
   eligiendo una candidata en vivo, e importar un CSV con ISBN poblando `passes.edition_id`. Los
   tres validados por MUTACIÓN.
 
-**Lo que NO está hecho, y es lo que hay que mirar antes de dar la pieza por cerrada:** la **fase
-destructiva (Task 16) no se ejecutó** y **ninguna migración de la rama está en prod**. Prod sigue
-con `books` en 14 columnas, sin `repr_meta` ni `wikidata_id`, con `get_widget_snapshot` nombrando
-`is_primary` y con las 61 shells vacías sin hidratar. Eso vive en **#900** (aplicar `20260892`),
-**#912** (barrido QID), **#894** (backfill de shells), **#877** (borrar los triggers de primaria)
-y **#866** (borrar el esquema de respaldo). El resto de lo que quedó abierto está etiquetado y
-es rastreable por `area:catalogo`.
+**Seguimiento de despliegue y limpieza:** #900 ya está satisfecha: el 2026-09-06 se verificó
+contra `pg_proc` que `get_widget_snapshot` tiene la precedencia a dos peldaños tanto en dev
+como en producción. Los pendientes de barrido y fase destructiva se revisan en **#912**
+(barrido QID), **#877** (triggers de primaria) y **#866** (esquema de respaldo); esta
+verificación no afirma su ejecución. El resto sigue rastreable por `area:catalogo`.
 
 ## Features que no existen (P2-P3, por dominio)
 
