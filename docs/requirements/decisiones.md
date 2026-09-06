@@ -4306,3 +4306,29 @@ y conserva cookies renovadas y cabeceras anticaché en las redirecciones. El cli
 refrescando tokens caducados; la firma simétrica aún requiere red. La autorización de
 acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
 Es una mitigación de #929, no una demostración de la causa del incidente de Auth.
+
+## 2026-09-06 — Mascota R4 desdoblado en R4a (aventuras) y R4b (botín)
+
+El contrato R4 de la hoja de ruta juntaba dos subsistemas del tamaño de R3 cada uno: aventuras
+derivadas (concesión, antifarm, gasto idempotente, reanudación) y primer botín (inventario,
+ranuras, objetos con efecto, versión de motor, iconos y VFX). Se parte en dos specs secuenciales,
+aventuras primero, para que los criterios antifarm se prueben con cuentas reales antes de que haya
+poder en juego. Decisiones de producto de R4a, tomadas en brainstorming y recogidas en
+`docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §2:
+
+- La aventura es una cadena de dos o tres tramos con la vida arrastrada y habilidad, ulti y
+  barrera reiniciadas por tramo; la longitud la fija la calibración, no un número a priori.
+- La derrota reintenta desde el principio de la cadena, gratis y sin límite, con seed nuevo.
+- Un solo disparador: el día con actividad cultural real según `private.pet_lived_activity_days`,
+  con ventana móvil de siete días en Europe/Madrid. «No caducan» (Parte I §9) se lee como «no hay
+  energía con temporizador»: un día vivido que sale de la ventana sin jugarse deja de contar; una
+  aventura ya empezada nunca se pierde. Es lo que impide que un import histórico regale aventuras
+  durante meses.
+- El botín se sortea y se guarda al ganar, marcado «pendiente de activar», con ids estables; el
+  inventario se deriva de las aventuras ganadas y no tiene tabla.
+- Arquitectura: la cadena entera es un solo combate para el motor (versión r4.1) y una sola fila
+  de `pet_battles`, reutilizando la idempotencia, la re-simulación y el digest existentes. El
+  entrenamiento pasa a r4.1 con un tramo y los números de r3.1. El log parcial para reanudar vive
+  en el dispositivo, no en el servidor: PvE sin ranking y botín sin poder no justifican más.
+
+R4a no genera arte ni se mergea a producción hasta que R3 pase su aceptación jugable (#1106).
