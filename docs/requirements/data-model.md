@@ -21,7 +21,11 @@
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
 
-> **Bootstrap local, 2026-09-06:** el esquema inicial y las 235 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+> **Bootstrap local, 2026-09-06:** el esquema inicial y las 236 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+
+> **#811, verificado localmente el 2026-09-06; pendiente de aplicación remota:** `private.request_quotas` guarda `(user_id, operation)` como clave primaria, `window_started_at timestamptz` y `used integer`. FK a `auth.users` con borrado en cascada, RLS activo y ningún permiso de tabla/columna para `anon` o `authenticated`. `consume_request_quota(text, integer default 1)` es SECURITY DEFINER, VOLATILE, `search_path=''`, ejecutable solo por `authenticated` entre los roles cliente. La identidad procede de `auth.uid()`, las capacidades de una lista fija y el incremento de un único UPSERT atómico. No hay cuotas en memoria ni campos modificables por clientes.
+>
+> Los triggers `request_quota` cubren INSERT en catálogo, posts, comentarios, reacciones, follows y pendientes de importación; push devices cubre INSERT/UPDATE. DELETE sigue disponible. `get_activities_progress`, `get_club_round_state` y `save_saga_sequence` conservan firma, permisos y cuerpo de consulta con un guard de cuota; los dos lectores pasan de SQL/STABLE a PL/pgSQL/VOLATILE y se invocan por POST. El guard SQL emite `PT429` al agotar cuota. Los trabajos sin JWT conservan sus permisos previos y no consumen cuota de usuario. Ver [capacidades, pruebas y límites](../testing/2026-09-06-811-shared-rate-limits.md).
 
 > **Verificación #900, 2026-09-06:** `get_widget_snapshot()` ya coincide en dev y producción:
 > `md5(prosrc) = 358c7aa6950f1b71a5790541fe39a89b`, 10083 caracteres, sin `is_primary`.

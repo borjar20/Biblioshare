@@ -4306,3 +4306,23 @@ y conserva cookies renovadas y cabeceras anticaché en las redirecciones. El cli
 refrescando tokens caducados; la firma simétrica aún requiere red. La autorización de
 acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
 Es una mitigación de #929, no una demostración de la causa del incidente de Auth.
+
+## 2026-09-06 — Cuotas compartidas por identidad (#811)
+
+El despliegue serverless comparte contadores en `private.request_quotas`, con
+una fila por usuario y operación y un UPSERT atómico. No se añade un proveedor,
+dependencia ni contador en memoria. Las ventanas y capacidades se fijan en SQL;
+la identidad procede de `auth.uid()`, nunca de un identificador del cliente.
+
+Las actions cobran antes de trabajo externo. Los triggers cubren escrituras
+directas y las tres RPC caras incorporan el guard conservando sus consultas y
+permisos. Los dos lectores pasan de STABLE a VOLATILE; se mantienen llamadas
+POST. Los trabajos sin JWT conservan su autorización previa. DELETE queda libre
+para permitir retirar contenido; volver a seguir o registrar sí consume cuota.
+
+CSV tiene presupuesto por filas (6000/hora), separado del parseo (6/hora) y de
+la cola de pendientes; preserva el máximo de 3000 filas por archivo. Las
+transacciones fallidas revierten su contador SQL; la carga previa al proveedor
+desde una action permanece consumida aunque el proveedor falle. No es una
+defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
+evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.

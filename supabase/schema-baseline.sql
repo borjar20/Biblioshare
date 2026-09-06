@@ -1182,3 +1182,8 @@ commit;
 begin;
 \ir migrations/20260906201847_pass_interaction_hrefs.sql
 commit;
+
+-- 20260906213325_shared_rate_limits
+begin;
+\ir migrations/20260906213325_shared_rate_limits.sql
+commit;

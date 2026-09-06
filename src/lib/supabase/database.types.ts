@@ -2829,6 +2829,10 @@ export type Database = {
       }
     }
     Functions: {
+      consume_request_quota: {
+        Args: { p_operation: string; p_cost?: number }
+        Returns: boolean
+      }
       activate_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined

@@ -11,6 +11,7 @@ import { ensureMovieHydrated, ensureSeriesHydrated } from "@/lib/catalog/hydrate
 import { itemHref } from "@/lib/catalog/item-href";
 import { loginHref } from "@/lib/auth/safe-next";
 import { settledWithin } from "@/lib/async/settled-within";
+import { requireRequestQuota } from "@/lib/rate-limit";
 import type { SearchResult } from "@/lib/catalog/types";
 
 // Presupuesto de la hidratación antes de navegar. No es un timeout de la
@@ -69,6 +70,7 @@ export async function openCatalogItem(result: SearchResult) {
   // devolverle; que reabra el resultado ya con sesión).
   if (!user) redirect(loginHref("/buscar"));
 
+  await requireRequestQuota(supabase, "catalog_request");
   const itemId = await findOrCreateCatalogItem(supabase, result, user.id);
 
   // La hidratación pega a una API externa (OpenLibrary o TMDB), y puede tardar
@@ -99,6 +101,7 @@ export async function addToLibrary(result: SearchResult) {
   // La búsqueda ya NO persiste los resultados de la API (§7.32): un resultado
   // que no venía del catálogo local llega sin catalogId, y la fila nace aquí,
   // que es cuando el usuario se compromete con el ítem.
+  if (!result.catalogId) await requireRequestQuota(supabase, "catalog_request");
   const itemId =
     result.catalogId ?? (await findOrCreateCatalogItem(supabase, result, user.id));
 
