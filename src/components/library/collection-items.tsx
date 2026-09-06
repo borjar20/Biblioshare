@@ -168,7 +168,6 @@ export function CollectionItems({
               key={item.entryId}
               item={item}
               isOwner={false}
-              inCollection
             />
           ))}
         </div>

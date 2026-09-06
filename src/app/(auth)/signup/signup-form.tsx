@@ -95,7 +95,7 @@ export function SignupForm() {
           <span
             className={`font-mono text-xs ${
               status === "available"
-                ? "text-status-completed"
+                ? "text-status-completed-ink"
                 : status === "taken" || status === "invalid"
                   ? "text-status-dropped"
                   : "text-muted-foreground"

@@ -88,6 +88,19 @@ const TOKENS_DE_TEXTO = ["foreground", "foreground-soft", "muted-foreground"] as
 const UMBRAL_TEXTO = 4.5;
 const UMBRAL_OBJETO_GRAFICO = 3;
 
+describe("tintas de estado sobre las superficies reales (#892)", () => {
+  for (const [tema, tokens] of TEMAS) {
+    for (const status of ["planned", "in-progress", "completed", "dropped"]) {
+      for (const fondo of [...FONDOS_DE_TEXTO, "surface-3"]) {
+        it(`${tema}: status-${status}-ink sobre ${fondo} >= 4.5:1`, () => {
+          expect(tokens[`status-${status}-ink`]).toBeDefined();
+          expect(contraste(tokens[`status-${status}-ink`], tokens[fondo])).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+    }
+  }
+});
+
 describe("contraste de los tokens de texto (F4-022)", () => {
   for (const [tema, tokens] of TEMAS) {
     for (const nombre of TOKENS_DE_TEXTO) {

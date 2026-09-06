@@ -52,7 +52,7 @@ export function ChallengeCard({ progress }: { progress: ChallengeProgress }) {
             </span>
           </div>
         </div>
-        <span className={`shrink-0 text-sm font-semibold ${isDone ? "text-status-completed" : "text-foreground"}`}>
+        <span className={`shrink-0 text-sm font-semibold ${isDone ? "text-status-completed-ink" : "text-foreground"}`}>
           {isDone ? t("completed") : t("progress", { completed, target: challenge.targetCount })}
         </span>
       </div>

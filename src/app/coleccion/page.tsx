@@ -500,7 +500,7 @@ async function LibraryGrid({
     <div className="flex flex-col gap-4">
       <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
         {items.map((item) => (
-          <LibraryItemCard key={item.entryId} item={item} isOwner inCollection />
+          <LibraryItemCard key={item.entryId} item={item} isOwner />
         ))}
       </div>
       {pending > 0 ? (
