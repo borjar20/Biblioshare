@@ -68,6 +68,8 @@ describe("resimulate", () => {
     const { record } = await makeRecord(3);
     const c = await content();
     expect(await resimulate({ ...record, enemyId: "dragon" }, c)).toEqual({ ok: false, code: "UNKNOWN_ENEMY" });
+    expect(await resimulate({ ...record, enemyId: "__proto__" }, c)).toEqual({ ok: false, code: "UNKNOWN_ENEMY" });
+    expect(await resimulate({ ...record, enemyId: "constructor" }, c)).toEqual({ ok: false, code: "UNKNOWN_ENEMY" });
     expect(await resimulate({ ...record, rulesetVersion: "r0" }, c)).toEqual({ ok: false, code: "RULESET_MISMATCH" });
     expect(await resimulate({ ...record, contentHash: "0".repeat(64) }, c)).toEqual({ ok: false, code: "CONTENT_MISMATCH" });
     expect(await resimulate({ ...record, seed: "0".repeat(32) }, c)).toEqual({ ok: false, code: "INVALID_SEED" });
@@ -84,5 +86,12 @@ describe("resimulate", () => {
       return;
     }
     throw new Error("ningún KO en 10 seeds con interrupt");
+  });
+
+  it("un resultado que no es canónico (número no entero) se rechaza como RESULT_MISMATCH, sin lanzar", async () => {
+    const { record } = await makeRecord(4);
+    const c = await content();
+    const result = { ...record.result, damageDealt: 1.5 };
+    expect(await resimulate({ ...record, result }, c)).toEqual({ ok: false, code: "RESULT_MISMATCH" });
   });
 });

@@ -36,7 +36,9 @@ export async function resimulate(
   record: BattleRecord,
   content: BattleContent,
 ): Promise<{ ok: true; events: BattleEvent[]; result: BattleResult; digest: string } | { ok: false; code: ResimError }> {
-  const enemy = content.enemies[record.enemyId];
+  // Una búsqueda en un objeto plano con una clave que llega del cliente debe
+  // ignorar las propiedades heredadas (__proto__, constructor, toString...).
+  const enemy = Object.hasOwn(content.enemies, record.enemyId) ? content.enemies[record.enemyId] : undefined;
   if (!enemy) return { ok: false, code: "UNKNOWN_ENEMY" };
   if (record.rulesetVersion !== content.ruleset.version) return { ok: false, code: "RULESET_MISMATCH" };
   if (record.contentHash !== content.contentHash) return { ok: false, code: "CONTENT_MISMATCH" };
@@ -46,10 +48,19 @@ export async function resimulate(
   let sim: { events: BattleEvent[]; result: BattleResult };
   try {
     sim = simulate({ seed: record.seed, snapshot: record.snapshot, enemy, ruleset: content.ruleset }, validated.inputs);
-  } catch {
-    return { ok: false, code: "INPUTS_AFTER_END" };
+  } catch (e) {
+    if (e instanceof Error && e.message === "INPUTS_AFTER_END") return { ok: false, code: "INPUTS_AFTER_END" };
+    throw e;
   }
-  if (canonicalJson(sim.result) !== canonicalJson(record.result)) return { ok: false, code: "RESULT_MISMATCH" };
+  // El resultado del cliente puede no ser canónico (p. ej. un número no
+  // entero): eso no es un bug del servidor, es un registro que no encaja.
+  let recordResultJson: string;
+  try {
+    recordResultJson = canonicalJson(record.result);
+  } catch {
+    return { ok: false, code: "RESULT_MISMATCH" };
+  }
+  if (canonicalJson(sim.result) !== recordResultJson) return { ok: false, code: "RESULT_MISMATCH" };
   const digest = await battleDigest({ ...record, inputs: validated.inputs }, sim.events);
   return { ok: true, events: sim.events, result: sim.result, digest };
 }
