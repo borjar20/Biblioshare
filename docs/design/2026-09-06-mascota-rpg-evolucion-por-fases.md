@@ -5,7 +5,7 @@
 > Esta redacción sustituye a la inicial del mismo día (commit `e47ca3d2` de la PR #1079) tras su
 > revisión, y al alcance de la spec de combate del 2026-09-04
 > (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
-> Contratos pendientes: #1081. Seguimiento: #1082.
+> Contratos: R1 cerrado el 2026-09-06 (#1081 cerrada; lo que hereda R7 vive en #1084). Seguimiento: #1082.
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
 > `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
@@ -441,7 +441,7 @@ Los jefes ligados a retos culturales (#1015) se separan del combate normal:
 - hay que decidir a propósito si cumplir el reto garantiza derrotar al jefe, o si puede quedar
   vivo y se comunica aparte. No se esconde esa decisión dentro del balance.
 
-Entran en R7, con los contratos R2, R3 y R7 de #1081.
+Entran en R7, con los contratos R2, R3 y R7 heredados de #1081 en #1084.
 
 ---
 
@@ -698,7 +698,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 
 | Hito | Entrega | Contrato | Arte |
 |---|---|---|---|
-| R1 Contratos y modelo de combate | la spec ejecutable de R2 | criterios | ninguno |
+| R1 Contratos y modelo de combate | la spec ejecutable de R2 — **cerrado 2026-09-06** | criterios | ninguno |
 | R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento | criterios | ninguno: sprites actuales como marcador |
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
 | R4 Aventuras y primer botín | aventuras derivadas, límites antifarm, dos ranuras y 4–6 objetos agnósticos | criterios | iconos y VFX de los objetos |
@@ -742,6 +742,10 @@ necesita; la economía y la procedencia de aventuras se contratan en R4, y los j
 - Test de integración: un JWT normal que intenta fabricar una victoria es rechazado; otra cuenta,
   también.
 - Simulador por CLI con perfiles sintéticos que ejecuta la re-simulación sin UI.
+
+**Cerrado el 2026-09-06** (rama `feat/mascota-r1-contratos`): spec
+`docs/superpowers/specs/2026-09-06-mascota-r1-contratos-combate-design.md`; motor, CLI, tabla y
+tests en el repo. Hito activo: R2.
 
 ## R2 — Combate mínimo universal
 
@@ -827,7 +831,7 @@ sus clases.
 
 Una región (Terror o Misterio), 5–8 nodos, tres enemigos, un miniboss, un jefe con fases y una
 decisión de ruta. Los **jefes de reto** (#1015) con sus contratos: condiciones fijadas al activar,
-historia inmutable, dos logros, política al completar el reto (#1081 R2, R3 y R7).
+historia inmutable, dos logros, política al completar el reto (#1081 R2, R3 y R7, heredados en #1084).
 
 ## R8 — Especializaciones (dirección)
 
@@ -926,7 +930,8 @@ o que la clase afín da ventaja no compensable. Regla de migración: nadie baja 
 
 | Issue | Papel en este roadmap |
 |---|---|
-| #1081 | contratos: R1 cierra sus R1, R4, R5 y R6; R7 cierra sus R2, R3 y R7 |
+| #1081 | contratos: cerrada el 2026-09-06 con R1 (sus R1, R4, R5 y R6); sus R2, R3 y R7 pasan a #1084 para R7 |
+| #1084 | contratos de los jefes de reto heredados de #1081 (raid, edición del reto, ventana e importación): se cierran en la spec de R7 |
 | #1082 | seguimiento y validación del prototipo |
 | #1015 | jefes de reto, en R7 |
 | #1017 | cosméticos y economía: R5 en parte, R10 lo cierra |

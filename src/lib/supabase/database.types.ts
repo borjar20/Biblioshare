@@ -1633,6 +1633,60 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_battles: {
+        Row: {
+          content_hash: string
+          created_at: string
+          digest: string | null
+          enemy_id: string
+          id: string
+          inputs: Json | null
+          intent_id: string
+          kind: string
+          resolved_at: string | null
+          result: Json | null
+          ruleset_version: string
+          seed: string
+          snapshot: Json
+          status: string
+          user_id: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          digest?: string | null
+          enemy_id: string
+          id?: string
+          inputs?: Json | null
+          intent_id: string
+          kind?: string
+          resolved_at?: string | null
+          result?: Json | null
+          ruleset_version: string
+          seed: string
+          snapshot: Json
+          status?: string
+          user_id: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          digest?: string | null
+          enemy_id?: string
+          id?: string
+          inputs?: Json | null
+          intent_id?: string
+          kind?: string
+          resolved_at?: string | null
+          result?: Json | null
+          ruleset_version?: string
+          seed?: string
+          snapshot?: Json
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pet_daily_missions: {
         Row: {
           completed_at: string | null
