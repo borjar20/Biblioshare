@@ -1,0 +1,60 @@
+name: Tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Lint changed source files
+        env:
+          CI_LINT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/ci-lint.mjs
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm test -- --maxWorkers=1 --no-file-parallelism
+  critical-flows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3
+        with:
+          version: '2.116.0'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:local:prepare
+      - name: Start disposable database
+        run: supabase --workdir .superpowers/supabase-local start --exclude studio,postgres-meta,imgproxy,edge-runtime,logflare,vector,supavisor,realtime > /dev/null
+      - run: npm run test:db:local
+      - run: node scripts/ci-local.mjs build
+      - run: node scripts/ci-local.mjs smoke
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: critical-flows-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+      - if: always()
+        run: supabase --workdir .superpowers/supabase-local stop --no-backup

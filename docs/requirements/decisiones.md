@@ -4320,3 +4320,10 @@ readActive devuelve un resultado discriminado: ok con registro o null, o unavail
 El espejo entre pestañas conserva snapshot y revisión cuando falla la lectura, para
 permitir reintentar el mismo aviso. Solo una lectura exitosa sin registro significa
 borrado remoto. La hidratación inicial conserva la degradación a legado/memoria.
+
+## 2026-09-06 — CI de regresiones sin secretos remotos (#836)
+
+Cada PR y push a main ejecutan unitarios completos, tipos y lint de los archivos
+modificados, más dos recorridos críticos contra build de producción y Supabase local
+desechable. La deuda global de lint (#856) y el resto de e2e sin atribuir (#919)
+permanecen explícitos. No se cambia la protección de rama. Operación: docs/testing/ci.md.

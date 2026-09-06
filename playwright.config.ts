@@ -20,7 +20,7 @@ export default defineConfig({
   // ejecutaría al cargarlo); `mascota-batallas-local.spec.ts` es el gate de build
   // de producción con Supabase local (`playwright.pet-local.config.ts`), no un
   // spec contra `next dev`. Ninguno de los dos entra en la suite principal.
-  testIgnore: ["**/support/**", "**/mascota-batallas-local.spec.ts"],
+  testIgnore: ["**/support/**", "**/ci/**", "**/mascota-batallas-local.spec.ts"],
   // Issue #215: la semilla QA de sagas se corrompía entre specs y ENTRE
   // SESIONES (un spec que muere a mitad deja su `finally` sin correr, y el
   // siguiente lee esa suciedad como su estado de partida y la restaura). Esto
