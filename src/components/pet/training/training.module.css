@@ -1,0 +1,14 @@
+.arena { padding: 1rem; border-radius: 1rem; background: var(--color-surface-muted); }
+.enemy { width: 76px; height: 76px; display: grid; place-items: center; color: var(--color-foreground); background: var(--color-accent); border: 4px solid var(--color-border); border-radius: 40% 40% 25% 25%; transform: rotate(-6deg); }
+.enemy span { font-size: 1.5rem; font-weight: bold; }
+.charge { animation: tremble .2s linear infinite; }
+.guard { outline: 5px double var(--color-foreground); transform: scale(.9); }
+.strike { animation: strike .25s ease-out; }
+.recoil { animation: recoil .25s ease-out; }
+.enemyRecoil { animation: recoil .25s ease-out reverse; }
+.fallen { transform: translateY(12px) rotate(-70deg); opacity: .55; transition: transform .35s ease-out; }
+.arena[data-paused="true"] * { animation-play-state: paused !important; }
+@keyframes tremble { 50% { transform: rotate(6deg); } }
+@keyframes strike { 50% { transform: translateX(18px); } }
+@keyframes recoil { 50% { transform: translateX(-12px) rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .arena * { animation: none !important; transition: none !important; } }

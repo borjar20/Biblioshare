@@ -508,3 +508,22 @@ el servidor en R2.
   impide escribir un `kind` inventado; solo escribe el servidor, así que el control es el código.
 - **El tramo de poder no se guarda**: viaja en el snapshot de cada combate. Consultar «qué tramo
   tenía en junio» significa leer combates, no una columna.
+
+## 2026-09-06 — Implementación de la validación de entrada (#1085)
+
+> Histórico: descripción del cambio de #1085 sobre la base 598fc5f; no sustituye al código como fuente de verdad.
+
+La API actual `validateInputs` exige `payload: {}` para `skill`; rechaza cualquier campo
+con `NON_EMPTY_PAYLOAD` (un contenedor inválido conserva `BAD_PAYLOAD`). `resimulate`
+rechaza estos inputs como `INVALID_INPUTS` antes de ejecutar el motor.
+
+La API actual y el adaptador de replay de r2.2 validan el snapshot: objeto plano con los
+siete campos del contrato, nombre de tipo cadena, clase y etapa conocidas, `hpMax`, `atk`
+y `tier` enteros seguros positivos y los seis atributos enteros seguros no negativos.
+Los campos adicionales se rechazan; los datos malformados devuelven `INVALID_SNAPSHOT`.
+No se recalculan estadísticas ni se modifica el registro.
+
+El código retenido en `versions/r2.2` permanece intacto. El replay conserva la validación
+histórica de inputs para poder verificar registros previamente admitidos; la restricción
+nueva de payload se aplica al resolver nuevos combates. El adaptador valida el snapshot
+según r2.2 después de seleccionar la versión, sin imponer este esquema a futuras versiones.
