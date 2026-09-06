@@ -245,7 +245,7 @@ resolveBattle(intentId, inputs)
    → validateInputs → resimulate → escribe inputs, result, digest, resolved_at, status = "resolved"
 ```
 
-`resimulate` acepta el registro sin `result`: el servidor de R2 lo produce en esa llamada; cuando
+`resimulate` acepta el registro sin `result` o con `result` a `null` (una fila `open`): el servidor de R2 lo produce en esa llamada; cuando
 `result` viene (replay, auditoría), se verifica.
 
 El servidor persiste `validated.inputs` (las copias), nunca el array crudo del cliente: es sobre las
@@ -452,7 +452,7 @@ exactamente y el servidor rechaza logs manipulados).
 
 ## 15. Pruebas
 
-14 ficheros bajo `src/lib/pet/battle/`, 74 tests (la suite de mascota entera: 168).
+14 ficheros bajo `src/lib/pet/battle/`, 75 tests (la suite de mascota entera: 169).
 
 | Fichero | Qué fija |
 |---|---|

@@ -8,13 +8,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { PET_CLASSES, isPetClass, type PetClass } from "../../src/lib/pet/classes";
 import { CALIBRATION, calibrate, checkCalibration, formatReport } from "../../src/lib/pet/battle/calibration";
-import { canonicalJson } from "../../src/lib/pet/battle/canonical";
 import { BROTE, ENEMIES, RULESET, contentHash } from "../../src/lib/pet/battle/content";
 import { simulate } from "../../src/lib/pet/battle/engine";
 import { POLICIES, POLICY_IDS, runPolicy, type PolicyId } from "../../src/lib/pet/battle/policies";
 import { PROFILE_IDS, snapshotForProfile, type ProfileId } from "../../src/lib/pet/battle/profiles";
 import { isSeed, seedFromIndex } from "../../src/lib/pet/battle/prng";
-import { battleDigest, resimulate } from "../../src/lib/pet/battle/record";
+import { battleDigest, digestMaterial, resimulate } from "../../src/lib/pet/battle/record";
 import type { BattleRecord } from "../../src/lib/pet/battle/types";
 
 const NORMATIVE_PATH = "src/lib/pet/battle/__fixtures__/normative.json";
@@ -103,7 +102,7 @@ async function golden() {
     if (result.outcome !== "win" || result.reason !== "ko") continue;
     const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
     const digest = await battleDigest(record, events);
-    const material = canonicalJson({ ...record, events });
+    const material = digestMaterial(record, events);
     mkdirSync(dirname(NORMATIVE_PATH), { recursive: true });
     writeFileSync(
       NORMATIVE_PATH,
