@@ -4178,3 +4178,7 @@ Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.
 ## 2026-09-06 — Paso de R2 a R3 tras aceptación del usuario (#1106)
 
 Tras probar el entrenamiento y sus ajustes de legibilidad (#1100), el usuario acepta avanzar a R3. Se registra su aprobación, sin inventar veinte partidas ni una muestra de personas. R3 introduce una acción atómica de ulti: el cliente pausa antes de elegir, envía solo la asignación y el servidor regenera y puntúa desde seed/tick. Dos recetas visibles permiten potencia o protección; saltar conserva daño base. Segundo enemigo con guardia y vulnerabilidad. El contenido se publica como r3.1, preservando resolución y replay de r2.2. El arte de combate se exporta separado para no alterar cajas de la compañera.
+
+## 2026-09-06 — Refinamiento del HUD y la ulti dentro de R3 (#1107)
+
+El pulido visual del entrenamiento pertenece a R3, antes de aventuras/equipo (R4). Habilidad y ulti comparten una zona de acciones con recargas integradas y recordatorios visibles; la explicación extensa queda desplegable. Las recetas usan símbolos de libro, bellota, estrella y corazón junto a sus números, conservando nombres accesibles, selección ficha-hueco y foco por teclado. El oro del tema destaca la ulti disponible. No cambia el motor, el coste ni el contrato del puzzle.

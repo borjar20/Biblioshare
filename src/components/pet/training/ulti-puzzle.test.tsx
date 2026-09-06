@@ -10,6 +10,7 @@ it('keeps recipes visible and submits a tile-slot permutation without a timer', 
  render(<NextIntlClientProvider locale="es" messages={messages}><UltiPuzzle seed="00000001000000020000000300000004" tick={120} onConfirm={confirm} onCancel={vi.fn()} /></NextIntlClientProvider>);
  expect(document.activeElement).toBe(screen.getByRole('button',{name:'Ficha 1'}));
  expect(screen.getByText('Potencia')).toBeTruthy(); expect(screen.getByText('Protección')).toBeTruthy();
+ expect(screen.getAllByRole('img', {name: /^Orden de fichas:/})).toHaveLength(2);
  for (let n=1;n<=4;n++) { fireEvent.click(screen.getByRole('button',{name:`Ficha ${n}`})); fireEvent.click(screen.getByRole('button',{name:`Hueco ${n}: vacío`})); }
  fireEvent.click(screen.getByRole('button',{name:'Lanzar ulti'})); expect(confirm).toHaveBeenCalledWith('0123');
 });

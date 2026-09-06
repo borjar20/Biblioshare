@@ -3229,10 +3229,10 @@
       "skillHelp": "La habilidad se activa al pulsar, nunca sola. Causa ×{normal} el daño de un ataque básico, o ×{interrupt} si interrumpes una carga. Después recarga durante {seconds} s de combate: no hace falta gastarla en cuanto esté lista.",
       "phaseTime": "Termina en {seconds} s de combate",
       "feedback": {
-        "interrupt": "Última habilidad: ¡carga interrumpida! Has evitado ese ataque y causado {damage} de daño.",
-        "hit": "Última habilidad: {damage} de daño. No había una carga que interrumpir.",
-        "wasted": "Última habilidad: bloqueada por la guardia. No has causado daño y has recibido un contraataque.",
-        "vulnerable": "Última habilidad: punto débil, {damage} de daño."
+        "interrupt": "Carga interrumpida: {damage} de daño.",
+        "hit": "Habilidad: {damage} de daño, sin interrupción.",
+        "wasted": "Guardia: recibes un contraataque.",
+        "vulnerable": "Punto débil: {damage} de daño."
       },
       "recharge": "Recarga de habilidad",
       "resume": "Continuar",
@@ -3289,7 +3289,7 @@
         "slot": "Hueco {n}: {value}",
         "title": "Preparar ulti",
         "power": "Potencia",
-        "powerHelp": "Hasta dos ataques básicos de daño adicional, según las posiciones acertadas.",
+        "powerHelp": "Hasta 2 ataques básicos de daño extra.",
         "recharge": "Recarga de ulti",
         "tile": "Ficha {n}",
         "cancel": "Cancelar",
@@ -3299,18 +3299,35 @@
         "ready": "Preparar ulti",
         "charging": "Ulti · Recarga: {seconds} s",
         "empty": "vacío",
-        "guardHelp": "Barrera de hasta el 20 % de tu vida máxima. Absorbe los próximos golpes.",
+        "guardHelp": "Absorbe daño con una barrera de hasta el 20 % de vida máxima.",
         "help": "El combate está detenido. Elige una ficha y después un hueco para copiar una receta. Puedes corregirla sin límite de tiempo. Siempre causa daño base de cuatro ataques básicos; las coincidencias añaden su bonificación.",
         "confirm": "Lanzar ulti",
         "used": "Ulti utilizada",
-        "shield": "Barrera: {value}"
+        "shield": "Barrera: {value}",
+        "shortTitle": "Ulti",
+        "shortReady": "Preparar ulti",
+        "shortUsed": "Utilizada",
+        "summary": "Una por combate. Tú eliges cuándo prepararla.",
+        "awaiting": "Potencia o protección: decide al preparar la ulti.",
+        "paused": "En pausa",
+        "instructions": "Toca una ficha y luego un hueco. Copia una de las recetas; puedes corregirla sin prisa.",
+        "chooseTile": "Elige una ficha",
+        "yourRecipe": "Tu receta",
+        "recipeOrder": "Orden de fichas: {order}",
+        "baseEffect": "Siempre causas el daño de 4 ataques básicos. Cada posición acertada mejora el efecto de la receta."
       },
       "enemySelect": "Rival de entrenamiento",
       "enemies": {
         "brote": "Brote",
         "caparazon": "Escarabajo coraza"
       },
-      "enemyHelp": "El Brote carga ataques que puedes interrumpir. El Escarabajo se protege y después queda vulnerable: entonces recibe el doble de daño."
+      "enemyHelp": "El Brote carga ataques que puedes interrumpir. El Escarabajo se protege y después queda vulnerable: entonces recibe el doble de daño.",
+      "skillTitle": "Habilidad",
+      "actionReady": "Usar habilidad",
+      "actionCooldown": "Recarga: {seconds} s",
+      "actionQueued": "Preparando…",
+      "skillSummary": "Daño doble. Interrumpe cargas. Recarga en 6 s.",
+      "helpTitle": "Cómo funcionan los ataques"
     }
   }
 }

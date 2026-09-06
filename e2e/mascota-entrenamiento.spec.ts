@@ -65,11 +65,14 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     await page.waitForTimeout(450);
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
     await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
-    await panel.screenshot({ path: ".superpowers/r2-training-desktop.png" });
+    await panel.screenshot({ path: ".superpowers/r2-training-desktop.png", style: "header:has(a[href='/']) { visibility: hidden; }" });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await panel.screenshot({ path: ".superpowers/r3-hud-desktop.png", style: "header:has(a[href='/']) { visibility: hidden; }" });
+    await page.setViewportSize({ width: 320, height: 844 });
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
     // Track the real button through text, countdown and feedback changes.
     // Panel-relative coordinates exclude scrolling and browser scroll anchoring.
-    const layout = panel.locator('button[aria-describedby="training-skill-help"]').evaluate(button => new Promise<{ deltaY: number; deltaHeight: number; phases: number; minY: number; count: number }>(resolve => {
+    const layout = panel.locator('button[aria-describedby="training-skill-summary"]').evaluate(button => new Promise<{ deltaY: number; deltaHeight: number; phases: number; minY: number; count: number }>(resolve => {
       const ys: number[] = [], heights: number[] = [];
       const phases = new Set<string>();
       const sample = () => {
@@ -87,9 +90,10 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     }));
     await panel.getByRole("button", { name: "Continuar", exact: true }).click();
     await panel.getByRole("button", { name: /Golpe interruptor.*Usar habilidad/ }).click();
+    await panel.getByText("Cómo funcionan los ataques", { exact: true }).click();
     await expect(panel.getByText(/La habilidad se activa al pulsar, nunca sola/)).toBeVisible();
     await expect(panel.getByRole("button", { name: /Golpe interruptor · Recarga:/ })).toBeDisabled();
-    await expect(panel.getByTestId("skill-feedback")).toContainText("Última habilidad:");
+    await expect(panel.getByTestId("skill-feedback")).toContainText("Habilidad:");
     const resolveRequest = page.waitForRequest(r => r.headers()["next-action"] !== startAction && Boolean(r.headers()["next-action"]) && r.method() === "POST", { timeout: 45_000 });
     const resolve = await resolveRequest;
     const resolveAction = resolve.headers()["next-action"];
@@ -214,6 +218,14 @@ test("R3: enemy choice, paused keyboard puzzle, authoritative ultimate and repla
     }
     await puzzle.screenshot({ path: ".superpowers/r3-puzzle-mobile.png" });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await puzzle.screenshot({ path: ".superpowers/r3-puzzle-390.png" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.evaluate(() => document.documentElement.classList.add("dark"));
+    await puzzle.screenshot({ path: ".superpowers/r3-puzzle-dark.png" });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.evaluate(() => document.documentElement.classList.remove("dark"));
+    await page.setViewportSize({ width: 320, height: 844 });
     await puzzle.getByRole("button", { name: "Lanzar ulti", exact: true }).click();
     await expect(puzzle).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Ulti utilizada", exact: true })).toBeDisabled();

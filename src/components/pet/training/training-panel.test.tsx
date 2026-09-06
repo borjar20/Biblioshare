@@ -21,9 +21,9 @@ it("explains manual use, shows recharge and keeps the skill outcome outside the 
   fireEvent.click(screen.getByRole("button", { name: "Golpe interruptor · Usar habilidad" }));
   act(() => { vi.advanceTimersByTime(100); });
   expect(screen.getByRole("button", { name: /Golpe interruptor · Recarga:/ }).hasAttribute("disabled")).toBe(true);
-  expect(screen.getByTestId("skill-feedback").textContent).toContain("No había una carga que interrumpir");
+  expect(screen.getByTestId("skill-feedback").textContent).toContain("sin interrupción");
   for (let tick = 0; tick < 15; tick++) act(() => { vi.advanceTimersByTime(100); });
-  expect(screen.getByTestId("skill-feedback").textContent).toContain("Última habilidad:");
+  expect(screen.getByTestId("skill-feedback").textContent).toContain("Habilidad:");
 });
 
 it("keeps one pet sprite when a skill hits and later ticks replace the motion", async () => {

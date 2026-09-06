@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { SparklesIcon as Sparkles, HeartIcon as Heart, PauseIcon as Pause, PlayIcon as Play } from "@/components/ui/icons";
+import { Swords, Shield } from "./training-icons";
 import { startBattle, resolveBattle, replayTrainingBattle } from "@/lib/pet/training/actions";
 import { RULESET } from "@/lib/pet/battle/content";
 import type { BattleEvent } from "@/lib/pet/battle/types";
@@ -93,35 +95,46 @@ export function TrainingPanel() {
       <div className={styles.arena} data-paused={session.paused || session.hidden || session.ultiOpen || !active}>
         <div className="grid grid-cols-2 gap-6">
           <Health label={snapshot.name} value={v.petHp} max={v.petHpMax} />
-          <Health label={t(`enemies.${session.battle!.enemyId as "brote" | "caparazon"}`)} value={v.enemyHp} max={v.enemyHpMax} />
+          <Health label={t(`enemies.${session.battle!.enemyId as "brote" | "caparazon"}`)} value={v.enemyHp} max={v.enemyHpMax} rival />
         </div>
-        <div className="flex h-36 items-end justify-around border-b-2 border-border pb-3" aria-hidden="true">
+        <div className="flex h-36 items-end justify-around pb-3" aria-hidden="true">
           <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={snapshot.stage === "acorn" ? (v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : "") : ""}>{snapshot.stage === "acorn" ? <div className="-scale-x-100"><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div> : <CombatSprite speed={speed} paused={session.paused || session.hidden || session.ultiOpen} stage={snapshot.stage} petClass={snapshot.petClass} animation={v.petHp === 0 ? "ko" : petHit ? "hurt" : moving ? "attack" : "idle"} size={112} />}</div>
           <div key={`enemy-${effects.enemyHit ?? effects.enemyStrike ?? "rest"}`}><CombatSprite speed={speed} paused={session.paused || session.hidden || session.ultiOpen} enemy={session.battle!.enemyId as "brote" | "caparazon"} animation={v.enemyHp === 0 ? "ko" : enemyHit ? "hurt" : effects.enemyStrike !== undefined ? "attack" : v.enemyPhase === "windup" ? "charge" : v.enemyPhase === "guard" ? "guard" : v.enemyPhase === "vulnerable" ? "vulnerable" : "idle"} size={112} /></div>
         </div>
-        <div className="mt-3 rounded-lg border border-border bg-surface p-3 text-center" data-enemy-phase={v.enemyPhase}>
+        <div className={styles.telegraph} data-enemy-phase={v.enemyPhase}>
           <p role="status" className="text-sm font-semibold"><ReservedText text={active ? t(v.enemyPhase === "idle" && session.battle?.enemyId === "caparazon" ? "phases.caparazonIdle" : `phases.${v.enemyPhase}`) : t("finished")} alternatives={[...(["idle", "windup", "guard", "stagger", "vulnerable"] as const).map(p => t(`phases.${p}`)), t("phases.caparazonIdle"), t("finished")]} /></p>
           <p aria-hidden="true" className={`mt-1 text-xs tabular-nums ${active && (v.enemyPhase === "windup" || v.enemyPhase === "guard") ? "" : "invisible"}`}>{t("phaseTime", { seconds: phaseSeconds })}</p>
         </div>
         <p role="status" aria-atomic="true" className="pt-2 text-center text-sm tabular-nums" data-testid="skill-feedback"><ReservedText text={lastSkill ? t(`feedback.${lastSkill.effect}`, { damage: lastSkill.damage }) : ""} alternatives={(["interrupt", "hit", "wasted", "vulnerable"] as const).map(effect => t(`feedback.${effect}`, { damage: v.enemyHpMax }))} /></p>
         <p data-testid="training-tick" className="text-center text-xs text-muted-foreground">{t("time", { seconds: (v.tick / 10).toFixed(1) })}{phase === "replaying" ? ` · ${t("replaying")}` : ""}</p>
       </div>
-      {active && <div className="flex flex-col gap-3">
-        <p id="training-skill-help" className="text-sm text-muted-foreground">{t("skillHelp", { seconds: RULESET.pet.skillCooldown * RULESET.tickMs / 1000, normal: RULESET.pet.skillIdleMul, interrupt: RULESET.pet.skillInterruptMul })}</p>
-        <button ref={skillButton} aria-describedby="training-skill-help" className={buttonVariants("primary", "tabular-nums")} disabled={phase !== "playing" || session.paused || session.hidden || session.ultiOpen || cooldown > 0 || queued} onClick={() => { session.skill(); refresh(); }}><ReservedText text={t(queued ? "queued" : cooldown ? "cooldown" : "skill", { seconds: (cooldown * RULESET.tickMs / 1000).toFixed(1) })} alternatives={[t("skill"), t("queued"), t("cooldown", { seconds: (RULESET.pet.skillCooldown * RULESET.tickMs / 1000).toFixed(1) })]} /></button>
-        <progress className="h-2 w-full accent-accent" max={RULESET.pet.skillCooldown} value={RULESET.pet.skillCooldown - cooldown} aria-label={t("recharge")} />
-        {Number.isFinite(v.ultiReadyAt) && <>
-          <button ref={ultiButton} className={button} disabled={phase !== "playing" || session.hidden || session.ultiOpen || v.ultiUsed || ultiCooldown > 0 || queued} onClick={() => { session.openUlti(); refresh(); }}><ReservedText text={t(v.ultiUsed ? "ulti.used" : ultiCooldown ? "ulti.charging" : "ulti.ready", { seconds: (ultiCooldown / 10).toFixed(1) })} alternatives={[t("ulti.used"),t("ulti.ready"),t("ulti.charging",{seconds:"12.0"})]} /></button>
-          <progress className="h-2 w-full accent-accent" max={v.ultiReadyAt} value={v.ultiReadyAt - ultiCooldown} aria-label={t("ulti.recharge")} />
-          <p className="text-sm tabular-nums">{t("ulti.shield", { value: v.shield })}</p>
-          <p role="status" className="text-sm"><ReservedText text={lastUlti ? t("ulti.feedback", { damage:lastUlti.damage, shield:lastUlti.shield }) : ""} alternatives={[t("ulti.feedback",{damage:v.enemyHpMax,shield:v.petHpMax})]} /></p>
-        </>}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button ref={pauseButton} className={button} aria-pressed={session.paused} disabled={session.ultiOpen} onClick={() => { session.togglePause(); refresh(); }}>{t(session.paused ? "resume" : "pause")}</button>
+      {active && <div className={styles.controls}>
+        <div className={styles.actions}>
+          <div className={styles.action}>
+            <button ref={skillButton} aria-label={t(queued ? "queued" : cooldown ? "cooldown" : "skill", { seconds: (cooldown * RULESET.tickMs / 1000).toFixed(1) })} aria-describedby="training-skill-summary" className={styles.actionButton} disabled={phase !== "playing" || session.paused || session.hidden || session.ultiOpen || cooldown > 0 || queued} onClick={() => { session.skill(); refresh(); }}>
+              <Swords width={23} height={23} aria-hidden="true" /><strong>{t("skillTitle")}</strong><ReservedText text={t(queued ? "actionQueued" : cooldown ? "actionCooldown" : "actionReady", { seconds: (cooldown / 10).toFixed(1) })} alternatives={[t("actionReady"), t("actionQueued"), t("actionCooldown", { seconds: "6.0" })]} />
+            </button>
+            <progress className={styles.actionProgress} max={RULESET.pet.skillCooldown} value={RULESET.pet.skillCooldown - cooldown} aria-label={t("recharge")} />
+          </div>
+          {Number.isFinite(v.ultiReadyAt) && <div className={styles.action} data-ultimate="true" data-ready={!v.ultiUsed && ultiCooldown === 0}>
+            <button ref={ultiButton} aria-label={t(v.ultiUsed ? "ulti.used" : ultiCooldown ? "ulti.charging" : "ulti.ready", { seconds: (ultiCooldown / 10).toFixed(1) })} aria-describedby="training-ulti-summary" className={styles.actionButton} disabled={phase !== "playing" || session.hidden || session.ultiOpen || v.ultiUsed || ultiCooldown > 0 || queued} onClick={() => { session.openUlti(); refresh(); }}>
+              <Sparkles width={23} height={23} aria-hidden="true" /><strong>{t("ulti.shortTitle")}</strong><ReservedText text={t(v.ultiUsed ? "ulti.shortUsed" : ultiCooldown ? "actionCooldown" : "ulti.shortReady", { seconds: (ultiCooldown / 10).toFixed(1) })} alternatives={[t("ulti.shortUsed"), t("ulti.shortReady"), t("actionCooldown", { seconds: "12.0" })]} />
+            </button>
+            <progress className={styles.actionProgress} max={v.ultiReadyAt} value={v.ultiReadyAt - ultiCooldown} aria-label={t("ulti.recharge")} />
+          </div>}
+        </div>
+        <div className={styles.actionHints}><p id="training-skill-summary">{t("skillSummary")}</p>{Number.isFinite(v.ultiReadyAt) && <p id="training-ulti-summary">{t("ulti.summary")}</p>}</div>
+        {Number.isFinite(v.ultiReadyAt) && <div className={styles.ultiOutcome}>
+          <span className={styles.shield}><Shield width={15} height={15} aria-hidden="true" />{t("ulti.shield", { value: v.shield })}</span>
+          <p role="status"><ReservedText text={lastUlti ? t("ulti.feedback", { damage:lastUlti.damage, shield:lastUlti.shield }) : t("ulti.awaiting")} alternatives={[t("ulti.feedback",{damage:v.enemyHpMax,shield:v.petHpMax}), t("ulti.awaiting")]} /></p>
+        </div>}
+        <div className={styles.playback}>
+          <button ref={pauseButton} className={button} aria-pressed={session.paused} disabled={session.ultiOpen} onClick={() => { session.togglePause(); refresh(); }}>{session.paused ? <Play width={14} height={14} aria-hidden="true" /> : <Pause width={14} height={14} aria-hidden="true" />}{t(session.paused ? "resume" : "pause")}</button>
           <label className="flex items-center gap-2 text-sm">{t("speed")}<select className="rounded border border-border bg-surface px-2 py-2" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[0.5, 1, 2].map(n => <option key={n} value={n}>{n}×</option>)}</select></label>
         </div>
         {(session.paused || session.hidden) && <p role="status" className="text-sm text-muted-foreground">{t("paused")}</p>}
         {session.ultiOpen && session.battle && <UltiPuzzle seed={session.battle.seed} tick={v.tick} onCancel={() => { session.cancelUlti(); restoreFocus.current = "ulti"; refresh(); }} onConfirm={order => { if (session.confirmUlti(order)) restoreFocus.current = "skill"; refresh(); }} />}
+        <details className={styles.help}><summary>{t("helpTitle")}</summary><p id="training-skill-help">{t("skillHelp", { seconds: RULESET.pet.skillCooldown * RULESET.tickMs / 1000, normal: RULESET.pet.skillIdleMul, interrupt: RULESET.pet.skillInterruptMul })}</p>{Number.isFinite(v.ultiReadyAt) && <p>{t("ulti.help")}</p>}</details>
       </div>}
     </>}
     {phase === "resolving" && <p role="status">{t("resolving")}</p>}
@@ -141,7 +154,7 @@ function ReservedText({ text, alternatives }: { text: string; alternatives: stri
   </span>;
 }
 
-function Health({ label, value, max }: { label: string; value: number; max: number }) {
-  return <div className="min-w-0 space-y-1"><p className="truncate text-sm font-medium">{label}</p><progress className="h-3 w-full accent-accent" aria-label={label} value={value} max={max} /><p className="text-xs tabular-nums text-muted-foreground">{value} / {max}</p></div>;
+function Health({ label, value, max, rival = false }: { label: string; value: number; max: number; rival?: boolean }) {
+  return <div className={styles.health} data-rival={rival}><p className="truncate text-sm font-medium">{label}</p><progress aria-label={label} value={value} max={max} /><p className={styles.healthValue}><Heart width={11} height={11} aria-hidden="true" />{value}<span>/ {max}</span></p></div>;
 }
 
