@@ -3223,9 +3223,16 @@
       "finished": "Combate terminado",
       "time": "{seconds} s",
       "replaying": "Repetición",
-      "skill": "Habilidad",
-      "queued": "Habilidad preparada",
-      "cooldown": "Habilidad en {seconds} s",
+      "skill": "Golpe interruptor · Usar habilidad",
+      "queued": "Golpe interruptor · Preparado",
+      "cooldown": "Golpe interruptor · Recarga: {seconds} s",
+      "skillHelp": "La habilidad se activa al pulsar, nunca sola. Causa ×{normal} el daño de un ataque básico, o ×{interrupt} si interrumpes una carga. Después recarga durante {seconds} s de combate: no hace falta gastarla en cuanto esté lista.",
+      "phaseTime": "Termina en {seconds} s de combate",
+      "feedback": {
+        "interrupt": "Última habilidad: ¡carga interrumpida! Has evitado ese ataque y causado {damage} de daño.",
+        "hit": "Última habilidad: {damage} de daño. No había una carga que interrumpir.",
+        "wasted": "Última habilidad: bloqueada por la guardia. No has causado daño y has recibido un contraataque."
+      },
       "recharge": "Recarga de habilidad",
       "resume": "Continuar",
       "pause": "Pausar",
@@ -3238,9 +3245,9 @@
       "repeat": "Nuevo combate",
       "log": "Detalle del combate",
       "phases": {
-        "idle": "El brote se prepara para su siguiente movimiento.",
-        "windup": "¡Está cargando un ataque! Puedes interrumpirlo con tu habilidad.",
-        "guard": "¡Está en guardia! Usar la habilidad ahora te hará daño.",
+        "idle": "Sin amenaza anunciada · Puedes guardar la habilidad para la próxima carga.",
+        "windup": "¡Carga en preparación! Usa Golpe interruptor para detenerla si está listo.",
+        "guard": "Guardia · Espera: tu habilidad fallaría y recibirías un contraataque.",
         "stagger": "¡Interrumpido! El brote está aturdido."
       },
       "outcomes": {

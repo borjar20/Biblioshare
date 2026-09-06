@@ -66,7 +66,10 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     await panel.screenshot({ path: ".superpowers/r2-training-desktop.png" });
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
     await panel.getByRole("button", { name: "Continuar", exact: true }).click();
-    await panel.getByRole("button", { name: /^Habilidad/ }).click();
+    await panel.getByRole("button", { name: /Golpe interruptor.*Usar habilidad/ }).click();
+    await expect(panel.getByText(/La habilidad se activa al pulsar, nunca sola/)).toBeVisible();
+    await expect(panel.getByRole("button", { name: /Golpe interruptor · Recarga:/ })).toBeDisabled();
+    await expect(panel.getByTestId("skill-feedback")).toContainText("Última habilidad:");
     const resolveRequest = page.waitForRequest(r => r.headers()["next-action"] !== startAction && Boolean(r.headers()["next-action"]) && r.method() === "POST", { timeout: 45_000 });
     const resolve = await resolveRequest;
     const resolveAction = resolve.headers()["next-action"];
