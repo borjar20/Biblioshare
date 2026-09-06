@@ -26,9 +26,9 @@ colors:
   status-completed: "#5c7052"
   status-dropped: "#b0492f"
   status-planned-ink: "#685b46"
-  status-in-progress-ink: "#80530d"
+  status-in-progress-ink: "#714a0c"
   status-completed-ink: "#4b5e41"
-  status-dropped-ink: "#933b27"
+  status-dropped-ink: "#8a3724"
   type-book: "#a15a34"
   type-movie: "#3f6b6e"
   type-series: "#7a5676"
@@ -200,9 +200,9 @@ declara los mismos valores que `.dark`.
 | Tinta | Claro | Oscuro explícito y del sistema |
 |---|---|---|
 | `status-planned-ink` | `#685b46` | `#b9ab98` |
-| `status-in-progress-ink` | `#80530d` | `#e0a94a` |
+| `status-in-progress-ink` | `#714a0c` | `#e0a94a` |
 | `status-completed-ink` | `#4b5e41` | `#9fb68f` |
-| `status-dropped-ink` | `#933b27` | `#e0907a` |
+| `status-dropped-ink` | `#8a3724` | `#efa48e` |
 
 Las tarjetas de biblioteca, tanto en Colección como en el perfil público, muestran
 siempre la etiqueta de estado con la variante `overlay`: el color no es su única señal.

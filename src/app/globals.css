@@ -104,9 +104,9 @@
   --status-dropped: #b0492f;
   /* Text inks (#892); chart and dot colors stay independent. */
   --status-planned-ink: #685b46;
-  --status-in-progress-ink: #80530d;
+  --status-in-progress-ink: #714a0c;
   --status-completed-ink: #4b5e41;
-  --status-dropped-ink: #933b27;
+  --status-dropped-ink: #8a3724;
 
   --type-book: #a15a34;
   --type-movie: #3f6b6e;
@@ -222,7 +222,7 @@
   --status-planned-ink: #b9ab98;
   --status-in-progress-ink: #e0a94a;
   --status-completed-ink: #9fb68f;
-  --status-dropped-ink: #e0907a;
+  --status-dropped-ink: #efa48e;
 
   --type-book: #cf8a54;
   --type-movie: #6bb0b4;
@@ -296,7 +296,7 @@
     --status-planned-ink: #b9ab98;
     --status-in-progress-ink: #e0a94a;
     --status-completed-ink: #9fb68f;
-    --status-dropped-ink: #e0907a;
+    --status-dropped-ink: #efa48e;
 
     --type-book: #cf8a54;
     --type-movie: #6bb0b4;

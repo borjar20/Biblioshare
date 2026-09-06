@@ -28,7 +28,8 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
       await rest(`profiles?user_id=eq.${user.id}`, "PATCH", { onboarded_at: new Date().toISOString() });
       const books = await rest("books", "POST", titles.map((title) => ({ title }))) as Array<{ id: string }>;
       await rest("passes", "POST", books.map((book, i) => ({ user_id: user.id, item_type: "book", item_id: book.id,
-        status: statuses[i], is_active: true, is_public: true })));
+        status: statuses[i], finished_on: i >= 2 ? new Date().toISOString().slice(0, 10) : null,
+        is_active: true, is_public: true })));
       await page.goto("/login");
       await page.locator('input[name="email"]').fill(user.email);
       await page.locator('input[name="password"]').fill(user.password);
@@ -87,14 +88,14 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
             probes.forEach(probe => probe.parentElement!.remove());
             return result;
           });
+          await testInfo.attach(`contrast-${target}-${theme}-${width}`, { body: JSON.stringify(measurements), contentType: "application/json" });
           for (const measurement of measurements) {
             expect(measurement.text).toBeTruthy();
             expect(measurement.role).not.toBe("img");
-            expect(measurement.ratio).toBeGreaterThanOrEqual(4.5);
+            expect.soft(measurement.ratio, `${target}/${theme}/${width}: ${measurement.text}`).toBeGreaterThanOrEqual(4.5);
             expect(measurement.clipped).toBe(false);
           }
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-          await testInfo.attach(`contrast-${target}-${theme}-${width}`, { body: JSON.stringify(measurements), contentType: "application/json" });
           await page.screenshot({ path: testInfo.outputPath(`${target}-${theme}-${width}.png`), fullPage: true });
         }
       }

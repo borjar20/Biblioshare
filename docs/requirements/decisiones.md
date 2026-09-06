@@ -4220,3 +4220,12 @@ verifican sobre background, surface, surface-muted y surface-3 en los tres bloqu
 de tema. Los colores de gráficos y puntos permanecen separados de esas tintas.
 Se migran los textos de éxito, estadísticas, cambios de nota y autoría; los
 mensajes de error sobre surface mantienen su color existente, ya contrastado.
+
+## 2026-09-06 — Contraste de tintas sobre fondos semitransparentes (#1105)
+
+La comprobación en navegador detectó ratios entre 4,31 y 4,49 en combinaciones
+con fondos de estado al 10 % sobre surface-3. Se oscurecen las tintas oro y roja
+en claro y se aclara la roja en oscuro, incluido el tema del sistema.
+El E2E mide las clases CSS compiladas sobre las cuatro superficies, además de
+las etiquetas reales de colección propia y perfil público: cuatro estados,
+tres temas y dos anchos. Todas las combinaciones comprobadas alcanzan 4,5:1.
