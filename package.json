@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:batches": "node scripts/e2e-batches.mjs",
-    "test:e2e:club": "node scripts/e2e-batches.mjs club-"
+    "test:e2e:club": "node scripts/e2e-batches.mjs club-",
+    "pet:battle": "tsx scripts/pet-battle/simulate.ts"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",
@@ -51,6 +52,7 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }
