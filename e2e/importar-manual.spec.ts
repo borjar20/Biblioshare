@@ -12,7 +12,8 @@ test("alta manual directa y cola de otro usuario usan la RPC de catálogo", asyn
     const response = await fetch(`${url}/rest/v1/${path}`, { method, headers,
       body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15_000) });
     expect(response.ok, `${method} ${path}: HTTP ${response.status}`).toBe(true);
-    return response.status === 204 ? null : response.json();
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
   }
   const suffix = Date.now().toString(36);
   const directTitle = `E2E926-direct-${suffix}`;
@@ -31,7 +32,7 @@ test("alta manual directa y cola de otro usuario usan la RPC de catálogo", asyn
       await cleanup();
       await rest(`profiles?user_id=eq.${reviewer.id}`, "PATCH", { role: "collaborator", onboarded_at: new Date().toISOString() });
       await rest(`profiles?user_id=eq.${owner.id}`, "PATCH", { onboarded_at: new Date().toISOString() });
-      await rest("pending_import_rows", "POST", { user_id: owner.id, item_type: "book", title: pendingTitle,
+      await rest("pending_import_rows", "POST", { user_id: owner.id, item_type: "book",
         payload: { rowNumber: 1, title: pendingTitle, author: "QA Author", year: 2000, isbn: null,
           publisher: null, pageCount: 100, status: "planned", rating: null, bookFormat: null,
           diaryDates: [], unknownStatusLabel: null } });

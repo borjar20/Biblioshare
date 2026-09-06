@@ -23,7 +23,7 @@ beforeEach(() => {
   state.role = "collaborator";
   state.rpcError = null;
   passes = [];
-  rpc = vi.fn(async (name: string, _args: Record<string, unknown>) => ({ data: name === "register_manual_catalog_item" ? "catalog-id" : null, error: state.rpcError }));
+  rpc = vi.fn(async (name: string) => ({ data: name === "register_manual_catalog_item" ? "catalog-id" : null, error: state.rpcError }));
   state.client = {
     auth: { getUser: async () => ({ data: { user: { id: "reviewer" } } }) }, rpc,
     from: (table: string) => {
