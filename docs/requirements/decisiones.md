@@ -4026,3 +4026,46 @@ fallaba desde cero (#1089). La prueba SQL determina el orden, no el nombre del a
 bootstrap vacío con una aserción de ausencia de sagas; no se fabrican UUID de producción.
 Esta receta verifica el esquema local, no equivalencia con datos/configuración remotos. Las
 pruebas E2E específicas siguen siendo necesarias. Receta: `docs/testing/supabase-local.md`.
+## 2026-09-06 — Mascota R1: contratos del combate cerrados en código
+
+**Decisión.** Los contratos de R1 (Parte II) se cierran como código con tests, no como
+prosa: motor puro en `src/lib/pet/battle/`, ejemplo normativo congelado
+(`__fixtures__/normative.json`), CLI `npm run pet:battle` y test de autoridad e2e. La
+spec `2026-09-06-mascota-r1-contratos-combate-design.md` cita esos artefactos.
+
+**Lo que fija y por qué.**
+- PRNG xoshiro128** con orden de tiradas documentado; seed de 128 bits del servidor.
+- Reloj de 100 ms, 600 ticks; orden de resolución por tick normativo (transiciones →
+  inputs → básica mascota → básica enemigo → límite). Un KO corta el tick.
+- Log de inputs `(seq, tick, action, payload)` validado en servidor; un input tras el fin
+  invalida el log. Los eventos no se guardan: se re-simulan.
+- Digest = sha256 del JSON canónico de registro + eventos, sin el digest dentro (#1081 R5).
+- Poder de combate = suma de atributos sin bonus de clase; el nivel visible no se toca
+  (#1081 R6). En R2 la clase no altera stats: identidad de clase = R6.
+- Enemigo medido contra la mascota (vida en múltiplos de atk, golpes en % de vida): la
+  decisión gana en todos los tramos y la calibración lo comprueba con seis perfiles.
+- `pet_battles` sin grants de escritura para el cliente; escribe service_role (#1081 R1);
+  `intent_id` único por usuario (#1081 R4).
+
+**Qué sustituye.** Los §3–§6 de la spec aparcada del 2026-09-04 (stats por atributo,
+actitudes, técnicas por clase, HMAC del seed, INSERT propio).
+
+**Consecuencia.** R2 no diseña: implementa. Cambiar un número de `content.ts` exige subir
+`RULESET.version` y regenerar el ejemplo normativo; el test lo recuerda.
+
+## 2026-09-06 — R5: conservar motor y contenido para replays históricos
+
+**Decisión.** Se conserva cada versión publicada en `src/lib/pet/battle/versions/`,
+incluyendo sus dependencias de ejecución y su ejemplo normativo. `replayBattle`
+selecciona por versión y hash exactos; una identidad desconocida se rechaza.
+La API actual reexporta `r2.2`, sin duplicar una segunda implementación activa.
+
+**Por qué.** Un hash identifica contenido pero no lo conserva. El requisito R5
+de #1081 exige re-simular después de cambiar reglas o balance; conservar solo
+eventos tampoco prueba que el motor reproduzca el resultado.
+
+**Consecuencia.** Nuevos cambios de comportamiento añaden otra versión y otra
+entrada al registro. Las anteriores no se regeneran. No cambia el digest ni el
+esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
+Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
+del combate histórico junto a una versión posterior con otro balance.

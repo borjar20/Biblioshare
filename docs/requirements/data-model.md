@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-09-03 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3813,6 +3813,28 @@ que en dev → `1 | true | 1 | 0 | false | true | 1`, más `secrets = 2` (los do
 cron de clubes) y `pet_nudges` vacía. El job `pet-nudges` está activo; el primer barrido real es a las
 20:00 de Madrid del mismo día y se comprueba en `pet_nudges` y en `net._http_response` (un 200 de
 `/api/cron/pet-nudges`; «sin filas» solo es éxito si hay 200).
+
+### 8bis.5. `pet_battles` (dev y **prod**, 2026-09-06)
+
+Mascota R1 (spec `docs/superpowers/specs/2026-09-06-mascota-r1-contratos-combate-design.md`,
+issue #1081). Migración `supabase/migrations/20260907_pet_battles.sql`. Un combate es un
+**hecho**: `seed` (32 hex), `snapshot` (jsonb inmutable de la mascota), `ruleset_version`,
+`content_hash`, `inputs` (jsonb, el log `(seq, tick, action, payload)`), `result` (jsonb) y
+`digest` (sha256 del registro más los eventos re-simulados). **Los eventos no se guardan**:
+se derivan re-simulando. `intent_id` + `unique (user_id, intent_id)` = idempotencia por
+intención (#1081 R4). `status` `open` → `resolved` con CHECK de coherencia. `kind` texto
+sin CHECK (`training` hoy).
+
+**RLS** activa, **una** política: `select` propio para `authenticated`. **Sin**
+insert/update/delete para `authenticated` ni `anon`: escribe solo el servidor con
+`service_role` tras re-simular (contrato C1). Como `pet_nudges`, **no aparece en la
+superficie 6 de `DRIFT-CHECK.md`** (solo mira tablas donde `authenticated` tiene algún
+grant de escritura); se anota aquí con su control. Verificación en dev y en **prod** (las dos
+el 2026-09-06; prod justo después de mergear la PR #1088) contra objetos reales, con la misma
+fila en ambos: `true | 1 | true | false | false | false | false | true | 1` (RLS, políticas,
+select/insert/update/delete de `authenticated`, select de `anon`, insert de `service_role`,
+índice) y 15 columnas. Aditiva pura: nada en `main` escribe en la tabla hasta R2. El e2e
+`e2e/mascota-batallas-autoridad.spec.ts` lo comprueba desde PostgREST contra dev.
 
 ## 9. Seguridad
 

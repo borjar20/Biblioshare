@@ -19,6 +19,9 @@
     "db:baseline": "node scripts/db/bootstrap.mjs --baseline",
     "test:db:bootstrap": "node --test scripts/db/bootstrap.test.mjs",
     "test:db:local": "node scripts/db/verify.mjs"
+    "pet:battle": "tsx scripts/pet-battle/simulate.ts",
+    "test:pet:battle": "vitest run src/lib/pet/battle --maxWorkers=1 --no-file-parallelism && node --import tsx --test scripts/pet-battle/simulate.test.ts e2e/support/battle-users.test.ts",
+    "test:e2e:pet:local": "playwright test --config playwright.pet-local.config.ts"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",
@@ -55,6 +58,7 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

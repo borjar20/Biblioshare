@@ -1,0 +1,565 @@
+{
+  "seedIndex": 1,
+  "record": {
+    "rulesetVersion": "r2.2",
+    "contentHash": "2c40a90c9f141ffd2eda8241c83eb8859a712dbe4606798b56b90fb056b159d3",
+    "enemyId": "brote",
+    "seed": "5e2d177214e498f0d20ea1fdb382f339",
+    "snapshot": {
+      "name": "Lectora de libros largos",
+      "petClass": "wizard",
+      "stage": "adult",
+      "attributes": {
+        "FUE": 400,
+        "CON": 1120,
+        "INT": 390,
+        "SAB": 290,
+        "CAR": 21,
+        "DES": 90
+      },
+      "tier": 13,
+      "hpMax": 230,
+      "atk": 34
+    },
+    "inputs": [
+      {
+        "seq": 0,
+        "tick": 22,
+        "action": "skill",
+        "payload": {}
+      },
+      {
+        "seq": 1,
+        "tick": 137,
+        "action": "skill",
+        "payload": {}
+      },
+      {
+        "seq": 2,
+        "tick": 197,
+        "action": "skill",
+        "payload": {}
+      },
+      {
+        "seq": 3,
+        "tick": 362,
+        "action": "skill",
+        "payload": {}
+      }
+    ],
+    "result": {
+      "outcome": "win",
+      "reason": "ko",
+      "ticks": 450,
+      "petHp": 57,
+      "petHpMax": 230,
+      "enemyHp": 0,
+      "enemyHpMax": 1428,
+      "damageDealt": 1428,
+      "damageTaken": 173,
+      "causes": [
+        "charges_interrupted"
+      ]
+    }
+  },
+  "events": [
+    {
+      "seq": 0,
+      "tick": 0,
+      "type": "BATTLE_STARTED",
+      "petHp": 230,
+      "enemyHp": 1428
+    },
+    {
+      "seq": 1,
+      "tick": 15,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1394,
+      "guarded": false
+    },
+    {
+      "seq": 2,
+      "tick": 20,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 221
+    },
+    {
+      "seq": 3,
+      "tick": 21,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "charge",
+      "resolvesAt": 36
+    },
+    {
+      "seq": 4,
+      "tick": 22,
+      "type": "SKILL_USED",
+      "effect": "interrupt",
+      "damage": 136,
+      "enemyHp": 1258,
+      "petHp": 221
+    },
+    {
+      "seq": 5,
+      "tick": 22,
+      "type": "STATUS_APPLIED",
+      "status": "stagger",
+      "until": 42
+    },
+    {
+      "seq": 6,
+      "tick": 30,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1224,
+      "guarded": false
+    },
+    {
+      "seq": 7,
+      "tick": 42,
+      "type": "STATUS_EXPIRED",
+      "status": "stagger"
+    },
+    {
+      "seq": 8,
+      "tick": 45,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1190,
+      "guarded": false
+    },
+    {
+      "seq": 9,
+      "tick": 60,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1156,
+      "guarded": false
+    },
+    {
+      "seq": 10,
+      "tick": 62,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 212
+    },
+    {
+      "seq": 11,
+      "tick": 75,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1122,
+      "guarded": false
+    },
+    {
+      "seq": 12,
+      "tick": 79,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "guard",
+      "resolvesAt": 104
+    },
+    {
+      "seq": 13,
+      "tick": 90,
+      "type": "PET_BASIC",
+      "damage": 8,
+      "enemyHp": 1114,
+      "guarded": true
+    },
+    {
+      "seq": 14,
+      "tick": 104,
+      "type": "TELEGRAPH_RESOLVED",
+      "kind": "guard",
+      "damage": 0,
+      "petHp": 212
+    },
+    {
+      "seq": 15,
+      "tick": 105,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1080,
+      "guarded": false
+    },
+    {
+      "seq": 16,
+      "tick": 120,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1046,
+      "guarded": false
+    },
+    {
+      "seq": 17,
+      "tick": 124,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 203
+    },
+    {
+      "seq": 18,
+      "tick": 135,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 1012,
+      "guarded": false
+    },
+    {
+      "seq": 19,
+      "tick": 136,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "charge",
+      "resolvesAt": 151
+    },
+    {
+      "seq": 20,
+      "tick": 137,
+      "type": "SKILL_USED",
+      "effect": "interrupt",
+      "damage": 136,
+      "enemyHp": 876,
+      "petHp": 203
+    },
+    {
+      "seq": 21,
+      "tick": 137,
+      "type": "STATUS_APPLIED",
+      "status": "stagger",
+      "until": 157
+    },
+    {
+      "seq": 22,
+      "tick": 150,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 842,
+      "guarded": false
+    },
+    {
+      "seq": 23,
+      "tick": 157,
+      "type": "STATUS_EXPIRED",
+      "status": "stagger"
+    },
+    {
+      "seq": 24,
+      "tick": 165,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 808,
+      "guarded": false
+    },
+    {
+      "seq": 25,
+      "tick": 177,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 194
+    },
+    {
+      "seq": 26,
+      "tick": 180,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 774,
+      "guarded": false
+    },
+    {
+      "seq": 27,
+      "tick": 184,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "charge",
+      "resolvesAt": 199
+    },
+    {
+      "seq": 28,
+      "tick": 195,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 740,
+      "guarded": false
+    },
+    {
+      "seq": 29,
+      "tick": 197,
+      "type": "SKILL_USED",
+      "effect": "interrupt",
+      "damage": 136,
+      "enemyHp": 604,
+      "petHp": 194
+    },
+    {
+      "seq": 30,
+      "tick": 197,
+      "type": "STATUS_APPLIED",
+      "status": "stagger",
+      "until": 217
+    },
+    {
+      "seq": 31,
+      "tick": 210,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 570,
+      "guarded": false
+    },
+    {
+      "seq": 32,
+      "tick": 217,
+      "type": "STATUS_EXPIRED",
+      "status": "stagger"
+    },
+    {
+      "seq": 33,
+      "tick": 225,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 536,
+      "guarded": false
+    },
+    {
+      "seq": 34,
+      "tick": 237,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 185
+    },
+    {
+      "seq": 35,
+      "tick": 238,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "guard",
+      "resolvesAt": 263
+    },
+    {
+      "seq": 36,
+      "tick": 240,
+      "type": "PET_BASIC",
+      "damage": 8,
+      "enemyHp": 528,
+      "guarded": true
+    },
+    {
+      "seq": 37,
+      "tick": 255,
+      "type": "PET_BASIC",
+      "damage": 8,
+      "enemyHp": 520,
+      "guarded": true
+    },
+    {
+      "seq": 38,
+      "tick": 263,
+      "type": "TELEGRAPH_RESOLVED",
+      "kind": "guard",
+      "damage": 0,
+      "petHp": 185
+    },
+    {
+      "seq": 39,
+      "tick": 270,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 486,
+      "guarded": false
+    },
+    {
+      "seq": 40,
+      "tick": 283,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 176
+    },
+    {
+      "seq": 41,
+      "tick": 285,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 452,
+      "guarded": false
+    },
+    {
+      "seq": 42,
+      "tick": 298,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "guard",
+      "resolvesAt": 323
+    },
+    {
+      "seq": 43,
+      "tick": 300,
+      "type": "PET_BASIC",
+      "damage": 8,
+      "enemyHp": 444,
+      "guarded": true
+    },
+    {
+      "seq": 44,
+      "tick": 315,
+      "type": "PET_BASIC",
+      "damage": 8,
+      "enemyHp": 436,
+      "guarded": true
+    },
+    {
+      "seq": 45,
+      "tick": 323,
+      "type": "TELEGRAPH_RESOLVED",
+      "kind": "guard",
+      "damage": 0,
+      "petHp": 176
+    },
+    {
+      "seq": 46,
+      "tick": 330,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 402,
+      "guarded": false
+    },
+    {
+      "seq": 47,
+      "tick": 343,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 167
+    },
+    {
+      "seq": 48,
+      "tick": 345,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 368,
+      "guarded": false
+    },
+    {
+      "seq": 49,
+      "tick": 360,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 334,
+      "guarded": false
+    },
+    {
+      "seq": 50,
+      "tick": 361,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "charge",
+      "resolvesAt": 376
+    },
+    {
+      "seq": 51,
+      "tick": 362,
+      "type": "SKILL_USED",
+      "effect": "interrupt",
+      "damage": 136,
+      "enemyHp": 198,
+      "petHp": 167
+    },
+    {
+      "seq": 52,
+      "tick": 362,
+      "type": "STATUS_APPLIED",
+      "status": "stagger",
+      "until": 382
+    },
+    {
+      "seq": 53,
+      "tick": 375,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 164,
+      "guarded": false
+    },
+    {
+      "seq": 54,
+      "tick": 382,
+      "type": "STATUS_EXPIRED",
+      "status": "stagger"
+    },
+    {
+      "seq": 55,
+      "tick": 390,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 130,
+      "guarded": false
+    },
+    {
+      "seq": 56,
+      "tick": 402,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 158
+    },
+    {
+      "seq": 57,
+      "tick": 404,
+      "type": "TELEGRAPH_STARTED",
+      "kind": "charge",
+      "resolvesAt": 419
+    },
+    {
+      "seq": 58,
+      "tick": 405,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 96,
+      "guarded": false
+    },
+    {
+      "seq": 59,
+      "tick": 419,
+      "type": "TELEGRAPH_RESOLVED",
+      "kind": "charge",
+      "damage": 92,
+      "petHp": 66
+    },
+    {
+      "seq": 60,
+      "tick": 420,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 62,
+      "guarded": false
+    },
+    {
+      "seq": 61,
+      "tick": 435,
+      "type": "PET_BASIC",
+      "damage": 34,
+      "enemyHp": 28,
+      "guarded": false
+    },
+    {
+      "seq": 62,
+      "tick": 439,
+      "type": "ENEMY_BASIC",
+      "damage": 9,
+      "petHp": 57
+    },
+    {
+      "seq": 63,
+      "tick": 450,
+      "type": "PET_BASIC",
+      "damage": 28,
+      "enemyHp": 0,
+      "guarded": false
+    },
+    {
+      "seq": 64,
+      "tick": 450,
+      "type": "BATTLE_ENDED",
+      "outcome": "win",
+      "reason": "ko",
+      "petHp": 57,
+      "enemyHp": 0
+    }
+  ],
+  "digest": "f6ce51cc44715bc87b317ae1d5fc49fc8f04df904d5fdcf3d85d15cf3310ac8a",
+  "canonicalHead": "{\"contentHash\":\"2c40a90c9f141ffd2eda8241c83eb8859a712dbe4606798b56b90fb056b159d3\",\"enemyId\":\"brote\",\"events\":[{\"enemyHp\":1428,\"petHp\":230,\"seq\":0,\"tick\":0,\"type\":\"BATTLE_STARTED\"},{\"damage\":34,\"enemyHp\":1394,\"guarded\":false,\"seq\":1,\"tick\":1",
+  "canonicalLength": 5961
+}
