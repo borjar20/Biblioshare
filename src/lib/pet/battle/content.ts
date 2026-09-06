@@ -6,13 +6,13 @@ import { sha256Hex } from "./hash";
 import type { EnemyDef, Ruleset } from "./types";
 
 export const RULESET: Ruleset = {
-  version: "r2.1",
+  version: "r2.2",
   tickMs: 100,
   maxTicks: 600,
   maxInputs: 64,
   pet: {
     basicInterval: 15,
-    skillCooldown: 90,
+    skillCooldown: 60,
     skillIdleMul: 2,
     skillInterruptMul: 4,
     guardBasicDiv: 4,
