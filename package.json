@@ -14,7 +14,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:batches": "node scripts/e2e-batches.mjs",
-    "test:e2e:club": "node scripts/e2e-batches.mjs club-"
+    "test:e2e:club": "node scripts/e2e-batches.mjs club-",
+    "db:local:prepare": "node scripts/db/bootstrap.mjs",
+    "db:baseline": "node scripts/db/bootstrap.mjs --baseline",
+    "test:db:bootstrap": "node --test scripts/db/bootstrap.test.mjs",
+    "test:db:local": "node scripts/db/verify.mjs"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",
