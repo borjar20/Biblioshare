@@ -1,0 +1,36 @@
+name: Supabase bootstrap
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'scripts/db/**'
+      - 'package.json'
+      - '.github/workflows/supabase-bootstrap.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'scripts/db/**'
+      - 'package.json'
+      - '.github/workflows/supabase-bootstrap.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  empty-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3
+        with:
+          version: '2.116.0'
+      - run: npm run test:db:bootstrap
+      - run: npm run db:local:prepare
+      - run: supabase --workdir .superpowers/supabase-local start --exclude studio,postgres-meta,imgproxy,edge-runtime,logflare,vector,supavisor,realtime
+      - run: npm run test:db:local
+      - if: always()
+        run: supabase --workdir .superpowers/supabase-local stop --no-backup

@@ -21,6 +21,8 @@
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
 
+> **Bootstrap local, 2026-09-06:** el esquema inicial y las 232 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+
 ## 0. Dos renombres que invalidan la doc antigua
 
 **`diary_entries` se llama `passes` desde julio de 2026** (migración `pass_hub_c_rename`).

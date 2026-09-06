@@ -4009,6 +4009,23 @@ exactas en vez de una política en `pet_state` evita filtrar `last_level` y `com
 (#1020). Ocultar la compañera no te saca de la madriguera de los demás: intenciones distintas; un
 interruptor propio se añade si alguien lo pide. Fecha del hash en UTC: solo ordena.
 
+## 2026-09-06 — Bootstrap local desde las fuentes SQL (#1089, #849)
+
+**Decisión.** Sustituir la copia manual de `schema-baseline.sql` por una entrada generada
+para psql: esquema inicial recuperado + manifiesto exhaustivo de migraciones. Supabase CLI
+materializa esas mismas fuentes con versiones ordinales solo locales; no altera el ledger
+remoto ni los ficheros históricos. El generador detecta omisiones, duplicados y cambios de
+fuentes sobre una instancia ya preparada. CI reconstruye una base vacía con Node 22 y CLI
+2.116.0 y verifica estructura y privilegios.
+
+**Motivo.** Los nombres históricos tienen versiones duplicadas y fechas que contradicen las
+dependencias. La copia manual omitía cambios (#849); aplicar el directorio sin esquema inicial
+fallaba desde cero (#1089). La prueba SQL determina el orden, no el nombre del archivo.
+
+**Límite.** La migración de datos `20260728_migrar_grafos_a_itinerarios.sql` se adapta al
+bootstrap vacío con una aserción de ausencia de sagas; no se fabrican UUID de producción.
+Esta receta verifica el esquema local, no equivalencia con datos/configuración remotos. Las
+pruebas E2E específicas siguen siendo necesarias. Receta: `docs/testing/supabase-local.md`.
 ## 2026-09-06 — Mascota R1: contratos del combate cerrados en código
 
 **Decisión.** Los contratos de R1 (Parte II) se cierran como código con tests, no como
