@@ -234,6 +234,7 @@
     "20260905_get_companion_state.sql",
     "20260906_pet_nudges.sql",
     "20260907_pet_battles.sql",
-    "20260906170958_get_burrow_pets.sql"
+    "20260906170958_get_burrow_pets.sql",
+    "20260906201847_pass_interaction_hrefs.sql"
   ]
 }

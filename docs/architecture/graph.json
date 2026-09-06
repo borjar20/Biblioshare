@@ -1065,7 +1065,7 @@
       "gotchas": [
         "NO llames a supabase.auth.getUser() en un componente de servidor: usa getCurrentUser(). auth.getUser() es una llamada de RED a /auth/v1/user, no un decode local del JWT, y AppShell ya la hace en cada ruta. Repetirla duplicaba el viaje antes del primer byte (issue #283).",
         "createClient y getCurrentUser van envueltos en cache() de React: memoizan POR PETICION, no entre peticiones. No lo uses para cachear datos entre usuarios.",
-        "src/proxy.ts hace su propio auth.getUser() y ese NO se deduplica: corre antes del render, en otro contexto. Es el que refresca el token (issue #289)."
+        "src/proxy.ts verifica con auth.getClaims() antes del render (#929). Con firma asimétrica evita /auth/v1/user; los tokens caducados y firmas simétricas todavía pueden requerir red. Conserva cookies y cabeceras anticaché también en redirects."
       ]
     },
     {
@@ -2749,7 +2749,7 @@
         "parseImportFile NO escribe en BD: devuelve las filas y el cliente conduce los lotes.",
         "Lotes de 20 filas por llamada (BATCH_SIZE), 5 filas en paralelo dentro del servidor (BATCH_CONCURRENCY). Devolver tras cada lote es lo que mantiene la invocación bajo el timeout.",
         "Tope duro de 3000 filas (MAX_ROWS).",
-        "Con más de un candidato válido el matcher devuelve `ambiguous` y NO escribe: elige el usuario en la pantalla de triaje (resolveAmbiguousImportRow). En el onboarding, sin triaje, las ambiguas van a pending_import_rows.",
+        "Películas: con más de un candidato válido el matcher devuelve `ambiguous` y NO escribe. Libros sin ISBN: verifica autoría, prefiere títulos exactos entre local y API, y sin una obra única devuelve `unmatched` para resolución manual (#923). El onboarding conserva las filas pendientes.",
         "Películas: el matcher compara contra los TRES títulos (es-ES del catálogo local, original e INGLÉS, que es el que exporta Letterboxd). Los candidatos se piden a TMDB en en-US y son de usar y tirar: la ficha en español se pide por id solo para la elegida, que es la única que se cachea.",
         "NO hay atajo por catálogo local: solo sabe lo que ya tenemos cacheado, así que no puede declarar única una película. Se consultan local y TMDB en paralelo y se decide sobre el conjunto."
       ],

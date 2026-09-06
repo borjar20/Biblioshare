@@ -87,8 +87,8 @@ describe("titleMatchesLabel", () => {
     expect(titleMatchesLabel("Words of Radiance", "Words of Radiance, Part 2")).toBe(false);
   });
 
-  it("una palabra repetida en medio SÍ casa: es un conjunto, no una secuencia", () => {
-    expect(titleMatchesLabel("La Biblioteca de Medianoche", "La biblioteca de la medianoche")).toBe(true);
+  it("una palabra repetida en medio exige revisión manual", () => {
+    expect(titleMatchesLabel("La Biblioteca de Medianoche", "La biblioteca de la medianoche")).toBe(false);
   });
 
   it("un título que normaliza a vacío no casa con nada, ni consigo mismo", () => {
@@ -105,6 +105,26 @@ describe("resolveQid", () => {
   const wor = entity("wd:Q8034469", { en: "Words of Radiance", es: "Palabras Radiantes" }, [
     "Brandon Sanderson",
   ]);
+
+  it("no propone fusionar títulos con las mismas palabras en otro orden", () => {
+    const original = book({ title: "Words of Radiance", wikidata_id: "Q8034469" });
+    const different = book({ id: "00000000-0000-0000-0000-000000000002", title: "Radiance of Words" });
+    const plan = planReconciliation([
+      { book: original, qid: original.wikidata_id },
+      { book: different, qid: resolveQid(different, [wor]) },
+    ]);
+    expect(plan).toEqual([{ book: different, qid: null, action: { kind: "sin-match" } }]);
+  });
+
+  it("no fusiona títulos mixtos cuando el normalizador ASCII pierde su diferencia", () => {
+    const first = book({ title: "Libro 天", wikidata_id: "Q1" });
+    const second = book({ id: "00000000-0000-0000-0000-000000000002", title: "Libro 水" });
+    const plan = planReconciliation([
+      { book: first, qid: first.wikidata_id },
+      { book: second, qid: resolveQid(second, [entity("wd:Q1", { es: "Libro 天" }, ["Brandon Sanderson"])]) },
+    ]);
+    expect(plan).toEqual([{ book: second, qid: null, action: { kind: "sin-match" } }]);
+  });
 
   it("casa un título en español contra el label inglés de la entidad", () => {
     expect(resolveQid({ title: "Palabras Radiantes", author: "Brandon Sanderson" }, [wor])).toBe(
@@ -197,16 +217,14 @@ describe("resolveQid", () => {
     expect(resolveQid({ title: "El Señor de los Anillos I", author: "J. R. R. Tolkien" }, [lotr])).toBeNull();
   });
 
-  it("recupera el falso negativo que motivaba dejar el título suelto", () => {
+  it("no resuelve automáticamente el antiguo falso negativo por palabras repetidas", () => {
     // «La Biblioteca de Medianoche» (alta manual, sin la segunda «la») contra el
     // label «La biblioteca de la medianoche». `isSameTitle` fallaba porque el
     // «la» extra va EN MEDIO: la contención no se cumple y el umbral del 65% ni
     // se llega a consultar (el ratio, 0.90, es irrelevante). Por conjunto de
-    // palabras es el mismo título. Ver la cabecera de `resolveQid`.
+    // palabras se aceptaba. #921 conserva la repetición y lo deja sin match.
     const medianoche = entity("wd:Q100152091", { es: "La biblioteca de la medianoche" }, ["Matt Haig"]);
-    expect(resolveQid({ title: "La Biblioteca de Medianoche", author: "Matt Haig" }, [medianoche])).toBe(
-      "Q100152091"
-    );
+    expect(resolveQid({ title: "La Biblioteca de Medianoche", author: "Matt Haig" }, [medianoche])).toBeNull();
   });
 
   it("el precio asumido: un subtítulo legítimo deja de casar, y falla del lado seguro", () => {

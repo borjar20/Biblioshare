@@ -4281,3 +4281,28 @@ sigue siendo un paso separado: sus dos funciones aún no existen y #1083 queda a
 Tras el permiso específico se aplica el SQL en producción y se verifican definiciones,
 ACL y RLS. La matriz local y los E2E de dev acreditan la implementación; la aceptación
 con dos cuentas reales de producción permanece en #1083 y no impide integrar el código.
+
+## 2026-09-06 — Coincidencia de libros y propagación de enlaces (#923, #921, #879, #929)
+
+El fallback del importador de libros verifica la autoría cuando el CSV la trae con el
+comparador de personas de #922. Evalúa catálogo local y Open Library antes de preferir
+títulos exactos, incluidos alternativos. Varias obras válidas quedan sin match automático
+y pasan por la resolución manual existente. El ISBN sigue identificando la edición.
+
+El barrido de reconciliación conserva orden y repeticiones del título normalizado y exige
+también la igualdad Unicode usada por el colapso visual. No se ensancha la búsqueda ni se
+cambia su comparador compartido. El caso «La Biblioteca de Medianoche» sin la segunda «la»
+queda para revisión: perder esa coincidencia automática es preferible a fusionar obras
+diferentes por un conjunto de palabras. #912 conserva el gate previo a ejecutar fusiones.
+
+Los href sociales siguen materializados. El trigger de pases repara sesiones y comentarios
+al cambiar la obra, incluidas respuestas (comparten target y se enlazan por parent_id).
+Se conservan audiencias, propietarios, query y anclas. Una función privada sin permisos
+API reutiliza la misma reparación para los enlaces anteriores. Los targets que ya son
+posts conservan su ruta propia. No se añaden columnas ni políticas.
+
+El proxy verifica identidad mediante getClaims, según el contrato actual de Supabase,
+y conserva cookies renovadas y cabeceras anticaché en las redirecciones. El cliente sigue
+refrescando tokens caducados; la firma simétrica aún requiere red. La autorización de
+acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
+Es una mitigación de #929, no una demostración de la causa del incidente de Auth.

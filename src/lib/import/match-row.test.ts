@@ -380,6 +380,56 @@ describe("matchBook: los títulos alternativos de una obra", () => {
     vi.mocked(searchLocalCatalog).mockResolvedValue([]);
   });
 
+  it("no asigna un libro local de otro autor aunque coincida el título", async () => {
+    localMock.mockResolvedValue([
+      sr({ itemType: "book", catalogId: "wrong-author", title: "En llamas", subtitle: "Otro Autor" }),
+    ]);
+    vi.mocked(searchWorks).mockResolvedValue([]);
+    expect(await matchImportRow(client, "book", bookRow())).toEqual({ kind: "unmatched" });
+  });
+
+  it("prefiere un título exacto de la API a un título local con sufijo", async () => {
+    localMock.mockResolvedValue([
+      sr({ itemType: "book", catalogId: "partial", title: "En llamas II", subtitle: "Suzanne Collins" }),
+    ]);
+    vi.mocked(searchWorks).mockResolvedValue([
+      sr({ itemType: "book", externalId: "/works/OL36410330W", title: "Fatta Eld", altTitles: ["En llamas"], subtitle: "Suzanne Collins" }),
+    ]);
+    expect(await matchImportRow(client, "book", bookRow())).toEqual({ kind: "matched", catalogId: "created-id" });
+  });
+
+  it("deja pendiente una coincidencia con varias obras distintas del mismo autor", async () => {
+    localMock.mockResolvedValue([]);
+    vi.mocked(searchWorks).mockResolvedValue([
+      sr({ itemType: "book", externalId: "/works/OL1W", title: "En llamas", subtitle: "Suzanne Collins" }),
+      sr({ itemType: "book", externalId: "/works/OL2W", title: "En llamas", subtitle: "Suzanne Collins" }),
+    ]);
+    expect(await matchImportRow(client, "book", bookRow())).toEqual({ kind: "unmatched" });
+  });
+
+  it.each([
+    ["Alexandre Dumas", "Alexandre Dumas hijo", "unmatched"],
+    ["Alexandre Dumas", null, "unmatched"],
+    ["Kevin J. Anderson", "Anderson, Kevin", "matched"],
+    ["Brandon Sanderson", "Brandon Sanderson, Rafael Marín", "matched"],
+    [null, "Suzanne Collins", "matched"],
+  ] as const)("autor CSV %s frente al candidato %s: %s", async (author, subtitle, kind) => {
+    localMock.mockResolvedValue([]);
+    vi.mocked(searchWorks).mockResolvedValue([
+      sr({ itemType: "book", title: "En llamas", subtitle }),
+    ]);
+    expect(await matchImportRow(client, "book", bookRow({ author }))).toEqual(
+      kind === "matched" ? { kind, catalogId: "created-id" } : { kind },
+    );
+  });
+
+  it("la misma obra en local y API cuenta una vez y conserva el id local", async () => {
+    const candidate = sr({ itemType: "book", externalId: "/works/OL36410330W", title: "En llamas", subtitle: "Suzanne Collins" });
+    localMock.mockResolvedValue([{ ...candidate, catalogId: "existing-book" }]);
+    vi.mocked(searchWorks).mockResolvedValue([candidate]);
+    expect(await matchImportRow(client, "book", bookRow())).toEqual({ kind: "matched", catalogId: "existing-book" });
+  });
+
   it("casa una fila cuyo título coincide con un altTitle, no con el mostrado", async () => {
     // El work OL36410330W se llama «Fatta Eld» en Open Library. Sin los títulos
     // alternativos, esta fila de un CSV español se quedaba sin casar.
