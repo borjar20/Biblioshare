@@ -4,7 +4,7 @@
 // snapshot.
 import { PET_ATTRIBUTES, type PetAttributes, type PetClass, type PetStage } from "../classes";
 import { levelFor } from "../derive";
-import type { BattleSnapshot, EnemyDef } from "./types";
+import type { BattleSnapshot } from "./types";
 
 export function combatPower(attrs: PetAttributes): number {
   let power = 0;
@@ -21,18 +21,7 @@ export function fighterStats(tier: number): { hpMax: number; atk: number } {
   return { hpMax: 100 + 10 * tier, atk: 8 + 2 * tier };
 }
 
-/** El enemigo se mide contra la mascota: vida en múltiplos de su atk, golpes en % de su vida. */
-export function enemyStats(
-  enemy: EnemyDef,
-  pet: { hpMax: number; atk: number },
-): { hpMax: number; basic: number; charge: number; punish: number } {
-  return {
-    hpMax: enemy.hpPerAtk * pet.atk,
-    basic: Math.floor((pet.hpMax * enemy.basicPct) / 100),
-    charge: Math.floor((pet.hpMax * enemy.chargePct) / 100),
-    punish: Math.floor((pet.hpMax * enemy.punishPct) / 100),
-  };
-}
+export { enemyStats } from "./versions/r2.2/power";
 
 export function buildSnapshot(p: {
   name: string;

@@ -4035,3 +4035,20 @@ actitudes, técnicas por clase, HMAC del seed, INSERT propio).
 
 **Consecuencia.** R2 no diseña: implementa. Cambiar un número de `content.ts` exige subir
 `RULESET.version` y regenerar el ejemplo normativo; el test lo recuerda.
+
+## 2026-09-06 — R5: conservar motor y contenido para replays históricos
+
+**Decisión.** Se conserva cada versión publicada en `src/lib/pet/battle/versions/`,
+incluyendo sus dependencias de ejecución y su ejemplo normativo. `replayBattle`
+selecciona por versión y hash exactos; una identidad desconocida se rechaza.
+La API actual reexporta `r2.2`, sin duplicar una segunda implementación activa.
+
+**Por qué.** Un hash identifica contenido pero no lo conserva. El requisito R5
+de #1081 exige re-simular después de cambiar reglas o balance; conservar solo
+eventos tampoco prueba que el motor reproduzca el resultado.
+
+**Consecuencia.** Nuevos cambios de comportamiento añaden otra versión y otra
+entrada al registro. Las anteriores no se regeneran. No cambia el digest ni el
+esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
+Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
+del combate histórico junto a una versión posterior con otro balance.

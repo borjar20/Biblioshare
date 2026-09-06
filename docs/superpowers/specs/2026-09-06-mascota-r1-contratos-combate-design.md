@@ -224,7 +224,7 @@ justamente el recordatorio de subir `RULESET.version` y regenerar el ejemplo nor
 
 **Reproducir eventos guardados no sustituye a re-simular: la BD no guarda eventos.**
 
-`resimulate(record, content)` es lo que hace el servidor en R2 y el CLI en `replay`. Devuelve
+`replayBattle(record)` selecciona la versión conservada para el CLI y el servidor de R2. Devuelve `UNKNOWN_RELEASE` si la pareja versión/hash no existe. Internamente llama a `resimulate(record, content)` de esa versión, que devuelve
 `{ ok: true, events, result, digest }` o un código: `UNKNOWN_ENEMY`, `RULESET_MISMATCH`,
 `CONTENT_MISMATCH`, `INVALID_SEED`, `INVALID_INPUTS`, `INPUTS_AFTER_END`, `RESULT_MISMATCH`. La
 búsqueda del enemigo usa `Object.hasOwn` (una clave del cliente no puede llegar a `__proto__`), y
@@ -480,11 +480,13 @@ también».
 **Cómo correr el CLI** (`scripts/pet-battle/simulate.ts`, Node 22, sin red ni Supabase):
 
 ```bash
-npm run pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--events] [--json]
+npm run --silent pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--events] [--json]
 npm run pet:battle -- calibrate [--seeds 200]
 npm run pet:battle -- replay <fichero.json>   # salida de `run --json`; una fila de pet_battles hay que mapearla antes a camelCase
 npm run pet:battle -- golden                  # reescribe __fixtures__/normative.json
 ```
+
+Con `run --json`, stdout contiene solo JSON, incluso junto con `--events`. Se puede guardar sin recortes y pasar directamente a `replay`.
 
 `replay` imprime `✓ coincide` con exit 0 si el registro es honesto, y el código de `resimulate`
 (p. ej. `re-simulación rechazada: RESULT_MISMATCH`) con exit 1 si no. Es la misma llamada que hará
@@ -498,9 +500,10 @@ el servidor en R2.
   precalcular el momento óptimo de pulsar. Solo importa en PvP y rankings, que están fuera del
   roadmap activo (§16.2 de la Parte I). El servidor sigue decidiendo el resultado; lo que no
   impide es que alguien juegue perfecto.
-- **Los eventos no se guardan**: el replay re-simula (§9). Un cambio de contenido invalida el
-  replay de los combates viejos —de ahí que `ruleset_version` y `content_hash` viajen con cada
-  fila: se sabe cuáles ya no se pueden reproducir.
+- **Los eventos no se guardan**: el replay re-simula (§9). Se conservan el motor y el contenido
+  de cada versión en `src/lib/pet/battle/versions/`. `replayBattle` selecciona la pareja exacta
+  `ruleset_version` + `content_hash`; una pareja desconocida falla con `UNKNOWN_RELEASE`.
+  Cambiar balance o comportamiento exige añadir una versión, nunca reescribir una publicada.
 - **`kind` es texto sin CHECK**: R4 añade `'adventure'` sin migración de tipo. A cambio, nada
   impide escribir un `kind` inventado; solo escribe el servidor, así que el control es el código.
 - **El tramo de poder no se guarda**: viaja en el snapshot de cada combate. Consultar «qué tramo

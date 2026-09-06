@@ -8,12 +8,13 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { PET_CLASSES, isPetClass, type PetClass } from "../../src/lib/pet/classes";
 import { CALIBRATION, calibrate, checkCalibration, formatReport } from "../../src/lib/pet/battle/calibration";
-import { BROTE, ENEMIES, RULESET, contentHash } from "../../src/lib/pet/battle/content";
+import { BROTE, RULESET, contentHash } from "../../src/lib/pet/battle/content";
 import { simulate } from "../../src/lib/pet/battle/engine";
 import { POLICIES, POLICY_IDS, runPolicy, type PolicyId } from "../../src/lib/pet/battle/policies";
 import { PROFILE_IDS, snapshotForProfile, type ProfileId } from "../../src/lib/pet/battle/profiles";
 import { isSeed, seedFromIndex } from "../../src/lib/pet/battle/prng";
-import { battleDigest, digestMaterial, resimulate } from "../../src/lib/pet/battle/record";
+import { battleDigest, digestMaterial } from "../../src/lib/pet/battle/record";
+import { replayBattle } from "../../src/lib/pet/battle/replay";
 import type { BattleRecord } from "../../src/lib/pet/battle/types";
 
 const NORMATIVE_PATH = "src/lib/pet/battle/__fixtures__/normative.json";
@@ -54,12 +55,16 @@ async function run() {
   const { inputs, events, result } = runPolicy(ctx, POLICIES[pickPolicy()]);
   const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
   const digest = await battleDigest(record, events);
+  // JSON wins over --events: stdout is always one replayable document.
+  if (flag("json")) {
+    console.log(JSON.stringify({ record, events, digest }, null, 2));
+    return;
+  }
   console.log(`seed ${seed} · ${snapshot.name} (${snapshot.petClass}, tramo ${snapshot.tier}, ${snapshot.hpMax} PV, atk ${snapshot.atk}) vs ${BROTE.name} (${result.enemyHpMax} PV)`);
   console.log(`resultado: ${result.outcome} por ${result.reason} en ${result.ticks} ticks (${(result.ticks * RULESET.tickMs) / 1000} s) · causas: ${result.causes.join(", ") || "—"}`);
   console.log(`daño hecho ${result.damageDealt}/${result.enemyHpMax} · recibido ${result.damageTaken}/${result.petHpMax} · inputs ${inputs.length} · eventos ${events.length}`);
   console.log(`digest ${digest}`);
   if (flag("events")) for (const e of events) console.log(JSON.stringify(e));
-  if (flag("json")) console.log(JSON.stringify({ record, events, digest }, null, 2));
 }
 
 async function calib() {
@@ -79,7 +84,7 @@ async function replay(file: string | undefined) {
   if (!file) fail("replay <fichero.json>");
   const parsed = JSON.parse(readFileSync(file, "utf8")) as { record?: BattleRecord; digest?: string } & Partial<BattleRecord>;
   const record = (parsed.record ?? parsed) as BattleRecord;
-  const out = await resimulate(record, { ruleset: RULESET, enemies: ENEMIES, contentHash: await contentHash() });
+  const out = await replayBattle(record);
   if (!out.ok) fail(`re-simulación rechazada: ${out.code}`);
   console.log(`re-simulado: ${out.result.outcome} por ${out.result.reason} en ${out.result.ticks} ticks · ${out.events.length} eventos · digest ${out.digest}`);
   if (parsed.digest && parsed.digest !== out.digest) fail(`digest distinto del guardado (${parsed.digest})`);

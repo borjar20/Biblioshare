@@ -12,7 +12,7 @@ const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").repl
 
 describe("pureza del motor", () => {
   it("ningún módulo del motor importa ni usa lo que lo haría no determinista", () => {
-    const files = readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
+    const files = readdirSync(dir, { recursive: true }).map(String).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
     expect(files.length).toBeGreaterThanOrEqual(13);
     for (const f of files) {
       const src = stripComments(readFileSync(join(dir, f), "utf8"));

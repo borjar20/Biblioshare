@@ -1,4 +1,8 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { withBattleUsers } from "./support/battle-users";
+import normative from "../src/lib/pet/battle/versions/r2.2/normative.json";
+import { replayBattle } from "../src/lib/pet/battle/replay";
+import type { BattleRecord } from "../src/lib/pet/battle/types";
 
 // R1 (contrato C1, #1081 R1): pet_battles la escribe SOLO el servidor. Este spec
 // habla con PostgREST directamente, sin navegador: dos cuentas desechables (patrón
@@ -27,23 +31,6 @@ function userHeaders(token: string, json = false) {
   };
 }
 
-async function createUser(request: APIRequestContext, username: string) {
-  const email = `${username}@example.com`;
-  const password = "TestPassword123!";
-  const auth = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
-    headers: adminHeaders(),
-    data: { email, password, email_confirm: true },
-  });
-  expect(auth.ok()).toBe(true);
-  const user = await auth.json();
-  const profile = await request.post(`${SUPABASE_URL}/rest/v1/profiles`, {
-    headers: adminHeaders(true),
-    data: { user_id: user.id, username, is_public: true },
-  });
-  expect(profile.ok()).toBe(true);
-  return { id: user.id as string, username, email, password };
-}
-
 async function userToken(request: APIRequestContext, email: string, password: string): Promise<string> {
   const res = await request.post(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     headers: { apikey: ANON_KEY, "Content-Type": "application/json" },
@@ -51,10 +38,6 @@ async function userToken(request: APIRequestContext, email: string, password: st
   });
   expect(res.ok()).toBe(true);
   return (await res.json()).access_token as string;
-}
-
-async function deleteUser(id: string) {
-  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders() });
 }
 
 const SEED = "0123456789abcdef0123456789abcdef";
@@ -84,9 +67,9 @@ function openRow(userId: string) {
 test("pet_battles: el cliente lee lo suyo y no puede insertar, editar, borrar ni ver lo ajeno", async ({ request }) => {
   test.setTimeout(60_000);
   const stamp = Date.now();
-  const a = await createUser(request, `batallaa${stamp}`.slice(0, 20));
-  const b = await createUser(request, `batallab${stamp}`.slice(0, 20));
-  try {
+  await withBattleUsers(SUPABASE_URL, SERVICE_KEY, async (createUser) => {
+    const a = await createUser( `batallaa${stamp}`.slice(0, 20));
+    const b = await createUser( `batallab${stamp}`.slice(0, 20));
     const tokenA = await userToken(request, a.email, a.password);
     const tokenB = await userToken(request, b.email, b.password);
 
@@ -126,15 +109,59 @@ test("pet_battles: el cliente lee lo suyo y no puede insertar, editar, borrar ni
     const forge = await request.post(REST, { headers: userHeaders(tokenB, true), data: openRow(a.id) });
     expect(forge.status()).toBe(403);
 
+    // Both accounts have data: an empty table cannot make isolation pass.
+    const createdB = await request.post(REST, { headers: adminHeaders(true), data: openRow(b.id) });
+    expect(createdB.ok()).toBe(true);
+    const [rowB] = await createdB.json() as Array<{ id: string }>;
+    const mineB = await request.get(`${REST}?select=id&user_id=eq.${b.id}`, { headers: userHeaders(tokenB) });
+    expect(await mineB.json()).toEqual([{ id: rowB.id }]);
+    const hiddenB = await request.get(`${REST}?select=id&user_id=eq.${b.id}`, { headers: userHeaders(tokenA) });
+    expect(await hiddenB.json()).toEqual([]);
+
     // Sin sesión, nada.
     const anon = await request.get(`${REST}?select=id`, { headers: { apikey: ANON_KEY } });
     expect([401, 403]).toContain(anon.status());
+    for (const method of ["POST", "PATCH", "DELETE"]) {
+      const denied = await request.fetch(`${REST}?id=eq.${row.id}`, {
+        method, headers: { apikey: ANON_KEY, "Content-Type": "application/json" },
+        ...(method === "DELETE" ? {} : { data: method === "POST" ? openRow(a.id) : { kind: "training" } }),
+      });
+      expect([401, 403]).toContain(denied.status());
+    }
 
     // La fila sigue intacta después de todos los intentos.
     const after = await request.get(`${REST}?select=status,result&id=eq.${row.id}`, { headers: adminHeaders() });
     expect(await after.json()).toEqual([{ status: "open", result: null }]);
-  } finally {
-    await deleteUser(a.id);
-    await deleteUser(b.id);
-  }
+  });
+});
+
+test("pet_battles: persisted historical record replays with its retained release", async ({ request }) => {
+  await withBattleUsers(SUPABASE_URL, SERVICE_KEY, async (createUser) => {
+    const user = await createUser(`battleold${Date.now()}`.slice(0, 20));
+    const record = normative.record;
+    const data = {
+      ...openRow(user.id), ruleset_version: record.rulesetVersion, content_hash: record.contentHash,
+      enemy_id: record.enemyId, seed: record.seed, snapshot: record.snapshot,
+      status: "resolved", inputs: record.inputs, result: record.result, digest: normative.digest,
+      resolved_at: new Date().toISOString(),
+    };
+    const created = await request.post(REST, { headers: adminHeaders(true), data });
+    expect(created.ok()).toBe(true);
+    const duplicate = await request.post(REST, { headers: adminHeaders(true), data });
+    expect(duplicate.status()).toBe(409);
+    expect((await duplicate.json()).code).toBe("23505");
+    const token = await userToken(request, user.email, user.password);
+    const read = await request.get(`${REST}?user_id=eq.${user.id}`, { headers: userHeaders(token) });
+    expect(read.status()).toBe(200);
+    const rows = await read.json();
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    const saved: BattleRecord = {
+      rulesetVersion: row.ruleset_version, contentHash: row.content_hash, enemyId: row.enemy_id,
+      seed: row.seed, snapshot: row.snapshot, inputs: row.inputs, result: row.result,
+    };
+    const replay = await replayBattle(saved);
+    expect(replay).toEqual({ ok: true, events: normative.events, result: record.result, digest: row.digest });
+    expect(row.digest).toBe(normative.digest);
+  });
 });

@@ -1014,8 +1014,8 @@
       "label": "lib/pet/battle",
       "layer": "domain",
       "kind": "module",
-      "size": 13,
-      "summary": "Motor de combate de la mascota (R1, spec 2026-09-06-mascota-r1-contratos-combate). PURO: xoshiro128** sembrado por un seed de 128 bits del servidor, reloj de 100 ms, log de inputs (seq, tick, action, payload), eventos derivados, resultado con causas. El cliente lo ejecuta para animar (stepBattle + viewOf) y el servidor para decidir (resimulate): digest = sha256 del JSON canónico de registro + eventos, sin circularidad. content.ts es el único sitio con números; cambiar uno = subir RULESET.version y regenerar __fixtures__/normative.json. CLI: scripts/pet-battle/simulate.ts (run, calibrate, replay, golden).",
+      "size": 23,
+      "summary": "Motor de combate de la mascota (R1, spec 2026-09-06-mascota-r1-contratos-combate). PURO: xoshiro128** sembrado por un seed de 128 bits del servidor, reloj de 100 ms, log de inputs (seq, tick, action, payload), eventos derivados, resultado con causas. El cliente lo ejecuta para animar (stepBattle + viewOf) y el servidor para decidir (resimulate): digest = sha256 del JSON canónico de registro + eventos, sin circularidad. content.ts es el único sitio con números; cambiar uno = subir RULESET.version y regenerar __fixtures__/normative.json. CLI: scripts/pet-battle/simulate.ts (run, calibrate, replay, golden). R5: replayBattle selecciona motor y contenido conservados por versión + hash; versions/r2.2 contiene código ejecutable y ejemplo inmutables.",
       "files": [
         "src/lib/pet/battle/prng.ts",
         "src/lib/pet/battle/canonical.ts",
@@ -1029,7 +1029,9 @@
         "src/lib/pet/battle/policies.ts",
         "src/lib/pet/battle/calibration.ts",
         "src/lib/pet/battle/record.ts",
-        "src/lib/pet/battle/minigame.ts"
+        "src/lib/pet/battle/minigame.ts",
+        "src/lib/pet/battle/replay.ts",
+        "src/lib/pet/battle/versions/README.md"
       ],
       "gotchas": [
         "Ningún fichero del motor puede importar Supabase, React, Date ni Math.random: purity.test.ts lo vigila.",
