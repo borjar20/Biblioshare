@@ -4069,3 +4069,16 @@ entrada al registro. Las anteriores no se regeneran. No cambia el digest ni el
 esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
 Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
 del combate histórico junto a una versión posterior con otro balance.
+
+## 2026-09-06 — Alta manual de importación por RPC autenticada (#926)
+
+Los dos accesos (fila sin coincidencia y cola de revisión) comparten el registro
+por `register_manual_catalog_item`, con el cliente de la petición. Conservan la
+validación de colaborador y registran los fallos; no restauran INSERT directo
+sobre books/movies/series ni elevan el cliente a service_role.
+
+El alta envía título, autor, año y páginas de libro. No envía ISBN ni editorial
+a las columnas congeladas de books. La identificación de edición y su enlace al
+pase siguen pendientes en #910; esta corrección no cierra esa issue. La cola
+conserva `resolve_pending_import` para escribir en la biblioteca del dueño,
+no en la del colaborador. No se cambia el esquema ni el contrato de las RPC.
