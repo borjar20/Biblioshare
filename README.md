@@ -47,6 +47,7 @@ gobernanza de abajo para saber cuál manda.**
 | [Decisiones](docs/requirements/decisiones.md) | Decisiones vigentes (consolidado 2026-08-19; historial completo en `docs/superpowers/decisiones-historicas-2026-08.md`) | Consolidado |
 | [Reactividad](docs/reactividad.md) | Cómo se refleja el estado en la UI | Convención |
 | [Testing](docs/TESTING.md) | Cómo se verifica | Convención |
+| [CI de regresiones](docs/testing/ci.md) | Checks en PR/push, recorridos críticos y límites de cobertura | Convención |
 | [Auditoría 2026-08](docs/audit/AUDIT-2026-08.md) | Auditoría integral 2026-08 (hallazgos y roadmap) | Estado vivo |
 | [Fidelidad Paper](docs/redesign/README.md) | Iniciativa de rediseño 2026-07 (cerrada) | Histórico · congelado |
 | [Referencia visual para prototipos](docs/REFERENCIA-VISUAL.md) | **Las capturas** de cada zona y el flujo para prototipar contra ellas. Los tokens NO: para eso manda [`DESIGN.md`](DESIGN.md) | Canónico · vs código/capturas |

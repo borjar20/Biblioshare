@@ -4306,3 +4306,10 @@ y conserva cookies renovadas y cabeceras anticaché en las redirecciones. El cli
 refrescando tokens caducados; la firma simétrica aún requiere red. La autorización de
 acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
 Es una mitigación de #929, no una demostración de la causa del incidente de Auth.
+
+## 2026-09-06 — CI de regresiones sin secretos remotos (#836)
+
+Cada PR y push a main ejecutan unitarios completos, tipos y lint de los archivos
+modificados, más dos recorridos críticos contra build de producción y Supabase local
+desechable. La deuda global de lint (#856) y el resto de e2e sin atribuir (#919)
+permanecen explícitos. No se cambia la protección de rama. Operación: docs/testing/ci.md.
