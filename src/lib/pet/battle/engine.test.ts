@@ -49,8 +49,10 @@ describe("determinismo e invariantes", () => {
   });
 
   it("seq contiguos, ticks no decrecientes, vida nunca negativa, termina con BATTLE_ENDED", () => {
+    // Inputs solo en ticks anteriores a cualquier KO posible: hasta el tick 96 la mascota
+    // (230 PV) no puede haber perdido (como mucho una carga, un castigo y cuatro básicas).
     for (let i = 0; i < 50; i++) {
-      const { events, result } = simulate(init(seedFromIndex(i)), i % 2 ? [skill(5), skill(100, 1), skill(200, 2)] : []);
+      const { events, result } = simulate(init(seedFromIndex(i)), i % 2 ? [skill(5), skill(96, 1)] : []);
       events.forEach((e, idx) => {
         expect(e.seq).toBe(idx);
         if (idx > 0) expect(e.tick).toBeGreaterThanOrEqual(events[idx - 1].tick);
