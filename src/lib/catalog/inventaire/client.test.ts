@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { qidFromUri, searchInventaireEntities } from "./client";
+import { qidFromUri, searchInventaireEntities, searchInventaireEntitiesOrNull } from "./client";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("qidFromUri", () => {
   it("extrae QID de uri wd:", () => expect(qidFromUri("wd:Q8034469")).toBe("Q8034469"));
@@ -10,6 +10,39 @@ describe("qidFromUri", () => {
 });
 
 describe("searchInventaireEntities", () => {
+  it.each(["search", "works", "authors"])("no da por completa una respuesta inválida de %s", async (stage) => {
+    const responses = [
+      { results: [{ uri: "wd:Q1" }] },
+      { entities: { "wd:Q1": { labels: { en: "Dune" }, claims: { "wdt:P50": ["wd:Q2"] } } } },
+      { entities: {} },
+    ];
+    responses[["search", "works", "authors"].indexOf(stage)] = {} as typeof responses[number];
+    const fetchMock = vi.fn();
+    for (const body of responses) fetchMock.mockResolvedValueOnce(Response.json(body));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await searchInventaireEntitiesOrNull("Dune")).toBeNull();
+  });
+  it.each([429, 503])("conserva la búsqueda blanda ante HTTP %s y registra el estado sin la consulta", async (status) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchMock = vi.fn().mockResolvedValue(new Response("", { status }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await searchInventaireEntities("consulta privada")).toEqual([]);
+    expect(warn).toHaveBeenCalledWith("Inventaire HTTP failure", { status, path: "/api/search" });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("consulta privada");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("un timeout y un JSON roto son fallos, no ausencias", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timeout", "TimeoutError")));
+    expect(await searchInventaireEntitiesOrNull("Dune")).toBeNull();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{")));
+    expect(await searchInventaireEntitiesOrNull("Dune")).toBeNull();
+  });
+  it("distingue un bloqueo HTTP de una búsqueda completada sin resultados", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", { status: 429 })));
+    expect(await searchInventaireEntitiesOrNull("Dune")).toBeNull();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ results: [] })));
+    expect(await searchInventaireEntitiesOrNull("Dune")).toEqual([]);
+  });
   it("devuelve [] si la API falla", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
     expect(await searchInventaireEntities("palabras radiantes")).toEqual([]);

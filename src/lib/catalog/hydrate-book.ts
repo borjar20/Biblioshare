@@ -4,7 +4,7 @@ import type { Json } from "@/lib/supabase/database.types";
 import { fetchWork, fetchFirstEditionDescription } from "./openlibrary/work-detail";
 import { fetchOpenLibraryAuthorByKey } from "./openlibrary/work-authors";
 import { resolveWorkKey, fetchRepresentationCandidates } from "./openlibrary/editions";
-import { searchInventaireEntities, qidFromUri } from "./inventaire/client";
+import { searchInventaireEntitiesOrNull, qidFromUri } from "./inventaire/client";
 import { findBestVolume, type GoogleVolume } from "./googlebooks/client";
 import { mapSubjectsToGenres } from "./genres";
 import {
@@ -202,11 +202,14 @@ export async function ensureBookHydrated(
         ? fetchOpenLibraryAuthorByKey(authorKey).then((a) => a?.name ?? null)
         : Promise.resolve(null),
       candidatesPromise,
-      titleForLookups ? searchInventaireEntities(titleForLookups) : Promise.resolve([]),
+      titleForLookups ? searchInventaireEntitiesOrNull(titleForLookups) : Promise.resolve([]),
       workKey && work && !work.description
         ? fetchFirstEditionDescription(workKey)
         : Promise.resolve(null),
     ]);
+    // hydrate_book stamps hydrated_at on every call. An unavailable identity
+    // provider is not a completed review: keep the book eligible for retry.
+    if (entities === null) return;
     const author = authorName ?? book.author ?? null;
 
     // Entidad fiable = autor verificado **Y título corroborado** (spec §6). De

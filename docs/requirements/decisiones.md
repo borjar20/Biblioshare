@@ -4069,3 +4069,17 @@ entrada al registro. Las anteriores no se regeneran. No cambia el digest ni el
 esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
 Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
 del combate histórico junto a una versión posterior con otro balance.
+
+## 2026-09-06 — Inventaire: una consulta fallida no completa la hidratación (#911)
+
+La búsqueda conserva su contrato blando: si Inventaire falla, muestra resultados sin
+colapsar. El cliente ofrece además una variante nullable para los consumidores que
+persisten: `null` significa consulta incompleta y `[]` una búsqueda completada sin entidades.
+Los errores HTTP se registran con estado y ruta, sin títulos ni autores en los logs.
+No se añaden reintentos automáticos ante 429.
+
+`ensureBookHydrated` detiene esa evaluación antes de `hydrate_book` cuando la consulta
+queda incompleta. Se conserva la representación anterior y no se estampa `hydrated_at`,
+porque esa RPC marca como revisada la obra en cada llamada. También se posponen las
+mejoras de otros proveedores de esa evaluación; la siguiente visita puede reintentarlas.
+No cambia la firma de las RPC ni los permisos de catálogo.

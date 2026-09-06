@@ -38,23 +38,34 @@ export function qidFromUri(uri: string): string | null {
 
 type RawEntity = { labels?: Record<string, string>; claims?: Record<string, unknown[]> };
 
-async function getJson<T>(url: string): Promise<T | null> {
+async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
     next: { revalidate: REVALIDATE_SECONDS },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // No query strings: titles and author searches do not belong in logs.
+    console.warn("Inventaire HTTP failure", { status: res.status, path: new URL(url).pathname });
+    throw new Error(`Inventaire HTTP ${res.status}`);
+  }
   return (await res.json()) as T;
 }
 
 export async function searchInventaireEntities(query: string): Promise<InventaireEntity[]> {
+  return (await searchInventaireEntitiesOrNull(query)) ?? [];
+}
+
+// Writers must distinguish a completed lookup from an unavailable provider.
+// No retries here: a 429 must not turn into more traffic during the block.
+export async function searchInventaireEntitiesOrNull(query: string): Promise<InventaireEntity[] | null> {
   const trimmed = query.trim();
   if (!trimmed) return [];
   try {
     const search = await getJson<{ results?: Array<{ uri?: string }> }>(
       `${API}/search?types=works&search=${encodeURIComponent(trimmed)}&limit=${MAX_ENTITIES}&lang=es`
     );
-    const uris = (search?.results ?? [])
+    if (!Array.isArray(search?.results)) throw new Error("Invalid Inventaire search response");
+    const uris = search.results
       .map((r) => r.uri)
       .filter((u): u is string => typeof u === "string" && qidFromUri(u) !== null)
       .slice(0, MAX_ENTITIES);
@@ -63,7 +74,9 @@ export async function searchInventaireEntities(query: string): Promise<Inventair
     const works = await getJson<{ entities?: Record<string, RawEntity> }>(
       `${API}/entities?action=by-uris&uris=${encodeURIComponent(uris.join("|"))}`
     );
-    if (!works?.entities) return [];
+    if (!works?.entities || typeof works.entities !== "object") {
+      throw new Error("Invalid Inventaire works response");
+    }
 
     // SEGUNDA ronda de `by-uris`, aparte, porque la respuesta de la primera
     // (las obras) trae el autor como URI en `wdt:P50` (una referencia, no el
@@ -82,6 +95,9 @@ export async function searchInventaireEntities(query: string): Promise<Inventair
         )
       : null;
 
+    if (authorUris.size && (!authors?.entities || typeof authors.entities !== "object")) {
+      throw new Error("Invalid Inventaire authors response");
+    }
     const authorName = (uri: string): string | null => {
       const labels = authors?.entities?.[uri]?.labels ?? {};
       return labels.es ?? labels.en ?? Object.values(labels)[0] ?? null;
@@ -98,7 +114,10 @@ export async function searchInventaireEntities(query: string): Promise<Inventair
         .filter((n): n is string => Boolean(n));
       return [{ uri, labels: raw.labels, authorNames: names }];
     });
-  } catch {
-    return [];
+  } catch (error) {
+    console.warn("Inventaire lookup incomplete", {
+      reason: error instanceof Error ? error.name : "unknown",
+    });
+    return null;
   }
 }
