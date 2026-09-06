@@ -11,11 +11,24 @@ vi.mock("@/lib/pet/training/actions", () => ({
 }));
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
+it("explains manual use, shows recharge and keeps the skill outcome outside the log", async () => {
+  vi.useFakeTimers();
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel /></NextIntlClientProvider>);
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar combate" })); });
+  expect(screen.getByText(/se activa al pulsar, nunca sola/).textContent).toContain("6 s");
+  fireEvent.click(screen.getByRole("button", { name: "Golpe interruptor · Usar habilidad" }));
+  act(() => { vi.advanceTimersByTime(100); });
+  expect(screen.getByRole("button", { name: /Golpe interruptor · Recarga:/ }).hasAttribute("disabled")).toBe(true);
+  expect(screen.getByTestId("skill-feedback").textContent).toContain("No había una carga que interrumpir");
+  for (let tick = 0; tick < 15; tick++) act(() => { vi.advanceTimersByTime(100); });
+  expect(screen.getByTestId("skill-feedback").textContent).toContain("Última habilidad:");
+});
+
 it("keeps one pet sprite when a skill hits and later ticks replace the motion", async () => {
   vi.useFakeTimers();
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar combate" })); });
-  fireEvent.click(screen.getByRole("button", { name: "Habilidad" }));
+  fireEvent.click(screen.getByRole("button", { name: "Golpe interruptor · Usar habilidad" }));
   for (let tick = 0; tick < 25; tick++) act(() => { vi.advanceTimersByTime(100); });
   expect(document.querySelectorAll('[data-mood]')).toHaveLength(1);
   expect(screen.getAllByText("• •")).toHaveLength(1);

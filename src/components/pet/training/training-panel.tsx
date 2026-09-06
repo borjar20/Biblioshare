@@ -54,6 +54,8 @@ export function TrainingPanel() {
   const moving = effects.strike !== undefined;
   const petHit = effects.petHit !== undefined;
   const enemyHit = effects.enemyHit !== undefined;
+  const lastSkill = session.events.findLast(event => event.type === "SKILL_USED");
+  const phaseSeconds = v ? Math.max(0, (v.enemyPhaseUntil - v.tick) * RULESET.tickMs / 1000).toFixed(1) : "0";
 
   function eventText(event: BattleEvent) {
     if (event.type === "TELEGRAPH_STARTED") return t(`events.${event.kind}`);
@@ -72,15 +74,20 @@ export function TrainingPanel() {
           <Health label={t("enemy")} value={v.enemyHp} max={v.enemyHpMax} />
         </div>
         <div className="flex h-36 items-end justify-around border-b-2 border-border pb-3" aria-hidden="true">
-          <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : ""}><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div>
+          <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : ""}><div className="-scale-x-100"><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div></div>
           <div key={`enemy-${effects.enemyHit ?? "rest"}`} className={v.enemyHp === 0 ? styles.fallen : enemyHit ? styles.enemyRecoil : ""}><div className={`${styles.enemy} ${v.enemyPhase === "windup" ? styles.charge : v.enemyPhase === "guard" ? styles.guard : ""}`}><span>• •</span></div></div>
         </div>
-        <p role="status" className="min-h-12 pt-3 text-center text-sm font-medium">{active ? t(`phases.${v.enemyPhase}`) : t("finished")}</p>
+        <div className="mt-3 rounded-lg border border-border bg-surface p-3 text-center" data-enemy-phase={v.enemyPhase}>
+          <p role="status" className="text-sm font-semibold"><ReservedText text={active ? t(`phases.${v.enemyPhase}`) : t("finished")} alternatives={[...(["idle", "windup", "guard", "stagger"] as const).map(p => t(`phases.${p}`)), t("finished")]} /></p>
+          <p aria-hidden="true" className={`mt-1 text-xs tabular-nums ${active && (v.enemyPhase === "windup" || v.enemyPhase === "guard") ? "" : "invisible"}`}>{t("phaseTime", { seconds: phaseSeconds })}</p>
+        </div>
+        <p role="status" aria-atomic="true" className="pt-2 text-center text-sm tabular-nums" data-testid="skill-feedback"><ReservedText text={lastSkill ? t(`feedback.${lastSkill.effect}`, { damage: lastSkill.damage }) : ""} alternatives={(["interrupt", "hit", "wasted"] as const).map(effect => t(`feedback.${effect}`, { damage: v.enemyHpMax }))} /></p>
         <p data-testid="training-tick" className="text-center text-xs text-muted-foreground">{t("time", { seconds: (v.tick / 10).toFixed(1) })}{phase === "replaying" ? ` · ${t("replaying")}` : ""}</p>
       </div>
       {active && <div className="flex flex-col gap-3">
-        <button aria-label={t("skill")} className={buttonVariants()} disabled={phase !== "playing" || session.paused || session.hidden || cooldown > 0 || queued} onClick={() => { session.skill(); refresh(); }}>{t(queued ? "queued" : cooldown ? "cooldown" : "skill", { seconds: (cooldown / 10).toFixed(1) })}</button>
-        <progress className="h-2 w-full accent-accent" max={60} value={60 - cooldown} aria-label={t("recharge")} />
+        <p id="training-skill-help" className="text-sm text-muted-foreground">{t("skillHelp", { seconds: RULESET.pet.skillCooldown * RULESET.tickMs / 1000, normal: RULESET.pet.skillIdleMul, interrupt: RULESET.pet.skillInterruptMul })}</p>
+        <button aria-describedby="training-skill-help" className={buttonVariants("primary", "tabular-nums")} disabled={phase !== "playing" || session.paused || session.hidden || cooldown > 0 || queued} onClick={() => { session.skill(); refresh(); }}><ReservedText text={t(queued ? "queued" : cooldown ? "cooldown" : "skill", { seconds: (cooldown * RULESET.tickMs / 1000).toFixed(1) })} alternatives={[t("skill"), t("queued"), t("cooldown", { seconds: (RULESET.pet.skillCooldown * RULESET.tickMs / 1000).toFixed(1) })]} /></button>
+        <progress className="h-2 w-full accent-accent" max={RULESET.pet.skillCooldown} value={RULESET.pet.skillCooldown - cooldown} aria-label={t("recharge")} />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button className={button} aria-pressed={session.paused} onClick={() => { session.togglePause(); refresh(); }}>{t(session.paused ? "resume" : "pause")}</button>
           <label className="flex items-center gap-2 text-sm">{t("speed")}<select className="rounded border border-border bg-surface px-2 py-2" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[0.5, 1, 2].map(n => <option key={n} value={n}>{n}×</option>)}</select></label>
@@ -94,6 +101,15 @@ export function TrainingPanel() {
     {phase === "done" && <div className="flex flex-wrap gap-2"><button className={button} onClick={() => void run(() => session.replay())}>{t("replay")}</button><button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{t("repeat")}</button></div>}
     {session.events.length > 0 && <details className="text-sm"><summary className="cursor-pointer py-2">{t("log")}</summary><ol className="max-h-56 space-y-1 overflow-y-auto">{session.events.map(event => <li key={event.seq}><span className="tabular-nums text-muted-foreground">{(event.tick / 10).toFixed(1)} s</span> · {eventText(event)}</li>)}</ol></details>}
   </section>;
+}
+
+/** Overlapping alternatives reserve their natural wrapped height, including at
+ * larger font sizes. Only the current message is visible or accessible. */
+function ReservedText({ text, alternatives }: { text: string; alternatives: string[] }) {
+  return <span className="grid">
+    {alternatives.map((alternative, index) => <span key={index} aria-hidden="true" className="invisible col-start-1 row-start-1">{alternative}</span>)}
+    <span className="col-start-1 row-start-1">{text}</span>
+  </span>;
 }
 
 function Health({ label, value, max }: { label: string; value: number; max: number }) {
