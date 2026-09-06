@@ -10,6 +10,7 @@ import {
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Json } from "@/lib/supabase/database.types";
+import { registerManualImportItem } from "@/lib/import/manual-catalog";
 import { detectFormat } from "@/lib/import/detect-format";
 import { parseGoodreads } from "@/lib/import/parse-goodreads";
 import { parseLetterboxd } from "@/lib/import/parse-letterboxd";
@@ -25,12 +26,6 @@ import type {
   ImportRow,
   ImportRowResult,
 } from "@/lib/import/types";
-
-const CATALOG_TABLE_BY_TYPE = {
-  book: "books",
-  movie: "movies",
-  series: "series",
-} as const;
 
 // Worst-case-time guard, independent of the request body size limit below.
 const MAX_ROWS = 3000;
@@ -255,38 +250,23 @@ export async function resolvePendingRow(
   const yearRaw = String(formData.get("year") ?? "").trim();
   const year = yearRaw ? Number(yearRaw) : null;
 
-  // Alta del ítem de catálogo (misma forma por tipo que commitManualImportRow).
-  const table = CATALOG_TABLE_BY_TYPE[itemType];
-  const payload =
-    itemType === "book"
-      ? {
-          title,
-          author,
-          published_year: year,
-          publisher: row.publisher,
-          total_pages: row.pageCount,
-          isbn: row.isbn,
-        }
-      : itemType === "movie"
-        ? { title, director: author, release_year: year }
-        : { title, creator: author, release_year: year };
-
-  const { data: inserted, error: insertError } = await supabase
-    .from(table)
-    .insert(payload as never)
-    .select("id")
-    .single();
-  if (insertError) return { error: "generic" };
+  const registered = await registerManualImportItem(supabase, itemType, {
+    title, author, year, pageCount: row.pageCount,
+  });
+  if ("error" in registered) return { error: "generic" };
 
   const { error: rpcError } = await supabase.rpc("resolve_pending_import", {
     p_pending_id: pendingId,
-    p_catalog_item_id: inserted.id,
+    p_catalog_item_id: registered.itemId,
   });
-  if (rpcError) return { error: "generic" };
+  if (rpcError) {
+    console.error("resolve_pending_import failed", { pendingId, error: rpcError });
+    return { error: "generic" };
+  }
 
   // El RPC escribe pases con nota para el DUEÑO de la fila: la media cacheada
   // de esa obra hay que invalidarla igual que en el camino normal (#718).
-  revalidateReadingLog(itemType, inserted.id);
+  revalidateReadingLog(itemType, registered.itemId);
   revalidatePendingImports();
   return { done: true };
 }

@@ -13,6 +13,11 @@ const entity = {
 };
 
 describe("collapseByWikidata", () => {
+  it("no colapsa dos autores distintos por contención de sus nombres", () => {
+    const father = { ...base, externalId: "father", title: "Obra", subtitle: "Alexandre Dumas" };
+    const son = { ...base, externalId: "son", title: "Obra", subtitle: "Alexandre Dumas hijo" };
+    expect(collapseByWikidata([father, son], [{ uri: "wd:Q1", labels: { es: "Obra" }, authorNames: ["Alexandre Dumas hijo"] }])).toHaveLength(2);
+  });
   it("funde dos works de OL que son la misma entidad, prefiriendo el local", () => {
     const local: SearchResult = { ...base, externalId: "/works/OL16813053W", catalogId: "uuid-1",
       title: "Palabras Radiantes", subtitle: "Brandon Sanderson", altTitles: ["Palabras Radiantes"] };

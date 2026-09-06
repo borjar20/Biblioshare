@@ -6,6 +6,7 @@
 > revisión, y al alcance de la spec de combate del 2026-09-04
 > (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
 > Contratos: R1 cerrado el 2026-09-06 (#1081 cerrada; lo que hereda R7 vive en #1084). Seguimiento: #1082.
+> R2 implementado y verificado técnicamente el 2026-09-06; aceptación humana tras veinte combates pendiente en #1082. R3 aún no está activo.
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
 > `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
@@ -699,7 +700,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 | Hito | Entrega | Contrato | Arte |
 |---|---|---|---|
 | R1 Contratos y modelo de combate | la spec ejecutable de R2 — **cerrado 2026-09-06** | criterios | ninguno |
-| R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento | criterios | ninguno: sprites actuales como marcador |
+| R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento — **implementado; aceptación humana pendiente (#1082)** | criterios | ninguno: sprites actuales como marcador |
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
 | R4 Aventuras y primer botín | aventuras derivadas, límites antifarm, dos ranuras y 4–6 objetos agnósticos | criterios | iconos y VFX de los objetos |
 | R5 Bellotas y tienda | moneda con su primer sumidero | dirección | — |
@@ -749,6 +750,10 @@ tests en el repo. Hito activo: R2.
 
 ## R2 — Combate mínimo universal
 
+**Estado a 2026-09-06.** Implementación técnica terminada y verificada. La aceptación con
+personas sigue abierta en #1082: no se ha acreditado que repetir veinte combates resulte
+interesante. R2 permanece activo y R3, incluidas sus animaciones, espera ese criterio.
+
 **Entrega:**
 
 - Motor puro en `src/lib/pet/battle/`, sin `Math.random`, compatible con las seis clases desde el
@@ -773,6 +778,21 @@ hacen de marcador. Las animaciones de combate se generan en R3 solo si R2 pasa.
 - Cambiar la decisión cambia el resultado, y se entiende por qué se perdió.
 - El replay reproduce exactamente; el servidor rechaza logs manipulados.
 - Ninguna de las seis clases queda sin poder pelear.
+
+**Implementación y evidencia técnica (2026-09-06).** Entrenamiento integrado en `/mascota`
+mediante `src/lib/pet/training/` y `src/components/pet/training/`: pausa y velocidades
+0,5×/1×/2×, simulación local y resultado validado por el servidor. Este autentica, genera
+seed y snapshot, reutiliza la intención y resuelve con compare-and-set sobre `status = open`;
+los reintentos devuelven el primer resultado. El replay muestra los eventos verificados por
+el servidor y comprueba el digest. El ingreso actual exige payload vacío
+(`NONEMPTY_PAYLOAD`) y snapshot válido (`INVALID_SNAPSHOT`, incluidos desbordamientos de
+enteros), sin modificar el motor histórico congelado `r2.2`. No hay cambio de esquema.
+
+Verificados 136 tests en 20 ficheros, TypeScript, build de producción por defecto con
+Turbopack (70/70) y Playwright contra ese build con dos cuentas desechables: acceso sin
+sesión, acciones sobre combates ajenos, inicio y resolución concurrentes de una intención,
+reintento con el primer resultado y replay. Esta evidencia técnica no sustituye los
+criterios con personas. El arreglo de #1085 está en código, pendiente de integrar la PR.
 
 ## R3 — Ulti y segundo enemigo
 

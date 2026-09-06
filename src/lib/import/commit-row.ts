@@ -10,14 +10,9 @@ import type {
   ImportRowResult,
 } from "./types";
 import { matchImportRow } from "./match-row";
+import { registerManualImportItem } from "./manual-catalog";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-const TABLE_BY_TYPE = {
-  book: "books",
-  movie: "movies",
-  series: "series",
-} as const;
 
 type ActivePassResult =
   | { passId: string; isNew: boolean; historicalDate: ImportDiaryDate | null }
@@ -329,10 +324,7 @@ export async function commitImportRowWithCandidate(
   }
 }
 
-// Used by the "add manually" affordance on unmatched rows — same insert
-// shape as src/app/buscar/manual/actions.ts's addManualItem, just invoked
-// inline instead of through a page redirect, and reusing this module's pass
-// commit logic.
+// Manual import keeps the same pass creation logic as matched rows.
 export async function commitManualImportRow(
   supabase: SupabaseServerClient,
   userId: string,
@@ -340,35 +332,11 @@ export async function commitManualImportRow(
   row: ImportRow,
   overrides: { title: string; author: string | null; year: number | null }
 ): Promise<ImportRowResult> {
-  const table = TABLE_BY_TYPE[itemType];
-  const payload =
-    itemType === "book"
-      ? {
-          title: overrides.title,
-          author: overrides.author,
-          published_year: overrides.year,
-          publisher: row.publisher,
-          total_pages: row.pageCount,
-          isbn: row.isbn,
-        }
-      : itemType === "movie"
-        ? { title: overrides.title, director: overrides.author, release_year: overrides.year }
-        : { title: overrides.title, creator: overrides.author, release_year: overrides.year };
-
-  const { data: inserted, error } = await supabase
-    .from(table)
-    .insert(payload as never)
-    .select("id")
-    .single();
-
-  if (error) {
-    return {
-      rowNumber: row.rowNumber,
-      title: row.title,
-      outcome: "error",
-      errorMessage: error.message,
-    };
+  const registered = await registerManualImportItem(supabase, itemType, {
+    ...overrides, pageCount: row.pageCount,
+  });
+  if ("error" in registered) {
+    return { rowNumber: row.rowNumber, title: row.title, outcome: "error", errorMessage: registered.error };
   }
-
-  return await commitPasses(supabase, userId, itemType, inserted.id, row);
+  return await commitPasses(supabase, userId, itemType, registered.itemId, row);
 }

@@ -3211,7 +3211,10 @@
       "missions": "Misiones",
       "stage": "Etapa"
     },
-    "rename": { "label": "Renombrar", "submit": "Guardar" },
+    "rename": {
+      "label": "Renombrar",
+      "submit": "Guardar"
+    },
     "changeClass": {
       "label": "Cambiar de clase",
       "confirm": "Cambiar a {cls}: cambia su aspecto y su bonus, no sus atributos.",
@@ -3221,6 +3224,73 @@
       "label": "Compañera flotante",
       "hint": "La ardilla pequeña en la esquina. Reacciona a lo que registras.",
       "cta": "Abrir mi mascota"
+    },
+    "training": {
+      "title": "Entrenamiento",
+      "intro": "Practica con el Brote de zarza. Gratis, sin recompensas y tantas veces como quieras. Tu mascota ataca sola; tú eliges cuándo usar su habilidad.",
+      "start": "Empezar combate",
+      "starting": "Preparando combate…",
+      "retryStart": "Reintentar el mismo combate",
+      "error": "No se ha podido completar la operación. Puedes reintentar sin perder tus decisiones.",
+      "enemy": "Brote de zarza",
+      "finished": "Combate terminado",
+      "time": "{seconds} s",
+      "replaying": "Repetición",
+      "skill": "Golpe interruptor · Usar habilidad",
+      "queued": "Golpe interruptor · Preparado",
+      "cooldown": "Golpe interruptor · Recarga: {seconds} s",
+      "skillHelp": "La habilidad se activa al pulsar, nunca sola. Causa ×{normal} el daño de un ataque básico, o ×{interrupt} si interrumpes una carga. Después recarga durante {seconds} s de combate: no hace falta gastarla en cuanto esté lista.",
+      "phaseTime": "Termina en {seconds} s de combate",
+      "feedback": {
+        "interrupt": "Última habilidad: ¡carga interrumpida! Has evitado ese ataque y causado {damage} de daño.",
+        "hit": "Última habilidad: {damage} de daño. No había una carga que interrumpir.",
+        "wasted": "Última habilidad: bloqueada por la guardia. No has causado daño y has recibido un contraataque."
+      },
+      "recharge": "Recarga de habilidad",
+      "resume": "Continuar",
+      "pause": "Pausar",
+      "paused": "Combate en pausa. La habilidad tampoco se recarga.",
+      "speed": "Velocidad",
+      "resolving": "Comprobando el resultado…",
+      "retryResolve": "Reintentar guardar el resultado",
+      "damage": "Has causado {dealt} de daño y recibido {taken}.",
+      "replay": "Ver repetición",
+      "repeat": "Nuevo combate",
+      "log": "Detalle del combate",
+      "phases": {
+        "idle": "Sin amenaza anunciada · Puedes guardar la habilidad para la próxima carga.",
+        "windup": "¡Carga en preparación! Usa Golpe interruptor para detenerla si está listo.",
+        "guard": "Guardia · Espera: tu habilidad fallaría y recibirías un contraataque.",
+        "stagger": "¡Interrumpido! El brote está aturdido."
+      },
+      "outcomes": {
+        "win": "¡Victoria!",
+        "lose": "Derrota",
+        "draw": "Empate"
+      },
+      "causes": {
+        "charges_landed": "Las cargas del brote te han causado mucho daño.",
+        "skill_wasted_on_guard": "Has usado la habilidad durante su guardia y recibido el contraataque.",
+        "skill_unused": "No has usado la habilidad para detener sus cargas.",
+        "charges_interrupted": "Interrumpir sus cargas ha marcado la diferencia.",
+        "steady_damage": "Tus ataques constantes han vencido al brote.",
+        "time_limit": "Se ha agotado el tiempo: decide la proporción de vida restante."
+      },
+      "events": {
+        "BATTLE_STARTED": "Empieza el combate.",
+        "PET_BASIC": "Tu mascota causa {damage} de daño.",
+        "ENEMY_BASIC": "El brote causa {damage} de daño.",
+        "charge": "El brote prepara una carga.",
+        "guard": "El brote se pone en guardia.",
+        "TELEGRAPH_RESOLVED": "Termina el movimiento del brote: {damage} de daño.",
+        "interrupt": "Interrumpes la carga y causas {damage} de daño.",
+        "hit": "Tu habilidad causa {damage} de daño.",
+        "wasted": "La guardia devuelve tu habilidad: recibes un contraataque.",
+        "SKILL_IGNORED": "La habilidad aún estaba recargando.",
+        "STATUS_APPLIED": "El brote queda aturdido.",
+        "STATUS_EXPIRED": "El brote se recupera.",
+        "BATTLE_ENDED": "Termina el combate."
+      }
     }
   }
 }
