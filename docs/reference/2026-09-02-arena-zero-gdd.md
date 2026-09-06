@@ -7,6 +7,10 @@
 > lo que se adopta y lo que se adapta está en `docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`.
 > Texto extraído tal cual del `.docx` original (`Especificacion_IA_Arena_Zero.docx`), sin las tablas maquetadas.
 
+> **Precedencia actual · 2026-09-06:** la adaptación inicial enlazada arriba es histórica.
+> El alcance que se continúa está en [Evolución del RPG por fases](../design/2026-09-06-mascota-rpg-evolucion-por-fases.md),
+> que incorpora intervenciones durante el combate. Este GDD sigue siendo referencia, no un contrato de implementación.
+
 ---
 
 ESPECIFICACION FUNCIONAL Y TECNICA · V1.0

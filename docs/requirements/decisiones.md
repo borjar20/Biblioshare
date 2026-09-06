@@ -3851,6 +3851,36 @@ seguramente no se verían, pero es una decisión de arte con pérdida y va en is
 §3 paso 5, de §3bis y de `.claude/agents/pet-artist.md`. Copiar un PNG a mano a
 `public/pet/sheets/` sin `--gen` deja de compilar en verde: falla `manifest.test.ts`.
 
+## 2026-09-04 — Enlace estable al perfil: `/go/<uuid>` en la app y redirector en GitHub Pages, sin dominio aún
+
+**Contexto.** Se quiere grabar el perfil de una persona en una tarjeta NFC de regalo. La URL de
+perfil (`biblioshare-nine.vercel.app/u/<username>`) tiene tres piezas que pueden cambiar —dominio
+automático de Vercel, esquema de rutas y username— y una tarjeta grabada con la URL literal queda
+muda con cualquiera de ellas. No se quiere comprar dominio todavía. Spec:
+`docs/superpowers/specs/2026-09-04-enlace-estable-perfil-nfc-design.md`.
+
+**Decisión.** Tres capas, cada una cubre lo que la anterior no:
+
+1. **Redirector en GitHub Pages (`borjar20/go`)**, un `index.html` por tarjeta con `meta refresh`
+   + `location.replace`. Es lo que va grabado en el tag. Absorbe cambio de dominio y de rutas;
+   editar el destino es editar un fichero desde el móvil.
+2. **Route handler `GET /go/[id]`**: uuid → `307` a `/u/<username>` leyendo `profile_identities`
+   con el cliente sin sesión. Absorbe cambio de username sin que nadie toque nada.
+3. **El tag no se bloquea**: último recurso reescribible con NFC Tools.
+
+**Por qué así y no de otra forma.** Sin dominio propio, el único punto fijo es una cuenta que no se
+va a cerrar; GitHub sobrevive a cualquier cambio de hosting o framework, no tiene plan gratuito que
+caduque y no requiere infra. Un proxy propio (Worker o proyecto Vercel aparte) es una cosa más que
+mantener y en `*.workers.dev` / `*.vercel.app` vuelve a heredar el problema del dominio. Un
+acortador de terceros puede cerrar o paywallear el edit. Route handler y no página: un tap debe
+recibir redirección HTTP, no un shell que redirige después; 307 y no 308 porque el destino puede
+cambiar; cliente sin sesión porque el par id → username es igual para todo el mundo (regla #437) y
+`profile_identities` ya expone la identidad de perfiles privados para el stub de seguir.
+
+**Consecuencia.** Cuando haya dominio propio, se cambia el destino en el repo `go` (un commit) y las
+tarjetas repartidas no se tocan. La ruta `/go/<uuid>` es un contrato: no se renombra ni se
+cambia a 308 sin pasar por aquí.
+
 ## 2026-09-04 — Mascota fase 4: combate tipo El Bruto, jefes derivados del reto (spec aparcada)
 
 **Decisión.** El combate de la mascota sigue la fórmula de **El Bruto**: autobattle observado,
@@ -3875,3 +3905,39 @@ cupo diario: la mascota no pide atención; el combate es la celebración de term
 lista lo que decidió el agente sin validar (mapa atributo → stat, fórmulas, técnicas de clase,
 criaturas, calibración) y hay que repasarlo antes del plan. Las animaciones de combate se generan
 en `east` (~190 gens con las 4 criaturas), no en `south-west` como las de humor.
+
+## 2026-09-06 — Mascota RPG: evolución por fases y combate automático con intervenciones
+
+**Decisión.** El usuario adopta la historia de producto de
+[`2026-09-06-mascota-rpg-evolucion-por-fases.md`](../design/2026-09-06-mascota-rpg-evolucion-por-fases.md)
+como punto de partida para continuar la PR #1079. El combate será **automático con
+intervenciones**: básico automático, habilidad manual con cooldown y ulti que pausa la pelea
+para un minijuego relacionado con la clase. La progresión y las oportunidades de recompensa
+siguen vinculadas al uso cultural de Biblioshare.
+
+El orden es progresión y prototipo de combate → aventuras/economía ligada a la app → equipo →
+subclases y elecciones → colección/gacha cosmético → contenido y juego social. El primer hito
+de trabajo comprende las **fases RPG 1–2** (progresión independiente de la clase y prototipo de
+pelea con dos clases contrastadas). Estas fases nuevas no renumeran ni reabren el núcleo,
+misiones/logros y push ya implementados.
+
+**Por qué.** Se quiere un juego en el que las decisiones del jugador importen, con Biblioshare
+como fuente de progreso. Equipo, árboles y gacha se apoyarán en una pelea que ya resulte
+interesante. El personaje completo PixelLab se conserva: iconos y efectos de equipo primero,
+aspectos completos después; no se recupera el rig por piezas descartado.
+
+**Qué sustituye.** La entrada de combate del 2026-09-04 y su spec quedan como antecedente.
+Conservamos motor puro, determinismo, autoridad del servidor y replay por eventos. Se
+sustituyen el resultado completo al iniciar, la actitud como única intervención y acabar una
+obra como única puerta al combate. Resolver por tramos, pausar/reanudar y registrar elecciones
+requiere rediseñar el esquema/action anteriores. Moneda gastada, equipo adquirido y elecciones
+necesitan persistencia propia: no se derivan solo de los atributos actuales. Los jefes ligados
+a retos deben resolver su historia frente a edición/borrado del reto y cambios de balance.
+
+**Consecuencia.** Esta PR continúa siendo documental: no se cambian las fórmulas ni los datos
+de producción. Antes de implementar el primer hito, concretar su spec técnica y resolver los
+contratos de #1081 (autoridad, vida del raid, historia, reintentos, replay, calibración y ventana).
+Los precios, coeficientes, tiempos y catálogo del documento son ejemplos para calibrar, no
+balance aprobado. No aplicar conversión de niveles reales sin comprobar la conservación de
+nivel, etapa e hitos alcanzados. #1082 coordina la evolución; #1015 conserva los jefes PvE;
+#1017, cosméticos/economía; #1016 queda después del PvE y de definir la defensa asíncrona.

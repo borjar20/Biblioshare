@@ -289,6 +289,16 @@
       ]
     },
     {
+      "id": "r-go",
+      "label": "/go/[id]",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Route handler: 307 de uuid de usuario a /u/<username>. Enlace estable para soportes físicos (tarjeta NFC, QR); lee profile_identities con el cliente sin sesión. Spec 2026-09-04-enlace-estable-perfil-nfc.",
+      "files": [
+        "src/app/go/[id]"
+      ]
+    },
+    {
       "id": "r-estadisticas",
       "label": "/estadisticas",
       "layer": "route",
@@ -1927,6 +1937,12 @@
       "from": "r-perfil",
       "to": "m-profile",
       "kind": "reads"
+    },
+    {
+      "from": "r-go",
+      "to": "t-profiles",
+      "kind": "reads",
+      "label": "vista profile_identities"
     },
     {
       "from": "r-perfil",

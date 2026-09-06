@@ -1,5 +1,13 @@
 # Mascota fase 4: jefes de reto y motor de combate (autobattler tipo El Bruto)
 
+> **Actualización de estado · 2026-09-06: sustituida como punto de partida.** Continuar desde
+> [Evolución del RPG por fases](../../design/2026-09-06-mascota-rpg-evolucion-por-fases.md).
+> El usuario adopta combate automático con intervenciones y ulti con minijuego, y una evolución
+> hacia equipo, subclases y economía ligada a la app. El primer hito son las fases RPG 1–2.
+> El texto de abajo se conserva como antecedente: su combate resuelto entero al iniciar, su
+> esquema/action y su §11 **no son el contrato vigente de implementación**. Los contratos de
+> autoridad, raid, idempotencia y replay señalados en #1081 deben resolverse en la nueva spec.
+
 > **[Histórico · congelado 2026-09-04 · APARCADA]** Spec de diseño de la fase 4 (#1015). Sale del
 > brainstorming del 2026-09-04 con el dueño del proyecto (decisiones en §1) y del GDD de referencia
 > `docs/reference/2026-09-02-arena-zero-gdd.md` (Arena Zero, fórmula El Bruto). **Se cerró sin

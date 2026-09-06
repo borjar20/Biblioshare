@@ -332,8 +332,10 @@ es rastreable por `area:catalogo`.
 - [x] Mascota fase 2: misiones diarias generadas + logros permanentes (#1013, cerrada 2026-09-04) — en `main` (PR #1027 + tanda de deuda #1046); logros por familias con escalera abierta e insignias (spec 2026-09-02-mascota-logros-niveles).
 - [x] Mascota fase 3: avisos push por humor y racha (#1014, cerrada 2026-09-04) — spec `docs/superpowers/specs/2026-09-02-mascota-avisos-push-design.md`, en `main` (PR #1054). Un push al día como mucho a las 20:00 de Madrid (racha en peligro ≥ 3 días, o humor en la transición a los 2 y a los 4 días); categoría propia «Mascota» en preferencias, compañera oculta = silencio, sin fila en la campana. Claim en SQL (`claim_pet_nudges`), envío en Node (`/api/cron/pet-nudges`). Migración `20260906_pet_nudges.sql` aplicada en dev y prod (2026-09-03); primer barrido real en prod el 2026-09-03 a las 20:00 (una fila `mood_sleepy`). Lo que sigue abierto es medir entregas y no intentos (#1052).
 - [x] Mascota: arte a 64 px «héroe» (PR #1075, spec `2026-09-03-mascota-64px-heroe-design.md`) y su deuda de salida (rama `fix/mascota-deuda-64px`, 2026-09-04): sheets a paleta sin pérdida (#1072), `?v=<hash>` en la URL del sheet en vez de bump manual de `CACHE_NAME` (#1058), zona táctil de la compañera = caja del personaje (#1074), maga adulta regenerada a 80×80 sin recorte (#1070).
-- [ ] Mascota fase 4: jefes PvE sobre challenges con motor de combate stats vs stats (#1015).
-- [ ] Mascota fase 5: PvP asíncrono entre seguidos (#1016).
+- [ ] Mascota RPG: progresión revisada y combate automático con intervenciones, habilidad con cooldown y ulti con minijuego. Dirección adoptada el 2026-09-06 en la PR #1079; primer hito = fases RPG 1–2 de [Evolución por fases](../design/2026-09-06-mascota-rpg-evolucion-por-fases.md). Seguimiento #1082; contratos previos #1081. Las fases RPG nuevas no renumeran las fases 1–3 ya implementadas.
+- [ ] Mascota: aventuras y jefes PvE sobre challenges (#1015), según la nueva hoja de ruta RPG; después del prototipo de combate.
+- [ ] Mascota RPG: equipo, subclases/árboles pequeños y colección cosmética por fases (#1082; cosméticos y economía #1017).
+- [ ] Mascota: PvP asíncrono entre seguidos (#1016), posterior al PvE y a definir la defensa frente a intervenciones del atacante.
 
 ## Deuda transversal priorizada por la auditoría 2026-08
 
