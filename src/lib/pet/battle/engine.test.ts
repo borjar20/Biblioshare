@@ -49,10 +49,11 @@ describe("determinismo e invariantes", () => {
   });
 
   it("seq contiguos, ticks no decrecientes, vida nunca negativa, termina con BATTLE_ENDED", () => {
-    // Inputs solo en ticks anteriores a cualquier KO posible: hasta el tick 96 la mascota
-    // (230 PV) no puede haber perdido (como mucho una carga, un castigo y cuatro básicas).
+    // Inputs solo en ticks anteriores a cualquier KO posible. Hasta el tick 36 la mascota
+    // (230 PV) no puede haber perdido: como mucho una carga (92) y una básica (9), y el
+    // input del tick 5 cae siempre en el reposo inicial (idleMin = 20), así que no hay castigo.
     for (let i = 0; i < 50; i++) {
-      const { events, result } = simulate(init(seedFromIndex(i)), i % 2 ? [skill(5), skill(96, 1)] : []);
+      const { events, result } = simulate(init(seedFromIndex(i)), i % 2 ? [skill(5), skill(36, 1)] : []);
       events.forEach((e, idx) => {
         expect(e.seq).toBe(idx);
         if (idx > 0) expect(e.tick).toBeGreaterThanOrEqual(events[idx - 1].tick);
@@ -126,7 +127,7 @@ describe("fin", () => {
     expect(simulate(init(seedFromIndex(0), { ...RULESET, maxTicks: 16 }), []).result).toMatchObject({ outcome: "win", reason: "limit", ticks: 16 });
   });
 
-  it("sin pulsar nunca se pierde por KO y la primera causa es skill_unused", () => {
+  it("sin pulsar, algún seed pierde por KO y su primera causa es skill_unused", () => {
     for (let i = 0; i < 20; i++) {
       const { result } = simulate(init(seedFromIndex(i)), []);
       if (result.outcome === "lose") {
