@@ -3906,38 +3906,105 @@ lista lo que decidió el agente sin validar (mapa atributo → stat, fórmulas, 
 criaturas, calibración) y hay que repasarlo antes del plan. Las animaciones de combate se generan
 en `east` (~190 gens con las 4 criaturas), no en `south-west` como las de humor.
 
-## 2026-09-06 — Mascota RPG: evolución por fases y combate automático con intervenciones
+## 2026-09-06 — Mascota RPG: visión congelada, hoja de ruta viva por hitos y combate con intervenciones de un toque
 
-**Decisión.** El usuario adopta la historia de producto de
+**Decisión.** El usuario adopta
 [`2026-09-06-mascota-rpg-evolucion-por-fases.md`](../design/2026-09-06-mascota-rpg-evolucion-por-fases.md)
-como punto de partida para continuar la PR #1079. El combate será **automático con
-intervenciones**: básico automático, habilidad manual con cooldown y ulti que pausa la pelea
-para un minijuego relacionado con la clase. La progresión y las oportunidades de recompensa
-siguen vinculadas al uso cultural de Biblioshare.
+como punto de partida para continuar la PR #1079, en su redacción revisada del mismo día (la
+inicial, commit `e47ca3d2`, se revisó antes de mergear y queda en el historial de la PR). El
+documento se parte en dos: **Parte I, visión congelada** (no cambia sin entrada aquí) y **Parte
+II, hoja de ruta viva** por hitos **R1–R10**, de los que solo **R1–R4 llevan criterios de salida y
+son contrato**; de R5 en adelante es dirección. Los hitos R no renumeran las fases 1–3 ya en
+producción.
 
-El orden es progresión y prototipo de combate → aventuras/economía ligada a la app → equipo →
-subclases y elecciones → colección/gacha cosmético → contenido y juego social. El primer hito
-de trabajo comprende las **fases RPG 1–2** (progresión independiente de la clase y prototipo de
-pelea con dos clases contrastadas). Estas fases nuevas no renumeran ni reabren el núcleo,
-misiones/logros y push ya implementados.
+El combate es **automático con intervenciones**: básica automática; intervención de clase de **un
+solo toque que nunca pausa** (tres primitivas: pulsar ahora, alternar, elegir una de N; lo que
+cambia por clase es el efecto en la simulación, no la entrada); y **ulti de varios pasos, lo único
+que pausa**, con **dos familias de minijuego** sobre un solo widget de «tocar ficha, tocar hueco»
+sin arrastre ni cronómetro: A secuencia/patrón (Maga, Bardo, Bárbaro; puntúa el orden) y B
+colocación/priorización (Guerrera, Clérigo, Ranger; puntúa la cobertura). Ninguna mide velocidad
+ni memoria; saltar el minijuego da el efecto base; la instancia se genera desde seed y tick.
 
-**Por qué.** Se quiere un juego en el que las decisiones del jugador importen, con Biblioshare
-como fuente de progreso. Equipo, árboles y gacha se apoyarán en una pelea que ya resulte
-interesante. El personaje completo PixelLab se conserva: iconos y efectos de equipo primero,
-aspectos completos después; no se recupera el rig por piezas descartado.
+**Orden.** R1 contratos (la spec de R2, no un hito propio) → R2 combate mínimo universal (kit
+genérico para las seis clases, un enemigo con dos anuncios contrarios, simulación en cliente y
+re-simulación en servidor, entrenamiento sin recompensa, sin arte nuevo) → R3 ulti y segundo
+enemigo, con las animaciones de combate → R4 aventuras derivadas y primer botín de equipo → R5
+bellotas con la tienda como primer sumidero → R6 identidad de clase por tandas (Maga + Guerrera
+primero) → R7 primera campaña por género con los jefes de reto (#1015) → R8 especializaciones →
+R9 Aspectos y Códice → R10 cosméticos y gacha (#1017). **Fuera del roadmap activo**: cooperativo
+de club, crafting profundo y PvP (#1016, posterior a R10). **Aplazado**: el nivel independiente de
+clase.
+
+**Por qué.**
+
+- *Primero una decisión divertida, después sistemas.* La redacción inicial empezaba por rehacer el
+  nivel (contabilidad sin jugabilidad) y su «prototipo» juntaba dos clases con recursos propios,
+  telegraphs, ulti, minijuego, pausa y motor por tramos. Un prototipo que responda «¿guardar la
+  habilidad puede ser mejor que pulsarla?» necesita un kit, una habilidad, un enemigo y replay.
+- *Nivel aplazado.* Hoy `xpFor` multiplica el primario por 1,5 y `changeClass` existe, así que el
+  nivel sí depende de la clase; pero quitar el bonus baja la XP de todos, y el usuario más activo
+  de prod está en nivel 10 justo, el umbral de adulta: volvería a joven. La necesidad real (R6 de
+  #1081: el rival escala con un nivel que depende de la clase) se resuelve con un «poder de
+  combate» interno sin bonus. Se reabre solo si R2 lo pide, con la regla «nadie baja de nivel ni
+  de etapa».
+- *Log de inputs, no tramos.* En Vercel cada tramo de 2–5 s sería una server action que carga,
+  simula y persiste: entre 10 y 30 idas y vueltas por pelea desde un móvil, y cada corte de red la
+  detiene. Con el cliente simulando el mismo motor determinista y el servidor re-simulando seed +
+  log de inputs hay una ida y vuelta, pausa y reanudación gratis y ningún botín local. El riesgo
+  residual (un cliente que precalcula el momento óptimo) solo importa en PvP y rankings.
+- *Kit genérico para las seis.* Cuatro de las seis clases que ya tienen los usuarios de prod
+  quedaban fuera de «Maga y Guerrera»; las dos clases contrastadas son la prueba de validación de
+  R6, no la puerta de entrada.
+- *Un enemigo con un solo anuncio no crea decisión:* la respuesta óptima es siempre la misma.
+  Hacen falta dos anuncios que pidan respuestas contrarias.
+- *Moneda sin sumidero.* Bellotas en R4 sin nada que comprar hasta R5 o R10 descontrolan el saldo
+  antes de abrir la tienda; nacen con la adquisición directa de equipo.
+- *Equipo antes que campaña.* El «volver a jugar» del bucle depende de «cambiar build»; contenido
+  sin un sistema que varíe es repetir la misma pelea. Los primeros objetos son agnósticos de clase
+  porque la identidad de clase llega en R6.
+- *Aventuras derivadas.* «Un intento por obra terminada» era derivado por completo; las aventuras
+  se conceden por (usuario, día, disparador) como el progreso de las misiones, y solo el gasto se
+  guarda, para que editar, dividir o repetir registros no dé más.
+- *Arte después de la diversión.* Los telegraphs multiplican animaciones (una por acción anunciada,
+  además de idle, ataque, golpe y KO); ninguna generación antes de que el hito anterior pase sus
+  criterios.
+- *Social fuera.* Prod tiene tres cuentas reales: un PvP entre seguidos no tiene población.
 
 **Qué sustituye.** La entrada de combate del 2026-09-04 y su spec quedan como antecedente.
-Conservamos motor puro, determinismo, autoridad del servidor y replay por eventos. Se
-sustituyen el resultado completo al iniciar, la actitud como única intervención y acabar una
-obra como única puerta al combate. Resolver por tramos, pausar/reanudar y registrar elecciones
-requiere rediseñar el esquema/action anteriores. Moneda gastada, equipo adquirido y elecciones
-necesitan persistencia propia: no se derivan solo de los atributos actuales. Los jefes ligados
-a retos deben resolver su historia frente a edición/borrado del reto y cambios de balance.
+Conservamos motor puro, determinismo, autoridad del servidor, replay por eventos, snapshots
+inmutables y «solo se guarda lo que es una decisión». Se sustituyen el resultado completo al
+iniciar, la actitud como única intervención, acabar una obra como única puerta al combate, la
+resolución por tramos de la redacción inicial y el nivel independiente de clase como primera
+fase. Moneda, equipo, Aspectos, Códice y elecciones necesitan persistencia propia; el personaje
+completo PixelLab se conserva y no se recupera el rig por piezas descartado.
 
-**Consecuencia.** Esta PR continúa siendo documental: no se cambian las fórmulas ni los datos
-de producción. Antes de implementar el primer hito, concretar su spec técnica y resolver los
-contratos de #1081 (autoridad, vida del raid, historia, reintentos, replay, calibración y ventana).
-Los precios, coeficientes, tiempos y catálogo del documento son ejemplos para calibrar, no
-balance aprobado. No aplicar conversión de niveles reales sin comprobar la conservación de
-nivel, etapa e hitos alcanzados. #1082 coordina la evolución; #1015 conserva los jefes PvE;
-#1017, cosméticos/economía; #1016 queda después del PvE y de definir la defensa asíncrona.
+**Consecuencia.** Esta PR sigue siendo documental: no cambian fórmulas ni datos de producción.
+R1 es la spec técnica de R2 y cierra R1, R4, R5 y R6 de #1081; R2, R3 y R7 de #1081 (vida del
+raid, edición del reto, ventana) se contratan en R7 con #1015. Todos los números del documento
+son ejemplos para calibrar. #1082 coordina; #1016 y #1017 conservan sus features; #1057 (paseo)
+es independiente de este roadmap. Al cerrar cada hito se actualiza la Parte II, no la Parte I.
+
+## 2026-09-06 — Mascota: apartado social = compañía, no comparación (madriguera compartida, #1083)
+
+**Decisión.** El apartado social de la mascota empieza por la **madriguera compartida**: una
+sección en `/mascota` con tu mascota y las de tus seguidos aceptados, todas en idle, con nombre,
+clase, etapa y el dueño enlazado a su perfil. **Sin ranking, sin nivel ajeno, sin humor ajeno, sin
+interacción sobre la mascota de otro.** Visibilidad = la del perfil (`can_view_profile`, nunca
+entre bloqueados), sin reglas propias. Los datos ajenos se leen con un RPC (`get_burrow_pets()`,
+helper en `private` con privilegios de definidor) que devuelve exactamente esas columnas;
+`pet_state` sigue siendo solo del dueño. Orden por hash diario de espectador y dueño; doce
+visibles y «Ver las N». Va como **vía S** de la hoja de ruta, en paralelo a los hitos R y sin
+depender del combate: S1 madriguera (contrato), S2 mascota en el perfil y OG, S3 madriguera del
+club (dirección). Principios en la Parte I §20 del documento de diseño; spec
+`docs/superpowers/specs/2026-09-06-mascota-madriguera-compartida-design.md`.
+
+**Por qué.** De las cuatro sensaciones posibles (identidad, compañía, comparación, interacción) el
+dueño eligió compañía. Un ranking por nivel es un ranking de lectura, contra «espejo, no máquina
+de culpa», y en la app las clasificaciones solo existen dentro de clubes, con variante
+cooperativa. El humor ajeno diría «lleva días sin usar la app»: además de exponer, no se puede
+servir sin abrir datos privados (se deriva de tablas que un tercero no lee). Un RPC de columnas
+exactas en vez de una política en `pet_state` evita filtrar `last_level` y `companion_hidden`.
+
+**Límites asumidos.** La etapa ajena es `last_stage`, lo que guardó la última visita del dueño
+(#1020). Ocultar la compañera no te saca de la madriguera de los demás: intenciones distintas; un
+interruptor propio se añade si alguien lo pide. Fecha del hash en UTC: solo ordena.

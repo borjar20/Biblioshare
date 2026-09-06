@@ -1,9 +1,10 @@
 # Mascota fase 4: jefes de reto y motor de combate (autobattler tipo El Bruto)
 
 > **Actualización de estado · 2026-09-06: sustituida como punto de partida.** Continuar desde
-> [Evolución del RPG por fases](../../design/2026-09-06-mascota-rpg-evolucion-por-fases.md).
-> El usuario adopta combate automático con intervenciones y ulti con minijuego, y una evolución
-> hacia equipo, subclases y economía ligada a la app. El primer hito son las fases RPG 1–2.
+> [RPG de mascota: visión y hoja de ruta](../../design/2026-09-06-mascota-rpg-evolucion-por-fases.md).
+> El usuario adopta combate automático con intervenciones de un toque y ulti con minijuego, y una
+> evolución hacia equipo, subclases y economía ligada a la app. El hito activo es R1 (contratos,
+> la spec de R2) y después R2 (combate mínimo universal), según la Parte II de ese documento.
 > El texto de abajo se conserva como antecedente: su combate resuelto entero al iniciar, su
 > esquema/action y su §11 **no son el contrato vigente de implementación**. Los contratos de
 > autoridad, raid, idempotencia y replay señalados en #1081 deben resolverse en la nueva spec.

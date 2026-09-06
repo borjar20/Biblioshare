@@ -1,24 +1,46 @@
-# Biblioshare — RPG de Mascota Unificado
+# Biblioshare — RPG de mascota: visión y hoja de ruta
 
-> **Propuesta de producto · 2026-09-06**
+> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06 · Parte II (hoja de ruta) viva, revisada el 2026-09-06]**
 >
-> Este documento unifica las dos propuestas existentes para convertir la mascota de Biblioshare en un RPG ligero, profundo y conectado con el uso cultural de la app.
+> Esta redacción sustituye a la inicial del mismo día (commit `e47ca3d2` de la PR #1079) tras su
+> revisión, y al alcance de la spec de combate del 2026-09-04
+> (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
+> Contratos pendientes: #1081. Seguimiento: #1082.
 >
-> La dirección elegida es:
+> **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
+> `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
+> orden; se edita al cerrar cada hito. Solo los hitos **R1–R4 y S1** llevan criterios de salida:
+> son contrato. De R5 y S2 en adelante es dirección, no compromiso. Todos los números del documento
+> (precios, tiempos, cantidades, coeficientes) son ejemplos para calibrar, no balance aprobado.
 >
-> **combate automático con intervenciones significativas + identidad mecánica por clase + ulti con minijuego + progresión vinculada a Biblioshare + builds graduales + campaña por géneros + colección cosmética sin dinero real.**
->
-> El objetivo no es construir desde el principio un “Diablo de ardillas”, sino demostrar primero que una pelea corta es divertida y después añadir profundidad de forma controlada.
+> **Regla de producto:** primero demostrar una sola decisión divertida; después añadir sistemas
+> solo cuando esa decisión necesite más profundidad.
+
+La dirección elegida es:
+
+**combate automático con intervenciones de un toque + identidad mecánica por clase + ulti con
+minijuego + progresión vinculada a Biblioshare + builds graduales + campaña por géneros + colección
+cosmética sin dinero real.**
+
+El objetivo no es construir desde el principio un «Diablo de ardillas», sino demostrar primero que
+una pelea corta es divertida y después añadir profundidad de forma controlada.
 
 ---
 
+# Parte I — Visión (congelada)
+
 ## 1. Visión del producto
 
-Abres Biblioshare, registras lo que has leído o visto y descubres que tu mascota tiene nuevas oportunidades de aventura.
+Abres Biblioshare, registras lo que has leído o visto y descubres que tu mascota tiene nuevas
+oportunidades de aventura.
 
-Entras en una expedición corta. Tu mascota sabe luchar por su cuenta, pero tú decides cuándo intervenir: guardar una habilidad, reaccionar a una amenaza, cambiar una postura, ordenar glifos, colocar un santuario, gestionar furia o preparar una ultimate.
+Entras en una expedición corta. Tu mascota sabe luchar por su cuenta, pero tú decides cuándo
+intervenir, con un toque: descargar la furia, cambiar de postura, elegir el glifo del siguiente
+hechizo, proteger la amenaza que se anuncia, entrar en el compás, soltar al halcón.
 
-Cuando la ulti está lista, el combate se pausa y aparece un pequeño minijuego coherente con la identidad de la clase. El resultado modifica la técnica, pero nunca invalida toda la build por fallar un puzzle.
+Cuando la ulti está lista, el combate se pausa y aparece un pequeño minijuego coherente con la
+identidad de la clase. El resultado modifica la técnica, pero nunca invalida toda la build por
+fallar un puzle.
 
 Al terminar puedes:
 
@@ -33,33 +55,26 @@ Al terminar puedes:
 
 La relación entre ambos productos es clara:
 
-> **Biblioshare genera crecimiento, oportunidades y contexto.  
+> **Biblioshare genera crecimiento, oportunidades y contexto.
 > El RPG convierte ese progreso en decisiones, builds, aventuras y colección.**
 
-El combate nunca debe convertirse en una vía infinita para sustituir leer, ver películas, seguir series o usar las herramientas culturales de la app.
+El combate nunca debe convertirse en una vía infinita para sustituir leer, ver películas, seguir
+series o usar las herramientas culturales de la app.
 
 ---
 
-# 2. Principios de diseño
+## 2. Principios de diseño
 
-## 2.1. Primero diversión, después complejidad
+### 2.1. Primero diversión, después complejidad
 
-El orden de desarrollo será:
+El orden de construcción está en la Parte II. La regla que lo gobierna:
 
-1. combate interesante;
-2. progresión coherente;
-3. conexión con Biblioshare;
-4. equipo que cambie cómo se juega;
-5. especializaciones;
-6. campaña más profunda;
-7. colección cosmética;
-8. sistemas de largo recorrido;
-9. juego social;
-10. PvP, solo si todo lo anterior funciona.
+> Cada sistema entra cuando la decisión anterior necesita más profundidad, no antes. Un hito no
+> abre el siguiente hasta cumplir sus criterios de salida.
 
 No se construirán desde el inicio:
 
-- nueve slots;
+- nueve ranuras de equipo;
 - docenas de afijos;
 - 18 especializaciones completas;
 - seis minijuegos independientes;
@@ -70,41 +85,33 @@ No se construirán desde el inicio:
 - gacha funcional;
 - rankings complejos.
 
----
+### 2.2. La actividad cultural mantiene el crecimiento vertical
 
-## 2.2. La actividad cultural mantiene el crecimiento vertical
+La XP y el nivel proceden del uso de Biblioshare: sesiones de lectura válidas, películas
+terminadas, progreso real de series, misiones, logros, objetivos semanales, hitos culturales.
 
-La XP y el nivel general proceden principalmente del uso de Biblioshare.
+El RPG ofrece progresión horizontal: aventuras, equipo, opciones de build, cosméticos, colección,
+logros de combate.
 
-Ejemplos:
+La misma actividad puede entregar varias cosas, por ejemplo XP y bellotas, porque tienen funciones
+distintas, pero deben mostrarse juntas de forma comprensible.
 
-- sesiones de lectura válidas;
-- películas terminadas;
-- progreso real de series;
-- misiones;
-- logros;
-- objetivos semanales;
-- hitos culturales.
+### 2.3. La clase define estilo; el nivel visible no se toca
 
-El RPG ofrece:
+Hoy el nivel visible sí depende de la clase: `xpFor` (`src/lib/pet/derive.ts`) multiplica el
+atributo primario por 1,5 y `changeClass` (`src/lib/pet/actions.ts`) existe. Quitar ese bonus
+bajaría la XP de todo el mundo, y el usuario más activo de producción está en el nivel 10 justo,
+el umbral de adulta: volvería a joven. Rehacer el nivel es una tercera recalibración a cambio de
+cero jugabilidad.
 
-- aventuras;
-- equipo;
-- opciones de build;
-- cosméticos;
-- colección;
-- logros de combate;
-- progresión horizontal.
+Decisión:
 
-La misma actividad puede entregar varias cosas —por ejemplo XP y bellotas— porque tienen funciones distintas, pero deben mostrarse juntas de forma comprensible.
-
----
-
-## 2.3. La clase define estilo, no nivel
-
-El nivel será común e independiente de la clase.
-
-Cambiar de clase no debe cambiar artificialmente el nivel.
+- **El nivel visible, la etapa y sus hitos no cambian en este roadmap.**
+- El combate escala a los enemigos con un **poder de combate** interno, calculado sin bonus de
+  clase a partir de los seis atributos (R1). No se muestra como «nivel».
+- Se reabre solo si R2 demuestra que el nivel visible confunde o que la clase afín da una ventaja
+  que no se puede compensar. Entonces se recalibra el divisor contra producción con una regla
+  fija: **nadie baja de nivel ni de etapa en la migración**.
 
 Las seis estadísticas existentes mantienen identidad:
 
@@ -115,9 +122,7 @@ Las seis estadísticas existentes mantienen identidad:
 - **DES** — precisión, oportunidades y movilidad;
 - **CAR** — inspiración, soporte y manipulación social/musical.
 
-Estas estadísticas pueden influir en el combate, pero con límites.
-
-No se quiere que:
+Influyen en el combate con límites. No se quiere que:
 
 - publicar más notas vuelva obligatorio jugar Clérigo;
 - ver muchas series sea requisito para una Maga;
@@ -126,53 +131,23 @@ No se quiere que:
 
 La actividad cultural retrata al usuario, pero no dicta una build obligatoria.
 
----
+### 2.4. Nada de pay-to-win
 
-## 2.4. Nada de pay-to-win
+Las bellotas se obtienen dentro de Biblioshare. No se plantea dinero real para probar este
+sistema. El gacha será exclusivamente cosmético. Nunca se bloqueará una build funcional detrás de
+dinero, azar, banners temporales, duplicados obligatorios o pity de pago.
 
-Las bellotas se obtienen dentro de Biblioshare.
+### 2.5. El cliente simula; el servidor decide
 
-No se plantea dinero real para probar este sistema.
-
-El gacha será exclusivamente cosmético.
-
-Nunca se bloqueará una build funcional detrás de:
-
-- dinero;
-- azar;
-- banners temporales;
-- duplicados obligatorios;
-- pity de pago.
+El cliente ejecuta el mismo motor determinista que el servidor para animar la pelea en vivo y
+registra las intervenciones como entradas. El servidor crea el combate, vuelve a simularlo desde
+el seed y las entradas, y solo de esa re-simulación salen el resultado, las recompensas y el
+historial. El cliente nunca envía un resultado, un botín ni una puntuación; envía acciones
+verificables. Detalle en §16.
 
 ---
 
-## 2.5. El cliente no decide recompensas
-
-La economía, el progreso, las compras, el inventario, las especializaciones y los resultados competitivos requieren autoridad del servidor.
-
-El cliente:
-
-- anima;
-- recibe el estado;
-- envía intervenciones;
-- muestra el replay;
-- puede simular de forma visual.
-
-El servidor:
-
-- valida;
-- consume recursos una sola vez;
-- resuelve resultados;
-- persiste recompensas;
-- controla reintentos;
-- evita dobles cobros y duplicaciones;
-- verifica las acciones del minijuego.
-
-El modo offline puede explorarse más adelante, pero no debe convertir al cliente en autoridad sobre loot, moneda o ranking.
-
----
-
-# 3. Bucle principal
+## 3. Bucle principal
 
 ```text
 Usar Biblioshare
@@ -183,7 +158,7 @@ Elegir aventura
       ↓
 Preparar clase + especialización + equipo
       ↓
-Combate automático con intervenciones
+Combate automático con intervenciones de un toque
       ↓
 Ulti + minijuego
       ↓
@@ -196,551 +171,245 @@ Cambiar build
 Volver a jugar
 ```
 
-El bucle debe funcionar incluso antes de añadir gacha, PvP o crafting.
+El bucle debe funcionar antes de añadir gacha, PvP o crafting. Hasta R4 el bucle es solo
+entrenamiento: pelear sin aventura y sin recompensa.
 
 ---
 
-# 4. Combate
+## 4. Combate
 
-## 4.1. Modelo base
+### 4.1. Tres capas
 
-El combate combina tres capas:
+**Capa 1 — Básica automática.** La mascota ataca por sí sola. Mantiene el carácter ligero y las
+sesiones cortas.
 
-### Capa 1 — Básica automática
+**Capa 2 — Intervención de clase: un solo toque, nunca pausa.** Cada clase tiene una intervención
+propia, pero todas se teclean con una de tres primitivas: **pulsar ahora**, **alternar** o
+**elegir una de N**. Lo que diferencia a las clases es qué hace la intervención en la simulación,
+no cómo se introduce. El jugador no pulsa constantemente: espera ventanas importantes y decide.
 
-La mascota ataca por sí sola.
+**Capa 3 — Ulti con minijuego: varios pasos, lo único que pausa.** La ulti se carga durante la
+pelea. Al activarla se pausa la simulación, aparece un minijuego corto, el resultado modifica el
+efecto y el combate continúa. La ulti siempre conserva un efecto base útil; un resultado excelente
+añade daño, duración, protección, control, recurso o efecto secundario. Nunca debe ocurrir que diez
+segundos de puzle anulen todo lo anterior. Familias y reglas en §6.
 
-Esto mantiene el carácter ligero del sistema y permite sesiones cortas.
+### 4.2. Duración objetivo (ejemplo para prototipo)
 
-### Capa 2 — Intervención manual
-
-Cada clase dispone de una forma propia de intervenir.
-
-El jugador no pulsa botones constantemente: espera ventanas importantes y toma decisiones.
-
-### Capa 3 — Ultimate con minijuego
-
-La ulti se carga durante la pelea.
-
-Cuando se activa:
-
-1. se pausa la simulación;
-2. aparece un minijuego corto;
-3. el resultado modifica el efecto;
-4. el combate continúa.
-
-La ulti siempre conserva un efecto base útil.
-
-Un resultado excelente añade:
-
-- daño;
-- duración;
-- protección;
-- control;
-- recurso adicional;
-- efecto secundario.
-
-Nunca debe ocurrir que diez segundos de puzzle anulen todo lo anterior.
-
----
-
-## 4.2. Duración objetivo inicial
-
-Primer prototipo:
-
-- **45–75 segundos**;
+- 45–75 segundos;
 - 2–3 decisiones relevantes;
 - al menos una ulti;
 - dos o tres enemigos legibles;
-- botón de pausa;
-- posibilidad de abandonar y retomar.
+- pausa y control de velocidad;
+- abandonar y retomar.
 
-Son cifras para prototipo, no balance definitivo.
+### 4.3. Telegraphs
 
----
+Los enemigos anuncian sus acciones importantes: cargar un golpe fuerte, levantar una defensa,
+preparar una curación, activar un contraataque, entrar en vulnerabilidad, invocar un aliado,
+aplicar un debuff.
 
-## 4.3. Telegraphs enemigos
-
-Los enemigos anuncian sus acciones importantes.
-
-Ejemplos:
-
-- cargar un golpe fuerte;
-- levantar una defensa;
-- preparar una curación;
-- activar un contraataque;
-- entrar en vulnerabilidad;
-- invocar un aliado;
-- aplicar un debuff.
-
-Esto crea la pregunta central:
-
-> «¿Uso mi recurso ahora o lo guardo?»
+> **Un enemigo con un solo anuncio no crea decisión:** la respuesta óptima es siempre la misma.
+> El mínimo es dos anuncios que pidan respuestas contrarias, por ejemplo una carga que conviene
+> interrumpir y una guardia durante la que conviene esperar. Es lo que convierte «¿uso mi recurso
+> ahora o lo guardo?» en una pregunta real.
 
 Sin telegraphs legibles, el combate automático sería principalmente espectáculo.
 
 ---
 
-# 5. Identidad de las seis clases
+## 5. Identidad de las seis clases
 
-Cada clase comparte la estructura:
+Cada clase comparte la estructura: ataque básico, recurso de clase, intervención, habilidad,
+ultimate y especializaciones futuras. La diferencia no se limita a estadísticas ni a VFX.
 
-- ataque básico;
-- recurso de clase;
-- habilidad;
-- ultimate;
-- interacción manual propia;
-- especializaciones futuras.
+| Clase | Intervención, la decisión | Primitiva | Familia de ulti |
+|---|---|---|---|
+| Maga | qué glifo carga el siguiente hechizo | elegir una de N | A, runas |
+| Guerrera | postura Muro o Filo | alternar | B, escudos |
+| Bárbaro | cuándo descargar la furia | pulsar ahora | A, orden de golpes |
+| Clérigo | qué amenaza anunciada recibe el santuario | elegir una de N | B, sellos |
+| Bardo | entrar en el compás, o pulsar libre sin ritmo | pulsar ahora | A, notas |
+| Ranger | a quién marca, o cuándo suelta el halcón | alternar o pulsar ahora | B, trayectoria |
 
-La diferencia no debe limitarse a estadísticas o VFX.
-
----
-
-## 5.1. Bárbaro
+### 5.1. Bárbaro
 
 **Fantasía:** presión, riesgo, fuerza y explosión.
 
-### Básica
-Ataques pesados.
+- **Básica:** ataques pesados.
+- **Recurso:** furia; sube con ataques y con daño recibido hacia una zona peligrosa.
+- **Intervención (pulsar ahora):** descargar la furia. Gastar pronto es seguro; esperar da más
+  potencia; pasarse penaliza o hace perder el control.
+- **Habilidad:** descarga de furia / golpe de ruptura.
+- **Ulti (familia A):** elegir el orden de golpes sobre puntos débiles.
+- **Especializaciones previstas:** Rompehuesos (crítico, ventanas cortas), Skaldo (gritos, buffs),
+  Quebrantasagas (rompe defensas, ejecución de enemigos grandes).
 
-### Recurso
-**Furia.**
-
-Se acumula con ataques y daño recibido.
-
-### Intervención
-La furia sube hacia una zona peligrosa.
-
-El jugador decide cuándo descargarla.
-
-- gastar pronto = seguridad;
-- esperar = más potencia;
-- pasarse = penalización o pérdida de control.
-
-### Habilidad
-Descarga de furia / golpe de ruptura.
-
-### Ulti
-Secuencia de impactos sobre puntos débiles.
-
-El jugador elige el orden de golpes.
-
-No se basa en machacar botones.
-
-### Especializaciones previstas
-
-**Rompehuesos**
-- crítico;
-- daño explosivo;
-- ventanas cortas.
-
-**Skaldo**
-- gritos;
-- buffs;
-- sinergia de grupo.
-
-**Quebrantasagas**
-- rompe defensas;
-- presión contra jefes;
-- ejecución de enemigos grandes.
-
----
-
-## 5.2. Guerrera
+### 5.2. Guerrera
 
 **Fantasía:** defensa activa, aguante y respuesta.
 
-### Básica
-Presión estable con espada.
+- **Básica:** presión estable con espada.
+- **Recurso:** guardia.
+- **Intervención (alternar):** postura **Muro** (defensa y absorción) o **Filo** (más presión).
+  La decisión responde a lo que anuncia el enemigo.
+- **Habilidad:** guardia perfecta / contraataque.
+- **Ulti (familia B):** colocar escudos frente al patrón anunciado. Sin modo con tiempo (§6).
+- **Especializaciones previstas:** Muro (barreras, control defensivo), Vengadora (devuelve daño,
+  premia bloquear bien), Abanderada (protección de grupo, buffs).
 
-### Recurso
-**Guardia.**
-
-### Intervención
-Elige postura:
-
-- **Muro** — defensa y absorción;
-- **Filo** — más presión ofensiva.
-
-La decisión debe responder a lo que anuncia el enemigo.
-
-### Habilidad
-Guardia perfecta / contraataque.
-
-### Ulti
-Colocar escudos frente a un patrón anunciado.
-
-Debe existir:
-
-- modo con tiempo;
-- modo con tiempo ampliado;
-- alternativa por pulsaciones.
-
-### Especializaciones previstas
-
-**Muro**
-- absorber amenazas;
-- barreras;
-- control defensivo.
-
-**Vengadora**
-- devuelve parte del daño;
-- recompensa bloquear bien.
-
-**Abanderada**
-- protección del grupo;
-- buffs;
-- futura utilidad cooperativa.
-
----
-
-## 5.3. Maga
+### 5.3. Maga
 
 **Fantasía:** preparación, combinaciones y control mágico.
 
-### Básica
-Proyectiles.
+- **Básica:** proyectiles.
+- **Recurso:** glifos.
+- **Intervención (elegir una de N):** qué glifo carga el siguiente hechizo. Ordenar varios glifos
+  es cosa de la ulti, no de la intervención.
+- **Habilidad:** explosión / interrupción / conversión de glifos.
+- **Ulti (familia A):** runas; la combinación conseguida determina el efecto secundario.
+- **Especializaciones previstas:** Piromante (quemadura, detonaciones), Cronomante (retrasar y
+  acelerar ventanas, cooldowns limitados), Invocadora (páginas vivientes, criaturas de tinta).
 
-### Recurso
-**Glifos.**
-
-### Intervención
-Ordenar o seleccionar glifos para modificar el siguiente hechizo.
-
-### Habilidad
-Explosión / interrupción / conversión de glifos.
-
-### Ulti
-Puzzle corto de runas.
-
-La combinación conseguida determina el efecto secundario del hechizo.
-
-### Especializaciones previstas
-
-**Piromante**
-- quemadura;
-- DoT;
-- detonaciones.
-
-**Cronomante**
-- retrasar acciones;
-- acelerar ventanas;
-- manipular cooldowns de forma limitada.
-
-**Invocadora**
-- páginas vivientes;
-- criaturas de tinta;
-- presión indirecta.
-
----
-
-## 5.4. Clérigo
+### 5.4. Clérigo
 
 **Fantasía:** protección, tiempo y priorización.
 
-### Básica
-Daño sagrado moderado.
+- **Básica:** daño sagrado moderado.
+- **Recurso:** fe / sellos.
+- **Intervención (elegir una de N):** qué amenaza anunciada recibe el santuario.
+- **Habilidad:** escudo, cura o juicio según contexto.
+- **Ulti (familia B):** sellos sobre las amenazas, decidiendo qué efecto priorizar.
+- **Especializaciones previstas:** Santuario (escudos, mitigación), Inquisidor (castigo a marcados,
+  afinidad contra arquetipos), Cronista (marcas internas convertidas en protección).
 
-### Recurso
-**Fe / sellos.**
+Las notas reales del usuario no se convierten en robo de vida ni en poder obligatorio.
 
-### Intervención
-Colocar un santuario o protección en la línea temporal de ataques enemigos.
-
-### Habilidad
-Escudo, cura o juicio según contexto.
-
-### Ulti
-Ordenar sellos y decidir qué efecto priorizar.
-
-### Especializaciones previstas
-
-**Santuario**
-- escudos;
-- supervivencia;
-- mitigación.
-
-**Inquisidor**
-- daño;
-- castigo a enemigos marcados;
-- afinidad temática contra ciertos arquetipos.
-
-**Cronista**
-- transforma recursos narrativos o marcas internas en protección/curación.
-
-Las notas reales del usuario no deben convertirse directamente en robo de vida o poder obligatorio.
-
----
-
-## 5.5. Bardo
+### 5.5. Bardo
 
 **Fantasía:** ritmo, apoyo y manipulación.
 
-### Básica
-Notas musicales.
+- **Básica:** notas musicales.
+- **Recurso:** compás.
+- **Intervención (pulsar ahora):** entrar en el compás. En modo sin ritmo, pulsar libre produce el
+  mismo efecto: la accesibilidad es por construcción, no un modo aparte. Señal visual y vibración
+  opcional.
+- **Habilidad:** buff / debuff / robo de efecto.
+- **Ulti (familia A):** secuencia de notas.
+- **Especializaciones previstas:** Farándula (buffs de grupo), Sátiro (mofa, debuffs,
+  interrupción), Juglar oscuro (roba buffs, distorsiona efectos).
 
-### Recurso
-**Compás.**
+### 5.6. Ranger
 
-### Intervención
-Mantener una secuencia musical.
+**Fantasía:** precisión, preparación y objetivo.
 
-La accesibilidad es prioritaria:
-
-- señal visual;
-- vibración opcional;
-- modo sin ritmo;
-- pulsaciones simples.
-
-### Habilidad
-Buff / debuff / robo de efecto.
-
-### Ulti
-Secuencia musical corta.
-
-### Especializaciones previstas
-
-**Farándula**
-- buffs de grupo;
-- inspiración.
-
-**Sátiro**
-- mofa;
-- debuffs;
-- interrupción.
-
-**Juglar oscuro**
-- roba buffs;
-- distorsiona efectos enemigos.
+- **Básica:** disparos.
+- **Recurso:** marca / halcón.
+- **Intervención (alternar o pulsar ahora):** a quién marca, o cuándo suelta al halcón.
+  «Posición» se descarta: exigiría una capa espacial que la vista de perfil no tiene; «objetivo»
+  y «halcón» funcionan con la vista actual y con dos o tres enemigos en pantalla.
+- **Habilidad:** disparo marcado / trampa / orden al halcón.
+- **Ulti (familia B):** seleccionar puntos de una trayectoria o patrón.
+- **Especializaciones previstas:** Rastreador (primer golpe, marcas), Cetrero (halcón, ataques
+  coordinados), Trampero (control, respuesta a telegraphs).
 
 ---
 
-## 5.6. Ranger
+## 6. Ultis: dos familias sobre un solo framework
 
-**Fantasía:** precisión, preparación y posicionamiento.
+Interacción de clase y minijuego de ulti son dos cosas distintas. Las seis clases tienen
+intervenciones distintas (§5); las ultis comparten **dos familias** de minijuego:
 
-### Básica
-Disparos.
+- **Familia A — secuencia / patrón.** Maga (runas), Bardo (notas), Bárbaro (orden de golpes).
+  Los huecos son posiciones ordinales; **puntúa el orden**.
+- **Familia B — colocación / priorización.** Guerrera (escudos), Clérigo (sellos), Ranger
+  (trayectoria). Los huecos son amenazas, carriles o puntos de la trayectoria; **puntúa la
+  cobertura**.
 
-### Recurso
-**Marca / posición.**
+Las dos son el mismo widget: **tocar ficha, tocar hueco**. Sin arrastre, sin cronómetro, cuatro
+fichas como mucho. Una sola capa de accesibilidad, una sola validación, presentación temática
+distinta. Reglas:
 
-### Intervención
-Gestionar posición, objetivo o compañero.
+1. **Ninguna familia mide velocidad ni memoria.** Descarta el modo «con tiempo» de la ulti de la
+   Guerrera y el «repite la secuencia» de estilo Simon: medirían capacidades reales (§17).
+2. **En A, lo que hace correcto un orden es una elección con la información a la vista, no un
+   recuerdo:** recetas conocidas por clase donde el orden cambia el efecto, por ejemplo quemar
+   primero o proteger primero. Es contenido de diseño por clase. **En B la respuesta correcta sale
+   sola de los telegraphs anunciados:** su contenido viene gratis con cada enemigo.
+3. **Saltar el minijuego da el efecto base.** Es la resolución asistida que pide §17 y se deduce
+   de «la ulti siempre conserva un efecto base útil». No hace falta otro modo.
+4. **La instancia del puzle se genera desde el seed y el tick del combate**, nunca la elige el
+   cliente. El servidor la regenera y puntúa la asignación enviada (§16.3).
+5. **La identidad visual de cada ulti va por VFX** sobre la animación de ataque, no por una
+   animación nueva por estado (§14).
 
-Puede usar un halcón como elemento visual y mecánico.
-
-### Habilidad
-Disparo marcado / trampa / orden al halcón.
-
-### Ulti
-Seleccionar puntos de una trayectoria o patrón.
-
-Debe existir alternativa sin arrastre fino.
-
-### Especializaciones previstas
-
-**Rastreador**
-- primer golpe;
-- marcas;
-- precisión.
-
-**Cetrero**
-- halcón;
-- ataques coordinados;
-- reposicionamiento.
-
-**Trampero**
-- control;
-- preparación;
-- respuesta a telegraphs.
+Orden de construcción: R3 construye el widget con la familia A en tema genérico, igual para las
+seis clases; la primera tanda de R6 retematiza A para la Maga y añade la puntuación B para la
+Guerrera.
 
 ---
 
-# 6. Especializaciones
+## 7. Especializaciones
 
-La visión final contempla:
+La visión final contempla **6 clases × 3 especializaciones = 18 estilos**, sin implementarlos de
+golpe. Primera validación: una sola clase con dos ramas contrastadas, por ejemplo Maga de fuego
+(acumular y detonar quemadura, burst) frente a Maga de hielo (barreras, ralentización,
+interrupciones, ventanas seguras). Cuando ambas exijan decisiones distintas contra el mismo enemigo,
+se amplía.
 
-**6 clases × 3 especializaciones = 18 estilos.**
-
-Pero no se implementarán las 18 de golpe.
-
-## Primera validación
-
-Se prueba una sola clase con dos estilos contrastados.
-
-Ejemplo:
-
-### Maga de fuego
-
-- acumula quemadura;
-- busca detonarla;
-- juega alrededor de burst.
-
-### Maga de hielo
-
-- barreras;
-- ralentización;
-- interrupciones;
-- ventanas seguras.
-
-Cuando ambas exijan decisiones distintas contra el mismo enemigo, se amplía.
+Árbol de decisión inicial: una elección para la básica, una para la habilidad y una para la ulti,
+cada una con dos opciones excluyentes. No se compra todo. Cambiar de rama es gratis fuera del
+combate: la experimentación debe sentirse segura.
 
 ---
 
-## Árbol de decisión inicial
+## 8. Ulti y relación con la lectura
 
-Una especialización puede empezar con solo:
-
-- 1 elección para la básica;
-- 1 elección para la habilidad;
-- 1 elección para la ulti.
-
-Cada elección tiene dos opciones excluyentes.
-
-No se compra todo.
-
-Cambiar de rama es gratis fuera del combate.
-
-La experimentación debe sentirse segura.
+La ulti se carga **durante el combate**. No se adopta «40 minutos leídos = 40 % de ulti inicial»:
+un día con menos lectura volvería menos divertido el kit. La actividad real influye de formas más
+suaves: dar una aventura, desbloquear una bendición inicial, ofrecer una elección adicional,
+entregar bellotas, aumentar XP, completar una misión. Las reglas internas de combate se mantienen
+estables.
 
 ---
 
-# 7. Ultimate y relación con la lectura
+## 9. Aventuras
 
-La ulti se carga **durante el combate**.
+Biblioshare concede **oportunidades de aventura** por actividad significativa. No son energía
+comprada, no caducan y no obligan a entrar cada día. Ejemplos de disparadores: primera actividad
+cultural válida del día, sesión de lectura significativa, película terminada, avance real de serie,
+misión, objetivo semanal.
 
-No se adopta como regla principal:
+**La concesión se deriva; solo el gasto se guarda.** Una aventura por (usuario, día local,
+disparador) con tope por periodo, calculada igual que el progreso de las misiones: sin libro mayor
+de concesiones. Se guarda únicamente qué aventura se empezó, con qué seed y qué se reclamó, con un
+identificador idempotente. Consecuencias:
 
-> “40 minutos leídos = 40 % de ulti inicial”.
+- dividir una sesión en diez registros no da diez aventuras;
+- borrar y volver a registrar contenido no da otra;
+- editar o borrar la actividad después no revierte una aventura ya jugada;
+- dos dispositivos no duplican, porque el gasto es idempotente por identificador.
 
-Esa fórmula haría que un día con menos lectura vuelva directamente menos divertido el kit.
+### 9.1. Entrenamiento libre
 
-La actividad real puede influir de formas más suaves:
-
-- dar una aventura;
-- desbloquear una bendición inicial;
-- ofrecer una elección adicional;
-- entregar bellotas;
-- aumentar XP;
-- completar una misión.
-
-Las reglas internas de combate deben mantenerse estables.
-
----
-
-# 8. Aventuras pendientes
-
-Biblioshare concede **oportunidades de aventura** por actividad significativa.
-
-No son energía comprada.
-
-No caducan.
-
-No obligan a entrar cada día.
-
-Ejemplos de triggers:
-
-- primera actividad cultural válida del día;
-- sesión de lectura significativa;
-- película terminada;
-- avance real de serie;
-- misión;
-- objetivo semanal.
-
-Se aplican límites por periodo.
-
-Dividir una sesión en diez registros no genera diez recompensas.
-
-Borrar y volver a registrar contenido tampoco.
+El jugador puede repetir combates conocidos, probar equipo, cambiar especialización, practicar
+minijuegos y comparar builds. No consume aventura ni entrega recompensas repetibles. **Hasta R4,
+todo el combate es entrenamiento.**
 
 ---
 
-## 8.1. Entrenamiento libre
+## 10. Campaña por géneros
 
-El jugador puede:
+Cada zona representa un género: Terror, Misterio, Ciencia ficción, Fantasía, Romance, Aventura,
+Clásicos, Distopía. Cada capítulo contiene nodos, eventos, enemigos temáticos, decisiones,
+riesgo/recompensa y un jefe.
 
-- repetir combates conocidos;
-- probar equipo;
-- cambiar especialización;
-- practicar minijuegos;
-- comparar builds.
+Ejemplos de familias: en **Terror**, Slasher (críticos fuertes, telegraphs agresivos), Fantasma
+(ignora parte de la defensa), Posesión (altera buffs), Entidad de la casa (invoca amenazas) y un
+jefe con fases propias. En **Misterio**, Detective (inspecciona y elimina buffs), Impostor (cambia de
+comportamiento), Testigo (pistas falsas), Enigma viviente (telegraphs ambiguos).
 
-Esto no consume aventura.
-
-Pero tampoco entrega recompensas repetibles.
-
----
-
-# 9. Campaña por géneros
-
-La campaña adopta una estructura cultural.
-
-Cada zona representa un género.
-
-Ejemplos:
-
-- Terror;
-- Misterio;
-- Ciencia ficción;
-- Fantasía;
-- Romance;
-- Aventura;
-- Clásicos;
-- Distopía.
-
-Cada capítulo contiene:
-
-- nodos;
-- eventos;
-- enemigos temáticos;
-- decisiones;
-- riesgo/recompensa;
-- jefe.
-
----
-
-## 9.1. Ejemplo: Terror
-
-**Slasher**
-- críticos fuertes;
-- telegraphs agresivos.
-
-**Fantasma**
-- ignora parte de la defensa.
-
-**Posesión**
-- altera buffs.
-
-**Entidad de la casa**
-- invoca amenazas.
-
-**Jefe**
-- mecánica propia;
-- varias fases;
-- telegraphs únicos.
-
----
-
-## 9.2. Ejemplo: Misterio
-
-**Detective**
-- inspecciona y elimina buffs.
-
-**Impostor**
-- cambia de comportamiento.
-
-**Testigo**
-- genera pistas falsas.
-
-**Enigma viviente**
-- telegraphs ambiguos.
-
----
-
-## 9.3. Rutas
-
-Una aventura corta puede tener:
+Una aventura corta:
 
 ```text
 Entrada
@@ -756,1272 +425,534 @@ Recuperación / evento
 Encuentro final
 ```
 
-La admisión se consume una sola vez al empezar.
-
-Si el jugador cierra:
-
-- guarda estado;
-- vuelve a la misma aventura;
-- no obtiene un segundo resultado;
-- no pierde la entrada.
+La admisión se consume una sola vez al empezar. Si el jugador cierra, se guarda el estado, vuelve
+a la misma aventura, no obtiene un segundo resultado y no pierde la entrada.
 
 ---
 
-# 10. Jefes especiales y retos
+## 11. Jefes de reto
 
-Los jefes ligados a retos culturales se separan del combate normal.
+Los jefes ligados a retos culturales (#1015) se separan del combate normal:
 
-Pueden usar daño persistente entre intentos.
+- las condiciones del encuentro (vida máxima, reglas, versión) se fijan al activarlo;
+- editar, rebalancear o borrar el reto después no cambia una batalla histórica;
+- el daño persiste entre intentos;
+- el objetivo cultural y el trofeo de combate son dos logros distintos;
+- hay que decidir a propósito si cumplir el reto garantiza derrotar al jefe, o si puede quedar
+  vivo y se comunica aparte. No se esconde esa decisión dentro del balance.
 
-Las condiciones del encuentro se fijan al activarlo.
-
-Editar después un reto no cambia una batalla histórica.
-
-El objetivo cultural y el trofeo de combate se consideran dos logros distintos.
-
----
-
-# 11. Economía
-
-## 11.1. Bellotas
-
-Moneda principal.
-
-Se obtiene mediante Biblioshare:
-
-- actividad;
-- misiones;
-- logros;
-- rachas;
-- objetivos semanales;
-- campañas;
-- ciertos hitos RPG.
-
-No se compra con dinero real en esta propuesta.
+Entran en R7, con los contratos R2, R3 y R7 de #1081.
 
 ---
 
-## 11.2. Ejemplo de economía para prototipo
+## 12. Economía: bellotas
 
-Valores de prueba:
+Moneda principal. Se obtiene mediante Biblioshare: actividad, misiones, logros, rachas, objetivos
+semanales, campañas, ciertos hitos RPG. No se compra con dinero real.
 
-- primera actividad válida del día → **10 bellotas**;
-- misión diaria → **5 bellotas**;
-- hasta tres misiones;
-- objetivo semanal → **25 bellotas**.
+> **Ninguna moneda existe sin su sumidero.** Las bellotas nacen en R5 junto con la tienda
+> (adquisición directa de equipo); los cosméticos se suman como segundo sumidero en R10.
 
-Ejemplo:
+Ejemplo de calibración, no balance: primera actividad válida del día 10 bellotas, misión diaria 5
+(hasta tres), objetivo semanal 25. Cuatro días activos, seis misiones y el semanal: 95 bellotas.
+Sirve solo para medir cuánto tarda alguien en conseguir algo deseado.
 
-4 días activos + 6 misiones + objetivo semanal:
+---
+
+## 13. Equipo, rarezas, afijos, Aspectos y Códice
+
+### 13.1. V1 — dos ranuras
+
+**Arma**: modifica una interacción principal. **Amuleto**: modifica una regla secundaria.
+
+> **Los primeros objetos son agnósticos de clase:** modifican la habilidad genérica o la ulti,
+> porque la identidad de clase llega en R6. Las armas de clase (Bastón de Ascuas: detonar quemadura
+> produce una explosión secundaria; Bastón de Escarcha: interrumpir una preparación concede una
+> barrera) entran con la tanda de R6 de su clase.
+
+Ejemplo agnóstico: **Amuleto de la Última Página**, «usar la ulti concede una pequeña barrera».
+Equipar es gratis fuera de combate y la comparación entre dos objetos debe leerse de un vistazo.
+
+### 13.2. Tercera ranura y largo plazo
+
+Un tercer slot funcional (accesorio de clase, reliquia, anillo único) solo cuando V1 demuestre
+profundidad. El sistema puede evolucionar hacia cabeza, torso, patas, cola, mano, anillos, amuleto y
+arma, pero **no se implementan nueve ranuras al inicio**.
+
+### 13.3. Rarezas
+
+Sirven primero para identidad, presentación, singularidad y complejidad del efecto; no significan
+automáticamente más poder. Niveles futuros: Normal, Mágico, Raro, Legendario, Único. Las builds
+importantes siguen teniendo vías de adquisición conocidas.
+
+### 13.4. Afijos
+
+Quedan para después. No se adoptan reglas como «velocidad de lectura = velocidad de ataque»,
+«notas = robo de vida» o «racha = regeneración»: distorsionan cómo se usa Biblioshare. En fases
+avanzadas, afinidades suaves (variedad de géneros → posibilidad de ciertos efectos temáticos),
+nunca una obligación para jugar bien.
+
+### 13.5. Aspectos
+
+La principal idea a conservar del modelo tipo Diablo: un Aspecto cambia una regla. **Aspecto del
+Marcapáginas**, «tu ulti deja un efecto persistente»; **Aspecto de la Página Quemada**, «detonar
+quemadura propaga parte del efecto»; **Aspecto del Margen**, «bloquear justo antes de un ataque
+genera guardia». Se pueden mover entre piezas bajo reglas controladas.
+
+### 13.6. Códice de la Madriguera
+
+Colección permanente de efectos descubiertos: al encontrar cierto objeto legendario se descubre su
+Aspecto, queda registrado, se puede consultar su origen y pasa a la colección de builds. Convierte
+drops no útiles en progreso de cuenta y encaja con la identidad bibliotecaria (catálogo, archivo,
+colección, descubrimiento, consulta). Se introduce después de validar el equipo básico.
+
+### 13.7. Crafting avanzado
+
+Templado, reroll, restauración, obra maestra y gemas quedan fuera de las primeras fases. Solo se
+consideran si existen suficientes builds, el loot tiene profundidad, los jugadores quieren optimizar
+y no convierten el RPG en gestión tediosa. Nombres temáticos posibles: Encuadernación, Restauración,
+Fragmentos de género.
+
+---
+
+## 14. Representación visual y presupuesto de arte
+
+El pipeline trabaja con personajes completos PixelLab
+(`docs/superpowers/specs/2026-09-03-mascota-arte-pixellab-design.md`). No se rediseña el rig para
+montar brazos, armas, ropa, sombreros o capas como piezas: está probado y descartado.
+
+- **Primera solución.** Cada equipo tiene icono, tarjeta, nombre, rareza, efecto y VFX. El combate
+  muestra su identidad mediante proyectiles, impactos, partículas, color y animación secundaria.
+- **Segunda solución.** Aspectos completos curados (Maga de hielo, Piromante, Ranger Cetrero,
+  Guerrera Muro): cada skin es un personaje visual completo. Equipo funcional y apariencia
+  permanecen separados; elegir la skin favorita nunca empeora la build.
+
+> **Regla de presupuesto.** El arte de un hito se genera cuando el hito anterior cumple sus
+> criterios de salida, nunca antes. Los telegraphs multiplican: cada enemigo lleva idle, ataque,
+> golpe y KO **más una animación por acción anunciada**. Referencia: la estimación previa era de
+> unas 190 generaciones para los 18 estados de la mascota y 4 criaturas. Cada hito de la Parte II
+> lleva su línea de arte.
+
+---
+
+## 15. Cosméticos y gacha
+
+El gacha llega solo cuando existe un juego divertido, una moneda estable, suficientes cosméticos y
+una colección con valor visible.
+
+- **Contenido permitido:** atuendos completos, accesorios, caras, animaciones idle, fondos, marcos,
+  efectos de victoria, skins de armas, VFX cosméticos. Cero stats.
+- **Apertura y compra directa:** bellota misteriosa más barata (ejemplo, 100) y elección directa
+  más cara (ejemplo, 250). Sorpresa sin bloquear el deseo concreto.
+- **Duplicados:** protección, garantía de objeto nuevo o conversión en polvo de bellota que avanza
+  hacia una pieza deseada. No se introduce otra moneda si puede evitarse.
+- **Banners:** colección temática, semana de clase, temporada visual o banner permanente, sin FOMO
+  agresivo. Los cosméticos importantes no desaparecen para siempre.
+- **Pity:** probabilidades visibles, protección clara, progreso acumulado.
+- **Nunca poder exclusivo:** ni armas funcionales, ni Aspectos necesarios, ni especializaciones,
+  ni stats, ni acceso a contenido. Si un arma aparece en una apertura, existe adquisición directa, o
+  la apertura entrega solo su apariencia, o hay garantía tras esfuerzo conocido.
+
+---
+
+## 16. Arquitectura
+
+### 16.1. Motor determinista
+
+Seed, estado inicial, entradas del jugador, eventos derivados, versión de reglas y hash del
+contenido. Sin `Math.random`. Permite replay, depuración, consistencia, reintentos y auditoría.
+
+### 16.2. Simulación en cliente, re-simulación en servidor
+
+Se descarta la resolución por tramos (servidor simula 2–5 s, cliente anima, ventana, servidor
+valida, nuevo tramo): en Vercel cada tramo sería una server action que carga, simula y persiste,
+entre 10 y 30 idas y vueltas por pelea desde un móvil, y cada corte de red la detiene.
+
+| | Por tramos (descartado) | Log de inputs (adoptado) |
+|---|---|---|
+| Quién simula en vivo | servidor | cliente, con el mismo motor determinista |
+| Qué envía el cliente | una acción por ventana | seed + lista de (tick, acción) al terminar |
+| Autoridad | servidor por tramo | servidor re-simula del seed y deriva resultado y botín |
+| Idas y vueltas | 10 a 30 por pelea | 1 por pelea, más checkpoints opcionales |
+| Pausa, abandono, offline | estado en BD por tramo | gratis: el log parcial es el estado |
+| Minijuego | validación aparte | sus acciones verificables son más inputs |
 
 ```text
-40 + 30 + 25 = 95 bellotas
+Servidor: crea el combate (seed, snapshot inmutable, versión) → identificador de combate
+Cliente:  simula en vivo con el motor, anima, registra (tick, acción, payload)
+Cliente → Servidor: identificador + log de inputs (+ acciones del minijuego)
+Servidor: re-simula desde el seed y el log; deriva eventos, resultado y recompensas; persiste
 ```
 
-No es un balance definitivo.
+Los cooldowns usan tiempo de simulación: al pausar no avanzan ticks. Abandonar y retomar es
+guardar el log parcial y el tick. Riesgo residual: un cliente modificado que precalcule el momento
+óptimo de intervenir; solo importa en PvP y rankings, fuera del roadmap activo. Nunca se acepta
+botín, moneda ni puntuación calculados localmente.
 
-Solo sirve para medir cuánto tarda alguien en conseguir algo deseado.
+### 16.3. Minijuegos verificables
 
----
+El cliente nunca envía `score = 100`. Envía la asignación ficha → hueco (y las elecciones que
+haga); el servidor regenera la instancia desde el seed y el tick, y la puntúa.
 
-# 12. Equipo
+### 16.4. Offline
 
-El equipo debe cambiar cómo se juega.
+Consecuencia natural del modelo para el entrenamiento: pelear sin red es posible porque el cliente
+simula. Las recompensas solo existen cuando el servidor re-simula. No se acepta loot local.
 
-No se quiere empezar por un inventario enorme de números.
+### 16.5. Persistencia: derivado frente a propio
 
----
+Se mantiene la regla de la mascota: **solo se guarda lo que es una decisión o un hecho.**
 
-## 12.1. V1 — Dos slots
+- **Derivado (no se guarda):** atributos, nivel, etapa, humor, concesión de aventuras, progreso de
+  misiones, logros.
+- **Propio:** combates (seed, log de inputs, versión, resultado), aventura activa y su gasto,
+  bellotas ganadas y gastadas (ledger), inventario y equipo, Aspectos, Códice, especialización,
+  cosméticos, pity si existe, recompensas reclamadas.
 
-### Arma
+### 16.6. Reintentos e idempotencia
 
-Modifica una interacción principal de clase.
-
-Ejemplos:
-
-**Bastón de Ascuas**
-> Detonar Quemadura con la habilidad produce una explosión secundaria.
-
-**Bastón de Escarcha**
-> Interrumpir una preparación enemiga concede una barrera.
-
-### Amuleto
-
-Modifica una regla secundaria.
-
-Ejemplo:
-
-**Amuleto de la Última Página**
-> Usar la ulti concede una pequeña barrera.
+Cada acción económica tiene un identificador estable por intención, reutilizado en los reintentos;
+el servidor recupera el resultado antes de crear otro. Casos obligatorios: doble clic, retry de
+red, dos dispositivos, cierre de app, recompensa ya concedida, compra repetida, aventura retomada,
+actividad cultural editada, rollback, derrota y reintento, combate ya resuelto.
 
 ---
 
-## 12.2. V2 — Tercer slot funcional
+## 17. Accesibilidad
 
-Solo cuando V1 demuestre suficiente profundidad.
-
-Puede añadirse:
-
-- accesorio de clase;
-- reliquia;
-- anillo único.
+Los minijuegos no miden capacidades reales del usuario, y el diseño lo garantiza por construcción:
+sin arrastre, sin cronómetro, sin memoria (§6). Además: señales visuales y no auditivas, vibración
+opcional, saltar la ulti con efecto base, movimiento reducido que afecta también a desplazamientos y
+números flotantes, pausa, control de velocidad, salto del replay y resumen accesible del resultado.
+Una persona que use configuración accesible completa el mismo contenido.
 
 ---
 
-## 12.3. Visión de largo plazo
+## 18. Derrota
 
-El sistema puede evolucionar eventualmente hacia slots como:
-
-- cabeza;
-- torso;
-- patas;
-- cola;
-- mano;
-- anillos;
-- amuleto;
-- arma.
-
-Pero **no se implementarán nueve slots al inicio**.
+Perder no destruye progreso. La ardilla se duerme, vuelve a la madriguera, se recupera visualmente
+y puede reintentar. No pierde equipo, XP, cosméticos ni el acceso a la aventura ya iniciada. La
+derrota enseña, no castiga.
 
 ---
 
-# 13. Rarezas
+## 19. Fuera del roadmap activo: cooperativo, crafting profundo y PvP
 
-La rareza sirve primero para:
+Son visión, no plan. Se conservan aquí para que nadie los reimplemente leyendo un mockup viejo.
 
-- identidad;
-- presentación;
-- singularidad;
-- complejidad del efecto.
-
-No significa automáticamente “más poder”.
-
-Posibles niveles futuros:
-
-- Normal;
-- Mágico;
-- Raro;
-- Legendario;
-- Único.
-
-Las builds importantes deben seguir teniendo vías de adquisición conocidas.
+- **Cooperativo: jefe de club.** Cada persona contribuye usando Biblioshare, completando aventuras
+  o combatiendo; el grupo comparte el progreso; las ausencias no restan vida, no dañan al equipo ni
+  penalizan a los demás. Compartir build, replay, equipo, skin y logro.
+- **PvP asíncrono (#1016).** Luchar contra la build guardada de otra persona; el defensor usa una
+  política de IA declarada; el atacante no obtiene ventaja oculta; bandas de nivel, consentimiento,
+  privacidad, bloqueo, reglas antiabuso, sin pérdida permanente. No se implementa añadiendo un
+  rating al PvE. **Condiciones para volver al roadmap:** población real, R1–R7 cerrados y una
+  defensa asíncrona definida frente a las intervenciones del atacante.
+- **Crafting profundo:** §13.7.
 
 ---
 
-# 14. Afijos
+## 20. Presencia social: compañía, no comparación
 
-Los afijos profundos quedan para una fase posterior.
+Decidido el 2026-09-06 (#1083). La mascota sale de tu pantalla para acompañar, no para competir:
 
-No se adoptan inicialmente reglas como:
+- **Se ve a quien puede ver tu perfil.** Misma regla que sesiones, pases y biblioteca
+  (`can_view_profile`: dueño, perfil público o seguimiento aceptado; nunca entre bloqueados). No
+  hay reglas de visibilidad propias de la mascota.
+- **De una mascota ajena se ve sprite, nombre, clase y etapa; nunca el nivel ni el humor.** El
+  humor ajeno diría «esta persona lleva días sin usar la app»; el nivel es un número que ordena.
+  Las vecinas salen siempre despiertas.
+- **Sin ranking.** Un ranking por nivel es un ranking de lectura, contra «espejo, no máquina de
+  culpa». Si algún día se quiere una clasificación, será dentro de un club, donde ya existe el
+  patrón de tablero y su variante cooperativa, y por logros de combate, no por lectura.
+- **Sin interacción sobre la mascota ajena** (reacciones, regalos, visitas) hasta que la compañía
+  a secas demuestre valor.
+- **Datos por RPC, no por política.** Las mascotas ajenas se leen con una función que devuelve
+  exactamente esas columnas; `pet_state` sigue siendo solo del dueño.
 
-- velocidad de lectura = velocidad de ataque;
-- notas = robo de vida;
-- racha = regeneración.
-
-Estas relaciones son temáticamente atractivas pero pueden distorsionar cómo se utiliza Biblioshare.
-
-En fases avanzadas se pueden explorar afinidades suaves.
-
-Ejemplo:
-
-> variedad de géneros → posibilidad de encontrar ciertos efectos temáticos.
-
-Pero nunca una obligación para jugar bien.
-
----
-
-# 15. Aspectos
-
-Los Aspectos son la principal idea a conservar del modelo tipo Diablo.
-
-Un Aspecto cambia una regla.
-
-Ejemplo:
-
-**Aspecto del Marcapáginas**
-> Tu ulti deja un efecto persistente.
-
-**Aspecto de la Página Quemada**
-> Detonar Quemadura propaga parte del efecto.
-
-**Aspecto del Margen**
-> Bloquear justo antes de un ataque genera Guardia.
-
-Se pueden mover entre piezas bajo reglas controladas.
+La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte II).
 
 ---
 
-# 16. Códice de la Madriguera
+# Parte II — Hoja de ruta (viva)
+
+## Cómo se usa esta parte
+
+- Hitos **R1–R10**. Los hitos R no renumeran las fases 1–3 de la mascota ya en producción (núcleo,
+  misiones y logros, avisos push).
+- **Vía S, presencia social**, en paralelo a los hitos R: no depende del combate ni del arte, y
+  puede construirse antes de R1 o entre dos hitos R. S1 lleva criterios; S2 y S3 son dirección.
+- **R1–R4 y S1 llevan criterios de salida y son contrato.** De R5 y S2 en adelante es dirección:
+  se concreta cuando le toca.
+- Cada hito arranca con su spec en `docs/superpowers/specs/` (brainstorming → spec → plan) y
+  cierra con su entrada en `decisiones.md` y la casilla del backlog. Al cerrarlo se edita esta
+  parte, no la Parte I.
+- El arte de un hito se genera después de que el anterior pase sus criterios (§14).
+- Hasta R4, todo lo que llega a producción es **entrenamiento**: sin recompensa, sin consumo.
+- Validación con personas: las cuentas reales de producción y perfiles sintéticos construidos con
+  `deriveAttributes` (lector de libros largos, espectador de películas, consumidor de series,
+  usuario social, importador de historial). La hipótesis del GDD de referencia sigue vigente:
+  observar combates cortos sigue siendo entretenido después de veinte.
+
+## Resumen
+
+| Hito | Entrega | Contrato | Arte |
+|---|---|---|---|
+| R1 Contratos y modelo de combate | la spec ejecutable de R2 | criterios | ninguno |
+| R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento | criterios | ninguno: sprites actuales como marcador |
+| R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
+| R4 Aventuras y primer botín | aventuras derivadas, límites antifarm, dos ranuras y 4–6 objetos agnósticos | criterios | iconos y VFX de los objetos |
+| R5 Bellotas y tienda | moneda con su primer sumidero | dirección | — |
+| R6 Identidad de clase por tandas | Maga + Guerrera; después Bárbaro + Clérigo; después Bardo + Ranger | dirección | VFX de ulti y de clase, armas de clase |
+| R7 Primera campaña por género | una región y los jefes de reto (#1015) | dirección | una familia de enemigos y su jefe |
+| R8 Especializaciones | fuego / hielo, tres elecciones binarias | dirección | VFX |
+| R9 Aspectos y Códice | catálogo pequeño | dirección | iconos |
+| R10 Cosméticos y gacha | catálogo, apertura, compra directa | dirección | skins completas |
+| S1 Madriguera compartida | las mascotas de tus seguidos junto a la tuya en /mascota; RPC de columnas exactas (#1083) | criterios | ninguno: sprites actuales en idle |
+| S2 Mascota en el perfil | sprite, nombre y clase en la cabecera del perfil público y en la imagen OG | dirección | ninguno |
+| S3 Madriguera del club | la misma escena con los miembros del club | dirección | ninguno |
+
+## R1 — Contratos y modelo de combate
+
+**Qué es.** No es un hito con entregable propio: es la spec técnica de R2. Solo lo que R2
+necesita; la economía y la procedencia de aventuras se contratan en R4, y los jefes de reto en R7.
+
+**Contenido:**
+
+- **Autoridad.** El servidor crea el combate y re-simula; el cliente nunca envía un resultado.
+  Ninguna RPC accesible al cliente inserta batallas (#1081 R1).
+- **Seed y snapshot.** Seed generado en servidor; snapshot inmutable de la mascota al crear el
+  combate.
+- **Log de inputs.** `(tick, acción, payload)`; serialización canónica; unidades y precisión;
+  orden de expiración de estados y resolución de golpes múltiples; conversión ticks ↔ segundos
+  (#1081 R5).
+- **Replay.** Eventos derivados de la re-simulación; checksum sin circularidad (el digest queda
+  fuera del material firmado). Reproducir eventos guardados no es lo mismo que volver a simular.
+- **Versión.** `rulesetVersion` y hash del contenido con el que se simuló, conservados con el
+  combate.
+- **Identificador de combate.** Estable por intención y reutilizado en los reintentos; el servidor
+  recupera el resultado antes de crear otro (#1081 R4).
+- **Poder de combate.** Magnitud interna sin bonus de clase para escalar al enemigo (#1081 R6),
+  calibrada con perfiles sintéticos, no a ojo.
+- **Instancia de minijuego** derivada de seed y tick, lista para R3.
+
+**Criterios de salida:**
+
+- Spec con un ejemplo normativo completo: seed → inputs → eventos → bytes del hash → resultado.
+- Test de integración: un JWT normal que intenta fabricar una victoria es rechazado; otra cuenta,
+  también.
+- Simulador por CLI con perfiles sintéticos que ejecuta la re-simulación sin UI.
+
+## R2 — Combate mínimo universal
+
+**Entrega:**
+
+- Motor puro en `src/lib/pet/battle/`, sin `Math.random`, compatible con las seis clases desde el
+  primer día.
+- Kit genérico igual para las seis: básica automática y una habilidad con cooldown (pulsar ahora).
+- Un enemigo con **dos anuncios contrarios**: una carga que conviene interrumpir y una guardia
+  durante la que conviene esperar.
+- Simulación en cliente, re-simulación y validación en servidor, replay.
+- Entrenamiento en `/mascota`: sin recompensa, sin consumo, repetible. Pausa y control de
+  velocidad.
+- Resultado legible: daño y una o dos causas; el log técnico completo como detalle.
+
+**Arte:** ninguno nuevo. Los sprites actuales con movimiento por CSS (embestida, retroceso, caída)
+hacen de marcador. Las animaciones de combate se generan en R3 solo si R2 pasa.
+
+**Fuera:** ulti, minijuego, mecánicas propias por clase, aventuras, bellotas, equipo, arte nuevo.
+
+**Criterios de salida, con personas:**
+
+- Repetir varios combates sigue siendo interesante después de veinte.
+- Guardar la habilidad es a veces mejor que pulsarla, y quien juega lo descubre solo.
+- Cambiar la decisión cambia el resultado, y se entiende por qué se perdió.
+- El replay reproduce exactamente; el servidor rechaza logs manipulados.
+- Ninguna de las seis clases queda sin poder pelear.
+
+## R3 — Ulti y segundo enemigo
+
+**Entrega:**
+
+- Widget de ulti compartido (tocar ficha, tocar hueco; cuatro fichas como mucho; sin arrastre ni
+  cronómetro) con la **familia A en tema genérico**; saltar da el efecto base; la ulti pausa.
+- Instancia desde seed y tick; el servidor puntúa la asignación.
+- **Segundo enemigo** con un patrón distinto (defensa temporal y ventana vulnerable, invocación o
+  debuff).
+- **Animaciones de combate reales:** los 18 estados en `east` (idle de combate, ataque, golpe, KO)
+  y los dos enemigos. Referencia de presupuesto: unas 190 generaciones para 18 estados y 4
+  criaturas en la estimación anterior.
 
-El **Códice de la Madriguera** es una colección permanente de efectos descubiertos.
+**Criterios de salida:**
 
-Cuando encuentras cierto objeto legendario:
+- La decisión cambia según el enemigo.
+- El minijuego se entiende sin tutorial, y con la configuración accesible se completa igual.
+- Un resultado excelente se nota; uno malo nunca anula la pelea.
+- Ampliar los sheets no agranda la caja táctil de la compañera (#1074).
 
-1. descubres su Aspecto;
-2. queda registrado;
-3. puedes consultar su origen;
-4. pasa a formar parte de tu colección de builds.
+## R4 — Aventuras y primer botín
 
-Esto convierte drops no útiles en progreso de cuenta.
+**Entrega:**
 
-También encaja con la identidad bibliotecaria de Biblioshare:
+- **Aventuras derivadas** por (usuario, día local, disparador) con tope por periodo (§9); no
+  caducan; gasto idempotente por identificador; el entrenamiento sigue libre.
+- **Primer botín:** dos ranuras (arma y amuleto) y 4–6 objetos **agnósticos de clase** que modifican
+  la habilidad genérica o la ulti; equipar gratis fuera de combate; comparación clara.
+- Reanudación de aventura desde el log parcial.
+- Iconos y VFX de los objetos.
 
-- catálogo;
-- archivo;
-- colección;
-- descubrimiento;
-- consulta.
+**Criterios de salida:**
 
-El Códice se introduce después de validar el equipo básico.
+- Usar Biblioshare con normalidad da acceso suficiente; nadie necesita falsear registros.
+- Dividir una sesión, borrar y volver a registrar, o usar dos dispositivos, no dan más aventuras ni
+  duplican recompensas.
+- Editar la actividad después no revierte una aventura jugada.
+- Un objeto nuevo da ganas de probarlo, y ninguna build domina entre los 4–6.
+- Ningún cambio de hábito negativo observado: no se dividen sesiones, no hay obligación diaria.
 
----
+## R5 — Bellotas y tienda (dirección)
 
-# 17. Crafting avanzado
+La moneda nace con su primer sumidero: la adquisición directa de equipo. Fuentes: actividad,
+misiones, logros, objetivo semanal. Ledger propio; compras idempotentes. Un primer cosmético de
+compra directa si hay uno listo. Parte de #1017.
 
-Sistemas inspirados en:
+## R6 — Identidad de clase por tandas (dirección)
 
-- templado;
-- reroll;
-- restauración;
-- obra maestra;
-- gemas;
+Primera tanda: **Maga** (glifos; retematizar la familia A como runas) y **Guerrera** (postura;
+añadir la puntuación B como escudos). Recurso de clase, intervención propia, armas de clase, VFX.
+Después Bárbaro + Clérigo, y luego Bardo + Ranger. Cada tanda repite los criterios de R2 y R3 para
+sus clases.
 
-quedan explícitamente fuera de las primeras fases.
+## R7 — Primera campaña por género (dirección)
 
-Solo se consideran si:
+Una región (Terror o Misterio), 5–8 nodos, tres enemigos, un miniboss, un jefe con fases y una
+decisión de ruta. Los **jefes de reto** (#1015) con sus contratos: condiciones fijadas al activar,
+historia inmutable, dos logros, política al completar el reto (#1081 R2, R3 y R7).
 
-1. existen suficientes builds;
-2. el loot tiene profundidad;
-3. los jugadores quieren optimizar;
-4. no convierten el RPG en gestión tediosa.
+## R8 — Especializaciones (dirección)
 
-Posibles nombres temáticos futuros:
+Fuego / hielo como prueba; tres elecciones binarias; cambio gratis entre aventuras. Termina cuando
+dos ramas son útiles contra el mismo contenido, exigen decisiones distintas y ninguna domina.
 
-- **Encuadernación** — modificar una propiedad;
-- **Restauración** — mejorar una pieza;
-- **Fragmentos de género** — engarces.
+## R9 — Aspectos y Códice (dirección)
 
----
+Aspectos, extracción, Códice de la Madriguera, 8–15 efectos iniciales. Termina cuando encontrar un
+Aspecto nuevo genera curiosidad y se entiende qué build permite sin consultar una wiki.
 
-# 18. Representación visual del equipo
+## R10 — Cosméticos y gacha (dirección)
 
-El pipeline actual trabaja con personajes completos.
-
-No se rediseña inicialmente el rig para montar:
-
-- brazos;
-- armas;
-- ropa;
-- sombreros;
-- capas;
-
-como piezas independientes.
-
----
-
-## 18.1. Primera solución
-
-Cada equipo tiene:
-
-- icono;
-- tarjeta;
-- nombre;
-- rareza;
-- efecto;
-- VFX.
-
-El combate muestra su identidad mediante:
-
-- proyectiles;
-- impactos;
-- partículas;
-- color;
-- animación secundaria.
-
----
-
-## 18.2. Segunda solución
-
-Aspectos completos curados.
-
-Ejemplos:
-
-- Maga de hielo;
-- Piromante;
-- Ranger Cetrero;
-- Guerrera Muro.
-
-Cada skin es un personaje visual completo.
-
-Equipo funcional y apariencia permanecen separados.
-
-Elegir la skin favorita nunca empeora la build.
-
----
-
-# 19. Gacha cosmético
-
-El gacha llega solo cuando:
-
-- existe un juego divertido;
-- hay una moneda estable;
-- hay suficientes cosméticos;
-- la colección tiene valor visible.
-
----
-
-## 19.1. Contenido permitido
-
-- atuendos completos;
-- accesorios;
-- caras;
-- animaciones idle;
-- fondos;
-- marcos;
-- efectos de victoria;
-- skins de armas;
-- VFX cosméticos.
-
-Cero stats.
-
----
-
-## 19.2. Apertura y compra directa
-
-Modelo recomendado:
-
-### Bellota misteriosa
-Más barata.
-
-Ejemplo:
-
-**100 bellotas**
-
-### Elección directa
-Más cara.
-
-Ejemplo:
-
-**250 bellotas**
-
-Así existe sorpresa sin bloquear el deseo concreto.
-
----
-
-## 19.3. Duplicados
-
-Opciones:
-
-- protección contra duplicado;
-- garantía de objeto nuevo;
-- convertir duplicado en polvo de bellota.
-
-El polvo sirve para avanzar hacia una pieza deseada.
-
-No se introduce otra moneda innecesaria si puede evitarse.
-
----
-
-## 19.4. Banners
-
-Se puede experimentar con:
-
-- colección temática;
-- semana de clase;
-- temporada visual;
-- banner permanente.
-
-Pero no se utilizará FOMO agresivo.
-
-Los cosméticos importantes no necesitan desaparecer permanentemente.
-
----
-
-## 19.5. Pity
-
-Si existe azar:
-
-- probabilidades visibles;
-- protección clara;
-- progreso acumulado.
-
-El pity no debe esconder una economía abusiva.
-
----
-
-# 20. El gacha nunca entrega poder exclusivo
-
-No se obtiene exclusivamente mediante gacha:
-
-- armas funcionales;
-- Aspectos necesarios;
-- especializaciones;
-- stats;
-- mejoras verticales;
-- acceso a contenido.
-
-Si alguna arma aparece en una apertura:
-
-- debe existir adquisición directa;
-- o la apertura entrega solo su apariencia;
-- o existe garantía tras esfuerzo conocido.
-
----
-
-# 21. Derrota
-
-Perder no destruye progreso.
-
-La ardilla:
-
-- se duerme;
-- vuelve a la madriguera;
-- necesita recuperarse visualmente;
-- puede reintentar.
-
-No pierde equipo.
-
-No pierde XP.
-
-No pierde cosméticos.
-
-No pierde acceso a la aventura ya iniciada.
-
-La derrota debe enseñar, no castigar arbitrariamente.
-
----
-
-# 22. PvE antes que PvP
-
-El primer objetivo es un PvE sólido.
-
-Orden:
-
-1. enemigo simple;
-2. enemigos con telegraphs;
-3. rutas;
-4. jefes;
-5. familias por género;
-6. builds;
-7. cooperativo;
-8. PvP asíncrono.
-
----
-
-# 23. Cooperativo
-
-Primer sistema social recomendado:
-
-## Jefe de club
-
-Cada persona contribuye cuando:
-
-- utiliza Biblioshare;
-- completa aventuras;
-- combate contra el jefe.
-
-El grupo comparte el progreso.
-
-Las ausencias no:
-
-- restan vida;
-- dañan al equipo;
-- penalizan a los demás.
-
-También se puede compartir:
-
-- build;
-- replay;
-- equipo;
-- skin;
-- logro.
-
----
-
-# 24. PvP asíncrono
-
-Solo se diseña después.
-
-Concepto posible:
-
-- luchas contra la build guardada de otra persona;
-- el defensor usa una política de IA;
-- se declara claramente cómo actúa;
-- el atacante no obtiene ventaja oculta;
-- matchmaking por bandas;
-- consentimiento;
-- privacidad;
-- bloqueo;
-- reglas antiabuso.
-
-No se implementa simplemente añadiendo un rating al PvE.
-
----
-
-## 24.1. Posibles reglas futuras
-
-Si se valida:
-
-- bandas de nivel;
-- bots para completar escalera;
-- temporadas;
-- recompensas cosméticas;
-- sin pérdida permanente;
-- sin degradaciones punitivas.
-
-Todo esto queda como visión, no como requisito inicial.
-
----
-
-# 25. Servidor y simulación
-
-## 25.1. Motor determinista
-
-El combate puede usar:
-
-- seed;
-- eventos;
-- estado inicial;
-- intervenciones;
-- resolución por tramos.
-
-Esto permite:
-
-- replay;
-- depuración;
-- consistencia;
-- reintentos;
-- auditoría.
-
----
-
-## 25.2. Resolución por tramos
-
-Ejemplo:
-
-```text
-Estado inicial
- ↓
-Servidor simula 2–5 s
- ↓
-Cliente anima
- ↓
-Ventana de intervención
- ↓
-Jugador actúa
- ↓
-Servidor valida
- ↓
-Nuevo tramo
- ↓
-...
-```
-
-El cooldown usa tiempo de simulación.
-
-Al pausar, no sigue corriendo.
-
----
-
-## 25.3. Minijuegos
-
-El cliente nunca envía simplemente:
-
-```text
-score = 100
-```
-
-Debe enviar acciones verificables.
-
-Ejemplo:
-
-- orden de glifos;
-- posiciones;
-- secuencia;
-- elecciones;
-- timestamps con tolerancia cuando sea necesario.
-
-El servidor reconstruye el resultado.
-
----
-
-# 26. Offline
-
-La campaña offline es una posibilidad futura, no la arquitectura base.
-
-Puede permitirse más adelante para:
-
-- entrenamiento;
-- práctica;
-- combates sin recompensa;
-- contenido firmado;
-- resultados que el servidor pueda verificar razonablemente.
-
-No se acepta de forma ciega loot generado localmente.
-
----
-
-# 27. Persistencia
-
-Se necesita estado persistente para:
-
-- bellotas;
-- compras;
-- inventario;
-- equipo;
-- Aspectos;
-- Códice;
-- especialización;
-- aventura activa;
-- recompensas reclamadas;
-- cosméticos;
-- pity si existe;
-- historial de combate.
-
-No puede derivarse todo del inventario visible.
-
----
-
-# 28. Reintentos y consistencia
-
-Casos obligatorios:
-
-- doble click;
-- retry de red;
-- dos dispositivos;
-- cierre de app;
-- recompensa ya concedida;
-- compra repetida;
-- aventura retomada;
-- actividad cultural editada;
-- rollback;
-- derrota y reintento;
-- combate ya resuelto.
-
-Cada acción económica importante necesita idempotencia.
-
----
-
-# 29. Accesibilidad
-
-Los minijuegos no miden capacidades reales del usuario.
-
-Se ofrecen:
-
-- menos presión temporal;
-- controles simples;
-- modos por pulsaciones;
-- alternativa al arrastre fino;
-- señales visuales;
-- señales no auditivas;
-- resolución asistida viable.
-
-Una persona que use configuración accesible debe poder completar el contenido.
-
----
-
-# 30. Fases de implementación
-
-# Fase 1 — Progresión coherente
-
-## Objetivo
-
-> «Entiendo qué hace crecer a mi mascota.»
-
-### Implementar
-
-- nivel independiente de clase;
-- afinidades acotadas;
-- migración de mascotas actuales;
-- simulación de perfiles;
-- conservación de hitos.
-
-### Termina cuando
-
-- cambiar de clase no cambia el nivel;
-- hábitos distintos siguen siendo viables;
-- se entiende la siguiente mejora;
-- los contratos de autoridad y persistencia están definidos.
-
----
-
-# Fase 2 — Primera pelea divertida
-
-## Objetivo
-
-> «Mi mascota sabe luchar; yo sé cuándo ayudarla.»
-
-### Implementar
-
-- dos clases;
-- dos o tres enemigos;
-- ataques automáticos;
-- habilidad manual;
-- telegraphs;
-- ulti;
-- un minijuego;
-- pausa;
-- replay determinista.
-
-### Recomendación
-
-Probar:
-
-- Maga;
-- Guerrera.
-
-Son contrastadas y fáciles de leer.
-
-### Termina cuando
-
-- repetir varios combates sigue siendo interesante;
-- guardar una habilidad puede ser mejor que pulsarla;
-- cambiar la decisión cambia el resultado.
-
----
-
-# Fase 3 — Identidad de clase
-
-## Objetivo
-
-> «Elegir otra clase cambia cómo juego.»
-
-### Implementar
-
-- recurso de clase;
-- interacción propia;
-- segundo minijuego;
-- feedback visual;
-- accesibilidad.
-
-### Validación
-
-Maga:
-
-- glifos.
-
-Guerrera:
-
-- postura/guardia.
-
-Después:
-
-- Bárbaro;
-- Clérigo;
-- Bardo;
-- Ranger.
-
----
-
-# Fase 4 — Biblioshare genera aventuras
-
-## Objetivo
-
-> «Lo que hago en la app me da motivos para volver al RPG.»
-
-### Implementar
-
-- bellotas;
-- aventuras pendientes;
-- misiones;
-- objetivos semanales;
-- límites antifarm;
-- reanudación;
-- entrenamiento sin recompensa.
-
-### Termina cuando
-
-- usar Biblioshare normalmente da suficiente acceso;
-- no hace falta falsear registros;
-- no caduca progreso innecesariamente;
-- dos dispositivos no duplican recompensas.
-
----
-
-# Fase 5 — Primera campaña
-
-## Objetivo
-
-> «Estoy recorriendo un mundo, no abriendo combates sueltos.»
-
-### Implementar
-
-- una región;
-- un género;
-- 5–8 nodos;
-- 3 enemigos;
-- 1 miniboss;
-- 1 boss;
-- 1 decisión de ruta.
-
-### Género recomendado
-
-**Terror** o **Misterio**.
-
-Permiten enemigos muy diferenciados.
-
----
-
-# Fase 6 — Primera build
-
-## Objetivo
-
-> «He conseguido algo y quiero probar otra forma de pelear.»
-
-### Implementar
-
-- arma;
-- amuleto;
-- 6–10 objetos;
-- efectos claros;
-- comparación;
-- equipar gratis fuera de combate.
-
-### No implementar aún
-
-- nueve slots;
-- reroll;
-- gems;
-- masterworking;
-- cuatro afijos por pieza.
-
----
-
-# Fase 7 — Especializaciones
-
-## Objetivo
-
-> «Mi Maga no juega como otra Maga.»
-
-### Implementar
-
-Primero:
-
-- Piromante;
-- una segunda rama contrastada.
-
-Después:
-
-- tercera especialización.
-
-### Árbol inicial
-
-3 elecciones binarias.
-
-### Termina cuando
-
-- dos ramas son útiles contra el mismo contenido;
-- requieren decisiones diferentes;
-- no existe una opción claramente dominante.
-
----
-
-# Fase 8 — Aspectos y Códice
-
-## Objetivo
-
-> «Encontrar objetos sigue siendo progreso aunque no equipe el drop.»
-
-### Implementar
-
-- Aspectos;
-- extracción;
-- Códice de la Madriguera;
-- colección permanente;
-- 8–15 efectos iniciales.
-
-### Termina cuando
-
-- encontrar un nuevo Aspecto genera curiosidad;
-- el jugador entiende qué build puede crear;
-- no es necesario consultar una wiki externa.
-
----
-
-# Fase 9 — Colección cosmética
-
-## Objetivo
-
-> «Tengo ganas de gastar bellotas.»
-
-### Implementar
-
-- pequeño catálogo;
-- skins completas;
-- marcos;
-- VFX;
-- apertura aleatoria;
-- compra directa;
-- duplicados protegidos;
-- probabilidades claras.
-
-### No implementar
-
-- armas exclusivas de gacha;
-- stats;
-- power creep.
-
----
-
-# Fase 10 — Más campaña y cooperativo
-
-## Objetivo
-
-> «Mi mascota tiene un recorrido y puedo compartirlo.»
-
-### Implementar
-
-- nuevos géneros;
-- familias de enemigos;
-- jefes especiales;
-- jefe cooperativo;
-- builds compartibles;
-- replays.
-
----
-
-# Fase 11 — Endgame opcional
-
-Solo si existe demanda.
-
-Posibles sistemas:
-
-- más slots;
-- rarezas avanzadas;
-- afijos;
-- Encuadernación;
-- Restauración;
-- fragmentos de género;
-- temporadas PvE;
-- desafíos.
-
-Cada sistema se añade solo si resuelve una necesidad real.
-
----
-
-# Fase 12 — PvP asíncrono
-
-Última gran fase.
-
-Requiere:
-
-- política de IA defensiva;
-- consentimiento;
-- privacidad;
-- matchmaking;
-- balance atacante/defensor;
-- detección de abuso;
-- integridad competitiva;
-- recompensas cosméticas.
-
----
-
-# 31. Prioridad consolidada
-
-| Sistema | Prioridad | Primera versión |
-|---|---:|---|
-| Nivel independiente de clase | Muy alta | Nivel común + afinidades limitadas |
-| Combate automático | Muy alta | Básica automática |
-| Intervención manual | Muy alta | Habilidad y telegraphs |
-| Identidad por clase | Muy alta | Maga + Guerrera |
-| Ulti + minijuego | Alta | 1–2 minijuegos reutilizables |
-| Bellotas | Alta | Recompensas directas |
-| Aventuras pendientes | Alta | Acumulables, sin caducidad |
-| Campaña por géneros | Alta | 1 género |
-| Equipo | Alta | Arma + amuleto |
-| Especializaciones | Media-alta | 2 ramas de una clase |
-| Aspectos | Media-alta | Pequeño catálogo |
-| Códice | Media | Tras validar Aspectos |
-| Cosméticos | Media | Skins completas |
-| Gacha cosmético | Media | Sorpresa + compra directa |
-| Rarezas profundas | Baja al inicio | Más tarde |
-| 9 slots | Baja al inicio | Solo si el loot lo necesita |
-| Crafting profundo | Baja | Endgame |
-| Cooperativo | Media a largo plazo | Jefe de club |
-| PvP | Muy baja inicialmente | Última fase |
-
----
-
-# 32. MVP real
-
-El primer lanzamiento no necesita:
-
-- gacha;
-- 18 especializaciones;
-- Códice;
-- nueve slots;
-- PvP;
-- temporadas;
-- crafting;
-- skins por piezas.
-
-Sí necesita:
-
-1. una mascota que pelee bien;
-2. una decisión manual clara;
-3. dos clases que se sientan diferentes;
-4. una ulti memorable;
-5. un enemigo que obligue a pensar;
-6. recompensas comprensibles;
-7. una conexión clara con Biblioshare;
-8. persistencia segura.
-
----
-
-# 33. Primer vertical slice recomendado
-
-## Contenido
-
-### Clases
-
-**Maga**
-- proyectiles;
-- glifos;
-- explosión;
-- ulti de runas.
-
-**Guerrera**
-- ataques automáticos;
-- Guardia;
-- postura Muro/Filo;
-- ulti defensiva.
-
-### Enemigos
-
-**Bandido**
-- ataque normal;
-- ataque fuerte anunciado.
-
-**Espectro**
-- defensa temporal;
-- ventana vulnerable.
-
-**Bibliotecario Corrupto**
-- boss;
-- alterna daño y protección;
-- obliga a usar las dos clases de forma distinta.
-
-### Equipo
-
-4 armas.
-
-4 amuletos.
-
-### Campaña
-
-Una pequeña ruta de Terror/Misterio.
-
-### Recompensa
-
-- bellotas;
-- primer cosmético;
-- primer objeto de build.
-
-### Duración
-
-Una sesión completa debe poder experimentarse en pocos minutos.
-
----
-
-# 34. Métricas de producto
-
-Antes de añadir complejidad se observa:
-
-## Combate
-
-- ¿se entiende qué ocurre?
-- ¿se sabe por qué se perdió?
-- ¿la habilidad se usa siempre en cooldown?
-- ¿se cambia la decisión según enemigo?
-- ¿se desea repetir?
-
-## Build
-
-- ¿un nuevo objeto provoca ganas de probarlo?
-- ¿se entiende qué cambia?
-- ¿hay una sola build dominante?
-
-## Biblioshare
-
-- ¿las recompensas alteran negativamente hábitos?
-- ¿la gente divide sesiones artificialmente?
-- ¿se siente obligación diaria?
-
-## Gacha
-
-- ¿la compra directa se usa?
-- ¿la apertura sorprende sin frustrar?
-- ¿los duplicados generan rechazo?
-
-## Campaña
-
-- ¿los géneros se sienten mecánicamente diferentes?
-- ¿los bosses se recuerdan?
-
----
-
-# 35. Riesgos principales
-
-## Riesgo 1 — Sobreproducción
-
-Crear 18 especializaciones antes de validar 2.
-
-### Mitigación
-Expandir clase por clase.
-
----
-
-## Riesgo 2 — “Diablo administrativo”
-
-Demasiados slots, números y basura de inventario.
-
-### Mitigación
-Pocos objetos, efectos fuertes y legibles.
-
----
-
-## Riesgo 3 — Actividad cultural manipulada
-
-Usuarios registrando cosas para minmaxear.
-
-### Mitigación
-Afinidades acotadas y límites antifarm.
-
----
-
-## Riesgo 4 — Combate espectador
-
-El auto-battle no requiere pensar.
-
-### Mitigación
-Telegraphs + intervención por clase + ulti.
-
----
-
-## Riesgo 5 — Combate manual disfrazado
-
-Una acción obligatoria cada segundo.
-
-### Mitigación
-Pocas ventanas relevantes.
-
----
-
-## Riesgo 6 — Gacha sin propósito
-
-Colección antes de existir apego.
-
-### Mitigación
-Gacha después del juego.
-
----
-
-## Riesgo 7 — Cliente manipulable
-
-Loot o moneda calculados localmente.
-
-### Mitigación
-Servidor autoritativo.
-
----
-
-## Riesgo 8 — Arte imposible de mantener
-
-Spritesheet por cada combinación.
-
-### Mitigación
-Iconos + VFX + skins completas curadas.
-
----
-
-# 36. Filosofía final
-
-Biblioshare no necesita convertirse en un MMO.
-
-Necesita un RPG que aproveche lo que ya hace especial a la app:
-
-- identidad cultural;
-- colección;
-- hábitos reales;
-- amistad;
-- biblioteca;
-- descubrimiento;
-- una mascota propia.
-
-El juego debe sentirse como una extensión natural de esa identidad.
-
-La visión completa puede llegar a tener:
-
-- seis clases;
-- 18 especializaciones;
-- campaña por géneros;
-- jefes;
-- builds;
-- Aspectos;
-- Códice;
-- cosméticos;
-- cooperativo;
-- PvP asíncrono.
-
-Pero el camino correcto sigue siendo:
-
-> **una pelea divertida → una elección interesante → una recompensa que apetezca usar → una build propia → una campaña que dé ganas de continuar.**
-
-Solo después se añade el resto.
-
----
-
-# 37. Resumen ejecutivo
-
-## Núcleo
-
-**Auto-combat + decisiones manuales + ulti/minijuego.**
-
-## Clases
-
-6 clases con identidad de interacción propia.
-
-## Especializaciones
-
-3 por clase como visión final; expansión gradual.
-
-## Progresión
-
-Biblioshare mantiene nivel y crecimiento principal.
-
-## Economía
-
-Bellotas sin dinero real.
-
-## Aventuras
-
-Se obtienen mediante actividad cultural y se acumulan.
-
-## Campaña
-
-Mapa por géneros literarios/culturales.
-
-## Equipo
-
-Empieza con arma + amuleto.
-
-## Endgame
-
-Aspectos + Códice antes de sistemas de crafting profundo.
-
-## Gacha
-
-Solo cosmético, con compra directa y protección contra duplicados.
-
-## Arquitectura
-
-Servidor autoritativo y motor determinista.
-
-## Social
-
-Cooperativo antes que PvP.
-
-## Regla de producto
-
-> **No construir profundidad que todavía no tiene un núcleo divertido al que servir.**
+Catálogo pequeño, skins completas, marcos, VFX, apertura aleatoria, compra directa, duplicados
+protegidos, probabilidades claras. Sin armas exclusivas de gacha, sin stats, sin power creep.
+Cierra #1017.
+
+## Vía S — Presencia social (en paralelo a R)
+
+Independiente del combate: no necesita motor, economía ni arte nuevo, y puede construirse antes de
+R1 o entre dos hitos R. Principios en §20.
+
+### S1 — Madriguera compartida (contrato, #1083)
+
+**Entrega:** sección «Madriguera» en /mascota, debajo de la ficha: tu mascota primero y después las
+de tus seguidos aceptados que pasen `can_view_profile`, todas en idle; al tocar una, tarjeta con
+nombre, clase, etapa y dueño con enlace a su perfil; mezcla diaria determinista, doce visibles y
+«Ver las N»; estados vacíos. Un RPC (`get_burrow_pets()`, helper privado con privilegios de
+definidor) que devuelve solo nombre, clase, etapa y dueño; sin cambios de política en `pet_state`.
+Spec: `docs/superpowers/specs/2026-09-06-mascota-madriguera-compartida-design.md`.
+
+**Criterios de salida:**
+
+- Matriz de visibilidad en SQL: público seguido y privado con seguimiento aceptado se ven; privado
+  pendiente, bloqueado y no seguido no; la propia se excluye; la bellota se incluye; tope y total
+  correctos.
+- Ninguna columna de `pet_state` fuera de nombre, clase y etapa sale por la API.
+- Dos cuentas reales de producción se ven mutuamente al seguirse; el e2e con dos usuarios pasa.
+- La ficha propia no espera a la madriguera (Suspense propio) y un fallo del RPC no rompe la
+  página.
+
+### S2 — Mascota en el perfil (dirección)
+
+Sprite, nombre y clase en la cabecera de `/u/<username>` y en su imagen OG, con la misma función de
+visibilidad y un RPC de una fila. Es lo que ve quien escanea una tarjeta NFC (`/go/<uuid>`).
+
+### S3 — Madriguera del club (dirección)
+
+La misma escena con los miembros del club, en la página del club. Es la pieza sobre la que se
+apoyaría el cooperativo de club si algún día vuelve al roadmap (§19).
+
+**Ampliaciones registradas, sin fecha:** humor ajeno con interruptor del dueño apagado por
+defecto; interruptor «no mostrar mi mascota»; franja compacta de la madriguera en inicio.
+
+## Fuera del roadmap activo
+
+Cooperativo de club, crafting profundo y PvP asíncrono (§19). **#1016 queda como P3, posterior a
+R10**, y solo vuelve al roadmap con población real, R1–R7 cerrados y la defensa asíncrona definida.
+
+## Aplazado
+
+**Nivel independiente de clase** (§2.3). Lo reabriría que R2 muestre que el nivel visible confunde
+o que la clase afín da ventaja no compensable. Regla de migración: nadie baja de nivel ni de etapa.
+
+## Métricas por hito
+
+- **R2, combate:** ¿se entiende qué ocurre?, ¿se sabe por qué se perdió?, ¿la habilidad se usa
+  siempre en cooldown o a veces se guarda?, ¿se desea repetir?
+- **R3, enemigos:** ¿se cambia la decisión según el enemigo?, ¿el minijuego se entiende sin
+  tutorial?
+- **R4, Biblioshare y build:** ¿las recompensas alteran hábitos?, ¿se dividen sesiones?, ¿se siente
+  obligación diaria?, ¿un objeto nuevo provoca ganas de probarlo?, ¿hay una build dominante?
+- **R6, clases:** ¿otra clase se juega distinto?
+- **R7, campaña:** ¿los géneros se sienten mecánicamente diferentes?, ¿los jefes se recuerdan?
+- **R10, gacha:** ¿la compra directa se usa?, ¿la apertura sorprende sin frustrar?, ¿los duplicados
+  generan rechazo?
+
+## Riesgos
+
+| Riesgo | Mitigación |
+|---|---|
+| Sobreproducción: 18 especializaciones antes de validar dos | expandir clase por clase, por tandas |
+| «Diablo administrativo»: ranuras, números y basura de inventario | pocos objetos, efectos fuertes y legibles |
+| Actividad cultural manipulada para minmaxear | afinidades acotadas, concesión derivada con tope |
+| Combate espectador: el autobattle no requiere pensar | telegraphs contrarios, intervención de clase, ulti |
+| Combate manual disfrazado: una acción cada segundo | pocas ventanas relevantes, intervención de un toque |
+| Gacha sin propósito: colección antes de apego | gacha en R10, después del juego |
+| Cliente manipulable | el servidor re-simula; nada local cuenta |
+| Arte imposible de mantener | iconos y VFX; skins completas curadas; arte después de los criterios |
+| Moneda sin sumidero | las bellotas nacen con la tienda (R5) |
+| Fase de contratos que no acaba | R1 es la spec de R2, no un hito propio |
+| Decisión degenerada: un enemigo con un solo anuncio | dos anuncios contrarios desde R2 |
+| Seis mecánicas de entrada a medida | tres primitivas para intervenir, dos familias de ulti, un widget |
+
+## Relación con las issues
+
+| Issue | Papel en este roadmap |
+|---|---|
+| #1081 | contratos: R1 cierra sus R1, R4, R5 y R6; R7 cierra sus R2, R3 y R7 |
+| #1082 | seguimiento y validación del prototipo |
+| #1015 | jefes de reto, en R7 |
+| #1017 | cosméticos y economía: R5 en parte, R10 lo cierra |
+| #1016 | PvP: fuera del roadmap activo, posterior a R10 |
+| #1057 | paseo de la compañera: independiente de este roadmap |
+| #1083 | madriguera compartida: S1 de la vía S, en paralelo a R |
+
+## Qué cambia respecto a la redacción inicial del 2026-09-06
+
+1. **Estructura.** Parte I congelada y Parte II viva; hitos R en vez de fases, para no chocar con
+   las fases 1–3 ya implementadas ni con la «fase 4» de #1015; contrato solo en R1–R4.
+2. **Orden.** Contratos → combate mínimo → ulti → aventuras y botín → bellotas → clases → campaña →
+   especializaciones → Aspectos → cosméticos. Antes: progresión → combate con dos clases → clases →
+   economía → campaña → equipo.
+3. **Nivel independiente de clase:** aplazado. Era la primera fase.
+4. **Arquitectura:** log de inputs con re-simulación en servidor sustituye a la resolución por
+   tramos.
+5. **Combate:** kit genérico para las seis clases; las dos clases contrastadas son prueba de
+   validación, no puerta de entrada; el primer enemigo lleva dos anuncios contrarios.
+6. **Intervenciones y ultis:** un toque y tres primitivas; dos familias de ulti sobre un solo
+   widget; sin velocidad ni memoria; Ranger pasa de «posición» a objetivo y halcón.
+7. **Equipo antes que campaña;** los primeros objetos son agnósticos de clase.
+8. **Moneda con sumidero:** las bellotas pasan a R5, con la tienda.
+9. **Aventuras:** concesión derivada, solo el gasto se guarda.
+10. **Arte:** después de los criterios de salida, con presupuesto por hito.
+11. **Cooperativo, crafting profundo y PvP:** fuera del roadmap activo.
+12. **Vía S, presencia social** (añadida en la revisión de la tarde): madriguera compartida (S1,
+    #1083), mascota en el perfil (S2) y madriguera del club (S3), en paralelo a R y sin ranking
+    (§20).

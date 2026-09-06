@@ -8,8 +8,10 @@
 > Texto extraído tal cual del `.docx` original (`Especificacion_IA_Arena_Zero.docx`), sin las tablas maquetadas.
 
 > **Precedencia actual · 2026-09-06:** la adaptación inicial enlazada arriba es histórica.
-> El alcance que se continúa está en [Evolución del RPG por fases](../design/2026-09-06-mascota-rpg-evolucion-por-fases.md),
-> que incorpora intervenciones durante el combate. Este GDD sigue siendo referencia, no un contrato de implementación.
+> El alcance que se continúa está en [RPG de mascota: visión y hoja de ruta](../design/2026-09-06-mascota-rpg-evolucion-por-fases.md),
+> que incorpora intervenciones de un toque durante el combate y una ulti con minijuego, y sustituye el
+> «resultado completo al iniciar» por simulación en cliente con re-simulación en servidor (log de inputs).
+> Este GDD sigue siendo referencia, no un contrato de implementación.
 
 ---
 
