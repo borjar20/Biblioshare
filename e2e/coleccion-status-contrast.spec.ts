@@ -47,7 +47,22 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
             document.documentElement.classList.remove("light", "dark");
             if (value !== "system-dark") document.documentElement.classList.add(value);
           }, theme);
-          const measurements = await badges.evaluateAll((nodes) => nodes.map((node) => {
+          const measurements = await badges.evaluateAll((nodes) => {
+            // Render the real error/author text classes on each supported surface.
+            const probes = ["background", "surface", "surface-muted", "surface-3"].flatMap(surface =>
+              ["bg-status-dropped/10 text-status-dropped-ink", "bg-status-in-progress/10 text-status-in-progress-ink"].map(classes => {
+                const parent = document.createElement("div");
+                parent.style.backgroundColor = `var(--${surface})`;
+                parent.setAttribute("aria-hidden", "true");
+                const text = document.createElement("span");
+                text.className = classes;
+                text.style.display = "inline-block";
+                text.textContent = `${surface}: ${classes}`;
+                text.dataset.contrastProbe = "true";
+                parent.append(text); document.body.append(parent);
+                return text;
+              }));
+            const result = [...nodes, ...probes].map((node) => {
             const style = getComputedStyle(node);
             const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
             const ctx = canvas.getContext("2d")!;
@@ -60,13 +75,18 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
               const c = value / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
             }).reduce((total, c, i) => total + c * [0.2126, 0.7152, 0.0722][i], 0);
             const fg = luminance(rgb(style.color, "white"));
-            const ratios = ["black", "white"].map((backing) => {
+            const backings = node.hasAttribute("data-contrast-probe")
+              ? [getComputedStyle(node.parentElement!).backgroundColor] : ["black", "white"];
+            const ratios = backings.map((backing) => {
               const bg = luminance(rgb(style.backgroundColor, backing));
               return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
             });
             return { text: node.textContent?.trim(), ratio: Math.min(...ratios), role: node.getAttribute("role"),
               clipped: node.scrollWidth > node.clientWidth };
-          }));
+            });
+            probes.forEach(probe => probe.parentElement!.remove());
+            return result;
+          });
           for (const measurement of measurements) {
             expect(measurement.text).toBeTruthy();
             expect(measurement.role).not.toBe("img");

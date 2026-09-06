@@ -4188,6 +4188,25 @@ pase siguen pendientes en #910; esta corrección no cierra esa issue. La cola
 conserva `resolve_pending_import` para escribir en la biblioteca del dueño,
 no en la del colaborador. No se cambia el esquema ni el contrato de las RPC.
 
+## 2026-09-06 — Comparación de personas separada de títulos (#922)
+
+Sustituye la decisión de comparación de autoría del 2026-08-27: `isSameTitle`
+conserva su contrato para títulos, pero reconciliación, colapso y Google Books
+usan un comparador de personas. Rechaza nombres vacíos y conserva sufijos de
+identidad (hijo/junior, padre/senior, II/III/IV). Tolera acentos, orden
+apellido/nombre, partículas interiores e iniciales adicionales compatibles.
+Exige un nombre de pila completo compartido o la misma secuencia de iniciales;
+no convierte un apellido aislado de una lista en una identidad completa.
+
+Los créditos con varios nombres completos separados por comas siguen admitidos;
+las comas de un nombre invertido o un sufijo no se interpretan como dos autores.
+No se cambia la tolerancia de títulos ni se ejecutan reconciliaciones o fusiones.
+
+Comprobación real de Inventaire el 2026-09-06: «The Name of the Wind» devolvió
+20 entidades; tanto el comparador anterior como el nuevo aceptaron solo
+`wd:Q1195989` para Patrick Rothfuss. Es una medición de esa consulta, no una
+prueba universal de identidad. #923 queda preparado para adoptar este criterio.
+
 ## 2026-09-06 — Estado visible y tintas de estado (#892)
 
 La rejilla de /coleccion ya pasaba `inCollection` y mostraba la etiqueta: esa

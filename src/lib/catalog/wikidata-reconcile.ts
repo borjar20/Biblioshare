@@ -1,4 +1,5 @@
-import { isSameTitle, normalizeTitle } from "./title-match";
+import { normalizeTitle } from "./title-match";
+import { authorListMatchesName } from "./person-name";
 import { qidFromUri, type InventaireEntity } from "./inventaire/client";
 
 // Reconciliación de identidad Wikidata para las filas que YA están en el
@@ -18,25 +19,10 @@ import { qidFromUri, type InventaireEntity } from "./inventaire/client";
 // Kevin J. Anderson» (las precuelas, OTRA obra) y una con `author` a NULL.
 // Fundirlas por título sería exactamente el desastre que esta regla evita.
 
-// `books.author` tiene la misma forma que el `subtitle` de un `SearchResult`:
-// la autoría tal cual la da OpenLibrary, una lista separada por comas que puede
-// incluir traductor o ilustrador («Brandon Sanderson, Rafael Marín»). Se compara
-// persona a persona, nunca la cadena entera contra el nombre de la entidad, por
-// las dos razones que ya documenta `wikidata-collapse.ts`: la cadena entera
-// diluye al autor real por debajo del umbral de longitud de `isSameTitle`, y
-// `isSameTitle` ya trae las dos guardas que hacen falta (un nombre que
-// normaliza a vacío —«—», «...»— no casa con nada, y la contención exige que el
-// más corto sea el 65% del más largo, así que «Ana» no casa con «Susana
-// Fortes»). Escribir aquí un comparador propio con contención bidireccional ha
-// sido hallazgo bloqueante DOS veces en este plan: no se hace.
+// Provider credits can be a contributor list or a family-name-first name.
+// Identity uses the dedicated comparator; fuzzy title containment is unsafe here.
 export function authorMatches(author: string | null, entity: InventaireEntity): boolean {
-  if (!author || entity.authorNames.length === 0) return false;
-  const haveNames = author
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (haveNames.length === 0) return false;
-  return entity.authorNames.some((name) => haveNames.some((have) => isSameTitle(have, name)));
+  return Boolean(author && entity.authorNames.some((name) => authorListMatchesName(author, name)));
 }
 
 /**

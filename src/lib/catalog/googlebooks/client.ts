@@ -18,7 +18,7 @@
 // paso un `synopsis` no-string nunca llega a la base. Mismo estilo defensivo
 // que openlibrary/normalize.ts.
 import { normalizeTitleForComparison } from "../openlibrary/normalize";
-import { isSameTitle } from "../title-match";
+import { isSamePersonName } from "../person-name";
 import { isAllowedCoverHost } from "../official-covers";
 
 const API = "https://www.googleapis.com/books/v1/volumes";
@@ -201,7 +201,7 @@ export async function findBestVolume(
       // tipo «(AdN)») — issue #881.
       if (!v.title || normalizeTitleForComparison(v.title) !== want) return false;
       if (!wantAuthor) return true;
-      return v.authors.some((a) => isSameTitle(a, wantAuthor));
+      return v.authors.some((a) => isSamePersonName(a, wantAuthor));
     }) ?? null
   );
 }
