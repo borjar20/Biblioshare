@@ -148,6 +148,14 @@ describe("fin", () => {
     expect(() => simulate(init(seed!), [skill(RULESET.maxTicks)])).toThrow("INPUTS_AFTER_END");
   });
 
+  it("stepBattle lanza INPUT_TICK si un input no es del tick actual", () => {
+    // Agrupar los inputs por tick es cosa de quien llama (simulate): un input de
+    // otro tick es un bug del llamante, no una entrada hostil del cliente.
+    const ctx = init(seedFromIndex(0));
+    const st = createBattle(ctx);
+    expect(() => stepBattle(ctx, st, [skill(7)])).toThrow("INPUT_TICK");
+  });
+
   it("stepBattle sobre un combate terminado lanza; viewOf expone fase y cooldown", () => {
     const ctx = init(seedFromIndex(0));
     const st = createBattle(ctx);

@@ -149,6 +149,8 @@ export function stepBattle(ctx: BattleInit, st: BattleState, inputs: readonly Ba
 
   // 2. Inputs de este tick
   for (let k = 0; k < inputs.length; k++) {
+    // Agrupar por tick es cosa de quien llama: un input de otro tick es un bug, no un error del cliente.
+    if (inputs[k].tick !== T) throw new Error("INPUT_TICK");
     if (T < st.pet.skillReadyAt) {
       emit({ type: "SKILL_IGNORED", reason: "cooldown" });
       continue;

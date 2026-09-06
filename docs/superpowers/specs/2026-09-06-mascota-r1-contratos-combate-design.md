@@ -197,6 +197,8 @@ KO del que llega a 0. En el límite gana quien conserve **mayor fracción de vid
 - derrota: `skill_unused` si nunca se pulsó y aterrizó alguna carga; después `charges_landed` /
   `skill_wasted_on_guard` por daño; y `time_limit`.
 
+Un `draw` (empate en el límite) lleva las causas de derrota: no hay rama propia para el empate.
+
 Las causas son el «resultado legible» de R2: no hay que interpretar el log de eventos para contar
 por qué se perdió.
 
@@ -212,6 +214,9 @@ digest = sha256(canonicalJson({ rulesetVersion, contentHash, enemyId, seed, snap
 
 en hex. Los `events` son **los re-simulados** y el material **NO contiene el digest**: sin
 circularidad por construcción (#1081 R5).
+
+El digest se calcula siempre sobre los siete campos del registro proyectados explícitamente más los
+eventos re-simulados; claves ajenas (id, estado, un digest guardado) nunca entran en el material.
 
 `contentHash = sha256(canonicalJson({ ruleset, enemies }))`: fija con qué números se simuló. Está
 clavado en `content.test.ts`, así que tocar un número de `content.ts` rompe el test — que es
@@ -239,6 +244,12 @@ startBattle(intentId)  → fila `open` (seed, snapshot, ruleset_version, content
 resolveBattle(intentId, inputs)
    → validateInputs → resimulate → escribe inputs, result, digest, resolved_at, status = "resolved"
 ```
+
+`resimulate` acepta el registro sin `result`: el servidor de R2 lo produce en esa llamada; cuando
+`result` viene (replay, auditoría), se verifica.
+
+El servidor persiste `validated.inputs` (las copias), nunca el array crudo del cliente: es sobre las
+copias sobre lo que se calculó el digest.
 
 ## 11. Minijuego (para R3)
 
@@ -429,6 +440,9 @@ Lista cerrada. R2 **no diseña**: implementa.
 - **Resultado legible** — `result.causes` en texto; el log de eventos como detalle plegado.
 - **Replay** — desde los eventos **re-simulados**, no desde eventos guardados (§9).
 
+`record.ts` y `hash.ts` son de servidor: `crypto.subtle` exige contexto seguro y el cliente nunca
+necesita el hash del contenido ni el digest; el cliente solo simula con `engine.ts`.
+
 **Criterios de salida de R2:** los de la Parte II del documento de diseño (repetir sigue siendo
 interesante después de veinte; guardar la habilidad es a veces mejor que pulsarla y se descubre
 solo; cambiar la decisión cambia el resultado y se entiende por qué se perdió; el replay reproduce
@@ -438,7 +452,7 @@ exactamente y el servidor rechaza logs manipulados).
 
 ## 15. Pruebas
 
-14 ficheros bajo `src/lib/pet/battle/`, 71 tests (la suite de mascota entera: 165).
+14 ficheros bajo `src/lib/pet/battle/`, 74 tests (la suite de mascota entera: 168).
 
 | Fichero | Qué fija |
 |---|---|
@@ -468,7 +482,7 @@ también».
 ```bash
 npm run pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--events] [--json]
 npm run pet:battle -- calibrate [--seeds 200]
-npm run pet:battle -- replay <fichero.json>   # salida de `run --json` o un registro de pet_battles
+npm run pet:battle -- replay <fichero.json>   # salida de `run --json`; una fila de pet_battles hay que mapearla antes a camelCase
 npm run pet:battle -- golden                  # reescribe __fixtures__/normative.json
 ```
 

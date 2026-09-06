@@ -831,7 +831,7 @@ sus clases.
 
 Una región (Terror o Misterio), 5–8 nodos, tres enemigos, un miniboss, un jefe con fases y una
 decisión de ruta. Los **jefes de reto** (#1015) con sus contratos: condiciones fijadas al activar,
-historia inmutable, dos logros, política al completar el reto (#1081 R2, R3 y R7).
+historia inmutable, dos logros, política al completar el reto (#1081 R2, R3 y R7, heredados en #1084).
 
 ## R8 — Especializaciones (dirección)
 

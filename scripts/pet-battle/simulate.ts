@@ -1,7 +1,7 @@
 // Simulador de combate por CLI (criterio de salida de R1: re-simular sin UI).
 //   npm run pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--events] [--json]
 //   npm run pet:battle -- calibrate [--seeds 200]
-//   npm run pet:battle -- replay <fichero.json>      (salida de `run --json` o registro de pet_battles)
+//   npm run pet:battle -- replay <fichero.json>      (salida de `run --json`; una fila de pet_battles hay que mapearla antes a camelCase)
 //   npm run pet:battle -- golden                      (escribe el ejemplo normativo)
 // Requiere Node 22 (ver «Node» en el plan de R1). Sin red ni Supabase: solo el motor.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

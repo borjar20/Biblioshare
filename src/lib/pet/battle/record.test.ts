@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { canonicalJson } from "./canonical";
 import { BROTE, ENEMIES, RULESET, contentHash } from "./content";
 import { POLICIES, runPolicy } from "./policies";
 import { snapshotForProfile } from "./profiles";
 import { seedFromIndex } from "./prng";
-import { battleDigest, digestMaterial, resimulate } from "./record";
+import { battleDigest, digestMaterial, resimulate, type ResimInput } from "./record";
 import type { BattleRecord } from "./types";
 
 const snapshot = snapshotForProfile("social", "bard");
@@ -43,6 +44,14 @@ describe("digest", () => {
     const result = { ...record.result, damageDealt: record.result.damageDealt + 1 };
     expect(await battleDigest({ ...record, result }, events)).not.toBe(base);
   });
+
+  it("el material ignora claves ajenas al registro (id, status, digest)", async () => {
+    const { record, events } = await makeRecord(6);
+    // Lo que llega de la BD trae columnas que no firman nada: si entraran en el
+    // material, el digest de la fila no coincidiría con el que calculó el motor.
+    const conRuido = { ...record, id: "x", status: "resolved", digest: "0".repeat(64) } as BattleRecord;
+    expect(digestMaterial(conRuido, events)).toBe(digestMaterial(record, events));
+  });
 });
 
 describe("resimulate", () => {
@@ -52,6 +61,18 @@ describe("resimulate", () => {
     expect(out.ok).toBe(true);
     if (out.ok) {
       expect(out.events).toEqual(events);
+      expect(out.digest).toBe(await battleDigest(record, events));
+    }
+  });
+
+  it("sin result: produce el resultado y el digest coincide con el del registro completo", async () => {
+    // Es la llamada del servidor en R2: la fila `open` todavía no tiene resultado.
+    const { record, events } = await makeRecord(5);
+    const open = Object.fromEntries(Object.entries(record).filter(([k]) => k !== "result")) as ResimInput;
+    const out = await resimulate(open, await content());
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(canonicalJson(out.result)).toBe(canonicalJson(record.result));
       expect(out.digest).toBe(await battleDigest(record, events));
     }
   });
