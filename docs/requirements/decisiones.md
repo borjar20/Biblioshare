@@ -4174,4 +4174,3 @@ incompleta para hidratación. Se exige una entidad objeto por cada URI solicitad
 incluidos lotes parcialmente devueltos. La búsqueda conserva su comportamiento
 anterior con resultados parciales; solo el consumidor que persiste exige completitud.
 Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.
-
