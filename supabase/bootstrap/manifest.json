@@ -232,6 +232,7 @@
     "20260903_pet_daily_missions.sql",
     "20260904_pet_achievement_tiers.sql",
     "20260905_get_companion_state.sql",
-    "20260906_pet_nudges.sql"
+    "20260906_pet_nudges.sql",
+    "20260907_pet_battles.sql"
   ]
 }

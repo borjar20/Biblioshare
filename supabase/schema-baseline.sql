@@ -1167,3 +1167,8 @@ commit;
 begin;
 \ir migrations/20260906_pet_nudges.sql
 commit;
+
+-- 20260907_pet_battles
+begin;
+\ir migrations/20260907_pet_battles.sql
+commit;
