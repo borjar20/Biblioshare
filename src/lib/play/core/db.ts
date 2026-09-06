@@ -169,17 +169,24 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-export async function readActive(identity: string): Promise<ActiveGameRecord | null> {
+export type ActiveReadResult =
+  | { ok: true; record: ActiveGameRecord | null }
+  | { ok: false; reason: "unavailable" };
+
+export async function readActive(identity: string): Promise<ActiveReadResult> {
   try {
     const db = await openDb();
-    return await new Promise((resolve, reject) => {
-      const request = db.transaction("active", "readonly").objectStore("active").get(identity);
-      request.onsuccess = () =>
-        resolve((request.result as ActiveGameRecord | undefined) ?? null);
+    const record = await new Promise<ActiveGameRecord | null>((resolve, reject) => {
+      const tx = db.transaction("active", "readonly");
+      const request = tx.objectStore("active").get(identity);
+      tx.oncomplete = () => resolve((request.result as ActiveGameRecord | undefined) ?? null);
+      tx.onabort = () => reject(tx.error ?? new Error("active read aborted"));
+      tx.onerror = () => reject(tx.error);
       request.onerror = () => reject(request.error);
     });
+    return { ok: true, record };
   } catch {
-    return null;
+    return { ok: false, reason: "unavailable" };
   }
 }
 

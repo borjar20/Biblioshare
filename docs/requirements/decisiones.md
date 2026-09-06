@@ -4306,3 +4306,10 @@ y conserva cookies renovadas y cabeceras anticaché en las redirecciones. El cli
 refrescando tokens caducados; la firma simétrica aún requiere red. La autorización de
 acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
 Es una mitigación de #929, no una demostración de la causa del incidente de Auth.
+
+## 2026-09-06 — La lectura de partida distingue ausencia e indisponibilidad (#955)
+
+readActive devuelve un resultado discriminado: ok con registro o null, o unavailable.
+El espejo entre pestañas conserva snapshot y revisión cuando falla la lectura, para
+permitir reintentar el mismo aviso. Solo una lectura exitosa sin registro significa
+borrado remoto. La hidratación inicial conserva la degradación a legado/memoria.
