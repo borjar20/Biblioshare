@@ -1,13 +1,14 @@
-import { isBattleSnapshot } from "./snapshot";
 // Registry is append-only: a release owns both its content and executable rules.
 // Unknown identities fail closed; never fall back to today's engine/content.
 import { ENEMIES, RULESET, contentHash } from "./versions/r2.2/content";
 import { resimulate, type ResimInput } from "./versions/r2.2/record";
+import { isBattleSnapshot } from "./snapshot";
+import type { resimulate as currentResimulate } from "./record";
 
 export interface BattleRelease {
   readonly rulesetVersion: string;
   readonly contentHash: string;
-  readonly replay: (record: ResimInput) => Promise<Awaited<ReturnType<typeof resimulate>> | { ok: false; code: "INVALID_SNAPSHOT" }>;
+  readonly replay: (record: ResimInput) => ReturnType<typeof currentResimulate>;
 }
 
 export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([

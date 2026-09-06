@@ -4,7 +4,7 @@ import { BROTE, ENEMIES, RULESET, contentHash } from "./content";
 import { POLICIES, runPolicy } from "./policies";
 import { snapshotForProfile } from "./profiles";
 import { seedFromIndex } from "./prng";
-import { battleDigest, digestMaterial, resimulate, type ResimInput } from "./record";
+import { battleDigest, digestMaterial, isBattleSnapshot, resimulate, type ResimInput } from "./record";
 import type { BattleRecord } from "./types";
 
 const snapshot = snapshotForProfile("social", "bard");
@@ -24,6 +24,27 @@ async function makeRecord(i = 0, policy = POLICIES.interrupt) {
   return { record, events: run.events };
 }
 const content = async () => ({ ruleset: RULESET, enemies: ENEMIES, contentHash: await contentHash() });
+
+describe("isBattleSnapshot", () => {
+  it("acepta las seis clases, etapas y atributos cero", () => {
+    for (const petClass of ["barbarian", "fighter", "wizard", "cleric", "bard", "ranger"]) {
+      for (const stage of ["acorn", "young", "adult", "veteran"]) {
+        expect(isBattleSnapshot({
+          ...snapshot, petClass, stage, hpMax: 1, atk: 1, tier: 1,
+          attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 },
+        })).toBe(true);
+      }
+    }
+  });
+
+  it("rechaza accesores sin ejecutarlos y claves extra no enumerables", () => {
+    const accessor = Object.defineProperty({ ...snapshot }, "name", {
+      enumerable: true, get() { throw new Error("must not execute"); },
+    });
+    expect(isBattleSnapshot(accessor)).toBe(false);
+    expect(isBattleSnapshot(Object.defineProperty({ ...snapshot }, "extra", { value: 1 }))).toBe(false);
+  });
+});
 
 describe("digest", () => {
   it("es estable, hex de 64 y el material no contiene ningún digest", async () => {
@@ -55,6 +76,35 @@ describe("digest", () => {
 });
 
 describe("resimulate", () => {
+  it.each([
+    null, [], {}, { ...snapshot, attributes: undefined },
+    { ...snapshot, petClass: "dragon" }, { ...snapshot, stage: "ancient" },
+    { ...snapshot, name: 1 }, { ...snapshot, hpMax: 0 },
+    { ...snapshot, atk: -1 }, { ...snapshot, tier: 1.5 },
+    { ...snapshot, hpMax: Number.MAX_SAFE_INTEGER + 1 },
+    { ...snapshot, hpMax: Number.MAX_SAFE_INTEGER },
+    { ...snapshot, atk: Number.MAX_SAFE_INTEGER },
+    { ...snapshot, atk: NaN }, { ...snapshot, tier: Infinity },
+    { ...snapshot, attributes: { ...snapshot.attributes, FUE: -1 } },
+    { ...snapshot, attributes: { ...snapshot.attributes, CON: 1.5 } },
+    { ...snapshot, attributes: { ...snapshot.attributes, INT: Number.MAX_SAFE_INTEGER + 1 } },
+    { ...snapshot, attributes: { FUE: 1 } },
+    { ...snapshot, extra: undefined },
+    { ...snapshot, attributes: { ...snapshot.attributes, extra: undefined } },
+    Object.assign(Object.create({ inherited: true }), snapshot),
+  ])("rechaza snapshot malformado sin lanzar: %#", async (invalidSnapshot) => {
+    const { record } = await makeRecord();
+    await expect(resimulate({ ...record, snapshot: invalidSnapshot } as ResimInput, await content()))
+      .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
+  });
+
+  it("aplica la validación actual de payload al re-simular", async () => {
+    const { record } = await makeRecord();
+    const inputs = [{ seq: 0, tick: 0, action: "skill" as const, payload: { text: "x" } }];
+    expect(await resimulate({ ...record, inputs, result: null }, await content()))
+      .toEqual({ ok: false, code: "INVALID_INPUTS" });
+  });
+
   it("acepta un registro honesto y reproduce eventos y digest", async () => {
     const { record, events } = await makeRecord(1);
     const out = await resimulate(record, await content());

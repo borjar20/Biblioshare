@@ -56,7 +56,7 @@ gobernanza de abajo para saber cuál manda.**
 | [Widgets Android](docs/widgets-android.md) | Widgets Glance | Canónico |
 | [Mapa de arquitectura](docs/architecture/README.md) | Localizar dónde vive una feature: flujos end-to-end con ficheros (`graph.json`) y diagrama interactivo (`map.html`) | Derivado del código |
 | [Paneles estadísticos](docs/design/paneles-estadisticos.md) | El contrato de cualquier panel de datos: resumen, indicadores, gráfico decorativo y tabla exacta desde una sola fuente | Canónico · vs código |
-| [RPG de mascota: visión y hoja de ruta](docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md) | Parte I, visión congelada del RPG (combate automático con intervenciones de un toque y ulti con minijuego, clases, equipo, campaña por géneros, cosméticos); Parte II, hoja de ruta viva por hitos R1–R10 con contrato solo en R1–R4. Sustituye el alcance de la spec de combate del 2026-09-04 | Diseño de producto · Parte II viva · R1 cerrado, R2 siguiente |
+| [RPG de mascota: visión y hoja de ruta](docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md) | Parte I, visión congelada del RPG (combate automático con intervenciones de un toque y ulti con minijuego, clases, equipo, campaña por géneros, cosméticos); Parte II, hoja de ruta viva por hitos R1–R10 con contrato solo en R1–R4. Sustituye el alcance de la spec de combate del 2026-09-04 | Diseño de producto · Parte II viva · R2 implementado; aceptación humana pendiente (#1082) |
 
 `docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y
 congelado. Explican *por qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de
@@ -87,27 +87,26 @@ Cuatro reglas, para que la doc no vuelva a divergir del proyecto:
 
 ## Entornos (Supabase)
 
-Dos proyectos separados:
+Dos proyectos remotos separados y un entorno local desechable para pruebas:
 
 - **Producción** — lo usa el deploy de Vercel (variables configuradas allí).
 - **Dev** — lo usa el desarrollo local; `.env.local` apunta aquí. Todo lo que hagas con
   `npm run dev` (búsquedas que cachean catálogo, usuarios de prueba, imports) escribe **solo**
   en dev.
 
-⚠️ **Supabase es remoto también en desarrollo.** No hay stack local: la latencia media es de
-~240 ms por consulta, con picos de más de 1 s. Eso condiciona los timeouts de los tests y es
-la causa habitual de e2e "flaky" — ver [Trampas](docs/TRAMPAS.md).
+- **Local desechable** — Docker + Supabase CLI 2.116.0 + Node 22. El esquema completo se
+  reconstruye desde cero sin acceder a los proyectos remotos. Receta y limpieza en
+  [Pruebas con Supabase local](docs/testing/supabase-local.md).
 
-Para (re)crear el proyecto dev desde cero:
+El desarrollo habitual sigue apuntando a dev remoto; sus latencias condicionan los timeouts
+(ver [Trampas](docs/TRAMPAS.md)). El entorno desechable usa variables de proceso locales y no
+necesita sobrescribir `.env.local`.
 
-1. Crear un proyecto nuevo en [supabase.com](https://supabase.com) (plan free).
-2. Aplicar [`supabase/schema-baseline.sql`](supabase/schema-baseline.sql) en el SQL editor —
-   es el replay ordenado de las migraciones de producción.
-3. Copiar URL y anon key a `.env.local`.
-4. Crear el usuario de prueba (`TEST_USER_*` de `.env.example`) vía `/signup` + onboarding.
-
-**Regla de migraciones:** primero en dev, se verifica, y después en producción. Y anexarla a
-`schema-baseline.sql` **en el orden de aplicación real de prod**, no en orden alfabético.
+**Regla de migraciones:** primero en dev, se verifica, y después en producción. Añadir cada
+SQL a `supabase/bootstrap/manifest.json` en orden de dependencias y ejecutar `npm run db:baseline`.
+El generador rechaza migraciones omitidas o duplicadas. `schema-baseline.sql` es una entrada
+generada para **psql**, con inclusiones relativas, no un bloque pegable en el SQL editor.
+Solo sirve para una base Supabase vacía; nunca para actualizar un proyecto existente.
 
 ## Android (Capacitor)
 

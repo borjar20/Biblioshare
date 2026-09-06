@@ -16,6 +16,11 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./e2e",
+  // `e2e/support/` son helpers (y algún test de `node:test`, que Playwright
+  // ejecutaría al cargarlo); `mascota-batallas-local.spec.ts` es el gate de build
+  // de producción con Supabase local (`playwright.pet-local.config.ts`), no un
+  // spec contra `next dev`. Ninguno de los dos entra en la suite principal.
+  testIgnore: ["**/support/**", "**/mascota-batallas-local.spec.ts"],
   // Issue #215: la semilla QA de sagas se corrompía entre specs y ENTRE
   // SESIONES (un spec que muere a mitad deja su `finally` sin correr, y el
   // siguiente lee esa suciedad como su estado de partida y la restaura). Esto

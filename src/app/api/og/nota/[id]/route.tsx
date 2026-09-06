@@ -3,8 +3,7 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getNoteById } from "@/lib/notes/get-notes";
 import { formatPosition } from "@/lib/library/position";
 
-export const size = { width: 1080, height: 1080 };
-export const contentType = "image/png";
+const size = { width: 1080, height: 1080 };
 
 // Satori no resuelve las CSS vars de globals.css: espejo manual de los dos temas.
 const THEMES = {

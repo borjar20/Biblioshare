@@ -4009,6 +4009,23 @@ exactas en vez de una política en `pet_state` evita filtrar `last_level` y `com
 (#1020). Ocultar la compañera no te saca de la madriguera de los demás: intenciones distintas; un
 interruptor propio se añade si alguien lo pide. Fecha del hash en UTC: solo ordena.
 
+## 2026-09-06 — Bootstrap local desde las fuentes SQL (#1089, #849)
+
+**Decisión.** Sustituir la copia manual de `schema-baseline.sql` por una entrada generada
+para psql: esquema inicial recuperado + manifiesto exhaustivo de migraciones. Supabase CLI
+materializa esas mismas fuentes con versiones ordinales solo locales; no altera el ledger
+remoto ni los ficheros históricos. El generador detecta omisiones, duplicados y cambios de
+fuentes sobre una instancia ya preparada. CI reconstruye una base vacía con Node 22 y CLI
+2.116.0 y verifica estructura y privilegios.
+
+**Motivo.** Los nombres históricos tienen versiones duplicadas y fechas que contradicen las
+dependencias. La copia manual omitía cambios (#849); aplicar el directorio sin esquema inicial
+fallaba desde cero (#1089). La prueba SQL determina el orden, no el nombre del archivo.
+
+**Límite.** La migración de datos `20260728_migrar_grafos_a_itinerarios.sql` se adapta al
+bootstrap vacío con una aserción de ausencia de sagas; no se fabrican UUID de producción.
+Esta receta verifica el esquema local, no equivalencia con datos/configuración remotos. Las
+pruebas E2E específicas siguen siendo necesarias. Receta: `docs/testing/supabase-local.md`.
 ## 2026-09-06 — Mascota R1: contratos del combate cerrados en código
 
 **Decisión.** Los contratos de R1 (Parte II) se cierran como código con tests, no como
@@ -4091,3 +4108,46 @@ ejemplo normativo y pureza PASS. Revisiones independientes de requisitos y está
 sin hallazgos de código; aclarada la naturaleza histórica del añadido a la spec. No se
 ha ejecutado persistencia remota: `resolveBattle` pertenece a R2 y aún no existe en esta
 base. La integración y el cierre de #1085 siguen pendientes.
+## 2026-09-06 — Mascota R2: ingreso estricto y replay histórico congelado
+
+**Decisión.** La capa actual `src/lib/pet/training/` valida el snapshot y exige que los
+inputs lleven payload vacío antes de aceptar un entrenamiento. Rechaza datos inválidos
+con `INVALID_SNAPSHOT` (incluidos desbordamientos de enteros) y `NONEMPTY_PAYLOAD`.
+El motor histórico `src/lib/pet/battle/versions/r2.2/` permanece congelado.
+
+**Por qué.** Endurecer la entrada de combates nuevos no debe cambiar los bytes ni las
+reglas con los que se reproduce un combate histórico. El replay usa la versión guardada
+y los eventos verificados por el servidor, comprobando el digest. El arreglo de #1085
+queda implementado, pendiente de integrar la PR; no requiere cambio de esquema.
+
+## 2026-09-06 — Mascota R2: una intención, un resultado y autoridad del dueño
+
+**Decisión.** El servidor autentica al usuario y crea seed y snapshot. La intención se
+reutiliza en reintentos; la resolución escribe con compare-and-set sobre `status = open`.
+Si otro intento resolvió primero, se recupera ese primer resultado. Las operaciones
+privilegiadas de `service_role` acotan siempre el combate por su dueño autenticado.
+
+**Por qué.** La simulación local permite jugar sin esperar cada tick, pero no concede
+autoridad al cliente. Ni peticiones concurrentes ni otra cuenta pueden sobrescribir el
+resultado. Playwright contra build de producción lo verifica con dos cuentas desechables,
+inicio y resolución concurrentes, reintentos, acceso ajeno y replay.
+
+## 2026-09-06 — Mascota R2: implementación técnica y aceptación humana separadas
+
+**Decisión.** R2 está implementado y verificado técnicamente; la aceptación tras veinte
+combates sigue abierta en #1082. R2 continúa activo. R3 y la generación de su arte esperan
+esa aceptación. El entrenamiento no concede recompensas ni consume recursos.
+
+**Por qué.** Los tests de autoridad, determinismo y UI no prueban que la decisión de
+guardar o gastar la habilidad siga siendo interesante después de veinte combates. Esa
+condición de producto exige observar a personas y no se da por satisfecha con el build.
+
+## 2026-09-06 — Integración de #1095 con el entrenamiento de #1099
+
+Se conserva la API de entrada de R2 ya integrada: `NONEMPTY_PAYLOAD`, el export
+`isBattleSnapshot` usado por entrenamiento y los límites de aritmética exacta. La
+aportación restante de #1095 es el guard de snapshot de r2.2, independiente del
+catálogo actual de clases y ejecutado dentro de su adaptador de replay. Cada versión
+futura valida su propio snapshot después de seleccionarse por versión y hash.
+No cambian los bytes del motor retenido ni el digest normativo. Las anotaciones
+anteriores de esta rama describen su base previa a #1099, no el estado integrado.

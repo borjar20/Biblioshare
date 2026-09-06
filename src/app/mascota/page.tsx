@@ -12,6 +12,7 @@ import { getPetCounts } from "@/lib/pet/get-pet-counts";
 import { getPetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import { HatchForm } from "@/components/pet/hatch-form";
 import { PetDetail } from "@/components/pet/pet-detail";
+import { TrainingPanel } from "@/components/pet/training/training-panel";
 
 export const metadata: Metadata = { title: "Mascota — Biblioshare" };
 
@@ -43,5 +44,5 @@ async function PetContent() {
     const { counts } = await getPetCounts(supabase, user.id);
     return <HatchForm suggested={suggestClass(deriveAttributes(counts))} />;
   }
-  return <PetDetail pet={pet} />;
+  return <><PetDetail pet={pet} /><TrainingPanel /></>;
 }

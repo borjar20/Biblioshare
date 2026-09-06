@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) contra dev el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -20,6 +20,8 @@
 > Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
+
+> **Bootstrap local, 2026-09-06:** el esquema inicial y las 232 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -3812,7 +3814,7 @@ cron de clubes) y `pet_nudges` vacía. El job `pet-nudges` está activo; el prim
 20:00 de Madrid del mismo día y se comprueba en `pet_nudges` y en `net._http_response` (un 200 de
 `/api/cron/pet-nudges`; «sin filas» solo es éxito si hay 200).
 
-### 8bis.5. `pet_battles` (dev 2026-09-06; prod pendiente hasta mergear)
+### 8bis.5. `pet_battles` (dev y **prod**, 2026-09-06)
 
 Mascota R1 (spec `docs/superpowers/specs/2026-09-06-mascota-r1-contratos-combate-design.md`,
 issue #1081). Migración `supabase/migrations/20260907_pet_battles.sql`. Un combate es un
@@ -3827,10 +3829,12 @@ sin CHECK (`training` hoy).
 insert/update/delete para `authenticated` ni `anon`: escribe solo el servidor con
 `service_role` tras re-simular (contrato C1). Como `pet_nudges`, **no aparece en la
 superficie 6 de `DRIFT-CHECK.md`** (solo mira tablas donde `authenticated` tiene algún
-grant de escritura); se anota aquí con su control. Verificación en dev (2026-09-06) contra
-objetos reales: `true | 1 | true | false | false | false | false | true | 1` (RLS, políticas,
+grant de escritura); se anota aquí con su control. Verificación en dev y en **prod** (las dos
+el 2026-09-06; prod justo después de mergear la PR #1088) contra objetos reales, con la misma
+fila en ambos: `true | 1 | true | false | false | false | false | true | 1` (RLS, políticas,
 select/insert/update/delete de `authenticated`, select de `anon`, insert de `service_role`,
-índice). El e2e `e2e/mascota-batallas-autoridad.spec.ts` lo comprueba desde PostgREST.
+índice) y 15 columnas. Aditiva pura: nada en `main` escribe en la tabla hasta R2. El e2e
+`e2e/mascota-batallas-autoridad.spec.ts` lo comprueba desde PostgREST contra dev.
 
 ## 9. Seguridad
 

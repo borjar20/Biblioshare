@@ -12,7 +12,7 @@ export type InputsError =
   | "TICK_ORDER"
   | "BAD_ACTION"
   | "BAD_PAYLOAD"
-  | "NON_EMPTY_PAYLOAD";
+  | "NONEMPTY_PAYLOAD";
 
 const KEYS = "action,payload,seq,tick";
 
@@ -40,14 +40,19 @@ export function validateInputs(
     if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
       return { ok: false, code: "BAD_PAYLOAD", index: i };
     }
-    const proto = Object.getPrototypeOf(payload);
-    if ((proto !== Object.prototype && proto !== null) || Object.hasOwn(payload, "__proto__")) {
+    const keys = Object.keys(payload);
+    const prototype = Object.getPrototypeOf(payload);
+    if ((prototype !== Object.prototype && prototype !== null) || Reflect.ownKeys(payload).length !== keys.length) {
       return { ok: false, code: "BAD_PAYLOAD", index: i };
     }
-    if (Reflect.ownKeys(payload).length !== 0) return { ok: false, code: "NON_EMPTY_PAYLOAD", index: i };
-    const copy = {};
+    for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+      // "__proto__" no crea propiedad propia (dispara el setter heredado): se perdería en silencio.
+      if (key === "__proto__") return { ok: false, code: "BAD_PAYLOAD", index: i };
+      if (typeof value !== "string" && !Number.isSafeInteger(value)) return { ok: false, code: "BAD_PAYLOAD", index: i };
+    }
+    if (keys.length !== 0) return { ok: false, code: "NONEMPTY_PAYLOAD", index: i };
     lastTick = tick as number;
-    inputs.push({ seq: i, tick: tick as number, action: "skill", payload: copy });
+    inputs.push({ seq: i, tick: tick as number, action: "skill", payload: {} });
   }
   return { ok: true, inputs };
 }

@@ -11,7 +11,10 @@ function hasFields(value: unknown, fields: readonly string[]): value is Record<s
   const proto = Object.getPrototypeOf(value);
   return (proto === Object.prototype || proto === null)
     && Reflect.ownKeys(value).length === fields.length
-    && fields.every((key) => Object.hasOwn(value, key));
+    && fields.every((key) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      return descriptor !== undefined && descriptor.enumerable && "value" in descriptor;
+    });
 }
 
 export function isBattleSnapshot(value: unknown): value is BattleSnapshot {
@@ -21,6 +24,8 @@ export function isBattleSnapshot(value: unknown): value is BattleSnapshot {
   for (const key of ["hpMax", "atk", "tier"]) {
     if (!Number.isSafeInteger(value[key]) || (value[key] as number) < 1) return false;
   }
+  // r2.2 multiplies these values by integer percentages up to 100.
+  if (![value.hpMax, value.atk].every((stat) => Number.isSafeInteger((stat as number) * 100))) return false;
   const attrs = value.attributes;
   return hasFields(attrs, ATTRIBUTES)
     && ATTRIBUTES.every((key) => Number.isSafeInteger(attrs[key]) && (attrs[key] as number) >= 0);
