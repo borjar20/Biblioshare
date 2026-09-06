@@ -10,6 +10,19 @@ import type { BattleRecord } from "./types";
 const record = normative.record as BattleRecord;
 
 describe("retained battle releases (R5)", () => {
+  it("lets the selected future release validate its own snapshot shape", async () => {
+    const futureReplay = vi.fn().mockResolvedValue({ ok: false, code: "FUTURE_SNAPSHOT" });
+    const future = { ...record, rulesetVersion: "future", contentHash: "future-hash", snapshot: { futureField: 1 } } as unknown as ResimInput;
+    const releases = [{ rulesetVersion: "future", contentHash: "future-hash", replay: futureReplay }, ...BATTLE_RELEASES];
+    await expect(replayBattle(future, releases)).resolves.toEqual({ ok: false, code: "FUTURE_SNAPSHOT" });
+    expect(futureReplay).toHaveBeenCalledWith(future);
+  });
+
+  it("validates r2.2 even when its adapter is called directly", async () => {
+    const release = BATTLE_RELEASES.find((entry) => entry.rulesetVersion === "r2.2")!;
+    await expect(release.replay({ ...record, snapshot: null } as unknown as ResimInput))
+      .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
+  });
   it.each(["atk", "hpMax"])("rejects %s that overflows derived battle arithmetic", async (key) => {
     await expect(replayBattle({ ...record, result: null, inputs: [], snapshot: { ...record.snapshot, [key]: Number.MAX_SAFE_INTEGER } }))
       .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
@@ -55,4 +68,9 @@ describe("retained battle releases (R5)", () => {
     expect(() => { RULESET.pet.skillCooldown = 999; }).toThrow();
     expect(() => { ENEMIES.brote.hpPerAtk = 999; }).toThrow();
   });
+});
+
+it("rechaza un snapshot histórico roto con un código de dominio", async () => {
+  await expect(replayBattle({ ...record, snapshot: { ...record.snapshot, atk: "x" } } as unknown as ResimInput))
+    .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
 });

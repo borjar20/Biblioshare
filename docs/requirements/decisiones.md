@@ -4070,6 +4070,45 @@ esquema de `pet_battles`: la fila ya guarda ambos identificadores y el snapshot.
 Los tests fijan los bytes de la versión, su cierre de dependencias y el replay
 del combate histórico junto a una versión posterior con otro balance.
 
+## 2026-09-06 — Mascota: payload vacío y snapshot histórico sin recalcular (#1085)
+
+**Estado.** Diseño acordado con el usuario; implementación y pruebas pendientes en #1085.
+
+**Decisión.** En R2, la acción `skill` acepta únicamente `payload: {}`. Cualquier campo
+adicional se rechaza con un código específico de validación, aunque su tamaño sea pequeño.
+No se eliminan campos silenciosamente. Las acciones futuras de R3 definirán su propio
+contrato de payload cuando se implementen, sin reservar ahora campos genéricos.
+
+Antes de re-simular se valida la forma del snapshot guardado. Un snapshot malformado se
+rechaza con `INVALID_SNAPSHOT`, antes de ejecutar el motor. No se recalculan sus estadísticas
+con las reglas actuales ni se sustituyen valores inválidos: el snapshot conserva los datos
+con los que comenzó ese combate, también cuando procede de un registro antiguo o un backup.
+
+**Por qué.** `skill` no necesita datos adicionales y aceptarlos añade almacenamiento y trabajo
+de verificación sin utilidad. Recalcular un snapshot histórico podría cambiar el resultado
+y el digest de un combate al cambiar las reglas; rechazar un registro roto conserva una
+explicación explícita del fallo.
+
+**Criterios de aceptación.** Los payloads vacíos válidos se aceptan y los no vacíos se
+rechazan con su código. La validación del snapshot comprueba los campos del contrato de la
+versión correspondiente (nombre, clase, etapa, seis atributos y estadísticas numéricas)
+antes de simular; los casos malformados devuelven `INVALID_SNAPSHOT`. El combate normativo
+válido conserva eventos, resultado y digest, y el replay histórico mantiene la selección
+de su versión. Los rechazos no reparan ni reescriben el registro.
+
+**Alcance.** Este acuerdo no cierra #1085 ni acredita pruebas ejecutadas. La implementación
+debe respetar las versiones retenidas del motor y comprobar el rechazo antes de persistir
+la resolución en R2. No implica cambios de esquema, datos productivos ni reglas de balance.
+
+**Verificación local de la implementación (2026-09-06, rama `fix/issue-1085`, base
+`598fc5f`).** Validaciones implementadas en la API actual y en el adaptador de replay de
+r2.2, sin modificar el código retenido. Vitest completo: 305 archivos y 3.083 pruebas
+PASS; typecheck sin errores; lint de los siete archivos TypeScript modificados PASS;
+ejemplo normativo y pureza PASS. Revisiones independientes de requisitos y estándares:
+sin hallazgos de código; aclarada la naturaleza histórica del añadido a la spec. No se
+ha ejecutado persistencia remota: `resolveBattle` pertenece a R2 y aún no existe en esta
+base. La integración y el cierre de #1085 siguen pendientes.
+
 ## 2026-09-06 — Inventaire: una consulta fallida no completa la hidratación (#911)
 
 La búsqueda conserva su contrato blando: si Inventaire falla, muestra resultados sin
@@ -4083,6 +4122,7 @@ queda incompleta. Se conserva la representación anterior y no se estampa `hydra
 porque esa RPC marca como revisada la obra en cada llamada. También se posponen las
 mejoras de otros proveedores de esa evaluación; la siguiente visita puede reintentarlas.
 No cambia la firma de las RPC ni los permisos de catálogo.
+
 ## 2026-09-06 — Mascota R2: ingreso estricto y replay histórico congelado
 
 **Decisión.** La capa actual `src/lib/pet/training/` valida el snapshot y exige que los
@@ -4117,6 +4157,16 @@ esa aceptación. El entrenamiento no concede recompensas ni consume recursos.
 guardar o gastar la habilidad siga siendo interesante después de veinte combates. Esa
 condición de producto exige observar a personas y no se da por satisfecha con el build.
 
+## 2026-09-06 — Integración de #1095 con el entrenamiento de #1099
+
+Se conserva la API de entrada de R2 ya integrada: `NONEMPTY_PAYLOAD`, el export
+`isBattleSnapshot` usado por entrenamiento y los límites de aritmética exacta. La
+aportación restante de #1095 es el guard de snapshot de r2.2, independiente del
+catálogo actual de clases y ejecutado dentro de su adaptador de replay. Cada versión
+futura valida su propio snapshot después de seleccionarse por versión y hash.
+No cambian los bytes del motor retenido ni el digest normativo. Las anotaciones
+anteriores de esta rama describen su base previa a #1099, no el estado integrado.
+
 ## 2026-09-06 — Inventaire: comprobar cobertura de las entidades solicitadas (#911)
 
 Una respuesta HTTP correcta que omite una obra o un autor solicitado sigue siendo
@@ -4124,3 +4174,4 @@ incompleta para hidratación. Se exige una entidad objeto por cada URI solicitad
 incluidos lotes parcialmente devueltos. La búsqueda conserva su comportamiento
 anterior con resultados parciales; solo el consumidor que persiste exige completitud.
 Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.
+
