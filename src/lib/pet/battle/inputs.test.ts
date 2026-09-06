@@ -19,14 +19,9 @@ describe("validateInputs", () => {
     expect(validateInputs([], RULESET).ok).toBe(true);
   });
 
-  it("copia un payload no vacío en un objeto nuevo", () => {
-    const raw = [{ seq: 0, tick: 1, action: "skill", payload: { hp: 5, tag: "x" } }];
-    const v = validateInputs(raw, RULESET);
-    expect(v.ok).toBe(true);
-    if (v.ok) {
-      expect(v.inputs[0].payload).toEqual({ hp: 5, tag: "x" });
-      expect(v.inputs[0].payload).not.toBe(raw[0].payload);
-    }
+  it("rechaza datos adicionales incluso pequeños", () => {
+    expect(validateInputs([{ seq: 0, tick: 1, action: "skill", payload: { hp: 5 } }], RULESET))
+      .toEqual({ ok: false, code: "NON_EMPTY_PAYLOAD", index: 0 });
   });
 
   it.each([
@@ -40,7 +35,7 @@ describe("validateInputs", () => {
     ["BAD_TICK", [{ seq: 0, tick: 1.5, action: "skill", payload: {} }], 0],
     ["TICK_ORDER", ok([10, 5]), 1],
     ["BAD_ACTION", [{ seq: 0, tick: 1, action: "ulti", payload: {} }], 0],
-    ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: { x: 1.5 } }], 0],
+    ["NON_EMPTY_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: { x: 1.5 } }], 0],
     ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: null }], 0],
     ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: [1] }], 0],
     ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: JSON.parse("{\"__proto__\": \"x\"}") }], 0],

@@ -37,3 +37,8 @@ describe("retained battle releases (R5)", () => {
     expect(() => { ENEMIES.brote.hpPerAtk = 999; }).toThrow();
   });
 });
+
+it("rechaza un snapshot histórico roto con un código de dominio", async () => {
+  await expect(replayBattle({ ...record, snapshot: { ...record.snapshot, atk: "x" } } as unknown as ResimInput))
+    .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
+});
