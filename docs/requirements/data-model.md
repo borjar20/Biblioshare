@@ -39,6 +39,13 @@
 > roles API. No cambia propietarios, audiencias ni políticas. Verificación local mediante
 > `supabase/tests/pass_interaction_hrefs.sql`; funciones y permisos verificados en ambos entornos.
 
+> **#812, producción verificada el 2026-09-06:** aplicada la migración existente
+> `20260878_catalog_technical_columns_gate.sql`. Los tres triggers BEFORE UPDATE
+> de books/movies/series siguen activos. Los campos técnicos ya poblados solo pueden
+> reescribirse por las vías privilegiadas existentes; null → valor sigue permitido.
+> La regresión funcional con filas sintéticas se ejecutó únicamente en local.
+> Evidencia: [verificación #812](../testing/2026-09-06-812-catalog-gate.md).
+
 ## 0. Dos renombres que invalidan la doc antigua
 
 **`diary_entries` se llama `passes` desde julio de 2026** (migración `pass_hub_c_rename`).

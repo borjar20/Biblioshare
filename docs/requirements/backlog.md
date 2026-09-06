@@ -205,7 +205,9 @@ Salieron tres issues que NO se encadenan: **#810** (la CSP no puede llevar
 social, RPC caras; implementado el 2026-09-06 con cuotas compartidas por usuario,
 triggers y guards antes de consultas externas; migración aplicada y verificada en dev y producción el 2026-09-07;
 la #684 solo cubría la búsqueda) y **#812** (la migración
-`20260878` está aplicada y verificada en dev, **no en prod**).
+`20260878` aplicada también en producción el 2026-09-06; función y tres triggers
+verificados, regresión funcional local PASS; evidencia en
+`docs/testing/2026-09-06-812-catalog-gate.md`).
 
 Quedan de este bloque los sueltos que NO son de seguridad: **#815** (contraste:
 `--muted-foreground` a 3,4:1 y `--foreground-faint` a 2,6:1 sacan axe *serious*
