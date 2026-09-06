@@ -3016,6 +3016,19 @@ export type Database = {
         }[]
       }
       get_companion_state: { Args: { p_tz?: string }; Returns: Json }
+      get_burrow_pets: {
+        Args: { p_limit?: number }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string | null
+          avatar_url: string | null
+          pet_name: string
+          pet_class: string
+          pet_stage: string
+          total: number
+        }[]
+      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {

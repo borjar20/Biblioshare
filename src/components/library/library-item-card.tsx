@@ -16,13 +16,9 @@ import { AddToCollectionSheet } from "@/components/library/add-to-collection-she
 export function LibraryItemCard({
   item,
   isOwner,
-  inCollection = false,
 }: {
   item: LibraryItem;
   isOwner: boolean;
-  // En Colección (frame B): badge de estado con TEXTO sobre la portada y línea
-  // mono «relecturas · ★ nota». En el Perfil (mockup IA nueva) sigue dot-only.
-  inCollection?: boolean;
 }) {
   const t = useTranslations("library");
   // Favorito optimista: el pin/unpin se pinta al instante y revierte en error.
@@ -67,8 +63,7 @@ export function LibraryItemCard({
           <StatusBadge
             status={item.status}
             label={t(`status.${item.status}`)}
-            dotOnly={!inCollection}
-            variant={inCollection ? "overlay" : "chip"}
+            variant="overlay"
           />
         </div>
 

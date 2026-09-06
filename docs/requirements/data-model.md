@@ -3836,6 +3836,50 @@ select/insert/update/delete de `authenticated`, select de `anon`, insert de `ser
 índice) y 15 columnas. Aditiva pura: nada en `main` escribe en la tabla hasta R2. El e2e
 `e2e/mascota-batallas-autoridad.spec.ts` lo comprueba desde PostgREST contra dev.
 
+### 8bis.6. Madriguera compartida — `get_burrow_pets` (#1083)
+
+**[Canónico · funciones y ACL verificadas contra dev y prod el 2026-09-06]**
+
+Migración `20260906170958_get_burrow_pets.sql`, aplicada en biblioshare-dev y producción. La función
+`public.get_burrow_pets(p_limit integer default 60)` es `SECURITY INVOKER` y delega en
+`private.burrow_pets(p_viewer uuid, p_limit integer)`, `SECURITY DEFINER`. Ambas fijan
+`search_path = ''`; el helper cualifica las referencias, exige `p_viewer = auth.uid()`
+y acota el límite a `[1,60]` (null → 60). El wrapper obtiene el espectador de la sesión.
+
+Solo incluye seguidos aceptados con mascota, visibles por `can_view_profile` y sin
+bloqueo en ningún sentido. Excluye la propia, incluye la etapa bellota y usa `last_stage`
+guardada, sin recalcular la mascota ajena. Orden por hash de espectador, día UTC y dueño,
+con UUID como desempate. Retorna exclusivamente `user_id`, `username`, `display_name`,
+`avatar_url`, `pet_name`, `pet_class`, `pet_stage` y `total` (`count(*) over ()`, antes del
+límite y sin contar la propia). No cambia políticas ni grants de `pet_state`.
+
+**ACL verificadas en `pg_proc`/`has_function_privilege`:** helper definidor, wrapper
+invocador; `search_path` vacío en ambos; `anon` sin EXECUTE y `authenticated` con EXECUTE
+en ambos. `authenticated` tiene USAGE de `private`, según el precedente social. El
+advisor de seguridad pasó de 87 avisos previos a 87, sin avisos nuevos por esta migración.
+
+**Pruebas:** RPC con sesiones reales en dev: público/privado aceptado visibles, pendiente,
+no seguido, propia y bloqueos en ambos sentidos excluidos; bellota incluida; campos
+mínimos y lectura directa ajena de `pet_state` vacía. El caso de 65 vecinas entrega 60,
+con total 65 y orden estable; los tres E2E pasan contra `next start` usando dev.
+Informe: `docs/superpowers/specs/2026-09-06-madriguera-1083-verification.md`.
+Matriz SQL transaccional `supabase/tests/get_burrow_pets.sql`: PASS el 2026-09-06
+en Supabase local desechable, CLI 2.116.0, tras aplicar 235 pasos desde cero.
+Incluye `SET ROLE authenticated`, intento de cambiar el espectador y ausencia de sesión;
+termina en ROLLBACK, con cero usuarios de prueba restantes. Las definiciones de ambas
+funciones coinciden por hash entre local y dev. El conector de dev sigue sin permitir
+SET ROLE; allí la comprobación funcional usa REST autenticado.
+
+La lectura de aplicación usa cliente de sesión, sin `use cache`, bajo un Suspense propio.
+Descarta filas de apariencia inválida; el total sigue siendo el recuento del RPC y el
+texto de expansión indica el número realmente mostrado. Tras autorización específica,
+se aplicó la migración en producción y se verificaron objetos, permisos, search_path y
+las tres políticas de pet_state intactas. Las definiciones coinciden con dev al normalizar
+CRLF/LF. Advisor: 87 avisos antes y después, sin diferencias salvo fecha de observación.
+La comprobación con dos cuentas reales de producción sigue pendiente en #1083.
+El manifiesto y el baseline permiten reconstruir una base vacía. Véase
+`docs/testing/supabase-local.md`.
+
 ## 9. Seguridad
 
 Las **60 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el

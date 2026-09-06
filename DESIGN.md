@@ -25,6 +25,10 @@ colors:
   status-in-progress: "#c98a2b"
   status-completed: "#5c7052"
   status-dropped: "#b0492f"
+  status-planned-ink: "#685b46"
+  status-in-progress-ink: "#714a0c"
+  status-completed-ink: "#4b5e41"
+  status-dropped-ink: "#8a3724"
   type-book: "#a15a34"
   type-movie: "#3f6b6e"
   type-series: "#7a5676"
@@ -185,6 +189,25 @@ apretada es su servicio. Lo que compensa la densidad no es el aire, es la jerarq
 - Sin toasts, sin emojis de sistema, sin adorno que no sea un dato.
 
 ## Colors
+
+### Tintas de estado (#892, verificadas contra globals.css el 2026-09-06)
+
+Los tokens `status-*` conservan el color de gráficos y puntos. Para texto de estado,
+estadísticas y cambios de nota se usa el par `status-*-ink`, con contraste mínimo
+4,5:1 sobre background, surface, surface-muted y surface-3. El oscuro del sistema
+declara los mismos valores que `.dark`.
+
+| Tinta | Claro | Oscuro explícito y del sistema |
+|---|---|---|
+| `status-planned-ink` | `#685b46` | `#b9ab98` |
+| `status-in-progress-ink` | `#714a0c` | `#e0a94a` |
+| `status-completed-ink` | `#4b5e41` | `#9fb68f` |
+| `status-dropped-ink` | `#8a3724` | `#efa48e` |
+
+Las tarjetas de biblioteca, tanto en Colección como en el perfil público, muestran
+siempre la etiqueta de estado con la variante `overlay`: el color no es su única señal.
+Los errores de formulario sobre surface conservan el rojo existente, cuyo contraste
+ya cumple. Las superficies tintadas se comprueban en navegador con su composición real.
 
 Paleta enteramente cálida —papel, teja, oro, verde oliva— con tres fríos que son **datos, no
 cromo**: el teal de película, el violeta de serie y el azul del salto de itinerario. Cada color
@@ -405,10 +428,11 @@ minimalismo, pero sin adorno que no sea un dato.
   en Tinta Apagada que sube a Tinta al hover. Enlaza a su página de género cuando la etiqueta
   pertenece al vocabulario canónico; si no, es un `<span>` muerto — nunca un enlace roto.
 - **Estado** (`StatusBadge`): píldora con dot de color a la izquierda, en tres tallas de
-  contexto — `chip` (papel hundido, en tarjetas de biblioteca), `hero` (papel de ficha + borde,
+  contexto — `chip` (papel hundido, en listados), `hero` (papel de ficha + borde,
   en la ficha de obra) y `overlay` (papel translúcido al 88 % + `backdrop-blur` + borde, para
   leerse encima de cualquier portada). La variante `dotOnly` deja solo el punto con un anillo de
-  fondo, y el nombre del estado vive en el `aria-label`.
+  fondo, y el nombre del estado vive en el `aria-label`. Las tarjetas de biblioteca usan
+  siempre `overlay` con texto, también en el perfil público; nunca `dotOnly`.
 
 ### Cards / Containers
 - **Esquina:** 14 px. **Fondo:** Papel de Ficha. **Borde:** la línea de `--border`.

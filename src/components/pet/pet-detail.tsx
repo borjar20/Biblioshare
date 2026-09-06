@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { checkCelebrations } from "@/lib/celebrations/preference";
 import { changeClass } from "@/lib/pet/actions";
@@ -14,7 +14,7 @@ import { MissionBoard } from "./mission-board";
 import { PetSprite, type PetReaction } from "./pet-sprite";
 import { RenameForm } from "./rename-form";
 
-export function PetDetail({ pet }: { pet: PetSnapshot }) {
+export function PetDetail({ pet, burrow }: { pet: PetSnapshot; burrow?: ReactNode }) {
   const t = useTranslations("pet");
   const [picking, setPicking] = useState(false);
   const [, startTransition] = useTransition();
@@ -93,6 +93,8 @@ export function PetDetail({ pet }: { pet: PetSnapshot }) {
           </div>
         </div>
       </section>
+
+      {burrow}
 
       <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5 shadow-card">
         <h3 className="font-serif text-lg font-semibold text-foreground">{t("sources.title")}</h3>

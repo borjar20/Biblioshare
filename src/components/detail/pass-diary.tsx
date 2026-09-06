@@ -203,7 +203,7 @@ function PassCard({
         {deltaLabel && (
           <span
             className={`ml-auto font-mono text-[10px] ${
-              deltaUp ? "text-status-completed" : "text-status-dropped"
+              deltaUp ? "text-status-completed-ink" : "text-status-dropped-ink"
             }`}
           >
             {deltaLabel}

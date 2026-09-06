@@ -4182,3 +4182,102 @@ Tras probar el entrenamiento y sus ajustes de legibilidad (#1100), el usuario ac
 ## 2026-09-06 — Refinamiento del HUD y la ulti dentro de R3 (#1107)
 
 El pulido visual del entrenamiento pertenece a R3, antes de aventuras/equipo (R4). Habilidad y ulti comparten una zona de acciones con recargas integradas y recordatorios visibles; la explicación extensa queda desplegable. Las recetas usan símbolos de libro, bellota, estrella y corazón junto a sus números, conservando nombres accesibles, selección ficha-hueco y foco por teclado. El oro del tema destaca la ulti disponible. No cambia el motor, el coste ni el contrato del puzzle.
+
+## 2026-09-06 — Alta manual de importación por RPC autenticada (#926)
+
+Los dos accesos (fila sin coincidencia y cola de revisión) comparten el registro
+por `register_manual_catalog_item`, con el cliente de la petición. Conservan la
+validación de colaborador y registran los fallos; no restauran INSERT directo
+sobre books/movies/series ni elevan el cliente a service_role.
+
+El alta envía título, autor, año y páginas de libro. No envía ISBN ni editorial
+a las columnas congeladas de books. La identificación de edición y su enlace al
+pase siguen pendientes en #910; esta corrección no cierra esa issue. La cola
+conserva `resolve_pending_import` para escribir en la biblioteca del dueño,
+no en la del colaborador. No se cambia el esquema ni el contrato de las RPC.
+
+## 2026-09-06 — Comparación de personas separada de títulos (#922)
+
+Sustituye la decisión de comparación de autoría del 2026-08-27: `isSameTitle`
+conserva su contrato para títulos, pero reconciliación, colapso y Google Books
+usan un comparador de personas. Rechaza nombres vacíos y conserva sufijos de
+identidad (hijo/junior, padre/senior, II/III/IV). Tolera acentos, orden
+apellido/nombre, partículas interiores e iniciales adicionales compatibles.
+Exige un nombre de pila completo compartido o la misma secuencia de iniciales;
+no convierte un apellido aislado de una lista en una identidad completa.
+
+Los créditos con varios nombres completos separados por comas siguen admitidos;
+las comas de un nombre invertido o un sufijo no se interpretan como dos autores.
+No se cambia la tolerancia de títulos ni se ejecutan reconciliaciones o fusiones.
+
+Comprobación real de Inventaire el 2026-09-06: «The Name of the Wind» devolvió
+20 entidades; tanto el comparador anterior como el nuevo aceptaron solo
+`wd:Q1195989` para Patrick Rothfuss. Es una medición de esa consulta, no una
+prueba universal de identidad. #923 queda preparado para adoptar este criterio.
+
+## 2026-09-06 — Estado visible y tintas de estado (#892)
+
+La rejilla de /coleccion ya pasaba `inCollection` y mostraba la etiqueta: esa
+parte del diagnóstico de #892 estaba desactualizada. La tarjeta compartida
+mostraba solo un punto en la pestaña Colección del perfil. Ahora conserva la
+etiqueta en todos sus consumidores, con el badge overlay existente, y se retira
+el parámetro de presentación que permitía ocultarla.
+
+Los cuatro estados tienen ahora un par `status-*-ink` para texto. Las tintas se
+verifican sobre background, surface, surface-muted y surface-3 en los tres bloques
+de tema. Los colores de gráficos y puntos permanecen separados de esas tintas.
+Se migran los textos de éxito, estadísticas, cambios de nota y autoría; los
+mensajes de error sobre surface mantienen su color existente, ya contrastado.
+
+## 2026-09-06 — Contraste de tintas sobre fondos semitransparentes (#1105)
+
+La comprobación en navegador detectó ratios entre 4,31 y 4,49 en combinaciones
+con fondos de estado al 10 % sobre surface-3. Se oscurecen las tintas oro y roja
+en claro y se aclara la roja en oscuro, incluido el tema del sistema.
+El E2E mide las clases CSS compiladas sobre las cuatro superficies, además de
+las etiquetas reales de colección propia y perfil público: cuatro estados,
+tres temas y dos anchos. Todas las combinaciones comprobadas alcanzan 4,5:1.
+
+## 2026-09-06 — Madriguera: límite explícito y acceso antes de eclosionar (#1083)
+
+**Estado.** Diseño confirmado por el usuario; implementación y pruebas pendientes en #1083.
+
+**Decisión.** S1 mantiene un máximo de 60 vecinas cargadas, sin paginación. El botón se
+llama «Mostrar más» y expande las vecinas ya cargadas. Si el total supera 60, la escena
+expandida explica el límite con «Mostrando 60 de N mascotas de tus seguidos»; ese recuento
+excluye la propia. Sustituye «Ver las N», que prometía mostrar un total que no se cargaba.
+
+Las doce mascotas visibles inicialmente incluyen la propia: una propia y hasta once
+vecinas. Sin mascota propia se muestran hasta doce vecinas. Al expandir, la propia
+permanece primera y se muestran hasta 60 vecinas adicionales.
+
+La madriguera también aparece debajo del formulario para eclosionar cuando el espectador
+todavía no tiene mascota. No se inventa una bellota propia ni se crea una mascota por
+visitar la sección. Una bellota es una etapa de una mascota existente; no representa a
+una persona que todavía no ha eclosionado. Los estados vacíos siguen distinguiendo entre
+no seguir a nadie y no disponer de mascotas vecinas visibles.
+
+**Por qué.** El límite mantiene acotada la primera entrega y el texto describe lo que se
+puede mostrar. Contar la propia dentro de doce fija el tamaño inicial de la escena.
+Permitir ver vecinas antes de eclosionar deja descubrir la parte social sin obligar a
+crear una mascota.
+
+**Verificación prevista.** Cubrir escenas con y sin mascota propia, el paso de once a
+doce vecinas con mascota propia, el paso de doce a trece sin ella, expansión con total
+superior a 60 y el recuento que excluye la propia. El acceso antes de eclosionar conserva
+el formulario y no crea `pet_state`. Se mantienen la matriz de visibilidad y las demás
+pruebas de S1. Este acuerdo no cierra la issue ni acredita verificaciones de ejecución.
+
+## 2026-09-06 — Integración de Madriguera con entrenamiento (#1097)
+
+Se conserva la sección privada bajo su Suspense dentro de PetDetail y se mantiene
+TrainingPanel después de la ficha. La matriz SQL se valida en una base local desechable
+porque el conector de dev no permite SET ROLE; dev se valida con sesiones REST reales.
+La coincidencia de definiciones y ambas matrices complementan la evidencia. Producción
+sigue siendo un paso separado: sus dos funciones aún no existen y #1083 queda abierta.
+
+## 2026-09-06 — Despliegue autorizado de Madriguera (#1097)
+
+Tras el permiso específico se aplica el SQL en producción y se verifican definiciones,
+ACL y RLS. La matriz local y los E2E de dev acreditan la implementación; la aceptación
+con dos cuentas reales de producción permanece en #1083 y no impide integrar el código.

@@ -142,7 +142,7 @@ export function StatPanel({
             role="status"
             className="flex flex-col gap-2 rounded-lg border border-status-dropped bg-status-dropped/10 p-3"
           >
-            <p className="text-sm text-status-dropped">
+            <p className="text-sm text-status-dropped-ink">
               <span aria-hidden>⚠ </span>
               {state.message ?? "No se han podido cargar estos datos."}
             </p>
@@ -422,8 +422,8 @@ function Hero({ kpi }: { kpi: PanelKpi }) {
             good === undefined
               ? "text-muted-foreground"
               : good
-                ? "text-status-completed"
-                : "text-status-dropped"
+                ? "text-status-completed-ink"
+                : "text-status-dropped-ink"
           }`}
         >
           <span aria-hidden>{deltaGlyph(kpi.delta)} </span>
@@ -458,8 +458,8 @@ function KpiRow({ kpis }: { kpis: PanelKpi[] }) {
                     good === undefined
                       ? "text-muted-foreground"
                       : good
-                        ? "text-status-completed"
-                        : "text-status-dropped"
+                        ? "text-status-completed-ink"
+                        : "text-status-dropped-ink"
                   }`}
                 >
                   {/* Glifo + palabra + unidad + periodo: cuatro señales, no un color. */}
