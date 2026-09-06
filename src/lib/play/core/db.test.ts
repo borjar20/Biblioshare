@@ -1,5 +1,6 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { IDBDatabase } from "fake-indexeddb";
 import {
   __resetDbForTests,
   deleteActive,
@@ -146,13 +147,15 @@ describe("active", () => {
   it("escribe y lee el registro por identidad", async () => {
     expect(await writeActive(record(1))).toEqual({ ok: true });
     const read = await readActive("anon");
-    expect(read?.rev).toBe(1);
-    expect(read?.committed).toHaveLength(1);
+    expect(read.ok).toBe(true);
+    if (!read.ok) throw new Error("expected readable storage");
+    expect(read.record?.rev).toBe(1);
+    expect(read.record?.committed).toHaveLength(1);
   });
 
   it("sin registro devuelve null, y otra identidad no ve el ajeno", async () => {
     await writeActive(record(1));
-    expect(await readActive("uid-x")).toBeNull();
+    expect(await readActive("uid-x")).toEqual({ ok: true, record: null });
   });
 
   it("CAS: un rev igual o menor NO pisa y devuelve el registro vigente", async () => {
@@ -172,7 +175,19 @@ describe("active", () => {
     await writeActive(record(1));
     await deleteActive("anon");
     await deleteActive("anon");
-    expect(await readActive("anon")).toBeNull();
+    expect(await readActive("anon")).toEqual({ ok: true, record: null });
+  });
+
+  it("un error de transacción no se confunde con ausencia (#955)", async () => {
+    await writeActive(record(1));
+    const transaction = vi.spyOn(IDBDatabase.prototype, "transaction")
+      .mockImplementationOnce(() => { throw new Error("storage unavailable"); });
+    try {
+      expect(await readActive("anon")).toEqual({ ok: false, reason: "unavailable" });
+    } finally {
+      transaction.mockRestore();
+    }
+    expect(await readActive("anon")).toMatchObject({ ok: true, record: { rev: 1 } });
   });
 });
 

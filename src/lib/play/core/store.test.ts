@@ -1,9 +1,9 @@
 import "fake-indexeddb/auto";
-import { IDBFactory } from "fake-indexeddb";
+import { IDBFactory, IDBDatabase } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeEvent } from "./events";
 import { BURST_WINDOW_MS } from "./log";
-import { __resetDbForTests, listSaved, readActive, writeActive, type ActiveGameRecord } from "./db";
+import { __resetDbForTests, listSaved, readActive as readActiveResult, writeActive, type ActiveGameRecord } from "./db";
 import {
   getPlayStore,
   parseSnapshot,
@@ -26,6 +26,12 @@ class FakeStorage {
 }
 
 let storage: FakeStorage;
+async function readActive(identity: string) {
+  const result = await readActiveResult(identity);
+  if (!result.ok) throw new Error("test storage unavailable");
+  return result.record;
+}
+
 beforeEach(async () => {
   storage = new FakeStorage();
   vi.stubGlobal("localStorage", storage);
@@ -539,6 +545,40 @@ describe("hidratación asíncrona (fase 3)", () => {
 });
 
 describe("espejo entre pestañas (#932)", () => {
+  it("un fallo de lectura del espejo conserva la partida y permite reintentar (#955)", async () => {
+    let deliver: (rev: number) => void = () => { throw new Error("canal sin crear"); };
+    vi.stubGlobal("BroadcastChannel", class {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor() { deliver = (rev) => this.onmessage?.({ data: { rev } } as MessageEvent); }
+      postMessage() {}
+      close() {}
+    });
+    const store = __createPlayStoreForTests("anon");
+    try {
+      await ready(store);
+      store.start(started(1000));
+      await store.__drainWritesForTests();
+      const before = store.getSnapshot();
+      const transaction = vi.spyOn(IDBDatabase.prototype, "transaction")
+        .mockImplementationOnce(() => { throw new Error("storage temporarily unavailable"); });
+      deliver(10);
+      await store.__drainWritesForTests();
+      transaction.mockRestore();
+      expect(store.getSnapshot()).toBe(before);
+      expect(store.tap(tap(-1, 2000))).toBe(true);
+      await store.__drainWritesForTests();
+      // Repeating the SAME announced revision must work after storage recovers.
+      await writeActive({ identity: "anon", v: 1, committed: [started(1000), tap(-7, 3000)], pending: null, rev: 10 });
+      deliver(10);
+      await store.__drainWritesForTests();
+      expect((store.getSnapshot().game?.state as MtgState).players[0].life).toBe(33);
+    } finally {
+      vi.restoreAllMocks();
+      await store.__drainWritesForTests();
+      store.destroy();
+    }
+  });
+
   // Verificado aparte (no committeado): en este entorno (vitest + node,
   // incluso con setTimeout/setInterval mockeados como en el beforeEach de
   // arriba) el BroadcastChannel global de Node SÍ entrega mensajes entre dos
