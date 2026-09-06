@@ -603,7 +603,7 @@
       "label": "importar/actions",
       "layer": "action",
       "kind": "action",
-      "summary": "parseImportFile (solo parsea, sin escribir), commitImportBatch (lotes de 20, 5 en paralelo) y resolución de filas pendientes.",
+      "summary": "parseImportFile consume cuota antes de parsear; commitImportBatch (lotes de 20, 5 en paralelo) y resolución de filas pendientes con cuota compartida.",
       "files": [
         "src/app/importar/actions.ts"
       ]
@@ -625,12 +625,12 @@
     },
     {
       "id": "a-push",
-      "label": "push/subscription-actions",
+      "label": "push/device-actions",
       "layer": "action",
       "kind": "action",
-      "summary": "subscribeToPush / unsubscribeFromPush: guarda o retira el endpoint del navegador.",
+      "summary": "Registra o retira dispositivos web/FCM. El alta cobra cuota autenticada antes de la escritura con service_role.",
       "files": [
-        "src/lib/push/subscription-actions.ts"
+        "src/lib/push/device-actions.ts"
       ]
     },
     {
@@ -1112,6 +1112,23 @@
       ]
     },
     {
+      "id": "m-rate-limit",
+      "label": "lib/rate-limit",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Consume cuota autenticada en PostgreSQL antes de consultas externas o importación. Falla cerrado si el contador no responde.",
+      "files": ["src/lib/rate-limit.ts"]
+    },
+    {
+      "id": "t-request-quotas",
+      "label": "private.request_quotas",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Contador atómico por usuario y operación. Sin permisos de cliente. Los triggers y tres RPC caras consumen cuota en la misma transacción.",
+      "columns": ["user_id", "operation", "window_started_at", "used"],
+      "files": ["supabase/migrations/20260906213325_shared_rate_limits.sql"]
+    },
+    {
       "id": "t-passes",
       "label": "passes",
       "layer": "db",
@@ -1498,6 +1515,10 @@
     }
   ],
   "edges": [
+    {"from": "a-buscar", "to": "m-rate-limit", "kind": "calls"},
+    {"from": "a-import", "to": "m-rate-limit", "kind": "calls"},
+    {"from": "a-push", "to": "m-rate-limit", "kind": "calls"},
+    {"from": "m-rate-limit", "to": "t-request-quotas", "kind": "writes"},
     {
       "from": "browser",
       "to": "proxy",
@@ -2743,10 +2764,10 @@
       "id": "flow-import",
       "name": "Importar CSV de Goodreads / Letterboxd",
       "category": "onboarding",
-      "summary": "Parseo sin escritura + commit por lotes conducido desde el cliente, con barra de progreso y cola de pendientes para lo que no casa.",
+      "summary": "Parseo con cuota compartida + commit por lotes conducido desde el cliente, con barra de progreso y cola de pendientes para lo que no casa.",
       "entrypoint": "src/app/importar/actions.ts:36",
       "notes": [
-        "parseImportFile NO escribe en BD: devuelve las filas y el cliente conduce los lotes.",
+        "parseImportFile solo escribe su contador de cuota: devuelve las filas y el cliente conduce los lotes. Se permiten 6 parseos/hora y 6000 filas procesadas/hora por usuario.",
         "Lotes de 20 filas por llamada (BATCH_SIZE), 5 filas en paralelo dentro del servidor (BATCH_CONCURRENCY). Devolver tras cada lote es lo que mantiene la invocación bajo el timeout.",
         "Tope duro de 3000 filas (MAX_ROWS).",
         "Películas: con más de un candidato válido el matcher devuelve `ambiguous` y NO escribe. Libros sin ISBN: verifica autoría, prefiere títulos exactos entre local y API, y sin una obra única devuelve `unmatched` para resolución manual (#923). El onboarding conserva las filas pendientes.",
@@ -2761,7 +2782,7 @@
         },
         {
           "node": "a-import",
-          "action": "parseImportFile detecta formato y parsea; sin escrituras",
+          "action": "parseImportFile consume cuota, detecta formato y parsea",
           "file": "src/app/importar/actions.ts:36"
         },
         {

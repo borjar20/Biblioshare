@@ -23,7 +23,9 @@ beforeEach(() => {
   state.role = "collaborator";
   state.rpcError = null;
   passes = [];
-  rpc = vi.fn(async (name: string) => ({ data: name === "register_manual_catalog_item" ? "catalog-id" : null, error: state.rpcError }));
+  rpc = vi.fn(async (name: string) => name === "consume_request_quota"
+    ? { data: true, error: null }
+    : { data: name === "register_manual_catalog_item" ? "catalog-id" : null, error: state.rpcError });
   state.client = {
     auth: { getUser: async () => ({ data: { user: { id: "reviewer" } } }) }, rpc,
     from: (table: string) => {
@@ -63,8 +65,10 @@ describe("manual import through authenticated catalog registration", () => {
   });
   it("does not write edition metadata to legacy work columns", async () => {
     await resolveUnmatchedImportRow("book", row, {}, form());
-    expect(rpc.mock.calls[0]?.[1]).not.toHaveProperty("p_isbn");
-    expect(rpc.mock.calls[0]?.[1]).not.toHaveProperty("p_publisher");
+    const registration = rpc.mock.calls.find(([name]) => name === "register_manual_catalog_item");
+    expect(registration).toBeDefined();
+    expect(registration?.[1]).not.toHaveProperty("p_isbn");
+    expect(registration?.[1]).not.toHaveProperty("p_publisher");
   });
   it("rejects a user without the collaborator role before creating anything", async () => {
     state.role = "user";
@@ -83,7 +87,8 @@ describe("manual import through authenticated catalog registration", () => {
   });
   it("reports a pending resolution failure without claiming success", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    rpc.mockResolvedValueOnce({ data: "catalog-id", error: null })
+    rpc.mockResolvedValueOnce({ data: true, error: null })
+      .mockResolvedValueOnce({ data: "catalog-id", error: null })
       .mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "pending row not found" } });
     expect(await resolvePendingRow("gone", "book", row, {}, form())).toEqual({ error: "generic" });
     expect(log).toHaveBeenCalledWith("resolve_pending_import failed", expect.objectContaining({ pendingId: "gone" }));

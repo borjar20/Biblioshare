@@ -202,7 +202,9 @@ no repetir #699), **#681** (formula injection en el CSV de exportación) y
 Salieron tres issues que NO se encadenan: **#810** (la CSP no puede llevar
 `script-src`: el nonce exige render dinámico y choca con Cache Components),
 **#811** (el resto del rate limiting de S2-11 — alta de catálogo, escritura
-social, RPC caras; la #684 solo cubría la búsqueda) y **#812** (la migración
+social, RPC caras; implementado el 2026-09-06 con cuotas compartidas por usuario,
+triggers y guards antes de consultas externas; migración aplicada y verificada en dev y producción el 2026-09-07;
+la #684 solo cubría la búsqueda) y **#812** (la migración
 `20260878` aplicada también en producción el 2026-09-06; función y tres triggers
 verificados, regresión funcional local PASS; evidencia en
 `docs/testing/2026-09-06-812-catalog-gate.md`).
