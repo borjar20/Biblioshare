@@ -12,6 +12,7 @@ import { getPetCounts } from "@/lib/pet/get-pet-counts";
 import { getPetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import { HatchForm } from "@/components/pet/hatch-form";
 import { PetDetail } from "@/components/pet/pet-detail";
+import { BurrowSection } from "@/components/pet/burrow-section";
 import { TrainingPanel } from "@/components/pet/training/training-panel";
 
 export const metadata: Metadata = { title: "Mascota — Biblioshare" };
@@ -38,11 +39,16 @@ async function PetContent() {
 
   const supabase = await createClient();
   const pet = await getPetSnapshot(supabase, user.id);
+  const burrow = (
+    <Suspense fallback={<div aria-hidden className="h-40 animate-pulse rounded-card bg-surface-muted" />}>
+      <BurrowSection viewerId={user.id} own={pet ? { name: pet.name, petClass: pet.petClass, stage: pet.stage } : null} />
+    </Suspense>
+  );
 
   if (!pet) {
     // Eclosión: la sugerencia sale del historial (spec §2). Sin historial → null.
     const { counts } = await getPetCounts(supabase, user.id);
-    return <HatchForm suggested={suggestClass(deriveAttributes(counts))} />;
+    return <><HatchForm suggested={suggestClass(deriveAttributes(counts))} />{burrow}</>;
   }
-  return <><PetDetail pet={pet} /><TrainingPanel /></>;
+  return <><PetDetail pet={pet} burrow={burrow} /><TrainingPanel /></>;
 }

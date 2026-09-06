@@ -878,10 +878,22 @@ R1 o entre dos hitos R. Principios en §20.
 
 **Entrega:** sección «Madriguera» en /mascota, debajo de la ficha: tu mascota primero y después las
 de tus seguidos aceptados que pasen `can_view_profile`, todas en idle; al tocar una, tarjeta con
-nombre, clase, etapa y dueño con enlace a su perfil; mezcla diaria determinista, doce visibles y
-«Ver las N»; estados vacíos. Un RPC (`get_burrow_pets()`, helper privado con privilegios de
+nombre, clase, etapa y dueño con enlace a su perfil; mezcla diaria determinista, doce visibles
+contando la propia y «Mostrar más» para expandir las vecinas cargadas; estados vacíos.
+Máximo de 60 vecinas, sin paginación: si hay más, al expandir se indica «Mostrando 60 de N
+mascotas de tus seguidos», sin contar la propia. Antes de eclosionar, la sección aparece
+debajo del formulario y muestra hasta doce vecinas inicialmente, sin inventar mascota propia.
+Un RPC (`get_burrow_pets()`, helper privado con privilegios de
 definidor) que devuelve solo nombre, clase, etapa y dueño; sin cambios de política en `pet_state`.
 Spec: `docs/superpowers/specs/2026-09-06-mascota-madriguera-compartida-design.md`.
+Precisiones posteriores confirmadas: `docs/requirements/decisiones.md`, entrada
+«Madriguera: límite explícito y acceso antes de eclosionar» del 2026-09-06; prevalecen sobre
+la spec histórica en estos tres puntos. **Estado (2026-09-06): implementación verificada,
+matriz SQL con cambio de rol ejecutada en local y migración aplicada en dev y producción,
+con objetos y permisos verificados. Pendiente aceptación con dos cuentas reales de
+producción en #1083.** La comprobación por RPC con sesiones reales y
+el recorrido E2E de dos usuarios pasaron en dev. Detalles de funciones/ACL en
+`docs/requirements/data-model.md` §8bis.6. S1 no se da por cerrado todavía.
 
 **Criterios de salida:**
 
@@ -889,6 +901,10 @@ Spec: `docs/superpowers/specs/2026-09-06-mascota-madriguera-compartida-design.md
   pendiente, bloqueado y no seguido no; la propia se excluye; la bellota se incluye; tope y total
   correctos.
 - Ninguna columna de `pet_state` fuera de nombre, clase y etapa sale por la API.
+- Doce visibles incluyen la propia cuando existe; sin ella caben doce vecinas. Expandir
+  conserva la propia primero, muestra hasta 60 vecinas y explica el límite si el total es mayor.
+- Antes de eclosionar se pueden consultar las vecinas sin crear `pet_state` ni ocultar el
+  formulario; los estados vacíos también funcionan en esta variante.
 - Dos cuentas reales de producción se ven mutuamente al seguirse; el e2e con dos usuarios pasa.
 - La ficha propia no espera a la madriguera (Suspense propio) y un fallo del RPC no rompe la
   página.
