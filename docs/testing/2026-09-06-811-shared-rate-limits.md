@@ -1,6 +1,6 @@
 # #811 — cuotas compartidas
 
-**Estado, 2026-09-06:** implementación local; aplicación en dev/producción pendiente. Base de revisión `5c6e501`. No se cambian dependencias ni secretos.
+**Estado, 2026-09-07:** migración aplicada primero en dev y después en producción con autorización expresa, y verificada en ambos entornos. Base de revisión `5c6e501`. No se cambian dependencias ni secretos. El código de la aplicación sigue en la PR, sin fusionar.
 
 ## Contrato
 
@@ -41,6 +41,14 @@ No se exponen tablas de cuota ni parámetros de capacidad. La RPC cliente solo a
 
 El registro push usa `service_role`, por lo que su action consume la cuota usando el cliente autenticado ANTES del DNS y del borrado/alta privilegiado. El trigger cubre en paralelo la escritura directa con JWT. Una denegación previa conserva el dispositivo ya registrado; las bajas siguen disponibles.
 
-Aplicar `20260906213325_shared_rate_limits.sql` primero en dev, verificar objetos, después en producción con autorización específica, antes de desplegar la aplicación. El bundle nuevo requiere la RPC; hasta aplicarla las actions fallarán cerrado.
+`20260906213325_shared_rate_limits.sql` aplicada mediante `apply_migration` en dev (`tyvzpuhxfwxrnkcpzxyg`) y, tras verificarlo, en producción (`vmutcradmodhiltuohys`). Ambas aplicaciones devolvieron éxito. La RPC requerida por el nuevo bundle ya existe en ambos entornos.
+
+Verificación remota de solo lectura contra objetos reales, no contra el ledger:
+
+- Nueve triggers `request_quota` activos en ambos entornos.
+- RLS activo en la tabla privada; `authenticated` sin lectura/escritura y `anon` sin lectura. `consume_request_quota` ejecutable por `authenticated`, no por `anon`; helper privado no ejecutable por `authenticated`.
+- Las tres funciones guardadas conservan exactamente OID, firma, ACL, search_path y cuerpo previo de consulta; solo se añade el guard. Las tres quedan VOLATILE/SECURITY DEFINER.
+- No se ejecutaron fixtures ni pruebas de agotamiento sobre datos remotos: la comprobación funcional/concurrente corresponde a la base local desechable.
+- Advisors de seguridad consultados en ambos entornos. La tabla privada genera el aviso informativo [RLS sin policies](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), intencional: ningún cliente accede al contador. La RPC autenticada genera el aviso genérico de SECURITY DEFINER; exige `auth.uid()`, operaciones/costes cerrados y conserva la tabla sin grants. No se interpreta el listado global de avisos sobre objetos ajenos como una auditoría resuelta por #811.
 
 Las tres funciones remotas se inspeccionaron por `pg_proc`: mismas firmas/lenguajes esperados; `get_club_round_state` difiere entre dev y producción solo por un comentario. La migración conserva el cuerpo existente en cada entorno, su firma/OID y ACL; inserta el guard sin reconstruir las consultas desde una copia desactualizada. Los lectores pasan a VOLATILE porque ahora escriben el contador. Los clientes actuales usan RPC POST.
