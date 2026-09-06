@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAutoCloseable } from "./get-passes";
+import { getPasses, getActivePass, isAutoCloseable } from "./get-passes";
 
 // Cliente falso: devuelve el `status` que se le pida para la fila de `passes` y
 // registra los filtros aplicados (el gate de usuario tiene que estar ahí).
@@ -41,5 +41,50 @@ describe("isAutoCloseable (#716)", () => {
     await isAutoCloseable(fakeSupabase("in_progress", eqCalls), "p1", "u1");
     expect(eqCalls).toContainEqual(["id", "p1"]);
     expect(eqCalls).toContainEqual(["user_id", "u1"]);
+  });
+});
+
+describe("lecturas de pases (#657)", () => {
+  it("no convierte un fallo de lectura en un diario vacío", async () => {
+    const failure = { code: "42703", message: "column unavailable" };
+    const query = {
+      select: () => query,
+      eq: () => query,
+      order: async () => ({ data: null, error: failure }),
+    };
+    const client = { from: () => query } as never;
+    await expect(getPasses(client, "book", "book-1", "user-1"))
+      .rejects.toThrow("Could not load passes");
+  });
+
+  it("no declara inexistente el pase activo cuando falla su lectura", async () => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      order: async () => ({ data: null, error: { code: "42501" } }),
+    };
+    await expect(getActivePass({ from: () => query } as never, "book", "b", "u"))
+      .rejects.toThrow("Could not load passes");
+  });
+
+  it("una consulta vacía correcta sigue significando ausencia", async () => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      order: async () => ({ data: [], error: null }),
+    };
+    const client = { from: () => query } as never;
+    expect(await getPasses(client, "book", "b", "u")).toEqual([]);
+    expect(await getActivePass(client, "book", "b", "u")).toBeNull();
+  });
+
+  it("un fallo al comprobar el autocierre no equivale a un pase cerrado", async () => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      maybeSingle: async () => ({ data: null, error: { code: "42703" } }),
+    };
+    await expect(isAutoCloseable({ from: () => query } as never, "p", "u"))
+      .rejects.toThrow("Could not load pass status");
   });
 });
