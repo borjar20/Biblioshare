@@ -99,6 +99,8 @@ async function golden() {
       .map((e) => (e.type === "TELEGRAPH_STARTED" ? e.kind : ""));
     if (kinds[0] !== "charge" || kinds[1] !== "guard") continue;
     const { inputs, events, result } = runPolicy(ctx, POLICIES.interrupt);
+    // el ejemplo enseña una victoria por KO; un seed que acaba en límite o en derrota no sirve de ejemplo
+    if (result.outcome !== "win" || result.reason !== "ko") continue;
     const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
     const digest = await battleDigest(record, events);
     const material = canonicalJson({ ...record, events });
