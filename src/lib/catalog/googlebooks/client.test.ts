@@ -43,6 +43,10 @@ function urlOf(spy: ReturnType<typeof vi.fn>): URL {
 }
 
 describe("petición saliente", () => {
+  it("no elige un volumen de Dumas hijo cuando se pidió a Dumas padre", async () => {
+    mockFetchOnce({ items: [{ id: "wrong", volumeInfo: { title: "Obra", authors: ["Alexandre Dumas hijo"] } }] });
+    expect(await findBestVolume("Obra", "Alexandre Dumas", "es")).toBeNull();
+  });
   // Sin estas aserciones, degradar `isbn:X` a búsqueda libre o perder
   // `langRestrict` pasa desapercibido: la forma de `q` es lo que sostiene la
   // regla dura de que solo el ISBN identifica sin ambigüedad.

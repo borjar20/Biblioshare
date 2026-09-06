@@ -31,6 +31,10 @@ function book(over: Partial<BookRow> = {}): BookRow {
 }
 
 describe("authorMatches", () => {
+  it("distingue padre/hijo y conserva iniciales medias y apellidos invertidos", () => {
+    expect(authorMatches("Alexandre Dumas", entity("wd:Q1", {}, ["Alexandre Dumas hijo"]))).toBe(false);
+    expect(authorMatches("Anderson, Kevin J.", entity("wd:Q2", {}, ["Kevin Anderson"]))).toBe(true);
+  });
   it("casa el autor real cuando OpenLibrary añade al traductor", () => {
     expect(
       authorMatches("Brandon Sanderson, Rafael Marín", entity("wd:Q1", {}, ["Brandon Sanderson"]))
