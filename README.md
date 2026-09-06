@@ -56,7 +56,7 @@ gobernanza de abajo para saber cuál manda.**
 | [Widgets Android](docs/widgets-android.md) | Widgets Glance | Canónico |
 | [Mapa de arquitectura](docs/architecture/README.md) | Localizar dónde vive una feature: flujos end-to-end con ficheros (`graph.json`) y diagrama interactivo (`map.html`) | Derivado del código |
 | [Paneles estadísticos](docs/design/paneles-estadisticos.md) | El contrato de cualquier panel de datos: resumen, indicadores, gráfico decorativo y tabla exacta desde una sola fuente | Canónico · vs código |
-| [RPG de mascota: visión y hoja de ruta](docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md) | Parte I, visión congelada del RPG (combate automático con intervenciones de un toque y ulti con minijuego, clases, equipo, campaña por géneros, cosméticos); Parte II, hoja de ruta viva por hitos R1–R10 con contrato solo en R1–R4. Sustituye el alcance de la spec de combate del 2026-09-04 | Diseño de producto · Parte II viva · R1 cerrado, R2 en curso |
+| [RPG de mascota: visión y hoja de ruta](docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md) | Parte I, visión congelada del RPG (combate automático con intervenciones de un toque y ulti con minijuego, clases, equipo, campaña por géneros, cosméticos); Parte II, hoja de ruta viva por hitos R1–R10 con contrato solo en R1–R4. Sustituye el alcance de la spec de combate del 2026-09-04 | Diseño de producto · Parte II viva · R1 cerrado, R2 siguiente |
 
 `docs/superpowers/plans/` y `specs/` son **registro histórico**: uno por feature, fechado y
 congelado. Explican *por qué* algo es como es, no *cómo* está hoy. Si contradicen a los docs de

@@ -5,7 +5,7 @@
 > Esta redacción sustituye a la inicial del mismo día (commit `e47ca3d2` de la PR #1079) tras su
 > revisión, y al alcance de la spec de combate del 2026-09-04
 > (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
-> Contratos pendientes: #1081. Seguimiento: #1082.
+> Contratos: R1 cerrado el 2026-09-06 (#1081 cerrada; lo que hereda R7 vive en #1084). Seguimiento: #1082.
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
 > `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
@@ -441,7 +441,7 @@ Los jefes ligados a retos culturales (#1015) se separan del combate normal:
 - hay que decidir a propósito si cumplir el reto garantiza derrotar al jefe, o si puede quedar
   vivo y se comunica aparte. No se esconde esa decisión dentro del balance.
 
-Entran en R7, con los contratos R2, R3 y R7 de #1081.
+Entran en R7, con los contratos R2, R3 y R7 heredados de #1081 en #1084.
 
 ---
 
@@ -931,6 +931,7 @@ o que la clase afín da ventaja no compensable. Regla de migración: nadie baja 
 | Issue | Papel en este roadmap |
 |---|---|
 | #1081 | contratos: cerrada el 2026-09-06 con R1 (sus R1, R4, R5 y R6); sus R2, R3 y R7 pasan a #1084 para R7 |
+| #1084 | contratos de los jefes de reto heredados de #1081 (raid, edición del reto, ventana e importación): se cierran en la spec de R7 |
 | #1082 | seguimiento y validación del prototipo |
 | #1015 | jefes de reto, en R7 |
 | #1017 | cosméticos y economía: R5 en parte, R10 lo cierra |

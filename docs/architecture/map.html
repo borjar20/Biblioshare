@@ -1601,18 +1601,6 @@
   ],
   "edges": [
     {
-      "from": "m-pet-battle",
-      "to": "m-pet",
-      "kind": "reads",
-      "label": "deriveAttributes / levelFor (poder sin bonus)"
-    },
-    {
-      "from": "m-pet-battle",
-      "to": "t-pet-battles",
-      "kind": "writes",
-      "label": "R2: service_role tras resimulate"
-    },
-    {
       "from": "browser",
       "to": "proxy",
       "kind": "auth",
@@ -2625,6 +2613,18 @@
       "to": "m-push",
       "kind": "calls",
       "label": "sendPushToUser (un aviso por fila reclamada)"
+    },
+    {
+      "from": "m-pet-battle",
+      "to": "m-pet",
+      "kind": "reads",
+      "label": "deriveAttributes / levelFor (poder sin bonus)"
+    },
+    {
+      "from": "m-pet-battle",
+      "to": "t-pet-battles",
+      "kind": "writes",
+      "label": "R2: service_role tras resimulate"
     },
     {
       "from": "sb-server",
