@@ -3863,10 +3863,12 @@ no seguido, propia y bloqueos en ambos sentidos excluidos; bellota incluida; cam
 mínimos y lectura directa ajena de `pet_state` vacía. El caso de 65 vecinas entrega 60,
 con total 65 y orden estable; los tres E2E pasan contra `next start` usando dev.
 Informe: `docs/superpowers/specs/2026-09-06-madriguera-1083-verification.md`.
-Matriz SQL transaccional preparada
-en `supabase/tests/get_burrow_pets.sql`: pendiente de ejecución con un rol que permita
-`SET ROLE authenticated`. El conector de consultas usa `supabase_read_only_user` y lo
-rechaza; el CLI del host no tiene sesión. No se acredita esa matriz como ejecutada.
+Matriz SQL transaccional `supabase/tests/get_burrow_pets.sql`: PASS el 2026-09-06
+en Supabase local desechable, CLI 2.116.0, tras aplicar 235 pasos desde cero.
+Incluye `SET ROLE authenticated`, intento de cambiar el espectador y ausencia de sesión;
+termina en ROLLBACK, con cero usuarios de prueba restantes. Las definiciones de ambas
+funciones coinciden por hash entre local y dev. El conector de dev sigue sin permitir
+SET ROLE; allí la comprobación funcional usa REST autenticado.
 
 La lectura de aplicación usa cliente de sesión, sin `use cache`, bajo un Suspense propio.
 Descarta filas de apariencia inválida; el total sigue siendo el recuento del RPC y el

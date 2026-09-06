@@ -1,4 +1,4 @@
--- #1083, biblioshare-dev only. Requires a connection allowed to SET ROLE.
+-- #1083, disposable local Supabase or biblioshare-dev only. Requires SET ROLE.
 -- All fixtures and helper assertions are rolled back, including on failure
 -- when the client aborts the transaction. Never run this against production.
 begin;

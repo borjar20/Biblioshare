@@ -84,3 +84,31 @@ S1 conserva su casilla abierta y no se cierra la issue.
 
 Rebase sobre main 93c1053: se conservan las entradas documentales nuevas, Madriguera pasa a §8bis.6 y su migración se incorpora al manifiesto y baseline del bootstrap local. Tras integrar: typecheck PASS, 17 tests de Madriguera PASS y 7 tests de bootstrap PASS. La suite completa, el build y los tres E2E descritos arriba corresponden a la base anterior; no se presentan como reejecutados sobre este main.
 
+
+## Integración final del 2026-09-06
+
+Base main `55d3776`, integración `c52ae60`: incluye entrenamiento y todas las
+correcciones de PR revisadas. Se conserva Madriguera dentro de la ficha y el panel
+de entrenamiento después de ella. No se modifica la migración funcional.
+
+- Node 22.23.1: 315 archivos / 3250 pruebas Vitest PASS (156,55 s), sin skips.
+- ESLint de los TS/TSX de la PR PASS. Build webpack, TypeScript y 70 páginas PASS.
+- Bootstrap: 7 tests PASS; CLI oficial 2.116.0, archivo verificado contra SHA256
+  publicado. 235 pasos desde cero y contratos SQL/privilegios PASS.
+- Matriz transaccional SQL completa PASS en local, incluido SET ROLE authenticated;
+  ROLLBACK y cero fixtures restantes. Definiciones local/dev idénticas por MD5:
+  helper `0a836264ece8de01b16410e260e7dd30`, wrapper `232f99bde81ab6c88d1716ee14e50b46`.
+- Tres E2E de Madriguera y uno de entrenamiento PASS contra next start y dev:
+  54,4 s, cero reintentos/skips, limpieza de fixtures en finally. Captura móvil revisada.
+- HANGING_PROMISE_REJECTION también aparece en el build integrado antes de añadir
+  Madriguera (log 1105-server.err.log, ruta /mascota). El síntoma es preexistente;
+  no se afirma que se haya aislado una causa común. Seguimiento ya publicado: #1098.
+- Consulta de objetos reales de producción: wrapper y helper no existen. Despliegue
+  pendiente de autorización específica; no se cierra #1083 ni se acredita producción.
+
+Esta sección actualiza los bloqueos históricos de las secciones anteriores: la matriz
+SQL ya está ejecutada en local y el seguimiento del prerender ya existe como issue.
+Evidencia local ignorada: `.superpowers/pr-remediation/1097-full-unit.log`,
+`1097-integrated-build.log`, `1097-integrated-lint.log`, `1097-bootstrap-unit.log`,
+`1097-local-start-sanitized.log`, `1097-local-sql-matrix.log`,
+`1097-e2e-integrated.log`, `1097-browser-integrated/` y `1097-server.err.log`.

@@ -4259,3 +4259,11 @@ doce vecinas con mascota propia, el paso de doce a trece sin ella, expansión co
 superior a 60 y el recuento que excluye la propia. El acceso antes de eclosionar conserva
 el formulario y no crea `pet_state`. Se mantienen la matriz de visibilidad y las demás
 pruebas de S1. Este acuerdo no cierra la issue ni acredita verificaciones de ejecución.
+
+## 2026-09-06 — Integración de Madriguera con entrenamiento (#1097)
+
+Se conserva la sección privada bajo su Suspense dentro de PetDetail y se mantiene
+TrainingPanel después de la ficha. La matriz SQL se valida en una base local desechable
+porque el conector de dev no permite SET ROLE; dev se valida con sesiones REST reales.
+La coincidencia de definiciones y ambas matrices complementan la evidencia. Producción
+sigue siendo un paso separado: sus dos funciones aún no existen y #1083 queda abierta.
