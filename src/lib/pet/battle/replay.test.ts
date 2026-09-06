@@ -10,6 +10,25 @@ import type { BattleRecord } from "./types";
 const record = normative.record as BattleRecord;
 
 describe("retained battle releases (R5)", () => {
+  it.each(["atk", "hpMax"])("rejects %s that overflows derived battle arithmetic", async (key) => {
+    await expect(replayBattle({ ...record, result: null, inputs: [], snapshot: { ...record.snapshot, [key]: Number.MAX_SAFE_INTEGER } }))
+      .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
+  });
+  it.each([
+    null, {}, { ...record.snapshot, atk: -1 },
+    { ...record.snapshot, atk: Number.MAX_SAFE_INTEGER },
+    { ...record.snapshot, hpMax: Number.MAX_SAFE_INTEGER },
+  ])("rejects malformed persisted snapshots without throwing: %#", async (snapshot) => {
+    await expect(replayBattle({ ...record, snapshot } as ResimInput))
+      .resolves.toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
+  });
+
+  it("retains historical nonempty payload semantics", async () => {
+    const historical = { ...record, result: null, inputs: [{ seq: 0, tick: 0, action: "skill" as const, payload: { legacy: "value" } }] };
+    const out = await replayBattle(historical);
+    expect(out.ok).toBe(true);
+  });
+
   it("replays an old record after adding changed rules and enemy content", async () => {
     const ruleset = { ...RULESET, version: "test-next", pet: { ...RULESET.pet, skillCooldown: 90 } };
     const enemies = { brote: { ...ENEMIES.brote, hpPerAtk: 70 } };

@@ -2,11 +2,12 @@
 // Unknown identities fail closed; never fall back to today's engine/content.
 import { ENEMIES, RULESET, contentHash } from "./versions/r2.2/content";
 import { resimulate, type ResimInput } from "./versions/r2.2/record";
+import { isBattleSnapshot, type resimulate as currentResimulate } from "./record";
 
 export interface BattleRelease {
   readonly rulesetVersion: string;
   readonly contentHash: string;
-  readonly replay: (record: ResimInput) => ReturnType<typeof resimulate>;
+  readonly replay: (record: ResimInput) => ReturnType<typeof currentResimulate>;
 }
 
 export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
@@ -25,5 +26,6 @@ export async function replayBattle(record: ResimInput, releases = BATTLE_RELEASE
     candidate.rulesetVersion === record.rulesetVersion && candidate.contentHash === record.contentHash,
   );
   if (!release) return { ok: false, code: "UNKNOWN_RELEASE" } as const;
+  if (!isBattleSnapshot(record.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" } as const;
   return release.replay(record);
 }
