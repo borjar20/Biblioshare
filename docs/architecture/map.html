@@ -1157,7 +1157,8 @@
         "src/lib/pet/battle/record.ts",
         "src/lib/pet/battle/minigame.ts",
         "src/lib/pet/battle/replay.ts",
-        "src/lib/pet/battle/versions/README.md"
+        "src/lib/pet/battle/versions/README.md",
+        "src/lib/pet/battle/ulti.ts"
       ],
       "gotchas": [
         "Ningún fichero del motor puede importar Supabase, React, Date ni Math.random: purity.test.ts lo vigila.",
@@ -1507,7 +1508,9 @@
       "files": [
         "src/components/pet",
         "src/components/pet/training/training-panel.tsx",
-        "src/components/pet/training/training-session.ts"
+        "src/components/pet/training/training-session.ts",
+        "src/components/pet/training/ulti-puzzle.tsx",
+        "src/components/pet/training/combat-sprite.tsx"
       ]
     },
     {
@@ -3562,7 +3565,7 @@
       "id": "flow-pet-training",
       "name": "Entrenar y reproducir un combate",
       "category": "core",
-      "summary": "Combate local con una habilidad; el servidor decide el resultado. Sin premios ni consumo. Pausa/velocidad no cambian el reloj de simulación.",
+      "summary": "Entrenamiento con selección de enemigo, habilidad y ulti pausada. El servidor fija la identidad y re-simula por versión. Sin premios ni consumo.",
       "entrypoint": "src/components/pet/training/training-panel.tsx",
       "steps": [
         {
@@ -3572,7 +3575,7 @@
         },
         {
           "node": "c-pet",
-          "action": "Genera intención UUID; la conserva al reintentar. Simula ticks y registra habilidad, pausa y velocidad.",
+          "action": "Conserva intención y enemigo; simula ticks y registra habilidad/ulti. El puzzle detiene la simulación sin gastar al cancelar.",
           "file": "src/components/pet/training/training-session.ts"
         },
         {
@@ -3582,8 +3585,8 @@
         },
         {
           "node": "m-pet-battle",
-          "action": "Rechaza payload no vacío y snapshot inválido; re-simula el log",
-          "file": "src/lib/pet/battle/record.ts"
+          "action": "Selecciona versión por identidad almacenada; valida payload/snapshot y regenera la receta desde seed/tick para puntuar la ulti.",
+          "file": "src/lib/pet/battle/replay.ts"
         },
         {
           "node": "t-pet-battles",
@@ -3597,7 +3600,7 @@
         },
         {
           "node": "c-pet",
-          "action": "Muestra daño y causas del resultado autoritativo; anima replay desde eventos re-simulados",
+          "action": "Muestra resultado y barrera; reproduce eventos con arte de combate separado de la compañera.",
           "file": "src/components/pet/training/training-panel.tsx"
         }
       ]

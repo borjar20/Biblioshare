@@ -46,7 +46,7 @@ describe("validateInputs", () => {
     ["BAD_TICK", [{ seq: 0, tick: RULESET.maxTicks + 1, action: "skill", payload: {} }], 0],
     ["BAD_TICK", [{ seq: 0, tick: 1.5, action: "skill", payload: {} }], 0],
     ["TICK_ORDER", ok([10, 5]), 1],
-    ["BAD_ACTION", [{ seq: 0, tick: 1, action: "ulti", payload: {} }], 0],
+    ["BAD_ACTION", [{ seq: 0, tick: 1, action: "unknown", payload: {} }], 0],
     ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: { x: 1.5 } }], 0],
     ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: null }], 0],
     ["BAD_PAYLOAD", [{ seq: 0, tick: 1, action: "skill", payload: [1] }], 0],

@@ -3,20 +3,21 @@ import { withBattleUsers } from "./support/battle-users";
 import { BROTE, RULESET } from "../src/lib/pet/battle/content";
 import { POLICIES, runPolicy } from "../src/lib/pet/battle/policies";
 import type { BattleSnapshot } from "../src/lib/pet/battle/types";
+import { createUltiPuzzle } from "../src/lib/pet/battle/ulti";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
 
 async function cleanPreviousRun(request: APIRequestContext) {
-  const response = await request.get(`${url}/rest/v1/profiles?username=in.(r2traininga,r2trainingb)&select=user_id`, { headers });
+  const response = await request.get(`${url}/rest/v1/profiles?username=in.(r2traininga,r2trainingb,r3traininga)&select=user_id`, { headers });
   expect(response.ok()).toBe(true);
   for (const { user_id } of await response.json() as Array<{ user_id: string }>) {
     const account = await request.get(`${url}/auth/v1/admin/users/${user_id}`, { headers });
     expect(account.ok()).toBe(true);
     const { email } = await account.json() as { email: string };
     // Never remove a real account that happens to have one of these usernames.
-    expect(["r2traininga@example.com", "r2trainingb@example.com"]).toContain(email);
+    expect(["r2traininga@example.com", "r2trainingb@example.com", "r3traininga@example.com"]).toContain(email);
     expect((await request.delete(`${url}/auth/v1/admin/users/${user_id}`, { headers })).ok()).toBe(true);
   }
 }
@@ -64,11 +65,14 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     await page.waitForTimeout(450);
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
     await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
-    await panel.screenshot({ path: ".superpowers/r2-training-desktop.png" });
+    await panel.screenshot({ path: ".superpowers/r2-training-desktop.png", style: "header:has(a[href='/']) { visibility: hidden; }" });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await panel.screenshot({ path: ".superpowers/r3-hud-desktop.png", style: "header:has(a[href='/']) { visibility: hidden; }" });
+    await page.setViewportSize({ width: 320, height: 844 });
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
     // Track the real button through text, countdown and feedback changes.
     // Panel-relative coordinates exclude scrolling and browser scroll anchoring.
-    const layout = panel.locator('button[aria-describedby="training-skill-help"]').evaluate(button => new Promise<{ deltaY: number; deltaHeight: number; phases: number; minY: number; count: number }>(resolve => {
+    const layout = panel.locator('button[aria-describedby="training-skill-summary"]').evaluate(button => new Promise<{ deltaY: number; deltaHeight: number; phases: number; minY: number; count: number }>(resolve => {
       const ys: number[] = [], heights: number[] = [];
       const phases = new Set<string>();
       const sample = () => {
@@ -86,9 +90,10 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     }));
     await panel.getByRole("button", { name: "Continuar", exact: true }).click();
     await panel.getByRole("button", { name: /Golpe interruptor.*Usar habilidad/ }).click();
+    await panel.getByText("Cómo funcionan los ataques", { exact: true }).click();
     await expect(panel.getByText(/La habilidad se activa al pulsar, nunca sola/)).toBeVisible();
     await expect(panel.getByRole("button", { name: /Golpe interruptor · Recarga:/ })).toBeDisabled();
-    await expect(panel.getByTestId("skill-feedback")).toContainText("Última habilidad:");
+    await expect(panel.getByTestId("skill-feedback")).toContainText("Habilidad:");
     const resolveRequest = page.waitForRequest(r => r.headers()["next-action"] !== startAction && Boolean(r.headers()["next-action"]) && r.method() === "POST", { timeout: 45_000 });
     const resolve = await resolveRequest;
     const resolveAction = resolve.headers()["next-action"];
@@ -176,6 +181,76 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     await panel.screenshot({ path: ".superpowers/r2-training-mobile.png" });
     expect((await rows(request, a.id)).length).toBe(countBeforeRepeat + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+});
+
+test("R3: enemy choice, paused keyboard puzzle, authoritative ultimate and replay", async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await cleanPreviousRun(request);
+  await withBattleUsers(url, key, async createUser => {
+    const user = await createUser("r3traininga");
+    expect((await request.post(`${url}/rest/v1/pet_state`, { headers, data: { user_id: user.id, name: "Nuez", class: "wizard" } })).ok()).toBe(true);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await login(page, user);
+    const panel = page.getByRole("region", { name: "Entrenamiento", exact: true });
+    await panel.getByRole("combobox", { name: "Rival de entrenamiento" }).selectOption("caparazon");
+    await panel.getByRole("button", { name: "Empezar combate", exact: true }).click();
+    await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
+    const ready = panel.getByRole("button", { name: "Preparar ulti", exact: true });
+    await expect(ready).toBeEnabled({ timeout: 15_000 });
+    await ready.click();
+    const puzzle = panel.getByTestId("ulti-puzzle");
+    await expect(puzzle).toBeVisible();
+    const frozen = await panel.getByTestId("training-tick").textContent();
+    await page.waitForTimeout(500);
+    expect(await panel.getByTestId("training-tick").textContent()).toBe(frozen);
+    const [battle] = await rows(request, user.id);
+    expect(battle).toMatchObject({ enemy_id: "caparazon", ruleset_version: "r3.1", status: "open" });
+    const tick = Math.round(Number.parseFloat(frozen!) * 10);
+    const order = createUltiPuzzle(battle.seed, tick).recipes.find(recipe => recipe.id === "power")!.order;
+    for (const [slot, tile] of order.entries()) {
+      await puzzle.getByRole("button", { name: `Ficha ${tile + 1}`, exact: true }).focus();
+      await page.keyboard.press("Enter");
+      await puzzle.getByRole("button", { name: new RegExp(`^Hueco ${slot + 1}:`) }).focus();
+      await page.keyboard.press("Enter");
+    }
+    await puzzle.screenshot({ path: ".superpowers/r3-puzzle-mobile.png" });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await puzzle.screenshot({ path: ".superpowers/r3-puzzle-390.png" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.evaluate(() => document.documentElement.classList.add("dark"));
+    await puzzle.screenshot({ path: ".superpowers/r3-puzzle-dark.png" });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.evaluate(() => document.documentElement.classList.remove("dark"));
+    await page.setViewportSize({ width: 320, height: 844 });
+    await puzzle.getByRole("button", { name: "Lanzar ulti", exact: true }).click();
+    await expect(puzzle).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: "Ulti utilizada", exact: true })).toBeDisabled();
+    await expect(panel.getByRole("button", { name: "Ver repetición", exact: true })).toBeVisible({ timeout: 40_000 });
+    const [resolved] = await rows(request, user.id);
+    const ultimates = resolved.inputs.filter(input => (input as { action: string }).action === "ulti");
+    expect(ultimates).toEqual([{ seq: 0, tick, action: "ulti", payload: { order: order.join("") } }]);
+    expect(resolved.status).toBe("resolved");
+    await panel.getByRole("button", { name: "Ver repetición", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Pausar", exact: true })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Ver repetición", exact: true })).toBeVisible({ timeout: 40_000 });
+    expect((await rows(request, user.id))[0]).toEqual(resolved);
+    await panel.getByRole("button", { name: "Nuevo combate", exact: true }).click();
+    await expect(ready).toBeEnabled({ timeout: 15_000 });
+    await ready.click();
+    await puzzle.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(ready).toBeFocused();
+    await expect(ready).toBeEnabled();
+    await ready.click();
+    await puzzle.getByRole("button", { name: "Saltar · daño base", exact: true }).click();
+    await expect(panel.getByRole("button", { name: "Ulti utilizada", exact: true })).toBeDisabled();
+    await expect(panel.getByRole("button", { name: "Ver repetición", exact: true })).toBeVisible({ timeout: 40_000 });
+    const skipped = (await rows(request, user.id)).find(row => row.intent_id !== battle.intent_id)!;
+    expect(skipped.inputs).toMatchObject([{ action: "ulti", payload: { order: "" } }]);
+    expect(skipped.status).toBe("resolved");
     expect(errors).toEqual([]);
   });
 });

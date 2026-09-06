@@ -1,0 +1,25 @@
+{
+  "src": "/pet/combat/adult/cleric.png",
+  "hash": "6eb2581e91",
+  "cell": 108,
+  "width": 864,
+  "height": 432,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    }
+  }
+}

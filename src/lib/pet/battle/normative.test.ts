@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import normative from "./__fixtures__/normative.json";
-import { canonicalJson } from "./canonical";
-import { ENEMIES, RULESET, contentHash } from "./content";
-import { battleDigest, digestMaterial, resimulate } from "./record";
-import type { BattleEvent, BattleRecord } from "./types";
+import { canonicalJson } from "./versions/r2.2/canonical";
+import { ENEMIES, RULESET, contentHash } from "./versions/r2.2/content";
+import { battleDigest, digestMaterial, resimulate } from "./versions/r2.2/record";
+import type { BattleEvent, BattleRecord } from "./versions/r2.2/types";
 
 const record = normative.record as unknown as BattleRecord;
 const events = normative.events as unknown as BattleEvent[];

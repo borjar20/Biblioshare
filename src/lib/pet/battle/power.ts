@@ -21,7 +21,7 @@ export function fighterStats(tier: number): { hpMax: number; atk: number } {
   return { hpMax: 100 + 10 * tier, atk: 8 + 2 * tier };
 }
 
-export { enemyStats } from "./versions/r2.2/power";
+export { enemyStats } from "./versions/r3.1/power";
 
 export function buildSnapshot(p: {
   name: string;

@@ -4,9 +4,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import ts from "typescript";
-import manifest from "./versions/r2.2/manifest.json";
+import manifestR2 from "./versions/r2.2/manifest.json";
+import manifestR3 from "./versions/r3.1/manifest.json";
+import { describe } from "vitest";
+describe.each([["r2.2", manifestR2], ["r3.1", manifestR3]] as const)("release %s", (version, manifest) => {
 
-const dir = join(dirname(fileURLToPath(import.meta.url)), "versions/r2.2");
+const dir = join(dirname(fileURLToPath(import.meta.url)), `versions/${version}`);
 
 it("retains every released file byte-for-byte (LF normalized)", () => {
   expect(readdirSync(dir).filter((name) => name !== "manifest.json").sort()).toEqual(Object.keys(manifest).sort());
@@ -32,4 +35,6 @@ it("retained executable code has no dependency on mutable modules outside its re
     }
     expect(output).not.toMatch(/\bimport\s*\(|\brequire\s*\(/);
   }
+});
+
 });

@@ -1,0 +1,9 @@
+{
+  "caparazonKo": {
+    "character_id": "9d8f8490-f4b5-48f5-8456-c0bb03d381ae",
+    "source": "63bf4474-3f92-439a-846f-f657bc8aae98",
+    "purpose": "Target frame for real KO interpolation after two animation-only briefs remained upright.",
+    "animation_group_id": "1fee7c7a-212c-4f9f-a3d2-a8512a2a895b",
+    "animation_name": "battle-ko-v3"
+  }
+}

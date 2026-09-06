@@ -1,0 +1,33 @@
+{
+  "src": "/pet/combat/enemy/brote.png",
+  "hash": "12a0df0ec2",
+  "cell": 88,
+  "width": 704,
+  "height": 528,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    },
+    "guard": {
+      "row": 4,
+      "frames": 8
+    },
+    "charge": {
+      "row": 5,
+      "frames": 8
+    }
+  }
+}

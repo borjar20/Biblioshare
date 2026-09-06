@@ -37,8 +37,8 @@ async function execute(
   }
 }
 
-export async function startBattle(intentId: string): Promise<TrainingResponse> {
-  return execute(service => service.start(intentId));
+export async function startBattle(intentId: string, enemyId = "brote"): Promise<TrainingResponse> {
+  return execute(service => service.start(intentId, enemyId));
 }
 
 export async function resolveBattle(intentId: string, inputs: unknown): Promise<TrainingResponse> {
