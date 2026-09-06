@@ -4108,6 +4108,21 @@ ejemplo normativo y pureza PASS. Revisiones independientes de requisitos y está
 sin hallazgos de código; aclarada la naturaleza histórica del añadido a la spec. No se
 ha ejecutado persistencia remota: `resolveBattle` pertenece a R2 y aún no existe en esta
 base. La integración y el cierre de #1085 siguen pendientes.
+
+## 2026-09-06 — Inventaire: una consulta fallida no completa la hidratación (#911)
+
+La búsqueda conserva su contrato blando: si Inventaire falla, muestra resultados sin
+colapsar. El cliente ofrece además una variante nullable para los consumidores que
+persisten: `null` significa consulta incompleta y `[]` una búsqueda completada sin entidades.
+Los errores HTTP se registran con estado y ruta, sin títulos ni autores en los logs.
+No se añaden reintentos automáticos ante 429.
+
+`ensureBookHydrated` detiene esa evaluación antes de `hydrate_book` cuando la consulta
+queda incompleta. Se conserva la representación anterior y no se estampa `hydrated_at`,
+porque esa RPC marca como revisada la obra en cada llamada. También se posponen las
+mejoras de otros proveedores de esa evaluación; la siguiente visita puede reintentarlas.
+No cambia la firma de las RPC ni los permisos de catálogo.
+
 ## 2026-09-06 — Mascota R2: ingreso estricto y replay histórico congelado
 
 **Decisión.** La capa actual `src/lib/pet/training/` valida el snapshot y exige que los
@@ -4151,6 +4166,14 @@ catálogo actual de clases y ejecutado dentro de su adaptador de replay. Cada ve
 futura valida su propio snapshot después de seleccionarse por versión y hash.
 No cambian los bytes del motor retenido ni el digest normativo. Las anotaciones
 anteriores de esta rama describen su base previa a #1099, no el estado integrado.
+
+## 2026-09-06 — Inventaire: comprobar cobertura de las entidades solicitadas (#911)
+
+Una respuesta HTTP correcta que omite una obra o un autor solicitado sigue siendo
+incompleta para hidratación. Se exige una entidad objeto por cada URI solicitada,
+incluidos lotes parcialmente devueltos. La búsqueda conserva su comportamiento
+anterior con resultados parciales; solo el consumidor que persiste exige completitud.
+Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.
 
 ## 2026-09-06 — Alta manual de importación por RPC autenticada (#926)
 
