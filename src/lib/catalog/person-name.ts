@@ -46,7 +46,11 @@ export function isSamePersonName(a: string, b: string): boolean {
     else if (y[j].length === 1 && x[i].length > 1) j++;
     else return false;
   }
-  return (sharedGivenName || x.join(" ") === y.join(" ")) &&
+  // Without a full given name shared by both, require every given-name
+  // position to be present: J. R. R. is corroborated, a lone J. is not.
+  const completeInitials = x.length === y.length &&
+    x.slice(0, -1).every((word, index) => word[0] === y[index][0]);
+  return (sharedGivenName || completeInitials) &&
     x.slice(i, -1).every((word) => word.length === 1) &&
     y.slice(j, -1).every((word) => word.length === 1);
 }
