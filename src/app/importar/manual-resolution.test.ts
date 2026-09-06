@@ -53,8 +53,11 @@ describe("manual import through authenticated catalog registration", () => {
     expect(passes[0]).toMatchObject({ user_id: "reviewer", item_id: "catalog-id", item_type: type });
     expect(rpc).toHaveBeenCalledWith("register_manual_catalog_item", expect.objectContaining({ p_item_type: type, p_title: "Curated title" }));
   });
-  it("resolves the pending row for its owner through the existing RPC", async () => {
-    expect(await resolvePendingRow("pending-id", "book", row, {}, form())).toEqual({ done: true });
+  it.each(["book", "movie", "series"] as const)("resolves a pending %s for its owner through the existing RPC", async (type) => {
+    expect(await resolvePendingRow("pending-id", type, row, {}, form())).toEqual({ done: true });
+    expect(rpc).toHaveBeenCalledWith("register_manual_catalog_item", expect.objectContaining({
+      p_item_type: type, p_total_pages: type === "book" ? row.pageCount : undefined,
+    }));
     expect(rpc).toHaveBeenCalledWith("resolve_pending_import", { p_pending_id: "pending-id", p_catalog_item_id: "catalog-id" });
     expect(passes).toEqual([]);
   });
