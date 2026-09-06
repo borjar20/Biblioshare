@@ -16,7 +16,7 @@ export async function getPasses(
   itemId: string,
   userId: string
 ): Promise<Pass[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("pass_reviews")
     .select(
       "id, status, is_active, position, started_on, finished_on, rating, review, is_public, edition_id, pinned_order, dropped_reason, dropped_reason_note"
@@ -25,6 +25,10 @@ export async function getPasses(
     .eq("item_type", itemType)
     .eq("item_id", itemId)
     .order("finished_on", { ascending: false, nullsFirst: true });
+
+  // Failure is not absence: callers must not render an empty diary or create
+  // another active pass when the existing one could not be read (#657).
+  if (error) throw new Error("Could not load passes", { cause: error });
 
   return (data ?? []).map((r) => ({
     id: r.id as string,
@@ -54,12 +58,14 @@ export async function isAutoCloseable(
   passId: string,
   userId: string
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("passes")
     .select("status")
     .eq("id", passId)
     .eq("user_id", userId)
     .maybeSingle();
+
+  if (error) throw new Error("Could not load pass status", { cause: error });
 
   return data?.status === "in_progress" || data?.status === "planned";
 }

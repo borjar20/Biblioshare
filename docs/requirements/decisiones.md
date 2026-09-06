@@ -4306,3 +4306,10 @@ y conserva cookies renovadas y cabeceras anticaché en las redirecciones. El cli
 refrescando tokens caducados; la firma simétrica aún requiere red. La autorización de
 acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
 Es una mitigación de #929, no una demostración de la causa del incidente de Auth.
+
+## 2026-09-06 — Los lectores críticos de pases distinguen fallo de ausencia (#657)
+
+getPasses e isAutoCloseable lanzan un Error con causa ante un error de consulta.
+getActivePass lo propaga y applyTransition se detiene antes de decidir escrituras.
+Se mantiene la ausencia legítima como []/null/false; el render usa el error boundary
+existente. No se añade caché ni se cambia el acceso a los datos.
