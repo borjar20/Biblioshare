@@ -1,0 +1,33 @@
+{
+  "src": "/pet/combat/enemy/caparazon.png",
+  "hash": "bbce9a8cf0",
+  "cell": 92,
+  "width": 736,
+  "height": 552,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    },
+    "guard": {
+      "row": 4,
+      "frames": 8
+    },
+    "vulnerable": {
+      "row": 5,
+      "frames": 8
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "src": "/pet/combat/adult/barbarian.png",
+  "hash": "7fde52ca7b",
+  "cell": 104,
+  "width": 832,
+  "height": 416,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    }
+  }
+}

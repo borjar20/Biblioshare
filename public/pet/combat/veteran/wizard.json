@@ -1,0 +1,25 @@
+{
+  "src": "/pet/combat/veteran/wizard.png",
+  "hash": "081137e8d3",
+  "cell": 92,
+  "width": 736,
+  "height": 368,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    }
+  }
+}

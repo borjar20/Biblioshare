@@ -5,6 +5,7 @@ import { snapshotForProfile } from "../battle/profiles";
 import { seedFromIndex } from "../battle/prng";
 import { BROTE, RULESET } from "../battle/content";
 import { POLICIES, runPolicy } from "../battle/policies";
+import { contentHash as r2ContentHash } from "../battle/versions/r2.2/content";
 
 const intent = "54e5f63c-68a8-4acf-a790-6938580d48a5";
 function setup() {
@@ -39,6 +40,20 @@ describe("training authority", () => {
     expect(await s.service.start(intent)).toEqual(first);
     expect(s.seedCalls()).toBe(1);
     expect(s.writes()).toBe(1);
+  });
+  it("the first intent fixes the enemy even when a retry asks for another", async () => {
+    const s = setup();
+    const first = await s.service.start(intent, "caparazon");
+    expect(first.ok && first.battle.enemyId).toBe("caparazon");
+    expect(await s.service.start(intent, "brote")).toEqual(first);
+    expect(s.writes()).toBe(1);
+  });
+  it("rejects unknown and inherited enemy ids before creating a battle", async () => {
+    const s = setup();
+    for (const id of ["unknown", "__proto__", "constructor"]) {
+      expect(await s.service.start(intent, id)).toEqual({ ok: false, code: "UNKNOWN_ENEMY" });
+    }
+    expect(s.writes()).toBe(0);
   });
   it("concurrent starts converge on one battle", async () => {
     const s = setup();
@@ -88,5 +103,36 @@ describe("training authority", () => {
     s.rows.get(intent)!.snapshot.atk = "x" as unknown as number;
     expect(await s.service.resolve(intent, [])).toEqual({ ok: false, code: "INVALID_SNAPSHOT" });
     expect(s.writes()).toBe(1);
+  });
+  it("resolves an open R2 battle using its stored release after R3 is current", async () => {
+    const s = setup();
+    await s.service.start(intent);
+    const historical = s.rows.get(intent)!;
+    historical.rulesetVersion = "r2.2";
+    historical.contentHash = await r2ContentHash();
+    expect(await s.service.resolve(intent, [{ seq: 0, tick: 0, action: "skill", payload: { score: 100 } }]))
+      .toEqual({ ok: false, code: "NONEMPTY_PAYLOAD" });
+    const resolved = await s.service.resolve(intent, []);
+    expect(resolved.ok && resolved.battle.rulesetVersion).toBe("r2.2");
+    expect(await s.service.replay(intent)).toEqual(resolved);
+  });
+  it("an early or forged ultimate cannot persist a result", async () => {
+    const s = setup();
+    await s.service.start(intent, "caparazon");
+    for (const payload of [{ order: "0123" }, { order: "0123", score: 100 }, { order: "0000" }]) {
+      const response = await s.service.resolve(intent, [{ seq: 0, tick: 0, action: "ulti", payload }]);
+      expect(response.ok).toBe(false);
+      expect(s.rows.get(intent)?.status).toBe("open");
+    }
+    expect(s.writes()).toBe(1);
+  });
+  it("skipping a ready ultimate is authoritative and replayable", async () => {
+    const s = setup();
+    await s.service.start(intent, "caparazon");
+    const response = await s.service.resolve(intent, [{ seq: 0, tick: 120, action: "ulti", payload: { order: "" } }]);
+    expect(response.ok).toBe(true);
+    if (!response.ok) throw Error(response.code);
+    expect(response.events?.some(event => event.type === "ULTI_USED" && event.damage > 0)).toBe(true);
+    expect(await s.service.replay(intent)).toEqual(response);
   });
 });

@@ -6,7 +6,7 @@
 > revisión, y al alcance de la spec de combate del 2026-09-04
 > (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
 > Contratos: R1 cerrado el 2026-09-06 (#1081 cerrada; lo que hereda R7 vive en #1084). Seguimiento: #1082.
-> R2 implementado y verificado técnicamente el 2026-09-06; aceptación humana tras veinte combates pendiente en #1082. R3 aún no está activo.
+> R2 aceptado por el usuario para avanzar el 2026-09-06 tras #1100; R3 activo en #1106.
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
 > `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
@@ -746,13 +746,11 @@ necesita; la economía y la procedencia de aventuras se contratan en R4, y los j
 
 **Cerrado el 2026-09-06** (rama `feat/mascota-r1-contratos`): spec
 `docs/superpowers/specs/2026-09-06-mascota-r1-contratos-combate-design.md`; motor, CLI, tabla y
-tests en el repo. Hito activo: R2.
+tests en el repo. Hito activo: R3 (#1106).
 
 ## R2 — Combate mínimo universal
 
-**Estado a 2026-09-06.** Implementación técnica terminada y verificada. La aceptación con
-personas sigue abierta en #1082: no se ha acreditado que repetir veinte combates resulte
-interesante. R2 permanece activo y R3, incluidas sus animaciones, espera ese criterio.
+**Estado a 2026-09-06.** R2 integrado (#1099, #1100). El usuario ha probado el combate, solicitado y probado su legibilidad y ha aceptado pasar a R3. Esta aceptación permite avanzar; no equivale a afirmar veinte partidas o una muestra de personas no documentada. Seguimiento de R3: #1106.
 
 **Entrega:**
 
@@ -792,9 +790,11 @@ Verificados 136 tests en 20 ficheros, TypeScript, build de producción por defec
 Turbopack (70/70) y Playwright contra ese build con dos cuentas desechables: acceso sin
 sesión, acciones sobre combates ajenos, inicio y resolución concurrentes de una intención,
 reintento con el primer resultado y replay. Esta evidencia técnica no sustituye los
-criterios con personas. El arreglo de #1085 está en código, pendiente de integrar la PR.
+criterios con personas. El arreglo de #1085 está integrado en #1099.
 
 ## R3 — Ulti y segundo enemigo
+
+**Hito activo (#1106).** Spec técnica: `docs/superpowers/specs/2026-09-06-mascota-r3-ulti-design.md`.
 
 **Entrega:**
 

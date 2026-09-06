@@ -1,0 +1,25 @@
+{
+  "src": "/pet/combat/adult/ranger.png",
+  "hash": "83c3accd9f",
+  "cell": 96,
+  "width": 768,
+  "height": 384,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    }
+  }
+}

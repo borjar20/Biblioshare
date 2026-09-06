@@ -1,10 +1,13 @@
 import { createBattle, stepBattle, viewOf } from "@/lib/pet/battle/engine";
-import { RULESET, BROTE } from "@/lib/pet/battle/content";
-import type { BattleEvent, BattleInit, BattleInput, BattleState, BattleView } from "@/lib/pet/battle/types";
+import * as legacy from "@/lib/pet/battle/versions/r2.2/engine";
+import { RULESET as R2, BROTE as R2_BROTE } from "@/lib/pet/battle/versions/r2.2/content";
+import type { BattleInput as R2Input } from "@/lib/pet/battle/versions/r2.2/types";
+import { RULESET, ENEMIES } from "@/lib/pet/battle/content";
+import type { BattleEvent, BattleInput, BattleView } from "@/lib/pet/battle/types";
 import type { TrainingBattle, TrainingResponse } from "@/lib/pet/training/types";
 
 interface Actions {
-  start: (intent: string) => Promise<TrainingResponse>;
+  start: (intent: string, enemyId?: string) => Promise<TrainingResponse>;
   resolve: (intent: string, inputs: BattleInput[]) => Promise<TrainingResponse>;
   replay: (intent: string) => Promise<TrainingResponse>;
 }
@@ -13,6 +16,9 @@ interface Actions {
 export class TrainingSession {
   phase: "idle" | "starting" | "playing" | "resolving" | "resolve-error" | "done" | "replaying" = "idle";
   paused = false;
+  ultiOpen = false;
+  enemyId = "brote";
+  private intentEnemy = "brote";
   hidden = false;
   error: string | null = null;
   battle: TrainingBattle | null = null;
@@ -20,13 +26,14 @@ export class TrainingSession {
   inputs: BattleInput[] = [];
   events: BattleEvent[] = [];
   private intent: string | null = null;
-  private ctx: BattleInit | null = null;
-  private state: BattleState | null = null;
+  private advance: ((inputs: BattleInput[]) => { events: BattleEvent[]; view: BattleView }) | null = null;
   private replayEvents: BattleEvent[] = [];
   private replayTick = 0;
   private pending = false;
 
   constructor(private actions: Actions, private newId: () => string) {}
+
+  selectEnemy(id: string) { if (id in ENEMIES) this.enemyId = id; }
 
   togglePause() { this.paused = !this.paused; }
 
@@ -46,22 +53,30 @@ export class TrainingSession {
 
   async start(fresh = false) {
     if (this.pending || (this.phase !== "idle" && !(fresh && this.phase === "done"))) return;
-    if (fresh || !this.intent) this.intent = this.newId();
+    if (fresh || !this.intent) { this.intent = this.newId(); this.intentEnemy = this.enemyId; }
     this.phase = "starting";
     this.error = null;
     this.pending = true;
     try {
-      const response = await this.actions.start(this.intent);
+      const response = await this.actions.start(this.intent, this.intentEnemy);
       if (!response.ok) throw new Error(response.code);
       const b = response.battle;
-      if (b.rulesetVersion !== RULESET.version || b.enemyId !== BROTE.id) throw new Error("UNSUPPORTED_BATTLE");
-      this.ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: RULESET, enemy: BROTE };
-      this.state = createBattle(this.ctx);
-      this.view = viewOf(this.state);
+      if (b.rulesetVersion === R2.version && b.enemyId === R2_BROTE.id) {
+        const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: R2, enemy: R2_BROTE };
+        const state = legacy.createBattle(ctx);
+        const view = () => ({ ...legacy.viewOf(state), ultiReadyAt: Infinity, ultiUsed: false, shield: 0 });
+        this.view = view();
+        this.advance = inputs => ({ events: legacy.stepBattle(ctx, state, inputs as R2Input[]).map(event => (event.type === "ENEMY_BASIC" || event.type === "TELEGRAPH_RESOLVED" || event.type === "SKILL_USED") ? { ...event, shield: 0 } : event), view: view() });
+      } else if (b.rulesetVersion === RULESET.version && ENEMIES[b.enemyId]) {
+        const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: RULESET, enemy: ENEMIES[b.enemyId] };
+        const state = createBattle(ctx);
+        this.view = viewOf(state);
+        this.advance = inputs => ({ events: stepBattle(ctx, state, inputs), view: viewOf(state) });
+      } else throw new Error("UNSUPPORTED_BATTLE");
       this.battle = b;
       this.inputs = [];
       this.events = [];
-      this.paused = false;
+      this.paused = false; this.ultiOpen = false;
       this.phase = b.status === "resolved" ? "done" : "playing";
       if (b.status === "resolved") this.acceptResolved(b, response.events);
     } catch (e) { this.error = e instanceof Error && e.message ? e.message : "NETWORK"; this.phase = "idle"; }
@@ -69,23 +84,36 @@ export class TrainingSession {
   }
 
   skill() {
-    if (this.phase !== "playing" || this.paused || this.hidden || !this.state) return false;
-    const tick = this.state.tick;
-    if (tick < this.state.pet.skillReadyAt || this.inputs.at(-1)?.tick === tick) return false;
+    if (this.phase !== "playing" || this.paused || this.hidden || this.ultiOpen || !this.view) return false;
+    const tick = this.view.tick;
+    if (tick < this.view.skillReadyAt || this.inputs.at(-1)?.tick === tick) return false;
     this.inputs.push({ seq: this.inputs.length, tick, action: "skill", payload: {} });
     return true;
   }
 
+  openUlti() {
+    if (this.phase !== "playing" || this.hidden || !this.view || this.view.ultiUsed || this.view.tick < this.view.ultiReadyAt || this.inputs.at(-1)?.tick === this.view.tick) return false;
+    this.ultiOpen = true; return true;
+  }
+  cancelUlti() { this.ultiOpen = false; }
+  confirmUlti(order: string) {
+    if (!this.ultiOpen || this.hidden || this.phase !== "playing" || !this.view || this.view.ultiUsed || (order !== "" && !/^(?!.*(.).*\1)[0-3]{4}$/.test(order))) return false;
+    this.inputs.push({ seq: this.inputs.length, tick: this.view.tick, action: "ulti", payload: { order } });
+    this.ultiOpen = false; return true;
+  }
+
   tick() {
-    if (this.paused || this.hidden) return;
+    if (this.paused || this.hidden || this.ultiOpen) return;
     if (this.phase === "replaying" && this.view) {
       const current = this.replayEvents.filter(e => e.tick === this.replayTick);
       for (const event of current) {
         if ("petHp" in event) this.view.petHp = event.petHp;
         if ("enemyHp" in event) this.view.enemyHp = event.enemyHp;
+        if ("shield" in event) this.view.shield = event.shield ?? this.view.shield;
+        if (event.type === "ULTI_USED") this.view.ultiUsed = true;
         if (event.type === "TELEGRAPH_STARTED") { this.view.enemyPhase = event.kind === "charge" ? "windup" : "guard"; this.view.enemyPhaseUntil = event.resolvesAt; }
         if (event.type === "TELEGRAPH_RESOLVED" || event.type === "STATUS_EXPIRED") this.view.enemyPhase = "idle";
-        if (event.type === "STATUS_APPLIED") { this.view.enemyPhase = "stagger"; this.view.enemyPhaseUntil = event.until; }
+        if (event.type === "STATUS_APPLIED") { this.view.enemyPhase = event.status; this.view.enemyPhaseUntil = event.until; }
         if (event.type === "SKILL_USED") this.view.skillReadyAt = event.tick + RULESET.pet.skillCooldown;
         if (event.type === "BATTLE_ENDED") { this.view.ended = true; this.phase = "done"; }
       }
@@ -94,17 +122,17 @@ export class TrainingSession {
       if (this.replayTick > (this.replayEvents.at(-1)?.tick ?? 0)) this.phase = "done";
       return;
     }
-    if (this.phase !== "playing" || !this.state || !this.ctx) return;
-    this.events.push(...stepBattle(this.ctx, this.state, this.inputs.filter(i => i.tick === this.state!.tick)));
-    this.view = viewOf(this.state);
-    if (this.state.ended) this.phase = "resolving";
+    if (this.phase !== "playing" || !this.advance || !this.view) return;
+    const next = this.advance(this.inputs.filter(i => i.tick === this.view!.tick));
+    this.events.push(...next.events); this.view = next.view;
+    if (this.view.ended) this.phase = "resolving";
   }
 
   async resolve() {
     if (this.pending || !this.intent || !["resolving", "resolve-error"].includes(this.phase)) return;
     this.pending = true; this.phase = "resolving"; this.error = null;
     try {
-      const response = await this.actions.resolve(this.intent, this.inputs.map(i => ({ ...i, payload: {} })));
+      const response = await this.actions.resolve(this.intent, this.inputs.map(i => ({ ...i, payload: { ...i.payload } })));
       if (!response.ok) throw new Error(response.code);
       this.acceptResolved(response.battle, response.events);
     } catch (e) { this.error = e instanceof Error && e.message ? e.message : "NETWORK"; this.phase = "resolve-error"; }
@@ -120,9 +148,9 @@ export class TrainingSession {
       if (!response.events) throw new Error("REPLAY_UNAVAILABLE");
       this.battle = response.battle;
       this.replayEvents = response.events;
-      this.events = []; this.replayTick = 0; this.paused = false;
+      this.events = []; this.replayTick = 0; this.paused = false; this.ultiOpen = false;
       const first = response.events.find(e => e.type === "BATTLE_STARTED");
-      if (this.view && first?.type === "BATTLE_STARTED") this.view = { ...this.view, tick: 0, petHp: first.petHp, enemyHp: first.enemyHp, enemyPhase: "idle", enemyPhaseUntil: 0, skillReadyAt: 0, ended: false };
+      if (this.view && first?.type === "BATTLE_STARTED") this.view = { ...this.view, tick: 0, petHp: first.petHp, enemyHp: first.enemyHp, enemyPhase: "idle", enemyPhaseUntil: 0, skillReadyAt: 0, ultiUsed: false, shield: 0, ended: false };
       this.phase = "replaying";
     } catch (e) { this.error = e instanceof Error && e.message ? e.message : "NETWORK"; }
     finally { this.pending = false; }

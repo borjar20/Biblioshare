@@ -4174,3 +4174,7 @@ incompleta para hidratación. Se exige una entidad objeto por cada URI solicitad
 incluidos lotes parcialmente devueltos. La búsqueda conserva su comportamiento
 anterior con resultados parciales; solo el consumidor que persiste exige completitud.
 Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.
+
+## 2026-09-06 — Paso de R2 a R3 tras aceptación del usuario (#1106)
+
+Tras probar el entrenamiento y sus ajustes de legibilidad (#1100), el usuario acepta avanzar a R3. Se registra su aprobación, sin inventar veinte partidas ni una muestra de personas. R3 introduce una acción atómica de ulti: el cliente pausa antes de elegir, envía solo la asignación y el servidor regenera y puntúa desde seed/tick. Dos recetas visibles permiten potencia o protección; saltar conserva daño base. Segundo enemigo con guardia y vulnerabilidad. El contenido se publica como r3.1, preservando resolución y replay de r2.2. El arte de combate se exporta separado para no alterar cajas de la compañera.

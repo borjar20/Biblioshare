@@ -1,0 +1,25 @@
+{
+  "src": "/pet/combat/veteran/fighter.png",
+  "hash": "f1fee259c1",
+  "cell": 100,
+  "width": 800,
+  "height": 400,
+  "anims": {
+    "idle": {
+      "row": 0,
+      "frames": 8
+    },
+    "attack": {
+      "row": 1,
+      "frames": 8
+    },
+    "hurt": {
+      "row": 2,
+      "frames": 8
+    },
+    "ko": {
+      "row": 3,
+      "frames": 8
+    }
+  }
+}

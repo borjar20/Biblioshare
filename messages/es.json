@@ -3214,7 +3214,7 @@
     },
     "training": {
       "title": "Entrenamiento",
-      "intro": "Practica con el Brote de zarza. Gratis, sin recompensas y tantas veces como quieras. Tu mascota ataca sola; tú eliges cuándo usar su habilidad.",
+      "intro": "Elige un rival y practica gratis, sin recompensas y tantas veces como quieras. Tu mascota ataca sola; tú eliges cuándo usar su habilidad y su ulti.",
       "start": "Empezar combate",
       "starting": "Preparando combate…",
       "retryStart": "Reintentar el mismo combate",
@@ -3231,7 +3231,8 @@
       "feedback": {
         "interrupt": "Última habilidad: ¡carga interrumpida! Has evitado ese ataque y causado {damage} de daño.",
         "hit": "Última habilidad: {damage} de daño. No había una carga que interrumpir.",
-        "wasted": "Última habilidad: bloqueada por la guardia. No has causado daño y has recibido un contraataque."
+        "wasted": "Última habilidad: bloqueada por la guardia. No has causado daño y has recibido un contraataque.",
+        "vulnerable": "Última habilidad: punto débil, {damage} de daño."
       },
       "recharge": "Recarga de habilidad",
       "resume": "Continuar",
@@ -3248,7 +3249,9 @@
         "idle": "Sin amenaza anunciada · Puedes guardar la habilidad para la próxima carga.",
         "windup": "¡Carga en preparación! Usa Golpe interruptor para detenerla si está listo.",
         "guard": "Guardia · Espera: tu habilidad fallaría y recibirías un contraataque.",
-        "stagger": "¡Interrumpido! El brote está aturdido."
+        "stagger": "¡Interrumpido! El brote está aturdido.",
+        "vulnerable": "¡Vulnerable! Tus golpes causan el doble de daño.",
+        "caparazonIdle": "Coraza en reposo · Guarda tu habilidad para cuando quede vulnerable."
       },
       "outcomes": {
         "win": "¡Victoria!",
@@ -3274,10 +3277,40 @@
         "hit": "Tu habilidad causa {damage} de daño.",
         "wasted": "La guardia devuelve tu habilidad: recibes un contraataque.",
         "SKILL_IGNORED": "La habilidad aún estaba recargando.",
-        "STATUS_APPLIED": "El brote queda aturdido.",
-        "STATUS_EXPIRED": "El brote se recupera.",
-        "BATTLE_ENDED": "Termina el combate."
-      }
+        "STATUS_APPLIED": "El rival queda expuesto.",
+        "vulnerableStarted": "La coraza se abre: el rival recibe el doble de daño.",
+        "vulnerableEnded": "La coraza se cierra: termina la vulnerabilidad.",
+        "STATUS_EXPIRED": "El rival se recupera.",
+        "BATTLE_ENDED": "Termina el combate.",
+        "vulnerable": "Golpe sobre punto débil: {damage} de daño.",
+        "ULTI_USED": "Ulti: {damage} de daño."
+      },
+      "ulti": {
+        "slot": "Hueco {n}: {value}",
+        "title": "Preparar ulti",
+        "power": "Potencia",
+        "powerHelp": "Hasta dos ataques básicos de daño adicional, según las posiciones acertadas.",
+        "recharge": "Recarga de ulti",
+        "tile": "Ficha {n}",
+        "cancel": "Cancelar",
+        "guard": "Protección",
+        "skip": "Saltar · daño base",
+        "feedback": "Última ulti: {damage} de daño · barrera {shield}",
+        "ready": "Preparar ulti",
+        "charging": "Ulti · Recarga: {seconds} s",
+        "empty": "vacío",
+        "guardHelp": "Barrera de hasta el 20 % de tu vida máxima. Absorbe los próximos golpes.",
+        "help": "El combate está detenido. Elige una ficha y después un hueco para copiar una receta. Puedes corregirla sin límite de tiempo. Siempre causa daño base de cuatro ataques básicos; las coincidencias añaden su bonificación.",
+        "confirm": "Lanzar ulti",
+        "used": "Ulti utilizada",
+        "shield": "Barrera: {value}"
+      },
+      "enemySelect": "Rival de entrenamiento",
+      "enemies": {
+        "brote": "Brote",
+        "caparazon": "Escarabajo coraza"
+      },
+      "enemyHelp": "El Brote carga ataques que puedes interrumpir. El Escarabajo se protege y después queda vulnerable: entonces recibe el doble de daño."
     }
   }
 }

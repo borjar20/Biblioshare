@@ -31,9 +31,34 @@ describe("training session", () => {
   });
   it("queues one current-tick skill without advancing and enforces cooldown", async () => { const { session } = setup(); await session.start(); expect(session.skill()).toBe(true); expect(session.skill()).toBe(false); expect(session.view?.tick).toBe(0); session.tick(); expect(session.inputs).toEqual([{ seq: 0, tick: 0, action: "skill", payload: {} }]); expect(session.skill()).toBe(false); });
   it("pause and hidden state stop time and input", async () => { const { session } = setup(); await session.start(); session.paused = true; session.tick(); expect(session.skill()).toBe(false); session.paused = false; session.hidden = true; session.tick(); expect(session.view?.tick).toBe(0); expect(session.skill()).toBe(false); session.hidden = false; session.tick(); expect(session.view?.tick).toBe(1); });
-  it("retains intent on failed start and creates a new one only on repeat", async () => { const { session, actions } = setup(); actions.start.mockRejectedValueOnce(new Error()); await session.start(); await session.start(); expect(actions.start.mock.calls.map(c => c[0])).toEqual(["1", "1"]); session.phase = "done"; await session.start(true); expect(actions.start).toHaveBeenLastCalledWith("2"); });
+  it("retains intent on failed start and creates a new one only on repeat", async () => { const { session, actions } = setup(); actions.start.mockRejectedValueOnce(new Error()); await session.start(); await session.start(); expect(actions.start.mock.calls.map(c => c[0])).toEqual(["1", "1"]); session.phase = "done"; await session.start(true); expect(actions.start).toHaveBeenLastCalledWith("2", "brote"); });
   it("preserves identical log on failed resolution", async () => { const { session, actions } = setup(); await session.start(); session.skill(); while (session.phase === "playing") session.tick(); await session.resolve(); const first = structuredClone(actions.resolve.mock.calls); await session.resolve(); expect(actions.resolve.mock.calls[1]).toEqual(first[0]); expect(session.inputs).toHaveLength(1); });
   it("replay only consumes server events and never resolves", async () => { const { session, actions } = setup(); await session.start(); session.phase = "done"; await session.replay(); session.tick(); expect(actions.replay).toHaveBeenCalledOnce(); expect(actions.resolve).not.toHaveBeenCalled(); });
   it("rejects unsupported versions before simulating", async () => { const { session, actions } = setup(); actions.start.mockResolvedValueOnce({ ok: true, battle: { ...battle, rulesetVersion: "future" } }); await session.start(); expect(session.error).toBe("UNSUPPORTED_BATTLE"); expect(session.view).toBeNull(); });
 });
 
+
+
+describe("R3 ulti controller", () => {
+ async function ready() {
+  const {session,actions}=setup();
+  actions.start.mockResolvedValueOnce({ok:true,battle:{...battle,rulesetVersion:"r3.1"}});
+  await session.start(); for(let i=0;i<120;i++) session.tick(); return {session,actions};
+ }
+ it("stops ticks and cooldown while open, keeps previous pause and cancel spends nothing",async()=>{
+  const {session}=await ready(); session.paused=true; expect(session.openUlti()).toBe(true);
+  const before=structuredClone(session.view); session.tick(); expect(session.view).toEqual(before); expect(session.skill()).toBe(false);
+  session.cancelUlti(); expect(session.paused).toBe(true); expect(session.inputs).toEqual([]);
+ });
+ it("submits one atomic permutation, preserves payload on resolve and refuses a second use",async()=>{
+  const {session,actions}=await ready(); session.openUlti(); expect(session.confirmUlti("0012")).toBe(false);
+  expect(session.confirmUlti("0123")).toBe(true); expect(session.confirmUlti("0123")).toBe(false);
+  session.tick(); expect(session.view?.ultiUsed).toBe(true); expect(session.openUlti()).toBe(false);
+  while(session.phase==="playing") session.tick(); await session.resolve();
+  expect(actions.resolve.mock.calls[0]).toEqual(["1",[{seq:0,tick:120,action:"ulti",payload:{order:"0123"}}]]);
+ });
+ it("retains selected enemy over network retries",async()=>{
+  const {session,actions}=setup();session.enemyId="caparazon";actions.start.mockRejectedValueOnce(new Error());await session.start();session.enemyId="brote";await session.start();
+  expect(actions.start.mock.calls.map(call=>call.slice(0,2))).toEqual([["1","caparazon"],["1","caparazon"]]);
+ });
+});

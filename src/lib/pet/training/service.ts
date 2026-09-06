@@ -1,7 +1,6 @@
 import { BROTE, ENEMIES, RULESET, contentHash } from "../battle/content";
-import { validateInputs } from "../battle/inputs";
-import { isBattleSnapshot, resimulate } from "../battle/record";
-import { replayBattle } from "../battle/replay";
+import { isBattleSnapshot } from "../battle/record";
+import { getBattleRelease, replayBattle } from "../battle/replay";
 import type { BattleSnapshot } from "../battle/types";
 import type { TrainingBattle, TrainingRepository, TrainingResponse } from "./types";
 
@@ -16,7 +15,6 @@ export function createTrainingService(deps: {
   const repo = deps.repository;
 
   async function saved(battle: TrainingBattle): Promise<TrainingResponse> {
-    if (!isBattleSnapshot(battle.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" };
     if (battle.status !== "resolved" || !battle.result || !battle.digest) return { ok: false, code: "NOT_RESOLVED" };
     const replay = await replayBattle(battle);
     if (!replay.ok) return replay;
@@ -25,19 +23,22 @@ export function createTrainingService(deps: {
   }
 
   return {
-    async start(intentId: string): Promise<TrainingResponse> {
+    async start(intentId: string, enemyId = BROTE.id): Promise<TrainingResponse> {
       if (!isIntent(intentId)) return { ok: false, code: "INVALID_INTENT" };
       const existing = await repo.find(intentId);
       if (existing) {
-        if (!isBattleSnapshot(existing.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" };
+        const release = getBattleRelease(existing.rulesetVersion, existing.contentHash);
+        if (!release) return { ok: false, code: "UNKNOWN_RELEASE" };
+        if (!release.isSnapshot(existing.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" };
         return existing.status === "resolved" ? saved(existing) : { ok: true, battle: existing };
       }
+      if (typeof enemyId !== "string" || !Object.hasOwn(ENEMIES, enemyId)) return { ok: false, code: "UNKNOWN_ENEMY" };
       const snapshot = await deps.snapshot();
       if (!snapshot) return { ok: false, code: "NO_PET" };
       if (!isBattleSnapshot(snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" };
       const battle = await repo.insert({
         intentId, status: "open", seed: deps.seed(), snapshot,
-        rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id,
+        rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId,
         inputs: [], result: null, digest: null,
       });
       return battle.status === "resolved" ? saved(battle) : { ok: true, battle };
@@ -49,10 +50,11 @@ export function createTrainingService(deps: {
       if (!battle) return { ok: false, code: "NOT_FOUND" };
       // A committed result wins even if a retry contains different inputs.
       if (battle.status === "resolved") return saved(battle);
-      const validated = validateInputs(rawInputs, RULESET);
+      const release = getBattleRelease(battle.rulesetVersion, battle.contentHash);
+      if (!release) return { ok: false, code: "UNKNOWN_RELEASE" };
+      const validated = release.validateInputs(rawInputs);
       if (!validated.ok) return { ok: false, code: validated.code };
-      const content = { ruleset: RULESET, enemies: ENEMIES, contentHash: await contentHash() };
-      const out = await resimulate({ ...battle, inputs: validated.inputs }, content);
+      const out = await replayBattle({ ...battle, inputs: validated.inputs });
       if (!out.ok) return out;
       const resolved: TrainingBattle = {
         ...battle, status: "resolved", inputs: validated.inputs, result: out.result, digest: out.digest,
