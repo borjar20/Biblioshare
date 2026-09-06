@@ -112,3 +112,16 @@ Evidencia local ignorada: `.superpowers/pr-remediation/1097-full-unit.log`,
 `1097-integrated-build.log`, `1097-integrated-lint.log`, `1097-bootstrap-unit.log`,
 `1097-local-start-sanitized.log`, `1097-local-sql-matrix.log`,
 `1097-e2e-integrated.log`, `1097-browser-integrated/` y `1097-server.err.log`.
+
+## Producción autorizada y verificada (2026-09-06)
+
+Tras autorización explícita se aplicó el SQL versionado en `vmutcradmodhiltuohys`.
+Wrapper invocador, helper definidor, search_path vacío y permisos correctos: anon sin
+EXECUTE; authenticated con EXECUTE y USAGE de private. RLS de pet_state activada y sus
+tres políticas de propietario intactas. Definiciones idénticas a dev tras normalizar
+saltos CRLF/LF; no se modificaron datos. Advisor de seguridad 87 → 87, sin cambios al
+excluir únicamente observed_at. Vercel y empty-database de la revisión 7324c81 pasan.
+
+Queda en #1083 la aceptación con dos cuentas reales de producción prevista por S1.
+La migración y verificación técnica de producción ya no están pendientes. No se han
+creado fixtures ni modificado seguimientos de usuarios reales para esa aceptación.

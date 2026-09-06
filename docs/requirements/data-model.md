@@ -3838,9 +3838,9 @@ select/insert/update/delete de `authenticated`, select de `anon`, insert de `ser
 
 ### 8bis.6. Madriguera compartida — `get_burrow_pets` (#1083)
 
-**[Canónico · funciones y ACL verificadas contra dev el 2026-09-06 · prod pendiente]**
+**[Canónico · funciones y ACL verificadas contra dev y prod el 2026-09-06]**
 
-Migración `20260906170958_get_burrow_pets.sql`, aplicada en biblioshare-dev. La función
+Migración `20260906170958_get_burrow_pets.sql`, aplicada en biblioshare-dev y producción. La función
 `public.get_burrow_pets(p_limit integer default 60)` es `SECURITY INVOKER` y delega en
 `private.burrow_pets(p_viewer uuid, p_limit integer)`, `SECURITY DEFINER`. Ambas fijan
 `search_path = ''`; el helper cualifica las referencias, exige `p_viewer = auth.uid()`
@@ -3872,10 +3872,13 @@ SET ROLE; allí la comprobación funcional usa REST autenticado.
 
 La lectura de aplicación usa cliente de sesión, sin `use cache`, bajo un Suspense propio.
 Descarta filas de apariencia inválida; el total sigue siendo el recuento del RPC y el
-texto de expansión indica el número realmente mostrado. Producción y la comprobación
-con cuentas reales de producción siguen pendientes en #1083. El manifiesto y el baseline
-generado incluyen la migración para reconstruir una base vacía; esa inclusión no acredita
-su aplicación en producción. Véase `docs/testing/supabase-local.md`.
+texto de expansión indica el número realmente mostrado. Tras autorización específica,
+se aplicó la migración en producción y se verificaron objetos, permisos, search_path y
+las tres políticas de pet_state intactas. Las definiciones coinciden con dev al normalizar
+CRLF/LF. Advisor: 87 avisos antes y después, sin diferencias salvo fecha de observación.
+La comprobación con dos cuentas reales de producción sigue pendiente en #1083.
+El manifiesto y el baseline permiten reconstruir una base vacía. Véase
+`docs/testing/supabase-local.md`.
 
 ## 9. Seguridad
 

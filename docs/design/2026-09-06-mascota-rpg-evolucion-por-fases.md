@@ -888,9 +888,10 @@ definidor) que devuelve solo nombre, clase, etapa y dueño; sin cambios de polí
 Spec: `docs/superpowers/specs/2026-09-06-mascota-madriguera-compartida-design.md`.
 Precisiones posteriores confirmadas: `docs/requirements/decisiones.md`, entrada
 «Madriguera: límite explícito y acceso antes de eclosionar» del 2026-09-06; prevalecen sobre
-la spec histórica en estos tres puntos. **Estado (2026-09-06): implementado localmente y
-migración aplicada en dev; pendiente ejecución de la matriz SQL con cambio de rol y
-despliegue/verificación en producción.** La comprobación por RPC con sesiones reales y
+la spec histórica en estos tres puntos. **Estado (2026-09-06): implementación verificada,
+matriz SQL con cambio de rol ejecutada en local y migración aplicada en dev y producción,
+con objetos y permisos verificados. Pendiente aceptación con dos cuentas reales de
+producción en #1083.** La comprobación por RPC con sesiones reales y
 el recorrido E2E de dos usuarios pasaron en dev. Detalles de funciones/ACL en
 `docs/requirements/data-model.md` §8bis.6. S1 no se da por cerrado todavía.
 

@@ -4267,3 +4267,9 @@ TrainingPanel después de la ficha. La matriz SQL se valida en una base local de
 porque el conector de dev no permite SET ROLE; dev se valida con sesiones REST reales.
 La coincidencia de definiciones y ambas matrices complementan la evidencia. Producción
 sigue siendo un paso separado: sus dos funciones aún no existen y #1083 queda abierta.
+
+## 2026-09-06 — Despliegue autorizado de Madriguera (#1097)
+
+Tras el permiso específico se aplica el SQL en producción y se verifican definiciones,
+ACL y RLS. La matriz local y los E2E de dev acreditan la implementación; la aceptación
+con dos cuentas reales de producción permanece en #1083 y no impide integrar el código.
