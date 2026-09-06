@@ -45,6 +45,15 @@ beforeEach(() => {
 });
 
 describe("applyTransition publica el hito por defecto", () => {
+  it("no escribe ni publica si no se pudo leer el pase activo (#657)", async () => {
+    mocks.getActivePass.mockRejectedValueOnce(new Error("Could not load passes"));
+    const from = vi.fn();
+    await expect(applyTransition({ from } as never, "u", "book", "b", "in_progress"))
+      .rejects.toThrow("Could not load passes");
+    expect(from).not.toHaveBeenCalled();
+    expect(mocks.maybeAutopostMilestone).not.toHaveBeenCalled();
+  });
+
   it("pase abierto que se cierra (completed) => publica con closed:true", async () => {
     mocks.getActivePass.mockResolvedValue({ id: "pase-1", status: "in_progress" });
 
