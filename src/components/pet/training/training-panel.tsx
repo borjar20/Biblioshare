@@ -74,7 +74,7 @@ export function TrainingPanel() {
           <Health label={t("enemy")} value={v.enemyHp} max={v.enemyHpMax} />
         </div>
         <div className="flex h-36 items-end justify-around border-b-2 border-border pb-3" aria-hidden="true">
-          <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : ""}><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div>
+          <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : ""}><div className="-scale-x-100"><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div></div>
           <div key={`enemy-${effects.enemyHit ?? "rest"}`} className={v.enemyHp === 0 ? styles.fallen : enemyHit ? styles.enemyRecoil : ""}><div className={`${styles.enemy} ${v.enemyPhase === "windup" ? styles.charge : v.enemyPhase === "guard" ? styles.guard : ""}`}><span>• •</span></div></div>
         </div>
         <div className="mt-3 rounded-lg border border-border bg-surface p-3 text-center" data-enemy-phase={v.enemyPhase}>
