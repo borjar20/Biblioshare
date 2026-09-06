@@ -46,8 +46,9 @@ export interface BattleContent {
 
 /** Lo que acepta `resimulate`: el registro con `result` opcional. El servidor de R2
  *  resuelve el combate desde los inputs y todavía no tiene resultado (C1); el replay
- *  y la auditoría sí lo traen, y entonces se verifica. */
-export type ResimInput = Omit<BattleRecord, "result"> & { result?: BattleResult };
+ *  y la auditoría sí lo traen, y entonces se verifica. `result` ausente o `null` (fila
+ *  `open`): el servidor lo produce; presente: se verifica. */
+export type ResimInput = Omit<BattleRecord, "result"> & { result?: BattleResult | null };
 
 export async function resimulate(
   record: ResimInput,
@@ -73,7 +74,7 @@ export async function resimulate(
     throw e;
   }
   // Sin `result` no hay nada que comparar: el resultado ES el de esta simulación.
-  if (record.result !== undefined) {
+  if (record.result != null) {
     // El resultado del cliente puede no ser canónico (p. ej. un número no
     // entero): eso no es un bug del servidor, es un registro que no encaja.
     let recordResultJson: string;

@@ -77,6 +77,19 @@ describe("resimulate", () => {
     }
   });
 
+  it("result null (fila abierta) cuenta como ausente", async () => {
+    // Una fila `open` en pet_battles lleva result: null, que se pasa tal cual.
+    // Debe tratarse como resultado ausente (producir el resultado), no rechazarse.
+    const { record, events } = await makeRecord(7);
+    const open = { ...record, result: null } as ResimInput;
+    const out = await resimulate(open, await content());
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(canonicalJson(out.result)).toBe(canonicalJson(record.result));
+      expect(out.digest).toBe(await battleDigest(record, events));
+    }
+  });
+
   it("rechaza una victoria fabricada y un resultado retocado", async () => {
     const { record } = await makeRecord(2, POLICIES.never);
     const flipped = { ...record.result, outcome: record.result.outcome === "win" ? ("lose" as const) : ("win" as const) };
