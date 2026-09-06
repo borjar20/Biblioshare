@@ -4174,3 +4174,16 @@ incompleta para hidratación. Se exige una entidad objeto por cada URI solicitad
 incluidos lotes parcialmente devueltos. La búsqueda conserva su comportamiento
 anterior con resultados parciales; solo el consumidor que persiste exige completitud.
 Una búsqueda sin coincidencias sigue siendo un resultado completo vacío.
+
+## 2026-09-06 — Alta manual de importación por RPC autenticada (#926)
+
+Los dos accesos (fila sin coincidencia y cola de revisión) comparten el registro
+por `register_manual_catalog_item`, con el cliente de la petición. Conservan la
+validación de colaborador y registran los fallos; no restauran INSERT directo
+sobre books/movies/series ni elevan el cliente a service_role.
+
+El alta envía título, autor, año y páginas de libro. No envía ISBN ni editorial
+a las columnas congeladas de books. La identificación de edición y su enlace al
+pase siguen pendientes en #910; esta corrección no cierra esa issue. La cola
+conserva `resolve_pending_import` para escribir en la biblioteca del dueño,
+no en la del colaborador. No se cambia el esquema ni el contrato de las RPC.
