@@ -15,7 +15,8 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
     return response.status === 204 ? null : response.json();
   }
   const suffix = Date.now().toString(36);
-  const titles = [`E2E892-planned-${suffix}`, `E2E892-reading-${suffix}`];
+  const statuses = ["planned", "in_progress", "completed", "dropped"];
+  const titles = statuses.map(status => `E2E892-${status}-${suffix}`);
   await withBattleUsers(url, key, async (create) => {
     const user = await create(`qa892_${suffix}`);
     async function cleanup() {
@@ -27,19 +28,25 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
       await rest(`profiles?user_id=eq.${user.id}`, "PATCH", { onboarded_at: new Date().toISOString() });
       const books = await rest("books", "POST", titles.map((title) => ({ title }))) as Array<{ id: string }>;
       await rest("passes", "POST", books.map((book, i) => ({ user_id: user.id, item_type: "book", item_id: book.id,
-        status: i === 0 ? "planned" : "in_progress", is_active: true, is_public: true })));
+        status: statuses[i], is_active: true, is_public: true })));
       await page.goto("/login");
       await page.locator('input[name="email"]').fill(user.email);
       await page.locator('input[name="password"]').fill(user.password);
       await page.getByRole("button", { name: "Entrar", exact: true }).click();
       await page.waitForURL("/");
-      await page.goto("/coleccion?tab=todo&type=todos");
       const badges = page.locator('[data-testid="status-badge"]:visible');
-      await expect(badges).toHaveCount(2);
+      for (const target of ["collection", "profile"]) {
+      if (target === "profile") await page.context().clearCookies();
+      await page.goto(target === "collection" ? "/coleccion?tab=todo&type=todos" : `/u/qa892_${suffix}?tab=coleccion`);
+      await expect(badges).toHaveCount(4);
+      await page.emulateMedia({ colorScheme: "dark" });
       for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        for (const theme of ["light", "dark"]) {
-          await page.evaluate((value) => { document.documentElement.classList.remove("light", "dark"); document.documentElement.classList.add(value); }, theme);
+        for (const theme of ["light", "dark", "system-dark"]) {
+          await page.evaluate((value) => {
+            document.documentElement.classList.remove("light", "dark");
+            if (value !== "system-dark") document.documentElement.classList.add(value);
+          }, theme);
           const measurements = await badges.evaluateAll((nodes) => nodes.map((node) => {
             const style = getComputedStyle(node);
             const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
@@ -57,24 +64,20 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
               const bg = luminance(rgb(style.backgroundColor, backing));
               return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
             });
-            return { text: node.textContent?.trim(), ratio: Math.min(...ratios), role: node.getAttribute("role") };
+            return { text: node.textContent?.trim(), ratio: Math.min(...ratios), role: node.getAttribute("role"),
+              clipped: node.scrollWidth > node.clientWidth };
           }));
           for (const measurement of measurements) {
             expect(measurement.text).toBeTruthy();
             expect(measurement.role).not.toBe("img");
             expect(measurement.ratio).toBeGreaterThanOrEqual(4.5);
+            expect(measurement.clipped).toBe(false);
           }
-          await testInfo.attach(`contrast-${theme}-${width}`, { body: JSON.stringify(measurements), contentType: "application/json" });
-          await page.screenshot({ path: testInfo.outputPath(`collection-${theme}-${width}.png`), fullPage: true });
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+          await testInfo.attach(`contrast-${target}-${theme}-${width}`, { body: JSON.stringify(measurements), contentType: "application/json" });
+          await page.screenshot({ path: testInfo.outputPath(`${target}-${theme}-${width}.png`), fullPage: true });
         }
       }
-      // The public profile was the remaining dot-only consumer of the card.
-      await page.context().clearCookies();
-      await page.goto(`/u/qa892_${suffix}?tab=coleccion`);
-      await expect(badges).toHaveCount(2);
-      for (const badge of await badges.all()) {
-        expect((await badge.textContent())?.trim()).toBeTruthy();
-        await expect(badge).not.toHaveAttribute("role", "img");
       }
     } finally { await cleanup(); }
   });

@@ -3,7 +3,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-03",
+    "generatedAt": "2026-09-06",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -1379,7 +1379,9 @@
       "kind": "ui",
       "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite pinta sprite sheets de personaje PixelLab en public/pet/sheets + sheets.gen.ts; el humor es la fila de animación que se reproduce).",
       "files": [
-        "src/components/pet"
+        "src/components/pet",
+        "src/components/pet/training/training-panel.tsx",
+        "src/components/pet/training/training-session.ts"
       ]
     },
     {
@@ -1472,6 +1474,23 @@
       ],
       "gotchas": [
         "Sin grants de INSERT/UPDATE/DELETE para authenticated ni anon a propósito (#1081 R1): no aparece en la superficie 6 de DRIFT-CHECK."
+      ]
+    },
+    {
+      "id": "m-pet-training",
+      "label": "lib/pet/training",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "R2: entrenamiento gratuito. Actions autentican cada llamada; servicio deriva snapshot/seed al empezar, valida inputs y re-simula al resolver; repositorio service_role filtra siempre user_id/kind y actualiza solo status=open. Reintentos recuperan el primer resultado. Replay re-simula por versión y verifica digest.",
+      "files": [
+        "src/lib/pet/training/actions.ts",
+        "src/lib/pet/training/service.ts",
+        "src/lib/pet/training/repository.ts",
+        "src/lib/pet/training/types.ts"
+      ],
+      "gotchas": [
+        "Nunca use cache: todas las consultas dependen del usuario.",
+        "La resolución usa compare-and-set de status=open; un reintento no sobrescribe ni snapshot ni resultado."
       ]
     }
   ],
@@ -2497,16 +2516,34 @@
       "label": "deriveAttributes / levelFor (poder sin bonus)"
     },
     {
-      "from": "m-pet-battle",
-      "to": "t-pet-battles",
-      "kind": "writes",
-      "label": "R2: service_role tras resimulate"
-    },
-    {
       "from": "sb-server",
       "to": "t-pet-nudges",
       "kind": "writes",
       "label": "claim_pet_nudges (service_role)"
+    },
+    {
+      "from": "c-pet",
+      "to": "m-pet-training",
+      "kind": "calls",
+      "label": "startBattle / resolveBattle / replayTrainingBattle"
+    },
+    {
+      "from": "m-pet-training",
+      "to": "m-pet",
+      "kind": "reads",
+      "label": "getPetSnapshot → buildSnapshot"
+    },
+    {
+      "from": "m-pet-training",
+      "to": "m-pet-battle",
+      "kind": "calls",
+      "label": "validateInputs / resimulate / replayBattle"
+    },
+    {
+      "from": "m-pet-training",
+      "to": "t-pet-battles",
+      "kind": "writes",
+      "label": "service_role con dueño explícito y compare-and-set"
     }
   ],
   "flows": [
@@ -3392,6 +3429,50 @@
           "node": "sw",
           "action": "El service worker pinta la notificación del sistema; al tocarla abre /mascota",
           "file": "public/sw.js"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-training",
+      "name": "Entrenar y reproducir un combate",
+      "category": "core",
+      "summary": "Combate local con una habilidad; el servidor decide el resultado. Sin premios ni consumo. Pausa/velocidad no cambian el reloj de simulación.",
+      "entrypoint": "src/components/pet/training/training-panel.tsx",
+      "steps": [
+        {
+          "node": "r-mascota",
+          "action": "Muestra entrenamiento al tener mascota",
+          "file": "src/app/mascota/page.tsx"
+        },
+        {
+          "node": "c-pet",
+          "action": "Genera intención UUID; la conserva al reintentar. Simula ticks y registra habilidad, pausa y velocidad.",
+          "file": "src/components/pet/training/training-session.ts"
+        },
+        {
+          "node": "m-pet-training",
+          "action": "Autentica y crea el combate: snapshot y seed propios; recupera intención repetida",
+          "file": "src/lib/pet/training/actions.ts"
+        },
+        {
+          "node": "m-pet-battle",
+          "action": "Rechaza payload no vacío y snapshot inválido; re-simula el log",
+          "file": "src/lib/pet/battle/record.ts"
+        },
+        {
+          "node": "t-pet-battles",
+          "action": "Congela el primer resultado con update solo status=open",
+          "file": "src/lib/pet/training/repository.ts"
+        },
+        {
+          "node": "m-pet-training",
+          "action": "Replay selecciona versión conservada y comprueba digest antes de devolver eventos derivados",
+          "file": "src/lib/pet/training/service.ts"
+        },
+        {
+          "node": "c-pet",
+          "action": "Muestra daño y causas del resultado autoritativo; anima replay desde eventos re-simulados",
+          "file": "src/components/pet/training/training-panel.tsx"
         }
       ]
     }

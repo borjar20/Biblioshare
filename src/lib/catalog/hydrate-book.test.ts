@@ -47,6 +47,7 @@ vi.mock("./openlibrary/editions", () => ({
 vi.mock("./inventaire/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./inventaire/client")>()),
   searchInventaireEntities: mocks.searchInventaireEntities,
+  searchInventaireEntitiesOrNull: mocks.searchInventaireEntities,
 }));
 vi.mock("./googlebooks/client", () => ({ findBestVolume: mocks.findBestVolume }));
 
@@ -204,6 +205,17 @@ beforeEach(() => {
 
 // ───────────────────────────── M1 · p_author ─────────────────────────────
 describe("ensureBookHydrated · autoría (mata M1: borrar p_author)", () => {
+  it("deja pendiente la hidratación si Inventaire no responde y permite la siguiente visita", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { request, service } = makeClients();
+    mocks.searchInventaireEntities.mockResolvedValueOnce(null);
+    await ensureBookHydrated(request as never, book());
+    expect(service.rpc).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
+    await ensureBookHydrated(request as never, book());
+    expect(rpcArgs(service).p_author).toBe("Brandon Sanderson");
+    errors.mockRestore();
+  });
   it("manda p_author con el nombre que resuelve OpenLibrary", async () => {
     const { request, service } = makeClients();
     await ensureBookHydrated(request as never, book());
