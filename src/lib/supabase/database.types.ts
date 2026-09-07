@@ -3173,6 +3173,19 @@ export type Database = {
         Args: { p_external_id: string; p_item_type: string }
         Returns: string
       }
+      register_verified_book_edition: {
+        Args: {
+          p_book_id: string
+          p_created_by: string
+          p_isbn: string
+          p_label?: string
+          p_publisher?: string
+          p_year?: number
+          p_pages?: number
+          p_cover_url?: string
+        }
+        Returns: string
+      }
       register_catalog_item_by_volume: {
         Args: { p_volume_id: string }
         Returns: string

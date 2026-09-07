@@ -19,6 +19,8 @@ sql(readFileSync(join(repoRoot, 'scripts/db/verify.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/pass_interaction_hrefs.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_technical_gate.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'utf8'));
+
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_reference_guards.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyCatalogReferenceConcurrency(stamp.projectId);
