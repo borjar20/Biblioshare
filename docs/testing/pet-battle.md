@@ -1,6 +1,8 @@
 # Verificación de contratos de combate
 
-Usar Node 22 e instalar el lockfile con `npm ci`.
+> **[Canónico · verificado 2026-09-07 · CLI: run, calibrate, replay, golden, fork, freeze]**
+
+Usar Node 22 e instalar el lockfile con `npm ci`. Los comandos `fork` y `freeze` automatizan el ritual de publicar versiones (#1093).
 
 ```powershell
 npm run test:pet:battle
