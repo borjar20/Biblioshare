@@ -4347,3 +4347,17 @@ transacciones fallidas revierten su contador SQL; la carga previa al proveedor
 desde una action permanece consumida aunque el proveedor falle. No es una
 defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
 evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.
+
+## 2026-09-07 — Identidad corroborada en bibliografías (#638)
+
+Los títulos de edición dejan de ser evidencia de identidad o descarte de obras.
+Las fusiones entre títulos distintos requieren redirecciones de Open Library;
+los estuches ambiguos requieren clasificación de obra o corroboración de una
+página completa de varias ediciones. Las traducciones siguen siendo presentación.
+Las comprobaciones se concentran en conflictos, con cuatro peticiones simultáneas
+y cinco segundos adicionales como máximo, y solo cachean datos públicos.
+
+El replay de las capturas mantiene 14/68 resultados y corrige el renombre real.
+Sin evidencia suficiente se conserva la obra, con posibles duplicados; no se
+repara la hidratación histórica. Evidencia y límites pendientes en #638 y
+`docs/testing/2026-09-07-638-work-identity.md`.

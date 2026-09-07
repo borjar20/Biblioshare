@@ -44,10 +44,8 @@ describe("acceptEditionTitle", () => {
     expect(acceptEditionTitle("Gregor and the Code of Claw", "Gregor", ["eng"], "eng")).toBeNull();
   });
 
-  it("acepta un título más largo o distinto, aunque comparta prefijo", () => {
-    expect(acceptEditionTitle("Gregor", "Gregor the Overlander", ["eng"], "eng")).toBe(
-      "Gregor the Overlander"
-    );
+  it("no renombra en inglés por una edición aislada; permite presentación traducida", () => {
+    expect(acceptEditionTitle("Gregor", "Gregor the Overlander", ["eng"], "eng")).toBeNull();
     expect(acceptEditionTitle("The Hunger Games", "Los juegos del hambre", ["spa"], "spa")).toBe(
       "Los juegos del hambre"
     );
@@ -67,14 +65,14 @@ const shusterman = normalizeAuthorWorks(shustermanEs.docs, shustermanEn.docs);
 const titulos = (obras: { title: string }[]) => obras.map((o) => o.title);
 
 describe("normalizeAuthorWorks · recuentos", () => {
-  it("Collins pasa de 25 entradas crudas a 14 obras", () => {
+  it("Collins conserva 16 candidatos sin evidencia adicional", () => {
     expect(collinsEs.docs).toHaveLength(25);
-    expect(collins).toHaveLength(14);
+    expect(collins).toHaveLength(16);
   });
 
-  it("Shusterman pasa de 86 entradas crudas a 68 obras", () => {
+  it("Shusterman conserva 70 candidatos sin evidencia adicional", () => {
     expect(shustermanEs.docs).toHaveLength(86);
-    expect(shusterman).toHaveLength(68);
+    expect(shusterman).toHaveLength(70);
   });
 
   it("sin `collection` entre los patrones, sobrevive «The Unwind Collection»", () => {
@@ -103,7 +101,7 @@ describe("normalizeAuthorWorks · título", () => {
 
   it("no trunca un título cuando la edición pierde información", () => {
     expect(titulos(collins)).toContain("Gregor and the Code of Claw");
-    expect(titulos(collins)).not.toContain("Gregor");
+    expect(collins.find((w) => w.workKey === "/works/OL5735344W")?.title).toBe("Gregor and the Code of Claw");
   });
 
   // El idioma del título elegido VIAJA con el título. Sin esta etiqueta, la
@@ -134,7 +132,7 @@ describe("normalizeAuthorWorks · título", () => {
     expect(work.titleLang).toBe("es");
   });
 
-  it("marca 'en' cuando solo hay título de edición inglesa", () => {
+  it("no atribuye al título de obra el idioma de una edición rechazada", () => {
     const [work] = normalizeAuthorWorks(
       [],
       [
@@ -147,8 +145,8 @@ describe("normalizeAuthorWorks · título", () => {
         },
       ]
     );
-    expect(work.title).toBe("Elantris: Tenth Anniversary");
-    expect(work.titleLang).toBe("en");
+    expect(work.title).toBe("Elantris");
+    expect(work.titleLang).toBe("other");
   });
 
   it("marca 'other' cuando cae al título de la obra", () => {
@@ -190,10 +188,10 @@ describe("normalizeAuthorWorks · filtros", () => {
 });
 
 describe("normalizeAuthorWorks · desduplicación", () => {
-  it("fusiona dos registros del mismo libro en idiomas distintos", () => {
+  it("no fusiona traducciones sin evidencia adicional de identidad", () => {
     // «Amanecer de la Cosecha» y «Sunrise on the Reaping» son el mismo libro en
     // dos works: sus conjuntos de títulos candidatos se cruzan por el inglés.
-    expect(titulos(collins).filter((t) => t.toLowerCase().includes("reaping"))).toHaveLength(0);
+    expect(titulos(collins).filter((t) => t.toLowerCase().includes("reaping"))).toHaveLength(1);
     expect(titulos(collins).filter((t) => t === "Amanecer de la Cosecha")).toHaveLength(1);
   });
 
@@ -310,8 +308,7 @@ describe("normalizeAuthorWorks · bordes", () => {
       []
     );
 
-    // `Beta` sí se fusiona con `Alfa` —comparten título directamente— pero
-    // `Gamma` sobrevive, que es lo que la herencia se llevaba por delante.
-    expect(obras.map((o) => o.workKey)).toEqual(["/works/OLB1W", "/works/OLB3W"]);
+    // Una cadena de títulos de edición no aporta evidencia de identidad.
+    expect(obras.map((o) => o.workKey)).toEqual(["/works/OLB1W", "/works/OLB2W", "/works/OLB3W"]);
   });
 });
