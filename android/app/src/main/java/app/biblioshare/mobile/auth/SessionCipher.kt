@@ -7,6 +7,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /** Versioned authenticated envelope; the key is supplied by Android Keystore. */
 internal class SessionCipher(private val key: () -> SecretKey) {
+    class InvalidEnvelopeException : GeneralSecurityException("Invalid session envelope")
     fun encrypt(plain: ByteArray): ByteArray {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
@@ -16,7 +17,7 @@ internal class SessionCipher(private val key: () -> SecretKey) {
 
     fun decrypt(envelope: ByteArray): ByteArray {
         if (envelope.size < 29 || envelope[0] != 1.toByte()) {
-            throw GeneralSecurityException("Invalid session envelope")
+            throw InvalidEnvelopeException()
         }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, envelope.copyOfRange(1, 13)))

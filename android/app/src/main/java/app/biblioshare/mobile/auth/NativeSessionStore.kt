@@ -5,12 +5,14 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.AtomicFile
 import org.json.JSONObject
+import org.json.JSONException
 import java.io.File
 import java.security.KeyStore
 import java.security.InvalidKeyException
 import java.security.UnrecoverableKeyException
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import javax.crypto.AEADBadTagException
 
 /** Session data never leaves noBackupFilesDir except as ciphertext. */
 internal object NativeSessionStore {
@@ -42,7 +44,11 @@ internal object NativeSessionStore {
                 // Ciphertext stays authoritative even if legacy cleanup must retry.
                 legacy.edit().clear().commit()
                 result
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                if (error !is SessionCipher.InvalidEnvelopeException && error !is AEADBadTagException &&
+                    error !is InvalidKeyException && error !is UnrecoverableKeyException && error !is JSONException) {
+                    throw error
+                }
                 // Missing/invalidated key or corrupt file: require a new native handoff.
                 // Never fall back to a potentially stale plaintext refresh token.
                 clear(context)
@@ -51,15 +57,11 @@ internal object NativeSessionStore {
         }
         val old = legacy.all
         if (old.isEmpty()) return JSONObject()
-        return try {
-            val migrated = JSONObject(old)
-            write(context, migrated)
-            migrated
-        } catch (_: Exception) {
-            // Fail closed if secure persistence is unavailable.
-            clear(context)
-            JSONObject()
-        }
+        val migrated = JSONObject(old)
+        // If secure persistence is temporarily unavailable, propagate the error:
+        // neither expose plaintext to the caller nor discard the existing session.
+        write(context, migrated)
+        return migrated
     }
 
     @Synchronized
