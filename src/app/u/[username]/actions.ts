@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { revalidateProfile } from "@/lib/reactivity/revalidate";
+import { revalidateProfile, revalidateSocialBurrows } from "@/lib/reactivity/revalidate";
 
 // Library-entry management actions (status/progress/remove) live in
 // src/lib/library/manage-actions.ts since the item detail pages became the
@@ -25,6 +25,7 @@ export async function updateProfileVisibility(
 
   if (error) throw error;
   revalidateProfile(username);
+  revalidateSocialBurrows();
 }
 
 // toggleFavorite se mudó a src/lib/library/favorite-actions.ts: la biblioteca

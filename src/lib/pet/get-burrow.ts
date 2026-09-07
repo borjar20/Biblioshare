@@ -1,4 +1,4 @@
-import { isPetClass, type PetStage } from "./classes";
+import { decodeBurrowPet } from "./decode-burrow-pet";
 import type { BurrowNeighbor } from "./burrow";
 
 type BurrowClient = {
@@ -7,10 +7,6 @@ type BurrowClient = {
 export type BurrowResult =
   | { ok: true; rows: BurrowNeighbor[]; total: number }
   | { ok: false };
-
-function isStage(value: unknown): value is PetStage {
-  return value === "acorn" || value === "young" || value === "adult" || value === "veteran";
-}
 
 /** Session-bound read. Never cache or pass raw RPC rows to the client. */
 export async function getBurrowPets(supabase: BurrowClient): Promise<BurrowResult> {
@@ -25,19 +21,8 @@ export async function getBurrowPets(supabase: BurrowClient): Promise<BurrowResul
       if (!value || typeof value !== "object") continue;
       const r = value as Record<string, unknown>;
       if (r.total !== total) return { ok: false };
-      if (
-        typeof r.user_id !== "string" || !r.user_id.trim() ||
-        typeof r.username !== "string" || !r.username.trim() ||
-        !(r.display_name === null || typeof r.display_name === "string") ||
-        !(r.avatar_url === null || typeof r.avatar_url === "string") ||
-        typeof r.pet_name !== "string" || !r.pet_name.trim() ||
-        !isPetClass(r.pet_class) || !isStage(r.pet_stage) ||
-        typeof r.pet_level !== "number" || !Number.isSafeInteger(r.pet_level) || r.pet_level < 1
-      ) continue;
-      rows.push({
-        userId: r.user_id, username: r.username, displayName: r.display_name,
-        avatarUrl: r.avatar_url, name: r.pet_name, petClass: r.pet_class, stage: r.pet_stage, level: r.pet_level,
-      });
+      const pet = decodeBurrowPet(r);
+      if (pet) rows.push(pet);
     }
     return rows.length ? { ok: true, rows, total } : { ok: false };
   } catch {

@@ -7,6 +7,7 @@ import { usersAreBlocked } from "./block-state";
 import {
   revalidateFeed,
   revalidateProfilePages,
+  revalidateSocialBurrows,
 } from "@/lib/reactivity/revalidate";
 
 // Mutaciones del grafo social (EPIC-05, Bloque A). El status correcto
@@ -18,6 +19,7 @@ import {
 // aparecen en varias (perfil propio y ajeno). Mismo patrón que toggleFavorite.
 function revalidateProfiles() {
   revalidateProfilePages();
+  revalidateSocialBurrows();
 }
 
 export async function followUser(targetUserId: string): Promise<void> {

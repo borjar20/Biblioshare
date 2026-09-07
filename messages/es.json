@@ -3087,6 +3087,16 @@
   },
   "pet": {
     "title": "Mascota",
+    "clubBurrow": {
+      "title": "Madriguera · {club}",
+      "empty": "Todavía no hay mascotas visibles en esta madriguera",
+      "myPet": "Mi mascota",
+      "error": "No hemos podido cargar la madriguera",
+      "retry": "Reintentar",
+      "retrying": "Cargando madriguera…",
+      "showLess": "Mostrar menos",
+      "limit": "Mostrando {shown} de {total} mascotas visibles del club, sin contar la tuya"
+    },
     "burrow": {
       "title": "Madriguera",
       "yours": "La tuya",

@@ -10,11 +10,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PetSprite } from "./pet-sprite";
 
-export function Burrow({ own, neighbors, total, followingCount }: {
+export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
   own: BurrowPet | null;
   neighbors: BurrowNeighbor[];
   total: number;
-  followingCount: number;
+  followingCount?: number;
+  club?: { name: string; ownOwner: BurrowNeighbor | null };
 }) {
   const t = useTranslations("pet");
   const id = useId();
@@ -22,7 +23,7 @@ export function Burrow({ own, neighbors, total, followingCount }: {
   const [expanded, setExpanded] = useState(false);
   const { visible, hidden } = arrangeBurrow(own, neighbors);
   const entries: { key: string; pet: BurrowPet; owner: BurrowNeighbor | null }[] = [
-    ...(own ? [{ key: "own", pet: own, owner: null }] : []),
+    ...(own ? [{ key: "own", pet: own, owner: club?.ownOwner ?? null }] : []),
     ...(expanded ? neighbors : visible).map((pet) => ({ key: pet.userId, pet, owner: pet })),
   ];
   // Resolve from current props: removed neighbors must not linger in an open card.
@@ -30,12 +31,12 @@ export function Burrow({ own, neighbors, total, followingCount }: {
 
   return (
     <section aria-labelledby={`${id}-title`} className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card">
-      <h2 id={`${id}-title`} className="font-serif text-lg font-semibold">{t("burrow.title")}</h2>
+      <h2 id={`${id}-title`} className="break-words font-serif text-lg font-semibold">{club ? t("clubBurrow.title", { club: club.name }) : t("burrow.title")}</h2>
       {entries.length > 0 && (
         <ul id={`${id}-pets`} role="list" className="flex flex-wrap items-end gap-x-3 gap-y-8 rounded-card border-b-4 border-border bg-surface-muted px-3 pb-3 pt-8">
           {entries.map(({ key, pet, owner }) => {
             const { box } = spriteBox(pet.stage, pet.petClass);
-            const label = owner
+            const label = owner && key !== "own"
               ? t("burrow.spriteLabel", { name: pet.name, class: t(`classes.${pet.petClass}`), stage: t(`stages.${pet.stage}`), owner: owner.username })
               : t("burrow.ownLabel", { name: pet.name, class: t(`classes.${pet.petClass}`), stage: t(`stages.${pet.stage}`) });
             return (
@@ -49,24 +50,29 @@ export function Burrow({ own, neighbors, total, followingCount }: {
                   </span>
                 </button>
                 <span className="text-xs text-muted-foreground">{t("level", { level: pet.level })}</span>
-                <span className="h-4 text-xs text-muted-foreground">{owner ? null : t("burrow.yours")}</span>
+                <span className="h-4 text-xs text-muted-foreground">{key === "own" ? t("burrow.yours") : null}</span>
               </li>
             );
           })}
         </ul>
       )}
-      {!neighbors.length && (
+      {club && entries.length === 0 && (
+        <EmptyState variant="panel" glyph={<span aria-hidden="true">♧</span>}
+          title={t("clubBurrow.empty")}
+          action={<Link href="/mascota" className={buttonVariants("secondary", "px-4")}>{t("clubBurrow.myPet")}</Link>} />
+      )}
+      {!club && !neighbors.length && (
         <EmptyState variant="panel" glyph={<span aria-hidden="true">♧</span>}
           title={t(followingCount === 0 ? "burrow.emptyNoFollows" : "burrow.emptyNoPets")}
           action={followingCount === 0 ? <Link href="/buscar?modo=personas" className={buttonVariants("secondary", "px-4")}>{t("burrow.findPeople")}</Link> : undefined} />
       )}
-      {!expanded && hidden.length > 0 && (
-        <button type="button" aria-expanded={false} aria-controls={`${id}-pets`} className={buttonVariants("secondary", "self-start px-4")} onClick={() => setExpanded(true)}>
-          {t("burrow.showMore")}
+      {hidden.length > 0 && (!expanded || club) && (
+        <button type="button" aria-expanded={expanded} aria-controls={`${id}-pets`} className={buttonVariants("secondary", "self-start px-4")} onClick={() => setExpanded(!expanded)}>
+          {t(expanded ? "clubBurrow.showLess" : "burrow.showMore")}
         </button>
       )}
       {expanded && total > neighbors.length && (
-        <p className="text-sm text-muted-foreground">{t("burrow.limit", { shown: neighbors.length, total })}</p>
+        <p className="text-sm text-muted-foreground">{t(club ? "clubBurrow.limit" : "burrow.limit", { shown: neighbors.length, total })}</p>
       )}
       <div id={`${id}-detail`} role="region" aria-label={t("burrow.detail")} aria-live="polite" aria-atomic="true">
         {current && (

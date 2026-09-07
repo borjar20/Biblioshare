@@ -36,6 +36,7 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Saga** | Serie de libros, Colección (de estudio) | Un conjunto de obras con orden narrativo. | `/saga/[id]` |
 | **Universo** | Metasaga, Franquicia | Una saga que agrupa otras sagas. Es una saga, no un tipo aparte. | `sagas.parent_id` |
 | **Club** | Grupo | El espacio compartido donde varias personas leen o ven algo a la vez. | `/club/[slug]` |
+| **Madriguera del club** | Ranking del club, Equipo de combate | El espacio de compañía de las mascotas de quienes pertenecen al club, respetando la privacidad de cada perfil. | S3 #1129; implementada en desarrollo el 2026-09-07, aceptación visual y publicación pendientes |
 | **Actividad** | Evento, Lectura conjunta | Lo que se hace dentro de un club y tiene calendario: lectura conjunta, tierlist, evento… | `club_activities` |
 | **Hito** | Checkpoint, Punto de control | La marca de «he llegado hasta aquí» dentro de una actividad; es lo que abre el capítulo sin spoilers. | `club_checkpoints` |
 | **Reto** | Challenge, Objetivo | La meta contable del usuario («50 libros en 2026»). | `/estadisticas`, `challenges` |

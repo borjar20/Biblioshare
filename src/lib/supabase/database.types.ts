@@ -3051,6 +3051,20 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: { pet_name: string; pet_class: string; pet_stage: string }[]
       }
+      get_club_burrow_pets: {
+        Args: { p_club_id: string }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string | null
+          avatar_url: string | null
+          pet_name: string
+          pet_class: string
+          pet_stage: string
+          pet_level: number
+          total: number
+        }[]
+      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
