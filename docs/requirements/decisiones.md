@@ -4365,6 +4365,10 @@ la PR debe distinguir esa evidencia de compilar el APK.
 
 Las operaciones públicas de NativeSupabase se serializan también durante la llamada
 HTTP: un refresh anterior no puede escribir después de que logout haya terminado.
-Cerrar sesión persiste un objeto vacío cifrado (tombstone), antes de limpiar el legado.
-Si la limpieza de preferencias falla, el archivo cifrado sigue siendo autoritativo y
+Cerrar sesión persiste un archivo vacío sin secretos (tombstone), antes de limpiar el legado.
+Si la limpieza de preferencias falla, el archivo nuevo sigue siendo autoritativo y
 se reintenta en lecturas posteriores; nunca se elimina para volver al origen antiguo.
+
+El tombstone no necesita Keystore: logout funciona aunque la clave esté inaccesible.
+Una clave inválida o irrecuperable se regenera al persistir un nuevo handoff; otros
+fallos del proveedor se propagan sin degradar a almacenamiento de tokens en claro.

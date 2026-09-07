@@ -7,6 +7,8 @@ import android.util.AtomicFile
 import org.json.JSONObject
 import java.io.File
 import java.security.KeyStore
+import java.security.InvalidKeyException
+import java.security.UnrecoverableKeyException
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
@@ -33,7 +35,10 @@ internal object NativeSessionStore {
         val legacy = context.getSharedPreferences("native_supabase", Context.MODE_PRIVATE)
         if (disk.baseFile.exists()) {
             return try {
-                val result = JSONObject(String(cipher.decrypt(disk.readFully()), Charsets.UTF_8))
+                val bytes = disk.readFully()
+                // The zero-byte tombstone contains no secrets and needs no key.
+                val result = if (bytes.isEmpty()) JSONObject()
+                    else JSONObject(String(cipher.decrypt(bytes), Charsets.UTF_8))
                 // Ciphertext stays authoritative even if legacy cleanup must retry.
                 legacy.edit().clear().commit()
                 result
@@ -59,7 +64,24 @@ internal object NativeSessionStore {
 
     @Synchronized
     fun write(context: Context, value: JSONObject) {
-        val encrypted = cipher.encrypt(value.toString().toByteArray(Charsets.UTF_8))
+        val plain = value.toString().toByteArray(Charsets.UTF_8)
+        val encrypted = try {
+            cipher.encrypt(plain)
+        } catch (_: InvalidKeyException) {
+            resetKey()
+            cipher.encrypt(plain)
+        } catch (_: UnrecoverableKeyException) {
+            resetKey()
+            cipher.encrypt(plain)
+        }
+        persist(context, encrypted)
+    }
+
+    private fun resetKey() {
+        KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.deleteEntry(KEY_ALIAS)
+    }
+
+    private fun persist(context: Context, encrypted: ByteArray) {
         val disk = file(context)
         val output = disk.startWrite()
         try {
@@ -74,8 +96,8 @@ internal object NativeSessionStore {
 
     @Synchronized
     fun clear(context: Context) {
-        // A durable encrypted tombstone prevents stale legacy data resurfacing
-        // after a failed preferences flush or a crash during cleanup.
-        write(context, JSONObject())
+        // A non-secret tombstone works even when Keystore is unavailable. Its
+        // existence prevents legacy fallback after a crash/failed prefs flush.
+        persist(context, byteArrayOf())
     }
 }
