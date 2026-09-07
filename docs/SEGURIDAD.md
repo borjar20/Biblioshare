@@ -100,7 +100,7 @@ informe de auditoría.
 | Trigger de curación no cubre columnas `openlibrary_work_key`/`hydrated_at`/`editions_synced_at` | S2-14 (pendiente de abrir) | P2 |
 | `hydrate_*` permiten a un `user` rellenar fichas vacías | #699 | **Es lo deseado y ya está resuelto (2026-08-19)**: son fill-only y solo rellenan huecos con datos del proveedor oficial; el flag `app.hydrating` las deja pasar el trigger de curación, que sigue exigiendo `collaborator+` para la edición manual. Verificado en prod |
 | SW cachea HTML privado sin purga en logout | #680 | P1 |
-| Tokens Supabase sin cifrar en Android + allowBackup | #679 | P1 |
+| Tokens Supabase en Android | #679 | Código: AES-GCM con Android Keystore, archivo atómico en noBackupFilesDir y exclusión de preferencias antiguas de backup/transferencia. Verificado en emulador Android 16 (API 36): migración, tombstone, clave inválida y contención refresh/logout. Destino Supabase fijado y redirecciones desactivadas. Distribución del APK pendiente en #679; el merge no actualiza instalaciones existentes. |
 | Saga raíz creable por cualquier user / HIBP desactivado | S2-13/S2-20 (pendientes) | P3 |
 
 ## Qué se verificó y está sano (no re-auditar sin motivo)
