@@ -51,7 +51,8 @@ Solicita mostrar el nivel en la madriguera y comenzar S2.
 - Vitest completo: 327 ficheros, 3346 tests, PASS. Pruebas de inventario y
   orden de migraciones: 7 PASS.
 - Build de producción Next.js 16.3.0 / Turbopack: 70/70 páginas, PASS.
-- Playwright contra `next start` con biblioshare-dev: 5/5 PASS, sin reintentos.
+- Playwright contra `next start` con biblioshare-dev: primera pasada 5/5 PASS;
+  pasada final 5/5 PASS en 36,8 s, sin reintentos automáticos.
   Incluye API de apariencia con sesiones reales, público/privado/seguimiento/
   bloqueos, ausencia de mascota y bellota; nivel guardado; móvil y escritorio;
   OG anónimo idéntico al autenticado para perfil privado; límite de 60/65 vecinas.
@@ -67,3 +68,16 @@ Solicita mostrar el nivel en la madriguera y comenzar S2.
 Artefactos locales: `.superpowers/social-s2-unit.log`, `social-s2-build.log`,
 `social-s2-e2e.log`, `social-s2-server.err.log` y `social-s2-browser/`.
 No se ha aplicado la migración en producción ni se ha verificado allí la UI nueva.
+
+### FAIL intermedio conservado
+
+Tras ajustar el fixture de la vecina adulta a nivel 12 y añadir una aserción de
+UI, una repetición del caso «A ve a B» agotó 120 s. La captura final mostraba
+«Perfil no encontrado»; no identifica el paso ni demuestra la causa. Se detectó
+una precondición incompleta del helper: creaba perfiles sin `onboarded_at`.
+Se explicita onboarding completado para estos usuarios de prueba. La siguiente
+pasada completa da 5/5 PASS; esta correlación no prueba por sí sola el origen
+del timeout. Log conservado: `.superpowers/social-s2-level-ui.log`, contexto en
+`social-s2-browser/mascota-madriguera-Madrigu-41b49--después-junto-a-su-mascota-chromium/error-context.md`.
+La evidencia final usa rutas nuevas: `.superpowers/social-s2-e2e-final.log` y
+`.superpowers/social-s2-browser-final/`.

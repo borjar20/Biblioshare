@@ -59,7 +59,7 @@ async function createUser(username: string, signIn = true): Promise<TestUser> {
   const email = `${username}@example.com`;
   const response = await write("auth/v1/admin/users", "POST", { email, password, email_confirm: true });
   const { id } = await response.json();
-  await write("rest/v1/profiles", "POST", { user_id: id, username, is_public: true });
+  await write("rest/v1/profiles", "POST", { user_id: id, username, is_public: true, onboarded_at: new Date().toISOString() });
   if (!signIn) return { id, email, username, token: "" };
   const session = await api("auth/v1/token?grant_type=password", "POST", { email, password });
   expect(session.ok).toBe(true);
