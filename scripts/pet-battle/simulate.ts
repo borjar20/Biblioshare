@@ -110,22 +110,32 @@ async function replay(file: string | undefined) {
 }
 
 /** Ejemplo normativo: el primer seed cuyos dos primeros anuncios son carga y luego
- *  guardia (así el ejemplo enseña las dos decisiones), con la política interrupt. */
+ *  guardia (así el ejemplo enseña las dos decisiones), con la política interrupt.
+ *  Con `--chain N` (N > 1) los enemigos salen de `pickEnemies` y el criterio de
+ *  búsqueda exige además que la cadena entera se gane por KO en el tramo N, con
+ *  la política `interrupt_ulti` (referencia de calibración desde Task 5) para que
+ *  el ejemplo enseñe también la ulti por tramo. */
 async function golden() {
   const out = normativePathFor(arg("version"));
   if (arg("version") && RULESET.version !== arg("version")) fail(`RULESET.version es ${RULESET.version}, no ${arg("version")}: apunta los reexports de la API actual a versions/${arg("version")} antes de generar su normativa`);
+  const chain = pickChain();
+  const policy = chain > 1 ? POLICIES.interrupt_ulti : POLICIES.interrupt;
+  const policyId: PolicyId = chain > 1 ? "interrupt_ulti" : "interrupt";
   const snapshot = snapshotForProfile("lectora_larga", "wizard");
   for (let i = 0; i < 10_000; i++) {
     const seed = seedFromIndex(i);
-    const ctx = { seed, snapshot, enemies: [BROTE], ruleset: RULESET };
+    const enemies = chain > 1 ? pickEnemies(seed, chain, ENEMIES) : [BROTE];
+    const ctx = { seed, snapshot, enemies, ruleset: RULESET };
     const kinds = simulate(ctx, [])
       .events.filter((e) => e.type === "TELEGRAPH_STARTED")
       .map((e) => (e.type === "TELEGRAPH_STARTED" ? e.kind : ""));
     if (kinds[0] !== "charge" || kinds[1] !== "guard") continue;
-    const { inputs, events, result } = runPolicy(ctx, POLICIES.interrupt);
-    // el ejemplo enseña una victoria por KO; un seed que acaba en límite o en derrota no sirve de ejemplo
+    const { inputs, events, result } = runPolicy(ctx, policy);
+    // el ejemplo enseña una victoria por KO en la cadena completa; un seed que
+    // acaba en límite, en derrota, o antes del último tramo no sirve de ejemplo
     if (result.outcome !== "win" || result.reason !== "ko") continue;
-    const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
+    if (chain > 1 && result.fight !== chain) continue;
+    const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: enemyList(enemies), seed, snapshot, inputs, result };
     const digest = await battleDigest(record, events);
     const material = digestMaterial(record, events);
     mkdirSync(dirname(out), { recursive: true });
@@ -133,10 +143,10 @@ async function golden() {
       out,
       JSON.stringify({ seedIndex: i, record, events, digest, canonicalHead: material.slice(0, 240), canonicalLength: material.length }, null, 2) + "\n",
     );
-    console.log(`escrito ${out}: seed ${seed} (índice ${i}), ${events.length} eventos, ${result.outcome} en ${result.ticks} ticks, digest ${digest}`);
+    console.log(`escrito ${out}: seed ${seed} (índice ${i}), política ${policyId}, ${events.length} eventos, ${result.outcome} en ${result.ticks} ticks (tramo ${result.fight}/${chain}), digest ${digest}`);
     return;
   }
-  fail("ningún seed en 10 000 empieza con carga y después guardia");
+  fail(`ningún seed en 10 000 cumple el criterio (chain=${chain})`);
 }
 
 async function fork(from: string | undefined, to: string | undefined) {

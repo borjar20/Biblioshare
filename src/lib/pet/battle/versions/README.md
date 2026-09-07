@@ -37,3 +37,9 @@ Un input elegido antes de una transicion letal en el mismo tick queda ignorado,
 porque las transiciones preceden a las acciones. Los inputs posteriores al final,
 incluido otro input tras un KO causado por una accion, se rechazan.
 R3 conserva tambien su guard de snapshot dentro del directorio publicado; el registro importa su record e inputs directamente, sin depender de los exports actuales ni del catalogo de clases mutable.
+
+`r4.1` (R4a) convierte la cadena de una aventura en un solo combate: `BattleInit.enemies[]`,
+`enemy_id` con ids separados por coma, reloj continuo con `maxTicks` por tramo, eventos
+`FIGHT_ENDED`/`FIGHT_STARTED`, ulti una vez por tramo (la juzga el motor, no el validador),
+límite de tramo en cadena = derrota. Con un solo enemigo se comporta como r3.1 y conserva sus
+números. Publicada con `fork`/`golden --version`/`freeze` (#1093).
