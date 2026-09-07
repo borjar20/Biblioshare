@@ -22,21 +22,12 @@ import java.net.URL
 // org.json (ambos gratis en el dispositivo), aislado en este fichero para que
 // migrar a supabase-kt más adelante quede contenido si hace falta Realtime.
 object NativeSupabase {
-    private const val PREFS = "native_supabase"
     private const val K_URL = "url"
     private const val K_ANON = "anon"
     private const val K_ACCESS = "access_token"
     private const val K_REFRESH = "refresh_token"
     private const val K_EXPIRES = "expires_at" // epoch segundos
     private const val SKEW_S = 60L // refresca 1 min antes de caducar
-
-    // ponytail: tokens en SharedPreferences app-privadas, SIN cifrar en reposo —
-    // mismo nivel de protección que las cookies del WebView (sandbox por app).
-    // No bajamos el listón actual, lo igualamos. Endurecer con Android Keystore
-    // si se decide: issue de deuda abierta, no Jetpack Security (alpha, crashea
-    // en algunos dispositivos).
-    private fun prefs(context: Context) =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     data class Who(val userId: String)
 
@@ -50,26 +41,25 @@ object NativeSupabase {
         val (code, text) = request("POST", "$url/auth/v1/verify", anonKey, null, body)
         if (code !in 200..299) return null
         val json = JSONObject(text)
-        prefs(context).edit().putString(K_URL, url).putString(K_ANON, anonKey).apply()
-        saveSession(context, json)
+        saveSession(context, json, url, anonKey)
         return json.optJSONObject("user")?.optString("id")?.ifEmpty { null }
     }
 
     /** Access token válido (refrescando si hace falta), o null si no hay sesión viva. */
     private fun freshAccessToken(context: Context): String? {
-        val p = prefs(context)
-        val access = p.getString(K_ACCESS, null) ?: return null
-        val expiresAt = p.getLong(K_EXPIRES, 0L)
+        val p = NativeSessionStore.read(context)
+        val access = p.optString(K_ACCESS).ifEmpty { null } ?: return null
+        val expiresAt = p.optLong(K_EXPIRES, 0L)
         val now = System.currentTimeMillis() / 1000
         if (now < expiresAt - SKEW_S) return access
         return refresh(context)
     }
 
     private fun refresh(context: Context): String? {
-        val p = prefs(context)
-        val url = p.getString(K_URL, null) ?: return null
-        val anon = p.getString(K_ANON, null) ?: return null
-        val refreshToken = p.getString(K_REFRESH, null) ?: return null
+        val p = NativeSessionStore.read(context)
+        val url = p.optString(K_URL).ifEmpty { null } ?: return null
+        val anon = p.optString(K_ANON).ifEmpty { null } ?: return null
+        val refreshToken = p.optString(K_REFRESH).ifEmpty { null } ?: return null
         val body = JSONObject().put("refresh_token", refreshToken).toString()
         val (code, text) = request(
             "POST", "$url/auth/v1/token?grant_type=refresh_token", anon, null, body,
@@ -85,7 +75,7 @@ object NativeSupabase {
         return json.optString("access_token").ifEmpty { null }
     }
 
-    private fun saveSession(context: Context, json: JSONObject) {
+    private fun saveSession(context: Context, json: JSONObject, url: String? = null, anon: String? = null) {
         val access = json.optString("access_token")
         val refresh = json.optString("refresh_token")
         // expires_at (epoch s) si viene; si no, ahora + expires_in.
@@ -94,11 +84,11 @@ object NativeSupabase {
         } else {
             System.currentTimeMillis() / 1000 + json.optLong("expires_in", 3600)
         }
-        prefs(context).edit()
-            .putString(K_ACCESS, access)
-            .putString(K_REFRESH, refresh)
-            .putLong(K_EXPIRES, expiresAt)
-            .apply()
+        val session = NativeSessionStore.read(context)
+        if (url != null) session.put(K_URL, url)
+        if (anon != null) session.put(K_ANON, anon)
+        session.put(K_ACCESS, access).put(K_REFRESH, refresh).put(K_EXPIRES, expiresAt)
+        NativeSessionStore.write(context, session)
     }
 
     /**
@@ -108,9 +98,9 @@ object NativeSupabase {
      */
     fun whoAmI(context: Context): Who? {
         val token = freshAccessToken(context) ?: return null
-        val p = prefs(context)
-        val url = p.getString(K_URL, null) ?: return null
-        val anon = p.getString(K_ANON, null) ?: return null
+        val p = NativeSessionStore.read(context)
+        val url = p.optString(K_URL).ifEmpty { null } ?: return null
+        val anon = p.optString(K_ANON).ifEmpty { null } ?: return null
         val (code, text) = request(
             "GET", "$url/rest/v1/profiles?select=user_id&limit=1", anon, token, null,
         )
@@ -126,7 +116,7 @@ object NativeSupabase {
      * refresco en segundo plano no dispare llamadas cuando ya no hay sesión.
      */
     fun hasSession(context: Context): Boolean =
-        prefs(context).getString(K_REFRESH, null) != null
+        NativeSessionStore.read(context).optString(K_REFRESH).isNotEmpty()
 
     /**
      * Llama una RPC de PostgREST con la sesión nativa y devuelve el cuerpo JSON
@@ -138,18 +128,18 @@ object NativeSupabase {
      */
     fun rpc(context: Context, fn: String): String? {
         val token = freshAccessToken(context) ?: return null
-        val p = prefs(context)
-        val url = p.getString(K_URL, null) ?: return null
-        val anon = p.getString(K_ANON, null) ?: return null
+        val p = NativeSessionStore.read(context)
+        val url = p.optString(K_URL).ifEmpty { null } ?: return null
+        val anon = p.optString(K_ANON).ifEmpty { null } ?: return null
         val (code, text) = request("POST", "$url/rest/v1/rpc/$fn", anon, token, "{}")
         return if (code in 200..299) text else null
     }
 
     fun signOut(context: Context) {
-        val p = prefs(context)
-        val url = p.getString(K_URL, null)
-        val anon = p.getString(K_ANON, null)
-        val token = p.getString(K_ACCESS, null)
+        val p = NativeSessionStore.read(context)
+        val url = p.optString(K_URL).ifEmpty { null }
+        val anon = p.optString(K_ANON).ifEmpty { null }
+        val token = p.optString(K_ACCESS).ifEmpty { null }
         if (url != null && anon != null && token != null) {
             // best-effort: revoca la sesión en el servidor antes de olvidarla.
             try {
@@ -161,7 +151,7 @@ object NativeSupabase {
     }
 
     fun clear(context: Context) {
-        prefs(context).edit().clear().apply()
+        NativeSessionStore.clear(context)
     }
 
     // ── HTTP (HttpURLConnection + org.json, cero dependencias nuevas) ──────────

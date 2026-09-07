@@ -4347,3 +4347,18 @@ transacciones fallidas revierten su contador SQL; la carga previa al proveedor
 desde una action permanece consumida aunque el proveedor falle. No es una
 defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
 evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.
+
+## 2026-09-07 — Sesión nativa cifrada y excluida de copias (#679)
+
+La sesión nativa completa se guarda con AES-256-GCM y una clave no exportable de
+Android Keystore, en un archivo atómico dentro de noBackupFilesDir. No se añade
+Jetpack Security ni otra dependencia. La primera lectura migra las preferencias
+antiguas: persiste el archivo cifrado antes de retirar el origen en texto claro.
+Si falta la clave o el archivo no autentica, se requiere un nuevo handoff nativo;
+no se vuelve al refresh token antiguo. Se excluye native_supabase.xml de backup y
+transferencia entre dispositivos, además de desactivar allowBackup. No se borran
+copias históricas externas ni se modifica la sesión de cookies del WebView.
+
+La verificación JVM cubre cifrado, IV distinto, integridad y clave incorrecta.
+Los tests Android de almacenamiento/migración requieren dispositivo o emulador;
+la PR debe distinguir esa evidencia de compilar el APK.
