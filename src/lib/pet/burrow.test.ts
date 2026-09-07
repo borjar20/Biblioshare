@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { arrangeBurrow, type BurrowNeighbor } from "./burrow";
 
-const own = { name: "Nuez", petClass: "wizard" as const, stage: "acorn" as const };
+const own = { name: "Nuez", petClass: "wizard" as const, stage: "acorn" as const, level: 1 };
 const neighbors: BurrowNeighbor[] = Array.from({ length: 13 }, (_, i) => ({
   userId: `user-${i}`, username: `person${i}`, displayName: null, avatarUrl: null,
-  name: `Vecina ${i}`, petClass: "fighter", stage: "adult",
+  name: `Vecina ${i}`, petClass: "fighter", stage: "adult", level: 12,
 }));
 
 describe("arrangeBurrow", () => {

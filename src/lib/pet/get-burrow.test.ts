@@ -3,10 +3,14 @@ import { getBurrowPets } from "./get-burrow";
 
 const row = {
   user_id: "neighbor", username: "ana", display_name: null, avatar_url: null,
-  pet_name: "Nube", pet_class: "wizard", pet_stage: "acorn", total: 85,
+  pet_name: "Nube", pet_class: "wizard", pet_stage: "acorn", pet_level: 7, total: 85,
 };
 
 describe("getBurrowPets", () => {
+  it.each([0, -1, 1.5, null, "12", Number.MAX_SAFE_INTEGER + 1])("rejects invalid social levels: %j", async (pet_level) => {
+    expect(await getBurrowPets({ rpc: async () => ({ data: [{ ...row, pet_level }], error: null }) }))
+      .toEqual({ ok: false });
+  });
   it("descarta las filas sin identidad, clase o etapa válidas", async () => {
     const result = await getBurrowPets({ rpc: async () => ({ data: [
       { ...row, pet_stage: "future" }, { ...row, username: "" },
@@ -35,7 +39,7 @@ describe("getBurrowPets", () => {
     }) });
     expect(result).toEqual({ ok: true, total: 85, rows: [{
       userId: "neighbor", username: "ana", displayName: null, avatarUrl: null,
-      name: "Nube", petClass: "wizard", stage: "acorn",
+      name: "Nube", petClass: "wizard", stage: "acorn", level: 7,
     }] });
   });
 });

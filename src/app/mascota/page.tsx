@@ -41,7 +41,7 @@ async function PetContent() {
   const pet = await getPetSnapshot(supabase, user.id);
   const burrow = (
     <Suspense fallback={<div aria-hidden className="h-40 animate-pulse rounded-card bg-surface-muted" />}>
-      <BurrowSection viewerId={user.id} own={pet ? { name: pet.name, petClass: pet.petClass, stage: pet.stage } : null} />
+      <BurrowSection viewerId={user.id} own={pet ? { name: pet.name, petClass: pet.petClass, stage: pet.stage, level: pet.level } : null} />
     </Suspense>
   );
 

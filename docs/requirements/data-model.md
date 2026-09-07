@@ -4508,3 +4508,15 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > pendiente a propósito**: la aplicación está reservada al controlador de la rama en el
 > momento del merge, no a esta tarea de cierre. Ver §7.4 para la semántica del valor nuevo y
 > `decisiones.md` (2026-08-15).
+
+### 8bis.7. Nivel social y mascota en perfil — S2 (2026-09-07)
+
+**[Canónico · funciones y ACL verificadas contra dev el 2026-09-07; NO aplicadas ni verificadas en producción]**
+
+Migración `20260907130854_pet_social_profile_and_level.sql`. No modifica tablas, columnas, RLS ni grants de tablas.
+
+- `get_burrow_pets_with_level(p_limit integer default 60)` es wrapper invocador sobre `private.burrow_pets_with_level(uuid,integer)`, definidor: añade `pet_level` desde `pet_state.last_level` a la selección de S1. Hereda visibilidad, límite, total y orden diario; vuelve a ordenar tras el join. Solo authenticated. La función original permanece para clientes anteriores. Nivel y etapa son la última derivación guardada, no un recálculo ajeno.
+- `get_profile_pet(p_user_id uuid)` es wrapper invocador sobre `private.profile_pet(uuid)`, definidor: devuelve cero o una fila con `pet_name`, `pet_class`, `pet_stage`. Usa `can_view_profile` y excluye bloqueos, sin recibir un espectador independiente. anon y authenticated tienen EXECUTE; anon recibe USAGE del esquema private para llamar al helper, sin grants adicionales de otras funciones o tablas.
+- Las cuatro funciones fijan search_path vacío y revocan EXECUTE de PUBLIC. Perfil y madriguera leen con sesión sin caché compartida; OG usa anónimo con respuesta no-store.
+
+S1 aceptado por el usuario el 2026-09-07. La nueva exposición de nivel es una decisión de producto explícita; no permite humor, XP, atributos ni actividad.

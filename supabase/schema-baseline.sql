@@ -1197,3 +1197,8 @@ commit;
 begin;
 \ir migrations/20260907093534_catalog_reference_guards.sql
 commit;
+
+-- 20260907130854_pet_social_profile_and_level
+begin;
+\ir migrations/20260907130854_pet_social_profile_and_level.sql
+commit;

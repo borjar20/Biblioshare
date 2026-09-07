@@ -1,11 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
 
 // Separate from mascota.spec.ts: that file's hooks change a persistent account.
 // This feature only uses these two disposable users, cleaned before and after.
 const usernames = ["burrow1083a", "burrow1083b", ...Array.from({ length: 64 }, (_, i) => `burrow1083n${i}`)];
 const password = "Burrow-test-1083!";
 type TestUser = { id: string; username: string; email: string; token: string };
-type Row = { user_id: string; pet_stage: string; total: number };
+type Row = { user_id: string; pet_stage: string; pet_level: number; total: number };
 
 function environment() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -74,12 +75,88 @@ async function login(page: Page, user: TestUser) {
 }
 
 async function pets(user: TestUser, limit?: number): Promise<Row[]> {
-  const response = await api("rest/v1/rpc/get_burrow_pets", "POST", limit === undefined ? {} : { p_limit: limit }, user.token);
-  expect(response.ok, `get_burrow_pets: ${response.status}`).toBe(true);
+  const response = await api("rest/v1/rpc/get_burrow_pets_with_level", "POST", limit === undefined ? {} : { p_limit: limit }, user.token);
+  expect(response.ok, `get_burrow_pets_with_level: ${response.status}`).toBe(true);
   return response.json();
 }
 
 test.describe("Madriguera #1083", () => {
+  test("S2: apariencia de perfil respeta público, privado, seguimiento y bloqueos", async () => withTestUsers(async () => {
+    const a = await createUser(usernames[0]);
+    const b = await createUser(usernames[1]);
+    const { anon } = environment();
+    const profilePet = async (token: string, userId = b.id) => {
+      const response = await api("rest/v1/rpc/get_profile_pet", "POST", { p_user_id: userId }, token);
+      expect(response.ok).toBe(true);
+      return response.json();
+    };
+    expect(await profilePet(anon)).toEqual([]);
+    await write("rest/v1/pet_state", "POST", { user_id: b.id, name: "Nube", class: "wizard", last_stage: "acorn", last_level: 7 });
+    const expected = [{ pet_name: "Nube", pet_class: "wizard", pet_stage: "acorn" }];
+    expect(await profilePet(anon)).toEqual(expected);
+    expect(await profilePet(a.token)).toEqual(expected);
+    await write(`rest/v1/profiles?user_id=eq.${b.id}`, "PATCH", { is_public: false });
+    expect(await profilePet(anon)).toEqual([]);
+    expect(await profilePet(a.token)).toEqual([]);
+    expect(await profilePet(b.token)).toEqual(expected);
+    await write("rest/v1/follows", "POST", { follower_id: a.id, followee_id: b.id, status: "pending" });
+    expect(await profilePet(a.token)).toEqual([]);
+    await write(`rest/v1/follows?follower_id=eq.${a.id}&followee_id=eq.${b.id}`, "PATCH", { status: "accepted" });
+    expect(await profilePet(a.token)).toEqual(expected);
+    expect((await pets(a))[0].pet_level).toBe(7);
+    for (const [blocker, blocked] of [[a, b], [b, a]]) {
+      await write("rest/v1/user_blocks", "POST", { blocker_id: blocker.id, blocked_id: blocked.id });
+      expect(await profilePet(a.token)).toEqual([]);
+      await write(`rest/v1/user_blocks?blocker_id=eq.${blocker.id}&blocked_id=eq.${blocked.id}`, "DELETE");
+    }
+  }));
+
+  test("S2: ficha móvil/escritorio y OG público incluso con sesión", async ({ page, browser }, testInfo) => withTestUsers(async () => {
+    test.setTimeout(180_000);
+    const a = await createUser(usernames[0]);
+    const b = await createUser(usernames[1]);
+    await write("rest/v1/pet_state", "POST", { user_id: b.id, name: "Nube de las bibliotecas", class: "wizard", last_stage: "adult", last_level: 12 });
+    const path = `/u/${b.username}`;
+    await page.goto(path);
+    const card = page.getByTestId("profile-pet");
+    await expect(card).toContainText("Nube de las bibliotecas");
+    await expect(card).toContainText("Maga");
+    await expect(card).toContainText("Adulta");
+    await card.screenshot({ path: testInfo.outputPath("profile-pet-desktop.png") });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(card).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await card.screenshot({ path: testInfo.outputPath("profile-pet-mobile.png") });
+    const meta = await page.locator('meta[property="og:image"]').getAttribute("content");
+    expect(meta).toBeTruthy();
+    const og = new URL(meta!, page.url());
+    const imagePath = og.pathname + og.search;
+    const publicImage = await page.request.get(imagePath);
+    expect(publicImage.ok()).toBe(true);
+    expect(publicImage.headers()["content-type"]).toContain("image/png");
+    expect(publicImage.headers()["cache-control"]).toContain("no-store");
+    await writeFile(testInfo.outputPath("profile-pet-og.png"), await publicImage.body());
+    await login(page, a);
+    await write(`rest/v1/profiles?user_id=eq.${b.id}`, "PATCH", { is_public: false });
+    await write("rest/v1/follows", "POST", { follower_id: a.id, followee_id: b.id, status: "accepted" });
+    await page.goto(path);
+    await expect(card).toBeVisible();
+    const authenticatedImage = await page.request.get(imagePath);
+    expect(authenticatedImage.ok()).toBe(true);
+    const anonContext = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+    try {
+      const anonymousImage = await anonContext.request.get(imagePath);
+      expect(anonymousImage.ok()).toBe(true);
+      expect(await authenticatedImage.body()).toEqual(await anonymousImage.body());
+      expect(await anonymousImage.body()).not.toEqual(await publicImage.body());
+      await writeFile(testInfo.outputPath("profile-private-og.png"), await anonymousImage.body());
+      const anonymousPage = await anonContext.newPage();
+      await anonymousPage.goto(path);
+      await expect(anonymousPage.getByText("Cuenta privada", { exact: false })).toBeVisible();
+      await expect(anonymousPage.getByTestId("profile-pet")).toHaveCount(0);
+    } finally { await anonContext.close(); }
+  }));
+
   test("visibilidad por RPC con sesiones reales y campos mínimos", async () => withTestUsers(async () => {
     const a = await createUser(usernames[0]);
     const b = await createUser(usernames[1]);
@@ -92,7 +169,7 @@ test.describe("Madriguera #1083", () => {
     expect(visible[0].pet_stage).toBe("acorn");
     expect(visible[0].total).toBe(1);
     expect(Object.keys(visible[0]).sort()).toEqual([
-      "avatar_url", "display_name", "pet_class", "pet_name", "pet_stage", "total", "user_id", "username",
+      "avatar_url", "display_name", "pet_class", "pet_level", "pet_name", "pet_stage", "total", "user_id", "username",
     ]);
     await write(`rest/v1/profiles?user_id=eq.${b.id}`, "PATCH", { is_public: false });
     expect((await pets(a)).map((p) => p.user_id)).toEqual([b.id]);
@@ -108,7 +185,7 @@ test.describe("Madriguera #1083", () => {
     expect(await pets(a, 0)).toHaveLength(1);
     expect(await pets(a, 1000)).toHaveLength(1);
     const { url, anon } = environment();
-    const anonymous = await fetch(`${url}/rest/v1/rpc/get_burrow_pets`, {
+    const anonymous = await fetch(`${url}/rest/v1/rpc/get_burrow_pets_with_level`, {
       method: "POST", headers: { apikey: anon, Authorization: `Bearer ${anon}`, "Content-Type": "application/json" }, body: "{}",
     });
     expect(anonymous.ok).toBe(false);
@@ -121,7 +198,7 @@ test.describe("Madriguera #1083", () => {
     test.setTimeout(120_000);
     const a = await createUser(usernames[0]);
     const b = await createUser(usernames[1]);
-    await write("rest/v1/pet_state", "POST", { user_id: b.id, name: "Nube", class: "wizard", last_stage: "adult" });
+    await write("rest/v1/pet_state", "POST", { user_id: b.id, name: "Nube", class: "wizard", last_stage: "adult", last_level: 12 });
     await login(page, a);
     await page.goto(`/u/${b.username}`);
     await page.getByRole("button", { name: /^seguir$/i }).click();
@@ -133,6 +210,7 @@ test.describe("Madriguera #1083", () => {
     await expect(page.getByTestId("hatch-form")).toBeVisible();
     await expect(burrow.getByRole("button", { name: /Nube.*@burrow1083b/ })).toBeVisible();
     await expect(burrow.getByText("La tuya")).toHaveCount(0);
+    await expect(burrow.getByText("Nivel 12", { exact: true })).toBeVisible();
     await burrow.getByRole("button", { name: /Nube.*@burrow1083b/ }).click();
     await expect(burrow.getByRole("link", { name: /@burrow1083b/ })).toHaveAttribute("href", "/u/burrow1083b");
     const noPet = await api(`rest/v1/pet_state?user_id=eq.${a.id}&select=user_id`);
