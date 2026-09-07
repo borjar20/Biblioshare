@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { TrainingSession } from "./training-session";
 import type { TrainingBattle, TrainingResponse } from "@/lib/pet/training/types";
+import { ENEMIES, RULESET } from "@/lib/pet/battle/content";
+import { pickEnemies, enemyList } from "@/lib/pet/battle/adventure";
+import { POLICIES, runPolicy } from "@/lib/pet/battle/policies";
+import { snapshotForProfile } from "@/lib/pet/battle/profiles";
+import { seedFromIndex } from "@/lib/pet/battle/prng";
+import { contentHash as r3Hash } from "@/lib/pet/battle/versions/r3.1/content";
 
 const battle: TrainingBattle = { intentId: "one", status: "open", seed: "00000001000000020000000300000004", rulesetVersion: "r2.2", enemyId: "brote", contentHash: "hash", inputs: [], result: null, digest: null, snapshot: { name: "Roble", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 0, hpMax: 100, atk: 10 } };
 function setup() {
@@ -42,7 +48,7 @@ describe("training session", () => {
 describe("R3 ulti controller", () => {
  async function ready() {
   const {session,actions}=setup();
-  actions.start.mockResolvedValueOnce({ok:true,battle:{...battle,rulesetVersion:"r3.1"}});
+  actions.start.mockResolvedValueOnce({ok:true,battle:{...battle,intentId:"1",rulesetVersion:"r3.1"}});
   await session.start(); for(let i=0;i<120;i++) session.tick(); return {session,actions};
  }
  it("stops ticks and cooldown while open, keeps previous pause and cancel spends nothing",async()=>{
@@ -61,4 +67,81 @@ describe("R3 ulti controller", () => {
   const {session,actions}=setup();session.enemyId="caparazon";actions.start.mockRejectedValueOnce(new Error());await session.start();session.enemyId="brote";await session.start();
   expect(actions.start.mock.calls.map(call=>call.slice(0,2))).toEqual([["1","caparazon"],["1","caparazon"]]);
  });
+});
+
+function memoryStorage() {
+  const m = new Map<string, string>();
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k), map: m };
+}
+const snapshot = snapshotForProfile("lectora_larga", "wizard");
+
+describe("chains and local log", () => {
+  it("simula una fila r3.1 con el motor r3.1 (un tramo) y expone fight 1/1", async () => {
+    const battle = { intentId: "i1", status: "open" as const, seed: seedFromIndex(1), snapshot, rulesetVersion: "r3.1", contentHash: await r3Hash(), enemyId: "caparazon", inputs: [], result: null, digest: null };
+    const s = new TrainingSession({ start: async () => ({ ok: true, battle }), resolve: async () => ({ ok: false, code: "x" }), replay: async () => ({ ok: false, code: "x" }) }, () => "i1");
+    await s.start();
+    expect(s.phase).toBe("playing");
+    expect(s.view).toMatchObject({ fight: 1, fights: 1, tick: 0 });
+  });
+
+  it("cadena r4.1: al acabar un tramo espera «Continuar», y el log local reanuda en pausa donde estaba", async () => {
+    // seed que supera el primer tramo con la política interrupt
+    let found: { seed: string; inputs: ReturnType<typeof runPolicy>["inputs"]; endedTick: number } | null = null;
+    for (let i = 0; i < 100 && !found; i++) {
+      const seed = seedFromIndex(i);
+      const enemies = pickEnemies(seed, 3, ENEMIES);
+      const { inputs, events } = runPolicy({ seed, snapshot, enemies, ruleset: RULESET }, POLICIES.interrupt);
+      const ended = events.find((e) => e.type === "FIGHT_ENDED");
+      if (ended) found = { seed, inputs, endedTick: ended.tick };
+    }
+    expect(found).not.toBeNull();
+    const { seed, inputs, endedTick } = found!;
+    const battle = { intentId: "adv-1", status: "open" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: "irrelevante-en-cliente", enemyId: enemyList(pickEnemies(seed, 3, ENEMIES)), inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const storage = memoryStorage();
+    const actions = { start: async () => ({ ok: true as const, battle }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: false as const, code: "x" }) };
+    const s = new TrainingSession(actions, () => "ignored", { storage });
+    await s.start();
+    // reproducir la política tick a tick hasta la frontera
+    while (s.view!.tick <= endedTick && !s.awaitingContinue) {
+      if (inputs.some((x) => x.tick === s.view!.tick)) s.skill();
+      s.tick();
+    }
+    expect(s.awaitingContinue).toBe(true);
+    expect(s.view).toMatchObject({ fight: 2, fights: 3, tick: endedTick + 1 });
+    const before = s.view!.tick;
+    s.tick(); s.tick();
+    expect(s.view!.tick).toBe(before); // el interludio detiene el reloj
+    expect(JSON.parse(storage.map.get("pet-adventure:adv-1")!)).toMatchObject({ tick: endedTick + 1 });
+    // Nueva sesión con el mismo almacenamiento: reanuda en pausa, en el mismo tick y esperando Continuar
+    const s2 = new TrainingSession(actions, () => "ignored", { storage });
+    await s2.start();
+    expect(s2.paused).toBe(true);
+    expect(s2.awaitingContinue).toBe(true);
+    expect(s2.view).toMatchObject({ fight: 2, tick: endedTick + 1 });
+    expect(s2.inputs).toEqual(s.inputs);
+    s2.continueFight(); s2.togglePause(); s2.tick();
+    expect(s2.view!.tick).toBe(endedTick + 2);
+    expect(s2.events.some((e) => e.type === "FIGHT_STARTED")).toBe(true);
+  });
+
+  it("sin log local, un intento abierto empieza en el tick 0 con el mismo seed", async () => {
+    const battle = { intentId: "adv-2", status: "open" as const, seed: seedFromIndex(5), snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const s = new TrainingSession({ start: async () => ({ ok: true, battle }), resolve: async () => ({ ok: false, code: "x" }), replay: async () => ({ ok: false, code: "x" }) }, () => "z", { storage: memoryStorage() });
+    await s.start();
+    expect(s.view).toMatchObject({ tick: 0, fight: 1, fights: 3 });
+    expect(s.paused).toBe(false);
+  });
+
+  it("al resolver, borra la entrada local", async () => {
+    const storage = memoryStorage();
+    const battle = { intentId: "adv-3", status: "open" as const, seed: seedFromIndex(7), snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote", inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const resolved = { ...battle, status: "resolved" as const, result: { outcome: "lose" as const, reason: "ko" as const, ticks: 1, petHp: 0, petHpMax: 1, enemyHp: 1, enemyHpMax: 1, damageDealt: 0, damageTaken: 1, causes: [], fight: 1 }, digest: "d" };
+    const s = new TrainingSession({ start: async () => ({ ok: true, battle }), resolve: async () => ({ ok: true, battle: resolved, events: [] }), replay: async () => ({ ok: false, code: "x" }) }, () => "z", { storage });
+    await s.start();
+    s.skill(); s.tick();
+    expect(storage.map.has("pet-adventure:adv-3")).toBe(true);
+    s.phase = "resolving";
+    await s.resolve();
+    expect(storage.map.has("pet-adventure:adv-3")).toBe(false);
+  });
 });
