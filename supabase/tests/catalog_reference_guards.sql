@@ -64,10 +64,38 @@ begin
   exception when foreign_key_violation then blocked := true;
   end;
   if not blocked then raise exception 'FAIL: insertion allowed a missing catalog target'; end if;
+  insert into public.notes(user_id,item_type,item_id,kind,body) values(actor,'book',anchor,'note','[TEST] move reference');
+  blocked := false;
+  begin
+    update public.notes set item_id=item where user_id=actor;
+  exception when foreign_key_violation then blocked := true;
+  end;
+  if not blocked then raise exception 'FAIL: update allowed a missing catalog target'; end if;
+  insert into public.books(id,title) values(item,'[TEST] new target');
+  update public.notes set item_id=item where user_id=actor;
+  blocked := false;
+  begin
+    delete from public.books where id=item;
+  exception when foreign_key_violation then blocked := true;
+  end;
+  if not blocked then raise exception 'FAIL: moved reference does not protect new target'; end if;
+  update public.notes set item_id=anchor where user_id=actor;
+  insert into public.saga_placement_windows(saga_id,item_type,item_id,after_child_saga_id)
+    values(saga,'book',anchor,child);
+  update public.saga_placement_windows set before_item_type='book',before_item_id=item where saga_id=saga;
+  blocked := false;
+  begin
+    delete from public.books where id=item;
+  exception when foreign_key_violation then blocked := true;
+  end;
+  if not blocked then raise exception 'FAIL: newly populated optional anchor not protected'; end if;
+  update public.saga_placement_windows set before_item_type=null,before_item_id=null where saga_id=saga;
+  delete from public.books where id=item;
   if (select count(*) from private.catalog_reference_rules()) <> 15 then raise exception 'FAIL: incomplete reference inventory'; end if;
   if has_function_privilege('authenticated','private.lock_catalog_reference()','execute') or
      has_function_privilege('anon','private.protect_catalog_references()','execute') then raise exception 'FAIL: trigger helpers exposed'; end if;
   raise notice 'PASS #708: % table/type restrictions and cascades, missing target and helper grants',checks;
+  raise notice 'PASS #708: reference UPDATE, optional anchor assignment and release';
 end;
 $test$;
 rollback;

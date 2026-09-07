@@ -1,7 +1,8 @@
 # Modelo de datos
 
 > **Delta #708, 2026-09-07:** esquema y comportamiento verificados en Supabase
-> local con fixtures y rollback; producción no modificada. Ver el inventario de
+> local con fixtures y rollback; definición y permisos comprobados en dev
+> (`biblioshare-dev`, `tyvzpuhxfwxrnkcpzxyg`); producción no modificada. Ver el inventario de
 > referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
 
 > **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**

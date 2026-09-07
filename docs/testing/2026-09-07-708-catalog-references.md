@@ -1,6 +1,6 @@
 # Referencias polimórficas de catálogo (#708)
 
-[Canónico · verificado localmente 2026-09-07; producción no modificada]
+[Canónico · verificado localmente 2026-09-07; definición/permisos/triggers verificados en dev; producción no modificada]
 
 La prueba mínima insertaba una nota sintética, borraba su libro y exigía un
 rechazo: antes de la migración fallaba con `deleting catalog leaves an orphan
@@ -59,6 +59,8 @@ una FK universal. Tampoco protege cambios privilegiados del ID de catálogo.
 - `supabase/tests/catalog_reference_guards.sql`: 45 casos de restricción/cascada
   (14 referencias restrictivas y créditos, por cada tipo de catálogo), destino
   inexistente, privilegios de helpers y rechazo de snapshot antiguo.
+  También cubre mover una referencia, rechazar un destino inexistente en UPDATE,
+  poblar un ancla opcional y liberar el destino al retirarla.
 - `scripts/db/verify-catalog-reference-concurrency.mjs`: ambos órdenes de
   concurrencia; no quedan notas huérfanas ni filas sintéticas.
 - `scripts/db/verify.sql`: contrato del esquema.
