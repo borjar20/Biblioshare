@@ -4377,13 +4377,7 @@ Cierre de la implementación de R4a (spec `docs/superpowers/specs/2026-09-06-mas
 migración `supabase/migrations/20260908_pet_adventures.sql`, verificada en dev el 2026-09-07; prod
 pendiente de la aceptación de R3 en #1106). La longitud de cadena y la política de referencia ya se
 decidieron y documentaron el 2026-09-07 en la entrada anterior («Mascota R4a: calibración de la
-cadena con la ulti y techo de «no pulsar» al 3 %», issue #1117); no se repite aquí, solo el resumen
-que hace falta para justificar las dos decisiones de esta entrada:
-
-| Tramos | `interrupt` (informativo) | `interrupt_ulti` | `never` | ¿En banda? |
-|---|---|---|---|---|
-| 2 | 28–37 % | 84–88 % | 3–9 % | No |
-| 3 | 8–14 % | 56–60 % | 0–2 % | Sí — elegida |
+cadena con la ulti y techo de «no pulsar» al 3 %», issue #1117); los números de la calibración (2 y 3 tramos, políticas `interrupt`, `interrupt_ulti` y `never`) están en esa entrada anterior y no se repiten aquí.
 
 **`start_pet_adventure` y `resolve_pet_adventure` viven en `public`, no en `private`.** PostgREST
 solo expone el esquema `public`; una función `service_role`-only en `private` no sería invocable
