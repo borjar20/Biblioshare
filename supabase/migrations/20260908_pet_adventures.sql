@@ -160,6 +160,10 @@ begin
     if v_reward is null then
       v_reward := p_reward_order->0;
     end if;
+    -- Una victoria sin lista de botín es un bug del servidor, no un caso: se rechaza para no quemar el día sin recompensa.
+    if v_reward is null then
+      raise exception 'EMPTY_REWARD_ORDER' using errcode = 'P0001';
+    end if;
   end if;
   return query
     update public.pet_battles

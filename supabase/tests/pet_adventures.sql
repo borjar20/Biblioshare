@@ -51,10 +51,14 @@ select pg_temp.assert_true((select min(day) = (timezone('Europe/Madrid', now()))
 select pg_temp.assert_true((select count(*) = 0 from private.pet_adventure_days('20260908-0000-4000-8000-00000000000b')), 'identidad ajena: cero filas');
 reset role;
 
--- Como B (sin actividad): nada pendiente
+-- Como postgres: la función pura sí ve los dos días pendientes de A (sin guarda de identidad)
+select pg_temp.assert_true((select count(*) = 2 from private.pet_pending_adventure_days('20260908-0000-4000-8000-00000000000a')), 'la función pura sí ve los dos días de A');
+
+-- Como B (sin actividad): nada pendiente, y tampoco puede leer los días pendientes de A
 select set_config('request.jwt.claims', '{"sub":"20260908-0000-4000-8000-00000000000b","role":"authenticated"}', true);
 set local role authenticated;
 select pg_temp.assert_true((select count(*) = 0 from public.get_pet_adventure_days()), 'sin actividad no hay aventura');
+select pg_temp.assert_true((select count(*) = 0 from private.pet_adventure_days('20260908-0000-4000-8000-00000000000a')), 'identidad ajena: B no lee los días pendientes de A');
 reset role;
 
 -- Escritura (como postgres, que es quien tiene service_role de facto en el test)
@@ -73,6 +77,14 @@ reset role;
 -- Derrota → el siguiente start es el intento 2 del mismo día
 select pg_temp.assert_true((select status = 'resolved' and reward is null from public.resolve_pet_adventure('20260908-0000-4000-8000-00000000000a', '20260908-0000-4000-8000-000000000101', '[]'::jsonb, '{"outcome":"lose","reason":"ko","fight":1}'::jsonb, repeat('b', 64), '[]'::jsonb)), 'resolver una derrota no da botín');
 select pg_temp.assert_true((select attempt = 2 and adventure_day = (timezone('Europe/Madrid', now()))::date - 6 from public.start_pet_adventure('20260908-0000-4000-8000-00000000000a', repeat('3', 32), '20260908-0000-4000-8000-000000000103', 'brote', 'r4.1', repeat('a', 64), '{}'::jsonb)), 'tras perder, el mismo día se reintenta como intento 2 antes de consumir otro día');
+-- Victoria con lista de botín vacía: se rechaza, el intento sigue abierto
+do $$ begin
+  perform public.resolve_pet_adventure('20260908-0000-4000-8000-00000000000a', '20260908-0000-4000-8000-000000000103', '[]'::jsonb, '{"outcome":"win","reason":"ko","fight":3}'::jsonb, repeat('9', 64), '[]'::jsonb);
+  raise exception 'assertion_failed: una victoria con lista de botín vacía debería rechazarse';
+exception when others then
+  if sqlerrm <> 'EMPTY_REWARD_ORDER' then raise; end if;
+end $$;
+select pg_temp.assert_true((select status = 'open' from public.pet_battles where intent_id = '20260908-0000-4000-8000-000000000103'), 'el intento sigue abierto tras rechazar la victoria sin botín');
 -- Victoria con permutación: primer no poseído
 select pg_temp.assert_true((select reward->>'itemId' = 'heavy_ink_quill' from public.resolve_pet_adventure('20260908-0000-4000-8000-00000000000a', '20260908-0000-4000-8000-000000000103', '[]'::jsonb, '{"outcome":"win","reason":"ko","fight":3}'::jsonb, repeat('c', 64), '[{"itemId":"heavy_ink_quill","slot":"weapon"},{"itemId":"loan_pendant","slot":"amulet"}]'::jsonb)), 'la victoria entrega el primer objeto de la lista');
 -- Resolver otra vez: devuelve la guardada sin cambiarla
