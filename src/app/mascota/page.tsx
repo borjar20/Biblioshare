@@ -13,6 +13,7 @@ import { getPetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import { HatchForm } from "@/components/pet/hatch-form";
 import { PetDetail } from "@/components/pet/pet-detail";
 import { BurrowSection } from "@/components/pet/burrow-section";
+import { AdventureSection } from "@/components/pet/adventure/adventure-section";
 import { TrainingPanel } from "@/components/pet/training/training-panel";
 
 export const metadata: Metadata = { title: "Mascota — Biblioshare" };
@@ -50,5 +51,9 @@ async function PetContent() {
     const { counts } = await getPetCounts(supabase, user.id);
     return <><HatchForm suggested={suggestClass(deriveAttributes(counts))} />{burrow}</>;
   }
-  return <><PetDetail pet={pet} burrow={burrow} /><TrainingPanel /></>;
+  return <>
+    <PetDetail pet={pet} burrow={burrow} />
+    <Suspense fallback={<div aria-hidden className="h-40 animate-pulse rounded-card bg-surface-muted" />}><AdventureSection viewerId={user.id} /></Suspense>
+    <TrainingPanel />
+  </>;
 }

@@ -4,6 +4,12 @@ import { afterEach, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../messages/es.json";
 import { TrainingPanel } from "./training-panel";
+import { pickEnemies, enemyList } from "@/lib/pet/battle/adventure";
+import { ENEMIES, RULESET } from "@/lib/pet/battle/content";
+import { POLICIES, runPolicy } from "@/lib/pet/battle/policies";
+import { snapshotForProfile } from "@/lib/pet/battle/profiles";
+import { seedFromIndex } from "@/lib/pet/battle/prng";
+import type { TrainingBattle, TrainingResponse } from "@/lib/pet/training/types";
 
 vi.mock("./combat-sprite", () => ({ CombatSprite: () => <div data-testid="combat-sprite" /> }));
 
@@ -69,4 +75,50 @@ it("returns keyboard focus after cancelling and confirming the ulti", async () =
   fireEvent.click(screen.getByRole("button",{name:"Saltar · daño base"}));
   act(() => { vi.advanceTimersByTime(100); });
   expect(document.activeElement).toBe(screen.getByRole("button",{name:"Golpe interruptor · Usar habilidad"}));
+});
+
+function chainFixture() {
+  const snapshot = snapshotForProfile("lectora_larga", "wizard");
+  for (let i = 0; i < 100; i++) {
+    const seed = seedFromIndex(i);
+    const enemies = pickEnemies(seed, RULESET.adventure.chainLength, ENEMIES);
+    const { inputs, events } = runPolicy({ seed, snapshot, enemies, ruleset: RULESET }, POLICIES.interrupt);
+    const ended = events.find((e) => e.type === "FIGHT_ENDED");
+    if (ended) return { seed, snapshot, enemyId: enemyList(enemies), inputs, endedTick: ended.tick };
+  }
+  throw new Error("sin cadena que supere el primer tramo");
+}
+
+it("modo aventura: marcador de tramo estable, interludio con Continuar y botón de reintento al perder", async () => {
+  vi.useFakeTimers();
+  const f = chainFixture();
+  const battle: TrainingBattle = { intentId: "adv-1", status: "open", seed: f.seed, snapshot: f.snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: f.enemyId, inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+  const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle })), resolve: vi.fn(), replay: vi.fn() };
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="start" /></NextIntlClientProvider>);
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar aventura" })); });
+  expect(screen.getByTestId("fight-marker").textContent).toBe("Tramo 1 de 3");
+  expect(screen.queryByLabelText(/Elige un rival/)).toBeNull();
+  const skill = () => fireEvent.click(screen.getByRole("button", { name: "Golpe interruptor · Usar habilidad" }));
+  for (let tick = 0; tick <= f.endedTick; tick++) {
+    if (f.inputs.some((x) => x.tick === tick)) skill();
+    act(() => { vi.advanceTimersByTime(100); });
+  }
+  expect(screen.getByTestId("fight-marker").textContent).toBe("Tramo 2 de 3");
+  const cont = screen.getByRole("button", { name: "Continuar" });
+  const before = screen.getByTestId("training-tick").textContent;
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(screen.getByTestId("training-tick").textContent).toBe(before);
+  fireEvent.click(cont);
+  act(() => { vi.advanceTimersByTime(100); });
+  expect(screen.getByTestId("training-tick").textContent).not.toBe(before);
+});
+
+it("modo aventura: al ganar muestra el botín y su etiqueta de pendiente", async () => {
+  const battle: TrainingBattle = { intentId: "adv-2", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 2, reward: { itemId: "loan_pendant", slot: "amulet" } } };
+  const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle, events: [] })), resolve: vi.fn(), replay: vi.fn() };
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="resume" /></NextIntlClientProvider>);
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Reanudar aventura" })); });
+  expect(screen.getByText("¡Aventura superada!")).toBeTruthy();
+  expect(screen.getByText("Botín: Colgante del préstamo")).toBeTruthy();
+  expect(screen.getByText("Se activa en la siguiente actualización")).toBeTruthy();
 });
