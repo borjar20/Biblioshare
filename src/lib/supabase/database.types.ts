@@ -3043,6 +3043,7 @@ export type Database = {
           pet_name: string
           pet_class: string
           pet_stage: string
+          pet_level: number
           total: number
         }[]
       }
