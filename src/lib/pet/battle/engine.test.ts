@@ -156,6 +156,18 @@ describe("fin", () => {
     expect(() => stepBattle(ctx, st, [skill(7)])).toThrow("INPUT_TICK");
   });
 
+  it.each([0, 10])("stepBattle rechaza acciones desconocidas incluso con cooldown hasta %i", (skillReadyAt) => {
+    const ctx = init(seedFromIndex(0));
+    const st = createBattle(ctx);
+    st.pet.skillReadyAt = skillReadyAt;
+    // Una entrada desconocida se rechaza en el límite público, antes del despacho.
+    const input = { ...skill(st.tick), action: "unknown" } as unknown as BattleInput;
+    expect(() => stepBattle(ctx, st, [input])).toThrow("INVALID_INPUTS");
+    expect(st.pet.skillReadyAt).toBe(skillReadyAt);
+    expect(st.pet.skillUses).toBe(0);
+    expect(st.enemy.hp).toBe(es.hpMax);
+  });
+
   it("stepBattle sobre un combate terminado lanza; viewOf expone fase y cooldown", () => {
     const ctx = init(seedFromIndex(0));
     const st = createBattle(ctx);
