@@ -20,7 +20,7 @@ export function AdventurePanel({ initial }: { initial: AdventureState }) {
       {current && <p data-testid="adventure-current">{t(current.status === "open" ? "inProgress" : "retryAvailable", { day: current.adventure.day })}</p>}
       {!canStart && <p>{t("none")}</p>}
     </div>
-    {canStart && <TrainingPanel kind="adventure" startLabel={startLabel} onDone={() => router.refresh()} actions={{ start: () => startAdventure(), resolve: (intent, inputs) => resolveAdventure(intent, inputs), replay: (intent) => replayAdventure(intent) }} />}
+    {canStart && <TrainingPanel kind="adventure" startLabel={startLabel} onDone={() => router.refresh()} canStartAnother={initial.pendingDays.length > 0} actions={{ start: () => startAdventure(), resolve: (intent, inputs) => resolveAdventure(intent, inputs), replay: (intent) => replayAdventure(intent) }} />}
     <section aria-labelledby="inventory-title"><h3 id="inventory-title" className="font-serif text-lg font-semibold">{t("inventory")}</h3><InventoryList inventory={initial.inventory} /></section>
   </div>;
 }

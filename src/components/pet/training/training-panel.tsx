@@ -27,9 +27,11 @@ interface Props {
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   startLabel?: "start" | "resume" | "retry";
   onDone?: () => void;
+  /** Aventura (R4a): hay más tramos pendientes tras ganar, así que puede lanzarse otra aventura sin salir del panel. */
+  canStartAnother?: boolean;
 }
 
-export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone }: Props = {}) {
+export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStartAnother = false }: Props = {}) {
   const t = useTranslations("pet.training");
   const ta = useTranslations("pet.adventure");
   const adventure = kind === "adventure";
@@ -70,7 +72,15 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     return () => { mounted = false; };
   }, [phase]);
 
-  useEffect(() => { if (phase === "done") onDone?.(); }, [phase, onDone]);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; });
+  const notifiedRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "done") { notifiedRef.current = false; return; }
+    if (notifiedRef.current) return;
+    notifiedRef.current = true;
+    onDoneRef.current?.();
+  }, [phase]);
 
   useEffect(() => {
     const target = restoreFocus.current === "ulti" ? ultiButton.current : restoreFocus.current === "skill" ? skillButton.current : null;
@@ -110,8 +120,8 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     return t(`events.${event.type}`, { damage: "damage" in event ? event.damage : 0 });
   }
 
-  return <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card" aria-labelledby={`${kind}-title`} data-testid={adventure ? "pet-adventure" : "pet-training"}>
-    <div><h2 id={`${kind}-title`} className="font-serif text-xl font-semibold">{adventure ? ta("title") : t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{adventure ? ta("intro") : t("intro")}</p></div>
+  return <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card" aria-labelledby={adventure ? "adventure-section-title" : `${kind}-title`} data-testid={adventure ? "pet-adventure" : "pet-training"}>
+    {!adventure && <div><h2 id={`${kind}-title`} className="font-serif text-xl font-semibold">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("intro")}</p></div>}
     {session.error && <div role="alert" className="text-sm"><p>{t("error")}</p></div>}
     {!adventure && (phase === "idle" || phase === "starting" || phase === "done") && <label className="space-y-2 text-sm">{t("enemySelect")}<select className="block w-full rounded border border-border bg-surface p-2" disabled={phase === "starting" || (phase === "idle" && !!session.error)} value={session.enemyId} onChange={e => { session.selectEnemy(e.target.value); refresh(); }}>{(["brote", "caparazon"] as const).map(id => <option key={id} value={id}>{t(`enemies.${id}`)}</option>)}</select><span className="block text-muted-foreground">{t("enemyHelp")}</span></label>}
     {(phase === "idle" || phase === "starting") && <button className={buttonVariants()} disabled={phase === "starting"} onClick={() => void run(() => session.start())}>{adventure ? ta(phase === "starting" ? "starting" : startLabel) : t(phase === "starting" ? "starting" : session.error ? "retryStart" : "start")}</button>}
@@ -166,7 +176,11 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     {phase === "resolving" && <p role="status">{t("resolving")}</p>}
     {phase === "resolve-error" && <button className={button} onClick={() => void run(() => session.resolve())}>{t("retryResolve")}</button>}
     {result && <div role="status" className="space-y-2"><h3 className="font-serif text-lg font-semibold">{adventure && result.outcome === "win" ? ta("won") : t(`outcomes.${result.outcome}`)}</h3><p className="text-sm">{t("damage", { dealt: result.damageDealt, taken: result.damageTaken })}</p>{result.causes.map(cause => <p key={cause} className="text-sm">{t(`causes.${cause}`)}</p>)}{adventure && session.battle?.adventure?.reward && <p className="text-sm font-medium">{ta("reward", { name: ta(`items.${session.battle.adventure.reward.itemId}`) })} <span className="text-muted-foreground">· </span><span className="text-muted-foreground">{ta("rewardPending")}</span></p>}{adventure && result.outcome !== "win" && <p className="text-sm text-muted-foreground">{ta("loseHint")}</p>}</div>}
-    {phase === "done" && <div className="flex flex-wrap gap-2"><button className={button} onClick={() => void run(() => session.replay())}>{t("replay")}</button>{adventure ? (result?.outcome !== "win" && <button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{ta("retry")}</button>) : <button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{t("repeat")}</button>}</div>}
+    {phase === "done" && <div className="flex flex-wrap gap-2"><button className={button} onClick={() => void run(() => session.replay())}>{t("replay")}</button>{adventure ? (
+      result?.outcome !== "win"
+        ? <button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{ta("retry")}</button>
+        : canStartAnother && <button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{ta("start")}</button>
+    ) : <button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{t("repeat")}</button>}</div>}
     {session.events.length > 0 && <details className="text-sm"><summary className="cursor-pointer py-2">{t("log")}</summary><ol className="max-h-56 space-y-1 overflow-y-auto">{session.events.map(event => <li key={event.seq}><span className="tabular-nums text-muted-foreground">{(event.tick / 10).toFixed(1)} s</span> · {eventText(event)}</li>)}</ol></details>}
   </section>;
 }

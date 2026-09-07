@@ -41,3 +41,13 @@ it("sin aventuras pendientes ni actual: mensaje de ninguna y sin botón", () => 
   expect(screen.queryByRole("button", { name: "Reanudar aventura" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Reintentar aventura" })).toBeNull();
 });
+
+it("no duplica el título «Aventuras»: TrainingPanel en modo aventura no pinta su propio encabezado", () => {
+  renderPanel({
+    pendingDays: ["2026-09-07"],
+    current: null,
+    inventory: [],
+  });
+  expect(screen.queryByRole("heading", { name: "Aventuras" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Empezar aventura" })).toBeTruthy();
+});
