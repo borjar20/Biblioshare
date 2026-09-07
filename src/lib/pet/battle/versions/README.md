@@ -9,13 +9,17 @@ el replay no vuelve a consultar la progresión ni el catálogo actuales.
 Los identificadores desconocidos producen `UNKNOWN_RELEASE`; nunca se sustituyen
 por el balance actual. El digest y el esquema de `pet_battles` no cambian.
 
-Para cambiar comportamiento o balance:
+Para cambiar comportamiento o balance (con herramienta desde R4a, #1093):
 
-1. Crear una versión nueva, conservando las anteriores sin modificaciones.
-2. Actualizar los exports de la API actual y generar el nuevo ejemplo normativo.
-3. Añadir la nueva identidad y su implementación a `BATTLE_RELEASES`.
-4. Verificar los ejemplos de TODAS las versiones conservadas y el test de replay
-   histórico. No regenerar los ejemplos ni los manifiestos de versiones antiguas.
+1. `npm run pet:battle -- fork <vieja> <nueva>`: copia el código ejecutable a `versions/<nueva>/`.
+2. Editar `versions/<nueva>/` (nunca la vieja). Subir `RULESET.version`. Apuntar los reexports
+   de `src/lib/pet/battle/*.ts` a `./versions/<nueva>/`.
+3. `npm run pet:battle -- golden --version <nueva> [--chain N]`: ejemplo normativo de esa versión.
+4. `npm run pet:battle -- freeze <nueva>`: escribe `manifest.json` y muestra el bloque para
+   `BATTLE_RELEASES` (`replay.ts`, append-only). Añadir su test `rN-normative.test.ts`.
+5. Verificar los ejemplos de TODAS las versiones y `releases.test.ts`. No regenerar fixtures
+   ni manifiestos antiguos. Los ficheros de `src/lib/pet/battle/*.ts` son reexports: editarlos
+   no cambia nada; el código vive en `versions/`.
 
 `r2.2` conserva el comportamiento de la PR #1088, incluidos sus límites conocidos.
 Un arreglo que cambie resultados necesita otra versión: conservar un replay no
@@ -33,3 +37,9 @@ Un input elegido antes de una transicion letal en el mismo tick queda ignorado,
 porque las transiciones preceden a las acciones. Los inputs posteriores al final,
 incluido otro input tras un KO causado por una accion, se rechazan.
 R3 conserva tambien su guard de snapshot dentro del directorio publicado; el registro importa su record e inputs directamente, sin depender de los exports actuales ni del catalogo de clases mutable.
+
+`r4.1` (R4a) convierte la cadena de una aventura en un solo combate: `BattleInit.enemies[]`,
+`enemy_id` con ids separados por coma, reloj continuo con `maxTicks` por tramo, eventos
+`FIGHT_ENDED`/`FIGHT_STARTED`, ulti una vez por tramo (la juzga el motor, no el validador),
+límite de tramo en cadena = derrota. Con un solo enemigo se comporta como r3.1 y conserva sus
+números. Publicada con `fork`/`golden --version`/`freeze` (#1093).

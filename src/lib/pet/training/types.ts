@@ -12,6 +12,8 @@ export interface TrainingBattle {
   inputs: BattleInput[];
   result: BattleResult | null;
   digest: string | null;
+  /** Solo en aventuras (R4a). */
+  adventure?: { day: string; attempt: number; reward: { itemId: string; slot: "weapon" | "amulet" } | null };
 }
 
 export type TrainingResponse =

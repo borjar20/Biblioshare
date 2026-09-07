@@ -129,7 +129,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-06",
+    "generatedAt": "2026-09-07",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03",
     "stack": {
       "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
@@ -1162,7 +1162,8 @@
       ],
       "gotchas": [
         "Ningún fichero del motor puede importar Supabase, React, Date ni Math.random: purity.test.ts lo vigila.",
-        "Los eventos NO se guardan en pet_battles: reproducir eventos guardados no es re-simular."
+        "Los eventos NO se guardan en pet_battles: reproducir eventos guardados no es re-simular.",
+        "src/lib/pet/battle/*.ts son reexports de versions/<actual>/: editarlos no cambia nada; publicar versión = fork/golden --version/freeze (#1093)."
       ]
     },
     {
@@ -1637,6 +1638,29 @@
       "gotchas": [
         "Nunca use cache: todas las consultas dependen del usuario.",
         "La resolución usa compare-and-set de status=open; un reintento no sobrescribe ni snapshot ni resultado."
+      ]
+    },
+    {
+      "id": "m-pet-adventure",
+      "label": "lib/pet/adventure + lib/pet/loot",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "R4a: aventuras derivadas. Concesión = RPC get_pet_adventure_days (días vividos de la semana sin fila). start/resolve son funciones SQL con pg_advisory_xact_lock por usuario, solo service_role; el servicio re-simula con la versión almacenada y pasa rewardOrder(seed); la SQL elige el primer objeto no poseído. Inventario derivado de las filas ganadas.",
+      "files": [
+        "src/lib/pet/adventure/actions.ts",
+        "src/lib/pet/adventure/service.ts",
+        "src/lib/pet/adventure/repository.ts",
+        "src/lib/pet/adventure/get-state.ts",
+        "src/lib/pet/adventure/types.ts",
+        "src/lib/pet/loot/catalog.ts",
+        "src/lib/pet/loot/reward.ts",
+        "supabase/migrations/20260908_pet_adventures.sql"
+      ],
+      "gotchas": [
+        "Nunca use cache: todo depende del usuario.",
+        "Las funciones de escritura están en public por PostgREST; son privadas por grants, no por esquema.",
+        "El botín se decide en SQL bajo el bloqueo; TypeScript solo aporta la permutación del seed.",
+        "El log parcial para reanudar vive en localStorage del dispositivo (pet-adventure:<intent>), no en el servidor."
       ]
     }
   ],
@@ -2694,6 +2718,36 @@
       "to": "t-pet-battles",
       "kind": "writes",
       "label": "service_role con dueño explícito y compare-and-set"
+    },
+    {
+      "from": "m-pet-adventure",
+      "to": "m-pet-battle",
+      "kind": "calls",
+      "label": "re-simula con la versión almacenada"
+    },
+    {
+      "from": "m-pet-adventure",
+      "to": "m-pet-training",
+      "kind": "calls",
+      "label": "shared.ts: isIntent, verifyResolved"
+    },
+    {
+      "from": "m-pet-adventure",
+      "to": "t-pet-battles",
+      "kind": "writes",
+      "label": "start_pet_adventure / resolve_pet_adventure vía service_role, pg_advisory_xact_lock por usuario"
+    },
+    {
+      "from": "m-pet-adventure",
+      "to": "t-pet-battles",
+      "kind": "reads",
+      "label": "get_pet_adventure_days (sesión) y repository.rewards() para el inventario derivado"
+    },
+    {
+      "from": "r-mascota",
+      "to": "m-pet-adventure",
+      "kind": "calls",
+      "label": "AdventureSection"
     }
   ],
   "flows": [
@@ -3623,6 +3677,65 @@
           "node": "c-pet",
           "action": "Muestra resultado y barrera; reproduce eventos con arte de combate separado de la compañera.",
           "file": "src/components/pet/training/training-panel.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-adventure",
+      "name": "Jugar una aventura",
+      "category": "core",
+      "summary": "Cadena de tres tramos concedida por día con actividad real (ventana de siete días); el cliente simula y guarda el log parcial en el dispositivo, el servidor re-simula y decide el botín bajo un bloqueo consultivo por usuario.",
+      "entrypoint": "src/components/pet/adventure/adventure-section.tsx",
+      "steps": [
+        {
+          "node": "r-mascota",
+          "action": "Muestra la sección de aventuras junto al entrenamiento",
+          "file": "src/app/mascota/page.tsx"
+        },
+        {
+          "node": "m-pet-adventure",
+          "action": "Deriva el estado (días concedidos, intento abierto, inventario) para la sesión",
+          "file": "src/lib/pet/adventure/get-state.ts"
+        },
+        {
+          "node": "t-pet-battles",
+          "action": "get_pet_adventure_days: días de private.pet_lived_activity_days en la ventana de siete días sin fila kind='adventure'",
+          "file": "supabase/migrations/20260908_pet_adventures.sql"
+        },
+        {
+          "node": "m-pet-adventure",
+          "action": "startAdventure autentica y llama a la RPC de escritura",
+          "file": "src/lib/pet/adventure/actions.ts"
+        },
+        {
+          "node": "t-pet-battles",
+          "action": "start_pet_adventure decide bajo pg_advisory_xact_lock: intento abierto, siguiente intento o día pendiente más antiguo",
+          "file": "supabase/migrations/20260908_pet_adventures.sql"
+        },
+        {
+          "node": "c-pet",
+          "action": "TrainingSession simula la cadena tramo a tramo y guarda el log parcial en localStorage (pet-adventure:<intent>) para reanudar",
+          "file": "src/components/pet/training/training-session.ts"
+        },
+        {
+          "node": "m-pet-adventure",
+          "action": "resolveAdventure envía el log y la permutación de botín derivada del seed",
+          "file": "src/lib/pet/adventure/actions.ts"
+        },
+        {
+          "node": "m-pet-battle",
+          "action": "replayBattle re-simula con la versión almacenada (r4.1) y comprueba el digest",
+          "file": "src/lib/pet/battle/replay.ts"
+        },
+        {
+          "node": "t-pet-battles",
+          "action": "resolve_pet_adventure elige bajo el mismo bloqueo el primer objeto no poseído y hace el compare-and-set status='open'",
+          "file": "supabase/migrations/20260908_pet_adventures.sql"
+        },
+        {
+          "node": "m-pet-adventure",
+          "action": "Al ganar, dispara la celebración pet_adventure_won (clave = día)",
+          "file": "src/lib/pet/adventure/get-state.ts"
         }
       ]
     }

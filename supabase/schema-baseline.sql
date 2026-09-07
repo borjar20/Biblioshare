@@ -1207,3 +1207,8 @@ commit;
 begin;
 \ir migrations/20260907150832_club_burrow.sql
 commit;
+
+-- 20260908_pet_adventures
+begin;
+\ir migrations/20260908_pet_adventures.sql
+commit;

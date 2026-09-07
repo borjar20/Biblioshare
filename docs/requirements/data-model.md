@@ -10,7 +10,7 @@
 > con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
 > referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106)]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3907,6 +3907,16 @@ select/insert/update/delete de `authenticated`, select de `anon`, insert de `ser
 índice) y 15 columnas. Aditiva pura: nada en `main` escribe en la tabla hasta R2. El e2e
 `e2e/mascota-batallas-autoridad.spec.ts` lo comprueba desde PostgREST contra dev.
 
+**R4a (2026-09-07, migración `20260908_pet_adventures.sql`, dev ✓ · prod ⏳):** tres columnas nuevas,
+`adventure_day date`, `attempt smallint`, `reward jsonb` ({itemId, slot}; fuera del digest), con CHECK
+de forma (`kind = 'adventure'` ⇔ día e intento presentes) y `reward is null or status = 'resolved'`.
+Tres índices únicos parciales: `(user_id, adventure_day, attempt)` en aventuras, `(user_id)` en
+aventuras abiertas (un solo intento abierto por usuario) y `(user_id, adventure_day)` en aventuras
+ganadas (`result->>'outcome' = 'win'`). `kind` toma ahora `'training'` y `'adventure'`; `enemy_id`
+guarda en aventuras la lista de enemigos por tramo separada por comas. Grants sin cambio; el `select`
+de las columnas nuevas llega a `authenticated` por el grant de tabla. Verificación en dev:
+`cols 3 | idx 3 | auth_days true | auth_start false | svc_start true | svc_resolve true | auth_reads_reward true`.
+
 ### 8bis.6. Madriguera compartida — `get_burrow_pets` (#1083)
 
 **[Canónico · funciones y ACL verificadas contra dev y prod el 2026-09-06]**
@@ -3950,6 +3960,37 @@ CRLF/LF. Advisor: 87 avisos antes y después, sin diferencias salvo fecha de obs
 La comprobación con dos cuentas reales de producción sigue pendiente en #1083.
 El manifiesto y el baseline permiten reconstruir una base vacía. Véase
 `docs/testing/supabase-local.md`.
+
+### 8bis.7. Aventuras: `get_pet_adventure_days`, `start_pet_adventure`, `resolve_pet_adventure`
+
+**[Canónico · verificado contra dev y prod el 2026-09-07 · aceptación jugable de R3 confirmada por el usuario (#1106)]**
+
+Verificación de producción previa al merge de #1127: tres columnas con tipos y grants iguales a dev (SELECT para authenticated; INSERT/UPDATE solo service_role), tres índices únicos válidos, dos CHECKs válidos y RLS activo. Las definiciones de las cinco funciones coinciden con dev tras normalizar CRLF; start/resolve solo permiten EXECUTE a service_role entre los roles de API. No se ejecutaron combates ni fixtures mutantes en producción.
+
+Spec `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §5–§6. **La concesión no se
+guarda**: `private.pet_pending_adventure_days(p_user)` (definer, sin comprobación de identidad, solo
+para las funciones de escritura) devuelve los días de `private.pet_lived_activity_days` en
+`[hoy − 6, hoy]` Europe/Madrid sin fila `kind = 'adventure'`. `private.pet_adventure_days(p_viewer)`
+exige `p_viewer = auth.uid()` y `public.get_pet_adventure_days()` (invoker) toma la sesión: patrón de
+`get_burrow_pets`. `authenticated` ejecuta las dos últimas; `anon` ninguna.
+
+**Escritura, solo `service_role`:** `public.start_pet_adventure(...)` y `public.resolve_pet_adventure(...)`
+viven en `public` porque PostgREST solo expone ese esquema; el `revoke` a `public, anon, authenticated`
+las hace privadas (como `claim_pet_nudges`). Ambas empiezan con **`pg_advisory_xact_lock(20260908,
+hashtext(p_user::text))`** — el primer bloqueo consultivo del repo; la clave `20260908` queda reservada
+para aventuras. `start` decide bajo el bloqueo: intento abierto → lo devuelve; día con intentos sin
+victoria → intento `max + 1`; si no, día pendiente más antiguo → intento 1; sin nada → cero filas.
+`resolve` relee el intento bajo el bloqueo, devuelve lo guardado si ya estaba resuelto, y al ganar elige
+el botín como primer `{itemId, slot}` de `p_reward_order` que el usuario no posee (o el primero si los
+posee todos) en la misma transacción que el compare-and-set `status = 'open'`. Matriz:
+`supabase/tests/pet_adventures.sql`; concurrencia real con dos conexiones en
+`e2e/mascota-batallas-autoridad.spec.ts`.
+
+**Orden de despliegue: la migración va a prod ANTES del código que la usa.** Es aditiva (columnas
+nullable, restricciones e índices que solo miran esas columnas, funciones nuevas), así que no rompe
+nada del código desplegado; al revés sí habría ventana de error. La red de seguridad existe
+(`src/components/pet/adventure/adventure-section.tsx` captura el fallo y degrada solo la sección
+Aventuras, dejando en pie detalle, madriguera y entrenamiento), pero es el último recurso.
 
 ## 9. Seguridad
 

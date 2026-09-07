@@ -81,7 +81,7 @@ describe("training authority", () => {
     const started = await s.service.start(intent);
     if (!started.ok) throw Error(started.code);
     const b = started.battle;
-    const run = runPolicy({ seed: b.seed, snapshot: b.snapshot, enemy: BROTE, ruleset: RULESET }, POLICIES.interrupt);
+    const run = runPolicy({ seed: b.seed, snapshot: b.snapshot, enemies: [BROTE], ruleset: RULESET }, POLICIES.interrupt);
     const [a, other] = await Promise.all([s.service.resolve(intent, []), s.service.resolve(intent, run.inputs)]);
     expect(a.ok).toBe(true);
     expect(other).toEqual(a);

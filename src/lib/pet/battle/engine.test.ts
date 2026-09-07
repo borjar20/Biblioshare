@@ -9,7 +9,7 @@ import type { BattleEvent, BattleInit, BattleInput, TelegraphKind } from "./type
 
 const snapshot = snapshotForProfile("lectora_larga", "wizard");
 const es = enemyStats(BROTE, snapshot);
-const init = (seed: string, ruleset = RULESET): BattleInit => ({ seed, snapshot, enemy: BROTE, ruleset });
+const init = (seed: string, ruleset = RULESET): BattleInit => ({ seed, snapshot, enemies: [BROTE], ruleset });
 const skill = (tick: number, seq = 0): BattleInput => ({ seq, tick, action: "skill", payload: {} });
 
 function firstTelegraph(seed: string) {

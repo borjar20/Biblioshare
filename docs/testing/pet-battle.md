@@ -1,6 +1,8 @@
 # Verificación de contratos de combate
 
-Usar Node 22 e instalar el lockfile con `npm ci`.
+> **[Canónico · verificado 2026-09-07 · CLI: run, calibrate, replay, golden, fork, freeze]**
+
+Usar Node 22 e instalar el lockfile con `npm ci`. Los comandos `fork` y `freeze` automatizan el ritual de publicar versiones (#1093).
 
 ```powershell
 npm run test:pet:battle
@@ -13,6 +15,31 @@ El primer comando ejecuta las pruebas del motor y las regresiones de exportació
 del CLI y limpieza de cuentas. `--json` tiene prioridad sobre `--events`; stdout
 contiene un único documento JSON. El replay selecciona una versión conservada,
 no el motor actual. Ver `src/lib/pet/battle/versions/README.md`.
+
+## Regresiones de cliente y permisos de aventuras (PR #1127)
+
+```powershell
+npx vitest run src/components/pet/training src/components/pet/adventure --maxWorkers=1 --no-file-parallelism
+```
+
+La sesión comprueba que la repetición reinicia la recarga de la ulti al comenzar
+y al cambiar de tramo, conservando r2.2 sin ulti y los tiempos de r3.1. El panel
+comprueba que una denegación del getter de `localStorage` permite empezar una
+aventura sin persistencia local.
+
+En `mascota-batallas-autoridad.spec.ts`, las dos RPC de escritura se prueban con
+todos sus argumentos obligatorios. Con JWT de usuario deben responder `403`,
+código PostgreSQL `42501` y denegación de permiso sobre la función correspondiente.
+Un `404` por firma inexistente o un error de autenticación no demuestra este
+contrato y debe fallar el test. Ver [errores de PostgREST](https://docs.postgrest.org/en/stable/references/errors.html).
+
+Verificación de estas correcciones el 2026-09-07: los dos fallos nuevos se
+reprodujeron antes del arreglo; después pasan los 44 tests de los seis archivos
+de entrenamiento y aventuras, el typecheck y el lint de los archivos tocados.
+La prueba HTTP de permisos necesita un entorno Supabase disponible; este
+resultado unitario no acredita los permisos de dev ni de producción.
+
+## Gate de integración local
 
 Para el gate de integración se necesita un Supabase **local** nuevo con el esquema
 de la app y `supabase/migrations/20260907_pet_battles.sql` aplicada. Ejecutar también
