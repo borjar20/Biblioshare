@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   }),
   revalidateFeed: vi.fn(),
   revalidateProfilePages: vi.fn(),
+  revalidateSocialBurrows: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
@@ -15,6 +16,7 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateFeed: mocks.revalidateFeed,
   revalidateProfilePages: mocks.revalidateProfilePages,
+  revalidateSocialBurrows: mocks.revalidateSocialBurrows,
 }));
 
 import { blockUser, unblockUser } from "./block-actions";

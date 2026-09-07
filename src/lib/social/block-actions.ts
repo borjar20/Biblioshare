@@ -2,12 +2,13 @@
 
 import "server-only";
 import { redirect } from "next/navigation";
-import { revalidateFeed, revalidateProfilePages } from "@/lib/reactivity/revalidate";
+import { revalidateFeed, revalidateProfilePages, revalidateSocialBurrows } from "@/lib/reactivity/revalidate";
 import { createClient } from "@/lib/supabase/server";
 
 function revalidateSocialBoundary(): void {
   revalidateProfilePages();
   revalidateFeed();
+  revalidateSocialBurrows();
 }
 
 export async function blockUser(targetUserId: string): Promise<void> {

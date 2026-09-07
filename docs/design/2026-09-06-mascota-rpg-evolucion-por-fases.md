@@ -684,8 +684,8 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 - Hitos **R1–R10**. Los hitos R no renumeran las fases 1–3 de la mascota ya en producción (núcleo,
   misiones y logros, avisos push).
 - **Vía S, presencia social**, en paralelo a los hitos R: no depende del combate ni del arte, y
-  puede construirse antes de R1 o entre dos hitos R. S1 lleva criterios; S2 y S3 son dirección.
-- **R1–R4 y S1 llevan criterios de salida y son contrato.** De R5 y S2 en adelante es dirección:
+  puede construirse antes de R1 o entre dos hitos R. S1 y S3 llevan criterios; S2 tiene su contrato específico.
+- **R1–R4, S1 y S3 llevan criterios de salida y son contrato; S2 tiene spec propia.** De R5 en adelante es dirección:
   se concreta cuando le toca.
 - Cada hito arranca con su spec en `docs/superpowers/specs/` (brainstorming → spec → plan) y
   cierra con su entrada en `decisiones.md` y la casilla del backlog. Al cerrarlo se edita esta
@@ -714,7 +714,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 | R10 Cosméticos y gacha | catálogo, apertura, compra directa | dirección | skins completas |
 | S1 Madriguera compartida | las mascotas de tus seguidos junto a la tuya en /mascota; RPC de columnas exactas (#1083) | criterios | ninguno: sprites actuales en idle |
 | S2 Mascota en el perfil | sprite, nombre y clase en la cabecera del perfil público y en la imagen OG | dirección | ninguno |
-| S3 Madriguera del club | la misma escena con los miembros del club | dirección | ninguno |
+| S3 Madriguera del club | escena de miembros activos en el feed, con privacidad de perfil; implementada en desarrollo | criterios; spec confirmada 2026-09-07 | ninguno |
 
 ## R1 — Contratos y modelo de combate
 
@@ -952,9 +952,11 @@ mascotas privadas, aunque quien la solicite tenga acceso al perfil. Es lo que ve
 tarjeta NFC (`/go/<uuid>`). Contrato: `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`.
 Migración aplicada y funciones/permisos verificados en dev y producción el 2026-09-07. Publicación web mediante PR #1128.
 
-### S3 — Madriguera del club (dirección)
+### S3 — Madriguera del club (implementada y aceptada visualmente en desarrollo)
 
-La misma escena con los miembros del club, en la página del club. Es la pieza sobre la que se
+Contrato confirmado el 2026-09-07 (#1129): `docs/superpowers/specs/2026-09-07-mascota-social-s3-design.md`. Bloque secundario bajo el resumen de actividades del feed, solo para miembros activos y con privacidad de perfil y bloqueos intactos. Participación automática, doce inicialmente y hasta sesenta vecinas; nivel visible, sin humor ni ranking. Estados vacíos y de error distintos, reintento, sin tiempo real. Pruebas técnicas y aceptación visual en desarrollo separadas de publicación. Implementación y pruebas en desarrollo el 2026-09-07 (#1130–#1132); migración aplicada y ACL verificadas solo en dev. Aceptación visual de José Ángel el 2026-09-07; publicación pendiente. Evidencia: `docs/testing/2026-09-07-s3-madriguera.md`.
+
+Es la pieza sobre la que se
 apoyaría el cooperativo de club si algún día vuelve al roadmap (§19).
 
 **Ampliaciones registradas, sin fecha:** humor ajeno con interruptor del dueño apagado por

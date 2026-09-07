@@ -1203,6 +1203,11 @@ begin;
 \ir migrations/20260907130854_pet_social_profile_and_level.sql
 commit;
 
+-- 20260907150832_club_burrow
+begin;
+\ir migrations/20260907150832_club_burrow.sql
+commit;
+
 -- 20260908_pet_adventures
 begin;
 \ir migrations/20260908_pet_adventures.sql

@@ -37,6 +37,7 @@ import {
 } from "@/components/clubs/club-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { RoundBlock } from "@/components/clubs/round/round-block";
+import { ClubBurrowSection } from "@/components/pet/club-burrow-section";
 
 export async function generateMetadata({
   params,
@@ -231,6 +232,9 @@ async function ClubFeedSection({
           upcoming={proximas}
           clubSlug={club.slug}
         />
+        <Suspense fallback={<SkeletonCard />}>
+          <ClubBurrowSection clubId={club.id} clubName={club.name} viewerId={userId} />
+        </Suspense>
         <div className="hidden rounded-card border border-border bg-surface p-4 shadow-card lg:block">
           <h2 className="mb-3 label-section">
             {t("directorySectionMembers")} · {club.memberCount}

@@ -4536,3 +4536,17 @@ El motor de trabajo src/lib/pet/battle/engine.ts, separado de la copia publicada
 José Ángel comunica que S1 gusta a quienes la usan y acepta esta pieza; no se atribuye una nueva prueba con un número concreto de cuentas. Pide mostrar el nivel en la madriguera y comenzar S2. Esta decisión modifica expresamente §20 de la visión: mostrar el nivel guardado junto a la etapa, sin ordenar por nivel ni crear rankings. El humor permanece privado.
 
 S2 usa la visibilidad del perfil y expone solo nombre, clase y etapa. Su imagen OG se genera con contexto anónimo, incluso si quien la solicita está autenticado: un perfil privado nunca aporta su mascota a una imagen compartible. El nivel se limita a la madriguera. Se conserva la semántica de companion_hidden (compañera flotante, no privacidad social). Contrato en `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`. Migraciones y pruebas autorizadas en dev; producción no autorizada en esta petición.
+
+## 2026-09-07 — Contrato S3: presencia del club sin ampliar privacidad
+
+S3 incluye automáticamente las mascotas de miembros activos, pero compartir club no concede acceso a perfiles privados ni evita bloqueos. Dos miembros pueden ver escenas distintas y los totales solo cuentan mascotas visibles. Los roles de moderación no amplían acceso. Se conserva la semántica de ocultar la compañera flotante; no se añade selección de clubes por mascota.
+
+La escena vive como bloque secundario del feed, bajo el resumen de actividades, sin pestaña nueva. Reutiliza S1 con nivel y sin humor: doce inicialmente, hasta sesenta vecinas y la propia, orden diario sin ranking. Cada consulta aplica permisos actuales; se acepta que pantallas ya abiertas conserven lo cargado hasta refrescar, sin tiempo real. Fallo y vacío son estados distintos.
+
+José Ángel confirma las tres rondas y el contrato el 2026-09-07. Spec `docs/superpowers/specs/2026-09-07-mascota-social-s3-design.md`. Diseño cerrado, implementación pendiente; pruebas técnicas, aceptación visual en desarrollo y publicación/verificación en producción siguen siendo estados separados.
+
+## 2026-09-07 — Implementación S3: lectura social del club con sesión
+
+La madriguera del club reutiliza la escena de S1 y una proyección común de apariencia. Su RPC incluye la propia y sesenta vecinas con un total que excluye la propia; resuelve membresía activa y visibilidad en la misma lectura. El endpoint público es invocador y delega en un helper privado con privilegios de definidor y contexto de sesión obligatorio, sin ampliar las políticas de tablas.
+
+Se encapsulan los mensajes de mascota en el bloque de S3, porque el provider del club no incluye ese namespace. La carga tiene Suspense propio; reintentar refresca la ruta, y las acciones de seguimiento, bloqueo y privacidad invalidan ambas madrigueras. Los límites sociales aprobados se mantienen. Migración aplicada y verificada en desarrollo; producción y aceptación visual del usuario pendientes.

@@ -4563,3 +4563,17 @@ Migración `20260907130854_pet_social_profile_and_level.sql`. No modifica tablas
 S1 aceptado por el usuario el 2026-09-07. La nueva exposición de nivel es una decisión de producto explícita; no permite humor, XP, atributos ni actividad.
 
 Verificación de producción S2 (autorización explícita 2026-09-07): las seis funciones sociales, incluidas las dos originales de S1, coinciden con dev por hash de pg_get_functiondef normalizado sin CR. Se comprobaron SECURITY DEFINER/INVOKER, search_path vacío y EXECUTE anon/authenticated. El conector de lectura no tiene EXECUTE sobre la nueva RPC de madriguera; la consulta funcional por ese conector fue rechazada, conforme a sus permisos. pet_state conserva RLS y sus tres políticas. No se sembraron cuentas ni se modificaron datos de usuarios en producción.
+
+### 8bis.8. Madriguera del club — `get_club_burrow_pets` (#1129, #1130–#1132)
+
+**[Canónico · definición, ACL y comportamiento REST verificados en biblioshare-dev el 2026-09-07; no aplicado en producción]**
+
+Migración `20260907150832_club_burrow.sql`. Wrapper público `get_club_burrow_pets(p_club_id uuid)` invocador sobre `private.club_burrow_pets(uuid)`, definidor. Ambos fijan `search_path = ''`; anónimo sin EXECUTE y authenticated con EXECUTE. El helper toma `auth.uid()` y exige membresía activa del observador; ausencia de sesión, club inexistente o falta de membresía producen el mismo error `42501 / club_burrow_unavailable`.
+
+Devuelve solo miembros activos con mascota visibles por `can_view_profile`, sin bloqueo bidireccional. No exige seguimiento de miembros públicos; los privados conservan el seguimiento aceptado. Los roles de club no amplían acceso. Incluye propia, siempre primero, y hasta sesenta vecinas. `total` cuenta todas las vecinas visibles antes del límite, excluyendo propia y ocultas; sin mascotas devuelve conjunto vacío. Mezcla diaria por hash de observador, club, día UTC y dueño, con UUID como desempate.
+
+Columnas exactas: `user_id`, `username`, `display_name`, `avatar_url`, `pet_name`, `pet_class`, `pet_stage`, `pet_level`, `total`. Etapa y nivel son la última derivación guardada, sin recalcular estados ajenos. Sin nuevas tablas, columnas ni cambios en políticas/grants de `pet_state` o `club_members`. No se requiere el chequeo de grants por columna nueva porque no se añade ninguna.
+
+Lectura de aplicación con sesión, sin caché compartida, bajo Suspense propio. Reintentar refresca la ruta; acciones de membresía ya revalidan clubes y las de seguimiento, bloqueo y privacidad revalidan ambas madrigueras. Una pantalla abierta puede conservar lo cargado hasta actualizarse: sin tiempo real.
+
+Pruebas: `e2e/club-madriguera.spec.ts` con cuentas sintéticas y limpieza, y decodificación de apariencia compartida con S1. Evidencia en `docs/testing/2026-09-07-s3-madriguera.md`. La verificación en desarrollo no es aceptación visual del usuario ni publicación.

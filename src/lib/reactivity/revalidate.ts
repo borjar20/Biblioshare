@@ -37,6 +37,12 @@ export function revalidateProfilePages(): void {
   revalidatePath("/u/[username]", "page");
 }
 
+/** Social appearance depends on follows, blocks and profile privacy, including club S3. */
+export function revalidateSocialBurrows(): void {
+  revalidatePath("/mascota");
+  revalidatePath("/club/[slug]", "page");
+}
+
 /** Un perfil concreto. */
 export function revalidateProfile(username: string): void {
   revalidatePath(`/u/${username}`);
