@@ -36,6 +36,7 @@ object NativeSupabase {
      * con url+anonKey (los necesita el refresh en segundo plano, cuando el
      * WebView no está para volver a pasarlos). Devuelve el userId o null.
      */
+    @Synchronized
     fun establish(context: Context, url: String, anonKey: String, tokenHash: String): String? {
         val body = JSONObject().put("type", "magiclink").put("token_hash", tokenHash).toString()
         val (code, text) = request("POST", "$url/auth/v1/verify", anonKey, null, body)
@@ -96,6 +97,7 @@ object NativeSupabase {
      * devuelve la fila, el handoff + la persistencia + el refresh funcionan y
      * `auth.uid()` es quien debe. Devuelve el userId o null.
      */
+    @Synchronized
     fun whoAmI(context: Context): Who? {
         val token = freshAccessToken(context) ?: return null
         val p = NativeSessionStore.read(context)
@@ -115,6 +117,7 @@ object NativeSupabase {
      * ¿Hay sesión guardada? Solo mira los tokens en disco (sin red), para que el
      * refresco en segundo plano no dispare llamadas cuando ya no hay sesión.
      */
+    @Synchronized
     fun hasSession(context: Context): Boolean =
         NativeSessionStore.read(context).optString(K_REFRESH).isNotEmpty()
 
@@ -126,6 +129,7 @@ object NativeSupabase {
      * (arquitectura híbrida, Fase 2): get_widget_snapshot devuelve el JSON v2
      * que el parser ya consume.
      */
+    @Synchronized
     fun rpc(context: Context, fn: String): String? {
         val token = freshAccessToken(context) ?: return null
         val p = NativeSessionStore.read(context)
@@ -135,6 +139,7 @@ object NativeSupabase {
         return if (code in 200..299) text else null
     }
 
+    @Synchronized
     fun signOut(context: Context) {
         val p = NativeSessionStore.read(context)
         val url = p.optString(K_URL).ifEmpty { null }
@@ -150,6 +155,7 @@ object NativeSupabase {
         clear(context)
     }
 
+    @Synchronized
     fun clear(context: Context) {
         NativeSessionStore.clear(context)
     }

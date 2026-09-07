@@ -4362,3 +4362,9 @@ copias históricas externas ni se modifica la sesión de cookies del WebView.
 La verificación JVM cubre cifrado, IV distinto, integridad y clave incorrecta.
 Los tests Android de almacenamiento/migración requieren dispositivo o emulador;
 la PR debe distinguir esa evidencia de compilar el APK.
+
+Las operaciones públicas de NativeSupabase se serializan también durante la llamada
+HTTP: un refresh anterior no puede escribir después de que logout haya terminado.
+Cerrar sesión persiste un objeto vacío cifrado (tombstone), antes de limpiar el legado.
+Si la limpieza de preferencias falla, el archivo cifrado sigue siendo autoritativo y
+se reintenta en lecturas posteriores; nunca se elimina para volver al origen antiguo.

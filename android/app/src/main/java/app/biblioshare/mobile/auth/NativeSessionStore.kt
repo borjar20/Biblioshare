@@ -34,7 +34,8 @@ internal object NativeSessionStore {
         if (disk.baseFile.exists()) {
             return try {
                 val result = JSONObject(String(cipher.decrypt(disk.readFully()), Charsets.UTF_8))
-                check(legacy.edit().clear().commit()) { "Cannot remove legacy session" }
+                // Ciphertext stays authoritative even if legacy cleanup must retry.
+                legacy.edit().clear().commit()
                 result
             } catch (_: Exception) {
                 // Missing/invalidated key or corrupt file: require a new native handoff.
@@ -68,14 +69,13 @@ internal object NativeSessionStore {
             disk.failWrite(output)
             throw error
         }
-        check(context.getSharedPreferences("native_supabase", Context.MODE_PRIVATE).edit().clear().commit()) {
-            "Cannot remove legacy session"
-        }
+        context.getSharedPreferences("native_supabase", Context.MODE_PRIVATE).edit().clear().commit()
     }
 
     @Synchronized
     fun clear(context: Context) {
-        file(context).delete()
-        context.getSharedPreferences("native_supabase", Context.MODE_PRIVATE).edit().clear().commit()
+        // A durable encrypted tombstone prevents stale legacy data resurfacing
+        // after a failed preferences flush or a crash during cleanup.
+        write(context, JSONObject())
     }
 }
