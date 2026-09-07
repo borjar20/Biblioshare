@@ -1,5 +1,9 @@
 # Modelo de datos
 
+> **Delta #708, 2026-09-07:** esquema y comportamiento verificados en Supabase
+> local con fixtures y rollback; producción no modificada. Ver el inventario de
+> referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
+
 > **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
@@ -290,7 +294,26 @@ select count(*) from credits c
 where c.item_type='movie' and not exists (select 1 from movies m where m.id=c.item_id);
 ```
 
-Prod está **sin medir**. Ver issue #609.
+Este es el diagnóstico histórico del 2026-08-12; la cascada se incorporó en #609.
+En #708 la implementa el guard unificado descrito a continuación.
+
+**Integridad polimórfica (#708).**
+`20260907093534_catalog_reference_guards.sql` centraliza la política en
+`private.catalog_reference_rules()` (15 pares, 13 tablas). Créditos derivados
+se borran en cascada; pases, notas, colecciones, biblioteca congelada, rondas,
+selecciones/opiniones/clasificaciones de actividades y las estructuras curadas
+de saga bloquean el borrado. Las ventanas incluyen sujeto y anclas before/after.
+`private.protect_catalog_references()` sustituye los dos helpers antiguos y sus
+seis triggers por un trigger BEFORE DELETE en cada tabla de catálogo.
+
+`private.lock_catalog_reference()` comprueba destinos nuevos/cambiados y toma
+KEY SHARE para coordinarse con el borrado. Son 15 triggers de referencia. No se
+añaden columnas ni se limpian filas históricas. Todos los helpers fijan
+`search_path=''` y revocan EXECUTE a PUBLIC/anon/authenticated. El mantenimiento
+DELETE requiere READ COMMITTED; otras instantáneas transaccionales se rechazan
+con 25000. Las referencias vivas bloquean con 23503. No es una FK general para
+referencias JSON, URL ni parejas fuera del inventario. Política y pruebas por
+tabla en [#708](../testing/2026-09-07-708-catalog-references.md).
 
 **`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
 `20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
@@ -1094,6 +1117,8 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   aplicado en **dev y prod**), `BEFORE DELETE` sobre `books`, `movies` y `series`: **rechaza
   el borrado** (`catalog_item_has_passes`, `23503`) si quedan pases apuntando a la obra.
   No cascadea a propósito — un pase guarda nota y reseña del usuario, ver `decisiones.md`.
+  Desde el delta #708 esa misma política vive en `private.protect_catalog_references`
+  y devuelve `catalog_item_has_references`, conservando SQLSTATE 23503.
   La trampa al depurar: `count(*) from passes where is_active and status='planned'` cuenta
   los huérfanos, así que parece que el usuario SÍ tiene pendientes; la cuenta que importa es
   la de pendientes **con obra en catálogo**.

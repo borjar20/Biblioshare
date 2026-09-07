@@ -4347,3 +4347,17 @@ transacciones fallidas revierten su contador SQL; la carga previa al proveedor
 desde una action permanece consumida aunque el proveedor falle. No es una
 defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
 evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.
+
+## 2026-09-07 — Proteger las referencias curadas al borrar catálogo (#708)
+
+Las once tablas sin guarda conservan información humana: selección, opinión,
+orden, colocación, opcionalidad o contenido histórico. Todas bloquean el borrado,
+igual que passes; solo credits mantiene la cascada porque procede del proveedor.
+El inventario único también incluye ambas anclas de saga_placement_windows.
+
+Las altas/cambios de referencia bloquean su destino con KEY SHARE y rechazan
+obras inexistentes. DELETE de catálogo exige READ COMMITTED para consultar
+referencias comprometidas después de esperar al escritor; se rechazan snapshots
+transaccionales antiguos, sin simular garantías de una FK nativa. No se alteran
+columnas ni datos históricos. Pruebas y límites en
+`docs/testing/2026-09-07-708-catalog-references.md`.
