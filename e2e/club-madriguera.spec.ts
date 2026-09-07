@@ -22,7 +22,8 @@ test.describe("S3 madriguera del club", () => {
       expect((await (await read()).json()).map((r: { user_id: string }) => r.user_id).sort()).toEqual([member.id, privateMember.id].sort());
     } finally { await cleanupClubBurrow(); }
   });
-  test("permisos en club privado: roles, pendientes, bloqueos y salida", async () => {
+  for (const visibility of ["public", "private"] as const) {
+  test(`permisos en club ${visibility}: roles, pendientes, bloqueos y salida`, async () => {
     test.setTimeout(180_000);
     try {
       await cleanupClubBurrow();
@@ -31,7 +32,7 @@ test.describe("S3 madriguera del club", () => {
       const outsider = await clubUser(2);
       const invited = await clubUser(3);
       const requested = await clubUser(4);
-      const club = await burrowClub(owner, "private");
+      const club = await burrowClub(owner, visibility);
       await addClubPet(club.id, member);
       await addClubPet(club.id, invited, "invited");
       await addClubPet(club.id, requested, "requested");
@@ -40,6 +41,14 @@ test.describe("S3 madriguera del club", () => {
       for (const user of [outsider, invited, requested]) expect((await read(user.token)).status).toBe(403);
       expect((await read(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)).ok).toBe(false);
       expect((await read(owner.token, crypto.randomUUID())).status).toBe(403);
+      await clubWrite(`rest/v1/club_members?club_id=eq.${club.id}&user_id=eq.${invited.id}`, "PATCH", { status: "active" });
+      expect((await read(invited.token)).ok).toBe(true);
+      expect((await (await read()).json()).map((r: { user_id: string }) => r.user_id).sort()).toEqual([member.id, invited.id].sort());
+      await clubWrite(`rest/v1/club_members?club_id=eq.${club.id}&user_id=eq.${invited.id}`, "PATCH", { status: "invited" });
+      await clubWrite(`rest/v1/profiles?user_id=eq.${member.id}`, "PATCH", { is_public: false });
+      expect(await (await read()).json()).toEqual([]);
+      await clubWrite(`rest/v1/profiles?user_id=eq.${member.id}`, "PATCH", { is_public: true });
+      expect((await (await read()).json()).map((r: { user_id: string }) => r.user_id)).toEqual([member.id]);
       await clubWrite(`rest/v1/club_members?club_id=eq.${club.id}&user_id=eq.${member.id}`, "PATCH", { role: "moderator" });
       expect((await read(member.token)).ok).toBe(true);
       await clubWrite("rest/v1/user_blocks", "POST", { blocker_id: owner.id, blocked_id: member.id });
@@ -56,6 +65,7 @@ test.describe("S3 madriguera del club", () => {
       expect(await raw.json()).toEqual([]);
     } finally { await cleanupClubBurrow(); }
   });
+  }
 
   test("feed: sin mascota, tarjetas y salida propia en móvil", async ({ page }) => {
     test.setTimeout(180_000);
@@ -77,6 +87,7 @@ test.describe("S3 madriguera del club", () => {
       const scene = page.getByRole("region", { name: "Madriguera · Club S3 de prueba", exact: true });
       await expect(scene).toBeVisible();
       await expect(scene.getByRole("listitem")).toHaveCount(1);
+      await expect(scene.locator('[role="img"]').first()).toHaveCSS("animation-name", "none");
       await expect(scene.getByText("La tuya")).toHaveCount(0);
       const sprite = scene.getByRole("button", { name: /Nuez del club/ });
       await sprite.focus();

@@ -43,3 +43,13 @@ Las pruebas reutilizan la frontera E2E y la lectura autorizada acordadas. Los te
 - Persisten avisos `HANGING_PROMISE_REJECTION` de Auth durante prerender, también en rutas ajenas al bloque. Seguimiento existente: #1098 y #1126; no se atribuye a S3 ni se afirma resuelta su causa.
 - Capturas móvil/escritorio revisadas por el agente; no sustituyen la aceptación visual de José Ángel.
 - No se publicó la aplicación, no se aplicó la migración en producción y no se cerraron las issues.
+
+## Verificación final y revisión
+
+La repetición conjunta sobre el último build dio 3 PASS y 1 FAIL: la comprobación de salida observaba la ausencia de la escena durante la navegación, antes de confirmar que la acción hubiese terminado. Se corrigió el E2E para esperar la respuesta POST y el botón «Unirse», no solo ausencia de contenido. El caso corregido pasó (1 prueba, 12,5 s); la matriz API confirma además denegación tras salida.
+
+El cierre automático del servidor funciona al ejecutar el runner desde el host con el comando directo de Next. El advisor de seguridad de dev no devuelve hallazgos que nombren las funciones nuevas de S3. Se mantiene el seguimiento previo de prerender en #1098/#1126.
+
+La revisión pidió completar la matriz pública/privada, la transición a miembro activo, el cambio de privacidad después de leer y comprobar CSS con movimiento reducido. Al ampliar la prueba se detectó un filtro incorrecto del propio fixture (`profiles.id`, que no existe); se corrigió a `profiles.user_id`. La repetición conjunta final dio **5 PASS en 46,6 s**, incluyendo ambos tipos de club y los dos recorridos de navegador. TypeScript y `git diff --check`: PASS. Datos sintéticos eliminados y servidor de pruebas cerrado.
+
+Revisión independiente final: **Standards: 0 hallazgos; Spec: 0 hallazgos**. Ambos revisores retiraron el supuesto defecto de invalidación de mascotas: `revalidatePetPage()` llega a `revalidatePath('/', 'layout')`, que ya cubre las rutas de club. La ampliación de pruebas resuelve la carencia de cobertura señalada por Spec.
