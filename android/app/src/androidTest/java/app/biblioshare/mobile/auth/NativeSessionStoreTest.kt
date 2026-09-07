@@ -11,8 +11,8 @@ import org.junit.Test
 import java.io.File
 
 class NativeSessionStoreTest {
-    // Test APK context isolates synthetic sessions from the user's installed app.
-    private val context = InstrumentationRegistry.getInstrumentation().context
+    // Run only in the disposable emulator: instrumentation executes under the target UID.
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Before fun reset() {
         NativeSessionStore.clear(context)
@@ -55,5 +55,50 @@ class NativeSessionStoreTest {
         NativeSessionStore.clear(failingCleanup)
         assertEquals(0, NativeSessionStore.read(failingCleanup).length())
         assertTrue(legacy.contains("refresh_token"))
+    }
+
+    @Test fun replacesUnusableKeyAtNextHandoff() {
+        NativeSessionStore.write(context, JSONObject().put("refresh_token", "old-synthetic"))
+        // Replace the alias with a real Keystore key incompatible with GCM.
+        val alias = "biblioshare.native-session.v1"
+        java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null); deleteEntry(alias) }
+        javax.crypto.KeyGenerator.getInstance("AES", "AndroidKeyStore").apply {
+            init(android.security.keystore.KeyGenParameterSpec.Builder(alias,
+                android.security.keystore.KeyProperties.PURPOSE_ENCRYPT or
+                    android.security.keystore.KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_CBC)
+                .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                .build())
+        }.generateKey()
+        NativeSessionStore.write(context, JSONObject().put("refresh_token", "new-synthetic"))
+        assertEquals("new-synthetic", NativeSessionStore.read(context).getString("refresh_token"))
+    }
+
+    @Test fun missingKeyNeverRestoresLegacyAndAllowsNewSession() {
+        NativeSessionStore.write(context, JSONObject().put("refresh_token", "lost-synthetic"))
+        java.security.KeyStore.getInstance("AndroidKeyStore").apply {
+            load(null); deleteEntry("biblioshare.native-session.v1")
+        }
+        context.getSharedPreferences("native_supabase", 0).edit()
+            .putString("refresh_token", "stale-synthetic").commit()
+        assertEquals(0, NativeSessionStore.read(context).length())
+        NativeSessionStore.write(context, JSONObject().put("refresh_token", "new-synthetic"))
+        assertEquals("new-synthetic", NativeSessionStore.read(context).getString("refresh_token"))
+    }
+
+    @Test fun signOutClearsEvenWhenSessionReadFails() {
+        NativeSessionStore.write(context, JSONObject().put("refresh_token", "synthetic-session"))
+        val unreadableOnce = object : ContextWrapper(context) {
+            var first = true
+            override fun getNoBackupFilesDir(): File {
+                if (first) {
+                    first = false
+                    throw java.security.ProviderException("synthetic temporary read failure")
+                }
+                return super.getNoBackupFilesDir()
+            }
+        }
+        NativeSupabase.signOut(unreadableOnce)
+        assertEquals(0, NativeSessionStore.read(context).length())
     }
 }

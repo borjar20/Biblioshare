@@ -4419,3 +4419,21 @@ se reintenta en lecturas posteriores; nunca se elimina para volver al origen ant
 El tombstone no necesita Keystore: logout funciona aunque la clave esté inaccesible.
 Una clave inválida o irrecuperable se regenera al persistir un nuevo handoff; otros
 fallos del proveedor se propagan sin degradar a almacenamiento de tokens en claro.
+
+## 2026-09-07 — Verificación Android y destino nativo (#679)
+
+Las pruebas instrumentadas se ejecutan bajo el UID del APK destino, en un
+emulador desechable Android 16/API 36 con sesiones sintéticas. El contexto del
+APK de tests no permite escribir su directorio desde ese UID: se corrigió el
+harness y la aserción antigua de identificador del test de ejemplo.
+
+El puente solo admite el origen HTTPS del proyecto Supabase de producción,
+incluso para peticiones de sesiones migradas, y no sigue redirecciones. La clave
+pública llega del WebView para permitir su rotación sin publicar otra APK; no
+puede cambiar el destino. Para otro entorno se requiere un cambio explícito del
+origen nativo junto con el wrapper.
+
+La prueba de fallo de lectura reprodujo que signOut no alcanzaba clear. Ahora
+el borrado local se ejecuta también si no puede recuperarse la sesión para la
+revocación remota. Los fallos de escritura siguen propagándose. Evidencia en
+`docs/testing/2026-09-07-679-native-session.md`; la distribución sigue en #679.

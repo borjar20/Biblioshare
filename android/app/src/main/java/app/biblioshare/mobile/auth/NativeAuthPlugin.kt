@@ -14,8 +14,8 @@ import org.json.JSONObject
 // Puente Capacitor → sesión Supabase nativa. Toda la lógica vive en
 // NativeSupabase; aquí solo se valida la entrada, se ejecuta la red en un hilo
 // aparte (NetworkOnMainThread) y se responde el estado. La web es la única que
-// pasa url+anonKey (los toma de NEXT_PUBLIC_*), así que el nativo no cablea
-// configuración que pueda desincronizarse.
+// pasa url+anonKey (los toma de NEXT_PUBLIC_*). NativeBackend restringe el
+// destino al proyecto de producción del wrapper; la clave pública puede rotar.
 //
 // TODO hilo lleva try/catch: una excepción sin capturar en un Thread{} crudo
 // dispara el UncaughtExceptionHandler por defecto de Android y MATA el proceso

@@ -38,11 +38,12 @@ object NativeSupabase {
      */
     @Synchronized
     fun establish(context: Context, url: String, anonKey: String, tokenHash: String): String? {
+        if (!NativeBackend.acceptsBase(url) || anonKey.isBlank() || tokenHash.isBlank()) return null
         val body = JSONObject().put("type", "magiclink").put("token_hash", tokenHash).toString()
-        val (code, text) = request("POST", "$url/auth/v1/verify", anonKey, null, body)
+        val (code, text) = request("POST", "${NativeBackend.ORIGIN}/auth/v1/verify", anonKey, null, body)
         if (code !in 200..299) return null
         val json = JSONObject(text)
-        saveSession(context, json, url, anonKey)
+        saveSession(context, json, NativeBackend.ORIGIN, anonKey)
         return json.optJSONObject("user")?.optString("id")?.ifEmpty { null }
     }
 
@@ -141,7 +142,13 @@ object NativeSupabase {
 
     @Synchronized
     fun signOut(context: Context) {
-        val p = NativeSessionStore.read(context)
+        val p = try {
+            NativeSessionStore.read(context)
+        } catch (_: Exception) {
+            // Remote revocation is best-effort; local logout needs no readable key.
+            clear(context)
+            return
+        }
         val url = p.optString(K_URL).ifEmpty { null }
         val anon = p.optString(K_ANON).ifEmpty { null }
         val token = p.optString(K_ACCESS).ifEmpty { null }
@@ -177,28 +184,33 @@ object NativeSupabase {
         apiKey: String,
         bearer: String?,
         body: String?,
-    ): Pair<Int, String> = try {
-        val conn = URL(urlStr).openConnection() as HttpURLConnection
-        try {
-            conn.requestMethod = method
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            conn.setRequestProperty("apikey", apiKey)
-            conn.setRequestProperty("Content-Type", "application/json")
-            bearer?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
-            if (body != null) {
-                conn.doOutput = true
-                conn.outputStream.use { it.write(body.toByteArray()) }
+    ): Pair<Int, String> {
+        // Covers migrated sessions too. Redirects must not forward credentials.
+        if (!NativeBackend.acceptsRequest(urlStr)) return 0 to ""
+        return try {
+            val conn = URL(urlStr).openConnection() as HttpURLConnection
+            try {
+                conn.instanceFollowRedirects = false
+                conn.requestMethod = method
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                conn.setRequestProperty("apikey", apiKey)
+                conn.setRequestProperty("Content-Type", "application/json")
+                bearer?.let { conn.setRequestProperty("Authorization", "Bearer $it") }
+                if (body != null) {
+                    conn.doOutput = true
+                    conn.outputStream.use { it.write(body.toByteArray()) }
+                }
+                val code = conn.responseCode
+                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                val text = stream?.bufferedReader()?.use(BufferedReader::readText) ?: ""
+                code to text
+            } finally {
+                conn.disconnect()
             }
-            val code = conn.responseCode
-            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-            val text = stream?.bufferedReader()?.use(BufferedReader::readText) ?: ""
-            code to text
-        } finally {
-            conn.disconnect()
+        } catch (e: IOException) {
+            Log.w("NativeSupabase", "fallo de red en $method $urlStr (¿sin conexión?)", e)
+            0 to ""
         }
-    } catch (e: IOException) {
-        Log.w("NativeSupabase", "fallo de red en $method $urlStr (¿sin conexión?)", e)
-        0 to ""
     }
 }
