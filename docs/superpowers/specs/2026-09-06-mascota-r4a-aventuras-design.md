@@ -1,6 +1,7 @@
 # R4a — Aventuras derivadas y botín pendiente de activar
 
-> **[Spec de diseño · aprobada por el usuario el 2026-09-06 · implementa la Parte II R4 de
+> **[Spec de diseño · aprobada por el usuario el 2026-09-06 · implementada el 2026-09-07, pendiente
+> aceptación jugable y despliegue a prod tras #1106 · implementa la Parte II R4 de
 > `docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md`, desdoblada en R4a y R4b]**
 >
 > Antecedentes: R1 `2026-09-06-mascota-r1-contratos-combate-design.md`, R3

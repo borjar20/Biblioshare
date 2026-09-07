@@ -4370,3 +4370,35 @@ esa política de referencia dejó de representar la decisión óptima en cuanto 
 Detalle completo, comandos y las tres tablas verbatim en la spec
 `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §10 y en
 `.superpowers/sdd/task-5-report.md`. Issue #1117 cerrada con este resultado.
+
+## 2026-09-07 — Mascota R4a: funciones de escritura en `public`, primer bloqueo consultivo
+
+Cierre de la implementación de R4a (spec `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`,
+migración `supabase/migrations/20260908_pet_adventures.sql`, verificada en dev el 2026-09-07; prod
+pendiente de la aceptación de R3 en #1106). La longitud de cadena y la política de referencia ya se
+decidieron y documentaron el 2026-09-07 en la entrada anterior («Mascota R4a: calibración de la
+cadena con la ulti y techo de «no pulsar» al 3 %», issue #1117); no se repite aquí, solo el resumen
+que hace falta para justificar las dos decisiones de esta entrada:
+
+| Tramos | `interrupt` (informativo) | `interrupt_ulti` | `never` | ¿En banda? |
+|---|---|---|---|---|
+| 2 | 28–37 % | 84–88 % | 3–9 % | No |
+| 3 | 8–14 % | 56–60 % | 0–2 % | Sí — elegida |
+
+**`start_pet_adventure` y `resolve_pet_adventure` viven en `public`, no en `private`.** PostgREST
+solo expone el esquema `public`; una función `service_role`-only en `private` no sería invocable
+desde el servidor de Next vía RPC sin duplicar la superficie. Se opta por el mismo patrón que
+`claim_pet_nudges`: función en `public`, con `revoke` explícito a `public, anon, authenticated` y
+`grant execute` solo a `service_role`. Es privada por grants, no por esquema — quien lea el listado
+de funciones de `public` no debe asumir que todo lo que hay ahí es alcanzable por un cliente.
+
+**Primer bloqueo consultivo del repo.** Ambas funciones abren con
+`pg_advisory_xact_lock(20260908, hashtext(p_user::text))` antes de decidir qué intento crear o
+resolver. Sin él, dos llamadas concurrentes de `start_pet_adventure` para el mismo usuario (dos
+pestañas, un reintento de red) podrían leer el mismo «día pendiente más antiguo» antes de que
+ninguna hubiera insertado su fila e insertar dos intentos abiertos para el mismo día, violando en
+la práctica el índice único `pet_battles_adventure_open_idx` solo en el caso feliz y arriesgando una
+carrera fea en el caso raro. El bloqueo evita la carrera en vez de manejarla con reintentos tras un
+choque de índice. La clave `20260908` (fecha de la migración) queda reservada para aventuras; no
+reutilizarla para otro bloqueo del repo. Concurrencia real probada con dos conexiones en
+`e2e/mascota-batallas-autoridad.spec.ts`.
