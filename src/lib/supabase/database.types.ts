@@ -1635,6 +1635,8 @@ export type Database = {
       }
       pet_battles: {
         Row: {
+          adventure_day: string | null
+          attempt: number | null
           content_hash: string
           created_at: string
           digest: string | null
@@ -1645,6 +1647,7 @@ export type Database = {
           kind: string
           resolved_at: string | null
           result: Json | null
+          reward: Json | null
           ruleset_version: string
           seed: string
           snapshot: Json
@@ -1652,6 +1655,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          adventure_day?: string | null
+          attempt?: number | null
           content_hash: string
           created_at?: string
           digest?: string | null
@@ -1662,6 +1667,7 @@ export type Database = {
           kind?: string
           resolved_at?: string | null
           result?: Json | null
+          reward?: Json | null
           ruleset_version: string
           seed: string
           snapshot: Json
@@ -1669,6 +1675,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          adventure_day?: string | null
+          attempt?: number | null
           content_hash?: string
           created_at?: string
           digest?: string | null
@@ -1679,6 +1687,7 @@ export type Database = {
           kind?: string
           resolved_at?: string | null
           result?: Json | null
+          reward?: Json | null
           ruleset_version?: string
           seed?: string
           snapshot?: Json
@@ -3038,6 +3047,12 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_pet_adventure_days: {
+        Args: never
+        Returns: {
+          day: string
+        }[]
+      }
       get_widget_snapshot: { Args: never; Returns: Json }
       has_min_club_role: {
         Args: {
@@ -3247,6 +3262,42 @@ export type Database = {
         Args: { p_catalog_item_id: string; p_pending_id: string }
         Returns: undefined
       }
+      resolve_pet_adventure: {
+        Args: {
+          p_digest: string
+          p_inputs: Json
+          p_intent: string
+          p_result: Json
+          p_reward_order: Json
+          p_user: string
+        }
+        Returns: {
+          adventure_day: string | null
+          attempt: number | null
+          content_hash: string
+          created_at: string
+          digest: string | null
+          enemy_id: string
+          id: string
+          inputs: Json | null
+          intent_id: string
+          kind: string
+          resolved_at: string | null
+          result: Json | null
+          reward: Json | null
+          ruleset_version: string
+          seed: string
+          snapshot: Json
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pet_battles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       sane_int: { Args: { hi: number; lo: number; v: number }; Returns: number }
       save_saga_route: {
         Args: { p_entries: Json; p_route_id: string }
@@ -3296,6 +3347,43 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      start_pet_adventure: {
+        Args: {
+          p_content_hash: string
+          p_enemies: string
+          p_intent: string
+          p_ruleset_version: string
+          p_seed: string
+          p_snapshot: Json
+          p_user: string
+        }
+        Returns: {
+          adventure_day: string | null
+          attempt: number | null
+          content_hash: string
+          created_at: string
+          digest: string | null
+          enemy_id: string
+          id: string
+          inputs: Json | null
+          intent_id: string
+          kind: string
+          resolved_at: string | null
+          result: Json | null
+          reward: Json | null
+          ruleset_version: string
+          seed: string
+          snapshot: Json
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pet_battles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       sync_tmdb_saga_items: {
         Args: { p_items: Json; p_saga_id: string }

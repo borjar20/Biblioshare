@@ -131,17 +131,19 @@ create unique index pet_battles_adventure_win_idx
   una sola victoria por día. Son defensa adicional a la operación atómica de §6; no sustituyen
   la serialización de la selección y la escritura.
 - **Dos funciones SQL de escritura en la misma migración**, porque supabase-js no abre
-  transacciones y la serialización por usuario exige una: `private.start_pet_adventure(p_user
+  transacciones y la serialización por usuario exige una: `public.start_pet_adventure(p_user
   uuid, p_seed text, p_intent uuid, p_enemies text, p_ruleset_version text, p_content_hash text,
-  p_snapshot jsonb)` y `private.resolve_pet_adventure(p_user uuid, p_intent uuid, p_inputs jsonb,
-  p_result jsonb, p_digest text, p_reward_order text[])`. Ambas `security definer`, `set
-  search_path = ''`, `revoke all` a `public, anon, authenticated`; solo `service_role` las
-  ejecuta, con el usuario que el servidor toma de la sesión. Las dos empiezan con
-  `pg_advisory_xact_lock(<clave fija de aventuras>, hashtext(p_user::text))`, que se libera solo
-  al terminar la transacción. **Es el primer bloqueo consultivo del repo**: se documenta en
-  `data-model.md` con su clave, para que la siguiente función que necesite uno no la reutilice.
-  El esquema `private` no se expone en PostgREST; el servidor las llama con el cliente de
-  `service_role` vía `rpc`, como ya hace con `get_burrow_pets` desde el cliente de sesión.
+  p_snapshot jsonb)` y `public.resolve_pet_adventure(p_user uuid, p_intent uuid, p_inputs jsonb,
+  p_result jsonb, p_digest text, p_reward_order jsonb)` (lista de `{itemId, slot}`). Ambas
+  `security definer`, `set search_path = ''`, `revoke all` a `public, anon, authenticated`; solo
+  `service_role` las ejecuta, con el usuario que el servidor toma de la sesión. Están en `public`
+  porque PostgREST solo expone ese esquema; el `revoke` a `public, anon, authenticated` y el
+  `grant execute` a `service_role` son lo que las hace privadas, como `claim_pet_nudges`. Las dos
+  empiezan con `pg_advisory_xact_lock(<clave fija de aventuras>, hashtext(p_user::text))`, que se
+  libera solo al terminar la transacción. **Es el primer bloqueo consultivo del repo**: se
+  documenta en `data-model.md` con su clave, para que la siguiente función que necesite uno no la
+  reutilice. El servidor las llama con el cliente de `service_role` vía `rpc`, como ya hace con
+  `claim_pet_nudges`.
 
 ## 5. Concesión derivada: RPC
 
@@ -186,7 +188,7 @@ módulo común; no se copia.
   perdido de un día sin victoria; `inventory` se deriva de las filas ganadas (§7).
 - `startAdventure()` sin argumentos. Toda la selección e inserción es una operación atómica
   del repositorio en una transacción de base de datos, serializada por usuario: la función
-  `private.start_pet_adventure` de §4. El servidor genera antes seed, `intent_id`, lista de
+  `public.start_pet_adventure` de §4. El servidor genera antes seed, `intent_id`, lista de
   enemigos y snapshot y se los pasa; la función decide bajo el bloqueo si los usa o devuelve una
   fila existente. El bloqueo se toma antes de leer y se mantiene hasta el commit; no sirve un
   mutex en el proceso del servidor. Orden bajo ese bloqueo: (1) si hay intento abierto,
@@ -201,7 +203,7 @@ módulo común; no se copia.
   de decidir; nunca se consume otro día como alternativa automática al conflicto.
 - `resolveAdventure(intentId, inputs)`: igual que `resolve` de entrenamiento con la versión
   almacenada. La re-simulación se hace fuera de la transacción, en el servidor; para guardar se
-  llama a `private.resolve_pet_adventure` (§4), que toma el mismo bloqueo por usuario que
+  llama a `public.resolve_pet_adventure` (§4), que toma el mismo bloqueo por usuario que
   `startAdventure` y relee el intento. Un resultado ya guardado gana sobre cualquier reintento
   con inputs distintos: la función devuelve la fila guardada sin tocarla. Si sigue abierto y el
   resultado es victoria, comprueba que el día no tiene otra victoria, lee el inventario y elige
@@ -236,7 +238,7 @@ números en R4a. La dirección prevista se documenta como comentario para que R4
 
 - `rewardOrder(seed)`: PRNG separado sembrado con el seed de la aventura (como
   `createUltiPuzzle`) que devuelve una permutación de los seis ids. Pura y determinista. El
-  servidor la pasa a `private.resolve_pet_adventure`, que elige **el primer id no poseído** (o el
+  servidor la pasa a `public.resolve_pet_adventure`, que elige **el primer id no poseído** (o el
   primero de la lista si se poseen todos) bajo el bloqueo de la transacción. El primer elemento
   no poseído de una permutación uniforme es uniforme entre los no poseídos, así que el resultado
   es el mismo que sortear entre ellos, pero la lectura del inventario y la elección ocurren dentro
