@@ -2,10 +2,12 @@
 //   npm run pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--events] [--json]
 //   npm run pet:battle -- calibrate [--seeds 200]
 //   npm run pet:battle -- replay <fichero.json>      (salida de `run --json`; una fila de pet_battles hay que mapearla antes a camelCase)
-//   npm run pet:battle -- golden                      (escribe el ejemplo normativo)
+//   npm run pet:battle -- golden [--version rN.M] [--chain N]   (escribe el ejemplo normativo)
+//   npm run pet:battle -- fork <desde> <hasta>       (copia código ejecutable a versions/<hasta>/)
+//   npm run pet:battle -- freeze <versión>           (escribe manifest.json y muestra BATTLE_RELEASES bloque)
 // Requiere Node 22 (ver «Node» en el plan de R1). Sin red ni Supabase: solo el motor.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { PET_CLASSES, isPetClass, type PetClass } from "../../src/lib/pet/classes";
 import { CALIBRATION, calibrate, checkCalibration, formatReport } from "../../src/lib/pet/battle/calibration";
 import { BROTE, RULESET, contentHash } from "../../src/lib/pet/battle/content";
@@ -16,6 +18,7 @@ import { isSeed, seedFromIndex } from "../../src/lib/pet/battle/prng";
 import { battleDigest, digestMaterial } from "../../src/lib/pet/battle/record";
 import { replayBattle } from "../../src/lib/pet/battle/replay";
 import type { BattleRecord } from "../../src/lib/pet/battle/types";
+import { BATTLE_DIR, forkVersion, releaseBlock, versionDir, writeManifest } from "./freeze";
 
 const NORMATIVE_PATH = "src/lib/pet/battle/__fixtures__/normative.json";
 
@@ -45,6 +48,10 @@ function pickPolicy(): PolicyId {
   const p = arg("policy", "interrupt") as string;
   if (!(POLICY_IDS as readonly string[]).includes(p)) fail(`política desconocida: ${p} (${POLICY_IDS.join(", ")})`);
   return p as PolicyId;
+}
+
+function normativePathFor(version: string | undefined): string {
+  return version ? join(versionDir(BATTLE_DIR, version), "normative.json") : NORMATIVE_PATH;
 }
 
 async function run() {
@@ -94,6 +101,8 @@ async function replay(file: string | undefined) {
 /** Ejemplo normativo: el primer seed cuyos dos primeros anuncios son carga y luego
  *  guardia (así el ejemplo enseña las dos decisiones), con la política interrupt. */
 async function golden() {
+  const out = normativePathFor(arg("version"));
+  if (arg("version") && RULESET.version !== arg("version")) fail(`RULESET.version es ${RULESET.version}, no ${arg("version")}: apunta los reexports de la API actual a versions/${arg("version")} antes de generar su normativa`);
   const snapshot = snapshotForProfile("lectora_larga", "wizard");
   for (let i = 0; i < 10_000; i++) {
     const seed = seedFromIndex(i);
@@ -108,15 +117,30 @@ async function golden() {
     const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
     const digest = await battleDigest(record, events);
     const material = digestMaterial(record, events);
-    mkdirSync(dirname(NORMATIVE_PATH), { recursive: true });
+    mkdirSync(dirname(out), { recursive: true });
     writeFileSync(
-      NORMATIVE_PATH,
+      out,
       JSON.stringify({ seedIndex: i, record, events, digest, canonicalHead: material.slice(0, 240), canonicalLength: material.length }, null, 2) + "\n",
     );
-    console.log(`escrito ${NORMATIVE_PATH}: seed ${seed} (índice ${i}), ${events.length} eventos, ${result.outcome} en ${result.ticks} ticks, digest ${digest}`);
+    console.log(`escrito ${out}: seed ${seed} (índice ${i}), ${events.length} eventos, ${result.outcome} en ${result.ticks} ticks, digest ${digest}`);
     return;
   }
   fail("ningún seed en 10 000 empieza con carga y después guardia");
+}
+
+async function fork(from: string | undefined, to: string | undefined) {
+  if (!from || !to) fail("fork <desde> <hasta>   p. ej. fork r3.1 r4.1");
+  const copied = forkVersion(BATTLE_DIR, from, to);
+  console.log(`copiados a versions/${to}: ${copied.join(", ")}`);
+  console.log(`siguiente: editar versions/${to}, apuntar los reexports de ${BATTLE_DIR}/*.ts a ./versions/${to}, subir RULESET.version a "${to}", y al final \`golden --version ${to}\` y \`freeze ${to}\``);
+}
+
+async function freeze(version: string | undefined) {
+  if (!version) fail("freeze <versión>");
+  if (RULESET.version !== version) fail(`RULESET.version es ${RULESET.version}, no ${version}: los reexports de la API actual deben apuntar a versions/${version} antes de congelarla`);
+  const manifest = writeManifest(BATTLE_DIR, version);
+  console.log(`escrito versions/${version}/manifest.json (${Object.keys(manifest).length} ficheros)`);
+  console.log(releaseBlock(version, await contentHash()));
 }
 
 async function main() {
@@ -125,7 +149,9 @@ async function main() {
   if (cmd === "calibrate") return calib();
   if (cmd === "replay") return replay(process.argv[3]);
   if (cmd === "golden") return golden();
-  fail("uso: run | calibrate [--seeds N] | replay <fichero> | golden");
+  if (cmd === "fork") return fork(process.argv[3], process.argv[4]);
+  if (cmd === "freeze") return freeze(process.argv[3]);
+  fail("uso: run | calibrate [--seeds N] | replay <fichero> | golden [--version rN.M] [--chain N] | fork <desde> <hasta> | freeze <versión>");
 }
 
 main().catch((e: unknown) => fail(String(e instanceof Error ? e.stack : e)));
