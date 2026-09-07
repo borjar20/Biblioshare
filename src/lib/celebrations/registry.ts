@@ -69,6 +69,14 @@ export const CELEBRATIONS: Record<CelebrationEvent, CelebrationConfig> = {
     scope: "key",
     reducedMotionFallback: "static",
   },
+  // Mascota R4a: se gana al resolver una aventura ganada. `key` = día local de la aventura.
+  pet_adventure_won: {
+    event: "pet_adventure_won",
+    intensity: "high",
+    durationMs: 1800,
+    scope: "key",
+    reducedMotionFallback: "static",
+  },
 };
 
 // Hitos de racha que se celebran. Fuera de esta lista, ningún día dispara nada.

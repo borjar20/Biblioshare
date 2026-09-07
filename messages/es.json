@@ -36,7 +36,8 @@
         "streak_milestone": "¡Racha {milestone}!",
         "first_club_participation": "¡Al club!",
         "pet_level_up": "¡Nivel {milestone}!",
-        "pet_evolved": "¡He crecido!"
+        "pet_evolved": "¡He crecido!",
+        "pet_adventure_won": "¡Aventura!"
       }
     }
   },
