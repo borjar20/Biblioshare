@@ -1,5 +1,15 @@
 # Modelo de datos
 
+> **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
+> verificados en dev; comportamiento SQL con fixtures y rollback verificado en
+> Supabase local. Definición y permisos verificados también en producción el 2026-09-07.
+
+> **Delta #708, 2026-09-07:** esquema y comportamiento verificados en Supabase
+> local con fixtures y rollback; definición y permisos comprobados en dev
+> (`biblioshare-dev`, `tyvzpuhxfwxrnkcpzxyg`) y en producción el 2026-09-07,
+> con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
+> referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
+
 > **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev el 2026-09-07, prod pendiente de la aceptación de R3 (#1106)]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
@@ -21,7 +31,11 @@
 > El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
 > íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
 
-> **Bootstrap local, 2026-09-06:** el esquema inicial y las 235 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+> **Bootstrap local, 2026-09-06:** el esquema inicial y las 236 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+
+> **#811, aplicado y verificado en dev y producción el 2026-09-07:** `private.request_quotas` guarda `(user_id, operation)` como clave primaria, `window_started_at timestamptz` y `used integer`. FK a `auth.users` con borrado en cascada, RLS activo y ningún permiso de tabla/columna para `anon` o `authenticated`. `consume_request_quota(text, integer default 1)` es SECURITY DEFINER, VOLATILE, `search_path=''`, ejecutable solo por `authenticated` entre los roles cliente. La identidad procede de `auth.uid()`, las capacidades de una lista fija y el incremento de un único UPSERT atómico. No hay cuotas en memoria ni campos modificables por clientes.
+>
+> Los triggers `request_quota` cubren INSERT en catálogo, posts, comentarios, reacciones, follows y pendientes de importación; push devices cubre INSERT/UPDATE. DELETE sigue disponible. `get_activities_progress`, `get_club_round_state` y `save_saga_sequence` conservan firma, permisos y cuerpo de consulta con un guard de cuota; los dos lectores pasan de SQL/STABLE a PL/pgSQL/VOLATILE y se invocan por POST. El guard SQL emite `PT429` al agotar cuota. Los trabajos sin JWT conservan sus permisos previos y no consumen cuota de usuario. Ver [capacidades, pruebas y límites](../testing/2026-09-06-811-shared-rate-limits.md).
 
 > **Verificación #900, 2026-09-06:** `get_widget_snapshot()` ya coincide en dev y producción:
 > `md5(prosrc) = 358c7aa6950f1b71a5790541fe39a89b`, 10083 caracteres, sin `is_primary`.
@@ -34,6 +48,13 @@
 > enlaces antiguos mediante `private.refresh_pass_interaction_hrefs(uuid)`, sin EXECUTE para
 > roles API. No cambia propietarios, audiencias ni políticas. Verificación local mediante
 > `supabase/tests/pass_interaction_hrefs.sql`; funciones y permisos verificados en ambos entornos.
+
+> **#812, producción verificada el 2026-09-06:** aplicada la migración existente
+> `20260878_catalog_technical_columns_gate.sql`. Los tres triggers BEFORE UPDATE
+> de books/movies/series siguen activos. Los campos técnicos ya poblados solo pueden
+> reescribirse por las vías privilegiadas existentes; null → valor sigue permitido.
+> La regresión funcional con filas sintéticas se ejecutó únicamente en local.
+> Evidencia: [verificación #812](../testing/2026-09-06-812-catalog-gate.md).
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -279,7 +300,26 @@ select count(*) from credits c
 where c.item_type='movie' and not exists (select 1 from movies m where m.id=c.item_id);
 ```
 
-Prod está **sin medir**. Ver issue #609.
+Este es el diagnóstico histórico del 2026-08-12; la cascada se incorporó en #609.
+En #708 la implementa el guard unificado descrito a continuación.
+
+**Integridad polimórfica (#708).**
+`20260907093534_catalog_reference_guards.sql` centraliza la política en
+`private.catalog_reference_rules()` (15 pares, 13 tablas). Créditos derivados
+se borran en cascada; pases, notas, colecciones, biblioteca congelada, rondas,
+selecciones/opiniones/clasificaciones de actividades y las estructuras curadas
+de saga bloquean el borrado. Las ventanas incluyen sujeto y anclas before/after.
+`private.protect_catalog_references()` sustituye los dos helpers antiguos y sus
+seis triggers por un trigger BEFORE DELETE en cada tabla de catálogo.
+
+`private.lock_catalog_reference()` comprueba destinos nuevos/cambiados y toma
+KEY SHARE para coordinarse con el borrado. Son 15 triggers de referencia. No se
+añaden columnas ni se limpian filas históricas. Todos los helpers fijan
+`search_path=''` y revocan EXECUTE a PUBLIC/anon/authenticated. El mantenimiento
+DELETE requiere READ COMMITTED; otras instantáneas transaccionales se rechazan
+con 25000. Las referencias vivas bloquean con 23503. No es una FK general para
+referencias JSON, URL ni parejas fuera del inventario. Política y pruebas por
+tabla en [#708](../testing/2026-09-07-708-catalog-references.md).
 
 **`people.credits_hydrated_at`** (`timestamptz`, nullable; migración
 `20260823_people_credits_hydrated_at.sql`, aplicada y **verificada en DEV y en PROD el
@@ -807,15 +847,17 @@ bloque, «Más ediciones (OpenLibrary)», que consulta las candidatas EN VIVO
 2 páginas / 200 ediciones, mismos filtros y mismo orden ES→EN→resto que `pickEditions`) y **no
 escribe nada al enseñarlas**: se cargan al DESPLEGAR el bloque, no al abrir el selector. La
 escritura la dispara `chooseEditionCandidate` cuando el usuario elige una — cuarto y último
-llamador de `register_book_edition`, junto a `ensureBookEdition` (`find-or-create.ts`) y el alta
-manual (`src/app/buscar/manual/actions.ts`). Las candidatas excluyen los ISBN ya persistidos del
+camino de alta verificada, junto a `ensureBookEdition` (`find-or-create.ts`). Desde #920 ambos
+usan `register_verified_book_edition`, solo ejecutable por `service_role`. El alta
+manual (`src/app/buscar/manual/actions.ts`) conserva `register_book_edition`, que exige
+`collaborator` o `admin`. Las candidatas excluyen los ISBN ya persistidos del
 libro (normalizados con `normalizeIsbn` en los dos lados) para que la misma tirada no salga en
 dos bloques. Verificado en dev el 2026-08-27: abrir la ficha de un libro y desplegar las 30
 candidatas deja `book_editions` en 481 filas, las mismas que antes.
 
-**Del navegador solo viaja el ISBN (revisión de la Task 13, 2026-08-27).**
+**Del navegador solo viaja el ISBN (revisión de la Task 13, 2026-08-27; cierre del acceso directo en #920, 2026-09-07).**
 `chooseEditionCandidate` recibía la candidata ENTERA desde el cliente y solo revalidaba el
-`isbn`: como `register_book_edition` es `SECURITY DEFINER` y su único requisito es
+`isbn`: históricamente `register_book_edition` era `SECURITY DEFINER` y su único requisito era
 `auth.uid() is not null`, cualquier usuario autenticado podía escribir `publisher`, `cover_url`
 y `label` arbitrarios en el catálogo COMUNITARIO de cualquier libro — un ensanchamiento de
 privilegio frente a `createEdition`, que exige `collaborator+`. Ahora la firma acepta **solo el
@@ -832,6 +874,22 @@ peticiones de la cuota de OpenLibrary de nuestra IP (no es fuga de datos — `bo
 y `p_cover_url` se insertan **crudos**; `p_label` solo pasa por un `trim` con valor por defecto
 `'Edición'`. El dígito de control del ISBN sí lo comprueba la función, en las dos formas (10 y
 13). Es la razón por la que esos tres campos no pueden volver a venir del navegador.
+
+**Registro verificado (#920, dev 2026-09-07).** La migración
+`20260907074033_verified_book_editions.sql` añade
+`register_verified_book_edition(uuid,uuid,text,text,text,integer,integer,text)`:
+libro, actor autenticado, ISBN y metadatos del proveedor. Es SECURITY DEFINER,
+`search_path=''`, sin EXECUTE para PUBLIC/anon/authenticated y con EXECUTE para
+service_role. La función anterior conserva su firma pero comprueba el rol de
+curador antes de delegar con `auth.uid()` como actor. No cambia ninguna columna.
+
+`ensureBookEdition` relee la clave de obra guardada en `books` y consulta hasta
+200 ediciones de Open Library; ignora los metadatos del resultado recibido del
+cliente. Si falta la clave, no aparece el ISBN o falla el proveedor, el libro
+se conserva sin inventar una edición. `chooseEditionCandidate` mantiene su
+rederivación y atribuye el alta al usuario validado en el servidor. La consulta
+de permisos en dev dio authenticated=false y service_role=true; el test SQL
+local verificó rechazo del usuario ordinario, alta, autoría e idempotencia.
 
 **La columna `books.editions_synced_at` NO se ha dropeado**: sigue en el esquema (fase
 destructiva, Task 16, después del despliegue) pero el código de aplicación ya no la lee ni la
@@ -1083,6 +1141,8 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   aplicado en **dev y prod**), `BEFORE DELETE` sobre `books`, `movies` y `series`: **rechaza
   el borrado** (`catalog_item_has_passes`, `23503`) si quedan pases apuntando a la obra.
   No cascadea a propósito — un pase guarda nota y reseña del usuario, ver `decisiones.md`.
+  Desde el delta #708 esa misma política vive en `private.protect_catalog_references`
+  y devuelve `catalog_item_has_references`, conservando SQLSTATE 23503.
   La trampa al depurar: `count(*) from passes where is_active and status='planned'` cuenta
   los huérfanos, así que parece que el usuario SÍ tiene pendientes; la cuenta que importa es
   la de pendientes **con obra en catálogo**.
@@ -4487,3 +4547,17 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 > pendiente a propósito**: la aplicación está reservada al controlador de la rama en el
 > momento del merge, no a esta tarea de cierre. Ver §7.4 para la semántica del valor nuevo y
 > `decisiones.md` (2026-08-15).
+
+### 8bis.7. Nivel social y mascota en perfil — S2 (2026-09-07)
+
+**[Canónico · funciones y ACL verificadas contra dev y producción el 2026-09-07]**
+
+Migración `20260907130854_pet_social_profile_and_level.sql`. No modifica tablas, columnas, RLS ni grants de tablas.
+
+- `get_burrow_pets_with_level(p_limit integer default 60)` es wrapper invocador sobre `private.burrow_pets_with_level(uuid,integer)`, definidor: añade `pet_level` desde `pet_state.last_level` a la selección de S1. Hereda visibilidad, límite, total y orden diario; vuelve a ordenar tras el join. Solo authenticated. La función original permanece para clientes anteriores. Nivel y etapa son la última derivación guardada, no un recálculo ajeno.
+- `get_profile_pet(p_user_id uuid)` es wrapper invocador sobre `private.profile_pet(uuid)`, definidor: devuelve cero o una fila con `pet_name`, `pet_class`, `pet_stage`. Usa `can_view_profile` y excluye bloqueos, sin recibir un espectador independiente. anon y authenticated tienen EXECUTE; anon recibe USAGE del esquema private para llamar al helper, sin grants adicionales de otras funciones o tablas.
+- Las cuatro funciones fijan search_path vacío y revocan EXECUTE de PUBLIC. Perfil y madriguera leen con sesión sin caché compartida; OG usa anónimo con respuesta no-store.
+
+S1 aceptado por el usuario el 2026-09-07. La nueva exposición de nivel es una decisión de producto explícita; no permite humor, XP, atributos ni actividad.
+
+Verificación de producción S2 (autorización explícita 2026-09-07): las seis funciones sociales, incluidas las dos originales de S1, coinciden con dev por hash de pg_get_functiondef normalizado sin CR. Se comprobaron SECURITY DEFINER/INVOKER, search_path vacío y EXECUTE anon/authenticated. El conector de lectura no tiene EXECUTE sobre la nueva RPC de madriguera; la consulta funcional por ese conector fue rechazada, conforme a sus permisos. pet_state conserva RLS y sus tres políticas. No se sembraron cuentas ni se modificaron datos de usuarios en producción.

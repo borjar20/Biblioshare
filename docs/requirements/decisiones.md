@@ -4396,3 +4396,143 @@ carrera fea en el caso raro. El bloqueo evita la carrera en vez de manejarla con
 choque de índice. La clave `20260908` (fecha de la migración) queda reservada para aventuras; no
 reutilizarla para otro bloqueo del repo. Concurrencia real probada con dos conexiones en
 `e2e/mascota-batallas-autoridad.spec.ts`.
+## 2026-09-06 — Los lectores críticos de pases distinguen fallo de ausencia (#657)
+
+getPasses e isAutoCloseable lanzan un Error con causa ante un error de consulta.
+getActivePass lo propaga y applyTransition se detiene antes de decidir escrituras.
+Se mantiene la ausencia legítima como []/null/false; el render usa el error boundary
+existente. No se añade caché ni se cambia el acceso a los datos.
+
+## 2026-09-06 — La lectura de partida distingue ausencia e indisponibilidad (#955)
+
+readActive devuelve un resultado discriminado: ok con registro o null, o unavailable.
+El espejo entre pestañas conserva snapshot y revisión cuando falla la lectura, para
+permitir reintentar el mismo aviso. Solo una lectura exitosa sin registro significa
+borrado remoto. La hidratación inicial conserva la degradación a legado/memoria.
+
+## 2026-09-06 — CI de regresiones sin secretos remotos (#836)
+
+Cada PR y push a main ejecutan unitarios completos, tipos y lint de los archivos
+modificados, más dos recorridos críticos contra build de producción y Supabase local
+desechable. La deuda global de lint (#856) y el resto de e2e sin atribuir (#919)
+permanecen explícitos. No se cambia la protección de rama. Operación: docs/testing/ci.md.
+
+## 2026-09-06 — Cuotas compartidas por identidad (#811)
+
+El despliegue serverless comparte contadores en `private.request_quotas`, con
+una fila por usuario y operación y un UPSERT atómico. No se añade un proveedor,
+dependencia ni contador en memoria. Las ventanas y capacidades se fijan en SQL;
+la identidad procede de `auth.uid()`, nunca de un identificador del cliente.
+
+Las actions cobran antes de trabajo externo. Los triggers cubren escrituras
+directas y las tres RPC caras incorporan el guard conservando sus consultas y
+permisos. Los dos lectores pasan de STABLE a VOLATILE; se mantienen llamadas
+POST. Los trabajos sin JWT conservan su autorización previa. DELETE queda libre
+para permitir retirar contenido; volver a seguir o registrar sí consume cuota.
+
+CSV tiene presupuesto por filas (6000/hora), separado del parseo (6/hora) y de
+la cola de pendientes; preserva el máximo de 3000 filas por archivo. Las
+transacciones fallidas revierten su contador SQL; la carga previa al proveedor
+desde una action permanece consumida aunque el proveedor falle. No es una
+defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
+evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.
+
+## 2026-09-07 — Registro de ediciones corroborado por servidor (#920)
+
+El registro automático usa una RPC exclusiva de service_role con actor obtenido
+de la sesión validada. El servidor relee la obra guardada y obtiene los metadatos
+de Open Library; no confía en etiquetas, portadas ni identificadores de obra del
+resultado enviado por el navegador. La RPC manual exige collaborator/admin.
+Sin corroboración del ISBN en las primeras 200 ediciones, se conserva el libro
+sin crear una edición. No se añaden columnas ni se cambian dependencias.
+
+Permisos comprobados en dev y comportamiento en una instancia Supabase local
+con datos sintéticos y rollback. No se aplicó el cambio a producción.
+
+## 2026-09-07 — Proteger las referencias curadas al borrar catálogo (#708)
+
+Las once tablas sin guarda conservan información humana: selección, opinión,
+orden, colocación, opcionalidad o contenido histórico. Todas bloquean el borrado,
+igual que passes; solo credits mantiene la cascada porque procede del proveedor.
+El inventario único también incluye ambas anclas de saga_placement_windows.
+
+Las altas/cambios de referencia bloquean su destino con KEY SHARE y rechazan
+obras inexistentes. DELETE de catálogo exige READ COMMITTED para consultar
+referencias comprometidas después de esperar al escritor; se rechazan snapshots
+transaccionales antiguos, sin simular garantías de una FK nativa. No se alteran
+columnas ni datos históricos. Pruebas y límites en
+`docs/testing/2026-09-07-708-catalog-references.md`.
+
+## 2026-09-07 — Despliegue autorizado de #920 y #708
+
+Aplicadas ambas migraciones en producción tras autorización explícita. Verificados
+los permisos de las cinco funciones, los 15 triggers de referencia y los tres de
+protección del catálogo. La prueba funcional con escrituras sigue acotada a
+fixtures locales; la verificación en producción fue estructural y de permisos.
+
+## 2026-09-07 — Identidad corroborada en bibliografías (#638)
+
+Los títulos de edición dejan de ser evidencia de identidad o descarte de obras.
+Las fusiones entre títulos distintos requieren redirecciones de Open Library;
+los estuches ambiguos requieren clasificación de obra o corroboración de una
+página completa de varias ediciones. Las traducciones siguen siendo presentación.
+Las comprobaciones se concentran en conflictos, con cuatro peticiones simultáneas
+y cinco segundos adicionales como máximo, y solo cachean datos públicos.
+
+El replay de las capturas mantiene 14/68 resultados y corrige el renombre real.
+Sin evidencia suficiente se conserva la obra, con posibles duplicados; no se
+repara la hidratación histórica. Evidencia y límites pendientes en #638 y
+`docs/testing/2026-09-07-638-work-identity.md`.
+
+## 2026-09-07 — Sesión nativa cifrada y excluida de copias (#679)
+
+La sesión nativa completa se guarda con AES-256-GCM y una clave no exportable de
+Android Keystore, en un archivo atómico dentro de noBackupFilesDir. No se añade
+Jetpack Security ni otra dependencia. La primera lectura migra las preferencias
+antiguas: persiste el archivo cifrado antes de retirar el origen en texto claro.
+Si falta la clave o el archivo no autentica, se requiere un nuevo handoff nativo;
+no se vuelve al refresh token antiguo. Se excluye native_supabase.xml de backup y
+transferencia entre dispositivos, además de desactivar allowBackup. No se borran
+copias históricas externas ni se modifica la sesión de cookies del WebView.
+
+La verificación JVM cubre cifrado, IV distinto, integridad y clave incorrecta.
+Los tests Android de almacenamiento/migración requieren dispositivo o emulador;
+la PR debe distinguir esa evidencia de compilar el APK.
+
+Las operaciones públicas de NativeSupabase se serializan también durante la llamada
+HTTP: un refresh anterior no puede escribir después de que logout haya terminado.
+Cerrar sesión persiste un archivo vacío sin secretos (tombstone), antes de limpiar el legado.
+Si la limpieza de preferencias falla, el archivo nuevo sigue siendo autoritativo y
+se reintenta en lecturas posteriores; nunca se elimina para volver al origen antiguo.
+
+El tombstone no necesita Keystore: logout funciona aunque la clave esté inaccesible.
+Una clave inválida o irrecuperable se regenera al persistir un nuevo handoff; otros
+fallos del proveedor se propagan sin degradar a almacenamiento de tokens en claro.
+
+## 2026-09-07 — Verificación Android y destino nativo (#679)
+
+Las pruebas instrumentadas se ejecutan bajo el UID del APK destino, en un
+emulador desechable Android 16/API 36 con sesiones sintéticas. El contexto del
+APK de tests no permite escribir su directorio desde ese UID: se corrigió el
+harness y la aserción antigua de identificador del test de ejemplo.
+
+El puente solo admite el origen HTTPS del proyecto Supabase de producción,
+incluso para peticiones de sesiones migradas, y no sigue redirecciones. La clave
+pública llega del WebView para permitir su rotación sin publicar otra APK; no
+puede cambiar el destino. Para otro entorno se requiere un cambio explícito del
+origen nativo junto con el wrapper.
+
+La prueba de fallo de lectura reprodujo que signOut no alcanzaba clear. Ahora
+el borrado local se ejecuta también si no puede recuperarse la sesión para la
+revocación remota. Los fallos de escritura siguen propagándose. Evidencia en
+`docs/testing/2026-09-07-679-native-session.md`; la distribución sigue en #679.
+
+## 2026-09-07 — Despacho explícito de acciones de combate (#1086)
+
+El motor de trabajo src/lib/pet/battle/engine.ts, separado de la copia publicada r3.1, despacha skill y ulti mediante ramas explícitas y rechaza una acción sin rama con INPUT_ACTION. Se conserva la validación previa de stepBattle (INVALID_INPUTS para entradas inválidas), los eventos y el ruleset; no se modifican los motores históricos ni los fixtures normativos. La ulti de R3 ya era una entrada atómica: este cambio no añade ulti_assign.
+
+## 2026-09-07 — Aceptación de S1, nivel en madriguera y arranque de S2
+
+José Ángel comunica que S1 gusta a quienes la usan y acepta esta pieza; no se atribuye una nueva prueba con un número concreto de cuentas. Pide mostrar el nivel en la madriguera y comenzar S2. Esta decisión modifica expresamente §20 de la visión: mostrar el nivel guardado junto a la etapa, sin ordenar por nivel ni crear rankings. El humor permanece privado.
+
+S2 usa la visibilidad del perfil y expone solo nombre, clase y etapa. Su imagen OG se genera con contexto anónimo, incluso si quien la solicita está autenticado: un perfil privado nunca aporta su mascota a una imagen compartible. El nivel se limita a la madriguera. Se conserva la semántica de companion_hidden (compañera flotante, no privacidad social). Contrato en `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`. Migraciones y pruebas autorizadas en dev; producción no autorizada en esta petición.

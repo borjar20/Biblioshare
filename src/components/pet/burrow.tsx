@@ -48,6 +48,7 @@ export function Burrow({ own, neighbors, total, followingCount }: {
                     <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={1} label={pet.name} />
                   </span>
                 </button>
+                <span className="text-xs text-muted-foreground">{t("level", { level: pet.level })}</span>
                 <span className="h-4 text-xs text-muted-foreground">{owner ? null : t("burrow.yours")}</span>
               </li>
             );
@@ -71,7 +72,7 @@ export function Burrow({ own, neighbors, total, followingCount }: {
         {current && (
           <div className="flex flex-col gap-2 rounded-card border border-border p-4">
             <h3 className="break-words font-serif text-lg font-semibold">{current.pet.name}</h3>
-            <p className="text-sm text-muted-foreground">{t(`classes.${current.pet.petClass}`)} · {t(`stages.${current.pet.stage}`)}</p>
+            <p className="text-sm text-muted-foreground">{t(`classes.${current.pet.petClass}`)} · {t(`stages.${current.pet.stage}`)} · {t("level", { level: current.pet.level })}</p>
             {current.owner && (
               <Link href={`/u/${encodeURIComponent(current.owner.username)}`} className="flex items-center gap-2 self-start text-sm text-accent">
                 <UserAvatar name={current.owner.displayName || current.owner.username} avatarUrl={current.owner.avatarUrl} size={32} />

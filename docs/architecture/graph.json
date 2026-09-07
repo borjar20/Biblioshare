@@ -603,7 +603,7 @@
       "label": "importar/actions",
       "layer": "action",
       "kind": "action",
-      "summary": "parseImportFile (solo parsea, sin escribir), commitImportBatch (lotes de 20, 5 en paralelo) y resolución de filas pendientes.",
+      "summary": "parseImportFile consume cuota antes de parsear; commitImportBatch (lotes de 20, 5 en paralelo) y resolución de filas pendientes con cuota compartida.",
       "files": [
         "src/app/importar/actions.ts"
       ]
@@ -625,12 +625,12 @@
     },
     {
       "id": "a-push",
-      "label": "push/subscription-actions",
+      "label": "push/device-actions",
       "layer": "action",
       "kind": "action",
-      "summary": "subscribeToPush / unsubscribeFromPush: guarda o retira el endpoint del navegador.",
+      "summary": "Registra o retira dispositivos web/FCM. El alta cobra cuota autenticada antes de la escritura con service_role.",
       "files": [
-        "src/lib/push/subscription-actions.ts"
+        "src/lib/push/device-actions.ts"
       ]
     },
     {
@@ -979,7 +979,7 @@
       "label": "lib/pet",
       "layer": "domain",
       "kind": "module",
-      "size": 17,
+      "size": 20,
       "summary": "Mascota RPG (spec 2026-09-02, fase 1; fase 2 misiones+logros 2026-09-02-mascota-misiones-logros; logros por familias 2026-09-02-mascota-logros-niveles). `pet_state` SOLO guarda decisiones (nombre, clase, ocultar); XP, atributos, nivel y etapa se DERIVAN cada vez en derive.ts a partir de progress_sessions, passes, notes, club_posts y demás — nunca hay un libro mayor de XP que sumar (balance.ts es el único sitio con números, calibrado contra prod en Task 10). get-companion-state.ts es la lectura LIGERA para el chrome (clase/etapa/humor): UNA consulta, el RPC `get_companion_state()` (20260905), que devuelve pet_state y el último día con actividad VIVIDA (misma regla que lastActivityISO: el historial volcado no es actividad, #1041); get-pet-snapshot.ts es la derivación completa para /mascota y detecta subida de nivel/evolución para earnCelebration. Fase 2: missions/ genera y evalúa las tres misiones diarias (asignación guardada en pet_daily_missions, progreso derivado). Logros: `achievements.ts` los agrupa en **familias** (`ACHIEVEMENT_FAMILIES`) con una **escalera** de niveles en `BALANCE.achievements` (pasos a mano + `+then` sin tope), sin tabla propia — el rastro es la celebración `pet_achievement:<familia>:<tier>`, una fila por nivel; `badges.ts` mapea cada familia a su insignia PNG en `public/pet/badges/` (generadas por `scripts/pet-badges.mjs` sobre `scripts/lib/png.mjs`). Fase 3 (spec 2026-09-02-mascota-avisos-push): nudges/ entrega los avisos push que reclama claim_pet_nudges() — deliver.ts llama al claim con el cliente de service_role y manda un push por fila (título = nombre de la mascota, ruta /mascota); copy.ts resuelve el texto por kind. NO se inserta ninguna fila en notifications: el aviso muere con la pantalla.",
       "files": [
         "src/lib/pet/actions.ts",
@@ -988,6 +988,9 @@
         "src/lib/pet/classes.ts",
         "src/lib/pet/manifest.ts",
         "src/lib/pet/get-companion-state.ts",
+        "src/lib/pet/get-burrow.ts",
+        "src/lib/pet/get-profile-pet.ts",
+        "src/lib/pet/profile-pet-image.ts",
         "src/lib/pet/get-pet-snapshot.ts",
         "src/lib/pet/get-pet-counts.ts",
         "src/lib/pet/achievements.ts",
@@ -1111,6 +1114,23 @@
       "files": [
         "src/lib/supabase/database.types.ts"
       ]
+    },
+    {
+      "id": "m-rate-limit",
+      "label": "lib/rate-limit",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Consume cuota autenticada en PostgreSQL antes de consultas externas o importación. Falla cerrado si el contador no responde.",
+      "files": ["src/lib/rate-limit.ts"]
+    },
+    {
+      "id": "t-request-quotas",
+      "label": "private.request_quotas",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Contador atómico por usuario y operación. Sin permisos de cliente. Los triggers y tres RPC caras consumen cuota en la misma transacción.",
+      "columns": ["user_id", "operation", "window_started_at", "used"],
+      "files": ["supabase/migrations/20260906213325_shared_rate_limits.sql"]
     },
     {
       "id": "t-passes",
@@ -1522,6 +1542,10 @@
     }
   ],
   "edges": [
+    {"from": "a-buscar", "to": "m-rate-limit", "kind": "calls"},
+    {"from": "a-import", "to": "m-rate-limit", "kind": "calls"},
+    {"from": "a-push", "to": "m-rate-limit", "kind": "calls"},
+    {"from": "m-rate-limit", "to": "t-request-quotas", "kind": "writes"},
     {
       "from": "browser",
       "to": "proxy",
@@ -2797,10 +2821,10 @@
       "id": "flow-import",
       "name": "Importar CSV de Goodreads / Letterboxd",
       "category": "onboarding",
-      "summary": "Parseo sin escritura + commit por lotes conducido desde el cliente, con barra de progreso y cola de pendientes para lo que no casa.",
+      "summary": "Parseo con cuota compartida + commit por lotes conducido desde el cliente, con barra de progreso y cola de pendientes para lo que no casa.",
       "entrypoint": "src/app/importar/actions.ts:36",
       "notes": [
-        "parseImportFile NO escribe en BD: devuelve las filas y el cliente conduce los lotes.",
+        "parseImportFile solo escribe su contador de cuota: devuelve las filas y el cliente conduce los lotes. Se permiten 6 parseos/hora y 6000 filas procesadas/hora por usuario.",
         "Lotes de 20 filas por llamada (BATCH_SIZE), 5 filas en paralelo dentro del servidor (BATCH_CONCURRENCY). Devolver tras cada lote es lo que mantiene la invocación bajo el timeout.",
         "Tope duro de 3000 filas (MAX_ROWS).",
         "Películas: con más de un candidato válido el matcher devuelve `ambiguous` y NO escribe. Libros sin ISBN: verifica autoría, prefiere títulos exactos entre local y API, y sin una obra única devuelve `unmatched` para resolución manual (#923). El onboarding conserva las filas pendientes.",
@@ -2815,7 +2839,7 @@
         },
         {
           "node": "a-import",
-          "action": "parseImportFile detecta formato y parsea; sin escrituras",
+          "action": "parseImportFile consume cuota, detecta formato y parsea",
           "file": "src/app/importar/actions.ts:36"
         },
         {

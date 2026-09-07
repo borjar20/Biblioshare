@@ -202,8 +202,12 @@ no repetir #699), **#681** (formula injection en el CSV de exportación) y
 Salieron tres issues que NO se encadenan: **#810** (la CSP no puede llevar
 `script-src`: el nonce exige render dinámico y choca con Cache Components),
 **#811** (el resto del rate limiting de S2-11 — alta de catálogo, escritura
-social, RPC caras; la #684 solo cubría la búsqueda) y **#812** (la migración
-`20260878` está aplicada y verificada en dev, **no en prod**).
+social, RPC caras; implementado el 2026-09-06 con cuotas compartidas por usuario,
+triggers y guards antes de consultas externas; migración aplicada y verificada en dev y producción el 2026-09-07;
+la #684 solo cubría la búsqueda) y **#812** (la migración
+`20260878` aplicada también en producción el 2026-09-06; función y tres triggers
+verificados, regresión funcional local PASS; evidencia en
+`docs/testing/2026-09-06-812-catalog-gate.md`).
 
 Quedan de este bloque los sueltos que NO son de seguridad: **#815** (contraste:
 `--muted-foreground` a 3,4:1 y `--foreground-faint` a 2,6:1 sacan axe *serious*
@@ -338,7 +342,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [ ] Mascota RPG R4b: los seis objetos entran en el motor, dos ranuras, equipar y comparar, iconos y VFX (#1123). Contrato heredado en la Parte II de la hoja de ruta; spec cuando R4a pase sus criterios.
 - [ ] Mascota RPG R5: bellotas con la tienda como primer sumidero (parte de #1017).
 - [ ] Mascota RPG R6–R10: identidad de clase por tandas, Maga + Guerrera primero (R6); primera campaña por género con los jefes de reto de #1015 (R7); especializaciones fuego/hielo (R8); Aspectos y Códice (R9); cosméticos y gacha (R10, cierra #1017).
-- [ ] Mascota S1: madriguera compartida (#1083) — implementación, matriz SQL local y E2E en dev verificados (2026-09-06); migración aplicada y objetos/permisos comprobados en dev y prod. Pendiente aceptación con dos cuentas reales de producción. Sección en `/mascota`, también antes de eclosionar: doce visibles contando la propia, hasta 60 vecinas y «Mostrar más» con límite explícito. Seguidos aceptados visibles por `can_view_profile`, siempre en idle, nombre, clase, etapa y dueño; sin nivel, humor ajeno ni ranking. RPC de columnas exactas sin tocar la política de `pet_state`. Vía S, independiente del combate. Contrato vigente: Parte II S1 de `docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md`; antecedente en la spec histórica de madriguera. S2 perfil/OG y S3 club siguen fuera.
+- [x] Mascota S1: madriguera compartida (#1083) — implementación, matriz SQL local y E2E en dev verificados (2026-09-06); migración aplicada y objetos/permisos comprobados en dev y prod. Aceptada por José Ángel el 2026-09-07 tras la respuesta favorable de quienes la usan. Sección en `/mascota`, también antes de eclosionar: doce visibles contando la propia, hasta 60 vecinas y «Mostrar más» con límite explícito. Seguidos aceptados visibles por `can_view_profile`, siempre en idle, nombre, clase, etapa y dueño; sin humor ajeno ni ranking. Ampliación autorizada el 2026-09-07: nivel en lista y tarjeta (dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128). RPC de columnas exactas sin tocar la política de `pet_state`. Vía S, independiente del combate. Contrato vigente: Parte II S1 de `docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md`; antecedente en la spec histórica de madriguera. S2 perfil/OG iniciado el 2026-09-07; S3 club sigue fuera.
+- [x] Mascota S2: sprite, nombre, clase y etapa en cabecera de perfil; sprite, nombre y clase en OG anónimo. Implementación y 5 E2E verificados en dev el 2026-09-07; migración y ACL verificadas también en producción. Publicación web mediante PR #1128. Contrato: `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`.
 - [ ] Mascota: fuera del roadmap activo — cooperativo de club, crafting profundo y PvP asíncrono (#1016 queda P3, posterior a R10: necesita población real y una defensa asíncrona definida frente a las intervenciones del atacante). Aplazado: nivel independiente de clase (Parte I §2.3 del documento).
 
 ## Deuda transversal priorizada por la auditoría 2026-08

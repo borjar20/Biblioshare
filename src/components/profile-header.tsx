@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+import { ProfilePet } from "./pet/profile-pet";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import type { Profile } from "@/lib/profile/get-profile-by-username";
@@ -100,6 +101,8 @@ export async function ProfileHeader({
           </div>
         </div>
       </div>
+
+      <Suspense fallback={null}><ProfilePet userId={profile.userId} /></Suspense>
 
       <div className="flex flex-wrap items-center gap-2 text-sm lg:hidden">
         <Counts basePath={basePath} counts={counts} tSocial={tSocial} />

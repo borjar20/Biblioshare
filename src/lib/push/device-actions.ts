@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { requireRequestQuota } from "@/lib/rate-limit";
 import { isSafePushEndpoint, resolvesToPublicHost } from "./safe-endpoint";
 
 // Registro/baja de dispositivos push (spec item 3). Escribe en push_devices.
@@ -18,17 +19,20 @@ type WebSubscriptionJson = {
   keys: { p256dh: string; auth: string };
 };
 
-async function requireUserId(): Promise<string> {
+async function requireUserId(options?: { registration: true }): Promise<string> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  // Registration writes with service_role (no user JWT in the DB trigger).
+  // Charge the session before DNS or deleting an existing subscription.
+  if (options?.registration) await requireRequestQuota(supabase, "push_devices");
   return user.id;
 }
 
 export async function registerWebDevice(subscription: WebSubscriptionJson): Promise<void> {
-  const userId = await requireUserId();
+  const userId = await requireUserId({ registration: true });
 
   // #678: el endpoint decide a dónde hace el servidor una petición saliente más
   // tarde (webpush.sendNotification). Sin validarlo, un autenticado elegía ese
@@ -89,7 +93,7 @@ export async function registerFcmDevice(input: {
   deviceId?: string;
   deviceName?: string;
 }): Promise<void> {
-  const userId = await requireUserId();
+  const userId = await requireUserId({ registration: true });
   const db = createServiceRoleClient();
   // Un token FCM identifica UN install. Quien lo registra ahora es su dueño: se
   // borran filas viejas con ese token de CUALQUIER usuario, para que un cierre

@@ -1,4 +1,5 @@
 import { normalizeAuthorWorks, type NormalizedWork, type OpenLibraryAuthorWorkDoc } from "./normalize";
+import { fetchWorkIdentityEvidence } from "./work-identity";
 
 // La bibliografía de un autor, en DOS llamadas a search.json.
 //
@@ -7,8 +8,8 @@ import { normalizeAuthorWorks, type NormalizedWork, type OpenLibraryAuthorWorkDo
 // search.json trae año, portada, idiomas y conteo, y con `editions.title` +
 // `lang` devuelve además el título de la mejor edición en ese idioma — de ahí
 // que hagan falta dos pasadas y no una: la española da «En llamas» y la
-// inglesa da «Catching Fire», y tener las dos es lo que permite reconocer que
-// dos registros distintos son el mismo libro.
+// inglesa da «Catching Fire». Las ediciones sirven para presentar traducciones;
+// las fusiones entre títulos distintos exigen redirecciones corroboradas.
 //
 // LÍMITE ASUMIDO: `limit=100` y sin paginar. Un autor con más de cien obras se
 // queda con las cien más populares, que es mejor que las mil sin ordenar que
@@ -71,7 +72,8 @@ export async function fetchAuthorWorks(authorKey: string): Promise<NormalizedWor
     const unaSolaPasadaVacia = (docsEs.length === 0) !== (docsEn.length === 0);
     if (unaSolaPasadaVacia) return [];
 
-    return normalizeAuthorWorks(docsEs, docsEn);
+    const evidence = await fetchWorkIdentityEvidence([...docsEs, ...docsEn]);
+    return normalizeAuthorWorks(docsEs, docsEn, evidence);
   } catch (error) {
     console.error("fetchAuthorWorks failed", { authorKey, error });
     return [];

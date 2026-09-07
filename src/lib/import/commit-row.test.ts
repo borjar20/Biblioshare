@@ -330,3 +330,6 @@ describe("commitImportRow — el ISBN de la fila identifica la edición del pase
     expect(matchImportRow).toHaveBeenCalledWith(client, "book", expect.anything(), "user-42");
   });
 });
+
+// Provider edition registration is outside this test's domain boundary.
+vi.mock("@/lib/editions/register-verified", () => ({ registerVerifiedBookEdition: vi.fn() }));

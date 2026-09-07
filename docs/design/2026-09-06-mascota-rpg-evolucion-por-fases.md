@@ -1,6 +1,6 @@
 # Biblioshare — RPG de mascota: visión y hoja de ruta
 
-> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06 · Parte II (hoja de ruta) viva, revisada el 2026-09-06]**
+> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06, con enmienda social del 2026-09-07 · Parte II (hoja de ruta) viva, revisada el 2026-09-07]**
 >
 > Esta redacción sustituye a la inicial del mismo día (commit `e47ca3d2` de la PR #1079) tras su
 > revisión, y al alcance de la spec de combate del 2026-09-04
@@ -662,8 +662,8 @@ Decidido el 2026-09-06 (#1083). La mascota sale de tu pantalla para acompañar, 
 - **Se ve a quien puede ver tu perfil.** Misma regla que sesiones, pases y biblioteca
   (`can_view_profile`: dueño, perfil público o seguimiento aceptado; nunca entre bloqueados). No
   hay reglas de visibilidad propias de la mascota.
-- **De una mascota ajena se ve sprite, nombre, clase y etapa; nunca el nivel ni el humor.** El
-  humor ajeno diría «esta persona lleva días sin usar la app»; el nivel es un número que ordena.
+- **De una mascota ajena se ve sprite, nombre, clase y etapa; el nivel también se muestra en la madriguera por decisión del 2026-09-07. Nunca se muestra el humor.** El
+  humor ajeno diría «esta persona lleva días sin usar la app». Mostrar nivel no cambia el orden ni crea un ranking.
   Las vecinas salen siempre despiertas.
 - **Sin ranking.** Un ranking por nivel es un ranking de lectura, contra «espejo, no máquina de
   culpa». Si algún día se quiere una clasificación, será dentro de un club, donde ya existe el
@@ -920,17 +920,16 @@ contando la propia y «Mostrar más» para expandir las vecinas cargadas; estado
 Máximo de 60 vecinas, sin paginación: si hay más, al expandir se indica «Mostrando 60 de N
 mascotas de tus seguidos», sin contar la propia. Antes de eclosionar, la sección aparece
 debajo del formulario y muestra hasta doce vecinas inicialmente, sin inventar mascota propia.
-Un RPC (`get_burrow_pets()`, helper privado con privilegios de
-definidor) que devuelve solo nombre, clase, etapa y dueño; sin cambios de política en `pet_state`.
+Un RPC (`get_burrow_pets_with_level()`, ampliación de `get_burrow_pets()` aplicada en dev, helper privado con privilegios de
+definidor) que devuelve nombre, clase, etapa, nivel guardado y dueño; sin cambios de política en `pet_state`.
 Spec: `docs/superpowers/specs/2026-09-06-mascota-madriguera-compartida-design.md`.
 Precisiones posteriores confirmadas: `docs/requirements/decisiones.md`, entrada
 «Madriguera: límite explícito y acceso antes de eclosionar» del 2026-09-06; prevalecen sobre
-la spec histórica en estos tres puntos. **Estado (2026-09-06): implementación verificada,
+la spec histórica en estos tres puntos. **Estado (2026-09-07): S1 aceptado por José Ángel tras la respuesta favorable de quienes lo usan. Implementación verificada,
 matriz SQL con cambio de rol ejecutada en local y migración aplicada en dev y producción,
-con objetos y permisos verificados. Pendiente aceptación con dos cuentas reales de
-producción en #1083.** La comprobación por RPC con sesiones reales y
+con objetos y permisos verificados. La aceptación de producto se comunica el 2026-09-07; no se atribuye una nueva ejecución técnica ni una muestra concreta.** La comprobación por RPC con sesiones reales y
 el recorrido E2E de dos usuarios pasaron en dev. Detalles de funciones/ACL en
-`docs/requirements/data-model.md` §8bis.6. S1 no se da por cerrado todavía.
+`docs/requirements/data-model.md` §8bis.6. S1 queda aceptado. Ampliación autorizada: nivel bajo cada mascota y en su tarjeta; implementación en dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128.
 
 **Criterios de salida:**
 
@@ -946,10 +945,13 @@ el recorrido E2E de dos usuarios pasaron en dev. Detalles de funciones/ACL en
 - La ficha propia no espera a la madriguera (Suspense propio) y un fallo del RPC no rompe la
   página.
 
-### S2 — Mascota en el perfil (dirección)
+### S2 — Mascota en el perfil (implementada; publicación en PR #1128)
 
-Sprite, nombre y clase en la cabecera de `/u/<username>` y en su imagen OG, con la misma función de
-visibilidad y un RPC de una fila. Es lo que ve quien escanea una tarjeta NFC (`/go/<uuid>`).
+Sprite, nombre, clase y etapa en la cabecera de `/u/<username>`; sprite, nombre y clase en su imagen OG.
+Misma función de visibilidad y RPC de una fila. La imagen OG usa solo contexto anónimo y no incluye
+mascotas privadas, aunque quien la solicite tenga acceso al perfil. Es lo que ve quien escanea una
+tarjeta NFC (`/go/<uuid>`). Contrato: `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`.
+Migración aplicada y funciones/permisos verificados en dev y producción el 2026-09-07. Publicación web mediante PR #1128.
 
 ### S3 — Madriguera del club (dirección)
 

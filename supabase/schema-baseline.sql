@@ -1182,3 +1182,23 @@ commit;
 begin;
 \ir migrations/20260906201847_pass_interaction_hrefs.sql
 commit;
+
+-- 20260906213325_shared_rate_limits
+begin;
+\ir migrations/20260906213325_shared_rate_limits.sql
+commit;
+
+-- 20260907074033_verified_book_editions
+begin;
+\ir migrations/20260907074033_verified_book_editions.sql
+commit;
+
+-- 20260907093534_catalog_reference_guards
+begin;
+\ir migrations/20260907093534_catalog_reference_guards.sql
+commit;
+
+-- 20260907130854_pet_social_profile_and_level
+begin;
+\ir migrations/20260907130854_pet_social_profile_and_level.sql
+commit;

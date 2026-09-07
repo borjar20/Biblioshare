@@ -279,7 +279,10 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
   }
 
   async function hydrate() {
-    const record = await readActive(identity);
+    const result = await readActive(identity);
+    // At startup there is no live in-memory game to preserve. Keep the existing
+    // legacy/memory fallback if persistence is unavailable.
+    const record = result.ok ? result.record : null;
     if (controller.signal.aborted) return;
     if (record) {
       // La clave legada de fase 1 se borra en TODO camino de hidratación, no
@@ -343,8 +346,12 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
       // local viva que solo estaba pendiente de guardarse (issue #931).
       // Esperar a que la cola local drene primero cierra esa carrera.
       enqueue(async () => {
-        const record = await readActive(identity);
+        const result = await readActive(identity);
         if (controller.signal.aborted) return;
+        // A failed read is not a remote deletion. Keep snapshot AND revision,
+        // so the same announcement can be retried after storage recovers (#955).
+        if (!result.ok) return;
+        const record = result.record;
         if (record && record.rev > rev) {
           adoptRecord(record);
         } else if (!record) {

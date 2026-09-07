@@ -2838,6 +2838,10 @@ export type Database = {
       }
     }
     Functions: {
+      consume_request_quota: {
+        Args: { p_operation: string; p_cost?: number }
+        Returns: boolean
+      }
       activate_club_activity: {
         Args: { p_activity_id: string }
         Returns: undefined
@@ -3038,6 +3042,24 @@ export type Database = {
           total: number
         }[]
       }
+      get_burrow_pets_with_level: {
+        Args: { p_limit?: number }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string | null
+          avatar_url: string | null
+          pet_name: string
+          pet_class: string
+          pet_stage: string
+          pet_level: number
+          total: number
+        }[]
+      }
+      get_profile_pet: {
+        Args: { p_user_id: string }
+        Returns: { pet_name: string; pet_class: string; pet_stage: string }[]
+      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
@@ -3182,6 +3204,19 @@ export type Database = {
       }
       register_catalog_item: {
         Args: { p_external_id: string; p_item_type: string }
+        Returns: string
+      }
+      register_verified_book_edition: {
+        Args: {
+          p_book_id: string
+          p_created_by: string
+          p_isbn: string
+          p_label?: string
+          p_publisher?: string
+          p_year?: number
+          p_pages?: number
+          p_cover_url?: string
+        }
         Returns: string
       }
       register_catalog_item_by_volume: {

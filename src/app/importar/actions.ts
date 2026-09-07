@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireRequestQuota } from "@/lib/rate-limit";
 import {
   revalidateImportBatch,
   revalidatePendingImports,
@@ -55,6 +56,7 @@ export async function parseImportFile(
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "noFile" };
 
+  await requireRequestQuota(supabase, "import_parse");
   const buffer = await file.arrayBuffer();
   const detected = detectFormat(buffer);
   if (!detected) return { error: "unrecognizedFormat" };
@@ -74,10 +76,8 @@ export async function parseImportFile(
 const BATCH_CONCURRENCY = 5;
 
 // Invoked imperatively from the client (startTransition), one batch per
-// call — same pattern as addExistingItemToLibrary/updateStatus. Next.js
-// dispatches Server Actions sequentially per client, so the caller's loop
-// over batches is naturally rate-limited already; concurrency here only
-// bounds how many external API calls happen at once within one batch.
+// call. The shared quota bounds work across clients and server instances;
+// concurrency only bounds simultaneous external calls within this batch.
 export async function commitImportBatch(
   itemType: ItemType,
   rows: ImportRow[]
@@ -91,6 +91,7 @@ export async function commitImportBatch(
   // Mismo tope que el parseo: cada fila puede disparar llamadas a APIs
   // externas, así que un cliente no debe poder enviar lotes arbitrarios.
   if (rows.length > MAX_ROWS) return [];
+  if (rows.length > 0) await requireRequestQuota(supabase, "import_rows", rows.length);
 
   const results: ImportRowResult[] = [];
   for (let i = 0; i < rows.length; i += BATCH_CONCURRENCY) {
@@ -138,6 +139,7 @@ export async function resolveAmbiguousImportRow(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  await requireRequestQuota(supabase, "import_rows");
   const result = await commitImportRowWithCandidate(
     supabase,
     user.id,
@@ -179,6 +181,7 @@ export async function resolveUnmatchedImportRow(
   const yearRaw = String(formData.get("year") ?? "").trim();
   const year = yearRaw ? Number(yearRaw) : null;
 
+  await requireRequestQuota(supabase, "import_rows");
   const result = await commitManualImportRow(supabase, user.id, itemType, row, {
     title,
     author,
@@ -250,6 +253,7 @@ export async function resolvePendingRow(
   const yearRaw = String(formData.get("year") ?? "").trim();
   const year = yearRaw ? Number(yearRaw) : null;
 
+  await requireRequestQuota(supabase, "import_rows");
   const registered = await registerManualImportItem(supabase, itemType, {
     title, author, year, pageCount: row.pageCount,
   });
@@ -365,6 +369,7 @@ export async function resolvePendingRowWithCandidate(
     return { error: "forbidden" };
   }
 
+  await requireRequestQuota(supabase, "import_rows");
   const catalogId = await catalogIdForCandidate(
     supabase,
     itemType,
