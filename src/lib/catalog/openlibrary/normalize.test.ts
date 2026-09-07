@@ -44,8 +44,8 @@ describe("acceptEditionTitle", () => {
     expect(acceptEditionTitle("Gregor and the Code of Claw", "Gregor", ["eng"], "eng")).toBeNull();
   });
 
-  it("no renombra en inglés por una edición aislada; permite presentación traducida", () => {
-    expect(acceptEditionTitle("Gregor", "Gregor the Overlander", ["eng"], "eng")).toBeNull();
+  it("permite títulos de presentación; la bibliografía aplica su guard de identidad aparte", () => {
+    expect(acceptEditionTitle("Gregor", "Gregor the Overlander", ["eng"], "eng")).toBe("Gregor the Overlander");
     expect(acceptEditionTitle("The Hunger Games", "Los juegos del hambre", ["spa"], "spa")).toBe(
       "Los juegos del hambre"
     );

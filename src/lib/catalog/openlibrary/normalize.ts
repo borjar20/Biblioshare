@@ -60,11 +60,6 @@ export function acceptEditionTitle(
   const edition = normalizeTitleForComparison(editionTitle);
   if (!edition) return null;
   if (edition.length < work.length && work.includes(edition)) return null;
-  // Una única edición inglesa no corrobora un renombre de la obra (#638).
-  // Conservamos solo variantes de puntuación/mayúsculas; las traducciones
-  // españolas siguen siendo presentación, nunca evidencia para fusionar.
-  if (want === "eng" && edition !== work) return null;
-
   return editionTitle;
 }
 
@@ -156,6 +151,9 @@ export function normalizeAuthorWorks(
         merged.get(doc.key) ?? { doc, order: merged.size, es: null, en: null };
       const edition = doc.editions?.docs?.[0];
       let accepted = acceptEditionTitle(doc.title, edition?.title, edition?.language, want);
+      // Bibliographies persist work titles: a lone English edition cannot
+      // rename a work. Search results have a different presentation contract.
+      if (want === "eng" && accepted && normalizeTitleForComparison(accepted) !== normalizeTitleForComparison(doc.title)) accepted = null;
       // A translation may label this work, but must not borrow another work's
       // identity or the title of a collection edition.
       if (accepted && (isOmnibus([accepted]) || workTitles.some((other) =>
