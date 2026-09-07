@@ -10,7 +10,7 @@
 > con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
 > referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev el 2026-09-07, prod pendiente de la aceptación de R3 (#1106)]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106)]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3963,7 +3963,9 @@ El manifiesto y el baseline permiten reconstruir una base vacía. Véase
 
 ### 8bis.7. Aventuras: `get_pet_adventure_days`, `start_pet_adventure`, `resolve_pet_adventure`
 
-**[Canónico · verificado contra dev el 2026-09-07 · prod pendiente de la aceptación de R3 (#1106)]**
+**[Canónico · verificado contra dev y prod el 2026-09-07 · aceptación jugable de R3 confirmada por el usuario (#1106)]**
+
+Verificación de producción previa al merge de #1127: tres columnas con tipos y grants iguales a dev (SELECT para authenticated; INSERT/UPDATE solo service_role), tres índices únicos válidos, dos CHECKs válidos y RLS activo. Las definiciones de las cinco funciones coinciden con dev tras normalizar CRLF; start/resolve solo permiten EXECUTE a service_role entre los roles de API. No se ejecutaron combates ni fixtures mutantes en producción.
 
 Spec `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §5–§6. **La concesión no se
 guarda**: `private.pet_pending_adventure_days(p_user)` (definer, sin comprobación de identidad, solo

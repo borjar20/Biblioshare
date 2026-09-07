@@ -7,7 +7,7 @@
 > (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
 > Contratos: R1 cerrado el 2026-09-06 (#1081 cerrada; lo que hereda R7 vive en #1084). Seguimiento: #1082.
 > R2 aceptado por el usuario para avanzar el 2026-09-06 tras #1100; R3 implementado y mergeado
-> (PR #1107), aceptación jugable pendiente en #1106. R4 desdoblado en R4a y R4b el 2026-09-06;
+> (PR #1107), aceptación jugable confirmada el 2026-09-07 (#1106). R4 desdoblado en R4a y R4b el 2026-09-06;
 > R4a diseñada en `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`.
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
@@ -704,7 +704,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 | R1 Contratos y modelo de combate | la spec ejecutable de R2 — **cerrado 2026-09-06** | criterios | ninguno |
 | R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento — **implementado; aceptación humana pendiente (#1082)** | criterios | ninguno: sprites actuales como marcador |
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
-| R4a Aventuras | cadenas de tres tramos concedidas por día con actividad, ventana de siete días, reanudación, reintento, botín guardado «pendiente de activar» — **implementada 2026-09-07; aceptación jugable y prod pendientes de #1106; migración a prod antes del deploy del código** | criterios | ninguno |
+| R4a Aventuras | cadenas de tres tramos concedidas por día con actividad, ventana de siete días, reanudación, reintento, botín guardado «pendiente de activar» — **implementada 2026-09-07; aceptación jugable confirmada; migración aplicada y verificada en prod el 2026-09-07 antes del merge de #1127** | criterios | ninguno |
 | R4b Primer botín | los seis objetos entran en el motor, dos ranuras, equipar y comparar | criterios | iconos y VFX de los objetos |
 | R5 Bellotas y tienda | moneda con su primer sumidero | dirección | — |
 | R6 Identidad de clase por tandas | Maga + Guerrera; después Bárbaro + Clérigo; después Bardo + Ranger | dirección | VFX de ulti y de clase, armas de clase |
@@ -827,8 +827,7 @@ haya poder en juego. Ninguna de las dos genera arte hasta que R3 pase su aceptac
 
 **Spec:** `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`.
 
-**Implementada 2026-09-07**; longitud de cadena: 3 tramos (calibración en la spec §10); pendiente
-aceptación jugable y despliegue a prod tras #1106. **Gate de despliegue:** migración
+**Implementada 2026-09-07**; longitud de cadena: 3 tramos (calibración en la spec §10); aceptación jugable confirmada por el usuario el 2026-09-07 (#1106). Migración aplicada y verificada en prod el mismo día, antes del merge de #1127. **Gate de despliegue:** migración
 `20260908_pet_adventures.sql` a prod ANTES del deploy del código; es aditiva, así que aplicarla
 primero es seguro (plan Task 14).
 
