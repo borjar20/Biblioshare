@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { pickEnemies } from "./adventure";
 import { canonicalJson } from "./canonical";
-import { BROTE, RULESET } from "./content";
+import { BROTE, ENEMIES, RULESET } from "./content";
 import { simulate } from "./engine";
 import { POLICIES, POLICY_IDS, runPolicy } from "./policies";
 import { snapshotForProfile } from "./profiles";
 import { seedFromIndex } from "./prng";
 
 const snapshot = snapshotForProfile("cinefila", "cleric");
-const ctx = (i: number) => ({ seed: seedFromIndex(i), snapshot, enemy: BROTE, ruleset: RULESET });
+const ctx = (i: number) => ({ seed: seedFromIndex(i), snapshot, enemies: [BROTE], ruleset: RULESET });
+const LEGACY_POLICY_IDS = POLICY_IDS.filter((id) => id !== "interrupt_ulti");
 
 describe("runPolicy", () => {
   it("never no genera inputs y coincide con simulate([])", () => {
@@ -40,5 +42,39 @@ describe("runPolicy", () => {
     expect(run.inputs[0]).toMatchObject({ seq: 0, tick: 0 });
     expect(run.events.some((e) => e.type === "SKILL_IGNORED")).toBe(false);
     expect(run.inputs.length).toBeLessThanOrEqual(RULESET.maxInputs);
+  });
+
+  it("las tres políticas heredadas solo generan inputs de skill", () => {
+    for (const id of LEGACY_POLICY_IDS) {
+      for (let i = 0; i < 10; i++) {
+        const run = runPolicy(ctx(i), POLICIES[id]);
+        expect(run.inputs.every((input) => input.action === "skill")).toBe(true);
+      }
+    }
+  });
+
+  it("interrupt_ulti lanza la ulti Potencia en cuanto está lista, una vez por tramo alcanzado, y su log re-simula igual", () => {
+    // Cadena de 3 tramos: buscamos un seed que alcance al menos el tramo 2 para
+    // comprobar que la ulti se relanza al reiniciarse por tramo (spec R4a §3).
+    const chainCtx = (i: number) => {
+      const seed = seedFromIndex(i);
+      return { seed, snapshot, enemies: pickEnemies(seed, 3, ENEMIES), ruleset: RULESET };
+    };
+    const run = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      .map((i) => ({ i, run: runPolicy(chainCtx(i), POLICIES.interrupt_ulti) }))
+      .find(({ run }) => run.result.fight >= 2)!;
+    const { i, run: r } = run;
+    const ultiEvents = r.events.filter((e) => e.type === "ULTI_USED");
+    const fightsReached = r.result.fight;
+    expect(ultiEvents.length).toBe(fightsReached);
+    for (const e of ultiEvents) {
+      expect(e.type).toBe("ULTI_USED");
+      if (e.type === "ULTI_USED") {
+        expect(e.recipe).toBe("power");
+        expect(e.matches).toBe(4);
+      }
+    }
+    const again = simulate(chainCtx(i), r.inputs);
+    expect(canonicalJson(again)).toBe(canonicalJson({ events: r.events, result: r.result }));
   });
 });

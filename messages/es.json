@@ -36,7 +36,8 @@
         "streak_milestone": "¡Racha {milestone}!",
         "first_club_participation": "¡Al club!",
         "pet_level_up": "¡Nivel {milestone}!",
-        "pet_evolved": "¡He crecido!"
+        "pet_evolved": "¡He crecido!",
+        "pet_adventure_won": "¡Aventura!"
       }
     }
   },
@@ -3296,7 +3297,9 @@
         "STATUS_EXPIRED": "El rival se recupera.",
         "BATTLE_ENDED": "Termina el combate.",
         "vulnerable": "Golpe sobre punto débil: {damage} de daño.",
-        "ULTI_USED": "Ulti: {damage} de daño."
+        "ULTI_USED": "Ulti: {damage} de daño.",
+        "FIGHT_ENDED": "Tramo superado. Tu mascota recupera el aliento.",
+        "FIGHT_STARTED": "Empieza el siguiente tramo."
       },
       "ulti": {
         "slot": "Hueco {n}: {value}",
@@ -3341,6 +3344,39 @@
       "actionQueued": "Preparando…",
       "skillSummary": "Daño doble. Interrumpe cargas. Recarga en 6 s.",
       "helpTitle": "Cómo funcionan los ataques"
+    },
+    "adventure": {
+      "title": "Aventuras",
+      "intro": "Cada día con lectura, episodios o películas te da una aventura: una cadena de combates seguidos en la que la vida no se recupera entre tramos. Ganar entrega un objeto; perder no quita nada.",
+      "pending": "{count, plural, =0 {No tienes aventuras pendientes} one {# aventura pendiente} other {# aventuras pendientes}}",
+      "pendingHelp": "Cuentan los últimos siete días con actividad. Una aventura empezada no caduca.",
+      "inProgress": "Aventura del {day} en curso",
+      "retryAvailable": "Aventura del {day}: puedes reintentarla",
+      "start": "Empezar aventura",
+      "resume": "Reanudar aventura",
+      "retry": "Reintentar aventura",
+      "starting": "Preparando aventura…",
+      "none": "Registra algo hoy y vuelve: tu mascota tendrá una aventura esperando.",
+      "unavailable": "Las aventuras no están disponibles ahora mismo. El entrenamiento sigue funcionando.",
+      "fight": "Tramo {n} de {total}",
+      "interlude": "Tramo {n} superado. Te quedan {hp} de {max} de vida. Habilidad y ulti vuelven a estar listas.",
+      "continue": "Continuar",
+      "loseHint": "La aventura no se pierde: puedes reintentarla desde el principio, con la vida llena y otro seed.",
+      "won": "¡Aventura superada!",
+      "reward": "Botín: {name}",
+      "rewardPending": "Se activa en la siguiente actualización",
+      "inventory": "Botín conseguido",
+      "inventoryEmpty": "Aún no has ganado ningún objeto.",
+      "count": "×{count}",
+      "slots": { "weapon": "Arma", "amulet": "Amuleto" },
+      "items": {
+        "sharp_bookmark": "Marcapáginas afilado",
+        "heavy_ink_quill": "Pluma de tinta pesada",
+        "librarian_loupe": "Lupa del bibliotecario",
+        "last_page_amulet": "Amuleto de la Última Página",
+        "loan_pendant": "Colgante del préstamo",
+        "streak_medallion": "Medallón de la racha"
+      }
     }
   }
 }

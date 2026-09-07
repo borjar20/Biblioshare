@@ -6,7 +6,9 @@
 > revisión, y al alcance de la spec de combate del 2026-09-04
 > (`docs/superpowers/specs/2026-09-04-mascota-jefes-combate-design.md`), que queda como antecedente.
 > Contratos: R1 cerrado el 2026-09-06 (#1081 cerrada; lo que hereda R7 vive en #1084). Seguimiento: #1082.
-> R2 aceptado por el usuario para avanzar el 2026-09-06 tras #1100; R3 activo en #1106.
+> R2 aceptado por el usuario para avanzar el 2026-09-06 tras #1100; R3 implementado y mergeado
+> (PR #1107), aceptación jugable confirmada el 2026-09-07 (#1106). R4 desdoblado en R4a y R4b el 2026-09-06;
+> R4a diseñada en `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`.
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
 > `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
@@ -702,7 +704,8 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 | R1 Contratos y modelo de combate | la spec ejecutable de R2 — **cerrado 2026-09-06** | criterios | ninguno |
 | R2 Combate mínimo universal | kit genérico para las seis clases, un enemigo con dos anuncios, simulación local y validación en servidor, replay, entrenamiento — **implementado; aceptación humana pendiente (#1082)** | criterios | ninguno: sprites actuales como marcador |
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
-| R4 Aventuras y primer botín | aventuras derivadas, límites antifarm, dos ranuras y 4–6 objetos agnósticos | criterios | iconos y VFX de los objetos |
+| R4a Aventuras | cadenas de tres tramos concedidas por día con actividad, ventana de siete días, reanudación, reintento, botín guardado «pendiente de activar» — **implementada 2026-09-07; aceptación jugable confirmada; migración aplicada y verificada en prod el 2026-09-07 antes del merge de #1127** | criterios | ninguno |
+| R4b Primer botín | los seis objetos entran en el motor, dos ranuras, equipar y comparar | criterios | iconos y VFX de los objetos |
 | R5 Bellotas y tienda | moneda con su primer sumidero | dirección | — |
 | R6 Identidad de clase por tandas | Maga + Guerrera; después Bárbaro + Clérigo; después Bardo + Ranger | dirección | VFX de ulti y de clase, armas de clase |
 | R7 Primera campaña por género | una región y los jefes de reto (#1015) | dirección | una familia de enemigos y su jefe |
@@ -814,16 +817,34 @@ criterios con personas. El arreglo de #1085 está integrado en #1099.
 - Un resultado excelente se nota; uno malo nunca anula la pelea.
 - Ampliar los sheets no agranda la caja táctil de la compañera (#1074).
 
-## R4 — Aventuras y primer botín
+## R4 — Aventuras y primer botín (desdoblado en R4a y R4b el 2026-09-06)
+
+El contrato original juntaba dos subsistemas del tamaño de R3 cada uno. Se parte en dos specs
+secuenciales, aventuras primero: los criterios antifarm se prueban con cuentas reales antes de que
+haya poder en juego. Ninguna de las dos genera arte hasta que R3 pase su aceptación (#1106).
+
+### R4a — Aventuras (contrato)
+
+**Spec:** `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`.
+
+**Implementada 2026-09-07**; longitud de cadena: 3 tramos (calibración en la spec §10); aceptación jugable confirmada por el usuario el 2026-09-07 (#1106). Migración aplicada y verificada en prod el mismo día, antes del merge de #1127. **Gate de despliegue:** migración
+`20260908_pet_adventures.sql` a prod ANTES del deploy del código; es aditiva, así que aplicarla
+primero es seguro (plan Task 14).
 
 **Entrega:**
 
-- **Aventuras derivadas** por (usuario, día local, disparador) con tope por periodo (§9); no
-  caducan; gasto idempotente por identificador; el entrenamiento sigue libre.
-- **Primer botín:** dos ranuras (arma y amuleto) y 4–6 objetos **agnósticos de clase** que modifican
-  la habilidad genérica o la ulti; equipar gratis fuera de combate; comparación clara.
-- Reanudación de aventura desde el log parcial.
-- Iconos y VFX de los objetos.
+- **Aventuras derivadas** por (usuario, día local con actividad cultural real, la misma definición
+  que usan los avisos push) con **ventana móvil de siete días** como tope por periodo (§9). «No
+  caducan» significa que no hay energía con temporizador; un día vivido que sale de la ventana sin
+  jugarse deja de contar, y una aventura ya empezada nunca se pierde.
+- **Cadena de dos o tres tramos** contra los enemigos de R3, fijados por el seed; la vida se
+  arrastra; habilidad, ulti y barrera se reinician por tramo. La longitud la decide la calibración.
+- Reintento gratis e ilimitado desde el principio de la cadena; reanudación desde el log parcial
+  del dispositivo.
+- **Botín guardado «pendiente de activar»:** catálogo de seis objetos con id estable, tres por
+  ranura, sin efecto en combate; inventario derivado de las aventuras ganadas.
+- Motor r4.1 (la cadena es un solo combate; el entrenamiento pasa a r4.1 con un tramo y los
+  números de r3.1), publicado con la herramienta de #1093; cierra #1086 y #1087.
 
 **Criterios de salida:**
 
@@ -831,8 +852,23 @@ criterios con personas. El arreglo de #1085 está integrado en #1099.
 - Dividir una sesión, borrar y volver a registrar, o usar dos dispositivos, no dan más aventuras ni
   duplican recompensas.
 - Editar la actividad después no revierte una aventura jugada.
-- Un objeto nuevo da ganas de probarlo, y ninguna build domina entre los 4–6.
 - Ningún cambio de hábito negativo observado: no se dividen sesiones, no hay obligación diaria.
+- La política «interrumpir» gana la cadena entre el 50 y el 75 % y «no pulsar» menos del 3 %
+  (política de referencia: interrumpir + ulti).
+
+### R4b — Primer botín (contrato heredado; se concreta cuando R4a pase sus criterios)
+
+**Entrega:**
+
+- Los seis objetos de R4a entran en el motor (versión r4.2): dos ranuras (arma y amuleto),
+  **agnósticos de clase**, modifican la habilidad genérica o la ulti; equipar gratis fuera de
+  combate; comparación clara; qué hacer con los duplicados.
+- Iconos y VFX de los objetos.
+
+**Criterios de salida:**
+
+- Un objeto nuevo da ganas de probarlo, y ninguna build domina entre los seis.
+- Lo ganado en R4a se activa sin perder nada.
 
 ## R5 — Bellotas y tienda (dirección)
 

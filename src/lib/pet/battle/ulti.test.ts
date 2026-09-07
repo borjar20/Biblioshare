@@ -8,7 +8,7 @@ import { snapshotForProfile } from "./profiles";
 import { getBattleRelease, replayBattle } from "./replay";
 import type { BattleInput } from "./types";
 const seed = seedFromIndex(7);
-const ctx = { seed, snapshot: snapshotForProfile("lectora_larga", "wizard"), enemy: CAPARAZON, ruleset: RULESET };
+const ctx = { seed, snapshot: snapshotForProfile("lectora_larga", "wizard"), enemies: [CAPARAZON], ruleset: RULESET };
 const input = (order: string, tick = 120, seq = 0): BattleInput => ({ seq, tick, action: "ulti", payload: { order } });
 function ready() { const st = createBattle(ctx); while(st.tick < 120) stepBattle(ctx, st, []); return st; }
 describe("R3 ulti", () => {

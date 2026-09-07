@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { withBattleUsers } from "./support/battle-users";
+import { resolveFinalEmpire } from "./support/book-fixture";
 import normative from "../src/lib/pet/battle/versions/r2.2/normative.json";
 import { replayBattle } from "../src/lib/pet/battle/replay";
 import type { BattleRecord } from "../src/lib/pet/battle/types";
@@ -163,5 +164,95 @@ test("pet_battles: persisted historical record replays with its retained release
     const replay = await replayBattle(saved);
     expect(replay).toEqual({ ok: true, events: normative.events, result: record.result, digest: row.digest });
     expect(row.digest).toBe(normative.digest);
+  });
+});
+
+// R4a: aventuras (spec docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md
+// §5-§6). Igual que el bloque de arriba, sin navegador: fabricar una fila de aventura
+// como usuario, ejecutar las funciones de escritura con JWT de usuario, y dos inicios
+// y dos resoluciones concurrentes con service_role para probar que la serialización
+// por usuario (advisory lock) hace convergentes las dos carreras.
+
+// `passes_one_active` (20260716_pass_hub_a_columns.sql) permite como mucho un pase
+// activo por (user_id, item_type, item_id): sembrar dos días para la MISMA cuenta con
+// el mismo libro fixture reutiliza el pase existente en vez de reinsertarlo.
+async function seedActivity(request: APIRequestContext, userId: string, daysAgo: number) {
+  const book = await resolveFinalEmpire<{ id: string }>(SUPABASE_URL, adminHeaders(), "id");
+  const existing = await request.get(`${SUPABASE_URL}/rest/v1/passes?user_id=eq.${userId}&item_id=eq.${book.id}&select=id`, { headers: adminHeaders() });
+  expect(existing.ok()).toBe(true);
+  const found = await existing.json() as Array<{ id: string }>;
+  let passId = found[0]?.id;
+  if (!passId) {
+    const pass = await request.post(`${SUPABASE_URL}/rest/v1/passes`, { headers: adminHeaders(true), data: { user_id: userId, item_type: "book", item_id: book.id, is_active: true } });
+    expect(pass.ok()).toBe(true);
+    [{ id: passId }] = await pass.json() as Array<{ id: string }>;
+  }
+  const day = new Date(Date.now() - daysAgo * 86_400_000).toLocaleDateString("sv-SE", { timeZone: "Europe/Madrid" });
+  const session = await request.post(`${SUPABASE_URL}/rest/v1/progress_sessions`, { headers: adminHeaders(true), data: { user_id: userId, pass_id: passId, duration_minutes: 20, session_date: day, position: {} } });
+  expect(session.ok()).toBe(true);
+  return day;
+}
+
+async function cleanPreviousAuthorityRun(request: APIRequestContext) {
+  const response = await request.get(`${SUPABASE_URL}/rest/v1/profiles?username=eq.r4autha&select=user_id`, { headers: adminHeaders() });
+  expect(response.ok()).toBe(true);
+  for (const { user_id } of await response.json() as Array<{ user_id: string }>) {
+    const account = await request.get(`${SUPABASE_URL}/auth/v1/admin/users/${user_id}`, { headers: adminHeaders() });
+    expect(account.ok()).toBe(true);
+    const { email } = await account.json() as { email: string };
+    expect(email).toBe("r4autha@example.com");
+    expect((await request.delete(`${SUPABASE_URL}/auth/v1/admin/users/${user_id}`, { headers: adminHeaders() })).ok()).toBe(true);
+  }
+}
+
+test("aventuras: nadie fabrica una fila ni ejecuta las funciones de escritura; dos inicios concurrentes convergen", async ({ request }) => {
+  test.setTimeout(90_000);
+  await cleanPreviousAuthorityRun(request);
+  await withBattleUsers(SUPABASE_URL, SERVICE_KEY, async (createUser) => {
+    const a = await createUser("r4autha");
+    expect((await request.post(`${SUPABASE_URL}/rest/v1/pet_state`, { headers: adminHeaders(true), data: { user_id: a.id, name: "Nuez", class: "wizard" } })).ok()).toBe(true);
+    // Dos días de actividad reales antes de los inicios concurrentes, para que
+    // el paso 5 (un nuevo start tras ganar) tenga un segundo día que consumir.
+    await seedActivity(request, a.id, 0);
+    await seedActivity(request, a.id, 1);
+    const token = await userToken(request, a.email, a.password);
+    // 1. inserción directa de una fila de aventura como usuario: denegada
+    const forged = await request.post(REST, { headers: userHeaders(token, true), data: { ...openRow(a.id), kind: "adventure", adventure_day: "2026-09-07", attempt: 1 } });
+    expect([401, 403]).toContain(forged.status());
+    // 2. Firma completa: un 404 por argumentos ausentes no demuestra falta de EXECUTE.
+    const args = (n: string) => ({ p_user: a.id, p_seed: n.repeat(32), p_intent: crypto.randomUUID(), p_enemies: "brote,brote,brote", p_ruleset_version: "r4.1", p_content_hash: "a".repeat(64), p_snapshot: SNAPSHOT });
+    const deniedCalls = [
+      { fn: "start_pet_adventure", data: args("1") },
+      { fn: "resolve_pet_adventure", data: { p_user: a.id, p_intent: crypto.randomUUID(), p_inputs: [], p_result: { outcome: "lose", reason: "ko", fight: 1 }, p_digest: "b".repeat(64), p_reward_order: [] } },
+    ];
+    for (const { fn, data } of deniedCalls) {
+      const res = await request.post(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { headers: userHeaders(token, true), data });
+      expect(res.status()).toBe(403);
+      expect(await res.json()).toMatchObject({ code: "42501", message: `permission denied for function ${fn}` });
+    }
+    // 3. dos inicios concurrentes con service_role (dos conexiones PostgREST reales) → la misma fila
+    const [r1, r2] = await Promise.all([
+      request.post(`${SUPABASE_URL}/rest/v1/rpc/start_pet_adventure`, { headers: adminHeaders(true), data: args("1") }),
+      request.post(`${SUPABASE_URL}/rest/v1/rpc/start_pet_adventure`, { headers: adminHeaders(true), data: args("2") }),
+    ]);
+    expect(r1.ok() && r2.ok()).toBe(true);
+    const [[row1], [row2]] = await Promise.all([r1.json(), r2.json()]) as Array<Array<{ intent_id: string; adventure_day: string }>>;
+    expect(row1.intent_id).toBe(row2.intent_id);
+    const all = await (await request.get(`${REST}?user_id=eq.${a.id}&kind=eq.adventure&select=id`, { headers: adminHeaders() })).json() as unknown[];
+    expect(all).toHaveLength(1);
+    // 4. dos resoluciones concurrentes de una victoria → una sola recompensa, mismo digest
+    const resolveArgs = (d: string) => ({ p_user: a.id, p_intent: row1.intent_id, p_inputs: [], p_result: { outcome: "win", reason: "ko", fight: 3 }, p_digest: d.repeat(64), p_reward_order: [{ itemId: "loan_pendant", slot: "amulet" }, { itemId: "sharp_bookmark", slot: "weapon" }] });
+    const [s1, s2] = await Promise.all([
+      request.post(`${SUPABASE_URL}/rest/v1/rpc/resolve_pet_adventure`, { headers: adminHeaders(true), data: resolveArgs("b") }),
+      request.post(`${SUPABASE_URL}/rest/v1/rpc/resolve_pet_adventure`, { headers: adminHeaders(true), data: resolveArgs("c") }),
+    ]);
+    const [[w1], [w2]] = await Promise.all([s1.json(), s2.json()]) as Array<Array<{ digest: string; reward: { itemId: string } }>>;
+    expect(w1.digest).toBe(w2.digest);
+    expect(w1.reward).toEqual(w2.reward);
+    expect(w1.reward.itemId).toBe("loan_pendant");
+    // 5. un nuevo start no reabre el día ganado: consume el otro día pendiente
+    const next = await (await request.post(`${SUPABASE_URL}/rest/v1/rpc/start_pet_adventure`, { headers: adminHeaders(true), data: args("3") })).json() as Array<{ adventure_day: string; attempt: number }>;
+    expect(next[0].adventure_day).not.toBe(row1.adventure_day);
+    expect(next[0].attempt).toBe(1);
   });
 });

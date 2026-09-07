@@ -1,2 +1,2 @@
 // Current battle API. Historical releases remain frozen.
-export * from "./versions/r3.1/inputs";
+export * from "./versions/r4.1/inputs";

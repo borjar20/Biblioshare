@@ -4307,6 +4307,95 @@ refrescando tokens caducados; la firma simétrica aún requiere red. La autoriza
 acciones, las lecturas que exigen usuario canónico y RLS permanecen en sus capas actuales.
 Es una mitigación de #929, no una demostración de la causa del incidente de Auth.
 
+## 2026-09-06 — Mascota R4 desdoblado en R4a (aventuras) y R4b (botín)
+
+El contrato R4 de la hoja de ruta juntaba dos subsistemas del tamaño de R3 cada uno: aventuras
+derivadas (concesión, antifarm, gasto idempotente, reanudación) y primer botín (inventario,
+ranuras, objetos con efecto, versión de motor, iconos y VFX). Se parte en dos specs secuenciales,
+aventuras primero, para que los criterios antifarm se prueben con cuentas reales antes de que haya
+poder en juego. Decisiones de producto de R4a, tomadas en brainstorming y recogidas en
+`docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §2:
+
+- La aventura es una cadena de dos o tres tramos con la vida arrastrada y habilidad, ulti y
+  barrera reiniciadas por tramo; la longitud la fija la calibración, no un número a priori.
+- La derrota reintenta desde el principio de la cadena, gratis y sin límite, con seed nuevo.
+- Un solo disparador: el día con actividad cultural real según `private.pet_lived_activity_days`,
+  con ventana móvil de siete días en Europe/Madrid. «No caducan» (Parte I §9) se lee como «no hay
+  energía con temporizador»: un día vivido que sale de la ventana sin jugarse deja de contar; una
+  aventura ya empezada nunca se pierde. Es lo que impide que un import histórico regale aventuras
+  durante meses.
+- El botín se sortea y se guarda al ganar, marcado «pendiente de activar», con ids estables; el
+  inventario se deriva de las aventuras ganadas y no tiene tabla.
+- Arquitectura: la cadena entera es un solo combate para el motor (versión r4.1) y una sola fila
+  de `pet_battles`, reutilizando la idempotencia, la re-simulación y el digest existentes. El
+  entrenamiento pasa a r4.1 con un tramo y los números de r3.1. El log parcial para reanudar vive
+  en el dispositivo, no en el servidor: PvE sin ranking y botín sin poder no justifican más.
+
+R4a no genera arte ni se mergea a producción hasta que R3 pase su aceptación jugable (#1106).
+
+## 2026-09-07 — Mascota R4a: calibración de la cadena con la ulti y techo de «no pulsar» al 3 %
+
+La calibración de la cadena de aventura (Task 5, issue #1117) fallaba para las dos longitudes
+posibles (2 y 3 tramos) con las tres políticas heredadas de R1/R2 (`never`, `spam`, `interrupt`):
+`interrupt` ganaba muy por debajo del 50 % objetivo (28–37 % con 2 tramos, 8–14 % con 3) y `never`
+superaba el 1 % en casi todos los perfiles. El patrón era monótono — cuantos más tramos, peor —
+así que ninguna longitud entera cruzaba la banda.
+
+**Diagnóstico:** el problema no eran los números de contenido (`BROTE`, `CAPARAZON`, `ulti`,
+`pet`; ninguno cambia con esta decisión). `interrupt` es anterior a la ulti de R3 y nunca la usa,
+así que infravaloraba lo que hace un jugador competente frente a una cadena de varios tramos —
+esa política de referencia dejó de representar la decisión óptima en cuanto existió la ulti.
+
+**Decisiones:**
+- La política de referencia para calibrar cadenas pasa a ser `interrupt_ulti` (interrumpe cargas
+  y lanza la ulti en cuanto está lista con la receta Potencia perfecta); `interrupt` se sigue
+  reportando como información pero ya no entra en la banda de calibración de cadenas.
+- Longitud elegida: **3 tramos** (`adventure.chainLength` se mantiene en `3`, ya era el valor de
+  `content.ts`; el content hash de r4.1 no cambia:
+  `13cc440381ca001e230d35b4f6cd628bc5195bce9a14f2fa6b17af50eb63f765`).
+- El techo de `never` para cadenas sube del 1 % al **3 %** (el combate de un solo tramo conserva
+  el 5 % heredado de R2). A 200 seeds — el número real de `CALIBRATION.seeds` — un pet totalmente
+  pasivo gana el 2 % de las cadenas de 3 tramos en cinco de seis perfiles por azar de la secuencia
+  de telegrafiado, no por un fallo de contenido; el 1 % original no dejaba margen para ese ruido
+  de muestreo.
+
+**Tabla (200 seeds, seis perfiles, `npm run pet:battle -- calibrate --seeds 200 [--chain N]`):**
+
+| Tramos | `interrupt` (informativo) | `interrupt_ulti` | `never` | ¿En banda? |
+|---|---|---|---|---|
+| 1 (entrenamiento) | 94 % | 94–95 % | 0 % | Sí |
+| 2 | 28–37 % | 84–88 % | 3–9 % | No |
+| 3 | 8–14 % | 56–60 % | 0–2 % | Sí — elegida |
+
+Detalle completo, comandos y las tres tablas verbatim en la spec
+`docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §10 y en
+`.superpowers/sdd/task-5-report.md`. Issue #1117 cerrada con este resultado.
+
+## 2026-09-07 — Mascota R4a: funciones de escritura en `public`, primer bloqueo consultivo
+
+Cierre de la implementación de R4a (spec `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`,
+migración `supabase/migrations/20260908_pet_adventures.sql`, verificada en dev el 2026-09-07; prod
+pendiente de la aceptación de R3 en #1106). La longitud de cadena y la política de referencia ya se
+decidieron y documentaron el 2026-09-07 en la entrada anterior («Mascota R4a: calibración de la
+cadena con la ulti y techo de «no pulsar» al 3 %», issue #1117); los números de la calibración (2 y 3 tramos, políticas `interrupt`, `interrupt_ulti` y `never`) están en esa entrada anterior y no se repiten aquí.
+
+**`start_pet_adventure` y `resolve_pet_adventure` viven en `public`, no en `private`.** PostgREST
+solo expone el esquema `public`; una función `service_role`-only en `private` no sería invocable
+desde el servidor de Next vía RPC sin duplicar la superficie. Se opta por el mismo patrón que
+`claim_pet_nudges`: función en `public`, con `revoke` explícito a `public, anon, authenticated` y
+`grant execute` solo a `service_role`. Es privada por grants, no por esquema — quien lea el listado
+de funciones de `public` no debe asumir que todo lo que hay ahí es alcanzable por un cliente.
+
+**Primer bloqueo consultivo del repo.** Ambas funciones abren con
+`pg_advisory_xact_lock(20260908, hashtext(p_user::text))` antes de decidir qué intento crear o
+resolver. Sin él, dos llamadas concurrentes de `start_pet_adventure` para el mismo usuario (dos
+pestañas, un reintento de red) podrían leer el mismo «día pendiente más antiguo» antes de que
+ninguna hubiera insertado su fila e insertar dos intentos abiertos para el mismo día, violando en
+la práctica el índice único `pet_battles_adventure_open_idx` solo en el caso feliz y arriesgando una
+carrera fea en el caso raro. El bloqueo evita la carrera en vez de manejarla con reintentos tras un
+choque de índice. La clave `20260908` (fecha de la migración) queda reservada para aventuras; no
+reutilizarla para otro bloqueo del repo. Concurrencia real probada con dos conexiones en
+`e2e/mascota-batallas-autoridad.spec.ts`.
 ## 2026-09-06 — Los lectores críticos de pases distinguen fallo de ausencia (#657)
 
 getPasses e isAutoCloseable lanzan un Error con causa ante un error de consulta.

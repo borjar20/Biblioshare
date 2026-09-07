@@ -29,6 +29,8 @@ function messageFor(p: CelebrationPayload): string {
       return "Misión cumplida.";
     case "pet_achievement":
       return "Logro desbloqueado.";
+    case "pet_adventure_won":
+      return "¡Aventura superada!";
   }
 }
 
@@ -50,6 +52,8 @@ function staticGlyph(p: CelebrationPayload): string {
       return "✓";
     case "pet_achievement":
       return "🏆";
+    case "pet_adventure_won":
+      return "⚔";
   }
 }
 
@@ -97,6 +101,7 @@ function Visual({ payload }: { payload: CelebrationPayload }) {
     case "pet_level_up":
     case "pet_evolved":
     case "pet_mission_done":
+    case "pet_adventure_won":
     case "pet_achievement":
       return (
         <div className={styles.stack} aria-hidden="true">

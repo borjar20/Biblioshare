@@ -11,7 +11,8 @@ export type CelebrationEvent =
   | "pet_level_up"
   | "pet_evolved"
   | "pet_mission_done"
-  | "pet_achievement";
+  | "pet_achievement"
+  | "pet_adventure_won";
 
 /** Cómo se deduplica: qué parte del payload forma la clave única por usuario. */
 export type CelebrationScope =
