@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createPublicClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   fetchLiveWorkEditions,
   type OpenLibraryEdition,
@@ -156,8 +157,7 @@ export async function fetchEditionCandidates(bookId: string): Promise<EditionCan
 // lanzar equivale a enseñar «algo ha ido mal» sin decir qué.
 //
 // **Del cliente llega SOLO el ISBN.** Una server action es un endpoint POST
-// público y `register_book_edition` es `SECURITY DEFINER` que solo exige
-// sesión: si la editorial, la portada o la etiqueta viajaran desde el
+// público. Si la editorial, la portada o la etiqueta viajaran desde el
 // navegador, cualquier usuario autenticado podría escribir metadatos
 // arbitrarios en `book_editions` —el catálogo COMUNITARIO— de cualquier libro,
 // y `formatEditionDetails` se los pintaría a todo el mundo. Antes de este
@@ -171,7 +171,8 @@ export async function fetchEditionCandidates(bookId: string): Promise<EditionCan
 //
 // Lo que sí se valida aquí igualmente: el ISBN (formato y dígito de control,
 // que la RPC vuelve a comprobar del lado del servidor) y la sesión.
-// `created_by` lo firma la RPC con `auth.uid()`, no con nada de esta llamada.
+// `created_by` procede del usuario validado aquí; la RPC nueva solo permite
+// execute a service_role. El antiguo alta manual exige collaborator/admin.
 //
 // Ojo con lo que la RPC NO hace, para no confiarle de más: `sane_int` se
 // aplica SOLO a `p_year` y `p_pages`; `p_publisher` y `p_cover_url` entran
@@ -212,8 +213,9 @@ export async function chooseEditionCandidate(
   // fijas; el recorte es cinturón por si esa lista crece con algo largo.
   const label = candidate.label.trim().slice(0, 60);
 
-  const { data: registeredId, error } = await supabase.rpc("register_book_edition", {
+  const { data: registeredId, error } = await createServiceRoleClient().rpc("register_verified_book_edition", {
     p_book_id: bookId,
+    p_created_by: user.id,
     p_isbn: candidate.isbn,
     p_label: label || undefined,
     p_publisher: candidate.publisher ?? undefined,

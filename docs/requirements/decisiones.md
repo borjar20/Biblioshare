@@ -4348,6 +4348,39 @@ desde una action permanece consumida aunque el proveedor falle. No es una
 defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
 evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.
 
+## 2026-09-07 — Registro de ediciones corroborado por servidor (#920)
+
+El registro automático usa una RPC exclusiva de service_role con actor obtenido
+de la sesión validada. El servidor relee la obra guardada y obtiene los metadatos
+de Open Library; no confía en etiquetas, portadas ni identificadores de obra del
+resultado enviado por el navegador. La RPC manual exige collaborator/admin.
+Sin corroboración del ISBN en las primeras 200 ediciones, se conserva el libro
+sin crear una edición. No se añaden columnas ni se cambian dependencias.
+
+Permisos comprobados en dev y comportamiento en una instancia Supabase local
+con datos sintéticos y rollback. No se aplicó el cambio a producción.
+
+## 2026-09-07 — Proteger las referencias curadas al borrar catálogo (#708)
+
+Las once tablas sin guarda conservan información humana: selección, opinión,
+orden, colocación, opcionalidad o contenido histórico. Todas bloquean el borrado,
+igual que passes; solo credits mantiene la cascada porque procede del proveedor.
+El inventario único también incluye ambas anclas de saga_placement_windows.
+
+Las altas/cambios de referencia bloquean su destino con KEY SHARE y rechazan
+obras inexistentes. DELETE de catálogo exige READ COMMITTED para consultar
+referencias comprometidas después de esperar al escritor; se rechazan snapshots
+transaccionales antiguos, sin simular garantías de una FK nativa. No se alteran
+columnas ni datos históricos. Pruebas y límites en
+`docs/testing/2026-09-07-708-catalog-references.md`.
+
+## 2026-09-07 — Despliegue autorizado de #920 y #708
+
+Aplicadas ambas migraciones en producción tras autorización explícita. Verificados
+los permisos de las cinco funciones, los 15 triggers de referencia y los tres de
+protección del catálogo. La prueba funcional con escrituras sigue acotada a
+fixtures locales; la verificación en producción fue estructural y de permisos.
+
 ## 2026-09-07 — Sesión nativa cifrada y excluida de copias (#679)
 
 La sesión nativa completa se guarda con AES-256-GCM y una clave no exportable de

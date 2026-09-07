@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { registerVerifiedBookEdition } from "@/lib/editions/register-verified";
 import { isVolumeOnlyResult, type SearchResult } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -228,7 +229,7 @@ export async function findOrCreateCatalogItem(
 
   // La edición del libro (ISBN escaneado) sigue su camino validado server-side.
   if (result.itemType === "book") {
-    await ensureBookEdition(supabase, id as string, result, userId);
+    await ensureBookEdition(id as string, result, userId);
   }
   return id as string;
 }
@@ -253,40 +254,22 @@ export async function findOrCreateCatalogItem(
 // función no registra nada en ese camino — comportamiento correcto, no un
 // descuido.
 //
-// El insert directo a book_editions no es una opción: dejaba a cualquier
-// autenticado escribir editorial/portada/páginas inventadas en cualquier libro
-// sin ser colaborador. Pasamos por register_book_edition, que valida el ISBN de
-// verdad (dígito de control incluido), sanea rangos y firma created_by con
-// auth.uid() del lado del servidor — no con el userId que le pasemos aquí.
-//
-// Es idempotente (on conflict do nothing) y no debe romper el alta del libro:
-// cualquier fallo se traga entero, porque registrar la edición es una mejora, no
-// un requisito para añadir el libro a la biblioteca.
+// El registro automático verifica la obra y el ISBN contra Open Library (#920).
+// Solo el servidor persiste esos metadatos; el alta manual conserva su gate de curador.
+// Si no hay evidencia del proveedor, se conserva el alta del libro sin inventar una edición.
 async function ensureBookEdition(
-  supabase: SupabaseServerClient,
   bookId: string,
   result: SearchResult,
   userId?: string | null
 ): Promise<void> {
   const isbn = result.matchedIsbn;
-  // register_book_edition exige auth.uid() no nulo (raise exception si no hay
-  // sesión) y lo usa para firmar created_by; sin isbn o sin usuario autenticado
-  // la llamada está condenada a fallar, así que ni la intentamos.
+  // El actor procede de la sesión validada por el caller.
   if (!isbn || !userId) return;
 
   try {
-    // Editorial, año y páginas de la tirada NO se pasan: no los tenemos (el
-    // resultado de búsqueda ya no los lleva) y los traerá el sync de ediciones
-    // desde OpenLibrary, que sí sabe de qué tirada son.
-    const { error } = await supabase.rpc("register_book_edition", {
-      p_book_id: bookId,
-      p_isbn: isbn,
-      p_cover_url: result.coverUrl ?? undefined,
-    });
-
-    if (error) {
-      console.error("ensureBookEdition rpc failed", { bookId, isbn, error });
-    }
+    // El helper vuelve a consultar la obra almacenada y sus ediciones: ningún
+    // metadato recibido del navegador decide lo que se registra.
+    await registerVerifiedBookEdition(bookId, isbn, userId);
   } catch (error) {
     console.error("ensureBookEdition failed", { bookId, isbn, error });
   }
