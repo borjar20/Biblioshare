@@ -1,5 +1,9 @@
 # Modelo de datos
 
+> **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
+> verificados en dev; comportamiento SQL con fixtures y rollback verificado en
+> Supabase local. Producción no modificada ni verificada para este delta.
+
 > **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
@@ -818,15 +822,17 @@ bloque, «Más ediciones (OpenLibrary)», que consulta las candidatas EN VIVO
 2 páginas / 200 ediciones, mismos filtros y mismo orden ES→EN→resto que `pickEditions`) y **no
 escribe nada al enseñarlas**: se cargan al DESPLEGAR el bloque, no al abrir el selector. La
 escritura la dispara `chooseEditionCandidate` cuando el usuario elige una — cuarto y último
-llamador de `register_book_edition`, junto a `ensureBookEdition` (`find-or-create.ts`) y el alta
-manual (`src/app/buscar/manual/actions.ts`). Las candidatas excluyen los ISBN ya persistidos del
+camino de alta verificada, junto a `ensureBookEdition` (`find-or-create.ts`). Desde #920 ambos
+usan `register_verified_book_edition`, solo ejecutable por `service_role`. El alta
+manual (`src/app/buscar/manual/actions.ts`) conserva `register_book_edition`, que exige
+`collaborator` o `admin`. Las candidatas excluyen los ISBN ya persistidos del
 libro (normalizados con `normalizeIsbn` en los dos lados) para que la misma tirada no salga en
 dos bloques. Verificado en dev el 2026-08-27: abrir la ficha de un libro y desplegar las 30
 candidatas deja `book_editions` en 481 filas, las mismas que antes.
 
-**Del navegador solo viaja el ISBN (revisión de la Task 13, 2026-08-27).**
+**Del navegador solo viaja el ISBN (revisión de la Task 13, 2026-08-27; cierre del acceso directo en #920, 2026-09-07).**
 `chooseEditionCandidate` recibía la candidata ENTERA desde el cliente y solo revalidaba el
-`isbn`: como `register_book_edition` es `SECURITY DEFINER` y su único requisito es
+`isbn`: históricamente `register_book_edition` era `SECURITY DEFINER` y su único requisito era
 `auth.uid() is not null`, cualquier usuario autenticado podía escribir `publisher`, `cover_url`
 y `label` arbitrarios en el catálogo COMUNITARIO de cualquier libro — un ensanchamiento de
 privilegio frente a `createEdition`, que exige `collaborator+`. Ahora la firma acepta **solo el
@@ -843,6 +849,22 @@ peticiones de la cuota de OpenLibrary de nuestra IP (no es fuga de datos — `bo
 y `p_cover_url` se insertan **crudos**; `p_label` solo pasa por un `trim` con valor por defecto
 `'Edición'`. El dígito de control del ISBN sí lo comprueba la función, en las dos formas (10 y
 13). Es la razón por la que esos tres campos no pueden volver a venir del navegador.
+
+**Registro verificado (#920, dev 2026-09-07).** La migración
+`20260907074033_verified_book_editions.sql` añade
+`register_verified_book_edition(uuid,uuid,text,text,text,integer,integer,text)`:
+libro, actor autenticado, ISBN y metadatos del proveedor. Es SECURITY DEFINER,
+`search_path=''`, sin EXECUTE para PUBLIC/anon/authenticated y con EXECUTE para
+service_role. La función anterior conserva su firma pero comprueba el rol de
+curador antes de delegar con `auth.uid()` como actor. No cambia ninguna columna.
+
+`ensureBookEdition` relee la clave de obra guardada en `books` y consulta hasta
+200 ediciones de Open Library; ignora los metadatos del resultado recibido del
+cliente. Si falta la clave, no aparece el ISBN o falla el proveedor, el libro
+se conserva sin inventar una edición. `chooseEditionCandidate` mantiene su
+rederivación y atribuye el alta al usuario validado en el servidor. La consulta
+de permisos en dev dio authenticated=false y service_role=true; el test SQL
+local verificó rechazo del usuario ordinario, alta, autoría e idempotencia.
 
 **La columna `books.editions_synced_at` NO se ha dropeado**: sigue en el esquema (fase
 destructiva, Task 16, después del despliegue) pero el código de aplicación ya no la lee ni la

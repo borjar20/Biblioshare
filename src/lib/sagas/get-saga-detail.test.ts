@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   freeBlockWindow,
   freeItemWindow,
@@ -386,3 +386,6 @@ describe("markSkipped", () => {
     expect(original.skipped).toBe(false);
   });
 });
+
+// Provider edition registration is outside this test's domain boundary.
+vi.mock("@/lib/editions/register-verified", () => ({ registerVerifiedBookEdition: vi.fn() }));

@@ -4347,3 +4347,15 @@ transacciones fallidas revierten su contador SQL; la carga previa al proveedor
 desde una action permanece consumida aunque el proveedor falle. No es una
 defensa global contra múltiples cuentas ni sustituye #684. Capacidades y
 evidencia en `docs/testing/2026-09-06-811-shared-rate-limits.md`.
+
+## 2026-09-07 — Registro de ediciones corroborado por servidor (#920)
+
+El registro automático usa una RPC exclusiva de service_role con actor obtenido
+de la sesión validada. El servidor relee la obra guardada y obtiene los metadatos
+de Open Library; no confía en etiquetas, portadas ni identificadores de obra del
+resultado enviado por el navegador. La RPC manual exige collaborator/admin.
+Sin corroboración del ISBN en las primeras 200 ediciones, se conserva el libro
+sin crear una edición. No se añaden columnas ni se cambian dependencias.
+
+Permisos comprobados en dev y comportamiento en una instancia Supabase local
+con datos sintéticos y rollback. No se aplicó el cambio a producción.
