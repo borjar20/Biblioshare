@@ -18,10 +18,10 @@ export function createAdventureService(deps: {
   const repo = deps.repository;
 
   async function state(): Promise<AdventureState> {
-    const [pendingDays, rows] = await Promise.all([repo.pendingDays(), repo.recent(60)]);
+    const [pendingDays, rows, rewards] = await Promise.all([repo.pendingDays(), repo.recent(60), repo.rewards()]);
     const wonDays = new Set(rows.filter((r) => r.status === "resolved" && r.result?.outcome === "win").map((r) => r.adventure.day));
     const current = rows.find((r) => r.status === "open") ?? rows.find((r) => !wonDays.has(r.adventure.day)) ?? null;
-    return { pendingDays, current, inventory: inventoryFrom(rows.map((r) => r.adventure.reward)) };
+    return { pendingDays, current, inventory: inventoryFrom(rewards) };
   }
 
   return {
@@ -59,7 +59,13 @@ export function createAdventureService(deps: {
       if (!committed) return { ok: false, code: "NOT_FOUND" };
       // Otra petición pudo ganar la carrera: lo guardado manda, y se re-verifica igual.
       if (committed.digest !== out.digest) return verifyResolved(committed);
-      if (committed.result?.outcome === "win" && deps.onWin) await deps.onWin(committed);
+      if (committed.result?.outcome === "win" && deps.onWin) {
+        try {
+          await deps.onWin(committed);
+        } catch (error) {
+          console.error("pet adventure onWin", error);
+        }
+      }
       return { ok: true, battle: committed, events: out.events };
     },
     async replay(intentId: string): Promise<AdventureResponse> {

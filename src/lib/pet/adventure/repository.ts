@@ -38,6 +38,11 @@ export function adventureRepository(admin: Admin, session: Session, userId: stri
       if (error) throw error;
       return (data ?? []).map(project);
     },
+    async rewards() {
+      const { data, error } = await admin.from("pet_battles").select("reward").eq("user_id", userId).eq("kind", "adventure").not("reward", "is", null);
+      if (error) throw error;
+      return (data ?? []).flatMap((r) => (isReward(r.reward) ? [r.reward] : []));
+    },
     async start(input) {
       const { data, error } = await admin.rpc("start_pet_adventure", {
         p_user: userId, p_seed: input.seed, p_intent: input.intentId, p_enemies: input.enemyId,

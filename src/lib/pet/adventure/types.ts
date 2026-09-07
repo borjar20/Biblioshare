@@ -18,6 +18,8 @@ export interface AdventureRepository {
   find(intentId: string): Promise<AdventureBattle | null>;
   /** Filas de aventura del usuario, más recientes primero. */
   recent(limit: number): Promise<AdventureBattle[]>;
+  /** Todo el botín histórico del usuario, sin límite (el inventario no puede olvidar lo ganado fuera de `recent`). */
+  rewards(): Promise<Reward[]>;
   /** null = sin aventura que empezar (NO_ADVENTURE). Devuelve el abierto existente si lo hay. */
   start(input: StartInput): Promise<AdventureBattle | null>;
   /** null = intento inexistente. Devuelve la fila guardada si ya estaba resuelta. */

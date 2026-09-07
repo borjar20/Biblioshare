@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createAdventureService } from "./service";
 import type { AdventureBattle, AdventureRepository } from "./types";
 import { ENEMIES, RULESET, contentHash } from "@/lib/pet/battle/content";
@@ -7,6 +7,7 @@ import { POLICIES, runPolicy } from "@/lib/pet/battle/policies";
 import { snapshotForProfile } from "@/lib/pet/battle/profiles";
 import { seedFromIndex } from "@/lib/pet/battle/prng";
 import { pickReward, rewardOrder } from "@/lib/pet/loot/reward";
+import { LOOT_ITEMS } from "@/lib/pet/loot/catalog";
 
 const snapshot = snapshotForProfile("lectora_larga", "wizard");
 
@@ -18,7 +19,8 @@ function memoryRepo(pending: string[]) {
   const repo: AdventureRepository = {
     async pendingDays() { return [...days].filter((d) => !rows.some((r) => r.adventure.day === d)).sort(); },
     async find(intentId) { return structuredClone(rows.find((r) => r.intentId === intentId) ?? null); },
-    async recent() { return structuredClone([...rows].reverse()); },
+    async recent(limit) { return structuredClone([...rows].reverse().slice(0, limit)); },
+    async rewards() { return structuredClone(rows.flatMap((r) => (r.adventure.reward ? [r.adventure.reward] : []))); },
     async start(input) {
       const open = rows.find((r) => r.status === "open");
       if (open) return structuredClone(open);
@@ -85,7 +87,7 @@ describe("servicio de aventuras (spec §6)", () => {
       if (!started.ok) throw new Error(started.code);
       const done = await playToEnd(s, started.battle);
       expect(done.ok).toBe(true);
-      if (!done.ok) return;
+      if (!done.ok) throw new Error(done.code);
       expect(done.battle.digest).toMatch(/^[0-9a-f]{64}$/);
       expect(done.events?.length).toBeGreaterThan(0);
       if (done.battle.result?.outcome === "win") {
@@ -113,18 +115,70 @@ describe("servicio de aventuras (spec §6)", () => {
     expect(await s.resolve("no-uuid", [])).toEqual({ ok: false, code: "INVALID_INTENT" });
   });
   it("state expone pendientes, el intento en curso (abierto o perdido) e inventario derivado", async () => {
-    const { s } = service(["2026-09-05", "2026-09-06"]);
-    expect(await s.state()).toEqual({ pendingDays: ["2026-09-05", "2026-09-06"], current: null, inventory: [] });
-    const a = await s.start();
-    if (!a.ok) throw new Error(a.code);
-    let st = await s.state();
-    expect(st.pendingDays).toEqual(["2026-09-06"]);
-    expect(st.current?.intentId).toBe(a.battle.intentId);
-    const done = await playToEnd(s, a.battle, POLICIES.never); // never pierde casi siempre
-    if (done.ok && done.battle.result?.outcome === "lose") {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const { s } = service(["2026-09-05", "2026-09-06"]);
+      expect(await s.state()).toEqual({ pendingDays: ["2026-09-05", "2026-09-06"], current: null, inventory: [] });
+      const a = await s.start();
+      if (!a.ok) throw new Error(a.code);
+      let st = await s.state();
+      expect(st.pendingDays).toEqual(["2026-09-06"]);
+      expect(st.current?.intentId).toBe(a.battle.intentId);
+      const done = await playToEnd(s, a.battle, POLICIES.never); // never pierde casi siempre
+      if (!done.ok) throw new Error(done.code);
+      if (done.battle.result?.outcome !== "lose") continue;
       st = await s.state();
       expect(st.current?.status).toBe("resolved");
       expect(st.current?.adventure.day).toBe("2026-09-05");
+      return;
+    }
+    throw new Error("20 intentos sin derrota con POLICIES.never: revisar calibración");
+  });
+  it("el inventario cuenta todo el botín histórico, no solo la ventana de recent(60)", async () => {
+    const { s, rows } = service(["2026-09-06"]);
+    let template: AdventureBattle | null = null;
+    for (let i = 0; i < 40 && !template; i++) {
+      const started = await s.start();
+      if (!started.ok) throw new Error(started.code);
+      const done = await playToEnd(s, started.battle);
+      if (!done.ok) throw new Error(done.code);
+      if (done.battle.result?.outcome === "win") template = done.battle;
+    }
+    if (!template) throw new Error("40 intentos sin victoria: revisar calibración");
+    // 70 filas históricas resueltas y ganadas, con días y botín distintos: más que la ventana de recent(60).
+    for (let i = 0; i < 70; i++) {
+      rows.push({
+        ...structuredClone(template),
+        intentId: `54e5f63c-68a8-4acf-a790-${String(900000000000 + i).padStart(12, "0")}`,
+        adventure: { day: `2000-01-${String(i).padStart(3, "0")}`, attempt: 1, reward: { itemId: LOOT_ITEMS[i % LOOT_ITEMS.length].id, slot: LOOT_ITEMS[i % LOOT_ITEMS.length].slot } },
+      });
+    }
+    const st = await s.state();
+    expect(st.inventory.reduce((n, e) => n + e.count, 0)).toBe(71); // 70 sembradas + 1 victoria real
+    expect(st.current).toBeNull();
+  });
+  it("una excepción en onWin no rompe una victoria ya guardada", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { repo } = memoryRepo(["2026-09-06"]);
+      const s = createAdventureService({
+        repository: repo, snapshot: async () => snapshot, seed: () => seedFromIndex(++intents),
+        newIntent: () => `54e5f63c-68a8-4acf-a790-${String(++intents).padStart(12, "0")}`,
+        onWin: async () => { throw new Error("celebración rota"); },
+      });
+      for (let i = 0; i < 40; i++) {
+        const started = await s.start();
+        if (!started.ok) throw new Error(started.code);
+        const done = await playToEnd(s, started.battle);
+        if (!done.ok) throw new Error(done.code);
+        if (done.battle.result?.outcome === "win") {
+          expect(done).toEqual({ ok: true, battle: done.battle, events: done.events });
+          expect(spy).toHaveBeenCalled();
+          return;
+        }
+      }
+      throw new Error("40 intentos sin victoria: revisar calibración");
+    } finally {
+      spy.mockRestore();
     }
   });
 });
