@@ -1,6 +1,6 @@
 // Simulador de combate por CLI (criterio de salida de R1: re-simular sin UI).
-//   npm run pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--events] [--json]
-//   npm run pet:battle -- calibrate [--seeds 200]
+//   npm run pet:battle -- run [--seed <32 hex>] [--profile lectora_larga] [--class wizard] [--policy interrupt] [--chain N] [--events] [--json]
+//   npm run pet:battle -- calibrate [--seeds 200] [--chain N]
 //   npm run pet:battle -- replay <fichero.json>      (salida de `run --json`; una fila de pet_battles hay que mapearla antes a camelCase)
 //   npm run pet:battle -- golden [--version rN.M] [--chain N]   (escribe el ejemplo normativo)
 //   npm run pet:battle -- fork <desde> <hasta>       (copia código ejecutable a versions/<hasta>/)
@@ -9,8 +9,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { PET_CLASSES, isPetClass, type PetClass } from "../../src/lib/pet/classes";
+import { pickEnemies, enemyList } from "../../src/lib/pet/battle/adventure";
 import { CALIBRATION, calibrate, checkCalibration, formatReport } from "../../src/lib/pet/battle/calibration";
-import { BROTE, RULESET, contentHash } from "../../src/lib/pet/battle/content";
+import { BROTE, ENEMIES, RULESET, contentHash } from "../../src/lib/pet/battle/content";
 import { simulate } from "../../src/lib/pet/battle/engine";
 import { POLICIES, POLICY_IDS, runPolicy, type PolicyId } from "../../src/lib/pet/battle/policies";
 import { PROFILE_IDS, snapshotForProfile, type ProfileId } from "../../src/lib/pet/battle/profiles";
@@ -54,20 +55,29 @@ function normativePathFor(version: string | undefined): string {
   return version ? join(versionDir(BATTLE_DIR, version), "normative.json") : NORMATIVE_PATH;
 }
 
+function pickChain(): number {
+  const raw = arg("chain", "1") as string;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > RULESET.adventure.chainLength) fail(`--chain: entero entre 1 y ${RULESET.adventure.chainLength}`);
+  return n;
+}
+
 async function run() {
   const seed = arg("seed", seedFromIndex(0)) as string;
   if (!isSeed(seed)) fail("--seed: 32 hex en minúsculas");
+  const chain = pickChain();
+  const enemies = chain > 1 ? pickEnemies(seed, chain, ENEMIES) : [BROTE];
   const snapshot = snapshotForProfile(pickProfile(), pickClass());
-  const ctx = { seed, snapshot, enemies: [BROTE], ruleset: RULESET };
+  const ctx = { seed, snapshot, enemies, ruleset: RULESET };
   const { inputs, events, result } = runPolicy(ctx, POLICIES[pickPolicy()]);
-  const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
+  const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: enemyList(enemies), seed, snapshot, inputs, result };
   const digest = await battleDigest(record, events);
   // JSON wins over --events: stdout is always one replayable document.
   if (flag("json")) {
     console.log(JSON.stringify({ record, events, digest }, null, 2));
     return;
   }
-  console.log(`seed ${seed} · ${snapshot.name} (${snapshot.petClass}, tramo ${snapshot.tier}, ${snapshot.hpMax} PV, atk ${snapshot.atk}) vs ${BROTE.name} (${result.enemyHpMax} PV)`);
+  console.log(`seed ${seed} · ${snapshot.name} (${snapshot.petClass}, tramo ${snapshot.tier}, ${snapshot.hpMax} PV, atk ${snapshot.atk}) vs ${enemies.map((e) => e.name).join(" → ")} (${result.enemyHpMax} PV)`);
   console.log(`resultado: ${result.outcome} por ${result.reason} en ${result.ticks} ticks (${(result.ticks * RULESET.tickMs) / 1000} s) · causas: ${result.causes.join(", ") || "—"}`);
   console.log(`daño hecho ${result.damageDealt}/${result.enemyHpMax} · recibido ${result.damageTaken}/${result.petHpMax} · inputs ${inputs.length} · eventos ${events.length}`);
   console.log(`digest ${digest}`);
@@ -77,7 +87,8 @@ async function run() {
 async function calib() {
   const seeds = Number(arg("seeds", String(CALIBRATION.seeds)));
   if (!Number.isInteger(seeds) || seeds < 1) fail("--seeds: entero positivo");
-  const report = calibrate({ seeds });
+  const chain = pickChain();
+  const report = calibrate({ seeds, chain });
   console.log(formatReport(report));
   const check = checkCalibration(report);
   if (!check.ok) {

@@ -290,6 +290,85 @@ de las dos cae en la banda, se ajusta primero la longitud (y se documenta) y sol
 plantea tocar un número de `content.ts`; ese cambio sería una decisión aparte con su entrada en
 `decisiones.md`. La tabla resultante se pega en esta spec al cerrar.
 
+**Resultado (2026-09-07, `npm run pet:battle -- calibrate --seeds 200 --chain N`).** Ninguna de
+las dos longitudes cae en la banda: `interrupt` queda muy por debajo del 50 % en ambas (28–37 %
+con 2 tramos, 8–14 % con 3) y `never` supera el 1 % en casi todos los perfiles. El daño y la vida
+del enemigo se acumulan tramo a tramo sin que la política `interrupt` recupere ritmo, así que
+cuantos más tramos, peor porcentaje de victorias — lo contrario de lo que necesita la banda.
+**Bloqueado**: no se toca ningún número de `content.ts` ni `adventure.chainLength` (sigue en `3`)
+hasta que se decida el rediseño — ver issue
+[#1117](https://github.com/borjar20/Biblioshare/issues/1117) (`area:play tipo:deuda P2`). Tablas
+verbatim de las dos ejecuciones:
+
+```
+$ npm run --silent pet:battle -- calibrate --seeds 200 --chain 2
+seeds por celda: 200 · tramos: 2
+política      perfil           victorias  media ticks
+never         nueva                  3 %          492
+spam          nueva                  0 %          388
+interrupt     nueva                 28 %          837
+never         importadora            9 %          531
+spam          importadora            0 %          378
+interrupt     importadora           37 %          887
+never         cinefila               9 %          523
+spam          cinefila               0 %          373
+interrupt     cinefila              35 %          876
+never         social                 9 %          523
+spam          social                 0 %          373
+interrupt     social                35 %          876
+never         lectora_larga          6 %          505
+spam          lectora_larga          0 %          376
+interrupt     lectora_larga         33 %          858
+never         seriefila              9 %          531
+spam          seriefila              0 %          378
+interrupt     seriefila             37 %          887
+✗ nueva: never gana 3 % > 1 %
+✗ nueva: interrupt gana 28 %, fuera de [50 %, 75 %]
+✗ importadora: never gana 9 % > 1 %
+✗ importadora: interrupt gana 37 %, fuera de [50 %, 75 %]
+✗ cinefila: never gana 9 % > 1 %
+✗ cinefila: interrupt gana 35 %, fuera de [50 %, 75 %]
+✗ social: never gana 9 % > 1 %
+✗ social: interrupt gana 35 %, fuera de [50 %, 75 %]
+✗ lectora_larga: never gana 6 % > 1 %
+✗ lectora_larga: interrupt gana 33 %, fuera de [50 %, 75 %]
+✗ seriefila: never gana 9 % > 1 %
+✗ seriefila: interrupt gana 37 %, fuera de [50 %, 75 %]
+
+$ npm run --silent pet:battle -- calibrate --seeds 200 --chain 3
+seeds por celda: 200 · tramos: 3
+política      perfil           victorias  media ticks
+never         nueva                  0 %          502
+spam          nueva                  0 %          388
+interrupt     nueva                  8 %          940
+never         importadora            2 %          564
+spam          importadora            0 %          378
+interrupt     importadora           14 %         1039
+never         cinefila               2 %          555
+spam          cinefila               0 %          373
+interrupt     cinefila              13 %         1021
+never         social                 2 %          555
+spam          social                 0 %          373
+interrupt     social                13 %         1021
+never         lectora_larga          2 %          525
+spam          lectora_larga          0 %          376
+interrupt     lectora_larga         12 %          990
+never         seriefila              2 %          564
+spam          seriefila              0 %          378
+interrupt     seriefila             14 %         1039
+✗ nueva: interrupt gana 8 %, fuera de [50 %, 75 %]
+✗ importadora: never gana 2 % > 1 %
+✗ importadora: interrupt gana 14 %, fuera de [50 %, 75 %]
+✗ cinefila: never gana 2 % > 1 %
+✗ cinefila: interrupt gana 13 %, fuera de [50 %, 75 %]
+✗ social: never gana 2 % > 1 %
+✗ social: interrupt gana 13 %, fuera de [50 %, 75 %]
+✗ lectora_larga: never gana 2 % > 1 %
+✗ lectora_larga: interrupt gana 12 %, fuera de [50 %, 75 %]
+✗ seriefila: never gana 2 % > 1 %
+✗ seriefila: interrupt gana 14 %, fuera de [50 %, 75 %]
+```
+
 **Unitarios (Vitest).**
 - Motor: arrastre de vida, reinicios en frontera, `FIGHT_ENDED`/`FIGHT_STARTED`, límite de tramo
   como derrota en cadena y comparación de vida en entrenamiento (victoria, derrota y empate),
