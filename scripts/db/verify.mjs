@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { repoRoot, loadPlan } from './bootstrap.mjs';
 import { verifyQuotaConcurrency } from './verify-quota-concurrency.mjs';
+import { verifyCatalogReferenceConcurrency } from './verify-catalog-reference-concurrency.mjs';
 
 // Only the disposable container named by this checkout's generated manifest.
 const stamp = JSON.parse(readFileSync(join(repoRoot, '.superpowers/supabase-local/bootstrap.json'), 'utf8'));
@@ -19,5 +20,8 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/pass_interaction_hrefs.sql'), 'u
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_technical_gate.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'utf8'));
+
+sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_reference_guards.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
+await verifyCatalogReferenceConcurrency(stamp.projectId);
 console.log(`PASS: ${versions.length} bootstrap steps, schema contracts and role privileges.`);

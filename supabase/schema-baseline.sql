@@ -1192,3 +1192,8 @@ commit;
 begin;
 \ir migrations/20260907074033_verified_book_editions.sql
 commit;
+
+-- 20260907093534_catalog_reference_guards
+begin;
+\ir migrations/20260907093534_catalog_reference_guards.sql
+commit;
