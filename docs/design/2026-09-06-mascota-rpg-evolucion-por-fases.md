@@ -908,7 +908,7 @@ el recorrido E2E de dos usuarios pasaron en dev. Detalles de funciones/ACL en
 - La ficha propia no espera a la madriguera (Suspense propio) y un fallo del RPC no rompe la
   página.
 
-### S2 — Mascota en el perfil (verificada en dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128)
+### S2 — Mascota en el perfil (implementada; publicación en PR #1128)
 
 Sprite, nombre, clase y etapa en la cabecera de `/u/<username>`; sprite, nombre y clase en su imagen OG.
 Misma función de visibilidad y RPC de una fila. La imagen OG usa solo contexto anónimo y no incluye
