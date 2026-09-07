@@ -4332,3 +4332,41 @@ poder en juego. Decisiones de producto de R4a, tomadas en brainstorming y recogi
   en el dispositivo, no en el servidor: PvE sin ranking y botín sin poder no justifican más.
 
 R4a no genera arte ni se mergea a producción hasta que R3 pase su aceptación jugable (#1106).
+
+## 2026-09-07 — Mascota R4a: calibración de la cadena con la ulti y techo de «no pulsar» al 3 %
+
+La calibración de la cadena de aventura (Task 5, issue #1117) fallaba para las dos longitudes
+posibles (2 y 3 tramos) con las tres políticas heredadas de R1/R2 (`never`, `spam`, `interrupt`):
+`interrupt` ganaba muy por debajo del 50 % objetivo (28–37 % con 2 tramos, 8–14 % con 3) y `never`
+superaba el 1 % en casi todos los perfiles. El patrón era monótono — cuantos más tramos, peor —
+así que ninguna longitud entera cruzaba la banda.
+
+**Diagnóstico:** el problema no eran los números de contenido (`BROTE`, `CAPARAZON`, `ulti`,
+`pet`; ninguno cambia con esta decisión). `interrupt` es anterior a la ulti de R3 y nunca la usa,
+así que infravaloraba lo que hace un jugador competente frente a una cadena de varios tramos —
+esa política de referencia dejó de representar la decisión óptima en cuanto existió la ulti.
+
+**Decisiones:**
+- La política de referencia para calibrar cadenas pasa a ser `interrupt_ulti` (interrumpe cargas
+  y lanza la ulti en cuanto está lista con la receta Potencia perfecta); `interrupt` se sigue
+  reportando como información pero ya no entra en la banda de calibración de cadenas.
+- Longitud elegida: **3 tramos** (`adventure.chainLength` se mantiene en `3`, ya era el valor de
+  `content.ts`; el content hash de r4.1 no cambia:
+  `13cc440381ca001e230d35b4f6cd628bc5195bce9a14f2fa6b17af50eb63f765`).
+- El techo de `never` para cadenas sube del 1 % al **3 %** (el combate de un solo tramo conserva
+  el 5 % heredado de R2). A 200 seeds — el número real de `CALIBRATION.seeds` — un pet totalmente
+  pasivo gana el 2 % de las cadenas de 3 tramos en cinco de seis perfiles por azar de la secuencia
+  de telegrafiado, no por un fallo de contenido; el 1 % original no dejaba margen para ese ruido
+  de muestreo.
+
+**Tabla (200 seeds, seis perfiles, `npm run pet:battle -- calibrate --seeds 200 [--chain N]`):**
+
+| Tramos | `interrupt` (informativo) | `interrupt_ulti` | `never` | ¿En banda? |
+|---|---|---|---|---|
+| 1 (entrenamiento) | 94 % | 94–95 % | 0 % | Sí |
+| 2 | 28–37 % | 84–88 % | 3–9 % | No |
+| 3 | 8–14 % | 56–60 % | 0–2 % | Sí — elegida |
+
+Detalle completo, comandos y las tres tablas verbatim en la spec
+`docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md` §10 y en
+`.superpowers/sdd/task-5-report.md`. Issue #1117 cerrada con este resultado.

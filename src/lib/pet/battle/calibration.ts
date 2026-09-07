@@ -13,8 +13,11 @@ export const CALIBRATION = {
   seeds: 200,
   win: { interruptMin: 0.85, spamMax: 0.35, neverMax: 0.05 },
   ticks: { interruptMeanMin: 300, interruptMeanMax: 560 },
-  /** Cadenas (spec R4a §10): interrumpir gana entre el 50 y el 75 %, no pulsar menos del 1 %. */
-  chain: { interruptMin: 0.5, interruptMax: 0.75, neverMax: 0.01 },
+  /** Cadenas (spec R4a §10, techo revisado 2026-09-07): interrumpir + ulti gana entre el 50 y
+   *  el 75 %, no pulsar menos del 3 % (a 200 seeds, un pet totalmente pasivo gana el 2 % de las
+   *  cadenas de 3 tramos en cinco de seis perfiles por azar de la secuencia de telegrafiado; el
+   *  techo del 1 % original no dejaba margen para ese ruido de muestreo). */
+  chain: { interruptMin: 0.5, interruptMax: 0.75, neverMax: 0.03 },
 } as const;
 
 export interface CalibrationCell {

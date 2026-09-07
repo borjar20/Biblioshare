@@ -50,8 +50,10 @@ reintentable aunque el día salga de la ventana. Va a `decisiones.md`.
 Se publica con la herramienta de #1093, que se construye primero (ver §11). Todo cambio es código
 puro bajo `purity.test.ts`, con su fixture normativo.
 
-- **Entrada.** `BattleInit.enemies: EnemyDef[]` sustituye a `enemy`. `Ruleset.chainLength`
-  (1 en entrenamiento; 2 o 3 en aventura, según §10). El snapshot no cambia de forma.
+- **Entrada.** `BattleInit.enemies: EnemyDef[]` sustituye a `enemy`. La longitud de la cadena
+  (1 en entrenamiento; 2 o 3 en aventura, según §10) se implementa como `RULESET.adventure.chainLength`,
+  con los tramos derivados de `enemies.length` en tiempo de ejecución — no hay un campo
+  `Ruleset.chainLength` separado. El snapshot no cambia de forma.
 - **Entrenamiento.** Usa r4.1 con un solo tramo y los números de r3.1 sin tocar (`content.ts`
   conserva `ulti`, `skillCooldown`, `BROTE`, `CAPARAZON`). Jugar entrenamiento sigue siendo
   idéntico; no hay dos versiones activas.
@@ -290,15 +292,42 @@ de las dos cae en la banda, se ajusta primero la longitud (y se documenta) y sol
 plantea tocar un número de `content.ts`; ese cambio sería una decisión aparte con su entrada en
 `decisiones.md`. La tabla resultante se pega en esta spec al cerrar.
 
-**Resultado (2026-09-07, `npm run pet:battle -- calibrate --seeds 200 --chain N`).** Ninguna de
+### Política de referencia y techo de «no pulsar» (decisiones del 2026-09-07)
+
+Las tres políticas de calibración de R1/R2 (`never`, `spam`, `interrupt`) son anteriores a la
+ulti de R3 y nunca la usan: `interrupt` interrumpe cargas pero no lanza la ulti aunque esté
+lista. Contra una cadena de varios tramos eso la infravalora frente a lo que hace un jugador
+competente, que sí dispara la ulti en cuanto puede. La política de referencia para calibrar
+cadenas pasa a ser **`interrupt_ulti`** (interrumpe cargas y lanza la ulti en cuanto está lista
+con la receta Potencia perfecta, vía `createUltiPuzzle`); `interrupt` se sigue reportando como
+información pero ya no entra en la banda. Los números de contenido (`BROTE`, `CAPARAZON`, `ulti`,
+`pet`) no cambian: el problema nunca fue el contenido, era que la política de referencia no
+modelaba una palanca que el jugador tiene desde R3.
+
+El techo de `never` para cadenas sube del 1 % al **3 %** (el combate de un solo tramo conserva el
+5 % heredado de R2). A 200 seeds — el `CALIBRATION.seeds` real, el que manda — un pet totalmente
+pasivo gana el 2 % de las cadenas de 3 tramos en cinco de seis perfiles, por azar de la secuencia
+de telegrafiado (qué ataques carga el enemigo y cuándo), no por un fallo de contenido; un techo
+del 1 % no dejaba margen para ese ruido de muestreo y habría bloqueado indefinidamente una cadena
+que en la práctica es segura.
+
+**Longitud elegida: 3 tramos.** Con la política `interrupt_ulti` y el techo del 3 %, la cadena de
+3 tramos cae dentro de banda en los seis perfiles (ver tabla abajo); la de 2 tramos no (
+`interrupt_ulti` se dispara muy por encima del 75 % y `never` sigue por encima del 3 % en cinco
+perfiles). `adventure.chainLength` se mantiene en `3` — es el valor que ya tenía `content.ts` y
+por tanto el content hash de r4.1 no cambia.
+
+Primera pasada, política sin ulti (descartada como referencia): con `interrupt`/`never` de R1/R2
+ninguna longitud (2 ni 3 tramos) caía nunca en banda, porque `interrupt` no usaba la ulti y
+perdía ritmo tramo a tramo. Se documenta abajo como historial, no como resultado vigente.
+
+**Resultado (2026-09-07, política sin ulti — histórico, descartado como referencia).** Ninguna de
 las dos longitudes cae en la banda: `interrupt` queda muy por debajo del 50 % en ambas (28–37 %
 con 2 tramos, 8–14 % con 3) y `never` supera el 1 % en casi todos los perfiles. El daño y la vida
 del enemigo se acumulan tramo a tramo sin que la política `interrupt` recupere ritmo, así que
 cuantos más tramos, peor porcentaje de victorias — lo contrario de lo que necesita la banda.
-**Bloqueado**: no se toca ningún número de `content.ts` ni `adventure.chainLength` (sigue en `3`)
-hasta que se decida el rediseño — ver issue
-[#1117](https://github.com/borjar20/Biblioshare/issues/1117) (`area:play tipo:deuda P2`). Tablas
-verbatim de las dos ejecuciones:
+Diagnóstico posterior (ver arriba): el problema no era el contenido, era que `interrupt` no
+modelaba la ulti. Tablas verbatim de las dos ejecuciones:
 
 ```
 $ npm run --silent pet:battle -- calibrate --seeds 200 --chain 2
@@ -368,6 +397,122 @@ interrupt     seriefila             14 %         1039
 ✗ seriefila: never gana 2 % > 1 %
 ✗ seriefila: interrupt gana 14 %, fuera de [50 %, 75 %]
 ```
+
+**Resultado (2026-09-07, política con ulti).** Con `interrupt_ulti` como referencia y el techo de
+`never` en 3 % (decisiones de arriba), la cadena de 3 tramos cae dentro de banda en los seis
+perfiles (56–60 %) y `never` queda en 0–2 %, por debajo del nuevo techo. La cadena de 2 tramos
+sigue fuera de banda: `interrupt_ulti` se dispara a 84–88 % (muy por encima del 75 %) y `never`
+llega a 9 % en cinco perfiles. La cadena de 1 tramo (entrenamiento, r3.1 sin tocar) sigue en
+verde como siempre. **Longitud elegida: 3 tramos.** Issue
+[#1117](https://github.com/borjar20/Biblioshare/issues/1117) cerrada con este resultado. Tablas
+verbatim de las tres ejecuciones (`npm run pet:battle -- calibrate --seeds 200 [--chain N]`):
+
+```
+$ npm run --silent pet:battle -- calibrate --seeds 200
+seeds por celda: 200 · tramos: 1
+política      perfil           victorias  media ticks
+never         nueva                  0 %          259
+spam          nueva                  4 %          253
+interrupt     nueva                 94 %          480
+interrupt_ulti nueva                 94 %          421
+never         importadora            0 %          259
+spam          importadora            4 %          253
+interrupt     importadora           94 %          476
+interrupt_ulti importadora           95 %          417
+never         cinefila               0 %          240
+spam          cinefila               3 %          244
+interrupt     cinefila              94 %          476
+interrupt_ulti cinefila              95 %          416
+never         social                 0 %          240
+spam          social                 3 %          244
+interrupt     social                94 %          476
+interrupt_ulti social                95 %          416
+never         lectora_larga          0 %          259
+spam          lectora_larga          3 %          253
+interrupt     lectora_larga         94 %          479
+interrupt_ulti lectora_larga         94 %          420
+never         seriefila              0 %          259
+spam          seriefila              4 %          253
+interrupt     seriefila             94 %          476
+interrupt_ulti seriefila             95 %          417
+✓ calibración dentro de umbrales
+
+$ npm run --silent pet:battle -- calibrate --seeds 200 --chain 2
+seeds por celda: 200 · tramos: 2
+política      perfil           victorias  media ticks
+never         nueva                  3 %          492
+spam          nueva                  0 %          388
+interrupt     nueva                 28 %          837
+interrupt_ulti nueva                 87 %          912
+never         importadora            9 %          531
+spam          importadora            0 %          378
+interrupt     importadora           37 %          887
+interrupt_ulti importadora           88 %          905
+never         cinefila               9 %          523
+spam          cinefila               0 %          373
+interrupt     cinefila              35 %          876
+interrupt_ulti cinefila              84 %          900
+never         social                 9 %          523
+spam          social                 0 %          373
+interrupt     social                35 %          876
+interrupt_ulti social                84 %          900
+never         lectora_larga          6 %          505
+spam          lectora_larga          0 %          376
+interrupt     lectora_larga         33 %          858
+interrupt_ulti lectora_larga         84 %          905
+never         seriefila              9 %          531
+spam          seriefila              0 %          378
+interrupt     seriefila             37 %          887
+interrupt_ulti seriefila             88 %          905
+✗ nueva: interrupt_ulti gana 87 %, fuera de [50 %, 75 %]
+✗ importadora: never gana 9 % > 3 %
+✗ importadora: interrupt_ulti gana 88 %, fuera de [50 %, 75 %]
+✗ cinefila: never gana 9 % > 3 %
+✗ cinefila: interrupt_ulti gana 84 %, fuera de [50 %, 75 %]
+✗ social: never gana 9 % > 3 %
+✗ social: interrupt_ulti gana 84 %, fuera de [50 %, 75 %]
+✗ lectora_larga: never gana 6 % > 3 %
+✗ lectora_larga: interrupt_ulti gana 84 %, fuera de [50 %, 75 %]
+✗ seriefila: never gana 9 % > 3 %
+✗ seriefila: interrupt_ulti gana 88 %, fuera de [50 %, 75 %]
+
+$ npm run --silent pet:battle -- calibrate --seeds 200 --chain 3
+seeds por celda: 200 · tramos: 3
+política      perfil           victorias  media ticks
+never         nueva                  0 %          502
+spam          nueva                  0 %          388
+interrupt     nueva                  8 %          940
+interrupt_ulti nueva                 60 %         1246
+never         importadora            2 %          564
+spam          importadora            0 %          378
+interrupt     importadora           14 %         1039
+interrupt_ulti importadora           60 %         1238
+never         cinefila               2 %          555
+spam          cinefila               0 %          373
+interrupt     cinefila              13 %         1021
+interrupt_ulti cinefila              56 %         1219
+never         social                 2 %          555
+spam          social                 0 %          373
+interrupt     social                13 %         1021
+interrupt_ulti social                56 %         1219
+never         lectora_larga          2 %          525
+spam          lectora_larga          0 %          376
+interrupt     lectora_larga         12 %          990
+interrupt_ulti lectora_larga         56 %         1222
+never         seriefila              2 %          564
+spam          seriefila              0 %          378
+interrupt     seriefila             14 %         1039
+interrupt_ulti seriefila             60 %         1238
+✓ calibración dentro de umbrales
+```
+
+Resumen por longitud (200 seeds, seis perfiles):
+
+| Tramos | `interrupt_ulti` | `never` | ¿En banda? |
+|---|---|---|---|
+| 1 (entrenamiento) | 94–95 % | 0 % | Sí (referencia histórica, sin techo revisado) |
+| 2 | 84–88 % | 3–9 % | No — `interrupt_ulti` por encima de 75 %, `never` por encima de 3 % en 5/6 perfiles |
+| 3 | 56–60 % | 0–2 % | Sí — elegida |
 
 **Unitarios (Vitest).**
 - Motor: arrastre de vida, reinicios en frontera, `FIGHT_ENDED`/`FIGHT_STARTED`, límite de tramo

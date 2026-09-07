@@ -849,7 +849,8 @@ haya poder en juego. Ninguna de las dos genera arte hasta que R3 pase su aceptac
   duplican recompensas.
 - Editar la actividad después no revierte una aventura jugada.
 - Ningún cambio de hábito negativo observado: no se dividen sesiones, no hay obligación diaria.
-- La política «interrumpir» gana la cadena entre el 50 y el 75 % y «no pulsar» menos del 1 %.
+- La política «interrumpir» gana la cadena entre el 50 y el 75 % y «no pulsar» menos del 3 %
+  (política de referencia: interrumpir + ulti).
 
 ### R4b — Primer botín (contrato heredado; se concreta cuando R4a pase sus criterios)
 

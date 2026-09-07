@@ -40,8 +40,12 @@ describe("calibración de R2", () => {
     expect(lowCheck.ok).toBe(false);
     expect(lowCheck.failures.join(" ")).toMatch(/interrupt_ulti/);
 
-    // never al 2 % (> 1 %): falla nombrando never, aunque interrupt_ulti esté en banda.
-    const highNever = reportWith({ interrupt_ulti: 60, never: 2 });
+    // never al 2 % (≤ 3 %): pasa, aunque el 2 % siga siendo el ruido de muestreo real a 200 seeds.
+    const lowNever = reportWith({ interrupt_ulti: 60, never: 2 });
+    expect(checkCalibration(lowNever).ok).toBe(true);
+
+    // never al 4 % (> 3 %): falla nombrando never, aunque interrupt_ulti esté en banda.
+    const highNever = reportWith({ interrupt_ulti: 60, never: 4 });
     const neverCheck = checkCalibration(highNever);
     expect(neverCheck.ok).toBe(false);
     expect(neverCheck.failures.join(" ")).toMatch(/never/);
