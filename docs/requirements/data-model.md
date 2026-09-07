@@ -4511,7 +4511,7 @@ ver «Social fase 0»); **sincronización documental de sagas (#183) el 2026-08-
 
 ### 8bis.7. Nivel social y mascota en perfil — S2 (2026-09-07)
 
-**[Canónico · funciones y ACL verificadas contra dev el 2026-09-07; NO aplicadas ni verificadas en producción]**
+**[Canónico · funciones y ACL verificadas contra dev y producción el 2026-09-07]**
 
 Migración `20260907130854_pet_social_profile_and_level.sql`. No modifica tablas, columnas, RLS ni grants de tablas.
 
@@ -4520,3 +4520,5 @@ Migración `20260907130854_pet_social_profile_and_level.sql`. No modifica tablas
 - Las cuatro funciones fijan search_path vacío y revocan EXECUTE de PUBLIC. Perfil y madriguera leen con sesión sin caché compartida; OG usa anónimo con respuesta no-store.
 
 S1 aceptado por el usuario el 2026-09-07. La nueva exposición de nivel es una decisión de producto explícita; no permite humor, XP, atributos ni actividad.
+
+Verificación de producción S2 (autorización explícita 2026-09-07): las seis funciones sociales, incluidas las dos originales de S1, coinciden con dev por hash de pg_get_functiondef normalizado sin CR. Se comprobaron SECURITY DEFINER/INVOKER, search_path vacío y EXECUTE anon/authenticated. El conector de lectura no tiene EXECUTE sobre la nueva RPC de madriguera; la consulta funcional por ese conector fue rechazada, conforme a sus permisos. pet_state conserva RLS y sus tres políticas. No se sembraron cuentas ni se modificaron datos de usuarios en producción.

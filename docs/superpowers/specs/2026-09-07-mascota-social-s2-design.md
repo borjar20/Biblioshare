@@ -1,7 +1,7 @@
 # Mascota social: nivel en S1 y perfil S2
 
-> [Implementado y verificado en dev el 2026-09-07 · producción pendiente]
-> Alcance solicitado por José Ángel. Migraciones y pruebas autorizadas solo en dev.
+> [Implementado y verificado en dev el 2026-09-07 · migración verificada en producción; publicación web en PR #1128]
+> Alcance solicitado por José Ángel. Autorización inicial en dev; ampliada a migración de producción e integración el 2026-09-07.
 
 ## Alcance y decisiones
 
@@ -89,3 +89,9 @@ alcance sin hallazgos; convenciones detectó la omisión de `pet_level` en los
 tipos de la nueva RPC. Corregida y comprobada con TypeScript. La duplicación
 breve de validación de etapa se mantiene local en los dos lectores; no requiere
 una abstracción adicional para este alcance. No quedan hallazgos de producto.
+
+## Autorización y migración de producción (2026-09-07)
+
+Tras autorización explícita, migración aplicada en biblioshare (vmutcradmodhiltuohys). Definiciones de las seis funciones sociales y permisos idénticos a dev (hash normalizado), RLS y tres políticas de pet_state conservadas. La ejecución funcional de la madriguera por el conector de lectura fue rechazada por falta de EXECUTE; no se presenta como una prueba autenticada de producción. Advisor sin avisos que mencionen funciones nuevas. No se modificaron datos de usuarios ni se crearon cuentas. Esta sección actualiza las limitaciones de autorización/aplicación anteriores; los E2E con cuentas desechables siguen siendo exclusivamente de dev. Publicación web mediante PR #1128, después de sus checks.
+
+Prueba REST anónima en producción: perfil público con mascota devuelve una fila y exclusivamente pet_name, pet_class, pet_stage; identificador inexistente devuelve cero filas. Solo lecturas, sin sesiones ni datos de prueba productivos.
