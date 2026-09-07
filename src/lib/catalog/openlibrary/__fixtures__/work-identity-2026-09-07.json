@@ -1,0 +1,527 @@
+{
+  "responses": {
+    "/works/OL24268078W.json": {
+      "type": {
+        "key": "/type/work"
+      },
+      "title": "Gregor",
+      "subjects": [
+        "Prophéties (Occultisme)",
+        "Romans, nouvelles",
+        "Frères et sœurs",
+        "Personnes disparues",
+        "Zones souterraines",
+        "Dystopies",
+        "Aventures",
+        "Children's fiction",
+        "Brothers and sisters, fiction",
+        "Animals, fiction",
+        "Missing persons, fiction",
+        "Fantasy fiction",
+        "book set"
+      ],
+      "authors": [
+        {
+          "author": {
+            "key": "/authors/OL1394359A"
+          },
+          "type": {
+            "key": "/type/author_role"
+          }
+        }
+      ],
+      "description": {
+        "type": "/type/text",
+        "value": "When Gregor follows his little sister through a grate in the laundry room of their New York apartment building, he hurtles into the dark Underland beneath the city. There, humans live uneasily beside giant spiders, bats, cockroaches, and rats--but the fragile peace is about to fall apart.\r\n\r\nGregor wants no part in this conflict, but again and again, he and his family are drawn into the Underland. Gregor must find his place in the frightening prophecies he encounters, the strength to protect his family, and the courage to defend against an army of giant rats.\r\n\r\nIn this action-packed and masterful series, Suzanne Collins unfolds the fate of the Underland and its great warrior, Gregor the Overlander."
+      },
+      "covers": [
+        -1
+      ],
+      "key": "/works/OL24268078W",
+      "subtitle": "The Overlander Collection",
+      "series": [
+        {
+          "series": {
+            "key": "/series/OL327006L"
+          },
+          "position": "1-5"
+        }
+      ],
+      "genres": [
+        "/tags/OL169T"
+      ],
+      "latest_revision": 11,
+      "revision": 11,
+      "created": {
+        "type": "/type/datetime",
+        "value": "2021-03-27T00:36:09.243507"
+      },
+      "last_modified": {
+        "type": "/type/datetime",
+        "value": "2026-08-30T02:36:52.476717"
+      }
+    },
+    "/works/OL45607348W.json": {
+      "location": "/works/OL43426400W",
+      "key": "/works/OL45607348W",
+      "type": {
+        "key": "/type/redirect"
+      },
+      "latest_revision": 3,
+      "revision": 3,
+      "created": {
+        "type": "/type/datetime",
+        "value": "2026-06-17T04:44:51.310192"
+      },
+      "last_modified": {
+        "type": "/type/datetime",
+        "value": "2026-08-26T19:23:02.442119"
+      }
+    },
+    "/works/OL43426400W.json": {
+      "title": "Sunrise on the Reaping",
+      "key": "/works/OL43426400W",
+      "type": {
+        "key": "/type/work"
+      },
+      "description": {
+        "type": "/type/text",
+        "value": "As the day dawns on the fiftieth annual Hunger Games, fear grips the districts of Panem. This year, in honor of the Quarter Quell, twice as many tributes will be taken from their homes.\r\n\r\nBack in District 12, Haymitch Abernathy is trying not to think too hard about his chances. All he cares about is making it through the day and being with the girl he loves.\r\n\r\nWhen Haymitch's name is called, he can feel all his dreams break. He's torn from his family and his love, shuttled to the Capitol with the three other District 12 tributes: a young friend who's nearly a sister to him, a compulsive oddsmaker, and the most stuck-up girl in town. As the Games begin, Haymitch understands he's been set up to fail. But there's something in him that wants to fight . . . and have that fight reverberate far beyond the deadly arena."
+      },
+      "subjects": [
+        "Dystopia",
+        "Young Adult",
+        "Fantasy",
+        "Fiction",
+        "Science Fiction",
+        "Romance",
+        "Adventure",
+        "Science Fiction Fantasy",
+        "Juegos del hambre",
+        "Serie:The_Hunger_Games"
+      ],
+      "subject_people": [
+        "Effie Trinket",
+        "Haymitch Abernathy",
+        "Caesar Flickerman",
+        "Beetee Latier",
+        "Wiress",
+        "Mags Flanagan",
+        "Panache Barker",
+        "Silka Sharp",
+        "Wyatt Callow",
+        "Maysilee Donner",
+        "Louella McCoy",
+        "Ampert Latier",
+        "Lenore Dove Baird",
+        "Willamae Abernathy",
+        "Sid Abernathy",
+        "Drusilla Sickle",
+        "Woodbine Chance",
+        "Merrilee Undersee",
+        "Asterid March",
+        "Coriolanus Snow",
+        "Plutarch Heavensbee"
+      ],
+      "subject_places": [
+        "Panem"
+      ],
+      "subject_times": [
+        "Futuro distopico"
+      ],
+      "authors": [
+        {
+          "author": {
+            "key": "/authors/OL1394359A"
+          },
+          "type": {
+            "key": "/type/author_role"
+          }
+        }
+      ],
+      "latest_revision": 9,
+      "revision": 9,
+      "created": {
+        "type": "/type/datetime",
+        "value": "2025-05-21T18:57:22.340086"
+      },
+      "last_modified": {
+        "type": "/type/datetime",
+        "value": "2026-08-26T20:08:49.616228"
+      }
+    },
+    "/works/OL25399947W.json": {
+      "type": {
+        "key": "/type/work"
+      },
+      "title": "The Ultimate Unwind Collection",
+      "authors": [
+        {
+          "author": {
+            "key": "/authors/OL234454A"
+          },
+          "type": {
+            "key": "/type/author_role"
+          }
+        }
+      ],
+      "key": "/works/OL25399947W",
+      "covers": [
+        13508731
+      ],
+      "latest_revision": 3,
+      "revision": 3,
+      "created": {
+        "type": "/type/datetime",
+        "value": "2021-09-29T21:26:58.498834"
+      },
+      "last_modified": {
+        "type": "/type/datetime",
+        "value": "2026-03-11T16:01:15.443578"
+      }
+    },
+    "/works/OL25375929W.json": {
+      "type": {
+        "key": "/type/work"
+      },
+      "title": "Unwind Unboxed",
+      "subjects": [
+        "Children's fiction",
+        "Survival, fiction",
+        "Identity, fiction",
+        "Science fiction"
+      ],
+      "authors": [
+        {
+          "author": {
+            "key": "/authors/OL234454A"
+          },
+          "type": {
+            "key": "/type/author_role"
+          }
+        }
+      ],
+      "key": "/works/OL25375929W",
+      "genres": [
+        "/tags/OL179T"
+      ],
+      "latest_revision": 3,
+      "revision": 3,
+      "created": {
+        "type": "/type/datetime",
+        "value": "2021-09-29T12:48:30.363474"
+      },
+      "last_modified": {
+        "type": "/type/datetime",
+        "value": "2026-08-31T07:12:21.94815"
+      }
+    },
+    "/works/OL25399947W/editions.json": {
+      "links": {
+        "self": "/works/OL25399947W/editions.json?limit=100",
+        "work": "/works/OL25399947W"
+      },
+      "size": 3,
+      "entries": [
+        {
+          "type": {
+            "key": "/type/edition"
+          },
+          "title": "The Ultimate Unwind Dystology Collection 5 Books Box Set",
+          "authors": [
+            {
+              "key": "/authors/OL234454A"
+            },
+            {
+              "key": "/authors/OL10353687A"
+            },
+            {
+              "key": "/authors/OL10353688A"
+            },
+            {
+              "key": "/authors/OL10353689A"
+            },
+            {
+              "key": "/authors/OL10353690A"
+            },
+            {
+              "key": "/authors/OL10353691A"
+            },
+            {
+              "key": "/authors/OL10353692A"
+            },
+            {
+              "key": "/authors/OL10353693A"
+            },
+            {
+              "key": "/authors/OL10353695A"
+            },
+            {
+              "key": "/authors/OL10353696A"
+            }
+          ],
+          "publish_date": "May 06, 2021",
+          "source_records": [
+            "amazon:9124136417"
+          ],
+          "publishers": [
+            "Simon & Schuster Books for Young Readers Ltd"
+          ],
+          "physical_format": "Paperback",
+          "notes": "Source title: The Ultimate Unwind Dystology Collection 5 Books Box Set by Neal Shusterman (Unwind, Unwholly, Unsouled, Undivided & Unbound)",
+          "works": [
+            {
+              "key": "/works/OL25399947W"
+            }
+          ],
+          "key": "/books/OL37857732M",
+          "identifiers": {},
+          "covers": [
+            13508731
+          ],
+          "isbn_10": [
+            "9124136417"
+          ],
+          "isbn_13": [
+            "9789124136413"
+          ],
+          "series": [
+            "Unwind Dystology (#1-5)"
+          ],
+          "languages": [
+            {
+              "key": "/languages/eng"
+            }
+          ],
+          "latest_revision": 6,
+          "revision": 6,
+          "created": {
+            "type": "/type/datetime",
+            "value": "2022-05-06T18:19:51.343074"
+          },
+          "last_modified": {
+            "type": "/type/datetime",
+            "value": "2026-03-11T16:01:15.443578"
+          }
+        },
+        {
+          "type": {
+            "key": "/type/edition"
+          },
+          "authors": [
+            {
+              "key": "/authors/OL234454A"
+            }
+          ],
+          "isbn_13": [
+            "9781665914543"
+          ],
+          "languages": [
+            {
+              "key": "/languages/eng"
+            }
+          ],
+          "number_of_pages": 1888,
+          "publish_date": "2021",
+          "publishers": [
+            "Simon & Schuster Books For Young Readers"
+          ],
+          "source_records": [
+            "bwb:9781665914543"
+          ],
+          "title": "Ultimate Unwind Hardcover Collection",
+          "subtitle": "Unwind; Unwholly; Unsouled; Undivided; Unbound",
+          "works": [
+            {
+              "key": "/works/OL25399947W"
+            }
+          ],
+          "key": "/books/OL34183774M",
+          "latest_revision": 2,
+          "revision": 2,
+          "created": {
+            "type": "/type/datetime",
+            "value": "2021-09-30T21:04:03.184533"
+          },
+          "last_modified": {
+            "type": "/type/datetime",
+            "value": "2025-12-14T15:26:46.217305"
+          }
+        },
+        {
+          "type": {
+            "key": "/type/edition"
+          },
+          "authors": [
+            {
+              "key": "/authors/OL234454A"
+            }
+          ],
+          "languages": [
+            {
+              "key": "/languages/eng"
+            }
+          ],
+          "number_of_pages": 1984,
+          "publish_date": "2016",
+          "publishers": [
+            "Simon & Schuster Books For Young Readers"
+          ],
+          "source_records": [
+            "bwb:9781481491815"
+          ],
+          "title": "The Ultimate Unwind Collection",
+          "weight": "1.711 ",
+          "subtitle": "Unwind; Unwholly; Unsouled; Undivided; Unbound",
+          "works": [
+            {
+              "key": "/works/OL25399947W"
+            }
+          ],
+          "key": "/books/OL34047498M",
+          "covers": [
+            15178552
+          ],
+          "identifiers": {},
+          "isbn_13": [
+            "9781481491815"
+          ],
+          "series": [
+            "Unwind Dystology (#1-5)"
+          ],
+          "physical_format": "Paperback",
+          "latest_revision": 3,
+          "revision": 3,
+          "created": {
+            "type": "/type/datetime",
+            "value": "2021-09-29T21:26:58.498834"
+          },
+          "last_modified": {
+            "type": "/type/datetime",
+            "value": "2026-03-11T16:02:07.035225"
+          }
+        }
+      ]
+    },
+    "/works/OL25375929W/editions.json": {
+      "links": {
+        "self": "/works/OL25375929W/editions.json?limit=100",
+        "work": "/works/OL25375929W"
+      },
+      "size": 2,
+      "entries": [
+        {
+          "type": {
+            "key": "/type/edition"
+          },
+          "authors": [
+            {
+              "key": "/authors/OL234454A"
+            }
+          ],
+          "languages": [
+            {
+              "key": "/languages/eng"
+            }
+          ],
+          "pagination": "905",
+          "publish_date": "2013",
+          "publishers": [
+            "Simon & Schuster, Limited"
+          ],
+          "source_records": [
+            "bwb:9781471121586"
+          ],
+          "subjects": [
+            "Children's fiction",
+            "Identity, fiction",
+            "Science fiction",
+            "Survival, fiction"
+          ],
+          "title": "Unwind Unboxed: Unwind / UnStrung / UnWholly",
+          "full_title": "Unwind Unboxed : Unwind; Unstrung an Unwind Story; Unwholly",
+          "works": [
+            {
+              "key": "/works/OL25375929W"
+            }
+          ],
+          "key": "/books/OL37167300M",
+          "covers": [
+            15178535
+          ],
+          "identifiers": {},
+          "isbn_13": [
+            "9781471121586"
+          ],
+          "series": [
+            "Unwind Dystology (#1-2, 1.5)"
+          ],
+          "physical_format": "Ebook",
+          "number_of_pages": 905,
+          "latest_revision": 4,
+          "revision": 4,
+          "created": {
+            "type": "/type/datetime",
+            "value": "2022-02-26T15:33:23.623179"
+          },
+          "last_modified": {
+            "type": "/type/datetime",
+            "value": "2026-03-11T15:38:38.521483"
+          }
+        },
+        {
+          "type": {
+            "key": "/type/edition"
+          },
+          "authors": [
+            {
+              "key": "/authors/OL234454A"
+            }
+          ],
+          "isbn_13": [
+            "9781442483149"
+          ],
+          "languages": [
+            {
+              "key": "/languages/eng"
+            }
+          ],
+          "number_of_pages": 828,
+          "publish_date": "2012",
+          "publishers": [
+            "Simon & Schuster Books For Young Readers"
+          ],
+          "source_records": [
+            "bwb:9781442483149"
+          ],
+          "subjects": [
+            "Children's fiction",
+            "Survival, fiction",
+            "Identity, fiction",
+            "Science fiction"
+          ],
+          "title": "Unwind Unboxed : Unwind; Unstrung",
+          "subtitle": "an Unwind Story; Unwholly",
+          "works": [
+            {
+              "key": "/works/OL25375929W"
+            }
+          ],
+          "key": "/books/OL34007085M",
+          "latest_revision": 1,
+          "revision": 1,
+          "created": {
+            "type": "/type/datetime",
+            "value": "2021-09-29T12:48:30.363474"
+          },
+          "last_modified": {
+            "type": "/type/datetime",
+            "value": "2021-09-29T12:48:30.363474"
+          }
+        }
+      ]
+    }
+  },
+  "source": "https://openlibrary.org",
+  "capturedAt": "2026-09-07"
+}
