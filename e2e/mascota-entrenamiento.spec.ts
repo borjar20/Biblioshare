@@ -186,6 +186,12 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
 });
 
 test("R3: enemy choice, paused keyboard puzzle, authoritative ultimate and replay", async ({ page, request }) => {
+  // Este test encadena dos combates completos contra `caparazon` (el rival con
+  // armadura, el más largo), un repaso de la repetición y tres aperturas del puzle:
+  // medido, pide ~96 s y no cabe en los 60 s por defecto del config. Hasta ahora no
+  // se veía porque moría antes, en la versión del ruleset. No relaja ninguna
+  // aserción: solo deja de cortar el test por el reloj.
+  test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await cleanPreviousRun(request);
@@ -207,7 +213,10 @@ test("R3: enemy choice, paused keyboard puzzle, authoritative ultimate and repla
     await page.waitForTimeout(500);
     expect(await panel.getByTestId("training-tick").textContent()).toBe(frozen);
     const [battle] = await rows(request, user.id);
-    expect(battle).toMatchObject({ enemy_id: "caparazon", ruleset_version: "r3.1", status: "open" });
+    // El entrenamiento pasó a r4.1 con #1086 (motor de cadena): un solo tramo y los
+    // números de r3.1 sin tocar (spec R4a §3). La versión que se graba es la del
+    // motor vivo, no la de la release anterior.
+    expect(battle).toMatchObject({ enemy_id: "caparazon", ruleset_version: "r4.1", status: "open" });
     const tick = Math.round(Number.parseFloat(frozen!) * 10);
     const order = createUltiPuzzle(battle.seed, tick).recipes.find(recipe => recipe.id === "power")!.order;
     for (const [slot, tile] of order.entries()) {
