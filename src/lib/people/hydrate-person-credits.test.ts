@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { needsCreditHydration } from "./hydrate-person-credits";
 
 describe("needsCreditHydration", () => {
@@ -32,3 +32,6 @@ describe("needsCreditHydration", () => {
     ).toBe(false);
   });
 });
+
+// Provider edition registration is outside this test's domain boundary.
+vi.mock("@/lib/editions/register-verified", () => ({ registerVerifiedBookEdition: vi.fn() }));

@@ -179,3 +179,6 @@ describe("deleteRoute", () => {
     expect(mocks.revalidateSagaPage).not.toHaveBeenCalled();
   });
 });
+
+// Provider edition registration is outside this test's domain boundary.
+vi.mock("@/lib/editions/register-verified", () => ({ registerVerifiedBookEdition: vi.fn() }));

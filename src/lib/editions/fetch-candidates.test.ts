@@ -1,3 +1,4 @@
+vi.mock("@/lib/supabase/service-role", () => ({ createServiceRoleClient: () => ({ rpc: h.rpc }) }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Estado compartido por los dobles. `vi.hoisted` porque `vi.mock` se iza por
@@ -32,7 +33,7 @@ const h = vi.hoisted(() => {
   function client() {
     return {
       auth: { getUser: async () => ({ data: { user: state.user } }) },
-      rpc,
+      rpc: vi.fn(() => { throw new Error("Unverified session RPC must not register provider metadata"); }),
       from(table: string) {
         tables.push(table);
         if (table === "books") {
@@ -268,8 +269,9 @@ describe("chooseEditionCandidate", () => {
     const result = await chooseEditionCandidate("pass-1", "book-1", VALID[0]);
 
     expect(result).toEqual({ ok: true });
-    expect(h.rpc).toHaveBeenCalledWith("register_book_edition", {
+    expect(h.rpc).toHaveBeenCalledWith("register_verified_book_edition", {
       p_book_id: "book-1",
+      p_created_by: "user-1",
       p_isbn: VALID[0],
       p_label: "Bolsillo",
       p_publisher: OL_PUBLISHER,

@@ -8,7 +8,10 @@ import type { SearchResult } from "./types";
 // entero. Por eso el mock del cliente de servicio es SEPARADO del `supabase`
 // que recibe la función: los tests comprueban por cuál de los dos sale cada
 // RPC, que es justo lo que una mutación rompería en silencio (#871).
-const mocks = vi.hoisted(() => ({ serviceRpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ serviceRpc: vi.fn(), registerEdition: vi.fn() }));
+vi.mock("@/lib/editions/register-verified", () => ({
+  registerVerifiedBookEdition: mocks.registerEdition,
+}));
 vi.mock("@/lib/supabase/service-role", () => ({
   createServiceRoleClient: () => ({ rpc: mocks.serviceRpc }),
 }));
@@ -16,6 +19,7 @@ vi.mock("@/lib/supabase/service-role", () => ({
 import { findOrCreateCatalogItem, findOrCreateCatalogItemsBulk } from "./find-or-create";
 
 beforeEach(() => {
+  mocks.registerEdition.mockReset();
   mocks.serviceRpc.mockReset();
   mocks.serviceRpc.mockResolvedValue({ data: null, error: null });
 });
@@ -333,11 +337,8 @@ describe("findOrCreateCatalogItem", () => {
       "user-1"
     );
 
-    expect(rpc).toHaveBeenNthCalledWith(2, "register_book_edition", {
-      p_book_id: "book-1",
-      p_isbn: "9788410138407",
-      p_cover_url: "c",
-    });
+    expect(mocks.registerEdition).toHaveBeenCalledWith("book-1", "9788410138407", "user-1");
+    expect(rpc).not.toHaveBeenCalledWith("register_book_edition", expect.anything());
   });
 
   it("libro sin matchedIsbn (alta por búsqueda de texto) -> NO registra edición", async () => {

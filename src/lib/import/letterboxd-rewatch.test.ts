@@ -175,3 +175,6 @@ describe("Letterboxd: revisionados de la misma película", () => {
     expect(insertedRows).toHaveLength(0);
   });
 });
+
+// Provider edition registration is outside this test's domain boundary.
+vi.mock("@/lib/editions/register-verified", () => ({ registerVerifiedBookEdition: vi.fn() }));
