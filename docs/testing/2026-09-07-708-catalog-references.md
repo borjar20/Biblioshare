@@ -50,7 +50,8 @@ con conexiones simultáneas y un solapamiento observado en `pg_stat_activity`.
 
 No hay limpieza de huérfanos previos, columnas nuevas ni cambios de grants de
 tablas. No cubre identificadores incrustados en JSON/URL (#546, #875, #879) ni
-otras parejas con nombres distintos que no figuren en el inventario; no afirma
+otras parejas con nombres distintos que no figuren en el inventario (anclas de
+posts y origen de actividades, ya censadas en #876); no afirma
 una FK universal. Tampoco protege cambios privilegiados del ID de catálogo.
 
 ## Comprobaciones
