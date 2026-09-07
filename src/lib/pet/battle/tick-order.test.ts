@@ -11,7 +11,7 @@ import type { BattleInit, BattleInput, EnemyDef, Ruleset } from "./types";
 const snapshot = snapshotForProfile("lectora_larga", "wizard");
 const skill = (tick: number, seq = 0): BattleInput => ({ seq, tick, action: "skill", payload: {} });
 // La forma de BattleInit cambia en r4.1 (enemies[]); este helper es el único sitio que lo sabe.
-const init = (seed: string, enemy: EnemyDef = BROTE, ruleset: Ruleset = RULESET): BattleInit => ({ seed, snapshot, enemy, ruleset });
+const init = (seed: string, enemy: EnemyDef = BROTE, ruleset: Ruleset = RULESET): BattleInit => ({ seed, snapshot, enemies: [enemy], ruleset });
 
 function firstGuardTick(ctx: BattleInit): number {
   const ev = simulate(ctx, []).events.find((e) => e.type === "TELEGRAPH_STARTED" && e.kind === "guard");

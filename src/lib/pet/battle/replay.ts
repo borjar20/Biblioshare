@@ -36,7 +36,7 @@ export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
   Object.freeze({
     rulesetVersion: "r3.1",
     contentHash: "deebe918beee7f74ff9d9cda720caac9f9182713158085c118971970cce40cb3",
-    ruleset: r3.RULESET,
+    ruleset: r3.RULESET as Ruleset,
     enemies: r3.ENEMIES,
     isSnapshot: isR3Snapshot,
     validateInputs: (raw: unknown) => validateInputs(raw, r3.RULESET),

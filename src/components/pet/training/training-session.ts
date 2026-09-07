@@ -64,11 +64,11 @@ export class TrainingSession {
       if (b.rulesetVersion === R2.version && b.enemyId === R2_BROTE.id) {
         const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: R2, enemy: R2_BROTE };
         const state = legacy.createBattle(ctx);
-        const view = () => ({ ...legacy.viewOf(state), ultiReadyAt: Infinity, ultiUsed: false, shield: 0 });
+        const view = () => ({ ...legacy.viewOf(state), ultiReadyAt: Infinity, ultiUsed: false, shield: 0, fight: 1, fights: 1 });
         this.view = view();
         this.advance = inputs => ({ events: legacy.stepBattle(ctx, state, inputs as R2Input[]).map(event => (event.type === "ENEMY_BASIC" || event.type === "TELEGRAPH_RESOLVED" || event.type === "SKILL_USED") ? { ...event, shield: 0 } : event), view: view() });
       } else if (b.rulesetVersion === RULESET.version && ENEMIES[b.enemyId]) {
-        const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: RULESET, enemy: ENEMIES[b.enemyId] };
+        const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: RULESET, enemies: [ENEMIES[b.enemyId]] };
         const state = createBattle(ctx);
         this.view = viewOf(state);
         this.advance = inputs => ({ events: stepBattle(ctx, state, inputs), view: viewOf(state) });

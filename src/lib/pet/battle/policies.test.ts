@@ -7,7 +7,7 @@ import { snapshotForProfile } from "./profiles";
 import { seedFromIndex } from "./prng";
 
 const snapshot = snapshotForProfile("cinefila", "cleric");
-const ctx = (i: number) => ({ seed: seedFromIndex(i), snapshot, enemy: BROTE, ruleset: RULESET });
+const ctx = (i: number) => ({ seed: seedFromIndex(i), snapshot, enemies: [BROTE], ruleset: RULESET });
 
 describe("runPolicy", () => {
   it("never no genera inputs y coincide con simulate([])", () => {

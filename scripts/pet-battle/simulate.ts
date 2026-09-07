@@ -58,7 +58,7 @@ async function run() {
   const seed = arg("seed", seedFromIndex(0)) as string;
   if (!isSeed(seed)) fail("--seed: 32 hex en minúsculas");
   const snapshot = snapshotForProfile(pickProfile(), pickClass());
-  const ctx = { seed, snapshot, enemy: BROTE, ruleset: RULESET };
+  const ctx = { seed, snapshot, enemies: [BROTE], ruleset: RULESET };
   const { inputs, events, result } = runPolicy(ctx, POLICIES[pickPolicy()]);
   const record: BattleRecord = { rulesetVersion: RULESET.version, contentHash: await contentHash(), enemyId: BROTE.id, seed, snapshot, inputs, result };
   const digest = await battleDigest(record, events);
@@ -106,7 +106,7 @@ async function golden() {
   const snapshot = snapshotForProfile("lectora_larga", "wizard");
   for (let i = 0; i < 10_000; i++) {
     const seed = seedFromIndex(i);
-    const ctx = { seed, snapshot, enemy: BROTE, ruleset: RULESET };
+    const ctx = { seed, snapshot, enemies: [BROTE], ruleset: RULESET };
     const kinds = simulate(ctx, [])
       .events.filter((e) => e.type === "TELEGRAPH_STARTED")
       .map((e) => (e.type === "TELEGRAPH_STARTED" ? e.kind : ""));

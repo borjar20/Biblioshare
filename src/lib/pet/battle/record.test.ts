@@ -11,7 +11,7 @@ const snapshot = snapshotForProfile("social", "bard");
 
 async function makeRecord(i = 0, policy = POLICIES.interrupt) {
   const seed = seedFromIndex(i);
-  const run = runPolicy({ seed, snapshot, enemy: BROTE, ruleset: RULESET }, policy);
+  const run = runPolicy({ seed, snapshot, enemies: [BROTE], ruleset: RULESET }, policy);
   const record: BattleRecord = {
     rulesetVersion: RULESET.version,
     contentHash: await contentHash(),

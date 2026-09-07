@@ -139,7 +139,7 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
       expect(await postAction(page, resolveAction, [intent, [{ seq: 0, tick: 0, action: "skill", payload: { injected: "x" } }]]))
         .toContain("NONEMPTY_PAYLOAD");
       expect((await rows(request, a.id, intent))[0].status).toBe("open");
-      const valid = runPolicy({ seed: before[0].seed, snapshot: before[0].snapshot, ruleset: RULESET, enemy: BROTE }, POLICIES.interrupt);
+      const valid = runPolicy({ seed: before[0].seed, snapshot: before[0].snapshot, ruleset: RULESET, enemies: [BROTE] }, POLICIES.interrupt);
       const resolutions = await Promise.all([
         postAction(page, resolveAction, [intent, []]),
         postAction(page, resolveAction, [intent, valid.inputs]),

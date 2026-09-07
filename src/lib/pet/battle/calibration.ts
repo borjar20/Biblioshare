@@ -45,7 +45,7 @@ export function calibrate(opts: {
         let draws = 0;
         let ticks = 0;
         for (let i = 0; i < opts.seeds; i++) {
-          const { result } = runPolicy({ seed: seedFromIndex(i), snapshot, enemy: BROTE, ruleset: RULESET }, POLICIES[policy]);
+          const { result } = runPolicy({ seed: seedFromIndex(i), snapshot, enemies: [BROTE], ruleset: RULESET }, POLICIES[policy]);
           if (result.outcome === "win") wins++;
           else if (result.outcome === "draw") draws++;
           ticks += result.ticks;
