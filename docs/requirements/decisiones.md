@@ -4437,3 +4437,7 @@ La prueba de fallo de lectura reprodujo que signOut no alcanzaba clear. Ahora
 el borrado local se ejecuta también si no puede recuperarse la sesión para la
 revocación remota. Los fallos de escritura siguen propagándose. Evidencia en
 `docs/testing/2026-09-07-679-native-session.md`; la distribución sigue en #679.
+
+## 2026-09-07 — Despacho explícito de acciones de combate (#1086)
+
+El motor de trabajo src/lib/pet/battle/engine.ts, separado de la copia publicada r3.1, despacha skill y ulti mediante ramas explícitas y rechaza una acción sin rama con INPUT_ACTION. Se conserva la validación previa de stepBattle (INVALID_INPUTS para entradas inválidas), los eventos y el ruleset; no se modifican los motores históricos ni los fixtures normativos. La ulti de R3 ya era una entrada atómica: este cambio no añade ulti_assign.
