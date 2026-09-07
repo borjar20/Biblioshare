@@ -1202,3 +1202,8 @@ commit;
 begin;
 \ir migrations/20260907130854_pet_social_profile_and_level.sql
 commit;
+
+-- 20260908_pet_adventures
+begin;
+\ir migrations/20260908_pet_adventures.sql
+commit;
