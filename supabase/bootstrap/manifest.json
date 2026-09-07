@@ -236,6 +236,7 @@
     "20260907_pet_battles.sql",
     "20260906170958_get_burrow_pets.sql",
     "20260906201847_pass_interaction_hrefs.sql",
-    "20260906213325_shared_rate_limits.sql"
+    "20260906213325_shared_rate_limits.sql",
+    "20260907074033_verified_book_editions.sql"
   ]
 }

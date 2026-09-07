@@ -1187,3 +1187,8 @@ commit;
 begin;
 \ir migrations/20260906213325_shared_rate_limits.sql
 commit;
+
+-- 20260907074033_verified_book_editions
+begin;
+\ir migrations/20260907074033_verified_book_editions.sql
+commit;
