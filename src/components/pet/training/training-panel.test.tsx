@@ -19,6 +19,21 @@ vi.mock("@/lib/pet/training/actions", () => ({
 }));
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
+it("permite empezar una aventura aunque el navegador bloquee localStorage", async () => {
+  const getter = vi.spyOn(window, "localStorage", "get").mockImplementation(() => { throw new DOMException("Storage blocked", "SecurityError"); });
+  const battle: TrainingBattle = { intentId: "blocked-storage", status: "open", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: null, digest: null };
+  const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle })), resolve: vi.fn(), replay: vi.fn() };
+  try {
+    render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} /></NextIntlClientProvider>);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar aventura" })); });
+    expect(actions.start).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("fight-marker").textContent).toBe("Tramo 1 de 3");
+    expect(screen.queryByRole("alert")).toBeNull();
+  } finally {
+    getter.mockRestore();
+  }
+});
+
 it("modo entrenamiento: sigue pintando su propio título «Entrenamiento»", () => {
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel /></NextIntlClientProvider>);
   expect(screen.getByRole("heading", { name: "Entrenamiento" })).toBeTruthy();

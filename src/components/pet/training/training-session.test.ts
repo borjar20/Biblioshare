@@ -75,6 +75,38 @@ function memoryStorage() {
 }
 const snapshot = snapshotForProfile("lectora_larga", "wizard");
 
+it("replay reinicia la recarga de ulti al empezar y en cada tramo", async () => {
+  const chained: TrainingBattle = { ...battle, rulesetVersion: RULESET.version, enemyId: "brote,brote", status: "resolved" };
+  const events = [
+    { type: "BATTLE_STARTED" as const, seq: 0, tick: 0, petHp: 100, enemyHp: 200 },
+    { type: "FIGHT_STARTED" as const, seq: 1, tick: 200, fight: 2, enemyId: "brote", petHp: 80, enemyHp: 200 },
+    { type: "BATTLE_ENDED" as const, seq: 2, tick: 400, outcome: "lose" as const, reason: "ko" as const, petHp: 0, enemyHp: 10 },
+  ];
+  const s = new TrainingSession({
+    start: async () => ({ ok: true, battle: chained }),
+    resolve: vi.fn(), replay: async () => ({ ok: true, battle: chained, events }),
+  }, () => "one");
+  await s.start();
+  // Un combate terminado conserva el reloj de la ulti del último tramo.
+  s.view!.ultiReadyAt = 520;
+  await s.replay();
+  expect(s.view?.ultiReadyAt).toBe(RULESET.ulti.readyAt);
+  while (s.view!.tick < 200) s.tick();
+  expect(s.view?.ultiReadyAt).toBe(200 + RULESET.ulti.readyAt);
+  while (s.phase === "replaying") s.tick();
+  await s.replay();
+  expect(s.view?.ultiReadyAt).toBe(RULESET.ulti.readyAt);
+});
+
+it.each(["r2.2", "r3.1"])("replay conserva la disponibilidad histórica de ulti en %s", async (rulesetVersion) => {
+  const historical = { ...battle, rulesetVersion, status: "resolved" as const };
+  const events = [{ type: "BATTLE_STARTED" as const, seq: 0, tick: 0, petHp: 100, enemyHp: 200 }];
+  const s = new TrainingSession({ start: async () => ({ ok: true, battle: historical }), resolve: vi.fn(), replay: async () => ({ ok: true, battle: historical, events }) }, () => "one");
+  await s.start();
+  await s.replay();
+  expect(s.view?.ultiReadyAt).toBe(rulesetVersion === "r2.2" ? Infinity : 120);
+});
+
 describe("chains and local log", () => {
   it("simula una fila r3.1 con el motor r3.1 (un tramo) y expone fight 1/1", async () => {
     const battle = { intentId: "i1", status: "open" as const, seed: seedFromIndex(1), snapshot, rulesetVersion: "r3.1", contentHash: await r3Hash(), enemyId: "caparazon", inputs: [], result: null, digest: null };

@@ -219,13 +219,18 @@ test("aventuras: nadie fabrica una fila ni ejecuta las funciones de escritura; d
     // 1. inserción directa de una fila de aventura como usuario: denegada
     const forged = await request.post(REST, { headers: userHeaders(token, true), data: { ...openRow(a.id), kind: "adventure", adventure_day: "2026-09-07", attempt: 1 } });
     expect([401, 403]).toContain(forged.status());
-    // 2. las funciones de escritura no son ejecutables con JWT de usuario
-    for (const fn of ["start_pet_adventure", "resolve_pet_adventure"]) {
-      const res = await request.post(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { headers: userHeaders(token, true), data: {} });
-      expect([401, 403, 404]).toContain(res.status());
+    // 2. Firma completa: un 404 por argumentos ausentes no demuestra falta de EXECUTE.
+    const args = (n: string) => ({ p_user: a.id, p_seed: n.repeat(32), p_intent: crypto.randomUUID(), p_enemies: "brote,brote,brote", p_ruleset_version: "r4.1", p_content_hash: "a".repeat(64), p_snapshot: SNAPSHOT });
+    const deniedCalls = [
+      { fn: "start_pet_adventure", data: args("1") },
+      { fn: "resolve_pet_adventure", data: { p_user: a.id, p_intent: crypto.randomUUID(), p_inputs: [], p_result: { outcome: "lose", reason: "ko", fight: 1 }, p_digest: "b".repeat(64), p_reward_order: [] } },
+    ];
+    for (const { fn, data } of deniedCalls) {
+      const res = await request.post(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { headers: userHeaders(token, true), data });
+      expect(res.status()).toBe(403);
+      expect(await res.json()).toMatchObject({ code: "42501", message: `permission denied for function ${fn}` });
     }
     // 3. dos inicios concurrentes con service_role (dos conexiones PostgREST reales) → la misma fila
-    const args = (n: string) => ({ p_user: a.id, p_seed: n.repeat(32), p_intent: crypto.randomUUID(), p_enemies: "brote,brote,brote", p_ruleset_version: "r4.1", p_content_hash: "a".repeat(64), p_snapshot: SNAPSHOT });
     const [r1, r2] = await Promise.all([
       request.post(`${SUPABASE_URL}/rest/v1/rpc/start_pet_adventure`, { headers: adminHeaders(true), data: args("1") }),
       request.post(`${SUPABASE_URL}/rest/v1/rpc/start_pet_adventure`, { headers: adminHeaders(true), data: args("2") }),

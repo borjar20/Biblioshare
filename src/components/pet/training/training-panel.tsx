@@ -34,6 +34,15 @@ interface Props {
   canStartAnother?: boolean;
 }
 
+function availableLocalStorage() {
+  try {
+    return typeof window !== "undefined" ? window.localStorage : undefined;
+  } catch {
+    // El navegador puede denegar incluso el getter: se juega sin log local.
+    return undefined;
+  }
+}
+
 export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStart = true, canStartAnother = false }: Props = {}) {
   const t = useTranslations("pet.training");
   const ta = useTranslations("pet.adventure");
@@ -41,7 +50,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   const [session] = useState(() => new TrainingSession(
     actions ?? { start: startBattle, resolve: resolveBattle, replay: replayTrainingBattle },
     () => crypto.randomUUID(),
-    adventure ? { storage: storage ?? (typeof window !== "undefined" ? window.localStorage : undefined) } : {},
+    adventure ? { storage: storage ?? availableLocalStorage() } : {},
   ));
   const ultiButton = useRef<HTMLButtonElement>(null);
   const skillButton = useRef<HTMLButtonElement>(null);
