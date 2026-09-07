@@ -44,29 +44,36 @@ describe("cadena r4.1 (spec R4a §3)", () => {
     expect(result.causes).toContain("time_limit");
   });
 
-  it("los ticks son continuos: un input más allá del tick 600 de una cadena es válido", () => {
+  it("los ticks son continuos: el log de una cadena larga lleva inputs más allá del tick 600 y se re-simula igual", () => {
     for (let i = 0; i < 200; i++) {
       const ctx = chain(seedFromIndex(i));
-      if (runPolicy(ctx, POLICIES.interrupt).result.ticks <= 700) continue;
-      expect(() => simulate(ctx, [skill(700, 0)])).not.toThrow();
+      const { inputs, result } = runPolicy(ctx, POLICIES.interrupt);
+      if (!inputs.some((x) => x.tick > RULESET.maxTicks)) continue;
+      const again = simulate(ctx, inputs);
+      expect(again.result).toEqual(result);
+      expect(inputs.at(-1)!.tick).toBeLessThanOrEqual(RULESET.adventure.chainLength * (RULESET.maxTicks + 1) - 1);
       return;
     }
-    throw new Error("ninguna cadena dura más de 700 ticks");
+    throw new Error("ninguna cadena en 200 seeds necesita inputs más allá del tick 600");
   });
 
   it("una ulti por tramo: dos en el mismo tramo lanzan; una por tramo tras su recarga vale", () => {
     const t1 = RULESET.ulti.readyAt;
-    for (let i = 0; i < 200; i++) {
+    const renumber = (list: BattleInput[]): BattleInput[] => list.map((x, seq) => ({ ...x, seq }));
+    for (let i = 0; i < 1000; i++) {
       const ctx = chain(seedFromIndex(i));
-      expect(() => simulate(ctx, [ulti(t1, 0), ulti(t1 + 1, 1)])).toThrow("INVALID_INPUTS");
-      const probe = simulate(ctx, [ulti(t1, 0)]);
+      const base = runPolicy(ctx, POLICIES.interrupt).inputs.filter((x) => x.tick < t1);
+      // Primer tramo con una ulti en cuanto está lista; solo sirve si el combate sigue vivo después
+      const probe = simulate(ctx, renumber([...base, ulti(t1, 0)]));
+      if (probe.result.ticks <= t1 + 1) continue;
+      expect(() => simulate(ctx, renumber([...base, ulti(t1, 0), ulti(t1 + 1, 0)]))).toThrow("INVALID_INPUTS");
       const second = probe.events.find((e) => e.type === "FIGHT_STARTED");
-      if (!second) continue;
-      const both = simulate(ctx, [ulti(t1, 0), ulti(second.tick + RULESET.ulti.readyAt, 1)]);
+      if (!second || probe.result.ticks <= second.tick + RULESET.ulti.readyAt) continue;
+      const both = simulate(ctx, renumber([...base, ulti(t1, 0), ulti(second.tick + RULESET.ulti.readyAt, 0)]));
       expect(both.events.filter((e) => e.type === "ULTI_USED")).toHaveLength(2);
       return;
     }
-    throw new Error("ningún seed llega al tramo 2 con una ulti saltada en el tick 120");
+    throw new Error("ningún seed en 1000 llega al tramo 2 tras una ulti saltada en el tick 120");
   });
 
   it("pickEnemies es determinista y uniforme sobre el catálogo; parseEnemyList rechaza lo heredado", () => {
