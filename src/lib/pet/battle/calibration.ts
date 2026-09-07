@@ -94,8 +94,11 @@ export function checkCalibration(report: CalibrationReport): { ok: boolean; fail
     for (const [key, a] of aggregate(report)) {
       const [policy, profile] = key.split("|");
       const rate = a.wins / a.fights;
-      if (policy === "interrupt" && (rate < C.interruptMin || rate > C.interruptMax)) {
-        failures.push(`${profile}: interrupt gana ${pct(rate)}, fuera de [${pct(C.interruptMin)}, ${pct(C.interruptMax)}]`);
+      // Referencia de calibración en cadena: interrupt_ulti (spec R4a §10, 2026-09-07).
+      // `interrupt` se reporta como información pero ya no entra en la banda: predata la
+      // ulti (R3) y nunca la usa.
+      if (policy === "interrupt_ulti" && (rate < C.interruptMin || rate > C.interruptMax)) {
+        failures.push(`${profile}: interrupt_ulti gana ${pct(rate)}, fuera de [${pct(C.interruptMin)}, ${pct(C.interruptMax)}]`);
       }
       if (policy === "never" && rate > C.neverMax) failures.push(`${profile}: never gana ${pct(rate)} > ${pct(C.neverMax)}`);
     }
