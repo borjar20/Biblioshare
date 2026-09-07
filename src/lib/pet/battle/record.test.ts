@@ -5,7 +5,7 @@ import { POLICIES, runPolicy } from "./policies";
 import { snapshotForProfile } from "./profiles";
 import { seedFromIndex } from "./prng";
 import { battleDigest, digestMaterial, isBattleSnapshot, resimulate, type ResimInput } from "./record";
-import type { BattleRecord } from "./types";
+import type { BattleInput, BattleRecord } from "./types";
 
 const snapshot = snapshotForProfile("social", "bard");
 
@@ -177,6 +177,19 @@ describe("resimulate", () => {
     const c = await content();
     const result = { ...record.result, damageDealt: 1.5 };
     expect(await resimulate({ ...record, result }, c)).toEqual({ ok: false, code: "RESULT_MISMATCH" });
+  });
+});
+
+describe("resimulate con cadena (r4.1)", () => {
+  it("acepta enemy_id con lista, produce result.fight y rechaza listas malas", async () => {
+    const content = { ruleset: RULESET, enemies: ENEMIES, contentHash: await contentHash() };
+    const base = { rulesetVersion: RULESET.version, contentHash: content.contentHash, seed: seedFromIndex(2), snapshot, inputs: [] as BattleInput[] };
+    const ok = await resimulate({ ...base, enemyId: "brote,caparazon,brote" }, content);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.result.fight).toBeGreaterThanOrEqual(1);
+    expect(await resimulate({ ...base, enemyId: "brote,zorro" }, content)).toEqual({ ok: false, code: "UNKNOWN_ENEMY" });
+    expect(await resimulate({ ...base, enemyId: "brote,brote,brote,brote" }, content)).toEqual({ ok: false, code: "BAD_CHAIN" });
+    expect(await resimulate({ ...base, enemyId: "" }, content)).toEqual({ ok: false, code: "UNKNOWN_ENEMY" });
   });
 });
 

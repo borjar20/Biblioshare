@@ -9,7 +9,7 @@ function setup() {
   return { actions, session: new TrainingSession(actions, () => String(++id)) };
 }
 describe("training session", () => {
-  const winner: TrainingBattle = { ...battle, status: "resolved", result: { outcome: "win", reason: "ko", ticks: 123, petHp: 72, petHpMax: 100, enemyHp: 0, enemyHpMax: 420, damageDealt: 420, damageTaken: 28, causes: ["charges_interrupted"] } };
+  const winner: TrainingBattle = { ...battle, status: "resolved", result: { outcome: "win", reason: "ko", ticks: 123, petHp: 72, petHpMax: 100, enemyHp: 0, enemyHpMax: 420, damageDealt: 420, damageTaken: 28, causes: ["charges_interrupted"], fight: 1 } };
   const winnerEvents = [{ type: "BATTLE_ENDED" as const, seq: 0, tick: 123, outcome: "win" as const, reason: "ko" as const, petHp: 72, enemyHp: 0 }];
   it("replaces local HP and tick with the concurrent authoritative winner", async () => {
     const { session, actions } = setup(); await session.start();

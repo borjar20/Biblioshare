@@ -4,6 +4,7 @@
 // `resimulate` es lo que hace el servidor en R2 y el CLI en `replay`; `result`
 // es opcional: el servidor de R2 lo produce; el replay y la auditoría lo verifican.
 import { canonicalJson } from "./canonical";
+import { parseEnemyList } from "./adventure";
 import { simulate } from "./engine";
 import { sha256Hex } from "./hash";
 import { validateInputs } from "./inputs";
@@ -34,6 +35,7 @@ export async function battleDigest(record: BattleRecord, events: readonly Battle
 export type ResimError =
   | "INVALID_SNAPSHOT"
   | "UNKNOWN_ENEMY"
+  | "BAD_CHAIN"
   | "RULESET_MISMATCH"
   | "CONTENT_MISMATCH"
   | "INVALID_SEED"
@@ -60,19 +62,21 @@ export async function resimulate(
   if (!isBattleSnapshot(record.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" };
   // Una búsqueda en un objeto plano con una clave que llega del cliente debe
   // ignorar las propiedades heredadas (__proto__, constructor, toString...).
-  const enemy = Object.hasOwn(content.enemies, record.enemyId) ? content.enemies[record.enemyId] : undefined;
-  if (!enemy) return { ok: false, code: "UNKNOWN_ENEMY" };
+  const enemies = parseEnemyList(record.enemyId, content.enemies);
+  if (!enemies) return { ok: false, code: "UNKNOWN_ENEMY" };
+  if (enemies.length > content.ruleset.adventure.chainLength) return { ok: false, code: "BAD_CHAIN" };
   if (record.rulesetVersion !== content.ruleset.version) return { ok: false, code: "RULESET_MISMATCH" };
   if (record.contentHash !== content.contentHash) return { ok: false, code: "CONTENT_MISMATCH" };
   if (!isSeed(record.seed) || record.seed === "0".repeat(32)) return { ok: false, code: "INVALID_SEED" };
-  const validated = validateInputs(record.inputs, content.ruleset);
+  const validated = validateInputs(record.inputs, content.ruleset, enemies.length);
   if (!validated.ok) return { ok: false, code: "INVALID_INPUTS" };
   let sim: { events: BattleEvent[]; result: BattleResult };
   try {
-    sim = simulate({ seed: record.seed, snapshot: record.snapshot, enemy, ruleset: content.ruleset }, validated.inputs);
+    sim = simulate({ seed: record.seed, snapshot: record.snapshot, enemies, ruleset: content.ruleset }, validated.inputs);
   } catch (e) {
     if (e instanceof Error && e.message === "INVALID_INPUTS") return { ok: false, code: "INVALID_INPUTS" };
     if (e instanceof Error && e.message === "INPUTS_AFTER_END") return { ok: false, code: "INPUTS_AFTER_END" };
+    if (e instanceof Error && e.message === "INPUTS_AFTER_FIGHT") return { ok: false, code: "INVALID_INPUTS" };
     throw e;
   }
   // Sin `result` no hay nada que comparar: el resultado ES el de esta simulación.

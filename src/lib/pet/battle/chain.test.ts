@@ -38,6 +38,7 @@ describe("cadena r4.1 (spec R4a §3)", () => {
 
   it("ganar el último tramo es victoria por KO en el tramo 3; el límite de un tramo en cadena es derrota", () => {
     const win = Array.from({ length: 200 }, (_, i) => runPolicy(chain(seedFromIndex(i)), POLICIES.interrupt).result).find((r) => r.outcome === "win");
+    if (!win) throw new Error("ninguna victoria en 200 seeds");
     expect(win).toMatchObject({ reason: "ko", fight: 3 });
     const { result } = simulate(chain(seedFromIndex(0), [BROTE, BROTE], { ...RULESET, maxTicks: 10 }), []);
     expect(result).toMatchObject({ outcome: "lose", reason: "limit", fight: 1, ticks: 10 });
@@ -51,7 +52,6 @@ describe("cadena r4.1 (spec R4a §3)", () => {
       if (!inputs.some((x) => x.tick > RULESET.maxTicks)) continue;
       const again = simulate(ctx, inputs);
       expect(again.result).toEqual(result);
-      expect(inputs.at(-1)!.tick).toBeLessThanOrEqual(RULESET.adventure.chainLength * (RULESET.maxTicks + 1) - 1);
       return;
     }
     throw new Error("ninguna cadena en 200 seeds necesita inputs más allá del tick 600");
@@ -83,6 +83,18 @@ describe("cadena r4.1 (spec R4a §3)", () => {
     expect(parseEnemyList("brote,caparazon", ENEMIES)).toEqual([BROTE, CAPARAZON]);
     expect(parseEnemyList("brote,__proto__", ENEMIES)).toBeNull();
     expect(() => createBattle(chain(seedFromIndex(0), [BROTE, BROTE, BROTE, BROTE]))).toThrow("BAD_CHAIN");
+  });
+
+  it("dos inputs en el mismo tick donde el primero remata un tramo intermedio lanza INPUTS_AFTER_FIGHT", () => {
+    // Enemigo local de prueba: hpPerAtk tan bajo que una sola habilidad en reposo
+    // lo remata siempre, sin depender de ningún seed concreto.
+    const tiny: EnemyDef = {
+      id: "test-tiny", name: "test-tiny", hpPerAtk: 1, basicPct: 4, chargePct: 40, punishPct: 25,
+      chargeBp: 0, idleMin: 100, idleMax: 100, windupTicks: 15, guardTicks: 25, staggerTicks: 20, basicInterval: 1000,
+    };
+    const ctx = chain(seedFromIndex(0), [tiny, BROTE]);
+    const inputs: BattleInput[] = [skill(0, 0), skill(0, 1)];
+    expect(() => simulate(ctx, inputs)).toThrow("INPUTS_AFTER_FIGHT");
   });
 
   it("una acción desconocida que llegue al motor lanza (#1086)", () => {

@@ -52,7 +52,7 @@ export function createTrainingService(deps: {
       if (battle.status === "resolved") return saved(battle);
       const release = getBattleRelease(battle.rulesetVersion, battle.contentHash);
       if (!release) return { ok: false, code: "UNKNOWN_RELEASE" };
-      const validated = release.validateInputs(rawInputs);
+      const validated = release.validateInputs(rawInputs, battle.enemyId.split(",").length);
       if (!validated.ok) return { ok: false, code: validated.code };
       const out = await replayBattle({ ...battle, inputs: validated.inputs });
       if (!out.ok) return out;

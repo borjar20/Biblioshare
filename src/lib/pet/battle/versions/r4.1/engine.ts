@@ -181,7 +181,10 @@ export function stepBattle(ctx: BattleInit, st: BattleState, inputs: readonly Ba
         // validateInputs y el motor se han desincronizado: bug nuestro, no del cliente.
         throw new Error("UNKNOWN_ACTION");
     }
-    if (koCheck()) { if (k + 1 < inputs.length) throw new Error("INPUTS_AFTER_END"); return out; }
+    if (koCheck()) {
+      if (k + 1 < inputs.length) throw new Error(st.ended ? "INPUTS_AFTER_END" : "INPUTS_AFTER_FIGHT");
+      return out;
+    }
   }
 
   // 3. Básica de la mascota
