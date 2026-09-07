@@ -42,7 +42,8 @@ export function createTrainingService(deps: {
       if (battle.status === "resolved") return verifyResolved(battle);
       const release = getBattleRelease(battle.rulesetVersion, battle.contentHash);
       if (!release) return { ok: false, code: "UNKNOWN_RELEASE" };
-      const validated = release.validateInputs(rawInputs, battle.enemyId.split(",").length);
+      // Una fila de entrenamiento es siempre de un solo enemigo (las cadenas son de aventura, R4a).
+      const validated = release.validateInputs(rawInputs, 1);
       if (!validated.ok) return { ok: false, code: validated.code };
       const out = await replayBattle({ ...battle, inputs: validated.inputs });
       if (!out.ok) return out;

@@ -3357,6 +3357,7 @@
       "retry": "Reintentar aventura",
       "starting": "Preparando aventura…",
       "none": "Registra algo hoy y vuelve: tu mascota tendrá una aventura esperando.",
+      "unavailable": "Las aventuras no están disponibles ahora mismo. El entrenamiento sigue funcionando.",
       "fight": "Tramo {n} de {total}",
       "interlude": "Tramo {n} superado. Te quedan {hp} de {max} de vida. Habilidad y ulti vuelven a estar listas.",
       "continue": "Continuar",

@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { adventureServiceFor } from "./get-state";
-import type { AdventureResponse, AdventureState } from "./types";
+import type { AdventureResponse } from "./types";
 
 async function withService<T>(operation: (service: ReturnType<typeof adventureServiceFor>) => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -16,9 +16,6 @@ async function withService<T>(operation: (service: ReturnType<typeof adventureSe
   }
 }
 
-export async function getAdventureState(): Promise<AdventureState | null> {
-  return withService((s) => s.state(), null);
-}
 export async function startAdventure(): Promise<AdventureResponse> {
   return withService((s) => s.start(), { ok: false, code: "UNAVAILABLE" });
 }

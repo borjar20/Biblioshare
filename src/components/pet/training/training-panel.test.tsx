@@ -82,7 +82,10 @@ it("returns keyboard focus after cancelling and confirming the ulti", async () =
   expect(document.activeElement).toBe(screen.getByRole("button",{name:"Golpe interruptor · Usar habilidad"}));
 });
 
-function chainFixture() {
+// Buscar la cadena cuesta simulación de sobra: se calcula una vez por fichero, no por test.
+let chainCache: ReturnType<typeof buildChainFixture> | null = null;
+const chainFixture = () => (chainCache ??= buildChainFixture());
+function buildChainFixture() {
   const snapshot = snapshotForProfile("lectora_larga", "wizard");
   for (let i = 0; i < 100; i++) {
     const seed = seedFromIndex(i);
@@ -94,7 +97,7 @@ function chainFixture() {
   throw new Error("sin cadena que supere el primer tramo");
 }
 
-it("modo aventura: marcador de tramo estable, interludio con Continuar y botón de reintento al perder", async () => {
+it("modo aventura: marcador de tramo estable, interludio con Continuar y botón de reintento al perder", { timeout: 30_000 }, async () => {
   vi.useFakeTimers();
   const f = chainFixture();
   const battle: TrainingBattle = { intentId: "adv-1", status: "open", seed: f.seed, snapshot: f.snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: f.enemyId, inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
@@ -116,6 +119,14 @@ it("modo aventura: marcador de tramo estable, interludio con Continuar y botón 
   fireEvent.click(cont);
   act(() => { vi.advanceTimersByTime(100); });
   expect(screen.getByTestId("training-tick").textContent).not.toBe(before);
+});
+
+it("modo aventura: sin nada que empezar, el botón se queda deshabilitado con su explicación", () => {
+  const actions = { start: vi.fn(), resolve: vi.fn(), replay: vi.fn() };
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="start" canStart={false} /></NextIntlClientProvider>);
+  const start = screen.getByRole("button", { name: "Empezar aventura" });
+  expect(start.hasAttribute("disabled")).toBe(true);
+  expect(screen.getByText("Registra algo hoy y vuelve: tu mascota tendrá una aventura esperando.")).toBeTruthy();
 });
 
 it("modo aventura: al ganar muestra el botín y su etiqueta de pendiente", async () => {
@@ -151,7 +162,9 @@ it("modo aventura: tras ganar, sin canStartAnother, no hay botón para la siguie
   expect(screen.queryByRole("button", { name: "Empezar aventura" })).toBeNull();
 });
 
-function singleFightFixture() {
+let singleFightCache: ReturnType<typeof buildSingleFightFixture> | null = null;
+const singleFightFixture = () => (singleFightCache ??= buildSingleFightFixture());
+function buildSingleFightFixture() {
   const snapshot = snapshotForProfile("lectora_larga", "wizard");
   for (let i = 0; i < 50; i++) {
     const seed = seedFromIndex(i);
@@ -163,7 +176,7 @@ function singleFightFixture() {
   throw new Error("sin combate que termine dentro de 50 seeds");
 }
 
-it("onDone se dispara una sola vez por combate terminado, con la última prop onDone vigente", async () => {
+it("onDone se dispara una sola vez por combate terminado, con la última prop onDone vigente", { timeout: 30_000 }, async () => {
   vi.useFakeTimers();
   const f = singleFightFixture();
   const lostBattle: TrainingBattle = {

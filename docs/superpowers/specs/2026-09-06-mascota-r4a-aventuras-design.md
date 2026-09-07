@@ -270,7 +270,11 @@ Todo en `/mascota` (`src/app/mascota/page.tsx`). Componentes en `src/components/
   intento abierto y log local para su `intent_id`, se re-simula hasta ese tick y se sigue en pausa.
   Si no hay log local, el intento arranca desde el tick cero con el mismo seed y sin penalización
   (consecuencia aceptada: quien borre el almacenamiento adrede repite una cadena conocida; PvE sin
-  ranking y botín sin poder). Al resolver, se borra la entrada local.
+  ranking y botín sin poder). **Segunda consecuencia aceptada:** el log se guarda en cada input y en
+  cada pausa, no en cada tick, así que recargar rebobina el reloj del cliente hasta el último tick
+  guardado y se repite el tramo transcurrido desde entonces — nunca da ventaja (el servidor
+  re-simula el log entero) y evita escribir en `localStorage` diez veces por segundo. Al resolver, se
+  borra la entrada local.
 - **Celebración** `pet_adventure:<día>` en `user_celebrations`, una por día ganado, con el
   mecanismo existente (`earnCelebration`).
 - **Accesibilidad**: las de R3 (teclado, movimiento reducido, controles que no se mueven) más el

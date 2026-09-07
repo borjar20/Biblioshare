@@ -3924,6 +3924,12 @@ posee todos) en la misma transacción que el compare-and-set `status = 'open'`. 
 `supabase/tests/pet_adventures.sql`; concurrencia real con dos conexiones en
 `e2e/mascota-batallas-autoridad.spec.ts`.
 
+**Orden de despliegue: la migración va a prod ANTES del código que la usa.** Es aditiva (columnas
+nullable, restricciones e índices que solo miran esas columnas, funciones nuevas), así que no rompe
+nada del código desplegado; al revés sí habría ventana de error. La red de seguridad existe
+(`src/components/pet/adventure/adventure-section.tsx` captura el fallo y degrada solo la sección
+Aventuras, dejando en pie detalle, madriguera y entrenamiento), pero es el último recurso.
+
 ## 9. Seguridad
 
 Las **60 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el

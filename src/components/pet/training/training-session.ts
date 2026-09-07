@@ -195,7 +195,7 @@ export class TrainingSession {
         if (event.type === "TELEGRAPH_RESOLVED" || event.type === "STATUS_EXPIRED") this.view.enemyPhase = "idle";
         if (event.type === "STATUS_APPLIED") { this.view.enemyPhase = event.status; this.view.enemyPhaseUntil = event.until; }
         if (event.type === "SKILL_USED") this.view.skillReadyAt = event.tick + RULESET.pet.skillCooldown;
-        if (event.type === "FIGHT_STARTED") { this.view.fight = event.fight; this.view.enemyHp = event.enemyHp; this.view.enemyPhase = "idle"; this.view.skillReadyAt = event.tick; this.view.ultiUsed = false; this.view.shield = 0; }
+        if (event.type === "FIGHT_STARTED") { this.view.fight = event.fight; this.view.enemyHp = event.enemyHp; this.view.enemyHpMax = event.enemyHp; this.view.enemyPhase = "idle"; this.view.skillReadyAt = event.tick; this.view.ultiUsed = false; this.view.shield = 0; }
         if (event.type === "BATTLE_ENDED") { this.view.ended = true; this.phase = "done"; }
       }
       this.events.push(...current);

@@ -27,11 +27,14 @@ interface Props {
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   startLabel?: "start" | "resume" | "retry";
   onDone?: () => void;
+  /** Aventura (R4a): no hay nada que empezar (ni día pendiente ni intento en curso). El botón se
+   *  queda deshabilitado con su explicación; el panel NO se desmonta (spec §8). */
+  canStart?: boolean;
   /** Aventura (R4a): hay más tramos pendientes tras ganar, así que puede lanzarse otra aventura sin salir del panel. */
   canStartAnother?: boolean;
 }
 
-export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStartAnother = false }: Props = {}) {
+export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStart = true, canStartAnother = false }: Props = {}) {
   const t = useTranslations("pet.training");
   const ta = useTranslations("pet.adventure");
   const adventure = kind === "adventure";
@@ -124,7 +127,10 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     {!adventure && <div><h2 id={`${kind}-title`} className="font-serif text-xl font-semibold">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("intro")}</p></div>}
     {session.error && <div role="alert" className="text-sm"><p>{t("error")}</p></div>}
     {!adventure && (phase === "idle" || phase === "starting" || phase === "done") && <label className="space-y-2 text-sm">{t("enemySelect")}<select className="block w-full rounded border border-border bg-surface p-2" disabled={phase === "starting" || (phase === "idle" && !!session.error)} value={session.enemyId} onChange={e => { session.selectEnemy(e.target.value); refresh(); }}>{(["brote", "caparazon"] as const).map(id => <option key={id} value={id}>{t(`enemies.${id}`)}</option>)}</select><span className="block text-muted-foreground">{t("enemyHelp")}</span></label>}
-    {(phase === "idle" || phase === "starting") && <button className={buttonVariants()} disabled={phase === "starting"} onClick={() => void run(() => session.start())}>{adventure ? ta(phase === "starting" ? "starting" : startLabel) : t(phase === "starting" ? "starting" : session.error ? "retryStart" : "start")}</button>}
+    {(phase === "idle" || phase === "starting") && <>
+      <button className={buttonVariants()} disabled={phase === "starting" || (adventure && !canStart)} onClick={() => void run(() => session.start())}>{adventure ? ta(phase === "starting" ? "starting" : startLabel) : t(phase === "starting" ? "starting" : session.error ? "retryStart" : "start")}</button>
+      {adventure && !canStart && <p className="text-sm text-muted-foreground">{ta("none")}</p>}
+    </>}
     {v && snapshot && <>
       <div className={styles.arena} data-paused={session.paused || session.hidden || session.ultiOpen || !active}>
         {adventure && v && <p data-testid="fight-marker" role="status" className="text-center text-sm font-semibold">{ta("fight", { n: v.fight, total: v.fights })}</p>}

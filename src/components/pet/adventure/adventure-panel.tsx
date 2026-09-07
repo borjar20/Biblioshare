@@ -18,9 +18,10 @@ export function AdventurePanel({ initial }: { initial: AdventureState }) {
       <p className="font-medium" data-testid="adventure-pending">{t("pending", { count: initial.pendingDays.length })}</p>
       <p className="text-muted-foreground">{t("pendingHelp")}</p>
       {current && <p data-testid="adventure-current">{t(current.status === "open" ? "inProgress" : "retryAvailable", { day: current.adventure.day })}</p>}
-      {!canStart && <p>{t("none")}</p>}
     </div>
-    {canStart && <TrainingPanel kind="adventure" startLabel={startLabel} onDone={() => router.refresh()} canStartAnother={initial.pendingDays.length > 0} actions={{ start: () => startAdventure(), resolve: (intent, inputs) => resolveAdventure(intent, inputs), replay: (intent) => replayAdventure(intent) }} />}
+    {/* Siempre montado: si se desmontara al quedarse sin días pendientes, el `router.refresh()`
+        posterior a ganar se llevaría por delante la pantalla de victoria (spec §8). */}
+    <TrainingPanel kind="adventure" startLabel={startLabel} onDone={() => router.refresh()} canStart={canStart} canStartAnother={initial.pendingDays.length > 0} actions={{ start: () => startAdventure(), resolve: (intent, inputs) => resolveAdventure(intent, inputs), replay: (intent) => replayAdventure(intent) }} />
     <section aria-labelledby="inventory-title"><h3 id="inventory-title" className="font-serif text-lg font-semibold">{t("inventory")}</h3><InventoryList inventory={initial.inventory} /></section>
   </div>;
 }

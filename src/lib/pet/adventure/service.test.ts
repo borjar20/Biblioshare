@@ -20,7 +20,7 @@ function memoryRepo(pending: string[]) {
     async pendingDays() { return [...days].filter((d) => !rows.some((r) => r.adventure.day === d)).sort(); },
     async find(intentId) { return structuredClone(rows.find((r) => r.intentId === intentId) ?? null); },
     async recent(limit) { return structuredClone([...rows].reverse().slice(0, limit)); },
-    async rewards() { return structuredClone(rows.flatMap((r) => (r.adventure.reward ? [r.adventure.reward] : []))); },
+    async wins() { return structuredClone(rows.filter((r) => r.status === "resolved" && r.adventure.reward).map((r) => ({ day: r.adventure.day, reward: r.adventure.reward }))); },
     async start(input) {
       const open = rows.find((r) => r.status === "open");
       if (open) return structuredClone(open);
@@ -53,7 +53,9 @@ const service = (pending: string[]) => {
   return { s, rows, wins };
 };
 
-async function playToEnd(s: ReturnType<typeof createAdventureService>, battle: AdventureBattle, policy = POLICIES.interrupt) {
+// `interrupt_ulti` es la política de referencia de R4a (gana ~56-60 % de las cadenas); con
+// `interrupt` a secas (8-14 %) los bucles de 40 intentos de abajo serían una moneda al aire.
+async function playToEnd(s: ReturnType<typeof createAdventureService>, battle: AdventureBattle, policy = POLICIES.interrupt_ulti) {
   const enemies = parseEnemyList(battle.enemyId, ENEMIES)!;
   const { inputs } = runPolicy({ seed: battle.seed, snapshot: battle.snapshot, enemies, ruleset: RULESET }, policy);
   return s.resolve(battle.intentId, inputs);
@@ -133,7 +135,7 @@ describe("servicio de aventuras (spec §6)", () => {
     }
     throw new Error("20 intentos sin derrota con POLICIES.never: revisar calibración");
   });
-  it("el inventario cuenta todo el botín histórico, no solo la ventana de recent(60)", async () => {
+  it("el inventario y los días ganados salen del histórico completo, no de la ventana de recent(60)", async () => {
     const { s, rows } = service(["2026-09-06"]);
     let template: AdventureBattle | null = null;
     for (let i = 0; i < 40 && !template; i++) {
@@ -144,16 +146,26 @@ describe("servicio de aventuras (spec §6)", () => {
       if (done.battle.result?.outcome === "win") template = done.battle;
     }
     if (!template) throw new Error("40 intentos sin victoria: revisar calibración");
-    // 70 filas históricas resueltas y ganadas, con días y botín distintos: más que la ventana de recent(60).
-    for (let i = 0; i < 70; i++) {
+    // 65 filas históricas resueltas y ganadas, con días y botín distintos: con la victoria real
+    // y la derrota de abajo, la ventana de recent(60) ya no alcanza a las más antiguas.
+    const day = (i: number) => `2000-01-${String(i).padStart(3, "0")}`;
+    for (let i = 0; i < 65; i++) {
       rows.push({
         ...structuredClone(template),
         intentId: `54e5f63c-68a8-4acf-a790-${String(900000000000 + i).padStart(12, "0")}`,
-        adventure: { day: `2000-01-${String(i).padStart(3, "0")}`, attempt: 1, reward: { itemId: LOOT_ITEMS[i % LOOT_ITEMS.length].id, slot: LOOT_ITEMS[i % LOOT_ITEMS.length].slot } },
+        adventure: { day: day(i), attempt: 1, reward: { itemId: LOOT_ITEMS[i % LOOT_ITEMS.length].id, slot: LOOT_ITEMS[i % LOOT_ITEMS.length].slot } },
       });
     }
+    // Intento perdido del día MÁS ANTIGUO: su victoria queda fuera de recent(60), así que si
+    // `wonDays` se derivara de la ventana, este día volvería a ofrecerse como intento actual.
+    rows.push({
+      ...structuredClone(template),
+      intentId: "54e5f63c-68a8-4acf-a790-999999000001",
+      result: { ...template.result!, outcome: "lose" },
+      adventure: { day: day(0), attempt: 2, reward: null },
+    });
     const st = await s.state();
-    expect(st.inventory.reduce((n, e) => n + e.count, 0)).toBe(71); // 70 sembradas + 1 victoria real
+    expect(st.inventory.reduce((n, e) => n + e.count, 0)).toBe(66); // 65 sembradas + 1 victoria real
     expect(st.current).toBeNull();
   });
   it("una excepción en onWin no rompe una victoria ya guardada", async () => {

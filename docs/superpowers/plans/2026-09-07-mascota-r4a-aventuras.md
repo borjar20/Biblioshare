@@ -2932,11 +2932,21 @@ git commit -m "docs(pet): R4a en data-model, backlog, decisiones, hoja de ruta y
 
 **Files:** ninguno nuevo. Migración `20260908_pet_adventures.sql` sobre `supabase-prod`; `docs/requirements/data-model.md` (fechas de prod).
 
-- [ ] **Step 1: Precondiciones**
+**Orden obligatorio: (a) aceptación de #1106 → (b) migración en prod verificada → (c) merge y
+despliegue del código.** La migración es **aditiva** (tres columnas nullable, dos restricciones CHECK que solo
+miran esas columnas, tres índices únicos parciales y cinco funciones nuevas: no toca ninguna
+columna ni función que el código desplegado hoy lea o escriba), así que aplicarla antes del deploy
+es seguro y evita la ventana en la que el código nuevo consulta objetos que aún no existen. Si el
+orden se invirtiera, `/mascota` en prod solo degradaría la sección Aventuras — el resto de la página
+sigue en pie (`adventure-section.tsx` captura el fallo) —, pero esa red es el último recurso, no el
+plan.
 
-`#1106` cerrada con aceptación jugable del usuario; PR de R4a revisada y mergeada en `main`; puerto 3000 libre; `git worktree list` sin huérfanas.
+- [ ] **Step 1: Precondiciones (antes de tocar prod)**
 
-- [ ] **Step 2: Aplicar en prod y verificar contra objetos reales**
+`#1106` cerrada con aceptación jugable del usuario; PR de R4a revisada y **aprobada** (todavía SIN
+mergear: el merge es el Step 3); puerto 3000 libre; `git worktree list` sin huérfanas.
+
+- [ ] **Step 2: Aplicar la migración en prod y verificar contra objetos reales (antes del deploy del código)**
 
 Con el MCP `supabase-prod` (o el conector de claude.ai con el `project_id` de prod), `apply_migration` con el mismo fichero. Ejecutar la consulta de verificación del Step 4 de la Task 8. Expected: `3 | 3 | true | false | true | true | true`. Ejecutar además:
 
@@ -2947,8 +2957,9 @@ select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 
 Expected: `5`.
 
-- [ ] **Step 3: Comprobación con una cuenta real**
+- [ ] **Step 3: Mergear la PR y comprobar con una cuenta real**
 
+Con la migración ya en prod y verificada, mergear la PR de R4a en `main` y esperar al despliegue.
 Abrir `/mascota` en producción con la cuenta del usuario: la sección Aventuras muestra el recuento coherente con sus días de actividad de la semana; el entrenamiento sigue funcionando (r4.1 con un tramo). No hace falta jugar una aventura entera para dar por aplicada la migración; sí para la aceptación de R4a, que es del usuario.
 
 - [ ] **Step 4: Documentar y cerrar**

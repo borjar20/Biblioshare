@@ -187,6 +187,23 @@ describe("chains and local log", () => {
     const fightStarted = events.find((e) => e.type === "FIGHT_STARTED");
     if (!fightStarted || fightStarted.type !== "FIGHT_STARTED") throw new Error("se buscó explícitamente un FIGHT_STARTED");
     while (s.view!.tick < fightStarted.tick) s.tick();
-    expect(s.view).toMatchObject({ fight: fightStarted.fight, enemyHp: fightStarted.enemyHp, enemyPhase: "idle", ultiUsed: false, shield: 0, skillReadyAt: fightStarted.tick });
+    expect(s.view).toMatchObject({ fight: fightStarted.fight, enemyHp: fightStarted.enemyHp, enemyHpMax: fightStarted.enemyHp, enemyPhase: "idle", ultiUsed: false, shield: 0, skillReadyAt: fightStarted.tick });
+  });
+
+  it("replaying: FIGHT_STARTED también renueva enemyHpMax, no solo enemyHp", async () => {
+    // Los dos enemigos de r4.1 comparten hpMax, así que el log sintético es la única forma de
+    // distinguir «arrancar el tramo a vida llena» de «heredar el máximo del tramo anterior».
+    const chained = { ...battle, rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote", status: "resolved" as const };
+    const events = [
+      { type: "BATTLE_STARTED" as const, seq: 0, tick: 0, petHp: 100, enemyHp: 200 },
+      { type: "FIGHT_STARTED" as const, seq: 1, tick: 1, fight: 2, enemyId: "brote", petHp: 100, enemyHp: 999 },
+    ];
+    const actions = { start: async () => ({ ok: true as const, battle: chained, events }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: true as const, battle: chained, events }) };
+    const s = new TrainingSession(actions, () => "ignored");
+    await s.start();
+    await s.replay();
+    expect(s.view?.enemyHpMax).not.toBe(999);
+    s.tick(); s.tick();
+    expect(s.view).toMatchObject({ fight: 2, enemyHp: 999, enemyHpMax: 999 });
   });
 });

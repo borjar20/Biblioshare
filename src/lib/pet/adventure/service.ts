@@ -18,10 +18,12 @@ export function createAdventureService(deps: {
   const repo = deps.repository;
 
   async function state(): Promise<AdventureState> {
-    const [pendingDays, rows, rewards] = await Promise.all([repo.pendingDays(), repo.recent(60), repo.rewards()]);
-    const wonDays = new Set(rows.filter((r) => r.status === "resolved" && r.result?.outcome === "win").map((r) => r.adventure.day));
+    const [pendingDays, rows, wins] = await Promise.all([repo.pendingDays(), repo.recent(60), repo.wins()]);
+    // `wonDays` sale del histórico completo, no de la ventana: si la victoria de un día cayera
+    // fuera de `recent(60)`, un intento perdido de ese mismo día volvería a ofrecerse como actual.
+    const wonDays = new Set(wins.map((w) => w.day));
     const current = rows.find((r) => r.status === "open") ?? rows.find((r) => !wonDays.has(r.adventure.day)) ?? null;
-    return { pendingDays, current, inventory: inventoryFrom(rewards) };
+    return { pendingDays, current, inventory: inventoryFrom(wins.map((w) => w.reward)) };
   }
 
   return {
