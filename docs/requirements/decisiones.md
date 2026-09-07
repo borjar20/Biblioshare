@@ -4441,3 +4441,9 @@ revocación remota. Los fallos de escritura siguen propagándose. Evidencia en
 ## 2026-09-07 — Despacho explícito de acciones de combate (#1086)
 
 El motor de trabajo src/lib/pet/battle/engine.ts, separado de la copia publicada r3.1, despacha skill y ulti mediante ramas explícitas y rechaza una acción sin rama con INPUT_ACTION. Se conserva la validación previa de stepBattle (INVALID_INPUTS para entradas inválidas), los eventos y el ruleset; no se modifican los motores históricos ni los fixtures normativos. La ulti de R3 ya era una entrada atómica: este cambio no añade ulti_assign.
+
+## 2026-09-07 — Aceptación de S1, nivel en madriguera y arranque de S2
+
+José Ángel comunica que S1 gusta a quienes la usan y acepta esta pieza; no se atribuye una nueva prueba con un número concreto de cuentas. Pide mostrar el nivel en la madriguera y comenzar S2. Esta decisión modifica expresamente §20 de la visión: mostrar el nivel guardado junto a la etapa, sin ordenar por nivel ni crear rankings. El humor permanece privado.
+
+S2 usa la visibilidad del perfil y expone solo nombre, clase y etapa. Su imagen OG se genera con contexto anónimo, incluso si quien la solicita está autenticado: un perfil privado nunca aporta su mascota a una imagen compartible. El nivel se limita a la madriguera. Se conserva la semántica de companion_hidden (compañera flotante, no privacidad social). Contrato en `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`. Migraciones y pruebas autorizadas en dev; producción no autorizada en esta petición.

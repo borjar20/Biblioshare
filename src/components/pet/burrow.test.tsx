@@ -7,10 +7,10 @@ import type { BurrowNeighbor } from "@/lib/pet/burrow";
 import { Burrow } from "./burrow";
 
 afterEach(cleanup);
-const own = { name: "Nuez", petClass: "wizard" as const, stage: "acorn" as const };
+const own = { name: "Nuez", petClass: "wizard" as const, stage: "acorn" as const, level: 1 };
 const neighbor: BurrowNeighbor = {
   userId: "ana-id", username: "ana", displayName: "Ana", avatarUrl: null,
-  name: "Nube", petClass: "fighter", stage: "adult",
+  name: "Nube", petClass: "fighter", stage: "adult", level: 12,
 };
 function show(ownPet = own as typeof own | null, neighbors = [neighbor], total = neighbors.length, followingCount = 1) {
   return render(<NextIntlClientProvider locale="es" messages={messages}>
@@ -19,6 +19,15 @@ function show(ownPet = own as typeof own | null, neighbors = [neighbor], total =
 }
 
 describe("Madriguera", () => {
+  it("muestra el nivel bajo cada mascota y en la tarjeta sin cambiar el orden", () => {
+    show();
+    const list = screen.getByRole("list");
+    expect(within(list).getByText("Nivel 1")).toBeTruthy();
+    expect(within(list).getByText("Nivel 12")).toBeTruthy();
+    expect(within(list).getAllByRole("button")[0].getAttribute("aria-label")).toContain("Nuez");
+    fireEvent.click(screen.getByRole("button", { name: /Nube.*@ana/ }));
+    expect(screen.getByRole("region", { name: /detalle/i }).textContent).toContain("Nivel 12");
+  });
   it("expande hasta 60 vecinas y cuenta el límite sin incluir la propia", () => {
     const neighbors = Array.from({ length: 60 }, (_, i) => ({ ...neighbor, userId: `u${i}`, username: `ana${i}` }));
     show(own, neighbors, 85);

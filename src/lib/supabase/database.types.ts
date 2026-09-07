@@ -3033,6 +3033,24 @@ export type Database = {
           total: number
         }[]
       }
+      get_burrow_pets_with_level: {
+        Args: { p_limit?: number }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string | null
+          avatar_url: string | null
+          pet_name: string
+          pet_class: string
+          pet_stage: string
+          pet_level: number
+          total: number
+        }[]
+      }
+      get_profile_pet: {
+        Args: { p_user_id: string }
+        Returns: { pet_name: string; pet_class: string; pet_stage: string }[]
+      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
