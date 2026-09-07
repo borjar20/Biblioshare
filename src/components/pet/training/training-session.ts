@@ -118,8 +118,14 @@ export class TrainingSession {
         this.events.push(...next.events);
         this.view = next.view;
       }
-      this.paused = true;
-      this.awaitingContinue = this.events.at(-1)?.type === "FIGHT_ENDED";
+      if (this.view?.ended) {
+        this.phase = "resolving";
+        this.paused = false;
+        this.awaitingContinue = false;
+      } else {
+        this.paused = true;
+        this.awaitingContinue = this.events.at(-1)?.type === "FIGHT_ENDED";
+      }
     } catch {
       this.forget();
       this.inputs = [];

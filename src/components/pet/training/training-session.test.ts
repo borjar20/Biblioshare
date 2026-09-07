@@ -144,4 +144,49 @@ describe("chains and local log", () => {
     await s.resolve();
     expect(storage.map.has("pet-adventure:adv-3")).toBe(false);
   });
+
+  it("restoreLocal: un log que ya llega al final del combate pasa a resolving, no se queda en playing pausado", async () => {
+    let found: { seed: string; inputs: ReturnType<typeof runPolicy>["inputs"]; ticks: number } | null = null;
+    for (let i = 0; i < 200 && !found; i++) {
+      const seed = seedFromIndex(i);
+      const enemies = pickEnemies(seed, 3, ENEMIES);
+      const { inputs, result } = runPolicy({ seed, snapshot, enemies, ruleset: RULESET }, POLICIES.interrupt);
+      if (result.reason === "ko") found = { seed, inputs, ticks: result.ticks };
+    }
+    expect(found).not.toBeNull();
+    const { seed, inputs, ticks } = found!;
+    const battle = { intentId: "adv-restore", status: "open" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: "irrelevante-en-cliente", enemyId: enemyList(pickEnemies(seed, 3, ENEMIES)), inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const storage = memoryStorage();
+    storage.setItem(`pet-adventure:${battle.intentId}`, JSON.stringify({ inputs, tick: ticks + 1 }));
+    const actions = { start: async () => ({ ok: true as const, battle }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: false as const, code: "x" }) };
+    const s = new TrainingSession(actions, () => "ignored", { storage });
+    await s.start();
+    expect(s.phase).toBe("resolving");
+    expect(s.view?.ended).toBe(true);
+    expect(s.paused).toBe(false);
+    expect(() => s.tick()).not.toThrow();
+  });
+
+  it("replaying: FIGHT_STARTED actualiza fight, enemyHp, fase, ulti, escudo y cooldown al repetirse", async () => {
+    let found: { seed: string; events: ReturnType<typeof runPolicy>["events"]; result: ReturnType<typeof runPolicy>["result"]; inputs: ReturnType<typeof runPolicy>["inputs"]; enemies: ReturnType<typeof pickEnemies> } | null = null;
+    for (let i = 0; i < 200 && !found; i++) {
+      const seed = seedFromIndex(i);
+      const enemies = pickEnemies(seed, 3, ENEMIES);
+      const { inputs, events, result } = runPolicy({ seed, snapshot, enemies, ruleset: RULESET }, POLICIES.interrupt);
+      if (events.some((e) => e.type === "FIGHT_STARTED")) found = { seed, events, result, inputs, enemies };
+    }
+    expect(found).not.toBeNull();
+    const { seed, events, result, inputs, enemies } = found!;
+    const battle = { intentId: "replay-fight2", status: "resolved" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: "irrelevante-en-cliente", enemyId: enemyList(enemies), inputs, result, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const actions = { start: async () => ({ ok: true as const, battle, events }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: true as const, battle, events }) };
+    const s = new TrainingSession(actions, () => "ignored");
+    await s.start();
+    expect(s.phase).toBe("done");
+    await s.replay();
+    expect(s.view?.fight).toBe(1);
+    const fightStarted = events.find((e) => e.type === "FIGHT_STARTED");
+    if (!fightStarted || fightStarted.type !== "FIGHT_STARTED") throw new Error("se buscó explícitamente un FIGHT_STARTED");
+    while (s.view!.tick < fightStarted.tick) s.tick();
+    expect(s.view).toMatchObject({ fight: fightStarted.fight, enemyHp: fightStarted.enemyHp, enemyPhase: "idle", ultiUsed: false, shield: 0, skillReadyAt: fightStarted.tick });
+  });
 });
