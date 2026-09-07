@@ -1,6 +1,6 @@
 # S3 — Verificación de madriguera del club
 
-> 2026-09-07 · implementación local y biblioshare-dev. Aceptación visual del usuario y producción pendientes.
+> 2026-09-07 · implementación local y biblioshare-dev. Aceptación visual del usuario el 2026-09-07; producción pendiente.
 
 Spec #1129; entregas #1130, #1131 y #1132. Base de revisión acordada: `1aa08ece4cf6e84d1ddfa1de56af4a41dd4affca`, rama actual `codex/pet-social-s2`.
 
@@ -41,7 +41,7 @@ Las pruebas reutilizan la frontera E2E y la lectura autorizada acordadas. Los te
 ## Límites y seguimiento
 
 - Persisten avisos `HANGING_PROMISE_REJECTION` de Auth durante prerender, también en rutas ajenas al bloque. Seguimiento existente: #1098 y #1126; no se atribuye a S3 ni se afirma resuelta su causa.
-- Capturas móvil/escritorio revisadas por el agente; no sustituyen la aceptación visual de José Ángel.
+- Capturas móvil/escritorio revisadas por el agente. José Ángel aceptó la revisión local el 2026-09-07 y autorizó commit, PR y merge condicionado a comprobaciones correctas.
 - No se publicó la aplicación, no se aplicó la migración en producción y no se cerraron las issues.
 
 ## Verificación final y revisión

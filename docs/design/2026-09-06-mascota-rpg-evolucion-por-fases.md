@@ -916,9 +916,9 @@ mascotas privadas, aunque quien la solicite tenga acceso al perfil. Es lo que ve
 tarjeta NFC (`/go/<uuid>`). Contrato: `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`.
 Migración aplicada y funciones/permisos verificados en dev y producción el 2026-09-07. Publicación web mediante PR #1128.
 
-### S3 — Madriguera del club (implementada en desarrollo; aceptación visual pendiente)
+### S3 — Madriguera del club (implementada y aceptada visualmente en desarrollo)
 
-Contrato confirmado el 2026-09-07 (#1129): `docs/superpowers/specs/2026-09-07-mascota-social-s3-design.md`. Bloque secundario bajo el resumen de actividades del feed, solo para miembros activos y con privacidad de perfil y bloqueos intactos. Participación automática, doce inicialmente y hasta sesenta vecinas; nivel visible, sin humor ni ranking. Estados vacíos y de error distintos, reintento, sin tiempo real. Pruebas técnicas y aceptación visual en desarrollo separadas de publicación. Implementación y pruebas en desarrollo el 2026-09-07 (#1130–#1132); migración aplicada y ACL verificadas solo en dev. Pendientes aceptación visual de José Ángel y publicación. Evidencia: `docs/testing/2026-09-07-s3-madriguera.md`.
+Contrato confirmado el 2026-09-07 (#1129): `docs/superpowers/specs/2026-09-07-mascota-social-s3-design.md`. Bloque secundario bajo el resumen de actividades del feed, solo para miembros activos y con privacidad de perfil y bloqueos intactos. Participación automática, doce inicialmente y hasta sesenta vecinas; nivel visible, sin humor ni ranking. Estados vacíos y de error distintos, reintento, sin tiempo real. Pruebas técnicas y aceptación visual en desarrollo separadas de publicación. Implementación y pruebas en desarrollo el 2026-09-07 (#1130–#1132); migración aplicada y ACL verificadas solo en dev. Aceptación visual de José Ángel el 2026-09-07; publicación pendiente. Evidencia: `docs/testing/2026-09-07-s3-madriguera.md`.
 
 Es la pieza sobre la que se
 apoyaría el cooperativo de club si algún día vuelve al roadmap (§19).
