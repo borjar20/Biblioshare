@@ -59,7 +59,10 @@ const movieRow = (over: Partial<ImportRow> = {}): ImportRow => ({
   ...over,
 });
 
-const client = {} as never;
+const movieLookup = vi.fn().mockResolvedValue({ data: null, error: null });
+const client = {
+  from: () => ({ select: () => ({ eq: () => ({ maybeSingle: movieLookup }) }) }),
+} as never;
 
 describe("matchMovie: los tres títulos de una película", () => {
   beforeEach(() => {
@@ -303,6 +306,52 @@ describe("matchMovie: la ficha que se cachea va en español", () => {
     vi.clearAllMocks();
     localMock.mockResolvedValue([]);
     apiMock.mockResolvedValue([]);
+  });
+
+  it("reutiliza por TMDB id la película cuyo título inglés no aparece en local (#388)", async () => {
+    apiMock.mockResolvedValue([
+      sr({ externalId: "129", title: "Spirited Away", year: 2001 }),
+    ]);
+    movieLookup.mockResolvedValueOnce({ data: { id: "local-chihiro" }, error: null });
+
+    const result = await matchImportRow(
+      client, "movie", movieRow({ title: "Spirited Away", year: 2001 })
+    );
+
+    expect(result).toEqual({ kind: "matched", catalogId: "local-chihiro" });
+    expect(searchMoviesForImport).toHaveBeenCalledWith("Spirited Away");
+    expect(getMovieAsSearchResult).not.toHaveBeenCalled();
+    expect(findOrCreateCatalogItem).not.toHaveBeenCalled();
+  });
+
+  it("conserva la ambigüedad aunque una película ya esté guardada (#388)", async () => {
+    apiMock.mockResolvedValue([
+      sr({ externalId: "129", title: "Spirited Away", year: 2001 }),
+      sr({ externalId: "130", title: "Spirited Away", year: 2001 }),
+    ]);
+
+    const result = await matchImportRow(
+      client, "movie", movieRow({ title: "Spirited Away", year: 2001 })
+    );
+
+    expect(result).toMatchObject({ kind: "ambiguous", candidates: [
+      { externalId: "129" }, { externalId: "130" },
+    ] });
+    expect(movieLookup).not.toHaveBeenCalled();
+    expect(getMovieAsSearchResult).not.toHaveBeenCalled();
+  });
+
+  it("si falla la consulta por id, mantiene la resolución por ficha española", async () => {
+    apiMock.mockResolvedValue([sr({ externalId: "129", title: "Spirited Away", year: 2001 })]);
+    movieLookup.mockResolvedValueOnce({ data: null, error: { message: "unavailable" } });
+    vi.mocked(getMovieAsSearchResult).mockResolvedValueOnce(
+      sr({ externalId: "129", title: "El viaje de Chihiro", year: 2001 })
+    );
+
+    expect(await matchImportRow(
+      client, "movie", movieRow({ title: "Spirited Away", year: 2001 })
+    )).toEqual({ kind: "matched", catalogId: "created-id" });
+    expect(getMovieAsSearchResult).toHaveBeenCalledWith(129);
   });
 
   it("pide la ficha es-ES por id antes de dar de alta: los candidatos vienen en inglés", async () => {
