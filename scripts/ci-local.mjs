@@ -20,6 +20,9 @@ const result = spawnSync(process.execPath, commands[mode], {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: status.ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,
     PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:3000',
+    // Local fixtures shared by the test runner and its Next.js subprocess.
+    CRON_SECRET: 'ci-letterboxd-fixture-only',
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/archive-tmdb.cjs`.trim(),
   },
 });
 if (result.error) throw result.error;

@@ -242,6 +242,7 @@
     "diaryTitle": "Diario",
     "empty": "Todavía no has registrado ningún pase.",
     "open": "En curso",
+    "unknownDate": "Fecha desconocida",
     "activeLabel": "Pase activo",
     "nth": {
       "book": "{n}.ª lectura",
@@ -1400,6 +1401,7 @@
     }
   },
   "detail": {
+    "unknownDate": "Fecha desconocida",
     "back": "Volver",
     "untitled": "Sin título",
     "inLibrary": "En tu biblioteca",
@@ -2212,7 +2214,12 @@
       "description": "Las 18 combinaciones etapa × clase y la bellota, con el componente real. Pausa y avanza frame a frame para revisar re-rolls.",
       "scale": "Escala",
       "anim": "Animación",
-      "anims": { "idle": "Idle", "sleepy": "Dormida", "sad": "Triste", "joy": "Alegría" },
+      "anims": {
+        "idle": "Idle",
+        "sleepy": "Dormida",
+        "sad": "Triste",
+        "joy": "Alegría"
+      },
       "direction": "Dirección",
       "acornReady": "Bellota lista",
       "evolve": "Evolución",
@@ -2279,6 +2286,75 @@
     "hiddenDroppedAction": "Mostrar"
   },
   "import": {
+    "archive": {
+      "title": "Importar ZIP de Letterboxd",
+      "jobs": "Mis importaciones de Letterboxd",
+      "jobsUnavailable": "No se pueden cargar las importaciones en este momento.",
+      "progress": "{imported} de {total} películas incorporadas",
+      "public": "Hacer públicos los pases importados",
+      "announce": "Anunciar la importación si hago públicos los pases",
+      "background": "Puedes cerrar esta página. La importación continúa en segundo plano y los resultados quedan guardados.",
+      "undo": "Deshacer esta importación",
+      "undoHelp": "Se retirarán los pases añadidos y se restaurarán los datos anteriores que no hayas editado después. Los cambios posteriores se conservarán.",
+      "confirmUndo": "Confirmar deshacer",
+      "undoConflicts": "Se han conservado {count} registros con cambios posteriores o dependencias. Revisa esas películas antes de intentar deshacer de nuevo.",
+      "confirm": "Confirmar importación",
+      "continue": "Continuar importación",
+      "results": "Ver resultados",
+      "searchTitle": "Título para buscar la película",
+      "search": "Buscar otra coincidencia",
+      "conflictHelp": "Hay datos existentes. Puedes conservarlos descartando esta fila, o aplicar los datos del archivo a los pases correspondientes.",
+      "useArchive": "Aplicar los datos del archivo",
+      "retry": "Reintentar",
+      "dismiss": "Descartar esta fila y conservar mis datos",
+      "associateReview": "Asociar reseña al visionado",
+      "newReviewPass": "Es otro visionado",
+      "saveReview": "Guardar asociación",
+      "unknownDate": "Fecha desconocida",
+      "states": {
+        "draft": "Pendiente de confirmar",
+        "running": "En proceso",
+        "done": "Procesada",
+        "undone": "Deshecha"
+      },
+      "rowStates": {
+        "pending": "Pendiente",
+        "imported": "Incorporada",
+        "conflict": "Conflicto con datos existentes",
+        "unmatched": "Sin coincidencia",
+        "ambiguous": "Elegir película",
+        "error": "Error; se puede reintentar",
+        "dismissed": "Descartada"
+      },
+      "help": "Sube el ZIP original de Letterboxd (máximo 4 MB) para revisar juntos tu historial, reseñas, valoraciones y pendientes.",
+      "file": "Archivo ZIP",
+      "analyze": "Analizar ZIP",
+      "analyzing": "Analizando…",
+      "summary": "Resumen del archivo",
+      "previewOnly": "Este análisis todavía no ha modificado tu biblioteca. Las películas se identificarán al confirmar; los casos dudosos quedarán para revisión.",
+      "excluded": "Archivos excluidos",
+      "movies": "Películas del archivo",
+      "counts": {
+        "movies": "Películas",
+        "passes": "Visionados",
+        "unknownDates": "Sin fecha",
+        "planned": "Pendientes",
+        "reviews": "Reseñas asociadas",
+        "ratings": "Pases con nota",
+        "conflicts": "Reseñas por revisar"
+      },
+      "errors": {
+        "invalidArchive": "No se puede leer este archivo. Comprueba que sea el ZIP original de Letterboxd y que sus CSV no estén dañados.",
+        "archiveTooLarge": "El archivo supera los límites de importación (4 MB comprimidos, 20 MB de contenido o 30.000 registros).",
+        "signIn": "Inicia sesión para importar.",
+        "generic": "No se pudo analizar el archivo. Inténtalo de nuevo."
+      },
+      "actionFailed": "No se pudo completar la operación. Tus datos se conservan: vuelve a intentarlo en unos minutos.",
+      "separate": "Conservar los locales y añadir pases distintos",
+      "newer": "Importaciones más recientes",
+      "older": "Importaciones anteriores",
+      "jobSummary": "Archivo: {passes} pases y {planned} pendientes. {unresolved} incidencias por revisar."
+    },
     "title": "Importar biblioteca",
     "description": "Sube un export de Goodreads, Letterboxd o Bookmory para volcar tu historial en Biblioshare.",
     "help": {
@@ -3038,8 +3114,16 @@
       "custom": "A medida",
       "customResource": "Recurso a medida",
       "presets": {
-        "gold": "Oro", "wood": "Madera", "stone": "Piedra", "wheat": "Trigo", "sheep": "Oveja",
-        "brick": "Ladrillo", "gem": "Gema", "heart": "Vida", "bolt": "Energía", "star": "Puntos"
+        "gold": "Oro",
+        "wood": "Madera",
+        "stone": "Piedra",
+        "wheat": "Trigo",
+        "sheep": "Oveja",
+        "brick": "Ladrillo",
+        "gem": "Gema",
+        "heart": "Vida",
+        "bolt": "Energía",
+        "star": "Puntos"
       },
       "fewerInitial": "Uno menos de inicio",
       "moreInitial": "Uno más de inicio",
@@ -3378,7 +3462,10 @@
       "inventory": "Botín conseguido",
       "inventoryEmpty": "Aún no has ganado ningún objeto.",
       "count": "×{count}",
-      "slots": { "weapon": "Arma", "amulet": "Amuleto" },
+      "slots": {
+        "weapon": "Arma",
+        "amulet": "Amuleto"
+      },
       "items": {
         "sharp_bookmark": "Marcapáginas afilado",
         "heavy_ink_quill": "Pluma de tinta pesada",

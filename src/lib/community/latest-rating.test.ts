@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { latestRatingPerUser } from "./latest-rating";
 
 describe("latestRatingPerUser", () => {
+  it("desempata dos pases del mismo día por orden de registro antes que UUID", () => {
+    const older = { id: "z", userId: "u", finishedOn: "2020-01-01", createdAt: "2026-09-08T10:00:00Z", rating: 6 };
+    const newer = { id: "a", userId: "u", finishedOn: "2020-01-01", createdAt: "2026-09-08T10:00:01Z", rating: 9 };
+    expect(latestRatingPerUser([newer, older])).toEqual([newer]);
+  });
   it("una relectura sustituye el voto de la primera lectura (caso de control: 8 en 2024, 9 en 2026 -> vota 9)", () => {
     const rows = [
       { id: "u1-2024-03-10", userId: "u1", finishedOn: "2024-03-10", rating: 8 },
@@ -42,9 +47,7 @@ describe("latestRatingPerUser", () => {
   });
 
   it("desempata por id cuando dos pases comparten fecha, para que la media no dependa del orden de las filas", () => {
-    // Un indice unico impide cerrar dos pases del mismo item el mismo dia, asi
-    // que esto no deberia pasar; el desempate existe para que, si pasara, la
-    // media no parpadee segun como Postgres devuelva las filas.
+    // Legacy callers without registration timestamps keep a stable UUID tie.
     const rows = [
       { id: "b", userId: "u1", finishedOn: "2026-01-05", rating: 6 },
       { id: "a", userId: "u1", finishedOn: "2026-01-05", rating: 9 },

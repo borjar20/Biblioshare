@@ -362,3 +362,7 @@ contraste (F4-022).
 - ¿En qué estado está el bug/deuda Y? → issues (`gh issue list`).
 - Al terminar una feature de esta lista: quitarla de aquí, añadirla a
   PROYECTO.md, y la narrativa a una spec. Lo que quede pendiente → issue.
+
+## Importación completa de Letterboxd
+
+- [ ] ZIP con historial, reseñas, notas y watchlist: tickets #1137–#1145 implementados y verificados localmente el 2026-09-08; aplicación de migraciones en dev/prod y publicación pendientes en esos tickets ([#1136](https://github.com/borjar20/Biblioshare/issues/1136)). Contrato: `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md`. Evidencia: `docs/testing/2026-09-08-letterboxd-zip.md`.

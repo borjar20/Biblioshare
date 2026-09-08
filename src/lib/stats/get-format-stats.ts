@@ -133,7 +133,7 @@ export async function getFormatStats(
   let droppedSeries = 0;
 
   for (const row of passRows) {
-    if (inPeriod(row.finished_on)) finishedIds[row.item_type].add(row.item_id);
+    if (inPeriod(row.finished_on) || (!bounds && row.status === "completed")) finishedIds[row.item_type].add(row.item_id);
     if (row.is_active && row.status === "planned") pendingIds[row.item_type].add(row.item_id);
     if (row.item_type === "series") {
       if (row.is_active && row.status === "in_progress") activeSeriesIds.add(row.item_id);

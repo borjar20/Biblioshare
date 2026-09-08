@@ -1,4 +1,5 @@
 "use client";
+import { ReviewContent } from "./review-content";
 
 import { useActionState, useState, useTransition } from "react";
 import { useTranslations, useFormatter } from "next-intl";
@@ -174,13 +175,13 @@ function PassCard({
         month: "short",
         year: "numeric",
       })
-    : t("open");
+    : pass.status === "completed" ? t("unknownDate") : t("open");
 
   // Solo los pases YA cerrados se editan aquí: el editable de un pase
   // abierto es la nota (panel Progreso, ratePass), no esta tarjeta — este
   // formulario comparte updatePass con closePass y ese siempre escribe
   // finished_on, así que abrirlo en un pase abierto lo cerraría de tapadillo.
-  const canEdit = pass.finishedOn !== null;
+  const canEdit = pass.status === "completed" || pass.status === "dropped";
 
   // `.diary-entry` del frame: sobre --surface-muted (el --surface-2 del
   // handoff), radio 10 y 13 de padding.
@@ -241,7 +242,7 @@ function PassCard({
           #584f43 del handoff), no en el gris de las etiquetas. */}
       {pass.review && (
         <p className="mt-1 text-[12.5px] leading-[1.55] text-foreground-soft">
-          {pass.review}
+          <ReviewContent text={pass.review} />
         </p>
       )}
 
@@ -305,7 +306,7 @@ function PassCard({
             <input
               type="date"
               name="finishedOn"
-              defaultValue={pass.finishedOn ?? today()}
+              defaultValue={pass.finishedOn ?? ""}
               max={today()}
               className="rounded-md border border-border bg-surface-muted px-2 py-1.5 text-xs text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />

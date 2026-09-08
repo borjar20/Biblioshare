@@ -4565,3 +4565,38 @@ ni original_title. Un error de consulta conserva la resolución previa.
 No se añade english_title ni backfill: no eliminarían la búsqueda necesaria.
 Para una coincidencia local por id se evita una petición de ficha española;
 no se afirma un ahorro de búsquedas ni una medición de tráfico en producción.
+
+## 2026-09-08 — Importación completa de Letterboxd: pases sin fecha y procedencia (#1136)
+
+Diseño confirmado por José Ángel; implementación pendiente. Contrato congelado en `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md` e issue #1136.
+
+Una vista sin diario será un pase completado con fecha desconocida: cuenta como vista sin asignarse a un periodo. Esto requiere revisar la invariante actual de fecha obligatoria, no inventar la fecha de importación ni declarar el esquema actual compatible. Dos visionados distintos del mismo día se conservan; la procedencia deberá distinguirlos de reimportaciones.
+
+La nota de ratings prevalece en el último pase del origen sin alterar notas anteriores ni sobrescribir ediciones locales sin resolver conflicto. No se crea una valoración independiente del pase. Un visionado fechado nuevo de otro ZIP crea OTRO pase y conserva el anterior sin fecha, sin preguntar ni fusionar; se elige preservar ambos visionados aunque no se pueda ordenar cronológicamente el de fecha desconocida.
+
+El trabajo confirmado continúa con la página cerrada y permite deshacer protegiendo datos previos y modificaciones posteriores. Su procedencia persistente deberá sostener recuperación, idempotencia y reversión. ZIP posterior incorpora novedades, no borra ausencias. Estas decisiones son de diseño; no autorizan aquí migraciones ni publicación de la aplicación.
+
+## 2026-09-08 — Ejecución del ZIP de Letterboxd (#1137–#1145)
+
+La implementación autorizada usa trabajos persistentes y RPC atómicas con procedencia por
+origen. Los snapshots protegen ediciones locales al actualizar y al deshacer. Las dependencias
+del pase activo se revierten juntas por película; un conflicto conserva el grupo afectado.
+La aceptación solo enlaza pases locales cuando la correspondencia es individual e inequívoca;
+también se puede conservar el historial local y añadir pases distintos explícitamente.
+
+Fecha de visionado y fecha administrativa quedan separadas. `completed` admite fecha desconocida;
+la biblioteca, diario, notas y estadísticas usan el estado explícito. En un empate de día se usa
+el orden de registro, con UUID como último desempate. Una URI de reseña diferente no se fusiona
+por compartir fecha: representa otro registro. Sin identidad segura, el texto se conserva para
+que el dueño lo asocie. Las reseñas se muestran con nodos React de formato básico y enlaces HTTP(S).
+
+Se conserva el flujo CSV. El ZIP se analiza en memoria con límites, sin nuevas dependencias.
+`after()` y un despachador pg_cron comparten el procesador con presupuesto temporal y lotes
+pequeños; la recuperación usa Vault ya existente. Las revalidaciones del worker usan
+`revalidateTag` con caducidad inmediata, porque `updateTag` solo es válido en Server Actions.
+No se cachea información privada de importaciones. El único post posible es un anuncio opt-in
+de la importación; no se fabrican eventos de visionados antiguos como actividad de hoy.
+
+Verificación y migraciones realizadas únicamente sobre instancia local desechable con fixtures
+sintéticos. Aplicación remota, publicación y aceptación con una cuenta real siguen pendientes en
+los tickets originales; no se cierra ninguno como consecuencia de esta implementación local.
