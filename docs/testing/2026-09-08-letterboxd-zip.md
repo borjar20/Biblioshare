@@ -93,7 +93,7 @@ de reseñas; se corrigió y quedó cubierto tanto por SQL como por resolución m
 
 ## Límites y seguimiento existente
 
-- Publicación y migraciones remotas pendientes en #1137–#1145 / #1136; no se cierran issues.
+- Publicación y migraciones de producción pendientes en #1137–#1145 / #1136; no se cierran issues.
   La recuperación programada requiere `app_base_url` y `cron_secret` existentes en Vault y
   `CRON_SECRET` en el servidor. La prueba usa el endpoint real con configuración sintética;
   no acredita la configuración de un entorno remoto.
@@ -103,3 +103,24 @@ de reseñas; se corrigió y quedó cubierto tanto por SQL como por resolución m
   ese problema ajeno a la importación.
 - No se mide precisión de identificación contra el archivo personal ni disponibilidad de
   TMDB: el E2E usa el proveedor sintético y las pruebas existentes cubren el matcher real.
+
+## Validación remota en dev y CI de PR #1147
+
+Las siete migraciones se aplicaron a biblioshare-dev (tyvzpuhxfwxrnkcpzxyg).
+Verificados cuatro objetos con RLS, permisos del propietario, siete RPC y cron registrado.
+Prueba REST con dos cuentas desechables: PASS para borrador sin pases, repetición y
+aplicación concurrente idempotentes, RLS entre cuentas, vista sin fecha con nota,
+pendiente, visionado posterior y deshacer protegido tras editar. Ambas cuentas se
+eliminaron en finally; el catálogo compartido no se modificó.
+El primer intento consultaba también pases públicos: se corrigió el filtro del fixture
+para limitarlo al propietario. El conector SQL rechaza DML por ser de solo lectura;
+la comprobación funcional se realizó mediante REST.
+
+CI inicial: quality y empty-database PASS; critical-flows 3 PASS / 1 FAIL porque el
+servidor carecía de CRON_SECRET sintético (503 frente a 401 esperado). El runner de CI
+ahora proporciona ese secreto y precarga TMDB sintético, restringido a Supabase local.
+Nueva ejecución pendiente al publicar esta corrección.
+
+Activación remota pendiente: dev no tiene app_base_url ni cron_secret en Vault.
+El conector Vercel devuelve 403 para el equipo y la CLI está sin sesión. No se acredita
+recuperación programada remota ni despliegue de producción.
