@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`.
 
-**Estado:** plan creado el 2026-09-08 por petición del usuario, sin ejecución. Base inspeccionada: `cbf9d65e` más commits documentales `109ff258` y `88374ad7`. Seguimiento #1123; tinta y desencantado aplazados en #1134.
+**Estado:** ejecución secuencial iniciada el 2026-09-08. Tarea 1 verificada: 21 tests de botín verdes con Node 22.23.1; tareas siguientes abiertas. Base inspeccionada: `cbf9d65e` más commits documentales `109ff258` y `88374ad7`. Seguimiento #1123; tinta y desencantado aplazados en #1134.
 
 ## Restricciones globales
 
@@ -76,7 +76,7 @@ Orden: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. No publi
 
 **Interfaces:** consume filas `{ id, reward, resolved_at }`; produce `copyFromWin(row): LootCopy | null` y `isQualityBp(value: unknown): value is number`. La forma moderna exige `qualityVersion: 1` y calidad del conjunto cerrado; la antigua no lleva ninguno de ambos campos. Campos parciales o versiones desconocidas se rechazan, no se normalizan silenciosamente.
 
-- [ ] Escribir casos: copia antigua a 10000, nueva a 12000, ids de fila distintos conservados, calidad 9999/NaN/string rechazada, ranura falsa rechazada. Test mínimo:
+- [x] Escribir casos: copia antigua a 10000, nueva a 12000, ids de fila distintos conservados, calidad 9999/NaN/string rechazada, ranura falsa rechazada. Test mínimo:
 
 ```ts
 expect(copyFromWin({ id: "a", resolved_at: "2026-09-07T12:00:00Z",
@@ -86,9 +86,9 @@ expect(copyFromWin({ id: "b", resolved_at: "2026-09-08T12:00:00Z",
     qualityVersion: 1 } })).toBeNull();
 ```
 
-- [ ] Ejecutar `npx vitest run src/lib/pet/loot/copies.test.ts`; esperar fallo por export ausente, después implementar validadores/proyección y obtener verde.
-- [ ] Correr `npx vitest run src/lib/pet/loot` y comprobar que el sorteo de tipo anterior conserva resultados.
-- [ ] Commit solo de estos archivos: `feat(pet): represent immutable loot copies`.
+- [x] Ejecutar `npx vitest run src/lib/pet/loot/copies.test.ts`; esperar fallo por export ausente, después implementar validadores/proyección y obtener verde.
+- [x] Correr `npx vitest run src/lib/pet/loot` y comprobar que el sorteo de tipo anterior conserva resultados.
+- [x] Commit solo de estos archivos: `feat(pet): represent immutable loot copies`.
 
 ### Tarea 2: Motor candidato r4.2 y seis efectos
 

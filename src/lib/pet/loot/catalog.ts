@@ -14,7 +14,14 @@ export const LOOT_ITEMS = [
 
 export type LootItemId = (typeof LOOT_ITEMS)[number]["id"];
 export interface LootItem { id: LootItemId; slot: LootSlot }
-export interface Reward { itemId: LootItemId; slot: LootSlot }
+export type Reward = { itemId: LootItemId; slot: LootSlot } & (
+  | { qualityBp?: never; qualityVersion?: never }
+  | { qualityBp: number; qualityVersion: 1 }
+);
+
+export function isQualityBp(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 8000 && value <= 12000 && value % 1000 === 0;
+}
 
 export function isLootItemId(x: unknown): x is LootItemId {
   return typeof x === "string" && LOOT_ITEMS.some((i) => i.id === x);
@@ -22,5 +29,7 @@ export function isLootItemId(x: unknown): x is LootItemId {
 export function isReward(x: unknown): x is Reward {
   if (!x || typeof x !== "object") return false;
   const r = x as Record<string, unknown>;
-  return isLootItemId(r.itemId) && LOOT_ITEMS.some((i) => i.id === r.itemId && i.slot === r.slot);
+  const legacy = !Object.hasOwn(r, "qualityBp") && !Object.hasOwn(r, "qualityVersion");
+  return isLootItemId(r.itemId) && LOOT_ITEMS.some((i) => i.id === r.itemId && i.slot === r.slot)
+    && (legacy || (r.qualityVersion === 1 && isQualityBp(r.qualityBp)));
 }
