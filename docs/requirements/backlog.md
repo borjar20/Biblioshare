@@ -365,4 +365,4 @@ contraste (F4-022).
 
 ## Importación completa de Letterboxd
 
-- [ ] ZIP con historial, reseñas, notas y watchlist: tickets #1137–#1145 implementados y verificados localmente el 2026-09-08; aplicación de migraciones en dev/prod y publicación pendientes en esos tickets ([#1136](https://github.com/borjar20/Biblioshare/issues/1136)). Contrato: `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md`. Evidencia: `docs/testing/2026-09-08-letterboxd-zip.md`.
+- [x] ZIP con historial, reseñas, notas y watchlist: tickets #1137–#1145 publicados el 2026-09-08 en PR #1147; siete migraciones aplicadas en dev/prod y cron de producción verificado con importación privada sintética y limpieza ([#1136](https://github.com/borjar20/Biblioshare/issues/1136)). Contrato: `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md`. Evidencia: `docs/testing/2026-09-08-letterboxd-zip.md`.

@@ -1,8 +1,7 @@
 # Modelo de datos
 
 > **Delta Letterboxd #1137–#1145, 2026-09-08:** implementación y migraciones verificadas
-> en Supabase local desechable. Este delta NO está aplicado ni verificado en dev remoto
-> o producción. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
+> en Supabase local, dev remoto y producción. Siete migraciones aplicadas; RLS y permisos comprobados. Cron de producción validado con importación sintética privada y limpieza. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
 
 > **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
 > verificados en dev; comportamiento SQL con fixtures y rollback verificado en
