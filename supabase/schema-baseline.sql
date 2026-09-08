@@ -1247,3 +1247,8 @@ commit;
 begin;
 \ir migrations/20260908105007_letterboxd_archive_announcement.sql
 commit;
+
+-- 20260908151906_letterboxd_recovery
+begin;
+\ir migrations/20260908151906_letterboxd_recovery.sql
+commit;

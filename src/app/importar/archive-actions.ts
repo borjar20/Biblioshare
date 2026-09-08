@@ -13,6 +13,51 @@ import { searchMoviesForImport } from "@/lib/catalog/tmdb";
 import type { ImportCandidate } from "@/lib/import/types";
 import { after } from "next/server";
 import { runArchiveWorker } from "@/lib/import/archive-worker";
+import { prepareArchiveCandidates } from "@/lib/import/archive-candidates";
+import type { ArchiveApprovedRow, ArchiveRowReview, ArchiveDecisionResult } from "@/lib/import/archive-review";
+
+export async function loadArchiveReview(jobId: string): Promise<ArchiveRowReview[]> {
+  const client = await createClient();
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) throw new Error("signIn");
+  const result = await client.rpc("archive_review_job", { p_job: jobId });
+  if (result.error) throw result.error;
+  return result.data as unknown as ArchiveRowReview[];
+}
+
+/** Each confirmed row commits independently; repeating its version returns its receipt. */
+export async function applyArchiveReview(jobId: string, approved: ArchiveApprovedRow[]): Promise<ArchiveDecisionResult[]> {
+  const client = await createClient();
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) throw new Error("signIn");
+  if (!Array.isArray(approved) || !approved.length || approved.length > 50 || approved.some(row =>
+    !row || !Number.isSafeInteger(row.ordinal) || row.ordinal < 0 || !/^[a-f0-9]{64}$/.test(row.version) ||
+    !["retry", "dismiss", "associate", "fill", "accept", "separate", "catalog"].includes(row.decision))) throw new Error("invalid_batch");
+  const owned = await client.from("archive_imports").select("id").eq("id", jobId).eq("user_id", user.id).single();
+  if (owned.error || !owned.data) throw new Error("forbidden");
+  const results: ArchiveDecisionResult[] = [];
+  for (const row of approved) {
+    const result = await client.rpc("archive_decide", { p_job: jobId, p_ordinal: row.ordinal, p_decision: row.decision, p_version: row.version });
+    results.push({ ordinal: row.ordinal, state: result.error ? "failed" : (result.data as { state: string }).state });
+  }
+  after(async () => { await runArchiveWorker(jobId); });
+  revalidateArchiveImports();
+  // A decision can synchronously update an existing pass; invalidate the same catalog tags.
+  const { data: rows } = await client.from("archive_import_items").select("item_id").eq("job_id", jobId).eq("user_id", user.id).in("ordinal", approved.map(r => r.ordinal));
+  revalidateImportBatch("movie", (rows ?? []).flatMap(r => r.item_id ? [r.item_id] : []));
+  return results;
+}
+
+export async function loadArchiveCandidates(jobId: string, ordinal: number) {
+  const client = await createClient();
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) throw new Error("signIn");
+  const { data: row, error } = await client.from("archive_import_items").select("candidates")
+    .eq("job_id", jobId).eq("ordinal", ordinal).eq("user_id", user.id).eq("state", "ambiguous").single();
+  if (error) throw error;
+  await requireRequestQuota(client, "catalog_request");
+  return prepareArchiveCandidates(row.candidates as unknown as ImportCandidate[]);
+}
 
 export type ArchivePreviewState = { analysis?: ArchiveAnalysis; jobId?: string; error?: "invalidArchive" | "archiveTooLarge" | "signIn" | "generic" };
 
@@ -98,6 +143,7 @@ export async function resolveArchive(data: FormData): Promise<void> {
       await requireRequestQuota(client, "catalog_request");
       const candidate = (row.candidates as unknown as ImportCandidate[])[Number(data.get("candidate"))];
       if (!candidate) throw new Error("missing_candidate");
+      if (data.get("candidateIdentity") !== (candidate.externalId || candidate.catalogId || "")) throw new Error("candidate_changed");
       movie = await catalogIdForCandidate(client, "movie", candidate, user.id);
     }
     const result = await client.rpc("archive_resolve", { p_job: job, p_ordinal: ordinal, p_decision: decision,

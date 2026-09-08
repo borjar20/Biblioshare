@@ -248,6 +248,7 @@
     "20260908104005_letterboxd_archive_review.sql",
     "20260908104441_letterboxd_archive_undo.sql",
     "20260908104624_letterboxd_archive_scheduler.sql",
-    "20260908105007_letterboxd_archive_announcement.sql"
+    "20260908105007_letterboxd_archive_announcement.sql",
+    "20260908151906_letterboxd_recovery.sql"
   ]
 }

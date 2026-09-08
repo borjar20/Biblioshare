@@ -366,3 +366,4 @@ contraste (F4-022).
 ## Importación completa de Letterboxd
 
 - [x] ZIP con historial, reseñas, notas y watchlist: tickets #1137–#1145 publicados el 2026-09-08 en PR #1147; siete migraciones aplicadas en dev/prod y cron de producción verificado con importación privada sintética y limpieza ([#1136](https://github.com/borjar20/Biblioshare/issues/1136)). Contrato: `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md`. Evidencia: `docs/testing/2026-09-08-letterboxd-zip.md`.
+- [ ] Recuperar importaciones parciales de Letterboxd y resolver incidencias con comparación y acciones conjuntas: [#1150](https://github.com/borjar20/Biblioshare/issues/1150), implementación #1151–#1159 y validación sintética local realizadas; publicación, migración remota y reparación de cuentas pendientes.

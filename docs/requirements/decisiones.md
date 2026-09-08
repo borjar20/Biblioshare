@@ -4600,3 +4600,23 @@ de la importación; no se fabrican eventos de visionados antiguos como actividad
 Verificación y migraciones realizadas únicamente sobre instancia local desechable con fixtures
 sintéticos. Aplicación remota, publicación y aceptación con una cuenta real siguen pendientes en
 los tickets originales; no se cierra ninguno como consecuencia de esta implementación local.
+
+## 2026-09-08 — Confirmaciones versionadas y procedencia reversible en recuperación Letterboxd
+
+La revisión y el plan son consultas sin escrituras. Al confirmar se revalida la versión de
+cada fila, sus pases, catálogo y procedencia bajo bloqueo; una decisión repetida devuelve su
+recibo. Los lotes de hasta 50 filas conservan resultados individuales y permiten continuar.
+La selección no se amplía al cambiar de filtro ni se sustituyen valores locales implícitamente.
+
+Una asociación conserva su política de completar huecos; aceptar discrepancias la cambia
+explícitamente. El diario privado de procedencia registra ambos estados para que deshacer
+restaure también esa política, protegiendo modificaciones posteriores. La equivalencia de
+reseñas solo normaliza espacios y envoltorios neutros; mantiene énfasis y enlaces.
+
+El worker registra catálogo únicamente para filas confirmadas, con identidad TMDB validada,
+y completa campos ausentes. Reparar una ficha importada no vuelve a escribir sus pases.
+Los errores conservan causas estables y un máximo de tres intentos; los resultados pendientes
+se muestran como parciales, incluso en trabajos antiguos marcados como finalizados.
+
+Alcance autorizado: migración y pruebas locales desechables. No implica aplicar la migración
+remota, publicar ni reparar una cuenta real; esos pasos siguen en #1150–#1159.

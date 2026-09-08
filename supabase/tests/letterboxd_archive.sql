@@ -48,9 +48,9 @@ begin
     jsonb_build_object('sourceKey',repeat('4',64),'finishedOn','2019-01-01','rating',8)))));
   next_job := public.archive_create(analysis); perform public.archive_confirm(next_job,false,false);
   if public.archive_apply(next_job,0,movie) <> 'conflict' then raise exception 'FAIL local conflict missing'; end if;
-  perform public.archive_resolve(next_job,0,'accept');
-  if public.archive_apply(next_job,0,movie) <> 'imported' then raise exception 'FAIL accepted overlap'; end if;
-  if (select count(*) from public.passes where user_id=actor and item_id=movie) <> 2 then raise exception 'FAIL collapsed origins'; end if;
+  if public.archive_decide(next_job,0,'accept',public.archive_review_row(next_job,0)->>'version')->>'state' <> 'ineligible' then raise exception 'FAIL competing origins associated'; end if;
+  if public.archive_decide(next_job,0,'separate',public.archive_review_row(next_job,0)->>'version')->>'state' <> 'imported' then raise exception 'FAIL explicit distinct viewings'; end if;
+  if (select count(*) from public.passes where user_id=actor and item_id=movie) <> 3 then raise exception 'FAIL collapsed origins'; end if;
   if public.archive_undo(next_job) <> 0 then raise exception 'FAIL undo overlap'; end if;
   if (select count(*) from public.passes where user_id=actor and item_id=movie and rating=2) <> 1 then raise exception 'FAIL restored local note'; end if;
   -- Several local candidates stay ambiguous until explicitly imported separately.
@@ -58,10 +58,8 @@ begin
   analysis := replace(replace(replace(analysis::text,repeat('1',64),repeat('5',64)),repeat('3',64),repeat('6',64)),repeat('4',64),repeat('7',64))::jsonb;
   next_job := public.archive_create(analysis); perform public.archive_confirm(next_job,false,false);
   if public.archive_apply(next_job,0,movie) <> 'conflict' then raise exception 'FAIL ambiguous overlap'; end if;
-  perform public.archive_resolve(next_job,0,'accept');
-  if public.archive_apply(next_job,0,movie) <> 'conflict' then raise exception 'FAIL ambiguous auto-link'; end if;
-  perform public.archive_resolve(next_job,0,'separate');
-  if public.archive_apply(next_job,0,movie) <> 'imported' then raise exception 'FAIL explicit separate'; end if;
+  if public.archive_decide(next_job,0,'accept',public.archive_review_row(next_job,0)->>'version')->>'state' <> 'ineligible' then raise exception 'FAIL ambiguous auto-link'; end if;
+  if public.archive_decide(next_job,0,'separate',public.archive_review_row(next_job,0)->>'version')->>'state' <> 'imported' then raise exception 'FAIL explicit separate'; end if;
   if (select count(*) from public.passes where user_id=actor and item_id=movie) <> 4 then raise exception 'FAIL separate lost local passes'; end if;
   insert into public.progress_sessions(user_id,pass_id,note) select actor,id,'later session' from public.passes where user_id=actor and item_id=movie and rating=8;
   if public.archive_undo(next_job)=0 then raise exception 'FAIL removed pass with later session'; end if;

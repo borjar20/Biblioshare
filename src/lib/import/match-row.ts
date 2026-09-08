@@ -144,7 +144,9 @@ function preferExactTitle(candidates: ImportCandidate[], csvTitle: string): Impo
 
 async function matchMovie(
   supabase: SupabaseServerClient,
-  row: ImportRow
+  row: ImportRow,
+  resolveCandidate = (candidate: ImportCandidate) => catalogIdForMovieCandidate(supabase, candidate),
+  strictSearch = false
 ): Promise<ImportMatch> {
   // A candidate with no release year can't be verified against the CSV's
   // year, so it's only accepted when the CSV itself has no year either —
@@ -185,7 +187,7 @@ async function matchMovie(
   // dado de alta (fusionado por tmdb_id, para no pedir su ficha otra vez).
   const [localResults, apiResults] = await Promise.all([
     searchLocalCatalog(supabase, "movie", row.title),
-    searchMoviesForImport(row.title),
+    strictSearch ? searchMoviesForImport(row.title, true) : searchMoviesForImport(row.title),
   ]);
 
   const cachedByTmdbId = new Map(
@@ -209,7 +211,7 @@ async function matchMovie(
   if (matches.length === 1) {
     return {
       kind: "matched",
-      catalogId: await catalogIdForMovieCandidate(supabase, matches[0]),
+      catalogId: await resolveCandidate(matches[0]),
     };
   }
   if (matches.length > 1) return ambiguous(matches);
@@ -233,9 +235,10 @@ export async function matchImportRow(
   supabase: SupabaseServerClient,
   itemType: ItemType,
   row: ImportRow,
-  userId?: string | null
+  userId?: string | null,
+  resolveMovie?: (candidate: ImportCandidate) => Promise<string>
 ): Promise<ImportMatch> {
   if (itemType === "book") return matchBook(supabase, row, userId);
-  if (itemType === "movie") return matchMovie(supabase, row);
+  if (itemType === "movie") return matchMovie(supabase, row, resolveMovie, !!resolveMovie);
   return { kind: "unmatched" };
 }
