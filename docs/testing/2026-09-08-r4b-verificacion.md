@@ -111,6 +111,6 @@ Docker Desktop cerrado (se había iniciado para este gate). Worktree previo R4a 
 Pendiente aceptación jugable y autorización de publicación, seguimiento #1123.
 
 Implementación guardada en `f1c63aac`. Gate de lint del diff contra `cbf9d65e`: 74 fuentes,
-cero errores (cuatro warnings de fixtures). Rama aún local; descripción de PR preparada.
-La subida de rama y creación de PR quedaron pendientes de autorización explícita tras el
-rechazo de la revisión automática de permisos. No se realizó push, merge ni despliegue.
+cero errores (cuatro warnings de fixtures). El usuario autorizó explícitamente subir la
+rama y crear la [PR en borrador #1146](https://github.com/borjar20/Biblioshare/pull/1146).
+Rama publicada; aceptación jugable, merge y despliegue en producción siguen pendientes.
