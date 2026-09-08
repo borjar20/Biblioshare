@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`.
 
-**Estado:** ejecución secuencial en `codex/mascota-r4b`, 2026-09-08. Motor r4.2 calibrado, registrado y congelado; copias, SQL, servicios, UI, iconos y VFX implementados. Migración dev, matriz SQL, concurrencia real, bootstrap local de 243 etapas y primer E2E de equipo contra build de producción pasan. Verificación final: 3470 tests, TypeScript, build y seis E2E cubiertos; lint R4b sin errores, lint global heredado en #856. Evidencia: `docs/testing/2026-09-08-r4b-balance.md` y `docs/testing/2026-09-08-r4b-verificacion.md`. Aceptación/publicación pendientes en #1123; tinta en #1134. No se ha desplegado a producción.
+**Estado:** ejecución secuencial en `codex/mascota-r4b`, 2026-09-08. Motor r4.2 calibrado, registrado y congelado; copias, SQL, servicios, UI, iconos y VFX implementados. Migración dev, matriz SQL, concurrencia real, bootstrap local de 243 etapas y primer E2E de equipo contra build de producción pasan. Verificación final: 3470 tests, TypeScript, build y seis E2E cubiertos; lint R4b sin errores, lint global heredado en #856. Evidencia: `docs/testing/2026-09-08-r4b-balance.md` y `docs/testing/2026-09-08-r4b-verificacion.md`. Implementación guardada en `f1c63aac`; subida de rama/creación de PR pendientes de autorización explícita tras rechazo del revisor automático. Descripción de PR preparada localmente. Aceptación/publicación pendientes en #1123; tinta en #1134. No se ha desplegado a producción.
 
 ## Restricciones globales
 

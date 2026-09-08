@@ -871,8 +871,9 @@ en #1123; esta revisión no declara implementado el sistema.
 **Ejecución secuencial, 2026-09-08:** r4.2 incorpora los seis efectos, calidad fija por
 copia y dos ranuras con captura atómica; versiones anteriores conservadas. Iconos y VFX
 PixelLab generados (16 generaciones). Migración verificada en dev y bootstrap local vacío
-de 243 etapas. El flujo de equipo/entrenamiento/replay y concurrencia real pasan; cierre
-general y aceptación jugable siguen en #1123. Balance: `docs/testing/2026-09-08-r4b-balance.md`.
+de 243 etapas. Verificación final: 3470 tests, TypeScript, build, seis E2E cubiertos y lint
+del diff sin errores. Subida de rama/PR, aceptación jugable y publicación siguen en #1123.
+Balance: `docs/testing/2026-09-08-r4b-balance.md`.
 No se ha desplegado R4b en producción. Tinta y desencantado siguen aplazados en #1134.
 
 **Entrega:**

@@ -109,3 +109,8 @@ no se ha retocado la imagen. Se revisaron transparencia y disposición del arte.
 Servidor 3000 detenido. Instancia Supabase local y sus datos de fixture eliminados;
 Docker Desktop cerrado (se había iniciado para este gate). Worktree previo R4a conservado.
 Pendiente aceptación jugable y autorización de publicación, seguimiento #1123.
+
+Implementación guardada en `f1c63aac`. Gate de lint del diff contra `cbf9d65e`: 74 fuentes,
+cero errores (cuatro warnings de fixtures). Rama aún local; descripción de PR preparada.
+La subida de rama y creación de PR quedaron pendientes de autorización explícita tras el
+rechazo de la revisión automática de permisos. No se realizó push, merge ni despliegue.
