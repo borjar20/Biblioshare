@@ -1,4 +1,6 @@
 // Local-only external API fixture. Loaded explicitly by the archive test server.
+// This fixture runs through NODE_OPTIONS=--require before Next starts.
+/* eslint-disable @typescript-eslint/no-require-imports */
 if (!/^http:\/\/(127\.0\.0\.1|localhost):54321$/.test(process.env.NEXT_PUBLIC_SUPABASE_URL || '')) {
   throw new Error('Archive TMDB fixture requires disposable local Supabase');
 }

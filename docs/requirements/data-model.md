@@ -2,7 +2,7 @@
 
 > **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
 > `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
-> Aplicación en dev y producción y reparación de cuentas reales pendientes.
+> Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.
 
 > **Delta Letterboxd #1137–#1145, 2026-09-08:** implementación y migraciones verificadas
 > en Supabase local, dev remoto y producción. Siete migraciones aplicadas; RLS y permisos comprobados. Cron de producción validado con importación sintética privada y limpieza. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
@@ -1220,7 +1220,7 @@ y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en
 
 ### Importación ZIP de Letterboxd: trabajos y procedencia
 
-Base #1137–#1145 verificada en local, dev y producción; delta #1151–#1159 solo local (2026-09-08).
+Base #1137–#1145 y delta #1151–#1159 aplicados en local, dev y producción (2026-09-08).
 
 - `archive_imports`: dueño, huella SHA-256 del archivo, análisis normalizado, estado
   (`draft`, `running`, `partial`, `done`, `undone`), visibilidad, anuncio opcional y conflictos al deshacer.

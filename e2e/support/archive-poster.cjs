@@ -1,4 +1,6 @@
 // Distinct synthetic posters, generated locally without external image downloads.
+// CommonJS is required by the test server's Node preload hook.
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { deflateSync } = require('node:zlib');
 function crc32(bytes) {
   let crc = 0xffffffff;

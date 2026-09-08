@@ -1,11 +1,15 @@
 # Recuperación Letterboxd #1151–#1159 — validación local
 
-[Verificado · 2026-09-08 · datos sintéticos · sin aplicación remota]
+[Verificado · 2026-09-08 · pruebas sintéticas locales; esquema remoto comprobado]
 
 Implementación basada en la especificación aprobada
 `docs/superpowers/specs/2026-09-08-letterboxd-recovery-spec.md` (#1150).
 El usuario autorizó añadir migraciones y probarlas en una base local desechable.
-No se aplicó la migración en dev o producción ni se reparó una cuenta real.
+Posteriormente autorizó push/PR, migración y reparación de su cuenta, en ese orden.
+PR #1160 abierta; migración aplicada primero en dev y luego en producción. En ambos
+entornos se comprobaron existencia de RPC, RLS de recibos, registro exclusivo del worker,
+lectura sin escritura de intentos y ausencia de acceso directo al diario privado.
+La reparación de cuenta sigue pendiente de un plan aprobado; no se ha modificado su historial.
 
 ## Resultado y cobertura
 
@@ -67,5 +71,9 @@ rutas. No impiden estos tres flujos. Existe investigación abierta en
 que la causa sea idéntica ni demuestra que esté resuelta.
 
 Los proveedores externos están simulados: estas pruebas demuestran el contrato local,
-no la disponibilidad actual de TMDB. Quedan pendientes publicación, migración dev/prod
-y aceptación con el plan concreto de una cuenta real, rastreadas en #1150–#1159.
+no la disponibilidad actual de TMDB. Quedan pendientes merge/publicación y aceptación
+con el plan concreto de una cuenta real, rastreadas en #1150–#1159.
+
+La primera comprobación de calidad de PR detectó dos usos de `require` en fixtures
+CommonJS. Se documentó su necesidad (preload de Node) y se exceptuó esa regla únicamente
+en ambos archivos; lint dirigido pasó tras el ajuste.
