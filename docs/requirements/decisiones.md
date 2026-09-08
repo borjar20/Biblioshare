@@ -4550,3 +4550,18 @@ José Ángel confirma las tres rondas y el contrato el 2026-09-07. Spec `docs/su
 La madriguera del club reutiliza la escena de S1 y una proyección común de apariencia. Su RPC incluye la propia y sesenta vecinas con un total que excluye la propia; resuelve membresía activa y visibilidad en la misma lectura. El endpoint público es invocador y delega en un helper privado con privilegios de definidor y contexto de sesión obligatorio, sin ampliar las políticas de tablas.
 
 Se encapsulan los mensajes de mascota en el bloque de S3, porque el provider del club no incluye ese namespace. La carga tiene Suspense propio; reintentar refresca la ruta, y las acciones de seguimiento, bloqueo y privacidad invalidan ambas madrigueras. Los límites sociales aprobados se mantienen. Migración aplicada y verificada en desarrollo; producción y aceptación visual del usuario pendientes.
+
+## 2026-09-08 — Letterboxd: reutilizar película por identidad TMDB (#388)
+
+El diagnóstico de #388 asumía que encontrar el título inglés en local evitaría
+la búsqueda en TMDB. El matcher actual consulta ambas fuentes deliberadamente:
+un catálogo local incompleto no puede descartar otras películas homónimas.
+Se conserva esa búsqueda para mantener la resolución de ambigüedades.
+
+Una vez elegido el candidato, si no trae catalogId, se consulta movies por
+su tmdb_id con el cliente de sesión antes de pedir la ficha española. Esto
+reutiliza películas existentes aunque el título inglés no coincida con title
+ni original_title. Un error de consulta conserva la resolución previa.
+No se añade english_title ni backfill: no eliminarían la búsqueda necesaria.
+Para una coincidencia local por id se evita una petición de ficha española;
+no se afirma un ahorro de búsquedas ni una medición de tráfico en producción.

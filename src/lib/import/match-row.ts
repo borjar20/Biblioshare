@@ -106,6 +106,18 @@ export async function catalogIdForMovieCandidate(
   if (candidate.catalogId) return candidate.catalogId;
 
   const tmdbId = Number(candidate.externalId);
+  // El título inglés del CSV puede no existir en title/original_title (#388).
+  // La identidad de TMDB sí es estable: reutiliza la fila antes de pedir su
+  // ficha traducida. Esto ocurre DESPUÉS del desempate, nunca evita buscar
+  // candidatos en TMDB. Un error de lectura conserva el camino de alta previo.
+  if (Number.isSafeInteger(tmdbId) && tmdbId > 0) {
+    const { data, error } = await supabase
+      .from("movies")
+      .select("id")
+      .eq("tmdb_id", tmdbId)
+      .maybeSingle();
+    if (!error && data) return data.id;
+  }
   const spanish = Number.isFinite(tmdbId) ? await getMovieAsSearchResult(tmdbId) : null;
   return findOrCreateCatalogItem(supabase, spanish ?? candidate, userId);
 }
