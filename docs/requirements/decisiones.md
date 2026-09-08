@@ -4632,4 +4632,4 @@ de la sesión y su RLS, sin caché compartida ni permisos nuevos.
 
 El fallo de transporte se reprodujo con 500 UUID: `UND_ERR_HEADERS_OVERFLOW`;
 50 UUID funcionan. La prueba local con 940 películas verifica también la rejilla
-tras importar. Publicación y comprobación en la cuenta real pendientes en #1161.
+tras importar. Publicación y comprobación en la cuenta real se rastrean en #1161.

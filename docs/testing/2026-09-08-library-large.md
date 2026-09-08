@@ -1,6 +1,7 @@
 # Biblioteca grande — #1161
 
-Verificado localmente el 2026-09-08. Publicación pendiente.
+Registro de verificación local del 2026-09-08, previo a la publicación.
+La entrega y comprobación posterior en producción se rastrean en #1161 / PR #1162.
 
 ## Diagnóstico
 

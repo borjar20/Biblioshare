@@ -48,8 +48,8 @@ se cerraron, no como trabajo pendiente.
 
 ## P1 — siguiente bloque (issues abiertas)
 
-- [ ] #1161 — Biblioteca vacía con cientos de películas: corrección verificada
-  localmente el 2026-09-08; pendiente publicación y comprobación en producción.
+- [x] #1161 — Biblioteca vacía con cientos de películas: corrección y pruebas
+  locales completadas el 2026-09-08. Entrega y comprobación publicada en #1161 / PR #1162.
 
 **Barrida del 2026-08-19: los diez P1 de escritorio quedan CERRADOS** (#691, #678,
 #676, #675, #654, #643, #609, #584, #582, #514). Mergeada en #711 y **aplicada a
