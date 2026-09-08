@@ -1,9 +1,12 @@
 # Mascota R4b — Primer botín con efecto
 
-> **[Propuesta · preparada el 2026-09-08 · pendiente de revisión del usuario]**
+> **[Diseño en planificación · actualizado el 2026-09-08]**
 > Contrato heredado: hoja de ruta Parte II, R4b; issue #1123.
 > Base leída: `main` en `cbf9d65e`, con R4a integrada mediante #1127.
 > Este documento concreta el diseño; no acredita implementación, balance medido ni arte generado.
+> El usuario confirma una copia por aventura y calidad sin resorteos, y pide crear el plan.
+> Plan: `docs/superpowers/plans/2026-09-08-mascota-r4b-botin.md`. Sus elecciones técnicas
+> concretan esta propuesta; los números siguen siendo candidatos de calibración.
 
 ## 1. Punto de partida y alcance
 
@@ -191,11 +194,13 @@ Tras revisar este diseño: motor candidato y medición de balance; persistencia 
 y matriz SQL; integración de servicios; selección/comparación; arte y VFX; verificación
 completa y aceptación jugable. El plan detallado se escribe sobre la spec revisada.
 
-**Diseño abierto en #1123:** rango/distribución de calidad, identidad de las copias,
-tratamiento de las recompensas antiguas y reglas que mantengan la obtención de equipo
-ligada a oportunidades ganadas por uso de la app. No se empieza a implementar estos
-puntos como si el diseño inicial siguiera aprobado. La utilidad de tinta se sigue
-aparte en #1134 y no se decide por defecto dentro de R4b.
+**Concreción para el plan (#1123):** identidad de copia = UUID de la fila ganada;
+recompensas antiguas proyectadas a potencia neutral sin reescribirlas; nuevas copias
+con calidad guardada. El rango inicial propuesto para calibrar es ×0,8/0,9/1/1,1/1,2,
+aplicado solo al efecto del objeto. La calidad de una oportunidad es estable por
+usuario/día y no depende del intento. El usuario confirmó una recompensa por aventura
+vinculada al uso de la app, sin más botín ni resorteos al repetir combates. La utilidad
+de tinta se sigue aparte en #1134 y no entra por defecto en R4b.
 
 R4b permanece en #1123 hasta completar todo el contrato. Al implementar se actualizan
 modelo de datos, backlog, Parte II, grafo y decisiones append-only. Cualquier límite

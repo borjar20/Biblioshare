@@ -4577,3 +4577,14 @@ No se adoptan las propuestas de mejorar ranuras o comprar mejoras generales con 
 Tampoco se considera autorizado crear una moneda sin uso definido. Las copias se
 conservan; rango de calidad, identidad de instancia y compatibilidad con botín antiguo
 siguen como decisiones de diseño de R4b en #1123. No se implementa nada en esta revisión.
+
+## 2026-09-08 — Una recompensa por aventura y plan de R4b
+
+El usuario confirma que cada aventura vinculada a actividad cultural da una única
+copia de potencia fija; repetir combates no permite obtener más botín ni volver a
+sortearla. Pide crear el plan, guardado en
+`docs/superpowers/plans/2026-09-08-mascota-r4b-botin.md`. Tinta y desencantado permanecen
+fuera de esta entrega (#1134). El plan propone UUID de victoria como identidad de
+copia, lectura neutral para las antiguas y cinco potencias candidatas para calibrar;
+estas concreciones técnicas no son mediciones ni valores numéricos aprobados por el
+usuario. La petición autoriza planificación, no acredita ejecución ni despliegue.
