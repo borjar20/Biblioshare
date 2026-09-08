@@ -96,7 +96,7 @@ expect(copyFromWin({ id: "b", resolved_at: "2026-09-08T12:00:00Z",
 
 **Interfaces:** consume snapshot con `equipment`; produce `isEquipment(unknown): boolean`, `scaleLootEffect(base: number, qualityBp: number): number`, y evento `LOOT_EFFECT { itemId, copyId, effect: 'damage'|'shield'|'heal'|'cooldown'|'vulnerability', amount: number }`, con seq/tick como los demás eventos. `amount` es magnitud aplicada efectiva (daño/vida recortado a lo que queda, duración en ticks).
 
-- [ ] Test rojo del escalado; implementar con enteros y protección frente a overflow (BigInt intermedio y salida segura):
+- [x] Test rojo del escalado; implementar con enteros y protección frente a overflow (BigInt intermedio y salida segura):
 
 ```ts
 expect(scaleLootEffect(10, 8000)).toBe(8);
@@ -105,11 +105,11 @@ expect(isEquipment({ weapon: { copyId: "x", itemId: "loan_pendant",
   qualityBp: 10000 }, amulet: null })).toBe(false); // ranura falsa
 ```
 
-- [ ] Añadir casos al motor para cada efecto y su ausencia. Interrupción: bonus sobre daño de interrupción; pluma: bonus sobre la parte de Potencia proporcional a aciertos; lupa: extensión al entrar en vulnerable; amuleto: barrera al usar ulti incluida omitida; colgante: menor recarga solo en interrupción; medallón: cura limitada al empezar tramos 2/3, sin revivir. Primer tramo empieza lleno y no produce cura ficticia.
-- [ ] Implementar los candidatos de §3 de la spec. Aplicar calidad a la bonificación antes del redondeo final cuando sea posible; multiplicar con racionales enteros, evitando que truncar dos veces o escalar `hpMax` cambie el efecto previsto. Escribir aserciones numéricas para 8000/10000/12000 por objeto con un fixture de hp/atk fijo.
-- [ ] Emitir `LOOT_EFFECT` solo si hubo efecto real. No introducir RNG de combate para botín, ni retrasar KO para mostrar VFX. Respetar el orden del tick y que curas/reinicios no se repitan al reconstruir una sesión.
-- [ ] Ejecutar `npx vitest run src/lib/pet/battle/equipment.test.ts src/lib/pet/battle/tick-order.test.ts src/lib/pet/battle/chain.test.ts`; rojo→verde. Añadir fixture equipo vacío comparado con r4.1 en resultados y eventos de combate equivalentes.
-- [ ] Commit: `feat(pet): implement candidate r4.2 loot effects`.
+- [x] Añadir casos al motor para cada efecto y su ausencia. Interrupción: bonus sobre daño de interrupción; pluma: bonus sobre la parte de Potencia proporcional a aciertos; lupa: extensión al entrar en vulnerable; amuleto: barrera al usar ulti incluida omitida; colgante: menor recarga solo en interrupción; medallón: cura limitada al empezar tramos 2/3, sin revivir. Primer tramo empieza lleno y no produce cura ficticia.
+- [x] Implementar los candidatos de §3 de la spec. Aplicar calidad a la bonificación antes del redondeo final cuando sea posible; multiplicar con racionales enteros, evitando que truncar dos veces o escalar `hpMax` cambie el efecto previsto. Escribir aserciones numéricas para 8000/10000/12000 por objeto con un fixture de hp/atk fijo.
+- [x] Emitir `LOOT_EFFECT` solo si hubo efecto real. No introducir RNG de combate para botín, ni retrasar KO para mostrar VFX. Respetar el orden del tick y que curas/reinicios no se repitan al reconstruir una sesión.
+- [x] Ejecutar `npx vitest run src/lib/pet/battle/equipment.test.ts src/lib/pet/battle/tick-order.test.ts src/lib/pet/battle/chain.test.ts`; rojo→verde. Añadir fixture equipo vacío comparado con r4.1 en resultados y eventos de combate equivalentes.
+- [x] Commit: `feat(pet): implement candidate r4.2 loot effects`.
 
 ### Tarea 3: Calibración reproducible de calidad y builds
 
