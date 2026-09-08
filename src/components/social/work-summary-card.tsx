@@ -40,6 +40,8 @@ export async function WorkSummaryCard({ work }: { work: WorkSummary }) {
           coverUrl={work.coverUrl}
           title={work.title}
           className="aspect-[2/3] w-full"
+          // .post-grid column width minus card padding and border (30px).
+          sizes="(min-width: 1440px) 220px, (min-width: 1180px) 190px, 150px"
         />
       </Link>
 
