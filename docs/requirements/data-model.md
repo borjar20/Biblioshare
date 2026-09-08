@@ -1,5 +1,9 @@
 # Modelo de datos
 
+> **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
+> `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
+> Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.
+
 > **Delta Letterboxd #1137–#1145, 2026-09-08:** implementación y migraciones verificadas
 > en Supabase local, dev remoto y producción. Siete migraciones aplicadas; RLS y permisos comprobados. Cron de producción validado con importación sintética privada y limpieza. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
 
@@ -1216,26 +1220,40 @@ y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en
 
 ### Importación ZIP de Letterboxd: trabajos y procedencia
 
-Delta #1137–#1145, verificado localmente el 2026-09-08; pendiente de aplicación remota.
+Base #1137–#1145 y delta #1151–#1159 aplicados en local, dev y producción (2026-09-08).
 
 - `archive_imports`: dueño, huella SHA-256 del archivo, análisis normalizado, estado
-  (`draft`, `running`, `done`, `undone`), visibilidad, anuncio opcional y conflictos al deshacer.
+  (`draft`, `running`, `partial`, `done`, `undone`), visibilidad, anuncio opcional y conflictos al deshacer.
   Solo una importación no deshecha por dueño/huella. Un archivo deshecho se puede volver a subir.
 - `archive_import_items`: una película del archivo por ordinal; payload, candidato elegido,
-  candidatos de búsqueda, error/conflicto y estado recuperables. Puede contener varios pases.
+  candidatos de búsqueda, causa de error estable, intentos acotados a tres y estado recuperable. Puede contener varios pases.
 - `archive_import_sources`: identidad de origen → pase y snapshot importado. Permite reconocer
   reintentos, cambios del archivo y modificaciones locales. Borrar un pase deja su procedencia
-  sin referencia; una reimportación no lo recrea silenciosamente.
+  sin referencia; una reimportación no lo recrea silenciosamente. `fill_only` conserva valores
+  locales al completar huecos; `association_job` identifica la asociación explícita.
 - `archive_import_effects`: primer estado anterior y último estado escrito por trabajo/pase.
   Deshacer compara snapshots y revierte por película las dependencias del pase activo.
   Conserva grupos editados posteriormente, indica conflictos y nunca borra catálogo compartido.
+- `archive_import_decisions`: recibos por trabajo, fila, versión comparada y decisión;
+  repetir una confirmación devuelve el resultado registrado.
+- `private.archive_source_effects`: diario anterior/posterior de asociaciones y políticas
+  de procedencia; deshacer las restaura solo cuando no han cambiado después.
 
-Las cuatro tablas permiten SELECT solo al dueño mediante RLS; no permiten escrituras directas
+Las cinco tablas públicas permiten SELECT solo al dueño mediante RLS; no permiten escrituras directas
 a `authenticated` o acceso a `anon`. Las RPC públicas son wrappers invoker de funciones privadas
 definer con `search_path=''` y comprobación de dueño. Solo el procesador del servidor puede usar
 `service_role` para aplicar/finalizar trabajos confirmados. `archive_create`, `archive_confirm`,
 `archive_resolve` y `archive_undo` exigen sesión de dueño. Las columnas añadidas a jobs heredan
 sus grants de tabla; no se añaden grants de lectura directa a `passes.review`.
+
+`archive_review_job` y `archive_review_row` consultan sin modificar catálogo, pases ni asociaciones.
+Su versión incluye los datos locales y la procedencia comparada. `archive_decide` exige dueño,
+revalida bajo bloqueo y registra el recibo. Asociar, completar huecos, sustituir y crear pases
+separados son decisiones distintas; la interfaz anticipa sus efectos antes de confirmar.
+`archive_register_movie`, exclusiva del worker, exige una fila confirmada y una identidad TMDB
+coherente antes de rellenar metadatos ausentes. La reparación de catálogo no modifica el historial.
+`archive_summary` cuenta pases efectivamente representados y fichas incompletas; estas
+últimas y las incidencias pendientes impiden presentar como resuelto un trabajo histórico.
 
 La confirmación consume cuota de filas antes de arrancar el worker. El ZIP admite hasta 4 MiB
 comprimidos, 20 MiB expandidos, 1.000 entradas, 3.000 películas y 6.000 pases/pendientes.

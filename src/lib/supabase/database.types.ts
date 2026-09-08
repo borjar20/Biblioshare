@@ -14,6 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      archive_import_decisions: {
+        Row: {
+          decision: string
+          job_id: string
+          ordinal: number
+          result: Json
+          user_id: string
+          version: string
+        }
+        Insert: {
+          decision: string
+          job_id: string
+          ordinal: number
+          result: Json
+          user_id: string
+          version: string
+        }
+        Update: {
+          decision?: string
+          job_id?: string
+          ordinal?: number
+          result?: Json
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_import_decisions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "archive_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_decisions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_identities"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "archive_import_decisions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       archive_import_effects: {
         Row: {
           after_row: Json
@@ -65,6 +114,7 @@ export type Database = {
       }
       archive_import_items: {
         Row: {
+          attempts: number
           candidates: Json
           item_id: string | null
           job_id: string
@@ -75,6 +125,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempts?: number
           candidates?: Json
           item_id?: string | null
           job_id: string
@@ -85,6 +136,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempts?: number
           candidates?: Json
           item_id?: string | null
           job_id?: string
@@ -127,24 +179,37 @@ export type Database = {
       }
       archive_import_sources: {
         Row: {
+          association_job: string | null
+          fill_only: boolean
           pass_id: string | null
           snapshot: Json
           source_key: string
           user_id: string
         }
         Insert: {
+          association_job?: string | null
+          fill_only?: boolean
           pass_id?: string | null
           snapshot: Json
           source_key: string
           user_id: string
         }
         Update: {
+          association_job?: string | null
+          fill_only?: boolean
           pass_id?: string | null
           snapshot?: Json
           source_key?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "archive_import_sources_association_job_fkey"
+            columns: ["association_job"]
+            isOneToOne: false
+            referencedRelation: "archive_imports"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "archive_import_sources_pass_id_fkey"
             columns: ["pass_id"]
@@ -3053,6 +3118,29 @@ export type Database = {
       }
     }
     Functions: {
+      archive_register_movie: {
+        Args: { p_data: Json; p_job: string; p_ordinal: number; p_tmdb: number }
+        Returns: string
+      }
+      archive_error: {
+        Args: { p_code: string; p_job: string; p_ordinal: number }
+        Returns: undefined
+      }
+      archive_review_row: {
+        Args: { p_job: string; p_ordinal: number }
+        Returns: Json
+      }
+      archive_review_job: { Args: { p_job: string }; Returns: Json }
+      archive_summary: { Args: { p_job: string }; Returns: Json }
+      archive_decide: {
+        Args: {
+          p_decision: string
+          p_job: string
+          p_ordinal: number
+          p_version: string
+        }
+        Returns: Json
+      }
       archive_apply: {
         Args: { p_job: string; p_movie: string; p_ordinal: number }
         Returns: string

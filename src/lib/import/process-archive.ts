@@ -3,6 +3,8 @@ import type { Json } from "@/lib/supabase/database.types";
 import type { ArchiveMovie } from "./letterboxd-archive-types";
 import { matchImportRow } from "./match-row";
 import type { ImportRow } from "./types";
+import { ensureArchiveMovie } from "./archive-catalog";
+import { archiveErrorCode } from "./archive-error";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 
@@ -24,7 +26,10 @@ export async function processArchive(client: Client, jobId: string, deadline = D
     if (Date.now() >= deadline) break;
     try {
       const movie = item.payload as unknown as ArchiveMovie;
-      const match = item.item_id ? { kind: "matched" as const, catalogId: item.item_id } : await matchImportRow(client, "movie", archiveMatchRow(movie), job.user_id);
+      const resolve = (candidate: { catalogId?: string; externalId: string }) => ensureArchiveMovie(jobId, item.ordinal, candidate);
+      const match = item.item_id
+        ? { kind: "matched" as const, catalogId: await resolve({ catalogId: item.item_id, externalId: "" }) }
+        : await matchImportRow(client, "movie", archiveMatchRow(movie), job.user_id, resolve);
       if (match.kind !== "matched") {
         const result = await client.rpc("archive_result", { p_job: jobId, p_ordinal: item.ordinal, p_state: match.kind,
           p_candidates: (match.kind === "ambiguous" ? match.candidates : []) as unknown as Json });
@@ -34,8 +39,8 @@ export async function processArchive(client: Client, jobId: string, deadline = D
       const result = await client.rpc("archive_apply", { p_job: jobId, p_ordinal: item.ordinal, p_movie: match.catalogId });
       if (result.error) throw result.error;
       affected.push(match.catalogId);
-    } catch {
-      const result = await client.rpc("archive_result", { p_job: jobId, p_ordinal: item.ordinal, p_state: "error" });
+    } catch (error) {
+      const result = await client.rpc("archive_error", { p_job: jobId, p_ordinal: item.ordinal, p_code: archiveErrorCode(error) });
       if (result.error) throw result.error;
     }
   }
