@@ -858,6 +858,14 @@ primero es seguro (plan Task 14).
 
 ### R4b — Primer botín (contrato heredado; en diseño, #1123)
 
+**Refinamiento del 2026-09-08:** cada copia mantiene el efecto del objeto y tiene un
+multiplicador de potencia fijo al obtenerla; conseguir una mejor requiere otra copia.
+La tinta no modifica ese multiplicador. La utilidad de tinta y el desencantado asociado
+quedan pendientes en #1134: el usuario quiere que las mejoras y el avance de la ardilla
+estén ligados al uso de la app, no a jugar. No se adoptan mejoras de ranura ni un árbol
+comprado con tinta. Rango de calidad y compatibilidad del botín histórico se concretan
+en #1123; esta revisión no declara implementado el sistema.
+
 **Arranque autorizado el 2026-09-08.** R4a está integrada mediante #1127, con aceptación jugable y migración en producción registradas arriba. La petición del usuario «sincroniza la documentación y vamos con R4b» permite avanzar al diseño; no equivale a una nueva medición de hábitos ni de cuentas reales. Propuesta técnica: `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`. El hito sigue abierto hasta implementar, verificar y aceptar su botín.
 
 **Entrega:**

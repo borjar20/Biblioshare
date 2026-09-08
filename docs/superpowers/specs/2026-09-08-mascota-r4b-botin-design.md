@@ -15,21 +15,32 @@ documentación y avanzar con R4b. No se infieren nuevas partidas ni mediciones d
 R4a ya guarda seis ids estables en `pet_battles.reward`. `inventoryFrom` cuenta las
 copias del histórico de victorias: ese histórico sigue siendo la fuente del inventario.
 R4b permite equipar un arma y un amuleto y hace efectivos los seis objetos en r4.2.
-Incluye comparación, iconos y VFX. No añade tienda, moneda, mejoras, rarezas ni equipo
-por clase. No cambia XP, nivel visible, etapa, concesión de aventuras ni sorteo de botín.
+Incluye comparación, iconos y VFX. Refinamiento acordado el 2026-09-08: las copias de
+un mismo objeto conservan el efecto pero tienen un multiplicador de potencia variable,
+fijado al obtenerlas. Encontrar una copia mejor es independiente de la futura tinta.
+No cambia XP, nivel visible, etapa ni concesión de aventuras. Se conserva la selección
+del tipo de objeto de R4a; se amplía el diseño de su calidad, sin resorteos por reintento.
+
+**Tinta y desencantado: utilidad aplazada, #1134.** El usuario quiere que las mejoras
+y el avance de la ardilla estén ligados al uso de la app, no a jugar. No se aprobaron
+mejoras de ranura ni atributos comprados con tinta, ni mejorar el multiplicador con
+ella. No se da por aprobado implementar saldo, conversión o gasto antes de definir
+su utilidad. Esta decisión sustituye la propuesta inicial de mejoras garantizadas.
 
 ## 2. Experiencia propuesta
 
 La sección de equipo de `/mascota` muestra las dos ranuras y el inventario agrupado
-por ranura, con nombre, efecto concreto, copias y estado equipado. Seleccionar un
+por ranura, con nombre, efecto concreto, potencia de cada copia y estado equipado. Seleccionar un
 objeto presenta el equipado y el candidato juntos, con sus efectos completos: no hay
 un indicador global de «mejor», porque ofrecen decisiones distintas.
 
 Equipar y quitar equipo es gratis. Cada ranura admite vacío. Nadie recibe selección
 automática al publicar R4b: lo ganado aparece utilizable y el usuario elige. La victoria
-presenta el objeto recibido y permite compararlo; una copia repetida se comunica como
-tal y aumenta el contador. Las copias no acumulan efectos, no se consumen y no se
-convierten en moneda. No se promete un uso futuro de los duplicados.
+presenta la copia recibida y permite comparar su efecto efectivo con el equipado.
+El multiplicador queda fijo: conseguir una versión mejor requiere obtener otra copia,
+no gastar tinta ni volver a resolver la misma recompensa. No se fusionan automáticamente
+copias de distinta potencia ni se destruyen las inferiores. La utilidad de desencantar
+queda registrada en #1134; no se ofrece una conversión sin un uso decidido para la tinta.
 
 La selección se guarda entre dispositivos. Mientras se envía una elección, se evita
 un segundo envío desde ese control. Ante un fallo se conserva la selección confirmada
@@ -54,7 +65,10 @@ al contrato. El entrenamiento nuevo usa equipo para probarlo gratuitamente.
 Los ids y las ranuras de `src/lib/pet/loot/catalog.ts` se conservan. Los números de
 esta tabla son **candidatos de simulación**, no un balance aprobado. Se ajustan antes
 de publicar r4.2, sin modificar r4.1. Todo el balance vive dentro de la nueva versión
-y forma parte de su hash de contenido.
+y forma parte de su hash de contenido. Con calidad variable, esta tabla define efectos
+base candidatos: el rango y distribución del multiplicador, su aplicación y el valor
+de las copias históricas se concretan en #1123 antes de implementar. La tabla ya no
+representa valores idénticos para todas las copias de un objeto.
 
 | Objeto | Ranura | Efecto propuesto | Candidato inicial |
 |---|---|---|---|
@@ -72,7 +86,8 @@ KO, no se llega al tramo siguiente y no hay cura. La lupa es situacional contra
 Coraza; la comparación lo explica en lugar de prometer un bonus universal.
 
 Porcentajes con enteros y redondeo hacia abajo, después del cálculo base del efecto;
-la recarga nunca baja de un tick. No se añaden tiradas aleatorias para los objetos.
+la recarga nunca baja de un tick. No se añaden tiradas durante el combate para los
+objetos: el multiplicador proviene de la recompensa guardada y entra en el snapshot.
 El orden de transiciones, inputs, básicas y final de tramo sigue siendo el de R4a.
 Los efectos producen eventos identificados por objeto, consumidos por UI y replay;
 el cliente no dispara efectos de juego por terminar una animación.
@@ -82,11 +97,14 @@ el cliente no dispara efectos de juego por terminar una animación.
 **Alternativas consideradas.** Guardar objetos e inventario en una tabla nueva
 duplicaría el historial de R4a. Dos columnas en `pet_state` mezclarían equipo con
 identidad y exigirían ampliar sus grants. Se propone una tabla pequeña de selección
-`pet_loadout`, separada, con `user_id` único, `weapon_id`, `amulet_id` nullable y fecha
-de actualización. Ausencia de fila significa ambas ranuras vacías.
+`pet_loadout`, separada, con `user_id` único y referencia nullable a la copia equipada
+en cada ranura, más fecha de actualización. Ausencia de fila significa ambas ranuras
+vacías. El diseño inicial con solo ids de catálogo queda sustituido: ya no basta para
+distinguir dos copias con distinta potencia. La identidad de copia y la compatibilidad
+de recompensas de R4a se concretan en #1123 antes de cerrar la persistencia.
 
 La tabla tiene RLS y lectura exclusiva del dueño. La escritura pasa por el servidor
-autenticado, que comprueba id, ranura y posesión contra victorias guardadas; ni el
+autenticado, que comprueba copia, potencia guardada, ranura y posesión contra victorias; ni el
 cliente ni una llamada directa pueden inventar un objeto. La operación de escritura
 vuelve a validar esas condiciones en base de datos. Los permisos de las funciones
 se revocan de PUBLIC y anon; solo se otorga la ejecución que requiera la ruta elegida.
@@ -116,8 +134,9 @@ reales antes de publicar el código dependiente.
 Se crea `versions/r4.2` con la herramienta de versiones existente. La nueva versión
 contiene el catálogo mecánico cerrado, validación del equipo del snapshot, efectos,
 eventos y fixtures. No importa valores mecánicos del catálogo mutable de presentación.
-El snapshot r4.2 exige las dos ranuras explícitas, admitiendo null y rechazando ids
-desconocidos o en ranura incorrecta. Los snapshots antiguos los validan sus motores
+El snapshot r4.2 exige las dos ranuras explícitas y la potencia fija de cada copia,
+admitiendo null y rechazando ids desconocidos, potencias fuera del rango o ranuras
+incorrectas. Los snapshots antiguos los validan sus motores
 conservados. Los contratos compartidos permiten representar ambas generaciones.
 
 Los eventos y el digest se re-simulan desde ese snapshot y su contenido congelado.
@@ -145,7 +164,8 @@ No se declara R4b terminada con iconos provisionales o VFX pendientes.
    Reanudar no repite curas. Equipo vacío reproduce los resultados de r4.1 con los
    mismos inputs y seeds (el digest r4.2 difiere por versión/snapshot).
 2. **Balance:** comparar las 16 combinaciones (tres armas + vacío por tres amuletos
-   + vacío) en entrenamiento y cadenas de tres, con los mismos seeds y los seis
+   + vacío), además de calidad mínima, intermedia y máxima, en entrenamiento y cadenas
+   de tres, con los mismos seeds y los seis
    perfiles de referencia. Incluir políticas sin pulsar, spam, interrupción + ulti
    y espera de vulnerabilidad; medir victorias, vida y duración por enemigo/cadena.
    Repetir la muestra de 200 seeds del baseline y validar en otra muestra fija.
@@ -155,7 +175,8 @@ No se declara R4b terminada con iconos provisionales o VFX pendientes.
 3. **Autoridad:** objeto no poseído, ranura incorrecta, usuario ajeno y escritura
    directa rechazados; cambiar en otra pestaña no altera un combate iniciado;
    equipar/iniciar concurrentes producen un snapshot coherente; reintentos conservan
-   snapshot, resultado y botín. Inventario anterior y copias permanecen intactos.
+   snapshot, resultado, botín y multiplicador. Reintentos de resolución no vuelven a
+   sortear calidad ni entregan otra copia. Inventario anterior y copias permanecen intactos.
 4. **Historia:** pruebas normativas de todas las versiones y resolución/replay de
    filas antiguas abiertas y resueltas. Cambiar el catálogo visible no cambia un replay.
 5. **UI:** ganar → comparar → equipar → entrenamiento con efecto → reanudar aventura
@@ -169,6 +190,12 @@ No se declara R4b terminada con iconos provisionales o VFX pendientes.
 Tras revisar este diseño: motor candidato y medición de balance; persistencia atómica
 y matriz SQL; integración de servicios; selección/comparación; arte y VFX; verificación
 completa y aceptación jugable. El plan detallado se escribe sobre la spec revisada.
+
+**Diseño abierto en #1123:** rango/distribución de calidad, identidad de las copias,
+tratamiento de las recompensas antiguas y reglas que mantengan la obtención de equipo
+ligada a oportunidades ganadas por uso de la app. No se empieza a implementar estos
+puntos como si el diseño inicial siguiera aprobado. La utilidad de tinta se sigue
+aparte en #1134 y no se decide por defecto dentro de R4b.
 
 R4b permanece en #1123 hasta completar todo el contrato. Al implementar se actualizan
 modelo de datos, backlog, Parte II, grafo y decisiones append-only. Cualquier límite

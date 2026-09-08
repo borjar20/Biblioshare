@@ -4563,3 +4563,17 @@ R4b pasa a diseño en #1123. La propuesta `docs/superpowers/specs/2026-09-08-mas
 concreta equipo, duplicados, efectos, compatibilidad y verificación. Sus números son
 candidatos de calibración y el diseño aún requiere revisión; no se consideran aprobados
 por esta entrada. Se conserva r4.1 y el inventario derivado del histórico de aventuras.
+
+## 2026-09-08 — Calidad del botín independiente de tinta; utilidad de tinta aplazada
+
+En el refinamiento de R4b (#1123), el usuario pide copias con el mismo efecto y distinto
+multiplicador de potencia, fijo al obtenerlas: encontrar otra copia mejor es un eje
+separado del desencantado. La tinta no sirve para subir ese multiplicador. La propuesta
+de mejoras garantizadas se separó de la calidad del objeto y no llegó a concretarse.
+
+El usuario decide dejar pendiente la utilidad de la tinta (#1134), porque quiere que
+las mejoras y el avance de la ardilla estén ligados al uso de Biblioshare, no a jugar.
+No se adoptan las propuestas de mejorar ranuras o comprar mejoras generales con tinta.
+Tampoco se considera autorizado crear una moneda sin uso definido. Las copias se
+conservan; rango de calidad, identidad de instancia y compatibilidad con botín antiguo
+siguen como decisiones de diseño de R4b en #1123. No se implementa nada en esta revisión.
