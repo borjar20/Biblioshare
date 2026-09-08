@@ -1,9 +1,9 @@
-# ZIP completo de Letterboxd — verificación local
+# ZIP completo de Letterboxd — verificación local y publicación
 
 > [Evidencia · 2026-09-08 · tickets #1137–#1145 · base 44545b478c71ff41e63bb5a27bb08edd4d725991]
 
 Implementación local de la spec `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md`.
-No demuestra despliegue, aplicación remota de migraciones ni aceptación con una cuenta real.
+La evidencia local se complementa con la validación remota de publicación al final del documento. No acredita aceptación del ZIP personal.
 No se utilizó ni versionó el ZIP personal: todos los archivos, textos y cuentas de prueba son sintéticos.
 
 ## Resultados
@@ -124,3 +124,27 @@ Nueva ejecución pendiente al publicar esta corrección.
 Activación remota pendiente: dev no tiene app_base_url ni cron_secret en Vault.
 El conector Vercel devuelve 403 para el equipo y la CLI está sin sesión. No se acredita
 recuperación programada remota ni despliegue de producción.
+
+## Publicación verificada — 2026-09-08
+
+PR #1147 fusionada en ec48e95138fc01950d04573213fa60142995012d. CI de 94ea7f8:
+quality, empty-database, critical-flows y preview PASS. Despliegue de producción:
+Vercel SUCCESS; endpoint POST sin secreto devuelve 401.
+
+Las siete migraciones se aplicaron a producción vmutcradmodhiltuohys. Verificados
+RLS y SELECT sin escritura directa authenticated en las cuatro tablas de importación.
+Vault contiene app_base_url y cron_secret. No se mostraron valores secretos.
+El advisor de seguridad no devolvió hallazgos relativos a archive_import/dispatch_archive.
+
+Cuenta persistente privada codex_qa_prod: creación y confirmación por REST de una
+importación sintética, sin llamar a archive_apply ni al endpoint desde el cliente.
+El cron real la completó antes de la primera consulta a los 15 segundos. Comprobados
+vista completed sin fecha con nota 8, pendiente y privacidad de ambos pases.
+Job a3649d38-84f0-4bfd-b5d6-a6fc1fd77dee: done/imported; cron succeeded a las
+14:30 UTC. Deshacer devolvió cero conflictos; lectura independiente confirmó undone
+y cero pases restantes de la película de prueba. Sesión cerrada; cuenta conservada.
+
+Esta evidencia resuelve los pendientes de configuración y publicación descritos en
+las secciones anteriores. No se desplegó una aplicación paralela de dev ni se usó
+el ZIP personal; la prueba de recuperación automática se hizo al publicar, por
+la opción elegida expresamente por el usuario.
