@@ -193,13 +193,13 @@ export async function hydrateItems(
   // lo que is_public escondía.
   const { data: closedPassRows } = await supabase
     .from("passes")
-    .select("id, item_type, item_id, finished_on, rating")
+    .select("id, item_type, item_id, finished_on, created_at, rating")
     .eq("user_id", userId)
     .in("item_id", allItemIds)
     // Un pase abierto ("lo estoy leyendo ahora") todavía no es una lectura
     // terminada: no debe sumar a "Leído {count} veces" (colección, perfiles
     // públicos y export CSV comparten este contador) ni aportar nota/reseña.
-    .not("finished_on", "is", null);
+    .in("status", ["completed", "dropped"]);
 
   const rereadCountByItem = new Map<string, number>();
   for (const row of closedPassRows ?? []) {
@@ -215,7 +215,8 @@ export async function hydrateItems(
     (closedPassRows ?? []).map((r) => ({
       id: r.id,
       itemKey: `${r.item_type}:${r.item_id}`,
-      finishedOn: r.finished_on as string,
+      finishedOn: r.finished_on ?? "",
+      createdAt: r.created_at,
       rating: r.rating,
     }))
   );

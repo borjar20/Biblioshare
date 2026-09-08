@@ -109,7 +109,7 @@ export function computeLibraryHealth(
   // fecha de abandono en el esquema, así que incluirlos los dejaría abiertos
   // para siempre y la curva subiría sola: preferimos no contarlos a contarlos
   // mal.
-  const openable = rows.filter((r) => r.status !== "dropped");
+  const openable = rows.filter((r) => r.status !== "dropped" && !(r.status === "completed" && r.finished_on === null));
   const backlog: LibraryHealth["backlog"] = [];
   for (let i = MONTHS_BACK - 1; i >= 0; i--) {
     // Primer día del mes SIGUIENTE al que se cierra: el corte es exclusivo.

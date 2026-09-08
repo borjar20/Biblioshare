@@ -1,5 +1,9 @@
 # Modelo de datos
 
+> **Delta Letterboxd #1137–#1145, 2026-09-08:** implementación y migraciones verificadas
+> en Supabase local desechable. Este delta NO está aplicado ni verificado en dev remoto
+> o producción. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
+
 > **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
 > verificados en dev; comportamiento SQL con fixtures y rollback verificado en
 > Supabase local. Definición y permisos verificados también en producción el 2026-09-07.
@@ -1047,24 +1051,25 @@ Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status
   importado nace como pases cerrados que nunca pasaron por `planned`, así que ahí es `NULL`.
   Por eso «la pila» ordena por `created_at` (proxy con datos para todos) y no por `planned_on`.
 
-- ⚠️ **`finished_on IS NULL` ⟺ pase abierto, y desde el 2026-08-20 lo garantiza la BASE**, no
-  solo TypeScript: constraint `passes_status_dates`
-  (`20260868_passes_state_dates_invariant.sql`, **aplicada y verificada en DEV** contra
-  `pg_constraint` — probada además insertando un `completed` sin fecha, que sale con
-  `check_violation`; **aplicada y verificada también en PROD el 2026-08-20**, con la
-  misma prueba: un `completed` sin fecha sale con `check_violation` y la transacción
-  aborta sola).
+- **Pase abierto = estado `planned` o `in_progress`**, no ausencia de fecha.
+  El delta local `20260908103210_letterboxd_unknown_dates.sql` cambia
+  `passes_status_dates` para admitir un visionado completado cuya fecha se desconoce:
 
   ```sql
-  CHECK ((status in ('completed','dropped')) = (finished_on is not null))
+  CHECK (
+    (status in ('planned','in_progress') and finished_on is null)
+    or status = 'completed'
+    or (status = 'dropped' and finished_on is not null)
+  )
   ```
 
-  Importa porque toda la app aguas abajo define «pase abierto» así (`log-panel.tsx:288`,
-  `get-passes.ts:25`). El camino que lo rompía era el importador: un CSV de Goodreads con
-  *Date Read* vacía creaba un `completed` sin fechas que la biblioteca pintaba como lectura EN
-  CURSO, y al releer la obra quedaban dos pases abiertos de facto (#714). Ahora `commit-row.ts`
-  y su gemelo SQL `resolve_pending_import` cierran con la fecha de importación cuando el CSV no
-  trae ninguna.
+  Los completados sin fecha cuentan en totales y conservan nota y reseña, pero no entran
+  en días, meses o años. Se ordenan después de los visionados fechados; dos visionados
+  del mismo día se desempatan por registro administrativo y, finalmente, por id.
+  `created_at` del ZIP es la fecha administrativa, nunca una fecha de visionado inventada.
+  El CSV anterior mantiene su comportamiento de compatibilidad. **Estado remoto anterior:**
+  dev/prod tenían la equivalencia fecha no nula ↔ cerrado verificada el 2026-08-20;
+  este cambio requiere aplicar primero las nuevas migraciones en dev.
 
 - ⚠️ **Y si están las dos fechas, van en orden**: constraint `passes_started_before_finished`
   (`20260873_passes_started_before_finished.sql`, #729).
@@ -1209,6 +1214,42 @@ regla que `pagesForPass` en el código web (§2). Verificado en dev sobre un usu
 primaria) a 1200 (la obra). Riesgo vivo: como la web sigue usando el TS, widget
 y dashboard podrían divergir cerca de medianoche (el server TS calcula "hoy" en UTC) — ver
 `decisiones.md` e issue de reconciliación.
+
+### Importación ZIP de Letterboxd: trabajos y procedencia
+
+Delta #1137–#1145, verificado localmente el 2026-09-08; pendiente de aplicación remota.
+
+- `archive_imports`: dueño, huella SHA-256 del archivo, análisis normalizado, estado
+  (`draft`, `running`, `done`, `undone`), visibilidad, anuncio opcional y conflictos al deshacer.
+  Solo una importación no deshecha por dueño/huella. Un archivo deshecho se puede volver a subir.
+- `archive_import_items`: una película del archivo por ordinal; payload, candidato elegido,
+  candidatos de búsqueda, error/conflicto y estado recuperables. Puede contener varios pases.
+- `archive_import_sources`: identidad de origen → pase y snapshot importado. Permite reconocer
+  reintentos, cambios del archivo y modificaciones locales. Borrar un pase deja su procedencia
+  sin referencia; una reimportación no lo recrea silenciosamente.
+- `archive_import_effects`: primer estado anterior y último estado escrito por trabajo/pase.
+  Deshacer compara snapshots y revierte por película las dependencias del pase activo.
+  Conserva grupos editados posteriormente, indica conflictos y nunca borra catálogo compartido.
+
+Las cuatro tablas permiten SELECT solo al dueño mediante RLS; no permiten escrituras directas
+a `authenticated` o acceso a `anon`. Las RPC públicas son wrappers invoker de funciones privadas
+definer con `search_path=''` y comprobación de dueño. Solo el procesador del servidor puede usar
+`service_role` para aplicar/finalizar trabajos confirmados. `archive_create`, `archive_confirm`,
+`archive_resolve` y `archive_undo` exigen sesión de dueño. Las columnas añadidas a jobs heredan
+sus grants de tabla; no se añaden grants de lectura directa a `passes.review`.
+
+La confirmación consume cuota de filas antes de arrancar el worker. El ZIP admite hasta 4 MiB
+comprimidos, 20 MiB expandidos, 1.000 entradas, 3.000 películas y 6.000 pases/pendientes.
+Se conservan seis trabajos nuevos por hora como máximo por cuenta. El archivo se descomprime
+en memoria; no se guarda el ZIP ni se interpreta contenido como instrucciones.
+
+`after()` inicia la ejecución y `private.dispatch_archive_imports` la recupera por pg_cron cada
+minuto, usando los valores ya existentes de Vault `app_base_url` y `cron_secret` y la ruta
+`POST /api/cron/archive-imports`. Sin esa configuración ambiental no hay recuperación automática
+tras terminar el proceso web; la interfaz conserva el botón para continuar. Cada lote es acotado
+y sus efectos son atómicos e idempotentes. Los errores quedan disponibles para reintento sin
+bloquear trabajos posteriores. El anuncio opt-in crea un único post `thought`, no eventos de
+visionado. Deshacer también lo elimina si no fue editado.
 
 ### Importación: `pending_import_rows` + `resolve_pending_import`
 
