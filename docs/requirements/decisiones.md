@@ -4620,3 +4620,18 @@ R4b está verificado en dev y base local; la aceptación jugable y publicación 
 en #1123. Tinta/desencantado siguen en #1134. El rollback no debe volver al frontend R4a
 si ya existen batallas r4.2 abiertas: conservar el motor/reanudación r4.2 y, si hace falta,
 desactivar solo nuevos inicios. Mantener la migración aditiva y las copias ya concedidas.
+
+## 2026-09-08 — Letterboxd: reutilizar película por identidad TMDB (#388)
+
+El diagnóstico de #388 asumía que encontrar el título inglés en local evitaría
+la búsqueda en TMDB. El matcher actual consulta ambas fuentes deliberadamente:
+un catálogo local incompleto no puede descartar otras películas homónimas.
+Se conserva esa búsqueda para mantener la resolución de ambigüedades.
+
+Una vez elegido el candidato, si no trae catalogId, se consulta movies por
+su tmdb_id con el cliente de sesión antes de pedir la ficha española. Esto
+reutiliza películas existentes aunque el título inglés no coincida con title
+ni original_title. Un error de consulta conserva la resolución previa.
+No se añade english_title ni backfill: no eliminarían la búsqueda necesaria.
+Para una coincidencia local por id se evita una petición de ficha española;
+no se afirma un ahorro de búsquedas ni una medición de tráfico en producción.
