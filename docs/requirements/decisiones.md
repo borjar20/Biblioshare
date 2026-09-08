@@ -4550,3 +4550,16 @@ José Ángel confirma las tres rondas y el contrato el 2026-09-07. Spec `docs/su
 La madriguera del club reutiliza la escena de S1 y una proyección común de apariencia. Su RPC incluye la propia y sesenta vecinas con un total que excluye la propia; resuelve membresía activa y visibilidad en la misma lectura. El endpoint público es invocador y delega en un helper privado con privilegios de definidor y contexto de sesión obligatorio, sin ampliar las políticas de tablas.
 
 Se encapsulan los mensajes de mascota en el bloque de S3, porque el provider del club no incluye ese namespace. La carga tiene Suspense propio; reintentar refresca la ruta, y las acciones de seguimiento, bloqueo y privacidad invalidan ambas madrigueras. Los límites sociales aprobados se mantienen. Migración aplicada y verificada en desarrollo; producción y aceptación visual del usuario pendientes.
+
+## 2026-09-08 — Sincronización de R3/R4a y arranque del diseño de R4b (#1123)
+
+El usuario pide «sincroniza la documentación y vamos con R4b». Se toma como base main
+en `cbf9d65e`: la hoja de ruta ya registra la aceptación jugable del 2026-09-07 y la
+migración de aventuras en producción antes del merge de #1127. README, backlog y la
+sección R3 conservaban estados anteriores; se sincronizan sin reescribir las entradas
+históricas de este documento ni atribuir pruebas nuevas o una muestra no comunicada.
+
+R4b pasa a diseño en #1123. La propuesta `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`
+concreta equipo, duplicados, efectos, compatibilidad y verificación. Sus números son
+candidatos de calibración y el diseño aún requiere revisión; no se consideran aprobados
+por esta entrada. Se conserva r4.1 y el inventario derivado del histórico de aventuras.

@@ -1,6 +1,6 @@
 # Biblioshare — RPG de mascota: visión y hoja de ruta
 
-> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06, con enmienda social del 2026-09-07 · Parte II (hoja de ruta) viva, revisada el 2026-09-07]**
+> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06, con enmienda social del 2026-09-07 · Parte II (hoja de ruta) viva, revisada el 2026-09-08]**
 >
 > Esta redacción sustituye a la inicial del mismo día (commit `e47ca3d2` de la PR #1079) tras su
 > revisión, y al alcance de la spec de combate del 2026-09-04
@@ -797,7 +797,7 @@ criterios con personas. El arreglo de #1085 está integrado en #1099.
 
 ## R3 — Ulti y segundo enemigo
 
-**Hito activo (#1106).** Spec técnica: `docs/superpowers/specs/2026-09-06-mascota-r3-ulti-design.md`.
+**Implementado (PR #1107) y aceptado el 2026-09-07 (#1106).** Spec técnica: `docs/superpowers/specs/2026-09-06-mascota-r3-ulti-design.md`. Se sincroniza el estado el 2026-09-08 con la aceptación ya registrada en la cabecera; no se atribuyen nuevas pruebas ni un número de partidas.
 
 **Entrega:**
 
@@ -856,7 +856,9 @@ primero es seguro (plan Task 14).
 - La política «interrumpir» gana la cadena entre el 50 y el 75 % y «no pulsar» menos del 3 %
   (política de referencia: interrumpir + ulti).
 
-### R4b — Primer botín (contrato heredado; se concreta cuando R4a pase sus criterios)
+### R4b — Primer botín (contrato heredado; en diseño, #1123)
+
+**Arranque autorizado el 2026-09-08.** R4a está integrada mediante #1127, con aceptación jugable y migración en producción registradas arriba. La petición del usuario «sincroniza la documentación y vamos con R4b» permite avanzar al diseño; no equivale a una nueva medición de hábitos ni de cuentas reales. Propuesta técnica: `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`. El hito sigue abierto hasta implementar, verificar y aceptar su botín.
 
 **Entrega:**
 
