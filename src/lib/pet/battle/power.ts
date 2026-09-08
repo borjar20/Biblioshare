@@ -21,7 +21,7 @@ export function fighterStats(tier: number): { hpMax: number; atk: number } {
   return { hpMax: 100 + 10 * tier, atk: 8 + 2 * tier };
 }
 
-export { enemyStats } from "./versions/r4.1/power";
+export { enemyStats } from "./versions/r4.2/power";
 
 export function buildSnapshot(p: {
   name: string;
@@ -31,5 +31,5 @@ export function buildSnapshot(p: {
 }): BattleSnapshot {
   const tier = powerTier(p.attributes);
   const { hpMax, atk } = fighterStats(tier);
-  return { name: p.name, petClass: p.petClass, stage: p.stage, attributes: { ...p.attributes }, tier, hpMax, atk };
+  return { name: p.name, petClass: p.petClass, stage: p.stage, attributes: { ...p.attributes }, tier, hpMax, atk, equipment: { weapon:null, amulet:null } };
 }

@@ -1,15 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { startAdventure, resolveAdventure, replayAdventure } from "@/lib/pet/adventure/actions";
 import type { AdventureState } from "@/lib/pet/adventure/types";
 import { TrainingPanel } from "../training/training-panel";
-import { InventoryList } from "./inventory-list";
+import { EquipmentPanel } from "../loot/equipment-panel";
+import type { AdventureBattle } from "@/lib/pet/adventure/types";
 
 export function AdventurePanel({ initial }: { initial: AdventureState }) {
   const t = useTranslations("pet.adventure");
   const router = useRouter();
+  const [wonCopy, setWonCopy] = useState<AdventureBattle["adventure"]["copy"]>(null);
   const current = initial.current;
   const startLabel = current?.status === "open" ? "resume" : current ? "retry" : "start";
   const canStart = initial.pendingDays.length > 0 || current !== null;
@@ -21,7 +24,7 @@ export function AdventurePanel({ initial }: { initial: AdventureState }) {
     </div>
     {/* Siempre montado: si se desmontara al quedarse sin días pendientes, el `router.refresh()`
         posterior a ganar se llevaría por delante la pantalla de victoria (spec §8). */}
-    <TrainingPanel kind="adventure" startLabel={startLabel} onDone={() => router.refresh()} canStart={canStart} canStartAnother={initial.pendingDays.length > 0} actions={{ start: () => startAdventure(), resolve: (intent, inputs) => resolveAdventure(intent, inputs), replay: (intent) => replayAdventure(intent) }} />
-    <section aria-labelledby="inventory-title"><h3 id="inventory-title" className="font-serif text-lg font-semibold">{t("inventory")}</h3><InventoryList inventory={initial.inventory} /></section>
+    <TrainingPanel kind="adventure" startLabel={startLabel} onDone={battle => { const copy = (battle as AdventureBattle | null)?.adventure?.copy; if (copy) setWonCopy(copy); router.refresh(); }} canStart={canStart} canStartAnother={initial.pendingDays.length > 0} actions={{ start: () => startAdventure(), resolve: (intent, inputs) => resolveAdventure(intent, inputs), replay: (intent) => replayAdventure(intent) }} />
+    <EquipmentPanel copies={wonCopy && !initial.inventory.some(copy => copy.copyId === wonCopy.copyId) ? [wonCopy, ...initial.inventory] : initial.inventory} initialLoadout={initial.loadout} hasOpenAdventure={current?.status === "open"} suggestedCopyId={wonCopy?.copyId} />
   </div>;
 }

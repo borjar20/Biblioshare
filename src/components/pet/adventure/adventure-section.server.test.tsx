@@ -9,6 +9,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => ({})) 
 vi.mock("@/lib/pet/adventure/get-state", () => ({ getAdventureStateFor: vi.fn() }));
 // AdventurePanel arrastra las acciones (server-only) a nivel de módulo.
 vi.mock("@/lib/pet/adventure/actions", () => ({ startAdventure: vi.fn(), resolveAdventure: vi.fn(), replayAdventure: vi.fn() }));
+vi.mock("@/lib/pet/loot/actions", () => ({ equipLoot: vi.fn() }));
 vi.mock("@/lib/pet/training/actions", () => ({ startBattle: vi.fn(), resolveBattle: vi.fn(), replayTrainingBattle: vi.fn() }));
 
 afterEach(() => { vi.restoreAllMocks(); });

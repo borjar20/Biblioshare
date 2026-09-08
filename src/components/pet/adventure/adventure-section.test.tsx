@@ -5,12 +5,15 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../messages/es.json";
 import { AdventurePanel } from "./adventure-panel";
 import { RULESET } from "@/lib/pet/battle/content";
+import { BATTLE_RELEASES } from "@/lib/pet/battle/replay";
+const CURRENT_HASH=BATTLE_RELEASES.find(release=>release.rulesetVersion===RULESET.version)!.contentHash;
 import { snapshotForProfile } from "@/lib/pet/battle/profiles";
 import { seedFromIndex } from "@/lib/pet/battle/prng";
 import type { AdventureBattle, AdventureState } from "@/lib/pet/adventure/types";
 
 vi.mock("../training/combat-sprite", () => ({ CombatSprite: () => <div data-testid="combat-sprite" /> }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/lib/pet/loot/actions", () => ({ equipLoot: vi.fn() }));
 vi.mock("@/lib/pet/adventure/actions", () => ({
   startAdventure: vi.fn(), resolveAdventure: vi.fn(), replayAdventure: vi.fn(),
 }));
@@ -22,20 +25,20 @@ vi.mock("@/lib/pet/training/actions", () => ({
 
 afterEach(() => { cleanup(); });
 
-function renderPanel(initial: AdventureState) {
-  return render(<NextIntlClientProvider locale="es" messages={messages}><AdventurePanel initial={initial} /></NextIntlClientProvider>);
+function renderPanel(initial: Omit<AdventureState, "loadout">) {
+  return render(<NextIntlClientProvider locale="es" timeZone="Europe/Madrid" messages={messages}><AdventurePanel initial={{ ...initial, loadout: { weapon: null, amulet: null } }} /></NextIntlClientProvider>);
 }
 
 it("con aventura pendiente y sin actual: cuenta, botón de empezar e inventario", () => {
   renderPanel({
     pendingDays: ["2026-09-07"],
     current: null,
-    inventory: [{ itemId: "sharp_bookmark", slot: "weapon", count: 2 }],
+    inventory: [{ copyId: "copy-a", itemId: "sharp_bookmark", slot: "weapon", qualityBp: 12000, acquiredAt: "2026-09-07T00:00:00Z" }],
   });
   expect(screen.getByTestId("adventure-pending").textContent).toBe("1 aventura pendiente");
   expect(screen.getByRole("button", { name: "Empezar aventura" })).toBeTruthy();
-  expect(screen.getByText("Marcapáginas afilado")).toBeTruthy();
-  expect(screen.getByText("×2")).toBeTruthy();
+  fireEvent.click(screen.getByText("Marcapáginas afilado", {selector:"summary"}));
+  expect(screen.getByText("Potencia ×1,2")).toBeTruthy();
 });
 
 it("sin aventuras pendientes ni actual: mensaje de ninguna y botón deshabilitado", () => {
@@ -61,7 +64,7 @@ it("la pantalla de victoria sobrevive al router.refresh() con un solo día pendi
   const { startAdventure } = await import("@/lib/pet/adventure/actions");
   const won: AdventureBattle = {
     intentId: "adv-refresh", status: "resolved", seed: seedFromIndex(1),
-    snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x",
+    snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH,
     enemyId: "brote,brote,brote", inputs: [],
     result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 },
     digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: { itemId: "loan_pendant", slot: "amulet" } },
@@ -73,7 +76,7 @@ it("la pantalla de victoria sobrevive al router.refresh() con un solo día pendi
   expect(screen.getByText("¡Aventura superada!")).toBeTruthy();
 
   // Lo que produce el router.refresh() posterior a ganar: ya no queda día pendiente.
-  const after: AdventureState = { pendingDays: [], current: null, inventory: [{ itemId: "loan_pendant", slot: "amulet", count: 1 }] };
+  const after: AdventureState = { pendingDays: [], current: null, loadout: { weapon: null, amulet: null }, inventory: [{ copyId: "copy-b", itemId: "loan_pendant", slot: "amulet", qualityBp: 10000, acquiredAt: "2026-09-07T00:00:00Z" }] };
   rerender(<NextIntlClientProvider locale="es" messages={messages}><AdventurePanel initial={after} /></NextIntlClientProvider>);
   expect(screen.getByText("¡Aventura superada!")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Empezar aventura" })).toBeNull();

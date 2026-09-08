@@ -26,17 +26,14 @@ export function trainingRepository(client: Client, userId: string): TrainingRepo
   return {
     find,
     async insert(battle) {
-      const { data, error } = await client.from("pet_battles").insert({
-        user_id: userId, intent_id: battle.intentId, kind: "training", enemy_id: battle.enemyId,
-        ruleset_version: battle.rulesetVersion, content_hash: battle.contentHash, seed: battle.seed,
-        snapshot: battle.snapshot as unknown as Json, status: "open",
-      }).select("*").single();
-      if (error?.code === "23505") {
-        const winner = await find(battle.intentId);
-        if (winner) return winner;
-      }
+      const { data, error } = await client.rpc("start_pet_training", {
+        p_user: userId, p_intent: battle.intentId, p_enemy: battle.enemyId,
+        p_ruleset_version: battle.rulesetVersion, p_content_hash: battle.contentHash, p_seed: battle.seed,
+        p_snapshot: battle.snapshot as unknown as Json,
+      });
       if (error) throw error;
-      return project(data!);
+      if (!data?.[0]) throw new Error("UNAVAILABLE");
+      return project(data[0]);
     },
     async resolve(battle) {
       // Atomic first-writer-wins. Never update a resolved combat or its snapshot.

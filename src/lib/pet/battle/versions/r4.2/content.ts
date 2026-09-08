@@ -19,7 +19,7 @@ export const RULESET: Ruleset = {
     guardBasicDiv: 4,
   },
   adventure: { chainLength: 3 },
-  loot: { interruptPct: 25, powerPct: 50, vulnerabilityTicks: 10, ultiShieldPct: 5, cooldownTicks: 15, healPct: 5 },
+  loot: { interruptPct: 25, powerPct: 50, vulnerabilityTicks: 10, ultiShieldPct: 5, cooldownTicks: 10, healPct: 10 },
 };
 
 /** El enemigo de R2: dos anuncios contrarios (§4.3). Carga que conviene

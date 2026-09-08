@@ -133,7 +133,7 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
     if (resolved[0].result?.outcome === "win") {
       expect(resolved[0].reward?.itemId).toBeTruthy();
       await expect(panel.getByText("¡Aventura superada!")).toBeVisible();
-      await expect(page.getByTestId("pet-inventory")).toBeVisible();
+      await expect(page.getByTestId("pet-equipment")).toBeVisible();
       await expect(page.getByTestId("adventure-pending")).toHaveText("1 aventura pendiente");
     } else {
       expect(resolved[0].reward).toBeNull();

@@ -5,6 +5,11 @@ import { NextIntlClientProvider } from 'next-intl';
 import messages from '../../../../messages/es.json';
 import { UltiPuzzle } from './ulti-puzzle';
 afterEach(cleanup);
+it('explains the equipped quill and barrier using the stored copy potency', () => {
+ render(<NextIntlClientProvider locale="es" messages={messages}><UltiPuzzle seed="00000001000000020000000300000004" tick={120} equipment={{weapon:{copyId:"a",itemId:"heavy_ink_quill",qualityBp:12000},amulet:{copyId:"b",itemId:"last_page_amulet",qualityBp:8000}}} onConfirm={vi.fn()} onCancel={vi.fn()} /></NextIntlClientProvider>);
+ expect(screen.getByText(/Tu pluma aumenta un 60 %/)).toBeTruthy();
+ expect(screen.getByText(/Tu amuleto añade una barrera del 4 %/)).toBeTruthy();
+});
 it('keeps recipes visible and submits a tile-slot permutation without a timer', () => {
  const confirm = vi.fn();
  render(<NextIntlClientProvider locale="es" messages={messages}><UltiPuzzle seed="00000001000000020000000300000004" tick={120} onConfirm={confirm} onCancel={vi.fn()} /></NextIntlClientProvider>);

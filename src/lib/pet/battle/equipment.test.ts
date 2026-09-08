@@ -46,7 +46,7 @@ describe("r4.2 equipment authority and deterministic effects", () => {
     const c = ctx(null, copy("loan_pendant", 12000)); const st = createBattle(c);
     st.tick = 1; st.enemy.phase = "windup"; st.enemy.phaseUntil = 20;
     stepBattle(c, st, [skill(1)]);
-    expect(st.pet.skillReadyAt).toBe(43); // 1 + 60 - 18
+    expect(st.pet.skillReadyAt).toBe(49); // 1 + 60 - 12
     const idle = createBattle(c); idle.tick = 1; stepBattle(c, idle, [skill(1)]);
     expect(idle.pet.skillReadyAt).toBe(61);
   });

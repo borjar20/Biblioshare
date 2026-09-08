@@ -1,5 +1,4 @@
-// Catálogo de botín de R4a (spec §7). Sin efecto en combate hasta R4b: los ids son
-// estables y el comentario de cada uno es la dirección prevista, para que R4b no renombre.
+// IDs y ranuras conservados desde R4a; sus efectos se ejecutan a partir de r4.2.
 export const LOOT_SLOTS = ["weapon", "amulet"] as const;
 export type LootSlot = (typeof LOOT_SLOTS)[number];
 

@@ -94,4 +94,7 @@
 @keyframes tremble { 50% { transform: rotate(6deg); } }
 @keyframes strike { 50% { transform: translateX(18px); } }
 @keyframes recoil { 50% { transform: translateX(-12px) rotate(-8deg); } }
+.lootBurst { position: absolute; top: 18px; left: calc(25% - 32px); z-index: 2; width: 64px; height: 64px; image-rendering: pixelated; pointer-events: none; animation: lootFrames .72s steps(9, end) forwards; }
+.lootBurst[data-target="enemy"] { left: calc(75% - 32px); }
+@keyframes lootFrames { to { background-position-x: -576px; } }
 @media (prefers-reduced-motion: reduce) { .arena * { animation: none !important; transition: none !important; } }

@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { SparklesIcon as Sparkles, HeartIcon as Heart, PauseIcon as Pause, PlayIcon as Play } from "@/components/ui/icons";
 import { Swords, Shield } from "./training-icons";
 import { startBattle, resolveBattle, replayTrainingBattle } from "@/lib/pet/training/actions";
 import { RULESET } from "@/lib/pet/battle/content";
 import type { BattleEvent, BattleInput } from "@/lib/pet/battle/types";
-import type { TrainingResponse } from "@/lib/pet/training/types";
+import type { TrainingBattle, TrainingResponse } from "@/lib/pet/training/types";
 import { buttonVariants } from "@/components/ui/button";
 import { PetSprite } from "../pet-sprite";
 import { CombatSprite } from "./combat-sprite";
 import { UltiPuzzle } from "./ulti-puzzle";
 import { TrainingSession } from "./training-session";
 import { trainingEffects } from "./training-effects";
+import { lootEffectsForTick, lootFeedbackForTick, type LootEffect } from "../loot/loot-effects";
+import { LOOT_FX } from "@/lib/pet/loot/art";
 import styles from "./training.module.css";
 
 interface PanelActions {
@@ -26,7 +28,7 @@ interface Props {
   actions?: PanelActions;
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   startLabel?: "start" | "resume" | "retry";
-  onDone?: () => void;
+  onDone?: (battle: TrainingBattle | null) => void;
   /** Aventura (R4a): no hay nada que empezar (ni día pendiente ni intento en curso). El botón se
    *  queda deshabilitado con su explicación; el panel NO se desmonta (spec §8). */
   canStart?: boolean;
@@ -44,6 +46,7 @@ function availableLocalStorage() {
 }
 
 export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStart = true, canStartAnother = false }: Props = {}) {
+  const format = useFormatter();
   const t = useTranslations("pet.training");
   const ta = useTranslations("pet.adventure");
   const adventure = kind === "adventure";
@@ -91,7 +94,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     if (phase !== "done") { notifiedRef.current = false; return; }
     if (notifiedRef.current) return;
     notifiedRef.current = true;
-    onDoneRef.current?.();
+    onDoneRef.current?.(sessionRef.current.battle);
   }, [phase]);
 
   useEffect(() => {
@@ -114,6 +117,8 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   const result = phase === "done" ? session.battle?.result : null;
   const button = buttonVariants("secondary");
   const effects = trainingEffects(session.events, v?.tick);
+  const lootEffects = lootEffectsForTick(session.events, v?.tick, session.visualFromTick);
+  const lootFeedback = lootFeedbackForTick(session.events, v?.tick ?? 0, session.visualFromTick);
   const moving = effects.strike !== undefined;
   const petHit = effects.petHit !== undefined;
   const enemyHit = effects.enemyHit !== undefined;
@@ -124,7 +129,8 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   // En aventura, `battle.enemyId` es la cadena completa del tramo (R4a); el rival mostrado es el del tramo actual.
   const currentEnemyId = session.battle ? (adventure ? session.battle.enemyId.split(",")[(v?.fight ?? 1) - 1] ?? session.battle.enemyId : session.battle.enemyId) : undefined;
 
-  function eventText(event: BattleEvent) {
+  function eventText(event: BattleEvent | LootEffect) {
+    if (event.type === "LOOT_EFFECT") return ta("equipment.feedback", { name:ta(`items.${event.itemId}`), effect:ta(`equipment.applied.${event.effect}`, { amount:format.number(event.effect === "cooldown" || event.effect === "vulnerability" ? event.amount / 10 : event.amount) }) });
     if (event.type === "STATUS_APPLIED" && event.status === "vulnerable") return t("events.vulnerableStarted");
     if (event.type === "STATUS_EXPIRED" && event.status === "vulnerable") return t("events.vulnerableEnded");
     if (event.type === "TELEGRAPH_STARTED") return t(`events.${event.kind}`);
@@ -147,7 +153,8 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
           <Health label={snapshot.name} value={v.petHp} max={v.petHpMax} />
           <Health label={t(`enemies.${currentEnemyId as "brote" | "caparazon"}`)} value={v.enemyHp} max={v.enemyHpMax} rival />
         </div>
-        <div className="flex h-36 items-end justify-around pb-3" aria-hidden="true">
+        <div className="relative flex h-36 items-end justify-around pb-3" aria-hidden="true">
+          {lootEffects.map(event => <span key={`loot-${event.seq}`} className={styles.lootBurst} data-target={event.effect === "damage" || event.effect === "vulnerability" ? "enemy" : "pet"} style={{backgroundImage:`url(${LOOT_FX[event.effect]})`}} />)}
           <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={snapshot.stage === "acorn" ? (v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : "") : ""}>{snapshot.stage === "acorn" ? <div className="-scale-x-100"><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div> : <CombatSprite speed={speed} paused={session.paused || session.hidden || session.ultiOpen} stage={snapshot.stage} petClass={snapshot.petClass} animation={v.petHp === 0 ? "ko" : petHit ? "hurt" : moving ? "attack" : "idle"} size={112} />}</div>
           <div key={`enemy-${effects.enemyHit ?? effects.enemyStrike ?? "rest"}`}><CombatSprite speed={speed} paused={session.paused || session.hidden || session.ultiOpen} enemy={currentEnemyId as "brote" | "caparazon"} animation={v.enemyHp === 0 ? "ko" : enemyHit ? "hurt" : effects.enemyStrike !== undefined ? "attack" : v.enemyPhase === "windup" ? "charge" : v.enemyPhase === "guard" ? "guard" : v.enemyPhase === "vulnerable" ? "vulnerable" : "idle"} size={112} /></div>
         </div>
@@ -157,6 +164,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
         </div>
         <p role="status" aria-atomic="true" className="pt-2 text-center text-sm tabular-nums" data-testid="skill-feedback"><ReservedText text={lastSkill ? t(`feedback.${lastSkill.effect}`, { damage: lastSkill.damage }) : ""} alternatives={(["interrupt", "hit", "wasted", "vulnerable"] as const).map(effect => t(`feedback.${effect}`, { damage: v.enemyHpMax }))} /></p>
         <p data-testid="training-tick" className="text-center text-xs text-muted-foreground">{t("time", { seconds: (v.tick / 10).toFixed(1) })}{phase === "replaying" ? ` · ${t("replaying")}` : ""}</p>
+        <p role="status" aria-live="polite" aria-atomic="true" className="min-h-5 text-center text-xs" data-testid="loot-feedback">{lootFeedback.map(eventText).join(" · ")}</p>
       </div>
       {active && <div className={styles.controls}>
         <div className={styles.actions}>
@@ -184,13 +192,13 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
         </div>
         {adventure && session.awaitingContinue && v && <div role="status" className="space-y-2 rounded border border-border p-3 text-sm"><p>{ta("interlude", { n: v.fight - 1, hp: v.petHp, max: v.petHpMax })}</p><button className={buttonVariants()} onClick={() => { session.continueFight(); refresh(); }}>{ta("continue")}</button></div>}
         {(session.paused || session.hidden) && <p role="status" className="text-sm text-muted-foreground">{t("paused")}</p>}
-        {session.ultiOpen && session.battle && <UltiPuzzle seed={session.battle.seed} tick={v.tick} onCancel={() => { session.cancelUlti(); restoreFocus.current = "ulti"; refresh(); }} onConfirm={order => { if (session.confirmUlti(order)) restoreFocus.current = "skill"; refresh(); }} />}
+        {session.ultiOpen && session.battle && <UltiPuzzle seed={session.battle.seed} tick={v.tick} version={session.battle.rulesetVersion} equipment={"equipment" in session.battle.snapshot ? session.battle.snapshot.equipment : undefined} onCancel={() => { session.cancelUlti(); restoreFocus.current = "ulti"; refresh(); }} onConfirm={order => { if (session.confirmUlti(order)) restoreFocus.current = "skill"; refresh(); }} />}
         <details className={styles.help}><summary>{t("helpTitle")}</summary><p id="training-skill-help">{t("skillHelp", { seconds: RULESET.pet.skillCooldown * RULESET.tickMs / 1000, normal: RULESET.pet.skillIdleMul, interrupt: RULESET.pet.skillInterruptMul })}</p>{Number.isFinite(v.ultiReadyAt) && <p>{t("ulti.help")}</p>}</details>
       </div>}
     </>}
     {phase === "resolving" && <p role="status">{t("resolving")}</p>}
     {phase === "resolve-error" && <button className={button} onClick={() => void run(() => session.resolve())}>{t("retryResolve")}</button>}
-    {result && <div role="status" className="space-y-2"><h3 className="font-serif text-lg font-semibold">{adventure && result.outcome === "win" ? ta("won") : t(`outcomes.${result.outcome}`)}</h3><p className="text-sm">{t("damage", { dealt: result.damageDealt, taken: result.damageTaken })}</p>{result.causes.map(cause => <p key={cause} className="text-sm">{t(`causes.${cause}`)}</p>)}{adventure && session.battle?.adventure?.reward && <p className="text-sm font-medium">{ta("reward", { name: ta(`items.${session.battle.adventure.reward.itemId}`) })} <span className="text-muted-foreground">· </span><span className="text-muted-foreground">{ta("rewardPending")}</span></p>}{adventure && result.outcome !== "win" && <p className="text-sm text-muted-foreground">{ta("loseHint")}</p>}</div>}
+    {result && <div role="status" className="space-y-2"><h3 className="font-serif text-lg font-semibold">{adventure && result.outcome === "win" ? ta("won") : t(`outcomes.${result.outcome}`)}</h3><p className="text-sm">{t("damage", { dealt: result.damageDealt, taken: result.damageTaken })}</p>{result.causes.map(cause => <p key={cause} className="text-sm">{t(`causes.${cause}`)}</p>)}{adventure && session.battle?.adventure?.reward && <p className="text-sm font-medium">{ta("reward", { name: ta(`items.${session.battle.adventure.reward.itemId}`) })} <span className="text-muted-foreground">· </span><span className="text-muted-foreground">{ta("equipment.potency", { value: format.number((session.battle.adventure.reward.qualityBp ?? 10000) / 10000, { minimumFractionDigits: 1 }) })}</span></p>}{adventure && result.outcome !== "win" && <p className="text-sm text-muted-foreground">{ta("loseHint")}</p>}</div>}
     {phase === "done" && <div className="flex flex-wrap gap-2"><button className={button} onClick={() => void run(() => session.replay())}>{t("replay")}</button>{adventure ? (
       result?.outcome !== "win"
         ? <button className={buttonVariants()} onClick={() => void run(() => session.start(true))}>{ta("retry")}</button>

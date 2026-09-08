@@ -18,7 +18,7 @@ describe("contenido de combate", () => {
   // Si esto cambia, cambió el contenido: hay que subir RULESET.version y regenerar
   // el ejemplo normativo (Task 11). Vitest rellena el snapshot en la primera pasada.
   it("el hash del contenido está fijado", async () => {
-    expect(RULESET.version).toBe("r4.1");
-    expect(await contentHash()).toMatchInlineSnapshot(`"13cc440381ca001e230d35b4f6cd628bc5195bce9a14f2fa6b17af50eb63f765"`);
+    expect(RULESET.version).toBe("r4.2");
+    expect(await contentHash()).toMatchInlineSnapshot(`"87d22bd94e446efa56e14127be889a0c9a367dbd3dd39ea9e0d5bf67761c0834"`);
   });
 });

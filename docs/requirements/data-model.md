@@ -3992,6 +3992,41 @@ nada del código desplegado; al revés sí habría ventana de error. La red de s
 (`src/components/pet/adventure/adventure-section.tsx` captura el fallo y degrada solo la sección
 Aventuras, dejando en pie detalle, madriguera y entrenamiento), pero es el último recurso.
 
+### 8bis.8. Equipo y calidad de botín R4b
+
+**[Canónico · verificado en dev el 2026-09-08 · pendiente de aplicar en producción; motor r4.2 aún candidato]**
+
+Migración `20260908074921_pet_r4b_equipment.sql`. `pet_loadout` guarda `user_id` (PK y FK
+a `auth.users`), `weapon_battle_id` y `amulet_battle_id` (FK nullable a `pet_battles`,
+`ON DELETE SET NULL`) y `updated_at`. La copia es la victoria original; no hay tabla de
+inventario ni reescritura de recompensas antiguas. RLS permite SELECT del dueño. Las cuatro
+columnas tienen SELECT para authenticated, cero INSERT/UPDATE para ese rol y escritura para
+service_role, comprobado contra privilegios reales en dev (superficie 6 de DRIFT-CHECK).
+
+`set_pet_equipment(p_user,p_slot,p_copy)` valida victoria, dueño, catálogo y ranura antes de
+guardar. Null vacía la ranura. Devuelve la fila persistida. Solo service_role ejecuta la RPC;
+los helpers `private.pet_owned_copy` y `private.pet_equipment_snapshot` no admiten roles de API.
+La clave de bloqueo consultivo `(20260908, hashtext(user_id::text))` se amplía desde aventuras
+a selección e inicio de entrenamientos. Ambos inicios capturan el equipo dentro de la misma
+transacción, sobrescribiendo el equipment entrante solo para r4.2. Una intención ya creada
+se devuelve antes de capturar nada y conserva su snapshot.
+
+`start_pet_training` devuelve `setof pet_battles` y recibe usuario, intención, seed, enemigo,
+versión, hash y snapshot. Solo service_role puede ejecutarla. `start_pet_adventure` y
+`resolve_pet_adventure` conservan sus firmas y el comportamiento de versiones antiguas.
+Al resolver una victoria r4.2 se exige una permutación completa de los seis objetos; el
+servidor añade `qualityBp` y `qualityVersion: 1` sin confiar en la calidad entrante.
+`private.pet_quality_v1` deriva uno de 8000/9000/10000/11000/12000 a partir de usuario y día
+de aventura (MD5, primeros 32 bits, módulo 5), con DateStyle fijado. Cambiar el intento no
+cambia esa calidad. Repetir la resolución devuelve lo guardado. Recompensas anteriores se
+proyectan a 10000 sin modificar su JSON. Tinta y desencantado quedan pendientes en #1134.
+
+Pruebas ejecutadas: matriz transaccional `supabase/tests/pet_r4b_equipment.sql` en dev y local,
+siete tests de composición, bootstrap vacío de 243 etapas con contratos SQL y grants,
+concurrencia real por PostgREST (equipar/iniciar y doble resolución), aislamiento de cuentas
+y flujo de equipo/entrenamiento/replay contra build de producción local. Ver evidencia en
+`docs/testing/2026-09-08-r4b-verificacion.md`. Producción permanece con R4a.
+
 ## 9. Seguridad
 
 Las **60 tablas públicas** de dev tienen **RLS activa** (recontadas contra `pg_tables` el

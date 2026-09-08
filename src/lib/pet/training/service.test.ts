@@ -81,6 +81,7 @@ describe("training authority", () => {
     const started = await s.service.start(intent);
     if (!started.ok) throw Error(started.code);
     const b = started.battle;
+    if (!("equipment" in b.snapshot)) throw Error("Expected current snapshot");
     const run = runPolicy({ seed: b.seed, snapshot: b.snapshot, enemies: [BROTE], ruleset: RULESET }, POLICIES.interrupt);
     const [a, other] = await Promise.all([s.service.resolve(intent, []), s.service.resolve(intent, run.inputs)]);
     expect(a.ok).toBe(true);
@@ -110,6 +111,10 @@ describe("training authority", () => {
     const historical = s.rows.get(intent)!;
     historical.rulesetVersion = "r2.2";
     historical.contentHash = await r2ContentHash();
+    if ("equipment" in historical.snapshot) {
+      const { equipment: _equipment, ...oldSnapshot } = historical.snapshot;
+      historical.snapshot = oldSnapshot;
+    }
     expect(await s.service.resolve(intent, [{ seq: 0, tick: 0, action: "skill", payload: { score: 100 } }]))
       .toEqual({ ok: false, code: "NONEMPTY_PAYLOAD" });
     const resolved = await s.service.resolve(intent, []);

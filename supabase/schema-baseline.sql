@@ -1212,3 +1212,8 @@ commit;
 begin;
 \ir migrations/20260908_pet_adventures.sql
 commit;
+
+-- 20260908074921_pet_r4b_equipment
+begin;
+\ir migrations/20260908074921_pet_r4b_equipment.sql
+commit;

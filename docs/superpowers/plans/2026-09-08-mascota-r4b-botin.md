@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`.
 
-**Estado:** ejecución secuencial iniciada el 2026-09-08. Tarea 1 verificada: 21 tests de botín verdes con Node 22.23.1; tareas siguientes abiertas. Base inspeccionada: `cbf9d65e` más commits documentales `109ff258` y `88374ad7`. Seguimiento #1123; tinta y desencantado aplazados en #1134.
+**Estado:** ejecución secuencial en `codex/mascota-r4b`, 2026-09-08. Motor r4.2 calibrado, registrado y congelado; copias, SQL, servicios, UI, iconos y VFX implementados. Migración dev, matriz SQL, concurrencia real, bootstrap local de 243 etapas y primer E2E de equipo contra build de producción pasan. Verificación final: 3470 tests, TypeScript, build y seis E2E cubiertos; lint R4b sin errores, lint global heredado en #856. Evidencia: `docs/testing/2026-09-08-r4b-balance.md` y `docs/testing/2026-09-08-r4b-verificacion.md`. Aceptación/publicación pendientes en #1123; tinta en #1134. No se ha desplegado a producción.
 
 ## Restricciones globales
 
@@ -68,7 +68,7 @@ Los tipos equivalentes del motor se definen dentro de `versions/r4.2/`; sus impo
 | Arte | `public/pet/loot/`, `src/lib/pet/loot/art.ts` | Seis iconos y VFX seleccionados |
 | Pruebas | `e2e/mascota-equipo.spec.ts`, autoridad y regresiones existentes | Flujo real y aislamiento con dos cuentas |
 
-Orden: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. No publicar cambios intermedios: algunos commits son piezas internas aún no conectadas.
+Dependencias: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. Ejecución con un solo agente; durante las mediciones largas se prepararon piezas posteriores, sin publicar el candidato. No publicar cambios intermedios: algunos commits son piezas internas aún no conectadas.
 
 ### Tarea 1: Proyección de copias y compatibilidad de recompensas
 
@@ -111,24 +111,26 @@ expect(isEquipment({ weapon: { copyId: "x", itemId: "loan_pendant",
 - [x] Ejecutar `npx vitest run src/lib/pet/battle/equipment.test.ts src/lib/pet/battle/tick-order.test.ts src/lib/pet/battle/chain.test.ts`; rojo→verde. Añadir fixture equipo vacío comparado con r4.1 en resultados y eventos de combate equivalentes.
 - [x] Commit: `feat(pet): implement candidate r4.2 loot effects`.
 
+**Ajuste de muestreo durante ejecución:** matriz completa neutral de tipos (200 semillas por estrato); 256 combinaciones de calidad con 200 semillas pareadas distribuidas entre 66 estratos, repetidas con semillas 200–399. No se ejecutó el producto exhaustivo de calidad × semillas × estratos. Justificación, comandos, datos completos y límites en el informe de balance.
+
 ### Tarea 3: Calibración reproducible de calidad y builds
 
 **Archivos:** crear `scripts/pet-battle/calibrate-loot.ts`, su test `calibrate-loot.test.ts`, `docs/testing/2026-09-08-r4b-balance.md`; leer políticas/perfiles/calibración existentes. Ajustes numéricos solo dentro de r4.2.
 
 **Interfaces:** script ejecutable `node --import tsx scripts/pet-battle/calibrate-loot.ts`; exporta `buildCases()` y `measureLootCases(seeds: number[]): Promise<LootMetric[]>`, con `LootMetric = { profile: string; scenario: string; weapon: string|null; amulet: string|null; weaponQuality: number|null; amuletQuality: number|null; policy: string; wins: number; samples: number; meanHp: number; meanTicks: number }`.
 
-- [ ] Test de matriz: vacío + 3 armas × 5 calidades y vacío + 3 amuletos × 5 calidades = **256** selecciones. No limitarse a 16 combinaciones de ids ni probar siempre ambas ranuras con la misma calidad.
+- [x] Test de matriz: vacío + 3 armas × 5 calidades y vacío + 3 amuletos × 5 calidades = **256** selecciones. No limitarse a 16 combinaciones de ids ni probar siempre ambas ranuras con la misma calidad.
 
 ```ts
 expect(buildCases()).toHaveLength(256);
 expect(buildCases().some(c => c.weaponQuality === 8000 && c.amuletQuality === 12000)).toBe(true);
 ```
 
-- [ ] Implementar barrido sobre los seis perfiles, Brote y Coraza individuales, ocho cadenas posibles de tres enemigos y cadenas sorteadas del baseline. Usar seeds 0–199 para calibrar y 200–399 para comprobar, desde `seedFromIndex`. Procesar secuencialmente y escribir resultados por lotes sin retener todos los eventos.
-- [ ] Incluir `never`, `spam`, `interrupt_ulti` existentes y política `vulnerability_ulti` que espera vulnerable para skill/ulti, interrumpe windup y no pulsa durante guardia. Crear inputs mediante las recetas generadas por seed/tick del candidato, no asumir un orden constante.
-- [ ] Mantener para equipo vacío el baseline de R4a (56–60 % observado en su muestra, criterio 50–75 %; never ≤3 %). Medir por separado todas las builds; detectar dominancia entre tipos a igual calidad, no confundir que una copia de mayor calidad supere a otra del mismo objeto con un fallo. Ningún objeto debe carecer de un escenario útil.
-- [ ] Documentar datos reales y ajustar candidatos hasta que cada objeto tenga efecto comprobable y no haya una build superior en todos los escenarios. Si eso exige alterar las seis direcciones acordadas o convertir el equipo en progresión ilimitada, parar la publicación y registrar la decisión en #1123.
-- [ ] Tests: `node --import tsx --test scripts/pet-battle/calibrate-loot.test.ts`; repetir medición solo tras cambios numéricos. Commit: `test(pet): calibrate loot quality and build tradeoffs`.
+- [x] Implementar barrido sobre los seis perfiles, Brote y Coraza individuales, ocho cadenas posibles de tres enemigos y cadenas sorteadas del baseline. Usar seeds 0–199 para calibrar y 200–399 para comprobar, desde `seedFromIndex`. Procesar secuencialmente y escribir resultados por lotes sin retener todos los eventos.
+- [x] Incluir `never`, `spam`, `interrupt_ulti` existentes y política `vulnerability_ulti` que espera vulnerable para skill/ulti, interrumpe windup y no pulsa durante guardia. Crear inputs mediante las recetas generadas por seed/tick del candidato, no asumir un orden constante.
+- [x] Mantener para equipo vacío el baseline de R4a (56–60 % observado en su muestra, criterio 50–75 %; never ≤3 %). Medir por separado todas las builds; detectar dominancia entre tipos a igual calidad, no confundir que una copia de mayor calidad supere a otra del mismo objeto con un fallo. Ningún objeto debe carecer de un escenario útil.
+- [x] Documentar datos reales y ajustar candidatos hasta que cada objeto tenga efecto comprobable y no haya una build superior en todos los escenarios. Si eso exige alterar las seis direcciones acordadas o convertir el equipo en progresión ilimitada, parar la publicación y registrar la decisión en #1123.
+- [x] Tests: `node --import tsx --test scripts/pet-battle/calibrate-loot.test.ts`; repetir medición solo tras cambios numéricos. Commit: `test(pet): calibrate loot quality and build tradeoffs`.
 
 ### Tarea 4: Publicar internamente r4.2 preservando la historia
 
@@ -136,9 +138,9 @@ expect(buildCases().some(c => c.weaponQuality === 8000 && c.amuletQuality === 12
 
 **Interfaces:** `getBattleRelease` conserva versión+hash. Tipos de frontera representan snapshots/resultados/eventos de las versiones publicadas; el narrowing ocurre en el adaptador de versión. No convertir un snapshot antiguo en r4.2 agregándole equipo vacío antes del digest.
 
-- [ ] Añadir prueba roja: r2.2/r3.1/r4.1 siguen resolviendo con sus fixtures; snapshot r4.2 exige `equipment`; versión/hash desconocidos siguen dando `UNKNOWN_RELEASE`.
-- [ ] Corregir dependencia histórica detectada: la entrada r2.2 usa hoy el guard `isBattleSnapshot` del export actual. Apuntarla a la validación histórica compatible (r3 conserva la forma anterior) o a un adaptador fuera de versiones congeladas que valide exactamente la forma r2.2; probar su fixture antes de mover los reexports.
-- [ ] Añadir r4.2 al registro, actualizar reexports y el CLI para crear equipo vacío o fixture equipado conforme a la nueva forma. Mantener imports de ejecución de r4.2 dentro de la carpeta.
+- [x] Añadir prueba roja: r2.2/r3.1/r4.1 siguen resolviendo con sus fixtures; snapshot r4.2 exige `equipment`; versión/hash desconocidos siguen dando `UNKNOWN_RELEASE`.
+- [x] Corregir dependencia histórica detectada: la entrada r2.2 usa hoy el guard `isBattleSnapshot` del export actual. Apuntarla a la validación histórica compatible (r3 conserva la forma anterior) o a un adaptador fuera de versiones congeladas que valide exactamente la forma r2.2; probar su fixture antes de mover los reexports.
+- [x] Añadir r4.2 al registro, actualizar reexports y el CLI para crear equipo vacío o fixture equipado conforme a la nueva forma. Mantener imports de ejecución de r4.2 dentro de la carpeta.
 
 ```sh
 npm run pet:battle -- golden --version r4.2 --chain 3
@@ -147,8 +149,8 @@ npm run test:pet:battle
 git diff --exit-code cbf9d65e -- src/lib/pet/battle/versions/r2.2 src/lib/pet/battle/versions/r3.1 src/lib/pet/battle/versions/r4.1
 ```
 
-- [ ] Fixture normativo con efectos efectivos y tests adicionales que cubran los otros cuatro objetos. `freeze` después del último ajuste, nunca regenerar manifiestos antiguos.
-- [ ] Commit: `feat(pet): register r4.2 without changing historical battles`.
+- [x] Fixture normativo con efectos efectivos y tests adicionales que cubran los otros cuatro objetos. `freeze` después del último ajuste, nunca regenerar manifiestos antiguos.
+Commit propuesto: `feat(pet): register r4.2 without changing historical battles`. (integrado en el commit conjunto de R4b tras la verificación).
 
 ### Tarea 5: Migración de calidad, equipo e inicios atómicos
 
@@ -156,8 +158,8 @@ git diff --exit-code cbf9d65e -- src/lib/pet/battle/versions/r2.2 src/lib/pet/ba
 
 **Interfaces SQL:** `set_pet_equipment(p_user uuid,p_slot text,p_copy uuid)` devuelve fila de `pet_loadout`; `private.pet_equipment_snapshot(p_user uuid)` devuelve JSON de las dos ranuras; `start_pet_training(p_user uuid,p_intent uuid,p_seed text,p_enemy text,p_ruleset_version text,p_content_hash text,p_snapshot jsonb)` devuelve `setof pet_battles`. Modificar mediante nueva migración las definiciones de `start_pet_adventure`/`resolve_pet_adventure` preservando sus firmas. Todas las escrituras públicas solo con EXECUTE para service_role; helpers sin permisos de API.
 
-- [ ] Matriz roja de tabla ausente y funciones ausentes. Crear tabla con FK a usuario, FKs de copias, RLS, SELECT propio para authenticated; escrituras directas solo service_role. No UPDATE directo para authenticated. CHECKs de ranura se aplican en la función junto a validación de victoria, ownership e id.
-- [ ] Fórmula candidata de calidad, helper estable con versión en su nombre. Es un hash determinista, no seguridad criptográfica del botín:
+- [x] Matriz roja de tabla ausente y funciones ausentes. Crear tabla con FK a usuario, FKs de copias, RLS, SELECT propio para authenticated; escrituras directas solo service_role. No UPDATE directo para authenticated. CHECKs de ranura se aplican en la función junto a validación de victoria, ownership e id.
+- [x] Fórmula candidata de calidad, helper estable con versión en su nombre. Es un hash determinista, no seguridad criptográfica del botín:
 
 ```sql
 -- Índice 0..4; las columnas ya son uuid/date tipadas.
@@ -167,12 +169,12 @@ git diff --exit-code cbf9d65e -- src/lib/pet/battle/versions/r2.2 src/lib/pet/ba
 )
 ```
 
-- [ ] En resolver: tomar bloqueo existente, devolver fila resuelta antes de cualquier cálculo, conservar primer no poseído y fallback. Para nuevas victorias r4.2 anexar calidad/versión calculadas desde día guardado. Las anteriores mantienen forma `{itemId,slot}` y proyección a 10000. Validar que la permutación recibida contiene exactamente los seis ids/ranuras, sin confiar en calidad del parámetro.
-- [ ] En equipar: bajo el mismo bloqueo leer fila de copia ganada del dueño, validar ranura y actualizar solo la ranura solicitada. `p_copy = null` vacía la ranura; id ajeno/inexistente produce `NOT_OWNED`. Id existente de otra ranura produce `WRONG_SLOT`. Sin fila propia crear ambas ranuras vacías antes de actualizar una.
-- [ ] En ambos inicios: bajo bloqueo devolver intención/intento existente primero; para fila nueva r4.2 sobrescribir `p_snapshot.equipment` con helper SQL, nunca usar selección enviada. `start_pet_training` conserva la idempotencia por `(user_id,intent_id)` y tipo training. Reintento de aventura sigue usando el día anterior y no crea otra oportunidad de botín.
-- [ ] Pruebas SQL: segunda resolución con distinto payload devuelve recompensa idéntica; dos victorias del mismo día imposibles; misma calidad entre intentos; antiguas intactas; INSERT/UPDATE/EXECUTE denegados a roles no autorizados. Con dos conexiones comprobar equipar/iniciar en ambos órdenes y dos resoluciones concurrentes. Usar transacciones y usuarios de fixture desechables.
-- [ ] Ejecutar receta de `docs/testing/supabase-local.md`, registrar migración, `npm run db:baseline`, `npm run test:db:bootstrap`; aplicar y verificar también dev con matriz SQL. Añadir tabla/funciones a `data-model.md` con fecha/entorno real y correr superficie 6 de `docs/DRIFT-CHECK.md`, anotando que authenticated tiene solo lectura aquí.
-- [ ] Commit: `feat(pet): persist loot quality and atomic equipment selection`.
+- [x] En resolver: tomar bloqueo existente, devolver fila resuelta antes de cualquier cálculo, conservar primer no poseído y fallback. Para nuevas victorias r4.2 anexar calidad/versión calculadas desde día guardado. Las anteriores mantienen forma `{itemId,slot}` y proyección a 10000. Validar que la permutación recibida contiene exactamente los seis ids/ranuras, sin confiar en calidad del parámetro.
+- [x] En equipar: bajo el mismo bloqueo leer fila de copia ganada del dueño, validar ranura y actualizar solo la ranura solicitada. `p_copy = null` vacía la ranura; id ajeno/inexistente produce `NOT_OWNED`. Id existente de otra ranura produce `WRONG_SLOT`. Sin fila propia crear ambas ranuras vacías antes de actualizar una.
+- [x] En ambos inicios: bajo bloqueo devolver intención/intento existente primero; para fila nueva r4.2 sobrescribir `p_snapshot.equipment` con helper SQL, nunca usar selección enviada. `start_pet_training` conserva la idempotencia por `(user_id,intent_id)` y tipo training. Reintento de aventura sigue usando el día anterior y no crea otra oportunidad de botín.
+- [x] Pruebas SQL: segunda resolución con distinto payload devuelve recompensa idéntica; dos victorias del mismo día imposibles; misma calidad entre intentos; antiguas intactas; INSERT/UPDATE/EXECUTE denegados a roles no autorizados. Con dos conexiones comprobar equipar/iniciar en ambos órdenes y dos resoluciones concurrentes. Usar transacciones y usuarios de fixture desechables.
+- [x] Ejecutar receta de `docs/testing/supabase-local.md`, registrar migración, `npm run db:baseline`, `npm run test:db:bootstrap`; aplicar y verificar también dev con matriz SQL. Añadir tabla/funciones a `data-model.md` con fecha/entorno real y correr superficie 6 de `docs/DRIFT-CHECK.md`, anotando que authenticated tiene solo lectura aquí.
+Commit propuesto: `feat(pet): persist loot quality and atomic equipment selection`. (integrado en el commit conjunto de R4b tras la verificación).
 
 ### Tarea 6: Servicios autenticados y lectura íntegra de copias
 
@@ -180,7 +182,7 @@ git diff --exit-code cbf9d65e -- src/lib/pet/battle/versions/r2.2 src/lib/pet/ba
 
 **Interfaces:** `setPetEquipment(slot: LootSlot, copyId: string|null): Promise<LoadoutResponse>`; `getPetLoadout(): Promise<PetLoadout>` autenticada; repositorio acotado a usuario con `equip(slot,copyId)`, `loadout()`, `copies()`. `AdventureState.inventory` pasa a `LootCopy[]`; `wins()` conserva todos los días ganados y añade id/fecha necesarios.
 
-- [ ] Test rojo de servicio: usuario ausente, UUID inválido, ranura desconocida, error de repositorio y éxito devuelven el código discriminado correcto. UI nunca envía qualityBp. Tras éxito revalidar `/mascota`; fallo conserva estado anterior.
+- [x] Test rojo de servicio: usuario ausente, UUID inválido, ranura desconocida, error de repositorio y éxito devuelven el código discriminado correcto. UI nunca envía qualityBp. Tras éxito revalidar `/mascota`; fallo conserva estado anterior.
 
 ```ts
 // En prueba con repositorio falso cuyo equip rechaza la copia ajena:
@@ -189,11 +191,11 @@ expect(await service.equip("weapon", otherUserCopyId))
 expect(repo.current.weapon?.copyId).toBe(previousCopyId);
 ```
 
-- [ ] Implementar acciones autenticadas siguiendo las existentes de training/adventure, sin leer service_role en cliente. Traducir códigos SQL conocidos; errores inesperados a `UNAVAILABLE` con log servidor sin secretos.
-- [ ] Cambiar lectura de wins/copias: paginar PostgREST explícitamente en lotes de 500 ordenados por id hasta terminar. Un SELECT sin limit explícito sigue teniendo el límite de API; probar 1001 victorias y que `wonDays` y copias antiguas no se pierdan. Ningún truncado silencioso.
-- [ ] Adaptar inicio de entrenamiento a RPC atómica y comprobar que el servicio utiliza el snapshot **devuelto**, no el previo al RPC. Nuevos snapshots base pueden usar equipo vacío para validar stats antes de SQL; el equipo real se inyecta dentro de la transacción. Resolver y replay enrutan por release almacenada.
-- [ ] Ejecutar `npx vitest run src/lib/pet/loot src/lib/pet/adventure src/lib/pet/training`; agregar caso cambiar equipo → recuperar intención anterior conserva snapshot y caso entrenamiento no aumenta inventario.
-- [ ] Commit: `feat(pet): connect owned loot copies to battle services`.
+- [x] Implementar acciones autenticadas siguiendo las existentes de training/adventure, sin leer service_role en cliente. Traducir códigos SQL conocidos; errores inesperados a `UNAVAILABLE` con log servidor sin secretos.
+- [x] Cambiar lectura de wins/copias: paginar PostgREST explícitamente en lotes de 500 ordenados por id hasta terminar. Un SELECT sin limit explícito sigue teniendo el límite de API; probar 1001 victorias y que `wonDays` y copias antiguas no se pierdan. Ningún truncado silencioso.
+- [x] Adaptar inicio de entrenamiento a RPC atómica y comprobar que el servicio utiliza el snapshot **devuelto**, no el previo al RPC. Nuevos snapshots base pueden usar equipo vacío para validar stats antes de SQL; el equipo real se inyecta dentro de la transacción. Resolver y replay enrutan por release almacenada.
+- [x] Ejecutar `npx vitest run src/lib/pet/loot src/lib/pet/adventure src/lib/pet/training`; agregar caso cambiar equipo → recuperar intención anterior conserva snapshot y caso entrenamiento no aumenta inventario.
+Commit propuesto: `feat(pet): connect owned loot copies to battle services`. (integrado en el commit conjunto de R4b tras la verificación).
 
 ### Tarea 7: Reanudar las cuatro versiones en el cliente
 
@@ -201,10 +203,10 @@ expect(repo.current.weapon?.copyId).toBe(previousCopyId);
 
 **Interfaces:** `TrainingSession` mantiene API pública. `buildEngine` añade rama explícita r4.1, además de r2.2/r3.1 y r4.2 actual; snapshot y contentHash deben coincidir con release antes de construir.
 
-- [ ] Test rojo: reanudar fila r4.1 con log parcial mientras actual es r4.2 no lanza `UNSUPPORTED_BATTLE`; resultado coincide con simulación r4.1. El código actual solo diferencia r2.2, r3.1 y «actual», por eso esta tarea es necesaria.
-- [ ] Añadir imports explícitos a r4.1/engine y content; adaptar sus vistas/eventos sin agregar equipo al snapshot histórico. Para r4.2 usar equipo guardado y rechazar calidad corrupta. Mantener versión+hash como selector, no solo nombre.
-- [ ] Casos de sesión: cambiar selección desde otra pestaña, recargar en interludio y reanudar con mismo equipo; cura del medallón una sola vez; log corrupto reconstruye desde cero sin volver a cobrar botín; volver a intentar tras derrota toma copia nueva.
-- [ ] Ejecutar `npx vitest run src/components/pet/training/training-session.test.ts src/lib/pet/training/historical.test.ts`; commit `fix(pet): preserve r4.1 resume after equipment release`.
+- [x] Test rojo: reanudar fila r4.1 con log parcial mientras actual es r4.2 no lanza `UNSUPPORTED_BATTLE`; resultado coincide con simulación r4.1. El código actual solo diferencia r2.2, r3.1 y «actual», por eso esta tarea es necesaria.
+- [x] Añadir imports explícitos a r4.1/engine y content; adaptar sus vistas/eventos sin agregar equipo al snapshot histórico. Para r4.2 usar equipo guardado y rechazar calidad corrupta. Mantener versión+hash como selector, no solo nombre.
+- [x] Casos de sesión: cambiar selección desde otra pestaña, recargar en interludio y reanudar con mismo equipo; cura del medallón una sola vez; log corrupto reconstruye desde cero sin volver a cobrar botín; volver a intentar tras derrota toma copia nueva.
+- [x] Ejecutar `npx vitest run src/components/pet/training/training-session.test.ts src/lib/pet/training/historical.test.ts`; commit `fix(pet): preserve r4.1 resume after equipment release`.
 
 ### Tarea 8: Inventario, comparación y selección
 
@@ -212,8 +214,8 @@ expect(repo.current.weapon?.copyId).toBe(previousCopyId);
 
 **Interfaces:** `EquipmentPanel({ copies: LootCopy[], initial: PetLoadout })`; `LootComparison({ equipped: LootCopy|null, candidate: LootCopy })`. Servidor aporta inventario/selección; acción de tarea 6 escribe; selección de candidato es local, equipo efectivo confirmado es servidor.
 
-- [ ] Prueba roja de dos copias del mismo id con distinta potencia: ambas visibles y seleccionables por `copyId`; comparar muestra valores efectivos y multiplicador, nunca solo «x2 copias». Mostrar alternativa vacía y botón quitar por ranura.
-- [ ] Implementar selección por tipo de objeto y listado de sus copias, con potencia descendente y desempate id, sin eliminar las inferiores. Seis grupos evitan una pared de tarjetas; cada grupo permite expandir sus copias. Sin controles de tinta/desencantado. Comparación de efectos distintos usa descripción completa, no un puntaje inventado.
+- [x] Prueba roja de dos copias del mismo id con distinta potencia: ambas visibles y seleccionables por `copyId`; comparar muestra valores efectivos y multiplicador, nunca solo «x2 copias». Mostrar alternativa vacía y botón quitar por ranura.
+- [x] Implementar selección por tipo de objeto y listado de sus copias, con potencia descendente y desempate id, sin eliminar las inferiores. Seis grupos evitan una pared de tarjetas; cada grupo permite expandir sus copias. Sin controles de tinta/desencantado. Comparación de efectos distintos usa descripción completa, no un puntaje inventado.
 
 ```ts
 // Contrato accesible a usar en la prueba y el componente.
@@ -222,9 +224,9 @@ await user.click(screen.getByRole("button", { name: "Equipar esta copia" }));
 expect(equipAction).toHaveBeenCalledWith("weapon", candidate.copyId);
 ```
 
-- [ ] Durante envío deshabilitar escritura del control; ante error mantener equipo anterior, explicar y permitir reintento. Actualizar desde respuesta confirmada y refrescar ruta; rehidratar props al refrescar. Texto para aventura abierta: «El equipo nuevo se usará en tu próximo combate. Esta aventura conserva el equipo con el que empezó».
-- [ ] Tras victoria seleccionar la copia recién concedida para comparar; no equipar automáticamente. Estados sin mascota, sin objetos, ranura vacía y fallo de lectura separados. Seguir degradación de AdventureSection sin ocultar la ficha completa.
-- [ ] Probar teclado, foco, móvil y traducciones. Ejecutar `npx vitest run src/components/pet/loot src/components/pet/adventure`; commit `feat(pet): compare and equip individual loot copies`.
+- [x] Durante envío deshabilitar escritura del control; ante error mantener equipo anterior, explicar y permitir reintento. Actualizar desde respuesta confirmada y refrescar ruta; rehidratar props al refrescar. Texto para aventura abierta: «El equipo nuevo se usará en tu próximo combate. Esta aventura conserva el equipo con el que empezó».
+- [x] Tras victoria seleccionar la copia recién concedida para comparar; no equipar automáticamente. Estados sin mascota, sin objetos, ranura vacía y fallo de lectura separados. Seguir degradación de AdventureSection sin ocultar la ficha completa.
+- [x] Probar teclado, foco, móvil y traducciones. Ejecutar `npx vitest run src/components/pet/loot src/components/pet/adventure`; commit `feat(pet): compare and equip individual loot copies`.
 
 ### Tarea 9: Iconos PixelLab y VFX basados en eventos
 
@@ -232,16 +234,16 @@ expect(equipAction).toHaveBeenCalledWith("weapon", candidate.copyId);
 
 **Interfaces:** `LOOT_ART` mapea cada id a icono y efecto; `lootEffectsForTick(events: readonly BattleEvent[])` devuelve eventos LOOT_EFFECT del tick visible. No ejecutar efectos durante reconstrucción de logs, solo al avanzar/reproducir ese tick.
 
-- [ ] Leer `.claude/agents/pet-artist.md` y spec canónica; comprobar PixelLab callable/saldo antes de generar. Si la sesión no expone PixelLab, resolver acceso o dejar tarea abierta en #1123; no sustituir herramienta ni declarar arte listo. Usar agente pet-artist si está disponible según instrucciones del proyecto.
-- [ ] Generar seis iconos 64×64 transparentes, paleta cálida, silueta reconocible: marcapáginas afilado, pluma de tinta pesada, lupa, amuleto de página, colgante de préstamo, medallón de racha. Candidatos y hoja de contacto en `.superpowers/brainstorm/2026-09-08-r4b/`; solo elegidos en public. Registrar ids y coste real.
-- [ ] Generar VFX breves para daño, barrera, cura, recarga y vulnerabilidad, reutilizando el mismo efecto visual entre copias de calidad distinta. Validar transparencia, frames y tamaño; no modificar sheets/cajas de la compañera.
-- [ ] Test rojo de evento concurrente: un STATUS_APPLIED posterior no oculta LOOT_EFFECT del mismo tick. Implementar extracción por tick completo y texto accesible con nombre/efecto; reduced-motion suprime animación conservando feedback.
+- [x] Leer `.claude/agents/pet-artist.md` y spec canónica; comprobar PixelLab callable/saldo antes de generar. Si la sesión no expone PixelLab, resolver acceso o dejar tarea abierta en #1123; no sustituir herramienta ni declarar arte listo. Usar agente pet-artist si está disponible según instrucciones del proyecto.
+- [x] Generar seis iconos 64×64 transparentes, paleta cálida, silueta reconocible: marcapáginas afilado, pluma de tinta pesada, lupa, amuleto de página, colgante de préstamo, medallón de racha. Candidatos y hoja de contacto en `.superpowers/brainstorm/2026-09-08-r4b/`; solo elegidos en public. Registrar ids y coste real.
+- [x] Generar VFX breves para daño, barrera, cura, recarga y vulnerabilidad, reutilizando el mismo efecto visual entre copias de calidad distinta. Validar transparencia, frames y tamaño; no modificar sheets/cajas de la compañera.
+- [x] Test rojo de evento concurrente: un STATUS_APPLIED posterior no oculta LOOT_EFFECT del mismo tick. Implementar extracción por tick completo y texto accesible con nombre/efecto; reduced-motion suprime animación conservando feedback.
 
 ```ts
 expect(lootEffectsForTick([lootEvent, statusEvent])).toEqual([lootEvent]);
 ```
 
-- [ ] Test del manifiesto exige asset existente por cada id, dimensiones/alpha correctos y archivos VFX válidos. Verificar en `/mascota` y replay. Commit `feat(pet): add loot icons and readable combat effects`.
+- [x] Test del manifiesto exige asset existente por cada id, dimensiones/alpha correctos y archivos VFX válidos. Verificar en `/mascota` y replay. Commit `feat(pet): add loot icons and readable combat effects`.
 
 ### Tarea 10: Verificación completa con dos cuentas
 
@@ -249,10 +251,10 @@ expect(lootEffectsForTick([lootEvent, statusEvent])).toEqual([lootEvent]);
 
 **Interfaces:** helpers siembran victorias/copies de prueba por API servidor en entorno desechable; nunca simular un PASS de autoridad mediante mocks de la RPC. Testids propuestos `pet-equipment`, `loot-copy-<uuid>`, `loot-comparison`.
 
-- [ ] Test de flujo: sembrar copia legacy y moderna, entrar, comparar/equipar, empezar entrenamiento, comprobar snapshot real, usar efecto, terminar y verificar que inventario no aumenta. Copia antigua sigue a 10000 y no se reescribe.
-- [ ] Test de aventura: ganar con usuario con actividad → una copia; resolver otra vez con payload diferente conserva calidad/id; repetir no da otra recompensa del día; perder y reintentar otro día conserva calidad determinada para esa oportunidad. Dos conexiones/pestañas compiten por equipar/iniciar y resolver; observar filas finales reales.
-- [ ] Test privacidad: segunda cuenta no lee equipo/recompensa ajena ni equipa una copia ajena; anon no ejecuta funciones; no puede falsificar qualityBp desde actions ni PostgREST. Verificar error y selección previa intacta.
-- [ ] Test visual/accesible: teclado, ancho 390 px, reduced-motion, copia repetida, error/reintento, interludio, recarga. Capturas de comparación y efecto con datos sintéticos. Limpiar antes y después por API incluso si falla la UI.
+- [x] Test de flujo: sembrar copia legacy y moderna, entrar, comparar/equipar, empezar entrenamiento, comprobar snapshot real, usar efecto, terminar y verificar que inventario no aumenta. Copia antigua sigue a 10000 y no se reescribe.
+- [x] Test de aventura: ganar con usuario con actividad → una copia; resolver otra vez con payload diferente conserva calidad/id; repetir no da otra recompensa del día; perder y reintentar otro día conserva calidad determinada para esa oportunidad. Dos conexiones/pestañas compiten por equipar/iniciar y resolver; observar filas finales reales.
+- [x] Test privacidad: segunda cuenta no lee equipo/recompensa ajena ni equipa una copia ajena; anon no ejecuta funciones; no puede falsificar qualityBp desde actions ni PostgREST. Verificar error y selección previa intacta.
+- [x] Test visual/accesible: teclado, ancho 390 px, reduced-motion, copia repetida, error/reintento, interludio, recarga. Capturas de comparación y efecto con datos sintéticos. Limpiar antes y después por API incluso si falla la UI.
 
 ```sh
 npm test
@@ -263,18 +265,18 @@ npm run build
 npm run test:e2e -- e2e/mascota-equipo.spec.ts e2e/mascota-aventuras.spec.ts e2e/mascota-batallas-autoridad.spec.ts
 ```
 
-- [ ] Registrar comandos, entorno, resultados reales y límites. La build y el start deben usar la misma BD de pruebas con migración; no ejecutar e2e solo contra next dev. Detener servidor al terminar.
+- [x] Registrar comandos, entorno, resultados reales y límites. La build y el start deben usar la misma BD de pruebas con migración; no ejecutar e2e solo contra next dev. Detener servidor al terminar.
 - [ ] Solicitar aceptación jugable sobre comparar y querer probar un objeto, sin inventar número de partidas. Si queda una limitación, issue con tres etiquetas antes de cerrar. Commit `test(pet): verify equipment authority and full loot flow`.
 
 ### Tarea 11: Documentación, revisión y publicación
 
 **Archivos:** `docs/requirements/{data-model,backlog,decisiones}.md`, Parte II de hoja de ruta, `README.md`, grafo y mapa según `docs/architecture/README.md`, spec y este plan. Seguimiento #1123/#1134.
 
-- [ ] Revisar diff de esquema contra lo aplicado: funciones, RLS, grants y copy ids; anotar alcance extendido de bloqueo. Registrar calidad final, fórmula, proyección legacy y evidencia de balance como decisiones nuevas append-only.
-- [ ] Actualizar grafo de concesión→victoria→copia→equipar→snapshot→replay con archivos reales. No marcar todo R4b hecho si falta arte, verificación o aceptación. Tinta permanece pendiente #1134.
+- [x] Revisar diff de esquema contra lo aplicado: funciones, RLS, grants y copy ids; anotar alcance extendido de bloqueo. Registrar calidad final, fórmula, proyección legacy y evidencia de balance como decisiones nuevas append-only.
+- [x] Actualizar grafo de concesión→victoria→copia→equipar→snapshot→replay con archivos reales. No marcar todo R4b hecho si falta arte, verificación o aceptación. Tinta permanece pendiente #1134.
 - [ ] Crear PR con problema/comportamiento, evidencia, plan de despliegue y rollback. Explicar que no hay caché compartida de datos de usuario. Revisión focalizada de permiso, carrera, compatibilidad y duplicación de recompensas antes de publicar.
 - [ ] Con autorización de publicación: aplicar migración aditiva en prod antes del código, verificar definiciones/grants contra objetos reales, desplegar código y smoke no destructivo. La aprobación de este plan por sí sola no autoriza tocar producción.
-- [ ] Rollback: volver al código anterior manteniendo migración aditiva y las filas/equipo/quality ya creados; versiones conservadas no se borran. Antes de publicar demostrar que el parser anterior tolera campos extra de recompensa y que funciones vigentes conservan firmas. Si una fila r4.2 abierta no puede reanudarse con el frontend anterior, no presentar rollback total como transparente: conservar el frontend compatible r4.2 o preparar rollback que desactive solo nuevos inicios r4.2.
+- [x] Rollback: volver al código anterior manteniendo migración aditiva y las filas/equipo/quality ya creados; versiones conservadas no se borran. Antes de publicar demostrar que el parser anterior tolera campos extra de recompensa y que funciones vigentes conservan firmas. Si una fila r4.2 abierta no puede reanudarse con el frontend anterior, no presentar rollback total como transparente: conservar el frontend compatible r4.2 o preparar rollback que desactive solo nuevos inicios r4.2.
 - [ ] Marcar tareas y backlog según evidencia, enlazar PR y cerrar #1123 únicamente al cumplir el contrato. Limpiar procesos/fixtures propios y mantener cambios ajenos intactos.
 
 ## Auto-revisión del plan

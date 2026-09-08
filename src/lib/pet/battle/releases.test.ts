@@ -7,8 +7,9 @@ import ts from "typescript";
 import manifestR2 from "./versions/r2.2/manifest.json";
 import manifestR3 from "./versions/r3.1/manifest.json";
 import manifestR4 from "./versions/r4.1/manifest.json";
+import manifestR4b from "./versions/r4.2/manifest.json";
 import { describe } from "vitest";
-describe.each([["r2.2", manifestR2], ["r3.1", manifestR3], ["r4.1", manifestR4]] as const)("release %s", (version, manifest) => {
+describe.each([["r2.2", manifestR2], ["r3.1", manifestR3], ["r4.1", manifestR4], ["r4.2", manifestR4b]] as const)("release %s", (version, manifest) => {
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), `versions/${version}`);
 

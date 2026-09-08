@@ -42,6 +42,9 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Reto** | Challenge, Objetivo | La meta contable del usuario («50 libros en 2026»). | `/estadisticas`, `challenges` |
 | **Rincón** | Mi rincón, Panel | La pestaña personal del perfil, con el sorteo y los accesos a lo tuyo. | pestaña de `/u/[username]` |
 | **Madriguera** | Ranking de mascotas, Clasificación | El espacio de compañía con las mascotas visibles de tus seguidos y la tuya, si tienes una. Puedes verlo antes de eclosionar. | sección en `/mascota`, S1 #1083 aceptada el 2026-09-07; ampliación de nivel verificada en dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128 |
+| **Botín** | Loot | Objetos obtenidos al superar aventuras de la mascota. | `/mascota`, R4b #1123 |
+| **Equipo** | Loadout, Build | Arma y amuleto elegidos para el próximo combate. | `/mascota`, `pet_loadout` |
+| **Potencia** (del objeto) | Calidad, Roll, Reroll | Multiplicador fijo del efecto adicional de una copia de botín. No es el nivel de la mascota. | `/mascota`, R4b #1123 |
 | **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón |
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
 | **Tu cuenta** | Mi cuenta, Tú (como etiqueta visible) | El **agrupador** de lo tuyo (perfil, Cuaderno, Estadísticas, Ajustes). Es el nombre del menú del avatar; en el código el concepto se llama «Tú» (`youItems`), pero al usuario no se le enseña esa palabra suelta. | menú del avatar (`sm+`), fila «Lo tuyo» del perfil (móvil) |

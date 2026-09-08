@@ -241,6 +241,7 @@
     "20260907093534_catalog_reference_guards.sql",
     "20260907130854_pet_social_profile_and_level.sql",
     "20260907150832_club_burrow.sql",
-    "20260908_pet_adventures.sql"
+    "20260908_pet_adventures.sql",
+    "20260908074921_pet_r4b_equipment.sql"
   ]
 }

@@ -2,6 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createUltiPuzzle } from "@/lib/pet/battle/ulti";
+import { createUltiPuzzle as createR3Puzzle } from "@/lib/pet/battle/versions/r3.1/ulti";
+import { createUltiPuzzle as createR4Puzzle } from "@/lib/pet/battle/versions/r4.1/ulti";
+import type { BattleSnapshot } from "@/lib/pet/battle/types";
+import { RULESET } from "@/lib/pet/battle/content";
 import { buttonVariants } from "@/components/ui/button";
 import { BookIcon, AcornIcon, StarIcon, HeartIcon, SparklesIcon as Sparkles, PauseIcon as Pause } from "@/components/ui/icons";
 import { Swords, Shield } from "./training-icons";
@@ -13,13 +17,15 @@ function Rune({ value }: { value: number }) {
  return <span className={styles.rune} data-rune={value} aria-hidden="true"><Icon width={20} height={20} strokeWidth={1.8} /><small>{value + 1}</small></span>;
 }
 
-export function UltiPuzzle({ seed, tick, onConfirm, onCancel }: { seed: string; tick: number; onConfirm: (order: string) => void; onCancel: () => void }) {
+export function UltiPuzzle({ seed, tick, version = RULESET.version, equipment, onConfirm, onCancel }: { seed: string; tick: number; version?: string; equipment?: BattleSnapshot["equipment"]; onConfirm: (order: string) => void; onCancel: () => void }) {
  const firstTile = useRef<HTMLButtonElement>(null);
  useEffect(() => { firstTile.current?.focus(); }, []);
  const t = useTranslations("pet.training.ulti");
  const [selected, select] = useState<number | null>(null);
  const [slots, setSlots] = useState<(number | null)[]>([null,null,null,null]);
- const puzzle = createUltiPuzzle(seed, tick);
+ const puzzle = (version === "r3.1" ? createR3Puzzle : version === "r4.1" ? createR4Puzzle : createUltiPuzzle)(seed, tick);
+ const quill = equipment?.weapon?.itemId === "heavy_ink_quill" ? equipment.weapon : null;
+ const amulet = equipment?.amulet?.itemId === "last_page_amulet" ? equipment.amulet : null;
  function place(index: number) {
   if (selected === null) { select(slots[index]); return; }
   setSlots(current => current.map((value, i) => i === index ? selected : value === selected ? null : value));
@@ -32,6 +38,7 @@ export function UltiPuzzle({ seed, tick, onConfirm, onCancel }: { seed: string; 
    <h4>{recipe.id === "power" ? <Swords width={17} height={17} aria-hidden="true" /> : <Shield width={17} height={17} aria-hidden="true" />}{t(recipe.id)}</h4>
    <div className={styles.recipeRunes} role="img" aria-label={t("recipeOrder", { order: recipe.order.map(n => n+1).join(", ") })}>{recipe.order.map(n => <Rune key={n} value={n} />)}</div>
    <p>{t(`${recipe.id}Help`)}</p>
+   {recipe.id === "power" && quill && <p>{t("quillHelp", { value: RULESET.loot.powerPct * quill.qualityBp / 10000 })}</p>}
   </div>)}</div>
   <div className={styles.tileBoard}>
    <p className={styles.boardLabel}>{t("chooseTile")}</p>
@@ -40,6 +47,7 @@ export function UltiPuzzle({ seed, tick, onConfirm, onCancel }: { seed: string; 
    <div className={styles.runeRow}>{slots.map((n,i) => <button key={i} type="button" className={styles.slot} data-filled={n !== null} aria-label={t("slot", { n:i+1, value:n===null?t("empty"):String(n+1) })} onClick={() => place(i)}>{n===null?<span aria-hidden="true">{i+1}</span>:<Rune value={n} />}</button>)}</div>
   </div>
   <p className={styles.baseEffect}>{t("baseEffect")}</p>
+  {amulet && <p className={styles.baseEffect}>{t("amuletHelp", { value: RULESET.loot.ultiShieldPct * amulet.qualityBp / 10000 })}</p>}
   <button className={buttonVariants("primary", styles.launch)} disabled={slots.some(n=>n===null)} onClick={()=>onConfirm(slots.join(""))}><Sparkles width={17} height={17} aria-hidden="true" />{t("confirm")}</button>
   <div className={styles.puzzleSecondary}><button onClick={()=>onConfirm("")}>{t("skip")}</button><button onClick={onCancel}>{t("cancel")}</button></div>
  </section>;

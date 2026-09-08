@@ -3,7 +3,8 @@ import { ENEMIES, RULESET, contentHash } from "../battle/content";
 import { isBattleSnapshot } from "../battle/record";
 import { getBattleRelease, replayBattle } from "../battle/replay";
 import type { BattleSnapshot } from "../battle/types";
-import { inventoryFrom, rewardOrder } from "../loot/reward";
+import { rewardOrder } from "../loot/reward";
+import { projectLoadout } from "../loot/service";
 import { isIntent, verifyResolved } from "../training/shared";
 import type { AdventureBattle, AdventureRepository, AdventureResponse, AdventureState } from "./types";
 
@@ -18,12 +19,13 @@ export function createAdventureService(deps: {
   const repo = deps.repository;
 
   async function state(): Promise<AdventureState> {
-    const [pendingDays, rows, wins] = await Promise.all([repo.pendingDays(), repo.recent(60), repo.wins()]);
+    const [pendingDays, rows, wins, selection] = await Promise.all([repo.pendingDays(), repo.recent(60), repo.wins(), repo.selection()]);
     // `wonDays` sale del histórico completo, no de la ventana: si la victoria de un día cayera
     // fuera de `recent(60)`, un intento perdido de ese mismo día volvería a ofrecerse como actual.
     const wonDays = new Set(wins.map((w) => w.day));
     const current = rows.find((r) => r.status === "open") ?? rows.find((r) => !wonDays.has(r.adventure.day)) ?? null;
-    return { pendingDays, current, inventory: inventoryFrom(wins.map((w) => w.reward)) };
+    const inventory = wins.flatMap(w => w.copy ? [w.copy] : []).sort((a, b) => b.acquiredAt.localeCompare(a.acquiredAt) || a.copyId.localeCompare(b.copyId));
+    return { pendingDays, current, inventory, loadout: projectLoadout(selection, inventory) };
   }
 
   return {

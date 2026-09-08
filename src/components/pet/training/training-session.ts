@@ -1,6 +1,10 @@
 import { createBattle, stepBattle, viewOf } from "@/lib/pet/battle/engine";
 import * as legacy from "@/lib/pet/battle/versions/r2.2/engine";
 import * as r3 from "@/lib/pet/battle/versions/r3.1/engine";
+import * as r4 from "@/lib/pet/battle/versions/r4.1/engine";
+import { RULESET as R4, ENEMIES as R4_ENEMIES } from "@/lib/pet/battle/versions/r4.1/content";
+import { isBattleSnapshot } from "@/lib/pet/battle/snapshot";
+import { getBattleRelease } from "@/lib/pet/battle/replay";
 import { RULESET as R2, BROTE as R2_BROTE } from "@/lib/pet/battle/versions/r2.2/content";
 import { RULESET as R3, ENEMIES as R3_ENEMIES } from "@/lib/pet/battle/versions/r3.1/content";
 import type { BattleInput as R2Input } from "@/lib/pet/battle/versions/r2.2/types";
@@ -34,10 +38,14 @@ export class TrainingSession {
   view: BattleView | null = null;
   inputs: BattleInput[] = [];
   events: BattleEvent[] = [];
+  /** Effects from a restored log are history, not fresh activations. */
+  visualFromTick = 0;
   private intent: string | null = null;
   private advance: ((inputs: BattleInput[]) => { events: BattleEvent[]; view: BattleView }) | null = null;
   private replayEvents: BattleEvent[] = [];
   private replayTick = 0;
+  private skillCooldown = RULESET.pet.skillCooldown;
+  private ultiDelay = RULESET.ulti.readyAt;
   private pending = false;
 
   constructor(private actions: Actions, private newId: () => string, private options: SessionOptions = {}) {}
@@ -84,6 +92,11 @@ export class TrainingSession {
 
   /** Construye el motor (r2.2/r3.1 congelados, o el actual con cadena) según el ruleset del combate. */
   private buildEngine(b: TrainingBattle) {
+    this.visualFromTick = 0;
+    const release = getBattleRelease(b.rulesetVersion,b.contentHash);
+    if (!release || !release.isSnapshot(b.snapshot)) throw new Error("UNSUPPORTED_BATTLE");
+    this.skillCooldown = release.ruleset.pet.skillCooldown;
+    this.ultiDelay = "ulti" in release.ruleset ? release.ruleset.ulti.readyAt : Infinity;
     const withFight = <V extends object>(v: V) => ({ ...v, fight: 1, fights: 1 });
     if (b.rulesetVersion === R2.version && b.enemyId === R2_BROTE.id) {
       const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: R2, enemy: R2_BROTE };
@@ -96,7 +109,14 @@ export class TrainingSession {
       const state = r3.createBattle(ctx);
       this.view = withFight(r3.viewOf(state));
       this.advance = inputs => ({ events: r3.stepBattle(ctx, state, inputs as R3Input[]) as BattleEvent[], view: withFight(r3.viewOf(state)) });
-    } else if (b.rulesetVersion === RULESET.version) {
+    } else if (b.rulesetVersion === R4.version) {
+      const enemies = parseEnemyList(b.enemyId, R4_ENEMIES);
+      if (!enemies) throw new Error("UNSUPPORTED_BATTLE");
+      const ctx = { snapshot:b.snapshot,seed:b.seed,ruleset:R4,enemies };
+      const state = r4.createBattle(ctx);
+      this.view = r4.viewOf(state);
+      this.advance = inputs => ({events:r4.stepBattle(ctx,state,inputs),view:r4.viewOf(state)});
+    } else if (b.rulesetVersion === RULESET.version && isBattleSnapshot(b.snapshot)) {
       const enemies = parseEnemyList(b.enemyId, ENEMIES);
       if (!enemies) throw new Error("UNSUPPORTED_BATTLE");
       const ctx = { snapshot: b.snapshot, seed: b.seed, ruleset: RULESET, enemies };
@@ -118,6 +138,7 @@ export class TrainingSession {
         this.events.push(...next.events);
         this.view = next.view;
       }
+      this.visualFromTick = this.view?.tick ?? 0;
       if (this.view?.ended) {
         this.phase = "resolving";
         this.paused = false;
@@ -194,8 +215,10 @@ export class TrainingSession {
         if (event.type === "TELEGRAPH_STARTED") { this.view.enemyPhase = event.kind === "charge" ? "windup" : "guard"; this.view.enemyPhaseUntil = event.resolvesAt; }
         if (event.type === "TELEGRAPH_RESOLVED" || event.type === "STATUS_EXPIRED") this.view.enemyPhase = "idle";
         if (event.type === "STATUS_APPLIED") { this.view.enemyPhase = event.status; this.view.enemyPhaseUntil = event.until; }
-        if (event.type === "SKILL_USED") this.view.skillReadyAt = event.tick + RULESET.pet.skillCooldown;
-        if (event.type === "FIGHT_STARTED") { this.view.fight = event.fight; this.view.enemyHp = event.enemyHp; this.view.enemyHpMax = event.enemyHp; this.view.enemyPhase = "idle"; this.view.skillReadyAt = event.tick; this.view.ultiReadyAt = event.tick + RULESET.ulti.readyAt; this.view.ultiUsed = false; this.view.shield = 0; }
+        if (event.type === "SKILL_USED") this.view.skillReadyAt = event.tick + this.skillCooldown;
+        if (event.type === "LOOT_EFFECT" && event.effect === "heal") this.view.petHp = Math.min(this.view.petHpMax,this.view.petHp + event.amount);
+        if (event.type === "LOOT_EFFECT" && event.effect === "cooldown") this.view.skillReadyAt -= event.amount;
+        if (event.type === "FIGHT_STARTED") { this.view.fight = event.fight; this.view.enemyHp = event.enemyHp; this.view.enemyHpMax = event.enemyHp; this.view.enemyPhase = "idle"; this.view.skillReadyAt = event.tick; this.view.ultiReadyAt = event.tick + this.ultiDelay; this.view.ultiUsed = false; this.view.shield = 0; }
         if (event.type === "BATTLE_ENDED") { this.view.ended = true; this.phase = "done"; }
       }
       this.events.push(...current);

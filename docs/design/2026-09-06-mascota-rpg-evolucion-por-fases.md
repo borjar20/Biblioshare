@@ -856,7 +856,7 @@ primero es seguro (plan Task 14).
 - La política «interrumpir» gana la cadena entre el 50 y el 75 % y «no pulsar» menos del 3 %
   (política de referencia: interrumpir + ulti).
 
-### R4b — Primer botín (contrato heredado; en diseño, #1123)
+### R4b — Primer botín (implementación en verificación, #1123)
 
 **Refinamiento del 2026-09-08:** cada copia mantiene el efecto del objeto y tiene un
 multiplicador de potencia fijo al obtenerla; conseguir una mejor requiere otra copia.
@@ -867,6 +867,13 @@ comprado con tinta. Rango de calidad y compatibilidad del botín histórico se c
 en #1123; esta revisión no declara implementado el sistema.
 
 **Arranque autorizado el 2026-09-08.** R4a está integrada mediante #1127, con aceptación jugable y migración en producción registradas arriba. La petición del usuario «sincroniza la documentación y vamos con R4b» permite avanzar al diseño; no equivale a una nueva medición de hábitos ni de cuentas reales. Propuesta técnica: `docs/superpowers/specs/2026-09-08-mascota-r4b-botin-design.md`. El hito sigue abierto hasta implementar, verificar y aceptar su botín.
+
+**Ejecución secuencial, 2026-09-08:** r4.2 incorpora los seis efectos, calidad fija por
+copia y dos ranuras con captura atómica; versiones anteriores conservadas. Iconos y VFX
+PixelLab generados (16 generaciones). Migración verificada en dev y bootstrap local vacío
+de 243 etapas. El flujo de equipo/entrenamiento/replay y concurrencia real pasan; cierre
+general y aceptación jugable siguen en #1123. Balance: `docs/testing/2026-09-08-r4b-balance.md`.
+No se ha desplegado R4b en producción. Tinta y desencantado siguen aplazados en #1134.
 
 **Entrega:**
 

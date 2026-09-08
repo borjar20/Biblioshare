@@ -4588,3 +4588,35 @@ fuera de esta entrega (#1134). El plan propone UUID de victoria como identidad d
 copia, lectura neutral para las antiguas y cinco potencias candidatas para calibrar;
 estas concreciones técnicas no son mediciones ni valores numéricos aprobados por el
 usuario. La petición autoriza planificación, no acredita ejecución ni despliegue.
+
+## 2026-09-08 — R4b: calidad fija por oportunidad y selección capturada en SQL
+
+La ejecución secuencial autorizada concreta la copia como UUID de la aventura ganada.
+No se crea inventario paralelo: las victorias se leen con paginación por id (500 filas)
+y el botín anterior se proyecta a 10000 bp sin modificar recompensas ni digests.
+Las nuevas copias tienen 8000/9000/10000/11000/12000 bp y `qualityVersion: 1`.
+`private.pet_quality_v1` depende de usuario y día de aventura, nunca del intento.
+
+`pet_loadout` guarda solo las dos referencias seleccionadas. Equipar y crear aventuras
+o entrenamientos comparten el bloqueo consultivo por usuario. SQL valida posesión,
+victoria y ranura; para un combate nuevo sobrescribe cualquier equipo entrante con su
+selección autoritativa. Recuperar una intención devuelve la foto guardada. authenticated
+solo lee su selección mediante RLS; las escrituras/RPC están limitadas a service_role.
+No se añade caché compartida a estos datos privados.
+
+El motor r4.2 queda separado de r2.2/r3.1/r4.1, conservados sin cambios. Cada efecto usa
+enteros, topes y eventos con cantidad efectiva. Iconos y cinco VFX se generan con PixelLab
+(16 generaciones), con procedencia y hashes. Las copias se agrupan por objeto, se ordenan
+por potencia y se comparan individualmente; una victoria sugiere la copia sin equiparla.
+
+La calibración usa una matriz completa de tipos neutrales y muestreo pareado estratificado
+para las 256 combinaciones de potencia, con comprobación en semillas nuevas: 1.254.400
+simulaciones. Es una reducción explícita del producto exhaustivo inicialmente propuesto;
+sus límites y cifras están en `docs/testing/2026-09-08-r4b-balance.md`. El colgante favorece
+mucho las cargas de Brote y no ayuda contra Coraza; ninguna build neutral domina a todas
+en victorias y vida final en toda la muestra. Esto no acredita aceptación humana.
+
+R4b está verificado en dev y base local; la aceptación jugable y publicación permanecen
+en #1123. Tinta/desencantado siguen en #1134. El rollback no debe volver al frontend R4a
+si ya existen batallas r4.2 abiertas: conservar el motor/reanudación r4.2 y, si hace falta,
+desactivar solo nuevos inicios. Mantener la migración aditiva y las copias ya concedidas.

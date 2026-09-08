@@ -4,6 +4,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../messages/es.json";
 import { TrainingPanel } from "./training-panel";
+import { BATTLE_RELEASES } from "@/lib/pet/battle/replay";
+const CURRENT_HASH=BATTLE_RELEASES.find(release=>release.rulesetVersion===RULESET.version)!.contentHash;
 import { pickEnemies, enemyList } from "@/lib/pet/battle/adventure";
 import { ENEMIES, RULESET } from "@/lib/pet/battle/content";
 import { POLICIES, runPolicy } from "@/lib/pet/battle/policies";
@@ -14,14 +16,14 @@ import type { TrainingBattle, TrainingResponse } from "@/lib/pet/training/types"
 vi.mock("./combat-sprite", () => ({ CombatSprite: () => <div data-testid="combat-sprite" /> }));
 
 vi.mock("@/lib/pet/training/actions", () => ({
-  startBattle: vi.fn(async (intentId: string) => ({ ok: true, battle: { intentId, status: "open", seed: "00000001000000020000000300000004", rulesetVersion: "r2.2", enemyId: "brote", snapshot: { name: "Roble", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 0, hpMax: 100, atk: 10 } } })),
+  startBattle: vi.fn(async (intentId: string) => ({ ok: true, battle: { intentId, status: "open", seed: "00000001000000020000000300000004", rulesetVersion: "r2.2", contentHash: "2c40a90c9f141ffd2eda8241c83eb8859a712dbe4606798b56b90fb056b159d3", enemyId: "brote", snapshot: { name: "Roble", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 1, hpMax: 100, atk: 10 } } })),
   resolveBattle: vi.fn(), replayTrainingBattle: vi.fn(),
 }));
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 it("permite empezar una aventura aunque el navegador bloquee localStorage", async () => {
   const getter = vi.spyOn(window, "localStorage", "get").mockImplementation(() => { throw new DOMException("Storage blocked", "SecurityError"); });
-  const battle: TrainingBattle = { intentId: "blocked-storage", status: "open", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: null, digest: null };
+  const battle: TrainingBattle = { intentId: "blocked-storage", status: "open", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote,brote", inputs: [], result: null, digest: null };
   const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle })), resolve: vi.fn(), replay: vi.fn() };
   try {
     render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} /></NextIntlClientProvider>);
@@ -83,7 +85,7 @@ it("returns keyboard focus after cancelling and confirming the ulti", async () =
   const { startBattle } = await import("@/lib/pet/training/actions");
   const original = await startBattle("focus");
   if (!original.ok) throw new Error(original.code);
-  vi.mocked(startBattle).mockResolvedValueOnce({...original, battle: {...original.battle, rulesetVersion:"r3.1",enemyId:"caparazon"}});
+  vi.mocked(startBattle).mockResolvedValueOnce({...original, battle: {...original.battle, rulesetVersion:"r3.1",contentHash:"deebe918beee7f74ff9d9cda720caac9f9182713158085c118971970cce40cb3",enemyId:"caparazon"}});
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name:"Empezar combate" })); });
   act(() => { vi.advanceTimersByTime(12000); });
@@ -115,7 +117,7 @@ function buildChainFixture() {
 it("modo aventura: marcador de tramo estable, interludio con Continuar y botón de reintento al perder", { timeout: 30_000 }, async () => {
   vi.useFakeTimers();
   const f = chainFixture();
-  const battle: TrainingBattle = { intentId: "adv-1", status: "open", seed: f.seed, snapshot: f.snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: f.enemyId, inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+  const battle: TrainingBattle = { intentId: "adv-1", status: "open", seed: f.seed, snapshot: { ...f.snapshot, equipment: { weapon:null, amulet:null } }, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: f.enemyId, inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
   const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle })), resolve: vi.fn(), replay: vi.fn() };
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="start" /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar aventura" })); });
@@ -144,18 +146,18 @@ it("modo aventura: sin nada que empezar, el botón se queda deshabilitado con su
   expect(screen.getByText("Registra algo hoy y vuelve: tu mascota tendrá una aventura esperando.")).toBeTruthy();
 });
 
-it("modo aventura: al ganar muestra el botín y su etiqueta de pendiente", async () => {
-  const battle: TrainingBattle = { intentId: "adv-2", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 2, reward: { itemId: "loan_pendant", slot: "amulet" } } };
+it("modo aventura: al ganar muestra el botín y su potencia neutral heredada", async () => {
+  const battle: TrainingBattle = { intentId: "adv-2", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 2, reward: { itemId: "loan_pendant", slot: "amulet" } } };
   const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle, events: [] })), resolve: vi.fn(), replay: vi.fn() };
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="resume" /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Reanudar aventura" })); });
   expect(screen.getByText("¡Aventura superada!")).toBeTruthy();
   expect(screen.getByText("Botín: Colgante del préstamo")).toBeTruthy();
-  expect(screen.getByText("Se activa en la siguiente actualización")).toBeTruthy();
+  expect(screen.getByText("Potencia ×1,0")).toBeTruthy();
 });
 
 it("modo aventura: tras ganar, con canStartAnother, hay botón para empezar la siguiente aventura", async () => {
-  const battle: TrainingBattle = { intentId: "adv-win-1", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+  const battle: TrainingBattle = { intentId: "adv-win-1", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
   const nextBattle: TrainingBattle = { ...battle, intentId: "adv-win-2" };
   const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle, events: [] })), resolve: vi.fn(), replay: vi.fn() };
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="start" canStartAnother /></NextIntlClientProvider>);
@@ -169,7 +171,7 @@ it("modo aventura: tras ganar, con canStartAnother, hay botón para empezar la s
 });
 
 it("modo aventura: tras ganar, sin canStartAnother, no hay botón para la siguiente aventura", async () => {
-  const battle: TrainingBattle = { intentId: "adv-win-3", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+  const battle: TrainingBattle = { intentId: "adv-win-3", status: "resolved", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote,brote", inputs: [], result: { outcome: "win", reason: "ko", ticks: 900, petHp: 10, petHpMax: 100, enemyHp: 0, enemyHpMax: 400, damageDealt: 1200, damageTaken: 90, causes: ["charges_interrupted"], fight: 3 }, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
   const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle, events: [] })), resolve: vi.fn(), replay: vi.fn() };
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="start" canStartAnother={false} /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar aventura" })); });
@@ -195,14 +197,14 @@ it("onDone se dispara una sola vez por combate terminado, con la última prop on
   vi.useFakeTimers();
   const f = singleFightFixture();
   const lostBattle: TrainingBattle = {
-    intentId: "adv-onDone-1", status: "resolved", seed: f.seed, snapshot: f.snapshot,
-    rulesetVersion: RULESET.version, contentHash: "x", enemyId: f.enemyId, inputs: [],
+    intentId: "adv-onDone-1", status: "resolved", seed: f.seed, snapshot: { ...f.snapshot, equipment: { weapon:null, amulet:null } },
+    rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: f.enemyId, inputs: [],
     result: { outcome: "lose", reason: "ko", ticks: 10, petHp: 0, petHpMax: 100, enemyHp: 50, enemyHpMax: 100, damageDealt: 10, damageTaken: 100, causes: [], fight: 1 },
     digest: "d1", adventure: { day: "2026-09-07", attempt: 1, reward: null },
   };
   const openBattle: TrainingBattle = {
-    intentId: "adv-onDone-2", status: "open", seed: f.seed, snapshot: f.snapshot,
-    rulesetVersion: RULESET.version, contentHash: "x", enemyId: f.enemyId, inputs: [],
+    intentId: "adv-onDone-2", status: "open", seed: f.seed, snapshot: { ...f.snapshot, equipment: { weapon:null, amulet:null } },
+    rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: f.enemyId, inputs: [],
     result: null, digest: null, adventure: { day: "2026-09-07", attempt: 2, reward: null },
   };
   const resolvedBattle: TrainingBattle = { ...openBattle, status: "resolved", result: f.result, digest: "d2" };

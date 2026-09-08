@@ -122,6 +122,10 @@ async function golden() {
   const policy = chain > 1 ? POLICIES.interrupt_ulti : POLICIES.interrupt;
   const policyId: PolicyId = chain > 1 ? "interrupt_ulti" : "interrupt";
   const snapshot = snapshotForProfile("lectora_larga", "wizard");
+  if (RULESET.version === "r4.2") snapshot.equipment = {
+    weapon:{copyId:"00000000-0000-4000-8000-000000000001",itemId:"sharp_bookmark",qualityBp:12000},
+    amulet:{copyId:"00000000-0000-4000-8000-000000000002",itemId:"last_page_amulet",qualityBp:10000},
+  };
   for (let i = 0; i < 10_000; i++) {
     const seed = seedFromIndex(i);
     const enemies = chain > 1 ? pickEnemies(seed, chain, ENEMIES) : [BROTE];
