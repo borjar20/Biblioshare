@@ -111,6 +111,13 @@ test("940 películas: worker nuevo, fallos, comparación, selección multipágin
     await expect(page.getByRole("heading", { name: /Finalizada/ })).toBeVisible();
     expect((await admin.from("passes").select("id", { count: "exact", head: true }).eq("user_id", actorIds[0])).count).toBe(941);
     expect((await admin.from("passes").select("id", { count: "exact", head: true }).eq("user_id", actorIds[0]).eq("status", "completed").is("finished_on", null)).count).toBe(1);
+    // A completed bulk import must render in the library, not just its summary.
+    await page.goto("/coleccion");
+    await expect(page.getByText(/\d+ de 939 obras/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tu biblioteca está vacía", exact: true })).toHaveCount(0);
+    await page.goto("/coleccion?type=movie&status=completed");
+    await expect(page.getByText(/\d+ de 938 obras/)).toBeVisible();
+    await page.goto("/importar");
     await page.getByText("Deshacer esta importación", { exact: true }).click();
     await page.getByRole("button", { name: "Confirmar deshacer", exact: true }).click();
     await expect(page.getByRole("heading", { name: /Deshecha/ })).toBeVisible();

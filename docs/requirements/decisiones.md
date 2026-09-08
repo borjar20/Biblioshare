@@ -4620,3 +4620,16 @@ se muestran como parciales, incluso en trabajos antiguos marcados como finalizad
 
 Alcance autorizado: migración y pruebas locales desechables. No implica aplicar la migración
 remota, publicar ni reparar una cuenta real; esos pasos siguen en #1150–#1159.
+
+## 2026-09-08 — Lecturas acotadas en bibliotecas grandes (#1161)
+
+La hidratación de biblioteca y colecciones divide las claves en lotes de 50,
+con un máximo de cuatro lotes simultáneos y conservando el orden de entrada.
+Las consultas de pases y facetas se paginan con desempate estable por id antes
+de aplicar búsqueda, ordenación y límite visible. Un error de catálogo o pases
+se propaga; no significa que la biblioteca esté vacía. Se mantiene el cliente
+de la sesión y su RLS, sin caché compartida ni permisos nuevos.
+
+El fallo de transporte se reprodujo con 500 UUID: `UND_ERR_HEADERS_OVERFLOW`;
+50 UUID funcionan. La prueba local con 940 películas verifica también la rejilla
+tras importar. Publicación y comprobación en la cuenta real se rastrean en #1161.

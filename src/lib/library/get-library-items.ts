@@ -8,6 +8,8 @@ import { loadGenres } from "@/lib/challenges/load-catalog-facets";
 import { labelForSlug, slugForLabel } from "@/lib/catalog/genre-vocab";
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import { shouldHideDropped, splitDropped } from "./hide-dropped";
+import { chunkIds } from "@/lib/supabase/in-chunks";
+import { readAllRows } from "@/lib/supabase/read-all-rows";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -40,6 +42,20 @@ type ActivePassMeta = {
 // llama ya lo trae, y descarta (como con el catálogo) las claves sin pase activo
 // en vez de inventar un `entryId`/`status` que no existen.
 export async function hydrateItems(
+  supabase: SupabaseServerClient,
+  userId: string,
+  keys: { item_type: ItemType; item_id: string }[]
+): Promise<LibraryItem[]> {
+  const items: LibraryItem[] = [];
+  // Bound every downstream IN query, retaining the caller's global ordering.
+  for (const group of chunkIds(chunkIds(keys), 4)) {
+    const batches = await Promise.all(group.map(batch => hydrateItemBatch(supabase, userId, batch)));
+    items.push(...batches.flat());
+  }
+  return items;
+}
+
+async function hydrateItemBatch(
   supabase: SupabaseServerClient,
   userId: string,
   keys: { item_type: ItemType; item_id: string }[]
@@ -88,6 +104,9 @@ export async function hydrateItems(
           .in("book_id", idsByType.book)
       : Promise.resolve({ data: [] }),
   ]);
+  for (const result of [books, movies, series, editions]) {
+    if ("error" in result && result.error) throw result.error;
+  }
 
   const editionsByBook = new Map<string, { id: string; total_pages: number | null }[]>();
   for (const row of editions.data ?? []) {
@@ -134,12 +153,13 @@ export async function hydrateItems(
   // entrada de biblioteca). Se resuelve por clave en vez de reutilizar filas ya
   // traídas por quien llama porque este helper también sirve a Colección, cuyas
   // claves no vienen de `passes`.
-  const { data: activePassRows } = await supabase
+  const { data: activePassRows, error: activePassError } = await supabase
     .from("passes")
     .select("id, item_type, item_id, status, position, pinned_order, edition_id")
     .eq("user_id", userId)
     .eq("is_active", true)
     .in("item_id", allItemIds);
+  if (activePassError) throw activePassError;
 
   const activePassByKey = new Map<string, ActivePassMeta>();
   for (const row of activePassRows ?? []) {
@@ -168,11 +188,12 @@ export async function hydrateItems(
 
   const watchedByPassId = new Map<string, number>();
   if (seriesPassIds.length > 0) {
-    const { data: watchRows } = await supabase
+    const watchRows = await readAllRows((from, to) => supabase
       .from("episode_watches")
       .select("pass_id")
       .eq("user_id", userId)
-      .in("pass_id", seriesPassIds);
+      .in("pass_id", seriesPassIds)
+      .order("id").range(from, to));
     for (const row of watchRows ?? []) {
       // `pass_id` es nullable: las filas legadas (anteriores al hub) no cuelgan
       // de ningún pase y no cuentan para el progreso de ESTE.
@@ -191,7 +212,7 @@ export async function hydrateItems(
   // qué filas se ven (perfil propio o público visible) y esa columna es
   // legible siempre, cuente o no la reseña como pública — la nota nunca fue
   // lo que is_public escondía.
-  const { data: closedPassRows } = await supabase
+  const closedPassRows = await readAllRows((from, to) => supabase
     .from("passes")
     .select("id, item_type, item_id, finished_on, created_at, rating")
     .eq("user_id", userId)
@@ -199,7 +220,8 @@ export async function hydrateItems(
     // Un pase abierto ("lo estoy leyendo ahora") todavía no es una lectura
     // terminada: no debe sumar a "Leído {count} veces" (colección, perfiles
     // públicos y export CSV comparten este contador) ni aportar nota/reseña.
-    .in("status", ["completed", "dropped"]);
+    .in("status", ["completed", "dropped"])
+    .order("id").range(from, to));
 
   const rereadCountByItem = new Map<string, number>();
   for (const row of closedPassRows ?? []) {
@@ -230,9 +252,10 @@ export async function hydrateItems(
   // ganador es una reseña privada de OTRO usuario, esta consulta simplemente
   // no devuelve esa fila y el texto se muestra en blanco, no un error.
   const latestPassIds = latestClosedPasses.map((p) => p.id);
-  const { data: reviewRows } = latestPassIds.length
+  const { data: reviewRows, error: reviewError } = latestPassIds.length
     ? await supabase.from("pass_reviews").select("id, review").in("id", latestPassIds)
-    : { data: [] as { id: string | null; review: string | null }[] };
+    : { data: [] as { id: string | null; review: string | null }[], error: null };
+  if (reviewError) throw reviewError;
   const reviewByPassId = new Map((reviewRows ?? []).map((r) => [r.id, r.review]));
   const notesByItem = new Map(
     latestClosedPasses.map((p) => [p.itemKey, reviewByPassId.get(p.id) ?? null])
@@ -362,8 +385,8 @@ export async function getLibraryView(
   if (filters.itemType) query = query.eq("item_type", filters.itemType);
   if (filters.status) query = query.eq("status", filters.status);
 
-  const { data: entries, error } = await query;
-  if (error) throw error;
+  query = query.order("id");
+  const entries = await readAllRows((from, to) => query.range(from, to));
   if (!entries || entries.length === 0) return { items: [], hiddenDropped: 0, total: 0 };
 
   // La hidratación (catálogo + pase activo + rating/notes) vive en
@@ -474,7 +497,8 @@ export async function getUserGenres(
   if (itemType) query = query.eq("item_type", itemType);
   if (status) query = query.eq("status", status);
   if (shouldHideDropped({ hideDropped, status })) query = query.neq("status", "dropped");
-  const { data: entries } = await query;
+  query = query.order("id");
+  const entries = await readAllRows((from, to) => query.range(from, to));
 
   const refs = (entries ?? []).map((e) => ({
     itemType: e.item_type as ItemType,
