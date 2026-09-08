@@ -16,7 +16,14 @@ export function ArchiveForm() {
       <p className="text-sm text-muted-foreground">{t("help")}</p>
       <form action={action} className="flex flex-col gap-3">
         <label htmlFor="letterboxd-archive">{t("file")}</label>
-        <input id="letterboxd-archive" name="archive" type="file" accept=".zip,application/zip" required />
+        <input
+          id="letterboxd-archive"
+          name="archive"
+          type="file"
+          accept=".zip,application/zip"
+          required
+          className="text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
+        />
         <Button type="submit" disabled={pending} className="self-start">{pending ? t("analyzing") : t("analyze")}</Button>
       </form>
       {state.error && <p role="alert">{t(`errors.${state.error}`)}</p>}
