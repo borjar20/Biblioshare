@@ -20,6 +20,12 @@ combate para móvil/escritorio ni desmontarlos al cambiar de sección. El resto 
 la app mantiene la identidad descrita a continuación. Tokens: `DESIGN.md`, apartado
 «Excepción de la mascota»; referencias: spec `2026-09-09-mascota-rpg-ui-design.md`.
 
+En escritorio (desde 900 px), el juego ocupa todo el ancho con 26 px de margen
+interior a cada lado, sin máximos de 1200/940/860 px. Campamento reserva una
+columna acotada para misiones y da el resto al escenario; la altura de los
+escenarios se adapta al viewport. Eclosión distribuye formulario y madriguera
+en dos columnas. En móvil se conserva la composición compacta.
+
 Serif display + paleta papel/teja + **la portada como material**. Los mejores
 layouts de la casa son la plantilla a imitar: `/persona` (desktop 2-3 columnas),
 `/estadisticas` (densidad + sub-nav), pestaña Episodios de serie, mapa de saga,

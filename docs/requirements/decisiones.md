@@ -4655,3 +4655,11 @@ también el resumen de Personaje. Se reutilizan sprites y reglas existentes; Pix
 genera únicamente fondos independientes. Las imágenes de diseño no definen nuevos
 objetos, clases, recompensas ni estadísticas. Spec y referencias:
 `docs/superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
+
+## 2026-09-09 — El RPG ocupa el ancho disponible en escritorio (#1166)
+
+Tras la revisión del usuario, se eliminan los máximos de ancho del marco y sus
+pantallas desde 900 px. El contenido conserva 26 px de margen lateral, las
+misiones tienen una columna acotada y los escenarios crecen con la altura de la
+ventana. El retorno queda alineado al borde interior del juego. La composición
+móvil mantiene sus reglas actuales.

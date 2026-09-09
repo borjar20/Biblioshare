@@ -59,3 +59,13 @@ balance R4b.
 El servidor volvió a registrar `HANGING_PROMISE_REJECTION` de Auth durante
 prerender, también fuera de `/mascota`. Seguimiento previo #1098 y #1126; no se
 atribuye al rediseño ni se declara resuelta su causa.
+
+## Corrección de ancho de escritorio — PR #1166
+
+Se retiraron los máximos de ancho desde 900 px y se ajustaron las alturas de los
+escenarios al viewport. Build de producción aprobada. Navegador real: 18
+comprobaciones (seis pantallas a 1920×1080, 1440×900 y 390×844), sin desbordamiento
+horizontal y con un único `main`. En escritorio cada vista ocupa el ancho de la
+ventana menos 52 px; retorno alineado a 26 px. Captura visual revisada a 1920 px.
+Evidencia local: `fullwidth-report.json` y `fullwidth-1920.png` en la carpeta de
+capturas del 2026-09-09. Prueba de lectura sin modificar datos de la cuenta.

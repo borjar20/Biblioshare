@@ -148,13 +148,16 @@
 .hatch > form > div:first-child :is(h2, p) { background: #09291ff0; padding: 8px 12px; border-radius: 4px; }
 .game label:has(input[type="radio"]:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
 @media (min-width: 900px) {
-  .content { padding: 26px; }
-  .header { padding-left: max(26px, calc((100vw - 1148px) / 2)); padding-right: max(26px, calc((100vw - 1148px) / 2)); }
-  .camp { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 24px; align-items: start; }
+  .content { max-width: none; padding: 26px; }
+  .header { padding-left: 26px; padding-right: 26px; }
+  .bag, .diary, .burrow, .combat, .hatch { max-width: none; }
+  .hatch { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .camp { grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 440px); gap: 24px; align-items: start; }
   .campHud { right: auto; width: min(380px, calc(100% - 24px)); }
-  .camp .scene { min-height: 480px; }
+  .camp .scene { min-height: max(480px, calc(100svh - 370px)); }
   .character { grid-template-columns: 1fr 1.1fr; gap: 24px; }
-  .character .scene { min-height: 450px; }
+  .character .scene { min-height: max(450px, calc(100svh - 290px)); }
+  .burrowScene { min-height: max(460px, calc(100svh - 250px)); }
   .campMissions { padding-top: 4px; }
 }
 @media (max-width: 420px) {
