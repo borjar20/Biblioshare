@@ -4601,6 +4601,20 @@ Verificación y migraciones realizadas únicamente sobre instancia local desecha
 sintéticos. Aplicación remota, publicación y aceptación con una cuenta real siguen pendientes en
 los tickets originales; no se cierra ninguno como consecuencia de esta implementación local.
 
+## 2026-09-08 — Asociar y reparar importaciones sin fusionar por coincidencia aparente
+
+Diseño confirmado en docs/design/letterboxd-recovery.md (Q1–Q6). Compartir película,
+fecha y nota propone una asociación con un único pase anterior, pero no la confirma:
+el usuario puede revisar y aceptar varias propuestas juntas. Se acepta el coste de
+esa confirmación para no colapsar visionados distintos. Una vez asociado, completar
+huecos conserva los valores locales presentes; sustituir discrepancias exige decisión.
+
+La recuperación conserva el trabajo y sus resultados correctos. Aplicar a una cuenta
+una reparación requiere aprobar primero sus efectos concretos. Fin del procesamiento
+no significa importación resuelta: se muestra parcial mientras queden incidencias.
+Estas decisiones complementan el contrato original; no autorizan reparación automática
+de datos productivos durante el diseño.
+
 ## 2026-09-08 — Confirmaciones versionadas y procedencia reversible en recuperación Letterboxd
 
 La revisión y el plan son consultas sin escrituras. Al confirmar se revalida la versión de
