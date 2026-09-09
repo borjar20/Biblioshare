@@ -1,0 +1,47 @@
+{
+  "created": "2026-09-09",
+  "tool": "mcp__pixellab__create_image_pro",
+  "model": "pro",
+  "sourceDimensions": {
+    "width": 576,
+    "height": 448
+  },
+  "format": "WebP lossless, native resolution, effort 6",
+  "notes": "Independent background-only scenes; existing character sprite sheets are not modified. Native area respects PixelLab Pro limit; use image-rendering: pixelated when upscaling. Subject and flat ground composed for centered mobile crops.",
+  "assets": [
+    {
+      "file": "camp.webp",
+      "jobId": "3feb3b3d-8776-43bb-b7be-36448846803b",
+      "seed": 202609091,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, lush emerald and olive greens, deep teal shadows, golden sunbeams, warm ochre highlights, moss, tiny white flowers and mushrooms at edges. Landscape full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak centered slightly right with huge arching roots forming a cozy rounded library burrow entrance in the middle distance. Built-in small bookshelves visible inside, colorful book spines without writing, a warm glowing amber lantern hanging beside the entrance. Oak canopy and other tall forest trees frame the top and sides. The large trunk and burrow fit within the central 60 percent so a centered mobile crop retains them. LOWER THIRD is a broad flat unobstructed grassy ochre clearing, especially empty at horizontal center and 78 percent down, a quiet stage for a single live sprite. Rich detailed woodland environment, restrained detail on the flat ground, tranquil welcoming atmosphere. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "chargedGenerations": 40,
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/3feb3b3d-8776-43bb-b7be-36448846803b/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-09/scene-sources/camp.png",
+      "outputDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "bytes": 39610,
+      "postprocessing": "Remove opaque alpha; encode lossless WebP. No resampling."
+    },
+    {
+      "file": "battle.webp",
+      "jobId": "fc413067-7be3-4b65-a9ce-aeb7d045ba4d",
+      "seed": 202609092,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, lush emerald and olive greens, deep teal shadows, golden sunbeams, warm ochre highlights, moss, tiny white flowers and mushrooms at edges. Landscape full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A secluded ancient forest glade framed by massive mossy trunks along left and right, with luminous canopy and shafts of afternoon sunlight. In the far center background a small rocky waterfall and brook recede between trees, behind the clearing. LOWER 45 percent is a wide flat open grassy earthen battle ground extending continuously across the image, empty and unobstructed around x=28 percent and x=72 percent at y=78 percent, suitable for two live fighter sprites. Foreground plants restricted to the outer bottom corners. Composition readable when center cropped on mobile. Peaceful adventurous atmosphere, detailed environmental pixel art, pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "chargedGenerations": 40,
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/fc413067-7be3-4b65-a9ce-aeb7d045ba4d/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-09/scene-sources/battle.png",
+      "outputDimensions": {
+        "width": 563,
+        "height": 448
+      },
+      "bytes": 29754,
+      "postprocessing": "Crop white generator padding: left 6 px, right 7 px; remove opaque alpha; encode lossless WebP. No resampling."
+    }
+  ],
+  "balanceBefore": 3285,
+  "balanceAfter": 3205,
+  "actualGenerationsSpent": 80,
+  "sourceTransfer": "PixelLab MCP inline PNG payload saved locally; same image as download URL."
+}

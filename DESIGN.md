@@ -491,6 +491,24 @@ Set propio, `viewBox` 24, trazo 1.8 con extremos y uniones redondeados, sin rell
 
 ## Do's and Don'ts
 
+### Excepción de la mascota: RPG de bosque (#1165, 2026-09-09)
+
+`/mascota` tiene un sistema local idéntico en claro y oscuro. La fuente ejecutable
+es `src/components/pet/game/pet-game.module.css`; no cambia los tokens globales de
+Paper. Fondo `#071f19`, panel `#0c2d24`, panel hundido `#123b2f`, texto `#f4f0d8`,
+secundario `#b5cfc0`, borde musgo `#355b48` y selección/foco `#eed281`. Los controles
+de mochila y combate tienen sus módulos locales con la misma familia visual.
+
+Marcos de 1 px, radios de 4–8 px y relieve leve en botones. Madera moderada para la
+acción de aventura; barras azules para XP, verdes/rojas para vida. Texto de interfaz
+sans legible: la identidad viene de escenarios PixelLab y sprites, no de párrafos
+en tipografía pixel. El regreso a Biblioshare y los controles táctiles miden al
+menos 40–44 px. El contenedor útil llega a 1200 px: campamento y personaje forman
+dos columnas en escritorio y una en móvil.
+
+Las reglas Paper de abajo siguen aplicándose fuera del juego. Madrigueras de clubes
+y mascotas embebidas en perfiles conservan la presentación del contexto anfitrión.
+
 ### Do:
 - **Do** usar la terracota como único primario, y reservarla para el CTA, el foco, el progreso y
   la selección. Si aparece en todas partes, deja de señalar.

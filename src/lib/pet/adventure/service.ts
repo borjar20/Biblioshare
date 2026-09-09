@@ -30,6 +30,18 @@ export function createAdventureService(deps: {
 
   return {
     state,
+    /** Read-only recovery: never consumes a day or creates a replacement attempt. */
+    async resume(intentId: string): Promise<AdventureResponse> {
+      if (!isIntent(intentId)) return { ok: false, code: "INVALID_INTENT" };
+      const battle = await repo.find(intentId);
+      if (!battle) return { ok: false, code: "NOT_FOUND" };
+      if (battle.status === "resolved") return verifyResolved(battle);
+      const release = getBattleRelease(battle.rulesetVersion, battle.contentHash);
+      if (!release) return { ok: false, code: "UNKNOWN_RELEASE" };
+      if (!release.isSnapshot(battle.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" };
+      if (!parseEnemyList(battle.enemyId, release.enemies)) return { ok: false, code: "ENEMIES_MISMATCH" };
+      return { ok: true, battle };
+    },
     async start(): Promise<AdventureResponse> {
       const snapshot = await deps.snapshot();
       if (!snapshot) return { ok: false, code: "NO_PET" };

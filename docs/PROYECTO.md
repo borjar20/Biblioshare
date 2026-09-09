@@ -123,6 +123,16 @@ con i18n (`next-intl`) desde el inicio.
   congelado (`docs/perf-baseline.md`), mapa de arquitectura derivado
   (`docs/architecture/graph.json`).
 
+## Mascota — interfaz RPG (verificada en código el 2026-09-09)
+
+`/mascota` reúne Campamento, Personaje, Mochila, Diario, Madriguera y Combate con
+escenarios de bosque pixel y un tema verde común a claro y oscuro. El retorno
+«Biblioshare» conserva la última ubicación de la app. Entrenamiento y aventuras
+se pausan al salir y recuperan su intento guardado en el dispositivo. Mochila
+compara copias y permite equiparlas; Diario conserva todas las misiones y logros.
+Implementación local de #1165; publicación pendiente. Contrato y evidencia en
+`superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
+
 ## Lo que NO existe (para no buscarlo)
 
 Etiquetas privadas, modo «en pausa», método de adquisición del ejemplar, diario

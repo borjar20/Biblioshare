@@ -206,7 +206,7 @@ test.describe("Madriguera #1083", () => {
     // The label is optimistic; wait until the server action finishes before navigating.
     await expect(page.getByRole("button", { name: /^siguiendo$/i })).toBeEnabled();
     await page.goto("/mascota");
-    const burrow = page.getByRole("region", { name: "Madriguera", exact: true });
+    const burrow = page.getByRole("region", { name: "Tu mascota y las de las personas que sigues", exact: true });
     await expect(page.getByTestId("hatch-form")).toBeVisible();
     await expect(burrow.getByRole("button", { name: /Nube.*@burrow1083b/ })).toBeVisible();
     await expect(burrow.getByText("La tuya")).toHaveCount(0);
@@ -220,7 +220,9 @@ test.describe("Madriguera #1083", () => {
     await page.getByRole("radiogroup").getByText("Maga", { exact: true }).click();
     await expect(page.getByRole("radio", { name: /Maga/ })).toBeChecked();
     await page.getByRole("button", { name: "Eclosionar", exact: true }).click();
+    await page.getByRole("button", { name: "Personaje", exact: true }).click();
     await expect(page.getByTestId("pet-detail")).toBeVisible();
+    await page.getByRole("button", { name: "Madriguera", exact: true }).click();
     await expect(burrow.getByText("La tuya")).toBeVisible();
     await expect(burrow.getByRole("button").first()).toHaveAccessibleName(/Nuez.*tu mascota/);
     await burrow.getByRole("button", { name: /Nube.*@burrow1083b/ }).click();
@@ -255,7 +257,7 @@ test.describe("Madriguera #1083", () => {
     expect(await pets(a, 1000)).toHaveLength(60);
     await login(page, a);
     await page.goto("/mascota");
-    const burrow = page.getByRole("region", { name: "Madriguera", exact: true });
+    const burrow = page.getByRole("region", { name: "Tu mascota y las de las personas que sigues", exact: true });
     await expect(burrow.getByRole("list").getByRole("button")).toHaveCount(12);
     await burrow.getByRole("button", { name: "Mostrar más" }).click();
     await expect(burrow.getByRole("list").getByRole("button")).toHaveCount(60);

@@ -3,10 +3,10 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-08",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08",
+    "generatedAt": "2026-09-09",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09",
     "stack": {
-      "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
+      "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
       "styling": "Tailwind CSS 4",
       "backend": "Supabase (Postgres + RLS + Auth + Storage) — remoto también en dev",
@@ -1408,13 +1408,16 @@
       "label": "components/pet",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite pinta sprite sheets de personaje PixelLab en public/pet/sheets + sheets.gen.ts; el humor es la fila de animación que se reproduce).",
+      "summary": "Interfaz RPG de bosque en /mascota: PetGame compone Campamento, Personaje, Mochila, Diario, Madriguera y Combate. Navegación por ?view con history nativo; los dos TrainingPanel permanecen montados y active=false pausa la simulación. Eclosión y compañera del chrome reutilizan sprites PixelLab. Tema local idéntico en claro y oscuro.",
       "files": [
         "src/components/pet",
         "src/components/pet/training/training-panel.tsx",
         "src/components/pet/training/training-session.ts",
         "src/components/pet/training/ulti-puzzle.tsx",
-        "src/components/pet/training/combat-sprite.tsx"
+        "src/components/pet/training/combat-sprite.tsx",
+        "src/components/pet/game/pet-game.tsx",
+        "src/components/pet/game/pet-return-tracker.tsx",
+        "src/lib/pet/game-navigation.ts"
       ]
     },
     {
@@ -1422,7 +1425,7 @@
       "label": "/mascota",
       "layer": "route",
       "kind": "route",
-      "summary": "Eclosión si no hay mascota; ficha derivada (atributos, nivel, etapa, humor) si ya la hay.",
+      "summary": "Shell de juego a pantalla completa con retorno a la última ruta válida de Biblioshare por usuario. PetContent lee snapshot y aventura bajo Suspense; eclosión si no hay mascota. No cachea datos de sesión.",
       "files": [
         "src/app/mascota"
       ]
@@ -3603,16 +3606,16 @@
       "name": "Entrenar y reproducir un combate",
       "category": "core",
       "summary": "Entrenamiento con selección de enemigo, habilidad y ulti pausada. El servidor fija la identidad y re-simula por versión. Sin premios ni consumo.",
-      "entrypoint": "src/components/pet/training/training-panel.tsx",
+      "entrypoint": "src/components/pet/game/pet-game.tsx",
       "steps": [
         {
           "node": "r-mascota",
-          "action": "Muestra entrenamiento al tener mascota",
+          "action": "PetGame abre Entrenamiento desde Campamento y conserva el panel al cambiar de sección",
           "file": "src/app/mascota/page.tsx"
         },
         {
           "node": "c-pet",
-          "action": "Conserva intención y enemigo; simula ticks y registra habilidad/ulti. El puzzle detiene la simulación sin gastar al cancelar.",
+          "action": "Conserva intención, tick e inputs en localStorage por usuario y modo; salir pausa y guarda. Recuperación siempre pausada; el resultado resuelto conserva su puntero hasta mostrarse en un panel y pestaña visibles.",
           "file": "src/components/pet/training/training-session.ts"
         },
         {
@@ -3647,11 +3650,11 @@
       "name": "Jugar una aventura",
       "category": "core",
       "summary": "Cadena de tres tramos concedida por día con actividad real (ventana de siete días); el cliente simula y guarda el log parcial en el dispositivo, el servidor re-simula y decide el botín bajo un bloqueo consultivo por usuario.",
-      "entrypoint": "src/components/pet/adventure/adventure-section.tsx",
+      "entrypoint": "src/components/pet/game/pet-game.tsx",
       "steps": [
         {
           "node": "r-mascota",
-          "action": "Muestra la sección de aventuras junto al entrenamiento",
+          "action": "PetGame recibe estado compartido de aventuras y abre Combate desde Campamento",
           "file": "src/app/mascota/page.tsx"
         },
         {
@@ -3676,7 +3679,7 @@
         },
         {
           "node": "c-pet",
-          "action": "TrainingSession simula la cadena tramo a tramo y guarda el log parcial en localStorage (pet-adventure:<intent>) para reanudar",
+          "action": "TrainingSession simula tramo a tramo y guarda checkpoint por usuario, modo e intención; recupera pausado mediante resumeAdventure, lectura autenticada que nunca crea otro intento.",
           "file": "src/components/pet/training/training-session.ts"
         },
         {

@@ -64,8 +64,9 @@ test("eclosión: nombre + clase → detalle; compañera en el shell; ausente en 
   await page.locator('input[name="class"][value="wizard"]').check({ force: true });
   await page.getByRole("button", { name: "Eclosionar" }).click();
 
+  await page.getByRole("button", { name: "Personaje", exact: true }).click();
   await expect(page.getByTestId("pet-detail")).toBeVisible();
-  await expect(page.getByTestId("pet-name")).toHaveText("Nuez");
+  await expect(page.getByTestId("pet-detail").getByTestId("pet-name")).toHaveText("Nuez");
 
   await page.goto("/coleccion");
   const companion = page.getByTestId("pet-companion");

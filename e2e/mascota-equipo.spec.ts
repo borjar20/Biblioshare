@@ -110,10 +110,21 @@ test("R4b interfaz: comparar copias, equipar, efecto real y entrenamiento sin bo
   await page.goto("/login?next=/mascota");
   await page.locator('input[name="email"]').fill(user.email);await page.locator('input[name="password"]').fill(user.password);
   await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/mascota$/,{timeout:30000});
+  await page.getByRole("navigation",{name:"Navegación de la mascota"}).getByRole("button",{name:"Mochila",exact:true}).click();
+  await expect(page).toHaveURL(/\/mascota\?view=bag$/);
+  await expect(page.getByRole("heading",{name:"Mochila",level:1})).toBeFocused();
+  await expect(page.getByRole("main")).toHaveCount(1);
+  await expect(page.getByTestId("pet-companion")).toHaveCount(0);
+  await page.getByRole("button",{name:"Personaje",exact:true}).click();
+  await expect(page).toHaveURL(/view=character$/);
+  await page.goBack();
+  await expect(page.getByRole("heading",{name:"Mochila",level:1})).toBeFocused();
+  await page.goForward();
+  await expect(page.getByRole("heading",{name:"Personaje",level:1})).toBeFocused();
+  await page.getByRole("button",{name:"Mochila",exact:true}).click();
   const equipment=page.getByTestId("pet-equipment");await expect(equipment).toBeVisible();
   for(const copy of [copies.b,copies.c]) {
-   await equipment.locator(`[data-item="${copy.reward.itemId}"] summary`).click();
-   const compare=equipment.locator(`[data-copy="${copy.id}"]`).getByRole("button",{name:"Comparar"});
+   const compare=equipment.locator(`[data-copy="${copy.id}"]`).getByRole("button",{name:/^Comparar/});
    await compare.focus();await compare.press("Enter");
    await expect(equipment.getByTestId("loot-comparison")).toContainText("Potencia ×1,2");
    await expect(equipment.getByTestId("loot-comparison")).toBeFocused();
@@ -122,6 +133,7 @@ test("R4b interfaz: comparar copias, equipar, efecto real y entrenamiento sin bo
   }
   await equipment.screenshot({path:".superpowers/r4b-equipo-mobile.png"});
   await page.reload();await expect(page.getByTestId("equipped-weapon")).toContainText("Potencia ×1,2");
+  await page.goto("/mascota?view=training");
   const training=page.getByTestId("pet-training");await training.getByRole("button",{name:"Empezar combate",exact:true}).click();
   await expect(training.getByTestId("training-tick")).toBeVisible();
   const rows=await (await request.get(`${url}/rest/v1/pet_battles?user_id=eq.${user.id}&kind=eq.training&select=*`,{headers})).json();

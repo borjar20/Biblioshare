@@ -1,0 +1,130 @@
+"use client";
+
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
+import type { AdventureBattle, AdventureState } from "@/lib/pet/adventure/types";
+import { startAdventure, resolveAdventure, replayAdventure, resumeAdventure } from "@/lib/pet/adventure/actions";
+import { petSection, petReturnKey, petViewKey, safePetReturn, type PetSection } from "@/lib/pet/game-navigation";
+import { checkCelebrations } from "@/lib/celebrations/preference";
+import { REACTION_MS } from "@/lib/pet/manifest";
+import { LOOT_ART } from "@/lib/pet/loot/art";
+import { LOOT_SLOTS } from "@/lib/pet/loot/catalog";
+import { equipLoot } from "@/lib/pet/loot/actions";
+import { ArrowLeftIcon, HomeIcon, AcornIcon, InboxIcon, BookIcon, UsersIcon, ChevronRightIcon, TargetIcon, StarIcon } from "@/components/ui/icons";
+import { TrainingPanel } from "../training/training-panel";
+import { EquipmentPanel } from "../loot/equipment-panel";
+import { MissionBoard } from "../mission-board";
+import { AchievementGrid } from "../achievement-grid";
+import { PetDetail } from "../pet-detail";
+import type { PetReaction } from "../pet-sprite";
+import { PetHud, PetScene } from "./pet-hud";
+import styles from "./pet-game.module.css";
+
+const destinations = [["camp", HomeIcon], ["character", AcornIcon], ["bag", InboxIcon], ["diary", BookIcon], ["burrow", UsersIcon]] as const;
+const subscribe = () => () => {};
+const adventureActions = { start: () => startAdventure(), resolve: resolveAdventure, replay: replayAdventure, resume: resumeAdventure };
+
+export function PetGame({ userId, pet, adventure, burrow, hatch }: {
+  userId: string; pet: PetSnapshot | null; adventure: AdventureState | null; burrow: ReactNode; hatch?: ReactNode;
+}) {
+  const t = useTranslations("pet");
+  const router = useRouter();
+  const params = useSearchParams();
+  const section = petSection(params.get("view"));
+  const title = useRef<HTMLHeadingElement>(null);
+  const previous = useRef(section);
+  const [journal, setJournal] = useState<"missions" | "achievements">("missions");
+  const [wonCopy, setWonCopy] = useState<AdventureBattle["adventure"]["copy"]>(null);
+  const [reaction, setReaction] = useState<PetReaction>(pet?.evolved ? "evolve" : pet?.leveledUp ? "joy" : null);
+  const returnHref = useSyncExternalStore(subscribe, () => {
+    try { return safePetReturn(sessionStorage.getItem(petReturnKey(userId))); } catch { return "/"; }
+  }, () => "/");
+  const combat = section === "adventure" || section === "training";
+
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("view")) {
+      try {
+        const remembered = sessionStorage.getItem(petViewKey(userId));
+        if (remembered) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("view", petSection(remembered));
+          window.history.replaceState(null, "", url.pathname + url.search);
+        }
+      } catch { /* Navigation works without storage. */ }
+    }
+  }, [userId]);
+  useEffect(() => {
+    // Read the live URL: the mount effect may have just restored a stored view.
+    try { sessionStorage.setItem(petViewKey(userId), petSection(new URLSearchParams(window.location.search).get("view"))); } catch { /* Optional preference. */ }
+    if (previous.current !== section) { previous.current = section; title.current?.focus({ preventScroll: true }); }
+  }, [section, userId]);
+  useEffect(() => {
+    if (pet?.leveledUp || pet?.evolved || pet?.missionsCompletedNow || pet?.achievementsUnlockedNow) checkCelebrations();
+  }, [pet?.leveledUp, pet?.evolved, pet?.missionsCompletedNow, pet?.achievementsUnlockedNow]);
+  useEffect(() => {
+    if (!reaction) return;
+    const timer = window.setTimeout(() => setReaction(null), reaction === "evolve" ? REACTION_MS.evolve : REACTION_MS.joy);
+    return () => window.clearTimeout(timer);
+  }, [reaction]);
+
+  function prepareLeave() {
+    return window.dispatchEvent(new Event("pet:before-leave", { cancelable: true })) || window.confirm(t("game.leaveWithoutSave"));
+  }
+  function navigate(next: PetSection) {
+    if (next === section || (combat && !prepareLeave())) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", next);
+    window.history.pushState(null, "", url.pathname + url.search);
+  }
+  const current = adventure?.current;
+  const canStart = Boolean(adventure && (adventure.pendingDays.length || current));
+  const startLabel = current?.status === "open" ? "resume" : current ? "retry" : "start";
+  const inventory = adventure ? wonCopy && !adventure.inventory.some(copy => copy.copyId === wonCopy.copyId) ? [wonCopy, ...adventure.inventory] : adventure.inventory : [];
+  const gear = adventure && <section className={styles.panel}>
+    <div className={styles.panelHeading}><h2>{t("adventure.equipment.title")}</h2><button className={styles.textButton} onClick={() => navigate("bag")}>{t("game.viewBag")}<ChevronRightIcon /></button></div>
+    <div className={styles.gearSummary}>{LOOT_SLOTS.map(slot => <div key={slot}><span>{t(`adventure.slots.${slot}`)}</span>{adventure.loadout[slot] ? <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- native pixel inventory icon */}
+      <img src={LOOT_ART[adventure.loadout[slot]!.itemId].icon} alt="" width={48} height={48} /><strong>{t(`adventure.items.${adventure.loadout[slot]!.itemId}`)}</strong></> : <small>{t("adventure.equipment.empty")}</small>}</div>)}</div>
+  </section>;
+
+  return <div className={styles.game} data-testid="pet-game" data-view={section}>
+    <header className={styles.header}>
+      <a href={returnHref} onClick={event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); if (prepareLeave()) router.push(returnHref); }} className={styles.returnLink}><ArrowLeftIcon />Biblioshare</a>
+      <h1 ref={title} tabIndex={-1}>{t(`game.sections.${!pet ? "camp" : section}`)}</h1>
+      {combat && pet ? <button className={styles.headerAction} onClick={() => navigate("camp")} aria-label={t("game.sections.camp")}><HomeIcon /></button> : <AcornIcon className={styles.headerAcorn} aria-hidden="true" />}
+    </header>
+    <div className={styles.content}>
+      {!pet ? <div className={styles.hatch}>{hatch}<section className={styles.panel}>{burrow}</section></div> : <>
+        <div hidden={section !== "camp"} className={styles.camp}>
+          <div className={styles.campHero}>
+            <div className={styles.campHud}><PetHud pet={pet} /></div>
+            <PetScene pet={pet} reaction={reaction} />
+            <div className={styles.campActions}>
+              <button className={styles.primary} disabled={!adventure} onClick={() => navigate("adventure")}><TargetIcon /><span>{canStart ? startLabel === "start" ? t("game.adventureCta") : t(`adventure.${startLabel}`) : t("game.viewAdventure")}<small>{current ? t(current.status === "open" ? "adventure.inProgress" : "adventure.retryAvailable", { day: current.adventure.day }) : adventure ? t("adventure.pending", { count: adventure.pendingDays.length }) : t("adventure.unavailable")}</small></span><ChevronRightIcon /></button>
+              <button className={styles.secondary} onClick={() => navigate("training")}><StarIcon />{t("game.train")}</button>
+              {adventure && !canStart && <p className={styles.hint}>{t("adventure.none")}</p>}
+              {pet.stage === "acorn" && <p className={styles.hint}>{t("acornHint")}</p>}
+            </div>
+          </div>
+          <aside className={styles.campMissions}><div className={styles.panelHeading}><span>{t("game.missionCount", { completed: pet.missions.filter(m => m.completed).length, total: pet.missions.length })}</span><button className={styles.textButton} onClick={() => navigate("diary")}>{t("game.viewDiary")}<ChevronRightIcon /></button></div><MissionBoard missions={pet.missions} /></aside>
+        </div>
+        <div hidden={section !== "character"}><PetDetail pet={pet} equipment={gear} /></div>
+        <div hidden={section !== "bag"} className={styles.bag}><PetHud pet={pet} />{adventure ? <EquipmentPanel copies={inventory} initialLoadout={adventure.loadout} hasOpenAdventure={current?.status === "open"} suggestedCopyId={wonCopy?.copyId} onEquip={async (slot, copyId) => { const result = await equipLoot(slot, copyId); if (result.ok) router.refresh(); return result; }} /> : <p role="status">{t("adventure.unavailable")}</p>}</div>
+        <div hidden={section !== "diary"} className={styles.diary}>
+          <div className={styles.journalTabs} role="group" aria-label={t("game.sections.diary")}><button aria-pressed={journal === "missions"} onClick={() => setJournal("missions")}><BookIcon />{t("missions.title")}</button><button aria-pressed={journal === "achievements"} onClick={() => setJournal("achievements")}><StarIcon />{t("achievements.title")}</button></div>
+          <div hidden={journal !== "missions"}><MissionBoard missions={pet.missions} /></div><div hidden={journal !== "achievements"}><AchievementGrid achievements={pet.achievements} /></div>
+        </div>
+        <div hidden={section !== "burrow"} className={styles.burrow}>{burrow}</div>
+        <div hidden={section !== "adventure"} className={styles.combat}>
+          <h2 id="adventure-section-title" className="sr-only">{t("adventure.title")}</h2>
+          {adventure ? <TrainingPanel kind="adventure" userId={userId} active={section === "adventure"} startLabel={startLabel} canStart={canStart} canStartAnother={adventure.pendingDays.length > 0} actions={adventureActions} onDone={battle => { const copy = battle?.adventure?.copy; if (copy) setWonCopy(copy); router.refresh(); }} /> : <p role="status">{t("adventure.unavailable")}</p>}
+          <button className={styles.textButton} onClick={() => navigate("bag")}>{t("game.viewBag")}<ChevronRightIcon /></button>
+        </div>
+        <div hidden={section !== "training"} className={styles.combat}><TrainingPanel userId={userId} active={section === "training"} /></div>
+      </>}
+    </div>
+    {pet && !combat && <nav className={styles.navigation} aria-label={t("game.navigation")}>{destinations.map(([id, Icon]) => <button key={id} type="button" aria-current={section === id ? "page" : undefined} onClick={() => navigate(id)}><Icon aria-hidden="true" /><span>{t(`game.sections.${id}`)}</span></button>)}</nav>}
+  </div>;
+}

@@ -3087,6 +3087,21 @@
     }
   },
   "pet": {
+    "game": {
+      "sections": { "camp": "Campamento", "character": "Personaje", "bag": "Mochila", "diary": "Diario", "burrow": "Madriguera", "adventure": "Aventura", "training": "Entrenamiento" },
+      "navigation": "Navegación de la mascota",
+      "experience": "Experiencia hasta el siguiente nivel",
+      "attributes": "Atributos",
+      "rename": "Cambiar nombre",
+      "viewBag": "Ver mochila",
+      "viewAdventure": "Ver aventura",
+      "adventureCta": "Aventurarse",
+      "viewDiary": "Ver diario",
+      "train": "Entrenar",
+      "missionCount": "{completed} de {total} completadas",
+      "burrowIntro": "Tu mascota y las de las personas que sigues",
+      "leaveWithoutSave": "El combate está pausado, pero no hemos podido guardar el avance en este navegador. ¿Quieres salir igualmente? Podrías perder el progreso de este combate."
+    },
     "title": "Mascota",
     "clubBurrow": {
       "title": "Madriguera · {club}",
@@ -3243,6 +3258,7 @@
       "starting": "Preparando combate…",
       "retryStart": "Reintentar el mismo combate",
       "error": "No se ha podido completar la operación. Puedes reintentar sin perder tus decisiones.",
+      "recoveryError": "No se pudo recuperar el progreso guardado. Al continuar, este mismo combate vuelve a empezar desde el principio.",
       "enemy": "Brote de zarza",
       "finished": "Combate terminado",
       "time": "{seconds} s",
@@ -3273,7 +3289,7 @@
         "idle": "Sin amenaza anunciada · Puedes guardar la habilidad para la próxima carga.",
         "windup": "¡Carga en preparación! Usa Golpe interruptor para detenerla si está listo.",
         "guard": "Guardia · Espera: tu habilidad fallaría y recibirías un contraataque.",
-        "stagger": "¡Interrumpido! El brote está aturdido.",
+        "stagger": "¡Interrumpido! El rival está aturdido.",
         "vulnerable": "¡Vulnerable! Tus golpes causan el doble de daño.",
         "caparazonIdle": "Coraza en reposo · Guarda tu habilidad para cuando quede vulnerable."
       },
@@ -3283,20 +3299,20 @@
         "draw": "Empate"
       },
       "causes": {
-        "charges_landed": "Las cargas del brote te han causado mucho daño.",
+        "charges_landed": "Las cargas del rival te han causado mucho daño.",
         "skill_wasted_on_guard": "Has usado la habilidad durante su guardia y recibido el contraataque.",
         "skill_unused": "No has usado la habilidad para detener sus cargas.",
         "charges_interrupted": "Interrumpir sus cargas ha marcado la diferencia.",
-        "steady_damage": "Tus ataques constantes han vencido al brote.",
+        "steady_damage": "Tus ataques constantes han vencido al rival.",
         "time_limit": "Se ha agotado el tiempo: decide la proporción de vida restante."
       },
       "events": {
         "BATTLE_STARTED": "Empieza el combate.",
         "PET_BASIC": "Tu mascota causa {damage} de daño.",
-        "ENEMY_BASIC": "El brote causa {damage} de daño.",
-        "charge": "El brote prepara una carga.",
-        "guard": "El brote se pone en guardia.",
-        "TELEGRAPH_RESOLVED": "Termina el movimiento del brote: {damage} de daño.",
+        "ENEMY_BASIC": "El rival causa {damage} de daño.",
+        "charge": "El rival prepara una carga.",
+        "guard": "El rival se pone en guardia.",
+        "TELEGRAPH_RESOLVED": "Termina el movimiento del rival: {damage} de daño.",
         "interrupt": "Interrumpes la carga y causas {damage} de daño.",
         "hit": "Tu habilidad causa {damage} de daño.",
         "wasted": "La guardia devuelve tu habilidad: recibes un contraataque.",
@@ -3373,7 +3389,7 @@
       "fight": "Tramo {n} de {total}",
       "interlude": "Tramo {n} superado. Te quedan {hp} de {max} de vida. Habilidad y ulti vuelven a estar listas.",
       "continue": "Continuar",
-      "loseHint": "La aventura no se pierde: puedes reintentarla desde el principio, con la vida llena y otro seed.",
+      "loseHint": "La aventura no se pierde: puedes reintentarla desde el principio, con la vida llena y otro patrón de combate.",
       "won": "¡Aventura superada!",
       "reward": "Botín: {name}",
       "rewardPending": "Se activa en la siguiente actualización",

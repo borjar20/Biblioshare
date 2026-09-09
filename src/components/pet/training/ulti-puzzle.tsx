@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createUltiPuzzle } from "@/lib/pet/battle/ulti";
 import { createUltiPuzzle as createR3Puzzle } from "@/lib/pet/battle/versions/r3.1/ulti";
@@ -18,6 +18,7 @@ function Rune({ value }: { value: number }) {
 }
 
 export function UltiPuzzle({ seed, tick, version = RULESET.version, equipment, onConfirm, onCancel }: { seed: string; tick: number; version?: string; equipment?: BattleSnapshot["equipment"]; onConfirm: (order: string) => void; onCancel: () => void }) {
+ const instructionsId = useId();
  const firstTile = useRef<HTMLButtonElement>(null);
  useEffect(() => { firstTile.current?.focus(); }, []);
  const t = useTranslations("pet.training.ulti");
@@ -31,9 +32,9 @@ export function UltiPuzzle({ seed, tick, version = RULESET.version, equipment, o
   setSlots(current => current.map((value, i) => i === index ? selected : value === selected ? null : value));
   select(null);
  }
- return <section aria-label={t("title")} aria-describedby="ulti-instructions" className={styles.puzzle} data-testid="ulti-puzzle">
+ return <section aria-label={t("title")} aria-describedby={instructionsId} className={styles.puzzle} data-testid="ulti-puzzle">
   <header className={styles.puzzleHeading}><Sparkles aria-hidden="true" width={24} height={24} /><h3>{t("title")}</h3><span><Pause width={12} height={12} aria-hidden="true" />{t("paused")}</span></header>
-  <p id="ulti-instructions" className={styles.puzzleHelp}>{t("instructions")}</p>
+  <p id={instructionsId} className={styles.puzzleHelp}>{t("instructions")}</p>
   <div className={styles.recipes}>{puzzle.recipes.map(recipe => <div key={recipe.id} className={styles.recipe} data-recipe={recipe.id}>
    <h4>{recipe.id === "power" ? <Swords width={17} height={17} aria-hidden="true" /> : <Shield width={17} height={17} aria-hidden="true" />}{t(recipe.id)}</h4>
    <div className={styles.recipeRunes} role="img" aria-label={t("recipeOrder", { order: recipe.order.map(n => n+1).join(", ") })}>{recipe.order.map(n => <Rune key={n} value={n} />)}</div>

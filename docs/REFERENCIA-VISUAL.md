@@ -1,6 +1,7 @@
 # Referencia visual para prototipos
 
-> [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-08-04]
+> [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-08-04;
+> excepción de mascota verificada en código y navegador el 2026-09-09]
 
 Este es el punto de partida para cualquier prototipo funcional nuevo de
 Biblioshare. Manda para las **capturas de referencia** y el **flujo de
@@ -13,6 +14,17 @@ prototipado**. El código y `globals.css` mandan si algo difiere de esta guía.
 > difieran, manda `DESIGN.md` — y si `DESIGN.md` difiere de `globals.css`, manda `globals.css`.
 
 ## Referencias de pantalla
+
+### Mascota RPG (2026-09-09)
+
+Dirección aprobada en
+`docs/superpowers/specs/assets/2026-09-09-mascota-rpg-ui/`: las láminas
+`campamento-combate-mochila.png` y `personaje-diario-madriguera.png` definen la
+composición. Son mockups, con nombres/cifras ilustrativos; el catálogo real manda.
+Tema bosque fijo en ambos temas de Biblioshare, marcos finos y acceso permanente
+«← Biblioshare». Los fondos elegidos viven en `public/pet/scenes/` con procedencia
+PixelLab en `provenance.json`; nunca incrustar los controles o personajes del mockup
+en el fondo. Contrato: spec `2026-09-09-mascota-rpg-ui-design.md`.
 
 Las capturas fuente viven fuera del repositorio en
 `D:\Proyectos\Personal\Imagenes diseño`. Se consultan antes de crear un

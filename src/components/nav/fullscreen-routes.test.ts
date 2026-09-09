@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { isFullscreenRoute } from "./fullscreen-routes";
 
 describe("rutas que se comen el marco de la app", () => {
+  it("el juego de mascota tiene su propio regreso y navegación", () => {
+    expect(isFullscreenRoute("/mascota")).toBe(true);
+    expect(isFullscreenRoute("/mascota/diario")).toBe(true);
+    expect(isFullscreenRoute("/mascotas")).toBe(false);
+    expect(isFullscreenRoute("/admin/mascota")).toBe(false);
+  });
   it("el tablero sí: es la única pantalla que quita topbar y barra de cinco", () => {
     expect(isFullscreenRoute("/partida/activa")).toBe(true);
   });

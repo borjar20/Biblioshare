@@ -41,7 +41,11 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Hito** | Checkpoint, Punto de control | La marca de «he llegado hasta aquí» dentro de una actividad; es lo que abre el capítulo sin spoilers. | `club_checkpoints` |
 | **Reto** | Challenge, Objetivo | La meta contable del usuario («50 libros en 2026»). | `/estadisticas`, `challenges` |
 | **Rincón** | Mi rincón, Panel | La pestaña personal del perfil, con el sorteo y los accesos a lo tuyo. | pestaña de `/u/[username]` |
-| **Madriguera** | Ranking de mascotas, Clasificación | El espacio de compañía con las mascotas visibles de tus seguidos y la tuya, si tienes una. Puedes verlo antes de eclosionar. | sección en `/mascota`, S1 #1083 aceptada el 2026-09-07; ampliación de nivel verificada en dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128 |
+| **Campamento** | — | Inicio de la mascota, con su estado, acceso a aventuras y entrenamiento, equipo y misiones. | `/mascota?view=camp`, navegación verificada 2026-09-09 |
+| **Personaje** | — | Sección de la mascota con sus atributos, clase y nombre. | `/mascota?view=character`, navegación verificada 2026-09-09 |
+| **Mochila** | — | Sección donde comparas el botín conseguido y eliges el equipo para el próximo combate. | `/mascota?view=bag`, navegación verificada 2026-09-09 |
+| **Diario** (de la mascota) | — | Sección de misiones y logros de la mascota. | `/mascota?view=diary`, navegación verificada 2026-09-09 |
+| **Madriguera** | Ranking de mascotas, Clasificación | El espacio de compañía con las mascotas visibles de tus seguidos y la tuya, si tienes una. Puedes verlo antes de eclosionar. | `/mascota?view=burrow` (navegación verificada 2026-09-09); S1 #1083 aceptada el 2026-09-07; ampliación de nivel verificada en dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128 |
 | **Botín** | Loot | Objetos obtenidos al superar aventuras de la mascota. | `/mascota`, R4b #1123 |
 | **Equipo** | Loadout, Build | Arma y amuleto elegidos para el próximo combate. | `/mascota`, `pet_loadout` |
 | **Potencia** (del objeto) | Calidad, Roll, Reroll | Multiplicador fijo del efecto adicional de una copia de botín. No es el nivel de la mascota. | `/mascota`, R4b #1123 |

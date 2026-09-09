@@ -1,10 +1,10 @@
 # Mascota: interfaz de RPG de bosque
 
-> [Diseño · 2026-09-09 · dirección visual y distribución aprobadas por el usuario;
-> contrato escrito pendiente de revisión antes de implementar]
+> [Histórico · congelado el 2026-09-09 · diseño aprobado e implementación local
+> verificada; publicación pendiente, issue #1165]
 >
-> Este documento describe el cambio propuesto, no el estado de producción. Al cerrar
-> la implementación se congela como histórico y se actualizan los documentos canónicos.
+> Este documento conserva el contrato aprobado. Estado actual en los documentos
+> canónicos; evidencia en `docs/testing/2026-09-09-mascota-rpg-ui.md`.
 
 ## 1. Resultado acordado
 
@@ -85,7 +85,9 @@ inventario ni combates de la cuenta anterior.
 Escena de raíces y madriguera con el sprite real de la mascota. Identidad, clase,
 nivel y XP en un HUD compacto; bellota y todas las etapas son estados válidos.
 Acción principal contextual: aventurarse, continuar el intento abierto o reintentar
-según el estado real. Explicar la falta de oportunidades si no puede empezar;
+según el estado real. Sin oportunidades se ofrece «Ver aventura» para poder recuperar
+un resultado confirmado mientras el usuario estaba fuera; entrar no inicia un intento.
+Explicar la falta de oportunidades si no puede empezar;
 entrenamiento sigue accesible como acción secundaria. Resumen de misiones con
 avance real y enlace a Diario. El CTA no debe exigir recorrer atributos o ajustes.
 
@@ -267,7 +269,5 @@ composición del escenario y la navegación aprobadas, conectadas a los datos re
 
 ## 10. Seguimiento
 
-El borrador de issue está en
-`.superpowers/brainstorm/2026-09-09/mascota-rpg-ui-issue.md`. La revisión automática
-rechazó publicarlo por contener detalles internos en un repositorio público.
-No se ha creado la issue; su publicación requiere confirmación del usuario.
+Seguimiento: https://github.com/borjar20/Biblioshare/issues/1165. El usuario aprobó
+expresamente publicar el borrador después de revisar el contrato escrito.

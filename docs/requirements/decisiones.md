@@ -4635,3 +4635,23 @@ ni original_title. Un error de consulta conserva la resolución previa.
 No se añade english_title ni backfill: no eliminarían la búsqueda necesaria.
 Para una coincidencia local por id se evita una petición de ficha española;
 no se afirma un ahorro de búsquedas ni una medición de tráfico en producción.
+
+## 2026-09-09 — La mascota tiene interfaz de RPG y regreso a Biblioshare (#1165)
+
+El usuario aprueba un RPG de bosque con marcos ligeros, cinco destinos (Campamento,
+Personaje, Mochila, Diario y Madriguera) y combate enfocado. El tema verde se mantiene
+en claro y oscuro; los tokens se limitan al contenedor del juego. La app conserva
+Paper fuera de `/mascota`. El vínculo «← Biblioshare» permanece visible y vuelve a
+la última ruta interna válida del usuario, o a Inicio si no existe.
+
+La navegación interna conserva las instancias de combate y usa historial nativo
+para reflejar la sección. Salir pausa y guarda; una recuperación usa la misma
+intención y el resultado autorizado del servidor, también si terminó de confirmarse
+mientras el usuario estaba fuera. Por eso «Ver aventura» permanece disponible sin
+días nuevos: permite recuperar un resultado, no iniciar un intento gratis.
+
+El inventario se separa de la arena. Equipar sigue siendo explícito y se actualiza
+también el resumen de Personaje. Se reutilizan sprites y reglas existentes; PixelLab
+genera únicamente fondos independientes. Las imágenes de diseño no definen nuevos
+objetos, clases, recompensas ni estadísticas. Spec y referencias:
+`docs/superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.

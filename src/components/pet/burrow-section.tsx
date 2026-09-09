@@ -6,7 +6,7 @@ import type { BurrowPet } from "@/lib/pet/burrow";
 import { Burrow } from "./burrow";
 
 /** Render under its own Suspense boundary; all data depends on the viewer. */
-export async function BurrowSection({ own, viewerId }: { own: BurrowPet | null; viewerId: string }) {
+export async function BurrowSection({ own, viewerId, game = false }: { own: BurrowPet | null; viewerId: string; game?: boolean }) {
   const t = await getTranslations("pet");
   let result: BurrowResult = { ok: false };
   let followingCount = 0;
@@ -20,6 +20,6 @@ export async function BurrowSection({ own, viewerId }: { own: BurrowPet | null; 
   } catch {
     // Failure is local to this optional section, including follow-count failures.
   }
-  if (result.ok) return <Burrow own={own} neighbors={result.rows} total={result.total} followingCount={followingCount} />;
+  if (result.ok) return <Burrow own={own} neighbors={result.rows} total={result.total} followingCount={followingCount} game={game} />;
   return <p role="status" className="text-sm text-muted-foreground">{t("burrow.error")}</p>;
 }

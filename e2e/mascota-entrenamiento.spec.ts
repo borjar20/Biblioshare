@@ -5,6 +5,8 @@ import { POLICIES, runPolicy } from "../src/lib/pet/battle/policies";
 import type { BattleSnapshot } from "../src/lib/pet/battle/types";
 import { createUltiPuzzle } from "../src/lib/pet/battle/ulti";
 
+test.use({ actionTimeout: 20_000 });
+
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const headers = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
@@ -23,11 +25,14 @@ async function cleanPreviousRun(request: APIRequestContext) {
 }
 
 async function login(page: Page, user: { email: string; password: string }) {
-  await page.goto("/login?next=/mascota");
+  await page.goto(`/login?next=${encodeURIComponent("/mascota?view=training")}`);
   await page.locator('input[name="email"]').fill(user.email);
   await page.locator('input[name="password"]').fill(user.password);
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/mascota$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/mascota\?view=training$/, { timeout: 30_000 });
+  // Wait for the authenticated destination to commit. Starting a second hard
+  // navigation on the URL change alone can race the login response's cookies.
+  await expect(page.getByRole("region", {name:"Entrenamiento", exact:true})).toBeVisible();
 }
 
 async function rows(request: APIRequestContext, userId: string, intent?: string) {
@@ -64,6 +69,32 @@ test("training: playable loop, authenticated actions, immutable concurrent resol
     const tick = await panel.getByTestId("training-tick").textContent();
     await page.waitForTimeout(450);
     expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
+
+    const openBeforeRecovery = await rows(request, a.id, uiIntent);
+    expect(openBeforeRecovery).toHaveLength(1);
+    expect(openBeforeRecovery[0].status).toBe("open");
+    // Internal navigation retains the mounted session and never advances it.
+    await page.getByRole("button", {name:"Campamento", exact:true}).click();
+    await expect(page).toHaveURL(/view=camp$/);
+    await page.getByRole("button", {name:"Entrenar", exact:true}).click();
+    await expect(panel.getByRole("button", {name:"Continuar", exact:true})).toBeVisible();
+    await page.waitForTimeout(450);
+    expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
+    // Return to Biblioshare, then load a fresh document (Next can retain hidden
+    // route trees). Recovery must address the same intent and immutable snapshot.
+    await page.getByRole("link", {name:"Biblioshare", exact:true}).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId("pet-game")).not.toBeVisible();
+    await page.goto("/mascota?view=training");
+    const recoveryRequest = page.waitForRequest(r => r.headers()["next-action"] === startAction && r.method() === "POST");
+    await panel.getByRole("button", {name:"Continuar", exact:true}).click();
+    expect(JSON.parse((await recoveryRequest).postData()!)[0]).toBe(uiIntent);
+    await expect(panel.getByTestId("training-tick")).toHaveText(tick!);
+    await expect(panel.getByRole("button", {name:"Continuar", exact:true})).toBeVisible();
+    await page.waitForTimeout(450);
+    expect(await panel.getByTestId("training-tick").textContent()).toBe(tick);
+    expect(await rows(request, a.id, uiIntent)).toEqual(openBeforeRecovery);
+    expect(await rows(request, a.id)).toHaveLength(1);
     await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
     await panel.screenshot({ path: ".superpowers/r2-training-desktop.png", style: "header:has(a[href='/']) { visibility: hidden; }" });
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -201,7 +232,7 @@ test("R3: enemy choice, paused keyboard puzzle, authoritative ultimate and repla
     await page.setViewportSize({ width: 320, height: 844 });
     await login(page, user);
     const panel = page.getByRole("region", { name: "Entrenamiento", exact: true });
-    await panel.getByRole("combobox", { name: "Rival de entrenamiento" }).selectOption("caparazon");
+    await panel.getByRole("radio", { name: "Escarabajo coraza", exact: true }).check();
     await panel.getByRole("button", { name: "Empezar combate", exact: true }).click();
     await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
     const ready = panel.getByRole("button", { name: "Preparar ulti", exact: true });
@@ -213,10 +244,9 @@ test("R3: enemy choice, paused keyboard puzzle, authoritative ultimate and repla
     await page.waitForTimeout(500);
     expect(await panel.getByTestId("training-tick").textContent()).toBe(frozen);
     const [battle] = await rows(request, user.id);
-    // El entrenamiento pasó a r4.1 con #1086 (motor de cadena): un solo tramo y los
-    // números de r3.1 sin tocar (spec R4a §3). La versión que se graba es la del
-    // motor vivo, no la de la release anterior.
-    expect(battle).toMatchObject({ enemy_id: "caparazon", ruleset_version: "r4.1", status: "open" });
+    // Newly created battles must use the current release, while old records keep
+    // their persisted version. The live puzzle below uses that same release.
+    expect(battle).toMatchObject({ enemy_id: "caparazon", ruleset_version: RULESET.version, status: "open" });
     const tick = Math.round(Number.parseFloat(frozen!) * 10);
     const order = createUltiPuzzle(battle.seed, tick).recipes.find(recipe => recipe.id === "power")!.order;
     for (const [slot, tile] of order.entries()) {

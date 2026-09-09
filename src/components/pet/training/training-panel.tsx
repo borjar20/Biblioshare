@@ -19,11 +19,14 @@ import { LOOT_FX } from "@/lib/pet/loot/art";
 import styles from "./training.module.css";
 
 interface PanelActions {
+  resume?: (intent: string) => Promise<TrainingResponse>;
   start: (intent: string, enemyId?: string) => Promise<TrainingResponse>;
   resolve: (intent: string, inputs: BattleInput[]) => Promise<TrainingResponse>;
   replay: (intent: string) => Promise<TrainingResponse>;
 }
 interface Props {
+  userId?: string;
+  active?: boolean;
   kind?: "training" | "adventure";
   actions?: PanelActions;
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -45,7 +48,7 @@ function availableLocalStorage() {
   }
 }
 
-export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStart = true, canStartAnother = false }: Props = {}) {
+export function TrainingPanel({ kind = "training", actions, storage, startLabel = "start", onDone, canStart = true, canStartAnother = false, userId, active: panelActive = true }: Props = {}) {
   const format = useFormatter();
   const t = useTranslations("pet.training");
   const ta = useTranslations("pet.adventure");
@@ -53,7 +56,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   const [session] = useState(() => new TrainingSession(
     actions ?? { start: startBattle, resolve: resolveBattle, replay: replayTrainingBattle },
     () => crypto.randomUUID(),
-    adventure ? { storage: storage ?? availableLocalStorage() } : {},
+    { storage: storage ?? availableLocalStorage(), userId, kind },
   ));
   const ultiButton = useRef<HTMLButtonElement>(null);
   const skillButton = useRef<HTMLButtonElement>(null);
@@ -62,8 +65,32 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   const sessionRef = useRef(session);
   const [, render] = useState(0);
   const [speed, setSpeed] = useState(1);
+  const [savedSession, setSavedSession] = useState(false);
   const refresh = () => render(n => n + 1);
   const phase = session.phase;
+
+  useEffect(() => {
+    setSavedSession(sessionRef.current.hasSavedSession());
+    sessionRef.current.setActive(panelActive);
+    if (!panelActive) restoreFocus.current = null;
+    render(n => n + 1);
+  }, [panelActive]);
+
+  useEffect(() => {
+    const prepare = (event: Event) => {
+      if (!sessionRef.current.prepareLeave()) event.preventDefault();
+      restoreFocus.current = null;
+      render(n => n + 1);
+    };
+    const checkpoint = () => { sessionRef.current.prepareLeave(); };
+    window.addEventListener("pet:before-leave", prepare);
+    window.addEventListener("pagehide", checkpoint);
+    return () => {
+      checkpoint();
+      window.removeEventListener("pet:before-leave", prepare);
+      window.removeEventListener("pagehide", checkpoint);
+    };
+  }, []);
 
   useEffect(() => {
     const current = sessionRef.current;
@@ -74,11 +101,11 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   }, []);
 
   useEffect(() => {
-    if (phase !== "playing" && phase !== "replaying") return;
+    if (!panelActive || (phase !== "playing" && phase !== "replaying")) return;
     // One timer callback = one tick. Never accumulate elapsed wall-clock time.
     const timer = window.setInterval(() => { sessionRef.current.tick(); render(n => n + 1); }, RULESET.tickMs / speed);
     return () => window.clearInterval(timer);
-  }, [phase, speed]);
+  }, [phase, speed, panelActive]);
 
   useEffect(() => {
     if (phase !== "resolving") return;
@@ -98,8 +125,12 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   }, [phase]);
 
   useEffect(() => {
+    if (phase === "done" && panelActive && !session.hidden) sessionRef.current.acknowledgeResult();
+  }, [phase, panelActive, session.hidden]);
+
+  useEffect(() => {
     const target = restoreFocus.current === "ulti" ? ultiButton.current : restoreFocus.current === "skill" ? skillButton.current : null;
-    if (!target || session.ultiOpen) return;
+    if (!panelActive || !target || session.ultiOpen) return;
     if (target.disabled) {
       if (document.activeElement !== pauseButton.current) pauseButton.current?.focus({ preventScroll: true });
       if (session.paused || session.hidden || (session.view && session.view.tick < session.view.skillReadyAt)) restoreFocus.current = null;
@@ -138,13 +169,18 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     return t(`events.${event.type}`, { damage: "damage" in event ? event.damage : 0 });
   }
 
-  return <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card" aria-labelledby={adventure ? "adventure-section-title" : `${kind}-title`} data-testid={adventure ? "pet-adventure" : "pet-training"}>
+  return <section className={styles.panel} aria-labelledby={adventure ? "adventure-section-title" : `${kind}-title`} data-testid={adventure ? "pet-adventure" : "pet-training"}>
     {!adventure && <div><h2 id={`${kind}-title`} className="font-serif text-xl font-semibold">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("intro")}</p></div>}
-    {session.error && <div role="alert" className="text-sm"><p>{t("error")}</p></div>}
-    {!adventure && (phase === "idle" || phase === "starting" || phase === "done") && <label className="space-y-2 text-sm">{t("enemySelect")}<select className="block w-full rounded border border-border bg-surface p-2" disabled={phase === "starting" || (phase === "idle" && !!session.error)} value={session.enemyId} onChange={e => { session.selectEnemy(e.target.value); refresh(); }}>{(["brote", "caparazon"] as const).map(id => <option key={id} value={id}>{t(`enemies.${id}`)}</option>)}</select><span className="block text-muted-foreground">{t("enemyHelp")}</span></label>}
+    {session.error && <div role="alert" className="text-sm"><p>{t(session.error === "LOCAL_RECOVERY" && session.battle ? "recoveryError" : "error")}</p></div>}
+    {!adventure && (phase === "idle" || phase === "starting" || phase === "done") && <fieldset className={styles.enemyPicker} disabled={phase === "starting" || (phase === "idle" && (!!session.error || savedSession))}>
+      <legend>{t("enemySelect")}</legend><div className={styles.enemyChoices}>{(["brote", "caparazon"] as const).map(id => <label key={id} data-selected={session.enemyId === id}>
+        <input type="radio" name={`${kind}-enemy`} value={id} checked={session.enemyId === id} onChange={() => {session.selectEnemy(id); refresh();}} />
+        <span aria-hidden="true"><CombatSprite enemy={id} animation="idle" paused size={72} /></span><strong>{t(`enemies.${id}`)}</strong>
+      </label>)}</div><p>{t("enemyHelp")}</p>
+    </fieldset>}
     {(phase === "idle" || phase === "starting") && <>
-      <button className={buttonVariants()} disabled={phase === "starting" || (adventure && !canStart)} onClick={() => void run(() => session.start())}>{adventure ? ta(phase === "starting" ? "starting" : startLabel) : t(phase === "starting" ? "starting" : session.error ? "retryStart" : "start")}</button>
-      {adventure && !canStart && <p className="text-sm text-muted-foreground">{ta("none")}</p>}
+      <button className={buttonVariants()} disabled={phase === "starting" || (adventure && !canStart && !savedSession)} onClick={() => void run(() => session.start())}>{adventure ? ta(phase === "starting" ? "starting" : savedSession ? "resume" : startLabel) : t(phase === "starting" ? "starting" : session.error ? "retryStart" : savedSession ? "resume" : "start")}</button>
+      {adventure && !canStart && !savedSession && <p className="text-sm text-muted-foreground">{ta("none")}</p>}
     </>}
     {v && snapshot && <>
       <div className={styles.arena} data-paused={session.paused || session.hidden || session.ultiOpen || !active}>
@@ -153,7 +189,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
           <Health label={snapshot.name} value={v.petHp} max={v.petHpMax} />
           <Health label={t(`enemies.${currentEnemyId as "brote" | "caparazon"}`)} value={v.enemyHp} max={v.enemyHpMax} rival />
         </div>
-        <div className="relative flex h-36 items-end justify-around pb-3" aria-hidden="true">
+        <div className={styles.stage} aria-hidden="true">
           {lootEffects.map(event => <span key={`loot-${event.seq}`} className={styles.lootBurst} data-target={event.effect === "damage" || event.effect === "vulnerability" ? "enemy" : "pet"} style={{backgroundImage:`url(${LOOT_FX[event.effect]})`}} />)}
           <div key={`pet-${effects.petHit ?? effects.strike ?? "rest"}`} className={snapshot.stage === "acorn" ? (v.petHp === 0 ? styles.fallen : petHit ? styles.recoil : moving ? styles.strike : "") : ""}>{snapshot.stage === "acorn" ? <div className="-scale-x-100"><PetSprite stage={snapshot.stage} petClass={snapshot.petClass} mood="neutral" scale={1} label={snapshot.name} /></div> : <CombatSprite speed={speed} paused={session.paused || session.hidden || session.ultiOpen} stage={snapshot.stage} petClass={snapshot.petClass} animation={v.petHp === 0 ? "ko" : petHit ? "hurt" : moving ? "attack" : "idle"} size={112} />}</div>
           <div key={`enemy-${effects.enemyHit ?? effects.enemyStrike ?? "rest"}`}><CombatSprite speed={speed} paused={session.paused || session.hidden || session.ultiOpen} enemy={currentEnemyId as "brote" | "caparazon"} animation={v.enemyHp === 0 ? "ko" : enemyHit ? "hurt" : effects.enemyStrike !== undefined ? "attack" : v.enemyPhase === "windup" ? "charge" : v.enemyPhase === "guard" ? "guard" : v.enemyPhase === "vulnerable" ? "vulnerable" : "idle"} size={112} /></div>
@@ -169,19 +205,19 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
       {active && <div className={styles.controls}>
         <div className={styles.actions}>
           <div className={styles.action}>
-            <button ref={skillButton} aria-label={t(queued ? "queued" : cooldown ? "cooldown" : "skill", { seconds: (cooldown * RULESET.tickMs / 1000).toFixed(1) })} aria-describedby="training-skill-summary" className={styles.actionButton} disabled={phase !== "playing" || session.paused || session.hidden || session.ultiOpen || session.awaitingContinue || cooldown > 0 || queued} onClick={() => { session.skill(); refresh(); }}>
+            <button ref={skillButton} aria-label={t(queued ? "queued" : cooldown ? "cooldown" : "skill", { seconds: (cooldown * RULESET.tickMs / 1000).toFixed(1) })} aria-describedby={`${kind}-skill-summary`} className={styles.actionButton} disabled={phase !== "playing" || session.paused || session.hidden || session.ultiOpen || session.awaitingContinue || cooldown > 0 || queued} onClick={() => { session.skill(); refresh(); }}>
               <Swords width={23} height={23} aria-hidden="true" /><strong>{t("skillTitle")}</strong><ReservedText text={t(queued ? "actionQueued" : cooldown ? "actionCooldown" : "actionReady", { seconds: (cooldown / 10).toFixed(1) })} alternatives={[t("actionReady"), t("actionQueued"), t("actionCooldown", { seconds: "6.0" })]} />
             </button>
             <progress className={styles.actionProgress} max={RULESET.pet.skillCooldown} value={RULESET.pet.skillCooldown - cooldown} aria-label={t("recharge")} />
           </div>
           {Number.isFinite(v.ultiReadyAt) && <div className={styles.action} data-ultimate="true" data-ready={!v.ultiUsed && ultiCooldown === 0}>
-            <button ref={ultiButton} aria-label={t(v.ultiUsed ? "ulti.used" : ultiCooldown ? "ulti.charging" : "ulti.ready", { seconds: (ultiCooldown / 10).toFixed(1) })} aria-describedby="training-ulti-summary" className={styles.actionButton} disabled={phase !== "playing" || session.hidden || session.ultiOpen || session.awaitingContinue || v.ultiUsed || ultiCooldown > 0 || queued} onClick={() => { session.openUlti(); refresh(); }}>
+            <button ref={ultiButton} aria-label={t(v.ultiUsed ? "ulti.used" : ultiCooldown ? "ulti.charging" : "ulti.ready", { seconds: (ultiCooldown / 10).toFixed(1) })} aria-describedby={`${kind}-ulti-summary`} className={styles.actionButton} disabled={phase !== "playing" || session.hidden || session.ultiOpen || session.awaitingContinue || v.ultiUsed || ultiCooldown > 0 || queued} onClick={() => { session.openUlti(); refresh(); }}>
               <Sparkles width={23} height={23} aria-hidden="true" /><strong>{t("ulti.shortTitle")}</strong><ReservedText text={t(v.ultiUsed ? "ulti.shortUsed" : ultiCooldown ? "actionCooldown" : "ulti.shortReady", { seconds: (ultiCooldown / 10).toFixed(1) })} alternatives={[t("ulti.shortUsed"), t("ulti.shortReady"), t("actionCooldown", { seconds: "12.0" })]} />
             </button>
             <progress className={styles.actionProgress} max={v.ultiReadyAt} value={v.ultiReadyAt - ultiCooldown} aria-label={t("ulti.recharge")} />
           </div>}
         </div>
-        <div className={styles.actionHints}><p id="training-skill-summary">{t("skillSummary")}</p>{Number.isFinite(v.ultiReadyAt) && <p id="training-ulti-summary">{t("ulti.summary")}</p>}</div>
+        <div className={styles.actionHints}><p id={`${kind}-skill-summary`}>{t("skillSummary")}</p>{Number.isFinite(v.ultiReadyAt) && <p id={`${kind}-ulti-summary`}>{t("ulti.summary")}</p>}</div>
         {Number.isFinite(v.ultiReadyAt) && <div className={styles.ultiOutcome}>
           <span className={styles.shield}><Shield width={15} height={15} aria-hidden="true" />{t("ulti.shield", { value: v.shield })}</span>
           <p role="status"><ReservedText text={lastUlti ? t("ulti.feedback", { damage:lastUlti.damage, shield:lastUlti.shield }) : t("ulti.awaiting")} alternatives={[t("ulti.feedback",{damage:v.enemyHpMax,shield:v.petHpMax}), t("ulti.awaiting")]} /></p>
@@ -190,10 +226,10 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
           <button ref={pauseButton} className={button} aria-pressed={session.paused} disabled={session.ultiOpen || session.awaitingContinue} onClick={() => { session.togglePause(); refresh(); }}>{session.paused ? <Play width={14} height={14} aria-hidden="true" /> : <Pause width={14} height={14} aria-hidden="true" />}{t(session.paused ? "resume" : "pause")}</button>
           <label className="flex items-center gap-2 text-sm">{t("speed")}<select className="rounded border border-border bg-surface px-2 py-2" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[0.5, 1, 2].map(n => <option key={n} value={n}>{n}×</option>)}</select></label>
         </div>
-        {adventure && session.awaitingContinue && v && <div role="status" className="space-y-2 rounded border border-border p-3 text-sm"><p>{ta("interlude", { n: v.fight - 1, hp: v.petHp, max: v.petHpMax })}</p><button className={buttonVariants()} onClick={() => { session.continueFight(); refresh(); }}>{ta("continue")}</button></div>}
+        {adventure && session.awaitingContinue && v && <div role="status" className="space-y-2 rounded border border-border p-3 text-sm"><p>{ta("interlude", { n: v.fight - 1, hp: v.petHp, max: v.petHpMax })}</p><button className={buttonVariants()} onClick={() => { session.continueFight(); if (session.paused) session.togglePause(); refresh(); }}>{ta("continue")}</button></div>}
         {(session.paused || session.hidden) && <p role="status" className="text-sm text-muted-foreground">{t("paused")}</p>}
         {session.ultiOpen && session.battle && <UltiPuzzle seed={session.battle.seed} tick={v.tick} version={session.battle.rulesetVersion} equipment={"equipment" in session.battle.snapshot ? session.battle.snapshot.equipment : undefined} onCancel={() => { session.cancelUlti(); restoreFocus.current = "ulti"; refresh(); }} onConfirm={order => { if (session.confirmUlti(order)) restoreFocus.current = "skill"; refresh(); }} />}
-        <details className={styles.help}><summary>{t("helpTitle")}</summary><p id="training-skill-help">{t("skillHelp", { seconds: RULESET.pet.skillCooldown * RULESET.tickMs / 1000, normal: RULESET.pet.skillIdleMul, interrupt: RULESET.pet.skillInterruptMul })}</p>{Number.isFinite(v.ultiReadyAt) && <p>{t("ulti.help")}</p>}</details>
+        <details className={styles.help}><summary>{t("helpTitle")}</summary><p id={`${kind}-skill-help`}>{t("skillHelp", { seconds: RULESET.pet.skillCooldown * RULESET.tickMs / 1000, normal: RULESET.pet.skillIdleMul, interrupt: RULESET.pet.skillInterruptMul })}</p>{Number.isFinite(v.ultiReadyAt) && <p>{t("ulti.help")}</p>}</details>
       </div>}
     </>}
     {phase === "resolving" && <p role="status">{t("resolving")}</p>}

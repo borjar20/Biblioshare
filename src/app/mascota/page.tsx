@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
-import { SHELL_READ } from "@/lib/ui/layout";
-import { PageHeader } from "@/components/ui/page-header";
 import { deriveAttributes, suggestClass } from "@/lib/pet/derive";
 import { getPetCounts } from "@/lib/pet/get-pet-counts";
 import { getPetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import { HatchForm } from "@/components/pet/hatch-form";
-import { PetDetail } from "@/components/pet/pet-detail";
+import { PetGame } from "@/components/pet/game/pet-game";
+import gameStyles from "@/components/pet/game/pet-game.module.css";
 import { BurrowSection } from "@/components/pet/burrow-section";
-import { AdventureSection } from "@/components/pet/adventure/adventure-section";
-import { TrainingPanel } from "@/components/pet/training/training-panel";
+import { getAdventureStateFor } from "@/lib/pet/adventure/get-state";
+import type { AdventureState } from "@/lib/pet/adventure/types";
 
 export const metadata: Metadata = { title: "Mascota — Biblioshare" };
 
@@ -23,12 +23,9 @@ export const metadata: Metadata = { title: "Mascota — Biblioshare" };
 export default async function MascotaPage() {
   const t = await getTranslations("pet");
   return (
-    <div className={`mx-auto flex w-full ${SHELL_READ} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      <PageHeader title={t("title")} />
-      <Suspense fallback={<div aria-hidden className="h-64 animate-pulse rounded-card bg-surface-muted" />}>
+    <Suspense fallback={<div className={gameStyles.game} aria-busy="true" aria-label={t("title")}><div className={gameStyles.header}><Link className={gameStyles.returnLink} href="/">← Biblioshare</Link><h1>{t("game.sections.camp")}</h1></div><div className={gameStyles.content}><div aria-hidden className="h-80 animate-pulse rounded-lg bg-surface-muted" /></div></div>}>
         <PetContent />
       </Suspense>
-    </div>
   );
 }
 
@@ -42,18 +39,17 @@ async function PetContent() {
   const pet = await getPetSnapshot(supabase, user.id);
   const burrow = (
     <Suspense fallback={<div aria-hidden className="h-40 animate-pulse rounded-card bg-surface-muted" />}>
-      <BurrowSection viewerId={user.id} own={pet ? { name: pet.name, petClass: pet.petClass, stage: pet.stage, level: pet.level } : null} />
+      <BurrowSection viewerId={user.id} game own={pet ? { name: pet.name, petClass: pet.petClass, stage: pet.stage, level: pet.level } : null} />
     </Suspense>
   );
 
   if (!pet) {
     // Eclosión: la sugerencia sale del historial (spec §2). Sin historial → null.
     const { counts } = await getPetCounts(supabase, user.id);
-    return <><HatchForm suggested={suggestClass(deriveAttributes(counts))} />{burrow}</>;
+    return <PetGame key={user.id} userId={user.id} pet={null} adventure={null} burrow={burrow} hatch={<HatchForm suggested={suggestClass(deriveAttributes(counts))} />} />;
   }
-  return <>
-    <PetDetail pet={pet} burrow={burrow} />
-    <Suspense fallback={<div aria-hidden className="h-40 animate-pulse rounded-card bg-surface-muted" />}><AdventureSection viewerId={user.id} /></Suspense>
-    <TrainingPanel />
-  </>;
+  let adventure: AdventureState | null = null;
+  try { adventure = await getAdventureStateFor(supabase, user.id); }
+  catch (error) { console.error("pet game adventure", error); }
+  return <PetGame key={user.id} userId={user.id} pet={pet} adventure={adventure} burrow={burrow} />;
 }

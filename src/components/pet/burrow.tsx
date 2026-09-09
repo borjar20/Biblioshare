@@ -9,12 +9,14 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PetSprite } from "./pet-sprite";
+import gameStyles from "./game/pet-game.module.css";
 
-export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
+export function Burrow({ own, neighbors, total, followingCount = 0, club, game = false }: {
   own: BurrowPet | null;
   neighbors: BurrowNeighbor[];
   total: number;
   followingCount?: number;
+  game?: boolean;
   club?: { name: string; ownOwner: BurrowNeighbor | null };
 }) {
   const t = useTranslations("pet");
@@ -30,10 +32,10 @@ export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
   const current = entries.find((entry) => entry.key === selected);
 
   return (
-    <section aria-labelledby={`${id}-title`} className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card">
-      <h2 id={`${id}-title`} className="break-words font-serif text-lg font-semibold">{club ? t("clubBurrow.title", { club: club.name }) : t("burrow.title")}</h2>
+    <section aria-labelledby={`${id}-title`} className={game ? `flex flex-col gap-4 ${gameStyles.gameBurrow}` : "flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card"}>
+      <h2 id={`${id}-title`} className="break-words font-serif text-lg font-semibold">{game ? t("game.burrowIntro") : club ? t("clubBurrow.title", { club: club.name }) : t("burrow.title")}</h2>
       {entries.length > 0 && (
-        <ul id={`${id}-pets`} role="list" className="flex flex-wrap items-end gap-x-3 gap-y-8 rounded-card border-b-4 border-border bg-surface-muted px-3 pb-3 pt-8">
+        <ul id={`${id}-pets`} role="list" className={game ? `flex flex-wrap items-end ${gameStyles.burrowScene}` : "flex flex-wrap items-end gap-x-3 gap-y-8 rounded-card border-b-4 border-border bg-surface-muted px-3 pb-3 pt-8"}>
           {entries.map(({ key, pet, owner }) => {
             const { box } = spriteBox(pet.stage, pet.petClass);
             const label = owner && key !== "own"
@@ -49,6 +51,7 @@ export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
                     <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={1} label={pet.name} />
                   </span>
                 </button>
+                {game && <span>{pet.name}</span>}
                 <span className="text-xs text-muted-foreground">{t("level", { level: pet.level })}</span>
                 <span className="h-4 text-xs text-muted-foreground">{key === "own" ? t("burrow.yours") : null}</span>
               </li>

@@ -1,7 +1,34 @@
-.arena { padding: 1rem; border-radius: 1rem; background: var(--color-surface-muted); }
-.health { min-width: 0; }
+.panel {
+ --foreground: #fff6df; --foreground-soft: #e6e7c7; --muted-foreground: #becfb8;
+ --surface: #103b30; --surface-muted: #164637; --surface-3: #092a24;
+ --border: #52765a; --green: #a5dc69; --accent: #efbc6b; --accent-ink: #ffcf80;
+ --gold: #dec06d; --gold-ink: #ffdd8a; --gold-graphic: #c4a757;
+ --color-surface: var(--surface); --color-surface-muted: var(--surface-muted);
+ --color-foreground: var(--foreground); --color-muted-foreground: var(--muted-foreground);
+ --color-border: var(--border);
+ display: flex; flex-direction: column; gap: 1rem; color: var(--foreground);
+ padding: clamp(.65rem, 2vw, 1.25rem); border: 1px solid var(--border);
+ border-radius: 1rem; background: linear-gradient(155deg, #154331, #062923);
+ min-width: 0;
+}
+.panel button, .panel select { min-height: 44px; }
+.panel select { color: var(--foreground); background: var(--surface); }
+.enemyPicker { min-width: 0; font-size: .875rem; }
+.enemyPicker legend { margin-bottom: .65rem; font-weight: 600; }
+.enemyPicker > p { margin-top: .65rem; color: var(--muted-foreground); }
+.enemyChoices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.enemyChoices label { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .65rem; border: 1px solid var(--border); border-radius: .65rem; background: #082f27; cursor: pointer; }
+.enemyChoices label[data-selected="true"] { border-color: var(--gold-ink); box-shadow: inset 0 0 0 1px var(--gold-ink); background: #204d32; }
+.enemyChoices label:has(:focus-visible) { outline: 3px solid var(--gold-ink); outline-offset: 3px; }
+.enemyChoices input { position: absolute; top: .6rem; left: .6rem; accent-color: #a5dc69; }
+.enemyPicker:disabled label { cursor: default; opacity: .65; }
+.panel button:focus-visible, .panel select:focus-visible, .panel summary:focus-visible { outline: 3px solid #ffe2a2; outline-offset: 3px; }
+.arena { padding: .65rem; border: 1px solid #73926c; border-radius: .75rem; background: linear-gradient(to bottom, #092d27c7, transparent 32%, transparent 60%, #062b24 86%), url('/pet/scenes/battle.webp') center 56% / cover, #22553a; }
+.stage { position: relative; display: flex; align-items: flex-end; justify-content: space-around; height: clamp(190px, 32vh, 320px); padding-bottom: 1rem; }
+.stage > div { filter: drop-shadow(0 8px 5px #021c29a6); }
+.health { min-width: 0; padding: .65rem; border: 1px solid #789773; border-radius: .6rem; background: #052b26e8; box-shadow: 0 2px 0 #04271e; }
 .health progress, .actionProgress { display: block; appearance: none; width: 100%; border: 0; overflow: hidden; background: var(--surface-3); }
-.health progress { height: 7px; border-radius: 4px; margin: 7px 0; }
+.health progress { height: 12px; border-radius: 4px; margin: 7px 0; }
 .health progress::-webkit-progress-bar, .actionProgress::-webkit-progress-bar { background: var(--surface-3); }
 .health progress::-webkit-progress-value { background: var(--green); border-radius: 4px; }
 .health progress::-moz-progress-bar { background: var(--green); border-radius: 4px; }
@@ -9,16 +36,20 @@
 .health[data-rival="true"] progress::-moz-progress-bar { background: var(--accent); }
 .healthValue { display: flex; align-items: center; gap: 4px; font-size: .75rem; font-variant-numeric: tabular-nums; }
 .healthValue span { color: var(--muted-foreground); }
-.telegraph { margin-top: 12px; padding: 10px 8px 6px; border-top: 2px solid var(--border); }
+.telegraph { margin-top: 12px; padding: 10px 8px 6px; border: 1px solid var(--border); border-radius: .5rem; background: #062d25ec; text-align: center; }
+.telegraph[data-enemy-phase="windup"] { background: #674015f5; color: #ffe5a5; }
 .telegraph[data-enemy-phase="windup"] { border-color: var(--accent); }
 .telegraph[data-enemy-phase="vulnerable"] { border-color: var(--green); }
 .telegraph[data-enemy-phase="guard"] { border-color: var(--gold-graphic); }
 .controls { display: flex; flex-direction: column; gap: 12px; }
 .actions, .actionHints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.action { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface-muted); }
+.action { border: 1px solid #88ab76; border-radius: 10px; overflow: hidden; background: linear-gradient(150deg, #326941, #0a372d); box-shadow: 0 3px 0 #021f19, inset 0 1px 0 #c9e4a12e; }
+.action[data-ultimate="true"] { background: linear-gradient(150deg, #503663, #243047); border-color: #b292ca; }
 .action[data-ready="true"] { border-color: var(--gold-graphic); background: color-mix(in srgb, var(--gold) 12%, var(--surface)); box-shadow: inset 0 0 0 1px var(--gold-graphic); }
-.actionButton { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px; padding: 12px; width: 100%; min-height: 106px; text-align: left; cursor: pointer; }
-.actionButton strong { font-size: .875rem; }
+.actionButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 14px 8px; width: 100%; min-height: 122px; text-align: center; cursor: pointer; }
+.actionButton strong { font-size: 1rem; }
+.actionButton > svg { width: 30px; height: 30px; }
+.actionButton:not(:disabled):active { transform: translateY(2px); }
 .actionButton span { font-size: .75rem; font-variant-numeric: tabular-nums; }
 .actionButton:disabled { color: var(--muted-foreground); cursor: default; }
 .actionButton:not(:disabled):hover { background: color-mix(in srgb, var(--foreground) 5%, transparent); }
@@ -33,7 +64,7 @@
 .ultiOutcome { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: .75rem; color: var(--muted-foreground); }
 .shield { display: flex; align-items: center; gap: 5px; color: var(--foreground); font-variant-numeric: tabular-nums; }
 .playback { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.playback > button { padding: 8px 12px; font-size: .75rem; }
+.playback > button { padding: 10px 16px; font-size: .875rem; flex: 1; }
 .playback label { font-size: .75rem; gap: 6px; }
 .help { font-size: .8125rem; color: var(--muted-foreground); }
 .help summary { cursor: pointer; padding: 8px 0; }

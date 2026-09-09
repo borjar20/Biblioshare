@@ -70,16 +70,17 @@ test.afterAll(async () => {
 
 test("abrir /mascota crea tres misiones del día y pinta la galería de logros", async ({ page }) => {
   await login(page);
-  await page.goto("/mascota");
-  await expect(page.getByTestId("mission-board")).toBeVisible();
+  await page.goto("/mascota?view=diary");
+  await expect(page.getByTestId("mission-board").filter({ visible: true })).toBeVisible();
   // La MISMA visita que genera las misiones ya las pinta (#1028: antes había
   // que recargar porque el render releía el resultado memoizado de antes del
   // insert). Si esto vuelve a necesitar un segundo goto, el bug ha vuelto.
-  await expect(page.getByTestId("mission-board").locator("li")).toHaveCount(3);
+  await expect(page.getByTestId("mission-board").filter({ visible: true }).locator("li")).toHaveCount(3);
   const rows = (await (await api(`pet_daily_missions?user_id=eq.${userId}&day=eq.${localDay()}&select=slot,template`)).json()) as Array<{ slot: number; template: string }>;
   expect(rows).toHaveLength(3);
   expect(new Set(rows.map((r) => r.template)).size).toBe(3);
 
+  await page.getByRole("button", { name: "Logros", exact: true }).click();
   await expect(page.getByTestId("achievement-grid")).toBeVisible();
   // Una tarjeta por familia, con su nivel y el siguiente umbral visible.
   const cards = page.getByTestId("achievement-grid").locator("li[data-testid^='achievement-']");
@@ -93,8 +94,8 @@ test("abrir /mascota crea tres misiones del día y pinta la galería de logros",
 
 test("una sesión de 20 minutos cumple session_minutes y se gana la celebración", async ({ page }) => {
   await login(page);
-  await page.goto("/mascota");
-  await expect(page.getByTestId("mission-board")).toBeVisible();
+  await page.goto("/mascota?view=diary");
+  await expect(page.getByTestId("mission-board").filter({ visible: true })).toBeVisible();
 
   // Fija las TRES plantillas del día (el sorteo es determinista pero depende
   // del usuario de prueba): la fila manda sobre el generador. Se parchean los
@@ -121,8 +122,8 @@ test("una sesión de 20 minutos cumple session_minutes y se gana la celebración
     body: JSON.stringify({ user_id: userId, pass_id: passes[0].id, duration_minutes: 20, session_date: localDay(), position: {} }),
   });
 
-  await page.goto("/mascota");
-  const mission = page.getByTestId("mission-session_minutes");
+  await page.goto("/mascota?view=diary");
+  const mission = page.getByTestId("mission-session_minutes").filter({ visible: true });
   await expect(mission).toHaveAttribute("data-completed", "true");
 
   const won = (await (await api(`user_celebrations?user_id=eq.${userId}&event_type=eq.pet_mission_done&select=event_key`)).json()) as Array<{ event_key: string }>;

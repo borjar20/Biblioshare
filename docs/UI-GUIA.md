@@ -1,6 +1,7 @@
 # Guía de UI — principios y patrones
 
-> **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19)]**
+> **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19);
+> excepción de mascota verificada el 2026-09-09]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -9,6 +10,15 @@
 > `docs/audit/AUDIT-2026-08.md` (F3-### desktop, F4-### mobile/a11y).
 
 ## Identidad (proteger)
+
+**Excepción aprobada: `/mascota` (#1165, 2026-09-09).** Tiene marco de RPG de bosque,
+tema verde fijo y navegación propia: Campamento, Personaje, Mochila, Diario y
+Madriguera. El combate cede el espacio a arena/controles, pero conserva «← Biblioshare».
+Ese acceso vuelve a la última ruta interna válida o a Inicio; no es un `back()`
+ciego. El marco reutiliza el único `main` de AppShell. No duplicar componentes de
+combate para móvil/escritorio ni desmontarlos al cambiar de sección. El resto de
+la app mantiene la identidad descrita a continuación. Tokens: `DESIGN.md`, apartado
+«Excepción de la mascota»; referencias: spec `2026-09-09-mascota-rpg-ui-design.md`.
 
 Serif display + paleta papel/teja + **la portada como material**. Los mejores
 layouts de la casa son la plantilla a imitar: `/persona` (desktop 2-3 columnas),
