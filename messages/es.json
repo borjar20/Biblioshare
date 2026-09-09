@@ -3094,6 +3094,7 @@
       "attributes": "Atributos",
       "rename": "Cambiar nombre",
       "viewBag": "Ver mochila",
+      "gear": "Equipo",
       "viewAdventure": "Ver aventura",
       "adventureCta": "Aventurarse",
       "viewDiary": "Ver diario",
@@ -3177,6 +3178,12 @@
       "sleepy": "dormida",
       "sad": "triste"
     },
+    "moodReason": {
+      "neutral": "Hace {days, plural, one {un día} other {# días}} que no registras nada.",
+      "sleepy": "Se ha dormido: llevas {days, plural, one {un día} other {# días}} sin registrar nada.",
+      "sad": "Está triste: llevas {days, plural, one {un día} other {# días}} sin registrar nada."
+    },
+    "moodAction": "Registra una sesión y volverá a animarse.",
     "level": "Nivel {level}",
     "xpToNext": "{current} / {next} XP",
     "primary": "Atributo principal",
@@ -3293,6 +3300,14 @@
         "vulnerable": "¡Vulnerable! Tus golpes causan el doble de daño.",
         "caparazonIdle": "Coraza en reposo · Guarda tu habilidad para cuando quede vulnerable."
       },
+      "phasesShort": {
+        "idle": "Sin amenaza",
+        "windup": "¡Carga! Interrumpe ahora",
+        "guard": "Guardia: espera",
+        "stagger": "¡Aturdido!",
+        "vulnerable": "¡Vulnerable! Golpea",
+        "caparazonIdle": "Coraza en reposo"
+      },
       "outcomes": {
         "win": "¡Victoria!",
         "lose": "Derrota",
@@ -3378,8 +3393,8 @@
       "intro": "Cada día con lectura, episodios o películas te da una aventura: una cadena de combates seguidos en la que la vida no se recupera entre tramos. Ganar entrega un objeto; perder no quita nada.",
       "pending": "{count, plural, =0 {No tienes aventuras pendientes} one {# aventura pendiente} other {# aventuras pendientes}}",
       "pendingHelp": "Cuentan los últimos siete días con actividad. Una aventura empezada no caduca.",
-      "inProgress": "Aventura del {day} en curso",
-      "retryAvailable": "Aventura del {day}: puedes reintentarla",
+      "inProgress": "Del {day} · en curso",
+      "retryAvailable": "Del {day} · puedes reintentarla",
       "start": "Empezar aventura",
       "resume": "Reanudar aventura",
       "retry": "Reintentar aventura",
@@ -3392,6 +3407,7 @@
       "loseHint": "La aventura no se pierde: puedes reintentarla desde el principio, con la vida llena y otro patrón de combate.",
       "won": "¡Aventura superada!",
       "reward": "Botín: {name}",
+      "lootNew": "Nuevo",
       "rewardPending": "Se activa en la siguiente actualización",
       "inventory": "Botín conseguido",
       "inventoryEmpty": "Aún no has ganado ningún objeto.",

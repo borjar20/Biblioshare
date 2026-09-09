@@ -7,7 +7,12 @@ import { LOOT_ITEMS, LOOT_SLOTS, type LootSlot } from "@/lib/pet/loot/catalog";
 import { effectValue } from "@/lib/pet/loot/effects";
 import { LOOT_ART } from "@/lib/pet/loot/art";
 import type { LootCopy, PetLoadout } from "@/lib/pet/loot/types";
+import { Shield, Swords } from "../training/training-icons";
 import styles from "./equipment-panel.module.css";
+
+/** Silueta de lo que cabe en cada ranura: un rectángulo con «Sin equipar»
+ * dentro no decía si esperaba un arma o un amuleto. */
+const SLOT_GHOST = { weapon: Swords, amulet: Shield } as const;
 
 function CopyIcon({ copy }: { copy: LootCopy }) {
   // The surrounding control or details supplies the accessible name.
@@ -61,15 +66,21 @@ export function EquipmentPanel({ copies, initialLoadout, hasOpenAdventure, sugge
       <p className={styles.help}>{t(hasOpenAdventure ? "equipment.openHelp" : "equipment.help")}</p>
     </header>
     <div className={styles.slots}>
-      {LOOT_SLOTS.map(slot => <div key={slot} className={styles.slot} data-testid={`equipped-${slot}`}>
-        <h4>{t(`slots.${slot}`)}</h4>
-        {loadout[slot] ? <>
-          <CopyIcon copy={loadout[slot]} />
-          <strong>{t(`items.${loadout[slot].itemId}`)}</strong>
-          <span className={styles.potency}>{t("equipment.potency", { value: format.number(loadout[slot].qualityBp / 10000, { minimumFractionDigits: 1 }) })}</span>
-          <button type="button" disabled={pending} className={styles.remove} onClick={() => change(slot, null)}>{t("equipment.remove", { slot: t(`slots.${slot}`).toLocaleLowerCase() })}</button>
-        </> : <p className={styles.emptySlot}>{t("equipment.empty")}</p>}
-      </div>)}
+      {LOOT_SLOTS.map(slot => {
+        const Ghost = SLOT_GHOST[slot];
+        const equipped = loadout[slot];
+        return <div key={slot} className={styles.slot} data-testid={`equipped-${slot}`} data-filled={equipped ? "true" : "false"}>
+          <h4>{t(`slots.${slot}`)}</h4>
+          <span className={styles.slotArt}>
+            {equipped ? <CopyIcon copy={equipped} /> : <span className={styles.slotGhost} aria-hidden="true"><Ghost /></span>}
+          </span>
+          {equipped ? <>
+            <strong>{t(`items.${equipped.itemId}`)}</strong>
+            <span className={styles.potency}>{t("equipment.potency", { value: format.number(equipped.qualityBp / 10000, { minimumFractionDigits: 1 }) })}</span>
+            <button type="button" disabled={pending} className={styles.remove} onClick={() => change(slot, null)}>{t("equipment.remove", { slot: t(`slots.${slot}`).toLocaleLowerCase() })}</button>
+          </> : <p className={styles.emptySlot}>{t("equipment.empty")}</p>}
+        </div>;
+      })}
     </div>
     <p role="status" className={styles.status} data-error={error || undefined} aria-live="polite">{error ? t("equipment.error") : pending ? t("equipment.saving") : confirmed ? t("equipment.saved") : ""}</p>
     <div className={styles.inventoryLayout}>
@@ -90,7 +101,9 @@ export function EquipmentPanel({ copies, initialLoadout, hasOpenAdventure, sugge
                       onClick={() => { setSelection({ suggestion: suggestedCopyId, id: copy.copyId }); setError(false); setConfirmed(false); }}>
                       <CopyIcon copy={copy} />
                       <span className={styles.potency}>{t("equipment.potency", { value: format.number(copy.qualityBp / 10000, { minimumFractionDigits: 1 }) })}</span>
-                      {loadout[slot]?.copyId === copy.copyId && <span className={styles.equipped}>{t("equipment.equipped")}</span>}
+                      {/* Esquina cosida: «Equipado» como línea de texto descuadraba
+                          la rejilla y hacía celdas de altura distinta. */}
+                      {loadout[slot]?.copyId === copy.copyId && <span className={styles.equipped} aria-hidden="true"><span>{t("equipment.equipped")}</span></span>}
                     </button>
                   </li>)}
                 </ul>

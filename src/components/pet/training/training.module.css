@@ -1,131 +1,237 @@
+/* Combate. Los tokens los pone `.game` (pet-game.module.css). Este fichero tenía
+ * antes su propia paleta —un acento naranja `#efbc6b` frente al dorado del
+ * juego— y por eso «Empezar combate» salía melocotón y «Reintentar aventura»
+ * crema en la pantalla de al lado. */
 .panel {
- --foreground: #fff6df; --foreground-soft: #e6e7c7; --muted-foreground: #becfb8;
- --surface: #103b30; --surface-muted: #164637; --surface-3: #092a24;
- --border: #52765a; --green: #a5dc69; --accent: #efbc6b; --accent-ink: #ffcf80;
- --gold: #dec06d; --gold-ink: #ffdd8a; --gold-graphic: #c4a757;
- --color-surface: var(--surface); --color-surface-muted: var(--surface-muted);
- --color-foreground: var(--foreground); --color-muted-foreground: var(--muted-foreground);
- --color-border: var(--border);
- display: flex; flex-direction: column; gap: 1rem; color: var(--foreground);
- padding: clamp(.65rem, 2vw, 1.25rem); border: 1px solid var(--border);
- border-radius: 1rem; background: linear-gradient(155deg, #154331, #062923);
- min-width: 0;
+  display: flex; flex-direction: column; gap: 1rem;
+  color: var(--cream, #f4f0d8);
+  padding: clamp(.65rem, 2vw, 1.25rem);
+  border: 1px solid var(--moss, #355b48);
+  border-radius: var(--r-2, 8px);
+  background: var(--forest-800, #0c2d24);
+  min-width: 0;
 }
 .panel button, .panel select { min-height: 44px; }
-.panel select { color: var(--foreground); background: var(--surface); }
-.enemyPicker { min-width: 0; font-size: .875rem; }
+/* Empezar / reanudar / continuar: el mismo tablón de madera que «Aventurarse».
+ * Antes era la píldora terracota de Paper y cambiaba de color entre pantallas. */
+.startButton {
+  width: 100%; max-width: 520px; margin: 0 auto; padding: 12px 20px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: linear-gradient(0deg, var(--wood-dark), var(--wood));
+  border: 1px solid var(--wood-edge); border-radius: var(--r-2);
+  box-shadow: inset 0 2px #dcb6714d, 0 3px #04170f;
+  color: var(--cream); font-size: 16px; font-weight: 650;
+}
+.startButton:hover:not(:disabled) { filter: brightness(1.12); }
+.startButton:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 1px #dcb6714d; }
+.panel select { color: var(--cream); background: var(--forest-700); }
+.panel button:focus-visible, .panel select:focus-visible, .panel summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* ── Selector de rival ──────────────────────────────────────────────────── */
+.enemyPicker { min-width: 0; font-size: 14px; }
 .enemyPicker legend { margin-bottom: .65rem; font-weight: 600; }
-.enemyPicker > p { margin-top: .65rem; color: var(--muted-foreground); }
+.enemyPicker > p { margin-top: .65rem; color: var(--cream-muted); font-size: 13px; }
 .enemyChoices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
-.enemyChoices label { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .65rem; border: 1px solid var(--border); border-radius: .65rem; background: #082f27; cursor: pointer; }
-.enemyChoices label[data-selected="true"] { border-color: var(--gold-ink); box-shadow: inset 0 0 0 1px var(--gold-ink); background: #204d32; }
-.enemyChoices label:has(:focus-visible) { outline: 3px solid var(--gold-ink); outline-offset: 3px; }
-.enemyChoices input { position: absolute; top: .6rem; left: .6rem; accent-color: #a5dc69; }
-.enemyPicker:disabled label { cursor: default; opacity: .65; }
-.panel button:focus-visible, .panel select:focus-visible, .panel summary:focus-visible { outline: 3px solid #ffe2a2; outline-offset: 3px; }
-.arena { padding: .65rem; border: 1px solid #73926c; border-radius: .75rem; background: linear-gradient(to bottom, #092d27c7, transparent 32%, transparent 60%, #062b24 86%), url('/pet/scenes/battle.webp') center 56% / cover, #22553a; }
-.stage { position: relative; display: flex; align-items: flex-end; justify-content: space-around; height: clamp(190px, 32vh, 320px); padding-bottom: 1rem; }
-.stage > div { filter: drop-shadow(0 8px 5px #021c29a6); }
-.health { min-width: 0; padding: .65rem; border: 1px solid #789773; border-radius: .6rem; background: #052b26e8; box-shadow: 0 2px 0 #04271e; }
-.health progress, .actionProgress { display: block; appearance: none; width: 100%; border: 0; overflow: hidden; background: var(--surface-3); }
-.health progress { height: 12px; border-radius: 4px; margin: 7px 0; }
-.health progress::-webkit-progress-bar, .actionProgress::-webkit-progress-bar { background: var(--surface-3); }
-.health progress::-webkit-progress-value { background: var(--green); border-radius: 4px; }
-.health progress::-moz-progress-bar { background: var(--green); border-radius: 4px; }
-.health[data-rival="true"] progress::-webkit-progress-value { background: var(--accent); }
-.health[data-rival="true"] progress::-moz-progress-bar { background: var(--accent); }
-.healthValue { display: flex; align-items: center; gap: 4px; font-size: .75rem; font-variant-numeric: tabular-nums; }
-.healthValue span { color: var(--muted-foreground); }
-.telegraph { margin-top: 12px; padding: 10px 8px 6px; border: 1px solid var(--border); border-radius: .5rem; background: #062d25ec; text-align: center; }
-.telegraph[data-enemy-phase="windup"] { background: #674015f5; color: #ffe5a5; }
-.telegraph[data-enemy-phase="windup"] { border-color: var(--accent); }
-.telegraph[data-enemy-phase="vulnerable"] { border-color: var(--green); }
-.telegraph[data-enemy-phase="guard"] { border-color: var(--gold-graphic); }
-.controls { display: flex; flex-direction: column; gap: 12px; }
-.actions, .actionHints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.action { border: 1px solid #88ab76; border-radius: 10px; overflow: hidden; background: linear-gradient(150deg, #326941, #0a372d); box-shadow: 0 3px 0 #021f19, inset 0 1px 0 #c9e4a12e; }
-.action[data-ultimate="true"] { background: linear-gradient(150deg, #503663, #243047); border-color: #b292ca; }
-.action[data-ready="true"] { border-color: var(--gold-graphic); background: color-mix(in srgb, var(--gold) 12%, var(--surface)); box-shadow: inset 0 0 0 1px var(--gold-graphic); }
-.actionButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 14px 8px; width: 100%; min-height: 122px; text-align: center; cursor: pointer; }
-.actionButton strong { font-size: 1rem; }
+.enemyChoices label { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .65rem; border: 1px solid var(--moss); border-radius: var(--r-2); background: var(--forest-700); cursor: pointer; }
+.enemyChoices label[data-selected="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); background: var(--forest-600); }
+.enemyChoices label:has(:focus-visible) { outline: 2px solid var(--gold); outline-offset: 3px; }
+.enemyChoices input { position: absolute; top: .6rem; left: .6rem; accent-color: var(--moss-light); }
+.enemyChoices span[aria-hidden] { image-rendering: pixelated; }
+.enemyPicker:disabled label { cursor: default; filter: saturate(.35); }
+
+/* ── Arena ──────────────────────────────────────────────────────────────── */
+/* Escala entera igual que las escenas del campamento, y `pixelated`: este fondo
+ * era el único que se pintaba con filtrado bilineal y salía borroso. */
+/* El panel ocupa el ancho de la ventana (decisión de #1166), pero la arena no:
+ * estirada a 1.350 px deja a los dos luchadores separados por un claro vacío. */
+.arena {
+  /* `width: 100%` es obligatorio junto a `margin-inline: auto`: en un contenedor
+   * flex, el margen automático cambia el dimensionado de «estirar» a «según el
+   * contenido», y la arena se salía 7 px del panel en móvil. */
+  width: 100%;
+  max-width: 1000px;
+  margin-inline: auto;
+  padding: .65rem;
+  border: 1px solid var(--moss);
+  border-radius: var(--r-2);
+  background-color: #22553a;
+  background-image: linear-gradient(to bottom, #092d27c7, transparent 32%, transparent 60%, #062b24 86%), url('/pet/scenes/battle.webp');
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, 50% 62%;
+  background-size: cover, 1126px 896px;
+  image-rendering: pixelated;
+}
+.arena > * { image-rendering: auto; }
+/* `overflow: hidden`: a 320 px los dos sprites de combate suman más que el ancho
+ * útil y estiraban el panel entero. Recortarlos por los lados es preferible a
+ * que la pantalla completa gane scroll horizontal. */
+.stage { position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-around; height: clamp(190px, 32vh, 320px); padding-bottom: 1rem; image-rendering: pixelated; }
+.stage > div { image-rendering: pixelated; }
+/* Sombra de contacto dentada, no un desenfoque: mismo criterio que la escena. */
+.stage > div::after { content: ''; position: absolute; z-index: -1; bottom: 12px; width: 54px; height: 9px; background: #04121b73; clip-path: polygon(12% 0, 88% 0, 100% 25%, 100% 75%, 88% 100%, 12% 100%, 0 75%, 0 25%); }
+
+/* Tramos como tubería de tres puntos, no como párrafo «Tramo 2 de 3». */
+.fights { display: flex; align-items: center; justify-content: center; gap: 8px; padding-bottom: 6px; }
+.fights i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--moss); background: var(--forest-600); }
+.fights i[data-state="done"] { background: var(--moss-light); border-color: var(--moss-light); }
+.fights i[data-state="current"] { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 0 3px #eed28133; }
+.fights span { font-size: 12px; color: var(--cream-muted); margin-left: 4px; }
+
+/* Barra de vida con retrato: quién pega y quién recibe se lee de un vistazo. */
+.health { min-width: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: center; padding: .55rem; border: 1px solid var(--moss); border-radius: var(--r-2); background: #052b26e8; }
+/* A 320 px el retrato no cabe junto a «1066 / 1092» y estiraba el panel entero.
+ * El sprite ya está en la arena, así que aquí sobra antes que el número. */
+@media (max-width: 360px) {
+  .health { grid-template-columns: minmax(0, 1fr); }
+  .healthPortrait { display: none; }
+}
+.healthPortrait { width: 40px; height: 40px; overflow: hidden; display: grid; place-items: center; border: 1px solid var(--moss); border-radius: var(--r-1); background: var(--forest-700); image-rendering: pixelated; }
+.healthPortrait > * { flex-shrink: 0; }
+.healthBody { min-width: 0; }
+.health progress, .actionProgress { display: block; appearance: none; width: 100%; border: 0; overflow: hidden; background: var(--forest-600); }
+.health progress { height: 14px; border-radius: var(--r-1); margin: 5px 0 3px; border: 1px solid var(--moss); }
+.health progress::-webkit-progress-bar, .actionProgress::-webkit-progress-bar { background: var(--forest-600); }
+.health progress::-webkit-progress-value { background: var(--hp); }
+.health progress::-moz-progress-bar { background: var(--hp); }
+.health[data-rival="true"] progress::-webkit-progress-value { background: var(--hp-rival); }
+.health[data-rival="true"] progress::-moz-progress-bar { background: var(--hp-rival); }
+.healthValue { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; min-width: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.healthValue span { color: var(--cream-muted); }
+
+/* Banner de aviso: seis palabras y un icono. Antes era una frase de quince que
+ * reservaba tres líneas en 390 px y empujaba los botones fuera de la pantalla. */
+/* `min-width: 0` en el texto: las alternativas invisibles que reservan la altura
+ * también reservan ancho, y sin esto empujaban el panel más allá de 320 px. */
+/* Altura FIJA, no mínima. El aviso cambia de texto cada pocos ticks y a 320 px
+ * unos caben en una línea y otros en dos; con `min-height` el banco crecía 24 px
+ * y arrastraba los botones. El e2e mide que no se muevan ni un píxel. */
+.telegraph { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; padding: 8px 12px; border: 1px solid var(--moss); border-radius: var(--r-2); background: #062d25ec; text-align: center; font-size: 16px; font-weight: 700; height: 72px; overflow: hidden; }
+.telegraph > span { min-width: 0; }
+.telegraph[data-warning="false"] > svg, .telegraph[data-warning="false"] > time { visibility: hidden; }
+.telegraph svg { width: 20px; height: 20px; }
+/* Ancho fijo: el contador pasa de «0.9 s» a «12.0 s» y, al ensancharse, le
+ * robaba sitio al texto, que envolvía y empujaba los botones hacia abajo. */
+.telegraph time { flex: 0 0 auto; min-width: 5ch; text-align: right; font-size: 13px; font-weight: 600; color: var(--cream-muted); font-variant-numeric: tabular-nums; }
+.telegraph[data-enemy-phase="windup"] { background: linear-gradient(0deg, var(--wood-dark), var(--wood)); border-color: var(--wood-edge); color: #ffe5a5; animation: pulse 1s steps(2, end) infinite; }
+.telegraph[data-enemy-phase="vulnerable"] { border-color: var(--moss-light); color: #d6f2c0; }
+.telegraph[data-enemy-phase="guard"] { border-color: var(--gold); color: var(--gold); }
+@keyframes pulse { 50% { filter: brightness(1.25); } }
+
+/* Una sola línea de estado bajo la arena: antes había cuatro (habilidad, tick,
+ * botín, pausa) compitiendo entre la arena y los botones. */
+.statusLine { display: flex; align-items: center; justify-content: center; gap: 8px; height: 34px; padding-top: 8px; font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.statusLine b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statusLine time { color: var(--cream-muted); font-size: 12px; flex-shrink: 0; }
+
+/* ── Controles ──────────────────────────────────────────────────────────── */
+.controls { display: flex; flex-direction: column; gap: 12px; max-width: 1000px; margin-inline: auto; width: 100%; }
+.actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.action { border: 1px solid #88ab76; border-radius: var(--r-2); overflow: hidden; background: linear-gradient(150deg, #326941, #0a372d); box-shadow: 0 3px 0 #021f19, inset 0 1px 0 #c9e4a12e; }
+.action[data-ultimate="true"] { background: linear-gradient(150deg, var(--arcane), #243047); border-color: #b292ca; }
+.action[data-ready="true"] { border-color: var(--gold); box-shadow: 0 3px 0 #021f19, inset 0 0 0 1px var(--gold); }
+.actionButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 14px 8px; width: 100%; min-height: 112px; text-align: center; cursor: pointer; }
+.actionButton strong { font-size: 16px; }
 .actionButton > svg { width: 30px; height: 30px; }
 .actionButton:not(:disabled):active { transform: translateY(2px); }
-.actionButton span { font-size: .75rem; font-variant-numeric: tabular-nums; }
-.actionButton:disabled { color: var(--muted-foreground); cursor: default; }
-.actionButton:not(:disabled):hover { background: color-mix(in srgb, var(--foreground) 5%, transparent); }
-.action[data-ultimate="true"] .actionButton:not(:disabled) { color: var(--gold-ink); }
-.actionButton:focus-visible { outline: 3px solid var(--foreground); outline-offset: -4px; }
+.actionButton span { font-size: 12px; font-variant-numeric: tabular-nums; }
+.actionButton:disabled { color: var(--cream-muted); cursor: default; }
+.actionButton:not(:disabled):hover { background: color-mix(in srgb, var(--cream) 5%, transparent); }
+.action[data-ultimate="true"] .actionButton:not(:disabled) { color: var(--gold); }
+.actionButton:focus-visible { outline: 2px solid var(--cream); outline-offset: -4px; }
 .actionProgress { height: 4px; }
-.actionProgress::-webkit-progress-value { background: var(--accent); }
-.actionProgress::-moz-progress-bar { background: var(--accent); }
-.action[data-ultimate="true"] .actionProgress::-webkit-progress-value { background: var(--gold-graphic); }
-.action[data-ultimate="true"] .actionProgress::-moz-progress-bar { background: var(--gold-graphic); }
-.actionHints { margin-top: -5px; font-size: .75rem; line-height: 1.5; color: var(--muted-foreground); }
-.ultiOutcome { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: .75rem; color: var(--muted-foreground); }
-.shield { display: flex; align-items: center; gap: 5px; color: var(--foreground); font-variant-numeric: tabular-nums; }
-.playback { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.playback > button { padding: 10px 16px; font-size: .875rem; flex: 1; }
-.playback label { font-size: .75rem; gap: 6px; }
-.help { font-size: .8125rem; color: var(--muted-foreground); }
-.help summary { cursor: pointer; padding: 8px 0; }
+.actionProgress::-webkit-progress-value { background: var(--gold); }
+.actionProgress::-moz-progress-bar { background: var(--gold); }
+.actionHints { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: -5px; font-size: 12px; line-height: 1.5; color: var(--cream-muted); }
+/* Columna acotada: el texto de resultado de la ulti reserva su alternativa más
+ * larga y, con la columna `auto` por defecto, estiraba el panel a 334 px. */
+.ultiOutcome { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px 0; border-top: 1px solid var(--moss); font-size: 12px; color: var(--cream-muted); }
+.ultiOutcome p, .ultiOutcome p > span { min-width: 0; }
+.shield { display: flex; align-items: center; gap: 5px; color: var(--cream); font-variant-numeric: tabular-nums; }
+
+/* Pausa y velocidad: dos botones de 44 px en una fila. La velocidad cicla en vez
+ * de abrir el desplegable nativo del sistema encima del combate. */
+.playback { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.playback button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--moss); border-radius: var(--r-2); background: var(--forest-700); color: var(--cream); font-size: 14px; font-weight: 600; }
+.playback button:hover:not(:disabled) { background: var(--forest-600); }
+.playback svg { width: 16px; height: 16px; }
+.speedValue { font-variant-numeric: tabular-nums; }
+.help { font-size: 13px; color: var(--cream-muted); }
+.help summary { cursor: pointer; padding: 12px 0; min-height: 44px; display: flex; align-items: center; }
 .help p { margin: 8px 0; line-height: 1.6; }
-.puzzle { --rune-ink: var(--foreground); border: 1px solid var(--gold-graphic); border-radius: 16px; padding: 16px; background: var(--surface); display: grid; gap: 14px; scroll-margin-top: 80px; }
-.puzzleHeading { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gold-ink); }
-.puzzleHeading h3 { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; color: var(--foreground); }
-.puzzleHeading > span { display: inline-flex; align-items: center; gap: 4px; font-size: .7rem; margin-left: auto; color: var(--muted-foreground); }
-.puzzleHelp { font-size: .8125rem; line-height: 1.55; color: var(--muted-foreground); }
+
+/* ── Resultado ──────────────────────────────────────────────────────────── */
+/* El pico del juego. Antes era un `h3` de 18 px y tres frases sueltas. */
+.result { display: grid; justify-items: center; gap: 10px; padding: 20px 16px; border: 1px solid var(--wood-edge); border-radius: var(--r-2); background: var(--forest-700); text-align: center; }
+.result h3 { font-size: 22px; }
+.result p { font-size: 14px; }
+.resultCauses { color: var(--cream-muted); font-size: 13px; }
+.lootReveal { display: grid; justify-items: center; gap: 6px; padding: 14px 18px; border: 1px solid var(--gold); border-radius: var(--r-2); background: #1b3a2a; }
+.lootReveal img { width: 96px; height: 96px; image-rendering: pixelated; animation: lootIn .6s steps(4, end) both; }
+.lootReveal strong { font-size: 18px; }
+.lootNew { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+.lootPotency { font-size: 14px; color: var(--gold); font-variant-numeric: tabular-nums; }
+@keyframes lootIn { from { transform: scale(.25) translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
+.resultActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+.resultActions button { flex: 1 1 160px; min-height: 48px; padding: 12px 16px; border-radius: var(--r-2); font-weight: 650; font-size: 15px; border: 1px solid var(--moss); background: var(--forest-800); color: var(--cream); }
+.resultActions button[data-primary="true"] { background: linear-gradient(0deg, var(--wood-dark), var(--wood)); border-color: var(--wood-edge); box-shadow: inset 0 2px #dcb6714d, 0 3px #04170f; }
+.resultActions button:hover:not(:disabled) { filter: brightness(1.12); }
+
+/* ── Puzle de la ulti ───────────────────────────────────────────────────── */
+.puzzle { --rune-ink: var(--cream); border: 1px solid var(--gold); border-radius: var(--r-2); padding: 16px; background: var(--forest-800); display: grid; gap: 14px; scroll-margin-top: 80px; }
+.puzzleHeading { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--gold); }
+.puzzleHeading h3 { font-size: 18px; font-weight: 700; color: var(--cream); }
+.puzzleHeading > span { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin-left: auto; color: var(--cream-muted); }
+.puzzleHelp { font-size: 13px; line-height: 1.55; color: var(--cream-muted); }
 .recipes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.recipe { min-width: 0; padding-bottom: 10px; border-bottom: 2px solid var(--accent); }
-.recipe[data-recipe="guard"] { border-color: var(--green); }
-.recipe h4 { display: flex; align-items: center; gap: 5px; font-size: .8125rem; font-weight: 600; }
-.recipe p { font-size: .75rem; line-height: 1.5; color: var(--muted-foreground); margin-top: 7px; }
+.recipe { min-width: 0; padding-bottom: 10px; border-bottom: 2px solid var(--gold); }
+.recipe[data-recipe="guard"] { border-color: var(--moss-light); }
+.recipe h4 { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; }
+.recipe p { font-size: 12px; line-height: 1.5; color: var(--cream-muted); margin-top: 7px; }
 .recipeRunes { display: flex; gap: 4px; margin-top: 10px; }
-.rune { display: inline-flex; position: relative; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 7px; background: var(--surface-muted); color: var(--rune-ink); }
-.rune[data-rune="0"] { --rune-ink: var(--accent-ink); }
-.rune[data-rune="1"] { --rune-ink: var(--foreground); }
-.rune[data-rune="2"] { --rune-ink: var(--foreground-soft); }
-.rune[data-rune="3"] { --rune-ink: var(--gold-ink); }
-.rune small { position: absolute; bottom: 1px; right: 3px; font-size: .6rem; line-height: 1; font-weight: 700; }
+.rune { display: inline-flex; position: relative; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: var(--r-1); background: var(--forest-700); color: var(--rune-ink); }
+.rune[data-rune="0"] { --rune-ink: var(--gold); }
+.rune[data-rune="1"] { --rune-ink: var(--cream); }
+.rune[data-rune="2"] { --rune-ink: var(--cream-soft); }
+.rune[data-rune="3"] { --rune-ink: var(--gold-hover); }
+.rune small { position: absolute; bottom: 1px; right: 3px; font-size: 12px; line-height: 1; font-weight: 700; }
 .recipeRunes .rune { width: 26px; height: 32px; flex: 1; }
 .recipeRunes svg { width: 15px; margin-bottom: 5px; }
-.tileBoard { padding: 12px; border-radius: 10px; background: var(--surface-muted); }
-.boardLabel { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: .75rem; font-weight: 500; }
+.tileBoard { padding: 12px; border-radius: var(--r-2); background: var(--forest-700); }
+.boardLabel { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: 500; }
 .boardLabel:not(:first-child) { margin-top: 16px; }
-.boardLabel span { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.boardLabel span { color: var(--cream-muted); font-variant-numeric: tabular-nums; }
 .runeRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.tile, .slot { display: flex; align-items: center; justify-content: center; min-height: 48px; min-width: 0; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
-.tile { background: var(--surface); box-shadow: 0 3px 0 var(--surface-3); }
+.tile, .slot { display: flex; align-items: center; justify-content: center; min-height: 48px; min-width: 0; border: 1px solid var(--moss); border-radius: var(--r-2); cursor: pointer; }
+.tile { background: var(--forest-800); box-shadow: 0 3px 0 var(--forest-600); }
 .tile .rune { background: transparent; }
-.tile[aria-pressed="true"] { outline: 2px solid var(--gold-ink); outline-offset: 2px; transform: translateY(-2px); }
-.tile[data-placed="true"] { border-bottom: 3px solid var(--green); }
-.slot { border: 1px dashed var(--muted-foreground); color: var(--muted-foreground); font-size: .75rem; }
-.slot[data-filled="true"] { border-style: solid; background: var(--surface); }
-.tile:focus-visible, .slot:focus-visible, .puzzleSecondary button:focus-visible { outline: 3px solid var(--foreground); outline-offset: 3px; }
-.baseEffect { font-size: .75rem; line-height: 1.5; color: var(--muted-foreground); }
+.tile[aria-pressed="true"] { outline: 2px solid var(--gold); outline-offset: 2px; transform: translateY(-2px); }
+.tile[data-placed="true"] { border-bottom: 3px solid var(--moss-light); }
+.slot { border: 1px dashed var(--cream-muted); color: var(--cream-muted); font-size: 12px; }
+.slot[data-filled="true"] { border-style: solid; background: var(--forest-800); }
+.tile:focus-visible, .slot:focus-visible, .puzzleSecondary button:focus-visible { outline: 2px solid var(--cream); outline-offset: 3px; }
+.baseEffect { font-size: 12px; line-height: 1.5; color: var(--cream-muted); }
 .launch { width: 100%; gap: 8px; }
 .puzzleSecondary { display: flex; justify-content: space-between; gap: 8px; }
-.puzzleSecondary button { cursor: pointer; min-height: 44px; font-size: .75rem; text-decoration: underline; text-underline-offset: 4px; color: var(--muted-foreground); }
+.puzzleSecondary button { cursor: pointer; min-height: 44px; font-size: 13px; text-decoration: underline; text-underline-offset: 4px; color: var(--cream-muted); }
 @media (max-width: 380px) {
- .puzzle { padding: 12px; }
- .recipes { grid-template-columns: 1fr; }
- .recipeRunes { max-width: 170px; }
- .tileBoard { padding: 10px; }
- .runeRow { gap: 6px; }
- .rune { width: 30px; }
+  .puzzle { padding: 12px; }
+  .recipes { grid-template-columns: 1fr; }
+  .recipeRunes { max-width: 170px; }
+  .tileBoard { padding: 10px; }
+  .runeRow { gap: 6px; }
+  .rune { width: 30px; }
 }
-.enemy { width: 76px; height: 76px; display: grid; place-items: center; color: var(--color-foreground); background: var(--color-accent); border: 4px solid var(--color-border); border-radius: 40% 40% 25% 25%; transform: rotate(-6deg); }
-.enemy span { font-size: 1.5rem; font-weight: bold; }
-.charge { animation: tremble .2s linear infinite; }
-.guard { outline: 5px double var(--color-foreground); transform: scale(.9); }
+
+/* ── Animaciones de golpe ───────────────────────────────────────────────── */
 .strike { animation: strike .25s ease-out; }
 .recoil { animation: recoil .25s ease-out; }
-.enemyRecoil { animation: recoil .25s ease-out reverse; }
 .fallen { transform: translateY(12px) rotate(-70deg); opacity: .55; transition: transform .35s ease-out; }
 .arena[data-paused="true"] * { animation-play-state: paused !important; }
-@keyframes tremble { 50% { transform: rotate(6deg); } }
 @keyframes strike { 50% { transform: translateX(18px); } }
 @keyframes recoil { 50% { transform: translateX(-12px) rotate(-8deg); } }
 .lootBurst { position: absolute; top: 18px; left: calc(25% - 32px); z-index: 2; width: 64px; height: 64px; image-rendering: pixelated; pointer-events: none; animation: lootFrames .72s steps(9, end) forwards; }
 .lootBurst[data-target="enemy"] { left: calc(75% - 32px); }
 @keyframes lootFrames { to { background-position-x: -576px; } }
-@media (prefers-reduced-motion: reduce) { .arena * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  .arena *, .telegraph, .lootReveal img { animation: none !important; transition: none !important; }
+}

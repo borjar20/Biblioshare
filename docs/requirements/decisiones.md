@@ -4663,3 +4663,33 @@ pantallas desde 900 px. El contenido conserva 26 px de margen lateral, las
 misiones tienen una columna acotada y los escenarios crecen con la altura de la
 ventana. El retorno queda alineado al borde interior del juego. La composición
 móvil mantiene sus reglas actuales.
+
+## 2026-09-09 — Un solo sistema visual para el RPG, y escala de píxel entera (#1166)
+
+Revisión estética de la interfaz propuesta por Codex. Tres decisiones de forma.
+
+**Los tokens del juego viven en un único sitio.** `pet-game.module.css` los declara, y
+`training.module.css` y `equipment-panel.module.css` solo los consumen. Antes cada
+módulo tenía su paleta: 115 colores literales, 13 dorados para un mismo papel y 15
+radios. Consecuencia visible: el botón primario salía melocotón en Entrenamiento y
+crema en Aventura. Quedan dos radios (4 y 8 px), una escala de texto
+(12/13/14/16/18/22/26) y ningún tamaño por debajo de 12 px.
+
+**Los fondos se sirven a escala entera, nunca con `cover`.** Un factor fraccionario
+con `image-rendering: pixelated` reparte píxeles de uno y de dos px: el arte deja de
+leerse como pixel art y el sprite, que va a 2× fijo, flota sobre él. Se sirven a 2×
+(3× desde 1400 px) con `background-size` en píxeles. Eso obliga a tener lámina en
+vertical para móvil (`camp-portrait.webp`), porque la apaisada recortaba el 36 % y
+dejaba fuera la madriguera entera. La Madriguera estrena escena propia
+(`gathering.webp`): con el fondo del campamento las dos pantallas se confundían.
+
+**El color pertenece al dato.** Los seis atributos tienen glifo y color propios, y el
+mismo par aparece en la misión que los alimenta. Las barras de atributo pasan a raíz
+cuadrada del máximo: con Fuerza 861 y Constitución 28, la escala lineal dejaba cinco
+de seis visualmente a cero. El número exacto sigue al lado, siempre.
+
+Además, dos correcciones de accesibilidad que no eran estéticas: la pista de las
+barras de misión y logro daba 1,05:1 sobre su tarjeta (WCAG 1.4.11) y no se veía en
+ninguna captura, y el texto blanco de la barra de XP sobre el gradiente azul daba
+1,9:1 — ahora la cifra va fuera de la barra. Evidencia:
+`docs/testing/2026-09-09-mascota-rpg-ui.md`.

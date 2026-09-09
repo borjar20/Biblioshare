@@ -3,12 +3,14 @@
 import { useTranslations } from "next-intl";
 import { MISSION_ATTR } from "@/lib/pet/missions/templates";
 import type { MissionView } from "@/lib/pet/missions/sync";
+import { CheckIcon } from "@/components/ui/icons";
+import { ATTR_COLOR, ATTR_ICON } from "./attribute-art";
 
 export function MissionBoard({ missions }: { missions: MissionView[] }) {
   const t = useTranslations("pet");
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5 shadow-card" data-testid="mission-board">
-      <h3 className="font-serif text-lg font-semibold text-foreground">{t("missions.title")}</h3>
+    <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5" data-testid="mission-board" data-variant="game">
+      <h3 className="text-lg font-semibold text-foreground">{t("missions.title")}</h3>
       {missions.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("missions.empty")}</p>
       ) : (
@@ -18,28 +20,48 @@ export function MissionBoard({ missions }: { missions: MissionView[] }) {
             // El mismo texto en la etiqueta y en la barra: un progressbar sin
             // nombre accesible se anuncia como «57 %» de nada.
             const label = t(`missions.${m.template}`, { target: m.target, title: m.title ?? "" });
+            const attr = MISSION_ATTR[m.template];
+            const Icon = ATTR_ICON[attr];
             return (
               <li
                 key={m.slot}
-                className="flex flex-col gap-1"
+                className="flex flex-col gap-2 rounded-card border border-border bg-surface-muted p-3"
                 data-testid={`mission-${m.template}`}
                 data-completed={m.completed ? "true" : "false"}
               >
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className={m.completed ? "line-through text-muted-foreground" : "font-medium text-foreground"}>
-                    <span className="mr-2 rounded-full bg-surface-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                      {t(`attributes.${MISSION_ATTR[m.template]}`)}
-                    </span>
+                <div className="flex items-start gap-2.5 text-sm">
+                  {/* El icono del atributo sustituye al chip de texto: el mismo
+                      glifo aparece en Personaje, así que la misión dice a qué
+                      alimenta sin obligar a recordar un mapa de nombres. */}
+                  <Icon
+                    aria-hidden="true"
+                    className="mt-0.5 size-[18px] shrink-0"
+                    style={{ color: ATTR_COLOR[attr] }}
+                  />
+                  <span className="sr-only">{t(`attributes.${attr}`)}</span>
+                  <span className={`min-w-0 flex-1 ${m.completed ? "text-muted-foreground line-through" : "font-medium text-foreground"}`}>
                     {label}
                   </span>
-                  <span className="shrink-0 font-mono text-[12.5px] text-muted-foreground">
-                    {m.completed ? `✓ ${t("missions.done")}` : t("missions.xp", { xp: m.xp })}
+                  <span className="flex shrink-0 items-center gap-1 text-[13px] tabular-nums text-muted-foreground">
+                    {m.completed
+                      ? <><CheckIcon aria-hidden="true" className="size-4 text-green" />{t("missions.done")}</>
+                      : t("missions.xp", { xp: m.xp })}
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-                  <div className={m.completed ? "h-full bg-accent" : "h-full bg-muted-foreground"} style={{ width: `${pct}%` }} />
+                {/* La pista lleva borde y un escalón de superficie por encima del
+                    fondo de la tarjeta: con `bg-surface-muted` sobre la tarjeta
+                    daba 1,05:1 y la barra sencillamente no se veía. */}
+                <div
+                  className="h-2 w-full overflow-hidden rounded-chip border border-border bg-surface-3"
+                  role="progressbar"
+                  aria-label={label}
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div className={`h-full ${m.completed ? "bg-accent" : "bg-green"}`} style={{ width: `${pct}%` }} />
                 </div>
-                <p className="text-[12px] text-muted-foreground">{t("missions.progress", { progress: m.progress, target: m.target })}</p>
+                <p className="text-[13px] text-muted-foreground">{t("missions.progress", { progress: m.progress, target: m.target })}</p>
               </li>
             );
           })}

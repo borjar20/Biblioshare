@@ -26,6 +26,14 @@ columna acotada para misiones y da el resto al escenario; la altura de los
 escenarios se adapta al viewport. Eclosión distribuye formulario y madriguera
 en dos columnas. En móvil se conserva la composición compacta.
 
+**Ancho de ventana no es ancho de todo (rediseño estético, 2026-09-09).** Ocupar la
+ventana vale para los paneles, no para lo que tiene proporción o un tamaño natural:
+la arena y sus controles se acotan a 1000 px centrados —estirada a 1350 px dejaba a
+los dos luchadores separados por un claro vacío—, la placa de identidad a 460 px, y
+la acción principal a 520 px. Las alturas de escenario se acotan **por arriba**
+además de por abajo (`clamp`, no `max`): con `max(480px, 100svh - 330px)` la escena
+crecía hasta empujar el botón de aventura por debajo de la barra de navegación.
+
 Serif display + paleta papel/teja + **la portada como material**. Los mejores
 layouts de la casa son la plantilla a imitar: `/persona` (desktop 2-3 columnas),
 `/estadisticas` (densidad + sub-nav), pestaña Episodios de serie, mapa de saga,

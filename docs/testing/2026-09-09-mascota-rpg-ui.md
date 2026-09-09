@@ -69,3 +69,50 @@ horizontal y con un único `main`. En escritorio cada vista ocupa el ancho de la
 ventana menos 52 px; retorno alineado a 26 px. Captura visual revisada a 1920 px.
 Evidencia local: `fullwidth-report.json` y `fullwidth-1920.png` en la carpeta de
 capturas del 2026-09-09. Prueba de lectura sin modificar datos de la cuenta.
+
+## Revisión estética sobre la PR #1166
+
+Segunda pasada, con la interfaz ya construida: un solo sistema de tokens, escala
+de píxel entera, arte nuevo de PixelLab y las correcciones de contraste. Mismo
+entorno (Node 22.23.1, `next dev` en el 3000, Supabase de desarrollo).
+
+### Comprobado
+
+- Vitest: **491 tests en 69 ficheros**, todos en verde (`src/components/pet`,
+  `src/lib/pet`, `src/components/nav`). TypeScript sin errores.
+- Playwright, **23 recorridos aprobados** sin reintentos: entrenamiento (2),
+  aventuras (1), equipo (2), madriguera (5), misiones (2), eclosión y compañera
+  (3), madriguera de club (5), landmark `main` y skip-link (3).
+- Navegador real a **320, 390 y 1440 px**, tema claro y oscuro. Las seis
+  pantallas más combate en curso, combate en pausa y pantalla de resultado.
+- **Sin desbordamiento horizontal** en ninguna vista a 320 px, incluidos combate
+  y puzle de ulti (`scrollWidth` 320 = `clientWidth` 320).
+- **El botón de habilidad no se mueve**: `deltaY` y `deltaHeight` a 0 px durante
+  todo el combate (antes de esta pasada, 24 px).
+- Claro y oscuro siguen dando el mismo bosque dentro del juego; un solo `main`.
+
+### Tres regresiones que encontró la verificación, y su causa
+
+Las tres las introdujo esta misma pasada y se corrigieron antes de cerrar:
+
+1. **El botón de combate se movía 24 px.** El banner de aviso tenía `min-height`
+   y su frase cambia cada pocos ticks: unas caben en una línea y otras en dos.
+   Además el contador pasaba de «0.9 s» a «12.0 s» y, al ensancharse, le robaba
+   sitio al texto. Arreglado con altura fija en el banner y ancho fijo en el
+   contador.
+2. **La arena se salía 7 px del panel en móvil.** `margin-inline: auto` en un
+   item flex cambia el dimensionado de «estirar» a «según el contenido». Hacía
+   falta `width: 100%` junto al margen automático.
+3. **Los retratos de las barras de vida salían vacíos.** `PetSprite` se
+   dimensiona por celda del sheet y no acepta un tamaño; a 40 px quedaba
+   recortado fuera de su caja. Se cambió a `CombatSprite`, que sí lo acepta.
+
+### Límites asumidos
+
+- `frame-parchment.webp` está generado y sin cablear; `gathering.webp` mide
+  576×432 y no 576×448; la franja inferior de `camp-portrait.webp` es plana.
+  Los tres están abiertos en la issue #1167, con lo que costaría cerrarlos.
+- El aviso `Date.now()` en prerender que sale en las capturas es la issue #895:
+  es global (afecta también a `/` y `/coleccion`) y no lo introduce esta PR.
+- Sigue sin desplegarse. La evidencia es local y con la cuenta de pruebas, sin
+  escribir datos: el entrenamiento es gratis y no concede recompensas.

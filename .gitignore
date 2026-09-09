@@ -90,3 +90,6 @@ next-env.d.ts
 /images/*
 # Impeccable: la configuracion local (consentimientos, toggles de sesion) no se comparte.
 .impeccable/config.local.json
+# Instantaneas de las criticas de diseno: andamiaje de sesion, igual que
+# .superpowers/. Lo que SI es historia va a decisiones.md y a docs/testing/.
+.impeccable/critique/

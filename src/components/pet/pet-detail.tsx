@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { changeClass } from "@/lib/pet/actions";
 import { CLASS_PRIMARY, PET_ATTRIBUTES, type PetClass } from "@/lib/pet/classes";
 import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
+import { ATTR_COLOR, ATTR_ICON } from "./attribute-art";
 import { ClassPicker } from "./class-picker";
 import { RenameForm } from "./rename-form";
 import { PetHud, PetScene } from "./game/pet-hud";
@@ -27,6 +28,10 @@ export function PetDetail({ pet, equipment }: { pet: PetSnapshot; equipment?: Re
     CAR: t("sources.CAR", { posts: c.posts, votes: c.votes, polls: c.polls, events: c.events, follows: c.follows }),
     DES: t("sources.DES", { works: c.newWorks, authors: c.newAuthors, historical: c.historicalWorks }),
   };
+  // Raíz cuadrada, no proporción directa: con FUE 861 y CON 28 la barra lineal
+  // dejaba cinco de seis atributos visualmente a cero. La raíz conserva el orden
+  // y hace legible la diferencia. El número exacto va al lado, siempre.
+  const width = (value: number) => `${Math.max(6, Math.round(Math.sqrt(value / max) * 100))}%`;
   function confirmClass(cls: PetClass) {
     if (pending || cls === pet.petClass || !window.confirm(t("changeClass.confirm", { cls: t(`classes.${cls}`) }))) return;
     setError(false);
@@ -35,10 +40,13 @@ export function PetDetail({ pet, equipment }: { pet: PetSnapshot; equipment?: Re
   return <div className={styles.character} data-testid="pet-detail">
     <div className={styles.characterVisual}><PetScene pet={pet} compact /><PetHud pet={pet} />{pet.stage === "acorn" && <p className={styles.hint}>{t("acornHint")}</p>}</div>
     <div className={styles.characterStats}>
-      <section className={styles.panel}><h2>{t("game.attributes")}</h2><div className={styles.attributes}>{PET_ATTRIBUTES.map(attr => <details key={attr} className={styles.attribute} data-primary={attr === primary}>
-        <summary><span>{t(`attributes.${attr}`)}</span><span className={styles.attributeBar} aria-hidden="true"><i style={{ width: `${pet.attributes[attr] / max * 100}%` }} /></span><strong>{pet.attributes[attr]}</strong><span className={styles.info} aria-hidden="true">i</span></summary>
-        <p>{attr === primary && <strong>{t("primary")}. </strong>}{sources[attr]}</p>
-      </details>)}</div></section>
+      <section className={styles.panel}><h2>{t("game.attributes")}</h2><div className={styles.attributes}>{PET_ATTRIBUTES.map(attr => {
+        const Icon = ATTR_ICON[attr];
+        return <details key={attr} className={styles.attribute} data-primary={attr === primary} style={{ "--attr": ATTR_COLOR[attr] } as React.CSSProperties}>
+          <summary><Icon className={styles.attributeIcon} aria-hidden="true" /><span>{t(`attributes.${attr}`)}</span><span className={styles.attributeBar} aria-hidden="true"><i style={{ width: width(pet.attributes[attr]) }} /></span><strong>{pet.attributes[attr]}</strong><span className={styles.info} aria-hidden="true">i</span></summary>
+          <p>{attr === primary && <strong>{t("primary")}. </strong>}{sources[attr]}</p>
+        </details>;
+      })}</div></section>
       <div className={styles.editActions}><button type="button" className={styles.secondary} aria-expanded={picking} onClick={() => setPicking(!picking)}>{t("changeClass.label")}</button><button type="button" className={styles.secondary} aria-expanded={renaming} onClick={() => setRenaming(!renaming)}>{t("game.rename")}</button></div>
       {picking && <section className={styles.panel}><fieldset disabled={pending}><ClassPicker value={pet.petClass} onChange={confirmClass} stage={pet.stage} name="newClass" /></fieldset>{error && <p role="alert">{t("hatch.errors.generic")}</p>}<button className={styles.textButton} onClick={() => setPicking(false)}>{t("changeClass.cancel")}</button></section>}
       {renaming && <section className={styles.panel}><RenameForm name={pet.name} /></section>}
