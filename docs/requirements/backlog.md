@@ -2,7 +2,7 @@
 
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
-> 2026-08-28 · estado de Mascota R2 actualizado el 2026-09-06]**
+> 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -339,6 +339,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] Mascota RPG R2 — aceptado por el usuario para avanzar el 2026-09-06 tras probar los ajustes de #1100 (#1082). No se afirma un número de partidas no comunicado. Los hitos R no renumeran las fases 1–3 ya implementadas.
 - [x] Mascota RPG R3: ulti con minijuego A, segundo enemigo y 84 animaciones de combate (PR #1107); aceptación jugable registrada el 2026-09-07 (#1106, hoja de ruta Parte II). Sin atribuir una nueva muestra de partidas.
 - [x] Mascota RPG R4a: aventuras derivadas del día con actividad (ventana de siete días), cadena de tres tramos con la vida arrastrada, reintento y reanudación, botín guardado «pendiente de activar», motor r4.1 (cierra #1086, #1087 y #1093). Implementada 2026-09-07 (rama `claude/mascota-features-r4-ef8885`, PR #1127); calibración: cadena de 3 tramos (política de referencia `interrupt_ulti`, banda 50–75 % / techo `never` 3 %, #1117). Verificada en dev (migración, matriz SQL, unitarios, e2e); Aceptación jugable de R3 confirmada por el usuario el 2026-09-07 (#1106); migración `20260908_pet_adventures.sql` aplicada y verificada en prod antes del merge de #1127. Spec `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`.
+- [ ] Mascota RPG UI (#1165): diseño de bosque aprobado e implementación local verificada el 2026-09-09; publicación pendiente. Campamento, Personaje, Mochila, Diario, Madriguera y Combate; regreso a Biblioshare y recuperación pausada. Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
 - [ ] Mascota RPG R4b: seis efectos en r4.2, copias de potencia fija, dos ranuras, comparación, iconos y VFX (#1123). Implementado en rama; balance, migración dev/local, concurrencia y flujo de equipo verificados. Verificación técnica completada; pendientes aceptación jugable y publicación. Lint global heredado en #856. Plan `docs/superpowers/plans/2026-09-08-mascota-r4b-botin.md`; evidencia `docs/testing/2026-09-08-r4b-balance.md`. Una recompensa por aventura vinculada a actividad, sin resorteos. Tinta/desencantado aplazados en #1134.
 - [ ] Mascota RPG R5: bellotas con la tienda como primer sumidero (parte de #1017).
 - [ ] Mascota RPG R6–R10: identidad de clase por tandas, Maga + Guerrera primero (R6); primera campaña por género con los jefes de reto de #1015 (R7); especializaciones fuego/hielo (R8); Aspectos y Códice (R9); cosméticos y gacha (R10, cierra #1017).

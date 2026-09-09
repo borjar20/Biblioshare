@@ -4635,3 +4635,129 @@ ni original_title. Un error de consulta conserva la resolución previa.
 No se añade english_title ni backfill: no eliminarían la búsqueda necesaria.
 Para una coincidencia local por id se evita una petición de ficha española;
 no se afirma un ahorro de búsquedas ni una medición de tráfico en producción.
+
+## 2026-09-09 — La mascota tiene interfaz de RPG y regreso a Biblioshare (#1165)
+
+El usuario aprueba un RPG de bosque con marcos ligeros, cinco destinos (Campamento,
+Personaje, Mochila, Diario y Madriguera) y combate enfocado. El tema verde se mantiene
+en claro y oscuro; los tokens se limitan al contenedor del juego. La app conserva
+Paper fuera de `/mascota`. El vínculo «← Biblioshare» permanece visible y vuelve a
+la última ruta interna válida del usuario, o a Inicio si no existe.
+
+La navegación interna conserva las instancias de combate y usa historial nativo
+para reflejar la sección. Salir pausa y guarda; una recuperación usa la misma
+intención y el resultado autorizado del servidor, también si terminó de confirmarse
+mientras el usuario estaba fuera. Por eso «Ver aventura» permanece disponible sin
+días nuevos: permite recuperar un resultado, no iniciar un intento gratis.
+
+El inventario se separa de la arena. Equipar sigue siendo explícito y se actualiza
+también el resumen de Personaje. Se reutilizan sprites y reglas existentes; PixelLab
+genera únicamente fondos independientes. Las imágenes de diseño no definen nuevos
+objetos, clases, recompensas ni estadísticas. Spec y referencias:
+`docs/superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
+
+## 2026-09-09 — El RPG ocupa el ancho disponible en escritorio (#1166)
+
+Tras la revisión del usuario, se eliminan los máximos de ancho del marco y sus
+pantallas desde 900 px. El contenido conserva 26 px de margen lateral, las
+misiones tienen una columna acotada y los escenarios crecen con la altura de la
+ventana. El retorno queda alineado al borde interior del juego. La composición
+móvil mantiene sus reglas actuales.
+
+## 2026-09-09 — Un solo sistema visual para el RPG, y escala de píxel entera (#1166)
+
+Revisión estética de la interfaz propuesta por Codex. Tres decisiones de forma.
+
+**Los tokens del juego viven en un único sitio.** `pet-game.module.css` los declara, y
+`training.module.css` y `equipment-panel.module.css` solo los consumen. Antes cada
+módulo tenía su paleta: 115 colores literales, 13 dorados para un mismo papel y 15
+radios. Consecuencia visible: el botón primario salía melocotón en Entrenamiento y
+crema en Aventura. Quedan dos radios (4 y 8 px), una escala de texto
+(12/13/14/16/18/22/26) y ningún tamaño por debajo de 12 px.
+
+**Los fondos se sirven a escala entera, nunca con `cover`.** Un factor fraccionario
+con `image-rendering: pixelated` reparte píxeles de uno y de dos px: el arte deja de
+leerse como pixel art y el sprite, que va a 2× fijo, flota sobre él. Se sirven a 2×
+(3× desde 1400 px) con `background-size` en píxeles. Eso obliga a tener lámina en
+vertical para móvil (`camp-portrait.webp`), porque la apaisada recortaba el 36 % y
+dejaba fuera la madriguera entera. La Madriguera estrena escena propia
+(`gathering.webp`): con el fondo del campamento las dos pantallas se confundían.
+
+**El color pertenece al dato.** Los seis atributos tienen glifo y color propios, y el
+mismo par aparece en la misión que los alimenta. Las barras de atributo pasan a raíz
+cuadrada del máximo: con Fuerza 861 y Constitución 28, la escala lineal dejaba cinco
+de seis visualmente a cero. El número exacto sigue al lado, siempre.
+
+Además, dos correcciones de accesibilidad que no eran estéticas: la pista de las
+barras de misión y logro daba 1,05:1 sobre su tarjeta (WCAG 1.4.11) y no se veía en
+ninguna captura, y el texto blanco de la barra de XP sobre el gradiente azul daba
+1,9:1 — ahora la cifra va fuera de la barra. Evidencia:
+`docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — El campamento cabe en la ventana (#1166)
+
+La pantalla de inicio del juego se dimensiona con la ventana, no con su contenido:
+`100svh` en el contenedor y la escena como fila elástica (`1fr`, suelo de 240 px) que
+absorbe lo que sobra. Antes scrolleaba 371 px en móvil y 20 px a 1440×900, porque el
+alto de la escena era la constante `clamp(300px, 100svh - 440px, 560px)` y ese 440 se
+quedaba corto en cuanto crecía cualquier bloque vecino. Con filas elásticas no hay
+constante que mantener.
+
+Las filas van a `1fr` y no a `minmax(0, 1fr)` a propósito. El mínimo automático de
+`1fr` impide que una fila se encoja por debajo de su contenido: en una ventana
+demasiado baja (390×667, 1024×600) el bloque de misiones no se solapa con la escena
+— desborda y scrollea su contenedor, con la cabecera y la barra de destinos quietas.
+Desplazar es peor que caber, pero recortar es peor que desplazar.
+
+**En móvil el tablero de misiones sale del campamento.** Mide 375 px: dejarlo ahí
+pone la escena en 130 px, y el tablero ya vive completo en Diario, a un toque del
+enlace que está justo al lado. En el campamento quedan el rótulo, el recuento y una
+barra por misión. En escritorio sí cabe —la columna tiene 700 px libres— y se queda
+como estaba. Las demás vistas (Personaje, Mochila, Diario, Madriguera) siguen
+scrolleando con normalidad; esta decisión es solo del campamento.
+
+Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — Cuatro destinos en el RPG: el equipo entra en la ficha (#1166)
+
+Con la interfaz ya construida, la mitad de cada pantalla era repetición o hueco.
+Medido a 1440×900, alto sin usar entre el final del contenido y la barra de
+destinos: Mochila 341 px (44 % del alto útil), Diario 297 px (39 %). Y la misma
+información aparecía en varios sitios: la identidad (nombre · clase · nivel · XP)
+en Campamento, en Personaje y en la chapa de la Madriguera; la escena del
+campamento otra vez entera dentro de Personaje; el tablero de misiones en la
+columna del Campamento y en la pestaña de Diario; y el equipo como resumen en
+Personaje y como panel en Mochila, enlazados el uno al otro.
+
+**La Mochila deja de ser destino y su panel pasa a Personaje.** Era una pantalla
+con dos ranuras y el resumen gemelo del que ya había en la ficha. Personaje queda
+como ficha de verdad: identidad en una tira, atributos a la izquierda, equipo a la
+derecha. Pierde la escena y la placa de madera duplicadas —el escenario se mira en
+el campamento— y se queda con un retrato de 61 px, que es lo que una ficha necesita
+para decir de quién es. `?view=bag` no se rompe: `petSection` lo redirige a
+`character`, con test unitario y e2e que lo fijan.
+
+**Diario enseña las dos colecciones a la vez en escritorio.** Las pestañas dejaban
+el 39 % del alto en blanco y hacían leer «Misiones de hoy» dos veces, en la pestaña
+y en la cabecera del panel. En móvil siguen las pestañas —no caben dos columnas— y
+ahí el rótulo del panel pasa a `sr-only`: lo dice la pestaña activa, pero la región
+no se queda sin encabezado para quien navega con lector.
+
+Resultado medido, mismo viewport: Diario 297 → 25 px sin usar. Campamento y
+Madriguera, sin cambios.
+
+**El hueco de Personaje lo llena lo que faltaba, no relleno.** Con el inventario
+vacío, «Aún no has ganado ningún objeto» dejaba 177 px en blanco y no decía qué se
+puede ganar ni para qué sirve. En su sitio va el catálogo: los seis objetos con su
+ranura y su efecto a potencia base ×1,0 —el texto del efecto ya existía, pero solo
+se veía al comparar copias que ya tienes—. Es estado vacío: desaparece en cuanto hay
+botín, que es justo cuando esa columna crece sola.
+
+La identidad dejó de cruzar la ficha. Acotada a 560 px dejaba 828 px de fila vacía a
+su derecha y empujaba el equipo una fila abajo. Ahora identidad y atributos van
+anidados en la columna izquierda —anidados en el marcado y no con `grid-row: span
+2`: al cruzar el equipo las dos filas, la rejilla repartía su alto entre ambas y
+abría 130 px entre la tira y Atributos—. La columna izquierda sigue acabando antes
+que la derecha mientras el catálogo esté a la vista; con botín se invierte.
+
+Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.

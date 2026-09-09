@@ -6,6 +6,7 @@ import { getUnreadCount } from "@/lib/social/notifications";
 import { getCompanionState } from "@/lib/pet/get-companion-state";
 import { Header } from "@/components/header";
 import { PetCompanion } from "@/components/pet/pet-companion";
+import { PetReturnTracker } from "@/components/pet/game/pet-return-tracker";
 import { BottomNav } from "./bottom-nav";
 import { ChromeGate } from "./chrome-gate";
 import { SkipLink } from "./skip-link";
@@ -28,9 +29,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <SkipLink />
-      {/* `/partida/activa` se come el marco: es la única pantalla de la app sin
-          topbar ni barra de cinco, y ese corte es lo que separa «configurar» de
-          «jugar» (#931).
+      {/* `/partida/activa` y `/mascota` tienen su propio marco de juego sin
+          topbar ni barra general de cinco (#931, #1165).
           El gate va DENTRO del `<Suspense>`, no envolviéndolo: lee la ruta con
           `usePathname`, y un hook de cliente sin boundary por encima bloquea el
           prerender de TODA ruta que llegue a prerenderarse (`CLIENT_HOOK_DYNAMIC`) —
@@ -108,12 +108,15 @@ async function SessionChrome() {
   }
 
   return (
+    <>
+    {user && showNav ? <PetReturnTracker userId={user.id} /> : null}
     <Header
       loggedIn={Boolean(user)}
       username={showNav ? username : null}
       avatarUrl={avatarUrl}
       unreadCount={unreadCount}
     />
+    </>
   );
 }
 

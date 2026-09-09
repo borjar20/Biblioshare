@@ -1,0 +1,425 @@
+/* Sistema visual del juego (#1165, rediseño estético #1166).
+ *
+ * Esta hoja es la ÚNICA fuente de tokens del bosque: `training.module.css` y
+ * `equipment-panel.module.css` los consumen, no los redeclaran. Antes había tres
+ * paletas y el mismo botón salía de un color distinto en cada pantalla.
+ *
+ * Tres reglas que no se rompen:
+ *   1. Escala de píxel ENTERA. Los fondos se sirven a 2× o 3× exactos del tamaño
+ *      nativo del WebP, nunca con `cover`: un factor fraccionario con
+ *      `image-rendering: pixelated` reparte píxeles de 1 y 2 px y el arte deja de
+ *      leerse como pixel art. El sprite va a 2×, así que las dos rejillas casan.
+ *   2. Dos radios: 4 px para lo diminuto, 8 px para todo lo demás.
+ *   3. Una escala de texto: 12/13/14/16/18/22/26. Nada por debajo de 12 px.
+ */
+.game {
+  /* Bosque */
+  --forest-900: #071f19;
+  --forest-800: #0c2d24;
+  --forest-700: #123b2f;
+  --forest-600: #1d493c;
+  --moss: #355b48;
+  --moss-light: #6cb86b;
+  /* Madera (la acción principal, y solo ella) */
+  --wood-dark: #6c421e;
+  --wood: #81572a;
+  --wood-edge: #b1934e;
+  /* Tinta y señales */
+  --cream: #f4f0d8;
+  --cream-soft: #e0e8d6;
+  --cream-muted: #b5cfc0;
+  --gold: #eed281;
+  --gold-hover: #ffe7a8;
+  --sky: #1f5f94;
+  --sky-edge: #7fd0f0;
+  --hp: #6cb86b;
+  --hp-rival: #d9694f;
+  --arcane: #7a4fa8;
+  --danger: #ffb7a5;
+  /* Color por atributo: el dato tiene color, el control no. */
+  --attr-fue: #d9694f;
+  --attr-con: #e0574f;
+  --attr-int: #4aa3df;
+  --attr-sab: #6cb86b;
+  --attr-car: #b48ad6;
+  --attr-des: #eed281;
+  /* Forma */
+  --r-1: 4px;
+  --r-2: 8px;
+
+  /* Paper, remapeado. Todo lo que herede tokens globales cae dentro del bosque:
+   * sin esto, `buttonVariants` y las utilidades de Tailwind traían el terracota. */
+  --background: var(--forest-900);
+  --surface: var(--forest-800);
+  --surface-muted: var(--forest-700);
+  --surface-3: var(--forest-600);
+  --foreground: var(--cream);
+  --foreground-soft: var(--cream-soft);
+  --muted-foreground: var(--cream-muted);
+  --foreground-faint: #7f9a8a;
+  --border: var(--moss);
+  --accent: var(--gold);
+  --accent-hover: var(--gold-hover);
+  --accent-ink: var(--gold);
+  --accent-foreground: #122c20;
+  --green: var(--moss-light);
+  --gold-ink: var(--gold);
+  --gold-graphic: var(--gold);
+  --color-background: var(--forest-900);
+  --color-surface: var(--forest-800);
+  --color-surface-muted: var(--forest-700);
+  --color-surface-3: var(--forest-600);
+  --color-foreground: var(--cream);
+  --color-muted-foreground: var(--cream-muted);
+  --color-border: var(--moss);
+  --color-accent: var(--gold);
+  --color-accent-hover: var(--gold-hover);
+  --color-accent-foreground: #122c20;
+  --color-green: var(--moss-light);
+  --radius-card: var(--r-2);
+  --radius-chip: var(--r-1);
+  --shadow-card: none;
+
+  color-scheme: dark;
+  color: var(--cream);
+  background: var(--forest-900);
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+.game [hidden] { display: none !important; }
+.game :global(.font-serif) { font-family: inherit; }
+.game :is(h1, h2, h3, h4, h5, h6) { font-family: var(--font-geist-sans), sans-serif; }
+.game button, .game a, .game summary { -webkit-tap-highlight-color: transparent; }
+.game :is(button, a, input, select, summary):focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.game :is(button, a) { touch-action: manipulation; }
+.game button:not(:disabled), .game summary { cursor: pointer; }
+/* Deshabilitado baja saturación, no opacidad: con `opacity` el texto de la ulti
+ * en recarga dejaba de leerse justo cuando hay que leer cuánto le falta. */
+.game button:disabled { filter: saturate(.35); cursor: not-allowed; }
+.game svg { flex-shrink: 0; }
+.game :global(.text-destructive), .game [role="alert"] { color: var(--danger); }
+.game h2, .game h3 { font-weight: 700; }
+
+/* ── Marco ──────────────────────────────────────────────────────────────── */
+.header {
+  position: sticky; top: 0; z-index: 25;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: 12px; padding: calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-left)) 10px;
+  background: #09291ff5; border-bottom: 1px solid var(--moss);
+}
+.header h1 { font-size: 22px; font-weight: 700; line-height: 1.2; outline: none; }
+.returnLink { display: inline-flex; gap: 6px; align-items: center; justify-self: start; min-height: 44px; font-size: 14px; font-weight: 600; }
+.returnLink svg { width: 18px; height: 18px; }
+.headerAcorn { width: 24px; height: 24px; color: #7da66a; justify-self: end; }
+.headerAction { display: grid; place-items: center; justify-self: end; border: 1px solid var(--moss); border-radius: var(--r-2); min-width: 44px; min-height: 44px; }
+.headerAction svg { width: 22px; }
+.content { flex: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 16px; }
+.navigation {
+  position: sticky; bottom: 0; z-index: 25;
+  display: flex; justify-content: center; gap: 2px;
+  background: #09291ffa; border-top: 1px solid var(--moss);
+  padding: 7px max(5px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom));
+}
+.navigation button { flex: 1; max-width: 160px; min-width: 0; min-height: 57px; display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; border-radius: var(--r-2); font-size: 12px; color: #bad0c1; }
+.navigation svg { width: 23px; height: 23px; }
+.navigation button[aria-current] { color: var(--gold); background: var(--forest-600); box-shadow: inset 0 2px 0 var(--gold); }
+.navigation button:hover, .headerAction:hover { background-color: var(--forest-600); }
+
+/* ── HUD de identidad ───────────────────────────────────────────────────── */
+/* Placa de madera de nueve cortes: el HUD es un objeto colgado en la escena, no
+ * otra caja con borde de 1 px. El recorte de 16 px es el medido para este arte. */
+.hud {
+  display: flex; gap: 10px; align-items: center; padding: 6px 10px;
+  border: 16px solid transparent;
+  border-image: url('/pet/ui/frame-wood.webp') 16 fill / 16px round;
+  image-rendering: pixelated;
+}
+.hud > * { image-rendering: auto; }
+.portrait { width: 61px; height: 61px; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--forest-700); border: 1px solid var(--moss); border-radius: var(--r-1); }
+.portrait > div { flex-shrink: 0; transform: scale(.55); }
+.identity { flex: 1; min-width: 0; }
+.identity > strong { font-size: 18px; line-height: 1.2; display: block; overflow-wrap: anywhere; }
+.identity p { font-size: 13px; color: var(--cream-muted); margin: 3px 0 6px; }
+/* El número de XP vive FUERA de la barra: encima del relleno azul, el blanco
+ * daba 1,9:1 y el `text-shadow` no cuenta para WCAG. */
+.xpRow { display: flex; align-items: center; gap: 8px; }
+.xp { flex: 1; height: 12px; border-radius: var(--r-1); background: var(--forest-600); border: 1px solid var(--moss); position: relative; overflow: hidden; }
+.xp > span { position: absolute; inset: 0 auto 0 0; background: var(--sky); border-top: 1px solid var(--sky-edge); transition: width .5s ease-out; }
+.xpValue { font-size: 12px; font-weight: 600; color: var(--cream); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── Escena ─────────────────────────────────────────────────────────────── */
+/* Escala entera: el WebP mide `--scene-w × --scene-h` y se sirve multiplicado
+ * por 2 (o 3 en pantallas grandes). `cover` está prohibido aquí. */
+/* Móvil recibe una lámina en vertical con la puerta centrada y el suelo despejado
+ * abajo; la apaisada, recortada al 36 %, dejaba fuera la madriguera entera. */
+.scene {
+  --scene-src: url('/pet/scenes/camp-portrait.webp');
+  --scene-w: 288;
+  --scene-h: 384;
+  --scene-scale: 2;
+  position: relative;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: var(--r-2);
+  border: 1px solid var(--moss);
+  background-color: #234832;
+  background-image: var(--scene-src);
+  background-repeat: no-repeat;
+  background-position: 50% 72%;
+  background-size: calc(var(--scene-w) * var(--scene-scale) * 1px) calc(var(--scene-h) * var(--scene-scale) * 1px);
+  image-rendering: pixelated;
+}
+.scene::after { content: ''; position: absolute; inset: auto 0 0; height: 70px; background: linear-gradient(transparent, #071f19b0); pointer-events: none; }
+/* Sombra de contacto dentada (dos escalones), no un `drop-shadow` desenfocado:
+ * el borrón bajo los pies era lo único no-pixelado de la escena. */
+.sceneSprite { position: absolute; z-index: 2; left: 50%; bottom: 9%; transform: translateX(-50%); display: flex; align-items: flex-end; justify-content: center; }
+/* Sin `z-index: -1`: un pseudo negativo se cuela por detrás del fondo de la
+ * escena. Pintado antes que el contenido, ya queda debajo del sprite. */
+.sceneSprite::before {
+  content: ''; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+  width: 52px; height: 8px; background: #06180f59;
+  clip-path: polygon(12% 0, 88% 0, 100% 25%, 100% 75%, 88% 100%, 12% 100%, 0 75%, 0 25%);
+}
+.sceneStatus { position: absolute; z-index: 3; bottom: 12px; right: 12px; color: #eef4da; background: #08261ede; border: 1px solid var(--moss); font-size: 12px; padding: 4px 8px; border-radius: var(--r-1); image-rendering: auto; }
+/* Bocadillo de humor: dice la causa y la palanca, no solo «triste». */
+.sceneMood { position: absolute; z-index: 3; left: 12px; bottom: 12px; max-width: min(340px, calc(100% - 24px)); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; color: var(--cream); background: #08261eee; border: 1px solid var(--moss); border-left: 3px solid var(--gold); font-size: 13px; line-height: 1.45; padding: 7px 10px; border-radius: var(--r-1); image-rendering: auto; }
+.sceneMood b { font-weight: 700; }
+.sceneMood span { color: var(--cream-muted); }
+
+/* ── Campamento ─────────────────────────────────────────────────────────── */
+/* El campamento cabe en la ventana: es una pantalla de juego, no un documento.
+ * El alto lo fija `100svh` y la ESCENA es la fila elástica que absorbe lo que
+ * sobra; así no hay constantes cosidas a mano (antes la escena de escritorio
+ * era `clamp(300px, 100svh - 440px, 560px)`, y ese 440 se quedaba 20 px corto a
+ * 900 px de alto en cuanto crecía cualquier bloque vecino).
+ * Las filas van a `1fr`, no a `minmax(0, 1fr)`: el mínimo automático impide que
+ * una fila se encoja por debajo de su contenido, así que en una ventana muy baja
+ * el bloque de misiones no se solapa con la escena — desborda y scrollea el
+ * contenido. Desplazar es peor que caber, pero recortar es peor que desplazar. */
+/* `:has(.camp)` distingue el campamento con mascota de la eclosión, que ocupa la
+ * misma vista sin mascota y sí es un formulario largo. Si el navegador no
+ * soporta `:has`, la regla entera se cae y queda el comportamiento de antes. */
+.game[data-view="camp"]:has(.camp) { height: 100svh; }
+.game[data-view="camp"]:has(.camp) .content { display: grid; grid-template-rows: 1fr; min-height: 0; overflow: hidden auto; }
+.camp { display: grid; gap: 18px; grid-template-rows: 1fr auto; }
+.campHero { position: relative; min-width: 0; display: grid; grid-template-rows: auto 1fr auto; }
+.camp .scene { min-height: 240px; }
+.campHud { z-index: 4; margin-bottom: 10px; }
+.campActions { position: relative; z-index: 4; padding: 12px; display: grid; gap: 10px; background: var(--forest-800); border: 1px solid var(--moss); border-top: 0; border-radius: 0 0 var(--r-2) var(--r-2); }
+.campHero .scene { border-radius: var(--r-2) var(--r-2) 0 0; border-bottom: 0; }
+
+/* Botón de madera: una sola acción de la casa lo lleva. Icono pegado al texto
+ * (antes `space-between` los separaba 1.300 px en 1920) y ancho acotado. */
+.primary, .secondary {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; margin: 0 auto; max-width: 520px;
+  border-radius: var(--r-2); padding: 12px 16px; min-height: 48px; font-weight: 650;
+  border: 1px solid #61834d; box-shadow: inset 0 1px #8cad6566, 0 3px #04170f;
+  background: linear-gradient(#305c35, #1d432b); color: var(--cream);
+}
+/* Tablón de madera de verdad, en tres estados. Altura fija de 64 px: el arte
+ * mide 32 px de alto, así que solo los múltiplos enteros mantienen la veta. */
+.primary {
+  height: 64px; min-height: 64px; padding: 0 22px;
+  border: 0 solid transparent; border-width: 0 8px;
+  border-image: url('/pet/ui/plank-normal.webp') 0 8 fill / 0 8px stretch;
+  box-shadow: none;
+  font-size: 20px;
+  image-rendering: pixelated;
+}
+.primary > *, .primary > * * { image-rendering: auto; }
+.primary:hover:not(:disabled) { border-image-source: url('/pet/ui/plank-hover.webp'); filter: none; }
+.primary:active:not(:disabled) { border-image-source: url('/pet/ui/plank-pressed.webp'); transform: none; box-shadow: none; }
+.primary > span { display: grid; gap: 1px; text-align: left; min-width: 0; }
+.primary > span > strong, .primary small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: inherit; }
+.primary small { font-size: 13px; font-weight: 450; color: #f0e2c4; }
+.primary svg { width: 26px; height: 26px; color: #f4dba0; }
+.secondary { font-size: 16px; }
+.secondary svg { width: 20px; height: 20px; }
+.primary:hover:not(:disabled), .secondary:hover:not(:disabled) { filter: brightness(1.12); }
+.primary:active:not(:disabled), .secondary:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 1px #8cad6566; }
+.hint { color: var(--cream-muted); font-size: 13px; line-height: 1.55; padding: 4px 0; }
+
+/* ── Paneles ────────────────────────────────────────────────────────────── */
+/* Marco de musgo de nueve cortes para los paneles de contenido. Es el que más se
+ * repite, por eso es el sobrio: borde fino, sin remaches ni esquinas doradas. */
+.panel {
+  padding: 8px 10px;
+  border: 8px solid transparent;
+  border-image: url('/pet/ui/frame-moss.webp') 8 fill / 8px round;
+  image-rendering: pixelated;
+}
+.panel > * { image-rendering: auto; }
+.panel h2 { font-size: 18px; }
+.panelHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.panelHeading > span { font-size: 13px; color: var(--cream-muted); }
+.textButton { display: inline-flex; gap: 4px; align-items: center; min-height: 44px; color: var(--gold); font-size: 13px; }
+.textButton svg { width: 15px; height: 15px; }
+.campMissions { min-width: 0; }
+.campMissions > section, .diary section { border-radius: var(--r-2); box-shadow: none; }
+/* Resumen de misiones para móvil. El tablero entero mide 375 px: ponerlo aquí
+ * deja la escena en 130 px, y el tablero YA vive completo en Diario, a un toque
+ * del enlace que está justo al lado. Se quedan el rótulo, el recuento y una
+ * barra por misión; el desglose está donde no compite con la escena. */
+.campMissionsTitle { font-size: 18px; margin-bottom: 6px; }
+.missionMeter { display: flex; gap: 6px; }
+.missionMeter li { flex: 1; height: 8px; border: 1px solid var(--moss); border-radius: var(--r-1); background: var(--forest-600); overflow: hidden; }
+.missionMeter i { display: block; height: 100%; background: var(--moss-light); }
+.missionMeter i[data-completed="true"] { background: var(--gold); }
+.campMissions > section { display: none; }
+/* Misiones y logros son componentes compartidos con Paper: dentro del juego
+ * reciben `data-variant="game"`, no un override por `data-testid`. */
+.game :global([data-variant="game"]) { background: var(--forest-800); }
+.game :global([data-variant="game"]) li { border-radius: var(--r-2); }
+
+/* ── Personaje ──────────────────────────────────────────────────────────── */
+/* La ficha: identidad arriba, atributos y equipo debajo. No repite la escena ni
+ * la placa de madera del campamento —eran la misma imagen y los mismos cuatro
+ * datos dos veces— y absorbe la Mochila, que era una pantalla con dos ranuras y
+ * el 44 % del alto en blanco. Una tira de identidad basta para decir de quién es
+ * la ficha; el escenario se mira en el campamento. */
+.character { display: grid; gap: 18px; max-width: 1100px; margin: 0 auto; }
+.characterMain { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.sheetIdentity {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px;
+  border: 8px solid transparent;
+  border-image: url('/pet/ui/frame-moss.webp') 8 fill / 8px round;
+  image-rendering: pixelated;
+}
+.sheetIdentity > * { image-rendering: auto; }
+.characterStats { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.characterGear { min-width: 0; }
+.attributes { margin-top: 12px; }
+.attribute { padding: 3px 0; border-bottom: 1px solid #365444; }
+.attribute:last-child { border-bottom: 0; }
+.attribute summary { display: grid; grid-template-columns: 22px minmax(88px, 1fr) 1fr 34px 20px; gap: 10px; align-items: center; min-height: 44px; list-style: none; font-size: 14px; }
+.attribute summary::-webkit-details-marker { display: none; }
+.attribute summary > strong { text-align: right; font-variant-numeric: tabular-nums; }
+.attribute p { color: #c2d2c0; font-size: 13px; line-height: 1.6; padding: 6px 0 12px; }
+.attribute[data-primary="true"] summary { color: var(--gold); }
+.attributeIcon { width: 20px; height: 20px; color: var(--attr); }
+.attributeBar { height: 10px; border: 1px solid var(--moss); border-radius: var(--r-1); background: var(--forest-600); overflow: hidden; }
+.attributeBar i { height: 100%; display: block; background: var(--attr); }
+.info { display: grid; place-items: center; border: 1px solid #a4bcb0; border-radius: 50%; width: 18px; height: 18px; color: #cfe0d4; font-size: 12px; line-height: 1; }
+.editActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.editActions button { padding: 10px; font-size: 14px; }
+
+/* ── Diario · Madriguera ────────────────────────────────────────────────── */
+.diary { max-width: 940px; margin: 0 auto; }
+/* Pestañas en móvil, dos columnas en escritorio, con el mismo marcado: la
+ * visibilidad la lleva `data-pane` y no el atributo `hidden`, que no se puede
+ * desactivar desde una media query. */
+.journalPanes[data-pane="missions"] .journalAchievements,
+.journalPanes[data-pane="achievements"] .journalMissions { display: none; }
+/* En móvil el rótulo lo pone la pestaña activa: repetirlo dentro del panel
+ * escribía «Misiones de hoy» dos veces en la misma pantalla. Se oculta a la
+ * vista, no al lector: la región se queda sin encabezado si se borra. */
+.journalPanes > div > section > h3 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.journalTabs { display: flex; gap: 10px; margin-bottom: 16px; }
+.journalTabs button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--moss); border-radius: var(--r-2); min-height: 50px; background: var(--forest-800); font-weight: 600; font-size: 14px; }
+.journalTabs button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: var(--forest-600); }
+.journalTabs svg { width: 22px; height: 22px; }
+.burrow { max-width: 940px; margin: 0 auto; }
+.gameBurrow { border: 0; padding: 0; background: none; box-shadow: none; }
+.gameBurrow > h2 { font-size: 14px; text-align: center; color: var(--cream-muted); font-weight: 400; }
+/* La madriguera tiene su propia escena: con el fondo del campamento las dos
+ * pantallas se confundían. */
+.burrowScene {
+  --scene-src: url('/pet/scenes/gathering.webp');
+  --scene-w: 576;
+  --scene-h: 432;
+  --scene-scale: 2;
+  min-height: 420px; justify-content: center; align-content: end; gap: 18px;
+  border: 1px solid var(--moss); border-radius: var(--r-2); padding: 180px 12px 40px;
+  background-color: #284e35;
+  background-image: var(--scene-src);
+  background-repeat: no-repeat;
+  background-position: 50% 84%;
+  background-size: calc(var(--scene-w) * var(--scene-scale) * 1px) calc(var(--scene-h) * var(--scene-scale) * 1px);
+  image-rendering: pixelated;
+}
+.burrowScene li { image-rendering: auto; }
+/* Una sola placa por mascota: antes eran tres chips apilados de anchos distintos. */
+.burrowScene li > span { background: #09281fed; padding: 3px 7px; border-radius: var(--r-1); color: #f0edcf; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; border: 1px solid var(--moss); }
+.burrowScene li > span[data-own="true"] { border-color: var(--gold); }
+.burrowScene button[aria-pressed="true"] { outline: 2px solid var(--gold); outline-offset: 5px; background: #e1c77226; border-radius: 50%; }
+.combat { max-width: 860px; margin: 0 auto; }
+
+/* ── Eclosión ───────────────────────────────────────────────────────────── */
+.hatch { max-width: 720px; margin: 0 auto; display: grid; gap: 24px; }
+.hatch > form { padding: 18px; background: var(--forest-800); border: 1px solid var(--moss); border-radius: var(--r-2); }
+.hatch > form > div:first-child {
+  background-color: #234832;
+  background-image: url('/pet/scenes/camp.webp');
+  background-repeat: no-repeat;
+  background-position: 50% 82%;
+  background-size: 1152px 896px;
+  image-rendering: pixelated;
+  padding: 24px 14px 14px; border-radius: var(--r-2);
+}
+.hatch > form > div:first-child :is(h2, p) { background: #09291ff0; padding: 8px 12px; border-radius: var(--r-1); image-rendering: auto; }
+.game label:has(input[type="radio"]:focus-visible) { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+@media (min-width: 900px) {
+  .content { max-width: none; padding: 26px; }
+  .header { padding-left: 26px; padding-right: 26px; }
+  .diary, .burrow, .combat, .hatch { max-width: none; }
+  .character { max-width: none; }
+  .hatch { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  /* En escritorio vuelve la lámina apaisada: hay ancho para ella y el claro
+   * queda a los lados del sprite. */
+  .scene { --scene-src: url('/pet/scenes/camp.webp'); --scene-w: 576; --scene-h: 448; background-position: 50% 78%; }
+  /* Dos columnas de una sola fila: el héroe se estira al alto disponible (de ahí
+   * `stretch`) y su escena elástica hace el resto. La columna de misiones no se
+   * estira, pero se acota al alto de la fila y scrollea ella sola si algún día
+   * hay más de tres misiones — nunca empuja la página. */
+  .camp { grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 440px); grid-template-rows: 1fr; gap: 24px; align-items: stretch; }
+  /* La placa de identidad no crece con la columna: a 1.400 px un cartel de
+   * madera de mil píxeles de ancho para tres datos es puro peso muerto. */
+  .campHud { max-width: 460px; }
+  /* En escritorio sí cabe el tablero: la columna tiene 700 px de alto libre. */
+  .campMissionsTitle, .missionMeter { display: none; }
+  .campMissions { align-self: start; max-height: 100%; overflow-y: auto; }
+  .campMissions > section { display: flex; }
+  /* Identidad a lo ancho, y debajo atributos | equipo: las dos columnas se
+   * equilibran (el panel de atributos mide 430 px y el de equipo 400) y llenan
+   * el alto que la Mochila dejaba en blanco. */
+  /* La identidad no cruza la ficha: acotada a 560 px dejaba 828 px de fila vacía
+   * a su derecha, y con el equipo empezando una fila más abajo las dos columnas
+   * quedaban descompensadas. En la izquierda, identidad + atributos (658 px)
+   * pesan casi lo mismo que el equipo (640 px) y ninguna acaba mucho antes. */
+  .character { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; align-items: start; }
+  /* Diario a dos columnas: con pestañas, el 39 % del alto quedaba vacío y
+   * «Misiones de hoy» se leía dos veces. Gana en especificidad a la regla de
+   * `data-pane` de arriba (0,3,0) y va después, así que se ven las dos. */
+  .journalTabs { display: none; }
+  .journalPanes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 24px; align-items: start; }
+  .journalPanes[data-pane] .journalMissions,
+  .journalPanes[data-pane] .journalAchievements { display: block; }
+  /* Sin pestañas que lo digan, cada columna vuelve a llevar su rótulo. */
+  .journalPanes > div > section > h3 { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: normal; }
+  .burrowScene { min-height: clamp(360px, calc(100svh - 280px), 640px); padding-top: 220px; }
+  .campMissions { padding-top: 4px; }
+}
+/* Pantallas grandes: el arte sube a 3×, sin pasar por escalas fraccionarias. */
+@media (min-width: 1400px) {
+  .scene, .burrowScene { --scene-scale: 3; }
+}
+@media (max-width: 420px) {
+  .content { padding: 10px; }
+  .header { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .header h1 { font-size: 18px; }
+  .returnLink { font-size: 13px; }
+  .scene { min-height: 340px; }
+  .navigation button { font-size: 12px; gap: 3px; }
+  .navigation svg { width: 21px; height: 21px; }
+  .primary { font-size: 18px; }
+  .panel { padding: 12px; }
+  .attribute summary { grid-template-columns: 20px minmax(84px, 1fr) .7fr 30px 18px; gap: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game *, .game *::before, .game *::after { scroll-behavior: auto; transition: none; }
+  .primary:active, .secondary:active { transform: none; }
+}

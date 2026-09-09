@@ -37,8 +37,8 @@ it("con aventura pendiente y sin actual: cuenta, botón de empezar e inventario"
   });
   expect(screen.getByTestId("adventure-pending").textContent).toBe("1 aventura pendiente");
   expect(screen.getByRole("button", { name: "Empezar aventura" })).toBeTruthy();
-  fireEvent.click(screen.getByText("Marcapáginas afilado", {selector:"summary"}));
-  expect(screen.getByText("Potencia ×1,2")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Comparar · Marcapáginas afilado/ }));
+  expect(screen.getByTestId("loot-comparison").textContent).toContain("Potencia ×1,2");
 });
 
 it("sin aventuras pendientes ni actual: mensaje de ninguna y botón deshabilitado", () => {

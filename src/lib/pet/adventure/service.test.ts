@@ -66,6 +66,18 @@ async function playToEnd(s: ReturnType<typeof createAdventureService>, battle: A
 }
 
 describe("servicio de aventuras (spec §6)", () => {
+  it("resume reads the exact open or resolved attempt without creating another", async () => {
+    const {s,rows} = service(["2026-09-05", "2026-09-06"]);
+    const started = await s.start(); if (!started.ok) throw new Error(started.code);
+    expect(await s.resume(started.battle.intentId)).toEqual(started);
+    const resolved = await playToEnd(s, started.battle); if (!resolved.ok) throw new Error(resolved.code);
+    const recovered = await s.resume(started.battle.intentId);
+    expect(recovered.ok && recovered.battle).toEqual(resolved.battle);
+    expect(rows).toHaveLength(1);
+    expect(await s.resume("invalid")).toEqual({ok:false,code:"INVALID_INTENT"});
+    expect(await s.resume("54e5f63c-68a8-4acf-a790-000000999999")).toEqual({ok:false,code:"NOT_FOUND"});
+    expect(rows).toHaveLength(1);
+  });
   it("start consume el día más antiguo, guarda una lista de enemigos válida y es idempotente", async () => {
     const { s, rows } = service(["2026-09-05", "2026-09-06"]);
     const a = await s.start();

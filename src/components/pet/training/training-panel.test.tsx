@@ -21,6 +21,43 @@ vi.mock("@/lib/pet/training/actions", () => ({
 }));
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
+it("recovers a settled adventure by intent even without another available day", async () => {
+  const map = new Map([["pet-adventure:alice:current", JSON.stringify({intent:"settled"})]]);
+  const storage = {getItem:(key:string)=>map.get(key) ?? null, setItem:(key:string,value:string)=>{map.set(key,value);}, removeItem:(key:string)=>{map.delete(key);}};
+  const battle: TrainingBattle = {intentId:"settled",status:"resolved",seed:seedFromIndex(1),snapshot:snapshotForProfile("social","bard"),rulesetVersion:RULESET.version,contentHash:CURRENT_HASH,enemyId:"brote,brote,brote",inputs:[],digest:null,result:{outcome:"win",reason:"ko",ticks:123,petHp:50,petHpMax:100,enemyHp:0,enemyHpMax:100,damageDealt:100,damageTaken:50,causes:[],fight:3}};
+  const actions = {start:vi.fn(),resume:vi.fn(async ():Promise<TrainingResponse>=>({ok:true,battle})),resolve:vi.fn(),replay:vi.fn()};
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" userId="alice" storage={storage} actions={actions} canStart={false} /></NextIntlClientProvider>);
+  const resume = screen.getByRole("button", {name:"Reanudar aventura"});
+  expect(resume.hasAttribute("disabled")).toBe(false);
+  await act(async()=>{fireEvent.click(resume);});
+  expect(actions.start).not.toHaveBeenCalled(); expect(actions.resume).toHaveBeenCalledWith("settled");
+  expect(screen.getByTestId("training-tick").textContent).toContain("12.3");
+  expect(map.has("pet-adventure:alice:current")).toBe(false);
+});
+
+it("hidden panels checkpoint and require manual resume when shown again", async () => {
+  vi.useFakeTimers();
+  const panel = (active: boolean) => <NextIntlClientProvider locale="es" messages={messages}><TrainingPanel active={active} /></NextIntlClientProvider>;
+  const {rerender} = render(panel(true));
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar combate" })); });
+  act(() => { vi.advanceTimersByTime(200); });
+  rerender(panel(false)); const tick = screen.getByTestId("training-tick").textContent;
+  act(() => { vi.advanceTimersByTime(1000); }); expect(screen.getByTestId("training-tick").textContent).toBe(tick);
+  rerender(panel(true)); act(() => { vi.advanceTimersByTime(1000); });
+  expect(screen.getByTestId("training-tick").textContent).toBe(tick);
+  expect(screen.getByRole("button", {name: "Continuar"})).toBeTruthy();
+});
+
+it("vetoes explicit leave on blocked checkpoint and keeps combat paused", async () => {
+  const storage = {getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error("blocked"); }};
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel userId="alice" storage={storage} /></NextIntlClientProvider>);
+  await act(async () => { fireEvent.click(screen.getByRole("button", {name: "Empezar combate"})); });
+  const event = new Event("pet:before-leave", {cancelable: true});
+  act(() => {window.dispatchEvent(event);});
+  expect(event.defaultPrevented).toBe(true);
+  expect(screen.getByRole("button", {name: "Continuar"})).toBeTruthy();
+});
+
 it("permite empezar una aventura aunque el navegador bloquee localStorage", async () => {
   const getter = vi.spyOn(window, "localStorage", "get").mockImplementation(() => { throw new DOMException("Storage blocked", "SecurityError"); });
   const battle: TrainingBattle = { intentId: "blocked-storage", status: "open", seed: seedFromIndex(1), snapshot: snapshotForProfile("social", "bard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote,brote", inputs: [], result: null, digest: null };
@@ -60,8 +97,12 @@ it("keeps one pet sprite when a skill hits and later ticks replace the motion", 
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar combate" })); });
   fireEvent.click(screen.getByRole("button", { name: "Golpe interruptor · Usar habilidad" }));
   for (let tick = 0; tick < 25; tick++) act(() => { vi.advanceTimersByTime(100); });
-  expect(document.querySelectorAll('[data-mood]')).toHaveLength(1);
-  expect(screen.getAllByTestId("combat-sprite")).toHaveLength(1);
+  // Acotado al escenario: ahí vivía el bug (cambiar la `key` por el efecto del
+  // tick dejaba dos sprites montados a la vez). Las barras de vida llevan además
+  // su propio retrato desde el rediseño #1166, y son sprites legítimos.
+  const stage = screen.getByTestId("combat-stage");
+  expect(stage.querySelectorAll("[data-mood]")).toHaveLength(1);
+  expect(stage.querySelectorAll('[data-testid="combat-sprite"]')).toHaveLength(1);
 });
 
 it("pauses the real component clock and changes speed without adding ticks", async () => {
@@ -152,7 +193,10 @@ it("modo aventura: al ganar muestra el botín y su potencia neutral heredada", a
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="resume" /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Reanudar aventura" })); });
   expect(screen.getByText("¡Aventura superada!")).toBeTruthy();
-  expect(screen.getByText("Botín: Colgante del préstamo")).toBeTruthy();
+  // El botín se revela (icono, «Nuevo», nombre y potencia), ya no se enumera en
+  // una línea «Botín: …» — rediseño #1166.
+  expect(screen.getByText("Nuevo")).toBeTruthy();
+  expect(screen.getByText("Colgante del préstamo")).toBeTruthy();
   expect(screen.getByText("Potencia ×1,0")).toBeTruthy();
 });
 

@@ -3087,6 +3087,21 @@
     }
   },
   "pet": {
+    "game": {
+      "sections": { "camp": "Campamento", "character": "Personaje", "diary": "Diario", "burrow": "Madriguera", "adventure": "Aventura", "training": "Entrenamiento" },
+      "navigation": "Navegación de la mascota",
+      "experience": "Experiencia hasta el siguiente nivel",
+      "attributes": "Atributos",
+      "rename": "Cambiar nombre",
+      "viewGear": "Ver equipo",
+            "viewAdventure": "Ver aventura",
+      "adventureCta": "Aventurarse",
+      "viewDiary": "Ver diario",
+      "train": "Entrenar",
+      "missionCount": "{completed} de {total} completadas",
+      "burrowIntro": "Tu mascota y las de las personas que sigues",
+      "leaveWithoutSave": "El combate está pausado, pero no hemos podido guardar el avance en este navegador. ¿Quieres salir igualmente? Podrías perder el progreso de este combate."
+    },
     "title": "Mascota",
     "clubBurrow": {
       "title": "Madriguera · {club}",
@@ -3162,6 +3177,12 @@
       "sleepy": "dormida",
       "sad": "triste"
     },
+    "moodReason": {
+      "neutral": "Hace {days, plural, one {un día} other {# días}} que no registras nada.",
+      "sleepy": "Se ha dormido: llevas {days, plural, one {un día} other {# días}} sin registrar nada.",
+      "sad": "Está triste: llevas {days, plural, one {un día} other {# días}} sin registrar nada."
+    },
+    "moodAction": "Registra una sesión y volverá a animarse.",
     "level": "Nivel {level}",
     "xpToNext": "{current} / {next} XP",
     "primary": "Atributo principal",
@@ -3243,6 +3264,7 @@
       "starting": "Preparando combate…",
       "retryStart": "Reintentar el mismo combate",
       "error": "No se ha podido completar la operación. Puedes reintentar sin perder tus decisiones.",
+      "recoveryError": "No se pudo recuperar el progreso guardado. Al continuar, este mismo combate vuelve a empezar desde el principio.",
       "enemy": "Brote de zarza",
       "finished": "Combate terminado",
       "time": "{seconds} s",
@@ -3273,9 +3295,17 @@
         "idle": "Sin amenaza anunciada · Puedes guardar la habilidad para la próxima carga.",
         "windup": "¡Carga en preparación! Usa Golpe interruptor para detenerla si está listo.",
         "guard": "Guardia · Espera: tu habilidad fallaría y recibirías un contraataque.",
-        "stagger": "¡Interrumpido! El brote está aturdido.",
+        "stagger": "¡Interrumpido! El rival está aturdido.",
         "vulnerable": "¡Vulnerable! Tus golpes causan el doble de daño.",
         "caparazonIdle": "Coraza en reposo · Guarda tu habilidad para cuando quede vulnerable."
+      },
+      "phasesShort": {
+        "idle": "Sin amenaza",
+        "windup": "¡Carga! Interrumpe ahora",
+        "guard": "Guardia: espera",
+        "stagger": "¡Aturdido!",
+        "vulnerable": "¡Vulnerable! Golpea",
+        "caparazonIdle": "Coraza en reposo"
       },
       "outcomes": {
         "win": "¡Victoria!",
@@ -3283,20 +3313,20 @@
         "draw": "Empate"
       },
       "causes": {
-        "charges_landed": "Las cargas del brote te han causado mucho daño.",
+        "charges_landed": "Las cargas del rival te han causado mucho daño.",
         "skill_wasted_on_guard": "Has usado la habilidad durante su guardia y recibido el contraataque.",
         "skill_unused": "No has usado la habilidad para detener sus cargas.",
         "charges_interrupted": "Interrumpir sus cargas ha marcado la diferencia.",
-        "steady_damage": "Tus ataques constantes han vencido al brote.",
+        "steady_damage": "Tus ataques constantes han vencido al rival.",
         "time_limit": "Se ha agotado el tiempo: decide la proporción de vida restante."
       },
       "events": {
         "BATTLE_STARTED": "Empieza el combate.",
         "PET_BASIC": "Tu mascota causa {damage} de daño.",
-        "ENEMY_BASIC": "El brote causa {damage} de daño.",
-        "charge": "El brote prepara una carga.",
-        "guard": "El brote se pone en guardia.",
-        "TELEGRAPH_RESOLVED": "Termina el movimiento del brote: {damage} de daño.",
+        "ENEMY_BASIC": "El rival causa {damage} de daño.",
+        "charge": "El rival prepara una carga.",
+        "guard": "El rival se pone en guardia.",
+        "TELEGRAPH_RESOLVED": "Termina el movimiento del rival: {damage} de daño.",
         "interrupt": "Interrumpes la carga y causas {damage} de daño.",
         "hit": "Tu habilidad causa {damage} de daño.",
         "wasted": "La guardia devuelve tu habilidad: recibes un contraataque.",
@@ -3362,8 +3392,8 @@
       "intro": "Cada día con lectura, episodios o películas te da una aventura: una cadena de combates seguidos en la que la vida no se recupera entre tramos. Ganar entrega un objeto; perder no quita nada.",
       "pending": "{count, plural, =0 {No tienes aventuras pendientes} one {# aventura pendiente} other {# aventuras pendientes}}",
       "pendingHelp": "Cuentan los últimos siete días con actividad. Una aventura empezada no caduca.",
-      "inProgress": "Aventura del {day} en curso",
-      "retryAvailable": "Aventura del {day}: puedes reintentarla",
+      "inProgress": "Del {day} · en curso",
+      "retryAvailable": "Del {day} · puedes reintentarla",
       "start": "Empezar aventura",
       "resume": "Reanudar aventura",
       "retry": "Reintentar aventura",
@@ -3373,9 +3403,10 @@
       "fight": "Tramo {n} de {total}",
       "interlude": "Tramo {n} superado. Te quedan {hp} de {max} de vida. Habilidad y ulti vuelven a estar listas.",
       "continue": "Continuar",
-      "loseHint": "La aventura no se pierde: puedes reintentarla desde el principio, con la vida llena y otro seed.",
+      "loseHint": "La aventura no se pierde: puedes reintentarla desde el principio, con la vida llena y otro patrón de combate.",
       "won": "¡Aventura superada!",
       "reward": "Botín: {name}",
+      "lootNew": "Nuevo",
       "rewardPending": "Se activa en la siguiente actualización",
       "inventory": "Botín conseguido",
       "inventoryEmpty": "Aún no has ganado ningún objeto.",
@@ -3383,7 +3414,7 @@
         "title": "Equipo para el próximo combate",
         "help": "Elige un arma y un amuleto. Puedes cambiarlos gratis antes de empezar.",
         "openHelp": "La aventura en curso conserva su equipo. Estos cambios se aplican al próximo combate, incluido un reintento tras perder.",
-        "fixedHelp": "La potencia de cada objeto es fija. Puedes conseguir otras copias en las aventuras que obtienes al usar Biblioshare.",
+        "catalog": "Lo que puedes conseguir (a potencia ×1,0)", "fixedHelp": "La potencia de cada objeto es fija. Puedes conseguir otras copias en las aventuras que obtienes al usar Biblioshare.",
         "potency": "Potencia ×{value}",
         "empty": "Sin equipar",
         "remove": "Quitar {slot}",

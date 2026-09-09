@@ -21,6 +21,110 @@ function setup() {
   return { actions, session: new TrainingSession(actions, () => String(++id)) };
 }
 describe("training session", () => {
+  it("retains an adventure result through detached resolution and recovers by intent until acknowledged", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    const options = {storage, userId:"alice", kind:"adventure" as const};
+    const first = new TrainingSession(actions, () => "same", options);
+    await first.start(); while (first.phase === "playing") first.tick();
+    first.prepareLeave(); first.setActive(false);
+    const resolved = {...first.battle!, status:"resolved" as const, result: {outcome:"lose" as const, reason:"ko" as const, ticks:first.view!.tick, petHp:0,petHpMax:100,enemyHp:20,enemyHpMax:420,damageDealt:400,damageTaken:100,causes:[],fight:1}};
+    actions.resolve.mockResolvedValueOnce({ok:true,battle:resolved}); await first.resolve();
+    expect(storage.getItem("pet-adventure:alice:current")).toContain("same");
+    const resume = vi.fn(async (): Promise<TrainingResponse> => ({ok:true,battle:resolved}));
+    const second = new TrainingSession({...actions,resume}, () => "wrong", options);
+    actions.start.mockClear(); await second.start();
+    expect(actions.start).not.toHaveBeenCalled(); expect(resume).toHaveBeenCalledWith("same");
+    expect(second.phase).toBe("done"); expect(second.battle?.result).toEqual(resolved.result);
+    expect(storage.getItem("pet-adventure:alice:current")).not.toBeNull();
+    second.hidden = true;
+    second.acknowledgeResult(); expect(storage.getItem("pet-adventure:alice:current")).not.toBeNull();
+    second.hidden = false;
+    second.acknowledgeResult(); expect(storage.getItem("pet-adventure:alice:current")).toBeNull();
+    storage.setItem("pet-adventure:alice:current", JSON.stringify({intent:"newer"}));
+    first.setActive(true); first.acknowledgeResult();
+    expect(storage.getItem("pet-adventure:alice:current")).toContain("newer");
+  });
+  it("checkpoints a training intent per account and restores it paused with no new identifier", async () => {
+    const storage = memoryStorage(); const { actions } = setup();
+    const options = { storage, userId: "alice", kind: "training" as const };
+    const first = new TrainingSession(actions, () => "same-intent", options);
+    await first.start(); first.skill(); first.tick(); first.tick();
+    expect(first.prepareLeave()).toBe(true);
+    const newId = vi.fn(() => "must-not-create");
+    const restored = new TrainingSession(actions, newId, options);
+    await restored.start();
+    expect(newId).not.toHaveBeenCalled();
+    expect(restored.battle?.intentId).toBe("same-intent");
+    expect(restored.view).toEqual(first.view);
+    expect(restored.inputs).toEqual(first.inputs);
+    restored.tick(); expect(restored.view?.tick).toBe(2); expect(restored.paused).toBe(true);
+    const other = new TrainingSession(actions, () => "bob-intent", { ...options, userId: "bob" });
+    await other.start(); expect(other.battle?.intentId).toBe("bob-intent"); expect(other.view?.tick).toBe(0);
+    expect(storage.getItem("pet-training:alice:current")).not.toContain("snapshot");
+  });
+  it("pauses and cancels unconfirmed ulti even when the checkpoint cannot be saved", async () => {
+    const { actions } = setup();
+    const storage = { getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error("blocked"); } };
+    const session = new TrainingSession(actions, () => "one", { storage, userId: "alice", kind: "training" });
+    await session.start(); session.ultiOpen = true;
+    expect(session.prepareLeave()).toBe(false); expect(session.paused).toBe(true);
+    expect(session.ultiOpen).toBe(false); session.tick(); expect(session.view?.tick).toBe(0);
+  });
+  it("inactive sessions cancel ulti and never resume merely by becoming active", async () => {
+    const {session} = setup(); await session.start(); session.tick(); session.ultiOpen = true;
+    session.setActive(false); session.tick(); expect(session.view?.tick).toBe(1);
+    expect(session.ultiOpen).toBe(false); session.setActive(true); session.tick();
+    expect(session.paused).toBe(true); expect(session.view?.tick).toBe(1);
+    session.togglePause(); session.tick(); expect(session.view?.tick).toBe(2);
+  });
+  it("rejects a malformed local log and does not claim a valid checkpoint", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", JSON.stringify({intent: "same"}));
+    storage.setItem("pet-training:alice:same", JSON.stringify({tick: 3, inputs: [{tick: 0, action: "invented"}]}));
+    const session = new TrainingSession(actions, () => "new", {storage, kind: "training", userId: "alice"});
+    await session.start(); expect(session.error).toBe("LOCAL_RECOVERY");
+    expect(session.paused).toBe(true); expect(session.inputs).toEqual([]);
+    expect(session.prepareLeave()).toBe(false);
+  });
+  it("reports a missing checkpoint behind a saved training pointer", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", JSON.stringify({intent:"same"}));
+    const session = new TrainingSession(actions, () => "new", {storage, kind:"training", userId:"alice"});
+    await session.start(); expect(session.error).toBe("LOCAL_RECOVERY"); expect(session.paused).toBe(true);
+  });
+  it("cleans a stale training pointer without issuing a new start intent", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", JSON.stringify({intent: "stale"}));
+    actions.start.mockResolvedValueOnce({ok:false, code:"UNKNOWN_ENEMY"});
+    const newId = vi.fn(() => "new");
+    const session = new TrainingSession(actions, newId, {storage, kind: "training", userId: "alice"});
+    await session.start(); expect(actions.start).toHaveBeenLastCalledWith("stale", "");
+    expect(newId).not.toHaveBeenCalled(); expect(storage.getItem("pet-training:alice:current")).toBeNull();
+  });
+  it("keeps a start response paused if leaving was requested while it was pending", async () => {
+    const {session,actions} = setup();
+    let complete!: (response: TrainingResponse) => void;
+    actions.start.mockImplementationOnce(() => new Promise(resolve => {complete = resolve;}));
+    const starting = session.start(); expect(session.prepareLeave()).toBe(false);
+    complete({ok:true, battle}); await starting; session.tick();
+    expect(session.paused).toBe(true); expect(session.view?.tick).toBe(0);
+  });
+  it("cleans an invalid pointer without replacing the intended recovery with a new combat", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", "invalid-json");
+    const session = new TrainingSession(actions, () => "new", {storage, kind: "training", userId: "alice"});
+    await session.start(); expect(actions.start).not.toHaveBeenCalled();
+    expect(session.error).toBe("LOCAL_RECOVERY"); expect(storage.getItem("pet-training:alice:current")).toBeNull();
+    await session.start(); expect(actions.start).toHaveBeenCalledOnce();
+  });
+  it("does not auto-resume a replay whose response arrives after deactivation", async () => {
+    const {session,actions} = setup(); await session.start(); session.phase = "done";
+    let complete!: (response: TrainingResponse) => void;
+    actions.replay.mockImplementationOnce(() => new Promise(resolve => {complete = resolve;}));
+    const replaying = session.replay(); session.setActive(false);
+    complete({ok:true,battle:{...battle,status:"resolved"},events:[]}); await replaying;
+    session.setActive(true); expect(session.paused).toBe(true);
+  });
   const winner: TrainingBattle = { ...battle, status: "resolved", result: { outcome: "win", reason: "ko", ticks: 123, petHp: 72, petHpMax: 100, enemyHp: 0, enemyHpMax: 420, damageDealt: 420, damageTaken: 28, causes: ["charges_interrupted"], fight: 1 } };
   const winnerEvents = [{ type: "BATTLE_ENDED" as const, seq: 0, tick: 123, outcome: "win" as const, reason: "ko" as const, petHp: 72, enemyHp: 0 }];
   it("replaces local HP and tick with the concurrent authoritative winner", async () => {

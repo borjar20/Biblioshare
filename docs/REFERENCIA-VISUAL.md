@@ -1,6 +1,7 @@
 # Referencia visual para prototipos
 
-> [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-08-04]
+> [Canónico · verificado contra `src/app/globals.css` y las capturas el 2026-08-04;
+> excepción de mascota verificada en código y navegador el 2026-09-09]
 
 Este es el punto de partida para cualquier prototipo funcional nuevo de
 Biblioshare. Manda para las **capturas de referencia** y el **flujo de
@@ -13,6 +14,30 @@ prototipado**. El código y `globals.css` mandan si algo difiere de esta guía.
 > difieran, manda `DESIGN.md` — y si `DESIGN.md` difiere de `globals.css`, manda `globals.css`.
 
 ## Referencias de pantalla
+
+### Mascota RPG (2026-09-09)
+
+Dirección aprobada en
+`docs/superpowers/specs/assets/2026-09-09-mascota-rpg-ui/`: las láminas
+`campamento-combate-mochila.png` y `personaje-diario-madriguera.png` definen la
+composición. Son mockups, con nombres/cifras ilustrativos; el catálogo real manda.
+Tema bosque fijo en ambos temas de Biblioshare, marcos finos y acceso permanente
+«← Biblioshare». Los fondos elegidos viven en `public/pet/scenes/` con procedencia
+PixelLab en `provenance.json`; nunca incrustar los controles o personajes del mockup
+en el fondo. Contrato: spec `2026-09-09-mascota-rpg-ui-design.md`.
+
+**Revisión estética (PR #1166).** Cuatro escenas, no dos: `camp.webp` (576×448,
+escritorio), `camp-portrait.webp` (288×384, móvil), `battle.webp` (563×448, arena)
+y `gathering.webp` (576×432, Madriguera). **Se sirven a 2× o 3× exactos con
+`background-size` en píxeles, jamás con `cover`**: un factor fraccionario con
+`image-rendering: pixelated` produce píxeles de anchura desigual y el arte deja de
+leerse como pixel art. Los materiales de interfaz —tres marcos de nueve cortes y el
+tablón de madera en sus tres estados— viven en `public/pet/ui/` con su propia
+procedencia y sus recortes medidos. **El campamento cabe en la ventana**: se
+dimensiona con `100svh` y la escena es la fila elástica que absorbe lo que sobra, así
+que en móvil el tablero de misiones se queda en Diario y aquí solo hay el recuento y
+una barra por misión. Los tokens y las reglas de forma, en `DESIGN.md`,
+«Excepción de la mascota».
 
 Las capturas fuente viven fuera del repositorio en
 `D:\Proyectos\Personal\Imagenes diseño`. Se consultan antes de crear un
