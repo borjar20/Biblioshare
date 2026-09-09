@@ -10,7 +10,7 @@
 > con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
 > referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106)]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b todavía sin desplegar]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -3994,7 +3994,20 @@ Aventuras, dejando en pie detalle, madriguera y entrenamiento), pero es el últi
 
 ### 8bis.8. Equipo y calidad de botín R4b
 
-**[Canónico · verificado en dev el 2026-09-08 · pendiente de aplicar en producción; motor r4.2 aún candidato]**
+**[Canónico · verificado en dev el 2026-09-08 · aplicada en producción el 2026-09-09 y
+verificada contra `pg_class`/`pg_proc`; motor r4.2 aún candidato y el código R4b **sin
+desplegar**]**
+
+**La migración es segura de aplicar antes que el código, y esa es la razón por la que se
+aplicó a prod con la app viva.** Reemplaza `start_pet_adventure` y `resolve_pet_adventure`
+con la misma firma, pero los tres comportamientos nuevos —inyectar `equipment` en el
+snapshot, exigir `p_reward_order` de seis objetos y sellar `qualityBp`— están dentro de
+`if ... ruleset_version='r4.2'`. Prod corre r4.1, así que su camino queda **idéntico línea
+a línea** al que ya tenía; se comprobó diffeando `pg_get_functiondef` antes y después.
+Sin esa guarda no valdría: el validador de r4.1 exige exactamente siete claves en el
+snapshot (`Reflect.ownKeys(value).length === fields.length`, `versions/r4.1/snapshot.ts`),
+y un `equipment` de más tumbaría cada aventura nueva hasta el despliegue. Si alguien
+quita la guarda, este orden deja de ser válido.
 
 Migración `20260908074921_pet_r4b_equipment.sql`. `pet_loadout` guarda `user_id` (PK y FK
 a `auth.users`), `weapon_battle_id` y `amulet_battle_id` (FK nullable a `pet_battles`,

@@ -4761,3 +4761,35 @@ abría 130 px entre la tira y Atributos—. La columna izquierda sigue acabando 
 que la derecha mientras el catálogo esté a la vista; con botín se invierte.
 
 Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — La migración R4b entra en producción antes que su código (#1146, #1166)
+
+Producción tiene mascota viva —5 mascotas, 47 combates, aventuras jugadas ese mismo
+día— y corre el motor **r4.1**. La migración `20260908074921_pet_r4b_equipment.sql`
+reemplaza `start_pet_adventure` y `resolve_pet_adventure` con la misma firma, así que
+sustituye en el sitio dos funciones que la app viva está llamando. Aun así se aplicó
+antes de desplegar el código, y a propósito.
+
+**Por qué se puede.** Los tres comportamientos nuevos —inyectar `equipment` en el
+snapshot, exigir un `p_reward_order` de seis objetos y sellar `qualityBp`— van dentro
+de `if ... ruleset_version='r4.2'`. Para r4.1 el camino es idéntico línea a línea al
+que ya había; se comprobó diffeando `pg_get_functiondef` de prod contra el texto de la
+migración antes de aplicarla, y comparando el md5 con dev después. El resto de la
+migración (tabla `pet_loadout`, `set_pet_equipment`, `start_pet_training` y los tres
+`private.*`) es aditivo: el código desplegado no llama a nada de eso.
+
+**Por qué importa que la guarda siga ahí.** El validador de r4.1 exige exactamente
+siete claves en el snapshot (`Reflect.ownKeys(value).length === fields.length`, en
+`src/lib/pet/battle/versions/r4.1/snapshot.ts`). Un `equipment` de más y cada aventura
+nueva de producción falla con `INVALID_SNAPSHOT` hasta que se despliegue R4b. Quien
+toque esas funciones sin mantener la guarda invalida este orden de despliegue.
+
+**Regla que queda.** «La migración va antes del despliegue» vale para cambios
+aditivos. Para un `create or replace` que cambia el contrato que el código vivo
+espera, el orden correcto es el contrario, salvo que el cambio esté guardado por
+versión —que es lo que hace este—.
+
+Verificado tras aplicar: `pet_loadout` con RLS y su política, las cinco funciones
+nuevas presentes, `start_pet_adventure` y `resolve_pet_adventure` con el mismo md5 que
+dev, cero aventuras r4.1 con `equipment`, y ningún objeto nuevo en el informe de
+seguridad de Supabase (los `revoke all` de la migración hacen su trabajo).
