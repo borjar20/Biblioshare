@@ -110,18 +110,21 @@ test("R4b interfaz: comparar copias, equipar, efecto real y entrenamiento sin bo
   await page.goto("/login?next=/mascota");
   await page.locator('input[name="email"]').fill(user.email);await page.locator('input[name="password"]').fill(user.password);
   await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/mascota$/,{timeout:30000});
-  await page.getByRole("navigation",{name:"Navegación de la mascota"}).getByRole("button",{name:"Mochila",exact:true}).click();
-  await expect(page).toHaveURL(/\/mascota\?view=bag$/);
-  await expect(page.getByRole("heading",{name:"Mochila",level:1})).toBeFocused();
+  // El equipo vive en Personaje desde #1166: la Mochila dejó de ser destino.
+  await page.getByRole("navigation",{name:"Navegación de la mascota"}).getByRole("button",{name:"Personaje",exact:true}).click();
+  await expect(page).toHaveURL(/\/mascota\?view=character$/);
+  await expect(page.getByRole("heading",{name:"Personaje",level:1})).toBeFocused();
   await expect(page.getByRole("main")).toHaveCount(1);
   await expect(page.getByTestId("pet-companion")).toHaveCount(0);
-  await page.getByRole("button",{name:"Personaje",exact:true}).click();
-  await expect(page).toHaveURL(/view=character$/);
+  await page.getByRole("button",{name:"Diario",exact:true}).click();
+  await expect(page).toHaveURL(/view=diary$/);
   await page.goBack();
-  await expect(page.getByRole("heading",{name:"Mochila",level:1})).toBeFocused();
-  await page.goForward();
   await expect(page.getByRole("heading",{name:"Personaje",level:1})).toBeFocused();
-  await page.getByRole("button",{name:"Mochila",exact:true}).click();
+  await page.goForward();
+  await expect(page.getByRole("heading",{name:"Diario",level:1})).toBeFocused();
+  // Un enlace viejo a la Mochila tiene que seguir llevando a alguna parte.
+  await page.goto("/mascota?view=bag");
+  await expect(page.getByRole("heading",{name:"Personaje",level:1})).toBeVisible();
   const equipment=page.getByTestId("pet-equipment");await expect(equipment).toBeVisible();
   for(const copy of [copies.b,copies.c]) {
    const compare=equipment.locator(`[data-copy="${copy.id}"]`).getByRole("button",{name:/^Comparar/});

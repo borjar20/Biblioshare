@@ -4717,3 +4717,34 @@ como estaba. Las demás vistas (Personaje, Mochila, Diario, Madriguera) siguen
 scrolleando con normalidad; esta decisión es solo del campamento.
 
 Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — Cuatro destinos en el RPG: el equipo entra en la ficha (#1166)
+
+Con la interfaz ya construida, la mitad de cada pantalla era repetición o hueco.
+Medido a 1440×900, alto sin usar entre el final del contenido y la barra de
+destinos: Mochila 341 px (44 % del alto útil), Diario 297 px (39 %). Y la misma
+información aparecía en varios sitios: la identidad (nombre · clase · nivel · XP)
+en Campamento, en Personaje y en la chapa de la Madriguera; la escena del
+campamento otra vez entera dentro de Personaje; el tablero de misiones en la
+columna del Campamento y en la pestaña de Diario; y el equipo como resumen en
+Personaje y como panel en Mochila, enlazados el uno al otro.
+
+**La Mochila deja de ser destino y su panel pasa a Personaje.** Era una pantalla
+con dos ranuras y el resumen gemelo del que ya había en la ficha. Personaje queda
+como ficha de verdad: identidad en una tira, atributos a la izquierda, equipo a la
+derecha. Pierde la escena y la placa de madera duplicadas —el escenario se mira en
+el campamento— y se queda con un retrato de 61 px, que es lo que una ficha necesita
+para decir de quién es. `?view=bag` no se rompe: `petSection` lo redirige a
+`character`, con test unitario y e2e que lo fijan.
+
+**Diario enseña las dos colecciones a la vez en escritorio.** Las pestañas dejaban
+el 39 % del alto en blanco y hacían leer «Misiones de hoy» dos veces, en la pestaña
+y en la cabecera del panel. En móvil siguen las pestañas —no caben dos columnas— y
+ahí el rótulo del panel pasa a `sr-only`: lo dice la pestaña activa, pero la región
+no se queda sin encabezado para quien navega con lector.
+
+Resultado medido, mismo viewport: Diario 297 → 25 px sin usar. Personaje 15 → 177,
+porque absorbe un panel de equipo que con el inventario vacío mide poco; con botín
+crece. Campamento y Madriguera, sin cambios.
+
+Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.

@@ -12,8 +12,8 @@
 ## Identidad (proteger)
 
 **Excepción aprobada: `/mascota` (#1165, 2026-09-09).** Tiene marco de RPG de bosque,
-tema verde fijo y navegación propia: Campamento, Personaje, Mochila, Diario y
-Madriguera. El combate cede el espacio a arena/controles, pero conserva «← Biblioshare».
+tema verde fijo y navegación propia: Campamento, Personaje, Diario y Madriguera
+(la Mochila entró en Personaje el 2026-09-09, #1166). El combate cede el espacio a arena/controles, pero conserva «← Biblioshare».
 Ese acceso vuelve a la última ruta interna válida o a Inicio; no es un `back()`
 ciego. El marco reutiliza el único `main` de AppShell. No duplicar componentes de
 combate para móvil/escritorio ni desmontarlos al cambiar de sección. El resto de

@@ -3088,14 +3088,13 @@
   },
   "pet": {
     "game": {
-      "sections": { "camp": "Campamento", "character": "Personaje", "bag": "Mochila", "diary": "Diario", "burrow": "Madriguera", "adventure": "Aventura", "training": "Entrenamiento" },
+      "sections": { "camp": "Campamento", "character": "Personaje", "diary": "Diario", "burrow": "Madriguera", "adventure": "Aventura", "training": "Entrenamiento" },
       "navigation": "Navegación de la mascota",
       "experience": "Experiencia hasta el siguiente nivel",
       "attributes": "Atributos",
       "rename": "Cambiar nombre",
-      "viewBag": "Ver mochila",
-      "gear": "Equipo",
-      "viewAdventure": "Ver aventura",
+      "viewGear": "Ver equipo",
+            "viewAdventure": "Ver aventura",
       "adventureCta": "Aventurarse",
       "viewDiary": "Ver diario",
       "train": "Entrenar",

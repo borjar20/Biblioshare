@@ -3,7 +3,9 @@ import { petSection, safePetReturn, isPetRoute } from "./game-navigation";
 
 describe("pet game navigation", () => {
   it("validates views and keeps explicit camp", () => {
-    expect(petSection("bag")).toBe("bag");
+    // `bag` fue destino propio hasta #1166; los enlaces viejos llevan a Personaje.
+    expect(petSection("bag")).toBe("character");
+    expect(petSection("character")).toBe("character");
     expect(petSection("camp")).toBe("camp");
     expect(petSection("invented")).toBe("camp");
     expect(petSection(null)).toBe("camp");

@@ -1,7 +1,14 @@
-export const PET_SECTIONS = ["camp", "character", "bag", "diary", "burrow", "adventure", "training"] as const;
+export const PET_SECTIONS = ["camp", "character", "diary", "burrow", "adventure", "training"] as const;
 export type PetSection = (typeof PET_SECTIONS)[number];
 
+/** Destinos retirados y su heredero. `bag` fue destino propio hasta que el equipo
+ *  entró en la ficha de Personaje (#1166): la Mochila era una pantalla con dos
+ *  ranuras y 341 px vacíos, y repetía el resumen que ya estaba en la ficha. Los
+ *  enlaces viejos y la vista recordada en `sessionStorage` siguen funcionando. */
+const RETIRED: Record<string, PetSection> = { bag: "character" };
+
 export function petSection(value: string | null): PetSection {
+  if (value !== null && value in RETIRED) return RETIRED[value];
   return PET_SECTIONS.includes(value as PetSection) ? value as PetSection : "camp";
 }
 

@@ -9,10 +9,8 @@ import { startAdventure, resolveAdventure, replayAdventure, resumeAdventure } fr
 import { petSection, petReturnKey, petViewKey, safePetReturn, type PetSection } from "@/lib/pet/game-navigation";
 import { checkCelebrations } from "@/lib/celebrations/preference";
 import { REACTION_MS } from "@/lib/pet/manifest";
-import { LOOT_ART } from "@/lib/pet/loot/art";
-import { LOOT_SLOTS } from "@/lib/pet/loot/catalog";
 import { equipLoot } from "@/lib/pet/loot/actions";
-import { ArrowLeftIcon, HomeIcon, PawIcon, BackpackIcon, BookIcon, BurrowArchIcon, ChevronRightIcon, CompassIcon, DumbbellIcon, MedalIcon } from "@/components/ui/icons";
+import { ArrowLeftIcon, HomeIcon, PawIcon, BookIcon, BurrowArchIcon, ChevronRightIcon, CompassIcon, DumbbellIcon, MedalIcon } from "@/components/ui/icons";
 import { TrainingPanel } from "../training/training-panel";
 import { EquipmentPanel } from "../loot/equipment-panel";
 import { MissionBoard } from "../mission-board";
@@ -24,7 +22,7 @@ import styles from "./pet-game.module.css";
 
 // Iconografía del bosque: la bandeja de entrada, la diana y la estrella decían
 // «app», y la estrella además ya era Logros. Un glifo, un significado.
-const destinations = [["camp", HomeIcon], ["character", PawIcon], ["bag", BackpackIcon], ["diary", BookIcon], ["burrow", BurrowArchIcon]] as const;
+const destinations = [["camp", HomeIcon], ["character", PawIcon], ["diary", BookIcon], ["burrow", BurrowArchIcon]] as const;
 const subscribe = () => () => {};
 const adventureActions = { start: () => startAdventure(), resolve: resolveAdventure, replay: replayAdventure, resume: resumeAdventure };
 
@@ -87,12 +85,11 @@ export function PetGame({ userId, pet, adventure, burrow, hatch }: {
   const inventory = adventure ? wonCopy && !adventure.inventory.some(copy => copy.copyId === wonCopy.copyId) ? [wonCopy, ...adventure.inventory] : adventure.inventory : [];
   // «Aventura del 2026-09-02» era la fecha ISO cruda en mitad de la frase.
   const currentDay = current ? format.dateTime(new Date(current.adventure.day), { day: "numeric", month: "long" }) : "";
-  const gear = adventure && <section className={styles.panel}>
-    <div className={styles.panelHeading}><h2>{t("game.gear")}</h2><button className={styles.textButton} onClick={() => navigate("bag")}>{t("game.viewBag")}<ChevronRightIcon /></button></div>
-    <div className={styles.gearSummary}>{LOOT_SLOTS.map(slot => <div key={slot}><span>{t(`adventure.slots.${slot}`)}</span>{adventure.loadout[slot] ? <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- native pixel inventory icon */}
-      <img src={LOOT_ART[adventure.loadout[slot]!.itemId].icon} alt="" width={48} height={48} /><strong>{t(`adventure.items.${adventure.loadout[slot]!.itemId}`)}</strong></> : <small>{t("adventure.equipment.empty")}</small>}</div>)}</div>
-  </section>;
+  // El panel de equipo ES la sección de equipo de la ficha: ya no hay resumen
+  // aparte que enlace a una Mochila, porque la Mochila ya no existe (#1166).
+  const gear = adventure
+    ? <EquipmentPanel copies={inventory} initialLoadout={adventure.loadout} hasOpenAdventure={current?.status === "open"} suggestedCopyId={wonCopy?.copyId} onEquip={async (slot, copyId) => { const result = await equipLoot(slot, copyId); if (result.ok) router.refresh(); return result; }} />
+    : <p role="status">{t("adventure.unavailable")}</p>;
 
   return <div className={styles.game} data-testid="pet-game" data-view={section}>
     <header className={styles.header}>
@@ -126,15 +123,22 @@ export function PetGame({ userId, pet, adventure, burrow, hatch }: {
           </aside>
         </div>
         <div hidden={section !== "character"}><PetDetail pet={pet} equipment={gear} /></div>
-        <div hidden={section !== "bag"} className={styles.bag}>{adventure ? <EquipmentPanel copies={inventory} initialLoadout={adventure.loadout} hasOpenAdventure={current?.status === "open"} suggestedCopyId={wonCopy?.copyId} onEquip={async (slot, copyId) => { const result = await equipLoot(slot, copyId); if (result.ok) router.refresh(); return result; }} /> : <p role="status">{t("adventure.unavailable")}</p>}</div>
+        {/* En escritorio Diario enseña las dos colecciones a la vez y las pestañas
+            sobran: con una sola, el 39 % del alto quedaba en blanco y «Misiones de
+            hoy» se leía dos veces, en la pestaña y en la cabecera del panel. La
+            visibilidad la lleva `data-pane`, no el atributo `hidden`: el mismo
+            marcado sirve para pestañas en móvil y dos columnas en escritorio. */}
         <div hidden={section !== "diary"} className={styles.diary}>
           <div className={styles.journalTabs} role="group" aria-label={t("game.sections.diary")}><button aria-pressed={journal === "missions"} onClick={() => setJournal("missions")}><BookIcon />{t("missions.title")}</button><button aria-pressed={journal === "achievements"} onClick={() => setJournal("achievements")}><MedalIcon />{t("achievements.title")}</button></div>
-          <div hidden={journal !== "missions"}><MissionBoard missions={pet.missions} /></div><div hidden={journal !== "achievements"}><AchievementGrid achievements={pet.achievements} /></div>
+          <div className={styles.journalPanes} data-pane={journal}>
+            <div className={styles.journalMissions}><MissionBoard missions={pet.missions} /></div>
+            <div className={styles.journalAchievements}><AchievementGrid achievements={pet.achievements} /></div>
+          </div>
         </div>
         <div hidden={section !== "burrow"} className={styles.burrow}>{burrow}</div>
         <div hidden={section !== "adventure"} className={styles.combat}>
           <h2 id="adventure-section-title" className="sr-only">{t("adventure.title")}</h2>
-          {adventure ? <TrainingPanel kind="adventure" userId={userId} active={section === "adventure"} startLabel={startLabel} canStart={canStart} canStartAnother={adventure.pendingDays.length > 0} actions={adventureActions} onEquipNow={() => navigate("bag")} onHome={() => navigate("camp")} onDone={battle => { const copy = battle?.adventure?.copy; if (copy) setWonCopy(copy); router.refresh(); }} /> : <p role="status">{t("adventure.unavailable")}</p>}
+          {adventure ? <TrainingPanel kind="adventure" userId={userId} active={section === "adventure"} startLabel={startLabel} canStart={canStart} canStartAnother={adventure.pendingDays.length > 0} actions={adventureActions} onEquipNow={() => navigate("character")} onHome={() => navigate("camp")} onDone={battle => { const copy = battle?.adventure?.copy; if (copy) setWonCopy(copy); router.refresh(); }} /> : <p role="status">{t("adventure.unavailable")}</p>}
         </div>
         <div hidden={section !== "training"} className={styles.combat}><TrainingPanel userId={userId} active={section === "training"} onHome={() => navigate("camp")} /></div>
       </>}

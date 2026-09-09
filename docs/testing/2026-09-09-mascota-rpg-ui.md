@@ -156,3 +156,46 @@ aventura pendiente» tras cobrar botín, aprobó al reintentar) y aprobó sola c
 `--retries=0`. La aserción depende del recuento que devuelve el servidor tras
 `router.refresh()`, no de la geometría que cambia esta pasada. Queda como sospecha
 sin confirmar, no como regresión atribuida a este cambio.
+
+## Unificación de vistas: cuatro destinos — PR #1166
+
+Cuarta pasada. Mismo entorno. La Mochila entra en Personaje y Diario pasa a dos
+columnas en escritorio.
+
+### Espacio sin usar a 1440×900
+
+Alto entre el final del contenido y la barra de destinos (alto útil: 767 px):
+
+| Vista | Antes | Después |
+|---|---|---|
+| Mochila | 341 px (44 %) | — (ya no existe) |
+| Diario | 297 px (39 %) | **25 px** |
+| Personaje | 15 px | 177 px |
+| Campamento | 26 px | 26 px |
+
+Personaje sube porque absorbe el panel de equipo, que con el inventario vacío de
+la cuenta de pruebas mide poco. Con botín, la columna derecha crece.
+
+### Información que ya no se repite
+
+- La escena del campamento y la placa de madera de identidad estaban enteras
+  dentro de Personaje. Ahora la ficha lleva una tira con retrato de 61 px.
+- El resumen de equipo de Personaje y el panel de Mochila decían lo mismo con las
+  mismas palabras («Arma», «Amuleto», «Sin equipar») y se enlazaban entre sí.
+- «Misiones de hoy» se leía dos veces en Diario, en la pestaña y en la cabecera.
+
+### Comprobado
+
+- Vitest: **492 tests en 69 ficheros**, en verde. Uno nuevo fija que `?view=bag`
+  lleva a Personaje y que ya no hay botón «Mochila».
+- TypeScript sin errores; ESLint sin errores en `src/components/pet` y
+  `src/lib/pet` (siguen los cuatro avisos heredados de `_equipment`).
+- Playwright: **15 aprobados sin reintentos** en las seis suites de mascota. Esta
+  vez `mascota-aventuras` aprobó a la primera. El botón de habilidad sigue
+  inmóvil (`deltaY: 0, deltaHeight: 0`).
+- Navegador a 320, 390, 1440 y 1920 px, claro y oscuro, en las cuatro vistas: sin
+  desbordamiento horizontal de página, un solo `main`, campamento sin scroll.
+- e2e actualizados: `mascota-equipo` navega Personaje ↔ Diario y comprueba que un
+  enlace viejo `?view=bag` sigue llegando al equipo; `mascota-misiones` comprueba
+  que en escritorio no hay pestaña «Logros» y la galería ya está a la vista;
+  `mascota-aventuras` pulsa «Ver equipo» en vez de «Ver mochila».

@@ -136,7 +136,7 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
     if (resolved[0].result?.outcome === "win") {
       expect(resolved[0].reward?.itemId).toBeTruthy();
       await expect(panel.getByText("¡Aventura superada!")).toBeVisible();
-      await page.getByRole("button", { name: "Ver mochila", exact: true }).click();
+      await page.getByRole("button", { name: "Ver equipo", exact: true }).click();
       await expect(page.getByTestId("pet-equipment")).toBeVisible();
       await page.getByRole("button", { name: "Campamento", exact: true }).click();
       await expect(page.getByText("1 aventura pendiente", { exact: true })).toBeVisible();

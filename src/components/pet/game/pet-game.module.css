@@ -275,10 +275,21 @@
 .game :global([data-variant="game"]) li { border-radius: var(--r-2); }
 
 /* ── Personaje ──────────────────────────────────────────────────────────── */
-.character { display: grid; gap: 18px; }
-.characterVisual { display: grid; gap: 10px; align-content: start; }
+/* La ficha: identidad arriba, atributos y equipo debajo. No repite la escena ni
+ * la placa de madera del campamento —eran la misma imagen y los mismos cuatro
+ * datos dos veces— y absorbe la Mochila, que era una pantalla con dos ranuras y
+ * el 44 % del alto en blanco. Una tira de identidad basta para decir de quién es
+ * la ficha; el escenario se mira en el campamento. */
+.character { display: grid; gap: 18px; max-width: 1100px; margin: 0 auto; }
+.sheetIdentity {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px;
+  border: 8px solid transparent;
+  border-image: url('/pet/ui/frame-moss.webp') 8 fill / 8px round;
+  image-rendering: pixelated;
+}
+.sheetIdentity > * { image-rendering: auto; }
 .characterStats { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.character .scene { min-height: 320px; }
+.characterGear { min-width: 0; }
 .attributes { margin-top: 12px; }
 .attribute { padding: 3px 0; border-bottom: 1px solid #365444; }
 .attribute:last-child { border-bottom: 0; }
@@ -293,15 +304,18 @@
 .info { display: grid; place-items: center; border: 1px solid #a4bcb0; border-radius: 50%; width: 18px; height: 18px; color: #cfe0d4; font-size: 12px; line-height: 1; }
 .editActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .editActions button { padding: 10px; font-size: 14px; }
-.gearSummary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.gearSummary > div { display: grid; grid-template-columns: 48px 1fr; gap: 6px; align-items: center; font-size: 13px; padding: 10px; border: 1px solid var(--moss); border-radius: var(--r-2); }
-.gearSummary span, .gearSummary small { grid-column: 1 / -1; color: var(--cream-muted); }
-.gearSummary img { image-rendering: pixelated; }
 
-/* ── Mochila · Diario · Madriguera ──────────────────────────────────────── */
-.bag { display: grid; gap: 18px; max-width: 940px; margin: 0 auto; }
-.bag > .hud { max-width: 500px; }
+/* ── Diario · Madriguera ────────────────────────────────────────────────── */
 .diary { max-width: 940px; margin: 0 auto; }
+/* Pestañas en móvil, dos columnas en escritorio, con el mismo marcado: la
+ * visibilidad la lleva `data-pane` y no el atributo `hidden`, que no se puede
+ * desactivar desde una media query. */
+.journalPanes[data-pane="missions"] .journalAchievements,
+.journalPanes[data-pane="achievements"] .journalMissions { display: none; }
+/* En móvil el rótulo lo pone la pestaña activa: repetirlo dentro del panel
+ * escribía «Misiones de hoy» dos veces en la misma pantalla. Se oculta a la
+ * vista, no al lector: la región se queda sin encabezado si se borra. */
+.journalPanes > div > section > h3 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .journalTabs { display: flex; gap: 10px; margin-bottom: 16px; }
 .journalTabs button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--moss); border-radius: var(--r-2); min-height: 50px; background: var(--forest-800); font-weight: 600; font-size: 14px; }
 .journalTabs button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); background: var(--forest-600); }
@@ -350,7 +364,8 @@
 @media (min-width: 900px) {
   .content { max-width: none; padding: 26px; }
   .header { padding-left: 26px; padding-right: 26px; }
-  .bag, .diary, .burrow, .combat, .hatch { max-width: none; }
+  .diary, .burrow, .combat, .hatch { max-width: none; }
+  .character { max-width: none; }
   .hatch { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   /* En escritorio vuelve la lámina apaisada: hay ancho para ella y el claro
    * queda a los lados del sprite. */
@@ -367,8 +382,20 @@
   .campMissionsTitle, .missionMeter { display: none; }
   .campMissions { align-self: start; max-height: 100%; overflow-y: auto; }
   .campMissions > section { display: flex; }
-  .character { grid-template-columns: 1fr 1.1fr; gap: 24px; }
-  .character .scene { min-height: clamp(320px, calc(100svh - 300px), 620px); }
+  /* Identidad a lo ancho, y debajo atributos | equipo: las dos columnas se
+   * equilibran (el panel de atributos mide 430 px y el de equipo 400) y llenan
+   * el alto que la Mochila dejaba en blanco. */
+  .character { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; align-items: start; }
+  .sheetIdentity { grid-column: 1 / -1; max-width: 560px; }
+  /* Diario a dos columnas: con pestañas, el 39 % del alto quedaba vacío y
+   * «Misiones de hoy» se leía dos veces. Gana en especificidad a la regla de
+   * `data-pane` de arriba (0,3,0) y va después, así que se ven las dos. */
+  .journalTabs { display: none; }
+  .journalPanes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 24px; align-items: start; }
+  .journalPanes[data-pane] .journalMissions,
+  .journalPanes[data-pane] .journalAchievements { display: block; }
+  /* Sin pestañas que lo digan, cada columna vuelve a llevar su rótulo. */
+  .journalPanes > div > section > h3 { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none; white-space: normal; }
   .burrowScene { min-height: clamp(360px, calc(100svh - 280px), 640px); padding-top: 220px; }
   .campMissions { padding-top: 4px; }
 }

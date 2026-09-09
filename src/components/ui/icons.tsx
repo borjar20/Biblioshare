@@ -515,16 +515,6 @@ export function DumbbellIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-// Mochila: la bolsa del botín. Sustituye a la bandeja de entrada.
-export function BackpackIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Icon {...props}>
-      <path d="M5 11a7 7 0 0 1 14 0v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8Z" />
-      <path d="M9 6.5V5a3 3 0 0 1 6 0v1.5" />
-      <path d="M9 14h6v3H9z" />
-    </Icon>
-  );
-}
 
 // Huella: el personaje. La bellota queda para la marca de la sección.
 export function PawIcon(props: SVGProps<SVGSVGElement>) {

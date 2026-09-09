@@ -42,8 +42,8 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Reto** | Challenge, Objetivo | La meta contable del usuario («50 libros en 2026»). | `/estadisticas`, `challenges` |
 | **Rincón** | Mi rincón, Panel | La pestaña personal del perfil, con el sorteo y los accesos a lo tuyo. | pestaña de `/u/[username]` |
 | **Campamento** | — | Inicio de la mascota, con su estado, acceso a aventuras y entrenamiento, equipo y misiones. | `/mascota?view=camp`, navegación verificada 2026-09-09 |
-| **Personaje** | — | Sección de la mascota con sus atributos, clase y nombre. | `/mascota?view=character`, navegación verificada 2026-09-09 |
-| **Mochila** | — | Sección donde comparas el botín conseguido y eliges el equipo para el próximo combate. | `/mascota?view=bag`, navegación verificada 2026-09-09 |
+| **Personaje** | Ficha | Sección de la mascota con sus atributos, clase, nombre y el equipo: aquí comparas el botín conseguido y eliges arma y amuleto para el próximo combate. | `/mascota?view=character`, navegación verificada 2026-09-09 |
+| **Mochila** | — | **Retirada el 2026-09-09 (#1166).** Fue destino propio hasta que el equipo entró en Personaje; `?view=bag` sigue llevando allí. No reimplementar leyendo un mockup viejo. | `/mascota?view=character` |
 | **Diario** (de la mascota) | — | Sección de misiones y logros de la mascota. | `/mascota?view=diary`, navegación verificada 2026-09-09 |
 | **Madriguera** | Ranking de mascotas, Clasificación | El espacio de compañía con las mascotas visibles de tus seguidos y la tuya, si tienes una. Puedes verlo antes de eclosionar. | `/mascota?view=burrow` (navegación verificada 2026-09-09); S1 #1083 aceptada el 2026-09-07; ampliación de nivel verificada en dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128 |
 | **Botín** | Loot | Objetos obtenidos al superar aventuras de la mascota. | `/mascota`, R4b #1123 |

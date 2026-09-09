@@ -36,7 +36,7 @@ interface Props {
   canStart?: boolean;
   /** Aventura (R4a): hay más tramos pendientes tras ganar, así que puede lanzarse otra aventura sin salir del panel. */
   canStartAnother?: boolean;
-  /** Lleva a la Mochila desde el resultado, con el botín recién ganado sugerido. */
+  /** Lleva al equipo de la ficha desde el resultado, con el botín recién ganado sugerido. */
   onEquipNow?: () => void;
   /** Vuelve al Campamento desde el resultado. */
   onHome?: () => void;
@@ -291,7 +291,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
       {adventure && result.outcome !== "win" && <p className={styles.resultCauses}>{ta("loseHint")}</p>}
     </div>}
     {phase === "done" && <div className={styles.resultActions}>
-      {adventure && wonCopy && onEquipNow && <button data-primary="true" onClick={onEquipNow}><CheckIcon width={16} height={16} aria-hidden="true" />{tg("viewBag")}</button>}
+      {adventure && wonCopy && onEquipNow && <button data-primary="true" onClick={onEquipNow}><CheckIcon width={16} height={16} aria-hidden="true" />{tg("viewGear")}</button>}
       {adventure ? (
         result?.outcome !== "win"
           ? <button data-primary="true" onClick={() => void run(() => session.start(true))}>{ta("retry")}</button>
