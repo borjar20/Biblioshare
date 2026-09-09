@@ -281,6 +281,7 @@
  * el 44 % del alto en blanco. Una tira de identidad basta para decir de quién es
  * la ficha; el escenario se mira en el campamento. */
 .character { display: grid; gap: 18px; max-width: 1100px; margin: 0 auto; }
+.characterMain { display: grid; gap: 18px; align-content: start; min-width: 0; }
 .sheetIdentity {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px;
   border: 8px solid transparent;
@@ -385,8 +386,11 @@
   /* Identidad a lo ancho, y debajo atributos | equipo: las dos columnas se
    * equilibran (el panel de atributos mide 430 px y el de equipo 400) y llenan
    * el alto que la Mochila dejaba en blanco. */
+  /* La identidad no cruza la ficha: acotada a 560 px dejaba 828 px de fila vacía
+   * a su derecha, y con el equipo empezando una fila más abajo las dos columnas
+   * quedaban descompensadas. En la izquierda, identidad + atributos (658 px)
+   * pesan casi lo mismo que el equipo (640 px) y ninguna acaba mucho antes. */
   .character { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; align-items: start; }
-  .sheetIdentity { grid-column: 1 / -1; max-width: 560px; }
   /* Diario a dos columnas: con pestañas, el 39 % del alto quedaba vacío y
    * «Misiones de hoy» se leía dos veces. Gana en especificidad a la regla de
    * `data-pane` de arriba (0,3,0) y va después, así que se ven las dos. */

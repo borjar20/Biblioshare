@@ -4743,8 +4743,21 @@ y en la cabecera del panel. En móvil siguen las pestañas —no caben dos colum
 ahí el rótulo del panel pasa a `sr-only`: lo dice la pestaña activa, pero la región
 no se queda sin encabezado para quien navega con lector.
 
-Resultado medido, mismo viewport: Diario 297 → 25 px sin usar. Personaje 15 → 177,
-porque absorbe un panel de equipo que con el inventario vacío mide poco; con botín
-crece. Campamento y Madriguera, sin cambios.
+Resultado medido, mismo viewport: Diario 297 → 25 px sin usar. Campamento y
+Madriguera, sin cambios.
+
+**El hueco de Personaje lo llena lo que faltaba, no relleno.** Con el inventario
+vacío, «Aún no has ganado ningún objeto» dejaba 177 px en blanco y no decía qué se
+puede ganar ni para qué sirve. En su sitio va el catálogo: los seis objetos con su
+ranura y su efecto a potencia base ×1,0 —el texto del efecto ya existía, pero solo
+se veía al comparar copias que ya tienes—. Es estado vacío: desaparece en cuanto hay
+botín, que es justo cuando esa columna crece sola.
+
+La identidad dejó de cruzar la ficha. Acotada a 560 px dejaba 828 px de fila vacía a
+su derecha y empujaba el equipo una fila abajo. Ahora identidad y atributos van
+anidados en la columna izquierda —anidados en el marcado y no con `grid-row: span
+2`: al cruzar el equipo las dos filas, la rejilla repartía su alto entre ambas y
+abría 130 px entre la tira y Atributos—. La columna izquierda sigue acabando antes
+que la derecha mientras el catálogo esté a la vista; con botín se invierte.
 
 Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.

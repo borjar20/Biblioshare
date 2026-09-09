@@ -3414,7 +3414,7 @@
         "title": "Equipo para el próximo combate",
         "help": "Elige un arma y un amuleto. Puedes cambiarlos gratis antes de empezar.",
         "openHelp": "La aventura en curso conserva su equipo. Estos cambios se aplican al próximo combate, incluido un reintento tras perder.",
-        "fixedHelp": "La potencia de cada objeto es fija. Puedes conseguir otras copias en las aventuras que obtienes al usar Biblioshare.",
+        "catalog": "Lo que puedes conseguir (a potencia ×1,0)", "fixedHelp": "La potencia de cada objeto es fija. Puedes conseguir otras copias en las aventuras que obtienes al usar Biblioshare.",
         "potency": "Potencia ×{value}",
         "empty": "Sin equipar",
         "remove": "Quitar {slot}",

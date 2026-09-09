@@ -170,11 +170,18 @@ Alto entre el final del contenido y la barra de destinos (alto útil: 767 px):
 |---|---|---|
 | Mochila | 341 px (44 %) | — (ya no existe) |
 | Diario | 297 px (39 %) | **25 px** |
-| Personaje | 15 px | 177 px |
+| Personaje | 15 px | **0** (la página se llena y scrollea 100 px) |
 | Campamento | 26 px | 26 px |
 
-Personaje sube porque absorbe el panel de equipo, que con el inventario vacío de
-la cuenta de pruebas mide poco. Con botín, la columna derecha crece.
+Personaje se quedó primero con 177 px de hueco al absorber el panel de equipo, que
+con el inventario vacío mide poco. Se llenó con el catálogo del botín: los seis
+objetos con su ranura y su efecto a potencia base ×1,0, en lugar de una sola línea
+diciendo que no tienes nada. Es estado vacío y desaparece en cuanto hay botín.
+
+Queda un desnivel entre columnas mientras el catálogo esté a la vista: la izquierda
+(identidad + atributos, 554 px) acaba antes que la derecha (equipo, 837 px). Con
+botín se invierte, porque el catálogo desaparece y el equipo baja a ~440 px. No se
+rellena con nada inventado.
 
 ### Información que ya no se repite
 
@@ -199,3 +206,18 @@ la cuenta de pruebas mide poco. Con botín, la columna derecha crece.
   enlace viejo `?view=bag` sigue llegando al equipo; `mascota-misiones` comprueba
   que en escritorio no hay pestaña «Logros» y la galería ya está a la vista;
   `mascota-aventuras` pulsa «Ver equipo» en vez de «Ver mochila».
+
+### Catálogo del botín en el estado vacío
+
+- 505 unitarios en 73 ficheros en verde; TypeScript sin errores; ESLint limpio en
+  `src/components/pet/loot`.
+- Playwright: **5 aprobados sin reintentos** (`mascota-equipo`, `mascota-aventuras`,
+  `mascota-misiones`). Las suites de equipo siembran copias, así que recorren la
+  rama con inventario, no el catálogo.
+- Revisado en navegador a 1440×900 y 390×844: seis tarjetas, tres por fila en
+  escritorio y apiladas en móvil, iconos al 55 % de opacidad para que se lean como
+  «existe y no es tuyo» y no como deshabilitado.
+
+Límite asumido: el catálogo solo aparece con el inventario **vacío**. Con una sola
+copia desaparece entero, así que no dice qué objetos te faltan cuando ya tienes
+alguno. Cubrirlo es trabajo aparte: issue #1170.

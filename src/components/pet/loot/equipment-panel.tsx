@@ -34,6 +34,31 @@ function CopyDetails({ copy }: { copy: LootCopy }) {
   </div>;
 }
 
+/** Lo que hay que buscar, mientras no haya nada.
+ *
+ * El hueco de la ficha estaba justo aquí: con el inventario vacío, «Aún no has
+ * ganado ningún objeto» dejaba 177 px en blanco y no decía qué se puede ganar ni
+ * para qué sirve. Los efectos van a potencia base ×1,0; las copias reales caen
+ * entre ×0,8 y ×1,2, y su valor exacto se ve al compararlas. */
+function CatalogPreview() {
+  const t = useTranslations("pet.adventure");
+  const format = useFormatter();
+  return <div className={styles.catalog}>
+    <h5 className={styles.slotHeading}>{t("equipment.catalog")}</h5>
+    <ul>
+      {LOOT_ITEMS.map(item => <li key={item.id} data-item={item.id}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- native pixel inventory icon */}
+        <img src={LOOT_ART[item.id].icon} width={48} height={48} alt="" className={styles.icon} />
+        <div>
+          <strong>{t(`items.${item.id}`)}</strong>
+          <span>{t(`slots.${item.slot}`)}</span>
+          <p>{t(`equipment.effects.${item.id}`, { value: format.number(effectValue({ copyId: "", itemId: item.id, slot: item.slot, qualityBp: 10000, acquiredAt: "" }), { maximumFractionDigits: 2 }) })}</p>
+        </div>
+      </li>)}
+    </ul>
+  </div>;
+}
+
 export function EquipmentPanel({ copies, initialLoadout, hasOpenAdventure, suggestedCopyId, onEquip = equipLoot }: {
   copies: LootCopy[]; initialLoadout: PetLoadout; hasOpenAdventure: boolean; suggestedCopyId?: string; onEquip?: typeof equipLoot;
 }) {
@@ -86,7 +111,7 @@ export function EquipmentPanel({ copies, initialLoadout, hasOpenAdventure, sugge
     <div className={styles.inventoryLayout}>
       <div className={styles.inventory}>
         <div><h4>{t("inventory")}</h4><p className={styles.help}>{t("equipment.fixedHelp")}</p></div>
-        {copies.length === 0 ? <p className={styles.help}>{t("inventoryEmpty")}</p> : LOOT_SLOTS.map(slot => <div key={slot}>
+        {copies.length === 0 ? <><p className={styles.help}>{t("inventoryEmpty")}</p><CatalogPreview /></> : LOOT_SLOTS.map(slot => <div key={slot}>
           <h5 className={styles.slotHeading}>{t(`slots.${slot}`)}</h5>
           <div className={styles.groups} data-testid={`loot-${slot}`}>
             {LOOT_ITEMS.filter(item => item.slot === slot).map(item => {

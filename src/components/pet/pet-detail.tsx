@@ -39,6 +39,11 @@ export function PetDetail({ pet, equipment }: { pet: PetSnapshot; equipment?: Re
     startTransition(async () => { try { const result = await changeClass(cls); if (result.error) setError(true); else setPicking(false); } catch { setError(true); } });
   }
   return <div className={styles.character} data-testid="pet-detail">
+    {/* Identidad y atributos van juntos en una columna. Anidados y no con
+        `grid-row: span 2`: al hacer que el equipo cruzase las dos filas, la
+        rejilla repartía su alto entre ambas y abría 130 px entre la tira de
+        identidad y Atributos. */}
+    <div className={styles.characterMain}>
     {/* Identidad en una tira, no la escena y la placa de madera del Campamento
         otra vez: eran la misma imagen y los mismos cuatro datos dos veces. Una
         ficha necesita decir de quién es; no necesita repetir el escenario. */}
@@ -65,6 +70,7 @@ export function PetDetail({ pet, equipment }: { pet: PetSnapshot; equipment?: Re
       <div className={styles.editActions}><button type="button" className={styles.secondary} aria-expanded={picking} onClick={() => setPicking(!picking)}>{t("changeClass.label")}</button><button type="button" className={styles.secondary} aria-expanded={renaming} onClick={() => setRenaming(!renaming)}>{t("game.rename")}</button></div>
       {picking && <section className={styles.panel}><fieldset disabled={pending}><ClassPicker value={pet.petClass} onChange={confirmClass} stage={pet.stage} name="newClass" /></fieldset>{error && <p role="alert">{t("hatch.errors.generic")}</p>}<button className={styles.textButton} onClick={() => setPicking(false)}>{t("changeClass.cancel")}</button></section>}
       {renaming && <section className={styles.panel}><RenameForm name={pet.name} /></section>}
+    </div>
     </div>
     {/* El equipo vive aquí, no en un destino propio: era una pantalla con dos
         ranuras, 341 px vacíos y un resumen gemelo del que ya había en la ficha. */}

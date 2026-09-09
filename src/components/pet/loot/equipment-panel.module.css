@@ -49,6 +49,15 @@
 .status[data-error] { color: var(--danger); }
 .inventoryLayout, .inventory { display: grid; gap: 1rem; min-width: 0; align-items: start; }
 .slotHeading { font-size: 13px; color: var(--cream-muted); margin-bottom: .6rem; }
+/* Catálogo del botín que aún no tienes. Iconos atenuados, no apagados: tienen
+ * que leerse como «esto existe y todavía no es tuyo», no como deshabilitado. */
+.catalog { margin-top: .9rem; }
+.catalog ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); gap: .6rem; list-style: none; padding: 0; margin: 0; }
+.catalog li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: .6rem; align-items: start; padding: .6rem; border: 1px solid var(--moss); border-radius: var(--r-2); background: var(--forest-700); min-width: 0; }
+.catalog .icon { width: 48px; height: 48px; opacity: .55; }
+.catalog strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.catalog span { display: block; font-size: 12px; color: var(--cream-muted); }
+.catalog p { font-size: 12px; line-height: 1.5; color: var(--cream-muted); margin-top: .3rem; }
 .groups { display: flex; flex-wrap: wrap; gap: .75rem; }
 .group { flex: 1 1 110px; min-width: 0; }
 .group h6 { font-size: 13px; margin-bottom: .5rem; }
