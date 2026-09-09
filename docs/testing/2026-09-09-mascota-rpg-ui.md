@@ -1,6 +1,7 @@
 # Mascota RPG UI — verificación local
 
-> Evidencia de implementación · 2026-09-09 · issue #1165 · publicación pendiente.
+> Evidencia de implementación · 2026-09-09 · issue #1165 · **publicado el 2026-09-09**
+> (PR #1146 a `main`). La evidencia de abajo es la local previa a publicar.
 
 Entorno: Node 22.23.1, build de producción de Next.js 16.3.0 y `next start`
 en el puerto 3000. Pruebas por lotes con un worker contra Supabase de desarrollo.
@@ -114,8 +115,9 @@ Las tres las introdujo esta misma pasada y se corrigieron antes de cerrar:
   Los tres están abiertos en la issue #1167, con lo que costaría cerrarlos.
 - El aviso `Date.now()` en prerender que sale en las capturas es la issue #895:
   es global (afecta también a `/` y `/coleccion`) y no lo introduce esta PR.
-- Sigue sin desplegarse. La evidencia es local y con la cuenta de pruebas, sin
-  escribir datos: el entrenamiento es gratis y no concede recompensas.
+- Cuando se escribió esto no estaba desplegado. La evidencia es local y con la
+  cuenta de pruebas, sin escribir datos: el entrenamiento es gratis y no concede
+  recompensas. Se publicó después, el mismo 2026-09-09, en la PR #1146.
 
 ## El campamento sin scroll vertical — PR #1166
 
@@ -221,3 +223,25 @@ rellena con nada inventado.
 Límite asumido: el catálogo solo aparece con el inventario **vacío**. Con una sola
 copia desaparece entero, así que no dice qué objetos te faltan cuando ya tienes
 alguno. Cubrirlo es trabajo aparte: issue #1170.
+
+## Publicación — PR #1146
+
+`codex/mascota-r4b` fusionada en `main` el 2026-09-09 (`af92087e`), tras resolver
+ocho conflictos con `main` (`fec41e87`).
+
+- Sobre el árbol fusionado, antes de subir: TypeScript limpio, **3.531 tests en
+  356 ficheros en verde**, `docs/architecture/sync.mjs --check` conforme y
+  `scripts/ci-lint.mjs` con 0 errores sobre los 127 ficheros cambiados.
+- CI de la PR: los cinco checks en verde, incluido `empty-database`, que es el que
+  valida `schema-baseline.sql` y el manifiesto contra una base vacía — justo los
+  dos ficheros derivados que se regeneraron en vez de resolverlos a mano.
+- Despliegue de Vercel sobre el commit de fusión: correcto. Comprobación anónima
+  en producción: `/`, `/mascota` y `/coleccion` responden 200.
+- La migración R4b ya estaba aplicada en producción desde antes, así que el orden
+  fue base de datos primero y código después.
+
+### Lo que esta evidencia NO dice
+
+No hay aceptación jugable de R4b: se publicó sin ella, a decisión del dueño. Y no
+hay verificación en producción con una cuenta real más allá del 200 anónimo: las
+cinco mascotas vivas no se han tocado.
