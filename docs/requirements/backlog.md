@@ -48,6 +48,9 @@ se cerraron, no como trabajo pendiente.
 
 ## P1 — siguiente bloque (issues abiertas)
 
+- [x] #1161 — Biblioteca vacía con cientos de películas: corrección y pruebas
+  locales completadas el 2026-09-08. Entrega y comprobación publicada en #1161 / PR #1162.
+
 **Barrida del 2026-08-19: los diez P1 de escritorio quedan CERRADOS** (#691, #678,
 #676, #675, #654, #643, #609, #584, #582, #514). Mergeada en #711 y **aplicada a
 producción el mismo día**, con las migraciones DESPUÉS del deploy del código (son
@@ -363,3 +366,8 @@ contraste (F4-022).
 - ¿En qué estado está el bug/deuda Y? → issues (`gh issue list`).
 - Al terminar una feature de esta lista: quitarla de aquí, añadirla a
   PROYECTO.md, y la narrativa a una spec. Lo que quede pendiente → issue.
+
+## Importación completa de Letterboxd
+
+- [x] ZIP con historial, reseñas, notas y watchlist: tickets #1137–#1145 publicados el 2026-09-08 en PR #1147; siete migraciones aplicadas en dev/prod y cron de producción verificado con importación privada sintética y limpieza ([#1136](https://github.com/borjar20/Biblioshare/issues/1136)). Contrato: `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md`. Evidencia: `docs/testing/2026-09-08-letterboxd-zip.md`.
+- [ ] Recuperar importaciones parciales de Letterboxd y resolver incidencias con comparación y acciones conjuntas: [#1150](https://github.com/borjar20/Biblioshare/issues/1150), implementación #1151–#1159 en PR #1160, validación sintética local y migración dev/prod realizadas; merge, publicación y reparación de cuenta pendientes.

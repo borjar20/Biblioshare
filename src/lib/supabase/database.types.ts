@@ -14,6 +14,286 @@ export type Database = {
   }
   public: {
     Tables: {
+      archive_import_decisions: {
+        Row: {
+          decision: string
+          job_id: string
+          ordinal: number
+          result: Json
+          user_id: string
+          version: string
+        }
+        Insert: {
+          decision: string
+          job_id: string
+          ordinal: number
+          result: Json
+          user_id: string
+          version: string
+        }
+        Update: {
+          decision?: string
+          job_id?: string
+          ordinal?: number
+          result?: Json
+          user_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_import_decisions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "archive_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_decisions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_identities"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "archive_import_decisions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      archive_import_effects: {
+        Row: {
+          after_row: Json
+          before_row: Json | null
+          job_id: string
+          pass_id: string
+          reverted: boolean
+          user_id: string
+        }
+        Insert: {
+          after_row: Json
+          before_row?: Json | null
+          job_id: string
+          pass_id: string
+          reverted?: boolean
+          user_id: string
+        }
+        Update: {
+          after_row?: Json
+          before_row?: Json | null
+          job_id?: string
+          pass_id?: string
+          reverted?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_import_effects_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "archive_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_effects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_identities"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "archive_import_effects_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      archive_import_items: {
+        Row: {
+          attempts: number
+          candidates: Json
+          item_id: string | null
+          job_id: string
+          message: string | null
+          ordinal: number
+          payload: Json
+          state: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          candidates?: Json
+          item_id?: string | null
+          job_id: string
+          message?: string | null
+          ordinal: number
+          payload: Json
+          state?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          candidates?: Json
+          item_id?: string | null
+          job_id?: string
+          message?: string | null
+          ordinal?: number
+          payload?: Json
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_import_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "archive_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_identities"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "archive_import_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      archive_import_sources: {
+        Row: {
+          association_job: string | null
+          fill_only: boolean
+          pass_id: string | null
+          snapshot: Json
+          source_key: string
+          user_id: string
+        }
+        Insert: {
+          association_job?: string | null
+          fill_only?: boolean
+          pass_id?: string | null
+          snapshot: Json
+          source_key: string
+          user_id: string
+        }
+        Update: {
+          association_job?: string | null
+          fill_only?: boolean
+          pass_id?: string | null
+          snapshot?: Json
+          source_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_import_sources_association_job_fkey"
+            columns: ["association_job"]
+            isOneToOne: false
+            referencedRelation: "archive_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_sources_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "pass_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_sources_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: false
+            referencedRelation: "passes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archive_import_sources_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_identities"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "archive_import_sources_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      archive_imports: {
+        Row: {
+          analysis: Json
+          announce: boolean
+          announcement_snapshot: Json | null
+          created_at: string
+          fingerprint: string
+          id: string
+          is_public: boolean
+          state: string
+          undo_conflicts: number
+          user_id: string
+        }
+        Insert: {
+          analysis: Json
+          announce?: boolean
+          announcement_snapshot?: Json | null
+          created_at?: string
+          fingerprint: string
+          id?: string
+          is_public?: boolean
+          state?: string
+          undo_conflicts?: number
+          user_id: string
+        }
+        Update: {
+          analysis?: Json
+          announce?: boolean
+          announcement_snapshot?: Json | null
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          is_public?: boolean
+          state?: string
+          undo_conflicts?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archive_imports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profile_identities"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "archive_imports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       book_editions: {
         Row: {
           book_id: string
@@ -2862,6 +3142,60 @@ export type Database = {
       }
     }
     Functions: {
+      archive_register_movie: {
+        Args: { p_data: Json; p_job: string; p_ordinal: number; p_tmdb: number }
+        Returns: string
+      }
+      archive_error: {
+        Args: { p_code: string; p_job: string; p_ordinal: number }
+        Returns: undefined
+      }
+      archive_review_row: {
+        Args: { p_job: string; p_ordinal: number }
+        Returns: Json
+      }
+      archive_review_job: { Args: { p_job: string }; Returns: Json }
+      archive_summary: { Args: { p_job: string }; Returns: Json }
+      archive_decide: {
+        Args: {
+          p_decision: string
+          p_job: string
+          p_ordinal: number
+          p_version: string
+        }
+        Returns: Json
+      }
+      archive_apply: {
+        Args: { p_job: string; p_movie: string; p_ordinal: number }
+        Returns: string
+      }
+      archive_confirm: {
+        Args: { p_announce: boolean; p_job: string; p_public: boolean }
+        Returns: undefined
+      }
+      archive_create: { Args: { p_analysis: Json }; Returns: string }
+      archive_finish: { Args: { p_job: string }; Returns: undefined }
+      archive_resolve: {
+        Args: {
+          p_decision: string
+          p_job: string
+          p_movie?: string
+          p_ordinal: number
+          p_review?: string
+          p_source?: string
+        }
+        Returns: undefined
+      }
+      archive_result: {
+        Args: {
+          p_candidates?: Json
+          p_job: string
+          p_ordinal: number
+          p_state: string
+        }
+        Returns: undefined
+      }
+      archive_undo: { Args: { p_job: string }; Returns: number }
       consume_request_quota: {
         Args: { p_operation: string; p_cost?: number }
         Returns: boolean

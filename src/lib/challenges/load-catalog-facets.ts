@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { groupIdsByType } from "@/lib/catalog/group-ids-by-type";
+import { chunkIds } from "@/lib/supabase/in-chunks";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -14,6 +15,17 @@ export type ItemRef = { itemType: ItemType; itemId: string };
 // Genres live per catalog table (books/movies/series). Fan out one query per
 // type that actually has ids — the idsByType pattern shared with the queue.
 export async function loadGenres(
+  supabase: SupabaseServerClient,
+  refs: ItemRef[],
+): Promise<Map<string, string[]>> {
+  const result = new Map<string, string[]>();
+  for (const batch of chunkIds(refs)) {
+    for (const [key, genres] of await loadGenreBatch(supabase, batch)) result.set(key, genres);
+  }
+  return result;
+}
+
+async function loadGenreBatch(
   supabase: SupabaseServerClient,
   refs: ItemRef[],
 ): Promise<Map<string, string[]>> {
@@ -31,6 +43,9 @@ export async function loadGenres(
       ? supabase.from("series").select("id, genres").in("id", byType.series)
       : Promise.resolve({ data: [] }),
   ]);
+  for (const result of [books, movies, series]) {
+    if ("error" in result && result.error) throw result.error;
+  }
 
   for (const row of books.data ?? []) map.set(`book:${row.id}`, row.genres ?? []);
   for (const row of movies.data ?? []) map.set(`movie:${row.id}`, row.genres ?? []);

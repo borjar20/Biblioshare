@@ -130,7 +130,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-09-09",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -508,7 +508,8 @@
       "summary": "Los extremos de los trabajos PROGRAMADOS del repo. Los llama pg_cron vía pg_net, nunca un navegador. event-reminders (cada 5 min) drena los recordatorios de evento vencidos y los entrega por notifyMany + push. pet-nudges (cada hora, pero la función SQL solo despacha a las 20:00 de Europe/Madrid) reclama y envía los avisos de la mascota.",
       "files": [
         "src/app/api/cron/event-reminders/route.ts",
-        "src/app/api/cron/pet-nudges/route.ts"
+        "src/app/api/cron/pet-nudges/route.ts",
+        "src/app/api/cron/archive-imports/route.ts"
       ],
       "gotchas": [
         "Si falta CRON_SECRET la ruta responde 503 y queda CERRADA, no abierta: un despliegue sin la variable no debe dejar un extremo público que vacíe la cola de recordatorios.",
@@ -731,7 +732,8 @@
       "kind": "action",
       "summary": "parseImportFile consume cuota antes de parsear; commitImportBatch (lotes de 20, 5 en paralelo) y resolución de filas pendientes con cuota compartida.",
       "files": [
-        "src/app/importar/actions.ts"
+        "src/app/importar/actions.ts",
+        "src/app/importar/archive-actions.ts"
       ]
     },
     {
@@ -933,11 +935,15 @@
         "src/lib/import/parse-letterboxd.ts",
         "src/lib/import/match-row.ts",
         "src/lib/import/commit-row.ts",
-        "src/lib/import/run-batches.ts"
+        "src/lib/import/run-batches.ts",
+        "src/lib/import/letterboxd-archive.ts",
+        "src/lib/import/process-archive.ts",
+        "src/lib/import/archive-worker.ts"
       ],
       "gotchas": [
         "Letterboxd exporta el título EN INGLÉS, no el original (su catálogo es TMDB en-US): 'Pan's Labyrinth', no 'El laberinto del fauno'. La PR #356 asumió lo contrario y dejó sin casar todo el cine no anglosajón.",
-        "Buscar en TMDB con language=es-ES reordena por el título español: 'Parasite' deja fuera de la primera página a la de Bong Joon-ho ('Parásitos'). El importador consulta en en-US."
+        "Buscar en TMDB con language=es-ES reordena por el título español: 'Parasite' deja fuera de la primera página a la de Bong Joon-ho ('Parásitos'). El importador consulta en en-US.",
+        "ZIP: completed sin finished_on es un visionado sin fecha, no un pase abierto. La procedencia y el estado del job son privados por usuario."
       ]
     },
     {
@@ -1677,6 +1683,13 @@
         "El botín se decide en SQL bajo el bloqueo; TypeScript solo aporta la permutación del seed.",
         "El log parcial para reanudar vive en localStorage del dispositivo (pet-adventure:<intent>), no en el servidor."
       ]
+    },
+    {
+      "id": "t-archive-imports",
+      "label": "archive_imports + items/sources/effects",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Trabajos ZIP, decisiones pendientes, identidad de origen y snapshots reversibles. SELECT por RLS del propietario; escrituras mediante RPC con comprobacion de identidad."
     },
     {
       "id": "m-pet-loot",
@@ -2816,6 +2829,16 @@
       "label": "AdventureSection"
     },
     {
+      "from": "m-import",
+      "to": "t-archive-imports",
+      "kind": "writes"
+    },
+    {
+      "from": "r-cron",
+      "to": "m-import",
+      "kind": "calls"
+    },
+    {
       "from": "c-pet",
       "to": "m-pet-loot",
       "kind": "calls"
@@ -3827,6 +3850,50 @@
           "node": "m-pet-adventure",
           "action": "Al ganar, dispara la celebración pet_adventure_won (clave = día)",
           "file": "src/lib/pet/adventure/get-state.ts"
+        }
+      ]
+    },
+    {
+      "id": "flow-letterboxd-zip",
+      "name": "Importar ZIP completo de Letterboxd",
+      "category": "onboarding",
+      "summary": "Analizar, confirmar, procesar en segundo plano, revisar incidencias y deshacer con proteccion de cambios locales.",
+      "entrypoint": "src/app/importar/archive-form.tsx",
+      "steps": [
+        {
+          "node": "r-importar",
+          "action": "Subir ZIP y ver resumen sin modificar pases",
+          "file": "src/app/importar/archive-form.tsx"
+        },
+        {
+          "node": "m-import",
+          "action": "Cruzar watched, diary, reviews, ratings y watchlist",
+          "file": "src/lib/import/letterboxd-archive.ts"
+        },
+        {
+          "node": "a-import",
+          "action": "Guardar borrador, confirmar privacidad y cuota, arrancar after",
+          "file": "src/app/importar/archive-actions.ts"
+        },
+        {
+          "node": "r-cron",
+          "action": "Recuperar trabajos persistentes via pg_cron y secreto existente",
+          "file": "src/app/api/cron/archive-imports/route.ts"
+        },
+        {
+          "node": "m-import",
+          "action": "Identificar catalogo y aplicar lotes idempotentes mediante RPC",
+          "file": "src/lib/import/process-archive.ts"
+        },
+        {
+          "node": "t-archive-imports",
+          "action": "Proteger procedencia, cambios locales y reversibilidad",
+          "file": "supabase/migrations/20260908103811_letterboxd_watchlist.sql"
+        },
+        {
+          "node": "r-importar",
+          "action": "Consultar resultados, resolver conflictos y deshacer",
+          "file": "src/app/importar/archive-jobs.tsx"
         }
       ]
     },

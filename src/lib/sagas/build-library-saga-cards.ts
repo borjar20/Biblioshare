@@ -50,7 +50,7 @@ export type LibItemMeta = { itemType: ItemType; itemId: string; title: string; c
 // relectura es in_progress y completada a la vez: cuenta en el avance y sale
 // como «leyendo ahora».
 export type LibEntry = { itemType: ItemType; itemId: string; status: string; everCompleted: boolean; updatedAt: string };
-export type LibRating = { itemType: ItemType; itemId: string; rating: number; finishedOn: string };
+export type LibRating = { itemType: ItemType; itemId: string; rating: number; finishedOn: string; createdAt?: string };
 export type LibCreator = { itemType: ItemType; itemId: string; name: string };
 // Ruta adoptada por el usuario en esa saga, ya resuelta a nombre (Task 7).
 // routeName va en null cuando la elección es una ruta sintética (`lectura`,
@@ -127,7 +127,7 @@ export function buildLibrarySagaCards(
   for (const r of ratings) {
     const k = key(r.itemType, r.itemId);
     const prev = ratingByItem.get(k);
-    if (!prev || r.finishedOn > prev.finishedOn) ratingByItem.set(k, r);
+    if (!prev || r.finishedOn > prev.finishedOn || (r.finishedOn === prev.finishedOn && (r.createdAt ?? "") > (prev.createdAt ?? ""))) ratingByItem.set(k, r);
   }
   const creatorByItem = new Map(creators.map((c) => [key(c.itemType, c.itemId), c.name]));
   const routeNameBySaga = new Map(routeChoices.map((c) => [c.sagaId, c.routeName]));

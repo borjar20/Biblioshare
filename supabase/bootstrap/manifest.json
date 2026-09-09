@@ -242,6 +242,14 @@
     "20260907130854_pet_social_profile_and_level.sql",
     "20260907150832_club_burrow.sql",
     "20260908_pet_adventures.sql",
-    "20260908074921_pet_r4b_equipment.sql"
+    "20260908074921_pet_r4b_equipment.sql",
+    "20260908102324_letterboxd_archive_jobs.sql",
+    "20260908103210_letterboxd_unknown_dates.sql",
+    "20260908103811_letterboxd_watchlist.sql",
+    "20260908104005_letterboxd_archive_review.sql",
+    "20260908104441_letterboxd_archive_undo.sql",
+    "20260908104624_letterboxd_archive_scheduler.sql",
+    "20260908105007_letterboxd_archive_announcement.sql",
+    "20260908151906_letterboxd_recovery.sql"
   ]
 }

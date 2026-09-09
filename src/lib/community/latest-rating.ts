@@ -5,16 +5,11 @@ export type RatedPass = {
   // con el cronológico.
   finishedOn: string;
   rating: number;
+  createdAt?: string;
 };
 
-// Núcleo del criterio "quédate con el pase cerrado más reciente del grupo":
-// gana el finishedOn más alto; el empate de fecha no debería existir —un
-// índice único impide cerrar dos pases del mismo ítem el mismo día— pero se
-// desempata por `id` de todos modos, para que el resultado no dependa del
-// orden en que Postgres devuelva las filas. Genérico en T para que tanto
-// latestRatingPerUser como keepLatestClosedPass compartan la regla sin
-// duplicarla, cada una con su propia clave de agrupación.
-function keepLatestPerGroup<T extends { id: string; finishedOn: string }>(
+// The viewing date wins, then registration order, then UUID for legacy ties.
+function keepLatestPerGroup<T extends { id: string; finishedOn: string; createdAt?: string }>(
   rows: T[],
   groupKeyOf: (row: T) => string
 ): T[] {
@@ -25,7 +20,9 @@ function keepLatestPerGroup<T extends { id: string; finishedOn: string }>(
     const wins =
       !current ||
       row.finishedOn > current.finishedOn ||
-      (row.finishedOn === current.finishedOn && row.id > current.id);
+      (row.finishedOn === current.finishedOn &&
+        ((row.createdAt ?? "") > (current.createdAt ?? "") ||
+          ((row.createdAt ?? "") === (current.createdAt ?? "") && row.id > current.id)));
     if (wins) byGroup.set(key, row);
   }
   return [...byGroup.values()];
@@ -48,7 +45,7 @@ export function latestRatingPerUser<T extends RatedPass>(rows: T[]): T[] {
 // ser lo que se lee). A diferencia de RatedPass, aquí `rating` puede ser null
 // (un pase cerrado sin puntuar sigue siendo "el último pase").
 export function keepLatestClosedPass<
-  T extends { id: string; itemKey: string; finishedOn: string },
+  T extends { id: string; itemKey: string; finishedOn: string; createdAt?: string },
 >(rows: T[]): T[] {
   return keepLatestPerGroup(rows, (r) => r.itemKey);
 }

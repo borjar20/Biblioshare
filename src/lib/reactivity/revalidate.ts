@@ -315,3 +315,18 @@ export function revalidateInteraction(): void {
   revalidateFeed();
   revalidateClubPages();
 }
+
+/** Background imports run outside Server Actions; expire their public ratings. */
+export function expireArchiveBatch(itemIds: readonly string[]): void {
+  for (const id of new Set(itemIds)) revalidateTag(`ratings:movie:${id}`, EXPIRE_NOW);
+  if (!itemIds.length) return;
+  revalidateAllItemPages();
+  revalidateProfilePages();
+  revalidateFeed();
+  revalidateLibrary();
+}
+
+/** Persistent ZIP import progress and decisions. */
+export function revalidateArchiveImports(): void {
+  revalidatePath("/importar");
+}

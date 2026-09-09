@@ -83,7 +83,7 @@ export async function getCatalogBreakdown(
     .from("passes")
     .select("item_type, item_id, finished_on")
     .eq("user_id", userId)
-    .not("finished_on", "is", null);
+    .in("status", ["completed", "dropped"]);
   if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
 
   const { data, error } = await query;
@@ -93,7 +93,7 @@ export async function getCatalogBreakdown(
   const rows = (data ?? []) as {
     item_type: ItemType;
     item_id: string;
-    finished_on: string;
+    finished_on: string | null;
   }[];
 
   // Obras distintas terminadas EN el período, y las terminadas ANTES (para
@@ -108,7 +108,7 @@ export async function getCatalogBreakdown(
     const key = `${row.item_type}:${row.item_id}`;
     if (inPeriod(row.finished_on, period)) {
       inPeriodItems.set(key, row.item_type);
-    } else if (start && row.finished_on < start && row.item_type !== "series") {
+    } else if (start && row.finished_on && row.finished_on < start && row.item_type !== "series") {
       beforeIds[row.item_type].add(row.item_id);
     }
   }

@@ -1217,3 +1217,43 @@ commit;
 begin;
 \ir migrations/20260908074921_pet_r4b_equipment.sql
 commit;
+
+-- 20260908102324_letterboxd_archive_jobs
+begin;
+\ir migrations/20260908102324_letterboxd_archive_jobs.sql
+commit;
+
+-- 20260908103210_letterboxd_unknown_dates
+begin;
+\ir migrations/20260908103210_letterboxd_unknown_dates.sql
+commit;
+
+-- 20260908103811_letterboxd_watchlist
+begin;
+\ir migrations/20260908103811_letterboxd_watchlist.sql
+commit;
+
+-- 20260908104005_letterboxd_archive_review
+begin;
+\ir migrations/20260908104005_letterboxd_archive_review.sql
+commit;
+
+-- 20260908104441_letterboxd_archive_undo
+begin;
+\ir migrations/20260908104441_letterboxd_archive_undo.sql
+commit;
+
+-- 20260908104624_letterboxd_archive_scheduler
+begin;
+\ir migrations/20260908104624_letterboxd_archive_scheduler.sql
+commit;
+
+-- 20260908105007_letterboxd_archive_announcement
+begin;
+\ir migrations/20260908105007_letterboxd_archive_announcement.sql
+commit;
+
+-- 20260908151906_letterboxd_recovery
+begin;
+\ir migrations/20260908151906_letterboxd_recovery.sql
+commit;

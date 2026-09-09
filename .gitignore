@@ -93,3 +93,12 @@ next-env.d.ts
 # Instantaneas de las criticas de diseno: andamiaje de sesion, igual que
 # .superpowers/. Lo que SI es historia va a decisiones.md y a docs/testing/.
 .impeccable/critique/
+
+# Andamiaje de sesion: logs de build/e2e, SQL de un solo uso, borradores de
+# issues antes de publicarlas. Se reescribe en cada sesion y no es historia
+# (lo que si lo es acaba en docs/). Se colo en el arbol con un `git add -A`.
+.scratch/
+
+# Cache local del CLI de Supabase (marca de version). Artefacto de la
+# herramienta, no configuracion del proyecto.
+supabase/.temp/

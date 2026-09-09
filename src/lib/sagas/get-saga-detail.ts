@@ -484,24 +484,24 @@ export async function getSagaDetail(
   // las lecturas abandonadas (dropped) — apply-transition.ts cierra el pase
   // con finished_on al pasar a dropped sin limpiar el rating, así que sin este
   // filtro contaminarían la media (mismo criterio que get-community.ts).
-  const ratingRows: Array<{ itemKey: string; userId: string; rating: number; finishedOn: string; passId: string }> = [];
+  const ratingRows: Array<{ itemKey: string; userId: string; rating: number; finishedOn: string; createdAt?: string; passId: string }> = [];
   await Promise.all(
     (Object.keys(idsByType) as ItemType[]).map(async (type) => {
       if (idsByType[type].length === 0) return;
       const { data } = await supabase
         .from("passes")
-        .select("id, item_id, user_id, rating, finished_on")
+        .select("id, item_id, user_id, rating, finished_on, created_at")
         .eq("item_type", type)
         .in("item_id", idsByType[type])
         .not("rating", "is", null)
-        .not("finished_on", "is", null)
-        .neq("status", "dropped");
+        .eq("status", "completed");
       for (const r of data ?? []) {
         ratingRows.push({
           itemKey: `${type}:${r.item_id}`,
           userId: r.user_id,
           rating: r.rating as number,
-          finishedOn: r.finished_on as string,
+          finishedOn: r.finished_on ?? "",
+          createdAt: r.created_at,
           passId: r.id,
         });
       }
