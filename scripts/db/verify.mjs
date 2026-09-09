@@ -22,6 +22,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'
 sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'utf8'));
 
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_reference_guards.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/pet_r4b_equipment.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_archive.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_recovery.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);

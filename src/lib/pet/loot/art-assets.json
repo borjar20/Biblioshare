@@ -1,0 +1,60 @@
+{
+  "icons": {
+    "sharp_bookmark": {
+      "hash": "0c5c74550c",
+      "jobId": "cca0309a-21cb-4213-9baa-9d67f2aa3c07"
+    },
+    "heavy_ink_quill": {
+      "hash": "f290c7db0f",
+      "jobId": "76a7f704-8c0a-44e6-8bad-0484a11816b7"
+    },
+    "librarian_loupe": {
+      "hash": "7e61fa50a7",
+      "jobId": "5539a4f3-1fe3-47ac-bc3d-e323f1b6f0d4"
+    },
+    "last_page_amulet": {
+      "hash": "1dc84ddf75",
+      "jobId": "c12fcf29-3f18-40ba-b3ff-5dbfa15bba8a"
+    },
+    "loan_pendant": {
+      "hash": "de2ee71664",
+      "jobId": "3985fa31-ba5b-45a0-a520-2d871a5fd10f"
+    },
+    "streak_medallion": {
+      "hash": "98aade1639",
+      "jobId": "5aea75be-b669-4811-9993-b0f5b3c28d6f"
+    }
+  },
+  "effects": {
+    "damage": {
+      "hash": "cce7723a33",
+      "jobId": "da68b740-b38f-4b05-ad5d-f7cc20f4e2e8",
+      "frames": 9,
+      "cell": 64
+    },
+    "shield": {
+      "hash": "6255b23b3a",
+      "jobId": "01c6bef9-bd96-4468-a958-060919de355f",
+      "frames": 9,
+      "cell": 64
+    },
+    "heal": {
+      "hash": "b69144e6c0",
+      "jobId": "199bba01-016d-49b2-bd32-6ec96132f2ca",
+      "frames": 9,
+      "cell": 64
+    },
+    "cooldown": {
+      "hash": "0c7bc1fd76",
+      "jobId": "7cf8b2eb-6edf-421d-b7c0-b0ff40d06d56",
+      "frames": 9,
+      "cell": 64
+    },
+    "vulnerability": {
+      "hash": "02d0801888",
+      "jobId": "5dc9e15d-d216-4fe2-9078-cd2bfc8e3120",
+      "frames": 9,
+      "cell": 64
+    }
+  }
+}

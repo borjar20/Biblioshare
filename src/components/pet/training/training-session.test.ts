@@ -7,14 +7,124 @@ import { POLICIES, runPolicy } from "@/lib/pet/battle/policies";
 import { snapshotForProfile } from "@/lib/pet/battle/profiles";
 import { seedFromIndex } from "@/lib/pet/battle/prng";
 import { contentHash as r3Hash } from "@/lib/pet/battle/versions/r3.1/content";
+import { BATTLE_RELEASES } from "@/lib/pet/battle/replay";
+import r4Fixture from "@/lib/pet/battle/versions/r4.1/normative.json";
+import * as r4Engine from "@/lib/pet/battle/versions/r4.1/engine";
+import {RULESET as R4_RULESET, ENEMIES as R4_ENEMIES} from "@/lib/pet/battle/versions/r4.1/content";
+const hashFor = (version:string) => BATTLE_RELEASES.find(release=>release.rulesetVersion===version)!.contentHash;
+const CURRENT_HASH=hashFor(RULESET.version);
 
-const battle: TrainingBattle = { intentId: "one", status: "open", seed: "00000001000000020000000300000004", rulesetVersion: "r2.2", enemyId: "brote", contentHash: "hash", inputs: [], result: null, digest: null, snapshot: { name: "Roble", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 0, hpMax: 100, atk: 10 } };
+const battle: TrainingBattle = { intentId: "one", status: "open", seed: "00000001000000020000000300000004", rulesetVersion: "r2.2", enemyId: "brote", contentHash: "2c40a90c9f141ffd2eda8241c83eb8859a712dbe4606798b56b90fb056b159d3", inputs: [], result: null, digest: null, snapshot: { name: "Roble", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 1, hpMax: 100, atk: 10 } };
 function setup() {
   const actions = { start: vi.fn(async (id: string): Promise<TrainingResponse> => ({ ok: true, battle: { ...battle, intentId: id } })), resolve: vi.fn(async (): Promise<TrainingResponse> => ({ ok: false, code: "NETWORK" })), replay: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle: { ...battle, status: "resolved" }, events: [] })) };
   let id = 0;
   return { actions, session: new TrainingSession(actions, () => String(++id)) };
 }
 describe("training session", () => {
+  it("retains an adventure result through detached resolution and recovers by intent until acknowledged", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    const options = {storage, userId:"alice", kind:"adventure" as const};
+    const first = new TrainingSession(actions, () => "same", options);
+    await first.start(); while (first.phase === "playing") first.tick();
+    first.prepareLeave(); first.setActive(false);
+    const resolved = {...first.battle!, status:"resolved" as const, result: {outcome:"lose" as const, reason:"ko" as const, ticks:first.view!.tick, petHp:0,petHpMax:100,enemyHp:20,enemyHpMax:420,damageDealt:400,damageTaken:100,causes:[],fight:1}};
+    actions.resolve.mockResolvedValueOnce({ok:true,battle:resolved}); await first.resolve();
+    expect(storage.getItem("pet-adventure:alice:current")).toContain("same");
+    const resume = vi.fn(async (): Promise<TrainingResponse> => ({ok:true,battle:resolved}));
+    const second = new TrainingSession({...actions,resume}, () => "wrong", options);
+    actions.start.mockClear(); await second.start();
+    expect(actions.start).not.toHaveBeenCalled(); expect(resume).toHaveBeenCalledWith("same");
+    expect(second.phase).toBe("done"); expect(second.battle?.result).toEqual(resolved.result);
+    expect(storage.getItem("pet-adventure:alice:current")).not.toBeNull();
+    second.hidden = true;
+    second.acknowledgeResult(); expect(storage.getItem("pet-adventure:alice:current")).not.toBeNull();
+    second.hidden = false;
+    second.acknowledgeResult(); expect(storage.getItem("pet-adventure:alice:current")).toBeNull();
+    storage.setItem("pet-adventure:alice:current", JSON.stringify({intent:"newer"}));
+    first.setActive(true); first.acknowledgeResult();
+    expect(storage.getItem("pet-adventure:alice:current")).toContain("newer");
+  });
+  it("checkpoints a training intent per account and restores it paused with no new identifier", async () => {
+    const storage = memoryStorage(); const { actions } = setup();
+    const options = { storage, userId: "alice", kind: "training" as const };
+    const first = new TrainingSession(actions, () => "same-intent", options);
+    await first.start(); first.skill(); first.tick(); first.tick();
+    expect(first.prepareLeave()).toBe(true);
+    const newId = vi.fn(() => "must-not-create");
+    const restored = new TrainingSession(actions, newId, options);
+    await restored.start();
+    expect(newId).not.toHaveBeenCalled();
+    expect(restored.battle?.intentId).toBe("same-intent");
+    expect(restored.view).toEqual(first.view);
+    expect(restored.inputs).toEqual(first.inputs);
+    restored.tick(); expect(restored.view?.tick).toBe(2); expect(restored.paused).toBe(true);
+    const other = new TrainingSession(actions, () => "bob-intent", { ...options, userId: "bob" });
+    await other.start(); expect(other.battle?.intentId).toBe("bob-intent"); expect(other.view?.tick).toBe(0);
+    expect(storage.getItem("pet-training:alice:current")).not.toContain("snapshot");
+  });
+  it("pauses and cancels unconfirmed ulti even when the checkpoint cannot be saved", async () => {
+    const { actions } = setup();
+    const storage = { getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error("blocked"); } };
+    const session = new TrainingSession(actions, () => "one", { storage, userId: "alice", kind: "training" });
+    await session.start(); session.ultiOpen = true;
+    expect(session.prepareLeave()).toBe(false); expect(session.paused).toBe(true);
+    expect(session.ultiOpen).toBe(false); session.tick(); expect(session.view?.tick).toBe(0);
+  });
+  it("inactive sessions cancel ulti and never resume merely by becoming active", async () => {
+    const {session} = setup(); await session.start(); session.tick(); session.ultiOpen = true;
+    session.setActive(false); session.tick(); expect(session.view?.tick).toBe(1);
+    expect(session.ultiOpen).toBe(false); session.setActive(true); session.tick();
+    expect(session.paused).toBe(true); expect(session.view?.tick).toBe(1);
+    session.togglePause(); session.tick(); expect(session.view?.tick).toBe(2);
+  });
+  it("rejects a malformed local log and does not claim a valid checkpoint", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", JSON.stringify({intent: "same"}));
+    storage.setItem("pet-training:alice:same", JSON.stringify({tick: 3, inputs: [{tick: 0, action: "invented"}]}));
+    const session = new TrainingSession(actions, () => "new", {storage, kind: "training", userId: "alice"});
+    await session.start(); expect(session.error).toBe("LOCAL_RECOVERY");
+    expect(session.paused).toBe(true); expect(session.inputs).toEqual([]);
+    expect(session.prepareLeave()).toBe(false);
+  });
+  it("reports a missing checkpoint behind a saved training pointer", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", JSON.stringify({intent:"same"}));
+    const session = new TrainingSession(actions, () => "new", {storage, kind:"training", userId:"alice"});
+    await session.start(); expect(session.error).toBe("LOCAL_RECOVERY"); expect(session.paused).toBe(true);
+  });
+  it("cleans a stale training pointer without issuing a new start intent", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", JSON.stringify({intent: "stale"}));
+    actions.start.mockResolvedValueOnce({ok:false, code:"UNKNOWN_ENEMY"});
+    const newId = vi.fn(() => "new");
+    const session = new TrainingSession(actions, newId, {storage, kind: "training", userId: "alice"});
+    await session.start(); expect(actions.start).toHaveBeenLastCalledWith("stale", "");
+    expect(newId).not.toHaveBeenCalled(); expect(storage.getItem("pet-training:alice:current")).toBeNull();
+  });
+  it("keeps a start response paused if leaving was requested while it was pending", async () => {
+    const {session,actions} = setup();
+    let complete!: (response: TrainingResponse) => void;
+    actions.start.mockImplementationOnce(() => new Promise(resolve => {complete = resolve;}));
+    const starting = session.start(); expect(session.prepareLeave()).toBe(false);
+    complete({ok:true, battle}); await starting; session.tick();
+    expect(session.paused).toBe(true); expect(session.view?.tick).toBe(0);
+  });
+  it("cleans an invalid pointer without replacing the intended recovery with a new combat", async () => {
+    const storage = memoryStorage(); const {actions} = setup();
+    storage.setItem("pet-training:alice:current", "invalid-json");
+    const session = new TrainingSession(actions, () => "new", {storage, kind: "training", userId: "alice"});
+    await session.start(); expect(actions.start).not.toHaveBeenCalled();
+    expect(session.error).toBe("LOCAL_RECOVERY"); expect(storage.getItem("pet-training:alice:current")).toBeNull();
+    await session.start(); expect(actions.start).toHaveBeenCalledOnce();
+  });
+  it("does not auto-resume a replay whose response arrives after deactivation", async () => {
+    const {session,actions} = setup(); await session.start(); session.phase = "done";
+    let complete!: (response: TrainingResponse) => void;
+    actions.replay.mockImplementationOnce(() => new Promise(resolve => {complete = resolve;}));
+    const replaying = session.replay(); session.setActive(false);
+    complete({ok:true,battle:{...battle,status:"resolved"},events:[]}); await replaying;
+    session.setActive(true); expect(session.paused).toBe(true);
+  });
   const winner: TrainingBattle = { ...battle, status: "resolved", result: { outcome: "win", reason: "ko", ticks: 123, petHp: 72, petHpMax: 100, enemyHp: 0, enemyHpMax: 420, damageDealt: 420, damageTaken: 28, causes: ["charges_interrupted"], fight: 1 } };
   const winnerEvents = [{ type: "BATTLE_ENDED" as const, seq: 0, tick: 123, outcome: "win" as const, reason: "ko" as const, petHp: 72, enemyHp: 0 }];
   it("replaces local HP and tick with the concurrent authoritative winner", async () => {
@@ -41,6 +151,11 @@ describe("training session", () => {
   it("preserves identical log on failed resolution", async () => { const { session, actions } = setup(); await session.start(); session.skill(); while (session.phase === "playing") session.tick(); await session.resolve(); const first = structuredClone(actions.resolve.mock.calls); await session.resolve(); expect(actions.resolve.mock.calls[1]).toEqual(first[0]); expect(session.inputs).toHaveLength(1); });
   it("replay only consumes server events and never resolves", async () => { const { session, actions } = setup(); await session.start(); session.phase = "done"; await session.replay(); session.tick(); expect(actions.replay).toHaveBeenCalledOnce(); expect(actions.resolve).not.toHaveBeenCalled(); });
   it("rejects unsupported versions before simulating", async () => { const { session, actions } = setup(); actions.start.mockResolvedValueOnce({ ok: true, battle: { ...battle, rulesetVersion: "future" } }); await session.start(); expect(session.error).toBe("UNSUPPORTED_BATTLE"); expect(session.view).toBeNull(); });
+  it("rejects a known version paired with an unknown content hash", async () => {
+    const {session,actions}=setup();
+    actions.start.mockResolvedValueOnce({ok:true,battle:{...battle,contentHash:"0".repeat(64)}});
+    await session.start();expect(session.error).toBe("UNSUPPORTED_BATTLE");expect(session.view).toBeNull();
+  });
 });
 
 
@@ -48,7 +163,7 @@ describe("training session", () => {
 describe("R3 ulti controller", () => {
  async function ready() {
   const {session,actions}=setup();
-  actions.start.mockResolvedValueOnce({ok:true,battle:{...battle,intentId:"1",rulesetVersion:"r3.1"}});
+  actions.start.mockResolvedValueOnce({ok:true,battle:{...battle,intentId:"1",rulesetVersion:"r3.1",contentHash:"deebe918beee7f74ff9d9cda720caac9f9182713158085c118971970cce40cb3"}});
   await session.start(); for(let i=0;i<120;i++) session.tick(); return {session,actions};
  }
  it("stops ticks and cooldown while open, keeps previous pause and cancel spends nothing",async()=>{
@@ -69,6 +184,44 @@ describe("R3 ulti controller", () => {
  });
 });
 
+describe("R4b replay quantities", () => {
+ it("resumes an open r4.1 log with its retained engine and unchanged snapshot",async()=>{
+  const record=r4Fixture.record;
+  const b:TrainingBattle={...record,snapshot:record.snapshot as TrainingBattle["snapshot"],intentId:"r4-resume",status:"open",inputs:[],result:null,digest:null};
+  const tick=100,inputs=record.inputs.filter(i=>i.tick<tick) as TrainingBattle["inputs"];
+  const storage=memoryStorage();storage.setItem("pet-adventure:r4-resume",JSON.stringify({tick,inputs}));
+  const session=new TrainingSession({start:async()=>({ok:true,battle:b}),resolve:async()=>({ok:false,code:"x"}),replay:async()=>({ok:false,code:"x"})},()=>b.intentId,{storage});
+  await session.start();
+  const ctx={snapshot:b.snapshot,seed:b.seed,ruleset:R4_RULESET,enemies:b.enemyId.split(",").map(id=>R4_ENEMIES[id])};
+  const state=r4Engine.createBattle(ctx);
+  for(let t=0;t<tick;t++)r4Engine.stepBattle(ctx,state,inputs.filter(i=>i.tick===t));
+  expect(session.error).toBeNull();expect(session.view).toEqual(r4Engine.viewOf(state));
+  expect(session.battle!.snapshot).not.toHaveProperty("equipment");
+ });
+ it.each(["loan_pendant", "streak_medallion"] as const)("replays %s with the same HP and cooldown as the live engine", async itemId => {
+  const snapshot={...snapshotForProfile("nueva","wizard"),equipment:{weapon:null,amulet:{copyId:"00000000-0000-4000-8000-000000000001",itemId,qualityBp:12000}}};
+  const enemies=[ENEMIES.brote,ENEMIES.brote,ENEMIES.brote];
+  let seed=seedFromIndex(0);
+  let run=runPolicy({snapshot,seed,enemies,ruleset:RULESET},POLICIES.interrupt);
+  for(let i=1;i<200&&!run.events.some(e=>e.type==="LOOT_EFFECT"&&e.itemId===itemId);i++) {
+   seed=seedFromIndex(i);run=runPolicy({snapshot,seed,enemies,ruleset:RULESET},POLICIES.interrupt);
+  }
+  const effect=run.events.find(e=>e.type==="LOOT_EFFECT"&&e.itemId===itemId);
+  expect(effect).toBeTruthy();
+  const b:TrainingBattle={intentId:"quantities",status:"resolved",snapshot,seed,enemyId:enemyList(enemies),rulesetVersion:RULESET.version,contentHash:CURRENT_HASH,inputs:run.inputs,result:run.result,digest:"d"};
+  const actions={start:async()=>({ok:true as const,battle:b,events:run.events}),resolve:async()=>({ok:false as const,code:"x"}),replay:async()=>({ok:true as const,battle:b,events:run.events})};
+  const session=new TrainingSession(actions,()=>"quantities");await session.start();await session.replay();
+  while(session.view!.tick<effect!.tick)session.tick();
+  if(effect?.type!=="LOOT_EFFECT")throw new Error("expected loot");
+  if(effect.effect==="cooldown")expect(session.view!.skillReadyAt).toBe(effect.tick+RULESET.pet.skillCooldown-effect.amount);
+  else {
+   const fight=run.events.find(e=>e.type==="FIGHT_STARTED"&&e.tick===effect.tick);
+   if(fight?.type!=="FIGHT_STARTED")throw new Error("expected next fight");
+   expect(session.view!.petHp).toBe(Math.min(snapshot.hpMax,fight.petHp+effect.amount));
+  }
+ });
+});
+
 function memoryStorage() {
   const m = new Map<string, string>();
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k), map: m };
@@ -76,7 +229,7 @@ function memoryStorage() {
 const snapshot = snapshotForProfile("lectora_larga", "wizard");
 
 it("replay reinicia la recarga de ulti al empezar y en cada tramo", async () => {
-  const chained: TrainingBattle = { ...battle, rulesetVersion: RULESET.version, enemyId: "brote,brote", status: "resolved" };
+  const chained: TrainingBattle = { ...battle, snapshot:snapshotForProfile("nueva","wizard"), contentHash:CURRENT_HASH, rulesetVersion: RULESET.version, enemyId: "brote,brote", status: "resolved" };
   const events = [
     { type: "BATTLE_STARTED" as const, seq: 0, tick: 0, petHp: 100, enemyHp: 200 },
     { type: "FIGHT_STARTED" as const, seq: 1, tick: 200, fight: 2, enemyId: "brote", petHp: 80, enemyHp: 200 },
@@ -99,7 +252,7 @@ it("replay reinicia la recarga de ulti al empezar y en cada tramo", async () => 
 });
 
 it.each(["r2.2", "r3.1"])("replay conserva la disponibilidad histórica de ulti en %s", async (rulesetVersion) => {
-  const historical = { ...battle, rulesetVersion, status: "resolved" as const };
+  const historical = { ...battle, rulesetVersion, contentHash:hashFor(rulesetVersion), status: "resolved" as const };
   const events = [{ type: "BATTLE_STARTED" as const, seq: 0, tick: 0, petHp: 100, enemyHp: 200 }];
   const s = new TrainingSession({ start: async () => ({ ok: true, battle: historical }), resolve: vi.fn(), replay: async () => ({ ok: true, battle: historical, events }) }, () => "one");
   await s.start();
@@ -109,7 +262,8 @@ it.each(["r2.2", "r3.1"])("replay conserva la disponibilidad histórica de ulti 
 
 describe("chains and local log", () => {
   it("simula una fila r3.1 con el motor r3.1 (un tramo) y expone fight 1/1", async () => {
-    const battle = { intentId: "i1", status: "open" as const, seed: seedFromIndex(1), snapshot, rulesetVersion: "r3.1", contentHash: await r3Hash(), enemyId: "caparazon", inputs: [], result: null, digest: null };
+    const {equipment:_equipment,...oldSnapshot}=snapshot;
+    const battle = { intentId: "i1", status: "open" as const, seed: seedFromIndex(1), snapshot:oldSnapshot, rulesetVersion: "r3.1", contentHash: await r3Hash(), enemyId: "caparazon", inputs: [], result: null, digest: null };
     const s = new TrainingSession({ start: async () => ({ ok: true, battle }), resolve: async () => ({ ok: false, code: "x" }), replay: async () => ({ ok: false, code: "x" }) }, () => "i1");
     await s.start();
     expect(s.phase).toBe("playing");
@@ -128,7 +282,7 @@ describe("chains and local log", () => {
     }
     expect(found).not.toBeNull();
     const { seed, inputs, endedTick } = found!;
-    const battle = { intentId: "adv-1", status: "open" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: "irrelevante-en-cliente", enemyId: enemyList(pickEnemies(seed, 3, ENEMIES)), inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const battle = { intentId: "adv-1", status: "open" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: enemyList(pickEnemies(seed, 3, ENEMIES)), inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
     const storage = memoryStorage();
     const actions = { start: async () => ({ ok: true as const, battle }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: false as const, code: "x" }) };
     const s = new TrainingSession(actions, () => "ignored", { storage });
@@ -157,7 +311,7 @@ describe("chains and local log", () => {
   });
 
   it("sin log local, un intento abierto empieza en el tick 0 con el mismo seed", async () => {
-    const battle = { intentId: "adv-2", status: "open" as const, seed: seedFromIndex(5), snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote,brote", inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const battle = { intentId: "adv-2", status: "open" as const, seed: seedFromIndex(5), snapshot, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote,brote", inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
     const s = new TrainingSession({ start: async () => ({ ok: true, battle }), resolve: async () => ({ ok: false, code: "x" }), replay: async () => ({ ok: false, code: "x" }) }, () => "z", { storage: memoryStorage() });
     await s.start();
     expect(s.view).toMatchObject({ tick: 0, fight: 1, fights: 3 });
@@ -166,7 +320,7 @@ describe("chains and local log", () => {
 
   it("al resolver, borra la entrada local", async () => {
     const storage = memoryStorage();
-    const battle = { intentId: "adv-3", status: "open" as const, seed: seedFromIndex(7), snapshot, rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote", inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const battle = { intentId: "adv-3", status: "open" as const, seed: seedFromIndex(7), snapshot, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote", inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
     const resolved = { ...battle, status: "resolved" as const, result: { outcome: "lose" as const, reason: "ko" as const, ticks: 1, petHp: 0, petHpMax: 1, enemyHp: 1, enemyHpMax: 1, damageDealt: 0, damageTaken: 1, causes: [], fight: 1 }, digest: "d" };
     const s = new TrainingSession({ start: async () => ({ ok: true, battle }), resolve: async () => ({ ok: true, battle: resolved, events: [] }), replay: async () => ({ ok: false, code: "x" }) }, () => "z", { storage });
     await s.start();
@@ -187,7 +341,7 @@ describe("chains and local log", () => {
     }
     expect(found).not.toBeNull();
     const { seed, inputs, ticks } = found!;
-    const battle = { intentId: "adv-restore", status: "open" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: "irrelevante-en-cliente", enemyId: enemyList(pickEnemies(seed, 3, ENEMIES)), inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const battle = { intentId: "adv-restore", status: "open" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: enemyList(pickEnemies(seed, 3, ENEMIES)), inputs: [], result: null, digest: null, adventure: { day: "2026-09-07", attempt: 1, reward: null } };
     const storage = memoryStorage();
     storage.setItem(`pet-adventure:${battle.intentId}`, JSON.stringify({ inputs, tick: ticks + 1 }));
     const actions = { start: async () => ({ ok: true as const, battle }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: false as const, code: "x" }) };
@@ -209,7 +363,7 @@ describe("chains and local log", () => {
     }
     expect(found).not.toBeNull();
     const { seed, events, result, inputs, enemies } = found!;
-    const battle = { intentId: "replay-fight2", status: "resolved" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: "irrelevante-en-cliente", enemyId: enemyList(enemies), inputs, result, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
+    const battle = { intentId: "replay-fight2", status: "resolved" as const, seed, snapshot, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: enemyList(enemies), inputs, result, digest: "d", adventure: { day: "2026-09-07", attempt: 1, reward: null } };
     const actions = { start: async () => ({ ok: true as const, battle, events }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: true as const, battle, events }) };
     const s = new TrainingSession(actions, () => "ignored");
     await s.start();
@@ -225,7 +379,7 @@ describe("chains and local log", () => {
   it("replaying: FIGHT_STARTED también renueva enemyHpMax, no solo enemyHp", async () => {
     // Los dos enemigos de r4.1 comparten hpMax, así que el log sintético es la única forma de
     // distinguir «arrancar el tramo a vida llena» de «heredar el máximo del tramo anterior».
-    const chained = { ...battle, rulesetVersion: RULESET.version, contentHash: "x", enemyId: "brote,brote", status: "resolved" as const };
+    const chained = { ...battle, snapshot:snapshotForProfile("nueva","wizard"), rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote,brote", status: "resolved" as const };
     const events = [
       { type: "BATTLE_STARTED" as const, seq: 0, tick: 0, petHp: 100, enemyHp: 200 },
       { type: "FIGHT_STARTED" as const, seq: 1, tick: 1, fight: 2, enemyId: "brote", petHp: 100, enemyHp: 999 },

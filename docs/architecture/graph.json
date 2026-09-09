@@ -3,10 +3,10 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-08",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03",
+    "generatedAt": "2026-09-09",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09",
     "stack": {
-      "framework": "Next.js 16.2.10 (App Router, React 19.2.4)",
+      "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
       "styling": "Tailwind CSS 4",
       "backend": "Supabase (Postgres + RLS + Auth + Storage) — remoto también en dev",
@@ -1024,7 +1024,7 @@
       "layer": "domain",
       "kind": "module",
       "size": 23,
-      "summary": "Motor de combate de la mascota (R1, spec 2026-09-06-mascota-r1-contratos-combate). PURO: xoshiro128** sembrado por un seed de 128 bits del servidor, reloj de 100 ms, log de inputs (seq, tick, action, payload), eventos derivados, resultado con causas. El cliente lo ejecuta para animar (stepBattle + viewOf) y el servidor para decidir (resimulate): digest = sha256 del JSON canónico de registro + eventos, sin circularidad. content.ts es el único sitio con números; cambiar uno = subir RULESET.version y regenerar __fixtures__/normative.json. CLI: scripts/pet-battle/simulate.ts (run, calibrate, replay, golden). R5: replayBattle selecciona motor y contenido conservados por versión + hash; versions/r2.2 contiene código ejecutable y ejemplo inmutables.",
+      "summary": "Motor de combate de la mascota (R1, spec 2026-09-06-mascota-r1-contratos-combate). PURO: xoshiro128** sembrado por un seed de 128 bits del servidor, reloj de 100 ms, log de inputs (seq, tick, action, payload), eventos derivados, resultado con causas. El cliente lo ejecuta para animar (stepBattle + viewOf) y el servidor para decidir (resimulate): digest = sha256 del JSON canónico de registro + eventos, sin circularidad. content.ts es el único sitio con números; cambiar uno = subir RULESET.version y regenerar __fixtures__/normative.json. CLI: scripts/pet-battle/simulate.ts (run, calibrate, replay, golden). R5: replayBattle selecciona motor y contenido conservados por versión + hash; versions/r2.2 contiene código ejecutable y ejemplo inmutables. R4b: actual r4.2 con equipo inmutable de dos ranuras y eventos LOOT_EFFECT. r2.2/r3.1/r4.1 conservados por versión+hash; nunca regenerar sus manifiestos.",
       "files": [
         "src/lib/pet/battle/prng.ts",
         "src/lib/pet/battle/canonical.ts",
@@ -1414,13 +1414,16 @@
       "label": "components/pet",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Eclosión (hatch-form + class-picker), ficha (pet-detail, rename-form) y compañera flotante del chrome (pet-companion, pet-sprite pinta sprite sheets de personaje PixelLab en public/pet/sheets + sheets.gen.ts; el humor es la fila de animación que se reproduce).",
+      "summary": "Interfaz RPG de bosque en /mascota: PetGame compone Campamento, Personaje, Mochila, Diario, Madriguera y Combate. Navegación por ?view con history nativo; los dos TrainingPanel permanecen montados y active=false pausa la simulación. Eclosión y compañera del chrome reutilizan sprites PixelLab. Tema local idéntico en claro y oscuro.",
       "files": [
         "src/components/pet",
         "src/components/pet/training/training-panel.tsx",
         "src/components/pet/training/training-session.ts",
         "src/components/pet/training/ulti-puzzle.tsx",
-        "src/components/pet/training/combat-sprite.tsx"
+        "src/components/pet/training/combat-sprite.tsx",
+        "src/components/pet/game/pet-game.tsx",
+        "src/components/pet/game/pet-return-tracker.tsx",
+        "src/lib/pet/game-navigation.ts"
       ]
     },
     {
@@ -1428,7 +1431,7 @@
       "label": "/mascota",
       "layer": "route",
       "kind": "route",
-      "summary": "Eclosión si no hay mascota; ficha derivada (atributos, nivel, etapa, humor) si ya la hay.",
+      "summary": "Shell de juego a pantalla completa con retorno a la última ruta válida de Biblioshare por usuario. PetContent lee snapshot y aventura bajo Suspense; eclosión si no hay mascota. No cachea datos de sesión.",
       "files": [
         "src/app/mascota"
       ]
@@ -1520,7 +1523,7 @@
       "label": "lib/pet/training",
       "layer": "domain",
       "kind": "module",
-      "summary": "R2: entrenamiento gratuito. Actions autentican cada llamada; servicio deriva snapshot/seed al empezar, valida inputs y re-simula al resolver; repositorio service_role filtra siempre user_id/kind y actualiza solo status=open. Reintentos recuperan el primer resultado. Replay re-simula por versión y verifica digest.",
+      "summary": "R2: entrenamiento gratuito. Actions autentican cada llamada; servicio deriva snapshot/seed al empezar, valida inputs y re-simula al resolver; repositorio service_role filtra siempre user_id/kind y actualiza solo status=open. Reintentos recuperan el primer resultado. Replay re-simula por versión y verifica digest. R4b: start_pet_training captura equipo en SQL bajo el mismo bloqueo que equipar; recuperar intención conserva la foto original.",
       "files": [
         "src/lib/pet/training/actions.ts",
         "src/lib/pet/training/service.ts",
@@ -1561,6 +1564,41 @@
       "layer": "db",
       "kind": "table",
       "summary": "Trabajos ZIP, decisiones pendientes, identidad de origen y snapshots reversibles. SELECT por RLS del propietario; escrituras mediante RPC con comprobacion de identidad."
+    },
+    {
+      "id": "m-pet-loot",
+      "label": "lib/pet/loot",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Copias = UUID de victoria. Legacy neutral 10000 sin reescritura; nuevas cinco potencias fijas por usuario/día. Equipo validado en SQL, lectura paginada de todas las victorias en lotes de 500.",
+      "files": [
+        "src/lib/pet/loot/copies.ts",
+        "src/lib/pet/loot/repository.ts",
+        "src/lib/pet/loot/service.ts",
+        "src/lib/pet/loot/actions.ts",
+        "src/components/pet/loot/equipment-panel.tsx"
+      ],
+      "gotchas": [
+        "No cache compartida de datos privados.",
+        "Entrenamiento sin recompensa; tinta pendiente #1134.",
+        "Equipar afecta solo a combates nuevos; nunca modifica snapshots guardados."
+      ]
+    },
+    {
+      "id": "t-pet-loadout",
+      "label": "pet_loadout",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Dos referencias a copias ganadas del dueño. SELECT propio por RLS; solo service_role escribe mediante set_pet_equipment. Mismo advisory lock para equipar/iniciar.",
+      "columns": [
+        "user_id",
+        "weapon_battle_id",
+        "amulet_battle_id",
+        "updated_at"
+      ],
+      "files": [
+        "supabase/migrations/20260908074921_pet_r4b_equipment.sql"
+      ]
     }
   ],
   "edges": [
@@ -2673,6 +2711,31 @@
       "from": "r-cron",
       "to": "m-import",
       "kind": "calls"
+    },
+    {
+      "from": "c-pet",
+      "to": "m-pet-loot",
+      "kind": "calls"
+    },
+    {
+      "from": "m-pet-loot",
+      "to": "t-pet-battles",
+      "kind": "reads"
+    },
+    {
+      "from": "m-pet-loot",
+      "to": "t-pet-loadout",
+      "kind": "writes"
+    },
+    {
+      "from": "m-pet-training",
+      "to": "t-pet-loadout",
+      "kind": "reads"
+    },
+    {
+      "from": "m-pet-adventure",
+      "to": "m-pet-loot",
+      "kind": "calls"
     }
   ],
   "flows": [
@@ -3566,16 +3629,16 @@
       "name": "Entrenar y reproducir un combate",
       "category": "core",
       "summary": "Entrenamiento con selección de enemigo, habilidad y ulti pausada. El servidor fija la identidad y re-simula por versión. Sin premios ni consumo.",
-      "entrypoint": "src/components/pet/training/training-panel.tsx",
+      "entrypoint": "src/components/pet/game/pet-game.tsx",
       "steps": [
         {
           "node": "r-mascota",
-          "action": "Muestra entrenamiento al tener mascota",
+          "action": "PetGame abre Entrenamiento desde Campamento y conserva el panel al cambiar de sección",
           "file": "src/app/mascota/page.tsx"
         },
         {
           "node": "c-pet",
-          "action": "Conserva intención y enemigo; simula ticks y registra habilidad/ulti. El puzzle detiene la simulación sin gastar al cancelar.",
+          "action": "Conserva intención, tick e inputs en localStorage por usuario y modo; salir pausa y guarda. Recuperación siempre pausada; el resultado resuelto conserva su puntero hasta mostrarse en un panel y pestaña visibles.",
           "file": "src/components/pet/training/training-session.ts"
         },
         {
@@ -3610,11 +3673,11 @@
       "name": "Jugar una aventura",
       "category": "core",
       "summary": "Cadena de tres tramos concedida por día con actividad real (ventana de siete días); el cliente simula y guarda el log parcial en el dispositivo, el servidor re-simula y decide el botín bajo un bloqueo consultivo por usuario.",
-      "entrypoint": "src/components/pet/adventure/adventure-section.tsx",
+      "entrypoint": "src/components/pet/game/pet-game.tsx",
       "steps": [
         {
           "node": "r-mascota",
-          "action": "Muestra la sección de aventuras junto al entrenamiento",
+          "action": "PetGame recibe estado compartido de aventuras y abre Combate desde Campamento",
           "file": "src/app/mascota/page.tsx"
         },
         {
@@ -3634,12 +3697,12 @@
         },
         {
           "node": "t-pet-battles",
-          "action": "start_pet_adventure decide bajo pg_advisory_xact_lock: intento abierto, siguiente intento o día pendiente más antiguo",
-          "file": "supabase/migrations/20260908_pet_adventures.sql"
+          "action": "start_pet_adventure decide bajo pg_advisory_xact_lock: intento abierto, siguiente intento o día pendiente más antiguo; fila nueva r4.2 captura equipo bajo el mismo bloqueo",
+          "file": "supabase/migrations/20260908074921_pet_r4b_equipment.sql"
         },
         {
           "node": "c-pet",
-          "action": "TrainingSession simula la cadena tramo a tramo y guarda el log parcial en localStorage (pet-adventure:<intent>) para reanudar",
+          "action": "TrainingSession simula tramo a tramo y guarda checkpoint por usuario, modo e intención; recupera pausado mediante resumeAdventure, lectura autenticada que nunca crea otro intento.",
           "file": "src/components/pet/training/training-session.ts"
         },
         {
@@ -3649,13 +3712,13 @@
         },
         {
           "node": "m-pet-battle",
-          "action": "replayBattle re-simula con la versión almacenada (r4.1) y comprueba el digest",
+          "action": "Re-simula con la versión+hash almacenados y su snapshot inmutable, incluidas las cuatro versiones conservadas",
           "file": "src/lib/pet/battle/replay.ts"
         },
         {
           "node": "t-pet-battles",
-          "action": "resolve_pet_adventure elige bajo el mismo bloqueo el primer objeto no poseído y hace el compare-and-set status='open'",
-          "file": "supabase/migrations/20260908_pet_adventures.sql"
+          "action": "resolve_pet_adventure elige bajo el mismo bloqueo el primer objeto no poseído y hace el compare-and-set status='open'; r4.2 fija calidad por usuario/día, una sola copia",
+          "file": "supabase/migrations/20260908074921_pet_r4b_equipment.sql"
         },
         {
           "node": "m-pet-adventure",
@@ -3705,6 +3768,50 @@
           "node": "r-importar",
           "action": "Consultar resultados, resolver conflictos y deshacer",
           "file": "src/app/importar/archive-jobs.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-equipment",
+      "name": "Equipar una copia y usarla en combate",
+      "category": "core",
+      "summary": "La selección actual es mutable; cada combate captura una foto inmutable antes de empezar.",
+      "entrypoint": "src/components/pet/loot/equipment-panel.tsx",
+      "steps": [
+        {
+          "node": "m-pet-loot",
+          "action": "Lee todas las victorias paginadas y proyecta copias por UUID, con calidad legacy neutral",
+          "file": "src/lib/pet/loot/repository.ts"
+        },
+        {
+          "node": "c-pet",
+          "action": "Agrupa copias por objeto, ordena por potencia y compara; equipar es una acción explícita",
+          "file": "src/components/pet/loot/equipment-panel.tsx"
+        },
+        {
+          "node": "m-pet-loot",
+          "action": "Autentica antes de crear el cliente privilegiado",
+          "file": "src/lib/pet/loot/actions.ts"
+        },
+        {
+          "node": "t-pet-loadout",
+          "action": "set_pet_equipment valida dueño/victoria/ranura y guarda bajo bloqueo por usuario",
+          "file": "supabase/migrations/20260908074921_pet_r4b_equipment.sql"
+        },
+        {
+          "node": "t-pet-battles",
+          "action": "start_pet_training/start_pet_adventure sobrescriben equipment desde selección autoritativa solo para filas nuevas",
+          "file": "supabase/migrations/20260908074921_pet_r4b_equipment.sql"
+        },
+        {
+          "node": "m-pet-battle",
+          "action": "r4.2 aplica los efectos puros desde el snapshot y emite cantidades efectivas",
+          "file": "src/lib/pet/battle/versions/r4.2/engine.ts"
+        },
+        {
+          "node": "c-pet",
+          "action": "Anima LOOT_EFFECT al avanzar o repetir, sin reemitir la reconstrucción de logs",
+          "file": "src/components/pet/training/training-panel.tsx"
         }
       ]
     }

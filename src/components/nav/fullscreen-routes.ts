@@ -7,5 +7,6 @@
  * a secas dejaría los hubs sin navegación.
  */
 export function isFullscreenRoute(pathname: string): boolean {
-  return pathname === "/partida" || pathname.startsWith("/partida/");
+  return pathname === "/partida" || pathname.startsWith("/partida/")
+    || pathname === "/mascota" || pathname.startsWith("/mascota/");
 }

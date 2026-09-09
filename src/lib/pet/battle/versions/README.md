@@ -43,3 +43,9 @@ R3 conserva tambien su guard de snapshot dentro del directorio publicado; el reg
 `FIGHT_ENDED`/`FIGHT_STARTED`, ulti una vez por tramo (la juzga el motor, no el validador),
 límite de tramo en cadena = derrota. Con un solo enemigo se comporta como r3.1 y conserva sus
 números. Publicada con `fork`/`golden --version`/`freeze` (#1093).
+
+`r4.2` (R4b) exige dos ranuras de equipo en el snapshot y aplica seis efectos
+con potencia fija por copia. Los eventos `LOOT_EFFECT` incluyen la cantidad efectiva.
+El replay consume ese equipo guardado; nunca consulta la selección actual. El fixture
+normativo ejercita marcapáginas y amuleto; los tests del motor cubren los otros cuatro.
+Balance y muestreo: `docs/testing/2026-09-08-r4b-balance.md`.

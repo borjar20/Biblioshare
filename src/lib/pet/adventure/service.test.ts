@@ -8,6 +8,8 @@ import { snapshotForProfile } from "@/lib/pet/battle/profiles";
 import { seedFromIndex } from "@/lib/pet/battle/prng";
 import { pickReward, rewardOrder } from "@/lib/pet/loot/reward";
 import { LOOT_ITEMS } from "@/lib/pet/loot/catalog";
+import { copyFromWin } from "@/lib/pet/loot/copies";
+import { isBattleSnapshot } from "@/lib/pet/battle/snapshot";
 
 const snapshot = snapshotForProfile("lectora_larga", "wizard");
 
@@ -17,10 +19,11 @@ function memoryRepo(pending: string[]) {
   const days = new Set(pending);
   const won = (day: string) => rows.some((r) => r.adventure.day === day && r.status === "resolved" && r.result?.outcome === "win");
   const repo: AdventureRepository = {
+    async selection() { return { weapon: null, amulet: null }; },
     async pendingDays() { return [...days].filter((d) => !rows.some((r) => r.adventure.day === d)).sort(); },
     async find(intentId) { return structuredClone(rows.find((r) => r.intentId === intentId) ?? null); },
     async recent(limit) { return structuredClone([...rows].reverse().slice(0, limit)); },
-    async wins() { return structuredClone(rows.filter((r) => r.status === "resolved" && r.adventure.reward).map((r) => ({ day: r.adventure.day, reward: r.adventure.reward }))); },
+    async wins() { return structuredClone(rows.filter((r) => r.status === "resolved" && r.adventure.reward).map((r) => ({ day: r.adventure.day, reward: r.adventure.reward, copy: copyFromWin({ id: r.intentId, reward: r.adventure.reward, resolved_at: "2026-09-08T00:00:00Z" }) }))); },
     async start(input) {
       const open = rows.find((r) => r.status === "open");
       if (open) return structuredClone(open);
@@ -56,12 +59,25 @@ const service = (pending: string[]) => {
 // `interrupt_ulti` es la política de referencia de R4a (gana ~56-60 % de las cadenas); con
 // `interrupt` a secas (8-14 %) los bucles de 40 intentos de abajo serían una moneda al aire.
 async function playToEnd(s: ReturnType<typeof createAdventureService>, battle: AdventureBattle, policy = POLICIES.interrupt_ulti) {
+  if (!isBattleSnapshot(battle.snapshot)) throw new Error("Expected current snapshot");
   const enemies = parseEnemyList(battle.enemyId, ENEMIES)!;
   const { inputs } = runPolicy({ seed: battle.seed, snapshot: battle.snapshot, enemies, ruleset: RULESET }, policy);
   return s.resolve(battle.intentId, inputs);
 }
 
 describe("servicio de aventuras (spec §6)", () => {
+  it("resume reads the exact open or resolved attempt without creating another", async () => {
+    const {s,rows} = service(["2026-09-05", "2026-09-06"]);
+    const started = await s.start(); if (!started.ok) throw new Error(started.code);
+    expect(await s.resume(started.battle.intentId)).toEqual(started);
+    const resolved = await playToEnd(s, started.battle); if (!resolved.ok) throw new Error(resolved.code);
+    const recovered = await s.resume(started.battle.intentId);
+    expect(recovered.ok && recovered.battle).toEqual(resolved.battle);
+    expect(rows).toHaveLength(1);
+    expect(await s.resume("invalid")).toEqual({ok:false,code:"INVALID_INTENT"});
+    expect(await s.resume("54e5f63c-68a8-4acf-a790-000000999999")).toEqual({ok:false,code:"NOT_FOUND"});
+    expect(rows).toHaveLength(1);
+  });
   it("start consume el día más antiguo, guarda una lista de enemigos válida y es idempotente", async () => {
     const { s, rows } = service(["2026-09-05", "2026-09-06"]);
     const a = await s.start();
@@ -119,7 +135,7 @@ describe("servicio de aventuras (spec §6)", () => {
   it("state expone pendientes, el intento en curso (abierto o perdido) e inventario derivado", async () => {
     for (let attempt = 0; attempt < 20; attempt++) {
       const { s } = service(["2026-09-05", "2026-09-06"]);
-      expect(await s.state()).toEqual({ pendingDays: ["2026-09-05", "2026-09-06"], current: null, inventory: [] });
+      expect(await s.state()).toEqual({ pendingDays: ["2026-09-05", "2026-09-06"], current: null, inventory: [], loadout: { weapon: null, amulet: null } });
       const a = await s.start();
       if (!a.ok) throw new Error(a.code);
       let st = await s.state();
@@ -165,7 +181,7 @@ describe("servicio de aventuras (spec §6)", () => {
       adventure: { day: day(0), attempt: 2, reward: null },
     });
     const st = await s.state();
-    expect(st.inventory.reduce((n, e) => n + e.count, 0)).toBe(66); // 65 sembradas + 1 victoria real
+    expect(st.inventory).toHaveLength(66); // 65 sembradas + 1 victoria real
     expect(st.current).toBeNull();
   });
   it("una excepción en onWin no rompe una victoria ya guardada", async () => {

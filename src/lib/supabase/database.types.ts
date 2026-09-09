@@ -1976,6 +1976,30 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_loadout: {
+        Row: {
+          user_id: string
+          weapon_battle_id: string | null
+          amulet_battle_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          weapon_battle_id?: string | null
+          amulet_battle_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          weapon_battle_id?: string | null
+          amulet_battle_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: "pet_loadout_weapon_battle_id_fkey"; columns: ["weapon_battle_id"]; isOneToOne: false; referencedRelation: "pet_battles"; referencedColumns: ["id"] },
+          { foreignKeyName: "pet_loadout_amulet_battle_id_fkey"; columns: ["amulet_battle_id"]; isOneToOne: false; referencedRelation: "pet_battles"; referencedColumns: ["id"] },
+        ]
+      }
       pet_daily_missions: {
         Row: {
           completed_at: string | null
@@ -3730,6 +3754,16 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      set_pet_equipment: {
+        Args: { p_user: string; p_slot: string; p_copy: string | null }
+        Returns: Database["public"]["Tables"]["pet_loadout"]["Row"][]
+        SetofOptions: { from: "*"; to: "pet_loadout"; isOneToOne: false; isSetofReturn: true }
+      }
+      start_pet_training: {
+        Args: { p_user: string; p_intent: string; p_seed: string; p_enemy: string; p_ruleset_version: string; p_content_hash: string; p_snapshot: Json }
+        Returns: Database["public"]["Tables"]["pet_battles"]["Row"][]
+        SetofOptions: { from: "*"; to: "pet_battles"; isOneToOne: false; isSetofReturn: true }
       }
       start_pet_adventure: {
         Args: {

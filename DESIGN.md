@@ -491,6 +491,67 @@ Set propio, `viewBox` 24, trazo 1.8 con extremos y uniones redondeados, sin rell
 
 ## Do's and Don'ts
 
+### Excepción de la mascota: RPG de bosque (#1165, 2026-09-09)
+
+`/mascota` tiene un sistema local idéntico en claro y oscuro. La fuente ejecutable y
+**única** es `src/components/pet/game/pet-game.module.css`; no cambia los tokens
+globales de Paper. `training.module.css` y `equipment-panel.module.css` **consumen**
+esos tokens y no declaran ninguno propio: cuando tenían paleta propia, el mismo botón
+salía melocotón en Entrenamiento y crema en Aventura, y había trece dorados para un
+solo papel.
+
+**Paleta con nombre.** Bosque `--forest-900 #071f19` (fondo), `--forest-800 #0c2d24`
+(panel), `--forest-700 #123b2f` (hundido), `--forest-600 #1d493c` (pista de barras y
+selección); `--moss #355b48` (borde) y `--moss-light #6cb86b` (progreso y vida).
+Madera `--wood-dark #6c421e`, `--wood #81572a`, `--wood-edge #b1934e`. Tinta
+`--cream #f4f0d8`, `--cream-muted #b5cfc0`. Señales `--gold #eed281` (selección y
+foco), `--sky #1f5f94` (XP), `--hp #6cb86b`, `--hp-rival #d9694f`, `--arcane #7a4fa8`
+(ulti). Color por atributo, que pertenece al dato y nunca al rol de un control:
+`--attr-fue #d9694f`, `--attr-con #e0574f`, `--attr-int #4aa3df`, `--attr-sab
+#6cb86b`, `--attr-car #b48ad6`, `--attr-des #eed281`.
+
+**Forma y texto.** Dos radios y solo dos: `--r-1: 4px` para lo diminuto y `--r-2: 8px`
+para todo lo demás. Escala de texto 12/13/14/16/18/22/26 y pesos 400/600/700; **nada
+por debajo de 12 px** y ni serif ni mono dentro del juego. Los controles táctiles y
+el regreso a Biblioshare miden 44 px.
+
+**Escala de píxel entera, sin excepciones.** Los escenarios se sirven a 2× (3× desde
+1400 px) del tamaño nativo del WebP con `background-size` en píxeles, nunca con
+`cover`: un factor fraccionario con `image-rendering: pixelated` reparte píxeles de
+uno y dos px y el arte deja de leerse como pixel art. El sprite va a 2×, así que las
+dos rejillas casan. Móvil usa la lámina en vertical `camp-portrait.webp` (288×384);
+escritorio la apaisada `camp.webp` (576×448); la Madriguera tiene escena propia,
+`gathering.webp` (576×432). Las sombras de contacto son elipses dentadas, no
+`drop-shadow` desenfocado.
+
+**El campamento cabe en la ventana.** Es la pantalla de inicio del juego y se
+dimensiona con `100svh`, no con su contenido: la escena es la fila elástica (`1fr`)
+que absorbe lo que sobra, con 240 px de suelo. Nada de constantes cosidas a mano —la
+anterior, `clamp(300px, 100svh - 440px, 560px)`, se quedaba 20 px corta en cuanto
+crecía un bloque vecino—. Las filas van a `1fr` y no a `minmax(0, 1fr)` a propósito:
+el mínimo automático impide que una fila colapse sobre otra, así que en una ventana
+demasiado baja el contenido desborda y scrollea su contenedor en vez de solaparse.
+Desplazar es peor que caber, pero recortar es peor que desplazar. En móvil el tablero
+de misiones no entra —mide 375 px y dejaría la escena en 130—: el campamento muestra
+rótulo, recuento y una barra por misión, y el tablero completo vive en Diario, a un
+toque del enlace que está al lado. Las demás vistas siguen scrolleando con normalidad.
+
+**Materiales.** Tres piezas de nueve cortes en `public/pet/ui/`, generadas con
+PixelLab: `frame-moss.webp` (recorte 8 px) para los paneles de contenido,
+`frame-wood.webp` (recorte 16 px) para la placa de identidad, y `plank-normal`,
+`plank-hover` y `plank-pressed` (recorte `0 8`) para la acción principal. El tablón
+exige altura múltiplo de 32 px —64 px en el CTA— o la veta se estira desigual.
+`frame-parchment.webp` está generado y **sin cablear**: su centro claro obliga a
+tinta oscura dentro (issue abierta).
+
+**Botones del juego.** La acción principal es tablón de madera; el resto,
+musgo. `buttonVariants("primary")` de Paper no entra bajo `.game` — traía el
+terracota, que aquí no significa nada. `secondary` y `ghost` sí valen: no llevan
+color propio y heredan los tokens remapeados.
+
+Las reglas Paper de abajo siguen aplicándose fuera del juego. Madrigueras de clubes
+y mascotas embebidas en perfiles conservan la presentación del contexto anfitrión.
+
 ### Do:
 - **Do** usar la terracota como único primario, y reservarla para el CTA, el foco, el progreso y
   la selección. Si aparece en todas partes, deja de señalar.

@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { createTrainingService } from "./service";
 import type { TrainingBattle } from "./types";
-import { snapshotForProfile } from "../battle/profiles";
+import fixture from "../battle/versions/r2.2/normative.json";
 import { contentHash } from "../battle/versions/r2.2/content";
 
 // A future current schema may reject an old snapshot. Stored releases still own it.
@@ -11,7 +11,7 @@ it("starting, resolving and replaying stored R2 never use today's snapshot guard
   const intentId = "54e5f63c-68a8-4acf-a790-6938580d48a5";
   let row: TrainingBattle = {
     intentId, status: "open", seed: "00000001000000020000000300000004",
-    snapshot: snapshotForProfile("social", "bard"), rulesetVersion: "r2.2",
+    snapshot: fixture.record.snapshot as TrainingBattle["snapshot"], rulesetVersion: "r2.2",
     contentHash: await contentHash(), enemyId: "brote", inputs: [], result: null, digest: null,
   };
   const service = createTrainingService({

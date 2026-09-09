@@ -19,6 +19,9 @@ async function withService<T>(operation: (service: ReturnType<typeof adventureSe
 export async function startAdventure(): Promise<AdventureResponse> {
   return withService((s) => s.start(), { ok: false, code: "UNAVAILABLE" });
 }
+export async function resumeAdventure(intentId: string): Promise<AdventureResponse> {
+  return withService((s) => s.resume(intentId), { ok: false, code: "UNAVAILABLE" });
+}
 export async function resolveAdventure(intentId: string, inputs: unknown): Promise<AdventureResponse> {
   return withService((s) => s.resolve(intentId, inputs), { ok: false, code: "UNAVAILABLE" });
 }

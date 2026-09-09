@@ -1,5 +1,4 @@
-// Catálogo de botín de R4a (spec §7). Sin efecto en combate hasta R4b: los ids son
-// estables y el comentario de cada uno es la dirección prevista, para que R4b no renombre.
+// IDs y ranuras conservados desde R4a; sus efectos se ejecutan a partir de r4.2.
 export const LOOT_SLOTS = ["weapon", "amulet"] as const;
 export type LootSlot = (typeof LOOT_SLOTS)[number];
 
@@ -14,7 +13,14 @@ export const LOOT_ITEMS = [
 
 export type LootItemId = (typeof LOOT_ITEMS)[number]["id"];
 export interface LootItem { id: LootItemId; slot: LootSlot }
-export interface Reward { itemId: LootItemId; slot: LootSlot }
+export type Reward = { itemId: LootItemId; slot: LootSlot } & (
+  | { qualityBp?: never; qualityVersion?: never }
+  | { qualityBp: number; qualityVersion: 1 }
+);
+
+export function isQualityBp(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 8000 && value <= 12000 && value % 1000 === 0;
+}
 
 export function isLootItemId(x: unknown): x is LootItemId {
   return typeof x === "string" && LOOT_ITEMS.some((i) => i.id === x);
@@ -22,5 +28,7 @@ export function isLootItemId(x: unknown): x is LootItemId {
 export function isReward(x: unknown): x is Reward {
   if (!x || typeof x !== "object") return false;
   const r = x as Record<string, unknown>;
-  return isLootItemId(r.itemId) && LOOT_ITEMS.some((i) => i.id === r.itemId && i.slot === r.slot);
+  const legacy = !Object.hasOwn(r, "qualityBp") && !Object.hasOwn(r, "qualityVersion");
+  return isLootItemId(r.itemId) && LOOT_ITEMS.some((i) => i.id === r.itemId && i.slot === r.slot)
+    && (legacy || (r.qualityVersion === 1 && isQualityBp(r.qualityBp)));
 }

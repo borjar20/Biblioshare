@@ -1,11 +1,14 @@
-import type { BattleEvent, BattleInput, BattleResult, BattleSnapshot } from "../battle/types";
+import type { BattleEvent, BattleInput, BattleResult } from "../battle/types";
+import type { StoredBattleSnapshot } from "../battle/replay";
+import type { Reward } from "../loot/catalog";
+import type { LootCopy } from "../loot/types";
 
 /** Public projection: no account identifiers or database-only fields. */
 export interface TrainingBattle {
   intentId: string;
   status: "open" | "resolved";
   seed: string;
-  snapshot: BattleSnapshot;
+  snapshot: StoredBattleSnapshot;
   rulesetVersion: string;
   contentHash: string;
   enemyId: string;
@@ -13,7 +16,7 @@ export interface TrainingBattle {
   result: BattleResult | null;
   digest: string | null;
   /** Solo en aventuras (R4a). */
-  adventure?: { day: string; attempt: number; reward: { itemId: string; slot: "weapon" | "amulet" } | null };
+  adventure?: { day: string; attempt: number; reward: Reward | null; copy?: LootCopy | null };
 }
 
 export type TrainingResponse =

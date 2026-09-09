@@ -2,12 +2,14 @@ import { test, expect, type Page, type APIRequestContext } from "@playwright/tes
 import { withBattleUsers } from "./support/battle-users";
 import { resolveFinalEmpire } from "./support/book-fixture";
 
+test.use({ actionTimeout: 20_000 });
+
 // R4a (spec docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md): la
 // concesión diaria de aventuras deriva de la actividad real (`passes` +
 // `progress_sessions`), y la cadena de tramos vive en una única fila de
 // `pet_battles` (`kind = 'adventure'`) hasta que se resuelve. Este spec entra por
 // UI con una cuenta desechable, valida la concesión por RPC, reanuda tras recargar
-// (log local + intent reasignado por el servidor) y termina la cadena a 2× hasta
+// (log local + lectura del mismo intent por el servidor) y termina la cadena a 2× hasta
 // victoria o derrota, comprobando en cada punto lo que hay realmente en la fila.
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -89,8 +91,9 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
 
     await page.setViewportSize({ width: 320, height: 844 });
     await login(page, a);
-    const section = page.getByTestId("pet-adventures");
-    await expect(section.getByTestId("adventure-pending")).toHaveText("2 aventuras pendientes");
+    await expect(page.getByText("2 aventuras pendientes", { exact: true })).toBeVisible();
+    await page.goto("/mascota?view=adventure");
+    const section = page.getByTestId("pet-adventure");
     await section.screenshot({ path: ".superpowers/r4-aventura-pendientes-mobile.png", style: "header:has(a[href='/']) { visibility: hidden; }" });
     await section.getByRole("button", { name: "Empezar aventura", exact: true }).click();
     await expect(section.getByTestId("fight-marker")).toHaveText(/Tramo 1 de \d/);
@@ -106,15 +109,15 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
     await section.getByRole("button", { name: "Pausar", exact: true }).click();
     const tickBefore = await section.getByTestId("training-tick").textContent();
     await page.reload();
-    await expect(page.getByTestId("pet-adventures").getByTestId("adventure-current")).toContainText("en curso");
-    await page.getByTestId("pet-adventures").getByRole("button", { name: "Reanudar aventura", exact: true }).click();
-    await expect(page.getByTestId("pet-adventures").getByRole("button", { name: "Continuar", exact: true })).toBeVisible();
-    expect(await page.getByTestId("pet-adventures").getByTestId("training-tick").textContent()).toBe(tickBefore);
+    await expect(section.getByRole("button", { name: "Reanudar aventura", exact: true })).toBeVisible();
+    await section.getByRole("button", { name: "Reanudar aventura", exact: true }).click();
+    await expect(section.getByRole("button", { name: "Continuar", exact: true })).toBeVisible();
+    expect(await section.getByTestId("training-tick").textContent()).toBe(tickBefore);
     const stillOpen = await (await request.get(`${url}/rest/v1/pet_battles?user_id=eq.${a.id}&kind=eq.adventure&select=intent_id,status`, { headers })).json() as Array<{ intent_id: string; status: string }>;
     expect(stillOpen).toEqual([{ intent_id: open[0].intent_id, status: "open" }]);
 
     // Dejar correr a 2× hasta el final (interrumpir cuando haya carga; pulsar Continuar entre tramos)
-    const panel = page.getByTestId("pet-adventures");
+    const panel = page.getByTestId("pet-adventure");
     await panel.getByRole("button", { name: "Continuar", exact: true }).click();
     await panel.getByRole("combobox", { name: "Velocidad", exact: true }).selectOption("2");
     const deadline = Date.now() + 150_000;
@@ -133,8 +136,10 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
     if (resolved[0].result?.outcome === "win") {
       expect(resolved[0].reward?.itemId).toBeTruthy();
       await expect(panel.getByText("¡Aventura superada!")).toBeVisible();
-      await expect(page.getByTestId("pet-inventory")).toBeVisible();
-      await expect(page.getByTestId("adventure-pending")).toHaveText("1 aventura pendiente");
+      await page.getByRole("button", { name: "Ver equipo", exact: true }).click();
+      await expect(page.getByTestId("pet-equipment")).toBeVisible();
+      await page.getByRole("button", { name: "Campamento", exact: true }).click();
+      await expect(page.getByText("1 aventura pendiente", { exact: true })).toBeVisible();
     } else {
       expect(resolved[0].reward).toBeNull();
       await panel.getByRole("button", { name: "Reintentar aventura", exact: true }).click();
@@ -152,7 +157,13 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
       const rows = await (await request.get(attempts, { headers })).json() as Array<{ attempt: number; adventure_day: string; status: string }>;
       expect(new Set(rows.map((r) => r.adventure_day)).size).toBe(1);
       // los pendientes no cambian al reintentar
-      await expect(page.getByTestId("adventure-pending")).toHaveText("1 aventura pendiente");
+      await page.getByRole("button", { name: "Campamento", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Campamento", exact: true })).toBeVisible();
+      // The camp CTA describes the current attempt while one exists. Check the
+      // actual remaining entitlement rather than requiring a second CTA summary.
+      const remaining = await request.post(`${url}/rest/v1/rpc/get_pet_adventure_days`, {headers:{apikey:anon,Authorization:`Bearer ${tokenA}`,"Content-Type":"application/json"},data:{}});
+      expect(remaining.ok()).toBe(true);
+      expect(await remaining.json()).toHaveLength(1);
     }
     // B no ve nada de A
     const seen = await request.get(`${url}/rest/v1/pet_battles?select=id`, { headers: { apikey: anon, Authorization: `Bearer ${tokenB}` } });

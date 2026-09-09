@@ -8,13 +8,16 @@ import { spriteBox } from "@/lib/pet/manifest";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AcornIcon, BurrowArchIcon } from "@/components/ui/icons";
 import { PetSprite } from "./pet-sprite";
+import gameStyles from "./game/pet-game.module.css";
 
-export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
+export function Burrow({ own, neighbors, total, followingCount = 0, club, game = false }: {
   own: BurrowPet | null;
   neighbors: BurrowNeighbor[];
   total: number;
   followingCount?: number;
+  game?: boolean;
   club?: { name: string; ownOwner: BurrowNeighbor | null };
 }) {
   const t = useTranslations("pet");
@@ -30,10 +33,10 @@ export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
   const current = entries.find((entry) => entry.key === selected);
 
   return (
-    <section aria-labelledby={`${id}-title`} className="flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card">
-      <h2 id={`${id}-title`} className="break-words font-serif text-lg font-semibold">{club ? t("clubBurrow.title", { club: club.name }) : t("burrow.title")}</h2>
+    <section aria-labelledby={`${id}-title`} className={game ? `flex flex-col gap-4 ${gameStyles.gameBurrow}` : "flex flex-col gap-4 rounded-card border border-border bg-surface p-5 shadow-card"}>
+      <h2 id={`${id}-title`} className="break-words font-serif text-lg font-semibold">{game ? t("game.burrowIntro") : club ? t("clubBurrow.title", { club: club.name }) : t("burrow.title")}</h2>
       {entries.length > 0 && (
-        <ul id={`${id}-pets`} role="list" className="flex flex-wrap items-end gap-x-3 gap-y-8 rounded-card border-b-4 border-border bg-surface-muted px-3 pb-3 pt-8">
+        <ul id={`${id}-pets`} role="list" className={game ? `flex flex-wrap items-end ${gameStyles.burrowScene}` : "flex flex-wrap items-end gap-x-3 gap-y-8 rounded-card border-b-4 border-border bg-surface-muted px-3 pb-3 pt-8"}>
           {entries.map(({ key, pet, owner }) => {
             const { box } = spriteBox(pet.stage, pet.petClass);
             const label = owner && key !== "own"
@@ -49,20 +52,33 @@ export function Burrow({ own, neighbors, total, followingCount = 0, club }: {
                     <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={1} label={pet.name} />
                   </span>
                 </button>
-                <span className="text-xs text-muted-foreground">{t("level", { level: pet.level })}</span>
-                <span className="h-4 text-xs text-muted-foreground">{key === "own" ? t("burrow.yours") : null}</span>
+                {game ? (
+                  // Una sola placa por mascota. Antes eran tres chips apilados de
+                  // anchos distintos («Nuez», «Nivel 10», «La tuya») y la columna
+                  // parecía una lista, no un claro con vecinos.
+                  <span data-own={key === "own" ? "true" : undefined}>
+                    {key === "own" ? <AcornIcon aria-hidden="true" className="mr-1 inline-block size-3 align-[-1px]" /> : null}
+                    {pet.name} · {t("level", { level: pet.level })}
+                    {key === "own" ? <span className="sr-only"> · {t("burrow.yours")}</span> : null}
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-xs text-muted-foreground">{t("level", { level: pet.level })}</span>
+                    <span className="h-4 text-xs text-muted-foreground">{key === "own" ? t("burrow.yours") : null}</span>
+                  </>
+                )}
               </li>
             );
           })}
         </ul>
       )}
       {club && entries.length === 0 && (
-        <EmptyState variant="panel" glyph={<span aria-hidden="true">♧</span>}
+        <EmptyState variant="panel" glyph={<BurrowArchIcon aria-hidden="true" />}
           title={t("clubBurrow.empty")}
           action={<Link href="/mascota" className={buttonVariants("secondary", "px-4")}>{t("clubBurrow.myPet")}</Link>} />
       )}
       {!club && !neighbors.length && (
-        <EmptyState variant="panel" glyph={<span aria-hidden="true">♧</span>}
+        <EmptyState variant="panel" glyph={<BurrowArchIcon aria-hidden="true" />}
           title={t(followingCount === 0 ? "burrow.emptyNoFollows" : "burrow.emptyNoPets")}
           action={followingCount === 0 ? <Link href="/buscar?modo=personas" className={buttonVariants("secondary", "px-4")}>{t("burrow.findPeople")}</Link> : undefined} />
       )}

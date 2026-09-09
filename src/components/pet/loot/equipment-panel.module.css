@@ -1,0 +1,121 @@
+/* Mochila. Los tokens los pone `.game` (pet-game.module.css): aquí no se declara
+ * ni un color ni un radio nuevo. Antes este fichero tenía su propia paleta
+ * (`--bag-gold #efcf77` frente al `#eed281` del juego) y el dorado de «objeto
+ * seleccionado» no coincidía con el dorado de «pestaña activa». */
+.panel {
+  color: var(--cream, #f4f0d8);
+  background: var(--forest-800, #0c2d24);
+  padding: clamp(.8rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--moss, #355b48);
+  border-radius: var(--r-2, 8px);
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.panel h3, .panel h4, .panel h5, .panel h6 { font-weight: 700; }
+.panel h3 { font-size: 18px; }
+.panel h4 { font-size: 16px; }
+.help, .copyDetails p { color: var(--cream-muted); font-size: 13px; line-height: 1.55; }
+.help { margin-top: .3rem; }
+
+/* Ranuras: cuadradas y con la silueta del tipo de objeto. Un rectángulo de
+ * 660×140 px con «Sin equipar» dentro no dice qué cabe ahí. */
+.slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; justify-content: start; }
+.slot {
+  border: 1px solid var(--moss);
+  border-radius: var(--r-2);
+  background: var(--forest-700);
+  padding: .8rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  gap: .3rem;
+  min-width: 0;
+}
+.slot h4 { font-size: 13px; color: var(--cream-muted); font-weight: 600; }
+.slot strong { font-size: 14px; overflow-wrap: anywhere; }
+.slotArt { position: relative; width: 96px; height: 96px; display: grid; place-items: center; border: 1px dashed var(--moss); border-radius: var(--r-2); background: #08241d; }
+.slot[data-filled="true"] .slotArt { border-style: solid; border-color: var(--wood-edge); background: var(--forest-600); }
+.slotArt img { image-rendering: pixelated; }
+.slotGhost { position: absolute; inset: 0; display: grid; place-items: center; color: var(--cream-muted); opacity: .3; }
+.slotGhost svg { width: 52px; height: 52px; }
+.icon { image-rendering: pixelated; flex-shrink: 0; width: 64px; height: 64px; object-fit: contain; }
+.potency { display: block; color: var(--gold); font-size: 13px; font-variant-numeric: tabular-nums; }
+.emptySlot { color: var(--cream-muted); font-size: 13px; }
+.remove { min-height: 44px; color: var(--cream-muted); text-decoration: underline; text-underline-offset: 4px; font-size: 13px; margin-top: auto; }
+.status { font-size: 13px; color: #c6ec9e; }
+.status:empty { display: none; }
+.status[data-error] { color: var(--danger); }
+.inventoryLayout, .inventory { display: grid; gap: 1rem; min-width: 0; align-items: start; }
+.slotHeading { font-size: 13px; color: var(--cream-muted); margin-bottom: .6rem; }
+/* Catálogo del botín que aún no tienes. Iconos atenuados, no apagados: tienen
+ * que leerse como «esto existe y todavía no es tuyo», no como deshabilitado. */
+.catalog { margin-top: .9rem; }
+.catalog ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); gap: .6rem; list-style: none; padding: 0; margin: 0; }
+.catalog li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: .6rem; align-items: start; padding: .6rem; border: 1px solid var(--moss); border-radius: var(--r-2); background: var(--forest-700); min-width: 0; }
+.catalog .icon { width: 48px; height: 48px; opacity: .55; }
+.catalog strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.catalog span { display: block; font-size: 12px; color: var(--cream-muted); }
+.catalog p { font-size: 12px; line-height: 1.5; color: var(--cream-muted); margin-top: .3rem; }
+.groups { display: flex; flex-wrap: wrap; gap: .75rem; }
+.group { flex: 1 1 110px; min-width: 0; }
+.group h6 { font-size: 13px; margin-bottom: .5rem; }
+.count { color: var(--cream-muted); font-weight: 400; }
+/* Rejilla de 64 px: la copia es un objeto, no una tarjeta con ficha. La potencia
+ * exacta vive en la comparación, no repetida bajo cada icono. */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: .5rem; list-style: none; padding: 0; margin: 0; }
+.grid li { min-width: 0; }
+.copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 92px;
+  gap: .25rem;
+  padding: .5rem .3rem;
+  border: 1px solid var(--moss);
+  border-radius: var(--r-2);
+  background: var(--forest-700);
+  cursor: pointer;
+}
+.copy[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); background: var(--forest-600); }
+.copy:hover:not(:disabled) { background: var(--forest-600); }
+/* «Equipado» como esquina cosida, no como una línea de texto que descuadra la rejilla. */
+.equipped { position: absolute; top: 0; right: 0; width: 0; height: 0; border-top: 18px solid var(--moss-light); border-left: 18px solid transparent; border-top-right-radius: var(--r-2); }
+.equipped span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.comparison { border: 1px solid var(--wood-edge); border-radius: var(--r-2); padding: 1rem; background: var(--forest-700); min-width: 0; }
+.comparison h4 { margin-bottom: .65rem; font-size: 13px; color: var(--cream-muted); }
+.copyDetails { display: flex; align-items: flex-start; gap: .65rem; }
+.copyDetails > div { min-width: 0; }
+.copyDetails strong { display: block; font-size: 16px; overflow-wrap: anywhere; }
+.copyDetails p { margin-top: .45rem; }
+.copyDetails .date { font-size: 12px; }
+.current { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--moss); }
+/* El mismo tablón de madera que «Aventurarse»: equipar es la acción de la pantalla. */
+.equip {
+  width: 100%; min-height: 48px; margin-top: 1rem; padding: .75rem;
+  background: linear-gradient(0deg, var(--wood-dark), var(--wood));
+  border: 1px solid var(--wood-edge); border-radius: var(--r-2);
+  box-shadow: inset 0 2px #dcb6714d, 0 3px #04170f;
+  color: var(--cream); font-weight: 650; font-size: 16px;
+}
+.equip:hover:not(:disabled) { filter: brightness(1.12); }
+.equip:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 1px #dcb6714d; }
+.panel button:disabled { filter: saturate(.35); cursor: default; }
+.panel button:focus-visible, .comparison:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media (min-width: 760px) {
+  .slots { grid-template-columns: repeat(2, minmax(0, 220px)); }
+  .inventoryLayout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .inventoryLayout:not(:has(.comparison)) { grid-template-columns: 1fr; }
+}
+@media (max-width: 360px) {
+  .copyDetails { flex-direction: column; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .equip:active { transform: none; }
+}

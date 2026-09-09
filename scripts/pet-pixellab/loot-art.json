@@ -1,0 +1,314 @@
+{
+  "date": "2026-09-08",
+  "generations": 16,
+  "jobs": {
+    "sharp_bookmark": {
+      "args": {
+        "description": "a single pointed copper bookmark shaped like a short blade, warm cream paper inset, red tassel loop, diagonal upright silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1123
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: cca0309a-21cb-4213-9baa-9d67f2aa3c07\njob_id: cca0309a-21cb-4213-9baa-9d67f2aa3c07\nmodel: pixen\ndescription: a single pointed copper bookmark shaped like a short blade, warm cream paper inset, red tassel loop, diagonal upright silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1123\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"cca0309a-21cb-4213-9baa-9d67f2aa3c07\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "heavy_ink_quill": {
+      "args": {
+        "description": "a single thick aubergine feather quill, heavy brass nib with a glossy dark ink droplet, diagonally upright silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1124
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 76a7f704-8c0a-44e6-8bad-0484a11816b7\njob_id: 76a7f704-8c0a-44e6-8bad-0484a11816b7\nmodel: pixen\ndescription: a single thick aubergine feather quill, heavy brass nib with a glossy dark ink droplet, diagonally upright silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1124\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"76a7f704-8c0a-44e6-8bad-0484a11816b7\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "librarian_loupe": {
+      "args": {
+        "description": "a single round brass magnifying glass, pale blue glass lens, short dark walnut handle, diagonal silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1125
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 5539a4f3-1fe3-47ac-bc3d-e323f1b6f0d4\njob_id: 5539a4f3-1fe3-47ac-bc3d-e323f1b6f0d4\nmodel: pixen\ndescription: a single round brass magnifying glass, pale blue glass lens, short dark walnut handle, diagonal silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1125\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"5539a4f3-1fe3-47ac-bc3d-e323f1b6f0d4\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "last_page_amulet": {
+      "args": {
+        "description": "a single cream folded book page charm on a short copper necklace loop, terracotta wax seal, square paper silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1126
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: c12fcf29-3f18-40ba-b3ff-5dbfa15bba8a\njob_id: c12fcf29-3f18-40ba-b3ff-5dbfa15bba8a\nmodel: pixen\ndescription: a single cream folded book page charm on a short copper necklace loop, terracotta wax seal, square paper silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1126\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"c12fcf29-3f18-40ba-b3ff-5dbfa15bba8a\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "loan_pendant": {
+      "args": {
+        "description": "a single brass library loan tag pendant with a small round clock emblem, dark walnut border, short copper chain loop, rectangular silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1127
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 3985fa31-ba5b-45a0-a520-2d871a5fd10f\njob_id: 3985fa31-ba5b-45a0-a520-2d871a5fd10f\nmodel: pixen\ndescription: a single brass library loan tag pendant with a small round clock emblem, dark walnut border, short copper chain loop, rectangular silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1127\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"3985fa31-ba5b-45a0-a520-2d871a5fd10f\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "streak_medallion": {
+      "args": {
+        "description": "a single round bronze medallion with an embossed leafy acorn and three tiny warm gold sparks, russet ribbon loop, circular silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1128
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 5aea75be-b669-4811-9993-b0f5b3c28d6f\njob_id: 5aea75be-b669-4811-9993-b0f5b3c28d6f\nmodel: pixen\ndescription: a single round bronze medallion with an embossed leafy acorn and three tiny warm gold sparks, russet ribbon loop, circular silhouette, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1128\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"5aea75be-b669-4811-9993-b0f5b3c28d6f\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "fx/damage": {
+      "args": {
+        "description": "one compact amber and copper four-point impact spark burst, bright cream center, short angular rays, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1129
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: a816b275-973a-4f89-8f6f-87ffbee11b6b\njob_id: a816b275-973a-4f89-8f6f-87ffbee11b6b\nmodel: pixen\ndescription: one compact amber and copper four-point impact spark burst, bright cream center, short angular rays, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1129\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"a816b275-973a-4f89-8f6f-87ffbee11b6b\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "fx/shield": {
+      "args": {
+        "description": "one translucent pale blue magical circular shield ring, tiny warm brass sparkles at its edge, clear hollow center, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1130
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: cf8016ac-2484-474d-85f5-1b071021b784\njob_id: cf8016ac-2484-474d-85f5-1b071021b784\nmodel: pixen\ndescription: one translucent pale blue magical circular shield ring, tiny warm brass sparkles at its edge, clear hollow center, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1130\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"cf8016ac-2484-474d-85f5-1b071021b784\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "fx/heal": {
+      "args": {
+        "description": "one cluster of three small olive green leaf-shaped magical motes surrounding a tiny warm golden plus sign, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1131
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: db998d8e-6872-4ce4-b9be-bd9892a9feaf\njob_id: db998d8e-6872-4ce4-b9be-bd9892a9feaf\nmodel: pixen\ndescription: one cluster of three small olive green leaf-shaped magical motes surrounding a tiny warm golden plus sign, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1131\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"db998d8e-6872-4ce4-b9be-bd9892a9feaf\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "fx/cooldown": {
+      "args": {
+        "description": "one small warm golden circular clock hand sweep with two short copper motion arcs, hollow center, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1132
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: d6699d9a-2130-4d64-8bcf-c4d68a3689ff\njob_id: d6699d9a-2130-4d64-8bcf-c4d68a3689ff\nmodel: pixen\ndescription: one small warm golden circular clock hand sweep with two short copper motion arcs, hollow center, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1132\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"d6699d9a-2130-4d64-8bcf-c4d68a3689ff\")"
+          }
+        ],
+        "isError": false
+      }
+    },
+    "fx/vulnerability": {
+      "args": {
+        "description": "one small mauve and warm golden magical broken shell outline, two curved halves framing a cream four-point sparkle, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object",
+        "width": 64,
+        "height": 64,
+        "no_background": true,
+        "view": "low top-down",
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "seed": 1133
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 75fda052-70a8-46c5-ae7c-069167cd06ab\njob_id: 75fda052-70a8-46c5-ae7c-069167cd06ab\nmodel: pixen\ndescription: one small mauve and warm golden magical broken shell outline, two curved halves framing a cream four-point sparkle, crisp fantasy library RPG inventory pixel art, warm muted palette, strong readable silhouette, isolated centered object, generous clear margin around the entire object\nsize: 64x64px\ntransparent: True\nseed: 1133\ncost: 1 generation\nstatus: processing (~10-40s)\n\nhint: get_image(job_id=\"75fda052-70a8-46c5-ae7c-069167cd06ab\")"
+          }
+        ],
+        "isError": false
+      }
+    }
+  },
+  "animations": {
+    "damage": {
+      "action": "small impact spark flashes, expands outward then fades away completely",
+      "frame_count": 8,
+      "seed": 2123,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: da68b740-b38f-4b05-ad5d-f7cc20f4e2e8\njob_id: da68b740-b38f-4b05-ad5d-f7cc20f4e2e8\naction: small impact spark flashes, expands outward then fades away completely\nframes: 8\nsize: 64x64px\ntransparent: True\nseed: 2123\ncost: 1 generation\nstatus: processing (~30-180s)\n\nhint: get_image(job_id=\"da68b740-b38f-4b05-ad5d-f7cc20f4e2e8\")"
+          }
+        ],
+        "isError": false
+      },
+      "frames": 9
+    },
+    "shield": {
+      "action": "circular shield ring gently expands, shines once then fades away completely",
+      "frame_count": 8,
+      "seed": 2124,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 01c6bef9-bd96-4468-a958-060919de355f\njob_id: 01c6bef9-bd96-4468-a958-060919de355f\naction: circular shield ring gently expands, shines once then fades away completely\nframes: 8\nsize: 64x64px\ntransparent: True\nseed: 2124\ncost: 1 generation\nstatus: processing (~30-180s)\n\nhint: get_image(job_id=\"01c6bef9-bd96-4468-a958-060919de355f\")"
+          }
+        ],
+        "isError": false
+      },
+      "frames": 9
+    },
+    "heal": {
+      "action": "leaf motes gently rise upward as the healing plus shines and fades away completely",
+      "frame_count": 8,
+      "seed": 2125,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 199bba01-016d-49b2-bd32-6ec96132f2ca\njob_id: 199bba01-016d-49b2-bd32-6ec96132f2ca\naction: leaf motes gently rise upward as the healing plus shines and fades away completely\nframes: 8\nsize: 64x64px\ntransparent: True\nseed: 2125\ncost: 1 generation\nstatus: processing (~30-180s)\n\nhint: get_image(job_id=\"199bba01-016d-49b2-bd32-6ec96132f2ca\")"
+          }
+        ],
+        "isError": false
+      },
+      "frames": 9
+    },
+    "cooldown": {
+      "action": "clock hand sweeps clockwise once with a short trail then fades away completely",
+      "frame_count": 8,
+      "seed": 2126,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 7cf8b2eb-6edf-421d-b7c0-b0ff40d06d56\njob_id: 7cf8b2eb-6edf-421d-b7c0-b0ff40d06d56\naction: clock hand sweeps clockwise once with a short trail then fades away completely\nframes: 8\nsize: 64x64px\ntransparent: True\nseed: 2126\ncost: 1 generation\nstatus: processing (~30-180s)\n\nhint: get_image(job_id=\"7cf8b2eb-6edf-421d-b7c0-b0ff40d06d56\")"
+          }
+        ],
+        "isError": false
+      },
+      "frames": 9
+    },
+    "vulnerability": {
+      "action": "shell halves gently spread apart as the central sparkle shines and fades away completely",
+      "frame_count": 8,
+      "seed": 2127,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "id: 5dc9e15d-d216-4fe2-9078-cd2bfc8e3120\njob_id: 5dc9e15d-d216-4fe2-9078-cd2bfc8e3120\naction: shell halves gently spread apart as the central sparkle shines and fades away completely\nframes: 8\nsize: 64x64px\ntransparent: True\nseed: 2127\ncost: 1 generation\nstatus: processing (~30-180s)\n\nhint: get_image(job_id=\"5dc9e15d-d216-4fe2-9078-cd2bfc8e3120\")"
+          }
+        ],
+        "isError": false
+      },
+      "frames": 9
+    }
+  }
+}

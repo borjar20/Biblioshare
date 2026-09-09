@@ -1,0 +1,108 @@
+{
+  "created": "2026-09-09",
+  "tool": "mcp__pixellab__create_image_pro",
+  "model": "pro",
+  "sourceDimensions": {
+    "width": 576,
+    "height": 448
+  },
+  "format": "WebP lossless, native resolution, effort 6",
+  "notes": "Independent background-only scenes; existing character sprite sheets are not modified. Native area respects PixelLab Pro limit; use image-rendering: pixelated when upscaling. Subject and flat ground composed for centered mobile crops.",
+  "assets": [
+    {
+      "file": "camp.webp",
+      "jobId": "3feb3b3d-8776-43bb-b7be-36448846803b",
+      "seed": 202609091,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, lush emerald and olive greens, deep teal shadows, golden sunbeams, warm ochre highlights, moss, tiny white flowers and mushrooms at edges. Landscape full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak centered slightly right with huge arching roots forming a cozy rounded library burrow entrance in the middle distance. Built-in small bookshelves visible inside, colorful book spines without writing, a warm glowing amber lantern hanging beside the entrance. Oak canopy and other tall forest trees frame the top and sides. The large trunk and burrow fit within the central 60 percent so a centered mobile crop retains them. LOWER THIRD is a broad flat unobstructed grassy ochre clearing, especially empty at horizontal center and 78 percent down, a quiet stage for a single live sprite. Rich detailed woodland environment, restrained detail on the flat ground, tranquil welcoming atmosphere. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "chargedGenerations": 40,
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/3feb3b3d-8776-43bb-b7be-36448846803b/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-09/scene-sources/camp.png",
+      "outputDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "bytes": 39610,
+      "postprocessing": "Remove opaque alpha; encode lossless WebP. No resampling."
+    },
+    {
+      "file": "battle.webp",
+      "jobId": "fc413067-7be3-4b65-a9ce-aeb7d045ba4d",
+      "seed": 202609092,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, lush emerald and olive greens, deep teal shadows, golden sunbeams, warm ochre highlights, moss, tiny white flowers and mushrooms at edges. Landscape full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A secluded ancient forest glade framed by massive mossy trunks along left and right, with luminous canopy and shafts of afternoon sunlight. In the far center background a small rocky waterfall and brook recede between trees, behind the clearing. LOWER 45 percent is a wide flat open grassy earthen battle ground extending continuously across the image, empty and unobstructed around x=28 percent and x=72 percent at y=78 percent, suitable for two live fighter sprites. Foreground plants restricted to the outer bottom corners. Composition readable when center cropped on mobile. Peaceful adventurous atmosphere, detailed environmental pixel art, pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "chargedGenerations": 40,
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/fc413067-7be3-4b65-a9ce-aeb7d045ba4d/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-09/scene-sources/battle.png",
+      "outputDimensions": {
+        "width": 563,
+        "height": 448
+      },
+      "bytes": 29754,
+      "postprocessing": "Crop white generator padding: left 6 px, right 7 px; remove opaque alpha; encode lossless WebP. No resampling."
+    },
+    {
+      "file": "camp-portrait.webp",
+      "chosenCandidate": "c1",
+      "tool": "mcp__pixellab__create_image_pro",
+      "model": "pro",
+      "jobId": "4acc2415-ea76-41c8-b2df-036046cf1516",
+      "seed": 202609101,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, lush emerald and olive greens, deep teal shadows, golden sunbeams, warm ochre highlights, moss, tiny white flowers and mushrooms at edges. TALL VERTICAL PORTRAIT full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak fills the upper two thirds of the frame, its huge arching roots forming a cozy rounded library burrow entrance placed EXACTLY AT THE HORIZONTAL CENTER of the image and vertically inside the MIDDLE THIRD. Built-in small bookshelves visible inside the burrow, colorful book spines without writing, a warm glowing amber lantern lit beside the entrance. Dense oak canopy with hanging leaves closes the top of the frame, tall mossy trunks frame both left and right sides. THE WHOLE LOWER THIRD is a broad flat unobstructed grassy ochre clearing, plain and empty from the left edge to the right edge, a quiet stage for a single live sprite. Rich detailed woodland environment above, restrained flat detail on the ground, tranquil welcoming atmosphere. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "sourceDimensions": {
+        "width": 288,
+        "height": 384
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/4acc2415-ea76-41c8-b2df-036046cf1516/download",
+      "chargedGenerations": 25,
+      "outputDimensions": {
+        "width": 288,
+        "height": 384
+      },
+      "bytes": 22604,
+      "postprocessing": "Remove opaque alpha; encode lossless WebP effort 6. No crop, no resampling. Verified byte-identical to the source PNG after decode.",
+      "layout": {
+        "burrowDoorCentreX": 144,
+        "burrowDoorRows": "163-230 (inside the middle third, 128-256)",
+        "flatGroundFrom": 278,
+        "singleColourGroundFrom": 290,
+        "groundColour": "#b3a056",
+        "palette": "32 colours"
+      },
+      "publishedAt": "public/pet/scenes/camp-portrait.webp"
+    },
+    {
+      "file": "gathering.webp",
+      "chosenCandidate": "c2",
+      "tool": "mcp__pixellab__create_image_pro",
+      "model": "pro",
+      "jobId": "c4259540-b3a6-4a03-9be1-1bdf0bc39394",
+      "seed": 202609104,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, lush emerald and olive greens, deep teal shadows, warm ochre highlights, moss, ferns, tiny white flowers and mushrooms at the outer edges. Landscape full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. An open circular meeting clearing in the forest at golden-hour sunset, the sky behind the treeline burning amber and rose. In the middle of the clearing, centred horizontally and placed a little below the vertical middle of the image, a crackling campfire of stacked logs with tall orange flames and glowing embers ringed by rounded stones. Around the fire, several thick sawn log stumps serve as rustic benches, drawn small and low so they do not rise above the fire. Strings of small hanging lanterns glow warm amber from the branches at the top of the frame. Dense forest and tall mossy trunks close the left and right borders. THE ENTIRE BOTTOM HALF of the image is flat trodden earth and short grass, one continuous level surface spanning edge to edge, kept plain and clear of clutter to the left and to the right of the fire so several live sprites can stand in a row. Warm inviting evening light. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "sourceDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/c4259540-b3a6-4a03-9be1-1bdf0bc39394/download",
+      "chargedGenerations": 40,
+      "outputDimensions": {
+        "width": 576,
+        "height": 432
+      },
+      "bytes": 46542,
+      "postprocessing": "Crop 16 rows of pure white generator padding off the bottom (y=432..447) - so the delivered size is 576x432, NOT the requested 576x448; remove opaque alpha; encode lossless WebP effort 6. No resampling. Verified byte-identical to the cropped source PNG after decode. Same class of crop as battle.webp, which lost 6 px left and 7 px right.",
+      "layout": {
+        "campfireCentreX": 288,
+        "campfireRows": "195-310",
+        "clearGroundBand": "320-400, edge to edge",
+        "groundColour": "#b48648",
+        "palette": "55 colours"
+      },
+      "publishedAt": "public/pet/scenes/gathering.webp"
+    }
+  ],
+  "balanceBefore": 3285,
+  "balanceAfter": 3065,
+  "actualGenerationsSpent": 80,
+  "sourceTransfer": "PixelLab MCP inline PNG payload saved locally; same image as download URL.",
+  "updated": "2026-09-09",
+  "updateNote": "PR #1166 (revision estetica): camp-portrait.webp para movil y gathering.webp para la Madriguera. Los fondos se sirven a escala entera 2x/3x, nunca con cover."
+}

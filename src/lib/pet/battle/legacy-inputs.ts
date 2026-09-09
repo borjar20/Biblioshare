@@ -1,7 +1,7 @@
 // Contrato C4: el servidor NUNCA simula un log sin pasar por aquí. Devuelve
 // copias (el objeto del cliente no entra en el motor) y un código, no un texto:
 // el código viaja al cliente y a los tests.
-import type { BattleInput, Ruleset } from "./types";
+import type { BattleInput, Ruleset } from "./versions/r4.1/types";
 
 export type InputsError =
   | "NOT_ARRAY"

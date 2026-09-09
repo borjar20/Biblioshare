@@ -215,6 +215,20 @@ skeletons son client-safe y el anuncio i18n va aparte.
   `.text` NO apunta a esos tres sino a su par de tinta (`--type-*-ink`): el color puro es de
   gráfico (3:1) y como texto se quedaba en 3,64:1 sobre su propio tinte. Ver `DESIGN.md`.
 
+### Mascota RPG (verificado el 2026-09-09)
+
+`src/app/mascota/page.tsx` lee datos de sesión bajo Suspense y entrega snapshot,
+estado compartido de aventuras y la madriguera como slot servidor a `PetGame`.
+`game-navigation.ts` valida `?view` y los destinos de retorno; `PetReturnTracker`
+recuerda la última ruta ajena al juego por usuario. El cambio de sección usa el
+historial nativo y mantiene montados los dos paneles de combate. `active=false`
+pausa; `pet:before-leave` guarda o permite advertir de un fallo de almacenamiento.
+Los checkpoints están separados por usuario y modo. `resumeAdventure` recupera
+una intención existente con autenticación, sin crear otra. El puntero de un
+resultado resuelto se retira solo cuando se muestra en un panel y pestaña visibles.
+El tema de bosque queda encapsulado en CSS modules. Sin cambios de esquema ni
+caché compartida de datos de sesión.
+
 ## 6. Verificación
 
 Vitest para lógica pura (183 ficheros de test), Playwright para flujos (83 specs).
