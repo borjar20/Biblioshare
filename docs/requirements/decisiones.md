@@ -4693,3 +4693,27 @@ barras de misión y logro daba 1,05:1 sobre su tarjeta (WCAG 1.4.11) y no se ve�
 ninguna captura, y el texto blanco de la barra de XP sobre el gradiente azul daba
 1,9:1 — ahora la cifra va fuera de la barra. Evidencia:
 `docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — El campamento cabe en la ventana (#1166)
+
+La pantalla de inicio del juego se dimensiona con la ventana, no con su contenido:
+`100svh` en el contenedor y la escena como fila elástica (`1fr`, suelo de 240 px) que
+absorbe lo que sobra. Antes scrolleaba 371 px en móvil y 20 px a 1440×900, porque el
+alto de la escena era la constante `clamp(300px, 100svh - 440px, 560px)` y ese 440 se
+quedaba corto en cuanto crecía cualquier bloque vecino. Con filas elásticas no hay
+constante que mantener.
+
+Las filas van a `1fr` y no a `minmax(0, 1fr)` a propósito. El mínimo automático de
+`1fr` impide que una fila se encoja por debajo de su contenido: en una ventana
+demasiado baja (390×667, 1024×600) el bloque de misiones no se solapa con la escena
+— desborda y scrollea su contenedor, con la cabecera y la barra de destinos quietas.
+Desplazar es peor que caber, pero recortar es peor que desplazar.
+
+**En móvil el tablero de misiones sale del campamento.** Mide 375 px: dejarlo ahí
+pone la escena en 130 px, y el tablero ya vive completo en Diario, a un toque del
+enlace que está justo al lado. En el campamento quedan el rótulo, el recuento y una
+barra por misión. En escritorio sí cabe —la columna tiene 700 px libres— y se queda
+como estaba. Las demás vistas (Personaje, Mochila, Diario, Madriguera) siguen
+scrolleando con normalidad; esta decisión es solo del campamento.
+
+Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.

@@ -189,8 +189,23 @@
 .sceneMood span { color: var(--cream-muted); }
 
 /* ── Campamento ─────────────────────────────────────────────────────────── */
-.camp { display: grid; gap: 18px; }
-.campHero { position: relative; min-width: 0; display: grid; }
+/* El campamento cabe en la ventana: es una pantalla de juego, no un documento.
+ * El alto lo fija `100svh` y la ESCENA es la fila elástica que absorbe lo que
+ * sobra; así no hay constantes cosidas a mano (antes la escena de escritorio
+ * era `clamp(300px, 100svh - 440px, 560px)`, y ese 440 se quedaba 20 px corto a
+ * 900 px de alto en cuanto crecía cualquier bloque vecino).
+ * Las filas van a `1fr`, no a `minmax(0, 1fr)`: el mínimo automático impide que
+ * una fila se encoja por debajo de su contenido, así que en una ventana muy baja
+ * el bloque de misiones no se solapa con la escena — desborda y scrollea el
+ * contenido. Desplazar es peor que caber, pero recortar es peor que desplazar. */
+/* `:has(.camp)` distingue el campamento con mascota de la eclosión, que ocupa la
+ * misma vista sin mascota y sí es un formulario largo. Si el navegador no
+ * soporta `:has`, la regla entera se cae y queda el comportamiento de antes. */
+.game[data-view="camp"]:has(.camp) { height: 100svh; }
+.game[data-view="camp"]:has(.camp) .content { display: grid; grid-template-rows: 1fr; min-height: 0; overflow: hidden auto; }
+.camp { display: grid; gap: 18px; grid-template-rows: 1fr auto; }
+.campHero { position: relative; min-width: 0; display: grid; grid-template-rows: auto 1fr auto; }
+.camp .scene { min-height: 240px; }
 .campHud { z-index: 4; margin-bottom: 10px; }
 .campActions { position: relative; z-index: 4; padding: 12px; display: grid; gap: 10px; background: var(--forest-800); border: 1px solid var(--moss); border-top: 0; border-radius: 0 0 var(--r-2) var(--r-2); }
 .campHero .scene { border-radius: var(--r-2) var(--r-2) 0 0; border-bottom: 0; }
@@ -244,6 +259,16 @@
 .textButton svg { width: 15px; height: 15px; }
 .campMissions { min-width: 0; }
 .campMissions > section, .diary section { border-radius: var(--r-2); box-shadow: none; }
+/* Resumen de misiones para móvil. El tablero entero mide 375 px: ponerlo aquí
+ * deja la escena en 130 px, y el tablero YA vive completo en Diario, a un toque
+ * del enlace que está justo al lado. Se quedan el rótulo, el recuento y una
+ * barra por misión; el desglose está donde no compite con la escena. */
+.campMissionsTitle { font-size: 18px; margin-bottom: 6px; }
+.missionMeter { display: flex; gap: 6px; }
+.missionMeter li { flex: 1; height: 8px; border: 1px solid var(--moss); border-radius: var(--r-1); background: var(--forest-600); overflow: hidden; }
+.missionMeter i { display: block; height: 100%; background: var(--moss-light); }
+.missionMeter i[data-completed="true"] { background: var(--gold); }
+.campMissions > section { display: none; }
 /* Misiones y logros son componentes compartidos con Paper: dentro del juego
  * reciben `data-variant="game"`, no un override por `data-testid`. */
 .game :global([data-variant="game"]) { background: var(--forest-800); }
@@ -330,13 +355,18 @@
   /* En escritorio vuelve la lámina apaisada: hay ancho para ella y el claro
    * queda a los lados del sprite. */
   .scene { --scene-src: url('/pet/scenes/camp.webp'); --scene-w: 576; --scene-h: 448; background-position: 50% 78%; }
-  .camp { grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 440px); gap: 24px; align-items: start; }
-  /* Las alturas se acotan por arriba: con `max(480px, 100svh - 330px)` la escena
-   * crecía tanto que empujaba el botón de aventura por debajo de la barra. */
+  /* Dos columnas de una sola fila: el héroe se estira al alto disponible (de ahí
+   * `stretch`) y su escena elástica hace el resto. La columna de misiones no se
+   * estira, pero se acota al alto de la fila y scrollea ella sola si algún día
+   * hay más de tres misiones — nunca empuja la página. */
+  .camp { grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 440px); grid-template-rows: 1fr; gap: 24px; align-items: stretch; }
   /* La placa de identidad no crece con la columna: a 1.400 px un cartel de
    * madera de mil píxeles de ancho para tres datos es puro peso muerto. */
   .campHud { max-width: 460px; }
-  .camp .scene { min-height: clamp(300px, calc(100svh - 440px), 560px); }
+  /* En escritorio sí cabe el tablero: la columna tiene 700 px de alto libre. */
+  .campMissionsTitle, .missionMeter { display: none; }
+  .campMissions { align-self: start; max-height: 100%; overflow-y: auto; }
+  .campMissions > section { display: flex; }
   .character { grid-template-columns: 1fr 1.1fr; gap: 24px; }
   .character .scene { min-height: clamp(320px, calc(100svh - 300px), 620px); }
   .burrowScene { min-height: clamp(360px, calc(100svh - 280px), 640px); padding-top: 220px; }

@@ -115,7 +115,15 @@ export function PetGame({ userId, pet, adventure, burrow, hatch }: {
               {pet.stage === "acorn" && <p className={styles.hint}>{t("acornHint")}</p>}
             </div>
           </div>
-          <aside className={styles.campMissions}><div className={styles.panelHeading}><span>{t("game.missionCount", { completed: pet.missions.filter(m => m.completed).length, total: pet.missions.length })}</span><button className={styles.textButton} onClick={() => navigate("diary")}>{t("game.viewDiary")}<ChevronRightIcon /></button></div><MissionBoard missions={pet.missions} /></aside>
+          <aside className={styles.campMissions}>
+            {/* El rótulo y el medidor solo se ven en móvil, donde el tablero
+                entero no cabe sin dejar la escena en un sello. El desglose
+                completo está en Diario, aquí al lado. */}
+            <h2 className={styles.campMissionsTitle}>{t("missions.title")}</h2>
+            <div className={styles.panelHeading}><span>{t("game.missionCount", { completed: pet.missions.filter(m => m.completed).length, total: pet.missions.length })}</span><button className={styles.textButton} onClick={() => navigate("diary")}>{t("game.viewDiary")}<ChevronRightIcon /></button></div>
+            <ul className={styles.missionMeter} aria-hidden="true">{pet.missions.map(m => <li key={m.slot}><i data-completed={m.completed ? "true" : "false"} style={{ width: `${Math.max(0, Math.min(100, Math.round(m.progress / Math.max(1, m.target) * 100)))}%` }} /></li>)}</ul>
+            <MissionBoard missions={pet.missions} />
+          </aside>
         </div>
         <div hidden={section !== "character"}><PetDetail pet={pet} equipment={gear} /></div>
         <div hidden={section !== "bag"} className={styles.bag}>{adventure ? <EquipmentPanel copies={inventory} initialLoadout={adventure.loadout} hasOpenAdventure={current?.status === "open"} suggestedCopyId={wonCopy?.copyId} onEquip={async (slot, copyId) => { const result = await equipLoot(slot, copyId); if (result.ok) router.refresh(); return result; }} /> : <p role="status">{t("adventure.unavailable")}</p>}</div>

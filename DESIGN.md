@@ -524,6 +524,18 @@ escritorio la apaisada `camp.webp` (576×448); la Madriguera tiene escena propia
 `gathering.webp` (576×432). Las sombras de contacto son elipses dentadas, no
 `drop-shadow` desenfocado.
 
+**El campamento cabe en la ventana.** Es la pantalla de inicio del juego y se
+dimensiona con `100svh`, no con su contenido: la escena es la fila elástica (`1fr`)
+que absorbe lo que sobra, con 240 px de suelo. Nada de constantes cosidas a mano —la
+anterior, `clamp(300px, 100svh - 440px, 560px)`, se quedaba 20 px corta en cuanto
+crecía un bloque vecino—. Las filas van a `1fr` y no a `minmax(0, 1fr)` a propósito:
+el mínimo automático impide que una fila colapse sobre otra, así que en una ventana
+demasiado baja el contenido desborda y scrollea su contenedor en vez de solaparse.
+Desplazar es peor que caber, pero recortar es peor que desplazar. En móvil el tablero
+de misiones no entra —mide 375 px y dejaría la escena en 130—: el campamento muestra
+rótulo, recuento y una barra por misión, y el tablero completo vive en Diario, a un
+toque del enlace que está al lado. Las demás vistas siguen scrolleando con normalidad.
+
 **Materiales.** Tres piezas de nueve cortes en `public/pet/ui/`, generadas con
 PixelLab: `frame-moss.webp` (recorte 8 px) para los paneles de contenido,
 `frame-wood.webp` (recorte 16 px) para la placa de identidad, y `plank-normal`,

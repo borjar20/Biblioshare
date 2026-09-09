@@ -33,7 +33,10 @@ y `gathering.webp` (576×432, Madriguera). **Se sirven a 2× o 3× exactos con
 `image-rendering: pixelated` produce píxeles de anchura desigual y el arte deja de
 leerse como pixel art. Los materiales de interfaz —tres marcos de nueve cortes y el
 tablón de madera en sus tres estados— viven en `public/pet/ui/` con su propia
-procedencia y sus recortes medidos. Los tokens y las reglas de forma, en `DESIGN.md`,
+procedencia y sus recortes medidos. **El campamento cabe en la ventana**: se
+dimensiona con `100svh` y la escena es la fila elástica que absorbe lo que sobra, así
+que en móvil el tablero de misiones se queda en Diario y aquí solo hay el recuento y
+una barra por misión. Los tokens y las reglas de forma, en `DESIGN.md`,
 «Excepción de la mascota».
 
 Las capturas fuente viven fuera del repositorio en

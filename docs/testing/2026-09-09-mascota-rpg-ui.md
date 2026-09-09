@@ -116,3 +116,43 @@ Las tres las introdujo esta misma pasada y se corrigieron antes de cerrar:
   es global (afecta también a `/` y `/coleccion`) y no lo introduce esta PR.
 - Sigue sin desplegarse. La evidencia es local y con la cuenta de pruebas, sin
   escribir datos: el entrenamiento es gratis y no concede recompensas.
+
+## El campamento sin scroll vertical — PR #1166
+
+Tercera pasada, sobre la misma rama y el mismo entorno (Node 22.23.1, `next dev` en
+el 3000, Supabase de desarrollo).
+
+### Medido, antes y después
+
+Desbordamiento vertical de la página en el campamento (`scrollHeight − clientHeight`):
+
+| Ventana | Antes | Después | Escena |
+|---|---|---|---|
+| 320×844 | 391 px | **0** | 340 → 303 px |
+| 390×844 | 371 px | **0** | 340 → 303 px |
+| 1440×900 | 20 px | **0** | 460 → 440 px |
+| 1920×1080 | 0 px | **0** | 560 → 620 px |
+
+A 1920 la escena *crece*: al quitar el techo de 560 px del `clamp`, la fila elástica
+se queda con el alto que sobra en lugar de dejarlo en blanco.
+
+### Comprobado
+
+- Vitest: **491 tests en 69 ficheros**, todos en verde. TypeScript sin errores.
+- Playwright: **14 aprobados** de las seis suites de mascota (`mascota`,
+  `misiones`, `madriguera`, `equipo`, `entrenamiento`, `aventuras`). El botón de
+  habilidad sigue inmóvil en combate (`deltaY: 0, deltaHeight: 0`).
+- Las cinco vistas a 320, 390, 1440 y 1920 px, en claro y oscuro: sin
+  desbordamiento **horizontal** de página y un solo `main` en las veinte
+  combinaciones. Campamento con `pageScrollY` 0 en las cuatro.
+- Degradación en ventanas bajas (390×667, 1024×600): la página sigue sin
+  scrollear; scrollea el contenedor de contenido y la escena se planta en su
+  suelo de 240 px. No hay solapamiento entre la escena y el bloque de misiones.
+
+### Límite asumido
+
+`mascota-aventuras` salió *flaky* en la tanda (falló una vez en la aserción de «1
+aventura pendiente» tras cobrar botín, aprobó al reintentar) y aprobó sola con
+`--retries=0`. La aserción depende del recuento que devuelve el servidor tras
+`router.refresh()`, no de la geometría que cambia esta pasada. Queda como sospecha
+sin confirmar, no como regresión atribuida a este cambio.
