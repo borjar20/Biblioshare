@@ -4154,12 +4154,17 @@ desde ahí). RLS activa en las dos tablas nuevas. Las cinco funciones están pre
 comprobado contra `has_function_privilege` que `authenticated` **no** puede ejecutar
 `claim_pet_acorns` y que `anon` **no** puede ejecutar `pet_acorn_state`.
 
-**Pruebas.** Matriz transaccional `supabase/tests/pet_acorns.sql` — doble recogida, compra con
-saldo justo, compra repetida, actividad borrada tras recoger — ejecutada entera en dev dentro
-de una transacción, PASS sin fallos; el rollback se confirmó después (cero filas en las dos
-tablas, cero usuarios de prueba, cero escenas puestas). 18 tests unitarios en
-`src/lib/pet/shop/` (catálogo, repositorio, servicio), 142 tests de componentes de la mascota y
-su tienda, e2e `mascota-tienda` en verde a 320 px de ancho. TypeScript limpio.
+**Pruebas.** Matriz transaccional `supabase/tests/pet_acorns.sql` — doble recogida, compra sin
+saldo, compra con saldo, compra repetida, actividad borrada tras recoger, permisos por rol —
+ejecutada entera en dev dentro de una transacción, PASS sin fallos; el rollback se confirmó
+después (cero filas en las dos tablas, cero usuarios de prueba, cero escenas puestas). La
+compra CONCURRENTE con saldo justo no cabe en una transacción SQL (el bloqueo consultivo
+`20260910` solo se nota entre conexiones distintas): esa vive en
+`e2e/mascota-tienda-concurrencia.spec.ts` (dos `buy_pet_cosmetic` por REST en paralelo, saldo
+para una sola compra), verde. 18 tests unitarios en `src/lib/pet/shop/` (catálogo, repositorio,
+servicio), 142 tests de componentes de la mascota y su tienda, e2e `mascota-tienda` en verde a
+320 px de ancho. TypeScript limpio. Condición de despliegue de `ACORN_EPOCH` (debe fijarse a la
+fecha real en que esta migración llegue a producción): `docs/testing/2026-09-10-r5-verificacion.md`.
 
 **Producción: la migración NO está aplicada.** No hay verificación contra prod porque no hay
 nada desplegado que verificar; esta sección documenta únicamente dev. No se afirma balance

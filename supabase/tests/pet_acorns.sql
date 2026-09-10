@@ -29,6 +29,31 @@ select pg_temp.assert_true(
  (select public.pet_acorn_state('20260911-5000-4000-8000-00000000000a', current_date - 1) ->> 'balance')::int = 55,
  'saldo intacto');
 
+-- Actividad borrada tras recoger: una bellota ya ingresada en el ledger no se
+-- revierte por borrar la fila que la generó (no hay FK de pet_acorn_ledger a
+-- pet_daily_missions, a propósito: el ledger es el hecho consumado, la misión
+-- es solo la fuente que lo detectó).
+with borrada as (
+ delete from public.pet_daily_missions
+ where user_id = '20260911-5000-4000-8000-00000000000a' and slot = 0
+ returning id
+)
+select pg_temp.assert_true((select count(*) from borrada) = 1, 'se borra la mision ya recogida');
+select pg_temp.assert_true(
+ exists (select 1 from public.pet_acorn_ledger
+         where user_id = '20260911-5000-4000-8000-00000000000a' and source_key like 'mission:%'),
+ 'el movimiento de la mision sigue en el ledger tras borrar la actividad');
+select pg_temp.assert_true(
+ (select public.pet_acorn_state('20260911-5000-4000-8000-00000000000a', current_date - 1) ->> 'balance')::int = 55,
+ 'borrar la actividad no revierte lo ya cobrado');
+select pg_temp.assert_true(
+ not exists (
+  select 1 from jsonb_array_elements(
+   public.pet_acorn_state('20260911-5000-4000-8000-00000000000a', current_date - 1) -> 'pending'
+  ) p where p ->> 'kind' = 'mission'
+ ),
+ 'sin fila de mision no hay pendiente de mision (ni la ya cobrada ni una nueva)');
+
 -- La época excluye lo anterior: con la época en el futuro no hay nada pendiente.
 select pg_temp.assert_true(
  jsonb_array_length(public.pet_acorn_state('20260911-5000-4000-8000-00000000000a', current_date + 1) -> 'pending') = 0,

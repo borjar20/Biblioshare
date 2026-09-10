@@ -3,8 +3,17 @@
 
 /** Solo cuentan los hechos con fecha igual o posterior a esta (spec §3.1). Sin
  * ella, la primera recogida barrería el historial entero de una cuenta veterana.
- * Vale la fecha del día en que la migración llega a producción; si el despliegue
- * se retrasa un día, el único efecto es un día más de gracia. */
+ *
+ * ATENCIÓN al aplicar la migración `20260911_pet_acorns.sql` a producción:
+ * esta constante vale el día REAL de ese despliegue, no la fecha en que se
+ * escribió este código. Nada la ata automáticamente a la fecha real (revisión
+ * final de rama R5, hallazgo 2) — si se despliega más tarde y esta fecha se
+ * deja atrás sin tocar, cada día de diferencia regala retroactivamente
+ * bellotas por actividad histórica a las cuentas veteranas, que es justo el
+ * agujero que la época existe para tapar. Antes de aplicar esa migración a
+ * producción: comprueba la fecha real de despliegue y actualiza este valor si
+ * no coincide. Condición de despliegue documentada en
+ * `docs/testing/2026-09-10-r5-verificacion.md`. */
 export const ACORN_EPOCH = "2026-09-11";
 
 export const ACORN_RATES = { day: 10, mission: 5, achievement: 20, welcome: 50 } as const;

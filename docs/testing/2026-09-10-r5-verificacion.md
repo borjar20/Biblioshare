@@ -27,11 +27,21 @@ Detalle completo de tablas, columnas, grants y funciones: `docs/requirements/dat
 
 ## Matriz SQL
 
-`supabase/tests/pet_acorns.sql` — doble recogida, compra concurrente con saldo justo,
-compra repetida y actividad borrada tras recoger — ejecutada entera en dev dentro de una
-transacción: **PASS, sin fallos**. El rollback se confirmó después: cero filas en
-`pet_acorn_ledger` y `pet_cosmetics`, cero usuarios de prueba, cero escenas puestas en
-`pet_state.camp_scene`.
+`supabase/tests/pet_acorns.sql` — doble recogida, compra sin saldo, compra con saldo,
+compra repetida, actividad borrada tras recoger y los permisos por rol — ejecutada entera
+en dev dentro de una transacción: **PASS, sin fallos** (reejecutado el 2026-09-10 tras
+añadir el caso de actividad borrada, mismo resultado). El rollback se confirmó después:
+cero filas en `pet_acorn_ledger` y `pet_cosmetics`, cero usuarios de prueba, cero escenas
+puestas en `pet_state.camp_scene`.
+
+**La compra concurrente con saldo justo NO está en este fichero.** El bloqueo consultivo
+(`pg_advisory_xact_lock(20260910, …)`) solo se nota entre CONEXIONES distintas, y una
+transacción SQL es una sola conexión — no hay forma de que esta matriz la ejercite. Esa
+prueba vive en `e2e/mascota-tienda-concurrencia.spec.ts`: dos peticiones REST reales en
+paralelo (`Promise.all`) contra `buy_pet_cosmetic`, con saldo sembrado justo para UNA
+compra y dos cosméticos del mismo precio. Verificado el 2026-09-10, 5 pasadas seguidas sin
+fallos: exactamente una compra prospera, la otra falla con `NOT_ENOUGH`, el saldo final
+queda en 0 (ni negativo ni doble descuento) y solo el cosmético ganador queda desbloqueado.
 
 ## Suite
 
@@ -40,6 +50,7 @@ transacción: **PASS, sin fallos**. El rollback se confirmó después: cero fila
 | Unitarios `src/lib/pet/shop/` | 18 tests, verde |
 | Componentes de mascota y su tienda | 142 tests, verde |
 | E2E `mascota-tienda` | verde a 320 px de ancho |
+| E2E `mascota-tienda-concurrencia` (compra concurrente con saldo justo) | verde, 5 pasadas seguidas |
 | TypeScript | limpio |
 
 ## Arte
@@ -47,6 +58,21 @@ transacción: **PASS, sin fallos**. El rollback se confirmó después: cero fila
 Cuatro escenas nuevas en `public/pet/scenes/`: `camp-creek` (280×380), `camp-autumn`,
 `camp-night`, `camp-snow` (288×384 las tres). 125 generaciones de PixelLab. Procedencia en
 `public/pet/scenes/provenance.json`.
+
+## Condición de despliegue obligatoria: `ACORN_EPOCH`
+
+`src/lib/pet/shop/catalog.ts` fija `ACORN_EPOCH = "2026-09-11"`. La regla de la spec
+(§3.1) es que esa fecha sea **el día en que la migración `20260911_pet_acorns.sql` llega
+a producción**, no la fecha en la que se escribió el código. Nada en el repo ata la
+constante a la fecha real del despliegue: es responsabilidad de quien despliega.
+
+**Antes de aplicar esa migración a producción, comprobar `ACORN_EPOCH` contra la fecha
+real de ese despliegue y corregirla si no coincide.** Si se deja la fecha vieja y el
+despliegue se retrasa, cada día de diferencia regala retroactivamente bellotas por
+actividad histórica a las cuentas veteranas — exactamente el agujero que la época existe
+para tapar. Esto no se cierra con un test (la fecha correcta depende de cuándo se
+despliegue, que no se conoce de antemano): se cierra con esta comprobación manual en el
+momento del despliegue. Ver el comentario junto a la constante en `catalog.ts`.
 
 ## Qué NO acredita esta evidencia
 
