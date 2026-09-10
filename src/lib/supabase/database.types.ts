@@ -3326,7 +3326,8 @@ export type Database = {
         Returns: {
           kind: string
           name: string
-          streak: number
+          // Nulable de verdad: case when ... then s.streak end sin else = NULL cuando no hay racha en peligro. El generador lo declara no-nulo.
+          streak: number | null
           user_id: string
         }[]
       }
@@ -3452,8 +3453,10 @@ export type Database = {
       get_burrow_pets: {
         Args: { p_limit?: number }
         Returns: {
-          avatar_url: string
-          display_name: string
+          // Nulable de verdad: salen de public.profiles.avatar_url nullable sin default ni coalesce. El generador lo declara no-nulo.
+          avatar_url: string | null
+          // Nulable de verdad: salen de public.profiles.display_name nullable sin default ni coalesce. El generador lo declara no-nulo.
+          display_name: string | null
           pet_class: string
           pet_name: string
           pet_stage: string
@@ -3465,8 +3468,10 @@ export type Database = {
       get_burrow_pets_with_level: {
         Args: { p_limit?: number }
         Returns: {
-          avatar_url: string
-          display_name: string
+          // Nulable de verdad: salen de public.profiles.avatar_url nullable sin default ni coalesce. El generador lo declara no-nulo.
+          avatar_url: string | null
+          // Nulable de verdad: salen de public.profiles.display_name nullable sin default ni coalesce. El generador lo declara no-nulo.
+          display_name: string | null
           pet_class: string
           pet_level: number
           pet_name: string
@@ -3479,8 +3484,10 @@ export type Database = {
       get_club_burrow_pets: {
         Args: { p_club_id: string }
         Returns: {
-          avatar_url: string
-          display_name: string
+          // Nulable de verdad: salen de public.profiles.avatar_url nullable sin default ni coalesce. El generador lo declara no-nulo.
+          avatar_url: string | null
+          // Nulable de verdad: salen de public.profiles.display_name nullable sin default ni coalesce. El generador lo declara no-nulo.
+          display_name: string | null
           pet_class: string
           pet_level: number
           pet_name: string
