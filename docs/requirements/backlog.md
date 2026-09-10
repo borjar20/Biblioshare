@@ -2,7 +2,8 @@
 
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
-> 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09]**
+> 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
+> actualizada el 2026-09-10]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -344,7 +345,15 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] Mascota RPG R4a: aventuras derivadas del día con actividad (ventana de siete días), cadena de tres tramos con la vida arrastrada, reintento y reanudación, botín guardado «pendiente de activar», motor r4.1 (cierra #1086, #1087 y #1093). Implementada 2026-09-07 (rama `claude/mascota-features-r4-ef8885`, PR #1127); calibración: cadena de 3 tramos (política de referencia `interrupt_ulti`, banda 50–75 % / techo `never` 3 %, #1117). Verificada en dev (migración, matriz SQL, unitarios, e2e); Aceptación jugable de R3 confirmada por el usuario el 2026-09-07 (#1106); migración `20260908_pet_adventures.sql` aplicada y verificada en prod antes del merge de #1127. Spec `docs/superpowers/specs/2026-09-06-mascota-r4a-aventuras-design.md`.
 - [ ] Mascota RPG UI (#1165): diseño de bosque aprobado e implementación local verificada el 2026-09-09; **publicada el 2026-09-09** (PR #1146 a `main`, despliegue de Vercel correcto), pendiente de aceptación de uso real. Campamento, Personaje, Diario, Madriguera y Combate —la Mochila entró en Personaje el 2026-09-09 (#1166) y `?view=bag` redirige—; regreso a Biblioshare y recuperación pausada. Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
 - [ ] Mascota RPG R4b: seis efectos en r4.2, copias de potencia fija, dos ranuras, comparación, iconos y VFX (#1123). Implementado en rama; balance, migración dev/local, concurrencia y flujo de equipo verificados. Verificación técnica completada. **Publicado el 2026-09-09** (PR #1146 a `main`): migración aplicada en producción antes que el código —válido porque los comportamientos nuevos van guardados por `ruleset_version='r4.2'`, ver `decisiones.md`—. **La aceptación jugable sigue pendiente**: se publicó sin ella, a decisión del dueño; el recorrido para darla está escrito en `docs/testing/2026-09-10-r4b-aceptacion-jugable.md`. Lint global heredado en #856. Plan `docs/superpowers/plans/2026-09-08-mascota-r4b-botin.md`; evidencia `docs/testing/2026-09-08-r4b-balance.md`. Una recompensa por aventura vinculada a actividad, sin resorteos. Tinta/desencantado aplazados en #1134.
-- [ ] Mascota RPG R5: bellotas con la tienda como primer sumidero (parte de #1017).
+- [ ] Mascota RPG R5: bellotas ganadas por día vivido, misión diaria y logro (10/5/20, bienvenida
+      50 única, época `ACORN_EPOCH` 2026-09-11), gastadas en cuatro fondos alternativos del
+      campamento (0/100/150/150/150) — cosmética, no equipo; decisión 2026-09-10 en
+      `decisiones.md`, spec `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`.
+      Esquema, arte de las cuatro escenas —cada una con lámina vertical y apaisada— e interfaz (panel del puesto en el Campamento)
+      implementados y en verde en dev (18 unitarios de `src/lib/pet/shop/`, 142 de componentes,
+      e2e `mascota-tienda`, matriz SQL con rollback confirmado). **No cierra:** migración
+      SIN aplicar en producción; sin aceptación de producto del ritmo real (hace falta una
+      semana de uso); equipo comprable queda sin hito tras el cambio de sumidero (parte de #1017).
 - [ ] Mascota RPG R6–R10: identidad de clase por tandas, Maga + Guerrera primero (R6); primera campaña por género con los jefes de reto de #1015 (R7); especializaciones fuego/hielo (R8); Aspectos y Códice (R9); cosméticos y gacha (R10, cierra #1017).
 - [x] Mascota S1: madriguera compartida (#1083) — implementación, matriz SQL local y E2E en dev verificados (2026-09-06); migración aplicada y objetos/permisos comprobados en dev y prod. Aceptada por José Ángel el 2026-09-07 tras la respuesta favorable de quienes la usan. Sección en `/mascota`, también antes de eclosionar: doce visibles contando la propia, hasta 60 vecinas y «Mostrar más» con límite explícito. Seguidos aceptados visibles por `can_view_profile`, siempre en idle, nombre, clase, etapa y dueño; sin humor ajeno ni ranking. Ampliación autorizada el 2026-09-07: nivel en lista y tarjeta (dev; migración aplicada también en producción el 2026-09-07, publicación web en PR #1128). RPC de columnas exactas sin tocar la política de `pet_state`. Vía S, independiente del combate. Contrato vigente: Parte II S1 de `docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md`; antecedente en la spec histórica de madriguera. S2 perfil/OG iniciado el 2026-09-07; S3 club implementado en desarrollo el 2026-09-07; aceptada visualmente por José Ángel el 2026-09-07; publicación pendiente (#1129).
 - [x] Mascota S2: sprite, nombre, clase y etapa en cabecera de perfil; sprite, nombre y clase en OG anónimo. Implementación y 5 E2E verificados en dev el 2026-09-07; migración y ACL verificadas también en producción. Publicación web mediante PR #1128. Contrato: `docs/superpowers/specs/2026-09-07-mascota-social-s2-design.md`.
