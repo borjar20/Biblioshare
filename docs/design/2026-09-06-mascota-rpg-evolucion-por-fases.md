@@ -553,8 +553,9 @@ montar brazos, armas, ropa, sombreros o capas como piezas: está probado y desca
 
 ## 15. Cosméticos y gacha
 
-> **Corrección del 2026-09-10.** Este párrafo asumía que la cosmética empezaba en R10, como
-> segundo sumidero tras el equipo de R5. Ya no: R5 estrena la cosmética directamente (cuatro
+> **Corrección del 2026-09-10.** Esta sección se escribió dando por hecho lo que decía §12: que
+> la cosmética llegaba en R10 como segundo sumidero, después del equipo. Esa premisa era de §12,
+> no de aquí, y ha dejado de valer. R5 estrena la cosmética directamente (cuatro
 > fondos del campamento, compra directa, sin gacha). Lo que queda para R10 es lo que sigue en
 > esta sección — apertura aleatoria, duplicados, banners, pity— sobre un catálogo que ya existe
 > y ya se vende. Ver la entrada «2026-09-10 — Las bellotas se gastan en apariencia, no en
