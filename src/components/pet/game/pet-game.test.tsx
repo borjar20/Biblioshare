@@ -161,8 +161,8 @@ it("does not request the same celebration again when changing screens", async ()
 
 it("abre el puesto sin salir del campamento y pinta el fondo comprado", () => {
   render(game("alice", pet, { balance: 0, pending: [], owned: ["creek"], scene: "creek" }));
-  // La escena elegida manda sobre la de siempre.
-  expect(screen.getByTestId("pet-scene").style.getPropertyValue("--scene-src")).toContain("camp-portrait.webp");
+  // La escena elegida manda sobre la de siempre: «creek» trae su propio fichero.
+  expect(screen.getByTestId("pet-scene").style.getPropertyValue("--scene-src")).toContain("camp-creek.webp");
   fireEvent.click(screen.getByRole("button", { name: "Ir al puesto" }));
   expect(screen.getByTestId("pet-shop")).toBeTruthy();
   // El puesto no es un destino: la barra sigue con cuatro botones.

@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ACORN_EPOCH, ACORN_RATES, CAMP_SCENES, DEFAULT_SCENE_ID, isCampSceneId, scenePrice } from "./catalog";
 
@@ -28,5 +29,18 @@ describe("catálogo de la tienda", () => {
   });
   it("fija la época en una fecha ISO", () => {
     expect(ACORN_EPOCH).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+  // Un `file` que no existe en disco no rompe nada en test ni en build: sale en
+  // producción como un rectángulo verde vacío detrás de la ardilla. Y cada
+  // escena declara su tamaño NATIVO, del que depende la escala entera del CSS.
+  it("cada escena del catálogo existe en disco", () => {
+    for (const scene of CAMP_SCENES) {
+      const stat = statSync(new URL(`../../../../public/pet/scenes/${scene.file}`, import.meta.url));
+      expect(stat.size, `${scene.id} → ${scene.file}`).toBeGreaterThan(0);
+    }
+  });
+  it("no reutiliza el mismo fichero en dos escenas", () => {
+    // Mientras faltó el arte, las cuatro de pago apuntaban a `camp-portrait.webp`.
+    expect(new Set(CAMP_SCENES.map(scene => scene.file)).size).toBe(CAMP_SCENES.length);
   });
 });

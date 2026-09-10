@@ -23,14 +23,18 @@ export interface CampScene {
 
 export const DEFAULT_SCENE_ID = "camp";
 
-// Hasta que la Task 2 genere el arte, las cuatro de pago apuntan al fichero de
-// siempre: el catálogo se ve y se compra, y nadie mira un hueco roto.
+// Las cuatro de pago son variaciones de la misma lámina del campamento (mismo
+// roble, misma puerta centrada, mismo tercio inferior despejado): al cambiar de
+// fondo se mueve la estación, no la escena. La procedencia de cada una está en
+// `public/pet/scenes/provenance.json`.
 export const CAMP_SCENES = [
   { id: "camp", price: 0, file: "camp-portrait.webp", width: 288, height: 384 },
-  { id: "creek", price: 100, file: "camp-portrait.webp", width: 288, height: 384 },
-  { id: "autumn", price: 150, file: "camp-portrait.webp", width: 288, height: 384 },
-  { id: "night", price: 150, file: "camp-portrait.webp", width: 288, height: 384 },
-  { id: "snow", price: 150, file: "camp-portrait.webp", width: 288, height: 384 },
+  // 280x380 y no 288x384: la lámina del arroyo llegó con un marco casi blanco
+  // del generador (4 px a los lados, 2 arriba y abajo) y se recorta, no se escala.
+  { id: "creek", price: 100, file: "camp-creek.webp", width: 280, height: 380 },
+  { id: "autumn", price: 150, file: "camp-autumn.webp", width: 288, height: 384 },
+  { id: "night", price: 150, file: "camp-night.webp", width: 288, height: 384 },
+  { id: "snow", price: 150, file: "camp-snow.webp", width: 288, height: 384 },
 ] as const satisfies readonly CampScene[];
 
 export type CampSceneId = (typeof CAMP_SCENES)[number]["id"];
