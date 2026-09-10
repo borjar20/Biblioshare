@@ -444,7 +444,7 @@ git commit -m "feat(pet): ledger de bellotas, cosmeticos y escena del campamento
 
 **Interfaces:**
 - Consumes: `CAMP_SCENES`, `ACORN_RATES`, `ACORN_EPOCH`, `isCampSceneId`, `scenePrice` (Task 1); las cuatro funciones SQL (Task 2).
-- Produces: `createShopService(repo)` con `state()`, `claim()`, `buy(id)`, `setScene(id)`; `shopRepository(admin, session, userId)`; acciones `claimAcorns()`, `buyCosmetic(id)`, `setCampScene(id)`; `getShopStateFor(session, userId)`; tipos `ShopState`, `ClaimResponse`, `BuyResponse`, `SceneResponse`.
+- Produces: `createShopService(repo)` con `state()`, `claim()`, `buy(id)`, `setScene(id)`; `shopRepository(admin, userId)`; acciones `claimAcorns()`, `buyCosmetic(id)`, `setCampScene(id)`; `getShopStateFor(userId)`; tipos `ShopState`, `ClaimResponse`, `BuyResponse`, `SceneResponse`.
 
 - [ ] **Step 1: Write the types**
 
@@ -605,12 +605,10 @@ Expected: PASS, 6 tests.
 ```ts
 // src/lib/pet/shop/repository.ts
 import "server-only";
-import type { createClient } from "@/lib/supabase/server";
 import type { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { ACORN_EPOCH, ACORN_RATES, type AcornKind } from "./catalog";
 import type { ClaimedEntry, ShopRepository, ShopState } from "./types";
 
-type Session = Awaited<ReturnType<typeof createClient>>;
 type Admin = ReturnType<typeof createServiceRoleClient>;
 
 function kindOf(key: string): AcornKind {
@@ -620,11 +618,11 @@ function kindOf(key: string): AcornKind {
   return "achievement";
 }
 
-/** `session` no se usa para leer el ledger: el estado sale de una sola función
- * `definer`, porque los pendientes necesitan `private.pet_lived_activity_days`
- * y PostgREST no sabe sumar el saldo. Se mantiene en la firma por simetría con
- * los demás repositorios de mascota y para futuras lecturas con RLS. */
-export function shopRepository(admin: Admin, _session: Session, userId: string): ShopRepository {
+/** Sin cliente de sesión, al contrario que los demás repositorios de mascota:
+ * TODO el estado sale de una sola función `definer`, porque los pendientes
+ * necesitan `private.pet_lived_activity_days` y PostgREST no sabe sumar el saldo.
+ * Un parámetro que no se usa es una mentira sobre lo que esto lee. */
+export function shopRepository(admin: Admin, userId: string): ShopRepository {
   async function state(): Promise<ShopState> {
     const { data, error } = await admin.rpc("pet_acorn_state", { p_user: userId, p_epoch: ACORN_EPOCH });
     if (error) throw error;
@@ -672,7 +670,7 @@ async function serviceForCaller() {
   const session = await createClient();
   const { data: { user }, error } = await session.auth.getUser();
   if (error || !user) return null;
-  return createShopService(shopRepository(createServiceRoleClient(), session, user.id));
+  return createShopService(shopRepository(createServiceRoleClient(), user.id));
 }
 
 export async function claimAcorns(): Promise<ClaimResponse> {
@@ -709,15 +707,14 @@ export async function setCampScene(cosmeticId: unknown): Promise<SceneResponse> 
 ```ts
 // src/lib/pet/shop/get-state.ts
 import "server-only";
-import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { shopRepository } from "./repository";
 import type { ShopState } from "./types";
 
-type Session = Awaited<ReturnType<typeof createClient>>;
-
-export async function getShopStateFor(session: Session, userId: string): Promise<ShopState> {
-  return shopRepository(createServiceRoleClient(), session, userId).state();
+/** Sin cliente de sesión: la autorización la hace la página, que ya resolvió
+ * quién es el usuario, y la lectura entera vive en una función `definer`. */
+export async function getShopStateFor(userId: string): Promise<ShopState> {
+  return shopRepository(createServiceRoleClient(), userId).state();
 }
 ```
 
@@ -1027,7 +1024,7 @@ En `src/app/mascota/page.tsx`, junto a la lectura de aventuras:
 
 ```tsx
   let shop: ShopState | null = null;
-  try { shop = await getShopStateFor(supabase, user.id); }
+  try { shop = await getShopStateFor(user.id); }
   catch (error) { console.error("pet game shop", error); }
   return <PetGame key={user.id} userId={user.id} pet={pet} adventure={adventure} shop={shop} burrow={burrow} />;
 ```
