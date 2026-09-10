@@ -3605,6 +3605,36 @@
         "loan_pendant": "Colgante del préstamo",
         "streak_medallion": "Medallón de la racha"
       }
+    },
+    "shop": {
+      "title": "Puesto del claro",
+      "open": "Ir al puesto",
+      "close": "Cerrar el puesto",
+      "balance": "{count, plural, one {# bellota} other {# bellotas}}",
+      "claim": "Recoger {count, plural, one {# bellota} other {# bellotas}}",
+      "claimEmpty": "Nada que recoger por ahora",
+      "claimed": "Recogidas {total, plural, one {# bellota} other {# bellotas}}",
+      "claimHelp": "Las bellotas no caducan. Recoger hoy o dentro de diez días da lo mismo.",
+      "sources": {
+        "day": "por el día {day}",
+        "mission": "por una misión",
+        "achievement": "por un logro",
+        "welcome": "de bienvenida"
+      },
+      "buy": "Comprar por {price}",
+      "missing": "Te faltan {count, plural, one {# bellota} other {# bellotas}}",
+      "use": "Poner este fondo",
+      "active": "Puesto ahora",
+      "owned": "Ya es tuyo",
+      "free": "El de siempre",
+      "scenes": {
+        "camp": "El claro de siempre",
+        "creek": "El arroyo",
+        "autumn": "El robledal en otoño",
+        "night": "La noche de luciérnagas",
+        "snow": "La primera nevada"
+      },
+      "error": "No se pudo completar. Vuelve a intentarlo."
     }
   }
 }
