@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createShopService } from "./service";
 import type { ClaimedEntry, ShopRepository, ShopState } from "./types";
 
@@ -58,5 +58,22 @@ describe("servicio de la tienda", () => {
   it("no deja estrenar lo que no se ha comprado", async () => {
     const { repo } = fakeRepo();
     expect(await createShopService(repo).setScene("snow")).toEqual({ ok: false, code: "NOT_OWNED" });
+  });
+  it("no expone errores inesperados del repositorio: salen como UNAVAILABLE", async () => {
+    const { repo } = fakeRepo({ balance: 1000 });
+    vi.spyOn(repo, "buy").mockRejectedValue(new Error('relation "pet_acorn_ledger" does not exist'));
+    const response = await createShopService(repo).buy("creek");
+    expect(response).toEqual({ ok: false, code: "UNAVAILABLE" });
+    expect(JSON.stringify(response)).not.toContain("pet_acorn_ledger");
+  });
+  it("traduce NO_PET (sin mascota) a su propio código", async () => {
+    const { repo } = fakeRepo({ owned: ["creek"] });
+    vi.spyOn(repo, "setScene").mockRejectedValue(new Error("NO_PET"));
+    expect(await createShopService(repo).setScene("creek")).toEqual({ ok: false, code: "NO_PET" });
+  });
+  it("un fallo de claim() en el repositorio se traduce en vez de propagarse", async () => {
+    const { repo } = fakeRepo();
+    vi.spyOn(repo, "claim").mockRejectedValue(new Error('relation "pet_acorn_ledger" does not exist'));
+    await expect(createShopService(repo).claim()).resolves.toEqual({ ok: false, code: "UNAVAILABLE" });
   });
 });
