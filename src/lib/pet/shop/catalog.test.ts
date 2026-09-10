@@ -1,6 +1,57 @@
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ACORN_EPOCH, ACORN_RATES, CAMP_SCENES, DEFAULT_SCENE_ID, isCampSceneId, scenePrice } from "./catalog";
+
+// No hay `sharp` ni `image-size` entre las dependencias del proyecto y esta
+// tarea no debe añadir ninguna solo para leer dos enteros de una cabecera.
+// El formato WebP expone ancho/alto en los primeros bytes del fichero, así
+// que basta un parser mínimo de la cabecera — vive aquí, en el test, porque
+// no es código de producción: solo sirve para comprobar que `catalog.ts` no
+// miente sobre el tamaño nativo del PNG/WebP que sirve de fondo.
+interface WebpDims {
+  width: number;
+  height: number;
+}
+
+function readWebpDimensions(path: URL, label: string): WebpDims {
+  const buf = readFileSync(path);
+  if (buf.length < 30 || buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WEBP") {
+    throw new Error(`${label}: no es un WebP válido (falta cabecera RIFF/WEBP)`);
+  }
+  const fourCc = buf.toString("ascii", 12, 16);
+
+  if (fourCc === "VP8L") {
+    // Lossless: byte de firma 0x2f y luego 14 bits de ancho-1 + 14 bits de
+    // alto-1 empaquetados little-endian en los 4 bytes siguientes.
+    if (buf[20] !== 0x2f) throw new Error(`${label}: cabecera VP8L sin firma 0x2f`);
+    const bits = buf[21] | (buf[22] << 8) | (buf[23] << 16) | (buf[24] << 24);
+    return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+  }
+
+  if (fourCc === "VP8X") {
+    // Extendido: ancho-1 y alto-1 en 24 bits cada uno, a partir del byte 24.
+    const width = (buf[24] | (buf[25] << 8) | (buf[26] << 16)) + 1;
+    const height = (buf[27] | (buf[28] << 8) | (buf[29] << 16)) + 1;
+    return { width, height };
+  }
+
+  if (fourCc === "VP8 ") {
+    // Con pérdida: tras la cabecera de trama (3 bytes) viene un código de
+    // inicio de 3 bytes (0x9d 0x01 0x2a) y luego ancho/alto en 14 bits cada
+    // uno, little-endian, con 2 bits altos de escala que se descartan.
+    const start = 20;
+    if (buf[start + 3] !== 0x9d || buf[start + 4] !== 0x01 || buf[start + 5] !== 0x2a) {
+      throw new Error(`${label}: cabecera VP8 sin código de inicio 0x9d012a`);
+    }
+    const width = (buf[start + 6] | (buf[start + 7] << 8)) & 0x3fff;
+    const height = (buf[start + 8] | (buf[start + 9] << 8)) & 0x3fff;
+    return { width, height };
+  }
+
+  // Cualquier otra variante (o una cabecera corrupta) debe hacer FALLAR el
+  // test con un mensaje claro, no colarse como si el tamaño fuera correcto.
+  throw new Error(`${label}: variante WebP no soportada por este parser ("${fourCc}")`);
+}
 
 describe("catálogo de la tienda", () => {
   it("tiene la escena de siempre gratis y cuatro de pago", () => {
@@ -42,5 +93,17 @@ describe("catálogo de la tienda", () => {
   it("no reutiliza el mismo fichero en dos escenas", () => {
     // Mientras faltó el arte, las cuatro de pago apuntaban a `camp-portrait.webp`.
     expect(new Set(CAMP_SCENES.map(scene => scene.file)).size).toBe(CAMP_SCENES.length);
+  });
+  // `width`/`height` no son metadatos decorativos: fijan la escala de píxel
+  // ENTERA con la que se sirve el fondo (regla estética del rediseño RPG,
+  // nada de `cover` ni reescalado). Si alguien cambia un número a mano, o
+  // sustituye el .webp por otro de otra talla, esto tiene que fallar aquí y
+  // no como un fondo borroso en producción.
+  it("las dimensiones declaradas coinciden con las reales del WebP", () => {
+    for (const scene of CAMP_SCENES) {
+      const path = new URL(`../../../../public/pet/scenes/${scene.file}`, import.meta.url);
+      const real = readWebpDimensions(path, `${scene.id} → ${scene.file}`);
+      expect(real, `${scene.id} → ${scene.file}`).toEqual({ width: scene.width, height: scene.height });
+    }
   });
 });
