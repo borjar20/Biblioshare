@@ -4901,3 +4901,46 @@ tienes.
 **Por qué no es pulsable.** Los botones de una ranura son las copias, y de eso dependen
 los e2e de `mascota-equipo`, que cuentan botones dentro de `loot-<ranura>`. Una tarjeta
 de lo que falta no es un control: no hay nada que comparar ni que equipar.
+
+## 2026-09-10 — Las bellotas se gastan en apariencia, no en poder
+
+**Qué se decide.** Las bellotas, la moneda que se gana usando Biblioshare, no tocan el
+poder de combate. R5 las lanza con un único sumidero: cuatro fondos alternativos para la
+escena del campamento, de compra directa y desbloqueo permanente. No hay equipo comprable
+con bellotas.
+
+**Contra qué contrato va.** La Parte I de
+`docs/design/2026-09-06-mascota-rpg-evolucion-por-fases.md` decía en §12: «Las bellotas
+nacen en R5 junto con la tienda (adquisición directa de equipo); los cosméticos se suman
+como segundo sumidero en R10». Se le presentó al usuario que esto contradice la hoja de
+ruta, que R10 era el sitio pactado para la cosmética y que obliga a generar arte antes de
+tener moneda que gastar. Lo eligió con eso escrito delante. §12 y §15 de la Parte I quedan
+corregidas con una nota que remite a esta entrada; la Parte II reescribe R5 con lo
+entregado.
+
+**Consecuencias que se asumen, no se esconden:**
+
+- **R5 necesita arte para existir.** El sumidero original (equipo) no lo necesitaba: el
+  equipo ya estaba dibujado por R4b. Sin las cuatro escenas de campamento, la moneda no
+  tiene dónde gastarse y R5 incumple su propia regla de que ninguna moneda existe sin
+  sumidero.
+- **R10 se queda sin su primer sumidero** y pasa a ser gacha y catálogo grande sobre una
+  cosmética que R5 ya habrá estrenado, no sobre equipo.
+- **La adquisición directa de equipo queda sin hito asignado.** No se pierde: o vuelve en
+  R9/R10, o se descarta explícitamente. Mientras no se decida, es una pregunta abierta, no
+  un olvido.
+
+**Dos reglas del repaso, para que no se pierdan:**
+
+- **Época:** solo cuentan hechos (días vividos, misiones, logros) con fecha igual o
+  posterior a `ACORN_EPOCH` (2026-09-11, constante en código). Sin esta regla, la primera
+  recogida de una cuenta veterana barrería el historial entero y compraría el catálogo de
+  una tacada, incumpliendo el criterio de salida de R5 en el minuto uno.
+- **Bienvenida fija:** 50 bellotas, una sola vez (`source_key = 'welcome'`), la mitad del
+  primer fondo, para que quien ya usaba la app no entre a la tienda con el bolsillo a
+  cero sin regalar el catálogo entero.
+
+Spec: `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md` (§3.1, §9).
+Evidencia de lo implementado: `docs/testing/2026-09-10-r5-verificacion.md`. La migración
+`supabase/migrations/20260911_pet_acorns.sql` está verificada solo en dev; no se ha
+aplicado en producción.

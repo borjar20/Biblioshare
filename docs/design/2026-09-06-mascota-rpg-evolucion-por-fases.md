@@ -1,6 +1,8 @@
 # Biblioshare — RPG de mascota: visión y hoja de ruta
 
-> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06, con enmienda social del 2026-09-07 · Parte II (hoja de ruta) viva, revisada el 2026-09-08]**
+> **[Diseño de producto · Parte I (visión) congelada el 2026-09-06, con enmienda social del
+> 2026-09-07 y corrección de sumidero de bellotas el 2026-09-10 (§12, §15) · Parte II (hoja de
+> ruta) viva, revisada el 2026-09-10]**
 >
 > Esta redacción sustituye a la inicial del mismo día (commit `e47ca3d2` de la PR #1079) tras su
 > revisión, y al alcance de la spec de combate del 2026-09-04
@@ -12,9 +14,14 @@
 >
 > **Cómo leerlo.** La Parte I dice hacia dónde va el RPG; no cambia sin una entrada en
 > `docs/requirements/decisiones.md`. La Parte II dice qué se construye a continuación y en qué
-> orden; se edita al cerrar cada hito. Solo los hitos **R1–R4 y S1** llevan criterios de salida:
-> son contrato. De R5 y S2 en adelante es dirección, no compromiso. Todos los números del documento
+> orden; se edita al cerrar cada hito. Solo los hitos **R1–R5 y S1** llevan criterios de salida:
+> son contrato, cada uno desde que tiene spec propia (R5:
+> `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`). De R6 y S2 en adelante es
+> dirección, no compromiso. Todos los números del documento
 > (precios, tiempos, cantidades, coeficientes) son ejemplos para calibrar, no balance aprobado.
+> **R5 cambia el contrato de §12 y §15** (ver §9 de su spec): el sumidero de las bellotas deja de
+> ser la adquisición de equipo y pasa a ser cosmética. R5 está implementada y verificada en dev,
+> sin migración en producción y sin aceptación del ritmo real (hace falta una semana de uso).
 >
 > **Regla de producto:** primero demostrar una sola decisión divertida; después añadir sistemas
 > solo cuando esa decisión necesite más profundidad.
@@ -453,8 +460,14 @@ Entran en R7, con los contratos R2, R3 y R7 heredados de #1081 en #1084.
 Moneda principal. Se obtiene mediante Biblioshare: actividad, misiones, logros, rachas, objetivos
 semanales, campañas, ciertos hitos RPG. No se compra con dinero real.
 
-> **Ninguna moneda existe sin su sumidero.** Las bellotas nacen en R5 junto con la tienda
-> (adquisición directa de equipo); los cosméticos se suman como segundo sumidero en R10.
+> **Ninguna moneda existe sin su sumidero.** ~~Las bellotas nacen en R5 junto con la tienda
+> (adquisición directa de equipo); los cosméticos se suman como segundo sumidero en R10.~~
+> **Ya no es así.** El usuario decidió el 2026-09-10 que las bellotas no tocan el poder: R5
+> las lanza gastándose en cosmética (fondos del campamento), no en equipo. Ver la entrada
+> «2026-09-10 — Las bellotas se gastan en apariencia, no en poder» en `decisiones.md` y §9
+> de `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`. Consecuencia: R10 se
+> queda sin su primer sumidero, y la adquisición directa de equipo queda sin hito asignado
+> (vuelve en R9/R10 o se descarta explícitamente; mientras no se decida, es pregunta abierta).
 
 Ejemplo de calibración, no balance: primera actividad válida del día 10 bellotas, misión diaria 5
 (hasta tres), objetivo semanal 25. Cuatro días activos, seis misiones y el semanal: 95 bellotas.
@@ -539,6 +552,13 @@ montar brazos, armas, ropa, sombreros o capas como piezas: está probado y desca
 ---
 
 ## 15. Cosméticos y gacha
+
+> **Corrección del 2026-09-10.** Este párrafo asumía que la cosmética empezaba en R10, como
+> segundo sumidero tras el equipo de R5. Ya no: R5 estrena la cosmética directamente (cuatro
+> fondos del campamento, compra directa, sin gacha). Lo que queda para R10 es lo que sigue en
+> esta sección — apertura aleatoria, duplicados, banners, pity— sobre un catálogo que ya existe
+> y ya se vende. Ver la entrada «2026-09-10 — Las bellotas se gastan en apariencia, no en
+> poder» en `decisiones.md`.
 
 El gacha llega solo cuando existe un juego divertido, una moneda estable, suficientes cosméticos y
 una colección con valor visible.
@@ -685,7 +705,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
   misiones y logros, avisos push).
 - **Vía S, presencia social**, en paralelo a los hitos R: no depende del combate ni del arte, y
   puede construirse antes de R1 o entre dos hitos R. S1 y S3 llevan criterios; S2 tiene su contrato específico.
-- **R1–R4, S1 y S3 llevan criterios de salida y son contrato; S2 tiene spec propia.** De R5 en adelante es dirección:
+- **R1–R5, S1 y S3 llevan criterios de salida y son contrato; S2 tiene spec propia.** De R6 en adelante es dirección:
   se concreta cuando le toca.
 - Cada hito arranca con su spec en `docs/superpowers/specs/` (brainstorming → spec → plan) y
   cierra con su entrada en `decisiones.md` y la casilla del backlog. Al cerrarlo se edita esta
@@ -706,7 +726,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
 | R4a Aventuras | cadenas de tres tramos concedidas por día con actividad, ventana de siete días, reanudación, reintento, botín guardado «pendiente de activar» — **implementada 2026-09-07; aceptación jugable confirmada; migración aplicada y verificada en prod el 2026-09-07 antes del merge de #1127** | criterios | ninguno |
 | R4b Primer botín | los seis objetos entran en el motor, dos ranuras, equipar y comparar | criterios | iconos y VFX de los objetos |
-| R5 Bellotas y tienda | moneda con su primer sumidero | dirección | — |
+| R5 Bellotas del campamento | moneda con su primer sumidero: cuatro fondos cosméticos del campamento, compra directa — **implementado y verificado en dev; sin aplicar en producción** | criterios (ver §R5) | cuatro escenas de campamento, generadas |
 | R6 Identidad de clase por tandas | Maga + Guerrera; después Bárbaro + Clérigo; después Bardo + Ranger | dirección | VFX de ulti y de clase, armas de clase |
 | R7 Primera campaña por género | una región y los jefes de reto (#1015) | dirección | una familia de enemigos y su jefe |
 | R8 Especializaciones | fuego / hielo, tres elecciones binarias | dirección | VFX |
@@ -895,11 +915,58 @@ se han comprobado con nadie jugando; el recorrido para hacerlo está en
 - Un objeto nuevo da ganas de probarlo, y ninguna build domina entre los seis.
 - Lo ganado en R4a se activa sin perder nada.
 
-## R5 — Bellotas y tienda (dirección)
+## R5 — Bellotas del campamento (contrato, implementada en dev)
 
-La moneda nace con su primer sumidero: la adquisición directa de equipo. Fuentes: actividad,
-misiones, logros, objetivo semanal. Ledger propio; compras idempotentes. Un primer cosmético de
-compra directa si hay uno listo. Parte de #1017.
+**Cambia el contrato de la Parte I §12 y §15.** El usuario decidió el 2026-09-10 que las
+bellotas no tocan el poder: el sumidero deja de ser la adquisición de equipo y pasa a ser
+cosmética. Entrada de decisión: «2026-09-10 — Las bellotas se gastan en apariencia, no en
+poder» en `decisiones.md`. Spec:
+`docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`.
+
+**Entrega:**
+
+- **Tres fuentes**, todas hechos ya guardados hoy: día con actividad cultural real
+  (`private.pet_lived_activity_days`, la misma definición que aventuras y avisos push), misión
+  diaria sellada y logro nuevo. Tarifas 10 / 5 / 20, más una bienvenida de 50 una sola vez.
+  Ninguna fuente nueva; nada de combate genera bellotas.
+- **Regla de época:** solo cuentan los hechos con fecha `>= ACORN_EPOCH` (2026-09-11), para que
+  la primera recogida no barra el historial entero de una cuenta veterana.
+- **Un sumidero:** cuatro fondos alternativos para la escena del campamento, de compra directa
+  (0 / 100 / 150 / 150 / 150 con el original gratis incluido). Comprar es desbloqueo permanente;
+  cambiar de fondo es gratis y reversible.
+- **Recogida manual** en un puesto dentro del Campamento (no un quinto destino), con desglose de
+  lo que generó cada bellota. Las bellotas no caducan: recoger tras varios días da lo mismo que
+  recoger a diario.
+- **Esquema:** `pet_acorn_ledger` (idempotencia por `unique (user_id, source_key)`),
+  `pet_cosmetics`, columna `camp_scene` en `pet_state`, y cinco funciones —
+  `private.pet_acorn_pending`, `public.pet_acorn_state`, `public.claim_pet_acorns`,
+  `public.buy_pet_cosmetic`, `public.set_pet_camp_scene` — todas `service_role`. Migración
+  `supabase/migrations/20260911_pet_acorns.sql`, bloqueo consultivo `20260910`. Detalle completo
+  en `docs/requirements/data-model.md` §8bis.9.
+- **Arte:** cuatro escenas nuevas en `public/pet/scenes/` (`camp-creek`, `camp-autumn`,
+  `camp-night`, `camp-snow`), 125 generaciones de PixelLab, procedencia en
+  `public/pet/scenes/provenance.json`.
+
+**Criterios de salida (§7 de la spec):**
+
+- Usar Biblioshare con normalidad lleva al primer fondo en torno a una semana, sin falsear
+  registros ni partir sesiones.
+- Recoger tras varios días da exactamente lo mismo que recoger a diario; nadie vuelve por
+  obligación, ninguna bellota se pierde por no entrar.
+- El saldo no se descuadra: dos dispositivos, doble toque, reintento de red y actividad editada
+  después no duplican ni pierden bellotas, y no dejan saldo negativo.
+- Estrenar un fondo se nota, y volver al anterior es gratis.
+- Ningún fondo del catálogo deja ilegible el texto del campamento.
+
+**Estado, 2026-09-10.** Esquema, servicio, interfaz y arte implementados y verificados en dev:
+matriz SQL `supabase/tests/pet_acorns.sql` en verde con rollback confirmado, 18 unitarios de
+`src/lib/pet/shop/`, 142 de componentes de mascota y su tienda, e2e `mascota-tienda` en verde a
+320 px, TypeScript limpio. Evidencia completa:
+`docs/testing/2026-09-10-r5-verificacion.md`. **Lo que NO cierra:** la migración sigue **sin
+aplicar en producción**; los criterios de salida de arriba son de producto y necesitan una
+semana de uso real, que esta evidencia no acredita; **R10 se queda sin su primer sumidero** y
+la **adquisición directa de equipo queda sin hito asignado** (vuelve en R9/R10 o se descarta
+explícitamente — mientras no se decida, es pregunta abierta, no un olvido). Parte de #1017.
 
 ## R6 — Identidad de clase por tandas (dirección)
 
@@ -1022,7 +1089,7 @@ o que la clase afín da ventaja no compensable. Regla de migración: nadie baja 
 | Gacha sin propósito: colección antes de apego | gacha en R10, después del juego |
 | Cliente manipulable | el servidor re-simula; nada local cuenta |
 | Arte imposible de mantener | iconos y VFX; skins completas curadas; arte después de los criterios |
-| Moneda sin sumidero | las bellotas nacen con la tienda (R5) |
+| Moneda sin sumidero | las bellotas nacen con su sumidero en R5 (fondos cosméticos del campamento, no equipo — ver §9 de su spec) |
 | Fase de contratos que no acaba | R1 es la spec de R2, no un hito propio |
 | Decisión degenerada: un enemigo con un solo anuncio | dos anuncios contrarios desde R2 |
 | Seis mecánicas de entrada a medida | tres primitivas para intervenir, dos familias de ulti, un widget |
@@ -1035,7 +1102,7 @@ o que la clase afín da ventaja no compensable. Regla de migración: nadie baja 
 | #1084 | contratos de los jefes de reto heredados de #1081 (raid, edición del reto, ventana e importación): se cierran en la spec de R7 |
 | #1082 | seguimiento y validación del prototipo |
 | #1015 | jefes de reto, en R7 |
-| #1017 | cosméticos y economía: R5 en parte, R10 lo cierra |
+| #1017 | cosméticos y economía: R5 entrega moneda y primer catálogo cosmético (fondos del campamento); R10 añade gacha sobre ese mismo catálogo, ya no sobre equipo |
 | #1016 | PvP: fuera del roadmap activo, posterior a R10 |
 | #1057 | paseo de la compañera: independiente de este roadmap |
 | #1083 | madriguera compartida: S1 de la vía S, en paralelo a R |

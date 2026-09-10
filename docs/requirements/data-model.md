@@ -17,7 +17,7 @@
 > con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
 > referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b desplegado ese mismo día]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b desplegado ese mismo día; bellotas y fondos del campamento R5 (§8bis.9, migración `20260911_pet_acorns.sql`) verificadas SOLO en dev el 2026-09-10, sin aplicar en producción]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -4097,6 +4097,74 @@ siete tests de composición, bootstrap vacío de 243 etapas con contratos SQL y 
 concurrencia real por PostgREST (equipar/iniciar y doble resolución), aislamiento de cuentas
 y flujo de equipo/entrenamiento/replay contra build de producción local. Ver evidencia en
 `docs/testing/2026-09-08-r4b-verificacion.md`. Producción permanece con R4a.
+
+### 8bis.9. Bellotas y fondos del campamento — R5
+
+**[Canónico · verificado en dev el 2026-09-10 · NO aplicada en producción]**
+
+Spec `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`. Migración
+`supabase/migrations/20260911_pet_acorns.sql`. Reserva la clave de bloqueo consultivo
+`20260910` (`20260908` es de aventuras y equipo, no se reutiliza).
+
+`public.pet_acorn_ledger`: una fila por movimiento, ingreso o gasto. `id` uuid PK, `user_id`
+(FK `auth.users` cascade), `source_key` text, `amount` integer (positivo o negativo),
+`created_at`. **`unique (user_id, source_key)` es donde vive la idempotencia**: recoger dos
+veces o comprar dos veces choca contra la restricción, no contra una comprobación en código
+que se pueda olvidar. El saldo es `sum(amount)`; no hay columna de saldo que pueda
+descuadrarse respecto a sus movimientos. RLS activa; `revoke all` a `public, anon,
+authenticated`; política de SELECT solo para el dueño (`auth.uid() = user_id`); `service_role`
+con acceso completo.
+
+`public.pet_cosmetics`: `user_id`, `cosmetic_id`, `acquired_at`, PK compuesta `(user_id,
+cosmetic_id)` — la misma restricción hace la compra idempotente sin lógica adicional. RLS
+activa, mismo patrón de grants y política que el ledger.
+
+`pet_state` gana la columna `camp_scene` (text, nullable; `null` = la escena de siempre). El
+fondo activo es una decisión, así que vive en `pet_state` y no en `pet_cosmetics`. Grant
+`select (camp_scene)` para `authenticated`; **sin** grant de UPDATE — la escena se lee desde
+el cliente y solo la escribe `set_pet_camp_scene` (`service_role`).
+
+**Cinco funciones**, todas `security definer`, `search_path = ''`:
+
+- `private.pet_acorn_pending(p_user, p_epoch)` — sin comprobación de identidad, solo la llaman
+  las dos siguientes. Devuelve, de las tres fuentes más la bienvenida, lo que aún no tiene fila
+  en el ledger y cuya fecha es `>= p_epoch`.
+- `public.pet_acorn_state(p_user, p_epoch)` — devuelve saldo, pendiente, cosméticos poseídos y
+  escena activa en un jsonb. `revoke all` a `public, anon, authenticated`; `execute` solo para
+  `service_role`.
+- `public.claim_pet_acorns(p_user, p_epoch, p_rates)` — bajo `pg_advisory_xact_lock(20260910,
+  hashtext(p_user::text))`. Inserta lo pendiente con `on conflict (user_id, source_key) do
+  nothing` y devuelve lo insertado, que es el desglose. Las tarifas llegan resueltas desde el
+  código (`p_rates` jsonb, `ACORN_RATES` en `src/lib/pet/shop/catalog.ts`); no hay una segunda
+  copia en SQL. `revoke all`; `execute` solo `service_role`.
+- `public.buy_pet_cosmetic(p_user, p_cosmetic, p_price)` — mismo bloqueo. Si el cosmético ya
+  estaba comprado devuelve `{bought:false, owned:true}` sin cobrar; si no, relee el saldo,
+  comprueba `p_price` (llega resuelto desde el código, como `p_reward_order` en
+  `resolve_pet_adventure`) y en la misma transacción inserta el desbloqueo y la fila negativa
+  del ledger. `revoke all`; `execute` solo `service_role`.
+- `public.set_pet_camp_scene(p_user, p_scene)` — exige que `p_scene` esté en `pet_cosmetics`
+  del usuario, o `null` para la escena de siempre, y actualiza `pet_state.camp_scene`.
+  `revoke all`; `execute` solo `service_role`.
+
+**Superficie 6 de DRIFT-CHECK, contra dev (prod: nada que comparar, ver abajo).** `pet_state`
+pasa de 9 a **10 columnas**. Grants de `authenticated` por columna: INSERT **7 sin cambio**,
+UPDATE **6 sin cambio**, SELECT 9 → **10** — la columna nueva (`camp_scene`) entra en SELECT y
+no en UPDATE, exactamente la asimetría que pide el diseño (se lee en cliente, no se escribe
+desde ahí). RLS activa en las dos tablas nuevas. Las cinco funciones están presentes;
+comprobado contra `has_function_privilege` que `authenticated` **no** puede ejecutar
+`claim_pet_acorns` y que `anon` **no** puede ejecutar `pet_acorn_state`.
+
+**Pruebas.** Matriz transaccional `supabase/tests/pet_acorns.sql` — doble recogida, compra con
+saldo justo, compra repetida, actividad borrada tras recoger — ejecutada entera en dev dentro
+de una transacción, PASS sin fallos; el rollback se confirmó después (cero filas en las dos
+tablas, cero usuarios de prueba, cero escenas puestas). 18 tests unitarios en
+`src/lib/pet/shop/` (catálogo, repositorio, servicio), 142 tests de componentes de la mascota y
+su tienda, e2e `mascota-tienda` en verde a 320 px de ancho. TypeScript limpio.
+
+**Producción: la migración NO está aplicada.** No hay verificación contra prod porque no hay
+nada desplegado que verificar; esta sección documenta únicamente dev. No se afirma balance
+aprobado ni ritmo real de producto — ver `docs/testing/2026-09-10-r5-verificacion.md` y su
+sección de qué NO acredita esta evidencia.
 
 ## 9. Seguridad
 
