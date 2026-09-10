@@ -944,8 +944,9 @@ poder» en `decisiones.md`. Spec:
   `public.buy_pet_cosmetic`, `public.set_pet_camp_scene` — todas `service_role`. Migración
   `supabase/migrations/20260911_pet_acorns.sql`, bloqueo consultivo `20260910`. Detalle completo
   en `docs/requirements/data-model.md` §8bis.9.
-- **Arte:** cuatro escenas nuevas en `public/pet/scenes/` (`camp-creek`, `camp-autumn`,
-  `camp-night`, `camp-snow`), 125 generaciones de PixelLab, procedencia en
+- **Arte:** cuatro escenas nuevas, **ocho ficheros**: cada una con su lámina vertical (móvil) y su
+  apaisada (desde 900 px), porque el campamento sirve dos según el ancho y con una sola el
+  escritorio empeoraba al comprar. 325 generaciones de PixelLab, procedencia en
   `public/pet/scenes/provenance.json`.
 
 **Criterios de salida (§7 de la spec):**

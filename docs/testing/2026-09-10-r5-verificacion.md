@@ -55,9 +55,23 @@ queda en 0 (ni negativo ni doble descuento) y solo el cosmético ganador queda d
 
 ## Arte
 
-Cuatro escenas nuevas en `public/pet/scenes/`: `camp-creek` (280×380), `camp-autumn`,
-`camp-night`, `camp-snow` (288×384 las tres). 125 generaciones de PixelLab. Procedencia en
+**Cuatro escenas, ocho ficheros.** El campamento sirve dos láminas por escena: la vertical en
+móvil y la apaisada a partir de 900 px, y hay que dar las dos o comprar un fondo empeora el
+escritorio (la vertical se quedaba estrecha, con el color de fondo a los lados).
+
+- Verticales: `camp-creek` (280×380), `camp-autumn`, `camp-night`, `camp-snow` (288×384 las tres).
+- Apaisadas: `camp-creek-wide`, `camp-autumn-wide`, `camp-night-wide`, `camp-snow-wide`
+  (576×448 las cuatro).
+
+**325 generaciones** de PixelLab en total (125 las verticales a 25 cada una, 200 las apaisadas a 40:
+el modelo cobra más a 576×448), con dos láminas descartadas y documentadas. Procedencia completa en
 `public/pet/scenes/provenance.json`.
+
+**Comprobado en navegador a 1440×900** con una cuenta desechable y el fondo `creek` puesto: sirve
+`camp-creek-wide.webp` a 1728×1344, el mismo tamaño que la lámina de siempre, y llena la caja igual.
+El estilo en línea del componente ya no declara `--scene-src` —lo haría ganar sobre la media query,
+que es lo que causaba el fallo—, sino las dos parejas de variables, y el CSS elige según el ancho.
+Un test contra el componente real fija que no vuelva a declararla.
 
 ## Condición de despliegue obligatoria: `ACORN_EPOCH`
 

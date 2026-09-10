@@ -349,7 +349,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
       50 única, época `ACORN_EPOCH` 2026-09-11), gastadas en cuatro fondos alternativos del
       campamento (0/100/150/150/150) — cosmética, no equipo; decisión 2026-09-10 en
       `decisiones.md`, spec `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`.
-      Esquema, arte de las cuatro escenas e interfaz (panel del puesto en el Campamento)
+      Esquema, arte de las cuatro escenas —cada una con lámina vertical y apaisada— e interfaz (panel del puesto en el Campamento)
       implementados y en verde en dev (18 unitarios de `src/lib/pet/shop/`, 142 de componentes,
       e2e `mascota-tienda`, matriz SQL con rollback confirmado). **No cierra:** migración
       SIN aplicar en producción; sin aceptación de producto del ritmo real (hace falta una
