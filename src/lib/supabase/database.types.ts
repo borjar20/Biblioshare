@@ -1913,6 +1913,30 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_acorn_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          source_key: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          source_key: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          source_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pet_battles: {
         Row: {
           adventure_day: string | null
@@ -1976,29 +2000,23 @@ export type Database = {
         }
         Relationships: []
       }
-      pet_loadout: {
+      pet_cosmetics: {
         Row: {
+          acquired_at: string
+          cosmetic_id: string
           user_id: string
-          weapon_battle_id: string | null
-          amulet_battle_id: string | null
-          updated_at: string
         }
         Insert: {
+          acquired_at?: string
+          cosmetic_id: string
           user_id: string
-          weapon_battle_id?: string | null
-          amulet_battle_id?: string | null
-          updated_at?: string
         }
         Update: {
+          acquired_at?: string
+          cosmetic_id?: string
           user_id?: string
-          weapon_battle_id?: string | null
-          amulet_battle_id?: string | null
-          updated_at?: string
         }
-        Relationships: [
-          { foreignKeyName: "pet_loadout_weapon_battle_id_fkey"; columns: ["weapon_battle_id"]; isOneToOne: false; referencedRelation: "pet_battles"; referencedColumns: ["id"] },
-          { foreignKeyName: "pet_loadout_amulet_battle_id_fkey"; columns: ["amulet_battle_id"]; isOneToOne: false; referencedRelation: "pet_battles"; referencedColumns: ["id"] },
-        ]
+        Relationships: []
       }
       pet_daily_missions: {
         Row: {
@@ -2045,6 +2063,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_loadout: {
+        Row: {
+          amulet_battle_id: string | null
+          updated_at: string
+          user_id: string
+          weapon_battle_id: string | null
+        }
+        Insert: {
+          amulet_battle_id?: string | null
+          updated_at?: string
+          user_id: string
+          weapon_battle_id?: string | null
+        }
+        Update: {
+          amulet_battle_id?: string | null
+          updated_at?: string
+          user_id?: string
+          weapon_battle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_loadout_amulet_battle_id_fkey"
+            columns: ["amulet_battle_id"]
+            isOneToOne: false
+            referencedRelation: "pet_battles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_loadout_weapon_battle_id_fkey"
+            columns: ["weapon_battle_id"]
+            isOneToOne: false
+            referencedRelation: "pet_battles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_nudges: {
         Row: {
           created_at: string
@@ -2074,6 +2128,7 @@ export type Database = {
       }
       pet_state: {
         Row: {
+          camp_scene: string | null
           class: string
           companion_hidden: boolean
           created_at: string
@@ -2085,6 +2140,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          camp_scene?: string | null
           class: string
           companion_hidden?: boolean
           created_at?: string
@@ -2096,6 +2152,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          camp_scene?: string | null
           class?: string
           companion_hidden?: boolean
           created_at?: string
@@ -3142,20 +3199,34 @@ export type Database = {
       }
     }
     Functions: {
-      archive_register_movie: {
-        Args: { p_data: Json; p_job: string; p_ordinal: number; p_tmdb: number }
-        Returns: string
-      }
-      archive_error: {
-        Args: { p_code: string; p_job: string; p_ordinal: number }
+      activate_club_activity: {
+        Args: { p_activity_id: string }
         Returns: undefined
       }
-      archive_review_row: {
-        Args: { p_job: string; p_ordinal: number }
-        Returns: Json
+      activity_window: {
+        Args: { p_activity_id: string }
+        Returns: {
+          window_end: string
+          window_start: string
+        }[]
       }
-      archive_review_job: { Args: { p_job: string }; Returns: Json }
-      archive_summary: { Args: { p_job: string }; Returns: Json }
+      approve_club_join_request: {
+        Args: { p_club_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      archive_apply: {
+        Args: { p_job: string; p_movie: string; p_ordinal: number }
+        Returns: string
+      }
+      archive_club_activity: {
+        Args: { p_activity_id: string }
+        Returns: undefined
+      }
+      archive_confirm: {
+        Args: { p_announce: boolean; p_job: string; p_public: boolean }
+        Returns: undefined
+      }
+      archive_create: { Args: { p_analysis: Json }; Returns: string }
       archive_decide: {
         Args: {
           p_decision: string
@@ -3165,16 +3236,15 @@ export type Database = {
         }
         Returns: Json
       }
-      archive_apply: {
-        Args: { p_job: string; p_movie: string; p_ordinal: number }
-        Returns: string
-      }
-      archive_confirm: {
-        Args: { p_announce: boolean; p_job: string; p_public: boolean }
+      archive_error: {
+        Args: { p_code: string; p_job: string; p_ordinal: number }
         Returns: undefined
       }
-      archive_create: { Args: { p_analysis: Json }; Returns: string }
       archive_finish: { Args: { p_job: string }; Returns: undefined }
+      archive_register_movie: {
+        Args: { p_data: Json; p_job: string; p_ordinal: number; p_tmdb: number }
+        Returns: string
+      }
       archive_resolve: {
         Args: {
           p_decision: string
@@ -3195,29 +3265,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      archive_review_job: { Args: { p_job: string }; Returns: Json }
+      archive_review_row: {
+        Args: { p_job: string; p_ordinal: number }
+        Returns: Json
+      }
+      archive_summary: { Args: { p_job: string }; Returns: Json }
       archive_undo: { Args: { p_job: string }; Returns: number }
-      consume_request_quota: {
-        Args: { p_operation: string; p_cost?: number }
-        Returns: boolean
-      }
-      activate_club_activity: {
-        Args: { p_activity_id: string }
-        Returns: undefined
-      }
-      activity_window: {
-        Args: { p_activity_id: string }
-        Returns: {
-          window_end: string
-          window_start: string
-        }[]
-      }
-      approve_club_join_request: {
-        Args: { p_club_id: string; p_user_id: string }
-        Returns: undefined
-      }
-      archive_club_activity: {
-        Args: { p_activity_id: string }
-        Returns: undefined
+      buy_pet_cosmetic: {
+        Args: { p_cosmetic: string; p_price: number; p_user: string }
+        Returns: Json
       }
       can_view_interaction_target: {
         Args: { p_interaction_target_id: string }
@@ -3248,12 +3305,28 @@ export type Database = {
           user_id: string
         }[]
       }
+      claim_pet_acorns: {
+        Args: { p_epoch: string; p_rates: Json; p_user: string }
+        Returns: {
+          amount: number
+          created_at: string
+          id: string
+          source_key: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pet_acorn_ledger"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_pet_nudges: {
         Args: { p_day?: string }
         Returns: {
           kind: string
           name: string
-          streak: number | null
+          streak: number
           user_id: string
         }[]
       }
@@ -3273,6 +3346,10 @@ export type Database = {
       confirm_checkpoint: {
         Args: { p_checkpoint_id: string }
         Returns: undefined
+      }
+      consume_request_quota: {
+        Args: { p_cost?: number; p_operation: string }
+        Returns: boolean
       }
       create_club: {
         Args: {
@@ -3372,6 +3449,47 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_burrow_pets: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          pet_class: string
+          pet_name: string
+          pet_stage: string
+          total: number
+          user_id: string
+          username: string
+        }[]
+      }
+      get_burrow_pets_with_level: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          pet_class: string
+          pet_level: number
+          pet_name: string
+          pet_stage: string
+          total: number
+          user_id: string
+          username: string
+        }[]
+      }
+      get_club_burrow_pets: {
+        Args: { p_club_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          pet_class: string
+          pet_level: number
+          pet_name: string
+          pet_stage: string
+          total: number
+          user_id: string
+          username: string
+        }[]
+      }
       get_club_round_state: {
         Args: { p_club_id: string }
         Returns: {
@@ -3387,51 +3505,6 @@ export type Database = {
         }[]
       }
       get_companion_state: { Args: { p_tz?: string }; Returns: Json }
-      get_burrow_pets: {
-        Args: { p_limit?: number }
-        Returns: {
-          user_id: string
-          username: string
-          display_name: string | null
-          avatar_url: string | null
-          pet_name: string
-          pet_class: string
-          pet_stage: string
-          total: number
-        }[]
-      }
-      get_burrow_pets_with_level: {
-        Args: { p_limit?: number }
-        Returns: {
-          user_id: string
-          username: string
-          display_name: string | null
-          avatar_url: string | null
-          pet_name: string
-          pet_class: string
-          pet_stage: string
-          pet_level: number
-          total: number
-        }[]
-      }
-      get_profile_pet: {
-        Args: { p_user_id: string }
-        Returns: { pet_name: string; pet_class: string; pet_stage: string }[]
-      }
-      get_club_burrow_pets: {
-        Args: { p_club_id: string }
-        Returns: {
-          user_id: string
-          username: string
-          display_name: string | null
-          avatar_url: string | null
-          pet_name: string
-          pet_class: string
-          pet_stage: string
-          pet_level: number
-          total: number
-        }[]
-      }
       get_list_challenge_progress: {
         Args: { p_activity_id: string }
         Returns: {
@@ -3445,6 +3518,14 @@ export type Database = {
         Args: never
         Returns: {
           day: string
+        }[]
+      }
+      get_profile_pet: {
+        Args: { p_user_id: string }
+        Returns: {
+          pet_class: string
+          pet_name: string
+          pet_stage: string
         }[]
       }
       get_widget_snapshot: { Args: never; Returns: Json }
@@ -3549,6 +3630,10 @@ export type Database = {
         Args: { p_club_id: string }
         Returns: undefined
       }
+      pet_acorn_state: {
+        Args: { p_epoch: string; p_user: string }
+        Returns: Json
+      }
       pin_comment: {
         Args: { p_comment_id: string; p_pinned: boolean }
         Returns: undefined
@@ -3578,19 +3663,6 @@ export type Database = {
         Args: { p_external_id: string; p_item_type: string }
         Returns: string
       }
-      register_verified_book_edition: {
-        Args: {
-          p_book_id: string
-          p_created_by: string
-          p_isbn: string
-          p_label?: string
-          p_publisher?: string
-          p_year?: number
-          p_pages?: number
-          p_cover_url?: string
-        }
-        Returns: string
-      }
       register_catalog_item_by_volume: {
         Args: { p_volume_id: string }
         Returns: string
@@ -3611,6 +3683,19 @@ export type Database = {
           p_publisher?: string
           p_title: string
           p_total_pages?: number
+          p_year?: number
+        }
+        Returns: string
+      }
+      register_verified_book_edition: {
+        Args: {
+          p_book_id: string
+          p_cover_url?: string
+          p_created_by: string
+          p_isbn: string
+          p_label?: string
+          p_pages?: number
+          p_publisher?: string
           p_year?: number
         }
         Returns: string
@@ -3745,6 +3830,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_pet_camp_scene: {
+        Args: { p_scene: string | null; p_user: string }
+        Returns: string
+      }
+      set_pet_equipment: {
+        Args: { p_copy: string | null; p_slot: string; p_user: string }
+        Returns: {
+          amulet_battle_id: string | null
+          updated_at: string
+          user_id: string
+          weapon_battle_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pet_loadout"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       spawn_linked_activity: {
         Args: {
           p_from_item_id?: string
@@ -3755,20 +3859,47 @@ export type Database = {
         }
         Returns: string
       }
-      set_pet_equipment: {
-        Args: { p_user: string; p_slot: string; p_copy: string | null }
-        Returns: Database["public"]["Tables"]["pet_loadout"]["Row"][]
-        SetofOptions: { from: "*"; to: "pet_loadout"; isOneToOne: false; isSetofReturn: true }
-      }
-      start_pet_training: {
-        Args: { p_user: string; p_intent: string; p_seed: string; p_enemy: string; p_ruleset_version: string; p_content_hash: string; p_snapshot: Json }
-        Returns: Database["public"]["Tables"]["pet_battles"]["Row"][]
-        SetofOptions: { from: "*"; to: "pet_battles"; isOneToOne: false; isSetofReturn: true }
-      }
       start_pet_adventure: {
         Args: {
           p_content_hash: string
           p_enemies: string
+          p_intent: string
+          p_ruleset_version: string
+          p_seed: string
+          p_snapshot: Json
+          p_user: string
+        }
+        Returns: {
+          adventure_day: string | null
+          attempt: number | null
+          content_hash: string
+          created_at: string
+          digest: string | null
+          enemy_id: string
+          id: string
+          inputs: Json | null
+          intent_id: string
+          kind: string
+          resolved_at: string | null
+          result: Json | null
+          reward: Json | null
+          ruleset_version: string
+          seed: string
+          snapshot: Json
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pet_battles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      start_pet_training: {
+        Args: {
+          p_content_hash: string
+          p_enemy: string
           p_intent: string
           p_ruleset_version: string
           p_seed: string

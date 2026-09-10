@@ -1257,3 +1257,8 @@ commit;
 begin;
 \ir migrations/20260908151906_letterboxd_recovery.sql
 commit;
+
+-- 20260911_pet_acorns
+begin;
+\ir migrations/20260911_pet_acorns.sql
+commit;
