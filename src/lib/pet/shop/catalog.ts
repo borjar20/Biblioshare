@@ -19,15 +19,29 @@ export const ACORN_EPOCH = "2026-09-11";
 export const ACORN_RATES = { day: 10, mission: 5, achievement: 20, welcome: 50 } as const;
 export type AcornKind = keyof typeof ACORN_RATES;
 
+/** Lámina de una escena: el fichero y su tamaño NATIVO. Cada una trae el suyo:
+ * el generador a veces devuelve relleno que se recorta, así que fingir un alto
+ * común rompe la escala entera. */
+export interface CampSheet {
+  /** Fichero en `public/pet/scenes/`. */
+  file: string;
+  width: number;
+  height: number;
+}
+
 export interface CampScene {
   id: string;
   price: number;
-  /** Fichero en `public/pet/scenes/`. */
+  /** Fichero en `public/pet/scenes/`. Lámina VERTICAL, la de móvil. */
   file: string;
-  /** Tamaño NATIVO del WebP. Cada escena trae el suyo: el generador devuelve
-   * relleno que se recorta, así que fingir un alto común rompe la escala entera. */
+  /** Tamaño NATIVO del WebP vertical. */
   width: number;
   height: number;
+  /** Lámina APAISADA, la que se sirve a partir de 900 px de ancho. El campamento
+   * usa dos láminas distintas, no una escalada: sin ésta, en escritorio una
+   * escena comprada se ve como una tira estrecha con el color de fondo a los
+   * lados (que es justo lo que pasaba antes de generarlas). */
+  wide: CampSheet;
 }
 
 export const DEFAULT_SCENE_ID = "camp";
@@ -37,13 +51,50 @@ export const DEFAULT_SCENE_ID = "camp";
 // fondo se mueve la estación, no la escena. La procedencia de cada una está en
 // `public/pet/scenes/provenance.json`.
 export const CAMP_SCENES = [
-  { id: "camp", price: 0, file: "camp-portrait.webp", width: 288, height: 384 },
-  // 280x380 y no 288x384: la lámina del arroyo llegó con un marco casi blanco
-  // del generador (4 px a los lados, 2 arriba y abajo) y se recorta, no se escala.
-  { id: "creek", price: 100, file: "camp-creek.webp", width: 280, height: 380 },
-  { id: "autumn", price: 150, file: "camp-autumn.webp", width: 288, height: 384 },
-  { id: "night", price: 150, file: "camp-night.webp", width: 288, height: 384 },
-  { id: "snow", price: 150, file: "camp-snow.webp", width: 288, height: 384 },
+  {
+    id: "camp",
+    price: 0,
+    file: "camp-portrait.webp",
+    width: 288,
+    height: 384,
+    // La apaisada de la escena de siempre ya existía desde el rediseño.
+    wide: { file: "camp.webp", width: 576, height: 448 },
+  },
+  {
+    id: "creek",
+    price: 100,
+    // 280x380 y no 288x384: la lámina VERTICAL del arroyo llegó con un marco casi
+    // blanco del generador (4 px a los lados, 2 arriba y abajo) y se recorta, no
+    // se escala. La apaisada llegó limpia, de ahí la talla distinta.
+    file: "camp-creek.webp",
+    width: 280,
+    height: 380,
+    wide: { file: "camp-creek-wide.webp", width: 576, height: 448 },
+  },
+  {
+    id: "autumn",
+    price: 150,
+    file: "camp-autumn.webp",
+    width: 288,
+    height: 384,
+    wide: { file: "camp-autumn-wide.webp", width: 576, height: 448 },
+  },
+  {
+    id: "night",
+    price: 150,
+    file: "camp-night.webp",
+    width: 288,
+    height: 384,
+    wide: { file: "camp-night-wide.webp", width: 576, height: 448 },
+  },
+  {
+    id: "snow",
+    price: 150,
+    file: "camp-snow.webp",
+    width: 288,
+    height: 384,
+    wide: { file: "camp-snow-wide.webp", width: 576, height: 448 },
+  },
 ] as const satisfies readonly CampScene[];
 
 export type CampSceneId = (typeof CAMP_SCENES)[number]["id"];

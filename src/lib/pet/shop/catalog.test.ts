@@ -53,6 +53,22 @@ function readWebpDimensions(path: URL, label: string): WebpDims {
   throw new Error(`${label}: variante WebP no soportada por este parser ("${fourCc}")`);
 }
 
+// Cada escena sirve DOS láminas: la vertical en móvil y la apaisada a partir de
+// 900 px. Las dos son ficheros distintos con tamaños distintos, así que todo lo
+// que se comprueba de una hay que comprobarlo de la otra: una apaisada que
+// falte o que mienta sobre su talla sale igual de rota en escritorio que una
+// vertical rota en móvil, y hasta ahora el test solo miraba la vertical.
+function laminasDe(scene: (typeof CAMP_SCENES)[number]) {
+  return [
+    { etiqueta: `${scene.id} vertical`, file: scene.file, width: scene.width, height: scene.height },
+    { etiqueta: `${scene.id} apaisada`, file: scene.wide.file, width: scene.wide.width, height: scene.wide.height },
+  ];
+}
+
+function todasLasLaminas() {
+  return CAMP_SCENES.flatMap(laminasDe);
+}
+
 describe("catálogo de la tienda", () => {
   it("tiene la escena de siempre gratis y cuatro de pago", () => {
     expect(CAMP_SCENES[0].id).toBe(DEFAULT_SCENE_ID);
@@ -84,15 +100,27 @@ describe("catálogo de la tienda", () => {
   // Un `file` que no existe en disco no rompe nada en test ni en build: sale en
   // producción como un rectángulo verde vacío detrás de la ardilla. Y cada
   // escena declara su tamaño NATIVO, del que depende la escala entera del CSS.
-  it("cada escena del catálogo existe en disco", () => {
-    for (const scene of CAMP_SCENES) {
-      const stat = statSync(new URL(`../../../../public/pet/scenes/${scene.file}`, import.meta.url));
-      expect(stat.size, `${scene.id} → ${scene.file}`).toBeGreaterThan(0);
+  it("las dos láminas de cada escena existen en disco", () => {
+    for (const lamina of todasLasLaminas()) {
+      const stat = statSync(new URL(`../../../../public/pet/scenes/${lamina.file}`, import.meta.url));
+      expect(stat.size, `${lamina.etiqueta} → ${lamina.file}`).toBeGreaterThan(0);
     }
   });
-  it("no reutiliza el mismo fichero en dos escenas", () => {
-    // Mientras faltó el arte, las cuatro de pago apuntaban a `camp-portrait.webp`.
-    expect(new Set(CAMP_SCENES.map(scene => scene.file)).size).toBe(CAMP_SCENES.length);
+  it("no reutiliza el mismo fichero en dos láminas", () => {
+    // Mientras faltó el arte, las cuatro de pago apuntaban a `camp-portrait.webp`
+    // en vertical y a `camp.webp` en apaisado: se compraba una escena y salía la
+    // de siempre. Ni un fichero repetido entre las diez láminas.
+    const files = todasLasLaminas().map(lamina => lamina.file);
+    expect(new Set(files).size).toBe(files.length);
+  });
+  it("cada escena declara su apaisada, y es apaisada de verdad", () => {
+    for (const scene of CAMP_SCENES) {
+      expect(scene.wide.file, scene.id).toMatch(/\.webp$/);
+      // Si el ancho no supera al alto, alguien ha copiado la vertical en el
+      // campo `wide` y el fondo de escritorio vuelve a ser una tira estrecha.
+      expect(scene.wide.width, `${scene.id} apaisada`).toBeGreaterThan(scene.wide.height);
+      expect(scene.wide.width, `${scene.id} apaisada`).toBeGreaterThan(scene.width);
+    }
   });
   // `width`/`height` no son metadatos decorativos: fijan la escala de píxel
   // ENTERA con la que se sirve el fondo (regla estética del rediseño RPG,
@@ -100,10 +128,10 @@ describe("catálogo de la tienda", () => {
   // sustituye el .webp por otro de otra talla, esto tiene que fallar aquí y
   // no como un fondo borroso en producción.
   it("las dimensiones declaradas coinciden con las reales del WebP", () => {
-    for (const scene of CAMP_SCENES) {
-      const path = new URL(`../../../../public/pet/scenes/${scene.file}`, import.meta.url);
-      const real = readWebpDimensions(path, `${scene.id} → ${scene.file}`);
-      expect(real, `${scene.id} → ${scene.file}`).toEqual({ width: scene.width, height: scene.height });
+    for (const lamina of todasLasLaminas()) {
+      const path = new URL(`../../../../public/pet/scenes/${lamina.file}`, import.meta.url);
+      const real = readWebpDimensions(path, `${lamina.etiqueta} → ${lamina.file}`);
+      expect(real, `${lamina.etiqueta} → ${lamina.file}`).toEqual({ width: lamina.width, height: lamina.height });
     }
   });
 });

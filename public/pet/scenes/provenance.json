@@ -237,12 +237,151 @@
         "localPath": ".superpowers/brainstorm/2026-09-10-r5/scene-sources/rechazada-snow-seed202609108.png",
         "reason": "Pintó una figura gigante con capa y botas ocupando el tercio inferior entero, pese al «no people, no characters» del prompt. Se rehizo con «Deserted winter landscape», «one unbroken sheet of fresh untouched snow» y «The snow directly in front of the burrow doorway is smooth and undisturbed»: describir el suelo vacío en positivo, y no sólo negar la figura, es lo que lo arregló."
       }
+    },
+    {
+      "file": "camp-creek-wide.webp",
+      "sceneId": "creek",
+      "idea": "El arroyo (lámina apaisada)",
+      "basedOn": "camp.webp (composición apaisada) + camp-creek.webp (tema)",
+      "pairOf": "camp-creek.webp",
+      "tool": "mcp__pixellab__create_image_pro",
+      "model": "pro",
+      "jobId": "774dcef2-f9b0-4f2c-813a-857c446287eb",
+      "seed": 202609105,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, clear water blues and cool teals, lush emerald and olive greens, deep teal shadows, wet rounded grey pebbles, damp ferns, moss, tiny white flowers at edges. WIDE LANDSCAPE full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak stands at the horizontal centre of the frame with huge arching roots forming a cozy rounded library burrow entrance in the middle distance; the whole trunk and the burrow doorway fit inside the CENTRAL 60 PERCENT of the width. Built-in small bookshelves visible inside the burrow, colorful book spines without writing, a warm glowing amber lantern lit beside the entrance. Oak canopy and other tall forest trees frame the top and both sides. A shallow creek of clear running water crosses the whole frame horizontally from the left edge to the right edge IN FRONT OF THE BASE OF THE OAK, immediately ABOVE the lower third, its bed of smooth rounded pebbles visible through the bright water, wet mossy stones and damp ferns along its far bank. THE WHOLE LOWER THIRD, below the creek, is a broad flat unobstructed grassy ochre bank, one continuous level surface, plain and empty from the left edge of the image to the right edge, especially clear at horizontal centre and 78 percent down, a quiet stage for a single live sprite. Rich detailed woodland environment above, restrained flat detail on the ground, fresh tranquil atmosphere. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "sourceDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/774dcef2-f9b0-4f2c-813a-857c446287eb/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-10-r5/scene-sources/camp-creek-wide.png",
+      "chargedGenerations": 40,
+      "outputDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "bytes": 41812,
+      "postprocessing": "Sin relleno que recortar: la lamina llega limpia a 576x448. OJO al recortar estas apaisadas: el detector de marco NO puede ser «fila uniforme» a secas, porque el tercio inferior es suelo plano a propósito y varias filas enteras son de un solo color (la ribera ocre del arroyo, la nieve lisa); un detector así se comió 75 y 110 filas de suelo bueno en la primera pasada. Solo se recorta una banda de borde uniforme y CASI BLANCA (min canal >= 240, como el (251,252,250) de la vertical del arroyo) y de 32 px como mucho. Quita el alfa opaco; codifica WebP sin pérdida con esfuerzo 6. Sin recorte, sin reescalado. Verificado idéntico byte a byte al PNG tras decodificar.",
+      "layout": {
+        "creekRows": "aprox. 300-358, de borde a borde, justo por encima del suelo despejado",
+        "flatGroundFrom": 358,
+        "singleColourGroundFrom": 373,
+        "groundColour": "#b7a849",
+        "palette": "54 colores",
+        "nota": "El tercio inferior baja a 7 colores en la banda donde se pinta la ardilla: 8,07:1 contra su contorno negro y 6,59:1 contra el panel de texto #08261e."
+      },
+      "publishedAt": "public/pet/scenes/camp-creek-wide.webp"
+    },
+    {
+      "file": "camp-autumn-wide.webp",
+      "sceneId": "autumn",
+      "idea": "El robledal en otoño (lámina apaisada)",
+      "basedOn": "camp.webp (composición apaisada) + camp-autumn.webp (tema)",
+      "pairOf": "camp-autumn.webp",
+      "tool": "mcp__pixellab__create_image_pro",
+      "model": "pro",
+      "jobId": "6c9b1851-1949-4437-abfd-5bfa49dc5a07",
+      "seed": 202609106,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, ochre, copper, russet and deep red autumn foliage, warm brown bark, muted olive undergrowth, low golden late-afternoon light, long warm shadows, mushrooms at edges. WIDE LANDSCAPE full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak stands at the horizontal centre of the frame with huge arching roots forming a cozy rounded library burrow entrance in the middle distance; the whole trunk and the burrow doorway fit inside the CENTRAL 60 PERCENT of the width. Built-in small bookshelves visible inside the burrow, colorful book spines without writing, a warm glowing amber lantern lit beside the entrance. Oak canopy closes the top of the frame and tall mossy trunks frame both left and right sides. The oak and the whole surrounding oak wood are in full autumn colour, the canopy a mass of ochre, copper and red leaves, a few loose leaves drifting through the air among the branches, the low sun turning everything golden. THE WHOLE LOWER THIRD is a broad flat unobstructed clearing of packed ochre earth and short grass thinly dusted with fallen leaves, drawn as flat restrained speckled texture with no piles and no clutter, one continuous level surface plain and even from the left edge of the image to the right edge, especially clear at horizontal centre and 78 percent down, a quiet stage for a single live sprite. Rich detailed woodland environment above, restrained flat detail on the ground, warm nostalgic atmosphere. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "sourceDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/6c9b1851-1949-4437-abfd-5bfa49dc5a07/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-10-r5/scene-sources/camp-autumn-wide.png",
+      "chargedGenerations": 40,
+      "outputDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "bytes": 44228,
+      "postprocessing": "Sin relleno que recortar: la lamina llega limpia a 576x448. OJO al recortar estas apaisadas: el detector de marco NO puede ser «fila uniforme» a secas, porque el tercio inferior es suelo plano a propósito y varias filas enteras son de un solo color (la ribera ocre del arroyo, la nieve lisa); un detector así se comió 75 y 110 filas de suelo bueno en la primera pasada. Solo se recorta una banda de borde uniforme y CASI BLANCA (min canal >= 240, como el (251,252,250) de la vertical del arroyo) y de 32 px como mucho. Quita el alfa opaco; codifica WebP sin pérdida con esfuerzo 6. Sin recorte, sin reescalado. Verificado idéntico byte a byte al PNG tras decodificar.",
+      "layout": {
+        "flatGroundFrom": 370,
+        "groundColour": "#dba042",
+        "palette": "32 colores",
+        "nota": "La hojarasca vuelve a ser textura moteada plana, como en la vertical: el suelo se lee como una sola superficie. 8,10:1 contra el contorno de la ardilla y 6,62:1 contra el panel de texto."
+      },
+      "publishedAt": "public/pet/scenes/camp-autumn-wide.webp"
+    },
+    {
+      "file": "camp-night-wide.webp",
+      "sceneId": "night",
+      "idea": "La noche de luciérnagas (lámina apaisada)",
+      "basedOn": "camp.webp (composición apaisada) + camp-night.webp (tema)",
+      "pairOf": "camp-night.webp",
+      "tool": "mcp__pixellab__create_image_pro",
+      "model": "pro",
+      "jobId": "4a862fce-72e0-4534-8b8e-2ab6a65609bc",
+      "seed": 202609107,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, deep midnight blue and indigo night palette, cool teal shadows, silver moonlight rim light on the leaves, one warm amber glow at the burrow. WIDE LANDSCAPE full-bleed composition, side-on slightly elevated camera, layered forest depth. Background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak stands at the horizontal centre of the frame with huge arching roots forming a cozy rounded library burrow entrance in the middle distance; the whole trunk and the burrow doorway fit inside the CENTRAL 60 PERCENT of the width. Built-in small bookshelves visible inside the burrow, colorful book spines without writing, a warm glowing amber lantern lit beside the entrance, burning bright and pooling golden light over the roots around the doorway, the brightest point of the picture. Oak canopy closes the top of the frame and tall mossy trunks frame both left and right sides. It is a still summer night: the whole wood is bathed in deep blue moonlight, and scattered fireflies glow as small warm yellow-green points among the branches and between the trunks. THE WHOLE LOWER THIRD is a broad flat unobstructed clearing of grass in an even MID-TONE dusty blue-grey, clearly lighter than the dark trees above it, evenly moonlit with no deep shadow and no black, one continuous level surface plain and empty from the left edge of the image to the right edge, especially clear at horizontal centre and 78 percent down, a quiet stage for a single live sprite. Rich detailed woodland environment above, restrained flat detail on the ground, calm magical atmosphere. Pure scenery, no people, no animals, no characters, no interface, no text, no frames.",
+      "sourceDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/4a862fce-72e0-4534-8b8e-2ab6a65609bc/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-10-r5/scene-sources/camp-night-wide.png",
+      "chargedGenerations": 40,
+      "outputDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "bytes": 35418,
+      "postprocessing": "Sin relleno que recortar: la lamina llega limpia a 576x448. OJO al recortar estas apaisadas: el detector de marco NO puede ser «fila uniforme» a secas, porque el tercio inferior es suelo plano a propósito y varias filas enteras son de un solo color (la ribera ocre del arroyo, la nieve lisa); un detector así se comió 75 y 110 filas de suelo bueno en la primera pasada. Solo se recorta una banda de borde uniforme y CASI BLANCA (min canal >= 240, como el (251,252,250) de la vertical del arroyo) y de 32 px como mucho. Quita el alfa opaco; codifica WebP sin pérdida con esfuerzo 6. Sin recorte, sin reescalado. Verificado idéntico byte a byte al PNG tras decodificar.",
+      "layout": {
+        "flatGroundFrom": 323,
+        "groundColour": "#57768d",
+        "palette": "29 colores",
+        "nota": "Sigue siendo la escena con menos contraste, igual que su vertical: el suelo (#57768d, casi el mismo #5c7788 de la vertical) da 3,64:1 contra el contorno negro de la ardilla —por encima del 3:1 exigible a un gráfico— pero 2,97:1 contra el panel de texto #08261e, un pelo POR DEBAJO de 3:1 (la vertical daba 3,41:1). Se acepta y se registra como issue: aclarar el suelo lo arregla en el papel pero convierte la escena en la nevada, ver la lámina descartada."
+      },
+      "publishedAt": "public/pet/scenes/camp-night-wide.webp",
+      "rejected": {
+        "jobId": "f5717c80-6a89-4968-ba7c-70c5a48cc6be",
+        "seed": 202609110,
+        "chargedGenerations": 40,
+        "localPath": ".superpowers/brainstorm/2026-09-10-r5/scene-sources/rechazada-night-wide-seed202609110.png",
+        "prompt": "Igual que la publicada salvo el suelo: «THE WHOLE LOWER THIRD is a broad flat unobstructed clearing of grass drawn in PALE LUMINOUS SILVER-BLUE, a light frosty blue-grey as bright as pale stone in full moonlight, far lighter than the dark trees above it and clearly the brightest large surface in the picture, evenly lit with no deep shadow, no navy and no black».",
+        "reason": "Se pidió para subir el contraste del panel por encima de 3:1 y lo consiguió (11,14:1), pero al precio de la escena: el suelo salió #c5dbea, prácticamente el mismo #c6d8f4 de camp-snow-wide.webp, así que dejaba de leerse como noche de verano y se confundía con la nevada. La regla «tiene que reconocerse como la misma escena que su vertical» pesa más que medio punto de contraste en un panel que ya trae su propio fondo opaco."
+      }
+    },
+    {
+      "file": "camp-snow-wide.webp",
+      "sceneId": "snow",
+      "idea": "La primera nevada (lámina apaisada)",
+      "basedOn": "camp.webp (composición apaisada) + camp-snow.webp (tema)",
+      "pairOf": "camp-snow.webp",
+      "tool": "mcp__pixellab__create_image_pro",
+      "model": "pro",
+      "jobId": "11eb3fdc-091b-440f-a398-c1a64ab563d9",
+      "seed": 202609109,
+      "prompt": "Detailed premium pixel art environmental background for a cozy woodland fantasy RPG, 16-bit hand-placed crisp pixel clusters, cool blue-white fresh snow, pale periwinkle shadows, frosted grey-brown bark, dark evergreen accents, pale winter daylight. WIDE LANDSCAPE full-bleed composition, side-on slightly elevated camera, layered forest depth. Deserted winter landscape, background scenery only: uninhabited environment, all surfaces clear of writing, empty clear ground reserved for live game sprites. A monumental ancient oak stands at the horizontal centre of the frame with huge arching roots forming a cozy rounded library burrow entrance in the middle distance; the whole trunk and the burrow doorway fit inside the CENTRAL 60 PERCENT of the width. Built-in small bookshelves visible inside the burrow, colorful book spines without writing, a warm glowing amber lantern lit beside the entrance. Oak canopy closes the top of the frame and tall snow-laden trunks frame both left and right sides. The first snowfall has settled over the wood: thick fresh snow caps every branch, the canopy, the roof of the burrow and the arching roots, a few slow snowflakes drift in the still air, and the whole picture is drawn in a cold blue winter palette. THE WHOLE LOWER THIRD is one unbroken sheet of fresh untouched snow, a single smooth unmarked flat surface reaching without interruption from the left edge of the image to the right edge, in a soft blue-white tone with gentle periwinkle shading, never pure white and never glaring, completely bare and even, especially clear at horizontal centre and 78 percent down, a quiet empty stage for a single live sprite. The snow directly in front of the burrow doorway is smooth and undisturbed. Rich detailed woodland environment above, restrained flat detail on the ground, hushed peaceful atmosphere. Pure scenery, no people, no animals, no characters, no figures, no clothing, no interface, no text, no frames.",
+      "sourceDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/11eb3fdc-091b-440f-a398-c1a64ab563d9/download",
+      "sourceLocalPath": ".superpowers/brainstorm/2026-09-10-r5/scene-sources/camp-snow-wide.png",
+      "chargedGenerations": 40,
+      "outputDimensions": {
+        "width": 576,
+        "height": 448
+      },
+      "bytes": 37524,
+      "postprocessing": "Sin relleno que recortar: la lamina llega limpia a 576x448. OJO al recortar estas apaisadas: el detector de marco NO puede ser «fila uniforme» a secas, porque el tercio inferior es suelo plano a propósito y varias filas enteras son de un solo color (la ribera ocre del arroyo, la nieve lisa); un detector así se comió 75 y 110 filas de suelo bueno en la primera pasada. Solo se recorta una banda de borde uniforme y CASI BLANCA (min canal >= 240, como el (251,252,250) de la vertical del arroyo) y de 32 px como mucho. Quita el alfa opaco; codifica WebP sin pérdida con esfuerzo 6. Sin recorte, sin reescalado. Verificado idéntico byte a byte al PNG tras decodificar.",
+      "layout": {
+        "flatGroundFrom": 298,
+        "singleColourGroundFrom": 338,
+        "groundColour": "#c6d8f4",
+        "palette": "31 colores",
+        "nota": "Se reutilizó el prompt de la vertical publicada, con «Deserted winter landscape» y el suelo descrito EN POSITIVO («one unbroken sheet of fresh untouched snow»): salió a la primera, sin la figura humanoide que arruinó el primer intento de la vertical. Otra vez la de mejor contraste, 13,50:1 contra la ardilla."
+      },
+      "publishedAt": "public/pet/scenes/camp-snow-wide.webp"
     }
   ],
-  "balanceBefore": 3065,
-  "balanceAfter": 2940,
-  "actualGenerationsSpent": 125,
+  "balanceBefore": 2940,
+  "balanceAfter": 2740,
+  "actualGenerationsSpent": 200,
   "sourceTransfer": "PixelLab MCP inline PNG payload saved locally; same image as download URL.",
   "updated": "2026-09-10",
-  "updateNote": "R5 Task 6: cuatro fondos alternativos del campamento que se compran con bellotas (camp-creek, camp-autumn, camp-night, camp-snow). Son variaciones de camp-portrait.webp —mismo roble, misma puerta centrada en el tercio medio, mismo tercio inferior despejado—, no escenas nuevas: al cambiar de fondo se mueve la estación, no el sitio. El saldo de arriba es el de ESTA tanda: 5 llamadas a create_image_pro (4 publicadas + 1 nevada descartada) a 25 generaciones cada una. El MCP anuncia 40 al encolar, pero cobra 25 a 288x384; el historial anterior (3285 -> 3065, 80 generaciones) está en git."
+  "updateNote": "R5 Tarea 6b: las cuatro láminas APAISADAS (576x448) de las escenas comprables — camp-creek-wide, camp-autumn-wide, camp-night-wide y camp-snow-wide. El campamento sirve dos láminas distintas, la vertical 288x384 en móvil y la apaisada a partir de 900 px; la tanda anterior solo generó las verticales, así que en escritorio un fondo comprado salía como una tira estrecha con el color de fondo a los lados. Cada apaisada = composición de camp.webp (cámara lateral algo elevada, roble y madriguera dentro del 60% central, tercio inferior plano de borde a borde) + tema de su vertical, reutilizando la misma semilla que ella. El saldo de arriba es el de ESTA tanda: 5 llamadas a create_image_pro (4 publicadas + 1 nocturna descartada) a 40 generaciones cada una — a 576x448 el MCP cobra las 40 que anuncia, no las 25 que cobraba a 288x384. El historial anterior (3285 -> 3065 -> 2940) está en git."
 }
