@@ -26,14 +26,19 @@ vi.mock("../mission-board", () => ({ MissionBoard: () => <div>Missions</div> }))
 vi.mock("../achievement-grid", () => ({ AchievementGrid: () => <div>Achievements</div> }));
 vi.mock("../pet-detail", () => ({ PetDetail: () => <div>Character</div> }));
 // La escena se mockea a bajo nivel, no a fuera: pinta las mismas variables CSS
-// que el componente real para que un test pueda comprobar qué fondo llegó.
+// que el componente real (las dos parejas, retrato y apaisada; nunca
+// `--scene-src` directo) para que un test pueda comprobar qué fondo llegó.
+type MockCampSheet = { file: string; width: number; height: number };
 vi.mock("./pet-hud", () => ({
   PetHud: () => <div>HUD</div>,
-  PetScene: ({ scene }: { scene?: { file: string; width: number; height: number } | null }) =>
+  PetScene: ({ scene }: { scene?: (MockCampSheet & { wide: MockCampSheet }) | null }) =>
     <div data-testid="pet-scene" style={scene ? {
-      "--scene-src": `url('/pet/scenes/${scene.file}')`,
-      "--scene-w": String(scene.width),
-      "--scene-h": String(scene.height),
+      "--scene-portrait-src": `url('/pet/scenes/${scene.file}')`,
+      "--scene-portrait-w": String(scene.width),
+      "--scene-portrait-h": String(scene.height),
+      "--scene-wide-src": `url('/pet/scenes/${scene.wide.file}')`,
+      "--scene-wide-w": String(scene.wide.width),
+      "--scene-wide-h": String(scene.wide.height),
     } as CSSProperties : undefined}>Scene</div>,
 }));
 
@@ -159,10 +164,13 @@ it("does not request the same celebration again when changing screens", async ()
   expect(checkCelebrations).toHaveBeenCalledOnce();
 });
 
-it("abre el puesto sin salir del campamento y pinta el fondo comprado", () => {
+it("abre el puesto sin salir del campamento y pinta el fondo comprado (retrato y apaisado)", () => {
   render(game("alice", pet, { balance: 0, pending: [], owned: ["creek"], scene: "creek" }));
-  // La escena elegida manda sobre la de siempre: «creek» trae su propio fichero.
-  expect(screen.getByTestId("pet-scene").style.getPropertyValue("--scene-src")).toContain("camp-creek.webp");
+  // La escena elegida manda sobre la de siempre: «creek» trae su propio fichero,
+  // vertical Y apaisado — el CSS es quien decide cuál pintar según el ancho.
+  const sceneStyle = screen.getByTestId("pet-scene").style;
+  expect(sceneStyle.getPropertyValue("--scene-portrait-src")).toContain("camp-creek.webp");
+  expect(sceneStyle.getPropertyValue("--scene-wide-src")).toContain("camp-creek-wide.webp");
   fireEvent.click(screen.getByRole("button", { name: "Ir al puesto" }));
   expect(screen.getByTestId("pet-shop")).toBeTruthy();
   // El puesto no es un destino: la barra sigue con cuatro botones.

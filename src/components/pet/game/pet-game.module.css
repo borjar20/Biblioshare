@@ -154,10 +154,17 @@
  * por 2 (o 3 en pantallas grandes). `cover` está prohibido aquí. */
 /* Móvil recibe una lámina en vertical con la puerta centrada y el suelo despejado
  * abajo; la apaisada, recortada al 36 %, dejaba fuera la madriguera entera. */
+/* `--scene-src/-w/-h` NO se fijan nunca como estilo en línea: un estilo en línea
+ * gana siempre sobre esta media query, así que si `PetScene` escribiera
+ * `--scene-src` directamente, la lámina vertical pisaría a la apaisada en
+ * escritorio. En su lugar recibe las dos parejas por separado
+ * (`--scene-portrait-*` y `--scene-wide-*`, del catálogo de la tienda) y es
+ * esta hoja quien elige cuál usar en cada ancho; el valor tras la coma es el
+ * respaldo de siempre para cuando no hay fondo comprado (`scene` es null). */
 .scene {
-  --scene-src: url('/pet/scenes/camp-portrait.webp');
-  --scene-w: 288;
-  --scene-h: 384;
+  --scene-src: var(--scene-portrait-src, url('/pet/scenes/camp-portrait.webp'));
+  --scene-w: var(--scene-portrait-w, 288);
+  --scene-h: var(--scene-portrait-h, 384);
   --scene-scale: 2;
   position: relative;
   min-height: 420px;
@@ -375,8 +382,10 @@
   .character { max-width: none; }
   .hatch { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   /* En escritorio vuelve la lámina apaisada: hay ancho para ella y el claro
-   * queda a los lados del sprite. */
-  .scene { --scene-src: url('/pet/scenes/camp.webp'); --scene-w: 576; --scene-h: 448; background-position: 50% 78%; }
+   * queda a los lados del sprite. Misma pareja `--scene-wide-*` que arriba, con
+   * sus respaldos: sin fondo comprado (`--scene-wide-*` sin definir) sale
+   * exactamente el `camp.webp` de siempre. */
+  .scene { --scene-src: var(--scene-wide-src, url('/pet/scenes/camp.webp')); --scene-w: var(--scene-wide-w, 576); --scene-h: var(--scene-wide-h, 448); background-position: 50% 78%; }
   /* Dos columnas de una sola fila: el héroe se estira al alto disponible (de ahí
    * `stretch`) y su escena elástica hace el resto. La columna de misiones no se
    * estira, pero se acota al alto de la fila y scrollea ella sola si algún día
