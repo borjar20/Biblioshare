@@ -873,9 +873,15 @@ copia y dos ranuras con captura atómica; versiones anteriores conservadas. Icon
 PixelLab generados (16 generaciones). Migración verificada en dev y bootstrap local vacío
 de 243 etapas. Verificación final: 3470 tests, TypeScript, build, seis E2E cubiertos y lint
 del diff sin errores. PR en borrador #1146, publicada con autorización del usuario;
-aceptación jugable y publicación en producción siguen en #1123.
+aceptación jugable seguía en #1123.
 Balance: `docs/testing/2026-09-08-r4b-balance.md`.
-No se ha desplegado R4b en producción. Tinta y desencantado siguen aplazados en #1134.
+Tinta y desencantado siguen aplazados en #1134.
+
+**Publicado el 2026-09-09** (PR #1146 fusionada en `main`, despliegue de Vercel correcto), con
+la migración ya aplicada en producción desde el día anterior. **Se publicó sin aceptación
+jugable, a decisión del dueño: el hito sigue abierto.** Los dos criterios de salida de abajo no
+se han comprobado con nadie jugando; el recorrido para hacerlo está en
+`docs/testing/2026-09-10-r4b-aceptacion-jugable.md` y el veredicto se escribe ahí y en #1123.
 
 **Entrega:**
 
