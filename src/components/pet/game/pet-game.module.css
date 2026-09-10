@@ -258,7 +258,13 @@
 .textButton { display: inline-flex; gap: 4px; align-items: center; min-height: 44px; color: var(--gold); font-size: 13px; }
 .textButton svg { width: 15px; height: 15px; }
 .campMissions { min-width: 0; }
-.campMissions > section, .diary section { border-radius: var(--r-2); box-shadow: none; }
+/* Desde la Task 5, `<ShopPanel>` (raíz `<section>`) también puede ser hijo
+ * directo de `.campMissions` mientras el puesto está abierto. `section` es
+ * una etiqueta global de CSS Modules: si estas tres reglas colgaran de
+ * `.campMissions > section` alcanzarían también al puesto, que no las quiere
+ * (issue de revisión, CRITICAL). Cuelgan de `.missionsBoard`, el envoltorio
+ * propio del tablero de misiones, para que hablen solo de él. */
+.missionsBoard > section, .diary section { border-radius: var(--r-2); box-shadow: none; }
 /* Resumen de misiones para móvil. El tablero entero mide 375 px: ponerlo aquí
  * deja la escena en 130 px, y el tablero YA vive completo en Diario, a un toque
  * del enlace que está justo al lado. Se quedan el rótulo, el recuento y una
@@ -268,7 +274,7 @@
 .missionMeter li { flex: 1; height: 8px; border: 1px solid var(--moss); border-radius: var(--r-1); background: var(--forest-600); overflow: hidden; }
 .missionMeter i { display: block; height: 100%; background: var(--moss-light); }
 .missionMeter i[data-completed="true"] { background: var(--gold); }
-.campMissions > section { display: none; }
+.missionsBoard > section { display: none; }
 /* Misiones y logros son componentes compartidos con Paper: dentro del juego
  * reciben `data-variant="game"`, no un override por `data-testid`. */
 .game :global([data-variant="game"]) { background: var(--forest-800); }
@@ -382,7 +388,7 @@
   /* En escritorio sí cabe el tablero: la columna tiene 700 px de alto libre. */
   .campMissionsTitle, .missionMeter { display: none; }
   .campMissions { align-self: start; max-height: 100%; overflow-y: auto; }
-  .campMissions > section { display: flex; }
+  .missionsBoard > section { display: flex; }
   /* Identidad a lo ancho, y debajo atributos | equipo: las dos columnas se
    * equilibran (el panel de atributos mide 430 px y el de equipo 400) y llenan
    * el alto que la Mochila dejaba en blanco. */

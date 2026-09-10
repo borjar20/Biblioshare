@@ -1,6 +1,6 @@
 import "server-only";
 import type { createServiceRoleClient } from "@/lib/supabase/service-role";
-import { ACORN_EPOCH, ACORN_RATES, type AcornKind } from "./catalog";
+import { ACORN_EPOCH, ACORN_RATES, isCampSceneId, type AcornKind } from "./catalog";
 import type { ClaimedEntry, ShopRepository, ShopState } from "./types";
 
 type Admin = ReturnType<typeof createServiceRoleClient>;
@@ -21,11 +21,16 @@ export function shopRepository(admin: Admin, userId: string): ShopRepository {
     const { data, error } = await admin.rpc("pet_acorn_state", { p_user: userId, p_epoch: ACORN_EPOCH });
     if (error) throw error;
     const value = (data ?? {}) as { balance?: number; pending?: { kind: AcornKind; key: string }[]; owned?: string[]; scene?: string | null };
+    // Un id retirado del catálogo (o corrompido en la fila) no debe propagarse:
+    // `campScene()` LANZA con un id desconocido y `pet-game.tsx` la llama sin
+    // red, así que un id inválido aquí tumbaría ficha, madriguera y
+    // entrenamiento enteros, no solo el fondo (issue de revisión, Important).
+    // Se lee como si nunca se hubiera elegido escena: la de siempre.
     return {
       balance: value.balance ?? 0,
       pending: value.pending ?? [],
       owned: value.owned ?? [],
-      scene: value.scene ?? null,
+      scene: isCampSceneId(value.scene) ? value.scene : null,
     };
   }
   return {

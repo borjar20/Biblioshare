@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CAMP_SCENES, DEFAULT_SCENE_ID, scenePrice } from "@/lib/pet/shop/catalog";
 import { buyCosmetic, claimAcorns, setCampScene } from "@/lib/pet/shop/actions";
@@ -27,6 +27,11 @@ export function ShopPanel({ state: initial, onClose, actions = defaultActions }:
   const [pending, setPending] = useState(false);
   const busy = useRef(false);
   const state = saved?.base === initial ? saved.value : initial;
+  const heading = useRef<HTMLHeadingElement>(null);
+  // El puesto sustituye al tablero de misiones en el mismo `<aside>`: sin mover
+  // el foco a mano se queda donde estaba el botón «Ir al puesto», que ya no
+  // está bajo el dedo. Mismo patrón que el `<h1>` de sección en pet-game.tsx.
+  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
   async function run(work: () => Promise<{ ok: true; state: ShopState } | { ok: false; code: string }>) {
     if (busy.current) return null;
@@ -54,7 +59,7 @@ export function ShopPanel({ state: initial, onClose, actions = defaultActions }:
 
   return <section className={styles.panel} aria-labelledby="pet-shop-title" data-testid="pet-shop" aria-busy={pending}>
     <header>
-      <h3 id="pet-shop-title">{t("title")}</h3>
+      <h3 id="pet-shop-title" ref={heading} tabIndex={-1}>{t("title")}</h3>
       <button type="button" className={styles.close} onClick={onClose}>{t("close")}</button>
     </header>
     <p className={styles.balance} data-testid="acorn-balance">{t("balance", { count: state.balance })}</p>

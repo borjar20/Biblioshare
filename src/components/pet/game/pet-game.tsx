@@ -45,6 +45,12 @@ export function PetGame({ userId, pet, adventure, shop, burrow, hatch }: {
   // El puesto vive dentro del campamento, no es un destino: no toca la URL ni
   // la barra de navegación (que sigue con cuatro botones).
   const [stall, setStall] = useState(false);
+  const stallButton = useRef<HTMLButtonElement>(null);
+  // Al cerrar, `<ShopPanel>` se desmonta con el foco puesto en su botón «Cerrar»
+  // (era el que se acababa de pulsar): sin devolverlo a mano, cae a `body`. El
+  // botón «Ir al puesto» no se desmonta nunca (vive en `.campActions`, fuera
+  // del `<aside>` que sustituye), así que sigue ahí para recibirlo.
+  function closeStall() { setStall(false); stallButton.current?.focus(); }
   const returnHref = useSyncExternalStore(subscribe, () => {
     try { return safePetReturn(sessionStorage.getItem(petReturnKey(userId))); } catch { return "/"; }
   }, () => "/");
@@ -114,7 +120,7 @@ export function PetGame({ userId, pet, adventure, shop, burrow, hatch }: {
             <div className={styles.campActions}>
               <button className={styles.primary} disabled={!adventure} onClick={() => navigate("adventure")}><CompassIcon /><span><strong>{canStart ? startLabel === "start" ? t("game.adventureCta") : t(`adventure.${startLabel}`) : t("game.viewAdventure")}</strong><small>{current ? t(current.status === "open" ? "adventure.inProgress" : "adventure.retryAvailable", { day: currentDay }) : adventure ? t("adventure.pending", { count: adventure.pendingDays.length }) : t("adventure.unavailable")}</small></span></button>
               <button className={styles.secondary} onClick={() => navigate("training")}><DumbbellIcon />{t("game.train")}</button>
-              {shop && <button className={styles.secondary} onClick={() => setStall(true)}><AcornIcon />{t("shop.open")}</button>}
+              {shop && <button ref={stallButton} className={styles.secondary} onClick={() => setStall(true)}><AcornIcon />{t("shop.open")}</button>}
               {adventure && !canStart && <p className={styles.hint}>{t("adventure.none")}</p>}
               {pet.stage === "acorn" && <p className={styles.hint}>{t("acornHint")}</p>}
             </div>
@@ -123,7 +129,7 @@ export function PetGame({ userId, pet, adventure, shop, burrow, hatch }: {
               sigue visible arriba, que es la razón de que la tienda viva aquí
               y no en una sección aparte. */}
           <aside className={styles.campMissions}>
-            {stall && shop ? <ShopPanel state={shop} onClose={() => setStall(false)} /> : <>
+            {stall && shop ? <ShopPanel state={shop} onClose={closeStall} /> : <div className={styles.missionsBoard}>
               {/* El rótulo y el medidor solo se ven en móvil, donde el tablero
                   entero no cabe sin dejar la escena en un sello. El desglose
                   completo está en Diario, aquí al lado. */}
@@ -131,7 +137,7 @@ export function PetGame({ userId, pet, adventure, shop, burrow, hatch }: {
               <div className={styles.panelHeading}><span>{t("game.missionCount", { completed: pet.missions.filter(m => m.completed).length, total: pet.missions.length })}</span><button className={styles.textButton} onClick={() => navigate("diary")}>{t("game.viewDiary")}<ChevronRightIcon /></button></div>
               <ul className={styles.missionMeter} aria-hidden="true">{pet.missions.map(m => <li key={m.slot}><i data-completed={m.completed ? "true" : "false"} style={{ width: `${Math.max(0, Math.min(100, Math.round(m.progress / Math.max(1, m.target) * 100)))}%` }} /></li>)}</ul>
               <MissionBoard missions={pet.missions} />
-            </>}
+            </div>}
           </aside>
         </div>
         <div hidden={section !== "character"}><PetDetail pet={pet} equipment={gear} /></div>

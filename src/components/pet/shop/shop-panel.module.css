@@ -1,7 +1,9 @@
 /* Los tokens los pone `.game` (pet-game.module.css): aquí no nace ningún color. */
 .panel { color: var(--cream, #f4f0d8); background: var(--forest-800, #0c2d24); border: 1px solid var(--moss, #355b48); border-radius: var(--r-2, 8px); padding: clamp(.8rem, 2.5vw, 1.2rem); display: grid; gap: .7rem; min-width: 0; }
 .panel header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
-.panel h3 { font-size: 18px; font-weight: 700; }
+/* `outline: none`: el foco al abrir es programático (mismo patrón que el
+ * `<h1>` de sección en pet-game.module.css), no navegación por teclado. */
+.panel h3 { font-size: 18px; font-weight: 700; outline: none; }
 .close { min-height: 44px; color: var(--cream-muted); text-decoration: underline; text-underline-offset: 4px; font-size: 13px; }
 .balance { color: var(--gold); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .claim { min-height: 48px; padding: .7rem; background: linear-gradient(0deg, var(--wood-dark), var(--wood)); border: 1px solid var(--wood-edge); border-radius: var(--r-2); box-shadow: inset 0 2px #dcb6714d, 0 3px #04170f; color: var(--cream); font-weight: 650; font-size: 16px; }

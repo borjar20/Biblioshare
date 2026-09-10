@@ -170,3 +170,15 @@ it("abre el puesto sin salir del campamento y pinta el fondo comprado", () => {
   fireEvent.click(screen.getByRole("button", { name: "Cerrar el puesto" }));
   expect(screen.queryByTestId("pet-shop")).toBeNull();
 });
+
+it("mueve el foco al puesto al abrirlo y lo devuelve al botón al cerrarlo", () => {
+  render(game("alice", pet, { balance: 0, pending: [], owned: ["creek"], scene: "creek" }));
+  const openButton = screen.getByRole("button", { name: "Ir al puesto" });
+  fireEvent.click(openButton);
+  // Sin esto el foco se queda en el botón «Ir al puesto», que el puesto tapa.
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Puesto del claro", level: 3 }));
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar el puesto" }));
+  // El botón que tenía el foco (el «Cerrar») se desmonta con el puesto: sin
+  // devolverlo a mano cae a `body`.
+  expect(document.activeElement).toBe(openButton);
+});
