@@ -49,18 +49,25 @@
 .status[data-error] { color: var(--danger); }
 .inventoryLayout, .inventory { display: grid; gap: 1rem; min-width: 0; align-items: start; }
 .slotHeading { font-size: 13px; color: var(--cream-muted); margin-bottom: .6rem; }
-/* Catálogo del botín que aún no tienes. Iconos atenuados, no apagados: tienen
- * que leerse como «esto existe y todavía no es tuyo», no como deshabilitado. */
-.catalog { margin-top: .9rem; }
-.catalog ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); gap: .6rem; list-style: none; padding: 0; margin: 0; }
-.catalog li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: .6rem; align-items: start; padding: .6rem; border: 1px solid var(--moss); border-radius: var(--r-2); background: var(--forest-700); min-width: 0; }
-.catalog .icon { width: 48px; height: 48px; opacity: .55; }
-.catalog strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
-.catalog span { display: block; font-size: 12px; color: var(--cream-muted); }
-.catalog p { font-size: 12px; line-height: 1.5; color: var(--cream-muted); margin-top: .3rem; }
-.groups { display: flex; flex-wrap: wrap; gap: .75rem; }
+/* Una sola tira por ranura: lo conseguido y lo que falta comparten fila y sitio,
+ * así que la tarjeta atenuada se convierte donde está al ganar el objeto (#1170).
+ * Antes el catálogo era una vista aparte que desaparecía con la primera copia.
+ * Bases distintas a propósito: una copia es un icono (110 px) y lo que falta lleva
+ * su efecto escrito (260 px), que con 110 px se parte en columnas de dos palabras. */
+.groups { display: flex; flex-wrap: wrap; gap: .75rem; align-items: start; }
 .group { flex: 1 1 110px; min-width: 0; }
-.group h6 { font-size: 13px; margin-bottom: .5rem; }
+.missing { flex: 1 1 260px; min-width: 0; }
+.group h6, .missing h6 { font-size: 13px; margin-bottom: .5rem; }
+/* Objeto por conseguir: atenuado, no apagado. Tiene que leerse como «esto existe
+ * y todavía no es tuyo», no como un control deshabilitado — de hecho no es un
+ * control: no lleva botón. */
+.missingCard { display: grid; grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: .6rem; align-items: start; padding: .6rem; border: 1px dashed var(--moss); border-radius: var(--r-2); background: var(--forest-700); }
+.missingCard .icon { grid-row: 1 / span 3; width: 48px; height: 48px; opacity: .55; }
+.missingCard p { font-size: 12px; line-height: 1.5; color: var(--cream-muted); }
+.missingNote { font-weight: 600; }
+.missingCard p + p { margin-top: .3rem; }
+/* El ×1,0 NO va en dorado: el dorado es la potencia real de una copia. */
+.basePotency { font-variant-numeric: tabular-nums; opacity: .8; }
 .count { color: var(--cream-muted); font-weight: 400; }
 /* Rejilla de 64 px: la copia es un objeto, no una tarjeta con ficha. La potencia
  * exacta vive en la comparación, no repetida bajo cada icono. */

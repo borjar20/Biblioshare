@@ -4874,3 +4874,30 @@ Verificado tras aplicar: `pet_loadout` con RLS y su política, las cinco funcion
 nuevas presentes, `start_pet_adventure` y `resolve_pet_adventure` con el mismo md5 que
 dev, cero aventuras r4.1 con `equipment`, y ningún objeto nuevo en el informe de
 seguridad de Supabase (los `revoke all` de la migración hacen su trabajo).
+
+## 2026-09-10 — El catálogo del botín deja de ser una pantalla de bienvenida (#1170)
+
+Con la mochila vacía se pintaban los seis objetos («Lo que puedes conseguir») y con la
+primera copia **desaparecían los seis**. Justo al revés de lo que hace falta: saber qué
+objetos existen y qué hacen empieza a servir cuando ya tienes alguno y decides a qué
+aventura ir.
+
+**Qué se decide.** Una sola vista. Por ranura se pintan siempre los tres objetos: los
+conseguidos como hasta ahora (rejilla de copias, potencia real en dorado) y los que
+faltan como tarjeta atenuada **no pulsable**, en el sitio que ocuparán al ganarlos, con
+su efecto escrito. `CatalogPreview` desaparece; el estado vacío pasa a ser esa misma
+rejilla con las seis atenuadas más «Aún no has ganado ningún objeto».
+
+**Lo que cambia de aspecto.** El estado vacío ya no es un bloque propio: tiene los
+encabezados de Arma y Amuleto desde el principio. Es el precio de tener un solo camino
+de render en vez de dos que había que mantener a la par.
+
+**La trampa que se respeta.** El efecto de una tarjeta atenuada va a potencia base ×1,0
+y lo dice en la propia tarjeta; las copias reales caen entre ×0,8 y ×1,2. Por eso ese
+número **no** lleva el dorado de `.potency`, que es el color de la potencia de una copia
+concreta: mezclar los dos valores en el mismo color sería decir que tienes algo que no
+tienes.
+
+**Por qué no es pulsable.** Los botones de una ranura son las copias, y de eso dependen
+los e2e de `mascota-equipo`, que cuentan botones dentro de `loot-<ranura>`. Una tarjeta
+de lo que falta no es un control: no hay nada que comparar ni que equipar.
