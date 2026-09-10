@@ -3622,11 +3622,11 @@
         "welcome": "de bienvenida"
       },
       "buy": "Comprar por {price}",
+      "buyAria": "Comprar {name} por {price}",
       "missing": "Te faltan {count, plural, one {# bellota} other {# bellotas}}",
       "use": "Poner este fondo",
+      "useAria": "Poner {name} de fondo",
       "active": "Puesto ahora",
-      "owned": "Ya es tuyo",
-      "free": "El de siempre",
       "scenes": {
         "camp": "El claro de siempre",
         "creek": "El arroyo",

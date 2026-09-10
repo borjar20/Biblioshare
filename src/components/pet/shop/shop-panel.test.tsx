@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../messages/es.json";
 import { ShopPanel } from "./shop-panel";
-import type { ShopState } from "@/lib/pet/shop/types";
+import type { BuyResponse, ShopState } from "@/lib/pet/shop/types";
 // El módulo real arrastra `server-only` (vía repository.ts): sin este mock,
 // el simple import de ShopPanel revienta el test, igual que en equipment-panel.
 vi.mock("@/lib/pet/shop/actions", () => ({ claimAcorns: vi.fn(), buyCosmetic: vi.fn(), setCampScene: vi.fn() }));
@@ -40,20 +40,21 @@ it("no ofrece comprar lo que no se puede pagar, y dice cuánto falta", () => {
   expect(within(card).queryByRole("button", { name: /Comprar/ })).toBeNull();
 });
 
-it("compra y deja estrenar lo comprado", async () => {
+it("compra, deja estrenar lo comprado y deja el saldo exacto", async () => {
   const buy = vi.fn().mockResolvedValue({ ok: true, state: { ...base, balance: 20, owned: ["creek"] } });
   const setScene = vi.fn().mockResolvedValue({ ok: true, state: { ...base, balance: 20, owned: ["creek"], scene: "creek" } });
   render(view({ balance: 120 }, { claim: vi.fn(), buy, setScene }));
   await act(async () => fireEvent.click(within(screen.getByTestId("scene-creek")).getByRole("button", { name: /Comprar/ })));
   expect(buy).toHaveBeenCalledWith("creek");
-  await act(async () => fireEvent.click(within(screen.getByTestId("scene-creek")).getByRole("button", { name: "Poner este fondo" })));
+  expect(screen.getByTestId("acorn-balance").textContent).toContain("20");
+  await act(async () => fireEvent.click(within(screen.getByTestId("scene-creek")).getByRole("button", { name: "Poner El arroyo de fondo" })));
   expect(setScene).toHaveBeenCalledWith("creek");
   expect(within(screen.getByTestId("scene-creek")).getByText("Puesto ahora")).toBeTruthy();
 });
 
 it("el fondo de siempre siempre se puede poner", () => {
   render(view({ owned: ["creek"], scene: "creek" }, { claim: vi.fn(), buy: vi.fn(), setScene: vi.fn() }));
-  expect(within(screen.getByTestId("scene-camp")).getByRole("button", { name: "Poner este fondo" })).toBeTruthy();
+  expect(within(screen.getByTestId("scene-camp")).getByRole("button", { name: "Poner El claro de siempre de fondo" })).toBeTruthy();
 });
 
 it("un fallo deja el saldo como estaba y lo dice", async () => {
@@ -62,4 +63,34 @@ it("un fallo deja el saldo como estaba y lo dice", async () => {
   await act(async () => fireEvent.click(within(screen.getByTestId("scene-creek")).getByRole("button", { name: /Comprar/ })));
   expect(screen.getByRole("status").textContent).toContain("Vuelve a intentarlo");
   expect(screen.getByTestId("acorn-balance").textContent).toContain("120");
+});
+
+it("los tres fondos de 150 bellotas tienen nombres accesibles distintos", () => {
+  render(view({ balance: 500 }, { claim: vi.fn(), buy: vi.fn(), setScene: vi.fn() }));
+  const labels = ["autumn", "night", "snow"].map(id =>
+    within(screen.getByTestId(`scene-${id}`)).getByRole("button", { name: /Comprar/ }).getAttribute("aria-label"));
+  expect(new Set(labels).size).toBe(3);
+});
+
+it("bloquea escrituras concurrentes: dos toques al mismo botón de compra solo disparan una llamada", async () => {
+  let finish!: (response: BuyResponse) => void;
+  const buy = vi.fn(() => new Promise<BuyResponse>(resolve => { finish = resolve; }));
+  render(view({ balance: 120 }, { claim: vi.fn(), buy, setScene: vi.fn() }));
+  const button = within(screen.getByTestId("scene-creek")).getByRole("button", { name: /Comprar/ });
+  fireEvent.click(button);
+  fireEvent.click(button);
+  expect(buy).toHaveBeenCalledTimes(1);
+  expect(button.hasAttribute("disabled")).toBe(true);
+  await act(async () => finish({ ok: true, state: { ...base, balance: 20, owned: ["creek"] } }));
+});
+
+it("un state renovado del servidor manda sobre el guardado localmente tras una compra", async () => {
+  const buy = vi.fn().mockResolvedValue({ ok: true, state: { ...base, balance: 20, owned: ["creek"] } });
+  const rendered = render(view({ balance: 120 }, { claim: vi.fn(), buy, setScene: vi.fn() }));
+  await act(async () => fireEvent.click(within(screen.getByTestId("scene-creek")).getByRole("button", { name: /Comprar/ })));
+  expect(screen.getByTestId("acorn-balance").textContent).toContain("20");
+  // La página revalida (revalidatePetPage) y pasa un `state` nuevo del servidor;
+  // debe ganar sobre lo que quedó guardado localmente tras la compra.
+  rendered.rerender(view({ balance: 500 }, { claim: vi.fn(), buy, setScene: vi.fn() }));
+  expect(screen.getByTestId("acorn-balance").textContent).toContain("500");
 });
