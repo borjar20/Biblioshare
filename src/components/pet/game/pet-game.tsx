@@ -6,16 +6,19 @@ import { useFormatter, useTranslations } from "next-intl";
 import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import type { AdventureBattle, AdventureState } from "@/lib/pet/adventure/types";
 import { startAdventure, resolveAdventure, replayAdventure, resumeAdventure } from "@/lib/pet/adventure/actions";
+import { campScene } from "@/lib/pet/shop/catalog";
+import type { ShopState } from "@/lib/pet/shop/types";
 import { petSection, petReturnKey, petViewKey, safePetReturn, type PetSection } from "@/lib/pet/game-navigation";
 import { checkCelebrations } from "@/lib/celebrations/preference";
 import { REACTION_MS } from "@/lib/pet/manifest";
 import { equipLoot } from "@/lib/pet/loot/actions";
-import { ArrowLeftIcon, HomeIcon, PawIcon, BookIcon, BurrowArchIcon, ChevronRightIcon, CompassIcon, DumbbellIcon, MedalIcon } from "@/components/ui/icons";
+import { ArrowLeftIcon, HomeIcon, PawIcon, BookIcon, BurrowArchIcon, ChevronRightIcon, CompassIcon, DumbbellIcon, MedalIcon, AcornIcon } from "@/components/ui/icons";
 import { TrainingPanel } from "../training/training-panel";
 import { EquipmentPanel } from "../loot/equipment-panel";
 import { MissionBoard } from "../mission-board";
 import { AchievementGrid } from "../achievement-grid";
 import { PetDetail } from "../pet-detail";
+import { ShopPanel } from "../shop/shop-panel";
 import type { PetReaction } from "../pet-sprite";
 import { PetHud, PetScene } from "./pet-hud";
 import styles from "./pet-game.module.css";
@@ -26,8 +29,8 @@ const destinations = [["camp", HomeIcon], ["character", PawIcon], ["diary", Book
 const subscribe = () => () => {};
 const adventureActions = { start: () => startAdventure(), resolve: resolveAdventure, replay: replayAdventure, resume: resumeAdventure };
 
-export function PetGame({ userId, pet, adventure, burrow, hatch }: {
-  userId: string; pet: PetSnapshot | null; adventure: AdventureState | null; burrow: ReactNode; hatch?: ReactNode;
+export function PetGame({ userId, pet, adventure, shop, burrow, hatch }: {
+  userId: string; pet: PetSnapshot | null; adventure: AdventureState | null; shop: ShopState | null; burrow: ReactNode; hatch?: ReactNode;
 }) {
   const t = useTranslations("pet");
   const format = useFormatter();
@@ -39,6 +42,9 @@ export function PetGame({ userId, pet, adventure, burrow, hatch }: {
   const [journal, setJournal] = useState<"missions" | "achievements">("missions");
   const [wonCopy, setWonCopy] = useState<AdventureBattle["adventure"]["copy"]>(null);
   const [reaction, setReaction] = useState<PetReaction>(pet?.evolved ? "evolve" : pet?.leveledUp ? "joy" : null);
+  // El puesto vive dentro del campamento, no es un destino: no toca la URL ni
+  // la barra de navegación (que sigue con cuatro botones).
+  const [stall, setStall] = useState(false);
   const returnHref = useSyncExternalStore(subscribe, () => {
     try { return safePetReturn(sessionStorage.getItem(petReturnKey(userId))); } catch { return "/"; }
   }, () => "/");
@@ -104,22 +110,28 @@ export function PetGame({ userId, pet, adventure, burrow, hatch }: {
         <div hidden={section !== "camp"} className={styles.camp}>
           <div className={styles.campHero}>
             <div className={styles.campHud}><PetHud pet={pet} /></div>
-            <PetScene pet={pet} reaction={reaction} />
+            <PetScene pet={pet} reaction={reaction} scene={shop?.scene ? campScene(shop.scene) : null} />
             <div className={styles.campActions}>
               <button className={styles.primary} disabled={!adventure} onClick={() => navigate("adventure")}><CompassIcon /><span><strong>{canStart ? startLabel === "start" ? t("game.adventureCta") : t(`adventure.${startLabel}`) : t("game.viewAdventure")}</strong><small>{current ? t(current.status === "open" ? "adventure.inProgress" : "adventure.retryAvailable", { day: currentDay }) : adventure ? t("adventure.pending", { count: adventure.pendingDays.length }) : t("adventure.unavailable")}</small></span></button>
               <button className={styles.secondary} onClick={() => navigate("training")}><DumbbellIcon />{t("game.train")}</button>
+              {shop && <button className={styles.secondary} onClick={() => setStall(true)}><AcornIcon />{t("shop.open")}</button>}
               {adventure && !canStart && <p className={styles.hint}>{t("adventure.none")}</p>}
               {pet.stage === "acorn" && <p className={styles.hint}>{t("acornHint")}</p>}
             </div>
           </div>
+          {/* El puesto sustituye al tablero mientras está abierto — la escena
+              sigue visible arriba, que es la razón de que la tienda viva aquí
+              y no en una sección aparte. */}
           <aside className={styles.campMissions}>
-            {/* El rótulo y el medidor solo se ven en móvil, donde el tablero
-                entero no cabe sin dejar la escena en un sello. El desglose
-                completo está en Diario, aquí al lado. */}
-            <h2 className={styles.campMissionsTitle}>{t("missions.title")}</h2>
-            <div className={styles.panelHeading}><span>{t("game.missionCount", { completed: pet.missions.filter(m => m.completed).length, total: pet.missions.length })}</span><button className={styles.textButton} onClick={() => navigate("diary")}>{t("game.viewDiary")}<ChevronRightIcon /></button></div>
-            <ul className={styles.missionMeter} aria-hidden="true">{pet.missions.map(m => <li key={m.slot}><i data-completed={m.completed ? "true" : "false"} style={{ width: `${Math.max(0, Math.min(100, Math.round(m.progress / Math.max(1, m.target) * 100)))}%` }} /></li>)}</ul>
-            <MissionBoard missions={pet.missions} />
+            {stall && shop ? <ShopPanel state={shop} onClose={() => setStall(false)} /> : <>
+              {/* El rótulo y el medidor solo se ven en móvil, donde el tablero
+                  entero no cabe sin dejar la escena en un sello. El desglose
+                  completo está en Diario, aquí al lado. */}
+              <h2 className={styles.campMissionsTitle}>{t("missions.title")}</h2>
+              <div className={styles.panelHeading}><span>{t("game.missionCount", { completed: pet.missions.filter(m => m.completed).length, total: pet.missions.length })}</span><button className={styles.textButton} onClick={() => navigate("diary")}>{t("game.viewDiary")}<ChevronRightIcon /></button></div>
+              <ul className={styles.missionMeter} aria-hidden="true">{pet.missions.map(m => <li key={m.slot}><i data-completed={m.completed ? "true" : "false"} style={{ width: `${Math.max(0, Math.min(100, Math.round(m.progress / Math.max(1, m.target) * 100)))}%` }} /></li>)}</ul>
+              <MissionBoard missions={pet.missions} />
+            </>}
           </aside>
         </div>
         <div hidden={section !== "character"}><PetDetail pet={pet} equipment={gear} /></div>

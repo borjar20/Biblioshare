@@ -1,6 +1,8 @@
 "use client";
+import type { CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
+import type { CampScene } from "@/lib/pet/shop/catalog";
 import { PetSprite, type PetReaction } from "../pet-sprite";
 import styles from "./pet-game.module.css";
 
@@ -28,13 +30,23 @@ function daysSince(iso: string | null): number | null {
   return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
 }
 
-export function PetScene({ pet, reaction, compact = false }: { pet: PetSnapshot; reaction?: PetReaction; compact?: boolean }) {
+export function PetScene({ pet, reaction, compact = false, scene = null }: {
+  pet: PetSnapshot; reaction?: PetReaction; compact?: boolean; scene?: CampScene | null;
+}) {
   const t = useTranslations("pet");
   const days = daysSince(pet.lastActivityISO);
   // Un humor que no es «contenta» explica su causa y ofrece la palanca. «Triste»
   // a secas en la esquina de la escena no decía por qué ni qué hacer.
   const needsNudge = pet.mood !== "happy" && days !== null && days > 0;
-  return <div className={styles.scene} data-compact={compact}>
+  // En línea y no con una clase por escena: cada WebP trae su tamaño nativo y la
+  // escala entera depende de él; una clase por fondo obligaría a tocar el CSS
+  // cada vez que se añade uno.
+  return <div className={styles.scene} data-compact={compact} data-testid="pet-scene"
+    style={scene ? {
+      "--scene-src": `url('/pet/scenes/${scene.file}')`,
+      "--scene-w": String(scene.width),
+      "--scene-h": String(scene.height),
+    } as CSSProperties : undefined}>
     <span className={styles.sceneSprite}><PetSprite stage={pet.stage} petClass={pet.petClass} mood={pet.mood} reaction={reaction} scale={2} label={pet.name} /></span>
     {needsNudge
       ? <p className={styles.sceneMood} data-testid="pet-mood"><b>{t(`moodReason.${pet.mood}`, { days })}</b> <span>{t("moodAction")}</span></p>

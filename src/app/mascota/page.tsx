@@ -15,6 +15,8 @@ import gameStyles from "@/components/pet/game/pet-game.module.css";
 import { BurrowSection } from "@/components/pet/burrow-section";
 import { getAdventureStateFor } from "@/lib/pet/adventure/get-state";
 import type { AdventureState } from "@/lib/pet/adventure/types";
+import { getShopStateFor } from "@/lib/pet/shop/get-state";
+import type { ShopState } from "@/lib/pet/shop/types";
 
 export const metadata: Metadata = { title: "Mascota — Biblioshare" };
 
@@ -46,10 +48,13 @@ async function PetContent() {
   if (!pet) {
     // Eclosión: la sugerencia sale del historial (spec §2). Sin historial → null.
     const { counts } = await getPetCounts(supabase, user.id);
-    return <PetGame key={user.id} userId={user.id} pet={null} adventure={null} burrow={burrow} hatch={<HatchForm suggested={suggestClass(deriveAttributes(counts))} />} />;
+    return <PetGame key={user.id} userId={user.id} pet={null} adventure={null} shop={null} burrow={burrow} hatch={<HatchForm suggested={suggestClass(deriveAttributes(counts))} />} />;
   }
   let adventure: AdventureState | null = null;
   try { adventure = await getAdventureStateFor(supabase, user.id); }
   catch (error) { console.error("pet game adventure", error); }
-  return <PetGame key={user.id} userId={user.id} pet={pet} adventure={adventure} burrow={burrow} />;
+  let shop: ShopState | null = null;
+  try { shop = await getShopStateFor(user.id); }
+  catch (error) { console.error("pet game shop", error); }
+  return <PetGame key={user.id} userId={user.id} pet={pet} adventure={adventure} shop={shop} burrow={burrow} />;
 }
