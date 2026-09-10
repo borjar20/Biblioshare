@@ -6,9 +6,17 @@ describe("catálogo de la tienda", () => {
     expect(CAMP_SCENES[0].id).toBe(DEFAULT_SCENE_ID);
     expect(scenePrice(DEFAULT_SCENE_ID)).toBe(0);
     expect(CAMP_SCENES.filter(scene => scene.price > 0)).toHaveLength(4);
+    // Fija los precios exactos en orden: camp, creek, autumn, night, snow
+    expect(CAMP_SCENES.map(s => [s.id, s.price])).toEqual([
+      ["camp", 0],
+      ["creek", 100],
+      ["autumn", 150],
+      ["night", 150],
+      ["snow", 150],
+    ]);
   });
   it("cuesta una semana de uso normal llegar al primero", () => {
-    // ~95 bellotas/semana con la calibración de la spec §3.
+    // ~90 bellotas/semana con la calibración de la spec §3.
     const semana = ACORN_RATES.day * 4 + ACORN_RATES.mission * 6 + ACORN_RATES.achievement;
     expect(semana).toBeGreaterThanOrEqual(90);
     expect(scenePrice("creek")).toBeLessThanOrEqual(semana + ACORN_RATES.welcome);
