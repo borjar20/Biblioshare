@@ -1,6 +1,7 @@
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { withBattleUsers } from "./support/battle-users";
 import { resolveFinalEmpire } from "./support/book-fixture";
+import { hideNextDevOverlay } from "./support/dev-overlay";
 
 test.use({ actionTimeout: 20_000 });
 
@@ -71,6 +72,8 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
   test.setTimeout(330_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  // El overlay de dev tapa «Campamento» abajo a la izquierda (#1169).
+  await hideNextDevOverlay(page);
   await cleanPreviousRun(request);
   await withBattleUsers(url, key, async (createUser) => {
     const a = await createUser("r4adventurea");
@@ -133,6 +136,10 @@ test("aventuras: concesión por día, empezar, reanudar tras recargar, resolver,
     expect(resolved).toHaveLength(1);
     expect(resolved[0].status).toBe("resolved");
     expect(resolved[0].digest).toMatch(/^[0-9a-f]{64}$/);
+    // Qué rama toma la pasada. Sin esto, un verde no distingue «no falló» de «no
+    // llegó a la rama de victoria», y así es como #1169 se quedó sin confirmar: la
+    // ejecución que aprobó pudo no pasar nunca por la aserción sospechosa.
+    console.log(`[aventura] outcome=${resolved[0].result?.outcome}`);
     if (resolved[0].result?.outcome === "win") {
       expect(resolved[0].reward?.itemId).toBeTruthy();
       await expect(panel.getByText("¡Aventura superada!")).toBeVisible();
