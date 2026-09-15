@@ -85,8 +85,13 @@ con i18n (`next-intl`) desde el inicio.
   waveform, bucket privado con URL firmada; hereda hilos, reacciones, notificaciones,
   bloqueos y moderación del comentario de texto. BD migrada en dev y prod; el wrapper
   Android necesita release nueva del APK (permiso `RECORD_AUDIO`, issue #842).
-- **Moderación**: bloqueos bidireccionales (`user_blocks`), reportes
-  (`content_reports`) con cola de revisión.
+- **Moderación**: bloqueos bidireccionales (`user_blocks`) y reportes
+  (`content_reports`). Ampliación #1183: BD aplicada y verificada en dev y producción
+  el 2026-09-15; aplicación pendiente de despliegue desde la PR #1184:
+  `/admin/reportes`, `/admin/contenido`, `/admin/clubes` y `/admin/historial`,
+  con retirada/restauración/borrado definitivo y evidencia administrativa.
+  El audio de esta versión se entrega por rutas con autorización por petición;
+  sustituye las URLs firmadas descritas arriba.
 - **Notificaciones**: in-app (`notifications`, campana) + push unificado Web
   (VAPID) y Android (FCM) con preferencias opt-out por canal×categoría;
   planificador `pg_cron`+`pg_net` (recordatorios de eventos).

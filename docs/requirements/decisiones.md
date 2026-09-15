@@ -4901,3 +4901,22 @@ tienes.
 **Por qué no es pulsable.** Los botones de una ranura son las copias, y de eso dependen
 los e2e de `mascota-equipo`, que cuentan botones dentro de `loot-<ranura>`. Una tarjeta
 de lo que falta no es un control: no hay nada que comparar ni que equipar.
+
+## 2026-09-15 — Moderación administrativa reversible y borrado definitivo (#1183)
+
+El propietario aprueba retirar, restaurar y eliminar definitivamente clubes,
+publicaciones y comentarios en esta versión. Retirar oculta a todos, incluidos
+autor, miembros y admin en las superficies normales; la evidencia solo se consulta
+en el panel administrativo. Restaurar un padre no restaura sus hijos retirados
+individualmente. El borrado de una publicación no elimina su pase personal.
+
+Estado e historial viven en tablas privadas separadas de los objetos, para conservar
+la evidencia tras sus cascadas y evitar ampliar grants de columnas públicas. Cada
+operación administrativa exige motivo y el borrado confirmación explícita. La
+resolución de un reporte no sustituye a la retirada del contenido.
+
+El audio se sirve con autorización por petición y sin caché; la evidencia de audio
+se conserva en almacenamiento privado incluso tras borrado. Las URLs de Storage ya
+emitidas por la versión anterior no pueden revocarse mediante RLS: al desplegar,
+pueden seguir vigentes hasta su caducidad original de una hora. Las nuevas rutas no
+emiten URLs firmadas. Verificación y migración en dev; producción pendiente.
