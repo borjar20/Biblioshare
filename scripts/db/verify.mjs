@@ -23,6 +23,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'u
 
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_reference_guards.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/pet_r4b_equipment.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/admin_content_moderation.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyCatalogReferenceConcurrency(stamp.projectId);
 console.log(`PASS: ${versions.length} bootstrap steps, schema contracts and role privileges.`);

@@ -1,5 +1,33 @@
 # Modelo de datos
 
+> **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
+> reales y fixtures transaccionales en **dev**. Migración
+> `20260915145340_admin_content_moderation.sql` y seguimiento
+> `20260915150429_moderation_event_notification_visibility.sql`;
+> **sin aplicar en producción**. El seguimiento cubre los avisos legacy `club_event`.
+> Estado y evidencia viven en `private.moderation_state` y
+> `private.moderation_history`, sin FK destructiva al objeto ni acceso directo
+> para `anon`/`authenticated`. `private.moderation_operations` solo marca la
+> operación administrativa durante la transacción. No se añaden columnas a
+> tablas públicas existentes ni se amplían sus grants por columna.
+>
+> `admin_moderation_list`, `admin_moderate_content`, `admin_review_report` y
+> `admin_moderation_audio` son envoltorios invoker de funciones privadas con
+> comprobación de admin global. Retirar oculta clubes/posts/club_posts/comments
+> y descendientes incluso al admin fuera de estas RPC. Políticas restrictivas,
+> helpers de visibilidad y guardas de escritura cubren consultas y funciones
+> privilegiadas. Restaurar el padre conserva las retiradas individuales.
+> Borrar exige motivo y confirmación (nombre exacto para club, `ELIMINAR` para
+> el resto), conserva evidencia y no elimina pases personales. Los posts
+> derivados borrados por moderación no se regeneran desde la misma fuente.
+>
+> Tras retirar o borrar contenido, sus reportes solo se consultan mediante la
+> RPC administrativa; esta regla restringe la lectura ordinaria descrita abajo.
+> El audio usado como evidencia se conserva en el bucket privado y solo se
+> entrega mediante `/api/admin/voice-notes/[id]`; la RPC
+> `moderation_audio_is_evidence` es exclusiva de `service_role` para impedir que
+> la limpieza de archivos destruya evidencia.
+
 > **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
 > verificados en dev; comportamiento SQL con fixtures y rollback verificado en
 > Supabase local. Definición y permisos verificados también en producción el 2026-09-07.

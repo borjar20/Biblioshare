@@ -1217,3 +1217,13 @@ commit;
 begin;
 \ir migrations/20260908074921_pet_r4b_equipment.sql
 commit;
+
+-- 20260915145340_admin_content_moderation
+begin;
+\ir migrations/20260915145340_admin_content_moderation.sql
+commit;
+
+-- 20260915150429_moderation_event_notification_visibility
+begin;
+\ir migrations/20260915150429_moderation_event_notification_visibility.sql
+commit;

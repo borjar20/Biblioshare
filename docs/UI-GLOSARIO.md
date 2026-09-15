@@ -24,6 +24,8 @@ de la app, por bien dibujada que esté cada pantalla.
 
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|
+| **Retirar** / **Restaurar** | Suspender / Reactivar (contenido) | Ocultar contenido para todos de forma reversible / recuperar su visibilidad previa. | Moderación, `/admin` (#1183) |
+| **Eliminar definitivamente** | Retirar (borrado irreversible) | Borrar contenido y dependencias, conservando evidencia administrativa. | Moderación, `/admin` (#1183) |
 | **Biblioteca** | Colección, Mi colección | Todo lo que has añadido: lo leído, lo que lees y lo pendiente. Es el contenedor grande. | `/coleccion` (la URL se queda: cambiarla rompería enlaces) |
 | **Colección** | Lista, Estantería | Una agrupación **que tú creas** dentro de tu biblioteca («Para el verano»). Es una de muchas. | pestaña «Colecciones», `/coleccion/c/[id]` |
 | **Cuaderno** | Notas guardadas, Mis notas y citas | El sitio donde viven tus notas y citas. En una ficha: «Tu cuaderno». | `/notas`, sección de ficha, tarjeta del Rincón |
