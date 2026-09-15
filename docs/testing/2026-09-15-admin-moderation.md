@@ -1,6 +1,6 @@
 # Verificación de moderación administrativa — #1183
 
-> Desarrollo, 2026-09-15. No acredita despliegue ni verificación de producción.
+> Verificado el 2026-09-15: aplicación en dev; esquema y permisos también en producción. Aplicación de producción pendiente.
 
 ## Contrato
 
@@ -78,9 +78,32 @@ bootstrap, pasaron TypeScript, las siete pruebas de bootstrap y la suite complet
 3.568 pruebas en 360 archivos (182,64 s). El build y los recorridos de navegador
 indicados arriba corresponden al commit de implementación anterior a esa integración.
 
-## Pendiente de producción
+## Base de datos en producción — 2026-09-15
 
-Aplicar ambas migraciones y desplegar la aplicación de manera coordinada.
+Ambas migraciones aplicadas por petición explícita del propietario al proyecto
+`vmutcradmodhiltuohys`, después de su validación en dev. El catálogo real no tenía
+los objetos de moderación antes de aplicarlas. El ledger remoto asignó:
+
+| Fichero del repo | Versión registrada en producción |
+|---|---|
+| `20260915145340_admin_content_moderation.sql` | `20260915175931` |
+| `20260915150429_moderation_event_notification_visibility.sql` | `20260915175943` |
+
+Verificación posterior contra objetos reales: 30 funciones (definiciones
+normalizadas, configuración y ACL), 24 políticas y 24 triggers coinciden con dev.
+Las tres tablas privadas tienen RLS y deniegan SELECT directo a anon/authenticated.
+Las seis listas administrativas funcionan con identidad admin; sin identidad y
+con identidad de usuario ordinario se rechazan las operaciones comprobadas.
+Los bloques de comprobación terminan en ROLLBACK; no se ejecutó la suite de fixtures
+marcada DEV/local sobre producción.
+
+Advisors de seguridad: 90 hallazgos individuales antes y después, cero añadidos y
+cero eliminados. Estado, historial y operaciones de moderación siguen con cero
+filas: este despliegue no retiró ni eliminó contenido. Comprobación a las 18:01 UTC.
+
+## Aplicación de producción pendiente
+
+La BD está preparada. Falta integrar/desplegar la aplicación y verificar su recorrido en producción.
 No habilitar las operaciones de retirada con el cliente anterior: emitía URLs
 de audio firmadas con una hora de validez. Tras sustituirlo, las URLs ya emitidas
 pueden vivir hasta su vencimiento; las nuevas rutas no emiten credenciales de

@@ -5,7 +5,8 @@
 - [ ] Retirada/restauración/borrado definitivo de clubes, publicaciones y comentarios,
   reportes e historial: implementación en `codex/moderation-admin`; esquema y
   permisos, build y recorridos de navegador verificados en dev el 2026-09-15. Pendiente despliegue
-  de aplicación y ambas migraciones en producción. Contrato en la spec del 2026-09-15.
+  de aplicación en producción; ambas migraciones ya aplicadas y permisos comprobados
+  allí el 2026-09-15. Contrato en la spec del 2026-09-15.
 
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al

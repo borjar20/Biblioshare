@@ -1,10 +1,11 @@
 # Modelo de datos
 
 > **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
-> reales y fixtures transaccionales en **dev**. Migración
+> reales y fixtures transaccionales en **dev**; esquema, permisos y consultas administrativas
+> comprobados también en **producción el 2026-09-15**. Migración
 > `20260915145340_admin_content_moderation.sql` y seguimiento
 > `20260915150429_moderation_event_notification_visibility.sql`;
-> **sin aplicar en producción**. El seguimiento cubre los avisos legacy `club_event`.
+> **ambas aplicadas en dev y producción**. El seguimiento cubre los avisos legacy `club_event`.
 > Estado y evidencia viven en `private.moderation_state` y
 > `private.moderation_history`, sin FK destructiva al objeto ni acceso directo
 > para `anon`/`authenticated`. `private.moderation_operations` solo marca la
