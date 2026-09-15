@@ -36,7 +36,7 @@ beforeEach(() => { sessionStorage.clear(); window.history.replaceState(null, "",
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 it("falls back to camp for an unknown explicit view, overriding the remembered screen", () => {
-  sessionStorage.setItem(petViewKey("alice"), "bag");
+  sessionStorage.setItem(petViewKey("alice"), "diary");
   window.history.replaceState(null, "", "/mascota?view=unknown");
   render(game());
   expect(screen.getByTestId("pet-game").getAttribute("data-view")).toBe("camp");
@@ -44,16 +44,26 @@ it("falls back to camp for an unknown explicit view, overriding the remembered s
   expect(sessionStorage.getItem(petViewKey("alice"))).toBe("camp");
 });
 
+it("sends the retired bag view to the character sheet, where the equipment now lives", () => {
+  // La Mochila dejó de ser destino en #1166. Los enlaces compartidos y la vista
+  // recordada de sesiones anteriores tienen que seguir llegando a alguna parte.
+  window.history.replaceState(null, "", "/mascota?view=bag");
+  render(game());
+  expect(screen.getByTestId("pet-game").getAttribute("data-view")).toBe("character");
+  expect(screen.getByRole("button", { name: "Personaje" }).getAttribute("aria-current")).toBe("page");
+  expect(screen.queryByRole("button", { name: "Mochila" })).toBeNull();
+});
+
 it("uses native history for tabs, preserves other query parameters and focuses restored views", async () => {
   window.history.replaceState(null, "", "/mascota?source=companion&view=camp");
   const { rerender } = render(game());
   const training = screen.getByTestId("training");
   const push = vi.spyOn(window.history, "pushState");
-  fireEvent.click(screen.getByRole("button", { name: "Mochila" }));
-  expect(push).toHaveBeenCalledWith(null, "", "/mascota?source=companion&view=bag");
+  fireEvent.click(screen.getByRole("button", { name: "Diario" }));
+  expect(push).toHaveBeenCalledWith(null, "", "/mascota?source=companion&view=diary");
   // Next's useSearchParams publishes this native-history change; render its new snapshot.
   rerender(game());
-  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Mochila", level: 1 }));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Diario", level: 1 }));
   expect(screen.getByTestId("training")).toBe(training);
   window.history.replaceState(null, "", "/mascota?view=character");
   act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
@@ -106,7 +116,7 @@ it("respects a failed combat checkpoint when cancelling exit, and leaves after c
   } finally { window.removeEventListener("pet:before-leave", veto); }
 });
 
-it.each(["camp", "bag", "training", "adventure"])("only activates the visible combat panel in %s", view => {
+it.each(["camp", "character", "training", "adventure"])("only activates the visible combat panel in %s", view => {
   window.history.replaceState(null, "", `/mascota?view=${view}`);
   render(game());
   expect(screen.getByTestId("training").getAttribute("data-active")).toBe(String(view === "training"));

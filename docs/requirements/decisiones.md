@@ -4636,6 +4636,87 @@ No se añade english_title ni backfill: no eliminarían la búsqueda necesaria.
 Para una coincidencia local por id se evita una petición de ficha española;
 no se afirma un ahorro de búsquedas ni una medición de tráfico en producción.
 
+## 2026-09-08 — Importación completa de Letterboxd: pases sin fecha y procedencia (#1136)
+
+Diseño confirmado por José Ángel; implementación pendiente. Contrato congelado en `docs/superpowers/specs/2026-09-08-letterboxd-zip-design.md` e issue #1136.
+
+Una vista sin diario será un pase completado con fecha desconocida: cuenta como vista sin asignarse a un periodo. Esto requiere revisar la invariante actual de fecha obligatoria, no inventar la fecha de importación ni declarar el esquema actual compatible. Dos visionados distintos del mismo día se conservan; la procedencia deberá distinguirlos de reimportaciones.
+
+La nota de ratings prevalece en el último pase del origen sin alterar notas anteriores ni sobrescribir ediciones locales sin resolver conflicto. No se crea una valoración independiente del pase. Un visionado fechado nuevo de otro ZIP crea OTRO pase y conserva el anterior sin fecha, sin preguntar ni fusionar; se elige preservar ambos visionados aunque no se pueda ordenar cronológicamente el de fecha desconocida.
+
+El trabajo confirmado continúa con la página cerrada y permite deshacer protegiendo datos previos y modificaciones posteriores. Su procedencia persistente deberá sostener recuperación, idempotencia y reversión. ZIP posterior incorpora novedades, no borra ausencias. Estas decisiones son de diseño; no autorizan aquí migraciones ni publicación de la aplicación.
+
+## 2026-09-08 — Ejecución del ZIP de Letterboxd (#1137–#1145)
+
+La implementación autorizada usa trabajos persistentes y RPC atómicas con procedencia por
+origen. Los snapshots protegen ediciones locales al actualizar y al deshacer. Las dependencias
+del pase activo se revierten juntas por película; un conflicto conserva el grupo afectado.
+La aceptación solo enlaza pases locales cuando la correspondencia es individual e inequívoca;
+también se puede conservar el historial local y añadir pases distintos explícitamente.
+
+Fecha de visionado y fecha administrativa quedan separadas. `completed` admite fecha desconocida;
+la biblioteca, diario, notas y estadísticas usan el estado explícito. En un empate de día se usa
+el orden de registro, con UUID como último desempate. Una URI de reseña diferente no se fusiona
+por compartir fecha: representa otro registro. Sin identidad segura, el texto se conserva para
+que el dueño lo asocie. Las reseñas se muestran con nodos React de formato básico y enlaces HTTP(S).
+
+Se conserva el flujo CSV. El ZIP se analiza en memoria con límites, sin nuevas dependencias.
+`after()` y un despachador pg_cron comparten el procesador con presupuesto temporal y lotes
+pequeños; la recuperación usa Vault ya existente. Las revalidaciones del worker usan
+`revalidateTag` con caducidad inmediata, porque `updateTag` solo es válido en Server Actions.
+No se cachea información privada de importaciones. El único post posible es un anuncio opt-in
+de la importación; no se fabrican eventos de visionados antiguos como actividad de hoy.
+
+Verificación y migraciones realizadas únicamente sobre instancia local desechable con fixtures
+sintéticos. Aplicación remota, publicación y aceptación con una cuenta real siguen pendientes en
+los tickets originales; no se cierra ninguno como consecuencia de esta implementación local.
+
+## 2026-09-08 — Asociar y reparar importaciones sin fusionar por coincidencia aparente
+
+Diseño confirmado en docs/design/letterboxd-recovery.md (Q1–Q6). Compartir película,
+fecha y nota propone una asociación con un único pase anterior, pero no la confirma:
+el usuario puede revisar y aceptar varias propuestas juntas. Se acepta el coste de
+esa confirmación para no colapsar visionados distintos. Una vez asociado, completar
+huecos conserva los valores locales presentes; sustituir discrepancias exige decisión.
+
+La recuperación conserva el trabajo y sus resultados correctos. Aplicar a una cuenta
+una reparación requiere aprobar primero sus efectos concretos. Fin del procesamiento
+no significa importación resuelta: se muestra parcial mientras queden incidencias.
+Estas decisiones complementan el contrato original; no autorizan reparación automática
+de datos productivos durante el diseño.
+
+## 2026-09-08 — Confirmaciones versionadas y procedencia reversible en recuperación Letterboxd
+
+La revisión y el plan son consultas sin escrituras. Al confirmar se revalida la versión de
+cada fila, sus pases, catálogo y procedencia bajo bloqueo; una decisión repetida devuelve su
+recibo. Los lotes de hasta 50 filas conservan resultados individuales y permiten continuar.
+La selección no se amplía al cambiar de filtro ni se sustituyen valores locales implícitamente.
+
+Una asociación conserva su política de completar huecos; aceptar discrepancias la cambia
+explícitamente. El diario privado de procedencia registra ambos estados para que deshacer
+restaure también esa política, protegiendo modificaciones posteriores. La equivalencia de
+reseñas solo normaliza espacios y envoltorios neutros; mantiene énfasis y enlaces.
+
+El worker registra catálogo únicamente para filas confirmadas, con identidad TMDB validada,
+y completa campos ausentes. Reparar una ficha importada no vuelve a escribir sus pases.
+Los errores conservan causas estables y un máximo de tres intentos; los resultados pendientes
+se muestran como parciales, incluso en trabajos antiguos marcados como finalizados.
+
+Alcance autorizado: migración y pruebas locales desechables. No implica aplicar la migración
+remota, publicar ni reparar una cuenta real; esos pasos siguen en #1150–#1159.
+
+## 2026-09-08 — Lecturas acotadas en bibliotecas grandes (#1161)
+
+La hidratación de biblioteca y colecciones divide las claves en lotes de 50,
+con un máximo de cuatro lotes simultáneos y conservando el orden de entrada.
+Las consultas de pases y facetas se paginan con desempate estable por id antes
+de aplicar búsqueda, ordenación y límite visible. Un error de catálogo o pases
+se propaga; no significa que la biblioteca esté vacía. Se mantiene el cliente
+de la sesión y su RLS, sin caché compartida ni permisos nuevos.
+
+El fallo de transporte se reprodujo con 500 UUID: `UND_ERR_HEADERS_OVERFLOW`;
+50 UUID funcionan. La prueba local con 940 películas verifica también la rejilla
+tras importar. Publicación y comprobación en la cuenta real se rastrean en #1161.
 ## 2026-09-09 — La mascota tiene interfaz de RPG y regreso a Biblioshare (#1165)
 
 El usuario aprueba un RPG de bosque con marcos ligeros, cinco destinos (Campamento,
@@ -4663,6 +4744,163 @@ pantallas desde 900 px. El contenido conserva 26 px de margen lateral, las
 misiones tienen una columna acotada y los escenarios crecen con la altura de la
 ventana. El retorno queda alineado al borde interior del juego. La composición
 móvil mantiene sus reglas actuales.
+
+## 2026-09-09 — Un solo sistema visual para el RPG, y escala de píxel entera (#1166)
+
+Revisión estética de la interfaz propuesta por Codex. Tres decisiones de forma.
+
+**Los tokens del juego viven en un único sitio.** `pet-game.module.css` los declara, y
+`training.module.css` y `equipment-panel.module.css` solo los consumen. Antes cada
+módulo tenía su paleta: 115 colores literales, 13 dorados para un mismo papel y 15
+radios. Consecuencia visible: el botón primario salía melocotón en Entrenamiento y
+crema en Aventura. Quedan dos radios (4 y 8 px), una escala de texto
+(12/13/14/16/18/22/26) y ningún tamaño por debajo de 12 px.
+
+**Los fondos se sirven a escala entera, nunca con `cover`.** Un factor fraccionario
+con `image-rendering: pixelated` reparte píxeles de uno y de dos px: el arte deja de
+leerse como pixel art y el sprite, que va a 2× fijo, flota sobre él. Se sirven a 2×
+(3× desde 1400 px) con `background-size` en píxeles. Eso obliga a tener lámina en
+vertical para móvil (`camp-portrait.webp`), porque la apaisada recortaba el 36 % y
+dejaba fuera la madriguera entera. La Madriguera estrena escena propia
+(`gathering.webp`): con el fondo del campamento las dos pantallas se confundían.
+
+**El color pertenece al dato.** Los seis atributos tienen glifo y color propios, y el
+mismo par aparece en la misión que los alimenta. Las barras de atributo pasan a raíz
+cuadrada del máximo: con Fuerza 861 y Constitución 28, la escala lineal dejaba cinco
+de seis visualmente a cero. El número exacto sigue al lado, siempre.
+
+Además, dos correcciones de accesibilidad que no eran estéticas: la pista de las
+barras de misión y logro daba 1,05:1 sobre su tarjeta (WCAG 1.4.11) y no se veía en
+ninguna captura, y el texto blanco de la barra de XP sobre el gradiente azul daba
+1,9:1 — ahora la cifra va fuera de la barra. Evidencia:
+`docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — El campamento cabe en la ventana (#1166)
+
+La pantalla de inicio del juego se dimensiona con la ventana, no con su contenido:
+`100svh` en el contenedor y la escena como fila elástica (`1fr`, suelo de 240 px) que
+absorbe lo que sobra. Antes scrolleaba 371 px en móvil y 20 px a 1440×900, porque el
+alto de la escena era la constante `clamp(300px, 100svh - 440px, 560px)` y ese 440 se
+quedaba corto en cuanto crecía cualquier bloque vecino. Con filas elásticas no hay
+constante que mantener.
+
+Las filas van a `1fr` y no a `minmax(0, 1fr)` a propósito. El mínimo automático de
+`1fr` impide que una fila se encoja por debajo de su contenido: en una ventana
+demasiado baja (390×667, 1024×600) el bloque de misiones no se solapa con la escena
+— desborda y scrollea su contenedor, con la cabecera y la barra de destinos quietas.
+Desplazar es peor que caber, pero recortar es peor que desplazar.
+
+**En móvil el tablero de misiones sale del campamento.** Mide 375 px: dejarlo ahí
+pone la escena en 130 px, y el tablero ya vive completo en Diario, a un toque del
+enlace que está justo al lado. En el campamento quedan el rótulo, el recuento y una
+barra por misión. En escritorio sí cabe —la columna tiene 700 px libres— y se queda
+como estaba. Las demás vistas (Personaje, Mochila, Diario, Madriguera) siguen
+scrolleando con normalidad; esta decisión es solo del campamento.
+
+Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — Cuatro destinos en el RPG: el equipo entra en la ficha (#1166)
+
+Con la interfaz ya construida, la mitad de cada pantalla era repetición o hueco.
+Medido a 1440×900, alto sin usar entre el final del contenido y la barra de
+destinos: Mochila 341 px (44 % del alto útil), Diario 297 px (39 %). Y la misma
+información aparecía en varios sitios: la identidad (nombre · clase · nivel · XP)
+en Campamento, en Personaje y en la chapa de la Madriguera; la escena del
+campamento otra vez entera dentro de Personaje; el tablero de misiones en la
+columna del Campamento y en la pestaña de Diario; y el equipo como resumen en
+Personaje y como panel en Mochila, enlazados el uno al otro.
+
+**La Mochila deja de ser destino y su panel pasa a Personaje.** Era una pantalla
+con dos ranuras y el resumen gemelo del que ya había en la ficha. Personaje queda
+como ficha de verdad: identidad en una tira, atributos a la izquierda, equipo a la
+derecha. Pierde la escena y la placa de madera duplicadas —el escenario se mira en
+el campamento— y se queda con un retrato de 61 px, que es lo que una ficha necesita
+para decir de quién es. `?view=bag` no se rompe: `petSection` lo redirige a
+`character`, con test unitario y e2e que lo fijan.
+
+**Diario enseña las dos colecciones a la vez en escritorio.** Las pestañas dejaban
+el 39 % del alto en blanco y hacían leer «Misiones de hoy» dos veces, en la pestaña
+y en la cabecera del panel. En móvil siguen las pestañas —no caben dos columnas— y
+ahí el rótulo del panel pasa a `sr-only`: lo dice la pestaña activa, pero la región
+no se queda sin encabezado para quien navega con lector.
+
+Resultado medido, mismo viewport: Diario 297 → 25 px sin usar. Campamento y
+Madriguera, sin cambios.
+
+**El hueco de Personaje lo llena lo que faltaba, no relleno.** Con el inventario
+vacío, «Aún no has ganado ningún objeto» dejaba 177 px en blanco y no decía qué se
+puede ganar ni para qué sirve. En su sitio va el catálogo: los seis objetos con su
+ranura y su efecto a potencia base ×1,0 —el texto del efecto ya existía, pero solo
+se veía al comparar copias que ya tienes—. Es estado vacío: desaparece en cuanto hay
+botín, que es justo cuando esa columna crece sola.
+
+La identidad dejó de cruzar la ficha. Acotada a 560 px dejaba 828 px de fila vacía a
+su derecha y empujaba el equipo una fila abajo. Ahora identidad y atributos van
+anidados en la columna izquierda —anidados en el marcado y no con `grid-row: span
+2`: al cruzar el equipo las dos filas, la rejilla repartía su alto entre ambas y
+abría 130 px entre la tira y Atributos—. La columna izquierda sigue acabando antes
+que la derecha mientras el catálogo esté a la vista; con botín se invierte.
+
+Evidencia: `docs/testing/2026-09-09-mascota-rpg-ui.md`.
+
+## 2026-09-09 — La migración R4b entra en producción antes que su código (#1146, #1166)
+
+Producción tiene mascota viva —5 mascotas, 47 combates, aventuras jugadas ese mismo
+día— y corre el motor **r4.1**. La migración `20260908074921_pet_r4b_equipment.sql`
+reemplaza `start_pet_adventure` y `resolve_pet_adventure` con la misma firma, así que
+sustituye en el sitio dos funciones que la app viva está llamando. Aun así se aplicó
+antes de desplegar el código, y a propósito.
+
+**Por qué se puede.** Los tres comportamientos nuevos —inyectar `equipment` en el
+snapshot, exigir un `p_reward_order` de seis objetos y sellar `qualityBp`— van dentro
+de `if ... ruleset_version='r4.2'`. Para r4.1 el camino es idéntico línea a línea al
+que ya había; se comprobó diffeando `pg_get_functiondef` de prod contra el texto de la
+migración antes de aplicarla, y comparando el md5 con dev después. El resto de la
+migración (tabla `pet_loadout`, `set_pet_equipment`, `start_pet_training` y los tres
+`private.*`) es aditivo: el código desplegado no llama a nada de eso.
+
+**Por qué importa que la guarda siga ahí.** El validador de r4.1 exige exactamente
+siete claves en el snapshot (`Reflect.ownKeys(value).length === fields.length`, en
+`src/lib/pet/battle/versions/r4.1/snapshot.ts`). Un `equipment` de más y cada aventura
+nueva de producción falla con `INVALID_SNAPSHOT` hasta que se despliegue R4b. Quien
+toque esas funciones sin mantener la guarda invalida este orden de despliegue.
+
+**Regla que queda.** «La migración va antes del despliegue» vale para cambios
+aditivos. Para un `create or replace` que cambia el contrato que el código vivo
+espera, el orden correcto es el contrario, salvo que el cambio esté guardado por
+versión —que es lo que hace este—.
+
+Verificado tras aplicar: `pet_loadout` con RLS y su política, las cinco funciones
+nuevas presentes, `start_pet_adventure` y `resolve_pet_adventure` con el mismo md5 que
+dev, cero aventuras r4.1 con `equipment`, y ningún objeto nuevo en el informe de
+seguridad de Supabase (los `revoke all` de la migración hacen su trabajo).
+
+## 2026-09-10 — El catálogo del botín deja de ser una pantalla de bienvenida (#1170)
+
+Con la mochila vacía se pintaban los seis objetos («Lo que puedes conseguir») y con la
+primera copia **desaparecían los seis**. Justo al revés de lo que hace falta: saber qué
+objetos existen y qué hacen empieza a servir cuando ya tienes alguno y decides a qué
+aventura ir.
+
+**Qué se decide.** Una sola vista. Por ranura se pintan siempre los tres objetos: los
+conseguidos como hasta ahora (rejilla de copias, potencia real en dorado) y los que
+faltan como tarjeta atenuada **no pulsable**, en el sitio que ocuparán al ganarlos, con
+su efecto escrito. `CatalogPreview` desaparece; el estado vacío pasa a ser esa misma
+rejilla con las seis atenuadas más «Aún no has ganado ningún objeto».
+
+**Lo que cambia de aspecto.** El estado vacío ya no es un bloque propio: tiene los
+encabezados de Arma y Amuleto desde el principio. Es el precio de tener un solo camino
+de render en vez de dos que había que mantener a la par.
+
+**La trampa que se respeta.** El efecto de una tarjeta atenuada va a potencia base ×1,0
+y lo dice en la propia tarjeta; las copias reales caen entre ×0,8 y ×1,2. Por eso ese
+número **no** lleva el dorado de `.potency`, que es el color de la potencia de una copia
+concreta: mezclar los dos valores en el mismo color sería decir que tienes algo que no
+tienes.
+
+**Por qué no es pulsable.** Los botones de una ranura son las copias, y de eso dependen
+los e2e de `mascota-equipo`, que cuentan botones dentro de `loot-<ranura>`. Una tarjeta
+de lo que falta no es un control: no hay nada que comparar ni que equipar.
 
 ## 2026-09-15 — Moderación administrativa reversible y borrado definitivo (#1183)
 

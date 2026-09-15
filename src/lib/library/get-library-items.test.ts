@@ -7,6 +7,8 @@ import { filterByGenre, getLibraryView, getUserGenres } from "./get-library-item
 // igual que el de Supabase.
 function fakeSupabase(eqCalls: [string, unknown][]) {
   const builder: Record<string, unknown> = {
+    order: () => builder,
+    range: () => builder,
     select: () => builder,
     eq: (col: string, val: unknown) => {
       eqCalls.push([col, val]);
@@ -34,9 +36,9 @@ describe("getUserGenres (#306: la faceta refleja el filtro de estado)", () => {
 
 describe("filterByGenre", () => {
   const items = [
-    { itemType: "book", itemId: "b1" },
-    { itemType: "movie", itemId: "m1" },
-  ] as any[];
+    { itemType: "book" as const, itemId: "b1" },
+    { itemType: "movie" as const, itemId: "m1" },
+  ];
   const genresByKey = new Map<string, string[]>([
     ["book:b1", ["Ciencia ficción", "Aventura"]],
     ["movie:m1", ["Comedia"]],
@@ -64,6 +66,7 @@ describe("filterByGenre", () => {
 // explota), no el filtrado — eso lo cubren los tests puros de splitDropped.
 function fakeEmptyLibrary() {
   const builder: Record<string, unknown> = {
+    range: () => builder,
     select: () => builder,
     eq: () => builder,
     in: () => builder,

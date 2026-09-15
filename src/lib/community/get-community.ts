@@ -27,7 +27,7 @@ export type CommunityReview = {
   username: string | null;
   /** Avatar del autor (Storage o URL legado); null = iniciales. */
   avatarUrl: string | null;
-  finishedOn: string; // ISO date
+  finishedOn: string | null; // null = completed with unknown date
   rating: number | null; // 1–10
   text: string;
   editionLabel: string | null;
@@ -167,18 +167,19 @@ export async function getRatingSummary(
   // en la Tarea 1, control de medias).
   const { data: passRows } = await supabase
     .from("passes")
-    .select("id, rating, finished_on, user_id")
+    .select("id, rating, finished_on, created_at, user_id")
     .eq("item_type", itemType)
     .eq("item_id", itemId)
-    .not("finished_on", "is", null)
+    .eq("status", "completed")
     .not("rating", "is", null)
     .neq("status", "dropped");
 
   const ratedPasses: RatedPass[] = (passRows ?? []).map((r) => ({
     id: r.id,
     userId: r.user_id,
-    // finished_on y rating no son null por los .not(...) de arriba.
-    finishedOn: r.finished_on as string,
+    // Completed ratings may have an unknown viewing date.
+    finishedOn: r.finished_on ?? "",
+      createdAt: r.created_at,
     rating: r.rating as number,
   }));
   const ratings = latestRatingPerUser(ratedPasses).map((r) => r.rating);
@@ -230,21 +231,19 @@ export async function getReviews(
       .not("review", "is", null)
       // Un pase abierto no es una reseña: todavía no ha terminado, así que
       // no debe verlo la comunidad.
-      .not("finished_on", "is", null)
+      .in("status", ["completed", "dropped"])
       // Una reseña privada es de su autor y de nadie más.
       .eq("is_public", true)
-      .order("finished_on", { ascending: false })
+      .order("finished_on", { ascending: false, nullsFirst: false })
       .limit(MAX_REVIEWS);
 
-    // El filtro anterior garantiza finished_on no nulo; se narrowa aquí
-    // porque Supabase no infiere el tipo a partir de la query. pass_reviews
+    // Closed reviews can have an unknown date. pass_reviews
     // tipa TODAS sus columnas como nullable (es una vista), así que también
     // se narrowan id/user_id — nunca vienen null en la práctica.
     const rows = (diaryRows ?? []).filter(
-      (r): r is typeof r & { id: string; user_id: string; finished_on: string } =>
+      (r): r is typeof r & { id: string; user_id: string } =>
         r.id !== null &&
         r.user_id !== null &&
-        r.finished_on !== null &&
         (r.review ?? "").trim() !== ""
     );
 

@@ -1,0 +1,175 @@
+{
+  "created": "2026-09-09",
+  "purpose": "Assets for the RPG visual redesign of /mascota (PR #1166): a portrait camp background for mobile, a distinct Madriguera gathering scene, three nine-slice UI frames and a three-state wooden button plank. Nothing under public/pet/ was used as input or modified; existing sprite sheets are untouched.",
+  "tool": "mcp__pixellab__create_image_pro, mcp__pixellab__create_image_pixen",
+  "toolNote": "create_ui_asset is NOT exposed by this PixelLab MCP server (available image tools: create_image_pixflux, create_image_pixen, create_image_pro, edit_image, inpaint_image, animate_image, reduce_colors, correct_pixelart, plus the character tools). The UI pieces were generated with create_image_pixen and the nine-slice inset is documented per asset instead.",
+  "format": "WebP lossless, native resolution, effort 6. No resampling anywhere: the CSS is expected to upscale by integer factors with image-rendering: pixelated.",
+  "assets": [
+    {
+      "file": "frame-moss.webp",
+      "chosenCandidate": "a",
+      "tool": "mcp__pixellab__create_image_pixen",
+      "model": "pixen",
+      "jobId": "469da6ae-7593-4864-b232-bf521830f262",
+      "seed": 202609111,
+      "prompt": "game UI nine-slice border frame, hollow rectangular window frame seen flat straight on, thin border of soft green moss and pale light wood grain veins, deep dark green flat panel filling the entire centre, moss green edging, thin cream wood highlight along the inner edge, all four sides identical thickness, four corners identical, perfectly symmetric, flat shading, crisp clean pixels, sober restrained ornament",
+      "sourceDimensions": {
+        "width": 64,
+        "height": 64
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/469da6ae-7593-4864-b232-bf521830f262/download",
+      "chargedGenerations": 1,
+      "outputDimensions": {
+        "width": 64,
+        "height": 64
+      },
+      "bytes": 832,
+      "postprocessing": "Flatten the nine-slice centre: everything inside an 8 px ring rewritten to the modal colour #243320 (1355 px changed, the region was already 41% that exact colour) so the middle tile has no texture to seam or smear when repeated; remove opaque alpha; encode lossless WebP effort 6. No resampling, no recolour of the border.",
+      "nineSlice": {
+        "ornamentThicknessPx": 7,
+        "recommendedSlice": 8,
+        "alsoValidSlice": 16,
+        "css": "border-image: url(/pet/ui/frame-moss.webp) 8 fill / 8px round; image-rendering: pixelated;",
+        "cssAt16": "border-image: url(/pet/ui/frame-moss.webp) 16 fill / 16px round;  /* also correct: the extra 8 px are flat panel, identical render, just eats 8 px of interior on each side */",
+        "centreColour": "#243320"
+      },
+      "publishedAt": "public/pet/ui/frame-moss.webp"
+    },
+    {
+      "file": "frame-wood.webp",
+      "chosenCandidate": "b",
+      "tool": "mcp__pixellab__create_image_pixen",
+      "model": "pixen",
+      "jobId": "36cf0167-83be-4038-ba9b-009ed78491b5",
+      "seed": 202609122,
+      "prompt": "game UI nine-slice wooden plaque frame filling the whole square image, the wooden border reaches and touches all four edges of the canvas so the wood runs right up to the outer edge, rectangular border of warm brown wood planks with visible grain, a bright pale gold bevelled edge, a round iron rivet nail in each of the four corners, flat brown wood filling the entire centre, all four sides identical thickness, perfectly symmetric, flat shading, crisp clean pixels",
+      "sourceDimensions": {
+        "width": 64,
+        "height": 64
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/36cf0167-83be-4038-ba9b-009ed78491b5/download",
+      "chargedGenerations": 1,
+      "outputDimensions": {
+        "width": 64,
+        "height": 64
+      },
+      "bytes": 964,
+      "postprocessing": "Flatten the nine-slice centre: everything inside a 16 px ring rewritten to the modal colour #502e17 (301 px changed, the region was already 71% that colour); remove opaque alpha; encode lossless WebP effort 6. No resampling.",
+      "nineSlice": {
+        "ornamentThicknessPx": 13,
+        "recommendedSlice": 16,
+        "css": "border-image: url(/pet/ui/frame-wood.webp) 16 fill / 16px round; image-rendering: pixelated;",
+        "centreColour": "#502e17",
+        "warning": "Do not slice below 14: the gold corner bracket and its iron rivet reach 13 px in from each corner."
+      },
+      "publishedAt": "public/pet/ui/frame-wood.webp"
+    },
+    {
+      "file": "frame-parchment.webp",
+      "chosenCandidate": "c",
+      "tool": "mcp__pixellab__create_image_pixen",
+      "model": "pixen",
+      "jobId": "5d329c92-b118-434c-aa3d-ae46fea0da86",
+      "seed": 202609125,
+      "prompt": "game UI nine-slice panel, a perfectly even rectangular border of warm toasted tan brown leather that starts at the very outer edge of the square image and touches all four edges, exactly the same thickness on the left, right, top and bottom, and inside it a completely plain smooth flat pale cream parchment surface with no texture and no marks filling the whole middle, a single thin dark brown line on the outermost edge, one soft warm shadow line where the tan border meets the cream, perfectly symmetric, flat shading, crisp clean pixels, calm minimal",
+      "sourceDimensions": {
+        "width": 64,
+        "height": 64
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/5d329c92-b118-434c-aa3d-ae46fea0da86/download",
+      "chargedGenerations": 1,
+      "outputDimensions": {
+        "width": 64,
+        "height": 64
+      },
+      "bytes": 800,
+      "postprocessing": "Flatten the nine-slice centre: everything inside an 8 px ring rewritten to the modal colour #e1d6b9 (1524 px changed), which also removes the mottled paper grain that would tile visibly behind the comparison text; remove opaque alpha; encode lossless WebP effort 6. No resampling.",
+      "nineSlice": {
+        "ornamentThicknessPx": 7,
+        "recommendedSlice": 8,
+        "alsoValidSlice": 16,
+        "css": "border-image: url(/pet/ui/frame-parchment.webp) 8 fill / 8px round; image-rendering: pixelated;",
+        "centreColour": "#e1d6b9"
+      },
+      "publishedAt": "public/pet/ui/frame-parchment.webp"
+    },
+    {
+      "file": "plank-normal.webp",
+      "chosenCandidate": "b",
+      "tool": "mcp__pixellab__create_image_pixen",
+      "model": "pixen",
+      "jobId": "a4dfc324-c329-47d8-9688-cf1c1166d9df",
+      "seed": 202609124,
+      "prompt": "game UI horizontal wooden button plank seen flat straight on, one solid rectangular board of warm brown wood that fills the entire rectangle and touches all four edges of the canvas with square corners, horizontal wood grain lines across the middle, a bright pale gold bevelled highlight strip along the whole top edge, a dark brown shadow strip along the whole bottom edge, a vertical pale gold banded cap at the far left end and an identical one at the far right end, plain empty wood surface between the two caps, crisp clean pixels, flat shading",
+      "sourceDimensions": {
+        "width": 64,
+        "height": 32
+      },
+      "sourceDownloadUrl": "https://api.pixellab.ai/mcp/images/a4dfc324-c329-47d8-9688-cf1c1166d9df/download",
+      "chargedGenerations": 1,
+      "outputDimensions": {
+        "width": 64,
+        "height": 32
+      },
+      "bytes": 1032,
+      "postprocessing": "12 leftover #313131 generator pixels in the four rounded corners set to alpha 0; alpha KEPT (the button has rounded corners, so this file is not fully opaque); encode lossless WebP effort 6. No resampling, no recolour.",
+      "nineSlice": {
+        "orientation": "horizontal",
+        "capWidthPx": 7,
+        "recommendedSlice": "0 8",
+        "css": "border-image: url(/pet/ui/plank-normal.webp) 0 8 fill / 0 8px stretch; image-rendering: pixelated;",
+        "note": "Left/right caps fixed, centre stretches horizontally - the grain is horizontal so stretching does not smear. Keep the button height at an integer multiple of the 32 px art (32 / 64 / 96 CSS px) or the vertical stretch lands on fractional pixels."
+      },
+      "publishedAt": "public/pet/ui/plank-normal.webp"
+    },
+    {
+      "file": "plank-hover.webp",
+      "derivedFrom": "plank-normal.webp",
+      "tool": "local (sharp)",
+      "model": null,
+      "jobId": null,
+      "seed": null,
+      "prompt": null,
+      "chargedGenerations": 0,
+      "outputDimensions": {
+        "width": 64,
+        "height": 32
+      },
+      "bytes": 1016,
+      "postprocessing": "Per channel v -> v + (255 - v) * 0.14 (one step towards white, hue preserved); geometry and alpha untouched; encode lossless WebP effort 6. Derived locally on purpose: a second generation would not have matched the plank pixel for pixel, and a hover state that shifts shape reads as a glitch.",
+      "nineSlice": {
+        "orientation": "horizontal",
+        "capWidthPx": 7,
+        "recommendedSlice": "0 8"
+      },
+      "publishedAt": "public/pet/ui/plank-hover.webp"
+    },
+    {
+      "file": "plank-pressed.webp",
+      "derivedFrom": "plank-normal.webp",
+      "tool": "local (sharp)",
+      "model": null,
+      "jobId": null,
+      "seed": null,
+      "prompt": null,
+      "chargedGenerations": 0,
+      "outputDimensions": {
+        "width": 64,
+        "height": 32
+      },
+      "bytes": 948,
+      "postprocessing": "Per channel v -> v * 0.82, then a vertical flip so the pale gold bevel moves from the top edge to the bottom edge (inverted bevel = pressed). The flip preserves the horizontal nine-slice geometry exactly (left/right caps unchanged); alpha untouched; encode lossless WebP effort 6.",
+      "nineSlice": {
+        "orientation": "horizontal",
+        "capWidthPx": 7,
+        "recommendedSlice": "0 8"
+      },
+      "publishedAt": "public/pet/ui/plank-pressed.webp"
+    }
+  ],
+  "balanceBefore": 3205,
+  "balanceAfter": 3065,
+  "actualGenerationsSpent": 140,
+  "spendNote": "Four create_image_pro calls announced 40 generations each (160) plus 10 create_image_pixen calls at 1 each = 170 announced, but only 140 were charged: the two 288x384 portrait jobs billed a lower area tier than the 40 they announced. The chargedGenerations per asset above are the reconstructed split (2x25 portrait + 2x40 landscape + 10x1 pixen = 140).",
+  "fullRecord": ".superpowers/brainstorm/2026-09-09-ui/provenance.json (candidatos descartados y laminas de contacto; no versionado)"
+}

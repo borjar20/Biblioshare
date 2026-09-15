@@ -15,7 +15,7 @@ export type RereadRow = {
   item_type: ItemType;
   item_id: string;
   rating: number | null;
-  finished_on: string;
+  finished_on: string | null;
 };
 
 export type RereadWork = {
@@ -81,7 +81,12 @@ export function computeRereads(rows: RereadRow[]): Rereads {
     totalRereadWorks += 1;
     // Por fecha, no por el orden en que llegan las filas: Postgres no promete
     // ninguno sin `order by`, y aquí el orden ES el dato.
-    passes.sort((a, b) => a.finished_on.localeCompare(b.finished_on));
+    if (passes.some((p) => p.finished_on === null)) {
+      // Count the repeat, but do not claim a chronological rating delta.
+      unratedRereads += 1;
+      continue;
+    }
+    passes.sort((a, b) => (a.finished_on ?? "").localeCompare(b.finished_on ?? ""));
     const first = passes[0];
     const latest = passes[passes.length - 1];
     if (first.rating === null || latest.rating === null) {
@@ -130,8 +135,7 @@ export async function getRereads(
     .from("passes")
     .select("item_type, item_id, rating, finished_on")
     .eq("user_id", userId)
-    .eq("status", "completed")
-    .not("finished_on", "is", null);
+    .eq("status", "completed");
   if (itemFilter !== "all") query = query.eq("item_type", itemFilter);
 
   const { data, error } = await query;

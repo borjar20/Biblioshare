@@ -192,19 +192,19 @@ export async function getFollowedSagas(
       if (idsByType[type].length === 0) return;
       const { data } = await supabase
         .from("passes")
-        .select("item_id, rating, finished_on")
+        .select("item_id, rating, finished_on, created_at")
         .eq("item_type", type)
         .eq("user_id", userId)
         .in("item_id", idsByType[type])
         .not("rating", "is", null)
-        .not("finished_on", "is", null)
-        .neq("status", "dropped");
+        .eq("status", "completed");
       for (const r of data ?? []) {
         ratings.push({
           itemType: type,
           itemId: r.item_id,
           rating: r.rating as number,
-          finishedOn: r.finished_on as string,
+          finishedOn: r.finished_on ?? "",
+          createdAt: r.created_at,
         });
       }
     }),

@@ -23,7 +23,7 @@ export async function getTypeDistribution(
     .from("passes")
     .select("item_type")
     .eq("user_id", userId)
-    .not("finished_on", "is", null);
+    .in("status", ["completed", "dropped"]);
 
   const bounds = periodBounds(period);
   if (bounds) {

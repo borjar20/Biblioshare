@@ -80,7 +80,9 @@ test("abrir /mascota crea tres misiones del día y pinta la galería de logros",
   expect(rows).toHaveLength(3);
   expect(new Set(rows.map((r) => r.template)).size).toBe(3);
 
-  await page.getByRole("button", { name: "Logros", exact: true }).click();
+  // En escritorio Diario enseña las dos colecciones a la vez y no hay pestañas
+  // que pulsar (#1166): con una sola, el 39 % del alto quedaba en blanco.
+  await expect(page.getByRole("button", { name: "Logros", exact: true })).toBeHidden();
   await expect(page.getByTestId("achievement-grid")).toBeVisible();
   // Una tarjeta por familia, con su nivel y el siguiente umbral visible.
   const cards = page.getByTestId("achievement-grid").locator("li[data-testid^='achievement-']");

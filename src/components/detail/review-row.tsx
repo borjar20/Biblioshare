@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { MentionText } from "@/components/social/mention-text";
+import { ReviewContent } from "./review-content";
 import type { ItemType } from "@/lib/catalog/types";
 
 // Los avatares subidos a Storage van por next/image (remotePatterns); las URLs
@@ -122,7 +123,7 @@ export function ReviewRow({
           una reseña de varios párrafos salía como un ladrillo. `break-words`
           para que una URL larga no desborde la ficha. */}
       <p className="whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
-        <MentionText text={text} knownUsernames={knownUsernames} />
+        {/<\/?(?:p|br|strong|b|em|i|a)\b/i.test(text) ? <ReviewContent text={text} /> : <MentionText text={text} knownUsernames={knownUsernames} />}
       </p>
 
       {children}

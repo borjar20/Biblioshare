@@ -12,6 +12,21 @@ navegador, usa la cuenta ya creada y con onboarding completo:
 - **No borrar nunca esta cuenta** como parte de la limpieza de un test. Es
   persistente para todo el proyecto.
 
+### Cuenta persistente de Codex
+
+Creada y verificada el 2026-09-06 por petición de José Ángel:
+
+- Proyecto: **biblioshare-dev** (`tyvzpuhxfwxrnkcpzxyg`).
+- Usuario: `codex_qa`; correo ficticio: `codex_qa@biblioshare.test`.
+- Credenciales e ID en **`.env.codex-test.local`**, excluido de Git. Cargarlo
+  explícitamente cuando una prueba use esta cuenta; no sustituye `.env.local`
+  ni cambia la cuenta de desarrollo existente.
+- Rol `user`, onboarding completado e inicio de sesión con contraseña verificado.
+- Cuenta persistente: conservarla entre pruebas. El dominio `.test` la separa
+  del barrido de cuentas desechables `@example.com` de `sweep-disposable.ts`.
+- Guardar la contraseña únicamente en el archivo local; en documentación,
+  issues y memoria usar esta referencia.
+
 ### Qué limpiar y qué no, tras probar algo
 
 - Si la prueba añade ítems a la biblioteca de `devtest` (`passes` —la tabla

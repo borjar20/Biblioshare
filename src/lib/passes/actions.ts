@@ -56,7 +56,7 @@ async function savePassFields(
   userId: string,
   formData: FormData
 ): Promise<ClosePassState & { review?: string | null; isPublic?: boolean }> {
-  const finishedOn = parseFinishedOn(formData.get("finishedOn"));
+  let finishedOn: string | null | undefined = parseFinishedOn(formData.get("finishedOn"));
   if (finishedOn === undefined) return { error: "invalidDate" };
 
   const rating = parseRating(formData.get("rating"));
@@ -89,10 +89,12 @@ async function savePassFields(
   // día» que en realidad eran de años.
   const { data: actual } = await supabase
     .from("passes")
-    .select("started_on")
+    .select("started_on, finished_on, status")
     .eq("id", passId)
     .eq("user_id", userId)
     .maybeSingle();
+  // Editing an already completed, undated pass must not invent today's date.
+  if (actual?.status === "completed" && actual.finished_on === null && !String(formData.get("finishedOn") ?? "").trim()) finishedOn = null;
   const inicioInvalido =
     finishedOn !== null && actual?.started_on != null && finishedOn < actual.started_on;
 

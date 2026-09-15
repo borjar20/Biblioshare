@@ -43,7 +43,7 @@ export type PeriodActivity = {
   previousMinutes: number | null;
 };
 
-type PassRow = { finished_on: string; item_type: ItemType };
+type PassRow = { finished_on: string | null; item_type: ItemType };
 type SessionRow = { session_date: string; duration_minutes: number | null };
 
 /** Qué grano pide cada periodo. */
@@ -125,7 +125,7 @@ export async function getPeriodActivity(
       .from("passes")
       .select("finished_on, item_type")
       .eq("user_id", userId)
-      .not("finished_on", "is", null);
+      .in("status", ["completed", "dropped"]);
     if (itemFilter !== "all") q = q.eq("item_type", itemFilter);
     return q;
   };
@@ -179,7 +179,7 @@ export async function getPeriodActivity(
   // En «todo» el eje son los años con actividad, así que salen del dato.
   const years = [
     ...new Set([
-      ...passRows.map((r) => Number(r.finished_on.slice(0, 4))),
+      ...passRows.flatMap((r) => r.finished_on ? [Number(r.finished_on.slice(0, 4))] : []),
       ...sessionRows.map((r) => Number(r.session_date.slice(0, 4))),
     ]),
   ].sort((a, b) => a - b);
@@ -190,6 +190,7 @@ export async function getPeriodActivity(
   const byType: Record<ItemType, number> = { book: 0, movie: 0, series: 0 };
   for (const row of passRows) {
     byType[row.item_type] += 1;
+    if (!row.finished_on) continue;
     const bucket = byKey.get(bucketKey(row.finished_on, grain));
     if (!bucket) continue;
     bucket.works += 1;

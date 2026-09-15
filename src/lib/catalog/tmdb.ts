@@ -3,6 +3,7 @@ import { mapTmdbJob } from "@/lib/people/map-tmdb-job";
 import { isSelfAppearance } from "@/lib/people/credit-noise";
 import type { SearchResult } from "./types";
 import { resolveGenresFromIds } from "./tmdb-genres";
+import { CatalogProviderError, requireProviderResponse } from "./provider-error";
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
 const TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
@@ -25,9 +26,12 @@ type TmdbSearchResponse = {
   }>;
 };
 
-async function tmdbSearch(kind: "movie" | "tv", query: string, language = "es-ES") {
+async function tmdbSearch(kind: "movie" | "tv", query: string, language = "es-ES", strict = false) {
   const accessToken = process.env.TMDB_API_KEY;
-  if (!accessToken) return [];
+  if (!accessToken) {
+    if (strict) throw new CatalogProviderError("configuration");
+    return [];
+  }
 
   const url = new URL(`https://api.themoviedb.org/3/search/${kind}`);
   url.searchParams.set("query", query);
@@ -37,6 +41,7 @@ async function tmdbSearch(kind: "movie" | "tv", query: string, language = "es-ES
     headers: { Authorization: `Bearer ${accessToken}` },
     next: { revalidate: 3600 },
   });
+  if (strict) requireProviderResponse(res);
   if (!res.ok) return [];
 
   const data: TmdbSearchResponse = await res.json();
@@ -91,8 +96,8 @@ export async function searchMovies(query: string): Promise<SearchResult[]> {
  * que se cachea — así el catálogo no se llena de títulos ingleses y se gasta una
  * llamada por película nueva en vez de dos por fila.
  */
-export async function searchMoviesForImport(query: string): Promise<SearchResult[]> {
-  const results = await tmdbSearch("movie", query, "en-US");
+export async function searchMoviesForImport(query: string, strict = false): Promise<SearchResult[]> {
+  const results = await tmdbSearch("movie", query, "en-US", strict);
   return results
     .filter((r) => r.title)
     .map((r) => ({ ...mapMovieResult(r), englishTitle: r.title ?? null }));
@@ -249,14 +254,18 @@ function profileUrl(path: string | null | undefined): string | null {
   return path ? `${TMDB_PROFILE_BASE}${path}` : null;
 }
 
-async function tmdbGet<T>(path: string): Promise<T | null> {
+async function tmdbGet<T>(path: string, strict = false): Promise<T | null> {
   const accessToken = process.env.TMDB_API_KEY;
-  if (!accessToken) return null;
+  if (!accessToken) {
+    if (strict) throw new CatalogProviderError("configuration");
+    return null;
+  }
 
   const res = await fetch(`https://api.themoviedb.org/3${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     next: { revalidate: 86400 },
   });
+  if (strict) requireProviderResponse(res);
   if (!res.ok) return null;
   return (await res.json()) as T;
 }
@@ -423,13 +432,13 @@ function yearFrom(date: string | undefined | null): number | null {
 // #674: fetch server-side por id con TODO lo que la hidratación escribe en una
 // sola llamada. director/creator salen de credits/created_by, que getMovieAs-
 // SearchResult NO trae. Ver spec 2026-08-14.
-export async function getMovieForHydration(tmdbId: number): Promise<MovieHydration | null> {
+export async function getMovieForHydration(tmdbId: number, strict = false): Promise<MovieHydration | null> {
   const data = await tmdbGet<{
     title?: string; original_title?: string; overview?: string;
     poster_path: string | null; release_date?: string; runtime?: number | null;
     genres?: Array<{ id: number }>;
     credits?: { crew?: Array<{ name: string; job?: string }> };
-  }>(`/movie/${tmdbId}?language=es-ES&append_to_response=credits`);
+  }>(`/movie/${tmdbId}?language=es-ES&append_to_response=credits`, strict);
   if (!data) return null;
 
   const director =

@@ -6,15 +6,17 @@ export function SpineCover({
   coverUrl,
   title,
   className = "",
+  sizes = "60px",
 }: {
   coverUrl: string | null;
   title: string;
   className?: string;
+  sizes?: string;
 }) {
   if (coverUrl) {
     return (
       <div className={`relative overflow-hidden rounded bg-surface-muted shadow-cover ${className}`}>
-        <Image src={coverUrl} alt={title} fill sizes="60px" className="object-cover" />
+        <Image src={coverUrl} alt={title} fill sizes={sizes} className="object-cover" />
       </div>
     );
   }

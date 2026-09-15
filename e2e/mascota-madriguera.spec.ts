@@ -210,7 +210,9 @@ test.describe("Madriguera #1083", () => {
     await expect(page.getByTestId("hatch-form")).toBeVisible();
     await expect(burrow.getByRole("button", { name: /Nube.*@burrow1083b/ })).toBeVisible();
     await expect(burrow.getByText("La tuya")).toHaveCount(0);
-    await expect(burrow.getByText("Nivel 12", { exact: true })).toBeVisible();
+    // Placa única por mascota desde el rediseño #1166: nombre y nivel juntos,
+    // en vez de tres chips apilados de anchos distintos.
+    await expect(burrow.getByText("Nube · Nivel 12", { exact: true })).toBeVisible();
     await burrow.getByRole("button", { name: /Nube.*@burrow1083b/ }).click();
     await expect(burrow.getByRole("link", { name: /@burrow1083b/ })).toHaveAttribute("href", "/u/burrow1083b");
     const noPet = await api(`rest/v1/pet_state?user_id=eq.${a.id}&select=user_id`);

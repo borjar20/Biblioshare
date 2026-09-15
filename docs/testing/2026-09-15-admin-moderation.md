@@ -70,6 +70,14 @@ conexión privilegiada. No se añade una puerta de borrado de auditoría a la ap
   #1126/#1098. No impidieron completar el recorrido.
 - Arquitectura sincronizada y `git diff --check` correcto.
 
+## Verificación para la PR #1184
+
+La suite completa antes de integrar main pasó: 3.541 pruebas en 353 archivos.
+Tras resolver las adiciones concurrentes de main en tipos, documentación y
+bootstrap, pasaron TypeScript, las siete pruebas de bootstrap y la suite completa:
+3.568 pruebas en 360 archivos (182,64 s). El build y los recorridos de navegador
+indicados arriba corresponden al commit de implementación anterior a esa integración.
+
 ## Pendiente de producción
 
 Aplicar ambas migraciones y desplegar la aplicación de manera coordinada.

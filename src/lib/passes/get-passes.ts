@@ -19,7 +19,7 @@ export async function getPasses(
   const { data, error } = await supabase
     .from("pass_reviews")
     .select(
-      "id, status, is_active, position, started_on, finished_on, rating, review, is_public, edition_id, pinned_order, dropped_reason, dropped_reason_note"
+      "id, created_at, status, is_active, position, started_on, finished_on, rating, review, is_public, edition_id, pinned_order, dropped_reason, dropped_reason_note"
     )
     .eq("user_id", userId)
     .eq("item_type", itemType)
@@ -30,7 +30,10 @@ export async function getPasses(
   // another active pass when the existing one could not be read (#657).
   if (error) throw new Error("Could not load passes", { cause: error });
 
-  return (data ?? []).map((r) => ({
+  return (data ?? []).sort((a, b) => {
+    const open = (status: string | null) => status === "planned" || status === "in_progress";
+    return Number(open(b.status)) - Number(open(a.status)) || (b.finished_on ?? "").localeCompare(a.finished_on ?? "") || (b.created_at ?? "").localeCompare(a.created_at ?? "");
+  }).map((r) => ({
     id: r.id as string,
     status: r.status as Pass["status"],
     isActive: r.is_active as boolean,

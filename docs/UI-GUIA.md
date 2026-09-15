@@ -12,8 +12,8 @@
 ## Identidad (proteger)
 
 **Excepción aprobada: `/mascota` (#1165, 2026-09-09).** Tiene marco de RPG de bosque,
-tema verde fijo y navegación propia: Campamento, Personaje, Mochila, Diario y
-Madriguera. El combate cede el espacio a arena/controles, pero conserva «← Biblioshare».
+tema verde fijo y navegación propia: Campamento, Personaje, Diario y Madriguera
+(la Mochila entró en Personaje el 2026-09-09, #1166). El combate cede el espacio a arena/controles, pero conserva «← Biblioshare».
 Ese acceso vuelve a la última ruta interna válida o a Inicio; no es un `back()`
 ciego. El marco reutiliza el único `main` de AppShell. No duplicar componentes de
 combate para móvil/escritorio ni desmontarlos al cambiar de sección. El resto de
@@ -25,6 +25,14 @@ interior a cada lado, sin máximos de 1200/940/860 px. Campamento reserva una
 columna acotada para misiones y da el resto al escenario; la altura de los
 escenarios se adapta al viewport. Eclosión distribuye formulario y madriguera
 en dos columnas. En móvil se conserva la composición compacta.
+
+**Ancho de ventana no es ancho de todo (rediseño estético, 2026-09-09).** Ocupar la
+ventana vale para los paneles, no para lo que tiene proporción o un tamaño natural:
+la arena y sus controles se acotan a 1000 px centrados —estirada a 1350 px dejaba a
+los dos luchadores separados por un claro vacío—, la placa de identidad a 460 px, y
+la acción principal a 520 px. Las alturas de escenario se acotan **por arriba**
+además de por abajo (`clamp`, no `max`): con `max(480px, 100svh - 330px)` la escena
+crecía hasta empujar el botón de aventura por debajo de la barra de navegación.
 
 Serif display + paleta papel/teja + **la portada como material**. Los mejores
 layouts de la casa son la plantilla a imitar: `/persona` (desktop 2-3 columnas),

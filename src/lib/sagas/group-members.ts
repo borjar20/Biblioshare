@@ -346,7 +346,7 @@ export function computeProgress(
 // la app) de las medias por título; por título cuenta el ÚLTIMO pase puntuado
 // de cada usuario (reusa latestRatingPerUser de la ficha de obra).
 export function averageSagaRating(
-  rows: Array<{ itemKey: string; userId: string; rating: number; finishedOn: string; passId: string }>,
+  rows: Array<{ itemKey: string; userId: string; rating: number; finishedOn: string; createdAt?: string; passId: string }>,
 ): number | null {
   const byItem = new Map<string, typeof rows>();
   for (const r of rows) {
@@ -360,7 +360,7 @@ export function averageSagaRating(
     // RatedPass = { id, userId, finishedOn, rating } en camelCase (no
     // snake_case: lo comprobamos contra la firma real antes de mapear aquí).
     const ratings = latestRatingPerUser(
-      list.map((r) => ({ id: r.passId, rating: r.rating, finishedOn: r.finishedOn, userId: r.userId })),
+      list.map((r) => ({ id: r.passId, rating: r.rating, finishedOn: r.finishedOn, createdAt: r.createdAt, userId: r.userId })),
     ).map((r) => r.rating);
     if (ratings.length === 0) continue;
     itemAvgs.push(ratings.reduce((a, b) => a + b, 0) / ratings.length);

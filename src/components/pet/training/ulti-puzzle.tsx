@@ -6,7 +6,6 @@ import { createUltiPuzzle as createR3Puzzle } from "@/lib/pet/battle/versions/r3
 import { createUltiPuzzle as createR4Puzzle } from "@/lib/pet/battle/versions/r4.1/ulti";
 import type { BattleSnapshot } from "@/lib/pet/battle/types";
 import { RULESET } from "@/lib/pet/battle/content";
-import { buttonVariants } from "@/components/ui/button";
 import { BookIcon, AcornIcon, StarIcon, HeartIcon, SparklesIcon as Sparkles, PauseIcon as Pause } from "@/components/ui/icons";
 import { Swords, Shield } from "./training-icons";
 import styles from "./training.module.css";
@@ -49,7 +48,7 @@ export function UltiPuzzle({ seed, tick, version = RULESET.version, equipment, o
   </div>
   <p className={styles.baseEffect}>{t("baseEffect")}</p>
   {amulet && <p className={styles.baseEffect}>{t("amuletHelp", { value: RULESET.loot.ultiShieldPct * amulet.qualityBp / 10000 })}</p>}
-  <button className={buttonVariants("primary", styles.launch)} disabled={slots.some(n=>n===null)} onClick={()=>onConfirm(slots.join(""))}><Sparkles width={17} height={17} aria-hidden="true" />{t("confirm")}</button>
+  <button className={`${styles.startButton} ${styles.launch}`} disabled={slots.some(n=>n===null)} onClick={()=>onConfirm(slots.join(""))}><Sparkles width={17} height={17} aria-hidden="true" />{t("confirm")}</button>
   <div className={styles.puzzleSecondary}><button onClick={()=>onConfirm("")}>{t("skip")}</button><button onClick={onCancel}>{t("cancel")}</button></div>
  </section>;
 }

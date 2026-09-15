@@ -41,12 +41,12 @@ export async function CommunityPanel({
   const format = await getFormatter();
   const accent = MEDIA_ACCENT[itemType];
 
-  const shortDate = (iso: string) =>
-    format.dateTime(new Date(iso), {
+  const shortDate = (iso: string | null) =>
+    iso ? format.dateTime(new Date(iso), {
       day: "numeric",
       month: "short",
       year: "numeric",
-    });
+    }) : t("unknownDate");
 
   const chipClass = `inline-block rounded-[5px] px-[7px] py-0.5 font-mono text-[9.5px] tracking-[0.05em] uppercase ${accent.bgSoft} ${accent.text}`;
 
@@ -59,7 +59,7 @@ export async function CommunityPanel({
     author: string;
     username: string | null;
     avatarUrl: string | null;
-    dateIso: string;
+    dateIso: string | null;
     rating: number | null;
     text: string;
     knownUsernames: string[];
@@ -132,7 +132,7 @@ export async function CommunityPanel({
 
   // Ambas fechas son ISO (`YYYY-MM-DD`), así que ordenan bien como texto.
   const rows = [...passRows, ...episodeRows].sort((a, b) =>
-    b.dateIso.localeCompare(a.dateIso),
+    (b.dateIso ?? "").localeCompare(a.dateIso ?? ""),
   );
   const reviewCount = rows.length;
 

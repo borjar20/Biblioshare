@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { useTranslations } from "next-intl";
 import { hatchPet, type PetActionState } from "@/lib/pet/actions";
 import { NAME_MAX, type PetClass } from "@/lib/pet/classes";
-import { buttonVariants } from "@/components/ui/button";
+import gameStyles from "./game/pet-game.module.css";
 import { ClassPicker } from "./class-picker";
 import { PetSprite } from "./pet-sprite";
 
@@ -46,7 +46,7 @@ export function HatchForm({ suggested }: { suggested: PetClass | null }) {
         <p role="alert" className="text-sm text-destructive">{t(`hatch.errors.${state.error}`)}</p>
       ) : null}
 
-      <button type="submit" disabled={pending || !cls} className={buttonVariants("primary", "self-center px-6")}>
+      <button type="submit" disabled={pending || !cls} className={gameStyles.primary}>
         {t("hatch.submit")}
       </button>
     </form>

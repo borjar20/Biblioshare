@@ -9,6 +9,8 @@ import { countMyPending } from "@/lib/import/pending";
 import { SHELL_APP } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
 import { ImportForm } from "./import-form";
+import { ArchiveForm } from "./archive-form";
+import { ArchiveJobs } from "./archive-jobs";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -23,7 +25,9 @@ export const metadata: Metadata = {
 // deployment's plan tier regardless (e.g. Vercel Hobby caps at 60s).
 export const maxDuration = 60;
 
-export default async function ImportPage() {
+export default async function ImportPage({ searchParams }: { searchParams: Promise<{ archivePage?: string }> }) {
+  const { archivePage } = await searchParams;
+  const page = Math.max(0, Math.min(100000, Number(archivePage) || 0)) | 0;
   const supabase = await createClient();
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/importar"));
@@ -52,6 +56,8 @@ export default async function ImportPage() {
             : t("pendingLink")}
         </Link>
       </div>
+      <ArchiveForm />
+      <ArchiveJobs client={supabase} userId={user.id} page={page} />
       <ImportForm canResolveManually={canResolveManually} />
     </div>
   );

@@ -244,7 +244,7 @@ function ManagedLog({
   // "Nuevo pase" ya ES la respuesta "de cero".
   function handleNewPass() {
     const active = passes.find((p) => p.isActive) ?? null;
-    if (active && active.finishedOn === null) {
+    if (active && (active.status === "planned" || active.status === "in_progress")) {
       setNewPassOpen(true);
       return;
     }
@@ -298,7 +298,7 @@ function ManagedLog({
   // arriba). Las sesiones cuelgan del activo; un pase abierto siempre es
   // también el activo (el índice passes_one_active no permite lo contrario),
   // así que cuando existe openPass son el mismo pase.
-  const openPass = passes.find((p) => p.finishedOn === null) ?? null;
+  const openPass = passes.find((p) => p.status === "planned" || p.status === "in_progress") ?? null;
   // La edición del pase, y solo esa: la que el usuario identificó. Sin ella no
   // se busca una sustituta (la «edición primaria» murió, spec 2026-08-26 §5) —
   // manda `workTotalUnits`, las páginas orientativas de la obra.

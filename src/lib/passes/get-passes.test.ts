@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { getPasses, getActivePass, isAutoCloseable } from "./get-passes";
 
+it("ordena pases abiertos, fechados y completados sin fecha sin confundir su estado", async () => {
+  const rows = [
+    { id: "unknown", status: "completed", finished_on: null },
+    { id: "open", status: "planned", finished_on: null },
+    { id: "dated", status: "completed", finished_on: "2020-01-01" },
+  ];
+  const builder = { select: () => builder, eq: () => builder, order: async () => ({ data: rows, error: null }) };
+  const result = await getPasses({ from: () => builder } as never, "movie", "m", "u");
+  expect(result.map((p) => p.id)).toEqual(["open", "dated", "unknown"]);
+});
+
 // Cliente falso: devuelve el `status` que se le pida para la fila de `passes` y
 // registra los filtros aplicados (el gate de usuario tiene que estar ahí).
 function fakeSupabase(status: string | null, eqCalls: [string, unknown][] = []) {

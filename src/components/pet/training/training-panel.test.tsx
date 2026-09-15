@@ -97,8 +97,12 @@ it("keeps one pet sprite when a skill hits and later ticks replace the motion", 
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Empezar combate" })); });
   fireEvent.click(screen.getByRole("button", { name: "Golpe interruptor · Usar habilidad" }));
   for (let tick = 0; tick < 25; tick++) act(() => { vi.advanceTimersByTime(100); });
-  expect(document.querySelectorAll('[data-mood]')).toHaveLength(1);
-  expect(screen.getAllByTestId("combat-sprite")).toHaveLength(1);
+  // Acotado al escenario: ahí vivía el bug (cambiar la `key` por el efecto del
+  // tick dejaba dos sprites montados a la vez). Las barras de vida llevan además
+  // su propio retrato desde el rediseño #1166, y son sprites legítimos.
+  const stage = screen.getByTestId("combat-stage");
+  expect(stage.querySelectorAll("[data-mood]")).toHaveLength(1);
+  expect(stage.querySelectorAll('[data-testid="combat-sprite"]')).toHaveLength(1);
 });
 
 it("pauses the real component clock and changes speed without adding ticks", async () => {
@@ -189,7 +193,10 @@ it("modo aventura: al ganar muestra el botín y su potencia neutral heredada", a
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel kind="adventure" actions={actions} startLabel="resume" /></NextIntlClientProvider>);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Reanudar aventura" })); });
   expect(screen.getByText("¡Aventura superada!")).toBeTruthy();
-  expect(screen.getByText("Botín: Colgante del préstamo")).toBeTruthy();
+  // El botín se revela (icono, «Nuevo», nombre y potencia), ya no se enumera en
+  // una línea «Botín: …» — rediseño #1166.
+  expect(screen.getByText("Nuevo")).toBeTruthy();
+  expect(screen.getByText("Colgante del préstamo")).toBeTruthy();
   expect(screen.getByText("Potencia ×1,0")).toBeTruthy();
 });
 

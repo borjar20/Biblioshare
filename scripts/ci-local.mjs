@@ -10,7 +10,7 @@ if (!status.ANON_KEY || !status.SERVICE_ROLE_KEY) throw new Error('Missing local
 const mode = process.argv[2];
 const commands = {
   build: ['node_modules/next/dist/bin/next', 'build'],
-  smoke: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.ci.config.ts'],
+  smoke: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.ci.config.ts', ...process.argv.slice(3)],
 };
 if (!commands[mode]) throw new Error('Expected build or smoke');
 const result = spawnSync(process.execPath, commands[mode], {
@@ -20,6 +20,10 @@ const result = spawnSync(process.execPath, commands[mode], {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: status.ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: status.SERVICE_ROLE_KEY,
     PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:3000',
+    // Local fixtures shared by the test runner and its Next.js subprocess.
+    CRON_SECRET: 'ci-letterboxd-fixture-only',
+    TMDB_API_KEY: 'ci-letterboxd-fixture-only',
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/archive-tmdb.cjs`.trim(),
   },
 });
 if (result.error) throw result.error;

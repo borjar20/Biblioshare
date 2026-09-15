@@ -92,4 +92,26 @@ it("renders both empty slots and no equip action for an empty inventory", () => 
   expect(within(screen.getByTestId("equipped-amulet")).getByText("Sin equipar")).toBeTruthy();
   expect(screen.queryByTestId("loot-comparison")).toBeNull();
   expect(screen.queryByRole("button", { name: "Equipar para el próximo combate" })).toBeNull();
+  // La mochila vacía es la misma rejilla, con los seis objetos por conseguir.
+  expect(screen.getByText("Aún no has ganado ningún objeto.")).toBeTruthy();
+  expect(screen.getByTestId("loot-weapon").querySelectorAll('[data-owned="false"]')).toHaveLength(3);
+  expect(screen.getByTestId("loot-amulet").querySelectorAll('[data-owned="false"]')).toHaveLength(3);
+});
+it("keeps the six catalog items visible once the inventory stops being empty (#1170)", () => {
+  render(view({ copies: [a], initialLoadout: { weapon: null, amulet: null } }));
+  const weapon = screen.getByTestId("loot-weapon");
+  // Lo conseguido sigue siendo lo único pulsable de la ranura.
+  expect(within(weapon).getAllByRole("button")).toHaveLength(1);
+  for (const id of ["heavy_ink_quill", "librarian_loupe"]) {
+    const card = weapon.querySelector<HTMLElement>(`[data-item="${id}"][data-owned="false"]`)!;
+    expect(card).toBeTruthy();
+    expect(within(card).getByText("Aún no lo tienes")).toBeTruthy();
+    expect(within(card).queryByRole("button")).toBeNull();
+  }
+  // El efecto del que falta va a potencia base y no se disfraza de potencia de una copia.
+  const missing = weapon.querySelector<HTMLElement>('[data-item="librarian_loupe"]')!;
+  expect(within(missing).getByText("Efecto a potencia ×1,0")).toBeTruthy();
+  expect(within(missing).queryByText(/^Potencia ×/)).toBeNull();
+  expect(weapon.querySelector('[data-item="sharp_bookmark"]')?.getAttribute("data-owned")).toBe("true");
+  expect(screen.getByTestId("loot-amulet").querySelectorAll('[data-owned="false"]')).toHaveLength(3);
 });
