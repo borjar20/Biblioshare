@@ -1,5 +1,7 @@
 # Modelo de datos
 
+> **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback).
+
 > **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
 > `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
 > Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.
@@ -1736,7 +1738,15 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 
 Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
 La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de
-verdad; `posts` la **referencia** y representa lo que se muestra socialmente.
+verdad; `posts` la **referencia** y representa lo que se muestra socialmente. **Un post con fuente
+muere con ella** (2026-09-22): `private.cleanup_source_posts(source_kind)` (`security definer`,
+sin `execute` para `anon`/`authenticated`), disparada `after delete` por
+`passes_cleanup_source_posts`, `progress_sessions_cleanup_source_posts` y
+`episode_watches_cleanup_source_posts`, borra los posts de esa fuente **del mismo autor**
+(`author_id = old.user_id`: un post colgado de una fuente ajena sobrevive). Salta también en
+cascada (pase → sesiones → sus `progressed`). Se lleva el hilo aunque tenga comentarios ajenos.
+Los `thought` no tienen fuente y no les afecta. Límite: los audios de comentarios de un post
+borrado así quedan en Storage (#845). Migración `20260922120000_posts_cleanup_on_source_delete.sql`.
 
 `posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
 `kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`

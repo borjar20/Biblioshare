@@ -4901,3 +4901,24 @@ tienes.
 **Por qué no es pulsable.** Los botones de una ranura son las copias, y de eso dependen
 los e2e de `mascota-equipo`, que cuentan botones dentro de `loot-<ranura>`. Una tarjeta
 de lo que falta no es un control: no hay nada que comparar ni que equipar.
+
+## 2026-09-22 — Un post de hito muere con su fuente
+
+**Qué se decide.** Borrar un pase, una sesión o un visionado de episodio borra los posts que
+salieron de él (`started`, `finished`, `dropped`, `progressed`, `watched`), con su hilo, aunque
+tenga comentarios de otras personas. Lo hace un trigger en BD, no las server actions.
+
+**Qué revisa.** La spec de posts (2026-08-09, §5) decidió lo contrario: «borrar la fuente no
+cascadea al post». El argumento era que el post es la representación social y tiene hilo propio.
+En la práctica, marcar «Terminado» por error y borrar el pase dejaba en el feed una afirmación
+falsa que no había forma de retirar (la tarjeta de hito no tenía «Eliminar»). Un hito no es
+contenido del usuario como una reseña: es un reflejo de un hecho, y si el hecho no existe, el
+reflejo tampoco.
+
+**Por qué en BD.** Cubre todos los caminos que borran pases (ficha, quitar de biblioteca, deshacer
+importación y los que vengan). Es la lección de #824: si cada llamador tiene que acordarse, alguno
+se olvida.
+
+**Lo que no cubre.** Deshacer un estado sin borrar el pase (Terminado→Leyendo) deja el post: el
+pase sigue existiendo (issue aparte). Y los audios de comentarios quedan en Storage (#845). Para
+todo lo demás, cualquier post propio se puede borrar a mano desde su tarjeta.
