@@ -1747,6 +1747,11 @@ sin `execute` para `anon`/`authenticated`), disparada `after delete` por
 cascada (pase → sesiones → sus `progressed`). Se lleva el hilo aunque tenga comentarios ajenos.
 Los `thought` no tienen fuente y no les afecta. Límite: los audios de comentarios de un post
 borrado así quedan en Storage (#845). Migración `20260922120000_posts_cleanup_on_source_delete.sql`.
+Borrar un pase de serie individual NO borra sus `episode_watches` (FK `pass_id` con `on delete set
+null`, `20260717_pass_hub_b3_fk_set_null.sql`): sus posts `watched` sobreviven; solo
+`removeFromLibrary` (que sí borra los `episode_watches`) se los lleva. Y borrar una sesión
+compartida (con post `progressed` propio) pide confirmación en la UI antes de borrarla —
+session-list.tsx, campo `hasPost` de `getSessions`.
 
 `posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
 `kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`
