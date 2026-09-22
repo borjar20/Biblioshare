@@ -6,7 +6,8 @@ export type Transition =
   | { kind: "none" }
   | { kind: "createActive"; status: MediaStatus; startedOn: string | null; finishedOn: string | null; plannedOn: string | null }
   | { kind: "updateActive"; set: { status: MediaStatus; started_on?: string; finished_on?: string | null; planned_on?: string } }
-  | { kind: "archiveAndCreate"; status: MediaStatus; startedOn: string | null; plannedOn: string | null }
+  // `finishedOn` solo lo trae el revisionado de película (nace ya cerrado).
+  | { kind: "archiveAndCreate"; status: MediaStatus; startedOn: string | null; finishedOn?: string | null; plannedOn: string | null }
   | { kind: "askResume" };
 
 const OPEN: MediaStatus[] = ["planned", "in_progress"];
@@ -28,6 +29,14 @@ export function planTransition(
     // completed o dropped sin pase previo: nace ya cerrado (película vista).
     return { kind: "createActive", status: to, startedOn: today, finishedOn: today, plannedOn: null };
   }
+
+  // Revisionado de película: activo cerrado → otro pase "vista" que nace ya
+  // cerrado. Una sola escritura, sin pasar por in_progress: ese paso intermedio
+  // publicaba el hito «ha empezado» de una peli que ya estaba vista, y en
+  // películas "en curso" ni existe (StatusSegments). Va antes del no-op porque
+  // completed → completed CON `restart` sí es un gesto: «la he vuelto a ver».
+  if (to === "completed" && resume === "restart" && !OPEN.includes(active.status))
+    return { kind: "archiveAndCreate", status: to, startedOn: today, finishedOn: today, plannedOn: null };
 
   if (active.status === to) return { kind: "none" };
 

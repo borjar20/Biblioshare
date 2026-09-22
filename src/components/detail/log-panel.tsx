@@ -249,14 +249,15 @@ function ManagedLog({
       return;
     }
     // Películas: un revisionado es otro pase "vista" directo, sin pasar por "en
-    // curso" (ese estado no existe para pelis, ver StatusSegments). Se archiva
-    // el anterior y se crea uno nuevo que se cierra en el acto como vista;
-    // encadenamos la hoja de cierre para puntuarlo, igual que marcar "Vista".
+    // curso" (ese estado no existe para pelis, ver StatusSegments). Una sola
+    // transición —completed + restart— archiva el anterior y crea el nuevo ya
+    // cerrado; encadenamos la hoja de cierre para puntuarlo, igual que marcar
+    // "Vista". Antes eran dos (in_progress + restart, luego completed) y la
+    // primera publicaba en el feed «ha empezado» una peli que ya estaba vista.
     if (itemType === "movie") {
       setStatus("completed");
       startTransition(async () => {
-        await updateStatus(itemType, itemId, "in_progress", "restart");
-        const outcome = await updateStatus(itemType, itemId, "completed");
+        const outcome = await updateStatus(itemType, itemId, "completed", "restart");
         router.refresh();
         if (outcome.kind === "done" && outcome.closed && outcome.passId) {
           setClosingStatus("completed");

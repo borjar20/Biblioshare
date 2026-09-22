@@ -4920,3 +4920,28 @@ se conserva en almacenamiento privado incluso tras borrado. Las URLs de Storage 
 emitidas por la versión anterior no pueden revocarse mediante RLS: al desplegar,
 pueden seguir vigentes hasta su caducidad original de una hora. Las nuevas rutas no
 emiten URLs firmadas. Verificación y migración en dev; producción pendiente.
+
+## 2026-09-22 — El revisionado de película es UNA transición, no dos
+
+«Nuevo pase» sobre una película ya vista encadenaba dos llamadas a la máquina:
+`in_progress + restart` (archiva y abre un pase «viendo») y luego `completed`. La UI lo
+disimulaba pintando «Vista» de forma optimista, pero desde #824 cada transición publica su
+hito, así que la primera dejaba en el feed «X ha empezado *peli*» de algo que ya estaba
+visto —para quien tuviera `autopost_started` activo—. En películas «en curso» ni siquiera
+es un estado que exista (StatusSegments no lo ofrece).
+
+**Qué se decide.** `planTransition` aprende un caso: activo **cerrado** + `to = completed` +
+`resume = "restart"` ⇒ `archiveAndCreate` con el pase nuevo ya cerrado (`started_on` =
+`finished_on` = hoy). Va **antes** del no-op de «mismo estado», porque `completed → completed`
+con `restart` sí es un gesto («la he vuelto a ver»); sin `restart` sigue siendo no-op, y
+`dropped → completed` sin `restart` sigue siendo la corrección del mismo pase. El panel hace
+esa única llamada. Resultado: una escritura, un solo hito (`finished`), nunca un pase
+`in_progress` intermedio.
+
+**Por qué en la máquina y no con `silent` en la primera llamada.** Callar el hito arreglaba el
+post pero dejaba el pase «viendo» vivo entre dos round-trips y dos escrituras no atómicas;
+la máquina ya es el único sitio que decide transiciones, y el revisionado es una más.
+
+Cubierto por `transitions.test.ts`, `apply-transition.test.ts` y el e2e «revisionar una peli
+vista no publica «ha empezado» ni pasa por Viendo» (`e2e/pase-hub.spec.ts`), que falla con el
+código anterior (crea 1 post `started`).

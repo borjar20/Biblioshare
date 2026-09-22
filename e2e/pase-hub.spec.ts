@@ -678,6 +678,90 @@ test.describe("película de un gesto", () => {
       }
     }
   });
+
+  // «Nuevo pase» sobre una peli ya vista es un revisionado: otro pase que nace
+  // "vista". Antes eran dos transiciones (in_progress + restart, luego
+  // completed) y la primera publicaba en el feed «ha empezado» una peli que ya
+  // estaba vista. El hito `started` va apagado por defecto, así que se enciende
+  // para devtest durante la prueba: con él apagado este test no distinguiría el
+  // arreglo del fallo.
+  test("revisionar una peli vista no publica «ha empezado» ni pasa por Viendo", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    let movieId = "";
+    const userId = await devtestId();
+    const prefsUrl = `${SUPABASE_URL}/rest/v1/post_preferences?user_id=eq.${userId}`;
+    const previousPrefs = (await (
+      await fetch(`${prefsUrl}&select=*`, { headers: adminHeaders() })
+    ).json()) as Record<string, unknown>[];
+
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/post_preferences`, {
+        method: "POST",
+        headers: { ...adminHeaders(), Prefer: "resolution=merge-duplicates" },
+        body: JSON.stringify({ user_id: userId, autopost_started: true }),
+      });
+
+      await login(page);
+      movieId = await openSearchResult(page, "movie", "whiplash", "Whiplash");
+      await page.goto(`/pelicula/${movieId}?tab=log`);
+      await page.waitForLoadState("networkidle").catch(() => {});
+      await followItem(page);
+      await expect(statusBadge(page, "Pendiente")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      await statusGroup(page).getByRole("button", { name: "Vista" }).click();
+      const closeHeading = page.getByRole("heading", {
+        name: "¿Qué te ha parecido?",
+      });
+      await expect(closeHeading).toBeVisible({ timeout: 15_000 });
+      await closeSheetSave(page).click();
+      await expect(closeHeading).toHaveCount(0);
+
+      await page.getByRole("button", { name: "Nuevo pase" }).click();
+      await expect(closeHeading).toBeVisible({ timeout: 15_000 });
+      await closeSheetSave(page).click();
+      await expect(closeHeading).toHaveCount(0);
+
+      const passes = (await (
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/passes?item_type=eq.movie&item_id=eq.${movieId}&user_id=eq.${userId}&select=status,is_active`,
+          { headers: adminHeaders() },
+        )
+      ).json()) as { status: string; is_active: boolean }[];
+      expect(passes).toHaveLength(2);
+      expect(passes.every((p) => p.status === "completed")).toBe(true);
+      expect(passes.filter((p) => p.is_active)).toHaveLength(1);
+
+      const started = (await (
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/posts?anchor_type=eq.movie&anchor_id=eq.${movieId}&author_id=eq.${userId}&kind=eq.started&select=id`,
+          { headers: adminHeaders() },
+        )
+      ).json()) as unknown[];
+      expect(started).toHaveLength(0);
+    } finally {
+      if (previousPrefs.length > 0) {
+        await fetch(`${SUPABASE_URL}/rest/v1/post_preferences`, {
+          method: "POST",
+          headers: { ...adminHeaders(), Prefer: "resolution=merge-duplicates" },
+          body: JSON.stringify(previousPrefs[0]),
+        });
+      } else {
+        await fetch(prefsUrl, { method: "DELETE", headers: adminHeaders() });
+      }
+      if (movieId) {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/posts?anchor_type=eq.movie&anchor_id=eq.${movieId}&author_id=eq.${userId}`,
+          { method: "DELETE", headers: adminHeaders() },
+        );
+        await deletePasses("movie", movieId, userId);
+        await deleteCatalogRow("movie", movieId);
+      }
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────
