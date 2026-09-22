@@ -129,7 +129,7 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-09",
+    "generatedAt": "2026-09-15",
     "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
@@ -1725,6 +1725,52 @@
       "files": [
         "supabase/migrations/20260908074921_pet_r4b_equipment.sql"
       ]
+    },
+    {
+      "id": "r-admin-moderation",
+      "label": "/admin/reportes · contenido · clubes · historial",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Panel global de moderación con consultas administrativas por sesión, retirada/restauración y borrado definitivo. #1183, verificado en dev; no desplegado.",
+      "files": [
+        "src/app/admin/[section]/page.tsx",
+        "src/app/admin/moderation-controls.tsx",
+        "src/app/admin/moderation-actions.ts"
+      ]
+    },
+    {
+      "id": "m-moderation",
+      "label": "lib/moderation",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Contrato y consultas RPC de moderación. Sin caché compartida; admin validado en aplicación y base de datos.",
+      "files": [
+        "src/lib/moderation/contracts.ts",
+        "src/lib/moderation/queries.ts"
+      ]
+    },
+    {
+      "id": "r-moderation-audio",
+      "label": "/api/voice-notes/[id] · /api/admin/voice-notes/[id]",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Entrega privada de audio autorizada por petición: RLS en reproducción normal, RPC admin para evidencia retirada/eliminada.",
+      "files": [
+        "src/app/api/voice-notes/[id]/route.ts",
+        "src/app/api/admin/voice-notes/[id]/route.ts",
+        "src/lib/storage/voice-note-response.ts"
+      ]
+    },
+    {
+      "id": "t-moderation",
+      "label": "private.moderation_state · moderation_history",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Retirada y evidencia independientes del objeto borrado. Políticas restrictivas ocultan descendientes incluso a admins en superficies normales. Marcador privado de operación transaccional.",
+      "files": [
+        "supabase/migrations/20260915145340_admin_content_moderation.sql",
+        "supabase/tests/admin_content_moderation.sql"
+      ]
     }
   ],
   "edges": [
@@ -2862,6 +2908,26 @@
       "from": "m-pet-adventure",
       "to": "m-pet-loot",
       "kind": "calls"
+    },
+    {
+      "from": "r-admin-moderation",
+      "to": "m-moderation",
+      "kind": "calls"
+    },
+    {
+      "from": "m-moderation",
+      "to": "t-moderation",
+      "kind": "reads"
+    },
+    {
+      "from": "r-admin-moderation",
+      "to": "t-moderation",
+      "kind": "writes"
+    },
+    {
+      "from": "r-moderation-audio",
+      "to": "t-moderation",
+      "kind": "auth"
     }
   ],
   "flows": [
@@ -3938,6 +4004,40 @@
           "node": "c-pet",
           "action": "Anima LOOT_EFFECT al avanzar o repetir, sin reemitir la reconstrucción de logs",
           "file": "src/components/pet/training/training-panel.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-admin-moderation",
+      "name": "Retirar, restaurar o eliminar contenido",
+      "category": "social",
+      "summary": "Admin selecciona contenido/reporte, confirma motivo, la RPC autoriza y registra evidencia atómicamente, la UI se revalida.",
+      "entrypoint": "src/app/admin/[section]/page.tsx",
+      "steps": [
+        {
+          "node": "r-admin-moderation",
+          "action": "Buscar y filtrar el contenido o reporte",
+          "file": "src/app/admin/[section]/page.tsx"
+        },
+        {
+          "node": "m-moderation",
+          "action": "Consultar por RPC con sesión administrativa",
+          "file": "src/lib/moderation/queries.ts"
+        },
+        {
+          "node": "r-admin-moderation",
+          "action": "Confirmar motivo y texto de borrado; validar entrada",
+          "file": "src/app/admin/moderation-actions.ts"
+        },
+        {
+          "node": "t-moderation",
+          "action": "Autorizar admin, guardar evidencia y cambiar estado/borrar dependencias en transacción",
+          "file": "supabase/migrations/20260915145340_admin_content_moderation.sql"
+        },
+        {
+          "node": "r-moderation-audio",
+          "action": "Comprobar permisos actuales al reproducir audio; evidencia solo administrativa",
+          "file": "src/app/api/admin/voice-notes/[id]/route.ts"
         }
       ]
     }

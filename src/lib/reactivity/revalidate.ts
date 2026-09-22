@@ -19,6 +19,11 @@ export function revalidateFeed(): void {
   revalidatePath("/");
 }
 
+/** Moderation can hide a whole club and descendants across every social surface. */
+export function revalidateModeration(): void {
+  revalidatePath("/", "layout");
+}
+
 /** La ficha concreta de un item (p.ej. /libro/123). */
 export function revalidateItemPage(itemType: ItemType, id: string): void {
   revalidatePath(itemHref(itemType, id));

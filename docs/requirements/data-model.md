@@ -2,6 +2,35 @@
 
 > **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
 
+> **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
+> reales y fixtures transaccionales en **dev**; esquema, permisos y consultas administrativas
+> comprobados también en **producción el 2026-09-15**. Migración
+> `20260915145340_admin_content_moderation.sql` y seguimiento
+> `20260915150429_moderation_event_notification_visibility.sql`;
+> **ambas aplicadas en dev y producción**. El seguimiento cubre los avisos legacy `club_event`.
+> Estado y evidencia viven en `private.moderation_state` y
+> `private.moderation_history`, sin FK destructiva al objeto ni acceso directo
+> para `anon`/`authenticated`. `private.moderation_operations` solo marca la
+> operación administrativa durante la transacción. No se añaden columnas a
+> tablas públicas existentes ni se amplían sus grants por columna.
+>
+> `admin_moderation_list`, `admin_moderate_content`, `admin_review_report` y
+> `admin_moderation_audio` son envoltorios invoker de funciones privadas con
+> comprobación de admin global. Retirar oculta clubes/posts/club_posts/comments
+> y descendientes incluso al admin fuera de estas RPC. Políticas restrictivas,
+> helpers de visibilidad y guardas de escritura cubren consultas y funciones
+> privilegiadas. Restaurar el padre conserva las retiradas individuales.
+> Borrar exige motivo y confirmación (nombre exacto para club, `ELIMINAR` para
+> el resto), conserva evidencia y no elimina pases personales. Los posts
+> derivados borrados por moderación no se regeneran desde la misma fuente.
+>
+> Tras retirar o borrar contenido, sus reportes solo se consultan mediante la
+> RPC administrativa; esta regla restringe la lectura ordinaria descrita abajo.
+> El audio usado como evidencia se conserva en el bucket privado y solo se
+> entrega mediante `/api/admin/voice-notes/[id]`; la RPC
+> `moderation_audio_is_evidence` es exclusiva de `service_role` para impedir que
+> la limpieza de archivos destruya evidencia.
+
 > **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
 > `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
 > Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.
@@ -1751,7 +1780,10 @@ Borrar un pase de serie individual NO borra sus `episode_watches` (FK `pass_id` 
 null`, `20260717_pass_hub_b3_fk_set_null.sql`): sus posts `watched` sobreviven; solo
 `removeFromLibrary` (que sí borra los `episode_watches`) se los lleva. Y borrar una sesión
 compartida (con post `progressed` propio) pide confirmación en la UI antes de borrarla —
-session-list.tsx, campo `hasPost` de `getSessions`.
+session-list.tsx, campo `hasPost` de `getSessions`. **Con moderación (#1183):** un post
+**retirado** por un admin no lo borra esta cascada. `private.guard_moderated_write` devuelve
+`null` en un DELETE anidado (`pg_trigger_depth() > 1`) sobre un post no disponible, así que el
+pase se borra igual y el post retirado se queda como evidencia oculta.
 
 `posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
 `kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`

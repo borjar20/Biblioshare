@@ -4902,6 +4902,50 @@ tienes.
 los e2e de `mascota-equipo`, que cuentan botones dentro de `loot-<ranura>`. Una tarjeta
 de lo que falta no es un control: no hay nada que comparar ni que equipar.
 
+## 2026-09-15 — Moderación administrativa reversible y borrado definitivo (#1183)
+
+El propietario aprueba retirar, restaurar y eliminar definitivamente clubes,
+publicaciones y comentarios en esta versión. Retirar oculta a todos, incluidos
+autor, miembros y admin en las superficies normales; la evidencia solo se consulta
+en el panel administrativo. Restaurar un padre no restaura sus hijos retirados
+individualmente. El borrado de una publicación no elimina su pase personal.
+
+Estado e historial viven en tablas privadas separadas de los objetos, para conservar
+la evidencia tras sus cascadas y evitar ampliar grants de columnas públicas. Cada
+operación administrativa exige motivo y el borrado confirmación explícita. La
+resolución de un reporte no sustituye a la retirada del contenido.
+
+El audio se sirve con autorización por petición y sin caché; la evidencia de audio
+se conserva en almacenamiento privado incluso tras borrado. Las URLs de Storage ya
+emitidas por la versión anterior no pueden revocarse mediante RLS: al desplegar,
+pueden seguir vigentes hasta su caducidad original de una hora. Las nuevas rutas no
+emiten URLs firmadas. Verificación y migración en dev; producción pendiente.
+
+## 2026-09-22 — El revisionado de película es UNA transición, no dos
+
+«Nuevo pase» sobre una película ya vista encadenaba dos llamadas a la máquina:
+`in_progress + restart` (archiva y abre un pase «viendo») y luego `completed`. La UI lo
+disimulaba pintando «Vista» de forma optimista, pero desde #824 cada transición publica su
+hito, así que la primera dejaba en el feed «X ha empezado *peli*» de algo que ya estaba
+visto —para quien tuviera `autopost_started` activo—. En películas «en curso» ni siquiera
+es un estado que exista (StatusSegments no lo ofrece).
+
+**Qué se decide.** `planTransition` aprende un caso: activo **cerrado** + `to = completed` +
+`resume = "restart"` ⇒ `archiveAndCreate` con el pase nuevo ya cerrado (`started_on` =
+`finished_on` = hoy). Va **antes** del no-op de «mismo estado», porque `completed → completed`
+con `restart` sí es un gesto («la he vuelto a ver»); sin `restart` sigue siendo no-op, y
+`dropped → completed` sin `restart` sigue siendo la corrección del mismo pase. El panel hace
+esa única llamada. Resultado: una escritura, un solo hito (`finished`), nunca un pase
+`in_progress` intermedio.
+
+**Por qué en la máquina y no con `silent` en la primera llamada.** Callar el hito arreglaba el
+post pero dejaba el pase «viendo» vivo entre dos round-trips y dos escrituras no atómicas;
+la máquina ya es el único sitio que decide transiciones, y el revisionado es una más.
+
+Cubierto por `transitions.test.ts`, `apply-transition.test.ts` y el e2e «revisionar una peli
+vista no publica «ha empezado» ni pasa por Viendo» (`e2e/pase-hub.spec.ts`), que falla con el
+código anterior (crea 1 post `started`).
+
 ## 2026-09-22 — Un post de hito muere con su fuente
 
 **Qué se decide.** Borrar un pase, una sesión o un visionado de episodio borra los posts que
@@ -4922,3 +4966,8 @@ se olvida.
 **Lo que no cubre.** Deshacer un estado sin borrar el pase (Terminado→Leyendo) deja el post: el
 pase sigue existiendo (issue aparte). Y los audios de comentarios quedan en Storage (#845). Para
 todo lo demás, cualquier post propio se puede borrar a mano desde su tarjeta.
+
+**Con la moderación de #1183.** Un post que un admin ha retirado no se borra en esta cascada:
+el guard de moderación (`guard_moderated_write`) salta el DELETE anidado y el post se queda como
+evidencia oculta, sin impedir que el usuario borre su pase. Es coherente con «el borrado de una
+publicación no elimina su pase personal»: la evidencia de moderación no la decide el usuario.
