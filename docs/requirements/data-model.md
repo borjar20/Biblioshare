@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback).
+> **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
 
 > **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
 > `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
