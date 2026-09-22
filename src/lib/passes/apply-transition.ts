@@ -113,7 +113,7 @@ export async function applyTransition(
   }
 
   const startedOn = plan.startedOn;
-  const finishedOn = plan.kind === "createActive" ? plan.finishedOn : null;
+  const finishedOn = plan.finishedOn ?? null;
   const { data: created, error } = await supabase
     .from("passes")
     .insert({
