@@ -91,6 +91,27 @@ describe("planTransition", () => {
       planTransition({ id: "p1", status: "dropped" }, "in_progress", HOY, "restart")
     ).toEqual({ kind: "archiveAndCreate", status: "in_progress", startedOn: HOY, plannedOn: null });
   });
+  // Revisionado de película: otro pase "vista" que nace cerrado, sin pasar por
+  // "en curso" (ese estado no existe para pelis). Pasar por in_progress
+  // publicaba el hito «ha empezado» de una peli que ya estaba vista.
+  it("completed → completed con 'restart' = revisionado: archiva y crea pase ya cerrado", () => {
+    expect(
+      planTransition({ id: "p1", status: "completed" }, "completed", HOY, "restart")
+    ).toEqual({
+      kind: "archiveAndCreate", status: "completed", startedOn: HOY, finishedOn: HOY, plannedOn: null,
+    });
+  });
+  it("dropped → completed con 'restart' = revisionado de cero, no corrección", () => {
+    expect(
+      planTransition({ id: "p1", status: "dropped" }, "completed", HOY, "restart")
+    ).toEqual({
+      kind: "archiveAndCreate", status: "completed", startedOn: HOY, finishedOn: HOY, plannedOn: null,
+    });
+  });
+  it("completed → completed sin 'restart' sigue siendo no-op", () => {
+    expect(planTransition({ id: "p1", status: "completed" }, "completed", HOY))
+      .toEqual({ kind: "none" });
+  });
   it("dropped → completed corrige el cierre en el mismo pase", () => {
     expect(planTransition({ id: "p1", status: "dropped" }, "completed", HOY)).toEqual({
       kind: "updateActive", set: { status: "completed", finished_on: HOY },

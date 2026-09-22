@@ -85,6 +85,35 @@ describe("applyTransition publica el hito por defecto", () => {
     });
   });
 
+  it("revisionado de película: un solo pase ya cerrado, un solo hito «terminado»", async () => {
+    // Antes «Nuevo pase» de una peli vista eran dos transiciones (in_progress +
+    // restart, luego completed) y la primera publicaba «ha empezado».
+    mocks.getActivePass.mockResolvedValue({ id: "pase-1", status: "completed", pinnedOrder: null });
+    const inserts: Record<string, unknown>[] = [];
+    const client = fakeClient() as unknown as { from: () => Record<string, unknown> };
+    const builder = client.from();
+    const originalInsert = builder.insert as () => unknown;
+    builder.insert = (row: Record<string, unknown>) => {
+      inserts.push(row);
+      return originalInsert();
+    };
+
+    const outcome = await applyTransition(
+      client as never, "usuario", "movie", "peli-1", "completed", "restart",
+    );
+
+    expect(outcome).toMatchObject({ kind: "done", passId: "pase-nuevo", closed: true, created: true });
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0]).toMatchObject({ status: "completed", is_active: true });
+    expect(inserts[0].finished_on).toBe(inserts[0].started_on);
+    expect(inserts[0].finished_on).not.toBeNull();
+    expect(mocks.maybeAutopostMilestone).toHaveBeenCalledTimes(1);
+    expect(mocks.maybeAutopostMilestone.mock.calls[0][1]).toMatchObject({
+      to: "completed",
+      closed: true,
+    });
+  });
+
   it("no publica si la máquina no decide nada (askResume)", async () => {
     // Abandonado → leyendo sin `resume`: la máquina no puede elegir sola, no
     // escribe nada. Publicar un hito de algo que no ha pasado sería mentir.
