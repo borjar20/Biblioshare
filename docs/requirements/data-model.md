@@ -1,5 +1,7 @@
 # Modelo de datos
 
+> **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
+
 > **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
 > reales y fixtures transaccionales en **dev**; esquema, permisos y consultas administrativas
 > comprobados también en **producción el 2026-09-15**. Migración
@@ -1765,7 +1767,23 @@ reacciones y avisos. `content_reports` **no** tiene FK al registro: conserva sna
 
 Cada publicación social es una fila `posts` con `post_id` estable y **ruta propia `/post/[id]`**.
 La **acción real** (`passes`/`progress_sessions`/`episode_watches`) sigue siendo la fuente de
-verdad; `posts` la **referencia** y representa lo que se muestra socialmente.
+verdad; `posts` la **referencia** y representa lo que se muestra socialmente. **Un post con fuente
+muere con ella** (2026-09-22): `private.cleanup_source_posts(source_kind)` (`security definer`,
+sin `execute` para `anon`/`authenticated`), disparada `after delete` por
+`passes_cleanup_source_posts`, `progress_sessions_cleanup_source_posts` y
+`episode_watches_cleanup_source_posts`, borra los posts de esa fuente **del mismo autor**
+(`author_id = old.user_id`: un post colgado de una fuente ajena sobrevive). Salta también en
+cascada (pase → sesiones → sus `progressed`). Se lleva el hilo aunque tenga comentarios ajenos.
+Los `thought` no tienen fuente y no les afecta. Límite: los audios de comentarios de un post
+borrado así quedan en Storage (#845). Migración `20260922120000_posts_cleanup_on_source_delete.sql`.
+Borrar un pase de serie individual NO borra sus `episode_watches` (FK `pass_id` con `on delete set
+null`, `20260717_pass_hub_b3_fk_set_null.sql`): sus posts `watched` sobreviven; solo
+`removeFromLibrary` (que sí borra los `episode_watches`) se los lleva. Y borrar una sesión
+compartida (con post `progressed` propio) pide confirmación en la UI antes de borrarla —
+session-list.tsx, campo `hasPost` de `getSessions`. **Con moderación (#1183):** un post
+**retirado** por un admin no lo borra esta cascada. `private.guard_moderated_write` devuelve
+`null` en un DELETE anidado (`pg_trigger_depth() > 1`) sobre un post no disponible, así que el
+pase se borra igual y el post retirado se queda como evidencia oculta.
 
 `posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
 `kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`

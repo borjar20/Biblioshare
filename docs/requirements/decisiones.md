@@ -4945,3 +4945,29 @@ la máquina ya es el único sitio que decide transiciones, y el revisionado es u
 Cubierto por `transitions.test.ts`, `apply-transition.test.ts` y el e2e «revisionar una peli
 vista no publica «ha empezado» ni pasa por Viendo» (`e2e/pase-hub.spec.ts`), que falla con el
 código anterior (crea 1 post `started`).
+
+## 2026-09-22 — Un post de hito muere con su fuente
+
+**Qué se decide.** Borrar un pase, una sesión o un visionado de episodio borra los posts que
+salieron de él (`started`, `finished`, `dropped`, `progressed`, `watched`), con su hilo, aunque
+tenga comentarios de otras personas. Lo hace un trigger en BD, no las server actions.
+
+**Qué revisa.** La spec de posts (2026-08-09, §5) decidió lo contrario: «borrar la fuente no
+cascadea al post». El argumento era que el post es la representación social y tiene hilo propio.
+En la práctica, marcar «Terminado» por error y borrar el pase dejaba en el feed una afirmación
+falsa que no había forma de retirar (la tarjeta de hito no tenía «Eliminar»). Un hito no es
+contenido del usuario como una reseña: es un reflejo de un hecho, y si el hecho no existe, el
+reflejo tampoco.
+
+**Por qué en BD.** Cubre todos los caminos que borran pases (ficha, quitar de biblioteca, deshacer
+importación y los que vengan). Es la lección de #824: si cada llamador tiene que acordarse, alguno
+se olvida.
+
+**Lo que no cubre.** Deshacer un estado sin borrar el pase (Terminado→Leyendo) deja el post: el
+pase sigue existiendo (issue aparte). Y los audios de comentarios quedan en Storage (#845). Para
+todo lo demás, cualquier post propio se puede borrar a mano desde su tarjeta.
+
+**Con la moderación de #1183.** Un post que un admin ha retirado no se borra en esta cascada:
+el guard de moderación (`guard_moderated_write`) salta el DELETE anidado y el post se queda como
+evidencia oculta, sin impedir que el usuario borre su pase. Es coherente con «el borrado de una
+publicación no elimina su pase personal»: la evidencia de moderación no la decide el usuario.

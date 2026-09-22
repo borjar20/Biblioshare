@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { PostSummary } from "@/components/social/post-summary";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
+import { PostDeleteError, PostDeleteMenu, useDeletePost } from "./post-delete-menu";
 
 // Tarjeta de HITO (post kind = started | dropped): «actor empezó / abandonó una
 // obra». Sin nota ni reseña —esos son atributos del post `finished`— y con la
@@ -30,10 +31,15 @@ export function MilestoneCard({
 }) {
   const t = useTranslations("feed");
   const actorName = event.actorDisplayName || event.actorUsername;
+  const { deleted, error: deleteError, pending, requestDelete } = useDeletePost(event.postId);
+  if (deleted) return null;
+  const deleteMenu = event.viewerCanDelete && event.postId && (
+    <PostDeleteMenu onDelete={requestDelete} pending={pending} />
+  );
 
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
-      {!hideActor && (
+      {!hideActor ? (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
           <p className="min-w-0 flex-1 truncate text-sm text-foreground">
@@ -42,7 +48,10 @@ export function MilestoneCard({
             </Link>{" "}
             <span className="text-muted-foreground">{t(`verbs.${event.verb}`)}</span>
           </p>
+          {deleteMenu}
         </div>
+      ) : (
+        deleteMenu && <div className="-mb-1 flex justify-end">{deleteMenu}</div>
       )}
 
       <div className="flex gap-3 rounded-lg border border-border bg-surface-muted p-3">
@@ -69,6 +78,7 @@ export function MilestoneCard({
           commentCount={event.commentCount}
         />
       )}
+      {deleteError && <PostDeleteError />}
       <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );

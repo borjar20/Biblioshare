@@ -278,7 +278,7 @@
     "delta": "▲ {delta} vs. anterior",
     "deltaDown": "▼ {delta} vs. anterior",
     "delete": "Borrar pase",
-    "deleteConfirm": "Borrar este pase borra su nota, su reseña y sus sesiones. No se puede deshacer.",
+    "deleteConfirm": "Borrar este pase borra su nota, su reseña, sus sesiones y sus publicaciones en el feed. No se puede deshacer.",
     "actionsLabel": "Acciones del pase",
     "edit": "Editar",
     "cancelEdit": "Cancelar",
@@ -557,10 +557,10 @@
       "thought": "Pensamiento"
     },
     "thoughtShared": "compartió un pensamiento",
-    "thoughtMenu": "Opciones",
-    "thoughtDelete": "Eliminar",
-    "thoughtDeleteConfirm": "¿Eliminar este pensamiento? No se puede deshacer.",
-    "thoughtDeleteError": "No se pudo eliminar.",
+    "postMenu": "Opciones",
+    "postDelete": "Eliminar",
+    "postDeleteConfirm": "¿Eliminar esta publicación? Se borran también sus comentarios. No se puede deshacer.",
+    "postDeleteError": "No se pudo eliminar.",
     "episode": {
       "watched": "Visto",
       "showMore": "ver {count, plural, one {# episodio más} other {# episodios más}}"
@@ -1255,7 +1255,7 @@
     "follow": "Seguir",
     "following": "Añadiendo...",
     "unfollow": "Quitar de mi biblioteca",
-    "unfollowConfirm": "Quitarla de tu biblioteca borra TODOS sus pases, con sus notas y reseñas. No se puede deshacer.",
+    "unfollowConfirm": "Quitarla de tu biblioteca borra TODOS sus pases, con sus notas, reseñas y publicaciones. No se puede deshacer.",
     "addToCollection": "Añadir a colección",
     "status": "Estado",
     "manage": "Gestionar",
@@ -1294,6 +1294,7 @@
       "add": "Registrar sesión",
       "empty": "Todavía no has registrado ninguna sesión.",
       "delete": "Eliminar",
+      "deleteConfirmShared": "Esta sesión está compartida: borrarla borra también su publicación en el feed y sus comentarios. No se puede deshacer.",
       "actionsLabel": "Acciones de la sesión",
       "duration": "{count} min",
       "edition": "Edición: {label}"

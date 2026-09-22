@@ -785,3 +785,110 @@ test("sesión NO compartida: cero avisos para quien sigue", async ({ page, reque
     await deleteUser(follower.id);
   }
 });
+
+// Spec 2026-09-22 (limpieza de posts): un hito muere con su pase. Datos propios
+// por REST con service-role y borrados en el `finally` (mismo patrón que el
+// test de /post/[id] de arriba).
+test("borrar el pase desde el diario se lleva su post de hito", async ({ page }) => {
+  test.setTimeout(120_000);
+  const owner = await devtestId();
+  const title = `E2E Pase Borrado ${Date.now()}`;
+  let bookId: string | null = null;
+  let passId: string | null = null;
+
+  try {
+    const book = await insertOne<{ id: string }>("books", { title });
+    bookId = book.id;
+    const pass = await insertOne<{ id: string }>("passes", {
+      user_id: owner, item_type: "book", item_id: bookId, status: "completed",
+      is_active: true, is_public: true, started_on: "2026-09-01", finished_on: "2026-09-02",
+      position: {},
+    });
+    passId = pass.id;
+    const post = await insertOne<{ id: string }>("posts", {
+      author_id: owner, kind: "finished", anchor_type: "book", anchor_id: bookId,
+      source_kind: "pass", source_id: passId,
+    });
+
+    await login(page);
+    await page.goto(`/post/${post.id}`);
+    await expect(page.locator("article").filter({ hasText: title })).toBeVisible();
+
+    await page.goto(`/libro/${bookId}?tab=log`);
+    // Playwright DESCARTA los diálogos por defecto: sin esto confirm() = false.
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Acciones del pase" }).first().click({ timeout: 15_000 });
+    await page.getByRole("menuitem", { name: "Borrar pase" }).click();
+
+    await expect
+      .poll(async () => (await rest<{ id: string }[]>(`passes?id=eq.${passId}&select=id`)).length, { timeout: 15_000 })
+      .toBe(0);
+    passId = null;
+    expect(await rest<{ id: string }[]>(`posts?id=eq.${post.id}&select=id`)).toHaveLength(0);
+
+    await page.goto("/");
+    await expect(page.locator("article").filter({ hasText: title })).toHaveCount(0);
+  } finally {
+    if (bookId) await rest(`posts?anchor_id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
+    if (passId) await rest(`passes?id=eq.${passId}`, { method: "DELETE" }).catch(() => {});
+    if (bookId) await rest(`books?id=eq.${bookId}`, { method: "DELETE" }).catch(() => {});
+  }
+});
+
+test("un hito propio se elimina desde su tarjeta, y desde /post/[id] vuelve a Inicio", async ({ page }) => {
+  test.setTimeout(120_000);
+  const owner = await devtestId();
+  const ts = Date.now();
+  const feedTitle = `E2E Hito Feed ${ts}`;
+  const pageTitle = `E2E Hito Pagina ${ts}`;
+  const bookIds: string[] = [];
+  const passIds: string[] = [];
+
+  async function hito(title: string) {
+    const book = await insertOne<{ id: string }>("books", { title });
+    bookIds.push(book.id);
+    const pass = await insertOne<{ id: string }>("passes", {
+      user_id: owner, item_type: "book", item_id: book.id, status: "completed",
+      is_active: true, is_public: true, started_on: "2026-09-01", finished_on: "2026-09-02",
+      position: {},
+    });
+    passIds.push(pass.id);
+    return insertOne<{ id: string }>("posts", {
+      author_id: owner, kind: "finished", anchor_type: "book", anchor_id: book.id,
+      source_kind: "pass", source_id: pass.id,
+    });
+  }
+
+  try {
+    const feedPost = await hito(feedTitle);
+    const pagePost = await hito(pageTitle);
+
+    await login(page);
+
+    // ── Desde la tarjeta del feed ──
+    await page.goto("/");
+    const card = page.locator("article").filter({ hasText: feedTitle });
+    await expect(card).toBeVisible({ timeout: 15_000 });
+    page.once("dialog", (d) => d.accept());
+    await card.getByRole("button", { name: "Opciones" }).click();
+    await page.getByRole("menuitem", { name: "Eliminar" }).click();
+    await expect(card).toHaveCount(0);
+    expect(await rest<{ id: string }[]>(`posts?id=eq.${feedPost.id}&select=id`)).toHaveLength(0);
+    // El pase NO se toca: borrar el post no borra la lectura.
+    expect(await rest<{ id: string }[]>(`passes?id=eq.${passIds[0]}&select=id`)).toHaveLength(1);
+
+    // ── Desde /post/[id]: redirige a Inicio ──
+    await page.goto(`/post/${pagePost.id}`);
+    const header = page.locator("article").filter({ hasText: pageTitle });
+    await expect(header).toBeVisible();
+    page.once("dialog", (d) => d.accept());
+    await header.getByRole("button", { name: "Opciones" }).click();
+    await page.getByRole("menuitem", { name: "Eliminar" }).click();
+    await page.waitForURL("/");
+    expect(await rest<{ id: string }[]>(`posts?id=eq.${pagePost.id}&select=id`)).toHaveLength(0);
+  } finally {
+    if (bookIds.length) await rest(`posts?anchor_id=in.(${bookIds.join(",")})`, { method: "DELETE" }).catch(() => {});
+    for (const id of passIds) await rest(`passes?id=eq.${id}`, { method: "DELETE" }).catch(() => {});
+    for (const id of bookIds) await rest(`books?id=eq.${id}`, { method: "DELETE" }).catch(() => {});
+  }
+});

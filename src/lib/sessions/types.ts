@@ -24,4 +24,9 @@ export type ProgressSession = {
   // Position REACHED in this session: {page} for books, {season, episode}
   // for series. Movies don't have sessions (see §7.14 scope decision).
   position: Position;
+  /** Tiene un post `progressed` propio (spec 2026-09-22, cleanup_source_posts):
+   *  borrar esta sesión se lleva también ese post y su hilo de comentarios —
+   *  aunque tenga comentarios ajenos. session-list.tsx confirma antes de
+   *  borrar cuando esto es `true`. */
+  hasPost: boolean;
 };

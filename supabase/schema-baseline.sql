@@ -1267,3 +1267,13 @@ commit;
 begin;
 \ir migrations/20260915150429_moderation_event_notification_visibility.sql
 commit;
+
+-- 20260922120000_posts_cleanup_on_source_delete
+begin;
+\ir migrations/20260922120000_posts_cleanup_on_source_delete.sql
+commit;
+
+-- 20260922120100_posts_orphans_backfill
+begin;
+\ir migrations/20260922120100_posts_orphans_backfill.sql
+commit;
