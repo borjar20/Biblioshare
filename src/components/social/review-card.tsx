@@ -10,6 +10,7 @@ import { PostSummary } from "@/components/social/post-summary";
 import { MentionText } from "@/components/social/mention-text";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
+import { PostDeleteError, PostDeleteMenu, useDeletePost } from "./post-delete-menu";
 
 // Variante C de un evento de reseña (finished/rated/reviewed/watchedEpisode):
 // hero con lomo + badge "Finalizado" + estrellas + meta (autor · días · pág.),
@@ -40,10 +41,15 @@ export function ReviewCard({
     event.reviewMeta?.totalPages != null ? t("review.metaPages", { count: event.reviewMeta.totalPages }) : null,
     event.episode ? `S${event.episode.season}E${event.episode.episode}` : null,
   ].filter(Boolean).join(" · ");
+  const { deleted, error: deleteError, pending, requestDelete } = useDeletePost(event.postId);
+  if (deleted) return null;
+  const deleteMenu = event.viewerCanDelete && event.postId && (
+    <PostDeleteMenu onDelete={requestDelete} pending={pending} />
+  );
 
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
-      {!hideActor && (
+      {!hideActor ? (
         <div className="flex items-center gap-2.5">
           <UserAvatar name={actorName} avatarUrl={event.actorAvatarUrl} size={30} />
           <p className="min-w-0 flex-1 truncate text-sm text-foreground">
@@ -53,7 +59,10 @@ export function ReviewCard({
           <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
             {t("kind.review")}
           </span>
+          {deleteMenu}
         </div>
+      ) : (
+        deleteMenu && <div className="-mb-1 flex justify-end">{deleteMenu}</div>
       )}
 
       <div className="flex gap-3 rounded-lg border border-border bg-surface-muted p-3">
@@ -87,6 +96,7 @@ export function ReviewCard({
           commentCount={event.commentCount}
         />
       )}
+      {deleteError && <PostDeleteError />}
       <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );

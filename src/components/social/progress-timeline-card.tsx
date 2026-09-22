@@ -11,6 +11,7 @@ import { PostSummary } from "@/components/social/post-summary";
 import { SpoilerGate } from "./spoiler-gate";
 import { itemHref } from "@/lib/catalog/item-href";
 import { splitCollapsedItems } from "./feed-collapse";
+import { PostDeleteError, PostDeleteMenu, useDeletePost } from "./post-delete-menu";
 
 export function ProgressTimelineCard({
   entry,
@@ -35,6 +36,15 @@ export function ProgressTimelineCard({
   // tras un "ver N anteriores" (splitCollapsedItems decide el umbral).
   const [expanded, setExpanded] = useState(false);
   const { visible, hiddenCount, collapsible } = splitCollapsedItems(entry.items, expanded);
+  // Solo un avance que ES un post se borra desde aquí: el singleton que
+  // feed-item envuelve como grupo de 1. Un grupo de varias sesiones no es un
+  // post y no tiene nada que borrar.
+  const soloPost = entry.items.length === 1 ? entry.items[0] : null;
+  const { deleted, error: deleteError, pending, requestDelete } = useDeletePost(soloPost?.postId);
+  if (deleted) return null;
+  const deleteMenu = soloPost?.viewerCanDelete && soloPost.postId && (
+    <PostDeleteMenu onDelete={requestDelete} pending={pending} />
+  );
 
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
@@ -52,6 +62,7 @@ export function ProgressTimelineCard({
         <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
           {t("kind.progress")}
         </span>
+        {deleteMenu}
       </div>
 
       <div className="flex flex-col">
@@ -108,6 +119,7 @@ export function ProgressTimelineCard({
                     />
                   </div>
                 ) : null}
+                {deleteError && <PostDeleteError />}
                 <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-muted-foreground" />
               </div>
             </div>
