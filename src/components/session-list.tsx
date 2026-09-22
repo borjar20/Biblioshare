@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useSyncExternalStore, useTransition } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { formatPosition, type Position } from "@/lib/library/position";
@@ -23,6 +23,15 @@ import { ActionMenu } from "@/components/ui/action-menu";
 // que la última cargada puede ser la primera del pase... o puede que no y solo
 // esté cortada, y desde aquí no hay forma de distinguirlo. En ese caso se
 // enseña solo la página alcanzada — que es lo que ya se hacía y nunca miente.
+// Reloj del cliente para las fechas relativas de la lista. getSnapshot tiene
+// que devolver el MISMO valor entre llamadas seguidas o React entra en bucle:
+// por eso se redondea al minuto, que es la granularidad de «hace X» (un
+// Date.now() crudo cambiaría en cada llamada). Sin suscripción: la lista no
+// necesita tickear sola, se recalcula en cada render.
+const subscribeNever = () => () => {};
+const clientMinute = () => Math.floor(Date.now() / 60_000) * 60_000;
+const serverNow = () => null;
+
 function rangeLabel(
   itemType: ItemType,
   position: Position,
@@ -66,8 +75,13 @@ export function SessionList({
   // idéntica en servidor y cliente, sin desajuste de hidratación— y al montar
   // se cambia a relativa con el reloj del cliente. Antes esto se pineaba con un
   // `now` global en i18n/request.ts que bloqueaba el prerender de TODA ruta.
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => setNow(new Date()), []);
+  //
+  // Se lee con useSyncExternalStore (el reloj es un almacén externo a React),
+  // no con un setState dentro de un efecto, que el lint del repo prohíbe: el
+  // snapshot de servidor `null` es el que se usa en SSR y en la hidratación, y
+  // el cliente lo sustituye justo después. Ver src/lib/sessions/use-timer-state.ts.
+  const nowMs = useSyncExternalStore(subscribeNever, clientMinute, serverNow);
+  const now = nowMs === null ? null : new Date(nowMs);
 
   return (
     <div className="flex flex-col">
