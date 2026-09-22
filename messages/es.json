@@ -1294,6 +1294,7 @@
       "add": "Registrar sesión",
       "empty": "Todavía no has registrado ninguna sesión.",
       "delete": "Eliminar",
+      "deleteConfirmShared": "Esta sesión está compartida: borrarla borra también su publicación en el feed y sus comentarios. No se puede deshacer.",
       "actionsLabel": "Acciones de la sesión",
       "duration": "{count} min",
       "edition": "Edición: {label}"

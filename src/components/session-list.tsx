@@ -149,10 +149,13 @@ export function SessionList({
                   </time>
                   {/* Borrar la sesión ya no es un text-link sembrado en cada
                       fila (F3-012): con diez sesiones había diez borrados
-                      permanentes a un misclick del scroll. Sin `confirm()` a
-                      propósito — la confirmación se reserva a lo que arrastra
-                      otros datos (pase, edición, rol); una sesión suelta se
-                      vuelve a registrar en diez segundos. */}
+                      permanentes a un misclick del scroll. `confirm()` solo
+                      cuando la sesión arrastra otros datos: si tiene un post
+                      `progressed` propio, borrarla se lleva también ese post
+                      y su hilo de comentarios (cleanup_source_posts,
+                      2026-09-22) — irreversible y no solo tuyo. Una sesión
+                      suelta sin post se vuelve a registrar en diez segundos,
+                      así que esa sigue sin preguntar. */}
                   <div className="shrink-0">
                     <ActionMenu
                       label={t("actionsLabel")}
@@ -164,10 +167,14 @@ export function SessionList({
                           label: t("delete"),
                           danger: true,
                           disabled: isPending,
-                          onSelect: () =>
+                          onSelect: () => {
+                            if (session.hasPost && !window.confirm(t("deleteConfirmShared"))) {
+                              return;
+                            }
                             startTransition(() =>
                               deleteSession(session.id, itemType, itemId),
-                            ),
+                            );
+                          },
                         },
                       ]}
                     />

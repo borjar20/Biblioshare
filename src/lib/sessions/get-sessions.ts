@@ -30,11 +30,35 @@ export async function getSessions(
 
   if (error) throw error;
 
+  const sessionIds = (data ?? []).map((row) => row.id);
+
+  // Qué sesiones arrastran un post `progressed` propio (cleanup_source_posts,
+  // 2026-09-22): borrarlas se lleva ese post y su hilo, así que session-list
+  // necesita saberlo para confirmar antes. Consulta aparte porque `posts` no
+  // tiene FK a `progress_sessions` (fuente polimórfica); con RLS el dueño solo
+  // ve sus propios posts, así que esto nunca filtra los de otro. Se salta si
+  // no hay sesiones que mirar.
+  const postedSessionIds = new Set<string>();
+  if (sessionIds.length > 0) {
+    const { data: posts, error: postsError } = await supabase
+      .from("posts")
+      .select("source_id")
+      .eq("source_kind", "progress_session")
+      .in("source_id", sessionIds);
+
+    if (postsError) throw postsError;
+
+    for (const post of posts ?? []) {
+      if (post.source_id) postedSessionIds.add(post.source_id);
+    }
+  }
+
   return (data ?? []).map((row) => ({
     id: row.id,
     sessionDate: row.session_date,
     createdAt: row.created_at,
     durationMinutes: row.duration_minutes,
     position: parsePosition(itemType, row.position),
+    hasPost: postedSessionIds.has(row.id),
   }));
 }
