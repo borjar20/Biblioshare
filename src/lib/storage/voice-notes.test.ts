@@ -4,17 +4,23 @@ const storage = vi.hoisted(() => ({
   upload: vi.fn(),
   remove: vi.fn(),
   createSignedUrls: vi.fn(),
+  rpc: vi.fn(),
+}));
+const visiblePaths = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => ({ from: () => ({ select: () => ({ in: visiblePaths }) }) }),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/service-role", () => ({
-  createServiceRoleClient: () => ({ storage: { from: () => storage } }),
+  createServiceRoleClient: () => ({ storage: { from: () => storage }, rpc: storage.rpc }),
 }));
 
 import { deleteVoiceNote, signVoiceNoteUrls, uploadVoiceNote } from "./voice-notes";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  storage.rpc.mockResolvedValue({ data: false, error: null });
 });
 
 describe("uploadVoiceNote", () => {
@@ -37,6 +43,17 @@ describe("uploadVoiceNote", () => {
 });
 
 describe("deleteVoiceNote", () => {
+  it("preserva audio referenciado como evidencia", async () => {
+    storage.rpc.mockResolvedValue({ data: true, error: null });
+    await deleteVoiceNote("u1/a.webm");
+    expect(storage.rpc).toHaveBeenCalledWith("moderation_audio_is_evidence", { p_path: "u1/a.webm" });
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+  it("no destruye evidencia si no puede comprobar las referencias", async () => {
+    storage.rpc.mockResolvedValue({ data: null, error: { message: "unavailable" } });
+    await deleteVoiceNote("u1/a.webm");
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
   it("borra y no lanza aunque falle (huérfano: se loguea)", async () => {
     storage.remove.mockResolvedValue({ error: { message: "boom" } });
     await expect(deleteVoiceNote("u1/a.webm")).resolves.toBeUndefined();
@@ -49,17 +66,11 @@ describe("signVoiceNoteUrls", () => {
     await expect(signVoiceNoteUrls([])).resolves.toEqual(new Map());
     expect(storage.createSignedUrls).not.toHaveBeenCalled();
   });
-  it("mapea path → signedUrl y descarta filas con error", async () => {
-    storage.createSignedUrls.mockResolvedValue({
-      data: [
-        { path: "u1/a.webm", signedUrl: "https://x/a?token=1", error: null },
-        { path: "u1/b.m4a", signedUrl: null, error: "not found" },
-      ],
-      error: null,
-    });
+  it("solo genera rutas autenticadas para comentarios visibles, sin firmar objetos", async () => {
+    visiblePaths.mockResolvedValue({ data: [{ id: "c1", audio_path: "u1/a.webm" }], error: null });
     const map = await signVoiceNoteUrls(["u1/a.webm", "u1/b.m4a"]);
-    expect(map.get("u1/a.webm")).toBe("https://x/a?token=1");
+    expect(map.get("u1/a.webm")).toBe("/api/voice-notes/c1");
     expect(map.has("u1/b.m4a")).toBe(false);
-    expect(storage.createSignedUrls).toHaveBeenCalledWith(["u1/a.webm", "u1/b.m4a"], 3600);
+    expect(storage.createSignedUrls).not.toHaveBeenCalled();
   });
 });

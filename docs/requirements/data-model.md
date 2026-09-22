@@ -1,5 +1,34 @@
 # Modelo de datos
 
+> **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
+> reales y fixtures transaccionales en **dev**; esquema, permisos y consultas administrativas
+> comprobados también en **producción el 2026-09-15**. Migración
+> `20260915145340_admin_content_moderation.sql` y seguimiento
+> `20260915150429_moderation_event_notification_visibility.sql`;
+> **ambas aplicadas en dev y producción**. El seguimiento cubre los avisos legacy `club_event`.
+> Estado y evidencia viven en `private.moderation_state` y
+> `private.moderation_history`, sin FK destructiva al objeto ni acceso directo
+> para `anon`/`authenticated`. `private.moderation_operations` solo marca la
+> operación administrativa durante la transacción. No se añaden columnas a
+> tablas públicas existentes ni se amplían sus grants por columna.
+>
+> `admin_moderation_list`, `admin_moderate_content`, `admin_review_report` y
+> `admin_moderation_audio` son envoltorios invoker de funciones privadas con
+> comprobación de admin global. Retirar oculta clubes/posts/club_posts/comments
+> y descendientes incluso al admin fuera de estas RPC. Políticas restrictivas,
+> helpers de visibilidad y guardas de escritura cubren consultas y funciones
+> privilegiadas. Restaurar el padre conserva las retiradas individuales.
+> Borrar exige motivo y confirmación (nombre exacto para club, `ELIMINAR` para
+> el resto), conserva evidencia y no elimina pases personales. Los posts
+> derivados borrados por moderación no se regeneran desde la misma fuente.
+>
+> Tras retirar o borrar contenido, sus reportes solo se consultan mediante la
+> RPC administrativa; esta regla restringe la lectura ordinaria descrita abajo.
+> El audio usado como evidencia se conserva en el bucket privado y solo se
+> entrega mediante `/api/admin/voice-notes/[id]`; la RPC
+> `moderation_audio_is_evidence` es exclusiva de `service_role` para impedir que
+> la limpieza de archivos destruya evidencia.
+
 > **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
 > `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
 > Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.

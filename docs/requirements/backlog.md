@@ -1,5 +1,13 @@
 # Backlog — trabajo pendiente
 
+## Moderación administrativa — #1183
+
+- [ ] Retirada/restauración/borrado definitivo de clubes, publicaciones y comentarios,
+  reportes e historial: implementación en `codex/moderation-admin`; esquema y
+  permisos, build y recorridos de navegador verificados en dev el 2026-09-15. Pendiente despliegue
+  de aplicación en producción; ambas migraciones ya aplicadas y permisos comprobados
+  allí el 2026-09-15. Contrato en la spec del 2026-09-15.
+
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09]**

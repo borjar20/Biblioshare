@@ -16,6 +16,7 @@
     "test:ci:build": "node scripts/ci-local.mjs build",
     "test:ci:smoke": "node scripts/ci-local.mjs smoke",
     "test:e2e": "playwright test",
+    "test:e2e:moderation": "playwright test --config playwright.moderation.config.ts",
     "test:e2e:batches": "node scripts/e2e-batches.mjs",
     "test:e2e:club": "node scripts/e2e-batches.mjs club-",
     "db:local:prepare": "node scripts/db/bootstrap.mjs",

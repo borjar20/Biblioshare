@@ -3142,6 +3142,34 @@ export type Database = {
       }
     }
     Functions: {
+      admin_moderation_list: {
+        Args: {
+          p_kind: string
+          p_offset: number
+          p_query: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      admin_moderate_content: {
+        Args: {
+          p_action: string
+          p_confirmation: string
+          p_id: string
+          p_kind: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      admin_review_report: {
+        Args: { p_id: string; p_reason: string; p_status: string }
+        Returns: Json
+      }
+      admin_moderation_audio: { Args: { p_comment_id: string }; Returns: Json }
+      moderation_audio_is_evidence: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
       archive_register_movie: {
         Args: { p_data: Json; p_job: string; p_ordinal: number; p_tmdb: number }
         Returns: string
