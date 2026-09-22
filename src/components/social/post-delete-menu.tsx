@@ -35,6 +35,11 @@ export function useDeletePost(postId: string | null | undefined) {
         setError(true);
         return;
       }
+      // Comparación exacta a propósito: sin prefijo de locale (next-intl ya lo
+      // quita de `usePathname()`) y sin contemplar un modal interceptor sobre
+      // esta ruta (no existe hoy). Si `/post/[id]` cambia de forma, esto deja
+      // de reconocer la cabecera y solo se cae a `setDeleted(true)` —oculta la
+      // tarjeta en vez de navegar a Inicio, no rompe nada más.
       if (pathname === `/post/${postId}`) router.replace("/");
       else setDeleted(true);
     });

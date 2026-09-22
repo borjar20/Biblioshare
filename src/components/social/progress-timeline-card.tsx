@@ -59,7 +59,7 @@ export function ProgressTimelineCard({
           <span className={`text-muted-foreground${hideActor ? " first-letter:uppercase" : ""}`}>{t("grouped.progressedIn", { title: "" })}</span>{" "}
           <Link href={itemHref(work.itemType, work.itemId)} className="font-serif font-semibold hover:underline">{work.itemTitle}</Link>
         </p>
-        <span className="rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
+        <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
           {t("kind.progress")}
         </span>
         {deleteMenu}
@@ -119,12 +119,15 @@ export function ProgressTimelineCard({
                     />
                   </div>
                 ) : null}
-                {deleteError && <PostDeleteError />}
                 <TimeAgo iso={step.eventDate} className="mt-1 block font-mono text-[9.5px] text-muted-foreground" />
               </div>
             </div>
           );
         })}
+
+        {/* Un solo fallo de borrado vale para todo el grupo (es UN post, el del
+            singleton) — antes se repetía por cada paso del `.map` de arriba. */}
+        {deleteError && <PostDeleteError />}
 
         {collapsible && (
           <div className="flex gap-3">
