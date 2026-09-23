@@ -63,7 +63,10 @@ export async function markEpisodeWatched(
   seriesId: string,
   passId: string,
   season: number,
-  episode: number
+  episode: number,
+  // Fecha LOCAL del visionado, ya validada (parseWatchedOn). null = el default
+  // de la columna (fecha UTC del servidor), el comportamiento de antes.
+  watchedOn: string | null = null
 ): Promise<boolean> {
   if (!(await episodeExists(supabase, seriesId, season, episode))) return false;
 
@@ -86,6 +89,7 @@ export async function markEpisodeWatched(
     pass_id: passId,
     season_number: season,
     episode_number: episode,
+    ...(watchedOn && { watched_on: watchedOn }),
   });
   if (error && error.code !== "23505") throw error;
   // 23505 = otra pestaña lo insertó primero: la fila existe, pero no la creó

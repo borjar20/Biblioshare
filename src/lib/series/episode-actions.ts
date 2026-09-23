@@ -12,6 +12,7 @@ import {
   rollSeriesProgress,
 } from "./episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { parseWatchedOn } from "./watched-on";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -87,7 +88,9 @@ export async function setEpisodeWatched(
   seriesId: string,
   season: number,
   episode: number,
-  watched: boolean
+  watched: boolean,
+  // Fecha LOCAL del cliente (YYYY-MM-DD); sin ella, la del servidor.
+  watchedOn?: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -106,6 +109,7 @@ export async function setEpisodeWatched(
       passId,
       season,
       episode,
+      parseWatchedOn(watchedOn),
     );
     // Marcar un episodio no avisa a nadie: el aviso lo emitiría un post
     // kind='watched', y hoy NADIE crea posts de ese kind (no existe «compartir
@@ -141,7 +145,8 @@ const MAX_BULK_EPISODES = 2500;
 // sesión: si el lote llega al último emitido de una serie terminada, se cierra.
 export async function markEpisodesWatched(
   seriesId: string,
-  episodes: { season: number; episode: number }[]
+  episodes: { season: number; episode: number }[],
+  watchedOn?: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -158,6 +163,7 @@ export async function markEpisodesWatched(
   }
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
+  const day = parseWatchedOn(watchedOn);
 
   const [{ episodes: catalog }, { data: already }] = await Promise.all([
     loadAiredCatalog(supabase, seriesId),
@@ -178,6 +184,7 @@ export async function markEpisodesWatched(
       pass_id: passId,
       season_number: e.season_number,
       episode_number: e.episode_number,
+      ...(day && { watched_on: day }),
     }));
 
   let added = false;
@@ -196,7 +203,8 @@ export async function markEpisodesWatched(
             seriesId,
             passId,
             r.season_number,
-            r.episode_number
+            r.episode_number,
+            day
           )
         )
           added = true;
@@ -215,7 +223,10 @@ export async function rateEpisode(
   season: number,
   episode: number,
   rating: number | null,
-  review: string | null
+  review: string | null,
+  // Solo cuenta si puntuar CREA la fila (puntuar implica visto): una nota
+  // sobre un episodio ya visto no le cambia la fecha.
+  watchedOn?: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -230,6 +241,7 @@ export async function rateEpisode(
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
   const cleanReview = review?.trim() || null;
+  const day = parseWatchedOn(watchedOn);
 
   const { data: existing } = await supabase
     .from("episode_watches")
@@ -255,6 +267,7 @@ export async function rateEpisode(
       episode_number: episode,
       rating,
       review: cleanReview,
+      ...(day && { watched_on: day }),
     });
     if (error) throw error;
   }

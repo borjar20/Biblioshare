@@ -21,6 +21,7 @@ import {
   seasonToMark,
 } from "@/lib/series/follow-state";
 import { EpisodeRating } from "./episode-rating";
+import { todayISO } from "@/lib/stats/dates";
 
 type View = "grid" | "list";
 
@@ -120,7 +121,9 @@ export function EpisodePanel({
       return;
     patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null });
     startTransition(() =>
-      setEpisodeWatched(seriesId, ep.season, ep.episode, next),
+      // Fecha LOCAL (todayISO de stats/dates): la del servidor es UTC y un
+      // episodio de madrugada caería en el día anterior de la racha.
+      setEpisodeWatched(seriesId, ep.season, ep.episode, next, todayISO()),
     );
   };
 
@@ -133,7 +136,7 @@ export function EpisodePanel({
       selectedKey === episodeKey(ep) ? draft : (ownOf(ep).review ?? "");
     patch(ep, { watched: true, rating, review: review || null });
     startTransition(() =>
-      rateEpisode(seriesId, ep.season, ep.episode, rating, review || null),
+      rateEpisode(seriesId, ep.season, ep.episode, rating, review || null, todayISO()),
     );
   };
 
@@ -151,6 +154,7 @@ export function EpisodePanel({
       markEpisodesWatched(
         seriesId,
         eps.map((e) => ({ season: e.season, episode: e.episode })),
+        todayISO(),
       ),
     );
   };
@@ -163,7 +167,7 @@ export function EpisodePanel({
   const saveReview = (ep: EpisodeRow) => {
     patch(ep, { watched: true, review: draft || null });
     startTransition(() =>
-      rateEpisode(seriesId, ep.season, ep.episode, ownOf(ep).rating, draft || null),
+      rateEpisode(seriesId, ep.season, ep.episode, ownOf(ep).rating, draft || null, todayISO()),
     );
   };
 
