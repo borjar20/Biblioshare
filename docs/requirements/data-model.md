@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback).
+> **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback) y en prod (pg_trigger/pg_proc/pg_policy; 0 casos previos que limpiar).
 
 > **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
 
