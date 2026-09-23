@@ -1287,3 +1287,8 @@ commit;
 begin;
 \ir migrations/20260923120100_posts_insert_own_source.sql
 commit;
+
+-- 20260923130000_series_live_episode_catalog
+begin;
+\ir migrations/20260923130000_series_live_episode_catalog.sql
+commit;

@@ -256,6 +256,7 @@
     "20260922120000_posts_cleanup_on_source_delete.sql",
     "20260922120100_posts_orphans_backfill.sql",
     "20260923120000_posts_cleanup_contradicted_milestones.sql",
-    "20260923120100_posts_insert_own_source.sql"
+    "20260923120100_posts_insert_own_source.sql",
+    "20260923130000_series_live_episode_catalog.sql"
   ]
 }
