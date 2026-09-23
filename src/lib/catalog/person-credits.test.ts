@@ -173,6 +173,42 @@ describe("getPersonCombinedCredits", () => {
     expect(credits[0].role).toBe("director");
   });
 
+  it("título ilegible en es-ES -> el de la misma filmografía en en-US, cruzado por tipo e id", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () =>
+          url.includes("language=en-US")
+            ? {
+                cast: [
+                  { id: 52415, media_type: "movie", title: "Crush and Blush", overview: "Mi-sook…" },
+                  // Mismo id, OTRO tipo: no debe cruzarse con la película.
+                  { id: 99, media_type: "movie", title: "Wrong" },
+                  { id: 99, media_type: "tv", name: "Hellbound", overview: "Angels…" },
+                ],
+                crew: [],
+              }
+            : {
+                cast: [
+                  { id: 52415, media_type: "movie", title: "미쓰 홍당무", original_title: "미쓰 홍당무", poster_path: null },
+                  { id: 99, media_type: "tv", name: "지옥", original_name: "지옥", poster_path: null },
+                  { id: 5, media_type: "movie", title: "La haine", overview: "Tres amigos…", poster_path: null },
+                ],
+                crew: [],
+              },
+      }))
+    );
+
+    const credits = await getPersonCombinedCredits(1);
+
+    expect(credits.map((c) => [c.title, c.originalTitle, c.synopsis])).toEqual([
+      ["Crush and Blush", "미쓰 홍당무", "Mi-sook…"],
+      ["Hellbound", "지옥", "Angels…"],
+      ["La haine", null, "Tres amigos…"],
+    ]);
+  });
+
   it("sin TMDB_API_KEY -> [] sin llamar a fetch", async () => {
     delete process.env.TMDB_API_KEY;
     const fetchMock = vi.fn();
