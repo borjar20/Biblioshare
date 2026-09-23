@@ -2,9 +2,10 @@
 
 > **Delta 2026-09-23 (#1193, catálogo vivo de series):** columnas `series.tmdb_status`,
 > `next_episode_air_date` y `episodes_synced_at` (migración
-> `20260923130000_series_live_episode_catalog.sql`), verificadas en **dev**
-> (`information_schema.columns`); **prod pendiente** de aplicar con la PR. Ver «Catálogo vivo de
-> episodios» más abajo.
+> `20260923130000_series_live_episode_catalog.sql`), verificadas en **dev** y en **prod**
+> (`information_schema.columns` + `has_column_privilege`: SELECT para anon/authenticated, sin
+> UPDATE para authenticated, UPDATE para service_role; CHECK `series_tmdb_status_length`). Ver
+> «Catálogo vivo de episodios» más abajo.
 
 > **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback) y en prod (pg_trigger/pg_proc/pg_policy; 0 casos previos que limpiar).
 
