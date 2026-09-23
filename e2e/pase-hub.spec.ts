@@ -338,8 +338,14 @@ test.describe
     // no existe todavía, así que la ficha cae en "Información".
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});
+    // Las pestañas son `role="tab"` desde #891 (antes, <button> pelados). Primero
+    // se exige que las pestañas estén pintadas: sin eso, el `toHaveCount(0)` de
+    // abajo pasaba con cualquier selector que no casara con nada (#1190).
     await expect(
-      page.getByRole("button", { name: "Mi registro" }),
+      page.getByRole("tab", { name: "Información" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("tab", { name: "Mi registro" }),
     ).toHaveCount(0);
 
     // "Seguir" es accesible en el hero. Al seguir, la obra pasa a Pendiente y
@@ -349,7 +355,7 @@ test.describe
       timeout: 15_000,
     });
     await expect(
-      page.getByRole("button", { name: "Mi registro" }),
+      page.getByRole("tab", { name: "Mi registro" }),
     ).toBeVisible({ timeout: 15_000 });
 
     // La biblioteca completa vive en la pestaña «Todo» (Colección v2); `/coleccion`

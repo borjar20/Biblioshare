@@ -43,9 +43,14 @@ test.describe("service worker y payloads RSC", () => {
     await page.waitForURL(/\/libro\/[0-9a-f-]{36}/, { timeout: 30_000 });
 
     // Ida y vuelta entre pestañas dos veces: la segunda visita a "Comunidad" es
-    // justo donde el SW devolvía su copia cacheada de la primera.
-    for (const name of [/comunidad/i, /registro/i, /comunidad/i]) {
-      await page.getByRole("button", { name }).click();
+    // justo donde el SW devolvía su copia cacheada de la primera. La pestaña
+    // intermedia es "Información" porque existe SIEMPRE; "Mi registro" solo
+    // aparece si el usuario sigue la obra, y el primer resultado de «dune» no
+    // tiene por qué estar en su biblioteca (#1190).
+    for (const name of [/comunidad/i, /informaci[oó]n/i, /comunidad/i]) {
+      // `role="tab"` desde #891: como `button` no casaba y el click esperaba
+      // hasta el timeout (#1190).
+      await page.getByRole("tab", { name }).click();
       await page.waitForTimeout(600);
     }
 
