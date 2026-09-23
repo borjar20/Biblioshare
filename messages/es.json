@@ -2033,6 +2033,7 @@
   },
   "session": {
     "sheetTitle": "Registrar sesión",
+    "sheetTitleSeries": "Marcar episodios",
     "close": "Cerrar",
     "kickerBook": "Libro · sesión de lectura",
     "kickerSeries": "Serie · episodios vistos",

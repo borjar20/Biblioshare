@@ -135,6 +135,70 @@ export async function loadAiredCatalog(
   };
 }
 
+// Escritura en bloque de episodios vistos en un pase (fase 3/4 del rediseño de
+// series). La comparten «Marcar temporada / hasta aquí» (markEpisodesWatched) y
+// la hoja de sesión de serie (addSession), para que las dos puertas escriban
+// igual. El llamante pide QUÉ episodios; aquí se decide cuáles se pueden dar por
+// vistos: existen en el catálogo, están EMITIDOS (loadAiredCatalog) y no
+// estaban ya vistos en este pase. Un solo insert; si otra pestaña gana la
+// carrera (23505) el lote entero se rechaza y se cae a uno a uno, que ya se
+// traga el choque fila a fila.
+//
+// Devuelve si ESTE gesto añadió algo (la señal del auto-cierre, #716).
+export async function insertEpisodeWatches(
+  supabase: SupabaseServerClient,
+  userId: string,
+  seriesId: string,
+  passId: string,
+  requested: { season: number; episode: number }[],
+  watchedOn: string | null
+): Promise<boolean> {
+  if (requested.length === 0) return false;
+  const wanted = new Set(requested.map((e) => `${e.season}:${e.episode}`));
+  const [{ episodes: catalog }, { data: already }] = await Promise.all([
+    loadAiredCatalog(supabase, seriesId),
+    supabase
+      .from("episode_watches")
+      .select("season_number, episode_number")
+      .eq("user_id", userId)
+      .eq("pass_id", passId),
+  ]);
+  const seen = new Set((already ?? []).map((w) => `${w.season_number}:${w.episode_number}`));
+  const rows = catalog
+    .filter((e) => e.aired)
+    .filter((e) => wanted.has(`${e.season_number}:${e.episode_number}`))
+    .filter((e) => !seen.has(`${e.season_number}:${e.episode_number}`))
+    .map((e) => ({
+      user_id: userId,
+      series_id: seriesId,
+      pass_id: passId,
+      season_number: e.season_number,
+      episode_number: e.episode_number,
+      ...(watchedOn && { watched_on: watchedOn }),
+    }));
+  if (rows.length === 0) return false;
+
+  const { error } = await supabase.from("episode_watches").insert(rows);
+  if (!error) return true;
+  if (error.code !== "23505") throw error;
+  let added = false;
+  for (const r of rows) {
+    if (
+      await markEpisodeWatched(
+        supabase,
+        userId,
+        seriesId,
+        passId,
+        r.season_number,
+        r.episode_number,
+        watchedOn
+      )
+    )
+      added = true;
+  }
+  return added;
+}
+
 // Hace rodar la posición del PASE (Tarea 8, hub) al episodio visto más
 // avanzado DE ESE PASE — nunca de todo lo visto por el usuario en la serie:
 // un revisionado tiene su propio cursor, así que los vistos de un pase

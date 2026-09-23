@@ -7,7 +7,7 @@ import { getActivePass, isAutoCloseable } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import {
   episodeExists,
-  loadAiredCatalog,
+  insertEpisodeWatches,
   markEpisodeWatched,
   rollSeriesProgress,
 } from "./episode-watch-store";
@@ -184,53 +184,17 @@ export async function markEpisodesWatched(
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
   const day = parseWatchedOn(watchedOn);
-
-  const [{ episodes: catalog }, { data: already }] = await Promise.all([
-    loadAiredCatalog(supabase, seriesId),
-    supabase
-      .from("episode_watches")
-      .select("season_number, episode_number")
-      .eq("user_id", user.id)
-      .eq("pass_id", passId),
-  ]);
-  const seen = new Set((already ?? []).map((w) => `${w.season_number}:${w.episode_number}`));
-  const rows = catalog
-    .filter((e) => e.aired)
-    .filter((e) => requested.has(`${e.season_number}:${e.episode_number}`))
-    .filter((e) => !seen.has(`${e.season_number}:${e.episode_number}`))
-    .map((e) => ({
-      user_id: user.id,
-      series_id: seriesId,
-      pass_id: passId,
-      season_number: e.season_number,
-      episode_number: e.episode_number,
-      ...(day && { watched_on: day }),
-    }));
-
-  let added = false;
-  if (rows.length > 0) {
-    const { error } = await supabase.from("episode_watches").insert(rows);
-    if (!error) added = true;
-    else if (error.code === "23505") {
-      // Otra pestaña marcó alguno entre la lectura y el insert: el lote entero
-      // se rechaza, así que se cae a la escritura de uno en uno, que ya se traga
-      // el choque fila a fila (markEpisodeWatched).
-      for (const r of rows) {
-        if (
-          await markEpisodeWatched(
-            supabase,
-            user.id,
-            seriesId,
-            passId,
-            r.season_number,
-            r.episode_number,
-            day
-          )
-        )
-          added = true;
-      }
-    } else throw error;
-  }
+  const added = await insertEpisodeWatches(
+    supabase,
+    user.id,
+    seriesId,
+    passId,
+    [...requested].map((k) => {
+      const [season, episode] = k.split(":").map(Number);
+      return { season, episode };
+    }),
+    day
+  );
 
   if (added)
     await maybeAutopostWatchedDay(supabase, { userId: user.id, seriesId, day: markedDay(day) });

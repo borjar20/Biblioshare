@@ -11,9 +11,11 @@ import { todayISO } from "@/lib/stats/dates";
 import { getEditions } from "@/lib/editions/get-editions";
 import { pagesForPass } from "@/lib/editions/edition-label";
 import {
-  markEpisodeWatched,
+  insertEpisodeWatches,
   rollSeriesProgress,
 } from "@/lib/series/episode-watch-store";
+import { maybeAutopostWatchedDay } from "@/lib/social/autopost-watched";
+import { todayISO as todayUtcISO } from "@/lib/series/aired";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { createPost } from "@/lib/social/post-actions";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
@@ -145,7 +147,7 @@ export async function addSession(
   // sesión (progress_sessions.position) — la posición real del pase la
   // deriva rollSeriesProgress a partir de episode_watches, nunca este valor.
   let sessionPosition: Position = {};
-  let episodesToMark: { season: number; episode: number }[] = [];
+  const episodesToMark: { season: number; episode: number }[] = [];
   if (itemType === "book") {
     const pageRaw = String(formData.get("page") ?? "").trim();
     if (pageRaw) {
@@ -155,17 +157,25 @@ export async function addSession(
       sessionPosition = { page };
     }
   } else if (itemType === "series") {
+    // Fase 4: la hoja deja marcar en VARIAS temporadas a la vez; cada episodio
+    // viaja como "temporada:episodio" en `episodeKeys`. Se sigue aceptando la
+    // forma vieja (`season` + `episodes`) por si una pestaña abierta antes del
+    // despliegue envía el formulario.
+    for (const raw of formData.getAll("episodeKeys")) {
+      const [s, e] = String(raw).split(":").map(Number);
+      if (!Number.isInteger(s) || s < 0 || !Number.isInteger(e) || e <= 0)
+        return { error: "invalidPosition" };
+      episodesToMark.push({ season: s, episode: e });
+    }
     const seasonRaw = String(formData.get("season") ?? "").trim();
     const episodeNumbers = formData
       .getAll("episodes")
       .map((v) => Number(String(v).trim()))
       .filter((n) => Number.isInteger(n) && n > 0);
-
     if (episodeNumbers.length > 0) {
       const season = Number(seasonRaw);
       if (!Number.isInteger(season) || season < 0) return { error: "invalidPosition" };
-      episodesToMark = episodeNumbers.map((episode) => ({ season, episode }));
-      sessionPosition = { season, episode: Math.max(...episodeNumbers) };
+      episodesToMark.push(...episodeNumbers.map((episode) => ({ season, episode })));
     }
   }
 
@@ -204,6 +214,58 @@ export async function addSession(
       effectivePassId = outcome.passId;
       passWasCreated = outcome.created;
     }
+  }
+
+  // Series (fase 4, decisión D3): ya NO se crea sesión. La unidad de una serie
+  // es el episodio visto, con su fecha: se marcan en bloque con la MISMA
+  // escritura que la pestaña Episodios (insertEpisodeWatches), la fecha de la
+  // hoja pasa a `watched_on`, y el post diario del feed sustituye al
+  // «Compartir» de la sesión. Rachas y calendarios ya leen episode_watches.
+  if (itemType === "series") {
+    const day = sessionDate || null;
+    const added = await insertEpisodeWatches(
+      supabase,
+      user.id,
+      itemId,
+      effectivePassId,
+      episodesToMark,
+      day,
+    );
+    // Las notas del cuaderno se guardaron sueltas mientras la hoja estaba
+    // abierta; sin sesión que las agrupe, solo se repuntan al pase vivo (#717).
+    const noteIds = formData.getAll("noteIds").map(String).filter(Boolean);
+    if (noteIds.length > 0 && effectivePassId !== passId) {
+      await supabase
+        .from("notes")
+        .update({ pass_id: effectivePassId })
+        .eq("user_id", user.id)
+        .eq("pass_id", passId)
+        .is("session_id", null)
+        .in("id", noteIds);
+    }
+    if (added) {
+      await maybeAutopostWatchedDay(supabase, {
+        userId: user.id,
+        seriesId: itemId,
+        day: day ?? todayUtcISO(),
+      });
+      await earnDailyLoopCelebrations(supabase, user.id);
+    }
+    const { reachedEnd: seriesEnd } = await rollSeriesProgress(
+      supabase,
+      user.id,
+      itemId,
+      effectivePassId,
+    );
+    // Mismo auto-cierre que la pestaña Episodios (#716): solo si ESTE gesto
+    // añadió algo, y nunca sobre un pase que el usuario acaba de abandonar.
+    if (added && seriesEnd && (await isAutoCloseable(supabase, effectivePassId, user.id))) {
+      await applyTransition(supabase, user.id, itemType, itemId, "completed");
+      revalidateReadingLog(itemType, itemId);
+      return { ok: true, passClosed: true };
+    }
+    revalidateReadingLog(itemType, itemId);
+    return { ok: true };
   }
 
   const { data: inserted, error: insertError } = await supabase
@@ -268,23 +330,6 @@ export async function addSession(
     });
   }
 
-  // Serie: marca cada episodio reutilizando la MISMA escritura que la
-  // pestaña Episodios (episode-watch-store.ts), atado al PASE de esta sesión
-  // (Tarea 8, hub) — no a user+series como antes de la migración del hub —
-  // y deja que rollSeriesProgress recalcule la posición una sola vez — toma
-  // el episodio más avanzado de TODO lo marcado EN ESTE PASE, así que
-  // registrar aquí un episodio antiguo nunca hace retroceder el progreso
-  // (§Tarea 15). `seriesReachedEnd` alimenta el mismo auto-cierre que ya
-  // tenía el libro más abajo.
-  let seriesReachedEnd = false;
-  if (itemType === "series" && episodesToMark.length > 0) {
-    for (const { season, episode } of episodesToMark) {
-      await markEpisodeWatched(supabase, user.id, itemId, effectivePassId, season, episode);
-    }
-    const result = await rollSeriesProgress(supabase, user.id, itemId, effectivePassId);
-    seriesReachedEnd = result.reachedEnd;
-  }
-
   // Roll the pase's current position forward. For books, merge so the
   // copy's `format` (part of the same JSONB) isn't lost by a page update.
   // Para series NO se escribe aquí: rollSeriesProgress ya dejó la posición
@@ -323,12 +368,12 @@ export async function addSession(
   // hoja de cierre; un redirect de servidor tira la página bajo el modal, así
   // que ahora se devuelve `passClosed: true` y es el CLIENTE quien decide
   // cómo encadenar la hoja (D4 de la spec) — ver `AddSessionState` arriba.
+  // (Las series ya salieron arriba con su propio auto-cierre.)
   const reachedEnd =
-    (itemType === "book" &&
-      maxPosition !== null &&
-      "page" in sessionPosition &&
-      sessionPosition.page === maxPosition) ||
-    seriesReachedEnd;
+    itemType === "book" &&
+    maxPosition !== null &&
+    "page" in sessionPosition &&
+    sessionPosition.page === maxPosition;
   // `isAutoCloseable` (#716, mismo criterio que la pestaña Episodios): si el
   // usuario acaba de elegir `dropped` en ESTA misma hoja, el auto-cierre no
   // puede pisarlo con un `completed`. Alcanzar el final y abandonar son dos
