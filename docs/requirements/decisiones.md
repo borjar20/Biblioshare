@@ -5043,3 +5043,26 @@ marcada «Vista» de un toque (sin episodios en el pase) no ofrece «seguir».
 `in_progress` borra el hito `finished` de ese pase, con su hilo. Es coherente con la regla —la
 serie no estaba terminada— pero se pierden los comentarios que tuviera ese post.
 
+## 2026-09-23 — Series: la pestaña Episodios pasa a ser la pantalla de seguimiento (fase 3)
+
+**Qué se decide.** Fase 3 del rediseño de series
+(`docs/superpowers/specs/2026-09-23-series-flujo-rediseno-design.md` §4.3):
+
+- **Cabecera de seguimiento en móvil y PC, en lista y en rejilla** (antes solo PC y solo lista):
+  estado, `vistos / emitidos`, barra y el botón «Visto: T2E6 · título». Tras pulsarlo aparece en
+  la misma cabecera «¿Qué tal T2E6?» con los dots: opcional, sin modal, desaparece al puntuar,
+  con «Ahora no» o al marcar el siguiente. No hay temporizador a propósito (un `setTimeout`
+  escondería la fila a mitad de gesto).
+- **Marcado masivo** con una acción nueva, `markEpisodesWatched`: «Marcar los N que faltan» en la
+  cabecera de cada temporada y «Marcar vistos hasta aquí (N)» en el detalle de un episodio. El
+  servidor vuelve a filtrar (existe, emitido según `loadAiredCatalog`, no visto en este pase) y
+  escribe en un solo insert; el auto-cierre se evalúa una vez al final.
+- **La reseña de un episodio se guarda al salir del cuadro**; desaparece el botón «Guardar».
+- **Desmarcar un episodio con nota o reseña pide confirmación** (#1194), con `window.confirm`,
+  como ya hacen «dejar de seguir» y «borrar pase» en la ficha.
+- **La rejilla es la vista de análisis:** tocar una celda cambia a la lista con ese episodio
+  abierto.
+
+**Fuera, a la fase 4.** Que la hoja `/sesion` deje cambiar de temporada sin perder lo marcado va
+con la decisión D3 (las series dejan de tener sesiones), que reescribe esa hoja para series.
+

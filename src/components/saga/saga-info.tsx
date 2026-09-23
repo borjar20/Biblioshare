@@ -214,8 +214,7 @@ export async function SagaInfo({
     noSlot: t("noOrderSlotHint"),
   };
   // Traduce una ventana ya resuelta a la frase del brief («a partir de X ·
-  // recomendable antes de Y»), con el título en negrita — mismo patrón que
-  // `t.rich` ya usa el resto de la app (episode-panel.tsx, "watchedProgress").
+  // recomendable antes de Y»), con el título en negrita, vía `t.rich`.
   // Con una sola ancla, media frase; `w` nunca llega con las dos a `null`
   // (resolveWindows ya descarta ese caso, no habría entrada en el mapa).
   const renderWindow = (w: ResolvedWindow | null): ReactNode => {

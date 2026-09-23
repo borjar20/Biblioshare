@@ -93,6 +93,44 @@ export async function markEpisodeWatched(
   return !error;
 }
 
+// Catálogo de la serie en orden cronológico con la marca «emitido» ya
+// aplicada (regla de src/lib/series/aired.ts) y el estado de TMDB. Lo comparten
+// el auto-cierre (rollSeriesProgress) y el marcado masivo (markEpisodesWatched
+// en episode-actions.ts): la regla de «qué se puede dar por visto» vive en un
+// solo sitio del servidor.
+export async function loadAiredCatalog(
+  supabase: SupabaseServerClient,
+  seriesId: string
+): Promise<{
+  tmdbStatus: string | null;
+  episodes: { season_number: number; episode_number: number; aired: boolean }[];
+}> {
+  const [{ data: series }, { data: catalog }] = await Promise.all([
+    supabase.from("series").select("tmdb_status").eq("id", seriesId).maybeSingle(),
+    supabase
+      .from("series_episodes")
+      .select("season_number, episode_number, air_date")
+      .eq("series_id", seriesId)
+      .order("season_number", { ascending: true })
+      .order("episode_number", { ascending: true }),
+  ]);
+  const tmdbStatus = series?.tmdb_status ?? null;
+  const rows = catalog ?? [];
+  const aired = airedFlags(
+    rows.map((e) => ({ airDate: e.air_date })),
+    todayISO(),
+    isSeriesEnded(tmdbStatus)
+  );
+  return {
+    tmdbStatus,
+    episodes: rows.map((e, i) => ({
+      season_number: e.season_number,
+      episode_number: e.episode_number,
+      aired: aired[i],
+    })),
+  };
+}
+
 // Hace rodar la posición del PASE (Tarea 8, hub) al episodio visto más
 // avanzado DE ESE PASE — nunca de todo lo visto por el usuario en la serie:
 // un revisionado tiene su propio cursor, así que los vistos de un pase
@@ -143,27 +181,10 @@ export async function rollSeriesProgress(
   // nunca: haber visto todo lo que hay no es haberla terminado (en la fase 2 de
   // la spec eso será el estado «Al día»). Sin estado de TMDB (serie manual o
   // aún sin sincronizar) se mantiene el criterio de siempre sobre lo emitido.
-  const [{ data: series }, { data: catalog }] = await Promise.all([
-    supabase.from("series").select("tmdb_status").eq("id", seriesId).maybeSingle(),
-    supabase
-      .from("series_episodes")
-      .select("season_number, episode_number, air_date")
-      .eq("series_id", seriesId)
-      .order("season_number", { ascending: true })
-      .order("episode_number", { ascending: true }),
-  ]);
+  const { tmdbStatus, episodes } = await loadAiredCatalog(supabase, seriesId);
+  if (tmdbStatus !== null && !isSeriesEnded(tmdbStatus)) return { reachedEnd: false };
 
-  const status = series?.tmdb_status ?? null;
-  const ended = isSeriesEnded(status);
-  if (status !== null && !ended) return { reachedEnd: false };
-
-  const episodes = catalog ?? [];
-  const aired = airedFlags(
-    episodes.map((e) => ({ airDate: e.air_date })),
-    todayISO(),
-    ended
-  );
-  const lastAired = episodes[aired.lastIndexOf(true)];
+  const lastAired = [...episodes].reverse().find((e) => e.aired);
 
   const reachedEnd =
     lastAired !== undefined &&

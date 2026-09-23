@@ -40,12 +40,30 @@ export type EpisodeListProps = {
   draft: string;
   onDraftChange: (value: string) => void;
   onSaveReview: (ep: EpisodeRow) => void;
+  /** Episodios emitidos y sin ver de esta temporada (0 = nada que marcar). */
+  seasonPendingCount: number;
+  onMarkSeason: () => void;
+  /** Cuántos marcaría «Vistos hasta aquí» desde este episodio. */
+  upToPendingCount: (ep: EpisodeRow) => number;
+  onMarkUpTo: (ep: EpisodeRow) => void;
 };
 
 export function EpisodeList(props: EpisodeListProps) {
   const t = useTranslations("episode");
-  const { group, stat, isLoggedIn, onBack } = props;
+  const { group, stat, isLoggedIn, onBack, interactive, isPending } = props;
   const remaining = stat.total - stat.watched;
+  // «Marcar temporada vista» (fase 3, H8): el alta de una temporada ya vista es
+  // un gesto, no diez casillas.
+  const markSeason = interactive && props.seasonPendingCount > 0 && (
+    <button
+      type="button"
+      onClick={props.onMarkSeason}
+      disabled={isPending}
+      className="rounded-full border border-border px-3 py-1 font-sans text-[11px] tracking-normal text-foreground normal-case hover:bg-surface-muted disabled:opacity-60"
+    >
+      {t("markSeason", { count: props.seasonPendingCount })}
+    </button>
+  );
 
   return (
     <div className="lg:max-h-[560px] lg:overflow-y-auto">
@@ -95,15 +113,19 @@ export function EpisodeList(props: EpisodeListProps) {
                 {t("remaining", { count: remaining })}
               </p>
             </div>
+            {markSeason}
           </div>
         )}
       </div>
 
       {/* `.lh` de PC·1: rótulo pegajoso de la columna central. */}
-      <div className="sticky top-0 hidden border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:block">
-        {t("season", { n: group.season })}
-        {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
-        {stat.avg !== null && ` · ${formatDots(stat.avg)}`}
+      <div className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:flex">
+        <span className="flex-1">
+          {t("season", { n: group.season })}
+          {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
+          {stat.avg !== null && ` · ${formatDots(stat.avg)}`}
+        </span>
+        {markSeason}
       </div>
 
       <ul>
@@ -128,6 +150,8 @@ function EpisodeItem({
   draft,
   onDraftChange,
   onSaveReview,
+  upToPendingCount,
+  onMarkUpTo,
 }: EpisodeListProps & { episode: EpisodeRow }) {
   const t = useTranslations("episode");
   const tPasses = useTranslations("passes");
@@ -249,6 +273,10 @@ function EpisodeItem({
             draft={draft}
             onDraftChange={onDraftChange}
             onSave={() => onSaveReview(episode)}
+            // Solo si hay algo ANTES que marcar: «hasta aquí» sobre el propio
+            // episodio sin nada detrás es la casilla de la fila.
+            markUpToCount={canAct ? upToPendingCount(episode) : 0}
+            onMarkUpTo={() => onMarkUpTo(episode)}
           />
         </div>
       )}

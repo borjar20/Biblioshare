@@ -49,3 +49,24 @@ export function hasNewEpisodesAfter(
   if (furthest === -1) return false;
   return episodes.slice(furthest + 1).some((e) => e.aired);
 }
+
+type MarkableEpisode = { season: number; episode: number; aired: boolean; watched: boolean };
+
+// «Vistos hasta aquí»: todo lo EMITIDO y sin ver desde el principio hasta el
+// episodio elegido, incluido. Los episodios van en orden cronológico. Es la
+// forma de dar de alta de un gesto una serie que ya llevabas vista (H8).
+export function episodesUpTo<T extends MarkableEpisode>(
+  episodes: T[],
+  target: { season: number; episode: number },
+): T[] {
+  const end = episodes.findIndex(
+    (e) => e.season === target.season && e.episode === target.episode,
+  );
+  if (end === -1) return [];
+  return episodes.slice(0, end + 1).filter((e) => e.aired && !e.watched);
+}
+
+// «Marcar temporada vista»: lo emitido y sin ver de esa temporada.
+export function seasonToMark<T extends MarkableEpisode>(episodes: T[], season: number): T[] {
+  return episodes.filter((e) => e.season === season && e.aired && !e.watched);
+}
