@@ -14,6 +14,15 @@ import {
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { parseWatchedOn } from "./watched-on";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
+import { maybeAutopostWatchedDay } from "@/lib/social/autopost-watched";
+import { todayISO } from "./aired";
+
+// El día en que cayó la marca: el que mandó el cliente o, sin él, el default de
+// la columna (`current_date`, fecha UTC de la BD — la misma que todayISO() de
+// aired.ts). Lo necesita el post diario del feed.
+function markedDay(watchedOn: string | null): string {
+  return watchedOn ?? todayISO();
+}
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -116,9 +125,15 @@ export async function setEpisodeWatched(
       episode,
       parseWatchedOn(watchedOn),
     );
-    // Marcar un episodio no avisa a nadie: el aviso lo emitiría un post
-    // kind='watched', y hoy NADIE crea posts de ese kind (no existe «compartir
-    // episodio»). Ver issue #626 (github.com/borjar20/Biblioshare).
+    // Post diario del feed (fase 4): antes del auto-cierre, que puede redirigir.
+    if (addedProgress)
+      await maybeAutopostWatchedDay(supabase, {
+        userId: user.id,
+        seriesId,
+        day: markedDay(parseWatchedOn(watchedOn)),
+      });
+    // El aviso a seguidores lo emite el post diario `watched` (fase 4, #626):
+    // uno por serie y día, no uno por episodio — ver autopost-watched.ts.
   } else {
     const { error } = await supabase
       .from("episode_watches")
@@ -217,6 +232,8 @@ export async function markEpisodesWatched(
     } else throw error;
   }
 
+  if (added)
+    await maybeAutopostWatchedDay(supabase, { userId: user.id, seriesId, day: markedDay(day) });
   await rollAndMaybeClose(supabase, user.id, seriesId, passId, added);
 }
 
@@ -279,5 +296,7 @@ export async function rateEpisode(
 
   // Puntuar un episodio YA visto no es progreso: solo cuenta si la puntuación
   // acaba de crear la fila (puntuar implica visto).
+  if (!existing)
+    await maybeAutopostWatchedDay(supabase, { userId: user.id, seriesId, day: markedDay(day) });
   await rollAndMaybeClose(supabase, user.id, seriesId, passId, !existing);
 }

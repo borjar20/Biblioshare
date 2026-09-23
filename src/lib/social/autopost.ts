@@ -9,7 +9,9 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // Sin fila de post_preferences => defaults compartidos (fuente única con la UI
 // de ajustes y con los DEFAULT de columna en 20260845_post_preferences.sql):
 // terminar publica, empezar y abandonar no.
-type PrefColumn = keyof PostPreferences;
+// Solo las de hitos de estado: `autopost_watched` la lee el post diario de
+// series (autopost-watched.ts), no esta máquina.
+type PrefColumn = Exclude<keyof PostPreferences, "autopost_watched">;
 
 // Mapea la transición a hito publicable. Solo estos tres: progressed/watched
 // (share) son Spec 2. `started` no exige `closed`; `finished`/`dropped` sí, para

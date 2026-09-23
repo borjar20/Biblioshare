@@ -7,10 +7,13 @@ export type PostPreferences = {
   autopost_started: boolean;
   autopost_finished: boolean;
   autopost_dropped: boolean;
+  // Un post `watched` por serie y día al marcar episodios (fase 4 series).
+  autopost_watched: boolean;
 };
 
 export const DEFAULT_POST_PREFERENCES: PostPreferences = {
   autopost_started: false,
   autopost_finished: true,
   autopost_dropped: false,
+  autopost_watched: true,
 };
