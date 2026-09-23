@@ -1297,3 +1297,8 @@ commit;
 begin;
 \ir migrations/20260923140000_post_preferences_autopost_watched.sql
 commit;
+
+-- 20260923150000_hydrate_screens_bulk_no_hydrated_at
+begin;
+\ir migrations/20260923150000_hydrate_screens_bulk_no_hydrated_at.sql
+commit;
