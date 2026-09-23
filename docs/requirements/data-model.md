@@ -1,5 +1,7 @@
 # Modelo de datos
 
+> **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback) y en prod (pg_trigger/pg_proc/pg_policy; 0 casos previos que limpiar).
+
 > **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
 
 > **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
@@ -1783,7 +1785,15 @@ compartida (con post `progressed` propio) pide confirmación en la UI antes de b
 session-list.tsx, campo `hasPost` de `getSessions`. **Con moderación (#1183):** un post
 **retirado** por un admin no lo borra esta cascada. `private.guard_moderated_write` devuelve
 `null` en un DELETE anidado (`pg_trigger_depth() > 1`) sobre un post no disponible, así que el
-pase se borra igual y el post retirado se queda como evidencia oculta.
+pase se borra igual y el post retirado se queda como evidencia oculta. **Y con el pase que CAMBIA a un estado que lo
+desmiente** (2026-09-23, #1187): `private.cleanup_contradicted_posts()` (`security definer`,
+sin `execute` público), disparada por `passes_cleanup_contradicted_posts` (`after update of
+status`, solo si el estado cambia de verdad), borra los posts del pase del mismo autor que ya no
+encajan: a `planned` no le encaja ningún hito; a `in_progress`, ni `finished` ni `dropped`; a
+`completed`, `dropped`; a `dropped`, `finished`. `started` se conserva en lo demás. Solo se nota al
+reescribir el MISMO pase (Terminado↔Abandonado, Abandonado→Leyendo, Leyendo→Pendiente):
+Terminado→Leyendo archiva el pase terminado intacto y su `finished` sigue siendo cierto. Migración
+`20260923120000_posts_cleanup_contradicted_milestones.sql`.
 
 `posts`: `id` (pk → ruta `/post/[id]`), `author_id` (FK `auth.users`, `on delete cascade`),
 `kind` (`post_kind`: `started|finished|dropped|progressed|watched|thought`), `anchor_type`
@@ -1796,6 +1806,10 @@ null salvo `thought` y el comentario opcional de `progressed`), `is_spoiler`, `c
 `posts_author_created_idx (author_id, created_at desc, id desc)` (clave de orden del feed),
 `posts_anchor_idx (anchor_type, anchor_id)`. RLS: select `can_view_profile(author_id)`, insert/
 update/delete propios (delete también admin/moderador vía `can_moderate_target('post', id)`).
+El insert exige además que la **fuente sea del autor** (2026-09-23, #1188): con `source_id`, el
+`passes`/`progress_sessions`/`episode_watches` correspondiente tiene que tener `user_id =
+author_id`. Son subconsultas invoker, sin función definer (así no sirve de oráculo de propiedad).
+Un `source_id` sin `source_kind` se rechaza. Migración `20260923120100_posts_insert_own_source.sql`.
 **Grants por columna** (#375) en la misma migración. `rated`/`reviewed` NO son `kind`: son
 atributos del pase que el post `finished` MUESTRA leyendo `pass.rating`/`pass.review` en vivo.
 

@@ -1277,3 +1277,13 @@ commit;
 begin;
 \ir migrations/20260922120100_posts_orphans_backfill.sql
 commit;
+
+-- 20260923120000_posts_cleanup_contradicted_milestones
+begin;
+\ir migrations/20260923120000_posts_cleanup_contradicted_milestones.sql
+commit;
+
+-- 20260923120100_posts_insert_own_source
+begin;
+\ir migrations/20260923120100_posts_insert_own_source.sql
+commit;
