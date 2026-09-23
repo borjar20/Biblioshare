@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { airedFlags, isSeriesEnded, todayISO } from "./aired";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -35,9 +36,16 @@ export type EpisodeRow = {
   avgRating: number | null;
   ratingCount: number;
   own: OwnWatch;
+  // Emitido (catálogo vivo, #1193): los anunciados de TMDB también están en el
+  // catálogo, pero no se pueden marcar ni cuentan para progreso, cursor ni
+  // auto-cierre. Regla en src/lib/series/aired.ts.
+  aired: boolean;
 };
 
 export type EpisodeData = {
+  // La serie ya no emitirá más (TMDB `Ended`/`Canceled`). false también si no
+  // se sabe (serie manual o sin sincronizar).
+  ended: boolean;
   seasons: number[]; // ordenadas asc
   // Rejilla: columnas = temporadas, filas = número de episodio (1..max).
   episodeNumbers: number[];
@@ -79,7 +87,9 @@ export function aggregateEpisodeData(
   episodes: EpisodeCatalogRow[],
   allWatches: EpisodeWatchRow[],
   userId: string | null,
-  activePassId: string | null
+  activePassId: string | null,
+  // `today` se inyecta para los tests; `ended` sale de `series.tmdb_status`.
+  { today = todayISO(), ended = false }: { today?: string; ended?: boolean } = {}
 ): EpisodeData {
   // Agregado comunidad por episodio.
   const ratingSum = new Map<string, number>();
@@ -167,6 +177,21 @@ export function aggregateEpisodeData(
     return Math.round((rated.reduce((a, b) => a + b, 0) / rated.length) * 10) / 10;
   });
 
+  // Emitido por episodio. La regla necesita el orden cronológico (un episodio
+  // sin fecha se juzga por su posición): se ordena aquí y no se fía del
+  // llamante, que puede venir de un fixture.
+  const ordered = [...episodes].sort(
+    (a, b) => a.season_number - b.season_number || a.episode_number - b.episode_number
+  );
+  const airedByKey = new Map<string, boolean>();
+  airedFlags(
+    ordered.map((e) => ({ airDate: e.air_date })),
+    today,
+    ended
+  ).forEach((aired, i) =>
+    airedByKey.set(key(ordered[i].season_number, ordered[i].episode_number), aired)
+  );
+
   // Lista por temporada para la UI.
   const bySeasons = new Map<number, EpisodeRow[]>();
   for (const season of seasons) bySeasons.set(season, []);
@@ -183,10 +208,11 @@ export function aggregateEpisodeData(
       avgRating: avgOf(k),
       ratingCount: ratingCount.get(k) ?? 0,
       own: own.get(k) ?? { watched: false, rating: null, review: null, seenBefore: false },
+      aired: airedByKey.get(k) ?? true,
     });
   }
 
-  return { seasons, episodeNumbers, cells, seasonAverages, bySeasons };
+  return { ended, seasons, episodeNumbers, cells, seasonAverages, bySeasons };
 }
 
 // Lee series_episodes + episode_watches (RLS ya filtra a perfiles públicos +
@@ -199,7 +225,7 @@ export async function getEpisodeData(
   userId: string | null,
   activePassId: string | null
 ): Promise<EpisodeData> {
-  const [{ data: catalog }, { data: watches }] = await Promise.all([
+  const [{ data: catalog }, { data: watches }, { data: series }] = await Promise.all([
     supabase
       .from("series_episodes")
       .select(
@@ -212,7 +238,11 @@ export async function getEpisodeData(
       .from("episode_watches")
       .select("user_id, season_number, episode_number, rating, review, pass_id")
       .eq("series_id", seriesId),
+    // Mismo viaje, en paralelo: ¿ha terminado la serie? (catálogo vivo).
+    supabase.from("series").select("tmdb_status").eq("id", seriesId).maybeSingle(),
   ]);
 
-  return aggregateEpisodeData(catalog ?? [], watches ?? [], userId, activePassId);
+  return aggregateEpisodeData(catalog ?? [], watches ?? [], userId, activePassId, {
+    ended: isSeriesEnded(series?.tmdb_status),
+  });
 }

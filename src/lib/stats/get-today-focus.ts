@@ -73,6 +73,8 @@ export async function getNextEpisode(
   const data = await getEpisodeData(supabase, seriesId, userId, activePassId);
   for (const season of data.seasons) {
     for (const ep of data.bySeasons.get(season) ?? []) {
+      // Un anunciado no es «el siguiente»: no se puede ver todavía (#1193).
+      if (!ep.aired) return null;
       if (!ep.own.watched) return { season: ep.season, episode: ep.episode };
     }
   }

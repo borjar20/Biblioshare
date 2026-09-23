@@ -1542,7 +1542,11 @@
     "seasonWindowHint": "ventana de {size} · {total} en total",
     "prevSeasons": "Temporadas anteriores",
     "nextSeasons": "Temporadas siguientes",
-    "legendUnseen": "Sin ver"
+    "legendUnseen": "Sin ver",
+    "legendUpcoming": "Próximamente",
+    "upToDate": "Al día",
+    "upcoming": "Próximamente",
+    "upcomingOn": "Próximamente · {date}"
   },
   "person": {
     "notFoundTitle": "Persona no encontrada",

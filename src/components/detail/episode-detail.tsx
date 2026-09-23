@@ -47,7 +47,11 @@ function MetaLine({
 
   const parts: string[] = [];
   if (episode.runtimeMinutes) parts.push(t("runtime", { n: episode.runtimeMinutes }));
-  if (aired) parts.push(t("airedOn", { date: aired }));
+  if (aired)
+    parts.push(
+      episode.aired ? t("airedOn", { date: aired }) : t("upcomingOn", { date: aired }),
+    );
+  else if (!episode.aired) parts.push(t("upcoming"));
   if (source === "mine" && own.rating !== null)
     parts.push(t("yourRatingMeta", { value: formatDots(own.rating) ?? "" }));
   if (source === "community" && episode.avgRating !== null)

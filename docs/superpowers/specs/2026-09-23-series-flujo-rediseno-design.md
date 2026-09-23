@@ -1,7 +1,7 @@
 # Series: revisión del flujo de registro y propuesta de rediseño
 
-`[Propuesta · 2026-09-23 · pendiente de decisiones]` — diagnóstico del flujo actual verificado
-contra el código de `main` a esta fecha. La parte «Propuesta» NO está implementada.
+`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fase 1 implementada]` — diagnóstico del flujo actual verificado
+contra el código de `main` a esta fecha. De la «Propuesta», solo la fase 1 (§6) está implementada.
 
 ## 1. Por qué
 
@@ -147,7 +147,7 @@ del día — así Sesiones y estadísticas cuentan lo mismo vengas de donde veng
 dejan de tener sesiones y las estadísticas leen `episode_watches.created_at`. Recomendación:
 **lo segundo** (un episodio visto ya es la unidad; la sesión de serie solo duplica).
 
-## 5. Decisiones que necesito del producto
+## 5. Decisiones del producto (aceptadas el 2026-09-23, todas con la opción recomendada)
 
 - **D1** — ¿«Al día» derivado (recomendado) o valor nuevo guardado en `media_status`?
 - **D2** — ¿Nota propia por temporada, o solo la media calculada (recomendado)?
@@ -158,8 +158,8 @@ dejan de tener sesiones y las estadísticas leen `episode_watches.created_at`. R
 
 ## 6. Plan por fases (cada una se puede entregar sola)
 
-1. **Catálogo vivo** (H1, H2): columnas nuevas, refresco, filtro de emitidos. Arregla bugs reales
-   aunque no se toque la UI.
+1. **Catálogo vivo** (H1, H2) — **hecha** (#1193): columnas nuevas, refresco, filtro de emitidos.
+   Adelanta una pieza de H3: una serie en emisión ya no se completa sola y el panel dice «Al día».
 2. **Estados** (H3, H4): «Al día» derivado, auto-cierre según `tmdb_status`, «Seguir con la T5».
 3. **Pantalla de seguimiento** (H5–H9): cabecera, marcar + puntuar en línea, autosave, marcado
    masivo, confirmación al desmarcar.

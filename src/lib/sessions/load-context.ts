@@ -91,7 +91,9 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
     itemType === "series"
       ? supabase
           .from("series")
-          .select("title, creator, cover_url, total_episodes, total_seasons, tmdb_id")
+          .select(
+            "title, creator, cover_url, total_episodes, total_seasons, tmdb_id, tmdb_status, next_episode_air_date, episodes_synced_at",
+          )
           .eq("id", itemId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -102,18 +104,26 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
     await ensureSeriesEpisodes(supabase, {
       id: itemId,
       tmdbId: series.tmdb_id,
-      totalSeasons: series.total_seasons,
+      tmdbStatus: series.tmdb_status,
+      nextEpisodeAirDate: series.next_episode_air_date,
+      episodesSyncedAt: series.episodes_synced_at,
     });
     const episodeData = await getEpisodeData(supabase, itemId, user.id, activePass.id);
-    seriesEpisodes = episodeData.seasons.map((season) => ({
-      season,
-      episodes: (episodeData.bySeasons.get(season) ?? []).map((e) => ({
-        episode: e.episode,
-        title: e.title,
-        stillUrl: e.stillUrl,
-        watched: e.own.watched,
-      })),
-    }));
+    // Solo lo emitido (#1193): un episodio anunciado no se puede registrar como
+    // visto, y una temporada sin nada emitido ni aparece en la hoja.
+    seriesEpisodes = episodeData.seasons
+      .map((season) => ({
+        season,
+        episodes: (episodeData.bySeasons.get(season) ?? [])
+          .filter((e) => e.aired)
+          .map((e) => ({
+            episode: e.episode,
+            title: e.title,
+            stillUrl: e.stillUrl,
+            watched: e.own.watched,
+          })),
+      }))
+      .filter((s) => s.episodes.length > 0);
   }
 
   // El total sale de la EDICIÓN QUE EL USUARIO IDENTIFICÓ en su pase; sin ella,

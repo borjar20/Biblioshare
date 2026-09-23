@@ -374,9 +374,19 @@ function pickEpisodeRuntime(
     : null;
 }
 
+// Lo de ScreenDetails más lo que solo tiene sentido en una serie viva: si ha
+// terminado y cuándo sale el siguiente episodio (catálogo vivo, #1193). Lo usa
+// ensureSeriesEpisodes para decidir cuándo volver a preguntar.
+export type SeriesDetails = ScreenDetails & {
+  /** `status` de TMDB: 'Returning Series', 'Ended', 'Canceled'… */
+  status: string | null;
+  /** `next_episode_to_air.air_date` (YYYY-MM-DD) o null si no hay anunciado. */
+  nextEpisodeAirDate: string | null;
+};
+
 export async function getSeriesDetails(
   tmdbId: number
-): Promise<ScreenDetails | null> {
+): Promise<SeriesDetails | null> {
   const data = await tmdbGet<{
     created_by?: Array<{ id: number; name: string; profile_path: string | null }>;
     credits?: TmdbCreditsPayload;
@@ -384,6 +394,8 @@ export async function getSeriesDetails(
     number_of_seasons?: number | null;
     episode_run_time?: number[];
     last_episode_to_air?: { runtime?: number | null } | null;
+    next_episode_to_air?: { air_date?: string | null } | null;
+    status?: string | null;
   }>(`/tv/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
 
@@ -403,7 +415,15 @@ export async function getSeriesDetails(
       data.episode_run_time,
       data.last_episode_to_air?.runtime
     ),
+    status: data.status?.trim().slice(0, 40) || null,
+    nextEpisodeAirDate: isoDateOrNull(data.next_episode_to_air?.air_date),
   };
+}
+
+// TMDB manda fechas `YYYY-MM-DD` o cadena vacía; cualquier otra cosa se
+// descarta antes de llegar a una columna `date`.
+function isoDateOrNull(value: string | null | undefined): string | null {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
 // ── Hidratación server-authoritative (#674) ─────────────────────────────────
@@ -575,7 +595,7 @@ export async function getSeriesEpisodes(
         title: ep.name?.trim() || null,
         synopsis: ep.overview?.trim() || null,
         stillUrl: ep.still_path ? `${TMDB_STILL_BASE}${ep.still_path}` : null,
-        airDate: ep.air_date || null,
+        airDate: isoDateOrNull(ep.air_date),
         runtimeMinutes:
           typeof ep.runtime === "number" && ep.runtime > 0 ? ep.runtime : null,
       });

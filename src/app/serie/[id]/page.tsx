@@ -53,6 +53,7 @@ import {
 import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
+import { todayISO } from "@/lib/series/aired";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -96,7 +97,7 @@ function fetchSeries(supabase: Supa, id: string) {
   return supabase
     .from("series")
     .select(
-      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id, hydrated_at",
+      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id, hydrated_at, tmdb_status, next_episode_air_date, episodes_synced_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -201,6 +202,10 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             .from("series_episodes")
             .select("*", { count: "exact", head: true })
             .eq("series_id", series.id)
+            // Solo lo emitido (#1193): los anunciados no se pueden ver. Aproxima
+            // la regla de src/lib/series/aired.ts (sin fecha = emitido); la
+            // pestaña Episodios aplica la exacta.
+            .or(`air_date.is.null,air_date.lte.${todayISO()}`)
             .then(({ count }) => count ?? 0)
         : Promise.resolve(0),
       user ? getCurrentUserRole() : Promise.resolve(null),
@@ -339,7 +344,9 @@ async function SeriesTabs({
       ensureSeriesEpisodes(supabase, {
         id: series.id,
         tmdbId: series.tmdb_id,
-        totalSeasons: series.total_seasons,
+        tmdbStatus: series.tmdb_status,
+        nextEpisodeAirDate: series.next_episode_air_date,
+        episodesSyncedAt: series.episodes_synced_at,
       }),
       series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
       getItemSagas("series", series.id),
@@ -552,6 +559,7 @@ async function SeriesTabs({
         hasEpisodes ? (
           <EpisodePanel
             seriesId={series.id}
+            ended={episodeData.ended}
             seasons={seasonGroups}
             isLoggedIn={Boolean(userId)}
           />

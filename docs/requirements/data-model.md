@@ -1,5 +1,11 @@
 # Modelo de datos
 
+> **Delta 2026-09-23 (#1193, catálogo vivo de series):** columnas `series.tmdb_status`,
+> `next_episode_air_date` y `episodes_synced_at` (migración
+> `20260923130000_series_live_episode_catalog.sql`), verificadas en **dev**
+> (`information_schema.columns`); **prod pendiente** de aplicar con la PR. Ver «Catálogo vivo de
+> episodios» más abajo.
+
 > **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback) y en prod (pg_trigger/pg_proc/pg_policy; 0 casos previos que limpiar).
 
 > **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
@@ -235,7 +241,28 @@ Tres tablas de "tirada concreta" cuelgan del catálogo:
 |---|---|---|
 | `book_editions` | `books` | ISBN, editorial, páginas, idioma, portada de **esa** edición. `is_primary` sigue en la tabla pero **YA NO LA LEE NADIE** (ver abajo) |
 | `movie_versions` | `movies` | Montajes/versiones |
-| `series_episodes` | `series` | Catálogo por episodio, cache-as-you-go desde TMDB |
+| `series_episodes` | `series` | Catálogo por episodio desde TMDB, **vivo** (ver abajo) |
+
+**Catálogo vivo de episodios (2026-09-23, #1193).** `series_episodes` ya no es «se trae una vez
+y nunca más». `ensureSeriesEpisodes` decide con `episodeSyncNeed` (`src/lib/series/aired.ts`):
+sin episodios → los trae en el render; serie en emisión con más de 7 días de sincronización, o
+con `next_episode_air_date` ya pasado (máx. uno al día), o fila anterior al cambio
+(`episodes_synced_at` null) → refresco en `after()`; `tmdb_status` `Ended`/`Canceled` ya
+sincronizada → nunca más. El refresco es un **upsert** por `(series_id, season_number,
+episode_number)` con service_role (los episodios que TMDB quite no se borran). Las tres columnas
+de estado **no tienen grant de UPDATE** para `authenticated`: son de servidor, las escribe solo
+service_role (la lectura la cubre el SELECT de tabla).
+
+- **Emitido ≠ en el catálogo.** TMDB lista también episodios anunciados (fecha futura o sin
+  fecha). Emitido = `air_date` ≤ hoy; sin fecha cuenta como emitido solo si va antes del último
+  emitido; serie terminada o sin ninguna fecha → todo emitido (`airedFlags`). Progreso, cursor,
+  «Marcar próximo», tarjeta de Inicio, hoja de sesión y auto-cierre usan solo lo emitido; los
+  server actions rechazan marcar un episodio con fecha futura (`episodeExists`).
+- **`series.total_episodes` pasa a significar «episodios EMITIDOS»** cuando lo escribe la
+  sincronización (antes: el `number_of_episodes` de TMDB, anunciados incluidos, y congelado).
+- **Auto-cierre:** una serie con `tmdb_status` conocido y NO terminada no se completa sola al ver
+  el último emitido (antes la daba por «Vista»). Sin estado (manual / sin sincronizar) se mantiene
+  el criterio anterior, sobre lo emitido.
 
 **`is_primary` está muerta como criterio desde 2026-08-27 (Task 12).** La columna, sus triggers
 (`ensure_primary_book_edition`, `promote_primary_edition_after_delete`) y su índice único parcial
