@@ -5020,3 +5020,26 @@ el 2026-09-23: 5 series con episodios de fecha futura (una con pase activo: 8 de
 (`episodeExists`) solo rechaza fechas futuras explícitas, porque la regla fina necesitaría leer
 el catálogo entero en cada marca.
 
+## 2026-09-23 — Series: «Al día» derivado en toda la app, y «Seguir con la temporada nueva» reabre el mismo pase
+
+**Qué se decide.** Fase 2 del rediseño de series
+(`docs/superpowers/specs/2026-09-23-series-flujo-rediseno-design.md` §4.1). «Al día» =
+pase `in_progress` + todo lo emitido visto + `tmdb_status` conocido y no terminado
+(`isUpToDate`, `src/lib/series/follow-state.ts`). No se guarda: se calcula en la ficha (píldora y
+rail dicen «Al día» en vez de «Viendo»), en `getLibraryItems` (`LibraryItem.upToDate`: etiqueta
+de la tarjeta, y la tarjeta de Inicio deja de ofrecer «Marcar terminada») y en la pestaña
+Episodios, que en ese estado enseña la tarjeta «Estás al día» con la fecha del siguiente
+episodio y la **nota de la serie hasta ahora** (sugiere la media de tus episodios). Esa nota es
+la del pase (`ratePass`), la misma que después pide la hoja de cierre.
+
+**«Seguir» sobre un pase ya visto.** Si el pase está `completed` y hay episodios emitidos
+**después** del más avanzado que viste en él, la pestaña ofrece «Seguir con la T*n*»:
+`updateStatus(…, "in_progress", "continue")`, y `planTransition` con `continue` ahora reabre el
+MISMO pase también desde `completed` (antes solo desde `dropped`). Sin `continue`, completado →
+en curso sigue siendo revisionado (pase nuevo). Se mira por posición, no por recuento: una serie
+marcada «Vista» de un toque (sin episodios en el pase) no ofrece «seguir».
+
+**Consecuencia asumida.** Reabrir el pase dispara `passes_cleanup_contradicted_posts` (#1187):
+`in_progress` borra el hito `finished` de ese pase, con su hilo. Es coherente con la regla —la
+serie no estaba terminada— pero se pierden los comentarios que tuviera ese post.
+

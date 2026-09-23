@@ -62,7 +62,9 @@ export function LibraryItemCard({
         <div className="absolute right-1.5 top-1.5">
           <StatusBadge
             status={item.status}
-            label={t(`status.${item.status}`)}
+            // Una serie al día sigue «en curso» (mismo color), pero se dice lo
+            // que es: no queda nada emitido por ver.
+            label={item.upToDate ? t("upToDate") : t(`status.${item.status}`)}
             variant="overlay"
           />
         </div>

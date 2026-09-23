@@ -51,11 +51,13 @@ export function planTransition(
   // Activo cerrado (completed | dropped).
   if (to === "planned") return { kind: "archiveAndCreate", status: to, startedOn: null, plannedOn: today };
   if (to === "in_progress") {
-    if (active.status === "dropped") {
-      if (!resume) return { kind: "askResume" };
-      if (resume === "continue")
-        return { kind: "updateActive", set: { status: to, finished_on: null } };
-    }
+    // «Seguir por donde iba» sobre el MISMO pase: retomar una abandonada, o una
+    // serie dada por vista a la que le ha salido temporada nueva (fase 2 del
+    // rediseño de series). Sin `continue`, un completado que vuelve a «en curso»
+    // es un revisionado: pase nuevo, cursor a cero.
+    if (resume === "continue")
+      return { kind: "updateActive", set: { status: to, finished_on: null } };
+    if (active.status === "dropped" && !resume) return { kind: "askResume" };
     return { kind: "archiveAndCreate", status: to, startedOn: today, plannedOn: null };
   }
   // dropped → completed (o viceversa): corrección sobre el mismo pase.

@@ -25,6 +25,11 @@ export type LibraryItem = {
   // NO vale, va numerado por temporada y `totalEpisodes` es de la serie entera
   // (#715).
   watchedEpisodes: number | null;
+  // Series-only: «Al día» derivado (src/lib/series/follow-state.ts) — en curso,
+  // todo lo emitido visto y la serie sigue en emisión. Siempre false en libros
+  // y películas. Lo usan la etiqueta de la tarjeta y la tarjeta de Inicio (que
+  // no debe ofrecer «Marcar terminada» a una serie que no ha terminado).
+  upToDate: boolean;
   // Nº de pases (`passes`) de esta obra. See docs/requirements/data-model.md.
   rereadCount: number;
   // NULL = not pinned to the public profile. See docs/REQUIREMENTS.md §7.9.
