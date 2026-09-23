@@ -4,7 +4,8 @@
 > (migración `20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`, con backfill que devuelve
 > a pendientes las pelis/series marcadas sin director/creador o tamaños). Verificada en **dev**
 > (`pg_proc` + prueba con rollback: fill-only, `hydrated_at` intacto, `genres` null no rompe el
-> lote). **Prod: pendiente de aplicar.**
+> lote) y en **prod** (`pg_proc`: sin delegar en `hydrate_movie`, grants intactos; 0 películas
+> marcadas sin director/duración tras el backfill, 3601 películas y 981 series pendientes).
 
 > **Delta 2026-09-23 (fase 4 de series, #626):** columna `post_preferences.autopost_watched`
 > (migración `20260923140000_post_preferences_autopost_watched.sql`) con grants por columna
