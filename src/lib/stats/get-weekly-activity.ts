@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { toISODate, todayISO } from "./dates";
 import type { DayActivity } from "./types";
+import { getSeriesDays } from "./series-days";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -34,7 +35,9 @@ export async function getWeeklyActivity(
 
   // Minutos de lectura (solo libros) para el objetivo diario, y finales de
   // cualquier tipo para "día activo" (una peli no tiene sesión pero sí final).
-  const [reading, finished] = await Promise.all([
+  // Y episodios vistos (fase 4, D3): ver una serie también hace el día activo,
+  // aunque no aporte minutos.
+  const [reading, finished, seriesDays] = await Promise.all([
     supabase
       .from("progress_sessions")
       .select("session_date, duration_minutes, passes!inner(item_type)")
@@ -49,6 +52,7 @@ export async function getWeeklyActivity(
       .not("finished_on", "is", null)
       .gte("finished_on", rangeStart)
       .lte("finished_on", todayISO()),
+    getSeriesDays(supabase, userId, { start: rangeStart }),
   ]);
 
   if (reading.error) throw reading.error;
@@ -67,6 +71,10 @@ export async function getWeeklyActivity(
     bucket.active = true;
     bucket.works += 1;
     bucket.byType[row.item_type as ItemType] += 1;
+  }
+  for (const d of seriesDays) {
+    const bucket = byDate.get(d.day);
+    if (bucket) bucket.active = true;
   }
 
   return days;

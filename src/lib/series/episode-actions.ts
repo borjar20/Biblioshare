@@ -13,6 +13,7 @@ import {
 } from "./episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { parseWatchedOn } from "./watched-on";
+import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -71,6 +72,10 @@ async function rollAndMaybeClose(
 ): Promise<void> {
   const { reachedEnd } = await rollSeriesProgress(supabase, userId, seriesId, passId);
   revalidateReadingLog("series", seriesId);
+  // Ver un episodio es actividad del día (fase 4, D3): primera actividad,
+  // hito de racha. Antes solo lo ganaba la hoja de sesión. Best-effort: nunca
+  // lanza. El cliente lo drena con checkCelebrations().
+  if (addedProgress) await earnDailyLoopCelebrations(supabase, userId);
   if (!reachedEnd || !addedProgress) return;
   if (!(await isAutoCloseable(supabase, passId, userId))) return;
 

@@ -22,6 +22,7 @@ import {
 } from "@/lib/series/follow-state";
 import { EpisodeRating } from "./episode-rating";
 import { todayISO } from "@/lib/stats/dates";
+import { checkCelebrations } from "@/lib/celebrations/preference";
 
 type View = "grid" | "list";
 
@@ -120,11 +121,14 @@ export function EpisodePanel({
     if (!next && (own.rating !== null || own.review) && !window.confirm(t("unwatchConfirm")))
       return;
     patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null });
-    startTransition(() =>
+    startTransition(async () => {
       // Fecha LOCAL (todayISO de stats/dates): la del servidor es UTC y un
       // episodio de madrugada caería en el día anterior de la racha.
-      setEpisodeWatched(seriesId, ep.season, ep.episode, next, todayISO()),
-    );
+      await setEpisodeWatched(seriesId, ep.season, ep.episode, next, todayISO());
+      // Marcar puede ganar celebraciones (primera actividad, racha): que el
+      // provider las drene, como tras guardar una sesión.
+      if (next) checkCelebrations();
+    });
   };
 
   const rate = (ep: EpisodeRow, rating: number) => {
@@ -150,13 +154,14 @@ export function EpisodePanel({
         nextPatches[episodeKey(e)] = { ...prev[episodeKey(e)], watched: true };
       return nextPatches;
     });
-    startTransition(() =>
-      markEpisodesWatched(
+    startTransition(async () => {
+      await markEpisodesWatched(
         seriesId,
         eps.map((e) => ({ season: e.season, episode: e.episode })),
         todayISO(),
-      ),
-    );
+      );
+      checkCelebrations();
+    });
   };
 
   const markNext = (ep: EpisodeRow) => {

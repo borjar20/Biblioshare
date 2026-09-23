@@ -1,6 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemFilter } from "./filter";
 import { type StatsPeriod, periodBounds } from "./period";
+import { getSeriesDays } from "./series-days";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -87,11 +88,26 @@ export async function getHabits(
   period: StatsPeriod = "all",
   itemFilter: ItemFilter = "all",
 ): Promise<Habits> {
+  const bounds = periodBounds(period);
+
+  // Series (fase 4, D3): su «sesión» es un día de serie — los episodios de una
+  // serie marcados el mismo `watched_on` —, con la hora del primero como hora
+  // de inicio. Con el filtro de series no hay nada más que leer.
+  const wantSeries = itemFilter === "all" || itemFilter === "series";
+  const seriesRowsPromise: Promise<HabitRow[]> = wantSeries
+    ? getSeriesDays(supabase, userId, bounds ?? undefined).then((days) =>
+        days.map((d) => ({ session_date: d.day, duration_minutes: null, started_at: d.firstAt })),
+      )
+    : Promise.resolve([]);
+  if (itemFilter === "series") return computeHabits(await seriesRowsPromise);
+
   // El `!inner` solo se pide cuando hace falta: sin filtro, una sesión sin pase
-  // (histórico anterior al hub) seguiría contando, y con él desaparecería.
+  // (histórico anterior al hub) seguiría contando, y con él desaparecería. Sin
+  // filtro se pide el pase con join normal para descartar en JS las sesiones de
+  // serie antiguas, que ya cuentan como días de serie.
   const columns =
     itemFilter === "all"
-      ? "session_date, duration_minutes, started_at"
+      ? "session_date, duration_minutes, started_at, passes(item_type)"
       : "session_date, duration_minutes, started_at, passes!inner(item_type)";
 
   let query = supabase
@@ -101,18 +117,25 @@ export async function getHabits(
 
   if (itemFilter !== "all") query = query.eq("passes.item_type", itemFilter);
 
-  const bounds = periodBounds(period);
   if (bounds) {
     query = query
       .gte("session_date", bounds.start)
       .lt("session_date", bounds.endExclusive);
   }
 
-  const { data, error } = await query;
+  const [{ data, error }, seriesRows] = await Promise.all([query, seriesRowsPromise]);
 
   if (error) throw error;
   // `select()` recibe la lista de columnas como variable, así que Supabase no
   // puede inferir la forma y devuelve su tipo de error de parseo. El doble paso
   // por `unknown` es lo que cuesta poder pedir el join solo cuando hace falta.
-  return computeHabits((data ?? []) as unknown as HabitRow[]);
+  const sessionRows = (data ?? []) as unknown as (HabitRow & {
+    passes: { item_type: string } | { item_type: string }[] | null;
+  })[];
+  const itemTypeOf = (r: (typeof sessionRows)[number]) =>
+    Array.isArray(r.passes) ? r.passes[0]?.item_type : r.passes?.item_type;
+  return computeHabits([
+    ...sessionRows.filter((r) => itemTypeOf(r) !== "series"),
+    ...seriesRows,
+  ]);
 }
