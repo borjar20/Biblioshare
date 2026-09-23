@@ -2,8 +2,9 @@
 
 > **Delta 2026-09-23 (fase 4 de series, #626):** columna `post_preferences.autopost_watched`
 > (migración `20260923140000_post_preferences_autopost_watched.sql`) con grants por columna
-> select/insert/update a `authenticated`, verificada en **dev** (`has_column_privilege`, igual
-> que sus hermanas); **prod pendiente** de aplicar con la PR. Las series dejan de crear
+> select/insert/update a `authenticated`, verificada en **dev** y en **prod**
+> (`information_schema.columns` + `has_column_privilege`: default `true`, not null, mismos grants
+> que sus hermanas). Las series dejan de crear
 > `progress_sessions` y su actividad se lee de `episode_watches.watched_on` (ver
 > «`episode_watches`» más abajo).
 
