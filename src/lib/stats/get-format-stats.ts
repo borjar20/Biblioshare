@@ -17,6 +17,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { type StatsPeriod, periodBounds } from "./period";
+import { todayISO } from "@/lib/series/aired";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -165,6 +166,9 @@ export async function getFormatStats(
           .from("series_episodes")
           .select("series_id, season_number")
           .in("series_id", [...new Set(watchRows.map((w) => w.series_id))])
+          // Una temporada está completa cuando has visto lo EMITIDO: los
+          // anunciados no cuentan (#1193, regla aproximada de series/aired.ts).
+          .or(`air_date.is.null,air_date.lte.${todayISO()}`)
       : Promise.resolve({ data: [] }),
   ]);
 

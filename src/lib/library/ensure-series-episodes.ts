@@ -1,77 +1,158 @@
+import { after } from "next/server";
 import type { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { getSeriesEpisodes, getSeriesDetails } from "@/lib/catalog/tmdb";
+import {
+  airedFlags,
+  episodeSyncNeed,
+  isSeriesEnded,
+  todayISO,
+} from "@/lib/series/aired";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-// "Cache-as-you-go" (§7.x, mismo patrón que ensureItemEnriched): la primera vez
-// que se abre la ficha de una serie se traen sus episodios de TMDB y se
-// persisten en series_episodes; las siguientes visitas leen solo de la BD. Se
-// protege con un guard de existencia y NUNCA lanza: un fallo de API externa no
-// debe romper la ficha.
+export type SeriesSyncRow = {
+  id: string;
+  tmdbId?: number | null;
+  tmdbStatus?: string | null;
+  nextEpisodeAirDate?: string | null;
+  episodesSyncedAt?: string | null;
+};
+
+// Catálogo vivo de episodios (#1193, spec 2026-09-23-series-flujo-rediseno,
+// fase 1). Antes esto era cache-as-you-go puro: se traía de TMDB la primera
+// vez y NUNCA más, así que una temporada estrenada después no llegaba jamás.
+// Ahora decide `episodeSyncNeed` (src/lib/series/aired.ts):
+//
+//   - "empty": sin episodios → se traen YA, dentro del render (sin ellos la
+//     pestaña Episodios ni existe). Es el camino de siempre.
+//   - "stale": la serie sigue en emisión y el catálogo tiene más de 7 días, o
+//     ya se estrenó el episodio que estaba anunciado, o es una fila anterior
+//     al catálogo vivo → se refresca en `after()`: la visita no espera a
+//     TMDB y lo nuevo aparece en la siguiente.
+//   - "fresh": nada. Una serie terminada (`Ended`/`Canceled`) ya sincronizada
+//     no vuelve a preguntar nunca.
+//
+// NUNCA lanza: un fallo de API externa no debe romper la ficha.
 export async function ensureSeriesEpisodes(
   supabase: SupabaseServerClient,
-  series: { id: string; tmdbId?: number | null; totalSeasons?: number | null }
+  series: SeriesSyncRow,
 ): Promise<void> {
   try {
-    if (!series.tmdbId) return;
+    const tmdbId = series.tmdbId;
+    if (!tmdbId) return;
 
-    const { count } = await supabase
+    // La lectura va con el cliente de la petición a propósito: leer catálogo
+    // es público. Solo la ESCRITURA necesita service_role (ver syncSeriesEpisodes).
+    const { count, error } = await supabase
       .from("series_episodes")
       .select("id", { count: "exact", head: true })
       .eq("series_id", series.id);
-    if ((count ?? 0) > 0) return;
+    if (error) return;
 
-    // #676: el número de temporadas se pregunta SIEMPRE a TMDB, nunca se cree
-    // el de la fila de catálogo. `series.totalSeasons` es un dato COMPARTIDO y
-    // escribible (lo rellena la hidratación), y aquí decide cuántas peticiones
-    // salen: usarlo como fuente convertía cualquier valor absurdo en el
-    // multiplicador de un fan-out. La llamada extra no cuesta nada real —
-    // `getSeriesDetails` va por `tmdbGet`, cacheada 24 h por Next, y este camino
-    // solo corre la PRIMERA vez que se abre la serie (guard de `count` arriba).
-    // Antes solo se preguntaba a TMDB cuando la fila venía sin dato.
-    const details = await getSeriesDetails(series.tmdbId);
-    const fromTmdb = details?.numberOfSeasons ?? null;
-    if (!fromTmdb || fromTmdb <= 0) return;
-    const totalSeasons = fromTmdb;
-
-    const episodes = await getSeriesEpisodes(series.tmdbId, totalSeasons);
-    if (episodes.length === 0) return;
-
-    const rows = episodes.map((ep) => ({
-      series_id: series.id,
-      season_number: ep.seasonNumber,
-      episode_number: ep.episodeNumber,
-      title: ep.title,
-      synopsis: ep.synopsis,
-      still_url: ep.stillUrl,
-      air_date: ep.airDate,
-      runtime_minutes: ep.runtimeMinutes,
-    }));
-
-    // #725: la escritura va con service_role, no con el cliente de la petición.
-    // `series_episodes` es catálogo GLOBAL y su INSERT estaba abierto a
-    // cualquier `authenticated` con `with check (true)`: se podían inventar
-    // episodios que veía todo el mundo. Mismo argumento que las sagas TMDB
-    // (`persist-collection.ts`): estas filas las deriva el SERVIDOR de TMDB —
-    // `rows` no lleva ni un dato que venga del cliente, solo el id de la serie y
-    // lo que devolvió la API—, así que el hecho lo respalda el servidor y la
-    // tabla puede quedar cerrada a la sesión del usuario.
-    //
-    // La lectura de arriba (el guard de `count`) se queda con el cliente de la
-    // petición a propósito: leer catálogo es público y no hace falta saltarse
-    // nada para contarlo.
-    const { error } = await createServiceRoleClient().from("series_episodes").insert(rows);
-    // 23505 = enriquecimiento concurrente (otro render insertó ya estos
-    // episodios); esperado e inocuo. Cualquier otro error sí se registra.
-    if (error && error.code !== "23505") {
-      console.error("series_episodes insert failed", {
-        id: series.id,
-        count: rows.length,
-        error,
-      });
+    const need = episodeSyncNeed({
+      episodeCount: count ?? 0,
+      tmdbStatus: series.tmdbStatus ?? null,
+      nextEpisodeAirDate: series.nextEpisodeAirDate ?? null,
+      episodesSyncedAt: series.episodesSyncedAt ?? null,
+    });
+    if (need === "fresh") return;
+    if (need === "empty") {
+      await syncSeriesEpisodes(series.id, tmdbId);
+      return;
     }
+    // El callback solo usa service_role, nunca el cliente de la petición: ese
+    // lee cookies en cada consulta y no puede cruzar a un `after()` (#751).
+    after(() => syncSeriesEpisodes(series.id, tmdbId));
   } catch (error) {
     console.error("ensureSeriesEpisodes failed", { id: series.id, error });
+  }
+}
+
+// Trae de TMDB el estado de la serie y todos sus episodios, y los vuelca en el
+// catálogo. Exportada para los tests; el resto de la app entra por
+// ensureSeriesEpisodes.
+//
+// #676: el número de temporadas se pregunta SIEMPRE a TMDB, nunca se cree el de
+// la fila de catálogo — decide cuántas peticiones salen, y la fila es un dato
+// compartido. `getSeriesDetails` va por `tmdbGet`, cacheada 24 h por Next.
+//
+// #725: la escritura va con service_role. `series_episodes` es catálogo GLOBAL
+// de solo lectura para las sesiones; estas filas las deriva el SERVIDOR de TMDB
+// (ni un dato viene del cliente), así que el hecho lo respalda el servidor. Lo
+// mismo para las tres columnas de estado de `series` (migración
+// 20260923130000_series_live_episode_catalog.sql), que no tienen grant de
+// UPDATE para `authenticated`.
+export async function syncSeriesEpisodes(seriesId: string, tmdbId: number): Promise<void> {
+  try {
+    const details = await getSeriesDetails(tmdbId);
+    if (!details) return;
+
+    const episodes =
+      details.numberOfSeasons && details.numberOfSeasons > 0
+        ? await getSeriesEpisodes(tmdbId, details.numberOfSeasons)
+        : [];
+
+    const admin = createServiceRoleClient();
+
+    if (episodes.length > 0) {
+      const rows = episodes.map((ep) => ({
+        series_id: seriesId,
+        season_number: ep.seasonNumber,
+        episode_number: ep.episodeNumber,
+        title: ep.title,
+        synopsis: ep.synopsis,
+        still_url: ep.stillUrl,
+        air_date: ep.airDate,
+        runtime_minutes: ep.runtimeMinutes,
+      }));
+      // Upsert, no insert: en un refresco los episodios ya guardados se
+      // ACTUALIZAN (TMDB corrige títulos y, sobre todo, fija la fecha de los
+      // anunciados). Los que TMDB haya quitado no se borran: `episode_watches`
+      // los referencia por número y un renumerado de TMDB no debe llevarse por
+      // delante lo que alguien marcó.
+      const { error } = await admin
+        .from("series_episodes")
+        .upsert(rows, { onConflict: "series_id,season_number,episode_number" });
+      if (error) {
+        // Sin marcar la sincronización: la próxima visita lo reintenta.
+        console.error("series_episodes upsert failed", {
+          id: seriesId,
+          count: rows.length,
+          error,
+        });
+        return;
+      }
+    }
+
+    // `total_episodes` pasa a ser «episodios EMITIDOS»: es el denominador del
+    // progreso en tarjetas, estadísticas y mascota, y los anunciados no se
+    // pueden ver. Sin catálogo (TMDB falló) no se toca lo que hubiera.
+    const sorted = [...episodes].sort(
+      (a, b) => a.seasonNumber - b.seasonNumber || a.episodeNumber - b.episodeNumber,
+    );
+    const aired = airedFlags(sorted, todayISO(), isSeriesEnded(details.status)).filter(
+      Boolean,
+    ).length;
+
+    const { error: seriesError } = await admin
+      .from("series")
+      .update({
+        tmdb_status: details.status,
+        next_episode_air_date: details.nextEpisodeAirDate,
+        episodes_synced_at: new Date().toISOString(),
+        // El CHECK `series_total_seasons_range` (≤ 200) es un pararrayos; si
+        // TMDB lo superase, mejor no tocar la columna que tumbar el update entero.
+        ...(episodes.length > 0 && {
+          ...(details.numberOfSeasons! <= 200 && { total_seasons: details.numberOfSeasons }),
+          ...(aired > 0 && { total_episodes: aired }),
+        }),
+      })
+      .eq("id", seriesId);
+    if (seriesError) {
+      console.error("series sync state update failed", { id: seriesId, error: seriesError });
+    }
+  } catch (error) {
+    console.error("syncSeriesEpisodes failed", { id: seriesId, error });
   }
 }

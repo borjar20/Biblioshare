@@ -142,4 +142,27 @@ describe("aggregateEpisodeData", () => {
     expect(row.own.watched).toBe(false); // no hay pase activo, no hay cursor
     expect(row.own.seenBefore).toBe(true); // pero sí se vio alguna vez
   });
+
+  it("marks announced episodes (future air date, or undated after the last aired) as not aired", () => {
+    const episodes = [
+      ep(1, 1, { air_date: "2024-01-01" }),
+      ep(2, 1, { air_date: "2026-10-01" }),
+      ep(2, 2), // TBA, detrás del último emitido
+    ];
+    const data = aggregateEpisodeData(episodes, [], null, null, { today: "2026-09-23" });
+
+    expect(data.bySeasons.get(1)![0].aired).toBe(true);
+    expect(data.bySeasons.get(2)!.map((e) => e.aired)).toEqual([false, false]);
+    expect(data.ended).toBe(false);
+  });
+
+  it("treats everything as aired once the series has ended", () => {
+    const episodes = [ep(1, 1, { air_date: "2026-10-01" })];
+    const data = aggregateEpisodeData(episodes, [], null, null, {
+      today: "2026-09-23",
+      ended: true,
+    });
+    expect(data.bySeasons.get(1)![0].aired).toBe(true);
+    expect(data.ended).toBe(true);
+  });
 });

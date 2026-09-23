@@ -4994,3 +4994,29 @@ dueño, y el dueño ve sus fuentes por RLS. Una función privilegiada contestar�
 Y?» a cualquiera, también sobre perfiles privados. Medido en prod el 2026-09-23: 0 posts sobre
 fuentes ajenas y 0 hitos que contradigan su pase, así que no hace falta limpieza retroactiva.
 
+## 2026-09-23 — Series: catálogo de episodios vivo, «emitido» como unidad, y una serie en emisión no se cierra sola (#1193)
+
+**Qué se decide.** Fase 1 del rediseño de series
+(`docs/superpowers/specs/2026-09-23-series-flujo-rediseno-design.md`, decisiones D1–D4 aceptadas
+tal como las recomendaba la spec). `series_episodes` se refresca contra TMDB mientras la serie
+siga en emisión (7 días, o antes si ya salió el episodio anunciado), y todo lo que mide progreso
+cuenta solo episodios **emitidos**.
+
+**Por qué derivado y no un estado nuevo.** «He visto todo y espero la temporada» (D1) se calcula
+de catálogo + `tmdb_status`; no se añade valor a `media_status`. En esta fase la única
+consecuencia visible es que el panel dice «Al día» en vez de «Serie completa» y que el pase no se
+completa solo; la fase 2 lo lleva a la píldora, la biblioteca y la hoja de cierre.
+
+**Por qué el refresco va en `after()`.** Una visita no debe esperar a N temporadas de TMDB para
+enseñar algo que ya tiene. Solo el catálogo vacío se trae en el render, como antes. El callback
+usa service_role y nunca el cliente de la petición (#751).
+
+**Por qué `total_episodes` pasa a contar emitidos.** Es el denominador de las tarjetas, la mascota
+y las estadísticas: con los anunciados dentro, una serie al día salía como «8/16». Medido en prod
+el 2026-09-23: 5 series con episodios de fecha futura (una con pase activo: 8 de 16 anunciados) y
+0 `episode_watches` sobre episodios no emitidos, así que el cambio no esconde nada ya marcado.
+
+**Límite asumido.** La regla del cliente para «sin fecha» es posicional; el guard del servidor
+(`episodeExists`) solo rechaza fechas futuras explícitas, porque la regla fina necesitaría leer
+el catálogo entero en cada marca.
+

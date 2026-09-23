@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { airedFlags, isSeriesEnded, todayISO } from "./aired";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -13,21 +14,29 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // en vez de duplicarla.
 
 // Comprueba que el episodio existe en el catálogo (evita filas arbitrarias) y
-// devuelve true/false. Un episodio siempre debería existir tras el
+// que no es un anunciado con fecha futura (#1193): no se puede haber visto lo
+// que no se ha emitido. Un episodio siempre debería existir tras el
 // cache-as-you-go, pero una server action es un endpoint POST público.
+//
+// Solo se rechaza la fecha FUTURA explícita. Un episodio sin fecha pasa: la
+// regla fina (posición respecto al último emitido, src/lib/series/aired.ts)
+// necesitaría el catálogo entero, y la UI ya no ofrece marcar esos; este es el
+// guard del endpoint, no la regla de pantalla.
 export async function episodeExists(
   supabase: SupabaseServerClient,
   seriesId: string,
   season: number,
   episode: number
 ): Promise<boolean> {
-  const { count } = await supabase
+  const { data } = await supabase
     .from("series_episodes")
-    .select("id", { count: "exact", head: true })
+    .select("air_date")
     .eq("series_id", seriesId)
     .eq("season_number", season)
-    .eq("episode_number", episode);
-  return (count ?? 0) > 0;
+    .eq("episode_number", episode)
+    .maybeSingle();
+  if (!data) return false;
+  return !data.air_date || data.air_date <= todayISO();
 }
 
 // Escritura pura de la marca "visto" en episode_watches: sin auth ni roll de
@@ -93,7 +102,7 @@ export async function markEpisodeWatched(
 // avanzado ya marcado en ESTE pase sigue estando en la tabla.
 //
 // Devuelve `reachedEnd`: true si el episodio más avanzado de este pase es el
-// último de la serie (última temporada, último episodio) — la señal que usa
+// último EMITIDO de una serie terminada o sin estado de TMDB (ver abajo) — la señal que usa
 // el llamante para encadenar applyTransition(..., "completed") y la hoja de
 // cierre, igual que el auto-cierre de libro (§Tarea 7).
 export async function rollSeriesProgress(
@@ -126,25 +135,40 @@ export async function rollSeriesProgress(
     if (error) throw error;
   }
 
-  // Último episodio del catálogo de la serie (última temporada, último
-  // episodio de esa temporada): el listón contra el que se compara el
-  // avance de este pase para decidir el auto-cierre.
-  const { data: lastEpisode } = await supabase
-    .from("series_episodes")
-    .select("season_number, episode_number")
-    .eq("series_id", seriesId)
-    .order("season_number", { ascending: false })
-    .order("episode_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (!furthest) return { reachedEnd: false };
+
+  // Catálogo vivo (#1193): el listón del auto-cierre ya no es el último
+  // episodio del catálogo —que puede ser un anunciado sin emitir— sino el
+  // último EMITIDO. Y una serie que TMDB da por en emisión no se cierra sola
+  // nunca: haber visto todo lo que hay no es haberla terminado (en la fase 2 de
+  // la spec eso será el estado «Al día»). Sin estado de TMDB (serie manual o
+  // aún sin sincronizar) se mantiene el criterio de siempre sobre lo emitido.
+  const [{ data: series }, { data: catalog }] = await Promise.all([
+    supabase.from("series").select("tmdb_status").eq("id", seriesId).maybeSingle(),
+    supabase
+      .from("series_episodes")
+      .select("season_number, episode_number, air_date")
+      .eq("series_id", seriesId)
+      .order("season_number", { ascending: true })
+      .order("episode_number", { ascending: true }),
+  ]);
+
+  const status = series?.tmdb_status ?? null;
+  const ended = isSeriesEnded(status);
+  if (status !== null && !ended) return { reachedEnd: false };
+
+  const episodes = catalog ?? [];
+  const aired = airedFlags(
+    episodes.map((e) => ({ airDate: e.air_date })),
+    todayISO(),
+    ended
+  );
+  const lastAired = episodes[aired.lastIndexOf(true)];
 
   const reachedEnd =
-    furthest !== null &&
-    furthest !== undefined &&
-    lastEpisode !== null &&
-    lastEpisode !== undefined &&
-    furthest.season_number === lastEpisode.season_number &&
-    furthest.episode_number === lastEpisode.episode_number;
+    lastAired !== undefined &&
+    furthest.season_number === lastAired.season_number &&
+    furthest.episode_number === lastAired.episode_number;
 
   return { reachedEnd };
 }

@@ -30,10 +30,13 @@ export function episodeKey(ep: { season: number; episode: number }): string {
 // sobre los props del servidor, mismo criterio que el resto de la app.
 export function EpisodePanel({
   seriesId,
+  ended,
   seasons,
   isLoggedIn,
 }: {
   seriesId: string;
+  /** La serie no emitirá más (TMDB Ended/Canceled). Decide «Serie completa» vs «Al día». */
+  ended: boolean;
   seasons: SeasonGroup[];
   isLoggedIn: boolean;
 }) {
@@ -81,6 +84,9 @@ export function EpisodePanel({
     }));
 
   const toggleWatched = (ep: EpisodeRow) => {
+    // Un anunciado no se puede marcar (#1193): la UI ya no ofrece la casilla,
+    // esto es la red por si algún camino la invoca igual.
+    if (!ep.aired) return;
     const next = !ownOf(ep).watched;
     patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null });
     startTransition(() =>
@@ -89,6 +95,7 @@ export function EpisodePanel({
   };
 
   const rate = (ep: EpisodeRow, rating: number) => {
+    if (!ep.aired) return;
     // Si el episodio está seleccionado, la nota arrastra el borrador escrito
     // (comportamiento de siempre: puntuar guardaba lo que hubiera en el
     // textarea); si no, conserva la reseña ya guardada.
@@ -108,9 +115,10 @@ export function EpisodePanel({
   };
 
   // El contador vive sobre la capa optimista: marcar un episodio lo mueve al
-  // instante, sin esperar la revalidación.
+  // instante, sin esperar la revalidación. Solo cuenta lo EMITIDO (#1193): los
+  // anunciados están en la lista pero no se pueden ver todavía.
   const { total, watched } = useMemo(() => {
-    const all = seasons.flatMap((s) => s.episodes);
+    const all = seasons.flatMap((s) => s.episodes).filter((e) => e.aired);
     return {
       total: all.length,
       watched: all.filter(
@@ -128,10 +136,11 @@ export function EpisodePanel({
         const ratings = s.episodes
           .map((e) => (source === "mine" ? own(e).rating : e.avgRating))
           .filter((r): r is number => r !== null);
+        const aired = s.episodes.filter((e) => e.aired);
         return {
           season: s.season,
-          total: s.episodes.length,
-          watched: s.episodes.filter((e) => own(e).watched).length,
+          total: aired.length,
+          watched: aired.filter((e) => own(e).watched).length,
           avg: averageRating(ratings),
         };
       }),
@@ -143,12 +152,18 @@ export function EpisodePanel({
   const nextEpisode = useMemo(() => {
     for (const s of seasons)
       for (const ep of s.episodes)
-        if (!{ ...ep.own, ...ownPatches[episodeKey(ep)] }.watched) return ep;
+        if (ep.aired && !{ ...ep.own, ...ownPatches[episodeKey(ep)] }.watched)
+          return ep;
     return null;
   }, [seasons, ownPatches]);
 
+  // Sin siguiente, el cursor se queda en la última temporada con algo EMITIDO:
+  // abrir la ficha en una temporada anunciada vacía no dice nada.
+  const lastAiredSeason = [...seasons]
+    .reverse()
+    .find((s) => s.episodes.some((e) => e.aired))?.season;
   const cursorSeason =
-    nextEpisode?.season ?? seasons[seasons.length - 1]?.season ?? 1;
+    nextEpisode?.season ?? lastAiredSeason ?? seasons[seasons.length - 1]?.season ?? 1;
   const activeSeason = openSeason ?? cursorSeason;
   const activeGroup =
     seasons.find((s) => s.season === activeSeason) ?? seasons[0];
@@ -222,9 +237,14 @@ export function EpisodePanel({
                   aria-hidden
                   className="h-2 w-2 rounded-full bg-status-in-progress"
                 />
+                {/* Sin siguiente emitido: si la serie terminó, completa; si
+                    sigue en emisión, «Al día» (fase 2 de la spec lo lleva al
+                    estado del pase). */}
                 {nextEpisode
                   ? t("watchingSeason", { n: cursorSeason })
-                  : t("seriesComplete")}
+                  : ended
+                    ? t("seriesComplete")
+                    : t("upToDate")}
               </span>
               <span className="shrink-0 font-serif text-[18px] font-semibold whitespace-nowrap text-foreground">
                 {watched}

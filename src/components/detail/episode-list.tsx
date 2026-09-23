@@ -135,10 +135,14 @@ function EpisodeItem({
   const selected = selectedKey === episodeKey(episode);
   const displayRating = source === "mine" ? own.rating : episode.avgRating;
 
+  // Un anunciado (#1193) se ve pero no se toca: sin casilla ni nota, y la
+  // fecha se lee como estreno, no como emisión.
+  const canAct = interactive && episode.aired;
+  const aired = formatAired(episode.airDate);
   const meta = [
     t("episodeShort", { n: episode.episode }),
     episode.runtimeMinutes ? t("runtime", { n: episode.runtimeMinutes }) : null,
-    formatAired(episode.airDate),
+    episode.aired ? aired : aired ? t("upcomingOn", { date: aired }) : t("upcoming"),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -153,7 +157,7 @@ function EpisodeItem({
           selected ? "lg:bg-type-series/7" : ""
         }`}
       >
-        {interactive ? (
+        {canAct ? (
           <button
             type="button"
             onClick={() => onToggleWatched(episode)}
@@ -198,7 +202,9 @@ function EpisodeItem({
                 className={`truncate text-[12.5px] lg:text-[13px] ${
                   own.watched
                     ? "font-medium text-foreground lg:font-semibold"
-                    : "font-medium text-muted-foreground"
+                    : episode.aired
+                      ? "font-medium text-muted-foreground"
+                      : "font-medium text-muted-foreground/60 italic"
                 }`}
               >
                 {episode.title ?? t("untitled")}
@@ -223,7 +229,7 @@ function EpisodeItem({
 
         <EpisodeRating
           rating={displayRating}
-          onRate={interactive ? (r) => onRate(episode, r) : undefined}
+          onRate={canAct ? (r) => onRate(episode, r) : undefined}
           disabled={isPending}
           size={7}
         />
@@ -238,7 +244,7 @@ function EpisodeItem({
             episode={episode}
             own={own}
             source={source}
-            interactive={interactive}
+            interactive={canAct}
             isPending={isPending}
             draft={draft}
             onDraftChange={onDraftChange}

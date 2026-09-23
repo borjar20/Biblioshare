@@ -74,7 +74,10 @@ function SeasonMeta({
   className?: string;
 }) {
   const t = useTranslations("episode");
-  const status = active
+  // `total` cuenta solo lo emitido (#1193): una temporada a 0 es una anunciada.
+  const status = stat.total === 0
+    ? t("upcoming").toLowerCase()
+    : active
     ? t("seasonActive")
     : isLoggedIn && stat.watched === 0
       ? t("seasonUnseen")
@@ -84,7 +87,7 @@ function SeasonMeta({
     <span
       className={`flex items-center gap-1 font-mono text-[9px] text-muted-foreground ${className}`}
     >
-      <span>{t("episodeCountShort", { count: stat.total })}</span>
+      {stat.total > 0 && <span>{t("episodeCountShort", { count: stat.total })}</span>}
       {stat.avg !== null && (
         <>
           <span aria-hidden>·</span>
@@ -94,7 +97,7 @@ function SeasonMeta({
       )}
       {status && (
         <>
-          <span aria-hidden>·</span>
+          {(stat.total > 0 || stat.avg !== null) && <span aria-hidden>·</span>}
           <span>{status}</span>
         </>
       )}

@@ -60,7 +60,9 @@ export function EpisodeGrid({
   // La ventana arranca donde está el cursor: la primera temporada con algo sin
   // ver (o la última, si están todas vistas), no siempre en la T1.
   const cursorIndex = useMemo(() => {
-    const i = seasons.findIndex((s) => s.episodes.some((e) => !e.own.watched));
+    const i = seasons.findIndex((s) =>
+      s.episodes.some((e) => e.aired && !e.own.watched),
+    );
     return i === -1 ? seasons.length - 1 : i;
   }, [seasons]);
   const maxStart = Math.max(0, seasons.length - WINDOW);
@@ -141,6 +143,12 @@ export function EpisodeGrid({
             {t("legendUnseen")}
           </span>
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-border" />
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {t("legendUpcoming")}
+          </span>
+        </span>
         {source === "mine" && (
           <span className="inline-flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
@@ -160,8 +168,10 @@ export function EpisodeGrid({
       >
         <div />
         {windowSeasons.map((s) => {
-          const watched = s.episodes.filter((e) => e.own.watched).length;
-          const done = watched === s.episodes.length;
+          // Solo lo emitido cuenta (#1193): una temporada anunciada no es «0/10».
+          const aired = s.episodes.filter((e) => e.aired);
+          const watched = aired.filter((e) => e.own.watched).length;
+          const done = aired.length > 0 && watched === aired.length;
           return (
             <div
               key={s.season}
@@ -177,7 +187,7 @@ export function EpisodeGrid({
                 {t("seasonTile", { n: s.season })}
               </span>
               <span className="font-mono text-[8px] text-muted-foreground">
-                {done ? "✓" : `${watched}/${s.episodes.length}`}
+                {done ? "✓" : aired.length === 0 ? "—" : `${watched}/${aired.length}`}
               </span>
             </div>
           );
@@ -250,7 +260,9 @@ export function EpisodeGrid({
                               ? ""
                               : present
                                 ? "bg-surface-muted text-muted-foreground"
-                                : "bg-surface-muted/40 text-muted-foreground/50"
+                                : ep.aired
+                                  ? "bg-surface-muted/40 text-muted-foreground/50"
+                                  : "border border-dashed border-border text-muted-foreground/40"
                           }`}
                           title={`${t("code", { s: ep.season, e: ep.episode })}${ep.title ? ` · ${ep.title}` : ""}`}
                         >
@@ -325,7 +337,9 @@ function FragmentRow({
                 ? "border-transparent"
                 : present
                   ? "border-border bg-surface-muted"
-                  : "border-border bg-surface-muted/40"
+                  : ep.aired
+                    ? "border-border bg-surface-muted/40"
+                    : "border-dashed border-border bg-transparent"
             } ${selected ? "z-10 outline-2 outline-offset-1 outline-type-series" : ""}`}
           >
             {hasNote && (

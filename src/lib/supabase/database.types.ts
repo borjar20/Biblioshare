@@ -2855,14 +2855,17 @@ export type Database = {
           created_at: string
           creator: string | null
           episode_runtime_minutes: number | null
+          episodes_synced_at: string | null
           genres: string[] | null
           hydrated_at: string | null
           id: string
+          next_episode_air_date: string | null
           original_title: string | null
           release_year: number | null
           synopsis: string | null
           title: string | null
           tmdb_id: number | null
+          tmdb_status: string | null
           total_episodes: number | null
           total_seasons: number | null
         }
@@ -2871,14 +2874,17 @@ export type Database = {
           created_at?: string
           creator?: string | null
           episode_runtime_minutes?: number | null
+          episodes_synced_at?: string | null
           genres?: string[] | null
           hydrated_at?: string | null
           id?: string
+          next_episode_air_date?: string | null
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
           title?: string | null
           tmdb_id?: number | null
+          tmdb_status?: string | null
           total_episodes?: number | null
           total_seasons?: number | null
         }
@@ -2887,14 +2893,17 @@ export type Database = {
           created_at?: string
           creator?: string | null
           episode_runtime_minutes?: number | null
+          episodes_synced_at?: string | null
           genres?: string[] | null
           hydrated_at?: string | null
           id?: string
+          next_episode_air_date?: string | null
           original_title?: string | null
           release_year?: number | null
           synopsis?: string | null
           title?: string | null
           tmdb_id?: number | null
+          tmdb_status?: string | null
           total_episodes?: number | null
           total_seasons?: number | null
         }
