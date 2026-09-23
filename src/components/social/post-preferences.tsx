@@ -19,7 +19,12 @@ import {
 //
 // Orden: terminar primero (default ON, el caso común: incluye "marcar película
 // vista", que es un pase completado → hito finished).
-const KEYS = ["autopost_finished", "autopost_started", "autopost_dropped"] as const;
+const KEYS = [
+  "autopost_finished",
+  "autopost_started",
+  "autopost_dropped",
+  "autopost_watched",
+] as const;
 
 export function PostPreferences() {
   const t = useTranslations("social");

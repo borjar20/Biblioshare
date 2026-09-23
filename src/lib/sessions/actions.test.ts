@@ -15,8 +15,9 @@ const mocks = vi.hoisted(() => ({
   isAutoCloseable: vi.fn(),
   applyTransition: vi.fn(),
   getEditions: vi.fn(),
-  markEpisodeWatched: vi.fn(),
+  insertEpisodeWatches: vi.fn(),
   rollSeriesProgress: vi.fn(),
+  maybeAutopostWatchedDay: vi.fn(),
   revalidateReadingLog: vi.fn(),
   createPost: vi.fn(),
   earnDailyLoopCelebrations: vi.fn(),
@@ -31,8 +32,11 @@ vi.mock("@/lib/passes/get-passes", () => ({
 vi.mock("@/lib/passes/apply-transition", () => ({ applyTransition: mocks.applyTransition }));
 vi.mock("@/lib/editions/get-editions", () => ({ getEditions: mocks.getEditions }));
 vi.mock("@/lib/series/episode-watch-store", () => ({
-  markEpisodeWatched: mocks.markEpisodeWatched,
+  insertEpisodeWatches: mocks.insertEpisodeWatches,
   rollSeriesProgress: mocks.rollSeriesProgress,
+}));
+vi.mock("@/lib/social/autopost-watched", () => ({
+  maybeAutopostWatchedDay: mocks.maybeAutopostWatchedDay,
 }));
 vi.mock("@/lib/reactivity/revalidate", () => ({
   revalidateReadingLog: mocks.revalidateReadingLog,
@@ -117,7 +121,7 @@ beforeEach(() => {
   mocks.isAutoCloseable.mockResolvedValue(false);
   mocks.getEditions.mockResolvedValue([]);
   mocks.rollSeriesProgress.mockResolvedValue({ reachedEnd: false });
-  mocks.markEpisodeWatched.mockResolvedValue(true);
+  mocks.insertEpisodeWatches.mockResolvedValue(true);
   mocks.createPost.mockResolvedValue({ ok: true });
   mocks.earnDailyLoopCelebrations.mockResolvedValue(undefined);
 });
@@ -199,13 +203,13 @@ describe("addSession · la sesión y el cambio de estado son la misma lectura (#
     fd.append("episodes", "3");
     await addSession(PASE_VIEJO, "series", "serie-1", {}, fd);
 
-    expect(mocks.markEpisodeWatched).toHaveBeenCalledWith(
+    expect(mocks.insertEpisodeWatches).toHaveBeenCalledWith(
       expect.anything(),
       "usuario",
       "serie-1",
       PASE_NUEVO,
-      2,
-      3,
+      [{ season: 2, episode: 3 }],
+      null,
     );
     expect(mocks.rollSeriesProgress).toHaveBeenCalledWith(
       expect.anything(),
@@ -352,5 +356,42 @@ describe("addSession publica el hito de los pases que cierra (#824)", () => {
     const cierre = llamadaQueCierra();
     expect(cierre, "el cambio de estado tiene que pasar por la máquina").toBeTruthy();
     expect(opcionesDeLaTransicion(cierre!)?.silent).not.toBe(true);
+  });
+
+  it("serie (fase 4): marca en varias temporadas con la fecha de la hoja, sin crear sesión", async () => {
+    mocks.getActivePass.mockResolvedValue({
+      id: PASE_VIEJO,
+      status: "in_progress",
+      position: {},
+      editionId: null,
+    });
+    mocks.insertEpisodeWatches.mockResolvedValue(true);
+    const escrituras: Escritura[] = [];
+    mocks.createClient.mockResolvedValue(fakeClient(escrituras));
+
+    const fd = form({ status: "in_progress", sessionDate: "2026-09-20" });
+    fd.append("episodeKeys", "1:9");
+    fd.append("episodeKeys", "2:1");
+    const result = await addSession(PASE_VIEJO, "series", "serie-1", {}, fd);
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.insertEpisodeWatches).toHaveBeenCalledWith(
+      expect.anything(),
+      "usuario",
+      "serie-1",
+      PASE_VIEJO,
+      [
+        { season: 1, episode: 9 },
+        { season: 2, episode: 1 },
+      ],
+      "2026-09-20",
+    );
+    expect(escrituraEn(escrituras, "progress_sessions")).toBeUndefined();
+    expect(mocks.maybeAutopostWatchedDay).toHaveBeenCalledWith(expect.anything(), {
+      userId: "usuario",
+      seriesId: "serie-1",
+      day: "2026-09-20",
+    });
+    expect(mocks.createPost).not.toHaveBeenCalled();
   });
 });

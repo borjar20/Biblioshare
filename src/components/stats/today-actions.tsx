@@ -6,6 +6,7 @@ import Link from "next/link";
 import { setEpisodeWatched } from "@/lib/series/episode-actions";
 import { updateStatus } from "@/lib/library/manage-actions";
 import { itemHref } from "@/lib/catalog/item-href";
+import { todayISO } from "@/lib/stats/dates";
 import { clearTimer, elapsedMs, pause, start, toMinutes, writeTimer } from "@/lib/sessions/timer";
 import { hasTime, useTimerState } from "@/lib/sessions/use-timer-state";
 import { ClockIcon, PencilIcon, CheckIcon } from "@/components/ui/icons";
@@ -194,7 +195,7 @@ function MarkNextEpisode({
         // episodio siguiente ya movido. Y si era el último, cierra el pase y
         // redirige a la hoja de cierre — por eso no se toca nada aquí después.
         startTransition(async () => {
-          await setEpisodeWatched(seriesId, nextEpisode.season, nextEpisode.episode, true);
+          await setEpisodeWatched(seriesId, nextEpisode.season, nextEpisode.episode, true, todayISO());
         })
       }
       className="flex flex-1 items-center justify-center gap-[7px] p-[11px] text-[12.5px] font-semibold text-[var(--acc)] transition-colors hover:bg-surface-muted disabled:opacity-50"

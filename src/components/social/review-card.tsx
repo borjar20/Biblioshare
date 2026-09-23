@@ -40,7 +40,13 @@ export function ReviewCard({
     event.reviewMeta?.readingDays != null ? t("review.metaDays", { count: event.reviewMeta.readingDays }) : null,
     event.reviewMeta?.totalPages != null ? t("review.metaPages", { count: event.reviewMeta.totalPages }) : null,
     event.episode ? `S${event.episode.season}E${event.episode.episode}` : null,
+    // Post diario de series (fase 4): el primer episodio del día y cuántos más.
+    event.episodeCount != null && event.episodeCount > 1
+      ? t("review.moreEpisodes", { count: event.episodeCount - 1 })
+      : null,
   ].filter(Boolean).join(" · ");
+  // Un `watched` no es un final: la etiqueta dice «Visto», no «Finalizado».
+  const badge = event.kind === "watched" ? t("episode.watched") : t("review.finished");
   const { deleted, error: deleteError, pending, requestDelete } = useDeletePost(event.postId);
   if (deleted) return null;
   const deleteMenu = event.viewerCanDelete && event.postId && (
@@ -71,7 +77,7 @@ export function ReviewCard({
         </Link>
         <div className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 font-mono text-[9.5px] tracking-[0.06em] uppercase text-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-green" />{t("review.finished")}
+            <span className="h-1.5 w-1.5 rounded-full bg-green" />{badge}
           </span>
           <Link href={itemHref(event.itemType, event.itemId)} className="mt-1 block font-serif text-[15px] leading-tight font-semibold hover:underline">
             {event.itemTitle}

@@ -223,7 +223,10 @@ export function SessionSheet({
             absorbe el hueco que falta o sobra, y si no le basta, es el
             <form> quien scrollea (overflow-y-auto, ver comentario de arriba). */}
         <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-background/90 px-4 py-3.5 backdrop-blur">
-          <span className="font-serif text-[17px] font-semibold">{t("sheetTitle")}</span>
+          <span className="font-serif text-[17px] font-semibold">
+            {/* Una serie ya no registra sesiones (fase 4, D3): marca episodios. */}
+            {itemType === "series" ? t("sheetTitleSeries") : t("sheetTitle")}
+          </span>
           <button
             type="button"
             onClick={closeSheet}
@@ -296,37 +299,41 @@ export function SessionSheet({
               aparte. Marcado, addSession publica un post 'progressed' con el
               texto opcional como cuerpo social; las notas del cuaderno siguen
               siendo privadas. */}
-          <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
-            <label className="flex items-center gap-2 text-sm text-foreground">
-              <input
-                type="checkbox"
-                name="share"
-                checked={share}
-                onChange={(e) => setShare(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-accent"
-              />
-              {t("shareLabel")}
-            </label>
-            {share && (
-              <>
-                <textarea
-                  name="shareBody"
-                  maxLength={2000}
-                  rows={2}
-                  placeholder={t("sharePlaceholder")}
-                  className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          {/* Solo libros: una serie publica sola su post diario (autopost-watched.ts,
+              con su interruptor en Ajustes), no un «Compartir» por hoja. */}
+          {itemType === "book" && (
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  name="share"
+                  checked={share}
+                  onChange={(e) => setShare(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-accent"
                 />
-                <label className="flex items-center gap-2 text-sm text-foreground">
-                  <input
-                    type="checkbox"
-                    name="shareSpoiler"
-                    className="h-4 w-4 rounded border-border accent-accent"
+                {t("shareLabel")}
+              </label>
+              {share && (
+                <>
+                  <textarea
+                    name="shareBody"
+                    maxLength={2000}
+                    rows={2}
+                    placeholder={t("sharePlaceholder")}
+                    className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
-                  {t("shareSpoiler")}
-                </label>
-              </>
-            )}
-          </div>
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <input
+                      type="checkbox"
+                      name="shareSpoiler"
+                      className="h-4 w-4 rounded border-border accent-accent"
+                    />
+                    {t("shareSpoiler")}
+                  </label>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
               Sigue disponible para abandonar o completar a mano sin ir a la ficha. */}

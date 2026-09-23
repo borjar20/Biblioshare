@@ -128,6 +128,26 @@ describe("getFeed — fuente `posts`", () => {
     expect(e.progress?.durationMinutes).toBeNull();
   });
 
+  test("un 'watched' es el día de una serie: episodio del que cuelga y cuántos hubo ese día", async () => {
+    // Fase 4 de series: un post por serie y día (autopost-watched.ts), colgado
+    // del primer episodio; la tarjeta cuenta los del MISMO autor, serie y día.
+    const ep = (id: string, episode: number, watchedOn: string) => ({
+      id, user_id: FAKE_ACTOR_ID, series_id: FAKE_SERIES_ID, season_number: 2, episode_number: episode,
+      rating: null, review: null, watched_on: watchedOn,
+    });
+    const sb = fakeSupabase({
+      posts: [post("p1", "2026-09-23T21:00:00+00:00", {
+        kind: "watched", source_kind: "episode_watch", source_id: "w1",
+        anchor_type: "series", anchor_id: FAKE_SERIES_ID,
+      })],
+      episodes: [ep("w1", 4, "2026-09-23"), ep("w2", 5, "2026-09-23"), ep("w3", 6, "2026-09-23"), ep("w0", 3, "2026-09-22")],
+    });
+    const [e] = personEvents((await getFeed(sb.client, VIEWER, {})).events);
+    expect(e.kind).toBe("watched");
+    expect(e.episode).toEqual({ season: 2, episode: 4, title: null });
+    expect(e.episodeCount).toBe(3);
+  });
+
   test("hito started/dropped => se emite con su kind (sin display extra)", async () => {
     const sb = fakeSupabase({
       posts: [

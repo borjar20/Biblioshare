@@ -12,6 +12,7 @@ const ALLOWED_KEYS = [
   "autopost_started",
   "autopost_finished",
   "autopost_dropped",
+  "autopost_watched",
 ] as const satisfies readonly (keyof PostPreferences)[];
 
 // Una server action es un endpoint POST público: se filtra a las claves
@@ -35,7 +36,7 @@ export async function loadMyPostPreferences(): Promise<PostPreferences> {
 
   const { data } = await supabase
     .from("post_preferences")
-    .select("autopost_started, autopost_finished, autopost_dropped")
+    .select("autopost_started, autopost_finished, autopost_dropped, autopost_watched")
     .eq("user_id", user.id)
     .maybeSingle();
 

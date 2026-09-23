@@ -95,6 +95,9 @@ export type FeedEvent = {
   rating: number | null;
   reviewExcerpt: string | null;
   episode: { season: number; episode: number; title: string | null } | null;
+  // Solo posts `watched`: episodios de esa serie marcados ese mismo día (el post
+  // es el día, colgado del primero). Ausente en el resto.
+  episodeCount?: number | null;
   // Meta de la tarjeta de reseña: solo `finished`. El resto va a null.
   reviewMeta: { readingDays: number | null; totalPages: number | null } | null;
   progress: {
@@ -278,7 +281,7 @@ async function resolvePostDrafts(
       watchedSourceIds.length
         ? supabase
             .from("episode_watches")
-            .select("id, series_id, season_number, episode_number, rating, review")
+            .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on")
             .in("id", watchedSourceIds)
         : Promise.resolve({ data: [] as EpisodeRow[], error: null }),
     ]);
@@ -328,13 +331,41 @@ async function resolvePostDrafts(
   const episodeById = new Map((episodeRows.data ?? []).map((r) => [r.id, r]));
 
   const episodeSeriesIds = [...new Set((episodeRows.data ?? []).map((r) => r.series_id))];
-  const { data: episodeTitles, error: episodeTitlesError } = episodeSeriesIds.length
-    ? await supabase
-        .from("series_episodes")
-        .select("series_id, season_number, episode_number, title")
-        .in("series_id", episodeSeriesIds)
-    : { data: [] as EpisodeTitleRow[], error: null };
+  // Un post `watched` es el DÍA de una serie (fase 4, autopost-watched.ts): cuelga
+  // del primer episodio marcado y la tarjeta dice cuántos hubo ese día. Se leen
+  // los episodios de esos autores/series/días en el mismo viaje que los títulos
+  // (RLS ya limita a lo que el que mira puede ver del autor).
+  const episodeDayUsers = [...new Set((episodeRows.data ?? []).map((r) => r.user_id))];
+  const episodeDays = [...new Set((episodeRows.data ?? []).map((r) => r.watched_on))];
+  const [
+    { data: episodeTitles, error: episodeTitlesError },
+    { data: dayWatches, error: dayWatchesError },
+  ] = await Promise.all([
+    episodeSeriesIds.length
+      ? supabase
+          .from("series_episodes")
+          .select("series_id, season_number, episode_number, title")
+          .in("series_id", episodeSeriesIds)
+      : Promise.resolve({ data: [] as EpisodeTitleRow[], error: null }),
+    episodeSeriesIds.length
+      ? supabase
+          .from("episode_watches")
+          .select("user_id, series_id, watched_on")
+          .in("series_id", episodeSeriesIds)
+          .in("user_id", episodeDayUsers)
+          .in("watched_on", episodeDays)
+      : Promise.resolve({
+          data: [] as { user_id: string; series_id: string; watched_on: string }[],
+          error: null,
+        }),
+  ]);
   if (episodeTitlesError) throw episodeTitlesError;
+  if (dayWatchesError) throw dayWatchesError;
+  const episodesPerDay = new Map<string, number>();
+  for (const w of dayWatches ?? []) {
+    const k = `${w.user_id}:${w.series_id}:${w.watched_on}`;
+    episodesPerDay.set(k, (episodesPerDay.get(k) ?? 0) + 1);
+  }
   const titleByEpisode = new Map(
     (episodeTitles ?? []).map((e) => [`${e.series_id}:${e.season_number}:${e.episode_number}`, e.title]),
   );
@@ -453,6 +484,9 @@ async function resolvePostDrafts(
       drafts.push({
         ...base,
         verb: verbForReviewable(ep?.rating ?? null, ep?.review ?? null, "watchedEpisode"),
+        episodeCount: ep
+          ? (episodesPerDay.get(`${ep.user_id}:${ep.series_id}:${ep.watched_on}`) ?? 1)
+          : null,
         rating: ep?.rating ?? null,
         reviewExcerpt: reviewOrExcerpt(ep?.review ?? null),
         episode: ep
@@ -796,6 +830,6 @@ type NamedRow = { id: string; name: string; cover_url: string | null };
 type PersonRow = { id: string; name: string; photo_url: string | null };
 type PassRow = { id: string; started_on: string | null; finished_on: string | null; rating: number | null };
 type SessionRow = { id: string; duration_minutes: number | null; position: unknown };
-type EpisodeRow = { id: string; series_id: string; season_number: number; episode_number: number; rating: number | null; review: string | null };
+type EpisodeRow = { id: string; user_id: string; series_id: string; season_number: number; episode_number: number; rating: number | null; review: string | null; watched_on: string };
 type EpisodeTitleRow = { series_id: string; season_number: number; episode_number: number; title: string | null };
 type ActorRow = { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null };

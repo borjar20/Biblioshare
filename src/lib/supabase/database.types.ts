@@ -2179,6 +2179,7 @@ export type Database = {
           autopost_dropped: boolean
           autopost_finished: boolean
           autopost_started: boolean
+          autopost_watched: boolean
           updated_at: string
           user_id: string
         }
@@ -2186,6 +2187,7 @@ export type Database = {
           autopost_dropped?: boolean
           autopost_finished?: boolean
           autopost_started?: boolean
+          autopost_watched?: boolean
           updated_at?: string
           user_id: string
         }
@@ -2193,6 +2195,7 @@ export type Database = {
           autopost_dropped?: boolean
           autopost_finished?: boolean
           autopost_started?: boolean
+          autopost_watched?: boolean
           updated_at?: string
           user_id?: string
         }

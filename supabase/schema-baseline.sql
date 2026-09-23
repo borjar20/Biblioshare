@@ -1292,3 +1292,8 @@ commit;
 begin;
 \ir migrations/20260923130000_series_live_episode_catalog.sql
 commit;
+
+-- 20260923140000_post_preferences_autopost_watched
+begin;
+\ir migrations/20260923140000_post_preferences_autopost_watched.sql
+commit;

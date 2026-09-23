@@ -2,6 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { daysInMonth, shiftMonth } from "./dates";
 import type { CalendarDay, MonthCalendar } from "./types";
+import { getSeriesDays } from "./series-days";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -32,32 +33,52 @@ export async function getMonthCalendar(
 
   // Las sesiones cuelgan del pase (pass_id, §Tarea 9, hub); item_type/item_id
   // ya no se resuelven vía library_entries sino uniendo con el propio pase.
-  const { data, error } = await supabase
-    .from("progress_sessions")
-    .select("session_date, created_at, passes!inner(item_type, item_id)")
-    .eq("user_id", userId)
-    .gte("session_date", monthStart)
-    .lte("session_date", monthEnd)
-    .order("session_date", { ascending: true })
-    .order("created_at", { ascending: true });
+  //
+  // Series (fase 4, D3): su actividad son los episodios vistos, no sesiones.
+  // Las sesiones de serie antiguas se excluyen: sus episodios ya están en
+  // episode_watches y saldrían dos veces.
+  const [{ data, error }, seriesDays] = await Promise.all([
+    supabase
+      .from("progress_sessions")
+      .select("session_date, created_at, passes!inner(item_type, item_id)")
+      .eq("user_id", userId)
+      .neq("passes.item_type", "series")
+      .gte("session_date", monthStart)
+      .lte("session_date", monthEnd),
+    getSeriesDays(supabase, userId, {
+      start: monthStart,
+      endExclusive: `${shiftMonth(month, 1)}-01`,
+    }),
+  ]);
 
   if (error) throw error;
 
-  // Latest session per day (rows are ascending, so the last one wins).
+  // Lo último de cada día, venga de una sesión o de un episodio: se ordena por
+  // (día, momento de registro) y el último gana.
+  const activity: { day: string; at: string; itemType: ItemType; itemId: string }[] = [];
+  for (const row of (data ?? []) as SessionRow[]) {
+    const entry = normalizeEntry(row);
+    if (!entry) continue;
+    activity.push({
+      day: row.session_date,
+      at: row.created_at,
+      itemType: entry.item_type,
+      itemId: entry.item_id,
+    });
+  }
+  for (const d of seriesDays)
+    activity.push({ day: d.day, at: d.lastAt, itemType: "series", itemId: d.seriesId });
+  activity.sort((a, b) => (a.day === b.day ? a.at.localeCompare(b.at) : a.day.localeCompare(b.day)));
+
   const latestByDay = new Map<string, { itemType: ItemType; itemId: string }>();
   const idsByType: Record<ItemType, Set<string>> = {
     book: new Set(),
     movie: new Set(),
     series: new Set(),
   };
-  for (const row of (data ?? []) as SessionRow[]) {
-    const entry = normalizeEntry(row);
-    if (!entry) continue;
-    latestByDay.set(row.session_date, {
-      itemType: entry.item_type,
-      itemId: entry.item_id,
-    });
-    idsByType[entry.item_type].add(entry.item_id);
+  for (const a of activity) {
+    latestByDay.set(a.day, { itemType: a.itemType, itemId: a.itemId });
+    idsByType[a.itemType].add(a.itemId);
   }
 
   const coverByKey = new Map<string, string | null>();

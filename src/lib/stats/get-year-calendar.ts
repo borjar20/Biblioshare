@@ -9,6 +9,7 @@
 
 import type { createClient } from "@/lib/supabase/server";
 import { yearBounds } from "./period";
+import { getSeriesDays } from "./series-days";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,11 +28,15 @@ export async function getYearCalendar(
 ): Promise<YearCalendar> {
   const { start, endExclusive } = yearBounds(year);
 
-  const [sessions, finished] = await Promise.all([
+  // Series (fase 4, D3): una actividad por serie y día de episodios vistos,
+  // no por sesión. Las sesiones de serie antiguas se excluyen para no contar
+  // dos veces el mismo visionado (sus episodios ya están en episode_watches).
+  const [sessions, finished, seriesDays] = await Promise.all([
     supabase
       .from("progress_sessions")
-      .select("session_date")
+      .select("session_date, passes!inner(item_type)")
       .eq("user_id", userId)
+      .neq("passes.item_type", "series")
       .gte("session_date", start)
       .lt("session_date", endExclusive),
     supabase
@@ -41,6 +46,7 @@ export async function getYearCalendar(
       .not("finished_on", "is", null)
       .gte("finished_on", start)
       .lt("finished_on", endExclusive),
+    getSeriesDays(supabase, userId, { start, endExclusive }),
   ]);
 
   if (sessions.error) throw sessions.error;
@@ -52,6 +58,7 @@ export async function getYearCalendar(
   for (const row of finished.data ?? []) {
     if (row.finished_on) bump(row.finished_on);
   }
+  for (const d of seriesDays) bump(d.day);
 
   const days: YearCalendar["days"] = [];
   let busiest: YearCalendar["busiest"] = null;

@@ -31,27 +31,36 @@ export function SeriesEpisodeGrid({
 
   const [season, setSeason] = useState(initialSeason);
 
-  function watchedSetFor(n: number): Set<number> {
-    const group = seasons.find((s) => s.season === n);
-    return new Set((group?.episodes ?? []).filter((e) => e.watched).map((e) => e.episode));
-  }
-
-  // `initialWatched` es la foto de "ya visto" al abrir: no cambia con los
-  // clics, y es lo que distingue "visto antes" de "esta sesión".
-  const [initialWatched, setInitialWatched] = useState<Set<number>>(() =>
-    watchedSetFor(initialSeason),
+  // Fase 4 del rediseño de series: la hoja deja marcar en VARIAS temporadas.
+  // Antes cambiar de temporada reseteaba lo marcado en la anterior, así que
+  // registrar «el final de la T1 y el principio de la T2» eran dos hojas.
+  //
+  // Todo va por clave "temporada:episodio". `initialWatched` es la foto de "ya
+  // visto" al abrir (no cambia con los clics: distingue "visto antes" de "esta
+  // vez"); `selected` es lo visto + lo marcado ahora, en todas las temporadas.
+  const key = (s: number, e: number) => `${s}:${e}`;
+  const [initialWatched] = useState<Set<string>>(
+    () =>
+      new Set(
+        seasons.flatMap((s) =>
+          s.episodes.filter((e) => e.watched).map((e) => key(s.season, e.episode)),
+        ),
+      ),
   );
-  const [selected, setSelected] = useState<Set<number>>(() => watchedSetFor(initialSeason));
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(initialWatched));
 
-  // Cambiar de temporada resetea a lo ya visto de la NUEVA — no arrastra
-  // marcas de la anterior. Manejador de evento, no efecto. Notifica al padre
-  // aquí mismo (nunca desde un efecto): el nuevo delta es 0 tras un reseteo.
+  const newlyOf = (set: Set<string>) =>
+    [...set]
+      .filter((k) => !initialWatched.has(k))
+      .map((k) => {
+        const [s, e] = k.split(":").map(Number);
+        return { season: s, episode: e };
+      })
+      .sort((a, b) => a.season - b.season || a.episode - b.episode);
+
+  // Cambiar de temporada ya no toca lo marcado: solo cambia qué se ve.
   function handleSeasonChange(next: number) {
     setSeason(next);
-    const watched = watchedSetFor(next);
-    setInitialWatched(watched);
-    setSelected(watched);
-    onNewlyMarkedChange(0, null);
   }
 
   // Manejador de evento: calcula el siguiente set a partir del `selected` del
@@ -60,16 +69,25 @@ export function SeriesEpisodeGrid({
   // — un updater funcional puede invocarse más de una vez por la misma
   // actualización y duplicaría o desincronizaría el aviso al padre.
   function toggle(episode: number) {
+    const k = key(season, episode);
     const next = new Set(selected);
-    if (next.has(episode)) next.delete(episode);
-    else next.add(episode);
+    if (next.has(k)) next.delete(k);
+    else next.add(k);
     setSelected(next);
-    const newly = [...next].filter((e) => !initialWatched.has(e));
-    onNewlyMarkedChange(
-      newly.length,
-      newly.length > 0 ? { season, episode: Math.max(...newly) } : null,
-    );
+    const newly = newlyOf(next);
+    onNewlyMarkedChange(newly.length, newly.at(-1) ?? null);
   }
+
+  // Vistas de la temporada abierta sobre las claves: lo que ya pintaba la
+  // rejilla (episodeState) sigue trabajando con números de episodio.
+  const seasonSet = (set: Set<string>, n: number) =>
+    new Set(
+      [...set]
+        .filter((k) => k.startsWith(`${n}:`))
+        .map((k) => Number(k.split(":")[1])),
+    );
+  const initialWatchedHere = seasonSet(initialWatched, season);
+  const selectedHere = seasonSet(selected, season);
 
   // useMemo (no solo `?? []`) porque el fallback crea un array nuevo en cada
   // render: sin memorizar, el useEffect de más abajo (que depende de
@@ -92,7 +110,16 @@ export function SeriesEpisodeGrid({
     grid.scrollTop = row === 0 || !tile ? 0 : tile.offsetTop - grid.offsetTop;
   }, [season, episodes]);
 
-  const newlyMarked = [...selected].filter((e) => !initialWatched.has(e));
+  const newlyMarked = newlyOf(selected);
+  const furthest = [...selected]
+    .map((k) => k.split(":").map(Number) as [number, number])
+    .reduce(
+      (best, [s, e]) =>
+        s > best.season || (s === best.season && e > best.episode)
+          ? { season: s, episode: e }
+          : best,
+      { season: 0, episode: 0 },
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -105,7 +132,8 @@ export function SeriesEpisodeGrid({
         </span>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {seasons.map((s) => {
-            const watched = s.episodes.filter((e) => e.watched).length;
+            // Lo visto + lo marcado en esta hoja: la cifra se mueve al marcar.
+            const watched = seasonSet(selected, s.season).size;
             const on = s.season === season;
             return (
               <button
@@ -147,7 +175,7 @@ export function SeriesEpisodeGrid({
             className="grid grid-cols-2 gap-2.5 overflow-y-auto"
           >
             {episodes.map((ep) => {
-              const st = episodeState(ep.episode, initialWatched, selected);
+              const st = episodeState(ep.episode, initialWatchedHere, selectedHere);
               return (
                 <button
                   key={ep.episode}
@@ -187,40 +215,30 @@ export function SeriesEpisodeGrid({
           </div>
         )}
 
-        {/* Los hidden inputs viajan como valores repetidos de "episodes";
-            addSession los lee con formData.getAll (actions.ts:137-141). */}
-        <input type="hidden" name="season" value={season} />
-        {[...selected].map((ep) => (
-          <input key={ep} type="hidden" name="episodes" value={ep} />
+        {/* Solo lo marcado AHORA, de cualquier temporada, como
+            "temporada:episodio"; addSession los lee con formData.getAll. Lo ya
+            visto no se reenvía: el servidor lo descartaría igual. */}
+        {newlyMarked.map((e) => (
+          <input
+            key={`${e.season}:${e.episode}`}
+            type="hidden"
+            name="episodeKeys"
+            value={`${e.season}:${e.episode}`}
+          />
         ))}
 
         {newlyMarked.length > 0 && (
           <span className="inline-flex w-fit items-center gap-1.5 rounded-md border border-green/25 bg-green/10 px-2.5 py-1.5 font-mono text-[11px] text-green">
-            {/* Deliberado: Math.max(...selected), NO ...newlyMarked. El
-                literal («vas por T{season}·E{episode}») describe la posición
-                en la que QUEDA el pase DENTRO DE ESTA TEMPORADA, no el
-                anclaje de la nota — y esa posición sale de TODO lo
-                seleccionado: los hidden inputs de abajo emiten `selected`
-                entero y el servidor hace Math.max sobre eso (actions.ts). Con
-                `newlyMarked` (revertido, era un error): en una temporada vista
-                hasta el 10 en la que marcas el 3, la chapa diría "T1·E3"
-                mientras el pase se queda en E10 — falso.
-                OJO: esto solo describe fielmente la posición GLOBAL del pase
-                si `season` es la temporada más avanzada del pase.
-                rollSeriesProgress nunca retrocede la posición derivada de
-                episode_watches, pero eso protege el estado del PASE, no esta
-                chapa — la rejilla deja elegir cualquier temporada, así que si
-                marcas un episodio suelto de la T1 con el pase ya en T2·E5, la
-                chapa dirá "vas por T1·Ex" y será falso respecto al pase real.
-                El anclaje del compositor ya se distingue con su propia
-                etiqueta ("Anclada a"), así que no hace falta que esta chapa
-                haga ese trabajo. `count` sí sigue siendo `newlyMarked.length`:
-                "cuántos has marcado" es otra pregunta y esa cuenta es
-                correcta. */}
+            {/* «Vas por T·E» = lo más avanzado de TODO lo visto + marcado, en
+                cualquier temporada: es donde queda el pase (rollSeriesProgress
+                toma el más avanzado del pase y nunca retrocede). Antes, con una
+                sola temporada por hoja, la chapa solo miraba la abierta y podía
+                decir T1 con el pase ya en T2. `count` es otra pregunta —cuántos
+                marcas ahora— y sale de `newlyMarked`. */}
             {t("episodesDelta", {
               count: newlyMarked.length,
-              season,
-              episode: Math.max(...selected),
+              season: furthest.season,
+              episode: furthest.episode,
             })}
           </span>
         )}

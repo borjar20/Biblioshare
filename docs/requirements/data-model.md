@@ -1,5 +1,13 @@
 # Modelo de datos
 
+> **Delta 2026-09-23 (fase 4 de series, #626):** columna `post_preferences.autopost_watched`
+> (migración `20260923140000_post_preferences_autopost_watched.sql`) con grants por columna
+> select/insert/update a `authenticated`, verificada en **dev** y en **prod**
+> (`information_schema.columns` + `has_column_privilege`: default `true`, not null, mismos grants
+> que sus hermanas). Las series dejan de crear
+> `progress_sessions` y su actividad se lee de `episode_watches.watched_on` (ver
+> «`episode_watches`» más abajo).
+
 > **Delta 2026-09-23 (#1193, catálogo vivo de series):** columnas `series.tmdb_status`,
 > `next_episode_air_date` y `episodes_synced_at` (migración
 > `20260923130000_series_live_episode_catalog.sql`), verificadas en **dev** y en **prod**
@@ -1225,7 +1233,15 @@ Cuelgan del pase:
   `notes` (varias por sesión, enlazadas por `session_id`, ver abajo); la columna se
   queda con las filas históricas, sin migrar.
 - **`episode_watches`** — un episodio visto. **La existencia de la fila = visto**;
-  `rating`/`review` son opcionales.
+  `rating`/`review` son opcionales. **Desde la fase 4 de series (2026-09-23) es la ÚNICA unidad
+  de actividad de una serie**: las series ya no crean `progress_sessions` (la hoja `/sesion` de
+  serie marca episodios, de varias temporadas, con su fecha). `watched_on` es la fecha **local**
+  del visionado que manda el cliente (`parseWatchedOn`); el `default current_date` (UTC) solo
+  queda para llamadas sin fecha. Racha, calendarios anual/mensual, semana y «Cuándo lees»
+  suman «días de serie» (episodios de una serie con el mismo `watched_on`, `getSeriesDays`) y
+  excluyen las 11 sesiones de serie antiguas (se conservan como historia) para no contar dos
+  veces. Un «día de serie» es también la unidad del post `watched` del feed: uno por serie y
+  día, `source_kind = 'episode_watch'` del primer episodio, con `autopost_watched`.
 - **`notes`** — notas y citas de «Memorizar». **Varias por sesión** (no hay tope):
   `SessionNotebook` (hoja de sesión) las guarda una a una según se escriben —
   `session_id` queda `null` hasta que se guarda la sesión, momento en que `addSession`
@@ -1851,8 +1867,9 @@ añadida a `private.social_target_owner_id`. Valores de enum nuevos: `'post'` en
 
 `post_preferences` (una fila por usuario, **opt-out**, sin fila = defaults): `user_id` (pk →
 `auth.users`), `autopost_started` (default **false**), `autopost_finished` (default **true**),
-`autopost_dropped` (default **false**), `updated_at`. RLS self-only, grants por columna. La lee
-`maybeAutopostMilestone`; su UI de ajustes es Spec 2.
+`autopost_dropped` (default **false**), `autopost_watched` (default **true**, fase 4 de series:
+post diario `watched` por serie y día, lo lee `maybeAutopostWatchedDay`), `updated_at`. RLS
+self-only, grants por columna. La lee `maybeAutopostMilestone`; su UI de ajustes es Spec 2.
 
 **Backfill / absorción** (`20260846`, in-place, preserva comentarios/reacciones): por cada pase
 terminado un post `finished` que **promueve** su target `diary_entry` → `post` (misma fila

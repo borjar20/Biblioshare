@@ -21,6 +21,8 @@ import {
   seasonToMark,
 } from "@/lib/series/follow-state";
 import { EpisodeRating } from "./episode-rating";
+import { todayISO } from "@/lib/stats/dates";
+import { checkCelebrations } from "@/lib/celebrations/preference";
 
 type View = "grid" | "list";
 
@@ -119,9 +121,14 @@ export function EpisodePanel({
     if (!next && (own.rating !== null || own.review) && !window.confirm(t("unwatchConfirm")))
       return;
     patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null });
-    startTransition(() =>
-      setEpisodeWatched(seriesId, ep.season, ep.episode, next),
-    );
+    startTransition(async () => {
+      // Fecha LOCAL (todayISO de stats/dates): la del servidor es UTC y un
+      // episodio de madrugada caería en el día anterior de la racha.
+      await setEpisodeWatched(seriesId, ep.season, ep.episode, next, todayISO());
+      // Marcar puede ganar celebraciones (primera actividad, racha): que el
+      // provider las drene, como tras guardar una sesión.
+      if (next) checkCelebrations();
+    });
   };
 
   const rate = (ep: EpisodeRow, rating: number) => {
@@ -133,7 +140,7 @@ export function EpisodePanel({
       selectedKey === episodeKey(ep) ? draft : (ownOf(ep).review ?? "");
     patch(ep, { watched: true, rating, review: review || null });
     startTransition(() =>
-      rateEpisode(seriesId, ep.season, ep.episode, rating, review || null),
+      rateEpisode(seriesId, ep.season, ep.episode, rating, review || null, todayISO()),
     );
   };
 
@@ -147,12 +154,14 @@ export function EpisodePanel({
         nextPatches[episodeKey(e)] = { ...prev[episodeKey(e)], watched: true };
       return nextPatches;
     });
-    startTransition(() =>
-      markEpisodesWatched(
+    startTransition(async () => {
+      await markEpisodesWatched(
         seriesId,
         eps.map((e) => ({ season: e.season, episode: e.episode })),
-      ),
-    );
+        todayISO(),
+      );
+      checkCelebrations();
+    });
   };
 
   const markNext = (ep: EpisodeRow) => {
@@ -163,7 +172,7 @@ export function EpisodePanel({
   const saveReview = (ep: EpisodeRow) => {
     patch(ep, { watched: true, review: draft || null });
     startTransition(() =>
-      rateEpisode(seriesId, ep.season, ep.episode, ownOf(ep).rating, draft || null),
+      rateEpisode(seriesId, ep.season, ep.episode, ownOf(ep).rating, draft || null, todayISO()),
     );
   };
 

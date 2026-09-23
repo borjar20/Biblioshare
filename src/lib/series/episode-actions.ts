@@ -7,11 +7,22 @@ import { getActivePass, isAutoCloseable } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import {
   episodeExists,
-  loadAiredCatalog,
+  insertEpisodeWatches,
   markEpisodeWatched,
   rollSeriesProgress,
 } from "./episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { parseWatchedOn } from "./watched-on";
+import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
+import { maybeAutopostWatchedDay } from "@/lib/social/autopost-watched";
+import { todayISO } from "./aired";
+
+// El día en que cayó la marca: el que mandó el cliente o, sin él, el default de
+// la columna (`current_date`, fecha UTC de la BD — la misma que todayISO() de
+// aired.ts). Lo necesita el post diario del feed.
+function markedDay(watchedOn: string | null): string {
+  return watchedOn ?? todayISO();
+}
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -70,6 +81,10 @@ async function rollAndMaybeClose(
 ): Promise<void> {
   const { reachedEnd } = await rollSeriesProgress(supabase, userId, seriesId, passId);
   revalidateReadingLog("series", seriesId);
+  // Ver un episodio es actividad del día (fase 4, D3): primera actividad,
+  // hito de racha. Antes solo lo ganaba la hoja de sesión. Best-effort: nunca
+  // lanza. El cliente lo drena con checkCelebrations().
+  if (addedProgress) await earnDailyLoopCelebrations(supabase, userId);
   if (!reachedEnd || !addedProgress) return;
   if (!(await isAutoCloseable(supabase, passId, userId))) return;
 
@@ -87,7 +102,9 @@ export async function setEpisodeWatched(
   seriesId: string,
   season: number,
   episode: number,
-  watched: boolean
+  watched: boolean,
+  // Fecha LOCAL del cliente (YYYY-MM-DD); sin ella, la del servidor.
+  watchedOn?: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -106,10 +123,17 @@ export async function setEpisodeWatched(
       passId,
       season,
       episode,
+      parseWatchedOn(watchedOn),
     );
-    // Marcar un episodio no avisa a nadie: el aviso lo emitiría un post
-    // kind='watched', y hoy NADIE crea posts de ese kind (no existe «compartir
-    // episodio»). Ver issue #626 (github.com/borjar20/Biblioshare).
+    // Post diario del feed (fase 4): antes del auto-cierre, que puede redirigir.
+    if (addedProgress)
+      await maybeAutopostWatchedDay(supabase, {
+        userId: user.id,
+        seriesId,
+        day: markedDay(parseWatchedOn(watchedOn)),
+      });
+    // El aviso a seguidores lo emite el post diario `watched` (fase 4, #626):
+    // uno por serie y día, no uno por episodio — ver autopost-watched.ts.
   } else {
     const { error } = await supabase
       .from("episode_watches")
@@ -141,7 +165,8 @@ const MAX_BULK_EPISODES = 2500;
 // sesión: si el lote llega al último emitido de una serie terminada, se cierra.
 export async function markEpisodesWatched(
   seriesId: string,
-  episodes: { season: number; episode: number }[]
+  episodes: { season: number; episode: number }[],
+  watchedOn?: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -158,52 +183,21 @@ export async function markEpisodesWatched(
   }
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
+  const day = parseWatchedOn(watchedOn);
+  const added = await insertEpisodeWatches(
+    supabase,
+    user.id,
+    seriesId,
+    passId,
+    [...requested].map((k) => {
+      const [season, episode] = k.split(":").map(Number);
+      return { season, episode };
+    }),
+    day
+  );
 
-  const [{ episodes: catalog }, { data: already }] = await Promise.all([
-    loadAiredCatalog(supabase, seriesId),
-    supabase
-      .from("episode_watches")
-      .select("season_number, episode_number")
-      .eq("user_id", user.id)
-      .eq("pass_id", passId),
-  ]);
-  const seen = new Set((already ?? []).map((w) => `${w.season_number}:${w.episode_number}`));
-  const rows = catalog
-    .filter((e) => e.aired)
-    .filter((e) => requested.has(`${e.season_number}:${e.episode_number}`))
-    .filter((e) => !seen.has(`${e.season_number}:${e.episode_number}`))
-    .map((e) => ({
-      user_id: user.id,
-      series_id: seriesId,
-      pass_id: passId,
-      season_number: e.season_number,
-      episode_number: e.episode_number,
-    }));
-
-  let added = false;
-  if (rows.length > 0) {
-    const { error } = await supabase.from("episode_watches").insert(rows);
-    if (!error) added = true;
-    else if (error.code === "23505") {
-      // Otra pestaña marcó alguno entre la lectura y el insert: el lote entero
-      // se rechaza, así que se cae a la escritura de uno en uno, que ya se traga
-      // el choque fila a fila (markEpisodeWatched).
-      for (const r of rows) {
-        if (
-          await markEpisodeWatched(
-            supabase,
-            user.id,
-            seriesId,
-            passId,
-            r.season_number,
-            r.episode_number
-          )
-        )
-          added = true;
-      }
-    } else throw error;
-  }
-
+  if (added)
+    await maybeAutopostWatchedDay(supabase, { userId: user.id, seriesId, day: markedDay(day) });
   await rollAndMaybeClose(supabase, user.id, seriesId, passId, added);
 }
 
@@ -215,7 +209,10 @@ export async function rateEpisode(
   season: number,
   episode: number,
   rating: number | null,
-  review: string | null
+  review: string | null,
+  // Solo cuenta si puntuar CREA la fila (puntuar implica visto): una nota
+  // sobre un episodio ya visto no le cambia la fecha.
+  watchedOn?: string
 ): Promise<void> {
   const supabase = await createClient();
   const {
@@ -230,6 +227,7 @@ export async function rateEpisode(
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
   const cleanReview = review?.trim() || null;
+  const day = parseWatchedOn(watchedOn);
 
   const { data: existing } = await supabase
     .from("episode_watches")
@@ -255,11 +253,14 @@ export async function rateEpisode(
       episode_number: episode,
       rating,
       review: cleanReview,
+      ...(day && { watched_on: day }),
     });
     if (error) throw error;
   }
 
   // Puntuar un episodio YA visto no es progreso: solo cuenta si la puntuación
   // acaba de crear la fila (puntuar implica visto).
+  if (!existing)
+    await maybeAutopostWatchedDay(supabase, { userId: user.id, seriesId, day: markedDay(day) });
   await rollAndMaybeClose(supabase, user.id, seriesId, passId, !existing);
 }

@@ -20,6 +20,9 @@ vi.mock("@/lib/library/manage-actions", () => ({ updateStatus: vi.fn() }));
 vi.mock("next/image", () => ({ default: () => null }));
 
 afterEach(cleanup);
+
+// Fase 4: las acciones llevan la fecha LOCAL del visionado.
+const LOCAL_DAY = expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/);
 beforeEach(() => vi.clearAllMocks());
 
 function ep(season: number, episode: number, own: Partial<EpisodeRow["own"]> = {}): EpisodeRow {
@@ -76,7 +79,7 @@ describe("EpisodePanel · fase 3", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Visto" })[0]);
 
     expect(confirm).not.toHaveBeenCalled();
-    expect(actions.setEpisodeWatched).toHaveBeenCalledWith("s1", 1, 1, false);
+    expect(actions.setEpisodeWatched).toHaveBeenCalledWith("s1", 1, 1, false, LOCAL_DAY);
     confirm.mockRestore();
   });
 
@@ -85,10 +88,14 @@ describe("EpisodePanel · fase 3", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Marcar los 2 que faltan" })[0]);
 
-    expect(actions.markEpisodesWatched).toHaveBeenCalledWith("s1", [
-      { season: 1, episode: 2 },
-      { season: 1, episode: 3 },
-    ]);
+    expect(actions.markEpisodesWatched).toHaveBeenCalledWith(
+      "s1",
+      [
+        { season: 1, episode: 2 },
+        { season: 1, episode: 3 },
+      ],
+      LOCAL_DAY,
+    );
   });
 
   it("la cabecera marca el siguiente y ofrece puntuarlo en línea", () => {
@@ -96,7 +103,7 @@ describe("EpisodePanel · fase 3", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Visto: T1E2/ }));
 
-    expect(actions.setEpisodeWatched).toHaveBeenCalledWith("s1", 1, 2, true);
+    expect(actions.setEpisodeWatched).toHaveBeenCalledWith("s1", 1, 2, true, LOCAL_DAY);
     expect(screen.getByRole("group", { name: "¿Qué tal T1E2?" })).toBeTruthy();
   });
 });
