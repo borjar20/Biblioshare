@@ -4971,3 +4971,26 @@ todo lo demás, cualquier post propio se puede borrar a mano desde su tarjeta.
 el guard de moderación (`guard_moderated_write`) salta el DELETE anidado y el post se queda como
 evidencia oculta, sin impedir que el usuario borre su pase. Es coherente con «el borrado de una
 publicación no elimina su pase personal»: la evidencia de moderación no la decide el usuario.
+
+## 2026-09-23 — Un hito tampoco sobrevive a que su pase lo desmienta; y solo se cuelga de fuentes propias (#1187, #1188)
+
+**Qué se decide.** La regla del 2026-09-22 («un hito es una afirmación sobre su fuente») se
+extiende al **cambio** de estado. Si el pase pasa a un estado que desmiente un hito suyo, ese post
+se borra: un trigger `after update of status` en `passes`, con la misma forma que el de borrado.
+Y un post solo puede colgar de una fuente (pase, sesión o episodio) **del propio autor**, lo que
+se comprueba en el `with check` de `posts insert own`.
+
+**Qué se corrige del diagnóstico.** #1187 daba Terminado→Leyendo como el caso roto. No lo es: la
+máquina archiva el pase terminado intacto y crea otro, así que el `finished` sigue diciendo la
+verdad sobre un pase que existe. Si fue un error, sobra el pase, y borrarlo ya se lleva el post.
+Lo que sí mentía eran las correcciones sobre el **mismo** pase (Terminado↔Abandonado,
+Abandonado→Leyendo, Leyendo→Pendiente).
+
+**Por qué `started` sobrevive.** Terminar, abandonar o retomar no desmiente que se empezó. Solo
+volver a pendiente lo hace.
+
+**Por qué subconsultas y no una función `security definer` para #1188.** Quien inserta es el
+dueño, y el dueño ve sus fuentes por RLS. Una función privilegiada contestaría «¿el pase X es de
+Y?» a cualquiera, también sobre perfiles privados. Medido en prod el 2026-09-23: 0 posts sobre
+fuentes ajenas y 0 hitos que contradigan su pase, así que no hace falta limpieza retroactiva.
+
