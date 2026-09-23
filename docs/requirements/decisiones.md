@@ -5097,3 +5097,35 @@ siguiente episodio que se marque ese día lo recrea. La mascota sigue contando s
 sin episodios (su regla vive también en SQL, `get_companion_state`, y es balance del juego):
 #1199.
 
+
+## 2026-09-23 — Catálogo: si TMDB no tiene título español y el original no es latino, se usa el inglés (#1202)
+
+**Qué se decide.** TMDB con `language=es-ES` no pasa al inglés cuando falta la traducción:
+devuelve `original_title` y la sinopsis vacía. Así entraron 190 obras con título en coreano,
+japonés o cirílico. Regla (`src/lib/catalog/readable-title.ts`): **si el título tiene letras
+fuera del alfabeto latino, se usa el de en-US**, siempre que ese sí se lea. Un título latino sin
+traducir (una película francesa, una italiana) **se queda en su idioma original**: se lee sin
+problema y el dueño lo prefiere así. La sinopsis de en-US solo rellena una española vacía. Se
+aplica en la hidratación de la ficha, en la filmografía de una persona (una llamada más, con la
+filmografía entera en en-US) y en la búsqueda (solo si hay algún resultado ilegible).
+
+**Por qué no se tocaron las RPC `hydrate_*`.** Tratar un «título igual al original» como hueco
+dejaría que TMDB corrigiera sola una traducción que llega más tarde. Pero `hydrate_movie` está
+concedida a `authenticated` con los valores que mande el cliente: ampliar lo que puede pisar
+abriría otra vez el envenenamiento del catálogo (#674). Las filas que ya había se corrigieron con
+un backfill de datos en dev y en prod, sin migración.
+
+**Límites asumidos.** 15 obras siguen ilegibles porque TMDB tampoco tiene título inglés (casi
+todas rusas). Un título ya guardado no se revisa si TMDB lo traduce después. Ambos en #1202.
+
+## 2026-09-23 — Catálogo: el lote de filmografía rellena huecos pero no da la obra por hidratada (#1201)
+
+**Qué se decide.** `hydrate_screens_bulk` deja de delegar en `hydrate_movie`/`hydrate_series`
+y hace su propio UPDATE fill-only **sin marcar `hydrated_at`**. El lote solo trae lo que da la
+filmografía de TMDB (título, sinopsis, géneros, año, portada); director/creador y tamaños los
+completa la primera apertura de ficha, que se saltaba la obra porque ya estaba marcada. Es el
+criterio que ya seguía `hydrate_books_bulk` con los libros. En prod había 3057 de 4477 películas
+y 900 de 996 series así; la migración las devuelve a pendientes.
+
+**Coste asumido.** Una obra que de verdad no tenga director en TMDB paga una llamada más a TMDB
+en su siguiente visita y vuelve a quedar marcada por `hydrate_movie`.

@@ -27,7 +27,9 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  *
  * `director`/`creator` y las duraciones/temporadas/episodios NO viven en
  * `SearchResult` — quedan sin hidratar en el lote y los completa la apertura
- * de ficha (`ensureMovieHydrated`/`ensureSeriesHydrated`).
+ * de ficha (`ensureMovieHydrated`/`ensureSeriesHydrated`). Para eso
+ * `hydrate_screens_bulk` NO marca `hydrated_at` (#1201): antes delegaba en
+ * `hydrate_movie`, que sí lo marca, y la ficha se saltaba la obra para siempre.
  *
  * Los libros se registran Y se hidratan PARCIALMENTE (`hydrate_books_bulk`):
  * título, autor, año y portada, que es lo que la bibliografía de autor SÍ trae

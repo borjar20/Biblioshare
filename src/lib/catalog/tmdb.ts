@@ -4,6 +4,7 @@ import { isSelfAppearance } from "@/lib/people/credit-noise";
 import type { SearchResult } from "./types";
 import { resolveGenresFromIds } from "./tmdb-genres";
 import { CatalogProviderError, requireProviderResponse } from "./provider-error";
+import { isHardToRead, needsEnglish, pickReadable, type EnglishFallback } from "./readable-title";
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
 const TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
@@ -70,7 +71,28 @@ function mapMovieResult(r: TmdbMovieResult): SearchResult {
 
 export async function searchMovies(query: string): Promise<SearchResult[]> {
   const results = await tmdbSearch("movie", query);
-  return results.filter((r) => r.title).map(mapMovieResult);
+  return withReadableTitles("movie", query, results.filter((r) => r.title).map(mapMovieResult));
+}
+
+// Búsqueda: solo si algún resultado sale con título ilegible (ver
+// readable-title.ts) se repite la MISMA búsqueda en en-US y se cruza por id. Una
+// búsqueda de cine español o anglosajón no paga la segunda llamada. Aquí solo se
+// arregla el título: la sinopsis de un resultado de búsqueda no se persiste.
+async function withReadableTitles(
+  kind: "movie" | "tv",
+  query: string,
+  results: SearchResult[]
+): Promise<SearchResult[]> {
+  if (!results.some((r) => isHardToRead(r.title))) return results;
+  const english = await tmdbSearch(kind, query, "en-US");
+  const byId = new Map(english.map((e) => [String(e.id), e.title ?? e.name]));
+  return results.map((r) => {
+    const { title } = pickReadable(
+      { title: r.title, synopsis: r.synopsis },
+      { title: byId.get(r.externalId) }
+    );
+    return { ...r, title: title ?? r.title };
+  });
 }
 
 /**
@@ -445,6 +467,21 @@ export type SeriesHydration = {
   episodeRuntimeMinutes: number | null;
 };
 
+// Título y sinopsis de la ficha con la caída a en-US de readable-title.ts. La
+// segunda llamada solo se hace si hace falta, y si falla se queda lo de es-ES:
+// peor un título ilegible que no hidratar la ficha.
+async function readableScreenText(
+  kind: "movie" | "tv",
+  tmdbId: number,
+  es: { title: string | null; synopsis: string | null }
+): Promise<{ title: string | null; synopsis: string | null }> {
+  if (!needsEnglish(es)) return es;
+  const en = await tmdbGet<{ title?: string; name?: string; overview?: string }>(
+    `/${kind}/${tmdbId}?language=en-US`
+  );
+  return pickReadable(es, en ? { title: en.title ?? en.name, overview: en.overview } : null);
+}
+
 function yearFrom(date: string | undefined | null): number | null {
   return date ? Number(date.slice(0, 4)) || null : null;
 }
@@ -463,12 +500,15 @@ export async function getMovieForHydration(tmdbId: number, strict = false): Prom
 
   const director =
     (data.credits?.crew ?? []).find((c) => c.job === "Director")?.name ?? null;
+  const { title, synopsis } = await readableScreenText(
+    "movie", tmdbId, { title: data.title ?? null, synopsis: data.overview ?? null }
+  );
 
   return {
-    title: data.title ?? null,
+    title,
     originalTitle: data.original_title ?? null,
     director,
-    synopsis: data.overview ?? null,
+    synopsis,
     genres: resolveGenresFromIds((data.genres ?? []).map((g) => g.id)),
     year: yearFrom(data.release_date),
     coverUrl: data.poster_path ? `${TMDB_IMAGE_BASE}${data.poster_path}` : null,
@@ -487,12 +527,15 @@ export async function getSeriesForHydration(tmdbId: number): Promise<SeriesHydra
     created_by?: Array<{ name: string }>;
   }>(`/tv/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
+  const { title, synopsis } = await readableScreenText(
+    "tv", tmdbId, { title: data.name ?? null, synopsis: data.overview ?? null }
+  );
 
   return {
-    title: data.name ?? null,
+    title,
     originalTitle: data.original_name ?? null,
     creator: (data.created_by ?? [])[0]?.name ?? null,
-    synopsis: data.overview ?? null,
+    synopsis,
     genres: resolveGenresFromIds((data.genres ?? []).map((g) => g.id)),
     year: yearFrom(data.first_air_date),
     coverUrl: data.poster_path ? `${TMDB_IMAGE_BASE}${data.poster_path}` : null,
@@ -749,7 +792,38 @@ export async function getPersonCombinedCredits(
     if (role) push(raw, role);
   }
 
-  return out;
+  return withReadableCredits(tmdbId, out);
+}
+
+// La filmografía es el camino que MÁS títulos ilegibles metió en el catálogo
+// (filmografías de actores coreanos, rusos…): se escriben tal cual vía
+// `hydrate_screens_bulk`. Una sola llamada extra, la misma filmografía en en-US,
+// cruzada por (tipo, id).
+async function withReadableCredits(
+  personTmdbId: number,
+  entries: PersonCreditEntry[]
+): Promise<PersonCreditEntry[]> {
+  if (!entries.some((e) => needsEnglish({ title: e.title, synopsis: e.synopsis }))) {
+    return entries;
+  }
+  const en = await tmdbGet<{
+    cast?: TmdbCombinedCreditEntry[];
+    crew?: TmdbCombinedCreditEntry[];
+  }>(`/person/${personTmdbId}/combined_credits?language=en-US`);
+  if (!en) return entries;
+
+  const byKey = new Map<string, EnglishFallback>();
+  for (const raw of [...(en.cast ?? []), ...(en.crew ?? [])]) {
+    byKey.set(`${raw.media_type}:${raw.id}`, {
+      title: raw.media_type === "movie" ? raw.title : raw.name,
+      overview: raw.overview,
+    });
+  }
+  return entries.map((e) => {
+    const fallback = byKey.get(`${e.itemType === "movie" ? "movie" : "tv"}:${e.tmdbId}`);
+    const { title, synopsis } = pickReadable({ title: e.title, synopsis: e.synopsis }, fallback);
+    return { ...e, title: title ?? e.title, synopsis };
+  });
 }
 
 export type CollectionDetails = {
@@ -803,7 +877,7 @@ export async function getCollection(
 
 export async function searchSeries(query: string): Promise<SearchResult[]> {
   const results = await tmdbSearch("tv", query);
-  return results
+  return withReadableTitles("tv", query, results
     .filter((r) => r.name)
     .map((r) => ({
       itemType: "series" as const,
@@ -822,7 +896,7 @@ export async function searchSeries(query: string): Promise<SearchResult[]> {
       publisher: null,
       pageCount: null,
       isbn: null,
-    }));
+    })));
 }
 
 // ── Galería de portadas oficiales (editor de ficha) ──────────────────────────
