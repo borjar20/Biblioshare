@@ -1,7 +1,7 @@
 # Series: revisión del flujo de registro y propuesta de rediseño
 
-`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fase 1 implementada]` — diagnóstico del flujo actual verificado
-contra el código de `main` a esta fecha. De la «Propuesta», solo la fase 1 (§6) está implementada.
+`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fases 1 y 2 implementadas]` — diagnóstico del flujo actual verificado
+contra el código de `main` a esta fecha. De la «Propuesta», están implementadas las fases 1 y 2 (§6).
 
 ## 1. Por qué
 
@@ -160,7 +160,10 @@ dejan de tener sesiones y las estadísticas leen `episode_watches.created_at`. R
 
 1. **Catálogo vivo** (H1, H2) — **hecha** (#1193): columnas nuevas, refresco, filtro de emitidos.
    Adelanta una pieza de H3: una serie en emisión ya no se completa sola y el panel dice «Al día».
-2. **Estados** (H3, H4): «Al día» derivado, auto-cierre según `tmdb_status`, «Seguir con la T5».
+2. **Estados** (H3, H4) — **hecha**: «Al día» derivado en ficha, biblioteca, Inicio y pestaña
+   Episodios (tarjeta con nota «hasta ahora»); «Seguir con la T5» reabre el mismo pase. Queda
+   fuera la rama «serie sin estado de TMDB → preguntar si ha terminado»: sin `tmdb_id` no hay
+   catálogo de episodios, así que ese auto-cierre no se da en la práctica.
 3. **Pantalla de seguimiento** (H5–H9): cabecera, marcar + puntuar en línea, autosave, marcado
    masivo, confirmación al desmarcar.
 4. **Sesiones** (H10) según D3, y limpieza de puertas duplicadas.

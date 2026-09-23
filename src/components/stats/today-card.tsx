@@ -39,7 +39,10 @@ export async function TodayCard({
   // El pase de esta tarjeta está ABIERTO por definición (el destacado solo
   // pinta `in_progress`), así que el 100 solo aparece con el final alcanzado —
   // y entonces la fila de acciones ofrece «Marcar terminada».
-  const reachedEnd = progress !== null && progress.current >= progress.total;
+  // Una serie AL DÍA también está al 100 %, pero no ha terminado: no se ofrece
+  // «Marcar terminada» (fase 2 del rediseño de series).
+  const reachedEnd =
+    progress !== null && progress.current >= progress.total && !item.upToDate;
 
   const todayMinutes = weekly[weekly.length - 1]?.minutes ?? 0;
   const goalPercent = dailyGoalMinutes

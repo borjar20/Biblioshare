@@ -86,6 +86,13 @@ describe("planTransition", () => {
       kind: "updateActive", set: { status: "in_progress", finished_on: null },
     });
   });
+  it("completed → in_progress con 'continue' reabre el MISMO pase (serie con temporada nueva)", () => {
+    expect(
+      planTransition({ id: "p1", status: "completed" }, "in_progress", HOY, "continue")
+    ).toEqual({
+      kind: "updateActive", set: { status: "in_progress", finished_on: null },
+    });
+  });
   it("dropped → in_progress con 'restart' archiva y abre de cero", () => {
     expect(
       planTransition({ id: "p1", status: "dropped" }, "in_progress", HOY, "restart")

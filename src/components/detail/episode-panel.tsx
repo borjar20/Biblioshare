@@ -9,6 +9,9 @@ import { CheckIcon } from "@/components/ui/icons";
 import { EpisodeGrid, type SeasonGroup, type GridSource } from "./episode-grid";
 import { EpisodeList } from "./episode-list";
 import { SeasonIndex, SeasonRail, type SeasonStat } from "./season-index";
+import { SeriesFollowCard } from "./series-follow-card";
+import { useItemStatus } from "./item-status-context";
+import { hasNewEpisodesAfter } from "@/lib/series/follow-state";
 
 type View = "grid" | "list";
 
@@ -30,13 +33,20 @@ export function episodeKey(ep: { season: number; episode: number }): string {
 // sobre los props del servidor, mismo criterio que el resto de la app.
 export function EpisodePanel({
   seriesId,
-  ended,
+  airing,
+  nextAirDate,
+  pass,
   seasons,
   isLoggedIn,
 }: {
   seriesId: string;
-  /** La serie no emitirá más (TMDB Ended/Canceled). Decide «Serie completa» vs «Al día». */
-  ended: boolean;
+  /** TMDB la da por en emisión (estado CONOCIDO y no terminado): sin siguiente
+   *  episodio se lee «Al día», no «Serie completa». */
+  airing: boolean;
+  /** Siguiente episodio anunciado (YYYY-MM-DD) o null. */
+  nextAirDate: string | null;
+  /** Pase activo (id y nota de la serie), o null si no la sigues. */
+  pass: { id: string; rating: number | null } | null;
   seasons: SeasonGroup[];
   isLoggedIn: boolean;
 }) {
@@ -171,6 +181,50 @@ export function EpisodePanel({
     stats.find((s) => s.season === activeSeason) ?? stats[0];
 
   const interactive = source === "mine" && isLoggedIn;
+
+  // Estado de seguimiento (fase 2). El estado del pase se lee del contexto
+  // compartido con la píldora del hero, así que «Seguir con la T5» cambia las
+  // dos cosas en el mismo commit optimista.
+  const { status: passStatus } = useItemStatus();
+  const allEpisodes = seasons.flatMap((s) => s.episodes);
+  const upToDate =
+    passStatus === "in_progress" && airing && total > 0 && nextEpisode === null;
+  const newEpisodesAfterFinish =
+    passStatus === "completed" &&
+    hasNewEpisodesAfter(
+      allEpisodes.map((e) => ({
+        season: e.season,
+        episode: e.episode,
+        aired: e.aired,
+        watched: ownOf(e).watched,
+      })),
+    );
+  const episodesAverage = averageRating(
+    allEpisodes
+      .map((e) => ownOf(e).rating)
+      .filter((r): r is number => r !== null),
+  );
+  // Primer episodio nuevo tras lo último visto: su temporada es la del botón.
+  const continueSeason = (() => {
+    if (!newEpisodesAfterFinish) return null;
+    let furthest = -1;
+    allEpisodes.forEach((e, i) => {
+      if (ownOf(e).watched) furthest = i;
+    });
+    return allEpisodes.slice(furthest + 1).find((e) => e.aired)?.season ?? null;
+  })();
+  const followCard =
+    isLoggedIn && pass && (upToDate || newEpisodesAfterFinish) ? (
+      <SeriesFollowCard
+        seriesId={seriesId}
+        passId={pass.id}
+        passRating={pass.rating}
+        mode={upToDate ? "upToDate" : "newEpisodes"}
+        nextAirDate={nextAirDate}
+        continueSeason={continueSeason}
+        episodesAverage={episodesAverage}
+      />
+    ) : null;
   const percent = total === 0 ? 0 : Math.round((watched / total) * 100);
 
   const sourceToggle = isLoggedIn && (
@@ -219,6 +273,8 @@ export function EpisodePanel({
       </div>
       {isLoggedIn && <div className="mb-4 lg:hidden">{sourceToggle}</div>}
 
+      {followCard}
+
       {view === "grid" ? (
         <EpisodeGrid
           seasons={seasons}
@@ -237,14 +293,13 @@ export function EpisodePanel({
                   aria-hidden
                   className="h-2 w-2 rounded-full bg-status-in-progress"
                 />
-                {/* Sin siguiente emitido: si la serie terminó, completa; si
-                    sigue en emisión, «Al día» (fase 2 de la spec lo lleva al
-                    estado del pase). */}
+                {/* Sin siguiente emitido: si sigue en emisión, «Al día»; si
+                    terminó (o no se sabe), completa. */}
                 {nextEpisode
                   ? t("watchingSeason", { n: cursorSeason })
-                  : ended
-                    ? t("seriesComplete")
-                    : t("upToDate")}
+                  : airing
+                    ? t("upToDate")
+                    : t("seriesComplete")}
               </span>
               <span className="shrink-0 font-serif text-[18px] font-semibold whitespace-nowrap text-foreground">
                 {watched}

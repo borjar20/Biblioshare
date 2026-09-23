@@ -10,6 +10,7 @@ import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 import { shouldHideDropped, splitDropped } from "./hide-dropped";
 import { chunkIds } from "@/lib/supabase/in-chunks";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
+import { isUpToDate } from "@/lib/series/follow-state";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -20,6 +21,8 @@ type CatalogMeta = {
   publisher: string | null;
   pageCount: number | null;
   totalEpisodes: number | null;
+  /** Series: `status` de TMDB (catálogo vivo); null en el resto. */
+  tmdbStatus: string | null;
 };
 
 type ActivePassMeta = {
@@ -89,7 +92,7 @@ async function hydrateItemBatch(
     idsByType.series.length
       ? supabase
           .from("series")
-          .select("id, title, cover_url, total_episodes")
+          .select("id, title, cover_url, total_episodes, tmdb_status")
           .in("id", idsByType.series)
       : Promise.resolve({ data: [] }),
     // Las páginas son un dato de la TIRADA, no de la obra: la búsqueda ya no
@@ -123,6 +126,7 @@ async function hydrateItemBatch(
       publisher: row.publisher,
       pageCount: row.total_pages,
       totalEpisodes: null,
+      tmdbStatus: null,
     });
   }
   for (const row of movies.data ?? []) {
@@ -133,6 +137,7 @@ async function hydrateItemBatch(
       publisher: null,
       pageCount: null,
       totalEpisodes: null,
+      tmdbStatus: null,
     });
   }
   for (const row of series.data ?? []) {
@@ -143,6 +148,7 @@ async function hydrateItemBatch(
       publisher: null,
       pageCount: null,
       totalEpisodes: row.total_episodes,
+      tmdbStatus: row.tmdb_status,
     });
   }
 
@@ -301,6 +307,15 @@ async function hydrateItemBatch(
         totalEpisodes: meta.totalEpisodes,
         watchedEpisodes:
           key.item_type === "series" ? (watchedByPassId.get(activePass.id) ?? 0) : null,
+        // `totalEpisodes` cuenta los EMITIDOS desde el catálogo vivo (#1193).
+        upToDate:
+          key.item_type === "series" &&
+          isUpToDate({
+            status: activePass.status,
+            watched: watchedByPassId.get(activePass.id) ?? 0,
+            aired: meta.totalEpisodes ?? 0,
+            tmdbStatus: meta.tmdbStatus,
+          }),
         rereadCount: rereadCountByItem.get(itemKey) ?? 0,
         pinnedOrder: activePass.pinnedOrder,
         activePassId: activePass.id,

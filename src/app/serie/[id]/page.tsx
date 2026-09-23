@@ -54,6 +54,7 @@ import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
 import { todayISO } from "@/lib/series/aired";
+import { isUpToDate } from "@/lib/series/follow-state";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -126,6 +127,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
+  const tEpisode = await getTranslations("episode");
   const supabase = await createClient();
 
   const [{ data: series }, user, accessToken] = await Promise.all([
@@ -231,13 +233,39 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   // Nota de alcance: el auto-cierre por episodios (EpisodePanel) NO publica
   // ahí — redirige a `?cerrar=...&tab=log`, que es una navegación completa con
   // render fresco del servidor, así que el badge llega ya correcto.
-  const statusLabels = await heroStatusLabels("series");
+  const baseStatusLabels = await heroStatusLabels("series");
 
   // El rail de PC, solo lectura (ver item-rail-actions.tsx). El total sale del
   // catálogo (lo mismo que cuenta la pestaña Episodios); en la primera visita
   // el catálogo aún no está sincronizado y el fallback es la columna de TMDB.
-  const railLabels = await statusVerbs("series");
-  const totalEpisodes = catalogEpisodes || series.total_episodes || 0;
+  const baseRailLabels = await statusVerbs("series");
+  // Con el catálogo vivo ya sincronizado, `total_episodes` son los EMITIDOS con
+  // la regla exacta (airedFlags: los «sin fecha» de una temporada anunciada
+  // fuera); `catalogEpisodes` es la aproximación SQL (sin fecha = emitido), que
+  // solo manda mientras la serie no se ha sincronizado.
+  const totalEpisodes =
+    (series.episodes_synced_at && series.total_episodes) ||
+    catalogEpisodes ||
+    series.total_episodes ||
+    0;
+
+  // «Al día» (fase 2, estado DERIVADO — src/lib/series/follow-state.ts): la
+  // píldora y el rail dicen «Al día» en vez de «Viendo» cuando has visto todo lo
+  // emitido y la serie sigue en emisión. Solo cambia la etiqueta de in_progress:
+  // el estado guardado sigue siendo ese, y ambos sitios son de solo lectura.
+  const upToDate = isUpToDate({
+    status: activeStatus,
+    watched: watchedEpisodes,
+    aired: totalEpisodes,
+    tmdbStatus: series.tmdb_status,
+  });
+  const upToDateLabel = tEpisode("upToDate");
+  const statusLabels = upToDate
+    ? { ...baseStatusLabels, in_progress: `${tDetail("inLibrary")} · ${upToDateLabel}` }
+    : baseStatusLabels;
+  const railLabels = upToDate
+    ? { ...baseRailLabels, in_progress: upToDateLabel }
+    : baseRailLabels;
   const railProgress =
     activePass && totalEpisodes > 0
       ? {
@@ -559,7 +587,9 @@ async function SeriesTabs({
         hasEpisodes ? (
           <EpisodePanel
             seriesId={series.id}
-            ended={episodeData.ended}
+            airing={series.tmdb_status !== null && !episodeData.ended}
+            nextAirDate={series.next_episode_air_date}
+            pass={activeRow ? { id: activeRow.id, rating: activeRow.rating } : null}
             seasons={seasonGroups}
             isLoggedIn={Boolean(userId)}
           />

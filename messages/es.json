@@ -1546,7 +1546,16 @@
     "legendUpcoming": "Próximamente",
     "upToDate": "Al día",
     "upcoming": "Próximamente",
-    "upcomingOn": "Próximamente · {date}"
+    "upcomingOn": "Próximamente · {date}",
+    "upToDateTitle": "Estás al día",
+    "nextAirOn": "Próximo episodio el {date}",
+    "waitingSeason": "Esperando temporada nueva",
+    "rateSoFar": "Tu nota de la serie hasta ahora",
+    "useEpisodesAverage": "Usar la media de tus episodios ({value})",
+    "newEpisodesTitle": "Hay episodios nuevos",
+    "continueHint": "Sigue este visionado donde lo dejaste, sin empezar uno nuevo.",
+    "continueSeason": "Seguir con la T{n}",
+    "continueWatching": "Seguir viéndola"
   },
   "person": {
     "notFoundTitle": "Persona no encontrada",
@@ -2331,6 +2340,7 @@
       "completed": "Completado",
       "dropped": "Abandonado"
     },
+    "upToDate": "Al día",
     "remove": "Quitar",
     "pin": "Fijar en el perfil",
     "unpin": "Quitar de fijados",
