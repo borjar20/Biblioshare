@@ -1,5 +1,11 @@
 # Modelo de datos
 
+> **Delta 2026-09-23 (#1201):** `hydrate_screens_bulk` reescrita para no marcar `hydrated_at`
+> (migración `20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`, con backfill que devuelve
+> a pendientes las pelis/series marcadas sin director/creador o tamaños). Verificada en **dev**
+> (`pg_proc` + prueba con rollback: fill-only, `hydrated_at` intacto, `genres` null no rompe el
+> lote). **Prod: pendiente de aplicar.**
+
 > **Delta 2026-09-23 (fase 4 de series, #626):** columna `post_preferences.autopost_watched`
 > (migración `20260923140000_post_preferences_autopost_watched.sql`) con grants por columna
 > select/insert/update a `authenticated`, verificada en **dev** y en **prod**
@@ -579,7 +585,11 @@ de la filmografía completa de una persona, `hydratePersonCredits`) usa
 `register_catalog_items_bulk` + `hydrate_screens_bulk` para no convertir ~6 consultas en
 300+ llamadas RPC; sus `SearchResult` vienen de TMDB (origen servidor, no del cliente), así
 que hidratarlos directamente no reabre el envenenamiento — la RPC fill-only tampoco podría
-pisar una curación existente aunque quisiera.
+pisar una curación existente aunque quisiera. **Desde #1201 (migración
+`20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`) `hydrate_screens_bulk` NO marca
+`hydrated_at`**: hace su propio UPDATE fill-only en vez de delegar en `hydrate_movie`/
+`hydrate_series` (que sí lo marcan), porque el lote no trae director/creador ni tamaños y la
+marca impedía que la ficha los completara. Es el mismo criterio que `hydrate_books_bulk`.
 
 > **Estado del despliegue: COMPLETO el 2026-08-19.** Las seis migraciones están **aplicadas y
 > verificadas en DEV y en PROD** contra objetos reales (`information_schema.columns`,

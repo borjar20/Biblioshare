@@ -5117,3 +5117,15 @@ un backfill de datos en dev y en prod, sin migración.
 
 **Límites asumidos.** 15 obras siguen ilegibles porque TMDB tampoco tiene título inglés (casi
 todas rusas). Un título ya guardado no se revisa si TMDB lo traduce después. Ambos en #1202.
+
+## 2026-09-23 — Catálogo: el lote de filmografía rellena huecos pero no da la obra por hidratada (#1201)
+
+**Qué se decide.** `hydrate_screens_bulk` deja de delegar en `hydrate_movie`/`hydrate_series`
+y hace su propio UPDATE fill-only **sin marcar `hydrated_at`**. El lote solo trae lo que da la
+filmografía de TMDB (título, sinopsis, géneros, año, portada); director/creador y tamaños los
+completa la primera apertura de ficha, que se saltaba la obra porque ya estaba marcada. Es el
+criterio que ya seguía `hydrate_books_bulk` con los libros. En prod había 3057 de 4477 películas
+y 900 de 996 series así; la migración las devuelve a pendientes.
+
+**Coste asumido.** Una obra que de verdad no tenga director en TMDB paga una llamada más a TMDB
+en su siguiente visita y vuelve a quedar marcada por `hydrate_movie`.
