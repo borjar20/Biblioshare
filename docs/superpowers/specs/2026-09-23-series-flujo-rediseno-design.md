@@ -1,7 +1,7 @@
 # Series: revisión del flujo de registro y propuesta de rediseño
 
-`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fases 1 y 2 implementadas]` — diagnóstico del flujo actual verificado
-contra el código de `main` a esta fecha. De la «Propuesta», están implementadas las fases 1 y 2 (§6).
+`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fases 1, 2 y 3 implementadas]` — diagnóstico del flujo actual verificado
+contra el código de `main` a esta fecha. De la «Propuesta», están implementadas las fases 1, 2 y 3 (§6).
 
 ## 1. Por qué
 
@@ -164,6 +164,8 @@ dejan de tener sesiones y las estadísticas leen `episode_watches.created_at`. R
    Episodios (tarjeta con nota «hasta ahora»); «Seguir con la T5» reabre el mismo pase. Queda
    fuera la rama «serie sin estado de TMDB → preguntar si ha terminado»: sin `tmdb_id` no hay
    catálogo de episodios, así que ese auto-cierre no se da en la práctica.
-3. **Pantalla de seguimiento** (H5–H9): cabecera, marcar + puntuar en línea, autosave, marcado
-   masivo, confirmación al desmarcar.
+3. **Pantalla de seguimiento** (H5–H9) — **hecha**: cabecera en móvil y PC, marcar + puntuar en
+   línea, autosave de la reseña, marcado masivo (temporada / hasta aquí), confirmación al desmarcar
+   (#1194) y la rejilla abre el episodio en la lista. La hoja `/sesion` multi-temporada pasa a la
+   fase 4.
 4. **Sesiones** (H10) según D3, y limpieza de puertas duplicadas.

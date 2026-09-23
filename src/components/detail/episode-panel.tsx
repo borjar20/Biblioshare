@@ -3,7 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
-import { setEpisodeWatched, rateEpisode } from "@/lib/series/episode-actions";
+import {
+  setEpisodeWatched,
+  rateEpisode,
+  markEpisodesWatched,
+} from "@/lib/series/episode-actions";
 import { averageRating } from "@/lib/series/rating-scale";
 import { CheckIcon } from "@/components/ui/icons";
 import { EpisodeGrid, type SeasonGroup, type GridSource } from "./episode-grid";
@@ -11,7 +15,12 @@ import { EpisodeList } from "./episode-list";
 import { SeasonIndex, SeasonRail, type SeasonStat } from "./season-index";
 import { SeriesFollowCard } from "./series-follow-card";
 import { useItemStatus } from "./item-status-context";
-import { hasNewEpisodesAfter } from "@/lib/series/follow-state";
+import {
+  episodesUpTo,
+  hasNewEpisodesAfter,
+  seasonToMark,
+} from "@/lib/series/follow-state";
+import { EpisodeRating } from "./episode-rating";
 
 type View = "grid" | "list";
 
@@ -93,11 +102,22 @@ export function EpisodePanel({
       [episodeKey(ep)]: { ...prev[episodeKey(ep)], ...p },
     }));
 
+  // Puntuación rápida (fase 3): tras marcar desde la cabecera, una fila de dots
+  // «¿Qué tal?» bajo ella. Opcional y sin modal: se ignora sin coste y se
+  // sustituye al marcar el siguiente.
+  const [quickRateKey, setQuickRateKey] = useState<string | null>(null);
+
   const toggleWatched = (ep: EpisodeRow) => {
     // Un anunciado no se puede marcar (#1193): la UI ya no ofrece la casilla,
     // esto es la red por si algún camino la invoca igual.
     if (!ep.aired) return;
-    const next = !ownOf(ep).watched;
+    const own = ownOf(ep);
+    const next = !own.watched;
+    // #1194: desmarcar borra la fila del pase, y con ella la nota y la reseña.
+    // Si hay algo que perder, se pregunta antes (mismo patrón que «dejar de
+    // seguir» en la ficha).
+    if (!next && (own.rating !== null || own.review) && !window.confirm(t("unwatchConfirm")))
+      return;
     patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null });
     startTransition(() =>
       setEpisodeWatched(seriesId, ep.season, ep.episode, next),
@@ -115,6 +135,29 @@ export function EpisodePanel({
     startTransition(() =>
       rateEpisode(seriesId, ep.season, ep.episode, rating, review || null),
     );
+  };
+
+  // Marcado masivo: el servidor vuelve a filtrar (existe, emitido, no visto),
+  // esto solo pinta el optimista.
+  const markMany = (eps: EpisodeRow[]) => {
+    if (eps.length === 0) return;
+    setOwnPatches((prev) => {
+      const nextPatches = { ...prev };
+      for (const e of eps)
+        nextPatches[episodeKey(e)] = { ...prev[episodeKey(e)], watched: true };
+      return nextPatches;
+    });
+    startTransition(() =>
+      markEpisodesWatched(
+        seriesId,
+        eps.map((e) => ({ season: e.season, episode: e.episode })),
+      ),
+    );
+  };
+
+  const markNext = (ep: EpisodeRow) => {
+    toggleWatched(ep);
+    setQuickRateKey(episodeKey(ep));
   };
 
   const saveReview = (ep: EpisodeRow) => {
@@ -182,6 +225,17 @@ export function EpisodePanel({
 
   const interactive = source === "mine" && isLoggedIn;
 
+  // Lo que ofrecen «Marcar temporada vista» y «Vistos hasta aquí», sobre la
+  // capa optimista. Orden cronológico = el de `seasons`.
+  const markable = seasons.flatMap((s) =>
+    s.episodes.map((e) => ({ ...e, watched: ownOf(e).watched })),
+  );
+  const seasonPending = (season: number) => seasonToMark(markable, season);
+  const upToPending = (ep: EpisodeRow) => episodesUpTo(markable, ep);
+  const quickRateEpisode = quickRateKey
+    ? allEpisodesFind(seasons, quickRateKey)
+    : null;
+
   // Estado de seguimiento (fase 2). El estado del pase se lee del contexto
   // compartido con la píldora del hero, así que «Seguir con la T5» cambia las
   // dos cosas en el mismo commit optimista.
@@ -246,19 +300,12 @@ export function EpisodePanel({
           conmutadores a la derecha. En PC con lista el contador se calla — la
           barra de resumen de abajo lo dice mejor y con más contexto. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p
-          className={`text-[13px] text-foreground ${view === "list" ? "lg:hidden" : ""}`}
-        >
-          {isLoggedIn
-            ? t.rich("watchedProgress", {
-                watched,
-                total,
-                b: (chunks) => (
-                  <b className="font-serif text-lg font-semibold">{chunks}</b>
-                ),
-              })
-            : t("episodeCount", { count: total })}
-        </p>
+        {/* Con sesión el recuento lo dice la cabecera de seguimiento de abajo. */}
+        {!isLoggedIn && (
+          <p className="text-[13px] text-foreground">
+            {t("episodeCount", { count: total })}
+          </p>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <div className="hidden lg:block">{sourceToggle}</div>
           <Segmented
@@ -273,6 +320,92 @@ export function EpisodePanel({
       </div>
       {isLoggedIn && <div className="mb-4 lg:hidden">{sourceToggle}</div>}
 
+      {/* Cabecera de seguimiento (fase 3; era el `.epsum` solo de PC y solo de
+          la lista): dónde estás, cuánto llevas y el gesto de casi siempre —
+          marcar el siguiente—, ahora en los dos breakpoints y las dos vistas. */}
+      {isLoggedIn && (
+        <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[14px] border border-border bg-surface px-[18px] py-[15px]">
+          <span className="inline-flex shrink-0 items-center gap-[7px] text-[13px] font-semibold text-foreground">
+            <i aria-hidden className="h-2 w-2 rounded-full bg-status-in-progress" />
+            {/* Sin siguiente emitido: si sigue en emisión, «Al día»; si terminó
+                (o no se sabe), completa. */}
+            {nextEpisode
+              ? t("watchingSeason", { n: cursorSeason })
+              : airing
+                ? t("upToDate")
+                : t("seriesComplete")}
+          </span>
+          <span className="shrink-0 font-serif text-[18px] font-semibold whitespace-nowrap text-foreground">
+            {watched}
+            <small className="text-[13px] font-normal text-muted-foreground">
+              {" "}
+              / {t("watchedOfTotal", { total })}
+            </small>
+          </span>
+          <span className="h-2 min-w-[80px] flex-1 overflow-hidden rounded-full bg-surface-muted">
+            <span
+              className="block h-full rounded-full bg-type-series"
+              style={{ width: `${percent}%` }}
+            />
+          </span>
+          <span className="shrink-0 font-mono text-xs font-medium text-type-series">
+            {percent}%
+          </span>
+          {interactive && nextEpisode && (
+            <button
+              type="button"
+              onClick={() => markNext(nextEpisode)}
+              disabled={isPending}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[9px] bg-accent px-4 py-[11px] text-[13px] font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-60 sm:w-auto sm:shrink-0"
+            >
+              <CheckIcon className="h-3.5 w-3.5" />
+              <span className="truncate">
+                {t("markNextEpisode", {
+                  code: t("code", { s: nextEpisode.season, e: nextEpisode.episode }),
+                })}
+                {nextEpisode.title && (
+                  <span className="font-normal opacity-80"> · {nextEpisode.title}</span>
+                )}
+              </span>
+            </button>
+          )}
+          {interactive &&
+            quickRateEpisode &&
+            ownOf(quickRateEpisode).watched &&
+            ownOf(quickRateEpisode).rating === null && (
+              <div
+                role="group"
+                aria-label={t("quickRateTitle", {
+                  code: t("code", { s: quickRateEpisode.season, e: quickRateEpisode.episode }),
+                })}
+                className="flex w-full flex-wrap items-center gap-3 border-t border-border pt-3"
+              >
+                <span className="text-xs text-muted-foreground">
+                  {t("quickRateTitle", {
+                    code: t("code", { s: quickRateEpisode.season, e: quickRateEpisode.episode }),
+                  })}
+                </span>
+                <EpisodeRating
+                  rating={null}
+                  onRate={(r) => {
+                    rate(quickRateEpisode, r);
+                    setQuickRateKey(null);
+                  }}
+                  disabled={isPending}
+                  size={12}
+                />
+                <button
+                  type="button"
+                  onClick={() => setQuickRateKey(null)}
+                  className="ml-auto text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  {t("quickRateSkip")}
+                </button>
+              </div>
+            )}
+        </div>
+      )}
+
       {followCard}
 
       {view === "grid" ? (
@@ -280,57 +413,17 @@ export function EpisodePanel({
           seasons={seasons}
           source={source}
           selectedKey={selectedKey}
-          onSelect={select}
+          // La rejilla es la vista de análisis: tocar una celda lleva al MISMO
+          // detalle que la lista (nota, reseña, «vistos hasta aquí»), abierto.
+          onSelect={(ep) => {
+            setView("list");
+            setOpenSeason(ep.season);
+            setSelectedKey(episodeKey(ep));
+            setDraft(ownOf(ep).review ?? "");
+          }}
         />
       ) : (
         <>
-          {/* `.epsum` de PC·1: dónde estás, cuánto llevas y el único gesto que
-              hace falta la mayoría de las veces — marcar el siguiente. */}
-          {isLoggedIn && (
-            <div className="mb-5 hidden items-center gap-5 rounded-[14px] border border-border bg-surface px-[18px] py-[15px] lg:flex">
-              <span className="inline-flex shrink-0 items-center gap-[7px] text-[13px] font-semibold text-foreground">
-                <i
-                  aria-hidden
-                  className="h-2 w-2 rounded-full bg-status-in-progress"
-                />
-                {/* Sin siguiente emitido: si sigue en emisión, «Al día»; si
-                    terminó (o no se sabe), completa. */}
-                {nextEpisode
-                  ? t("watchingSeason", { n: cursorSeason })
-                  : airing
-                    ? t("upToDate")
-                    : t("seriesComplete")}
-              </span>
-              <span className="shrink-0 font-serif text-[18px] font-semibold whitespace-nowrap text-foreground">
-                {watched}
-                <small className="text-[13px] font-normal text-muted-foreground">
-                  {" "}
-                  / {t("watchedOfTotal", { total })}
-                </small>
-              </span>
-              <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-muted">
-                <span
-                  className="block h-full rounded-full bg-type-series"
-                  style={{ width: `${percent}%` }}
-                />
-              </span>
-              <span className="shrink-0 font-mono text-xs font-medium text-type-series">
-                {percent}%
-              </span>
-              {interactive && nextEpisode && (
-                <button
-                  type="button"
-                  onClick={() => toggleWatched(nextEpisode)}
-                  disabled={isPending}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-[9px] bg-accent px-4 py-[11px] text-[13px] font-semibold text-accent-foreground hover:bg-accent-hover disabled:opacity-60"
-                >
-                  <CheckIcon className="h-3.5 w-3.5" />
-                  {t("markNext")}
-                </button>
-              )}
-            </div>
-          )}
-
           {/* El marco `.ep3` del frame PC·1, con dos columnas y no tres: el
               cuerpo de la ficha está topado en 771px por el raíl lateral de la
               portada, y las 340 del detalle dejaban la lista en ~200px (títulos
@@ -372,6 +465,10 @@ export function EpisodePanel({
                 draft={draft}
                 onDraftChange={setDraft}
                 onSaveReview={saveReview}
+                seasonPendingCount={seasonPending(activeGroup.season).length}
+                onMarkSeason={() => markMany(seasonPending(activeGroup.season))}
+                upToPendingCount={(ep) => upToPending(ep).length}
+                onMarkUpTo={(ep) => markMany(upToPending(ep))}
               />
             </div>
 
@@ -412,4 +509,9 @@ function Segmented({
       ))}
     </div>
   );
+}
+
+function allEpisodesFind(seasons: SeasonGroup[], key: string): EpisodeRow | null {
+  for (const s of seasons) for (const e of s.episodes) if (episodeKey(e) === key) return e;
+  return null;
 }

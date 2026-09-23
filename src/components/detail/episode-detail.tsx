@@ -26,6 +26,9 @@ type DetailProps = {
   draft: string;
   onDraftChange: (value: string) => void;
   onSave: () => void;
+  /** Cuántos marcaría «Vistos hasta aquí» (incluido este); 0 lo oculta. */
+  markUpToCount: number;
+  onMarkUpTo: () => void;
 };
 
 // La línea `.em` de los frames: duración · emitido · nota, en mono y apagada.
@@ -67,34 +70,34 @@ function MetaLine({
   );
 }
 
+// La reseña se guarda sola al salir del cuadro (fase 3, H6): antes había un
+// «Guardar» aparte y, a la vez, puntuar guardaba de rebote el borrador — dos
+// reglas para el mismo bloque. Ahora solo hay una: lo escrito se guarda al
+// soltar el foco, si cambió.
 function ReviewBox({
   draft,
+  saved,
   onDraftChange,
   onSave,
-  isPending,
 }: {
   draft: string;
+  saved: string;
   onDraftChange: (value: string) => void;
   onSave: () => void;
-  isPending: boolean;
 }) {
   const t = useTranslations("episode");
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
       <textarea
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
+        onBlur={() => {
+          if (draft.trim() !== saved.trim()) onSave();
+        }}
         placeholder={t("reviewPlaceholder")}
         className="h-14 w-full resize-none rounded-[9px] border border-border bg-surface-muted px-[11px] py-[9px] text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none lg:h-[70px] lg:px-[13px] lg:py-[11px] lg:text-[13px]"
       />
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={isPending}
-        className="self-start rounded-full border border-border px-3 py-1 text-[11px] text-foreground hover:bg-surface-muted disabled:opacity-60"
-      >
-        {t("save")}
-      </button>
+      <p className="font-mono text-[9.5px] text-muted-foreground">{t("reviewAutosave")}</p>
     </div>
   );
 }
@@ -110,7 +113,10 @@ export function EpisodeInlineDetail({
   draft,
   onDraftChange,
   onSave,
+  markUpToCount,
+  onMarkUpTo,
 }: DetailProps) {
+  const t = useTranslations("episode");
   return (
     <div className="flex flex-col">
       <MetaLine episode={episode} own={own} source={source} className="mt-3" />
@@ -122,10 +128,22 @@ export function EpisodeInlineDetail({
       {interactive && (
         <ReviewBox
           draft={draft}
+          saved={own.review ?? ""}
           onDraftChange={onDraftChange}
           onSave={onSave}
-          isPending={isPending}
         />
+      )}
+      {/* Solo si marca algo más que este mismo episodio: para eso ya está la
+          casilla de la fila. */}
+      {interactive && markUpToCount > (own.watched ? 0 : 1) && (
+        <button
+          type="button"
+          onClick={onMarkUpTo}
+          disabled={isPending}
+          className="mt-2 self-start rounded-full border border-border px-3 py-1 text-[11px] text-foreground hover:bg-surface-muted disabled:opacity-60"
+        >
+          {t("markUpTo", { count: markUpToCount })}
+        </button>
       )}
     </div>
   );

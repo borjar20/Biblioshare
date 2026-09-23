@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasNewEpisodesAfter, isUpToDate } from "./follow-state";
+import { episodesUpTo, hasNewEpisodesAfter, isUpToDate, seasonToMark } from "./follow-state";
 
 describe("isUpToDate", () => {
   const base = {
@@ -59,5 +59,32 @@ describe("hasNewEpisodesAfter", () => {
 
   it("sin nada visto en el pase (vista de un toque) no ofrece seguir", () => {
     expect(hasNewEpisodesAfter([ep(1, 1, false), ep(1, 2, false)])).toBe(false);
+  });
+});
+
+describe("episodesUpTo / seasonToMark", () => {
+  const ep = (season: number, episode: number, watched = false, aired = true) => ({
+    season,
+    episode,
+    watched,
+    aired,
+  });
+  const all = [ep(1, 1, true), ep(1, 2), ep(2, 1), ep(2, 2), ep(3, 1, false, false)];
+
+  it("hasta aquí: lo emitido y sin ver hasta el elegido, incluido", () => {
+    expect(episodesUpTo(all, { season: 2, episode: 1 })).toEqual([ep(1, 2), ep(2, 1)]);
+  });
+
+  it("hasta aquí no incluye anunciados aunque sea el elegido", () => {
+    expect(episodesUpTo(all, { season: 3, episode: 1 })).toEqual([ep(1, 2), ep(2, 1), ep(2, 2)]);
+  });
+
+  it("episodio que no existe: nada", () => {
+    expect(episodesUpTo(all, { season: 9, episode: 9 })).toEqual([]);
+  });
+
+  it("temporada: solo lo emitido y sin ver de esa temporada", () => {
+    expect(seasonToMark(all, 1)).toEqual([ep(1, 2)]);
+    expect(seasonToMark(all, 3)).toEqual([]);
   });
 });

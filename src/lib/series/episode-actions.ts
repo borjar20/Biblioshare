@@ -7,6 +7,7 @@ import { getActivePass, isAutoCloseable } from "@/lib/passes/get-passes";
 import { applyTransition } from "@/lib/passes/apply-transition";
 import {
   episodeExists,
+  loadAiredCatalog,
   markEpisodeWatched,
   rollSeriesProgress,
 } from "./episode-watch-store";
@@ -122,6 +123,88 @@ export async function setEpisodeWatched(
 
   // Desmarcar NUNCA cierra: `addedProgress` se queda en false.
   await rollAndMaybeClose(supabase, user.id, seriesId, passId, addedProgress);
+}
+
+// Tope de episodios por llamada: es un endpoint POST público y la serie más
+// larga del catálogo ronda los 1.900 (Doraemon); con esto cabe cualquier
+// «marcar hasta aquí» real y un cliente malicioso no fabrica un insert enorme.
+const MAX_BULK_EPISODES = 2500;
+
+// Marcado masivo (fase 3 del rediseño de series): «Marcar temporada vista» y
+// «Vistos hasta aquí». El cliente dice QUÉ episodios; el servidor decide cuáles
+// se pueden dar por vistos — solo los que existen en el catálogo, están
+// EMITIDOS (loadAiredCatalog, misma regla que el auto-cierre) y no estaban ya
+// vistos en este pase. Un solo insert en vez de N llamadas a setEpisodeWatched:
+// con 60 episodios eran 60 viajes de ida y vuelta y 60 recálculos del cursor.
+//
+// El cierre automático se evalúa UNA vez, al final, igual que en la hoja de
+// sesión: si el lote llega al último emitido de una serie terminada, se cierra.
+export async function markEpisodesWatched(
+  seriesId: string,
+  episodes: { season: number; episode: number }[]
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (!Array.isArray(episodes) || episodes.length === 0) return;
+  if (episodes.length > MAX_BULK_EPISODES) return;
+  const requested = new Set<string>();
+  for (const e of episodes) {
+    if (!Number.isInteger(e?.season) || !Number.isInteger(e?.episode)) return;
+    requested.add(`${e.season}:${e.episode}`);
+  }
+
+  const passId = await ensureWritablePass(supabase, user.id, seriesId);
+
+  const [{ episodes: catalog }, { data: already }] = await Promise.all([
+    loadAiredCatalog(supabase, seriesId),
+    supabase
+      .from("episode_watches")
+      .select("season_number, episode_number")
+      .eq("user_id", user.id)
+      .eq("pass_id", passId),
+  ]);
+  const seen = new Set((already ?? []).map((w) => `${w.season_number}:${w.episode_number}`));
+  const rows = catalog
+    .filter((e) => e.aired)
+    .filter((e) => requested.has(`${e.season_number}:${e.episode_number}`))
+    .filter((e) => !seen.has(`${e.season_number}:${e.episode_number}`))
+    .map((e) => ({
+      user_id: user.id,
+      series_id: seriesId,
+      pass_id: passId,
+      season_number: e.season_number,
+      episode_number: e.episode_number,
+    }));
+
+  let added = false;
+  if (rows.length > 0) {
+    const { error } = await supabase.from("episode_watches").insert(rows);
+    if (!error) added = true;
+    else if (error.code === "23505") {
+      // Otra pestaña marcó alguno entre la lectura y el insert: el lote entero
+      // se rechaza, así que se cae a la escritura de uno en uno, que ya se traga
+      // el choque fila a fila (markEpisodeWatched).
+      for (const r of rows) {
+        if (
+          await markEpisodeWatched(
+            supabase,
+            user.id,
+            seriesId,
+            passId,
+            r.season_number,
+            r.episode_number
+          )
+        )
+          added = true;
+      }
+    } else throw error;
+  }
+
+  await rollAndMaybeClose(supabase, user.id, seriesId, passId, added);
 }
 
 // Pone (o actualiza) nota y/o reseña de un episodio EN EL PASE ACTIVO.
