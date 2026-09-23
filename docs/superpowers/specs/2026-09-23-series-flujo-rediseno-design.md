@@ -1,7 +1,7 @@
 # Series: revisión del flujo de registro y propuesta de rediseño
 
-`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fases 1, 2 y 3 implementadas]` — diagnóstico del flujo actual verificado
-contra el código de `main` a esta fecha. De la «Propuesta», están implementadas las fases 1, 2 y 3 (§6).
+`[Propuesta · 2026-09-23 · decisiones D1–D4 aceptadas con la recomendación · fases 1–4 implementadas]` — diagnóstico del flujo actual verificado
+contra el código de `main` a esta fecha. De la «Propuesta», están implementadas las cuatro fases (§6).
 
 ## 1. Por qué
 
@@ -168,4 +168,6 @@ dejan de tener sesiones y las estadísticas leen `episode_watches.created_at`. R
    línea, autosave de la reseña, marcado masivo (temporada / hasta aquí), confirmación al desmarcar
    (#1194) y la rejilla abre el episodio en la lista. La hoja `/sesion` multi-temporada pasa a la
    fase 4.
-4. **Sesiones** (H10) según D3, y limpieza de puertas duplicadas.
+4. **Sesiones** (H10) según D3 — **hecha**: las series no crean sesiones; `/sesion` de serie marca
+   episodios de varias temporadas con fecha; rachas y calendarios cuentan episodios; un post
+   `watched` por serie y día en el feed (`autopost_watched`). Ver `decisiones.md`.

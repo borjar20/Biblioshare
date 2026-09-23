@@ -5066,3 +5066,34 @@ serie no estaba terminada— pero se pierden los comentarios que tuviera ese pos
 **Fuera, a la fase 4.** Que la hoja `/sesion` deje cambiar de temporada sin perder lo marcado va
 con la decisión D3 (las series dejan de tener sesiones), que reescribe esa hoja para series.
 
+## 2026-09-23 — Series: sin sesiones; la actividad es el episodio visto, y el feed recibe un post por serie y día (fase 4)
+
+**Qué se decide.** Fase 4 del rediseño de series
+(`docs/superpowers/specs/2026-09-23-series-flujo-rediseno-design.md`, decisión D3, más dos
+decisiones de producto tomadas hoy: publicar por día y conservar las sesiones antiguas).
+
+- **Las series no crean `progress_sessions`.** La hoja `/sesion` de una serie pasa a «Marcar
+  episodios»: marca en varias temporadas a la vez (antes cambiar de temporada borraba lo
+  marcado), con la fecha de la hoja como `watched_on`, por la misma escritura que la pestaña
+  Episodios (`insertEpisodeWatches`). Sin «Compartir»: lo sustituye el post diario.
+- **`watched_on` es la fecha local del cliente.** El `default current_date` es UTC y un episodio
+  de madrugada en España caía el día anterior: ahora importa porque las rachas cuentan por él.
+- **Racha, calendarios, semana y «Cuándo lees» cuentan episodios vistos**, agrupados en «días de
+  serie» (`getSeriesDays`). Antes marcar desde la ficha o desde Inicio no contaba como actividad
+  y desde `/sesion` sí (H10). Las 11 sesiones de serie que había en prod se conservan como
+  historia (Registro, sus 7 posts) pero las estadísticas las excluyen para no contar dos veces.
+  Los minutos no cambian: un episodio no trae duración, igual que no la traían esas sesiones.
+- **Un post `watched` por serie y día** (`maybeAutopostWatchedDay`), colgado del primer episodio
+  del día; el feed cuenta cuántos más hubo («+N episodios»). No uno por episodio: «Marcar los 12
+  que faltan» serían 12 posts y 12 avisos por seguidor. Se desactiva con `autopost_watched`
+  (Ajustes), activado por defecto como `autopost_finished`. Cierra #626, que pedía un «Compartir»
+  en Episodios: se eligió el automático diario con interruptor en su lugar.
+- **Marcar episodios gana celebraciones** (primera actividad del día, hito de racha): antes solo
+  las ganaba la hoja de sesión.
+
+**Límites asumidos.** Si se desmarca justo el episodio del que cuelga el post del día, la
+limpieza por fuente se lleva el post y no se re-ancla (re-anclar emitiría un segundo aviso); el
+siguiente episodio que se marque ese día lo recrea. La mascota sigue contando sus días activos
+sin episodios (su regla vive también en SQL, `get_companion_state`, y es balance del juego):
+#1199.
+

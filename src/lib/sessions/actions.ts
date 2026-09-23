@@ -16,6 +16,7 @@ import {
 } from "@/lib/series/episode-watch-store";
 import { maybeAutopostWatchedDay } from "@/lib/social/autopost-watched";
 import { todayISO as todayUtcISO } from "@/lib/series/aired";
+import { parseWatchedOn } from "@/lib/series/watched-on";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
 import { createPost } from "@/lib/social/post-actions";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
@@ -222,7 +223,9 @@ export async function addSession(
   // hoja pasa a `watched_on`, y el post diario del feed sustituye al
   // «Compartir» de la sesión. Rachas y calendarios ya leen episode_watches.
   if (itemType === "series") {
-    const day = sessionDate || null;
+    // Validada como en la pestaña Episodios: una fecha mal formada tumbaría el
+    // insert entero; con null manda el default de la columna.
+    const day = parseWatchedOn(sessionDate);
     const added = await insertEpisodeWatches(
       supabase,
       user.id,
