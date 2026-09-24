@@ -5182,3 +5182,37 @@ sinopsis y reparto pasa de 16px a los 40px que ya usan las demás secciones, por
 envoltorio vacío de ediciones cuando alguien sin contribuciones ve una obra sin ediciones deja un
 hueco al final de la columna; se acepta como cosmético.
 
+
+## 2026-09-24 — Ficha cinemática PR 4: Episodios PC·1 en tres columnas
+
+**Qué se decide.** La pestaña Episodios en PC pasa de dos columnas (temporadas | episodios, con el
+detalle desplegado bajo la fila como en móvil) a tres: raíl de temporadas | lista de episodios |
+detalle del episodio elegido, anclado a la derecha. Esto **revierte** la parte de plan 06 §6e que
+fijó dos columnas: aquella decisión respondía a que el cuerpo de las pestañas medía 771px a
+cualquier viewport (raíl sticky de 300px + contenedor de 1200px); con el contenedor de la ficha
+cinemática (`DETAIL_CONTAINER`, ~1320px) el cuerpo ronda los 1240px y la tercera columna vuelve a
+caber sin apretar la lista.
+
+**Dónde vive el detalle.** En móvil sigue desplegado bajo su fila (`EpisodeList` con
+`inlineDetail`); en PC vive en `EpisodeDetailColumn`, la tercera columna. `useIsDesktop()` decide
+dónde se **MONTA** el detalle (no un `hidden` por CSS): el cuadro de reseña autoguarda al perder
+el foco y debe existir una sola vez en el árbol — montarlo dos veces (uno oculto) habría creado dos
+cuadros con el mismo borrador y un guardado ambiguo.
+
+**Accesibilidad.** La fila del episodio expresa su estado de forma distinta según el breakpoint:
+en móvil (`inlineDetail`) sigue siendo `aria-expanded`, porque el propio botón despliega su propio
+contenido; en PC pasa a `aria-pressed` + `aria-controls="episode-detail-column"`, porque el botón
+ya no expande nada bajo sí mismo, sino que controla una región aparte. Esa región lleva
+`role="region"` y `aria-label` (clave `episode.detailRegion`, "Detalle del episodio") para que sea
+localizable por lectores de pantalla sin depender del testid. Al elegir un episodio en PC el foco
+salta al `<h3>` del título de la columna (`tabIndex={-1}` + un `focusKey` que solo cambia en la
+selección del usuario, nunca al montar ni al cambiar de temporada) para que el teclado no tenga
+que atravesar el resto de filas de la lista. El rótulo pegajoso de temporada de la columna central
+(antes un `<div>` puramente visual) pasa a `<h2>`: en PC el único `<h2>` de la pestaña vivía tras un
+`lg:hidden`, así que el esquema de encabezados saltaba de `h1` a `h3`.
+
+**Deuda registrada.** Si se cambia de ancho con el cuadro de reseña de la columna enfocado, el
+componente se desmonta sin disparar `blur` y el borrador no se guarda solo (sobrevive en el estado
+del panel y reaparece al volver a mostrarlo, pero no llega al servidor); ver issue de seguimiento.
+
+Spec: `docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`.
