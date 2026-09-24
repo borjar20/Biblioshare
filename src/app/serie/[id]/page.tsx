@@ -30,6 +30,7 @@ import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
+import { InfoLayout } from "@/components/detail/info-layout";
 import {
   MetadataSidebar,
   type MetaRow,
@@ -485,6 +486,9 @@ async function SeriesTabs({
     s.position !== null && s.total > 0
       ? tDetail("sagaPosition", { position: s.position, total: s.total })
       : null;
+  // La tira de la saga principal, a todos los anchos. La serie conserva su
+  // umbral de 2 miembros (una tira de una sola portada, la propia, no aporta).
+  const stripShown = Boolean(mainSaga) && sagaMembers.length >= 2;
 
   return (
     <ItemDetailTabs
@@ -520,52 +524,67 @@ async function SeriesTabs({
           sagas={sagas.map((s) => ({ sagaId: s.sagaId, name: s.name, isPrimary: s.isPrimary }))}
           canContribute={canContribute}
         >
-          <div className="flex flex-col gap-10">
-            {sagas.length > 0 && (
-              <section className="flex flex-col gap-3.5">
-                <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
-                  {tDetail("sagasCount", { count: sagas.length })}
-                </span>
-                {mainSaga && sagaMembers.length >= 2 && (
-                  <div className="lg:hidden">
-                    <SagaStrip
-                      members={sagaMembers}
-                      currentType="series"
-                      currentId={series.id}
-                      sagaId={mainSaga.sagaId}
-                      sagaName={mainSaga.name}
-                      positionLabel={sagaPosition(mainSaga)}
-                    />
+          {/* Info de la serie (spec ficha cinemática §3). PC: sinopsis →
+              reparto → saga | ficha → dónde verla. Móvil, el orden de siempre:
+              sagas → sinopsis → reparto → dónde verla → ficha. */}
+          <InfoLayout
+            main={
+              <>
+                <div className="order-2 lg:order-none">
+                  <InfoPanel
+                    aboutLabel={tDetail("about")}
+                    synopsis={series.synopsis}
+                    noSynopsisLabel={tDetail("noSynopsis")}
+                    actions={<EditFichaButton />}
+                  />
+                </div>
+                {(credits.cast.length > 0 || credits.crew.length > 0) && (
+                  <div className="order-3 min-w-0 lg:order-none">
+                    <CreditsSection credits={credits} />
                   </div>
                 )}
-                <SagaList
-                  itemType="series"
-                  sagas={sagas}
-                  positionLabel={sagaPosition}
-                  stripShown={false}
-                />
-              </section>
-            )}
-            <InfoPanel
-              aboutLabel={tDetail("about")}
-              synopsis={series.synopsis}
-              noSynopsisLabel={tDetail("noSynopsis")}
-              actions={<EditFichaButton />}
-              sidebar={
-                <MetadataSidebar
-                  rows={metaRows}
-                  genres={genres}
-                  genresLabel={tDetail("genres")}
-                />
-              }
-              extra={
-                <>
-                  <CreditsSection credits={credits} />
-                  {watchProviders && <WatchProviders data={watchProviders} />}
-                </>
-              }
-            />
-          </div>
+                {sagas.length > 0 && (
+                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
+                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                      {tDetail("sagasCount", { count: sagas.length })}
+                    </span>
+                    {stripShown && mainSaga && (
+                      <SagaStrip
+                        members={sagaMembers}
+                        currentType="series"
+                        currentId={series.id}
+                        sagaId={mainSaga.sagaId}
+                        sagaName={mainSaga.name}
+                        positionLabel={sagaPosition(mainSaga)}
+                      />
+                    )}
+                    <SagaList
+                      itemType="series"
+                      sagas={sagas}
+                      positionLabel={sagaPosition}
+                      stripShown={stripShown}
+                    />
+                  </section>
+                )}
+              </>
+            }
+            aside={
+              <>
+                <div className="order-5 lg:order-none">
+                  <MetadataSidebar
+                    rows={metaRows}
+                    genres={genres}
+                    genresLabel={tDetail("genres")}
+                  />
+                </div>
+                {watchProviders && (
+                  <div className="order-4 lg:order-none">
+                    <WatchProviders data={watchProviders} />
+                  </div>
+                )}
+              </>
+            }
+          />
         </CatalogEditor>
       }
       episodes={
