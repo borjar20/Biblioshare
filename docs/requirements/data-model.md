@@ -1,5 +1,14 @@
 # Modelo de datos
 
+> **Delta 2026-09-24 (ficha cinemática, PR 1):** `movies.backdrop_url` y `series.backdrop_url`
+> (`text`, nullable; migración `20260924120000_movies_series_backdrop_url.sql`). Backdrop apaisado
+> de TMDB a `w1280` para el hero de la ficha. Check `*_backdrop_url_tmdb`: solo
+> `https://image.tmdb.org/t/p/%`. Lo escriben **solo** `hydrate_movie`/`hydrate_series` (nuevo
+> parámetro `p_backdrop_url`, fill-only) desde `ensureItemEnriched`; sin grant de UPDATE para
+> `authenticated`. `hydrate_screens_bulk` acepta la clave `backdrop_url`. NULL = sin consultar
+> o TMDB no tiene (sin centinela; reintenta al abrir la ficha). Verificado en **dev** (2026-09-24);
+> prod pendiente.
+
 > **Delta 2026-09-23 (#1201):** `hydrate_screens_bulk` reescrita para no marcar `hydrated_at`
 > (migración `20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`, con backfill que devuelve
 > a pendientes las pelis/series marcadas sin director/creador o tamaños). Verificada en **dev**
@@ -208,7 +217,8 @@ graph TB
 ## 2. Catálogo (compartido entre usuarios)
 
 `books`, `movies`, `series` — metadatos por tipo (autoría, portada, sinopsis, año, géneros).
-Se rellenan **cache-as-you-go** desde APIs externas (OpenLibrary/Google Books, TMDB).
+`movies` y `series` llevan además `backdrop_url` (imagen de fondo apaisada de TMDB para hero
+de la ficha). Se rellenan **cache-as-you-go** desde APIs externas (OpenLibrary/Google Books, TMDB).
 `SELECT` abierto a cualquiera, incluso anónimo — hace falta para renderizar perfiles
 públicos y son metadatos no sensibles. `INSERT`/`UPDATE` autenticado.
 

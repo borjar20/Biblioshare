@@ -314,19 +314,24 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 > cliente de petición es la regresión, aunque los números cuadren. Y toda escritura de este tipo
 > debe destructurar `error`: sin eso, la superficie no falla — se queda muda (#871, y ahora C1).
 
+> **Nota del 2026-09-24 (ficha cinemática).** `movies` y `series` ganan `backdrop_url` **sin**
+> grant de UPDATE, a propósito: se escribe solo por `hydrate_movie`/`hydrate_series` (SECURITY
+> DEFINER), igual que las columnas de tamaño desde #676. Cada tabla sube en 1 su `cols` y NO su
+> `con_update`. Si aparece con grant de UPDATE, alguien lo ha abierto y hay que revocarlo.
+
 | tabla | cols | con_insert | con_update | por qué el hueco es intencionado |
 |---|---|---|---|---|
 | `books` | 17 | **0** | 9 | INSERT revocado (#674): el alta va por `register_catalog_item`. La hidratación solo reescribe parte de la ficha. **Subió de 14 a 17 el 2026-08-27** (`20260882`, solo dev; prod sigue en 14 hasta desplegar): `repr_meta`/`google_books_volume_id`/`wikidata_id` nacen SIN grant de cliente a propósito. Quién las escribe (**precisado el 2026-08-28, C1**): `wikidata_id` y `repr_meta`, la RPC `hydrate_book` (`SECURITY DEFINER`), y `repr_meta` además el trigger `trg_stamp_books_repr_manual`; `google_books_volume_id`, **`ensureBookHydrated` con el cliente de `service_role`** — no es una RPC, pero tampoco es el cliente de la petición. **Ninguna action de colaborador las toca** — las de edición solo las LEEN, y la marca de curación la pone el trigger justo para que ningún camino pueda olvidarse de ponerla |
 | `comments` | 12 | 12 | 3 | notas de voz (2026-08-26, dev y prod): `audio_path`/`audio_duration_ms`/`audio_peaks` SIN grant update (inmutables); solo `body`/`is_spoiler`/`edited_at` editables por el autor |
 | `content_reports` | 14 | 14 | 2 | solo moderación cambia `reviewed_*` |
-| `movies` | 12 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676) |
+| `movies` | 13 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 8 a 7 el 2026-08-19**: `duration_minutes` revocada (#676). **Subió de 12 a 13 el 2026-09-24**: `backdrop_url` para la ficha cinemática (2026-09-24, dev verificado) |
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
 | `passes` | 19 | 14 | 13 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables; `dropped_reason`/`dropped_reason_note` sin SELECT (motivo de abandono, siempre privado) |
 | `people` | 12 | 11 | 6 | ídem `books` |
 | `pet_state` | 9 | 7 | 6 | `created_at`/`updated_at` sin INSERT (generadas/gestionadas por la app); `user_id` (PK inmutable), `hatched_at` (se fija al insertar) y `created_at` sin UPDATE |
 | `pet_daily_missions` | 12 | 9 | 1 | `id`/`completed_at`/`created_at` sin INSERT; UPDATE solo `completed_at` (la asignación se congela) |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
-| `series` | 14 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 10 a 7 el 2026-08-19**: `total_seasons`, `total_episodes` y `episode_runtime_minutes` revocadas (#676) |
+| `series` | 15 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 10 a 7 el 2026-08-19**: `total_seasons`, `total_episodes` y `episode_runtime_minutes` revocadas (#676). **Subió de 14 a 15 el 2026-09-24**: `backdrop_url` para la ficha cinemática (2026-09-24, dev verificado) |
 | `series_episodes` | 10 | 10 | 0 | catálogo de episodios, alta-only |
 | `user_blocks` | 3 | 3 | 0 | un bloqueo se crea o se borra, no se edita |
 
