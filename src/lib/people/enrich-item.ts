@@ -38,6 +38,8 @@ export type EnrichableItem = {
   durationMinutes?: number | null;
   totalEpisodes?: number | null;
   episodeRuntimeMinutes?: number | null;
+  /** Cine y series: el backdrop de TMDB ya guardado (ficha cinemática). */
+  backdropUrl?: string | null;
 };
 
 // Guard de los tamaños, independiente del de créditos A PROPÓSITO: una obra
@@ -49,6 +51,17 @@ export function needsSizeHydration(itemType: ItemType, item: EnrichableItem): bo
   if (itemType === "series")
     return item.totalEpisodes == null || item.episodeRuntimeMinutes == null;
   return false;
+}
+
+// Guard del backdrop, independiente de créditos y tamaños por la misma razón
+// que el de arriba: casi todas las obras viejas ya tienen reparto y duración, y
+// si el backdrop colgara de esos guards no se pediría nunca. Una obra que en
+// TMDB NO tiene backdrop se queda a null y vuelve a preguntar al abrirse; el
+// fetch de detalles ya se cachea 24h (`revalidate: 86400`), así que eso cuesta
+// como mucho una llamada por obra y día, y se ahorra un valor centinela.
+export function needsBackdrop(itemType: ItemType, item: EnrichableItem): boolean {
+  if (itemType === "book") return false;
+  return item.backdropUrl == null;
 }
 
 // ⚠️ NO es "¿hay algún crédito?", que es lo que preguntaba antes y estaba MAL.
@@ -139,6 +152,24 @@ async function writeSizes(
   if (error && error.code !== "42501") console.error("writeSizes failed", { itemType, id, error });
 }
 
+// Mismo camino que los tamaños: RPC fill-only (#674/#676), sin grant directo de
+// UPDATE sobre la columna. 42501/P0001 = visitante anónimo, esperado e inocuo:
+// lo guardará el primer visitante con sesión.
+async function writeBackdrop(
+  supabase: SupabaseServerClient,
+  itemType: "movie" | "series",
+  id: string,
+  backdropUrl: string
+): Promise<void> {
+  const { error } =
+    itemType === "movie"
+      ? await supabase.rpc("hydrate_movie", { p_movie_id: id, p_backdrop_url: backdropUrl })
+      : await supabase.rpc("hydrate_series", { p_series_id: id, p_backdrop_url: backdropUrl });
+  if (error && error.code !== "42501" && error.code !== "P0001") {
+    console.error("writeBackdrop failed", { itemType, id, error });
+  }
+}
+
 // "Cache-as-you-go" (§7.32/§7.34): la primera vez que se abre la ficha de un
 // ítem, se traen y persisten sus créditos (y, en películas, su saga) y sus
 // TAMAÑOS —duración de la película, nº de episodios y duración de episodio—.
@@ -163,8 +194,9 @@ export async function ensureItemEnriched(
   const effects: EnrichmentEffects = { wroteCredits: false, sagaMembers: [] };
   try {
     const needsSize = needsSizeHydration(itemType, item);
+    const wantsBackdrop = needsBackdrop(itemType, item);
     const needsCredits = !(await hasBilledCast(supabase, itemType, item.id));
-    if (!needsCredits && !needsSize) return effects;
+    if (!needsCredits && !needsSize && !wantsBackdrop) return effects;
 
     if (itemType === "book") {
       if (!needsCredits) return effects;
@@ -268,6 +300,9 @@ export async function ensureItemEnriched(
     if (!details) return effects;
 
     if (needsSize) await writeSizes(supabase, itemType, item.id, details);
+    if (wantsBackdrop && details.backdropUrl) {
+      await writeBackdrop(supabase, itemType, item.id, details.backdropUrl);
+    }
     if (!needsCredits) return effects;
 
     const peopleMap = await findOrCreatePeopleByTmdb(

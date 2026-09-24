@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { needsSizeHydration } from "./enrich-item";
+import { needsBackdrop, needsSizeHydration } from "./enrich-item";
 
 describe("needsSizeHydration", () => {
   it("pide duración cuando la película no la tiene", () => {
@@ -26,5 +26,29 @@ describe("needsSizeHydration", () => {
 
   it("los libros no tienen tamaño que hidratar (sus páginas son de la edición)", () => {
     expect(needsSizeHydration("book", { id: "b1" })).toBe(false);
+  });
+});
+
+describe("needsBackdrop", () => {
+  it("pide backdrop cuando la película o la serie no lo tiene", () => {
+    expect(needsBackdrop("movie", { id: "m1", backdropUrl: null })).toBe(true);
+    expect(needsBackdrop("series", { id: "s1", backdropUrl: null })).toBe(true);
+  });
+
+  it("no repite trabajo si ya lo tiene", () => {
+    expect(
+      needsBackdrop("movie", { id: "m1", backdropUrl: "https://image.tmdb.org/t/p/w1280/x.jpg" }),
+    ).toBe(false);
+  });
+
+  // Mismo motivo que needsSizeHydration: es independiente de créditos y
+  // tamaños. Una obra que ya tiene reparto y duración (casi todas las viejas)
+  // no lo pediría nunca si dependiera de ellos.
+  it("undefined cuenta como que falta", () => {
+    expect(needsBackdrop("movie", { id: "m1", durationMinutes: 120 })).toBe(true);
+  });
+
+  it("los libros no tienen backdrop de TMDB", () => {
+    expect(needsBackdrop("book", { id: "b1" })).toBe(false);
   });
 });

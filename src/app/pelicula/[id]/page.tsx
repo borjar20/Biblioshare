@@ -95,7 +95,7 @@ function fetchMovie(supabase: Supa, id: string) {
   return supabase
     .from("movies")
     .select(
-      "id, title, director, cover_url, synopsis, release_year, duration_minutes, genres, tmdb_id, hydrated_at",
+      "id, title, director, cover_url, backdrop_url, synopsis, release_year, duration_minutes, genres, tmdb_id, hydrated_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -303,6 +303,7 @@ async function MovieTabs({
         // La duración se hidrata aquí (misma respuesta que los créditos); sin
         // pasarla no habría con qué decidir si ya está. Ver #365.
         durationMinutes: movie.duration_minutes,
+        backdropUrl: movie.backdrop_url,
       }),
       getItemSagas("movie", movie.id),
       getEditions("movie", movie.id),
