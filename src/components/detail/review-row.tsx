@@ -121,8 +121,8 @@ export function ReviewRow({
       {/* `whitespace-pre-line`: la reseña se escribe en un textarea y sus saltos
           de línea son del autor. Sin esto el HTML los colapsaba a un espacio y
           una reseña de varios párrafos salía como un ladrillo. `break-words`
-          para que una URL larga no desborde la ficha. */}
-      <p className="whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
+          para que una URL larga no desborde la ficha. Tope de lectura de ~70 caracteres: la columna principal de Comunidad mide ~860px en PC. */}
+      <p className="max-w-[70ch] whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
         {/<\/?(?:p|br|strong|b|em|i|a)\b/i.test(text) ? <ReviewContent text={text} /> : <MentionText text={text} knownUsernames={knownUsernames} />}
       </p>
 

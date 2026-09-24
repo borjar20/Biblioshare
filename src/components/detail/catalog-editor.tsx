@@ -440,7 +440,7 @@ function CatalogEditorForm({
           comunidad. El degradado y el borde salen de mezclar --gold con la
           superficie (color-mix), así que el modo oscuro se adapta solo con el
           --gold oscuro; los dos textos sí llevan su pareja dark a mano. */}
-      <div className="sticky top-[var(--topbar-h)] z-30 -mx-4 flex items-center gap-[9px] border-b border-[color:color-mix(in_oklab,var(--gold)_35%,transparent)] bg-[linear-gradient(90deg,color-mix(in_oklab,var(--gold)_22%,var(--surface)),color-mix(in_oklab,var(--gold)_12%,var(--surface)))] px-4 py-[11px] sm:-mx-6 sm:px-6 lg:-mx-11 lg:px-11">
+      <div className="sticky top-[var(--topbar-h)] z-30 -mx-4 flex items-center gap-[9px] border-b border-[color:color-mix(in_oklab,var(--gold)_35%,transparent)] bg-[linear-gradient(90deg,color-mix(in_oklab,var(--gold)_22%,var(--surface)),color-mix(in_oklab,var(--gold)_12%,var(--surface)))] px-4 py-[11px] sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
         <span
           aria-hidden
           className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] bg-gold text-[13px] text-white"
@@ -818,7 +818,7 @@ function CatalogEditorForm({
           pantalla — sagas y ediciones — dentro del formulario principal).
           bottom-16 deja sitio a BottomNav (solo móvil, sticky bottom-0
           también); en sm+ no hay BottomNav así que baja a bottom-0. */}
-      <div className="sticky bottom-16 z-30 -mx-4 flex gap-2.5 border-t border-border bg-background/90 px-4 py-[13px] backdrop-blur-[12px] sm:bottom-0 sm:-mx-6 sm:px-6 lg:-mx-11 lg:justify-end lg:px-11">
+      <div className="sticky bottom-16 z-30 -mx-4 flex gap-2.5 border-t border-border bg-background/90 px-4 py-[13px] backdrop-blur-[12px] sm:bottom-0 sm:-mx-6 sm:px-6 lg:-mx-10 lg:justify-end lg:px-10">
         <Button
           type="button"
           variant="secondary"
