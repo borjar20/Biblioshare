@@ -6,8 +6,8 @@
 > `https://image.tmdb.org/t/p/%`. Lo escriben **solo** `hydrate_movie`/`hydrate_series` (nuevo
 > parámetro `p_backdrop_url`, fill-only) desde `ensureItemEnriched`; sin grant de UPDATE para
 > `authenticated`. `hydrate_screens_bulk` acepta la clave `backdrop_url`. NULL = sin consultar
-> o TMDB no tiene (sin centinela; reintenta al abrir la ficha). Verificado en **dev** (2026-09-24);
-> prod pendiente.
+> o TMDB no tiene (sin centinela; reintenta al abrir la ficha). Verificado en **dev** y **prod**
+> (2026-09-24, `pg_proc` + grants de columna + checks).
 
 > **Delta 2026-09-23 (#1201):** `hydrate_screens_bulk` reescrita para no marcar `hydrated_at`
 > (migración `20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`, con backfill que devuelve
