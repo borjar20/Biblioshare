@@ -85,6 +85,12 @@ export function EpisodePanel({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
+  // Token que empuja el foco a la cabecera de la columna de detalle (PC).
+  // Solo cambia dentro de `select()` cuando el usuario elige un episodio EN
+  // PC — nunca al montar, al hidratar ni al cambiar de temporada desde el
+  // raíl — así el teclado no tiene que recorrer el resto de filas.
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+
   // Nivel abierto en MÓVIL: null = índice de temporadas (E3), un número = esa
   // temporada (E2). En PC no hay niveles, así que null se lee como "la del
   // cursor" y el raíl siempre tiene una encendida. Un solo estado para los dos
@@ -99,6 +105,9 @@ export function EpisodePanel({
     }
     setSelectedKey(k);
     setDraft(ownOf(ep).review ?? "");
+    // Token único por click: garantiza que el efecto de foco de la columna
+    // se dispare aunque se reelija el mismo episodio tras deseleccionarlo.
+    if (isDesktop) setFocusKey(`${k}:${Date.now()}`);
   };
 
   const patch = (ep: EpisodeRow, p: Partial<OwnWatch>) =>
@@ -491,7 +500,10 @@ export function EpisodePanel({
             </div>
 
             <div
+              id="episode-detail-column"
               data-testid="episode-detail-column"
+              role="region"
+              aria-label={t("detailRegion")}
               className="hidden lg:block lg:max-h-[560px] lg:overflow-y-auto lg:border-l lg:border-border"
             >
               <EpisodeDetailColumn
@@ -509,6 +521,7 @@ export function EpisodePanel({
                   interactive && selectedEpisode?.aired ? upToPending(selectedEpisode).length : 0
                 }
                 onMarkUpTo={() => selectedEpisode && markMany(upToPending(selectedEpisode))}
+                focusKey={focusKey}
               />
             </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
@@ -18,6 +19,13 @@ export type EpisodeDetailColumnProps = {
   onSave: () => void;
   markUpToCount: number;
   onMarkUpTo: () => void;
+  /**
+   * Cambia (a un valor no nulo) solo cuando el usuario elige un episodio a
+   * propósito en PC — nunca en el montaje ni al cambiar de temporada. Mueve
+   * el foco al título de la columna para que el teclado no tenga que
+   * atravesar el resto de filas (revisión final PR 4).
+   */
+  focusKey: string | null;
 };
 
 // La tercera columna del frame PC·1 (ficha cinemática, PR 4): el detalle del
@@ -29,9 +37,18 @@ export type EpisodeDetailColumnProps = {
 export function EpisodeDetailColumn({
   episode,
   own,
+  focusKey,
   ...detail
 }: EpisodeDetailColumnProps) {
   const t = useTranslations("episode");
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Solo reacciona a un focusKey no nulo: el panel lo deja en null al montar
+  // y al cambiar de temporada, así que aquí nunca se roba el foco por eso —
+  // solo cuando el usuario elige un episodio a propósito.
+  useEffect(() => {
+    if (focusKey !== null) headingRef.current?.focus();
+  }, [focusKey]);
 
   if (!episode || !own) {
     return (
@@ -51,7 +68,11 @@ export function EpisodeDetailColumn({
       <span className="font-mono text-[10.5px] text-muted-foreground">
         {t("code", { s: episode.season, e: episode.episode })}
       </span>
-      <h3 className="mt-1 font-serif text-[18px] leading-tight font-semibold text-foreground">
+      <h3
+        ref={headingRef}
+        tabIndex={-1}
+        className="mt-1 font-serif text-[18px] leading-tight font-semibold text-foreground focus-visible:outline-none"
+      >
         {episode.title ?? t("untitled")}
       </h3>
       <EpisodeInlineDetail episode={episode} own={own} {...detail} />

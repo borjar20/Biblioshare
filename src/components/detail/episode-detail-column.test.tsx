@@ -34,6 +34,7 @@ const base: EpisodeDetailColumnProps = {
   onSave: () => {},
   markUpToCount: 0,
   onMarkUpTo: () => {},
+  focusKey: null,
 };
 
 function renderColumn(props: Partial<EpisodeDetailColumnProps> = {}) {
@@ -62,5 +63,18 @@ describe("EpisodeDetailColumn", () => {
   it("sin título, usa el «sin título» de es.json", () => {
     renderColumn({ episode: { ...episode, title: null } as EpisodeRow });
     expect(screen.getByRole("heading", { name: messages.episode.untitled })).toBeTruthy();
+  });
+
+  it("con focusKey no nulo, el título recibe el foco (tabIndex -1)", () => {
+    renderColumn({ focusKey: "2:3:123" });
+    const heading = screen.getByRole("heading", { name: "Tormenta" });
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("con focusKey null (montaje), el título NO recibe el foco", () => {
+    renderColumn({ focusKey: null });
+    const heading = screen.getByRole("heading", { name: "Tormenta" });
+    expect(document.activeElement).not.toBe(heading);
   });
 });

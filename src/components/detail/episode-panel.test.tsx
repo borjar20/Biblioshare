@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
@@ -19,7 +19,10 @@ vi.mock("@/lib/passes/actions", () => ({ ratePass: vi.fn() }));
 vi.mock("@/lib/library/manage-actions", () => ({ updateStatus: vi.fn() }));
 vi.mock("next/image", () => ({ default: () => null }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 // Fase 4: las acciones llevan la fecha LOCAL del visionado.
 const LOCAL_DAY = expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/);
@@ -120,6 +123,31 @@ function stubDesktop(matches: boolean) {
   );
 }
 
+// Variante que guarda los listeners de "change" para poder simular un cruce
+// de breakpoint en caliente (resize real): cambia `matches` y dispara los
+// listeners registrados, como haría el navegador.
+function stubResizableDesktop(initialMatches: boolean) {
+  let matches = initialMatches;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      get matches() {
+        return matches;
+      },
+      media: query,
+      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+    })),
+  );
+  return {
+    resize(next: boolean) {
+      matches = next;
+      listeners.forEach((l) => l());
+    },
+  };
+}
+
 describe("EpisodePanel · PC·1 en tres columnas", () => {
   it("en PC, sin episodio elegido, la tercera columna invita a elegir uno", () => {
     stubDesktop(true);
@@ -127,7 +155,6 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     expect(screen.getByTestId("episode-detail-column").textContent).toContain(
       messages.episode.pickEpisode,
     );
-    vi.unstubAllGlobals();
   });
 
   it("en PC, elegir un episodio lo abre en la columna y NO bajo su fila", () => {
@@ -139,7 +166,6 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     // Un solo cuadro de reseña en todo el panel: el de la columna.
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(column.contains(screen.getByRole("textbox"))).toBe(true);
-    vi.unstubAllGlobals();
   });
 
   it("en móvil, el detalle se despliega bajo su fila (como siempre)", () => {
@@ -150,6 +176,32 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     expect(
       screen.getByTestId("episode-detail-column").contains(screen.getByRole("textbox")),
     ).toBe(false);
-    vi.unstubAllGlobals();
+  });
+
+  it("elegir un episodio en PC mueve el foco al título de la columna", () => {
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const heading = screen.getByTestId("episode-detail-column").querySelector("h3");
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("cruzar de PC a móvil con un borrador escrito conserva el mismo cuadro, ahora inline", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "un borrador a medias" } });
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+
+    act(() => resize(false));
+
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    const mobileTextarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+    expect(mobileTextarea.value).toBe("un borrador a medias");
+    expect(
+      screen.getByTestId("episode-detail-column").contains(mobileTextarea),
+    ).toBe(false);
   });
 });

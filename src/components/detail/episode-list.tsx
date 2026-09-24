@@ -126,11 +126,11 @@ export function EpisodeList(props: EpisodeListProps) {
 
       {/* `.lh` de PC·1: rótulo pegajoso de la columna central. */}
       <div className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:flex">
-        <span className="flex-1">
+        <h2 className="flex-1 font-mono text-[10px] font-normal tracking-[0.1em] text-muted-foreground uppercase">
           {t("season", { n: group.season })}
           {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
           {stat.avg !== null && ` · ${formatDots(stat.avg)}`}
-        </span>
+        </h2>
         {markSeason}
       </div>
 
@@ -213,7 +213,9 @@ function EpisodeItem({
         <button
           type="button"
           onClick={() => onSelect(episode)}
-          aria-expanded={selected}
+          {...(inlineDetail
+            ? { "aria-expanded": selected }
+            : { "aria-pressed": selected, "aria-controls": "episode-detail-column" })}
           className="flex min-w-0 flex-1 items-center gap-3 text-left lg:gap-[11px]"
         >
           <span className="relative block h-[34px] w-[58px] shrink-0 overflow-hidden rounded-[5px] bg-surface-3 lg:h-[38px] lg:w-16">
