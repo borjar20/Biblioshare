@@ -247,6 +247,10 @@ El shell lo fija `item-shell.tsx`: `lg:max-w-[1160px] lg:grid-cols-[300px_1fr]`.
 > frames 8/12 (el reparto ya no va «a lo ancho» encima: entra en la principal; la tira de saga se ve
 > también en PC); el orden móvil de §2 NO cambia.
 
+> **PR 4 (2026-09-24):** PC·1 vuelve a tres columnas (temporadas 220 | episodios | detalle 340); el
+> detalle del episodio vive en la tercera en PC y bajo su fila en móvil. PC·2 (muro/heatmap) sigue
+> sin usar.
+
 **Lección e2e:** `pase-hub.spec.ts` localizaba temporadas con `page.locator("section")` — ya no existe, la pestaña enseña UNA temporada. Helper `openLastSeason()` que entra por el raíl.
 
 ### Los dos hallazgos de la verificación de cierre (PR #68)
