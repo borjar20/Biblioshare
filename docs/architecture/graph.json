@@ -416,7 +416,7 @@
       "label": "components/detail",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Hero cinemático único (backdrop TMDB / portada teñida), PassCard y pestañas con CTA pegado; contenedor común DETAIL_CONTAINER (1320px).",
+      "summary": "Hero cinemático único (backdrop TMDB / portada teñida), PassCard, pestañas con CTA pegado; InfoLayout (principal | datos pegajosa) y Episodios PC·1 en tres columnas; contenedor común DETAIL_CONTAINER (1320px).",
       "files": [
         "src/components/detail"
       ]

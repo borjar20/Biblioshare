@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
@@ -19,7 +19,10 @@ vi.mock("@/lib/passes/actions", () => ({ ratePass: vi.fn() }));
 vi.mock("@/lib/library/manage-actions", () => ({ updateStatus: vi.fn() }));
 vi.mock("next/image", () => ({ default: () => null }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 // Fase 4: las acciones llevan la fecha LOCAL del visionado.
 const LOCAL_DAY = expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/);
@@ -105,5 +108,123 @@ describe("EpisodePanel · fase 3", () => {
 
     expect(actions.setEpisodeWatched).toHaveBeenCalledWith("s1", 1, 2, true, LOCAL_DAY);
     expect(screen.getByRole("group", { name: "¿Qué tal T1E2?" })).toBeTruthy();
+  });
+});
+
+function stubDesktop(matches: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
+
+// Variante que guarda los listeners de "change" para poder simular un cruce
+// de breakpoint en caliente (resize real): cambia `matches` y dispara los
+// listeners registrados, como haría el navegador.
+function stubResizableDesktop(initialMatches: boolean) {
+  let matches = initialMatches;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      get matches() {
+        return matches;
+      },
+      media: query,
+      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+    })),
+  );
+  return {
+    resize(next: boolean) {
+      matches = next;
+      listeners.forEach((l) => l());
+    },
+  };
+}
+
+describe("EpisodePanel · PC·1 en tres columnas", () => {
+  it("en PC, sin episodio elegido, la tercera columna invita a elegir uno", () => {
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    expect(screen.getByTestId("episode-detail-column").textContent).toContain(
+      messages.episode.pickEpisode,
+    );
+  });
+
+  it("en PC, elegir un episodio lo abre en la columna y NO bajo su fila", () => {
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const column = screen.getByTestId("episode-detail-column");
+    expect(column.querySelector("h3")?.textContent).toBe("Episodio 1x2");
+    // Un solo cuadro de reseña en todo el panel: el de la columna.
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(column.contains(screen.getByRole("textbox"))).toBe(true);
+  });
+
+  it("en móvil, el detalle se despliega bajo su fila (como siempre)", () => {
+    stubDesktop(false);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(
+      screen.getByTestId("episode-detail-column").contains(screen.getByRole("textbox")),
+    ).toBe(false);
+  });
+
+  it("elegir un episodio en PC mueve el foco al título de la columna", () => {
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const heading = screen.getByTestId("episode-detail-column").querySelector("h3");
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("elegir un episodio en PC sigue moviendo el foco al título tras cambiar a rejilla y volver a lista", () => {
+    // Revisión final PR 4: EpisodeDetailColumn vive en la rama `list` del
+    // `view === "grid" ? … : …`, así que lista → grid → lista la remonta.
+    // Si el focusKey no se consume tras aplicar el foco, ese remontaje lo
+    // vuelve a disparar sin que el usuario haya elegido nada.
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const heading = screen.getByTestId("episode-detail-column").querySelector("h3");
+    expect(document.activeElement).toBe(heading);
+
+    // Se retira el foco a propósito, como haría el usuario al seguir
+    // navegando por el teclado o el ratón.
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.activeElement).not.toBe(heading);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rejilla" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lista" }));
+
+    const headingAfter = screen.getByTestId("episode-detail-column").querySelector("h3");
+    expect(document.activeElement).not.toBe(headingAfter);
+  });
+
+  it("cruzar de PC a móvil con un borrador escrito conserva el mismo cuadro, ahora inline", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "un borrador a medias" } });
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+
+    act(() => resize(false));
+
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    const mobileTextarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+    expect(mobileTextarea.value).toBe("un borrador a medias");
+    expect(
+      screen.getByTestId("episode-detail-column").contains(mobileTextarea),
+    ).toBe(false);
   });
 });

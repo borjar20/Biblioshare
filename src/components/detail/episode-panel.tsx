@@ -12,9 +12,11 @@ import { averageRating } from "@/lib/series/rating-scale";
 import { CheckIcon } from "@/components/ui/icons";
 import { EpisodeGrid, type SeasonGroup, type GridSource } from "./episode-grid";
 import { EpisodeList } from "./episode-list";
+import { EpisodeDetailColumn } from "./episode-detail-column";
 import { SeasonIndex, SeasonRail, type SeasonStat } from "./season-index";
 import { SeriesFollowCard } from "./series-follow-card";
 import { useItemStatus } from "./item-status-context";
+import { useIsDesktop } from "@/lib/ui/use-is-desktop";
 import {
   episodesUpTo,
   hasNewEpisodesAfter,
@@ -67,6 +69,7 @@ export function EpisodePanel({
     isLoggedIn ? "mine" : "community",
   );
   const [isPending, startTransition] = useTransition();
+  const isDesktop = useIsDesktop();
 
   const [ownPatches, setOwnPatches] = useState<
     Record<string, Partial<OwnWatch>>
@@ -82,6 +85,12 @@ export function EpisodePanel({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
+  // Token que empuja el foco a la cabecera de la columna de detalle (PC).
+  // Solo cambia dentro de `select()` cuando el usuario elige un episodio EN
+  // PC — nunca al montar, al hidratar ni al cambiar de temporada desde el
+  // raíl — así el teclado no tiene que recorrer el resto de filas.
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+
   // Nivel abierto en MÓVIL: null = índice de temporadas (E3), un número = esa
   // temporada (E2). En PC no hay niveles, así que null se lee como "la del
   // cursor" y el raíl siempre tiene una encendida. Un solo estado para los dos
@@ -96,6 +105,9 @@ export function EpisodePanel({
     }
     setSelectedKey(k);
     setDraft(ownOf(ep).review ?? "");
+    // Token único por click: garantiza que el efecto de foco de la columna
+    // se dispare aunque se reelija el mismo episodio tras deseleccionarlo.
+    if (isDesktop) setFocusKey(`${k}:${Date.now()}`);
   };
 
   const patch = (ep: EpisodeRow, p: Partial<OwnWatch>) =>
@@ -303,6 +315,12 @@ export function EpisodePanel({
 
   if (!activeGroup || !activeStat) return null;
 
+  // El episodio anclado en la tercera columna (PC). Solo si es de la temporada
+  // que se está viendo: al cambiar de temporada en el raíl, la columna vuelve a
+  // su estado vacío en vez de enseñar un episodio que ya no está en la lista.
+  const selectedEpisode =
+    activeGroup.episodes.find((e) => episodeKey(e) === selectedKey) ?? null;
+
   return (
     <div className="flex flex-col">
       {/* `.btop` de los frames móviles: contador con la cifra en serif y los
@@ -429,18 +447,21 @@ export function EpisodePanel({
             setOpenSeason(ep.season);
             setSelectedKey(episodeKey(ep));
             setDraft(ownOf(ep).review ?? "");
+            // Mismo criterio que la selección desde la fila: en PC, elegir
+            // una celda de la rejilla también debe llevar el foco al título
+            // de la columna de detalle, no dejarlo en el body.
+            if (isDesktop) setFocusKey(`${episodeKey(ep)}:${Date.now()}`);
           }}
         />
       ) : (
         <>
-          {/* El marco `.ep3` del frame PC·1, con dos columnas y no tres: el
-              cuerpo de la ficha está topado en 771px por el raíl lateral de la
-              portada, y las 340 del detalle dejaban la lista en ~200px (títulos
-              partidos letra a letra). Los niveles 1 y 2 conviven en PC —que es
-              lo que arreglaba la escala— y el 3 se despliega bajo su fila, el
-              mismo gesto que en móvil. En móvil no hay marco: cada nivel ocupa
-              la pantalla entera por turnos. */}
-          <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:overflow-hidden lg:rounded-[14px] lg:border lg:border-border lg:bg-surface">
+          {/* El marco `.ep3` del frame PC·1: temporadas | episodios | detalle.
+              En julio se quedó en dos columnas porque el cuerpo de la ficha
+              medía 771px (plan 06 §6e); con el contenedor de la ficha
+              cinemática la tercera vuelve a caber. En móvil no hay marco: cada
+              nivel ocupa la pantalla por turnos y el detalle se abre bajo su
+              fila. */}
+          <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)_340px] lg:overflow-hidden lg:rounded-[14px] lg:border lg:border-border lg:bg-surface">
             <SeasonRail
               stats={stats}
               activeSeason={activeSeason}
@@ -478,6 +499,34 @@ export function EpisodePanel({
                 onMarkSeason={() => markMany(seasonPending(activeGroup.season))}
                 upToPendingCount={(ep) => upToPending(ep).length}
                 onMarkUpTo={(ep) => markMany(upToPending(ep))}
+                inlineDetail={!isDesktop}
+              />
+            </div>
+
+            <div
+              id="episode-detail-column"
+              data-testid="episode-detail-column"
+              role="region"
+              aria-label={t("detailRegion")}
+              className="hidden lg:block lg:max-h-[560px] lg:overflow-y-auto lg:border-l lg:border-border"
+            >
+              <EpisodeDetailColumn
+                episode={isDesktop ? selectedEpisode : null}
+                own={isDesktop && selectedEpisode ? ownOf(selectedEpisode) : null}
+                source={source}
+                interactive={
+                  interactive && Boolean(selectedEpisode?.aired)
+                }
+                isPending={isPending}
+                draft={draft}
+                onDraftChange={setDraft}
+                onSave={() => selectedEpisode && saveReview(selectedEpisode)}
+                markUpToCount={
+                  interactive && selectedEpisode?.aired ? upToPending(selectedEpisode).length : 0
+                }
+                onMarkUpTo={() => selectedEpisode && markMany(upToPending(selectedEpisode))}
+                focusKey={focusKey}
+                onFocused={() => setFocusKey(null)}
               />
             </div>
 

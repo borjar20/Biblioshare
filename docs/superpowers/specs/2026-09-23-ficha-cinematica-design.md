@@ -1,7 +1,7 @@
 ---
 title: Ficha de obra cinemática (libro · película · serie), fase 1
 date: 2026-09-23
-status: design
+status: implementada (fase 1: #1206, #1209, #1211 y esta PR)
 area: ui / catalogo
 ---
 

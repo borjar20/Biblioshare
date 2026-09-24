@@ -21,9 +21,9 @@ function formatAired(iso: string | null): string | null {
 
 // Los episodios de UNA temporada. Es el nivel 2 del móvil (frame E2, con su
 // vuelta al índice y su cabecera de temporada) y a la vez la columna central de
-// PC (frame PC·1, con la cabecera `.lh` pegajosa). Un solo componente para los
-// dos: las filas son idénticas en ambos frames, y duplicarlas por breakpoint
-// habría duplicado también la lista larga.
+// las tres de PC·1. Un solo componente para los dos: las filas son idénticas en
+// ambos frames, y duplicarlas por breakpoint habría duplicado también la lista
+// larga.
 export type EpisodeListProps = {
   group: { season: number; episodes: EpisodeRow[] };
   stat: SeasonStat;
@@ -46,6 +46,12 @@ export type EpisodeListProps = {
   /** Cuántos marcaría «Vistos hasta aquí» desde este episodio. */
   upToPendingCount: (ep: EpisodeRow) => number;
   onMarkUpTo: (ep: EpisodeRow) => void;
+  /**
+   * ¿El detalle del episodio elegido se despliega bajo su fila? Sí en móvil;
+   * en PC va en la tercera columna (EpisodeDetailColumn) y aquí no se monta,
+   * para que el cuadro de reseña exista una sola vez.
+   */
+  inlineDetail: boolean;
 };
 
 export function EpisodeList(props: EpisodeListProps) {
@@ -120,11 +126,11 @@ export function EpisodeList(props: EpisodeListProps) {
 
       {/* `.lh` de PC·1: rótulo pegajoso de la columna central. */}
       <div className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:flex">
-        <span className="flex-1">
+        <h2 className="flex-1 font-mono text-[10px] font-normal tracking-[0.1em] text-muted-foreground uppercase">
           {t("season", { n: group.season })}
           {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
           {stat.avg !== null && ` · ${formatDots(stat.avg)}`}
-        </span>
+        </h2>
         {markSeason}
       </div>
 
@@ -152,6 +158,7 @@ function EpisodeItem({
   onSaveReview,
   upToPendingCount,
   onMarkUpTo,
+  inlineDetail,
 }: EpisodeListProps & { episode: EpisodeRow }) {
   const t = useTranslations("episode");
   const tPasses = useTranslations("passes");
@@ -206,7 +213,9 @@ function EpisodeItem({
         <button
           type="button"
           onClick={() => onSelect(episode)}
-          aria-expanded={selected}
+          {...(inlineDetail
+            ? { "aria-expanded": selected }
+            : { "aria-pressed": selected, "aria-controls": "episode-detail-column" })}
           className="flex min-w-0 flex-1 items-center gap-3 text-left lg:gap-[11px]"
         >
           <span className="relative block h-[34px] w-[58px] shrink-0 overflow-hidden rounded-[5px] bg-surface-3 lg:h-[38px] lg:w-16">
@@ -259,11 +268,13 @@ function EpisodeItem({
         />
       </div>
 
-      {/* El nivel 3, bajo su fila y en los dos breakpoints: el detalle no tiene
-          columna propia (ver el porqué en episode-panel.tsx), así que se abre
-          donde estás mirando. */}
-      {selected && (
-        <div className="border-t border-border pr-[15px] pb-3.5 pl-[49px] lg:pl-[57px]">
+      {/* El nivel 3 en móvil, bajo su fila. En PC vive en la tercera columna
+          (EpisodeDetailColumn). */}
+      {selected && inlineDetail && (
+        <div
+          data-testid="episode-inline-detail"
+          className="border-t border-border pr-[15px] pb-3.5 pl-[49px] lg:pl-[57px]"
+        >
           <EpisodeInlineDetail
             episode={episode}
             own={own}
