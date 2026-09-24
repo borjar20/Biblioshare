@@ -17,15 +17,25 @@ export function SagaList({
   itemType,
   sagas,
   positionLabel,
+  stripShown,
 }: {
   itemType: ItemType;
   /** Todas, la principal primero. */
   sagas: SagaMembership[];
   /** "nº {position} de {total}" ya traducido, por saga. */
   positionLabel: (saga: SagaMembership) => string | null;
+  /**
+   * ¿Se está pintando la tira de portadas (SagaStrip) de la principal? Si sí,
+   * la principal ya se ve ahí y no se repite en la lista, a ningún ancho. Antes
+   * la tira era solo de móvil y la fila principal se escondía SOLO en móvil
+   * (`hidden lg:flex`), así que una saga sin tira quedaba sin ninguna de las dos.
+   */
+  stripShown: boolean;
 }) {
   const accent = MEDIA_ACCENT[itemType];
   if (sagas.length === 0) return null;
+  // Con la tira visible y una sola saga no queda nada que listar.
+  if (stripShown && sagas.length === 1) return null;
 
   // Las dos columnas de PC son para cuando hay sagas que emparejar. Con UNA
   // sola, la segunda columna se queda vacía y el nombre se trunca a media fila
@@ -43,7 +53,9 @@ export function SagaList({
             href={`/saga/${saga.sagaId}`}
             className={`flex items-center gap-2.5 border-b border-border py-3 lg:rounded-[10px] lg:border lg:px-3.5 lg:py-2.5 ${
               isMain
-                ? `hidden lg:flex ${accent.border} ${accent.bgSoft}`
+                ? stripShown
+                  ? "hidden"
+                  : `${accent.border} ${accent.bgSoft}`
                 : "lg:border-border lg:bg-surface"
             }`}
           >

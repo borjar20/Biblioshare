@@ -542,6 +542,7 @@ async function SeriesTabs({
                   itemType="series"
                   sagas={sagas}
                   positionLabel={sagaPosition}
+                  stripShown={false}
                 />
               </section>
             )}

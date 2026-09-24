@@ -568,6 +568,7 @@ async function BookTabs({
                     itemType="book"
                     sagas={sagas}
                     positionLabel={sagaPosition}
+                    stripShown={false}
                   />
                 </section>
               )}

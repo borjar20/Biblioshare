@@ -472,6 +472,7 @@ async function MovieTabs({
                     itemType="movie"
                     sagas={sagas}
                     positionLabel={sagaPosition}
+                    stripShown={false}
                   />
                 </section>
               )}
