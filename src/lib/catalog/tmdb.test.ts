@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getPosterPaths, getSeriesEpisodes, mapPosterPaths } from "./tmdb";
+import { getPosterPaths, getSeriesEpisodes, mapPosterPaths, getMovieDetails, getSeriesDetails, tmdbBackdropUrl } from "./tmdb";
 
 describe("mapPosterPaths", () => {
   it("convierte file_path en URL absoluta con base w342", () => {
@@ -169,5 +169,57 @@ describe("getSeriesEpisodes — techo y concurrencia (#676)", () => {
     expect(await getSeriesEpisodes(42, 0)).toEqual([]);
     expect(await getSeriesEpisodes(42, -5)).toEqual([]);
     expect(stats().calls).toBe(0);
+  });
+});
+
+describe("tmdbBackdropUrl", () => {
+  it("convierte backdrop_path en URL absoluta w1280", () => {
+    expect(tmdbBackdropUrl("/abc.jpg")).toBe("https://image.tmdb.org/t/p/w1280/abc.jpg");
+  });
+
+  it("null, undefined o vacío -> null", () => {
+    expect(tmdbBackdropUrl(null)).toBeNull();
+    expect(tmdbBackdropUrl(undefined)).toBeNull();
+    expect(tmdbBackdropUrl("")).toBeNull();
+  });
+});
+
+describe("backdrop en los detalles de pantalla", () => {
+  const originalApiKey = process.env.TMDB_API_KEY;
+
+  beforeEach(() => {
+    process.env.TMDB_API_KEY = "test-token";
+  });
+
+  afterEach(() => {
+    if (originalApiKey === undefined) delete process.env.TMDB_API_KEY;
+    else process.env.TMDB_API_KEY = originalApiKey;
+    vi.unstubAllGlobals();
+  });
+
+  function stubJson(body: unknown) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })),
+    );
+  }
+
+  it("getMovieDetails lo saca de la MISMA respuesta de detalles", async () => {
+    stubJson({ belongs_to_collection: null, backdrop_path: "/peli.jpg", runtime: 166 });
+    const details = await getMovieDetails(693134);
+    expect(details?.backdropUrl).toBe("https://image.tmdb.org/t/p/w1280/peli.jpg");
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it("getMovieDetails sin backdrop_path -> null", async () => {
+    stubJson({ belongs_to_collection: null, backdrop_path: null });
+    const details = await getMovieDetails(1);
+    expect(details?.backdropUrl).toBeNull();
+  });
+
+  it("getSeriesDetails lo saca de la respuesta de /tv", async () => {
+    stubJson({ backdrop_path: "/serie.jpg", number_of_seasons: 4 });
+    const details = await getSeriesDetails(76331);
+    expect(details?.backdropUrl).toBe("https://image.tmdb.org/t/p/w1280/serie.jpg");
   });
 });

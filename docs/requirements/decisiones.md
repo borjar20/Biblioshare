@@ -5129,3 +5129,28 @@ y 900 de 996 series así; la migración las devuelve a pendientes.
 
 **Coste asumido.** Una obra que de verdad no tenga director en TMDB paga una llamada más a TMDB
 en su siguiente visita y vuelve a quedar marcada por `hydrate_movie`.
+
+## 2026-09-24 — Ficha cinemática PR 1: backdrop_url
+
+**Qué se decide.** `movies.backdrop_url`/`series.backdrop_url` se rellenan sin centinela: una obra
+sin backdrop en TMDB se queda a `null` y se vuelve a preguntar en cada apertura de ficha; el fetch
+de detalles ya se cachea 24h, así que eso cuesta como mucho una llamada por obra y día, y se ahorra
+gestionar un valor centinela. Tampoco hace falta caducar la columna: se lee con el cliente de la
+petición en cada visita, no queda detrás de ningún `use cache`.
+
+**El backdrop solo se escribe para filas ya hidratadas y visitantes con sesión.** `writeBackdrop`
+corre durante el render (MovieTabs/SeriesTabs), y `hydrate_movie`/`hydrate_series` ponen SIEMPRE
+`hydrated_at = now()`, sin importar qué columnas rellenen. La hidratación completa la agenda la
+ficha con `after()` y hace early-return en cuanto ve `hydrated_at` puesto. Escribir el backdrop de
+una fila todavía pendiente la habría marcado como hidratada aquí mismo, y si el `after()` luego
+fallaba se quedaba marcada para siempre sin su metadata — mismo bug que #1201. `ensureItemEnriched`
+ahora exige `item.hydratedAt != null && item.viewerLoggedIn === true` para pedirlo; una fila
+pendiente recibe su backdrop en la primera visita posterior a que `after()` la hidrate del todo.
+
+**La migración recreó `hydrate_movie`/`hydrate_series`** (nuevo parámetro `p_backdrop_url`), así
+que los `comment on function` que les puso la 20260818 se perdieron. Se acepta: no documentan
+comportamiento que no esté ya en el código y en este mismo documento. `anon` conserva el EXECUTE
+que ya tenía sobre ambas RPC (igual que antes de este cambio) porque son SECURITY DEFINER y exigen
+`auth.uid()` dentro — el grant no es lo que las protege. Queda como deuda seguir la convención de
+revocar el EXECUTE a `anon` que fijó #831 para las RPC de escritura del catálogo; abierta como
+issue de seguimiento.

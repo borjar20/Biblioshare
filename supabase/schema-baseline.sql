@@ -1302,3 +1302,8 @@ commit;
 begin;
 \ir migrations/20260923150000_hydrate_screens_bulk_no_hydrated_at.sql
 commit;
+
+-- 20260924120000_movies_series_backdrop_url
+begin;
+\ir migrations/20260924120000_movies_series_backdrop_url.sql
+commit;

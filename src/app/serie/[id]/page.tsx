@@ -98,7 +98,7 @@ function fetchSeries(supabase: Supa, id: string) {
   return supabase
     .from("series")
     .select(
-      "id, title, creator, cover_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id, hydrated_at, tmdb_status, next_episode_air_date, episodes_synced_at",
+      "id, title, creator, cover_url, backdrop_url, synopsis, release_year, total_seasons, total_episodes, episode_runtime_minutes, genres, tmdb_id, hydrated_at, tmdb_status, next_episode_air_date, episodes_synced_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -368,6 +368,9 @@ async function SeriesTabs({
         // que los créditos); sin pasarlos no hay con qué decidir. Ver #365.
         totalEpisodes: series.total_episodes,
         episodeRuntimeMinutes: series.episode_runtime_minutes,
+        backdropUrl: series.backdrop_url,
+        hydratedAt: series.hydrated_at,
+        viewerLoggedIn: Boolean(userId),
       }),
       ensureSeriesEpisodes(supabase, {
         id: series.id,

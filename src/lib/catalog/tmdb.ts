@@ -10,7 +10,15 @@ const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w342";
 const TMDB_LOGO_BASE = "https://image.tmdb.org/t/p/w92";
 const TMDB_PROFILE_BASE = "https://image.tmdb.org/t/p/w185";
 const TMDB_STILL_BASE = "https://image.tmdb.org/t/p/w300";
+// Backdrop apaisado para el hero de la ficha (spec 2026-09-23 ficha cinemática).
+// w1280 y no `original`: el hero mide como mucho ~1920 de ancho a 420 de alto, y
+// next/image ya pide el tamaño que toque al CDN.
+const TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/w1280";
 const WATCH_PROVIDERS_REGION = "ES";
+
+export function tmdbBackdropUrl(path: string | null | undefined): string | null {
+  return path ? `${TMDB_BACKDROP_BASE}${path}` : null;
+}
 
 type TmdbSearchResponse = {
   results?: Array<{
@@ -264,6 +272,8 @@ export type ScreenCollection = {
 export type ScreenDetails = {
   collection: ScreenCollection | null;
   credits: CreditPerson[];
+  /** Backdrop apaisado (w1280) para el hero de la ficha; null si TMDB no tiene. */
+  backdropUrl: string | null;
   // Size data for time-to-complete estimates (§7.22). Movie-only/series-only
   // fields are null on the other type.
   runtimeMinutes: number | null;
@@ -361,6 +371,7 @@ export async function getMovieDetails(
     } | null;
     credits?: TmdbCreditsPayload;
     runtime?: number | null;
+    backdrop_path?: string | null;
   }>(`/movie/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
 
@@ -374,6 +385,7 @@ export async function getMovieDetails(
         }
       : null,
     credits: mapScreenCredits(data.credits),
+    backdropUrl: tmdbBackdropUrl(data.backdrop_path),
     runtimeMinutes: typeof data.runtime === "number" && data.runtime > 0 ? data.runtime : null,
     numberOfEpisodes: null,
     numberOfSeasons: null,
@@ -418,12 +430,14 @@ export async function getSeriesDetails(
     last_episode_to_air?: { runtime?: number | null } | null;
     next_episode_to_air?: { air_date?: string | null } | null;
     status?: string | null;
+    backdrop_path?: string | null;
   }>(`/tv/${tmdbId}?language=es-ES&append_to_response=credits`);
   if (!data) return null;
 
   return {
     collection: null, // las series de TMDB no usan belongs_to_collection
     credits: mapScreenCredits(data.credits, data.created_by ?? []),
+    backdropUrl: tmdbBackdropUrl(data.backdrop_path),
     runtimeMinutes: null,
     numberOfEpisodes:
       typeof data.number_of_episodes === "number" && data.number_of_episodes > 0
