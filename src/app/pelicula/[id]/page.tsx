@@ -304,6 +304,8 @@ async function MovieTabs({
         // pasarla no habría con qué decidir si ya está. Ver #365.
         durationMinutes: movie.duration_minutes,
         backdropUrl: movie.backdrop_url,
+        hydratedAt: movie.hydrated_at,
+        viewerLoggedIn: Boolean(userId),
       }),
       getItemSagas("movie", movie.id),
       getEditions("movie", movie.id),

@@ -40,6 +40,11 @@ export type EnrichableItem = {
   episodeRuntimeMinutes?: number | null;
   /** Cine y series: el backdrop de TMDB ya guardado (ficha cinemática). */
   backdropUrl?: string | null;
+  /** Cine y series: `movies.hydrated_at`/`series.hydrated_at` tal cual está en
+   *  la fila. Ver el guard del backdrop más abajo para el porqué. */
+  hydratedAt?: string | null;
+  /** Si quien abre la ficha tiene sesión. Ver el guard del backdrop. */
+  viewerLoggedIn?: boolean;
 };
 
 // Guard de los tamaños, independiente del de créditos A PROPÓSITO: una obra
@@ -165,7 +170,13 @@ async function writeBackdrop(
     itemType === "movie"
       ? await supabase.rpc("hydrate_movie", { p_movie_id: id, p_backdrop_url: backdropUrl })
       : await supabase.rpc("hydrate_series", { p_series_id: id, p_backdrop_url: backdropUrl });
-  if (error && error.code !== "42501" && error.code !== "P0001") {
+  // Con el guard de `wantsBackdrop` de abajo (viewerLoggedIn === true) ya no
+  // debería llegar aquí un visitante anónimo — a diferencia de `writeSizes`,
+  // que sigue permitiendo que lo intente cualquiera. Se mantiene el 42501 por
+  // si acaso, pero YA NO se ignora P0001: es cualquier `raise exception` de la
+  // RPC (incluido "authentication required"), y con el guard puesto un P0001
+  // real es un fallo que hay que ver, no ruido esperado.
+  if (error && error.code !== "42501") {
     console.error("writeBackdrop failed", { itemType, id, error });
   }
 }
@@ -194,7 +205,21 @@ export async function ensureItemEnriched(
   const effects: EnrichmentEffects = { wroteCredits: false, sagaMembers: [] };
   try {
     const needsSize = needsSizeHydration(itemType, item);
-    const wantsBackdrop = needsBackdrop(itemType, item);
+    // `hydrate_movie`/`hydrate_series` ponen SIEMPRE `hydrated_at = now()`,
+    // sin importar qué columnas rellenen. `writeBackdrop` corre aquí, durante
+    // el render; la hidratación completa (créditos, tamaños, título legible…)
+    // la agenda la ficha con `after()` (`ensureMovieHydrated`/
+    // `ensureSeriesHydrated`, `hydrate-screen.ts`) y esa SÍ hace early-return
+    // en cuanto ve `hydrated_at` puesto. Si se escribiera el backdrop de una
+    // fila todavía pendiente (`hydratedAt == null`), la marcaría como
+    // hidratada aquí mismo; si el `after()` luego fallase, la fila se quedaría
+    // MARCADA para siempre sin su metadata — mismo bug que #1201. Por eso solo
+    // se pide backdrop para filas que YA estaban hidratadas: una fila pendiente
+    // lo recibe en su siguiente visita, una vez que `after()` haya podido
+    // completar el resto. `viewerLoggedIn` además evita que un anónimo
+    // intente la escritura (no tiene grant; ver `writeBackdrop`).
+    const wantsBackdrop =
+      needsBackdrop(itemType, item) && item.hydratedAt != null && item.viewerLoggedIn === true;
     const needsCredits = !(await hasBilledCast(supabase, itemType, item.id));
     if (!needsCredits && !needsSize && !wantsBackdrop) return effects;
 

@@ -369,6 +369,8 @@ async function SeriesTabs({
         totalEpisodes: series.total_episodes,
         episodeRuntimeMinutes: series.episode_runtime_minutes,
         backdropUrl: series.backdrop_url,
+        hydratedAt: series.hydrated_at,
+        viewerLoggedIn: Boolean(userId),
       }),
       ensureSeriesEpisodes(supabase, {
         id: series.id,
