@@ -31,6 +31,7 @@ import {
 import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
+import { InfoLayout } from "@/components/detail/info-layout";
 import {
   MetadataSidebar,
   type MetaRow,
@@ -509,6 +510,9 @@ async function BookTabs({
     s.position !== null && s.total > 0
       ? tDetail("sagaPosition", { position: s.position, total: s.total })
       : null;
+  // La tira de portadas de la saga principal se pinta a TODOS los anchos desde
+  // la ficha cinemática (antes era solo móvil). Mismo umbral que tenía el libro.
+  const stripShown = Boolean(mainSaga) && sagaMembers.length >= 1;
 
   return (
     <ItemDetailTabs
@@ -541,19 +545,26 @@ async function BookTabs({
           sagas={sagas.map((s) => ({ sagaId: s.sagaId, name: s.name, isPrimary: s.isPrimary }))}
           canContribute={canContribute}
         >
-          {/* Orden del mockup (frame 1): sagas → sinopsis → ficha →
-              ediciones, con las ediciones AL FINAL y en tono menor. En PC
-              (frame 8) el cuerpo son dos columnas: sagas y ediciones a la
-              izquierda, la ficha en la de 340. */}
-          <div className="lg:grid lg:grid-cols-[1fr_340px] lg:items-start lg:gap-11">
-            <div className="flex flex-col gap-10">
-              {sagas.length > 0 && (
-                <section className="flex flex-col gap-3.5">
-                  <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
-                    {tDetail("sagasCount", { count: sagas.length })}
-                  </span>
-                  {mainSaga && sagaMembers.length >= 1 && (
-                    <div className="lg:hidden">
+          {/* Info del libro (spec ficha cinemática §3). PC: sinopsis → saga →
+              ediciones | ficha. Móvil, el orden del plan 06 (frame 1): sagas →
+              sinopsis → ficha → ediciones — de ahí los `order-N`. */}
+          <InfoLayout
+            main={
+              <>
+                <div className="order-2 lg:order-none">
+                  <InfoPanel
+                    aboutLabel={tDetail("about")}
+                    synopsis={book.synopsis}
+                    noSynopsisLabel={tDetail("noSynopsis")}
+                    actions={<EditFichaButton />}
+                  />
+                </div>
+                {sagas.length > 0 && (
+                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
+                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                      {tDetail("sagasCount", { count: sagas.length })}
+                    </span>
+                    {stripShown && mainSaga && (
                       <SagaStrip
                         members={sagaMembers}
                         currentType="book"
@@ -562,51 +573,40 @@ async function BookTabs({
                         sagaName={mainSaga.name}
                         positionLabel={sagaPosition(mainSaga)}
                       />
-                    </div>
-                  )}
-                  <SagaList
+                    )}
+                    <SagaList
+                      itemType="book"
+                      sagas={sagas}
+                      positionLabel={sagaPosition}
+                      stripShown={stripShown}
+                    />
+                  </section>
+                )}
+                <div className="order-4 lg:order-none">
+                  <EditionsSection
                     itemType="book"
-                    sagas={sagas}
-                    positionLabel={sagaPosition}
+                    itemId={book.id}
+                    editionsPromise={editionsPromise}
+                    usedEditionIdsPromise={usedEditionIdsPromise}
+                    editionsFallback={<EditionsLoading />}
+                    selectedEditionId={
+                      passes.find((p) => !p.finishedOn)?.editionId ?? null
+                    }
+                    canContribute={canContribute}
                   />
-                </section>
-              )}
-              <InfoPanel
-                aboutLabel={tDetail("about")}
-                synopsis={book.synopsis}
-                noSynopsisLabel={tDetail("noSynopsis")}
-                actions={<EditFichaButton />}
-              />
-              {/* La ficha de la obra: en móvil va aquí, entre la sinopsis y
-                  las ediciones; en PC se muda a la columna lateral. */}
-              <div className="lg:hidden">
+                </div>
+              </>
+            }
+            aside={
+              <div className="order-3 lg:order-none">
                 <MetadataSidebar
                   rows={metaRows}
                   genres={genres}
                   genresLabel={tDetail("genres")}
                 />
               </div>
-              <EditionsSection
-                itemType="book"
-                itemId={book.id}
-                editionsPromise={editionsPromise}
-                usedEditionIdsPromise={usedEditionIdsPromise}
-                editionsFallback={<EditionsLoading />}
-                selectedEditionId={
-                  passes.find((p) => !p.finishedOn)?.editionId ?? null
-                }
-                canContribute={canContribute}
-              />
-            </div>
-
-            <div className="hidden lg:block">
-              <MetadataSidebar
-                rows={metaRows}
-                genres={genres}
-                genresLabel={tDetail("genres")}
-              />
-            </div>
-          </div>
+            }
+          />
         </CatalogEditor>
       }
       community={

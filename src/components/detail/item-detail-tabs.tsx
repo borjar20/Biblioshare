@@ -35,7 +35,12 @@ export function ItemDetailTabs({
   episodes?: ReactNode;
   community: ReactNode;
   log: ReactNode;
-  /** CTA compacto (StickyPassCta) que aparece a la derecha cuando la barra se pega. Solo ≥ lg. */
+  /**
+   * CTA compacto (StickyPassCta) que aparece a la derecha cuando la barra se
+   * pega. Solo ≥ lg. `DETAIL_ASIDE_STICKY` (detail-container.ts) asume una
+   * barra de pestañas de 49px para calcular el `top` de los laterales — lo
+   * que se meta aquí no puede hacer la barra más alta.
+   */
   stickyAction?: ReactNode;
 }) {
   const router = useRouter();

@@ -51,8 +51,8 @@ function PersonAvatar({ person }: { person: Credit }) {
 }
 
 // "Reparto y equipo" (frames 5 y 12): equipo como líneas rol → persona,
-// reparto como avatares — tira con scroll en móvil (`.credits`), rejilla de 6
-// a lo ancho en PC (`.desk-cast`).
+// reparto como avatares — tira con scroll en móvil (`.credits`); en PC va en
+// la columna principal de Info (ficha cinemática): 6 por fila en lg, 8 en xl.
 export async function CreditsSection({ credits }: { credits: ItemCredits }) {
   const t = await getTranslations("item");
   if (credits.cast.length === 0 && credits.crew.length === 0) return null;
@@ -83,7 +83,7 @@ export async function CreditsSection({ credits }: { credits: ItemCredits }) {
       )}
 
       {credits.cast.length > 0 && (
-        <div className="flex gap-3.5 overflow-x-auto pb-1 lg:grid lg:grid-cols-6 lg:gap-[18px] lg:overflow-visible lg:pb-0">
+        <div className="flex gap-3.5 overflow-x-auto pb-1 lg:grid lg:grid-cols-6 lg:gap-[18px] lg:overflow-visible lg:pb-0 xl:grid-cols-8">
           {credits.cast.map((person) => (
             <PersonAvatar key={person.id} person={person} />
           ))}

@@ -5169,3 +5169,16 @@ reaparece en la barra de pestañas cuando se pega.
 
 **Descartado.** Cabecera editorial sin foto + 3 columnas; raíl ensanchado; reestilizar los dos
 árboles; ficha v2 tras flag. Spec: `docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`.
+
+## 2026-09-24 — Ficha cinemática PR 3: Info a dos columnas
+
+**Qué se decide.** La tira de portadas de la saga principal (`SagaStrip`) se pinta ahora en PC
+además de en móvil, y `SagaList.stripShown` es quien decide que la principal no se repita en la
+lista, a ningún ancho — antes la fila principal solo se escondía en móvil (`hidden lg:flex`), así
+que una serie con una saga de un solo miembro se quedaba sin tira Y sin fila en móvil (ni la una
+ni la otra). El reparto se enseña completo (`MAX_CAST = 10`, en filas de 8/6) sin el «+N» que
+recogía la spec: se decide así a propósito, no es un olvido. En la serie, el espaciado móvil entre
+sinopsis y reparto pasa de 16px a los 40px que ya usan las demás secciones, por consistencia. El
+envoltorio vacío de ediciones cuando alguien sin contribuciones ve una obra sin ediciones deja un
+hueco al final de la columna; se acepta como cosmético.
+

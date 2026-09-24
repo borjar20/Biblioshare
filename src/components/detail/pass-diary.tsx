@@ -241,7 +241,7 @@ function PassCard({
       {/* `.tx` del frame: prosa, no metadato — va en --foreground-soft (el
           #584f43 del handoff), no en el gris de las etiquetas. */}
       {pass.review && (
-        <p className="mt-1 text-[12.5px] leading-[1.55] text-foreground-soft">
+        <p className="mt-1 max-w-[70ch] text-[12.5px] leading-[1.55] text-foreground-soft">
           <ReviewContent text={pass.review} />
         </p>
       )}
@@ -251,7 +251,7 @@ function PassCard({
       {pass.status === "dropped" &&
         pass.droppedReason === "otro" &&
         pass.droppedReasonNote && (
-          <p className="mt-1 text-[12.5px] leading-[1.55] text-foreground-soft">
+          <p className="mt-1 max-w-[70ch] text-[12.5px] leading-[1.55] text-foreground-soft">
             {pass.droppedReasonNote}
           </p>
         )}

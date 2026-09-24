@@ -28,6 +28,7 @@ import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
+import { InfoLayout } from "@/components/detail/info-layout";
 import {
   MetadataSidebar,
   type MetaRow,
@@ -403,6 +404,8 @@ async function MovieTabs({
     s.position !== null && s.total > 0
       ? tDetail("sagaPosition", { position: s.position, total: s.total })
       : null;
+  // La tira de la saga principal, a todos los anchos (antes solo móvil).
+  const stripShown = Boolean(mainSaga) && sagaMembers.length >= 1;
 
   return (
     <ItemDetailTabs
@@ -435,29 +438,32 @@ async function MovieTabs({
           sagas={sagas.map((s) => ({ sagaId: s.sagaId, name: s.name, isPrimary: s.isPrimary }))}
           canContribute={canContribute}
         >
-          {/* Frames 5 (móvil) y 12 (PC), y son órdenes DISTINTOS con el mismo
-              DOM (`display:contents` + `order`, como el Registro):
-                móvil → sagas, sinopsis, versiones, reparto, dónde verla, ficha
-                PC    → reparto A LO ANCHO primero (rejilla de 6), y debajo las
-                        dos columnas: sinopsis, dónde verla y versiones a la
-                        izquierda; la ficha técnica a la derecha.
-              La sinopsis se queda en el cuerpo también en PC (P9, decidido).
-              Todo es servidor y sin estado: reordenar no duplica nada. */}
-          <div className="flex flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-11 lg:gap-y-9">
-            {(credits.cast.length > 0 || credits.crew.length > 0) && (
-              <div className="order-4 lg:order-none lg:col-span-2">
-                <CreditsSection credits={credits} />
-              </div>
-            )}
-
-            <div className="contents lg:flex lg:flex-col lg:gap-10">
-              {sagas.length > 0 && (
-                <section className="order-1 flex flex-col gap-3.5 lg:order-none">
-                  <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
-                    {tDetail("sagasCount", { count: sagas.length })}
-                  </span>
-                  {mainSaga && sagaMembers.length >= 1 && (
-                    <div className="lg:hidden">
+          {/* Info de la película (spec ficha cinemática §3). PC: sinopsis →
+              reparto → saga → versiones | ficha → dónde verla. Móvil, el orden
+              del plan 06 (frame 5): sagas → sinopsis → versiones → reparto →
+              dónde verla → ficha — de ahí los `order-N`. */}
+          <InfoLayout
+            main={
+              <>
+                <div className="order-2 lg:order-none">
+                  <InfoPanel
+                    aboutLabel={tDetail("about")}
+                    synopsis={movie.synopsis}
+                    noSynopsisLabel={tDetail("noSynopsis")}
+                    actions={<EditFichaButton />}
+                  />
+                </div>
+                {(credits.cast.length > 0 || credits.crew.length > 0) && (
+                  <div className="order-4 min-w-0 lg:order-none">
+                    <CreditsSection credits={credits} />
+                  </div>
+                )}
+                {sagas.length > 0 && (
+                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
+                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                      {tDetail("sagasCount", { count: sagas.length })}
+                    </span>
+                    {stripShown && mainSaga && (
                       <SagaStrip
                         members={sagaMembers}
                         currentType="movie"
@@ -466,51 +472,47 @@ async function MovieTabs({
                         sagaName={mainSaga.name}
                         positionLabel={sagaPosition(mainSaga)}
                       />
-                    </div>
-                  )}
-                  <SagaList
+                    )}
+                    <SagaList
+                      itemType="movie"
+                      sagas={sagas}
+                      positionLabel={sagaPosition}
+                      stripShown={stripShown}
+                    />
+                  </section>
+                )}
+                <div className="order-3 lg:order-none">
+                  <EditionsSection
                     itemType="movie"
-                    sagas={sagas}
-                    positionLabel={sagaPosition}
+                    itemId={movie.id}
+                    editionsPromise={Promise.resolve(editions)}
+                    usedEditionIdsPromise={usedEditionIdsPromise}
+                    editionsFallback={<EditionsLoading />}
+                    selectedEditionId={
+                      passes.find((p) => !p.finishedOn)?.editionId ?? null
+                    }
+                    canContribute={canContribute}
                   />
-                </section>
-              )}
-              <div className="order-2 lg:order-none">
-                <InfoPanel
-                  aboutLabel={tDetail("about")}
-                  synopsis={movie.synopsis}
-                  noSynopsisLabel={tDetail("noSynopsis")}
-                  actions={<EditFichaButton />}
-                />
-              </div>
-              {watchProviders && (
-                <div className="order-5 lg:order-none">
-                  <WatchProviders data={watchProviders} />
                 </div>
-              )}
-              <div className="order-3 lg:order-none">
-                <EditionsSection
-                  itemType="movie"
-                  itemId={movie.id}
-                  editionsPromise={Promise.resolve(editions)}
-                  usedEditionIdsPromise={usedEditionIdsPromise}
-                  editionsFallback={<EditionsLoading />}
-                  selectedEditionId={
-                    passes.find((p) => !p.finishedOn)?.editionId ?? null
-                  }
-                  canContribute={canContribute}
-                />
-              </div>
-            </div>
-
-            <div className="order-6 lg:order-none">
-              <MetadataSidebar
-                rows={metaRows}
-                genres={genres}
-                genresLabel={tDetail("genres")}
-              />
-            </div>
-          </div>
+              </>
+            }
+            aside={
+              <>
+                <div className="order-6 lg:order-none">
+                  <MetadataSidebar
+                    rows={metaRows}
+                    genres={genres}
+                    genresLabel={tDetail("genres")}
+                  />
+                </div>
+                {watchProviders && (
+                  <div className="order-5 lg:order-none">
+                    <WatchProviders data={watchProviders} />
+                  </div>
+                )}
+              </>
+            }
+          />
         </CatalogEditor>
       }
       community={

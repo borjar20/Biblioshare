@@ -7,6 +7,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { CommunitySummary } from "@/components/detail/community-summary";
 import { ReviewRow } from "@/components/detail/review-row";
 import { ReviewInteractions } from "@/components/social/review-interactions";
+import { DETAIL_ASIDE_STICKY } from "./detail-container";
 
 // "Comunidad" tab body: agregados reales de passes (estados) y pass_reviews
 // (reseñas), calculados en src/lib/community/get-community.ts.
@@ -176,9 +177,8 @@ export async function CommunityPanel({
 
       {/* Resumen de notas. En PC es la tarjeta pegada de la derecha
           (`.rate-card` del frame 9): se queda quieta mientras suben las
-          reseñas, con el mismo `sticky` que el rail — scroll de página, no
-          interno (P5). */}
-      <aside className="order-1 mb-[22px] lg:sticky lg:order-none lg:mb-0 lg:top-[calc(var(--topbar-h)+34px)]">
+          reseñas, pegada BAJO la barra de pestañas (DETAIL_ASIDE_STICKY). */}
+      <aside className={`order-1 mb-[22px] lg:order-none lg:mb-0 ${DETAIL_ASIDE_STICKY}`}>
         {community.avgRating === null ? (
           <p className="text-sm text-muted-foreground">{t("noRatings")}</p>
         ) : (
