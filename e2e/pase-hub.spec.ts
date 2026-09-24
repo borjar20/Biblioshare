@@ -140,10 +140,8 @@ function statusGroup(page: Page) {
 // (Leyendo/Viendo, Leído/Vista), como en el control. Los genéricos "En curso"
 // y "Completado" NO aparecen en la píldora; "Pendiente" y "Abandonado" sí,
 // que no tienen verbo propio.
-// `:visible` porque el estado se pinta en DOS sitios según el ancho y el otro
-// se queda en el DOM apagado: la píldora del hero en móvil, la pastilla del
-// rail en PC (item-rail-actions.tsx). La suite corre a 1280 —o sea, la del
-// rail—, pero así el helper no depende de eso.
+// `:visible` por robustez: desde la ficha cinemática (2026-09) el estado se
+// pinta en UN solo sitio, el enlace de estado de PassCard, a cualquier ancho.
 function statusBadge(page: Page, label: string) {
   return page
     .locator('[data-testid="status-badge"]:visible')
