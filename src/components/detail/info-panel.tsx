@@ -20,21 +20,24 @@ export function InfoPanel({
     : [];
 
   return (
-    // Tope de lectura: con la columna principal a ~860px, la sinopsis a 14px
-    // salía a ~120 caracteres por línea.
-    <div className="flex min-w-0 max-w-[68ch] flex-col gap-4">
+    // El tope de lectura va en los párrafos, no aquí: si envolviera toda la
+    // columna, también le capaba el ancho a la fila del título y el botón
+    // «Editar ficha» dejaba de estar pegado al borde derecho de la columna.
+    <div className="flex min-w-0 flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold tracking-tight">{aboutLabel}</h2>
         {actions}
       </div>
       {paragraphs.length > 0 ? (
         paragraphs.map((p, i) => (
-          <p key={i} className="text-sm leading-relaxed text-foreground">
+          // Tope de lectura: con la columna principal a ~860px, la sinopsis
+          // a 14px salía a ~120 caracteres por línea.
+          <p key={i} className="max-w-[68ch] text-sm leading-relaxed text-foreground">
             {p}
           </p>
         ))
       ) : (
-        <p className="text-sm text-muted-foreground">{noSynopsisLabel}</p>
+        <p className="max-w-[68ch] text-sm text-muted-foreground">{noSynopsisLabel}</p>
       )}
     </div>
   );

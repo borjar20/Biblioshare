@@ -37,4 +37,32 @@ describe("SagaList · stripShown", () => {
     );
     expect(container.innerHTML).toBe("");
   });
+
+  it("con la tira visible y 2 sagas, solo queda 1 fila visible: una columna", () => {
+    const { container } = render(
+      <SagaList itemType="movie" sagas={sagas} positionLabel={() => null} stripShown />,
+    );
+    const list = container.firstElementChild as HTMLElement;
+    expect(list.className.split(" ")).toContain("lg:grid-cols-1");
+    expect(list.className.split(" ")).not.toContain("lg:grid-cols-2");
+  });
+
+  it("sin tira y 2 sagas, las 2 son visibles: dos columnas", () => {
+    const { container } = render(
+      <SagaList itemType="movie" sagas={sagas} positionLabel={() => null} stripShown={false} />,
+    );
+    const list = container.firstElementChild as HTMLElement;
+    expect(list.className.split(" ")).toContain("lg:grid-cols-2");
+    expect(list.className.split(" ")).not.toContain("lg:grid-cols-1");
+  });
+
+  it("sin tira, el tinte de la fila principal va escopado a lg:", () => {
+    render(<SagaList itemType="movie" sagas={sagas} positionLabel={() => null} stripShown={false} />);
+    const main = screen.getByRole("link", { name: /Dune/ });
+    const classes = main.className.split(" ");
+    expect(classes).toContain("lg:border-type-movie");
+    expect(classes).toContain("lg:bg-type-movie/10");
+    expect(classes).not.toContain("border-type-movie");
+    expect(classes).not.toContain("bg-type-movie/10");
+  });
 });

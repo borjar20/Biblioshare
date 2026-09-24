@@ -6,13 +6,12 @@ import { ChevronRightIcon } from "@/components/ui/icons";
 
 // Las sagas del ítem como filas (.saga-row en móvil, .desk-sagas .sr en PC).
 //
-// Las dos vistas enseñan cosas distintas y por eso la lista recibe TODAS y
-// esconde por breakpoint, en vez de que la página pase dos arrays:
-//
-// - Móvil (frame 1): arriba va la tira de portadas de la saga principal
-//   (SagaStrip) y aquí solo LAS DEMÁS — la principal ya está contada arriba.
-// - PC (frame 8): no hay tira; TODAS son filas en dos columnas, y la
-//   principal se marca teñida.
+// `stripShown` decide si la principal se repite en la lista, a CUALQUIER
+// ancho: la tira de portadas (SagaStrip) se pinta en las dos vistas, no solo
+// en móvil. Con la tira visible, la principal ya se ve ahí y su fila en la
+// lista se esconde (`hidden`, sin importar el breakpoint). Sin tira, la
+// principal sale como una fila más — teñida con el acento — también en
+// móvil.
 export function SagaList({
   itemType,
   sagas,
@@ -38,9 +37,24 @@ export function SagaList({
   if (stripShown && sagas.length === 1) return null;
 
   // Las dos columnas de PC son para cuando hay sagas que emparejar. Con UNA
-  // sola, la segunda columna se queda vacía y el nombre se trunca a media fila
-  // ("Batman …", "Nacido…") teniendo el ancho al lado sin usar.
-  const columns = sagas.length > 1 ? "lg:grid lg:grid-cols-2" : "lg:grid lg:grid-cols-1";
+  // sola VISIBLE, la segunda columna se queda vacía y el nombre se trunca a
+  // media fila ("Batman …", "Nacido…") teniendo el ancho al lado sin usar. Lo
+  // que cuenta es lo visible, no `sagas.length`: con la tira mostrada, la
+  // principal no pinta fila (ver arriba), así que 2 sagas + tira son 1 fila
+  // visible y deben caer a una columna, no a dos.
+  const visible = sagas.length - (stripShown ? 1 : 0);
+  const columns = visible > 1 ? "lg:grid lg:grid-cols-2" : "lg:grid lg:grid-cols-1";
+
+  // Sin tira, la fila principal lleva el borde/fondo teñidos del acento. En
+  // móvil no hay padding horizontal en la fila (solo `border-b py-3`), así
+  // que un tinte sin escopar se ve como una banda de color con el texto a
+  // ras — se escopa a `lg:` para que en móvil la fila luzca como las demás
+  // (borde inferior, sin tinte) y solo el nombre se distinga por su color.
+  const lgOnly = (classes: string) =>
+    classes
+      .split(" ")
+      .map((c) => `lg:${c}`)
+      .join(" ");
 
   return (
     <div className={`flex flex-col lg:gap-x-5 lg:gap-y-2 ${columns}`}>
@@ -55,7 +69,7 @@ export function SagaList({
               isMain
                 ? stripShown
                   ? "hidden"
-                  : `${accent.border} ${accent.bgSoft}`
+                  : `${lgOnly(accent.border)} ${lgOnly(accent.bgSoft)}`
                 : "lg:border-border lg:bg-surface"
             }`}
           >

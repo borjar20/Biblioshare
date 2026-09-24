@@ -28,6 +28,10 @@ test.describe("PC 1600", () => {
   });
 
   test("Info a dos columnas: la ficha técnica a la derecha, una sola vez, pegada bajo las pestañas", async ({ page }) => {
+    // Viewport más bajo que el describe (1000px): a 1600x1000 la página del
+    // libro no siempre tiene 1500px de contenido debajo del fold para que el
+    // wheel la mueva; a 700px de alto sí sobra scrollable de sobra.
+    await page.setViewportSize({ width: 1600, height: 700 });
     await page.goto(BOOK);
     const synopsis = page.getByRole("heading", { name: "Sinopsis" });
     await expect(synopsis).toBeVisible();
@@ -38,12 +42,26 @@ test.describe("PC 1600", () => {
     const a = await aside.boundingBox();
     expect(a!.x).toBeGreaterThan(s!.x + 400);
 
-    // Tras bajar, el lateral queda por DEBAJO de la barra de pestañas pegada.
+    // Confirma que la página realmente se movió antes de medir nada debajo.
     await page.mouse.wheel(0, 1500);
-    await page.waitForTimeout(400);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+
+    // Tras bajar, el lateral queda pegado justo bajo la barra de pestañas:
+    // top de la barra + su alto + 24px de aire (DETAIL_ASIDE_STICKY), con
+    // 3px de tolerancia por redondeo de subpíxel.
     const tabs = await page.getByRole("tablist").boundingBox();
-    const a2 = await aside.boundingBox();
-    expect(a2!.y).toBeGreaterThanOrEqual(tabs!.y + tabs!.height);
+    await expect
+      .poll(async () => {
+        const a2 = await aside.boundingBox();
+        return a2!.y;
+      })
+      .toBeGreaterThanOrEqual(tabs!.y + tabs!.height + 24 - 3);
+    await expect
+      .poll(async () => {
+        const a2 = await aside.boundingBox();
+        return a2!.y;
+      })
+      .toBeLessThanOrEqual(tabs!.y + tabs!.height + 24 + 3);
   });
 });
 
