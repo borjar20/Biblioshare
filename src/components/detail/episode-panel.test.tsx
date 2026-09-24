@@ -107,3 +107,49 @@ describe("EpisodePanel · fase 3", () => {
     expect(screen.getByRole("group", { name: "¿Qué tal T1E2?" })).toBeTruthy();
   });
 });
+
+function stubDesktop(matches: boolean) {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  );
+}
+
+describe("EpisodePanel · PC·1 en tres columnas", () => {
+  it("en PC, sin episodio elegido, la tercera columna invita a elegir uno", () => {
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    expect(screen.getByTestId("episode-detail-column").textContent).toContain(
+      messages.episode.pickEpisode,
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("en PC, elegir un episodio lo abre en la columna y NO bajo su fila", () => {
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const column = screen.getByTestId("episode-detail-column");
+    expect(column.querySelector("h3")?.textContent).toBe("Episodio 1x2");
+    // Un solo cuadro de reseña en todo el panel: el de la columna.
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(column.contains(screen.getByRole("textbox"))).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("en móvil, el detalle se despliega bajo su fila (como siempre)", () => {
+    stubDesktop(false);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(
+      screen.getByTestId("episode-detail-column").contains(screen.getByRole("textbox")),
+    ).toBe(false);
+    vi.unstubAllGlobals();
+  });
+});
