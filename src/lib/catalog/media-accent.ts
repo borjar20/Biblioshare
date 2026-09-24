@@ -22,6 +22,14 @@ export type MediaAccent = {
   /** ring-type-* (focused / current markers) */
   ring: string;
   /**
+   * `lg:border-type-x`, escrito literal (nunca `lg:${border}` en runtime):
+   * Tailwind v4 solo genera CSS para strings que ve tal cual en el fuente, y
+   * una clase compuesta en runtime a partir de `border` no genera nada.
+   */
+  lgBorder: string;
+  /** `lg:bg-type-x/10`, literal por el mismo motivo que `lgBorder`. */
+  lgBgSoft: string;
+  /**
    * Raw CSS custom property, for gradients / SVG strokes / arbitrary values.
    * Deliberately `--type-*` and not Tailwind's `--color-type-*`: globals.css
    * declares the theme with `@theme inline`, which inlines those names into
@@ -39,6 +47,8 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     border: "border-type-book",
     borderSoft: "border-type-book/30",
     ring: "ring-type-book",
+    lgBorder: "lg:border-type-book",
+    lgBgSoft: "lg:bg-type-book/10",
     varName: "--type-book",
   },
   movie: {
@@ -48,6 +58,8 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     border: "border-type-movie",
     borderSoft: "border-type-movie/30",
     ring: "ring-type-movie",
+    lgBorder: "lg:border-type-movie",
+    lgBgSoft: "lg:bg-type-movie/10",
     varName: "--type-movie",
   },
   series: {
@@ -57,6 +69,8 @@ export const MEDIA_ACCENT: Record<ItemType, MediaAccent> = {
     border: "border-type-series",
     borderSoft: "border-type-series/30",
     ring: "ring-type-series",
+    lgBorder: "lg:border-type-series",
+    lgBgSoft: "lg:bg-type-series/10",
     varName: "--type-series",
   },
 };

@@ -50,11 +50,9 @@ export function SagaList({
   // que un tinte sin escopar se ve como una banda de color con el texto a
   // ras — se escopa a `lg:` para que en móvil la fila luzca como las demás
   // (borde inferior, sin tinte) y solo el nombre se distinga por su color.
-  const lgOnly = (classes: string) =>
-    classes
-      .split(" ")
-      .map((c) => `lg:${c}`)
-      .join(" ");
+  // `accent.lgBorder` / `accent.lgBgSoft` son literales en media-accent.ts
+  // (nunca compuestas en runtime): Tailwind v4 solo genera CSS para clases
+  // que ve tal cual en el fuente.
 
   return (
     <div className={`flex flex-col lg:gap-x-5 lg:gap-y-2 ${columns}`}>
@@ -69,7 +67,7 @@ export function SagaList({
               isMain
                 ? stripShown
                   ? "hidden"
-                  : `${lgOnly(accent.border)} ${lgOnly(accent.bgSoft)}`
+                  : `${accent.lgBorder} ${accent.lgBgSoft}`
                 : "lg:border-border lg:bg-surface"
             }`}
           >
