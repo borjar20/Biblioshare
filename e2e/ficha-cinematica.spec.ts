@@ -131,18 +131,18 @@ test.describe("móvil 375", () => {
 
     // Primer episodio de la temporada: en móvil las filas conservan
     // aria-expanded (el desplegable de siempre, ahora exclusivo de este
-    // breakpoint — revisión final PR 4).
-    const firstEpisode = page.locator("button[aria-expanded]").first();
+    // breakpoint — revisión final PR 4). Acotado a la lista (li button) para
+    // no colar un aria-expanded de otra parte de la página (p.ej. un menú).
+    const firstEpisode = page.locator("li button[aria-expanded]").first();
     await firstEpisode.click();
     await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
 
     // El detalle aparece DENTRO de la fila (su <li>), no en la columna que
-    // sigue oculta a este ancho. Anónimo no tiene reseña (sin textarea), así
-    // que se comprueba con la línea de metadatos propia del desplegable
-    // (EpisodeInlineDetail añade su MetaLine con "mt-3"; la de la fila
-    // colapsada, que ya estaba visible antes del click, no lleva esa clase).
+    // sigue oculta a este ancho. Se comprueba con el testid estable del
+    // envoltorio del desplegable, no con una clase de utilidad de Tailwind
+    // (frágil: cambia con cualquier retoque de estilo).
     const row = firstEpisode.locator("xpath=ancestor::li[1]");
-    await expect(row.locator("p.mt-3")).toBeVisible();
+    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
     await expect(page.getByTestId("episode-detail-column")).toBeHidden();
   });
 });

@@ -26,6 +26,13 @@ export type EpisodeDetailColumnProps = {
    * atravesar el resto de filas (revisión final PR 4).
    */
   focusKey: string | null;
+  /**
+   * Llamado justo tras aplicar el foco al título. El panel lo usa para
+   * consumir el token (volverlo a null): sin esto, remontar la columna con
+   * el mismo focusKey (p.ej. lista → grid → lista) roba el foco sin que el
+   * usuario haya elegido nada (revisión final PR 4).
+   */
+  onFocused?: () => void;
 };
 
 // La tercera columna del frame PC·1 (ficha cinemática, PR 4): el detalle del
@@ -38,6 +45,7 @@ export function EpisodeDetailColumn({
   episode,
   own,
   focusKey,
+  onFocused,
   ...detail
 }: EpisodeDetailColumnProps) {
   const t = useTranslations("episode");
@@ -45,9 +53,16 @@ export function EpisodeDetailColumn({
 
   // Solo reacciona a un focusKey no nulo: el panel lo deja en null al montar
   // y al cambiar de temporada, así que aquí nunca se roba el foco por eso —
-  // solo cuando el usuario elige un episodio a propósito.
+  // solo cuando el usuario elige un episodio a propósito. Se avisa al padre
+  // justo después con `onFocused` para que consuma el token: si no, un
+  // remontaje posterior (lista → grid → lista) vería el mismo focusKey ya
+  // "gastado" y robaría el foco sin que el usuario haya elegido nada.
   useEffect(() => {
-    if (focusKey !== null) headingRef.current?.focus();
+    if (focusKey !== null) {
+      headingRef.current?.focus();
+      onFocused?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusKey]);
 
   if (!episode || !own) {
@@ -71,7 +86,7 @@ export function EpisodeDetailColumn({
       <h3
         ref={headingRef}
         tabIndex={-1}
-        className="mt-1 font-serif text-[18px] leading-tight font-semibold text-foreground focus-visible:outline-none"
+        className="mt-1 rounded-sm font-serif text-[18px] leading-tight font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-type-series/40"
       >
         {episode.title ?? t("untitled")}
       </h3>

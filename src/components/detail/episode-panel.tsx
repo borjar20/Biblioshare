@@ -447,6 +447,10 @@ export function EpisodePanel({
             setOpenSeason(ep.season);
             setSelectedKey(episodeKey(ep));
             setDraft(ownOf(ep).review ?? "");
+            // Mismo criterio que la selección desde la fila: en PC, elegir
+            // una celda de la rejilla también debe llevar el foco al título
+            // de la columna de detalle, no dejarlo en el body.
+            if (isDesktop) setFocusKey(`${episodeKey(ep)}:${Date.now()}`);
           }}
         />
       ) : (
@@ -522,6 +526,7 @@ export function EpisodePanel({
                 }
                 onMarkUpTo={() => selectedEpisode && markMany(upToPending(selectedEpisode))}
                 focusKey={focusKey}
+                onFocused={() => setFocusKey(null)}
               />
             </div>
 

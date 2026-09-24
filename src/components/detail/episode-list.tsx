@@ -271,7 +271,10 @@ function EpisodeItem({
       {/* El nivel 3 en móvil, bajo su fila. En PC vive en la tercera columna
           (EpisodeDetailColumn). */}
       {selected && inlineDetail && (
-        <div className="border-t border-border pr-[15px] pb-3.5 pl-[49px] lg:pl-[57px]">
+        <div
+          data-testid="episode-inline-detail"
+          className="border-t border-border pr-[15px] pb-3.5 pl-[49px] lg:pl-[57px]"
+        >
           <EpisodeInlineDetail
             episode={episode}
             own={own}

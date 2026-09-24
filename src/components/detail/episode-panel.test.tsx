@@ -186,6 +186,29 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     expect(document.activeElement).toBe(heading);
   });
 
+  it("elegir un episodio en PC sigue moviendo el foco al título tras cambiar a rejilla y volver a lista", () => {
+    // Revisión final PR 4: EpisodeDetailColumn vive en la rama `list` del
+    // `view === "grid" ? … : …`, así que lista → grid → lista la remonta.
+    // Si el focusKey no se consume tras aplicar el foco, ese remontaje lo
+    // vuelve a disparar sin que el usuario haya elegido nada.
+    stubDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const heading = screen.getByTestId("episode-detail-column").querySelector("h3");
+    expect(document.activeElement).toBe(heading);
+
+    // Se retira el foco a propósito, como haría el usuario al seguir
+    // navegando por el teclado o el ratón.
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.activeElement).not.toBe(heading);
+
+    fireEvent.click(screen.getByRole("button", { name: "Rejilla" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lista" }));
+
+    const headingAfter = screen.getByTestId("episode-detail-column").querySelector("h3");
+    expect(document.activeElement).not.toBe(headingAfter);
+  });
+
   it("cruzar de PC a móvil con un borrador escrito conserva el mismo cuadro, ahora inline", () => {
     const { resize } = stubResizableDesktop(true);
     renderPanel([ep(1, 1), ep(1, 2)]);

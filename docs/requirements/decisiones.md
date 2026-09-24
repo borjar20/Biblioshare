@@ -5213,6 +5213,6 @@ que atravesar el resto de filas de la lista. El rótulo pegajoso de temporada de
 
 **Deuda registrada.** Si se cambia de ancho con el cuadro de reseña de la columna enfocado, el
 componente se desmonta sin disparar `blur` y el borrador no se guarda solo (sobrevive en el estado
-del panel y reaparece al volver a mostrarlo, pero no llega al servidor); ver issue de seguimiento.
+del panel y reaparece al volver a mostrarlo, pero no llega al servidor); ver issue #1216.
 
 Spec: `docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`.
