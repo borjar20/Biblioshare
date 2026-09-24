@@ -5,10 +5,9 @@ import { addExistingItemToLibrary } from "@/lib/library/add-existing-item";
 import { loginHref } from "@/lib/auth/safe-next";
 import { useItemStatus } from "./item-status-context";
 
-// Acción "Seguir" compartida por las DOS caras de la ficha: la ficha son dos
-// árboles distintos (ver item-shell.tsx), el hero de MÓVIL (HeroStatusOrFollow)
-// y el rail de PC (ItemRailActions), y ambos necesitan seguir. Misma lógica en
-// un solo sitio para que no diverjan.
+// Acción "Seguir" de la ficha. La usa PassCard (una sola tarjeta para móvil y
+// PC desde la ficha cinemática, 2026-09); antes la compartían el hero de móvil
+// y el raíl de PC. Queda en su propio hook para que la lógica no se duplique.
 //
 // Logueado: "planned" optimista (el badge y la pestaña "Mi registro" reaccionan
 // al instante vía ItemStatusContext) → salto a ?tab=log (canal que

@@ -3,11 +3,9 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import {
-  heroStatusLabels,
-  statusVerbs,
-} from "@/lib/library/hero-status-labels";
-import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { statusVerbs } from "@/lib/library/hero-status-labels";
+import { PassCard } from "@/components/detail/pass-card";
+import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
 import { passPercent } from "@/lib/library/progress";
 import {
   createClient,
@@ -40,7 +38,6 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
-import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
@@ -225,17 +222,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
   const genres = series.genres ?? [];
 
-  // Las 4 etiquetas de la píldora del hero ("En tu biblioteca · Viendo"),
-  // traducidas aquí para que la isla de cliente (StatusBadgeLive) no arrastre
-  // i18n. El provider comparte el estado del pase activo entre el badge del
-  // hero y los pills de la pestaña Registro: ambos cambian en el mismo commit
-  // optimista (ver item-status-context.tsx).
-  // Nota de alcance: el auto-cierre por episodios (EpisodePanel) NO publica
-  // ahí — redirige a `?cerrar=...&tab=log`, que es una navegación completa con
-  // render fresco del servidor, así que el badge llega ya correcto.
-  const baseStatusLabels = await heroStatusLabels("series");
-
-  // El rail de PC, solo lectura (ver item-rail-actions.tsx). El total sale del
+  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). El total sale del
   // catálogo (lo mismo que cuenta la pestaña Episodios); en la primera visita
   // el catálogo aún no está sincronizado y el fallback es la columna de TMDB.
   const baseRailLabels = await statusVerbs("series");
@@ -260,9 +247,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
     tmdbStatus: series.tmdb_status,
   });
   const upToDateLabel = tEpisode("upToDate");
-  const statusLabels = upToDate
-    ? { ...baseStatusLabels, in_progress: `${tDetail("inLibrary")} · ${upToDateLabel}` }
-    : baseStatusLabels;
   const railLabels = upToDate
     ? { ...baseRailLabels, in_progress: upToDateLabel }
     : baseRailLabels;
@@ -287,19 +271,10 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={series.cover_url}
+        backdropUrl={series.backdrop_url ?? null}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
-        statusSlot={
-          <HeroStatusOrFollow
-            itemType="series"
-            itemId={series.id}
-            isLoggedIn={Boolean(user)}
-            statusLabels={statusLabels}
-            ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
-            ctaLabel={tDetail("rail.cta.series")}
-          />
-        }
         menuSlot={
           <HeroMenu
             itemType="series"
@@ -307,8 +282,8 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             canEditCatalog={canEditCatalog}
           />
         }
-        railActions={
-          <ItemRailActions
+        passCard={
+          <PassCard
             itemType="series"
             itemId={series.id}
             isLoggedIn={Boolean(user)}
@@ -521,6 +496,12 @@ async function SeriesTabs({
         community: tDetail("tabCommunity"),
         log: tDetail("tabLog"),
       }}
+      stickyAction={
+        <StickyPassCta
+          href={activeRow ? `/serie/${series.id}?tab=episodes` : null}
+          label={tDetail("rail.cta.series")}
+        />
+      }
       info={
         <CatalogEditor
           itemType="series"

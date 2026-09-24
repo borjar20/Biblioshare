@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { useItemStatus } from "./item-status-context";
+import { DETAIL_CONTAINER } from "./detail-container";
 import {
   detailTabOrder,
   clampDetailTab,
@@ -24,6 +25,7 @@ export function ItemDetailTabs({
   episodes,
   community,
   log,
+  stickyAction,
 }: {
   itemType: ItemType;
   /** Nombre accesible del grupo de pestañas («Secciones de la ficha»). */
@@ -33,6 +35,8 @@ export function ItemDetailTabs({
   episodes?: ReactNode;
   community: ReactNode;
   log: ReactNode;
+  /** CTA compacto (StickyPassCta) que aparece a la derecha cuando la barra se pega. Solo ≥ lg. */
+  stickyAction?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -93,6 +97,28 @@ export function ItemDetailTabs({
   // ahí el tabIndex móvil (solo la activa entra en el orden de tabulación) y el
   // manejador de ←/→/Inicio/Fin.
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  // ¿Está la barra pegada bajo la topbar? Un centinela de 1px justo ENCIMA de
+  // ella: cuando sale por arriba (por encima de --topbar-h), la barra ya va
+  // pegada. IntersectionObserver y no un listener de scroll: no corre en cada
+  // frame. Solo se monta si hay CTA que enseñar.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !stickyAction) return;
+    const topbar =
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 59;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setStuck(!entry.isIntersecting && (entry.boundingClientRect?.top ?? 0) < topbar);
+      },
+      { rootMargin: `-${topbar}px 0px 0px 0px` },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [stickyAction]);
+
   function onTabKey(e: React.KeyboardEvent, index: number) {
     const delta =
       e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
@@ -109,6 +135,7 @@ export function ItemDetailTabs({
 
   return (
     <div className="flex flex-col">
+      <div ref={sentinelRef} aria-hidden className="h-px" />
       {/* Sans (NO el mono de las subtabs — aquí la maqueta escribe Geist),
           subrayado del acento y pegada bajo la topbar, en las dos vistas.
           Cambia la piel: en PC el texto es más pequeño (14) y más ligero, y
@@ -117,43 +144,53 @@ export function ItemDetailTabs({
           Sin scroll horizontal: caben (comprobado con 4 pestañas a 390).
           .desk-tabs de "Web - Ficha de titulo (PC).html". */}
       <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:bg-background/80 lg:backdrop-blur-[10px]">
-        <div
-          role="tablist"
-          aria-label={tablistLabel}
-          className="mx-auto flex w-full max-w-4xl gap-5 px-4 sm:px-6 lg:max-w-none lg:gap-7 lg:px-11"
-        >
-          {order.map((id, index) => {
-            const isActive = tab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`item-tab-${id}`}
-                aria-selected={isActive}
-                aria-controls={`item-tabpanel-${id}`}
-                tabIndex={isActive ? 0 : -1}
-                ref={(el) => {
-                  tabRefs.current[id] = el;
-                }}
-                onKeyDown={(e) => onTabKey(e, index)}
-                onClick={() => selectTab(id)}
-                className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
-                  isActive
-                    ? "text-foreground lg:font-semibold"
-                    : "text-muted-foreground hover:text-foreground lg:font-medium lg:hover:text-foreground"
-                }`}
-              >
-                {labels[id]}
-                {isActive && (
-                  <span
-                    aria-hidden
-                    className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
-                  />
-                )}
-              </button>
-            );
-          })}
+        <div className={`${DETAIL_CONTAINER} flex items-center gap-4`}>
+          <div
+            role="tablist"
+            aria-label={tablistLabel}
+            className="flex min-w-0 flex-1 gap-5 lg:gap-7"
+          >
+            {order.map((id, index) => {
+              const isActive = tab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`item-tab-${id}`}
+                  aria-selected={isActive}
+                  aria-controls={`item-tabpanel-${id}`}
+                  tabIndex={isActive ? 0 : -1}
+                  ref={(el) => {
+                    tabRefs.current[id] = el;
+                  }}
+                  onKeyDown={(e) => onTabKey(e, index)}
+                  onClick={() => selectTab(id)}
+                  className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
+                    isActive
+                      ? "text-foreground lg:font-semibold"
+                      : "text-muted-foreground hover:text-foreground lg:font-medium lg:hover:text-foreground"
+                  }`}
+                >
+                  {labels[id]}
+                  {isActive && (
+                    <span
+                      aria-hidden
+                      className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {stickyAction && (
+            <div
+              data-testid="tabs-sticky-action"
+              className={stuck ? "hidden shrink-0 items-center lg:flex" : "hidden"}
+            >
+              {stickyAction}
+            </div>
+          )}
         </div>
       </div>
 
@@ -166,7 +203,7 @@ export function ItemDetailTabs({
         id={`item-tabpanel-${tab}`}
         aria-labelledby={`item-tab-${tab}`}
         tabIndex={0}
-        className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:max-w-none lg:px-11 lg:pt-[34px] lg:pb-[42px]"
+        className={`${DETAIL_CONTAINER} py-6 lg:pt-[34px] lg:pb-[42px]`}
       >
         {slots[tab]}
       </div>

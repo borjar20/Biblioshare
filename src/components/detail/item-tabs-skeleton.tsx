@@ -1,4 +1,5 @@
 import { SkeletonLine } from "@/components/ui/skeleton";
+import { DETAIL_CONTAINER } from "./detail-container";
 
 // Fila de pestañas + un bloque de contenido, fantasma. Es el fallback del
 // <Suspense> INTERNO que envuelve las pestañas: cuando el hero ya está pintado
@@ -15,7 +16,7 @@ import { SkeletonLine } from "@/components/ui/skeleton";
 // cual, por debajo del de página.
 export function ItemTabsSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+    <div className={`${DETAIL_CONTAINER} py-8`}>
       <div className="flex gap-6 border-b border-border pb-3">
         <SkeletonLine className="w-14" />
         <SkeletonLine className="w-20" />

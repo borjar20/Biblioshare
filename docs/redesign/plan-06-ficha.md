@@ -238,6 +238,10 @@ topbar de la app (sticky, global — P-T1)
 
 El shell lo fija `item-shell.tsx`: `lg:max-w-[1160px] lg:grid-cols-[300px_1fr]`. Medido a 1280/1440/1600/1920: **siempre 771** (hay max-width, no es cuestión de pantallas grandes). Por eso PC·1 `220|1fr|340` **no cabe**: la lista quedaba en 208px y los títulos se partían **letra a letra**. **Decisión del usuario: dos columnas en PC** (raíl 220 + lista 549) y el detalle desplegado bajo su fila en ambos breakpoints; `EpisodeDetailCard` **borrada**. Si algún día se adopta el shell nuevo, la tercera columna vuelve a caber y **PC·2** (muro/heatmap), hoy dibujado sin usar, pasa a ser viable.
 
+> **Resuelto el 2026-09-24** a favor del shell SIN raíl: ficha cinemática
+> (`docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`). El cuerpo pasa a ~1240px; la
+> tercera columna de Episodios (PC·1) vuelve a caber y es la PR 4 de esa spec.
+
 **Lección e2e:** `pase-hub.spec.ts` localizaba temporadas con `page.locator("section")` — ya no existe, la pestaña enseña UNA temporada. Helper `openLastSeason()` que entra por el raíl.
 
 ### Los dos hallazgos de la verificación de cierre (PR #68)

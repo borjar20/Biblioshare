@@ -3,11 +3,9 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import {
-  heroStatusLabels,
-  statusVerbs,
-} from "@/lib/library/hero-status-labels";
-import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { statusVerbs } from "@/lib/library/hero-status-labels";
+import { PassCard } from "@/components/detail/pass-card";
+import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
 import { passPercent } from "@/lib/library/progress";
 import {
   createClient,
@@ -41,7 +39,6 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
-import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { HydrationWatch } from "@/components/detail/hydration-watch";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import {
@@ -237,14 +234,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 
   const genres = book.genres ?? [];
 
-  // Las 4 etiquetas de la píldora del hero ("En tu biblioteca · Leyendo"),
-  // traducidas aquí para que la isla de cliente (StatusBadgeLive) no arrastre
-  // i18n. El provider comparte el estado del pase activo entre el badge del
-  // hero y los pills de la pestaña Registro: ambos cambian en el mismo commit
-  // optimista (ver item-status-context.tsx).
-  const statusLabels = await heroStatusLabels("book");
-
-  // El rail de PC (solo lectura, ver item-rail-actions.tsx). La barra de
+  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La barra de
   // progreso solo tiene sentido con total de páginas conocido.
   const railLabels = await statusVerbs("book");
   const bookPosition = parsePosition(
@@ -286,19 +276,10 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={book.cover_url}
+        backdropUrl={null}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
-        statusSlot={
-          <HeroStatusOrFollow
-            itemType="book"
-            itemId={book.id}
-            isLoggedIn={Boolean(user)}
-            statusLabels={statusLabels}
-            ctaHref={activePass ? `/sesion/${activePass.id}` : null}
-            ctaLabel={tDetail("rail.cta.book")}
-          />
-        }
         menuSlot={
           <HeroMenu
             itemType="book"
@@ -306,8 +287,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             canEditCatalog={canEditCatalog}
           />
         }
-        railActions={
-          <ItemRailActions
+        passCard={
+          <PassCard
             itemType="book"
             itemId={book.id}
             isLoggedIn={Boolean(user)}
@@ -538,6 +519,12 @@ async function BookTabs({
         community: tDetail("tabCommunity"),
         log: tDetail("tabLog"),
       }}
+      stickyAction={
+        <StickyPassCta
+          href={activeRow ? `/sesion/${activeRow.id}` : null}
+          label={tDetail("rail.cta.book")}
+        />
+      }
       info={
         <CatalogEditor
           itemType="book"

@@ -3,11 +3,9 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import {
-  heroStatusLabels,
-  statusVerbs,
-} from "@/lib/library/hero-status-labels";
-import { ItemRailActions } from "@/components/detail/item-rail-actions";
+import { statusVerbs } from "@/lib/library/hero-status-labels";
+import { PassCard } from "@/components/detail/pass-card";
+import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
 import {
   createClient,
   createTokenClient,
@@ -39,7 +37,6 @@ import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
-import { HeroStatusOrFollow } from "@/components/detail/hero-status-or-follow";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { ensureMovieHydrated } from "@/lib/catalog/hydrate-screen";
@@ -203,14 +200,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 
   const genres = movie.genres ?? [];
 
-  // Las 4 etiquetas de la píldora del hero ("En tu biblioteca · Viendo"),
-  // traducidas aquí para que la isla de cliente (StatusBadgeLive) no arrastre
-  // i18n. El provider comparte el estado del pase activo entre el badge del
-  // hero y los pills de la pestaña Registro: ambos cambian en el mismo commit
-  // optimista (ver item-status-context.tsx).
-  const statusLabels = await heroStatusLabels("movie");
-
-  // El rail de PC, solo lectura (ver item-rail-actions.tsx). La película NO
+  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La película NO
   // lleva barra de progreso: su estado es binario y el frame 12 no la pinta.
   const railLabels = await statusVerbs("movie");
 
@@ -223,19 +213,10 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={movie.cover_url}
+        backdropUrl={movie.backdrop_url ?? null}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
-        statusSlot={
-          <HeroStatusOrFollow
-            itemType="movie"
-            itemId={movie.id}
-            isLoggedIn={Boolean(user)}
-            statusLabels={statusLabels}
-            ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
-            ctaLabel={tDetail("rail.cta.movie")}
-          />
-        }
         menuSlot={
           <HeroMenu
             itemType="movie"
@@ -243,8 +224,8 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
             canEditCatalog={canEditCatalog}
           />
         }
-        railActions={
-          <ItemRailActions
+        passCard={
+          <PassCard
             itemType="movie"
             itemId={movie.id}
             isLoggedIn={Boolean(user)}
@@ -432,6 +413,12 @@ async function MovieTabs({
         community: tDetail("tabCommunity"),
         log: tDetail("tabLog"),
       }}
+      stickyAction={
+        <StickyPassCta
+          href={activeRow ? `/pelicula/${movie.id}?tab=log` : null}
+          label={tDetail("rail.cta.movie")}
+        />
+      }
       info={
         <CatalogEditor
           itemType="movie"
