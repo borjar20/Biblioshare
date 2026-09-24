@@ -1,25 +1,17 @@
 import type { ReactNode } from "react";
 import type { ItemType } from "@/lib/catalog/types";
 import { ItemHero } from "./item-hero";
-import { ItemRail } from "./item-rail";
-import { ItemHeaderWide } from "./item-header-wide";
 
-// La ficha entera son DOS pantallas, no una responsive (plan 06 §2bis):
+// La ficha: hero cinemático + pestañas (spec 2026-09-23-ficha-cinematica-design.md).
 //
-// - Móvil (frames 1-7): hero con portada, barra superior y píldora de estado,
-//   y debajo las pestañas a lo ancho.
-// - PC (frames 8-12): rail sticky de 300px con la portada y el panel de
-//   control, y una columna a la derecha con cabecera, pestañas y cuerpo.
+// Hasta el 2026-09 eran DOS árboles —hero de móvil y raíl de 300px + cabecera
+// de PC— escondidos por breakpoint, dentro de un contenedor de 1200px: el cuerpo
+// de cualquier pestaña se quedaba en ~771px a cualquier viewport (plan 06 §6e).
+// Ahora es un árbol: el ancho lo fija DETAIL_CONTAINER, compartido con las
+// pestañas.
 //
-// Por eso hay dos árboles y no un hero que se estira: en PC no existen el
-// botón de volver, el label de tipo centrado ni la píldora de estado, la
-// portada cambia de sitio, y el byline pasa de mono 11 a serif 22. Cada uno se
-// esconde en su breakpoint. El precio es que la portada se pinta dos veces
-// (una oculta): son ~15 KB y a cambio no hay que reordenar el DOM con trucos.
-//
-// Las pestañas se pasan como slot y se pintan UNA vez: en PC caen dentro de la
-// columna derecha; en móvil, a lo ancho. Así el <Suspense> que las envuelve
-// (Fase B del plan 00) sigue intacto.
+// Las pestañas siguen llegando como slot y se pintan UNA vez, así que el
+// <Suspense> que las envuelve (Fase B del plan 00) sigue intacto.
 export function ItemShell({
   itemType,
   mediaLabel,
@@ -27,12 +19,12 @@ export function ItemShell({
   byline,
   genres,
   coverUrl,
+  backdropUrl,
   avgRating,
   ratingsLabel,
   backLabel,
-  statusSlot,
   menuSlot,
-  railActions,
+  passCard,
   tabs,
 }: {
   itemType: ItemType;
@@ -41,58 +33,34 @@ export function ItemShell({
   byline: string | null;
   genres: string[];
   coverUrl: string | null;
+  /** Backdrop de TMDB (PR 1); null en libros y en obras sin él. */
+  backdropUrl: string | null;
   avgRating: number | null;
   ratingsLabel: string;
   backLabel: string;
-  /** La píldora "En tu biblioteca · Leyendo" — solo móvil. */
-  statusSlot?: ReactNode;
-  /** El menú ⋯ de la barra del hero (P2) — solo móvil, como la barra. */
+  /** El menú ⋯ de la barra superior — solo móvil. */
   menuSlot?: ReactNode;
-  /** Panel de control del rail — solo PC. */
-  railActions?: ReactNode;
+  /** <PassCard/>, una sola instancia. */
+  passCard: ReactNode;
   tabs: ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full lg:grid lg:max-w-[1200px] lg:grid-cols-[300px_1fr]">
-      <div className="hidden lg:block">
-        <ItemRail
-          itemType={itemType}
-          title={title}
-          coverUrl={coverUrl}
-          actions={railActions}
-        />
-      </div>
-
-      <div className="min-w-0 lg:border-l lg:border-border">
-        <div className="lg:hidden">
-          <ItemHero
-            itemType={itemType}
-            mediaLabel={mediaLabel}
-            title={title}
-            byline={byline}
-            genres={genres}
-            coverUrl={coverUrl}
-            avgRating={avgRating}
-            ratingsLabel={ratingsLabel}
-            backLabel={backLabel}
-            statusSlot={statusSlot}
-            menuSlot={menuSlot}
-          />
-        </div>
-
-        <div className="hidden lg:block">
-          <ItemHeaderWide
-            itemType={itemType}
-            mediaLabel={mediaLabel}
-            title={title}
-            byline={byline}
-            avgRating={avgRating}
-            ratingsLabel={ratingsLabel}
-          />
-        </div>
-
-        {tabs}
-      </div>
+    <div className="w-full">
+      <ItemHero
+        itemType={itemType}
+        mediaLabel={mediaLabel}
+        title={title}
+        byline={byline}
+        genres={genres}
+        coverUrl={coverUrl}
+        backdropUrl={backdropUrl}
+        avgRating={avgRating}
+        ratingsLabel={ratingsLabel}
+        backLabel={backLabel}
+        menuSlot={menuSlot}
+        passCard={passCard}
+      />
+      {tabs}
     </div>
   );
 }
