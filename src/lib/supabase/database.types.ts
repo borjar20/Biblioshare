@@ -1545,6 +1545,7 @@ export type Database = {
       }
       movies: {
         Row: {
+          backdrop_url: string | null
           cover_url: string | null
           created_at: string
           director: string | null
@@ -1559,6 +1560,7 @@ export type Database = {
           tmdb_id: number | null
         }
         Insert: {
+          backdrop_url?: string | null
           cover_url?: string | null
           created_at?: string
           director?: string | null
@@ -1573,6 +1575,7 @@ export type Database = {
           tmdb_id?: number | null
         }
         Update: {
+          backdrop_url?: string | null
           cover_url?: string | null
           created_at?: string
           director?: string | null
@@ -2854,6 +2857,7 @@ export type Database = {
       }
       series: {
         Row: {
+          backdrop_url: string | null
           cover_url: string | null
           created_at: string
           creator: string | null
@@ -2873,6 +2877,7 @@ export type Database = {
           total_seasons: number | null
         }
         Insert: {
+          backdrop_url?: string | null
           cover_url?: string | null
           created_at?: string
           creator?: string | null
@@ -2892,6 +2897,7 @@ export type Database = {
           total_seasons?: number | null
         }
         Update: {
+          backdrop_url?: string | null
           cover_url?: string | null
           created_at?: string
           creator?: string | null
@@ -3520,6 +3526,7 @@ export type Database = {
       hydrate_books_bulk: { Args: { p_rows: Json }; Returns: undefined }
       hydrate_movie: {
         Args: {
+          p_backdrop_url?: string
           p_cover_url?: string
           p_director?: string
           p_duration_minutes?: number
@@ -3538,6 +3545,7 @@ export type Database = {
       }
       hydrate_series: {
         Args: {
+          p_backdrop_url?: string
           p_cover_url?: string
           p_creator?: string
           p_episode_runtime_minutes?: number
