@@ -39,7 +39,9 @@ export function InfoPanel({
           contenido no encoge. Sin esto la tira de reparto (6 avatares de 64px
           = 454px) estiraba la ficha entera a 470px en un viewport de 360 y el
           `overflow-x-auto` de CreditsSection nunca llegaba a actuar (#721). */}
-      <div className="flex min-w-0 flex-col gap-4">
+      {/* Tope de lectura: con la columna principal a ~860px, la sinopsis a
+          14px salía a ~120 caracteres por línea. */}
+      <div className="flex min-w-0 max-w-[68ch] flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold tracking-tight">{aboutLabel}</h2>
           {actions}
