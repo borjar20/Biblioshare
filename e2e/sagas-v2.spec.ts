@@ -219,14 +219,10 @@ test("ficha de obra miembro sigue mostrando su sección de saga", async ({
   await page.waitForLoadState("networkidle").catch(() => {});
 
   // Sección de sagas de la ficha de obra (SagaList/SagaStrip, src/components/detail):
-  // el rótulo "Sagas · N" y una fila/tira enlazando de vuelta a Era Uno.
-  //
-  // Hay DOS enlaces a la misma saga en el DOM: el de SagaStrip (la tira de
-  // portadas, envuelta en `lg:hidden`, así que a este ancho de escritorio
-  // está en el DOM pero oculta) y el de SagaList (fila de escritorio,
-  // `hidden lg:flex`). El primero en orden de documento es el de SagaStrip
-  // (SIEMPRE oculto en esta suite, que corre a 1280px), así que un `.first()`
-  // a secas coge el oculto — de ahí el filtro `:visible` en vez de `.first()`.
+  // el rótulo "Sagas · N" y un enlace de vuelta a Era Uno. Desde la ficha
+  // cinemática la tira de portadas se ve a TODOS los anchos y, cuando está, la
+  // saga principal no se repite en la lista (SagaList `stripShown`). `:visible`
+  // por robustez: el enlace visible es el de la tira o, sin tira, el de la lista.
   await expect(page.getByText(/^Sagas ·/)).toBeVisible({ timeout: 15_000 });
   await expect(
     page.locator(`a[href="/saga/${SAGA_ERA_UNO}"]:visible`),

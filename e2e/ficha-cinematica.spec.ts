@@ -26,6 +26,25 @@ test.describe("PC 1600", () => {
     const card = await follow.boundingBox();
     expect(card!.x).toBeGreaterThan(title!.x + 200);
   });
+
+  test("Info a dos columnas: la ficha técnica a la derecha, una sola vez, pegada bajo las pestañas", async ({ page }) => {
+    await page.goto(BOOK);
+    const synopsis = page.getByRole("heading", { name: "Sinopsis" });
+    await expect(synopsis).toBeVisible();
+    const aside = page.getByTestId("info-aside");
+    // Una sola ficha técnica en el DOM (antes el libro la pintaba dos veces).
+    await expect(page.locator("aside").filter({ hasText: "Primera publicación" })).toHaveCount(1);
+    const s = await synopsis.boundingBox();
+    const a = await aside.boundingBox();
+    expect(a!.x).toBeGreaterThan(s!.x + 400);
+
+    // Tras bajar, el lateral queda por DEBAJO de la barra de pestañas pegada.
+    await page.mouse.wheel(0, 1500);
+    await page.waitForTimeout(400);
+    const tabs = await page.getByRole("tablist").boundingBox();
+    const a2 = await aside.boundingBox();
+    expect(a2!.y).toBeGreaterThanOrEqual(tabs!.y + tabs!.height);
+  });
 });
 
 test.describe("móvil 375", () => {
@@ -44,5 +63,14 @@ test.describe("móvil 375", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test("Info en una columna con el orden de siempre: sinopsis antes que la ficha, la ficha antes que las ediciones", async ({ page }) => {
+    await page.goto(BOOK);
+    const synopsis = await page.getByRole("heading", { name: "Sinopsis" }).boundingBox();
+    const ficha = await page.locator("aside").filter({ hasText: "Primera publicación" }).boundingBox();
+    const editions = await page.getByText("Ediciones", { exact: true }).first().boundingBox();
+    expect(ficha!.y).toBeGreaterThan(synopsis!.y);
+    expect(editions!.y).toBeGreaterThan(ficha!.y);
   });
 });
