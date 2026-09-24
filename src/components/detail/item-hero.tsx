@@ -191,7 +191,7 @@ function HeroBackdrop({
         </>
       )}
       {background.kind === "none" && <div className={`absolute inset-0 ${accent.bgSoft}`} />}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent from-20% via-background/75 via-60% to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent from-15% via-background/85 via-35% to-background to-55% lg:via-45% lg:to-65%" />
     </div>
   );
 }

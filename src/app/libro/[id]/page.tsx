@@ -234,7 +234,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 
   const genres = book.genres ?? [];
 
-  // El rail de PC (solo lectura, ver item-rail-actions.tsx). La barra de
+  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La barra de
   // progreso solo tiene sentido con total de páginas conocido.
   const railLabels = await statusVerbs("book");
   const bookPosition = parsePosition(

@@ -200,7 +200,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 
   const genres = movie.genres ?? [];
 
-  // El rail de PC, solo lectura (ver item-rail-actions.tsx). La película NO
+  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La película NO
   // lleva barra de progreso: su estado es binario y el frame 12 no la pinta.
   const railLabels = await statusVerbs("movie");
 

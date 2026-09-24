@@ -222,7 +222,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
   const genres = series.genres ?? [];
 
-  // El rail de PC, solo lectura (ver item-rail-actions.tsx). El total sale del
+  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). El total sale del
   // catálogo (lo mismo que cuenta la pestaña Episodios); en la primera visita
   // el catálogo aún no está sincronizado y el fallback es la columna de TMDB.
   const baseRailLabels = await statusVerbs("series");

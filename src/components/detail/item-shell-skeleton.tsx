@@ -16,7 +16,7 @@ export function ItemShellSkeleton({ itemType }: { itemType: ItemType }) {
           aria-hidden
           className={`absolute inset-x-0 top-0 h-[240px] sm:h-[280px] lg:h-[420px] ${accent.bgSoft}`}
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/75 to-background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent from-15% via-background/85 via-35% to-background to-55% lg:via-45% lg:to-65%" />
         </div>
         <div className={`relative ${DETAIL_CONTAINER} pt-3.5 pb-5 lg:pt-[190px] lg:pb-8`}>
           <div className="flex items-center justify-between gap-3 lg:hidden">
