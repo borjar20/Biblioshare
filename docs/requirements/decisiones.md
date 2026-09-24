@@ -48,21 +48,6 @@
   (2026-07-30). Bloquear borra follows/avisos y desbloquear no restaura; el cliente no inserta
   notificaciones; `content_reports` deriva snapshot en servidor y sobrevive al borrado del target.
 - **Portadas oficiales por allowlist de hosts** (2026-08-02): `https:` + host ∈ {image.tmdb.org,
-
-## 2026-09-24 — Ficha de obra: se abandona el raíl lateral por un hero cinemático
-
-**Contexto.** El shell de PC del plan 06 (raíl sticky de 300px con la portada + contenedor de
-1200px) dejaba el cuerpo de cualquier pestaña en ~771px a cualquier viewport; el plan 06 §6e ya
-lo registró como «choque de shells». Además la ficha eran dos árboles (móvil y PC) escondidos por
-breakpoint.
-
-**Decisión.** Un solo hero responsive con backdrop de TMDB (portada difuminada en libros), una
-tarjeta «tu pase» (`PassCard`) en una sola instancia —flotante a la derecha en xl, bajo el título
-en lg y móvil— y un contenedor común de 1320px (`DETAIL_CONTAINER`) para hero y pestañas. El CTA
-reaparece en la barra de pestañas cuando se pega.
-
-**Descartado.** Cabecera editorial sin foto + 3 columnas; raíl ensanchado; reestilizar los dos
-árboles; ficha v2 tras flag. Spec: `docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`.
   covers.openlibrary.org} ANTES de tocar BD — la URL llega del cliente y es manipulable.
 - **Errores de dominio como resultado `{ok:false, reason}`, nunca throw** (2026-08-03): Next redacta los
   mensajes de `Error` de server actions en producción.
@@ -5169,3 +5154,18 @@ que ya tenía sobre ambas RPC (igual que antes de este cambio) porque son SECURI
 `auth.uid()` dentro — el grant no es lo que las protege. Queda como deuda seguir la convención de
 revocar el EXECUTE a `anon` que fijó #831 para las RPC de escritura del catálogo; abierta como
 issue de seguimiento.
+
+## 2026-09-24 — Ficha de obra: se abandona el raíl lateral por un hero cinemático
+
+**Contexto.** El shell de PC del plan 06 (raíl sticky de 300px con la portada + contenedor de
+1200px) dejaba el cuerpo de cualquier pestaña en ~771px a cualquier viewport; el plan 06 §6e ya
+lo registró como «choque de shells». Además la ficha eran dos árboles (móvil y PC) escondidos por
+breakpoint.
+
+**Decisión.** Un solo hero responsive con backdrop de TMDB (portada difuminada en libros), una
+tarjeta «tu pase» (`PassCard`) en una sola instancia —flotante a la derecha en xl, bajo el título
+en lg y móvil— y un contenedor común de 1320px (`DETAIL_CONTAINER`) para hero y pestañas. El CTA
+reaparece en la barra de pestañas cuando se pega.
+
+**Descartado.** Cabecera editorial sin foto + 3 columnas; raíl ensanchado; reestilizar los dos
+árboles; ficha v2 tras flag. Spec: `docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`.

@@ -74,7 +74,7 @@ export function PassCard({
 
   return (
     <div className={shell}>
-      {/* data-testid: lo localizan pase-hub.spec.ts y coleccion-status-contrast.spec.ts. */}
+      {/* data-testid: lo localiza pase-hub.spec.ts. */}
       <Link
         href={`${pathname}?tab=log`}
         title={goToLogLabel}
@@ -93,6 +93,7 @@ export function PassCard({
         <div className="px-0.5">
           <div
             role="progressbar"
+            aria-label={progress.left}
             aria-valuenow={progress.percent}
             aria-valuemin={0}
             aria-valuemax={100}

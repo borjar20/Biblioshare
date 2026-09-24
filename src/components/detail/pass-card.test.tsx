@@ -53,6 +53,9 @@ describe("PassCard", () => {
     expect(badge.textContent).toContain("Viendo");
     expect(badge.getAttribute("href")).toBe("/serie/s1?tab=log");
     expect(screen.getByText("16 / 39 vistos")).toBeTruthy();
+    expect(
+      screen.getByRole("progressbar", { name: "16 / 39 vistos" }),
+    ).toBeTruthy();
     const cta = screen.getByRole("link", { name: /Marcar episodio/ });
     expect(cta.getAttribute("href")).toBe("/serie/s1?tab=episodes");
     expect(screen.getByText("Tu nota")).toBeTruthy();

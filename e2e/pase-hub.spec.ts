@@ -133,8 +133,8 @@ function statusGroup(page: Page) {
 // contienen el MISMO texto ("Pendiente", "Leyendo"...): un getByText a secas
 // es ambiguo. data-testid="status-badge" (src/components/ui/status-badge.tsx)
 // distingue la píldora de solo lectura del control. El filtro es por
-// SUBcadena, así que casa con la etiqueta larga del hero ("En tu biblioteca ·
-// Leyendo").
+// SUBcadena, así que casa igual con solo el verbo ("Leyendo"), que es lo
+// único que pinta hoy la tarjeta del hero.
 //
 // Ojo con el verbo: "en curso" y "completado" cambian por tipo de medio
 // (Leyendo/Viendo, Leído/Vista), como en el control. Los genéricos "En curso"
