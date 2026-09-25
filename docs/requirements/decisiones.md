@@ -5236,3 +5236,21 @@ escribe (hoja de cierre, edición en el diario, detalle del episodio).
   `isSpoiler`), mismo criterio que los comentarios (2026-08-25).
 - **Episodios:** la reseña se autoguarda al soltar el cuadro; la casilla guarda al instante al
   tocarla, igual que la nota.
+
+## 2026-09-25 — Hilos de comentarios en móvil: cuerpo a todo el ancho, textos largos plegables
+
+Revisión del feed de clubes en móvil (390px). El contenedor ya medía lo mismo que el feed de Inicio
+(tarjeta de 358px frente a 350px); lo que estrechaba la lectura era el hilo DENTRO de la tarjeta.
+
+- **Comentario = cabecera + cuerpo debajo**, no avatar como columna fija. Con la columna, una
+  respuesta se quedaba en ~240px de texto. En móvil el cuerpo va a todo el ancho del hilo; desde
+  `sm` vuelve a alinearse bajo el nombre. Afecta a todas las superficies de `ReviewInteractions`
+  (es un componente compartido): mismo hilo en todas partes.
+- **Cuerpo del comentario en `text-foreground` a 13px**, no gris a 12px: era la parte menos legible.
+- **Textos largos plegables por ALTURA medida** (`ClampedText`, «Ver más/Ver menos»), no con
+  `line-clamp`: el cuerpo trae varios bloques y Safari solo recorta bien un bloque inline. Post de
+  club a ~10 líneas, comentario a ~8.
+- **Textareas que crecen al escribir** (`useAutosizeTextarea`, tope 45% del alto de ventana). El
+  compositor de comentario raíz se apila en móvil (botón debajo), igual que ya hacía `compact`.
+  El compositor de post de club gana contador y `maxLength` 5000 (espejo del CHECK de BD).
+- **Tarjeta de post de club con avatar + hora**, como las tarjetas del feed de Inicio.

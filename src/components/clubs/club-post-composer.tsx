@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { FeedEvent } from "@/lib/social/feed";
 import { createTextPost, createShareActivityPost, createPoll } from "@/lib/clubs/posts";
@@ -10,6 +10,20 @@ import { Input } from "@/components/ui/input";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { PollIcon, ListCheckIcon } from "@/components/ui/icons";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
+import { useAutosizeTextarea } from "@/components/ui/use-autosize-textarea";
+
+// Espejo de MAX_BODY_LENGTH de posts.ts (y del CHECK de BD): con el tope en el
+// campo, un texto largo no se descubre demasiado largo al pulsar Publicar.
+const MAX_BODY_LENGTH = 5000;
+
+// Contador del textarea, al pie a la derecha (mismo patrón que CommentComposer).
+function Counter({ value }: { value: string }) {
+  return (
+    <span className="pointer-events-none absolute right-2.5 bottom-2 font-mono text-[9px] text-muted-foreground">
+      {value.length}/{MAX_BODY_LENGTH}
+    </span>
+  );
+}
 
 type Mode = "closed" | "text" | "pick_activity" | "share_activity" | "poll";
 
@@ -45,6 +59,13 @@ export function ClubPostComposer({
     onChange: setShareCaption,
     scope: { scope: "club", clubId },
   });
+  // La caja crece con el texto: escribir un post largo en 3 líneas fijas con
+  // scroll interno no dejaba releer lo escrito en móvil. Los refs solo se
+  // enganchan en el modo que pinta su textarea; en el resto el hook no hace nada.
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const captionRef = useRef<HTMLTextAreaElement>(null);
+  useAutosizeTextarea(textRef, mode === "text" ? text : "");
+  useAutosizeTextarea(captionRef, mode === "share_activity" ? shareCaption : "");
 
   function reset() {
     setMode("closed");
@@ -136,14 +157,17 @@ export function ClubPostComposer({
       <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-3">
         <div className="relative">
           <textarea
+            ref={textRef}
             value={text}
+            maxLength={MAX_BODY_LENGTH}
             onChange={(e) => setText(e.target.value)}
             onInput={textMention.onInput}
             onKeyDown={textMention.onKeyDown}
             placeholder={t("composerPlaceholderText")}
-            rows={3}
-            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            rows={4}
+            className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 pb-6 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
+          <Counter value={text} />
           {textMention.dropdown}
         </div>
         {error && <p className="text-xs text-status-dropped">{error}</p>}
@@ -177,14 +201,17 @@ export function ClubPostComposer({
         <span className="text-sm text-foreground">{pickedActivity?.itemTitle}</span>
         <div className="relative">
           <textarea
+            ref={captionRef}
             value={shareCaption}
+            maxLength={MAX_BODY_LENGTH}
             onChange={(e) => setShareCaption(e.target.value)}
             onInput={captionMention.onInput}
             onKeyDown={captionMention.onKeyDown}
             placeholder={t("captionPlaceholder")}
             rows={2}
-            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 pb-6 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
+          <Counter value={shareCaption} />
           {captionMention.dropdown}
         </div>
         {error && <p className="text-xs text-status-dropped">{error}</p>}

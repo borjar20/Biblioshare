@@ -9,6 +9,9 @@ import { ReviewInteractions } from "@/components/social/review-interactions";
 import { MentionText } from "@/components/social/mention-text";
 import { itemHref } from "@/lib/catalog/item-href";
 import { ActionMenu } from "@/components/ui/action-menu";
+import { ClampedText } from "@/components/ui/clamped-text";
+import { TimeAgo } from "@/components/ui/time-ago";
+import { UserAvatar } from "@/components/social/user-avatar";
 
 export function ClubPostCard({
   post,
@@ -26,6 +29,7 @@ export function ClubPostCard({
   const [selectedOption, setSelectedOption] = useState(post.poll?.viewerOptionId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const authorName = post.authorDisplayName || post.authorUsername;
 
   function handleVote(optionId: string) {
     const previous = selectedOption;
@@ -56,11 +60,20 @@ export function ClubPostCard({
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-border bg-surface shadow-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-foreground">
-          {post.authorDisplayName || post.authorUsername}
-        </span>
+    <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
+      {/* Cabecera como la de las tarjetas del feed de Inicio (ThoughtCard):
+          avatar + autor enlazado + hora. Antes solo el nombre, sin cuándo. */}
+      <div className="flex items-center gap-2.5">
+        <UserAvatar name={authorName} avatarUrl={post.authorAvatarUrl} size={30} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Link
+            href={`/u/${post.authorUsername}`}
+            className="truncate text-sm font-semibold text-foreground hover:underline"
+          >
+            {authorName}
+          </Link>
+          <TimeAgo iso={post.createdAt} className="font-mono text-[10px] text-muted-foreground" />
+        </div>
         {/* Detrás del «···» (F3-012): un botón «Borrar» por post convertía el
             feed del club en una hilera de borrados a la vista, y a dedo (F4-027)
             cae justo donde se apoya el pulgar al desplazar. La confirmación ya
@@ -83,9 +96,14 @@ export function ClubPostCard({
 
       {error && <p className="text-xs text-status-dropped">{error}</p>}
 
-      <p className="whitespace-pre-wrap break-words text-sm text-foreground">
-        <MentionText text={post.body} knownUsernames={knownUsernames} />
-      </p>
+      {/* Un post largo se pliega a ~10 líneas con «Ver más»: sin esto, un
+          texto de varios párrafos ocupaba pantallas enteras en móvil y
+          enterraba el resto del feed. */}
+      {post.body && (
+        <ClampedText className="whitespace-pre-wrap break-words font-serif text-[14px] leading-relaxed text-foreground">
+          <MentionText text={post.body} knownUsernames={knownUsernames} />
+        </ClampedText>
+      )}
 
       {post.kind === "activity_share" && (
         post.sharedActivity ? (
@@ -171,6 +189,6 @@ export function ClubPostCard({
         knownUsernames={knownUsernames}
         voiceEnabled
       />
-    </div>
+    </article>
   );
 }

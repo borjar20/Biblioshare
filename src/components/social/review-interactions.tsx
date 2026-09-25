@@ -19,6 +19,7 @@ import {
   type InteractionComment,
   type ReactionsByEmoji,
 } from "@/lib/social/interactions";
+import { ClampedText } from "@/components/ui/clamped-text";
 import { buildCommentThreads, type CommentSort } from "@/lib/social/comment-tree";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { interactionReducer } from "@/lib/social/interaction-optimistic";
@@ -278,12 +279,17 @@ export function ReviewInteractions({
     });
   }
 
+  // Cabecera (avatar + autor + hora) en su fila y el cuerpo DEBAJO, a todo el
+  // ancho en móvil: con el avatar como columna fija, una respuesta dentro de
+  // una tarjeta de club se quedaba en ~240px de texto a 390px de pantalla. En
+  // `sm`+ el cuerpo vuelve a alinearse bajo el nombre (hay ancho de sobra).
   function renderComment(c: InteractionComment, rootId: string, isReply: boolean) {
+    const avatar = isReply ? 18 : 22;
     return (
-      <div key={c.id} id={`c-${c.id}`} className="flex items-start gap-2 text-xs">
-        <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={isReply ? 20 : 24} />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center gap-1.5">
+      <div key={c.id} id={`c-${c.id}`} className="flex flex-col gap-1 text-[13px]">
+        <div className="flex min-w-0 items-center gap-2">
+          <UserAvatar name={c.author} avatarUrl={c.authorAvatarUrl} size={avatar} />
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
             {c.authorUsername ? (
               <Link href={`/u/${c.authorUsername}`} className="font-medium hover:underline">
                 {c.author}
@@ -296,7 +302,9 @@ export function ReviewInteractions({
             )}
             <TimeAgo iso={c.createdAt} className="text-[10px] text-muted-foreground" />
           </div>
+        </div>
 
+        <div className={`flex min-w-0 flex-col gap-1 ${isReply ? "sm:pl-[26px]" : "sm:pl-[30px]"}`}>
           {editingId === c.id ? (
             <CommentComposer
               value={editDraft}
@@ -314,7 +322,7 @@ export function ReviewInteractions({
             />
           ) : (
             <>
-              <div className="break-words text-muted-foreground">
+              <ClampedText maxHeight={168} className="break-words leading-relaxed text-foreground">
                 {c.audio ? (
                   c.isSpoiler ? (
                     <SpoilerGate>
@@ -330,8 +338,8 @@ export function ReviewInteractions({
                 ) : (
                   <RichTextView text={c.body} knownUsernames={knownUsernames} />
                 )}
-                {c.edited && <span className="ml-1 text-[10px]">· {t("edited")}</span>}
-              </div>
+                {c.edited && <span className="ml-1 text-[10px] text-muted-foreground">· {t("edited")}</span>}
+              </ClampedText>
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <ReactionBar
@@ -447,7 +455,7 @@ export function ReviewInteractions({
                     type="button"
                     onClick={() => toggleReplies(thread.root.id)}
                     aria-expanded={repliesOpen}
-                    className="ml-8 self-start text-[11px] font-medium text-accent hover:underline"
+                    className="self-start text-[11px] font-medium text-accent hover:underline sm:ml-[30px]"
                   >
                     {repliesOpen
                       ? t("hideReplies")
@@ -456,13 +464,13 @@ export function ReviewInteractions({
                 )}
 
                 {repliesOpen && thread.replies.length > 0 && (
-                  <div className="ml-4 flex flex-col gap-2 border-l border-border pl-3">
+                  <div className="ml-2 flex flex-col gap-3 border-l-2 border-border pl-3 sm:ml-4">
                     {thread.replies.map((r) => renderComment(r, thread.root.id, true))}
                   </div>
                 )}
 
                 {voiceEnabled && threadPending.length > 0 && (
-                  <div className="ml-4 flex flex-col gap-2 border-l border-border pl-3">
+                  <div className="ml-2 flex flex-col gap-3 border-l-2 border-border pl-3 sm:ml-4">
                     {threadPending.map((note) => (
                       <PendingVoiceNoteRow key={note.localId} note={note} onRetry={voice.retry} onDiscard={voice.discard} />
                     ))}
@@ -470,7 +478,7 @@ export function ReviewInteractions({
                 )}
 
                 {replyingTo === thread.root.id && (
-                  <div className="ml-8">
+                  <div className="ml-2 border-l-2 border-transparent pl-3 sm:ml-8 sm:border-l-0 sm:pl-0">
                     {voiceEnabled && voiceMode === thread.root.id ? (
                       <VoiceRecorder
                         onCancel={() => setVoiceMode(null)}
