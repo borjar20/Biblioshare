@@ -8,8 +8,8 @@
 > `create or replace` + el bloque `grant select`/`revoke` de la superficie 7). Grants por columna en
 > `passes` (superficie 6): `select` a `anon`/`authenticated` (la bandera no es sensible, como
 > `rating`), `insert`/`update` a `authenticated`. `episode_watches` tiene grants de tabla: la cubren
-> solos. La acción la apaga si la reseña queda vacía. Verificado en **dev** (2026-09-25,
-> `column_privileges` + `role_table_grants` de la vista); **prod pendiente** de aplicar tras el merge.
+> solos. La acción la apaga si la reseña queda vacía. Verificado en **dev** y **prod** (2026-09-25,
+> `column_privileges` + `role_table_grants` de la vista + `UPDATE` como `authenticated` con rollback).
 
 > **Delta 2026-09-24 (ficha cinemática, PR 1):** `movies.backdrop_url` y `series.backdrop_url`
 > (`text`, nullable; migración `20260924120000_movies_series_backdrop_url.sql`). Backdrop apaisado
