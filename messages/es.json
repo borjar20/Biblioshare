@@ -2,7 +2,9 @@
   "common": {
     "appName": "Biblioshare",
     "loading": "Cargando...",
-    "zoomImage": "Ampliar imagen"
+    "zoomImage": "Ampliar imagen",
+    "showMore": "Ver más",
+    "showLess": "Ver menos"
   },
   "nav": {
     "items": {

@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
+import { useAutosizeTextarea } from "@/components/ui/use-autosize-textarea";
 
 const MAX_LENGTH = 2000;
 
@@ -82,6 +83,7 @@ export function CommentComposer({
   const t = useTranslations("social");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formatting = showFormatting ?? !compact;
+  useAutosizeTextarea(textareaRef, value);
 
   function applyWrap(before: string, after: string) {
     wrap(textareaRef.current, value, onChange, before, after);
@@ -143,8 +145,12 @@ export function CommentComposer({
           (~120px fijos) + el hueco del contador (`pr-12`), al textarea le
           quedaban ~90px útiles y UNA línea de alto — imposible ver lo que
           estabas editando. */}
-      <div className={compact ? "flex flex-col gap-1.5" : "flex items-center gap-2"}>
-        <div className={compact ? "relative w-full" : "relative flex-1"}>
+      {/* Fuera de `compact`, en móvil también se apila: con «Publicar
+          comentario» al lado, la caja del comentario raíz se quedaba en ~240px
+          a 390 de pantalla. Desde `sm` vuelve a la fila, con `items-end` para
+          que el botón quede al pie de una caja que crece al escribir. */}
+      <div className={compact ? "flex flex-col gap-1.5" : "flex flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2"}>
+        <div className={compact ? "relative w-full" : "relative w-full sm:flex-1"}>
           <textarea
             ref={textareaRef}
             value={value}
@@ -158,8 +164,8 @@ export function CommentComposer({
               compact
                 ? // Sin `pr-12`: el contador deja de comer ancho; se le reserva
                   // alto (`pb-5`) y el texto usa la línea entera.
-                  "w-full resize-y rounded-xl border border-border bg-surface px-2.5 py-1.5 pb-5 text-xs outline-none focus:border-accent"
-                : "w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 pr-12 text-xs outline-none focus:border-accent"
+                  "w-full resize-y rounded-xl border border-border bg-surface px-2.5 py-1.5 pb-5 text-xs leading-relaxed outline-none focus:border-accent"
+                : "w-full resize-none rounded-xl border border-border bg-surface px-3 py-2 pb-5 text-xs leading-relaxed outline-none focus:border-accent"
             }
           />
           <span className="pointer-events-none absolute right-2 bottom-1.5 font-mono text-[9px] text-muted-foreground">
@@ -167,12 +173,12 @@ export function CommentComposer({
           </span>
           {dropdown}
         </div>
-        <div className={compact ? "flex items-center justify-end gap-4" : "contents"}>
+        <div className={compact ? "flex items-center justify-end gap-4" : "flex items-center justify-end gap-4 sm:contents"}>
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className={`shrink-0 text-xs text-muted-foreground hover:text-foreground${compact ? " px-1 py-1" : ""}`}
+              className={`shrink-0 text-xs text-muted-foreground hover:text-foreground${compact ? " px-1 py-1" : " py-2"}`}
             >
               {t("cancel")}
             </button>
@@ -184,7 +190,7 @@ export function CommentComposer({
               type="button"
               onClick={onSubmit}
               disabled={busy || !value.trim()}
-              className={`shrink-0 text-xs font-medium text-accent disabled:opacity-50${compact ? " px-1 py-1" : ""}`}
+              className={`shrink-0 text-xs font-medium text-accent disabled:opacity-50${compact ? " px-1 py-1" : " py-2"}`}
             >
               {submitLabel}
             </button>

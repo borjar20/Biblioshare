@@ -72,7 +72,11 @@ export function ClubFeed({
       {posts.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        // Móvil: filas a ancho completo con separadores, igual que el feed de
+        // Inicio (FeedList). `-mx-4` deshace el gutter de ClubShell; a cada
+        // <article> se le quitan radio, sombra y bordes salvo el inferior. En
+        // sm+ vuelve a ser la lista de tarjetas.
+        <div className="flex flex-col gap-3 max-sm:-mx-4 max-sm:gap-0 max-sm:[&>article]:rounded-none max-sm:[&>article]:border-x-0 max-sm:[&>article]:border-t-0 max-sm:[&>article]:shadow-none max-sm:[&>article:last-of-type]:border-b-0">
           {posts.map((post) => (
             <ClubPostCard
               key={post.id}
