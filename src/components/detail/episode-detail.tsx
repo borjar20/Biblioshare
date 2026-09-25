@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
 import { formatDots } from "@/lib/rating/dots";
 import type { GridSource } from "./episode-grid";
+import { ReviewSpoilerField } from "./review-spoiler-field";
 
 const dateFmt = new Intl.DateTimeFormat("es", {
   day: "numeric",
@@ -25,7 +26,8 @@ type DetailProps = {
   isPending: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
-  onSave: () => void;
+  /** Sin argumento: guarda el borrador con la marca de spoiler que ya tenía. */
+  onSave: (reviewIsSpoiler?: boolean) => void;
   /** Cuántos marcaría «Vistos hasta aquí» (incluido este); 0 lo oculta. */
   markUpToCount: number;
   onMarkUpTo: () => void;
@@ -77,13 +79,15 @@ function MetaLine({
 function ReviewBox({
   draft,
   saved,
+  spoiler,
   onDraftChange,
   onSave,
 }: {
   draft: string;
   saved: string;
+  spoiler: boolean;
   onDraftChange: (value: string) => void;
-  onSave: () => void;
+  onSave: (reviewIsSpoiler?: boolean) => void;
 }) {
   const t = useTranslations("episode");
   return (
@@ -97,6 +101,8 @@ function ReviewBox({
         placeholder={t("reviewPlaceholder")}
         className="h-14 w-full resize-none rounded-[9px] border border-border bg-surface-muted px-[11px] py-[9px] text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none lg:h-[70px] lg:px-[13px] lg:py-[11px] lg:text-[13px]"
       />
+      {/* Como la nota, la casilla se guarda al tocarla (con el texto que haya). */}
+      <ReviewSpoilerField review={draft} checked={spoiler} onChange={(next) => onSave(next)} size="sm" />
       <p className="font-mono text-[9.5px] text-muted-foreground">{t("reviewAutosave")}</p>
     </div>
   );
@@ -129,6 +135,7 @@ export function EpisodeInlineDetail({
         <ReviewBox
           draft={draft}
           saved={own.review ?? ""}
+          spoiler={own.reviewIsSpoiler}
           onDraftChange={onDraftChange}
           onSave={onSave}
         />

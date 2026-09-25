@@ -1323,6 +1323,7 @@ export type Database = {
           pass_id: string | null
           rating: number | null
           review: string | null
+          review_is_spoiler: boolean
           season_number: number
           series_id: string
           updated_at: string
@@ -1336,6 +1337,7 @@ export type Database = {
           pass_id?: string | null
           rating?: number | null
           review?: string | null
+          review_is_spoiler?: boolean
           season_number: number
           series_id: string
           updated_at?: string
@@ -1349,6 +1351,7 @@ export type Database = {
           pass_id?: string | null
           rating?: number | null
           review?: string | null
+          review_is_spoiler?: boolean
           season_number?: number
           series_id?: string
           updated_at?: string
@@ -1782,6 +1785,7 @@ export type Database = {
           position: Json
           rating: number | null
           review: string | null
+          review_is_spoiler: boolean
           started_on: string | null
           status: Database["public"]["Enums"]["media_status"]
           updated_at: string
@@ -1805,6 +1809,7 @@ export type Database = {
           position?: Json
           rating?: number | null
           review?: string | null
+          review_is_spoiler?: boolean
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
@@ -1828,6 +1833,7 @@ export type Database = {
           position?: Json
           rating?: number | null
           review?: string | null
+          review_is_spoiler?: boolean
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"]
           updated_at?: string
@@ -3081,6 +3087,7 @@ export type Database = {
           position: Json | null
           rating: number | null
           review: string | null
+          review_is_spoiler: boolean | null
           started_on: string | null
           status: Database["public"]["Enums"]["media_status"] | null
           updated_at: string | null
@@ -3101,6 +3108,7 @@ export type Database = {
           position?: Json | null
           rating?: number | null
           review?: string | null
+          review_is_spoiler?: boolean | null
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"] | null
           updated_at?: string | null
@@ -3121,6 +3129,7 @@ export type Database = {
           position?: Json | null
           rating?: number | null
           review?: string | null
+          review_is_spoiler?: boolean | null
           started_on?: string | null
           status?: Database["public"]["Enums"]["media_status"] | null
           updated_at?: string | null

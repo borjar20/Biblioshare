@@ -82,8 +82,22 @@ describe("getFeed — fuente `posts`", () => {
     expect(e.verb).toBe("reviewed");
     expect(e.rating).toBe(4);
     expect(e.reviewExcerpt).toBe("Una maravilla de principio a fin");
+    expect(e.reviewIsSpoiler).toBe(false);
     // readingDays = finished-started+1 = 8 días.
     expect(e.reviewMeta?.readingDays).toBe(8);
+  });
+
+  test("una reseña marcada spoiler llega al evento con reviewIsSpoiler", async () => {
+    const sb = fakeSupabase({
+      posts: [post("p1", "2026-08-09T10:00:00+00:00", {
+        kind: "finished", source_kind: "pass", source_id: "pass-1", anchor_type: "book", anchor_id: FAKE_BOOK_ID,
+      })],
+      passes: [{ id: "pass-1", rating: 4, started_on: null, finished_on: "2026-08-08" }],
+      passReviews: [{ id: "pass-1", review: "Al final muere", review_is_spoiler: true }],
+    });
+    const [e] = personEvents((await getFeed(sb.client, VIEWER, {})).events);
+    expect(e.reviewExcerpt).toBe("Al final muere");
+    expect(e.reviewIsSpoiler).toBe(true);
   });
 
   test("un terminado sin reseña visible => verb finished/rated, sin excerpt", async () => {

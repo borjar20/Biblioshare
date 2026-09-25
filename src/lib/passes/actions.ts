@@ -55,7 +55,7 @@ async function savePassFields(
   passId: string,
   userId: string,
   formData: FormData
-): Promise<ClosePassState & { review?: string | null; isPublic?: boolean }> {
+): Promise<ClosePassState & { review?: string | null; reviewIsSpoiler?: boolean; isPublic?: boolean }> {
   let finishedOn: string | null | undefined = parseFinishedOn(formData.get("finishedOn"));
   if (finishedOn === undefined) return { error: "invalidDate" };
 
@@ -75,6 +75,8 @@ async function savePassFields(
   // is_public tiene default false en la columna: hay que escribirlo siempre
   // explícitamente, nunca confiar en el default.
   const isPublic = formData.get("isPublic") === "on";
+  // Sin reseña no hay nada que tapar: la bandera se apaga con el texto.
+  const reviewIsSpoiler = Boolean(review) && formData.get("reviewIsSpoiler") === "on";
 
   // Cerrar con una fecha ANTERIOR al inicio no es un error del usuario: es el
   // camino normal de «añado hoy una obra que leí hace años». Lo que pasa es que
@@ -104,6 +106,7 @@ async function savePassFields(
       finished_on: finishedOn,
       rating,
       review: review || null,
+      review_is_spoiler: reviewIsSpoiler,
       is_public: isPublic,
       dropped_reason: droppedReason,
       dropped_reason_note: droppedReasonNote,
@@ -116,7 +119,7 @@ async function savePassFields(
   // necesitan para decidir si notifican menciones (alta: todas; edición:
   // solo el diff de menciones nuevas, issue #317 — ver llamadas más abajo)
   // sin tener que releer la fila recién escrita.
-  return error ? { error: "generic" } : { review: review || null, isPublic };
+  return error ? { error: "generic" } : { review: review || null, reviewIsSpoiler, isPublic };
 }
 
 async function notifyPublicReviewMentions(
@@ -124,6 +127,7 @@ async function notifyPublicReviewMentions(
   authorId: string,
   passId: string,
   review: string,
+  isSpoiler: boolean,
   usernames?: string[],
 ): Promise<void> {
   try {
@@ -140,6 +144,8 @@ async function notifyPublicReviewMentions(
       text: review,
       interactionTargetId: target.id,
       usernames,
+      // Una reseña spoiler no deja su extracto en el aviso (notification-context).
+      isSpoiler,
     });
   } catch (error) {
     console.error("notifyPublicReviewMentions failed", error);
@@ -173,7 +179,7 @@ export async function closePass(
   // reutiliza la visibilidad de su perfil. updatePass reutiliza el mismo
   // helper pero solo para el diff de menciones nuevas (issue #317).
   if (result.review && result.isPublic) {
-    await notifyPublicReviewMentions(supabase, user.id, passId, result.review);
+    await notifyPublicReviewMentions(supabase, user.id, passId, result.review, result.reviewIsSpoiler ?? false);
   }
 
   // Cerrar el pase no avisa: el aviso de «terminó» lo emite createPost cuando
@@ -219,7 +225,14 @@ export async function updatePass(
   if (result.review && result.isPublic) {
     const newMentions = diffNewMentions(existing?.review ?? "", result.review);
     if (newMentions.length > 0) {
-      await notifyPublicReviewMentions(supabase, user.id, passId, result.review, newMentions);
+      await notifyPublicReviewMentions(
+        supabase,
+        user.id,
+        passId,
+        result.review,
+        result.reviewIsSpoiler ?? false,
+        newMentions,
+      );
     }
   }
 

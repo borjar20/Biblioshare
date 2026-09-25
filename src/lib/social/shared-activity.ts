@@ -139,6 +139,7 @@ export async function resolveSharedActivity(
       sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
+      reviewIsSpoiler: false,
       episode: null,
       progress: null,
       reviewMeta: null,
@@ -211,6 +212,7 @@ export async function resolveSharedActivity(
       sortDate: row.created_at,
       rating: null,
       reviewExcerpt: null,
+      reviewIsSpoiler: false,
       episode: null,
       // page/percent/note resueltos como en getFeed (#301): page desde
       // position, percent contra books.total_pages, note desde la nota PÚBLICA.
@@ -231,7 +233,7 @@ export async function resolveSharedActivity(
     // trata igual que "la fila ya no existe" (null) más abajo.
     const { data: row } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, item_type, item_id, finished_on, rating, review, updated_at")
+      .select("id, user_id, item_type, item_id, finished_on, rating, review, review_is_spoiler, updated_at")
       .eq("id", ref.rowId)
       // Un pase abierto no es actividad terminada: si es lo único que hay
       // que resolver, se trata igual que "la fila ya no existe" (null).
@@ -283,6 +285,7 @@ export async function resolveSharedActivity(
       sortDate: row.updated_at,
       rating: row.rating,
       reviewExcerpt: excerpt(row.review),
+      reviewIsSpoiler: row.review_is_spoiler ?? false,
       episode: null,
       progress: null,
       reviewMeta: null,
@@ -293,7 +296,7 @@ export async function resolveSharedActivity(
   // episode_watches
   const { data: row } = await supabase
     .from("episode_watches")
-    .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on, created_at")
+    .select("id, user_id, series_id, season_number, episode_number, rating, review, review_is_spoiler, watched_on, created_at")
     .eq("id", ref.rowId)
     .maybeSingle();
   if (!row) return null;
@@ -328,6 +331,7 @@ export async function resolveSharedActivity(
     sortDate: row.created_at,
     rating: row.rating,
     reviewExcerpt: excerpt(row.review),
+    reviewIsSpoiler: row.review_is_spoiler ?? false,
     episode: { season: row.season_number, episode: row.episode_number, title: episodeTitle },
     progress: null,
     reviewMeta: null,

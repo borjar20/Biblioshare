@@ -132,7 +132,7 @@ export function EpisodePanel({
     // seguir» en la ficha).
     if (!next && (own.rating !== null || own.review) && !window.confirm(t("unwatchConfirm")))
       return;
-    patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null });
+    patch(ep, next ? { watched: true } : { watched: false, rating: null, review: null, reviewIsSpoiler: false });
     startTransition(async () => {
       // Fecha LOCAL (todayISO de stats/dates): la del servidor es UTC y un
       // episodio de madrugada caería en el día anterior de la racha.
@@ -150,9 +150,10 @@ export function EpisodePanel({
     // textarea); si no, conserva la reseña ya guardada.
     const review =
       selectedKey === episodeKey(ep) ? draft : (ownOf(ep).review ?? "");
-    patch(ep, { watched: true, rating, review: review || null });
+    const reviewIsSpoiler = Boolean(review.trim()) && ownOf(ep).reviewIsSpoiler;
+    patch(ep, { watched: true, rating, review: review || null, reviewIsSpoiler });
     startTransition(() =>
-      rateEpisode(seriesId, ep.season, ep.episode, rating, review || null, todayISO()),
+      rateEpisode(seriesId, ep.season, ep.episode, rating, review || null, reviewIsSpoiler, todayISO()),
     );
   };
 
@@ -181,10 +182,13 @@ export function EpisodePanel({
     setQuickRateKey(episodeKey(ep));
   };
 
-  const saveReview = (ep: EpisodeRow) => {
-    patch(ep, { watched: true, review: draft || null });
+  // `spoiler` llega solo al tocar la casilla (se guarda al instante, como la
+  // nota); al soltar el cuadro se conserva la marca que ya tenía.
+  const saveReview = (ep: EpisodeRow, spoiler?: boolean) => {
+    const reviewIsSpoiler = Boolean(draft.trim()) && (spoiler ?? ownOf(ep).reviewIsSpoiler);
+    patch(ep, { watched: true, review: draft || null, reviewIsSpoiler });
     startTransition(() =>
-      rateEpisode(seriesId, ep.season, ep.episode, ownOf(ep).rating, draft || null, todayISO()),
+      rateEpisode(seriesId, ep.season, ep.episode, ownOf(ep).rating, draft || null, reviewIsSpoiler, todayISO()),
     );
   };
 
@@ -520,7 +524,7 @@ export function EpisodePanel({
                 isPending={isPending}
                 draft={draft}
                 onDraftChange={setDraft}
-                onSave={() => selectedEpisode && saveReview(selectedEpisode)}
+                onSave={(spoiler) => selectedEpisode && saveReview(selectedEpisode, spoiler)}
                 markUpToCount={
                   interactive && selectedEpisode?.aired ? upToPending(selectedEpisode).length : 0
                 }

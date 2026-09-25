@@ -39,7 +39,7 @@ function ep(season: number, episode: number, own: Partial<EpisodeRow["own"]> = {
     runtimeMinutes: null,
     avgRating: null,
     ratingCount: 0,
-    own: { watched: false, rating: null, review: null, seenBefore: false, ...own },
+    own: { watched: false, rating: null, review: null, reviewIsSpoiler: false, seenBefore: false, ...own },
     aired: true,
   };
 }

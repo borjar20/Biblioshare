@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { PostSummary } from "@/components/social/post-summary";
 import { MentionText } from "@/components/social/mention-text";
+import { SpoilerGate } from "@/components/social/spoiler-gate";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
 import { PostDeleteError, PostDeleteMenu, useDeletePost } from "./post-delete-menu";
@@ -53,6 +54,14 @@ export function ReviewCard({
     <PostDeleteMenu onDelete={requestDelete} pending={pending} />
   );
 
+  // `whitespace-pre-line`: los saltos de línea de la reseña son del autor
+  // (textarea); sin esto el HTML los colapsa y el extracto sale de corrido.
+  const excerpt = event.reviewExcerpt && (
+    <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed whitespace-pre-line break-words">
+      <MentionText text={event.reviewExcerpt} knownUsernames={knownUsernames} />
+    </p>
+  );
+
   return (
     <article className="flex flex-col gap-3 rounded-card border border-border bg-surface shadow-card p-4">
       {!hideActor ? (
@@ -87,13 +96,7 @@ export function ReviewCard({
         </div>
       </div>
 
-      {event.reviewExcerpt && (
-        // `whitespace-pre-line`: los saltos de línea de la reseña son del autor
-        // (textarea); sin esto el HTML los colapsa y el extracto sale de corrido.
-        <p className="border-l-2 border-accent pl-3.5 font-serif text-[14px] leading-relaxed whitespace-pre-line break-words">
-          <MentionText text={event.reviewExcerpt} knownUsernames={knownUsernames} />
-        </p>
-      )}
+      {event.reviewExcerpt && (event.reviewIsSpoiler ? <SpoilerGate>{excerpt}</SpoilerGate> : excerpt)}
 
       {showInteractions && event.postId && (
         <PostSummary

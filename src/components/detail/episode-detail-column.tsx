@@ -16,7 +16,7 @@ export type EpisodeDetailColumnProps = {
   isPending: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
-  onSave: () => void;
+  onSave: (reviewIsSpoiler?: boolean) => void;
   markUpToCount: number;
   onMarkUpTo: () => void;
   /**

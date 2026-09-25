@@ -5216,3 +5216,23 @@ componente se desmonta sin disparar `blur` y el borrador no se guarda solo (sobr
 del panel y reaparece al volver a mostrarlo, pero no llega al servidor); ver issue #1216.
 
 Spec: `docs/superpowers/specs/2026-09-23-ficha-cinematica-design.md`.
+
+## 2026-09-25 — Reseñas con spoiler: casilla sobre la reseña entera, no marcas en el texto
+
+Las reseñas (`passes.review`, `episode_watches.review`) eran el único texto social sin marca de
+spoiler. Se añade `review_is_spoiler` y una casilla «Contiene spoiler» en los tres sitios donde se
+escribe (hoja de cierre, edición en el diario, detalle del episodio).
+
+- **Casilla sobre la reseña ENTERA**, no marcas en línea tipo `||spoiler||`. Es el mismo modelo que
+  ya usan comentarios, notas y posts, reutiliza `SpoilerGate` tal cual y no toca el render de texto
+  enriquecido (`ReviewContent`/`MentionText`). Las marcas en línea serían más finas, pero pedían un
+  segundo formato de spoiler que convivir con el primero.
+- **Solo UI, como el resto:** el texto sigue viajando a quien puede leerlo; la bandera solo decide
+  si se pinta tapado. Se tapa en la comunidad de la ficha, en las tarjetas del feed (reseña y
+  valoraciones de episodios), en `/post/[id]` y en la actividad compartida a un club. El dueño ve
+  su propia reseña destapada en su diario.
+- **Sin texto no hay marca:** la acción la apaga si la reseña queda vacía (no hay nada que tapar).
+- **El aviso de @mención** en una reseña spoiler no guarda extracto (`notifyMentions` con
+  `isSpoiler`), mismo criterio que los comentarios (2026-08-25).
+- **Episodios:** la reseña se autoguarda al soltar el cuadro; la casilla guarda al instante al
+  tocarla, igual que la nota.

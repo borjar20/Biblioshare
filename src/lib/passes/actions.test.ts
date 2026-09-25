@@ -208,7 +208,23 @@ describe("closePass — menciones", () => {
       authorId: "author",
       text: "hola @ana",
       interactionTargetId: "target-diary",
+      usernames: undefined,
+      isSpoiler: false,
     });
+  });
+
+  it("una reseña marcada spoiler avisa como spoiler (el aviso no guarda extracto)", async () => {
+    const fake = makePassClient("target-diary");
+    mocks.createClient.mockResolvedValue(fake.client);
+    const form = publicReviewForm();
+    form.set("reviewIsSpoiler", "on");
+
+    await closePass("pass-1", "book", "book-1", {}, form);
+
+    expect(mocks.notifyMentions).toHaveBeenCalledWith(
+      fake.client,
+      expect.objectContaining({ text: "hola @ana", isSpoiler: true }),
+    );
   });
 
   it("conserva el pase y revalida si la resolución del target falla", async () => {
@@ -255,6 +271,33 @@ describe("updatePass — menciones (issue #317)", () => {
       text: "gran libro, gracias a @borja",
       interactionTargetId: "target-diary",
       usernames: ["borja"],
+      isSpoiler: false,
     });
+  });
+});
+
+describe("savePassFields — reseña con spoiler", () => {
+  it("guarda la marca cuando hay reseña", async () => {
+    const { client, updates } = makeRecordingClient(null);
+    mocks.createClient.mockResolvedValue(client);
+    const form = closeForm("2026-07-30");
+    form.set("review", "el mayordomo lo hizo");
+    form.set("reviewIsSpoiler", "on");
+
+    await updatePass("pass-1", "book", "book-1", {}, form);
+
+    expect(updates[0]).toMatchObject({ review: "el mayordomo lo hizo", review_is_spoiler: true });
+  });
+
+  it("sin reseña la marca se apaga aunque el formulario la mande", async () => {
+    const { client, updates } = makeRecordingClient(null);
+    mocks.createClient.mockResolvedValue(client);
+    const form = closeForm("2026-07-30");
+    form.set("review", "   ");
+    form.set("reviewIsSpoiler", "on");
+
+    await updatePass("pass-1", "book", "book-1", {}, form);
+
+    expect(updates[0]).toMatchObject({ review: null, review_is_spoiler: false });
   });
 });

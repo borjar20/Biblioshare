@@ -1307,3 +1307,8 @@ commit;
 begin;
 \ir migrations/20260924120000_movies_series_backdrop_url.sql
 commit;
+
+-- 20260925120000_review_is_spoiler
+begin;
+\ir migrations/20260925120000_review_is_spoiler.sql
+commit;

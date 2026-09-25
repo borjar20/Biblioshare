@@ -19,7 +19,7 @@ export async function getPasses(
   const { data, error } = await supabase
     .from("pass_reviews")
     .select(
-      "id, created_at, status, is_active, position, started_on, finished_on, rating, review, is_public, edition_id, pinned_order, dropped_reason, dropped_reason_note"
+      "id, created_at, status, is_active, position, started_on, finished_on, rating, review, review_is_spoiler, is_public, edition_id, pinned_order, dropped_reason, dropped_reason_note"
     )
     .eq("user_id", userId)
     .eq("item_type", itemType)
@@ -42,6 +42,7 @@ export async function getPasses(
     finishedOn: r.finished_on,
     rating: r.rating,
     review: r.review,
+    reviewIsSpoiler: r.review_is_spoiler ?? false,
     isPublic: r.is_public as boolean,
     editionId: r.edition_id,
     pinnedOrder: r.pinned_order,
