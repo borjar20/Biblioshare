@@ -40,6 +40,9 @@ export type Pass = {
   // Nota SIEMPRE entera 1-10; la escala de estrellas es solo presentación.
   rating: number | null;
   review: string | null;
+  // La reseña ENTERA destapa el final: se pinta tapada (SpoilerGate) para los
+  // demás. Solo UI, el texto viaja igual (quien lo ve tiene permiso).
+  reviewIsSpoiler: boolean;
   isPublic: boolean;
   editionId: string | null;
   // Solo significativo en el pase activo; lo hereda el pase nuevo al archivar.

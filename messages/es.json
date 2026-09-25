@@ -260,6 +260,8 @@
     "rating": "Tu nota",
     "review": "Reseña",
     "reviewPlaceholder": "Qué te ha parecido…",
+    "reviewSpoiler": "Contiene spoiler",
+    "reviewSpoilerHint": "Los demás la verán tapada hasta que decidan destaparla.",
     "isPublic": "Visible para la comunidad",
     "droppedReason": {
       "label": "Motivo (opcional)",

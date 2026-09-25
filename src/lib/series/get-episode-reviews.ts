@@ -25,6 +25,8 @@ export type EpisodeReview = {
   watchedOn: string; // ISO date
   rating: number | null; // 1–10
   text: string;
+  // «Contiene spoiler» del autor: se pinta tapada hasta el clic.
+  isSpoiler: boolean;
   reactionCount: number;
   viewerReacted: boolean;
   commentCount: number;
@@ -59,7 +61,7 @@ export async function getEpisodeReviews(
 ): Promise<EpisodeReviewsResult> {
   const { data: rows } = await supabase
     .from("episode_watches")
-    .select("id, user_id, season_number, episode_number, rating, review, watched_on")
+    .select("id, user_id, season_number, episode_number, rating, review, review_is_spoiler, watched_on")
     .eq("series_id", seriesId)
     .not("review", "is", null)
     .order("watched_on", { ascending: false })
@@ -105,6 +107,7 @@ export async function getEpisodeReviews(
       watchedOn: r.watched_on,
       rating: r.rating,
       text: (r.review ?? "").trim(),
+      isSpoiler: r.review_is_spoiler,
       reactionCount: 0,
       viewerReacted: false,
       commentCount: 0,

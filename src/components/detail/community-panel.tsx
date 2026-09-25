@@ -63,6 +63,7 @@ export async function CommunityPanel({
     dateIso: string | null;
     rating: number | null;
     text: string;
+    isSpoiler: boolean;
     knownUsernames: string[];
     chip: ReactNode;
     interactions: ReactNode;
@@ -79,6 +80,7 @@ export async function CommunityPanel({
     dateIso: review.finishedOn,
     rating: review.rating,
     text: review.text,
+    isSpoiler: review.isSpoiler,
     knownUsernames: community.knownUsernames,
     chip:
       review.editionLabel !== null ? (
@@ -110,6 +112,7 @@ export async function CommunityPanel({
     dateIso: review.watchedOn,
     rating: review.rating,
     text: review.text,
+    isSpoiler: review.isSpoiler,
     knownUsernames: episodeMentions,
     chip: (
       <span className={chipClass}>
@@ -165,6 +168,7 @@ export async function CommunityPanel({
                 rating={review.rating}
                 itemType={itemType}
                 text={review.text}
+                isSpoiler={review.isSpoiler}
                 knownUsernames={review.knownUsernames}
                 chip={review.chip}
               >

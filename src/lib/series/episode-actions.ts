@@ -210,6 +210,8 @@ export async function rateEpisode(
   episode: number,
   rating: number | null,
   review: string | null,
+  // «Contiene spoiler»: marca la reseña entera. Sin texto se apaga sola.
+  reviewIsSpoiler: boolean,
   // Solo cuenta si puntuar CREA la fila (puntuar implica visto): una nota
   // sobre un episodio ya visto no le cambia la fecha.
   watchedOn?: string
@@ -227,6 +229,7 @@ export async function rateEpisode(
 
   const passId = await ensureWritablePass(supabase, user.id, seriesId);
   const cleanReview = review?.trim() || null;
+  const cleanSpoiler = cleanReview !== null && reviewIsSpoiler;
   const day = parseWatchedOn(watchedOn);
 
   const { data: existing } = await supabase
@@ -241,7 +244,7 @@ export async function rateEpisode(
   if (existing) {
     const { error } = await supabase
       .from("episode_watches")
-      .update({ rating, review: cleanReview, updated_at: new Date().toISOString() })
+      .update({ rating, review: cleanReview, review_is_spoiler: cleanSpoiler, updated_at: new Date().toISOString() })
       .eq("id", existing.id);
     if (error) throw error;
   } else {
@@ -253,6 +256,7 @@ export async function rateEpisode(
       episode_number: episode,
       rating,
       review: cleanReview,
+      review_is_spoiler: cleanSpoiler,
       ...(day && { watched_on: day }),
     });
     if (error) throw error;

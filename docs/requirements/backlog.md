@@ -299,7 +299,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - Modo «en pausa» como estado explícito (§7.16 = issue #426; decisión 8-A).
 - Método de adquisición / detalles del ejemplar (`copy_details`, §7.29).
 - Modo sin spoilers GLOBAL (§7.30) — la infraestructura parcial existe
-  (spoiler-flag en notas/posts, gate por progreso en clubes); falta el modo.
+  (spoiler-flag en notas/posts/comentarios y, desde 2026-09-25, en reseñas de pase y de
+  episodio; gate por progreso en clubes); falta el modo.
 - OCR de citas (§7.27).
 
 **Estadísticas y retos**

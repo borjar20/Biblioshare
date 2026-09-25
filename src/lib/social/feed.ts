@@ -94,6 +94,10 @@ export type FeedEvent = {
   sortDate: string;
   rating: number | null;
   reviewExcerpt: string | null;
+  // La reseña (pase o episodio) está marcada «Contiene spoiler»: la tarjeta la
+  // tapa con SpoilerGate. Solo UI — el extracto viaja igual (quien mira puede
+  // leerlo), mismo criterio que `progress.note.isSpoiler`.
+  reviewIsSpoiler: boolean;
   episode: { season: number; episode: number; title: string | null } | null;
   // Solo posts `watched`: episodios de esa serie marcados ese mismo día (el post
   // es el día, colgado del primero). Ausente en el resto.
@@ -273,15 +277,18 @@ async function resolvePostDrafts(
         ? supabase.from("passes").select("id, started_on, finished_on, rating").in("id", finishedSourceIds)
         : Promise.resolve({ data: [] as PassRow[], error: null }),
       finishedSourceIds.length
-        ? supabase.from("pass_reviews").select("id, review").in("id", finishedSourceIds)
-        : Promise.resolve({ data: [] as { id: string | null; review: string | null }[], error: null }),
+        ? supabase.from("pass_reviews").select("id, review, review_is_spoiler").in("id", finishedSourceIds)
+        : Promise.resolve({
+            data: [] as { id: string | null; review: string | null; review_is_spoiler: boolean | null }[],
+            error: null,
+          }),
       progressedSourceIds.length
         ? supabase.from("progress_sessions").select("id, duration_minutes, position").in("id", progressedSourceIds)
         : Promise.resolve({ data: [] as SessionRow[], error: null }),
       watchedSourceIds.length
         ? supabase
             .from("episode_watches")
-            .select("id, user_id, series_id, season_number, episode_number, rating, review, watched_on")
+            .select("id, user_id, series_id, season_number, episode_number, rating, review, review_is_spoiler, watched_on")
             .in("id", watchedSourceIds)
         : Promise.resolve({ data: [] as EpisodeRow[], error: null }),
     ]);
@@ -327,6 +334,7 @@ async function resolvePostDrafts(
 
   const passById = new Map((passRows.data ?? []).map((r) => [r.id, r]));
   const reviewById = new Map((reviewRows.data ?? []).map((r) => [r.id, r.review]));
+  const reviewSpoilerById = new Map((reviewRows.data ?? []).map((r) => [r.id, r.review_is_spoiler ?? false]));
   const sessionById = new Map((sessionRows.data ?? []).map((r) => [r.id, r]));
   const episodeById = new Map((episodeRows.data ?? []).map((r) => [r.id, r]));
 
@@ -417,6 +425,7 @@ async function resolvePostDrafts(
       sortDate: r.created_at,
       rating: null as number | null,
       reviewExcerpt: null as string | null,
+      reviewIsSpoiler: false,
       episode: null as FeedEvent["episode"],
       reviewMeta: null as FeedEvent["reviewMeta"],
       progress: null as FeedEvent["progress"],
@@ -440,6 +449,7 @@ async function resolvePostDrafts(
         verb: verbForReviewable(pass?.rating ?? null, reviewText, "finished"),
         rating: pass?.rating ?? null,
         reviewExcerpt: reviewOrExcerpt(reviewText),
+        reviewIsSpoiler: r.source_id ? (reviewSpoilerById.get(r.source_id) ?? false) : false,
         reviewMeta: {
           readingDays:
             r.anchor_type === "book" && pass?.started_on && pass?.finished_on
@@ -489,6 +499,7 @@ async function resolvePostDrafts(
           : null,
         rating: ep?.rating ?? null,
         reviewExcerpt: reviewOrExcerpt(ep?.review ?? null),
+        reviewIsSpoiler: ep?.review_is_spoiler ?? false,
         episode: ep
           ? {
               season: ep.season_number,
@@ -830,6 +841,6 @@ type NamedRow = { id: string; name: string; cover_url: string | null };
 type PersonRow = { id: string; name: string; photo_url: string | null };
 type PassRow = { id: string; started_on: string | null; finished_on: string | null; rating: number | null };
 type SessionRow = { id: string; duration_minutes: number | null; position: unknown };
-type EpisodeRow = { id: string; user_id: string; series_id: string; season_number: number; episode_number: number; rating: number | null; review: string | null; watched_on: string };
+type EpisodeRow = { id: string; user_id: string; series_id: string; season_number: number; episode_number: number; rating: number | null; review: string | null; review_is_spoiler: boolean; watched_on: string };
 type EpisodeTitleRow = { series_id: string; season_number: number; episode_number: number; title: string | null };
 type ActorRow = { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null };

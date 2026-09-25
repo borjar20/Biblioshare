@@ -1,5 +1,16 @@
 # Modelo de datos
 
+> **Delta 2026-09-25 (reseñas con spoiler):** `passes.review_is_spoiler` y
+> `episode_watches.review_is_spoiler` (`boolean not null default false`; migración
+> `20260925120000_review_is_spoiler.sql`). Marca la reseña ENTERA como spoiler, igual que
+> `comments`/`notes`/`posts.is_spoiler`; la UI la tapa con `SpoilerGate` (solo UI: el texto viaja
+> igual a quien puede leerlo). `pass_reviews` la sirve como última columna (recreada con
+> `create or replace` + el bloque `grant select`/`revoke` de la superficie 7). Grants por columna en
+> `passes` (superficie 6): `select` a `anon`/`authenticated` (la bandera no es sensible, como
+> `rating`), `insert`/`update` a `authenticated`. `episode_watches` tiene grants de tabla: la cubren
+> solos. La acción la apaga si la reseña queda vacía. Verificado en **dev** (2026-09-25,
+> `column_privileges` + `role_table_grants` de la vista); **prod pendiente** de aplicar tras el merge.
+
 > **Delta 2026-09-24 (ficha cinemática, PR 1):** `movies.backdrop_url` y `series.backdrop_url`
 > (`text`, nullable; migración `20260924120000_movies_series_backdrop_url.sql`). Backdrop apaisado
 > de TMDB a `w1280` para el hero de la ficha. Check `*_backdrop_url_tmdb`: solo
@@ -1134,7 +1145,7 @@ concreto de un ítem. Releer un libro es un pase nuevo, no una edición del ante
 
 Columnas que importan: `user_id`, `item_type`/`item_id`, `status` (`media_status`:
 `planned|in_progress|completed|dropped`), `is_active`, `position` (jsonb), `rating`,
-`review`, `is_public`, `planned_on`/`started_on`/`finished_on`, `edition_id`,
+`review`, `review_is_spoiler`, `is_public`, `planned_on`/`started_on`/`finished_on`, `edition_id`,
 `dropped_reason`/`dropped_reason_note`, y `pinned_order` (las de cola se borraron, ver
 «`queues` ya no existe»).
 
@@ -1254,7 +1265,7 @@ Cuelgan del pase:
   `notes` (varias por sesión, enlazadas por `session_id`, ver abajo); la columna se
   queda con las filas históricas, sin migrar.
 - **`episode_watches`** — un episodio visto. **La existencia de la fila = visto**;
-  `rating`/`review` son opcionales. **Desde la fase 4 de series (2026-09-23) es la ÚNICA unidad
+  `rating`/`review` son opcionales (y `review_is_spoiler`, delta 2026-09-25). **Desde la fase 4 de series (2026-09-23) es la ÚNICA unidad
   de actividad de una serie**: las series ya no crean `progress_sessions` (la hoja `/sesion` de
   serie marca episodios, de varias temporadas, con su fecha). `watched_on` es la fecha **local**
   del visionado que manda el cliente (`parseWatchedOn`); el `default current_date` (UTC) solo

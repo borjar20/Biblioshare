@@ -36,6 +36,7 @@ function watch(
     episode_number: episode,
     rating,
     review,
+    review_is_spoiler: false,
     pass_id: passId,
   };
 }

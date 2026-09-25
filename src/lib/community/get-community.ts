@@ -30,6 +30,8 @@ export type CommunityReview = {
   finishedOn: string | null; // null = completed with unknown date
   rating: number | null; // 1–10
   text: string;
+  // «Contiene spoiler» del autor: se pinta tapada hasta el clic.
+  isSpoiler: boolean;
   editionLabel: string | null;
   reactionCount: number;
   viewerReacted: boolean;
@@ -225,7 +227,7 @@ export async function getReviews(
     // defensa en profundidad y para dejar la intención explícita.
     const { data: diaryRows } = await supabase
       .from("pass_reviews")
-      .select("id, user_id, finished_on, rating, review, edition_id")
+      .select("id, user_id, finished_on, rating, review, review_is_spoiler, edition_id")
       .eq("item_type", itemType)
       .eq("item_id", itemId)
       .not("review", "is", null)
@@ -277,6 +279,7 @@ export async function getReviews(
           finishedOn: r.finished_on,
           rating: r.rating,
           text: (r.review ?? "").trim(),
+          isSpoiler: r.review_is_spoiler ?? false,
           editionLabel: r.edition_id ? (editionLabelById.get(r.edition_id) ?? null) : null,
           interactionTargetId: null as string | null,
           reactionCount: 0,

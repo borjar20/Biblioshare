@@ -22,6 +22,8 @@ export type OwnWatch = {
   watched: boolean;
   rating: number | null;
   review: string | null;
+  // La reseña entera destapa algo: los demás la ven tapada (SpoilerGate).
+  reviewIsSpoiler: boolean;
   seenBefore: boolean;
 };
 
@@ -76,6 +78,7 @@ export type EpisodeWatchRow = {
   episode_number: number;
   rating: number | null;
   review: string | null;
+  review_is_spoiler: boolean;
   pass_id: string | null;
 };
 
@@ -135,6 +138,7 @@ export function aggregateEpisodeData(
         watched: Boolean(current),
         rating: current?.rating ?? null,
         review: current?.review ?? null,
+        reviewIsSpoiler: current?.review_is_spoiler ?? false,
         seenBefore,
       });
     }
@@ -207,7 +211,7 @@ export function aggregateEpisodeData(
       runtimeMinutes: e.runtime_minutes,
       avgRating: avgOf(k),
       ratingCount: ratingCount.get(k) ?? 0,
-      own: own.get(k) ?? { watched: false, rating: null, review: null, seenBefore: false },
+      own: own.get(k) ?? { watched: false, rating: null, review: null, reviewIsSpoiler: false, seenBefore: false },
       aired: airedByKey.get(k) ?? true,
     });
   }
@@ -236,7 +240,7 @@ export async function getEpisodeData(
       .order("episode_number", { ascending: true }),
     supabase
       .from("episode_watches")
-      .select("user_id, season_number, episode_number, rating, review, pass_id")
+      .select("user_id, season_number, episode_number, rating, review, review_is_spoiler, pass_id")
       .eq("series_id", seriesId),
     // Mismo viaje, en paralelo: ¿ha terminado la serie? (catálogo vivo).
     supabase.from("series").select("tmdb_status").eq("id", seriesId).maybeSingle(),

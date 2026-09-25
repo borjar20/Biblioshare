@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { MentionText } from "@/components/social/mention-text";
+import { SpoilerGate } from "@/components/social/spoiler-gate";
 import { ReviewContent } from "./review-content";
 import type { ItemType } from "@/lib/catalog/types";
 
@@ -25,6 +26,7 @@ export function ReviewRow({
   rating,
   itemType,
   text,
+  isSpoiler = false,
   knownUsernames,
   chip,
   children,
@@ -40,6 +42,8 @@ export function ReviewRow({
   /** Tiñe la nota con el color del tipo de obra. */
   itemType?: ItemType;
   text: string;
+  /** El autor la marcó «Contiene spoiler»: tapada hasta el clic. */
+  isSpoiler?: boolean;
   /** Usernames @mencionados en `text` que existen de verdad — ver MentionText. */
   knownUsernames: string[];
   /** Etiqueta a la izquierda de la fecha: la edición leída, o el episodio. */
@@ -88,6 +92,18 @@ export function ReviewRow({
     </div>
   );
 
+  // `.tx`: prosa, no metadato — en --foreground-soft (el #584f43 del
+  // handoff), no en el gris de las etiquetas.
+  // `whitespace-pre-line`: la reseña se escribe en un textarea y sus saltos
+  // de línea son del autor. Sin esto el HTML los colapsaba a un espacio y
+  // una reseña de varios párrafos salía como un ladrillo. `break-words`
+  // para que una URL larga no desborde la ficha. Tope de lectura de ~70 caracteres: la columna principal de Comunidad mide ~860px en PC.
+  const body = (
+    <p className="max-w-[70ch] whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
+      {/<\/?(?:p|br|strong|b|em|i|a)\b/i.test(text) ? <ReviewContent text={text} /> : <MentionText text={text} knownUsernames={knownUsernames} />}
+    </p>
+  );
+
   return (
     <article className="border-t border-border py-[15px] first:border-t-0 first:pt-0 lg:py-5">
       <div className="mb-[7px] flex items-center gap-2.5 lg:mb-2.5 lg:gap-3">
@@ -116,15 +132,7 @@ export function ReviewRow({
 
       {chip && <div className="mb-1.5">{chip}</div>}
 
-      {/* `.tx`: prosa, no metadato — en --foreground-soft (el #584f43 del
-          handoff), no en el gris de las etiquetas. */}
-      {/* `whitespace-pre-line`: la reseña se escribe en un textarea y sus saltos
-          de línea son del autor. Sin esto el HTML los colapsaba a un espacio y
-          una reseña de varios párrafos salía como un ladrillo. `break-words`
-          para que una URL larga no desborde la ficha. Tope de lectura de ~70 caracteres: la columna principal de Comunidad mide ~860px en PC. */}
-      <p className="max-w-[70ch] whitespace-pre-line break-words text-[13.5px] leading-[1.6] text-foreground-soft lg:text-[15px] lg:leading-[1.65]">
-        {/<\/?(?:p|br|strong|b|em|i|a)\b/i.test(text) ? <ReviewContent text={text} /> : <MentionText text={text} knownUsernames={knownUsernames} />}
-      </p>
+      {isSpoiler ? <SpoilerGate>{body}</SpoilerGate> : body}
 
       {children}
     </article>

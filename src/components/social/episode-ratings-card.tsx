@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/social/user-avatar";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 import { MentionText } from "@/components/social/mention-text";
+import { SpoilerGate } from "@/components/social/spoiler-gate";
 import { SpineCover } from "./spine-cover";
 import { itemHref } from "@/lib/catalog/item-href";
 import { splitCollapsedItems } from "./feed-collapse";
@@ -81,11 +82,20 @@ export function EpisodeRatingsCard({
                   <RatingDots value={ep.rating} size="sm" itemType="series" />
                 </div>
               )}
-              {ep.reviewExcerpt && (
-                <p className="mt-1.5 border-l-2 border-accent pl-3 font-serif text-[13px] leading-relaxed whitespace-pre-line break-words">
-                  <MentionText text={ep.reviewExcerpt} knownUsernames={knownUsernames} />
-                </p>
-              )}
+              {ep.reviewExcerpt &&
+                (ep.reviewIsSpoiler ? (
+                  <div className="mt-1.5">
+                    <SpoilerGate>
+                      <p className="border-l-2 border-accent pl-3 font-serif text-[13px] leading-relaxed whitespace-pre-line break-words">
+                        <MentionText text={ep.reviewExcerpt} knownUsernames={knownUsernames} />
+                      </p>
+                    </SpoilerGate>
+                  </div>
+                ) : (
+                  <p className="mt-1.5 border-l-2 border-accent pl-3 font-serif text-[13px] leading-relaxed whitespace-pre-line break-words">
+                    <MentionText text={ep.reviewExcerpt} knownUsernames={knownUsernames} />
+                  </p>
+                ))}
               {showInteractions && ep.interactionTarget?.interactionTargetId && (
                 <div className="mt-1.5">
                   <ReviewInteractions

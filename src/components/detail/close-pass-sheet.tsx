@@ -10,6 +10,7 @@ import { RatingDots } from "@/components/ui/rating-dots";
 import { Button } from "@/components/ui/button";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
+import { ReviewSpoilerField } from "@/components/detail/review-spoiler-field";
 
 const initialState: ClosePassState = {};
 
@@ -48,6 +49,7 @@ export function ClosePassSheet({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [review, setReview] = useState("");
+  const [reviewIsSpoiler, setReviewIsSpoiler] = useState(false);
   const [reason, setReason] = useState<DroppedReason | "">("");
   const [reasonNote, setReasonNote] = useState("");
   const mention = useMentionAutocomplete({
@@ -166,6 +168,8 @@ export function ClosePassSheet({
               {mention.dropdown}
             </div>
           </label>
+
+          <ReviewSpoilerField review={review} checked={reviewIsSpoiler} onChange={setReviewIsSpoiler} />
 
           {status === "dropped" && (
             <DroppedReasonFields

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/ui/action-menu";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
+import { ReviewSpoilerField } from "@/components/detail/review-spoiler-field";
 
 const initialState: ClosePassState = {};
 
@@ -148,6 +149,7 @@ function PassCard({
   const [isDeleting, startDeleteTransition] = useTransition();
   const [rating, setRating] = useState<number | null>(pass.rating);
   const [review, setReview] = useState(pass.review ?? "");
+  const [reviewIsSpoiler, setReviewIsSpoiler] = useState(pass.reviewIsSpoiler);
   const [reason, setReason] = useState<DroppedReason | "">(pass.droppedReason ?? "");
   const [reasonNote, setReasonNote] = useState(pass.droppedReasonNote ?? "");
   const mention = useMentionAutocomplete({
@@ -337,6 +339,8 @@ function PassCard({
               {mention.dropdown}
             </div>
           </label>
+
+          <ReviewSpoilerField review={review} checked={reviewIsSpoiler} onChange={setReviewIsSpoiler} size="sm" />
 
           {pass.status === "dropped" && (
             <DroppedReasonFields
