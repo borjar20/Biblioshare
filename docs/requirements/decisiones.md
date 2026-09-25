@@ -5239,8 +5239,11 @@ escribe (hoja de cierre, edición en el diario, detalle del episodio).
 
 ## 2026-09-25 — Hilos de comentarios en móvil: cuerpo a todo el ancho, textos largos plegables
 
-Revisión del feed de clubes en móvil (390px). El contenedor ya medía lo mismo que el feed de Inicio
-(tarjeta de 358px frente a 350px); lo que estrechaba la lectura era el hilo DENTRO de la tarjeta.
+Revisión del feed de clubes en móvil (390px).
+
+- **Posts a ancho completo en móvil**, como el feed de Inicio: bajo `sm` las tarjetas pasan a filas
+  de borde a borde con un separador (mismas variantes descendientes que `FeedList`, con `-mx-4`
+  por el gutter de `ClubShell`). El feed del club seguía como tarjetas con margen lateral.
 
 - **Comentario = cabecera + cuerpo debajo**, no avatar como columna fija. Con la columna, una
   respuesta se quedaba en ~240px de texto. En móvil el cuerpo va a todo el ancho del hilo; desde
