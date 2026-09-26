@@ -112,8 +112,14 @@ export async function getTodayFocus(
   supabase: SupabaseServerClient,
   userId: string,
 ): Promise<TodayFocus> {
-  const items = await getLibraryItems(supabase, userId, { status: "in_progress" });
-  if (items.length === 0) return { featured: null, rest: [], total: 0 };
+  const inProgress = await getLibraryItems(supabase, userId, { status: "in_progress" });
+  // Una serie «Al día» (todo lo emitido visto, sigue en emisión) está en curso
+  // pero no hay nada que continuar: sin episodio siguiente, la tarjeta solo
+  // ocupa sitio. Fuera del bloque; vuelve sola en cuanto TMDB publica uno
+  // nuevo (`upToDate` es derivado). `total` sigue contando TODOS los en curso
+  // porque el «N · Ver todos» enlaza a la colección, que sí los lista.
+  const items = inProgress.filter((i) => !i.upToDate);
+  if (items.length === 0) return { featured: null, rest: [], total: inProgress.length };
 
   // Sin pase activo no hay nada que contar (dato huérfano): el ítem sigue
   // saliendo, pero sin "Día N" ni notas.
@@ -191,6 +197,6 @@ export async function getTodayFocus(
   return {
     featured: passesToday[0] ?? null,
     rest: passesToday.slice(1),
-    total: passesToday.length,
+    total: inProgress.length,
   };
 }

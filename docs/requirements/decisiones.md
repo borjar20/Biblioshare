@@ -5293,3 +5293,14 @@ de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro 
 - **Nada se cachea** (regla #437): todo depende de quién mira.
 - **Sin aviso a seguidores** del post conjunto: no pasa por `createPost`. Los avisos son la
   invitación (`joint_viewing_invite`) y la confirmación a quien invitó (`joint_viewing_accepted`).
+
+## 2026-09-26 — Las series «Al día» no salen en «¿Qué has disfrutado hoy?»
+
+- Una serie **al día** (viendo, todo lo emitido visto, sigue en emisión — estado derivado de
+  `src/lib/series/follow-state.ts`) se filtra en `getTodayFocus`: no tiene episodio siguiente, así
+  que ni puede ser el destacado ni «continuar donde lo dejaste». Vuelve sola al bloque cuando TMDB
+  publica un episodio nuevo (el estado es derivado, no se escribe nada).
+- **`total` («N · Ver todos») sigue contando todos los en curso**, series al día incluidas, porque
+  el enlace lleva a la colección filtrada por `in_progress`, que sí las lista.
+- Si todo lo que tienes en curso son series al día, el bloque baja al siguiente peldaño de la
+  escalera (próxima lectura / sugerencias / descubrimiento), igual que sin nada en curso.
