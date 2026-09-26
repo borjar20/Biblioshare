@@ -22,7 +22,12 @@ de un miembro **se oculta** del feed; los miembros que quien mira no puede ver s
      si ya está compartido, muestra los avatares («Con Ana y Luis», «Pendiente» si falta alguien
      por contestar). Abre `JointViewingSheet`: ver quién está, invitar a más (quien lo creó) o
      salirse. El diario pide los visionados de todos sus pases en UNA llamada.
-2. Cada invitado recibe `joint_viewing_invite` (campana + push) que abre `/juntos/[id]`.
+2. Cada invitado recibe `joint_viewing_invite` (campana + push) que abre `/juntos/[id]`. Además
+   (#1224) las invitaciones sin contestar se leen de la tabla, no de la campana, y se ven en dos
+   sitios aunque el aviso se pierda: un bloque «Te han etiquetado» en Inicio, encima del feed, y
+   un aviso encima de la tarjeta del pase en la ficha de la obra (`PendingJointInvites`,
+   `getPendingJointInvites`). Se contesta ahí mismo cuando no hay que elegir pase; si tienes
+   pases terminados de la obra pero ninguno de ese día, «Confirmar» lleva a `/juntos/[id]`.
 3. En `/juntos/[id]` (`JointInviteResponse`) elige cuál de sus pases terminados es (se preselecciona
    el del mismo día) o «uno nuevo», y acepta; o dice «No fui yo». Aceptar llama a
    `respond_joint_viewing`, que publica el post `joint` si aún no existe. Quien invitó recibe

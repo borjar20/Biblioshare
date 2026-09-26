@@ -208,3 +208,110 @@ export async function getJointViewingPage(
       .map((p) => ({ id: p.id, finishedOn: p.finished_on })),
   };
 }
+
+export type PendingJointInvite = {
+  viewingId: string;
+  itemType: ItemType;
+  itemId: string;
+  itemTitle: string;
+  itemCoverUrl: string | null;
+  watchedOn: string | null;
+  inviter: JointPerson | null;
+  // Con qué pase se acepta sin preguntar: el terminado sin visionado del mismo
+  // día, o "new" si no tiene ninguno terminado libre. null = hay que elegir en
+  // `/juntos/[id]` (tiene pases terminados libres, pero ninguno de ese día).
+  quickChoice: string | "new" | null;
+};
+
+const PENDING_INVITES_LIMIT = 10;
+
+// Invitaciones que quien mira aún no ha contestado (#1224). Lee de la tabla, no
+// de la campana: se ven aunque el aviso se haya perdido o haya salido de los 20
+// últimos. `item` acota a una obra (la ficha).
+export async function getPendingJointInvites(
+  supabase: SupabaseServerClient,
+  userId: string,
+  item?: { itemType: ItemType; itemId: string },
+): Promise<PendingJointInvite[]> {
+  const { data: rows, error } = await supabase
+    .from("joint_viewing_members")
+    .select("viewing_id, invited_at")
+    .eq("user_id", userId)
+    .eq("status", "invited")
+    .order("invited_at", { ascending: false })
+    .limit(PENDING_INVITES_LIMIT * 3);
+  if (error) throw error;
+  if (!rows || rows.length === 0) return [];
+
+  let viewingsQuery = supabase
+    .from("joint_viewings")
+    .select("id, item_type, item_id, watched_on, created_by")
+    .in("id", rows.map((r) => r.viewing_id));
+  if (item) viewingsQuery = viewingsQuery.eq("item_type", item.itemType).eq("item_id", item.itemId);
+  const { data: viewings, error: viewingsError } = await viewingsQuery;
+  if (viewingsError) throw viewingsError;
+  if (!viewings || viewings.length === 0) return [];
+
+  const order = new Map(rows.map((r, i) => [r.viewing_id, i]));
+  const sorted = [...viewings]
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .slice(0, PENDING_INVITES_LIMIT);
+
+  const idsByType: Record<ItemType, string[]> = { book: [], movie: [], series: [] };
+  for (const v of sorted) idsByType[v.item_type as ItemType].push(v.item_id);
+  const itemIds = sorted.map((v) => v.item_id);
+
+  const [books, movies, series, passes, people] = await Promise.all([
+    idsByType.book.length
+      ? supabase.from("books").select("id, title, cover_url").in("id", idsByType.book)
+      : Promise.resolve({ data: [] as { id: string; title: string | null; cover_url: string | null }[], error: null }),
+    idsByType.movie.length
+      ? supabase.from("movies").select("id, title, cover_url").in("id", idsByType.movie)
+      : Promise.resolve({ data: [] as { id: string; title: string | null; cover_url: string | null }[], error: null }),
+    idsByType.series.length
+      ? supabase.from("series").select("id, title, cover_url").in("id", idsByType.series)
+      : Promise.resolve({ data: [] as { id: string; title: string | null; cover_url: string | null }[], error: null }),
+    supabase
+      .from("passes")
+      .select("id, item_type, item_id, finished_on")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .in("item_id", itemIds),
+    resolvePeople(
+      supabase,
+      sorted.map((v) => v.created_by),
+    ),
+  ]);
+  for (const r of [books, movies, series, passes]) if (r.error) throw r.error;
+
+  const passIds = (passes.data ?? []).map((p) => p.id);
+  const { data: linked, error: linkedError } = passIds.length
+    ? await supabase.from("joint_viewing_members").select("pass_id").in("pass_id", passIds)
+    : { data: [] as { pass_id: string | null }[], error: null };
+  if (linkedError) throw linkedError;
+  const linkedIds = new Set((linked ?? []).map((l) => l.pass_id));
+
+  const catalog = new Map<string, { title: string | null; cover_url: string | null }>();
+  for (const [type, res] of [["book", books], ["movie", movies], ["series", series]] as const) {
+    for (const r of res.data ?? []) catalog.set(`${type}:${r.id}`, r);
+  }
+
+  return sorted.map((v) => {
+    const itemType = v.item_type as ItemType;
+    const free = (passes.data ?? []).filter(
+      (p) => p.item_type === itemType && p.item_id === v.item_id && !linkedIds.has(p.id),
+    );
+    const sameDay = v.watched_on ? free.find((p) => p.finished_on === v.watched_on) : undefined;
+    const meta = catalog.get(`${itemType}:${v.item_id}`);
+    return {
+      viewingId: v.id,
+      itemType,
+      itemId: v.item_id,
+      itemTitle: meta?.title ?? UNTITLED_FALLBACK,
+      itemCoverUrl: meta?.cover_url ?? null,
+      watchedOn: v.watched_on,
+      inviter: people.get(v.created_by) ?? null,
+      quickChoice: sameDay ? sameDay.id : free.length === 0 ? "new" : null,
+    };
+  });
+}

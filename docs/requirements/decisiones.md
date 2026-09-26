@@ -5304,3 +5304,17 @@ de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro 
   el enlace lleva a la colección filtrada por `in_progress`, que sí las lista.
 - Si todo lo que tienes en curso son series al día, el bloque baja al siguiente peldaño de la
   escalera (próxima lectura / sugerencias / descubrimiento), igual que sin nada en curso.
+
+## 2026-09-26 — Invitaciones pendientes a visionados conjuntos: de la tabla, no de la campana (#1224)
+
+- **Se leen de `joint_viewing_members` (`status='invited'`), no de `notifications`.** La campana
+  solo muestra los 20 avisos más recientes y el aviso es best-effort (se envía después del RPC):
+  una invitación no puede depender de que el aviso llegue ni de que siga en la lista.
+- **En Inicio van dentro del MISMO `<Suspense>` que el feed**, en paralelo con `getFeed`, no en un
+  boundary propio: uno propio empujaría el feed al llegar, el CLS de #284. Solo en la vista «Todo».
+- **En la ficha se lanza la lectura al tener la obra y se espera antes de pintar el hero**, en
+  paralelo con el resto del hero; va encima de la tarjeta del pase. En los dos sitios un fallo de
+  la lectura se traga (sin bloque) y no tumba la página.
+- **Contestar sin salir de ahí solo cuando no hay nada que elegir**: el pase terminado libre del
+  mismo día, o «uno nuevo» si no hay ninguno libre. Si hay pases terminados libres de otros días,
+  «Confirmar» lleva a `/juntos/[id]`, para no enlazar a ciegas un visionado de hace años.
