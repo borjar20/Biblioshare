@@ -1460,6 +1460,75 @@ export type Database = {
         }
         Relationships: []
       }
+      joint_viewing_members: {
+        Row: {
+          invited_at: string
+          pass_id: string | null
+          responded_at: string | null
+          status: string
+          user_id: string
+          viewing_id: string
+        }
+        Insert: {
+          invited_at?: string
+          pass_id?: string | null
+          responded_at?: string | null
+          status: string
+          user_id: string
+          viewing_id: string
+        }
+        Update: {
+          invited_at?: string
+          pass_id?: string | null
+          responded_at?: string | null
+          status?: string
+          user_id?: string
+          viewing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "joint_viewing_members_pass_id_fkey"
+            columns: ["pass_id"]
+            isOneToOne: true
+            referencedRelation: "passes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "joint_viewing_members_viewing_id_fkey"
+            columns: ["viewing_id"]
+            isOneToOne: false
+            referencedRelation: "joint_viewings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      joint_viewings: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          watched_on: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          watched_on?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          watched_on?: string | null
+        }
+        Relationships: []
+      }
       library_entries: {
         Row: {
           created_at: string
@@ -3574,6 +3643,22 @@ export type Database = {
         Returns: boolean
       }
       is_club_member: { Args: { p_club_id: string }; Returns: boolean }
+      joint_viewing_accepted_counts: {
+        Args: { p_viewing_ids: string[] }
+        Returns: {
+          accepted_count: number
+          viewing_id: string
+        }[]
+      }
+      create_joint_viewing: {
+        Args: { p_invitee_ids: string[]; p_pass_id: string }
+        Returns: Json
+      }
+      respond_joint_viewing: {
+        Args: { p_accept: boolean; p_pass_id?: string; p_viewing_id: string }
+        Returns: Json
+      }
+      leave_joint_viewing: { Args: { p_viewing_id: string }; Returns: undefined }
       is_visible_via_club_share: {
         Args: { p_owner_id: string; p_row_id: string; p_source_table: string }
         Returns: boolean
@@ -3979,6 +4064,8 @@ export type Database = {
         | "followed_started"
         | "followed_dropped"
         | "followed_thought"
+        | "joint_viewing_invite"
+        | "joint_viewing_accepted"
       pass_dropped_reason:
         | "no_enganchado"
         | "aburrido"
@@ -3994,7 +4081,12 @@ export type Database = {
         | "progressed"
         | "watched"
         | "thought"
-      post_source_kind: "pass" | "progress_session" | "episode_watch"
+        | "joint"
+      post_source_kind:
+        | "pass"
+        | "progress_session"
+        | "episode_watch"
+        | "joint_viewing"
       push_channel: "web"
       push_platform: "web_push" | "fcm_android" | "apns_ios"
       saga_item_role:
@@ -4212,6 +4304,8 @@ export const Constants = {
         "followed_started",
         "followed_dropped",
         "followed_thought",
+        "joint_viewing_invite",
+        "joint_viewing_accepted",
       ],
       pass_dropped_reason: [
         "no_enganchado",
@@ -4229,8 +4323,14 @@ export const Constants = {
         "progressed",
         "watched",
         "thought",
+        "joint",
       ],
-      post_source_kind: ["pass", "progress_session", "episode_watch"],
+      post_source_kind: [
+        "pass",
+        "progress_session",
+        "episode_watch",
+        "joint_viewing",
+      ],
       push_channel: ["web"],
       push_platform: ["web_push", "fcm_android", "apns_ios"],
       saga_item_role: [

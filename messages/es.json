@@ -252,6 +252,45 @@
       "series": "{n}.º visionado"
     },
     "newPass": "Nuevo pase",
+    "jointAction": {
+      "book": "Lo leí con…",
+      "movie": "La vi con…",
+      "series": "La vi con…"
+    },
+    "jointSheet": {
+      "title": {
+        "book": "¿Con quién lo leíste?",
+        "movie": "¿Con quién la viste?",
+        "series": "¿Con quién la viste?"
+      },
+      "hint": "Solo aparecen las personas a las que sigues y que te siguen. Cada una recibe un aviso y decide si lo confirma.",
+      "loading": "Cargando…",
+      "currentTitle": "En este visionado",
+      "inviteMore": "Añadir a alguien más",
+      "noMutuals": "No tienes seguidos mutuos a los que etiquetar.",
+      "status": {
+        "invited": "Invitado",
+        "accepted": "Confirmado",
+        "declined": "No fue"
+      },
+      "submit": "{count, plural, =0 {Etiquetar} one {Etiquetar a 1 persona} other {Etiquetar a # personas}}",
+      "sending": "Enviando…",
+      "sent": "Listo. Les ha llegado un aviso.",
+      "leave": "Salir del visionado",
+      "leaveConfirm": "¿Salir de este visionado conjunto? Tu nota y tu reseña se quedan en tu diario.",
+      "close": "Cerrar",
+      "errors": {
+        "load": "No se pudo cargar. Inténtalo de nuevo.",
+        "unauthenticated": "Tienes que iniciar sesión.",
+        "not_mutual": "Solo puedes etiquetar a personas a las que sigues y que te siguen.",
+        "no_invitees": "Elige al menos a una persona.",
+        "too_many_invitees": "Como mucho 20 personas por visionado.",
+        "pass_not_completed": "Solo se puede compartir un visionado terminado.",
+        "pass_already_joint": "Este visionado ya es de otro grupo.",
+        "not_found": "Este visionado ya no existe.",
+        "generic": "Algo ha fallado. Inténtalo de nuevo."
+      }
+    },
     "newPassSheet": {
       "title": "¿Cómo cierras el pase actual?",
       "hint": "El pase actual se guarda en tu diario y empieza uno nuevo desde cero.",
@@ -468,7 +507,8 @@
       "progressed": "Progreso",
       "watched": "Episodio",
       "started": "Empezó",
-      "dropped": "Abandonó"
+      "dropped": "Abandonó",
+      "joint": "Juntos"
     },
     "voice": {
       "record": "Grabar una nota de voz",
@@ -539,7 +579,14 @@
       "reviewed": "reseñó",
       "watchedEpisode": "marcó un episodio de",
       "started": "empezó",
-      "dropped": "abandonó"
+      "dropped": "abandonó",
+      "joint": "compartió un visionado"
+    },
+    "joint": {
+      "header": "{names} {itemType, select, book {leyeron} other {vieron}} juntos",
+      "andMore": "{count} más",
+      "badge": "Juntos",
+      "noRating": "Sin nota"
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
     "quickAdd": "Añadir",
@@ -559,7 +606,8 @@
       "progress": "Avances",
       "review": "Reseña",
       "reviews": "Reseñas",
-      "thought": "Pensamiento"
+      "thought": "Pensamiento",
+      "joint": "Juntos"
     },
     "thoughtShared": "compartió un pensamiento",
     "postMenu": "Opciones",
@@ -678,7 +726,48 @@
     "followedSessionSubject": "{name} compartió una sesión de {subject}",
     "followedEpisodeSubject": "{name} vio un episodio de {subject}",
     "followedStartedSubject": "{name} empezó {subject}",
-    "followedDroppedSubject": "{name} abandonó {subject}"
+    "followedDroppedSubject": "{name} abandonó {subject}",
+    "jointViewingInvite": "{name} dice que lo disfrutasteis juntos",
+    "jointViewingAccepted": "{name} confirmó que lo disfrutasteis juntos",
+    "jointViewingInviteSubject": "{name} dice que disfrutasteis {subject} juntos",
+    "jointViewingAcceptedSubject": "{name} confirmó que disfrutasteis {subject} juntos"
+  },
+  "joint": {
+    "eyebrow": "Juntos",
+    "createdBy": "{name} dice que {itemType, select, book {lo leísteis} other {la visteis}} juntos",
+    "watchedOn": "El {date, date, long}",
+    "membersTitle": "Quién estaba",
+    "status": {
+      "invited": "Invitado",
+      "accepted": "Confirmado",
+      "declined": "No fue"
+    },
+    "question": {
+      "book": "¿Lo leísteis juntos?",
+      "movie": "¿La visteis juntos?",
+      "series": "¿La visteis juntos?"
+    },
+    "whichPass": "¿Cuál de tus visionados es?",
+    "passOn": "El del {date}",
+    "passUndated": "Uno sin fecha",
+    "passNew": "Uno nuevo, con la fecha de este visionado",
+    "accept": "Sí, estaba",
+    "decline": "No fui yo",
+    "sending": "Enviando…",
+    "acceptedNow": "Hecho. Tu nota y tu reseña saldrán en la tarjeta conjunta.",
+    "rateLink": "Puntúa y reseña en la ficha",
+    "acceptedHint": "Ya lo confirmaste. Tu nota y tu reseña se editan en <link>la ficha</link>.",
+    "declinedHint": "Dijiste que no estabas en este visionado.",
+    "errors": {
+      "unauthenticated": "Tienes que iniciar sesión.",
+      "not_mutual": "Ya no os seguís mutuamente.",
+      "no_invitees": "Algo ha fallado. Inténtalo de nuevo.",
+      "too_many_invitees": "Algo ha fallado. Inténtalo de nuevo.",
+      "pass_not_completed": "Ese visionado no está terminado.",
+      "pass_already_joint": "Ese visionado ya está en otro grupo. Elige otro o crea uno nuevo.",
+      "not_found": "Esta invitación ya no existe.",
+      "generic": "Algo ha fallado. Inténtalo de nuevo."
+    }
   },
   "time": {
     "justNow": "ahora mismo",

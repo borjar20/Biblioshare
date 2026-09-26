@@ -6,6 +6,7 @@ import { EpisodeRatingsCard } from "./episode-ratings-card";
 import { ReviewCard } from "./review-card";
 import { ThoughtCard } from "./thought-card";
 import { MilestoneCard } from "./milestone-card";
+import { JointCard } from "./joint-card";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 
 export function FeedItem({
@@ -51,6 +52,10 @@ export function FeedItem({
     // esta tarjeta solo lee `e.thought`. Defensivo: getFeed lo garantiza relleno.
     if (!e.thought) return null;
     return <ThoughtCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
+  }
+
+  if (kind === "joint") {
+    return <JointCard event={e} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions} />;
   }
 
   if (kind === "started" || kind === "dropped") {

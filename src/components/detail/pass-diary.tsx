@@ -19,6 +19,7 @@ import { ActionMenu } from "@/components/ui/action-menu";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 import { ReviewSpoilerField } from "@/components/detail/review-spoiler-field";
+import { JointViewingSheet } from "@/components/detail/joint-viewing-sheet";
 
 const initialState: ClosePassState = {};
 
@@ -146,6 +147,7 @@ function PassCard({
   const format = useFormatter();
   const accent = MEDIA_ACCENT[itemType];
   const [editing, setEditing] = useState(false);
+  const [jointOpen, setJointOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [rating, setRating] = useState<number | null>(pass.rating);
   const [review, setReview] = useState(pass.review ?? "");
@@ -279,6 +281,17 @@ function PassCard({
             label={t("actionsLabel")}
             triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
             items={[
+              // Visionado conjunto (#1220): solo sobre un pase terminado, que es
+              // lo que `create_joint_viewing` acepta.
+              ...(pass.status === "completed"
+                ? [
+                    {
+                      key: "joint",
+                      label: t(`jointAction.${itemType}`),
+                      onSelect: () => setJointOpen(true),
+                    },
+                  ]
+                : []),
               {
                 key: "delete",
                 label: t("delete"),
@@ -295,6 +308,16 @@ function PassCard({
           />
         </div>
       </div>
+
+      {pass.status === "completed" && (
+        <JointViewingSheet
+          passId={pass.id}
+          itemType={itemType}
+          itemId={itemId}
+          open={jointOpen}
+          onClose={() => setJointOpen(false)}
+        />
+      )}
 
       {canEdit && editing && (
         <form

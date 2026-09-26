@@ -452,6 +452,14 @@ async function resolveTargetHrefs(
     }
   }
 
+  // Visionado conjunto (#1220): su página es `/juntos/[id]`, y el id basta para
+  // construirla. No se consulta la fila: quien recibe la invitación puede verla
+  // (es miembro) y, si ya no existe, la página da 404 como cualquier otro enlace
+  // a algo borrado.
+  for (const t of targets) {
+    if (t.targetType === "joint_viewing") hrefByKey.set(`joint_viewing:${t.targetId}`, `/juntos/${t.targetId}`);
+  }
+
   const clubRoundIds = targets.filter((t) => t.targetType === "club_round").map((t) => t.targetId);
   if (clubRoundIds.length > 0) {
     // Igual que comment arriba: private.sync_club_round_interaction_target

@@ -46,7 +46,9 @@ export type FeedVerb =
   | "watchedEpisode"
   | "started"
   | "dropped"
-  | "thought";
+  | "thought"
+  // Visionado conjunto (#1220): un post `joint`, tarjeta propia.
+  | "joint";
 
 export type FeedEvent = {
   id: string; // `posts:${postId}` en el feed; etiqueta de fuente en previews legadas
@@ -113,6 +115,10 @@ export type FeedEvent = {
   // Solo `thought`: cuerpo + ancla polimórfica. El ancla NO vive en itemType/
   // itemId (ver comentario de arriba).
   thought: { body: string; isSpoiler: boolean; anchor: AnchorRef } | null;
+  // Solo `joint`: los miembros ACEPTADOS que quien mira puede ver, cada uno con
+  // la nota y la reseña de SU pase, y cuántos más hay que no puede ver («y N
+  // más»: se cuentan, nunca se identifican). Ausente en el resto.
+  joint?: JointCard | null;
   // El feed emite SIEMPRE `post` (el target canónico del post). Las previews
   // legadas siguen sirviendo `diary_entry`/`episode_watch` sobre las mismas
   // tarjetas, así que la unión los conserva.
@@ -126,6 +132,23 @@ export type FeedEvent = {
   commentCount: number;
   comments: InteractionComment[];
   reactions: ReactionsByEmoji;
+};
+
+export type JointCardMember = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  rating: number | null;
+  reviewExcerpt: string | null;
+  reviewIsSpoiler: boolean;
+};
+
+export type JointCard = {
+  viewingId: string;
+  watchedOn: string | null;
+  members: JointCardMember[];
+  hiddenCount: number;
 };
 
 // Forma interna mientras se resuelve el target canónico en batch. Nunca cruza el
@@ -218,6 +241,154 @@ function mentionTextsOf(event: { reviewExcerpt: string | null; thought: FeedEven
   ];
 }
 
+// --- Visionados conjuntos (#1220) ------------------------------------------------
+
+// Tarjetas de los posts `joint` de una página, en batch. Todo INVOKER: la RLS de
+// `joint_viewing_members` solo devuelve los aceptados cuyo perfil puede ver quien
+// mira (o todos, si es miembro), y la de `passes`/`pass_reviews` decide qué nota y
+// reseña se sirven. El recuento total sale de `joint_viewing_accepted_counts`,
+// que devuelve números, nunca identidades: la diferencia es el «y N más».
+async function resolveJointCards(
+  supabase: SupabaseServerClient,
+  viewingIds: string[],
+  reviewOrExcerpt: (text: string | null) => string | null,
+): Promise<Map<string, JointCard>> {
+  const cards = new Map<string, JointCard>();
+  if (viewingIds.length === 0) return cards;
+
+  const [viewings, members, counts] = await Promise.all([
+    supabase.from("joint_viewings").select("id, watched_on").in("id", viewingIds),
+    supabase
+      .from("joint_viewing_members")
+      .select("viewing_id, user_id, pass_id, responded_at")
+      .in("viewing_id", viewingIds)
+      .eq("status", "accepted")
+      .order("responded_at", { ascending: true }),
+    supabase.rpc("joint_viewing_accepted_counts", { p_viewing_ids: viewingIds }),
+  ]);
+  if (viewings.error) throw viewings.error;
+  if (members.error) throw members.error;
+  if (counts.error) throw counts.error;
+
+  const memberRows = members.data ?? [];
+  const passIds = memberRows.map((m) => m.pass_id).filter((id): id is string => id != null);
+  const userIds = [...new Set(memberRows.map((m) => m.user_id))];
+  const [passes, reviews, identities] = await Promise.all([
+    passIds.length
+      ? supabase.from("passes").select("id, rating").in("id", passIds)
+      : Promise.resolve({ data: [] as { id: string; rating: number | null }[], error: null }),
+    passIds.length
+      ? supabase.from("pass_reviews").select("id, review, review_is_spoiler").in("id", passIds)
+      : Promise.resolve({
+          data: [] as { id: string | null; review: string | null; review_is_spoiler: boolean | null }[],
+          error: null,
+        }),
+    userIds.length
+      ? supabase.from("profile_identities").select("user_id, username, display_name, avatar_url").in("user_id", userIds)
+      : Promise.resolve({ data: [] as ActorRow[], error: null }),
+  ]);
+  if (passes.error) throw passes.error;
+  if (reviews.error) throw reviews.error;
+  if (identities.error) throw identities.error;
+
+  const ratingByPass = new Map((passes.data ?? []).map((p) => [p.id, p.rating]));
+  const reviewByPass = new Map((reviews.data ?? []).map((r) => [r.id, r]));
+  const identityById = new Map(
+    (identities.data ?? [])
+      .filter((a): a is ActorRow & { user_id: string; username: string } => a.user_id != null && a.username != null)
+      .map((a) => [a.user_id, a]),
+  );
+  const totalByViewing = new Map((counts.data ?? []).map((c) => [c.viewing_id, c.accepted_count]));
+
+  for (const v of viewings.data ?? []) {
+    const visible: JointCardMember[] = [];
+    for (const m of memberRows) {
+      if (m.viewing_id !== v.id) continue;
+      const who = identityById.get(m.user_id);
+      if (!who) continue;
+      const review = m.pass_id ? reviewByPass.get(m.pass_id) : undefined;
+      visible.push({
+        userId: m.user_id,
+        username: who.username,
+        displayName: who.display_name,
+        avatarUrl: who.avatar_url,
+        rating: m.pass_id ? (ratingByPass.get(m.pass_id) ?? null) : null,
+        reviewExcerpt: reviewOrExcerpt(review?.review ?? null),
+        reviewIsSpoiler: review?.review_is_spoiler ?? false,
+      });
+    }
+    const total = totalByViewing.get(v.id) ?? visible.length;
+    cards.set(v.id, {
+      viewingId: v.id,
+      watchedOn: v.watched_on,
+      members: visible,
+      hiddenCount: Math.max(0, total - visible.length),
+    });
+  }
+  return cards;
+}
+
+// Visionados con algún miembro aceptado entre `authorIds`: sus posts `joint`
+// entran en el feed de inicio aunque su autor (quien creó el visionado) no sea
+// alguien a quien sigues. La RLS de miembros ya limita a lo visible. Tope: los
+// más recientes; uno más viejo solo se pierde si además no sigues a su autor.
+const JOINT_VIEWINGS_LOOKUP_LIMIT = 200;
+
+async function jointViewingIdsFor(
+  supabase: SupabaseServerClient,
+  authorIds: string[],
+): Promise<string[]> {
+  if (authorIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("joint_viewing_members")
+    .select("viewing_id")
+    .in("user_id", authorIds)
+    .eq("status", "accepted")
+    .order("responded_at", { ascending: false })
+    .limit(JOINT_VIEWINGS_LOOKUP_LIMIT);
+  if (error) throw error;
+  return [...new Set((data ?? []).map((r) => r.viewing_id))];
+}
+
+// Decisión de #1220: en el feed de inicio, el `finished` suelto de un pase que
+// pertenece a un visionado conjunto se oculta cuando quien mira VE el post
+// conjunto (su nota y su reseña salen dentro de esa tarjeta). Si no lo ve (p.
+// ej. el perfil de quien lo creó es privado para él), el `finished` se queda:
+// ocultarlo le escondería una reseña que sí puede leer.
+async function withoutJointFinished(
+  supabase: SupabaseServerClient,
+  postRows: PostRow[],
+): Promise<PostRow[]> {
+  const finishedPassIds = postRows
+    .filter((r) => r.kind === "finished" && r.source_kind === "pass" && r.source_id)
+    .map((r) => r.source_id!);
+  if (finishedPassIds.length === 0) return postRows;
+
+  const { data: links, error } = await supabase
+    .from("joint_viewing_members")
+    .select("viewing_id, pass_id")
+    .in("pass_id", finishedPassIds)
+    .eq("status", "accepted");
+  if (error) throw error;
+  if (!links || links.length === 0) return postRows;
+
+  const { data: jointPosts, error: jointError } = await supabase
+    .from("posts")
+    .select("source_id")
+    .eq("kind", "joint")
+    .eq("source_kind", "joint_viewing")
+    .in("source_id", [...new Set(links.map((l) => l.viewing_id))]);
+  if (jointError) throw jointError;
+  const visibleViewings = new Set((jointPosts ?? []).map((p) => p.source_id));
+  const hiddenPasses = new Set(
+    links.filter((l) => l.pass_id && visibleViewings.has(l.viewing_id)).map((l) => l.pass_id),
+  );
+  if (hiddenPasses.size === 0) return postRows;
+  return postRows.filter(
+    (r) => !(r.kind === "finished" && r.source_kind === "pass" && r.source_id && hiddenPasses.has(r.source_id)),
+  );
+}
+
 // Resuelve en batch el catálogo del ancla + las filas fuente para display
 // (pass/pass_reviews en finished, progress_sessions en progressed,
 // episode_watches en watched) + las identidades de actor, y construye un draft
@@ -254,6 +425,9 @@ async function resolvePostDrafts(
     .map((r) => r.source_id!);
   const watchedSourceIds = postRows
     .filter((r) => r.kind === "watched" && r.source_kind === "episode_watch" && r.source_id)
+    .map((r) => r.source_id!);
+  const jointSourceIds = postRows
+    .filter((r) => r.kind === "joint" && r.source_kind === "joint_viewing" && r.source_id)
     .map((r) => r.source_id!);
 
   const [books, movies, series, sagas, people, passRows, reviewRows, sessionRows, episodeRows] =
@@ -377,6 +551,8 @@ async function resolvePostDrafts(
   const titleByEpisode = new Map(
     (episodeTitles ?? []).map((e) => [`${e.series_id}:${e.season_number}:${e.episode_number}`, e.title]),
   );
+
+  const jointByViewing = await resolveJointCards(supabase, jointSourceIds, reviewOrExcerpt);
 
   const actorIds = [...new Set(postRows.map((r) => r.author_id))];
   const { data: actors, error: actorsError } = actorIds.length
@@ -510,6 +686,14 @@ async function resolvePostDrafts(
       });
       continue;
     }
+    if (r.kind === "joint") {
+      const joint = r.source_id ? jointByViewing.get(r.source_id) : undefined;
+      // Sin al menos dos personas que contar no hay «juntos» que pintar (la base
+      // retira el post en ese caso; esto cubre la ventana de carrera).
+      if (!joint || joint.members.length + joint.hiddenCount < 2 || joint.members.length === 0) continue;
+      drafts.push({ ...base, verb: "joint", joint });
+      continue;
+    }
     // started / dropped: hito sin display extra.
     drafts.push({ ...base, verb: r.kind === "started" ? "started" : "dropped" });
   }
@@ -619,27 +803,64 @@ export async function getFeed(
     return { events: [], nextCursor: null, knownUsernames: [] };
   }
 
-  const { data: postRowsRaw, error: postsError } = includePersons
-    ? await (() => {
-        let q = supabase
-          .from("posts")
-          .select(POST_COLUMNS)
-          .in("author_id", authorIds)
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false })
-          .limit(fetchLimit);
-        if (anchorTypes) q = q.in("anchor_type", anchorTypes);
-        // "Reseñas" = terminados con texto. El kind se filtra en SQL; el texto
-        // (que vive en el pase, con su privacidad) se filtra tras resolverlo.
-        if (reviewsOnly) q = q.eq("kind", "finished");
-        if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.posts, cursor));
-        return q;
-      })()
-    : { data: [] as PostRow[], error: null };
-  if (postsError) throw postsError;
-  const postRows = (postRowsRaw ?? []) as PostRow[];
+  // Misma consulta para los posts de los autores y para los posts `joint` de
+  // visionados en los que están: solo cambia el filtro de «de quién».
+  const postsQuery = (scope: (q: ReturnType<typeof basePostsQuery>) => ReturnType<typeof basePostsQuery>) => {
+    let q = scope(basePostsQuery());
+    if (anchorTypes) q = q.in("anchor_type", anchorTypes);
+    // "Reseñas" = terminados con texto. El kind se filtra en SQL; el texto
+    // (que vive en el pase, con su privacidad) se filtra tras resolverlo.
+    if (reviewsOnly) q = q.eq("kind", "finished");
+    if (cursor) q = q.or(cursorSourceFilter(FEED_SOURCE_COLUMNS.posts, cursor));
+    return q;
+  };
+  function basePostsQuery() {
+    return supabase
+      .from("posts")
+      .select(POST_COLUMNS)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(fetchLimit);
+  }
 
-  const drafts = await resolvePostDrafts(supabase, postRows, reviewsOnly);
+  // Visionados conjuntos (#1220), solo en el feed de inicio: el post `joint` lo
+  // firma quien creó el visionado, que puede no ser alguien a quien sigues. Se
+  // piden aparte (mismo orden, cursor y límite) y se funden: la unión de los
+  // `fetchLimit` primeros de cada consulta contiene los `fetchLimit` primeros
+  // del total, así que el keyset sigue siendo exacto.
+  const jointViewingIds =
+    includePersons && !isActorFeed && !reviewsOnly ? await jointViewingIdsFor(supabase, authorIds) : [];
+
+  const [authorPosts, jointPosts] = includePersons
+    ? await Promise.all([
+        postsQuery((q) => q.in("author_id", authorIds)),
+        jointViewingIds.length
+          ? postsQuery((q) => q.eq("kind", "joint").eq("source_kind", "joint_viewing").in("source_id", jointViewingIds))
+          : Promise.resolve({ data: [] as PostRow[], error: null }),
+      ])
+    : [
+        { data: [] as PostRow[], error: null },
+        { data: [] as PostRow[], error: null },
+      ];
+  if (authorPosts.error) throw authorPosts.error;
+  if (jointPosts.error) throw jointPosts.error;
+  const postRowsById = new Map<string, PostRow>();
+  for (const r of [...((authorPosts.data ?? []) as PostRow[]), ...((jointPosts.data ?? []) as PostRow[])]) {
+    postRowsById.set(r.id, r);
+  }
+  const postRows = [...postRowsById.values()]
+    // Por instante, no por cadena: Postgres omite la fracción cuando es cero y
+    // la comparación de texto ordenaría mal (ver cursorSourceFilter).
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+    .slice(0, fetchLimit);
+
+  // El `finished` suelto de un visionado conjunto visible se oculta en inicio;
+  // en el perfil (feed de actor) se queda, que es la actividad de esa persona.
+  // En «Reseñas» también: ese filtro no trae posts `joint`, y ocultar el
+  // `finished` dejaría la reseña fuera de todas partes.
+  const visibleRows =
+    isActorFeed || reviewsOnly ? postRows : await withoutJointFinished(supabase, postRows);
+  const drafts = await resolvePostDrafts(supabase, visibleRows, reviewsOnly);
 
   // --- Mezcla, orden y corte de página ----------------------------------------
 
@@ -829,7 +1050,7 @@ type PostRow = {
   kind: PostKind;
   anchor_type: AnchorType;
   anchor_id: string;
-  source_kind: "pass" | "progress_session" | "episode_watch" | null;
+  source_kind: "pass" | "progress_session" | "episode_watch" | "joint_viewing" | null;
   source_id: string | null;
   body: string | null;
   is_spoiler: boolean;

@@ -125,6 +125,9 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, PushCategory> = {
   // Fase «Posts»: contenido personal, misma categoría que thought_*.
   post_commented: "social",
   post_liked: "social",
+  // Visionados conjuntos (#1220): una persona te etiqueta, contenido social.
+  joint_viewing_invite: "social",
+  joint_viewing_accepted: "social",
 };
 
 // Canal de notificación Android por categoría (spec item 8). El registro nativo

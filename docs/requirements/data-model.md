@@ -1,5 +1,11 @@
 # Modelo de datos
 
+> **Delta 2026-09-26 (visionados conjuntos, #1220):** tablas `joint_viewings` y
+> `joint_viewing_members`, `post_kind` `joint`, `post_source_kind` `joint_viewing`, dos
+> `notification_type` (`joint_viewing_invite`, `joint_viewing_accepted`). Detalle en §5.4.
+> **Estado:** en **dev** solo está aplicada la de enums (`20260926120000`); la de tablas y
+> funciones (`20260926120100`) está en el repo y **pendiente en dev y en prod**.
+
 > **Delta 2026-09-25 (reseñas con spoiler):** `passes.review_is_spoiler` y
 > `episode_watches.review_is_spoiler` (`boolean not null default false`; migración
 > `20260925120000_review_is_spoiler.sql`). Marca la reseña ENTERA como spoiler, igual que
@@ -2066,6 +2072,47 @@ historia congelada y no se toca, pero su instrucción quedó superada por esta s
   (`:289-291`, la única de las tres que sí nombraba la spec §8.1 y esta entrada). Marcar «completado»
   desde la ficha del ítem sigue publicando y avisando bien — el gap es específico de estas tres rutas.
   Issue [#628](https://github.com/borjar20/Biblioshare/issues/628).
+
+### 5.4 Visionados conjuntos — `joint_viewings` / `joint_viewing_members` (#1220, 2026-09-26)
+
+> Migraciones `20260926120000_joint_viewings_enums.sql` (aplicada en **dev** el 2026-09-26) y
+> `20260926120100_joint_viewings.sql` (**sin aplicar** ni en dev ni en prod). Spec
+> `docs/superpowers/specs/2026-09-26-visionados-conjuntos-design.md`; decisión en `decisiones.md`
+> 2026-09-26.
+
+«Vi / leí esta obra con estas personas», fuera de los clubes. **Cada miembro conserva SU pase**
+con su nota y su reseña; el visionado solo los enlaza.
+
+- `joint_viewings`: `id`, `item_type`, `item_id`, `watched_on` (el `finished_on` del pase de quien
+  lo crea; puede ser null), `created_by` (→ `auth.users`, cascade), `created_at`.
+- `joint_viewing_members`: pk `(viewing_id, user_id)`, `status` text
+  `invited|accepted|declined`, `pass_id` (→ `passes`, **on delete cascade**: borrar el pase saca a
+  su dueño), `invited_at`, `responded_at`. CHECK `(status = 'accepted') = (pass_id is not null)`.
+  Índice único parcial sobre `pass_id`: **un pase, como mucho un visionado**. `declined` se
+  conserva: la pk impide volver a invitar a la misma persona al mismo visionado.
+- **RLS (solo SELECT, a `anon` y `authenticated`; sin grants de escritura):** un visionado lo ve
+  quien es miembro (`private.joint_viewing_member_of`, definer para no recursar) o quien ve su post
+  `joint` (subconsulta invoker a `posts`). Miembros: los propios, todos los de un visionado en el
+  que estás, y de uno ajeno visible solo los `accepted` con `can_view_profile(user_id)`.
+- **Escritura, solo por funciones `security definer`** (execute a `authenticated`):
+  - `create_joint_viewing(p_pass_id, p_invitee_ids) → jsonb {viewing_id, invited}`: pase propio y
+    `completed`; 1–20 invitados; cada uno **seguido mutuo** (dos `follows` `accepted`) y sin
+    bloqueo, todo o nada (`not_mutual`). Si el pase ya es de un visionado que creó quien llama,
+    añade invitados a ese; si es de otro, `pass_already_joint`.
+  - `respond_joint_viewing(p_viewing_id, p_accept, p_pass_id) → jsonb`: solo con fila `invited`.
+    Aceptar exige pase propio `completed` de la misma obra y sin visionado; inserta el post `joint`
+    (`author_id = created_by`, `source_kind = 'joint_viewing'`, `source_id = viewing`,
+    `on conflict do nothing` contra `posts_source_kind_uidx`).
+  - `leave_joint_viewing(p_viewing_id)`: borra la fila propia; el pase no se toca.
+- `joint_viewing_accepted_counts(uuid[])` (definer, también `anon`): aceptados por visionado,
+  solo de los que quien llama puede ver. Números, nunca identidades: es el «y N más».
+- **Reconciliación:** trigger `joint_viewing_members_reconcile` (after delete / update de
+  `status`, `pass_id`) → con menos de dos aceptados borra el post `joint`; sin filas, borra el
+  visionado. `joint_viewings_cleanup_posts` (after delete) se lleva el post `joint`.
+- **Feed** (`src/lib/social/feed.ts`): los posts `joint` se piden aparte por visionado; el
+  `finished` de un pase enlazado se oculta en Inicio cuando quien mira ve el post `joint` (no en el
+  perfil ni en «Reseñas»).
+- **Grants por columna (superficie 6):** no aplica, las dos tablas tienen solo `select` de tabla.
 
 ## 6. Clubes
 
