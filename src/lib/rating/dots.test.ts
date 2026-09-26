@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ratingFromFraction, toDots, formatDots } from "./dots";
+import { ratingFromFraction, toDots, formatDots, groupRating } from "./dots";
 
 describe("toDots", () => {
   it("convierte la nota 1-10 a la escala de 5 dots", () => {
@@ -68,5 +68,19 @@ describe("ratingFromFraction", () => {
     expect(ratingFromFraction(0.15)).toBe(2);
     expect(ratingFromFraction(0.85)).toBe(9);
     expect(ratingFromFraction(0.95)).toBe(10);
+  });
+});
+
+describe("groupRating", () => {
+  it("media redondeada a media nota, ignorando a quien no puntuó", () => {
+    expect(groupRating([9, 8, 10])).toBe(9);
+    expect(groupRating([9, null, 8])).toBe(9); // 8,5 → 9
+    expect(groupRating([7, 8])).toBe(8); // 7,5 → 8
+  });
+
+  it("con menos de dos notas no hay media", () => {
+    expect(groupRating([])).toBeNull();
+    expect(groupRating([null, null])).toBeNull();
+    expect(groupRating([6, null])).toBeNull();
   });
 });

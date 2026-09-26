@@ -61,6 +61,7 @@ export function ThoughtCard({
             <Link href={`/u/${event.actorUsername}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
             <span className="text-muted-foreground">{t("thoughtShared")}</span>
           </p>
+          <TimeAgo iso={event.eventDate} className="shrink-0 font-mono text-[10px] text-muted-foreground" />
           <span className="shrink-0 self-start rounded-full border border-gold/35 bg-gold/15 px-2.5 py-0.5 font-mono text-[10.5px] tracking-wider text-gold-ink uppercase">
             {t("kind.thought")}
           </span>
@@ -71,7 +72,11 @@ export function ThoughtCard({
         // en flujo normal alineado a la derecha. Un `absolute` sobre la tarjeta
         // se solapaba con el chip del ancla (no hay banda reservada como en
         // club-header); una fila propia no puede solaparse con nada.
-        deleteMenu && <div className="-mb-1 flex justify-end">{deleteMenu}</div>
+        // Sin cabecera, la hora va sola a la derecha, con el menú si lo hay.
+        <div className="-mb-1 flex items-center justify-end gap-2">
+          <TimeAgo iso={event.eventDate} className="shrink-0 font-mono text-[10px] text-muted-foreground" />
+          {deleteMenu}
+        </div>
       )}
 
       <Link
@@ -100,7 +105,6 @@ export function ThoughtCard({
         />
       )}
       {deleteError && <PostDeleteError />}
-      <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );
 }

@@ -5318,3 +5318,40 @@ de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro 
 - **Contestar sin salir de ahí solo cuando no hay nada que elegir**: el pase terminado libre del
   mismo día, o «uno nuevo» si no hay ninguno libre. Si hay pases terminados libres de otros días,
   «Confirmar» lleva a `/juntos/[id]`, para no enlazar a ciegas un visionado de hace años.
+
+## 2026-09-26 — Feed: hitos en una línea con contexto, pie sin ceros, reseñas y visionados más densos
+
+Revisión estética del feed de Inicio: los hitos (`started`/`dropped`) ocupaban una tarjeta grande
+con una caja interior casi vacía, y cada post cargaba tres filas de adorno (pie, «Ver hilo», hora)
+aunque no tuviera actividad. Se decidió sobre una maqueta de antes/después (propuestas 1, 2 y 4).
+
+- **El hito es una fila** (`milestone-card.tsx`): avatar, frase, datos de la obra (tipo · autor ·
+  año · temporadas, de `itemYear`/`itemSeasons`), miniatura de 34 px, sin sombra. Sigue siendo su
+  propio post y su propia tarjeta: no se agrupa nada, el cursor no cambia (#731/#814).
+- **Contexto de quien mira en el hito** (`viewerContext`, `resolveMilestoneContext` en `feed.ts`):
+  su pase de la obra («La estás viendo», «La viste ●●●●»), los seguidos que también la llevan (en
+  curso o terminada, sin el autor; hasta 3 con avatar y «y N más») y «Añadir» si no la tiene y el
+  hito no es suyo. Consultas en lote por página (follows + pases propios + pases de seguidos +
+  identidades), nunca por tarjeta. Con el cliente de la petición: la RLS de `passes`
+  (`can_view_profile`) decide de quién se ve la obra, así que **no se cachea** (regla #437). Solo
+  en `getFeed` (Inicio y perfil); en `/post/[id]` el hito se pinta sin contexto.
+- **Pie ligero** (`post-summary.tsx`): sin filete ni «Ver hilo →». Sin comentarios dice
+  «Comentar», no «0 comentarios»; el corazón solo sale con reacciones. Todo sigue enlazando a
+  `/post/[id]`.
+- **La hora sube a la cabecera** en reseña, pensamiento, visionado conjunto e hito. Sin cabecera
+  (`hideActor`, perfil) va sola a la derecha junto al menú. El timeline de avances conserva su
+  hora por paso.
+- **Reseña: una etiqueta y el texto dentro de la caja** (`review-card.tsx`). Fuera el chip «Reseña»
+  y el estado «Finalizado»/«Visto»: el verbo ya lo dice (en series, «S1E5» sitúa el post). En el
+  feed la reseña va dentro de la caja de la obra, bajo la nota, con `line-clamp-4` y «Seguir
+  leyendo» si se recorta (medido con `ResizeObserver`) o si el servidor ya cortó en «…». En
+  `/post/[id]` el texto entero sigue fuera de la caja y sin recortar.
+- **El extracto del feed junta los párrafos en blanco** (`excerpt()` en `feed.ts`): una línea
+  vacía en una tarjeta cuesta tanto como una con texto. El texto con su formato sigue en el hilo.
+- **Visionado conjunto** (`joint-card.tsx`): «juntos» solo en la frase de la cabecera (fuera
+  chip y estado); la caja lleva tipo · año y la **media del grupo** (`groupRating` en
+  `src/lib/rating/dots.ts`: media de las notas de los miembros que quien mira ve, redondeada a
+  media nota, y solo con dos notas o más); la cabecera pierde los avatares, que se quedan en la
+  fila de cada miembro, y las filas pierden las divisorias.
+- Fuera de este cambio: unir «empezó» + «valoró» de la misma obra cuando llegan seguidos
+  (propuesta 3) y la tira horizontal de hitos de varias personas (propuesta 5): issue #1226.

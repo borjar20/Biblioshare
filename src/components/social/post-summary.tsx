@@ -9,6 +9,10 @@ import { HeartIcon, CommentIcon } from "@/components/ui/icons";
 // del dueño: el feed se ojea, la página conversa. Sin estado ni acciones: es un
 // simple <Link>, así que la tarjeta puede quedar envuelta en enlaces sin anidar
 // interactivos.
+//
+// Pie ligero (rediseño del feed, propuesta 2): sin filete ni «Ver hilo →», y
+// sin ceros. Un post sin actividad no dice «0 comentarios»: invita a
+// «Comentar». El corazón solo aparece cuando hay reacciones que contar.
 export function PostSummary({
   postId,
   reactionCount,
@@ -22,19 +26,18 @@ export function PostSummary({
   return (
     <Link
       href={`/post/${postId}`}
-      className="flex items-center gap-4 border-t border-border pt-[11px] text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+      className="flex items-center gap-4 self-start text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
     >
       {reactionCount > 0 && (
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 text-accent">
           <HeartIcon className="h-4 w-4" />
           {reactionCount}
         </span>
       )}
       <span className="flex items-center gap-1.5">
         <CommentIcon className="h-4 w-4" />
-        {t("commentsCount", { count: commentCount })}
+        {commentCount > 0 ? t("commentsCount", { count: commentCount }) : t("postComment")}
       </span>
-      <span className="ml-auto font-medium text-accent">{t("viewThread")} →</span>
     </Link>
   );
 }

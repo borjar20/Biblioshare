@@ -79,6 +79,15 @@ export type FeedEvent = {
   itemTitle: string;
   itemCoverUrl: string | null;
   itemSubtitle: string | null;
+  // Año de la obra y, en series, cuántas temporadas tiene. Los pinta la línea de
+  // datos del hito (`MilestoneCard`); null en sagas/personas o si el catálogo no
+  // lo sabe.
+  itemYear?: number | null;
+  itemSeasons?: number | null;
+  // Solo hitos (`started`/`dropped`) del feed y con sesión: qué tiene QUIEN MIRA
+  // con esa obra y qué seguidos suyos también la llevan. Depende de la sesión
+  // (regla #437): nunca se cachea. Ausente en el resto.
+  viewerContext?: MilestoneViewerContext | null;
   // Estado del pase; lo informaba el verbo "added" (legado, sin uso en posts).
   entryStatus: MediaStatus | null;
   // Solo "added" (legado): pertenencia del visitante, resuelta por página.
@@ -133,6 +142,29 @@ export type FeedEvent = {
   comments: InteractionComment[];
   reactions: ReactionsByEmoji;
 };
+
+// Contexto de un hito para quien mira (propuesta 4 del rediseño del feed).
+// `viewerPass` es SU pase de la obra (el activo, o si no el más reciente) y va a
+// null si no la tiene o si el hito es suyo. `friends` son seguidos suyos —ni él
+// ni el autor del hito— con la obra en curso o terminada, hasta
+// MILESTONE_FRIENDS_SHOWN; `friendsTotal` los cuenta todos.
+export type MilestoneFriend = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+export type MilestoneViewerContext = {
+  viewerPass: { status: MediaStatus; rating: number | null } | null;
+  friends: MilestoneFriend[];
+  friendsTotal: number;
+  // En qué punto están TODOS ellos (no solo los mostrados): decide la frase
+  // («lo están leyendo» / «ya lo han leído» / «lo han empezado»).
+  friendsStatus: "in_progress" | "completed" | "mixed";
+  // El hito es de quien mira: no se le ofrece «Añadir» ni se le cuenta su pase.
+  ownPost: boolean;
+};
+export const MILESTONE_FRIENDS_SHOWN = 3;
 
 export type JointCardMember = {
   userId: string;
@@ -211,9 +243,12 @@ const REVIEW_EXCERPT_LENGTH = 200;
 const POST_COLUMNS =
   "id, author_id, kind, anchor_type, anchor_id, source_kind, source_id, body, is_spoiler, created_at";
 
-function excerpt(text: string | null): string | null {
+// Extracto de la reseña para el feed. Los párrafos en blanco se juntan (R3 del
+// rediseño del feed): en una tarjeta, una línea vacía cuesta tanto alto como una
+// con texto. El texto entero, con su formato, sigue en /post/[id] (`fullBody`).
+export function excerpt(text: string | null): string | null {
   if (!text) return null;
-  const trimmed = text.trim();
+  const trimmed = text.trim().replace(/\r?\n[ \t]*(?:\r?\n[ \t]*)+/g, "\n");
   if (trimmed.length <= REVIEW_EXCERPT_LENGTH) return trimmed;
   return trimmed.slice(0, REVIEW_EXCERPT_LENGTH).trimEnd() + "…";
 }
@@ -433,14 +468,17 @@ async function resolvePostDrafts(
   const [books, movies, series, sagas, people, passRows, reviewRows, sessionRows, episodeRows] =
     await Promise.all([
       anchorIdsByType.book.size
-        ? supabase.from("books").select("id, title, author, cover_url, total_pages").in("id", [...anchorIdsByType.book])
+        ? supabase.from("books").select("id, title, author, cover_url, total_pages, published_year").in("id", [...anchorIdsByType.book])
         : Promise.resolve({ data: [] as BookRow[], error: null }),
       anchorIdsByType.movie.size
-        ? supabase.from("movies").select("id, title, cover_url").in("id", [...anchorIdsByType.movie])
+        ? supabase.from("movies").select("id, title, cover_url, release_year").in("id", [...anchorIdsByType.movie])
         : Promise.resolve({ data: [] as ScreenRow[], error: null }),
       anchorIdsByType.series.size
-        ? supabase.from("series").select("id, title, cover_url").in("id", [...anchorIdsByType.series])
-        : Promise.resolve({ data: [] as ScreenRow[], error: null }),
+        ? supabase
+            .from("series")
+            .select("id, title, cover_url, release_year, total_seasons")
+            .in("id", [...anchorIdsByType.series])
+        : Promise.resolve({ data: [] as SeriesRow[], error: null }),
       anchorIdsByType.saga.size
         ? supabase.from("sagas").select("id, name, cover_url").in("id", [...anchorIdsByType.saga])
         : Promise.resolve({ data: [] as NamedRow[], error: null }),
@@ -472,7 +510,14 @@ async function resolvePostDrafts(
 
   const catalogByKey = new Map<
     string,
-    { title: string; coverUrl: string | null; subtitle: string | null; totalPages: number | null }
+    {
+      title: string;
+      coverUrl: string | null;
+      subtitle: string | null;
+      totalPages: number | null;
+      year?: number | null;
+      seasons?: number | null;
+    }
   >();
   for (const r of books.data ?? [])
     catalogByKey.set(`book:${r.id}`, {
@@ -480,6 +525,7 @@ async function resolvePostDrafts(
       coverUrl: r.cover_url,
       subtitle: r.author,
       totalPages: r.total_pages,
+      year: r.published_year,
     });
   for (const r of movies.data ?? [])
     catalogByKey.set(`movie:${r.id}`, {
@@ -487,6 +533,7 @@ async function resolvePostDrafts(
       coverUrl: r.cover_url,
       subtitle: null,
       totalPages: null,
+      year: r.release_year,
     });
   for (const r of series.data ?? [])
     catalogByKey.set(`series:${r.id}`, {
@@ -494,6 +541,8 @@ async function resolvePostDrafts(
       coverUrl: r.cover_url,
       subtitle: null,
       totalPages: null,
+      year: r.release_year,
+      seasons: r.total_seasons,
     });
   for (const r of sagas.data ?? [])
     catalogByKey.set(`saga:${r.id}`, { title: r.name, coverUrl: r.cover_url, subtitle: null, totalPages: null });
@@ -595,6 +644,8 @@ async function resolvePostDrafts(
       itemTitle: anchor.title,
       itemCoverUrl: anchor.imageUrl,
       itemSubtitle: anchor.subtitle,
+      itemYear: catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.year ?? null,
+      itemSeasons: catalogByKey.get(`${r.anchor_type}:${r.anchor_id}`)?.seasons ?? null,
       entryStatus: null,
       eventDate: r.created_at,
       orderDate: r.created_at,
@@ -735,6 +786,144 @@ async function resolvePostInteractions(
     e.comments = s.comments;
     e.reactions = s.reactions;
   }
+}
+
+// Contexto de quien mira para los hitos de UNA página (propuesta 4): su pase de
+// cada obra y los seguidos que también la llevan. Tres consultas en lote por
+// página —follows, pases propios, pases de seguidos— más las identidades, nunca
+// una por tarjeta. Lee con el cliente de la petición: la RLS de `passes`
+// (`can_view_profile`) decide de qué seguidos se ve la obra, así que el
+// resultado es de ESTE viewer y no se puede cachear (regla #437). Muta in-place.
+async function resolveMilestoneContext(
+  supabase: SupabaseServerClient,
+  viewerId: string | null,
+  drafts: FeedEventDraft[],
+): Promise<void> {
+  const milestones = drafts.filter((d) => d.kind === "started" || d.kind === "dropped");
+  if (!viewerId || milestones.length === 0) return;
+
+  const itemIds = [...new Set(milestones.map((d) => d.itemId))];
+  const [ownResult, followResult] = await Promise.all([
+    supabase
+      .from("passes")
+      .select("item_type, item_id, status, rating, is_active, created_at")
+      .eq("user_id", viewerId)
+      .in("item_id", itemIds),
+    supabase.from("follows").select("followee_id").eq("follower_id", viewerId).eq("status", "accepted"),
+  ]);
+  if (ownResult.error) throw ownResult.error;
+  if (followResult.error) throw followResult.error;
+
+  const followeeIds = (followResult.data ?? []).map((f) => f.followee_id).filter((id) => id !== viewerId);
+  const friendResult = followeeIds.length
+    ? await supabase
+        .from("passes")
+        .select("user_id, item_type, item_id, status")
+        .in("user_id", followeeIds)
+        .in("item_id", itemIds)
+        .in("status", ["in_progress", "completed"])
+    : { data: [] as { user_id: string; item_type: string; item_id: string; status: MediaStatus }[], error: null };
+  if (friendResult.error) throw friendResult.error;
+
+  const context = buildMilestoneContext({
+    viewerId,
+    milestones: milestones.map((d) => ({ actorId: d.actorId, itemType: d.itemType, itemId: d.itemId })),
+    ownPasses: (ownResult.data ?? []).map((p) => ({
+      itemType: p.item_type,
+      itemId: p.item_id,
+      status: p.status,
+      rating: p.rating,
+      isActive: p.is_active,
+      createdAt: p.created_at,
+    })),
+    friendPasses: (friendResult.data ?? []).map((p) => ({
+      userId: p.user_id,
+      itemType: p.item_type,
+      itemId: p.item_id,
+      status: p.status,
+    })),
+  });
+
+  const shownIds = [...new Set(context.flatMap((c) => c.friendIds))];
+  const { data: identities, error: identitiesError } = shownIds.length
+    ? await supabase
+        .from("profile_identities")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", shownIds)
+    : { data: [] as ActorRow[], error: null };
+  if (identitiesError) throw identitiesError;
+  const identityById = new Map(
+    (identities ?? [])
+      .filter((a): a is ActorRow & { user_id: string; username: string } => a.user_id != null && a.username != null)
+      .map((a) => [a.user_id, a]),
+  );
+
+  milestones.forEach((d, i) => {
+    const c = context[i];
+    const friends: MilestoneFriend[] = [];
+    for (const id of c.friendIds) {
+      const who = identityById.get(id);
+      if (!who) continue;
+      friends.push({
+        userId: id,
+        username: who.username,
+        displayName: who.display_name,
+        avatarUrl: who.avatar_url,
+      });
+    }
+    d.viewerContext = {
+      viewerPass: c.viewerPass,
+      friends,
+      friendsTotal: c.friendsTotal,
+      friendsStatus: c.friendsStatus,
+      ownPost: d.actorId === viewerId,
+    };
+  });
+}
+
+type ContextPass = { itemType: string; itemId: string; status: MediaStatus; rating: number | null; isActive: boolean; createdAt: string };
+type ContextFriendPass = { userId: string; itemType: string; itemId: string; status: MediaStatus };
+
+// Parte pura de `resolveMilestoneContext` (testeable sin Supabase). Por cada
+// hito, en el mismo orden: el pase de quien mira (el activo; si no hay, el más
+// reciente; null si el hito es suyo) y los seguidos con la obra en curso o
+// terminada, sin el autor ni quien mira, en curso primero.
+export function buildMilestoneContext(input: {
+  viewerId: string;
+  milestones: { actorId: string; itemType: string; itemId: string }[];
+  ownPasses: ContextPass[];
+  friendPasses: ContextFriendPass[];
+}): {
+  viewerPass: MilestoneViewerContext["viewerPass"];
+  friendIds: string[];
+  friendsTotal: number;
+  friendsStatus: MilestoneViewerContext["friendsStatus"];
+}[] {
+  return input.milestones.map((m) => {
+    const own = input.ownPasses
+      .filter((p) => p.itemType === m.itemType && p.itemId === m.itemId)
+      .sort((a, b) => Number(b.isActive) - Number(a.isActive) || Date.parse(b.createdAt) - Date.parse(a.createdAt))[0];
+    const viewerPass = m.actorId === input.viewerId || !own ? null : { status: own.status, rating: own.rating };
+
+    const friendStatus = new Map<string, "in_progress" | "completed">();
+    for (const p of input.friendPasses) {
+      if (p.itemType !== m.itemType || p.itemId !== m.itemId) continue;
+      if (p.userId === m.actorId || p.userId === input.viewerId) continue;
+      if (p.status !== "in_progress" && p.status !== "completed") continue;
+      // Releer: si un pase está en curso, eso manda sobre uno terminado.
+      if (friendStatus.get(p.userId) !== "in_progress") friendStatus.set(p.userId, p.status);
+    }
+    const ordered = [...friendStatus.entries()]
+      .sort((a, b) => (a[1] === b[1] ? 0 : a[1] === "in_progress" ? -1 : 1))
+      .map(([id]) => id);
+    const statuses = new Set(friendStatus.values());
+    return {
+      viewerPass,
+      friendIds: ordered.slice(0, MILESTONE_FRIENDS_SHOWN),
+      friendsTotal: ordered.length,
+      friendsStatus: statuses.size === 1 ? [...statuses][0] : "mixed",
+    };
+  });
 }
 
 function finalizePostDraft(draft: FeedEventDraft): FeedEvent {
@@ -885,7 +1074,10 @@ export async function getFeed(
   // Interacciones y borrado solo para los posts de ESTA página (referencias a
   // los mismos drafts, así que finalizarlos abajo ya los ve resueltos).
   const personDrafts = page.filter((e) => e.source === "person").map((e) => e.event);
-  await resolvePostInteractions(supabase, viewerId, personDrafts);
+  await Promise.all([
+    resolvePostInteractions(supabase, viewerId, personDrafts),
+    resolveMilestoneContext(supabase, viewerId, personDrafts),
+  ]);
 
   const finalizedPage: FeedEntry[] = page.map((entry) =>
     entry.source === "club"
@@ -1056,8 +1248,9 @@ type PostRow = {
   is_spoiler: boolean;
   created_at: string;
 };
-type BookRow = { id: string; title: string | null; author: string | null; cover_url: string | null; total_pages: number | null };
-type ScreenRow = { id: string; title: string | null; cover_url: string | null };
+type BookRow = { id: string; title: string | null; author: string | null; cover_url: string | null; total_pages: number | null; published_year: number | null };
+type ScreenRow = { id: string; title: string | null; cover_url: string | null; release_year: number | null };
+type SeriesRow = ScreenRow & { total_seasons: number | null };
 type NamedRow = { id: string; name: string; cover_url: string | null };
 type PersonRow = { id: string; name: string; photo_url: string | null };
 type PassRow = { id: string; started_on: string | null; finished_on: string | null; rating: number | null };

@@ -160,11 +160,11 @@ test("publicar y comentar un pensamiento: ancla, spoiler, negrita y reacciones m
     // (`PostSummary`) que enlaza a `/post/[id]`; el hilo interactivo inline
     // desapareció. Este test esperaba un `button "0 comentarios"` que hoy es un
     // `link "0 comentarios · Ver hilo →"`, y se quedaba colgado 150 s (#787).
-    // Comentar y reaccionar se hacen ahora donde vive la conversación, y la
-    // tarjeta solo debe reflejar el contador al volver.
+    // Desde el pie ligero del feed, sin actividad no hay «0 comentarios»: el
+    // enlace dice «Comentar». Comentar y reaccionar se hacen donde vive la
+    // conversación, y la tarjeta solo debe reflejar el contador al volver.
     const comentario = `comentario e2e ${ts}`;
-    await expect(card.getByRole("link", { name: /0 comentarios/i })).toBeVisible();
-    await card.getByRole("link", { name: /ver hilo/i }).click();
+    await card.getByRole("link", { name: /^comentar$/i }).click();
     await page.waitForURL(/\/post\/[0-9a-f-]{36}$/i);
 
     // Composer del hilo SIEMPRE visible (PostThread): no hay nada que expandir.
