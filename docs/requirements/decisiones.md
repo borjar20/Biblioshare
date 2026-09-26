@@ -5257,3 +5257,14 @@ Revisión del feed de clubes en móvil (390px).
   compositor de comentario raíz se apila en móvil (botón debajo), igual que ya hacía `compact`.
   El compositor de post de club gana contador y `maxLength` 5000 (espejo del CHECK de BD).
 - **Tarjeta de post de club con avatar + hora**, como las tarjetas del feed de Inicio.
+
+## 2026-09-26 — Las series «Al día» no salen en «¿Qué has disfrutado hoy?»
+
+- Una serie **al día** (viendo, todo lo emitido visto, sigue en emisión — estado derivado de
+  `src/lib/series/follow-state.ts`) se filtra en `getTodayFocus`: no tiene episodio siguiente, así
+  que ni puede ser el destacado ni «continuar donde lo dejaste». Vuelve sola al bloque cuando TMDB
+  publica un episodio nuevo (el estado es derivado, no se escribe nada).
+- **`total` («N · Ver todos») sigue contando todos los en curso**, series al día incluidas, porque
+  el enlace lleva a la colección filtrada por `in_progress`, que sí las lista.
+- Si todo lo que tienes en curso son series al día, el bloque baja al siguiente peldaño de la
+  escalera (próxima lectura / sugerencias / descubrimiento), igual que sin nada en curso.
