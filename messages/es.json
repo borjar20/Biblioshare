@@ -743,6 +743,10 @@
     "jointViewingAcceptedSubject": "{name} confirmó que disfrutasteis {subject} juntos"
   },
   "joint": {
+    "pendingTitle": "Te han etiquetado",
+    "pendingLine": "{name} dice que {itemType, select, book {leísteis} other {visteis}} <title></title> juntos",
+    "confirm": "Confirmar",
+    "someone": "Alguien",
     "eyebrow": "Juntos",
     "createdBy": "{name} dice que {itemType, select, book {lo leísteis} other {la visteis}} juntos",
     "watchedOn": "El {date, date, long}",

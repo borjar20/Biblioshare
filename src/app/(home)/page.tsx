@@ -11,6 +11,8 @@ import { TodayBlock } from "@/components/stats/today-block";
 import { FeedFilters } from "@/components/social/feed-filters";
 import { ThoughtComposerInline } from "@/components/social/thought-composer-inline";
 import { FeedList } from "@/components/social/feed-list";
+import { PendingJointInvites } from "@/components/social/pending-joint-invites";
+import { getPendingJointInvites } from "@/lib/social/joint-viewings";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
@@ -134,7 +136,9 @@ export default async function Home({
 }
 
 // El feed: la consulta pesada, aislada en su propio boundary para que el shell
-// pinte sin esperarla.
+// pinte sin esperarla. Las invitaciones a visionados conjuntos sin contestar
+// (#1224) viajan en el MISMO boundary, en paralelo: si tuvieran uno propio
+// empujarían el feed al llegar (el CLS de #284). Solo en la vista «Todo».
 async function FeedSection({
   filter,
   userId,
@@ -143,15 +147,28 @@ async function FeedSection({
   userId: string;
 }) {
   const supabase = await createClient();
-  const feedPage = await getFeed(supabase, userId, { filter, pageSize: 20 });
+  const [feedPage, invites] = await Promise.all([
+    getFeed(supabase, userId, { filter, pageSize: 20 }),
+    filter
+      ? Promise.resolve([])
+      : getPendingJointInvites(supabase, userId).catch((error) => {
+          // Un fallo aquí no debe tumbar el feed: sin bloque, y el aviso de la
+          // campana sigue llevando a la invitación.
+          console.error("getPendingJointInvites failed", error);
+          return [];
+        }),
+  ]);
 
   return (
-    <FeedList
-      initialEvents={feedPage.events}
-      initialCursor={feedPage.nextCursor}
-      initialKnownUsernames={feedPage.knownUsernames}
-      filter={filter}
-      viewerLoggedIn={true}
-    />
+    <>
+      {invites.length > 0 && <PendingJointInvites invites={invites} variant="home" />}
+      <FeedList
+        initialEvents={feedPage.events}
+        initialCursor={feedPage.nextCursor}
+        initialKnownUsernames={feedPage.knownUsernames}
+        filter={filter}
+        viewerLoggedIn={true}
+      />
+    </>
   );
 }
