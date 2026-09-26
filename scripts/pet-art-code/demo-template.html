@@ -1,0 +1,445 @@
+<title>Mascota a mano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  /* Un solo look a propósito: el bosque de /mascota es verde en los dos temas de la app */
+  :root {
+    color-scheme: dark;
+    --ground: #16211a; --panel: #1f2f24; --panel2: #263a2c; --line: #3c5a2a;
+    --ink: #eef2e2; --muted: #a9b89a; --parch: #f6e2bd; --gold: #e8b83a; --fur: #e89a4f;
+    --pl: #8fb6ee; --mine: #e8b83a; --bad: #f78a6a; --good: #b4dc6a;
+    --display: "Pixelify Sans", "Courier New", monospace;
+    --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  body { background: var(--ground); color: var(--ink); font: 16px/1.55 var(--body); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; display: grid; gap: 56px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; text-wrap: balance; margin: 0; letter-spacing: .01em; }
+  h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.02; color: var(--parch); }
+  h2 { font-size: clamp(24px, 3.4vw, 32px); color: var(--parch); }
+  h3 { font-size: 19px; color: var(--parch); }
+  p { margin: 0; max-width: 68ch; }
+  .muted { color: var(--muted); }
+  .eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+  section { display: grid; gap: 18px; }
+  .sechead { display: grid; gap: 8px; }
+  canvas, img.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; max-width: 100%; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 var(--mono); padding: 5px 8px; border-radius: 3px; letter-spacing: .04em; }
+  .tag.pl { background: #1d2a5c; color: var(--pl); }
+  .tag.mine { background: #4a3510; color: var(--mine); }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: center; }
+  .hero-text { display: grid; gap: 16px; }
+  .hero-stage { border: 4px solid #0d130f; outline: 2px solid var(--line); background: #0d130f; }
+  .hero-stage canvas { width: 100%; height: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 820px) { .hero { grid-template-columns: 1fr; } }
+
+  /* diagnóstico */
+  .findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+  .finding { background: var(--panel); border-left: 3px solid var(--bad); padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+  .finding.ok { border-left-color: var(--good); }
+  .finding b { font: 600 22px/1.1 var(--mono); color: var(--parch); font-variant-numeric: tabular-nums; }
+  .finding span { font-size: 14.5px; color: var(--muted); }
+
+  /* controles */
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+  .field { display: grid; gap: 6px; }
+  .field > span { font: 600 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; }
+  .seg button, .btn { font: 500 14px/1 var(--display); color: var(--ink); background: var(--panel2); border: 2px solid #0d130f; box-shadow: inset 0 2px 0 #3c5a2a; padding: 8px 11px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--gold); color: #1c1220; box-shadow: inset 0 2px 0 #fff08a; }
+  .seg button:hover, .btn:hover { filter: brightness(1.15); }
+  button:focus-visible { outline: 2px solid var(--parch); outline-offset: 2px; }
+  .btn.primary { background: #9c2232; box-shadow: inset 0 2px 0 #d8423e; }
+
+  /* comparador */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pane { background: var(--panel); display: grid; gap: 10px; padding: 14px; align-content: start; }
+  .pane-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pane .meta { font: 12px/1.5 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .spritebox { aspect-ratio: 1; max-width: 100%; background:
+      repeating-conic-gradient(#223428 0 25%, #1c2c21 0 50%) 0 0 / 24px 24px; display: grid; place-items: center; }
+  .spritebox canvas { width: 100%; height: 100%; }
+  @media (max-width: 620px) { .versus { grid-template-columns: 1fr; } }
+
+  /* galería */
+  .gallery { overflow-x: auto; }
+  .gallery table { border-collapse: collapse; min-width: 640px; width: 100%; }
+  .gallery th { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px; text-align: center; }
+  .gallery td { padding: 4px; text-align: center; }
+  .cellpair { display: flex; justify-content: center; gap: 2px; background: var(--panel); padding: 4px; }
+  .cellpair canvas { width: 72px; height: 72px; }
+
+  /* escenas */
+  .scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .scenes .pane canvas, .scenes .pane img { width: 100%; height: auto; }
+  .scenes .frame { background: #0d130f; display: grid; place-items: center; min-height: 200px; }
+  .scenes .frame.portrait canvas, .scenes .frame.portrait img { width: auto; max-height: 520px; max-width: 100%; }
+  @media (max-width: 820px) { .scenes { grid-template-columns: 1fr; } }
+
+  /* arena */
+  .arena { background: #0d130f; border: 4px solid #0d130f; outline: 2px solid var(--line); }
+  .arena canvas { width: 100%; height: auto; }
+  .log { font: 13px/1.5 var(--mono); color: var(--muted); min-height: 1.5em; }
+
+  /* objetos */
+  .items { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .row canvas, .row img { width: 64px; height: 64px; }
+  .row.small canvas, .row.small img { width: 48px; height: 48px; }
+  .rowlabel { width: 100%; }
+  .ui-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ui-card { padding: 14px; min-height: 90px; display: grid; gap: 10px; align-content: start; color: var(--parch); font: 500 15px/1.3 var(--display); }
+  .plank { font: 500 14px/1 var(--display); color: var(--parch); padding: 0 8px; cursor: pointer; background: none; image-rendering: pixelated; justify-self: start; }
+
+  /* veredicto */
+  .ledger { overflow-x: auto; }
+  .ledger table { width: 100%; border-collapse: collapse; min-width: 620px; font-size: 15px; }
+  .ledger th, .ledger td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ledger th { font: 600 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .ledger td:first-child { color: var(--parch); font-weight: 600; white-space: nowrap; }
+  .win { color: var(--good); font-weight: 600; }
+  .lose { color: var(--bad); font-weight: 600; }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .option { background: var(--panel); padding: 16px; display: grid; gap: 8px; align-content: start; border-top: 3px solid var(--line); }
+  .option.pick { border-top-color: var(--gold); }
+  .option h3 { font-size: 18px; }
+  .option p { font-size: 15px; color: var(--muted); }
+  footer { font: 12px/1.6 var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+  @media (prefers-reduced-motion: reduce) { .anim-note::after { content: " (animación reducida)"; } }
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="hero-text">
+      <span class="eyebrow">BiblioPlay · mascota RPG · prueba de arte</span>
+      <h1>La ardilla, dibujada a mano en código</h1>
+      <p>Todo lo que ves con la etiqueta <span class="tag mine">PROPIO</span> lo he generado yo con un motor de pixel art de ~70 KB escrito para esta prueba: sin PixelLab, sin IA de imágenes y sin ficheros de entrada. Al lado, con <span class="tag pl">PIXELLAB</span>, está lo que hoy sirve <code>public/pet/</code>.</p>
+      <div class="chips">
+        <span class="tag mine">18 personajes · 7 animaciones</span>
+        <span class="tag mine">3 fondos × 3 horas</span>
+        <span class="tag mine">2 enemigos · botín · insignias · UI</span>
+        <span class="tag mine">0 generaciones</span>
+      </div>
+    </div>
+    <div class="hero-stage"><canvas id="hero" width="256" height="192" aria-label="Campamento generado por código con la mascota adulta maga"></canvas></div>
+  </header>
+
+  <section id="diagnostico">
+    <div class="sechead">
+      <span class="eyebrow">1 · Lo que hay hoy</span>
+      <h2>Diagnóstico del arte PixelLab</h2>
+      <p class="muted">Medido sobre los ficheros de <code>public/pet/</code> y sus JSON. El arte es bonito y detallado; los problemas son de coherencia y de coste de mantenimiento.</p>
+    </div>
+    <div class="findings">
+      <div class="finding"><b>6 tamaños de celda</b><span>92, 96, 100, 104, 108 y 112 px entre los 36 sheets de mascota. Cada re-roll puede cambiar la caja y el componente depende del JSON para cuadrar.</span></div>
+      <div class="finding"><b>64 y 80 px mezclados</b><span>La cría guerrera y la clériga están a 80; las otras cuatro crías a 64. La misma etapa no tiene la misma escala en todas las clases.</span></div>
+      <div class="finding"><b>126 a 443 colores</b><span>Cada sheet trae su propia paleta. No hay paleta común entre clases, etapas, fondos y UI.</span></div>
+      <div class="finding"><b>Orden de filas distinto</b><span>En <code>young/ranger</code> las filas son sad, joy, sleepy, idle; en <code>adult/wizard</code> idle va primero. Funciona gracias a <code>sheets.gen.ts</code>, pero es deriva.</span></div>
+      <div class="finding"><b>2,96 MB de imágenes</b><span>Sheets de 51 a 180 KB. El mago y el bardo pesan el triple que el resto por su paleta.</span></div>
+      <div class="finding"><b>Dos lenguajes visuales</b><span>Sprites con contorno negro y sombreado duro; fondos pintados, sin contorno, cuantizados a 32 colores. <code>battle.webp</code> mide 563 px de ancho, no es múltiplo entero.</span></div>
+      <div class="finding"><b>20–40 gens por clase</b><span>Según la spec de PixelLab, cada estado de clase cuesta 20–40 generaciones más re-rolls. La etapa adulta gastó ~60 solo en re-rolls.</span></div>
+      <div class="finding ok"><b>Calidad de detalle alta</b><span>Pelaje, pliegues y objetos tienen más riqueza que lo que yo puedo dibujar con primitivas. Eso hay que tenerlo en cuenta en el veredicto.</span></div>
+    </div>
+  </section>
+
+  <section id="comparador">
+    <div class="sechead">
+      <span class="eyebrow">2 · Cara a cara</span>
+      <h2>La misma ardilla, frame a frame</h2>
+      <p class="muted">Elige etapa, clase y animación. Las cuatro primeras salen de los sheets de mascota; ataque, golpe y KO, de los sheets de combate. Ambos a escala entera sobre la misma cuadrícula.</p>
+    </div>
+    <div class="controls">
+      <div class="field"><span>Etapa</span><div class="seg" id="c-stage"></div></div>
+      <div class="field"><span>Clase</span><div class="seg" id="c-class"></div></div>
+      <div class="field"><span>Animación</span><div class="seg" id="c-anim"></div></div>
+    </div>
+    <div class="versus">
+      <div class="pane"><div class="pane-head"><span class="tag pl">PIXELLAB</span><span class="meta" id="m-pl"></span></div><div class="spritebox"><canvas id="v-pl" width="112" height="112"></canvas></div></div>
+      <div class="pane"><div class="pane-head"><span class="tag mine">PROPIO</span><span class="meta" id="m-mine"></span></div><div class="spritebox"><canvas id="v-mine" width="112" height="112"></canvas></div></div>
+    </div>
+  </section>
+
+  <section id="galeria">
+    <div class="sechead">
+      <span class="eyebrow">3 · Las 18 de un vistazo</span>
+      <h2>Tres etapas por seis clases</h2>
+      <p class="muted">En cada celda, PixelLab a la izquierda y la mía a la derecha, en reposo. En la mía la prenda y el arma son la misma geometría en todas las etapas; lo que cambia es el cuerpo y los adornos por rango (capa, galones, cicatriz y canas en la veterana).</p>
+    </div>
+    <div class="gallery"><table id="gal"></table></div>
+  </section>
+
+  <section id="escenas">
+    <div class="sechead">
+      <span class="eyebrow">4 · Fondos</span>
+      <h2>Escenas vivas, a cualquier tamaño</h2>
+      <p class="muted">Los fondos propios son procedurales: se generan para el ancho y alto que pida la pantalla, se animan (rayos de luz, farol, cascada, hoguera, luciérnagas) y cambian con la hora. PixelLab entrega una imagen fija por formato.</p>
+    </div>
+    <div class="controls">
+      <div class="field"><span>Escena</span><div class="seg" id="s-scene"></div></div>
+      <div class="field"><span>Hora</span><div class="seg" id="s-tod"></div></div>
+      <div class="field"><span>Formato</span><div class="seg" id="s-fmt"></div></div>
+    </div>
+    <div class="scenes">
+      <div class="pane"><div class="pane-head"><span class="tag pl">PIXELLAB</span><span class="meta" id="sm-pl"></span></div><div class="frame" id="sf-pl"><img class="px" id="s-pl" alt="Fondo PixelLab"></div></div>
+      <div class="pane"><div class="pane-head"><span class="tag mine">PROPIO</span><span class="meta" id="sm-mine"></span></div><div class="frame" id="sf-mine"><canvas id="s-mine" width="256" height="192"></canvas></div></div>
+    </div>
+  </section>
+
+  <section id="combate">
+    <div class="sechead">
+      <span class="eyebrow">5 · Combate</span>
+      <h2>Arena de prueba</h2>
+      <p class="muted">Todo propio: fondo, mascota (etapa y clase del comparador), enemigos y efectos. Las animaciones se encadenan igual que en el motor de combate: el golpe de uno dispara la reacción del otro.</p>
+    </div>
+    <div class="controls">
+      <div class="field"><span>Enemigo</span><div class="seg" id="a-enemy"></div></div>
+      <div class="field"><span>Acción</span><div class="seg">
+        <button class="btn primary" id="a-attack" type="button">Atacar</button>
+        <button class="btn" id="a-defend" type="button">Recibir golpe</button>
+        <button class="btn" id="a-win" type="button">Rematar</button>
+        <button class="btn" id="a-reset" type="button">Reiniciar</button>
+      </div></div>
+    </div>
+    <div class="arena"><canvas id="arena" width="256" height="192" aria-label="Arena de combate generada por código"></canvas></div>
+    <div class="log" id="a-log" aria-live="polite">La mascota y el enemigo esperan en guardia.</div>
+  </section>
+
+  <section id="objetos">
+    <div class="sechead">
+      <span class="eyebrow">6 · Botín, efectos, insignias y UI</span>
+      <h2>Lo pequeño, también en la misma paleta</h2>
+      <p class="muted">Botín a 32 px (tamaño real de inventario) frente a los 64 px de PixelLab. Las insignias de hoy son marcadores provisionales de un script, no arte final; las propias ya son dibujo terminado, y las bloqueadas salen del mismo dibujo pasado a gris.</p>
+    </div>
+    <div class="items">
+      <div class="pane"><h3>Botín</h3>
+        <div class="row" id="loot-pl"><span class="rowlabel tag pl">PIXELLAB · 64 px</span></div>
+        <div class="row" id="loot-mine"><span class="rowlabel tag mine">PROPIO · 32 px</span></div></div>
+      <div class="pane"><h3>Efectos de combate</h3>
+        <div class="row" id="fx-pl"><span class="rowlabel tag pl">PIXELLAB</span></div>
+        <div class="row" id="fx-mine"><span class="rowlabel tag mine">PROPIO</span></div></div>
+      <div class="pane"><h3>Insignias</h3>
+        <div class="row small" id="bd-pl"><span class="rowlabel tag pl">HOY · marcador de scripts/pet-badges.mjs (no es PixelLab)</span></div>
+        <div class="row small" id="bd-mine"><span class="rowlabel tag mine">PROPIO · con y sin desbloquear</span></div></div>
+      <div class="pane"><h3>Marcos nine-slice y botón</h3>
+        <div class="ui-demo" id="ui-demo"></div></div>
+    </div>
+  </section>
+
+  <section id="veredicto">
+    <div class="sechead">
+      <span class="eyebrow">7 · Veredicto</span>
+      <h2>Qué gana cada camino</h2>
+    </div>
+    <div class="ledger"><table>
+      <thead><tr><th>Criterio</th><th>PixelLab (hoy)</th><th>Propio (código)</th></tr></thead>
+      <tbody>
+        <tr><td>Detalle y encanto</td><td class="win">Mayor: pelaje, pliegues, brillos</td><td>Más simple, chibi, se nota la geometría</td></tr>
+        <tr><td>Coherencia</td><td class="lose">6 celdas, 64/80 mezclados, paletas sueltas</td><td class="win">Una celda, una escala, una paleta de 48 colores</td></tr>
+        <tr><td>Animación</td><td>Frames IA, cuesta re-rolls</td><td class="win">Frames exactos desde una pose; los que quieras</td></tr>
+        <tr><td>Fondos</td><td class="win">Más pictóricos y ricos</td><td>Menos detalle, pero animados, con hora y cualquier formato</td></tr>
+        <tr><td>Coste de un cambio</td><td class="lose">20–40 gens + re-rolls por clase</td><td class="win">0 gens; editar una función</td></tr>
+        <tr><td>Peso</td><td>2,96 MB de PNG/WebP</td><td class="win">~70 KB de código sin minificar</td></tr>
+        <tr><td>Direcciones</td><td class="win">8 rotaciones (solo se usa una)</td><td>Una + espejo gratis</td></tr>
+        <tr><td>Quién amplía</td><td class="win">Cualquiera con un prompt</td><td class="lose">Alguien que escriba código de dibujo</td></tr>
+      </tbody>
+    </table></div>
+    <div class="options">
+      <div class="option"><span class="eyebrow">Opción A</span><h3>Todo propio</h3><p>Sustituir sheets, fondos y objetos por el motor. Máxima coherencia y cero coste, a cambio de una ardilla menos detallada.</p></div>
+      <div class="option pick"><span class="eyebrow">Opción B · mi recomendación</span><h3>Híbrido</h3><p>Personajes y enemigos siguen en PixelLab, donde su detalle luce. Fondos animados, efectos, insignias y UI pasan a código. Y un paso de post-proceso lleva los sheets a la paleta común y a una celda única.</p></div>
+      <div class="option"><span class="eyebrow">Opción C</span><h3>Solo ordenar PixelLab</h3><p>Mantener todo el arte y normalizar: una celda, un lienzo, paleta común y orden de filas fijo, sin tocar el estilo.</p></div>
+    </div>
+  </section>
+
+  <footer>Prueba de arte, 26-09-2026. Motor: engine.js (primitivas, sombreado por forma, contorno selectivo, tramado Bayer), pet.js, world.js, items.js. Nada de esto está en la app todavía.</footer>
+</div>
+
+<script>/*ART*/</script>
+<script>
+const META = /*META*/;
+(function () {
+  "use strict";
+  const A = window.ART;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const STAGE_L = { young: "Cría", adult: "Adulta", veteran: "Veterana" };
+  const CLASS_L = { barbarian: "Bárbara", fighter: "Guerrera", wizard: "Maga", cleric: "Clériga", bard: "Barda", ranger: "Exploradora" };
+  const ANIM_L = { idle: "Reposo", sleepy: "Sueño", sad: "Triste", joy: "Alegría", attack: "Ataque", hurt: "Golpe", ko: "KO" };
+  const COMBAT = new Set(["attack", "hurt", "ko"]);
+  const FPS = { idle: 4, sleepy: 3, sad: 3, joy: 10, attack: 10, hurt: 10, ko: 8 };
+
+  // ---- caché de frames propios como canvas ----
+  const cache = new Map();
+  function toCanvas(px) { const c = document.createElement("canvas"); c.width = px.w; c.height = px.h; c.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(px.d), px.w, px.h), 0, 0); return c; }
+  function petFrame(st, cl, an, f) { const k = `p/${st}/${cl}/${an}/${f}`; if (!cache.has(k)) cache.set(k, toCanvas(A.drawPet(st, cl, an, f))); return cache.get(k); }
+  function memo(k, fn) { if (!cache.has(k)) cache.set(k, fn()); return cache.get(k); }
+  const imgs = new Map();
+  function img(src) { if (!imgs.has(src)) { const i = new Image(); i.src = src; imgs.set(src, i); } return imgs.get(src); }
+  const ctx = (id) => { const c = document.getElementById(id).getContext("2d"); c.imageSmoothingEnabled = false; return c; };
+
+  // ---- estado ----
+  const st = { stage: "adult", cls: "wizard", anim: "idle", scene: "camp", tod: 0, fmt: "land", enemy: "caparazon" };
+  function seg(id, opts, key, labels, after) {
+    const el = document.getElementById(id);
+    for (const o of opts) { const b = document.createElement("button"); b.type = "button"; b.textContent = labels[o] ?? o; b.dataset.v = o;
+      b.setAttribute("aria-pressed", String(st[key] === o)); b.addEventListener("click", () => { st[key] = typeof st[key] === "number" ? +o : o; for (const x of el.children) x.setAttribute("aria-pressed", String(x.dataset.v == st[key])); after && after(); }); el.appendChild(b); }
+  }
+  seg("c-stage", ["young", "adult", "veteran"], "stage", STAGE_L, info);
+  seg("c-class", A.CLASSES, "cls", CLASS_L, info);
+  seg("c-anim", Object.keys(A.ANIMS), "anim", ANIM_L, info);
+  seg("s-scene", ["camp", "battle", "gathering"], "scene", { camp: "Campamento", battle: "Claro de combate", gathering: "Madriguera" }, sceneChange);
+  seg("s-tod", [0, 1, 2], "tod", { 0: "Día", 1: "Atardecer", 2: "Noche" }, sceneChange);
+  seg("s-fmt", ["land", "port"], "fmt", { land: "Horizontal", port: "Vertical (móvil)" }, sceneChange);
+  seg("a-enemy", ["caparazon", "brote"], "enemy", { caparazon: "Caparazón", brote: "Brote" }, () => arena.reset());
+
+  // ---- PixelLab: fila y celda desde los JSON reales ----
+  function plRef(stage, cls, anim) {
+    if (COMBAT.has(anim)) { const m = META.combat[stage][cls]; const a = m.anims[anim]; return { src: m.src, cell: m.cell, row: a.row, n: a.frames }; }
+    const m = META.sheets[stage][cls]; const r = m.rows[anim]; return { src: m.src, cell: m.cell, row: r.row, n: r.n };
+  }
+  function drawPL(c, ref, f, box) {
+    const im = img(ref.src); if (!im.complete || !im.naturalWidth) return;
+    const off = (box - ref.cell) / 2; c.drawImage(im, (f % ref.n) * ref.cell, ref.row * ref.cell, ref.cell, ref.cell, Math.round(off), Math.round(off), ref.cell, ref.cell);
+  }
+  function info() {
+    const r = plRef(st.stage, st.cls, st.anim), m = COMBAT.has(st.anim) ? META.combat[st.stage][st.cls] : META.sheets[st.stage][st.cls];
+    document.getElementById("m-pl").textContent = `celda ${r.cell} px · ${r.n} frames · ${m.colors} colores · ${m.kb} KB`;
+    document.getElementById("m-mine").textContent = `celda 64 px · ${A.ANIMS[st.anim]} frames · paleta común de 48 · 0 KB`;
+    buildGallery();
+  }
+
+  // ---- galería ----
+  const galCells = [];
+  function buildGallery() {
+    const t = document.getElementById("gal"); if (t.dataset.built) return; t.dataset.built = 1;
+    let h = "<thead><tr><th></th>" + A.CLASSES.map((c) => `<th>${CLASS_L[c]}</th>`).join("") + "</tr></thead><tbody>";
+    for (const s of ["young", "adult", "veteran"]) { h += `<tr><th>${STAGE_L[s]}</th>`; for (const c of A.CLASSES) h += `<td><div class="cellpair"><canvas width="112" height="112" data-pl="${s}/${c}" aria-label="${STAGE_L[s]} ${CLASS_L[c]} PixelLab"></canvas><canvas width="64" height="64" data-mine="${s}/${c}" aria-label="${STAGE_L[s]} ${CLASS_L[c]} propia"></canvas></div></td>`; h += "</tr>"; }
+    t.innerHTML = h + "</tbody>";
+    t.querySelectorAll("canvas").forEach((c) => { const g = c.getContext("2d"); g.imageSmoothingEnabled = false; galCells.push(c); });
+  }
+
+  // ---- escenas ----
+  let sceneObj = null, sceneBuf = null;
+  function sceneChange() {
+    const [w, h] = st.fmt === "land" ? [256, 192] : [144, 192];
+    sceneObj = A.SCENES[st.scene](w, h); sceneBuf = new A.Px(w, h);
+    const c = document.getElementById("s-mine"); c.width = w; c.height = h;
+    document.getElementById("sf-mine").classList.toggle("portrait", st.fmt === "port");
+    document.getElementById("sf-pl").classList.toggle("portrait", st.fmt === "port");
+    const pl = st.scene === "camp" ? (st.fmt === "port" ? "camp-portrait" : "camp") : st.scene;
+    const p = META.scenes[pl];
+    document.getElementById("s-pl").src = p.src;
+    document.getElementById("sm-pl").textContent = `${pl}.webp · ${p.w}×${p.h} · fija` + (st.fmt === "port" && st.scene !== "camp" ? " · no existe vertical" : "") + (st.tod ? " · sin hora" : "");
+    document.getElementById("sm-mine").textContent = `${w}×${h} · generada al vuelo · animada`;
+  }
+
+  // ---- arena ----
+  const arena = {
+    sc: null, buf: null, seq: [], t0: 0, pet: "idle", en: "idle", pf: 0, ef: 0, enemyKo: false, petKo: false,
+    init() { this.sc = A.SCENES.battle(256, 192); this.buf = new A.Px(256, 192); },
+    reset() { this.seq = []; this.pet = "idle"; this.en = "idle"; this.enemyKo = false; this.petKo = false; log("La mascota y el enemigo esperan en guardia."); },
+    play(steps) { this.seq = steps.slice(); this.next(performance.now()); },
+    next(now) { const s = this.seq.shift(); if (!s) { if (!this.enemyKo) this.en = "idle"; if (!this.petKo) this.pet = "idle"; return; } s.who === "pet" ? (this.pet = s.anim) : (this.en = s.anim); if (s.also) s.also(); if (s.msg) log(s.msg); this.t0 = now; this.cur = s; },
+    tick(now) {
+      if (this.cur && this.seq !== null) {
+        const n = this.cur.who === "pet" ? A.ANIMS[this.cur.anim] : A.ENEMY_ANIMS[this.cur.anim];
+        const f = Math.floor((now - this.t0) / 90);
+        if (f >= n) { this.cur = null; this.next(now); }
+      }
+    },
+  };
+  function log(m) { document.getElementById("a-log").textContent = m; }
+  const EN_L = { caparazon: "El caparazón", brote: "El brote" };
+  document.getElementById("a-attack").onclick = () => { if (arena.enemyKo) return; arena.play([{ who: "pet", anim: "attack", msg: `${CLASS_L[st.cls]} ataca.` }, { who: "en", anim: "hurt", msg: `${EN_L[st.enemy]} encaja el golpe.` }]); };
+  document.getElementById("a-defend").onclick = () => { if (arena.enemyKo) return; arena.play([{ who: "en", anim: "attack", msg: `${EN_L[st.enemy]} embiste.` }, { who: "pet", anim: "hurt", msg: "La mascota recibe el golpe y aguanta." }]); };
+  document.getElementById("a-win").onclick = () => { if (arena.enemyKo) return; arena.play([{ who: "pet", anim: "attack", msg: "Golpe final." }, { who: "en", anim: "ko", hold: true, also: () => (arena.enemyKo = true), msg: `${EN_L[st.enemy]} cae.` }, { who: "pet", anim: "joy", msg: "¡Victoria! La mascota lo celebra." }]); };
+  document.getElementById("a-reset").onclick = () => arena.reset();
+
+  // ---- objetos ----
+  function addCanvas(parent, px, label) { const c = toCanvas(px); c.setAttribute("aria-label", label); parent.appendChild(c); return c; }
+  function addImg(parent, src, label) { const i = document.createElement("img"); i.className = "px"; i.src = src; i.alt = label; parent.appendChild(i); }
+  const LOOT_ORDER = ["sharp_bookmark", "heavy_ink_quill", "librarian_loupe", "last_page_amulet", "loan_pendant", "streak_medallion"];
+  for (const k of LOOT_ORDER) { addImg(document.getElementById("loot-pl"), META.loot[k], k); addCanvas(document.getElementById("loot-mine"), A.LOOT[k](), k); }
+  const fxCanv = [];
+  for (const k of Object.keys(A.FX)) {
+    const cp = document.createElement("canvas"); cp.width = 64; cp.height = 64; cp.setAttribute("aria-label", k); document.getElementById("fx-pl").appendChild(cp);
+    const cm = document.createElement("canvas"); cm.width = 32; cm.height = 32; cm.setAttribute("aria-label", k); document.getElementById("fx-mine").appendChild(cm);
+    fxCanv.push([k, cp, cm]);
+  }
+  for (const k of Object.keys(A.BADGE_ICON)) addImg(document.getElementById("bd-pl"), META.badges[k], k);
+  Object.keys(A.BADGE_ICON).forEach((k, i) => addCanvas(document.getElementById("bd-mine"), A.badge(k, i >= 8), k));
+  (function uiDemo() {
+    const d = document.getElementById("ui-demo");
+    const fr = (u, s, px) => `border: ${px}px solid transparent; border-image: url(${u}) ${s} fill / ${px}px round;`;
+    const mine = {}; for (const k of ["moss", "wood", "parchment"]) mine[k] = toCanvas(A.frame(k)).toDataURL();
+    const pl = { normal: toCanvas(A.plank("normal")).toDataURL(), hover: toCanvas(A.plank("hover")).toDataURL(), pressed: toCanvas(A.plank("pressed")).toDataURL() };
+    const cards = [
+      ["PIXELLAB · musgo", fr(META.ui["frame-moss"], 8, 8), "pl"], ["PROPIO · musgo", fr(mine.moss, 8, 16), "mine"],
+      ["PIXELLAB · madera", fr(META.ui["frame-wood"], 16, 16), "pl"], ["PROPIO · madera", fr(mine.wood, 8, 16), "mine"],
+      ["PIXELLAB · pergamino", fr(META.ui["frame-parchment"], 8, 16), "pl"], ["PROPIO · pergamino", fr(mine.parchment, 8, 16), "mine"],
+    ];
+    for (const [t, css, who] of cards) {
+      const el = document.createElement("div"); el.className = "ui-card"; el.style.cssText = css;
+      if (t.includes("pergamino")) el.style.color = "#3a2012";
+      const lab = document.createElement("span"); lab.textContent = t; el.appendChild(lab);
+      if (t.includes("madera")) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "plank"; b.textContent = "Aventurarse";
+        const set = (s) => { b.style.cssText = who === "pl" ? `height:32px;border-style:solid;border-color:transparent;border-width:0 8px;border-image:url(${META.ui["plank-" + s]}) 0 8 fill / 0 8px stretch;` : `height:32px;border-style:solid;border-color:transparent;border-width:0 12px;border-image:url(${pl[s]}) 0 6 fill / 0 12px stretch;`; };
+        set("normal"); b.onmouseenter = () => set("hover"); b.onmouseleave = () => set("normal"); b.onmousedown = () => set("pressed"); b.onmouseup = () => set("hover");
+        el.appendChild(b);
+      }
+      d.appendChild(el);
+    }
+  })();
+
+  // ---- bucle ----
+  const hero = { sc: A.SCENES.camp(256, 192), buf: new A.Px(256, 192) };
+  arena.init(); sceneChange(); info();
+  let heroCls = 2;
+  function frameAt(now, fps, n) { return Math.floor(now / 1000 * fps) % n; }
+  function loop(now) {
+    const t = reduce ? 0 : now / 1000, T = reduce ? 0 : now;
+    // hero: campamento + mascota que cambia de clase cada 3 s
+    const hc = A.CLASSES[(heroCls + Math.floor(T / 3000)) % 6];
+    A.renderScene(hero.sc, t, 0, hero.buf);
+    const hx = ctx("hero"); hx.putImageData(new ImageData(new Uint8ClampedArray(hero.buf.d), 256, 192), 0, 0);
+    const ha = Math.floor(T / 3000) % 4 === 3 ? "joy" : "idle";
+    hx.drawImage(petFrame("adult", hc, ha, frameAt(T, FPS[ha], A.ANIMS[ha])), Math.round(hero.sc.spot[0] - 32), Math.round(hero.sc.spot[1] - 58));
+
+    // comparador
+    const cp = ctx("v-pl"), cm = ctx("v-mine"); cp.clearRect(0, 0, 112, 112); cm.clearRect(0, 0, 112, 112);
+    const ref = plRef(st.stage, st.cls, st.anim); drawPL(cp, ref, frameAt(T, FPS[st.anim], ref.n), 112);
+    cm.drawImage(petFrame(st.stage, st.cls, st.anim, frameAt(T, FPS[st.anim], A.ANIMS[st.anim])), 24, 30);
+
+    // galería
+    for (const c of galCells) { const g = c.getContext("2d"); g.clearRect(0, 0, c.width, c.height);
+      if (c.dataset.pl) { const [s, k] = c.dataset.pl.split("/"); const r = plRef(s, k, "idle"); drawPL(g, r, frameAt(T, 4, r.n), 112); }
+      else { const [s, k] = c.dataset.mine.split("/"); g.drawImage(petFrame(s, k, "idle", frameAt(T, 4, 8)), 0, 0); } }
+
+    // escena
+    if (sceneObj) { A.renderScene(sceneObj, t, st.tod, sceneBuf); const sx = ctx("s-mine"); sx.putImageData(new ImageData(new Uint8ClampedArray(sceneBuf.d), sceneBuf.w, sceneBuf.h), 0, 0);
+      const a = sceneObj.night || st.tod === 2 ? "sleepy" : "idle"; sx.drawImage(petFrame(st.stage, st.cls, a, frameAt(T, FPS[a], 8)), Math.round(sceneObj.spot[0] - 32), Math.round(sceneObj.spot[1] - 58)); }
+
+    // arena
+    arena.tick(now);
+    A.renderScene(arena.sc, t, 0, arena.buf); const ax = ctx("arena"); ax.putImageData(new ImageData(new Uint8ClampedArray(arena.buf.d), 256, 192), 0, 0);
+    const pf = arena.cur && arena.cur.who === "pet" ? Math.min(A.ANIMS[arena.pet] - 1, Math.floor((now - arena.t0) / 90)) : frameAt(T, 4, A.ANIMS[arena.pet]);
+    const ef = arena.cur && arena.cur.who === "en" ? Math.min(A.ENEMY_ANIMS[arena.en] - 1, Math.floor((now - arena.t0) / 90)) : (arena.en === "ko" ? 7 : frameAt(T, 4, A.ENEMY_ANIMS[arena.en]));
+    const petAnim = arena.pet, enAnim = arena.en;
+    const pc = petFrame(st.stage, st.cls, petAnim, pf);
+    ax.save(); ax.translate(56 + 64, 100); ax.scale(-1, 1); ax.drawImage(pc, 0, 0); ax.restore(); // mira a la derecha
+    const ec = memo(`e/${st.enemy}/${enAnim}/${ef}`, () => toCanvas(A.ENEMIES[st.enemy](enAnim, ef)));
+    ax.save(); ax.translate(150 + 80, 94); ax.scale(-1, 1); ax.drawImage(ec, 0, 0); ax.restore();
+
+    // efectos
+    const ff = frameAt(T, 10, 9);
+    for (const [k, cpx, cmx] of fxCanv) { const g = cpx.getContext("2d"); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 64, 64); const im = img(META.fx[k]); if (im.complete && im.naturalWidth) g.drawImage(im, ff * 64, 0, 64, 64, 0, 0, 64, 64);
+      const g2 = cmx.getContext("2d"); g2.clearRect(0, 0, 32, 32); g2.drawImage(memo(`fx/${k}/${ff}`, () => toCanvas(A.FX[k](ff))), 0, 0); }
+
+    if (!reduce) requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  if (reduce) setInterval(() => requestAnimationFrame(loop), 500);
+})();
+</script>

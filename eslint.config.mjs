@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     // no los cubren: sin esta línea, un solo worktree con build hecho mete
     // ~1000 errores de código generado en `npm run lint` y tapa los reales.
     ".claude/**",
+    // Prueba de arte por código (no conectada a la app): IIFE de navegador + CJS.
+    "scripts/pet-art-code/**",
   ]),
 ]);
 
