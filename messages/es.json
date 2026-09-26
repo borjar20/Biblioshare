@@ -253,10 +253,13 @@
     },
     "newPass": "Nuevo pase",
     "jointAction": {
-      "book": "Lo leí con…",
-      "movie": "La vi con…",
-      "series": "La vi con…"
+      "book": "¿Con quién lo leíste?",
+      "movie": "¿Con quién la viste?",
+      "series": "¿Con quién la viste?"
     },
+    "jointWith": "Con {names}",
+    "jointMore": "{count} más",
+    "jointPending": "Pendiente",
     "jointSheet": {
       "title": {
         "book": "¿Con quién lo leíste?",
@@ -264,6 +267,7 @@
         "series": "¿Con quién la viste?"
       },
       "hint": "Solo aparecen las personas a las que sigues y que te siguen. Cada una recibe un aviso y decide si lo confirma.",
+      "closeHint": "Al guardar les llega un aviso para que lo confirmen.",
       "loading": "Cargando…",
       "currentTitle": "En este visionado",
       "inviteMore": "Añadir a alguien más",

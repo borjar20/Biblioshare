@@ -13,6 +13,7 @@ import {
 } from "@/lib/social/joint-viewing-actions";
 import { UserAvatar } from "@/components/social/user-avatar";
 import { Button } from "@/components/ui/button";
+import { JointCompanionsPicker } from "@/components/detail/joint-companions-picker";
 
 // «Lo disfruté con…» (#1220): etiqueta a seguidos mutuos en un pase terminado.
 // Cada invitado recibe un aviso y decide; hasta que acepta no aparece en nada.
@@ -148,27 +149,7 @@ export function JointViewingSheet({
           {options && options !== "loading" && canInvite && (
             <section className="flex flex-col gap-2">
               {current && <h3 className="label-section">{t("inviteMore")}</h3>}
-              {candidates.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("noMutuals")}</p>
-              ) : (
-                <ul className="flex flex-col gap-1">
-                  {candidates.map((m) => (
-                    <li key={m.userId}>
-                      <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1.5 text-sm hover:bg-surface-muted">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(m.userId)}
-                          onChange={() => toggle(m.userId)}
-                          className="h-4 w-4 accent-accent"
-                        />
-                        <UserAvatar name={m.displayName || m.username} avatarUrl={m.avatarUrl} size={24} />
-                        <span className="min-w-0 flex-1 truncate">{m.displayName || m.username}</span>
-                        <span className="truncate font-mono text-[10px] text-muted-foreground">@{m.username}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <JointCompanionsPicker people={candidates} selected={selected} onToggle={toggle} />
             </section>
           )}
 

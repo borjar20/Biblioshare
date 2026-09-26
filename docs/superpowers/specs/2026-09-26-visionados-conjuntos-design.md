@@ -14,8 +14,14 @@ de un miembro **se oculta** del feed; los miembros que quien mira no puede ver s
 
 ## Flujo
 
-1. Ficha → pestaña Registro → diario → «···» de un pase **terminado** → «La vi con… / Lo leí con…».
-   La hoja (`JointViewingSheet`) lista los seguidos mutuos; al enviar, `create_joint_viewing`.
+1. Dos entradas, las dos a la vista:
+   - **Al terminar**: la hoja de cierre («¿Qué te ha parecido?», `ClosePassSheet`) trae
+     «¿Con quién la viste?» con fichas de seguidos mutuos (`JointCompanionsPicker`). Al guardar,
+     `create_joint_viewing`. Solo al completar, y solo si hay seguidos mutuos.
+   - **Después**: en el diario, cada pase **terminado** lleva un botón «＋ ¿Con quién la viste?»;
+     si ya está compartido, muestra los avatares («Con Ana y Luis», «Pendiente» si falta alguien
+     por contestar). Abre `JointViewingSheet`: ver quién está, invitar a más (quien lo creó) o
+     salirse. El diario pide los visionados de todos sus pases en UNA llamada.
 2. Cada invitado recibe `joint_viewing_invite` (campana + push) que abre `/juntos/[id]`.
 3. En `/juntos/[id]` (`JointInviteResponse`) elige cuál de sus pases terminados es (se preselecciona
    el del mismo día) o «uno nuevo», y acepta; o dice «No fui yo». Aceptar llama a

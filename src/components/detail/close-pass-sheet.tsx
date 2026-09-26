@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 import { ReviewSpoilerField } from "@/components/detail/review-spoiler-field";
+import { JointCompanionsPicker } from "@/components/detail/joint-companions-picker";
+import {
+  createJointViewing,
+  loadMutualFollows,
+  type JointActionError,
+} from "@/lib/social/joint-viewing-actions";
+import type { JointPerson } from "@/lib/social/joint-viewings";
 
 const initialState: ClosePassState = {};
 
@@ -61,6 +68,14 @@ export function ClosePassSheet({
     closePass.bind(null, passId, itemType, itemId),
     initialState
   );
+  // Visionado conjunto (#1220): «¿Con quién la viste?» en el mismo gesto de
+  // terminar. Solo al completar (un abandono no se comparte). La lista de
+  // seguidos mutuos se carga al abrir; la etiqueta se envía tras guardar.
+  const canShare = status === "completed";
+  const [mutuals, setMutuals] = useState<JointPerson[] | null>(null);
+  const [companions, setCompanions] = useState<Set<string>>(new Set());
+  const [jointError, setJointError] = useState<JointActionError | null>(null);
+  const [sharing, startSharing] = useTransition();
 
   // Al reabrir la hoja no queremos arrastrar la nota que hubiera quedado
   // marcada de una vez anterior. Ajuste de estado durante el render (mismo
@@ -73,7 +88,29 @@ export function ClosePassSheet({
       setRating(null);
       setReason("");
       setReasonNote("");
+      setCompanions(new Set());
+      setJointError(null);
     }
+  }
+
+  useEffect(() => {
+    if (!open || !canShare) return;
+    let cancelled = false;
+    loadMutualFollows().then((people) => {
+      if (!cancelled) setMutuals(people);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, canShare]);
+
+  function toggleCompanion(userId: string) {
+    setCompanions((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
   }
 
   // showModal()/close() son llamadas imperativas al DOM, no setState: no
@@ -98,9 +135,27 @@ export function ClosePassSheet({
   // que ya se había enviado y cerraba la hoja nada más abrirse (el auto-cierre
   // al terminar un libro no llegaba a verse). El guard de abajo es idempotente,
   // que es justo lo que la doble invocación exige.
+  //
+  // Con acompañantes marcados, antes de cerrar se crea el visionado conjunto
+  // (el pase ya está guardado). Si eso falla la hoja se queda abierta con el
+  // error: el cierre no se pierde, solo la etiqueta.
+  const invitees = canShare ? [...companions] : [];
+  const inviteesKey = invitees.join(",");
   useEffect(() => {
     if (state === initialState) return;
-    if (!state.error) dialogRef.current?.close();
+    if (state.error) return;
+    const ids = inviteesKey ? inviteesKey.split(",") : [];
+    if (ids.length === 0) {
+      dialogRef.current?.close();
+      return;
+    }
+    startSharing(async () => {
+      const result = await createJointViewing(passId, itemType, itemId, ids);
+      if (result.ok) dialogRef.current?.close();
+      else setJointError(result.error);
+    });
+    // Solo al resolver el envío: la selección no debe relanzar la etiqueta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
@@ -171,6 +226,25 @@ export function ClosePassSheet({
 
           <ReviewSpoilerField review={review} checked={reviewIsSpoiler} onChange={setReviewIsSpoiler} />
 
+          {/* Solo si hay a quién etiquetar: sin seguidos mutuos el bloque sería
+              ruido en cada cierre, y mientras carga no se reserva hueco. */}
+          {canShare && mutuals && mutuals.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="label-section">{t(`jointSheet.title.${itemType}`)}</span>
+              <JointCompanionsPicker
+                people={mutuals}
+                selected={companions}
+                onToggle={toggleCompanion}
+              />
+              {companions.size > 0 && (
+                <p className="text-xs text-muted-foreground">{t("jointSheet.closeHint")}</p>
+              )}
+              {jointError && (
+                <p className="text-xs text-status-dropped">{t(`jointSheet.errors.${jointError}`)}</p>
+              )}
+            </div>
+          )}
+
           {status === "dropped" && (
             <DroppedReasonFields
               reason={reason}
@@ -205,14 +279,14 @@ export function ClosePassSheet({
           <Button
             type="button"
             variant="secondary"
-            disabled={pending}
+            disabled={pending || sharing}
             className="flex-1"
             onClick={() => dialogRef.current?.close()}
           >
             {t("skip")}
           </Button>
-          <Button type="submit" disabled={pending} className="flex-1">
-            {pending ? t("submitting") : t("submit")}
+          <Button type="submit" disabled={pending || sharing} className="flex-1">
+            {pending || sharing ? t("submitting") : t("submit")}
           </Button>
         </div>
       </form>

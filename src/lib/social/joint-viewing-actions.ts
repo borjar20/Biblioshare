@@ -252,3 +252,39 @@ export async function loadJointViewingOptions(passId: string): Promise<JointView
     return null;
   }
 }
+
+// Seguidos mutuos de quien llama: los que ofrece el selector de la hoja de
+// cierre. Solo el selector; la regla la vuelve a comprobar la base.
+export async function loadMutualFollows(): Promise<JointPerson[]> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    return await getMutualFollows(supabase, user.id);
+  } catch (error) {
+    console.error("loadMutualFollows failed", error);
+    return [];
+  }
+}
+
+// Con quién está compartido cada pase del diario, en UNA llamada por diario (no
+// una por tarjeta). Solo pases propios: la RLS no deja ver los de otros.
+export async function loadJointViewingsForPasses(
+  passIds: string[],
+): Promise<Record<string, PassJointViewing>> {
+  try {
+    const ids = Array.isArray(passIds) ? passIds.filter((id) => typeof id === "string" && UUID.test(id)) : [];
+    if (ids.length === 0) return {};
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return {};
+    return Object.fromEntries(await getJointViewingsForPasses(supabase, user.id, ids.slice(0, 100)));
+  } catch (error) {
+    console.error("loadJointViewingsForPasses failed", error);
+    return {};
+  }
+}
