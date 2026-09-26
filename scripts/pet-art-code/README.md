@@ -32,3 +32,11 @@ Tercer intento, tras descartar la ardilla chibi: una sola geometría vectorial d
 (bestiario de libro, folk/grabado, anime de aventuras, cómic europeo). `pixel.js` baja cada
 lámina a 128 px cuantizando a la paleta del estilo. `board-template.html` es el tablero: se
 construye sustituyendo `/*CODE*/` por los tres ficheros concatenados.
+
+### Estilo elegido: A · Bestiario (2026-09-26)
+
+`estilos/bestiary.js` desarrolla el estilo A: 3 edades (cría, adulta, veterana) × 6 oficios con su
+equipo × 6 semblantes (pícara, contenta, adormilada, triste, furiosa, KO), más un parpadeo. El SVG
+sale con cuatro grupos animables (`.tail`, `.body`, `.head`, `.hand`): las animaciones son
+transformaciones de piezas, no fotogramas. `sheet-template.html` es la hoja de personaje; se
+construye sustituyendo `/*CODE*/` por `squirrel.js` + `bestiary.js`.
