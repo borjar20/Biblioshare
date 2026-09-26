@@ -24,3 +24,11 @@ npx -y -p sharp node scripts/pet-art-code/build-demo.cjs   # o con sharp instala
 ```
 
 Los ficheros de `art/` funcionan igual en navegador (`window.ART`) y en Node (`globalThis.ART`).
+
+## `estilos/`: exploración de estilo (vectorial + pixel)
+
+Tercer intento, tras descartar la ardilla chibi: una sola geometría vectorial dibujada a mano
+(`squirrel.js`, proporción adulta y mirada con carácter) con cuatro tratamientos en `styles.js`
+(bestiario de libro, folk/grabado, anime de aventuras, cómic europeo). `pixel.js` baja cada
+lámina a 128 px cuantizando a la paleta del estilo. `board-template.html` es el tablero: se
+construye sustituyendo `/*CODE*/` por los tres ficheros concatenados.
