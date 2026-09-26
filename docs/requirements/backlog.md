@@ -310,12 +310,11 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 
 **Social y clubes**
 - Listas colaborativas (§7.26; hoy solo existe `list_challenge` de club).
-- [ ] Visionados conjuntos fuera de los clubes: etiquetar a seguidos mutuos en un pase terminado
-  y una tarjeta de feed que agrupa la nota y la reseña de cada uno
-  ([#1220](https://github.com/borjar20/Biblioshare/issues/1220)). Código en la rama
-  `claude/zen-heisenberg-05sgvx`, spec `docs/superpowers/specs/2026-09-26-visionados-conjuntos-design.md`.
-  Migraciones aplicadas y verificadas en dev y prod (2026-09-26); PR #1221. Pendiente: probarlo
-  en navegador y el e2e con tres cuentas (el entorno remoto no llega a Supabase), y el merge.
+- [x] Visionados conjuntos fuera de los clubes: etiquetar a seguidos mutuos al terminar o desde
+  el diario, y una tarjeta de feed que agrupa la nota y la reseña de cada uno
+  ([#1220](https://github.com/borjar20/Biblioshare/issues/1220)). En `main` (PR #1221, 2026-09-26),
+  migraciones en dev y prod. Spec `docs/superpowers/specs/2026-09-26-visionados-conjuntos-design.md`.
+  Sin probar aún en navegador ni con e2e: [#1223](https://github.com/borjar20/Biblioshare/issues/1223).
 
 **Descubrimiento**
 - Seguir editoriales (§7.6), tabla de adaptaciones/relaciones entre obras
