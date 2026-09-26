@@ -5,6 +5,8 @@ import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
+import { PendingJointInvites } from "@/components/social/pending-joint-invites";
+import { getPendingJointInvites } from "@/lib/social/joint-viewings";
 import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
 import {
   createClient,
@@ -19,7 +21,7 @@ import { RouteMessages } from "@/components/route-messages";
 // Namespaces de cliente de la ficha (medidos por su subárbol, #444).
 const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
-  "item", "library", "notes", "passes", "social",
+  "item", "library", "notes", "passes", "social", "joint",
 ] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
@@ -140,6 +142,16 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 
   if (!movie) notFound();
 
+  // Invitación a un visionado conjunto de esta obra sin contestar (#1224): se
+  // lanza ya y se espera antes de pintar, en paralelo con lo del hero. Un fallo
+  // no tumba la ficha: sin aviso, y la campana sigue llevando a la invitación.
+  const jointInvitesPromise = user
+    ? getPendingJointInvites(supabase, user.id, { itemType: "movie", itemId: movie.id }).catch((error) => {
+        console.error("getPendingJointInvites failed", error);
+        return [];
+      })
+    : Promise.resolve([]);
+
   // Hidratación de la OBRA (TMDB): se resuelve en after() porque es una API
   // externa que escribe. Lo normal es que la fila ya llegue hidratada
   // (openCatalogItem hidrata al pulsar el resultado), así que esto es sobre
@@ -205,6 +217,8 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   // lleva barra de progreso: su estado es binario y el frame 12 no la pinta.
   const railLabels = await statusVerbs("movie");
 
+  const jointInvites = await jointInvitesPromise;
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       <ItemShell
@@ -226,18 +240,21 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
           />
         }
         passCard={
-          <PassCard
-            itemType="movie"
-            itemId={movie.id}
-            isLoggedIn={Boolean(user)}
-            labels={railLabels}
-            progress={null}
-            rating={activePass?.rating ?? null}
-            ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
-            ctaLabel={tDetail("rail.cta.movie")}
-            ratingLabel={tDetail("rail.yourRating")}
-            goToLogLabel={tDetail("rail.goToLog")}
-          />
+          <div className="flex flex-col gap-3">
+            <PendingJointInvites invites={jointInvites} variant="item" />
+            <PassCard
+              itemType="movie"
+              itemId={movie.id}
+              isLoggedIn={Boolean(user)}
+              labels={railLabels}
+              progress={null}
+              rating={activePass?.rating ?? null}
+              ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
+              ctaLabel={tDetail("rail.cta.movie")}
+              ratingLabel={tDetail("rail.yourRating")}
+              goToLogLabel={tDetail("rail.goToLog")}
+            />
+          </div>
         }
         tabs={
           <Suspense fallback={<ItemTabsSkeleton />}>

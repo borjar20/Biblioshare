@@ -5,6 +5,8 @@ import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
+import { PendingJointInvites } from "@/components/social/pending-joint-invites";
+import { getPendingJointInvites } from "@/lib/social/joint-viewings";
 import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
 import { passPercent } from "@/lib/library/progress";
 import {
@@ -20,7 +22,7 @@ import { RouteMessages } from "@/components/route-messages";
 // Namespaces de cliente de la ficha (medidos por su subárbol, #444).
 const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
-  "item", "library", "notes", "passes", "social",
+  "item", "library", "notes", "passes", "social", "joint",
 ] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
@@ -135,6 +137,16 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   ]);
 
   if (!book) notFound();
+
+  // Invitación a un visionado conjunto de esta obra sin contestar (#1224): se
+  // lanza ya y se espera antes de pintar, en paralelo con lo del hero. Un fallo
+  // no tumba la ficha: sin aviso, y la campana sigue llevando a la invitación.
+  const jointInvitesPromise = user
+    ? getPendingJointInvites(supabase, user.id, { itemType: "book", itemId: book.id }).catch((error) => {
+        console.error("getPendingJointInvites failed", error);
+        return [];
+      })
+    : Promise.resolve([]);
 
   // Hidratación de la OBRA (sinopsis y géneros desde /works/<key>.json): se
   // resuelve en after() porque es una API externa que escribe. Lo normal es
@@ -262,6 +274,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
         }
       : null;
 
+  const jointInvites = await jointInvitesPromise;
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       {/* Fila aún sin hidratar (recién creada, o su hidratación falló y el
@@ -289,18 +303,21 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
           />
         }
         passCard={
-          <PassCard
-            itemType="book"
-            itemId={book.id}
-            isLoggedIn={Boolean(user)}
-            labels={railLabels}
-            progress={railProgress}
-            rating={activePass?.rating ?? null}
-            ctaHref={activePass ? `/sesion/${activePass.id}` : null}
-            ctaLabel={tDetail("rail.cta.book")}
-            ratingLabel={tDetail("rail.yourRating")}
-            goToLogLabel={tDetail("rail.goToLog")}
-          />
+          <div className="flex flex-col gap-3">
+            <PendingJointInvites invites={jointInvites} variant="item" />
+            <PassCard
+              itemType="book"
+              itemId={book.id}
+              isLoggedIn={Boolean(user)}
+              labels={railLabels}
+              progress={railProgress}
+              rating={activePass?.rating ?? null}
+              ctaHref={activePass ? `/sesion/${activePass.id}` : null}
+              ctaLabel={tDetail("rail.cta.book")}
+              ratingLabel={tDetail("rail.yourRating")}
+              goToLogLabel={tDetail("rail.goToLog")}
+            />
+          </div>
         }
         tabs={
           <Suspense fallback={<ItemTabsSkeleton />}>

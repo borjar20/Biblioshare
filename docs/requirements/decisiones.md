@@ -5293,3 +5293,17 @@ de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro 
 - **Nada se cachea** (regla #437): todo depende de quién mira.
 - **Sin aviso a seguidores** del post conjunto: no pasa por `createPost`. Los avisos son la
   invitación (`joint_viewing_invite`) y la confirmación a quien invitó (`joint_viewing_accepted`).
+
+## 2026-09-26 — Invitaciones pendientes a visionados conjuntos: de la tabla, no de la campana (#1224)
+
+- **Se leen de `joint_viewing_members` (`status='invited'`), no de `notifications`.** La campana
+  solo muestra los 20 avisos más recientes y el aviso es best-effort (se envía después del RPC):
+  una invitación no puede depender de que el aviso llegue ni de que siga en la lista.
+- **En Inicio van dentro del MISMO `<Suspense>` que el feed**, en paralelo con `getFeed`, no en un
+  boundary propio: uno propio empujaría el feed al llegar, el CLS de #284. Solo en la vista «Todo».
+- **En la ficha se lanza la lectura al tener la obra y se espera antes de pintar el hero**, en
+  paralelo con el resto del hero; va encima de la tarjeta del pase. En los dos sitios un fallo de
+  la lectura se traga (sin bloque) y no tumba la página.
+- **Contestar sin salir de ahí solo cuando no hay nada que elegir**: el pase terminado libre del
+  mismo día, o «uno nuevo» si no hay ninguno libre. Si hay pases terminados libres de otros días,
+  «Confirmar» lleva a `/juntos/[id]`, para no enlazar a ciegas un visionado de hace años.
