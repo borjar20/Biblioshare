@@ -3,7 +3,7 @@
 > **Delta 2026-09-26 (visionados conjuntos, #1220):** tablas `joint_viewings` y
 > `joint_viewing_members`, `post_kind` `joint`, `post_source_kind` `joint_viewing`, dos
 > `notification_type` (`joint_viewing_invite`, `joint_viewing_accepted`). Detalle en §5.4.
-> **Estado:** las dos aplicadas y verificadas en **dev** (2026-09-26); **pendientes en prod**.
+> **Estado:** las dos aplicadas y verificadas en **dev** y en **prod** (2026-09-26).
 
 > **Delta 2026-09-25 (reseñas con spoiler):** `passes.review_is_spoiler` y
 > `episode_watches.review_is_spoiler` (`boolean not null default false`; migración
@@ -2078,7 +2078,10 @@ historia congelada y no se toca, pero su instrucción quedó superada por esta s
 > **aplicadas y verificadas en dev el 2026-09-26** (objetos reales: 2 tablas, 6 funciones, 2
 > triggers; recorrido completo suplantando usuarios en una transacción revertida; `get_advisors`
 > sin hallazgos nuevos salvo los `security definer` invocables, que son el patrón de todas las
-> RPC). **Pendientes en prod.** Spec
+> RPC). **Aplicadas y verificadas en PROD el 2026-09-26** (enums primero y tablas después, en
+> dos migraciones; mismos objetos, grants y policies que en dev; lectura como `anon` sin error;
+> `get_advisors` igual que en dev). Aditivas: el código anterior las ignora, así que podían ir
+> antes del merge. Spec
 > `docs/superpowers/specs/2026-09-26-visionados-conjuntos-design.md`; decisión en `decisiones.md`
 > 2026-09-26.
 
