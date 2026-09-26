@@ -17,7 +17,8 @@ import { test, expect } from "@playwright/test";
 //        (is_public=true, is_spoiler=false) SÍ; la pública-spoiler queda velada
 //        hasta pulsar "Mostrar spoiler".
 //   C · Reseña     → ReviewCard: un seguido que terminó+reseñó un libro →
-//        badge "Finalizado", dots de valoración y el texto de la reseña.
+//        verbo "reseñó" (sin badge "Finalizado" desde el rediseño del feed),
+//        dots de valoración y el texto de la reseña.
 //
 // Convención de datos (docs/TESTING.md): siembra por REST con la service key,
 // limpia ANTES (dentro del try) y DESPUÉS (finally) con UUIDs fijos. El caso
@@ -483,14 +484,16 @@ test("un seguido que terminó y reseñó un libro se pinta como ReviewCard con F
     await login(page);
     await page.goto("/");
 
-    // La ReviewCard: el <article> del seguido que lleva el badge "Finalizado".
+    // La ReviewCard: el <article> del seguido con la obra. Desde el rediseño
+    // del feed (R1) el verbo es la única etiqueta: ni chip «Reseña» ni badge
+    // «Finalizado».
     const review = page
       .locator("article")
       .filter({ hasText: followeeName })
-      .filter({ hasText: /finalizado/i });
+      .filter({ hasText: bookTitle });
     await expect(review).toHaveCount(1);
-    await expect(review.getByText(bookTitle)).toBeVisible();
-    await expect(review.getByText(/^finalizado$/i)).toBeVisible();
+    await expect(review.getByText(/reseñó/i)).toBeVisible();
+    await expect(review.getByText(/^finalizado$/i)).toHaveCount(0);
     // Dots de valoración (RatingDots, role=img "… de 5").
     await expect(review.getByRole("img", { name: /de 5/i })).toBeVisible();
     // El texto de la reseña.

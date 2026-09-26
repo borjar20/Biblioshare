@@ -243,9 +243,12 @@ const REVIEW_EXCERPT_LENGTH = 200;
 const POST_COLUMNS =
   "id, author_id, kind, anchor_type, anchor_id, source_kind, source_id, body, is_spoiler, created_at";
 
-function excerpt(text: string | null): string | null {
+// Extracto de la reseña para el feed. Los párrafos en blanco se juntan (R3 del
+// rediseño del feed): en una tarjeta, una línea vacía cuesta tanto alto como una
+// con texto. El texto entero, con su formato, sigue en /post/[id] (`fullBody`).
+export function excerpt(text: string | null): string | null {
   if (!text) return null;
-  const trimmed = text.trim();
+  const trimmed = text.trim().replace(/\r?\n[ \t]*(?:\r?\n[ \t]*)+/g, "\n");
   if (trimmed.length <= REVIEW_EXCERPT_LENGTH) return trimmed;
   return trimmed.slice(0, REVIEW_EXCERPT_LENGTH).trimEnd() + "…";
 }

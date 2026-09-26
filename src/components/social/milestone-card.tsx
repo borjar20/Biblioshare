@@ -45,7 +45,7 @@ export function MilestoneCard({
   );
   const href = itemHref(event.itemType, event.itemId);
   const facts = [
-    t("milestone.type", { itemType: event.itemType }),
+    t("workType", { itemType: event.itemType }),
     event.itemSubtitle,
     event.itemYear != null ? String(event.itemYear) : null,
     event.itemSeasons != null ? t("milestone.seasons", { count: event.itemSeasons }) : null,

@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
 import type { FeedEvent, MilestoneViewerContext } from "@/lib/social/feed";
+import { makeFeedEvent } from "./test-feed-event";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -16,43 +17,7 @@ import { MilestoneCard } from "./milestone-card";
 
 afterEach(cleanup);
 
-function event(over: Partial<FeedEvent> = {}): FeedEvent {
-  return {
-    id: "posts:p1",
-    postId: "p1",
-    kind: "started",
-    actorId: "borja",
-    actorUsername: "borja",
-    actorDisplayName: "Borja",
-    actorAvatarUrl: null,
-    verb: "started",
-    itemType: "series",
-    itemId: "jojo",
-    itemTitle: "JoJo's Bizarre Adventure",
-    itemCoverUrl: null,
-    itemSubtitle: null,
-    itemYear: 2012,
-    itemSeasons: 5,
-    entryStatus: null,
-    eventDate: new Date().toISOString(),
-    orderDate: new Date().toISOString(),
-    sortDate: new Date().toISOString(),
-    rating: null,
-    reviewExcerpt: null,
-    reviewIsSpoiler: false,
-    episode: null,
-    reviewMeta: null,
-    progress: null,
-    thought: null,
-    interactionTarget: { targetType: "post", targetId: "p1", interactionTargetId: "t1" },
-    reactionCount: 0,
-    viewerReacted: false,
-    commentCount: 0,
-    comments: [],
-    reactions: {} as FeedEvent["reactions"],
-    ...over,
-  };
-}
+const event = makeFeedEvent;
 
 function ctx(over: Partial<MilestoneViewerContext> = {}): MilestoneViewerContext {
   return { viewerPass: null, friends: [], friendsTotal: 0, friendsStatus: "mixed", ownPost: false, ...over };

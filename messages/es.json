@@ -588,12 +588,12 @@
     "joint": {
       "header": "{names} {itemType, select, book {leyeron} other {vieron}} juntos",
       "andMore": "{count} más",
-      "badge": "Juntos",
-      "noRating": "Sin nota"
+      "noRating": "Sin nota",
+      "groupAverage": "Media del grupo"
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
+    "workType": "{itemType, select, book {Libro} movie {Película} series {Serie} other {Obra}}",
     "milestone": {
-      "type": "{itemType, select, book {Libro} movie {Película} series {Serie} other {Obra}}",
       "seasons": "{count, plural, one {# temporada} other {# temporadas}}",
       "andMore": "{count} más",
       "friends": "{names} {status, select, in_progress {también {itemType, select, book {{count, plural, one {lo está leyendo} other {lo están leyendo}}} other {{count, plural, one {la está viendo} other {la están viendo}}}}} completed {ya {itemType, select, book {{count, plural, one {lo ha leído} other {lo han leído}}} other {{count, plural, one {la ha visto} other {la han visto}}}}} other {también {itemType, select, book {{count, plural, one {lo ha empezado} other {lo han empezado}}} other {{count, plural, one {la ha empezado} other {la han empezado}}}}}}",
@@ -614,10 +614,8 @@
     "kind": {
       "collection": "Colección",
       "progress": "Avances",
-      "review": "Reseña",
       "reviews": "Reseñas",
-      "thought": "Pensamiento",
-      "joint": "Juntos"
+      "thought": "Pensamiento"
     },
     "thoughtShared": "compartió un pensamiento",
     "postMenu": "Opciones",
@@ -635,7 +633,7 @@
       "showLess": "ver menos"
     },
     "review": {
-      "finished": "Finalizado",
+      "readMore": "Seguir leyendo",
       "metaDays": "{count, plural, one {# día} other {# días}}",
       "metaPages": "{count} pág.",
       "moreEpisodes": "{count, plural, one {+# episodio} other {+# episodios}}"

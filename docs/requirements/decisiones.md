@@ -5319,7 +5319,7 @@ de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro 
   mismo día, o «uno nuevo» si no hay ninguno libre. Si hay pases terminados libres de otros días,
   «Confirmar» lleva a `/juntos/[id]`, para no enlazar a ciegas un visionado de hace años.
 
-## 2026-09-26 — Feed: hitos en una línea con contexto, y pie de tarjeta sin ceros
+## 2026-09-26 — Feed: hitos en una línea con contexto, pie sin ceros, reseñas y visionados más densos
 
 Revisión estética del feed de Inicio: los hitos (`started`/`dropped`) ocupaban una tarjeta grande
 con una caja interior casi vacía, y cada post cargaba tres filas de adorno (pie, «Ver hilo», hora)
@@ -5341,5 +5341,17 @@ aunque no tuviera actividad. Se decidió sobre una maqueta de antes/después (pr
 - **La hora sube a la cabecera** en reseña, pensamiento, visionado conjunto e hito. Sin cabecera
   (`hideActor`, perfil) va sola a la derecha junto al menú. El timeline de avances conserva su
   hora por paso.
+- **Reseña: una etiqueta y el texto dentro de la caja** (`review-card.tsx`). Fuera el chip «Reseña»
+  y el estado «Finalizado»/«Visto»: el verbo ya lo dice (en series, «S1E5» sitúa el post). En el
+  feed la reseña va dentro de la caja de la obra, bajo la nota, con `line-clamp-4` y «Seguir
+  leyendo» si se recorta (medido con `ResizeObserver`) o si el servidor ya cortó en «…». En
+  `/post/[id]` el texto entero sigue fuera de la caja y sin recortar.
+- **El extracto del feed junta los párrafos en blanco** (`excerpt()` en `feed.ts`): una línea
+  vacía en una tarjeta cuesta tanto como una con texto. El texto con su formato sigue en el hilo.
+- **Visionado conjunto** (`joint-card.tsx`): «juntos» solo en la frase de la cabecera (fuera
+  chip y estado); la caja lleva tipo · año y la **media del grupo** (`groupRating` en
+  `src/lib/rating/dots.ts`: media de las notas de los miembros que quien mira ve, redondeada a
+  media nota, y solo con dos notas o más); la cabecera pierde los avatares, que se quedan en la
+  fila de cada miembro, y las filas pierden las divisorias.
 - Fuera de este cambio: unir «empezó» + «valoró» de la misma obra cuando llegan seguidos
   (propuesta 3) y la tira horizontal de hitos de varias personas (propuesta 5): issue #1226.

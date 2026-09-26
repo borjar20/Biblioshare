@@ -31,3 +31,13 @@ export function formatDots(rating: number | null): string | null {
   if (dots === null) return null;
   return dots.toLocaleString("es-ES", { maximumFractionDigits: 1 });
 }
+
+// Nota media de un grupo en la misma escala 1–10, redondeada a la media nota
+// que los dots pueden pintar. Sin notas no hay media (null); con una sola, la
+// «media» sería esa nota repetida, así que tampoco: la tarjeta que la usa
+// (visionado conjunto) ya enseña la nota de cada miembro en su fila.
+export function groupRating(ratings: (number | null)[]): number | null {
+  const rated = ratings.filter((r): r is number => r !== null);
+  if (rated.length < 2) return null;
+  return Math.round(rated.reduce((a, b) => a + b, 0) / rated.length);
+}
