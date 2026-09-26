@@ -3,8 +3,7 @@
 > **Delta 2026-09-26 (visionados conjuntos, #1220):** tablas `joint_viewings` y
 > `joint_viewing_members`, `post_kind` `joint`, `post_source_kind` `joint_viewing`, dos
 > `notification_type` (`joint_viewing_invite`, `joint_viewing_accepted`). Detalle en §5.4.
-> **Estado:** en **dev** solo está aplicada la de enums (`20260926120000`); la de tablas y
-> funciones (`20260926120100`) está en el repo y **pendiente en dev y en prod**.
+> **Estado:** las dos aplicadas y verificadas en **dev** (2026-09-26); **pendientes en prod**.
 
 > **Delta 2026-09-25 (reseñas con spoiler):** `passes.review_is_spoiler` y
 > `episode_watches.review_is_spoiler` (`boolean not null default false`; migración
@@ -2075,8 +2074,11 @@ historia congelada y no se toca, pero su instrucción quedó superada por esta s
 
 ### 5.4 Visionados conjuntos — `joint_viewings` / `joint_viewing_members` (#1220, 2026-09-26)
 
-> Migraciones `20260926120000_joint_viewings_enums.sql` (aplicada en **dev** el 2026-09-26) y
-> `20260926120100_joint_viewings.sql` (**sin aplicar** ni en dev ni en prod). Spec
+> Migraciones `20260926120000_joint_viewings_enums.sql` y `20260926120100_joint_viewings.sql`,
+> **aplicadas y verificadas en dev el 2026-09-26** (objetos reales: 2 tablas, 6 funciones, 2
+> triggers; recorrido completo suplantando usuarios en una transacción revertida; `get_advisors`
+> sin hallazgos nuevos salvo los `security definer` invocables, que son el patrón de todas las
+> RPC). **Pendientes en prod.** Spec
 > `docs/superpowers/specs/2026-09-26-visionados-conjuntos-design.md`; decisión en `decisiones.md`
 > 2026-09-26.
 
