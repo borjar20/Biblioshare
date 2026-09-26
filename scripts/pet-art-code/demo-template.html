@@ -70,7 +70,8 @@
   .gallery th { font: 600 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px; text-align: center; }
   .gallery td { padding: 4px; text-align: center; }
   .cellpair { display: flex; justify-content: center; gap: 2px; background: var(--panel); padding: 4px; }
-  .cellpair canvas { width: 72px; height: 72px; }
+  .cellpair canvas { width: 80px; height: 80px; }
+  .cellpair canvas[data-mine] { width: 70px; height: 70px; align-self: end; }
 
   /* escenas */
   .scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -116,12 +117,12 @@
     <div class="hero-text">
       <span class="eyebrow">BiblioPlay · mascota RPG · prueba de arte</span>
       <h1>La ardilla, dibujada a mano en código</h1>
-      <p>Todo lo que ves con la etiqueta <span class="tag mine">PROPIO</span> lo he generado yo con un motor de pixel art de ~70 KB escrito para esta prueba: sin PixelLab, sin IA de imágenes y sin ficheros de entrada. Al lado, con <span class="tag pl">PIXELLAB</span>, está lo que hoy sirve <code>public/pet/</code>.</p>
+      <p>Todo lo que ves con la etiqueta <span class="tag mine">PROPIO</span> lo he hecho yo: la cara de la ardilla pintada píxel a píxel, y el resto con un motor de pixel art escrito para esta prueba. Sin PixelLab, sin IA de imágenes y sin ficheros de entrada. Al lado, con <span class="tag pl">PIXELLAB</span>, está lo que hoy sirve <code>public/pet/</code>.</p>
       <div class="chips">
         <span class="tag mine">18 personajes · 7 animaciones</span>
         <span class="tag mine">3 fondos × 3 horas</span>
         <span class="tag mine">2 enemigos · botín · insignias · UI</span>
-        <span class="tag mine">0 generaciones</span>
+        <span class="tag mine">cara pintada a mano</span><span class="tag mine">0 generaciones</span>
       </div>
     </div>
     <div class="hero-stage"><canvas id="hero" width="256" height="192" aria-label="Campamento generado por código con la mascota adulta maga"></canvas></div>
@@ -166,7 +167,7 @@
     <div class="sechead">
       <span class="eyebrow">3 · Las 18 de un vistazo</span>
       <h2>Tres etapas por seis clases</h2>
-      <p class="muted">En cada celda, PixelLab a la izquierda y la mía a la derecha, en reposo. En la mía la prenda y el arma son la misma geometría en todas las etapas; lo que cambia es el cuerpo y los adornos por rango (capa, galones, cicatriz y canas en la veterana).</p>
+      <p class="muted">En cada celda, PixelLab a la izquierda y la mía a la derecha, en reposo. Las tres etapas comparten la misma cara; cambian el cuerpo, la cola y los adornos por rango (capa, galones, cicatriz y hocico canoso en la veterana).</p>
     </div>
     <div class="gallery"><table id="gal"></table></div>
   </section>
@@ -236,8 +237,8 @@
     <div class="ledger"><table>
       <thead><tr><th>Criterio</th><th>PixelLab (hoy)</th><th>Propio (código)</th></tr></thead>
       <tbody>
-        <tr><td>Detalle y encanto</td><td class="win">Mayor: pelaje, pliegues, brillos</td><td>Más simple, chibi, se nota la geometría</td></tr>
-        <tr><td>Coherencia</td><td class="lose">6 celdas, 64/80 mezclados, paletas sueltas</td><td class="win">Una celda, una escala, una paleta de 48 colores</td></tr>
+        <tr><td>Detalle y encanto</td><td class="win">Mayor: pelaje, pliegues, brillos</td><td>Cara dibujada a mano, muy cerca; ropa y cola algo más simples</td></tr>
+        <tr><td>Coherencia</td><td class="lose">6 celdas, 64/80 mezclados, paletas sueltas</td><td class="win">Una celda de 80 px, una escala, una paleta compartida (~100 colores entre las 18 y todas sus animaciones)</td></tr>
         <tr><td>Animación</td><td>Frames IA, cuesta re-rolls</td><td class="win">Frames exactos desde una pose; los que quieras</td></tr>
         <tr><td>Fondos</td><td class="win">Más pictóricos y ricos</td><td>Menos detalle, pero animados, con hora y cualquier formato</td></tr>
         <tr><td>Coste de un cambio</td><td class="lose">20–40 gens + re-rolls por clase</td><td class="win">0 gens; editar una función</td></tr>
@@ -247,7 +248,7 @@
       </tbody>
     </table></div>
     <div class="options">
-      <div class="option"><span class="eyebrow">Opción A</span><h3>Todo propio</h3><p>Sustituir sheets, fondos y objetos por el motor. Máxima coherencia y cero coste, a cambio de una ardilla menos detallada.</p></div>
+      <div class="option"><span class="eyebrow">Opción A</span><h3>Todo propio</h3><p>Sustituir sheets, fondos y objetos por el motor. Máxima coherencia y cero coste; la ardilla queda algo menos detallada en ropa y pelaje.</p></div>
       <div class="option pick"><span class="eyebrow">Opción B · mi recomendación</span><h3>Híbrido</h3><p>Personajes y enemigos siguen en PixelLab, donde su detalle luce. Fondos animados, efectos, insignias y UI pasan a código. Y un paso de post-proceso lleva los sheets a la paleta común y a una celda única.</p></div>
       <div class="option"><span class="eyebrow">Opción C</span><h3>Solo ordenar PixelLab</h3><p>Mantener todo el arte y normalizar: una celda, un lienzo, paleta común y orden de filas fijo, sin tocar el estilo.</p></div>
     </div>
@@ -305,7 +306,7 @@ const META = /*META*/;
   function info() {
     const r = plRef(st.stage, st.cls, st.anim), m = COMBAT.has(st.anim) ? META.combat[st.stage][st.cls] : META.sheets[st.stage][st.cls];
     document.getElementById("m-pl").textContent = `celda ${r.cell} px · ${r.n} frames · ${m.colors} colores · ${m.kb} KB`;
-    document.getElementById("m-mine").textContent = `celda 64 px · ${A.ANIMS[st.anim]} frames · paleta común de 48 · 0 KB`;
+    document.getElementById("m-mine").textContent = `celda 80 px · ${A.ANIMS[st.anim]} frames · paleta compartida · 0 KB`;
     buildGallery();
   }
 
@@ -314,7 +315,7 @@ const META = /*META*/;
   function buildGallery() {
     const t = document.getElementById("gal"); if (t.dataset.built) return; t.dataset.built = 1;
     let h = "<thead><tr><th></th>" + A.CLASSES.map((c) => `<th>${CLASS_L[c]}</th>`).join("") + "</tr></thead><tbody>";
-    for (const s of ["young", "adult", "veteran"]) { h += `<tr><th>${STAGE_L[s]}</th>`; for (const c of A.CLASSES) h += `<td><div class="cellpair"><canvas width="112" height="112" data-pl="${s}/${c}" aria-label="${STAGE_L[s]} ${CLASS_L[c]} PixelLab"></canvas><canvas width="64" height="64" data-mine="${s}/${c}" aria-label="${STAGE_L[s]} ${CLASS_L[c]} propia"></canvas></div></td>`; h += "</tr>"; }
+    for (const s of ["young", "adult", "veteran"]) { h += `<tr><th>${STAGE_L[s]}</th>`; for (const c of A.CLASSES) h += `<td><div class="cellpair"><canvas width="112" height="112" data-pl="${s}/${c}" aria-label="${STAGE_L[s]} ${CLASS_L[c]} PixelLab"></canvas><canvas width="80" height="80" data-mine="${s}/${c}" aria-label="${STAGE_L[s]} ${CLASS_L[c]} propia"></canvas></div></td>`; h += "</tr>"; }
     t.innerHTML = h + "</tbody>";
     t.querySelectorAll("canvas").forEach((c) => { const g = c.getContext("2d"); g.imageSmoothingEnabled = false; galCells.push(c); });
   }
@@ -405,12 +406,12 @@ const META = /*META*/;
     A.renderScene(hero.sc, t, 0, hero.buf);
     const hx = ctx("hero"); hx.putImageData(new ImageData(new Uint8ClampedArray(hero.buf.d), 256, 192), 0, 0);
     const ha = Math.floor(T / 3000) % 4 === 3 ? "joy" : "idle";
-    hx.drawImage(petFrame("adult", hc, ha, frameAt(T, FPS[ha], A.ANIMS[ha])), Math.round(hero.sc.spot[0] - 32), Math.round(hero.sc.spot[1] - 58));
+    hx.drawImage(petFrame("adult", hc, ha, frameAt(T, FPS[ha], A.ANIMS[ha])), Math.round(hero.sc.spot[0] - 40), Math.round(hero.sc.spot[1] - 74));
 
     // comparador
     const cp = ctx("v-pl"), cm = ctx("v-mine"); cp.clearRect(0, 0, 112, 112); cm.clearRect(0, 0, 112, 112);
     const ref = plRef(st.stage, st.cls, st.anim); drawPL(cp, ref, frameAt(T, FPS[st.anim], ref.n), 112);
-    cm.drawImage(petFrame(st.stage, st.cls, st.anim, frameAt(T, FPS[st.anim], A.ANIMS[st.anim])), 24, 30);
+    cm.drawImage(petFrame(st.stage, st.cls, st.anim, frameAt(T, FPS[st.anim], A.ANIMS[st.anim])), 16, 16);
 
     // galería
     for (const c of galCells) { const g = c.getContext("2d"); g.clearRect(0, 0, c.width, c.height);
@@ -419,7 +420,7 @@ const META = /*META*/;
 
     // escena
     if (sceneObj) { A.renderScene(sceneObj, t, st.tod, sceneBuf); const sx = ctx("s-mine"); sx.putImageData(new ImageData(new Uint8ClampedArray(sceneBuf.d), sceneBuf.w, sceneBuf.h), 0, 0);
-      const a = sceneObj.night || st.tod === 2 ? "sleepy" : "idle"; sx.drawImage(petFrame(st.stage, st.cls, a, frameAt(T, FPS[a], 8)), Math.round(sceneObj.spot[0] - 32), Math.round(sceneObj.spot[1] - 58)); }
+      const a = sceneObj.night || st.tod === 2 ? "sleepy" : "idle"; sx.drawImage(petFrame(st.stage, st.cls, a, frameAt(T, FPS[a], 8)), Math.round(sceneObj.spot[0] - 40), Math.round(sceneObj.spot[1] - 74)); }
 
     // arena
     arena.tick(now);
@@ -428,7 +429,7 @@ const META = /*META*/;
     const ef = arena.cur && arena.cur.who === "en" ? Math.min(A.ENEMY_ANIMS[arena.en] - 1, Math.floor((now - arena.t0) / 90)) : (arena.en === "ko" ? 7 : frameAt(T, 4, A.ENEMY_ANIMS[arena.en]));
     const petAnim = arena.pet, enAnim = arena.en;
     const pc = petFrame(st.stage, st.cls, petAnim, pf);
-    ax.save(); ax.translate(56 + 64, 100); ax.scale(-1, 1); ax.drawImage(pc, 0, 0); ax.restore(); // mira a la derecha
+    ax.save(); ax.translate(40 + 80, 86); ax.scale(-1, 1); ax.drawImage(pc, 0, 0); ax.restore(); // mira a la derecha
     const ec = memo(`e/${st.enemy}/${enAnim}/${ef}`, () => toCanvas(A.ENEMIES[st.enemy](enAnim, ef)));
     ax.save(); ax.translate(150 + 80, 94); ax.scale(-1, 1); ax.drawImage(ec, 0, 0); ax.restore();
 

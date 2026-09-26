@@ -4,12 +4,14 @@
 > El arte de producción sigue siendo PixelLab (`docs/superpowers/specs/2026-09-03-mascota-arte-pixellab-design.md`).
 
 Motor de pixel art sin IA ni imágenes de entrada, escrito para comparar con lo que sirve
-`public/pet/`. Genera, de forma determinista y con una paleta común de 48 colores:
+`public/pet/`. Genera, de forma determinista y con una paleta compartida:
 
 - `art/engine.js` — primitivas (elipse, cápsula, tubo, polígono), relleno con rampa de 4 tonos
   y sombreado por forma (luz arriba-izquierda), contorno selectivo, tramado Bayer, ruido.
 - `art/pet.js` — la ardilla: 3 etapas × 6 clases × 7 animaciones (`idle`, `sleepy`, `sad`,
-  `joy`, `attack`, `hurt`, `ko`), celda 64 px, más la bellota. Cada frame sale de una pose numérica.
+  `joy`, `attack`, `hurt`, `ko`), celda 80 px, más la bellota. La cabeza está pintada a mano
+  (rejilla `HEAD` de 27×20) con ojos, cejas y boca como sellos por expresión; cuerpo, cola y ropa
+  son formas sombreadas. Cada frame sale de una pose numérica.
 - `art/world.js` — fondos procedurales a cualquier tamaño (campamento, claro de combate,
   madriguera) con animación y hora del día; enemigos `caparazon` y `brote`.
 - `art/items.js` — botín (32 px), efectos de combate (9 frames), insignias y UI nine-slice.
