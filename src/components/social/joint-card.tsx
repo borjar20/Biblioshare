@@ -56,6 +56,7 @@ export function JointCard({
         <p className="min-w-0 flex-1 text-sm text-foreground">
           {t("joint.header", { names, itemType: event.itemType })}
         </p>
+        <TimeAgo iso={event.eventDate} className="shrink-0 font-mono text-[10px] text-muted-foreground" />
         <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
           {t("kind.joint")}
         </span>
@@ -93,7 +94,6 @@ export function JointCard({
         <PostSummary postId={event.postId} reactionCount={event.reactionCount} commentCount={event.commentCount} />
       )}
       {deleteError && <PostDeleteError />}
-      <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );
 }

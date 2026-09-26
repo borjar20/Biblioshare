@@ -18,8 +18,8 @@ import { PostDeleteError, PostDeleteMenu, useDeletePost } from "./post-delete-me
 // extracto de reseña y UNA fila de reacción (el target del propio evento).
 // `hideActor`: variante para "Reseñas recientes" del perfil (mismo prop que
 // tenía el FeedCard viejo) — el autor es el propio perfil, así que se oculta
-// la cabecera. El «hace x» del pie NO depende de esa variante: la antigüedad de
-// la reseña se publica siempre.
+// la cabecera. El «hace x» NO depende de esa variante (va en la cabecera o, sin
+// ella, junto al menú): la antigüedad de la reseña se publica siempre.
 export function ReviewCard({
   event,
   hideActor = false,
@@ -71,13 +71,18 @@ export function ReviewCard({
             <Link href={`/u/${event.actorUsername}`} className="font-semibold hover:underline">{actorName}</Link>{" "}
             <span className="text-muted-foreground">{t(`verbs.${event.verb}`)}</span>
           </p>
+          <TimeAgo iso={event.eventDate} className="shrink-0 font-mono text-[10px] text-muted-foreground" />
           <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.07em] uppercase text-muted-foreground">
             {t("kind.review")}
           </span>
           {deleteMenu}
         </div>
       ) : (
-        deleteMenu && <div className="-mb-1 flex justify-end">{deleteMenu}</div>
+        // Sin cabecera, la hora va sola a la derecha, con el menú si lo hay.
+        <div className="-mb-1 flex items-center justify-end gap-2">
+          <TimeAgo iso={event.eventDate} className="shrink-0 font-mono text-[10px] text-muted-foreground" />
+          {deleteMenu}
+        </div>
       )}
 
       <div className="flex gap-3 rounded-lg border border-border bg-surface-muted p-3">
@@ -106,7 +111,6 @@ export function ReviewCard({
         />
       )}
       {deleteError && <PostDeleteError />}
-      <TimeAgo iso={event.eventDate} className="self-end font-mono text-[10px] text-muted-foreground" />
     </article>
   );
 }

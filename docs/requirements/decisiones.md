@@ -5304,3 +5304,28 @@ de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro 
   el enlace lleva a la colección filtrada por `in_progress`, que sí las lista.
 - Si todo lo que tienes en curso son series al día, el bloque baja al siguiente peldaño de la
   escalera (próxima lectura / sugerencias / descubrimiento), igual que sin nada en curso.
+
+## 2026-09-26 — Feed: hitos en una línea con contexto, y pie de tarjeta sin ceros
+
+Revisión estética del feed de Inicio: los hitos (`started`/`dropped`) ocupaban una tarjeta grande
+con una caja interior casi vacía, y cada post cargaba tres filas de adorno (pie, «Ver hilo», hora)
+aunque no tuviera actividad. Se decidió sobre una maqueta de antes/después (propuestas 1, 2 y 4).
+
+- **El hito es una fila** (`milestone-card.tsx`): avatar, frase, datos de la obra (tipo · autor ·
+  año · temporadas, de `itemYear`/`itemSeasons`), miniatura de 34 px, sin sombra. Sigue siendo su
+  propio post y su propia tarjeta: no se agrupa nada, el cursor no cambia (#731/#814).
+- **Contexto de quien mira en el hito** (`viewerContext`, `resolveMilestoneContext` en `feed.ts`):
+  su pase de la obra («La estás viendo», «La viste ●●●●»), los seguidos que también la llevan (en
+  curso o terminada, sin el autor; hasta 3 con avatar y «y N más») y «Añadir» si no la tiene y el
+  hito no es suyo. Consultas en lote por página (follows + pases propios + pases de seguidos +
+  identidades), nunca por tarjeta. Con el cliente de la petición: la RLS de `passes`
+  (`can_view_profile`) decide de quién se ve la obra, así que **no se cachea** (regla #437). Solo
+  en `getFeed` (Inicio y perfil); en `/post/[id]` el hito se pinta sin contexto.
+- **Pie ligero** (`post-summary.tsx`): sin filete ni «Ver hilo →». Sin comentarios dice
+  «Comentar», no «0 comentarios»; el corazón solo sale con reacciones. Todo sigue enlazando a
+  `/post/[id]`.
+- **La hora sube a la cabecera** en reseña, pensamiento, visionado conjunto e hito. Sin cabecera
+  (`hideActor`, perfil) va sola a la derecha junto al menú. El timeline de avances conserva su
+  hora por paso.
+- Fuera de este cambio: unir «empezó» + «valoró» de la misma obra cuando llegan seguidos
+  (propuesta 3) y la tira horizontal de hitos de varias personas (propuesta 5): issue #1226.

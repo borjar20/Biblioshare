@@ -278,8 +278,8 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
     });
 
     // `a` sigue a `b`: su hito sale en el feed. La tarjeta ya no lleva el hilo
-    // dentro (posts Spec 2b): su pie es un resumen que enlaza a `/post/[id]`,
-    // que es donde se conversa — y donde debe aterrizar el comentario, sobre el
+    // dentro (posts Spec 2b): su icono de comentario (sin «Ver hilo» desde el
+    // rediseño del feed) enlaza a `/post/[id]`, que es donde se conversa — y donde debe aterrizar el comentario, sobre el
     // target canónico del post.
     const passComment = `Pase ${prefix}`;
     await login(page, a);
@@ -287,10 +287,10 @@ test("los targets canónicos conectan pase, checkpoint, agrupación y cascada", 
     const milestoneCard = page
       .locator("article")
       .filter({ hasText: book.title })
-      .filter({ has: page.getByRole("link", { name: /ver hilo/i }) })
+      .filter({ has: page.getByRole("link", { name: /^comentar$/i }) })
       .first();
     await expect(milestoneCard).toBeVisible();
-    await milestoneCard.getByRole("link", { name: /ver hilo/i }).click();
+    await milestoneCard.getByRole("link", { name: /^comentar$/i }).click();
     await page.waitForURL(new RegExp(`/post/${milestonePost.id}$`));
     await page.getByPlaceholder(/escribe un comentario/i).fill(passComment);
     await page.getByRole("button", { name: /^comentar$/i }).click();

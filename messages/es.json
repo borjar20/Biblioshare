@@ -440,7 +440,6 @@
       "capReached": "Máximo 6 reacciones por mensaje"
     },
     "commentsCount": "{count, plural, one {1 comentario} other {# comentarios}}",
-    "viewThread": "Ver hilo",
     "writeComment": "Escribe un comentario…",
     "postComment": "Comentar",
     "deleteComment": "Borrar",
@@ -593,6 +592,13 @@
       "noRating": "Sin nota"
     },
     "minutesLogged": "{count, plural, one {1 minuto registrado} other {# minutos registrados}}",
+    "milestone": {
+      "type": "{itemType, select, book {Libro} movie {Película} series {Serie} other {Obra}}",
+      "seasons": "{count, plural, one {# temporada} other {# temporadas}}",
+      "andMore": "{count} más",
+      "friends": "{names} {status, select, in_progress {también {itemType, select, book {{count, plural, one {lo está leyendo} other {lo están leyendo}}} other {{count, plural, one {la está viendo} other {la están viendo}}}}} completed {ya {itemType, select, book {{count, plural, one {lo ha leído} other {lo han leído}}} other {{count, plural, one {la ha visto} other {la han visto}}}}} other {también {itemType, select, book {{count, plural, one {lo ha empezado} other {lo han empezado}}} other {{count, plural, one {la ha empezado} other {la han empezado}}}}}}",
+      "you": "{status, select, planned {En tu lista} in_progress {{itemType, select, book {Lo estás leyendo} other {La estás viendo}}} completed {{itemType, select, book {Lo leíste} other {La viste}}} dropped {{itemType, select, book {Lo abandonaste} other {La abandonaste}}} other {En tu biblioteca}}"
+    },
     "quickAdd": "Añadir",
     "alreadyInLibrary": "En tu biblioteca",
     "grouped": {
