@@ -49,6 +49,8 @@ export type FakeFeedSource =
   | "interaction_targets"
   | "reactions"
   | "comments"
+  | "joint_viewings"
+  | "joint_viewing_members"
   | "other";
 
 export type FakeFeedData = {
@@ -63,6 +65,16 @@ export type FakeFeedData = {
   sessions?: FakeRow[];
   /** Filas fuente para display de posts `watched`. */
   episodes?: FakeRow[];
+  /**
+   * Visionados conjuntos (#1220). A diferencia del resto, sobre estas dos tablas
+   * SÍ se aplican `.in()`/`.eq()`: el feed las consulta por pase o por visionado
+   * y sin filtrar devolvería enlaces que no tocan. Lo que la RLS no dejaría ver
+   * se modela no poniéndolo.
+   */
+  jointViewings?: FakeRow[];
+  jointMembers?: FakeRow[];
+  /** Respuesta de `joint_viewing_accepted_counts` (el total, visible o no). */
+  jointCounts?: FakeRow[];
 };
 
 export type FakeOrderCall = { column: string; ascending: boolean };
@@ -166,6 +178,8 @@ function sourceOf(table: string): FakeFeedSource {
     case "interaction_targets":
     case "reactions":
     case "comments":
+    case "joint_viewings":
+    case "joint_viewing_members":
       return table;
     default:
       return "other";
@@ -201,6 +215,9 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
   const passReviews = rows.passReviews ?? [];
   const sessions = rows.sessions ?? [];
   const episodes = rows.episodes ?? [];
+  const jointViewings = rows.jointViewings ?? [];
+  const jointMembers = rows.jointMembers ?? [];
+  const jointCounts = rows.jointCounts ?? [];
 
   const orFilters: Record<string, string[]> = {};
   const orderCalls: Record<string, FakeOrderCall[][]> = {};
@@ -225,6 +242,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       FAKE_ACTOR_ID,
       ...posts.map((r) => text(r.author_id)),
       ...clubActivities.map((r) => text(r.created_by)),
+      ...jointMembers.map((r) => text(r.user_id)),
     ]),
   ].map((id) => ({ user_id: id, username: `user_${id}`, display_name: null, avatar_url: null }));
 
@@ -267,6 +285,10 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       case "reactions":
       case "comments":
         return [];
+      case "joint_viewings":
+        return jointViewings;
+      case "joint_viewing_members":
+        return jointMembers;
       default:
         return [];
     }
@@ -322,6 +344,10 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       for (const [column, value] of eqs) (eqFilters[source] ??= {})[column] = value;
 
       let result = dataFor(source);
+      if (source === "joint_viewings" || source === "joint_viewing_members") {
+        for (const [column, values] of ins) result = result.filter((r) => values.map(text).includes(text(r[column])));
+        for (const [column, value] of eqs) result = result.filter((r) => text(r[column]) === text(value));
+      }
       for (const filter of ors) result = result.filter((r) => rowMatchesOrFilter(r, filter));
       if (orders.length) {
         result = [...result].sort((a, b) => {
@@ -349,7 +375,10 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
 
   const client = {
     auth: { getUser: async () => ({ data: { user: null } }) },
-    rpc: async () => ({ data: [], error: null }),
+    rpc: async (name: string) => ({
+      data: name === "joint_viewing_accepted_counts" ? jointCounts : [],
+      error: null,
+    }),
     from: (table: string) => query(table),
   };
 

@@ -62,7 +62,12 @@ export type NotificationType =
   // la migración de posts (comment/reaction_notification_type de
   // interaction_targets). La copia de es.json va con esta tarjeta.
   | "post_commented"
-  | "post_liked";
+  | "post_liked"
+  // Visionados conjuntos (#1220): la invitación («X dice que visteis Y juntos»)
+  // y la confirmación que recibe quien invitó. target = el visionado
+  // (`joint_viewing`), que resuelve a `/juntos/[id]`.
+  | "joint_viewing_invite"
+  | "joint_viewing_accepted";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -82,7 +87,9 @@ export type ReviewTargetType =
   // escribe el trigger private.sync_club_round_interaction_target
   // ('/club/'||slug||'?ronda='||period_key) -- no se recalcula, así que no
   // puede divergir de él.
-  | "club_round";
+  | "club_round"
+  // Un visionado conjunto (#1220): su página es `/juntos/[id]`, donde se acepta.
+  | "joint_viewing";
 
 export type Notification = {
   id: string;
@@ -145,6 +152,8 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   thought_liked: "thoughtLiked",
   post_commented: "postCommented",
   post_liked: "postLiked",
+  joint_viewing_invite: "jointViewingInvite",
+  joint_viewing_accepted: "jointViewingAccepted",
 };
 
 /**
@@ -191,4 +200,6 @@ export const ENRICHED_NOTIFICATION_KEY: Partial<
   followed_episode: { subject: "followedEpisodeSubject" },
   followed_started: { subject: "followedStartedSubject" },
   followed_dropped: { subject: "followedDroppedSubject" },
+  joint_viewing_invite: { subject: "jointViewingInviteSubject" },
+  joint_viewing_accepted: { subject: "jointViewingAcceptedSubject" },
 };

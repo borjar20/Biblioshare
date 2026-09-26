@@ -350,3 +350,95 @@ describe("getFeed — paginación keyset", () => {
     }
   });
 });
+
+describe("getFeed — visionados conjuntos (#1220)", () => {
+  const ANA = "ana";
+  const LUIS = "luis";
+
+  function jointData(extra: { withJointPost?: boolean; hiddenTotal?: number } = {}) {
+    const withJointPost = extra.withJointPost ?? true;
+    return {
+      posts: [
+        ...(withJointPost
+          ? [post("pj", "2026-09-26T12:00:00+00:00", {
+              kind: "joint", source_kind: "joint_viewing", source_id: "jv-1",
+              anchor_type: "movie", anchor_id: FAKE_MOVIE_ID, body: null,
+            })]
+          : []),
+        post("pf", "2026-09-26T11:00:00+00:00", {
+          author_id: ANA, kind: "finished", source_kind: "pass", source_id: "pass-ana",
+          anchor_type: "movie", anchor_id: FAKE_MOVIE_ID, body: null,
+        }),
+      ],
+      passes: [
+        { id: "pass-ana", rating: 8, started_on: null, finished_on: "2026-09-25" },
+        { id: "pass-luis", rating: 6, started_on: null, finished_on: "2026-09-25" },
+      ],
+      passReviews: [
+        { id: "pass-ana", review: "Nos encantó", review_is_spoiler: false },
+        { id: "pass-luis", review: "El final se hace largo", review_is_spoiler: true },
+      ],
+      jointViewings: [{ id: "jv-1", watched_on: "2026-09-25" }],
+      jointMembers: [
+        { viewing_id: "jv-1", user_id: ANA, pass_id: "pass-ana", status: "accepted", responded_at: "2026-09-26T10:00:00+00:00" },
+        { viewing_id: "jv-1", user_id: LUIS, pass_id: "pass-luis", status: "accepted", responded_at: "2026-09-26T10:30:00+00:00" },
+      ],
+      jointCounts: [{ viewing_id: "jv-1", accepted_count: extra.hiddenTotal ?? 2 }],
+    };
+  }
+
+  test("un post joint => tarjeta con la nota y la reseña de cada miembro visible", async () => {
+    const sb = fakeSupabase(jointData());
+    const page = await getFeed(sb.client, VIEWER, {});
+    const joint = personEvents(page.events).find((e) => e.kind === "joint");
+    expect(joint?.verb).toBe("joint");
+    expect(joint?.joint).toEqual({
+      viewingId: "jv-1",
+      watchedOn: "2026-09-25",
+      hiddenCount: 0,
+      members: [
+        expect.objectContaining({ userId: ANA, rating: 8, reviewExcerpt: "Nos encantó", reviewIsSpoiler: false }),
+        expect.objectContaining({ userId: LUIS, rating: 6, reviewExcerpt: "El final se hace largo", reviewIsSpoiler: true }),
+      ],
+    });
+  });
+
+  test("los aceptados que quien mira no ve se cuentan («y N más»), no se nombran", async () => {
+    const sb = fakeSupabase(jointData({ hiddenTotal: 3 }));
+    const page = await getFeed(sb.client, VIEWER, {});
+    const joint = personEvents(page.events).find((e) => e.kind === "joint");
+    expect(joint?.joint?.members).toHaveLength(2);
+    expect(joint?.joint?.hiddenCount).toBe(1);
+  });
+
+  test("el finished suelto de un pase del visionado se oculta en inicio", async () => {
+    const sb = fakeSupabase(jointData());
+    const page = await getFeed(sb.client, VIEWER, {});
+    expect(personEvents(page.events).map((e) => e.postId)).toEqual(["pj"]);
+  });
+
+  test("…pero se queda si quien mira no ve el post conjunto", async () => {
+    const sb = fakeSupabase(jointData({ withJointPost: false }));
+    const page = await getFeed(sb.client, VIEWER, {});
+    expect(personEvents(page.events).map((e) => e.postId)).toEqual(["pf"]);
+  });
+
+  test("…y se queda en el perfil (feed de actor), que es la actividad de esa persona", async () => {
+    const sb = fakeSupabase(jointData());
+    const page = await getFeed(sb.client, VIEWER, { actorId: ANA });
+    expect(personEvents(page.events).map((e) => e.postId)).toContain("pf");
+  });
+
+  test("se piden los posts joint de los visionados en los que están tus seguidos", async () => {
+    const data = jointData();
+    // Un seguido (FAKE_ACTOR_ID) está en el visionado; quien lo creó, no.
+    data.jointMembers.push({ viewing_id: "jv-1", user_id: FAKE_ACTOR_ID, pass_id: "pass-x", status: "accepted", responded_at: "2026-09-26T11:30:00+00:00" });
+    const sb = fakeSupabase(data);
+    await getFeed(sb.client, VIEWER, {});
+    // Los visionados se buscan por los AUTORES del feed (tú + a quién sigues)…
+    expect(sb.inFilters.joint_viewing_members?.user_id).toEqual([VIEWER, FAKE_ACTOR_ID]);
+    expect(sb.eqFilters.joint_viewing_members?.status).toBe("accepted");
+    // …y sus posts joint se piden por visionado, no por autor.
+    expect(sb.inFilters.posts?.source_id).toEqual(["jv-1"]);
+  });
+});
