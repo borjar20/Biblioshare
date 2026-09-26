@@ -261,6 +261,8 @@
     "20260923140000_post_preferences_autopost_watched.sql",
     "20260923150000_hydrate_screens_bulk_no_hydrated_at.sql",
     "20260924120000_movies_series_backdrop_url.sql",
-    "20260925120000_review_is_spoiler.sql"
+    "20260925120000_review_is_spoiler.sql",
+    "20260926120000_joint_viewings_enums.sql",
+    "20260926120100_joint_viewings.sql"
   ]
 }

@@ -1312,3 +1312,13 @@ commit;
 begin;
 \ir migrations/20260925120000_review_is_spoiler.sql
 commit;
+
+-- 20260926120000_joint_viewings_enums
+begin;
+\ir migrations/20260926120000_joint_viewings_enums.sql
+commit;
+
+-- 20260926120100_joint_viewings
+begin;
+\ir migrations/20260926120100_joint_viewings.sql
+commit;

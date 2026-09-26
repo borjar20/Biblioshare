@@ -1,7 +1,7 @@
 "use client";
 import { ReviewContent } from "./review-content";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { Pass, DroppedReason } from "@/lib/passes/types";
@@ -19,6 +19,10 @@ import { ActionMenu } from "@/components/ui/action-menu";
 import { useMentionAutocomplete } from "@/components/social/use-mention-autocomplete";
 import { DroppedReasonFields } from "@/components/detail/dropped-reason-fields";
 import { ReviewSpoilerField } from "@/components/detail/review-spoiler-field";
+import { JointViewingSheet } from "@/components/detail/joint-viewing-sheet";
+import { UserAvatar } from "@/components/social/user-avatar";
+import { loadJointViewingsForPasses } from "@/lib/social/joint-viewing-actions";
+import type { PassJointViewing } from "@/lib/social/joint-viewings";
 
 const initialState: ClosePassState = {};
 
@@ -55,6 +59,28 @@ export function PassDiary({
   editions: Edition[];
 }) {
   const t = useTranslations("passes");
+
+  // Con quién está compartido cada pase terminado (#1220), en UNA llamada por
+  // diario. Se recarga al cerrar la hoja de un pase, por si invitó o se salió.
+  const completedKey = passes
+    .filter((p) => p.status === "completed")
+    .map((p) => p.id)
+    .join(",");
+  const [jointByPass, setJointByPass] = useState<Record<string, PassJointViewing>>({});
+  const reloadJoint = useCallback(() => {
+    if (!completedKey) return;
+    loadJointViewingsForPasses(completedKey.split(",")).then(setJointByPass);
+  }, [completedKey]);
+  useEffect(() => {
+    if (!completedKey) return;
+    let cancelled = false;
+    loadJointViewingsForPasses(completedKey.split(",")).then((map) => {
+      if (!cancelled) setJointByPass(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [completedKey]);
 
   return (
     <div className="flex flex-col">
@@ -111,6 +137,8 @@ export function PassDiary({
                   // Los pases viejos se atenúan (`opacity:.8` del frame): el
                   // de arriba es el que cuenta ahora.
                   isOld={i > 0}
+                  joint={jointByPass[pass.id] ?? null}
+                  onJointChanged={reloadJoint}
                 />
               </li>
             );
@@ -130,6 +158,8 @@ function PassCard({
   deltaLabel,
   deltaUp,
   isOld,
+  joint,
+  onJointChanged,
 }: {
   pass: Pass;
   n: number;
@@ -141,11 +171,15 @@ function PassCard({
   deltaUp: boolean | null;
   /** No es el pase más reciente: se atenúa (`opacity:.8` del frame). */
   isOld: boolean;
+  /** Visionado conjunto del pase (#1220), o null si no está compartido. */
+  joint: PassJointViewing | null;
+  onJointChanged: () => void;
 }) {
   const t = useTranslations("passes");
   const format = useFormatter();
   const accent = MEDIA_ACCENT[itemType];
   const [editing, setEditing] = useState(false);
+  const [jointOpen, setJointOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
   const [rating, setRating] = useState<number | null>(pass.rating);
   const [review, setReview] = useState(pass.review ?? "");
@@ -258,6 +292,17 @@ function PassCard({
           </p>
         )}
 
+      {/* Visionado conjunto (#1220), a la vista y no tras el «···»: sobre un
+          pase terminado, un botón para decir con quién; si ya está compartido,
+          los avatares de quien está (sin los que dijeron «No fui yo»). */}
+      {pass.status === "completed" && (
+        <JointChip
+          itemType={itemType}
+          joint={joint}
+          onOpen={() => setJointOpen(true)}
+        />
+      )}
+
       {/* Editar se queda en línea (es neutro y es lo que se hace a diario);
           borrar se va detrás del «···» (F3-012). Antes los dos eran el mismo
           text-link gris, uno al lado del otro, y el de la derecha borraba el
@@ -295,6 +340,19 @@ function PassCard({
           />
         </div>
       </div>
+
+      {pass.status === "completed" && (
+        <JointViewingSheet
+          passId={pass.id}
+          itemType={itemType}
+          itemId={itemId}
+          open={jointOpen}
+          onClose={() => {
+            setJointOpen(false);
+            onJointChanged();
+          }}
+        />
+      )}
 
       {canEdit && editing && (
         <form
@@ -371,5 +429,62 @@ function PassCard({
         </form>
       )}
     </div>
+  );
+}
+
+function JointChip({
+  itemType,
+  joint,
+  onOpen,
+}: {
+  itemType: ItemType;
+  joint: PassJointViewing | null;
+  onOpen: () => void;
+}) {
+  const t = useTranslations("passes");
+  const others = (joint?.others ?? []).filter((m) => m.status !== "declined");
+  const names = others.map((m) => m.displayName || m.username);
+
+  if (others.length === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="mt-2 flex w-fit items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+      >
+        <span aria-hidden>＋</span>
+        {t(`jointAction.${itemType}`)}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="mt-2 flex w-fit max-w-full items-center gap-2 rounded-full border border-border bg-surface px-1.5 py-1 pr-2.5 text-[11px] text-foreground-soft transition-colors hover:border-accent"
+    >
+      <span className="flex shrink-0 -space-x-1.5">
+        {others.slice(0, 3).map((m) => (
+          <span key={m.userId} className="rounded-full ring-2 ring-surface">
+            <UserAvatar name={m.displayName || m.username} avatarUrl={m.avatarUrl} size={18} />
+          </span>
+        ))}
+      </span>
+      <span className="truncate">
+        {t("jointWith", {
+          names: new Intl.ListFormat("es", { style: "long", type: "conjunction" }).format(
+            names.length > 3
+              ? [...names.slice(0, 2), t("jointMore", { count: names.length - 2 })]
+              : names,
+          ),
+        })}
+      </span>
+      {others.some((m) => m.status === "invited") && (
+        <span className="shrink-0 font-mono text-[9.5px] tracking-wide uppercase text-muted-foreground">
+          {t("jointPending")}
+        </span>
+      )}
+    </button>
   );
 }

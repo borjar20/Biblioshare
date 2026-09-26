@@ -542,7 +542,7 @@
       "label": "components/detail",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Cabecera y pestañas de la ficha de obra; hero con acento por tipo.",
+      "summary": "Hero cinemático único (backdrop TMDB / portada teñida), PassCard, pestañas con CTA pegado; InfoLayout (principal | datos pegajosa) y Episodios PC·1 en tres columnas; contenedor común DETAIL_CONTAINER (1320px).",
       "files": [
         "src/components/detail"
       ]
@@ -1771,6 +1771,17 @@
         "supabase/migrations/20260915145340_admin_content_moderation.sql",
         "supabase/tests/admin_content_moderation.sql"
       ]
+    },
+    {
+      "id": "t-joint-viewings",
+      "label": "joint_viewings · joint_viewing_members",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Visionados conjuntos (#1220): una obra vista/leída con seguidos mutuos. Cada miembro enlaza SU pase (pass_id, único); la nota y la reseña siguen en el pase. Escritura solo por create_/respond_/leave_joint_viewing; el post `joint` lo publica respond_joint_viewing.",
+      "gotchas": [
+        "Menos de dos aceptados ⇒ un trigger retira el post `joint` (y el visionado si no queda nadie). Borrar un pase saca a su dueño (cascade).",
+        "«y N más» sale de joint_viewing_accepted_counts (definer, solo números): la RLS de miembros no deja ver a quien no puedes ver."
+      ]
     }
   ],
   "edges": [
@@ -2928,6 +2939,16 @@
       "from": "r-moderation-audio",
       "to": "t-moderation",
       "kind": "auth"
+    },
+    {
+      "from": "m-social",
+      "to": "t-joint-viewings",
+      "kind": "reads"
+    },
+    {
+      "from": "a-social",
+      "to": "t-joint-viewings",
+      "kind": "writes"
     }
   ],
   "flows": [
@@ -4038,6 +4059,53 @@
           "node": "r-moderation-audio",
           "action": "Comprobar permisos actuales al reproducir audio; evidencia solo administrativa",
           "file": "src/app/api/admin/voice-notes/[id]/route.ts"
+        }
+      ]
+    },
+    {
+      "id": "flow-joint-viewing",
+      "name": "Visionado conjunto: etiquetar, aceptar y tarjeta de feed",
+      "category": "social",
+      "summary": "Etiquetar a seguidos mutuos en un pase terminado; cada invitado acepta enlazando su pase; la base publica un post `joint` y el feed de inicio lo pinta ocultando los `finished` sueltos.",
+      "entrypoint": "src/lib/social/joint-viewing-actions.ts",
+      "steps": [
+        {
+          "node": "c-detail",
+          "action": "«La vi con…» en el «···» de un pase terminado del diario",
+          "file": "src/components/detail/joint-viewing-sheet.tsx"
+        },
+        {
+          "node": "a-social",
+          "action": "createJointViewing → rpc create_joint_viewing (mutuos, pase propio completado)",
+          "file": "src/lib/social/joint-viewing-actions.ts"
+        },
+        {
+          "node": "t-joint-viewings",
+          "action": "Visionado + miembros (creador aceptado, invitados)"
+        },
+        {
+          "node": "m-social",
+          "action": "notifyMany joint_viewing_invite → /juntos/[id]",
+          "file": "src/lib/social/notifications.ts"
+        },
+        {
+          "node": "a-social",
+          "action": "respondJointViewing: elige o crea el pase (applyTransition) y rpc respond_joint_viewing",
+          "file": "src/lib/social/joint-viewing-actions.ts"
+        },
+        {
+          "node": "t-joint-viewings",
+          "action": "La base inserta el post `joint` (autor = creador, fuente = visionado)"
+        },
+        {
+          "node": "m-social",
+          "action": "getFeed pide los posts joint de los visionados de tus seguidos, los pinta con resolveJointCards y oculta los finished enlazados",
+          "file": "src/lib/social/feed.ts"
+        },
+        {
+          "node": "c-social",
+          "action": "JointCard: una fila por miembro visible + «y N más»",
+          "file": "src/components/social/joint-card.tsx"
         }
       ]
     }

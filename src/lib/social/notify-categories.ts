@@ -20,6 +20,7 @@ export const CATEGORY_FOR_POST_KIND: Record<PostKind, NotifyCategory> = {
   progressed: "progress",
   watched: "progress",
   thought: "thought",
+  joint: "milestone",
 };
 
 // Record (no Partial) a propósito, igual que NOTIFICATION_CATEGORY en push:
@@ -32,6 +33,11 @@ export const POST_KIND_NOTIFICATION_TYPE: Record<PostKind, NotificationType> = {
   started: "followed_started",
   dropped: "followed_dropped",
   thought: "followed_thought",
+  // El post conjunto NO pasa por `createPost` (lo inserta la función SQL
+  // `respond_joint_viewing`), así que no hay aviso a seguidores y este mapeo no
+  // se emite hoy. Apunta a su propio tipo para no romper la regla de arriba (un
+  // kind, un texto); si algún día se avisa a seguidores, necesitará uno nuevo.
+  joint: "joint_viewing_accepted",
 };
 
 const VALID = new Set<string>(NOTIFY_CATEGORIES);

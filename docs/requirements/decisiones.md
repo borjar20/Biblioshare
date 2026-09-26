@@ -5257,3 +5257,39 @@ Revisión del feed de clubes en móvil (390px).
   compositor de comentario raíz se apila en móvil (botón debajo), igual que ya hacía `compact`.
   El compositor de post de club gana contador y `maxLength` 5000 (espejo del CHECK de BD).
 - **Tarjeta de post de club con avatar + hora**, como las tarjetas del feed de Inicio.
+
+## 2026-09-26 — Visionados conjuntos: un post propio del visionado, no agrupar los «terminado» (#1220)
+
+Un usuario marca que vio (o leyó) una obra con otros; el feed enseña UNA tarjeta con la nota y la
+reseña de cada uno. Decisiones de producto del dueño: solo **seguidos mutuos**, **todos los tipos
+de obra**, el `finished` suelto **se oculta** y quien no puede ver a un miembro ve **«y N más»**.
+
+- **Cada miembro conserva SU pase.** El visionado (`joint_viewings` + `joint_viewing_members`) solo
+  enlaza pases: la nota y la reseña siguen siendo del pase (data-model §3). Un pase, como mucho un
+  visionado (índice único).
+- **Un post `joint` por visionado, no agrupación de presentación.** Agrupar los `finished` sueltos
+  chocaba con el orden por publicación: cada miembro reseña en un momento distinto y el grupo
+  quedaría partido entre páginas —lo mismo que dejó muerto `group-feed-entries.ts` (#731/#814)—.
+  Un post es una tarjeta y el cursor keyset sigue siendo trivial. Lo publica la base
+  (`respond_joint_viewing`) al primer «aceptar», porque su autor (quien creó el visionado) no es
+  quien acepta y la policy de insert de `posts` exige autor = `auth.uid()`.
+- **Consentimiento:** etiquetar no mete a nadie en nada. El invitado acepta (y elige cuál de sus
+  pases es, o crea uno por la máquina de estados) o dice «No fui yo»; la fila `declined` se queda
+  para que no se le pueda volver a invitar al mismo visionado.
+- **Seguidos mutuos en la base**, no solo en el selector: `create_joint_viewing` comprueba los dos
+  `follows` aceptados y el bloqueo, todo o nada.
+- **Ocultar el `finished` solo si quien mira VE el post conjunto.** Si el perfil de quien creó el
+  visionado es privado para él, el post conjunto no le llega y ocultar el `finished` le escondería
+  una reseña que sí puede leer. Solo en Inicio: en el perfil (feed de actor) y en el filtro
+  «Reseñas» el `finished` se queda. Se filtra tras leer la página, como ya hace «Reseñas» con los
+  terminados sin texto: una página puede salir algo más corta, el cursor sigue siendo exacto.
+- **Los posts `joint` se piden aparte** (visionados con algún aceptado entre los autores del feed,
+  los 200 más recientes) y se funden con los de los autores: la unión de los N primeros de cada
+  consulta contiene los N primeros del total.
+- **«y N más» sin identidades:** `joint_viewing_accepted_counts` (definer) devuelve solo números, y
+  solo de visionados que quien llama puede ver.
+- **Menos de dos aceptados = no hay «juntos»:** un trigger retira el post conjunto, y el visionado
+  entero si no queda nadie. Borrar el pase saca a su dueño (cascade).
+- **Nada se cachea** (regla #437): todo depende de quién mira.
+- **Sin aviso a seguidores** del post conjunto: no pasa por `createPost`. Los avisos son la
+  invitación (`joint_viewing_invite`) y la confirmación a quien invitó (`joint_viewing_accepted`).
