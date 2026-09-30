@@ -241,7 +241,7 @@ describe("addSession · la sesión y el cambio de estado son la misma lectura (#
     });
   });
 
-  it("askResume no escribe nada: la sesión se queda en el pase de siempre (#737)", async () => {
+  it("askResume devuelve la pregunta antes de escribir sesión, cursor o notas (#737)", async () => {
     mocks.getActivePass.mockResolvedValue({
       id: PASE_VIEJO,
       status: "dropped",
@@ -252,10 +252,84 @@ describe("addSession · la sesión y el cambio de estado son la misma lectura (#
     const escrituras: Escritura[] = [];
     mocks.createClient.mockResolvedValue(fakeClient(escrituras));
 
-    await addSession(PASE_VIEJO, "book", "libro-1", {}, form({ status: "in_progress", page: "42" }));
+    const result = await addSession(
+      PASE_VIEJO,
+      "book",
+      "libro-1",
+      {},
+      form({ status: "in_progress", page: "42" }),
+    );
 
+    expect(result).toEqual({ askResume: true });
+    expect(escrituras).toEqual([]);
+  });
+
+  it("continuar guarda la sesión y el cursor en el pase abandonado reabierto", async () => {
+    mocks.getActivePass.mockResolvedValue({
+      id: PASE_VIEJO,
+      status: "dropped",
+      position: { page: 40, format: "paperback" },
+      editionId: null,
+    });
+    mocks.applyTransition.mockResolvedValue({
+      kind: "done",
+      passId: PASE_VIEJO,
+      closed: false,
+      created: false,
+    });
+    const escrituras: Escritura[] = [];
+    mocks.createClient.mockResolvedValue(fakeClient(escrituras));
+
+    const result = await addSession(
+      PASE_VIEJO,
+      "book",
+      "libro-1",
+      {},
+      form({ status: "in_progress", resumeMode: "continue", page: "42" }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.applyTransition).toHaveBeenCalledWith(
+      expect.anything(), "usuario", "book", "libro-1", "in_progress", "continue",
+    );
     expect(escrituraEn(escrituras, "progress_sessions")?.payload).toMatchObject({
       pass_id: PASE_VIEJO,
+    });
+    expect(escrituraEn(escrituras, "passes")?.payload).toEqual({
+      position: { page: 42, format: "paperback" },
+    });
+  });
+
+  it("empezar de cero guarda sesión y notas en el pase nuevo", async () => {
+    mocks.getActivePass.mockResolvedValue({
+      id: PASE_VIEJO,
+      status: "dropped",
+      position: { page: 40, format: "paperback" },
+      editionId: null,
+    });
+    mocks.applyTransition.mockResolvedValue({
+      kind: "done",
+      passId: PASE_NUEVO,
+      closed: false,
+      created: true,
+    });
+    const escrituras: Escritura[] = [];
+    mocks.createClient.mockResolvedValue(fakeClient(escrituras));
+    const fd = form({ status: "in_progress", resumeMode: "restart", page: "42" });
+    fd.append("noteIds", "nota-1");
+
+    const result = await addSession(PASE_VIEJO, "book", "libro-1", {}, fd);
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.applyTransition).toHaveBeenCalledWith(
+      expect.anything(), "usuario", "book", "libro-1", "in_progress", "restart",
+    );
+    expect(escrituraEn(escrituras, "progress_sessions")?.payload).toMatchObject({
+      pass_id: PASE_NUEVO,
+    });
+    expect(escrituraEn(escrituras, "notes")?.payload).toMatchObject({
+      pass_id: PASE_NUEVO,
+      session_id: "sesion-1",
     });
   });
 

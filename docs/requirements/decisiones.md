@@ -5435,3 +5435,14 @@ hidratadores fill-only no lo sustituyen. La ausencia de `repr_meta.author` sigue
 significando «autor desconocido» y permite rellenarlo desde proveedor; no se hace
 backfill retrospectivo porque los vaciados históricos no se pueden distinguir de
 los autores nunca conocidos.
+
+## 2026-09-30 — #737: reanudar una sesión exige elección de la persona
+
+Al registrar progreso sobre un pase sustituido no se infiere «continuar» o
+«reiniciar» por fecha, página, minutos ni estado. La acción devuelve `askResume`
+antes de escribir sesiones, cursor, episodios, notas o publicaciones; la hoja
+conserva el borrador y pregunta. Continuar escribe en el pase original. Reiniciar
+archiva ese pase, crea uno nuevo y dirige todas esas escrituras al nuevo. Cancelar
+la pregunta tampoco reenvía la acción. Las notas del Cuaderno se guardan por su
+propio flujo durante la edición; esta garantía se limita a que `addSession` no
+escribe antes de la elección.

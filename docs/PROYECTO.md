@@ -47,6 +47,9 @@ con i18n (`next-intl`) desde el inicio.
   Transiciones por `planTransition`/`applyTransition` (una sola máquina de estados).
 - **Sesiones de progreso** (`progress_sessions`): registro con modal de ruta
   interceptada (`/sesion/[passId]`, slot `@modal`), cronómetro nativo en Android.
+  #737 conserva el borrador ante un pase
+  sustituido y pregunta si se continúa el pase original o se reinicia en uno
+  nuevo; en el segundo caso vuelve a la ficha sin mostrar un 404 transitorio.
 - **Episodios de serie** (`episode_watches`): marcar/puntuar por episodio, rail de
   temporadas, auto-avance de posición.
 - **Colección** (`/coleccion`): pestañas Todo / Colecciones / Sagas; filtros;

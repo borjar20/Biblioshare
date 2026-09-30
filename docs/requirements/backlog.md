@@ -164,6 +164,10 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#737 — decidir cómo reanudar una sesión.** La hoja conserva el borrador,
+  permite continuar el pase o reiniciarlo y dirige al nuevo pase tras reiniciar;
+  unitarios y recorridos de navegador focalizados verificados el 2026-09-30.
+
 - [x] **#870 — vaciado manual de autor en libros.** `repr_meta.author.source='manual'`
   preserva la curación frente a los dos hidratadores; migración y regresión SQL verificadas
   en dev y definiciones/ACL comprobadas en producción el 2026-09-30.
