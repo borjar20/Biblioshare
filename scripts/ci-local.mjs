@@ -14,7 +14,12 @@ const commands = {
 };
 if (!commands[mode]) throw new Error('Expected build or smoke');
 const result = spawnSync(process.execPath, commands[mode], {
-  stdio: 'inherit',
+  // The abandoned-stream regression (#754) leaves the browser healthy while
+  // Next rejects a late request API on the server. A green browser exit alone
+  // cannot detect it; inspect the webServer output as well.
+  stdio: mode === 'smoke' ? ['inherit', 'pipe', 'pipe'] : 'inherit',
+  encoding: 'utf8',
+  maxBuffer: 10 * 1024 * 1024,
   env: { ...process.env,
     NEXT_PUBLIC_SUPABASE_URL: status.API_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: status.ANON_KEY,
@@ -23,8 +28,22 @@ const result = spawnSync(process.execPath, commands[mode], {
     // Local fixtures shared by the test runner and its Next.js subprocess.
     CRON_SECRET: 'ci-letterboxd-fixture-only',
     TMDB_API_KEY: 'ci-letterboxd-fixture-only',
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/archive-tmdb.cjs`.trim(),
+    DETAIL_NOTES_NAMESPACE: String(Date.now()),
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/detail-notes-provider.cjs`.trim(),
   },
 });
 if (result.error) throw result.error;
-process.exitCode = result.status ?? 1;
+if (mode === 'smoke') {
+  process.stdout.write(result.stdout ?? '');
+  process.stderr.write(result.stderr ?? '');
+  const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+  const lateRequestApi = /Route \/(?:libro|pelicula|serie)\/\[id\] used `(connection|cookies)\(\)` inside `after\(\)` while rendering/;
+  if (lateRequestApi.test(output)) {
+    process.stderr.write('FAIL: a detail renderer read request data after its response closed (#754).\n');
+    process.exitCode = 1;
+  } else {
+    process.exitCode = result.status ?? 1;
+  }
+} else {
+  process.exitCode = result.status ?? 1;
+}

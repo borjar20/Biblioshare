@@ -171,8 +171,15 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 - [x] **#1249 — remediación de auditoría de dependencias.** Vitest 4.1.11 y
   cierres de Browserslist/Baseline/Nanoid verificados con `npm ci`, auditoría
-  npm a cero, unitarios, build y smoke funcional local. La PR de esta
-  remediación sigue por crear; no se declara integrada todavía.
+  npm a cero, unitarios, build y smoke funcional local. La PR #1258 se mergeó
+  en `72ae013`; la issue está cerrada y la auditoría de GitHub abierta quedó a
+  cero.
+
+- [x] **#754 — notas de ficha fuera de `after()` durante el streaming.** La
+  consulta se inicia antes de `after()` y su promesa llega a `NotesSection`;
+  el build de producción local, tres unitarios y el smoke de seis rutas
+  verificaron el recorrido, incluida la privacidad de notas y una salida
+  temprana.
 
 - [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
   corrección existente de #833: sin overflow a 390 px antes y después de buscar

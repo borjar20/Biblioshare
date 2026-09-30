@@ -5480,3 +5480,16 @@ la versión vigente de jsdom. `.nvmrc` (22.23.1) y CI (línea 22) quedan dentro;
 Node 23 queda deliberadamente fuera. La comprobación con Node 24.19.0 acredita
 el candidato en esta máquina, sin cambiar el runtime global ni las dependencias
 nativas de Capacitor.
+
+## 2026-10-01 — #754: la promesa de notas nace antes de `after()`
+
+Cada uno de los tres padres de la ficha inicia la consulta de notas después de
+`notFound()` y antes de `after()`, con su propio cliente de servidor y el
+`user.id` de la petición. La misma promesa se propaga por `Tabs` hasta
+`NotesSection`, que no crea otro cliente ni introduce caché. El `catch`
+temprano observa un rechazo sin sustituir la promesa, para que el renderer
+conserve el error original.
+
+La decisión evita que una lectura dependiente de petición se inicie cuando la
+respuesta ya se ha cerrado. No atribuye una mejora al lector estable ni una fuga
+de ALS: esas hipótesis no se probaron.

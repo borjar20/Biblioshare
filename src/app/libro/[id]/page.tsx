@@ -71,6 +71,7 @@ import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { NotesSection } from "@/components/notes/notes-section";
+import { getNotesForItem } from "@/lib/notes/get-notes";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
@@ -137,6 +138,16 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   ]);
 
   if (!book) notFound();
+
+  // Debe empezar durante el render y antes de cualquier `after()`: NotesSection
+  // ya no construye un cliente tardío cuando se resuelva el límite de Tabs.
+  const notesPromise = user
+    ? getNotesForItem(supabase, user.id, "book", book.id)
+    : null;
+  // Puede rechazar antes de que el límite de Tabs alcance NotesSection. Este
+  // consumidor sólo marca el rechazo como atendido; la promesa original sigue
+  // viajando a NotesSection y allí se propaga al renderer.
+  void notesPromise?.catch(() => undefined);
 
   // Invitación a un visionado conjunto de esta obra sin contestar (#1224): se
   // lanza ya y se espera antes de pintar, en paralelo con lo del hero. Un fallo
@@ -324,6 +335,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             <BookTabs
               book={book}
               userId={user?.id ?? null}
+              notesPromise={notesPromise}
               ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
@@ -339,11 +351,13 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 async function BookTabs({
   book,
   userId,
+  notesPromise,
   ratingSummary,
   cerrar,
 }: {
   book: BookRow;
   userId: string | null;
+  notesPromise: ReturnType<typeof getNotesForItem> | null;
   ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
@@ -646,7 +660,7 @@ async function BookTabs({
             initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />
-          {userId && <NotesSection userId={userId} itemType="book" itemId={book.id} />}
+          {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}
         </div>
       }
     />
