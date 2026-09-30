@@ -109,7 +109,7 @@ test("R4b interfaz: comparar copias, equipar, efecto real y entrenamiento sin bo
   await page.setViewportSize({width:390,height:844});
   await page.goto("/login?next=/mascota");
   await page.locator('input[name="email"]').fill(user.email);await page.locator('input[name="password"]').fill(user.password);
-  await page.locator('button[type="submit"]').click();await expect(page).toHaveURL(/\/mascota$/,{timeout:30000});
+  await page.locator('button[type="submit"]').click();await page.waitForURL((url)=>url.pathname==="/mascota"&&url.search==="",{timeout:30_000});
   // El equipo vive en Personaje desde #1166: la Mochila dejó de ser destino.
   await page.getByRole("navigation",{name:"Navegación de la mascota"}).getByRole("button",{name:"Personaje",exact:true}).click();
   await expect(page).toHaveURL(/\/mascota\?view=character$/);
