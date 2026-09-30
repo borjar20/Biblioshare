@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import styles from "./stage.module.css";
 import { buzz, wheelSectors, wheelTargetAngle } from "./stage-helpers";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
@@ -35,6 +35,7 @@ export function PlayersWheel({
   label,
   disabled,
   hint,
+  announcement,
 }: {
   players: string[];
   spin: { id: string; picked: string } | null;
@@ -42,6 +43,7 @@ export function PlayersWheel({
   label: string;
   disabled: boolean;
   hint: string;
+  announcement?: ReactNode;
 }) {
   const reduced = useReducedMotion();
   const [rotation, advanceRotation] = useReducer(nextRotation, 0);
@@ -112,14 +114,14 @@ export function PlayersWheel({
           </svg>
         </span>
       </button>
-      <div aria-live="polite" className={styles.resultZone}>
-        {landed && spin ? (
-          <p className={`${styles.pop} font-serif text-[24px] font-semibold`} data-testid="players-result">
+      <div aria-live="polite" data-testid="players-result" className={styles.resultZone}>
+        {announcement ?? (landed && spin ? (
+          <p className={`${styles.pop} font-serif text-[24px] font-semibold`}>
             {spin.picked}
           </p>
         ) : !spin ? (
           <p className="text-[14px] text-muted-foreground">{hint}</p>
-        ) : null}
+        ) : null)}
       </div>
     </div>
   );

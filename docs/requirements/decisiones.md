@@ -5393,3 +5393,12 @@ una gramática en la referencia consultada; no se exige una longitud exacta de
 caracteres y estaban dentro del conjunto. Se conservan autenticación e
 idempotencia. Validar la forma no prueba existencia ni evita muchas altas con
 cadenas admisibles: esa admisión se rastrea por separado en #1237.
+
+## 2026-09-30 — Play: nombres, región de anuncios y aterrizaje
+
+Los fondos nombran su color y el input de caras usa un nombre distinto del chip
+(#951, #992). Los tres resultados de Jugadores comparten una región viva estable
+en la ruleta, insertando solo el contenido (#988). La animación de dados/monedas
+se reinicia al cambiar de ID, incluso al restaurar una tirada, y movimiento
+reducido conserva su resolución inmediata (#991). Los tests de regiones vivas
+cuentan solo las visibles cuando Next conserva rutas ocultas (#1003).

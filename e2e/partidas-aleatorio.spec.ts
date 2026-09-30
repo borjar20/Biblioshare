@@ -48,6 +48,22 @@ test("dados y moneda: resultado, feed, deshacer y recarga", async ({ page }) => 
   await expect(page.locator('section[aria-label="Últimos resultados"] li')).toHaveCount(2);
 });
 
+test("deshacer una tirada en animación mantiene oculto el resultado restaurado", async ({ page }) => {
+  await page.goto("/partidas/aleatorio");
+  const result = page.getByTestId("dice-result");
+
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
+  await expect(result).toBeVisible();
+
+  await page.getByRole("button", { name: "Tirar el dado" }).click();
+  await expect(result).toHaveCount(0);
+  await page.getByRole("button", { name: /^deshacer$/i }).click();
+
+  // Volver a una tirada anterior crea una animación nueva: no puede reutilizar
+  // el aterrizaje que había completado antes del segundo lanzamiento.
+  await expect(result).toHaveCount(0, { timeout: 300 });
+});
+
 test("jugadores: primero, orden y equipos", async ({ page }) => {
   await page.goto("/partidas/aleatorio");
   await page.getByRole("tab", { name: "Jugadores" }).click();
@@ -60,15 +76,26 @@ test("jugadores: primero, orden y equipos", async ({ page }) => {
     await page.getByLabel("Nombre del jugador").press("Enter");
   }
 
+  const wheelStage = page.getByRole("button", { name: "Primer jugador" }).locator("xpath=..");
+  const liveRegion = wheelStage.getByTestId("players-result");
+  await expect(wheelStage.locator('[aria-live="polite"]')).toHaveCount(1);
+  await liveRegion.evaluate((element) => element.setAttribute("data-playwright-stable-region", "yes"));
+
   await page.getByRole("button", { name: /^primer jugador$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText(/Ana|Beto|Carla|Dario/);
+  await expect(liveRegion).toContainText(/Ana|Beto|Carla|Dario/);
 
   await page.getByRole("button", { name: /^orden aleatorio$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText("1.");
+  await expect(liveRegion).toContainText("1.");
+  await expect(liveRegion).toHaveAttribute("data-playwright-stable-region", "yes");
+  await expect(wheelStage.locator('[aria-live="polite"]')).toHaveCount(1);
+  for (const name of ["Ana", "Beto", "Carla", "Dario"]) await expect(liveRegion).toContainText(name);
 
   await page.getByRole("group", { name: "Número de equipos" }).getByRole("button", { name: "2", exact: true }).click();
   await page.getByRole("button", { name: /^equipos$/i }).click();
-  await expect(page.getByTestId("players-result")).toContainText("Equipo 1");
+  await expect(liveRegion).toContainText("Equipo 1");
+  await expect(liveRegion).toHaveAttribute("data-playwright-stable-region", "yes");
+  await expect(wheelStage.locator('[aria-live="polite"]')).toHaveCount(1);
+  for (const name of ["Ana", "Beto", "Carla", "Dario"]) await expect(liveRegion).toContainText(name);
 });
 
 test("bolsa sin reemplazo se agota, se desactiva y se reinicia", async ({ page }) => {
