@@ -16,6 +16,7 @@ const versions = sql('select version from supabase_migrations.schema_migrations 
 assert.equal(stamp.migrations.length, loadPlan().length);
 assert.deepEqual(versions, stamp.migrations.map((migration) => migration.version));
 sql(readFileSync(join(repoRoot, 'scripts/db/verify.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/hydrate_screen_permissions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/pass_interaction_hrefs.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_technical_gate.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'));

@@ -5355,3 +5355,12 @@ aunque no tuviera actividad. Se decidió sobre una maqueta de antes/después (pr
   fila de cada miembro, y las filas pierden las divisorias.
 - Fuera de este cambio: unir «empezó» + «valoró» de la misma obra cuando llegan seguidos
   (propuesta 3) y la tira horizontal de hitos de varias personas (propuesta 5): issue #1226.
+
+## 2026-09-30 — #1204: permisos explícitos de hidratación de pantalla
+
+Se revoca EXECUTE de PUBLIC y anon en las dos firmas actuales con backdrop_url,
+con grants explícitos para authenticated y service_role. Se conservan firmas y
+cuerpos; el rechazo anónimo ocurre antes del guard auth.uid(). Es compatible
+con el código publicado, que programa hidratación solo con sesión. Dev primero
+con prueba transaccional por roles, prod después con comprobación de ACL efectiva.
+La regresión SQL queda en el gate DB normal y en el replay local de 265 pasos.
