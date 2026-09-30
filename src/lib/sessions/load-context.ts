@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { itemHref } from "@/lib/catalog/item-href";
 import { parsePosition, type Position } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
@@ -51,9 +51,7 @@ export function parseMinutes(raw: string | undefined): number | null {
 // la pinta como modal: ninguna de las dos duplica esta lógica.
 export async function loadSessionContext(passId: string): Promise<SessionContext> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   // El pase es el hub (§Tarea 7): la obra vive en el propio pase.

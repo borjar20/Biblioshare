@@ -164,6 +164,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#895 — cliente SSR de Supabase en tiempo de petición.** El límite central
+  espera `connection()` antes de cookies y de construir el cliente; comprobado en
+  dev sobre seis rutas autenticadas y dos públicas el 2026-09-30; build final
+  verificado con prerender parcial conservado en esas páginas.
+
 - [x] **#696 — continuidad de bloque de saga tras una ventana.** El timeline
   separa el tramo posterior con la misma etiqueta y acento, marcado «(cont.)»;
   504 pruebas de saga y navegador focalizado en móvil/escritorio verificados el

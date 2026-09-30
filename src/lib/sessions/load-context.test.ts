@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  getCurrentUser: vi.fn(),
   notFound: vi.fn(),
   redirect: vi.fn(),
   getActivePass: vi.fn(),
   getEditions: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: mocks.createClient,
+  getCurrentUser: mocks.getCurrentUser,
+}));
 vi.mock("next/navigation", () => ({
   notFound: mocks.notFound,
   redirect: mocks.redirect,
@@ -35,7 +39,6 @@ function navigationThatThrows() {
 
 function clientFor(passRow: { id: string; item_type: "book"; item_id: string } | null) {
   return {
-    auth: { getUser: async () => ({ data: { user: { id: "usuario" } } }) },
     from(table: string) {
       const builder = {
         select: () => builder,
@@ -63,6 +66,7 @@ beforeEach(() => {
   mocks.createClient.mockResolvedValue(clientFor({
     id: PASS_ID, item_type: "book", item_id: ITEM_ID,
   }));
+  mocks.getCurrentUser.mockResolvedValue({ id: "usuario" });
   mocks.getEditions.mockResolvedValue([]);
 });
 
@@ -100,5 +104,30 @@ describe("loadSessionContext (#737)", () => {
       itemId: ITEM_ID,
       position: { page: 20 },
     });
+  });
+
+  it("mantiene el filtro del dueño al cargar el pase", async () => {
+    const eqCalls: Array<[string, unknown]> = [];
+    const client = clientFor({ id: PASS_ID, item_type: "book", item_id: ITEM_ID }) as {
+      from(table: string): { eq(column: string, value: unknown): unknown };
+    };
+    const originalFrom = client.from;
+    client.from = (table: string) => {
+      const builder = originalFrom(table);
+      const originalEq = builder.eq.bind(builder);
+      builder.eq = (column: string, value: unknown) => {
+        if (table === "passes") eqCalls.push([column, value]);
+        return originalEq(column, value);
+      };
+      return builder;
+    };
+    mocks.createClient.mockResolvedValue(client);
+    mocks.getActivePass.mockResolvedValue({
+      id: PASS_ID, status: "in_progress", position: { page: 20 }, editionId: null,
+    });
+
+    await loadSessionContext(PASS_ID);
+
+    expect(eqCalls).toContainEqual(["user_id", "usuario"]);
   });
 });

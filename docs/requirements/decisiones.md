@@ -5456,3 +5456,19 @@ tras la ventana hay una entrada o tándem, por lo que ventanas consecutivas sin
 obra entre ellas permanecen en el mismo tramo. Las ramas sueltas se anclan al
 último segmento del grupo con `findLast`, ya que el mismo grupo puede reaparecer
 después de la división.
+
+## 2026-09-30 — #895: el cliente SSR se construye tras el límite de petición
+
+`createClient()` espera `connection()` antes de leer cookies y de construir el
+cliente SSR. El disparador observado no fue la consulta de token ni una llamada
+de datos: el callback asíncrono de sesión ya se encola al construir ese cliente,
+antes de la primera llamada a auth o a una consulta. Por eso una guarda previa
+solo en helpers fue insuficiente: un acierto de caché de auth no protege todos
+los constructores. `skipAutoInitialize` no convierte el constructor en inocuo;
+el evento asíncrono sigue ocurriendo.
+
+El cliente público y el token conservan su contrato. `cache()` de React sigue
+deduplicando solo dentro de cada petición y no se sustituye por `use cache` para
+datos sujetos a RLS. La frontera de petición no pretende cuantificar una mejora
+de rendimiento ni afirma que todas las rutas hubieran perdido antes su shell
+estático.
