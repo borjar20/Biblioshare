@@ -9,8 +9,10 @@ Android vía Capacitor.
 
 ## Arranque
 
-Node **22.23.1** (está en `.nvmrc`; el shell suele arrancar en otra versión, así que
-`fnm use` antes de nada).
+Node **22.22.2+ de la línea 22**, **24.15.0+ de la 24** o **26+**
+(`^22.22.2 || ^24.15.0 || >=26.0.0`). `.nvmrc` fija **22.23.1** y la CI usa
+esa línea, ambas compatibles; Node 23 queda fuera del rango de jsdom. El shell
+suele arrancar en otra versión, así que `fnm use` antes de nada.
 
 ```bash
 npm install
@@ -23,7 +25,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` | Servidor de desarrollo |
 | `npm run build` / `start` | Build de producción y arranque |
 | `npm run lint` | ESLint |
-| `npm test` | Vitest (unidad) — **requiere Node 22** |
+| `npm test` | Vitest (unidad) — requiere una versión admitida de Node |
 | `npm run test:e2e` | Playwright (e2e) — necesita un servidor levantado; reutiliza el que haya |
 
 ## Documentación
