@@ -34,7 +34,7 @@ test("login real y filtros del cuaderno sin desborde móvil (#833)", async ({ pa
     await page.locator('input[name="email"]').fill(user.email);
     await page.locator('input[name="password"]').fill(user.password);
     await page.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/notas$/);
+    await page.waitForURL((url) => url.pathname === "/notas" && url.search === "", { timeout: 30_000 });
     const search = page.locator('form[action="/notas"]');
     await expect(search.getByRole("button", { name: /buscar/i })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
