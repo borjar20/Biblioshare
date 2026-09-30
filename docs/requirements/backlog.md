@@ -185,7 +185,7 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   token sintético de TMDB recibe un namespace por ejecución, compartido con la
   fixture de notas, para que la caché de Next no reutilice una respuesta de una
   pasada anterior. La evidencia 7/7 pertenece a la integración local de #1250;
-  el candidato aislado queda pendiente de su ejecución de CI.
+  las comprobaciones del candidato aislado están en PR #1261.
 
 - [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
   corrección existente de #833: sin overflow a 390 px antes y después de buscar
