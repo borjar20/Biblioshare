@@ -2,10 +2,13 @@ import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { Database } from "./database.types";
 
-// Un cliente NUEVO por llamada, igual que siempre. Construirlo no cuesta red:
-// lo caro es `auth.getUser()`, y eso sí se memoiza abajo.
+// Un cliente NUEVO por llamada, igual que siempre. El SDK SSR programa
+// `INITIAL_SESSION` al construirse y ese evento consulta el reloj aunque aún
+// no haya `auth.getUser()` ni una query. La frontera debe preceder al
+// constructor, no solo a quienes llaman a auth después.
 //
 // Se intentó envolver esto también en `cache()` y se dio marcha atrás. Motivo
 // honesto: durante esa prueba `e2e/happy-path.spec.ts` salió en rojo (`/u/...`
@@ -18,6 +21,11 @@ import type { Database } from "./database.types";
 // paralelo. Si alguien quiere volver a intentarlo, que aísle primero las dos
 // variables; hay contexto en el issue #283.
 export async function createClient() {
+  // `createServerClient` se suscribe a auth y encola INITIAL_SESSION. En PPR,
+  // ese callback puede ejecutar Date.now() más tarde, fuera del consumidor que
+  // creó el cliente. Esperar aquí asegura que cada cliente con cookies nace
+  // tras una petición real, antes de cookies, el constructor y sus callbacks.
+  await connection();
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
@@ -112,6 +120,8 @@ export function createTokenClient(accessToken: string) {
 // `user` de la sesión — ese no está verificado por el servidor de auth y para
 // eso está `getCurrentUser()`.
 export const getAccessToken = cache(async (): Promise<string | null> => {
+  // createClient ya cruza la frontera antes de construir el SDK y de encolar
+  // INITIAL_SESSION; mantenerla central evita confiar en un hit de cache().
   const supabase = await createClient();
   const {
     data: { session },
@@ -134,6 +144,7 @@ export const getAccessToken = cache(async (): Promise<string | null> => {
 // Usa esto en vez de `supabase.auth.getUser()` en componentes de servidor.
 export const getCurrentUser = cache(async () => {
   // Cliente propio: el que se comparte es el RESULTADO, no la instancia.
+  // createClient cruza la frontera antes de que auth pueda encolar trabajo.
   const supabase = await createClient();
   const {
     data: { user },

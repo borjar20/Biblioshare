@@ -130,7 +130,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-09-30",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30; el resto conserva las fuentes anteriores",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -1210,7 +1210,8 @@
       "gotchas": [
         "NO llames a supabase.auth.getUser() en un componente de servidor: usa getCurrentUser(). auth.getUser() es una llamada de RED a /auth/v1/user, no un decode local del JWT, y AppShell ya la hace en cada ruta. Repetirla duplicaba el viaje antes del primer byte (issue #283).",
         "createClient y getCurrentUser van envueltos en cache() de React: memoizan POR PETICION, no entre peticiones. No lo uses para cachear datos entre usuarios.",
-        "src/proxy.ts verifica con auth.getClaims() antes del render (#929). Con firma asimétrica evita /auth/v1/user; los tokens caducados y firmas simétricas todavía pueden requerir red. Conserva cookies y cabeceras anticaché también en redirects."
+        "src/proxy.ts verifica con auth.getClaims() antes del render (#929). Con firma asimétrica evita /auth/v1/user; los tokens caducados y firmas simétricas todavía pueden requerir red. Conserva cookies y cabeceras anticaché también en redirects.",
+        "#895: createClient debe esperar connection() ANTES de cookies y de construir el cliente SSR. El callback asíncrono de sesión se encola ya en el constructor, antes de auth o consultas; una guarda solo en helpers y skipAutoInitialize no lo evitan."
       ]
     },
     {

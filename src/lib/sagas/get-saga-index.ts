@@ -1,4 +1,4 @@
-import type { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, type createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { getCurrentUserRole, type UserRole } from "@/lib/auth/roles";
 import { buildSagaIndex, type SagaIndexCard, type SagaIndexCreditRow } from "./build-saga-index";
@@ -26,9 +26,7 @@ export async function getSagaIndexData(
   supabase: SupabaseServerClient,
   query: string,
 ): Promise<SagaIndexData> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   const [sagasRes, itemsRes, routesRes, followsRes, passesRes, choicesRes, viewerRole] =
     await Promise.all([
