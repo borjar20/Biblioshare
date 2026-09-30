@@ -167,7 +167,12 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 - [x] **#1234 / #1233 / #1232 / #1181 / #1180 / #1179 — lote de parches de
   dependencias.** Lock coherente con Next/eslint 16.3.8, Sharp 0.35.4 y cierres
   de seguridad; instalación, unitarios, build y smoke verificados. Auditoría
-  residual: #1249. Errores de servidor observados: #1250 y #1251.
+  residual resuelta por #1249. Errores de servidor observados: #1250 y #1251.
+
+- [x] **#1249 — remediación de auditoría de dependencias.** Vitest 4.1.11 y
+  cierres de Browserslist/Baseline/Nanoid verificados con `npm ci`, auditoría
+  npm a cero, unitarios, build y smoke funcional local. La PR de esta
+  remediación sigue por crear; no se declara integrada todavía.
 
 - [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
   corrección existente de #833: sin overflow a 390 px antes y después de buscar
