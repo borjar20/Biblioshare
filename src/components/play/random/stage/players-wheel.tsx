@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import styles from "./stage.module.css";
 import { buzz, wheelSectors, wheelTargetAngle } from "./stage-helpers";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
@@ -15,6 +15,11 @@ function sectorPath(start: number, end: number): string {
   const b = polar(96, end);
   const large = end - start > 180 ? 1 : 0;
   return `M 100 100 L ${a.x} ${a.y} A 96 96 0 ${large} 1 ${b.x} ${b.y} Z`;
+}
+
+function nextRotation(previous: number, { players, picked }: { players: string[]; picked: string }): number {
+  const base = ((previous % 360) + 360) % 360;
+  return previous - base + wheelTargetAngle(players, picked, 4);
 }
 
 /**
@@ -39,7 +44,7 @@ export function PlayersWheel({
   hint: string;
 }) {
   const reduced = useReducedMotion();
-  const [rotation, setRotation] = useState(0);
+  const [rotation, advanceRotation] = useReducer(nextRotation, 0);
   const [landedId, setLandedId] = useState<string | null>(null);
   const lastId = useRef<string | null>(null);
 
@@ -48,18 +53,11 @@ export function PlayersWheel({
   useEffect(() => {
     if (!spin || spin.id === lastId.current) return;
     lastId.current = spin.id;
-    if (reduced || !players.includes(spin.picked)) {
-      // Sin animación (o la lista ya cambió): resultado directo.
-      setLandedId(spin.id);
-      return;
-    }
-    setRotation((prev) => {
-      const base = ((prev % 360) + 360) % 360;
-      return prev - base + wheelTargetAngle(players, spin.picked, 4);
-    });
+    if (reduced || !players.includes(spin.picked)) return;
+    advanceRotation({ players, picked: spin.picked });
   }, [spin, players, reduced]);
 
-  const landed = spin !== null && (reduced || landedId === spin.id);
+  const landed = spin !== null && (reduced || !players.includes(spin.picked) || landedId === spin.id);
 
   return (
     <div className={styles.stage}>

@@ -17,6 +17,10 @@ const eslintConfig = defineConfig([
     // no los cubren: sin esta línea, un solo worktree con build hecho mete
     // ~1000 errores de código generado en `npm run lint` y tapa los reales.
     ".claude/**",
+    // Andamiaje y builds locales: no forman parte de la superficie fuente.
+    ".superpowers/**",
+    ".scratch/**",
+    "android/app/build/**",
   ]),
 ]);
 

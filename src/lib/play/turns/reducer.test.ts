@@ -131,7 +131,7 @@ describe("eliminar y restaurar", () => {
     expect(aliveCount(s)).toBe(3);
   });
   it("no deja bajar de 2 vivos ni tocar inexistentes", () => {
-    let s = run([cfg(), ev("player_eliminated", { name: "Carla" })]);
+    const s = run([cfg(), ev("player_eliminated", { name: "Carla" })]);
     expect(() => turnsReducer(s, ev("player_eliminated", { name: "Beto" }))).toThrow();
     expect(() => turnsReducer(s, ev("player_eliminated", { name: "Zoe" }))).toThrow();
     expect(() => turnsReducer(s, ev("player_eliminated", { name: "Carla" }))).toThrow();

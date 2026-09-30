@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getCatalogByGenre } from "./get-catalog-by-genre";
 
 // Mock mínimo del builder de supabase: cada from() devuelve un thenable que
@@ -6,11 +6,17 @@ import { getCatalogByGenre } from "./get-catalog-by-genre";
 // por título) porque el código bajo prueba ya no pide `.order`/`.range` a la
 // query — el orden/paginación se hace en JS. `.limit()` es el último eslabón
 // de la cadena y es quien resuelve la promesa (como en el cliente real).
+type FakeBuilder = {
+  select(): FakeBuilder;
+  contains(): FakeBuilder;
+  limit(): Promise<{ data: unknown[]; count: number; error: null }>;
+};
+
 function fakeSupabase(byTable: Record<string, { data: unknown[]; count: number }>) {
   return {
     from(table: string) {
       const res = byTable[table] ?? { data: [], count: 0 };
-      const builder: any = {
+      const builder: FakeBuilder = {
         select: () => builder,
         contains: () => builder,
         limit: () => Promise.resolve({ data: res.data, count: res.count, error: null }),
@@ -23,7 +29,7 @@ function fakeSupabase(byTable: Record<string, { data: unknown[]; count: number }
 describe("getCatalogByGenre", () => {
   it("slug inválido → items vacíos y total 0", async () => {
     const s = fakeSupabase({});
-    const out = await getCatalogByGenre(s as any, "no-existe", { page: 1 });
+    const out = await getCatalogByGenre(s as unknown as Parameters<typeof getCatalogByGenre>[0], "no-existe", { page: 1 });
     expect(out).toEqual({ items: [], total: 0 });
   });
 
@@ -33,7 +39,7 @@ describe("getCatalogByGenre", () => {
       movies: { data: [{ id: "m1", title: "Alien", cover_url: null, release_year: 1979 }], count: 1 },
       series: { data: [], count: 0 },
     });
-    const out = await getCatalogByGenre(s as any, "ciencia-ficcion", { page: 1 });
+    const out = await getCatalogByGenre(s as unknown as Parameters<typeof getCatalogByGenre>[0], "ciencia-ficcion", { page: 1 });
     expect(out.items.map((i) => i.title)).toEqual(["Alien", "Zulú"]);
     expect(out.total).toBe(2);
   });
@@ -43,7 +49,7 @@ describe("getCatalogByGenre", () => {
     const s = fakeSupabase({
       books: { data: [{ id: "b1", title: "Sapiens", cover_url: null, published_year: 2011 }], count: 1 },
     });
-    const out = await getCatalogByGenre(s as any, "ensayo", { page: 1 });
+    const out = await getCatalogByGenre(s as unknown as Parameters<typeof getCatalogByGenre>[0], "ensayo", { page: 1 });
     expect(out.items.map((i) => i.itemType)).toEqual(["book"]);
   });
 
@@ -62,7 +68,7 @@ describe("getCatalogByGenre", () => {
         count: 2,
       },
     });
-    const out = await getCatalogByGenre(s as any, "ensayo", { page: 1 });
+    const out = await getCatalogByGenre(s as unknown as Parameters<typeof getCatalogByGenre>[0], "ensayo", { page: 1 });
     expect(out.items.map((i) => i.title)).toEqual(["Ábaco", "Zeta"]);
   });
 
@@ -87,12 +93,12 @@ describe("getCatalogByGenre", () => {
     const data = [...fillers, { id: "abaco", title: "Ábaco", cover_url: null, published_year: 1999 }];
     const s = fakeSupabase({ books: { data, count: 25 } });
 
-    const page1 = await getCatalogByGenre(s as any, "ensayo", { page: 1 });
+    const page1 = await getCatalogByGenre(s as unknown as Parameters<typeof getCatalogByGenre>[0], "ensayo", { page: 1 });
     expect(page1.items).toHaveLength(24);
     expect(page1.items[0].title).toBe("Ábaco");
     expect(page1.items.map((i) => i.title)).not.toContain("B24");
 
-    const page2 = await getCatalogByGenre(s as any, "ensayo", { page: 2 });
+    const page2 = await getCatalogByGenre(s as unknown as Parameters<typeof getCatalogByGenre>[0], "ensayo", { page: 2 });
     expect(page2.items.map((i) => i.title)).toEqual(["B24"]);
     expect(page1.total).toBe(25);
     expect(page2.total).toBe(25);
