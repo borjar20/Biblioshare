@@ -1,6 +1,6 @@
 # Remediación de auditoría de dependencias — #1249
 
-> **[Evidencia de ejecución · candidato local verificado el 2026-09-30]**
+> **[Evidencia de ejecución · verificado el 2026-09-30]**
 
 La remediación actualiza Vitest y sus siete paquetes internos a 4.1.11,
 `baseline-browser-mapping` a 2.11.0, `browserslist` a 4.28.7 y `nanoid` a
@@ -27,5 +27,5 @@ remotos.
 
 El smoke funcional no declara el servidor limpio. Persisten los errores SSR de
 invalidación y los avisos de listeners/stream de navegación temprana, ya
-seguidos por #1250 y #1251; no se atribuyen a esta remediación. La PR de #1249
-aún debe crearse, por lo que esta evidencia no declara el cambio integrado.
+seguidos por #1250 y #1251; no se atribuyen a esta remediación. El cambio se
+revisa en [PR #1258](https://github.com/borjar20/Biblioshare/pull/1258).
