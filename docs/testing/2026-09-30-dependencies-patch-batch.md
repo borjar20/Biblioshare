@@ -37,8 +37,12 @@ alertas de GitHub para este lote.
 
 Los hallazgos se siguen por separado en [#1250](https://github.com/borjar20/Biblioshare/issues/1250)
 (`tipo:bug`, P2, invalidación) y [#1251](https://github.com/borjar20/Biblioshare/issues/1251)
-(`tipo:sospecha`, P2, listeners). El log no se presenta como limpio ni se atribuyen
-estos síntomas a la nueva versión de Next: falta el baseline con Next 16.3.0.
+(`tipo:sospecha`, P2, listeners). El log no se presenta como limpio. Una copia
+aislada de `c9e3ed0` con Next 16.3.0 reproduce los mismos dos errores y cinco
+avisos, con los cinco tests PASS en 1,1 min. Ambos síntomas son preexistentes,
+sin regresión observada en esos recorridos al subir a 16.3.8. El trace de los
+listeners apunta a la compresión y el streaming de Next; no prueba por sí solo
+una fuga de memoria. Evidencia: `deps-baseline-next-1630/smoke-node24-final.log`.
 
 La carga nativa verificada es Windows x64; los binarios de otras plataformas
 solo constan en el lockfile.
