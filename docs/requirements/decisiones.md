@@ -5374,3 +5374,13 @@ shell pendiente podía impedir que una visita posterior recuperase metadatos tra
 un fallo de `after()`. Los créditos y la colección conservan su recorrido; la
 hidratación completa sigue siendo quien marca por primera vez la fila pendiente.
 No se añade un parámetro ni otra migración para separar escrituras parciales.
+
+## 2026-09-30 — #924: límite conservador del identificador de Google Books
+
+La RPC de alta de shell acepta solo un identificador recortado de 1 a 256
+caracteres ASCII URL-safe. Google lo documenta como cadena única y no publica
+una gramática en la referencia consultada; no se exige una longitud exacta de
+12. Todos los IDs existentes comprobados en dev (4) y prod (34) tenían 12
+caracteres y estaban dentro del conjunto. Se conservan autenticación e
+idempotencia. Validar la forma no prueba existencia ni evita muchas altas con
+cadenas admisibles: esa admisión se rastrea por separado en #1237.

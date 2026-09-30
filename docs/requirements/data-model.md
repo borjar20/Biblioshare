@@ -1,5 +1,16 @@
 # Modelo de datos
 
+> **Delta 2026-09-30 (#924):** `register_catalog_item_by_volume(text)` exige, tras
+> `btrim`, de 1 a 256 caracteres ASCII URL-safe (`A-Z`, `a-z`, `0-9`, `_`, `-`).
+> Es un límite conservador del proyecto, no una gramática oficial de Google ni
+> una prueba de existencia del volumen. La migración
+> `20260930160000_register_catalog_item_by_volume_validation.sql` conserva firma,
+> sesión obligatoria, idempotencia, SECURITY DEFINER, search path y ACL efectiva
+> `anon=false`, `authenticated=true`, `service_role=true`. Verificada en **dev**
+> (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
+> Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
+> existentes. La admisión por número de altas sigue en #1237.
+
 > **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
 > firmas con `backdrop_url` y su cuerpo fill-only. La migración
 > `20260930151804_hydrate_screen_revoke_anon.sql` revoca EXECUTE de `PUBLIC`/`anon`

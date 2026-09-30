@@ -21,6 +21,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/pass_interaction_hrefs.sql'), 'u
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_technical_gate.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/register_catalog_item_by_volume_validation.sql'), 'utf8'));
 
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_reference_guards.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/pet_r4b_equipment.sql'), 'utf8'));
