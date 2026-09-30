@@ -26,6 +26,7 @@ type DetailProps = {
   isPending: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
+  onReviewFocusChange: (focused: boolean) => void;
   /** Sin argumento: guarda el borrador con la marca de spoiler que ya tenía. */
   onSave: (reviewIsSpoiler?: boolean) => void;
   /** Cuántos marcaría «Vistos hasta aquí» (incluido este); 0 lo oculta. */
@@ -81,12 +82,14 @@ function ReviewBox({
   saved,
   spoiler,
   onDraftChange,
+  onReviewFocusChange,
   onSave,
 }: {
   draft: string;
   saved: string;
   spoiler: boolean;
   onDraftChange: (value: string) => void;
+  onReviewFocusChange: (focused: boolean) => void;
   onSave: (reviewIsSpoiler?: boolean) => void;
 }) {
   const t = useTranslations("episode");
@@ -95,7 +98,9 @@ function ReviewBox({
       <textarea
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
+        onFocus={() => onReviewFocusChange(true)}
         onBlur={() => {
+          onReviewFocusChange(false);
           if (draft.trim() !== saved.trim()) onSave();
         }}
         placeholder={t("reviewPlaceholder")}
@@ -118,6 +123,7 @@ export function EpisodeInlineDetail({
   isPending,
   draft,
   onDraftChange,
+  onReviewFocusChange,
   onSave,
   markUpToCount,
   onMarkUpTo,
@@ -137,6 +143,7 @@ export function EpisodeInlineDetail({
           saved={own.review ?? ""}
           spoiler={own.reviewIsSpoiler}
           onDraftChange={onDraftChange}
+          onReviewFocusChange={onReviewFocusChange}
           onSave={onSave}
         />
       )}
