@@ -4,9 +4,12 @@
 export function normalizeTitle(title: string): string {
   return title
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    // Diacritics can be part of a letter in other scripts (for example, Cyrillic й).
+    // Keep them there while retaining the established accent-insensitive Latin matching.
+    .replace(/(\p{Script=Latin})\p{M}+/gu, "$1")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, " ")
     .trim();
 }
 
