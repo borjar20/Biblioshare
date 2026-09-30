@@ -315,13 +315,15 @@ describe("deriveTimeline · ventana", () => {
       ),
     );
 
-  /** Etiqueta cada fila para comparar el ORDEN de la columna de un vistazo. */
+  /** Etiqueta cada fila para comparar el ORDEN de la columna de un vistazo.
+   *  Un bloque partido puede ocupar varias secciones consecutivas. */
   const shape = (tl: ReturnType<typeof deriveTimeline>) =>
-    tl[0].rows.map((r) => (r.kind === "window" ? "window" : r.kind === "entry" ? r.node.id : r.kind));
+    tl.flatMap((section) => section.rows.map((r) => (r.kind === "window" ? "window" : r.kind === "entry" ? r.node.id : r.kind)));
 
   it("con ancla «después de», la fila cae JUSTO DESPUÉS de esa fila", () => {
     const tl = withWindow([{ id: "e", source: "a", target: "w", type: "requisito", accent: "beige" }]);
     expect(shape(tl)).toEqual(["a", "window", "b", "c"]);
+    expect(tl[1].continuation).toBe(true);
     const win = tl[0].rows[1];
     if (win.kind !== "window") throw new Error("se esperaba una ventana");
     expect(win.after?.id).toBe("a");
@@ -344,6 +346,7 @@ describe("deriveTimeline · ventana", () => {
       { id: "e2", source: "w", target: "c", type: "opcional", accent: "ambar" },
     ]);
     expect(shape(tl)).toEqual(["a", "b", "window", "c"]);
+    expect(tl[1].continuation).toBe(true);
     const win = tl[0].rows[2];
     if (win.kind !== "window") throw new Error("se esperaba una ventana");
     expect(win.after?.id).toBe("a");
@@ -353,6 +356,7 @@ describe("deriveTimeline · ventana", () => {
   it("con solo «antes de», la fila cae JUSTO ANTES de esa fila", () => {
     const tl = withWindow([{ id: "e", source: "w", target: "c", type: "opcional", accent: "ambar" }]);
     expect(shape(tl)).toEqual(["a", "b", "window", "c"]);
+    expect(tl[1].continuation).toBe(true);
   });
 
   it("sin ancla que resuelva, sigue cayendo a rama como hoy", () => {
@@ -395,14 +399,78 @@ describe("deriveTimeline · ventana", () => {
     const derived = deriveSagaMap(
       groups,
       { "i:book:L": { afterTitle: "A", beforeTitle: null, afterKey: "i:book:A", beforeKey: null, reason: null } },
-      { groupAccent: new Map(), groupName: new Map() },
+      { groupAccent: new Map(), groupName: new Map([["saga-Era", "Era"]]) },
     );
     const tl = deriveTimeline(derived);
+    // La ventana parte el bloque: la parte que continúa conserva la subsaga,
+    // pero queda en su propia sección para que ReadingTimeline la rotule «(cont.)».
+    expect(tl).toHaveLength(2);
+    expect(tl.map((section) => ({ name: section.groupName, continuation: section.continuation }))).toEqual([
+      { name: "Era", continuation: false },
+      { name: "Era", continuation: true },
+    ]);
     expect(tl[0].rows.map((r) => (r.kind === "window" ? "window" : r.kind === "entry" ? r.node.id : r.kind))).toEqual([
       "i:book:A",
       "window",
-      "i:book:B",
     ]);
+    expect(tl[1].rows.map((r) => (r.kind === "entry" ? r.node.id : r.kind))).toEqual(["i:book:B"]);
+  });
+
+  it("un bloque entero conserva una sola sección y no se presenta como continuación", () => {
+    const tl = deriveTimeline(
+      graph([node("a", { orderNo: 0 }), node("b", { orderNo: 1 })]),
+    );
+    expect(tl).toHaveLength(1);
+    expect(tl[0].continuation).toBe(false);
+    expect(tl[0].rows.map((r) => (r.kind === "entry" ? r.node.id : r.kind))).toEqual(["a", "b"]);
+  });
+
+  it("dos ventanas consecutivas dejan una única continuación tras ambas", () => {
+    const tl = deriveTimeline(
+      graph(
+        [
+          node("a", { orderNo: 0 }),
+          node("b", { orderNo: 1 }),
+          node("c", { orderNo: 2 }),
+          node("window-a", { orderNo: null, label: "Ventana A" }),
+          node("window-b", { orderNo: null, label: "Ventana B" }),
+        ],
+        [
+          { id: "window-a-after", source: "a", target: "window-a", type: "requisito", accent: "beige" },
+          { id: "window-b-after", source: "a", target: "window-b", type: "requisito", accent: "beige" },
+        ],
+      ),
+    );
+
+    expect(tl).toHaveLength(2);
+    expect(tl.map(({ groupSagaId, groupName, accent, continuation }) => ({ groupSagaId, groupName, accent, continuation }))).toEqual([
+      { groupSagaId: "g1", groupName: "Era Uno", accent: "verde", continuation: false },
+      { groupSagaId: "g1", groupName: "Era Uno", accent: "verde", continuation: true },
+    ]);
+    expect(shape(tl)).toEqual(["a", "window", "window", "b", "c"]);
+  });
+
+  it("una rama suelta tras partir un bloque se adjunta al último segmento", () => {
+    const loose = node("loose", { orderNo: null, label: "Rama suelta" });
+    const tl = deriveTimeline(
+      graph(
+        [
+          node("a", { orderNo: 0 }),
+          node("b", { orderNo: 1 }),
+          node("window", { orderNo: null, label: "Ventana" }),
+          loose,
+        ],
+        [{ id: "window-after", source: "a", target: "window", type: "requisito", accent: "beige" }],
+      ),
+    );
+
+    expect(tl.map(({ groupSagaId, continuation }) => ({ groupSagaId, continuation }))).toEqual([
+      { groupSagaId: "g1", continuation: false },
+      { groupSagaId: "g1", continuation: true },
+    ]);
+    const resumed = tl[1].rows.find((row) => row.kind === "entry" && row.node.id === "b");
+    if (!resumed || resumed.kind !== "entry") throw new Error("se esperaba la obra del segmento de continuación");
+    expect(resumed.branches).toEqual([{ node: loose, edgeType: "opcional" }]);
   });
 });
 

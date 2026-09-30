@@ -164,6 +164,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#696 — continuidad de bloque de saga tras una ventana.** El timeline
+  separa el tramo posterior con la misma etiqueta y acento, marcado «(cont.)»;
+  504 pruebas de saga y navegador focalizado en móvil/escritorio verificados el
+  2026-09-30 con fixture local.
+
 - [x] **#737 — decidir cómo reanudar una sesión.** La hoja conserva el borrador,
   permite continuar el pase o reiniciarlo y dirige al nuevo pase tras reiniciar;
   unitarios y recorridos de navegador focalizados verificados el 2026-09-30.

@@ -77,6 +77,8 @@ export type TimelineSection = {
   groupSagaId: string | null;
   groupName: string | null;
   accent: SagaAccentToken;
+  /** Un bloque que una ventana ha partido retoma su cabecera como «(cont.)». */
+  continuation: boolean;
   rows: TimelineRow[];
 };
 
@@ -170,7 +172,7 @@ export function deriveTimeline(
       }
       rows.push({ kind: "entry", no: n.step, node: n, branches: [] });
     }
-    return [{ groupSagaId: null, groupName: null, accent: "beige", rows }];
+    return [{ groupSagaId: null, groupName: null, accent: "beige", continuation: false, rows }];
   }
 
   const spine = items
@@ -237,7 +239,7 @@ export function deriveTimeline(
     const row: Extract<TimelineRow, { kind: "entry" }> = { kind: "entry", no: n.orderNo! + 1, node: n, branches: [] };
     rowByNodeId.set(n.id, row);
     if (last && last.groupSagaId === n.groupSagaId) last.rows.push(row);
-    else sections.push({ groupSagaId: n.groupSagaId, groupName: n.groupName, accent: n.accent, rows: [row] });
+    else sections.push({ groupSagaId: n.groupSagaId, groupName: n.groupName, accent: n.accent, continuation: false, rows: [row] });
   }
 
   // Ventanas: un sujeto `libre` (sin orderNo) con al menos un ancla resuelta.
@@ -277,16 +279,27 @@ export function deriveTimeline(
   };
 
   /** Coloca una fila justo después (o justo antes) de la fila que contiene a
-   *  `anchorId`. Devuelve false si el ancla no está en ninguna sección. */
+   *  `anchorId`. Si la ventana cae en medio de un bloque, abre un segmento de
+   *  continuación para que la cáscara pueda repetir su cabecera como «(cont.)».
+   *  Devuelve false si el ancla no está en ninguna sección. */
   const insertRelativeTo = (anchorId: string, row: TimelineRow, where: "after" | "before"): boolean => {
-    for (const section of sections) {
+    for (const [sectionIdx, section] of sections.entries()) {
       const idx = section.rows.findIndex(
         (r) =>
           (r.kind === "entry" && r.node.id === anchorId) ||
           (r.kind === "tandem" && r.nodes.some((x) => x.id === anchorId)),
       );
       if (idx === -1) continue;
-      section.rows.splice(where === "after" ? idx + 1 : idx, 0, row);
+      const insertAt = where === "after" ? idx + 1 : idx;
+      section.rows.splice(insertAt, 0, row);
+      const continuationRows = section.rows.slice(insertAt + 1);
+      // Varias ventanas junto a la misma ancla no parten el bloque: todavía no
+      // se ha reanudado ninguna obra de su cadena. Solo abrimos un segmento
+      // cuando queda una fila de columna después de la ventana recién puesta.
+      if (continuationRows.some((r) => r.kind === "entry" || r.kind === "tandem")) {
+        section.rows.splice(insertAt + 1);
+        sections.splice(sectionIdx + 1, 0, { ...section, continuation: true, rows: continuationRows });
+      }
       return true;
     }
     return false;
@@ -345,7 +358,7 @@ export function deriveTimeline(
       continue;
     }
     // Suelto dentro de su subsaga: cuelga del último de su sección (si existe).
-    const section = sections.find((s) => s.groupSagaId === n.groupSagaId);
+    const section = sections.findLast((s) => s.groupSagaId === n.groupSagaId);
     const lastEntry = section?.rows
       .filter((r): r is RowWithBranches => r.kind === "entry" || r.kind === "tandem")
       .at(-1);
@@ -377,6 +390,7 @@ export function deriveTimeline(
         groupSagaId: null,
         groupName: null,
         accent: "beige" as const,
+        continuation: false,
         rows: [{ kind: "bridge" as const, node }],
       })),
     );

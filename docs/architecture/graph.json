@@ -4,7 +4,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-09-30",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, código con PR pendiente, 2026-09-30; el resto conserva las fuentes anteriores",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30; el resto conserva las fuentes anteriores",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -747,7 +747,8 @@
         "countRoles cuenta sobre el GRAFO y no sobre las filas visibles, igual que optionalCount: contadas sobre lo visible, filtrar por un rol dejaria la barra con un solo chip y no habria forma de volver.",
         "map-overlays.ts (fase 6) es DIBUJO del lienzo 2D y de nadie mas: la capsula del tandem y el marco del sujeto de una ventana se derivan de las coordenadas que el grafo ya trae, y SagaGraph no gana campos. Un nodo sintetico de capsula en graph.nodes se colaria en countRoles, en el optionalCount de la pestana y en deriveTimeline, que iteran el mismo array.",
         "La capsula agrupa por EMPATE DE orderNo, no por la fila de saga_tandems: node.tandem es null cuando el curador no declaro metadatos, y un tandem sin curar sigue siendo un tandem. Misma regla que usa deriveTimeline para fundir su fila.",
-        "El marco de ventana solo lo lleva un sujeto con orderNo === null. Un sujeto-BLOQUE lo resuelve deriveSagaMap a la primera obra del bloque, que es una fila normal de la cadena: marcarla diria que esa obra tiene ventana propia. Mismo limite con el que deriveSagaMap se niega a colgarle el windowReason (issue #221)."
+        "El marco de ventana solo lo lleva un sujeto con orderNo === null. Un sujeto-BLOQUE lo resuelve deriveSagaMap a la primera obra del bloque, que es una fila normal de la cadena: marcarla diria que esa obra tiene ventana propia. Mismo limite con el que deriveSagaMap se niega a colgarle el windowReason (issue #221).",
+        "Una ventana dentro de un bloque puede partir el timeline en dos TimelineSection del mismo grupo: continuation solo marca el segundo, conserva etiqueta/acento/numeración y no reemplaza filas. Para ramas sueltas, findLast debe buscar el ÚLTIMO segmento del grupo; usar el primero las cuelga antes de la ventana."
       ]
     },
     {
@@ -3287,7 +3288,7 @@
         },
         {
           "node": "m-sagas",
-          "action": "deriveTimeline convierte el SagaGraph en filas: columna por curación (spine 'curation') o por los pasos del itinerario activo (spine 'route'), con las formas entry / tandem / window / bridge",
+          "action": "deriveTimeline convierte el SagaGraph en filas: columna por curación (spine 'curation') o por los pasos del itinerario activo (spine 'route'), con las formas entry / tandem / window / bridge; una ventana puede abrir una sección continuation del mismo bloque",
           "file": "src/lib/sagas/derive-timeline.ts"
         },
         {
