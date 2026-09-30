@@ -23,8 +23,8 @@ reparado, instalación reproducible y un contrato Node compatible con jsdom.
   vacíos. Evidencia: `deps-repair/browser-next-patch.log`. La prueba no escribe
   catálogo compartido ni modifica la cuenta QA.
 
-La auditoría baja de 11 paquetes afectados a 5 (2 altos y 3 moderados); no es
-una auditoría a cero. El residual se sigue de forma separada en
+Antes de #1249, la auditoría bajó de 11 paquetes afectados a 5 (2 altos y 3
+moderados); no era una auditoría a cero. El residual se siguió de forma separada en
 [#1249](https://github.com/borjar20/Biblioshare/issues/1249). No se informan
 alertas de GitHub para este lote.
 
