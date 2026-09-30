@@ -53,8 +53,8 @@ export async function LibraryFilters({
   genres?: { slug: string; label: string; count: number }[];
   basePath: string;
   showTypeFilter?: boolean;
-  /** Preferencia `profiles.hide_dropped`. Solo con ella activa tiene sentido
-   *  ofrecer el chip que la anula. */
+  /** Preferencia `profiles.hide_dropped`. El chip la anula solo cuando no hay
+   *  un filtro de estado explícito, que ya tiene prioridad sobre ella. */
   hideDroppedPref?: boolean;
   /** ¿Esta vista lleva ya `?abandonados=1`? */
   showDropped?: boolean;
@@ -250,7 +250,7 @@ export async function LibraryFilters({
             {/* Anulación de la preferencia «ocultar abandonados». Vive entre los
                 estados porque es de lo que habla, pero no es un filtro más: es
                 un interruptor de dos posiciones sobre esta vista. */}
-            {hideDroppedPref && (
+            {hideDroppedPref && status === undefined && (
               <Link
                 href={buildHref({ showDropped: !showDropped })}
                 className={segClass(showDropped)}
