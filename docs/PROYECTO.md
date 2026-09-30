@@ -69,7 +69,9 @@ con i18n (`next-intl`) desde el inicio.
   orden unificado (progreso = pertenencia; colocación curada `position_in_parent`;
   placement fijo/libre/anclado; opcionales y saltos).
 - **Itinerarios** (rutas de lectura sintetizadas con slugs reservados), ventanas
-  de colocación («léelo antes de X»), tándems (intercalado por hueco).
+  de colocación («léelo antes de X»), tándems (intercalado por hueco). Una ventana
+  dentro de bloque mantiene visualmente el tramo posterior como continuación del
+  mismo grupo, con idéntico acento y la marca «(cont.)» (#696).
 - **Mapa de universo** (`/saga/[id]/mapa`): grafo DERIVADO (React Flow) con
   timeline móvil separada; seguir sagas (`saga_follows`).
 - **Curación** por colaboradores: editor de secuencia, sync TMDB acotado por RPC.

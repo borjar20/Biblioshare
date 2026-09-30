@@ -1773,6 +1773,7 @@
     "mapHint": "Arrastra para explorar · pellizca para zoom",
     "mapTitle": "Mapa de lectura · {count, plural, =1 {1 título} other {# títulos}}",
     "orderNo": "Nº {n}",
+    "timelineContinuation": "(cont.)",
     "timelineTandemTitle": "Leer en tándem",
     "timelineTandemCount": "{count} títulos",
     "timelineTandemSimultaneo": "A la vez",

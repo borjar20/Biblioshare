@@ -5446,3 +5446,13 @@ archiva ese pase, crea uno nuevo y dirige todas esas escrituras al nuevo. Cancel
 la pregunta tampoco reenvía la acción. Las notas del Cuaderno se guardan por su
 propio flujo durante la edición; esta garantía se limita a que `addSession` no
 escribe antes de la elección.
+
+## 2026-09-30 — #696: una ventana parte la lectura visual, no el bloque curado
+
+Cuando una ventana se intercala dentro de un bloque o subsaga, las obras que
+siguen conservan grupo, acento, números y orden derivado; solo pasan a una
+segunda sección con la marca «(cont.)». La sección de continuación se crea si
+tras la ventana hay una entrada o tándem, por lo que ventanas consecutivas sin
+obra entre ellas permanecen en el mismo tramo. Las ramas sueltas se anclan al
+último segmento del grupo con `findLast`, ya que el mismo grupo puede reaparecer
+después de la división.

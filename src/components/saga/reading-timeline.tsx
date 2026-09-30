@@ -115,7 +115,10 @@ export async function ReadingTimeline({
             {section.groupName && (
               <div className="mb-1 mt-3.5 flex items-center gap-2">
                 <span className={`h-4 w-1 rounded-full ${SAGA_ACCENT[section.accent].tick}`} />
-                <h3 className="font-serif text-base font-semibold">{section.groupName}</h3>
+                <h3 className="font-serif text-base font-semibold">
+                  {section.groupName}
+                  {section.continuation && <> <span className="text-sm font-normal text-muted-foreground">{t("timelineContinuation")}</span></>}
+                </h3>
               </div>
             )}
             <div>
