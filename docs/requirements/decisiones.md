@@ -5375,6 +5375,15 @@ un fallo de `after()`. Los créditos y la colección conservan su recorrido; la
 hidratación completa sigue siendo quien marca por primera vez la fila pendiente.
 No se añade un parámetro ni otra migración para separar escrituras parciales.
 
+## 2026-09-30 — #1230: reiniciar los espejos locales del hub por identidad
+
+Historial y Habituales se componen en `IdentityScopedHub`, con una clave distinta
+por componente e identidad. Así una lectura pendiente de B no deja visibles las
+filas que la instancia ya había cargado de A. La identidad sigue resolviéndose
+en el servidor; la composición no añade un boundary cliente. La prueba usa los
+dos clientes reales y comprueba que retirar cualquiera de las claves reproduce
+su fallo correspondiente. No se cambia el contrato de IndexedDB ni de Supabase.
+
 ## 2026-09-30 — #924: límite conservador del identificador de Google Books
 
 La RPC de alta de shell acepta solo un identificador recortado de 1 a 256
