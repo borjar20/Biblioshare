@@ -164,6 +164,10 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
+  corrección existente de #833: sin overflow a 390 px antes y después de buscar
+  y filtrar; controles y nota propia verificados el 2026-09-30.
+
 - [x] **#895 — cliente SSR de Supabase en tiempo de petición.** El límite central
   espera `connection()` antes de cookies y de construir el cliente; comprobado en
   dev sobre seis rutas autenticadas y dos públicas el 2026-09-30; build final
