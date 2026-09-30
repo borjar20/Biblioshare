@@ -263,6 +263,7 @@
     "20260924120000_movies_series_backdrop_url.sql",
     "20260925120000_review_is_spoiler.sql",
     "20260926120000_joint_viewings_enums.sql",
-    "20260926120100_joint_viewings.sql"
+    "20260926120100_joint_viewings.sql",
+    "20260930151804_hydrate_screen_revoke_anon.sql"
   ]
 }

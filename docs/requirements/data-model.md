@@ -1,5 +1,14 @@
 # Modelo de datos
 
+> **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
+> firmas con `backdrop_url` y su cuerpo fill-only. La migración
+> `20260930151804_hydrate_screen_revoke_anon.sql` revoca EXECUTE de `PUBLIC`/`anon`
+> y mantiene grants explícitos de `authenticated`/`service_role`. Aplicada y
+> verificada en **dev** y **prod** mediante `pg_proc` y `has_function_privilege`:
+> `anon=false`, `authenticated=true`, `service_role=true` en ambas funciones.
+> Replay local limpio: 265 pasos y gate DB completo; llamadas por rol con rollback
+> en local y dev. Sin cambios de columnas, firmas ni datos.
+
 > **Delta 2026-09-26 (visionados conjuntos, #1220):** tablas `joint_viewings` y
 > `joint_viewing_members`, `post_kind` `joint`, `post_source_kind` `joint_viewing`, dos
 > `notification_type` (`joint_viewing_invite`, `joint_viewing_accepted`). Detalle en §5.4.

@@ -1322,3 +1322,8 @@ commit;
 begin;
 \ir migrations/20260926120100_joint_viewings.sql
 commit;
+
+-- 20260930151804_hydrate_screen_revoke_anon
+begin;
+\ir migrations/20260930151804_hydrate_screen_revoke_anon.sql
+commit;
