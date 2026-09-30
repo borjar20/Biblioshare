@@ -39,6 +39,7 @@ export type EpisodeListProps = {
   onBack: () => void;
   draft: string;
   onDraftChange: (value: string) => void;
+  onReviewFocusChange: (focused: boolean) => void;
   onSaveReview: (ep: EpisodeRow, reviewIsSpoiler?: boolean) => void;
   /** Episodios emitidos y sin ver de esta temporada (0 = nada que marcar). */
   seasonPendingCount: number;
@@ -155,6 +156,7 @@ function EpisodeItem({
   onRate,
   draft,
   onDraftChange,
+  onReviewFocusChange,
   onSaveReview,
   upToPendingCount,
   onMarkUpTo,
@@ -283,6 +285,7 @@ function EpisodeItem({
             isPending={isPending}
             draft={draft}
             onDraftChange={onDraftChange}
+            onReviewFocusChange={onReviewFocusChange}
             onSave={(spoiler) => onSaveReview(episode, spoiler)}
             // Solo si hay algo ANTES que marcar: «hasta aquí» sobre el propio
             // episodio sin nada detrás es la casilla de la fila.
