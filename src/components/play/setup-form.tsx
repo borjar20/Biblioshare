@@ -36,6 +36,14 @@ const FIELD =
 const LIFE_CHIPS = [20, 30, 40] as const;
 const LIFE_MIN = 1;
 const LIFE_MAX = 999;
+const BACKGROUND_LABELS = [
+  "backgroundTerracotta",
+  "backgroundTeal",
+  "backgroundOlive",
+  "backgroundPlum",
+  "backgroundOchre",
+  "backgroundIndigo",
+] as const;
 
 function parseMode(value: string | null): MtgMode {
   return MTG_MODE_IDS.includes(value as MtgMode) ? (value as MtgMode) : "commander";
@@ -328,7 +336,7 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
                     key={id}
                     type="button"
                     onClick={() => setEdited(updatePlayer(draft, openIndex, { cardBackground: id }))}
-                    aria-label={t("setup.backgroundN", { n: tint + 1 })}
+                    aria-label={t(`setup.${BACKGROUND_LABELS[tint]}`)}
                     aria-pressed={chosen}
                     className={`h-11 w-11 rounded-chip ${seatAccent(tint).tint} ${
                       chosen ? `ring-2 ${seatAccent(tint).ring}` : ""

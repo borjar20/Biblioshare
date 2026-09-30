@@ -46,6 +46,9 @@ export function PlayersSection({
     lastResult && lastResult.type === "first_picked"
       ? { id: lastResult.id, picked: lastResult.payload.picked }
       : null;
+  const announcement = lastResult?.type === "order_drawn" ? <OrderReveal id={lastResult.id} order={lastResult.payload.order} />
+    : lastResult?.type === "teams_drawn" ? <TeamsReveal id={lastResult.id} teams={lastResult.payload.teams} teamLabel={(n) => t("team", { n })} />
+    : undefined;
 
   return (
     <div>
@@ -56,18 +59,8 @@ export function PlayersSection({
         label={t("first")}
         disabled={!canDraw}
         hint={t("wheelHint")}
+        announcement={announcement}
       />
-
-      {lastResult?.type === "order_drawn" ? (
-        <OrderReveal id={lastResult.id} order={lastResult.payload.order} />
-      ) : null}
-      {lastResult?.type === "teams_drawn" ? (
-        <TeamsReveal
-          id={lastResult.id}
-          teams={lastResult.payload.teams}
-          teamLabel={(n) => t("team", { n })}
-        />
-      ) : null}
 
       {/* Mismo selector de fichas que Reloj, Recursos y Turnos: la ruleta ya es
           el juguete de esta pantalla, la lista de jugadores no puede ser un

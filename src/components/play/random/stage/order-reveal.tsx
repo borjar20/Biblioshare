@@ -5,7 +5,7 @@ import styles from "./stage.module.css";
 /** Orden de juego en cascada numerada. `key` por id de evento re-lanza la animación. */
 export function OrderReveal({ id, order }: { id: string; order: string[] }) {
   return (
-    <ol key={id} data-testid="players-result" className="mt-4 space-y-1" aria-live="polite">
+    <ol key={id} className="mt-4 space-y-1">
       {order.map((name, i) => (
         <li
           key={name}

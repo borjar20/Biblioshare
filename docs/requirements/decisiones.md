@@ -5383,3 +5383,12 @@ filas que la instancia ya había cargado de A. La identidad sigue resolviéndose
 en el servidor; la composición no añade un boundary cliente. La prueba usa los
 dos clientes reales y comprueba que retirar cualquiera de las claves reproduce
 su fallo correspondiente. No se cambia el contrato de IndexedDB ni de Supabase.
+
+## 2026-09-30 — Play: nombres, región de anuncios y aterrizaje
+
+Los fondos nombran su color y el input de caras usa un nombre distinto del chip
+(#951, #992). Los tres resultados de Jugadores comparten una región viva estable
+en la ruleta, insertando solo el contenido (#988). La animación de dados/monedas
+se reinicia al cambiar de ID, incluso al restaurar una tirada, y movimiento
+reducido conserva su resolución inmediata (#991). Los tests de regiones vivas
+cuentan solo las visibles cuando Next conserva rutas ocultas (#1003).

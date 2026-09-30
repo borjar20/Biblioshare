@@ -58,7 +58,7 @@ se cerraron, no como trabajo pendiente.
 
 - [x] #956 — Los E2E de Play ya leen la partida activa desde IndexedDB. Reverificado
   el 2026-09-30: 13 pruebas de MTG y 6 de navegación pasan sin reintentos ni semillas
-  remotas; el ajuste independiente del locator de accesibilidad se rastrea en #1003.
+  remotas; locator de accesibilidad #1003 ajustado y reverificado el 2026-09-30.
 
 - [x] #1161 — Biblioteca vacía con cientos de películas: corrección y pruebas
   locales completadas el 2026-09-08. Entrega y comprobación publicada en #1161 / PR #1162.
