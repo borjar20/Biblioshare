@@ -2,18 +2,20 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { needsBackdrop, needsSizeHydration, ensureItemEnriched } from "./enrich-item";
 
 // Mocks de todo lo que haría I/O en la rama de cine de ensureItemEnriched.
-// getMovieDetails es el único que varía entre tests (controla si TMDB trae
-// backdropUrl); el resto solo necesita existir para que el módulo cargue.
+// Los detalles de película y serie varían para cubrir los guards de tamaños
+// y backdrop; el resto evita efectos de red durante el enriquecimiento.
 const getMovieDetails = vi.fn();
+const getSeriesDetails = vi.fn();
+const persistCollectionMembership = vi.fn().mockResolvedValue([]);
 vi.mock("@/lib/catalog/tmdb", () => ({
   getMovieDetails: (...args: unknown[]) => getMovieDetails(...args),
-  getSeriesDetails: vi.fn(),
+  getSeriesDetails: (...args: unknown[]) => getSeriesDetails(...args),
 }));
 vi.mock("@/lib/supabase/service-role", () => ({
   createServiceRoleClient: vi.fn(),
 }));
 vi.mock("@/lib/sagas/persist-collection", () => ({
-  persistCollectionMembership: vi.fn().mockResolvedValue([]),
+  persistCollectionMembership: (...args: unknown[]) => persistCollectionMembership(...args),
 }));
 vi.mock("./find-or-create-person", () => ({
   findOrCreatePeopleByTmdb: vi.fn().mockResolvedValue(new Map()),
@@ -24,7 +26,7 @@ vi.mock("./find-or-create-person", () => ({
 // ensureItemEnriched usa en la rama de cine antes de llegar a
 // getMovieDetails — hasBilledCast (`from("credits").select().eq().eq().not()`)
 // y la RPC de escritura del backdrop.
-function makeFakeSupabase() {
+function makeFakeSupabase(billedCastCount = 1) {
   const rpc = vi.fn().mockResolvedValue({ error: null });
   const from = vi.fn((table: string) => {
     if (table !== "credits") throw new Error(`tabla inesperada en el fake: ${table}`);
@@ -34,7 +36,7 @@ function makeFakeSupabase() {
           eq: () => ({
             // Reparto ya facturado presente: needsCredits = false, así el
             // test se centra solo en el guard del backdrop.
-            not: () => Promise.resolve({ count: 1 }),
+            not: () => Promise.resolve({ count: billedCastCount }),
           }),
         }),
       }),
@@ -101,6 +103,166 @@ describe("needsBackdrop", () => {
 
   it("los libros no tienen backdrop de TMDB", () => {
     expect(needsBackdrop("book", { id: "b1" })).toBe(false);
+  });
+});
+
+describe("ensureItemEnriched — escritura de tamaños", () => {
+  beforeEach(() => {
+    getMovieDetails.mockReset();
+    getSeriesDetails.mockReset();
+    persistCollectionMembership.mockReset();
+    persistCollectionMembership.mockResolvedValue([]);
+  });
+
+  it("obra hidratada + sesión rellena la duración ausente", async () => {
+    getMovieDetails.mockResolvedValue({
+      collection: null,
+      credits: [],
+      backdropUrl: null,
+      runtimeMinutes: 120,
+      numberOfEpisodes: null,
+      numberOfSeasons: null,
+      episodeRuntimeMinutes: null,
+    });
+    const supabase = makeFakeSupabase();
+
+    await ensureItemEnriched(supabase, "movie", {
+      ...baseMovie,
+      durationMinutes: null,
+      hydratedAt: "2026-01-01T00:00:00Z",
+      viewerLoggedIn: true,
+    });
+
+    const rpc = (supabase as unknown as { rpc: ReturnType<typeof vi.fn> }).rpc;
+    expect(rpc).toHaveBeenCalledWith("hydrate_movie", {
+      p_movie_id: "m1",
+      p_duration_minutes: 120,
+    });
+  });
+
+  it("fila pendiente no escribe tamaños antes de la hidratación completa", async () => {
+    getMovieDetails.mockResolvedValue({
+      collection: null,
+      credits: [],
+      backdropUrl: null,
+      runtimeMinutes: 120,
+      numberOfEpisodes: null,
+      numberOfSeasons: null,
+      episodeRuntimeMinutes: null,
+    });
+    const supabase = makeFakeSupabase();
+
+    await ensureItemEnriched(supabase, "movie", {
+      ...baseMovie,
+      durationMinutes: null,
+      hydratedAt: null,
+      viewerLoggedIn: true,
+    });
+
+    const rpc = (supabase as unknown as { rpc: ReturnType<typeof vi.fn> }).rpc;
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("una fila pendiente sigue enriqueciendo créditos y colección, sin escribir tamaños", async () => {
+    getMovieDetails.mockResolvedValue({
+      collection: { id: 7, name: "Colección" },
+      credits: [],
+      backdropUrl: null,
+      runtimeMinutes: 120,
+      numberOfEpisodes: null,
+      numberOfSeasons: null,
+      episodeRuntimeMinutes: null,
+    });
+    const supabase = makeFakeSupabase(0);
+
+    await ensureItemEnriched(supabase, "movie", {
+      ...baseMovie,
+      durationMinutes: null,
+      hydratedAt: null,
+      viewerLoggedIn: true,
+    });
+
+    const rpc = (supabase as unknown as { rpc: ReturnType<typeof vi.fn> }).rpc;
+    expect(getMovieDetails).toHaveBeenCalledWith(42);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(persistCollectionMembership).toHaveBeenCalledWith(
+      supabase,
+      "movie",
+      "m1",
+      { id: 7, name: "Colección" }
+    );
+  });
+
+  it("visitante sin sesión no intenta escribir tamaños ni registra el fallo de autenticación", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const supabase = makeFakeSupabase();
+
+    await ensureItemEnriched(supabase, "movie", {
+      ...baseMovie,
+      durationMinutes: null,
+      hydratedAt: "2026-01-01T00:00:00Z",
+      viewerLoggedIn: false,
+    });
+
+    const rpc = (supabase as unknown as { rpc: ReturnType<typeof vi.fn> }).rpc;
+    expect(rpc).not.toHaveBeenCalled();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("serie hidratada + sesión rellena episodios y duración de episodio ausentes", async () => {
+    getSeriesDetails.mockResolvedValue({
+      collection: null,
+      credits: [],
+      backdropUrl: null,
+      runtimeMinutes: null,
+      numberOfEpisodes: 12,
+      numberOfSeasons: 1,
+      episodeRuntimeMinutes: 45,
+    });
+    const supabase = makeFakeSupabase();
+
+    await ensureItemEnriched(supabase, "series", {
+      id: "s1",
+      tmdbId: 24,
+      totalEpisodes: null,
+      episodeRuntimeMinutes: null,
+      hydratedAt: "2026-01-01T00:00:00Z",
+      viewerLoggedIn: true,
+    });
+
+    const rpc = (supabase as unknown as { rpc: ReturnType<typeof vi.fn> }).rpc;
+    expect(rpc).toHaveBeenCalledWith("hydrate_series", {
+      p_series_id: "s1",
+      p_total_episodes: 12,
+      p_total_seasons: 1,
+      p_episode_runtime_minutes: 45,
+    });
+  });
+
+  it("una serie pendiente tampoco llama hydrate_series solo por sus tamaños", async () => {
+    getSeriesDetails.mockResolvedValue({
+      collection: null,
+      credits: [],
+      backdropUrl: null,
+      runtimeMinutes: null,
+      numberOfEpisodes: 12,
+      numberOfSeasons: 1,
+      episodeRuntimeMinutes: 45,
+    });
+    const supabase = makeFakeSupabase();
+
+    await ensureItemEnriched(supabase, "series", {
+      id: "s1",
+      tmdbId: 24,
+      totalEpisodes: null,
+      episodeRuntimeMinutes: null,
+      hydratedAt: null,
+      viewerLoggedIn: true,
+    });
+
+    const rpc = (supabase as unknown as { rpc: ReturnType<typeof vi.fn> }).rpc;
+    expect(rpc).not.toHaveBeenCalled();
   });
 });
 

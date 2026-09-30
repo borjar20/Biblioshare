@@ -5364,3 +5364,13 @@ cuerpos; el rechazo anónimo ocurre antes del guard auth.uid(). Es compatible
 con el código publicado, que programa hidratación solo con sesión. Dev primero
 con prueba transaccional por roles, prod después con comprobación de ACL efectiva.
 La regresión SQL queda en el gate DB normal y en el replay local de 265 pasos.
+
+## 2026-09-30 — #1205: tamaños sin anticipar la hidratación completa
+
+El enriquecimiento durante el render solo escribe duración/episodios si la fila
+ya tiene `hydrated_at` y el visitante tiene sesión, igual que el backdrop. Las
+RPC de hidratación marcan siempre ese timestamp: usarlas para un tamaño de una
+shell pendiente podía impedir que una visita posterior recuperase metadatos tras
+un fallo de `after()`. Los créditos y la colección conservan su recorrido; la
+hidratación completa sigue siendo quien marca por primera vez la fila pendiente.
+No se añade un parámetro ni otra migración para separar escrituras parciales.
