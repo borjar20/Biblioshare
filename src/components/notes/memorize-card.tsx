@@ -83,7 +83,7 @@ export function MemorizeCard({
         href={itemHref(note.itemType, note.itemId)}
         className="group flex flex-col gap-2"
       >
-        <p className="font-serif text-[17px] leading-snug text-foreground group-hover:text-accent">
+        <p className="font-serif text-[17px] leading-snug whitespace-pre-line break-words text-foreground group-hover:text-accent">
           {note.kind === "quote" ? `«${note.body}»` : note.body}
         </p>
         <p className="font-mono text-[10.5px] tracking-wider text-muted-foreground uppercase">
