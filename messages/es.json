@@ -3043,7 +3043,12 @@
       "name": "Nombre",
       "edit": "Editar {name}",
       "background": "Fondo de la tarjeta",
-      "backgroundN": "Fondo {n}",
+      "backgroundTerracotta": "Fondo teja",
+      "backgroundTeal": "Fondo azul verdoso",
+      "backgroundOlive": "Fondo verde oliva",
+      "backgroundPlum": "Fondo ciruela",
+      "backgroundOchre": "Fondo ocre",
+      "backgroundIndigo": "Fondo índigo",
       "startingLife": "Vidas iniciales",
       "lifeFewer": "Una vida menos de inicio",
       "lifeMore": "Una vida más de inicio",
@@ -3265,7 +3270,8 @@
         "hint": "Toca el dado para tirar",
         "fewer": "Un dado menos",
         "more": "Un dado más",
-        "customSides": "Caras personalizadas"
+        "customSides": "Caras personalizadas",
+        "customSidesInput": "Número de caras"
       },
       "coin": {
         "flip": "Lanzar moneda",

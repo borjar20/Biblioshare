@@ -13,7 +13,7 @@ export function TeamsReveal({
   teamLabel: (n: number) => string;
 }) {
   return (
-    <div key={id} data-testid="players-result" className="mt-4 space-y-3" aria-live="polite">
+    <div key={id} className="mt-4 space-y-3">
       {teams.map((team, ti) => (
         <div key={ti}>
           <p

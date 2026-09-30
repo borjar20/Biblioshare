@@ -229,8 +229,11 @@ test("accesibilidad del tablero: orden de asientos, etiquetas y una sola región
   );
   expect(sinNombre).toBe(0);
 
-  // Una sola región que anuncia el último movimiento; más de una las pisa entre sí.
-  await expect(page.locator('[aria-live="polite"]')).toHaveCount(1);
+  // Una sola región VISIBLE anuncia el último movimiento. Next conserva rutas
+  // previas ocultas tras una navegación instantánea, que no pertenecen al árbol
+  // de accesibilidad activo (#1003).
+  const regionActiva = page.locator('[aria-live="polite"]:visible');
+  await expect(regionActiva).toHaveCount(1);
   await page.getByRole("button", { name: "Quitar una vida a Jugador 1" }).click();
-  await expect(page.locator('[aria-live="polite"]')).toHaveText(/Jugador 1/);
+  await expect(regionActiva).toHaveText(/Jugador 1/);
 });

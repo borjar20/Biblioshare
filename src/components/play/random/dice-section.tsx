@@ -88,7 +88,7 @@ export function DiceSection({
             inputMode="numeric"
             min={2}
             max={DICE_MAX_SIDES}
-            aria-label={t("customSides")}
+            aria-label={t("customSidesInput")}
             value={customSides}
             placeholder="6"
             onChange={(e) => setCustomSides(e.target.value)}
