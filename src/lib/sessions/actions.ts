@@ -40,6 +40,9 @@ export type AddSessionState = {
   error?: "invalidPosition" | "invalidDuration" | "futureDate" | "generic" | "network";
   ok?: boolean;
   passClosed?: boolean;
+  // El pase abandonado necesita que la persona elija entre continuar el mismo
+  // intento o empezar otro. Este resultado sale ANTES de guardar la sesión.
+  askResume?: boolean;
 };
 
 // Logs a reading/watching session AND rolls the PASE's current state
@@ -184,6 +187,9 @@ export async function addSession(
   const status = VALID_STATUSES.includes(statusRaw as MediaStatus)
     ? (statusRaw as MediaStatus)
     : undefined;
+  const resumeModeRaw = String(formData.get("resumeMode") ?? "").trim();
+  const resumeMode =
+    resumeModeRaw === "continue" || resumeModeRaw === "restart" ? resumeModeRaw : undefined;
 
   // El Select de estado del formulario NUNCA escribe a mano (era el fallo 5 de
   // la spec): si el usuario eligió un estado distinto del que ya tiene el pase,
@@ -207,14 +213,20 @@ export async function addSession(
   let effectivePassId = passId;
   let passWasCreated = false;
   if (status && status !== currentStatus) {
-    const outcome = await applyTransition(supabase, user.id, itemType, itemId, status);
-    // `askResume` (abandonado → leyendo) no escribe nada: la máquina no puede
-    // elegir sola entre continuar y empezar de cero. Se sigue con el pase de
-    // siempre; que el usuario no reciba aviso de esto es #737.
-    if (outcome.kind === "done") {
-      effectivePassId = outcome.passId;
-      passWasCreated = outcome.created;
-    }
+    const outcome = await applyTransition(
+      supabase,
+      user.id,
+      itemType,
+      itemId,
+      status,
+      resumeMode,
+    );
+    // `askResume` no escribe nada. La hoja conserva el formulario y pregunta
+    // antes de reintentarlo con la elección explícita, para que una sesión no
+    // quede guardada contra un pase que la persona aún no ha decidido retomar.
+    if (outcome.kind === "askResume") return { askResume: true };
+    effectivePassId = outcome.passId;
+    passWasCreated = outcome.created;
   }
 
   // Series (fase 4, decisión D3): ya NO se crea sesión. La unidad de una serie

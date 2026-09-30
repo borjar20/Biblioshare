@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ export function SessionSheet({
 
   const t = useTranslations("session");
   const tLibrary = useTranslations("library");
+  const tResume = useTranslations("passes.resume");
   const router = useRouter();
   // null en modo "page" (no hay SessionModal por encima). En modo "modal" es
   // el único punto de salida del <dialog> exterior (ver session-modal.tsx):
@@ -81,6 +82,12 @@ export function SessionSheet({
   }, [mode, modalClose, router, itemType, itemId]);
 
   const boundAddSession = addSession.bind(null, passId, itemType, itemId);
+  // Abrir una sesión desde pendiente equivale a empezar. Se mantiene
+  // controlado porque askResume devuelve una respuesta intermedia del action:
+  // el formulario debe seguir mostrando exactamente el estado que se envió al
+  // abrir la pregunta, aunque React repinte tras esa respuesta.
+  const defaultStatus = status === "planned" ? "in_progress" : status;
+  const [selectedStatus, setSelectedStatus] = useState<MediaStatus>(defaultStatus);
   // withNetworkCatch: si el POST de la action ni llega (sin red al pulsar
   // Guardar), el rechazo NO sube al error boundary (que desmontaría el form
   // con lo tecleado) — se vuelve `state.error = "network"` y la hoja sigue
@@ -93,7 +100,11 @@ export function SessionSheet({
   // Ajuste de estado durante el render (patrón de close-pass-sheet.tsx:51-56):
   // un useEffect con setState dispararía react-hooks/set-state-in-effect.
   const [closingPass, setClosingPass] = useState(false);
+  const [resumeOpen, setResumeOpen] = useState(false);
   const [prevState, setPrevState] = useState(state);
+  const formRef = useRef<HTMLFormElement>(null);
+  const resumeDialogRef = useRef<HTMLDialogElement>(null);
+  const resumeModeRef = useRef<HTMLInputElement>(null);
   // Controlado (antes defaultValue-only) porque BookProgressField necesita el
   // valor EN VIVO para combinarlo con la hora opcional en combineStartedAt —
   // ver book-progress-field.tsx.
@@ -101,6 +112,30 @@ export function SessionSheet({
   if (state !== prevState) {
     setPrevState(state);
     if (state.passClosed) setClosingPass(true);
+    if (state.askResume) setResumeOpen(true);
+  }
+
+  useEffect(() => {
+    const dialog = resumeDialogRef.current;
+    if (!dialog) return;
+    if (resumeOpen && !dialog.open) dialog.showModal();
+    if (!resumeOpen && dialog.open) dialog.close();
+  }, [resumeOpen]);
+
+  function chooseResume(resumeMode: "continue" | "restart") {
+    // La primera respuesta askResume no escribió nada, así que el formulario
+    // sigue íntegro. Se añade solo la elección y se reenvía su mismo FormData:
+    // página, fecha, episodios y notas se aplican al pase que resuelva la
+    // transición (el nuevo si se reinicia).
+    if (resumeModeRef.current) resumeModeRef.current.value = resumeMode;
+    const statusControl = formRef.current?.elements.namedItem("status");
+    if (statusControl instanceof HTMLSelectElement) statusControl.value = selectedStatus;
+    const shareControl = formRef.current?.elements.namedItem("share");
+    if (shareControl instanceof HTMLInputElement) shareControl.checked = share;
+    const spoilerControl = formRef.current?.elements.namedItem("shareSpoiler");
+    if (spoilerControl instanceof HTMLInputElement) spoilerControl.checked = shareSpoiler;
+    resumeDialogRef.current?.close();
+    formRef.current?.requestSubmit();
   }
 
   // Navegar NO es setState: un efecto aquí no choca con
@@ -127,9 +162,6 @@ export function SessionSheet({
     if (state.passClosed) return;
     closeSheet();
   }, [state, closeSheet, itemType, passId]);
-
-  // Opening a session on a "planned" item means you're starting it now.
-  const defaultStatus = status === "planned" ? "in_progress" : status;
 
   const currentPage =
     "page" in position && position.page !== undefined ? position.page : null;
@@ -165,6 +197,11 @@ export function SessionSheet({
   // Compartir en el perfil (Spec 2): opt-in. Controla si se despliega el texto
   // social; sin marcar, la sesión queda privada (+ notas) como hasta ahora.
   const [share, setShare] = useState(false);
+  // askResume devuelve al mismo formulario antes de guardar. React restablece
+  // los controles no controlados al completar esa action, así que este texto y
+  // la marca de spoiler necesitan conservar su borrador igual que el estado.
+  const [shareBody, setShareBody] = useState("");
+  const [shareSpoiler, setShareSpoiler] = useState(false);
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -210,9 +247,11 @@ export function SessionSheet({
           <form> vuelve a su altura natural y es el documento quien scrollea,
           exactamente como antes de este fix. */}
       <form
+        ref={formRef}
         action={formAction}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
+        <input ref={resumeModeRef} type="hidden" name="resumeMode" />
         {/* `shrink-0`: cabecera, hero y footer son hermanos flex de este
             <form> flex-col — sin esto, cuando el contenido de en medio
             desborda el hueco disponible, flexbox reparte la compresión entre
@@ -320,12 +359,16 @@ export function SessionSheet({
                     maxLength={2000}
                     rows={2}
                     placeholder={t("sharePlaceholder")}
+                    value={shareBody}
+                    onChange={(e) => setShareBody(e.target.value)}
                     className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   />
                   <label className="flex items-center gap-2 text-sm text-foreground">
                     <input
                       type="checkbox"
                       name="shareSpoiler"
+                      checked={shareSpoiler}
+                      onChange={(e) => setShareSpoiler(e.target.checked)}
                       className="h-4 w-4 rounded border-border accent-accent"
                     />
                     {t("shareSpoiler")}
@@ -342,7 +385,12 @@ export function SessionSheet({
               {t("statusToggle")}
             </summary>
             <div className="border-t border-border px-3 py-3">
-              <Select id="session-status" name="status" defaultValue={defaultStatus}>
+              <Select
+                id="session-status"
+                name="status"
+                value={selectedStatus}
+                onChange={(event) => setSelectedStatus(event.target.value as MediaStatus)}
+              >
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {tLibrary(`status.${s}`)}
@@ -396,6 +444,48 @@ export function SessionSheet({
           closeSheet();
         }}
       />
+
+      <dialog
+        ref={resumeDialogRef}
+        onClose={() => setResumeOpen(false)}
+        aria-labelledby="session-resume-title"
+        className="m-auto w-[min(420px,92vw)] rounded-card border border-border bg-surface p-0 text-foreground shadow-card backdrop:bg-scrim"
+        onClick={(event) => {
+          if (event.target === resumeDialogRef.current) resumeDialogRef.current?.close();
+        }}
+      >
+        <div className="flex flex-col">
+          <div className="border-b border-border px-5 py-4">
+            <h2 id="session-resume-title" className="font-serif text-lg font-semibold">
+              {tResume("title")}
+            </h2>
+          </div>
+          <div className="flex flex-col gap-2.5 px-5 py-4">
+            <Button type="button" disabled={pending} onClick={() => chooseResume("continue")}>
+              {tResume("continue")}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => chooseResume("restart")}
+            >
+              {tResume("restart")}
+            </Button>
+          </div>
+          <div className="border-t border-border px-5 py-4">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              disabled={pending}
+              onClick={() => resumeDialogRef.current?.close()}
+            >
+              {tResume("cancel")}
+            </Button>
+          </div>
+        </div>
+      </dialog>
     </>
   );
 }

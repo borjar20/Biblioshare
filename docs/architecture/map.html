@@ -130,7 +130,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-09-30",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30; el resto conserva las fuentes anteriores",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, código con PR pendiente, 2026-09-30; el resto conserva las fuentes anteriores",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -675,9 +675,12 @@
       "label": "sessions/actions",
       "layer": "action",
       "kind": "action",
-      "summary": "addSession/deleteSession. Valida contra el pase ACTIVO, mueve planned→in_progress y hace rodar posición y estado.",
+      "summary": "addSession/deleteSession. Valida contra el pase ACTIVO, pide elegir reanudación antes de escribir y hace rodar posición y estado en el pase elegido.",
       "files": [
         "src/lib/sessions/actions.ts"
+      ],
+      "gotchas": [
+        "Si applyTransition devuelve askResume, addSession debe salir antes de crear sesiones, mover cursor/episodios o enlazar notas/posts. Continuar conserva el pase; reiniciar crea uno nuevo y toda escritura posterior usa ese id."
       ]
     },
     {
@@ -2990,10 +2993,11 @@
       "id": "flow-session",
       "name": "Registrar una sesión (bucle diario)",
       "category": "core",
-      "summary": "El flujo más usado de la app: apuntar cuánto has leído/visto. Hace rodar la posición y el estado del PASE, y puede encadenar la hoja de cierre si la sesión completa la obra.",
+      "summary": "El flujo más usado de la app: apuntar cuánto has leído/visto. Hace rodar la posición y el estado del PASE elegido, y puede encadenar la hoja de cierre si la sesión completa la obra.",
       "entrypoint": "src/lib/sessions/actions.ts:44",
       "notes": [
         "El passId del formulario debe ser EXACTAMENTE el pase activo ahora mismo: una pestaña vieja apuntando a un pase ya cerrado se rechaza.",
+        "Si la transición pide reanudar, no hay escrituras de addSession hasta que la persona elige continuar el pase o reiniciar en uno nuevo. Al volver a evaluar la ruta de un pase sustituido, loadSessionContext redirige a la ficha si ya existe otro activo propio, para no desmontar la hoja con un 404.",
         "Los minutos solo aplican a libros; una server action es un POST público, así que el campo se ignora en servidor, no solo en la UI.",
         "La nota se escribe en DOS tablas y progress_sessions.note tiene CHECK <= 2000 code points; se valida con [...note].length antes de tocar la BD."
       ],
@@ -3005,7 +3009,17 @@
         },
         {
           "node": "a-sessions",
-          "action": "addSession valida el pase activo, la duración y la longitud de la nota",
+          "action": "addSession valida el pase activo, la duración y la longitud de la nota; si applyTransition devuelve askResume, retorna sin escribir",
+          "file": "src/lib/sessions/actions.ts:44"
+        },
+        {
+          "node": "c-session",
+          "action": "La hoja conserva el borrador y pide continuar el pase original o reiniciar; cancelar cierra la pregunta sin reenviar",
+          "file": "src/components/session"
+        },
+        {
+          "node": "a-sessions",
+          "action": "Con resumeMode, continuar usa el pase original; reiniciar lo archiva, crea otro y selecciona su id para las escrituras",
           "file": "src/lib/sessions/actions.ts:44"
         },
         {
@@ -3043,7 +3057,7 @@
         },
         {
           "node": "r-ficha",
-          "action": "La ficha y el resto de superficies se repintan con datos frescos"
+          "action": "La ficha y el resto de superficies se repintan con datos frescos; la ruta de un pase propio sustituido redirige a la ficha si ya hay otro activo"
         }
       ]
     },

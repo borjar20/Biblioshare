@@ -78,7 +78,11 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
   // Confirma que sigue siendo el pase ACTIVO ahora mismo — nunca uno archivado
   // de una relectura anterior (mismo guard que addSession).
   const activePass = await getActivePass(supabase, itemType, itemId, user.id);
-  if (!activePass || activePass.id !== passId) notFound();
+  if (!activePass) notFound();
+  // Una acción puede archivar este pase y crear otro antes de que se actualice
+  // el árbol de la ruta. La URL antigua sigue siendo del dueño, pero ya no debe
+  // montar la hoja sobre una lectura cerrada: vuelve a la ficha de la obra.
+  if (activePass.id !== passId) redirect(itemHref(itemType, itemId));
 
   const [{ data: book }, { data: series }] = await Promise.all([
     itemType === "book"
