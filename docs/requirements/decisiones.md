@@ -5384,6 +5384,16 @@ en el servidor; la composición no añade un boundary cliente. La prueba usa los
 dos clientes reales y comprueba que retirar cualquiera de las claves reproduce
 su fallo correspondiente. No se cambia el contrato de IndexedDB ni de Supabase.
 
+## 2026-09-30 — #924: límite conservador del identificador de Google Books
+
+La RPC de alta de shell acepta solo un identificador recortado de 1 a 256
+caracteres ASCII URL-safe. Google lo documenta como cadena única y no publica
+una gramática en la referencia consultada; no se exige una longitud exacta de
+12. Todos los IDs existentes comprobados en dev (4) y prod (34) tenían 12
+caracteres y estaban dentro del conjunto. Se conservan autenticación e
+idempotencia. Validar la forma no prueba existencia ni evita muchas altas con
+cadenas admisibles: esa admisión se rastrea por separado en #1237.
+
 ## 2026-09-30 — Play: nombres, región de anuncios y aterrizaje
 
 Los fondos nombran su color y el input de caras usa un nombre distinto del chip
