@@ -5472,3 +5472,11 @@ deduplicando solo dentro de cada petición y no se sustituye por `use cache` par
 datos sujetos a RLS. La frontera de petición no pretende cuantificar una mejora
 de rendimiento ni afirma que todas las rutas hubieran perdido antes su shell
 estático.
+
+## 2026-09-30 — Lote de dependencias: Node soportado por contrato, no por runtime global
+
+El manifiesto admite `^22.22.2 || ^24.15.0 || >=26.0.0`, el rango exigido por
+la versión vigente de jsdom. `.nvmrc` (22.23.1) y CI (línea 22) quedan dentro;
+Node 23 queda deliberadamente fuera. La comprobación con Node 24.19.0 acredita
+el candidato en esta máquina, sin cambiar el runtime global ni las dependencias
+nativas de Capacitor.
