@@ -280,6 +280,8 @@ Lo cerrado, con la migración o el fichero que lo sostiene:
   `book_editions.is_primary` sigue en la tabla pero **ya no la lee nadie**; la precedencia de
   páginas queda en 2 niveles (edición del pase → `books.total_pages` orientativas). El selector
   consulta OpenLibrary **en vivo** y persiste **solo la tirada elegida**.
+- [x] Identidad canónica ISBN-10/13 en candidatas y admisión de ediciones (#906).
+  Reconciliación de las parejas históricas pendiente en #1242.
 - [x] **Identidad inter-idioma (Wikidata/Inventaire) y fusión de obras.** Tercera pasada de
   búsqueda con colapso por QID, y `merge_book_into` (fusión cobarde, repunta las 18 referencias
   a libro) más el barrido de reconciliación.

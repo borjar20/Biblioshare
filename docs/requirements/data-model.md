@@ -1,5 +1,19 @@
 # Modelo de datos
 
+> **Delta 2026-09-30 (#906):** ISBN-10 válidos y su equivalente ISBN-13 con
+> prefijo 978 comparten identidad; 979 conserva la suya. `canonical_isbn13(text)`
+> coincide con TypeScript en checksum, separadores y espacios exteriores de
+> ECMAScript. La tabla privada `book_edition_isbn_keys(book_id, isbn13, row_count)`
+> admite nuevas identidades de forma atómica y conserva los duplicados anteriores.
+> Trigger AFTER para INSERT/UPDATE/DELETE y cascadas; sin acceso de columna para
+> anon/authenticated. Las RPC devuelven el UUID existente al repetir, conservando
+> sus firmas y roles. `merge_book_into` deduplica por esa identidad y sigue
+> abortando antes de borrar una edición referenciada. Ambas migraciones aplicadas
+> en **dev y prod**: cero diferencias entre ledger y ediciones; filas existentes
+> conservadas (481/396). Dev: regresión SQL con rollback; local: replay vacío de
+> 268 pasos, 37 checks de admisión, fusión y cinco carreras con cleanup PASS.
+> Las parejas históricas (15 grupos dev, 3 prod) se siguen en #1242.
+
 > **Delta 2026-09-30 (#924):** `register_catalog_item_by_volume(text)` exige, tras
 > `btrim`, de 1 a 256 caracteres ASCII URL-safe (`A-Z`, `a-z`, `0-9`, `_`, `-`).
 > Es un límite conservador del proyecto, no una gramática oficial de Google ni
@@ -984,7 +998,7 @@ camino de alta verificada, junto a `ensureBookEdition` (`find-or-create.ts`). De
 usan `register_verified_book_edition`, solo ejecutable por `service_role`. El alta
 manual (`src/app/buscar/manual/actions.ts`) conserva `register_book_edition`, que exige
 `collaborator` o `admin`. Las candidatas excluyen los ISBN ya persistidos del
-libro (normalizados con `normalizeIsbn` en los dos lados) para que la misma tirada no salga en
+libro (identidad `canonicalIsbn13` en los dos lados, desde #906) para que la misma tirada no salga en
 dos bloques. Verificado en dev el 2026-08-27: abrir la ficha de un libro y desplegar las 30
 candidatas deja `book_editions` en 481 filas, las mismas que antes.
 
@@ -1015,6 +1029,17 @@ libro, actor autenticado, ISBN y metadatos del proveedor. Es SECURITY DEFINER,
 `search_path=''`, sin EXECUTE para PUBLIC/anon/authenticated y con EXECUTE para
 service_role. La función anterior conserva su firma pero comprueba el rol de
 curador antes de delegar con `auth.uid()` como actor. No cambia ninguna columna.
+
+**Identidad canónica (#906, verificada en dev y prod el 2026-09-30).** Las dos
+RPC conservan metadatos, límites y atribución del primer registro; un alta
+repetida devuelve ahora el UUID ya guardado, en lugar del `NULL` histórico.
+Un INSERT directo equivalente se rechaza con `23505`. El ledger privado
+mantiene un contador por libro e ISBN canónico; su PK impide dos nuevas filas
+incluso con snapshots antiguos de REPEATABLE READ. Una carrera puede exigir
+reintento (`23505`/`40001`), nunca crear un clon. Con READ COMMITTED, las llamadas
+RPC concurrentes devuelven el mismo UUID. Cambios de libro/ISBN y borrados
+liberan la clave; la cascada del libro también elimina sus claves privadas.
+Los ISBN inválidos no reciben identidad canónica y no se fusionan por parecido.
 
 `ensureBookEdition` relee la clave de obra guardada en `books` y consulta hasta
 200 ediciones de Open Library; ignora los metadatos del resultado recibido del
@@ -1148,6 +1173,13 @@ imposible, porque dos shells de la misma obra llevan ambas su `credits (person_i
 role='author')`. La guarda cubre también «un pase usa una edición del perdedor que habría que
 borrar por ISBN duplicado», que antes salía como un `P0001 edition_in_use` crudo desde dentro
 del `delete` y ya con escrituras hechas.
+
+Desde #906, la comparación de ediciones duplicadas usa el ISBN canónico válido,
+tanto contra el ganador como entre las filas históricas del perdedor. Para
+valores inválidos se conserva la igualdad literal anterior. La edición que
+habría que eliminar se comprueba contra `passes.edition_id` antes de cualquier
+escritura; si está referenciada, se aborta y se conservan ambas obras. Este
+cambio redefine la función en dev/prod; no ejecuta fusiones de datos productivos.
 
 **Invariante que la función mantiene:** un libro con ediciones tiene exactamente una primaria.
 Si el ganador no tenía ediciones y el perdedor sí, al moverlas quedaría `ediciones=N

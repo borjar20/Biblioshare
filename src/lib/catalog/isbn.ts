@@ -42,3 +42,23 @@ export function isValidIsbnCheckDigit(isbn: string): boolean {
 
   return false;
 }
+
+// Devuelve una clave ISBN-13 para comparar ediciones. Los ISBN-10 válidos se
+// convierten a su forma ISBN-13 con prefijo 978; un ISBN-13 válido, incluido
+// el prefijo 979, conserva su propia forma. Los ISBN inválidos no tienen clave
+// para evitar que dos valores inventados se traten como la misma edición.
+export function canonicalIsbn13(value: string): string | null {
+  const isbn = normalizeIsbn(value);
+  if (!isbn || !isValidIsbnCheckDigit(isbn)) return null;
+
+  if (/^\d{13}$/.test(isbn)) return isbn;
+
+  const firstTwelveDigits = `978${isbn.slice(0, 9)}`;
+  let sum = 0;
+  for (let i = 0; i < firstTwelveDigits.length; i++) {
+    const digit = Number(firstTwelveDigits[i]);
+    sum += i % 2 === 0 ? digit : digit * 3;
+  }
+
+  return `${firstTwelveDigits}${(10 - (sum % 10)) % 10}`;
+}

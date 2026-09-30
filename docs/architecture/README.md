@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Derivado · generado desde el código el 2026-09-15]**
+> **[Derivado · generado desde el código el 2026-09-30; delta ISBN #906, las demás fuentes constan en meta.verifiedAgainst]**
 
 Dos vistas de lo mismo, pensadas para lectores distintos:
 
