@@ -57,6 +57,3 @@ globalThis.fetch = async (input, init) => {
 
   return originalFetch(input, init);
 };
-
-
-
