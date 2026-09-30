@@ -18,7 +18,16 @@ vi.mock("@/lib/storage/voice-notes", () => ({ deleteVoiceNote: mocks.deleteVoice
 vi.mock("./notifications", () => ({ notify: mocks.notify }));
 vi.mock("./notify-mentions", () => ({ notifyMentions: mocks.notifyMentions }));
 vi.mock("./interaction-target-gate", () => ({
-  getInteractionTarget: async (supabase: any, interactionTargetId: string) => {
+  getInteractionTarget: async (
+    supabase: {
+      from(table: string): {
+        select(columns: string): {
+          eq(column: string, value: string): { maybeSingle(): Promise<{ data: unknown; error: unknown }> };
+        };
+      };
+    },
+    interactionTargetId: string,
+  ) => {
     const { data, error } = await supabase
       .from("interaction_targets")
       .select(
@@ -444,7 +453,7 @@ function commentDeleteBuilder(data: Array<{ id: string; audio_path: string | nul
       eqCalls.push([column, value]);
       return builder;
     },
-    select(_columns: string) {
+    select() {
       return builder;
     },
     then(resolve: (value: unknown) => void) {

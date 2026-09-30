@@ -9,7 +9,6 @@ export function useNow(enabled: boolean, stepMs = 250): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!enabled) return;
-    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), stepMs);
     return () => clearInterval(id);
   }, [enabled, stepMs]);

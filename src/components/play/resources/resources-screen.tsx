@@ -1,38 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useResources } from "@/lib/play/resources/use-resources";
 import { ResourcesConfig } from "./resources-config";
 import { ResourcesBoard } from "./resources-board";
 
-/**
- * Pantalla del acompañante «Recursos»: configuración colapsable arriba
- * (abierta al llegar sin nada; NO se auto-cierra a mitad de configuración —
- * el latch se fija UNA vez al cargar) y tablero debajo. Deshacer, reiniciar
- * valores y empezar de cero como ghosts con confirm en dos toques.
- */
+type Resources = ReturnType<typeof useResources>;
+type T = ReturnType<typeof useTranslations>;
+
+/** Pantalla del acompañante «Recursos»: configuración y tablero local-first. */
 export function ResourcesScreen({ identity }: { identity: string }) {
   const t = useTranslations("play.resources");
   const res = useResources(identity);
-  const [configOpen, setConfigOpen] = useState<boolean | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
-
-  // `some` y no `every`: con mezcla de defs y 0 jugadores el BANCO sí es
-  // operable — se enseña el tablero (con solo la tarjeta Banco) y no el hint.
   const hasBoard =
     res.state.defs.length > 0 &&
     (res.state.players.length > 0 || res.state.defs.some((d) => d.shared));
 
-  // Latch: se decide una vez al cargar (persistido con tablero → colapsada).
-  useEffect(() => {
-    if (res.loaded) setConfigOpen((prev) => (prev === null ? !hasBoard : prev));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [res.loaded]);
-
+  // Al llegar el snapshot se monta un hijo cuyo estado inicial queda fijado
+  // para toda la configuración, sin sincronizarlo con un efecto.
   if (!res.loaded) return null;
-  const open = configOpen ?? !hasBoard;
+  return <LoadedResourcesScreen key={identity} identity={identity} t={t} res={res} hasBoard={hasBoard} />;
+}
+
+function LoadedResourcesScreen({
+  identity,
+  t,
+  res,
+  hasBoard,
+}: {
+  identity: string;
+  t: T;
+  res: Resources;
+  hasBoard: boolean;
+}) {
+  const [configOpen, setConfigOpen] = useState(() => !hasBoard);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   return (
     <div>
@@ -41,13 +45,13 @@ export function ResourcesScreen({ identity }: { identity: string }) {
 
       <button
         type="button"
-        aria-expanded={open}
-        onClick={() => setConfigOpen(!open)}
+        aria-expanded={configOpen}
+        onClick={() => setConfigOpen(!configOpen)}
         className="mt-4 rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold"
       >
         {t("configure")}
       </button>
-      {open ? (
+      {configOpen ? (
         <div className="mt-3">
           <ResourcesConfig identity={identity} state={res.state} emit={res.emit} />
         </div>

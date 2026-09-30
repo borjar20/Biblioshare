@@ -1,10 +1,10 @@
 # CI de regresiones
 
-> **[Canónico · implementación 2026-09-06 · #836]**
+> **[Canónico · verificado 2026-09-30 · #836, #1172]**
 
 `.github/workflows/tests.yml` corre en cada pull request y push a main:
 
-- `quality`: Node 22, instalación desde lockfile, lint de archivos modificados,
+- `quality`: Node 22, instalación desde lockfile, lint completo con `npm run lint`,
   typecheck completo y suite Vitest completa, un worker.
 - `critical-flows`: Supabase local desde cero, verificación del esquema, build
   de producción y Playwright contra `next start`. Prueba login real, filtros
@@ -35,15 +35,18 @@ de dev para no ejecutar fixtures locales contra una cuenta compartida.
 
 ## Límites explícitos
 
-La base del 2026-09-06 (`5c6e501`) tiene 22 errores y 26 avisos de lint en 1624
-archivos versionados; deuda en #856. `test:ci:lint` sin CI_LINT_BASE mide toda
-esa superficie y termina en FAIL. En CI, CI_LINT_BASE contiene el SHA de base
-del evento: se exige lint limpio en todos los archivos modificados, incluidos
-errores antiguos si se toca ese archivo. No se desactivan reglas ni se oculta
-el fallo de la medición completa. Los artefactos no versionados quedan fuera.
+La deuda de lint de #856 y #1172 se corrigió el 2026-09-30: el informe completo
+contiene 0 errores y 28 avisos en 1833 archivos. CI exige ahora cero errores en
+toda la superficie, incluso en archivos que la PR no toca. Los avisos siguen
+visibles; no se desactivaron reglas. ESLint excluye el andamiaje efímero de
+`.superpowers/`, `.scratch/` y los resultados de compilación de Android, además
+de las exclusiones de generación que ya existían. El código fuente sigue incluido.
+La medición anterior se conserva en la evidencia de
+[#1172](2026-09-30-lint-baseline.md).
 
 El job de navegador es un conjunto crítico explícito, no toda la suite de dev.
 Los 20 fallos históricos sin atribución de #919 y las semillas remotas de otros
 specs siguen pendientes. Un job verde no demuestra que esas pruebas pasen.
-Convertir estos checks en obligatorios para merge requiere configurar las reglas
-de la rama en GitHub; este cambio solo publica los checks y sus resultados.
+La protección de `main` exige checks correctos y una rama actualizada con la base;
+se comprobó durante la entrega de #1204. El workflow publica los resultados,
+pero no modifica esa configuración de GitHub.

@@ -31,8 +31,9 @@ export function usePlayers(identity: string): {
   // `reload` cubre TAMBIÉN el caso anon (players = []): así el efecto de
   // abajo llama a una única función pase lo que pase, igual que
   // `SavedGames.reload`, y anon no necesita su propia rama de setState suelta.
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (isCancelled: () => boolean = () => false) => {
     if (identity === "anon") {
+      if (isCancelled()) return;
       setPlayers([]);
       setLoaded(true);
       return;
@@ -45,19 +46,26 @@ export function usePlayers(identity: string): {
     const own = (await listPlayers(identity))
       .filter((r) => r.deletedAt === null)
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
+    if (isCancelled()) return;
     setPlayers(own);
     setLoaded(true);
   }, [identity]);
 
   useEffect(() => {
-    reload();
+    let cancelled = false;
+    async function load() {
+      await reload(() => cancelled);
+    }
+    void load();
     if (identity === "anon") return;
     requestPlayersSync(identity);
 
     // El sync de fondo (Task 4) avisa por este canal en cada pasada, tenga o
     // no cambios: reload() relee IDB y hace setState -- barato e idempotente.
     const channel = new BroadcastChannel(PLAYERS_CHANNEL_PREFIX + identity);
-    channel.onmessage = () => reload();
+    channel.onmessage = () => {
+      void reload(() => cancelled);
+    };
 
     function onOnline() {
       requestPlayersSync(identity);
@@ -65,6 +73,7 @@ export function usePlayers(identity: string): {
     window.addEventListener("online", onOnline);
 
     return () => {
+      cancelled = true;
       channel.close();
       window.removeEventListener("online", onOnline);
     };

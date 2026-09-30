@@ -12,6 +12,14 @@ export type CatalogCard = {
   year: number | null;
 };
 
+type CatalogQueryRow = {
+  id: string;
+  title: string;
+  cover_url: string | null;
+};
+type CatalogBookRow = CatalogQueryRow & { published_year: number | null };
+type CatalogScreenRow = CatalogQueryRow & { release_year: number | null };
+
 export const PAGE_SIZE = 24;
 // Tope de seguridad por tabla: sin `.order`/`.range` en la query, un género
 // patológicamente popular podría traer toda la tabla. SAFETY_LIMIT acota el
@@ -71,11 +79,11 @@ export async function getCatalogByGenre(
   ]);
 
   const cards: CatalogCard[] = [];
-  for (const r of (books.data ?? []) as any[])
+  for (const r of (books.data ?? []) as CatalogBookRow[])
     cards.push({ itemType: "book", itemId: r.id, title: r.title, coverUrl: r.cover_url, year: r.published_year });
-  for (const r of (movies.data ?? []) as any[])
+  for (const r of (movies.data ?? []) as CatalogScreenRow[])
     cards.push({ itemType: "movie", itemId: r.id, title: r.title, coverUrl: r.cover_url, year: r.release_year });
-  for (const r of (series.data ?? []) as any[])
+  for (const r of (series.data ?? []) as CatalogScreenRow[])
     cards.push({ itemType: "series", itemId: r.id, title: r.title, coverUrl: r.cover_url, year: r.release_year });
 
   cards.sort((a, b) => a.title.localeCompare(b.title, "es"));

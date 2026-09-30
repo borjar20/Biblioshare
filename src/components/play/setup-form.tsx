@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { makeEvent } from "@/lib/play/core/events";
@@ -100,43 +100,26 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
   }, [isRematch, isReconfigure, remembered, mode, requestedPlayers]);
 
   const [edited, setEdited] = useState<SetupDraft | null>(null);
-  const draft = edited ?? base;
+  const rawDraft = edited ?? base;
 
   // UNA sola suscripción al espejo de habituales por pantalla: se baja por
   // props a cada `RegularPicker` en vez de que cada asiento monte la suya.
   const { players: regulars, loaded: regularsLoaded } = usePlayers(identity);
 
-  // Degradación de prefill (spec §6): un asiento que llega con `playerId` de
-  // una mesa recordada/revancha/reconfiguración pero cuyo habitual ya no
-  // existe (lo borraron en otro dispositivo) se limpia a invitado
-  // conservando el nombre. Corre UNA sola vez por hidratación -- el ref
-  // evita repetirse en cada reload() del espejo y pisar ediciones del
-  // usuario -- y solo cuando el espejo YA respondió: antes de eso `regulars`
-  // está vacío por estar cargando, no porque no haya habituales, y degradar
-  // ahí borraría asignaciones válidas.
-  const degradedRef = useRef(false);
-  useEffect(() => {
-    degradedRef.current = false;
-  }, [base]);
-  useEffect(() => {
-    // Espejo VACÍO es indistinguible de espejo frío (IDB evacuada con los
-    // habituales sanos en el servidor): con [] no se degrada nada y el ref no
-    // se consume, así que cuando el pull puebla el espejo y el canal refresca,
-    // esta pasada vuelve a correr contra la lista real (review final fase 6).
-    if (!regularsLoaded || regulars.length === 0 || degradedRef.current) return;
-    degradedRef.current = true;
+  // Un habitual que dejó de existir en otro dispositivo se deriva como
+  // invitado, sin escribir estado desde un efecto. Un espejo vacío puede
+  // seguir frío, por eso no se degradan asignaciones hasta que haya datos.
+  const draft = useMemo(() => {
+    if (!regularsLoaded || regulars.length === 0) return rawDraft;
     const ids = new Set(regulars.map((r) => r.playerId));
-    const current = edited ?? base;
-    if (current.players.some((p) => p.playerId && !ids.has(p.playerId))) {
-      setEdited({
-        ...current,
-        players: current.players.map((p) =>
-          p.playerId && !ids.has(p.playerId) ? { ...p, playerId: undefined } : p,
-        ),
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- degradedRef guarda la única corrida por hidratación
-  }, [regularsLoaded, regulars, base]);
+    if (!rawDraft.players.some((p) => p.playerId && !ids.has(p.playerId))) return rawDraft;
+    return {
+      ...rawDraft,
+      players: rawDraft.players.map((p) =>
+        p.playerId && !ids.has(p.playerId) ? { ...p, playerId: undefined } : p,
+      ),
+    };
+  }, [rawDraft, regularsLoaded, regulars]);
 
   const takenIds = draft.players
     .map((p) => p.playerId)

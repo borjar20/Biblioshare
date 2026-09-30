@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { listSaved, type SavedGameRecord } from "@/lib/play/core/db";
@@ -245,7 +245,7 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   }, [rematchSetup, preset, requestedPlayers, requestedTarget]);
 
   const [edited, setEdited] = useState<ScoreDraft | null>(null);
-  const draft = edited ?? base;
+  const rawDraft = edited ?? base;
   // Asiento abierto en el panel de edición. Uno cada vez: la mesa se lee de un
   // vistazo en las fichas y solo se despliega el que se toca (nada de ocho
   // tarjetas de campos plegadas tras un <details>).
@@ -257,6 +257,20 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   // UNA sola suscripción al espejo de habituales por pantalla (mismo criterio
   // que setup-form.tsx): se baja por props a cada `RegularPicker`.
   const { players: regulars, loaded: regularsLoaded } = usePlayers(identity);
+
+  // Igual que el setup de MTG: hasta que el espejo tenga filas no se puede
+  // distinguir vacío de frío; después, un habitual borrado es un invitado.
+  const draft = useMemo(() => {
+    if (!regularsLoaded || regulars.length === 0) return rawDraft;
+    const ids = new Set(regulars.map((r) => r.playerId));
+    if (!rawDraft.players.some((p) => p.playerId && !ids.has(p.playerId))) return rawDraft;
+    return {
+      ...rawDraft,
+      players: rawDraft.players.map((p) =>
+        p.playerId && !ids.has(p.playerId) ? { ...p, playerId: undefined } : p,
+      ),
+    };
+  }, [rawDraft, regularsLoaded, regulars]);
 
   // Partidas guardadas para los chips de "a qué jugáis" (Task 3): UNA carga
   // al montar, sin canal -- los guardados no cambian mientras configuras
@@ -281,34 +295,6 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
     () => gameNameSuggestions(savedRecords, addingGame ? draft.gameName : ""),
     [savedRecords, addingGame, draft.gameName],
   );
-
-  // Degradación de prefill (spec §6), espejo de setup-form.tsx: un asiento
-  // que llega con `playerId` de una revancha/reconfiguración cuyo habitual ya
-  // no existe se limpia a invitado conservando el nombre. Una sola vez por
-  // hidratación, y solo cuando el espejo ya respondió -- ver el comentario
-  // gemelo en setup-form.tsx para el porqué de cada guarda.
-  const degradedRef = useRef(false);
-  useEffect(() => {
-    degradedRef.current = false;
-  }, [base]);
-  useEffect(() => {
-    // Espejo vacío = posiblemente frío (IDB evacuada, habituales sanos en el
-    // servidor): no degradar ni consumir el ref; la pasada re-corre cuando el
-    // pull puebla la lista (review final fase 6, mismo guard que setup-form).
-    if (!regularsLoaded || regulars.length === 0 || degradedRef.current) return;
-    degradedRef.current = true;
-    const ids = new Set(regulars.map((r) => r.playerId));
-    const current = edited ?? base;
-    if (current.players.some((p) => p.playerId && !ids.has(p.playerId))) {
-      setEdited({
-        ...current,
-        players: current.players.map((p) =>
-          p.playerId && !ids.has(p.playerId) ? { ...p, playerId: undefined } : p,
-        ),
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- degradedRef guarda la única corrida por hidratación
-  }, [regularsLoaded, regulars, base]);
 
   const takenIds = draft.players
     .map((p) => p.playerId)

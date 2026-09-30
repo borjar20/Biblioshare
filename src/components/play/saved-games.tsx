@@ -58,25 +58,33 @@ export function SavedGames({ identity }: { identity: string }) {
   const [selected, setSelected] = useState<SavedGameRecord | null>(null);
   const [adoptDismissed, setAdoptDismissed] = useState(false);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (isCancelled: () => boolean = () => false) => {
     const own = (await listSaved(identity)).filter((r) => r.deletedAt === null);
     own.sort((a, b) => b.savedAt - a.savedAt);
+    if (isCancelled()) return;
     setRecords(own);
     if (identity !== "anon") {
       const anon = await listSaved("anon");
+      if (isCancelled()) return;
       setAnonCount(anon.filter((r) => r.deletedAt === null).length);
     }
   }, [identity]);
 
   useEffect(() => {
-    reload();
+    let cancelled = false;
+    async function load() {
+      await reload(() => cancelled);
+    }
+    void load();
     requestSavedSync(identity);
 
     // El sync de fondo (Task 6) avisa por este canal en CADA pasada, tenga o no
     // cambios: reload() relee IDB y hace setState — barato e idempotente, así
     // que no hace falta diffing manual aquí.
     const channel = new BroadcastChannel(SAVED_CHANNEL_PREFIX + identity);
-    channel.onmessage = () => reload();
+    channel.onmessage = () => {
+      void reload(() => cancelled);
+    };
 
     function onOnline() {
       requestSavedSync(identity);
@@ -84,6 +92,7 @@ export function SavedGames({ identity }: { identity: string }) {
     window.addEventListener("online", onOnline);
 
     return () => {
+      cancelled = true;
       channel.close();
       window.removeEventListener("online", onOnline);
     };
