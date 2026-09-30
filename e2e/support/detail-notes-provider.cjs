@@ -43,7 +43,7 @@ globalThis.fetch = async (input, init) => {
   if (url.hostname === "www.googleapis.com" && url.searchParams.get("q")?.includes(fixtureTitle)) {
     return Response.json({ items: [] });
   }
-  if (url.hostname.endsWith("inventaire.io") && url.searchParams.get("search")?.includes(fixtureTitle)) {
+  if (url.hostname === "inventaire.io" && url.searchParams.get("search")?.includes(fixtureTitle)) {
     return Response.json({ results: [] });
   }
 
