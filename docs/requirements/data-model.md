@@ -2614,6 +2614,10 @@ llamar como no-socio (o sin sesión) también devuelve cero filas.
 
 > **⚠️ HISTÓRICO.** La tabla `thoughts` se **absorbió en `posts`** (§5.1) y se **eliminó de dev y
 > prod el 2026-08-09** (migración `20260847`, `to_regclass('public.thoughts')` = null en ambos).
+> Reverificado contra objetos reales de dev y prod el **2026-09-30** al revisar #552:
+> `thoughts` sigue ausente y `posts` conserva SELECT de moderación. La regresión
+> vigente `posts_rls.sql` comprueba el borrado de un post privado sin depender de
+> la visibilidad RLS del administrador; PASS local con rollback.
 > Un pensamiento es hoy un `posts` con `kind='thought'`. Los valores de enum muertos (`'thought'`
 > en `target_kind`, `thought_commented`/`thought_liked` en `notification_type`) se dejan inertes
 > (recrear el tipo es caro). Lo de abajo describe el modelo ORIGINAL, ya no vigente; se conserva

@@ -358,6 +358,34 @@ describe("addSession publica el hito de los pases que cierra (#824)", () => {
     expect(opcionesDeLaTransicion(cierre!)?.silent).not.toBe(true);
   });
 
+  it("serie sin episodios: no publica progreso aunque llegue Compartir del formulario antiguo (#672)", async () => {
+    mocks.getActivePass.mockResolvedValue({
+      id: PASE_VIEJO,
+      status: "in_progress",
+      position: {},
+      editionId: null,
+    });
+    // El store real devuelve false antes de consultar la BD si el lote está vacío.
+    mocks.insertEpisodeWatches.mockResolvedValue(false);
+    const escrituras: Escritura[] = [];
+    mocks.createClient.mockResolvedValue(fakeClient(escrituras));
+
+    const result = await addSession(PASE_VIEJO, "series", "serie-1", {}, form({
+      status: "in_progress",
+      sessionDate: "2026-09-20",
+      share: "on",
+    }));
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.insertEpisodeWatches).toHaveBeenCalledWith(
+      expect.anything(), "usuario", "serie-1", PASE_VIEJO, [], "2026-09-20",
+    );
+    expect(escrituraEn(escrituras, "progress_sessions")).toBeUndefined();
+    expect(mocks.maybeAutopostWatchedDay).not.toHaveBeenCalled();
+    expect(mocks.createPost).not.toHaveBeenCalled();
+    expect(mocks.earnDailyLoopCelebrations).not.toHaveBeenCalled();
+  });
+
   it("serie (fase 4): marca en varias temporadas con la fecha de la hoja, sin crear sesión", async () => {
     mocks.getActivePass.mockResolvedValue({
       id: PASE_VIEJO,
