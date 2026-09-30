@@ -104,13 +104,9 @@ async function hasBilledCast(
 // independientes (puede venir uno sin el otro) y la estimación necesita ambos,
 // así que se guarda lo que haya en vez de descartar la respuesta entera.
 //
-// 42501 = visitante ANÓNIMO. Desde la navegación anónima (#359/#360) las fichas
-// las abre también quien no tiene sesión, y `anon` no tiene —ni debe tener—
-// grant de escritura sobre el catálogo. Es esperado e inocuo: la hidratación la
-// hará el primer visitante con sesión. Mismo criterio que el 23505 de los
-// créditos; cualquier otro error sí se registra. Con la RPC el anónimo recibe
-// además el `authentication required` que ella misma lanza (P0001), tratado
-// igual: la RPC exige `auth.uid()`.
+// Solo se llama desde `wantsSizes`: una fila ya hidratada y un visitante con
+// sesión. Así no marca hydrated_at en una shell pendiente ni provoca errores
+// de autenticación durante una visita anónima.
 //
 // #676: esto era un UPDATE DIRECTO sobre `movies`/`series`. El grant de UPDATE
 // por columna que lo sostenía incluía `total_seasons`, y la política era
@@ -206,7 +202,7 @@ export async function ensureItemEnriched(
   try {
     const needsSize = needsSizeHydration(itemType, item);
     // `hydrate_movie`/`hydrate_series` ponen SIEMPRE `hydrated_at = now()`,
-    // sin importar qué columnas rellenen. `writeBackdrop` corre aquí, durante
+    // sin importar qué columnas rellenen. `writeSizes` y `writeBackdrop` corren aquí, durante
     // el render; la hidratación completa (créditos, tamaños, título legible…)
     // la agenda la ficha con `after()` (`ensureMovieHydrated`/
     // `ensureSeriesHydrated`, `hydrate-screen.ts`) y esa SÍ hace early-return
@@ -214,14 +210,15 @@ export async function ensureItemEnriched(
     // fila todavía pendiente (`hydratedAt == null`), la marcaría como
     // hidratada aquí mismo; si el `after()` luego fallase, la fila se quedaría
     // MARCADA para siempre sin su metadata — mismo bug que #1201. Por eso solo
-    // se pide backdrop para filas que YA estaban hidratadas: una fila pendiente
-    // lo recibe en su siguiente visita, una vez que `after()` haya podido
-    // completar el resto. `viewerLoggedIn` además evita que un anónimo
+    // se piden estos campos para filas que YA estaban hidratadas: una fila
+    // pendiente los recibe en su siguiente visita, una vez que `after()` haya
+    // podido completar el resto. `viewerLoggedIn` además evita que un anónimo
     // intente la escritura (no tiene grant; ver `writeBackdrop`).
+    const wantsSizes = needsSize && item.hydratedAt != null && item.viewerLoggedIn === true;
     const wantsBackdrop =
       needsBackdrop(itemType, item) && item.hydratedAt != null && item.viewerLoggedIn === true;
     const needsCredits = !(await hasBilledCast(supabase, itemType, item.id));
-    if (!needsCredits && !needsSize && !wantsBackdrop) return effects;
+    if (!needsCredits && !wantsSizes && !wantsBackdrop) return effects;
 
     if (itemType === "book") {
       if (!needsCredits) return effects;
@@ -324,7 +321,7 @@ export async function ensureItemEnriched(
         : await getSeriesDetails(item.tmdbId);
     if (!details) return effects;
 
-    if (needsSize) await writeSizes(supabase, itemType, item.id, details);
+    if (wantsSizes) await writeSizes(supabase, itemType, item.id, details);
     if (wantsBackdrop && details.backdropUrl) {
       await writeBackdrop(supabase, itemType, item.id, details.backdropUrl);
     }
