@@ -3,8 +3,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-15",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09",
+    "generatedAt": "2026-09-30",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30; el resto conserva las fuentes anteriores",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -63,6 +63,11 @@
         "id": "inv-tailwind-literal",
         "rule": "Las clases de acento por tipo se escriben enteras, nunca interpoladas, para que el JIT de Tailwind las vea.",
         "evidence": "src/lib/catalog/media-accent.ts"
+      },
+      {
+        "id": "inv-edition-isbn-admission",
+        "rule": "Un ISBN válido comparte identidad entre sus formas 10/13. Las nuevas filas o traslados no añaden otra edición canónica al mismo libro; las parejas históricas se conservan hasta reconciliar sus referencias.",
+        "evidence": "supabase/migrations/20260930170000_book_editions_canonical_isbn.sql; supabase/tests/book_editions_canonical_isbn.sql; scripts/db/check-book-edition-isbn-concurrency.mjs"
       }
     ],
     "layers": [
@@ -837,7 +842,7 @@
       "layer": "domain",
       "kind": "module",
       "size": 3,
-      "summary": "Ediciones de libro: alta, etiqueta y edición primaria. El total de páginas contra el que se valida sale de AQUÍ, no de books.",
+      "summary": "Ediciones identificadas y candidatas en vivo. ISBN válidos se comparan en forma ISBN-13 canónica; el total de páginas del pase sale de su edición.",
       "files": [
         "src/lib/editions"
       ]
@@ -1232,7 +1237,7 @@
       "label": "book_editions · movie_versions · series_episodes",
       "layer": "db",
       "kind": "table",
-      "summary": "La tirada concreta: ISBN/editorial/páginas, montajes y catálogo por episodio. is_primary marca la edición canónica."
+      "summary": "La tirada concreta: ISBN/editorial/páginas, montajes y catálogo por episodio. Las nuevas ediciones de libro respetan una identidad ISBN-10/13 canónica."
     },
     {
       "id": "t-people",
@@ -1655,6 +1660,29 @@
       "gotchas": [
         "Menos de dos aceptados ⇒ un trigger retira el post `joint` (y el visionado si no queda nadie). Borrar un pase saca a su dueño (cascade).",
         "«y N más» sale de joint_viewing_accepted_counts (definer, solo números): la RLS de miembros no deja ver a quien no puedes ver."
+      ]
+    },
+    {
+      "id": "t-edition-isbn-keys",
+      "label": "private.book_edition_isbn_keys",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Admisión atómica de identidades canónicas de edición por libro. Conserva contador para duplicados históricos; los clientes no pueden leer ni escribir la tabla.",
+      "columns": [
+        "book_id",
+        "isbn13",
+        "row_count"
+      ],
+      "files": [
+        "supabase/migrations/20260930170000_book_editions_canonical_isbn.sql",
+        "supabase/migrations/20260930171000_merge_book_canonical_isbn.sql",
+        "supabase/tests/book_editions_canonical_isbn.sql",
+        "scripts/db/check-book-edition-isbn-concurrency.mjs"
+      ],
+      "gotchas": [
+        "Un UNIQUE sobre las ediciones existentes falla por las parejas históricas de #1242. El contador conserva esas filas y bloquea otra alta.",
+        "El trigger es AFTER para no reservar una clave cuando ON CONFLICT DO NOTHING descarta la fila. La cascada del libro puede borrar primero la clave privada.",
+        "REPEATABLE READ puede rechazar un escritor con snapshot antiguo (23505/40001); la clave primaria impide que ese escritor cree un clon."
       ]
     }
   ],
@@ -2823,6 +2851,12 @@
       "from": "a-social",
       "to": "t-joint-viewings",
       "kind": "writes"
+    },
+    {
+      "from": "t-tiradas",
+      "to": "t-edition-isbn-keys",
+      "kind": "writes",
+      "label": "trigger AFTER en ediciones de libro"
     }
   ],
   "flows": [

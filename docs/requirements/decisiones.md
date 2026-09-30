@@ -5402,3 +5402,27 @@ en la ruleta, insertando solo el contenido (#988). La animación de dados/moneda
 se reinicia al cambiar de ID, incluso al restaurar una tirada, y movimiento
 reducido conserva su resolución inmediata (#991). Los tests de regiones vivas
 cuentan solo las visibles cuando Next conserva rutas ocultas (#1003).
+
+## 2026-09-30 — #906: identidad de ISBN y admisión sin borrar el historial
+
+Las comparaciones usan ISBN-13 canónico con checksum válido, incluyendo la
+conversión de ISBN-10 a 978 y conservando 979. SQL y TypeScript comparten el
+conjunto de espacios exteriores de ECMAScript; un ISBN inválido no identifica
+una tirada. El ejemplo con X del ticket tenía checksum incorrecto: la pareja
+válida de regresión es `8433920421`/`9788433920423`.
+
+El preflight encontró 15 grupos históricos duplicados en dev y 3 en prod.
+No se impone un UNIQUE sobre esas filas ni se eliminan como parte de una
+migración de integridad. Un ledger privado con PK y contador conserva el
+historial y atomiza las nuevas altas/traslados; el trigger es AFTER para no
+reservar identidades cuando ON CONFLICT DO NOTHING descarta una inserción.
+La PK protege también REPEATABLE READ; el advisory lock por sí solo no cubría
+un snapshot antiguo. Las RPC devuelven la identidad existente de forma
+determinista, en vez del NULL histórico. Los consumidores admiten ese UUID.
+
+La fusión de libros usa la misma identidad, conserva el tratamiento literal
+de ISBN inválidos y la guarda que impide eliminar una edición referenciada.
+Las parejas de ediciones anteriores se reconcilian aparte en #1242, conservando
+sus referencias. Las migraciones se verifican primero en el replay vacío y dev;
+en prod se aplican las funciones/protección y se verifican objetos/permisos,
+sin ejecutar una fusión de libros ni borrar ediciones existentes.

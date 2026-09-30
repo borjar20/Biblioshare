@@ -8,7 +8,7 @@ import {
   EDITIONS_PAGE_SIZE,
   MAX_REPRESENTATION_PAGES,
 } from "@/lib/catalog/openlibrary/editions";
-import { isValidIsbnCheckDigit, normalizeIsbn } from "@/lib/catalog/isbn";
+import { canonicalIsbn13, isValidIsbnCheckDigit, normalizeIsbn } from "@/lib/catalog/isbn";
 import { setPassEdition } from "@/lib/passes/actions";
 
 // Una tirada que OpenLibrary CONOCE pero que en esta base de datos todavía no
@@ -123,13 +123,13 @@ export async function fetchEditionCandidates(bookId: string): Promise<EditionCan
     .eq("book_id", bookId)
     .not("isbn", "is", null);
 
-  // Normalizado en los dos lados: lo persistido puede venir con guiones (un
-  // colaborador lo tecleó a mano vía `createEdition`, que no normaliza),
-  // mientras que lo de OpenLibrary ya sale de `normalizeIsbn`. Comparar en
-  // crudo dejaría colar duplicados con distinta puntuación.
+  // Se compara con una clave ISBN-13 canónica: lo persistido puede venir con
+  // guiones o en ISBN-10 (un colaborador lo tecleó a mano vía
+  // `createEdition`), mientras que OpenLibrary puede dar el ISBN-13
+  // equivalente. Los 979 se conservan y los ISBN inválidos no se colisionan.
   const persisted = new Set(
     (persistedRows ?? [])
-      .map((row) => (row.isbn ? normalizeIsbn(row.isbn) : null))
+      .map((row) => (row.isbn ? canonicalIsbn13(row.isbn) : null))
       .filter((isbn): isbn is string => isbn !== null)
   );
 
@@ -141,7 +141,8 @@ export async function fetchEditionCandidates(bookId: string): Promise<EditionCan
 
   const candidates: EditionCandidate[] = [];
   for (const edition of editions) {
-    if (persisted.has(edition.isbn)) continue;
+    const canonicalIsbn = canonicalIsbn13(edition.isbn);
+    if (canonicalIsbn && persisted.has(canonicalIsbn)) continue;
     candidates.push(toCandidate(edition));
     if (candidates.length === MAX_CANDIDATES) break;
   }

@@ -1332,3 +1332,13 @@ commit;
 begin;
 \ir migrations/20260930160000_register_catalog_item_by_volume_validation.sql
 commit;
+
+-- 20260930170000_book_editions_canonical_isbn
+begin;
+\ir migrations/20260930170000_book_editions_canonical_isbn.sql
+commit;
+
+-- 20260930171000_merge_book_canonical_isbn
+begin;
+\ir migrations/20260930171000_merge_book_canonical_isbn.sql
+commit;

@@ -195,6 +195,39 @@ describe("fetchEditionCandidates", () => {
     expect(candidates.map((c) => c.isbn)).toEqual([VALID[1]]);
   });
 
+  it("excluye una candidata ISBN-13 cuando ya existe su ISBN-10 con puntuación", async () => {
+    h.state.persistedIsbns = [{ isbn: "84-339-2042-1" }];
+    vi.stubGlobal("fetch", respondWith([doc(VALID[0]), doc(VALID[1])]));
+
+    const candidates = await fetchEditionCandidates("book-1");
+
+    expect(candidates.map((c) => c.isbn)).toEqual([VALID[1]]);
+  });
+
+  it("excluye una candidata ISBN-10 cuando ya existe su ISBN-13", async () => {
+    h.state.persistedIsbns = [{ isbn: VALID[0] }];
+    vi.stubGlobal(
+      "fetch",
+      respondWith([doc("84-339-2042-1", { isbn_13: undefined, isbn_10: ["84-339-2042-1"] })])
+    );
+
+    expect(await fetchEditionCandidates("book-1")).toEqual([]);
+  });
+
+  it("no confunde un ISBN-10 equivalente con un ISBN-13 979", async () => {
+    h.state.persistedIsbns = [{ isbn: "8433920421" }];
+    vi.stubGlobal("fetch", respondWith([doc("9791234567896")]));
+
+    expect((await fetchEditionCandidates("book-1")).map((c) => c.isbn)).toEqual(["9791234567896"]);
+  });
+
+  it("un ISBN persistido inválido no oculta una candidata válida", async () => {
+    h.state.persistedIsbns = [{ isbn: "9788433920424" }];
+    vi.stubGlobal("fetch", respondWith([doc(VALID[0])]));
+
+    expect((await fetchEditionCandidates("book-1")).map((c) => c.isbn)).toEqual([VALID[0]]);
+  });
+
   it("no escribe NADA en la base de datos (ni RPC ni insert)", async () => {
     vi.stubGlobal("fetch", respondWith([doc(VALID[0])]));
 

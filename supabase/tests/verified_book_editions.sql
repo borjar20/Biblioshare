@@ -35,7 +35,8 @@ begin
   if not exists (select 1 from public.book_editions where id=edition and book_id=book and created_by=actor) then
     raise exception 'FAIL: verified edition and attribution not persisted';
   end if;
-  if public.register_verified_book_edition(book, actor, '9788410138407') is not null then
+  if public.register_verified_book_edition(book, actor, '9788410138407') is distinct from edition
+     or (select count(*) from public.book_editions where book_id=book and isbn='9788410138407') <> 1 then
     raise exception 'FAIL: registration not idempotent';
   end if;
   perform set_config('request.jwt.claim.sub', curator::text, true);

@@ -265,6 +265,8 @@
     "20260926120000_joint_viewings_enums.sql",
     "20260926120100_joint_viewings.sql",
     "20260930151804_hydrate_screen_revoke_anon.sql",
-    "20260930160000_register_catalog_item_by_volume_validation.sql"
+    "20260930160000_register_catalog_item_by_volume_validation.sql",
+    "20260930170000_book_editions_canonical_isbn.sql",
+    "20260930171000_merge_book_canonical_isbn.sql"
   ]
 }
