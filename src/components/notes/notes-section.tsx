@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
-import { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
-import { getNotesForItem } from "@/lib/notes/get-notes";
+import type { getNotesForItem } from "@/lib/notes/get-notes";
 import { compareNotes } from "@/lib/notes/sort";
 import { NoteCard } from "./note-card";
 
@@ -13,17 +12,15 @@ import { NoteCard } from "./note-card";
 // Las notas cuelgan del ítem, así que una relectura mezcla las suyas con las de
 // la primera. No se agrupa por pase: cada tarjeta lleva su fecha y eso basta.
 export async function NotesSection({
-  userId,
   itemType,
-  itemId,
+  notesPromise,
 }: {
-  userId: string;
   itemType: ItemType;
-  itemId: string;
+  /** Iniciada por la ficha antes de registrar trabajo en `after()` (#754). */
+  notesPromise: ReturnType<typeof getNotesForItem>;
 }) {
   const t = await getTranslations("notes");
-  const supabase = await createClient();
-  const notes = await getNotesForItem(supabase, userId, itemType, itemId);
+  const notes = await notesPromise;
   const sorted = [...notes].sort((a, b) => compareNotes(itemType, a, b));
 
   return (

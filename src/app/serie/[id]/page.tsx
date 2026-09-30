@@ -73,6 +73,7 @@ import {
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
 import { NotesSection } from "@/components/notes/notes-section";
+import { getNotesForItem } from "@/lib/notes/get-notes";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
@@ -138,6 +139,15 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   ]);
 
   if (!series) notFound();
+
+  // La consulta pertenece al render de la ficha; pasar la promesa evita que
+  // NotesSection construya un cliente una vez que `after()` ya está activo.
+  const notesPromise = user
+    ? getNotesForItem(supabase, user.id, "series", series.id)
+    : null;
+  // Adjunta pronto un consumidor de rechazo sin sustituir la promesa que
+  // NotesSection espera más tarde dentro del límite de Tabs.
+  void notesPromise?.catch(() => undefined);
 
   // Invitación a un visionado conjunto de esta obra sin contestar (#1224): se
   // lanza ya y se espera antes de pintar, en paralelo con lo del hero. Un fallo
@@ -319,6 +329,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             <SeriesTabs
               series={series}
               userId={user?.id ?? null}
+              notesPromise={notesPromise}
               ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
@@ -334,11 +345,13 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 async function SeriesTabs({
   series,
   userId,
+  notesPromise,
   ratingSummary,
   cerrar,
 }: {
   series: SeriesRow;
   userId: string | null;
+  notesPromise: ReturnType<typeof getNotesForItem> | null;
   ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
@@ -641,7 +654,7 @@ async function SeriesTabs({
             initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />
-          {userId && <NotesSection userId={userId} itemType="series" itemId={series.id} />}
+          {userId && notesPromise && <NotesSection itemType="series" notesPromise={notesPromise} />}
         </div>
       }
     />
