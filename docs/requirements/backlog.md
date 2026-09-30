@@ -181,6 +181,12 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
+- [x] **#1250 — invalidar las valoraciones de importaciones sin `after()`.**
+  El POST autenticado del propietario inicia el trabajo y el worker informa por
+  lotes; `private.dispatch_archive_imports` conserva la recuperación por cron.
+  Unitarios, tipos, lint focal, build local y smoke 7/7 han pasado. El fallo de
+  aislamiento de fixture descubierto durante el smoke se rastrea en #1260.
+
 - [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
   corrección existente de #833: sin overflow a 390 px antes y después de buscar
   y filtrar; controles y nota propia verificados el 2026-09-30.

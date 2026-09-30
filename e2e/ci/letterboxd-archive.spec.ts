@@ -4,7 +4,7 @@ import { analyzeLetterboxdArchive } from "../../src/lib/import/letterboxd-archiv
 import { randomUUID } from "node:crypto";
 import { zipFixture } from "../../src/lib/import/test-zip-fixture";
 
-test("ZIP completo: confirmar, cerrar, historial, pendientes, privacidad y deshacer", async ({ page }) => {
+test("ZIP completo: confirmar, cerrar, recuperar por cron, historial, pendientes, privacidad y deshacer", async ({ page, request }) => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   if (url !== "http://127.0.0.1:54321") throw new Error("Requires disposable local Supabase");
   const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -41,6 +41,12 @@ test("ZIP completo: confirmar, cerrar, historial, pendientes, privacidad y desha
     expect(before.data).toHaveLength(0);
     await page.getByRole("button", { name: "Confirmar importación", exact: true }).click();
     await page.close();
+    // Simulate the durable scheduled request after the importing browser closes.
+    // The local fixture has no production Vault/cron configuration.
+    const recovered = await request.post("/api/cron/archive-imports", {
+      headers: { "x-cron-secret": process.env.CRON_SECRET! },
+    });
+    expect(recovered.status()).toBe(200);
     const back = await page.context().newPage();
     await back.goto("/importar");
     await expect(back.getByText("1 de 1 películas incorporadas", { exact: true })).toBeVisible();

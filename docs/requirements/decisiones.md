@@ -5493,3 +5493,18 @@ conserve el error original.
 La decisión evita que una lectura dependiente de petición se inicie cuando la
 respuesta ya se ha cerrado. No atribuye una mejora al lector estable ni una fuga
 de ALS: esas hipótesis no se probaron.
+
+## 2026-10-01 — #1250: el POST del dueño inicia la importación; cron recupera
+
+El POST autenticado comprueba que quien inicia una importación es su propietario
+y que el origen permitido corresponde a la aplicación; inicia entonces el
+trabajo antes de devolver la respuesta. La invalidación ya no depende de un
+`after()` de render. El worker comunica el resultado de cada lote, de modo que
+la petición y la interfaz conservan el estado del trabajo sin esperar a que
+termine toda la importación.
+
+`private.dispatch_archive_imports` y su cron siguen siendo la recuperación para
+trabajos que queden pendientes. Esa ruta usa la configuración existente de
+Vault y el secreto de cron; no se añade migración, columna ni grant para este
+cambio. La recuperación no sustituye la autorización del POST ni la comprobación
+de origen.

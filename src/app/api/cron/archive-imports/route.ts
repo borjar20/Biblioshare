@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { runArchiveWorker } from "@/lib/import/archive-worker";
+import { expireArchiveBatch, revalidateArchiveImports } from "@/lib/reactivity/revalidate";
 
 export const maxDuration = 60;
 
@@ -10,7 +11,10 @@ export async function POST(request: Request) {
   const secret = Buffer.from(expected);
   if (supplied.length !== secret.length || !timingSafeEqual(supplied, secret)) return Response.json({ error: "unauthorized" }, { status: 401 });
   try {
-    return Response.json(await runArchiveWorker());
+    return Response.json(await runArchiveWorker(undefined, (itemIds) => {
+      expireArchiveBatch(itemIds);
+      revalidateArchiveImports();
+    }));
   } catch {
     return Response.json({ error: "worker_failed" }, { status: 500 });
   }

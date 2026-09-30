@@ -48,7 +48,7 @@ export async function ArchiveJobs({ client, userId, page = 0 }: { page?: number;
           <Button type="submit" className="self-start">{t("confirm")}</Button>
         </ArchiveActionForm>}
         {job.state === "running" && <ArchiveActionForm action={continueArchive}><input type="hidden" name="jobId" value={job.id} /><Button type="submit">{t("continue")}</Button></ArchiveActionForm>}
-        {job.state === "running" && rows.some((r) => r.state === "pending") && <><ArchiveRefresh /><p>{t("background")}</p></>}
+        {job.state === "running" && rows.some((r) => r.state === "pending") && <><ArchiveRefresh jobId={job.id} /><p>{t("background")}</p></>}
         {job.state !== "undone" && <details><summary>{t("undo")}</summary><p>{t("undoHelp")}</p><ArchiveActionForm action={undoArchive}><input type="hidden" name="jobId" value={job.id} /><Button type="submit">{t("confirmUndo")}</Button></ArchiveActionForm></details>}
         <details><summary>{t("results")}</summary><ul className="flex flex-col gap-4">{rows.map((row) => {
           const movie = row.payload as unknown as ArchiveMovie;
