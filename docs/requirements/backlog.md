@@ -181,11 +181,21 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
-- [x] **#1250 — invalidar las valoraciones de importaciones sin `after()`.**
+- [ ] **#1250 — invalidar las valoraciones de importaciones sin `after()`.**
   El POST autenticado del propietario inicia el trabajo y el worker informa por
   lotes; `private.dispatch_archive_imports` conserva la recuperación por cron.
   Unitarios, tipos, lint focal, build local y smoke 7/7 han pasado. El fallo de
   aislamiento de fixture descubierto durante el smoke se rastrea en #1260.
+  Implementación local verificada; integración pendiente al pausar la campaña.
+
+- [ ] **#1216 — persistir la reseña al cruzar el breakpoint con foco.**
+  Implementación local en ambos sentidos y 21 unitarios verdes. Quedan la
+  comprobación en navegador y la secuencia resize seguido de blur señalada por
+  revisión estática; esa posible duplicación aún no está reproducida.
+
+- [ ] **#1174 — esperar al destino efectivo tras iniciar sesión.** Tres
+  aserciones corregidas, con lint y tipos verificados. La ejecución de los
+  recorridos e2e y su integración quedaron pendientes al pausar.
 
 - [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
   corrección existente de #833: sin overflow a 390 px antes y después de buscar
