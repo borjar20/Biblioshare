@@ -40,6 +40,10 @@ integración local, no a este worktree aislado, que parte de `9f5099d` y no
 incluye el e2e de #1250. Las comprobaciones del candidato aislado se consultan
 en [PR #1261](https://github.com/borjar20/Biblioshare/pull/1261).
 
+El candidato `7e101d2` completó los controles publicados de calidad, flujos
+críticos, CodeQL y Vercel. La PR se cerró por petición del usuario al pausar la
+campaña el 2026-10-01; el cambio no está integrado en main.
+
 En este cambio aislado se comprobó la sintaxis del runner y el diff. No se
 arrancó un servidor desde este worktree ni se modificó la base de datos o
 eliminó la caché.
