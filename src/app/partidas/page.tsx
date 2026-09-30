@@ -6,8 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { PlayFrame } from "@/components/play/play-frame";
 import { ToolGrid } from "@/components/play/tool-grid";
 import { ActiveGameBanner } from "@/components/play/active-game-banner";
-import { SavedGames } from "@/components/play/saved-games";
-import { PlayersManager } from "@/components/play/players-manager";
+import { IdentityScopedHub } from "@/components/play/identity-scoped-hub";
 import { HowItWorks } from "@/components/play/how-it-works";
 
 export const metadata: Metadata = { title: "Partidas — Biblioshare" };
@@ -35,12 +34,7 @@ async function Banner() {
 async function Saved() {
   await connection();
   const identity = (await getCurrentUser())?.id ?? "anon";
-  return (
-    <>
-      <SavedGames identity={identity} />
-      <PlayersManager identity={identity} />
-    </>
-  );
+  return <IdentityScopedHub identity={identity} />;
 }
 
 export default async function PlayHubPage() {
