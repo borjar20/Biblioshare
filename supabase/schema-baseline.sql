@@ -1327,3 +1327,8 @@ commit;
 begin;
 \ir migrations/20260930151804_hydrate_screen_revoke_anon.sql
 commit;
+
+-- 20260930160000_register_catalog_item_by_volume_validation
+begin;
+\ir migrations/20260930160000_register_catalog_item_by_volume_validation.sql
+commit;
