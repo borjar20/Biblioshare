@@ -1,5 +1,14 @@
 # Modelo de datos
 
+> **Delta 2026-09-30 (#870):** un colaborador o admin que vacía `books.author`
+> deja `repr_meta.author={"source":"manual"}` tanto para `NULL` como para `''`;
+> el centinela impide que `hydrate_book` y `hydrate_books_bulk` lo rellenen. Si
+> falta esa entrada, el autor sigue siendo desconocido y ambos hidratadores pueden
+> rellenarlo. La migración `20260930190000_book_author_manual_clear.sql` conserva
+> firmas y fill-only, deja las tres funciones solo para `service_role` y fija
+> `search_path=''`. Aplicada y verificada en **dev** (regresión con rollback) y
+> en **prod** (definiciones, ACL y comentarios, sin fixtures ni curación de datos).
+
 > **Delta 2026-09-30 (#906):** ISBN-10 válidos y su equivalente ISBN-13 con
 > prefijo 978 comparten identidad; 979 conserva la suya. `canonical_isbn13(text)`
 > coincide con TypeScript en checksum, separadores y espacios exteriores de
@@ -728,7 +737,7 @@ visita).
 > pero es defensa en profundidad que falta sobre dos funciones que se saltan RLS. Issue
 > [#831](https://github.com/borjar20/Biblioshare/issues/831).
 
-### 2.1ter Representación de obra: `repr_meta` y la regla de escritura (dev, verificado 2026-08-27)
+### 2.1ter Representación de obra: `repr_meta` y la regla de escritura (delta #870 verificado en dev y prod el 2026-09-30; resto 2026-08-27)
 
 **Esta subsección MANDA sobre lo que §2 y §2.1 dicen de `hydrate_book`.** Diez migraciones
 (`20260882`…`20260891`) cambiaron a fondo cómo se escribe el catálogo de libros, y lo que
@@ -745,7 +754,7 @@ cada valor representable, de dónde salió y en qué idioma está.
 
 | Columna | Qué es |
 |---|---|
-| `books.repr_meta` | `jsonb`. Procedencia por campo: `{"title":{"lang":"es","source":"openlibrary"},"cover":…,"synopsis":…,"pages":{"source":…}}`. `lang`: `es` \| `en` \| `other` \| `unknown`. `source`: `openlibrary` \| `google_books` \| `wikidata` \| `manual` |
+| `books.repr_meta` | `jsonb`. Procedencia por campo: `{"title":{"lang":"es","source":"openlibrary"},"cover":…,"synopsis":…,"author":{"source":"manual"},"pages":{"source":…}}`. `lang`: `es` \| `en` \| `other` \| `unknown` (solo título, portada y sinopsis). `source`: `openlibrary` \| `google_books` \| `wikidata` \| `manual` |
 | `books.google_books_volume_id` | `text`, índice **único sin predicado** (`books_google_books_volume_id_key`) |
 | `books.wikidata_id` | `text`, índice **único sin predicado** (`books_wikidata_id_key`). Ancla de identidad ENTRE idiomas |
 
@@ -801,12 +810,13 @@ Dos bordes que costaron un hallazgo cada uno y que **no** son arbitrarios:
   entrada bien formada, así que se auto-cura. **El orden importa: esta comprobación va ANTES
   que la de `manual`.**
 
-#### `hydrate_book` v5 — una obra, desde su ficha
+#### `hydrate_book` — una obra, desde su ficha
 
 `hydrate_book(p_book_id uuid, p_fields jsonb, p_genres text[], p_published_year integer,
 p_total_pages integer, p_pages_source text, p_wikidata_id text, p_author text) returns void`.
-`SECURITY DEFINER`, `search_path = public, pg_temp`. Migraciones `20260883` (v3) → `20260884`
-(v4) → `20260890` (v5, que solo saca la regla a `repr_should_write`).
+`SECURITY DEFINER`, `search_path = ''` desde `20260930190000`. Migraciones `20260883` (v3) →
+`20260884` (v4) → `20260890` (v5, que saca la regla a `repr_should_write`); #870 añade el
+guard del autor manual y fija el search path vacío.
 
 🔒 **SOLO `service_role`** (`20260884`, hallazgo C1). Este es el punto que la doc vieja tenía
 del revés: no es que «cualquier `authenticated` complete una obra hueca al abrir su ficha» —
@@ -832,8 +842,11 @@ Qué escribe, y cómo:
   fuera de `openlibrary|google_books|wikidata` **rechaza** la escritura (la procedencia es un
   hecho verificable); un `lang` ausente o fuera del vocabulario **no** rechaza, se normaliza a
   `unknown` (el idioma es una heurística). Truncados a 300 / 2000 / 5000.
-- **`author` / `published_year` / `genres` / `total_pages`** — **fill-only de siempre**: no
-  tienen dimensión de idioma. `total_pages` solo entre 1 y 20000, y estampa
+- **`author` / `published_year` / `genres` / `total_pages`** — **fill-only**: no tienen
+  dimensión de idioma. `author` solo se rellena si está `NULL`/vacío **y**
+  `repr_should_write(author, repr_meta, 'author', 'unknown')` lo permite: una
+  entrada manual preserva una curación, mientras su ausencia sigue significando
+  «desconocido» e hidratable. `total_pages` solo entre 1 y 20000, y estampa
   `repr_meta.pages.source`. `author` volvió en `20260884` (I6): v3 lo había perdido, y como la
   RPC marca `hydrated_at` igualmente, un libro hidratado desde la ficha se quedaba con
   `author = NULL` **para siempre** — recaída exacta de #730.
@@ -845,9 +858,9 @@ Qué escribe, y cómo:
 
 #### `hydrate_books_bulk` — la bibliografía de un autor, en lote
 
-`hydrate_books_bulk(p_rows jsonb) returns void`. `SECURITY DEFINER`, `public, pg_temp`, **solo
+`hydrate_books_bulk(p_rows jsonb) returns void`. `SECURITY DEFINER`, `search_path = ''`, **solo
 `service_role`** con el mismo guard del GUC `role`. Migración `20260890`, endurecida por
-`20260891`.
+`20260891` y `20260930190000` (autor manual y search path vacío).
 
 Nace de un dato medido **en prod** el 2026-08-26: abrir la ficha de Brandon Sanderson creó 87
 créditos de libro y dejó **61 filas de `books` completamente vacías** —el 23% del catálogo
@@ -857,7 +870,9 @@ título». La causa no era falta de datos: `fetchAuthorWorks` los traía y
 
 Cada elemento de `p_rows` es
 `{book_id, title, title_lang, author, cover_url, cover_lang, published_year}`. Escribe **solo
-título / autor / año / portada**, fill-or-upgrade vía `repr_should_write`, y **sin UPDATE si no
+título / autor / año / portada**; título y portada usan fill-or-upgrade, y autor es fill-only
+con el guard `repr_should_write(..., 'author', 'unknown')`. Así una entrada manual, incluido un
+vaciado, no se repone; sin entrada el autor desconocido sí se completa. No hay **UPDATE si no
 cambió nada** (una segunda pasada no debe generar 87 versiones nuevas de fila).
 
 ⚠️ **NO toca `hydrated_at`, y es deliberado.** El lote no trae sinopsis, géneros, páginas ni
@@ -891,10 +906,12 @@ significa que algo está roto, no que el idioma se desconozca.
 #### Quién estampa `source:'manual'`: el trigger `trg_stamp_books_repr_manual`
 
 `BEFORE UPDATE` en `books`, función `stamp_repr_manual_on_curation()` (`20260884`, endurecida
-en `20260885`). Si una persona **autenticada** cambia `title`/`cover_url`/`synopsis` **fuera de
-`app.hydrating`**, estampa `{"source":"manual"}` en la entrada de ese campo; y si el campo se
-**vacía**, BORRA la entrada — la procedencia describe el valor que hay, y estampar `manual`
-sobre un hueco lo cerraría para siempre, incluso para el simple relleno.
+en `20260885`; `20260930190000` para `author`). Si una persona **autenticada** cambia
+`title`/`cover_url`/`synopsis` **fuera de `app.hydrating`**, estampa
+`{"source":"manual"}` en la entrada de ese campo; si uno de esos campos se **vacía**, BORRA la
+entrada — la procedencia describe el valor que hay. Para `author` la semántica es distinta: al
+cambiarlo siempre estampa `{"source":"manual"}` y conserva la entrada aun si queda `NULL` o
+vacío. Ese vaciado es curación explícita, no un dato desconocido para que el proveedor lo rellene.
 
 Por qué un trigger y no las actions de curación: `authenticated` no tiene grant de UPDATE sobre
 `repr_meta`, así que **las actions no pueden escribirla** (y de hecho no la tocan nunca);
@@ -937,27 +954,19 @@ y hace depender el alta de un trigger en vez del dato. Solo la rama de libro: `r
 
 #### Estado
 
-> **Aplicadas y verificadas en DEV el 2026-08-27**, contra objetos reales (`pg_proc.proacl`,
-> `pg_proc.proconfig`, `col_description`) y nunca contra `list_migrations`. Las cinco funciones
-> —`hydrate_book`, `hydrate_books_bulk`, `repr_should_write`, `repr_lang_rank`,
-> `stamp_repr_manual_on_curation`— tienen `proacl = {postgres=X/postgres,
-> service_role=X/postgres}` (ni `anon` ni `authenticated`, con `anon` **nombrado** en el
-> `revoke` por #831) y `proconfig = {"search_path=public, pg_temp"}`.
+> **Aplicadas y verificadas en dev y prod el 2026-09-30.** La validación actual cubre los tres
+> objetos redefinidos por #870 —`hydrate_book`, `hydrate_books_bulk` y
+> `stamp_repr_manual_on_curation`—: definiciones idénticas entre entornos por hash
+> (`c81f64d6fb516824583f8e1b63af5658`, `ad02c6523e072e800a0532a5c4db50e6` y
+> `c22ebc0249abf22228d7406cea522ace`), `SECURITY DEFINER`, `search_path=''` y EXECUTE efectivo
+> `anon=false`, `authenticated=false`, `service_role=true`. La prueba SQL transaccional cubre
+> `NULL`, vacío, autor desconocido, valor manual y ambos hidratadores; pasó en dev con rollback.
 >
-> **PROD: NADA DE ESTO ESTÁ APLICADO** (verificado contra `pg_proc` el 2026-08-27). De las ocho
-> funciones de esta cadena, producción solo tiene las dos VIEJAS: `hydrate_book` con su firma v2
-> (`p_book_id, p_synopsis, p_genres, p_cover_url, p_title, p_author, p_published_year` — o sea
-> fill-only y ejecutable por `authenticated`) y `register_manual_catalog_item` sin la marca de
-> curación. No existen allí `hydrate_books_bulk`, `repr_should_write`, `repr_lang_rank`,
-> `merge_book_into`, `register_catalog_item_by_volume` ni `stamp_repr_manual_on_curation`.
-> La cadena `20260882`–`20260891` se despliega ENTERA y detrás del código, nunca a trozos: el
-> código nuevo llama con firmas que prod todavía no tiene.
->
-> Antes de aplicar nada de aquí a prod, leer el aviso de la issue
-> [#894](https://github.com/borjar20/Biblioshare/issues/894): sobre las filas que dejó el
-> backfill de `20260882` en rango 3, el lote **sí pisa** título y portada con candidatas de
-> rango 2 (`other`, que puede ser cualquier idioma). Es la semántica decidida, pero el efecto
-> pasa de «una ficha» a «87 libros por cada visita a una ficha de autor».
+> En prod se comprobaron solo definición, ACL y comentarios de esos objetos, sin fixtures ni
+> curación de datos. Los libros permanecieron sin cambios durante la comprobación (dev 397,
+> 11 autores vacíos; prod 437, 6 vacíos; `repr_meta.author.source='manual'` 0 en ambos). No es
+> una reverificación completa de toda la cadena de representación ni atribuye a #870 la guarda
+> UUID del lote, que ya existía en los dos entornos.
 
 #### Muerte del sync masivo de ediciones (Task 10, código, dev, 2026-08-27)
 

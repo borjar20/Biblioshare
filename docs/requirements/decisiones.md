@@ -5426,3 +5426,12 @@ Las parejas de ediciones anteriores se reconcilian aparte en #1242, conservando
 sus referencias. Las migraciones se verifican primero en el replay vacío y dev;
 en prod se aplican las funciones/protección y se verifican objetos/permisos,
 sin ejecutar una fusión de libros ni borrar ediciones existentes.
+
+## 2026-09-30 — #870: un autor vaciado por curación es intencional, no desconocido
+
+Un colaborador o admin puede dejar `books.author` en `NULL` o vacío para corregir
+una atribución. Ese resultado conserva `repr_meta.author.source='manual'`: los
+hidratadores fill-only no lo sustituyen. La ausencia de `repr_meta.author` sigue
+significando «autor desconocido» y permite rellenarlo desde proveedor; no se hace
+backfill retrospectivo porque los vaciados históricos no se pueden distinguir de
+los autores nunca conocidos.

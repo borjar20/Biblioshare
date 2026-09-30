@@ -1342,3 +1342,8 @@ commit;
 begin;
 \ir migrations/20260930171000_merge_book_canonical_isbn.sql
 commit;
+
+-- 20260930190000_book_author_manual_clear
+begin;
+\ir migrations/20260930190000_book_author_manual_clear.sql
+commit;

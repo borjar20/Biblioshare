@@ -164,6 +164,10 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#870 — vaciado manual de autor en libros.** `repr_meta.author.source='manual'`
+  preserva la curación frente a los dos hidratadores; migración y regresión SQL verificadas
+  en dev y definiciones/ACL comprobadas en producción el 2026-09-30.
+
 **Acción 6 — hit-areas + RatingDots táctiles: HECHA el 2026-08-20.** F4-010
 (puntuar a dedo pasa a ser un arrastre con la nota visible), F4-013 (check de
 episodio visto) y F4-015 (regla de sistema `tap-44`, aplicada al trigger de

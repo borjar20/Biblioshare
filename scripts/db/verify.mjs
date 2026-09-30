@@ -24,6 +24,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'
 sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/book_editions_canonical_isbn.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/register_catalog_item_by_volume_validation.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/book_author_manual_clear.sql'), 'utf8'));
 
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_reference_guards.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/pet_r4b_equipment.sql'), 'utf8'));
