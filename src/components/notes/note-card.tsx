@@ -51,8 +51,8 @@ export function NoteCard({
       <p
         className={
           note.kind === "quote"
-            ? "font-serif text-[16px] leading-snug italic text-foreground"
-            : "text-sm text-foreground"
+            ? "font-serif text-[16px] leading-snug italic whitespace-pre-line break-words text-foreground"
+            : "text-sm whitespace-pre-line break-words text-foreground"
         }
       >
         {note.body}
