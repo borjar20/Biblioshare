@@ -5592,3 +5592,21 @@ coinciden: esa equivalencia de objetos manda sobre la diferencia de timestamps.
 No se siembran pruebas ni se reescribe actividad existente en producción.
 La fecha de Madrid verificada antes de aplicar fue 2026-10-01; el corte fijo
 2026-10-02 sigue siendo futuro y se conserva tras este primer lanzamiento.
+
+## 2026-10-01 — compresión de transporte en el CDN (#1251)
+
+Se fija `compress: false` en Next y se delega la compresión pública al CDN de
+Vercel. El middleware incluido en Next 16.3.8 redirige `on('drain')` al Gzip,
+pero `once` conserva como target el ServerResponse y retira allí el wrapper.
+Después de ejecutar trece callbacks quedan trece listeners en Gzip; `off`
+tampoco los retira. Sin Gzip quedan cero. No es solo un aviso ni una hipótesis
+de cierre temprano, y no se arregla aumentando `maxListeners`.
+
+Es una evitación explícita de un defecto externo, sin parchear dependencias:
+`next start` local queda sin compresión. El CDN debe seguir negociando br/gzip;
+se verifica HTTP/HTML/Content-Encoding en el preview y en producción. Cualquier
+hosting distinto requiere un proxy de compresión que mantenga el streaming,
+sin bufferizar, y verificar allí ese contrato antes de exponer la aplicación.
+El smoke de producción local conserva los recorridos y falla si reaparece
+el aviso Gzip, pero no demuestra el funcionamiento del encoder remoto.
+Evidencia y límites: `docs/testing/2026-10-01-gzip-listeners-1251.md`.

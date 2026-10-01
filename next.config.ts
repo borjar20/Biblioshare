@@ -53,6 +53,10 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  // Vercel comprime en el CDN. Evita el puente Gzip de Next que retiene
+  // listeners drain (#1251). Otro hosting requiere un proxy de compresión
+  // que conserve streaming; contrato y verificación en docs/testing/ci.md.
+  compress: false,
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

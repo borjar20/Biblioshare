@@ -18,7 +18,8 @@ const fixtureNamespace = String(Date.now());
 const result = spawnSync(process.execPath, commands[mode], {
   // Server failures can leave the browser assertions green: late request APIs
   // during abandoned detail streams (#754) and import invalidation during a
-  // render (#1250). Inspect the webServer output as well.
+  // render (#1250), or retained Gzip drain listeners (#1251). Inspect the
+  // webServer output as well.
   stdio: mode !== 'build' ? ['inherit', 'pipe', 'pipe'] : 'inherit',
   encoding: 'utf8',
   maxBuffer: 10 * 1024 * 1024,
@@ -43,11 +44,15 @@ if (mode !== 'build') {
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
   const lateRequestApi = /Route \/(?:libro|pelicula|serie)\/\[id\] used `(connection|cookies)\(\)` inside `after\(\)` while rendering/;
   const importInvalidationDuringRender = /Route \/importar used ["`]revalidate(?:Tag|Path)[^\r\n]*during render which is unsupported/;
+  const gzipListeners = /MaxListenersExceededWarning:[^\r\n]*\[Gzip\]/;
   if (lateRequestApi.test(output)) {
     process.stderr.write('FAIL: a detail renderer read request data after its response closed (#754).\n');
     process.exitCode = 1;
   } else if (importInvalidationDuringRender.test(output)) {
     process.stderr.write('FAIL: an archive worker invalidated its cache during a render (#1250).\n');
+    process.exitCode = 1;
+  } else if (gzipListeners.test(output)) {
+    process.stderr.write('FAIL: the Next compression bridge retained Gzip drain listeners (#1251).\n');
     process.exitCode = 1;
   } else {
     process.exitCode = result.status ?? 1;
