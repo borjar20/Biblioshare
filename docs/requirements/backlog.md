@@ -165,6 +165,12 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#1274 — lecturas de sesión de Ajustes detrás de su frontera de carga.**
+  `loading.tsx` aporta el shell estático; se retiran los opt-outs de página y
+  layout. Seis recorridos pasan tanto en dev como contra build/start local,
+  sin el error de prerender de Ajustes; evidencia en
+  `docs/testing/2026-10-01-ajustes-suspense-1274.md`.
+
 - [x] **#875 — referencias de eventos en fusiones de libros.** SQL cubre
   lanzamiento y relaciones de fecha destacada; el reconciliador cuenta ambos
   como rastro de usuario. Regresiones con rollback en local/dev y definición/
