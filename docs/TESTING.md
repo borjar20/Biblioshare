@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero y zoom verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero, zoom y errores del entrenamiento verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1171)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -181,6 +181,23 @@ Solo se interceptan recursos sintéticos propios; no se miden bytes ni LCP.
 El guard para cambios de `src` se revisa por lectura, sin simular esa edición
 en el navegador. Evidencia, FAIL conservados y limpieza:
 [original del zoom](testing/2026-10-01-image-zoom-loading-1278.md).
+
+### Errores y recuperación del entrenamiento (#1171)
+
+`e2e/ci/training-errors.spec.ts` cubre seis causas en 320 y 1280 px contra
+build/start: conexión al iniciar, sesión caducada al iniciar y al resolver,
+versión desconocida, snapshot inválido y mascota ausente. Usa acciones reales,
+cookies reales y un actor propio en Supabase local; no simula respuestas RSC.
+Comprueba mensaje/acción, destino y foco del login, intent/decisiones, conservación
+de la partida incompatible y una resolución con los mismos inputs tras volver
+a autenticarse. Recuperar un checkpoint abierto mantiene la pausa intencionada.
+
+Son 12 casos sin reintentos, con cero errores de página/desbordamiento. Los
+70 unitarios de sesión/panel cubren además UNAVAILABLE, replay, aventuras y
+LOCAL_RECOVERY. La pasada final y el barrido agregado de once actores verifican
+Auth 404 y ocho superficies vacías, sin tocar cuentas persistentes. FAIL previos,
+recuperación del tick final pendiente #1281 y límites:
+[errores del entrenamiento](testing/2026-10-01-training-error-actions-1171.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

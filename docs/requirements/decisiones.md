@@ -5705,3 +5705,27 @@ de antemano. No se cambia la carga de las miniaturas ni se usa lazy como sustitu
 de este contrato. La portada de club ya usa su URL completa visible, por lo que
 allí no se promete ahorro adicional de bytes. Evidencia de los cuatro
 consumidores: `docs/testing/2026-10-01-image-zoom-loading-1278.md`.
+
+## 2026-10-01 — errores y reautenticación del entrenamiento (#1171)
+
+El panel traduce las familias de error y ofrece su recuperación concreta:
+reintento con la misma intención para conexión/otros fallos, login para sesión
+caducada y nuevo entrenamiento sólo por elección explícita cuando el inicio
+no es compatible. `UNSUPPORTED_BATTLE` comparte la familia de incompatibilidad.
+Resolver/repetir, aventuras y LOCAL_RECOVERY conservan sus estados e inputs;
+no se reemplaza automáticamente una partida ni se borra su historial.
+
+La frontera de transporte normaliza únicamente el rechazo de la llamada remota
+a NETWORK, sin reinterpretar códigos devueltos ni errores del motor local.
+El enlace de reautenticación usa navegación de documento. Activity conserva
+useState durante una navegación cliente e impedía salir del error incluso
+después de un login correcto; se reprodujo en ambos tamaños de pantalla. La
+nueva instancia restaura el checkpoint y evita limpiar el aviso antes de
+autenticarse. No se introduce reset general durante render ni al cambiar de vista.
+
+Un checkpoint abierto se recupera en pausa y se continúa antes de resolver.
+La representación del último tick del combate puede necesitar ese paso aunque
+la animación ya terminase antes de salir; es deuda independiente #1281, con
+motores congelados intactos. Evidencia: 70 unitarios y doce recorridos de
+Chromium contra build/start local, incluidos resolución, intent e inputs tras
+login: `docs/testing/2026-10-01-training-error-actions-1171.md`.
