@@ -24,6 +24,13 @@ interface Actions {
 type LocalLog = { inputs: BattleInput[]; tick: number; awaitingContinue?: boolean };
 interface SessionOptions { storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">; storagePrefix?: string; userId?: string; kind?: "training" | "adventure" }
 
+// Only a rejected remote call is a transport failure. Keep returned domain
+// codes, and local engine/recovery errors, separate from that boundary.
+async function requestTraining(action: () => TrainingResponse | Promise<TrainingResponse>): Promise<TrainingResponse> {
+  try { return await action(); }
+  catch { return { ok: false, code: "NETWORK" }; }
+}
+
 /** Mutable session held in a React ref: input acceptance and ticks are synchronous. */
 export class TrainingSession {
   phase: "idle" | "starting" | "playing" | "resolving" | "resolve-error" | "done" | "replaying" = "idle";
@@ -229,11 +236,11 @@ export class TrainingSession {
     this.pending = true;
     try {
       const resuming = this.intentEnemy === "";
-      const response = resuming && this.actions.resume
-        ? await this.actions.resume(this.intent!)
+      const response = await requestTraining(() => resuming && this.actions.resume
+        ? this.actions.resume(this.intent!)
         : resuming && this.options.kind === "adventure"
           ? {ok:false as const, code:"RESUME_UNAVAILABLE"}
-          : await this.actions.start(this.intent!, this.intentEnemy);
+          : this.actions.start(this.intent!, this.intentEnemy));
       if (!response.ok && resuming && ["UNKNOWN_ENEMY", "INVALID_INTENT", "NOT_FOUND"].includes(response.code)) { this.forget(); this.intent = null; }
       if (!response.ok) throw new Error(response.code);
       const b = response.battle;
@@ -310,7 +317,8 @@ export class TrainingSession {
     if (this.pending || !this.intent || !["resolving", "resolve-error"].includes(this.phase)) return;
     this.pending = true; this.phase = "resolving"; this.error = null;
     try {
-      const response = await this.actions.resolve(this.intent, this.inputs.map(i => ({ ...i, payload: { ...i.payload } })));
+      const inputs = this.inputs.map(i => ({ ...i, payload: { ...i.payload } }));
+      const response = await requestTraining(() => this.actions.resolve(this.intent!, inputs));
       if (!response.ok) throw new Error(response.code);
       this.acceptResolved(response.battle, response.events);
       if (!this.pointerKey()) this.forget();
@@ -323,7 +331,7 @@ export class TrainingSession {
     this.pending = true; this.error = null;
     this.paused = false;
     try {
-      const response = await this.actions.replay(this.intent);
+      const response = await requestTraining(() => this.actions.replay(this.intent!));
       if (!response.ok) throw new Error(response.code);
       if (!response.events) throw new Error("REPLAY_UNAVAILABLE");
       this.battle = response.battle;

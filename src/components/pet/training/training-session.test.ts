@@ -21,6 +21,47 @@ function setup() {
   return { actions, session: new TrainingSession(actions, () => String(++id)) };
 }
 describe("training session", () => {
+  it.each([
+    new TypeError("Failed to fetch"),
+    new DOMException("The request was aborted", "AbortError"),
+    new Error("Failed to fetch"),
+  ])("normalizes a rejected request to NETWORK and retains its intent", async error => {
+    const { session, actions } = setup();
+    session.selectEnemy("caparazon");
+    actions.start.mockRejectedValueOnce(error);
+    await session.start();
+    expect(session.error).toBe("NETWORK");
+    expect(session.phase).toBe("idle");
+    await session.start();
+    expect(actions.start.mock.calls.map(call => call.slice(0, 2))).toEqual([["1", "caparazon"], ["1", "caparazon"]]);
+  });
+  it.each(["UNAVAILABLE", "UNKNOWN_RELEASE", "INVALID_SNAPSHOT"])("preserves the explicit server code %s", async code => {
+    const { session, actions } = setup();
+    actions.start.mockResolvedValueOnce({ ok: false, code });
+    await session.start();
+    expect(session.error).toBe(code);
+    await session.start();
+    expect(actions.start.mock.calls.map(call => call[0])).toEqual(["1", "1"]);
+  });
+  it("normalizes a rejected resolution without changing the inputs or intent", async () => {
+    const { session, actions } = setup();
+    await session.start(); session.skill(); while (session.phase === "playing") session.tick();
+    actions.resolve.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await session.resolve();
+    expect(session.phase).toBe("resolve-error"); expect(session.error).toBe("NETWORK");
+    const first = structuredClone(actions.resolve.mock.calls[0]);
+    await session.resolve();
+    expect(actions.resolve.mock.calls[1]).toEqual(first);
+  });
+  it("normalizes a rejected replay while retaining the completed battle", async () => {
+    const { session, actions } = setup();
+    await session.start(); session.phase = "done";
+    const original = structuredClone(session.battle);
+    actions.replay.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await session.replay();
+    expect(session.error).toBe("NETWORK"); expect(session.phase).toBe("done");
+    expect(session.battle).toEqual(original);
+  });
   it("retains an adventure result through detached resolution and recovers by intent until acknowledged", async () => {
     const storage = memoryStorage(); const {actions} = setup();
     const options = {storage, userId:"alice", kind:"adventure" as const};
