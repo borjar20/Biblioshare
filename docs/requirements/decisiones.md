@@ -5613,3 +5613,35 @@ Dev `20261001102008` y prod `20261001102919 / merge_book_club_event_refs` conser
 timestamps distintos del fichero `20261001102000`; el cuerpo y ACL equivalentes
 mandan sobre el ledger. La promoción redefine una función compatible y no ejecuta
 fusiones. El plan/backup revisable para las fusiones concretas sigue en #912.
+
+## 2026-10-01 — arranque automático actual e incidente aislado (#1073)
+
+Se conserva `npm run dev` y el límite de 120 s del `webServer` de Playwright.
+Tres arranques con caché previa y tres sin `.next`, puerto libre y sin
+reutilización, escuchan y sirven el login completo en menos de nueve segundos.
+No hay evidencia actual que justifique elevar el timeout ni hacer obligatorio
+arrancar el servidor a mano para specs cortos. Esto no establece la causa del
+incidente único del 4 de septiembre ni garantiza otros entornos.
+
+La ejecución de los cinco tests originales conserva sus cuatro FAIL: no se
+cuentan como verdes porque el arranque haya pasado. Las discrepancias de
+redirección, escala, eclosión y prerender de ajustes se rastrean en #1271–#1274.
+La verificación acotada y sus hashes están en
+`docs/testing/2026-10-01-playwright-startup-1073.md`.
+
+## 2026-10-01 — control del origen y las precondiciones de #1073
+
+Se repite la serie final con `localhost`, el valor del proyecto, porque el
+primer control con `127.0.0.1` registró bloqueo de HMR por `allowedDevOrigins`.
+La disponibilidad sigue en PASS: seis arranques con escucha en 1,71–1,94 s
+y login en 3,16–8,55 s. No se amplía la allowlist de producto por una
+elección del diagnóstico ni se afirma que HMR explique todos los síntomas.
+
+El control de los cinco specs con localhost y onboarding completo pasa
+cuatro y falla solo la redirección de #1271. #1272/#1273 se rectifican como
+observaciones no reproducidas bajo precondiciones válidas. La ausencia de
+compañera en el control intermedio se acota a `onboarded_at` faltante en la
+cuenta temporal; el reinicio del worker borraba después la mascota antes del
+test de ajustes. El flujo de Ajustes pasa, pero mantiene el error de
+prerender #1274. Se conserva el FAIL original y no se modifica producto
+para compensar una preparación incorrecta.

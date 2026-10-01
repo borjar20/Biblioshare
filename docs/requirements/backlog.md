@@ -187,6 +187,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
+- [x] **#1073 — comprobar el arranque automático de Playwright.** Incidente
+  aislado no reproducido el 2026-10-01: seis arranques con caché previa/limpia,
+  HTTP 200 y formulario visible; sin elevar el límite de 120 s.
+  Evidencia: `docs/testing/2026-10-01-playwright-startup-1073.md`.
+
 - [x] **#1174 — esperar al destino efectivo tras iniciar sesión.** Tres
   aserciones comparan pathname y query del destino; comprobadas en navegador
   con el POST de login retenido y luego liberado, además del smoke de Cuaderno.
