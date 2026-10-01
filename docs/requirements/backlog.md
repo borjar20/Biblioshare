@@ -181,6 +181,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
+- [x] **#1216 — persistir la reseña al cruzar el breakpoint con foco.** El
+  panel coordina el blur y el cambio de tamaño para guardar una sola vez;
+  22 unitarios, build de producción local y navegador con persistencia en BD,
+  selección de otro episodio y recarga verificados en ambos sentidos.
+
 - [x] **#1250 — invalidar las valoraciones de importaciones sin `after()`.**
   El POST autenticado del propietario inicia el trabajo y el worker informa por
   lotes; `private.dispatch_archive_imports` conserva la recuperación por cron.

@@ -31,6 +31,7 @@ const base: EpisodeDetailColumnProps = {
   isPending: false,
   draft: "",
   onDraftChange: () => {},
+  onReviewFocusChange: () => {},
   onSave: () => {},
   markUpToCount: 0,
   onMarkUpTo: () => {},
