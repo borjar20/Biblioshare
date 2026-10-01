@@ -19,6 +19,9 @@ const TYPE_ICON = {
 
 // Umbral a partir del cual la serif de PC baja de 44 a 34px (spec §4).
 const LONG_TITLE = 40;
+// Mismo tamaño de recurso para portada frontal y fondo difuminado: también
+// colapsan las URLs de Google Books y los buckets de OpenLibrary a DPR 1.
+const COVER_SIZES = "(min-width: 1024px) 200px, (min-width: 640px) 140px, 110px";
 
 // Hero cinemático de la ficha (spec 2026-09-23-ficha-cinematica-design.md §1):
 // UN árbol para móvil y PC, no dos que se esconden por breakpoint como antes.
@@ -90,8 +93,9 @@ export function ItemHero({
                 src={coverUrl}
                 alt={title}
                 fill
-                priority
-                sizes="(max-width: 640px) 110px, (max-width: 1024px) 140px, 200px"
+                loading="eager"
+                fetchPriority={background.kind === "backdrop" ? "auto" : "high"}
+                sizes={COVER_SIZES}
                 className="object-cover"
               />
             </ImageZoom>
@@ -166,25 +170,26 @@ function HeroBackdrop({
       className="pointer-events-none absolute inset-x-0 top-0 h-[240px] overflow-hidden sm:h-[280px] lg:h-[420px]"
     >
       {background.kind === "backdrop" && (
-        // El backdrop es el LCP de la ficha de peli/serie: precarga.
+        // Con backdrop, este es el candidato LCP al que damos prioridad alta.
         <Image
           src={background.src}
           alt=""
           fill
-          priority
+          loading="eager"
+          fetchPriority="high"
           sizes="100vw"
           className="object-cover object-[center_25%]"
         />
       )}
       {background.kind === "cover" && (
         <>
-          {/* Misma URL que la portada en primer plano (el loader colapsa los
-              buckets, ver cdn-loader.ts): reaprovecha su precarga. */}
+          {/* Comparte srcset y sizes con la portada frontal; el navegador
+              puede reutilizar su descarga aunque no haya resize en el CDN. */}
           <Image
             src={background.src}
             alt=""
             fill
-            sizes="100vw"
+            sizes={COVER_SIZES}
             className="scale-125 object-cover opacity-60 blur-2xl"
           />
           <div className={`absolute inset-0 ${accent.bg} opacity-30 mix-blend-multiply`} />

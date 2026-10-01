@@ -165,6 +165,12 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#1208 — recursos y prioridades del hero.** Backdrops TMDB adaptados
+  a su familia de tamaños, una prioridad explícita alta y recurso compartido
+  entre portada/fondo de libro. 18 unitarios y 30 recorridos contra build/start
+  local; evidencia en `docs/testing/2026-10-01-hero-images-1208.md`.
+  La descarga anticipada del visor compartido se rastrea en #1278.
+
 - [x] **#1271 — conservar el destino administrativo al pedir login.** El proxy
   recuerda subruta y filtros del anónimo; layout y RPC conservan el gate de
   rol. 22 unitarios y ocho recorridos en dev y build/start local verificados;

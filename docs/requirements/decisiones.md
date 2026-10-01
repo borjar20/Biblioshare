@@ -5679,3 +5679,17 @@ login y no abre la galería mediante una segunda navegación manual. Los
 unitarios y controles de navegador cubren límites del prefijo, identidad,
 cookies y rechazo del usuario sin rol admin. Evidencia:
 `docs/testing/2026-10-01-admin-login-return-1271.md`.
+
+## 2026-10-01 — tamaños y prioridad explícita del hero (#1208)
+
+El loader reconoce únicamente el origen TMDB w1280 de los backdrops y elige
+w300/w780/w1280, conservando el techo del origen. Pósters w342 mantienen su
+familia, y logos/perfiles/fotogramas no se reinterpretan.
+
+Se sustituye `priority` por carga eager y una sola `fetchPriority="high"`:
+backdrop cuando existe, portada frontal en el fallback. Es la elección de
+candidato probable del hero, no una medición de LCP para cada obra/pantalla.
+El fondo difuminado comparte `sizes` con la portada, incluidos los breakpoints
+640/1024; prioriza reutilizar su recurso sobre descargar una versión mayor
+de un fondo deliberadamente borroso. La descarga del original en el diálogo
+cerrado de `ImageZoom` se conserva como deuda independiente #1278.

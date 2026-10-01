@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes y retorno administrativo verificados el 2026-10-01 (#1073/#1274/#1271)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo y recursos del hero verificados el 2026-10-01 (#1073/#1274/#1271/#1208)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -146,6 +146,23 @@ build/start local, incluidos los rechazos del usuario sin rol admin.
 Entorno, controles y evidencia: [verificación de #1073](testing/2026-10-01-playwright-startup-1073.md).
 Corrección y límites: [Ajustes con Suspense](testing/2026-10-01-ajustes-suspense-1274.md).
 Retorno tras login: [destino administrativo](testing/2026-10-01-admin-login-return-1271.md).
+
+### Imágenes del hero (#1208)
+
+`e2e/ci/hero-images.spec.ts` crea cinco obras propias en Supabase local y
+comprueba las peticiones de imágenes de película/serie, libro Google Books,
+OpenLibrary y portada TMDB. Usa 375px/DPR 1, 2 y 3, y 640/1024/1600px/DPR 1.
+El contrato es: una prioridad explícita alta, bucket de backdrop suficiente,
+misma URL efectiva para portada/fondo del libro y dimensiones sin desbordar.
+Los 30 casos pasan contra build/start, sin reintentos, y borran sus cinco filas.
+
+Las imágenes sintéticas se interceptan por la marca propia; esto verifica
+URL, selección responsive y reutilización, no bytes ni LCP del CDN real.
+Los tamaños w300/w780/w1280 también respondieron HTTP 200 en un HEAD público
+acotado. La imagen original del diálogo cerrado de `ImageZoom` es una tercera
+superficie, fuera de las dos imágenes visibles: su carga anticipada está en
+#1278. Evidencia, fallos iniciales del test y límites:
+[recursos del hero](testing/2026-10-01-hero-images-1208.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

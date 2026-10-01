@@ -13,12 +13,16 @@
 // nitidez respecto a lo que ya se veía.
 
 const TMDB_POSTER_WIDTHS = [92, 154, 185, 342] as const;
+const TMDB_BACKDROP_WIDTHS = [300, 780, 1280] as const;
 
 // Solo tratamos w342: es el único bucket que este repo usa para pósters
 // (ver TMDB_IMAGE_BASE en src/lib/catalog/tmdb.ts), así que la familia es
 // inequívoca. Los demás (w92 logo, w185 perfil, w300 fotograma) ya son
 // pequeños y cada familia admite buckets distintos: tocarlos daría 404.
 const TMDB_POSTER_RE = /^https:\/\/image\.tmdb\.org\/t\/p\/w342\//;
+// Los backdrops guardados por tmdbBackdropUrl usan w1280; su familia de
+// tamaños es distinta de la de pósters, perfiles y fotogramas.
+const TMDB_BACKDROP_RE = /^https:\/\/image\.tmdb\.org\/t\/p\/w1280\//;
 
 const OPENLIBRARY_RE =
   /^(https:\/\/covers\.openlibrary\.org\/[ab]\/id\/\d+)-([SML])\.jpg$/;
@@ -47,6 +51,12 @@ function tmdbPoster(src: string, width: number): string {
   const target =
     TMDB_POSTER_WIDTHS.find((candidate) => candidate >= width) ?? 342;
   const resized = src.replace("/t/p/w342/", `/t/p/w${target}/`);
+  return markIfUnchanged(resized, src, target);
+}
+
+function tmdbBackdrop(src: string, width: number): string {
+  const target = TMDB_BACKDROP_WIDTHS.find((candidate) => candidate >= width) ?? 1280;
+  const resized = src.replace("/t/p/w1280/", `/t/p/w${target}/`);
   return markIfUnchanged(resized, src, target);
 }
 
@@ -85,6 +95,7 @@ export default function cdnLoader({
   quality?: number;
 }): string {
   if (TMDB_POSTER_RE.test(src)) return tmdbPoster(src, width);
+  if (TMDB_BACKDROP_RE.test(src)) return tmdbBackdrop(src, width);
 
   const openLibrary = OPENLIBRARY_RE.exec(src);
   if (openLibrary) {

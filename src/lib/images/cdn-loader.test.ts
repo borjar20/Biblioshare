@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import cdnLoader from "./cdn-loader";
 
 const poster = "https://image.tmdb.org/t/p/w342/abc123.jpg";
+const backdrop = "https://image.tmdb.org/t/p/w1280/backdrop.jpg";
 const cover = (size: string) =>
   `https://covers.openlibrary.org/b/id/8100921-${size}.jpg`;
 
@@ -20,6 +21,22 @@ describe("cdnLoader", () => {
     // que se marca con `?width=` inocuo para no disparar el falso positivo de
     // next-image-missing-loader-width (ver comentario de markIfUnchanged).
     expect(cdnLoader({ src: poster, width: 1920 })).toBe(`${poster}?width=342`);
+  });
+
+  it.each([
+    [128, 300],
+    [300, 300],
+    [301, 780],
+    [640, 780],
+    [780, 780],
+    [781, 1280],
+    [1280, 1280],
+    [1920, 1280],
+  ])("elige un backdrop suficiente para %i px sin superar el origen", (width, target) => {
+    const expected = target === 1280
+      ? `${backdrop}?width=1280`
+      : `https://image.tmdb.org/t/p/w${target}/backdrop.jpg`;
+    expect(cdnLoader({ src: backdrop, width })).toBe(expected);
   });
 
   it("no toca otras familias de TMDB (logos, perfiles, fotogramas)", () => {
