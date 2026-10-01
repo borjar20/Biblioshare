@@ -35,7 +35,10 @@ No se aumenta el límite, se silencia el aviso ni se parchea `node_modules`.
 
 Local y cualquier `next start` aislado quedan sin compresión; fuera de Vercel
 se exige proxy/CDN que negocie br/gzip sin bufferizar streaming y prueba en
-ese hosting. El gate local no prueba el encoder de Vercel: exige aparte
+ese hosting: verificar codificación y llegada del shell antes de resolver una
+frontera Suspense con retraso controlado. Content-Encoding no demuestra por
+sí solo ausencia de buffering, y aquí no se verifica otro hosting.
+El gate local no prueba el encoder de Vercel: exige aparte
 HTTP 200, HTML completo y codificación br/gzip negociada en el preview exacto
 y producción, más la respuesta sin codificación al pedir `identity`.
 

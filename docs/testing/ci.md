@@ -44,8 +44,11 @@ Antes de publicar este cambio se comprueba el preview exacto y después
 producción: `/login` con `Accept-Encoding: br, gzip` debe devolver HTTP 200,
 HTML completo y `Content-Encoding: br` o `gzip`; con `identity`, HTTP 200 y
 HTML completo sin codificación. Fuera de Vercel se requiere un proxy/CDN que
-negocie compresión **sin bufferizar el streaming** y la misma comprobación
-en ese hosting. No desplegar `next start` expuesto sin esa capa.
+negocie compresión **sin bufferizar el streaming**. La comprobación HTTP de
+codificación no detecta buffering: en ese hosting se prueba además una frontera
+Suspense con retraso controlado, comprobando que el shell llega antes de resolver
+esa frontera. No se ha verificado aquí ningún hosting ajeno a Vercel. No desplegar
+`next start` expuesto sin esa capa y sus dos comprobaciones.
 
 El wrapper falla ante `MaxListenersExceededWarning` de `[Gzip]`, aunque las
 aserciones del navegador pasen. Conserva asimismo los controles de lecturas

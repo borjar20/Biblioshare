@@ -5606,7 +5606,9 @@ Es una evitación explícita de un defecto externo, sin parchear dependencias:
 `next start` local queda sin compresión. El CDN debe seguir negociando br/gzip;
 se verifica HTTP/HTML/Content-Encoding en el preview y en producción. Cualquier
 hosting distinto requiere un proxy de compresión que mantenga el streaming,
-sin bufferizar, y verificar allí ese contrato antes de exponer la aplicación.
+sin bufferizar, y verificar allí ese contrato antes de exponer la aplicación:
+codificación HTTP y shell recibido antes de una frontera Suspense retardada.
+Un Content-Encoding correcto, por sí solo, no demuestra ausencia de buffering.
 El smoke de producción local conserva los recorridos y falla si reaparece
 el aviso Gzip, pero no demuestra el funcionamiento del encoder remoto.
 Evidencia y límites: `docs/testing/2026-10-01-gzip-listeners-1251.md`.
