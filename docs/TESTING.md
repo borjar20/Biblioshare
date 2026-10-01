@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoint final del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1110/#1116)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -218,8 +218,33 @@ las cuatro versiones conservadas y compatibilidad legacy. Los dos casos
 una sola pulsación, sin otro tick manual: misma fila, intent, inputs y digest
 idéntico a la repetición real. Pasan en 320/1280 px contra build/start local.
 Cuatro actores propios ausentes de Auth y ocho superficies a cero; 3000 libre.
-El tratamiento explícito de finales guardados con el formato antiguo queda
-en #1284. Evidencia: [checkpoint final](testing/2026-10-01-terminal-checkpoint-1281.md).
+El formato anterior recibe el tratamiento explícito de #1284, debajo.
+Evidencia de aquella entrega: [checkpoint final](testing/2026-10-01-terminal-checkpoint-1281.md).
+
+### Recuperación de checkpoints anteriores (#1284)
+
+Un log válido sin `ended` que se reconstruye abierto conserva la pausa y
+explica su recuperación. Salir/volver/recargar antes de continuar conserva
+el aviso y el formato anterior. La acción existente «Continuar» consume el
+aviso y normaliza de inmediato el checkpoint, con el mismo intento e inputs.
+No se infiere el final ambiguo ni se reanuda automáticamente una partida.
+
+81 unitarios de sesión/panel/errores pasan. Diez casos reales en 375/1280 px
+contra un build nuevo comprueban el abierto/final antiguo, sus equivalentes
+modernos y corrupción. El final r2.2 con una habilidad real conserva fila,
+intent, inputs, resultado y digest tras reautenticarse y continuar; los logs
+sin marca permanecen en pausa hasta esa elección. Aviso y controles legibles,
+cero errores de página/desborde, siete actores Auth 404 y ocho superficies a
+cero. El interludio se cubre por unitarios, sin prometer un E2E de aventura.
+FAIL de preparación, artefactos y límites:
+[formato anterior](testing/2026-10-01-legacy-checkpoint-recovery-1284.md).
+
+El spec CI de errores conserva sus doce casos y añade dos regresiones del
+final antiguo r2.2, 320/1280 px. Ambos pasan contra el mismo build, con
+conservación del log tras recargar y resultado/digest real tras continuar.
+El reloj de cada pausa se obtiene del navegador, después de mostrar la UI;
+usar Date.now de Node tras runFor puede intentar pausar en el pasado.
+Limpieza conjunta de las nueve cuentas de preparación/QA/regresión verificada.
 
 ### Lecturas previas al guardar un pase (#1110)
 

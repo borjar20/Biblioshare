@@ -48,6 +48,28 @@ it("hidden panels checkpoint and require manual resume when shown again", async 
   expect(screen.getByRole("button", {name: "Continuar"})).toBeTruthy();
 });
 
+it("shows the legacy checkpoint notice beside Continue and removes it when play resumes", async () => {
+  vi.useFakeTimers();
+  const intent = "legacy-open";
+  const storageMap = new Map([
+    ["pet-training:alice:current", JSON.stringify({ intent })],
+    [`pet-training:alice:${intent}`, JSON.stringify({ inputs: [], tick: 0 })],
+  ]);
+  const storage = { getItem: (key: string) => storageMap.get(key) ?? null, setItem: (key: string, value: string) => { storageMap.set(key, value); }, removeItem: (key: string) => { storageMap.delete(key); } };
+  const battle: TrainingBattle = { intentId: intent, status: "open", seed: "00000001000000020000000300000004", rulesetVersion: "r2.2", contentHash: "2c40a90c9f141ffd2eda8241c83eb8859a712dbe4606798b56b90fb056b159d3", enemyId: "brote", inputs: [], result: null, digest: null, snapshot: { name: "Roble", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 1, hpMax: 100, atk: 10 } };
+  const actions = { start: vi.fn(async (): Promise<TrainingResponse> => ({ ok: true, battle })), resolve: vi.fn(), replay: vi.fn() };
+  render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel userId="alice" storage={storage} actions={actions} /></NextIntlClientProvider>);
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Continuar" })); });
+  expect(screen.getByText(messages.pet.training.legacyCheckpoint)).toBeTruthy();
+  act(() => { vi.advanceTimersByTime(500); });
+  expect(screen.getByTestId("training-tick").textContent).toBe("0.0 s");
+  fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+  expect(screen.queryByText(messages.pet.training.legacyCheckpoint)).toBeNull();
+  expect(JSON.parse(storageMap.get(`pet-training:alice:${intent}`)!)).toMatchObject({ ended: false, inputs: [] });
+  act(() => { vi.advanceTimersByTime(100); });
+  expect(screen.getByTestId("training-tick").textContent).toBe("0.1 s");
+});
+
 it("vetoes explicit leave on blocked checkpoint and keeps combat paused", async () => {
   const storage = {getItem: () => null, removeItem: () => {}, setItem: () => { throw new Error("blocked"); }};
   render(<NextIntlClientProvider locale="es" messages={messages}><TrainingPanel userId="alice" storage={storage} /></NextIntlClientProvider>);

@@ -103,3 +103,18 @@ y dos FAIL esperados, cero omitidos/flaky. `evidence-final.json` recoge la
 QA, `evidence-sha256.json` sus hashes, `cleanup-all.json` la limpieza, y
 `evidence-integrated.json` las fuentes, documentación y evidencia integrada.
 No se atribuye aceptación en producción remota ni otros navegadores.
+
+## Continuidad posterior: formato anterior (#1284)
+
+El límite indicado en el alcance de esta entrega recibe después un
+tratamiento explícito en #1284: aviso de recuperación y continuación con
+la acción existente, manteniendo pausa, intento e inputs. Salir/volver antes
+de continuar conserva el aviso; no se adivina el final de un tick ambiguo.
+El paso adicional del formato antiguo sigue siendo una elección necesaria
+por la información ausente, ahora explicado al usuario.
+
+La entrega posterior verifica 81 unitarios y diez recorridos reales contra
+un build nuevo, incluidos final r2.2 y resultado/digest de la misma fila.
+Estos resultados no sustituyen los 79 unitarios, baseline FAIL ni capturas
+de #1281 conservados arriba. Evidencia:
+[recuperación del formato anterior](2026-10-01-legacy-checkpoint-recovery-1284.md).
