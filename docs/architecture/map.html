@@ -130,7 +130,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-10-01",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -243,7 +243,7 @@
         "id": "db",
         "order": 7,
         "label": "Postgres + RLS",
-        "description": "42 tablas, todas con RLS activa"
+        "description": "Tablas y funciones protegidas por permisos y RLS"
       },
       {
         "id": "external",
@@ -1573,7 +1573,8 @@
         "src/components/pet/training/combat-sprite.tsx",
         "src/components/pet/game/pet-game.tsx",
         "src/components/pet/game/pet-return-tracker.tsx",
-        "src/lib/pet/game-navigation.ts"
+        "src/lib/pet/game-navigation.ts",
+        "src/components/pet/shop/shop-panel.tsx"
       ]
     },
     {
@@ -1581,7 +1582,7 @@
       "label": "/mascota",
       "layer": "route",
       "kind": "route",
-      "summary": "Shell de juego a pantalla completa con retorno a la última ruta válida de Biblioshare por usuario. PetContent lee snapshot y aventura bajo Suspense; eclosión si no hay mascota. No cachea datos de sesión.",
+      "summary": "Shell de juego a pantalla completa con retorno a la última ruta válida de Biblioshare por usuario. PetContent lee snapshot y aventura bajo Suspense; eclosión si no hay mascota. No cachea datos de sesión. La tienda se lee tras autenticar, con cliente privilegiado y sin caché compartida.",
       "files": [
         "src/app/mascota"
       ]
@@ -1591,7 +1592,7 @@
       "label": "pet_state",
       "layer": "db",
       "kind": "table",
-      "summary": "Una fila por usuario, solo decisiones. XP/nivel/etapa NO están aquí — se derivan en m-pet. last_level/last_stage existen solo para detectar la subida al calcular.",
+      "summary": "Una fila por usuario, solo decisiones. XP/nivel/etapa NO están aquí — se derivan en m-pet. last_level/last_stage existen solo para detectar la subida al calcular. camp_scene es la decisión de fondo del campamento; lectura propia y escritura solo mediante set_pet_camp_scene.",
       "columns": [
         "user_id",
         "name",
@@ -1599,7 +1600,8 @@
         "hatched_at",
         "companion_hidden",
         "last_level",
-        "last_stage"
+        "last_stage",
+        "camp_scene"
       ]
     },
     {
@@ -1828,6 +1830,58 @@
         "Un UNIQUE sobre las ediciones existentes falla por las parejas históricas de #1242. El contador conserva esas filas y bloquea otra alta.",
         "El trigger es AFTER para no reservar una clave cuando ON CONFLICT DO NOTHING descarta la fila. La cascada del libro puede borrar primero la clave privada.",
         "REPEATABLE READ puede rechazar un escritor con snapshot antiguo (23505/40001); la clave primaria impide que ese escritor cree un clon."
+      ]
+    },
+    {
+      "id": "m-pet-shop",
+      "label": "lib/pet/shop",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Bellotas por hechos desde la época de lanzamiento, bienvenida única y fondos cosméticos de compra permanente. Tarifas y precios del servidor; lectura y escrituras ligadas al usuario autenticado.",
+      "files": [
+        "src/lib/pet/shop/actions.ts",
+        "src/lib/pet/shop/catalog.ts",
+        "src/lib/pet/shop/get-state.ts",
+        "src/lib/pet/shop/repository.ts",
+        "src/lib/pet/shop/service.ts"
+      ],
+      "gotchas": [
+        "No caché compartida del saldo, pendientes ni compras.",
+        "ACORN_EPOCH se fija al primer día completo tras el lanzamiento; no se desplaza después.",
+        "Las RPC privilegiadas no admiten llamadas de anon/authenticated. El cliente no decide usuario, precio ni saldo."
+      ]
+    },
+    {
+      "id": "t-pet-acorns",
+      "label": "pet_acorn_ledger",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Ingresos y gastos privados por usuario, saldo derivado de sum(amount). UNIQUE(user_id, source_key) y advisory lock 20260910 serializan recogidas y compras.",
+      "files": [
+        "supabase/migrations/20260910101116_pet_acorns.sql",
+        "supabase/tests/pet_acorns.sql"
+      ],
+      "columns": [
+        "id",
+        "user_id",
+        "source_key",
+        "amount",
+        "created_at"
+      ]
+    },
+    {
+      "id": "t-pet-cosmetics",
+      "label": "pet_cosmetics",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Desbloqueos permanentes, PK(user_id, cosmetic_id). SELECT propio por RLS y escritura solo por servidor; elegir el fondo exige posesión.",
+      "files": [
+        "supabase/migrations/20260910101116_pet_acorns.sql"
+      ],
+      "columns": [
+        "user_id",
+        "cosmetic_id",
+        "acquired_at"
       ]
     }
   ],
@@ -3036,6 +3090,46 @@
       "to": "sb-service",
       "kind": "writes",
       "label": "worker ZIP autorizado por el Route Handler"
+    },
+    {
+      "from": "r-mascota",
+      "to": "m-pet-shop",
+      "kind": "calls"
+    },
+    {
+      "from": "c-pet",
+      "to": "m-pet-shop",
+      "kind": "calls"
+    },
+    {
+      "from": "m-pet-shop",
+      "to": "t-pet-acorns",
+      "kind": "reads"
+    },
+    {
+      "from": "m-pet-shop",
+      "to": "t-pet-acorns",
+      "kind": "writes"
+    },
+    {
+      "from": "m-pet-shop",
+      "to": "t-pet-cosmetics",
+      "kind": "reads"
+    },
+    {
+      "from": "m-pet-shop",
+      "to": "t-pet-cosmetics",
+      "kind": "writes"
+    },
+    {
+      "from": "m-pet-shop",
+      "to": "t-pet",
+      "kind": "writes"
+    },
+    {
+      "from": "m-pet-shop",
+      "to": "m-reactivity",
+      "kind": "revalidates"
     }
   ],
   "flows": [
@@ -4227,6 +4321,55 @@
           "node": "c-social",
           "action": "JointCard: una fila por miembro visible + «y N más»",
           "file": "src/components/social/joint-card.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-pet-shop",
+      "name": "Recoger bellotas y elegir el fondo del campamento",
+      "category": "core",
+      "summary": "Cada hecho paga una sola vez; cada fondo se compra una sola vez, sin afectar al combate.",
+      "entrypoint": "src/components/pet/shop/shop-panel.tsx",
+      "steps": [
+        {
+          "node": "r-mascota",
+          "action": "Autentica y resuelve el dueño antes de leer la tienda bajo Suspense",
+          "file": "src/app/mascota/page.tsx"
+        },
+        {
+          "node": "m-pet-shop",
+          "action": "Lee saldo, hechos pendientes desde ACORN_EPOCH, posesión y escena mediante pet_acorn_state",
+          "file": "src/lib/pet/shop/repository.ts"
+        },
+        {
+          "node": "c-pet",
+          "action": "Muestra desglose y compra o elección explícitas dentro del Campamento",
+          "file": "src/components/pet/shop/shop-panel.tsx"
+        },
+        {
+          "node": "m-pet-shop",
+          "action": "Vuelve a autenticar al llamador y resuelve precio/ID del catálogo en servidor",
+          "file": "src/lib/pet/shop/actions.ts"
+        },
+        {
+          "node": "t-pet-acorns",
+          "action": "claim_pet_acorns y buy_pet_cosmetic bloquean por usuario y escriben el ledger idempotente",
+          "file": "supabase/migrations/20260910101116_pet_acorns.sql"
+        },
+        {
+          "node": "t-pet-cosmetics",
+          "action": "La compra desbloquea el fondo; set_pet_camp_scene verifica posesión y escribe camp_scene",
+          "file": "supabase/migrations/20260910101116_pet_acorns.sql"
+        },
+        {
+          "node": "m-reactivity",
+          "action": "Revalida la página de la mascota tras la acción correcta",
+          "file": "src/lib/pet/shop/actions.ts"
+        },
+        {
+          "node": "c-pet",
+          "action": "Elige lámina vertical o apaisada a su escala entera y conserva la escena tras recargar",
+          "file": "src/components/pet/game/pet-hud.tsx"
         }
       ]
     }

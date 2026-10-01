@@ -328,7 +328,7 @@ select table_name, count(*) as cols, sum(ins) as con_insert, sum(upd) as con_upd
 | `notifications` | 9 | 0 | 9 | las escriben triggers/service role; el usuario solo marca leído |
 | `passes` | 19 | 14 | 13 | `id`/`created_at`/`updated_at` generadas; `user_id`/`item_type`/`item_id` inmutables; `dropped_reason`/`dropped_reason_note` sin SELECT (motivo de abandono, siempre privado) |
 | `people` | 12 | 11 | 6 | ídem `books` |
-| `pet_state` | 9 | 7 | 6 | `created_at`/`updated_at` sin INSERT (generadas/gestionadas por la app); `user_id` (PK inmutable), `hatched_at` (se fija al insertar) y `created_at` sin UPDATE |
+| `pet_state` | 10 | 7 | 6 | R5 (2026-10-01, local/dev/prod): `camp_scene` gana SELECT y no INSERT/UPDATE; solo escribe `set_pet_camp_scene` con service_role. `created_at`/`updated_at` sin INSERT; `user_id`, `hatched_at` y `created_at` sin UPDATE |
 | `pet_daily_missions` | 12 | 9 | 1 | `id`/`completed_at`/`created_at` sin INSERT; UPDATE solo `completed_at` (la asignación se congela) |
 | `progress_sessions` | 9 | 7 | 0 | `id`/`created_at` generadas; la sesión no se edita |
 | `series` | 15 | **0** | 7 | ídem `books` (+`hydrated_at` con su `grant update`). **Bajó de 10 a 7 el 2026-08-19**: `total_seasons`, `total_episodes` y `episode_runtime_minutes` revocadas (#676). **Subió de 14 a 15 el 2026-09-24**: `backdrop_url` para la ficha cinemática (2026-09-24, dev y prod) |
