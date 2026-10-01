@@ -5581,3 +5581,14 @@ objetos y permisos antes de decidir; no se reaplica DDL por diferencias del ledg
 El bootstrap incorpora el fichero una sola vez y su prueba SQL entra en el gate DB.
 Los tipos R5 se extraen del esquema combinado local, conservando contratos manuales
 de nulabilidad y tipos ajenos; la RPC de fondo acepta/devuelve null para el gratuito.
+
+## 2026-10-01 — R5: promoción aditiva antes del código
+
+Con los ocho checks del candidato #1266 en SUCCESS, incluidos 270 pasos de
+bootstrap vacío y el gate SQL, se aplica R5 a producción antes de integrar la
+aplicación. El ledger registra `20261001084337 / pet_acorns`; dev conserva su
+versión `20260910101116`. Los cinco cuerpos/configuraciones, RLS, ACL y grants
+coinciden: esa equivalencia de objetos manda sobre la diferencia de timestamps.
+No se siembran pruebas ni se reescribe actividad existente en producción.
+La fecha de Madrid verificada antes de aplicar fue 2026-10-01; el corte fijo
+2026-10-02 sigue siendo futuro y se conserva tras este primer lanzamiento.

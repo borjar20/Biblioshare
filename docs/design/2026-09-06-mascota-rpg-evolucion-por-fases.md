@@ -727,7 +727,7 @@ La primera pieza es la **madriguera compartida** en /mascota (vía S de la Parte
 | R3 Ulti y segundo enemigo | widget de ulti con la familia A, pausa, segundo enemigo | criterios | animaciones de combate de los 18 estados y de los dos enemigos |
 | R4a Aventuras | cadenas de tres tramos concedidas por día con actividad, ventana de siete días, reanudación, reintento, botín guardado «pendiente de activar» — **implementada 2026-09-07; aceptación jugable confirmada; migración aplicada y verificada en prod el 2026-09-07 antes del merge de #1127** | criterios | ninguno |
 | R4b Primer botín | los seis objetos entran en el motor, dos ranuras, equipar y comparar | criterios | iconos y VFX de los objetos |
-| R5 Bellotas del campamento | moneda con su primer sumidero: cuatro fondos cosméticos del campamento, compra directa — **implementado y verificado en dev; sin aplicar en producción** | criterios (ver §R5) | cuatro escenas de campamento, generadas |
+| R5 Bellotas del campamento | moneda con su primer sumidero: cuatro fondos cosméticos del campamento, compra directa — **implementación verificada; esquema aplicado en dev/prod, entrega de código PR #1266** | criterios (ver §R5) | cuatro escenas de campamento, generadas |
 | R6 Identidad de clase por tandas | Maga + Guerrera; después Bárbaro + Clérigo; después Bardo + Ranger | dirección | VFX de ulti y de clase, armas de clase |
 | R7 Primera campaña por género | una región y los jefes de reto (#1015) | dirección | una familia de enemigos y su jefe |
 | R8 Especializaciones | fuego / hielo, tres elecciones binarias | dirección | VFX |
@@ -916,7 +916,7 @@ se han comprobado con nadie jugando; el recorrido para hacerlo está en
 - Un objeto nuevo da ganas de probarlo, y ninguna build domina entre los seis.
 - Lo ganado en R4a se activa sin perder nada.
 
-## R5 — Bellotas del campamento (contrato, implementada en dev)
+## R5 — Bellotas del campamento (contrato, implementación verificada)
 
 **Cambia el contrato de la Parte I §12 y §15.** El usuario decidió el 2026-09-10 que las
 bellotas no tocan el poder: el sumidero deja de ser la adquisición de equipo y pasa a ser

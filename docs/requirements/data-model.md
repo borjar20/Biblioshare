@@ -140,7 +140,7 @@
 > con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
 > referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
 
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b desplegado ese mismo día; bellotas y fondos del campamento R5 (§8bis.9, migración `20260910101116_pet_acorns.sql`) reverificadas en local/dev el 2026-10-01; aplicación en producción pendiente]**
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b desplegado ese mismo día; bellotas y fondos del campamento R5 (§8bis.9, migración `20260910101116_pet_acorns.sql`) reverificadas en local/dev/prod el 2026-10-01]**
 >
 > **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
 > sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
@@ -4356,7 +4356,7 @@ y flujo de equipo/entrenamiento/replay contra build de producción local. Ver ev
 
 ### 8bis.9. Bellotas y fondos del campamento — R5
 
-**[Canónico · reverificado en local/dev el 2026-10-01 · aplicación en producción pendiente]**
+**[Canónico · reverificado en local/dev/prod el 2026-10-01]**
 
 Spec `docs/superpowers/specs/2026-09-10-mascota-r5-bellotas-design.md`. Migración
 `supabase/migrations/20260910101116_pet_acorns.sql`. Reserva la clave de bloqueo consultivo
@@ -4402,7 +4402,7 @@ el cliente y solo la escribe `set_pet_camp_scene` (`service_role`).
   del usuario, o `null` para la escena de siempre, y actualiza `pet_state.camp_scene`.
   `revoke all`; `execute` solo `service_role`.
 
-**Superficie 6 de DRIFT-CHECK, reverificada en local/dev el 2026-10-01.**
+**Superficie 6 de DRIFT-CHECK, reverificada en local/dev/prod el 2026-10-01.**
 `pet_state`: 10 columnas, SELECT 10, INSERT 7 y UPDATE 6 para `authenticated`.
 `camp_scene` no tiene escritura de cliente. La matriz comprueba además las cuatro RPC
 por roles (anon/authenticated denegados; service_role autorizado), lectura aislada entre
@@ -4421,8 +4421,11 @@ Ejecutada con rollback en local/dev; cero usuarios y películas fixture restante
 con saldo para una sola, doble bienvenida simultánea y recoger/comprar/elegir/recargar.
 Evidencia actual: `docs/testing/2026-10-01-r5-entrega.md`.
 
-**Producción pendiente.** Se verificó la ausencia de las dos tablas, columna y RPC R5.
-La migración es aditiva y debe llegar antes de publicar el código. `ACORN_EPOCH` es
+**Producción.** Migración aditiva aplicada el 2026-10-01, ledger
+`20261001084337 / pet_acorns`, antes de publicar el código de la PR #1266.
+Se comprobaron objetos, cinco cuerpos/configuraciones de función, ACL, RLS y
+grants de columna contra dev: coincidencia completa; sin fixtures en prod.
+El asesor de seguridad no detectó hallazgos nuevos en los objetos R5. `ACORN_EPOCH` es
 2026-10-02, primer día completo de Madrid posterior al lanzamiento previsto el 1 de
 octubre; revalidar el corte antes del primer despliegue y mantenerlo en los posteriores.
 La bienvenida de 50 no depende de la época. El ritmo real y el catálogo futuro siguen
