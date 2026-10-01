@@ -33,6 +33,17 @@ test("tienda: recoger con desglose, comprar, estrenar y sobrevivir a una recarga
     await expect(shop.getByTestId("acorn-balance")).toContainText("250");
 
     const creek = shop.getByTestId("scene-creek");
+    // La vista previa debe mostrar la lámina entera, también cuando su tamaño
+    // nativo no es 3/4 (el arroyo mide 280x380; #1176).
+    const preview = creek.locator("img");
+    await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    const thumbnail = await preview.evaluate((img: HTMLImageElement) => {
+      const { width, height } = img.getBoundingClientRect();
+      return { width, height, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight };
+    });
+    await test.info().attach("creek-thumbnail-dimensions", { body: JSON.stringify(thumbnail), contentType: "application/json" });
+    expect(Math.abs(thumbnail.height - thumbnail.width * thumbnail.naturalHeight / thumbnail.naturalWidth)).toBeLessThanOrEqual(1);
+    await test.info().attach("creek-thumbnail", { body: await preview.screenshot(), contentType: "image/png" });
     // Comprar y Poner llevan aria-label compuesto con el nombre de la escena
     // ("Comprar El arroyo por 100", "Poner El arroyo de fondo"): el texto visible
     // del botón no es el nombre accesible. Se localizan por regex, no por el texto
