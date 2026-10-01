@@ -5645,3 +5645,20 @@ cuenta temporal; el reinicio del worker borraba después la mascota antes del
 test de ajustes. El flujo de Ajustes pasa, pero mantiene el error de
 prerender #1274. Se conserva el FAIL original y no se modifica producto
 para compensar una preparación incorrecta.
+
+## 2026-10-01 — frontera de carga propia de Ajustes (#1274)
+
+Las lecturas de sesión, perfil, importaciones y mascota siguen en la página,
+con el cliente de petición y su RLS. `ajustes/loading.tsx` las deja detrás de
+la frontera Suspense que Next coloca bajo el layout de esa ruta. El fallback
+usa únicamente los skeletons y dimensiones compartidos; no consulta ni
+serializa datos de cuenta. No se añade caché compartida.
+
+Se retiran los dos `instant = false` de página y layout: conservar el del
+layout eximiría a la ruta de la validación de shell estático. Los avisos de
+navegación instantánea de Next 16.3.8 se comprueban en dev; un build correcto
+no demuestra por sí solo su ausencia. Seis recorridos en dev no registran el
+error de Ajustes y los mismos seis pasan contra el build de producción local.
+Identidad, login anónimo, traducciones y toggle de compañera se conservan.
+Los mensajes de stream cerrado de #1263 y la redirección de #1271 siguen
+acotados aparte. Evidencia: `docs/testing/2026-10-01-ajustes-suspense-1274.md`.

@@ -22,10 +22,6 @@ import { RouteMessages } from "@/components/route-messages";
 import { VisibilityToggle } from "./visibility-toggle";
 import { LogoutButton } from "./logout-button";
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false;
-
 export const metadata: Metadata = {
   title: "Ajustes — Biblioshare",
 };
