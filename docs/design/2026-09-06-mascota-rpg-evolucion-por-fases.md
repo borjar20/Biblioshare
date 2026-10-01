@@ -20,8 +20,9 @@
 > dirección, no compromiso. Todos los números del documento
 > (precios, tiempos, cantidades, coeficientes) son ejemplos para calibrar, no balance aprobado.
 > **R5 cambia el contrato de §12 y §15** (ver §9 de su spec): el sumidero de las bellotas deja de
-> ser la adquisición de equipo y pasa a ser cosmética. R5 está implementada y verificada en dev,
-> sin migración en producción y sin aceptación del ritmo real (hace falta una semana de uso).
+> ser la adquisición de equipo y pasa a ser cosmética. R5 está implementada y verificada;
+> el esquema está aplicado en dev y producción y el código se entrega en PR #1266.
+> La aceptación del ritmo real sigue pendiente (hace falta una semana de uso).
 >
 > **Regla de producto:** primero demostrar una sola decisión divertida; después añadir sistemas
 > solo cuando esa decisión necesite más profundidad.
@@ -967,9 +968,9 @@ componentes, build de producción y tres E2E locales de tienda/concurrencia (tie
 El corte excluye días, misiones y logros anteriores; el gate SQL comprueba dos cuentas y
 los permisos efectivos. Evidencia actual: `docs/testing/2026-10-01-r5-entrega.md`;
 el informe del 10 de septiembre conserva su evidencia histórica.
-**Lo que NO cierra:** la migración sigue **sin
-aplicar en producción**; los criterios de salida de arriba son de producto y necesitan una
-semana de uso real, que esta evidencia no acredita; **R10 se queda sin su primer sumidero** y
+**Estado de entrega:** la migración está aplicada en producción y sus objetos y permisos
+coinciden con dev; el código se entrega en PR #1266. Los criterios de salida de arriba
+necesitan una semana de uso real, que esta evidencia no acredita; **R10 se queda sin su primer sumidero** y
 la **adquisición directa de equipo queda sin hito asignado** (vuelve en R9/R10 o se descarta
 explícitamente — mientras no se decida, es pregunta abierta, no un olvido). Parte de #1017.
 
