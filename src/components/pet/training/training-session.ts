@@ -38,6 +38,8 @@ export class TrainingSession {
   ultiOpen = false;
   /** Interludio entre tramos de una cadena (R4a): el reloj se detiene hasta continueFight(). */
   awaitingContinue = false;
+  /** A valid checkpoint from before `ended` was stored; keep the recovery visible until Continue. */
+  legacyCheckpoint = false;
   enemyId = "brote";
   private intentEnemy = "brote";
   hidden = false;
@@ -68,7 +70,13 @@ export class TrainingSession {
 
   acknowledgeResult() { if (this.phase === "done" && this.active && !this.hidden) this.forget(); }
 
-  togglePause() { this.paused = !this.paused; if (!this.paused && this.error === "LOCAL_RECOVERY") this.error = null; if (this.paused) this.save(); }
+  togglePause() {
+    const resumingLegacy = this.paused && this.legacyCheckpoint;
+    this.paused = !this.paused;
+    if (!this.paused && this.error === "LOCAL_RECOVERY") this.error = null;
+    if (resumingLegacy) this.legacyCheckpoint = false;
+    if (this.paused || resumingLegacy) this.save();
+  }
 
   setActive(active: boolean) { this.active = active; if (!active) this.prepareLeave(); }
 
@@ -111,13 +119,19 @@ export class TrainingSession {
     const key = this.storageKey();
     if (!key || !this.options.storage || !this.view) return false;
     try {
-      this.options.storage.setItem(key, JSON.stringify({ inputs: this.inputs, tick: this.view.tick, awaitingContinue: this.awaitingContinue, ended: this.view.ended } satisfies LocalLog));
+      this.options.storage.setItem(key, JSON.stringify({
+        inputs: this.inputs,
+        tick: this.view.tick,
+        awaitingContinue: this.awaitingContinue,
+        ...(this.legacyCheckpoint ? {} : { ended: this.view.ended }),
+      } satisfies LocalLog));
       const pointer = this.pointerKey();
       if (pointer) this.options.storage.setItem(pointer, JSON.stringify({ intent: this.intent }));
       return true;
     } catch { return false; }
   }
   private forget() {
+    this.legacyCheckpoint = false;
     const key = this.storageKey();
     if (key && this.options.storage) try { this.options.storage.removeItem(key); } catch { /* idem */ }
     const pointer = this.pointerKey();
@@ -144,6 +158,7 @@ export class TrainingSession {
   }
 
   private acceptResolved(battle: TrainingBattle, events?: BattleEvent[]) {
+    this.legacyCheckpoint = false;
     this.battle = battle;
     this.inputs = battle.inputs;
     this.events = events ?? [];
@@ -196,6 +211,7 @@ export class TrainingSession {
   /** Reanuda un intento abierto desde el log local, si lo hay. Un log corrupto se olvida
    *  y el combate arranca desde el tick 0 (el motor ya está construido en tick 0). */
   private restoreLocal() {
+    this.legacyCheckpoint = false;
     const log = this.loadLocal();
     if (!log) return;
     try {
@@ -214,6 +230,7 @@ export class TrainingSession {
       } else {
         this.paused = true;
         this.awaitingContinue = log.awaitingContinue ?? this.events.at(-1)?.type === "FIGHT_ENDED";
+        this.legacyCheckpoint = !Object.hasOwn(log, "ended");
       }
     } catch {
       this.forget();
@@ -228,6 +245,7 @@ export class TrainingSession {
   async start(fresh = false) {
     if (this.pending || (this.phase !== "idle" && !(fresh && this.phase === "done"))) return;
     this.error = null;
+    this.legacyCheckpoint = false;
     const recovering = !fresh && !this.intent && this.restoreIntent();
     if (this.error) return;
     if (fresh || !this.intent) { this.intent = this.newId(); this.intentEnemy = this.enemyId; }
@@ -282,7 +300,13 @@ export class TrainingSession {
   }
 
   /** Cierra el interludio entre tramos y deja que el reloj vuelva a correr. */
-  continueFight() { if (this.active && this.awaitingContinue) { this.awaitingContinue = false; this.save(); } }
+  continueFight() {
+    if (this.active && this.awaitingContinue) {
+      this.awaitingContinue = false;
+      this.legacyCheckpoint = false;
+      this.save();
+    }
+  }
 
   tick() {
     if (!this.active || this.paused || this.hidden || this.ultiOpen || this.awaitingContinue) return;
@@ -330,6 +354,7 @@ export class TrainingSession {
   async replay() {
     if (this.pending || !this.intent || this.phase !== "done") return;
     this.pending = true; this.error = null;
+    this.legacyCheckpoint = false;
     this.paused = false;
     try {
       const response = await requestTraining(() => this.actions.replay(this.intent!));

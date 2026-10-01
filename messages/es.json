@@ -3625,6 +3625,7 @@
       },
       "recharge": "Recarga de habilidad",
       "resume": "Continuar",
+      "legacyCheckpoint": "Hemos recuperado tu combate guardado. Tus decisiones se conservan. Pulsa Continuar para retomarlo o completar el resultado.",
       "pause": "Pausar",
       "paused": "Combate en pausa. La habilidad tampoco se recarga.",
       "speed": "Velocidad",

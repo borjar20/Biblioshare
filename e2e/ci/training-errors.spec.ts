@@ -11,6 +11,14 @@ const database = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 const marker = `qa1171_${Date.now()}`;
 const credentials = { email: `${marker}@example.test`, password: `Qa1171!${randomUUID()}` };
 const currentHash = BATTLE_RELEASES.find(release => release.rulesetVersion === RULESET.version)!.contentHash;
+const legacyR2 = {
+  rulesetVersion: "r2.2",
+  contentHash: "2c40a90c9f141ffd2eda8241c83eb8859a712dbe4606798b56b90fb056b159d3",
+  seed: "00000001000000020000000300000004",
+  snapshot: { name: "Roble QA1171", petClass: "wizard", stage: "acorn", attributes: { FUE: 0, CON: 0, INT: 0, SAB: 0, CAR: 0, DES: 0 }, tier: 1, hpMax: 100, atk: 10 },
+  inputs: [{ seq: 0, tick: 0, action: "skill", payload: {} }],
+  tick: 246,
+};
 let actorId: string | undefined;
 const ownId = () => { if (!actorId) throw new Error("Missing own actor"); return actorId; };
 function check<T>({ data, error }: { data: T; error: { message: string } | null }): T { if (error) throw new Error(error.message); return data; }
@@ -190,5 +198,60 @@ for (const viewport of [{ name: "mobile", width: 320, height: 844 }, { name: "de
         await info.attach("training-requests", { body: JSON.stringify({ cause, viewport, actorId, requests }), contentType: "application/json" });
       });
     }
+    test("legacy r2 checkpoint: notice persists before Continue and resolves the same intent", async ({ page }, info) => {
+      test.setTimeout(60000);
+      await page.clock.install();
+      const errors: string[] = [];
+      page.on("pageerror", error => errors.push(error.message));
+      await login(page);
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+      const intent = randomUUID();
+      check(await database.from("pet_battles").insert({
+        user_id: ownId(), intent_id: intent, kind: "training", enemy_id: "brote", status: "open",
+        ruleset_version: legacyR2.rulesetVersion, content_hash: legacyR2.contentHash, seed: legacyR2.seed, snapshot: legacyR2.snapshot,
+      }));
+      const original = (await battles())[0];
+      const panel = page.getByRole("region", { name: "Entrenamiento", exact: true });
+      const pointerKey = `pet-training:${ownId()}:current`, logKey = `pet-training:${ownId()}:${intent}`;
+      const legacyLog = { inputs: legacyR2.inputs, tick: legacyR2.tick, awaitingContinue: false };
+      await page.evaluate(({ pointerKey, logKey, intent, legacyLog }) => {
+        localStorage.setItem(pointerKey, JSON.stringify({ intent }));
+        localStorage.setItem(logKey, JSON.stringify(legacyLog));
+      }, { pointerKey, logKey, intent, legacyLog });
+      await page.clock.resume();
+      await page.reload();
+      await expect(panel).toBeVisible();
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+      await panel.getByRole("button", { name: "Continuar", exact: true }).click();
+      const notice = "Hemos recuperado tu combate guardado. Tus decisiones se conservan. Pulsa Continuar para retomarlo o completar el resultado.";
+      await expect(panel.getByText(notice, { exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: "Continuar", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await page.clock.runFor(RULESET.tickMs * 5);
+      await expect(panel.getByTestId("training-tick")).toHaveText("24.6 s");
+      expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), logKey))!)).toEqual(legacyLog);
+
+      await page.clock.resume();
+      await page.reload();
+      await expect(panel).toBeVisible();
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+      await panel.getByRole("button", { name: "Continuar", exact: true }).click();
+      await expect(panel.getByText(notice, { exact: true })).toBeVisible();
+      expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), logKey))!)).toEqual(legacyLog);
+
+      await panel.getByRole("button", { name: "Continuar", exact: true }).click();
+      await expect(panel.getByText(notice, { exact: true })).toHaveCount(0);
+      expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), logKey))!)).toEqual({ ...legacyLog, ended: false });
+      await page.clock.runFor(RULESET.tickMs);
+      await expect(panel.getByRole("button", { name: "Ver repetición", exact: true })).toBeVisible();
+      const [resolved] = await battles();
+      expect(resolved.id).toBe(original.id); expect(resolved.intent_id).toBe(intent); expect(resolved.status).toBe("resolved");
+      expect(resolved.inputs).toEqual(legacyR2.inputs); expect(resolved.digest).toMatch(/^[0-9a-f]{64}$/);
+      const audit = await replayBattle({ rulesetVersion: resolved.ruleset_version, contentHash: resolved.content_hash, enemyId: resolved.enemy_id, seed: resolved.seed, snapshot: resolved.snapshot, inputs: resolved.inputs, result: resolved.result });
+      expect(audit.ok).toBe(true); if (!audit.ok) throw new Error(`Legacy checkpoint replay failed: ${audit.code}`);
+      expect(resolved.digest).toBe(audit.digest); expect(resolved.result).toEqual(audit.result);
+      expect(errors).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+      await info.attach("legacy-checkpoint", { body: JSON.stringify({ viewport, intent, legacyLog, normalized: { ...legacyLog, ended: false }, row: resolved, digest: audit.digest }), contentType: "application/json" });
+    });
   });
 }

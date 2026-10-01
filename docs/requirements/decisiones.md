@@ -5795,3 +5795,19 @@ No hay cambio de esquema, caché ni flujo de interfaz. Los fixtures r2.2,
 r3.1 y r4.2 conservan resultados/eventos/digests exactos; 46 unitarios y el
 typecheck verifican las fronteras de entrenamiento y aventuras. Evidencia:
 `docs/testing/2026-10-01-historical-replay-result-types-1116.md`.
+
+## 2026-10-01 — recuperación explícita del checkpoint anterior (#1284)
+
+La ausencia de `ended` en un log válido no indica corrupción ni permite
+distinguir automáticamente la vista abierta del tick T de un final ya jugado.
+Se conserva la pausa y se explica la recuperación con un aviso; la acción
+existente «Continuar» retoma o completa el mismo combate. No se añade otro
+botón ni se crea una intención nueva para suplir la información ausente.
+
+Mientras no se continúa, guardar/salir/volver conserva el formato anterior
+y el aviso. Continuar normaliza de inmediato el checkpoint; el interludio
+conserva su acción propia. Una reproducción antigua que ya demuestra un
+final mantiene la resolución existente, y los formatos modernos y corruptos
+conservan sus caminos. No hay migración de base de datos ni cambio en los
+motores o manifiestos históricos. Evidencia y alcance de la verificación:
+`docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.

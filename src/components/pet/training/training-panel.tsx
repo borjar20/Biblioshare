@@ -266,6 +266,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
           <span className={styles.shield}><Shield width={15} height={15} aria-hidden="true" />{t("ulti.shield", { value: v.shield })}</span>
           <p role="status"><ReservedText text={lastUlti ? t("ulti.feedback", { damage:lastUlti.damage, shield:lastUlti.shield }) : t("ulti.awaiting")} alternatives={[t("ulti.feedback",{damage:v.enemyHpMax,shield:v.petHpMax}), t("ulti.awaiting")]} /></p>
         </div>}
+        {session.legacyCheckpoint && <p role="status" className="text-sm">{t("legacyCheckpoint")}</p>}
         <div className={styles.playback}>
           <button ref={pauseButton} aria-pressed={session.paused} disabled={session.ultiOpen || session.awaitingContinue} onClick={() => { session.togglePause(); refresh(); }}>{session.paused ? <Play width={14} height={14} aria-hidden="true" /> : <Pause width={14} height={14} aria-hidden="true" />}{t(session.paused ? "resume" : "pause")}</button>
           <label className="flex items-center gap-2 text-sm">{t("speed")}<select className="min-h-11 rounded border border-border bg-surface-muted px-2 py-2" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[0.5, 1, 2].map(n => <option key={n} value={n}>{n}×</option>)}</select></label>

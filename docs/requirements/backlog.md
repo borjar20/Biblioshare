@@ -11,7 +11,7 @@
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
-> y errores/checkpoint de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01]**
+> y errores/checkpoints finales y anteriores de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -184,8 +184,10 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   y dos recorridos de navegador PASS. Evidencia:
   `docs/testing/2026-10-01-terminal-checkpoint-1281.md`.
 
-- [ ] **#1284 — checkpoints antiguos sin marca de final.** Compatibilidad en
-  pausa; tratamiento explícito del formato anterior pendiente.
+- [x] **#1284 — checkpoints antiguos sin marca de final.** Aviso de recuperación
+  y continuación explícita con el mismo intento e inputs; 81 unitarios, diez
+  casos de QA y dos regresiones E2E durables PASS. Evidencia:
+  `docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.
 
 - [x] **#1208 — recursos y prioridades del hero.** Backdrops TMDB adaptados
   a su familia de tamaños, una prioridad explícita alta y recurso compartido
