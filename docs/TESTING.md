@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; sección de arranque y control de Ajustes verificados el 2026-10-01 (#1073/#1274)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes y retorno administrativo verificados el 2026-10-01 (#1073/#1274/#1271)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -140,9 +140,12 @@ redirección (#1271). Las sospechas #1272/#1273 se descartan bajo esas
 precondiciones. El flujo de Ajustes pasó incluso cuando registraba el error
 de prerender de #1274; su corrección posterior aporta una frontera de carga
 propia y pasa seis recorridos en dev y seis contra build/start local, sin ese
-error. La redirección de #1271 sigue pendiente y no forma parte de ese lote.
+error. La redirección de #1271 no formó parte de ese lote de seis: su arreglo
+posterior conserva subruta/filtros y pasa ocho recorridos en dev y ocho en
+build/start local, incluidos los rechazos del usuario sin rol admin.
 Entorno, controles y evidencia: [verificación de #1073](testing/2026-10-01-playwright-startup-1073.md).
 Corrección y límites: [Ajustes con Suspense](testing/2026-10-01-ajustes-suspense-1274.md).
+Retorno tras login: [destino administrativo](testing/2026-10-01-admin-login-return-1271.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

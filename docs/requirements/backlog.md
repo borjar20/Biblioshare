@@ -165,6 +165,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#1271 — conservar el destino administrativo al pedir login.** El proxy
+  recuerda subruta y filtros del anónimo; layout y RPC conservan el gate de
+  rol. 22 unitarios y ocho recorridos en dev y build/start local verificados;
+  evidencia en `docs/testing/2026-10-01-admin-login-return-1271.md`.
+
 - [x] **#1274 — lecturas de sesión de Ajustes detrás de su frontera de carga.**
   `loading.tsx` aporta el shell estático; se retiran los opt-outs de página y
   layout. Seis recorridos pasan tanto en dev como contra build/start local,
