@@ -5592,3 +5592,24 @@ coinciden: esa equivalencia de objetos manda sobre la diferencia de timestamps.
 No se siembran pruebas ni se reescribe actividad existente en producción.
 La fecha de Madrid verificada antes de aplicar fue 2026-10-01; el corte fijo
 2026-10-02 sigue siendo futuro y se conserva tras este primer lanzamiento.
+
+## 2026-10-01 — referencias de libro en eventos de club (#875)
+
+La fusión cubre los dos contratos actuales del JSON de evento: item de
+lanzamiento y relaciones item/book de fecha destacada. `spawned_from_item_*`
+sigue siendo el origen de tierlist y no sustituye una lista de relaciones.
+Config conserva su contrato opaco/tolerante: se actualizan solo rutas conocidas
+y se preservan campos ajenos, orden, otros medios y estructuras malformadas.
+No se añade un CHECK global que invalidaría formas históricas admitidas por el
+parser. La integridad ante borrado ordinario sigue en #546; Storage, en #880.
+
+Cada referencia válida de evento cuenta como rastro de persona en el reconciliador,
+incluidas las repetidas, igual que cada referencia tipada existente. Se reutiliza
+`parseEventConfig` y la paginación por id total; una página fallida aborta el
+recuento para no elegir ganador con evidencia parcial. La migración conserva
+íntegros los abortos previos y la deduplicación canónica de ISBN de #906.
+
+Dev `20261001102008` y prod `20261001102919 / merge_book_club_event_refs` conservan
+timestamps distintos del fichero `20261001102000`; el cuerpo y ACL equivalentes
+mandan sobre el ledger. La promoción redefine una función compatible y no ejecuta
+fusiones. El plan/backup revisable para las fusiones concretas sigue en #912.

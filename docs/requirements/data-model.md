@@ -1,5 +1,12 @@
 # Modelo de datos
 
+> **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
+> eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
+> orden, claves ajenas y configuraciones opacas. Local/dev: regresiones con rollback;
+> prod: cuerpo `c8b66534da7190781a3578225040817b`, `SECURITY DEFINER`, search_path
+> `public, pg_temp` y ejecución solo service_role verificados, sin fusiones de datos.
+> El reconciliador cuenta ambos formatos como rastro de usuario para elegir ganador.
+
 > **Delta 2026-09-30 (#870):** un colaborador o admin que vacía `books.author`
 > deja `repr_meta.author={"source":"manual"}` tanto para `NULL` como para `''`;
 > el centinela impide que `hydrate_book` y `hydrate_books_bulk` lo rellenen. Si
@@ -1064,17 +1071,18 @@ escribe en ningún sitio — solo sobrevive en el tipo generado de Supabase
 (`src/lib/supabase/database.types.ts`), que refleja el esquema real y se regenerará solo cuando
 la columna se borre de verdad.
 
-### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev, verificado 2026-08-27)
+### 2.2 Fusión de dos obras duplicadas — `merge_book_into` (dev/prod, verificado 2026-10-01)
 
 OpenLibrary cataloga cada traducción como una obra distinta, así que `books` acumula filas que
 son la misma obra. `merge_book_into(p_loser uuid, p_winner uuid) returns void` repunta al
 ganador todo lo que colgaba del perdedor y borra el perdedor. `SECURITY DEFINER`, `search_path`
 fijado a `public, pg_temp`, **solo `service_role`** (`revoke all ... from public, anon,
 authenticated`, nombrando los roles — ver #831). Quién gana lo decide el llamador, no la
-función. Migración `20260889_repr_h_merge_books_href.sql`, que sustituye a
-`20260888_repr_g_merge_books_completo.sql` (y esta a `20260887_repr_f_merge_books_fn.sql`).
+función. Definición vigente: `20261001102000_merge_book_club_event_refs.sql`, sobre
+la comparación canónica de ISBN de `20260930171000_merge_book_canonical_isbn.sql`.
+Los antecedentes `20260889`/`20260888`/`20260887` documentan cómo se completó la lista.
 
-**Las referencias a libro son 18, y NO tienen FK.** Este es el punto que hay que
+**Se repuntan 18 superficies tipadas/href y dos formatos JSON, sin FK.** Este es el punto que hay que
 entender antes de tocar nada: la integridad de la fusión no la sostiene ningún constraint. La
 única FK real a `books` en todo el esquema es `book_editions.book_id`. Todo lo demás es
 `(_type, _id)` sin FK, así que **una tabla que falte en la función deja filas de usuario
@@ -1084,7 +1092,8 @@ apuntando a una obra inexistente y no lo detecta nadie** — la app las esconde 
 |---|---|
 | 13 con `item_type`/`item_id` | `credits`, `passes`, `collection_items`, `library_entries`, `notes`, `saga_items`, `saga_optional_skips`, `saga_placement_windows`, `saga_route_entries`, `club_activity_items`, `club_activity_opinions`, `club_activity_placements`, `club_rounds` |
 | 4 con OTRO nombre | `posts.anchor_type`/`anchor_id` (enum `post_anchor_type`), `saga_placement_windows.after_item_*`, `saga_placement_windows.before_item_*`, `club_activities.spawned_from_item_*` |
-| 1 con el **id incrustado en texto** | `interaction_targets.href` — `text` con la URL `/libro/<uuid>` dentro, escrita por `private.item_interaction_href()` (`20260730212803`). 232 filas en prod. |
+| 1 con el **id incrustado en texto** | `interaction_targets.href` — `text` con la URL `/libro/<uuid>` dentro, escrita por `private.item_interaction_href()` (`20260730212803`). 232 filas en prod en el baseline de 2026-08-27. |
+| 2 formatos JSON de evento (#875) | Solo `kind='evento'`: `event_type='lanzamiento'`, `config.item` con `itemType='book'`; `event_type='fecha_destacada'`, elementos `config.relations[]` de `kind='item'`/`itemType='book'`. |
 
 Esas 4 son las que faltaban en `20260887`, que copió su lista de `20260870` sin verificarla:
 esa lista **no es autoritativa**, solo cubre las columnas llamadas literalmente
@@ -1170,9 +1179,14 @@ ninguna columna del esquema lo usa (tipo muerto, resto de §6.2b); `profiles.int
 (`item_type[]`) **sí** contiene la etiqueta `'book'`, pero es un filtro de intereses del perfil
 («me interesan los libros») sin `item_id` ni columna que lo acompañe — no es una referencia y no
 hay nada que repuntar (2 perfiles la usan en prod); `pass_reviews` es una vista de
-solo lectura. Queda fuera **a propósito** `club_activities.config->'item'->>'itemId'` (JSONB,
-hoy latente: cero eventos de libro en prod) — issue
-[#875](https://github.com/borjar20/Biblioshare/issues/875).
+solo lectura. Las dos referencias de evento en JSON se cubren desde
+[#875](https://github.com/borjar20/Biblioshare/issues/875), no mediante
+`spawned_from_item_*` (origen de tierlist). El array se reconstruye en su orden
+original y solo cambian los itemId book que coinciden con el perdedor. Los
+elementos opacos, medios distintos, vínculos a actividad, claves ajenas y otras
+clases/tipos de evento permanecen idénticos. Configuración no-array no se expande.
+El scan de ambos formatos en dev/prod del 2026-10-01 encontró cero referencias
+book y cero huérfanos; eso no sustituye las regresiones con fixtures.
 
 **Dos clases de fila, y la fusión es cobarde con una.** Si repuntar un DATO DE USUARIO chocara
 con un índice único, la función **aborta nombrando la tabla y sin haber escrito nada**: nadie
@@ -2814,6 +2828,8 @@ catálogo (mismo trato que `passes`, §3): `forbid_delete_with_passes` NO las cu
 borrar la obra puede dejar la referencia colgando — el display degrada con gracia (omite la
 relación irresoluble), pero el ref queda muerto (issue
 [#546](https://github.com/borjar20/Biblioshare/issues/546), `tipo:deuda`).
+La fusión `merge_book_into` sí repunta ambos formatos desde #875; el borrado
+ordinario y la falta de FK siguen siendo el alcance pendiente de #546.
 
 **«Todo el día» (hora opcional) y el cambio de comportamiento de Encuentro:**
 `create_club_event`/`update_club_event` (`20260842`, `DROP`+`CREATE` como ya usaba la firma

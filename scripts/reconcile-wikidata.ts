@@ -67,6 +67,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { searchInventaireEntities } from "../src/lib/catalog/inventaire/client";
+import { countBookEventTrace } from "../src/lib/catalog/wikidata-event-trace";
 import {
   planReconciliation,
   resolveQid,
@@ -123,19 +124,19 @@ const MAX_POR_TANDA_SUGERIDO = 60;
 const PAGE = 1000;
 
 /**
- * EL RASTRO DE USUARIO, tabla por tabla. Tiene que ser LA MISMA lista que
- * repunta `merge_book_into` (`20260889_repr_h_merge_books_href.sql`), porque de
+ * EL RASTRO DE USUARIO, tabla por tabla. Incluye las referencias PERSONALES que
+ * repunta `merge_book_into` actual (incluidos los eventos JSON de #875), porque de
  * este recuento sale el ganador de la fusión: **una referencia que no se cuenta
  * aquí sí se repunta allí, así que no se pierde el dato — pero la fila que la
  * llevaba puntúa como si estuviera vacía y PIERDE contra una que lo está de
  * verdad.** La primera versión contaba 6 de 17 y ese era exactamente el fallo:
  * una obra que solo llevara la opinión de un club sacaba 0 y moría.
  *
- * `merge_book_into` repunta 17 referencias polimórficas. Aquí están las 16 que
- * son rastro de PERSONA; `passes` va aparte porque es el desempate fuerte.
+ * Las referencias tipadas de persona se cuentan aquí; `passes` va aparte como
+ * desempate fuerte. Los dos formatos JSON de eventos (#875) se cuentan con
+ * `countBookEventTrace`, que reutiliza el parser tipado de la ficha de evento.
  *
- * LA QUE FALTA A PROPÓSITO — `credits` (autoría/rol de la obra). Es la
- * decimoséptima y NO se cuenta, porque no es rastro de usuario: es metadato de
+ * `credits` (autoría/rol de la obra) NO se cuenta, porque no es rastro de usuario: es metadato de
  * CATÁLOGO que escribe la hidratación desde OpenLibrary, no una persona.
  * Contarlo invertiría el criterio justo en el caso que importa —una fila
  * hidratada dos veces, con más `credits` automáticos, le ganaría a la fila donde
@@ -143,6 +144,8 @@ const PAGE = 1000;
  * `20260870`) es explícito: gana el rastro de usuario, no lo completo del
  * catálogo. Un dato de catálogo se vuelve a bajar; una nota, no. `book_editions`
  * queda fuera por lo mismo (además es FK real, no referencia polimórfica).
+ * `interaction_targets.href` es una URL derivada del rastro, no otro dato de
+ * persona: repuntarla preserva el enlace pero no añade peso independiente.
  *
  * La cuarta columna es la CLAVE PRIMARIA, para que la paginación tenga un orden
  * total. Ver `countByBook`: cuatro de estas tablas no tienen columna `id`.
@@ -353,6 +356,9 @@ async function main() {
     for (const [id, n] of await countByBook(supabase, tabla, idCol, tipoCol, orden)) {
       otros.set(id, (otros.get(id) ?? 0) + n);
     }
+  }
+  for (const [id, n] of await countBookEventTrace(supabase)) {
+    otros.set(id, (otros.get(id) ?? 0) + n);
   }
 
   const filas: BookRow[] = libros.map((b) => ({

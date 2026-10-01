@@ -1352,3 +1352,8 @@ commit;
 begin;
 \ir migrations/20260930190000_book_author_manual_clear.sql
 commit;
+
+-- 20261001102000_merge_book_club_event_refs
+begin;
+\ir migrations/20261001102000_merge_book_club_event_refs.sql
+commit;
