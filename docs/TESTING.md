@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero, zoom, errores y checkpoint final del entrenamiento y lecturas previas de pases verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1171/#1281/#1110)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoint final del entrenamiento y lecturas previas de pases verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1110)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -153,16 +153,22 @@ Retorno tras login: [destino administrativo](testing/2026-10-01-admin-login-retu
 comprueba las peticiones de imágenes de película/serie, libro Google Books,
 OpenLibrary y portada TMDB. Usa 375px/DPR 1, 2 y 3, y 640/1024/1600px/DPR 1.
 El contrato es: una prioridad explícita alta, bucket de backdrop suficiente,
-misma URL efectiva para portada/fondo del libro y dimensiones sin desbordar.
+identidad independiente de portada y fondo para película/serie, misma URL
+efectiva para portada/fondo del libro y dimensiones sin desbordar. El conjunto
+de URLs solicitadas debe coincidir con esos recursos: una URL adicional falla.
 Los 30 casos pasan contra build/start, sin reintentos, y borran sus cinco filas.
 
 Las imágenes sintéticas se interceptan por la marca propia; esto verifica
-URL, selección responsive y reutilización, no bytes ni LCP del CDN real.
+URL y selección responsive. `page.route()` desactiva la caché HTTP; varias
+peticiones de la misma URL quedan en el adjunto y no prueban un fallo de
+reutilización. No se miden caché real, ahorro de bytes ni LCP del CDN.
 Los tamaños w300/w780/w1280 también respondieron HTTP 200 en un HEAD público
 acotado. El original de `ImageZoom` es una superficie distinta de las dos
 imágenes visibles; #1278 difiere su montaje hasta abrir el visor. Evidencia
 del hero, fallos iniciales del test y límites:
 [recursos del hero](testing/2026-10-01-hero-images-1208.md).
+Corrección del contrato de la prueba y FAIL de CI conservado:
+[URLs seleccionadas y caché HTTP](testing/2026-10-01-hero-resource-contract-1287.md).
 
 ### Original del visor de imágenes (#1278)
 

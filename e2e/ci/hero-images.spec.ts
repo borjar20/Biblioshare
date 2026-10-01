@@ -14,6 +14,13 @@ const tmdbCover = `https://image.tmdb.org/t/p/w342/${marker}-cover.jpg`;
 const backdrop = `https://image.tmdb.org/t/p/w1280/${marker}-backdrop.jpg`;
 const googleCover = `https://books.google.com/books/content?id=${marker}&img=1`;
 const openLibraryCover = `https://covers.openlibrary.org/b/id/${namespace}-L.jpg`;
+function tmdbImageIdentity(url: string) {
+  const parsed = new URL(url);
+  return {
+    origin: parsed.origin,
+    path: parsed.pathname.replace(/\/t\/p\/(?:w\d+|original)\//, "/t/p/"),
+  };
+}
 const fixtures = [
   { id: randomUUID(), table: "movies", route: "pelicula", label: "movie", cover: tmdbCover, backdrop },
   { id: randomUUID(), table: "series", route: "serie", label: "series", cover: tmdbCover, backdrop },
@@ -68,7 +75,7 @@ for (const viewport of [
   test.describe(viewport.name, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: viewport.dpr });
     for (const fixture of fixtures) {
-      test(`${fixture.label}: requested size, one high priority and shared cover resource`, async ({ page }, info) => {
+      test(`${fixture.label}: selected hero resources, one high priority and shared cover resource`, async ({ page }, info) => {
         const requests: string[] = [], errors: string[] = [];
         const ours = (url: string) => url.includes(marker) || url.includes(`/id/${namespace}-`);
         // Only owned synthetic images are served here. Bytes/LCP of the public CDN are not measured.
@@ -96,20 +103,26 @@ for (const viewport of [
         }));
         const front = resources.find(image => image.alt !== "")!;
         const background = resources.find(image => image.alt === "")!;
-        await info.attach("image-resources", { body: JSON.stringify({ viewport, fixture: fixture.label, resources, requests }), contentType: "application/json" });
+        // page.route() disables HTTP cache (Playwright API). A duplicate request for the
+        // same selected URL is transport detail; a second selected size is not.
+        const expectedUrls = fixture.backdrop ? [front.currentSrc, background.currentSrc] : [front.currentSrc];
+        const requestedUrls = [...new Set(requests)].sort();
+        await info.attach("image-resources", { body: JSON.stringify({ viewport, fixture: fixture.label, resources, requests, requestedUrls, expectedUrls }), contentType: "application/json" });
         expect(resources.filter(image => image.priority === "high")).toHaveLength(1);
         expect(front.coverWidth).toBe(viewport.width >= 1024 ? 200 : viewport.width >= 640 ? 140 : 110);
+        expect(requestedUrls).toEqual([...new Set(expectedUrls)].sort());
         if (fixture.backdrop) {
+          expect(tmdbImageIdentity(front.currentSrc)).toEqual(tmdbImageIdentity(fixture.cover));
+          expect(tmdbImageIdentity(background.currentSrc)).toEqual(tmdbImageIdentity(fixture.backdrop));
+          expect(front.currentSrc).not.toBe(background.currentSrc);
           expect(background.priority).toBe("high");
           expect(front.priority).toBe("auto");
           const bucket = viewport.width <= 640 && viewport.dpr < 3 ? 780 : 1280;
           expect(new URL(background.currentSrc).pathname).toContain(`/w${bucket}/`);
-          expect(requests.filter(url => url.includes("backdrop"))).toEqual([background.currentSrc]);
         } else {
           expect(front.priority).toBe("high");
           expect(background.currentSrc).toBe(front.currentSrc);
           expect(background.sizes).toBe(front.sizes);
-          expect(requests.filter(url => url === front.currentSrc)).toEqual([front.currentSrc]);
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         expect(errors).toEqual([]);
