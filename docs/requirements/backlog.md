@@ -181,6 +181,10 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
+- [x] **#1174 — esperar al destino efectivo tras iniciar sesión.** Tres
+  aserciones comparan pathname y query del destino; comprobadas en navegador
+  con el POST de login retenido y luego liberado, además del smoke de Cuaderno.
+
 - [x] **#1216 — persistir la reseña al cruzar el breakpoint con foco.** El
   panel coordina el blur y el cambio de tamaño para guardar una sola vez;
   22 unitarios, build de producción local y navegador con persistencia en BD,

@@ -56,7 +56,7 @@ async function login(page: Page, user: { email: string; password: string }) {
   await page.locator('input[name="email"]').fill(user.email);
   await page.locator('input[name="password"]').fill(user.password);
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/mascota$/, { timeout: 30_000 });
+  await page.waitForURL((url) => url.pathname === "/mascota" && url.search === "", { timeout: 30_000 });
 }
 
 async function userToken(request: APIRequestContext, email: string, password: string) {
