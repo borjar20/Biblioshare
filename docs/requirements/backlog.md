@@ -181,6 +181,12 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
+- [x] **#1260 — aislamiento de la fixture de proveedor entre ejecuciones.** El
+  token sintético de TMDB recibe un namespace por ejecución, compartido con la
+  fixture de notas, para que la caché de Next no reutilice una respuesta de una
+  pasada anterior. La evidencia 7/7 pertenece a la integración local de #1250;
+  el candidato aislado pasó los controles de PR #1261.
+
 - [x] **#745 / #755 — ancho del Cuaderno en móvil.** Comprobación de la
   corrección existente de #833: sin overflow a 390 px antes y después de buscar
   y filtrar; controles y nota propia verificados el 2026-09-30.

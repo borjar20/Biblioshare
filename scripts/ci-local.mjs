@@ -13,6 +13,7 @@ const commands = {
   smoke: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.ci.config.ts', ...process.argv.slice(3)],
 };
 if (!commands[mode]) throw new Error('Expected build or smoke');
+const fixtureNamespace = String(Date.now());
 const result = spawnSync(process.execPath, commands[mode], {
   // The abandoned-stream regression (#754) leaves the browser healthy while
   // Next rejects a late request API on the server. A green browser exit alone
@@ -27,8 +28,8 @@ const result = spawnSync(process.execPath, commands[mode], {
     PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:3000',
     // Local fixtures shared by the test runner and its Next.js subprocess.
     CRON_SECRET: 'ci-letterboxd-fixture-only',
-    TMDB_API_KEY: 'ci-letterboxd-fixture-only',
-    DETAIL_NOTES_NAMESPACE: String(Date.now()),
+    TMDB_API_KEY: `ci-letterboxd-fixture-only-${fixtureNamespace}`,
+    DETAIL_NOTES_NAMESPACE: fixtureNamespace,
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/detail-notes-provider.cjs`.trim(),
   },
 });
