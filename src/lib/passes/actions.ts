@@ -89,12 +89,15 @@ async function savePassFields(
   // Sin esto, producción acumuló 167 de 407 pases (41 %) con la fecha de inicio
   // POSTERIOR a la de fin (#729), y la ficha llegaba a anunciar lecturas de «1
   // día» que en realidad eran de años.
-  const { data: actual } = await supabase
+  const { data: actual, error: actualError } = await supabase
     .from("passes")
     .select("started_on, finished_on, status")
     .eq("id", passId)
     .eq("user_id", userId)
     .maybeSingle();
+  // Failure is not absence: without the current dates we cannot preserve the
+  // finished/start ordering invariant safely.
+  if (actualError) return { error: "generic" };
   // Editing an already completed, undated pass must not invent today's date.
   if (actual?.status === "completed" && actual.finished_on === null && !String(formData.get("finishedOn") ?? "").trim()) finishedOn = null;
   const inicioInvalido =
@@ -209,12 +212,14 @@ export async function updatePass(
   // Se lee ANTES de guardar: savePassFields sobrescribe review, y el diff de
   // menciones (issue #317) necesita el texto previo para saber cuáles son
   // nuevas.
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("passes")
     .select("review")
     .eq("id", passId)
     .eq("user_id", user.id)
     .maybeSingle();
+  // The previous review is required to notify only newly added mentions.
+  if (existingError) return { error: "generic" };
 
   const result = await savePassFields(supabase, passId, user.id, formData);
   if (result.error) return result;
