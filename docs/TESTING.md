@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo y recursos del hero verificados el 2026-10-01 (#1073/#1274/#1271/#1208)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero y zoom verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -159,10 +159,28 @@ Los 30 casos pasan contra build/start, sin reintentos, y borran sus cinco filas.
 Las imágenes sintéticas se interceptan por la marca propia; esto verifica
 URL, selección responsive y reutilización, no bytes ni LCP del CDN real.
 Los tamaños w300/w780/w1280 también respondieron HTTP 200 en un HEAD público
-acotado. La imagen original del diálogo cerrado de `ImageZoom` es una tercera
-superficie, fuera de las dos imágenes visibles: su carga anticipada está en
-#1278. Evidencia, fallos iniciales del test y límites:
+acotado. El original de `ImageZoom` es una superficie distinta de las dos
+imágenes visibles; #1278 difiere su montaje hasta abrir el visor. Evidencia
+del hero, fallos iniciales del test y límites:
 [recursos del hero](testing/2026-10-01-hero-images-1208.md).
+
+### Original del visor de imágenes (#1278)
+
+`e2e/ci/image-zoom-loading.spec.ts` comprueba película TMDB, libro Google
+Books, avatar Storage y portada de club en móvil/escritorio, cerrando por
+Escape y por clic. Son 16 casos contra build/start, incluidos automáticamente
+por `playwright.ci.config.ts`. Crean dos obras, un club y un actor propios
+en Supabase local, y verifican su borrado por REST y Auth 404 al terminar.
+
+Antes de abrir, el diálogo no tiene imagen original. Para los tres orígenes
+con miniatura distinta no existe petición de la URL original; al abrir se
+sirve esa URL completa. El diálogo es modal, tiene nombre accesible, devuelve
+el foco al disparador y reabre sin peticiones adicionales. El club ya usa la
+URL completa en su portada visible: allí no se atribuye ahorro de red al visor.
+Solo se interceptan recursos sintéticos propios; no se miden bytes ni LCP.
+El guard para cambios de `src` se revisa por lectura, sin simular esa edición
+en el navegador. Evidencia, FAIL conservados y limpieza:
+[original del zoom](testing/2026-10-01-image-zoom-loading-1278.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

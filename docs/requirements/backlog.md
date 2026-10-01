@@ -169,7 +169,13 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   a su familia de tamaños, una prioridad explícita alta y recurso compartido
   entre portada/fondo de libro. 18 unitarios y 30 recorridos contra build/start
   local; evidencia en `docs/testing/2026-10-01-hero-images-1208.md`.
-  La descarga anticipada del visor compartido se rastrea en #1278.
+  El visor compartido se resuelve en #1278, debajo.
+
+- [x] **#1278 — cargar el original solo al ampliar una imagen.** El visor
+  nativo conserva Escape, cierre por clic, foco y reapertura; solo monta la
+  URL que se ha pedido abrir. 16 recorridos contra build/start cubren fichas,
+  perfil y club en móvil/escritorio. Evidencia y límites:
+  `docs/testing/2026-10-01-image-zoom-loading-1278.md`.
 
 - [x] **#1271 — conservar el destino administrativo al pedir login.** El proxy
   recuerda subruta y filtros del anónimo; layout y RPC conservan el gate de
