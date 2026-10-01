@@ -21,7 +21,7 @@ interface Actions {
   replay: (intent: string) => Promise<TrainingResponse>;
 }
 
-type LocalLog = { inputs: BattleInput[]; tick: number; awaitingContinue?: boolean };
+type LocalLog = { inputs: BattleInput[]; tick: number; awaitingContinue?: boolean; ended?: boolean };
 interface SessionOptions { storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">; storagePrefix?: string; userId?: string; kind?: "training" | "adventure" }
 
 // Only a rejected remote call is a transport failure. Keep returned domain
@@ -111,7 +111,7 @@ export class TrainingSession {
     const key = this.storageKey();
     if (!key || !this.options.storage || !this.view) return false;
     try {
-      this.options.storage.setItem(key, JSON.stringify({ inputs: this.inputs, tick: this.view.tick, awaitingContinue: this.awaitingContinue } satisfies LocalLog));
+      this.options.storage.setItem(key, JSON.stringify({ inputs: this.inputs, tick: this.view.tick, awaitingContinue: this.awaitingContinue, ended: this.view.ended } satisfies LocalLog));
       const pointer = this.pointerKey();
       if (pointer) this.options.storage.setItem(pointer, JSON.stringify({ intent: this.intent }));
       return true;
@@ -138,7 +138,7 @@ export class TrainingSession {
       const parsed = JSON.parse(raw) as LocalLog;
       const release = this.battle && getBattleRelease(this.battle.rulesetVersion, this.battle.contentHash);
       const fights = this.battle?.enemyId.split(",").length ?? 1;
-      if (!release || !Number.isSafeInteger(parsed.tick) || parsed.tick < 0 || parsed.tick > fights * (release.ruleset.maxTicks + 1) || !release.validateInputs(parsed.inputs, fights).ok || parsed.inputs.some(i => i.tick > parsed.tick) || (parsed.awaitingContinue !== undefined && typeof parsed.awaitingContinue !== "boolean")) throw new Error("LOCAL_RECOVERY");
+      if (!release || !Number.isSafeInteger(parsed.tick) || parsed.tick < 0 || parsed.tick > fights * (release.ruleset.maxTicks + 1) || !release.validateInputs(parsed.inputs, fights).ok || parsed.inputs.some(i => i.tick > parsed.tick) || (parsed.awaitingContinue !== undefined && typeof parsed.awaitingContinue !== "boolean") || (parsed.ended !== undefined && typeof parsed.ended !== "boolean")) throw new Error("LOCAL_RECOVERY");
       return parsed;
     } catch { this.error = "LOCAL_RECOVERY"; this.paused = true; return null; }
   }
@@ -200,11 +200,12 @@ export class TrainingSession {
     if (!log) return;
     try {
       this.inputs = log.inputs;
-      while (this.view && !this.view.ended && this.view.tick < log.tick) {
+      while (this.view && !this.view.ended && (this.view.tick < log.tick || (log.ended === true && this.view.tick === log.tick))) {
         const next = this.advance!(this.inputs.filter(i => i.tick === this.view!.tick));
         this.events.push(...next.events);
         this.view = next.view;
       }
+      if (log.ended === true && !this.view?.ended) throw new Error("LOCAL_RECOVERY");
       this.visualFromTick = this.view?.tick ?? 0;
       if (this.view?.ended) {
         this.phase = "resolving";

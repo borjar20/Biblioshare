@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero, zoom, errores del entrenamiento y lecturas previas de pases verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1171/#1110)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero, zoom, errores y checkpoint final del entrenamiento y lecturas previas de pases verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1171/#1281/#1110)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -196,8 +196,24 @@ Son 12 casos sin reintentos, con cero errores de página/desbordamiento. Los
 70 unitarios de sesión/panel cubren además UNAVAILABLE, replay, aventuras y
 LOCAL_RECOVERY. La pasada final y el barrido agregado de once actores verifican
 Auth 404 y ocho superficies vacías, sin tocar cuentas persistentes. FAIL previos,
-recuperación del tick final pendiente #1281 y límites:
+recuperación del tick final corregida por #1281 y límites de aquella entrega:
 [errores del entrenamiento](testing/2026-10-01-training-error-actions-1171.md).
+
+### Recuperación de un combate ya terminado (#1281)
+
+El checkpoint nuevo guarda su estado final y reconstruye también el último
+tick sólo si había terminado. Los abiertos, los interludios de aventura y
+los logs antiguos sin marca siguen recuperándose en pausa; un marcador
+incoherente sigue el camino LOCAL_RECOVERY.
+
+79 pruebas de sesión/panel/errores pasan, con finales por KO y por límite,
+las cuatro versiones conservadas y compatibilidad legacy. Los dos casos
+`resolution-authentication` del spec anterior ahora exigen resultado tras
+una sola pulsación, sin otro tick manual: misma fila, intent, inputs y digest
+idéntico a la repetición real. Pasan en 320/1280 px contra build/start local.
+Cuatro actores propios ausentes de Auth y ocho superficies a cero; 3000 libre.
+El tratamiento explícito de finales guardados con el formato antiguo queda
+en #1284. Evidencia: [checkpoint final](testing/2026-10-01-terminal-checkpoint-1281.md).
 
 ### Lecturas previas al guardar un pase (#1110)
 
