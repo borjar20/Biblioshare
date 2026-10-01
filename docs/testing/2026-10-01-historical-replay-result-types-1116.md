@@ -82,3 +82,41 @@ de integración de aventuras no tiene un log persistido separado.
 No se levantó servidor, no se crearon actores o filas y no hubo cambios en
 Supabase, dependencias o producción para verificar esta corrección de tipos.
 No se atribuye a este lote una prueba nueva de navegador ni de red/CDN.
+
+## Integración después de corregir el control del hero — #1287
+
+El [primer run de CI de esta PR](https://github.com/borjar20/Biblioshare/actions/runs/36897878091)
+conserva **64 PASS / 1 FAIL** en los recorridos. El único FAIL fue la exigencia
+de una sola petición de imagen en el hero de OpenLibrary; su traza registra
+dos entregas completas de la misma URL sintética con prioridades correctas.
+El diagnóstico y la corrección pertenecen a #1287, separado de este cambio.
+
+La PR #1288 corrigió ese contrato y se integró en
+`3a5366eea846da4bfac55d5b0aa6ed291492e0a5`. Su CI ejecutó 65 recorridos
+y 3.902 unitarios correctos. Esta rama incorpora esa base; los conflictos
+se limitaron a la cabecera de `TESTING` y el final de `decisiones`. Se
+conservan ambas verificaciones y la entrada #1116 se añade tras el contenido
+ya integrado de #1287, sin reescribir decisiones anteriores.
+
+Los cuatro archivos de fuente/prueba de #1116 conservan exactamente sus
+SHA-256 anteriores. La comparación de emisión TypeScript sin comentarios
+también confirmó el mismo JavaScript de los tres archivos de producción
+entre la base inicial y el head original: **no es una comparación completa
+de builds Next** ni una prueba causal de cada solicitud del hero.
+
+Tras la integración se ejecuta un nuevo lote, sin sustituir los anteriores:
+
+| Control sobre la base `3a5366e…` | Resultado | Tiempo de proceso |
+|---|---|---:|
+| Cinco suites de replay, releases y servicios | 46 PASS / 0 FAIL / 0 SKIPPED / 0 TODO | 2,616 s |
+| ESLint de cuatro fuentes, JSON nativo | 0 errores / 0 avisos | 2,036 s |
+| TypeScript completo | PASS, exit 0 | 5,475 s |
+
+Estos son los 46 casos del lote integrado; no se suman los dos lotes de
+46 como 92 casos finales. La nueva evidencia está en
+`.scratch/ticket-campaign/qa1116/integrated-1790878114455/`.
+`evidence-integrated-3a.json` sella fuente, documentación adaptada, nativos
+y diagnóstico CI, conservando `evidence-final.json` y los artefactos iniciales.
+Los motores/manifiestos congelados siguen sin cambios. El informe de #1287
+acota su QA de navegador y sus respuestas sintéticas por separado:
+[contrato de recursos del hero](2026-10-01-hero-resource-contract-1287.md).

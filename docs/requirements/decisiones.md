@@ -5762,6 +5762,22 @@ intent, seed y decisiones, y el navegador comprueba digest/resultado contra
 la repetición determinista real. Evidencia:
 `docs/testing/2026-10-01-terminal-checkpoint-1281.md`.
 
+## 2026-10-01 — recursos seleccionados y caché en el E2E del hero (#1287)
+
+La intercepción de Playwright desactiva la caché HTTP. Contar exactamente una
+petición de una URL sintética mezclaba el contrato de selección de imágenes
+con un comportamiento de transporte que la prueba había alterado. Se compara
+el conjunto exacto de URLs solicitadas con los recursos visibles, manteniendo
+la lista completa de solicitudes en el adjunto para el diagnóstico.
+
+En película/serie, portada y backdrop deben corresponder a sus fixtures
+independientes y ser distintos; sólo se normaliza el bucket TMDB para comparar
+su identidad. En libros, ambas imágenes comparten URL y `sizes`. Las reglas
+de prioridad, bucket, carga efectiva y dimensiones se conservan. No se añade
+un retry ni se cambia el producto. Este E2E no demuestra caché, ahorro de bytes
+o LCP del CDN real. Evidencia:
+`docs/testing/2026-10-01-hero-resource-contract-1287.md`.
+
 ## 2026-10-01 — contrato común verdadero para resultados históricos (#1116)
 
 R2.2 y R3.1 firmaron resultados sin `fight`; R4.1 incorporó ese campo al
