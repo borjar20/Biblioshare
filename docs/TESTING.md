@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero, zoom y errores del entrenamiento verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1171)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos del hero, zoom, errores del entrenamiento y lecturas previas de pases verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1171/#1110)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -198,6 +198,20 @@ LOCAL_RECOVERY. La pasada final y el barrido agregado de once actores verifican
 Auth 404 y ocho superficies vacías, sin tocar cuentas persistentes. FAIL previos,
 recuperación del tick final pendiente #1281 y límites:
 [errores del entrenamiento](testing/2026-10-01-training-error-actions-1171.md).
+
+### Lecturas previas al guardar un pase (#1110)
+
+`src/lib/passes/actions.test.ts` fuerza por separado el fallo de lectura de
+fechas al cerrar y el de reseña previa al editar. Ambos deben devolver
+`generic`, sin escrituras, avisos de menciones ni revalidación. La lectura
+de reseña permanece antes del guardado para calcular sólo las menciones nuevas.
+
+El lote focalizado con `get-passes.test.ts` pasa 27 casos, incluidos los
+contratos de #657 y la diferencia entre error y consulta vacía correcta.
+Los formularios existentes conservan la edición abierta y muestran el error.
+Esta comprobación de interfaz es por código; el fallo se reproduce con un
+cliente controlado, sin simular una avería de Supabase en producción.
+Evidencia: [lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

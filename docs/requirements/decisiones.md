@@ -5729,3 +5729,16 @@ la animación ya terminase antes de salir; es deuda independiente #1281, con
 motores congelados intactos. Evidencia: 70 unitarios y doce recorridos de
 Chromium contra build/start local, incluidos resolución, intent e inputs tras
 login: `docs/testing/2026-10-01-training-error-actions-1171.md`.
+
+## 2026-10-01 — lecturas previas obligatorias al guardar pases (#1110)
+
+Un error al leer fechas o la reseña anterior no significa que esos datos
+estén ausentes. `savePassFields` y `updatePass` devuelven el error existente
+`generic` antes de escribir, notificar menciones o revalidar. Los formularios
+ya interpretan ese estado manteniendo la edición abierta. La reseña se sigue
+leyendo antes de guardar: moverla después invalidaría el diff de menciones.
+
+Una consulta correcta sin fila conserva su comportamiento anterior. El
+diagnóstico inicialmente registrado como sospecha se confirma con dos casos
+controlados que fallaban antes de los guards; no se atribuyen daños observados
+en producción. Evidencia: `docs/testing/2026-10-01-pass-prerequisite-reads-1110.md`.

@@ -11,7 +11,7 @@
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
-> y errores de entrenamiento reverificados el 2026-10-01]**
+> y errores de entrenamiento y lecturas previas de pases reverificados el 2026-10-01]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -164,6 +164,10 @@ posts huérfanos; `dev` quedó a cero en las cinco medidas. Quedan abiertas **#8
 prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada).
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
+
+- [x] **#1110 — abortar el guardado si falla una lectura previa del pase.**
+  Fechas y reseña previa comprobadas antes de escribir; 27 unitarios PASS.
+  Evidencia: `docs/testing/2026-10-01-pass-prerequisite-reads-1110.md`.
 
 - [x] **#1171 — distinguir errores y acciones del entrenamiento.** Conexión,
   sesión caducada y combate incompatible; reautenticación y recuperación de
