@@ -5761,3 +5761,21 @@ cambios en motores/manifiestos. La resolución del checkpoint nuevo conserva
 intent, seed y decisiones, y el navegador comprueba digest/resultado contra
 la repetición determinista real. Evidencia:
 `docs/testing/2026-10-01-terminal-checkpoint-1281.md`.
+
+## 2026-10-01 — contrato común verdadero para resultados históricos (#1116)
+
+R2.2 y R3.1 firmaron resultados sin `fight`; R4.1 incorporó ese campo al
+introducir cadenas. El enrutador exporta `ReplayBattleResult` con `fight`
+opcional y un `ReplayResult` explícito, compartidos por `TrainingBattle` y
+el input de resolución de aventuras. Cada adaptador devuelve directamente
+el resultado de su motor, sin forzar el retorno al tipo actual.
+
+No se añade un valor por defecto ni se proyecta o limpia el registro: eso
+cambiaría los datos firmados y la semántica de los payloads históricos.
+Los casts que especializan inputs/snapshots al entrar en un motor retenido
+permanecen en esa frontera; no prometen campos ausentes en la salida.
+Los tipos actuales y todos los ficheros/manifiestos congelados se conservan.
+No hay cambio de esquema, caché ni flujo de interfaz. Los fixtures r2.2,
+r3.1 y r4.2 conservan resultados/eventos/digests exactos; 46 unitarios y el
+typecheck verifican las fronteras de entrenamiento y aventuras. Evidencia:
+`docs/testing/2026-10-01-historical-replay-result-types-1116.md`.
