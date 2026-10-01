@@ -17,6 +17,6 @@
 .card[data-active="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
 .card strong { font-size: 14px; overflow-wrap: anywhere; }
 .card button { min-height: 44px; border: 1px solid var(--wood-edge); border-radius: var(--r-2); background: var(--wood); color: var(--cream); font-size: 13px; font-weight: 600; }
-.thumb { width: 100%; height: auto; aspect-ratio: 3 / 4; object-fit: cover; image-rendering: pixelated; border-radius: var(--r-1); }
+.thumb { width: 100%; height: auto; image-rendering: pixelated; border-radius: var(--r-1); }
 .active { color: var(--gold); font-size: 13px; font-weight: 600; }
 .panel button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
