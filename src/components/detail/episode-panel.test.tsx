@@ -227,4 +227,97 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
       screen.getByTestId("episode-detail-column").contains(mobileTextarea),
     ).toBe(false);
   });
+
+  it("guarda el borrador enfocado al cruzar de PC a móvil sin blur (#1216)", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, { target: { value: "reseña sin blur" } });
+
+    act(() => resize(false));
+
+    expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
+    expect(actions.rateEpisode).toHaveBeenCalledWith("s1", 1, 2, null, "reseña sin blur", false, LOCAL_DAY);
+  });
+
+  it("no duplica el guardado normal al perder foco antes del cambio de breakpoint", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, { target: { value: "reseña normal" } });
+    fireEvent.blur(textarea);
+    act(() => resize(false));
+
+    expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("guarda una vez si blur llega después del breakpoint pero antes del commit", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, { target: { value: "reseña con blur antes del commit" } });
+
+    act(() => {
+      resize(false);
+      expect(textarea.isConnected).toBe(true);
+      fireEvent.blur(textarea);
+    });
+
+    expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("no guarda al cruzar el breakpoint sin foco o sin cambios", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    act(() => resize(false));
+
+    expect(actions.rateEpisode).not.toHaveBeenCalled();
+  });
+
+  it("no guarda un borrador cambiado que no conserva foco al cruzar el breakpoint", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "sin foco" } });
+    act(() => resize(false));
+
+    expect(actions.rateEpisode).not.toHaveBeenCalled();
+  });
+
+  it("no guarda un cuadro enfocado sin cambios al cruzar el breakpoint", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    fireEvent.focus(screen.getByRole("textbox"));
+    act(() => resize(false));
+
+    expect(actions.rateEpisode).not.toHaveBeenCalled();
+  });
+
+  it("guarda también al cruzar de móvil a PC con el cuadro enfocado", () => {
+    const { resize } = stubResizableDesktop(false);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, { target: { value: "reseña desde móvil" } });
+    act(() => resize(true));
+
+    expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
+    expect(actions.rateEpisode).toHaveBeenCalledWith("s1", 1, 2, null, "reseña desde móvil", false, LOCAL_DAY);
+  });
 });

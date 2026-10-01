@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
 import {
@@ -84,6 +84,8 @@ export function EpisodePanel({
   // — es EL texto del episodio seleccionado, venga de donde venga.
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const reviewFocused = useRef(false);
+  const breakpointAtLastEvent = useRef(isDesktop);
 
   // Token que empuja el foco a la cabecera de la columna de detalle (PC).
   // Solo cambia dentro de `select()` cuando el usuario elige un episodio EN
@@ -317,13 +319,45 @@ export function EpisodePanel({
     />
   );
 
-  if (!activeGroup || !activeStat) return null;
-
   // El episodio anclado en la tercera columna (PC). Solo si es de la temporada
   // que se está viendo: al cambiar de temporada en el raíl, la columna vuelve a
   // su estado vacío en vez de enseñar un episodio que ya no está en la lista.
   const selectedEpisode =
-    activeGroup.episodes.find((e) => episodeKey(e) === selectedKey) ?? null;
+    activeGroup?.episodes.find((e) => episodeKey(e) === selectedKey) ?? null;
+
+  // Blur y breakpoint comparten el mismo consumo del foco. Aunque ambos
+  // eventos lleguen antes del commit de React, solo el primero puede guardar.
+  const handleReviewFocusChange = (focused: boolean) => {
+    if (focused) {
+      reviewFocused.current = true;
+      return;
+    }
+    if (!reviewFocused.current) return;
+    reviewFocused.current = false;
+    if (!selectedEpisode) return;
+    if (draft.trim() === (ownOf(selectedEpisode).review ?? "").trim()) return;
+    saveReview(selectedEpisode);
+  };
+
+  // El textarea se desmonta y se monta al cruzar `lg`, así que el navegador no
+  // siempre emite blur. Escuchamos el mismo MediaQueryList que useIsDesktop y
+  // guardamos solo el borrador que seguía enfocado, en ambos sentidos.
+  const saveFocusedReviewOnBreakpoint = useEffectEvent((matches: boolean) => {
+    if (breakpointAtLastEvent.current === matches) return;
+    breakpointAtLastEvent.current = matches;
+    handleReviewFocusChange(false);
+  });
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    breakpointAtLastEvent.current = media.matches;
+    const onChange = () => saveFocusedReviewOnBreakpoint(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  if (!activeGroup || !activeStat) return null;
 
   return (
     <div className="flex flex-col">
@@ -498,6 +532,7 @@ export function EpisodePanel({
                 onBack={() => setOpenSeason(null)}
                 draft={draft}
                 onDraftChange={setDraft}
+                onReviewFocusChange={handleReviewFocusChange}
                 onSaveReview={saveReview}
                 seasonPendingCount={seasonPending(activeGroup.season).length}
                 onMarkSeason={() => markMany(seasonPending(activeGroup.season))}
@@ -524,6 +559,7 @@ export function EpisodePanel({
                 isPending={isPending}
                 draft={draft}
                 onDraftChange={setDraft}
+                onReviewFocusChange={handleReviewFocusChange}
                 onSave={(spoiler) => selectedEpisode && saveReview(selectedEpisode, spoiler)}
                 markUpToCount={
                   interactive && selectedEpisode?.aired ? upToPending(selectedEpisode).length : 0
