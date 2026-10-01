@@ -165,6 +165,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#875 — referencias de eventos en fusiones de libros.** SQL cubre
+  lanzamiento y relaciones de fecha destacada; el reconciliador cuenta ambos
+  como rastro de usuario. Regresiones con rollback en local/dev y definición/
+  permisos verificados en producción; evidencia en `docs/testing/2026-10-01-merge-eventos-875.md`.
+
 - [x] **#1234 / #1233 / #1232 / #1181 / #1180 / #1179 — lote de parches de
   dependencias.** Lock coherente con Next/eslint 16.3.8, Sharp 0.35.4 y cierres
   de seguridad; instalación, unitarios, build y smoke verificados. Auditoría

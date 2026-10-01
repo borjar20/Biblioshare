@@ -806,7 +806,10 @@
         "src/lib/catalog/hydrate-book.ts",
         "src/lib/catalog/tmdb.ts",
         "src/lib/catalog/openlibrary",
-        "src/lib/catalog/media-accent.ts"
+        "src/lib/catalog/media-accent.ts",
+        "src/lib/catalog/wikidata-event-trace.ts",
+        "src/lib/catalog/wikidata-reconcile.ts",
+        "scripts/reconcile-wikidata.ts"
       ]
     },
     {
@@ -1442,9 +1445,15 @@
       "layer": "db",
       "kind": "table",
       "summary": "Actividades de club y sus tablas satélite (opiniones, colocaciones, votos, lecturas de checkpoint). Desde 2026-08-04 lleva además las columnas de EVENTO (starts_at/ends_at/event_timezone/location/modality/online_url/event_state/updated_at).",
+      "files": [
+        "src/lib/clubs/activities/event-types.ts",
+        "supabase/migrations/20261001102000_merge_book_club_event_refs.sql",
+        "supabase/tests/merge_book_club_event_refs.sql"
+      ],
       "gotchas": [
         "starts_on lo DERIVA un trigger desde starts_at y la zona del evento; no es una columna generada porque timezone(text, timestamptz) es STABLE y Postgres rechaza una GENERATED que la invoque. Escribir starts_on a mano no sirve: el trigger lo sobreescribe.",
-        "Tiene grant POR COLUMNA: añadir una columna sin su grant rompe la escritura ENTERA de la tabla, no solo el campo nuevo (issue #375). Correr la superficie 6 de DRIFT-CHECK.md después de tocarla."
+        "Tiene grant POR COLUMNA: añadir una columna sin su grant rompe la escritura ENTERA de la tabla, no solo el campo nuevo (issue #375). Correr la superficie 6 de DRIFT-CHECK.md después de tocarla.",
+        "#875: merge_book_into repunta config.item book de lanzamiento y relations item/book de fecha_destacada. Son referencias JSON sin FK; el borrado ordinario sigue en #546. La reconciliación cuenta ambos formatos como rastro con el parser actual y paginación total."
       ]
     },
     {
@@ -2531,6 +2540,16 @@
       "from": "m-catalog",
       "to": "m-people",
       "kind": "calls"
+    },
+    {
+      "from": "m-catalog",
+      "to": "m-clubs",
+      "kind": "calls"
+    },
+    {
+      "from": "m-catalog",
+      "to": "t-activities",
+      "kind": "reads"
     },
     {
       "from": "m-import",
