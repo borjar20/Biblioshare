@@ -188,6 +188,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   local; evidencia en `docs/testing/2026-10-01-hero-images-1208.md`.
   El visor compartido se resuelve en #1278, debajo.
 
+- [x] **#1287 — contrato de recursos del E2E del hero.** Compara las URLs
+  seleccionadas, su identidad y prioridad; conserva peticiones duplicadas
+  sin confundir el routing sintético con la caché HTTP. Evidencia en
+  `docs/testing/2026-10-01-hero-resource-contract-1287.md`.
+
 - [x] **#1278 — cargar el original solo al ampliar una imagen.** El visor
   nativo conserva Escape, cierre por clic, foco y reapertura; solo monta la
   URL que se ha pedido abrir. 16 recorridos contra build/start cubren fichas,
