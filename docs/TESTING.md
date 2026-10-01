@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoint final del entrenamiento y lecturas previas de pases verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1110)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoint final del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1110/#1116)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -234,6 +234,21 @@ Los formularios existentes conservan la edición abierta y muestran el error.
 Esta comprobación de interfaz es por código; el fallo se reproduce con un
 cliente controlado, sin simular una avería de Supabase en producción.
 Evidencia: [lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
+
+### Contrato de resultados históricos de combate (#1116)
+
+El resultado compartido de `replayBattle`, `TrainingBattle` y la resolución
+de aventuras acepta `fight` opcional: r2.2/r3.1 no guardaban ese campo.
+Las versiones congeladas mantienen sus tipos y sus resultados originales.
+Los adaptadores ya no fuerzan sus retornos al tipo de una versión posterior.
+
+El lote de replay, releases, entrenamiento histórico, servicio de entrenamiento
+y servicio de aventuras pasa 46 casos. Las assertions de tipo se verifican
+con `tsc --noEmit`, no con el mero transpile de Vitest. Los fixtures normativos
+de r2.2/r3.1/r4.2 conservan resultado, eventos y digest exactos; el control de
+releases conserva los cuatro manifiestos. No se transforma ningún payload.
+El RED de tipos, el reporte nativo y los límites están en
+[resultados históricos](testing/2026-10-01-historical-replay-result-types-1116.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

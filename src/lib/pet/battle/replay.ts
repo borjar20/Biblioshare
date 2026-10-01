@@ -16,11 +16,21 @@ import { resimulate, type ResimInput as HistoricalInput } from "./versions/r4.1/
 import { isBattleSnapshot as isR4Snapshot } from "./versions/r4.1/snapshot";
 import type { Ruleset, EnemyDef, BattleSnapshot as HistoricalSnapshot } from "./versions/r4.1/types";
 import type { BattleSnapshot as EquipmentSnapshot } from "./versions/r4.2/types";
+import type { BattleEvent, BattleResult } from "./types";
 
 export type StoredBattleSnapshot = HistoricalSnapshot | EquipmentSnapshot;
-export type StoredBattleInput = Omit<HistoricalInput,"snapshot"> & {snapshot:StoredBattleSnapshot};
+
+/** Public result shared by every retained release; chains added `fight` in R4.1. */
+export type ReplayBattleResult = Omit<BattleResult, "fight"> & { fight?: number };
+export type ReplayResult =
+  | { ok: true; events: BattleEvent[]; result: ReplayBattleResult; digest: string }
+  | { ok: false; code: string };
+
+export type StoredBattleInput = Omit<HistoricalInput, "snapshot" | "result"> & {
+  snapshot: StoredBattleSnapshot;
+  result?: ReplayBattleResult | null;
+};
 type ResimInput = StoredBattleInput;
-type ReplayResult = ReturnType<typeof replayR4b>;
 
 export interface BattleRelease {
   readonly rulesetVersion: string;
@@ -30,7 +40,7 @@ export interface BattleRelease {
   readonly isSnapshot: (value: unknown) => value is StoredBattleSnapshot;
   /** `fights` solo lo entiende r4.1; las versiones anteriores lo ignoran (un tramo). */
   readonly validateInputs: (raw: unknown, fights?: number) => ReturnType<typeof validateInputs>;
-  readonly replay: (record: ResimInput) => ReplayResult;
+  readonly replay: (record: ResimInput) => Promise<ReplayResult>;
 }
 export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
   Object.freeze({
@@ -40,11 +50,9 @@ export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
     enemies: r2.ENEMIES,
     isSnapshot: isR3Snapshot,
     validateInputs(raw: unknown): ReturnType<typeof validateInputs> { return validateR2(raw, r2.RULESET as unknown as Ruleset); },
-    async replay(record: ResimInput): ReturnType<typeof resimulate> {
+    async replay(record: ResimInput): Promise<ReplayResult> {
       if (!isR3Snapshot(record.snapshot)) return { ok: false, code: "INVALID_SNAPSHOT" } as const;
-      // r2.2 no conoce `result.fight` (campo de r4.1): la forma retenida es la
-      // que firmó su propio digest, no la del enrutador actual.
-      return replayR2(record as R2Input, { ruleset: r2.RULESET, enemies: r2.ENEMIES, contentHash: await r2.contentHash() }) as unknown as ReturnType<typeof resimulate>;
+      return replayR2(record as R2Input, { ruleset: r2.RULESET, enemies: r2.ENEMIES, contentHash: await r2.contentHash() });
     },
   }),
   Object.freeze({
@@ -54,9 +62,8 @@ export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
     enemies: r3.ENEMIES,
     isSnapshot: isR3Snapshot,
     validateInputs: (raw: unknown) => validateR3(raw, r3.RULESET),
-    async replay(record: ResimInput): ReturnType<typeof resimulate> {
-      // Misma nota: r3.1 tampoco lleva `fight` en su BattleResult retenido.
-      return replayR3(record as R3Input, { ruleset: r3.RULESET, enemies: r3.ENEMIES, contentHash: await r3.contentHash() }) as unknown as ReturnType<typeof resimulate>;
+    async replay(record: ResimInput): Promise<ReplayResult> {
+      return replayR3(record as R3Input, { ruleset: r3.RULESET, enemies: r3.ENEMIES, contentHash: await r3.contentHash() });
     },
   }),
   Object.freeze({
@@ -67,7 +74,7 @@ export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
     isSnapshot: isR4Snapshot,
     validateInputs: (raw: unknown, fights = 1) => validateInputs(raw, r4.RULESET, fights),
     async replay(record: ResimInput) {
-      return resimulate(record, { ruleset: r4.RULESET, enemies: r4.ENEMIES, contentHash: await r4.contentHash() });
+      return resimulate(record as HistoricalInput, { ruleset: r4.RULESET, enemies: r4.ENEMIES, contentHash: await r4.contentHash() });
     },
   }),
   Object.freeze({
@@ -77,9 +84,9 @@ export const BATTLE_RELEASES: readonly BattleRelease[] = Object.freeze([
     enemies:r4b.ENEMIES,
     isSnapshot:isR4bSnapshot,
     validateInputs:(raw:unknown,fights=1)=>validateR4b(raw,r4b.RULESET,fights),
-    async replay(record:ResimInput):ReplayResult {
+    async replay(record:ResimInput):Promise<ReplayResult> {
       if(!isR4bSnapshot(record.snapshot))return {ok:false,code:"INVALID_SNAPSHOT"};
-      return replayR4b({...record,snapshot:record.snapshot},{ruleset:r4b.RULESET,enemies:r4b.ENEMIES,contentHash:await r4b.contentHash()});
+      return replayR4b({...record,snapshot:record.snapshot} as Parameters<typeof replayR4b>[0],{ruleset:r4b.RULESET,enemies:r4b.ENEMIES,contentHash:await r4b.contentHash()});
     },
   }),
 ]);

@@ -1,5 +1,5 @@
-import type { BattleEvent, BattleInput, BattleResult } from "../battle/types";
-import type { StoredBattleSnapshot } from "../battle/replay";
+import type { BattleEvent, BattleInput } from "../battle/types";
+import type { ReplayBattleResult, StoredBattleSnapshot } from "../battle/replay";
 import type { Reward } from "../loot/catalog";
 import type { LootCopy } from "../loot/types";
 
@@ -13,7 +13,7 @@ export interface TrainingBattle {
   contentHash: string;
   enemyId: string;
   inputs: BattleInput[];
-  result: BattleResult | null;
+  result: ReplayBattleResult | null;
   digest: string | null;
   /** Solo en aventuras (R4a). */
   adventure?: { day: string; attempt: number; reward: Reward | null; copy?: LootCopy | null };
