@@ -5613,3 +5613,18 @@ Dev `20261001102008` y prod `20261001102919 / merge_book_club_event_refs` conser
 timestamps distintos del fichero `20261001102000`; el cuerpo y ACL equivalentes
 mandan sobre el ledger. La promoción redefine una función compatible y no ejecuta
 fusiones. El plan/backup revisable para las fusiones concretas sigue en #912.
+
+## 2026-10-01 — arranque automático actual e incidente aislado (#1073)
+
+Se conserva `npm run dev` y el límite de 120 s del `webServer` de Playwright.
+Tres arranques con caché previa y tres sin `.next`, puerto libre y sin
+reutilización, escuchan y sirven el login completo en menos de nueve segundos.
+No hay evidencia actual que justifique elevar el timeout ni hacer obligatorio
+arrancar el servidor a mano para specs cortos. Esto no establece la causa del
+incidente único del 4 de septiembre ni garantiza otros entornos.
+
+La ejecución de los cinco tests originales conserva sus cuatro FAIL: no se
+cuentan como verdes porque el arranque haya pasado. Las discrepancias de
+redirección, escala, eclosión y prerender de ajustes se rastrean en #1271–#1274.
+La verificación acotada y sus hashes están en
+`docs/testing/2026-10-01-playwright-startup-1073.md`.

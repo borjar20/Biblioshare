@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19]**
+> **[Canónico · verificado contra código el 2026-08-19; sección de arranque verificada el 2026-10-01 (#1073)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -118,6 +118,25 @@ navegador" tras implementar una feature de UI.
   `qa-verifier`.
 - Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
   archivos) la sigue haciendo el agente directamente, como siempre.
+
+### Arranque automático en Windows (#1073)
+
+`playwright.config.ts` reutiliza el servidor que ya escuche en 3000 y, si no
+hay ninguno, ejecuta `npm run dev` con un límite de 120 s. Para uno o dos
+specs no es obligatorio arrancarlo a mano. Conserva un único servidor y el
+Node admitido por `package.json`/`.nvmrc`; comprueba el ejecutable del proceso
+de Next, porque el shim de npm de Windows puede usar otro Node.
+
+El incidente aislado de #1073 no se reprodujo el 2026-10-01: seis arranques
+automáticos, tres con caché previa y tres sin `.next`, escucharon en
+1,46–1,58 s y sirvieron `/login` con HTTP 200 en 3,18–8,97 s. Cada pasada
+comprobó en Chromium el formulario visible y terminó su servidor. La caché
+previa se apartó y restauró; no se aumentó el timeout.
+
+Esto verifica el arranque actual, no toda la suite ni la causa del incidente
+de septiembre. Los cinco tests originales dieron un PASS y cuatro FAIL
+posteriores al arranque; se investigan por separado en #1271–#1274.
+Entorno, controles y evidencia: [verificación de #1073](testing/2026-10-01-playwright-startup-1073.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 
