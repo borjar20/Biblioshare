@@ -154,10 +154,17 @@
  * por 2 (o 3 en pantallas grandes). `cover` está prohibido aquí. */
 /* Móvil recibe una lámina en vertical con la puerta centrada y el suelo despejado
  * abajo; la apaisada, recortada al 36 %, dejaba fuera la madriguera entera. */
+/* `--scene-src/-w/-h` NO se fijan nunca como estilo en línea: un estilo en línea
+ * gana siempre sobre esta media query, así que si `PetScene` escribiera
+ * `--scene-src` directamente, la lámina vertical pisaría a la apaisada en
+ * escritorio. En su lugar recibe las dos parejas por separado
+ * (`--scene-portrait-*` y `--scene-wide-*`, del catálogo de la tienda) y es
+ * esta hoja quien elige cuál usar en cada ancho; el valor tras la coma es el
+ * respaldo de siempre para cuando no hay fondo comprado (`scene` es null). */
 .scene {
-  --scene-src: url('/pet/scenes/camp-portrait.webp');
-  --scene-w: 288;
-  --scene-h: 384;
+  --scene-src: var(--scene-portrait-src, url('/pet/scenes/camp-portrait.webp'));
+  --scene-w: var(--scene-portrait-w, 288);
+  --scene-h: var(--scene-portrait-h, 384);
   --scene-scale: 2;
   position: relative;
   min-height: 420px;
@@ -258,7 +265,13 @@
 .textButton { display: inline-flex; gap: 4px; align-items: center; min-height: 44px; color: var(--gold); font-size: 13px; }
 .textButton svg { width: 15px; height: 15px; }
 .campMissions { min-width: 0; }
-.campMissions > section, .diary section { border-radius: var(--r-2); box-shadow: none; }
+/* Desde la Task 5, `<ShopPanel>` (raíz `<section>`) también puede ser hijo
+ * directo de `.campMissions` mientras el puesto está abierto. `section` es
+ * una etiqueta global de CSS Modules: si estas tres reglas colgaran de
+ * `.campMissions > section` alcanzarían también al puesto, que no las quiere
+ * (issue de revisión, CRITICAL). Cuelgan de `.missionsBoard`, el envoltorio
+ * propio del tablero de misiones, para que hablen solo de él. */
+.missionsBoard > section, .diary section { border-radius: var(--r-2); box-shadow: none; }
 /* Resumen de misiones para móvil. El tablero entero mide 375 px: ponerlo aquí
  * deja la escena en 130 px, y el tablero YA vive completo en Diario, a un toque
  * del enlace que está justo al lado. Se quedan el rótulo, el recuento y una
@@ -268,7 +281,7 @@
 .missionMeter li { flex: 1; height: 8px; border: 1px solid var(--moss); border-radius: var(--r-1); background: var(--forest-600); overflow: hidden; }
 .missionMeter i { display: block; height: 100%; background: var(--moss-light); }
 .missionMeter i[data-completed="true"] { background: var(--gold); }
-.campMissions > section { display: none; }
+.missionsBoard > section { display: none; }
 /* Misiones y logros son componentes compartidos con Paper: dentro del juego
  * reciben `data-variant="game"`, no un override por `data-testid`. */
 .game :global([data-variant="game"]) { background: var(--forest-800); }
@@ -369,8 +382,10 @@
   .character { max-width: none; }
   .hatch { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   /* En escritorio vuelve la lámina apaisada: hay ancho para ella y el claro
-   * queda a los lados del sprite. */
-  .scene { --scene-src: url('/pet/scenes/camp.webp'); --scene-w: 576; --scene-h: 448; background-position: 50% 78%; }
+   * queda a los lados del sprite. Misma pareja `--scene-wide-*` que arriba, con
+   * sus respaldos: sin fondo comprado (`--scene-wide-*` sin definir) sale
+   * exactamente el `camp.webp` de siempre. */
+  .scene { --scene-src: var(--scene-wide-src, url('/pet/scenes/camp.webp')); --scene-w: var(--scene-wide-w, 576); --scene-h: var(--scene-wide-h, 448); background-position: 50% 78%; }
   /* Dos columnas de una sola fila: el héroe se estira al alto disponible (de ahí
    * `stretch`) y su escena elástica hace el resto. La columna de misiones no se
    * estira, pero se acota al alto de la fila y scrollea ella sola si algún día
@@ -382,7 +397,7 @@
   /* En escritorio sí cabe el tablero: la columna tiene 700 px de alto libre. */
   .campMissionsTitle, .missionMeter { display: none; }
   .campMissions { align-self: start; max-height: 100%; overflow-y: auto; }
-  .campMissions > section { display: flex; }
+  .missionsBoard > section { display: flex; }
   /* Identidad a lo ancho, y debajo atributos | equipo: las dos columnas se
    * equilibran (el panel de atributos mide 430 px y el de equipo 400) y llenan
    * el alto que la Mochila dejaba en blanco. */

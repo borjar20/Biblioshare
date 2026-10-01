@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { CSSProperties } from "react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../../messages/es.json";
@@ -7,6 +8,7 @@ import { PetGame } from "./pet-game";
 import { EMPTY_COUNTS } from "@/lib/pet/counts";
 import type { PetSnapshot } from "@/lib/pet/get-pet-snapshot";
 import type { AdventureState } from "@/lib/pet/adventure/types";
+import type { ShopState } from "@/lib/pet/shop/types";
 import { petReturnKey, petViewKey } from "@/lib/pet/game-navigation";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
@@ -14,12 +16,31 @@ vi.mock("next/navigation", () => ({ useRouter: () => router, useSearchParams: ()
 vi.mock("@/lib/pet/adventure/actions", () => ({ startAdventure: vi.fn(), resolveAdventure: vi.fn(), replayAdventure: vi.fn(), resumeAdventure: vi.fn() }));
 vi.mock("@/lib/pet/loot/actions", () => ({ equipLoot: vi.fn() }));
 vi.mock("@/lib/celebrations/preference", () => ({ checkCelebrations: vi.fn() }));
+// El módulo real de la tienda arrastra `server-only` (vía repository.ts): sin
+// este mock, el simple import de ShopPanel revienta el test, igual que en
+// shop-panel.test.tsx.
+vi.mock("@/lib/pet/shop/actions", () => ({ claimAcorns: vi.fn(), buyCosmetic: vi.fn(), setCampScene: vi.fn() }));
 vi.mock("../training/training-panel", () => ({ TrainingPanel: ({ kind = "training", active }: { kind?: string; active: boolean }) => <div data-testid={kind} data-active={String(active)} /> }));
 vi.mock("../loot/equipment-panel", () => ({ EquipmentPanel: () => <div>Equipment</div> }));
 vi.mock("../mission-board", () => ({ MissionBoard: () => <div>Missions</div> }));
 vi.mock("../achievement-grid", () => ({ AchievementGrid: () => <div>Achievements</div> }));
 vi.mock("../pet-detail", () => ({ PetDetail: () => <div>Character</div> }));
-vi.mock("./pet-hud", () => ({ PetHud: () => <div>HUD</div>, PetScene: () => <div>Scene</div> }));
+// La escena se mockea a bajo nivel, no a fuera: pinta las mismas variables CSS
+// que el componente real (las dos parejas, retrato y apaisada; nunca
+// `--scene-src` directo) para que un test pueda comprobar qué fondo llegó.
+type MockCampSheet = { file: string; width: number; height: number };
+vi.mock("./pet-hud", () => ({
+  PetHud: () => <div>HUD</div>,
+  PetScene: ({ scene }: { scene?: (MockCampSheet & { wide: MockCampSheet }) | null }) =>
+    <div data-testid="pet-scene" style={scene ? {
+      "--scene-portrait-src": `url('/pet/scenes/${scene.file}')`,
+      "--scene-portrait-w": String(scene.width),
+      "--scene-portrait-h": String(scene.height),
+      "--scene-wide-src": `url('/pet/scenes/${scene.wide.file}')`,
+      "--scene-wide-w": String(scene.wide.width),
+      "--scene-wide-h": String(scene.wide.height),
+    } as CSSProperties : undefined}>Scene</div>,
+}));
 
 const pet: PetSnapshot = {
   name: "Nuez", petClass: "wizard", hatchedAt: "2026-09-01T00:00:00Z", hidden: false,
@@ -29,8 +50,8 @@ const pet: PetSnapshot = {
   missionsCompletedNow: false, achievementsUnlockedNow: false,
 };
 const adventure: AdventureState = { pendingDays: ["2026-09-09"], current: null, inventory: [], loadout: { weapon: null, amulet: null } };
-function game(userId = "alice", snapshot = pet) {
-  return <NextIntlClientProvider locale="es" messages={messages}><PetGame userId={userId} pet={snapshot} adventure={adventure} burrow={<div>Burrow</div>} /></NextIntlClientProvider>;
+function game(userId = "alice", snapshot = pet, shop: ShopState | null = null) {
+  return <NextIntlClientProvider locale="es" messages={messages}><PetGame userId={userId} pet={snapshot} adventure={adventure} shop={shop} burrow={<div>Burrow</div>} /></NextIntlClientProvider>;
 }
 beforeEach(() => { sessionStorage.clear(); window.history.replaceState(null, "", "/mascota"); vi.clearAllMocks(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -141,4 +162,31 @@ it("does not request the same celebration again when changing screens", async ()
   fireEvent.click(screen.getByRole("button", { name: "Diario" }));
   rerender(game("alice", snapshot));
   expect(checkCelebrations).toHaveBeenCalledOnce();
+});
+
+it("abre el puesto sin salir del campamento y pinta el fondo comprado (retrato y apaisado)", () => {
+  render(game("alice", pet, { balance: 0, pending: [], owned: ["creek"], scene: "creek" }));
+  // La escena elegida manda sobre la de siempre: «creek» trae su propio fichero,
+  // vertical Y apaisado — el CSS es quien decide cuál pintar según el ancho.
+  const sceneStyle = screen.getByTestId("pet-scene").style;
+  expect(sceneStyle.getPropertyValue("--scene-portrait-src")).toContain("camp-creek.webp");
+  expect(sceneStyle.getPropertyValue("--scene-wide-src")).toContain("camp-creek-wide.webp");
+  fireEvent.click(screen.getByRole("button", { name: "Ir al puesto" }));
+  expect(screen.getByTestId("pet-shop")).toBeTruthy();
+  // El puesto no es un destino: la barra sigue con cuatro botones.
+  expect(within(screen.getByRole("navigation", { name: "Navegación de la mascota" })).getAllByRole("button")).toHaveLength(4);
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar el puesto" }));
+  expect(screen.queryByTestId("pet-shop")).toBeNull();
+});
+
+it("mueve el foco al puesto al abrirlo y lo devuelve al botón al cerrarlo", () => {
+  render(game("alice", pet, { balance: 0, pending: [], owned: ["creek"], scene: "creek" }));
+  const openButton = screen.getByRole("button", { name: "Ir al puesto" });
+  fireEvent.click(openButton);
+  // Sin esto el foco se queda en el botón «Ir al puesto», que el puesto tapa.
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Puesto del claro", level: 3 }));
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar el puesto" }));
+  // El botón que tenía el foco (el «Cerrar») se desmonta con el puesto: sin
+  // devolverlo a mano cae a `body`.
+  expect(document.activeElement).toBe(openButton);
 });

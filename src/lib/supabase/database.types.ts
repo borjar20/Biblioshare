@@ -1991,6 +1991,30 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_acorn_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          source_key: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          source_key: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          source_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pet_battles: {
         Row: {
           adventure_day: string | null
@@ -2050,6 +2074,24 @@ export type Database = {
           seed?: string
           snapshot?: Json
           status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pet_cosmetics: {
+        Row: {
+          acquired_at: string
+          cosmetic_id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          cosmetic_id: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          cosmetic_id?: string
           user_id?: string
         }
         Relationships: []
@@ -2152,6 +2194,7 @@ export type Database = {
       }
       pet_state: {
         Row: {
+          camp_scene: string | null
           class: string
           companion_hidden: boolean
           created_at: string
@@ -2163,6 +2206,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          camp_scene?: string | null
           class: string
           companion_hidden?: boolean
           created_at?: string
@@ -2174,6 +2218,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          camp_scene?: string | null
           class?: string
           companion_hidden?: boolean
           created_at?: string
@@ -3262,6 +3307,26 @@ export type Database = {
         Returns: Json
       }
       admin_moderation_audio: { Args: { p_comment_id: string }; Returns: Json }
+      claim_pet_acorns: {
+        Args: { p_epoch: string; p_rates: Json; p_user: string }
+        Returns: {
+          amount: number
+          created_at: string
+          id: string
+          source_key: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "pet_acorn_ledger"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      buy_pet_cosmetic: {
+        Args: { p_cosmetic: string; p_price: number; p_user: string }
+        Returns: Json
+      }
       moderation_audio_is_evidence: {
         Args: { p_path: string }
         Returns: boolean
@@ -3654,6 +3719,10 @@ export type Database = {
         Args: { p_invitee_ids: string[]; p_pass_id: string }
         Returns: Json
       }
+      pet_acorn_state: {
+        Args: { p_epoch: string; p_user: string }
+        Returns: Json
+      }
       respond_joint_viewing: {
         Args: { p_accept: boolean; p_pass_id?: string; p_viewing_id: string }
         Returns: Json
@@ -3886,6 +3955,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      set_pet_camp_scene: {
+        Args: { p_scene: string | null; p_user: string }
+        Returns: string | null
       }
       spawn_linked_activity: {
         Args: {

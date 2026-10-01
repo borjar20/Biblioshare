@@ -11,14 +11,15 @@ const mode = process.argv[2];
 const commands = {
   build: ['node_modules/next/dist/bin/next', 'build'],
   smoke: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.ci.config.ts', ...process.argv.slice(3)],
+  shop: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.shop-local.config.ts', ...process.argv.slice(3)],
 };
-if (!commands[mode]) throw new Error('Expected build or smoke');
+if (!commands[mode]) throw new Error('Expected build, smoke or shop');
 const fixtureNamespace = String(Date.now());
 const result = spawnSync(process.execPath, commands[mode], {
   // Server failures can leave the browser assertions green: late request APIs
   // during abandoned detail streams (#754) and import invalidation during a
   // render (#1250). Inspect the webServer output as well.
-  stdio: mode === 'smoke' ? ['inherit', 'pipe', 'pipe'] : 'inherit',
+  stdio: mode !== 'build' ? ['inherit', 'pipe', 'pipe'] : 'inherit',
   encoding: 'utf8',
   maxBuffer: 10 * 1024 * 1024,
   env: { ...process.env,
@@ -36,7 +37,7 @@ const result = spawnSync(process.execPath, commands[mode], {
   },
 });
 if (result.error) throw result.error;
-if (mode === 'smoke') {
+if (mode !== 'build') {
   process.stdout.write(result.stdout ?? '');
   process.stderr.write(result.stderr ?? '');
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;

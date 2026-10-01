@@ -1258,6 +1258,11 @@ begin;
 \ir migrations/20260908151906_letterboxd_recovery.sql
 commit;
 
+-- 20260910101116_pet_acorns
+begin;
+\ir migrations/20260910101116_pet_acorns.sql
+commit;
+
 -- 20260915145340_admin_content_moderation
 begin;
 \ir migrations/20260915145340_admin_content_moderation.sql
