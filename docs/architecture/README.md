@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Derivado · generado desde el código el 2026-09-30; deltas ISBN #906, reanudación de sesión #737, continuidad de timeline #696 y frontera SSR #895, las demás fuentes constan en meta.verifiedAgainst]**
+> **[Derivado · generado desde el código el 2026-10-01; incluye despacho autenticado e invalidación por lotes del ZIP #1250; las demás fuentes constan en meta.verifiedAgainst]**
 
 Dos vistas de lo mismo, pensadas para lectores distintos:
 

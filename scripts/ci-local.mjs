@@ -15,9 +15,9 @@ const commands = {
 if (!commands[mode]) throw new Error('Expected build or smoke');
 const fixtureNamespace = String(Date.now());
 const result = spawnSync(process.execPath, commands[mode], {
-  // The abandoned-stream regression (#754) leaves the browser healthy while
-  // Next rejects a late request API on the server. A green browser exit alone
-  // cannot detect it; inspect the webServer output as well.
+  // Server failures can leave the browser assertions green: late request APIs
+  // during abandoned detail streams (#754) and import invalidation during a
+  // render (#1250). Inspect the webServer output as well.
   stdio: mode === 'smoke' ? ['inherit', 'pipe', 'pipe'] : 'inherit',
   encoding: 'utf8',
   maxBuffer: 10 * 1024 * 1024,
@@ -28,6 +28,8 @@ const result = spawnSync(process.execPath, commands[mode], {
     PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:3000',
     // Local fixtures shared by the test runner and its Next.js subprocess.
     CRON_SECRET: 'ci-letterboxd-fixture-only',
+    // Next caches provider responses by request headers. A fresh synthetic
+    // token keeps this run's one-shot failures independent of earlier runs.
     TMDB_API_KEY: `ci-letterboxd-fixture-only-${fixtureNamespace}`,
     DETAIL_NOTES_NAMESPACE: fixtureNamespace,
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/detail-notes-provider.cjs`.trim(),
@@ -39,8 +41,12 @@ if (mode === 'smoke') {
   process.stderr.write(result.stderr ?? '');
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
   const lateRequestApi = /Route \/(?:libro|pelicula|serie)\/\[id\] used `(connection|cookies)\(\)` inside `after\(\)` while rendering/;
+  const importInvalidationDuringRender = /Route \/importar used ["`]revalidate(?:Tag|Path)[^\r\n]*during render which is unsupported/;
   if (lateRequestApi.test(output)) {
     process.stderr.write('FAIL: a detail renderer read request data after its response closed (#754).\n');
+    process.exitCode = 1;
+  } else if (importInvalidationDuringRender.test(output)) {
+    process.stderr.write('FAIL: an archive worker invalidated its cache during a render (#1250).\n');
     process.exitCode = 1;
   } else {
     process.exitCode = result.status ?? 1;

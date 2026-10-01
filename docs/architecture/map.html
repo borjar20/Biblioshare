@@ -129,8 +129,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-09-30",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores",
+    "generatedAt": "2026-10-01",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01",
     "stack": {
       "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -225,7 +225,7 @@
         "id": "action",
         "order": 4,
         "label": "Server Actions",
-        "description": "'use server' — la única vía de escritura desde la UI"
+        "description": "'use server' — escritura ordinaria desde la UI; el worker ZIP se inicia por POST autenticado"
       },
       {
         "id": "domain",
@@ -458,6 +458,19 @@
       "files": [
         "src/app/importar",
         "src/app/importar/pendientes"
+      ]
+    },
+    {
+      "id": "r-archive-dispatch",
+      "label": "POST /api/import/archive/[id]/dispatch",
+      "layer": "route",
+      "kind": "api",
+      "summary": "Inicia el worker del ZIP del propietario y revalida tras cada lote, dentro del contexto de petición.",
+      "files": [
+        "src/app/api/import/archive/[id]/dispatch/route.ts"
+      ],
+      "gotchas": [
+        "Exige Origin del mismo host público, sesión y un job running del dueño antes de usar service_role. El cron existente recupera el trabajo si el navegador se cierra."
       ]
     },
     {
@@ -952,7 +965,8 @@
       "gotchas": [
         "Letterboxd exporta el título EN INGLÉS, no el original (su catálogo es TMDB en-US): 'Pan's Labyrinth', no 'El laberinto del fauno'. La PR #356 asumió lo contrario y dejó sin casar todo el cine no anglosajón.",
         "Buscar en TMDB con language=es-ES reordena por el título español: 'Parasite' deja fuera de la primera página a la de Bong Joon-ho ('Parásitos'). El importador consulta en en-US.",
-        "ZIP: completed sin finished_on es un visionado sin fecha, no un pase abierto. La procedencia y el estado del job son privados por usuario."
+        "ZIP: completed sin finished_on es un visionado sin fecha, no un pase abierto. La procedencia y el estado del job son privados por usuario.",
+        "#1250: el worker informa los IDs afectados tras cada lote; los Route Handlers invalidan rating e importaciones. No ejecutar revalidateTag/revalidatePath desde after() del render."
       ]
     },
     {
@@ -2988,6 +3002,40 @@
       "to": "t-edition-isbn-keys",
       "kind": "writes",
       "label": "trigger AFTER en ediciones de libro"
+    },
+    {
+      "from": "r-importar",
+      "to": "r-archive-dispatch",
+      "kind": "calls",
+      "label": "POST una vez por job/montaje desde archive-refresh"
+    },
+    {
+      "from": "r-archive-dispatch",
+      "to": "sb-server",
+      "kind": "auth"
+    },
+    {
+      "from": "r-archive-dispatch",
+      "to": "m-import",
+      "kind": "calls"
+    },
+    {
+      "from": "r-archive-dispatch",
+      "to": "m-reactivity",
+      "kind": "revalidates",
+      "label": "expireArchiveBatch + revalidateArchiveImports por lote"
+    },
+    {
+      "from": "r-cron",
+      "to": "m-reactivity",
+      "kind": "revalidates",
+      "label": "archive-imports: mismas invalidaciones por lote"
+    },
+    {
+      "from": "m-import",
+      "to": "sb-service",
+      "kind": "writes",
+      "label": "worker ZIP autorizado por el Route Handler"
     }
   ],
   "flows": [
@@ -3994,7 +4042,7 @@
       "id": "flow-letterboxd-zip",
       "name": "Importar ZIP completo de Letterboxd",
       "category": "onboarding",
-      "summary": "Analizar, confirmar, procesar en segundo plano, revisar incidencias y deshacer con proteccion de cambios locales.",
+      "summary": "Analizar y confirmar el ZIP; el propietario inicia el worker por POST autenticado, con recuperación por cron e invalidación por lotes; revisar incidencias y deshacer con protección de cambios locales.",
       "entrypoint": "src/app/importar/archive-form.tsx",
       "steps": [
         {
@@ -4009,18 +4057,38 @@
         },
         {
           "node": "a-import",
-          "action": "Guardar borrador, confirmar privacidad y cuota, arrancar after",
+          "action": "Guardar borrador, confirmar privacidad y cuota, persistir el job running",
           "file": "src/app/importar/archive-actions.ts"
         },
         {
+          "node": "r-importar",
+          "action": "La pantalla de progreso inicia el POST del job y refresca mientras sigue running",
+          "file": "src/app/importar/archive-refresh.tsx"
+        },
+        {
+          "node": "r-archive-dispatch",
+          "action": "Validar Origin, sesión y propiedad del job; iniciar su worker",
+          "file": "src/app/api/import/archive/[id]/dispatch/route.ts"
+        },
+        {
           "node": "r-cron",
-          "action": "Recuperar trabajos persistentes via pg_cron y secreto existente",
+          "action": "Alternativa si se cierra el navegador: recuperar jobs running con pg_cron y secreto existente",
           "file": "src/app/api/cron/archive-imports/route.ts"
         },
         {
           "node": "m-import",
           "action": "Identificar catalogo y aplicar lotes idempotentes mediante RPC",
           "file": "src/lib/import/process-archive.ts"
+        },
+        {
+          "node": "m-import",
+          "action": "Reportar los IDs afectados al handler tras cada lote, antes de continuar",
+          "file": "src/lib/import/archive-worker.ts"
+        },
+        {
+          "node": "m-reactivity",
+          "action": "El handler expira rating público y revalida la pantalla de importación",
+          "file": "src/lib/reactivity/revalidate.ts"
         },
         {
           "node": "t-archive-imports",
@@ -4032,6 +4100,9 @@
           "action": "Consultar resultados, resolver conflictos y deshacer",
           "file": "src/app/importar/archive-jobs.tsx"
         }
+      ],
+      "notes": [
+        "La confirmación persiste el estado running. archive-refresh inicia una petición por job/montaje; al cerrar el navegador, private.dispatch_archive_imports puede recuperar por pg_cron. Ambos handlers invalidan tras cada lote del mismo worker."
       ]
     },
     {

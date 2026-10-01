@@ -11,8 +11,6 @@ import { processArchive } from "@/lib/import/process-archive";
 import { catalogIdForCandidate } from "@/lib/import/commit-row";
 import { searchMoviesForImport } from "@/lib/catalog/tmdb";
 import type { ImportCandidate } from "@/lib/import/types";
-import { after } from "next/server";
-import { runArchiveWorker } from "@/lib/import/archive-worker";
 import { prepareArchiveCandidates } from "@/lib/import/archive-candidates";
 import type { ArchiveApprovedRow, ArchiveRowReview, ArchiveDecisionResult } from "@/lib/import/archive-review";
 
@@ -40,7 +38,6 @@ export async function applyArchiveReview(jobId: string, approved: ArchiveApprove
     const result = await client.rpc("archive_decide", { p_job: jobId, p_ordinal: row.ordinal, p_decision: row.decision, p_version: row.version });
     results.push({ ordinal: row.ordinal, state: result.error ? "failed" : (result.data as { state: string }).state });
   }
-  after(async () => { await runArchiveWorker(jobId); });
   revalidateArchiveImports();
   // A decision can synchronously update an existing pass; invalidate the same catalog tags.
   const { data: rows } = await client.from("archive_import_items").select("item_id").eq("job_id", jobId).eq("user_id", user.id).in("ordinal", approved.map(r => r.ordinal));
@@ -88,7 +85,6 @@ export async function confirmArchive(data: FormData): Promise<void> {
   const jobId = String(data.get("jobId"));
   const confirmed = await client.rpc("archive_confirm", { p_job: jobId, p_public: data.get("isPublic") === "on", p_announce: data.get("announce") === "on" });
   if (confirmed.error) throw confirmed.error;
-  after(async () => { await runArchiveWorker(jobId); });
   revalidateArchiveImports();
 }
 

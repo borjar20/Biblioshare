@@ -48,10 +48,19 @@ test("940 películas: worker nuevo, fallos, comparación, selección multipágin
     await page.getByRole("button", { name: "Analizar ZIP", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Resumen del archivo" })).toBeVisible();
     expect((await admin.from("passes").select("id", { count: "exact", head: true }).eq("user_id", actorIds[0])).count).toBe(25);
+    const initialDispatch = page.waitForResponse(response =>
+      response.request().method() === "POST" && /\/api\/import\/archive\/[0-9a-f-]+\/dispatch$/.test(response.url()),
+      { timeout: 60_000 });
     await page.getByRole("button", { name: "Confirmar importación", exact: true }).click();
     const job = await admin.from("archive_imports").select("id").eq("user_id", actorIds[0]).single();
     expect(job.error).toBeNull();
-    await page.goto("/coleccion"); // Worker survives leaving the import page.
+    // Observe the automatic browser dispatch before simulating the next cron
+    // round. Overlapping the two would consume the one-shot provider 503 twice
+    // and recover it before this fixture can assert the initial error state.
+    const started = await initialDispatch;
+    expect(started.status()).toBe(200);
+    expect(new URL(started.url()).pathname).toBe(`/api/import/archive/${job.data!.id}/dispatch`);
+    await page.goto("/coleccion"); // Cron finishes any remaining bounded rounds.
     for (let i = 0; i < 12; i++) {
       const pending = await admin.from("archive_import_items").select("ordinal", { count: "exact", head: true }).eq("job_id", job.data!.id).eq("state", "pending");
       if (!pending.count) break;

@@ -181,6 +181,12 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
 
+- [x] **#1250 — invalidar las valoraciones de importaciones sin `after()`.**
+  El POST autenticado del propietario inicia el trabajo y el worker informa por
+  lotes; `private.dispatch_archive_imports` conserva la recuperación por cron.
+  Unitarios, tipos, lint focal, build local y smoke 7/7 han pasado. El fallo de
+  aislamiento de fixture descubierto durante el smoke se rastrea en #1260.
+
 - [x] **#1260 — aislamiento de la fixture de proveedor entre ejecuciones.** El
   token sintético de TMDB recibe un namespace por ejecución, compartido con la
   fixture de notas, para que la caché de Next no reutilice una respuesta de una

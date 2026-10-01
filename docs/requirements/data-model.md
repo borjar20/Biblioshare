@@ -1435,13 +1435,14 @@ comprimidos, 20 MiB expandidos, 1.000 entradas, 3.000 películas y 6.000 pases/p
 Se conservan seis trabajos nuevos por hora como máximo por cuenta. El archivo se descomprime
 en memoria; no se guarda el ZIP ni se interpreta contenido como instrucciones.
 
-`after()` inicia la ejecución y `private.dispatch_archive_imports` la recupera por pg_cron cada
-minuto, usando los valores ya existentes de Vault `app_base_url` y `cron_secret` y la ruta
+El POST autenticado inicia la ejecución tras comprobar propietario y origen; no delega ese
+arranque a `after()`. `private.dispatch_archive_imports` conserva la recuperación por pg_cron
+cada minuto, usando los valores ya existentes de Vault `app_base_url` y `cron_secret` y la ruta
 `POST /api/cron/archive-imports`. Sin esa configuración ambiental no hay recuperación automática
-tras terminar el proceso web; la interfaz conserva el botón para continuar. Cada lote es acotado
-y sus efectos son atómicos e idempotentes. Los errores quedan disponibles para reintento sin
-bloquear trabajos posteriores. El anuncio opt-in crea un único post `thought`, no eventos de
-visionado. Deshacer también lo elimina si no fue editado.
+tras terminar el proceso web; la interfaz conserva el botón para continuar. El worker informa del
+avance por lotes; cada lote es acotado y sus efectos son atómicos e idempotentes. Los errores
+quedan disponibles para reintento sin bloquear trabajos posteriores. El anuncio opt-in crea un
+único post `thought`, no eventos de visionado. Deshacer también lo elimina si no fue editado.
 
 ### Importación: `pending_import_rows` + `resolve_pending_import`
 
