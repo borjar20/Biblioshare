@@ -5662,3 +5662,20 @@ error de Ajustes y los mismos seis pasan contra el build de producción local.
 Identidad, login anónimo, traducciones y toggle de compañera se conservan.
 Los mensajes de stream cerrado de #1263 y la redirección de #1271 siguen
 acotados aparte. Evidencia: `docs/testing/2026-10-01-ajustes-suspense-1274.md`.
+
+## 2026-10-01 — retorno administrativo después de login (#1271)
+
+El guard del layout añadió protección compartida, pero su redirect a
+`loginHref('/admin')` ocultó el destino específico que seguía declarando la
+página de mascota. Se conserva ese guard y se adelanta únicamente el redirect
+del anónimo al proxy, que conoce `pathname + search`. El límite es `/admin`
+o `/admin/…`; no cubre prefijos parecidos. Se reutiliza el helper que propaga
+cookies y cabeceras del SDK, y el login sigue validando el destino con
+`safeNext`. La autorización de rol y las RPC no se trasladan al proxy.
+
+Los filtros se comparan por sus valores: Next puede normalizar `%20` a `+`
+sin perder el texto. El E2E del visor comprueba ahora el regreso efectivo tras
+login y no abre la galería mediante una segunda navegación manual. Los
+unitarios y controles de navegador cubren límites del prefijo, identidad,
+cookies y rechazo del usuario sin rol admin. Evidencia:
+`docs/testing/2026-10-01-admin-login-return-1271.md`.

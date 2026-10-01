@@ -82,4 +82,51 @@ describe("updateSession", () => {
     expect(response.status).toBe(200);
     expect(response.cookies.get("bs_onb")).toBeUndefined();
   });
+
+  it.each([
+    "/admin",
+    "/admin/mascota",
+    "/admin/contenido?kind=comment&status=removed&q=un%20texto",
+  ])("conserva la ruta y filtros administrativos del anónimo: %s", async (path) => {
+    getClaims.mockResolvedValue({ data: null, error: null });
+    const response = await updateSession(new NextRequest(`https://biblioshare.test${path}`));
+    const location = new URL(response.headers.get("location")!);
+    expect(location.origin).toBe("https://biblioshare.test");
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("next")).toBe(path);
+    expect(profile).not.toHaveBeenCalled();
+  });
+
+  it.each(["/administrator", "/admin-tools"])("no extiende el gate administrativo a %s", async (path) => {
+    getClaims.mockResolvedValue({ data: null, error: null });
+    const response = await updateSession(new NextRequest(`https://biblioshare.test${path}`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it.each([
+    [null, null],
+    [{ claims: { sub: "user-a" } }, { message: "invalid signature" }],
+    [{ claims: {} }, null],
+  ])("no acepta la cookie de onboarding como sesión administrativa (%j)", async (data, error) => {
+    getClaims.mockResolvedValue({ data, error });
+    const response = await updateSession(new NextRequest("https://biblioshare.test/admin/mascota", {
+      headers: { cookie: "bs_onb=user-a" },
+    }));
+    expect(response.headers.get("location")).toBe("https://biblioshare.test/login?next=%2Fadmin%2Fmascota");
+    expect(profile).not.toHaveBeenCalled();
+  });
+
+  it("propaga las cookies y cabeceras del SDK al login administrativo", async () => {
+    getClaims.mockResolvedValue({ data: null, error: null });
+    refresh.mockImplementation((cookies) => cookies.setAll([
+      { name: "sb-session", value: "", options: { httpOnly: true, path: "/", maxAge: 0 } },
+    ], { "cache-control": "private, no-store", expires: "0", pragma: "no-cache" }));
+    const response = await updateSession(new NextRequest("https://biblioshare.test/admin/mascota"));
+    expect(response.headers.get("location")).toBe("https://biblioshare.test/login?next=%2Fadmin%2Fmascota");
+    expect(response.cookies.get("sb-session")).toMatchObject({ value: "", maxAge: 0, httpOnly: true });
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("expires")).toBe("0");
+    expect(response.headers.get("pragma")).toBe("no-cache");
+  });
 });

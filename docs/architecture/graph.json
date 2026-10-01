@@ -4,9 +4,9 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-10-01",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01",
     "stack": {
-      "framework": "Next.js 16.3.0 (App Router, React 19.2.4)",
+      "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
       "styling": "Tailwind CSS 4",
       "backend": "Supabase (Postgres + RLS + Auth + Storage) — remoto también en dev",
@@ -181,7 +181,7 @@
       "label": "proxy (src/proxy.ts)",
       "layer": "edge",
       "kind": "middleware",
-      "summary": "Sustituye al middleware clásico. Refresca la sesión de Supabase en cada request y propaga las cookies. Su matcher excluye estáticos, sw.js e iconos.",
+      "summary": "Sustituye al middleware clásico. Refresca la sesión y propaga cookies. El anónimo en /admin o /admin/… va al login conservando ruta y filtros; layout/RPC siguen autorizando el rol. Su matcher excluye estáticos, sw.js e iconos.",
       "files": [
         "src/proxy.ts",
         "src/lib/supabase/proxy.ts"
@@ -945,10 +945,11 @@
       "label": "lib/auth",
       "layer": "domain",
       "kind": "module",
-      "size": 1,
-      "summary": "Roles: user | collaborator | admin. Contribuir al catálogo (alta manual, editar ficha, curar sagas) es collaborator+.",
+      "size": 2,
+      "summary": "Roles: user | collaborator | admin. Contribuir al catálogo es collaborator+. loginHref recuerda el destino y safeNext rechaza rutas externas o ambiguas.",
       "files": [
-        "src/lib/auth/roles.ts"
+        "src/lib/auth/roles.ts",
+        "src/lib/auth/safe-next.ts"
       ]
     },
     {
@@ -1120,7 +1121,7 @@
       "label": "supabase/proxy.ts",
       "layer": "data",
       "kind": "client",
-      "summary": "Solo resuelve/refresca la sesión dentro del proxy. No consultes datos aquí.",
+      "summary": "Valida/refresca sesión y onboarding vinculado al user id; propaga cookies/cabeceras al redirigir. Conserva pathname + search del anónimo en /admin… (#1271); no sustituye la autorización de roles del servidor/RLS.",
       "files": [
         "src/lib/supabase/proxy.ts"
       ]
@@ -1644,7 +1645,8 @@
       "files": [
         "src/app/admin/[section]/page.tsx",
         "src/app/admin/moderation-controls.tsx",
-        "src/app/admin/moderation-actions.ts"
+        "src/app/admin/moderation-actions.ts",
+        "src/app/admin/layout.tsx"
       ]
     },
     {
@@ -1829,6 +1831,12 @@
       "to": "x-supabase-auth",
       "kind": "auth",
       "label": "refresca sesión"
+    },
+    {
+      "from": "sb-proxy",
+      "to": "m-auth",
+      "kind": "calls",
+      "label": "loginHref puro conserva destino administrativo"
     },
     {
       "from": "proxy",
@@ -4143,6 +4151,21 @@
       "summary": "Admin selecciona contenido/reporte, confirma motivo, la RPC autoriza y registra evidencia atómicamente, la UI se revalida.",
       "entrypoint": "src/app/admin/[section]/page.tsx",
       "steps": [
+        {
+          "node": "proxy",
+          "action": "Si falta sesión, recordar ruta y filtros administrativos al ir al login",
+          "file": "src/lib/supabase/proxy.ts"
+        },
+        {
+          "node": "r-auth",
+          "action": "Iniciar sesión y validar el destino interno con safeNext",
+          "file": "src/app/(auth)/actions.ts"
+        },
+        {
+          "node": "r-admin-moderation",
+          "action": "Comprobar sesión y rol admin antes de entregar contenido",
+          "file": "src/app/admin/layout.tsx"
+        },
         {
           "node": "r-admin-moderation",
           "action": "Buscar y filtrar el contenido o reporte",
