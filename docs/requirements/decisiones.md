@@ -5508,3 +5508,17 @@ trabajos que queden pendientes. Esa ruta usa la configuración existente de
 Vault y el secreto de cron; no se añade migración, columna ni grant para este
 cambio. La recuperación no sustituye la autorización del POST ni la comprobación
 de origen.
+
+## 2026-10-01 — #1216: el panel consume una sola vez el foco de la reseña
+
+`EpisodePanel` mantiene el foco de la reseña seleccionada y coordina el blur
+normal y el cambio de `(min-width: 1024px)`. Ambos consumen esa referencia antes
+de comparar y guardar el borrador; si llegan antes del mismo commit de React,
+el segundo ya no puede provocar otra escritura. Los cuadros inline y de
+escritorio solo informan de foco y blur al panel. La marca de spoiler conserva
+su guardado explícito.
+
+El listener registrado una vez usa `useEffectEvent` para leer selección y
+borrador actuales. Se retira al desmontar sin guardar desde su cleanup. El
+contrato sigue guardando al salir del cuadro; no guarda en cada pulsación ni
+introduce un guardado genérico al desmontar cualquier panel.

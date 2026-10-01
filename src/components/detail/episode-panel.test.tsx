@@ -249,9 +249,28 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
     const textarea = screen.getByRole("textbox");
+    fireEvent.focus(textarea);
     fireEvent.change(textarea, { target: { value: "reseña normal" } });
     fireEvent.blur(textarea);
     act(() => resize(false));
+
+    expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
+  });
+
+  it("guarda una vez si blur llega después del breakpoint pero antes del commit", () => {
+    const { resize } = stubResizableDesktop(true);
+    renderPanel([ep(1, 1), ep(1, 2)]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, { target: { value: "reseña con blur antes del commit" } });
+
+    act(() => {
+      resize(false);
+      expect(textarea.isConnected).toBe(true);
+      fireEvent.blur(textarea);
+    });
 
     expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
   });

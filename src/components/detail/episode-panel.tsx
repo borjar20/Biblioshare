@@ -325,16 +325,27 @@ export function EpisodePanel({
   const selectedEpisode =
     activeGroup?.episodes.find((e) => episodeKey(e) === selectedKey) ?? null;
 
+  // Blur y breakpoint comparten el mismo consumo del foco. Aunque ambos
+  // eventos lleguen antes del commit de React, solo el primero puede guardar.
+  const handleReviewFocusChange = (focused: boolean) => {
+    if (focused) {
+      reviewFocused.current = true;
+      return;
+    }
+    if (!reviewFocused.current) return;
+    reviewFocused.current = false;
+    if (!selectedEpisode) return;
+    if (draft.trim() === (ownOf(selectedEpisode).review ?? "").trim()) return;
+    saveReview(selectedEpisode);
+  };
+
   // El textarea se desmonta y se monta al cruzar `lg`, así que el navegador no
   // siempre emite blur. Escuchamos el mismo MediaQueryList que useIsDesktop y
   // guardamos solo el borrador que seguía enfocado, en ambos sentidos.
   const saveFocusedReviewOnBreakpoint = useEffectEvent((matches: boolean) => {
     if (breakpointAtLastEvent.current === matches) return;
     breakpointAtLastEvent.current = matches;
-    if (!reviewFocused.current || !selectedEpisode) return;
-    if (draft.trim() === (ownOf(selectedEpisode).review ?? "").trim()) return;
-    reviewFocused.current = false;
-    saveReview(selectedEpisode);
+    handleReviewFocusChange(false);
   });
 
   useEffect(() => {
@@ -521,7 +532,7 @@ export function EpisodePanel({
                 onBack={() => setOpenSeason(null)}
                 draft={draft}
                 onDraftChange={setDraft}
-                onReviewFocusChange={(focused) => { reviewFocused.current = focused; }}
+                onReviewFocusChange={handleReviewFocusChange}
                 onSaveReview={saveReview}
                 seasonPendingCount={seasonPending(activeGroup.season).length}
                 onMarkSeason={() => markMany(seasonPending(activeGroup.season))}
@@ -548,7 +559,7 @@ export function EpisodePanel({
                 isPending={isPending}
                 draft={draft}
                 onDraftChange={setDraft}
-                onReviewFocusChange={(focused) => { reviewFocused.current = focused; }}
+                onReviewFocusChange={handleReviewFocusChange}
                 onSave={(spoiler) => selectedEpisode && saveReview(selectedEpisode, spoiler)}
                 markUpToCount={
                   interactive && selectedEpisode?.aired ? upToPending(selectedEpisode).length : 0

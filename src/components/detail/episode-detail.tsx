@@ -79,14 +79,12 @@ function MetaLine({
 // soltar el foco, si cambió.
 function ReviewBox({
   draft,
-  saved,
   spoiler,
   onDraftChange,
   onReviewFocusChange,
   onSave,
 }: {
   draft: string;
-  saved: string;
   spoiler: boolean;
   onDraftChange: (value: string) => void;
   onReviewFocusChange: (focused: boolean) => void;
@@ -99,10 +97,7 @@ function ReviewBox({
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
         onFocus={() => onReviewFocusChange(true)}
-        onBlur={() => {
-          onReviewFocusChange(false);
-          if (draft.trim() !== saved.trim()) onSave();
-        }}
+        onBlur={() => onReviewFocusChange(false)}
         placeholder={t("reviewPlaceholder")}
         className="h-14 w-full resize-none rounded-[9px] border border-border bg-surface-muted px-[11px] py-[9px] text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none lg:h-[70px] lg:px-[13px] lg:py-[11px] lg:text-[13px]"
       />
@@ -140,7 +135,6 @@ export function EpisodeInlineDetail({
       {interactive && (
         <ReviewBox
           draft={draft}
-          saved={own.review ?? ""}
           spoiler={own.reviewIsSpoiler}
           onDraftChange={onDraftChange}
           onReviewFocusChange={onReviewFocusChange}
