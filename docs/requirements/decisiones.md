@@ -5693,3 +5693,15 @@ El fondo difuminado comparte `sizes` con la portada, incluidos los breakpoints
 640/1024; prioriza reutilizar su recurso sobre descargar una versión mayor
 de un fondo deliberadamente borroso. La descarga del original en el diálogo
 cerrado de `ImageZoom` se conserva como deuda independiente #1278.
+
+## 2026-10-01 — original de ImageZoom bajo demanda (#1278)
+
+Un `<dialog>` cerrado oculta su contenido, pero no reserva la descarga de un
+`img` que ya tiene `src`. El visor monta el original al pulsar su disparador,
+manteniendo el diálogo nativo y sus reglas de foco, Escape y cierre por clic.
+Se conserva la imagen después de cerrar para reutilizar el recurso al reabrir.
+El estado recuerda la URL abierta: si cambia `src`, la nueva URL no se monta
+de antemano. No se cambia la carga de las miniaturas ni se usa lazy como sustituto
+de este contrato. La portada de club ya usa su URL completa visible, por lo que
+allí no se promete ahorro adicional de bytes. Evidencia de los cuatro
+consumidores: `docs/testing/2026-10-01-image-zoom-loading-1278.md`.

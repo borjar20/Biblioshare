@@ -85,8 +85,8 @@ for (const viewport of [
         page.on("pageerror", error => errors.push(error.message));
         await page.goto(`/${fixture.route}/${fixture.id}`);
         await expect(page.getByRole("heading", { level: 1, name: `${marker} ${fixture.label}`, exact: true })).toBeVisible();
-        // The closed ImageZoom dialog has an original image too; it is a
-        // separate download surface, not the two visible hero images.
+        // Only the two visible hero images belong to this resource check.
+        // ImageZoom mounts its original on demand (#1278).
         const images = page.locator(`img[src*="${marker}"], img[src*="/id/${namespace}-"]`).filter({ visible: true });
         await expect(images).toHaveCount(2);
         await expect.poll(() => images.evaluateAll(nodes => nodes.every(node => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth > 0))).toBe(true);
