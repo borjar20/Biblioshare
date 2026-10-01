@@ -124,3 +124,9 @@ lógica/interfaz y revisión de invariantes; no todos disponen de E2E individual
 No se promete conservar en RAM la selección de un inicio fallido a través de
 una recarga completa ni se afirma aceptación en producción remota u otros
 navegadores. La corrección no altera los datos productivos.
+
+Actualización de continuidad: #1281 corrige la recuperación del tick final
+para los nuevos checkpoints que guardan su marca de final. Su verificación
+posterior y la compatibilidad antigua pendiente #1284 están en
+[checkpoint final](2026-10-01-terminal-checkpoint-1281.md). Los recuentos y
+hashes de este informe corresponden a la entrega #1171 anterior al cambio.

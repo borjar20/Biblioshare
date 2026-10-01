@@ -5742,3 +5742,22 @@ Una consulta correcta sin fila conserva su comportamiento anterior. El
 diagnóstico inicialmente registrado como sospecha se confirma con dos casos
 controlados que fallaban antes de los guards; no se atribuyen daños observados
 en producción. Evidencia: `docs/testing/2026-10-01-pass-prerequisite-reads-1110.md`.
+
+## 2026-10-01 — estado final explícito del checkpoint local (#1281)
+
+Los cuatro motores conservados dejan el tick T al terminar, antes de su
+incremento normal. Guardar sólo ese tick no distingue un final ya jugado
+de la vista abierta anterior a procesar T. El adaptador local escribe
+`ended` junto al tick y los inputs. Reproduce inclusivamente la frontera
+únicamente si la marca es true y exige alcanzar un final real; una marca
+mal tipada o incoherente activa LOCAL_RECOVERY.
+
+Los checkpoints abiertos e interludios conservan la pausa. El formato
+anterior, sin marca, sigue aceptado y pausado: no se adivina su final ni se
+reanuda automáticamente una partida abierta. Su tratamiento explícito
+queda registrado en #1284, con una regresión que demuestra que todavía
+puede completarse con los mismos inputs. No hay migración de Supabase ni
+cambios en motores/manifiestos. La resolución del checkpoint nuevo conserva
+intent, seed y decisiones, y el navegador comprueba digest/resultado contra
+la repetición determinista real. Evidencia:
+`docs/testing/2026-10-01-terminal-checkpoint-1281.md`.

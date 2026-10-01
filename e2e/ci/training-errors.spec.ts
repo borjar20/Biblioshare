@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { RULESET } from "../../src/lib/pet/battle/content";
-import { BATTLE_RELEASES } from "../../src/lib/pet/battle/replay";
+import { BATTLE_RELEASES, replayBattle } from "../../src/lib/pet/battle/replay";
 import { snapshotForProfile } from "../../src/lib/pet/battle/profiles";
 
 if (process.env.NEXT_PUBLIC_SUPABASE_URL !== "http://127.0.0.1:54321") throw new Error("#1171 requires disposable local Supabase");
@@ -83,6 +83,11 @@ for (const viewport of [{ name: "mobile", width: 320, height: 844 }, { name: "de
       test(`${cause}: message, correct action and retained decisions`, async ({ page }, info) => {
         if (cause === "resolution-authentication") { test.setTimeout(60000); await page.clock.install(); }
         const errors: string[] = [], requests: Array<[string, string]> = [];
+        const recoveryConsoleErrors: string[] = [], recoveryFailedRequests: Array<{ path: string; error: string | undefined }> = [];
+        if (cause === "resolution-authentication") {
+          page.on("console", message => { if (message.type() === "error") recoveryConsoleErrors.push(message.text()); });
+          page.on("requestfailed", request => recoveryFailedRequests.push({ path: new URL(request.url()).pathname, error: request.failure()?.errorText }));
+        }
         page.on("pageerror", error => errors.push(error.message));
         page.on("request", request => { const args = trainingArgs(request); if (args) requests.push(args); });
         await login(page);
@@ -107,22 +112,26 @@ for (const viewport of [{ name: "mobile", width: 320, height: 844 }, { name: "de
           const decisions = JSON.parse(saved!).inputs; expect(decisions).toHaveLength(1); expect(decisions[0].action).toBe("skill");
           await page.screenshot({ path: info.outputPath("training-error.png") });
           await signInAgain(page, panel);
+          const checkpointAfterLogin = await page.evaluate(key => localStorage.getItem(key), logKey); expect(checkpointAfterLogin).not.toBeNull();
           await panel.getByRole("button", { name: "Continuar", exact: true }).click();
           const replay = panel.getByRole("button", { name: "Ver repetición", exact: true });
-          const resume = panel.getByRole("button", { name: "Continuar", exact: true });
-          // Recovery can restore an open checkpoint in pause before its final tick.
-          await expect.poll(async () => await replay.isVisible() || (await resume.isVisible() && await resume.getAttribute("aria-pressed") === "true")).toBe(true);
-          await expect(panel.getByRole("alert")).toHaveCount(0);
-          if (!await replay.isVisible()) {
-            await resume.click();
-            await page.clock.runFor((RULESET.maxTicks + 1) * RULESET.tickMs);
-            await page.clock.resume();
+          try {
+            // A failed terminal resolution is complete locally; recovery must
+            // resolve it without another playback click or advancing the clock.
+            await expect(replay, "Terminal recovery must show the result after one Continue").toBeVisible();
+            await expect(panel.getByRole("alert")).toHaveCount(0);
+            const resolved = await battles(); expect(resolved).toHaveLength(1);
+            const row = resolved[0];
+            expect(row.id).toBe(original.id); expect(row.intent_id).toBe(original.intent_id); expect(row.status).toBe("resolved");
+            expect(row.inputs).toEqual(decisions); expect(row.digest).toMatch(/^[0-9a-f]{64}$/);
+            const audit = await replayBattle({ rulesetVersion: row.ruleset_version, contentHash: row.content_hash, enemyId: row.enemy_id, seed: row.seed, snapshot: row.snapshot, inputs: row.inputs, result: row.result });
+            expect(audit.ok).toBe(true); if (!audit.ok) throw new Error(`Resolved battle replay failed: ${audit.code}`);
+            expect(row.digest).toBe(audit.digest); expect(row.result).toEqual(audit.result);
+            await info.attach("retained-decisions", { body: JSON.stringify({ intent: original.intent_id, decisions, result: row.result, digest: row.digest, replayDigest: audit.digest }), contentType: "application/json" });
+            await page.screenshot({ path: info.outputPath("training-result.png"), fullPage: true });
+          } finally {
+            await info.attach("terminal-recovery", { body: JSON.stringify({ viewport, intent: original.intent_id, checkpointBeforeLogin: JSON.parse(saved!), checkpoint: JSON.parse(checkpointAfterLogin!), rows: await battles(), panel: await panel.innerText(), errors, consoleErrors: recoveryConsoleErrors, failedRequests: recoveryFailedRequests, overflow: await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth) }), contentType: "application/json" });
           }
-          await expect(replay).toBeVisible();
-          const resolved = await battles(); expect(resolved).toHaveLength(1);
-          expect(resolved[0].intent_id).toBe(original.intent_id); expect(resolved[0].status).toBe("resolved");
-          expect(resolved[0].inputs).toEqual(decisions); expect(resolved[0].digest).toMatch(/^[0-9a-f]{64}$/);
-          await info.attach("retained-decisions", { body: JSON.stringify({ intent: original.intent_id, decisions }), contentType: "application/json" });
         } else if (cause === "UNKNOWN_RELEASE" || cause === "INVALID_SNAPSHOT") {
           const intent = randomUUID();
           check(await database.from("pet_battles").insert({
