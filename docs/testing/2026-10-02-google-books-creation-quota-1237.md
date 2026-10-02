@@ -121,7 +121,9 @@ El formatter de opciones del Next instalado reproduce la concatenación de
 los dos `--require`. `e2e/support/ci-providers.cjs` carga la cadena mediante
 un único preload, conservando el orden detail-notes/archive → Google y los
 guards de cada fixture. Siete comprobaciones nativas de formatter y proceso
-hijo pasan sin red/DB, con sintaxis/lint PASS; la nueva CI Node22 sigue pendiente.
+hijo pasan sin red/DB, con sintaxis/lint PASS. La segunda CI Node22 confirma
+que esta composición permite completar el build; su navegador falla después,
+según el apartado siguiente.
 Las pruebas anteriores de aplicación se conservan, sin atribuirles el build
 fallido de CI ni esta nueva composición.
 
@@ -132,6 +134,47 @@ desvío de endpoint/query con `../search.json?q=proof#`, conservando el host
 inicial; no demuestra una fuga interna o redirects externos. Se corrige
 en [#1292](https://github.com/borjar20/Biblioshare/issues/1292), mediante PR
 independiente. No se descartan las alertas ni se afirma el gate completo.
+
+### Segunda CI: respuesta del navegador y geometría
+
+El head `8ccae7cb478d865e7e09e47e57314c180dddb7e4` pasa build y quality:
+3913 PASS en 406 archivos, sin FAIL/SKIP. Los dos jobs de base de datos
+vuelven a completar 41 checks SQL, dos carreras y 272 pasos de bootstrap;
+el inventario TAP tiene siete PASS. Las dos paradas terminan correctamente.
+
+El navegador ejecuta los 71 casos: 68 PASS / 3 FAIL / 0 SKIP, sin flaky ni
+retries. Los cuatro casos de cuota se ejecutan: uno pasa y tres fallan.
+Dos fallos ocurren en `response.text()` con el error CDP «No data found for
+resource with given identifier». Sus capturas ya muestran el aviso; no se
+atribuye ese error de lectura al producto. El tercero observa un ancho de
+documento de 325 frente a un viewport de 320. La captura muestra el filtro
+Series en el borde, pero aún falta el control anterior a la acción para
+confirmar la causa. No se relaja la comprobación de overflow.
+
+Los cuatro cleanup nativos confirman actores Auth 404, ocho tablas a cero,
+cuotas/ediciones/claves a cero y 121 libros eliminados. Los 63 archivos
+sellados incluyen el HTML nativo y las tres capturas; las 23 huellas de la
+primera CI permanecen intactas. No se repite la CI sin corregir una causa.
+
+El nuevo harness lee en paralelo un clon de la respuesta real del navegador,
+sin depender de que CDP conserve el body. Devuelve intacta la Response a
+React y restaura `fetch` en `finally`. Identifica sólo `openCatalogItem` por
+la entrada única del manifest del build instalado, sin hardcode ni retener
+el manifest o su clave. Las acciones de fondo quedan fuera del contador.
+Doce controles nativos de la función extraída del spec pasan, incluyendo
+delegación, identidad de Response/Request, errores, otra acción y guards de
+unicidad; lint y TypeScript pasan. Los cuatro recorridos reales del nuevo
+harness aún deben verificarse; las aserciones de cuota y geometría siguen
+intactas.
+
+El control local anterior al clic confirma en Buscar que Series rebasa
+9,17 px su contenedor a 320, incluso con búsqueda vacía. No reproduce los
+325 px globales de CI. El defecto independiente se sigue en
+[#1295](https://github.com/borjar20/Biblioshare/issues/1295). El intento de
+formulario manual con un actor ordinario redirigió a Buscar: no acredita
+esa ruta. El baseline conserva 1 PASS/7 FAIL y explica por separado el
+guard demasiado amplio que contó llamadas de fondo; su limpieza está a
+cero. No se atribuye ese guard al producto ni se relaja `noOverflow`.
 
 Raíz ignorada: `.scratch/ticket-campaign/qa1237/`.
 
@@ -178,6 +221,16 @@ Raíz ignorada: `.scratch/ticket-campaign/qa1237/`.
   unitarios y bootstrap reales del primer head, logs y manifiesto de 23 archivos.
 - `ci-preload-fix-1790927208559/`: reproducción del formatter de Next,
   siete comprobaciones PASS y 18 archivos sellados; no sustituye la CI.
+- `ci-second-head-36980748218/` y `ci-second-head-36980748217/`: 68/3
+  navegador, 3913 unitarios, build y bootstrap nativos del segundo head.
+  `evidence-final.json` SHA256
+  `fa739e3922db7f591a850bb0a5c71f1ae5fca8c254b65a1f60942d15fcf26f89`;
+  manifiesto de 63 archivos SHA256
+  `d0e184b78486e8ecb26119f42705b1ca226c351c49ac56dbed3b89099e3d457b`.
+- `ci-failure-diagnosis/capture-1790928733560/`: doce controles PASS del
+  harness con ID exacto y 17 huellas; el sello previo de nueve PASS se conserva.
+- `type-pills-repro-1790928370063/`: baseline anterior al clic, ocho controles,
+  43 huellas y límites del formulario manual/guard de llamadas de fondo.
 - `codeql-preexisting-1790927053704/run-1790927120267/`: funciones reales
   con fetch offline, matriz de 44 URLs, fuentes base/head y 11 huellas.
 

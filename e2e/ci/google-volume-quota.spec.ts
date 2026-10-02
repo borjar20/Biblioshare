@@ -16,6 +16,16 @@ const messages = {
   googleBooksCreate: "Has alcanzado el límite horario de nuevas altas desde Google Books. Puedes abrir o añadir títulos que ya existen.",
   catalogRequest: "Has hecho demasiadas peticiones en poco tiempo. Espera un momento antes de volver a intentarlo.",
 };
+function resolveOpenCatalogItemActionId() {
+  const manifest = JSON.parse(readFileSync(".next/server/server-reference-manifest.json", "utf8")) as {
+    node?: Record<string, { exportedName?: string; filename?: string; workers?: Record<string, unknown> }>;
+  };
+  const matches = Object.entries(manifest.node ?? {}).filter(([, action]) => action.exportedName === "openCatalogItem"
+    && action.filename === "src/app/buscar/actions.ts" && Object.hasOwn(action.workers ?? {}, "app/buscar/page"));
+  if (matches.length !== 1) throw new Error("Expected one openCatalogItem server action for /buscar in the installed build");
+  return matches[0][0];
+}
+const openCatalogItemActionId = resolveOpenCatalogItemActionId();
 type Operation = "catalog_google_volume_create" | "catalog_request";
 type Book = { id: string; google_books_volume_id: string };
 type Quota = { operation: Operation; used: number; window_started_at: string };
@@ -143,26 +153,78 @@ async function noOverflow(page: Page) {
   const bounds = await page.evaluate(() => ({ width: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
   expect(bounds.document).toBeLessThanOrEqual(bounds.width); expect(bounds.body).toBeLessThanOrEqual(bounds.width);
 }
+// Read the same browser Response as React, without asking CDP to retain its
+// resource body. The clone is observed in parallel; the original stays intact.
+function installActionResponseCapture({ expectedReason, actionId }: { expectedReason: keyof typeof messages; actionId: string }) {
+  const originalFetch = window.fetch;
+  const observation = {
+    postCount: 0, complete: false, status: null as number | null,
+    error: null as "RATE_LIMIT" | null, reason: null as keyof typeof messages | null,
+    captureError: null as "ACTION_FETCH_FAILED" | "RSC_BODY_READ_FAILED" | null,
+  };
+  window.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : null;
+    const url = new URL(request?.url ?? String(input), location.href);
+    const method = (init?.method ?? request?.method ?? "GET").toUpperCase();
+    const headers = new Headers(init?.headers ?? request?.headers);
+    const matches = url.origin === location.origin && url.pathname === "/buscar"
+      && method === "POST" && headers.get("next-action") === actionId;
+    if (matches) observation.postCount++;
+    let response: Response;
+    try {
+      response = await originalFetch.call(window, input, init);
+    } catch (error) {
+      if (matches) { observation.captureError = "ACTION_FETCH_FAILED"; observation.complete = true; }
+      throw error;
+    }
+    if (matches) {
+      observation.status = response.status;
+      void (async () => {
+        try {
+          const body = await response.clone().text();
+          observation.error = body.includes("RATE_LIMIT") ? "RATE_LIMIT" : null;
+          observation.reason = body.includes(expectedReason) ? expectedReason : null;
+        } catch {
+          observation.captureError = "RSC_BODY_READ_FAILED";
+        } finally {
+          observation.complete = true;
+        }
+      })();
+    }
+    return response;
+  };
+  return { snapshot: () => ({ ...observation }), restore: () => { window.fetch = originalFetch; } };
+}
 async function rejected(page: Page, card: Locator, reason: keyof typeof messages, actor: Actor) {
   const beforeUrl = page.url();
-  const responsePromise = page.waitForResponse(response => response.request().method() === "POST"
-    && !!response.request().headers()["next-action"] && new URL(response.url()).pathname === "/buscar");
-  await card.click();
-  const response = await responsePromise, body = await response.text();
-  const observation = { stage: "real-action-rejection", reason, status: response.status(), rateLimit: body.includes("RATE_LIMIT"), expectedReason: body.includes(reason) };
-  actor.observations.push(observation);
-  expect(observation).toMatchObject({ status: 200, rateLimit: true, expectedReason: true });
-  const notice = page.getByRole("alert").filter({ hasText: messages[reason] });
-  await expect(notice).toHaveCount(1); await expect(notice).toHaveText(messages[reason]);
-  await expect(card).toBeEnabled(); expect(page.url()).toBe(beforeUrl);
-  expect(await card.getAttribute("aria-describedby")).toBe(await notice.getAttribute("id"));
-  const sameCell = await card.evaluate((element, noticeId) => element.parentElement?.querySelector('[role="alert"]')?.id === noticeId, await notice.getAttribute("id"));
-  expect(sameCell).toBe(true);
-  const cardBox = await card.boundingBox(), noticeBox = await notice.boundingBox();
-  expect(cardBox).not.toBeNull(); expect(noticeBox).not.toBeNull();
-  expect(Math.abs(noticeBox!.x - cardBox!.x)).toBeLessThanOrEqual(1);
-  expect(noticeBox!.y).toBeGreaterThanOrEqual(cardBox!.y + cardBox!.height);
-  await noOverflow(page);
+  const capture = await page.evaluateHandle(installActionResponseCapture, { expectedReason: reason, actionId: openCatalogItemActionId });
+  try {
+    const responsePromise = page.waitForResponse(response => response.request().method() === "POST"
+      && response.request().headers()["next-action"] === openCatalogItemActionId && new URL(response.url()).pathname === "/buscar");
+    await card.click();
+    const response = await responsePromise;
+    await expect.poll(() => capture.evaluate(observer => observer.snapshot().complete)).toBe(true);
+    const captured = await capture.evaluate(observer => observer.snapshot());
+    expect(captured.captureError).toBeNull(); expect(captured.postCount).toBe(1);
+    expect(captured.status).toBe(response.status());
+    const observation = { stage: "real-action-rejection", reason, status: captured.status, rateLimit: captured.error === "RATE_LIMIT", expectedReason: captured.reason === reason };
+    actor.observations.push(observation);
+    expect(observation).toMatchObject({ status: 200, rateLimit: true, expectedReason: true });
+    const notice = page.getByRole("alert").filter({ hasText: messages[reason] });
+    await expect(notice).toHaveCount(1); await expect(notice).toHaveText(messages[reason]);
+    await expect(card).toBeEnabled(); expect(page.url()).toBe(beforeUrl);
+    expect(await card.getAttribute("aria-describedby")).toBe(await notice.getAttribute("id"));
+    const sameCell = await card.evaluate((element, noticeId) => element.parentElement?.querySelector('[role="alert"]')?.id === noticeId, await notice.getAttribute("id"));
+    expect(sameCell).toBe(true);
+    const cardBox = await card.boundingBox(), noticeBox = await notice.boundingBox();
+    expect(cardBox).not.toBeNull(); expect(noticeBox).not.toBeNull();
+    expect(Math.abs(noticeBox!.x - cardBox!.x)).toBeLessThanOrEqual(1);
+    expect(noticeBox!.y).toBeGreaterThanOrEqual(cardBox!.y + cardBox!.height);
+    await noOverflow(page);
+  } finally {
+    try { await capture.evaluate(observer => observer.restore()); }
+    finally { await capture.dispose(); }
+  }
 }
 async function opened(page: Page, card: Locator, actor: Actor, fixture: Fixture) {
   await card.click();
