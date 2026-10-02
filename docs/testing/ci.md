@@ -1,6 +1,6 @@
 # CI de regresiones
 
-> **[Canónico · verificado 2026-09-30 · #836, #1172]**
+> **[Canónico · verificado 2026-10-01 · #836, #1172, #1251]**
 
 `.github/workflows/tests.yml` corre en cada pull request y push a main:
 
@@ -32,6 +32,29 @@ los procesos hijos; no lee ni modifica archivos de credenciales. El config de
 Playwright rechaza destinos remotos y nunca reutiliza un servidor existente.
 No arrancar otro servidor en 3000. Los specs `e2e/ci` están excluidos del config
 de dev para no ejecutar fixtures locales contra una cuenta compartida.
+
+## Compresión y errores del servidor
+
+La compresión pública pertenece al CDN de Vercel. `compress: false` evita
+el middleware Gzip de Next que conserva listeners `drain` ya ejecutados
+(#1251); `next start` local sirve respuestas sin comprimir. El smoke local
+verifica los recorridos y el streaming, pero no el compresor del CDN.
+
+Antes de publicar este cambio se comprueba el preview exacto y después
+producción: `/login` con `Accept-Encoding: br, gzip` debe devolver HTTP 200,
+HTML completo y `Content-Encoding: br` o `gzip`; con `identity`, HTTP 200 y
+HTML completo sin codificación. Fuera de Vercel se requiere un proxy/CDN que
+negocie compresión **sin bufferizar el streaming**. La comprobación HTTP de
+codificación no detecta buffering: en ese hosting se prueba además una frontera
+Suspense con retraso controlado, comprobando que el shell llega antes de resolver
+esa frontera. No se ha verificado aquí ningún hosting ajeno a Vercel. No desplegar
+`next start` expuesto sin esa capa y sus dos comprobaciones.
+
+El wrapper falla ante `MaxListenersExceededWarning` de `[Gzip]`, aunque las
+aserciones del navegador pasen. Conserva asimismo los controles de lecturas
+de petición tardías (#754) e invalidación durante render (#1250); no convierte
+todos los avisos en errores ni aumenta el límite de listeners.
+Diagnóstico y mediciones: [#1251](2026-10-01-gzip-listeners-1251.md).
 
 ## Límites explícitos
 
