@@ -240,9 +240,9 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 - [x] **#1234 / #1233 / #1232 / #1181 / #1180 / #1179 — lote de parches de
   dependencias.** Lock coherente con Next/eslint 16.3.8, Sharp 0.35.4 y cierres
   de seguridad; instalación, unitarios, build y smoke verificados. Auditoría
-  residual resuelta por #1249. Errores de servidor resueltos: #1250 y #1251.
+  residual resuelta por #1249. Error de servidor #1250 resuelto; #1251 conserva su gate de entrega.
 
-- [x] **#1251 — listeners Gzip retenidos en el streaming.** La compresión
+- [ ] **#1251 — listeners Gzip retenidos en el streaming.** Arreglo local preparado; pendiente gate HTTP del preview y entrega. La compresión
   pública se delega al CDN de Vercel; el servidor Next evita el puente que
   retiene los listeners. El smoke falla ante ese aviso aunque el navegador
   pase. Contrato de otro hosting y evidencia en `docs/testing/ci.md` y

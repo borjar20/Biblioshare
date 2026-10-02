@@ -70,3 +70,20 @@ Una revisión independiente confirma el desajuste de emisores y el contrato
 de compresión externa; su verificación HTTP no se sustituye por el smoke local.
 
 Los resultados HTTP del preview y de producción se añaden tras verificarlos.
+
+## Integración de la base actual — 2026-10-02
+
+Se integra `origin/main` `030426a` en el candidato mediante `01b6525`.
+El único conflicto fue append-only en `decisiones.md`: se conserva íntegra
+la historia de main y se añade la decisión de compresión al final. Los guards
+actuales del wrapper y el registro de fixtures de cuota quedan conservados.
+Typegen, TypeScript completo y ESLint de configuración/wrapper pasan con
+Node 24.19.0. Estos controles no sustituyen el nuevo smoke ni la CI del head.
+
+El preview de la rama continúa respondiendo 302 hacia SSO de Vercel; el
+navegador integrado tampoco dispone de sesión autorizada. El conector sólo
+dispone del equipo `maxteryoo`, mientras el despliegue pertenece a
+`borjar20s-projects` y devuelve 403 para esa conexión. No se cambia la
+protección del despliegue ni se considera el redirect una prueba del encoder.
+El gate HTTP del preview exacto sigue pendiente, igual que el de producción
+posterior al merge. El FAIL de acceso del 2026-10-01 se conserva.
