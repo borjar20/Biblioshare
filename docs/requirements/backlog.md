@@ -410,6 +410,8 @@ Lo cerrado, con la migración o el fichero que lo sostiene:
   a libro) más el barrido de reconciliación.
 - [x] **Google Books como enriquecedor**, no como fuente primaria: sinopsis en español y, en
   último recurso, alta por ISBN cuando OpenLibrary no lo conoce.
+- [ ] Acotar las altas nuevas de Google Books por cuenta sin penalizar reutilizaciones
+  (#1237): local y dev verificados; entrega en producción pendiente.
 - [x] **Cobertura e2e de los tres flujos nuevos** (`e2e/obra-edicion-representacion.spec.ts`,
   2026-08-28): alta desde `/buscar` dejando procedencia en `repr_meta`, identificar la edición
   eligiendo una candidata en vivo, e importar un CSV con ISBN poblando `passes.edition_id`. Los

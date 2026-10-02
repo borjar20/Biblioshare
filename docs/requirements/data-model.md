@@ -1,5 +1,16 @@
 # Modelo de datos
 
+> **Delta 2026-10-02 (#1237):** `catalog_google_volume_create` admite 60 altas nuevas
+> por cuenta y ventana fija de una hora. En `books`, el trigger AFTER INSERT
+> aplica sólo a una fila con volumen Google y sin work key de Open Library;
+> el BEFORE genérico sigue cubriendo los demás libros. Reutilizar una fila mediante
+> `ON CONFLICT DO NOTHING`, incluso desde otra cuenta, no consume cuota de creación.
+> `PT429` revierte la inserción, su edición automática y el incremento de cuota.
+> Local y dev: 41 comprobaciones con reversión; dos carreras locales reales.
+> Producción pendiente de entrega. Firma, validación de ID, permisos, RLS y
+> capacidades anteriores se conservan; no hay columnas ni backfill nuevos.
+> Evidencia: `docs/testing/2026-10-02-google-books-creation-quota-1237.md`.
+
 > **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
 > eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
 > orden, claves ajenas y configuraciones opacas. Local/dev: regresiones con rollback;
@@ -39,7 +50,8 @@
 > `anon=false`, `authenticated=true`, `service_role=true`. Verificada en **dev**
 > (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
 > Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
-> existentes. La admisión por número de altas sigue en #1237.
+> existentes. La admisión por número de altas se incorpora en el delta #1237 de
+> 2026-10-02, con su estado de verificación separado arriba.
 
 > **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
 > firmas con `backdrop_url` y su cuerpo fill-only. La migración

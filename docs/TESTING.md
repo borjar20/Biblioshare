@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); cuota de altas Google Books verificada el 2026-10-02 (#1237)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -146,6 +146,25 @@ build/start local, incluidos los rechazos del usuario sin rol admin.
 Entorno, controles y evidencia: [verificación de #1073](testing/2026-10-01-playwright-startup-1073.md).
 Corrección y límites: [Ajustes con Suspense](testing/2026-10-01-ajustes-suspense-1274.md).
 Retorno tras login: [destino administrativo](testing/2026-10-01-admin-login-return-1271.md).
+
+### Cuota de altas nuevas de Google Books (#1237)
+
+`e2e/ci/google-volume-quota.spec.ts` cubre el rechazo de la alta 61,
+reintento tras vencer la hora, reutilización de una fila existente y el
+mensaje distinto de la cuota de peticiones, a 320/1280 px. Sólo se simulan
+proveedores para ISBN sintéticos registrados por el caso; login, acciones,
+RPC y contadores son reales. El aviso comparte celda con la tarjeta y queda
+asociado mediante `aria-describedby`. Las credenciales no se guardan en traces; cada actor y sus
+filas se limpian por REST y SQL, con Auth 404 y residuos a cero.
+
+El SQL añade 41 checks y un comprobador de dos carreras con bloqueos reales
+a `scripts/db/verify.mjs`, ejecutado por el bootstrap de CI. La comprobación
+puntual del candidato final pasa ocho casos contra build/start; los cuatro
+casos permanentes también pasan sin skip ni reintentos. La CI sigue pendiente. La prueba no
+valida la existencia del ID remoto ni su hidratación canónica (#1290), y
+el componente de añadir sin consumidor queda cubierto por unitarios.
+Evidencia, fallos conservados y límites:
+[cuota de Google Books](testing/2026-10-02-google-books-creation-quota-1237.md).
 
 ### Imágenes del hero (#1208)
 
