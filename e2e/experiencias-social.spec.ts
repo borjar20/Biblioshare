@@ -1,8 +1,9 @@
 import {test,expect} from "@playwright/test";
+import {mkdirSync} from "node:fs";
 import {experienceActor,deleteExperienceActor,clearExperienceFixtures,experienceRest,experienceClientRest,loginExperienceUser,EXPERIENCE_QA_PREFIX} from "./support/experience-fixtures";
 test.use({actionTimeout:20_000});
 
-test("one publication appears in feed and profile, and follows current privacy",async({page,browser},info)=>{
+test("one publication appears in feed and profile, and follows current privacy",async({page,browser})=>{
   test.setTimeout(240_000);
   const actors=[] as Awaited<ReturnType<typeof experienceActor>>[],contexts=[] as Awaited<ReturnType<typeof browser.newContext>>[];
   const title=`${EXPERIENCE_QA_PREFIX}Teatro con amigos`;
@@ -25,10 +26,11 @@ test("one publication appears in feed and profile, and follows current privacy",
     await viewer.goto(`/u/${actors[0].username}?tab=experiencias`);await expect(viewer.getByRole("link",{name:new RegExp("Teatro con amigos")})).toBeVisible();
     await viewer.setViewportSize({width:390,height:844});
     expect(await viewer.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
-    await viewer.screenshot({path:info.outputPath("experience-profile-mobile.png"),fullPage:true});
+    mkdirSync(".superpowers/experience-visuals",{recursive:true});
+    await viewer.screenshot({path:".superpowers/experience-visuals/experience-profile-mobile.png",fullPage:true});
     await viewer.setViewportSize({width:1280,height:900});await viewer.goto(`/post/${postId}`);
     await expect(viewer.getByRole("link",{name:new RegExp("Teatro con amigos")})).toBeVisible();
-    await viewer.screenshot({path:info.outputPath("experience-post-desktop.png"),fullPage:true});
+    await viewer.screenshot({path:".superpowers/experience-visuals/experience-post-desktop.png",fullPage:true});
     await experienceRest(`profiles?user_id=eq.${actors[0].id}`,{method:"PATCH",body:JSON.stringify({is_public:false})});
     expect(await (await experienceClientRest(`posts?id=eq.${postId}&select=id`,actors[1])).json()).toEqual([]);
     await experienceRest(`profiles?user_id=eq.${actors[0].id}`,{method:"PATCH",body:JSON.stringify({is_public:true})});

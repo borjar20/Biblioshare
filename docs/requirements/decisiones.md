@@ -5846,3 +5846,27 @@ RLS solo para esos GET/HEAD y responde HTML fijo 404/no-store si no hay acceso.
 Se conservan cookies renovadas y autorización independiente en página/RPC.
 El coste es una lectura indexada adicional al abrir detalle y un error con UI
 Paper mínima. No se altera el streaming de las otras rutas.
+
+## 2026-10-02 — Publicación y evidencia de Experiencias (#1293)
+
+La audiencia profile es una elección explícita del creador para su recuerdo y
+su atribución en su perfil/feed. Los acompañantes consienten identidad por separado;
+aceptar y asistir no publican identidad ni fotos. Vividas exige presencia propia,
+aunque el organizador haya marcado la raíz vivida.
+
+Una raíz tiene como máximo un post activo; publicar dos veces devuelve el mismo ID.
+Quitar la publicación conserva el recuerdo. Privatizar o retirar la raíz oculta
+post, comentarios, reacciones y avisos con el gate actual de acceso. Una restauración
+no revierte retiradas independientes; un post borrado por moderación no se recrea.
+
+Denuncias e historial retienen solo fotos ready y se leen por vías administrativas,
+incluidos snapshots ocultos a quien denuncia. Borrar sin denuncia/moderación no
+genera evidencia permanente. Se captura antes de las cascadas y los borrados de
+Storage quedan en cola duradera, con comprobación de filas vivas/evidencia.
+El marcador privado de operación confiable se reutiliza dentro de RPC de publicación
+y borrado tras validar creador/bloquear raíz: impide INSERT directo y permite
+eliminar descendientes retirados independientemente. El cliente no puede leerlo
+ni escribirlo; una operación ordinaria no captura historial administrativo de hijos.
+
+Código y SQL probados en local/dev; producir el release es una operación separada
+con las siete migraciones ordenadas y verificación de objetos reales. Estado en #1293.

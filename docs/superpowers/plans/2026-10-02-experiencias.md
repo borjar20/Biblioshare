@@ -17,7 +17,7 @@ Supabase PostgreSQL 17, next-intl 4, Tailwind 4, Vitest y Playwright existentes.
 **Spec:** `docs/superpowers/specs/2026-10-02-experiencias-design.md` y su
 propuesta de producto `docs/superpowers/specs/2026-10-02-experiencias-producto.md`.
 
-**Estado:** aprobado el 2026-10-02; tareas 1–4 implementadas y verificadas en local/dev; tareas 5–6 en ejecución.
+**Estado:** aprobado el 2026-10-02; tareas 1–5 implementadas y verificadas en local/dev; tarea 6 en revisión final.
 **Seguimiento:** [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 **Método recomendado:** ejecución en este chat, tarea a tarea, y revisión independiente final.
 

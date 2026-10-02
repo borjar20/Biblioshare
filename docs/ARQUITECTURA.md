@@ -8,6 +8,19 @@
 > Para el esquema de BD, el canónico es [modelo de datos](./requirements/data-model.md).
 > Antes de depurar algo que no cuadra, [Trampas](./TRAMPAS.md).
 
+> **Delta 2026-10-02 (#1293), verificado contra código y local/dev:** Experiencias
+> añade `/experiencias`, `/experiencias/nueva`, `/experiencia/[id]` y su edición,
+> UI en `components/experiences` y dominio en `lib/experiences`. Es una excepción
+> explícita a passes como centro del estado: una raíz colaborativa con momentos,
+> miembros, presencia, favoritos y fotos. `passes` sigue siendo usuario↔obra.
+> Mutaciones por RPC con lock/revisión; readers con sesión y sin caché compartida.
+> Feed/detalle usan ExperiencePreview real en lote, sin simular ItemType.
+> La entrega normal y administrativa de fotos pasa por endpoints distintos,
+> cada uno autorizado antes del servicio de Storage, private/no-store.
+> Proxy añade preflight RLS a detalle/edición para devolver 404 antes de streaming;
+> las rutas conservan su comprobación de acceso. `revalidateExperiences` invalida
+> hub, raíz, perfil y feed; moderación invalida el layout. Producción pendiente.
+
 ## 1. Vista de sistema
 
 ```mermaid

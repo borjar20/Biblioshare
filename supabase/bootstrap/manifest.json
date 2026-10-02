@@ -276,6 +276,7 @@
     "20261002095236_experiences_deletion.sql",
     "20261002105627_experiences_participation.sql",
     "20261002112531_experiences_photo_mutations.sql",
-    "20261002120712_experiences_social_visibility.sql"
+    "20261002120712_experiences_social_visibility.sql",
+    "20261002125917_experiences_advisor_hardening.sql"
   ]
 }

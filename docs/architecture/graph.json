@@ -3,8 +3,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-10-01",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01",
+    "generatedAt": "2026-10-02",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; producción pendiente",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -37,7 +37,7 @@
         "rule": "Cualquier estado del usuario se deriva de `passes`. `library_entries` está CONGELADA (solo conserva `pinned_order`); su `status`/`position` llevan meses sin actualizarse.",
         "evidence": "docs/requirements/data-model.md §0, §3",
         "brokenBy": "PR #96 — avance de sagas al 0% por leer library_entries",
-        "exception": "`play` (Partidas/BiblioPlay, m-play) NO deriva de `passes`: es local-first sin backend en fases 0-3 y, cuando tenga backend (Fase 5), su fuente de verdad serán sus propias tablas. Excepción registrada a propósito, no un bug — ver docs/requirements/decisiones.md §2026-08-29 «El dominio play es una excepción explícita a inv-passes-hub (#931)» y docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md."
+        "exception": "`play` (Partidas/BiblioPlay, m-play) NO deriva de `passes`: es local-first sin backend en fases 0-3 y, cuando tenga backend (Fase 5), su fuente de verdad serán sus propias tablas. Excepción registrada a propósito, no un bug — ver docs/requirements/decisiones.md §2026-08-29 «El dominio play es una excepción explícita a inv-passes-hub (#931)» y docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md. Experiencias (m-experiences) es otra excepción explícita: raíz colaborativa independiente, con presencia por persona/momento; passes conserva usuario↔obra. Decisión 2026-10-02 en decisiones.md."
       },
       {
         "id": "inv-search-no-write",
@@ -68,6 +68,11 @@
         "id": "inv-edition-isbn-admission",
         "rule": "Un ISBN válido comparte identidad entre sus formas 10/13. Las nuevas filas o traslados no añaden otra edición canónica al mismo libro; las parejas históricas se conservan hasta reconciliar sus referencias.",
         "evidence": "supabase/migrations/20260930170000_book_editions_canonical_isbn.sql; supabase/tests/book_editions_canonical_isbn.sql; scripts/db/check-book-edition-isbn-concurrency.mjs"
+      },
+      {
+        "id": "inv-experience-consent",
+        "rule": "Aceptación, presencia, identidad y fotos tienen consentimiento independiente; post y bytes consultan siempre el acceso actual a la raíz. Ninguna lectura con RLS de experiencias usa caché compartida.",
+        "evidence": "supabase/tests/experiences_participation.sql; supabase/tests/experiences_social.sql; src/lib/storage/experience-photo-response.ts"
       }
     ],
     "layers": [
@@ -1768,6 +1773,89 @@
         "cosmetic_id",
         "acquired_at"
       ]
+    },
+    {
+      "id": "r-experiences",
+      "label": "/experiencias · /experiencia/[id]",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Hub, captura, detalle y edición. Perfil añade pestaña Experiencias; preflight RLS devuelve 404 antes del streaming.",
+      "files": [
+        "src/app/experiencias/page.tsx",
+        "src/app/experiencias/nueva/page.tsx",
+        "src/app/experiencia/[id]/page.tsx",
+        "src/app/experiencia/[id]/editar/page.tsx",
+        "src/lib/supabase/proxy.ts"
+      ]
+    },
+    {
+      "id": "r-experience-photos",
+      "label": "/api/experience-photos · /api/admin/experience-photos",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Bytes autorizados en cada petición; ruta administrativa solo tras gate admin.",
+      "files": [
+        "src/app/api/experience-photos/[id]/route.ts",
+        "src/app/api/admin/experience-photos/[id]/route.ts"
+      ]
+    },
+    {
+      "id": "c-experiences",
+      "label": "components/experiences",
+      "layer": "ui",
+      "kind": "ui",
+      "summary": "Recuerdos con momentos, personas y galería; publicación, consentimientos y gestión de fotos propias fuera del grupo.",
+      "files": [
+        "src/components/experiences",
+        "src/components/social/experience-feed-card.tsx"
+      ]
+    },
+    {
+      "id": "a-experiences",
+      "label": "experiences/*-actions",
+      "layer": "action",
+      "kind": "action",
+      "summary": "Autentica, valida, llama RPC y revalida; fotos reservan/suben/confirman con compensación.",
+      "files": [
+        "src/lib/experiences/actions.ts",
+        "src/lib/experiences/participation-actions.ts",
+        "src/lib/experiences/photo-actions.ts",
+        "src/lib/experiences/publish-actions.ts",
+        "src/lib/experiences/report-actions.ts"
+      ]
+    },
+    {
+      "id": "m-experiences",
+      "label": "lib/experiences",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Queries RLS y proyecciones en lote para hub, perfil, feed y detalle; IDs estables al ampliar.",
+      "files": [
+        "src/lib/experiences/queries.ts",
+        "src/lib/experiences/types.ts",
+        "src/lib/experiences/validation.ts"
+      ],
+      "gotchas": [
+        "Aceptar no confirma asistencia ni publica identidad/fotos. Vividas exige presencia propia confirmada.",
+        "No simular ItemType ni cachear datos dependientes de sesión."
+      ]
+    },
+    {
+      "id": "t-experiences",
+      "label": "experiences · moments · participants · attendance · favorites · photos",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Seis tablas RLS, cliente SELECT y mutaciones RPC con lock/revisión y límites 50/30/40.",
+      "files": [
+        "supabase/migrations/20261002092737_experiences_core.sql",
+        "supabase/migrations/20261002105627_experiences_participation.sql",
+        "supabase/migrations/20261002112531_experiences_photo_mutations.sql",
+        "supabase/migrations/20261002120712_experiences_social_visibility.sql"
+      ],
+      "gotchas": [
+        "No deriva de passes: es una raíz colaborativa, excepción explícita.",
+        "Evidencia ready privada; borrado sin denuncia/moderación no crea historial. Cola de Storage solo servicio."
+      ]
     }
   ],
   "edges": [
@@ -3031,6 +3119,61 @@
       "from": "m-pet-shop",
       "to": "m-reactivity",
       "kind": "revalidates"
+    },
+    {
+      "from": "r-experiences",
+      "to": "c-experiences",
+      "kind": "renders"
+    },
+    {
+      "from": "r-experiences",
+      "to": "m-experiences",
+      "kind": "calls"
+    },
+    {
+      "from": "r-experience-photos",
+      "to": "m-storage",
+      "kind": "calls"
+    },
+    {
+      "from": "c-experiences",
+      "to": "a-experiences",
+      "kind": "calls"
+    },
+    {
+      "from": "a-experiences",
+      "to": "t-experiences",
+      "kind": "writes"
+    },
+    {
+      "from": "a-experiences",
+      "to": "m-reactivity",
+      "kind": "revalidates"
+    },
+    {
+      "from": "a-experiences",
+      "to": "m-social",
+      "kind": "calls"
+    },
+    {
+      "from": "a-experiences",
+      "to": "m-storage",
+      "kind": "calls"
+    },
+    {
+      "from": "m-experiences",
+      "to": "sb-server",
+      "kind": "reads"
+    },
+    {
+      "from": "m-experiences",
+      "to": "t-experiences",
+      "kind": "reads"
+    },
+    {
+      "from": "m-social",
+      "to": "m-experiences",
+      "kind": "calls"
     }
   ],
   "flows": [
@@ -4286,6 +4429,60 @@
           "node": "c-pet",
           "action": "Elige lámina vertical o apaisada a su escala entera y conserva la escena tras recargar",
           "file": "src/components/pet/game/pet-hud.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-experiences",
+      "name": "Compartir una salida o escapada con personas y fotos",
+      "category": "core",
+      "summary": "Una raíz estable; aceptación, presencia e identidad independientes, fotos autorizadas y una publicación única.",
+      "entrypoint": "src/app/experiencias/nueva/page.tsx",
+      "steps": [
+        {
+          "node": "c-experiences",
+          "action": "Captura nombre y primer momento, sin exigir fecha ni texto",
+          "file": "src/components/experiences/experience-form.tsx"
+        },
+        {
+          "node": "a-experiences",
+          "action": "Valida y llama RPC atómica",
+          "file": "src/lib/experiences/actions.ts"
+        },
+        {
+          "node": "t-experiences",
+          "action": "Crea raíz/momento/creador; posteriores ediciones bloquean raíz y exigen revisión",
+          "file": "supabase/migrations/20261002092737_experiences_core.sql"
+        },
+        {
+          "node": "a-experiences",
+          "action": "Invita y cada cuenta acepta/confirma presencia/identidad",
+          "file": "src/lib/experiences/participation-actions.ts"
+        },
+        {
+          "node": "a-experiences",
+          "action": "Reserva, sube y confirma foto; publicación de imagen propia separada",
+          "file": "src/lib/experiences/photo-actions.ts"
+        },
+        {
+          "node": "r-experience-photos",
+          "action": "Consulta autorización con sesión antes de Storage, private/no-store",
+          "file": "src/lib/storage/experience-photo-response.ts"
+        },
+        {
+          "node": "a-experiences",
+          "action": "Publica una vez desde audiencia profile",
+          "file": "src/lib/experiences/publish-actions.ts"
+        },
+        {
+          "node": "m-social",
+          "action": "Mapea ExperiencePreview en lote sin ItemType y mantiene cursor de posts",
+          "file": "src/lib/social/feed.ts"
+        },
+        {
+          "node": "c-experiences",
+          "action": "Pinta el qué y con quién con consentimientos vigentes",
+          "file": "src/components/social/experience-feed-card.tsx"
         }
       ]
     }

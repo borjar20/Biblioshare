@@ -421,17 +421,16 @@ como en producción. Los pendientes de barrido y fase destructiva se revisan en 
 (barrido QID), **#877** (triggers de primaria) y **#866** (esquema de respaldo); esta
 verificación no afirma su ejecución. El resto sigue rastreable por `area:catalogo`.
 
-## Features que no existen (P2-P3, por dominio)
+**Experiencias — código local/dev (#1293, 2026-10-02)**
+- [x] Captura manual de salidas y escapadas con momentos, acompañantes, presencia
+  propia, favoritos, fotos consentidas y publicación única en feed/perfil.
+- [x] Privacidad/RLS, entrega autorizada y moderación con evidencia privada.
+- [ ] Aplicación de migraciones y publicación en producción; seguimiento en #1293.
+- [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
+  Contrato: `docs/superpowers/specs/2026-10-02-experiencias-design.md`.
+  Evidencia: `docs/testing/2026-10-02-experiencias.md`.
 
-**Experiencias — en diseño (#1293)**
-- [ ] Nueva sección que reúne salidas culturales y escapadas, con momentos,
-  acompañantes y recuerdos visuales compartidos. Producto aceptado para preparar
-  implementación el 2026-10-02; diseño técnico y plan preparados para revisión.
-  Seguimiento: #1293 (`area:social`,
-  `tipo:feature`, `P3`). Propuesta de producto en
-  `docs/superpowers/specs/2026-10-02-experiencias-producto.md`.
-  Contratos en `docs/superpowers/specs/2026-10-02-experiencias-design.md` y tareas en
-  `docs/superpowers/plans/2026-10-02-experiencias.md`. Todavía no implementada.
+## Features que no existen (P2-P3, por dominio)
 
 **Biblioteca y ejemplar**
 - Etiquetas privadas del usuario (§7.5).

@@ -1387,3 +1387,8 @@ commit;
 begin;
 \ir migrations/20261002120712_experiences_social_visibility.sql
 commit;
+
+-- 20261002125917_experiences_advisor_hardening
+begin;
+\ir migrations/20261002125917_experiences_advisor_hardening.sql
+commit;

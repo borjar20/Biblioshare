@@ -8,11 +8,26 @@
 > `docs/requirements/backlog.md` + las issues del repo. El producto y su porqué:
 > `docs/requirements/vision.md`.
 
-Biblioshare es un tracker social de libros, películas y series: catálogo compartido
+Biblioshare es una app social para compartir lo que lees, ves y vives, y con quién:
+catálogo compartido
 entre todos los usuarios, progreso y biblioteca privados por usuario, capa social de
 seguimiento/clubes. Web Next.js 16 (App Router, Cache Components) + Supabase
 (Postgres/RLS/Storage/Auth) + PWA + wrapper Android con Capacitor. UI en español
 con i18n (`next-intl`) desde el inicio.
+
+## Experiencias — código en local/dev, pendiente de producción (#1293)
+
+**[Delta verificado 2026-10-02; no desplegado en producción]**
+Desde «Tu cuenta» se abre `/experiencias`: planes y recuerdos que pueden crecer
+de una salida a una escapada con varios momentos. Cada momento admite tipo,
+lugar y fechas opcionales; el centro del recuerdo son acompañantes y fotos.
+Aceptar la invitación da acceso al grupo; cada persona confirma su presencia,
+elige su favorito y consiente por separado mostrar identidad e imágenes.
+El creador puede compartir una publicación única en el feed o quitarla conservando
+el recuerdo. La pestaña Experiencias aparece en perfiles propios y visitantes,
+según los permisos actuales. Incluye denuncia y moderación administrativa.
+Captura manual; catálogos externos, fusionar recuerdos y filtro entre hobbies
+quedan en #1293. Evidencia: `docs/testing/2026-10-02-experiencias.md`.
 
 ## Catálogo compartido
 

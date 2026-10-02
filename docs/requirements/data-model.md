@@ -3,8 +3,9 @@
 > **Delta 2026-10-02 (#1293, local/dev; pendiente de producción):** Experiencias
 > añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
 > existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
-> ediciones perdidas. Bootstrap vacío de 273 pasos y pruebas de acceso/transiciones
-> locales y en dev; carrera de dos ediciones comprobada localmente. Ver §8ter.
+> ediciones perdidas. Bootstrap vacío final de 278 pasos y pruebas de acceso,
+> participación, fotos/publicación/moderación locales y en dev; carreras de edición
+> y publicación comprobadas localmente. Ver §8ter; producción pendiente.
 
 > **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
 > eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
@@ -4487,7 +4488,7 @@ raíz y nunca elimina el último momento. Ampliar conserva raíz y primer moment
 `experience_delete(uuid,text)` (local/dev 2026-10-02) exige creador y confirmación
 por título; elimina raíz/descendientes y referencias sociales en una transacción.
 Devuelve las rutas de fotos únicamente al servidor para la limpieza de Storage,
-cuya conservación de evidencia se completa junto con imágenes/moderación.
+conservando evidencia privada únicamente si hay denuncia/moderación (§8ter, abajo).
 
 Participación (local/dev 2026-10-02): `experience_invite`, `experience_add_guest`,
 `experience_respond_invitation`, `experience_set_attendance`,
@@ -4506,8 +4507,7 @@ ese resumen y no abre detalle, incluso si la raíz está en audiencia profile.
 Avisos de invitación/aceptación usan el canal social y dedupe por invitación,
 sin contexto de título privado. Invitación enlaza al hub para responder.
 Pruebas con rollback, perfiles privados, consentimiento/joins REST, límite exacto
-y tres cuentas sobre build de producción; manifest aumentado a 275 pasos,
-cuya reconstrucción completa se repite en la verificación integral.
+y tres cuentas sobre build de producción; incluida en el replay integral de 278 pasos.
 
 Fotos (local/dev 2026-10-02, `20261002112531_experiences_photo_mutations.sql`):
 reserva autenticada de ruta generada en servidor; máximo 40 incluyendo pending.
@@ -4533,8 +4533,7 @@ El script `scripts/experiences/cleanup-pending-photos.mjs` exige proyecto dev/lo
 coincidente con el entorno, empieza en dry-run, limita lotes a 100 y antigüedad a
 una hora mínima. `--kind=deleted` recupera borrados pendientes de Storage; el modo
 predeterminado solo retira reservas pending antiguas. Nunca elimina fotos ready.
-Sin columnas añadidas a tablas previas; bootstrap manifest de 276 pasos, con
-reconstrucción completa pendiente de la verificación integral.
+Sin columnas añadidas a tablas previas; incluida en el replay integral de 278 pasos.
 
 Publicación y moderación (local/dev 2026-10-02,
 `20261002120712_experiences_social_visibility.sql`): `experience_publish` exige
@@ -4557,8 +4556,14 @@ las retiradas independientes de posts. Borrar un post conserva el recuerdo y un
 post borrado administrativamente no se recrea al publicar. Borrar la raíz captura
 evidencia antes de cascadas solo si hay denuncia/moderación; pending no se retiene.
 `admin_moderation_photo` exige administrador y entrega ruta/MIME únicamente al
-endpoint administrativo, con bytes private/no-store. Manifest de 277 pasos;
-replay completo pendiente de la verificación integral.
+endpoint administrativo, con bytes private/no-store. Bootstrap final: 278 pasos,
+reconstruido desde cero y verificado con todas las regresiones SQL.
+`20261002125917_experiences_advisor_hardening.sql` añade índice para FK compuesta
+de asistencia, initplan de auth.uid en fotos y policy false en la cola privada.
+Se comprobaron objetos/ACL reales: seis tablas RLS, cero escritura directa de cliente
+y cero EXECUTE de PUBLIC en los contratos nuevos. Sin columnas nuevas en tablas
+existentes, no hay grants finos que ampliar. Advisors de SECURITY DEFINER de lecturas
+públicas son deliberados y probados con identidades diferentes; producción pendiente.
 
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
