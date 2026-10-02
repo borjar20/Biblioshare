@@ -5881,3 +5881,18 @@ comunica sin falso éxito. La cuota de peticiones de 60/min sigue siendo otra
 frontera. No se presenta la cuota ni el filtro ASCII de #924 como verificación
 de existencia o gramática oficial de Google Books. Evidencia y límites:
 `docs/testing/2026-10-02-google-books-creation-quota-1237.md`.
+
+## 2026-10-02 — rescate del enum de menciones en el bootstrap (#1299)
+
+El código de notificaciones ya consume `mentioned` y los objetos reales de
+dev/prod ya lo contienen. El fallo está en la reconstrucción local: se añade
+una migración idempotente al manifiesto después de crear su vecino
+`club_event_created`, en una transacción que termina antes de los consumidores
+del valor. Se regenera el baseline desde esas fuentes; no se aplica DDL remoto.
+
+El generador contrasta todos los valores de `NotificationType` con el DDL del
+plan, y el verificador prueba inserción/lectura con rollback, no una reparación
+durante el test. Replay vacío, 18 contratos SQL, cuatro familias concurrentes,
+idempotencia y tipos locales pasan. La ruta local nueva conserva el backup de
+la campaña anterior. Evidencia:
+`docs/testing/2026-10-02-notification-type-bootstrap-1299.md`.

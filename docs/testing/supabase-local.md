@@ -1,8 +1,10 @@
 # Pruebas con Supabase local
 
-> **[Canónico · verificado localmente el 2026-09-06 · no verifica dev ni producción]**
+> **[Canónico · replay y contratos locales verificados el 2026-10-02 (#1299);
+> no verifica dev ni producción]**
 
-Requisitos: Node 22 (probado con 22.23.1), Docker en marcha y Supabase CLI **2.116.0**.
+Requisitos: una versión Node admitida por `package.json` (probado con 22.23.1 y
+24.19.0), Docker en marcha y Supabase CLI **2.116.0**.
 No requiere credenciales remotas. No ejecutar esta receta con un proyecto enlazado remoto.
 
 ```sh
@@ -67,7 +69,20 @@ Si no cambian, `supabase --workdir .superpowers/supabase-local db reset --local 
 repite las migraciones en la instancia desechable. Ambos comandos destruyen únicamente los
 datos locales de pruebas. No usar `--all` ni reutilizar este directorio para una base con datos.
 
-## Verificación actual (2026-09-06)
+## Verificación actual (2026-10-02)
+
+Con #1299: 273 pasos desde cero, 8 tests del generador sin SKIP, 18 contratos
+SQL y cuatro familias concurrentes PASS. El valor `mentioned` se rescata al
+historial local; inserción/lectura con rollback, idempotencia y tipos locales
+verificados. Las 313 fuentes permanecen idénticas antes/después. Evidencia:
+[bootstrap de menciones](2026-10-02-notification-type-bootstrap-1299.md).
+
+La campaña usa una ruta generada nueva en `.scratch` para conservar el backup
+previo de `.superpowers/supabase-local`; sólo cambia rutas en el harness, sin
+adaptar SQL ni saltar contratos. El recorrido normal de CI conserva la receta
+de arriba. Esta comprobación no sustituye el gate de navegador de cada feature.
+
+## Verificación anterior (2026-09-06)
 
 Con #879: 236 pasos (inicial + 235 migraciones). El gate incluye la regresión SQL de
 enlaces de pases, sesiones y comentarios, con datos sintéticos y rollback.

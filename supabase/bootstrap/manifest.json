@@ -82,6 +82,7 @@
     "20260720_onboarding.sql",
     "20260721_notes_social_columns.sql",
     "20260722_activity_kind_evento.sql",
+    "20261002102913_notification_type_mentioned.sql",
     "20260722_club_event_rpcs.sql",
     "20260722_saga_items_rls_hardening.sql",
     "20260723_saga_item_role.sql",
