@@ -1,8 +1,10 @@
 # Verificación de contratos de combate
 
-> **[Canónico · verificado 2026-09-07 · CLI: run, calibrate, replay, golden, fork, freeze]**
+> **[Canónico · CLI verificado 2026-09-07; bootstrap vacío y gate de integración local verificados el 2026-10-02 (#1092/#1299)]**
 
-Usar Node 22 e instalar el lockfile con `npm ci`. Los comandos `fork` y `freeze` automatizan el ritual de publicar versiones (#1093).
+Usar un Node LTS admitido por `package.json` e instalar el lockfile con `npm ci`.
+La tanda local del 2026-10-02 usa Node 24.19.0. Los comandos `fork` y `freeze`
+automatizan el ritual de publicar versiones (#1093).
 
 ```powershell
 npm run test:pet:battle
@@ -41,9 +43,11 @@ resultado unitario no acredita los permisos de dev ni de producción.
 
 ## Gate de integración local
 
-Para el gate de integración se necesita un Supabase **local** nuevo con el esquema
-de la app y `supabase/migrations/20260907_pet_battles.sql` aplicada. Ejecutar también
-`supabase/tests/pet_battles_permissions.sql` con `psql -v ON_ERROR_STOP=1`.
+Preparar un Supabase **local** nuevo mediante el bootstrap canónico de
+[supabase-local.md](supabase-local.md). El plan incluye la migración de batallas;
+no aplicar las migraciones sueltas sobre una base vacía ni volver a aplicarla
+después. Ejecutar también `supabase/tests/pet_battles_permissions.sql` con
+`psql -v ON_ERROR_STOP=1`.
 
 Cargar únicamente las claves del proyecto local en el proceso que compila y prueba:
 
@@ -59,17 +63,52 @@ npm run test:e2e:pet:local
 
 El config dedicado rechaza hosts no locales y no carga `.env.local`, semillas
 compartidas ni el barrido de cuentas de dev. Arranca `next start` y exige el puerto
-3000 libre: reutilizar un `next dev` no verifica el build. Playwright ejecuta tres
-tests, sin reintentos: permisos/aislamiento con dos cuentas, replay persistido y
-login renderizado e hidratado en Chromium. Las cuentas creadas se eliminan por REST,
+3000 libre: reutilizar un `next dev` no verifica el build. Playwright ejecuta cuatro
+tests, sin reintentos: permisos/aislamiento con dos cuentas, replay persistido,
+exclusión concurrente de aventuras y login renderizado e hidratado en Chromium.
+Las cuentas creadas se eliminan por REST,
 incluido un fallo a mitad de la preparación. No se usa la cuenta persistente de QA.
 
-## Límite del bootstrap del repositorio
+## Fallo histórico y verificación del bootstrap
 
 En la verificación del 2026-09-06, ni `supabase/migrations/` por sí sola ni el
 `schema-baseline.sql` original arrancaron desde vacío. La carpeta carece del esquema
 inicial y el baseline omite prerrequisitos e incluye datos de sagas de producción.
 El E2E pasó con un bootstrap temporal adaptado. Eso verifica `pet_battles` sobre una
-base nueva, pero **no convierte en PASS el replay del historial original**. Mantener
-ese gate pendiente hasta disponer de un bootstrap canónico reproducible; no copiar
-datos productivos ni saltar errores SQL para convertirlo en verde.
+base nueva, pero **no convierte en PASS el replay del historial original**. Esta
+limitación describe aquella tanda y conserva su fallo; no se reclasifica.
+
+El 2026-10-02 el bootstrap canónico se ejecutó desde vacío: **273 pasos, 18
+contratos SQL y cuatro familias de concurrencia PASS**, sin copiar datos de
+producción ni omitir errores. #1299 repara el valor `mentioned` que faltaba en
+la reconstrucción; los objetos reales de dev/prod ya lo contienen y no
+necesitaron DDL remoto. La preparación usa un destino local nuevo y conserva
+el backup anterior. Evidencia: [notification-type-bootstrap-1299.md](2026-10-02-notification-type-bootstrap-1299.md).
+
+Sobre esa base se ejecutaron los **cuatro casos dedicados de combate PASS**,
+junto a doce casos de reloj, contra un build/start de producción nuevo. Los
+permisos SQL pasan antes y después. Las 27 peticiones HTTP nativas incluyen
+siete denegaciones autenticadas, cuatro anónimas y el duplicado esperado
+`409/23505`; no hubo errores de transporte. Se auditaron cuatro actores:
+Auth 404, cierre global de sesión y cero filas propias, cuotas, sesiones o
+refresh tokens. Next y la DB quedaron detenidos, esta última con backup, y
+el puerto 3000 libre. Esta evidencia verifica el gate local de #1092, sin
+afirmar nuevos resultados en dev o producción.
+
+Evidencia conservada en
+`.scratch/ticket-campaign/20261002-resolve-all/qa-evidence/integration-1790938830828/`:
+
+- Build `GHPTlpI0jcGGEc3YV72WJ`; manifiesto Next
+  `6e3c8481152f22b494e9a67a24e250450ee6554c883a48753daf866af9b85e39`.
+- Resultado de los 16 casos: cero SKIP, flaky o reintentos, 14,769 s. Los
+  cuatro de combate y los doce de reloj conservan alcances separados.
+- SHA256 de `result.json`:
+  `cc4cb9d0ac8850c58c1f1cc24950b4c3d65123fd4d432efbc0bb0e7ed53793f4`.
+- SHA256 de `manifest.sha256.json`:
+  `7c6062c4ab81f83e132b8c03703d3284a55fc372462d6506f5043e6c85b96396`;
+  49 artefactos y 209 fuentes estables, cero discrepancias o secretos.
+
+El primer build del worktree falló porque su junction de `node_modules`
+salía de la raíz de Turbopack. No ejecutó casos ni creó actores. Se conserva
+su FAIL con 34 artefactos; la recuperación ajustó sólo la raíz de filesystem
+mediante el runtime QA, sin cambiar el producto ni su configuración fuente.

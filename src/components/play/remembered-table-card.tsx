@@ -39,9 +39,8 @@ export function RememberedTableCard({ identity }: { identity: string }) {
     // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
     if (snapshot.status === "loading") return;
     // Mismo contrato que cualquier arranque: empezar ES pedir sustituir la activa.
-    if (snapshot.game) store.discard();
     const setup = rotateStartingSeat(remembered);
-    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
+    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()), { replaceActive: true })) {
       return;
     }
     rememberTable(identity, setup);

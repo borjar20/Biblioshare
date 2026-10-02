@@ -1,6 +1,6 @@
 # Hidratación de fichas nacidas de Google Books (#1290)
 
-> **[Evidencia · verificada el 2026-10-02 · producto y siete regresiones de navegador PASS; entrega y CI del head pendientes]**
+> **[Evidencia · verificada el 2026-10-02 · producto, siete regresiones de navegador y CI del head PASS; integrada en PR #1303]**
 
 ## Fallo confirmado y alcance
 
@@ -183,3 +183,17 @@ actual de Google ni una reparación masiva de fichas en producción.
 No hay cambio de esquema, permisos, dependencias ni configuración productiva.
 La recuperación de shells históricas ocurre al acceder a ellas; el seguimiento
 de identidad y fusiones de producción mantiene su issue y sus gates propios.
+
+## Entrega verificada
+
+La [PR #1303](https://github.com/borjar20/Biblioshare/pull/1303) se integró el
+2026-10-02 a las 11:05:24 UTC. Head verificado:
+`d325d5a282febc8fe7ea50cc45eafa0ace19f4d1`; merge:
+`f5963e20d7da57d4041ad7034378fce5bce08646`. **4045 unitarios y 91 casos de
+navegador PASS**, con lint, tipos y CodeQL también PASS. Las comprobaciones
+corresponden a ese head: [Tests](https://github.com/borjar20/Biblioshare/actions/runs/36998022730)
+y [CodeQL](https://github.com/borjar20/Biblioshare/actions/runs/36998021028).
+El log se conserva en
+`.scratch/ticket-campaign/20261002-resolve-all/hydration1290-ci-36998022730.log`.
+La issue #1290 está cerrada. El FAIL auxiliar de #1301 y los límites del
+proveedor real descritos arriba siguen conservando su resultado y alcance.

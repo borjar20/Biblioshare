@@ -59,8 +59,7 @@ export function MtgModeChooser({ identity }: { identity: string }) {
     const setup = toSetup(newDraft(mode, count), (i) => t("setup.playerN", { n: i + 1 }));
     // Mismo contrato que «Empezar» en la configuración: arrancar ES pedir sustituir
     // la partida que hubiera (spec §4, una sola activa).
-    if (snapshot.game) store.discard();
-    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
+    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()), { replaceActive: true })) {
       return;
     }
     rememberTable(identity, setup);

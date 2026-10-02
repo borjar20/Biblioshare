@@ -180,11 +180,8 @@ export function SetupForm({ identity, selfName }: { identity: string; selfName?:
     // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
     if (snapshot.status === "loading") return;
     const setup = toSetup(draft, (i) => t("setup.playerN", { n: i + 1 }));
-    // Una sola partida activa (spec §4): `start()` LANZA si ya hay una, así que la
-    // vieja se descarta aquí — pulsar «Empezar» ES pedir sustituirla, y es lo que
-    // hace que la revancha no borre nada hasta que la siguiente arranca de verdad.
-    if (snapshot.game) store.discard();
-    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()))) {
+    // «Empezar» pide sustituir la activa, solo si el motor acepta el nuevo setup.
+    if (!store.start(makeEvent("game_started", { toolId: "mtg" as const, setup }, Date.now()), { replaceActive: true })) {
       return; // setup que el motor rechaza: no se navega a un tablero que no existe
     }
     // La mesa se recuerda AL EMPEZAR, no al terminar: así sobrevive a descartar.

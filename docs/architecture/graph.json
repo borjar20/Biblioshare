@@ -4,7 +4,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-10-02",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -37,7 +37,7 @@
         "rule": "Cualquier estado del usuario se deriva de `passes`. `library_entries` está CONGELADA (solo conserva `pinned_order`); su `status`/`position` llevan meses sin actualizarse.",
         "evidence": "docs/requirements/data-model.md §0, §3",
         "brokenBy": "PR #96 — avance de sagas al 0% por leer library_entries",
-        "exception": "`play` (Partidas/BiblioPlay, m-play) NO deriva de `passes`: es local-first sin backend en fases 0-3 y, cuando tenga backend (Fase 5), su fuente de verdad serán sus propias tablas. Excepción registrada a propósito, no un bug — ver docs/requirements/decisiones.md §2026-08-29 «El dominio play es una excepción explícita a inv-passes-hub (#931)» y docs/superpowers/specs/2026-08-29-play-fases-0-2-design.md."
+        "exception": "`play` (Partidas/BiblioPlay, m-play) NO deriva de `passes`: la partida activa y los acompañantes viven en IndexedDB por identidad; el historial se lee de su espejo local y, con sesión, se sincroniza con `play_games` (Fase 5 ya implementada). Excepción explícita con backend propio — ver src/lib/play/core/db.ts, sync.ts y play-games-api.ts; docs/requirements/decisiones.md §2026-08-29 y §2026-08-31 «Play fase 5: espejo local como fuente del historial»."
       },
       {
         "id": "inv-search-no-write",
@@ -996,16 +996,22 @@
       "layer": "domain",
       "kind": "module",
       "size": 22,
-      "summary": "Motor puro de BiblioPlay (Partidas), dominio nuevo e independiente (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y la primera herramienta especializada, Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. En ui/ vive la lógica de la pantalla que NO es React: reparto de la mesa, tamaño del número de vidas, borrador de configuración, memoria de la última mesa y preferencias de vista. Solo store.ts, ui/preferences.ts y ui/table-memory.ts tocan el navegador (localStorage, con guardas); el log va aislado por identidad. Sin backend en fases 0-3 — excepción explícita a inv-passes-hub (ver meta.invariants).",
+      "summary": "Dominio de BiblioPlay (Partidas), independiente de passes (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. En ui/ vive la lógica de la pantalla que NO es React: reparto de la mesa, tamaño de vidas, borrador de configuración, memoria de la última mesa y preferencias de vista. core/store.ts coordina hidratación y escrituras; core/db.ts persiste en IndexedDB por identidad, con CAS por rev; el store replica entre pestañas por BroadcastChannel. localStorage queda como puente legado de la activa y almacén de preferencias/mesa recordada. El historial lee el espejo local saved; core/sync.ts y play-games-api.ts lo sincronizan con play_games para usuarios autenticados (Fase 5 existente). Excepción explícita a inv-passes-hub (ver meta.invariants).",
       "files": [
         "src/lib/play/tools.ts",
         "src/lib/play/core/log.ts",
         "src/lib/play/core/store.ts",
+        "src/lib/play/core/db.ts",
+        "src/lib/play/core/sync.ts",
+        "src/lib/play/core/play-games-api.ts",
         "src/lib/play/mtg/reducer.ts",
         "src/lib/play/mtg/rules.ts",
         "src/lib/play/ui/layout.ts",
         "src/lib/play/ui/setup-draft.ts",
         "src/lib/play/ui/table-memory.ts"
+      ],
+      "gotchas": [
+        "Reconfigurar usa PlayStore.start(event, { replaceActive: true }): el replay valida antes de tocar snapshot/rev/timer/persistencia. Si devuelve false, conserva la activa y el plazo original de la ráfaga; no llames discard() antes. Recuerda la mesa y navega sólo después de true. Sin opción, start sigue rechazando una activa con excepción; el CAS no cambia (#964)."
       ]
     },
     {
