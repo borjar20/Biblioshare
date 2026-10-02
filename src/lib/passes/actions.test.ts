@@ -130,6 +130,54 @@ function makeRecordingClient(startedOn: string | null) {
   return { client, updates };
 }
 
+// A prerequisite read is not optional: these tests must distinguish the two
+// selects from the later update, otherwise a failing read can silently become
+// an empty row in a fake client.
+function makePrerequisiteFailureClient(failingSelect: "started_on, finished_on, status" | "review") {
+  const updates: Array<Record<string, unknown>> = [];
+  const selected: string[] = [];
+  let columns = "";
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
+    from(table: string) {
+      if (table === "passes") {
+        const builder = {
+          select(next: string) {
+            columns = next;
+            selected.push(next);
+            return builder;
+          },
+          update(payload: Record<string, unknown>) {
+            updates.push(payload);
+            return builder;
+          },
+          eq() {
+            return builder;
+          },
+          async maybeSingle() {
+            if (columns === failingSelect) return { data: null, error: { message: "prerequisite unavailable" } };
+            return { data: { started_on: null, finished_on: null, status: "completed", review: "hola @ana" }, error: null };
+          },
+          then(resolve: (value: unknown) => void) {
+            resolve({ error: null });
+          },
+        };
+        return builder;
+      }
+      if (table === "interaction_targets") {
+        const builder = {
+          select() { return builder; },
+          eq() { return builder; },
+          async maybeSingle() { return { data: { id: "target-diary" }, error: null }; },
+        };
+        return builder;
+      }
+      throw new Error(`Tabla inesperada: ${table}`);
+    },
+  };
+  return { client, updates, selected };
+}
+
 function closeForm(finishedOn: string) {
   const form = new FormData();
   form.set("finishedOn", finishedOn);
@@ -175,6 +223,32 @@ describe("closePass — fecha de fin anterior al inicio (#729)", () => {
     await closePass("pass-1", "book", "book-1", {}, closeForm("2026-08-14"));
 
     expect(updates[0]).not.toHaveProperty("started_on");
+  });
+});
+
+describe("lecturas prerequisito de pases (#1110)", () => {
+  it("no cierra ni publica efectos si no puede leer la fecha de inicio", async () => {
+    const fake = makePrerequisiteFailureClient("started_on, finished_on, status");
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await expect(closePass("pass-1", "book", "book-1", {}, publicReviewForm())).resolves.toEqual({ error: "generic" });
+
+    expect(fake.selected).toEqual(["started_on, finished_on, status"]);
+    expect(fake.updates).toEqual([]);
+    expect(mocks.notifyMentions).not.toHaveBeenCalled();
+    expect(mocks.revalidateReadingLog).not.toHaveBeenCalled();
+  });
+
+  it("no edita ni re-notifica si no puede leer la reseña previa", async () => {
+    const fake = makePrerequisiteFailureClient("review");
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await expect(updatePass("pass-1", "book", "book-1", {}, publicReviewForm())).resolves.toEqual({ error: "generic" });
+
+    expect(fake.selected).toEqual(["review"]);
+    expect(fake.updates).toEqual([]);
+    expect(mocks.notifyMentions).not.toHaveBeenCalled();
+    expect(mocks.revalidateReadingLog).not.toHaveBeenCalled();
   });
 });
 

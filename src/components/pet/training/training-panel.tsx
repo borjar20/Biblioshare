@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { SparklesIcon as Sparkles, HeartIcon as Heart, PauseIcon as Pause, PlayIcon as Play, AlertIcon, CheckIcon, EyeIcon } from "@/components/ui/icons";
 import { Swords, Shield } from "./training-icons";
 import { startBattle, resolveBattle, replayTrainingBattle } from "@/lib/pet/training/actions";
+import { loginHref } from "@/lib/auth/safe-next";
 import { RULESET } from "@/lib/pet/battle/content";
 import type { BattleEvent, BattleInput } from "@/lib/pet/battle/types";
 import type { TrainingBattle, TrainingResponse } from "@/lib/pet/training/types";
@@ -72,6 +73,13 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
   const [savedSession, setSavedSession] = useState(false);
   const refresh = () => render(n => n + 1);
   const phase = session.phase;
+  const needsSignIn = session.error === "UNAUTHENTICATED";
+  const incompatible = ["UNKNOWN_RELEASE", "INVALID_SNAPSHOT", "UNSUPPORTED_BATTLE"].includes(session.error ?? "");
+  const freshTraining = !adventure && phase === "idle" && incompatible;
+  const errorMessage = session.error === "LOCAL_RECOVERY" && session.battle ? "recoveryError"
+    : needsSignIn ? "authenticationError"
+    : ["NETWORK", "UNAVAILABLE"].includes(session.error ?? "") ? "connectionError"
+    : incompatible ? "versionError" : "error";
 
   useEffect(() => {
     setSavedSession(sessionRef.current.hasSavedSession());
@@ -185,7 +193,10 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
 
   return <section className={styles.panel} aria-labelledby={adventure ? "adventure-section-title" : `${kind}-title`} data-testid={adventure ? "pet-adventure" : "pet-training"}>
     {!adventure && <div><h2 id={`${kind}-title`} className="text-xl font-semibold">{t("title")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("intro")}</p></div>}
-    {session.error && <div role="alert" className="text-sm"><p>{t(session.error === "LOCAL_RECOVERY" && session.battle ? "recoveryError" : "error")}</p></div>}
+    {session.error && <div role="alert" className="text-sm"><p>{t(errorMessage)}</p></div>}
+    {/* Reauthentication needs a new document: Activity would retain the failed
+        session after a client-side login round-trip. The checkpoint restores play. */}
+    {needsSignIn && <a href={loginHref(`/mascota?view=${kind}`)} className={styles.startButton}>{t("signIn")}</a>}
     {!adventure && (phase === "idle" || phase === "starting" || phase === "done") && <fieldset className={styles.enemyPicker} disabled={phase === "starting" || (phase === "idle" && (!!session.error || savedSession))}>
       <legend>{t("enemySelect")}</legend><div className={styles.enemyChoices}>{(["brote", "caparazon"] as const).map(id => <label key={id} data-selected={session.enemyId === id}>
         <input type="radio" name={`${kind}-enemy`} value={id} checked={session.enemyId === id} onChange={() => {session.selectEnemy(id); refresh();}} />
@@ -193,7 +204,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
       </label>)}</div><p>{t("enemyHelp")}</p>
     </fieldset>}
     {(phase === "idle" || phase === "starting") && <>
-      <button className={styles.startButton} disabled={phase === "starting" || (adventure && !canStart && !savedSession)} onClick={() => void run(() => session.start())}>{adventure ? ta(phase === "starting" ? "starting" : savedSession ? "resume" : startLabel) : t(phase === "starting" ? "starting" : session.error ? "retryStart" : savedSession ? "resume" : "start")}</button>
+      {!needsSignIn && <button className={styles.startButton} disabled={phase === "starting" || (adventure && !canStart && !savedSession)} onClick={() => void run(() => session.start(freshTraining))}>{adventure ? ta(phase === "starting" ? "starting" : savedSession ? "resume" : startLabel) : t(phase === "starting" ? "starting" : freshTraining ? "newStart" : session.error ? "retryStart" : savedSession ? "resume" : "start")}</button>}
       {adventure && !canStart && !savedSession && <p className="text-sm text-muted-foreground">{ta("none")}</p>}
     </>}
     {v && snapshot && <>
@@ -255,6 +266,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
           <span className={styles.shield}><Shield width={15} height={15} aria-hidden="true" />{t("ulti.shield", { value: v.shield })}</span>
           <p role="status"><ReservedText text={lastUlti ? t("ulti.feedback", { damage:lastUlti.damage, shield:lastUlti.shield }) : t("ulti.awaiting")} alternatives={[t("ulti.feedback",{damage:v.enemyHpMax,shield:v.petHpMax}), t("ulti.awaiting")]} /></p>
         </div>}
+        {session.legacyCheckpoint && <p role="status" className="text-sm">{t("legacyCheckpoint")}</p>}
         <div className={styles.playback}>
           <button ref={pauseButton} aria-pressed={session.paused} disabled={session.ultiOpen || session.awaitingContinue} onClick={() => { session.togglePause(); refresh(); }}>{session.paused ? <Play width={14} height={14} aria-hidden="true" /> : <Pause width={14} height={14} aria-hidden="true" />}{t(session.paused ? "resume" : "pause")}</button>
           <label className="flex items-center gap-2 text-sm">{t("speed")}<select className="min-h-11 rounded border border-border bg-surface-muted px-2 py-2" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[0.5, 1, 2].map(n => <option key={n} value={n}>{n}×</option>)}</select></label>
@@ -275,7 +287,7 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
       </div>}
     </>}
     {phase === "resolving" && <p role="status">{t("resolving")}</p>}
-    {phase === "resolve-error" && <button className={styles.startButton} onClick={() => void run(() => session.resolve())}>{t("retryResolve")}</button>}
+    {phase === "resolve-error" && !needsSignIn && <button className={styles.startButton} onClick={() => void run(() => session.resolve())}>{t("retryResolve")}</button>}
     {/* El resultado es el pico del juego: el botín se revela, no se enumera. */}
     {result && <div role="status" className={styles.result}>
       <h3>{adventure && result.outcome === "win" ? ta("won") : t(`outcomes.${result.outcome}`)}</h3>
@@ -292,12 +304,12 @@ export function TrainingPanel({ kind = "training", actions, storage, startLabel 
     </div>}
     {phase === "done" && <div className={styles.resultActions}>
       {adventure && wonCopy && onEquipNow && <button data-primary="true" onClick={onEquipNow}><CheckIcon width={16} height={16} aria-hidden="true" />{tg("viewGear")}</button>}
-      {adventure ? (
+      {!needsSignIn && (adventure ? (
         result?.outcome !== "win"
           ? <button data-primary="true" onClick={() => void run(() => session.start(true))}>{ta("retry")}</button>
           : canStartAnother && <button data-primary="true" onClick={() => void run(() => session.start(true))}>{ta("start")}</button>
-      ) : <button data-primary="true" onClick={() => void run(() => session.start(true))}>{t("repeat")}</button>}
-      <button onClick={() => void run(() => session.replay())}><EyeIcon width={16} height={16} aria-hidden="true" />{t("replay")}</button>
+      ) : <button data-primary="true" onClick={() => void run(() => session.start(true))}>{t("repeat")}</button>)}
+      {!needsSignIn && <button onClick={() => void run(() => session.replay())}><EyeIcon width={16} height={16} aria-hidden="true" />{t("replay")}</button>}
       {onHome && <button onClick={onHome}>{tg("sections.camp")}</button>}
     </div>}
     {session.events.length > 0 && <details className={styles.help}><summary>{t("log")}</summary><ol className="max-h-56 space-y-1 overflow-y-auto">{session.events.map(event => <li key={event.seq}><span className="tabular-nums text-muted-foreground">{(event.tick / 10).toFixed(1)} s</span> · {eventText(event)}</li>)}</ol></details>}

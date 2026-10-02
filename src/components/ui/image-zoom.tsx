@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 /** Lightbox estilo X: pulsas la imagen y se ve a tamaño completo sobre el
@@ -23,13 +23,20 @@ export function ImageZoom({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Un diálogo cerrado también descarga sus imágenes. Montar el original
+  // solo después de pedirlo; conservarlo al cerrar permite reutilizarlo.
+  // Guardar la URL evita adelantar la carga si cambia la imagen de la vista.
+  const [openedSrc, setOpenedSrc] = useState<string | null>(null);
   const t = useTranslations("common");
 
   return (
     <>
       <button
         type="button"
-        onClick={() => ref.current?.showModal()}
+        onClick={() => {
+          setOpenedSrc(src);
+          ref.current?.showModal();
+        }}
         aria-label={t("zoomImage")}
         className={`cursor-zoom-in ${className ?? ""}`}
       >
@@ -43,13 +50,14 @@ export function ImageZoom({
         // (0.45 en claro): aquí la imagen ES el contenido y el resto estorba.
         className="m-auto max-h-none max-w-none cursor-zoom-out bg-transparent p-0 backdrop:bg-black/90"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- aquí se quiere
-            el original a resolución completa, no una miniatura optimizada */}
-        <img
-          src={src}
-          alt={alt}
-          className="max-h-[92vh] max-w-[92vw] object-contain"
-        />
+        {openedSrc === src && (
+          // eslint-disable-next-line @next/next/no-img-element -- el original a resolución completa
+          <img
+            src={src}
+            alt={alt}
+            className="max-h-[92vh] max-w-[92vw] object-contain"
+          />
+        )}
       </dialog>
     </>
   );

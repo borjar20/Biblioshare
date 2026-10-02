@@ -1,5 +1,6 @@
 import { normalizeIsbn, isValidIsbnCheckDigit } from "../isbn";
 import { buildCoverUrl } from "./covers";
+import { normalizeWorkKey } from "./work-detail";
 
 // Documento crudo de OpenLibrary tal como viene de
 // GET /works/<key>/editions.json (campo `entries`). Solo los campos que
@@ -236,7 +237,7 @@ const FETCH_TIMEOUT_MS = 5000;
 // fallo de toda la operación.
 async function fetchEditionsPage(key: string, offset: number): Promise<EditionsResponse | null> {
   try {
-    const url = `https://openlibrary.org/works/${key}/editions.json?limit=${EDITIONS_PAGE_SIZE}&offset=${offset}`;
+    const url = `https://openlibrary.org/works/${encodeURIComponent(key)}/editions.json?limit=${EDITIONS_PAGE_SIZE}&offset=${offset}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) return null;
     return await res.json();
@@ -263,7 +264,7 @@ export const MAX_REPRESENTATION_PAGES = 2;
 // en bruto, sin pasar por pickEditions: cada llamante decide qué límite final
 // aplicar.
 async function fetchEditionDocs(workKey: string, maxPages: number): Promise<OpenLibraryEditionDoc[]> {
-  const key = workKey.replace(/^\/?works\//, "").replace(/^\//, "");
+  const key = normalizeWorkKey(workKey);
   if (!key) return [];
 
   const first = await fetchEditionsPage(key, 0);
@@ -407,14 +408,16 @@ type IsbnLookupResponse = {
 // un ISBN. Igual que fetchWorkEditions, nunca lanza.
 export async function resolveWorkKey(isbn: string): Promise<string | null> {
   try {
-    const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
+    const normalizedIsbn = normalizeIsbn(isbn);
+    if (!normalizedIsbn || !isValidIsbnCheckDigit(normalizedIsbn)) return null;
+    const res = await fetch(`https://openlibrary.org/isbn/${encodeURIComponent(normalizedIsbn)}.json`, {
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return null;
 
     const data: IsbnLookupResponse = await res.json();
-    const key = data.works?.[0]?.key;
-    return typeof key === "string" ? key : null;
+    const key = normalizeWorkKey(data.works?.[0]?.key ?? "");
+    return key ? `/works/${key}` : null;
   } catch {
     return null;
   }

@@ -5593,6 +5593,295 @@ No se siembran pruebas ni se reescribe actividad existente en producción.
 La fecha de Madrid verificada antes de aplicar fue 2026-10-01; el corte fijo
 2026-10-02 sigue siendo futuro y se conserva tras este primer lanzamiento.
 
+## 2026-10-01 — referencias de libro en eventos de club (#875)
+
+La fusión cubre los dos contratos actuales del JSON de evento: item de
+lanzamiento y relaciones item/book de fecha destacada. `spawned_from_item_*`
+sigue siendo el origen de tierlist y no sustituye una lista de relaciones.
+Config conserva su contrato opaco/tolerante: se actualizan solo rutas conocidas
+y se preservan campos ajenos, orden, otros medios y estructuras malformadas.
+No se añade un CHECK global que invalidaría formas históricas admitidas por el
+parser. La integridad ante borrado ordinario sigue en #546; Storage, en #880.
+
+Cada referencia válida de evento cuenta como rastro de persona en el reconciliador,
+incluidas las repetidas, igual que cada referencia tipada existente. Se reutiliza
+`parseEventConfig` y la paginación por id total; una página fallida aborta el
+recuento para no elegir ganador con evidencia parcial. La migración conserva
+íntegros los abortos previos y la deduplicación canónica de ISBN de #906.
+
+Dev `20261001102008` y prod `20261001102919 / merge_book_club_event_refs` conservan
+timestamps distintos del fichero `20261001102000`; el cuerpo y ACL equivalentes
+mandan sobre el ledger. La promoción redefine una función compatible y no ejecuta
+fusiones. El plan/backup revisable para las fusiones concretas sigue en #912.
+
+## 2026-10-01 — arranque automático actual e incidente aislado (#1073)
+
+Se conserva `npm run dev` y el límite de 120 s del `webServer` de Playwright.
+Tres arranques con caché previa y tres sin `.next`, puerto libre y sin
+reutilización, escuchan y sirven el login completo en menos de nueve segundos.
+No hay evidencia actual que justifique elevar el timeout ni hacer obligatorio
+arrancar el servidor a mano para specs cortos. Esto no establece la causa del
+incidente único del 4 de septiembre ni garantiza otros entornos.
+
+La ejecución de los cinco tests originales conserva sus cuatro FAIL: no se
+cuentan como verdes porque el arranque haya pasado. Las discrepancias de
+redirección, escala, eclosión y prerender de ajustes se rastrean en #1271–#1274.
+La verificación acotada y sus hashes están en
+`docs/testing/2026-10-01-playwright-startup-1073.md`.
+
+## 2026-10-01 — control del origen y las precondiciones de #1073
+
+Se repite la serie final con `localhost`, el valor del proyecto, porque el
+primer control con `127.0.0.1` registró bloqueo de HMR por `allowedDevOrigins`.
+La disponibilidad sigue en PASS: seis arranques con escucha en 1,71–1,94 s
+y login en 3,16–8,55 s. No se amplía la allowlist de producto por una
+elección del diagnóstico ni se afirma que HMR explique todos los síntomas.
+
+El control de los cinco specs con localhost y onboarding completo pasa
+cuatro y falla solo la redirección de #1271. #1272/#1273 se rectifican como
+observaciones no reproducidas bajo precondiciones válidas. La ausencia de
+compañera en el control intermedio se acota a `onboarded_at` faltante en la
+cuenta temporal; el reinicio del worker borraba después la mascota antes del
+test de ajustes. El flujo de Ajustes pasa, pero mantiene el error de
+prerender #1274. Se conserva el FAIL original y no se modifica producto
+para compensar una preparación incorrecta.
+
+## 2026-10-01 — frontera de carga propia de Ajustes (#1274)
+
+Las lecturas de sesión, perfil, importaciones y mascota siguen en la página,
+con el cliente de petición y su RLS. `ajustes/loading.tsx` las deja detrás de
+la frontera Suspense que Next coloca bajo el layout de esa ruta. El fallback
+usa únicamente los skeletons y dimensiones compartidos; no consulta ni
+serializa datos de cuenta. No se añade caché compartida.
+
+Se retiran los dos `instant = false` de página y layout: conservar el del
+layout eximiría a la ruta de la validación de shell estático. Los avisos de
+navegación instantánea de Next 16.3.8 se comprueban en dev; un build correcto
+no demuestra por sí solo su ausencia. Seis recorridos en dev no registran el
+error de Ajustes y los mismos seis pasan contra el build de producción local.
+Identidad, login anónimo, traducciones y toggle de compañera se conservan.
+Los mensajes de stream cerrado de #1263 y la redirección de #1271 siguen
+acotados aparte. Evidencia: `docs/testing/2026-10-01-ajustes-suspense-1274.md`.
+
+## 2026-10-01 — retorno administrativo después de login (#1271)
+
+El guard del layout añadió protección compartida, pero su redirect a
+`loginHref('/admin')` ocultó el destino específico que seguía declarando la
+página de mascota. Se conserva ese guard y se adelanta únicamente el redirect
+del anónimo al proxy, que conoce `pathname + search`. El límite es `/admin`
+o `/admin/…`; no cubre prefijos parecidos. Se reutiliza el helper que propaga
+cookies y cabeceras del SDK, y el login sigue validando el destino con
+`safeNext`. La autorización de rol y las RPC no se trasladan al proxy.
+
+Los filtros se comparan por sus valores: Next puede normalizar `%20` a `+`
+sin perder el texto. El E2E del visor comprueba ahora el regreso efectivo tras
+login y no abre la galería mediante una segunda navegación manual. Los
+unitarios y controles de navegador cubren límites del prefijo, identidad,
+cookies y rechazo del usuario sin rol admin. Evidencia:
+`docs/testing/2026-10-01-admin-login-return-1271.md`.
+
+## 2026-10-01 — tamaños y prioridad explícita del hero (#1208)
+
+El loader reconoce únicamente el origen TMDB w1280 de los backdrops y elige
+w300/w780/w1280, conservando el techo del origen. Pósters w342 mantienen su
+familia, y logos/perfiles/fotogramas no se reinterpretan.
+
+Se sustituye `priority` por carga eager y una sola `fetchPriority="high"`:
+backdrop cuando existe, portada frontal en el fallback. Es la elección de
+candidato probable del hero, no una medición de LCP para cada obra/pantalla.
+El fondo difuminado comparte `sizes` con la portada, incluidos los breakpoints
+640/1024; prioriza reutilizar su recurso sobre descargar una versión mayor
+de un fondo deliberadamente borroso. La descarga del original en el diálogo
+cerrado de `ImageZoom` se conserva como deuda independiente #1278.
+
+## 2026-10-01 — original de ImageZoom bajo demanda (#1278)
+
+Un `<dialog>` cerrado oculta su contenido, pero no reserva la descarga de un
+`img` que ya tiene `src`. El visor monta el original al pulsar su disparador,
+manteniendo el diálogo nativo y sus reglas de foco, Escape y cierre por clic.
+Se conserva la imagen después de cerrar para reutilizar el recurso al reabrir.
+El estado recuerda la URL abierta: si cambia `src`, la nueva URL no se monta
+de antemano. No se cambia la carga de las miniaturas ni se usa lazy como sustituto
+de este contrato. La portada de club ya usa su URL completa visible, por lo que
+allí no se promete ahorro adicional de bytes. Evidencia de los cuatro
+consumidores: `docs/testing/2026-10-01-image-zoom-loading-1278.md`.
+
+## 2026-10-01 — errores y reautenticación del entrenamiento (#1171)
+
+El panel traduce las familias de error y ofrece su recuperación concreta:
+reintento con la misma intención para conexión/otros fallos, login para sesión
+caducada y nuevo entrenamiento sólo por elección explícita cuando el inicio
+no es compatible. `UNSUPPORTED_BATTLE` comparte la familia de incompatibilidad.
+Resolver/repetir, aventuras y LOCAL_RECOVERY conservan sus estados e inputs;
+no se reemplaza automáticamente una partida ni se borra su historial.
+
+La frontera de transporte normaliza únicamente el rechazo de la llamada remota
+a NETWORK, sin reinterpretar códigos devueltos ni errores del motor local.
+El enlace de reautenticación usa navegación de documento. Activity conserva
+useState durante una navegación cliente e impedía salir del error incluso
+después de un login correcto; se reprodujo en ambos tamaños de pantalla. La
+nueva instancia restaura el checkpoint y evita limpiar el aviso antes de
+autenticarse. No se introduce reset general durante render ni al cambiar de vista.
+
+Un checkpoint abierto se recupera en pausa y se continúa antes de resolver.
+La representación del último tick del combate puede necesitar ese paso aunque
+la animación ya terminase antes de salir; es deuda independiente #1281, con
+motores congelados intactos. Evidencia: 70 unitarios y doce recorridos de
+Chromium contra build/start local, incluidos resolución, intent e inputs tras
+login: `docs/testing/2026-10-01-training-error-actions-1171.md`.
+
+## 2026-10-01 — lecturas previas obligatorias al guardar pases (#1110)
+
+Un error al leer fechas o la reseña anterior no significa que esos datos
+estén ausentes. `savePassFields` y `updatePass` devuelven el error existente
+`generic` antes de escribir, notificar menciones o revalidar. Los formularios
+ya interpretan ese estado manteniendo la edición abierta. La reseña se sigue
+leyendo antes de guardar: moverla después invalidaría el diff de menciones.
+
+Una consulta correcta sin fila conserva su comportamiento anterior. El
+diagnóstico inicialmente registrado como sospecha se confirma con dos casos
+controlados que fallaban antes de los guards; no se atribuyen daños observados
+en producción. Evidencia: `docs/testing/2026-10-01-pass-prerequisite-reads-1110.md`.
+
+## 2026-10-01 — estado final explícito del checkpoint local (#1281)
+
+Los cuatro motores conservados dejan el tick T al terminar, antes de su
+incremento normal. Guardar sólo ese tick no distingue un final ya jugado
+de la vista abierta anterior a procesar T. El adaptador local escribe
+`ended` junto al tick y los inputs. Reproduce inclusivamente la frontera
+únicamente si la marca es true y exige alcanzar un final real; una marca
+mal tipada o incoherente activa LOCAL_RECOVERY.
+
+Los checkpoints abiertos e interludios conservan la pausa. El formato
+anterior, sin marca, sigue aceptado y pausado: no se adivina su final ni se
+reanuda automáticamente una partida abierta. Su tratamiento explícito
+queda registrado en #1284, con una regresión que demuestra que todavía
+puede completarse con los mismos inputs. No hay migración de Supabase ni
+cambios en motores/manifiestos. La resolución del checkpoint nuevo conserva
+intent, seed y decisiones, y el navegador comprueba digest/resultado contra
+la repetición determinista real. Evidencia:
+`docs/testing/2026-10-01-terminal-checkpoint-1281.md`.
+
+## 2026-10-01 — recursos seleccionados y caché en el E2E del hero (#1287)
+
+La intercepción de Playwright desactiva la caché HTTP. Contar exactamente una
+petición de una URL sintética mezclaba el contrato de selección de imágenes
+con un comportamiento de transporte que la prueba había alterado. Se compara
+el conjunto exacto de URLs solicitadas con los recursos visibles, manteniendo
+la lista completa de solicitudes en el adjunto para el diagnóstico.
+
+En película/serie, portada y backdrop deben corresponder a sus fixtures
+independientes y ser distintos; sólo se normaliza el bucket TMDB para comparar
+su identidad. En libros, ambas imágenes comparten URL y `sizes`. Las reglas
+de prioridad, bucket, carga efectiva y dimensiones se conservan. No se añade
+un retry ni se cambia el producto. Este E2E no demuestra caché, ahorro de bytes
+o LCP del CDN real. Evidencia:
+`docs/testing/2026-10-01-hero-resource-contract-1287.md`.
+
+## 2026-10-01 — contrato común verdadero para resultados históricos (#1116)
+
+R2.2 y R3.1 firmaron resultados sin `fight`; R4.1 incorporó ese campo al
+introducir cadenas. El enrutador exporta `ReplayBattleResult` con `fight`
+opcional y un `ReplayResult` explícito, compartidos por `TrainingBattle` y
+el input de resolución de aventuras. Cada adaptador devuelve directamente
+el resultado de su motor, sin forzar el retorno al tipo actual.
+
+No se añade un valor por defecto ni se proyecta o limpia el registro: eso
+cambiaría los datos firmados y la semántica de los payloads históricos.
+Los casts que especializan inputs/snapshots al entrar en un motor retenido
+permanecen en esa frontera; no prometen campos ausentes en la salida.
+Los tipos actuales y todos los ficheros/manifiestos congelados se conservan.
+No hay cambio de esquema, caché ni flujo de interfaz. Los fixtures r2.2,
+r3.1 y r4.2 conservan resultados/eventos/digests exactos; 46 unitarios y el
+typecheck verifican las fronteras de entrenamiento y aventuras. Evidencia:
+`docs/testing/2026-10-01-historical-replay-result-types-1116.md`.
+
+## 2026-10-01 — recuperación explícita del checkpoint anterior (#1284)
+
+La ausencia de `ended` en un log válido no indica corrupción ni permite
+distinguir automáticamente la vista abierta del tick T de un final ya jugado.
+Se conserva la pausa y se explica la recuperación con un aviso; la acción
+existente «Continuar» retoma o completa el mismo combate. No se añade otro
+botón ni se crea una intención nueva para suplir la información ausente.
+
+Mientras no se continúa, guardar/salir/volver conserva el formato anterior
+y el aviso. Continuar normaliza de inmediato el checkpoint; el interludio
+conserva su acción propia. Una reproducción antigua que ya demuestra un
+final mantiene la resolución existente, y los formatos modernos y corruptos
+conservan sus caminos. No hay migración de base de datos ni cambio en los
+motores o manifiestos históricos. Evidencia y alcance de la verificación:
+`docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.
+
+## 2026-10-02 — identificadores limitados al endpoint de OpenLibrary (#1292)
+
+Un hostname fijo no impide que una ruta, query o fragmento cambie el endpoint.
+`normalizeWorkKey` admite únicamente `OL[0-9]+W`, normalizando la clave sin prefijo,
+`works/`, `/works/` y la histórica `/OL…W`. Las funciones de obra y ediciones
+rechazan el resto antes de `fetch` y conservan sus salidas vacías. El segmento
+normalizado se codifica con `encodeURIComponent` al construir la URL.
+
+`resolveWorkKey` y `lookupIsbn` normalizan y comprueban el checksum del ISBN-10/13
+antes de pedirlo. También validan la work key devuelta por el proveedor antes
+de devolverla o solicitar el detalle de obra. Se conservan el fallback de
+edición, cachés, timeouts y límites de paginación existentes. Se mantiene la
+política por defecto de redirecciones de `fetch`: OpenLibrary usa el recorrido
+ISBN→edición legítimamente; bloquearlo rompería ese lookup.
+
+La verificación local acota los identificadores que construyen el endpoint;
+no demuestra protección frente a redirects de un proveedor comprometido.
+No cambia esquema, interfaz ni política de caché. CI/CodeQL y entrega remota
+quedan pendientes; #1292 sigue abierta hasta esos gates. Evidencia:
+`docs/testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md`.
+
+Verificación posterior del mismo día: el head `2195e70` de PR #1294 pasa
+3950 unitarios, 67 casos de navegador y CodeQL sin resultados. El informe
+anterior conserva los detalles y distingue el ref reparado de main antes
+del merge; el cierre operativo exige los checks de entrega y la integración.
+
+## 2026-10-02 — saltos de línea en los filtros de tipo (#1295)
+
+`TypePills` comparte el control de Buscar y alta manual. Su fila permite
+`flex-wrap` cuando los tres enlaces no caben, manteniendo textos, dimensiones
+y destinos. Reducir letra o recortar el control cambiaría su presentación
+para resolver un problema de distribución; el salto de línea conserva cada
+enlace y admite una segunda fila en móvil.
+
+La comprobación espera a las fuentes y mide los enlaces dentro de su
+contenedor, además del documento/body frente al viewport. El baseline
+confirmó 9,17 px de exceso del contenedor en Buscar a 320 px; el documento
+seguía en 320 px, así que no explica por sí solo los 325 px del FAIL de #1237.
+Un intento redirigido desde alta manual tampoco acredita ese formulario:
+la QA final usa un collaborator y exige su ruta y campos reales.
+
+Ocho casos de QA y cuatro regresiones durables pasan contra build/start
+local a 320/1280 px. El spec comprueba geometría, selección y teclado,
+sin depender de nombres de clases CSS, y entra en la configuración CI
+existente. Los checks obligatorios de la PR siguen siendo el gate antes
+del merge. Evidencia y fallos de preparación conservados:
+`docs/testing/2026-10-02-search-type-pills-1295.md`.
+
+## 2026-10-02 — sólo las altas nuevas de Google Books consumen su cuota (#1237)
+
+El fallback de Google Books procede de un ISBN escrito o escaneado que Open
+Library no conoce; CSV y bulk no llegan a esa RPC. Se fija una operación
+independiente de 60 altas por cuenta y ventana de una hora, conservando la
+cuota genérica de 6000/h para las importaciones y los otros tipos de catálogo.
+El límite responde a esa ruta manual, no al número de la reproducción de abuso.
+
+Se cobra después de la inserción ganadora del índice único, mediante un AFTER
+INSERT limitado a shells con volumen Google y sin work key. Un BEFORE en ese
+camino cobraría también intentos idempotentes. Reutilizar un libro existente,
+incluso desde otra cuenta o con ambas claves, no consume cuota de creación.
+El BEFORE genérico de los demás libros conserva su comportamiento anterior;
+no se amplía esta reparación a sus intentos idempotentes.
+
+La admisión está en SQL para cubrir llamadas directas y carreras. PT429 revierte
+la shell y sus efectos; la acción lo convierte en un estado esperado que se
+comunica sin falso éxito. La cuota de peticiones de 60/min sigue siendo otra
+frontera. No se presenta la cuota ni el filtro ASCII de #924 como verificación
+de existencia o gramática oficial de Google Books. Evidencia y límites:
+`docs/testing/2026-10-02-google-books-creation-quota-1237.md`.
+
 ## 2026-10-01 — compresión de transporte en el CDN (#1251)
 
 Se fija `compress: false` en Next y se delega la compresión pública al CDN de

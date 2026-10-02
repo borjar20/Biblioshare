@@ -21,8 +21,15 @@ interface Actions {
   replay: (intent: string) => Promise<TrainingResponse>;
 }
 
-type LocalLog = { inputs: BattleInput[]; tick: number; awaitingContinue?: boolean };
+type LocalLog = { inputs: BattleInput[]; tick: number; awaitingContinue?: boolean; ended?: boolean };
 interface SessionOptions { storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">; storagePrefix?: string; userId?: string; kind?: "training" | "adventure" }
+
+// Only a rejected remote call is a transport failure. Keep returned domain
+// codes, and local engine/recovery errors, separate from that boundary.
+async function requestTraining(action: () => TrainingResponse | Promise<TrainingResponse>): Promise<TrainingResponse> {
+  try { return await action(); }
+  catch { return { ok: false, code: "NETWORK" }; }
+}
 
 /** Mutable session held in a React ref: input acceptance and ticks are synchronous. */
 export class TrainingSession {
@@ -31,6 +38,8 @@ export class TrainingSession {
   ultiOpen = false;
   /** Interludio entre tramos de una cadena (R4a): el reloj se detiene hasta continueFight(). */
   awaitingContinue = false;
+  /** A valid checkpoint from before `ended` was stored; keep the recovery visible until Continue. */
+  legacyCheckpoint = false;
   enemyId = "brote";
   private intentEnemy = "brote";
   hidden = false;
@@ -61,7 +70,13 @@ export class TrainingSession {
 
   acknowledgeResult() { if (this.phase === "done" && this.active && !this.hidden) this.forget(); }
 
-  togglePause() { this.paused = !this.paused; if (!this.paused && this.error === "LOCAL_RECOVERY") this.error = null; if (this.paused) this.save(); }
+  togglePause() {
+    const resumingLegacy = this.paused && this.legacyCheckpoint;
+    this.paused = !this.paused;
+    if (!this.paused && this.error === "LOCAL_RECOVERY") this.error = null;
+    if (resumingLegacy) this.legacyCheckpoint = false;
+    if (this.paused || resumingLegacy) this.save();
+  }
 
   setActive(active: boolean) { this.active = active; if (!active) this.prepareLeave(); }
 
@@ -104,13 +119,19 @@ export class TrainingSession {
     const key = this.storageKey();
     if (!key || !this.options.storage || !this.view) return false;
     try {
-      this.options.storage.setItem(key, JSON.stringify({ inputs: this.inputs, tick: this.view.tick, awaitingContinue: this.awaitingContinue } satisfies LocalLog));
+      this.options.storage.setItem(key, JSON.stringify({
+        inputs: this.inputs,
+        tick: this.view.tick,
+        awaitingContinue: this.awaitingContinue,
+        ...(this.legacyCheckpoint ? {} : { ended: this.view.ended }),
+      } satisfies LocalLog));
       const pointer = this.pointerKey();
       if (pointer) this.options.storage.setItem(pointer, JSON.stringify({ intent: this.intent }));
       return true;
     } catch { return false; }
   }
   private forget() {
+    this.legacyCheckpoint = false;
     const key = this.storageKey();
     if (key && this.options.storage) try { this.options.storage.removeItem(key); } catch { /* idem */ }
     const pointer = this.pointerKey();
@@ -131,12 +152,13 @@ export class TrainingSession {
       const parsed = JSON.parse(raw) as LocalLog;
       const release = this.battle && getBattleRelease(this.battle.rulesetVersion, this.battle.contentHash);
       const fights = this.battle?.enemyId.split(",").length ?? 1;
-      if (!release || !Number.isSafeInteger(parsed.tick) || parsed.tick < 0 || parsed.tick > fights * (release.ruleset.maxTicks + 1) || !release.validateInputs(parsed.inputs, fights).ok || parsed.inputs.some(i => i.tick > parsed.tick) || (parsed.awaitingContinue !== undefined && typeof parsed.awaitingContinue !== "boolean")) throw new Error("LOCAL_RECOVERY");
+      if (!release || !Number.isSafeInteger(parsed.tick) || parsed.tick < 0 || parsed.tick > fights * (release.ruleset.maxTicks + 1) || !release.validateInputs(parsed.inputs, fights).ok || parsed.inputs.some(i => i.tick > parsed.tick) || (parsed.awaitingContinue !== undefined && typeof parsed.awaitingContinue !== "boolean") || (parsed.ended !== undefined && typeof parsed.ended !== "boolean")) throw new Error("LOCAL_RECOVERY");
       return parsed;
     } catch { this.error = "LOCAL_RECOVERY"; this.paused = true; return null; }
   }
 
   private acceptResolved(battle: TrainingBattle, events?: BattleEvent[]) {
+    this.legacyCheckpoint = false;
     this.battle = battle;
     this.inputs = battle.inputs;
     this.events = events ?? [];
@@ -189,15 +211,17 @@ export class TrainingSession {
   /** Reanuda un intento abierto desde el log local, si lo hay. Un log corrupto se olvida
    *  y el combate arranca desde el tick 0 (el motor ya está construido en tick 0). */
   private restoreLocal() {
+    this.legacyCheckpoint = false;
     const log = this.loadLocal();
     if (!log) return;
     try {
       this.inputs = log.inputs;
-      while (this.view && !this.view.ended && this.view.tick < log.tick) {
+      while (this.view && !this.view.ended && (this.view.tick < log.tick || (log.ended === true && this.view.tick === log.tick))) {
         const next = this.advance!(this.inputs.filter(i => i.tick === this.view!.tick));
         this.events.push(...next.events);
         this.view = next.view;
       }
+      if (log.ended === true && !this.view?.ended) throw new Error("LOCAL_RECOVERY");
       this.visualFromTick = this.view?.tick ?? 0;
       if (this.view?.ended) {
         this.phase = "resolving";
@@ -206,6 +230,7 @@ export class TrainingSession {
       } else {
         this.paused = true;
         this.awaitingContinue = log.awaitingContinue ?? this.events.at(-1)?.type === "FIGHT_ENDED";
+        this.legacyCheckpoint = !Object.hasOwn(log, "ended");
       }
     } catch {
       this.forget();
@@ -220,6 +245,7 @@ export class TrainingSession {
   async start(fresh = false) {
     if (this.pending || (this.phase !== "idle" && !(fresh && this.phase === "done"))) return;
     this.error = null;
+    this.legacyCheckpoint = false;
     const recovering = !fresh && !this.intent && this.restoreIntent();
     if (this.error) return;
     if (fresh || !this.intent) { this.intent = this.newId(); this.intentEnemy = this.enemyId; }
@@ -229,11 +255,11 @@ export class TrainingSession {
     this.pending = true;
     try {
       const resuming = this.intentEnemy === "";
-      const response = resuming && this.actions.resume
-        ? await this.actions.resume(this.intent!)
+      const response = await requestTraining(() => resuming && this.actions.resume
+        ? this.actions.resume(this.intent!)
         : resuming && this.options.kind === "adventure"
           ? {ok:false as const, code:"RESUME_UNAVAILABLE"}
-          : await this.actions.start(this.intent!, this.intentEnemy);
+          : this.actions.start(this.intent!, this.intentEnemy));
       if (!response.ok && resuming && ["UNKNOWN_ENEMY", "INVALID_INTENT", "NOT_FOUND"].includes(response.code)) { this.forget(); this.intent = null; }
       if (!response.ok) throw new Error(response.code);
       const b = response.battle;
@@ -274,7 +300,13 @@ export class TrainingSession {
   }
 
   /** Cierra el interludio entre tramos y deja que el reloj vuelva a correr. */
-  continueFight() { if (this.active && this.awaitingContinue) { this.awaitingContinue = false; this.save(); } }
+  continueFight() {
+    if (this.active && this.awaitingContinue) {
+      this.awaitingContinue = false;
+      this.legacyCheckpoint = false;
+      this.save();
+    }
+  }
 
   tick() {
     if (!this.active || this.paused || this.hidden || this.ultiOpen || this.awaitingContinue) return;
@@ -310,7 +342,8 @@ export class TrainingSession {
     if (this.pending || !this.intent || !["resolving", "resolve-error"].includes(this.phase)) return;
     this.pending = true; this.phase = "resolving"; this.error = null;
     try {
-      const response = await this.actions.resolve(this.intent, this.inputs.map(i => ({ ...i, payload: { ...i.payload } })));
+      const inputs = this.inputs.map(i => ({ ...i, payload: { ...i.payload } }));
+      const response = await requestTraining(() => this.actions.resolve(this.intent!, inputs));
       if (!response.ok) throw new Error(response.code);
       this.acceptResolved(response.battle, response.events);
       if (!this.pointerKey()) this.forget();
@@ -321,9 +354,10 @@ export class TrainingSession {
   async replay() {
     if (this.pending || !this.intent || this.phase !== "done") return;
     this.pending = true; this.error = null;
+    this.legacyCheckpoint = false;
     this.paused = false;
     try {
-      const response = await this.actions.replay(this.intent);
+      const response = await requestTraining(() => this.actions.replay(this.intent!));
       if (!response.ok) throw new Error(response.code);
       if (!response.events) throw new Error("REPLAY_UNAVAILABLE");
       this.battle = response.battle;

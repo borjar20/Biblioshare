@@ -11,7 +11,10 @@
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
-> reverificada el 2026-10-01]**
+> y errores/checkpoints finales y anteriores de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01;
+> frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292);
+> filtros de tipo reverificados contra código y navegador local el 2026-10-02 (#1295);
+> cuota de altas Google Books verificada en local/dev/prod y CI el 2026-10-02 (#1237)]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -165,6 +168,75 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
 
+- [x] **#1295 — filtros de tipo dentro de su contenedor.** `TypePills` permite
+  saltos de línea conservando textos, tamaños y destinos en Buscar y alta manual.
+  Corrección verificada en la propuesta: ocho casos de QA y cuatro E2E durables
+  contra build/start local a 320/1280 px, más lint y typecheck PASS.
+  Evidencia: `docs/testing/2026-10-02-search-type-pills-1295.md`.
+
+- [x] **#1292 — impedir que un identificador cambie el endpoint de OpenLibrary.**
+  Validación de work keys/ISBN y segmentos codificados implementados; 80 pruebas
+  focales, 256 de módulos afectados, lint y typecheck PASS local el 2026-10-02.
+  CI: 3950 unitarios y 67 casos de navegador PASS; CodeQL sin resultados. Evidencia:
+  `docs/testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md`.
+
+- [x] **#1116 — contrato verdadero de resultados históricos.** `fight` opcional
+  en replay, entrenamiento y resolución de aventuras; resultados y releases
+  congelados conservados. 46 unitarios y typecheck PASS. Evidencia:
+  `docs/testing/2026-10-01-historical-replay-result-types-1116.md`.
+
+- [x] **#1110 — abortar el guardado si falla una lectura previa del pase.**
+  Fechas y reseña previa comprobadas antes de escribir; 27 unitarios PASS.
+  Evidencia: `docs/testing/2026-10-01-pass-prerequisite-reads-1110.md`.
+
+- [x] **#1171 — distinguir errores y acciones del entrenamiento.** Conexión,
+  sesión caducada y combate incompatible; reautenticación y recuperación de
+  decisiones verificadas con 70 unitarios y 12 recorridos contra build/start.
+  Evidencia: `docs/testing/2026-10-01-training-error-actions-1171.md`.
+
+- [x] **#1281 — checkpoint del tick final.** Los nuevos checkpoints terminados
+  recuperan y resuelven el mismo resultado sin otro paso de juego; 79 unitarios
+  y dos recorridos de navegador PASS. Evidencia:
+  `docs/testing/2026-10-01-terminal-checkpoint-1281.md`.
+
+- [x] **#1284 — checkpoints antiguos sin marca de final.** Aviso de recuperación
+  y continuación explícita con el mismo intento e inputs; 81 unitarios, diez
+  casos de QA y dos regresiones E2E durables PASS. Evidencia:
+  `docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.
+
+- [x] **#1208 — recursos y prioridades del hero.** Backdrops TMDB adaptados
+  a su familia de tamaños, una prioridad explícita alta y recurso compartido
+  entre portada/fondo de libro. 18 unitarios y 30 recorridos contra build/start
+  local; evidencia en `docs/testing/2026-10-01-hero-images-1208.md`.
+  El visor compartido se resuelve en #1278, debajo.
+
+- [x] **#1287 — contrato de recursos del E2E del hero.** Compara las URLs
+  seleccionadas, su identidad y prioridad; conserva peticiones duplicadas
+  sin confundir el routing sintético con la caché HTTP. Evidencia en
+  `docs/testing/2026-10-01-hero-resource-contract-1287.md`.
+
+- [x] **#1278 — cargar el original solo al ampliar una imagen.** El visor
+  nativo conserva Escape, cierre por clic, foco y reapertura; solo monta la
+  URL que se ha pedido abrir. 16 recorridos contra build/start cubren fichas,
+  perfil y club en móvil/escritorio. Evidencia y límites:
+  `docs/testing/2026-10-01-image-zoom-loading-1278.md`.
+
+- [x] **#1271 — conservar el destino administrativo al pedir login.** El proxy
+  recuerda subruta y filtros del anónimo; layout y RPC conservan el gate de
+  rol. 22 unitarios y ocho recorridos en dev y build/start local verificados;
+  evidencia en `docs/testing/2026-10-01-admin-login-return-1271.md`.
+
+- [x] **#1274 — lecturas de sesión de Ajustes detrás de su frontera de carga.**
+  `loading.tsx` aporta el shell estático; se retiran los opt-outs de página y
+  layout. Seis recorridos pasan tanto en dev como contra build/start local,
+  sin el error de prerender de Ajustes; evidencia en
+  `docs/testing/2026-10-01-ajustes-suspense-1274.md`.
+
+- [x] **#875 — referencias de eventos en fusiones de libros.** SQL cubre
+  lanzamiento y relaciones de fecha destacada; el reconciliador cuenta ambos
+  como rastro de usuario. Regresiones con rollback en local/dev y definición/
+  permisos verificados en producción; evidencia en `docs/testing/2026-10-01-merge-eventos-875.md`.
+
 - [x] **#1234 / #1233 / #1232 / #1181 / #1180 / #1179 — lote de parches de
   dependencias.** Lock coherente con Next/eslint 16.3.8, Sharp 0.35.4 y cierres
   de seguridad; instalación, unitarios, build y smoke verificados. Auditoría
@@ -187,6 +259,11 @@ prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada
   el build de producción local, tres unitarios y el smoke de seis rutas
   verificaron el recorrido, incluida la privacidad de notas y una salida
   temprana.
+
+- [x] **#1073 — comprobar el arranque automático de Playwright.** Incidente
+  aislado no reproducido el 2026-10-01: seis arranques con caché previa/limpia,
+  HTTP 200 y formulario visible; sin elevar el límite de 120 s.
+  Evidencia: `docs/testing/2026-10-01-playwright-startup-1073.md`.
 
 - [x] **#1174 — esperar al destino efectivo tras iniciar sesión.** Tres
   aserciones comparan pathname y query del destino; comprobadas en navegador
@@ -354,6 +431,9 @@ Lo cerrado, con la migración o el fichero que lo sostiene:
   a libro) más el barrido de reconciliación.
 - [x] **Google Books como enriquecedor**, no como fuente primaria: sinopsis en español y, en
   último recurso, alta por ISBN cuando OpenLibrary no lo conoce.
+- [x] Acotar las altas nuevas de Google Books por cuenta sin penalizar reutilizaciones
+  (#1237): local/dev/CI verificados y SQL aplicado en prod; entrega mediante
+  PR #1291 con los checks obligatorios del commit de entrega antes del merge.
 - [x] **Cobertura e2e de los tres flujos nuevos** (`e2e/obra-edicion-representacion.spec.ts`,
   2026-08-28): alta desde `/buscar` dejando procedencia en `repr_meta`, identificar la edición
   eligiendo una candidata en vivo, e importar un CSV con ISBN poblando `passes.edition_id`. Los

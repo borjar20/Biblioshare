@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -118,6 +118,251 @@ navegador" tras implementar una feature de UI.
   `qa-verifier`.
 - Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
   archivos) la sigue haciendo el agente directamente, como siempre.
+
+### Arranque automático en Windows (#1073)
+
+`playwright.config.ts` reutiliza el servidor que ya escuche en 3000 y, si no
+hay ninguno, ejecuta `npm run dev` con un límite de 120 s. Para uno o dos
+specs no es obligatorio arrancarlo a mano. Conserva un único servidor y el
+Node admitido por `package.json`/`.nvmrc`; comprueba el ejecutable del proceso
+de Next, porque el shim de npm de Windows puede usar otro Node.
+
+El incidente aislado de #1073 no se reprodujo el 2026-10-01: seis arranques
+automáticos, tres con caché previa y tres sin `.next`, escucharon en
+1,71–1,94 s y sirvieron `/login` con HTTP 200 en 3,16–8,55 s. Cada pasada
+comprobó en Chromium el formulario visible y terminó su servidor. La caché
+previa se apartó y restauró; no se aumentó el timeout.
+
+Esto verifica el arranque actual, no toda la suite ni la causa del incidente
+de septiembre. El control inicial de los cinco tests dio un PASS y cuatro
+FAIL; con `localhost` y onboarding completo dio cuatro PASS y un FAIL de
+redirección (#1271). Las sospechas #1272/#1273 se descartan bajo esas
+precondiciones. El flujo de Ajustes pasó incluso cuando registraba el error
+de prerender de #1274; su corrección posterior aporta una frontera de carga
+propia y pasa seis recorridos en dev y seis contra build/start local, sin ese
+error. La redirección de #1271 no formó parte de ese lote de seis: su arreglo
+posterior conserva subruta/filtros y pasa ocho recorridos en dev y ocho en
+build/start local, incluidos los rechazos del usuario sin rol admin.
+Entorno, controles y evidencia: [verificación de #1073](testing/2026-10-01-playwright-startup-1073.md).
+Corrección y límites: [Ajustes con Suspense](testing/2026-10-01-ajustes-suspense-1274.md).
+Retorno tras login: [destino administrativo](testing/2026-10-01-admin-login-return-1271.md).
+
+### Cuota de altas nuevas de Google Books (#1237)
+
+`e2e/ci/google-volume-quota.spec.ts` cubre el rechazo de la alta 61,
+reintento tras vencer la hora, reutilización de una fila existente y el
+mensaje distinto de la cuota de peticiones, a 320/1280 px. Sólo se simulan
+proveedores para ISBN sintéticos registrados por el caso; login, acciones,
+RPC y contadores son reales. El aviso comparte celda con la tarjeta y queda
+asociado mediante `aria-describedby`. Las credenciales no se guardan en traces; cada actor y sus
+filas se limpian por REST y SQL, con Auth 404 y residuos a cero.
+
+El SQL añade 41 checks y un comprobador de dos carreras con bloqueos reales
+a `scripts/db/verify.mjs`. En el head integrado `b94d0dad`, la última tanda
+local pasa los cuatro casos permanentes contra un build nuevo Node24 en
+24,814 s, sin FAIL/SKIP/flaky/reintentos: 28 fuentes estables y cuatro actores
+Auth 404, ocho tablas y cuotas/catálogo propios a cero. Las tandas anteriores
+de ocho y cuatro casos se conservan como historia, sin sumarlas a esta.
+
+La CI de ese head pasa 3956 unitarios en 407 archivos y 75 casos de navegador,
+incluidos los cuatro de cuota. Tanto critical-flows como el bootstrap
+independiente pasan 41 checks SQL, dos carreras y 272 pasos, con cleanup
+correcto; el generador pasa 7/7 y CodeQL tiene cero resultados en la ref de
+la PR. Los ocho checks son SUCCESS. El SQL está aplicado y sus objetos,
+permisos y RLS verificados en prod. La entrega mediante PR #1291 exige
+los checks obligatorios del commit de entrega antes del merge. La prueba no
+valida la existencia del ID remoto ni su hidratación canónica (#1290),
+y el componente de añadir sin consumidor publicado sólo queda cubierto por unitarios.
+Evidencia, fallos conservados y límites:
+[cuota de Google Books](testing/2026-10-02-google-books-creation-quota-1237.md).
+
+### Imágenes del hero (#1208)
+
+`e2e/ci/hero-images.spec.ts` crea cinco obras propias en Supabase local y
+comprueba las peticiones de imágenes de película/serie, libro Google Books,
+OpenLibrary y portada TMDB. Usa 375px/DPR 1, 2 y 3, y 640/1024/1600px/DPR 1.
+El contrato es: una prioridad explícita alta, bucket de backdrop suficiente,
+identidad independiente de portada y fondo para película/serie, misma URL
+efectiva para portada/fondo del libro y dimensiones sin desbordar. El conjunto
+de URLs solicitadas debe coincidir con esos recursos: una URL adicional falla.
+Los 30 casos pasan contra build/start, sin reintentos, y borran sus cinco filas.
+
+Las imágenes sintéticas se interceptan por la marca propia; esto verifica
+URL y selección responsive. `page.route()` desactiva la caché HTTP; varias
+peticiones de la misma URL quedan en el adjunto y no prueban un fallo de
+reutilización. No se miden caché real, ahorro de bytes ni LCP del CDN.
+Los tamaños w300/w780/w1280 también respondieron HTTP 200 en un HEAD público
+acotado. El original de `ImageZoom` es una superficie distinta de las dos
+imágenes visibles; #1278 difiere su montaje hasta abrir el visor. Evidencia
+del hero, fallos iniciales del test y límites:
+[recursos del hero](testing/2026-10-01-hero-images-1208.md).
+Corrección del contrato de la prueba y FAIL de CI conservado:
+[URLs seleccionadas y caché HTTP](testing/2026-10-01-hero-resource-contract-1287.md).
+
+### Original del visor de imágenes (#1278)
+
+`e2e/ci/image-zoom-loading.spec.ts` comprueba película TMDB, libro Google
+Books, avatar Storage y portada de club en móvil/escritorio, cerrando por
+Escape y por clic. Son 16 casos contra build/start, incluidos automáticamente
+por `playwright.ci.config.ts`. Crean dos obras, un club y un actor propios
+en Supabase local, y verifican su borrado por REST y Auth 404 al terminar.
+
+Antes de abrir, el diálogo no tiene imagen original. Para los tres orígenes
+con miniatura distinta no existe petición de la URL original; al abrir se
+sirve esa URL completa. El diálogo es modal, tiene nombre accesible, devuelve
+el foco al disparador y reabre sin peticiones adicionales. El club ya usa la
+URL completa en su portada visible: allí no se atribuye ahorro de red al visor.
+Solo se interceptan recursos sintéticos propios; no se miden bytes ni LCP.
+El guard para cambios de `src` se revisa por lectura, sin simular esa edición
+en el navegador. Evidencia, FAIL conservados y limpieza:
+[original del zoom](testing/2026-10-01-image-zoom-loading-1278.md).
+
+### Errores y recuperación del entrenamiento (#1171)
+
+`e2e/ci/training-errors.spec.ts` cubre seis causas en 320 y 1280 px contra
+build/start: conexión al iniciar, sesión caducada al iniciar y al resolver,
+versión desconocida, snapshot inválido y mascota ausente. Usa acciones reales,
+cookies reales y un actor propio en Supabase local; no simula respuestas RSC.
+Comprueba mensaje/acción, destino y foco del login, intent/decisiones, conservación
+de la partida incompatible y una resolución con los mismos inputs tras volver
+a autenticarse. Recuperar un checkpoint abierto mantiene la pausa intencionada.
+
+Son 12 casos sin reintentos, con cero errores de página/desbordamiento. Los
+70 unitarios de sesión/panel cubren además UNAVAILABLE, replay, aventuras y
+LOCAL_RECOVERY. La pasada final y el barrido agregado de once actores verifican
+Auth 404 y ocho superficies vacías, sin tocar cuentas persistentes. FAIL previos,
+recuperación del tick final corregida por #1281 y límites de aquella entrega:
+[errores del entrenamiento](testing/2026-10-01-training-error-actions-1171.md).
+
+### Recuperación de un combate ya terminado (#1281)
+
+El checkpoint nuevo guarda su estado final y reconstruye también el último
+tick sólo si había terminado. Los abiertos, los interludios de aventura y
+los logs antiguos sin marca siguen recuperándose en pausa; un marcador
+incoherente sigue el camino LOCAL_RECOVERY.
+
+79 pruebas de sesión/panel/errores pasan, con finales por KO y por límite,
+las cuatro versiones conservadas y compatibilidad legacy. Los dos casos
+`resolution-authentication` del spec anterior ahora exigen resultado tras
+una sola pulsación, sin otro tick manual: misma fila, intent, inputs y digest
+idéntico a la repetición real. Pasan en 320/1280 px contra build/start local.
+Cuatro actores propios ausentes de Auth y ocho superficies a cero; 3000 libre.
+El formato anterior recibe el tratamiento explícito de #1284, debajo.
+Evidencia de aquella entrega: [checkpoint final](testing/2026-10-01-terminal-checkpoint-1281.md).
+
+### Recuperación de checkpoints anteriores (#1284)
+
+Un log válido sin `ended` que se reconstruye abierto conserva la pausa y
+explica su recuperación. Salir/volver/recargar antes de continuar conserva
+el aviso y el formato anterior. La acción existente «Continuar» consume el
+aviso y normaliza de inmediato el checkpoint, con el mismo intento e inputs.
+No se infiere el final ambiguo ni se reanuda automáticamente una partida.
+
+81 unitarios de sesión/panel/errores pasan. Diez casos reales en 375/1280 px
+contra un build nuevo comprueban el abierto/final antiguo, sus equivalentes
+modernos y corrupción. El final r2.2 con una habilidad real conserva fila,
+intent, inputs, resultado y digest tras reautenticarse y continuar; los logs
+sin marca permanecen en pausa hasta esa elección. Aviso y controles legibles,
+cero errores de página/desborde, siete actores Auth 404 y ocho superficies a
+cero. El interludio se cubre por unitarios, sin prometer un E2E de aventura.
+FAIL de preparación, artefactos y límites:
+[formato anterior](testing/2026-10-01-legacy-checkpoint-recovery-1284.md).
+
+El spec CI de errores conserva sus doce casos y añade dos regresiones del
+final antiguo r2.2, 320/1280 px. Ambos pasan contra el mismo build, con
+conservación del log tras recargar y resultado/digest real tras continuar.
+El reloj de cada pausa se obtiene del navegador, después de mostrar la UI;
+usar Date.now de Node tras runFor puede intentar pausar en el pasado.
+Limpieza conjunta de las nueve cuentas de preparación/QA/regresión verificada.
+
+### Lecturas previas al guardar un pase (#1110)
+
+`src/lib/passes/actions.test.ts` fuerza por separado el fallo de lectura de
+fechas al cerrar y el de reseña previa al editar. Ambos deben devolver
+`generic`, sin escrituras, avisos de menciones ni revalidación. La lectura
+de reseña permanece antes del guardado para calcular sólo las menciones nuevas.
+
+El lote focalizado con `get-passes.test.ts` pasa 27 casos, incluidos los
+contratos de #657 y la diferencia entre error y consulta vacía correcta.
+Los formularios existentes conservan la edición abierta y muestran el error.
+Esta comprobación de interfaz es por código; el fallo se reproduce con un
+cliente controlado, sin simular una avería de Supabase en producción.
+Evidencia: [lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
+
+### Contrato de resultados históricos de combate (#1116)
+
+El resultado compartido de `replayBattle`, `TrainingBattle` y la resolución
+de aventuras acepta `fight` opcional: r2.2/r3.1 no guardaban ese campo.
+Las versiones congeladas mantienen sus tipos y sus resultados originales.
+Los adaptadores ya no fuerzan sus retornos al tipo de una versión posterior.
+
+El lote de replay, releases, entrenamiento histórico, servicio de entrenamiento
+y servicio de aventuras pasa 46 casos. Las assertions de tipo se verifican
+con `tsc --noEmit`, no con el mero transpile de Vitest. Los fixtures normativos
+de r2.2/r3.1/r4.2 conservan resultado, eventos y digest exactos; el control de
+releases conserva los cuatro manifiestos. No se transforma ningún payload.
+El RED de tipos, el reporte nativo y los límites están en
+[resultados históricos](testing/2026-10-01-historical-replay-result-types-1116.md).
+
+### Frontera de endpoints de OpenLibrary (#1292)
+
+`src/lib/catalog/openlibrary/endpoint-boundaries.test.ts` llama a las seis
+funciones públicas de obra y a `resolveWorkKey`/`lookupIsbn`, con un spy de
+`fetch`. Rutas relativas, query, fragmentos, escapes, barras invertidas,
+URLs absolutas y tipos incompatibles deben devolver la salida vacía existente
+sin ninguna petición. Mantener el hostname no basta: se comprueba también
+que el identificador no pueda cambiar el endpoint.
+
+Los controles positivos conservan `OL45804W`, `works/OL45804W`,
+`/works/OL45804W` y la forma histórica `/OL45804W`; todas se normalizan a
+`OL45804W`, dentro del formato `OL[0-9]+W`. Los ISBN-10/13 se normalizan y validan por checksum,
+incluidos guiones y `x` final. La work key devuelta por el proveedor se valida
+antes de pedir la obra. Se verifican las URLs exactas, las cachés existentes,
+los límites de paginación, la tolerancia a una página fallida y el fallback
+a los datos de edición. `fetch` conserva las redirecciones por defecto para
+el recorrido legítimo ISBN→edición.
+
+El 2026-10-02, con Node 24.19.0, pasan 80 pruebas focales en cinco archivos
+y 256 de módulos afectados en dieciséis, con cero FAIL y cero pendientes;
+lint focal y `tsc --noEmit` también pasan. El RED de 57 PASS/16 FAIL queda
+conservado. Son pruebas locales con respuestas controladas: no comprueban
+la disponibilidad de OpenLibrary ni los redirects de un proveedor
+comprometido. La CI de entrega pasa 3950 unitarios, 67 casos de navegador y
+CodeQL sin resultados; el informe identifica el head y sus límites. Evidencia y sello:
+[frontera de endpoints](testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md).
+
+### Filtros de tipo en Buscar y alta manual (#1295)
+
+`TypePills` permite saltar de línea cuando sus tres enlaces no caben.
+El baseline de Buscar a 320 px sobresalía 9,17 px de su contenedor, aunque
+documento y body seguían midiendo 320 px. El cambio conserva textos,
+dimensiones de cada enlace, selección y destinos; no reduce ni recorta el
+control para hacerlo caber.
+
+La QA contra build/start local pasa ocho casos: Buscar con query vacía,
+corta y larga, más el formulario manual real, cada uno a 320/1280 px.
+Después de `document.fonts.ready`, comprueba enlaces dentro del contenedor
+y documento/body dentro del viewport, con cero FAIL, SKIP, flaky y retries.
+Un actor temporal collaborator acredita la ruta y campos del alta manual;
+las ocho capturas se inspeccionaron. Contenedor y scrollWidth de Buscar son
+288 px en móvil; el formulario manual conserva sus 400 px máximos en escritorio.
+
+La regresión durable `e2e/ci/search-type-pills.spec.ts` pasa cuatro casos
+contra el mismo build, verificando geometría, selección y navegación de
+teclado por las tres opciones. Se recoge por el glob existente de
+`playwright.ci.config.ts`, sin modificar la configuración. Para repetirla:
+
+```sh
+npx playwright test e2e/ci/search-type-pills.spec.ts --config=playwright.ci.config.ts
+```
+
+Los ocho casos de QA y los cuatro del spec son tandas distintas. Lint focal,
+TypeScript y listado del spec pasan; el listado no sustituye su ejecución.
+Limpieza local verificada: actor Auth 404 y ocho tablas/cuotas/obras/pases
+a cero, Supabase detenido con backup conservado y puerto 3000 libre.
+Antes de mergear la PR deben pasar sus checks obligatorios. Baseline, FAIL
+del harness conservados, artefactos y límites de esta verificación local:
+[filtros de tipo](testing/2026-10-02-search-type-pills-1295.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

@@ -1,4 +1,5 @@
-import type { BattleEvent, BattleInput, BattleResult, BattleSnapshot } from "../battle/types";
+import type { BattleEvent, BattleInput, BattleSnapshot } from "../battle/types";
+import type { ReplayBattleResult } from "../battle/replay";
 import type { TrainingBattle } from "../training/types";
 import type { LootCopy, LootSelection, PetLoadout } from "../loot/types";
 import type { Reward } from "../loot/catalog";
@@ -10,7 +11,7 @@ export interface AdventureState { pendingDays: string[]; current: AdventureBattl
 export type AdventureResponse = { ok: true; battle: AdventureBattle; events?: BattleEvent[] } | { ok: false; code: string };
 
 export interface StartInput { intentId: string; seed: string; enemyId: string; rulesetVersion: string; contentHash: string; snapshot: BattleSnapshot }
-export interface ResolveInput { intentId: string; inputs: BattleInput[]; result: BattleResult; digest: string; rewardOrder: Reward[] }
+export interface ResolveInput { intentId: string; inputs: BattleInput[]; result: ReplayBattleResult; digest: string; rewardOrder: Reward[] }
 
 /** Acotado a un usuario autenticado antes de construir el servicio. Las escrituras son las funciones SQL de §6. */
 export interface AdventureRepository {

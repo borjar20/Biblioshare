@@ -21,6 +21,47 @@ function setup() {
   return { actions, session: new TrainingSession(actions, () => String(++id)) };
 }
 describe("training session", () => {
+  it.each([
+    new TypeError("Failed to fetch"),
+    new DOMException("The request was aborted", "AbortError"),
+    new Error("Failed to fetch"),
+  ])("normalizes a rejected request to NETWORK and retains its intent", async error => {
+    const { session, actions } = setup();
+    session.selectEnemy("caparazon");
+    actions.start.mockRejectedValueOnce(error);
+    await session.start();
+    expect(session.error).toBe("NETWORK");
+    expect(session.phase).toBe("idle");
+    await session.start();
+    expect(actions.start.mock.calls.map(call => call.slice(0, 2))).toEqual([["1", "caparazon"], ["1", "caparazon"]]);
+  });
+  it.each(["UNAVAILABLE", "UNKNOWN_RELEASE", "INVALID_SNAPSHOT"])("preserves the explicit server code %s", async code => {
+    const { session, actions } = setup();
+    actions.start.mockResolvedValueOnce({ ok: false, code });
+    await session.start();
+    expect(session.error).toBe(code);
+    await session.start();
+    expect(actions.start.mock.calls.map(call => call[0])).toEqual(["1", "1"]);
+  });
+  it("normalizes a rejected resolution without changing the inputs or intent", async () => {
+    const { session, actions } = setup();
+    await session.start(); session.skill(); while (session.phase === "playing") session.tick();
+    actions.resolve.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await session.resolve();
+    expect(session.phase).toBe("resolve-error"); expect(session.error).toBe("NETWORK");
+    const first = structuredClone(actions.resolve.mock.calls[0]);
+    await session.resolve();
+    expect(actions.resolve.mock.calls[1]).toEqual(first);
+  });
+  it("normalizes a rejected replay while retaining the completed battle", async () => {
+    const { session, actions } = setup();
+    await session.start(); session.phase = "done";
+    const original = structuredClone(session.battle);
+    actions.replay.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await session.replay();
+    expect(session.error).toBe("NETWORK"); expect(session.phase).toBe("done");
+    expect(session.battle).toEqual(original);
+  });
   it("retains an adventure result through detached resolution and recovers by intent until acknowledged", async () => {
     const storage = memoryStorage(); const {actions} = setup();
     const options = {storage, userId:"alice", kind:"adventure" as const};
@@ -57,10 +98,46 @@ describe("training session", () => {
     expect(restored.battle?.intentId).toBe("same-intent");
     expect(restored.view).toEqual(first.view);
     expect(restored.inputs).toEqual(first.inputs);
+    expect(restored.legacyCheckpoint).toBe(false);
     restored.tick(); expect(restored.view?.tick).toBe(2); expect(restored.paused).toBe(true);
+    const legacy = JSON.parse(storage.map.get("pet-training:alice:same-intent")!);
+    delete legacy.ended;
+    storage.setItem("pet-training:alice:same-intent", JSON.stringify(legacy));
+    const restoredLegacy = new TrainingSession(actions, () => "must-not-create", options);
+    await restoredLegacy.start();
+    expect(restoredLegacy.paused).toBe(true);
+    expect(restoredLegacy.legacyCheckpoint).toBe(true);
+    expect(restoredLegacy.view).toEqual(first.view);
     const other = new TrainingSession(actions, () => "bob-intent", { ...options, userId: "bob" });
     await other.start(); expect(other.battle?.intentId).toBe("bob-intent"); expect(other.view?.tick).toBe(0);
     expect(storage.getItem("pet-training:alice:current")).not.toContain("snapshot");
+  });
+  it("keeps an open checkpoint without ended as legacy until its existing Continue action", async () => {
+    const storage = memoryStorage(); const { actions } = setup();
+    const options = { storage, userId: "alice", kind: "training" as const };
+    const first = new TrainingSession(actions, () => "legacy-open", options);
+    await first.start(); first.skill(); first.tick(); first.prepareLeave();
+    const key = "pet-training:alice:legacy-open";
+    const oldLog = JSON.parse(storage.getItem(key)!);
+    delete oldLog.ended;
+    storage.setItem(key, JSON.stringify(oldLog));
+
+    const restored = new TrainingSession(actions, () => "must-not-create", options);
+    await restored.start();
+    expect(restored.legacyCheckpoint).toBe(true);
+    expect(restored.paused).toBe(true);
+    const tick = restored.view!.tick;
+    restored.tick(); expect(restored.view!.tick).toBe(tick);
+    expect(JSON.parse(storage.getItem(key)!)).not.toHaveProperty("ended");
+    expect(restored.prepareLeave()).toBe(true);
+    expect(JSON.parse(storage.getItem(key)!)).not.toHaveProperty("ended");
+
+    const restoredAgain = new TrainingSession(actions, () => "must-not-create", options);
+    await restoredAgain.start();
+    expect(restoredAgain.legacyCheckpoint).toBe(true);
+    restoredAgain.togglePause();
+    expect(restoredAgain.legacyCheckpoint).toBe(false);
+    expect(JSON.parse(storage.getItem(key)!)).toMatchObject({ ended: false, inputs: first.inputs });
   });
   it("pauses and cancels unconfirmed ulti even when the checkpoint cannot be saved", async () => {
     const { actions } = setup();
@@ -84,6 +161,7 @@ describe("training session", () => {
     const session = new TrainingSession(actions, () => "new", {storage, kind: "training", userId: "alice"});
     await session.start(); expect(session.error).toBe("LOCAL_RECOVERY");
     expect(session.paused).toBe(true); expect(session.inputs).toEqual([]);
+    expect(session.legacyCheckpoint).toBe(false);
     expect(session.prepareLeave()).toBe(false);
   });
   it("reports a missing checkpoint behind a saved training pointer", async () => {
@@ -298,14 +376,21 @@ describe("chains and local log", () => {
     s.tick(); s.tick();
     expect(s.view!.tick).toBe(before); // el interludio detiene el reloj
     expect(JSON.parse(storage.map.get("pet-adventure:adv-1")!)).toMatchObject({ tick: endedTick + 1 });
-    // Nueva sesión con el mismo almacenamiento: reanuda en pausa, en el mismo tick y esperando Continuar
+    // El formato antiguo mantiene el interludio: su Continuar existente consume el aviso.
+    const legacyLog = JSON.parse(storage.map.get("pet-adventure:adv-1")!);
+    delete legacyLog.ended;
+    storage.setItem("pet-adventure:adv-1", JSON.stringify(legacyLog));
     const s2 = new TrainingSession(actions, () => "ignored", { storage });
     await s2.start();
     expect(s2.paused).toBe(true);
     expect(s2.awaitingContinue).toBe(true);
+    expect(s2.legacyCheckpoint).toBe(true);
     expect(s2.view).toMatchObject({ fight: 2, tick: endedTick + 1 });
     expect(s2.inputs).toEqual(s.inputs);
-    s2.continueFight(); s2.togglePause(); s2.tick();
+    s2.continueFight();
+    expect(s2.legacyCheckpoint).toBe(false);
+    expect(JSON.parse(storage.map.get("pet-adventure:adv-1")!)).toMatchObject({ ended: false });
+    s2.togglePause(); s2.tick();
     expect(s2.view!.tick).toBe(endedTick + 2);
     expect(s2.events.some((e) => e.type === "FIGHT_STARTED")).toBe(true);
   });
@@ -350,7 +435,107 @@ describe("chains and local log", () => {
     expect(s.phase).toBe("resolving");
     expect(s.view?.ended).toBe(true);
     expect(s.paused).toBe(false);
+    expect(s.legacyCheckpoint).toBe(false);
     expect(() => s.tick()).not.toThrow();
+  });
+
+  it.each([
+    ["KO", { ...snapshot, hpMax: 1_000_000, atk: 1 }, "ko"],
+    ["límite", { ...snapshot, hpMax: 1, atk: 1 }, "limit"],
+  ] as const)("un checkpoint real terminado por %s restaura, resuelve y conserva el intento", async (_name, terminalSnapshot, reason) => {
+    const intent = `terminal-${reason}`;
+    const open = { intentId: intent, status: "open" as const, seed: seedFromIndex(0), snapshot: terminalSnapshot, rulesetVersion: RULESET.version, contentHash: CURRENT_HASH, enemyId: "brote", inputs: [], result: null, digest: null };
+    const storage = memoryStorage();
+    const resolved = vi.fn(async (_intent: string, received: unknown[]) => {
+      expect(_intent).toBe(intent);
+      expect(received).toEqual(first.inputs);
+      return { ok: true as const, battle: { ...open, status: "resolved" as const, inputs: structuredClone(first.inputs), result: { outcome: "lose" as const, reason, ticks: first.view!.tick, petHp: first.view!.petHp, petHpMax: first.view!.petHpMax, enemyHp: first.view!.enemyHp, enemyHpMax: first.view!.enemyHpMax, damageDealt: 0, damageTaken: 0, causes: [], fight: 1 }, digest: `digest-${reason}` }, events: [] };
+    });
+    const actions = { start: vi.fn(async () => ({ ok: true as const, battle: open })), resolve: resolved, replay: vi.fn(async () => ({ ok: false as const, code: "x" })) };
+    const options = { storage, userId: "alice", kind: "training" as const };
+    const first = new TrainingSession(actions, () => intent, options);
+    await first.start();
+    while (first.phase === "playing") first.tick();
+    expect(first.view?.ended).toBe(true);
+    expect(first.events.at(-1)).toMatchObject({ type: "BATTLE_ENDED", reason });
+    expect(first.prepareLeave()).toBe(true);
+    const second = new TrainingSession(actions, () => "must-not-create", options);
+    await second.start();
+    expect(second.phase).toBe("resolving");
+    expect(second.paused).toBe(false);
+    expect(second.view).toEqual(first.view);
+    expect(second.battle?.intentId).toBe(intent);
+    expect(second.battle?.seed).toBe(first.battle?.seed);
+    expect(second.inputs).toEqual(first.inputs);
+    await second.resolve();
+    expect(resolved).toHaveBeenCalledTimes(1);
+    expect(second.battle).toMatchObject({ intentId: intent, digest: `digest-${reason}`, inputs: first.inputs });
+  });
+
+  it.each(["r2.2", "r3.1", "r4.1", "r4.2"] as const)("el marcador terminal se restaura con el motor congelado %s", async rulesetVersion => {
+    const { equipment, ...oldSnapshot } = snapshot;
+    void equipment;
+    const versioned = rulesetVersion === "r2.2" ? { ...battle, intentId: `release-${rulesetVersion}` }
+      : rulesetVersion === "r3.1" ? { ...battle, intentId: `release-${rulesetVersion}`, snapshot: oldSnapshot, rulesetVersion, contentHash: await r3Hash() }
+      : rulesetVersion === "r4.1" ? { ...battle, intentId: `release-${rulesetVersion}`, snapshot: oldSnapshot, rulesetVersion, contentHash: hashFor(rulesetVersion) }
+      : { ...battle, intentId: `release-${rulesetVersion}`, snapshot, rulesetVersion, contentHash: CURRENT_HASH };
+    const storage = memoryStorage();
+    const actions = { start: async () => ({ ok: true as const, battle: versioned }), resolve: async () => ({ ok: false as const, code: "x" }), replay: async () => ({ ok: false as const, code: "x" }) };
+    const options = { storage, userId: "alice", kind: "training" as const };
+    const first = new TrainingSession(actions, () => versioned.intentId, options);
+    await first.start(); while (first.phase === "playing") first.tick();
+    expect(first.prepareLeave()).toBe(true);
+    const second = new TrainingSession(actions, () => "must-not-create", options);
+    await second.start();
+    expect(second.view).toEqual(first.view);
+    expect(second.phase).toBe("resolving");
+    expect(second.paused).toBe(false);
+    expect(second.legacyCheckpoint).toBe(false);
+  });
+
+  it.each([
+    ["no booleano", "true"],
+    ["que no llega realmente al final", true],
+  ])("trata un marcador terminal %s como LOCAL_RECOVERY", async (_name, ended) => {
+    const storage = memoryStorage(); const { actions } = setup();
+    storage.setItem("pet-training:alice:one", JSON.stringify({ tick: 0, inputs: [], ended }));
+    storage.setItem("pet-training:alice:current", JSON.stringify({ intent: "one" }));
+    const session = new TrainingSession(actions, () => "new", { storage, userId: "alice", kind: "training" });
+    await session.start();
+    expect(session.error).toBe("LOCAL_RECOVERY");
+    expect(session.paused).toBe(true);
+  });
+
+  it("un final guardado con el formato antiguo sigue recuperable en pausa", async () => {
+    const storage = memoryStorage();
+    const { actions } = setup();
+    const options = { storage, userId: "alice", kind: "training" as const };
+    const first = new TrainingSession(actions, () => "old-final", options);
+    await first.start(); first.skill();
+    while (first.phase === "playing") first.tick();
+    expect(first.inputs.length).toBeGreaterThan(0);
+    expect(first.prepareLeave()).toBe(true);
+    const key = "pet-training:alice:old-final";
+    const oldLog = JSON.parse(storage.getItem(key)!);
+    delete oldLog.ended;
+    storage.setItem(key, JSON.stringify(oldLog));
+
+    const second = new TrainingSession(actions, () => "must-not-create", options);
+    await second.start();
+    expect(second.error).toBeNull();
+    expect(second.phase).toBe("playing");
+    expect(second.paused).toBe(true);
+    expect(second.legacyCheckpoint).toBe(true);
+    expect(second.view?.ended).toBe(false);
+    expect(second.battle?.intentId).toBe("old-final");
+    expect(second.inputs).toEqual(first.inputs);
+    expect(JSON.parse(storage.getItem(key)!)).not.toHaveProperty("ended");
+    second.togglePause(); second.tick();
+    expect(second.legacyCheckpoint).toBe(false);
+    expect(JSON.parse(storage.getItem(key)!)).toMatchObject({ ended: false, inputs: first.inputs });
+    expect(second.phase).toBe("resolving");
+    expect(second.view).toEqual(first.view);
+    expect(second.inputs).toEqual(first.inputs);
   });
 
   it("replaying: FIGHT_STARTED actualiza fight, enemyHp, fase, ulti, escudo y cooldown al repetirse", async () => {

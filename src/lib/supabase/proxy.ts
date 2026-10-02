@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { loginHref } from "@/lib/auth/safe-next";
 
 const AUTH_PATHS = ["/login", "/signup", "/recuperar"];
 const ONBOARDING_PATH = "/onboarding";
@@ -59,6 +60,11 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!userId) {
+    // El layout compartido no conoce la subruta ni sus filtros. Recordamos
+    // aquí el destino exacto; el layout y las RPC conservan la autorización.
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      return redirect(loginHref(pathname + request.nextUrl.search));
+    }
     if (pathname === ONBOARDING_PATH) {
       return redirect("/login");
     }

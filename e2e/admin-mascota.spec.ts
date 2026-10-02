@@ -9,13 +9,29 @@ test("anónimo: /admin/mascota redirige al login con next", async ({ page }) => 
   await expect(page).toHaveURL(/\/login\?next=%2Fadmin%2Fmascota/);
 });
 
+for (const target of ["/admin", "/admin/contenido?kind=comment&status=removed&q=un%20texto"]) {
+  test(`anónimo: conserva el destino administrativo ${target}`, async ({ page }) => {
+    const expected = new URL(target, "https://biblioshare.test");
+    await page.goto(target);
+    await expect(page).toHaveURL((url) => {
+      const next = url.searchParams.get("next");
+      if (url.pathname !== "/login" || !next) return false;
+      const destination = new URL(next, url.origin);
+      // Next puede normalizar %20 a +: importan los valores de los filtros.
+      return destination.pathname === expected.pathname &&
+        destination.searchParams.toString() === expected.searchParams.toString();
+    });
+  });
+}
+
 test("admin: 19 sprites, la escala 3× ensancha el sprite y los controles mueven la animación", async ({ page }) => {
-  await page.goto("/login");
+  // Prueba el retorno tras autenticarse, además de abrir la galería.
+  await page.goto("/admin/mascota");
+  await expect(page).toHaveURL(/\/login\?next=%2Fadmin%2Fmascota$/);
   await page.fill('input[name="email"]', EMAIL);
   await page.fill('input[name="password"]', PASSWORD);
   await page.click('button[type="submit"]');
-  await page.waitForURL("/");
-  await page.goto("/admin/mascota");
+  await page.waitForURL((url) => url.pathname === "/admin/mascota");
   const sprites = page.getByTestId("pet-gallery").getByRole("img");
   await expect(sprites).toHaveCount(19);
   const before = await sprites.first().evaluate((el) => parseFloat(getComputedStyle(el).width));

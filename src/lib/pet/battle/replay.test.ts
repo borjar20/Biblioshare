@@ -1,16 +1,39 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import normative from "./versions/r2.2/normative.json";
+import normativeR3 from "./versions/r3.1/normative.json";
+import normativeR4b from "./versions/r4.2/normative.json";
 import { BATTLE_RELEASES, replayBattle } from "./replay";
 import { resimulate, isBattleSnapshot } from "./record";
 import { RULESET, ENEMIES } from "./content";
 import { canonicalJson } from "./canonical";
 import { sha256Hex } from "./hash";
 import type { BattleRecord } from "./versions/r4.1/types";
+import type { TrainingBattle } from "../training/types";
 type ResimInput = Parameters<typeof replayBattle>[0];
 
 const record = normative.record as BattleRecord;
 
+type ReplaySuccess = Extract<Awaited<ReturnType<typeof replayBattle>>, { ok: true }>;
+
+expectTypeOf<ReplaySuccess["result"]["fight"]>().toEqualTypeOf<number | undefined>();
+expectTypeOf<NonNullable<TrainingBattle["result"]>["fight"]>().toEqualTypeOf<number | undefined>();
+
 describe("retained battle releases (R5)", () => {
+  it.each([
+    ["r2.2", normative],
+    ["r3.1", normativeR3],
+  ] as const)("keeps the retained %s result without a later fight field", async (_version, fixture) => {
+    const out = await replayBattle(fixture.record as unknown as ResimInput);
+    expect(out).toEqual({ ok: true, events: fixture.events, result: fixture.record.result, digest: fixture.digest });
+    if (out.ok) expect(out.result).not.toHaveProperty("fight");
+  });
+
+  it("keeps the r4.2 fight field and normative digest", async () => {
+    const out = await replayBattle(normativeR4b.record as unknown as ResimInput);
+    expect(out).toEqual({ ok: true, events: normativeR4b.events, result: normativeR4b.record.result, digest: normativeR4b.digest });
+    if (out.ok) expect(out.result.fight).toBe(normativeR4b.record.result.fight);
+  });
+
   it("lets the selected future release validate its own snapshot shape", async () => {
     const futureReplay = vi.fn().mockResolvedValue({ ok: false, code: "FUTURE_SNAPSHOT" });
     const future = { ...record, rulesetVersion: "future", contentHash: "future-hash", snapshot: { futureField: 1 } } as unknown as ResimInput;
@@ -49,7 +72,7 @@ describe("retained battle releases (R5)", () => {
     const contentHash = await sha256Hex(canonicalJson({ ruleset, enemies }));
     const nextReplay = vi.fn((input: ResimInput) => {
       if (!isBattleSnapshot(input.snapshot)) return Promise.resolve({ok:false as const,code:"INVALID_SNAPSHOT" as const});
-      return resimulate({...input,snapshot:input.snapshot}, { ruleset, enemies, contentHash });
+      return resimulate({...input,snapshot:input.snapshot} as Parameters<typeof resimulate>[0], { ruleset, enemies, contentHash });
     });
     const releases = [{ rulesetVersion: ruleset.version, contentHash, replay: nextReplay }, ...BATTLE_RELEASES];
     const out = await replayBattle(record, releases);
