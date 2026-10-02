@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada el 2026-10-02 (#1237)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -158,11 +158,21 @@ asociado mediante `aria-describedby`. Las credenciales no se guardan en traces; 
 filas se limpian por REST y SQL, con Auth 404 y residuos a cero.
 
 El SQL añade 41 checks y un comprobador de dos carreras con bloqueos reales
-a `scripts/db/verify.mjs`, ejecutado por el bootstrap de CI. La comprobación
-puntual del candidato final pasa ocho casos contra build/start; los cuatro
-casos permanentes también pasan sin skip ni reintentos. La CI sigue pendiente. La prueba no
-valida la existencia del ID remoto ni su hidratación canónica (#1290), y
-el componente de añadir sin consumidor queda cubierto por unitarios.
+a `scripts/db/verify.mjs`. En el head integrado `b94d0dad`, la última tanda
+local pasa los cuatro casos permanentes contra un build nuevo Node24 en
+24,814 s, sin FAIL/SKIP/flaky/reintentos: 28 fuentes estables y cuatro actores
+Auth 404, ocho tablas y cuotas/catálogo propios a cero. Las tandas anteriores
+de ocho y cuatro casos se conservan como historia, sin sumarlas a esta.
+
+La CI de ese head pasa 3956 unitarios en 407 archivos y 75 casos de navegador,
+incluidos los cuatro de cuota. Tanto critical-flows como el bootstrap
+independiente pasan 41 checks SQL, dos carreras y 272 pasos, con cleanup
+correcto; el generador pasa 7/7 y CodeQL tiene cero resultados en la ref de
+la PR. Los ocho checks son SUCCESS. El SQL está aplicado y sus objetos,
+permisos y RLS verificados en prod. La entrega mediante PR #1291 exige
+los checks obligatorios del commit de entrega antes del merge. La prueba no
+valida la existencia del ID remoto ni su hidratación canónica (#1290),
+y el componente de añadir sin consumidor publicado sólo queda cubierto por unitarios.
 Evidencia, fallos conservados y límites:
 [cuota de Google Books](testing/2026-10-02-google-books-creation-quota-1237.md).
 

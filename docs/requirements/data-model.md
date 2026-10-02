@@ -7,9 +7,13 @@
 > `ON CONFLICT DO NOTHING`, incluso desde otra cuenta, no consume cuota de creación.
 > `PT429` revierte la inserción, su edición automática y el incremento de cuota.
 > Local y dev: 41 comprobaciones con reversión; dos carreras locales reales.
-> Producción pendiente de entrega. Firma, validación de ID, permisos, RLS y
-> capacidades anteriores se conservan; no hay columnas ni backfill nuevos.
-> Evidencia: `docs/testing/2026-10-02-google-books-creation-quota-1237.md`.
+> Aplicada una vez y verificada en producción el 2026-10-02: definición y helper
+> idénticos a dev, ambos triggers activos (`enabled=O`), SECURITY DEFINER y ACL
+> conservadas (`anon=false`, `authenticated=true`); RLS privado activo y sin SELECT
+> para anon/authenticated. Firma, validación de ID y capacidades anteriores se
+> conservan; no hay columnas, backfill ni datos de prueba nuevos en producción.
+> Entrega de UI: PR #1291, con sus checks obligatorios antes del merge.
+> Evidencia: [cuota de Google Books](../testing/2026-10-02-google-books-creation-quota-1237.md).
 
 > **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
 > eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
@@ -51,7 +55,8 @@
 > (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
 > Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
 > existentes. La admisión por número de altas se incorpora en el delta #1237 de
-> 2026-10-02, con su estado de verificación separado arriba.
+> 2026-10-02, aplicado y verificado en dev y prod como se detalla arriba; la gramática
+> y la ACL de esta RPC permanecen idénticas.
 
 > **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
 > firmas con `backdrop_url` y su cuerpo fill-only. La migración

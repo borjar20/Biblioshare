@@ -1,6 +1,6 @@
 # #1237 — cuota de altas nuevas de Google Books
 
-> **[Canónico · verificado en código, SQL local/dev y navegador contra build/start el 2026-10-02; producción y CI pendientes]**
+> **[Canónico · verificado en código, SQL local/dev, navegador contra build/start y CI del head b94d0dad el 2026-10-02; SQL aplicado y verificado en prod; entrega por PR #1291 con checks obligatorios antes del merge]**
 
 ## Contrato
 
@@ -38,9 +38,9 @@ conserva el botón disponible y no marca un alta rechazada como «En tu bibliote
 `AddToLibraryButton` y su acción quedan cubiertos por unitarios; no se atribuye
 un recorrido publicado de añadir ni se introduce un consumidor para probarlo.
 
-## Verificación disponible
+## Tandas históricas anteriores a la integración
 
-Base de trabajo: `89d82e83749350cc761b4a5bdd1d1188a34ff3cb`.
+Base inicial de trabajo: `89d82e83749350cc761b4a5bdd1d1188a34ff3cb`.
 Runtime local explícito: Node 24.19.0, Next 16.3.8, Vitest 4.1.11.
 
 | Superficie | Resultado |
@@ -58,7 +58,7 @@ Runtime local explícito: Node 24.19.0, Next 16.3.8, Vitest 4.1.11.
 | Advisors locales | Ocho antes/después, sin añadidos, eliminados ni cambios |
 | Navegador: candidato final, 320/1280 px | 8 PASS, 0 FAIL, 0 SKIP, 0 flaky, 0 retries |
 | Cobertura permanente de navegador | 4 PASS, 0 FAIL, 0 SKIP, 0 flaky, 0 retries |
-| Producción y CI de la PR | Pendientes de entrega |
+| Producción y CI de la PR en esas tandas | Pendientes entonces; resultado integrado y SQL entregado, debajo |
 
 Los 41 checks prueban 60 altas aceptadas, rechazo de la 61 sin residuos,
 reutilización y aislamiento de cuentas, vencimiento, límites de coste,
@@ -75,7 +75,7 @@ quedan a cero. El objeto real confirma un único cambio en el allowlist,
 el RPC de volumen idéntico, ACL/RLS idénticas y los dos triggers esperados.
 No se escriben datos de prueba en producción.
 
-La comprobación final de navegador usa Node 24.19.0 y el build
+La comprobación de ocho casos del candidato previo usa Node 24.19.0 y el build
 `-3H-UXeHRKnHi4s6cWdAq`. Las ocho pruebas pasan sin reintentos: rechazo de la
 alta 61, vencimiento y reintento sobre la misma tarjeta, límite de peticiones
 con mensaje distinto, reutilización por UUID y enlace de catálogo con ambas
@@ -106,6 +106,90 @@ pendiente viven en [#1290](https://github.com/borjar20/Biblioshare/issues/1290).
 No se atribuye existencia remota al volumen sintético ni un recorrido de
 añadir publicado al componente sin consumidor.
 
+## Verificación integrada y entrega SQL del 2026-10-02
+
+Head verificado: `b94d0dad0ba8c5ea9c2af602d2e2d9be81424040`, integrado con
+main `db265d568d43804166969440c500526bdfed5813`. Las tandas anteriores de
+ocho y cuatro casos y los dos FAIL de CI se conservan; no se suman a esta
+verificación ni se atribuye un PASS a un futuro head documental.
+
+| Superficie del head integrado | Resultado nativo |
+|---|---|
+| Build/start local nuevo, Node 24.19.0 | PASS; BUILD_ID `oobcOzt56D-A60o0uIKZF`, 73/73 páginas |
+| Cuatro casos permanentes locales, 320/1280 px | 4/4 PASS en 24,814 s; 0 FAIL/SKIP/flaky/retries |
+| Identidad local | 28 fuentes RAW/LF, refs y build estables antes/después |
+| Cleanup local independiente | Cuatro actores Auth 404; ocho tablas y cuotas/books/passes/ediciones/claves ISBN propias a cero |
+| CI quality | 3956/3956 unitarios en 407/407 archivos; typegen/tsc PASS; lint 0 errores y 29 avisos |
+| CI critical-flows | Build 73/73; navegador 75/75 PASS, 0 FAIL/SKIP/flaky, incluidos los cuatro casos de cuota |
+| CI SQL en critical-flows y bootstrap independiente | Cada job: 41 aserciones #1237 y dos carreras PASS; 272 pasos de bootstrap, contratos y privilegios PASS |
+| Generador del bootstrap independiente | 7/7 PASS |
+| Cleanup de ambos jobs DB | Supabase stop SUCCESS; upload-artifact omitido sólo por `if: failure()` |
+| Checks de PR #1291 | 8/8 SUCCESS; obligatorios quality/critical-flows SUCCESS; CLEAN/MERGEABLE en esa observación |
+| CodeQL del head integrado | Agregado SUCCESS; JS/TS 87 reglas y Actions 17 reglas, cero resultados; alertas OPEN en `refs/pull/1291/head`: `[]` |
+| SQL en producción | Aplicado una vez; pre/post y soporte PASS, objetos y ACL/RLS idénticos a dev |
+
+La tanda local usa únicamente `e2e/support/ci-providers.cjs` como preload y
+un registro propio de metadatos para ISBN sintéticos. Conserva sin relajar
+las aserciones RSC, la identidad de `openCatalogItem` obtenida del manifest
+nuevo, `aria-describedby`, misma celda, alineación y `noOverflow`. Auth,
+SDK, acciones, RPC y SQL son reales. El cierre termina los servicios propios,
+con backup normal de Supabase y puerto 3000 libre en ese momento; no borra
+fixtures ajenas ni cuentas persistentes. No se atribuyen los 325 px de la
+segunda CI exclusivamente al ajuste de filtros #1295.
+
+Los jobs `quality`, `critical-flows` y `empty-database` ejecutan el commit
+sintético `0913f0041eb7665351542e87006f0def0b96435a`: sus padres son exactamente
+main/head anteriores. CodeQL analiza directamente el head `b94d0dad`.
+Los resultados nativos están en
+[Tests 36987526145](https://github.com/borjar20/Biblioshare/actions/runs/36987526145),
+[bootstrap 36987526072](https://github.com/borjar20/Biblioshare/actions/runs/36987526072)
+y [CodeQL 36987520476](https://github.com/borjar20/Biblioshare/actions/runs/36987520476).
+La ausencia de alertas se limita a la ref de esta PR; no declara resueltas
+todas las alertas globales de main. No se repite ninguna ejecución de CI.
+
+La entrega SQL se comprueba contra los objetos reales de producción
+`vmutcradmodhiltuohys` y dev `tyvzpuhxfwxrnkcpzxyg`: función de cuota idéntica
+a dev, con la única operación nueva prevista de 60/h; RPC de volumen y ACL sin cambios,
+helper `private.enforce_write_quota` idéntico y ambos triggers de cuota activos
+(`enabled=O`). `consume_request_quota` conserva SECURITY DEFINER, EXECUTE
+anon=false/authenticated=true y RLS privado sin SELECT para esos dos roles.
+No hay columnas, backfill ni datos de prueba nuevos en producción. Las 41
+pruebas de comportamiento se ejecutan en local/dev/CI y las dos carreras en
+local/CI; producción se verifica por metadatos, sin fixtures.
+
+**Gate de entrega:** la PR #1291 se integra y cierra #1237 sólo cuando pasan
+los checks obligatorios del commit de entrega. El SQL está verificado en prod;
+#1290 documenta la hidratación canónica, que esta prueba de cuota no acredita.
+`AddToLibraryButton` continúa sin consumidor publicado y su prueba es unitaria.
+
+Los dos sellos finales de esta revisión son independientes de los históricos:
+
+- [QA local integrada](../../.scratch/ticket-campaign/qa1237/integration-1790931572584/result.json):
+  16 artefactos, cero discrepancias; SHA-256 de resultado
+  `30cd01154a4c9caec9df44f35f8c79cd0266ea499447fae2c70b76f0c7554d0e`;
+  [manifiesto](../../.scratch/ticket-campaign/qa1237/integration-1790931572584/sha256.json)
+  `416b8967ef97402a4efc729495e133a42b640af2cddddd263df38b758000d8c3`.
+- [CI integrada](../../.scratch/ticket-campaign/qa1237/ci-integrated-head-b94d0da/verdict.json):
+  20 artefactos, cero discrepancias; SHA-256 de dictamen
+  `b5279719c0ba59acbf98a24b2dd5c7f9804c9e0cea28bfa306639616c23be23a`;
+  [manifiesto](../../.scratch/ticket-campaign/qa1237/ci-integrated-head-b94d0da/manifest.sha256.json)
+  `8ad096de0901b13e402a0dceef6da2c117b5a9816aed67ecebf5dd86706033cb`.
+
+El sello de [entrega SQL de producción](../../.scratch/ticket-campaign/qa1237/root/prod-delivery-20261002-v001/verdict.json)
+contiene 14 artefactos, cero discrepancias; SHA-256 de dictamen
+`87a8ae4af72518f8bbdd40e25f727fddfcd079ff96d0694e857b0541a8dc52a6`
+y del [manifiesto](../../.scratch/ticket-campaign/qa1237/root/prod-delivery-20261002-v001/manifest.sha256.json)
+`d66ba5a4f94bc6123a408cf9572cc57d9a66dd4e23816c833d3210880ef7e192`.
+Incluye `apply-result.json`, `{dev,prod}-pre.json`, `prod-post.json`,
+`check-{pre,post,support}.json` y `{dev,prod}-support.json`, con resultado
+de aplicación y las definiciones/ACL/RLS y estados de triggers antes/después.
+
+Se conserva además `integration-1790931490978/` como
+`FAIL_HARNESS_IDENTITY_METADATA`: el guard comparaba la huella RAW esperada
+del spec con su versión LF. Abortó antes de arrancar servicios, build o
+pruebas; la corrección vive en el harness de la ruta nueva, sin convertir
+EOL ni tocar fuentes o aserciones. No se interpreta como un fallo de producto.
+
 ## Evidencia y fallos conservados
 
 ### Primera CI y corrección de la carga de proveedores
@@ -128,12 +212,15 @@ Las pruebas anteriores de aplicación se conservan, sin atribuirles el build
 fallido de CI ni esta nueva composición.
 
 El check CodeQL también falla con cuatro alertas de OpenLibrary. Los IDs
-2–5 ya están abiertos en `main` desde 2026-09-13 y sus sinks no cambian en
-esta PR. Una reproducción offline de las cuatro funciones reales confirma
+2–5 estaban abiertos en `main` desde 2026-09-13 y sus sinks no cambiaban en
+esa PR. Una reproducción offline de las cuatro funciones reales confirma
 desvío de endpoint/query con `../search.json?q=proof#`, conservando el host
 inicial; no demuestra una fuga interna o redirects externos. Se corrige
-en [#1292](https://github.com/borjar20/Biblioshare/issues/1292), mediante PR
-independiente. No se descartan las alertas ni se afirma el gate completo.
+en [#1292](https://github.com/borjar20/Biblioshare/issues/1292), mediante
+[PR #1294](https://github.com/borjar20/Biblioshare/pull/1294), integrada antes
+del head b94d0dad. Las alertas 2–5 se verificaron FIXED sin dismissals.
+Ese cierre no cambia el FAIL de la primera CI; el gate del nuevo head se
+comprueba por separado arriba.
 
 ### Segunda CI: respuesta del navegador y geometría
 
@@ -163,9 +250,9 @@ la entrada única del manifest del build instalado, sin hardcode ni retener
 el manifest o su clave. Las acciones de fondo quedan fuera del contador.
 Doce controles nativos de la función extraída del spec pasan, incluyendo
 delegación, identidad de Response/Request, errores, otra acción y guards de
-unicidad; lint y TypeScript pasan. Los cuatro recorridos reales del nuevo
-harness aún deben verificarse; las aserciones de cuota y geometría siguen
-intactas.
+unicidad; lint y TypeScript pasan. En ese punto aún faltaban los cuatro
+recorridos reales del nuevo harness; los pasa después la tanda integrada
+documentada arriba. Las aserciones de cuota y geometría siguen intactas.
 
 El control local anterior al clic confirma en Buscar que Series rebasa
 9,17 px su contenedor a 320, incluso con búsqueda vacía. No reproduce los
@@ -234,8 +321,11 @@ Raíz ignorada: `.scratch/ticket-campaign/qa1237/`.
 - `codeql-preexisting-1790927053704/run-1790927120267/`: funciones reales
   con fetch offline, matriz de 44 URLs, fuentes base/head y 11 huellas.
 
-La migración tiene SHA-256
+La migración canónica LF, idéntica al blob aprobado y al SQL entregado, tiene SHA-256
 `955d10fda883d61bb7ac994a166574664163be24d251199c457db27cc2657227`.
+El checkout CRLF tiene SHA-256 RAW
+`067e984650cc3cf0b27c42ada7ddf864da931f515a82ed3adf67f5280cd18353`;
+la diferencia es de EOL, sin cambio de SQL.
 El SQL final tiene SHA-256
 `1f93447aaf932662854982e228b337051c6114ca519a0666197e810e7e443591`.
 El módulo durable de carreras tiene SHA-256
