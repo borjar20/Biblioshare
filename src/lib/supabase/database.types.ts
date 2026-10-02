@@ -4464,6 +4464,43 @@ export type Database = {
         Args: { p_path: string }
         Returns: boolean
       }
+      admin_moderation_photo: { Args: { p_photo_id: string }; Returns: Json }
+      experience_publish: { Args: { p_id: string }; Returns: Json }
+      experience_report: {
+        Args: { p_details?: string; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      experience_unpublish: { Args: { p_id: string }; Returns: Json }
+      get_experience_publication: { Args: { p_id: string }; Returns: string }
+      get_profile_experiences: {
+        Args: {
+          p_after_created?: string
+          p_after_id?: string
+          p_kind?: string
+          p_state?: string
+          p_user_id: string
+        }
+        Returns: {
+          audience: string
+          cover_photo_id: string | null
+          created_at: string
+          creator_id: string
+          ends_on: string | null
+          id: string
+          revision: number
+          shape: string
+          starts_on: string | null
+          state: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "experiences"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
 }
     Enums: {
       activity_kind:

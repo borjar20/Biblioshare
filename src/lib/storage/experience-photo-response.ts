@@ -12,8 +12,15 @@ export async function serveExperiencePhoto(id:string):Promise<Response> {
     const service=createServiceRoleClient();
     const {data:photo,error}=await service.from("experience_photos").select("storage_path,mime_type,status").eq("id",id).maybeSingle();
     if(error||photo?.status!=="ready"||!["image/jpeg","image/png","image/webp"].includes(photo.mime_type)) return missing();
-    const {data:bytes,error:downloadError}=await service.storage.from("experience-photos").download(photo.storage_path);
-    if(downloadError||!bytes||bytes.size>2097152) return missing();
-    return new Response(bytes,{headers:{...PRIVATE_PHOTO_HEADERS,"Content-Type":photo.mime_type,"Content-Length":String(bytes.size)}});
+    return serveAuthorizedExperiencePhoto(photo.storage_path,photo.mime_type);
+  } catch {return missing();}
+}
+export async function serveAuthorizedExperiencePhoto(path:string,mime:string):Promise<Response> {
+  const missing=()=>new Response(null,{status:404,headers:PRIVATE_PHOTO_HEADERS});
+  if(!["image/jpeg","image/png","image/webp"].includes(mime))return missing();
+  try {
+    const {data:bytes,error}=await createServiceRoleClient().storage.from("experience-photos").download(path);
+    if(error||!bytes||bytes.size===0||bytes.size>2097152)return missing();
+    return new Response(bytes,{headers:{...PRIVATE_PHOTO_HEADERS,"Content-Type":mime,"Content-Length":String(bytes.size)}});
   } catch {return missing();}
 }

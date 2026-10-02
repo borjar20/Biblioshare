@@ -2,13 +2,13 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { LockIcon } from "@/components/ui/icons";
 
-export type SectionTab = "actividad" | "estadisticas" | "rincon" | "coleccion";
+export type SectionTab = "actividad" | "estadisticas" | "rincon" | "coleccion" | "experiencias";
 
 // IA del mockup Perfil v2 (plan 05, P2). El dueño no tiene pestaña Colección:
 // su biblioteca es /coleccion. Estadísticas y Rincón son privadas (◍) y solo
 // existen para el dueño; el visitante ve la cara pública: Actividad + Colección.
-const OWNER_TABS: SectionTab[] = ["actividad", "estadisticas", "rincon"];
-const VISITOR_TABS: SectionTab[] = ["actividad", "coleccion"];
+const OWNER_TABS: SectionTab[] = ["actividad", "experiencias", "estadisticas", "rincon"];
+const VISITOR_TABS: SectionTab[] = ["actividad", "experiencias", "coleccion"];
 
 const PRIVATE_TABS: SectionTab[] = ["estadisticas", "rincon"];
 
@@ -25,7 +25,7 @@ export async function SectionTabs({
   const tabs = isOwner ? OWNER_TABS : VISITOR_TABS;
 
   return (
-    <div className="flex gap-6 border-b border-border">
+    <div className="flex gap-4 overflow-x-auto border-b border-border sm:gap-6">
       {tabs.map((tab) => {
         const isActive = tab === active;
         return (

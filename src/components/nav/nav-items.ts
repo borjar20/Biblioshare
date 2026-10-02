@@ -2,6 +2,7 @@ import type { SVGProps } from "react";
 import type { ComponentType } from "react";
 import {
   AcornIcon,
+  CompassIcon,
   GearIcon,
   HomeIcon,
   LibraryIcon,
@@ -98,7 +99,7 @@ export function anonPrimaryNavItems(): NavItem[] {
 // accesos del perfil propio (móvil, donde la entrada es la pestaña Perfil de la
 // barra inferior). Misma lista, dos formas de enseñarla, un solo sitio que tocar.
 export type YouItem = {
-  key: "profile" | "play" | "pet" | "notes" | "stats" | "settings";
+  key: "profile" | "experiences" | "play" | "pet" | "notes" | "stats" | "settings";
   href: string;
   /** Clave de traducción bajo `nav.you`. */
   labelKey: string;
@@ -117,6 +118,7 @@ export function youItems(username: string): YouItem[] {
     // de cinco no se toca (decisión previa), y el anónimo llega por URL o por la
     // PWA — no entra en anonNavItems de momento.
     { key: "play", href: "/partidas", labelKey: "play", Icon: DiceIcon },
+    {key:"experiences",href:"/experiencias",labelKey:"experiences",Icon:CompassIcon},
     // Mascota cuelga de «Tú»: es tuya y no es un destino diario (la compañera
     // flotante lo es). La barra de cinco no se toca (spec 2026-09-02 §7).
     { key: "pet", href: "/mascota", labelKey: "pet", Icon: AcornIcon },

@@ -4536,6 +4536,30 @@ predeterminado solo retira reservas pending antiguas. Nunca elimina fotos ready.
 Sin columnas añadidas a tablas previas; bootstrap manifest de 276 pasos, con
 reconstrucción completa pendiente de la verificación integral.
 
+Publicación y moderación (local/dev 2026-10-02,
+`20261002120712_experiences_social_visibility.sql`): `experience_publish` exige
+creador y audiencia profile, bloquea la raíz y devuelve el mismo post en llamadas
+simultáneas. Índice parcial único por raíz, kind/ancla experience y fuente nula;
+el guard rechaza INSERT directo. `experience_unpublish` conserva el recuerdo.
+Los posts, targets de comentarios/reacciones y notificaciones consultan el acceso
+actual a la raíz: privacidad, bloqueo o retirada revocan también descendientes.
+
+`get_profile_experiences` excluye invitaciones pendientes; Vividas requiere
+asistencia propia confirmada. Un tercero solo ve raíces profile, con consentimiento
+individual para acompañantes y perfil visible. El creador aparece en su propio
+perfil público por su elección explícita de audiencia. Lecturas con sesión, sin
+caché compartida; feed/detalle usan proyecciones en lote, sin simular ItemType.
+
+`experience_report` devuelve confirmación sin snapshot. Los snapshots de raíces
+y posts de experiencias quedan ocultos al reporter y contienen fotos ready como
+evidencia privada. La moderación admite experience; restaurar la raíz conserva
+las retiradas independientes de posts. Borrar un post conserva el recuerdo y un
+post borrado administrativamente no se recrea al publicar. Borrar la raíz captura
+evidencia antes de cascadas solo si hay denuncia/moderación; pending no se retiene.
+`admin_moderation_photo` exige administrador y entrega ruta/MIME únicamente al
+endpoint administrativo, con bytes private/no-store. Manifest de 277 pasos;
+replay completo pendiente de la verificación integral.
+
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
 Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos

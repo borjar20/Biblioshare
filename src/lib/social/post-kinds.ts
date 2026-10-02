@@ -16,6 +16,7 @@ export const POST_KINDS = [
   // primer «aceptar» (`respond_joint_viewing`), con autor = quien creó el
   // visionado y fuente = la fila de `joint_viewings`.
   "joint",
+  "experience",
 ] as const;
 
 export type PostKind = (typeof POST_KINDS)[number];

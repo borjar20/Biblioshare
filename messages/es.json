@@ -1,5 +1,14 @@
 {
   "experiences": {
+    "publication": "Compartir el recuerdo",
+    "publicationHint": "La publicación enlaza al recuerdo y respeta el permiso de cada foto y acompañante.",
+    "publish": "Compartir en el feed",
+    "unpublish": "Quitar publicación del feed",
+    "viewPublication": "Ver publicación",
+    "publishAudienceHint": "Elige «Quien pueda ver mi perfil» para compartir en el feed.",
+    "sharedMemory": "Compartió una experiencia",
+    "profileEmptyTitle": "Sin experiencias para mostrar",
+    "profileEmptyMessage": "Aquí aparecerán los recuerdos y planes que puedas ver de esta persona.",
     "unavailableTitle": "Experiencia no disponible",
     "unavailableMessage": "No podemos mostrar este recuerdo.",
     "addCompanion": "Añadir acompañante",
@@ -161,6 +170,7 @@
     "youLabel": "Tu cuenta",
     "you": {
       "profile": "Mi perfil",
+      "experiences": "Experiencias",
       "notes": "Cuaderno",
       "stats": "Estadísticas",
       "settings": "Ajustes",
@@ -514,6 +524,7 @@
     },
     "tabs": {
       "actividad": "Actividad",
+      "experiencias": "Experiencias",
       "estadisticas": "Estadísticas",
       "rincon": "Rincón",
       "coleccion": "Biblioteca"
@@ -583,6 +594,7 @@
     "deleteComment": "Borrar",
     "deleteCommentConfirm": "¿Borrar este comentario? Esta acción no se puede deshacer.",
     "reportComment": "Reportar",
+    "reportExperience": "Reportar experiencia",
     "reportReasonLabel": "Motivo",
     "reportDetailsLabel": "Detalles opcionales",
     "reportReason": {
@@ -2493,7 +2505,7 @@
     "cancel": "Cancelar",
     "contentActions": "Acciones de moderación",
     "type": "Tipo de contenido",
-    "kinds": { "post": "Publicación", "club_post": "Publicación de club", "comment": "Comentario", "club": "Club", "report": "Reporte" },
+    "kinds": { "post": "Publicación", "club_post": "Publicación de club", "comment": "Comentario", "club": "Club", "experience": "Experiencia", "report": "Reporte" },
     "statusLabel": "Estado",
     "statuses": { "all": "Todos", "active": "Sin retirar", "removed": "Retirado", "deleted": "Eliminado", "pending": "Pendiente", "actioned": "Resuelto", "dismissed": "Descartado" },
     "search": "Buscar por texto o identificador",
@@ -2505,6 +2517,7 @@
     "retry": "Volver a cargar",
     "reportReasons": { "spam": "Spam", "harassment": "Acoso", "spoiler": "Spoiler", "hate": "Discurso de odio", "other": "Otro motivo" },
     "evidence": "Consultar evidencia",
+    "evidencePhoto": "Imagen de evidencia",
     "reviewContent": "Revisar y moderar el contenido",
     "targetDeleted": "El contenido denunciado se ha eliminado. La evidencia se conserva.",
     "reviewedAt": "Revisado el {date}",

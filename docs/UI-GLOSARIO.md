@@ -39,6 +39,9 @@ invitar abre el recuerdo a acompañantes aceptados y lo avisa antes de enviar.
 Galería: «Añadir foto», «Portada» y «Mostrar esta foto en el perfil». La autoría
 no concede consentimiento de identidad. «Fotos fuera de un grupo» permite quitar
 aportaciones propias tras salir, sin volver a abrir el recuerdo.
+Publicación: «Compartir en el feed», «Ver publicación» y «Quitar publicación del
+feed»; quitar el post conserva la experiencia. Perfil: pestaña «Experiencias».
+Moderación: «Reportar experiencia» y «Imagen de evidencia», reservada al administrador.
 
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|

@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { MOMENT_KINDS,type ExperienceFilters,type ExperiencePerson } from "@/lib/experiences/types";
-export function ExperienceFiltersBar({filters,people}:{filters:ExperienceFilters;people:ExperiencePerson[]}) {
+export function ExperienceFiltersBar({filters,people,basePath="/experiencias"}:{filters:ExperienceFilters;people:ExperiencePerson[];basePath?:string}) {
   const t=useTranslations("experiences"),router=useRouter();
   function href(change:Partial<ExperienceFilters>) {
-    const values={...filters,...change,cursor:undefined},params=new URLSearchParams();
+    const values={...filters,...change,cursor:undefined},params=new URLSearchParams(basePath.split("?")[1]);
     for(const [key,value] of Object.entries(values)) if(value&&value!=="all") params.set(key,value);
-    return `/experiencias${params.size ? `?${params}` : ""}`;
+    return `${basePath.split("?")[0]}${params.size ? `?${params}` : ""}`;
   }
   const companions=[...new Map(people.filter(p=>p.invitationState==="accepted").map(p=>[p.userId??p.id,p])).values()];
   return <div className="flex flex-col gap-3">

@@ -1,0 +1,13 @@
+import {beforeEach,it,expect,vi} from "vitest";
+const h=vi.hoisted(()=>({auth:vi.fn(),rpc:vi.fn(),notify:vi.fn(),invalidate:vi.fn()}));
+vi.mock("server-only",()=>({}));
+vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser:h.auth},rpc:h.rpc})}));
+vi.mock("@/lib/social/notify-followers",()=>({notifyFollowersOfPost:h.notify}));
+vi.mock("@/lib/reactivity/revalidate",()=>({revalidateExperiences:h.invalidate}));
+import {publishExperience,unpublishExperience} from "./publish-actions";
+const id="ad5a363b-323f-4a48-8c5d-3c9d05fe3be7";
+beforeEach(()=>{vi.clearAllMocks();h.auth.mockResolvedValue({data:{user:{id}}});h.rpc.mockResolvedValue({data:{id,experienceId:id,created:true,actorId:id,targetId:id},error:null});});
+it("does not publish without a session",async()=>{h.auth.mockResolvedValue({data:{user:null}});expect(await publishExperience(id)).toEqual({ok:false,error:"unauthenticated"});expect(h.rpc).not.toHaveBeenCalled();});
+it("rejects private and foreign roots from SQL without notifying",async()=>{h.rpc.mockResolvedValue({data:null,error:{code:"42501"}});expect(await publishExperience(id)).toEqual({ok:false,error:"forbidden"});expect(h.notify).not.toHaveBeenCalled();});
+it("uses only committed publication metadata and emits once",async()=>{expect(await publishExperience(id)).toEqual({ok:true,data:{id}});expect(h.rpc).toHaveBeenCalledWith("experience_publish",{p_id:id});expect(h.notify).toHaveBeenCalledWith(expect.anything(),id,{postId:id,kind:"experience",interactionTargetId:id});h.rpc.mockResolvedValue({data:{id,experienceId:id,created:false},error:null});await publishExperience(id);expect(h.notify).toHaveBeenCalledTimes(1);});
+it("unpublishes through RPC without deleting the memory",async()=>{expect(await unpublishExperience(id)).toEqual({ok:true,data:null});expect(h.rpc).toHaveBeenCalledWith("experience_unpublish",{p_id:id});expect(h.invalidate).toHaveBeenCalledWith(id);});

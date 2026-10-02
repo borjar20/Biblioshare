@@ -13,7 +13,7 @@ vi.mock("@/lib/supabase/server", async (importOriginal) => ({
   getCurrentUser: async () => null,
 }));
 
-import { getFeed, getPostEvent, type FeedEntry, type FeedEvent } from "./feed";
+import { getFeed, getPostEvent, isExperienceEvent, type FeedEntry, type FeedEvent } from "./feed";
 import { isAfterCursor, parseCursor } from "./feed-order";
 import {
   fakeSupabase,
@@ -210,10 +210,11 @@ describe("getPostEvent — la ruta propia del post sirve la reseña ENTERA", () 
 
   test("/post/[id] sirve el texto completo, con sus saltos de línea", async () => {
     const result = await getPostEvent(fixture().client, VIEWER, "p1");
-    expect(result?.event.reviewExcerpt).toBe(RESENA);
+    const event=result?.event;if(!event||isExperienceEvent(event))throw new Error("Expected catalog post");
+    expect(event.reviewExcerpt).toBe(RESENA);
     // El salto de párrafo llega intacto al componente: la separación de
     // párrafos es del autor, no ruido que se pueda colapsar.
-    expect(result?.event.reviewExcerpt).toContain("\n\n");
+    expect(event.reviewExcerpt).toContain("\n\n");
   });
 });
 

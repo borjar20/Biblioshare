@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import { getPostEvent, getPostContext, type FeedEntry } from "@/lib/social/feed";
+import { getPostEvent, getPostContext, isExperienceEvent, type FeedEntry } from "@/lib/social/feed";
 import { FeedItem } from "@/components/social/feed-item";
 import { PostThread } from "@/components/social/post-thread";
 import { PostAside, type AsideParticipant } from "@/components/social/post-aside";
@@ -31,7 +31,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   if (!result) notFound();
 
   const { event, knownUsernames } = result;
-  const entry: FeedEntry = {
+  const entry: FeedEntry = isExperienceEvent(event)?{source:"experience",id:event.id,eventDate:event.eventDate,orderDate:event.orderDate,sortDate:event.sortDate,event}:{
     source: "person",
     id: event.id,
     eventDate: event.eventDate,
@@ -44,8 +44,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // Ancla REAL de la obra: para un pensamiento vive en `thought.anchor`
   // (itemType/itemId son un placeholder inerte); para el resto, el par
   // itemType/itemId ES el ancla de catálogo. Mismo criterio que `getPostContext`.
-  const anchorType = event.thought?.anchor.type ?? event.itemType;
-  const anchorId = event.thought?.anchor.id ?? event.itemId;
+  const anchorType = isExperienceEvent(event)?"experience":event.thought?.anchor.type ?? event.itemType;
+  const anchorId = isExperienceEvent(event)?event.experience.id:event.thought?.anchor.id ?? event.itemId;
 
   // Contexto SOCIAL del raíl derecho + resumen de la OBRA del raíl izquierdo, en
   // paralelo (ambos dependen solo de `event`). Participantes = autores DISTINTOS
@@ -63,7 +63,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     }
   }
   const participants = [...participantsById.values()];
-  const workTitle = event.thought?.anchor.title ?? event.itemTitle;
+  const workTitle = isExperienceEvent(event)?event.experience.title:event.thought?.anchor.title ?? event.itemTitle;
 
   // Cabecera = el post (tarjeta-hero, SIN su barra de interacción:
   // `showInteractions={false}`), y debajo el hilo como ciudadano de primera —
@@ -83,7 +83,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // página; el árbol ya no lo añade). Cabecera = el post (tarjeta-hero, SIN su
   // barra de interacción) y debajo el hilo anidado con su composer y deep-link.
   return (
-    <RouteMessages ns={["feed", "social"]}>
+    <RouteMessages ns={["feed", "social", "experiences"]}>
       <div className={`mx-auto w-full ${SHELL_POST} flex-1 px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
         <div className="post-grid pb-28 min-[1023px]:pb-0">
           <div data-area="conversacion" className="flex min-w-0 flex-col gap-4">

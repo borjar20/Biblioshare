@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
+import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getModerationPage } from "@/lib/moderation/queries";
-import { evidenceText, isContentKind, type ContentRow, type HistoryRow, type ModerationKind, type ReportRow } from "@/lib/moderation/contracts";
+import { evidenceText,evidencePhotoIds, isContentKind, type ContentRow, type HistoryRow, type ModerationKind, type ReportRow } from "@/lib/moderation/contracts";
 import { ContentControls, ReportControls } from "../moderation-controls";
 
 export const instant = false;
@@ -16,11 +17,12 @@ const sections = { reportes: "reports", contenido: "content", clubes: "clubs", h
 type Search = Record<string, string | string[] | undefined>;
 const scalar = (value: Search[string]) => typeof value === "string" ? value : "";
 
-function Evidence({ snapshot, label, commentId }: { snapshot: Record<string, unknown>; label: string; commentId?: string | null }) {
+function Evidence({ snapshot, label, photoLabel, commentId }: { snapshot: Record<string, unknown>; label: string; photoLabel:string; commentId?: string | null }) {
   return <details className="text-sm">
     <summary className="cursor-pointer font-medium underline underline-offset-4">{label}</summary>
     <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface-muted p-3 font-sans text-sm">{evidenceText(snapshot ?? {})}</pre>
     {commentId && typeof snapshot?.audio_path === "string" && <audio controls preload="none" className="mt-3 max-w-full" src={`/api/admin/voice-notes/${commentId}`} />}
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">{evidencePhotoIds(snapshot).map(id=><Image key={id} src={`/api/admin/experience-photos/${id}`} alt={photoLabel} width={600} height={450} unoptimized className="max-h-80 w-full object-contain"/>)}</div>
   </details>;
 }
 
@@ -59,7 +61,7 @@ export default async function ModerationPage({ params, searchParams }: {
     <form className="flex flex-wrap items-end gap-3" method="get">
       {name === "content" && <label className="flex flex-col gap-1 text-sm" htmlFor="moderation-kind">{t("type")}
         <select name="kind" id="moderation-kind" defaultValue={kind} className="rounded-lg border border-border bg-surface px-3 py-2">
-          {["post", "club_post", "comment"].map((value) => <option key={value} value={value}>{t(`kinds.${value}`)}</option>)}
+          {["post", "club_post", "comment", "experience"].map((value) => <option key={value} value={value}>{t(`kinds.${value}`)}</option>)}
         </select>
       </label>}
       {name !== "history" && <label className="flex flex-col gap-1 text-sm" htmlFor="moderation-status">{t("statusLabel")}
@@ -85,7 +87,7 @@ export default async function ModerationPage({ params, searchParams }: {
               <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-serif text-lg font-semibold">{t.has(`reportReasons.${item.reason}`) ? t(`reportReasons.${item.reason}`) : item.reason}</h2><span className="text-sm text-muted-foreground">{t(`statuses.${item.status}`)}</span></div>
               <p className="text-xs text-muted-foreground">{date(item.created_at)}</p>
               {item.details && <p className="whitespace-pre-wrap break-words text-sm">{item.details}</p>}
-              <Evidence snapshot={item.snapshot} label={t("evidence")} commentId={targetKind === "comment" ? targetId : null} />
+              <Evidence snapshot={item.snapshot} label={t("evidence")} photoLabel={t("evidencePhoto")} commentId={targetKind === "comment" ? targetId : null} />
               {item.target_deleted_at ? <p className="text-sm text-muted-foreground">{t("targetDeleted")}</p> : targetHref && <Link href={targetHref} className="text-sm font-medium underline underline-offset-4">{t("reviewContent")}</Link>}
               {item.status === "pending" && <ReportControls id={item.id} />}
               {item.reviewed_at && <p className="text-xs text-muted-foreground">{t("reviewedAt", { date: date(item.reviewed_at) })}</p>}
@@ -96,7 +98,7 @@ export default async function ModerationPage({ params, searchParams }: {
               <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-serif text-lg font-semibold">{t.has(`actions.${item.action}`) ? t(`actions.${item.action}`) : item.action}</h2><time className="text-xs text-muted-foreground">{date(item.created_at)}</time></div>
               <p className="whitespace-pre-wrap break-words text-sm">{item.reason}</p>
               <dl className="grid gap-1 break-all text-xs text-muted-foreground"><div><dt className="inline font-medium">{t("actor")}: </dt><dd className="inline">{item.actor_name ?? item.actor_id}</dd></div><div><dt className="inline font-medium">{t("target")}: </dt><dd className="inline">{t.has(`kinds.${item.kind}`) ? t(`kinds.${item.kind}`) : item.kind} · {item.target_id}</dd></div></dl>
-              <Evidence snapshot={item.snapshot} label={t("evidence")} commentId={item.kind === "comment" ? item.target_id : null} />
+              <Evidence snapshot={item.snapshot} label={t("evidence")} photoLabel={t("evidencePhoto")} commentId={item.kind === "comment" ? item.target_id : null} />
             </>;
           })() : (() => {
             const item = row as ContentRow;
@@ -107,6 +109,7 @@ export default async function ModerationPage({ params, searchParams }: {
               {item.parent_removed && <p className="text-sm text-status-dropped">{t("parentRemoved")}</p>}
               {item.kind === "comment" && typeof item.snapshot?.audio_path === "string" && <audio controls preload="none" className="max-w-full" src={`/api/admin/voice-notes/${item.id}`} />}
               <ContentControls item={item} />
+              {item.kind==="experience"&&item.snapshot&&<Evidence snapshot={item.snapshot} label={t("evidence")} photoLabel={t("evidencePhoto")}/>}
             </>;
           })()}
         </article>)}

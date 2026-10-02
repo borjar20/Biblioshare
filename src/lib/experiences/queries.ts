@@ -91,11 +91,25 @@ export async function getExperience(id:string):Promise<ExperienceDetail|null> {
   if(photos.error) throw photos.error;
   const viewerId=auth.data.user?.id??null,preview=previews[0];
   const canEdit=viewerId!==null&&root.creator_id===viewerId;
+  const [publication,target]=await Promise.all([
+    canEdit?client.rpc("get_experience_publication",{p_id:id}):Promise.resolve({data:null,error:null}),
+    client.from("interaction_targets").select("id").eq("kind","experience").eq("source_id",id).maybeSingle(),
+  ]);
+  if(publication.error)throw publication.error;if(target.error)throw target.error;
   return {...preview,viewerId,canEdit,canContribute:canEdit||(viewerId!==null&&preview.participants.some(p=>p.userId===viewerId&&p.invitationState==="accepted")),
+    publicationId:publication.data,interactionTargetId:target.data?.id??null,
     attendance:(attendance.data??[]).map(a=>({momentId:a.moment_id,participantId:a.participant_id,state:a.attendance_state as ExperienceDetail["attendance"][number]["state"]})),
     favorites:(favorites.data??[]).map(f=>({userId:f.user_id,momentId:f.moment_id})),
     photos:(photos.data as unknown as ExperiencePhoto[]).map(p=>({...p,canManage:p.canManage===true,isAuthor:p.isAuthor===true})),
   };
+}
+export async function getProfileExperiences(userId:string,filters:ExperienceFilters={}):Promise<ExperiencePage> {
+  if(!isExperienceId(userId))return {items:[],nextCursor:null};
+  const client=await createClient(),after=cursor(filters.cursor);
+  const {data,error}=await client.rpc("get_profile_experiences",{p_user_id:userId,p_state:filters.state??"all",p_kind:filters.kind,p_after_created:after?.createdAt,p_after_id:after?.id});
+  if(error)throw error;
+  const rows=data??[],page=rows.slice(0,20),last=page.at(-1);
+  return {items:await getExperiencePreviews(client,page),nextCursor:rows.length>20&&last?Buffer.from(JSON.stringify({createdAt:last.created_at,id:last.id})).toString("base64url"):null};
 }
 async function readAttendance(client:Client,id:string) {
   // 50 moments × 30 people exceeds PostgREST's 1,000-row response cap.

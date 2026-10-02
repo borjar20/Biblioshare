@@ -17,6 +17,8 @@ import {ExperienceParticipants} from "./experience-participants";
 import {MomentAttendance} from "./moment-attendance";
 import {MomentFavorite} from "./moment-favorite";
 import {ExperienceGallery} from "./experience-gallery";
+import {ExperiencePublication} from "./experience-publication";
+import {ExperienceReport} from "./experience-report";
 export function ExperienceDetail({experience:e}:{experience:Detail}) {
   const t=useTranslations("experiences"),router=useRouter(),fieldId=useId();
   const [deleting,setDeleting]=useState(false),[error,setError]=useState<ExperienceError|null>(null),[pending,startTransition]=useTransition();
@@ -35,6 +37,8 @@ export function ExperienceDetail({experience:e}:{experience:Detail}) {
       <aside className="mt-6 space-y-4 lg:sticky lg:top-20 lg:mt-0">
         {e.canEdit&&<Link href={`/experiencia/${e.id}/editar`} className={buttonVariants("secondary","min-h-11 w-full")}>{t("edit")}</Link>}
         <ExperienceParticipants experience={e}/>
+        <ExperiencePublication experience={e}/>
+        {e.viewerId&&e.viewerId!==e.creatorId&&e.interactionTargetId&&<ExperienceReport id={e.id}/>}
       </aside>
     </div>
     {deleting&&<SheetShell title={t("delete")} onClose={()=>{setDeleting(false);setError(null);}}><form className="space-y-4" onSubmit={event=>{event.preventDefault();const confirmation=String(new FormData(event.currentTarget).get("confirmation")??"");setError(null);startTransition(async()=>{const result=await deleteExperience(e.id,confirmation);if(!result.ok) setError(result.error);else router.push("/experiencias");});}}>

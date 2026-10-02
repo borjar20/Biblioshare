@@ -32,6 +32,7 @@ import { ActivityTab } from "./_tabs/activity-tab";
 import { CollectionTab } from "./_tabs/collection-tab";
 import { StatsTab } from "./_tabs/stats-tab";
 import { RinconTab } from "./_tabs/rincon-tab";
+import {ExperiencesTab} from "./_tabs/experiences-tab";
 import { YouRow } from "@/components/nav/you-row";
 import { SHELL_APP } from "@/lib/ui/layout";
 
@@ -40,6 +41,7 @@ const VALID_TABS: SectionTab[] = [
   "estadisticas",
   "rincon",
   "coleccion",
+  "experiencias",
 ];
 // Estadísticas y Rincón son del dueño: un visitante no las alcanza ni por URL.
 const OWNER_ONLY_TABS: SectionTab[] = ["estadisticas", "rincon"];
@@ -67,6 +69,9 @@ type PublicProfileProps = {
     tipo?: string;
     medida?: string;
     archivados?: string;
+    state?:string;
+    kind?:string;
+    cursor?:string;
   }>;
 };
 
@@ -227,6 +232,7 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
       {isOwner && <FollowRequests requests={pendingRequests} />}
 
       <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />
+      {tab==="experiencias"&&<Suspense fallback={<ProfileSectionSkeleton/>}><ExperiencesTab userId={profile.userId} basePath={basePath} params={parsedParams} isOwner={isOwner}/></Suspense>}
 
       {tab === "actividad" && (
         <Suspense fallback={<ProfileSectionSkeleton />}>

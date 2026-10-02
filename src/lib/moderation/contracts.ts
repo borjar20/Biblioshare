@@ -1,4 +1,4 @@
-export const CONTENT_KINDS = ["post", "club_post", "comment", "club"] as const;
+export const CONTENT_KINDS = ["post", "club_post", "comment", "club", "experience"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 export type ModerationAction = "remove" | "restore" | "delete";
 export type ModerationKind = ContentKind | "report" | "history";
@@ -67,4 +67,15 @@ export function evidenceText(snapshot: Record<string, unknown>): string {
     .filter(([, value]) => value != null)
     .map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`)
     .join("\n");
+}
+export function evidencePhotoIds(snapshot:Record<string,unknown>):string[] {
+  const ids=new Set<string>();
+  function visit(value:unknown,depth:number) {
+    if(depth>6||!value||typeof value!=="object"||ids.size>=40)return;
+    if(Array.isArray(value)){for(const item of value)visit(item,depth+1);return;}
+    const row=value as Record<string,unknown>;
+    if(row.status==="ready"&&isUuid(row.id)&&typeof row.storage_path==="string")ids.add(row.id);
+    for(const child of Object.values(row))visit(child,depth+1);
+  }
+  visit(snapshot,0);return [...ids];
 }

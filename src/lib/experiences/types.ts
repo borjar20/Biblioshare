@@ -74,6 +74,8 @@ export interface ExperienceDetail extends ExperiencePreview {
   attendance: { momentId: string; participantId: string; state: AttendanceState }[];
   favorites: { userId: string; momentId: string }[];
   photos:ExperiencePhoto[];
+  publicationId:string|null;
+  interactionTargetId:string|null;
 }
 export interface ExperienceFilters {
   state?: ExperienceState | "all";

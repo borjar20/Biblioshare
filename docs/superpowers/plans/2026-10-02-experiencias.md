@@ -207,21 +207,21 @@ cuerpo opcional. `publishExperience` idempotente solo para creador y audiencia p
 `getProfileExperiences(userId,filters)` comprueba visibilidad del perfil; Vividas exige
 asistencia confirmada y Por vivir permite planes aceptados, nunca invitaciones pendientes.
 
-- [ ] Escribir tests de publicación privada/ajena prohibida, dos llamadas simultáneas con
+- [x] Escribir tests de publicación privada/ajena prohibida, dos llamadas simultáneas con
   único post, cursor con posts de tipos mezclados y modo joint preservado; ejecutar RED.
-- [ ] Implementar RPC de publicación, índice parcial único y guard SQL del ancla/kind.
-- [ ] Añadir policy restrictiva y actualizar helpers de targets/moderación para comprobar
+- [x] Implementar RPC de publicación, índice parcial único y guard SQL del ancla/kind.
+- [x] Añadir policy restrictiva y actualizar helpers de targets/moderación para comprobar
   acceso al recuerdo en post, comentarios, reacciones, contexto y notificaciones.
-- [ ] Extender mapper común de feed/detalle con batch de experiencias; añadir tarjeta y
+- [x] Extender mapper común de feed/detalle con batch de experiencias; añadir tarjeta y
   contexto propios. Mantener filtros existentes y el cursor; sin N+1 por tarjeta.
-- [ ] Añadir enlace en Tu cuenta/Lo tuyo con CompassIcon y pestaña de perfil para ambos roles.
-- [ ] Extender reporte/retirada/restauración/borrado administrativo de la experiencia,
+- [x] Añadir enlace en Tu cuenta/Lo tuyo con CompassIcon y pestaña de perfil para ambos roles.
+- [x] Extender reporte/retirada/restauración/borrado administrativo de la experiencia,
   conservando evidencia privada de fotos y evitando recrear un post moderado.
-- [ ] E2E de feed y perfil: compartir dos veces, cambiar audiencia, perfil privado, visitante
+- [x] E2E de feed y perfil: compartir dos veces, cambiar audiencia, perfil privado, visitante
   bloqueado, foto/identidad sin consentimiento y anónimo con joins directos a tablas hijas.
-- [ ] Probar retiro del padre, restauración sin restaurar un post retirado por separado y
+- [x] Probar retiro del padre, restauración sin restaurar un post retirado por separado y
   borrado de post sin borrar recuerdo. Verificar que las imágenes quedan revocadas.
-- [ ] Pasar regresiones focalizadas de posts, cursores, joint y moderación; commit de esta tarea.
+- [x] Pasar regresiones focalizadas de posts, cursores, joint y moderación; commit de esta tarea.
 
 ## Tarea 6: Verificación integral, dev y documentación verdadera
 
