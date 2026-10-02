@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     // Andamiaje y builds locales: no forman parte de la superficie fuente.
     ".superpowers/**",
     ".scratch/**",
+    // Índice y helpers locales de GitNexus, igual que el resto del andamiaje.
+    ".gitnexus/**",
     "android/app/build/**",
   ]),
 ]);
