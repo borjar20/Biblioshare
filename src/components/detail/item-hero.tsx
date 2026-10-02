@@ -121,7 +121,7 @@ export function ItemHero({
             </div>
 
             <h1
-              className={`mt-2 font-serif text-[25px] leading-[1.05] font-semibold sm:text-[32px] lg:mt-3 lg:leading-[1.02] lg:tracking-[-0.01em] ${titleSize}`}
+              className={`mt-2 [overflow-wrap:anywhere] font-serif text-[25px] leading-[1.05] font-semibold sm:text-[32px] lg:mt-3 lg:leading-[1.02] lg:tracking-[-0.01em] ${titleSize}`}
             >
               {title}
             </h1>
