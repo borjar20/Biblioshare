@@ -13,7 +13,8 @@
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
 > y errores/checkpoints finales y anteriores de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01;
 > frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292);
-> filtros de tipo reverificados contra código y navegador local el 2026-10-02 (#1295)]**
+> filtros de tipo reverificados contra código y navegador local el 2026-10-02 (#1295);
+> cuota de altas Google Books verificada en local/dev/prod y CI el 2026-10-02 (#1237)]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -424,6 +425,9 @@ Lo cerrado, con la migración o el fichero que lo sostiene:
   a libro) más el barrido de reconciliación.
 - [x] **Google Books como enriquecedor**, no como fuente primaria: sinopsis en español y, en
   último recurso, alta por ISBN cuando OpenLibrary no lo conoce.
+- [x] Acotar las altas nuevas de Google Books por cuenta sin penalizar reutilizaciones
+  (#1237): local/dev/CI verificados y SQL aplicado en prod; entrega mediante
+  PR #1291 con los checks obligatorios del commit de entrega antes del merge.
 - [x] **Cobertura e2e de los tres flujos nuevos** (`e2e/obra-edicion-representacion.spec.ts`,
   2026-08-28): alta desde `/buscar` dejando procedencia en `repr_meta`, identificar la edición
   eligiendo una candidata en vivo, e importar un CSV con ISBN poblando `passes.edition_id`. Los

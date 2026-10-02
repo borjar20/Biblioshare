@@ -5859,3 +5859,25 @@ sin depender de nombres de clases CSS, y entra en la configuración CI
 existente. Los checks obligatorios de la PR siguen siendo el gate antes
 del merge. Evidencia y fallos de preparación conservados:
 `docs/testing/2026-10-02-search-type-pills-1295.md`.
+
+## 2026-10-02 — sólo las altas nuevas de Google Books consumen su cuota (#1237)
+
+El fallback de Google Books procede de un ISBN escrito o escaneado que Open
+Library no conoce; CSV y bulk no llegan a esa RPC. Se fija una operación
+independiente de 60 altas por cuenta y ventana de una hora, conservando la
+cuota genérica de 6000/h para las importaciones y los otros tipos de catálogo.
+El límite responde a esa ruta manual, no al número de la reproducción de abuso.
+
+Se cobra después de la inserción ganadora del índice único, mediante un AFTER
+INSERT limitado a shells con volumen Google y sin work key. Un BEFORE en ese
+camino cobraría también intentos idempotentes. Reutilizar un libro existente,
+incluso desde otra cuenta o con ambas claves, no consume cuota de creación.
+El BEFORE genérico de los demás libros conserva su comportamiento anterior;
+no se amplía esta reparación a sus intentos idempotentes.
+
+La admisión está en SQL para cubrir llamadas directas y carreras. PT429 revierte
+la shell y sus efectos; la acción lo convierte en un estado esperado que se
+comunica sin falso éxito. La cuota de peticiones de 60/min sigue siendo otra
+frontera. No se presenta la cuota ni el filtro ASCII de #924 como verificación
+de existencia o gramática oficial de Google Books. Evidencia y límites:
+`docs/testing/2026-10-02-google-books-creation-quota-1237.md`.

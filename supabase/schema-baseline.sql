@@ -1357,3 +1357,8 @@ commit;
 begin;
 \ir migrations/20261001102000_merge_book_club_event_refs.sql
 commit;
+
+-- 20261001195124_google_books_creation_quota
+begin;
+\ir migrations/20261001195124_google_books_creation_quota.sql
+commit;

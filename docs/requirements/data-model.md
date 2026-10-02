@@ -1,5 +1,20 @@
 # Modelo de datos
 
+> **Delta 2026-10-02 (#1237):** `catalog_google_volume_create` admite 60 altas nuevas
+> por cuenta y ventana fija de una hora. En `books`, el trigger AFTER INSERT
+> aplica sólo a una fila con volumen Google y sin work key de Open Library;
+> el BEFORE genérico sigue cubriendo los demás libros. Reutilizar una fila mediante
+> `ON CONFLICT DO NOTHING`, incluso desde otra cuenta, no consume cuota de creación.
+> `PT429` revierte la inserción, su edición automática y el incremento de cuota.
+> Local y dev: 41 comprobaciones con reversión; dos carreras locales reales.
+> Aplicada una vez y verificada en producción el 2026-10-02: definición y helper
+> idénticos a dev, ambos triggers activos (`enabled=O`), SECURITY DEFINER y ACL
+> conservadas (`anon=false`, `authenticated=true`); RLS privado activo y sin SELECT
+> para anon/authenticated. Firma, validación de ID y capacidades anteriores se
+> conservan; no hay columnas, backfill ni datos de prueba nuevos en producción.
+> Entrega de UI: PR #1291, con sus checks obligatorios antes del merge.
+> Evidencia: [cuota de Google Books](../testing/2026-10-02-google-books-creation-quota-1237.md).
+
 > **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
 > eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
 > orden, claves ajenas y configuraciones opacas. Local/dev: regresiones con rollback;
@@ -39,7 +54,9 @@
 > `anon=false`, `authenticated=true`, `service_role=true`. Verificada en **dev**
 > (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
 > Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
-> existentes. La admisión por número de altas sigue en #1237.
+> existentes. La admisión por número de altas se incorpora en el delta #1237 de
+> 2026-10-02, aplicado y verificado en dev y prod como se detalla arriba; la gramática
+> y la ACL de esta RPC permanecen idénticas.
 
 > **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
 > firmas con `backdrop_url` y su cuerpo fill-only. La migración
