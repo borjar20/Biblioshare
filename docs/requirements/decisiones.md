@@ -5811,3 +5811,24 @@ final mantiene la resolución existente, y los formatos modernos y corruptos
 conservan sus caminos. No hay migración de base de datos ni cambio en los
 motores o manifiestos históricos. Evidencia y alcance de la verificación:
 `docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.
+
+## 2026-10-02 — identificadores limitados al endpoint de OpenLibrary (#1292)
+
+Un hostname fijo no impide que una ruta, query o fragmento cambie el endpoint.
+`normalizeWorkKey` admite únicamente `OL[0-9]+W`, normalizando la clave sin prefijo,
+`works/`, `/works/` y la histórica `/OL…W`. Las funciones de obra y ediciones
+rechazan el resto antes de `fetch` y conservan sus salidas vacías. El segmento
+normalizado se codifica con `encodeURIComponent` al construir la URL.
+
+`resolveWorkKey` y `lookupIsbn` normalizan y comprueban el checksum del ISBN-10/13
+antes de pedirlo. También validan la work key devuelta por el proveedor antes
+de devolverla o solicitar el detalle de obra. Se conservan el fallback de
+edición, cachés, timeouts y límites de paginación existentes. Se mantiene la
+política por defecto de redirecciones de `fetch`: OpenLibrary usa el recorrido
+ISBN→edición legítimamente; bloquearlo rompería ese lookup.
+
+La verificación local acota los identificadores que construyen el endpoint;
+no demuestra protección frente a redirects de un proveedor comprometido.
+No cambia esquema, interfaz ni política de caché. CI/CodeQL y entrega remota
+quedan pendientes; #1292 sigue abierta hasta esos gates. Evidencia:
+`docs/testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md`.

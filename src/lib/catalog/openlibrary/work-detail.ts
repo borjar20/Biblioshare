@@ -56,9 +56,15 @@ export function parseFirstPublishYear(value: unknown): number | null {
   return year >= 1400 && year <= 2200 ? year : null;
 }
 
-// Normaliza "/works/OL893415W", "works/OL893415W" y "OL893415W" a "OL893415W".
+// Normaliza "/works/OL893415W", "works/OL893415W", "/OL893415W" y
+// "OL893415W" a "OL893415W". La barra suelta se conserva por compatibilidad.
+// Solo una identidad de obra puede entrar en el segmento de URL: una ruta,
+// query o fragmento no es una clave. "" mantiene la degradación de los callers.
 export function normalizeWorkKey(workKey: string): string {
-  return workKey.replace(/^\/?works\//, "").replace(/^\//, "");
+  if (typeof workKey !== "string") return "";
+  const key = workKey.replace(/^\/?(?:works\/)?/, "");
+  // `$` también admite un salto de línea final en JS; endsWith lo excluye.
+  return /^OL[0-9]+W$/.test(key) && key.endsWith("W") ? key : "";
 }
 
 // Nunca lanza: null significa "no se pudo hidratar ahora", y el llamador deja
@@ -68,7 +74,7 @@ export async function fetchWork(workKey: string): Promise<WorkDetail | null> {
     const key = normalizeWorkKey(workKey);
     if (!key) return null;
 
-    const res = await fetch(`https://openlibrary.org/works/${key}.json`, {
+    const res = await fetch(`https://openlibrary.org/works/${encodeURIComponent(key)}.json`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -111,7 +117,7 @@ export async function fetchFirstEditionDescription(
     if (!key) return null;
 
     const res = await fetch(
-      `https://openlibrary.org/works/${key}/editions.json?limit=20`,
+      `https://openlibrary.org/works/${encodeURIComponent(key)}/editions.json?limit=20`,
       { next: { revalidate: 86400 }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
     );
     if (!res.ok) return null;
@@ -135,7 +141,7 @@ export async function fetchWorkCovers(workKey: string): Promise<string[]> {
     const key = normalizeWorkKey(workKey);
     if (!key) return [];
 
-    const res = await fetch(`https://openlibrary.org/works/${key}.json`, {
+    const res = await fetch(`https://openlibrary.org/works/${encodeURIComponent(key)}.json`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
