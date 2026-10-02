@@ -12,7 +12,8 @@
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
 > y errores/checkpoints finales y anteriores de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01;
-> frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292)]**
+> frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292);
+> filtros de tipo reverificados contra código y navegador local el 2026-10-02 (#1295)]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -165,6 +166,12 @@ posts huérfanos; `dev` quedó a cero en las cinco medidas. Quedan abiertas **#8
 prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada).
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
+
+- [x] **#1295 — filtros de tipo dentro de su contenedor.** `TypePills` permite
+  saltos de línea conservando textos, tamaños y destinos en Buscar y alta manual.
+  Corrección verificada en la propuesta: ocho casos de QA y cuatro E2E durables
+  contra build/start local a 320/1280 px, más lint y typecheck PASS.
+  Evidencia: `docs/testing/2026-10-02-search-type-pills-1295.md`.
 
 - [x] **#1292 — impedir que un identificador cambie el endpoint de OpenLibrary.**
   Validación de work keys/ISBN y segmentos codificados implementados; 80 pruebas

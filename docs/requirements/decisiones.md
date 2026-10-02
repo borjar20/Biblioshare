@@ -5837,3 +5837,25 @@ Verificación posterior del mismo día: el head `2195e70` de PR #1294 pasa
 3950 unitarios, 67 casos de navegador y CodeQL sin resultados. El informe
 anterior conserva los detalles y distingue el ref reparado de main antes
 del merge; el cierre operativo exige los checks de entrega y la integración.
+
+## 2026-10-02 — saltos de línea en los filtros de tipo (#1295)
+
+`TypePills` comparte el control de Buscar y alta manual. Su fila permite
+`flex-wrap` cuando los tres enlaces no caben, manteniendo textos, dimensiones
+y destinos. Reducir letra o recortar el control cambiaría su presentación
+para resolver un problema de distribución; el salto de línea conserva cada
+enlace y admite una segunda fila en móvil.
+
+La comprobación espera a las fuentes y mide los enlaces dentro de su
+contenedor, además del documento/body frente al viewport. El baseline
+confirmó 9,17 px de exceso del contenedor en Buscar a 320 px; el documento
+seguía en 320 px, así que no explica por sí solo los 325 px del FAIL de #1237.
+Un intento redirigido desde alta manual tampoco acredita ese formulario:
+la QA final usa un collaborator y exige su ruta y campos reales.
+
+Ocho casos de QA y cuatro regresiones durables pasan contra build/start
+local a 320/1280 px. El spec comprueba geometría, selección y teclado,
+sin depender de nombres de clases CSS, y entra en la configuración CI
+existente. Los checks obligatorios de la PR siguen siendo el gate antes
+del merge. Evidencia y fallos de preparación conservados:
+`docs/testing/2026-10-02-search-type-pills-1295.md`.

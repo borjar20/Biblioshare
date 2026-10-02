@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -301,6 +301,39 @@ la disponibilidad de OpenLibrary ni los redirects de un proveedor
 comprometido. La CI de entrega pasa 3950 unitarios, 67 casos de navegador y
 CodeQL sin resultados; el informe identifica el head y sus límites. Evidencia y sello:
 [frontera de endpoints](testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md).
+
+### Filtros de tipo en Buscar y alta manual (#1295)
+
+`TypePills` permite saltar de línea cuando sus tres enlaces no caben.
+El baseline de Buscar a 320 px sobresalía 9,17 px de su contenedor, aunque
+documento y body seguían midiendo 320 px. El cambio conserva textos,
+dimensiones de cada enlace, selección y destinos; no reduce ni recorta el
+control para hacerlo caber.
+
+La QA contra build/start local pasa ocho casos: Buscar con query vacía,
+corta y larga, más el formulario manual real, cada uno a 320/1280 px.
+Después de `document.fonts.ready`, comprueba enlaces dentro del contenedor
+y documento/body dentro del viewport, con cero FAIL, SKIP, flaky y retries.
+Un actor temporal collaborator acredita la ruta y campos del alta manual;
+las ocho capturas se inspeccionaron. Contenedor y scrollWidth de Buscar son
+288 px en móvil; el formulario manual conserva sus 400 px máximos en escritorio.
+
+La regresión durable `e2e/ci/search-type-pills.spec.ts` pasa cuatro casos
+contra el mismo build, verificando geometría, selección y navegación de
+teclado por las tres opciones. Se recoge por el glob existente de
+`playwright.ci.config.ts`, sin modificar la configuración. Para repetirla:
+
+```sh
+npx playwright test e2e/ci/search-type-pills.spec.ts --config=playwright.ci.config.ts
+```
+
+Los ocho casos de QA y los cuatro del spec son tandas distintas. Lint focal,
+TypeScript y listado del spec pasan; el listado no sustituye su ejecución.
+Limpieza local verificada: actor Auth 404 y ocho tablas/cuotas/obras/pases
+a cero, Supabase detenido con backup conservado y puerto 3000 libre.
+Antes de mergear la PR deben pasar sus checks obligatorios. Baseline, FAIL
+del harness conservados, artefactos y límites de esta verificación local:
+[filtros de tipo](testing/2026-10-02-search-type-pills-1295.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 
