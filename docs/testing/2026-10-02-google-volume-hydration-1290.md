@@ -1,6 +1,6 @@
 # Hidratación de fichas nacidas de Google Books (#1290)
 
-> **[En verificación · código, unitarios y primera tanda de navegador comprobados el 2026-10-02; gate final y CI pendientes]**
+> **[Trabajo pausado a petición del usuario el 2026-10-02 · código, unitarios y primera tanda de navegador comprobados; gate final y CI pendientes]**
 
 ## Fallo confirmado y alcance
 
@@ -82,9 +82,10 @@ Manifiesto SHA256
 
 El caso de alta recuperó los canónicos y la UI sin recarga, pero comparó el
 sello mientras la segunda hidratación Action/RSC seguía en vuelo: sólo cambió
-`hydrated_at`, de `09:56:45.270001` a `09:56:45.759185` UTC. El spec debe
-esperar esa finalización antes de fijar su snapshot; no se relaja el contrato
-de cooldown. Los otros seis casos de hidratación pasan. Los dos casos de
+`hydrated_at`, de `09:56:45.270001` a `09:56:45.759185` UTC. La revisión posterior
+del spec espera esa finalización antes de fijar su snapshot; no se relaja el
+contrato de cooldown. Esa revisión aún no se ha ejecutado en navegador.
+Los otros seis casos de hidratación pasan. Los dos casos de
 cuota a 1280 px pasan; a 320 px los títulos con un token de 32 caracteres
 producen documentos de 603/585 px. La CSS del hero coincide con el código base
 `030426a`; este fallo se rastrea y corrige por separado en
@@ -96,6 +97,26 @@ de personas ni escrituras tardías. Next se detuvo antes de la auditoría final,
 Supabase se detuvo con backup y el puerto 3000 quedó libre. El gate #1092 no
 se ejecutó después de este FAIL. Esta tanda se conserva aunque el siguiente
 intento pase.
+
+La corrección del spec observa los dos POST reales de `hydrate_book` por
+UUID propio y sus respuestas 204 antes de fijar la fila final; después de
+recargar exige fila completa idéntica y ninguna nueva llamada GET/RPC. La
+observación es pass-through: no sintetiza la respuesta de la DB ni guarda
+propuestas, cabeceras o credenciales. Sólo acepta el host local, la ruta y el
+método exactos y una identidad de fixture demostrada. La revisión estática,
+TypeScript, ESLint y sintaxis Node 24 pasan; no acredita una segunda tanda de
+navegador. Firmas RAW de las fuentes revisadas:
+
+- Spec: `4d70e6e731acb7acce2415e9f66ea5ee10d95980b69ab2a9b242b0a6a094fd73`.
+- Provider: `0aa8738dbcc14e5e0a5fd1ef03909b1af3887bf5a657968eb49ce8c017206601`.
+
+El producto y esta revisión quedan guardados en el commit local
+`1ff2dde7777fb9e4f6cf02c451d5be18d2cd677c`, rama
+`codex/google-books-hydration-1290`. No hay PR ni cierre de #1290. Para
+reanudar: terminar #1300 en su rama independiente, integrar su CSS, construir
+de nuevo y ejecutar los siete casos de hidratación más los cuatro de cuota;
+después sincronizar los documentos canónicos de estado y pasar los checks de
+la PR final. #1092 y #831 conservan sus issues y su alcance separado.
 
 Los siete casos permanentes de
 `e2e/ci/google-volume-hydration.spec.ts` cubren alta por ISBN y refresco sin
