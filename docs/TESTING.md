@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente el 2026-10-02 (#1292), con CI/CodeQL y entrega pendientes]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -298,7 +298,8 @@ y 256 de módulos afectados en dieciséis, con cero FAIL y cero pendientes;
 lint focal y `tsc --noEmit` también pasan. El RED de 57 PASS/16 FAIL queda
 conservado. Son pruebas locales con respuestas controladas: no comprueban
 la disponibilidad de OpenLibrary ni los redirects de un proveedor
-comprometido. CI/CodeQL y entrega remota siguen pendientes. Evidencia y sello:
+comprometido. La CI de entrega pasa 3950 unitarios, 67 casos de navegador y
+CodeQL sin resultados; el informe identifica el head y sus límites. Evidencia y sello:
 [frontera de endpoints](testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)

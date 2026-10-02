@@ -5832,3 +5832,8 @@ no demuestra protección frente a redirects de un proveedor comprometido.
 No cambia esquema, interfaz ni política de caché. CI/CodeQL y entrega remota
 quedan pendientes; #1292 sigue abierta hasta esos gates. Evidencia:
 `docs/testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md`.
+
+Verificación posterior del mismo día: el head `2195e70` de PR #1294 pasa
+3950 unitarios, 67 casos de navegador y CodeQL sin resultados. El informe
+anterior conserva los detalles y distingue el ref reparado de main antes
+del merge; el cierre operativo exige los checks de entrega y la integración.

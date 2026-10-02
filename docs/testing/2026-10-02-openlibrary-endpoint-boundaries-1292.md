@@ -1,6 +1,6 @@
 # #1292 — frontera de endpoints de OpenLibrary
 
-> **[Canónico · verificado contra código, unitarios y comprobaciones estáticas el 2026-10-02; CI/CodeQL y entrega pendientes]**
+> **[Canónico · verificado contra código, unitarios, comprobaciones estáticas y CI/CodeQL el 2026-10-02]**
 
 ## Comportamiento y diagnóstico
 
@@ -36,7 +36,8 @@ realmente ejecutados; los bloques `describe` no se cuentan como archivos.
 | ESLint focalizado | PASS, exit 0 |
 | TypeScript completo | PASS, exit 0 |
 | Revisión independiente | PASS, sin hallazgos materiales |
-| CI/CodeQL de entrega | Pendiente |
+| CI del head `2195e70` | 3950 unitarios / 406 archivos y 67/67 casos de navegador PASS |
+| CodeQL del mismo head | Cero resultados; alertas 2–5 ausentes del ref de la PR |
 
 `endpoint-boundaries.test.ts` llama a las funciones exportadas y observa
 `fetch`. Prueba traversal, query, fragmento, escapes, barras invertidas,
@@ -74,6 +75,26 @@ La defensa valida la URL inicial y las claves devueltas; no garantiza
 protección frente a un proveedor comprometido ni a su DNS.
 
 El [análisis de CodeQL](https://codeql.github.com/codeql-query-help/javascript/js-request-forgery/)
-contempla traversal del pathname con hostname fijo. El resultado del
-analizador desplegado debe confirmarse en CI antes de cerrar #1292. No se
-suprimen alertas ni se cambian las reglas del analizador.
+contempla traversal del pathname con hostname fijo. No se suprimen alertas
+ni se cambian las reglas del analizador.
+
+## CI comprobada
+
+La [CI de la PR #1294](https://github.com/borjar20/Biblioshare/actions/runs/36981751841)
+pasa los 3950 unitarios en 406 archivos, sin FAIL/SKIP, y 67/67 casos de
+navegador contra producción local. Pasa el bootstrap de 271 pasos, build de
+73 páginas y parada de Supabase. Actions ejecuta el merge temporal
+`634255f32dd1baf2b8d9acd8e4c6312f4afc72ce` del head
+`2195e70474ac948ee62a0522ea59395a0fa6ee91` sobre `89d82e8`.
+
+[CodeQL](https://github.com/borjar20/Biblioshare/actions/runs/36981749695)
+analiza directamente ese head: 87 reglas JS/TS y 17 Actions, sin resultados,
+warnings ni errores. El check agregado pasa y el ref de la PR no tiene las
+alertas 2–5. En ese momento siguen abiertas en main; no se afirma su cierre
+global antes de integrar la reparación.
+
+El dictamen `.scratch/ticket-campaign/qa1292/ci-head-2195e70/verdict.json`
+tiene SHA256 `8bc64af6ba909a3f0dfc884b1d8166c777625009f785fa919c2faeed9d961103`.
+Su manifiesto reúne 21 archivos verificados sin discrepancias. La revisión
+de documentación posterior conserva exactamente las cuatro fuentes
+verificadas; el merge exige también los checks obligatorios de su head.
