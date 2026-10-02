@@ -15,6 +15,10 @@ Private excluye acompañantes; participants exige aceptación; profile exige per
 visible y ausencia de bloqueo. Un pendiente ve solo el resumen de invitación.
 Las cuentas confirman solo su presencia, favorito e identidad. Los invitados sin
 cuenta son etiquetas privadas. Consentir una foto no consiente identidad.
+Retirar identidad o salir de una participación propia no exige recuperar acceso:
+un resumen autenticado de título/fecha identifica la participación sin mostrar el
+grupo. El bloqueo creador↔acompañante suspende atribución pública en ambos sentidos,
+incluidos asistencia, favoritos y perfil. Conceder consentimiento conserva el gate normal.
 
 La publicación única exige creador y audiencia profile. INSERT directo está cerrado;
 post, targets de comentarios/reacciones y notificaciones comprueban también la raíz.
@@ -25,8 +29,12 @@ Fotos en bucket privado, 1..2 MiB, JPEG/PNG/WebP y firma verificada en la aplica
 Reserva pending y confirmación solo si existen bytes con metadatos válidos.
 El endpoint normal autoriza por sesión antes de leer con servicio: 404 uniforme,
 private/no-store, nosniff y sin URL firmada. El autor saliente puede borrar su imagen
-sin recuperar acceso al grupo; la gestión muestra solo IDs/fechas.
+sin recuperar acceso al grupo; la gestión muestra IDs/fechas y una vista previa
+exclusiva de su autor por `/api/experience-photos/[id]/own`. Esta ruta usa otro gate
+autenticado, no sirve imágenes ajenas/pending ni abre raíces retiradas por moderación.
 
+Denunciar exige visibilidad actual de la raíz, también dentro de la RPC definidora;
+un tercero, pendiente o exmiembro sin acceso no puede denunciar ni crear evidencia.
 Denuncias e historial guardan fotos ready como evidencia privada. El reporter recibe
 confirmación, nunca ese snapshot. Solo la RPC y el endpoint administrativos sirven
 la evidencia tras comprobar rol admin. La eliminación personal sin denuncia/moderación

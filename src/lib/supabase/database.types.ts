@@ -4501,6 +4501,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      experience_can_preview_own_photo: {
+        Args: { p_photo_id: string }
+        Returns: boolean
+      }
+      get_experience_companions: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          display_name: string
+          guest_name: string
+          id: string
+          user_id: string
+          username: string
+        }[]
+      }
+      get_experience_own_memberships: {
+        Args: never
+        Returns: {
+          created_at: string
+          experience_id: string
+          participant_id: string
+          share_identity: boolean
+          title: string
+        }[]
+      }
 }
     Enums: {
       activity_kind:

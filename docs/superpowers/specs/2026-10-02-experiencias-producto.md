@@ -1,9 +1,9 @@
 # Experiencias — propuesta de producto
 
-> **[Producto aceptado para preparar implementación · 2026-10-02]** El propietario
+> **[Histórico · congelado 2026-10-02 · producto de origen]** El propietario
 > eligió reunir «En vivo» y «Escapadas» y, tras presentarse este documento, pidió
-> implementarlo. No describe funcionalidad existente. El diseño técnico y el plan
-> concretan los contratos nuevos para su revisión antes de escribir código.
+> implementarlo. La primera versión está verificada en local/dev; el estado actual
+> vive en `docs/PROYECTO.md` y `docs/requirements/data-model.md`. Producción pendiente.
 
 Seguimiento operativo: [issue #1293](https://github.com/borjar20/Biblioshare/issues/1293).
 

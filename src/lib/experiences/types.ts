@@ -93,3 +93,5 @@ export interface ExperiencePhoto {
   authorId:string|null;authorName:string|null;canManage:boolean;isAuthor:boolean;
 }
 export interface ExperienceOwnPhotoPage {items:{id:string;createdAt:string}[];nextCursor:string|null}
+export type ExperienceCompanion=Pick<ExperiencePerson,"id"|"userId"|"guestName"|"username"|"displayName"|"avatarUrl">;
+export interface ExperienceOwnMembership {participantId:string;experienceId:string;title:string;createdAt:string;shareIdentity:boolean}

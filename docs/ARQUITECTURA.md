@@ -66,7 +66,7 @@ Cuatro clientes de Supabase, y usar el que no toca es un error habitual:
 |---|---|---|
 | `lib/supabase/server.ts` | Server Components y Actions | El normal |
 | `lib/supabase/client.ts` | Componentes de cliente | Sujeto a RLS del usuario |
-| `lib/supabase/proxy.ts` | `src/proxy.ts` | Solo resuelve la sesión |
+| `lib/supabase/proxy.ts` | `src/proxy.ts` | Sesión y preflight RLS de detalle/edición de Experiencias |
 | `lib/supabase/service-role.ts` | **Salta RLS** | Solo server. Necesario para Storage: **no valida JWT ES256** |
 
 ## 2. Mapa de rutas

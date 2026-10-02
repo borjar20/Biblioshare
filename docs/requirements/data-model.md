@@ -3,7 +3,7 @@
 > **Delta 2026-10-02 (#1293, local/dev; pendiente de producción):** Experiencias
 > añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
 > existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
-> ediciones perdidas. Bootstrap vacío final de 278 pasos y pruebas de acceso,
+> ediciones perdidas. Bootstrap vacío final de 279 pasos y pruebas de acceso,
 > participación, fotos/publicación/moderación locales y en dev; carreras de edición
 > y publicación comprobadas localmente. Ver §8ter; producción pendiente.
 
@@ -4499,7 +4499,11 @@ propone presencia, nunca confirma asistencia. Cada cuenta escribe únicamente
 su presencia/favorito/consentimiento; el creador solo registra presencia de etiquetas
 sin cuenta. Quitar un miembro elimina asistencia/favoritos y conserva fotos.
 El creador no puede salir ni ser expulsado. Una cuenta puede retirar consentimiento
-aunque la raíz haya vuelto a privada.
+aunque la raíz haya vuelto a privada o haya un bloqueo en cualquiera de los sentidos.
+La retirada propia usa lock separado del gate de contribución, sin autorizar nuevas
+aportaciones. `get_experience_own_memberships` entrega título/fecha y consentimiento
+solo de participaciones propias aceptadas sin acceso, para revocar o salir desde el hub.
+Un bloqueo creador↔acompañante suspende además su atribución pública, incluso en perfil.
 
 `get_experience_invitations()` deriva destinatario de auth.uid y entrega solo
 ID/título/fechas/organizador; sin sesión no devuelve filas. Un pendiente conserva
@@ -4507,7 +4511,10 @@ ese resumen y no abre detalle, incluso si la raíz está en audiencia profile.
 Avisos de invitación/aceptación usan el canal social y dedupe por invitación,
 sin contexto de título privado. Invitación enlaza al hub para responder.
 Pruebas con rollback, perfiles privados, consentimiento/joins REST, límite exacto
-y tres cuentas sobre build de producción; incluida en el replay integral de 278 pasos.
+y tres cuentas sobre build de producción; incluida en el replay integral de 279 pasos.
+`get_experience_companions` usa RLS del invocador y proyecta personas aceptadas del
+historial propio accesible completo. Su paginación es independiente de los veinte
+resultados y de los filtros activos; no pierde opciones al filtrar o no tener resultados.
 
 Fotos (local/dev 2026-10-02, `20261002112531_experiences_photo_mutations.sql`):
 reserva autenticada de ruta generada en servidor; máximo 40 incluyendo pending.
@@ -4524,7 +4531,9 @@ MIME explícito, nosniff, private/no-store; sin URL firmada ni optimizador compa
 
 El autor saliente puede retirar consentimiento y eliminar su aportación sin volver
 al grupo. `get_experience_orphan_photos` devuelve solo sus IDs/fechas para gestión
-desde el hub, sin imágenes ni nombres de recuerdos ajenos. El borrado encola rutas
+desde el hub. Para reconocer cuál retirar, `experience_can_preview_own_photo` y
+`/api/experience-photos/[id]/own` autorizan exclusivamente ready del autor actual,
+sin abrir grupo, servir fotos ajenas/pending ni raíces moderadas. El borrado encola rutas
 en `private.experience_photo_cleanup`, tabla con RLS y acceso solo servicio. La
 limpieza comprueba ausencia de metadatos vivos y evidencia de moderación antes de
 borrar Storage; un fallo conserva la cola. Evidencia conserva bytes y cierra la cola.
@@ -4533,7 +4542,7 @@ El script `scripts/experiences/cleanup-pending-photos.mjs` exige proyecto dev/lo
 coincidente con el entorno, empieza en dry-run, limita lotes a 100 y antigüedad a
 una hora mínima. `--kind=deleted` recupera borrados pendientes de Storage; el modo
 predeterminado solo retira reservas pending antiguas. Nunca elimina fotos ready.
-Sin columnas añadidas a tablas previas; incluida en el replay integral de 278 pasos.
+Sin columnas añadidas a tablas previas; incluida en el replay integral de 279 pasos.
 
 Publicación y moderación (local/dev 2026-10-02,
 `20261002120712_experiences_social_visibility.sql`): `experience_publish` exige
@@ -4549,17 +4558,21 @@ individual para acompañantes y perfil visible. El creador aparece en su propio
 perfil público por su elección explícita de audiencia. Lecturas con sesión, sin
 caché compartida; feed/detalle usan proyecciones en lote, sin simular ItemType.
 
-`experience_report` devuelve confirmación sin snapshot. Los snapshots de raíces
+`experience_report` exige visibilidad actual dentro de la RPC SECURITY DEFINER;
+un tercero, pendiente o exmiembro sin acceso no puede generar denuncia/evidencia.
+Devuelve confirmación sin snapshot. Los snapshots de raíces
 y posts de experiencias quedan ocultos al reporter y contienen fotos ready como
 evidencia privada. La moderación admite experience; restaurar la raíz conserva
 las retiradas independientes de posts. Borrar un post conserva el recuerdo y un
 post borrado administrativamente no se recrea al publicar. Borrar la raíz captura
 evidencia antes de cascadas solo si hay denuncia/moderación; pending no se retiene.
 `admin_moderation_photo` exige administrador y entrega ruta/MIME únicamente al
-endpoint administrativo, con bytes private/no-store. Bootstrap final: 278 pasos,
+endpoint administrativo, con bytes private/no-store. Bootstrap final: 279 pasos,
 reconstruido desde cero y verificado con todas las regresiones SQL.
 `20261002125917_experiences_advisor_hardening.sql` añade índice para FK compuesta
 de asistencia, initplan de auth.uid en fotos y policy false en la cola privada.
+`20261002132635_experiences_review_fixes.sql` corrige retirada tras bloqueo, denuncia
+sin acceso, filtro del historial completo y vista previa exclusiva de fotos propias.
 Se comprobaron objetos/ACL reales: seis tablas RLS, cero escritura directa de cliente
 y cero EXECUTE de PUBLIC en los contratos nuevos. Sin columnas nuevas en tablas
 existentes, no hay grants finos que ampliar. Advisors de SECURITY DEFINER de lecturas

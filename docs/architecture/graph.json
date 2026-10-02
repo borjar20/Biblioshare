@@ -46,7 +46,7 @@
       },
       {
         "id": "inv-server-clients",
-        "rule": "Cuatro clientes de Supabase y usar el que no toca es un error habitual: server.ts (RSC/actions), client.ts (componentes cliente), proxy.ts (solo sesión), service-role.ts (salta RLS, solo server).",
+        "rule": "Cuatro clientes de Supabase y usar el que no toca es un error habitual: server.ts (RSC/actions), client.ts (componentes cliente), proxy.ts (sesión y preflight RLS de Experiencias), service-role.ts (salta RLS, solo server).",
         "evidence": "src/lib/supabase/"
       },
       {
@@ -1126,7 +1126,7 @@
       "label": "supabase/proxy.ts",
       "layer": "data",
       "kind": "client",
-      "summary": "Valida/refresca sesión y onboarding vinculado al user id; propaga cookies/cabeceras al redirigir. Conserva pathname + search del anónimo en /admin… (#1271); no sustituye la autorización de roles del servidor/RLS.",
+      "summary": "Valida/refresca sesión y onboarding vinculado al user id; propaga cookies/cabeceras al redirigir. Conserva pathname + search del anónimo en /admin… (#1271). Preflight RLS de detalle/edición de Experiencias devuelve 404 antes del streaming; las rutas/RPC conservan su autorización.",
       "files": [
         "src/lib/supabase/proxy.ts"
       ]
@@ -1793,10 +1793,11 @@
       "label": "/api/experience-photos · /api/admin/experience-photos",
       "layer": "route",
       "kind": "route",
-      "summary": "Bytes autorizados en cada petición; ruta administrativa solo tras gate admin.",
+      "summary": "Bytes autorizados por petición: acceso al grupo, vista previa exclusiva del autor o evidencia tras gate admin.",
       "files": [
         "src/app/api/experience-photos/[id]/route.ts",
-        "src/app/api/admin/experience-photos/[id]/route.ts"
+        "src/app/api/admin/experience-photos/[id]/route.ts",
+        "src/app/api/experience-photos/[id]/own/route.ts"
       ]
     },
     {
@@ -1804,7 +1805,7 @@
       "label": "components/experiences",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Recuerdos con momentos, personas y galería; publicación, consentimientos y gestión de fotos propias fuera del grupo.",
+      "summary": "Momentos, personas y galería; retirada de participaciones propias sin acceso y fotos propias reconocibles con vista previa del autor.",
       "files": [
         "src/components/experiences",
         "src/components/social/experience-feed-card.tsx"
@@ -1818,7 +1819,7 @@
       "summary": "Autentica, valida, llama RPC y revalida; fotos reservan/suben/confirman con compensación.",
       "files": [
         "src/lib/experiences/actions.ts",
-        "src/lib/experiences/participation-actions.ts",
+        "src/lib/experiences/participant-actions.ts",
         "src/lib/experiences/photo-actions.ts",
         "src/lib/experiences/publish-actions.ts",
         "src/lib/experiences/report-actions.ts"
@@ -1837,7 +1838,8 @@
       ],
       "gotchas": [
         "Aceptar no confirma asistencia ni publica identidad/fotos. Vividas exige presencia propia confirmada.",
-        "No simular ItemType ni cachear datos dependientes de sesión."
+        "No simular ItemType ni cachear datos dependientes de sesión.",
+        "Lista completa de acompañantes independiente de la página; retirada propia no requiere acceso al grupo."
       ]
     },
     {
@@ -1850,7 +1852,8 @@
         "supabase/migrations/20261002092737_experiences_core.sql",
         "supabase/migrations/20261002105627_experiences_participation.sql",
         "supabase/migrations/20261002112531_experiences_photo_mutations.sql",
-        "supabase/migrations/20261002120712_experiences_social_visibility.sql"
+        "supabase/migrations/20261002120712_experiences_social_visibility.sql",
+        "supabase/migrations/20261002132635_experiences_review_fixes.sql"
       ],
       "gotchas": [
         "No deriva de passes: es una raíz colaborativa, excepción explícita.",
@@ -4457,7 +4460,7 @@
         {
           "node": "a-experiences",
           "action": "Invita y cada cuenta acepta/confirma presencia/identidad",
-          "file": "src/lib/experiences/participation-actions.ts"
+          "file": "src/lib/experiences/participant-actions.ts"
         },
         {
           "node": "a-experiences",

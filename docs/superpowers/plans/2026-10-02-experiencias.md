@@ -17,7 +17,9 @@ Supabase PostgreSQL 17, next-intl 4, Tailwind 4, Vitest y Playwright existentes.
 **Spec:** `docs/superpowers/specs/2026-10-02-experiencias-design.md` y su
 propuesta de producto `docs/superpowers/specs/2026-10-02-experiencias-producto.md`.
 
-**Estado:** aprobado el 2026-10-02; tareas 1–5 implementadas y verificadas en local/dev; tarea 6 en revisión final.
+**Estado:** histórico, congelado el 2026-10-02; seis tareas implementadas y verificadas
+en local/dev. Revisión independiente: cuatro hallazgos importantes corregidos y dos
+menores en #1321/#1322. Producción pendiente; evidencia final en `docs/testing/2026-10-02-experiencias.md`.
 **Seguimiento:** [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 **Método recomendado:** ejecución en este chat, tarea a tarea, y revisión independiente final.
 
@@ -231,21 +233,21 @@ asistencia confirmada y Por vivir permite planes aceptados, nunca invitaciones p
   `docs/PROYECTO.md`, `docs/SEGURIDAD.md`, `docs/architecture/graph.json`,
   `docs/ARQUITECTURA.md` y los docs de contratos que cambien efectivamente.
 
-- [ ] Ejecutar typecheck, lint apropiado y unitarios de las tareas más sus regresiones.
-- [ ] Reconstruir esquema vacío con bootstrap y comprobar enums/helpers/grants reales,
+- [x] Ejecutar typecheck, lint apropiado y unitarios de las tareas más sus regresiones.
+- [x] Reconstruir esquema vacío con bootstrap y comprobar enums/helpers/grants reales,
   incluidos PUBLIC y grants por columna; ejecutar superficie 6 si cambió alguna columna.
-- [ ] Aplicar migraciones a `biblioshare-dev` tras comprobar la ausencia/presencia real de
+- [x] Aplicar migraciones a `biblioshare-dev` tras comprobar la ausencia/presencia real de
   objetos, conservando las funciones adicionales de dev. Verificar RLS/RPC/media con JWTs
   de actores distintos; ejecutar advisors y corregir problemas introducidos.
-- [ ] Construir producción con Node 22.23.1 y ejecutar las cinco familias E2E en tandas pequeñas,
+- [x] Construir producción con Node 22.23.1 y ejecutar las cinco familias E2E en tandas pequeñas,
   usando `next start` en 3000 y configuración dedicada sin limpieza global ajena.
-- [ ] Revisar visualmente móvil/escritorio y accesibilidad de las pantallas nuevas; guardar
+- [x] Revisar visualmente móvil/escritorio y accesibilidad de las pantallas nuevas; guardar
   evidencia. Ejecutar una revisión independiente de todo el cambio y resolver hallazgos.
-- [ ] Sincronizar esquema/seguridad/arquitectura/glosario y registrar la decisión explícita
+- [x] Sincronizar esquema/seguridad/arquitectura/glosario y registrar la decisión explícita
   del dominio; fechas de verificación precisas por entorno. Marcar solo lo realmente terminado.
-- [ ] Actualizar #1293 con entregas y evidencia; registrar aparte cualquier fallo ajeno,
+- [x] Actualizar #1293 con entregas y evidencia; registrar aparte cualquier fallo ajeno,
   con área/tipo/prioridad, y mantener ahí las ampliaciones y el release no ejecutado.
-- [ ] Limpiar datos de test, reservas de fotos, servidores y recursos locales creados. Commit final.
+- [x] Limpiar datos de test, reservas de fotos, servidores y recursos locales creados. Commit final.
 
 ## Contrato de terminación
 

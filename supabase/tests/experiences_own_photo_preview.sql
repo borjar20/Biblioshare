@@ -1,0 +1,21 @@
+begin;
+create temporary table xv(k text primary key,id uuid not null default gen_random_uuid());
+insert into xv(k) values('owner'),('former'),('outside'),('root'),('photo'),('other'),('pending');
+grant select on xv to authenticated,anon;
+insert into auth.users(id) select id from xv where k in ('owner','former','outside');
+insert into public.experiences(id,creator_id,title) select id,(select id from xv where k='owner'),'[TEST] own preview' from xv where k='root';
+insert into public.experience_photos(id,experience_id,author_id,storage_path,mime_type,status) select id,(select id from xv where k='root'),(select id from xv where k=case when p.k='other' then 'owner' else 'former' end),id||'.png','image/png',case when p.k='pending' then 'pending' else 'ready' end from xv p where k in ('photo','other','pending');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xv where k='former'),true);
+do $$ begin
+  if public.experience_can_read_photo((select id from xv where k='photo')) or exists(select 1 from public.experiences where id=(select id from xv where k='root')) then raise exception 'FAIL group remains visible'; end if;
+  if not public.experience_can_preview_own_photo((select id from xv where k='photo')) then raise exception 'FAIL own recognizable preview'; end if;
+  if public.experience_can_preview_own_photo((select id from xv where k='other')) or public.experience_can_preview_own_photo((select id from xv where k='pending')) then raise exception 'FAIL alien/pending preview'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xv where k='outside'),true);
+do $$ begin if public.experience_can_preview_own_photo((select id from xv where k='photo')) then raise exception 'FAIL outsider preview'; end if; end $$;
+reset role;
+set local role anon;
+do $$ begin begin perform public.experience_can_preview_own_photo((select id from xv where k='photo')); raise exception 'FAIL anonymous preview RPC'; exception when insufficient_privilege then null; end; end $$;
+reset role;
+rollback;

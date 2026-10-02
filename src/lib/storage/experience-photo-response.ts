@@ -4,10 +4,16 @@ import {createServiceRoleClient} from "@/lib/supabase/service-role";
 import {isExperienceId} from "@/lib/experiences/validation";
 export const PRIVATE_PHOTO_HEADERS={"Cache-Control":"private, no-store",Vary:"Cookie, Authorization","X-Content-Type-Options":"nosniff"};
 export async function serveExperiencePhoto(id:string):Promise<Response> {
+  return servePermittedPhoto(id,"experience_can_read_photo");
+}
+export async function serveExperienceOwnPhoto(id:string):Promise<Response> {
+  return servePermittedPhoto(id,"experience_can_preview_own_photo");
+}
+async function servePermittedPhoto(id:string,permissionRpc:"experience_can_read_photo"|"experience_can_preview_own_photo"):Promise<Response> {
   const missing=()=>new Response(null,{status:404,headers:PRIVATE_PHOTO_HEADERS});
   if(!isExperienceId(id)) return missing();
   try {
-    const session=await createClient(),permission=await session.rpc("experience_can_read_photo",{p_photo_id:id});
+    const session=await createClient(),permission=await session.rpc(permissionRpc,{p_photo_id:id});
     if(permission.error||permission.data!==true) return missing();
     const service=createServiceRoleClient();
     const {data:photo,error}=await service.from("experience_photos").select("storage_path,mime_type,status").eq("id",id).maybeSingle();

@@ -26,6 +26,9 @@ elige su favorito y consiente por separado mostrar identidad e imágenes.
 El creador puede compartir una publicación única en el feed o quitarla conservando
 el recuerdo. La pestaña Experiencias aparece en perfiles propios y visitantes,
 según los permisos actuales. Incluye denuncia y moderación administrativa.
+El filtro de acompañantes recorre todo el historial accesible. Al perder acceso,
+las participaciones propias se pueden retirar desde el hub y las fotos propias
+se reconocen con una vista previa exclusiva del autor antes de eliminarlas.
 Captura manual; catálogos externos, fusionar recuerdos y filtro entre hobbies
 quedan en #1293. Evidencia: `docs/testing/2026-10-02-experiencias.md`.
 

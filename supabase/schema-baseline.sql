@@ -1392,3 +1392,8 @@ commit;
 begin;
 \ir migrations/20261002125917_experiences_advisor_hardening.sql
 commit;
+
+-- 20261002132635_experiences_review_fixes
+begin;
+\ir migrations/20261002132635_experiences_review_fixes.sql
+commit;

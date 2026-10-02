@@ -5870,3 +5870,24 @@ ni escribirlo; una operación ordinaria no captura historial administrativo de h
 
 Código y SQL probados en local/dev; producir el release es una operación separada
 con las siete migraciones ordenadas y verificación de objetos reales. Estado en #1293.
+
+## 2026-10-02 — Retirada propia después de perder acceso (#1293, revisión final)
+
+Retirar identidad o salir no son aportaciones al grupo: usan autenticación propia
+y lock de raíz, independientemente de privacidad/bloqueo/moderación. Conceder
+consentimiento mantiene el gate de contribución. El hub ofrece una proyección mínima
+de título/fecha de participaciones propias aceptadas sin acceso; no muestra personas,
+momentos ni galería. Un bloqueo creador↔acompañante suspende también atribución pública
+en ambos sentidos, incluidos perfil, asistencia y favoritos.
+
+La gestión ID/fecha de fotos no permitía reconocer aportaciones subidas el mismo día.
+Se sustituye por una vista previa exclusiva del autor, en lista y confirmación, con
+RPC y endpoint separados del acceso al grupo. Solo ready propias de raíces no retiradas
+por moderación; sesión, no-store y 404 uniforme. La URL ordinaria sigue revocada al salir.
+El autor recupera sus propias imágenes para retirarlas, nunca contenido de otras personas.
+
+El filtro de acompañantes obtiene su lista completa con RLS del invocador, independiente
+de los resultados/filtros activos. Denunciar dentro de SECURITY DEFINER exige comprobar
+visibilidad actual antes de INSERT, para impedir denuncias y retención de evidencia sin acceso.
+La revisión añade una octava migración canónica; el orden final de release vive en
+`docs/testing/2026-10-02-experiencias.md` y #1293, con producción todavía pendiente.

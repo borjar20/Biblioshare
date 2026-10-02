@@ -1,9 +1,10 @@
 # Experiencias — diseño técnico de la primera versión
 
-> **[Diseño aprobado · 2026-10-02 · implementación en curso]**
+> **[Histórico · congelado 2026-10-02 · diseño implementado en local/dev]**
 > El propietario aprobó diseño, plan y ejecución continua. Este documento fija el
 > alcance; el estado aplicado por entorno vive en el modelo de datos canónico y
-> en el plan. Seguimiento: [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
+> en el plan. Correcciones de revisión y evidencia final: `docs/testing/2026-10-02-experiencias.md`.
+> Seguimiento de release: [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 
 Producto de origen: [Experiencias](2026-10-02-experiencias-producto.md).
 Plan: [implementación](../plans/2026-10-02-experiencias.md).

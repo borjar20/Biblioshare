@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
-import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation,ExperiencePhoto,ExperienceOwnPhotoPage } from "./types";
+import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation,ExperiencePhoto,ExperienceOwnPhotoPage,ExperienceCompanion,ExperienceOwnMembership } from "./types";
 import { MOMENT_KINDS } from "./types";
 import { isExperienceId } from "./validation";
 
@@ -131,4 +131,22 @@ export async function getExperienceOwnPhotos(afterCursor?:string):Promise<Experi
   const {data,error}=await query;if(error) throw error;
   const rows=(data??[]).slice(0,20),last=rows.at(-1);
   return {items:rows.map(p=>({id:p.id,createdAt:p.created_at})),nextCursor:data!.length>20&&last ? Buffer.from(JSON.stringify({createdAt:last.created_at,id:last.id})).toString("base64url") : null};
+}
+export async function getExperienceCompanions():Promise<ExperienceCompanion[]> {
+  const client=await createClient(),people:ExperienceCompanion[]=[];
+  for(let offset=0;;offset+=1000) {
+    const {data,error}=await client.rpc("get_experience_companions").order("user_id",{nullsFirst:true}).order("id").range(offset,offset+999);
+    if(error)throw error;
+    people.push(...(data??[]).map(p=>({id:p.id,userId:p.user_id,guestName:p.guest_name,username:p.username,displayName:p.display_name,avatarUrl:p.avatar_url})));
+    if(!data||data.length<1000)return people;
+  }
+}
+export async function getExperienceOwnMemberships():Promise<ExperienceOwnMembership[]> {
+  const client=await createClient(),memberships:ExperienceOwnMembership[]=[];
+  for(let offset=0;;offset+=1000) {
+    const {data,error}=await client.rpc("get_experience_own_memberships").order("created_at",{ascending:false}).order("participant_id").range(offset,offset+999);
+    if(error)throw error;
+    memberships.push(...(data??[]).map(p=>({participantId:p.participant_id,experienceId:p.experience_id,title:p.title,createdAt:p.created_at,shareIdentity:p.share_identity})));
+    if(!data||data.length<1000)return memberships;
+  }
 }
