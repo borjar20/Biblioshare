@@ -36,6 +36,9 @@ Invitaciones: «Aceptar invitación» / «Rechazar invitación». «Mostrar mi p
 en el perfil» es consentimiento individual, separado de aceptar y de «Fui».
 «Añadir acompañante» admite «Cuenta de Biblioshare» o «Invitado sin cuenta»;
 invitar abre el recuerdo a acompañantes aceptados y lo avisa antes de enviar.
+Galería: «Añadir foto», «Portada» y «Mostrar esta foto en el perfil». La autoría
+no concede consentimiento de identidad. «Fotos fuera de un grupo» permite quitar
+aportaciones propias tras salir, sin volver a abrir el recuerdo.
 
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|

@@ -4410,6 +4410,60 @@ export type Database = {
           username: string
         }[]
       }
+      experience_ack_photo_cleanup: {
+        Args: { p_path: string }
+        Returns: undefined
+      }
+      experience_can_read_photo: {
+        Args: { p_photo_id: string }
+        Returns: boolean
+      }
+      experience_cancel_photo: { Args: { p_photo_id: string }; Returns: Json }
+      experience_cleanup_pending_photos: {
+        Args: { p_before: string; p_limit?: number }
+        Returns: Json
+      }
+      experience_delete_photo: { Args: { p_photo_id: string }; Returns: Json }
+      experience_finish_photo: { Args: { p_photo_id: string }; Returns: Json }
+      experience_photo_cleanup_candidate: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
+      experience_queue_photo_cleanup: {
+        Args: { p_path: string }
+        Returns: undefined
+      }
+      experience_reserve_photo: {
+        Args: { p_id: string; p_mime?: string; p_moment_id?: string }
+        Returns: Json
+      }
+      experience_set_cover: {
+        Args: { p_id: string; p_photo_id?: string }
+        Returns: Json
+      }
+      experience_set_photo_sharing: {
+        Args: { p_enabled: boolean; p_photo_id: string }
+        Returns: Json
+      }
+      get_experience_cover_photos: { Args: { p_ids: string[] }; Returns: Json }
+      get_experience_orphan_photos: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+        }[]
+      }
+      get_experience_photo_cleanup: {
+        Args: { p_before: string; p_limit?: number }
+        Returns: {
+          storage_path: string
+        }[]
+      }
+      get_experience_visible_photos: { Args: { p_id: string }; Returns: Json }
+      moderation_photo_is_evidence: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
 }
     Enums: {
       activity_kind:

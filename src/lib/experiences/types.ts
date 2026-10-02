@@ -73,6 +73,7 @@ export interface ExperienceDetail extends ExperiencePreview {
   canContribute: boolean;
   attendance: { momentId: string; participantId: string; state: AttendanceState }[];
   favorites: { userId: string; momentId: string }[];
+  photos:ExperiencePhoto[];
 }
 export interface ExperienceFilters {
   state?: ExperienceState | "all";
@@ -85,3 +86,8 @@ export interface ExperienceInvitation {
   participantId:string;experienceId:string;title:string;startsOn:string|null;endsOn:string|null;
   organizer:{id:string;username:string;name:string;avatarUrl:string|null};
 }
+export interface ExperiencePhoto {
+  id:string;momentId:string|null;mimeType:string;createdAt:string;shareWithProfile:boolean;
+  authorId:string|null;authorName:string|null;canManage:boolean;isAuthor:boolean;
+}
+export interface ExperienceOwnPhotoPage {items:{id:string;createdAt:string}[];nextCursor:string|null}

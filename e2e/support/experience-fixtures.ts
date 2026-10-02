@@ -21,8 +21,16 @@ export async function clearExperienceFixtures(owner:string) {
   const roots=await (await experienceRest(`experiences?${query}`)).json() as {id:string}[];
   if(!roots.length) return;
   const ids=roots.map(r=>r.id).join(",");
+  const photos=await (await experienceRest(`experience_photos?experience_id=in.(${ids})&select=storage_path`)).json() as {storage_path:string}[];
+  if(photos.length) {
+    const url=process.env.NEXT_PUBLIC_SUPABASE_URL!,key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    if(photos.some(p=>!roots.some(r=>p.storage_path.startsWith(`${r.id}/`)))) throw new Error("Photo fixture outside owned roots");
+    const removed=await fetch(`${url}/storage/v1/object/experience-photos`,{method:"DELETE",headers:{apikey:key,Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({prefixes:photos.map(p=>p.storage_path)})});
+    if(!removed.ok) throw new Error(`Photo fixture cleanup ${removed.status}`);
+  }
   await experienceRest(`posts?anchor_type=eq.experience&anchor_id=in.(${ids})`,{method:"DELETE"});
   await experienceRest(`experiences?id=in.(${ids})&creator_id=eq.${owner}`,{method:"DELETE"});
+  for(const photo of photos) await experienceRest("rpc/experience_ack_photo_cleanup",{method:"POST",body:JSON.stringify({p_path:photo.storage_path})});
 }
 export async function loginExperienceUser(page:Page,actor?:{email:string;password:string}) {
   await page.goto("/login");

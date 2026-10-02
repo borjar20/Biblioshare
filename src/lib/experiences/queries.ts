@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
-import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation } from "./types";
+import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation,ExperiencePhoto,ExperienceOwnPhotoPage } from "./types";
 import { MOMENT_KINDS } from "./types";
 import { isExperienceId } from "./validation";
 
@@ -28,19 +28,26 @@ export function parseExperienceFilters(params:Record<string,string|string[]|unde
 /** Uses the caller's RLS for every relation; shared with the social batch mapper. */
 export async function getExperiencePreviews(client:Client,roots:Root[]):Promise<ExperiencePreview[]> {
   if(!roots.length) return [];
+  if(roots.length>20) {
+    const batches=[];for(let start=0;start<roots.length;start+=20) batches.push(roots.slice(start,start+20));
+    return (await Promise.all(batches.map(batch=>getExperiencePreviews(client,batch)))).flat();
+  }
   const ids=roots.map(r=>r.id);
-  const [moments,people]=await Promise.all([
+  const [moments,people,covers]=await Promise.all([
     client.from("experience_moments").select("*").in("experience_id",ids).order("position"),
     client.from("experience_participants").select("*").in("experience_id",ids).order("created_at").order("id"),
+    client.rpc("get_experience_cover_photos",{p_ids:ids}),
   ]);
   if(moments.error) throw moments.error;
   if(people.error) throw people.error;
+  if(covers.error) throw covers.error;
+  const coverByRoot=new Map((covers.data as {experienceId:string;id:string}[]).map(p=>[p.experienceId,p.id]));
   const userIds=[...new Set((people.data??[]).flatMap(p=>p.user_id ? [p.user_id] : []))];
   const identities=userIds.length ? await client.from("profile_identities").select("user_id,username,display_name,avatar_url").in("user_id",userIds) : {data:[],error:null};
   if(identities.error) throw identities.error;
   const byId=new Map((identities.data??[]).map(p=>[p.user_id,p]));
   return roots.map(root=>({
-    id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:root.cover_photo_id,createdAt:root.created_at,revision:root.revision,
+    id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:coverByRoot.get(root.id)??null,createdAt:root.created_at,revision:root.revision,
     moments:(moments.data??[]).filter(m=>m.experience_id===root.id).map(m=>({id:m.id,title:m.title,kind:m.kind as ExperiencePreview["moments"][number]["kind"],placeLabel:m.place_label,startsOn:m.starts_on,endsOn:m.ends_on,position:m.position})),
     participants:(people.data??[]).filter(p=>p.experience_id===root.id).map(p=>({id:p.id,userId:p.user_id,guestName:p.guest_name,invitationState:p.invitation_state as ExperiencePreview["participants"][number]["invitationState"],shareIdentity:p.share_identity,username:byId.get(p.user_id)?.username??null,displayName:byId.get(p.user_id)?.display_name??null,avatarUrl:byId.get(p.user_id)?.avatar_url??null})),
   }));
@@ -73,18 +80,21 @@ export async function getExperience(id:string):Promise<ExperienceDetail|null> {
   const {data:root,error}=await client.from("experiences").select("*").eq("id",id).maybeSingle();
   if(error) throw error;
   if(!root) return null;
-  const [previews,auth,attendance,favorites]=await Promise.all([
+  const [previews,auth,attendance,favorites,photos]=await Promise.all([
     getExperiencePreviews(client,[root]),client.auth.getUser(),
     readAttendance(client,id),
     client.from("experience_favorites").select("*").eq("experience_id",id),
+    client.rpc("get_experience_visible_photos",{p_id:id}),
   ]);
   if(attendance.error) throw attendance.error;
   if(favorites.error) throw favorites.error;
+  if(photos.error) throw photos.error;
   const viewerId=auth.data.user?.id??null,preview=previews[0];
   const canEdit=viewerId!==null&&root.creator_id===viewerId;
   return {...preview,viewerId,canEdit,canContribute:canEdit||(viewerId!==null&&preview.participants.some(p=>p.userId===viewerId&&p.invitationState==="accepted")),
     attendance:(attendance.data??[]).map(a=>({momentId:a.moment_id,participantId:a.participant_id,state:a.attendance_state as ExperienceDetail["attendance"][number]["state"]})),
     favorites:(favorites.data??[]).map(f=>({userId:f.user_id,momentId:f.moment_id})),
+    photos:(photos.data as unknown as ExperiencePhoto[]).map(p=>({...p,canManage:p.canManage===true,isAuthor:p.isAuthor===true})),
   };
 }
 async function readAttendance(client:Client,id:string) {
@@ -99,4 +109,12 @@ export async function getExperienceInvitations():Promise<ExperienceInvitation[]>
   const client=await createClient(),{data,error}=await client.rpc("get_experience_invitations");
   if(error) throw error;
   return (data??[]).map(row=>({participantId:row.participant_id,experienceId:row.experience_id,title:row.title,startsOn:row.starts_on,endsOn:row.ends_on,organizer:{id:row.creator_id,username:row.username,name:row.display_name??row.username,avatarUrl:row.avatar_url}}));
+}
+export async function getExperienceOwnPhotos(afterCursor?:string):Promise<ExperienceOwnPhotoPage> {
+  const client=await createClient(),after=cursor(afterCursor);
+  let query=client.rpc("get_experience_orphan_photos").order("created_at",{ascending:false}).order("id",{ascending:false}).limit(21);
+  if(after) query=query.or(`created_at.lt.${after.createdAt},and(created_at.eq.${after.createdAt},id.lt.${after.id})`);
+  const {data,error}=await query;if(error) throw error;
+  const rows=(data??[]).slice(0,20),last=rows.at(-1);
+  return {items:rows.map(p=>({id:p.id,createdAt:p.created_at})),nextCursor:data!.length>20&&last ? Buffer.from(JSON.stringify({createdAt:last.created_at,id:last.id})).toString("base64url") : null};
 }

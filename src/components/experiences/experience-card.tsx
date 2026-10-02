@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { CompassIcon } from "@/components/ui/icons";
@@ -8,9 +9,9 @@ export function ExperienceCard({experience:e}:{experience:ExperiencePreview}) {
   const t=useTranslations("experiences");
   const people=e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).map(p=>p.guestName??p.displayName??p.username).filter(Boolean);
   return <Link href={`/experiencia/${e.id}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-colors hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-    <div className="flex min-h-28 items-center justify-between bg-surface-muted px-5 py-4">
-      <CompassIcon aria-hidden className="h-12 w-12 text-accent" />
-      <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs">{e.shape==="trip" ? t("trip") : t(`kinds.${e.moments[0]?.kind??"other"}`)}</span>
+    <div className={`relative flex min-h-28 items-center justify-between bg-surface-muted px-5 py-4 ${e.coverPhotoId ? "aspect-[16/9]" : ""}`}>
+      {e.coverPhotoId ? <Image src={`/api/experience-photos/${e.coverPhotoId}`} alt="" fill unoptimized className="object-cover"/> : <CompassIcon aria-hidden className="h-12 w-12 text-accent" />}
+      <span className="relative ml-auto rounded-full border border-border bg-surface px-3 py-1 text-xs">{e.shape==="trip" ? t("trip") : t(`kinds.${e.moments[0]?.kind??"other"}`)}</span>
     </div>
     <div className="flex flex-1 flex-col gap-3 p-5">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{t(`states.${e.state}`)}</span><span aria-hidden>·</span><ExperienceDate startsOn={e.startsOn} endsOn={e.endsOn}/></div>

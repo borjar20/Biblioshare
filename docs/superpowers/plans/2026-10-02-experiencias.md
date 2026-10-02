@@ -17,7 +17,7 @@ Supabase PostgreSQL 17, next-intl 4, Tailwind 4, Vitest y Playwright existentes.
 **Spec:** `docs/superpowers/specs/2026-10-02-experiencias-design.md` y su
 propuesta de producto `docs/superpowers/specs/2026-10-02-experiencias-producto.md`.
 
-**Estado:** aprobado el 2026-10-02; tarea 1 implementada y verificada en local/dev; tareas 2–6 en ejecución.
+**Estado:** aprobado el 2026-10-02; tareas 1–4 implementadas y verificadas en local/dev; tareas 5–6 en ejecución.
 **Seguimiento:** [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 **Método recomendado:** ejecución en este chat, tarea a tarea, y revisión independiente final.
 
@@ -171,19 +171,19 @@ externos enmascarados; `experience_can_read_photo(uuid)` autoriza entrega sin ex
 Storage paths. `GET /api/experience-photos/[id]` valida esa RPC con sesión antes de obtener
 ruta/bytes en servidor; 404 sin acceso, MIME explícito y cabeceras privadas/no-store.
 
-- [ ] Escribir tests de tamaño exacto, MIME/firma incorrectos, archivo ajeno, fallo de Storage
+- [x] Escribir tests de tamaño exacto, MIME/firma incorrectos, archivo ajeno, fallo de Storage
   y cancelación de reserva; ejecutar el fallo esperado.
-- [ ] Implementar reserva/subida/confirmación y compensación. El script de limpieza acepta
+- [x] Implementar reserva/subida/confirmación y compensación. El script de limpieza acepta
   proyecto dev/local explícito y solo elimina reservas pending antiguas y sus rutas.
-- [ ] Implementar proxy autorizado sin URL firmada ni lectura pública del bucket.
-- [ ] Probar REST con visitante externo: la tabla de fotos no expone rutas ni autor_id;
+- [x] Implementar proxy autorizado sin URL firmada ni lectura pública del bucket.
+- [x] Probar REST con visitante externo: la tabla de fotos no expone rutas ni autor_id;
   la proyección pública solo devuelve identidades consentidas y visibles.
-- [ ] Implementar galería, portada propia y consentimiento por imagen, con autoría visible.
-- [ ] Probar foto ajena como portada, foto de otro recuerdo y publicar imagen sin consentimiento.
-- [ ] E2E: copiar URL, bloquear al visitante o volver a privado y volver a solicitar esa URL;
+- [x] Implementar galería, portada propia y consentimiento por imagen, con autoría visible.
+- [x] Probar foto ajena como portada, foto de otro recuerdo y publicar imagen sin consentimiento.
+- [x] E2E: copiar URL, bloquear al visitante o volver a privado y volver a solicitar esa URL;
   devuelve 404. Verificar anónimo solo para foto expresamente publicada, y sin caché pública.
-- [ ] Probar que un autor saliente puede eliminar su imagen sin recuperar acceso al grupo.
-- [ ] Pasar tests de imágenes y regresiones de audio privado, actualizar manifiesto y commit.
+- [x] Probar que un autor saliente puede eliminar su imagen sin recuperar acceso al grupo.
+- [x] Pasar tests de imágenes y regresiones de audio privado, actualizar manifiesto y commit.
 
 ## Tarea 5: Perfil, feed, publicación única y moderación
 

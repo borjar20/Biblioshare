@@ -16,6 +16,7 @@ import { ExperienceDate } from "./experience-date";
 import {ExperienceParticipants} from "./experience-participants";
 import {MomentAttendance} from "./moment-attendance";
 import {MomentFavorite} from "./moment-favorite";
+import {ExperienceGallery} from "./experience-gallery";
 export function ExperienceDetail({experience:e}:{experience:Detail}) {
   const t=useTranslations("experiences"),router=useRouter(),fieldId=useId();
   const [deleting,setDeleting]=useState(false),[error,setError]=useState<ExperienceError|null>(null),[pending,startTransition]=useTransition();
@@ -29,6 +30,7 @@ export function ExperienceDetail({experience:e}:{experience:Detail}) {
           <p className="mb-2 text-xs text-muted-foreground">{t(`kinds.${m.kind}`)}</p><h2 className="font-serif text-xl font-semibold">{m.title}</h2>{m.placeLabel&&<p className="mt-2 text-sm">{m.placeLabel}</p>}<p className="mt-3 text-sm text-muted-foreground"><ExperienceDate startsOn={m.startsOn} endsOn={m.endsOn}/></p>
           <MomentAttendance experience={e} moment={m}/><MomentFavorite experience={e} moment={m}/>
         </li>)}</ol>
+        <ExperienceGallery experience={e}/>
       </div>
       <aside className="mt-6 space-y-4 lg:sticky lg:top-20 lg:mt-0">
         {e.canEdit&&<Link href={`/experiencia/${e.id}/editar`} className={buttonVariants("secondary","min-h-11 w-full")}>{t("edit")}</Link>}

@@ -4509,6 +4509,33 @@ Pruebas con rollback, perfiles privados, consentimiento/joins REST, límite exac
 y tres cuentas sobre build de producción; manifest aumentado a 275 pasos,
 cuya reconstrucción completa se repite en la verificación integral.
 
+Fotos (local/dev 2026-10-02, `20261002112531_experiences_photo_mutations.sql`):
+reserva autenticada de ruta generada en servidor; máximo 40 incluyendo pending.
+Confirmar exige objeto en el bucket privado, MIME coincidente y tamaño 1..2 MiB.
+La aplicación verifica además la firma antes de reservar. Fallos de subida o pérdida
+de membresía cancelan la reserva y compensan los bytes. Solo el autor puede publicar
+su imagen; portada exige creador, autoría propia, ready y mismo recuerdo.
+
+`get_experience_visible_photos` devuelve metadatos autorizados sin rutas ni identidad
+sin consentimiento; `get_experience_cover_photos` resuelve portadas en lote con el
+mismo gate. El endpoint de bytes consulta `experience_can_read_photo` con la sesión
+en cada petición antes de usar servicio. Respuesta 404 uniforme al revocar permisos,
+MIME explícito, nosniff, private/no-store; sin URL firmada ni optimizador compartido.
+
+El autor saliente puede retirar consentimiento y eliminar su aportación sin volver
+al grupo. `get_experience_orphan_photos` devuelve solo sus IDs/fechas para gestión
+desde el hub, sin imágenes ni nombres de recuerdos ajenos. El borrado encola rutas
+en `private.experience_photo_cleanup`, tabla con RLS y acceso solo servicio. La
+limpieza comprueba ausencia de metadatos vivos y evidencia de moderación antes de
+borrar Storage; un fallo conserva la cola. Evidencia conserva bytes y cierra la cola.
+RPC de limpieza/evidencia solo servicio, sin EXECUTE de PUBLIC/anon/authenticated.
+El script `scripts/experiences/cleanup-pending-photos.mjs` exige proyecto dev/local
+coincidente con el entorno, empieza en dry-run, limita lotes a 100 y antigüedad a
+una hora mínima. `--kind=deleted` recupera borrados pendientes de Storage; el modo
+predeterminado solo retira reservas pending antiguas. Nunca elimina fotos ready.
+Sin columnas añadidas a tablas previas; bootstrap manifest de 276 pasos, con
+reconstrucción completa pendiente de la verificación integral.
+
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
 Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos

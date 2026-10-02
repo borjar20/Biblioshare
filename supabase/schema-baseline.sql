@@ -1377,3 +1377,8 @@ commit;
 begin;
 \ir migrations/20261002105627_experiences_participation.sql
 commit;
+
+-- 20261002112531_experiences_photo_mutations
+begin;
+\ir migrations/20261002112531_experiences_photo_mutations.sql
+commit;

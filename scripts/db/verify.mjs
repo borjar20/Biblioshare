@@ -38,6 +38,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_access.sql'), 'utf8'
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_transitions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_deletion.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_participation.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_photos.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyCatalogReferenceConcurrency(stamp.projectId);
 await verifyBookEditionIsbnConcurrency(stamp.projectId);
