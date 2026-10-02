@@ -1,5 +1,15 @@
 # Modelo de datos
 
+> **Delta 2026-10-02 (#1299):** la migración
+> `20261002102913_notification_type_mentioned.sql` rescata al historial local
+> el valor `mentioned` de `public.notification_type`, usando `IF NOT EXISTS`
+> tras crear `club_event_created` y antes de sus consumidores. Replay vacío
+> canónico de 273 pasos, inserción/lectura como service_role con rollback,
+> idempotencia y generación de tipos locales verificados. Dev (43 labels) y
+> prod (40) ya contienen el valor en la posición 18: comprobados contra
+> `pg_enum` y mediante cast real; no se aplica DDL remoto ni se cambian grants.
+> Evidencia: [bootstrap de menciones](../testing/2026-10-02-notification-type-bootstrap-1299.md).
+
 > **Delta 2026-10-02 (#1237):** `catalog_google_volume_create` admite 60 altas nuevas
 > por cuenta y ventana fija de una hora. En `books`, el trigger AFTER INSERT
 > aplica sólo a una fila con volumen Google y sin work key de Open Library;

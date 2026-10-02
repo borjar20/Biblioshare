@@ -5904,3 +5904,18 @@ recarga no repite GET/RPC. No acredita disponibilidad real de Google ni una
 reparación masiva de filas de producción. El fallo auxiliar de red de #1301
 se conserva separado de los veinte casos permanentes PASS de la tanda.
 Evidencia: `docs/testing/2026-10-02-google-volume-hydration-1290.md`.
+
+## 2026-10-02 — rescate del enum de menciones en el bootstrap (#1299)
+
+El código de notificaciones ya consume `mentioned` y los objetos reales de
+dev/prod ya lo contienen. El fallo está en la reconstrucción local: se añade
+una migración idempotente al manifiesto después de crear su vecino
+`club_event_created`, en una transacción que termina antes de los consumidores
+del valor. Se regenera el baseline desde esas fuentes; no se aplica DDL remoto.
+
+El generador contrasta todos los valores de `NotificationType` con el DDL del
+plan, y el verificador prueba inserción/lectura con rollback, no una reparación
+durante el test. Replay vacío, 18 contratos SQL, cuatro familias concurrentes,
+idempotencia y tipos locales pasan. La ruta local nueva conserva el backup de
+la campaña anterior. Evidencia:
+`docs/testing/2026-10-02-notification-type-bootstrap-1299.md`.
