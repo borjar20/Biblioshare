@@ -18,7 +18,7 @@ export async function TypePills({
   const t = await getTranslations("search");
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {TYPES.map((type) => {
         const on = type === active;
 
