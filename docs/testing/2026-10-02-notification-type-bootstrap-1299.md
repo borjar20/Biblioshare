@@ -1,7 +1,7 @@
 # Bootstrap del aviso de mención — #1299
 
 > **[Evidencia · verificada el 2026-10-02 · replay vacío, contratos SQL,
-> idempotencia, tipos locales y objetos remotos PASS; CI de entrega pendiente]**
+> idempotencia, tipos locales, objetos remotos y CI de entrega PASS; integrada en PR #1304]**
 
 El bootstrap vacío omitía `public.notification_type = 'mentioned'`, aunque
 `src/lib/social/notification-types.ts` y `notify-mentions.ts` lo consumen.
@@ -111,3 +111,19 @@ La sintaxis está contrastada con
 `IF NOT EXISTS` conserva un valor ya presente y el valor nuevo se usa tras el
 commit de su migración. La creación del archivo sigue la
 [referencia CLI](https://supabase.com/docs/reference/cli/supabase-migration-new).
+
+## Entrega verificada
+
+La [PR #1304](https://github.com/borjar20/Biblioshare/pull/1304) se integró el
+2026-10-02 a las 11:20:41 UTC. Head verificado:
+`4e5e7ac728e64bfbce4431529e88e276e1806fbe`; merge:
+`fd66c346228fb682502aed09eecc01d4893d65c0`. **4045 unitarios y 91 casos de
+navegador PASS**, además de lint, tipos, CodeQL y el job dedicado de base vacía.
+La CI de [Tests](https://github.com/borjar20/Biblioshare/actions/runs/36999837935)
+y [bootstrap](https://github.com/borjar20/Biblioshare/actions/runs/36999837937)
+corresponde a ese head; el último confirma de nuevo los 273 pasos y los
+contratos/concurrencia reales. Los logs se conservan en
+`.scratch/ticket-campaign/20261002-resolve-all/bootstrap1299-ci-36999837935.log`
+y `bootstrap1299-empty-36999837937.log`. La issue #1299 está cerrada.
+El gate posterior de combate #1092 se documenta en `pet-battle.md` y conserva
+su build y sus cuatro casos separados de la verificación SQL anterior.
