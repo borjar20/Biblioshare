@@ -413,6 +413,11 @@ begin;
 \ir migrations/20260722_activity_kind_evento.sql
 commit;
 
+-- 20261002102913_notification_type_mentioned
+begin;
+\ir migrations/20261002102913_notification_type_mentioned.sql
+commit;
+
 -- 20260722_club_event_rpcs
 begin;
 \ir migrations/20260722_club_event_rpcs.sql
@@ -1356,6 +1361,11 @@ commit;
 -- 20261001102000_merge_book_club_event_refs
 begin;
 \ir migrations/20261001102000_merge_book_club_event_refs.sql
+commit;
+
+-- 20261001195124_google_books_creation_quota
+begin;
+\ir migrations/20261001195124_google_books_creation_quota.sql
 commit;
 
 -- 20261002092735_experiences_enums

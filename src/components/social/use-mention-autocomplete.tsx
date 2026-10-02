@@ -37,8 +37,13 @@ type Colocacion = { lado: "arriba" | "abajo"; altoMaximo: number };
 function medirColocacion(anchor: HTMLElement | null): Colocacion {
   if (!anchor || typeof window === "undefined") return { lado: "abajo", altoMaximo: ALTO_MAXIMO };
   const rect = anchor.getBoundingClientRect();
-  const abajo = window.innerHeight - rect.bottom - MARGEN;
-  const arriba = rect.top - MARGEN;
+  // El teclado puede recortar o desplazar la zona visible sin cambiar el
+  // viewport de layout. El rect del campo usa las coordenadas de ese layout.
+  const viewport = window.visualViewport;
+  const bordeSuperior = viewport?.offsetTop ?? 0;
+  const bordeInferior = bordeSuperior + (viewport?.height ?? window.innerHeight);
+  const abajo = bordeInferior - rect.bottom - MARGEN;
+  const arriba = rect.top - bordeSuperior - MARGEN;
   // Solo se voltea si abajo NO cabe y arriba hay más sitio: en los composers a
   // media página (ficha, sheet de cierre) debe seguir abriéndose hacia abajo.
   const lado = abajo < Math.min(ALTO_MAXIMO, arriba) ? "arriba" : "abajo";
@@ -78,6 +83,37 @@ export function useMentionAutocomplete(opts: {
   );
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const abierta = candidates.length > 0;
+  useEffect(() => {
+    if (!abierta) return;
+    const viewport = window.visualViewport;
+    let frame: number | null = null;
+    const recolocar = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        const next = medirColocacion(anchor.current);
+        setColocacion(current => current.lado === next.lado && current.altoMaximo === next.altoMaximo
+          ? current : next);
+      });
+    };
+    // scroll no burbujea: captura también el de sheets y contenedores, no
+    // sólo el de la página. Los eventos únicamente miden, nunca buscan.
+    const scrollOptions = { capture: true, passive: true };
+    const resizeOptions = { capture: false, passive: true };
+    window.addEventListener("resize", recolocar, resizeOptions);
+    window.addEventListener("scroll", recolocar, scrollOptions);
+    viewport?.addEventListener("resize", recolocar, resizeOptions);
+    viewport?.addEventListener("scroll", recolocar, resizeOptions);
+    return () => {
+      window.removeEventListener("resize", recolocar, resizeOptions);
+      window.removeEventListener("scroll", recolocar, scrollOptions);
+      viewport?.removeEventListener("resize", recolocar, resizeOptions);
+      viewport?.removeEventListener("scroll", recolocar, resizeOptions);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [abierta]);
 
   const onInput = useCallback(
     (e: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>) => {

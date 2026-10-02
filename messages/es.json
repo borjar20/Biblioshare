@@ -350,6 +350,10 @@
     "adding": "Añadiendo...",
     "opening": "Abriendo...",
     "added": "En tu biblioteca",
+    "rateLimit": {
+      "catalogRequest": "Has hecho demasiadas peticiones en poco tiempo. Espera un momento antes de volver a intentarlo.",
+      "googleBooksCreate": "Has alcanzado el límite horario de nuevas altas desde Google Books. Puedes abrir o añadir títulos que ya existen."
+    },
     "empty": "Escribe algo para buscar.",
     "emptyBody": "Libros, películas y series por título, o personas por su nombre. También puedes escanear el código de barras de un libro.",
     "noResults": "No se encontraron resultados.",
@@ -3223,6 +3227,8 @@
       "addPlayer": "Añadir jugador",
       "namePlaceholder": "Añadir jugador…",
       "nameLabel": "Nombre del jugador",
+      "duplicatePlayer": "{name} ya está en la mesa.",
+      "maxPlayersReached": "La mesa ya tiene {max} jugadores.",
       "remove": "Quitar a {name} de la mesa",
       "seat": "Sentar a {name}",
       "edit": "Editar a {name}",
@@ -3495,6 +3501,8 @@
       },
       "playersHint": "Añade entre 2 y 6 jugadores.",
       "initial": "Tiempo inicial",
+      "initialSeconds": "Tiempo inicial (segundos)",
+      "initialRange": "Elige un tiempo entre 10 y 7200 segundos, con hasta 3 decimales.",
       "increment": "Incremento",
       "minutes": "{n} min",
       "fewerMinutes": "Un minuto menos",

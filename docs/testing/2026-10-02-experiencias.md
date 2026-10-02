@@ -2,7 +2,8 @@
 
 **[Verificado 2026-10-02 · local + biblioshare-dev; producción no modificada]**
 
-Rama `codex/experiencias`, base `89d82e83`. Node 22.23.1, Next 16.3.8 y React 19.2.4
+Rama `codex/experiencias`, base inicial `89d82e83`, integrada para la PR con
+`origin/main` (`3262865e`). Node 22.23.1, Next 16.3.8 y React 19.2.4
 del lockfile de main; sin dependencias nuevas. Diseño/plan aprobados, ejecución
 continua en seis tareas y una revisión independiente final. Captura manual de planes
 y recuerdos, escapadas con IDs estables, participación/presencia/favoritos propios,
@@ -12,11 +13,11 @@ galería consentida, perfil/feed y moderación con evidencia privada.
 
 | Comprobación | Resultado |
 |---|---|
-| Vitest completo, un worker | 417 archivos, 3981 pruebas, todas pasan tras la revisión |
+| Vitest completo, un worker | 424 archivos, 4223 pruebas, todas pasan tras integrar main |
 | TypeScript | `npx tsc --noEmit`, exit 0 |
-| Lint de aplicación | 0 errores, 28 warnings previos; se excluye artefacto ignorado GitNexus (#1310) |
+| Lint de aplicación | 0 errores, 28 warnings previos; exclusión GitNexus incorporada desde main (#1310) |
 | Producción | `npm run build`, exit 0; E2E con `next start` en 3000 |
-| Bootstrap | 279 pasos desde esquema vacío; inventario 7/7 |
+| Bootstrap | 281 pasos desde esquema vacío; inventario 8/8 |
 | SQL local | Todas las regresiones de `npm run test:db:local`, incluidas moderación y nuevas experiencias; joint conservado en los unitarios y enums |
 | SQL dev | Acceso/transiciones/borrado/participación/fotos/social y cuatro regresiones de revisión con rollback |
 | Carreras locales | Ediciones: un éxito y un conflicto; publicaciones: mismo post, creado una vez |
@@ -24,7 +25,8 @@ galería consentida, perfil/feed y moderación con evidencia privada.
 | Maintenance | 4/4 tests; limpieza QA anterior de 3 objetos y final de 1, cero reintentos; cola final vacía |
 | Arquitectura | `node docs/architecture/sync.mjs --check`, mapa sincronizado |
 
-Tras la revisión, nueve E2E pasaron en la tanda integral y los dos restantes en
+Antes de la integración, tras la revisión, nueve E2E pasaron en la tanda integral
+y los dos restantes en
 una repetición focalizada del mismo build. Se corrigieron dos errores del test:
 localizar la tarjeta por su heading, y esperar el cierre del diálogo antes de
 buscar la imagen que también aparecía en la confirmación. La configuración dedicada
@@ -33,6 +35,17 @@ sin retries. El recorrido social se repitió para conservar capturas móvil 390�
 y escritorio 1280×900. Inspección visual: estilo Paper, tabs legibles, sin overflow
 horizontal. Accesibilidad focal: controles localizados por rol/etiqueta, diálogos y
 formularios con nombres, foco visible y links semánticos; no es una auditoría WCAG completa.
+
+Para abrir la PR se integró `origin/main` (`3262865e`), preservando los cambios
+de catálogo, Play y UI. Los siete conflictos afectaban a documentación y archivos
+derivados; no hubo conflictos en código de Experiencias. Se regeneraron mapa y
+baseline. La composición final pasa 4223 unitarios, TypeScript, lint, build, el
+replay vacío de 281 pasos con todos los contratos SQL y cinco familias concurrentes,
+y **11/11 E2E en una sola tanda de 2,7 minutos, sin retries**, contra ese build/start.
+El primer intento de navegador dentro del sandbox falló preparando REST/Auth;
+una petición de salud confirmó `EACCES`. Se repitió la misma tanda con acceso de red
+autorizado, sin cambiar producto ni tests. La última limpieza retiró un objeto de
+Storage sin reintentos: cero actores, raíces, evidencia QA y rutas en cola.
 
 Privacidad probada con organizador, aceptado, pendiente, tercero, bloqueado,
 perfil privado, administrador y anónimo. Incluye joins directos a personas,
@@ -87,8 +100,9 @@ la proyección de portada se aplicó además como definición suplementaria en d
 componer la migración de imágenes. Se verifican objetos reales, no solo el ledger.
 Se conservan cuerpos previos de helpers/moderación y contratos joint/joint_viewing.
 Generación de contratos nuevos desde local; la revisión registra aparte la deriva
-del array runtime ajeno (#1322). El bootstrap
-omite el enum previo mentioned, deriva ajena registrada en #1299.
+del array runtime ajeno (#1322). El bootstrap inicial omitía el enum previo
+mentioned (#1299); la integración incorpora su migración canónica desde main
+y verifica también inserción/lectura con rollback en el replay vacío final.
 
 Comprobación de ACL: seis tablas RLS, clientes sin INSERT/UPDATE/DELETE, cero EXECUTE
 de PUBLIC en contratos nuevos, helpers de mantenimiento/evidencia solo servicio.
@@ -104,7 +118,7 @@ Referencia del advisor: [lecturas definidoras anónimas](https://supabase.com/do
 ```powershell
 npm run test -- --maxWorkers=1 --no-file-parallelism
 npx tsc --noEmit
-npm run lint -- --ignore-pattern .gitnexus
+npm run lint
 npm run build
 npx playwright test --config playwright.experiences.config.ts
 npm run test:db:bootstrap

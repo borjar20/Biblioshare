@@ -264,6 +264,17 @@ existe en pareja claro/oscuro; el oscuro no se deriva, se declara.
 - **Tinta Fantasma** (`#a89e8d` · oscuro `#6f665a`): **no colorea texto nunca**. Dots
   decorativos y glifos `aria-hidden`.
 
+### Asientos de BiblioPlay (#999, verificados el 2026-10-02)
+
+Las iniciales de `SeatToken` (12/14 px) usan `--surface` sobre `--play-seat-*` y
+exigen 4,5:1 en los tres bloques de tema. El ocre del asiento 5 es `#996d19` en
+claro y `#e0a94a` en oscuro explícito y del sistema: da 4,534:1 y 7,330:1,
+respectivamente. El óxido del asiento 1 ya cumple en claro (4,508:1).
+
+`contraste-play.test.ts` renderiza la ficha compartida y resuelve su tinta desde
+`@theme inline`. Conserva también los suelos anteriores: 3:1 entre asiento y
+fieltro, ΔE CIE76 de 15 entre asientos y de 25 entre peligro y asiento 1.
+
 ### Named Rules
 
 **La Regla de la Tinta Única.** Hay un primario en toda la app y es la terracota. Una vista con

@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -147,6 +147,35 @@ Entorno, controles y evidencia: [verificación de #1073](testing/2026-10-01-play
 Corrección y límites: [Ajustes con Suspense](testing/2026-10-01-ajustes-suspense-1274.md).
 Retorno tras login: [destino administrativo](testing/2026-10-01-admin-login-return-1271.md).
 
+### Cuota de altas nuevas de Google Books (#1237)
+
+`e2e/ci/google-volume-quota.spec.ts` cubre el rechazo de la alta 61,
+reintento tras vencer la hora, reutilización de una fila existente y el
+mensaje distinto de la cuota de peticiones, a 320/1280 px. Sólo se simulan
+proveedores para ISBN sintéticos registrados por el caso; login, acciones,
+RPC y contadores son reales. El aviso comparte celda con la tarjeta y queda
+asociado mediante `aria-describedby`. Las credenciales no se guardan en traces; cada actor y sus
+filas se limpian por REST y SQL, con Auth 404 y residuos a cero.
+
+El SQL añade 41 checks y un comprobador de dos carreras con bloqueos reales
+a `scripts/db/verify.mjs`. En el head integrado `b94d0dad`, la última tanda
+local pasa los cuatro casos permanentes contra un build nuevo Node24 en
+24,814 s, sin FAIL/SKIP/flaky/reintentos: 28 fuentes estables y cuatro actores
+Auth 404, ocho tablas y cuotas/catálogo propios a cero. Las tandas anteriores
+de ocho y cuatro casos se conservan como historia, sin sumarlas a esta.
+
+La CI de ese head pasa 3956 unitarios en 407 archivos y 75 casos de navegador,
+incluidos los cuatro de cuota. Tanto critical-flows como el bootstrap
+independiente pasan 41 checks SQL, dos carreras y 272 pasos, con cleanup
+correcto; el generador pasa 7/7 y CodeQL tiene cero resultados en la ref de
+la PR. Los ocho checks son SUCCESS. El SQL está aplicado y sus objetos,
+permisos y RLS verificados en prod. La entrega mediante PR #1291 exige
+los checks obligatorios del commit de entrega antes del merge. La prueba no
+valida la existencia del ID remoto ni su hidratación canónica (#1290),
+y el componente de añadir sin consumidor publicado sólo queda cubierto por unitarios.
+Evidencia, fallos conservados y límites:
+[cuota de Google Books](testing/2026-10-02-google-books-creation-quota-1237.md).
+
 ### Imágenes del hero (#1208)
 
 `e2e/ci/hero-images.spec.ts` crea cinco obras propias en Supabase local y
@@ -274,6 +303,66 @@ de r2.2/r3.1/r4.2 conservan resultado, eventos y digest exactos; el control de
 releases conserva los cuatro manifiestos. No se transforma ningún payload.
 El RED de tipos, el reporte nativo y los límites están en
 [resultados históricos](testing/2026-10-01-historical-replay-result-types-1116.md).
+
+### Frontera de endpoints de OpenLibrary (#1292)
+
+`src/lib/catalog/openlibrary/endpoint-boundaries.test.ts` llama a las seis
+funciones públicas de obra y a `resolveWorkKey`/`lookupIsbn`, con un spy de
+`fetch`. Rutas relativas, query, fragmentos, escapes, barras invertidas,
+URLs absolutas y tipos incompatibles deben devolver la salida vacía existente
+sin ninguna petición. Mantener el hostname no basta: se comprueba también
+que el identificador no pueda cambiar el endpoint.
+
+Los controles positivos conservan `OL45804W`, `works/OL45804W`,
+`/works/OL45804W` y la forma histórica `/OL45804W`; todas se normalizan a
+`OL45804W`, dentro del formato `OL[0-9]+W`. Los ISBN-10/13 se normalizan y validan por checksum,
+incluidos guiones y `x` final. La work key devuelta por el proveedor se valida
+antes de pedir la obra. Se verifican las URLs exactas, las cachés existentes,
+los límites de paginación, la tolerancia a una página fallida y el fallback
+a los datos de edición. `fetch` conserva las redirecciones por defecto para
+el recorrido legítimo ISBN→edición.
+
+El 2026-10-02, con Node 24.19.0, pasan 80 pruebas focales en cinco archivos
+y 256 de módulos afectados en dieciséis, con cero FAIL y cero pendientes;
+lint focal y `tsc --noEmit` también pasan. El RED de 57 PASS/16 FAIL queda
+conservado. Son pruebas locales con respuestas controladas: no comprueban
+la disponibilidad de OpenLibrary ni los redirects de un proveedor
+comprometido. La CI de entrega pasa 3950 unitarios, 67 casos de navegador y
+CodeQL sin resultados; el informe identifica el head y sus límites. Evidencia y sello:
+[frontera de endpoints](testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md).
+
+### Filtros de tipo en Buscar y alta manual (#1295)
+
+`TypePills` permite saltar de línea cuando sus tres enlaces no caben.
+El baseline de Buscar a 320 px sobresalía 9,17 px de su contenedor, aunque
+documento y body seguían midiendo 320 px. El cambio conserva textos,
+dimensiones de cada enlace, selección y destinos; no reduce ni recorta el
+control para hacerlo caber.
+
+La QA contra build/start local pasa ocho casos: Buscar con query vacía,
+corta y larga, más el formulario manual real, cada uno a 320/1280 px.
+Después de `document.fonts.ready`, comprueba enlaces dentro del contenedor
+y documento/body dentro del viewport, con cero FAIL, SKIP, flaky y retries.
+Un actor temporal collaborator acredita la ruta y campos del alta manual;
+las ocho capturas se inspeccionaron. Contenedor y scrollWidth de Buscar son
+288 px en móvil; el formulario manual conserva sus 400 px máximos en escritorio.
+
+La regresión durable `e2e/ci/search-type-pills.spec.ts` pasa cuatro casos
+contra el mismo build, verificando geometría, selección y navegación de
+teclado por las tres opciones. Se recoge por el glob existente de
+`playwright.ci.config.ts`, sin modificar la configuración. Para repetirla:
+
+```sh
+npx playwright test e2e/ci/search-type-pills.spec.ts --config=playwright.ci.config.ts
+```
+
+Los ocho casos de QA y los cuatro del spec son tandas distintas. Lint focal,
+TypeScript y listado del spec pasan; el listado no sustituye su ejecución.
+Limpieza local verificada: actor Auth 404 y ocho tablas/cuotas/obras/pases
+a cero, Supabase detenido con backup conservado y puerto 3000 libre.
+Antes de mergear la PR deben pasar sus checks obligatorios. Baseline, FAIL
+del harness conservados, artefactos y límites de esta verificación local:
+[filtros de tipo](testing/2026-10-02-search-type-pills-1295.md).
 
 ### Tandas largas: córrelas por lotes (issue #584)
 

@@ -178,13 +178,14 @@
      #a8781f): sobre el fieltro claro daban 2,96:1 y 2,88:1, por debajo del 3:1 que
      WCAG 1.4.11 pide a un objeto grafico -- y la barra de asiento se lee contra el
      fieltro, que es sobre lo que flotan los paneles. Los otros cuatro pasaban ya.
-     Medido: ahora 3,38 y 3,28, sin acercarlos entre si (dE 19,6, el par mas junto
-     de la paleta y el mismo que ya tenia). */
+     Medido: ahora 3,38 y 3,40. El ocre tambien sostiene las iniciales de
+     SeatToken (12/14 px): 4,53:1 sobre --surface, frente al 4,37 anterior (#999).
+     El test mantiene ademas el suelo de distancia entre todos los asientos. */
   --play-seat-1: #b1602e;
   --play-seat-2: #2f6f7e;
   --play-seat-3: #5f7a3f;
   --play-seat-4: #7d4f76;
-  --play-seat-5: #9d6f1c;
+  --play-seat-5: #996d19;
   --play-seat-6: #45598c;
 }
 

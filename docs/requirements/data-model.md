@@ -3,9 +3,34 @@
 > **Delta 2026-10-02 (#1293, local/dev; pendiente de producción):** Experiencias
 > añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
 > existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
-> ediciones perdidas. Bootstrap vacío final de 279 pasos y pruebas de acceso,
+> ediciones perdidas. Bootstrap vacío final de 281 pasos y pruebas de acceso,
 > participación, fotos/publicación/moderación locales y en dev; carreras de edición
 > y publicación comprobadas localmente. Ver §8ter; producción pendiente.
+
+> **Delta 2026-10-02 (#1299):** la migración
+> `20261002102913_notification_type_mentioned.sql` rescata al historial local
+> el valor `mentioned` de `public.notification_type`, usando `IF NOT EXISTS`
+> tras crear `club_event_created` y antes de sus consumidores. Replay vacío
+> canónico de 273 pasos, inserción/lectura como service_role con rollback,
+> idempotencia y generación de tipos locales verificados. Dev (43 labels) y
+> prod (40) ya contienen el valor en la posición 18: comprobados contra
+> `pg_enum` y mediante cast real; no se aplica DDL remoto ni se cambian grants.
+> Evidencia: [bootstrap de menciones](../testing/2026-10-02-notification-type-bootstrap-1299.md).
+
+> **Delta 2026-10-02 (#1237):** `catalog_google_volume_create` admite 60 altas nuevas
+> por cuenta y ventana fija de una hora. En `books`, el trigger AFTER INSERT
+> aplica sólo a una fila con volumen Google y sin work key de Open Library;
+> el BEFORE genérico sigue cubriendo los demás libros. Reutilizar una fila mediante
+> `ON CONFLICT DO NOTHING`, incluso desde otra cuenta, no consume cuota de creación.
+> `PT429` revierte la inserción, su edición automática y el incremento de cuota.
+> Local y dev: 41 comprobaciones con reversión; dos carreras locales reales.
+> Aplicada una vez y verificada en producción el 2026-10-02: definición y helper
+> idénticos a dev, ambos triggers activos (`enabled=O`), SECURITY DEFINER y ACL
+> conservadas (`anon=false`, `authenticated=true`); RLS privado activo y sin SELECT
+> para anon/authenticated. Firma, validación de ID y capacidades anteriores se
+> conservan; no hay columnas, backfill ni datos de prueba nuevos en producción.
+> Entrega de UI: PR #1291, con sus checks obligatorios antes del merge.
+> Evidencia: [cuota de Google Books](../testing/2026-10-02-google-books-creation-quota-1237.md).
 
 > **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
 > eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
@@ -46,7 +71,9 @@
 > `anon=false`, `authenticated=true`, `service_role=true`. Verificada en **dev**
 > (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
 > Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
-> existentes. La admisión por número de altas sigue en #1237.
+> existentes. La admisión por número de altas se incorpora en el delta #1237 de
+> 2026-10-02, aplicado y verificado en dev y prod como se detalla arriba; la gramática
+> y la ACL de esta RPC permanecen idénticas.
 
 > **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
 > firmas con `backdrop_url` y su cuerpo fill-only. La migración
@@ -4511,7 +4538,7 @@ ese resumen y no abre detalle, incluso si la raíz está en audiencia profile.
 Avisos de invitación/aceptación usan el canal social y dedupe por invitación,
 sin contexto de título privado. Invitación enlaza al hub para responder.
 Pruebas con rollback, perfiles privados, consentimiento/joins REST, límite exacto
-y tres cuentas sobre build de producción; incluida en el replay integral de 279 pasos.
+y tres cuentas sobre build de producción; incluida en el replay integral de 281 pasos.
 `get_experience_companions` usa RLS del invocador y proyecta personas aceptadas del
 historial propio accesible completo. Su paginación es independiente de los veinte
 resultados y de los filtros activos; no pierde opciones al filtrar o no tener resultados.
@@ -4542,7 +4569,7 @@ El script `scripts/experiences/cleanup-pending-photos.mjs` exige proyecto dev/lo
 coincidente con el entorno, empieza en dry-run, limita lotes a 100 y antigüedad a
 una hora mínima. `--kind=deleted` recupera borrados pendientes de Storage; el modo
 predeterminado solo retira reservas pending antiguas. Nunca elimina fotos ready.
-Sin columnas añadidas a tablas previas; incluida en el replay integral de 279 pasos.
+Sin columnas añadidas a tablas previas; incluida en el replay integral de 281 pasos.
 
 Publicación y moderación (local/dev 2026-10-02,
 `20261002120712_experiences_social_visibility.sql`): `experience_publish` exige
@@ -4567,7 +4594,7 @@ las retiradas independientes de posts. Borrar un post conserva el recuerdo y un
 post borrado administrativamente no se recrea al publicar. Borrar la raíz captura
 evidencia antes de cascadas solo si hay denuncia/moderación; pending no se retiene.
 `admin_moderation_photo` exige administrador y entrega ruta/MIME únicamente al
-endpoint administrativo, con bytes private/no-store. Bootstrap final: 279 pasos,
+endpoint administrativo, con bytes private/no-store. Bootstrap final: 281 pasos,
 reconstruido desde cero y verificado con todas las regresiones SQL.
 `20261002125917_experiences_advisor_hardening.sql` añade índice para FK compuesta
 de asistencia, initplan de auth.uid en fotos y policy false en la cola privada.

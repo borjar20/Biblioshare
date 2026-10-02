@@ -25,6 +25,29 @@ test('every repository migration is included exactly once', () => {
 test('the psql entrypoint has the same complete ordering as the CLI bootstrap', () => {
   assert.equal(readFileSync(join(repoRoot, 'supabase/schema-baseline.sql'), 'utf8').replaceAll('\r\n', '\n'), renderBaseline());
 });
+
+test('every application notification type exists in the empty bootstrap enum', () => {
+  const declaration = readFileSync(join(repoRoot, 'src/lib/social/notification-types.ts'), 'utf8')
+    .match(/export\s+type\s+NotificationType\s*=([\s\S]*?);/);
+  assert.ok(declaration, 'NotificationType declaration must be inspected');
+  const applicationTypes = [...declaration[1].matchAll(/^\s*\|\s*"([^"]+)"/gm)].map((match) => match[1]);
+  assert.ok(applicationTypes.includes('mentioned'), '#1299 must cover the mention emitter contract');
+
+  const bootstrapTypes = new Set();
+  for (const step of loadPlan(repoRoot)) {
+    // Read actual enum DDL; a comment mentioning a value is not evidence that
+    // the empty database can store it. PostgreSQL execution remains the SQL gate.
+    const sql = step.sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '');
+    for (const match of sql.matchAll(/create\s+type\s+public\.notification_type\s+as\s+enum\s*\(([\s\S]*?)\)\s*;/gi)) {
+      for (const value of match[1].matchAll(/'([^']+)'/g)) bootstrapTypes.add(value[1]);
+    }
+    for (const match of sql.matchAll(/alter\s+type\s+public\.notification_type\s+add\s+value\s+(?:if\s+not\s+exists\s+)?'([^']+)'/gi)) {
+      bootstrapTypes.add(match[1]);
+    }
+  }
+  assert.deepEqual(applicationTypes.filter((type) => !bootstrapTypes.has(type)), [],
+    'NotificationType values missing from the empty bootstrap');
+});
 test('an added migration must be placed in the explicit order', () => fixture((root) => {
   writeFileSync(join(root, 'supabase/migrations/20260102_new.sql'), 'select 3;');
   assert.throws(() => loadPlan(root), /Migration inventory differs.*20260102_new/);

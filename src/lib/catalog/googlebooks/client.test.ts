@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { findVolumeByIsbn, findBestVolume } from "./client";
+import { fetchVolumeById, findVolumeByIsbn, findBestVolume } from "./client";
 
 beforeEach(() => {
   process.env.GOOGLE_BOOKS_API_KEY = "test-key";
@@ -7,6 +7,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   delete process.env.GOOGLE_BOOKS_API_KEY;
 });
 
@@ -41,6 +42,138 @@ function mockFetchOnce(body: unknown, init?: ResponseInit) {
 function urlOf(spy: ReturnType<typeof vi.fn>): URL {
   return new URL(String(spy.mock.calls[0][0]));
 }
+
+describe("fetchVolumeById", () => {
+  it("consulta el endpoint exacto por GET con la key, caché y timeout existentes", async () => {
+    const spy = mockFetchOnce({ ...volume, id: "vol_1-A" });
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const out = await fetchVolumeById("vol_1-A");
+
+    expect(out?.volumeId).toBe("vol_1-A");
+    expect(spy).toHaveBeenCalledTimes(1);
+    const url = urlOf(spy);
+    expect(url.origin + url.pathname).toBe("https://www.googleapis.com/books/v1/volumes/vol_1-A");
+    expect([...url.searchParams.entries()]).toEqual([["key", "test-key"]]);
+    expect(spy.mock.calls[0][1]).toMatchObject({
+      method: "GET",
+      next: { revalidate: 86400 },
+    });
+    expect(spy.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(4000);
+  });
+
+  it("reutiliza el mapper completo, incluida la portada oficial y los ISBN normalizados", async () => {
+    mockFetchOnce({
+      ...volume,
+      volumeInfo: {
+        ...volume.volumeInfo,
+        industryIdentifiers: isbnIds("978-84-101-3840-7"),
+        imageLinks: {
+          small: "http://books.google.com/books/content?id=vol1&zoom=1&edge=curl",
+          thumbnail: "https://evil.example.com/cover.jpg",
+        },
+      },
+    });
+
+    expect(await fetchVolumeById("vol1")).toEqual({
+      volumeId: "vol1",
+      title: "La biblioteca de la medianoche",
+      authors: ["Matt Haig"],
+      isbns: [ISBN],
+      synopsis: "Sinopsis en español.",
+      coverUrl: "https://books.google.com/books/content?id=vol1&zoom=2",
+      pageCount: 304,
+      language: "es",
+    });
+  });
+
+  it.each(["a", "A".repeat(256)])("acepta el límite legítimo de longitud del ID (%s)", async (id) => {
+    const spy = mockFetchOnce({ ...volume, id });
+    expect((await fetchVolumeById(id))?.volumeId).toBe(id);
+    expect(urlOf(spy).pathname).toBe(`/books/v1/volumes/${id}`);
+  });
+
+  it.each([
+    "", "A".repeat(257), " vol1", "vol1 ", "vol1\n", "vol1\r", "vol1\r\n",
+    "vol1\u2028", "../vol1", "vol1/other", "vol1\\other", "vol1?q=other", "vol1#other",
+    "vol1%2Fother", "https://example.com/vol1", "vól1", "vol1\0", "vol1.",
+    null, undefined, 123, {},
+  ])("rechaza un ID inválido antes de pedir red (%j)", async (id) => {
+    const spy = vi.fn();
+    vi.stubGlobal("fetch", spy);
+    await expect(fetchVolumeById(id as string)).resolves.toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, ""])("sin API key no intenta red (%j)", async (key) => {
+    if (key === undefined) delete process.env.GOOGLE_BOOKS_API_KEY;
+    else process.env.GOOGLE_BOOKS_API_KEY = key;
+    const spy = vi.fn();
+    vi.stubGlobal("fetch", spy);
+    expect(await fetchVolumeById("vol1")).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    null, false, 42, "vol1", [], [volume], {}, { volumeInfo: volume.volumeInfo },
+    { ...volume, id: "vol2" }, { ...volume, id: "VOL1" }, { ...volume, id: 1 },
+    { ...volume, id: "" }, { ...volume, id: "vol1\n" },
+  ])("rechaza cuerpos malformados o un ID distinto al solicitado (%j)", async (body) => {
+    mockFetchOnce(body);
+    await expect(fetchVolumeById("vol1")).resolves.toBeNull();
+  });
+
+  it.each([undefined, null, false, 42, "metadata", []])("rechaza volumeInfo malformado (%j)", async (info) => {
+    mockFetchOnce({ id: "vol1", volumeInfo: info });
+    await expect(fetchVolumeById("vol1")).resolves.toBeNull();
+  });
+
+  it("sanea por tipo los campos de metadatos sin alterar el mapper", async () => {
+    mockFetchOnce({
+      id: "vol1",
+      volumeInfo: {
+        title: 1984,
+        authors: [null, 42, "Matt Haig"],
+        industryIdentifiers: "not-an-array",
+        description: { text: "description" },
+        imageLinks: { thumbnail: "https://evil.example.com/cover.jpg" },
+        pageCount: 0,
+        language: 42,
+      },
+    });
+    expect(await fetchVolumeById("vol1")).toEqual({
+      volumeId: "vol1", title: null, authors: ["Matt Haig"], isbns: [],
+      synopsis: null, coverUrl: null, pageCount: null, language: null,
+    });
+  });
+
+  it.each([404, 429, 500])("rechaza HTTP %s aunque el cuerpo sea un volumen válido", async (status) => {
+    mockFetchOnce(volume, { status });
+    await expect(fetchVolumeById("vol1")).resolves.toBeNull();
+  });
+
+  it("degrada un error de red a null sin lanzar", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    await expect(fetchVolumeById("vol1")).resolves.toBeNull();
+  });
+
+  it("degrada JSON inválido a null sin lanzar", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{invalid JSON")));
+    await expect(fetchVolumeById("vol1")).resolves.toBeNull();
+  });
+
+  it("degrada la cancelación por timeout a null sin lanzar", async () => {
+    const controller = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true });
+    })));
+    const pending = fetchVolumeById("vol1");
+    controller.abort(new DOMException("Timed out", "TimeoutError"));
+    await expect(pending).resolves.toBeNull();
+    expect(timeout).toHaveBeenCalledWith(4000);
+  });
+});
 
 describe("petición saliente", () => {
   it("no elige un volumen de Dumas hijo cuando se pidió a Dumas padre", async () => {

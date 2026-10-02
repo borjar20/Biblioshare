@@ -19,14 +19,14 @@ export function AccentRadio({
   const t = useTranslations("sagaIndex");
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs has-[:checked]:border-accent">
+      <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs has-[:checked]:border-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2">
         <input type="radio" name={name} value="" defaultChecked={!defaultValue} className="sr-only" />
         <span>{t("accentAuto")}</span>
       </label>
       {SAGA_ACCENT_SEQUENCE.map((token) => (
         <label
           key={token}
-          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs has-[:checked]:border-accent"
+          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs has-[:checked]:border-accent has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2"
         >
           <input type="radio" name={name} value={token} defaultChecked={defaultValue === token} className="sr-only" />
           <span aria-hidden className={`h-3 w-3 rounded-full ${SAGA_ACCENT[token].bg}`} />

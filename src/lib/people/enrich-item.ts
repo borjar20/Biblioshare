@@ -16,8 +16,8 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // lo agenda con `after()`. Ver `revalidateItemCredits` /
 // `revalidateSagaMembership` en el módulo de reactividad (F1-023).
 export type EnrichmentEffects = {
-  /** Se escribieron filas nuevas en `credits`: la etiqueta `credits:*` de esta
-   *  obra puede estar cacheada VACÍA de un intento anterior que falló. */
+  /** Se insertaron créditos o se completó su billing_order: la etiqueta
+   *  `credits:*` puede conservar un resultado vacío o incompleto anterior. */
   wroteCredits: boolean;
   /** Miembros de la colección TMDB en la que la película acaba de entrar: a
    *  todos les cambia el «nº X de Y», no solo a la recién llegada. */
@@ -97,6 +97,23 @@ async function hasBilledCast(
     .eq("item_id", itemId)
     .not("billing_order", "is", null);
   return (count ?? 0) > 0;
+}
+
+// Libros: una escritura parcial puede haber completado un coautor y fallado
+// para otro. Basta un orden en cine/series, pero aquí deben tenerlo TODOS los
+// créditos de autor ya sembrados. Un autor que la obra no confirma se conserva
+// a NULL y deja abierto el reintento; no se inventa un orden para cerrar el guard.
+async function hasBilledAuthors(
+  supabase: SupabaseServerClient,
+  itemId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("credits")
+    .select("billing_order")
+    .eq("item_type", "book")
+    .eq("item_id", itemId)
+    .eq("role", "author");
+  return data != null && data.length > 0 && data.every((row) => row.billing_order !== null);
 }
 
 // Persiste los tamaños que ya vienen en la respuesta de detalles. Solo escribe
@@ -217,7 +234,9 @@ export async function ensureItemEnriched(
     const wantsSizes = needsSize && item.hydratedAt != null && item.viewerLoggedIn === true;
     const wantsBackdrop =
       needsBackdrop(itemType, item) && item.hydratedAt != null && item.viewerLoggedIn === true;
-    const needsCredits = !(await hasBilledCast(supabase, itemType, item.id));
+    const needsCredits = itemType === "book"
+      ? !(await hasBilledAuthors(supabase, item.id))
+      : !(await hasBilledCast(supabase, itemType, item.id));
     if (!needsCredits && !wantsSizes && !wantsBackdrop) return effects;
 
     if (itemType === "book") {
@@ -299,14 +318,41 @@ export async function ensureItemEnriched(
       // Ya no hay que tratar el 42501 del visitante anónimo: escribe él también,
       // y la ficha deja de depender de que pase alguien con sesión.
       if (rows.length > 0) {
-        const { error } = await createServiceRoleClient().from("credits").upsert(rows, {
-          onConflict: "item_type,item_id,person_id,role",
-          ignoreDuplicates: true,
-        });
+        const writer = createServiceRoleClient();
+        const { data: inserted, error } = await writer
+          .from("credits")
+          .upsert(rows, {
+            onConflict: "item_type,item_id,person_id,role",
+            ignoreDuplicates: true,
+          })
+          .select("id");
         if (error) {
           console.error("book credits upsert failed", { id: item.id, count: rows.length, error });
-        } else {
-          effects.wroteCredits = true;
+          return effects;
+        }
+        effects.wroteCredits = (inserted?.length ?? 0) > 0;
+
+        // #633: la siembra desde una persona deja billing_order a NULL para
+        // que el guard siga pidiendo los autores de la obra completa. El
+        // upsert conserva esas filas; ahora se completa SOLO ese campo, sin
+        // reemplazar créditos ni pisar un orden ya escrito por otro render.
+        for (const row of rows) {
+          const { data: updated, error: updateError } = await writer
+            .from("credits")
+            .update({ billing_order: row.billing_order })
+            .eq("item_type", "book")
+            .eq("item_id", item.id)
+            .eq("person_id", row.person_id)
+            .eq("role", "author")
+            .is("billing_order", null)
+            .select("id");
+          if (updateError) {
+            console.error("book credit billing update failed", {
+              id: item.id, personId: row.person_id, error: updateError,
+            });
+          } else if ((updated?.length ?? 0) > 0) {
+            effects.wroteCredits = true;
+          }
         }
       }
       return effects;

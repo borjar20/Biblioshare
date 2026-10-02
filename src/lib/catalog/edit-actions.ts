@@ -449,7 +449,7 @@ export async function reevaluateRepresentation(bookId: string): Promise<EditItem
     .update({ hydrated_at: null })
     .eq("id", bookId)
     .select(
-      "id, openlibrary_work_key, isbn, hydrated_at, repr_meta, wikidata_id, title, author, total_pages"
+      "id, openlibrary_work_key, google_books_volume_id, isbn, hydrated_at, repr_meta, wikidata_id, title, author, synopsis, cover_url, total_pages"
     )
     .single();
 

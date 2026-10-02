@@ -5891,3 +5891,172 @@ de los resultados/filtros activos. Denunciar dentro de SECURITY DEFINER exige co
 visibilidad actual antes de INSERT, para impedir denuncias y retención de evidencia sin acceso.
 La revisión añade una octava migración canónica; el orden final de release vive en
 `docs/testing/2026-10-02-experiencias.md` y #1293, con producción todavía pendiente.
+
+## 2026-10-02 — identificadores limitados al endpoint de OpenLibrary (#1292)
+
+Un hostname fijo no impide que una ruta, query o fragmento cambie el endpoint.
+`normalizeWorkKey` admite únicamente `OL[0-9]+W`, normalizando la clave sin prefijo,
+`works/`, `/works/` y la histórica `/OL…W`. Las funciones de obra y ediciones
+rechazan el resto antes de `fetch` y conservan sus salidas vacías. El segmento
+normalizado se codifica con `encodeURIComponent` al construir la URL.
+
+`resolveWorkKey` y `lookupIsbn` normalizan y comprueban el checksum del ISBN-10/13
+antes de pedirlo. También validan la work key devuelta por el proveedor antes
+de devolverla o solicitar el detalle de obra. Se conservan el fallback de
+edición, cachés, timeouts y límites de paginación existentes. Se mantiene la
+política por defecto de redirecciones de `fetch`: OpenLibrary usa el recorrido
+ISBN→edición legítimamente; bloquearlo rompería ese lookup.
+
+La verificación local acota los identificadores que construyen el endpoint;
+no demuestra protección frente a redirects de un proveedor comprometido.
+No cambia esquema, interfaz ni política de caché. CI/CodeQL y entrega remota
+quedan pendientes; #1292 sigue abierta hasta esos gates. Evidencia:
+`docs/testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md`.
+
+Verificación posterior del mismo día: el head `2195e70` de PR #1294 pasa
+3950 unitarios, 67 casos de navegador y CodeQL sin resultados. El informe
+anterior conserva los detalles y distingue el ref reparado de main antes
+del merge; el cierre operativo exige los checks de entrega y la integración.
+
+## 2026-10-02 — saltos de línea en los filtros de tipo (#1295)
+
+`TypePills` comparte el control de Buscar y alta manual. Su fila permite
+`flex-wrap` cuando los tres enlaces no caben, manteniendo textos, dimensiones
+y destinos. Reducir letra o recortar el control cambiaría su presentación
+para resolver un problema de distribución; el salto de línea conserva cada
+enlace y admite una segunda fila en móvil.
+
+La comprobación espera a las fuentes y mide los enlaces dentro de su
+contenedor, además del documento/body frente al viewport. El baseline
+confirmó 9,17 px de exceso del contenedor en Buscar a 320 px; el documento
+seguía en 320 px, así que no explica por sí solo los 325 px del FAIL de #1237.
+Un intento redirigido desde alta manual tampoco acredita ese formulario:
+la QA final usa un collaborator y exige su ruta y campos reales.
+
+Ocho casos de QA y cuatro regresiones durables pasan contra build/start
+local a 320/1280 px. El spec comprueba geometría, selección y teclado,
+sin depender de nombres de clases CSS, y entra en la configuración CI
+existente. Los checks obligatorios de la PR siguen siendo el gate antes
+del merge. Evidencia y fallos de preparación conservados:
+`docs/testing/2026-10-02-search-type-pills-1295.md`.
+
+## 2026-10-02 — sólo las altas nuevas de Google Books consumen su cuota (#1237)
+
+El fallback de Google Books procede de un ISBN escrito o escaneado que Open
+Library no conoce; CSV y bulk no llegan a esa RPC. Se fija una operación
+independiente de 60 altas por cuenta y ventana de una hora, conservando la
+cuota genérica de 6000/h para las importaciones y los otros tipos de catálogo.
+El límite responde a esa ruta manual, no al número de la reproducción de abuso.
+
+Se cobra después de la inserción ganadora del índice único, mediante un AFTER
+INSERT limitado a shells con volumen Google y sin work key. Un BEFORE en ese
+camino cobraría también intentos idempotentes. Reutilizar un libro existente,
+incluso desde otra cuenta o con ambas claves, no consume cuota de creación.
+El BEFORE genérico de los demás libros conserva su comportamiento anterior;
+no se amplía esta reparación a sus intentos idempotentes.
+
+La admisión está en SQL para cubrir llamadas directas y carreras. PT429 revierte
+la shell y sus efectos; la acción lo convierte en un estado esperado que se
+comunica sin falso éxito. La cuota de peticiones de 60/min sigue siendo otra
+frontera. No se presenta la cuota ni el filtro ASCII de #924 como verificación
+de existencia o gramática oficial de Google Books. Evidencia y límites:
+`docs/testing/2026-10-02-google-books-creation-quota-1237.md`.
+
+## 2026-10-02 — hidratación de Google Books por identidad persistida (#1290)
+
+Una ficha nacida del fallback ISBN de Google Books no tiene work key ni
+metadatos fiables del navegador. Las acciones y la ficha vuelven a leer su
+fila por UUID y el hidratador consulta el volumen persistido por ID desde el
+servidor. Se mantiene la precedencia de OpenLibrary y la protección de
+curación de la RPC existente; la nueva rama no propone ISBN, QID, work key,
+año ni géneros. Un proveedor fallido o sin título útil no estampa un éxito.
+
+El rescate del fallo histórico sólo omite el cooldown para una shell
+completamente vacía, sin identidad OL/QID ni representación previa, con
+`repr_meta` nulo u objeto vacío. Una fila poblada o curada conserva el gate.
+El watcher compara con el sello inicial y refresca una sola vez al observar
+otro: un sello histórico no demuestra que haya terminado el reintento.
+
+Siete regresiones de hidratación pasan contra build/start local con Actions,
+Auth, RPC y DB reales y proveedor de prueba controlado. El spec espera las
+dos transacciones reales antes de fijar el estado estable y verificar que la
+recarga no repite GET/RPC. No acredita disponibilidad real de Google ni una
+reparación masiva de filas de producción. El fallo auxiliar de red de #1301
+se conserva separado de los veinte casos permanentes PASS de la tanda.
+Evidencia: `docs/testing/2026-10-02-google-volume-hydration-1290.md`.
+
+## 2026-10-02 — rescate del enum de menciones en el bootstrap (#1299)
+
+El código de notificaciones ya consume `mentioned` y los objetos reales de
+dev/prod ya lo contienen. El fallo está en la reconstrucción local: se añade
+una migración idempotente al manifiesto después de crear su vecino
+`club_event_created`, en una transacción que termina antes de los consumidores
+del valor. Se regenera el baseline desde esas fuentes; no se aplica DDL remoto.
+
+El generador contrasta todos los valores de `NotificationType` con el DDL del
+plan, y el verificador prueba inserción/lectura con rollback, no una reparación
+durante el test. Replay vacío, 18 contratos SQL, cuatro familias concurrentes,
+idempotencia y tipos locales pasan. La ruta local nueva conserva el backup de
+la campaña anterior. Evidencia:
+`docs/testing/2026-10-02-notification-type-bootstrap-1299.md`.
+
+## 2026-10-02 — reemplazar una partida valida primero el candidato (#964)
+
+El reemplazo pertenece a `PlayStore.start(event, { replaceActive: true })`,
+no a una secuencia de descarte y arranque en cada consumidor. El replay se
+ejecuta antes de mutar el snapshot, la revisión, el timer o la persistencia.
+Un rechazo devuelve `false` y conserva también el plazo de la ráfaga pendiente;
+una excepción de programación sigue propagándose. Al aceptar hay un solo
+cambio de revisión y una notificación, sin un estado vacío intermedio.
+
+Los cinco puntos de entrada recuerdan la mesa, cuando corresponde, y navegan
+después de la aceptación. La llamada sin opción conserva su contrato estricto
+y el CAS de IndexedDB conserva su arbitraje entre pestañas. La aceptación
+sincrónica no garantiza que la escritura asíncrona ya haya terminado.
+Evidencia: `docs/testing/2026-10-02-atomic-game-start-964.md`.
+
+## 2026-10-02 — configurar el reloj conserva milisegundos y explica el rechazo (#995)
+
+`chess-setup.tsx` presenta segundos de 10 a 7200, con hasta tres decimales,
+porque convertir una precarga a minutos redondeados cambia el tiempo con el
+que se juega. La conversión produce milisegundos enteros; los presets y los
+pasos de ±60 segundos conservan la fracción. Una entrada incompleta, fuera
+de rango o más precisa que un milisegundo explica el problema y bloquea Empezar.
+El motor y la persistencia mantienen su contrato.
+
+El feedback de duplicado o mesa llena vive en el `SeatPicker` que comparten
+los acompañantes: aviso de estado accesible, vínculo con el input y botón
+Añadir visible. El duplicado conserva lo escrito; retirar un asiento permite
+volver a añadir. Evidencia: `docs/testing/2026-10-02-clock-setup-995.md`.
+
+## 2026-10-02 — el contraste del asiento incluye su texto pequeño (#999)
+
+`SeatToken` ya es la ficha común. Sus iniciales de 12/14 px necesitan 4,5:1
+contra su fondo, además del suelo existente de 3:1 contra el fieltro. Se mide
+la tinta real de `text-surface` en claro, oscuro explícito y oscuro del sistema.
+
+Sólo cambia `--play-seat-5` claro, de `#9d6f1c` a `#996d19`: pasa de 4,372747:1
+a 4,534193:1. El asiento 1 ya cumple con 4,508397:1; no se modifica por redondear
+su resultado. Los bloques oscuros y los criterios de separación de la paleta
+se conservan. La evidencia de DOM, el fallo global inicial y la recuperación
+acotada del helper constan en `docs/testing/2026-10-02-seat-text-contrast-999.md`.
+
+## 2026-10-02 — los créditos de autor convergen sólo al completar todos sus órdenes (#633)
+
+Para libros, `ensureItemEnriched` exige al menos un crédito de autor y
+`billing_order` no nulo en todos los autores presentes antes de omitir al
+proveedor. Un único orden completo ocultaría una escritura parcial fallida.
+La siembra desde personas sigue dejando `NULL`; cine y series conservan el
+guard anterior de `hasBilledCast`.
+
+El upsert ignora duplicados y devuelve los IDs insertados. Después se completa
+sólo el orden de cada autor confirmado, con identidad de obra/persona/rol y
+`billing_order IS NULL` en el propio UPDATE. Así se conserva la curación,
+incluida la que llegue después de leer el guard. `wroteCredits` depende de IDs
+devueltos por escrituras reales, para invalidar también al completar órdenes.
+
+Un autor que el proveedor no confirma conserva `NULL` y el libro sigue siendo
+reintentable; no se inventa un orden para silenciar la siguiente apertura.
+No hay migración ni reparación masiva. La verificación nativa usa lector
+anónimo y escritor de sistema; su alcance y el fallo previo conservado están
+en `docs/testing/2026-10-02-book-credit-convergence-633.md`.

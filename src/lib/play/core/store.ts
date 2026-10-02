@@ -100,13 +100,14 @@ export function parseSnapshot(raw: string | null): ActiveGame | null {
 // tap antes de re-render, botón obsoleto tras acabar la partida) y NO debe
 // tumbar el render ni persistirse a medias: la UI decide qué hacer con
 // `false` (p. ej. mostrar "acción no válida"). start() sigue LANZANDO, pero
-// solo cuando ya hay una partida activa — eso es un error de programación
-// (la UI debe comprobarlo antes de llamar, no una entrada de usuario) y por
-// tanto no comparte canal de señal con un evento inválido.
+// solo cuando ya hay una partida activa y no se pidió `replaceActive` — eso
+// es un error de programación y no comparte canal con un evento inválido.
+// Empezar/reconfigurar usa replaceActive: valida la partida candidata ANTES
+// de sustituir la anterior, sin descarte intermedio (#964).
 export type PlayStore = {
   subscribe(callback: () => void): () => void;
   getSnapshot(): PlayStoreSnapshot;
-  start(event: PlayEvent): boolean;
+  start(event: PlayEvent, options?: { replaceActive?: boolean }): boolean;
   tap(event: PlayEvent): boolean;
   dispatch(event: PlayEvent): boolean;
   undo(): PlayEvent | null;
@@ -256,7 +257,7 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
   // (PlayEventError), no se asigna nada, no se persiste nada, no se notifica
   // a nadie — el store queda exactamente como estaba. Si lo acepta, log y
   // estado se cachean juntos y getSnapshot() solo tiene que devolverlos.
-  function tryCommit(candidateLog: EventLog): boolean {
+  function tryCommit(candidateLog: EventLog, resetSealTimer = false): boolean {
     let state: PlayGameState;
     try {
       state = replay(candidateLog.committed, candidateLog.pending);
@@ -271,6 +272,9 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
       if (!(error instanceof PlayEventError)) throw error;
       return false;
     }
+    // Un arranque aceptado retira el timer de la partida anterior antes de
+    // notificar el nuevo snapshot. Un rechazo conserva su ráfaga Y su plazo.
+    if (resetSealTimer) clearSealTimer();
     rev += 1;
     snapshot = { status: "ready", game: { log: candidateLog, state } };
     persistCurrent();
@@ -373,15 +377,15 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
     getSnapshot() {
       return snapshot;
     },
-    start(event) {
+    start(event, options) {
       if (snapshot.status === "loading") return false;
-      if (snapshot.game) {
+      if (snapshot.game && !options?.replaceActive) {
         throw new Error("ya hay una partida activa; la UI debe interceptar antes (spec §4)");
       }
       // Aquí SÍ puede llegar un evento inválido (game_started con un setup
       // fuera de rango, o directamente un evento que no es game_started): se
       // trata igual que tap/dispatch, no como el caso de arriba.
-      return tryCommit(emptyLog(event));
+      return tryCommit(emptyLog(event), true);
     },
     tap(event) {
       if (snapshot.status !== "ready" || !snapshot.game) return false;

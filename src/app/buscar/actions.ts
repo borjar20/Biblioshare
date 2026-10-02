@@ -6,19 +6,36 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { ensureBookHydrated, bookShellFromSearchResult } from "@/lib/catalog/hydrate-book";
+import { ensureBookHydrated, ensureRegisteredBookHydrated, bookShellFromSearchResult } from "@/lib/catalog/hydrate-book";
 import { ensureMovieHydrated, ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
 import { itemHref } from "@/lib/catalog/item-href";
 import { loginHref } from "@/lib/auth/safe-next";
 import { settledWithin } from "@/lib/async/settled-within";
-import { requireRequestQuota } from "@/lib/rate-limit";
-import type { SearchResult } from "@/lib/catalog/types";
+import { RequestQuotaExceededError, requireRequestQuota } from "@/lib/rate-limit";
+import { isVolumeOnlyResult, type SearchResult } from "@/lib/catalog/types";
+import type { SearchActionRateLimit } from "./action-result";
 
 // Presupuesto de la hidratación antes de navegar. No es un timeout de la
 // llamada: es cuánto está dispuesto el usuario a mirar una pantalla congelada.
 const HYDRATION_BUDGET_MS = 1200;
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
+
+function requestRateLimit(error: unknown): SearchActionRateLimit | null {
+  return error instanceof RequestQuotaExceededError
+    ? { ok: false, error: "RATE_LIMIT", reason: "catalogRequest" }
+    : null;
+}
+
+function googleBooksCreationRateLimit(
+  error: unknown,
+  result: SearchResult,
+): SearchActionRateLimit | null {
+  return isVolumeOnlyResult(result) &&
+    typeof error === "object" && error !== null && "code" in error && error.code === "PT429"
+    ? { ok: false, error: "RATE_LIMIT", reason: "googleBooksCreate" }
+    : null;
+}
 
 // Dispatcher común. El shell de libro (título/autor a null, work key e ISBN
 // del propio `result`, y por qué eso es seguro) vive en
@@ -37,7 +54,9 @@ type Supa = Awaited<ReturnType<typeof createClient>>;
 // creada o encontrada". Ninguna de las tres ensure*Hydrated lanza.
 function hydrateNewItem(supabase: Supa, itemId: string, result: SearchResult) {
   return result.itemType === "book"
-    ? ensureBookHydrated(supabase, bookShellFromSearchResult(itemId, result))
+    ? isVolumeOnlyResult(result)
+      ? ensureRegisteredBookHydrated(supabase, itemId)
+      : ensureBookHydrated(supabase, bookShellFromSearchResult(itemId, result))
     : result.itemType === "movie"
       ? ensureMovieHydrated(supabase, {
           id: itemId,
@@ -57,7 +76,7 @@ function hydrateNewItem(supabase: Supa, itemId: string, result: SearchResult) {
 // donde nace: el usuario ha hecho clic, es decir, se ha comprometido con el
 // libro. La hidratación se intenta aquí con un presupuesto corto y, si no llega
 // a tiempo, se termina en segundo plano (ver HYDRATION_BUDGET_MS arriba).
-export async function openCatalogItem(result: SearchResult) {
+export async function openCatalogItem(result: SearchResult): Promise<SearchActionRateLimit | void> {
   if (result.catalogId) redirect(itemHref(result.itemType, result.catalogId));
 
   const supabase = await createClient();
@@ -70,8 +89,22 @@ export async function openCatalogItem(result: SearchResult) {
   // devolverle; que reabra el resultado ya con sesión).
   if (!user) redirect(loginHref("/buscar"));
 
-  await requireRequestQuota(supabase, "catalog_request");
-  const itemId = await findOrCreateCatalogItem(supabase, result, user.id);
+  try {
+    await requireRequestQuota(supabase, "catalog_request");
+  } catch (error) {
+    const rateLimit = requestRateLimit(error);
+    if (rateLimit) return rateLimit;
+    throw error;
+  }
+
+  let itemId: string;
+  try {
+    itemId = await findOrCreateCatalogItem(supabase, result, user.id);
+  } catch (error) {
+    const rateLimit = googleBooksCreationRateLimit(error, result);
+    if (rateLimit) return rateLimit;
+    throw error;
+  }
 
   // La hidratación pega a una API externa (OpenLibrary o TMDB), y puede tardar
   // varios segundos: esperarla entera aquí dejaba el clic en el resultado
@@ -91,7 +124,7 @@ export async function openCatalogItem(result: SearchResult) {
   redirect(itemHref(result.itemType, itemId));
 }
 
-export async function addToLibrary(result: SearchResult) {
+export async function addToLibrary(result: SearchResult): Promise<SearchActionRateLimit | void> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -101,9 +134,26 @@ export async function addToLibrary(result: SearchResult) {
   // La búsqueda ya NO persiste los resultados de la API (§7.32): un resultado
   // que no venía del catálogo local llega sin catalogId, y la fila nace aquí,
   // que es cuando el usuario se compromete con el ítem.
-  if (!result.catalogId) await requireRequestQuota(supabase, "catalog_request");
-  const itemId =
-    result.catalogId ?? (await findOrCreateCatalogItem(supabase, result, user.id));
+  if (!result.catalogId) {
+    try {
+      await requireRequestQuota(supabase, "catalog_request");
+    } catch (error) {
+      const rateLimit = requestRateLimit(error);
+      if (rateLimit) return rateLimit;
+      throw error;
+    }
+  }
+
+  let itemId = result.catalogId;
+  if (!itemId) {
+    try {
+      itemId = await findOrCreateCatalogItem(supabase, result, user.id);
+    } catch (error) {
+      const rateLimit = googleBooksCreationRateLimit(error, result);
+      if (rateLimit) return rateLimit;
+      throw error;
+    }
+  }
 
   // Alta = pase activo en planned vía la máquina; si ya estaba en la
   // biblioteca (pase activo existente), la transición es un no-op.
