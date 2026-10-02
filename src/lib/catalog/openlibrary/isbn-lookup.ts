@@ -1,6 +1,7 @@
 import type { SearchResult } from "../types";
 import { buildCoverUrl } from "./covers";
 import { normalizeWorkKey } from "./work-detail";
+import { normalizeIsbn, isValidIsbnCheckDigit } from "../isbn";
 
 // Un ISBN no es una búsqueda, es un LOOKUP: identifica una tirada concreta (el
 // caso del escáner de código de barras y del importador de Goodreads). Lo que se
@@ -30,7 +31,8 @@ function parseYear(value: string | undefined): number | null {
 async function fetchWorkTitle(workKey: string): Promise<WorkTitleResponse | null> {
   try {
     const key = normalizeWorkKey(workKey);
-    const res = await fetch(`https://openlibrary.org/works/${key}.json`, {
+    if (!key) return null;
+    const res = await fetch(`https://openlibrary.org/works/${encodeURIComponent(key)}.json`, {
       next: { revalidate: 86400 },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -46,15 +48,18 @@ async function fetchWorkTitle(workKey: string): Promise<WorkTitleResponse | null
 // que no vale la pena crear la ficha.
 export async function lookupIsbn(isbn: string): Promise<SearchResult | null> {
   try {
-    const res = await fetch(`https://openlibrary.org/isbn/${isbn}.json`, {
+    const normalizedIsbn = normalizeIsbn(isbn);
+    if (!normalizedIsbn || !isValidIsbnCheckDigit(normalizedIsbn)) return null;
+    const res = await fetch(`https://openlibrary.org/isbn/${encodeURIComponent(normalizedIsbn)}.json`, {
       next: { revalidate: 3600 },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) return null;
 
     const edition: IsbnResponse = await res.json();
-    const workKey = edition.works?.[0]?.key;
-    if (!workKey) return null;
+    const key = normalizeWorkKey(edition.works?.[0]?.key ?? "");
+    if (!key) return null;
+    const workKey = `/works/${key}`;
 
     // El doc de /isbn/ trae el título de la EDICIÓN; el de la obra es más
     // canónico y su portada suele ser mejor. Si la obra no responde, se cae a
@@ -77,7 +82,7 @@ export async function lookupIsbn(isbn: string): Promise<SearchResult | null> {
       year: parseYear(work?.first_publish_date ?? edition.publish_date),
       synopsis: null,
       genres: null,
-      matchedIsbn: isbn,
+      matchedIsbn: normalizedIsbn,
     };
   } catch {
     return null;

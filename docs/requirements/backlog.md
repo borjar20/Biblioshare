@@ -11,7 +11,8 @@
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
-> y errores/checkpoints finales y anteriores de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01]**
+> y errores/checkpoints finales y anteriores de entrenamiento, lecturas previas de pases y contrato histórico de replay reverificados el 2026-10-01;
+> frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292)]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -164,6 +165,12 @@ posts huérfanos; `dev` quedó a cero en las cinco medidas. Quedan abiertas **#8
 prueba un overlay retirado en #446: un test rojo y otro verde que no prueba nada).
 
 ## P2 — mantenimiento (acciones 6-9 del roadmap)
+
+- [x] **#1292 — impedir que un identificador cambie el endpoint de OpenLibrary.**
+  Validación de work keys/ISBN y segmentos codificados implementados; 80 pruebas
+  focales, 256 de módulos afectados, lint y typecheck PASS local el 2026-10-02.
+  CI: 3950 unitarios y 67 casos de navegador PASS; CodeQL sin resultados. Evidencia:
+  `docs/testing/2026-10-02-openlibrary-endpoint-boundaries-1292.md`.
 
 - [x] **#1116 — contrato verdadero de resultados históricos.** `fight` opcional
   en replay, entrenamiento y resolución de aventuras; resultados y releases
