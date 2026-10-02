@@ -5919,3 +5919,44 @@ durante el test. Replay vacío, 18 contratos SQL, cuatro familias concurrentes,
 idempotencia y tipos locales pasan. La ruta local nueva conserva el backup de
 la campaña anterior. Evidencia:
 `docs/testing/2026-10-02-notification-type-bootstrap-1299.md`.
+
+## 2026-10-02 — reemplazar una partida valida primero el candidato (#964)
+
+El reemplazo pertenece a `PlayStore.start(event, { replaceActive: true })`,
+no a una secuencia de descarte y arranque en cada consumidor. El replay se
+ejecuta antes de mutar el snapshot, la revisión, el timer o la persistencia.
+Un rechazo devuelve `false` y conserva también el plazo de la ráfaga pendiente;
+una excepción de programación sigue propagándose. Al aceptar hay un solo
+cambio de revisión y una notificación, sin un estado vacío intermedio.
+
+Los cinco puntos de entrada recuerdan la mesa, cuando corresponde, y navegan
+después de la aceptación. La llamada sin opción conserva su contrato estricto
+y el CAS de IndexedDB conserva su arbitraje entre pestañas. La aceptación
+sincrónica no garantiza que la escritura asíncrona ya haya terminado.
+Evidencia: `docs/testing/2026-10-02-atomic-game-start-964.md`.
+
+## 2026-10-02 — configurar el reloj conserva milisegundos y explica el rechazo (#995)
+
+`chess-setup.tsx` presenta segundos de 10 a 7200, con hasta tres decimales,
+porque convertir una precarga a minutos redondeados cambia el tiempo con el
+que se juega. La conversión produce milisegundos enteros; los presets y los
+pasos de ±60 segundos conservan la fracción. Una entrada incompleta, fuera
+de rango o más precisa que un milisegundo explica el problema y bloquea Empezar.
+El motor y la persistencia mantienen su contrato.
+
+El feedback de duplicado o mesa llena vive en el `SeatPicker` que comparten
+los acompañantes: aviso de estado accesible, vínculo con el input y botón
+Añadir visible. El duplicado conserva lo escrito; retirar un asiento permite
+volver a añadir. Evidencia: `docs/testing/2026-10-02-clock-setup-995.md`.
+
+## 2026-10-02 — el contraste del asiento incluye su texto pequeño (#999)
+
+`SeatToken` ya es la ficha común. Sus iniciales de 12/14 px necesitan 4,5:1
+contra su fondo, además del suelo existente de 3:1 contra el fieltro. Se mide
+la tinta real de `text-surface` en claro, oscuro explícito y oscuro del sistema.
+
+Sólo cambia `--play-seat-5` claro, de `#9d6f1c` a `#996d19`: pasa de 4,372747:1
+a 4,534193:1. El asiento 1 ya cumple con 4,508397:1; no se modifica por redondear
+su resultado. Los bloques oscuros y los criterios de separación de la paleta
+se conservan. La evidencia de DOM, el fallo global inicial y la recuperación
+acotada del helper constan en `docs/testing/2026-10-02-seat-text-contrast-999.md`.

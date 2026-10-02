@@ -11,7 +11,8 @@ import { SeatRow } from "./seat-row";
  * Turnos): fichas en vez de formulario. Tocar una ficha de color la abre en
  * un panel con «Quitar de la mesa» — nunca quita al toque (un roce en la mesa
  * borraba a alguien sin deshacer). Tocar un habitual atenuado lo sienta; el
- * «+» despliega el ÚNICO input de la pantalla.
+ * «+» despliega el input y su botón de alta. Los duplicados y el límite de
+ * jugadores se explican sin descartar el nombre escrito.
  *
  * No se renombra aquí: los acompañantes identifican al jugador por nombre y
  * renombrar sería quitar + añadir (Recursos perdería sus valores).
@@ -37,6 +38,7 @@ export function SeatPicker({
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const inputId = `${idPrefix}-add-player`;
+  const feedbackId = `${idPrefix}-add-player-feedback`;
   const panelId = `${idPrefix}-seat`;
 
   function add(candidate: string, fromInput = false) {
@@ -57,6 +59,13 @@ export function SeatPicker({
 
   const available = regulars.filter((r) => !players.includes(r.name));
   const full = max !== undefined && players.length >= max;
+  const trimmedName = name.trim();
+  const duplicate = trimmedName !== "" && players.includes(trimmedName);
+  const feedback = full
+    ? t("maxPlayersReached", { max: max ?? players.length })
+    : adding && duplicate
+      ? t("duplicatePlayer", { name: trimmedName })
+      : null;
   const opened = open !== null && players.includes(open) ? open : null;
 
   return (
@@ -92,7 +101,7 @@ export function SeatPicker({
         </div>
       ) : null}
       {adding ? (
-        <div id={inputId} className={`mt-2 flex ${align === "center" ? "justify-center" : ""}`}>
+        <div id={inputId} className={`mt-2 flex items-center gap-2 ${align === "center" ? "justify-center" : ""}`}>
           <input
             autoFocus
             value={name}
@@ -102,9 +111,28 @@ export function SeatPicker({
               if (e.key === "Enter") add(name, true);
             }}
             aria-label={t("nameLabel")}
-            className="w-48 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
+            aria-invalid={duplicate || full}
+            aria-describedby={feedback === null ? undefined : feedbackId}
+            className="min-w-0 w-48 rounded-md border border-border bg-surface px-2 py-1.5 text-[14px]"
           />
+          <button
+            type="button"
+            disabled={trimmedName === "" || duplicate || full}
+            onClick={() => add(name, true)}
+            className="tap-44 shrink-0 rounded-chip border border-border px-3 py-1.5 text-[13px] font-semibold disabled:opacity-40"
+          >
+            {t("add")}
+          </button>
         </div>
+      ) : null}
+      {feedback !== null ? (
+        <p
+          id={feedbackId}
+          role="status"
+          className={`mt-2 break-words text-[13px] ${full ? "text-muted-foreground" : "text-play-danger"} ${align === "center" ? "text-center" : ""}`}
+        >
+          {feedback}
+        </p>
       ) : null}
     </>
   );
