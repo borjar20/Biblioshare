@@ -22,6 +22,15 @@ de la app, por bien dibujada que esté cada pantalla.
 
 ## Los términos
 
+Delta 2026-10-02, Experiencias (#1293): **Experiencia** es una salida o recuerdo
+compartido; **Escapada** agrupa varios **Momentos** en el mismo recuerdo;
+**Acompañante** es una cuenta invitada o una etiqueta privada sin cuenta.
+Estados: **Por vivir**, **Vivida**, **Cancelada**. Aceptar una invitación confirma
+participación en el grupo; **Fui**, **Por confirmar** y **No fui** describen presencia
+en cada momento. **Mi momento favorito** pertenece a quien lo elige.
+Compartir significa publicar la experiencia en el perfil/feed según su audiencia.
+Avisos: «te invitó a una experiencia», «aceptó tu invitación», «compartió una experiencia».
+
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|
 | **Retirar** / **Restaurar** | Suspender / Reactivar (contenido) | Ocultar contenido para todos de forma reversible / recuperar su visibilidad previa. | Moderación, `/admin` (#1183) |

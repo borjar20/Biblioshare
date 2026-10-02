@@ -17,8 +17,7 @@ Supabase PostgreSQL 17, next-intl 4, Tailwind 4, Vitest y Playwright existentes.
 **Spec:** `docs/superpowers/specs/2026-10-02-experiencias-design.md` y su
 propuesta de producto `docs/superpowers/specs/2026-10-02-experiencias-producto.md`.
 
-**Estado:** plan preparado para revisión y rama creada desde main; las tareas 1–6
-de implementación no están ejecutadas.
+**Estado:** aprobado el 2026-10-02; tarea 1 implementada y verificada en local/dev; tareas 2–6 en ejecución.
 **Seguimiento:** [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 **Método recomendado:** ejecución en este chat, tarea a tarea, y revisión independiente final.
 
@@ -51,9 +50,9 @@ de implementación no están ejecutadas.
 - [x] Registrar una instantánea Git de los documentos de esta conversación, sin incluir
   archivos ajenos. Crear o reutilizar `codex/experiencias` y actualizarla con `origin/main`;
   preservar las entradas de backlog/decisiones al resolver conflictos documentales.
-- [ ] Verificar `git status`, base, Node, puerto 3000 y worktrees. El checkout actual basta
+- [x] Verificar `git status`, base, Node, puerto 3000 y worktrees. El checkout actual basta
   si no hay trabajo paralelo; no crear otro por costumbre.
-- [ ] Leer ambas specs y crear el ledger de ejecución del plan. Registrar las decisiones
+- [x] Leer ambas specs y crear el ledger de ejecución del plan. Registrar las decisiones
   necesarias para ajustes sin reiniciar tareas ya terminadas.
 
 ## Tarea 1: Persistencia, privacidad y transiciones comprobables
@@ -74,22 +73,22 @@ RPC de dominio `experience_create(jsonb)`, `experience_update(uuid,bigint,jsonb)
 `experience_save_moment(uuid,bigint,jsonb)`, `experience_remove_moment(uuid,bigint,uuid)`
 y `experience_reorder_moments(uuid,bigint,uuid[])`, con respuestas del §7.
 
-- [ ] Escribir tests de validación: solo nombre/estado, intervalos inválidos, fechas nulas,
+- [x] Escribir tests de validación: solo nombre/estado, intervalos inválidos, fechas nulas,
   límites exactos y UUIDs inválidos. Escribir SQL de siete actores con datos sintéticos.
-- [ ] Ejecutar los tests nuevos antes de implementar y guardar el fallo esperado.
-- [ ] Definir los tipos/validadores y crear la migración de enums aditiva, incluyendo
+- [x] Ejecutar los tests nuevos antes de implementar y guardar el fallo esperado.
+- [x] Definir los tipos/validadores y crear la migración de enums aditiva, incluyendo
   invitaciones/publicación y moderación. No usar valores nuevos en su misma transacción.
-- [ ] Crear las seis tablas, FKs compuestas, índices y bucket privado en la migración core.
-- [ ] Implementar helpers RLS sin recursión; grants mínimos y revocación de `PUBLIC`.
-- [ ] Implementar creación/edición/orden atómicos con locks, revisiones y cuotas existentes.
-- [ ] Añadir pruebas que rechacen reordenación ajena, borrar último momento, FK de otro
+- [x] Crear las seis tablas, FKs compuestas, índices y bucket privado en la migración core.
+- [x] Implementar helpers RLS sin recursión; grants mínimos y revocación de `PUBLIC`.
+- [x] Implementar creación/edición/orden atómicos con locks, revisiones y cuotas existentes.
+- [x] Añadir pruebas que rechacen reordenación ajena, borrar último momento, FK de otro
   recuerdo, reasignación de creador y asistencia ajena. Probar visibilidad de guest rows/IDs.
-- [ ] Probar simultáneamente dos ediciones con la misma revisión: una gana y otra devuelve
+- [x] Probar simultáneamente dos ediciones con la misma revisión: una gana y otra devuelve
   conflicto, sin perder momentos. Integrar verificación con el runner de DB.
-- [ ] Registrar migraciones en el manifiesto; ejecutar `npm run db:baseline` y
+- [x] Registrar migraciones en el manifiesto; ejecutar `npm run db:baseline` y
   `npm run test:db:bootstrap`. Arrancar/validar el bootstrap local desechable y los SQL nuevos.
-- [ ] Generar tipos contra el esquema de prueba, preservando todos los contratos de main.
-- [ ] Repetir unitarios y SQL: todas las comprobaciones nuevas pasan. Commit de esta tarea.
+- [x] Generar tipos contra el esquema de prueba, preservando todos los contratos de main.
+- [x] Repetir unitarios y SQL: todas las comprobaciones nuevas pasan. Commit de esta tarea.
 
 ## Tarea 2: Captura libre, detalle y crecimiento a escapada
 
@@ -263,3 +262,4 @@ Cada riesgo de Review Focus tiene prueba asignada. El catálogo externo, la fusi
 recuerdos independientes y el filtro entre hobbies permanecen explícitamente en #1293.
 Tipos y firmas se comparten desde tarea 1; las migrations tienen nombres generados por
 CLI y orden por dependencia. Los commits incluyen solo archivos de su tarea.
+

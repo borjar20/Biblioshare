@@ -3139,7 +3139,282 @@ export type Database = {
         }
         Relationships: []
       }
-    }
+          experience_favorites: {
+        Row: {
+          experience_id: string
+          moment_id: string
+          user_id: string
+        }
+        Insert: {
+          experience_id: string
+          moment_id: string
+          user_id: string
+        }
+        Update: {
+          experience_id?: string
+          moment_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_favorites_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_favorites_experience_id_user_id_fkey"
+            columns: ["experience_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "experience_participants"
+            referencedColumns: ["experience_id", "user_id"]
+          },
+          {
+            foreignKeyName: "experience_favorites_moment_id_experience_id_fkey"
+            columns: ["moment_id", "experience_id"]
+            isOneToOne: false
+            referencedRelation: "experience_moments"
+            referencedColumns: ["id", "experience_id"]
+          },
+        ]
+      }
+      experience_moment_participants: {
+        Row: {
+          attendance_state: string
+          experience_id: string
+          moment_id: string
+          participant_id: string
+        }
+        Insert: {
+          attendance_state?: string
+          experience_id: string
+          moment_id: string
+          participant_id: string
+        }
+        Update: {
+          attendance_state?: string
+          experience_id?: string
+          moment_id?: string
+          participant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_moment_participant_participant_id_experience_id_fkey"
+            columns: ["participant_id", "experience_id"]
+            isOneToOne: false
+            referencedRelation: "experience_participants"
+            referencedColumns: ["id", "experience_id"]
+          },
+          {
+            foreignKeyName: "experience_moment_participants_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_moment_participants_moment_id_experience_id_fkey"
+            columns: ["moment_id", "experience_id"]
+            isOneToOne: false
+            referencedRelation: "experience_moments"
+            referencedColumns: ["id", "experience_id"]
+          },
+        ]
+      }
+      experience_moments: {
+        Row: {
+          created_at: string
+          ends_on: string | null
+          experience_id: string
+          id: string
+          kind: string
+          place_label: string | null
+          position: number
+          starts_on: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_on?: string | null
+          experience_id: string
+          id?: string
+          kind: string
+          place_label?: string | null
+          position: number
+          starts_on?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_on?: string | null
+          experience_id?: string
+          id?: string
+          kind?: string
+          place_label?: string | null
+          position?: number
+          starts_on?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_moments_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experience_participants: {
+        Row: {
+          created_at: string
+          experience_id: string
+          guest_name: string | null
+          id: string
+          invitation_state: string
+          share_identity: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          experience_id: string
+          guest_name?: string | null
+          id?: string
+          invitation_state?: string
+          share_identity?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          experience_id?: string
+          guest_name?: string | null
+          id?: string
+          invitation_state?: string
+          share_identity?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_participants_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experience_photos: {
+        Row: {
+          author_id: string
+          created_at: string
+          experience_id: string
+          id: string
+          mime_type: string
+          moment_id: string | null
+          share_with_profile: boolean
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          experience_id: string
+          id?: string
+          mime_type: string
+          moment_id?: string | null
+          share_with_profile?: boolean
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          experience_id?: string
+          id?: string
+          mime_type?: string
+          moment_id?: string | null
+          share_with_profile?: boolean
+          status?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_photos_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_photos_moment_id_experience_id_fkey"
+            columns: ["moment_id", "experience_id"]
+            isOneToOne: false
+            referencedRelation: "experience_moments"
+            referencedColumns: ["id", "experience_id"]
+          },
+        ]
+      }
+      experiences: {
+        Row: {
+          audience: string
+          cover_photo_id: string | null
+          created_at: string
+          creator_id: string
+          ends_on: string | null
+          id: string
+          revision: number
+          shape: string
+          starts_on: string | null
+          state: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          cover_photo_id?: string | null
+          created_at?: string
+          creator_id: string
+          ends_on?: string | null
+          id?: string
+          revision?: number
+          shape?: string
+          starts_on?: string | null
+          state?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          cover_photo_id?: string | null
+          created_at?: string
+          creator_id?: string
+          ends_on?: string | null
+          id?: string
+          revision?: number
+          shape?: string
+          starts_on?: string | null
+          state?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiences_cover_same_root"
+            columns: ["cover_photo_id", "id"]
+            isOneToOne: false
+            referencedRelation: "experience_photos"
+            referencedColumns: ["id", "experience_id"]
+          },
+        ]
+      }
+}
     Views: {
       club_identities: {
         Row: {
@@ -4068,7 +4343,24 @@ export type Database = {
         Args: { p_option_id: string; p_post_id: string }
         Returns: undefined
       }
-    }
+          experience_create: { Args: { p_input: Json }; Returns: Json }
+      experience_remove_moment: {
+        Args: { p_id: string; p_moment_id: string; p_revision: number }
+        Returns: Json
+      }
+      experience_reorder_moments: {
+        Args: { p_id: string; p_ordered_ids: string[]; p_revision: number }
+        Returns: Json
+      }
+      experience_save_moment: {
+        Args: { p_id: string; p_input: Json; p_revision: number }
+        Returns: Json
+      }
+      experience_update: {
+        Args: { p_id: string; p_input: Json; p_revision: number }
+        Returns: Json
+      }
+}
     Enums: {
       activity_kind:
         | "buddy_read"
@@ -4099,46 +4391,7 @@ export type Database = {
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       notification_type:
-        | "follow_request"
-        | "new_follower"
-        | "follow_accepted"
-        | "review_liked"
-        | "review_commented"
-        | "club_join_request"
-        | "club_join_approved"
-        | "club_invite"
-        | "club_invite_accepted"
-        | "club_post"
-        | "club_post_liked"
-        | "club_post_commented"
-        | "comment_liked"
-        | "club_activity_proposed"
-        | "club_activity_activated"
-        | "club_activity_spawned"
-        | "club_event_created"
-        | "mentioned"
-        | "activity_liked"
-        | "activity_commented"
-        | "checkpoint_commented"
-        | "club_round_proposed"
-        | "club_round_commented"
-        | "club_round_liked"
-        | "followed_finished"
-        | "followed_session"
-        | "followed_episode"
-        | "followed_added"
-        | "club_event_reminder"
-        | "club_event_updated"
-        | "club_event_cancelled"
-        | "thought_commented"
-        | "thought_liked"
-        | "post_commented"
-        | "post_liked"
-        | "followed_started"
-        | "followed_dropped"
-        | "followed_thought"
-        | "joint_viewing_invite"
-        | "joint_viewing_accepted"
+        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience"
       pass_dropped_reason:
         | "no_enganchado"
         | "aburrido"
@@ -4146,15 +4399,9 @@ export type Database = {
         | "no_esperado"
         | "otro"
       pending_import_status: "pending" | "resolved" | "dismissed"
-      post_anchor_type: "book" | "movie" | "series" | "saga" | "person"
+      post_anchor_type: "book" | "movie" | "series" | "saga" | "person" | "experience"
       post_kind:
-        | "started"
-        | "finished"
-        | "dropped"
-        | "progressed"
-        | "watched"
-        | "thought"
-        | "joint"
+        "started" | "finished" | "dropped" | "progressed" | "watched" | "thought" | "joint" | "experience"
       post_source_kind:
         | "pass"
         | "progress_session"
@@ -4173,17 +4420,7 @@ export type Database = {
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
       target_kind:
-        | "diary_entry"
-        | "episode_watch"
-        | "club_post"
-        | "comment"
-        | "activity_checkpoint"
-        | "club_activity"
-        | "pass"
-        | "progress_session"
-        | "club_round"
-        | "thought"
-        | "post"
+        "diary_entry" | "episode_watch" | "club_post" | "comment" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session" | "club_round" | "thought" | "post" | "experience"
       thought_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       user_role: "user" | "collaborator" | "admin"
     }
@@ -4324,7 +4561,7 @@ export const Constants = {
       club_event_state: ["programado", "cancelado", "pospuesto"],
       club_event_type: ["encuentro", "lanzamiento", "fecha_destacada"],
       club_member_status: ["invited", "active", "requested"],
-      club_post_kind: ["text", "activity_share", "poll"],
+      club_post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
       content_report_reason: ["spam", "harassment", "spoiler", "hate", "other"],
@@ -4338,48 +4575,7 @@ export const Constants = {
       ],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
-      notification_type: [
-        "follow_request",
-        "new_follower",
-        "follow_accepted",
-        "review_liked",
-        "review_commented",
-        "club_join_request",
-        "club_join_approved",
-        "club_invite",
-        "club_invite_accepted",
-        "club_post",
-        "club_post_liked",
-        "club_post_commented",
-        "comment_liked",
-        "club_activity_proposed",
-        "club_activity_activated",
-        "club_activity_spawned",
-        "club_event_created",
-        "mentioned",
-        "activity_liked",
-        "activity_commented",
-        "checkpoint_commented",
-        "club_round_proposed",
-        "club_round_commented",
-        "club_round_liked",
-        "followed_finished",
-        "followed_session",
-        "followed_episode",
-        "followed_added",
-        "club_event_reminder",
-        "club_event_updated",
-        "club_event_cancelled",
-        "thought_commented",
-        "thought_liked",
-        "post_commented",
-        "post_liked",
-        "followed_started",
-        "followed_dropped",
-        "followed_thought",
-        "joint_viewing_invite",
-        "joint_viewing_accepted",
-      ],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience"],
       pass_dropped_reason: [
         "no_enganchado",
         "aburrido",
@@ -4388,16 +4584,8 @@ export const Constants = {
         "otro",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
-      post_anchor_type: ["book", "movie", "series", "saga", "person"],
-      post_kind: [
-        "started",
-        "finished",
-        "dropped",
-        "progressed",
-        "watched",
-        "thought",
-        "joint",
-      ],
+      post_anchor_type: ["book", "movie", "series", "saga", "person", "experience"],
+      post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience"],
       post_source_kind: [
         "pass",
         "progress_session",
@@ -4417,19 +4605,7 @@ export const Constants = {
       saga_placement: ["fijo", "libre", "anclado"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],
-      target_kind: [
-        "diary_entry",
-        "episode_watch",
-        "club_post",
-        "comment",
-        "activity_checkpoint",
-        "club_activity",
-        "pass",
-        "progress_session",
-        "club_round",
-        "thought",
-        "post",
-      ],
+      target_kind: ["diary_entry", "episode_watch", "club_post", "comment", "activity_checkpoint", "club_activity", "pass", "progress_session", "club_round", "thought", "post", "experience"],
       thought_anchor_type: ["book", "movie", "series", "saga", "person"],
       user_role: ["user", "collaborator", "admin"],
     },

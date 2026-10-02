@@ -1357,3 +1357,13 @@ commit;
 begin;
 \ir migrations/20261001102000_merge_book_club_event_refs.sql
 commit;
+
+-- 20261002092735_experiences_enums
+begin;
+\ir migrations/20261002092735_experiences_enums.sql
+commit;
+
+-- 20261002092737_experiences_core
+begin;
+\ir migrations/20261002092737_experiences_core.sql
+commit;

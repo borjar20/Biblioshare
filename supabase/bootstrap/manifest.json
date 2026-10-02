@@ -270,6 +270,8 @@
     "20260930170000_book_editions_canonical_isbn.sql",
     "20260930171000_merge_book_canonical_isbn.sql",
     "20260930190000_book_author_manual_clear.sql",
-    "20261001102000_merge_book_club_event_refs.sql"
+    "20261001102000_merge_book_club_event_refs.sql",
+    "20261002092735_experiences_enums.sql",
+    "20261002092737_experiences_core.sql"
   ]
 }

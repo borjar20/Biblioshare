@@ -13,7 +13,8 @@ export type TargetType =
   | "progress_session"
   | "club_round"
   | "thought"
-  | "post";
+  | "post"
+  | "experience";
 
 export type InteractionTargetRef = {
   id: string;

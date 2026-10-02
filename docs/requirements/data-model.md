@@ -1,5 +1,11 @@
 # Modelo de datos
 
+> **Delta 2026-10-02 (#1293, local/dev; pendiente de producción):** Experiencias
+> añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
+> existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
+> ediciones perdidas. Bootstrap vacío de 273 pasos y pruebas de acceso/transiciones
+> locales y en dev; carrera de dos ediciones comprobada localmente. Ver §8ter.
+
 > **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
 > eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
 > orden, claves ajenas y configuraciones opacas. Local/dev: regresiones con rollback;
@@ -4446,6 +4452,43 @@ El asesor de seguridad no detectó hallazgos nuevos en los objetos R5. `ACORN_EP
 octubre; revalidar el corte antes del primer despliegue y mantenerlo en los posteriores.
 La bienvenida de 50 no depende de la época. El ritmo real y el catálogo futuro siguen
 en #1017; estos checks no acreditan aceptación de una semana de uso.
+
+## 8ter. Experiencias (#1293, local/dev 2026-10-02)
+
+**[Canónico · esquema y permisos verificados en local y dev el 2026-10-02;
+pendiente de producción]**
+
+Migraciones `20261002092735_experiences_enums.sql` y
+`20261002092737_experiences_core.sql`. Dominio colaborativo independiente;
+`passes` conserva el estado usuario↔obra. No añaden columnas a tablas existentes.
+
+| Tabla | Contrato |
+|---|---|
+| `experiences` | Creador inmutable, nombre, single/trip, planned/lived/cancelled, private/participants/profile, fechas opcionales, portada del mismo recuerdo, revisión. |
+| `experience_moments` | Nombre, tipo/lugar/fechas y orden único diferible. Máximo 50; crear guarda raíz y primer momento atómicamente. |
+| `experience_participants` | Cuenta XOR etiqueta privada, invitación y consentimiento de identidad; máximo 30 incluido creador. |
+| `experience_moment_participants` | planned/attended/skipped por persona/momento; FKs compuestas impiden asociaciones entre recuerdos. |
+| `experience_favorites` | Un momento favorito por cuenta/recuerdo; FK al miembro y al momento del mismo recuerdo. |
+| `experience_photos` | Reserva pending/ready, autor/ruta/MIME y consentimiento de perfil; FK a raíz y momento. |
+
+Las seis tablas tienen RLS y solo SELECT para clientes; mutaciones por RPC
+autenticadas. Helpers privados sin recursión, `search_path=''`, EXECUTE de PUBLIC
+revocado. Private revoca a aceptados; profile aplica visibilidad/bloqueo del creador.
+Invitados privados y cuentas sin consentimiento no se deducen por joins de
+asistencia/favoritos. Metadatos brutos de fotos solo dentro del grupo o al autor.
+Bucket `experience-photos` privado, JPEG/PNG/WebP, máximo 2 MiB.
+
+RPC iniciales: `experience_create`, `experience_update`, `experience_save_moment`,
+`experience_remove_moment`, `experience_reorder_moments`. Ediciones estructurales
+exigen revisión y lock de raíz. Cuota `experience_write` (60/minuto) en el contador
+atómico existente. Borrar un momento quita favoritos, conserva fotos en galería
+raíz y nunca elimina el último momento. Ampliar conserva raíz y primer momento.
+
+Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
+`experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
+Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos
+previos de main. Pruebas SQL con siete actores y rollback; carrera local produce
+un éxito y un conflicto, sin perder momentos.
 
 ## 9. Seguridad
 
