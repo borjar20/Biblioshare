@@ -19,14 +19,21 @@ globalThis.fetch = async (input, init) => {
   const openLibrary = url.hostname === 'openlibrary.org' && /^\/isbn\/(\d{13})\.json$/.exec(url.pathname);
   const googleBooks = url.hostname === 'www.googleapis.com' && url.pathname === '/books/v1/volumes'
     && /^isbn:(\d{13})$/.exec(url.searchParams.get('q') || '');
+  const googleDetail = url.hostname === 'www.googleapis.com'
+    && (init?.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase() === 'GET'
+    && /^\/books\/v1\/volumes\/(gbquota1237_[A-Za-z0-9_-]+)$/.exec(url.pathname);
   const isbn = openLibrary?.[1] || googleBooks?.[1];
-  if (isbn) {
+  if (isbn || googleDetail) {
     const fixture = readFileSync(registry, 'utf8').split('\n').filter(Boolean)
       .map(line => JSON.parse(line))
-      .find(row => row.namespace === namespace && row.isbn === isbn
+      .find(row => row.namespace === namespace && (isbn ? row.isbn === isbn : row.volumeId === googleDetail[1])
         && /^\d{13}$/.test(row.isbn)
         && row.volumeId.startsWith(`gbquota1237_${namespace}_`));
     if (fixture) {
+      if (googleDetail) return Response.json({ id: fixture.volumeId, volumeInfo: {
+        title: fixture.title, authors: ['Autor sintético QA1237'],
+        industryIdentifiers: [{ type: 'ISBN_13', identifier: fixture.isbn }],
+      } });
       return openLibrary
         ? Response.json({ error: 'Synthetic ISBN absent from OpenLibrary' }, { status: 404 })
         : Response.json({ totalItems: 1, items: [{ id: fixture.volumeId, volumeInfo: {

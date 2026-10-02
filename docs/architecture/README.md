@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Derivado · generado desde el código el 2026-10-01; incluye despacho autenticado e invalidación por lotes del ZIP #1250, economía/fondos R5, referencias de eventos en fusiones de libro #875 y retorno administrativo al login #1271; las demás fuentes constan en meta.verifiedAgainst]**
+> **[Derivado · generado desde el código el 2026-10-02; incluye hidratación Google-only y rescate de shells vacías #1290, despacho autenticado e invalidación por lotes del ZIP #1250, economía/fondos R5, referencias de eventos en fusiones de libro #875 y retorno administrativo al login #1271; las demás fuentes constan en meta.verifiedAgainst]**
 
 Dos vistas de lo mismo, pensadas para lectores distintos:
 

@@ -156,6 +156,40 @@ async function queryVolumes(params: Record<string, string>): Promise<GoogleVolum
   }
 }
 
+// Identidad ya persistida: se consulta el volumen exacto, sin búsqueda por
+// título/autor ni metadatos del navegador. La gramática coincide con el ID
+// canónico que guarda la RPC; no se aceptan espacios, rutas, query ni fragmentos.
+export async function fetchVolumeById(volumeId: string): Promise<GoogleVolume | null> {
+  if (
+    typeof volumeId !== "string" ||
+    volumeId.length === 0 ||
+    volumeId.length > 256 ||
+    /[^A-Za-z0-9_-]/.test(volumeId)
+  ) return null;
+  const key = process.env.GOOGLE_BOOKS_API_KEY;
+  if (!key) return null;
+  try {
+    const url = new URL(`${API}/${encodeURIComponent(volumeId)}`);
+    url.searchParams.set("key", key);
+    const res = await fetch(url, {
+      method: "GET",
+      next: { revalidate: REVALIDATE_SECONDS },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const raw = asRecord(await res.json());
+    if (
+      raw.id !== volumeId ||
+      raw.volumeInfo === null ||
+      typeof raw.volumeInfo !== "object" ||
+      Array.isArray(raw.volumeInfo)
+    ) return null;
+    return mapVolume(raw);
+  } catch {
+    return null;
+  }
+}
+
 // Identidad de último recurso: el ISBN no admite ambigüedad — pero esta es la
 // ÚNICA vía que CREA obra en el catálogo COMPARTIDO, así que no basta con
 // fiarse de que la consulta llevaba `isbn:`: se confirma contra los
