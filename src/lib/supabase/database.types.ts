@@ -3558,6 +3558,10 @@ export type Database = {
       }
     }
     Functions: {
+      experience_delete: {
+        Args: { p_id: string; p_confirmation: string }
+        Returns: Json
+      }
       admin_moderation_list: {
         Args: {
           p_kind: string

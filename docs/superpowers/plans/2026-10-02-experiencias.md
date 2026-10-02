@@ -11,7 +11,7 @@ favoritos y publicación social, respetando la privacidad en todos sus accesos.
 recuerdo mantiene IDs estables al crecer de salida sencilla a escapada. Posts
 referencia ese recuerdo; imágenes privadas se entregan tras autorización por petición.
 
-**Tech Stack:** Node 22.23.1, Next.js 16.3.0, React 19.2.4, TypeScript 5,
+**Tech Stack:** Node 22.23.1, Next.js 16.3.8 (lockfile de main), React 19.2.4, TypeScript 5,
 Supabase PostgreSQL 17, next-intl 4, Tailwind 4, Vitest y Playwright existentes.
 
 **Spec:** `docs/superpowers/specs/2026-10-02-experiencias-design.md` y su
@@ -26,7 +26,8 @@ propuesta de producto `docs/superpowers/specs/2026-10-02-experiencias-producto.m
 - Node 22.23.1; conservar versiones y lockfile, sin nuevas dependencias.
 - `passes` sigue siendo fuente de verdad del estado usuario↔obra; registrar la excepción
   limitada del nuevo dominio antes de dar su implementación por terminada.
-- Sin `use cache` para estos lectores de sesión. Shell síncrono + `<Suspense>`.
+- Sin `use cache` para estos lectores de sesión. Hub/captura con shell síncrono y
+  `<Suspense>`; detalle/edición con `instant=false` y preflight RLS en proxy para 404 real.
 - Nombre 1–160 caracteres; lugar ≤240; acompañante 1–80; 50 momentos, 30 acompañantes
   incluido el creador y 40 fotos. Fechas opcionales `YYYY-MM-DD`, inicio ≤ fin.
 - JPEG, PNG y WebP, máximo 2 MiB por imagen. Bucket privado, sin URL firmada entregada.
@@ -107,21 +108,21 @@ y `experience_reorder_moments(uuid,bigint,uuid[])`, con respuestas del §7.
 `getExperience(id): Promise<ExperienceDetail|null>` y `revalidateExperiences(id?)`.
 `ExperiencePage` contiene `items` y `nextCursor`; tamaño 20, orden estable `(created_at,id)`.
 
-- [ ] Escribir tests de actions para falta de sesión, errores SQL normalizados, conflicto
+- [x] Escribir tests de actions para falta de sesión, errores SQL normalizados, conflicto
   y revalidación. Preparar E2E de captura mínima y ampliación conservando IDs.
-- [ ] Ejecutar nuevos tests y confirmar el fallo esperado antes de implementar.
-- [ ] Implementar lectores de sesión y filtros/paginación sin caché compartida.
-- [ ] Implementar actions de captura/edición sobre RPC y revalidación centralizada.
-- [ ] Implementar borrado del recuerdo por creador, con confirmación por nombre, revocación
+- [x] Ejecutar nuevos tests y confirmar el fallo esperado antes de implementar.
+- [x] Implementar lectores de sesión y filtros/paginación sin caché compartida.
+- [x] Implementar actions de captura/edición sobre RPC y revalidación centralizada.
+- [x] Implementar borrado del recuerdo por creador, con confirmación por nombre, revocación
   de referencias sociales y conservación de la evidencia requerida por moderación.
-- [ ] Introducir los términos Experiencia/Escapada/Momento/Acompañante en el glosario y copy.
-- [ ] Construir hub, captura y detalle con primitives existentes; nombre/estado mínimos,
-  filtros, Canceladas, vacíos con acción y 404 de detalle bajo Suspense.
-- [ ] Añadir edición/reordenación de momentos; ampliar un concierto a escapada reutiliza
+- [x] Introducir los términos Experiencia/Escapada/Momento/Acompañante en el glosario y copy.
+- [x] Construir hub, captura y detalle con primitives existentes; nombre/estado mínimos,
+  filtros, Canceladas, vacíos con acción y 404 real previo al streaming del detalle.
+- [x] Añadir edición/reordenación de momentos; ampliar un concierto a escapada reutiliza
   experiencia y primer momento. Eliminar con aportaciones requiere confirmación.
-- [ ] Verificar por E2E: plan sin fecha, experiencia en solitario, cancelación y dos momentos
+- [x] Verificar por E2E: plan sin fecha, experiencia en solitario, cancelación y dos momentos
   ordenados, sin texto descriptivo. Sembrar/limpiar fixtures antes y después por REST.
-- [ ] Ejecutar unitarios, lint de los archivos y E2E focalizados; commit de esta tarea.
+- [x] Ejecutar unitarios, lint de los archivos y E2E focalizados; commit de esta tarea.
 
 ## Tarea 3: Acompañantes, invitaciones, asistencia y favoritos
 
@@ -262,4 +263,3 @@ Cada riesgo de Review Focus tiene prueba asignada. El catálogo externo, la fusi
 recuerdos independientes y el filtro entre hobbies permanecen explícitamente en #1293.
 Tipos y firmas se comparten desde tarea 1; las migrations tienen nombres generados por
 CLI y orden por dependencia. Los commits incluyen solo archivos de su tarea.
-

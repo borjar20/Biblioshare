@@ -4484,6 +4484,11 @@ exigen revisión y lock de raíz. Cuota `experience_write` (60/minuto) en el con
 atómico existente. Borrar un momento quita favoritos, conserva fotos en galería
 raíz y nunca elimina el último momento. Ampliar conserva raíz y primer momento.
 
+`experience_delete(uuid,text)` (local/dev 2026-10-02) exige creador y confirmación
+por título; elimina raíz/descendientes y referencias sociales en una transacción.
+Devuelve las rutas de fotos únicamente al servidor para la limpieza de Storage,
+cuya conservación de evidencia se completa junto con imágenes/moderación.
+
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
 Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos

@@ -32,3 +32,52 @@ export interface SaveMomentInput {
   startsOn?: string | null;
   endsOn?: string | null;
 }
+
+export interface ExperiencePerson {
+  id: string;
+  userId: string | null;
+  guestName: string | null;
+  invitationState: InvitationState;
+  shareIdentity: boolean;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+export interface ExperienceMoment {
+  id: string;
+  title: string;
+  kind: MomentKind;
+  placeLabel: string | null;
+  startsOn: string | null;
+  endsOn: string | null;
+  position: number;
+}
+export interface ExperiencePreview {
+  id: string;
+  creatorId: string;
+  title: string;
+  shape: ExperienceShape;
+  state: ExperienceState;
+  audience: ExperienceAudience;
+  startsOn: string | null;
+  endsOn: string | null;
+  coverPhotoId: string | null;
+  createdAt: string;
+  revision: number;
+  moments: ExperienceMoment[];
+  participants: ExperiencePerson[];
+}
+export interface ExperienceDetail extends ExperiencePreview {
+  viewerId: string | null;
+  canEdit: boolean;
+  canContribute: boolean;
+  attendance: { momentId: string; participantId: string; state: AttendanceState }[];
+  favorites: { userId: string; momentId: string }[];
+}
+export interface ExperienceFilters {
+  state?: ExperienceState | "all";
+  kind?: MomentKind;
+  companion?: string;
+  cursor?: string;
+}
+export interface ExperiencePage { items: ExperiencePreview[]; nextCursor: string | null }

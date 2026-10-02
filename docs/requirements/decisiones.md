@@ -5830,3 +5830,19 @@ crea una excepción a la regla de `passes`.
 
 Propuesta revisable en `docs/superpowers/specs/2026-10-02-experiencias-producto.md`;
 seguimiento operativo en #1293 (`area:social`, `tipo:feature`, `P3`).
+
+## 2026-10-02 — Dominio de Experiencias y 404 antes del streaming (#1293)
+
+Diseño y plan aprobados: `experiences` es una excepción limitada al hub general
+de estado usuario↔obra. Tiene organizador, miembros, momentos y permisos propios;
+`passes` sigue gobernando libros, películas y series. Ampliar una salida conserva
+el ID de raíz y primer momento. No se representa como una obra ficticia del catálogo.
+
+Los lectores de sesión no se cachean. Hub y captura mantienen shell/Suspense;
+detalle y edición permiten bloquear mediante `instant=false` de Next 16.3.8.
+Una prueba de producción demostró que ni esa opción ni un rewrite con status 404
+evitan el 200 cuando ya empezó el streaming. El proxy de sesión hace un preflight
+RLS solo para esos GET/HEAD y responde HTML fijo 404/no-store si no hay acceso.
+Se conservan cookies renovadas y autorización independiente en página/RPC.
+El coste es una lectura indexada adicional al abrir detalle y un error con UI
+Paper mínima. No se altera el streaming de las otras rutas.

@@ -30,6 +30,8 @@ participación en el grupo; **Fui**, **Por confirmar** y **No fui** describen pr
 en cada momento. **Mi momento favorito** pertenece a quien lo elige.
 Compartir significa publicar la experiencia en el perfil/feed según su audiencia.
 Avisos: «te invitó a una experiencia», «aceptó tu invitación», «compartió una experiencia».
+Un recuerdo inaccesible se presenta como «Experiencia no disponible», sin distinguir
+entre ID inexistente, privacidad o retirada.
 
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|

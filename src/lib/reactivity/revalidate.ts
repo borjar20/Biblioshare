@@ -19,6 +19,20 @@ export function revalidateFeed(): void {
   revalidatePath("/");
 }
 
+/** Shared memory affects hub, detail/edit, participants' profiles and its post. */
+export function revalidateExperiences(id?: string): void {
+  revalidatePath("/experiencias");
+  if (id) {
+    revalidatePath(`/experiencia/${id}`);
+    revalidatePath(`/experiencia/${id}/editar`);
+  } else {
+    revalidatePath("/experiencia/[id]", "page");
+  }
+  revalidatePath("/post/[id]", "page");
+  revalidateProfilePages();
+  revalidateFeed();
+}
+
 /** Moderation can hide a whole club and descendants across every social surface. */
 export function revalidateModeration(): void {
   revalidatePath("/", "layout");

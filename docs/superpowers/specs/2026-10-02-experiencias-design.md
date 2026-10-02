@@ -1,9 +1,9 @@
 # Experiencias — diseño técnico de la primera versión
 
-> **[Diseño propuesto · 2026-10-02 · pendiente de revisión del plan]**
-> La propuesta de producto fue presentada y el propietario pidió implementarla.
-> Este documento concreta los contratos nuevos; todavía no describe código ni
-> esquema aplicado. Seguimiento: [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
+> **[Diseño aprobado · 2026-10-02 · implementación en curso]**
+> El propietario aprobó diseño, plan y ejecución continua. Este documento fija el
+> alcance; el estado aplicado por entorno vive en el modelo de datos canónico y
+> en el plan. Seguimiento: [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 
 Producto de origen: [Experiencias](2026-10-02-experiencias-producto.md).
 Plan: [implementación](../plans/2026-10-02-experiencias.md).
@@ -278,9 +278,11 @@ introducen librerías, permisos nativos, cambios de service worker o marca visua
 
 ## 11. Lecturas, caché y pruebas
 
-Las consultas usan el cliente de sesión y RLS, sin `use cache`. Shells de páginas
-síncronos con lectores bajo `<Suspense>`, incluyendo lectura de params/searchParams.
-No se añade `loading.tsx` a rutas de detalle que deban responder 404 real.
+Las consultas usan el cliente de sesión y RLS, sin `use cache`. Hub/captura tienen
+shell síncrono con lectores bajo `<Suspense>`. Detalle/edición permiten bloquear
+con `instant=false`; el proxy comprueba esas rutas GET/HEAD con la misma RLS y
+devuelve un 404 fijo antes del streaming cuando no hay acceso. La página y las
+mutaciones conservan su autorización propia. No se añade `loading.tsx` al detalle.
 
 Pruebas de dominio: entradas, fechas desconocidas, límites, estados, agrupación
 estable y errores/concurrencia. Pruebas SQL con datos sintéticos y rollback:
