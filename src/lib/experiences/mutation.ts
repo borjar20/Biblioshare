@@ -25,7 +25,7 @@ export async function experienceMutation<T>(valid:boolean,work:(client:Client)=>
     if(!valid) return {ok:false,error:"invalid"};
     const {data,error}=await work(client);
     if(error) return {ok:false,error:experienceSqlError(error.code)};
-    const createdId=data && typeof data==="object" && !Array.isArray(data) && typeof data.id==="string" ? data.id : undefined;
+    const createdId=data && typeof data==="object" && !Array.isArray(data) ? typeof data.experienceId==="string" ? data.experienceId : typeof data.id==="string" ? data.id : undefined : undefined;
     revalidateExperiences(rootId??createdId);
     return {ok:true,data:data as T};
   } catch {return {ok:false,error:"unknown"};}

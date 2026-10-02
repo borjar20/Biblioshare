@@ -273,6 +273,7 @@
     "20261001102000_merge_book_club_event_refs.sql",
     "20261002092735_experiences_enums.sql",
     "20261002092737_experiences_core.sql",
-    "20261002095236_experiences_deletion.sql"
+    "20261002095236_experiences_deletion.sql",
+    "20261002105627_experiences_participation.sql"
   ]
 }

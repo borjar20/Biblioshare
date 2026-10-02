@@ -1372,3 +1372,8 @@ commit;
 begin;
 \ir migrations/20261002095236_experiences_deletion.sql
 commit;
+
+-- 20261002105627_experiences_participation
+begin;
+\ir migrations/20261002105627_experiences_participation.sql
+commit;

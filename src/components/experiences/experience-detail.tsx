@@ -13,6 +13,9 @@ import { HOME_TWO_COL } from "@/lib/ui/layout";
 import { deleteExperience } from "@/lib/experiences/actions";
 import type { ExperienceDetail as Detail,ExperienceError } from "@/lib/experiences/types";
 import { ExperienceDate } from "./experience-date";
+import {ExperienceParticipants} from "./experience-participants";
+import {MomentAttendance} from "./moment-attendance";
+import {MomentFavorite} from "./moment-favorite";
 export function ExperienceDetail({experience:e}:{experience:Detail}) {
   const t=useTranslations("experiences"),router=useRouter(),fieldId=useId();
   const [deleting,setDeleting]=useState(false),[error,setError]=useState<ExperienceError|null>(null),[pending,startTransition]=useTransition();
@@ -24,11 +27,12 @@ export function ExperienceDetail({experience:e}:{experience:Detail}) {
         <ol className={e.shape==="trip" ? "space-y-5 border-l border-border pl-5" : "space-y-5"}>{e.moments.map((m,index)=><li key={m.id} className="relative rounded-2xl border border-border bg-surface p-5 sm:p-6">
           {e.shape==="trip"&&<span aria-hidden className="absolute -left-8 top-6 grid h-6 w-6 place-items-center rounded-full border border-border bg-background text-xs">{index+1}</span>}
           <p className="mb-2 text-xs text-muted-foreground">{t(`kinds.${m.kind}`)}</p><h2 className="font-serif text-xl font-semibold">{m.title}</h2>{m.placeLabel&&<p className="mt-2 text-sm">{m.placeLabel}</p>}<p className="mt-3 text-sm text-muted-foreground"><ExperienceDate startsOn={m.startsOn} endsOn={m.endsOn}/></p>
+          <MomentAttendance experience={e} moment={m}/><MomentFavorite experience={e} moment={m}/>
         </li>)}</ol>
       </div>
       <aside className="mt-6 space-y-4 lg:sticky lg:top-20 lg:mt-0">
         {e.canEdit&&<Link href={`/experiencia/${e.id}/editar`} className={buttonVariants("secondary","min-h-11 w-full")}>{t("edit")}</Link>}
-        <div className="rounded-2xl border border-border bg-surface p-5"><h2 className="font-serif text-lg font-semibold">{t("companions")}</h2><ul className="mt-3 space-y-2 text-sm">{e.participants.filter(p=>p.invitationState==="accepted").map(p=><li key={p.id}>{p.username ? <Link className="underline decoration-border underline-offset-4 hover:text-accent" href={`/u/${p.username}`}>{p.displayName??p.username}</Link> : p.guestName??t("companion")}</li>)}</ul></div>
+        <ExperienceParticipants experience={e}/>
       </aside>
     </div>
     {deleting&&<SheetShell title={t("delete")} onClose={()=>{setDeleting(false);setError(null);}}><form className="space-y-4" onSubmit={event=>{event.preventDefault();const confirmation=String(new FormData(event.currentTarget).get("confirmation")??"");setError(null);startTransition(async()=>{const result=await deleteExperience(e.id,confirmation);if(!result.ok) setError(result.error);else router.push("/experiencias");});}}>

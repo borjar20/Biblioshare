@@ -4364,6 +4364,52 @@ export type Database = {
         Args: { p_id: string; p_input: Json; p_revision: number }
         Returns: Json
       }
+      experience_add_guest: {
+        Args: { p_id: string; p_name: string }
+        Returns: Json
+      }
+      experience_invite: {
+        Args: { p_id: string; p_user_id: string }
+        Returns: Json
+      }
+      experience_remove_participant: {
+        Args: { p_participant_id: string }
+        Returns: Json
+      }
+      experience_respond_invitation: {
+        Args: { p_participant_id: string; p_response: string }
+        Returns: Json
+      }
+      experience_set_attendance: {
+        Args: { p_moment_id: string; p_state: string }
+        Returns: Json
+      }
+      experience_set_favorite: {
+        Args: { p_id: string; p_moment_id?: string }
+        Returns: Json
+      }
+      experience_set_guest_attendance: {
+        Args: { p_moment_id: string; p_participant_id: string; p_state: string }
+        Returns: Json
+      }
+      experience_set_share_identity: {
+        Args: { p_enabled: boolean; p_id: string }
+        Returns: Json
+      }
+      get_experience_invitations: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          creator_id: string
+          display_name: string
+          ends_on: string
+          experience_id: string
+          participant_id: string
+          starts_on: string
+          title: string
+          username: string
+        }[]
+      }
 }
     Enums: {
       activity_kind:

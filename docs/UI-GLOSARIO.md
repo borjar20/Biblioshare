@@ -32,6 +32,10 @@ Compartir significa publicar la experiencia en el perfil/feed según su audienci
 Avisos: «te invitó a una experiencia», «aceptó tu invitación», «compartió una experiencia».
 Un recuerdo inaccesible se presenta como «Experiencia no disponible», sin distinguir
 entre ID inexistente, privacidad o retirada.
+Invitaciones: «Aceptar invitación» / «Rechazar invitación». «Mostrar mi participación
+en el perfil» es consentimiento individual, separado de aceptar y de «Fui».
+«Añadir acompañante» admite «Cuenta de Biblioshare» o «Invitado sin cuenta»;
+invitar abre el recuerdo a acompañantes aceptados y lo avisa antes de enviar.
 
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|

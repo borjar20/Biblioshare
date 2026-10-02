@@ -81,3 +81,7 @@ export interface ExperienceFilters {
   cursor?: string;
 }
 export interface ExperiencePage { items: ExperiencePreview[]; nextCursor: string | null }
+export interface ExperienceInvitation {
+  participantId:string;experienceId:string;title:string;startsOn:string|null;endsOn:string|null;
+  organizer:{id:string;username:string;name:string;avatarUrl:string|null};
+}

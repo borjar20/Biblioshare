@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
-import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview } from "./types";
+import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation } from "./types";
 import { MOMENT_KINDS } from "./types";
 import { isExperienceId } from "./validation";
 
@@ -75,7 +75,7 @@ export async function getExperience(id:string):Promise<ExperienceDetail|null> {
   if(!root) return null;
   const [previews,auth,attendance,favorites]=await Promise.all([
     getExperiencePreviews(client,[root]),client.auth.getUser(),
-    client.from("experience_moment_participants").select("*").eq("experience_id",id),
+    readAttendance(client,id),
     client.from("experience_favorites").select("*").eq("experience_id",id),
   ]);
   if(attendance.error) throw attendance.error;
@@ -86,4 +86,17 @@ export async function getExperience(id:string):Promise<ExperienceDetail|null> {
     attendance:(attendance.data??[]).map(a=>({momentId:a.moment_id,participantId:a.participant_id,state:a.attendance_state as ExperienceDetail["attendance"][number]["state"]})),
     favorites:(favorites.data??[]).map(f=>({userId:f.user_id,momentId:f.moment_id})),
   };
+}
+async function readAttendance(client:Client,id:string) {
+  // 50 moments × 30 people exceeds PostgREST's 1,000-row response cap.
+  const query=()=>client.from("experience_moment_participants").select("*").eq("experience_id",id).order("moment_id").order("participant_id");
+  const first=await query().range(0,999);
+  if(first.error||first.data.length<1000) return first;
+  const rest=await query().range(1000,1999);
+  return {data:[...first.data,...(rest.data??[])],error:rest.error};
+}
+export async function getExperienceInvitations():Promise<ExperienceInvitation[]> {
+  const client=await createClient(),{data,error}=await client.rpc("get_experience_invitations");
+  if(error) throw error;
+  return (data??[]).map(row=>({participantId:row.participant_id,experienceId:row.experience_id,title:row.title,startsOn:row.starts_on,endsOn:row.ends_on,organizer:{id:row.creator_id,username:row.username,name:row.display_name??row.username,avatarUrl:row.avatar_url}}));
 }

@@ -4489,6 +4489,26 @@ por título; elimina raíz/descendientes y referencias sociales en una transacci
 Devuelve las rutas de fotos únicamente al servidor para la limpieza de Storage,
 cuya conservación de evidencia se completa junto con imágenes/moderación.
 
+Participación (local/dev 2026-10-02): `experience_invite`, `experience_add_guest`,
+`experience_respond_invitation`, `experience_set_attendance`,
+`experience_set_guest_attendance`, `experience_set_favorite`,
+`experience_set_share_identity`, `experience_remove_participant`. Lock de raíz y
+máximo 30 miembros. Invitar cambia Solo yo a Acompañantes aceptados; aceptar
+propone presencia, nunca confirma asistencia. Cada cuenta escribe únicamente
+su presencia/favorito/consentimiento; el creador solo registra presencia de etiquetas
+sin cuenta. Quitar un miembro elimina asistencia/favoritos y conserva fotos.
+El creador no puede salir ni ser expulsado. Una cuenta puede retirar consentimiento
+aunque la raíz haya vuelto a privada.
+
+`get_experience_invitations()` deriva destinatario de auth.uid y entrega solo
+ID/título/fechas/organizador; sin sesión no devuelve filas. Un pendiente conserva
+ese resumen y no abre detalle, incluso si la raíz está en audiencia profile.
+Avisos de invitación/aceptación usan el canal social y dedupe por invitación,
+sin contexto de título privado. Invitación enlaza al hub para responder.
+Pruebas con rollback, perfiles privados, consentimiento/joins REST, límite exacto
+y tres cuentas sobre build de producción; manifest aumentado a 275 pasos,
+cuya reconstrucción completa se repite en la verificación integral.
+
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
 Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos

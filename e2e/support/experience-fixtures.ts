@@ -24,10 +24,41 @@ export async function clearExperienceFixtures(owner:string) {
   await experienceRest(`posts?anchor_type=eq.experience&anchor_id=in.(${ids})`,{method:"DELETE"});
   await experienceRest(`experiences?id=in.(${ids})&creator_id=eq.${owner}`,{method:"DELETE"});
 }
-export async function loginExperienceUser(page:Page) {
+export async function loginExperienceUser(page:Page,actor?:{email:string;password:string}) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill(process.env.TEST_USER_EMAIL!);
-  await page.locator('input[name="password"]').fill(process.env.TEST_USER_PASSWORD!);
+  await page.locator('input[name="email"]').fill(actor?.email??process.env.TEST_USER_EMAIL!);
+  await page.locator('input[name="password"]').fill(actor?.password??process.env.TEST_USER_PASSWORD!);
   await page.locator('button[type="submit"]').click();
   await expect(page).not.toHaveURL(/\/login/);
+}
+export async function experienceActor(name:string,isPublic=false) {
+  const suffix=crypto.randomUUID().replaceAll("-","").slice(0,12),username=`qa_exp_${suffix}`;
+  const actor={email:`${username}@example.invalid`,password:crypto.randomUUID(),username,id:"",name};
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL!,key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  if(new URL(url).hostname!=="tyvzpuhxfwxrnkcpzxyg.supabase.co") throw new Error("Synthetic actors require dev");
+  const response=await fetch(`${url}/auth/v1/admin/users`,{method:"POST",headers:{apikey:key,Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({email:actor.email,password:actor.password,email_confirm:true})});
+  if(!response.ok) throw new Error(`Synthetic actor creation ${response.status}`);
+  actor.id=(await response.json()).id;
+  try {
+    await experienceRest("profiles",{method:"POST",headers:{Prefer:"resolution=merge-duplicates"},body:JSON.stringify({user_id:actor.id,username,display_name:name,is_public:isPublic,onboarded_at:new Date().toISOString()})});
+    return actor;
+  } catch(error) {await deleteExperienceActor(actor);throw error;}
+}
+export async function deleteExperienceActor(actor:{id:string;email:string}) {
+  if(!actor.email.startsWith("qa_exp_")||!actor.email.endsWith("@example.invalid")||!actor.id) throw new Error("Refuse deleting a persistent actor");
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL!,key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  if(new URL(url).hostname!=="tyvzpuhxfwxrnkcpzxyg.supabase.co") throw new Error("Synthetic cleanup requires dev");
+  const response=await fetch(`${url}/auth/v1/admin/users/${actor.id}`,{method:"DELETE",headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  if(!response.ok) throw new Error(`Synthetic cleanup ${response.status}`);
+}
+export async function experienceClientRest(path:string,actor?:{email:string;password:string}) {
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL!,key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if(new URL(url).hostname!=="tyvzpuhxfwxrnkcpzxyg.supabase.co") throw new Error("Actor REST requires dev");
+  let token=key;
+  if(actor) {
+    const auth=await fetch(`${url}/auth/v1/token?grant_type=password`,{method:"POST",headers:{apikey:key,"Content-Type":"application/json"},body:JSON.stringify({email:actor.email,password:actor.password})});
+    if(!auth.ok) throw new Error(`Fixture authentication ${auth.status}`);
+    token=(await auth.json()).access_token;
+  }
+  return fetch(`${url}/rest/v1/${path}`,{headers:{apikey:key,Authorization:`Bearer ${token}`}});
 }

@@ -174,6 +174,8 @@ Contratos de servidor:
 - `setMomentAttendance(momentId, state:AttendanceState)` solo cambia la presencia propia;
   el creador puede proponer presencia de otros y registrar invitados sin cuenta,
   pero no sobrescribe una asistencia ya confirmada por otra cuenta.
+- `setGuestAttendance(momentId, participantId, state)` es la operación estrecha
+  para registrar únicamente etiquetas sin cuenta, solo por el creador.
 - `setFavorite(experienceId, momentId:string|null)` y `setShareIdentity(experienceId, enabled)`.
 - `removeParticipant(participantId)` acepta al creador o a la propia cuenta, salvo salir
   como creador; no hay transferencia de propiedad en esta versión.

@@ -140,18 +140,18 @@ y `experience_reorder_moments(uuid,bigint,uuid[])`, con respuestas del §7.
 `get_experience_invitations()` devuelve solo ID de invitación/recuerdo, título, fecha
 y organizador de invitaciones dirigidas al caller.
 
-- [ ] Escribir SQL/actions/E2E para pendiente/aceptado/rechazado, guest privado y favorito
+- [x] Escribir SQL/actions/E2E para pendiente/aceptado/rechazado, guest privado y favorito
   ajeno rechazado; ejecutar y observar fallos antes de añadir las mutaciones.
-- [ ] Implementar las RPC de participación con locks y ownership individual. Invitar cambia
+- [x] Implementar las RPC de participación con locks y ownership individual. Invitar cambia
   audiencia privada a participantes; nunca confirma asistencia ni favorito de otra cuenta.
-- [ ] Añadir resúmenes de invitación y avisos en campana/push por canal social, sin filtrar
+- [x] Añadir resúmenes de invitación y avisos en campana/push por canal social, sin filtrar
   títulos privados a seguidores. Reenvíos no duplican el aviso de la misma invitación.
-- [ ] Añadir selector de cuentas respetando bloqueos, invitados con etiqueta y respuesta.
-- [ ] Añadir presencia por momento y favorito propio; invitar/aceptar/asistir son distintos.
-- [ ] E2E de tres personas: una no va al museo; el creador marca el viaje vivido y las otras
+- [x] Añadir selector de cuentas respetando bloqueos, invitados con etiqueta y respuesta.
+- [x] Añadir presencia por momento y favorito propio; invitar/aceptar/asistir son distintos.
+- [x] E2E de tres personas: una no va al museo; el creador marca el viaje vivido y las otras
   conservan su presencia pendiente hasta confirmarla. Quitar miembro revoca su acceso.
-- [ ] Probar perfiles privados y consentimiento de identidad, tanto por UI como por REST.
-- [ ] Pasar tests de participación/notificaciones y las regresiones de visionados conjuntos;
+- [x] Probar perfiles privados y consentimiento de identidad, tanto por UI como por REST.
+- [x] Pasar tests de participación/notificaciones y las regresiones de visionados conjuntos;
   actualizar manifiesto y commit de esta tarea.
 
 ## Tarea 4: Galería y portadas con entrega autorizada
