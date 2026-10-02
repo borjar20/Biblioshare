@@ -12,11 +12,12 @@ import {
   __createPlayStoreForTests,
   __resetPlayStoresForTests,
   type PlayStore,
+  type PlayStoreWithTestHooks,
 } from "./store";
 import { makeSetup, started } from "@/lib/play/mtg/test-fixtures";
 import type { MtgState } from "@/lib/play/mtg/types";
 import { playTools } from "@/lib/play/tools";
-import type { EventLog } from "./types";
+import type { EventLog, PlayEvent } from "./types";
 
 class FakeStorage {
   private map = new Map<string, string>();
@@ -230,6 +231,144 @@ describe("ráfagas y suscripción", () => {
     store.start(started(1000));
     store.discard();
     expect(store.getSnapshot().game).toBeNull();
+  });
+});
+
+describe("arranque con reemplazo atómico (#964)", () => {
+  const invalidStarts: { name: string; event: PlayEvent }[] = [
+    { name: "Magic con un solo participante", event: started(3000, makeSetup(["ana"])) },
+    {
+      name: "Puntuación con target cero",
+      event: makeEvent("game_started", {
+        toolId: "score",
+        setup: { participants: makeSetup().participants, direction: "highest", target: { kind: "points", value: 0 } },
+      }, 3000, "invalid-score"),
+    },
+    { name: "evento que no arranca una partida", event: tap(-1, 3000) },
+  ];
+
+  it.each(["anon", "uid-964"].flatMap((identity) => invalidStarts.map((candidate) => ({ identity, ...candidate }))))(
+    "$identity conserva partida, escritura y plazo de ráfaga ante $name",
+    async ({ identity, event }) => {
+      const store = getPlayStore(identity) as PlayStoreWithTestHooks;
+      await ready(store);
+      store.start(started(1000));
+      store.tap(tap(-3, 2000));
+      await store.__drainWritesForTests();
+      const before = store.getSnapshot();
+      const persistedBefore = await readActive(identity);
+      const notified = vi.fn();
+      store.subscribe(notified);
+
+      vi.advanceTimersByTime(1000);
+      expect(store.start(event, { replaceActive: true })).toBe(false);
+      await store.__drainWritesForTests();
+      expect(store.getSnapshot()).toBe(before);
+      expect(await readActive(identity)).toEqual(persistedBefore);
+      expect(notified).not.toHaveBeenCalled();
+
+      // El rechazo no cancela ni reinicia el timer: sella a los 1500 ms
+      // originales y conserva todos los eventos y las vidas de la partida.
+      vi.advanceTimersByTime(BURST_WINDOW_MS - 1000);
+      expect(store.getSnapshot().game?.log).toEqual({ committed: [started(1000), tap(-3, 2000)], pending: null });
+      expect((store.getSnapshot().game?.state as MtgState).players[0].life).toBe(37);
+      expect(notified).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("acepta otra herramienta sin emitir un vacío ni borrar el slot y cancela el timer anterior", async () => {
+    const store = getPlayStore("anon") as PlayStoreWithTestHooks;
+    await ready(store);
+    store.start(started(1000));
+    store.tap(tap(-3, 2000));
+    await store.__drainWritesForTests();
+    const persistedBefore = await readActive("anon");
+    const seen: ReturnType<PlayStore["getSnapshot"]>[] = [];
+    store.subscribe(() => seen.push(store.getSnapshot()));
+    const event = makeEvent("game_started", {
+      toolId: "score",
+      setup: { participants: makeSetup().participants, direction: "highest" },
+    }, 3000, "new-score");
+
+    expect(store.start(event, { replaceActive: true })).toBe(true);
+    await store.__drainWritesForTests();
+    const after = store.getSnapshot();
+    expect(after.game?.state.toolId).toBe("score");
+    expect(after.game?.log).toEqual({ committed: [event], pending: null });
+    expect(seen).toEqual([after]);
+    expect(await readActive("anon")).toEqual({
+      identity: "anon", v: 1, committed: [event], pending: null, rev: persistedBefore!.rev + 1,
+    });
+    vi.advanceTimersByTime(BURST_WINDOW_MS);
+    expect(store.getSnapshot()).toBe(after);
+    expect(seen).toEqual([after]);
+  });
+
+  it("start sin replaceActive mantiene el contrato estricto y no toca la activa", async () => {
+    const store = getPlayStore("anon") as PlayStoreWithTestHooks;
+    await ready(store);
+    store.start(started(1000));
+    await store.__drainWritesForTests();
+    const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
+    expect(() => store.start(started(2000))).toThrow("ya hay una partida activa");
+    expect(store.getSnapshot()).toBe(before);
+    expect(await readActive("anon")).toEqual(persistedBefore);
+  });
+
+  it("replaceActive se comporta como un arranque normal cuando no hay activa", async () => {
+    const store = getPlayStore("anon") as PlayStoreWithTestHooks;
+    await ready(store);
+    expect(store.start(started(1000, makeSetup(["ana"])), { replaceActive: true })).toBe(false);
+    expect(store.getSnapshot().game).toBeNull();
+    expect(await readActive("anon")).toBeNull();
+    expect(store.start(started(2000), { replaceActive: true })).toBe(true);
+    await store.__drainWritesForTests();
+    expect(store.getSnapshot().game?.log).toEqual({ committed: [started(2000)], pending: null });
+    expect((await readActive("anon"))?.rev).toBe(1);
+  });
+
+  it("replaceActive no salta la hidratación", async () => {
+    const store = getPlayStore("anon");
+    expect(store.getSnapshot().status).toBe("loading");
+    expect(store.start(started(1000), { replaceActive: true })).toBe(false);
+    await ready(store);
+    expect(store.getSnapshot().game).toBeNull();
+    expect(await readActive("anon")).toBeNull();
+  });
+
+  it("una excepción de programación en init se propaga y conserva la activa", async () => {
+    const store = getPlayStore("anon") as PlayStoreWithTestHooks;
+    await ready(store);
+    store.start(started(1000));
+    await store.__drainWritesForTests();
+    const before = store.getSnapshot();
+    const persistedBefore = await readActive("anon");
+    const initSpy = vi.spyOn(playTools.mtg, "init").mockImplementation(() => { throw new TypeError("init roto"); });
+    try {
+      expect(() => store.start(started(2000), { replaceActive: true })).toThrow("init roto");
+    } finally {
+      initSpy.mockRestore();
+    }
+    expect(store.getSnapshot()).toBe(before);
+    expect(await readActive("anon")).toEqual(persistedBefore);
+  });
+
+  it("reemplazar la partida anónima no toca la partida de otra identidad", async () => {
+    const anon = getPlayStore("anon") as PlayStoreWithTestHooks;
+    const user = getPlayStore("uid-964") as PlayStoreWithTestHooks;
+    await ready(anon);
+    await ready(user);
+    anon.start(started(1000));
+    user.start(started(2000));
+    user.tap(tap(-5, 3000));
+    await user.__drainWritesForTests();
+    const userBefore = user.getSnapshot();
+    const userPersisted = await readActive("uid-964");
+    expect(anon.start(started(4000), { replaceActive: true })).toBe(true);
+    await anon.__drainWritesForTests();
+    expect(user.getSnapshot()).toBe(userBefore);
+    expect(await readActive("uid-964")).toEqual(userPersisted);
   });
 });
 

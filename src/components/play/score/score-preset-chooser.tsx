@@ -78,8 +78,8 @@ export function ScorePresetChooser({ identity }: { identity: string }) {
     // Con el store hidratando no se arranca: podría pisar una activa aún no
     // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
     if (snapshot.status === "loading") return;
-    // Guarda ANTES de descartar (issue #964): un límite que el reducer
-    // rechazaría no debe costar la partida activa.
+    // No envía un límite inválido. El store valida también el setup completo
+    // antes de sustituir la activa (#964).
     if (!targetValid) return;
     const participants: Participant[] = Array.from({ length: players }, (_, i) => ({
       id: `p${i + 1}`,
@@ -96,8 +96,7 @@ export function ScorePresetChooser({ identity }: { identity: string }) {
     };
     // Mismo contrato que «Empezar» en la configuración: arrancar ES pedir
     // sustituir la partida que hubiera (spec §4, una sola activa).
-    if (snapshot.game) store.discard();
-    if (!store.start(makeEvent("game_started", { toolId: "score" as const, setup }, Date.now()))) {
+    if (!store.start(makeEvent("game_started", { toolId: "score" as const, setup }, Date.now()), { replaceActive: true })) {
       return;
     }
     router.push("/partida/activa");

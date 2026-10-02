@@ -221,7 +221,7 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
   const { snapshot, store } = useActiveGame(identity);
 
   // Partida de la que prerrellenar en revancha: la current del store, leída
-  // ANTES de que `start()` la descarte. `snapshot.game` es estable entre
+  // ANTES de que `start()` la sustituya. `snapshot.game` es estable entre
   // renders mientras nadie escribe en el store, así que sirve de dependencia.
   const rematchSetup = useMemo(() => {
     if (!isRematch || snapshot.status !== "ready" || !snapshot.game) return null;
@@ -355,19 +355,14 @@ export function ScoreSetupForm({ identity, selfName }: { identity: string; selfN
     // Con el store hidratando no se arranca: podría pisar una activa aún no
     // leída (spec fase 3 §3). El botón va deshabilitado; esto es el cinturón.
     if (snapshot.status === "loading") return;
-    // Guarda ANTES de descartar: si el límite está activo con un valor que el
-    // reducer rechaza (no entero >= 1, p. ej. el campo vaciado a mano), no se
-    // toca nada — descartar aquí y que store.start() falle después borraría
-    // la partida activa sin arrancar otra (issue #964, caso alcanzable desde
-    // puntuación).
+    // No envía un límite inválido. El store valida también el setup completo
+    // antes de sustituir la activa (#964).
     if (draft.targetActive && (!Number.isInteger(draft.targetValue) || draft.targetValue < 1)) {
       return;
     }
     const setup = toScoreSetup(draft, (i) => t("setup.playerN", { n: i + 1 }));
-    // Una sola partida activa (spec §4): `start()` LANZA si ya hay una, así
-    // que la vieja se descarta aquí — pulsar «Empezar» ES pedir sustituirla.
-    if (snapshot.game) store.discard();
-    if (!store.start(makeEvent("game_started", { toolId: "score" as const, setup }, Date.now()))) {
+    // «Empezar» pide sustituir la activa, solo si el motor acepta el nuevo setup.
+    if (!store.start(makeEvent("game_started", { toolId: "score" as const, setup }, Date.now()), { replaceActive: true })) {
       return; // setup que el motor rechaza: no se navega a un tablero que no existe
     }
     router.push("/partida/activa");

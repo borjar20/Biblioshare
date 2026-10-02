@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { SeatToken } from "@/components/play/ui/seat-token";
 
 // Hermano de `contraste-tokens.test.ts`, para la familia de BiblioPlay (#931).
 // Mismo planteamiento y por el mismo motivo: lee el CSS REAL en vez de copiar los
@@ -9,8 +12,11 @@ import { describe, expect, it } from "vitest";
 // Los colores de asiento pintan DOS cosas con umbrales distintos: la barra del
 // asiento y la mitad teñida al pulsar son objeto gráfico (3:1, WCAG 1.4.11); el
 // número de vidas se pinta sobre el panel, no sobre el color, así que no cae aquí.
+// Las iniciales de SeatToken sí van SOBRE el color: con 12/14 px necesitan
+// 4.5:1 (WCAG 1.4.3). Se renderiza la ficha compartida y se resuelve su tinta
+// desde @theme inline, para no probar un par de tokens que la UI ya no use.
 // Lo que este test defiende es lo que de verdad se puede romper sin darse cuenta:
-// que un asiento se funda con el fieltro de la mesa en alguno de los tres temas.
+// que la tinta o un asiento se funda con su fondo en alguno de los tres temas.
 const globalsCss = readFileSync("src/app/globals.css", "utf8");
 
 /** Recorta el bloque `{ … }` que sigue a `selector`, contando llaves. */
@@ -98,10 +104,54 @@ const TEMAS = [
 ] as const;
 
 const ASIENTOS = [1, 2, 3, 4, 5, 6] as const;
+const UMBRAL_TEXTO = 4.5;
 const UMBRAL_OBJETO_GRAFICO = 3;
+
+const coloresTailwind = Object.fromEntries(
+  [...extraerBloque(globalsCss, /@theme\s+inline\s*\{/).matchAll(
+    /--color-([a-z0-9-]+):\s*var\(--([a-z0-9-]+)\)\s*;/g,
+  )].map((m) => [m[1], m[2]]),
+);
+
+function coloresFicha(asiento: number, size: "md" | "sm") {
+  const html = renderToStaticMarkup(createElement(SeatToken, {
+    variant: "seat",
+    seat: asiento - 1,
+    size,
+    caption: "Ana Pérez",
+    label: "Editar Ana Pérez",
+    onClick: () => {},
+  }, "AP"));
+  const boton = /<button\b([^>]*)>/.exec(html)?.[1];
+  if (!boton) throw new Error("SeatToken no renderizó un botón");
+  const clases = /\bclass="([^"]*)"/.exec(boton)?.[1].split(/\s+/) ?? [];
+  const tintas = clases.flatMap((clase) => {
+    const nombre = /^text-([a-z][a-z0-9-]*)$/.exec(clase)?.[1];
+    const token = nombre ? coloresTailwind[nombre] : undefined;
+    return token ? [token] : [];
+  });
+  if (tintas.length !== 1) throw new Error("No se pudo resolver la tinta real de SeatToken");
+  const fondo = /\bstyle="[^"]*\bbackground:var\(--([a-z0-9-]+)\)/.exec(boton)?.[1];
+  if (!fondo) throw new Error("No se pudo resolver el fondo real de SeatToken");
+  return { tinta: tintas[0], fondo };
+}
 
 describe("tokens de BiblioPlay (#931)", () => {
   for (const [tema, tokens] of TEMAS) {
+    for (const n of ASIENTOS) {
+      it(`${tema}: texto de la ficha ${n} >= 4.5:1 (#999)`, () => {
+        for (const size of ["md", "sm"] as const) {
+          const { tinta, fondo } = coloresFicha(n, size);
+          expect(tokens[tinta], `falta --${tinta} en "${tema}"`).toBeDefined();
+          expect(tokens[fondo], `falta --${fondo} en "${tema}"`).toBeDefined();
+          expect(
+            contraste(tokens[tinta], tokens[fondo]),
+            `SeatToken ${size}: --${tinta} sobre --${fondo} en "${tema}"`,
+          ).toBeGreaterThanOrEqual(UMBRAL_TEXTO);
+        }
+      });
+    }
+
     it(`${tema}: los seis asientos existen y se distinguen del fieltro`, () => {
       for (const n of ASIENTOS) {
         const color = tokens[`play-seat-${n}`];
