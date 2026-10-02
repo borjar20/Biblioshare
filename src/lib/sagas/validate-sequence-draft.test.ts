@@ -217,6 +217,40 @@ describe("anchored sin ventana", () => {
     };
     expect(validateSequenceDraft(p, { ...ctx, anchorKeys: new Set(["i:book:im1"]) }).errors).not.toContain("anchoredNoWindow");
   });
+
+  it("marca `anchoredNoWindow` si un bloque anclado no tiene ventana", () => {
+    const p: SequencePayload = {
+      ...base,
+      blocks: [{ child_saga_id: "hija-1", position_in_parent: null, placement_in_parent: "anclado", optional_in_parent: false }],
+    };
+    expect(validateSequenceDraft(p, ctx)).toEqual({ errors: ["anchoredNoWindow"], unclassified: 0 });
+  });
+
+  it("la ventana de una obra no sustituye la del bloque anclado", () => {
+    const p: SequencePayload = {
+      ...base,
+      entries: [item("a", 1, "fijo"), item("f", null, "libre")],
+      blocks: [{ child_saga_id: "hija-1", position_in_parent: null, placement_in_parent: "anclado", optional_in_parent: false }],
+      windows: [window({ after_item_type: "book", after_item_id: "a" })],
+    };
+    expect(validateSequenceDraft(p, { ...ctx, anchorKeys: new Set(["i:book:a"]) })).toEqual({
+      errors: ["anchoredNoWindow"], unclassified: 0,
+    });
+  });
+
+  it("acepta un bloque anclado con su propia ventana válida", () => {
+    const p: SequencePayload = {
+      ...base,
+      entries: [item("a", 1, "fijo")],
+      blocks: [{ child_saga_id: "hija-1", position_in_parent: null, placement_in_parent: "anclado", optional_in_parent: false }],
+      windows: [window({
+        item_type: null, item_id: null, child_saga_id: "hija-1", after_item_type: "book", after_item_id: "a",
+      })],
+    };
+    expect(validateSequenceDraft(p, {
+      ...ctx, anchorKeys: new Set(["i:book:a"]), windowOwners: new Map([["s:hija-1", "saga"]]),
+    })).toEqual({ errors: [], unclassified: 0 });
+  });
 });
 
 describe("tándems (fase 2)", () => {
