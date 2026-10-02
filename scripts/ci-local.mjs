@@ -19,8 +19,12 @@ if (!commands[mode]) throw new Error('Expected build, smoke or shop');
 const fixtureNamespace = String(Date.now());
 // Shared, synthetic provider metadata; tests add their own UUID-scoped ISBNs.
 const quotaFixturePath = resolve('.superpowers', `google-volume-quota-${fixtureNamespace}.ndjson`);
+const hydrationFixturePath = resolve('.superpowers', `google-volume-hydration-${fixtureNamespace}.ndjson`);
+const hydrationLogPath = resolve('.superpowers', `google-volume-hydration-${fixtureNamespace}.log.ndjson`);
 mkdirSync(resolve('.superpowers'), { recursive: true });
 writeFileSync(quotaFixturePath, '');
+writeFileSync(hydrationFixturePath, '');
+writeFileSync(hydrationLogPath, '');
 const result = spawnSync(process.execPath, commands[mode], {
   // Server failures can leave the browser assertions green: late request APIs
   // during abandoned detail streams (#754) and import invalidation during a
@@ -42,12 +46,17 @@ const result = spawnSync(process.execPath, commands[mode], {
     GOOGLE_BOOKS_API_KEY: `ci-google-volume-fixture-only-${fixtureNamespace}`,
     GOOGLE_VOLUME_QUOTA_NAMESPACE: fixtureNamespace,
     GOOGLE_VOLUME_QUOTA_FIXTURES: quotaFixturePath,
+    GOOGLE_VOLUME_HYDRATION_NAMESPACE: fixtureNamespace,
+    GOOGLE_VOLUME_HYDRATION_FIXTURES: hydrationFixturePath,
+    GOOGLE_VOLUME_HYDRATION_LOG: hydrationLogPath,
     // Next.js forwards repeated --require values to its workers as one module
     // path. Load the fixture chain through a single entry point instead.
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/ci-providers.cjs`.trim(),
   },
 });
 unlinkSync(quotaFixturePath);
+unlinkSync(hydrationFixturePath);
+unlinkSync(hydrationLogPath);
 if (result.error) throw result.error;
 if (mode !== 'build') {
   process.stdout.write(result.stdout ?? '');

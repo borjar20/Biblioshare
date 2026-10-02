@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  rpc: vi.fn(), create: vi.fn(), hydrate: vi.fn(), transition: vi.fn(), redirect: vi.fn(),
+  rpc: vi.fn(), create: vi.fn(), hydrate: vi.fn(), registeredHydrate: vi.fn(), after: vi.fn(), transition: vi.fn(), redirect: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: "reader" } } }) },
   rpc: mocks.rpc,
 }) }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
-vi.mock("next/server", () => ({ after: vi.fn() }));
+vi.mock("next/server", () => ({ after: mocks.after }));
 vi.mock("@/lib/reactivity/revalidate", () => ({ revalidateSearch: vi.fn() }));
 vi.mock("@/lib/catalog/find-or-create", () => ({ findOrCreateCatalogItem: mocks.create }));
 vi.mock("@/lib/passes/apply-transition", () => ({ applyTransition: mocks.transition }));
-vi.mock("@/lib/catalog/hydrate-book", () => ({ ensureBookHydrated: mocks.hydrate, bookShellFromSearchResult: vi.fn() }));
+vi.mock("@/lib/catalog/hydrate-book", () => ({ ensureBookHydrated: mocks.hydrate, ensureRegisteredBookHydrated: mocks.registeredHydrate, bookShellFromSearchResult: vi.fn() }));
 vi.mock("@/lib/catalog/hydrate-screen", () => ({ ensureMovieHydrated: mocks.hydrate, ensureSeriesHydrated: mocks.hydrate }));
 
 import { addToLibrary, openCatalogItem } from "./actions";
@@ -27,6 +27,7 @@ describe("catalog action quota boundary", () => {
     mocks.rpc.mockResolvedValue({ data: true, error: null });
     mocks.create.mockResolvedValue("created");
     mocks.hydrate.mockResolvedValue(undefined);
+    mocks.registeredHydrate.mockResolvedValue(undefined);
     mocks.transition.mockResolvedValue(undefined);
   });
 
@@ -36,6 +37,7 @@ describe("catalog action quota boundary", () => {
       await expect(action(result)).resolves.toEqual({ ok: false, error: "RATE_LIMIT", reason: "catalogRequest" });
       expect(mocks.create).not.toHaveBeenCalled();
       expect(mocks.hydrate).not.toHaveBeenCalled();
+      expect(mocks.registeredHydrate).not.toHaveBeenCalled();
       expect(mocks.transition).not.toHaveBeenCalled();
       expect(mocks.redirect).not.toHaveBeenCalled();
     });
@@ -46,6 +48,7 @@ describe("catalog action quota boundary", () => {
       mocks.create.mockRejectedValue({ code: "PT429", message: "request quota exceeded" });
       await expect(action(gbOnly)).resolves.toEqual({ ok: false, error: "RATE_LIMIT", reason: "googleBooksCreate" });
       expect(mocks.hydrate).not.toHaveBeenCalled();
+      expect(mocks.registeredHydrate).not.toHaveBeenCalled();
       expect(mocks.transition).not.toHaveBeenCalled();
       expect(mocks.redirect).not.toHaveBeenCalled();
     });
@@ -76,5 +79,21 @@ describe("catalog action quota boundary", () => {
   it("does not charge adding an existing catalog item", async () => {
     await addToLibrary({ ...result, catalogId: "existing" });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("opens GB-only by hydrating the registered UUID instead of client metadata", async () => {
+    await openCatalogItem({ ...gbOnly, title: "Forged", matchedIsbn: "9788466657662" });
+    expect(mocks.registeredHydrate).toHaveBeenCalledWith(expect.anything(), "created");
+    expect(mocks.hydrate).not.toHaveBeenCalled();
+    expect(mocks.redirect).toHaveBeenCalledWith("/libro/created");
+  });
+
+  it("hydrates the registered GB-only UUID after adding without exposing browser fields", async () => {
+    await addToLibrary({ ...gbOnly, title: "Forged", matchedIsbn: "9788466657662" });
+    expect(mocks.registeredHydrate).not.toHaveBeenCalled();
+    expect(mocks.after).toHaveBeenCalledTimes(1);
+    await mocks.after.mock.calls[0][0]();
+    expect(mocks.registeredHydrate).toHaveBeenCalledWith(expect.anything(), "created");
+    expect(mocks.hydrate).not.toHaveBeenCalled();
   });
 });

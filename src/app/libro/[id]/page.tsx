@@ -55,7 +55,7 @@ import { pagesForPass } from "@/lib/editions/edition-label";
 import { loadBookEditions } from "@/lib/editions/load-editions";
 import { getUsedEditionIds } from "@/lib/editions/get-used-edition-ids";
 import { EditionsLoading } from "@/components/detail/editions-loading";
-import { ensureBookHydrated } from "@/lib/catalog/hydrate-book";
+import { ensureBookHydrated, needsGoogleVolumeHydrationRetry } from "@/lib/catalog/hydrate-book";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -97,7 +97,7 @@ function fetchBook(supabase: Supa, id: string) {
   return supabase
     .from("books")
     .select(
-      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, hydrated_at, repr_meta, wikidata_id",
+      "id, title, author, cover_url, synopsis, published_year, publisher, total_pages, isbn, genres, openlibrary_work_key, google_books_volume_id, hydrated_at, repr_meta, wikidata_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -195,12 +195,15 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
       ensureBookHydrated(createTokenClient(accessToken), {
         id: book.id,
         openlibrary_work_key: book.openlibrary_work_key,
+        google_books_volume_id: book.google_books_volume_id,
         isbn: book.isbn,
         hydrated_at: book.hydrated_at,
         repr_meta: book.repr_meta,
         wikidata_id: book.wikidata_id,
         title: book.title,
         author: book.author,
+        synopsis: book.synopsis,
+        cover_url: book.cover_url,
         total_pages: book.total_pages,
       }),
     );
@@ -294,7 +297,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
           refresca la ficha cuando la hidratación de fondo termina — sin ella,
           la ficha nacía vacía y así se quedaba hasta recargar a mano. Solo con
           sesión, por el mismo guardia de coste que el propio after(). */}
-      {user && !book.hydrated_at && <HydrationWatch bookId={book.id} />}
+      {user && (!book.hydrated_at || needsGoogleVolumeHydrationRetry(book)) &&
+        <HydrationWatch bookId={book.id} hydratedAt={book.hydrated_at} />}
       <ItemShell
         itemType="book"
         mediaLabel={tDetail("mediaLabel.book")}

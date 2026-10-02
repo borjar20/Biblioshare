@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   fetchRepresentationCandidates: vi.fn(),
   searchInventaireEntities: vi.fn(),
   findBestVolume: vi.fn(),
+  fetchVolumeById: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/service-role", () => ({
@@ -49,9 +50,9 @@ vi.mock("./inventaire/client", async (importOriginal) => ({
   searchInventaireEntities: mocks.searchInventaireEntities,
   searchInventaireEntitiesOrNull: mocks.searchInventaireEntities,
 }));
-vi.mock("./googlebooks/client", () => ({ findBestVolume: mocks.findBestVolume }));
+vi.mock("./googlebooks/client", () => ({ findBestVolume: mocks.findBestVolume, fetchVolumeById: mocks.fetchVolumeById }));
 
-import { ensureBookHydrated, bookShellFromSearchResult, type HydratableBook } from "./hydrate-book";
+import { ensureBookHydrated, ensureRegisteredBookHydrated, needsGoogleVolumeHydrationRetry, bookShellFromSearchResult, type HydratableBook } from "./hydrate-book";
 import type { GoogleVolume } from "./googlebooks/client";
 import type { SearchResult } from "./types";
 
@@ -79,6 +80,8 @@ function makeClients() {
     // Mutable: algún test hace que el update falle para comprobar que se
     // registra (si no, volvemos al fallo mudo de #871).
     const state = { error: null as unknown };
+    const readState = { data: null as HydratableBook | null, error: null as unknown };
+    const reads: Array<{ table: string; columns: string; column: string; value: unknown }> = [];
 
     // La cadena real es `.update().eq()` y, para las columnas técnicas,
     // `.update().eq().is()`. Un thenable que se devuelve a sí mismo cubre
@@ -103,10 +106,18 @@ function makeClients() {
       rpc,
       updates,
       updateCalls,
+      readState,
+      reads,
       failUpdates: (error: unknown) => {
         state.error = error;
       },
-      from: () => ({
+      from: (table: string) => ({
+        select: (columns: string) => ({
+          eq: (column: string, value: unknown) => {
+            reads.push({ table, columns, column, value });
+            return { maybeSingle: async () => readState };
+          },
+        }),
         update: (values: Record<string, unknown>) => {
           const call: UpdateCall = { values, filters: [] };
           updates.push(values);
@@ -147,12 +158,15 @@ const volume = (over: Partial<GoogleVolume> = {}): GoogleVolume => ({
 const book = (over: Partial<HydratableBook> = {}): HydratableBook => ({
   id: "b1",
   openlibrary_work_key: "/works/OL1W",
+  google_books_volume_id: null,
   isbn: null,
   hydrated_at: null,
   repr_meta: null,
   wikidata_id: null,
   title: null,
   author: null,
+  synopsis: null,
+  cover_url: null,
   total_pages: null,
   ...over,
 });
@@ -201,6 +215,7 @@ beforeEach(() => {
   mocks.fetchRepresentationCandidates.mockResolvedValue({ es: null, en: null, pagesMedian: null });
   mocks.searchInventaireEntities.mockResolvedValue([]);
   mocks.findBestVolume.mockResolvedValue(null);
+  mocks.fetchVolumeById.mockResolvedValue(null);
 });
 
 // ───────────────────────────── M1 · p_author ─────────────────────────────
@@ -857,6 +872,10 @@ describe("bookShellFromSearchResult (mata C1: devolver result.title/author)", ()
     expect(bookShellFromSearchResult("b1", gbOnly()).openlibrary_work_key).toBeNull();
   });
 
+  it("el volumen del navegador no llega al shell: debe leerse del registro real", () => {
+    expect(bookShellFromSearchResult("b1", gbOnly()).google_books_volume_id).toBeNull();
+  });
+
   // La cota del corte: con work key, el ISBN escaneado SÍ se propaga aunque
   // venga también un googleVolumeId — ahí no es GB-only y el ISBN es útil.
   it("con work key el matchedIsbn sigue propagándose", () => {
@@ -884,5 +903,147 @@ describe("bookShellFromSearchResult (mata C1: devolver result.title/author)", ()
     expect(shell.repr_meta).toBeNull();
     expect(shell.wikidata_id).toBeNull();
     expect(shell.total_pages).toBeNull();
+  });
+});
+
+describe("ensureBookHydrated · volumen Google persistido (#1290)", () => {
+  const googleBook = (over: Partial<HydratableBook> = {}) => book({
+    openlibrary_work_key: null, google_books_volume_id: "persisted-volume", ...over,
+  });
+
+  it("hidrata desde el volumen exacto con idioma y procedencia reales, sin resolver otra identidad", async () => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValue(volume({
+      volumeId: "persisted-volume", title: "Título canónico", authors: ["Autor primero", "Coautor"],
+      synopsis: "Sinopsis canónica", coverUrl: "https://books.google.com/books/content?id=persisted-volume",
+      pageCount: 384, language: "en-GB",
+    }));
+    await ensureBookHydrated(request as never, googleBook({ isbn: "ISBN que no debe resolver OL" }));
+    expect(mocks.fetchVolumeById).toHaveBeenCalledWith("persisted-volume");
+    expect(rpcArgs(service)).toMatchObject({
+      p_book_id: "b1", p_author: "Autor primero", p_total_pages: 384, p_pages_source: "google_books",
+      p_fields: {
+        title: { value: "Título canónico", lang: "en", source: "google_books" },
+        synopsis: { value: "Sinopsis canónica", lang: "en", source: "google_books" },
+        cover: { lang: "en", source: "google_books" },
+      },
+    });
+    expect(rpcArgs(service)).not.toHaveProperty("p_wikidata_id");
+    expect(rpcArgs(service)).not.toHaveProperty("p_published_year");
+    expect(rpcArgs(service)).not.toHaveProperty("p_genres");
+    expect(mocks.resolveWorkKey).not.toHaveBeenCalled();
+    expect(mocks.fetchWork).not.toHaveBeenCalled();
+    expect(mocks.searchInventaireEntities).not.toHaveBeenCalled();
+    expect(mocks.findBestVolume).not.toHaveBeenCalled();
+    expect(request.rpc).not.toHaveBeenCalled();
+    expect(request.updates).toEqual([]);
+    expect(service.updates).toEqual([]);
+  });
+
+  it("no inventa español cuando el volumen no declara idioma", async () => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValue(volume({ title: "Título", language: null }));
+    await ensureBookHydrated(request as never, googleBook());
+    expect((rpcArgs(service).p_fields as Fields).title.lang).toBe("other");
+  });
+
+  it("un fallo de proveedor no sella la fila y permite reintentar el mismo volumen", async () => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValueOnce(null).mockResolvedValueOnce(volume({ title: "Recuperado" }));
+    await ensureBookHydrated(request as never, googleBook());
+    expect(service.rpc).not.toHaveBeenCalled();
+    await ensureBookHydrated(request as never, googleBook());
+    expect(mocks.fetchVolumeById.mock.calls).toEqual([["persisted-volume"], ["persisted-volume"]]);
+    expect((rpcArgs(service).p_fields as Fields).title.value).toBe("Recuperado");
+  });
+
+  it.each([null, "", "  "])("sin título útil (%j) no escribe ni sella una propuesta vacía", async (title) => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValue(volume({ title, authors: ["Un autor"], pageCount: 100 }));
+    await ensureBookHydrated(request as never, googleBook());
+    expect(service.rpc).not.toHaveBeenCalled();
+    expect(mocks.findBestVolume).not.toHaveBeenCalled();
+  });
+
+  it.each([null, 0, 1.5, Infinity, 20001])("descarta páginas %j sin rechazar los demás canónicos", async (pageCount) => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValue(volume({ pageCount }));
+    await ensureBookHydrated(request as never, googleBook());
+    expect(rpcArgs(service).p_total_pages).toBeUndefined();
+    expect(rpcArgs(service).p_pages_source).toBeUndefined();
+    expect((rpcArgs(service).p_fields as Fields).title.value).toBe("Palabras radiantes");
+  });
+
+  it("no propone sustituir páginas existentes y usa el primer autor no vacío", async () => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValue(volume({ authors: ["  ", " Autor canónico ", "Coautor"], pageCount: 384 }));
+    await ensureBookHydrated(request as never, googleBook({ total_pages: 200 }));
+    expect(rpcArgs(service).p_total_pages).toBeUndefined();
+    expect(rpcArgs(service).p_pages_source).toBeUndefined();
+    expect(rpcArgs(service).p_author).toBe("Autor canónico");
+  });
+
+  it("una obra con work key conserva la escalera OpenLibrary aunque tenga ID Google", async () => {
+    const { request, service } = makeClients();
+    await ensureBookHydrated(request as never, googleBook({ openlibrary_work_key: "/works/OL1W" }));
+    expect(mocks.fetchVolumeById).not.toHaveBeenCalled();
+    expect(mocks.fetchWork).toHaveBeenCalledWith("/works/OL1W");
+    expect(rpcArgs(service).p_author).toBe("Brandon Sanderson");
+  });
+
+  it.each([null, {}])("recupera la shell completamente vacía con sello reciente y meta %j", async (repr_meta) => {
+    const { request, service } = makeClients();
+    mocks.fetchVolumeById.mockResolvedValue(volume());
+    const empty = googleBook({ hydrated_at: days(1), repr_meta });
+    expect(needsGoogleVolumeHydrationRetry(empty)).toBe(true);
+    await ensureBookHydrated(request as never, empty);
+    expect(service.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  const populated: Array<Partial<HydratableBook>> = [
+    { title: "Título existente" }, { author: "Autor existente" }, { synopsis: "Sinopsis existente" },
+    { cover_url: "https://covers.openlibrary.org/b/id/1-L.jpg" }, { total_pages: 100 }, { wikidata_id: "Q1" },
+    { openlibrary_work_key: "/works/OL1W" }, { google_books_volume_id: null },
+    { repr_meta: { title: { source: "manual", lang: "es" } } },
+    { repr_meta: [] }, { repr_meta: "incorrecto" }, { repr_meta: 1 },
+  ];
+  it.each(populated)("no exime del cooldown a una fila parcialmente poblada o meta no vacío: %j", async (over) => {
+    const { request, service } = makeClients();
+    const existing = googleBook({ hydrated_at: days(1), ...over });
+    expect(needsGoogleVolumeHydrationRetry(existing)).toBe(false);
+    await ensureBookHydrated(request as never, existing);
+    expect(mocks.fetchVolumeById).not.toHaveBeenCalled();
+    expect(mocks.fetchWork).not.toHaveBeenCalled();
+    expect(service.rpc).not.toHaveBeenCalled();
+  });
+
+  it("al reutilizar un UUID carga el volumen y estado de la fila en lugar del shell del navegador", async () => {
+    const { request, service } = makeClients();
+    request.readState.data = googleBook({ google_books_volume_id: "database-volume" });
+    mocks.fetchVolumeById.mockResolvedValue(volume({ volumeId: "database-volume" }));
+    await ensureRegisteredBookHydrated(request as never, "b1");
+    expect(request.reads).toEqual([expect.objectContaining({ table: "books", column: "id", value: "b1" })]);
+    expect(request.reads[0].columns.split(", ")).toContain("google_books_volume_id");
+    expect(mocks.fetchVolumeById).toHaveBeenCalledWith("database-volume");
+    expect(service.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("al reutilizar una ficha curada reciente no fabrica un estado vacío para saltarse el cooldown", async () => {
+    const { request, service } = makeClients();
+    request.readState.data = googleBook({ title: "Curado", hydrated_at: days(1), repr_meta: { title: { source: "manual", lang: "es" } } });
+    await ensureRegisteredBookHydrated(request as never, "b1");
+    expect(mocks.fetchVolumeById).not.toHaveBeenCalled();
+    expect(service.rpc).not.toHaveBeenCalled();
+  });
+
+  it("una lectura fallida del UUID no cae a metadatos del navegador ni escribe", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { request, service } = makeClients();
+    request.readState.error = { code: "42501" };
+    await ensureRegisteredBookHydrated(request as never, "b1");
+    expect(mocks.fetchVolumeById).not.toHaveBeenCalled();
+    expect(service.rpc).not.toHaveBeenCalled();
+    expect(errors).toHaveBeenCalledOnce();
+    errors.mockRestore();
   });
 });

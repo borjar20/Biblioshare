@@ -425,6 +425,10 @@ Lo cerrado, con la migración o el fichero que lo sostiene:
   a libro) más el barrido de reconciliación.
 - [x] **Google Books como enriquecedor**, no como fuente primaria: sinopsis en español y, en
   último recurso, alta por ISBN cuando OpenLibrary no lo conoce.
+- [x] Hidratación por el volumen Google persistido de las fichas sin work key (#1290):
+  siete regresiones contra build de producción local verifican curación, cooldown,
+  rescate de shells vacías y refresco sin recarga. Entrega a main pendiente de los
+  checks obligatorios de la PR; evidencia y límites en el informe de pruebas.
 - [x] Acotar las altas nuevas de Google Books por cuenta sin penalizar reutilizaciones
   (#1237): local/dev/CI verificados y SQL aplicado en prod; entrega mediante
   PR #1291 con los checks obligatorios del commit de entrega antes del merge.
