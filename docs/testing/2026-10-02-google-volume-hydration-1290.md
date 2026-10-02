@@ -1,6 +1,6 @@
 # Hidratación de fichas nacidas de Google Books (#1290)
 
-> **[Trabajo pausado a petición del usuario el 2026-10-02 · código, unitarios y primera tanda de navegador comprobados; gate final y CI pendientes]**
+> **[Evidencia · verificada el 2026-10-02 · producto y siete regresiones de navegador PASS; entrega y CI del head pendientes]**
 
 ## Fallo confirmado y alcance
 
@@ -61,6 +61,8 @@ no todas las tareas de la ficha.
 | TypeScript y ESLint del producto | PASS | Sin errores; comprobados antes del spec nuevo |
 | Revisión independiente del delta del coordinador | PASS estático | Sin hallazgos accionables; no sustituye navegador ni CI |
 | Primera tanda de build nuevo y navegador, 7 casos nuevos + 4 de cuota | FAIL: 8 PASS / 3 FAIL | Una igualdad prematura del sello y dos desbordamientos móviles, registrados en #1300 |
+| Segunda tanda de build nuevo, 9 títulos + 7 hidratación + 4 cuota | PASS: 20/20 | Sin SKIP, inesperados, flaky ni reintentos; Auth, Actions, RPC y DB reales |
+| Helper auxiliar de causalidad CSS | FAIL conservado | Geometría y texto PASS; cinco `net::ERR_ABORTED` sin causa acreditada, seguimiento #1301 |
 | Checks obligatorios de la PR | Pendiente | Deben corresponder al commit final de entrega |
 
 El cliente tiene evidencia sellada en
@@ -84,7 +86,7 @@ El caso de alta recuperó los canónicos y la UI sin recarga, pero comparó el
 sello mientras la segunda hidratación Action/RSC seguía en vuelo: sólo cambió
 `hydrated_at`, de `09:56:45.270001` a `09:56:45.759185` UTC. La revisión posterior
 del spec espera esa finalización antes de fijar su snapshot; no se relaja el
-contrato de cooldown. Esa revisión aún no se ha ejecutado en navegador.
+contrato de cooldown. La segunda tanda descrita abajo verifica esa revisión.
 Los otros seis casos de hidratación pasan. Los dos casos de
 cuota a 1280 px pasan; a 320 px los títulos con un token de 32 caracteres
 producen documentos de 603/585 px. La CSS del hero coincide con el código base
@@ -104,19 +106,55 @@ recargar exige fila completa idéntica y ninguna nueva llamada GET/RPC. La
 observación es pass-through: no sintetiza la respuesta de la DB ni guarda
 propuestas, cabeceras o credenciales. Sólo acepta el host local, la ruta y el
 método exactos y una identidad de fixture demostrada. La revisión estática,
-TypeScript, ESLint y sintaxis Node 24 pasan; no acredita una segunda tanda de
-navegador. Firmas RAW de las fuentes revisadas:
+TypeScript, ESLint y sintaxis Node 24 pasan. Firmas RAW de las fuentes revisadas
+y ejecutadas posteriormente en la segunda tanda:
 
 - Spec: `4d70e6e731acb7acce2415e9f66ea5ee10d95980b69ab2a9b242b0a6a094fd73`.
 - Provider: `0aa8738dbcc14e5e0a5fd1ef03909b1af3887bf5a657968eb49ce8c017206601`.
 
-El producto y esta revisión quedan guardados en el commit local
+El producto y la revisión inicial quedan guardados en el commit local
 `1ff2dde7777fb9e4f6cf02c451d5be18d2cd677c`, rama
-`codex/google-books-hydration-1290`. No hay PR ni cierre de #1290. Para
-reanudar: terminar #1300 en su rama independiente, integrar su CSS, construir
-de nuevo y ejecutar los siete casos de hidratación más los cuatro de cuota;
-después sincronizar los documentos canónicos de estado y pasar los checks de
-la PR final. #1092 y #831 conservan sus issues y su alcance separado.
+`codex/google-books-hydration-1290`; `e3ee620` conserva el estado anterior.
+El usuario autorizó reanudar la campaña el mismo día. #1300 se entrega en su
+rama independiente y la PR de #1290 requiere sus checks del head antes de
+integrarse. #1092 y #831 conservan sus issues y su alcance separado.
+
+### Segunda tanda: correcciones integradas y build nuevo
+
+Evidencia en `.scratch/ticket-campaign/qa1290/integration-1790937088982/`:
+los veinte casos permanentes pasan en 70,451 s, con cero SKIP, inesperados,
+flaky o reintentos. Los siete de hidratación verifican el refresco sin recarga,
+las dos shells históricas, recuperación tras fallo, curación, cooldown y
+precedencia OpenLibrary. Los cuatro de cuota y los nueve de títulos también
+pasan; no se suman a este resultado los casos del intento anterior.
+
+TypeScript, ESLint, discovery y build pasan con Node 24.19.0. Build
+`ueeyMS3xF3sAJkjSGGTS4`; SHA256 de `server-reference-manifest.json`:
+`527af9d69373931942e54c6a21512b354fe0d5f21a3d9d9e19622efc95705ee4`.
+Las 55 fuentes RAW/LF y el HEAD permanecen estables. Los 74 artefactos
+sellados tienen cero discrepancias, sin secretos en la evidencia. La revisión
+independiente de `origin/main` `030426a` frente a `e3ee620` y los deltas
+locales de #1300/#1299 no encuentra hallazgos accionables.
+
+**El sello global conserva FAIL**, aunque los veinte casos permanentes sean
+PASS: el helper auxiliar de causalidad CSS exige cero peticiones canceladas y
+observó cinco `net::ERR_ABORTED`. Sus mediciones pasan (601 px con `normal`,
+320/375 px con `anywhere`, texto íntegro), sin errores de consola ni
+`pageerror`. No registró el tipo de recurso ni la fase de navegación; no se
+afirma que las cancelaciones fueran normales ni que demuestren un bug.
+La causa pendiente se rastrea en
+[#1301](https://github.com/borjar20/Biblioshare/issues/1301).
+SHA256 de `manifest.sha256.json`:
+`a100dd1a9e744f5b6c8ef248353787208741682443b25d31888db5bf3660573c`.
+SHA256 de `result.json`:
+`7c1a5eb339e95d1778fe3bc84f273408c784c0d6f938c0f6aa3faf86ec066207`.
+
+La auditoría final elimina los once actores y confirma cero filas propias,
+cuotas o sesiones residuales. Los tres libros del spec de títulos pasan doce
+comprobaciones de residuos, todas a cero. Next se detiene antes de limpiar,
+Supabase se detiene con backup y el puerto 3000 queda libre. El log de Next
+no contiene errores de `after`, render o hidratación. Este gate local no
+sustituye la CI del commit de entrega ni un GET real 200 a Google Books.
 
 Los siete casos permanentes de
 `e2e/ci/google-volume-hydration.spec.ts` cubren alta por ISBN y refresco sin
@@ -139,7 +177,7 @@ un GET real 200 ni el idioma del volumen; `hl=en` sólo es idioma de interfaz.
 La ancla vive en `.scratch/ticket-campaign/qa1290/real-anchor-20261002-v001.json`,
 SHA256 `38dc426db4e2f7596ef2813b03e266b62fb66340d0033d86ed1d93790d3d16b4`.
 No se le atribuyen los metadatos del proveedor de prueba. Las pruebas de
-navegador verificarán el consumo de ese contrato, pero no la disponibilidad
+navegador verifican el consumo de ese contrato, pero no la disponibilidad
 actual de Google ni una reparación masiva de fichas en producción.
 
 No hay cambio de esquema, permisos, dependencias ni configuración productiva.
