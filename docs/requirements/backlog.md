@@ -423,6 +423,16 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 
 ## Features que no existen (P2-P3, por dominio)
 
+**Experiencias — en diseño (#1293)**
+- [ ] Nueva sección que reúne salidas culturales y escapadas, con momentos,
+  acompañantes y recuerdos visuales compartidos. Producto aceptado para preparar
+  implementación el 2026-10-02; diseño técnico y plan preparados para revisión.
+  Seguimiento: #1293 (`area:social`,
+  `tipo:feature`, `P3`). Propuesta de producto en
+  `docs/superpowers/specs/2026-10-02-experiencias-producto.md`.
+  Contratos en `docs/superpowers/specs/2026-10-02-experiencias-design.md` y tareas en
+  `docs/superpowers/plans/2026-10-02-experiencias.md`. Todavía no implementada.
+
 **Biblioteca y ejemplar**
 - Etiquetas privadas del usuario (§7.5).
 - Modo «en pausa» como estado explícito (§7.16 = issue #426; decisión 8-A).

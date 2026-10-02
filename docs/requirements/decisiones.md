@@ -5811,3 +5811,22 @@ final mantiene la resolución existente, y los formatos modernos y corruptos
 conservan sus caminos. No hay migración de base de datos ni cambio en los
 motores o manifiestos históricos. Evidencia y alcance de la verificación:
 `docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.
+
+## 2026-10-02 — Dirección de producto: Experiencias reúne En vivo y Escapadas (#1293)
+
+El propietario elige desarrollar el diseño de una nueva sección que reúna conciertos,
+espectáculos, visitas culturales y escapadas. Su foco es compartir **qué se vivió y
+con quién**, mediante imágenes, carteles, lugares y personas. Los textos son un
+complemento, no un requisito para expresar la experiencia.
+
+Una salida concreta puede funcionar por sí sola o formar parte de una escapada con
+varios momentos; los acompañantes pueden variar entre momentos. Se explora una
+historia compartida con aportaciones y favoritos individuales.
+
+«Experiencias» es el nombre de trabajo. La elección acepta la dirección de producto,
+no un alcance técnico cerrado: captura, permisos, persistencia, búsqueda externa y
+desglose en hitos siguen en diseño. No se modifica el estado actual de la app ni se
+crea una excepción a la regla de `passes`.
+
+Propuesta revisable en `docs/superpowers/specs/2026-10-02-experiencias-producto.md`;
+seguimiento operativo en #1293 (`area:social`, `tipo:feature`, `P3`).
