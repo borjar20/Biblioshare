@@ -5,7 +5,7 @@ import { fetchWork, fetchFirstEditionDescription } from "./openlibrary/work-deta
 import { fetchOpenLibraryAuthorByKey } from "./openlibrary/work-authors";
 import { resolveWorkKey, fetchRepresentationCandidates } from "./openlibrary/editions";
 import { searchInventaireEntitiesOrNull, qidFromUri } from "./inventaire/client";
-import { findBestVolume, type GoogleVolume } from "./googlebooks/client";
+import { fetchVolumeById, findBestVolume, type GoogleVolume } from "./googlebooks/client";
 import { mapSubjectsToGenres } from "./genres";
 import {
   langRank,
@@ -24,12 +24,15 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export type HydratableBook = {
   id: string;
   openlibrary_work_key: string | null;
+  google_books_volume_id: string | null;
   isbn: string | null;
   hydrated_at: string | null;
   repr_meta: Json | null;
   wikidata_id: string | null;
   title: string | null;
   author: string | null;
+  synopsis: string | null;
+  cover_url: string | null;
   // Solo para no proponerle a la RPC unas páginas que ya tiene: `total_pages` es
   // fill-only allí, así que mandarlas cuando la fila ya las trae es ruido.
   total_pages: number | null;
@@ -85,6 +88,9 @@ export function bookShellFromSearchResult(itemId: string, result: SearchResult):
   return {
     id: itemId,
     openlibrary_work_key: result.externalId || null,
+    // La identidad Google se lee de la fila registrada, nunca de este shell
+    // fabricado con entrada del navegador (#1290).
+    google_books_volume_id: null,
     isbn: isVolumeOnlyResult(result) ? null : (result.matchedIsbn ?? null),
     hydrated_at: null,
     // La fila acaba de nacer vacía (#674): no tiene representación previa que
@@ -93,8 +99,74 @@ export function bookShellFromSearchResult(itemId: string, result: SearchResult):
     wikidata_id: null,
     title: null,
     author: null,
+    synopsis: null,
+    cover_url: null,
     total_pages: null,
   };
+}
+
+// Un alta por volumen puede reutilizar una fila ya curada o hidratada. Los
+// nulls del shell de búsqueda no describen esa fila: leerla por el UUID que
+// devolvió la RPC conserva su identidad, procedencia y cooldown reales.
+export async function ensureRegisteredBookHydrated(
+  supabase: SupabaseServerClient,
+  bookId: string,
+): Promise<void> {
+  try {
+    const { data: book, error } = await supabase
+      .from("books")
+      .select("id, openlibrary_work_key, google_books_volume_id, isbn, hydrated_at, repr_meta, wikidata_id, title, author, synopsis, cover_url, total_pages")
+      .eq("id", bookId)
+      .maybeSingle();
+    if (error) {
+      console.error("registered book hydration read failed", { bookId, error });
+      return;
+    }
+    if (book) await ensureBookHydrated(supabase, book);
+  } catch (error) {
+    console.error("registered book hydration failed", { bookId, error });
+  }
+}
+
+// #1290: la ruta vieja sellaba una propuesta vacía sin consultar el volumen.
+// Solo esas shells completamente vacías pueden saltarse el cooldown para
+// recuperarse. Una representación, curación o identidad existente lo conserva.
+export function needsGoogleVolumeHydrationRetry(book: HydratableBook): boolean {
+  const meta = book.repr_meta;
+  const emptyMeta = meta === null ||
+    (typeof meta === "object" && !Array.isArray(meta) && Object.keys(meta).length === 0);
+  return !book.openlibrary_work_key && !!book.google_books_volume_id &&
+    book.title === null && book.author === null && book.synopsis === null &&
+    book.cover_url === null && book.total_pages === null && book.wikidata_id === null && emptyMeta;
+}
+
+async function hydrateGoogleVolumeBook(book: HydratableBook): Promise<void> {
+  const volume = await fetchVolumeById(book.google_books_volume_id!);
+  // No se sella un intento fallido ni se buscan sustitutos por los textos o
+  // ISBN del navegador. El siguiente acceso puede reintentar el volumen exacto.
+  if (!volume?.title?.trim()) return;
+
+  const fields: HydrateFields = {};
+  const lang = toReprLang(volume.language);
+  for (const [field, value] of [
+    ["title", volume.title],
+    ["synopsis", volume.synopsis],
+    ["cover", volume.coverUrl],
+  ] as const) {
+    pickField(fields, field, [{ value, lang, source: "google_books" }]);
+  }
+  const author = volume.authors.find((name) => name.trim())?.trim();
+  const pageCount = volume.pageCount;
+  const pages = book.total_pages === null && typeof pageCount === "number" && Number.isInteger(pageCount) &&
+    pageCount >= 1 && pageCount <= 20000 ? pageCount : undefined;
+  const { error } = await createServiceRoleClient().rpc("hydrate_book", {
+    p_book_id: book.id,
+    p_fields: fields as Json,
+    p_author: author,
+    p_total_pages: pages,
+    p_pages_source: pages !== undefined ? "google_books" : undefined,
+  });
+  if (error) console.error("hydrate_book rpc failed", { bookId: book.id, error });
 }
 
 // Máximo de llamadas a Google Books por evaluación (spec §4): es el
@@ -131,7 +203,15 @@ export async function ensureBookHydrated(
 ): Promise<void> {
   try {
     const meta = (book.repr_meta ?? null) as ReprMeta | null;
-    if (!needsRepresentationReview(book.hydrated_at, meta, book.wikidata_id)) return;
+    if (!needsGoogleVolumeHydrationRetry(book) &&
+      !needsRepresentationReview(book.hydrated_at, meta, book.wikidata_id)) return;
+
+    // Cuando la obra nació sin work key, su ancla es el volumen persistido.
+    // Su respuesta exacta basta para los canónicos; no reasigna OL ni QID.
+    if (!book.openlibrary_work_key && book.google_books_volume_id) {
+      await hydrateGoogleVolumeBook(book);
+      return;
+    }
 
     let workKey = book.openlibrary_work_key;
 

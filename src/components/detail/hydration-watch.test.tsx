@@ -50,6 +50,32 @@ afterEach(() => {
 });
 
 describe("HydrationWatch", () => {
+  it("ignora el sello anterior de una shell vacía y refresca solo al cambiar", async () => {
+    const baseline = "2026-10-02T08:00:00Z";
+    h.maybeSingle.mockResolvedValue({ data: { hydrated_at: baseline } });
+    render(<HydrationWatch bookId="b1" hydratedAt={baseline} />);
+    await advance(6_000);
+    expect(h.refresh).not.toHaveBeenCalled();
+
+    h.maybeSingle.mockResolvedValue({ data: { hydrated_at: "2026-10-02T08:01:00Z" } });
+    await advance(5_000);
+    expect(h.refresh).toHaveBeenCalledTimes(1);
+    const polls = h.maybeSingle.mock.calls.length;
+    await advance(120_000);
+    expect(h.maybeSingle).toHaveBeenCalledTimes(polls);
+  });
+
+  it("agota el sondeo si el intento de rescate no cambia el sello anterior", async () => {
+    const baseline = "2026-10-02T08:00:00Z";
+    h.maybeSingle.mockResolvedValue({ data: { hydrated_at: baseline } });
+    render(<HydrationWatch bookId="b1" hydratedAt={baseline} />);
+    await advance(120_000);
+    expect(h.maybeSingle).toHaveBeenCalledTimes(6);
+    expect(h.refresh).not.toHaveBeenCalled();
+    await advance(120_000);
+    expect(h.maybeSingle).toHaveBeenCalledTimes(6);
+  });
+
   it("no refresca mientras la fila siga sin hidratar", async () => {
     render(<HydrationWatch bookId="b1" />);
     await advance(10_000);

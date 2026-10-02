@@ -14,7 +14,9 @@ import { createClient } from "@/lib/supabase/client";
 //
 // El contrato es mínimo a propósito: sondear `books.hydrated_at` (la RPC
 // `hydrate_book` lo estampa al final de la cadena) con esperas crecientes y
-// acotadas, y UN `router.refresh()` cuando aparece. Tras el refresh el server
+// acotadas, y UN `router.refresh()` cuando cambia respecto al sello del render.
+// El baseline también permite recuperar una shell que la ruta antigua selló
+// vacía (#1290), sin refrescar en bucle por el sello anterior. Tras el refresh el server
 // component ya no renderiza esta isla (la fila viene hidratada), así que no hay
 // bucle posible. Si la hidratación falló (proveedor caído: `ensureBookHydrated`
 // retorna sin escribir), el sondeo se agota y se rinde en silencio — el curador
@@ -26,7 +28,7 @@ import { createClient } from "@/lib/supabase/client";
 // sesión sería esperar un tren que no sale.
 const POLL_DELAYS_MS = [2500, 3500, 5000, 8000, 12000, 15000];
 
-export function HydrationWatch({ bookId }: { bookId: string }) {
+export function HydrationWatch({ bookId, hydratedAt = null }: { bookId: string; hydratedAt?: string | null }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function HydrationWatch({ bookId }: { bookId: string }) {
           .eq("id", bookId)
           .maybeSingle();
         if (cancelled) return;
-        if (data?.hydrated_at) {
+        if (data?.hydrated_at && data.hydrated_at !== hydratedAt) {
           router.refresh();
           return;
         }
@@ -60,7 +62,7 @@ export function HydrationWatch({ bookId }: { bookId: string }) {
       cancelled = true;
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [bookId, router]);
+  }, [bookId, hydratedAt, router]);
 
   return null;
 }

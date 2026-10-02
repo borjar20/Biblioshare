@@ -6,7 +6,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { findOrCreateCatalogItem } from "@/lib/catalog/find-or-create";
 import { applyTransition } from "@/lib/passes/apply-transition";
-import { ensureBookHydrated, bookShellFromSearchResult } from "@/lib/catalog/hydrate-book";
+import { ensureBookHydrated, ensureRegisteredBookHydrated, bookShellFromSearchResult } from "@/lib/catalog/hydrate-book";
 import { ensureMovieHydrated, ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
 import { itemHref } from "@/lib/catalog/item-href";
 import { loginHref } from "@/lib/auth/safe-next";
@@ -54,7 +54,9 @@ function googleBooksCreationRateLimit(
 // creada o encontrada". Ninguna de las tres ensure*Hydrated lanza.
 function hydrateNewItem(supabase: Supa, itemId: string, result: SearchResult) {
   return result.itemType === "book"
-    ? ensureBookHydrated(supabase, bookShellFromSearchResult(itemId, result))
+    ? isVolumeOnlyResult(result)
+      ? ensureRegisteredBookHydrated(supabase, itemId)
+      : ensureBookHydrated(supabase, bookShellFromSearchResult(itemId, result))
     : result.itemType === "movie"
       ? ensureMovieHydrated(supabase, {
           id: itemId,

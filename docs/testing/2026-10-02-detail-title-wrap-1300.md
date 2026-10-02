@@ -128,3 +128,14 @@ La superficie cubierta es la ficha de libro. Películas y series comparten
 son sintéticos; no se afirma calidad de imágenes, LCP ni aceptación de
 producción. La CI de la PR debe comprobar su commit de entrega; el build
 local citado corresponde al conjunto integrado de la campaña.
+
+## Entrega verificada
+
+La PR #1302 pasa todos los checks sobre el head
+`a0110b03ad8c083d3e4331610f43e1ed71510e95`: 3956 unitarios en 407 archivos,
+lint y tipos completos, 84 casos de navegador contra build de producción y
+CodeQL. Run de pruebas `36997224875`; no se sustituye su resultado por el
+de la tanda local integrada. La PR se integra el 2026-10-02 mediante
+`4be87c68c0f4d19440f68b6b3147e9c903dc4420` y #1300 queda cerrada.
+El seguimiento de las cancelaciones auxiliares sigue en #1301; la entrega
+no afirma que ese helper haya pasado ni aceptación visual en producción.

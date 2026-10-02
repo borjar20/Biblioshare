@@ -5881,3 +5881,26 @@ comunica sin falso éxito. La cuota de peticiones de 60/min sigue siendo otra
 frontera. No se presenta la cuota ni el filtro ASCII de #924 como verificación
 de existencia o gramática oficial de Google Books. Evidencia y límites:
 `docs/testing/2026-10-02-google-books-creation-quota-1237.md`.
+
+## 2026-10-02 — hidratación de Google Books por identidad persistida (#1290)
+
+Una ficha nacida del fallback ISBN de Google Books no tiene work key ni
+metadatos fiables del navegador. Las acciones y la ficha vuelven a leer su
+fila por UUID y el hidratador consulta el volumen persistido por ID desde el
+servidor. Se mantiene la precedencia de OpenLibrary y la protección de
+curación de la RPC existente; la nueva rama no propone ISBN, QID, work key,
+año ni géneros. Un proveedor fallido o sin título útil no estampa un éxito.
+
+El rescate del fallo histórico sólo omite el cooldown para una shell
+completamente vacía, sin identidad OL/QID ni representación previa, con
+`repr_meta` nulo u objeto vacío. Una fila poblada o curada conserva el gate.
+El watcher compara con el sello inicial y refresca una sola vez al observar
+otro: un sello histórico no demuestra que haya terminado el reintento.
+
+Siete regresiones de hidratación pasan contra build/start local con Actions,
+Auth, RPC y DB reales y proveedor de prueba controlado. El spec espera las
+dos transacciones reales antes de fijar el estado estable y verificar que la
+recarga no repite GET/RPC. No acredita disponibilidad real de Google ni una
+reparación masiva de filas de producción. El fallo auxiliar de red de #1301
+se conserva separado de los veinte casos permanentes PASS de la tanda.
+Evidencia: `docs/testing/2026-10-02-google-volume-hydration-1290.md`.

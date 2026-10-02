@@ -129,8 +129,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-10-01",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01",
+    "generatedAt": "2026-10-02",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -809,7 +809,8 @@
         "src/lib/catalog/media-accent.ts",
         "src/lib/catalog/wikidata-event-trace.ts",
         "src/lib/catalog/wikidata-reconcile.ts",
-        "scripts/reconcile-wikidata.ts"
+        "scripts/reconcile-wikidata.ts",
+        "src/lib/catalog/googlebooks/client.ts"
       ]
     },
     {
@@ -3241,7 +3242,9 @@
       "notes": [
         "OpenLibrary hace dos llamadas de 5 s de timeout; esperar entera dejaba el clic congelado ~10 s. Se le da un presupuesto de 1200 ms y, si no llega, sigue viva en after().",
         "La red de seguridad final es el curador de la propia ficha: rehidrata cualquier fila con hydrated_at null la próxima vez que se abra.",
-        "La tarjeta de resultado NO pinta editorial ni páginas a propósito: son de una tirada concreta, no de la obra."
+        "La tarjeta de resultado NO pinta editorial ni páginas a propósito: son de una tirada concreta, no de la obra.",
+        "Google-only no confía en título/autor/ISBN del resultado del navegador: el GET por ID del volumen persistido aporta los canónicos. Un fallo o volumen sin título no estampa hidratación (#1290).",
+        "Una shell Google completamente vacía, sin work key ni QID y con repr_meta NULL u objeto vacío se recupera aunque tuviera un sello reciente erróneo; las demás filas conservan el cooldown. HydrationWatch refresca al cambiar ese sello (#1290)."
       ],
       "steps": [
         {
@@ -3266,7 +3269,7 @@
         },
         {
           "node": "x-openlibrary",
-          "action": "ensureBookHydrated pide sinopsis, géneros y portada",
+          "action": "ensureBookHydrated usa la escalera OpenLibrary o consulta el volumen Google exacto persistido; en GB-only la action carga primero la fila por UUID",
           "file": "src/lib/catalog/hydrate-book.ts"
         },
         {
