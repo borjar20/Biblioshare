@@ -24,7 +24,8 @@ async function ponerPuntos(page: Page, seat: number, target: number) {
   while (value - target >= 5) { await chip("-5"); value -= 5; }
   while (value < target) { await page.getByRole("button", { name: `Sumar uno a ${name}` }).click(); value++; }
   while (value > target) { await page.getByRole("button", { name: `Restar uno a ${name}` }).click(); value--; }
-  await expect(page.getByLabel(`Puntos de ${name}`)).toHaveText(String(target));
+  const visibleTarget = target < 0 ? `−${Math.abs(target)}` : String(target);
+  await expect(page.getByLabel(`Puntos de ${name}`)).toHaveText(visibleTarget);
 }
 
 /** Hoja de ronda ya abierta: pone cada puntuación en orden de asiento y confirma. */
@@ -72,10 +73,14 @@ test("partida completa: preset, 3 rondas, editar, deshacer, finalizar, guardar",
   // Tocar cualquier celda de la columna R2 abre su edición (el evento es LA
   // RONDA entera, no la celda).
   await page.getByRole("button", { name: "Editar ronda 2" }).first().click();
-  await apuntarValores(page, [14, 6, 1, 2]);
+  await apuntarValores(page, [14, -4, 7, 0]);
 
-  // p1 pasa de 12 a 22 (5+14+3): el total cambia.
+  // Cambia TODA la ronda, incluidos negativo y cero: editar una sola celda
+  // o cruzar asientos no puede pasar mirando únicamente el total de p1.
   await expect(totalDe(page, 0)).toHaveText("22");
+  await expect(totalDe(page, 1)).toHaveText("1");
+  await expect(totalDe(page, 2)).toHaveText("14");
+  await expect(totalDe(page, 3)).toHaveText("2");
 
   // Deshacer desde la hoja de partida revierte la edición entera. La etiqueta
   // dice QUÉ deshace (mismo criterio que mtg): «Ronda 2 editada».
@@ -84,6 +89,9 @@ test("partida completa: preset, 3 rondas, editar, deshacer, finalizar, guardar",
   await expect(undo).toBeVisible();
   await undo.click();
   await expect(totalDe(page, 0)).toHaveText("12");
+  await expect(totalDe(page, 1)).toHaveText("11");
+  await expect(totalDe(page, 2)).toHaveText("8");
+  await expect(totalDe(page, 3)).toHaveText("4");
 
   // Finalizar -> resumen con el ganador correcto según los totales (Jugador 1, 12).
   await page.getByRole("button", { name: "Acciones de la partida" }).click();
