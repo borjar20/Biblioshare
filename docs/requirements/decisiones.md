@@ -5960,3 +5960,23 @@ a 4,534193:1. El asiento 1 ya cumple con 4,508397:1; no se modifica por redondea
 su resultado. Los bloques oscuros y los criterios de separación de la paleta
 se conservan. La evidencia de DOM, el fallo global inicial y la recuperación
 acotada del helper constan en `docs/testing/2026-10-02-seat-text-contrast-999.md`.
+
+## 2026-10-02 — los créditos de autor convergen sólo al completar todos sus órdenes (#633)
+
+Para libros, `ensureItemEnriched` exige al menos un crédito de autor y
+`billing_order` no nulo en todos los autores presentes antes de omitir al
+proveedor. Un único orden completo ocultaría una escritura parcial fallida.
+La siembra desde personas sigue dejando `NULL`; cine y series conservan el
+guard anterior de `hasBilledCast`.
+
+El upsert ignora duplicados y devuelve los IDs insertados. Después se completa
+sólo el orden de cada autor confirmado, con identidad de obra/persona/rol y
+`billing_order IS NULL` en el propio UPDATE. Así se conserva la curación,
+incluida la que llegue después de leer el guard. `wroteCredits` depende de IDs
+devueltos por escrituras reales, para invalidar también al completar órdenes.
+
+Un autor que el proveedor no confirma conserva `NULL` y el libro sigue siendo
+reintentable; no se inventa un orden para silenciar la siguiente apertura.
+No hay migración ni reparación masiva. La verificación nativa usa lector
+anónimo y escritor de sistema; su alcance y el fallo previo conservado están
+en `docs/testing/2026-10-02-book-credit-convergence-633.md`.

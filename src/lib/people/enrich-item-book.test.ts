@@ -26,16 +26,31 @@ function fakeSupabase(
   upsertCalls?: UpsertCall[]
 ) {
   let insertCount = 0;
+  const credits: Upserted = [];
   const doble = {
+    _credits: credits,
     from(table: string) {
       return {
         select() {
+          const filters: Array<(row: Record<string, unknown>) => boolean> = [];
+          const then: Promise<{ data: Upserted; error: null }>["then"] = (onfulfilled, onrejected) =>
+            Promise.resolve({
+              data: credits.filter((row) => filters.every((filter) => filter(row))), error: null,
+            } as const).then(onfulfilled, onrejected);
           return {
-            eq() {
+            then,
+            eq(column: string, value: unknown) {
+              filters.push((row) => row[column] === value);
               return this;
             },
-            // El guard `hasBilledCast`: sin créditos facturados.
-            not: async () => ({ count: 0, error: null }),
+            // Cuenta el estado que realmente dejaron las escrituras de la
+            // primera visita, en vez de forzar otra hidratación siempre.
+            not: async (column: string) => ({
+              count: credits.filter((row) =>
+                filters.every((filter) => filter(row)) && row[column] != null,
+              ).length,
+              error: null,
+            }),
             limit() {
               return { maybeSingle: async () => ({ data: null, error: null }) };
             },
@@ -49,14 +64,51 @@ function fakeSupabase(
           const id = `p-${table}-${insertCount}`;
           return { select: () => ({ single: async () => ({ data: { id }, error: null }) }) };
         },
-        update() {
+        update(patch?: Record<string, unknown>) {
+          if (table === "credits") {
+            const filters: Array<(row: Record<string, unknown>) => boolean> = [];
+            return {
+              eq(column: string, value: unknown) {
+                filters.push((row) => row[column] === value);
+                return this;
+              },
+              is(column: string, value: null) {
+                filters.push((row) => row[column] === value);
+                return this;
+              },
+              select: async () => {
+                const matching = credits.filter((row) => filters.every((filter) => filter(row)));
+                matching.forEach((row) => Object.assign(row, patch));
+                return { data: matching.map(({ id }) => ({ id })), error: null };
+              },
+            };
+          }
           return { eq: async () => ({ error: null }) };
         },
-        upsert: async (rows: Upserted, upsertOptions: unknown) => {
+        upsert(rows: Upserted, upsertOptions: unknown) {
           upserted.push(...rows);
           upsertCalls?.push({ rows, options: upsertOptions });
-          if (options.upsertError) return { error: options.upsertError };
-          return { error: null };
+          const inserted: Upserted = [];
+          if (!options.upsertError) {
+            for (const row of rows) {
+              const existing = credits.find((candidate) =>
+                ["item_type", "item_id", "person_id", "role"].every((column) =>
+                  candidate[column] === row[column],
+                ),
+              );
+              if (!existing) {
+                const credit = { ...row, id: `credit-${credits.length}` };
+                credits.push(credit);
+                inserted.push(credit);
+              }
+            }
+          }
+          return {
+            select: async () => ({
+              data: options.upsertError ? null : inserted.map(({ id }) => ({ id })),
+              error: options.upsertError ?? null,
+            }),
+          };
         },
       };
     },
@@ -70,6 +122,7 @@ function fakeSupabase(
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   mocks.service = null;
 });
 
@@ -94,12 +147,15 @@ describe("ensureItemEnriched · libros", () => {
 
     const upserted: Upserted = [];
     const upsertCalls: UpsertCall[] = [];
-    await ensureItemEnriched(fakeSupabase(upserted, {}, upsertCalls) as never, "book", {
+    const supabase = fakeSupabase(upserted, {}, upsertCalls);
+    const item = {
       id: "libro-1",
       title: "El nombre del viento",
       author: "Patrick Rothfuss, Marc Simonetti",
       openlibraryWorkKey: "/works/OL8479867W",
-    });
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const first = await ensureItemEnriched(supabase as never, "book", item);
 
     expect(upserted).toHaveLength(2);
     expect(upserted[0]).toMatchObject({ item_type: "book", role: "author", billing_order: 0 });
@@ -115,9 +171,18 @@ describe("ensureItemEnriched · libros", () => {
       onConflict: "item_type,item_id,person_id,role",
       ignoreDuplicates: true,
     });
+    expect(first).toEqual({ wroteCredits: true, sagaMembers: [] });
+    expect(supabase._credits).toEqual(upserted.map((row) => ({ ...row, id: expect.any(String) })));
+    const callsAfterFirst = fetchMock.mock.calls.length;
+    expect(await ensureItemEnriched(supabase as never, "book", item)).toEqual({
+      wroteCredits: false, sagaMembers: [],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(callsAfterFirst);
+    expect(upsertCalls).toHaveLength(1);
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
-  it("si el upsert de créditos falla, lo registra (salvo 42501, visitante anónimo)", async () => {
+  it("si el upsert de créditos falla, registra su causa real y no anuncia una escritura", async () => {
     const fetchMock = vi.fn(async (input: unknown) => {
       const url = String(input);
       if (url.includes("/works/")) {
@@ -132,7 +197,7 @@ describe("ensureItemEnriched · libros", () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const upserted: Upserted = [];
-    await ensureItemEnriched(
+    const effects = await ensureItemEnriched(
       fakeSupabase(upserted, { upsertError: { code: "23503", message: "fk violation" } }) as never,
       "book",
       {
@@ -143,7 +208,10 @@ describe("ensureItemEnriched · libros", () => {
       }
     );
 
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(effects.wroteCredits).toBe(false);
+    expect(consoleErrorSpy).toHaveBeenCalledWith("book credits upsert failed", {
+      id: "libro-error", count: 1, error: { code: "23503", message: "fk violation" },
+    });
     consoleErrorSpy.mockRestore();
   });
 
@@ -178,7 +246,9 @@ describe("ensureItemEnriched · libros", () => {
       }
     );
 
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith("book credits upsert failed", {
+      id: "libro-anonimo", count: 1, error: { code: "42501", message: "permission denied" },
+    });
     consoleErrorSpy.mockRestore();
   });
 
@@ -209,6 +279,7 @@ describe("ensureItemEnriched · libros", () => {
       return {
         ...api,
         update: (patch: Record<string, unknown>) => {
+          if (table !== "books") return api.update(patch);
           updates.push(JSON.stringify(patch));
           return { eq: async () => ({ error: null }) };
         },
@@ -260,6 +331,7 @@ describe("ensureItemEnriched · libros", () => {
       return {
         ...api,
         update: (patch: Record<string, unknown>) => {
+          if (table !== "books") return api.update(patch);
           updates.push(JSON.stringify(patch));
           return { eq: async () => ({ error: null }) };
         },
