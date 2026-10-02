@@ -108,6 +108,31 @@ añadir publicado al componente sin consumidor.
 
 ## Evidencia y fallos conservados
 
+### Primera CI y corrección de la carga de proveedores
+
+El head `695fa1bc4213d6539ae6ea0a9536af4a7530c683` pasa quality con
+3913 pruebas y 406 archivos, sin FAIL/SKIP. Los dos jobs de base de datos
+completan 41 checks, dos carreras Google y 272 pasos de bootstrap; el TAP
+del inventario tiene siete PASS. El navegador no se ejecuta: `next build`
+falla antes de smoke al intentar cargar los dos paths de proveedores como
+un solo módulo. No existe un contador nativo Playwright para esa pasada.
+
+El formatter de opciones del Next instalado reproduce la concatenación de
+los dos `--require`. `e2e/support/ci-providers.cjs` carga la cadena mediante
+un único preload, conservando el orden detail-notes/archive → Google y los
+guards de cada fixture. Siete comprobaciones nativas de formatter y proceso
+hijo pasan sin red/DB, con sintaxis/lint PASS; la nueva CI Node22 sigue pendiente.
+Las pruebas anteriores de aplicación se conservan, sin atribuirles el build
+fallido de CI ni esta nueva composición.
+
+El check CodeQL también falla con cuatro alertas de OpenLibrary. Los IDs
+2–5 ya están abiertos en `main` desde 2026-09-13 y sus sinks no cambian en
+esta PR. Una reproducción offline de las cuatro funciones reales confirma
+desvío de endpoint/query con `../search.json?q=proof#`, conservando el host
+inicial; no demuestra una fuga interna o redirects externos. Se corrige
+en [#1292](https://github.com/borjar20/Biblioshare/issues/1292), mediante PR
+independiente. No se descartan las alertas ni se afirma el gate completo.
+
 Raíz ignorada: `.scratch/ticket-campaign/qa1237/`.
 
 - `app/red-1790884394378/`: RED de la acción que antes propagaba la cuota.
@@ -149,6 +174,12 @@ Raíz ignorada: `.scratch/ticket-campaign/qa1237/`.
 - `root/evidence-check-1790895752856/result.json`: comprobación independiente
   de las 139 huellas SQL, 158 de QA, ocho fuentes de unitarios, 14 de QA,
   métricas nativas, geometría y limpieza. PASS, sin modificar los manifiestos.
+- `ci-first-head-36979523086/` y `ci-first-head-36979522903/`: FAIL de build,
+  unitarios y bootstrap reales del primer head, logs y manifiesto de 23 archivos.
+- `ci-preload-fix-1790927208559/`: reproducción del formatter de Next,
+  siete comprobaciones PASS y 18 archivos sellados; no sustituye la CI.
+- `codeql-preexisting-1790927053704/run-1790927120267/`: funciones reales
+  con fetch offline, matriz de 44 URLs, fuentes base/head y 11 huellas.
 
 La migración tiene SHA-256
 `955d10fda883d61bb7ac994a166574664163be24d251199c457db27cc2657227`.

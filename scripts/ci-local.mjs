@@ -42,7 +42,9 @@ const result = spawnSync(process.execPath, commands[mode], {
     GOOGLE_BOOKS_API_KEY: `ci-google-volume-fixture-only-${fixtureNamespace}`,
     GOOGLE_VOLUME_QUOTA_NAMESPACE: fixtureNamespace,
     GOOGLE_VOLUME_QUOTA_FIXTURES: quotaFixturePath,
-    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/detail-notes-provider.cjs --require ./e2e/support/google-volume-quota-provider.cjs`.trim(),
+    // Next.js forwards repeated --require values to its workers as one module
+    // path. Load the fixture chain through a single entry point instead.
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --require ./e2e/support/ci-providers.cjs`.trim(),
   },
 });
 unlinkSync(quotaFixturePath);
