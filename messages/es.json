@@ -196,9 +196,9 @@
     "items": {
       "home": "Inicio",
       "collection": "Biblioteca",
+      "experiences": "Experiencias",
+      "community": "Comunidad",
       "search": "Buscar",
-      "clubs": "Clubes",
-      "profile": "Perfil",
       "login": "Entrar"
     },
     "auth": {
@@ -206,7 +206,8 @@
       "signUp": "Crear cuenta"
     },
     "skipToContent": "Saltar al contenido",
-    "youLabel": "Tu cuenta",
+    "primaryLabel": "Navegación principal",
+    "moreLabel": "Más opciones",
     "you": {
       "profile": "Mi perfil",
       "experiences": "Experiencias",
@@ -229,6 +230,15 @@
         "pet_adventure_won": "¡Aventura!"
       }
     }
+  },
+  "community": {
+    "title": "Comunidad",
+    "clubs": "Clubes",
+    "people": "Personas",
+    "navigationLabel": "Secciones de Comunidad",
+    "findPeople": "Buscar personas",
+    "searchPeoplePlaceholder": "Nombre o usuario",
+    "searchPeople": "Buscar"
   },
   "auth": {
     "login": {
@@ -2929,6 +2939,12 @@
   },
   "collection": {
     "title": "Mi Biblioteca",
+    "toolsLabel": "Herramientas de tu biblioteca",
+    "notebook": "Cuaderno",
+    "goalsAndChallenges": "Retos y objetivos",
+    "statistics": "Estadísticas",
+    "rinconTitle": "Retos y objetivos",
+    "backToLibrary": "Volver a Biblioteca",
     "addWork": "Añadir obra",
     "tabs": {
       "navLabel": "Secciones de tu biblioteca",

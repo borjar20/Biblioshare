@@ -18,7 +18,7 @@ con i18n (`next-intl`) desde el inicio.
 ## Experiencias — código en local/dev, pendiente de producción (#1293)
 
 **[Delta funcional verificado 2026-10-02; UX de álbum verificada 2026-10-03; no desplegado en producción]**
-Desde «Tu cuenta» se abre `/experiencias`: planes y recuerdos que pueden crecer
+Desde la navegación principal se abre `/experiencias`: planes y recuerdos que pueden crecer
 de una salida a una escapada con varios momentos. El archivo se presenta como
 un álbum con portadas por actividad, fotos y acompañantes; las invitaciones
 preceden a los filtros. La creación pide actividad, nombre y estado, con lugar y
@@ -36,6 +36,21 @@ se reconocen con una vista previa exclusiva del autor antes de eliminarlas.
 Captura manual; catálogos externos, fusionar recuerdos y filtro entre hobbies
 quedan en #1293. Evidencia funcional: `docs/testing/2026-10-02-experiencias.md`;
 UX y regresión: `docs/testing/2026-10-03-experiencias-album.md`.
+
+## Navegación — delta local/dev 2026-10-03, pendiente de entrega
+
+La barra principal tiene Inicio, Biblioteca, Experiencias, Comunidad y Buscar.
+El avatar abre el perfil directamente en todos los tamaños; el menú «Más» reúne
+Partidas, Mascota y Ajustes. En móvil la barra principal está abajo y desde 768 px
+está en la cabecera. El perfil propio conserva Actividad y Experiencias; el
+visitante añade Biblioteca, siempre con los permisos actuales.
+
+Biblioteca muestra accesos a Cuaderno (`/notas`), Retos y objetivos
+(`/coleccion/rincon`) y Estadísticas (`/estadisticas`). El Rincón conserva retos
+activos/archivados, objetivo diario, Memorizar y sorteo. Comunidad (`/comunidad`)
+reúne Clubes y Personas; `/clubes` sigue funcionando. Los enlaces propios antiguos
+de Estadísticas/Panel y Rincón redirigen a sus nuevas superficies, conservando
+los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 
 ## Catálogo compartido
 
@@ -102,7 +117,8 @@ UX y regresión: `docs/testing/2026-10-03-experiencias-album.md`.
 ## Social
 
 - **Perfiles** (`/u/[username]`): públicos por defecto (modelo Instagram),
-  privados con solicitud; pestañas Actividad / Biblioteca / Estadísticas; pins.
+  privados con solicitud; pestañas propias Actividad / Experiencias y Biblioteca
+  adicional para visitantes; pins.
 - **Follows** con solicitudes pendientes; sugerencias de a quién seguir.
 - **Posts** (`posts`, `/post/[id]`): capa canónica del feed — reseñas, hitos,
   pensamientos con ancla; feed de Inicio ordenado por publicación con cursor.
@@ -127,7 +143,7 @@ UX y regresión: `docs/testing/2026-10-03-experiencias-album.md`.
 
 ## Clubes
 
-- **Clubes** (`/clubes`, `/club/[slug]`): visibilidad pública/privada con
+- **Clubes** (`/comunidad`, enlace antiguo `/clubes`, `/club/[slug]`): visibilidad pública/privada con
   solicitud de entrada, roles (owner/mod/member) con transiciones solo por RPC,
   directorio de miembros, portada.
 - **Feed de club**: posts, encuestas (`poll`), compartir actividad, moderación.

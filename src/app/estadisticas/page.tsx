@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
-import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import {
   periodLabel,
   resolvePeriod,
@@ -100,18 +99,12 @@ export default async function FullStatsPage({
   const itemFilter = resolveItemFilter(tipo);
   const metric = resolveActivityMetric(medida);
 
-  // Lo único que el SHELL espera: el @usuario, para el enlace de volver. Una
-  // consulta ligera (índice por user_id), no las 18 del muro. getOwnProfile crea
-  // su propio cliente y va memoizado por userId (#456).
-  const profile = await getOwnProfile(user.id);
-  const backHref = profile ? `/u/${profile.username}?tab=estadisticas` : "/";
-
   return (
     <div className={`mx-auto w-full ${SHELL_APP} px-4 py-4 pb-24 sm:px-6 lg:px-8`}>
       <div className="mb-4">
         <PageHeader
           title={t("fullStatsTitle")}
-          backHref={backHref}
+          backHref="/coleccion"
           backLabel={t("back")}
         />
       </div>

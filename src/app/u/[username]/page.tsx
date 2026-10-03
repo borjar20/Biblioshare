@@ -30,21 +30,14 @@ import {
 } from "@/components/ui/skeleton";
 import { ActivityTab } from "./_tabs/activity-tab";
 import { CollectionTab } from "./_tabs/collection-tab";
-import { StatsTab } from "./_tabs/stats-tab";
-import { RinconTab } from "./_tabs/rincon-tab";
 import {ExperiencesTab} from "./_tabs/experiences-tab";
-import { YouRow } from "@/components/nav/you-row";
 import { SHELL_APP } from "@/lib/ui/layout";
 
 const VALID_TABS: SectionTab[] = [
   "actividad",
-  "estadisticas",
-  "rincon",
   "coleccion",
   "experiencias",
 ];
-// Estadísticas y Rincón son del dueño: un visitante no las alcanza ni por URL.
-const OWNER_ONLY_TABS: SectionTab[] = ["estadisticas", "rincon"];
 const VALID_TYPES: ItemType[] = ["book", "movie", "series"];
 
 export async function generateMetadata({
@@ -152,11 +145,17 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
   const isOwner = user?.id === profile.userId;
   const basePath = `/u/${profile.username}`;
 
-  // Deep-links de la IA vieja (plan 05, P2). El Panel se partió en dos, así que
-  // `?tab=panel` aterriza en Estadísticas; y el dueño ya no tiene Colección
-  // aquí: su biblioteca es /coleccion.
-  if (parsedParams.tab === "panel") {
-    redirect(`${basePath}?tab=estadisticas`);
+  // Conserva los enlaces personales antiguos solo para su dueño. Un tercero
+  // sigue viendo la actividad de esta persona, nunca sus herramientas.
+  if (isOwner && ["panel", "estadisticas"].includes(parsedParams.tab ?? "")) {
+    const filters = new URLSearchParams();
+    for (const key of ["periodo", "tipo", "medida"] as const) {
+      if (parsedParams[key]) filters.set(key, parsedParams[key]);
+    }
+    redirect(`/estadisticas${filters.size ? `?${filters.toString()}` : ""}`);
+  }
+  if (isOwner && parsedParams.tab === "rincon") {
+    redirect(`/coleccion/rincon${parsedParams.archivados === "1" ? "?archivados=1" : ""}`);
   }
   if (isOwner && parsedParams.tab === "coleccion") {
     redirect("/coleccion");
@@ -165,10 +164,7 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
   const requestedTab = VALID_TABS.includes(parsedParams.tab as SectionTab)
     ? (parsedParams.tab as SectionTab)
     : null;
-  const tab: SectionTab =
-    requestedTab && (isOwner || !OWNER_ONLY_TABS.includes(requestedTab))
-      ? requestedTab
-      : "actividad";
+  const tab: SectionTab = requestedTab ?? "actividad";
 
   const itemType = VALID_TYPES.includes(parsedParams.type as ItemType)
     ? (parsedParams.type as ItemType)
@@ -222,10 +218,6 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
         }
       />
 
-      {/* Accesos a lo tuyo (Cuaderno, Estadísticas, Ajustes) — solo móvil: en
-          sm+ los sirve el menú del avatar de la topbar. Ver YouRow. */}
-      {isOwner && <YouRow username={profile.username} />}
-
       {/* Solicitudes de seguimiento: en el mockup v2 se mudan al desplegable de
           Notificaciones (P1/D3), que es del plan 07. Hasta entonces siguen
           aquí. Visibilidad y admin ya viven en /ajustes (⚙ de la cabecera). */}
@@ -240,27 +232,6 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
             userId={profile.userId}
             viewerLoggedIn={!!user}
             isOwner={isOwner}
-          />
-        </Suspense>
-      )}
-
-      {tab === "estadisticas" && (
-        <Suspense fallback={<ProfileSectionSkeleton />}>
-          <StatsTab
-            userId={profile.userId}
-            basePath={basePath}
-            monthParam={parsedParams.month}
-            metricParam={parsedParams.medida}
-          />
-        </Suspense>
-      )}
-
-      {tab === "rincon" && (
-        <Suspense fallback={<ProfileSectionSkeleton />}>
-          <RinconTab
-            userId={profile.userId}
-            includeArchived={parsedParams.archivados === "1"}
-            basePath={basePath}
           />
         </Suspense>
       )}

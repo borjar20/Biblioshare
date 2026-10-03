@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/icons";
 
 export type NavItem = {
-  key: "home" | "collection" | "search" | "clubs" | "profile" | "login";
+  key: "home" | "collection" | "experiences" | "community" | "search" | "login";
   href: string;
   /** Clave de traducción bajo `nav.items`. */
   labelKey: string;
@@ -25,7 +25,7 @@ export type NavItem = {
 // Fuente única de la navegación (§IA del rediseño Paper). La barra inferior
 // (móvil) y la topbar (sm+) salen de aquí: si cambia una entrada, cambia en
 // las dos.
-export function navItems(username: string): NavItem[] {
+export function navItems(): NavItem[] {
   return [
     { key: "home", href: "/", labelKey: "home", Icon: HomeIcon },
     {
@@ -34,39 +34,36 @@ export function navItems(username: string): NavItem[] {
       labelKey: "collection",
       Icon: LibraryIcon,
     },
+    { key: "experiences", href: "/experiencias", labelKey: "experiences", Icon: CompassIcon },
+    { key: "community", href: "/comunidad", labelKey: "community", Icon: UsersIcon },
     { key: "search", href: "/buscar", labelKey: "search", Icon: SearchIcon },
-    { key: "clubs", href: "/clubes", labelKey: "clubs", Icon: UsersIcon },
-    {
-      key: "profile",
-      href: `/u/${username}`,
-      labelKey: "profile",
-      Icon: UserIcon,
-    },
   ];
 }
 
-// La topbar de escritorio solo lleva las cuatro primeras: Perfil no es un
-// enlace más, sino el avatar de la derecha. Es lo que dan los cuatro frames de
-// escritorio del handoff (Home B, Colección C, Buscar C, Perfil C), todos
-// iguales; en móvil la tabbar sí conserva las cinco.
-export function primaryNavItems(username: string): NavItem[] {
-  return navItems(username).filter((item) => item.key !== "profile");
+// Los cinco destinos son iguales en ambos viewports; la identidad tiene su
+// enlace propio en el avatar y no consume un hueco de navegación.
+export function primaryNavItems(): NavItem[] {
+  return navItems();
 }
 
 // Una entrada está activa si la ruta coincide o cuelga de ella. "/" es
 // excepción: sin esto, Inicio quedaría activo en todas las rutas.
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
   if (item.href === "/") return pathname === "/";
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  const paths = item.key === "experiences" ? [item.href, "/experiencia"]
+    : item.key === "community" ? [item.href, "/clubes", "/club"]
+    : item.key === "collection" ? [item.href, "/notas", "/estadisticas"]
+    : [item.href];
+  return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
 // Navegación para el usuario SIN sesión: solo los destinos públicos (Inicio,
-// Buscar, Clubes) más "Entrar". Colección y Perfil quedan fuera hasta que
+// Comunidad, Buscar) más "Entrar". Biblioteca y Experiencias quedan fuera hasta que
 // inicie sesión — su hueco lo ocupa el CTA de login del header.
 export function anonNavItems(): NavItem[] {
-  const all = navItems("");
+  const all = navItems();
   const publicItems = all.filter(
-    (i) => i.key === "home" || i.key === "search" || i.key === "clubs"
+    (i) => i.key === "home" || i.key === "search" || i.key === "community"
   );
   return [
     ...publicItems,
@@ -81,23 +78,30 @@ export function anonPrimaryNavItems(): NavItem[] {
 }
 
 // ---------------------------------------------------------------------------
-// «Tú»: el segundo nivel de la navegación (F3-010 / F4-007)
+// Menú global de la app: destinos secundarios, separado del perfil.
+// Partidas conserva su entrada pública; Mascota y Ajustes requieren sesión.
+// Biblioteca y sus herramientas viven en su área, Experiencias es primaria.
 // ---------------------------------------------------------------------------
-// La app tiene ~8 áreas y la barra principal cinco huecos, así que lo que no
-// cabía —Cuaderno, Estadísticas, Ajustes— no colgaba de NINGUNA navegación: se
-// llegaba a Cuaderno desde una tarjeta del Rincón, a Estadísticas desde un
-// enlace al pie de una pestaña del perfil, y a los ajustes desde un engranaje
-// que abría una hoja modal. Un tercio de la app era inalcanzable sin saberse
-// el camino de memoria.
-//
-// La regla de reparto: **si es TUYO, cuelga de Tú.** Lo que es del catálogo
-// (Sagas, Géneros) cuelga de Buscar, que es donde se descubre. Por eso Sagas NO
-// entra en esta lista aunque también estuviera enterrada: no es tuya.
-//
-// Se sirve en dos sitios y por eso vive aquí, no dentro de un componente: el
-// menú del avatar (sm+, donde el avatar ES la entrada a lo tuyo) y la fila de
-// accesos del perfil propio (móvil, donde la entrada es la pestaña Perfil de la
-// barra inferior). Misma lista, dos formas de enseñarla, un solo sitio que tocar.
+export type AppMenuItem = {
+  key: "play" | "pet" | "settings";
+  href: string;
+  /** Clave de traducción bajo `nav.you`. */
+  labelKey: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+};
+
+export function appMenuItems(authenticated: boolean): AppMenuItem[] {
+  const items: AppMenuItem[] = [
+    { key: "play", href: "/partidas", labelKey: "play", Icon: DiceIcon },
+    { key: "pet", href: "/mascota", labelKey: "pet", Icon: AcornIcon },
+    { key: "settings", href: "/ajustes", labelKey: "settings", Icon: GearIcon },
+  ];
+  return authenticated ? items : items.filter((item) => item.key === "play");
+}
+
+// ---------------------------------------------------------------------------
+// Compatibilidad del antiguo YouRow, ya retirado del perfil.
+// ---------------------------------------------------------------------------
 export type YouItem = {
   key: "profile" | "experiences" | "play" | "pet" | "notes" | "stats" | "settings";
   href: string;
@@ -114,13 +118,8 @@ export function youItems(username: string): YouItem[] {
       labelKey: "profile",
       Icon: UserIcon,
     },
-    // Partidas cuelga de «Tú» por la regla de reparto de arriba: es TUYO. La barra
-    // de cinco no se toca (decisión previa), y el anónimo llega por URL o por la
-    // PWA — no entra en anonNavItems de momento.
     { key: "play", href: "/partidas", labelKey: "play", Icon: DiceIcon },
     {key:"experiences",href:"/experiencias",labelKey:"experiences",Icon:CompassIcon},
-    // Mascota cuelga de «Tú»: es tuya y no es un destino diario (la compañera
-    // flotante lo es). La barra de cinco no se toca (spec 2026-09-02 §7).
     { key: "pet", href: "/mascota", labelKey: "pet", Icon: AcornIcon },
     { key: "notes", href: "/notas", labelKey: "notes", Icon: NoteIcon },
     { key: "stats", href: "/estadisticas", labelKey: "stats", Icon: PollIcon },

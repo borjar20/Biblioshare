@@ -22,6 +22,7 @@ import {
   revalidateItemPage,
   revalidateAllItemPages,
   revalidateProfile,
+  revalidateProfilePages,
   revalidateClubPages,
   revalidateReadingLog,
   revalidateInteraction,
@@ -69,6 +70,11 @@ describe("revalidate helpers", () => {
     expect(calls()).toEqual(["/u/borja"]);
   });
 
+  it("las mutaciones del antiguo Rincón refrescan su destino en Biblioteca", () => {
+    revalidateProfilePages();
+    expect(calls()).toEqual(["/u/[username] page", "/coleccion/rincon"]);
+  });
+
   // El calendario y la ficha de evento entran desde el seguimiento de eventos
   // (spec 2026-08-04): seguir cambia el contador de la ficha y la marca de
   // «seguido» de la rejilla, y sin revalidarlas el optimismo de la UI no tendría
@@ -81,12 +87,13 @@ describe("revalidate helpers", () => {
       "/club/[slug]/calendario page",
       "/club/[slug]/evento/[id] page",
       "/clubes",
+      "/comunidad",
     ]);
   });
 
   it("revalidateReadingLog toca ficha + perfiles + feed", () => {
     revalidateReadingLog("movie", "xyz");
-    expect(calls()).toEqual(["/pelicula/xyz", "/u/[username] page", "/"]);
+    expect(calls()).toEqual(["/pelicula/xyz", "/u/[username] page", "/coleccion/rincon", "/"]);
   });
 
   it("revalidateReadingLog invalida la etiqueta de nota (read-your-own-writes)", () => {
@@ -106,6 +113,7 @@ describe("revalidate helpers", () => {
       "/club/[slug]/calendario page",
       "/club/[slug]/evento/[id] page",
       "/clubes",
+      "/comunidad",
     ]);
   });
 });

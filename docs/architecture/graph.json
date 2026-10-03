@@ -4,7 +4,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-10-03",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; producción pendiente · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; producción pendiente",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; producción pendiente · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; producción pendiente · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -219,10 +219,17 @@
       "label": "/coleccion",
       "layer": "route",
       "kind": "route",
-      "summary": "Biblioteca del usuario, con subpestañas Colecciones · Todo · Sagas. /coleccion/c/[id] abre una colección concreta.",
+      "summary": "Biblioteca propia con Todo · Colecciones · Sagas y herramientas visibles: Cuaderno (/notas), Estadísticas (/estadisticas) y Retos y objetivos (/coleccion/rincon). /coleccion/c/[id] abre una colección; el Rincón deriva su dueño de la sesión y reutiliza RinconTab.",
       "files": [
         "src/app/coleccion",
-        "src/app/coleccion/c/[id]"
+        "src/app/coleccion/c/[id]",
+        "src/app/coleccion/rincon/page.tsx",
+        "src/app/coleccion/rincon/layout.tsx",
+        "src/components/library/library-tools.tsx",
+        "src/app/u/[username]/_tabs/rincon-tab.tsx"
+      ],
+      "gotchas": [
+        "RouteMessages anidado REEMPLAZA messages, no lo fusiona con Biblioteca. El layout de /coleccion/rincon conserva collection, library y search además de stats, challenges, notes y rincon; RouteMessages añade BASE. Omitir search.types rompe las islas de retos aunque el layout padre lo tenga."
       ]
     },
     {
@@ -276,15 +283,32 @@
       ]
     },
     {
+      "id": "r-comunidad",
+      "label": "/comunidad",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Hub autenticado con vistas Clubes · Personas por query. ClubLists conserva listMyClubs, discoverPublicClubs y getClubUnreadCounts; PeopleResults reutiliza searchProfiles y solo muestra perfiles públicos. Los filtros viven en URL, con Suspense y permisos existentes; /buscar conserva su modo Personas compatible.",
+      "files": [
+        "src/app/comunidad/page.tsx",
+        "src/app/comunidad/layout.tsx",
+        "src/components/clubs/club-lists.tsx",
+        "src/app/buscar/people-results.tsx"
+      ],
+      "gotchas": [
+        "ClubCard y ClubForm son cliente y requieren club.*: /comunidad/layout.tsx declara RouteMessages con club. PeopleResults es RSC, compone su copy en servidor y no monta FollowButton; no necesita serializar social ni users al navegador."
+      ]
+    },
+    {
       "id": "r-clubes",
       "label": "/clubes · /club/[slug]",
       "layer": "route",
       "kind": "route",
-      "summary": "Directorio de clubes, muro, calendario, miembros, actividades (/club/[slug]/actividad/[id]) y la ficha de un evento (/club/[slug]/evento/[id]).",
+      "summary": "Directorio heredado /clubes y fichas /club/[slug]: muro, calendario, miembros, actividades y eventos. /clubes y /comunidad comparten ClubLists con lecturas por petición e invitaciones/no leídos actuales.",
       "files": [
         "src/app/clubes",
         "src/app/club/[slug]",
-        "src/app/club/[slug]/evento/[id]"
+        "src/app/club/[slug]/evento/[id]",
+        "src/components/clubs/club-lists.tsx"
       ]
     },
     {
@@ -292,10 +316,11 @@
       "label": "/u/[username]",
       "layer": "route",
       "kind": "route",
-      "summary": "Perfil público con pestañas Actividad · Estadísticas · Rincón, más /seguidores y /siguiendo. Sujeto a visibilidad de perfil.",
+      "summary": "Perfil centrado en la persona y lo que comparte: Actividad · Experiencias; el visitante añade Biblioteca. Sin fila YouRow ni pestañas de herramientas. El dueño conserva redirecciones de antiguos tab=panel/estadisticas, rincon y coleccion hacia sus áreas; el tercero cae en Actividad. Visibilidad del perfil y /seguidores · /siguiendo se conservan.",
       "files": [
         "src/app/u/[username]",
-        "src/app/u/[username]/_tabs"
+        "src/app/u/[username]/_tabs",
+        "src/components/section-tabs.tsx"
       ]
     },
     {
@@ -313,7 +338,7 @@
       "label": "/estadisticas",
       "layer": "route",
       "kind": "route",
-      "summary": "Panel de métricas solo-dueño. EXISTE (algún doc antiguo dice que se eliminó; es falso).",
+      "summary": "Panel de métricas solo-dueño, accesible desde las herramientas de Biblioteca. El perfil ya no expone una pestaña Estadísticas; sus enlaces antiguos del dueño redirigen aquí conservando filtros.",
       "files": [
         "src/app/estadisticas"
       ]
@@ -323,7 +348,7 @@
       "label": "/notas",
       "layer": "route",
       "kind": "route",
-      "summary": "Citas y notas del usuario, filtrables por etiqueta. Cada nota puede exportarse como tarjeta PNG.",
+      "summary": "Cuaderno privado accesible desde Biblioteca: citas y notas filtrables por etiqueta, con exportación como tarjeta PNG.",
       "files": [
         "src/app/notas"
       ]
@@ -517,9 +542,15 @@
       "label": "components/nav",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Navegación inferior/lateral, buscador rápido y badges de no leídos.",
+      "summary": "Fuente única de cinco destinos: Inicio · Biblioteca · Experiencias · Comunidad · Buscar. TopNav desde 768px y BottomNav por debajo; avatar directo al perfil en ambos. AppMenu global separado ofrece Partidas, Mascota y Ajustes, o solo Partidas sin sesión. Conserva campana/compañera y pantallas a sangre.",
       "files": [
-        "src/components/nav"
+        "src/components/nav",
+        "src/components/header.tsx",
+        "src/components/nav/nav-items.ts",
+        "src/components/nav/app-menu.tsx"
+      ],
+      "gotchas": [
+        "AppMenu se reinicia por pathname + query bajo Suspense de AppShell: cambiar tabs por query o recorrer el historial también debe cerrar el menú. El avatar es un enlace, no su disparador."
       ]
     },
     {
@@ -895,9 +926,10 @@
       "layer": "domain",
       "kind": "module",
       "size": 2,
-      "summary": "Perfil, objetivos anuales y avatar (sube a Storage con service-role).",
+      "summary": "Perfil, búsqueda acotada de perfiles públicos con searchProfiles, objetivos anuales y avatar (sube a Storage con service-role).",
       "files": [
-        "src/lib/profile"
+        "src/lib/profile",
+        "src/lib/profile/search-profiles.ts"
       ]
     },
     {
@@ -917,7 +949,7 @@
       "layer": "domain",
       "kind": "module",
       "size": 4,
-      "summary": "Pestaña Comunidad de la ficha (valoraciones ajenas) y el Rincón del perfil (sorteo entre la pila pendiente).",
+      "summary": "Pestaña Comunidad de la ficha (valoraciones ajenas) y sorteo entre la pila pendiente del Rincón privado de Biblioteca (/coleccion/rincon). El hub /comunidad reutiliza lectores de lib/clubs y lib/profile, no este módulo.",
       "files": [
         "src/lib/community",
         "src/lib/rincon"
@@ -941,7 +973,7 @@
       "kind": "module",
       "size": 3,
       "hub": true,
-      "summary": "El vocabulario de invalidación: revalidateFeed, revalidateItemPage, revalidateLibrary, revalidateReadingLog, revalidateInteraction, revalidateSagaPage, revalidateClubPages… más useOptimisticAction.",
+      "summary": "Vocabulario de invalidación: revalidateFeed, revalidateItemPage, revalidateLibrary, revalidateLibraryCorner, revalidateProfilePages, revalidateInteraction, revalidateSagaPage y revalidateClubPages, más useOptimisticAction. Los clubes invalidan también /comunidad; las mutaciones del antiguo Rincón invalidan /coleccion/rincon.",
       "files": [
         "src/lib/reactivity/revalidate.ts",
         "src/lib/reactivity/use-optimistic-action.ts"
@@ -2081,11 +2113,6 @@
       "kind": "renders"
     },
     {
-      "from": "r-perfil",
-      "to": "c-stats",
-      "kind": "renders"
-    },
-    {
       "from": "r-estadisticas",
       "to": "c-stats",
       "kind": "renders"
@@ -2429,16 +2456,6 @@
       "kind": "reads"
     },
     {
-      "from": "r-perfil",
-      "to": "m-stats",
-      "kind": "reads"
-    },
-    {
-      "from": "r-perfil",
-      "to": "m-community",
-      "kind": "reads"
-    },
-    {
       "from": "r-estadisticas",
       "to": "m-stats",
       "kind": "reads"
@@ -2485,7 +2502,8 @@
     {
       "from": "m-reactivity",
       "to": "r-coleccion",
-      "kind": "revalidates"
+      "kind": "revalidates",
+      "label": "revalidateLibrary y revalidateLibraryCorner (/coleccion/rincon), también desde revalidateProfilePages"
     },
     {
       "from": "m-clubs",
@@ -3188,6 +3206,113 @@
       "from": "m-social",
       "to": "m-experiences",
       "kind": "calls"
+    },
+    {
+      "from": "proxy",
+      "to": "r-comunidad",
+      "kind": "renders"
+    },
+    {
+      "from": "r-comunidad",
+      "to": "c-clubs",
+      "kind": "renders",
+      "label": "ClubLists y controles de clubes reutilizados"
+    },
+    {
+      "from": "r-comunidad",
+      "to": "c-social",
+      "kind": "renders",
+      "label": "PeopleResults compone enlaces a perfil y UserAvatar"
+    },
+    {
+      "from": "r-comunidad",
+      "to": "m-clubs",
+      "kind": "reads",
+      "label": "listMyClubs · discoverPublicClubs · getClubUnreadCounts"
+    },
+    {
+      "from": "r-comunidad",
+      "to": "m-profile",
+      "kind": "reads",
+      "label": "PeopleResults → searchProfiles (solo perfiles públicos)"
+    },
+    {
+      "from": "m-reactivity",
+      "to": "r-comunidad",
+      "kind": "revalidates",
+      "label": "revalidateClubPages"
+    },
+    {
+      "from": "m-reactivity",
+      "to": "r-clubes",
+      "kind": "revalidates",
+      "label": "revalidateClubPages"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "m-community",
+      "kind": "reads",
+      "label": "RinconTab → getSorteoPool"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "m-challenges",
+      "kind": "reads",
+      "label": "RinconTab → retos y progreso"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "m-notes",
+      "kind": "reads",
+      "label": "RinconTab → Memorizar y contadores"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "m-stats",
+      "kind": "reads",
+      "label": "RinconTab → actividad semanal y objetivo diario"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "m-profile",
+      "kind": "reads",
+      "label": "RinconTab → getOwnProfile para objetivo diario"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "c-stats",
+      "kind": "renders",
+      "label": "Rincón → StatPanel y DailyGoalForm"
+    },
+    {
+      "from": "r-coleccion",
+      "to": "c-notes",
+      "kind": "renders",
+      "label": "Rincón → MemorizeCard y NotesCountsCard"
+    },
+    {
+      "from": "r-perfil",
+      "to": "m-library",
+      "kind": "reads",
+      "label": "Cabecera y Biblioteca del visitante"
+    },
+    {
+      "from": "r-perfil",
+      "to": "c-library",
+      "kind": "renders",
+      "label": "Biblioteca del visitante"
+    },
+    {
+      "from": "r-perfil",
+      "to": "m-experiences",
+      "kind": "reads",
+      "label": "ExperiencesTab → getProfileExperiences"
+    },
+    {
+      "from": "r-perfil",
+      "to": "c-experiences",
+      "kind": "renders",
+      "label": "Experiencias del perfil"
     }
   ],
   "flows": [
@@ -3718,8 +3843,8 @@
         },
         {
           "node": "m-reactivity",
-          "action": "revalidateClubPages() refresca muro, calendario y no leídos",
-          "file": "src/lib/reactivity/revalidate.ts:68"
+          "action": "revalidateClubPages() refresca muro, calendario, actividades/eventos y directorios /clubes · /comunidad con sus no leídos",
+          "file": "src/lib/reactivity/revalidate.ts"
         }
       ]
     },
@@ -3727,12 +3852,17 @@
       "id": "flow-stats",
       "name": "Panel de estadísticas",
       "category": "core",
-      "summary": "Todo se deriva de passes + progress_sessions en el servidor; no hay tabla de métricas agregadas.",
+      "summary": "Panel privado abierto desde Biblioteca; todo se deriva de passes + progress_sessions en el servidor, sin tabla de métricas agregadas ni pestaña estadística del perfil.",
       "entrypoint": "src/app/estadisticas",
       "steps": [
         {
+          "node": "r-coleccion",
+          "action": "LibraryTools abre el panel Estadísticas como herramienta de Biblioteca",
+          "file": "src/components/library/library-tools.tsx"
+        },
+        {
           "node": "r-estadisticas",
-          "action": "Ruta solo-dueño; el perfil público expone una versión reducida en su pestaña Estadísticas",
+          "action": "Ruta solo-dueño; los enlaces personales antiguos del perfil redirigen aquí conservando filtros",
           "file": "src/app/estadisticas"
         },
         {
@@ -3935,7 +4065,7 @@
         },
         {
           "node": "m-reactivity",
-          "action": "revalidateClubPages() refresca muro, calendario y la ficha del evento",
+          "action": "revalidateClubPages() refresca muro, calendario, actividades/eventos y directorios /clubes · /comunidad con sus no leídos",
           "file": "src/lib/reactivity/revalidate.ts"
         }
       ]

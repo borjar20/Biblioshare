@@ -6083,3 +6083,51 @@ decisiones explícitas e independientes. La audiencia de perfil no publica por s
 sola en el feed. Las acciones contextuales conservan la revisión vigente y todos
 los valores de configuración al cambiar un campo. Las fotos usan los mismos
 endpoints autorizados; no se añade caché de datos dependientes de la sesión.
+
+## 2026-10-03 — las áreas de la app tienen entrada propia; el perfil muestra a la persona
+
+La barra principal para quien tiene sesión pasa a **Inicio · Biblioteca ·
+Experiencias · Comunidad · Buscar**, con los mismos destinos en móvil y
+escritorio. El avatar enlaza directamente al perfil en ambos tamaños. Su dueño
+ve Actividad y Experiencias; al visitar otro perfil se añade Biblioteca. El
+perfil concentra identidad y contenido compartido, y deja de ser la puerta de
+entrada a las herramientas de la app. Este reparto sustituye los puntos 1, 2,
+6 y 7 de la decisión de navegación del 2026-08-21: se retira la fila «Lo tuyo»
+y el avatar deja de desplegar destinos.
+
+**Más** es un menú global separado del avatar: reúne Partidas, Mascota y
+Ajustes. Partidas conserva un acceso secundario para no ocupar una entrada
+principal y aparece también sin sesión, porque su juego local ya admite ese
+uso. Esto sustituye la consecuencia de acceso anónimo oculto del punto 2 de la
+revisión de Play del 2026-08-30 (3); los shortcuts siguen siendo válidos. La
+cabecera con enlaces principales empieza en `md` (768 px) y la barra inferior
+queda por debajo: cinco destinos y las acciones no caben con claridad a 640 px.
+Los enlaces del menú siguen siendo enlaces reales; su cierre contempla también
+los cambios de query y las visitas del historial, no solo el `pathname`.
+
+Biblioteca muestra accesos a **Cuaderno**, **Retos y objetivos** y
+**Estadísticas**. `/coleccion/rincon` reutiliza los objetivos, retos, memorizar y
+sorteo del Rincón anterior, sin cambiar sus datos. Las pestañas privadas antiguas
+del perfil propio redirigen a sus nuevas rutas; Estadísticas conserva los
+parámetros de periodo, tipo y medida, y el Rincón conserva la vista de archivados.
+El mismo alias en un perfil ajeno no abre herramientas privadas. Los retornos
+de estas pantallas llevan a Biblioteca.
+
+Comunidad reúne **Clubes** y **Personas** en `/comunidad`. La lista de clubes
+se comparte mediante `ClubLists`; la ruta histórica `/clubes` sigue disponible.
+Personas reutiliza `PeopleResults` y la búsqueda de perfiles existente, con
+formulario GET. Son lecturas de la petición bajo los permisos/RLS vigentes;
+la agrupación no añade caché compartida de datos de sesión ni modifica el esquema.
+
+Las invalidaciones acompañan los nuevos destinos: `revalidateProfilePages`
+incluye `revalidateLibraryCorner`, una edición correcta de objetivos invalida
+feed y Rincón, y `revalidateClubPages` incluye Comunidad. Los layouts cargan los
+mensajes de sus islas cliente explícitamente: el provider del Rincón reemplaza
+al de Biblioteca y conserva `collection`, `library` y `search`, además de
+`challenges`, `notes`, `rincon` y `stats`; Comunidad envía `club`, mientras
+Personas compone sus textos en servidor.
+
+Los recorridos principales se han verificado en navegador real contra
+build/start local con datos de desarrollo. El estado de producción de
+Experiencias sigue pendiente en #1293. La evidencia y el alcance final de los
+controles están en `docs/testing/2026-10-03-navegacion-app.md`.

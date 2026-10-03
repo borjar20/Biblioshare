@@ -1,19 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// IA de navegación + página de Ajustes (acción 8 de la auditoría 2026-08:
-// F3-010, F4-007, F1-025).
-//
-// Lo que protege este fichero NO es que las páginas existan —ya existían
-// todas— sino que se pueda LLEGAR a ellas. El fallo que se arregla aquí es el
-// más silencioso que hay: `/cuenta/contrasena` tenía cero enlaces en `src/` y
-// aun así respondía 200, así que ningún test de "la ruta funciona" lo habría
-// pillado nunca. Por eso los asertos de abajo siempre empiezan navegando con
-// clics desde el perfil, no con `page.goto()` al destino.
-
+// Los recorridos parten de Inicio: que una ruta responda 200 no demuestra
+// que sea alcanzable. Son lecturas con la cuenta persistente, sin escribir.
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
 const USERNAME = process.env.TEST_USER_USERNAME!;
 
+// El login introduce credenciales; estos specs no guardan traces.
+test.use({ trace: "off" });
 test.beforeEach(async ({ page }) => {
   page.setDefaultTimeout(20_000);
   page.setDefaultNavigationTimeout(60_000);
@@ -27,149 +21,204 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
-test.describe("IA de navegación", () => {
-  test.skip(
-    !EMAIL || !PASSWORD || !USERNAME,
-    "TEST_USER_* no configurado",
-  );
+function primaryNav(page: Page) {
+  // Los roles excluyen la copia del otro breakpoint y el DOM de Activity.
+  return page.getByRole("navigation", { name: "Navegación principal" });
+}
 
-  test("el engranaje del perfil lleva a /ajustes, que es una página", async ({
-    page,
-  }) => {
-    await login(page);
-    await page.goto(`/u/${USERNAME}`);
+async function openSettings(page: Page) {
+  await page.getByRole("button", { name: "Más opciones" }).click();
+  await page.getByRole("menuitem", { name: "Ajustes" }).click();
+  await expect(page).toHaveURL(/\/ajustes$/);
+  await expect(page.getByRole("menu")).toHaveCount(0);
+}
 
-    // Enlace, no botón: antes era el disparador de un <dialog>. Que sea un
-    // <a href> es la mitad del arreglo — una pantalla de ajustes tiene que
-    // poder marcarse, compartirse y volverse con el botón atrás.
-    const gear = page.getByRole("link", { name: "Ajustes" });
-    await expect(gear).toBeVisible();
-    await gear.click();
+for (const width of [390, 768]) {
+  test.describe(`IA de navegación a ${width}px`, () => {
+    test.skip(!EMAIL || !PASSWORD || !USERNAME, "TEST_USER_* no configurado");
+    test.use({ viewport: { width, height: 900 }, hasTouch: true, isMobile: width < 768 });
 
-    await expect(page).toHaveURL(/\/ajustes$/);
-    await expect(
-      page.getByRole("heading", { name: "Ajustes", level: 1 }),
-    ).toBeVisible();
+    test("los cinco destinos se alcanzan desde Inicio sin pasar por el perfil", async ({ page }) => {
+      await login(page);
+      const nav = primaryNav(page);
+      await expect(nav).toHaveCount(1);
+      await expect(nav.getByRole("link")).toHaveText(["Inicio", "Biblioteca", "Experiencias", "Comunidad", "Buscar"]);
+      await expect(nav.getByRole("link", { name: "Inicio", exact: true })).toHaveAttribute("aria-current", "page");
+      for (const [name, path, heading] of [
+        ["Experiencias", "/experiencias", "Experiencias"],
+        ["Comunidad", "/comunidad", "Comunidad"],
+        ["Buscar", "/buscar", "Buscar"],
+        ["Biblioteca", "/coleccion", "Mi Biblioteca"],
+      ]) {
+        const link = nav.getByRole("link", { name, exact: true });
+        await expect(link).toHaveAttribute("href", path);
+        await link.click();
+        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
+        await expect(link).toHaveAttribute("aria-current", "page");
+      }
+      await expect(nav.getByRole("link", { name: "Partidas" })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Mi perfil", exact: true })).toBeVisible();
+    });
 
-    // Las cuatro secciones. Si alguna desapareciera, su contenido volvería a
-    // no tener casa (que es de donde venimos).
-    for (const section of ["Perfil", "Cuenta", "Tus datos", "Avisos"]) {
-      await expect(
-        page.getByRole("heading", { name: section, level: 2 }),
-      ).toBeVisible();
-    }
+    test("Biblioteca reúne Cuaderno, Retos y objetivos y Estadísticas", async ({ page }) => {
+      await login(page);
+      const library = primaryNav(page).getByRole("link", { name: "Biblioteca", exact: true });
+      await library.click();
+      const tools = page.getByRole("navigation", { name: "Herramientas de tu biblioteca" });
+      await expect(tools.getByRole("link")).toHaveText(["Cuaderno", "Retos y objetivos", "Estadísticas"]);
+      for (const [name, path, heading] of [
+        ["Cuaderno", "/notas", "Cuaderno"],
+        ["Retos y objetivos", "/coleccion/rincon", "Retos y objetivos"],
+        ["Estadísticas", "/estadisticas", "Estadísticas"],
+      ]) {
+        const link = tools.getByRole("link", { name, exact: true });
+        await expect(link).toHaveAttribute("href", path);
+        const box = await link.boundingBox();
+        expect(box, `${name}: control visible`).not.toBeNull();
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+        await link.click();
+        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
+        if (path === "/coleccion/rincon") {
+          // El objetivo es el primer editor, antes de los retos existentes.
+          // Abrir y cancelar protege sus namespaces sin escribir en la cuenta.
+          await page.getByRole("button", { name: "Editar", exact: true }).first().click();
+          await expect(page.getByRole("spinbutton", { name: "Objetivo diario de lectura (min)", exact: true })).toBeVisible();
+          await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+        }
+        await expect(library).toHaveAttribute("aria-current", "page");
+        await library.click();
+        await expect(page).toHaveURL(/\/coleccion$/);
+      }
+    });
 
-    // Cerrar sesión sigue existiendo: se mudó desde la hoja del perfil y es
-    // fácil perderlo en una mudanza.
-    await expect(
-      page.getByRole("button", { name: "Cerrar sesión" }),
-    ).toBeVisible();
+    test("el avatar abre un perfil sin la antigua fila de herramientas", async ({ page }) => {
+      await login(page);
+      const avatar = page.getByRole("link", { name: "Mi perfil", exact: true });
+      await expect(avatar).toHaveAttribute("href", `/u/${USERNAME}`);
+      await avatar.click();
+      await expect(page).toHaveURL(new RegExp(`/u/${USERNAME}$`));
+      await expect(page.getByText(`@${USERNAME}`, { exact: true }).filter({ visible: true })).toBeVisible();
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await expect(page.getByRole("navigation", { name: "Lo tuyo" })).toHaveCount(0);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("link", { name: "Actividad", exact: true })).toHaveAttribute("href", `/u/${USERNAME}?tab=actividad`);
+      await expect(main.getByRole("link", { name: "Experiencias", exact: true })).toHaveAttribute("href", `/u/${USERNAME}?tab=experiencias`);
+      for (const name of ["Cuaderno", "Estadísticas", "Rincón", "Partidas", "Mascota"]) {
+        await expect(main.getByRole("link", { name, exact: true })).toHaveCount(0);
+      }
+      // El acceso a editar la identidad del dueño sigue siendo un enlace real.
+      await expect(main.getByRole("link", { name: "Ajustes", exact: true })).toHaveAttribute("href", "/ajustes");
+      await page.getByRole("button", { name: "Más opciones" }).click();
+      const menu = page.getByRole("menu", { name: "Más opciones" });
+      await expect(menu.getByRole("menuitem")).toHaveText(["Partidas", "Mascota", "Ajustes"]);
+      for (const [name, path] of [["Partidas", "/partidas"], ["Mascota", "/mascota"], ["Ajustes", "/ajustes"]]) {
+        await expect(menu.getByRole("menuitem", { name, exact: true })).toHaveAttribute("href", path);
+      }
+    });
   });
+}
 
-  test("desde Ajustes se llega a importar, exportar y contraseña", async ({
-    page,
-  }) => {
+test.describe("IA de navegación con teclado", () => {
+  test.skip(!EMAIL || !PASSWORD || !USERNAME, "TEST_USER_* no configurado");
+
+  test("Más lleva a Ajustes y conserva los accesos de cuenta", async ({ page }) => {
     await login(page);
-    await page.goto("/ajustes");
-
-    // Los tres caminos que la auditoría dio por enterrados. Importar solo se
-    // alcanzaba desde DENTRO de la hoja de «Editar perfil»; la contraseña, solo
-    // desde el correo de recuperación.
-    await expect(
-      page.getByRole("link", { name: "Importar biblioteca" }),
-    ).toHaveAttribute("href", "/importar");
-    await expect(
-      page.getByRole("link", { name: "Exportar CSV" }),
-    ).toHaveAttribute("href", "/api/export");
-
+    await openSettings(page);
+    await expect(page.getByRole("heading", { name: "Ajustes", level: 1 })).toBeVisible();
+    for (const section of ["Perfil", "Cuenta", "Tus datos", "Avisos"]) {
+      await expect(page.getByRole("heading", { name: section, level: 2 })).toBeVisible();
+    }
+    await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Importar biblioteca" })).toHaveAttribute("href", "/importar");
+    await expect(page.getByRole("link", { name: "Exportar CSV" })).toHaveAttribute("href", "/api/export");
     await page.getByRole("link", { name: "Cambiar contraseña" }).click();
     await expect(page).toHaveURL(/\/cuenta\/contrasena$/);
-
-    // La pantalla dejó de ser un formulario suelto: tiene título de página y
-    // salida de vuelta a Ajustes.
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Ajustes" }),
-    ).toHaveAttribute("href", "/ajustes");
+    await expect(page.getByRole("link", { name: "Ajustes", exact: true })).toHaveAttribute("href", "/ajustes");
   });
 
-  test("el menú del avatar abre «Tú» y lleva al Cuaderno", async ({ page }) => {
+  test("Más recorre sus enlaces, devuelve el foco y se cierra al volver entre pestañas", async ({ page }) => {
     await login(page);
-
-    const trigger = page.getByRole("button", { name: "Tu cuenta" });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-
-    const menu = page.getByRole("menu");
-    await expect(menu).toBeVisible();
-    for (const item of ["Mi perfil", "Cuaderno", "Estadísticas", "Ajustes"]) {
-      await expect(menu.getByRole("menuitem", { name: item })).toBeVisible();
-    }
-
-    // Son enlaces reales, no botones que empujan la ruta: se pueden abrir en
-    // otra pestaña. El aserto lo comprueba por el href, que un <button> no
-    // tendría.
-    await expect(
-      menu.getByRole("menuitem", { name: "Cuaderno" }),
-    ).toHaveAttribute("href", "/notas");
-
-    await menu.getByRole("menuitem", { name: "Cuaderno" }).click();
-    await expect(page).toHaveURL(/\/notas$/);
-    // Y se cierra al navegar: con Cache Components el componente no se
-    // desmonta en navegación soft y se quedaría abierto sobre la página nueva.
+    await primaryNav(page).getByRole("link", { name: "Comunidad", exact: true }).click();
+    const sections = page.getByRole("navigation", { name: "Secciones de Comunidad" });
+    await sections.getByRole("link", { name: "Personas", exact: true }).click();
+    await expect(page).toHaveURL(/\/comunidad\?tab=personas$/);
+    const trigger = page.getByRole("button", { name: "Más opciones" });
+    await trigger.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("menuitem", { name: "Partidas" })).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(page.getByRole("menuitem", { name: "Ajustes" })).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(page.getByRole("menuitem", { name: "Partidas" })).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("menuitem", { name: "Ajustes" })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.press("ArrowUp");
+    await expect(page.getByRole("menuitem", { name: "Ajustes" })).toBeFocused();
+    // Mismo pathname: el historial solo cambia la query, sin clic exterior.
+    await page.goBack();
+    await expect(page).toHaveURL(/\/comunidad$/);
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await page.goForward();
+    await expect(page).toHaveURL(/\/comunidad\?tab=personas$/);
     await expect(page.getByRole("menu")).toHaveCount(0);
   });
 
-  test("Sagas se ve como un destino en Buscar", async ({ page }) => {
-    // /buscar es pública: este acceso tiene que existir también sin sesión.
-    await page.goto("/buscar");
+  test("Comunidad busca clubes sin perder foco y restaura el filtro al volver", async ({ page }) => {
+    await login(page);
+    const community = primaryNav(page).getByRole("link", { name: "Comunidad", exact: true });
+    await community.click();
+    const search = page.getByPlaceholder("Buscar clubes...", { exact: true }).filter({ visible: true });
+    await search.fill("cine");
+    await expect(page).toHaveURL(/\/comunidad\?q=cine$/);
+    await expect(search).toBeFocused();
+    await search.press("End");
+    await search.pressSequentially(" y libros");
+    await expect(page).toHaveURL(/\/comunidad\?q=cine(?:%20|\+)y(?:%20|\+)libros$/);
+    await expect(search).toHaveValue("cine y libros");
+    await expect(search).toBeFocused();
+    await page.getByRole("navigation", { name: "Secciones de Comunidad" }).getByRole("link", { name: "Clubes", exact: true }).click();
+    await expect(page).toHaveURL(/\/comunidad$/);
+    await expect(search).toHaveValue("");
+    await page.goBack();
+    await expect(page).toHaveURL(/\/comunidad\?q=cine(?:%20|\+)y(?:%20|\+)libros$/);
+    await expect(search).toHaveValue("cine y libros");
+    await primaryNav(page).getByRole("link", { name: "Inicio", exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await community.click();
+    await expect(page).toHaveURL(/\/comunidad$/);
+    await expect(search).toHaveValue("");
+  });
 
-    const link = page.getByRole("link", { name: "Explorar sagas" });
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", "/sagas");
-
-    // Era una línea de 11px en versalitas grises, indistinguible de un rótulo
-    // de sección. Ahora tiene cuerpo de control: se mide, no se supone.
-    const box = await link.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(36);
-
-    await link.click();
-    await expect(page).toHaveURL(/\/sagas$/);
+  test("Personas se busca dentro de Comunidad y el resultado abre un perfil", async ({ page }) => {
+    await login(page);
+    await primaryNav(page).getByRole("link", { name: "Comunidad", exact: true }).click();
+    await page.getByRole("navigation", { name: "Secciones de Comunidad" }).getByRole("link", { name: "Personas", exact: true }).click();
+    await page.getByRole("searchbox", { name: "Buscar personas", exact: true }).fill("devtest");
+    await page.getByRole("button", { name: "Buscar", exact: true }).click();
+    await expect(page).toHaveURL(/\/comunidad\?tab=personas&q=devtest$/);
+    const result = page.getByRole("main").getByRole("link").filter({ hasText: "@devtest" });
+    await expect(result).toHaveAttribute("href", "/u/devtest");
+    await result.click();
+    await expect(page).toHaveURL(/\/u\/devtest$/);
+    await expect(page.getByText("@devtest", { exact: true }).filter({ visible: true })).toBeVisible();
   });
 });
 
-// El bloque móvil va aparte porque `test.use` es por fichero o por describe, y
-// aquí hace falta `isMobile: true` además de `hasTouch`: es lo que pone al
-// navegador en `pointer: coarse`. Sin eso, un `setViewportSize` a 390 sigue
-// siendo un ratón, y las reglas táctiles del sistema no se activan.
-test.describe("IA de navegación en móvil", () => {
-  test.skip(!EMAIL || !PASSWORD || !USERNAME, "TEST_USER_* no configurado");
-  test.use({ viewport: { width: 390, height: 700 }, hasTouch: true, isMobile: true });
-
-  test("los mismos destinos cuelgan del perfil", async ({ page }) => {
-    await login(page);
-    await page.goto(`/u/${USERNAME}`);
-
-    // En móvil no hay avatar en la topbar: la entrada a lo tuyo es la pestaña
-    // Perfil de la barra inferior, y de ahí cuelga la fila.
-    await expect(page.getByRole("button", { name: "Tu cuenta" })).toHaveCount(0);
-
-    const row = page.getByRole("navigation", { name: "Lo tuyo" });
-    await expect(row).toBeVisible();
-    for (const item of ["Cuaderno", "Estadísticas", "Ajustes"]) {
-      const link = row.getByRole("link", { name: item });
-      await expect(link).toBeVisible();
-      // Regla táctil de 44px (F4-015). Se mide el RECTÁNGULO, no la clase: una
-      // clase puede estar puesta y no compilar (#722), y `tap-44` además
-      // agranda el área con un pseudo-elemento que `boundingBox()` no ve — por
-      // eso estos chips llevan `min-h-[44px]` de verdad.
-      const box = await link.boundingBox();
-      expect(box, `${item} debe tener caja`).not.toBeNull();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
-    }
-
-    await row.getByRole("link", { name: "Estadísticas" }).click();
-    await expect(page).toHaveURL(/\/estadisticas$/);
-  });
+test("Sagas se ve como un destino en Buscar sin sesión", async ({ page }) => {
+  await page.goto("/buscar");
+  const link = page.getByRole("link", { name: "Explorar sagas" });
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute("href", "/sagas");
+  const box = await link.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.height).toBeGreaterThanOrEqual(36);
+  await link.click();
+  await expect(page).toHaveURL(/\/sagas$/);
 });

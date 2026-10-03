@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Derivado · generado desde el código el 2026-10-03; incluye captura breve y composición de Experiencias como álbum desde el recuerdo #1293 (local/dev, producción pendiente), y convergencia de créditos de autor #633 verificada con PostgREST local, contrato de reemplazo de partida #964 y configuración exacta de reloj/selector común #995, además de hidratación Google-only y rescate de shells vacías #1290, despacho autenticado e invalidación por lotes del ZIP #1250, economía/fondos R5, referencias de eventos en fusiones de libro #875 y retorno administrativo al login #1271; las demás fuentes constan en meta.verifiedAgainst]**
+> **[Derivado · generado desde el código el 2026-10-03; delta de navegación por áreas verificado contra código, unitarios focales e integridad del mapa (11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 4304 unitarios PASS). Incluye cinco destinos principales, Comunidad, herramientas de Biblioteca y perfil centrado en lo compartido; conserva captura breve y álbum de Experiencias #1293 (local/dev, producción pendiente), y las verificaciones anteriores de créditos #633, Partidas #964/#995, hidratación #1290, ZIP #1250, economía R5, fusiones #875 y retorno al login #1271. Las fuentes y el alcance de cada delta constan en meta.verifiedAgainst]**
 
 Dos vistas de lo mismo, pensadas para lectores distintos:
 
@@ -14,6 +14,21 @@ Dos vistas de lo mismo, pensadas para lectores distintos:
 [ARQUITECTURA.md](../ARQUITECTURA.md); para el esquema,
 [data-model.md](../requirements/data-model.md). Si este mapa los contradice, están
 ellos en lo cierto y el mapa está viejo.
+
+La navegación actual sale de `src/components/nav/nav-items.ts`: Inicio,
+Biblioteca, Experiencias, Comunidad y Buscar. `AppMenu` reúne Partidas, Mascota
+y Ajustes; el avatar enlaza directamente al perfil. `/comunidad` reutiliza
+`ClubLists` y `PeopleResults`, mientras `/coleccion/rincon` conserva el contenido
+privado de `RinconTab` con identidad de sesión. Los nodos `r-comunidad`,
+`r-coleccion`, `r-perfil` y `c-nav` señalan los ficheros reales; el flujo
+`flow-stats` comienza en las herramientas de Biblioteca.
+
+Las rutas nuevas declaran sus providers en los layouts: Comunidad envía
+`club` para sus islas de cliente; el Rincón conserva `collection`, `library`
+y `search` junto con `stats`, `challenges`, `notes` y `rincon`. Un
+`RouteMessages` anidado reemplaza los mensajes del padre; sus gotchas están
+en `r-comunidad` y `r-coleccion`. Los textos de `PeopleResults` se componen
+en servidor.
 
 ## Para agentes: cómo usar `graph.json`
 

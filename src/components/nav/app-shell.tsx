@@ -149,11 +149,10 @@ function BottomNavSkeleton() {
   return (
     <div
       aria-hidden
-      className="sticky bottom-0 z-20 flex justify-around border-t border-border bg-background/90 px-2 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:hidden"
+      className="sticky bottom-0 z-20 flex justify-around border-t border-border bg-background/90 px-2 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden"
     >
-      {/* Columna de 39px: icono (h-5) + gap-1 + línea de etiqueta (~15px), la
-          altura medida de un item real de BottomNav en móvil. */}
-      <div className="flex flex-col items-center gap-1">
+      {/* Misma área mínima de 44px que los destinos de BottomNav. */}
+      <div className="flex min-h-11 flex-col items-center gap-1">
         <div className="h-5 w-5" />
         <div className="h-[15px] w-8" />
       </div>
