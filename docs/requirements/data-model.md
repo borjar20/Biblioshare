@@ -1,5 +1,23 @@
 # Modelo de datos
 
+> **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
+> `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
+> de `public.can_view_target` frente a la reordenación del planner. Antes de recursar,
+> un `CASE` exige el ID solicitado y el target padre del comentario. El test real
+> de planes por índice/secuenciales y el fixture social original pasan en dev con
+> rollback. Producción verificada a las 15:36:19 UTC: cuerpo idéntico a dev, firma,
+> SQL/STABLE, SECURITY DEFINER, search_path, dueño y ACL conservados. Sin fixtures
+> en producción; el corte de las ocho originales, abajo, se conserva.
+
+> **Delta 2026-10-03 (#1293, esquema aplicado y verificado en producción):** Experiencias
+> añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
+> existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
+> ediciones perdidas. Bootstrap vacío final de 281 pasos y pruebas de acceso,
+> participación, fotos/publicación/moderación locales y en dev; carreras de edición
+> y publicación comprobadas localmente. Ocho migraciones aplicadas y objetos,
+> definiciones y permisos verificados en producción el 2026-10-03 a las 10:04 UTC.
+> Ver §8ter y [evidencia de release](../testing/2026-10-03-experiencias-release.md).
+
 > **Delta 2026-10-02 (#1299):** la migración
 > `20261002102913_notification_type_mentioned.sql` rescata al historial local
 > el valor `mentioned` de `public.notification_type`, usando `IF NOT EXISTS`
@@ -4473,6 +4491,153 @@ El asesor de seguridad no detectó hallazgos nuevos en los objetos R5. `ACORN_EP
 octubre; revalidar el corte antes del primer despliegue y mantenerlo en los posteriores.
 La bienvenida de 50 no depende de la época. El ritmo real y el catálogo futuro siguen
 en #1017; estos checks no acreditan aceptación de una semana de uso.
+
+## 8ter. Experiencias (#1293, esquema verificado en producción 2026-10-03)
+
+**[Canónico · esquema y permisos verificados en local y dev el 2026-10-02;
+ocho migraciones aplicadas y verificadas contra producción el 2026-10-03 a las 10:04 UTC]**
+
+Migraciones `20261002092735_experiences_enums.sql` y
+`20261002092737_experiences_core.sql`. Dominio colaborativo independiente;
+`passes` conserva el estado usuario↔obra. No añaden columnas a tablas existentes.
+
+| Tabla | Contrato |
+|---|---|
+| `experiences` | Creador inmutable, nombre, single/trip, planned/lived/cancelled, private/participants/profile, fechas opcionales, portada del mismo recuerdo, revisión. |
+| `experience_moments` | Nombre, tipo/lugar/fechas y orden único diferible. Máximo 50; crear guarda raíz y primer momento atómicamente. |
+| `experience_participants` | Cuenta XOR etiqueta privada, invitación y consentimiento de identidad; máximo 30 incluido creador. |
+| `experience_moment_participants` | planned/attended/skipped por persona/momento; FKs compuestas impiden asociaciones entre recuerdos. |
+| `experience_favorites` | Un momento favorito por cuenta/recuerdo; FK al miembro y al momento del mismo recuerdo. |
+| `experience_photos` | Reserva pending/ready, autor/ruta/MIME y consentimiento de perfil; FK a raíz y momento. |
+
+Las seis tablas tienen RLS y solo SELECT para clientes; mutaciones por RPC
+autenticadas. Helpers privados sin recursión, `search_path=''`, EXECUTE de PUBLIC
+revocado. Private revoca a aceptados; profile aplica visibilidad/bloqueo del creador.
+Invitados privados y cuentas sin consentimiento no se deducen por joins de
+asistencia/favoritos. Metadatos brutos de fotos solo dentro del grupo o al autor.
+Bucket `experience-photos` privado, JPEG/PNG/WebP, máximo 2 MiB.
+
+RPC iniciales: `experience_create`, `experience_update`, `experience_save_moment`,
+`experience_remove_moment`, `experience_reorder_moments`. Ediciones estructurales
+exigen revisión y lock de raíz. Cuota `experience_write` (60/minuto) en el contador
+atómico existente. Borrar un momento quita favoritos, conserva fotos en galería
+raíz y nunca elimina el último momento. Ampliar conserva raíz y primer momento.
+
+`experience_delete(uuid,text)` (local/dev 2026-10-02) exige creador y confirmación
+por título; elimina raíz/descendientes y referencias sociales en una transacción.
+Devuelve las rutas de fotos únicamente al servidor para la limpieza de Storage,
+conservando evidencia privada únicamente si hay denuncia/moderación (§8ter, abajo).
+
+Participación (local/dev 2026-10-02): `experience_invite`, `experience_add_guest`,
+`experience_respond_invitation`, `experience_set_attendance`,
+`experience_set_guest_attendance`, `experience_set_favorite`,
+`experience_set_share_identity`, `experience_remove_participant`. Lock de raíz y
+máximo 30 miembros. Invitar cambia Solo yo a Acompañantes aceptados; aceptar
+propone presencia, nunca confirma asistencia. Cada cuenta escribe únicamente
+su presencia/favorito/consentimiento; el creador solo registra presencia de etiquetas
+sin cuenta. Quitar un miembro elimina asistencia/favoritos y conserva fotos.
+El creador no puede salir ni ser expulsado. Una cuenta puede retirar consentimiento
+aunque la raíz haya vuelto a privada o haya un bloqueo en cualquiera de los sentidos.
+La retirada propia usa lock separado del gate de contribución, sin autorizar nuevas
+aportaciones. `get_experience_own_memberships` entrega título/fecha y consentimiento
+solo de participaciones propias aceptadas sin acceso, para revocar o salir desde el hub.
+Un bloqueo creador↔acompañante suspende además su atribución pública, incluso en perfil.
+
+`get_experience_invitations()` deriva destinatario de auth.uid y entrega solo
+ID/título/fechas/organizador; sin sesión no devuelve filas. Un pendiente conserva
+ese resumen y no abre detalle, incluso si la raíz está en audiencia profile.
+Avisos de invitación/aceptación usan el canal social y dedupe por invitación,
+sin contexto de título privado. Invitación enlaza al hub para responder.
+Pruebas con rollback, perfiles privados, consentimiento/joins REST, límite exacto
+y tres cuentas sobre build de producción; incluida en el replay integral de 281 pasos.
+`get_experience_companions` usa RLS del invocador y proyecta personas aceptadas del
+historial propio accesible completo. Su paginación es independiente de los veinte
+resultados y de los filtros activos; no pierde opciones al filtrar o no tener resultados.
+
+Fotos (local/dev 2026-10-02, `20261002112531_experiences_photo_mutations.sql`):
+reserva autenticada de ruta generada en servidor; máximo 40 incluyendo pending.
+Confirmar exige objeto en el bucket privado, MIME coincidente y tamaño 1..2 MiB.
+La aplicación verifica además la firma antes de reservar. Fallos de subida o pérdida
+de membresía cancelan la reserva y compensan los bytes. Solo el autor puede publicar
+su imagen; portada exige creador, autoría propia, ready y mismo recuerdo.
+
+`get_experience_visible_photos` devuelve metadatos autorizados sin rutas ni identidad
+sin consentimiento; `get_experience_cover_photos` resuelve portadas en lote con el
+mismo gate. El endpoint de bytes consulta `experience_can_read_photo` con la sesión
+en cada petición antes de usar servicio. Respuesta 404 uniforme al revocar permisos,
+MIME explícito, nosniff, private/no-store; sin URL firmada ni optimizador compartido.
+
+El autor saliente puede retirar consentimiento y eliminar su aportación sin volver
+al grupo. `get_experience_orphan_photos` devuelve solo sus IDs/fechas para gestión
+desde el hub. Para reconocer cuál retirar, `experience_can_preview_own_photo` y
+`/api/experience-photos/[id]/own` autorizan exclusivamente ready del autor actual,
+sin abrir grupo, servir fotos ajenas/pending ni raíces moderadas. El borrado encola rutas
+en `private.experience_photo_cleanup`, tabla con RLS y acceso solo servicio. La
+limpieza comprueba ausencia de metadatos vivos y evidencia de moderación antes de
+borrar Storage; un fallo conserva la cola. Evidencia conserva bytes y cierra la cola.
+RPC de limpieza/evidencia solo servicio, sin EXECUTE de PUBLIC/anon/authenticated.
+El script `scripts/experiences/cleanup-pending-photos.mjs` exige proyecto dev/local
+coincidente con el entorno, empieza en dry-run, limita lotes a 100 y antigüedad a
+una hora mínima. `--kind=deleted` recupera borrados pendientes de Storage; el modo
+predeterminado solo retira reservas pending antiguas. Nunca elimina fotos ready.
+Sin columnas añadidas a tablas previas; incluida en el replay integral de 281 pasos.
+
+Publicación y moderación (local/dev 2026-10-02,
+`20261002120712_experiences_social_visibility.sql`): `experience_publish` exige
+creador y audiencia profile, bloquea la raíz y devuelve el mismo post en llamadas
+simultáneas. Índice parcial único por raíz, kind/ancla experience y fuente nula;
+el guard rechaza INSERT directo. `experience_unpublish` conserva el recuerdo.
+Los posts, targets de comentarios/reacciones y notificaciones consultan el acceso
+actual a la raíz: privacidad, bloqueo o retirada revocan también descendientes.
+
+`get_profile_experiences` excluye invitaciones pendientes; Vividas requiere
+asistencia propia confirmada. Un tercero solo ve raíces profile, con consentimiento
+individual para acompañantes y perfil visible. El creador aparece en su propio
+perfil público por su elección explícita de audiencia. Lecturas con sesión, sin
+caché compartida; feed/detalle usan proyecciones en lote, sin simular ItemType.
+
+`experience_report` exige visibilidad actual dentro de la RPC SECURITY DEFINER;
+un tercero, pendiente o exmiembro sin acceso no puede generar denuncia/evidencia.
+Devuelve confirmación sin snapshot. Los snapshots de raíces
+y posts de experiencias quedan ocultos al reporter y contienen fotos ready como
+evidencia privada. La moderación admite experience; restaurar la raíz conserva
+las retiradas independientes de posts. Borrar un post conserva el recuerdo y un
+post borrado administrativamente no se recrea al publicar. Borrar la raíz captura
+evidencia antes de cascadas solo si hay denuncia/moderación; pending no se retiene.
+`admin_moderation_photo` exige administrador y entrega ruta/MIME únicamente al
+endpoint administrativo, con bytes private/no-store. Bootstrap final: 281 pasos,
+reconstruido desde cero y verificado con todas las regresiones SQL.
+`20261002125917_experiences_advisor_hardening.sql` añade índice para FK compuesta
+de asistencia, initplan de auth.uid en fotos y policy false en la cola privada.
+`20261002132635_experiences_review_fixes.sql` corrige retirada tras bloqueo, denuncia
+sin acceso, filtro del historial completo y vista previa exclusiva de fotos propias.
+Se comprobaron objetos/ACL reales: seis tablas RLS, cero escritura directa de cliente
+y cero EXECUTE de PUBLIC en los contratos nuevos. Sin columnas nuevas en tablas
+existentes, no hay grants finos que ampliar. Advisors de SECURITY DEFINER de lecturas
+públicas son deliberados y probados con identidades diferentes. Las ocho migraciones
+se aplicaron y verificaron en producción el 2026-10-03 a las 10:04 UTC: seis tablas
+públicas y la cola privada con RLS, sin escritura directa de anon/authenticated;
+bucket privado de 2 MiB y MIME JPEG/PNG/WebP. Los 68 contratos y helpers comprobados
+coinciden con dev en firma, cuerpo normalizado, SECURITY/configuración y ACL.
+Los nuevos contratos tienen cero EXECUTE de PUBLIC. La comprobación de producción
+no repite la matriz multiusuario local/dev ni escribe fixtures.
+La [evidencia de release](../testing/2026-10-03-experiencias-release.md) distingue
+el esquema de la integración y despliegue del código, seguidos en PR #1323 y #1293.
+
+La novena migración `20261003153110_guard_comment_target_recursion.sql` corrige
+la recursión de comentarios dependiente del planner (#1335). La rama `comment`
+de `public.can_view_target` comprueba mediante CASE `c.id = p_target_id` y
+`t.id = c.interaction_target_id` antes de autorizar recursivamente al padre.
+`experiences_target_planner.sql` y el fixture social original pasan en dev con
+rollback. Aplicada después en producción y verificada el 2026-10-03 a las
+15:36:19 UTC: cuerpo idéntico a dev y firma, SQL/STABLE, SECURITY DEFINER,
+search_path vacío, dueño postgres y ACL conservados. El ledger incluye la
+versión canónica `20261003153110`; no se siembran actores de prueba en producción.
+Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
+`experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
+Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos
+previos de main. Pruebas SQL con siete actores y rollback; carrera local produce
+un éxito y un conflicto, sin perder momentos.
 
 ## 9. Seguridad
 

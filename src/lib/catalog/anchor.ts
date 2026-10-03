@@ -5,7 +5,7 @@ import type { ItemType } from "./types";
 // cuelga de una obra de catálogo (book/movie/series), de una saga o de una
 // persona — nunca de un pase. La resolución batch de título/imagen por tipo
 // vive en feed.ts (Task 3.3); aquí solo el tipo y el href.
-export type AnchorType = ItemType | "saga" | "person";
+export type AnchorType = ItemType | "saga" | "person" | "experience";
 
 export type AnchorRef = {
   type: AnchorType;
@@ -16,6 +16,7 @@ export type AnchorRef = {
 };
 
 export function anchorHref(type: AnchorType, id: string): string {
+  if(type==="experience")return `/experiencia/${id}`;
   if (type === "saga") return sagaHref(id);
   if (type === "person") return personHref(id);
   return itemHref(type, id);

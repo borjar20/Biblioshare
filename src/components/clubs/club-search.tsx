@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { SearchIcon } from "@/components/ui/icons";
@@ -15,30 +15,43 @@ import { SearchIcon } from "@/components/ui/icons";
 export function ClubSearch({
   placeholder,
   initialQuery,
+  basePath = "/clubes",
 }: {
   placeholder: string;
   initialQuery: string;
+  basePath?: "/clubes" | "/comunidad";
 }) {
   const router = useRouter();
-  const [value, setValue] = useState(initialQuery);
+  const [search, setSearch] = useState({
+    query: initialQuery,
+    value: initialQuery,
+    pendingQueries: [] as string[],
+  });
   const [, startTransition] = useTransition();
-  // El primer efecto se salta: value arranca igual que la URL, así que navegar
-  // en el montaje sería redundante (y rompería el foco).
-  const skip = useRef(true);
+
+  // La URL manda al volver o cambiar de pestaña. Una respuesta a nuestro propio
+  // debounce conserva el borrador: puede haber más teclas escritas mientras llega.
+  if (search.query !== initialQuery) {
+    const acknowledged = search.pendingQueries.indexOf(initialQuery);
+    setSearch({
+      query: initialQuery,
+      value: acknowledged >= 0 ? search.value : initialQuery,
+      pendingQueries: acknowledged >= 0 ? search.pendingQueries.slice(acknowledged + 1) : [],
+    });
+  }
 
   useEffect(() => {
-    if (skip.current) {
-      skip.current = false;
-      return;
-    }
+    const query = search.value.trim();
+    if (query === initialQuery || search.pendingQueries.includes(query)) return;
     const handle = setTimeout(() => {
-      const url = value.trim()
-        ? `/clubes?q=${encodeURIComponent(value.trim())}`
-        : "/clubes";
+      const url = query
+        ? `${basePath}?q=${encodeURIComponent(query)}`
+        : basePath;
+      setSearch(current => ({ ...current, pendingQueries: [...current.pendingQueries, query] }));
       startTransition(() => router.replace(url, { scroll: false }));
     }, 300);
     return () => clearTimeout(handle);
-  }, [value, router]);
+  }, [search.value, search.pendingQueries, initialQuery, router, basePath]);
 
   return (
     <div className="relative">
@@ -48,8 +61,11 @@ export function ClubSearch({
       />
       <Input
         type="search"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
+        value={search.value}
+        onChange={(e) => {
+          const value = e.target.value;
+          setSearch(current => ({ ...current, value }));
+        }}
         placeholder={placeholder}
         className="w-full rounded-xl py-2.5 pl-10"
       />

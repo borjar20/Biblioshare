@@ -12,6 +12,7 @@ import {
 } from "@/lib/library/get-library-items";
 import { SHOW_DROPPED_PARAM } from "@/lib/library/hide-dropped";
 import { HiddenDroppedNote } from "@/components/library/hidden-dropped-note";
+import { LibraryTools } from "@/components/library/library-tools";
 import { genreDefForSlug } from "@/lib/catalog/genre-vocab";
 import {
   resolveEffectiveType,
@@ -258,6 +259,7 @@ export default async function CollectionPage({
         }
       />
 
+      <LibraryTools />
       <CollectionTabs active={tab} />
 
       {tab === "colecciones" && (

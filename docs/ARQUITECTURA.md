@@ -8,6 +8,31 @@
 > Para el esquema de BD, el canónico es [modelo de datos](./requirements/data-model.md).
 > Antes de depurar algo que no cuadra, [Trampas](./TRAMPAS.md).
 
+> **Delta 2026-10-02 (#1293), verificado contra código y local/dev:** Experiencias
+> añade `/experiencias`, `/experiencias/nueva`, `/experiencia/[id]` y su edición,
+> UI en `components/experiences` y dominio en `lib/experiences`. Es una excepción
+> explícita a passes como centro del estado: una raíz colaborativa con momentos,
+> miembros, presencia, favoritos y fotos. `passes` sigue siendo usuario↔obra.
+> Mutaciones por RPC con lock/revisión; readers con sesión y sin caché compartida.
+> Feed/detalle usan ExperiencePreview real en lote, sin simular ItemType.
+> La entrega normal y administrativa de fotos pasa por endpoints distintos,
+> cada uno autorizado antes del servicio de Storage, private/no-store.
+> Proxy añade preflight RLS a detalle/edición para devolver 404 antes de streaming;
+> las rutas conservan su comprobación de acceso. `revalidateExperiences` invalida
+> hub, raíz, perfil y feed; moderación invalida el layout. Producción pendiente.
+
+> **Delta 2026-10-03, verificado contra código local/dev:** navegación principal
+> Inicio / Biblioteca / Experiencias / Comunidad / Buscar. El avatar es enlace
+> directo al perfil; Partidas, Mascota y Ajustes están en un menú global aparte.
+> `/comunidad` compone las listas existentes de clubes y búsqueda de personas;
+> `/coleccion/rincon` reutiliza las herramientas antes expuestas en el perfil.
+> Ambas rutas mantienen sesión bajo Suspense y lectores por petición. También
+> declaran sus mensajes de cliente mediante layouts `RouteMessages`: Comunidad
+> carga `club`; el Rincón añade sus dominios y conserva los de Biblioteca.
+> Los aliases privados del perfil redirigen sólo al dueño. `revalidateProfilePages` incluye
+> el Rincón, `updateGoals` lo invalida explícitamente y `revalidateClubPages`
+> incluye Comunidad. No hay esquema ni caché compartida nuevos.
+
 ## 1. Vista de sistema
 
 ```mermaid
@@ -53,7 +78,7 @@ Cuatro clientes de Supabase, y usar el que no toca es un error habitual:
 |---|---|---|
 | `lib/supabase/server.ts` | Server Components y Actions | El normal |
 | `lib/supabase/client.ts` | Componentes de cliente | Sujeto a RLS del usuario |
-| `lib/supabase/proxy.ts` | `src/proxy.ts` | Solo resuelve la sesión |
+| `lib/supabase/proxy.ts` | `src/proxy.ts` | Sesión y preflight RLS de detalle/edición de Experiencias |
 | `lib/supabase/service-role.ts` | **Salta RLS** | Solo server. Necesario para Storage: **no valida JWT ES256** |
 
 ## 2. Mapa de rutas
@@ -65,7 +90,10 @@ graph TD
 
     root --> col["/coleccion"]
     col --> colc["/coleccion/c/[id]"]
-    col -. subpestañas .-> colt["Colecciones · Todo · Sagas · Colas"]
+    col -. subpestañas .-> colt["Colecciones · Todo · Sagas"]
+    col --> rin["/coleccion/rincon · Retos y objetivos"]
+    col -. herramientas .-> nts["/notas · Cuaderno"]
+    col -. herramientas .-> est["/estadisticas"]
 
     root --> bus["/buscar"] --> man["/buscar/manual"]
 
@@ -78,8 +106,6 @@ graph TD
     root --> ses["/sesion/[passId]"]
     root --> per["/persona/[id]"]
     root --> gen["/genero/[slug]"]
-    root --> est["/estadisticas"]
-    root --> nts["/notas"]
     root --> post["/post/[id]"]
 
     root --> sg["/sagas"] --> sgn["/sagas/nueva"]
@@ -88,7 +114,8 @@ graph TD
     sgd --> sgm["/saga/[id]/mapa"] --> sgme["/mapa/editar"]
     sgd --> sgr["/rutas"] --> sgre["/rutas/[slug]/editar"]
 
-    root --> cl["/clubes"] --> cld["/club/[slug]"]
+    root --> com["/comunidad · Clubes / Personas"] --> cld["/club/[slug]"]
+    root --> cl["/clubes · enlace antiguo"] --> cld
     cld --> cla["/actividad/[id]"]
     cld --> cle["/evento/[id]"]
     cld --> clc["/calendario"]
@@ -96,7 +123,10 @@ graph TD
 
     root --> u["/u/[username]"]
     u --> seg["/seguidores · /siguiendo"]
-    u -. "pestañas propias" .-> ut["Actividad · Estadísticas · Rincón"]
+    u -. "pestañas propias" .-> ut["Actividad · Experiencias"]
+    u -. "sólo visitantes" .-> ub["Biblioteca"]
+    root --> exp["/experiencias"] --> expn["/experiencias/nueva"]
+    exp --> expd["/experiencia/[id]"] --> expe["/experiencia/[id]/editar"]
 
     root --> imp["/importar"] --> impp["/importar/pendientes"]
     root --> otras["/onboarding · /admin<br/>/cuenta/contrasena · /offline"]

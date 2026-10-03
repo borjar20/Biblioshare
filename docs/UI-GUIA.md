@@ -1,7 +1,8 @@
 # Guía de UI — principios y patrones
 
 > **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19);
-> excepción de mascota verificada el 2026-09-09]**
+> excepción de mascota verificada el 2026-09-09; navegación principal y perfil
+> verificados contra código el 2026-10-03 (local/dev)]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -91,15 +92,16 @@ editor de catálogo inline (banner + barra sticky).
    i18n y páginas usan el término del glosario y nada más.
 9. **Toda feature cuelga de la navegación.** Ruta no alcanzable desde su área =
    o se le da entrada o se registra acta de por qué es contextual. **Aplicado
-   (acción 8, 2026-08-21).** La regla de reparto de la IA: **si es TUYO cuelga de
-   «Tú»** —el menú del avatar en `sm+`, la fila «Lo tuyo» del perfil en móvil,
-   ambos desde `youItems` en `nav-items.ts`—; **si es del catálogo, cuelga de
-   Buscar** (por eso Sagas va ahí y no en «Tú»). La configuración es una PÁGINA
-   (`/ajustes`), no una hoja modal: una pantalla de ajustes se marca, se comparte
-   y se vuelve a ella con el botón atrás. **Un camino por viewport, no dos:** la
-   misma lista no se enseña dos veces en la misma pantalla. La barra principal
-   sigue con sus cinco entradas a propósito — el agujero no era cuáles eran, sino
-   que no colgaba nada de ellas. Ver `decisiones.md` (2026-08-21).
+   desde 2026-10-03).** Inicio, Biblioteca, Experiencias, Comunidad y Buscar
+   son entradas principales. Biblioteca contiene Cuaderno, Retos y objetivos
+   y Estadísticas; Comunidad reúne Clubes y Personas. El avatar abre el perfil
+   directamente, cuyo contenido es Actividad y Experiencias (más Biblioteca
+   para visitantes). El menú global «Más» contiene Partidas, Mascota y Ajustes.
+   Sagas de catálogo siguen en Buscar. La configuración es una PÁGINA
+   (`/ajustes`), no una hoja modal. **Un camino por viewport:** barra inferior
+   bajo 768 px y superior desde 768 px, ambas desde `nav-items.ts`; sin fila
+   de accesos privados en el perfil. Esta decisión sustituye el reparto «Tú»
+   de 2026-08-21; ver la entrada nueva en `decisiones.md`.
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados
     juntos derivan del mismo dato (una fórmula por métrica).
 

@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 
+// Los round-trips introducen credenciales; ninguna prueba escribe datos.
+test.use({ trace: "off" });
+
 // El usuario SIN sesión: navega el chrome público y, al pisar una pantalla
 // bloqueada, aterriza en /login?next= para volver tras entrar.
 test("anónimo ve nav pública y botón de login en una página pública", async ({ page }) => {
@@ -7,15 +10,36 @@ test("anónimo ve nav pública y botón de login en una página pública", async
   // CTA de login en el header (no avatar).
   await expect(page.getByRole("link", { name: /iniciar sesión/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /crear cuenta/i })).toBeVisible();
-  // Nav pública presente; Biblioteca NO. (La entrada se llamaba «Colección»
-  // hasta F3-011 — ver docs/UI-GLOSARIO.md.)
-  await expect(page.getByRole("link", { name: /^Buscar$/ }).first()).toBeVisible();
-  await expect(page.getByRole("link", { name: /^Biblioteca$/ })).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "Navegación principal" });
+  await expect(nav.getByRole("link")).toHaveText(["Inicio", "Comunidad", "Buscar"]);
+  await expect(nav.getByRole("link", { name: "Biblioteca" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Experiencias" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Mi perfil" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Más opciones" }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem")).toHaveText(["Partidas"]);
+  await expect(menu.getByRole("menuitem", { name: "Partidas" })).toHaveAttribute("href", "/partidas");
 });
 
 test("anónimo en página gated cae en /login?next= y no pierde el destino", async ({ page }) => {
-  await page.goto("/coleccion");
-  await expect(page).toHaveURL(/\/login\?next=%2Fcoleccion/);
+  for (const route of ["/coleccion", "/coleccion/rincon", "/experiencias"]) {
+    await page.goto(route);
+    await expect(page).toHaveURL((url) => url.pathname === "/login" && url.searchParams.get("next") === route);
+  }
+});
+
+test.describe("nav pública en móvil", () => {
+  test.use({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true });
+
+  test("Comunidad se descubre desde Buscar y pide login con retorno", async ({ page }) => {
+    await page.goto("/buscar");
+    const nav = page.getByRole("navigation", { name: "Navegación principal" });
+    await expect(nav.getByRole("link")).toHaveText(["Inicio", "Comunidad", "Buscar", "Entrar"]);
+    await expect(nav.getByRole("link", { name: "Biblioteca" })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Experiencias" })).toHaveCount(0);
+    await nav.getByRole("link", { name: "Comunidad", exact: true }).click();
+    await expect(page).toHaveURL((url) => url.pathname === "/login" && url.searchParams.get("next") === "/comunidad");
+  });
 });
 
 // Regresión: un anónimo puede abrir un perfil PÚBLICO sin 500. Las políticas
@@ -63,6 +87,7 @@ test("anónimo: 'Seguir' en una ficha lleva a /login?next= con la ficha", async 
 // que safeNext + el hidden input hacen posible (la review final marcó que no
 // tenía e2e por necesitar un usuario autenticado).
 test("tras loguearse desde /login?next=, vuelve a la página gated de origen", async ({ page }) => {
+  test.skip(!process.env.TEST_USER_EMAIL || !process.env.TEST_USER_PASSWORD, "TEST_USER_* no configurado");
   await page.goto("/coleccion");
   await expect(page).toHaveURL(/\/login\?next=%2Fcoleccion/);
 
@@ -75,4 +100,19 @@ test("tras loguearse desde /login?next=, vuelve a la página gated de origen", a
   await expect(
     page.getByRole("heading", { level: 1, name: "Mi Biblioteca" }),
   ).toBeVisible();
+});
+
+test("Comunidad conserva pestaña y búsqueda tras login", async ({ page }) => {
+  test.skip(!process.env.TEST_USER_EMAIL || !process.env.TEST_USER_PASSWORD, "TEST_USER_* no configurado");
+  const destination = "/comunidad?tab=personas&q=devtest";
+  await page.goto(destination);
+  await expect(page).toHaveURL((url) => url.pathname === "/login" && url.searchParams.get("next") === destination);
+  await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL!);
+  await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD!);
+  await page.click('button[type="submit"]');
+  await page.waitForURL(destination);
+  await expect(page.getByRole("heading", { level: 1, name: "Comunidad", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Secciones de Comunidad" }).getByRole("link", { name: "Personas", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("searchbox", { name: "Buscar personas", exact: true })).toHaveValue("devtest");
+  await expect(page.getByRole("main").getByRole("link").filter({ hasText: "@devtest" })).toHaveAttribute("href", "/u/devtest");
 });

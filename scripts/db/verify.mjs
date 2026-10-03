@@ -7,6 +7,7 @@ import { verifyQuotaConcurrency } from './verify-quota-concurrency.mjs';
 import { verifyGoogleVolumeQuotaConcurrency } from './check-google-volume-quota-concurrency.mjs';
 import { verifyCatalogReferenceConcurrency } from './verify-catalog-reference-concurrency.mjs';
 import { verifyBookEditionIsbnConcurrency } from './check-book-edition-isbn-concurrency.mjs';
+import { verifyExperienceConcurrency } from './verify-experience-concurrency.mjs';
 
 // Only the disposable container named by this checkout's generated manifest.
 const stamp = JSON.parse(readFileSync(join(repoRoot, '.superpowers/supabase-local/bootstrap.json'), 'utf8'));
@@ -36,8 +37,20 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/pet_acorns.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/admin_content_moderation.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_archive.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_recovery.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_access.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_transitions.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_deletion.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_participation.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_photos.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_social.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_target_planner.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_withdrawal.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_report_access.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_companion_history.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_own_photo_preview.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyGoogleVolumeQuotaConcurrency(stamp.projectId);
 await verifyCatalogReferenceConcurrency(stamp.projectId);
 await verifyBookEditionIsbnConcurrency(stamp.projectId);
+await verifyExperienceConcurrency(stamp.projectId);
 console.log(`PASS: ${versions.length} bootstrap steps, schema contracts and role privileges.`);

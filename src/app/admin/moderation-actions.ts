@@ -4,6 +4,7 @@ import { getCurrentUserRole } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateModeration } from "@/lib/reactivity/revalidate";
 import { deleteVoiceNote } from "@/lib/storage/voice-notes";
+import {removeExperienceImage} from "@/lib/storage/experience-photos";
 import { isContentKind, isUuid, type ModerationInput, type ModerationResult } from "@/lib/moderation/contracts";
 
 function validReason(value: unknown): value is string {
@@ -48,6 +49,7 @@ export async function moderateContent(input: ModerationInput): Promise<Moderatio
       }
     }
     revalidateModeration();
+    if(input.action==="delete"&&Array.isArray(data.photo_paths))await Promise.all(data.photo_paths.filter((path):path is string=>typeof path==="string").map(removeExperienceImage));
     return { ok: true };
   } catch (error) {
     console.error("Moderation action failed", error);
