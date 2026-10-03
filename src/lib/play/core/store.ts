@@ -116,6 +116,9 @@ export type PlayStore = {
   // Guarda la partida TERMINADA en el almacén local `saved` y limpia la
   // activa. false si no hay partida, no está terminada o la BD falla — en ese
   // caso la activa NO se toca (no se pierde nada por un fallo de guardado).
+  // También false si el snapshot cambia durante el guardado: `saved` sí
+  // conserva la partida serializada, pero la activa adoptada NO se limpia.
+  // El boolean confirma guardar Y liberar la activa, no solo escribir `saved`.
   save(): Promise<boolean>;
   // #935: retira listeners, cierra el canal y para el timer. El Map de stores
   // llama a esto al resetear; en producción un store vive lo que la página.
