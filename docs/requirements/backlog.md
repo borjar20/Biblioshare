@@ -455,6 +455,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] Navegación de la app con Experiencias y Comunidad como destinos principales,
   herramientas en Biblioteca (`/coleccion/rincon`, `/notas`, `/estadisticas`),
   perfil desde el avatar y Partidas en el menú secundario Más.
+- [x] Acción «Nueva experiencia» compacta en móvil: 44 × 44 px, nombre accesible y etiqueta completa desde 640 px; ocho combinaciones de viewport/tema y apertura del formulario verificadas en Next dev (2026-10-03). Evidencia: `docs/testing/2026-10-03-experiencias-mobile-button.md`.
 - [x] Ocho migraciones aplicadas en producción el 2026-10-03; objetos, definiciones y permisos reales verificados a las 10:04 UTC (#1293).
   Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
