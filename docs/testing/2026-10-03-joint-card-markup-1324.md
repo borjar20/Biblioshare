@@ -99,3 +99,27 @@ hidratación en esta reproducción aislada.
 No cambia una feature, un contrato de datos ni una decisión de arquitectura;
 por eso no requiere cambios de backlog de features, modelo de datos o mapa.
 La issue #1324 rastrea el defecto y su cierre tras integrar la corrección.
+
+## Comprobación adicional con el parser nativo
+
+El 2026-10-03, Chromium `149.0.7827.55` abrió el HTML SSR anterior con
+JavaScript desactivado: **5 PASS**, 603 ms. El navegador conservó un único
+artículo, sin párrafos vacíos añadidos por reparación; el rótulo de media,
+la valoración accesible y `4,5` quedaron dentro del mismo `div`. También se
+verificaron las cuatro valoraciones accesibles y su asociación con los
+participantes. No hubo peticiones HTTP ni errores; el navegador se cerró.
+El SHA256 del HTML coincidió antes y después.
+
+Esta comprobación acredita la estructura y semántica tras el parser real.
+No cargó CSS ni JavaScript de la aplicación y no acredita su maquetación,
+hidratación o flujo de datos. La regresión de hidratación sigue siendo la
+prueba aislada con React real descrita arriba.
+
+Los cinco artefactos públicos se conservaron y verificaron por tamaño y
+SHA256 fuera del worktree en
+`.scratch/ticket-campaign/20261002-resolve-all/qa-evidence/joint1324-parser-1791028741445/`:
+
+- `result.json`: `9f82b94da2c7be1d3b1c39f9434e0181ffa30aa6a018797df47b896012cf1f33`.
+- `manifest.sha256.json`: `32376624d461fae9e47090b79c48bcf5491bcd63d77c2cd5241b894a6fcec75f`.
+- `parsed-dom.json`, `browser-serialized.html`, `accessible-article.yaml` y
+  `verify.mjs` conservan la estructura observada y el procedimiento.
