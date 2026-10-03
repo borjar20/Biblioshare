@@ -5980,3 +5980,20 @@ reintentable; no se inventa un orden para silenciar la siguiente apertura.
 No hay migración ni reparación masiva. La verificación nativa usa lector
 anónimo y escritor de sistema; su alcance y el fallo previo conservado están
 en `docs/testing/2026-10-02-book-credit-convergence-633.md`.
+
+## 2026-10-02 — Speed Insights se excluye por origen loopback (#1306)
+
+El layout conserva el SDK original en dominios de Vercel, personalizados y
+otros hosts no locales. Un wrapper cliente omite su montaje en `localhost`,
+subdominios `.localhost`, IPv4 `127/8` y `::1`. `useSyncExternalStore` conserva
+un snapshot inicial `false` para servidor/hidratación y decide después según
+el hostname del documento, sin introducir lectura de cookies o headers.
+
+No se depende de `VERCEL=1`, cuya exposición de variables de sistema no está
+confirmada en este proyecto. No se cambian props, configuración dinámica,
+seguimiento de rutas ni filtrado de eventos del SDK. Las direcciones LAN
+mantienen el comportamiento anterior. El SDK real pasa 19 pruebas y un
+setup hidratado bajo `next start` no solicita el recurso local inexistente.
+El audit global de navegación conserva su FAIL separado (#1301); esta
+verificación no acredita recepción de métricas de un despliegue. Evidencia:
+`docs/testing/2026-10-02-local-speed-insights-1306.md`.
