@@ -70,3 +70,42 @@ Las copias sólo normalizan CRLF y retiran una actualización de estado. Un reso
 Se comparan 20 fuentes existentes antes/después, incluidos los siete archivos publicados de #901, ambos consumidores de voz, Recorder/Engine y hooks. Todos conservan sus hashes. No se crea worktree ni se cambia base, main, esquema, configuración o secretos.
 
 El trabajo permanece sobre la rama preparada `codex/voice-composer-coverage-843`. Main avanzó a `a0b0e03` durante la ejecución; el coordinador integrará después ese estado. El typecheck aquí sólo acredita la base `4a63cf92`; queda pendiente el gate de integración sobre el HEAD combinado y la CI de publicación. No se cierran issues desde este trabajo.
+
+## Preparación de integración con main — 2026-10-03
+
+**PASS_INTEGRATION_LOCAL**: merge ordinario `ba5654ba2f88add8a27a33e90217fb3d280a1478`,
+con padres `67f101c76cfd24853b285dc1eb653b9170942929` y
+`a0b0e0313771982322ff29e5dd3108a93fa4a931`. No hubo conflictos ni corrección de
+producto. Las tres fuentes TSX nuevas mantienen sus hashes de candidato.
+
+El foco se repitió en ese HEAD combinado: **50/50 pruebas en seis ficheros**,
+con los 16 casos DOM nuevos; typecheck completo y lint de los tres TSX PASS
+con Node 24.19.0. Esos checks acreditan los mensajes y tipos sociales actuales
+de main en la base combinada. La tanda de ocho FAIL de mutantes pertenece a la
+base 4a y se conserva como evidencia causal; no se vuelve a ejecutar ni se suma
+a la prueba de integración.
+
+Antes del merge se validaron los **106 artefactos** y los cuatro hashes de
+candidato del sello anterior, incluido su manifiesto
+`32273de7911684c2eb2e0403cf5d76ee44556944bc46843984728904138f6c90`.
+Se guardaron snapshots exactos previos de este informe y de `docs/TESTING.md`
+(SHA-256 físico `1f33175a8c0deefbcfd94d387242e0dd5589afbd6672ac02574cc5cd4eb0c552`).
+La narrativa y los FAIL anteriores permanecen íntegros. Este apartado se añade
+al final; el canónico añade el contrato DOM y sus fronteras.
+
+La evidencia nueva vive en la raíz del repositorio,
+`.scratch/ticket-campaign/20261002-resolve-all/voice843-integration-20261003/`:
+`preflight-result.json`, snapshots, `product-base-before.json`, invocaciones
+y resultados de checks, recibos de ancestry/fuentes/docs y manifiesto propio.
+Veinte fuentes de producto se comparan contra los blobs de main a0 antes y
+después; se guardan SHA-256 físicos y de contenido normalizado por CRLF/LF.
+Las veinte superficies del sello anterior también se auditan: sólo
+`docs/TESTING.md` recibe el append autorizado. Las otras seis fuentes/reportes
+publicados de #901 mantienen sus hashes anteriores.
+
+No se arrancan servicios, build, navegador, Docker ni DB; no se ejecuta SQL
+ni se modifican dependencias o secretos. El merge incorpora los archivos ya
+publicados en main y no aplica sus migraciones. No hay push, PR ni merge remoto.
+La revisión y la CI del lote en el HEAD final de publicación siguen pendientes
+del coordinador. El gate local de tipos sobre main queda satisfecho por esta
+tanda; los límites nativos descritos arriba se mantienen.

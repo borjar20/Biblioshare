@@ -520,3 +520,27 @@ Vitest no acredita el runtime RSC de Next, streaming, caché ni navegador.
 La issue histórica ya no carece de runner TSX ni de test de reanudación de
 sesión: estos casos añaden la defensa de sus páginas. Producto y esquema sin
 cambios; la CI de la PR sobre la base actual es gate previo al merge.
+
+## Composer de voz: transiciones DOM (#843)
+
+[Informe y límites](testing/2026-10-03-voice-composer-state-843.md): 16 casos
+de componente nuevos (7 PostThread, 9 ReviewInteractions) ejercen los controles
+DOM reales para responder a otro objetivo o a la misma raíz, entrar a editar,
+cancelar respuesta y publicar voz. Cambiar contexto desarma la grabadora sin
+otro gesto de micrófono; publicar cierra la respuesta antes de resolver el envío.
+
+CommentComposer, VoiceRecorder, VoiceRecorderEngine, hooks, menús y traducciones
+son reales. Las fronteras falsas se limitan a APIs de media/medición de navegador,
+usePathname y transportes de acciones; los bytes de audio son sintéticos.
+El reloj local avanza los ticks del motor y el envío se mantiene pendiente para
+observar el cierre de contexto. Esto acredita las transiciones de estado y DOM;
+no acredita micrófono físico, permisos, codificación/reproducción, SSR, despacho
+de Server Actions, revalidación remota ni navegador de Next.
+
+Verificado el 2026-10-03 sobre el merge local de main a0b0e03 y la cobertura
+67f101c: 50/50 focales en seis ficheros, tipos y lint PASS con Node24. Las ocho
+guardas retiradas individualmente en copias provocan ocho FAIL causales
+conservados sobre la base 4a; los controles pasan 16/16. No se repite esa tanda
+de mutaciones en el merge. No cambia el producto ni se añade el aviso de la
+deuda hermana antes de cortar una grabación. La CI de publicación y la revisión
+del lote siguen siendo gates del coordinador.
