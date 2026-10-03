@@ -3371,6 +3371,11 @@
     "resources": {
       "title": "Recursos",
       "subtitle": "Contadores de monedas, puntos o materiales para cualquier juego.",
+      "persistence": {
+        "pending": "Guardando los recursos…",
+        "saved": "Los recursos están guardados en este dispositivo.",
+        "memory": "No se han guardado los últimos cambios de los recursos. Puedes seguir aquí, pero esos cambios se perderán al salir de esta pantalla, recargar o cerrar."
+      },
       "configure": "Configurar",
       "emptyHint": "Configura jugadores y recursos para empezar.",
       "players": "Jugadores",
