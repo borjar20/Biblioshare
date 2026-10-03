@@ -714,7 +714,8 @@
       "watched": "Episodio",
       "started": "Empezó",
       "dropped": "Abandonó",
-      "joint": "Juntos"
+      "joint": "Juntos",
+      "experience": "Experiencia"
     },
     "voice": {
       "record": "Grabar una nota de voz",
