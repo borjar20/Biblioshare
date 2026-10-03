@@ -6,6 +6,7 @@ import {
   getProfileByUsername,
   getProfileIdentity,
 } from "@/lib/profile/get-profile-by-username";
+import { getOwnCollectionAlias } from "@/lib/profile/collection-alias";
 import {
   getFollowCounts,
   getFollowNotify,
@@ -153,9 +154,8 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
   if (parsedParams.tab === "panel") {
     redirect(`${basePath}?tab=estadisticas`);
   }
-  if (isOwner && parsedParams.tab === "coleccion") {
-    redirect("/coleccion");
-  }
+  const collectionAlias = getOwnCollectionAlias(isOwner, parsedParams.tab, parsedParams.type);
+  if (collectionAlias) redirect(collectionAlias);
 
   const requestedTab = VALID_TABS.includes(parsedParams.tab as SectionTab)
     ? (parsedParams.tab as SectionTab)

@@ -21,7 +21,9 @@ export async function POST(request: Request) {
 
   try {
     const report = await deliverPetNudges(createServiceRoleClient());
-    // Solo recuentos, y solo cuando hubo algo: ni ids ni nombres de mascota.
+    // Filas reclamadas, solicitudes por claim y resultados por dispositivo.
+    // accepted = ACK del proveedor, nunca recepción en el teléfono. Solo
+    // recuentos, y solo cuando hubo algo: ni ids ni nombres de mascota.
     if (report.claimed > 0) console.log("pet-nudges", report);
     return NextResponse.json(report);
   } catch (error) {
