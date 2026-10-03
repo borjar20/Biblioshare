@@ -601,3 +601,16 @@ Las acciones de servidor y la carga conjunta están controladas. Esta cobertura
 acredita el DOM local; no acredita layout de navegador, persistencia ni RLS.
 No cambia el producto y no arranca servicios. La entrega requiere CI sobre el
 HEAD final de la PR.
+
+## Guardado de Partidas frente a adopción del espejo (#959)
+
+[Informe](testing/2026-10-03-play-save-staleness-959.md): dos casos deterministas,
+anónimo y con identidad, retienen el ACK de `saved` mientras se adopta una partida
+ajena. Comprueban que la anterior queda guardada y que la nueva permanece en
+memoria e IndexedDB sin borrado ni notificación adicional. Suite focal 76/76,
+tipos y lint PASS; retirar la guarda causa dos FAIL y se restaura el producto.
+
+Se aclara el boolean de `save()` sin cambiar comportamiento. Los consumidores
+actuales no muestran el supuesto mensaje de «no guardado». La prueba ejecuta
+store y adaptadores reales sobre fake-indexeddb con canal controlado; no acredita
+navegador, sincronización remota ni RLS. Requiere CI sobre el HEAD de entrega.
