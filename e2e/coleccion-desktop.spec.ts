@@ -9,12 +9,13 @@ const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const H = () => ({ apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" });
 
 // Rediseño de `Colecciones` en escritorio: cabecera con botón (ya no un tile en
-// la rejilla), buscador y orden en CLIENTE, y tres columnas a 1440px.
+// la rejilla), buscador y orden en CLIENTE: cuatro columnas a 1440px,
+// tres a 1200px y dos en móvil. Cinco fixtures permiten medir los tres escalones.
 //
 // Los nombres se siembran a propósito con iniciales que NO están en orden de
 // creación (Zafiro/Bruma/Almendra): así «Nombre» y el orden por defecto no
 // pueden coincidir por casualidad y dar un verde falso.
-test("colecciones en escritorio: botón en cabecera, búsqueda y orden en cliente, 3 columnas", async ({
+test("colecciones: cabecera, búsqueda y orden en cliente y rejilla 4/3/2", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -25,7 +26,7 @@ test("colecciones en escritorio: botón en cabecera, búsqueda y orden en client
   )).json())[0].user_id;
 
   const stamp = Date.now();
-  const names = [`Zafiro ${stamp}`, `Bruma ${stamp}`, `Almendra ${stamp}`];
+  const names = [`Zafiro ${stamp}`, `Bruma ${stamp}`, `Almendra ${stamp}`, `Delta ${stamp}`, `Cobre ${stamp}`];
   const ids: string[] = [];
 
   try {
@@ -57,17 +58,24 @@ test("colecciones en escritorio: botón en cabecera, búsqueda y orden en client
     // otras colecciones de antes, así que nada se cuenta en absoluto: todo se
     // acota al sello de tiempo de esta pasada.
     const seeded = cards.filter({ hasText: String(stamp) });
-    await expect(seeded).toHaveCount(3);
+    await expect(seeded).toHaveCount(5);
 
-    // ── Tres columnas a 1440: se mide la geometría real, no las clases ──
+    // ── Cuatro columnas a 1440: geometría real, sin depender de tarjetas ajenas ──
     // (las clases de Tailwind pueden estar puestas y no aplicarse; la posición
-    // en pantalla es lo que ve el usuario). Tres tarjetas seguidas comparten
+    // en pantalla es lo que ve el usuario). Tarjetas seguidas comparten
     // fila si comparten el borde superior.
     const tops = await cards.evaluateAll((els) =>
       els.map((el) => Math.round(el.getBoundingClientRect().top)),
     );
     const firstRow = tops.filter((t) => t === tops[0]).length;
-    expect(firstRow).toBe(3);
+    expect(firstRow).toBe(4);
+
+    await page.setViewportSize({ width: 1200, height: 900 });
+    const mediumTops = await cards.evaluateAll((els) =>
+      els.map((el) => Math.round(el.getBoundingClientRect().top)),
+    );
+    expect(mediumTops.filter((t) => t === mediumTops[0]).length).toBe(3);
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     // ── Búsqueda: filtra en el navegador, SIN navegar ──
     const urlBefore = page.url();
@@ -83,10 +91,10 @@ test("colecciones en escritorio: botón en cabecera, búsqueda y orden en client
     await expect(cards).toHaveCount(0);
     await expect(page.getByText("Ninguna colección coincide")).toBeVisible();
 
-    // Acotado al sello: quedan las tres sembradas y nada más, sea cual sea el
+    // Acotado al sello: quedan las cinco sembradas y nada más, sea cual sea el
     // resto de la biblioteca del usuario de prueba.
     await search.fill(String(stamp));
-    await expect(cards).toHaveCount(3);
+    await expect(cards).toHaveCount(5);
 
     // ── Orden: «Nombre» reordena el DOM sin ir al servidor ──
     await page.getByRole("button", { name: "Nombre", exact: true }).click();
@@ -95,17 +103,19 @@ test("colecciones en escritorio: botón en cabecera, búsqueda y orden en client
     );
     expect(ordered[0]).toContain("Almendra");
     expect(ordered[1]).toContain("Bruma");
-    expect(ordered[2]).toContain("Zafiro");
+    expect(ordered[2]).toContain("Cobre");
+    expect(ordered[3]).toContain("Delta");
+    expect(ordered[4]).toContain("Zafiro");
     expect(page.url()).toBe(urlBefore);
 
     // ── Móvil: DOS columnas, no una ──
     // El rediseño ensancha el escritorio sin tocar el teléfono. A una sola
     // columna la tarjeta ocupa media pantalla y solo caben dos colecciones,
-    // así que esto es tan parte del diseño como las tres de escritorio.
+    // así que esto es tan parte del diseño como las cuatro de escritorio.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
     await page.locator('input[name="coleccion-q"]').fill(String(stamp));
-    await expect(cards).toHaveCount(3);
+    await expect(cards).toHaveCount(5);
     const mobileTops = await cards.evaluateAll((els) =>
       els.map((el) => Math.round(el.getBoundingClientRect().top)),
     );

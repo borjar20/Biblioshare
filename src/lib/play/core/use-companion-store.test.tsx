@@ -518,7 +518,7 @@ describe("Reloj — inicio confirmado", () => {
     expect(result.current.state.mode).toBe("chess");
   });
 
-  it("conserva la publicación optimista y emit booleano de Aleatorio, Recursos y Turnos", async () => {
+  it("conserva Aleatorio y Turnos optimistas y espera el ACK de Recursos con emit booleano", async () => {
     const useTools = () => ({
       random: useCompanion("anon"),
       resources: useResources("anon"),
@@ -541,11 +541,14 @@ describe("Reloj — inicio confirmado", () => {
       });
       await write.started;
       expect(result.current.random.state.players).toEqual(["Ana", "Beto"]);
-      expect(result.current.resources.state.players).toEqual(["Ana", "Beto"]);
+      expect(result.current.resources.state.players).toEqual([]);
+      expect(result.current.resources.persistence).toBe("pending");
       expect(result.current.turns.state.players).toEqual(["Ana", "Beto"]);
     } finally {
       await act(async () => { write.release(); await write.completed; });
     }
+    await waitFor(() => expect(result.current.resources.persistence).toBe("saved"));
+    expect(result.current.resources.state.players).toEqual(["Ana", "Beto"]);
     unmount();
     const restored = renderHook(useTools);
     await waitFor(() => {
