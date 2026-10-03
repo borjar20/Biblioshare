@@ -6290,3 +6290,11 @@ search_path vacío, dueño postgres y ACL conservados. Ledger canónico
 `20261003153110 / guard_comment_target_recursion`. No se ejecutan fixtures
 con actores sintéticos en producción; la publicación del código sigue teniendo
 su propio gate de CI y merge.
+
+## 2026-10-03 — Recursos: publicar tras guardar y acotar el bloqueo (#1328/#1007)
+
+Recursos activa publishAfterPersist del core existente. El valor ordinario del tablero cambia tras tx.oncomplete; aceptar no confirma el guardado. Deltas y deshacer se calculan desde la cabeza lógica y pueden entrar en la cola. Sólo el fieldset de configuración se deshabilita mientras guarda, porque calcula valores absolutos desde el snapshot publicado. Mantener pulsado conserva su vista previa provisional.
+
+Si IDB falla, se puede seguir en memoria con aviso de que los últimos cambios se perderán al salir, recargar o cerrar. No se promete conservar eventos aceptados al cerrar antes del ACK. Aleatorio y Turnos siguen optimistas; no hay nube, esquema o formato nuevos. El editor se remonta al cambiar opened.name para cancelar el gesto anterior (#1007); los nombres siguen únicos y los presets siguen siendo atajos.
+
+La causa inicial de #1007 (ocultar Oro ocupado) no era un bug. El defecto real trasladaba la vista previa de Madera a Oro. RED y fallos de recarga #1328 se conservan. Base4a: 57 unitarios PASS, ocho casos de Recursos y un contexto visual independiente PASS en build w0f. Informes: docs/testing/2026-10-03-resource-editor-1007.md y docs/testing/2026-10-03-resources-durable-updates-1328.md. Nueva QA en base Experiencias y CI exigidas antes del merge.

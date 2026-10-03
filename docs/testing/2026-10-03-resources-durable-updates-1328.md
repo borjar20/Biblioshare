@@ -119,3 +119,15 @@ de Recursos, la cola de deltas y el bloqueo acotado de configuración; actualiza
 el mapa de arquitectura y el contrato de pruebas que aún describen Recursos
 como optimista; cerrar #1328 sólo con evidencia nativa del gesto original y del
 fallback. Es una propuesta: este candidato no modifica esos documentos.
+
+## Verificación coordinada posterior — 2026-10-03
+
+Revisión del coordinador sin hallazgos. Cinco casos durables, recorrido natural original y dos permanentes #1007 PASS, sin retries, en build nuevo w0fPfzXH53lyqUsYDgEfX, HEAD e22afd7de6731f751b9dac6dc6e1e369a26f2e48/base4a/backend273. Recorrido original: ACK revisión11/evento86 antes del banco6/evento87 (1,1ms), reload27ms después, pagehide sin transacciones activas y restauración exacta. Son mediciones de ese recorrido, no plazos garantizados.
+
+Antes de ejecutar, r3 corrigió sólo el oráculo de cola: banco7 podía verse en una revisión intermedia. Se espera saved antes del último banco7; recarga adyacente, producto y recorrido natural intactos. Candidatos anteriores y diff conservados.
+
+Las ocho capturas originales se revisaron. memory320/fullPage y memory390 estaban desplazadas y no acreditaban legibilidad. Un contexto nuevo, sin modificar esas capturas ni producto, confirmó aviso completo a320/390 con scroll0, sin overflow ni oclusión de cabecera: visual independiente PASS. La original1280 también muestra el aviso completo.
+
+Evidencia pública en la raíz de campaña qa-evidence/resources1328-final-native-1791045239755/:307 archivos exactos, manifiesto8e7b9dfc6ee73f2acba2c993a85424772d490056dc905adea28eff5d0368a531. Fuentes y895 artefactos previos intactos, cleanup real PASS, datos/cuentas/sesiones propios0 y servicios parados con backup.
+
+Auditorías de Recursos PASS. La del original de Colecciones conserva FAIL separado #1301, sin reclasificar por ActionID/200. Main avanzó con Experiencias (#1323): se integra maina0b0 más commits #789/#662/#746 con ascendencia real, once blobs propios idénticos y tres keys de Recursos conservadas junto al nuevo español. Nueva QA del lote actual y CI completa son gates antes del merge.

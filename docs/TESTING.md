@@ -520,3 +520,12 @@ Vitest no acredita el runtime RSC de Next, streaming, caché ni navegador.
 La issue histórica ya no carece de runner TSX ni de test de reanudación de
 sesión: estos casos añaden la defensa de sus páginas. Producto y esquema sin
 cambios; la CI de la PR sobre la base actual es gate previo al merge.
+
+### Recursos, Colecciones y reacciones: cobertura del 2026-10-03
+
+- [Recursos #1328](testing/2026-10-03-resources-durable-updates-1328.md): 57 unitarios PASS; cinco casos durables nativos y recorrido natural original PASS. ACK antes del valor visible y recarga inmediata a320/390/1280, transacción retenida, cola/undo y fallback. Un contexto visual adicional acredita aviso completo a320/390 tras scroll inicial; capturas desplazadas originales conservadas.
+- [Editor #1007](testing/2026-10-03-resource-editor-1007.md): dos casos nativos permanentes PASS; nombre único y cancelación de gesto al cambiar ficha. Diagnóstico inicial del preset corregido.
+- [Colecciones #662/#746](testing/2026-10-03-collection-grid-662-746.md): nuevo caso y original corregido PASS. Cinco fixtures distinguen4/3/2 columnas a1440/1200/390; búsqueda, vacío y las cinco posiciones del orden. URL estable y cero navegaciones del documento en el nuevo; no acredita foco ni ausencia de fetch/RSC.
+- [ReactionBar #789](testing/2026-10-03-reaction-bar-coverage-789.md): nueve casos nuevos, 38 focales PASS y ocho mutaciones detectadas con17 fallos causales. Componentes/picker/catálogo/handlers reales, fallback canvas sin rasterizador; no acredita fuentes, CSS, navegador ni persistencia remota.
+
+Los nativos anteriores pertenecen al build w0f/base4a y backend local273. La primera prueba nueva de Colecciones falló por literal exacto incompleto; recuperación sólo cambia esa cadena y conserva el FAIL. El original conserva auditoría global FAIL por POST cancelados sin atribución de efecto (#1301); identificar pullPendingCelebrations no acredita pérdida ni inocuidad. #1334 investiga su repro condicional aparte. Fixtures y servicios propios limpios. Nueva QA sobre maina0b0/Experiencias y CI de PR son gates de merge; no se extrapola el build anterior.

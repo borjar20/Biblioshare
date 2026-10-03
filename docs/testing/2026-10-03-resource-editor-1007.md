@@ -83,3 +83,11 @@ Los resultados anteriores prueban la lógica del componente y del dominio.
 Este informe no atribuye aún un PASS a la prueba de navegador, a un build
 de producción ni a dev o producción remotos. La integración y la
 verificación en navegador están coordinadas desde la tarea principal.
+
+## Verificación coordinada posterior — 2026-10-03
+
+La fase previa ya recibió navegador real: los dos casos permanentes pasaron sin retries en build w0fPfzXH53lyqUsYDgEfX, HEAD e22afd7de6731f751b9dac6dc6e1e369a26f2e48/base4a/backend273, con auditorías PASS. Colisión/recuperación del preset y cambio durante hold, ajuste nuevo y recarga. El recorrido natural original también pasó en fase distinta, con ACK anterior a banco6 y revisión exacta restaurada.
+
+Evidencia pública en la raíz de campaña qa-evidence/resources1328-final-native-1791045239755/:307 archivos exactos, manifiesto8e7b9dfc6ee73f2acba2c993a85424772d490056dc905adea28eff5d0368a531. Fuentes y895 artefactos previos intactos, cleanup real PASS, datos/cuentas/sesiones propios0 y servicios parados con backup.
+
+La integración posterior con maina0b0/Experiencias exige nueva QA y CI. La causa inicial de preset no se reivindica como bug arreglado. Esta entrada añade el resultado posterior sin sustituir la evidencia de la fase inicial.
