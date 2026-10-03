@@ -540,3 +540,49 @@ Auditoría global FAIL conservada: POST #22 de /partidas/recursos y #59 de /cole
 Evidencia local sellada: resources-coverage-current-native-1791046824201/final-public-manifest.sha256.json, 173 archivos, SHA-256 a7d1bdca4d9821971beaeba05439a04a927eef6c6c513fd7cc418db44dd7d8d5. Se preservan 2012 inputs, 23 fuentes congeladas y los 307 artefactos de la tanda previa. Infra/probe/cleanup PASS; actores eliminados con Auth404 y nueve tablas vacías por actor, seis tablas de Experiencias vacías, Next cerrado, puerto 3000 libre y Supabase parado con backup normal de 282 pasos. Son recibos de cierre de esa tanda; otro gate local puede utilizar después el backend.
 
 El gate de CI se comprueba en la PR de publicación sobre el HEAD final antes de integrarla. Los PASS funcionales y el FAIL global mantienen dictámenes separados.
+
+## Composer de voz: transiciones DOM (#843)
+
+[Informe y límites](testing/2026-10-03-voice-composer-state-843.md): 16 casos
+de componente nuevos (7 PostThread, 9 ReviewInteractions) ejercen los controles
+DOM reales para responder a otro objetivo o a la misma raíz, entrar a editar,
+cancelar respuesta y publicar voz. Cambiar contexto desarma la grabadora sin
+otro gesto de micrófono; publicar cierra la respuesta antes de resolver el envío.
+
+CommentComposer, VoiceRecorder, VoiceRecorderEngine, hooks, menús y traducciones
+son reales. Las fronteras falsas se limitan a APIs de media/medición de navegador,
+usePathname y transportes de acciones; los bytes de audio son sintéticos.
+El reloj local avanza los ticks del motor y el envío se mantiene pendiente para
+observar el cierre de contexto. Esto acredita las transiciones de estado y DOM;
+no acredita micrófono físico, permisos, codificación/reproducción, SSR, despacho
+de Server Actions, revalidación remota ni navegador de Next.
+
+Verificado el 2026-10-03 sobre el merge local de main a0b0e03 y la cobertura
+67f101c: 50/50 focales en seis ficheros, tipos y lint PASS con Node24. Las ocho
+guardas retiradas individualmente en copias provocan ocho FAIL causales
+conservados sobre la base 4a; los controles pasan 16/16. No se repite esa tanda
+de mutaciones en el merge. No cambia el producto ni se añade el aviso de la
+deuda hermana antes de cortar una grabación. La CI de publicación y la revisión
+del lote siguen siendo gates del coordinador.
+
+## Lote de cobertura de voz y miembros de saga (#843 + #191)
+
+[Miembros de saga #191](testing/2026-10-03-saga-member-coverage-191.md): 19 casos
+ejercen getSaga público, sin exportar resolveMembers. La frontera de lectura
+Supabase aplica select (proyección de columnas), eq e in sobre filas tipadas:
+comprueba role/placement/optional/position, orden numérico con 0 y null al final,
+desempate por título, identidad tipo:id entre catálogos, títulos nulos, saga
+inexistente y miembros sin metadatos. No es un test de DB o RLS nativa; TMDB,
+creación de catálogo y cliente privilegiado fallan si se intentan usar.
+
+La integración local del 2026-10-03 combina main 1d1f618, cobertura de voz y
+Saga 9e7acab: 69/69 focales en siete ficheros, tipos completos y lint PASS con
+Node24. Incluye los 50 casos pertinentes de voz y los 19 de getSaga. No cambia
+producto ni amplía las fronteras reales descritas en ambos informes. Las
+tandas históricas de 526 tests de sagas y de mutantes se conservan; no se
+repiten ni se suman a esta ejecución. No se arrancan servicios ni DB.
+
+**Requisito de entrega:** los checks de CI de la PR deben pasar sobre su HEAD
+final. Un PASS local o de otro SHA no acredita la CI de este lote. La evidencia
+de publicación se vincula a ese HEAD, sin convertir la cobertura local en
+verificación de navegador, media nativa, RLS o proveedores.
