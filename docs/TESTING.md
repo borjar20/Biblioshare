@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -497,3 +497,11 @@ debug en local) sigue siendo el camino para probar en esta máquina.
   (Codemagic, GitHub Actions con runner `macos-latest`, etc.). No hay
   plataforma iOS generada todavía (`npx cap add ios` — pendiente hasta tener
   acceso a alguna de esas vías).
+
+## Biblioteca y alias del perfil: cobertura verificada el 2026-10-03
+
+- [Pipeline de abandonos #773](testing/2026-10-03-library-dropped-pipeline-773.md): 16 casos nuevos y 38 focales PASS; seis mutaciones detectadas con 14 fallos causales conservados. Biblioteca expone búsqueda/género/límite; Sin colección expone población y límite; Colección expone ocultación/contador/media. Los tests respetan las APIs actuales y no inventan filtros de Colección.
+- [Alias de Biblioteca del perfil propio #1325](testing/2026-10-03-profile-collection-alias-1325.md): 23 unitarios y ocho casos de navegador PASS sobre build de producción, sin retries. Tipo válido conservado, ausente/inválido con default y visitantes sin redirección a la biblioteca propia. RED original y auditoría global FAIL de #1301 conservados por separado.
+- [Aislamiento de libros de autor #1307](testing/2026-10-02-person-books-test-isolation-1307.md): escrituras autenticadas y publicación respetadas; RED causal, cinco casos focales y 112 pertinentes PASS. La antigua CI quedó retenida por el fallo de persistencia de Reloj #1313, ahora integrado; la integración de esta cobertura exige CI del lote sobre la base actual.
+
+Los checks locales y las auditorías globales tienen alcance distinto. Los informes anteriores no acreditan RLS remota, dispositivos reales ni inocuidad de POST cancelados. No se modifican esquema ni cuentas persistentes; cada fixture nativo se elimina por REST antes/después.
