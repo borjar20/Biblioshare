@@ -6,7 +6,7 @@ import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { TurnsEvent } from "@/lib/play/turns/events";
 import type { TurnsState } from "@/lib/play/turns/types";
 import { aliveCount } from "@/lib/play/turns/selectors";
-import { buzz } from "@/components/play/random/stage/stage-helpers";
+import { buzz } from "@/lib/play/ui/buzz";
 import { initials } from "@/components/play/ui/seat-token";
 import { SEAT_ACCENT } from "@/lib/play/ui/seats";
 
