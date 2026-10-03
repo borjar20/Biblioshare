@@ -505,3 +505,18 @@ debug en local) sigue siendo el camino para probar en esta máquina.
 - [Aislamiento de libros de autor #1307](testing/2026-10-02-person-books-test-isolation-1307.md): escrituras autenticadas y publicación respetadas; RED causal, cinco casos focales y 112 pertinentes PASS. La antigua CI quedó retenida por el fallo de persistencia de Reloj #1313, ahora integrado; la integración de esta cobertura exige CI del lote sobre la base actual.
 
 Los checks locales y las auditorías globales tienen alcance distinto. Los informes anteriores no acreditan RLS remota, dispositivos reales ni inocuidad de POST cancelados. No se modifican esquema ni cuentas persistentes; cada fixture nativo se elimina por REST antes/después.
+
+### Precedencia de páginas en sus consumidores (#901)
+
+[Informe focal](testing/2026-10-03-edition-pages-consumers-901.md): 30 casos nuevos
+en Biblioteca/Colección, contexto de sesión, Registro y rail de ficha; 61
+pertinentes PASS y doce mutaciones detectadas con 51 fallos causales. La edición
+identificada manda; sin ella o sin sus páginas se usa la obra. Una edición
+ajena con otro total distingue la selección por ID de elegir la primera.
+
+Registro y PassCard se renderizan realmente en jsdom. La ficha resuelve el
+hijo async devuelto por el wrapper público y comprueba su cálculo y DOM;
+Vitest no acredita el runtime RSC de Next, streaming, caché ni navegador.
+La issue histórica ya no carece de runner TSX ni de test de reanudación de
+sesión: estos casos añaden la defensa de sus páginas. Producto y esquema sin
+cambios; la CI de la PR sobre la base actual es gate previo al merge.
