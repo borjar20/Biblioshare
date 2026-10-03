@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
-import { sendPushToUser } from "@/lib/push/send-push";
-import type { PushContent } from "@/lib/push/types";
+import { createPushSendReport, sendPushToUser } from "@/lib/push/send-push";
+import type { PushContent, PushSendReport } from "@/lib/push/types";
 import type { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { petNudgeCopy, type NudgeT } from "./copy";
 import { isPetNudgeKind, PET_NUDGE_TYPE } from "./types";
@@ -10,12 +10,18 @@ type AdminClient = ReturnType<typeof createServiceRoleClient>;
 /** Fila que devuelve claim_pet_nudges() (20260906). */
 export type ClaimRow = { user_id: string; name: string; kind: string; streak: number | null };
 
-// `sent` = envíos INTENTADOS (sendPushToUser nunca lanza; la entrega real se
-// ve en push_devices.last_success_at/last_error), ver #1052.
-export type NudgeReport = { claimed: number; sent: number };
+// claimed/unknownKind cuentan FILAS; pushRequests suma una solicitud por fila
+// válida (no promete usuarios distintos en el barrido). deviceResults cuenta
+// un resultado por dispositivo y solicitud; accepted solo acredita un ACK.
+export type NudgeReport = {
+  claimed: number;
+  unknownKind: number;
+  pushRequests: PushSendReport["users"];
+  deviceResults: PushSendReport["devices"];
+};
 
 type Deps = {
-  send?: (userId: string, content: PushContent) => Promise<void>;
+  send?: (userId: string, content: PushContent) => Promise<PushSendReport>;
   t?: NudgeT;
 };
 
@@ -28,14 +34,18 @@ export async function deliverPetNudges(admin: AdminClient, deps: Deps = {}): Pro
   const { data, error } = await admin.rpc("claim_pet_nudges");
   if (error) throw error;
   const rows = (data ?? []) as ClaimRow[];
-  if (rows.length === 0) return { claimed: 0, sent: 0 };
+  const empty = createPushSendReport();
+  const report: NudgeReport = {
+    claimed: rows.length, unknownKind: 0, pushRequests: empty.users, deviceResults: empty.devices,
+  };
+  if (rows.length === 0) return report;
 
   const send = deps.send ?? sendPushToUser;
   const t: NudgeT = deps.t ?? (await getTranslations("pet"));
 
-  let sent = 0;
   for (const row of rows) {
     if (!isPetNudgeKind(row.kind)) {
+      report.unknownKind += 1;
       console.error("deliverPetNudges: kind desconocido", row.kind);
       continue;
     }
@@ -47,12 +57,19 @@ export async function deliverPetNudges(admin: AdminClient, deps: Deps = {}): Pro
       path: "/mascota",
     };
     try {
-      await send(row.user_id, content);
-      sent += 1;
+      const result = await send(row.user_id, content);
+      for (const key of Object.keys(result.users) as (keyof PushSendReport["users"])[]) {
+        report.pushRequests[key] += result.users[key];
+      }
+      for (const key of Object.keys(result.devices) as (keyof PushSendReport["devices"])[]) {
+        report.deviceResults[key] += result.devices[key];
+      }
     } catch (e) {
       // sendPushToUser no lanza; esto cubre un `send` inyectado o un fallo raro.
+      report.pushRequests.requested += 1;
+      report.pushRequests.failed += 1;
       console.error("deliverPetNudges: envío fallido", e);
     }
   }
-  return { claimed: rows.length, sent };
+  return report;
 }
