@@ -280,6 +280,7 @@
     "20261002112531_experiences_photo_mutations.sql",
     "20261002120712_experiences_social_visibility.sql",
     "20261002125917_experiences_advisor_hardening.sql",
-    "20261002132635_experiences_review_fixes.sql"
+    "20261002132635_experiences_review_fixes.sql",
+    "20261003153110_guard_comment_target_recursion.sql"
   ]
 }

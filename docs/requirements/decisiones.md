@@ -6251,3 +6251,42 @@ Verificación: repro original y RED conservados; 51 pruebas focales PASS (19 de 
 El alias antiguo `/u/<dueño>?tab=coleccion` conserva un tipo explícito válido (`book`, `movie`, `series`, `todos`) al redirigir a la Biblioteca personal. Sin tipo o con uno inválido continúa en `/coleccion`, donde se aplica el default de Biblioteca, incluido el interés único del onboarding. `todos` conserva la elección explícita de todos los tipos y se distingue de omitir `type` (#313). La validación reutiliza el resolver de Biblioteca. Sólo el dueño alcanza este alias; el visitante conserva la colección del perfil que visita. No se amplía el passthrough de otros filtros antiguos.
 
 El RED nativo confirmó que el acceso directo movie conservaba Películas, mientras el alias perdía type y arrancaba en Libros. El arreglo pasa 23 unitarios, tipos/lint y ocho casos nativos sin retries en un build nuevo de producción: cuatro tipos explícitos, ausente/inválido y visitantes anónimo/autenticado. El gate funcional pasa; la auditoría global conserva FAIL por cinco POST cancelados de pullPendingCelebrations (#1301), cuya identidad no demuestra inocuidad. La tanda conjunta conserva el FAIL separado de Recursos #1328. Fuentes y evidencias anteriores permanecen intactas; fixtures y servicios propios limpios. Informe: `docs/testing/2026-10-03-profile-collection-alias-1325.md`. Sin cambio de esquema, caché ni arquitectura de rutas. La CI del lote es gate previo al merge.
+
+## 2026-10-03 — Comentarios: comprobar el padre antes de recursar, independiente del planner (#1335)
+
+La autorización de un comentario conserva su función SQL/STABLE y su contrato
+de permisos. La llamada recursiva a `public.can_view_target` se protege con un
+`CASE` que exige a la vez `c.id = p_target_id` y
+`t.id = c.interaction_target_id`. Un predicado WHERE o la condición del join
+no garantiza qué expresión evalúa primero PostgreSQL. El guard del ID solicitado
+por sí solo tampoco descarta el target propio del comentario.
+
+El ciclo no estaba en los datos: cada comentario apunta al target de su padre y
+posee además otro target. Si el planner recorre este último antes del join,
+la función vuelve a consultar el mismo comentario. El caso se hizo visible en
+la CI de PR #1323 al consultar el comentario de una experiencia privatizada;
+el SQL no cambió al integrar main. Un probe aislado con plan adverso produjo
+54001, el mismo probe con ambos guards devolvió público=true/privado=false, y
+la regresión sobre la función real reprodujo 54001 en dev con rollback.
+
+Se añade `20261003153110_guard_comment_target_recursion.sql` como novena
+migración y `supabase/tests/experiences_target_planner.sql` al runner del
+bootstrap. Las ocho migraciones ya aplicadas conservan su SQL y versiones.
+No cambian tablas, enums, cuotas, RLS, grants, firma, lenguaje, volatilidad,
+SECURITY DEFINER ni search_path; tampoco se aumenta max_stack_depth ni se
+oculta el fallo con reintentos. La aplicación y verificación remotas de la
+corrección siguen pendientes al registrar esta decisión. El corte de producción
+de las ocho originales a las 10:04 UTC queda separado de esa corrección.
+
+Seguimiento: [#1335](https://github.com/borjar20/Biblioshare/issues/1335).
+Evidencia: `docs/testing/2026-10-03-experiencias-release.md`, que conserva
+el fallo y distingue probes, verificación de esquema y publicación del código.
+
+Verificación posterior de la corrección, 2026-10-03: aplicada primero en dev,
+donde la regresión real de planes pasa en 3,639 s y el fixture social original
+en 7,804 s, ambos con rollback. Aplicada después en producción; a las
+15:36:19 UTC, cuerpo idéntico a dev y firma, SQL/STABLE, SECURITY DEFINER,
+search_path vacío, dueño postgres y ACL conservados. Ledger canónico
+`20261003153110 / guard_comment_target_recursion`. No se ejecutan fixtures
+con actores sintéticos en producción; la publicación del código sigue teniendo
+su propio gate de CI y merge.

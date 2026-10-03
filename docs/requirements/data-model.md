@@ -1,5 +1,14 @@
 # Modelo de datos
 
+> **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
+> `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
+> de `public.can_view_target` frente a la reordenación del planner. Antes de recursar,
+> un `CASE` exige el ID solicitado y el target padre del comentario. El test real
+> de planes por índice/secuenciales y el fixture social original pasan en dev con
+> rollback. Producción verificada a las 15:36:19 UTC: cuerpo idéntico a dev, firma,
+> SQL/STABLE, SECURITY DEFINER, search_path, dueño y ACL conservados. Sin fixtures
+> en producción; el corte de las ocho originales, abajo, se conserva.
+
 > **Delta 2026-10-03 (#1293, esquema aplicado y verificado en producción):** Experiencias
 > añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
 > existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
@@ -4615,6 +4624,15 @@ no repite la matriz multiusuario local/dev ni escribe fixtures.
 La [evidencia de release](../testing/2026-10-03-experiencias-release.md) distingue
 el esquema de la integración y despliegue del código, seguidos en PR #1323 y #1293.
 
+La novena migración `20261003153110_guard_comment_target_recursion.sql` corrige
+la recursión de comentarios dependiente del planner (#1335). La rama `comment`
+de `public.can_view_target` comprueba mediante CASE `c.id = p_target_id` y
+`t.id = c.interaction_target_id` antes de autorizar recursivamente al padre.
+`experiences_target_planner.sql` y el fixture social original pasan en dev con
+rollback. Aplicada después en producción y verificada el 2026-10-03 a las
+15:36:19 UTC: cuerpo idéntico a dev y firma, SQL/STABLE, SECURITY DEFINER,
+search_path vacío, dueño postgres y ACL conservados. El ledger incluye la
+versión canónica `20261003153110`; no se siembran actores de prueba en producción.
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.
 Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos

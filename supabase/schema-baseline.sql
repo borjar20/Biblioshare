@@ -1407,3 +1407,8 @@ commit;
 begin;
 \ir migrations/20261002132635_experiences_review_fixes.sql
 commit;
+
+-- 20261003153110_guard_comment_target_recursion
+begin;
+\ir migrations/20261003153110_guard_comment_target_recursion.sql
+commit;

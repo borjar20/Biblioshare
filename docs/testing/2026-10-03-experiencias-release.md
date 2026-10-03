@@ -102,3 +102,69 @@ y lugares, fusión de recuerdos independientes y filtro de una persona entre
 hobbies. Los dos hallazgos menores previos siguen registrados en
 [#1321](https://github.com/borjar20/Biblioshare/issues/1321) y
 [#1322](https://github.com/borjar20/Biblioshare/issues/1322).
+
+## Corrección de recursión antes del merge (#1335)
+
+Esta ampliación conserva el corte de las ocho migraciones originales a las
+10:04:01 UTC y su smoke a las 10:04:49 UTC. La corrección posterior se sigue
+en [#1335](https://github.com/borjar20/Biblioshare/issues/1335) y PR #1323;
+la novena migración se aplicó después en dev y producción, y se verificó
+en producción el 2026-10-03 a las 15:36:19 UTC.
+
+El [check empty-database del run 37132961205](https://github.com/borjar20/Biblioshare/actions/runs/37132961205)
+falló a las 15:23 UTC con `54001: stack depth limit exceeded`, en
+`experiences_social.sql:60`: consultar el target de un comentario después de
+privatizar la experiencia. El SQL, el runner y el workflow no cambiaron entre
+el HEAD anterior que pasó y la integración de main. Otra ejecución del mismo
+contrato también pasó; la variación procede del plan de ejecución.
+
+La rama `comment` de `public.can_view_target` unía comentarios y targets con
+la llamada recursiva en un `WHERE ... AND`. El planner podía evaluarla antes
+de filtrar el comentario solicitado o comprobar su target padre. Un comentario
+tiene además un target propio; recorrer ese target vuelve a consultar el mismo
+comentario, aunque las relaciones almacenadas no tengan un ciclo de padres.
+`private.moderation_available` aparece dentro del stack, pero no inicia ese ciclo.
+
+| Comprobación de la corrección | Resultado |
+|---|---|
+| Fixture original en dev, plan normal | Doce consultas consecutivas del comentario privado devuelven false. |
+| Rama SQL reducida en pg_temp, un comentario y sus targets padre/propio, plan secuencial y nested-loop forzado | RED: SQLSTATE 54001. BEGIN/ROLLBACK, sin persistencia. |
+| Mismo caso reducido con el CASE propuesto | GREEN: público=true y privado=false, sin recursión. BEGIN/ROLLBACK. |
+| `supabase/tests/experiences_target_planner.sql`, función pública real en dev | RED: SQLSTATE 54001 en la consulta del comentario privado; fixtures sintéticos dentro de BEGIN/ROLLBACK. |
+| Regresión real tras aplicar la corrección en dev | GREEN: experiences_target_planner.sql en 3,639 s; público/privado por planes de índice y secuenciales. BEGIN/ROLLBACK. |
+| Fixture social original tras aplicar la corrección en dev | GREEN: experiences_social.sql en 7,804 s. BEGIN/ROLLBACK. |
+| Novena migración en producción | Aplicada; verificación a las 15:36:19 UTC: cuerpo dev/producción idéntico, firma y atributos conservados, dueño postgres y ACL exactas antes/después. Sin fixtures sintéticos en producción. |
+| Ledger de la corrección en producción | Versión 20261003153110 y nombre guard_comment_target_recursion canónicos. |
+| Smoke de producción después de la corrección | PASS a las 15:37:36 UTC: comentario e interaction target inexistentes devuelven false. Sólo lecturas, cero escrituras. |
+
+La migración correctiva es
+`20261003153110_guard_comment_target_recursion.sql`. Mantiene la función SQL,
+STABLE, SECURITY DEFINER, firma, search_path y permisos existentes. Su `CASE`
+exige `c.id = p_target_id` y `t.id = c.interaction_target_id` antes de la llamada
+recursiva; ninguno de esos guards se delega al orden del WHERE o del join.
+Las ocho migraciones ya aplicadas permanecen intactas. El nuevo test compara
+planes por índice y planes secuenciales sobre comentarios públicos y privados,
+y se incorpora al runner `scripts/db/verify.mjs`.
+
+El orden de evaluación de expresiones booleanas no está fijado y PostgreSQL
+permite reordenarlas; CASE protege la evaluación condicional de esta llamada.
+Referencia: [documentación PostgreSQL 17](https://www.postgresql.org/docs/17/sql-expressions.html#SYNTAX-EXPRESS-EVAL).
+
+El manifest canónico incorpora la novena migración al final del orden de
+dependencias. `npm run db:baseline` regeneró `schema-baseline.sql` y
+`npm run test:db:bootstrap` pasó sus ocho comprobaciones (8/8).
+El baseline resultante ordena 282 pasos; los 281 de la verificación original
+permanecen como evidencia histórica de las ocho migraciones iniciales.
+
+SHA256 del SQL aplicado:
+`3ABB26C2092309E79B02A89A614D486952EA3B099BE3145D048390D74F71DD15`.
+
+El JSON seguro de la comparación y del smoke posterior se conserva como
+artefacto local en
+`experiencias-release-2026-10-03/comment-recursion-verification.json`.
+
+La publicación del código continúa detrás del gate final de CI y merge.
+El fallo posterior de navegador ajeno a la recursión —POST ERR_ABORTED en
+local-speed-insights, 137/138 recorridos PASS— se sigue en
+[#1336](https://github.com/borjar20/Biblioshare/issues/1336). La repetición del
+HEAD final sigue pendiente en este corte; no altera la verificación del esquema.
