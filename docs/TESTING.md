@@ -521,6 +521,26 @@ La issue histórica ya no carece de runner TSX ni de test de reanudación de
 sesión: estos casos añaden la defensa de sus páginas. Producto y esquema sin
 cambios; la CI de la PR sobre la base actual es gate previo al merge.
 
+### Recursos, Colecciones y reacciones: cobertura del 2026-10-03
+
+- [Recursos #1328](testing/2026-10-03-resources-durable-updates-1328.md): 57 unitarios PASS; cinco casos durables nativos y recorrido natural original PASS. ACK antes del valor visible y recarga inmediata a320/390/1280, transacción retenida, cola/undo y fallback. Un contexto visual adicional acredita aviso completo a320/390 tras scroll inicial; capturas desplazadas originales conservadas.
+- [Editor #1007](testing/2026-10-03-resource-editor-1007.md): dos casos nativos permanentes PASS; nombre único y cancelación de gesto al cambiar ficha. Diagnóstico inicial del preset corregido.
+- [Colecciones #662/#746](testing/2026-10-03-collection-grid-662-746.md): nuevo caso y original corregido PASS. Cinco fixtures distinguen4/3/2 columnas a1440/1200/390; búsqueda, vacío y las cinco posiciones del orden. URL estable y cero navegaciones del documento en el nuevo; no acredita foco ni ausencia de fetch/RSC.
+- [ReactionBar #789](testing/2026-10-03-reaction-bar-coverage-789.md): nueve casos nuevos, 38 focales PASS y ocho mutaciones detectadas con17 fallos causales. Componentes/picker/catálogo/handlers reales, fallback canvas sin rasterizador; no acredita fuentes, CSS, navegador ni persistencia remota.
+
+Los nativos anteriores pertenecen al build w0f/base4a y backend local273. La primera prueba nueva de Colecciones falló por literal exacto incompleto; recuperación sólo cambia esa cadena y conserva el FAIL. El original conserva auditoría global FAIL por POST cancelados sin atribución de efecto (#1301); identificar pullPendingCelebrations no acredita pérdida ni inocuidad. #1334 investiga su repro condicional aparte. Fixtures y servicios propios limpios. Nueva QA sobre maina0b0/Experiencias y CI de PR son gates de merge; no se extrapola el build anterior.
+
+
+### Integración de Recursos y Colecciones sobre main a0 — 2026-10-03
+
+Nueva build zOSPb8W0Exp_IruBgC7iv de HEAD 9a3f13a749d178e12c443b80d7c2a4b85b18eb77, con base main a0b0e031/Experiencias y backend local 282: 9/9 recorridos funcionales PASS, cero reintentos, SKIP o flaky. Cinco casos de persistencia de Recursos, dos del editor y dos de Colecciones (nuevo y original). Tipos y lint PASS; 95 unitarios focales PASS en nueve archivos. El recorrido natural original previo conserva su resultado en build w0f; no se vuelve a declarar ejecutado en esta tanda.
+
+Auditoría global FAIL conservada: POST #22 de /partidas/recursos y #59 de /coleccion se corresponden con pullPendingCelebrations según el índice de esta misma build; POST #38 de /login queda fuera del probe, sin atribución. Los tres siguen UNCLASSIFIED: no hay recibo RPC/filas por petición. #22 empezó y falló antes del ACK retenido, por lo que no se atribuye a la recarga final. #1301 y #1334 permanecen abiertos; identificar la acción o recibir HTTP 200 no acredita inocuidad ni pérdida.
+
+Evidencia local sellada: resources-coverage-current-native-1791046824201/final-public-manifest.sha256.json, 173 archivos, SHA-256 a7d1bdca4d9821971beaeba05439a04a927eef6c6c513fd7cc418db44dd7d8d5. Se preservan 2012 inputs, 23 fuentes congeladas y los 307 artefactos de la tanda previa. Infra/probe/cleanup PASS; actores eliminados con Auth404 y nueve tablas vacías por actor, seis tablas de Experiencias vacías, Next cerrado, puerto 3000 libre y Supabase parado con backup normal de 282 pasos. Son recibos de cierre de esa tanda; otro gate local puede utilizar después el backend.
+
+El gate de CI se comprueba en la PR de publicación sobre el HEAD final antes de integrarla. Los PASS funcionales y el FAIL global mantienen dictámenes separados.
+
 ## Composer de voz: transiciones DOM (#843)
 
 [Informe y límites](testing/2026-10-03-voice-composer-state-843.md): 16 casos
