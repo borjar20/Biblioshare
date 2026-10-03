@@ -117,3 +117,37 @@ cuenta de prueba o credencial. No verifica RLS, permisos SQL, datos desplegados,
 la sincronización TMDB ni el editor en navegador. Tampoco atribuye un bug real a
 las mutaciones artificiales. La CI y la publicación se comprueban por separado
 en la integración de la campaña.
+
+## Integración del lote #843 + #191 — 2026-10-03
+
+**PASS_COMBINED_LOCAL**: se integró main `1d1f61867dac7ba076d9e6dd940e6fbbbf34fbc3`
+mediante merge ordinario `8d3f1092b0966f94a854c362176184200f507ea1` y después Saga
+`9e7acab3048e665ab41d1f55c7f37fb0323afdf5` mediante merge ordinario
+`10a5ae547b528f122238106db09cbf1fdd25961a`. No hubo conflictos ni corrección de
+producto. El commit posterior sólo añade documentación.
+
+Sobre el HEAD combinado `10a5ae5` se ejecutó una sola tanda de **69/69 focales
+en siete ficheros**: 50 pertinentes de voz y 19 de getSaga. Typecheck completo
+y lint de los cuatro archivos de tests/fixture PASS con Node 24.19.0. No se
+repitieron los 526 tests de dominio ni las mutaciones históricas de Saga o voz.
+
+Los sellos anteriores de 106 y 71 artefactos de voz y 113 de Saga se validaron
+por hashes antes de mutar y se conservan íntegros, con sus controles y FAIL.
+Las cuatro fuentes de tests/fixture mantienen su contenido; Git incorpora
+los dos archivos de Saga como CRLF y se conservan hashes físicos y normalizados
+para distinguir ese checkout de un cambio semántico. Los prefijos de los
+informes y del canónico se mantienen exactos respecto al snapshot físico
+posterior a los merges. get-saga.ts conserva el SHA-256
+`48831d9dc73f89b33123ec255c7473ee3789fd93d2e9d299760346e81ef2f19b`.
+
+La evidencia nueva está en la raíz del repositorio bajo
+`.scratch/ticket-campaign/20261002-resolve-all/voice-saga843-191-integration-20261003/`:
+preflight, siete fuentes de candidato, resultados e invocaciones exactas,
+recibos de ancestry/producto/docs y manifiesto propio. No se modifica producto,
+dependencias, esquema, secretos ni fixtures de otros tickets. No hay servicios,
+browser, Docker, SQL, build, push, PR ni merge remoto.
+
+**Requisito de entrega:** acreditar los checks de CI de la PR sobre su HEAD
+final. El gate local descrito aquí y los gates históricos no sustituyen esa
+CI ni acreditan los límites nativos de los informes. La publicación registra
+su evidencia contra el SHA definitivo del lote.

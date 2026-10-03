@@ -544,3 +544,25 @@ conservados sobre la base 4a; los controles pasan 16/16. No se repite esa tanda
 de mutaciones en el merge. No cambia el producto ni se añade el aviso de la
 deuda hermana antes de cortar una grabación. La CI de publicación y la revisión
 del lote siguen siendo gates del coordinador.
+
+## Lote de cobertura de voz y miembros de saga (#843 + #191)
+
+[Miembros de saga #191](testing/2026-10-03-saga-member-coverage-191.md): 19 casos
+ejercen getSaga público, sin exportar resolveMembers. La frontera de lectura
+Supabase aplica select (proyección de columnas), eq e in sobre filas tipadas:
+comprueba role/placement/optional/position, orden numérico con 0 y null al final,
+desempate por título, identidad tipo:id entre catálogos, títulos nulos, saga
+inexistente y miembros sin metadatos. No es un test de DB o RLS nativa; TMDB,
+creación de catálogo y cliente privilegiado fallan si se intentan usar.
+
+La integración local del 2026-10-03 combina main 1d1f618, cobertura de voz y
+Saga 9e7acab: 69/69 focales en siete ficheros, tipos completos y lint PASS con
+Node24. Incluye los 50 casos pertinentes de voz y los 19 de getSaga. No cambia
+producto ni amplía las fronteras reales descritas en ambos informes. Las
+tandas históricas de 526 tests de sagas y de mutantes se conservan; no se
+repiten ni se suman a esta ejecución. No se arrancan servicios ni DB.
+
+**Requisito de entrega:** los checks de CI de la PR deben pasar sobre su HEAD
+final. Un PASS local o de otro SHA no acredita la CI de este lote. La evidencia
+de publicación se vincula a ese HEAD, sin convertir la cobertura local en
+verificación de navegador, media nativa, RLS o proveedores.
