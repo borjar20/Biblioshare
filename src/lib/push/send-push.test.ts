@@ -137,6 +137,6 @@ describe("sendPushToUsers dispatcher", () => {
     const report = await sendPushToUsers(["u1"], content);
     expect(report.users).toMatchObject({ accepted: 1, failed: 0 });
     expect(report.devices.accepted).toBe(1);
-    expect(console.error).toHaveBeenCalledWith("sendPushToUsers: health update failed", pushState.healthRejection);
+    expect(console.error).toHaveBeenCalledWith("sendPushToUsers: health update failed", { kind: "rejection", code: "UNKNOWN" });
   });
 });
