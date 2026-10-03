@@ -136,7 +136,7 @@ export async function sendPushToUsers(
     await recordHealth(supabase, outcomes);
   } catch (error) {
     // La salud persistida y la aceptación del proveedor son hechos distintos.
-    console.error("sendPushToUsers: health update failed", error);
+    logHealthUpdateFailure("rejection", error);
   }
   return report;
 }
@@ -188,7 +188,7 @@ async function recordHealth(
   const invalid = outcomes.filter((o) => o.result.outcome === "invalid_token");
   const temporary = outcomes.filter((o) => o.result.outcome === "temporary_error");
 
-  const ops: PromiseLike<unknown>[] = [];
+  const ops: PromiseLike<{ error: unknown }>[] = [];
 
   if (sentIds.length > 0) {
     ops.push(
@@ -225,8 +225,29 @@ async function recordHealth(
   }
 
   if (ops.length === 0) return;
-  await Promise.all(ops).then(
-    () => {},
-    (e) => console.error("sendPushToUsers: health update failed", e),
-  );
+  // PostgREST resuelve los fallos con { error }; no tienen por qué rechazar.
+  // Observar cada escritura también cuando otra rechaza, sin repetir ninguna.
+  for (const result of await Promise.allSettled(ops)) {
+    if (result.status === "rejected") logHealthUpdateFailure("rejection", result.reason);
+    else if (result.value.error) logHealthUpdateFailure("response", result.value.error);
+  }
+}
+
+function logHealthUpdateFailure(kind: "response" | "rejection", error: unknown): void {
+  let code: unknown = null;
+  try {
+    if (error !== null && typeof error === "object") code = (error as { code?: unknown }).code;
+  } catch {
+    // Una excepción opaca también puede tener propiedades que lancen al leerlas.
+  }
+  // Solo códigos SQLSTATE/PostgREST: message/details/hint y excepciones pueden
+  // contener ids, endpoints o credenciales. No se imprimen ni el error ni la fila.
+  const safeCode = typeof code === "string" && /^(?:(?:[0-9]{2}|F0|HV|P0|XX)[0-9A-Z]{3}|PGRST[0-9]{3})$/.test(code)
+    ? code
+    : "UNKNOWN";
+  try {
+    console.error("sendPushToUsers: health update failed", { kind, code: safeCode });
+  } catch {
+    // Un fallo del diagnóstico no invalida el ACK ni oculta las demás escrituras.
+  }
 }
