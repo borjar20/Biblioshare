@@ -40,9 +40,7 @@ export function wheelTargetAngle(players: string[], picked: string, turns: numbe
 }
 
 // Vibración sutil al aterrizar. No-op donde no hay soporte (iOS Safari, SSR).
-export function buzz(): void {
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(30);
-}
+export { buzz } from "@/lib/play/ui/buzz";
 
 export type DieShapeKind = "d4" | "d6" | "d8" | "d10" | "d12" | "d20" | "round";
 

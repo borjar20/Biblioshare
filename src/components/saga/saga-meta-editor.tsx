@@ -208,9 +208,11 @@ export function SagaMetaEditor({
             <SagaPicker value={null} onChange={(saga) => saga && applyParent({ id: saga.id })} />
             <div className="flex gap-2">
               <Input
+                className="min-w-0 flex-1"
                 value={newParentName}
                 onChange={(e) => setNewParentName(e.target.value)}
                 placeholder={t("editParentNewPlaceholder")}
+                aria-label={t("editParentNewPlaceholder")}
                 maxLength={120}
               />
               <Button
@@ -218,6 +220,7 @@ export function SagaMetaEditor({
                 variant="secondary"
                 disabled={parentPending || !newParentName.trim()}
                 onClick={() => applyParent({ newName: newParentName })}
+                className="shrink-0"
               >
                 {t("editParentCreate")}
               </Button>

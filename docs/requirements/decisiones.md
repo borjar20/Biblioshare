@@ -5997,3 +5997,16 @@ setup hidratado bajo `next start` no solicita el recurso local inexistente.
 El audit global de navegación conserva su FAIL separado (#1301); esta
 verificación no acredita recepción de métricas de un despliegue. Evidencia:
 `docs/testing/2026-10-02-local-speed-insights-1306.md`.
+
+## 2026-10-02 — la vibración de Play vive en la utilidad común de UI (#996)
+
+`buzz` pasa a `lib/play/ui/buzz.ts` porque Reloj y Turnos no deben
+depender de los helpers internos del escenario Aleatorio. La función conserva
+exactamente su cuerpo: comprueba `navigator.vibrate` y solicita 30 ms.
+`stage-helpers.ts` reexporta la misma función para mantener los consumidores
+de Aleatorio; los otros tres consumidores sólo cambian sus imports.
+
+No se introduce un plugin de Capacitor ni un contrato nuevo de vibración.
+La equivalencia literal, los imports, tipos y nueve unitarios existentes
+verifican la extracción; no acreditan vibración física. Evidencia:
+`docs/testing/2026-10-02-shared-play-buzz-996.md`.
