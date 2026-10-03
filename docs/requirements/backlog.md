@@ -15,7 +15,9 @@
 > frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292);
 > filtros de tipo reverificados contra código y navegador local el 2026-10-02 (#1295);
 > cuota de altas Google Books verificada en local/dev/prod y CI el 2026-10-02 (#1237);
-> arranque, configuración del reloj y contraste de asientos verificados contra código y build/start local el 2026-10-02 (#964, #995, #999)]**
+> arranque, configuración del reloj y contraste de asientos verificados contra código y build/start local el 2026-10-02 (#964, #995, #999);
+> navegación principal, herramientas de Biblioteca y Comunidad verificadas contra código y navegador con build/start local el 2026-10-03;
+> esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -443,6 +445,24 @@ contra `pg_proc` que `get_widget_snapshot` tiene la precedencia a dos peldaños 
 como en producción. Los pendientes de barrido y fase destructiva se revisan en **#912**
 (barrido QID), **#877** (triggers de primaria) y **#866** (esquema de respaldo); esta
 verificación no afirma su ejecución. El resto sigue rastreable por `area:catalogo`.
+
+**Experiencias — esquema en producción (2026-10-03); entrega del código en PR #1323 (#1293)**
+- [x] Captura manual de salidas y escapadas con momentos, acompañantes, presencia
+  propia, favoritos, fotos consentidas y publicación única en feed/perfil.
+- [x] Privacidad/RLS, entrega autorizada y moderación con evidencia privada.
+- [x] Álbum social con portadas por actividad y acompañantes, captura breve,
+  acciones contextuales por momento, galería y permisos independientes.
+- [x] Navegación de la app con Experiencias y Comunidad como destinos principales,
+  herramientas en Biblioteca (`/coleccion/rincon`, `/notas`, `/estadisticas`),
+  perfil desde el avatar y Partidas en el menú secundario Más.
+- [x] Ocho migraciones aplicadas en producción el 2026-10-03; objetos, definiciones y permisos reales verificados a las 10:04 UTC (#1293).
+  Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.
+- [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
+  Contrato: `docs/superpowers/specs/2026-10-02-experiencias-design.md`.
+  Evidencia: [funcional (2026-10-02)](../testing/2026-10-02-experiencias.md)
+  y [UX de álbum (2026-10-03)](../testing/2026-10-03-experiencias-album.md);
+  [navegación de la app (2026-10-03)](../testing/2026-10-03-navegacion-app.md)
+  y [release (2026-10-03)](../testing/2026-10-03-experiencias-release.md).
 
 ## Features que no existen (P2-P3, por dominio)
 

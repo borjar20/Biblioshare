@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { loginHref } from "@/lib/auth/safe-next";
+import { isExperienceId } from "@/lib/experiences/validation";
+import { experienceUnavailableResponse } from "@/lib/experiences/not-found-response";
 
 const AUTH_PATHS = ["/login", "/signup", "/recuperar"];
 const ONBOARDING_PATH = "/onboarding";
@@ -58,6 +60,20 @@ export async function updateSession(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
+
+  // Resolve only these detail routes before streaming; page/actions still use RLS.
+  const experienceRoute=pathname.match(/^\/experiencia\/([^/]+)(\/editar)?\/?$/);
+  if (experienceRoute && ["GET","HEAD"].includes(request.method)) {
+    if (experienceRoute[2] && !userId) return redirect(loginHref(pathname));
+    const {data:experience}=isExperienceId(experienceRoute[1])
+      ? await supabase.from("experiences").select("id,creator_id").eq("id",experienceRoute[1]).maybeSingle()
+      : {data:null};
+    if (!experience || (experienceRoute[2] && experience.creator_id!==userId)) {
+      const missing=experienceUnavailableResponse();
+      response.cookies.getAll().forEach(cookie=>missing.cookies.set(cookie));
+      return missing;
+    }
+  }
 
   if (!userId) {
     // El layout compartido no conoce la subruta ni sus filtros. Recordamos

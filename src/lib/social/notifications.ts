@@ -137,6 +137,7 @@ async function buildPushPayload(
     ]);
     href = hrefByKey.get(`${params.targetType}:${params.targetId}`) ?? href;
   }
+  if(params.type==="experience_invited") href="/experiencias";
 
   const t = await getTranslations("notifications");
   const tCommon = await getTranslations("common");
@@ -458,6 +459,7 @@ async function resolveTargetHrefs(
   // a algo borrado.
   for (const t of targets) {
     if (t.targetType === "joint_viewing") hrefByKey.set(`joint_viewing:${t.targetId}`, `/juntos/${t.targetId}`);
+    if (t.targetType === "experience") hrefByKey.set(`experience:${t.targetId}`, `/experiencia/${t.targetId}`);
   }
 
   const clubRoundIds = targets.filter((t) => t.targetType === "club_round").map((t) => t.targetId);
@@ -623,7 +625,7 @@ export async function listNotifications(
 
       const fallbackHref = actor ? `/u/${actor.username}` : "/";
       const href =
-        n.interaction_target_id
+        n.type==="experience_invited" ? "/experiencias" : n.interaction_target_id
           ? (targetById.get(n.interaction_target_id)?.href ?? fallbackHref)
           : n.target_type && n.target_id
           ? (hrefByKey.get(`${n.target_type}:${n.target_id}`) ?? fallbackHref)

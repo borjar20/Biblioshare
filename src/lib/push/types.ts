@@ -151,6 +151,9 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, PushCategory> = {
   // Visionados conjuntos (#1220): una persona te etiqueta, contenido social.
   joint_viewing_invite: "social",
   joint_viewing_accepted: "social",
+  experience_invited: "social",
+  experience_accepted: "social",
+  followed_experience: "social",
 };
 
 // Canal de notificación Android por categoría (spec item 8). El registro nativo

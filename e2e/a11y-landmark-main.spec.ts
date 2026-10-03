@@ -4,6 +4,8 @@ const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
 const USERNAME = process.env.TEST_USER_USERNAME!;
 
+test.use({ trace: "off" });
+
 // Auditoría 2026-08, hallazgo F4-023 (issue #816): 15 de 17 rutas se servían sin
 // landmark `<main>` y ninguna tenía skip-link, así que quien navega con teclado
 // o lector de pantalla re-tabulaba la cabecera entera en CADA navegación.
@@ -23,7 +25,11 @@ const PUBLICAS = ["/login", "/signup", "/recuperar"];
 // Rutas con sesión. Se incluyen a propósito las cuatro que ANTES traían su
 // propio `<main>` (estadísticas y notas entre ellas): si alguien deshace a
 // medias el cambio, el fallo sale como dos landmarks, no como cero.
-const PRIVADAS = ["/", "/coleccion", "/buscar", "/clubes", "/notas", "/estadisticas", "/ajustes"];
+const PRIVADAS = [
+  "/", "/coleccion", "/coleccion/rincon", "/coleccion/rincon?archivados=1",
+  "/experiencias", "/comunidad", "/comunidad?tab=personas", "/buscar",
+  "/clubes", "/notas", "/estadisticas", "/ajustes",
+];
 
 async function entrar(page: Page) {
   await page.goto("/login");
@@ -37,6 +43,9 @@ async function esperarUnSoloMain(page: Page, ruta: string) {
   const main = page.locator("main");
   await expect(main, `${ruta}: se esperaba exactamente un <main>`).toHaveCount(1);
   await expect(main, `${ruta}: el <main> no es el del armazón`).toHaveAttribute("id", "contenido");
+  const heading = page.getByRole("heading", { level: 1 });
+  await expect(heading, `${ruta}: un único título visible`).toHaveCount(1);
+  await expect(heading).toBeVisible();
 }
 
 test("las rutas públicas traen un solo landmark <main>", async ({ page }) => {
@@ -47,8 +56,8 @@ test("las rutas públicas traen un solo landmark <main>", async ({ page }) => {
 });
 
 test("las rutas con sesión traen un solo landmark <main>", async ({ page }) => {
-  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
-  test.setTimeout(90_000);
+  test.skip(!EMAIL || !PASSWORD || !USERNAME, "TEST_USER_* no configurado");
+  test.setTimeout(120_000);
 
   await entrar(page);
 
@@ -74,4 +83,19 @@ test("el skip-link es el primer elemento enfocable y lleva al contenido", async 
 
   await page.keyboard.press("Enter");
   await expect(page.locator(":focus")).toHaveAttribute("id", "contenido");
+});
+
+test("Retos y objetivos conserva el skip-link y un solo main tras navegar a Comunidad", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+  await entrar(page);
+  await page.goto("/coleccion/rincon");
+  await esperarUnSoloMain(page, "/coleccion/rincon");
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus")).toHaveAttribute("href", "#contenido");
+  await expect(page.locator(":focus")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(":focus")).toHaveAttribute("id", "contenido");
+  await page.getByRole("navigation", { name: "Navegación principal" }).getByRole("link", { name: "Comunidad", exact: true }).click();
+  await expect(page).toHaveURL(/\/comunidad(?:#contenido)?$/);
+  await esperarUnSoloMain(page, "/comunidad tras navegación soft");
 });

@@ -5812,6 +5812,86 @@ conservan sus caminos. No hay migración de base de datos ni cambio en los
 motores o manifiestos históricos. Evidencia y alcance de la verificación:
 `docs/testing/2026-10-01-legacy-checkpoint-recovery-1284.md`.
 
+## 2026-10-02 — Dirección de producto: Experiencias reúne En vivo y Escapadas (#1293)
+
+El propietario elige desarrollar el diseño de una nueva sección que reúna conciertos,
+espectáculos, visitas culturales y escapadas. Su foco es compartir **qué se vivió y
+con quién**, mediante imágenes, carteles, lugares y personas. Los textos son un
+complemento, no un requisito para expresar la experiencia.
+
+Una salida concreta puede funcionar por sí sola o formar parte de una escapada con
+varios momentos; los acompañantes pueden variar entre momentos. Se explora una
+historia compartida con aportaciones y favoritos individuales.
+
+«Experiencias» es el nombre de trabajo. La elección acepta la dirección de producto,
+no un alcance técnico cerrado: captura, permisos, persistencia, búsqueda externa y
+desglose en hitos siguen en diseño. No se modifica el estado actual de la app ni se
+crea una excepción a la regla de `passes`.
+
+Propuesta revisable en `docs/superpowers/specs/2026-10-02-experiencias-producto.md`;
+seguimiento operativo en #1293 (`area:social`, `tipo:feature`, `P3`).
+
+## 2026-10-02 — Dominio de Experiencias y 404 antes del streaming (#1293)
+
+Diseño y plan aprobados: `experiences` es una excepción limitada al hub general
+de estado usuario↔obra. Tiene organizador, miembros, momentos y permisos propios;
+`passes` sigue gobernando libros, películas y series. Ampliar una salida conserva
+el ID de raíz y primer momento. No se representa como una obra ficticia del catálogo.
+
+Los lectores de sesión no se cachean. Hub y captura mantienen shell/Suspense;
+detalle y edición permiten bloquear mediante `instant=false` de Next 16.3.8.
+Una prueba de producción demostró que ni esa opción ni un rewrite con status 404
+evitan el 200 cuando ya empezó el streaming. El proxy de sesión hace un preflight
+RLS solo para esos GET/HEAD y responde HTML fijo 404/no-store si no hay acceso.
+Se conservan cookies renovadas y autorización independiente en página/RPC.
+El coste es una lectura indexada adicional al abrir detalle y un error con UI
+Paper mínima. No se altera el streaming de las otras rutas.
+
+## 2026-10-02 — Publicación y evidencia de Experiencias (#1293)
+
+La audiencia profile es una elección explícita del creador para su recuerdo y
+su atribución en su perfil/feed. Los acompañantes consienten identidad por separado;
+aceptar y asistir no publican identidad ni fotos. Vividas exige presencia propia,
+aunque el organizador haya marcado la raíz vivida.
+
+Una raíz tiene como máximo un post activo; publicar dos veces devuelve el mismo ID.
+Quitar la publicación conserva el recuerdo. Privatizar o retirar la raíz oculta
+post, comentarios, reacciones y avisos con el gate actual de acceso. Una restauración
+no revierte retiradas independientes; un post borrado por moderación no se recrea.
+
+Denuncias e historial retienen solo fotos ready y se leen por vías administrativas,
+incluidos snapshots ocultos a quien denuncia. Borrar sin denuncia/moderación no
+genera evidencia permanente. Se captura antes de las cascadas y los borrados de
+Storage quedan en cola duradera, con comprobación de filas vivas/evidencia.
+El marcador privado de operación confiable se reutiliza dentro de RPC de publicación
+y borrado tras validar creador/bloquear raíz: impide INSERT directo y permite
+eliminar descendientes retirados independientemente. El cliente no puede leerlo
+ni escribirlo; una operación ordinaria no captura historial administrativo de hijos.
+
+Código y SQL probados en local/dev; producir el release es una operación separada
+con las siete migraciones ordenadas y verificación de objetos reales. Estado en #1293.
+
+## 2026-10-02 — Retirada propia después de perder acceso (#1293, revisión final)
+
+Retirar identidad o salir no son aportaciones al grupo: usan autenticación propia
+y lock de raíz, independientemente de privacidad/bloqueo/moderación. Conceder
+consentimiento mantiene el gate de contribución. El hub ofrece una proyección mínima
+de título/fecha de participaciones propias aceptadas sin acceso; no muestra personas,
+momentos ni galería. Un bloqueo creador↔acompañante suspende también atribución pública
+en ambos sentidos, incluidos perfil, asistencia y favoritos.
+
+La gestión ID/fecha de fotos no permitía reconocer aportaciones subidas el mismo día.
+Se sustituye por una vista previa exclusiva del autor, en lista y confirmación, con
+RPC y endpoint separados del acceso al grupo. Solo ready propias de raíces no retiradas
+por moderación; sesión, no-store y 404 uniforme. La URL ordinaria sigue revocada al salir.
+El autor recupera sus propias imágenes para retirarlas, nunca contenido de otras personas.
+
+El filtro de acompañantes obtiene su lista completa con RLS del invocador, independiente
+de los resultados/filtros activos. Denunciar dentro de SECURITY DEFINER exige comprobar
+visibilidad actual antes de INSERT, para impedir denuncias y retención de evidencia sin acceso.
+La revisión añade una octava migración canónica; el orden final de release vive en
+`docs/testing/2026-10-02-experiencias.md` y #1293, con producción todavía pendiente.
+
 ## 2026-10-02 — identificadores limitados al endpoint de OpenLibrary (#1292)
 
 Un hostname fijo no impide que una ruta, query o fragmento cambie el endpoint.
@@ -6011,6 +6091,77 @@ La equivalencia literal, los imports, tipos y nueve unitarios existentes
 verifican la extracción; no acreditan vibración física. Evidencia:
 `docs/testing/2026-10-02-shared-play-buzz-996.md`.
 
+## 2026-10-03 — Experiencias se compone como un álbum social
+
+La dirección aprobada tras revisar el recorrido de Experiencias es un álbum
+centrado en lo vivido y sus personas. La captura elige actividad, nombre y estado
+en una vista breve; lugar y fechas se despliegan cuando hacen falta. Una portada
+sin fotografía utiliza arte vectorial propio de su categoría, sin simular fotos
+ni datos de una experiencia. Se conservan los tokens Paper y los términos del
+glosario. Entrar desde una actividad abre una captura nueva con esa categoría;
+atrás y adelante del navegador conservan el borrador de la visita correspondiente.
+
+El detalle reúne portada, acompañantes, fotos y recorrido. Añadir, editar y
+reordenar momentos sucede desde el propio recuerdo mediante hojas contextuales;
+la ruta de edición queda como alternativa para la configuración general. Las
+invitaciones tienen prioridad sobre los filtros del archivo. Los controles de
+retirada y fotos sin acceso continúan disponibles en su sección de gestión.
+
+La composición no cambia los contratos de datos: aceptar una invitación,
+confirmar presencia, mostrar identidad y compartir una foto siguen siendo cuatro
+decisiones explícitas e independientes. La audiencia de perfil no publica por sí
+sola en el feed. Las acciones contextuales conservan la revisión vigente y todos
+los valores de configuración al cambiar un campo. Las fotos usan los mismos
+endpoints autorizados; no se añade caché de datos dependientes de la sesión.
+
+## 2026-10-03 — las áreas de la app tienen entrada propia; el perfil muestra a la persona
+
+La barra principal para quien tiene sesión pasa a **Inicio · Biblioteca ·
+Experiencias · Comunidad · Buscar**, con los mismos destinos en móvil y
+escritorio. El avatar enlaza directamente al perfil en ambos tamaños. Su dueño
+ve Actividad y Experiencias; al visitar otro perfil se añade Biblioteca. El
+perfil concentra identidad y contenido compartido, y deja de ser la puerta de
+entrada a las herramientas de la app. Este reparto sustituye los puntos 1, 2,
+6 y 7 de la decisión de navegación del 2026-08-21: se retira la fila «Lo tuyo»
+y el avatar deja de desplegar destinos.
+
+**Más** es un menú global separado del avatar: reúne Partidas, Mascota y
+Ajustes. Partidas conserva un acceso secundario para no ocupar una entrada
+principal y aparece también sin sesión, porque su juego local ya admite ese
+uso. Esto sustituye la consecuencia de acceso anónimo oculto del punto 2 de la
+revisión de Play del 2026-08-30 (3); los shortcuts siguen siendo válidos. La
+cabecera con enlaces principales empieza en `md` (768 px) y la barra inferior
+queda por debajo: cinco destinos y las acciones no caben con claridad a 640 px.
+Los enlaces del menú siguen siendo enlaces reales; su cierre contempla también
+los cambios de query y las visitas del historial, no solo el `pathname`.
+
+Biblioteca muestra accesos a **Cuaderno**, **Retos y objetivos** y
+**Estadísticas**. `/coleccion/rincon` reutiliza los objetivos, retos, memorizar y
+sorteo del Rincón anterior, sin cambiar sus datos. Las pestañas privadas antiguas
+del perfil propio redirigen a sus nuevas rutas; Estadísticas conserva los
+parámetros de periodo, tipo y medida, y el Rincón conserva la vista de archivados.
+El mismo alias en un perfil ajeno no abre herramientas privadas. Los retornos
+de estas pantallas llevan a Biblioteca.
+
+Comunidad reúne **Clubes** y **Personas** en `/comunidad`. La lista de clubes
+se comparte mediante `ClubLists`; la ruta histórica `/clubes` sigue disponible.
+Personas reutiliza `PeopleResults` y la búsqueda de perfiles existente, con
+formulario GET. Son lecturas de la petición bajo los permisos/RLS vigentes;
+la agrupación no añade caché compartida de datos de sesión ni modifica el esquema.
+
+Las invalidaciones acompañan los nuevos destinos: `revalidateProfilePages`
+incluye `revalidateLibraryCorner`, una edición correcta de objetivos invalida
+feed y Rincón, y `revalidateClubPages` incluye Comunidad. Los layouts cargan los
+mensajes de sus islas cliente explícitamente: el provider del Rincón reemplaza
+al de Biblioteca y conserva `collection`, `library` y `search`, además de
+`challenges`, `notes`, `rincon` y `stats`; Comunidad envía `club`, mientras
+Personas compone sus textos en servidor.
+
+Los recorridos principales se han verificado en navegador real contra
+build/start local con datos de desarrollo. El estado de producción de
+Experiencias sigue pendiente en #1293. La evidencia y el alcance final de los
+controles están en `docs/testing/2026-10-03-navegacion-app.md`.
+
 ## 2026-10-03 — Reloj publica después de confirmar la persistencia local (#1313)
 
 `useClock` activa `publishAfterPersist` en `useCompanionStore` para corregir
@@ -6100,3 +6251,42 @@ Verificación: repro original y RED conservados; 51 pruebas focales PASS (19 de 
 El alias antiguo `/u/<dueño>?tab=coleccion` conserva un tipo explícito válido (`book`, `movie`, `series`, `todos`) al redirigir a la Biblioteca personal. Sin tipo o con uno inválido continúa en `/coleccion`, donde se aplica el default de Biblioteca, incluido el interés único del onboarding. `todos` conserva la elección explícita de todos los tipos y se distingue de omitir `type` (#313). La validación reutiliza el resolver de Biblioteca. Sólo el dueño alcanza este alias; el visitante conserva la colección del perfil que visita. No se amplía el passthrough de otros filtros antiguos.
 
 El RED nativo confirmó que el acceso directo movie conservaba Películas, mientras el alias perdía type y arrancaba en Libros. El arreglo pasa 23 unitarios, tipos/lint y ocho casos nativos sin retries en un build nuevo de producción: cuatro tipos explícitos, ausente/inválido y visitantes anónimo/autenticado. El gate funcional pasa; la auditoría global conserva FAIL por cinco POST cancelados de pullPendingCelebrations (#1301), cuya identidad no demuestra inocuidad. La tanda conjunta conserva el FAIL separado de Recursos #1328. Fuentes y evidencias anteriores permanecen intactas; fixtures y servicios propios limpios. Informe: `docs/testing/2026-10-03-profile-collection-alias-1325.md`. Sin cambio de esquema, caché ni arquitectura de rutas. La CI del lote es gate previo al merge.
+
+## 2026-10-03 — Comentarios: comprobar el padre antes de recursar, independiente del planner (#1335)
+
+La autorización de un comentario conserva su función SQL/STABLE y su contrato
+de permisos. La llamada recursiva a `public.can_view_target` se protege con un
+`CASE` que exige a la vez `c.id = p_target_id` y
+`t.id = c.interaction_target_id`. Un predicado WHERE o la condición del join
+no garantiza qué expresión evalúa primero PostgreSQL. El guard del ID solicitado
+por sí solo tampoco descarta el target propio del comentario.
+
+El ciclo no estaba en los datos: cada comentario apunta al target de su padre y
+posee además otro target. Si el planner recorre este último antes del join,
+la función vuelve a consultar el mismo comentario. El caso se hizo visible en
+la CI de PR #1323 al consultar el comentario de una experiencia privatizada;
+el SQL no cambió al integrar main. Un probe aislado con plan adverso produjo
+54001, el mismo probe con ambos guards devolvió público=true/privado=false, y
+la regresión sobre la función real reprodujo 54001 en dev con rollback.
+
+Se añade `20261003153110_guard_comment_target_recursion.sql` como novena
+migración y `supabase/tests/experiences_target_planner.sql` al runner del
+bootstrap. Las ocho migraciones ya aplicadas conservan su SQL y versiones.
+No cambian tablas, enums, cuotas, RLS, grants, firma, lenguaje, volatilidad,
+SECURITY DEFINER ni search_path; tampoco se aumenta max_stack_depth ni se
+oculta el fallo con reintentos. La aplicación y verificación remotas de la
+corrección siguen pendientes al registrar esta decisión. El corte de producción
+de las ocho originales a las 10:04 UTC queda separado de esa corrección.
+
+Seguimiento: [#1335](https://github.com/borjar20/Biblioshare/issues/1335).
+Evidencia: `docs/testing/2026-10-03-experiencias-release.md`, que conserva
+el fallo y distingue probes, verificación de esquema y publicación del código.
+
+Verificación posterior de la corrección, 2026-10-03: aplicada primero en dev,
+donde la regresión real de planes pasa en 3,639 s y el fixture social original
+en 7,804 s, ambos con rollback. Aplicada después en producción; a las
+15:36:19 UTC, cuerpo idéntico a dev y firma, SQL/STABLE, SECURITY DEFINER,
+search_path vacío, dueño postgres y ACL conservados. Ledger canónico
+`20261003153110 / guard_comment_target_recursion`. No se ejecutan fixtures
+con actores sintéticos en producción; la publicación del código sigue teniendo
+su propio gate de CI y merge.

@@ -54,6 +54,7 @@ export async function getWorkSummary(
   type: AnchorType,
   id: string,
 ): Promise<WorkSummary | null> {
+  if(type==="experience")return null;
   const href = anchorHref(type, id);
 
   if (type === "saga") {

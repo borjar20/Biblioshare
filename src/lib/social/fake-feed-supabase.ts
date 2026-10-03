@@ -31,6 +31,7 @@ export const FAKE_ITEM_ID = FAKE_BOOK_ID;
 
 export type FakeFeedSource =
   | "posts"
+  | "experiences"
   | "follows"
   | "profile_identities"
   | "books"
@@ -56,6 +57,7 @@ export type FakeFeedSource =
 export type FakeFeedData = {
   /** Filas de `posts` (la fuente de contenido del feed). */
   posts?: FakeRow[];
+  experiences?: FakeRow[];
   /** Filas de `club_activities` (la segunda fuente, columna `created_at`). */
   clubActivities?: FakeRow[];
   /** Filas fuente para display de posts `finished`, por `id` = source_id del post. */
@@ -160,6 +162,7 @@ export function rowMatchesOrFilter(row: FakeRow, filter: string): boolean {
 function sourceOf(table: string): FakeFeedSource {
   switch (table) {
     case "posts":
+    case "experiences":
     case "follows":
     case "profile_identities":
     case "books":
@@ -250,6 +253,8 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     switch (source) {
       case "posts":
         return posts;
+      case "experiences":
+        return rows.experiences ?? [];
       case "interaction_targets":
         return interactionTargets;
       case "passes":

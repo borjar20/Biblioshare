@@ -40,6 +40,7 @@ export async function createPost(input: CreatePostInput): Promise<CreatePostResu
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "unauthenticated" };
+    if(input.kind==="experience"||input.anchorType==="experience")return {ok:false,error:"forbidden"};
 
     // body obligatorio SOLO para 'thought'; en los hitos es opcional (null).
     const rawBody = input.body ?? "";

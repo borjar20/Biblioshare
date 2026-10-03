@@ -2,6 +2,14 @@
 
 > **[Convención · verificada contra código el 2026-08-19]**
 
+> **Delta verificado 2026-10-03 (local/dev):** `revalidateLibraryCorner()` invalida
+> `/coleccion/rincon`. `revalidateProfilePages()` lo incorpora para que las
+> mutaciones de retos y notas que antes alimentaban el Rincón del perfil también
+> refresquen su nueva superficie. `updateGoals` invalida Inicio y el Rincón sólo
+> después de guardar correctamente. `revalidateClubPages()` incluye `/comunidad`
+> además del directorio antiguo y las fichas. Las lecturas conservan la sesión
+> de petición bajo Suspense; no se añade caché compartida.
+
 Dos capas separadas:
 
 1. **Verdad (servidor).** Toda server action mutadora revalida vía los helpers
