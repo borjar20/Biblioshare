@@ -6,7 +6,7 @@ import type { CompanionEmit } from "@/lib/play/core/use-companion-store";
 import type { ClockEvent } from "@/lib/play/clock/events";
 import type { ClockState } from "@/lib/play/clock/types";
 import { flaggedAt, formatMs, remainingAt } from "@/lib/play/clock/selectors";
-import { buzz } from "@/components/play/random/stage/stage-helpers";
+import { buzz } from "@/lib/play/ui/buzz";
 import { SEAT_ACCENT } from "@/lib/play/ui/seats";
 import { useNow } from "./use-now";
 

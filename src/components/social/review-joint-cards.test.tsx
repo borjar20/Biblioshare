@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
+import { hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
 import type { JointCardMember } from "@/lib/social/feed";
@@ -92,6 +94,48 @@ const joint = (members: JointCardMember[]) =>
   });
 
 describe("JointCard", () => {
+  it("hidrata la media del grupo sin regenerar el HTML del servidor", async () => {
+    const now = new Date("2026-10-03T12:00:00.000Z");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now.getTime());
+    const errors = vi.spyOn(console, "error");
+    const recoverableErrors: unknown[] = [];
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    let root: Root | undefined;
+
+    try {
+      const event = {
+        ...joint([member("ana", 9), member("luis", 8), member("marta", 10)]),
+        eventDate: "2026-10-03T10:00:00.000Z",
+      };
+      const tree = (
+        <NextIntlClientProvider locale="es" messages={messages} timeZone="Europe/Madrid" now={now}>
+          <JointCard event={event} viewerLoggedIn knownUsernames={[]} />
+        </NextIntlClientProvider>
+      );
+      // Interpretar el SSR como HTML aplica las mismas correcciones de anidación
+      // que un navegador; un montaje cliente directo no ejercita esta frontera.
+      container.innerHTML = renderToString(tree);
+      const article = container.querySelector("article");
+      expect(article).not.toBeNull();
+
+      await act(async () => {
+        root = hydrateRoot(container, tree, {
+          onRecoverableError: (error) => recoverableErrors.push(error),
+        });
+      });
+
+      expect(recoverableErrors.map(String)).toEqual([]);
+      expect(errors.mock.calls).toEqual([]);
+      expect(container.querySelector("article")).toBe(article);
+    } finally {
+      await act(async () => root?.unmount());
+      container.remove();
+      errors.mockRestore();
+      clock.mockRestore();
+    }
+  });
+
   it("«juntos» una sola vez, datos de la obra y media del grupo", () => {
     const { container } = wrap(
       <JointCard event={joint([member("borja", 9), member("maxteryo", 8), member("flufli", 10)])} viewerLoggedIn knownUsernames={[]} />,
