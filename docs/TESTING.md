@@ -586,3 +586,18 @@ repiten ni se suman a esta ejecución. No se arrancan servicios ni DB.
 final. Un PASS local o de otro SHA no acredita la CI de este lote. La evidencia
 de publicación se vincula a ese HEAD, sin convertir la cobertura local en
 verificación de navegador, media nativa, RLS o proveedores.
+
+## Motivo de abandono en el diario (#655)
+
+[Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho
+casos ejecutan `PassDiary` e Intl reales en jsdom. Cubren las cinco categorías
+de abandono, la nota completa de «Otro», la ausencia de motivo y un pase
+completado con motivo residual. La tanda focal del 2026-10-03 pasa 35/35 en
+tres archivos, con tipos y lint correctos. Dos controles negativos detectan
+la retirada del gate de estado y el truncado de la nota; después se restaura
+el producto con sus bytes originales.
+
+Las acciones de servidor y la carga conjunta están controladas. Esta cobertura
+acredita el DOM local; no acredita layout de navegador, persistencia ni RLS.
+No cambia el producto y no arranca servicios. La entrega requiere CI sobre el
+HEAD final de la PR.
