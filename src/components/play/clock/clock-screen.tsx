@@ -30,33 +30,46 @@ export function ClockScreen({ identity }: { identity: string }) {
       <h1 className="font-serif text-[26px] font-semibold">{t("title")}</h1>
       <p className="mt-1 text-[14px] text-muted-foreground">{t("subtitle")}</p>
 
-      <div role="tablist" aria-label={t("title")} className="mt-4 flex flex-wrap gap-2">
-        {TABS.map((id) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            type="button"
-            onClick={() => setTabChoice(id)}
-            className={`rounded-chip border px-3 py-1.5 text-[13px] ${
-              tab === id ? "border-foreground bg-surface-muted font-semibold" : "border-border"
-            }`}
-          >
-            {t(`tabs.${id}`)}
-          </button>
-        ))}
-      </div>
+      {clock.persistence !== "idle" ? (
+        <p
+          role="status"
+          className={`mt-3 text-[13px] ${
+            clock.persistence === "memory" ? "text-play-danger" : "text-muted-foreground"
+          }`}
+        >
+          {t(`persistence.${clock.persistence}`)}
+        </p>
+      ) : null}
 
-      <div className="mt-5">
-        {tab === "chess" ? (
-          clock.state.mode === "chess" ? (
-            <ChessGame state={clock.state} emit={clock.emit} />
-          ) : (
-            <ChessSetup identity={identity} state={clock.state} emit={clock.emit} />
-          )
-        ) : null}
-        {tab === "countdown" ? <CountdownPanel state={clock.state} emit={clock.emit} /> : null}
-      </div>
+      <fieldset disabled={clock.persistence === "pending"} className="min-w-0">
+        <div role="tablist" aria-label={t("title")} className="mt-4 flex flex-wrap gap-2">
+          {TABS.map((id) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              type="button"
+              onClick={() => setTabChoice(id)}
+              className={`rounded-chip border px-3 py-1.5 text-[13px] ${
+                tab === id ? "border-foreground bg-surface-muted font-semibold" : "border-border"
+              }`}
+            >
+              {t(`tabs.${id}`)}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-5">
+          {tab === "chess" ? (
+            clock.state.mode === "chess" ? (
+              <ChessGame state={clock.state} emit={clock.emit} />
+            ) : (
+              <ChessSetup identity={identity} state={clock.state} emit={clock.emit} />
+            )
+          ) : null}
+          {tab === "countdown" ? <CountdownPanel state={clock.state} emit={clock.emit} /> : null}
+        </div>
+      </fieldset>
     </div>
   );
 }
