@@ -43,6 +43,17 @@ function LoadedResourcesScreen({
       <h1 className="font-serif text-[26px] font-semibold">{t("title")}</h1>
       <p className="mt-1 text-[14px] text-muted-foreground">{t("subtitle")}</p>
 
+      {res.persistence !== "idle" ? (
+        <p
+          role="status"
+          className={`mt-3 text-[13px] ${
+            res.persistence === "memory" ? "text-play-danger" : "text-muted-foreground"
+          }`}
+        >
+          {t(`persistence.${res.persistence}`)}
+        </p>
+      ) : null}
+
       <button
         type="button"
         aria-expanded={configOpen}
@@ -52,9 +63,11 @@ function LoadedResourcesScreen({
         {t("configure")}
       </button>
       {configOpen ? (
-        <div className="mt-3">
+        // La configuración emite valores absolutos del snapshot publicado.
+        // Los deltas del tablero y deshacer sí pueden seguir encolándose.
+        <fieldset disabled={res.persistence === "pending"} className="mt-3 min-w-0">
           <ResourcesConfig identity={identity} state={res.state} emit={res.emit} />
-        </div>
+        </fieldset>
       ) : null}
 
       <div className="mt-5">
