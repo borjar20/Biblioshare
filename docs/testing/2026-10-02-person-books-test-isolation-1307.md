@@ -96,3 +96,25 @@ Acredita la orquestación, los argumentos de escritura, el sello y los reintento
 La admisión en catálogo y las restricciones, grants y políticas de Postgres
 requieren sus comprobaciones de integración. Este resultado no afirma un fallo
 de siembra en producción ni modifica ese comportamiento.
+
+## Continuidad del gate de integración · 2026-10-03
+
+La primera CI de la PR #1312 pasó calidad y CodeQL, pero su navegador terminó
+con **104 PASS / 1 FAIL** en un caso ajeno al test de bibliografías: Reloj a
+1280 px mostró `1:30` y perdió la partida al recargar. Se conservan el FAIL,
+la traza y su contexto; no se reintentó la tanda antes de corregir la causa.
+Tests `37005173568`, log raíz `person-books1307-fail-ci-37005173568.log`, SHA256
+`81265f8617abf37cc843a47ad5302b1cfe5ab56405e707d116f2b61885cb06c1`.
+
+La reproducción posterior de #1313 confirmó publicación anterior al ACK de
+IDB. Su corrección se integró en la PR #1331, commit
+`0c22a6049bb8882f07a67569b7f8ea72a75b7d88`, con **4.207 unitarios y 130
+recorridos de navegador PASS**. Esto desbloquea la preparación de #1307;
+no convierte el FAIL de la primera tanda en PASS.
+
+El lote actual incorpora el commit original
+`1cf2e1096d9c29ed98c2c5b60ba257dc07fdfde9` sobre esa base, conserva el hash
+del test `4e445c24cfc23b53561ab20ecf582ee2bc027cf3b40ff6ec147682401c56a69b`
+y mantiene el producto sin cambios. La CI completa del lote es el gate de
+integración de esta cobertura. Los 14 artefactos estáticos originales están
+archivados en la raíz; no depende de conservar el checkout temporal.
