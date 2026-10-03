@@ -71,6 +71,15 @@ describe("scoreRanking", () => {
     const ranking = scoreRanking(conRondas([[10, 10, 3]]));
     expect(ranking.map((r) => r.position)).toEqual([1, 1, 3]);
   });
+
+  it("con lowest los dos menores comparten posición 1 y el siguiente queda tercero", () => {
+    const ranking = scoreRanking(conRondas([[9, 3, 4], [2, 1, 0]], { direction: "lowest" }));
+    expect(ranking).toEqual([
+      { seat: 1, total: 4, position: 1 },
+      { seat: 2, total: 4, position: 1 },
+      { seat: 0, total: 11, position: 3 },
+    ]);
+  });
 });
 
 describe("limitReached", () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { playTools, UNKNOWN_EVENT_DESCRIPTION, buildSavedSummary } from "./tools";
 import { initialMtgState } from "./mtg/reducer";
+import { initialScoreState } from "./score/reducer";
 import { ev, started } from "./mtg/test-fixtures";
 import type { LifeChangedEvent } from "./mtg/events";
 import { makeEvent } from "./core/events";
@@ -31,6 +32,29 @@ describe("playTools.mtg", () => {
     expect(playTools.mtg.describe(foreign, state)).toEqual(UNKNOWN_EVENT_DESCRIPTION);
     expect(playTools.mtg.describe(foreign, state)).toEqual({ key: "unknown", params: {} });
   });
+});
+
+describe("playTools.score", () => {
+  const state = initialScoreState(
+    makeEvent("game_started", {
+      toolId: "score" as const,
+      setup: {
+        participants: [
+          { id: "ana", kind: "guest" as const, name: "Ana" },
+          { id: "beto", kind: "guest" as const, name: "Beto" },
+        ],
+        direction: "highest" as const,
+      },
+    }, 1000),
+  );
+
+  it.each(["life_changed", "future_score_event"])(
+    "describe() devuelve UNKNOWN_EVENT_DESCRIPTION para %s",
+    (type) => {
+      const foreign = makeEvent(type, {}, 2000);
+      expect(playTools.score.describe(foreign, state)).toBe(UNKNOWN_EVENT_DESCRIPTION);
+    },
+  );
 });
 
 // Logs mínimos válidos para buildSavedSummary: game_started + eventos +
