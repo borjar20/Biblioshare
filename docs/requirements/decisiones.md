@@ -5980,3 +5980,16 @@ reintentable; no se inventa un orden para silenciar la siguiente apertura.
 No hay migración ni reparación masiva. La verificación nativa usa lector
 anónimo y escritor de sistema; su alcance y el fallo previo conservado están
 en `docs/testing/2026-10-02-book-credit-convergence-633.md`.
+
+## 2026-10-02 — la vibración de Play vive en la utilidad común de UI (#996)
+
+`buzz` pasa a `lib/play/ui/buzz.ts` porque Reloj y Turnos no deben
+depender de los helpers internos del escenario Aleatorio. La función conserva
+exactamente su cuerpo: comprueba `navigator.vibrate` y solicita 30 ms.
+`stage-helpers.ts` reexporta la misma función para mantener los consumidores
+de Aleatorio; los otros tres consumidores sólo cambian sus imports.
+
+No se introduce un plugin de Capacitor ni un contrato nuevo de vibración.
+La equivalencia literal, los imports, tipos y nueve unitarios existentes
+verifican la extracción; no acreditan vibración física. Evidencia:
+`docs/testing/2026-10-02-shared-play-buzz-996.md`.
