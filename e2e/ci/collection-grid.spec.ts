@@ -124,7 +124,7 @@ test("Colecciones usa 4/3/2 columnas; cabecera, búsqueda y orden siguen en clie
   await expect(cards.first()).toContainText(fixture.names[1]);
   await search.fill("no-existe-qa662746");
   await expect(cards).toHaveCount(0);
-  await expect(page.getByText("Ninguna colección coincide", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ninguna colección coincide con la búsqueda.", { exact: true })).toBeVisible();
   await search.fill("qa662746");
   await expect(cards).toHaveCount(5);
   await page.getByRole("button", { name: "Nombre", exact: true }).click();
