@@ -1367,3 +1367,48 @@ commit;
 begin;
 \ir migrations/20261001195124_google_books_creation_quota.sql
 commit;
+
+-- 20261002092735_experiences_enums
+begin;
+\ir migrations/20261002092735_experiences_enums.sql
+commit;
+
+-- 20261002092737_experiences_core
+begin;
+\ir migrations/20261002092737_experiences_core.sql
+commit;
+
+-- 20261002095236_experiences_deletion
+begin;
+\ir migrations/20261002095236_experiences_deletion.sql
+commit;
+
+-- 20261002105627_experiences_participation
+begin;
+\ir migrations/20261002105627_experiences_participation.sql
+commit;
+
+-- 20261002112531_experiences_photo_mutations
+begin;
+\ir migrations/20261002112531_experiences_photo_mutations.sql
+commit;
+
+-- 20261002120712_experiences_social_visibility
+begin;
+\ir migrations/20261002120712_experiences_social_visibility.sql
+commit;
+
+-- 20261002125917_experiences_advisor_hardening
+begin;
+\ir migrations/20261002125917_experiences_advisor_hardening.sql
+commit;
+
+-- 20261002132635_experiences_review_fixes
+begin;
+\ir migrations/20261002132635_experiences_review_fixes.sql
+commit;
+
+-- 20261003153110_guard_comment_target_recursion
+begin;
+\ir migrations/20261003153110_guard_comment_target_recursion.sql
+commit;

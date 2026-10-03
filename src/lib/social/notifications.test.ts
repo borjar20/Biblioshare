@@ -214,6 +214,20 @@ function makeFakeSupabase(tables: Record<string, Row[]>, queriedTables: string[]
   } as any;
 }
 
+describe("experience notification destinations",()=>{
+  it("pending invitation opens the summary hub and accepted opens the memory",async()=>{
+    const tables=baseTables();
+    tables.notifications=["experience_invited","experience_accepted"].map((type,index)=>({id:`exp-${index}`,user_id:"user-1",actor_id:"actor-1",type,interaction_target_id:null,target_type:"experience",target_id:"memory-1",read_at:null,created_at:"2026-10-02T10:00:00Z"}));
+    const rows=await listNotifications(makeFakeSupabase(tables),"user-1");
+    expect(rows.find(n=>n.type==="experience_invited")?.href).toBe("/experiencias");
+    expect(rows.find(n=>n.type==="experience_accepted")?.href).toBe("/experiencia/memory-1");
+  });
+  it("invitation push has no private title and opens invitations",async()=>{
+    const caller=makeFakeSupabase(baseTables());trustedWriter.create.mockReturnValue(makeFakeSupabase({notifications:[]}));
+    await notify(caller,{userId:"user-1",actorId:"actor-1",type:"experience_invited",targetType:"experience",targetId:"memory-1",dedupeKey:"experience_invited:person-1"});
+    expect(sendPushToUser.mock.calls[0]?.slice(0,2)).toEqual(["user-1",expect.objectContaining({path:"/experiencias",category:"social",type:"experience_invited",body:'notifications.experienceInvited:{"name":"Ana"}'})]);
+  });
+});
 function baseTables(): Record<string, Row[]> {
   return {
     clubs: [{ id: "club-1", slug: "club-lectura" }],

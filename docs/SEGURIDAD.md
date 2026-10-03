@@ -7,6 +7,46 @@
 > (`docs/audit/AUDIT-2026-08.md`, hallazgos `S2-###`). El detalle por tabla/policy
 > está en `docs/requirements/data-model.md`. Lo roto y pendiente vive en issues.
 
+## Experiencias (#1293, verificado local/dev 2026-10-02; producción pendiente)
+
+Seis tablas nuevas con RLS y SELECT de cliente; la escritura exige RPC autenticada
+con identidad propia, raíz bloqueada y cuotas. No se añaden columnas a tablas previas.
+Private excluye acompañantes; participants exige aceptación; profile exige perfil
+visible y ausencia de bloqueo. Un pendiente ve solo el resumen de invitación.
+Las cuentas confirman solo su presencia, favorito e identidad. Los invitados sin
+cuenta son etiquetas privadas. Consentir una foto no consiente identidad.
+Retirar identidad o salir de una participación propia no exige recuperar acceso:
+un resumen autenticado de título/fecha identifica la participación sin mostrar el
+grupo. El bloqueo creador↔acompañante suspende atribución pública en ambos sentidos,
+incluidos asistencia, favoritos y perfil. Conceder consentimiento conserva el gate normal.
+
+La publicación única exige creador y audiencia profile. INSERT directo está cerrado;
+post, targets de comentarios/reacciones y notificaciones comprueban también la raíz.
+Retirar o privatizar el padre revoca descendientes, incluso para el creador/admin
+en las superficies ordinarias. Restaurar no restaura hijos retirados por separado.
+
+Fotos en bucket privado, 1..2 MiB, JPEG/PNG/WebP y firma verificada en la aplicación.
+Reserva pending y confirmación solo si existen bytes con metadatos válidos.
+El endpoint normal autoriza por sesión antes de leer con servicio: 404 uniforme,
+private/no-store, nosniff y sin URL firmada. El autor saliente puede borrar su imagen
+sin recuperar acceso al grupo; la gestión muestra IDs/fechas y una vista previa
+exclusiva de su autor por `/api/experience-photos/[id]/own`. Esta ruta usa otro gate
+autenticado, no sirve imágenes ajenas/pending ni abre raíces retiradas por moderación.
+
+Denunciar exige visibilidad actual de la raíz, también dentro de la RPC definidora;
+un tercero, pendiente o exmiembro sin acceso no puede denunciar ni crear evidencia.
+Denuncias e historial guardan fotos ready como evidencia privada. El reporter recibe
+confirmación, nunca ese snapshot. Solo la RPC y el endpoint administrativos sirven
+la evidencia tras comprobar rol admin. La eliminación personal sin denuncia/moderación
+no crea historial permanente. La cola privada de borrado conserva rutas para reintentar,
+comprueba metadatos vivos y evidencia antes de retirar Storage. Servicio únicamente.
+
+Advisors: EXECUTE SECURITY DEFINER de lecturas públicas es deliberado (proyección
+autorizada); las mutaciones autenticadas tienen gate interno. Sin EXECUTE de PUBLIC
+en los contratos nuevos. La cola tiene policy false; índice FK e initplan de auth.uid
+corregidos en `20261002125917_experiences_advisor_hardening.sql`. Un índice nuevo
+«unused» no se retira: protege la FK de portada. Detalle y límites en la evidencia.
+
 ## El modelo en una página
 
 1. **RLS en todo.** Las 55 tablas de `public` tienen RLS activa y al menos una

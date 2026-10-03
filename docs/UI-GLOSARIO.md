@@ -1,6 +1,8 @@
 # Glosario de UI — un nombre por concepto
 
 > **[Canónico · verificado 2026-08-20]**
+> Delta de navegación principal y herramientas de Biblioteca verificado 2026-10-03;
+> el resto conserva su fecha de verificación.
 >
 > Cierra **F3-011** de la auditoría 2026-08 (acción 7 del roadmap). Aquí manda el
 > término que ve el usuario, en español; el nombre técnico (tabla, tipo, ruta) va
@@ -22,6 +24,53 @@ de la app, por bien dibujada que esté cada pantalla.
 
 ## Los términos
 
+Delta 2026-10-02, Experiencias (#1293): **Experiencia** es una salida o recuerdo
+compartido; **Escapada** agrupa varios **Momentos** en el mismo recuerdo;
+**Acompañante** es una cuenta invitada o una etiqueta privada sin cuenta.
+Estados: **Por vivir**, **Vivida**, **Cancelada**. Aceptar una invitación confirma
+participación en el grupo; **Fui**, **Por confirmar** y **No fui** describen presencia
+en cada momento. **Mi momento favorito** pertenece a quien lo elige.
+Compartir significa publicar la experiencia en el perfil/feed según su audiencia.
+Avisos: «te invitó a una experiencia», «aceptó tu invitación», «compartió una experiencia».
+Un recuerdo inaccesible se presenta como «Experiencia no disponible», sin distinguir
+entre ID inexistente, privacidad o retirada.
+«Participaciones sin acceso» permite «Retirar mi participación pública» o «Salir
+de la experiencia». «Fotos fuera de un grupo» muestra una vista previa exclusiva
+del autor para reconocer la aportación que va a eliminar.
+Invitaciones: «Aceptar invitación» / «Rechazar invitación». «Mostrar mi participación
+en el perfil» es consentimiento individual, separado de aceptar y de «Fui».
+«Añadir acompañante» admite «Cuenta de Biblioshare» o «Invitado sin cuenta»;
+invitar abre el recuerdo a acompañantes aceptados y lo avisa antes de enviar.
+Galería: «Añadir foto», «Portada» y «Mostrar esta foto en el perfil». La autoría
+no concede consentimiento de identidad. «Fotos fuera de un grupo» permite quitar
+aportaciones propias tras salir, sin volver a abrir el recuerdo.
+Publicación: «Compartir en el feed», «Ver publicación» y «Quitar publicación del
+feed»; quitar el post conserva la experiencia. Perfil: pestaña «Experiencias».
+Moderación: «Reportar experiencia» y «Imagen de evidencia», reservada al administrador.
+
+Delta 2026-10-03, rediseño de Experiencias como álbum social: se conservan los
+conceptos **Experiencia**, **Momento**, **Escapada** y **Acompañante**. «El recuerdo»
+y «El recorrido» organizan la experiencia y sus momentos; «álbum» describe la
+presentación de las fotos, sin introducir otro contenedor de datos. La creación
+empieza por «¿Qué vas a vivir?» y el nombre; «Añadir fecha o lugar» permite ampliar
+los detalles. «Fechas y privacidad» reúne esos ajustes dentro del recuerdo y
+«Tu participación» agrupa la presencia y las decisiones personales.
+**Vivida** sigue siendo el estado de la experiencia y **Fui** la presencia de cada
+persona en un momento: elegir uno no confirma el otro. «Visible dentro del
+recuerdo» y «Visible en el perfil según cada permiso» describen la audiencia sin
+sustituir el consentimiento individual de identidad y fotos. «Revisar mis
+participaciones» y «Revisar mis fotos» mantienen el acceso a la gestión de
+aportaciones propias cuando ya no se puede abrir el recuerdo.
+
+Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
+**Experiencias**, **Comunidad** y **Buscar** son las entradas principales.
+**Comunidad** reúne **Clubes** y **Personas**: aquí «Personas» son cuentas de
+Biblioshare, no autores del catálogo. **Retos y objetivos** es el acceso al
+**Rincón** desde Biblioteca; conserva los objetivos, retos, memorizar y sorteo
+existentes. El **Perfil** muestra identidad y contenido compartido y se abre
+desde el avatar global. Las funciones de la app tienen navegación propia;
+**Más opciones** ofrece los accesos secundarios globales, incluida **Partidas**.
+
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|
 | **Retirar** / **Restaurar** | Suspender / Reactivar (contenido) | Ocultar contenido para todos de forma reversible / recuperar su visibilidad previa. | Moderación, `/admin` (#1183) |
@@ -38,11 +87,15 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Saga** | Serie de libros, Colección (de estudio) | Un conjunto de obras con orden narrativo. | `/saga/[id]` |
 | **Universo** | Metasaga, Franquicia | Una saga que agrupa otras sagas. Es una saga, no un tipo aparte. | `sagas.parent_id` |
 | **Club** | Grupo | El espacio compartido donde varias personas leen o ven algo a la vez. | `/club/[slug]` |
+| **Comunidad** | — | El destino compartido de Clubes y Personas. | `/comunidad`; pestaña Personas con `?tab=personas` |
+| **Personas** (en Comunidad) | Autores | Cuentas de Biblioshare que puedes buscar y conocer. | `/comunidad?tab=personas` |
+| **Perfil** | Mi espacio | La identidad y el contenido que comparte una persona. El avatar global da acceso al perfil propio. | `/u/[username]` |
 | **Madriguera del club** | Ranking del club, Equipo de combate | El espacio de compañía de las mascotas de quienes pertenecen al club, respetando la privacidad de cada perfil. | S3 #1129; implementada en desarrollo el 2026-09-07, aceptación visual de José Ángel el 2026-09-07; publicación pendiente |
 | **Actividad** | Evento, Lectura conjunta | Lo que se hace dentro de un club y tiene calendario: lectura conjunta, tierlist, evento… | `club_activities` |
 | **Hito** | Checkpoint, Punto de control | La marca de «he llegado hasta aquí» dentro de una actividad; es lo que abre el capítulo sin spoilers. | `club_checkpoints` |
 | **Reto** | Challenge, Objetivo | La meta contable del usuario («50 libros en 2026»). | `/estadisticas`, `challenges` |
-| **Rincón** | Mi rincón, Panel | La pestaña personal del perfil, con el sorteo y los accesos a lo tuyo. | pestaña de `/u/[username]` |
+| **Retos y objetivos** | Mi espacio | El acceso desde Biblioteca al Rincón y sus objetivos, retos, memorizar y sorteo. | `/coleccion/rincon` |
+| **Rincón** | Mi rincón, Panel | El espacio de objetivos, retos, memorizar y sorteo integrado en Biblioteca. | `/coleccion/rincon`; los enlaces antiguos del perfil propio redirigen aquí |
 | **Campamento** | — | Inicio de la mascota, con su estado, acceso a aventuras y entrenamiento, equipo y misiones. | `/mascota?view=camp`, navegación verificada 2026-09-09 |
 | **Personaje** | Ficha | Sección de la mascota con sus atributos, clase, nombre y el equipo: aquí comparas el botín conseguido y eliges arma y amuleto para el próximo combate. | `/mascota?view=character`, navegación verificada 2026-09-09 |
 | **Mochila** | — | **Retirada el 2026-09-09 (#1166).** Fue destino propio hasta que el equipo entró en Personaje; `?view=bag` sigue llevando allí. No reimplementar leyendo un mockup viejo. | `/mascota?view=character` |
@@ -53,7 +106,7 @@ de la app, por bien dibujada que esté cada pantalla.
 | **Potencia** (del objeto) | Calidad, Roll, Reroll | Multiplicador fijo del efecto adicional de una copia de botín. No es el nivel de la mascota. | `/mascota`, R4b #1123 |
 | **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón |
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
-| **Tu cuenta** | Mi cuenta, Tú (como etiqueta visible) | El **agrupador** de lo tuyo (perfil, Cuaderno, Estadísticas, Ajustes). Es el nombre del menú del avatar; en el código el concepto se llama «Tú» (`youItems`), pero al usuario no se le enseña esa palabra suelta. | menú del avatar (`sm+`), fila «Lo tuyo» del perfil (móvil) |
+| **Más opciones** | Mi espacio | El menú de accesos secundarios de la app, disponible en cualquier pantalla. Incluye Partidas y Ajustes. | navegación global; separado del enlace de perfil en el avatar |
 | **Partida** | Juego | Una sesión de juego concreta; la unidad principal del dominio. | dominio `play`, `/partidas` |
 | **Herramienta** | Tracker, Módulo | Cada tracker del hub de Partidas, y es el **juego**, no el modo: «Magic: The Gathering», no «Commander». Nadie se pregunta «¿tendrá Commander?», se pregunta «¿tendrá Magic?». | `/partidas` (hub principal) |
 | **Jugador** | Usuario, Participante | Quien participa en una partida, sea cuenta Biblioshare, habitual o invitado; su origen no se distingue durante la partida. | dominio `play` |
@@ -106,7 +159,7 @@ de la app, por bien dibujada que esté cada pantalla.
   propuesta de la auditoría era renombrar la pestaña «Perfil» de la barra
   inferior a «Tú»; se descartó por no estrenar un término tres días después de
   cerrar este glosario, y porque el problema no era el nombre de la pestaña sino
-  que no colgaba nada de ella. El concepto existe en el código (`youItems`) y
-  llega al usuario como **«Tu cuenta»** (el menú) y **«Lo tuyo»** (la fila del
-  perfil en móvil). Si algún día se rehace la barra principal, decidir la
-  etiqueta AQUÍ antes de tocar `nav-items.ts`.
+  que no colgaba nada de ella. Aquella navegación se sustituyó el 2026-10-03:
+  el perfil se abre desde el avatar, las secciones tienen entradas propias y
+  **«Más opciones»** reúne los accesos secundarios globales. «Tu cuenta» y
+  «Lo tuyo» ya no describen la navegación principal ni la cabecera del perfil.

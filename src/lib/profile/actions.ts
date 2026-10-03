@@ -8,6 +8,7 @@ import {
   revalidateLibrary,
   revalidateProfilePages,
   revalidateCollectionPages,
+  revalidateLibraryCorner,
 } from "@/lib/reactivity/revalidate";
 import { uploadPublicImage } from "@/lib/storage/upload-public-image";
 
@@ -90,6 +91,7 @@ export async function updateGoals(
   if (error) return { error: "generic" };
 
   revalidateFeed();
+  revalidateLibraryCorner();
   return {};
 }
 

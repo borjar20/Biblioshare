@@ -67,7 +67,10 @@ export type NotificationType =
   // y la confirmación que recibe quien invitó. target = el visionado
   // (`joint_viewing`), que resuelve a `/juntos/[id]`.
   | "joint_viewing_invite"
-  | "joint_viewing_accepted";
+  | "joint_viewing_accepted"
+  | "experience_invited"
+  | "experience_accepted"
+  | "followed_experience";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -89,7 +92,8 @@ export type ReviewTargetType =
   // puede divergir de él.
   | "club_round"
   // Un visionado conjunto (#1220): su página es `/juntos/[id]`, donde se acepta.
-  | "joint_viewing";
+  | "joint_viewing"
+  | "experience";
 
 export type Notification = {
   id: string;
@@ -154,6 +158,9 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   post_liked: "postLiked",
   joint_viewing_invite: "jointViewingInvite",
   joint_viewing_accepted: "jointViewingAccepted",
+  experience_invited: "experienceInvited",
+  experience_accepted: "experienceAccepted",
+  followed_experience: "followedExperience",
 };
 
 /**

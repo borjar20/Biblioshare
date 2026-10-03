@@ -21,6 +21,7 @@ export const CATEGORY_FOR_POST_KIND: Record<PostKind, NotifyCategory> = {
   watched: "progress",
   thought: "thought",
   joint: "milestone",
+  experience: "milestone",
 };
 
 // Record (no Partial) a propósito, igual que NOTIFICATION_CATEGORY en push:
@@ -38,6 +39,7 @@ export const POST_KIND_NOTIFICATION_TYPE: Record<PostKind, NotificationType> = {
   // se emite hoy. Apunta a su propio tipo para no romper la regla de arriba (un
   // kind, un texto); si algún día se avisa a seguidores, necesitará uno nuevo.
   joint: "joint_viewing_accepted",
+  experience: "followed_experience",
 };
 
 const VALID = new Set<string>(NOTIFY_CATEGORIES);

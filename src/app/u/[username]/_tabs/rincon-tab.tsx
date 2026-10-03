@@ -32,9 +32,8 @@ function Card({
   );
 }
 
-// Rincón ◍ — la mitad cualitativa del antiguo Panel (frames C y H): retos y
-// metas, Memorizar y (en F4) el sorteo. Escritorio a dos columnas: retos +
-// Memorizar a la izquierda, contadores en el rail.
+// Contenido privado del Rincón, reutilizado en /coleccion/rincon. La ruta
+// deriva userId de la sesión. Escritorio a dos columnas; móvil en una sola.
 export async function RinconTab({
   userId,
   includeArchived,
@@ -105,8 +104,8 @@ export async function RinconTab({
         <Link
           href={
             includeArchived
-              ? `${basePath}?tab=rincon`
-              : `${basePath}?tab=rincon&archivados=1`
+              ? basePath
+              : `${basePath}?archivados=1`
           }
           className="self-start text-sm text-muted-foreground underline hover:text-foreground"
         >

@@ -8,11 +8,54 @@
 > `docs/requirements/backlog.md` + las issues del repo. El producto y su porqué:
 > `docs/requirements/vision.md`.
 
-Biblioshare es un tracker social de libros, películas y series: catálogo compartido
+Biblioshare es una app social para compartir lo que lees, ves y vives, y con quién:
+catálogo compartido
 entre todos los usuarios, progreso y biblioteca privados por usuario, capa social de
 seguimiento/clubes. Web Next.js 16 (App Router, Cache Components) + Supabase
 (Postgres/RLS/Storage/Auth) + PWA + wrapper Android con Capacitor. UI en español
 con i18n (`next-intl`) desde el inicio.
+
+## Experiencias — esquema aplicado; integración y despliegue en PR #1323 y #1293
+
+**[Delta funcional verificado 2026-10-02; UX de álbum verificada 2026-10-03;
+esquema aplicado y verificado en producción el 2026-10-03 a las 10:04 UTC]**
+Desde la navegación principal se abre `/experiencias`: planes y recuerdos que pueden crecer
+de una salida a una escapada con varios momentos. El archivo se presenta como
+un álbum con portadas por actividad, fotos y acompañantes; las invitaciones
+preceden a los filtros. La creación pide actividad, nombre y estado, con lugar y
+fechas opcionales plegables. Añadir, editar y ordenar momentos sucede desde el
+propio recuerdo. La galería amplía cada foto y reúne allí sus acciones y permisos.
+Aceptar la invitación da acceso al grupo; cada persona confirma su presencia,
+elige su favorito y consiente por separado mostrar identidad e imágenes.
+El creador decide la audiencia desde Compartir; publicar en el feed requiere otra
+acción explícita. Puede quitar esa publicación única conservando el recuerdo.
+La pestaña Experiencias aparece en perfiles propios y visitantes,
+según los permisos actuales. Incluye denuncia y moderación administrativa.
+El filtro de acompañantes recorre todo el historial accesible. Al perder acceso,
+las participaciones propias se pueden retirar desde el hub y las fotos propias
+se reconocen con una vista previa exclusiva del autor antes de eliminarlas.
+Captura manual; catálogos externos, fusionar recuerdos y filtro entre hobbies
+quedan en #1293. Evidencia funcional: `docs/testing/2026-10-02-experiencias.md`;
+UX y regresión: `docs/testing/2026-10-03-experiencias-album.md`.
+La [evidencia de release](testing/2026-10-03-experiencias-release.md) distingue
+el esquema y la publicación del código; el estado de integración, despliegue y
+comprobaciones posteriores se sigue en [PR #1323](https://github.com/borjar20/Biblioshare/pull/1323)
+y [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
+
+## Navegación — delta local/dev 2026-10-03; entrega en PR #1323
+
+La barra principal tiene Inicio, Biblioteca, Experiencias, Comunidad y Buscar.
+El avatar abre el perfil directamente en todos los tamaños; el menú «Más» reúne
+Partidas, Mascota y Ajustes. En móvil la barra principal está abajo y desde 768 px
+está en la cabecera. El perfil propio conserva Actividad y Experiencias; el
+visitante añade Biblioteca, siempre con los permisos actuales.
+
+Biblioteca muestra accesos a Cuaderno (`/notas`), Retos y objetivos
+(`/coleccion/rincon`) y Estadísticas (`/estadisticas`). El Rincón conserva retos
+activos/archivados, objetivo diario, Memorizar y sorteo. Comunidad (`/comunidad`)
+reúne Clubes y Personas; `/clubes` sigue funcionando. Los enlaces propios antiguos
+de Estadísticas/Panel y Rincón redirigen a sus nuevas superficies, conservando
+los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 
 ## Catálogo compartido
 
@@ -79,7 +122,8 @@ con i18n (`next-intl`) desde el inicio.
 ## Social
 
 - **Perfiles** (`/u/[username]`): públicos por defecto (modelo Instagram),
-  privados con solicitud; pestañas Actividad / Biblioteca / Estadísticas; pins.
+  privados con solicitud; pestañas propias Actividad / Experiencias y Biblioteca
+  adicional para visitantes; pins.
 - **Follows** con solicitudes pendientes; sugerencias de a quién seguir.
 - **Posts** (`posts`, `/post/[id]`): capa canónica del feed — reseñas, hitos,
   pensamientos con ancla; feed de Inicio ordenado por publicación con cursor.
@@ -104,7 +148,7 @@ con i18n (`next-intl`) desde el inicio.
 
 ## Clubes
 
-- **Clubes** (`/clubes`, `/club/[slug]`): visibilidad pública/privada con
+- **Clubes** (`/comunidad`, enlace antiguo `/clubes`, `/club/[slug]`): visibilidad pública/privada con
   solicitud de entrada, roles (owner/mod/member) con transiciones solo por RPC,
   directorio de miembros, portada.
 - **Feed de club**: posts, encuestas (`poll`), compartir actividad, moderación.

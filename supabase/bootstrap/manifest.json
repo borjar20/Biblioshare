@@ -272,6 +272,15 @@
     "20260930171000_merge_book_canonical_isbn.sql",
     "20260930190000_book_author_manual_clear.sql",
     "20261001102000_merge_book_club_event_refs.sql",
-    "20261001195124_google_books_creation_quota.sql"
+    "20261001195124_google_books_creation_quota.sql",
+    "20261002092735_experiences_enums.sql",
+    "20261002092737_experiences_core.sql",
+    "20261002095236_experiences_deletion.sql",
+    "20261002105627_experiences_participation.sql",
+    "20261002112531_experiences_photo_mutations.sql",
+    "20261002120712_experiences_social_visibility.sql",
+    "20261002125917_experiences_advisor_hardening.sql",
+    "20261002132635_experiences_review_fixes.sql",
+    "20261003153110_guard_comment_target_recursion.sql"
   ]
 }

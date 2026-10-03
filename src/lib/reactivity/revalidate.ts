@@ -19,6 +19,20 @@ export function revalidateFeed(): void {
   revalidatePath("/");
 }
 
+/** Shared memory affects hub, detail/edit, participants' profiles and its post. */
+export function revalidateExperiences(id?: string): void {
+  revalidatePath("/experiencias");
+  if (id) {
+    revalidatePath(`/experiencia/${id}`);
+    revalidatePath(`/experiencia/${id}/editar`);
+  } else {
+    revalidatePath("/experiencia/[id]", "page");
+  }
+  revalidatePath("/post/[id]", "page");
+  revalidateProfilePages();
+  revalidateFeed();
+}
+
 /** Moderation can hide a whole club and descendants across every social surface. */
 export function revalidateModeration(): void {
   revalidatePath("/", "layout");
@@ -40,6 +54,14 @@ export function revalidateAllItemPages(): void {
 /** Todos los perfiles (patrón dinámico): cuando no se conoce el username. */
 export function revalidateProfilePages(): void {
   revalidatePath("/u/[username]", "page");
+  // Retos y cuaderno compartían el Rincón del perfil; su nueva superficie
+  // conserva la misma invalidación que ya disparan todas sus mutaciones.
+  revalidateLibraryCorner();
+}
+
+/** Retos, objetivo diario, Memorizar y sorteo de la biblioteca personal. */
+export function revalidateLibraryCorner(): void {
+  revalidatePath("/coleccion/rincon");
 }
 
 /** Social appearance depends on follows, blocks and profile privacy, including club S3. */
@@ -121,6 +143,7 @@ export function revalidateClubPages(): void {
   revalidatePath("/club/[slug]/calendario", "page");
   revalidatePath("/club/[slug]/evento/[id]", "page");
   revalidatePath("/clubes");
+  revalidatePath("/comunidad");
 }
 
 /** El panel de administración. */

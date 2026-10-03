@@ -7,6 +7,7 @@ import { ReviewCard } from "./review-card";
 import { ThoughtCard } from "./thought-card";
 import { MilestoneCard } from "./milestone-card";
 import { JointCard } from "./joint-card";
+import {ExperienceFeedCard} from "./experience-feed-card";
 import type { PersonGroupEntry } from "@/lib/social/group-feed-entries";
 
 export function FeedItem({
@@ -29,6 +30,7 @@ export function FeedItem({
   showInteractions?: boolean;
 }) {
   if (entry.source === "club") return <ClubFeedCard event={entry.event} />;
+  if(entry.source==="experience")return <ExperienceFeedCard event={entry.event} viewerLoggedIn={viewerLoggedIn} knownUsernames={knownUsernames} hideActor={hideActor} showInteractions={showInteractions}/>;
 
   // `person-group` lo producían el feed y el perfil al agrupar; con posts ya no
   // se generan grupos (cada post es una tarjeta). Se conserva el despacho por si
