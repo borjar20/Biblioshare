@@ -26,7 +26,7 @@ function makePassClient(
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
     from(table: string) {
-      if (table === "passes") {
+      if (table === "passes" || table === "pass_reviews") {
         const builder = {
           select() {
             return builder;
@@ -140,7 +140,7 @@ function makePrerequisiteFailureClient(failingSelect: "started_on, finished_on, 
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
     from(table: string) {
-      if (table === "passes") {
+      if (table === "passes" || table === "pass_reviews") {
         const builder = {
           select(next: string) {
             columns = next;
@@ -176,6 +176,54 @@ function makePrerequisiteFailureClient(failingSelect: "started_on, finished_on, 
     },
   };
   return { client, updates, selected };
+}
+
+// passes permite escribir reseñas, pero su SELECT está revocado: la lectura
+// filtrada por privacidad vive en pass_reviews. Un doble que acepta cualquier
+// SELECT no detectaría que editar aborta antes de llegar al UPDATE.
+function makeReviewPrivacyClient() {
+  type Filters = Array<[string, unknown]>;
+  const reads: Array<{ table: string; columns: string; filters: Filters }> = [];
+  const updates: Array<{ payload: Record<string, unknown>; filters: Filters }> = [];
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: "author" } } }) },
+    from(table: string) {
+      let columns = "";
+      const filters: Filters = [];
+      const builder = {
+        select(value: string) {
+          columns = value;
+          return builder;
+        },
+        update(payload: Record<string, unknown>) {
+          if (table !== "passes") throw new Error(`UPDATE inesperado: ${table}`);
+          updates.push({ payload, filters });
+          return builder;
+        },
+        eq(column: string, value: unknown) {
+          filters.push([column, value]);
+          return builder;
+        },
+        async maybeSingle() {
+          reads.push({ table, columns, filters });
+          if (table === "passes") {
+            if (columns.split(",").some((column) => column.trim() === "review")) {
+              return { data: null, error: { code: "42501", message: "permission denied for table passes" } };
+            }
+            return { data: { started_on: "2026-07-01", finished_on: "2026-07-20", status: "completed" }, error: null };
+          }
+          if (table === "pass_reviews") return { data: { review: "hola @ana" }, error: null };
+          if (table === "interaction_targets") return { data: { id: "target-diary" }, error: null };
+          throw new Error(`Tabla inesperada: ${table}`);
+        },
+        then(resolve: (value: unknown) => void) {
+          resolve({ error: null });
+        },
+      };
+      return builder;
+    },
+  };
+  return { client, reads, updates };
 }
 
 function closeForm(finishedOn: string) {
@@ -315,6 +363,43 @@ describe("closePass — menciones", () => {
 });
 
 describe("updatePass — menciones (issue #317)", () => {
+  it("edita con los permisos de privacidad y notifica solo la mención añadida", async () => {
+    const fake = makeReviewPrivacyClient();
+    mocks.createClient.mockResolvedValue(fake.client);
+    const form = publicReviewForm();
+    form.set("rating", "8");
+    form.set("review", "hola @ana, gracias a @borja");
+    form.set("reviewIsSpoiler", "on");
+
+    await expect(updatePass("party-pass", "movie", "movie-1", {}, form)).resolves.toEqual({});
+
+    expect(fake.reads[0]).toEqual({
+      table: "pass_reviews",
+      columns: "review",
+      filters: [["id", "party-pass"], ["user_id", "author"]],
+    });
+    expect(fake.updates).toEqual([{
+      payload: {
+        finished_on: "2026-07-30",
+        rating: 8,
+        review: "hola @ana, gracias a @borja",
+        review_is_spoiler: true,
+        is_public: true,
+        dropped_reason: null,
+        dropped_reason_note: null,
+      },
+      filters: [["id", "party-pass"], ["user_id", "author"]],
+    }]);
+    expect(mocks.notifyMentions).toHaveBeenCalledWith(fake.client, {
+      authorId: "author",
+      text: "hola @ana, gracias a @borja",
+      interactionTargetId: "target-diary",
+      usernames: ["borja"],
+      isSpoiler: true,
+    });
+    expect(mocks.revalidateReadingLog).toHaveBeenCalledWith("movie", "movie-1");
+  });
+
   it("misma mención en ambas versiones → no re-notifica", async () => {
     const fake = makePassClient("target-diary", null, "hola @ana");
     mocks.createClient.mockResolvedValue(fake.client);

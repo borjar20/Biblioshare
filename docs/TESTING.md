@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -275,19 +275,47 @@ El reloj de cada pausa se obtiene del navegador, después de mostrar la UI;
 usar Date.now de Node tras runFor puede intentar pausar en el pasado.
 Limpieza conjunta de las nueve cuentas de preparación/QA/regresión verificada.
 
-### Lecturas previas al guardar un pase (#1110)
+### Lecturas previas al guardar un pase (#1110, #1345)
 
 `src/lib/passes/actions.test.ts` fuerza por separado el fallo de lectura de
 fechas al cerrar y el de reseña previa al editar. Ambos deben devolver
 `generic`, sin escrituras, avisos de menciones ni revalidación. La lectura
-de reseña permanece antes del guardado para calcular sólo las menciones nuevas.
+previa conserva el cálculo de sólo las menciones nuevas.
 
-El lote focalizado con `get-passes.test.ts` pasa 27 casos, incluidos los
-contratos de #657 y la diferencia entre error y consulta vacía correcta.
-Los formularios existentes conservan la edición abierta y muestran el error.
-Esta comprobación de interfaz es por código; el fallo se reproduce con un
-cliente controlado, sin simular una avería de Supabase en producción.
-Evidencia: [lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
+**La reseña se lee por `pass_reviews`, con filtros de pase y propietario.**
+El SELECT de `passes.review` está revocado deliberadamente para proteger
+reseñas privadas; conservar permiso UPDATE no permite leer esa columna.
+#1345 reprodujo el error 42501 de esa lectura previa, que bloqueaba editar
+tanto pases de «ver juntos» como individuales. Los dobles anteriores
+permitían una lectura prohibida: el guard de #1110 era correcto, pero no
+probaba los permisos reales.
+
+La regresión nueva modela esos permisos y pasó de devolver `generic` a
+persistir fecha, nota, reseña, spoiler y privacidad, avisando sólo de la
+mención añadida. El lote focalizado de acciones, lecturas y menciones pasa
+55 casos en cuatro archivos; TypeScript completo y ESLint de los dos
+archivos de acciones también pasan. Revisión independiente sin hallazgos.
+
+`supabase/tests/pass_review_edit_permissions.sql`, integrado en
+`scripts/db/verify.mjs`, verifica 29 condiciones con roles reales: dos
+miembros aceptados y un pase individual, lectura propia por la vista,
+escritura del payload de edición, vínculos/post/metadatos conservados y
+reseñas privadas inaccesibles a terceros y anónimos. Ejecutado en dev el
+2026-10-03 desde el archivo exacto, con rollback y cero perfiles/películas
+de prueba restantes. No hay cambios de esquema ni permisos.
+
+Chromium real contra dev verificó edición de reseña, después fecha y nota,
+y persistencia de los tres campos al recargar; el vínculo se conservó.
+La segunda pasada tuvo cero errores de consola y POST de guardado 200.
+El fixture de navegador tenía un miembro aceptado: la prueba con dos
+participantes corresponde al SQL anterior. No hubo RED en navegador;
+el parche ya estaba aplicado al terminar la preparación. Fixtures
+eliminados, cuenta persistente conservada y puerto 3000 libre al acabar.
+
+La evidencia histórica de los guards se conserva en
+[lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
+El diagnóstico y la evidencia de integración y despliegue se
+rastrean en [#1345](https://github.com/borjar20/Biblioshare/issues/1345).
 
 ### Contrato de resultados históricos de combate (#1116)
 
