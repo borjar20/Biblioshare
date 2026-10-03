@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -118,6 +118,31 @@ navegador" tras implementar una feature de UI.
   `qa-verifier`.
 - Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
   archivos) la sigue haciendo el agente directamente, como siempre.
+
+### Cabecera y panel de notificaciones (#1349)
+
+`e2e/header-notifications-mobile.spec.ts` aporta cinco casos y se ejecuta
+junto con dos casos de navegación/avatar de `e2e/ia-navegacion.spec.ts`.
+Los siete pasan contra build/start local Next 16.3.8 en 19,7 s, sin reintentos,
+skip ni flaky. La matriz cubre 320/360/390/412/768 px, claro/oscuro, tema en
+Más bajo 768 px, perfil directo, teclado en opciones visibles, área de
+campana de 44 × 44 px y cierre por Escape y puntero fuera. La altura
+corta se comprueba a 320 × 360 px.
+
+El caso de lista larga sustituye solo la respuesta de lectura de
+`fetchNotifications` por 20 avisos sintéticos. Mide `clientHeight = 203` y
+`scrollHeight = 1690`; el scroll alcanza el último aviso y el footer de push
+dentro de la región. El informe conserva una oclusión parcial del texto del
+footer por la mascota flotante: [#1350](https://github.com/borjar20/Biblioshare/issues/1350),
+hallazgo separado de #1349. Los cinco casos nuevos
+tienen cero errores de consola; se registran peticiones `ERR_ABORTED`, así
+que este PASS focal no acredita una auditoría global de red limpia.
+
+Los 17 unitarios focales pasan e incluyen además el cierre por foco fuera
+con foco real en NotificationBell. La suite general posterior pasa 4.565
+pruebas en 459 archivos (233,52 s). El build y esta QA verifican el candidato local;
+la publicación tiene su propio estado. Evidencia, capturas y límites:
+[cabecera y notificaciones](testing/2026-10-04-header-notifications.md).
 
 ### Arranque automático en Windows (#1073)
 

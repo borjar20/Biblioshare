@@ -1,20 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 function isCurrentlyDark() {
   return document.documentElement.classList.contains("dark");
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({
+  variant = "icon",
+  onToggle,
+}: {
+  variant?: "icon" | "menu";
+  onToggle?: () => void;
+}) {
+  const t = useTranslations("nav");
   const [isDark, setIsDark] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // The actual theme can only be known client-side (it depends on the
-    // inline script + localStorage), so this one-time sync after mount is
-    // intentional rather than a derivable/subscribable value.
+    // The inline script selects the initial theme. Keep mounted copies in
+    // sync when the mobile menu changes it before the desktop icon reappears.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(isCurrentlyDark());
+    const observer = new MutationObserver(() => setIsDark(isCurrentlyDark()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
   }, []);
 
   function toggle() {
@@ -23,6 +33,7 @@ export function ThemeToggle() {
     document.documentElement.classList.toggle("light", !next);
     localStorage.setItem("theme", next ? "dark" : "light");
     setIsDark(next);
+    onToggle?.();
   }
 
   const icon =
@@ -36,10 +47,15 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      aria-label="Cambiar tema"
-      className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+      role={variant === "menu" ? "menuitem" : undefined}
+      aria-label={t("changeTheme")}
+      className={variant === "menu"
+        ? "flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-foreground transition-colors hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:hidden"
+        : "flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      }
     >
       {icon}
+      {variant === "menu" && t("changeTheme")}
     </button>
   );
 }

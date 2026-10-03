@@ -6302,3 +6302,36 @@ Recursos activa publishAfterPersist del core existente. El valor ordinario del t
 Si IDB falla, se puede seguir en memoria con aviso de que los últimos cambios se perderán al salir, recargar o cerrar. No se promete conservar eventos aceptados al cerrar antes del ACK. Aleatorio y Turnos siguen optimistas; no hay nube, esquema o formato nuevos. El editor se remonta al cambiar opened.name para cancelar el gesto anterior (#1007); los nombres siguen únicos y los presets siguen siendo atajos.
 
 La causa inicial de #1007 (ocultar Oro ocupado) no era un bug. El defecto real trasladaba la vista previa de Madera a Oro. RED y fallos de recarga #1328 se conservan. Base4a: 57 unitarios PASS, ocho casos de Recursos y un contexto visual independiente PASS en build w0f. Informes: docs/testing/2026-10-03-resource-editor-1007.md y docs/testing/2026-10-03-resources-durable-updates-1328.md. Nueva QA en base Experiencias y CI exigidas antes del merge.
+
+## 2026-10-04 — Cabecera móvil compacta y panel de notificaciones dentro de la ventana (#1349)
+
+Por debajo de 768 px, la cabecera del usuario con perfil muestra marca,
+campana, Más y avatar. «Cambiar tema» pasa a Más para liberar espacio; desde
+768 px conserva su icono directo. El avatar sigue enlazando al perfil y Más
+conserva Partidas, Mascota y Ajustes. Esta composición aprobada aprovecha
+el menú existente y mantiene el acceso directo al perfil.
+
+El panel de notificaciones continúa como desplegable: en móvil se ancla a
+la cabecera sticky, con margen al viewport, en lugar de seguir la posición
+horizontal de la campana. Su ancho y altura quedan dentro de la ventana,
+reservando espacio para la barra inferior y la safe-area; título, avisos y
+control de push comparten un único scroll. Este ajuste resuelve el panel
+sin introducir un drawer. En escritorio conserva el anclaje a la campana.
+El botón tiene 44 × 44 px y controla una región con nombre accesible;
+Escape cierra y devuelve el foco; el puntero y el foco fuera cierran el panel.
+
+Las copias montadas de ThemeToggle siguen el tema del documento para que el
+icono de escritorio refleje un cambio hecho en Más al cruzar el breakpoint.
+El teclado de Más omite las opciones ocultas en ese viewport. Verificación
+local del 2026-10-04: build Next 16.3.8, 17 unitarios focales y suite general
+de 4.565 pruebas en 459 archivos PASS. Siete E2E contra build/start pasan en
+19,7 s, sin reintentos, skip ni flaky: cinco nuevos y dos de navegación/avatar.
+Cubren 320/360/390/412/768 px en claro/oscuro, tema, perfil, teclado y cierre
+por Escape y puntero fuera, además de 320 × 360 px. El cierre por foco fuera
+se verifica en el unitario de NotificationBell con foco real. Con 20 avisos
+sintéticos solo en la respuesta de lectura, el scroll alcanza el último aviso
+y el footer dentro de la región. El informe conserva la oclusión parcial del
+footer por la mascota flotante y las peticiones ERR_ABORTED; los cinco casos
+nuevos tienen cero errores de consola. Este corte acredita un candidato local,
+pendiente de publicación.
+Evidencia: [cabecera y notificaciones #1349](../testing/2026-10-04-header-notifications.md).

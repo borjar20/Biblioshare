@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -34,14 +34,31 @@ export function NotificationBell({
   // null = todavía no se ha pedido nunca (o está en vuelo la primera vez).
   const [notifications, setNotifications] = useState<Notification[] | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
   useEffect(() => {
     if (!open) return;
-    function onClickOutside(e: MouseEvent) {
+    function onPointerOutside(e: PointerEvent) {
       if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+    function onFocusOutside(e: FocusEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerOutside);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("focusin", onFocusOutside);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerOutside);
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("focusin", onFocusOutside);
+    };
   }, [open]);
 
   async function toggle() {
@@ -67,12 +84,17 @@ export function NotificationBell({
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    // En móvil el panel se ancla a Header (sticky), no a la campana:
+    // los controles a su derecha empujaban el desplegable fuera del viewport.
+    <div ref={containerRef} className="shrink-0 md:relative">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={t("title")}
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         onClick={() => void toggle()}
-        className="relative inline-flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
       >
         <BellIcon className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -82,8 +104,14 @@ export function NotificationBell({
         )}
       </button>
 
+      {/* La reserva móvil deja libre la barra inferior. Un único scroll
+          permite alcanzar también los ajustes push en pantallas bajas. */}
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-card border border-border bg-surface shadow-cover">
+        <section
+          id={panelId}
+          aria-label={t("title")}
+          className="absolute right-4 top-full z-30 mt-2 max-h-[calc(100dvh-var(--topbar-h)-6rem-env(safe-area-inset-bottom))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-card border border-border bg-surface shadow-cover sm:right-6 md:right-0 md:max-h-[calc(100dvh-var(--topbar-h)-1rem)]"
+        >
           <div className="border-b border-border px-4 py-2 font-serif text-sm font-semibold text-foreground">
             {t("title")}
           </div>
@@ -104,7 +132,7 @@ export function NotificationBell({
               <p className="text-sm text-muted-foreground">{t("empty")}</p>
             </div>
           ) : (
-            <ul className="flex max-h-96 flex-col overflow-y-auto">
+            <ul className="flex flex-col">
               {notifications.map((n) => {
                 // La MISMA función que usa el push. Con el comprobador de
                 // emoji: aquí sí hay canvas, y un emoji que este sistema no
@@ -182,7 +210,7 @@ export function NotificationBell({
           <div className="border-t border-border">
             <PushToggle />
           </div>
-        </div>
+        </section>
       )}
     </div>
   );

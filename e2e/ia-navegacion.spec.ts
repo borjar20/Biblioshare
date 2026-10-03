@@ -112,7 +112,9 @@ for (const width of [390, 768]) {
       await expect(main.getByRole("link", { name: "Ajustes", exact: true })).toHaveAttribute("href", "/ajustes");
       await page.getByRole("button", { name: "Más opciones" }).click();
       const menu = page.getByRole("menu", { name: "Más opciones" });
-      await expect(menu.getByRole("menuitem")).toHaveText(["Partidas", "Mascota", "Ajustes"]);
+      await expect(menu.getByRole("menuitem")).toHaveText(width < 768
+        ? ["Partidas", "Mascota", "Ajustes", "Cambiar tema"]
+        : ["Partidas", "Mascota", "Ajustes"]);
       for (const [name, path] of [["Partidas", "/partidas"], ["Mascota", "/mascota"], ["Ajustes", "/ajustes"]]) {
         await expect(menu.getByRole("menuitem", { name, exact: true })).toHaveAttribute("href", path);
       }
