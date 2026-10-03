@@ -4727,7 +4727,7 @@ export const Constants = {
       club_event_state: ["programado", "cancelado", "pospuesto"],
       club_event_type: ["encuentro", "lanzamiento", "fecha_destacada"],
       club_member_status: ["invited", "active", "requested"],
-      club_post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience"],
+      club_post_kind: ["text", "activity_share", "poll"],
       club_role: ["member", "moderator", "owner"],
       club_visibility: ["public", "private"],
       content_report_reason: ["spam", "harassment", "spoiler", "hate", "other"],
