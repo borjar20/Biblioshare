@@ -1,11 +1,13 @@
 # Modelo de datos
 
-> **Delta 2026-10-02 (#1293, local/dev; pendiente de producción):** Experiencias
+> **Delta 2026-10-03 (#1293, esquema aplicado y verificado en producción):** Experiencias
 > añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
 > existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
 > ediciones perdidas. Bootstrap vacío final de 281 pasos y pruebas de acceso,
 > participación, fotos/publicación/moderación locales y en dev; carreras de edición
-> y publicación comprobadas localmente. Ver §8ter; producción pendiente.
+> y publicación comprobadas localmente. Ocho migraciones aplicadas y objetos,
+> definiciones y permisos verificados en producción el 2026-10-03 a las 10:04 UTC.
+> Ver §8ter y [evidencia de release](../testing/2026-10-03-experiencias-release.md).
 
 > **Delta 2026-10-02 (#1299):** la migración
 > `20261002102913_notification_type_mentioned.sql` rescata al historial local
@@ -4481,10 +4483,10 @@ octubre; revalidar el corte antes del primer despliegue y mantenerlo en los post
 La bienvenida de 50 no depende de la época. El ritmo real y el catálogo futuro siguen
 en #1017; estos checks no acreditan aceptación de una semana de uso.
 
-## 8ter. Experiencias (#1293, local/dev 2026-10-02)
+## 8ter. Experiencias (#1293, esquema verificado en producción 2026-10-03)
 
 **[Canónico · esquema y permisos verificados en local y dev el 2026-10-02;
-pendiente de producción]**
+ocho migraciones aplicadas y verificadas contra producción el 2026-10-03 a las 10:04 UTC]**
 
 Migraciones `20261002092735_experiences_enums.sql` y
 `20261002092737_experiences_core.sql`. Dominio colaborativo independiente;
@@ -4603,7 +4605,15 @@ sin acceso, filtro del historial completo y vista previa exclusiva de fotos prop
 Se comprobaron objetos/ACL reales: seis tablas RLS, cero escritura directa de cliente
 y cero EXECUTE de PUBLIC en los contratos nuevos. Sin columnas nuevas en tablas
 existentes, no hay grants finos que ampliar. Advisors de SECURITY DEFINER de lecturas
-públicas son deliberados y probados con identidades diferentes; producción pendiente.
+públicas son deliberados y probados con identidades diferentes. Las ocho migraciones
+se aplicaron y verificaron en producción el 2026-10-03 a las 10:04 UTC: seis tablas
+públicas y la cola privada con RLS, sin escritura directa de anon/authenticated;
+bucket privado de 2 MiB y MIME JPEG/PNG/WebP. Los 68 contratos y helpers comprobados
+coinciden con dev en firma, cuerpo normalizado, SECURITY/configuración y ACL.
+Los nuevos contratos tienen cero EXECUTE de PUBLIC. La comprobación de producción
+no repite la matriz multiusuario local/dev ni escribe fixtures.
+La [evidencia de release](../testing/2026-10-03-experiencias-release.md) distingue
+el esquema de la integración y despliegue del código, seguidos en PR #1323 y #1293.
 
 Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invited`,
 `experience_accepted`, `followed_experience`. Se conservan `joint`/`joint_viewing`.

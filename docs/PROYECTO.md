@@ -15,9 +15,10 @@ seguimiento/clubes. Web Next.js 16 (App Router, Cache Components) + Supabase
 (Postgres/RLS/Storage/Auth) + PWA + wrapper Android con Capacitor. UI en español
 con i18n (`next-intl`) desde el inicio.
 
-## Experiencias — código en local/dev, pendiente de producción (#1293)
+## Experiencias — esquema aplicado; integración y despliegue en PR #1323 y #1293
 
-**[Delta funcional verificado 2026-10-02; UX de álbum verificada 2026-10-03; no desplegado en producción]**
+**[Delta funcional verificado 2026-10-02; UX de álbum verificada 2026-10-03;
+esquema aplicado y verificado en producción el 2026-10-03 a las 10:04 UTC]**
 Desde la navegación principal se abre `/experiencias`: planes y recuerdos que pueden crecer
 de una salida a una escapada con varios momentos. El archivo se presenta como
 un álbum con portadas por actividad, fotos y acompañantes; las invitaciones
@@ -36,8 +37,12 @@ se reconocen con una vista previa exclusiva del autor antes de eliminarlas.
 Captura manual; catálogos externos, fusionar recuerdos y filtro entre hobbies
 quedan en #1293. Evidencia funcional: `docs/testing/2026-10-02-experiencias.md`;
 UX y regresión: `docs/testing/2026-10-03-experiencias-album.md`.
+La [evidencia de release](testing/2026-10-03-experiencias-release.md) distingue
+el esquema y la publicación del código; el estado de integración, despliegue y
+comprobaciones posteriores se sigue en [PR #1323](https://github.com/borjar20/Biblioshare/pull/1323)
+y [#1293](https://github.com/borjar20/Biblioshare/issues/1293).
 
-## Navegación — delta local/dev 2026-10-03, pendiente de entrega
+## Navegación — delta local/dev 2026-10-03; entrega en PR #1323
 
 La barra principal tiene Inicio, Biblioteca, Experiencias, Comunidad y Buscar.
 El avatar abre el perfil directamente en todos los tamaños; el menú «Más» reúne
