@@ -6,6 +6,7 @@ import type {
   PushContent,
   PushDeliveryResult,
   PushPlatform,
+  PushSendReport,
 } from "./types";
 
 // Dispatcher común de push (spec item 6). Recibe una notificación lógica YA
@@ -38,75 +39,142 @@ export async function sendPushToUser(
   userId: string,
   content: PushContent,
   notificationId?: string,
-): Promise<void> {
+): Promise<PushSendReport> {
   const map = notificationId ? new Map([[userId, notificationId]]) : undefined;
-  await sendPushToUsers([userId], content, { notificationIdByUser: map });
+  return sendPushToUsers([userId], content, { notificationIdByUser: map });
+}
+
+export function createPushSendReport(requestedUsers = 0): PushSendReport {
+  return {
+    users: { requested: requestedUsers, accepted: 0, noDevices: 0, skipped: 0, failed: 0, lookupFailed: 0 },
+    devices: { total: 0, accepted: 0, invalid: 0, temporaryErrors: 0, skipped: 0 },
+  };
 }
 
 export async function sendPushToUsers(
   userIds: string[],
   content: PushContent,
   opts?: { notificationIdByUser?: Map<string, string> },
-): Promise<void> {
+): Promise<PushSendReport> {
   const uniqueIds = [...new Set(userIds)];
-  if (uniqueIds.length === 0) return;
+  const report = createPushSendReport(uniqueIds.length);
+  if (uniqueIds.length === 0) return report;
 
-  const supabase = createServiceRoleClient();
+  let supabase: ReturnType<typeof createServiceRoleClient>;
+  let devices: DeviceRow[];
+  let prefsByUser: Map<string, NotificationPreferences>;
+  try {
+    supabase = createServiceRoleClient();
+    // Preferencias del destinatario (opt-out: sin fila = todo activo).
+    const { data: prefRows } = await supabase
+      .from("notification_preferences")
+      .select(
+        "user_id, web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system, category_pet",
+      )
+      .in("user_id", uniqueIds);
+    prefsByUser = new Map<string, NotificationPreferences>(
+      (prefRows ?? []).map((r) => [r.user_id, r]),
+    );
 
-  // Preferencias del destinatario (opt-out: sin fila = todo activo).
-  const { data: prefRows } = await supabase
-    .from("notification_preferences")
-    .select(
-      "user_id, web_push_enabled, android_push_enabled, category_social, category_clubs, category_progress, category_system, category_pet",
-    )
-    .in("user_id", uniqueIds);
-  const prefsByUser = new Map<string, NotificationPreferences>(
-    (prefRows ?? []).map((r) => [r.user_id, r]),
-  );
-
-  // Solo dispositivos ACTIVOS (índice parcial idx_push_devices_user_enabled).
-  const { data: devices, error } = await supabase
-    .from("push_devices")
-    .select("id, user_id, platform, endpoint, p256dh, auth, token, failure_count")
-    .in("user_id", uniqueIds)
-    .eq("enabled", true);
-  if (error) {
+    // Solo dispositivos ACTIVOS (índice parcial idx_push_devices_user_enabled).
+    const { data, error } = await supabase
+      .from("push_devices")
+      .select("id, user_id, platform, endpoint, p256dh, auth, token, failure_count")
+      .in("user_id", uniqueIds)
+      .eq("enabled", true);
+    if (error) throw error;
+    devices = (data ?? []) as DeviceRow[];
+  } catch (error) {
+    // Mantener el contrato silencioso también ante un rechazo del cliente.
     console.error("sendPushToUsers: failed to load devices", error);
-    return;
+    report.users.lookupFailed = uniqueIds.length;
+    return report;
   }
-  if (!devices || devices.length === 0) return;
 
   const outcomes: { device: DeviceRow; result: PushDeliveryResult }[] = [];
   await Promise.all(
-    (devices as DeviceRow[]).map(async (device) => {
-      const prefs = prefsByUser.get(device.user_id) ?? DEFAULT_PREFERENCES;
-      // Preferencia desactivada → no se intenta (spec item 10).
-      if (!isPushAllowed(prefs, content.category, device.platform)) return;
-
-      const transport = transportFor(device.platform);
-      if (!transport) return; // apns_ios reservado, sin transporte vivo aún
-
-      const event: NotificationEvent = {
-        ...content,
-        recipientUserId: device.user_id,
-        notificationId: opts?.notificationIdByUser?.get(device.user_id),
-      };
-      const result = await transport.send(
-        {
-          id: device.id,
-          platform: device.platform,
-          endpoint: device.endpoint,
-          p256dh: device.p256dh,
-          auth: device.auth,
-          token: device.token,
-        },
-        event,
-      );
+    devices.map(async (device) => {
+      let result: PushDeliveryResult;
+      try {
+        const prefs = prefsByUser.get(device.user_id) ?? DEFAULT_PREFERENCES;
+        // Preferencia desactivada o apns_ios reservado → no se intenta.
+        const transport = isPushAllowed(prefs, content.category, device.platform)
+          ? transportFor(device.platform)
+          : null;
+        if (!transport) {
+          outcomes.push({ device, result: { deviceId: device.id, outcome: "skipped" } });
+          return;
+        }
+        const event: NotificationEvent = {
+          ...content,
+          recipientUserId: device.user_id,
+          notificationId: opts?.notificationIdByUser?.get(device.user_id),
+        };
+        result = await transport.send(
+          {
+            id: device.id,
+            platform: device.platform,
+            endpoint: device.endpoint,
+            p256dh: device.p256dh,
+            auth: device.auth,
+            token: device.token,
+          },
+          event,
+        );
+      } catch (error) {
+        // Un rechazo inesperado no elimina los ACK de otros dispositivos ni
+        // revierte la acción original. El dispositivo sigue activo.
+        console.error("sendPushToUsers: transport failed", error);
+        result = { deviceId: device.id, outcome: "temporary_error", errorCode: "TRANSPORT_ERROR" };
+      }
       outcomes.push({ device, result });
     }),
   );
 
-  await recordHealth(supabase, outcomes);
+  summarizeOutcomes(report, uniqueIds, outcomes);
+  try {
+    await recordHealth(supabase, outcomes);
+  } catch (error) {
+    // La salud persistida y la aceptación del proveedor son hechos distintos.
+    console.error("sendPushToUsers: health update failed", error);
+  }
+  return report;
+}
+
+function summarizeOutcomes(
+  report: PushSendReport,
+  userIds: string[],
+  outcomes: { device: DeviceRow; result: PushDeliveryResult }[],
+): void {
+  const byUser = new Map(userIds.map((id) => [id, { devices: 0, accepted: false, failed: false }]));
+  for (const { device, result } of outcomes) {
+    report.devices.total += 1;
+    const user = byUser.get(device.user_id)!;
+    user.devices += 1;
+    switch (result.outcome) {
+      case "sent":
+        report.devices.accepted += 1;
+        user.accepted = true;
+        break;
+      case "invalid_token":
+        report.devices.invalid += 1;
+        user.failed = true;
+        break;
+      case "temporary_error":
+        report.devices.temporaryErrors += 1;
+        user.failed = true;
+        break;
+      case "skipped":
+        report.devices.skipped += 1;
+        break;
+    }
+  }
+  for (const user of byUser.values()) {
+    if (user.devices === 0) report.users.noDevices += 1;
+    else if (user.accepted) report.users.accepted += 1;
+    else if (user.failed) report.users.failed += 1;
+    else report.users.skipped += 1;
+  }
 }
 
 // Traduce los resultados a salud de push_devices (spec item 10). El camino feliz

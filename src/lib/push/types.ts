@@ -55,7 +55,8 @@ export type PushDevice = {
   token: string | null;
 };
 
-// Resultado de UN intento de entrega a UN dispositivo. El dispatcher lo traduce
+// Resultado de UN intento de entrega a UN dispositivo. `sent` significa que el
+// proveedor aceptó el mensaje, NO que llegó al teléfono/navegador. El dispatcher lo traduce
 // a salud del dispositivo: invalid_token → enabled=false; temporary_error →
 // failure_count++; sent → last_success_at.
 export type PushDeliveryOutcome =
@@ -68,6 +69,28 @@ export type PushDeliveryResult = {
   deviceId: string;
   outcome: PushDeliveryOutcome;
   errorCode?: string;
+};
+
+// Solo recuentos: no expone ids, tokens ni contenido. Los usuarios son únicos
+// DENTRO de una llamada al dispatcher; los dispositivos cuentan sus resultados.
+// Las categorías de users son excluyentes y suman requested; las de devices
+// suman total. accepted acredita un ACK del proveedor, nunca recepción/lectura.
+export type PushSendReport = {
+  users: {
+    requested: number;
+    accepted: number; // al menos un dispositivo aceptado por el proveedor
+    noDevices: number; // la consulta tuvo éxito, pero no había dispositivos activos
+    skipped: number; // todos descartados por preferencia/transporte
+    failed: number; // ninguno aceptado y al menos un resultado inválido/temporal
+    lookupFailed: number; // no se pudo consultar; NO equivale a noDevices
+  };
+  devices: {
+    total: number;
+    accepted: number;
+    invalid: number;
+    temporaryErrors: number;
+    skipped: number;
+  };
 };
 
 // Transportes separados por canal (spec item 6). El formateo (título, cuerpo,
