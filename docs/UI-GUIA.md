@@ -148,7 +148,8 @@ editor de catálogo inline (banner + barra sticky).
    nada (early-return por `pointerType`). `touch-action: pan-y`, nunca `none`:
    el eje vertical se lo queda el scroll de la página.
 
-Los iconos de acción y el avatar de la cabecera quedan contiguos, con áreas de 44 × 44 px. Bajo 768 px, su panel se ancla a la
+Los iconos de acción y el avatar de la cabecera quedan contiguos, con áreas
+de 44 × 44 px. Bajo 768 px, el panel de Notificaciones se ancla a la
 cabecera sticky con margen al viewport; desde 768 px se ancla a la campana.
 El ancho y la altura se acotan a la ventana: en móvil se reserva además el
 espacio de la barra inferior y la safe-area. Título, lista y control de avisos
