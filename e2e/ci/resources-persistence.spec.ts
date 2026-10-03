@@ -209,6 +209,9 @@ test("IDB nativo pendiente mantiene banco5, acumula deltas y deshacer, luego con
       await expect(page.getByTestId("res-0-Oro")).toHaveText("5");
       await page.screenshot({ path: info.outputPath("resources-native-pending.png") });
     } finally { await page.evaluate(() => window.__qa1328.release()); }
+    // El banco puede alcanzar 7 en rev9 antes de terminar +5 y undo (rev10/11).
+    // Este caso comprueba toda la cola; el natural 5→6 mantiene su recarga inmediata.
+    await expect(page.getByRole("status")).toHaveText("Los recursos están guardados en este dispositivo.");
     await expect(page.getByTestId("res-0-Oro")).toHaveText("7");
     await page.reload();
     await expect(page.getByTestId("res-0-Oro")).toHaveText("7");
