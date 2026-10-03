@@ -6335,3 +6335,13 @@ footer por la mascota flotante y las peticiones ERR_ABORTED; los cinco casos
 nuevos tienen cero errores de consola. Este corte acredita un candidato local,
 pendiente de publicación.
 Evidencia: [cabecera y notificaciones #1349](../testing/2026-10-04-header-notifications.md).
+
+## 2026-10-04 — Acciones contiguas en la cabecera
+
+Los iconos de acción y el avatar mantienen cajas de 44 × 44 px y quedan
+contiguos: Header retira `gap-1` y UserMenu retira `ml-1`. El grupo pasa de
+144 a 132 px en móvil y de 192 a 176 px en escritorio, conservando targets y
+acceso directo al perfil. Es un refinamiento de [#1349](https://github.com/borjar20/Biblioshare/issues/1349)
+y [PR #1351](https://github.com/borjar20/Biblioshare/pull/1351).
+Ocho estados de QA en Next dev y 17 unitarios existentes PASS; alcance,
+mediciones y límites en [separación de iconos](../testing/2026-10-04-header-icons-spacing.md).

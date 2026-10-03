@@ -39,7 +39,7 @@ export async function Header({
         {(username || !loggedIn) && <TopNav username={username} />}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center">
         {loggedIn && <NotificationBell initialUnreadCount={unreadCount} />}
         <div className={hasAppMenu ? "hidden md:block" : undefined}>
           <ThemeToggle />
