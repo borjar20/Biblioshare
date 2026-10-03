@@ -3,6 +3,7 @@
 import {
   useCompanionStore,
   type CompanionEmit,
+  type CompanionPersistence,
 } from "@/lib/play/core/use-companion-store";
 import type { ClockState } from "./types";
 import type { ClockEvent } from "./events";
@@ -19,12 +20,14 @@ export function useClock(identity: string): {
   undo: () => void;
   canUndo: boolean;
   loaded: boolean;
+  persistence: CompanionPersistence;
 } {
   return useCompanionStore<ClockState, ClockEvent>({
     storageKey: `${identity}:clock`,
     replay: replayClock,
     reducer: clockReducer,
     compact: compactClockIfNeeded,
+    publishAfterPersist: true,
     // Reloj del sistema hacia atrás (NTP) no puede dejar muerto el reloj — el
     // evento se clava al lastEventAt vigente; el throw estricto sigue
     // protegiendo el replay de logs guardados.
