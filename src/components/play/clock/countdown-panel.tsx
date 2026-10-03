@@ -9,7 +9,7 @@ import type { ClockEvent } from "@/lib/play/clock/events";
 import type { ClockState } from "@/lib/play/clock/types";
 import { CLOCK_DURATION_MS_MAX, CLOCK_DURATION_MS_MIN } from "@/lib/play/clock/reducer";
 import { flaggedAt, formatMs, remainingAt } from "@/lib/play/clock/selectors";
-import { buzz } from "@/components/play/random/stage/stage-helpers";
+import { buzz } from "@/lib/play/ui/buzz";
 import { useNow } from "./use-now";
 
 const PRESETS_S = [30, 60, 120, 300, 600];

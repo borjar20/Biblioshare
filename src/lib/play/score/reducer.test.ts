@@ -55,12 +55,34 @@ describe("initialScoreState", () => {
     expect(() => initialScoreState(started(setup({ participants: gente(9) })))).toThrow(PlayEventError);
   });
 
+  it.each([
+    { count: 2, scores: [7, -2] },
+    { count: 8, scores: [8, -3, 5, 0, 4, 2, -1, 6] },
+  ])("permite iniciar, puntuar y terminar con exactamente $count jugadores", ({ count, scores }) => {
+    const initial = initialScoreState(started(setup({ participants: gente(count) })));
+    expect(initial.status).toBe("active");
+    expect(initial.setup.participants).toHaveLength(count);
+    expect(initial.rounds).toEqual([]);
+
+    const scored = scoreReducer(initial, ronda(scores));
+    const finished = scoreReducer(scored, fin());
+    expect(finished.rounds).toEqual([scores]);
+    expect(finished.status).toBe("finished");
+    expect(finished.finishedAt).toBe(9000);
+  });
+
   it("rechaza un target sin sentido (valor no entero positivo)", () => {
     expect(() =>
       initialScoreState(started(setup({ target: { kind: "rounds", value: 0 } }))),
     ).toThrow(PlayEventError);
     expect(() =>
       initialScoreState(started(setup({ target: { kind: "points", value: 2.5 } }))),
+    ).toThrow(PlayEventError);
+  });
+
+  it.each(["rounds", "points"] as const)("rechaza un target negativo de %s", (kind) => {
+    expect(() =>
+      initialScoreState(started(setup({ target: { kind, value: -1 } }))),
     ).toThrow(PlayEventError);
   });
 });

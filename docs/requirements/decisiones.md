@@ -5997,3 +5997,77 @@ setup hidratado bajo `next start` no solicita el recurso local inexistente.
 El audit global de navegación conserva su FAIL separado (#1301); esta
 verificación no acredita recepción de métricas de un despliegue. Evidencia:
 `docs/testing/2026-10-02-local-speed-insights-1306.md`.
+
+## 2026-10-02 — la vibración de Play vive en la utilidad común de UI (#996)
+
+`buzz` pasa a `lib/play/ui/buzz.ts` porque Reloj y Turnos no deben
+depender de los helpers internos del escenario Aleatorio. La función conserva
+exactamente su cuerpo: comprueba `navigator.vibrate` y solicita 30 ms.
+`stage-helpers.ts` reexporta la misma función para mantener los consumidores
+de Aleatorio; los otros tres consumidores sólo cambian sus imports.
+
+No se introduce un plugin de Capacitor ni un contrato nuevo de vibración.
+La equivalencia literal, los imports, tipos y nueve unitarios existentes
+verifican la extracción; no acreditan vibración física. Evidencia:
+`docs/testing/2026-10-02-shared-play-buzz-996.md`.
+
+## 2026-10-03 — Reloj publica después de confirmar la persistencia local (#1313)
+
+`useClock` activa `publishAfterPersist` en `useCompanionStore` para corregir
+la partida visible que desaparecía al recargar antes de completar su
+escritura. El opt-in pertenece sólo a Reloj; Aleatorio, Recursos y Turnos
+conservan la publicación optimista. `emit` sigue devolviendo aceptación y
+validación síncronas: `true` no acredita que IndexedDB haya guardado nada.
+
+Reloj conserva el snapshot visible anterior mientras guarda y publica el
+nuevo después del ACK real de `writeCompanion`, cuyo éxito procede de
+`tx.oncomplete`, no de `put` ni de la aceptación. La pantalla expone
+`pending`, `saved` o `memory` y bloquea sus controles durante `pending`.
+El timestamp se captura al aceptar el evento y se acota al `lastEventAt`
+vigente si el reloj del sistema retrocede; el ACK no reinicia ese tiempo.
+
+La cabeza lógica reserva la revisión sincrónicamente, separada del snapshot
+publicado. Cada sesión de efectos conserva su cola: eventos y deshacer del
+mismo tick componen sobre esa cabeza y un ACK intermedio no la rebobina.
+Un conflicto CAS con registro reproducible adopta la rama vigente e
+invalida los commits derivados de la perdedora antes de comprobar si sigue
+habiendo UI, también tras desmontar o cambiar de identidad. Salir por sí
+solo mantiene las escrituras ya aceptadas en su clave original.
+
+Antes de hidratar, las sesiones e instancias nuevas del opt-in esperan las
+promesas aceptadas para su `storageKey` en el documento actual. Cada promesa
+entra en el registro compartido sincrónicamente antes de devolver aceptación;
+la barrera vuelve a comprobar si se aceptaron más durante la espera. Al
+resolverse o rechazarse se retira la promesa y, si queda vacía, la clave.
+La barrera ordena hidratación frente a escrituras aceptadas; no serializa
+escritores independientes ni sustituye su CAS. Otras claves no esperan por
+ese registro, aunque IndexedDB conserva su propio orden de transacciones.
+
+La marca de carga pertenece a cada sesión de efectos. Ocultar y recuperar
+Activity exige una nueva hidratación aunque conserve identidad y estado de
+React: hasta terminarla, `loaded=false`, `persistence=idle` y la pantalla no
+ofrece controles. Los callbacks antiguos permanecen rechazados y las
+respuestas anteriores no publican en la sesión visible nueva.
+
+Si la escritura no está disponible, o el registro de un conflicto no se
+puede reproducir, se publica el candidato en memoria. El aviso delimita los
+últimos cambios no guardados y permite seguir jugando aquí; esos cambios se
+pierden al salir de la pantalla, recargar o cerrar. Puede existir un estado
+durable anterior. Una acción posterior puede persistir el log completo.
+
+El registro de promesas no sobrevive a una recarga ni comunica ventanas.
+No se añade nube ni una garantía de conservar cambios si se recarga o cierra
+antes del ACK. Se conserva el formato de `companion`, el adaptador de IDB y
+el tratamiento de errores de lectura; no hay cambio de esquema ni migración.
+
+El candidato r3 acredita 163 unitarios PASS, incluidos 25 casos durables
+del cambio; la revisión independiente acredita 6 diagnósticos originales y
+5 comprobaciones de frontera PASS. En el build nuevo de producción, los 12
+casos existentes y 6 nuevos de ACK pasaron; el séptimo caso nuevo, fallback,
+pasó en recuperación focal tras corregir sólo Pausar -> Pausa en el locator.
+Son 19 casos Clock PASS repartidos entre ambas tandas, sin retries. La tanda
+conjunta original conserva 19 PASS / 2 FAIL (locator y Recursos #1328), y su
+auditoría global conserva FAIL por un POST sin clasificar (#1301). La
+recuperación focal Clock tiene auditoría global PASS. CI se exige en la PR.
+Los FAIL interpretables de r1/r2 y de QA se conservan.
+Evidencia base: `docs/testing/2026-10-02-clock-durable-start-1313.md`.
