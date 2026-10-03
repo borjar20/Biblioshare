@@ -6290,3 +6290,7 @@ search_path vacío, dueño postgres y ACL conservados. Ledger canónico
 `20261003153110 / guard_comment_target_recursion`. No se ejecutan fixtures
 con actores sintéticos en producción; la publicación del código sigue teniendo
 su propio gate de CI y merge.
+
+## 2026-10-03 — Crear Experiencias: acción compacta en la cabecera móvil
+
+En `/experiencias`, la acción de crear muestra solo el icono por debajo de 640 px, con área táctil de 44 × 44 px y nombre accesible «Nueva experiencia» reutilizado de la traducción existente. Desde 640 px mantiene la etiqueta completa y el padding anterior. Se evita partir el texto o competir con el título sin cambiar PageHeader ni el estilo global de botones. El ajuste local pasa ocho combinaciones de viewport/tema, foco de teclado y navegación al formulario; evidencia y alcance en `docs/testing/2026-10-03-experiencias-mobile-button.md`.
