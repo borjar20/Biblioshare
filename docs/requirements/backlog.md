@@ -17,7 +17,7 @@
 > cuota de altas Google Books verificada en local/dev/prod y CI el 2026-10-02 (#1237);
 > arranque, configuración del reloj y contraste de asientos verificados contra código y build/start local el 2026-10-02 (#964, #995, #999);
 > navegación principal, herramientas de Biblioteca y Comunidad verificadas contra código y navegador con build/start local el 2026-10-03;
-> cabecera y panel de notificaciones #1349 verificados con build/start local y siete E2E focales PASS el 2026-10-04; candidato local pendiente de publicación;
+> cabecera y panel de notificaciones #1349 verificados con build/start local y siete E2E focales PASS el 2026-10-04; verificación sobre candidato local; integración/publicación rastreadas en [PR #1351](https://github.com/borjar20/Biblioshare/pull/1351);
 > Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293]**
 >
