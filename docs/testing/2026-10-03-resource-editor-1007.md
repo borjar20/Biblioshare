@@ -91,3 +91,16 @@ La fase previa ya recibió navegador real: los dos casos permanentes pasaron sin
 Evidencia pública en la raíz de campaña qa-evidence/resources1328-final-native-1791045239755/:307 archivos exactos, manifiesto8e7b9dfc6ee73f2acba2c993a85424772d490056dc905adea28eff5d0368a531. Fuentes y895 artefactos previos intactos, cleanup real PASS, datos/cuentas/sesiones propios0 y servicios parados con backup.
 
 La integración posterior con maina0b0/Experiencias exige nueva QA y CI. La causa inicial de preset no se reivindica como bug arreglado. Esta entrada añade el resultado posterior sin sustituir la evidencia de la fase inicial.
+
+
+## Gate de integración actual — 2026-10-03
+
+Nueva build zOSPb8W0Exp_IruBgC7iv de HEAD 9a3f13a749d178e12c443b80d7c2a4b85b18eb77, con base main a0b0e031/Experiencias y backend local 282: 9/9 recorridos funcionales PASS, cero reintentos, SKIP o flaky. Cinco casos de persistencia de Recursos, dos del editor y dos de Colecciones (nuevo y original). Tipos y lint PASS; 95 unitarios focales PASS en nueve archivos. El recorrido natural original previo conserva su resultado en build w0f; no se vuelve a declarar ejecutado en esta tanda.
+
+Los dos casos permanentes del editor pasan también en la base actual: recuperación del atajo Oro con nombre único y cancelación del hold anterior al cambiar de ficha. No se altera el diagnóstico corregido de la primera fase.
+
+Auditoría global FAIL conservada: POST #22 de /partidas/recursos y #59 de /coleccion se corresponden con pullPendingCelebrations según el índice de esta misma build; POST #38 de /login queda fuera del probe, sin atribución. Los tres siguen UNCLASSIFIED: no hay recibo RPC/filas por petición. #22 empezó y falló antes del ACK retenido, por lo que no se atribuye a la recarga final. #1301 y #1334 permanecen abiertos; identificar la acción o recibir HTTP 200 no acredita inocuidad ni pérdida.
+
+Evidencia local sellada: resources-coverage-current-native-1791046824201/final-public-manifest.sha256.json, 173 archivos, SHA-256 a7d1bdca4d9821971beaeba05439a04a927eef6c6c513fd7cc418db44dd7d8d5. Se preservan 2012 inputs, 23 fuentes congeladas y los 307 artefactos de la tanda previa. Infra/probe/cleanup PASS; actores eliminados con Auth404 y nueve tablas vacías por actor, seis tablas de Experiencias vacías, Next cerrado, puerto 3000 libre y Supabase parado con backup normal de 282 pasos. Son recibos de cierre de esa tanda; otro gate local puede utilizar después el backend.
+
+La publicación exige CI de la PR y merge; los hallazgos globales siguen sus propias issues.

@@ -71,3 +71,8 @@ Se conservan los intentos previos fallidos: una importación nativa de configura
 Propiedad limitada al test nuevo y a este informe. Producto, mensajes, helpers existentes, dependencias, `.env`, esquema, fuentes de #901 y documentos canónicos compartidos quedan sin editar. No se ha detectado un bug actual del producto. No se levantaron servicios, build, navegador ni DB, y no se hicieron commit/push/PR/comentarios/cierres remotos.
 
 Los hashes de las dos fuentes finales, de las dieciséis fuentes protegidas antes/después y de todos los artefactos se publican en el sello local. El checkout permanece en `codex/reaction-bar-coverage-789`, HEAD `d9c2246512d605a1936fb8dd23eb44a66fee4b06`. El coordinador sincroniza `docs/TESTING.md` y decide revisión, integración con el main posterior y CI antes del cierre de la issue.
+
+
+## Integración actual — 2026-10-03
+
+La cobertura se integra con ascendencia real del commit 197c7c1 y main a0b0e031. Sobre el candidato conjunto pasan tipos, lint y 95 pruebas focales en nueve archivos, incluidos los 38 casos de reacciones. No se repiten las mutaciones históricas ni se amplía su alcance a navegador o persistencia remota. CI final exigida en la PR.

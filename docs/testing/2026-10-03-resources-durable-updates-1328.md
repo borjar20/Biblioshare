@@ -131,3 +131,16 @@ Las ocho capturas originales se revisaron. memory320/fullPage y memory390 estaba
 Evidencia pública en la raíz de campaña qa-evidence/resources1328-final-native-1791045239755/:307 archivos exactos, manifiesto8e7b9dfc6ee73f2acba2c993a85424772d490056dc905adea28eff5d0368a531. Fuentes y895 artefactos previos intactos, cleanup real PASS, datos/cuentas/sesiones propios0 y servicios parados con backup.
 
 Auditorías de Recursos PASS. La del original de Colecciones conserva FAIL separado #1301, sin reclasificar por ActionID/200. Main avanzó con Experiencias (#1323): se integra maina0b0 más commits #789/#662/#746 con ascendencia real, once blobs propios idénticos y tres keys de Recursos conservadas junto al nuevo español. Nueva QA del lote actual y CI completa son gates antes del merge.
+
+
+## Gate de integración actual — 2026-10-03
+
+Nueva build zOSPb8W0Exp_IruBgC7iv de HEAD 9a3f13a749d178e12c443b80d7c2a4b85b18eb77, con base main a0b0e031/Experiencias y backend local 282: 9/9 recorridos funcionales PASS, cero reintentos, SKIP o flaky. Cinco casos de persistencia de Recursos, dos del editor y dos de Colecciones (nuevo y original). Tipos y lint PASS; 95 unitarios focales PASS en nueve archivos. El recorrido natural original previo conserva su resultado en build w0f; no se vuelve a declarar ejecutado en esta tanda.
+
+ACK de revisión 8: evento 70 anterior al banco/evento 71 a 320, 390 y 1280 px. Con transacción retenida, ACK de revisión 11/evento 97 anterior al banco/evento 98; la cola pendiente acaba vacía. Los tests conservan recarga adyacente tras la aserción del banco. El fallback continúa utilizable en memoria y restaura el último valor durable tras recargar.
+
+Auditoría global FAIL conservada: POST #22 de /partidas/recursos y #59 de /coleccion se corresponden con pullPendingCelebrations según el índice de esta misma build; POST #38 de /login queda fuera del probe, sin atribución. Los tres siguen UNCLASSIFIED: no hay recibo RPC/filas por petición. #22 empezó y falló antes del ACK retenido, por lo que no se atribuye a la recarga final. #1301 y #1334 permanecen abiertos; identificar la acción o recibir HTTP 200 no acredita inocuidad ni pérdida.
+
+Evidencia local sellada: resources-coverage-current-native-1791046824201/final-public-manifest.sha256.json, 173 archivos, SHA-256 a7d1bdca4d9821971beaeba05439a04a927eef6c6c513fd7cc418db44dd7d8d5. Se preservan 2012 inputs, 23 fuentes congeladas y los 307 artefactos de la tanda previa. Infra/probe/cleanup PASS; actores eliminados con Auth404 y nueve tablas vacías por actor, seis tablas de Experiencias vacías, Next cerrado, puerto 3000 libre y Supabase parado con backup normal de 282 pasos. Son recibos de cierre de esa tanda; otro gate local puede utilizar después el backend.
+
+CI de publicación exigida en la PR. Estos datos acreditan el contrato local de Recursos; no acreditan salud global de la acción de celebraciones ni almacenamiento remoto.

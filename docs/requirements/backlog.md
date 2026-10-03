@@ -17,6 +17,7 @@
 > cuota de altas Google Books verificada en local/dev/prod y CI el 2026-10-02 (#1237);
 > arranque, configuración del reloj y contraste de asientos verificados contra código y build/start local el 2026-10-02 (#964, #995, #999);
 > navegación principal, herramientas de Biblioteca y Comunidad verificadas contra código y navegador con build/start local el 2026-10-03;
+> Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
