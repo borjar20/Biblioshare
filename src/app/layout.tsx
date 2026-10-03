@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { LocalAwareSpeedInsights } from "@/components/local-aware-speed-insights";
 import { RouteMessages } from "@/components/route-messages";
 import { AppShell } from "@/components/nav/app-shell";
 import { CelebrationProvider } from "@/components/celebrations/celebration-provider";
@@ -85,7 +85,7 @@ export default function RootLayout({
             {modal}
           </CelebrationProvider>
         </RouteMessages>
-        <SpeedInsights />
+        <LocalAwareSpeedInsights />
       </body>
     </html>
   );
