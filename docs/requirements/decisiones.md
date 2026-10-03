@@ -6071,3 +6071,32 @@ auditoría global conserva FAIL por un POST sin clasificar (#1301). La
 recuperación focal Clock tiene auditoría global PASS. CI se exige en la PR.
 Los FAIL interpretables de r1/r2 y de QA se conservan.
 Evidencia base: `docs/testing/2026-10-02-clock-durable-start-1313.md`.
+
+## 2026-10-03 — Push: reportar aceptación del proveedor con unidades explícitas (#1052)
+
+`sendPushToUser(s)` devuelve un reporte agregado sin ids ni contenido: usuarios únicos por llamada y resultados por dispositivo. `accepted` significa que al menos un proveedor aceptó el mensaje; no acredita recepción, visualización ni lectura en el teléfono. Los errores de otros dispositivos de un usuario parcialmente aceptado permanecen en el recuento de dispositivos. Sin dispositivos, descartes por preferencias/transporte, resultados inválidos/temporales y fallos de consulta quedan distinguidos.
+
+El barrido de mascota sustituye `sent` (intentos) por `{ claimed, unknownKind, pushRequests, deviceResults }`. `claimed`/`unknownKind` son filas; `pushRequests` suma una solicitud por fila válida y no promete unicidad global del usuario; `deviceResults` cuenta cada dispositivo y solicitud. Los claims y la regla de no reintentar permanecen como estaban. La ruta devuelve y loguea únicamente estos recuentos.
+
+La salud sigue aplicándose desde los mismos outcomes (ACK en lote, inválido desactivado, temporal activo con contador incrementado). Un rechazo inesperado de transporte se contiene como temporal; los errores del cliente o de persistencia no deshacen los ACK de otros dispositivos ni la acción original. El límite de errores PostgREST resueltos ignorados por `recordHealth` se registra separado en #1329.
+
+Verificación local: RED real del contador (2 FAIL esperados); 32 pruebas focales y 116 pertinentes PASS, tipos y lint PASS, sin base/proveedores reales. Informe: docs/testing/2026-10-03-push-report-1052.md.
+
+La revisión independiente del commit 4419656 dio PASS sin hallazgos: 1.144
+escenarios de particiones, límites y comparación causal; no ejecutó servicios
+reales. La primera CI pasó 4.201 unitarios y 123 recorridos de navegador.
+Los canónicos sincronizados y la base actual se verifican en la PR #1330.
+
+## 2026-10-03 — Push: observar cada fallo de salud sin invalidar aceptación (#1329)
+
+`recordHealth` observa todas sus operaciones con `Promise.allSettled`: inspecciona cada respuesta resuelta con `error` y cada rechazo. Mantiene ACK en lote, desactivación de inválidos y temporales activos con contador incrementado; no repite escrituras ni envíos. Aceptación del proveedor y persistencia de salud siguen siendo hechos distintos.
+
+El diagnóstico expone sólo `{ kind, code }`, con código SQLSTATE/PostgREST validado o `UNKNOWN`; omite el error completo, mensajes, detalles, hints, stacks, ids, endpoints, credenciales y contenido. La lectura de un `code` opaco y la llamada al logger quedan contenidas por separado: si fallan, el ACK y la observación de las otras operaciones se conservan. Un logger averiado no puede garantizar un diagnóstico visible; tampoco se reintenta.
+
+Verificación: repro original y RED conservados; 51 pruebas focales PASS (19 de salud), tipos/lint PASS, dos casos con builder real y fetch local. La revisión independiente r1 encontró dos bordes mediante excepciones inyectadas; r2 pasa los tres diagnósticos originales sin hallazgos nuevos. No se acredita ocurrencia de esas excepciones en un servicio real. Se conserva toda la evidencia; informe `docs/testing/2026-10-03-push-health-errors-1329.md`. Los commits separados de #1052 y #1329 se integran en ese orden y pasan el gate de CI del lote antes del merge.
+
+## 2026-10-03 — Alias del perfil propio: conservar tipo de Biblioteca (#1325)
+
+El alias antiguo `/u/<dueño>?tab=coleccion` conserva un tipo explícito válido (`book`, `movie`, `series`, `todos`) al redirigir a la Biblioteca personal. Sin tipo o con uno inválido continúa en `/coleccion`, donde se aplica el default de Biblioteca, incluido el interés único del onboarding. `todos` conserva la elección explícita de todos los tipos y se distingue de omitir `type` (#313). La validación reutiliza el resolver de Biblioteca. Sólo el dueño alcanza este alias; el visitante conserva la colección del perfil que visita. No se amplía el passthrough de otros filtros antiguos.
+
+El RED nativo confirmó que el acceso directo movie conservaba Películas, mientras el alias perdía type y arrancaba en Libros. El arreglo pasa 23 unitarios, tipos/lint y ocho casos nativos sin retries en un build nuevo de producción: cuatro tipos explícitos, ausente/inválido y visitantes anónimo/autenticado. El gate funcional pasa; la auditoría global conserva FAIL por cinco POST cancelados de pullPendingCelebrations (#1301), cuya identidad no demuestra inocuidad. La tanda conjunta conserva el FAIL separado de Recursos #1328. Fuentes y evidencias anteriores permanecen intactas; fixtures y servicios propios limpios. Informe: `docs/testing/2026-10-03-profile-collection-alias-1325.md`. Sin cambio de esquema, caché ni arquitectura de rutas. La CI del lote es gate previo al merge.
