@@ -4,7 +4,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-10-03",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; ocho migraciones aplicadas y objetos/definiciones/ACL verificados en producción 2026-10-03 a las 10:04 UTC; integración y despliegue seguidos en PR #1323 y #1293 · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; publicación seguida en PR #1323 y #1293 · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · utilidad compartida de vibración #996 desde código, equivalencia literal de función y nueve unitarios existentes verificados el 2026-10-02 · delta de publicación confirmada del Reloj #1313 desde candidato r3: código, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) verificados el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR · delta de reporte push #1052 desde commit 4419656: 116 unitarios pertinentes, revisión independiente sin hallazgos (1.144 escenarios) y primera CI 4.201 unitarios/123 recorridos; accepted es ACK del proveedor, errores resueltos/rechazados de health observados sin invalidar aceptación (#1329; 51 pruebas focales y tres diagnósticos independientes PASS), 2026-10-03 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; ocho migraciones aplicadas y objetos/definiciones/ACL verificados en producción 2026-10-03 a las 10:04 UTC; integración y despliegue seguidos en PR #1323 y #1293 · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; publicación seguida en PR #1323 y #1293 · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -961,9 +961,13 @@
       "layer": "domain",
       "kind": "module",
       "size": 2,
-      "summary": "Envío de Web Push (VAPID vía web-push) a uno o varios usuarios. Se dispara detrás de las notificaciones.",
+      "summary": "Dispatcher Web Push/FCM: consulta preferencias y dispositivos activos y retorna usuarios únicos por llamada y resultados por dispositivo; accepted es aceptación del proveedor, no acredita recepción en el teléfono. Registra salud desde los mismos outcomes, observa respuestas con error y rechazos por operación y conserva aceptación aunque falle su diagnóstico.",
       "files": [
-        "src/lib/push/send-push.ts"
+        "src/lib/push/send-push.ts",
+        "src/lib/push/types.ts"
+      ],
+      "gotchas": [
+        "No sumar users como personas únicas entre llamadas: el barrido usa pushRequests por claim y deviceResults por dispositivo/solicitud. El ACK no garantiza persistencia de health. #1329 observa cada fallo de escritura sin repetir operaciones; el diagnóstico saneado tampoco debe invalidar aceptación."
       ]
     },
     {
@@ -1037,11 +1041,13 @@
       "layer": "domain",
       "kind": "module",
       "size": 22,
-      "summary": "Dominio de BiblioPlay (Partidas), independiente de passes (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. En ui/ vive la lógica de la pantalla que NO es React: reparto de la mesa, tamaño de vidas, borrador de configuración, memoria de la última mesa y preferencias de vista. core/store.ts coordina hidratación y escrituras; core/db.ts persiste en IndexedDB por identidad, con CAS por rev; el store replica entre pestañas por BroadcastChannel. localStorage queda como puente legado de la activa y almacén de preferencias/mesa recordada. El historial lee el espejo local saved; core/sync.ts y play-games-api.ts lo sincronizan con play_games para usuarios autenticados (Fase 5 existente). Excepción explícita a inv-passes-hub (ver meta.invariants).",
+      "summary": "Dominio de BiblioPlay (Partidas), independiente de passes (EPIC #931). Event log con coalescing + reducer + replay puros (core/), registro de herramientas por toolId (tools.ts) y Magic (mtg/), con sus modos en mtg/modes.ts — Commander es un modo, no una herramienta. En ui/ vive la lógica de la pantalla que NO es React: reparto de la mesa, tamaño de vidas, borrador de configuración, memoria de la última mesa, preferencias de vista y vibración común con navigator.vibrate(30) cuando está disponible. core/store.ts coordina hidratación y escrituras; core/db.ts persiste en IndexedDB por identidad, con CAS por rev; el store replica entre pestañas por BroadcastChannel. localStorage queda como puente legado de la activa y almacén de preferencias/mesa recordada. El historial lee el espejo local saved; core/sync.ts y play-games-api.ts lo sincronizan con play_games para usuarios autenticados (Fase 5 existente). Excepción explícita a inv-passes-hub (ver meta.invariants). Los acompañantes usan core/use-companion-store.ts; clock/use-clock.ts activa la publicación tras la confirmación local de IDB sólo para Reloj, con cola por sesión y barrera de hidratación por clave entre instancias (#1313).",
       "files": [
         "src/lib/play/tools.ts",
         "src/lib/play/core/log.ts",
         "src/lib/play/core/store.ts",
+        "src/lib/play/core/use-companion-store.ts",
+        "src/lib/play/clock/use-clock.ts",
         "src/lib/play/core/db.ts",
         "src/lib/play/core/sync.ts",
         "src/lib/play/core/play-games-api.ts",
@@ -1049,10 +1055,12 @@
         "src/lib/play/mtg/rules.ts",
         "src/lib/play/ui/layout.ts",
         "src/lib/play/ui/setup-draft.ts",
-        "src/lib/play/ui/table-memory.ts"
+        "src/lib/play/ui/table-memory.ts",
+    "src/lib/play/ui/buzz.ts"
       ],
       "gotchas": [
-        "Reconfigurar usa PlayStore.start(event, { replaceActive: true }): el replay valida antes de tocar snapshot/rev/timer/persistencia. Si devuelve false, conserva la activa y el plazo original de la ráfaga; no llames discard() antes. Recuerda la mesa y navega sólo después de true. Sin opción, start sigue rechazando una activa con excepción; el CAS no cambia (#964)."
+        "Reconfigurar usa PlayStore.start(event, { replaceActive: true }): el replay valida antes de tocar snapshot/rev/timer/persistencia. Si devuelve false, conserva la activa y el plazo original de la ráfaga; no llames discard() antes. Recuerda la mesa y navega sólo después de true. Sin opción, start sigue rechazando una activa con excepción; el CAS no cambia (#964).",
+        "Sólo Reloj activa publishAfterPersist: emit devuelve true al aceptar, sin confirmar guardado. La cabeza lógica y la cola son de cada sesión; publicar un ACK no rebobina revisiones ni timestamps capturados al aceptar. El éxito de writeCompanion viene de tx.oncomplete; mientras espera se conserva el snapshot anterior y la UI bloquea controles. Un conflicto CAS con registro reproducible adopta la ganadora e invalida la cola perdedora incluso tras desmontar/cambiar identidad; salir sin conflicto conserva los commits aceptados. Activity exige nueva hidratación con loaded=false y persistence=idle, sin revivir callbacks antiguos. Antes de leer, el opt-in espera las promesas aceptadas de su storageKey, registradas síncronamente antes de devolver aceptación y retiradas al resolverse o rechazarse, incluida la clave vacía; vuelve a comprobar nuevas aceptaciones. Esa barrera entre sesiones/instancias sólo vive en el documento: no serializa escritores ni altera CAS, no espera otras claves por su cuenta y no sobrevive a recargas. Unavailable o conflicto corrupto publica en memory con aviso de últimos cambios no guardados; Aleatorio, Recursos y Turnos siguen optimistas. Sin nube nueva ni garantía de recargar/cerrar antes del ACK (#1313)."
       ]
     },
     {
@@ -4186,7 +4194,7 @@
         },
         {
           "node": "m-pet",
-          "action": "deliverPetNudges llama a claim_pet_nudges() con el cliente de service_role y recibe SOLO las filas nuevas (user_id, name, kind, streak)",
+          "action": "deliverPetNudges reclama con service_role sólo filas nuevas y agrega claimed/unknownKind por fila, pushRequests por claim válido y deviceResults por dispositivo/solicitud; no deduplica claims ni modifica el SQL",
           "file": "src/lib/pet/nudges/deliver.ts"
         },
         {
@@ -4201,7 +4209,7 @@
         },
         {
           "node": "m-push",
-          "action": "sendPushToUser filtra por category_pet y por canal, firma con VAPID y envía a cada endpoint guardado",
+          "action": "sendPushToUser filtra por categoría y canal, despacha Web Push/FCM y retorna aceptación, dispositivo inválido, error temporal o descarte; el ACK del proveedor no acredita recepción",
           "file": "src/lib/push/send-push.ts"
         },
         {
@@ -4210,11 +4218,11 @@
         },
         {
           "node": "x-webpush",
-          "action": "El servicio de push entrega el mensaje"
+          "action": "El proveedor Web Push acepta la solicitud o devuelve un fallo; su ACK no acredita recepción en el teléfono"
         },
         {
           "node": "sw",
-          "action": "El service worker pinta la notificación del sistema; al tocarla abre /mascota",
+          "action": "Si el mensaje llega al dispositivo Web, el service worker muestra la notificación; al tocarla abre /mascota",
           "file": "public/sw.js"
         }
       ]

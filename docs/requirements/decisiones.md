@@ -6061,6 +6061,36 @@ No hay migración ni reparación masiva. La verificación nativa usa lector
 anónimo y escritor de sistema; su alcance y el fallo previo conservado están
 en `docs/testing/2026-10-02-book-credit-convergence-633.md`.
 
+## 2026-10-02 — Speed Insights se excluye por origen loopback (#1306)
+
+El layout conserva el SDK original en dominios de Vercel, personalizados y
+otros hosts no locales. Un wrapper cliente omite su montaje en `localhost`,
+subdominios `.localhost`, IPv4 `127/8` y `::1`. `useSyncExternalStore` conserva
+un snapshot inicial `false` para servidor/hidratación y decide después según
+el hostname del documento, sin introducir lectura de cookies o headers.
+
+No se depende de `VERCEL=1`, cuya exposición de variables de sistema no está
+confirmada en este proyecto. No se cambian props, configuración dinámica,
+seguimiento de rutas ni filtrado de eventos del SDK. Las direcciones LAN
+mantienen el comportamiento anterior. El SDK real pasa 19 pruebas y un
+setup hidratado bajo `next start` no solicita el recurso local inexistente.
+El audit global de navegación conserva su FAIL separado (#1301); esta
+verificación no acredita recepción de métricas de un despliegue. Evidencia:
+`docs/testing/2026-10-02-local-speed-insights-1306.md`.
+
+## 2026-10-02 — la vibración de Play vive en la utilidad común de UI (#996)
+
+`buzz` pasa a `lib/play/ui/buzz.ts` porque Reloj y Turnos no deben
+depender de los helpers internos del escenario Aleatorio. La función conserva
+exactamente su cuerpo: comprueba `navigator.vibrate` y solicita 30 ms.
+`stage-helpers.ts` reexporta la misma función para mantener los consumidores
+de Aleatorio; los otros tres consumidores sólo cambian sus imports.
+
+No se introduce un plugin de Capacitor ni un contrato nuevo de vibración.
+La equivalencia literal, los imports, tipos y nueve unitarios existentes
+verifican la extracción; no acreditan vibración física. Evidencia:
+`docs/testing/2026-10-02-shared-play-buzz-996.md`.
+
 ## 2026-10-03 — Experiencias se compone como un álbum social
 
 La dirección aprobada tras revisar el recorrido de Experiencias es un álbum
@@ -6131,3 +6161,93 @@ Los recorridos principales se han verificado en navegador real contra
 build/start local con datos de desarrollo. El estado de producción de
 Experiencias sigue pendiente en #1293. La evidencia y el alcance final de los
 controles están en `docs/testing/2026-10-03-navegacion-app.md`.
+
+## 2026-10-03 — Reloj publica después de confirmar la persistencia local (#1313)
+
+`useClock` activa `publishAfterPersist` en `useCompanionStore` para corregir
+la partida visible que desaparecía al recargar antes de completar su
+escritura. El opt-in pertenece sólo a Reloj; Aleatorio, Recursos y Turnos
+conservan la publicación optimista. `emit` sigue devolviendo aceptación y
+validación síncronas: `true` no acredita que IndexedDB haya guardado nada.
+
+Reloj conserva el snapshot visible anterior mientras guarda y publica el
+nuevo después del ACK real de `writeCompanion`, cuyo éxito procede de
+`tx.oncomplete`, no de `put` ni de la aceptación. La pantalla expone
+`pending`, `saved` o `memory` y bloquea sus controles durante `pending`.
+El timestamp se captura al aceptar el evento y se acota al `lastEventAt`
+vigente si el reloj del sistema retrocede; el ACK no reinicia ese tiempo.
+
+La cabeza lógica reserva la revisión sincrónicamente, separada del snapshot
+publicado. Cada sesión de efectos conserva su cola: eventos y deshacer del
+mismo tick componen sobre esa cabeza y un ACK intermedio no la rebobina.
+Un conflicto CAS con registro reproducible adopta la rama vigente e
+invalida los commits derivados de la perdedora antes de comprobar si sigue
+habiendo UI, también tras desmontar o cambiar de identidad. Salir por sí
+solo mantiene las escrituras ya aceptadas en su clave original.
+
+Antes de hidratar, las sesiones e instancias nuevas del opt-in esperan las
+promesas aceptadas para su `storageKey` en el documento actual. Cada promesa
+entra en el registro compartido sincrónicamente antes de devolver aceptación;
+la barrera vuelve a comprobar si se aceptaron más durante la espera. Al
+resolverse o rechazarse se retira la promesa y, si queda vacía, la clave.
+La barrera ordena hidratación frente a escrituras aceptadas; no serializa
+escritores independientes ni sustituye su CAS. Otras claves no esperan por
+ese registro, aunque IndexedDB conserva su propio orden de transacciones.
+
+La marca de carga pertenece a cada sesión de efectos. Ocultar y recuperar
+Activity exige una nueva hidratación aunque conserve identidad y estado de
+React: hasta terminarla, `loaded=false`, `persistence=idle` y la pantalla no
+ofrece controles. Los callbacks antiguos permanecen rechazados y las
+respuestas anteriores no publican en la sesión visible nueva.
+
+Si la escritura no está disponible, o el registro de un conflicto no se
+puede reproducir, se publica el candidato en memoria. El aviso delimita los
+últimos cambios no guardados y permite seguir jugando aquí; esos cambios se
+pierden al salir de la pantalla, recargar o cerrar. Puede existir un estado
+durable anterior. Una acción posterior puede persistir el log completo.
+
+El registro de promesas no sobrevive a una recarga ni comunica ventanas.
+No se añade nube ni una garantía de conservar cambios si se recarga o cierra
+antes del ACK. Se conserva el formato de `companion`, el adaptador de IDB y
+el tratamiento de errores de lectura; no hay cambio de esquema ni migración.
+
+El candidato r3 acredita 163 unitarios PASS, incluidos 25 casos durables
+del cambio; la revisión independiente acredita 6 diagnósticos originales y
+5 comprobaciones de frontera PASS. En el build nuevo de producción, los 12
+casos existentes y 6 nuevos de ACK pasaron; el séptimo caso nuevo, fallback,
+pasó en recuperación focal tras corregir sólo Pausar -> Pausa en el locator.
+Son 19 casos Clock PASS repartidos entre ambas tandas, sin retries. La tanda
+conjunta original conserva 19 PASS / 2 FAIL (locator y Recursos #1328), y su
+auditoría global conserva FAIL por un POST sin clasificar (#1301). La
+recuperación focal Clock tiene auditoría global PASS. CI se exige en la PR.
+Los FAIL interpretables de r1/r2 y de QA se conservan.
+Evidencia base: `docs/testing/2026-10-02-clock-durable-start-1313.md`.
+
+## 2026-10-03 — Push: reportar aceptación del proveedor con unidades explícitas (#1052)
+
+`sendPushToUser(s)` devuelve un reporte agregado sin ids ni contenido: usuarios únicos por llamada y resultados por dispositivo. `accepted` significa que al menos un proveedor aceptó el mensaje; no acredita recepción, visualización ni lectura en el teléfono. Los errores de otros dispositivos de un usuario parcialmente aceptado permanecen en el recuento de dispositivos. Sin dispositivos, descartes por preferencias/transporte, resultados inválidos/temporales y fallos de consulta quedan distinguidos.
+
+El barrido de mascota sustituye `sent` (intentos) por `{ claimed, unknownKind, pushRequests, deviceResults }`. `claimed`/`unknownKind` son filas; `pushRequests` suma una solicitud por fila válida y no promete unicidad global del usuario; `deviceResults` cuenta cada dispositivo y solicitud. Los claims y la regla de no reintentar permanecen como estaban. La ruta devuelve y loguea únicamente estos recuentos.
+
+La salud sigue aplicándose desde los mismos outcomes (ACK en lote, inválido desactivado, temporal activo con contador incrementado). Un rechazo inesperado de transporte se contiene como temporal; los errores del cliente o de persistencia no deshacen los ACK de otros dispositivos ni la acción original. El límite de errores PostgREST resueltos ignorados por `recordHealth` se registra separado en #1329.
+
+Verificación local: RED real del contador (2 FAIL esperados); 32 pruebas focales y 116 pertinentes PASS, tipos y lint PASS, sin base/proveedores reales. Informe: docs/testing/2026-10-03-push-report-1052.md.
+
+La revisión independiente del commit 4419656 dio PASS sin hallazgos: 1.144
+escenarios de particiones, límites y comparación causal; no ejecutó servicios
+reales. La primera CI pasó 4.201 unitarios y 123 recorridos de navegador.
+Los canónicos sincronizados y la base actual se verifican en la PR #1330.
+
+## 2026-10-03 — Push: observar cada fallo de salud sin invalidar aceptación (#1329)
+
+`recordHealth` observa todas sus operaciones con `Promise.allSettled`: inspecciona cada respuesta resuelta con `error` y cada rechazo. Mantiene ACK en lote, desactivación de inválidos y temporales activos con contador incrementado; no repite escrituras ni envíos. Aceptación del proveedor y persistencia de salud siguen siendo hechos distintos.
+
+El diagnóstico expone sólo `{ kind, code }`, con código SQLSTATE/PostgREST validado o `UNKNOWN`; omite el error completo, mensajes, detalles, hints, stacks, ids, endpoints, credenciales y contenido. La lectura de un `code` opaco y la llamada al logger quedan contenidas por separado: si fallan, el ACK y la observación de las otras operaciones se conservan. Un logger averiado no puede garantizar un diagnóstico visible; tampoco se reintenta.
+
+Verificación: repro original y RED conservados; 51 pruebas focales PASS (19 de salud), tipos/lint PASS, dos casos con builder real y fetch local. La revisión independiente r1 encontró dos bordes mediante excepciones inyectadas; r2 pasa los tres diagnósticos originales sin hallazgos nuevos. No se acredita ocurrencia de esas excepciones en un servicio real. Se conserva toda la evidencia; informe `docs/testing/2026-10-03-push-health-errors-1329.md`. Los commits separados de #1052 y #1329 se integran en ese orden y pasan el gate de CI del lote antes del merge.
+
+## 2026-10-03 — Alias del perfil propio: conservar tipo de Biblioteca (#1325)
+
+El alias antiguo `/u/<dueño>?tab=coleccion` conserva un tipo explícito válido (`book`, `movie`, `series`, `todos`) al redirigir a la Biblioteca personal. Sin tipo o con uno inválido continúa en `/coleccion`, donde se aplica el default de Biblioteca, incluido el interés único del onboarding. `todos` conserva la elección explícita de todos los tipos y se distingue de omitir `type` (#313). La validación reutiliza el resolver de Biblioteca. Sólo el dueño alcanza este alias; el visitante conserva la colección del perfil que visita. No se amplía el passthrough de otros filtros antiguos.
+
+El RED nativo confirmó que el acceso directo movie conservaba Películas, mientras el alias perdía type y arrancaba en Libros. El arreglo pasa 23 unitarios, tipos/lint y ocho casos nativos sin retries en un build nuevo de producción: cuatro tipos explícitos, ausente/inválido y visitantes anónimo/autenticado. El gate funcional pasa; la auditoría global conserva FAIL por cinco POST cancelados de pullPendingCelebrations (#1301), cuya identidad no demuestra inocuidad. La tanda conjunta conserva el FAIL separado de Recursos #1328. Fuentes y evidencias anteriores permanecen intactas; fixtures y servicios propios limpios. Informe: `docs/testing/2026-10-03-profile-collection-alias-1325.md`. Sin cambio de esquema, caché ni arquitectura de rutas. La CI del lote es gate previo al merge.

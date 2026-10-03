@@ -3545,6 +3545,11 @@
     "clock": {
       "title": "Reloj",
       "subtitle": "Reloj de ajedrez y cuenta atrás para cualquier juego.",
+      "persistence": {
+        "pending": "Guardando el reloj…",
+        "saved": "El reloj está guardado en este dispositivo.",
+        "memory": "No se han guardado los últimos cambios del reloj. Puedes seguir jugando aquí, pero esos cambios se perderán al salir de esta pantalla, recargar o cerrar."
+      },
       "tabs": {
         "chess": "Ajedrez",
         "countdown": "Cuenta atrás"
