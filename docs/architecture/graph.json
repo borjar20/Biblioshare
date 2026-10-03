@@ -3,8 +3,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-10-02",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; producción pendiente",
+    "generatedAt": "2026-10-03",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; producción pendiente · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; producción pendiente",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -1816,7 +1816,7 @@
       "label": "components/experiences",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Momentos, personas y galería; retirada de participaciones propias sin acceso y fotos propias reconocibles con vista previa del autor.",
+      "summary": "Álbum social con captura breve, portadas por actividad y composición de momentos desde el recuerdo; permisos contextuales y retirada propia sin acceso al grupo.",
       "files": [
         "src/components/experiences",
         "src/components/social/experience-feed-card.tsx"
@@ -4457,7 +4457,7 @@
       "steps": [
         {
           "node": "c-experiences",
-          "action": "Captura nombre y primer momento, sin exigir fecha ni texto",
+          "action": "Elige actividad y estado con radios, captura nombre; fecha y lugar opcionales",
           "file": "src/components/experiences/experience-form.tsx"
         },
         {
@@ -4469,6 +4469,11 @@
           "node": "t-experiences",
           "action": "Crea raíz/momento/creador; posteriores ediciones bloquean raíz y exigen revisión",
           "file": "supabase/migrations/20261002092737_experiences_core.sql"
+        },
+        {
+          "node": "c-experiences",
+          "action": "Añade, edita y ordena momentos desde el recorrido, con revisión de la raíz",
+          "file": "src/components/experiences/moment-editor.tsx"
         },
         {
           "node": "a-experiences",
@@ -4484,6 +4489,11 @@
           "node": "r-experience-photos",
           "action": "Consulta autorización con sesión antes de Storage, private/no-store",
           "file": "src/lib/storage/experience-photo-response.ts"
+        },
+        {
+          "node": "c-experiences",
+          "action": "Guarda audiencia desde Compartir; publicar en el feed es una acción posterior independiente",
+          "file": "src/components/experiences/experience-publication.tsx"
         },
         {
           "node": "a-experiences",

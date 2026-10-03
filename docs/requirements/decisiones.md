@@ -6060,3 +6060,26 @@ reintentable; no se inventa un orden para silenciar la siguiente apertura.
 No hay migración ni reparación masiva. La verificación nativa usa lector
 anónimo y escritor de sistema; su alcance y el fallo previo conservado están
 en `docs/testing/2026-10-02-book-credit-convergence-633.md`.
+
+## 2026-10-03 — Experiencias se compone como un álbum social
+
+La dirección aprobada tras revisar el recorrido de Experiencias es un álbum
+centrado en lo vivido y sus personas. La captura elige actividad, nombre y estado
+en una vista breve; lugar y fechas se despliegan cuando hacen falta. Una portada
+sin fotografía utiliza arte vectorial propio de su categoría, sin simular fotos
+ni datos de una experiencia. Se conservan los tokens Paper y los términos del
+glosario. Entrar desde una actividad abre una captura nueva con esa categoría;
+atrás y adelante del navegador conservan el borrador de la visita correspondiente.
+
+El detalle reúne portada, acompañantes, fotos y recorrido. Añadir, editar y
+reordenar momentos sucede desde el propio recuerdo mediante hojas contextuales;
+la ruta de edición queda como alternativa para la configuración general. Las
+invitaciones tienen prioridad sobre los filtros del archivo. Los controles de
+retirada y fotos sin acceso continúan disponibles en su sección de gestión.
+
+La composición no cambia los contratos de datos: aceptar una invitación,
+confirmar presencia, mostrar identidad y compartir una foto siguen siendo cuatro
+decisiones explícitas e independientes. La audiencia de perfil no publica por sí
+sola en el feed. Las acciones contextuales conservan la revisión vigente y todos
+los valores de configuración al cambiar un campo. Las fotos usan los mismos
+endpoints autorizados; no se añade caché de datos dependientes de la sesión.

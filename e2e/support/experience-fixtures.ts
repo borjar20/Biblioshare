@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 export const EXPERIENCE_QA_PREFIX="[QA Experiences] ";
 export async function experienceRest(path:string,init:RequestInit={}) {
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -39,6 +39,35 @@ export async function loginExperienceUser(page:Page,actor?:{email:string;passwor
   await page.locator('button[type="submit"]').click();
   await expect(page).not.toHaveURL(/\/login/);
 }
+/** Native radio choices stay operable by keyboard, even with their input visually hidden. */
+export async function chooseExperienceRadio(radio:Locator) {
+  await expect(radio).toBeEnabled();
+  await radio.focus();
+  await radio.press("Space");
+  await expect(radio).toBeChecked();
+}
+export async function editExperience(page:Page,id:string) {
+  await page.getByRole("button",{name:"Acciones de la experiencia",exact:true}).click();
+  await page.getByRole("menuitem",{name:"Editar experiencia",exact:true}).click();
+  await expect(page).toHaveURL(`/experiencia/${id}/editar`);
+}
+/** Leaves the contextual sheet open; saving audience is deliberately separate from publishing. */
+export async function setExperienceAudience(page:Page,audience:"private"|"participants"|"profile") {
+  await page.getByRole("button",{name:"Compartir el recuerdo",exact:true}).click();
+  const sheet=page.getByRole("dialog",{name:"Compartir el recuerdo",exact:true});
+  await expect(sheet).toBeVisible();
+  const labels={private:"Solo yo",participants:"Acompañantes aceptados",profile:"Quien pueda ver mi perfil"};
+  const radio=sheet.getByRole("radio",{name:labels[audience],exact:true});
+  if(!await radio.isChecked()) {
+    await chooseExperienceRadio(radio);
+    const save=sheet.getByRole("button",{name:/^(Guardar cambios|Guardando…)$/});
+    await save.click();
+    // The save button disappears only when the refreshed projection agrees with the choice.
+    await expect(save).toHaveCount(0);
+  }
+  await expect(radio).toBeChecked();
+  return sheet;
+}
 export async function experienceActor(name:string,isPublic=false) {
   const suffix=crypto.randomUUID().replaceAll("-","").slice(0,12),username=`qa_exp_${suffix}`;
   const actor={email:`${username}@example.invalid`,password:crypto.randomUUID(),username,id:"",name};
@@ -58,6 +87,9 @@ export async function deleteExperienceActor(actor:{id:string;email:string}) {
   if(new URL(url).hostname!=="tyvzpuhxfwxrnkcpzxyg.supabase.co") throw new Error("Synthetic cleanup requires dev");
   const response=await fetch(`${url}/auth/v1/admin/users/${actor.id}`,{method:"DELETE",headers:{apikey:key,Authorization:`Bearer ${key}`}});
   if(!response.ok) throw new Error(`Synthetic cleanup ${response.status}`);
+  const absent=await fetch(`${url}/auth/v1/admin/users/${actor.id}`,{headers:{apikey:key,Authorization:`Bearer ${key}`}});
+  expect(absent.status,"disposable experience actor removed from Auth").toBe(404);
+  expect(await (await experienceRest(`profiles?user_id=eq.${actor.id}&select=user_id`)).json(),"disposable experience profile removed").toEqual([]);
 }
 export async function experienceClientRest(path:string,actor?:{email:string;password:string}) {
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL!,key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

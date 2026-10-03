@@ -46,6 +46,20 @@ Publicación: «Compartir en el feed», «Ver publicación» y «Quitar publicac
 feed»; quitar el post conserva la experiencia. Perfil: pestaña «Experiencias».
 Moderación: «Reportar experiencia» y «Imagen de evidencia», reservada al administrador.
 
+Delta 2026-10-03, rediseño de Experiencias como álbum social: se conservan los
+conceptos **Experiencia**, **Momento**, **Escapada** y **Acompañante**. «El recuerdo»
+y «El recorrido» organizan la experiencia y sus momentos; «álbum» describe la
+presentación de las fotos, sin introducir otro contenedor de datos. La creación
+empieza por «¿Qué vas a vivir?» y el nombre; «Añadir fecha o lugar» permite ampliar
+los detalles. «Fechas y privacidad» reúne esos ajustes dentro del recuerdo y
+«Tu participación» agrupa la presencia y las decisiones personales.
+**Vivida** sigue siendo el estado de la experiencia y **Fui** la presencia de cada
+persona en un momento: elegir uno no confirma el otro. «Visible dentro del
+recuerdo» y «Visible en el perfil según cada permiso» describen la audiencia sin
+sustituir el consentimiento individual de identidad y fotos. «Revisar mis
+participaciones» y «Revisar mis fotos» mantienen el acceso a la gestión de
+aportaciones propias cuando ya no se puede abrir el recuerdo.
+
 | Se dice | NO se dice | Qué es | Dónde vive |
 |---|---|---|---|
 | **Retirar** / **Restaurar** | Suspender / Reactivar (contenido) | Ocultar contenido para todos de forma reversible / recuperar su visibilidad previa. | Moderación, `/admin` (#1183) |

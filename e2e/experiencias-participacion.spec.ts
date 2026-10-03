@@ -1,21 +1,22 @@
 import {test,expect} from "@playwright/test";
-import {clearExperienceFixtures,experienceOwner,experienceActor,deleteExperienceActor,experienceRest,experienceClientRest,loginExperienceUser,EXPERIENCE_QA_PREFIX} from "./support/experience-fixtures";
+import {clearExperienceFixtures,experienceActor,deleteExperienceActor,experienceRest,experienceClientRest,loginExperienceUser,EXPERIENCE_QA_PREFIX,chooseExperienceRadio,editExperience} from "./support/experience-fixtures";
 test("three people accept, confirm their own moments, and lose access when removed",async({page,browser})=>{
-  const owner=await experienceOwner(),actors=[] as Awaited<ReturnType<typeof experienceActor>>[];
+  const creator=await experienceActor("Organizador de la escapada"),owner=creator.id,actors=[] as Awaited<ReturnType<typeof experienceActor>>[];
   const contexts=[] as Awaited<ReturnType<typeof browser.newContext>>[];
   try {
     await clearExperienceFixtures(owner);
     for(const name of ["Ana del museo","Luis del paseo"]) actors.push(await experienceActor(name));
-    await loginExperienceUser(page);
+    await loginExperienceUser(page,creator);
     await page.goto("/experiencias/nueva");
     await page.getByRole("textbox",{name:"Nombre *",exact:true}).fill(`${EXPERIENCE_QA_PREFIX}Escapada compartida`);
     await page.getByRole("button",{name:"Guardar experiencia",exact:true}).click();
     await expect(page).toHaveURL(/\/experiencia\/[0-9a-f-]+$/);
     const id=page.url().split("/").at(-1)!;
-    await page.getByRole("link",{name:"Editar experiencia",exact:true}).click();
     await page.getByRole("button",{name:"Añadir momento",exact:true}).click();
-    await page.getByRole("textbox",{name:"Nombre del momento *",exact:true}).fill("Museo de la escapada");
-    await page.getByRole("button",{name:"Guardar momento",exact:true}).click();
+    const momentSheet=page.getByRole("dialog",{name:"Añadir momento",exact:true});
+    await momentSheet.getByRole("textbox",{name:"Nombre del momento *",exact:true}).fill("Museo de la escapada");
+    await momentSheet.getByRole("button",{name:"Guardar momento",exact:true}).click();
+    await expect(momentSheet).not.toBeVisible();
     await expect(page.getByRole("heading",{name:"Museo de la escapada",exact:true})).toBeVisible();
     await page.goto(`/experiencia/${id}`);
     for(const actor of actors) {
@@ -33,15 +34,16 @@ test("three people accept, confirm their own moments, and lose access when remov
       const context=await browser.newContext();contexts.push(context);
       const member=await context.newPage();members.push(member);
       await loginExperienceUser(member,actor);await member.goto("/experiencias");
-      await expect(member.getByRole("heading",{name:"Invitaciones",exact:true})).toBeVisible();
+      await expect(member.getByRole("heading",{name:"Planes que te esperan",exact:true})).toBeVisible();
       const denied=await member.goto(`/experiencia/${id}`);expect(denied?.status()).toBe(404);
       await member.goto("/experiencias");await member.getByRole("button",{name:"Aceptar invitación",exact:true}).click();
       await expect(member.getByRole("button",{name:"Aceptar invitación",exact:true})).not.toBeVisible();
       await member.goto(`/experiencia/${id}`);
     }
-    await members[0].getByLabel("Tu presencia en Museo de la escapada",{exact:true}).selectOption("skipped");
+    const attendance=members[0].getByRole("radiogroup",{name:"Tu presencia en Museo de la escapada",exact:true});
+    await chooseExperienceRadio(attendance.getByRole("radio",{name:"No fui",exact:true}));
     await members[0].getByRole("button",{name:`Elegir ${EXPERIENCE_QA_PREFIX}Escapada compartida como favorito`,exact:true}).click();
-    await page.goto(`/experiencia/${id}/editar`);await page.getByLabel("Estado",{exact:true}).selectOption("lived");
+    await editExperience(page,id);await chooseExperienceRadio(page.getByRole("radio",{name:"Vivida",exact:true}));
     await page.getByRole("button",{name:"Guardar cambios",exact:true}).click();await expect(page).toHaveURL(`/experiencia/${id}`);
     const rows=await (await experienceRest(`experience_moment_participants?experience_id=eq.${id}&select=attendance_state,experience_participants!inner(user_id)`)).json() as {attendance_state:string;experience_participants:{user_id:string}}[];
     expect(rows.filter(r=>r.experience_participants.user_id===actors[1].id).every(r=>r.attendance_state==="planned")).toBe(true);
@@ -56,6 +58,7 @@ test("three people accept, confirm their own moments, and lose access when remov
     for(const context of contexts) await context.close();
     await clearExperienceFixtures(owner);
     for(const actor of actors) await deleteExperienceActor(actor);
+    await deleteExperienceActor(creator);
   }
 });
 test("direct REST joins expose only consented people with visible profiles",async()=>{

@@ -444,14 +444,17 @@ como en producción. Los pendientes de barrido y fase destructiva se revisan en 
 (barrido QID), **#877** (triggers de primaria) y **#866** (esquema de respaldo); esta
 verificación no afirma su ejecución. El resto sigue rastreable por `area:catalogo`.
 
-**Experiencias — código local/dev (#1293, 2026-10-02)**
+**Experiencias — código local/dev (#1293, 2026-10-02; UX de álbum verificada el 2026-10-03)**
 - [x] Captura manual de salidas y escapadas con momentos, acompañantes, presencia
   propia, favoritos, fotos consentidas y publicación única en feed/perfil.
 - [x] Privacidad/RLS, entrega autorizada y moderación con evidencia privada.
+- [x] Álbum social con portadas por actividad y acompañantes, captura breve,
+  acciones contextuales por momento, galería y permisos independientes.
 - [ ] Aplicación de migraciones y publicación en producción; seguimiento en #1293.
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
   Contrato: `docs/superpowers/specs/2026-10-02-experiencias-design.md`.
-  Evidencia: `docs/testing/2026-10-02-experiencias.md`.
+  Evidencia: [funcional (2026-10-02)](../testing/2026-10-02-experiencias.md)
+  y [UX de álbum (2026-10-03)](../testing/2026-10-03-experiencias-album.md).
 
 ## Features que no existen (P2-P3, por dominio)
 

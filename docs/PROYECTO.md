@@ -17,20 +17,25 @@ con i18n (`next-intl`) desde el inicio.
 
 ## Experiencias — código en local/dev, pendiente de producción (#1293)
 
-**[Delta verificado 2026-10-02; no desplegado en producción]**
+**[Delta funcional verificado 2026-10-02; UX de álbum verificada 2026-10-03; no desplegado en producción]**
 Desde «Tu cuenta» se abre `/experiencias`: planes y recuerdos que pueden crecer
-de una salida a una escapada con varios momentos. Cada momento admite tipo,
-lugar y fechas opcionales; el centro del recuerdo son acompañantes y fotos.
+de una salida a una escapada con varios momentos. El archivo se presenta como
+un álbum con portadas por actividad, fotos y acompañantes; las invitaciones
+preceden a los filtros. La creación pide actividad, nombre y estado, con lugar y
+fechas opcionales plegables. Añadir, editar y ordenar momentos sucede desde el
+propio recuerdo. La galería amplía cada foto y reúne allí sus acciones y permisos.
 Aceptar la invitación da acceso al grupo; cada persona confirma su presencia,
 elige su favorito y consiente por separado mostrar identidad e imágenes.
-El creador puede compartir una publicación única en el feed o quitarla conservando
-el recuerdo. La pestaña Experiencias aparece en perfiles propios y visitantes,
+El creador decide la audiencia desde Compartir; publicar en el feed requiere otra
+acción explícita. Puede quitar esa publicación única conservando el recuerdo.
+La pestaña Experiencias aparece en perfiles propios y visitantes,
 según los permisos actuales. Incluye denuncia y moderación administrativa.
 El filtro de acompañantes recorre todo el historial accesible. Al perder acceso,
 las participaciones propias se pueden retirar desde el hub y las fotos propias
 se reconocen con una vista previa exclusiva del autor antes de eliminarlas.
 Captura manual; catálogos externos, fusionar recuerdos y filtro entre hobbies
-quedan en #1293. Evidencia: `docs/testing/2026-10-02-experiencias.md`.
+quedan en #1293. Evidencia funcional: `docs/testing/2026-10-02-experiencias.md`;
+UX y regresión: `docs/testing/2026-10-03-experiencias-album.md`.
 
 ## Catálogo compartido
 

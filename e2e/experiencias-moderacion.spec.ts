@@ -1,6 +1,6 @@
 import {test,expect} from "@playwright/test";
 import {writeFileSync} from "node:fs";
-import {experienceActor,deleteExperienceActor,clearExperienceFixtures,experienceRest,experienceClientRest,loginExperienceUser,EXPERIENCE_QA_PREFIX} from "./support/experience-fixtures";
+import {experienceActor,deleteExperienceActor,clearExperienceFixtures,experienceRest,experienceClientRest,loginExperienceUser,EXPERIENCE_QA_PREFIX,setExperienceAudience} from "./support/experience-fixtures";
 const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII=","base64");
 test.use({actionTimeout:20_000});
 
@@ -18,16 +18,20 @@ test("admin withdraws and restores the root, preserving independent removal and 
     await form.getByRole("button",{name:action,exact:true}).click();await expect(form).toHaveCount(0);
   }
   try {
-    actors.push(await experienceActor("Organizador moderación",true),await experienceActor("Visitante moderación",true),await experienceActor("Admin experiencias",true));
+    actors.push(await experienceActor("Organizador moderación",true));actors.push(await experienceActor("Visitante moderación",true));actors.push(await experienceActor("Admin experiencias",true));
+    await clearExperienceFixtures(actors[0].id);
     await experienceRest(`profiles?user_id=eq.${actors[2].id}`,{method:"PATCH",body:JSON.stringify({role:"admin"})});
     const ownerContext=await browser.newContext(),visitorContext=await browser.newContext();contexts.push(ownerContext,visitorContext);
     const owner=await ownerContext.newPage(),visitor=await visitorContext.newPage();await loginExperienceUser(owner,actors[0]);
     await owner.goto("/experiencias/nueva");await owner.getByRole("textbox",{name:"Nombre *",exact:true}).fill(`${EXPERIENCE_QA_PREFIX}Recuerdo moderado`);
     await owner.getByRole("button",{name:"Guardar experiencia",exact:true}).click();await expect(owner).toHaveURL(/\/experiencia\/[0-9a-f-]+$/);root=owner.url().split("/").at(-1)!;
-    await owner.getByRole("link",{name:"Editar experiencia",exact:true}).click();await owner.getByLabel("Quién puede verlo",{exact:true}).selectOption("profile");await owner.getByRole("button",{name:"Guardar cambios",exact:true}).click();await expect(owner).toHaveURL(`/experiencia/${root}`);
+    const sharing=await setExperienceAudience(owner,"profile");await sharing.press("Escape");
     await owner.getByRole("button",{name:"Añadir foto",exact:true}).click();await owner.getByLabel("Imagen",{exact:true}).setInputFiles({name:"foto.png",mimeType:"image/png",buffer:png});await owner.getByRole("button",{name:"Subir foto",exact:true}).click();await expect(owner.getByRole("dialog")).not.toBeVisible();
     const [row]=await (await experienceRest(`experience_photos?experience_id=eq.${root}&select=id,storage_path`)).json();photo=row.id;path=row.storage_path;
-    await owner.getByRole("button",{name:"Compartir en el feed",exact:true}).click();await expect(owner.getByRole("link",{name:"Ver publicación",exact:true})).toBeVisible();
+    await owner.getByRole("button",{name:"Compartir el recuerdo",exact:true}).click();await owner.getByRole("dialog",{name:"Compartir el recuerdo",exact:true}).getByRole("button",{name:"Compartir en el feed",exact:true}).click();
+    await expect(owner.getByRole("dialog")).not.toBeVisible();
+    await owner.getByRole("button",{name:"Compartir el recuerdo",exact:true}).click();await expect(owner.getByRole("link",{name:"Ver publicación",exact:true})).toBeVisible();
+    await owner.getByRole("dialog",{name:"Compartir el recuerdo",exact:true}).press("Escape");
     post=(await (await experienceRest(`posts?anchor_type=eq.experience&anchor_id=eq.${root}&select=id`)).json())[0].id;
     await loginExperienceUser(visitor,actors[1]);await visitor.goto(`/experiencia/${root}`);await visitor.getByRole("button",{name:"Reportar experiencia",exact:true}).click();
     await visitor.getByRole("dialog").getByRole("button",{name:"Enviar reporte",exact:true}).click();await expect(visitor.getByRole("dialog")).not.toBeVisible();

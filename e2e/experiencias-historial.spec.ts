@@ -3,6 +3,7 @@ import {experienceActor,deleteExperienceActor,experienceRest,clearExperienceFixt
 test("companion search includes older memories and survives empty filters",async({page})=>{
   const actor=await experienceActor("Historial completo");
   try {
+    await clearExperienceFixtures(actor.id);
     const roots=Array.from({length:23},(_,i)=>({id:crypto.randomUUID(),creator_id:actor.id,title:`${EXPERIENCE_QA_PREFIX}Historial ${i}`,created_at:new Date(Date.now()-i*60000).toISOString()}));
     await experienceRest("experiences",{method:"POST",body:JSON.stringify(roots)});
     await experienceRest("experience_moments",{method:"POST",body:JSON.stringify(roots.map(r=>({experience_id:r.id,title:r.title,kind:"walk",position:0})))});
@@ -10,6 +11,8 @@ test("companion search includes older memories and survives empty filters",async
     await experienceRest("experience_participants",{method:"POST",body:JSON.stringify(roots.map(r=>({experience_id:r.id,user_id:actor.id,invitation_state:"accepted"})))});
     await experienceRest("experience_participants",{method:"POST",body:JSON.stringify([{id:ana,experience_id:roots[22].id,guest_name:"Ana del museo",invitation_state:"accepted"},{id:luis,experience_id:roots[0].id,guest_name:"Luis del paseo",invitation_state:"accepted"}])});
     await loginExperienceUser(page,actor);await page.goto("/experiencias");
+    await expect(page.getByRole("combobox",{name:"Acompañantes",exact:true})).not.toBeVisible();
+    await page.getByRole("button",{name:"Tipo y acompañantes",exact:true}).click();
     const selector=page.getByLabel("Acompañantes",{exact:true});
     await expect(selector.locator(`option[value="${ana}"]`)).toHaveText("Ana del museo");
     await selector.selectOption(ana);await expect(page.getByRole("heading",{name:roots[22].title,exact:true})).toBeVisible();
