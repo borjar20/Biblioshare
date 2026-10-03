@@ -1412,3 +1412,130 @@ commit;
 begin;
 \ir migrations/20261003153110_guard_comment_target_recursion.sql
 commit;
+
+-- 20261003184419_recoverable_celebrations_expand
+begin;
+\ir migrations/20261003184419_recoverable_celebrations_expand.sql
+commit;
+
+-- 20261003184423_retire_eager_celebration_admission
+begin;
+\ir migrations/20261003184423_retire_eager_celebration_admission.sql
+commit;
+
+-- Protected activation: explicitly attest owner/superuser dispatch is paused.
+-- Pass psql -v celebrations_privileged_dispatch_paused=true; the live SQL gate
+-- still checks full visibility, admission, empty data and transaction completion.
+\if :{?celebrations_privileged_dispatch_paused}
+select set_config('biblioshare.celebrations_privileged_dispatch_paused', :'celebrations_privileged_dispatch_paused', false);
+\else
+\warn Missing explicit celebrations_privileged_dispatch_paused attestation.
+\quit 1
+\endif
+do $bootstrap_cutover$
+declare
+  v_snapshot jsonb;
+  v_legacy jsonb;
+  v_functions jsonb;
+begin
+  if current_setting('biblioshare.celebrations_privileged_dispatch_paused', true) is distinct from 'true' then
+    raise exception using errcode = '55000', message = 'Explicit privileged-dispatch pause attestation required';
+  end if;
+  perform pg_stat_clear_snapshot();
+  select observed.value into strict v_snapshot from (
+with marker as materialized (select clock_timestamp() as cutoff),
+functions as (
+  select p.* from pg_proc p where p.oid = any(array[
+    to_regprocedure('public.pull_pending_celebrations()'),
+    to_regprocedure('public.claim_next_celebration(text[])'),
+    to_regprocedure('public.ack_celebration(uuid,uuid)'),
+    to_regprocedure('public.release_celebration(uuid,uuid)')
+  ]::oid[])
+), activity as materialized (
+  select a.pid, a.backend_start, a.xact_start, a.state, a.backend_type,
+    a.usename, a.wait_event_type, a.wait_event,
+    pg_blocking_pids(a.pid) as blockers, a.xact_start <= m.cutoff as pre_cutoff
+  from pg_stat_activity a cross join marker m
+  where a.datid = (select oid from pg_database where datname = current_database())
+    and a.pid <> pg_backend_pid()
+)
+select jsonb_build_object(
+  'database_oid', (select oid from pg_database where datname = current_database()),
+  'database_name', current_database(), 'cutoff', m.cutoff,
+  'observer_role', current_user, 'observer_pid', pg_backend_pid(),
+  'observer_backend_start', (select backend_start from pg_stat_activity where pid = pg_backend_pid()),
+  'full_stats', r.rolsuper or pg_has_role(r.oid, 'pg_read_all_stats', 'USAGE'),
+  'track_activities', current_setting('track_activities'),
+  'stats_fetch_consistency', current_setting('stats_fetch_consistency'),
+  'table_oid', to_regclass('public.user_celebrations')::oid,
+  'rpc_overload_count', (select count(*) from pg_proc p where p.pronamespace = 'public'::regnamespace
+    and p.proname in ('pull_pending_celebrations','claim_next_celebration','ack_celebration','release_celebration')),
+  'claim_shape_ready', exists (
+    select 1 from pg_class c where c.oid = to_regclass('public.user_celebrations')
+      and c.relrowsecurity
+      and (select count(*) from pg_attribute a where a.attrelid = c.oid and not a.attisdropped
+        and ((a.attname = 'claim_token' and a.atttypid = 'uuid'::regtype)
+          or (a.attname = 'claim_expires_at' and a.atttypid = 'timestamptz'::regtype))) = 2
+      and exists (select 1 from pg_constraint k where k.conrelid = c.oid
+        and k.conname = 'user_celebrations_claim_pair' and k.contype = 'c' and k.convalidated)
+  ),
+  'functions', coalesce((select jsonb_agg(jsonb_build_object(
+    'oid', f.oid, 'name', f.proname, 'definition_md5', md5(pg_get_functiondef(f.oid)),
+    'security_definer', f.prosecdef, 'result', pg_get_function_result(f.oid),
+    'search_path', f.proconfig,
+    'public_execute', exists (select 1 from aclexplode(coalesce(f.proacl, acldefault('f', f.proowner))) a
+      where a.grantee = 0 and a.privilege_type = 'EXECUTE'),
+    'authenticated_execute', has_function_privilege('authenticated', f.oid, 'EXECUTE'),
+    'anon_execute', has_function_privilege('anon', f.oid, 'EXECUTE'),
+    'ordinary_executors', coalesce((select jsonb_agg(c.rolname order by c.rolname) from pg_roles c
+      where not c.rolsuper and not pg_has_role(c.oid, f.proowner, 'USAGE')
+        and has_function_privilege(c.oid, f.oid, 'EXECUTE')), '[]'::jsonb),
+    'privileged_executors', coalesce((select jsonb_agg(c.rolname order by c.rolname) from pg_roles c
+      where c.rolsuper or pg_has_role(c.oid, f.proowner, 'MEMBER')), '[]'::jsonb)
+  ) order by f.oid) from functions f), '[]'::jsonb),
+  'prepared_transactions', (select count(*) from pg_prepared_xacts where database = current_database()),
+  'backends', coalesce((select jsonb_agg(to_jsonb(a) order by a.pid) from activity a), '[]'::jsonb)
+) from marker m join pg_roles r on r.rolname = current_user
+) observed(value);
+  if v_snapshot->>'full_stats' is distinct from 'true'
+     or v_snapshot->>'track_activities' is distinct from 'on'
+     or v_snapshot->>'claim_shape_ready' is distinct from 'true'
+     or v_snapshot->>'rpc_overload_count' is distinct from '4'
+     or jsonb_array_length(v_snapshot->'functions') <> 4
+     or v_snapshot->>'prepared_transactions' is distinct from '0'
+     or exists (select 1 from jsonb_array_elements(v_snapshot->'functions') f
+       where f->>'public_execute' is distinct from 'false'
+         or f->>'authenticated_execute' is distinct from 'false'
+         or f->>'anon_execute' is distinct from 'false'
+         or jsonb_array_length(f->'ordinary_executors') <> 0)
+     or exists (select 1 from jsonb_array_elements(v_snapshot->'backends') a
+       where a->>'backend_start' is null or a->>'backend_type' is null or a->>'state' = 'disabled'
+         or (a->>'backend_type' = 'client backend' and a->>'state' is null)
+         or a->>'xact_start' is not null) then
+    raise exception using errcode = '55000', message = 'Empty-bootstrap live visibility/ACL/quiescence gate blocked';
+  end if;
+  if row_security_active('auth.users'::regclass) or row_security_active('public.user_celebrations'::regclass)
+     or exists (select 1 from auth.users) or exists (select 1 from public.user_celebrations) then
+    raise exception using errcode = '55000', message = 'Bootstrap gate requires fully visible empty Auth and celebrations';
+  end if;
+  select f into strict v_legacy from jsonb_array_elements(v_snapshot->'functions') f
+    where f->>'name' = 'pull_pending_celebrations';
+  select jsonb_agg(jsonb_build_object('oid', f->'oid', 'definition_md5', f->'definition_md5'))
+    into v_functions from jsonb_array_elements(v_snapshot->'functions') f;
+  perform set_config('biblioshare.celebrations_cutover', jsonb_build_object(
+    'version', 1, 'privileged_dispatch_paused', true,
+    'database_oid', v_snapshot->'database_oid', 'table_oid', v_snapshot->'table_oid',
+    'legacy_oid', v_legacy->'oid', 'legacy_definition_md5', v_legacy->'definition_md5',
+    'observer_role', current_user, 'cutoff', v_snapshot->'cutoff',
+    'cohort', '[]'::jsonb, 'functions', v_functions
+  )::text, false);
+end;
+$bootstrap_cutover$;
+
+-- 20261003184427_activate_recoverable_celebrations
+begin;
+\ir migrations/20261003184427_activate_recoverable_celebrations.sql
+commit;
+
+reset biblioshare.celebrations_cutover;
+reset biblioshare.celebrations_privileged_dispatch_paused;

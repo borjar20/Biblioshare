@@ -1,5 +1,17 @@
 # Modelo de datos
 
+> **Delta 2026-10-03 (#1334, esquema verificado local; dev/prod pendientes):**
+> Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
+> reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
+> cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
+> target real. La fase final instala un no-op compatible para clientes antiguos.
+> `scripts/db/celebrations-cutover.mjs` comprueba actividad fresca, ACL efectivas y
+> cada transacción previa terminal; el SQL vuelve a comprobarlo y exige cero otras
+> transacciones actuales. No hay activación remota acreditada ni recuperación de
+> sellos históricos. Un control PostgreSQL causal con tracking desactivado
+> mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
+> Contrato, fases y límites en §7bis.
+
 > **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
 > `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
 > de `public.can_view_target` frente a la reordenación del planner. Antes de recursar,
@@ -4019,7 +4031,7 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
-## 7bis. Celebraciones — `user_celebrations` (dev y **prod**, 2026-08-05)
+## 7bis. Celebraciones — `user_celebrations` (base dev/prod 2026-08-05; delta local #1334)
 
 > (Antes numerada «7.9», chocando con «7.9 Motivo de la ventana recomendada» dentro de Sagas;
 > renumerada a 7bis el 2026-08-19 — es sección propia, no una subsección de §7 Sagas.)
@@ -4031,8 +4043,10 @@ el estado vivo sigue en `passes`; esta tabla es memoria de UI persistida.
 **La tabla** `user_celebrations`: `id`, `user_id` (FK `auth.users`, `on delete cascade`),
 `event_type text` (no enum: añadir un evento no debe exigir migración de tipo; el registro de
 la app en `src/lib/celebrations/registry.ts` es la fuente de verdad), `event_key text`,
-`payload jsonb`, `first_triggered_at`, `last_triggered_at`, `displayed_at` (NULL = ganada sin
-animar todavía), `created_at`. **`unique (user_id, event_type, event_key)` ES la
+`payload jsonb`, `first_triggered_at`, `last_triggered_at`, `displayed_at` (NULL = pendiente),
+`created_at`. El delta #1334 añade `claim_token uuid` y `claim_expires_at timestamptz`,
+ambas nullable y sin default, con CHECK `user_celebrations_claim_pair` que exige las dos
+nulas o las dos presentes. **`unique (user_id, event_type, event_key)` ES la
 deduplicación**: ganar dos veces el mismo hito no crea segunda fila. Índice parcial
 `idx_user_celebrations_pending on (user_id) where displayed_at is null` para el drenado.
 
@@ -4040,15 +4054,65 @@ deduplicación**: ganar dos veces el mismo hito no crea segunda fila. Índice pa
 gana SUS celebraciones con su sesión, sin service-role. `grant select, insert, update` a
 `authenticated`.
 
-**RPC** `pull_pending_celebrations()` (`security definer`, `search_path` fijado, `revoke` de
-`anon`/`public`): reclama y devuelve las no mostradas del usuario en **una** sentencia
-(`update … where displayed_at is null returning …`), atómica ante dos pestañas.
+**Contrato anterior (base remota, hasta su cutover acreditado)**:
+`pull_pending_celebrations()` sella con `UPDATE … RETURNING` antes de que el cliente
+presente el overlay. Ese orden origina #1334: una navegación puede interrumpir la
+presentación después de que el SQL haya consumido la fila. No se modifica ningún
+`displayed_at` histórico ni se supone que un sello pruebe una animación.
 
-Modelo **ganar → drenar**: el dominio gana (idempotente vía upsert `ignoreDuplicates`) desde
+Modelo **ganar → reservar → presentar → ACK** del delta #1334: el dominio gana
+(idempotente vía upsert `ignoreDuplicates`) desde
 `addSession` (eventos «primera actividad», «objetivo diario», «hito de racha») y desde las
-acciones de club (join/accept/post/poll/vote → «primera participación»); el cliente drena por
-la RPC, anima una vez y sella `displayed_at`. Migración
-`supabase/migrations/20260805_user_celebrations.sql`.
+acciones de club (join/accept/post/poll/vote → «primera participación»). Esos productores
+y la deduplicación no cambian. Tres RPC `VOLATILE`, `SECURITY INVOKER` y
+`search_path=public, pg_temp` operan bajo las políticas propias existentes:
+
+- `claim_next_celebration(p_supported_types text[]) RETURNS jsonb`: toma una fila
+  pendiente compatible, FIFO por `(first_triggered_at,id)`. Devuelve `empty`, `busy`
+  con `retry_after_ms`, o `claimed` con `actor_id`, ID/evento/payload, token y deadline.
+  Token nuevo y lease de 30 s desde `clock_timestamp()` después de esperar el lock.
+  No sella; no hay `SKIP LOCKED` ni adelantamiento del head con lease vigente.
+- `ack_celebration(p_id uuid,p_claim_token uuid) RETURNS text`: `acked`,
+  `already_acked` o `stale`. Sólo el token actual puede sellar `displayed_at`;
+  retenerlo tras ACK permite reintentos idempotentes. Expirar permite reclamar;
+  un token expirado todavía confirma si no ha sido reemplazado.
+- `release_celebration(p_id uuid,p_claim_token uuid) RETURNS text`: `released`,
+  `already_acked` o `stale`. Libera sólo una reserva propia no mostrada; nunca
+  borra un sello. Capabilities vacías conservan tipos desconocidos pendientes.
+
+**Entrega y permisos por fases** (no ejecutar el bloque entero sobre un target vivo):
+
+1. `20261003184419_recoverable_celebrations_expand.sql`: columnas/CHECK y tres RPC,
+   con EXECUTE retirado de PUBLIC, anon, authenticated, service_role y cualquier
+   otro grantee explícito salvo owner. El cliente nuevo sigue deshabilitado.
+2. `20261003184423_retire_eager_celebration_admission.sql`: retira esas concesiones
+   también del legacy y comprueba las rutas efectivas ordinarias/heredadas.
+   COMMIT obligatorio antes del snapshot; los productores siguen disponibles.
+3. `20261003184427_activate_recoverable_celebrations.sql`: requiere el checker
+   operativo y su contexto de sesión validado. Después de quiescencia, reemplaza
+   el legacy por `SECURITY INVOKER`, firma idéntica y cero filas/cero escrituras,
+   y sólo entonces concede EXECUTE de los cuatro RPC a authenticated. No se
+   devuelve el eager drain como rollback.
+
+El checker observa **todas** las transacciones previas sin filtrar SQL, rol ni
+backend_type, acredita cada `(pid,backend_start,xact_start)` terminal y refresca
+con `pg_stat_clear_snapshot()`. Requiere superuser o `pg_read_all_stats` USAGE,
+`track_activities=on` y datos de actividad completos. Comprueba de
+forma explícita que ningún backend observado tenga `state=disabled`: el tracking
+activo del observador no garantiza el de otra sesión y un xact_start ocultado
+no demuestra que terminó. La fase final valida de
+nuevo objetos/ACL/cohorte, prepared transactions ausentes y **cero cualquier otra
+transacción actual**; registra SQL y ledger en la misma transacción. Un archivo,
+bandera, espera fija, table lock, HTTP 200 o REVOKE aislado no sustituye ese gate.
+Owner/superuser y quienes heredan capacidad del owner requieren pausa operativa
+explícita de despachos privilegiados/DDL relevante: REVOKE no les revoca la
+capacidad implícita. No se matan backends ajenos para acreditar el resultado.
+
+El bootstrap psql vacío usa el renderer del mismo checker antes del BEGIN final,
+con attestation explícita y comprobación real de Auth/celebraciones totalmente
+visibles y vacías, ACL/visibilidad frescas y cero transacciones ajenas; ejecuta la
+misma fase 3 protegida. La documentación operativa está en
+[`scripts/db/celebrations-cutover.md`](../../scripts/db/celebrations-cutover.md).
 
 **Aplicada a prod el 2026-08-05** (misma pasada que dev): verificado contra objetos reales —
 `user_celebrations` con RLS activa y 3 políticas, 3 índices, y `pull_pending_celebrations`

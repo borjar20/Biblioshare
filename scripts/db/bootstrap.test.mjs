@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import { loadPlan, prepare, repoRoot, renderBaseline } from './bootstrap.mjs';
+import { ACTIVATION_MIGRATION } from './celebrations-cutover.mjs';
+import { preparedLocalActivation } from './activate-local-celebrations.mjs';
 
 function fixture(body) {
   const root = mkdtempSync(join(tmpdir(), 'biblioshare-bootstrap-'));
@@ -83,4 +85,55 @@ test('foreign destinations and unlisted generated SQL are rejected', () => fixtu
   prepare(root, destination);
   writeFileSync(join(destination, 'supabase/migrations/99999999999999_extra.sql'), 'select 99;');
   assert.throws(() => prepare(root, destination), /Unexpected file/);
+}));
+
+function addProtectedActivation(root) {
+  writeFileSync(join(root, 'supabase/migrations', ACTIVATION_MIGRATION.file), 'select 3;');
+  writeFileSync(join(root, 'supabase/bootstrap/manifest.json'), JSON.stringify({
+    version: 1, migrations: ['20260101_a.sql', ACTIVATION_MIGRATION.file],
+  }));
+}
+
+test('automatic replay defers protected activation but preserves its complete ordinal and SQL identity', () => fixture((root) => {
+  addProtectedActivation(root);
+  const destination = join(root, 'generated');
+  assert.equal(prepare(root, destination).count, 3);
+  const stamp = JSON.parse(readFileSync(join(destination, 'bootstrap.json'), 'utf8'));
+  assert.equal(stamp.migrations.length, 3);
+  assert.equal(stamp.migrations.at(-1).deferred, true);
+  assert.throws(() => readFileSync(join(destination, 'supabase/migrations', stamp.migrations.at(-1).file)), { code: 'ENOENT' });
+  const local = preparedLocalActivation(destination, root);
+  assert.equal(local.container, `supabase_db_${stamp.projectId}`);
+  assert.equal(local.ledger.version, stamp.migrations.at(-1).version);
+  assert.equal(local.ledger.name, loadPlan(root).at(-1).name);
+}));
+
+test('a forged deferred version, foreign local identity or changed sources fail before target access', () => fixture((root) => {
+  addProtectedActivation(root);
+  const destination = join(root, 'generated');
+  prepare(root, destination);
+  const stampPath = join(destination, 'bootstrap.json');
+  const stamp = JSON.parse(readFileSync(stampPath, 'utf8'));
+  const original = JSON.stringify(stamp);
+  stamp.migrations.at(-1).version = '20000101000999';
+  writeFileSync(stampPath, JSON.stringify(stamp));
+  assert.throws(() => preparedLocalActivation(destination, root), /migration identity/);
+  writeFileSync(stampPath, original);
+  writeFileSync(join(destination, 'supabase/config.toml'), 'project_id = "another-project"');
+  assert.throws(() => preparedLocalActivation(destination, root), /configuration identity/);
+  writeFileSync(join(root, 'supabase/migrations', ACTIVATION_MIGRATION.file), 'select 99;');
+  assert.throws(() => preparedLocalActivation(destination, root), /sources differ/);
+}));
+
+test('the psql baseline captures a real empty-target gate after revoke commit and before activation begin', () => fixture((root) => {
+  addProtectedActivation(root);
+  const sql = renderBaseline(root);
+  const previousCommit = sql.indexOf('commit;\n', sql.indexOf('-- 20260101_a'));
+  const gate = sql.indexOf('do $bootstrap_cutover$');
+  const activation = sql.indexOf(`-- ${ACTIVATION_MIGRATION.version}`);
+  assert.ok(previousCommit < gate && gate < activation);
+  assert.match(sql, /\\if :\{\?celebrations_privileged_dispatch_paused\}/);
+  assert.match(sql, /pg_stat_clear_snapshot/);
+  assert.match(sql, /row_security_active\('auth\.users'/);
+  assert.match(sql, /reset biblioshare\.celebrations_cutover;/);
 }));
