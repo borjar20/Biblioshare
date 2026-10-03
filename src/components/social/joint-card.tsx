@@ -79,11 +79,11 @@ export function JointCard({
           </Link>
           <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">{facts.join(" · ")}</p>
           {average != null && (
-            <p className="mt-2.5 flex items-center gap-2 font-mono text-[10.5px] text-muted-foreground">
+            <div className="mt-2.5 flex items-center gap-2 font-mono text-[10.5px] text-muted-foreground">
               {t("joint.groupAverage")}
               <RatingDots value={average} size="sm" itemType={event.itemType} />
               <span className="text-foreground">{formatDots(average)}</span>
-            </p>
+            </div>
           )}
         </div>
       </div>
