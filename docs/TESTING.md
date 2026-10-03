@@ -614,3 +614,18 @@ Se aclara el boolean de `save()` sin cambiar comportamiento. Los consumidores
 actuales no muestran el supuesto mensaje de «no guardado». La prueba ejecuta
 store y adaptadores reales sobre fake-indexeddb con canal controlado; no acredita
 navegador, sincronización remota ni RLS. Requiere CI sobre el HEAD de entrega.
+
+## Reevaluación de representación: petición y sistema (#897)
+
+[Informe](testing/2026-10-03-catalog-representation-coverage-897.md): 18 casos
+ejecutan la acción, roles, hidratación y builders SDK reales. Comprueban el gate
+de colaborador antes de escribir, el reset con cliente de petición, la RPC con
+cliente de sistema y el orden de las esperas; los fallos de hidratación siguen
+sin invalidar un reset correcto. La tanda focal pasa 104/104, con tipos y lint
+correctos. Cinco mutaciones independientes provocan sus FAIL causales.
+
+Sesión, HTTP, proveedores y Next son fronteras controladas. El trigger canónico
+permite la vía de sistema con auth.uid() NULL: se verifica qué cliente escribe,
+sin inventar un rechazo SQL para el reset de sistema. No se acredita RLS, grants,
+proveedores ni POST nativos. No cambia el producto; CI del HEAD final es gate
+de publicación.
