@@ -111,7 +111,7 @@ export function ResourcesConfig({
         )}
       </div>
 
-      {opened ? <DefPanel def={opened} emit={emit} onRemoved={() => setOpen(null)} /> : null}
+      {opened ? <DefPanel key={opened.name} def={opened} emit={emit} onRemoved={() => setOpen(null)} /> : null}
 
       {adding ? (
         <div id="resources-custom" className="mt-3 flex flex-col gap-2 rounded-card border border-border bg-surface p-3">

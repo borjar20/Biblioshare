@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Derivado · generado desde el código el 2026-10-03; delta de navegación por áreas verificado contra código, unitarios focales e integridad del mapa (11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 4304 unitarios PASS). Incluye cinco destinos principales, Comunidad, herramientas de Biblioteca y perfil centrado en lo compartido; conserva captura breve y álbum de Experiencias #1293 (código local/dev; ocho migraciones aplicadas y esquema/permisos verificados en producción el 2026-10-03 a las 10:04 UTC; integración/despliegue en PR #1323 y #1293), y las verificaciones anteriores de créditos #633, Partidas #964/#995, hidratación #1290, ZIP #1250, economía R5, fusiones #875 y retorno al login #1271. Las fuentes y el alcance de cada delta constan en meta.verifiedAgainst; utilidad compartida de vibración #996 verificada por equivalencia e imports; delta de publicación confirmada del Reloj #1313 verificado contra candidato r3, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR; delta del reporte push #1052 verificado con 116 unitarios y revisión independiente de 1.144 escenarios; primera CI 4.201 unitarios/123 recorridos; diagnóstico seguro de salud #1329 verificado con 51 pruebas focales y tres diagnósticos independientes PASS el 2026-10-03]**
+> **[Derivado · generado desde el código el 2026-10-03; delta de navegación por áreas verificado contra código, unitarios focales e integridad del mapa (11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 4304 unitarios PASS). Incluye cinco destinos principales, Comunidad, herramientas de Biblioteca y perfil centrado en lo compartido; conserva captura breve y álbum de Experiencias #1293 (código local/dev; ocho migraciones aplicadas y esquema/permisos verificados en producción el 2026-10-03 a las 10:04 UTC; integración/despliegue en PR #1323 y #1293), y las verificaciones anteriores de créditos #633, Partidas #964/#995, hidratación #1290, ZIP #1250, economía R5, fusiones #875 y retorno al login #1271. Las fuentes y el alcance de cada delta constan en meta.verifiedAgainst; utilidad compartida de vibración #996 verificada por equivalencia e imports; delta de publicación confirmada del Reloj #1313 verificado contra candidato r3, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR; delta del reporte push #1052 verificado con 116 unitarios y revisión independiente de 1.144 escenarios; primera CI 4.201 unitarios/123 recorridos; diagnóstico seguro de salud #1329 verificado con 51 pruebas focales y tres diagnósticos independientes PASS el 2026-10-03; Recursos #1328/#1007: 57 unitarios, ocho casos nativos y un contexto visual PASS en build w0f/base4a; base Experiencias integrada, 95 unitarios focales y nueve recorridos funcionales actuales PASS en build zOSPb8W0Exp_IruBgC7iv/backend282; FAIL global conservado en #1301/#1334, CI final exigida en la PR; delta documental #937/#938: referencia de esquema y recorrido de partida contrastados estáticamente con rutas, imports y persistencia en main e4f33f2 el 2026-10-03, sin nueva ejecución funcional, de navegador o de backend]**
 
 Dos vistas de lo mismo, pensadas para lectores distintos:
 
@@ -8,7 +8,7 @@ Dos vistas de lo mismo, pensadas para lectores distintos:
 |---|---|---|
 | [`graph.json`](./graph.json) | **Agentes IA** | Nodos, aristas y flujos con rutas de fichero. Estructurado, diffeable, consultable |
 | [`map.html`](./map.html) | **Personas** | Diagrama interactivo + flujos resaltables. Autocontenido: doble clic y listo |
-| [`sync.mjs`](./sync.mjs) | Mantenimiento | Valida `graph.json` y lo re-embebe en `map.html` |
+| [`sync.mjs`](./sync.mjs) | Mantenimiento | Comprueba referencias de `graph.json` y lo re-embebe en `map.html` |
 
 **Esto es un doc DERIVADO, no canónico.** Para rutas y capas manda
 [ARQUITECTURA.md](../ARQUITECTURA.md); para el esquema,
@@ -72,8 +72,12 @@ autocontenido) y este script es lo que impide que diverjan:
 node docs/architecture/sync.mjs
 ```
 
-Valida integridad referencial (aristas y pasos que apuntan a nodos inexistentes, capas
-y `kind` desconocidos, ids duplicados) y regenera el HTML. `--check` valida sin escribir.
+Comprueba ids de nodo duplicados, capas y tipos de arista conocidos, extremos de
+aristas y nodos de pasos existentes, flujos con pasos y ausencia de `</script` en el
+JSON incrustado. No valida un JSON Schema ni comprueba la existencia de ficheros
+referenciados o la correspondencia de dependencias con imports: esa revisión se
+hace contra el código. `--check` sólo comprueba esa integridad; no escribe ni compara
+la copia de `map.html`. Para sincronizar el HTML, ejecuta el comando sin `--check`.
 
 Actualízalo cuando cambie **la forma**, no con cada commit:
 

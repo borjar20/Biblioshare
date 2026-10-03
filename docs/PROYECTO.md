@@ -177,7 +177,7 @@ los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
   congelado (`docs/perf-baseline.md`), mapa de arquitectura derivado
   (`docs/architecture/graph.json`).
 
-## Mascota — interfaz RPG (verificada en código el 2026-09-09)
+## Mascota — interfaz RPG (código verificado el 2026-09-09; entrega contrastada el 2026-10-03)
 
 `/mascota` reúne Campamento, Personaje, Diario, Madriguera y Combate con
 escenarios de bosque pixel y un tema verde común a claro y oscuro. El retorno
@@ -185,8 +185,9 @@ escenarios de bosque pixel y un tema verde común a claro y oscuro. El retorno
 se pausan al salir y recuperan su intento guardado en el dispositivo. Personaje
 lleva atributos y equipo —compara copias y permite equiparlas—; Diario conserva
 todas las misiones y logros. El campamento cabe en la ventana, sin scroll.
-Implementación local de #1165; publicación pendiente. Contrato y evidencia en
-`superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
+Publicada el 2026-09-09 mediante [PR #1146](https://github.com/borjar20/Biblioshare/pull/1146).
+La aceptación de uso real (#1165) y la jugable de R4b (#1123) siguen pendientes.
+Contrato y evidencia en `superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
 
 ## Lo que NO existe (para no buscarlo)
 

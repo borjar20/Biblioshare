@@ -548,3 +548,84 @@ Vitest no acredita el runtime RSC de Next, streaming, caché ni navegador.
 La issue histórica ya no carece de runner TSX ni de test de reanudación de
 sesión: estos casos añaden la defensa de sus páginas. Producto y esquema sin
 cambios; la CI de la PR sobre la base actual es gate previo al merge.
+
+### Recursos, Colecciones y reacciones: cobertura del 2026-10-03
+
+- [Recursos #1328](testing/2026-10-03-resources-durable-updates-1328.md): 57 unitarios PASS; cinco casos durables nativos y recorrido natural original PASS. ACK antes del valor visible y recarga inmediata a320/390/1280, transacción retenida, cola/undo y fallback. Un contexto visual adicional acredita aviso completo a320/390 tras scroll inicial; capturas desplazadas originales conservadas.
+- [Editor #1007](testing/2026-10-03-resource-editor-1007.md): dos casos nativos permanentes PASS; nombre único y cancelación de gesto al cambiar ficha. Diagnóstico inicial del preset corregido.
+- [Colecciones #662/#746](testing/2026-10-03-collection-grid-662-746.md): nuevo caso y original corregido PASS. Cinco fixtures distinguen4/3/2 columnas a1440/1200/390; búsqueda, vacío y las cinco posiciones del orden. URL estable y cero navegaciones del documento en el nuevo; no acredita foco ni ausencia de fetch/RSC.
+- [ReactionBar #789](testing/2026-10-03-reaction-bar-coverage-789.md): nueve casos nuevos, 38 focales PASS y ocho mutaciones detectadas con17 fallos causales. Componentes/picker/catálogo/handlers reales, fallback canvas sin rasterizador; no acredita fuentes, CSS, navegador ni persistencia remota.
+
+Los nativos anteriores pertenecen al build w0f/base4a y backend local273. La primera prueba nueva de Colecciones falló por literal exacto incompleto; recuperación sólo cambia esa cadena y conserva el FAIL. El original conserva auditoría global FAIL por POST cancelados sin atribución de efecto (#1301); identificar pullPendingCelebrations no acredita pérdida ni inocuidad. #1334 investiga su repro condicional aparte. Fixtures y servicios propios limpios. Nueva QA sobre maina0b0/Experiencias y CI de PR son gates de merge; no se extrapola el build anterior.
+
+
+### Integración de Recursos y Colecciones sobre main a0 — 2026-10-03
+
+Nueva build zOSPb8W0Exp_IruBgC7iv de HEAD 9a3f13a749d178e12c443b80d7c2a4b85b18eb77, con base main a0b0e031/Experiencias y backend local 282: 9/9 recorridos funcionales PASS, cero reintentos, SKIP o flaky. Cinco casos de persistencia de Recursos, dos del editor y dos de Colecciones (nuevo y original). Tipos y lint PASS; 95 unitarios focales PASS en nueve archivos. El recorrido natural original previo conserva su resultado en build w0f; no se vuelve a declarar ejecutado en esta tanda.
+
+Auditoría global FAIL conservada: POST #22 de /partidas/recursos y #59 de /coleccion se corresponden con pullPendingCelebrations según el índice de esta misma build; POST #38 de /login queda fuera del probe, sin atribución. Los tres siguen UNCLASSIFIED: no hay recibo RPC/filas por petición. #22 empezó y falló antes del ACK retenido, por lo que no se atribuye a la recarga final. #1301 y #1334 permanecen abiertos; identificar la acción o recibir HTTP 200 no acredita inocuidad ni pérdida.
+
+Evidencia local sellada: resources-coverage-current-native-1791046824201/final-public-manifest.sha256.json, 173 archivos, SHA-256 a7d1bdca4d9821971beaeba05439a04a927eef6c6c513fd7cc418db44dd7d8d5. Se preservan 2012 inputs, 23 fuentes congeladas y los 307 artefactos de la tanda previa. Infra/probe/cleanup PASS; actores eliminados con Auth404 y nueve tablas vacías por actor, seis tablas de Experiencias vacías, Next cerrado, puerto 3000 libre y Supabase parado con backup normal de 282 pasos. Son recibos de cierre de esa tanda; otro gate local puede utilizar después el backend.
+
+El gate de CI se comprueba en la PR de publicación sobre el HEAD final antes de integrarla. Los PASS funcionales y el FAIL global mantienen dictámenes separados.
+
+## Composer de voz: transiciones DOM (#843)
+
+[Informe y límites](testing/2026-10-03-voice-composer-state-843.md): 16 casos
+de componente nuevos (7 PostThread, 9 ReviewInteractions) ejercen los controles
+DOM reales para responder a otro objetivo o a la misma raíz, entrar a editar,
+cancelar respuesta y publicar voz. Cambiar contexto desarma la grabadora sin
+otro gesto de micrófono; publicar cierra la respuesta antes de resolver el envío.
+
+CommentComposer, VoiceRecorder, VoiceRecorderEngine, hooks, menús y traducciones
+son reales. Las fronteras falsas se limitan a APIs de media/medición de navegador,
+usePathname y transportes de acciones; los bytes de audio son sintéticos.
+El reloj local avanza los ticks del motor y el envío se mantiene pendiente para
+observar el cierre de contexto. Esto acredita las transiciones de estado y DOM;
+no acredita micrófono físico, permisos, codificación/reproducción, SSR, despacho
+de Server Actions, revalidación remota ni navegador de Next.
+
+Verificado el 2026-10-03 sobre el merge local de main a0b0e03 y la cobertura
+67f101c: 50/50 focales en seis ficheros, tipos y lint PASS con Node24. Las ocho
+guardas retiradas individualmente en copias provocan ocho FAIL causales
+conservados sobre la base 4a; los controles pasan 16/16. No se repite esa tanda
+de mutaciones en el merge. No cambia el producto ni se añade el aviso de la
+deuda hermana antes de cortar una grabación. La CI de publicación y la revisión
+del lote siguen siendo gates del coordinador.
+
+## Lote de cobertura de voz y miembros de saga (#843 + #191)
+
+[Miembros de saga #191](testing/2026-10-03-saga-member-coverage-191.md): 19 casos
+ejercen getSaga público, sin exportar resolveMembers. La frontera de lectura
+Supabase aplica select (proyección de columnas), eq e in sobre filas tipadas:
+comprueba role/placement/optional/position, orden numérico con 0 y null al final,
+desempate por título, identidad tipo:id entre catálogos, títulos nulos, saga
+inexistente y miembros sin metadatos. No es un test de DB o RLS nativa; TMDB,
+creación de catálogo y cliente privilegiado fallan si se intentan usar.
+
+La integración local del 2026-10-03 combina main 1d1f618, cobertura de voz y
+Saga 9e7acab: 69/69 focales en siete ficheros, tipos completos y lint PASS con
+Node24. Incluye los 50 casos pertinentes de voz y los 19 de getSaga. No cambia
+producto ni amplía las fronteras reales descritas en ambos informes. Las
+tandas históricas de 526 tests de sagas y de mutantes se conservan; no se
+repiten ni se suman a esta ejecución. No se arrancan servicios ni DB.
+
+**Requisito de entrega:** los checks de CI de la PR deben pasar sobre su HEAD
+final. Un PASS local o de otro SHA no acredita la CI de este lote. La evidencia
+de publicación se vincula a ese HEAD, sin convertir la cobertura local en
+verificación de navegador, media nativa, RLS o proveedores.
+
+## Motivo de abandono en el diario (#655)
+
+[Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho
+casos ejecutan `PassDiary` e Intl reales en jsdom. Cubren las cinco categorías
+de abandono, la nota completa de «Otro», la ausencia de motivo y un pase
+completado con motivo residual. La tanda focal del 2026-10-03 pasa 35/35 en
+tres archivos, con tipos y lint correctos. Dos controles negativos detectan
+la retirada del gate de estado y el truncado de la nota; después se restaura
+el producto con sus bytes originales.
+
+Las acciones de servidor y la carga conjunta están controladas. Esta cobertura
+acredita el DOM local; no acredita layout de navegador, persistencia ni RLS.
+No cambia el producto y no arranca servicios. La entrega requiere CI sobre el
+HEAD final de la PR.

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import {
   useCompanionStore,
   type CompanionEmit,
+  type CompanionPersistence,
 } from "@/lib/play/core/use-companion-store";
 import type { ResourcesState } from "./types";
 import type { ResourcesEvent } from "./events";
@@ -21,12 +22,14 @@ export function useResources(identity: string): {
   canUndo: boolean;
   clear: () => void;
   loaded: boolean;
+  persistence: CompanionPersistence;
 } {
   const store = useCompanionStore<ResourcesState, ResourcesEvent>({
     storageKey: `${identity}:resources`,
     replay: replayResources,
     reducer: resourcesReducer,
     compact: compactResourcesIfNeeded,
+    publishAfterPersist: true,
   });
 
   const { emit } = store;
