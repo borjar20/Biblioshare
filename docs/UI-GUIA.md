@@ -2,7 +2,9 @@
 
 > **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19);
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
-> verificados contra código el 2026-10-03 (local/dev)]**
+> verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
+> notificaciones verificados contra código y build/start local el 2026-10-04
+> (#1349; siete E2E focales PASS; candidato local)]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -100,8 +102,11 @@ editor de catálogo inline (banner + barra sticky).
    Sagas de catálogo siguen en Buscar. La configuración es una PÁGINA
    (`/ajustes`), no una hoja modal. **Un camino por viewport:** barra inferior
    bajo 768 px y superior desde 768 px, ambas desde `nav-items.ts`; sin fila
-   de accesos privados en el perfil. Esta decisión sustituye el reparto «Tú»
-   de 2026-08-21; ver la entrada nueva en `decisiones.md`.
+   de accesos privados en el perfil. En móvil, la cabecera del usuario con
+   perfil contiene marca, campana, Más y avatar; «Cambiar tema» vive dentro de
+   Más. Desde 768 px, el tema mantiene su icono directo en la cabecera. Estas
+   decisiones y la sustitución del reparto «Tú» de 2026-08-21 constan en
+   `decisiones.md`.
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados
     juntos derivan del mismo dato (una fórmula por métrica).
 
@@ -142,6 +147,16 @@ editor de catálogo inline (banner + barra sticky).
    220px que pedirían diez mitades de 44 sería otro dibujo. Con ratón no cambia
    nada (early-return por `pointerType`). `touch-action: pan-y`, nunca `none`:
    el eje vertical se lo queda el scroll de la página.
+
+La campana tiene un área de 44 × 44 px. Bajo 768 px, su panel se ancla a la
+cabecera sticky con margen al viewport; desde 768 px se ancla a la campana.
+El ancho y la altura se acotan a la ventana: en móvil se reserva además el
+espacio de la barra inferior y la safe-area. Título, lista y control de avisos
+comparten un único scroll. El panel es una región con nombre accesible,
+relacionada con su botón mediante `aria-controls`; Escape lo cierra y devuelve
+el foco a la campana; el puntero y el foco fuera también lo cierran. En Más, la
+navegación por teclado recorre solo las opciones visibles en ese viewport.
+Evidencia y alcance: [cabecera y notificaciones #1349](testing/2026-10-04-header-notifications.md).
 
 ## Accesibilidad — base y deuda
 

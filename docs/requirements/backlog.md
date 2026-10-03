@@ -17,6 +17,7 @@
 > cuota de altas Google Books verificada en local/dev/prod y CI el 2026-10-02 (#1237);
 > arranque, configuración del reloj y contraste de asientos verificados contra código y build/start local el 2026-10-02 (#964, #995, #999);
 > navegación principal, herramientas de Biblioteca y Comunidad verificadas contra código y navegador con build/start local el 2026-10-03;
+> cabecera y panel de notificaciones #1349 verificados con build/start local y siete E2E focales PASS el 2026-10-04; candidato local pendiente de publicación;
 > Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293]**
 >
@@ -456,6 +457,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] Navegación de la app con Experiencias y Comunidad como destinos principales,
   herramientas en Biblioteca (`/coleccion/rincon`, `/notas`, `/estadisticas`),
   perfil desde el avatar y Partidas en el menú secundario Más.
+- [x] [#1349](https://github.com/borjar20/Biblioshare/issues/1349) — Cabecera móvil compacta, tema en Más y panel de notificaciones acotado al viewport.
+  Evidencia y alcance local: [build/start y QA focal (2026-10-04)](../testing/2026-10-04-header-notifications.md).
 - [x] Acción «Nueva experiencia» compacta en móvil: 44 × 44 px, nombre accesible y etiqueta completa desde 640 px; ocho combinaciones de viewport/tema y apertura del formulario verificadas en Next dev (2026-10-03). Evidencia: `docs/testing/2026-10-03-experiencias-mobile-button.md`.
 - [x] Ocho migraciones aplicadas en producción el 2026-10-03; objetos, definiciones y permisos reales verificados a las 10:04 UTC (#1293).
   Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.

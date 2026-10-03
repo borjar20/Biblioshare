@@ -16,7 +16,12 @@ vi.mock("@/components/social/notification-bell", () => ({ NotificationBell: () =
 import { Header } from "./header";
 
 const signedIn = { loggedIn: true, username: "ana", avatarUrl: null, unreadCount: 3 };
-beforeEach(() => { pathname = "/experiencias"; query = ""; });
+beforeEach(() => {
+  pathname = "/experiencias";
+  query = "";
+  document.documentElement.classList.remove("dark", "light");
+  localStorage.removeItem("theme");
+});
 afterEach(cleanup);
 
 describe("accesos globales separados de la identidad", () => {
@@ -26,7 +31,7 @@ describe("accesos globales separados de la identidad", () => {
     const trigger = screen.getByRole("button", { name: "moreLabel" });
     fireEvent.click(trigger);
     const menu = screen.getByRole("menu", { name: "moreLabel" });
-    expect(within(menu).getAllByRole("menuitem").map((link) => link.getAttribute("href"))).toEqual([
+    expect(within(menu).getAllByRole("menuitem").filter((item) => item.tagName === "A").map((link) => link.getAttribute("href"))).toEqual([
       "/partidas", "/mascota", "/ajustes",
     ]);
     expect(within(menu).queryByRole("menuitem", { name: "you.profile" })).toBeNull();
@@ -43,10 +48,56 @@ describe("accesos globales separados de la identidad", () => {
     fireEvent.keyDown(play, { key: "ArrowDown" });
     expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "you.pet" }));
     fireEvent.keyDown(document.activeElement!, { key: "End" });
-    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "you.settings" }));
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "changeTheme" }));
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(screen.queryByRole("menu")).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it("recorre el tema móvil con flechas y Home junto a los destinos", async () => {
+    render(await Header(signedIn));
+    const trigger = screen.getByRole("button", { name: "moreLabel" });
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: "ArrowUp" });
+    const theme = screen.getByRole("menuitem", { name: "changeTheme" });
+    await waitFor(() => expect(document.activeElement).toBe(theme));
+    fireEvent.keyDown(theme, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "you.settings" }));
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(theme);
+    fireEvent.keyDown(theme, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "you.play" }));
+    fireEvent.keyDown(document.activeElement!, { key: "End" });
+    fireEvent.keyDown(theme, { key: "Home" });
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "you.play" }));
+  });
+
+  it("cambia y persiste el tema desde Más, cierra el menú y devuelve el foco", async () => {
+    render(await Header(signedIn));
+    const trigger = screen.getByRole("button", { name: "moreLabel" });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("menuitem", { name: "changeTheme" }));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorage.getItem("theme")).toBe("dark");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("omite el tema oculto en escritorio al recorrer el menú", async () => {
+    render(await Header(signedIn));
+    fireEvent.click(screen.getByRole("button", { name: "moreLabel" }));
+    const theme = screen.getByRole("menuitem", { name: "changeTheme" });
+    // jsdom no aplica los breakpoints Tailwind; reproducimos el display calculado
+    // de md:hidden para verificar el contrato de foco con un botón oculto.
+    theme.style.display = "none";
+    const play = screen.getByRole("menuitem", { name: "you.play" });
+    const settings = screen.getByRole("menuitem", { name: "you.settings" });
+    fireEvent.keyDown(play, { key: "End" });
+    expect(document.activeElement).toBe(settings);
+    fireEvent.keyDown(settings, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(play);
+    fireEvent.keyDown(play, { key: "ArrowUp" });
+    expect(document.activeElement).toBe(settings);
   });
 
   it("cierra al seguir un enlace y al pulsar fuera", async () => {
@@ -93,12 +144,14 @@ describe("accesos globales separados de la identidad", () => {
     render(await Header({ ...signedIn, loggedIn: false, username: null }));
     fireEvent.click(screen.getByRole("button", { name: "moreLabel" }));
     const menu = screen.getByRole("menu");
-    expect(within(menu).getAllByRole("menuitem").map((link) => link.getAttribute("href"))).toEqual(["/partidas"]);
+    expect(within(menu).getAllByRole("menuitem").filter((item) => item.tagName === "A").map((link) => link.getAttribute("href"))).toEqual(["/partidas"]);
+    expect(within(menu).getByRole("menuitem", { name: "changeTheme" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "you.profile" })).toBeNull();
   });
 
   it("el onboarding no muestra navegación privada antes de tener identidad completa", async () => {
     render(await Header({ ...signedIn, username: null }));
+    expect(screen.getByRole("button", { name: "changeTheme" })).toBeTruthy();
     expect(screen.queryByRole("navigation")).toBeNull();
     expect(screen.queryByRole("button", { name: "moreLabel" })).toBeNull();
     expect(screen.queryByRole("link", { name: "you.profile" })).toBeNull();
