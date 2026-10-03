@@ -16,7 +16,7 @@ import {
 } from "./store";
 import { makeSetup, started } from "@/lib/play/mtg/test-fixtures";
 import type { MtgState } from "@/lib/play/mtg/types";
-import { playTools } from "@/lib/play/tools";
+import { buildSavedSummary, playTools } from "@/lib/play/tools";
 import type { EventLog, PlayEvent } from "./types";
 
 class FakeStorage {
@@ -883,7 +883,7 @@ describe("espejo entre pestañas (#932)", () => {
   });
 });
 
-describe("save() (sin cobertura hasta ahora)", () => {
+describe("save()", () => {
   it("una partida terminada se guarda y la activa se limpia", async () => {
     const store = getPlayStore("anon");
     await ready(store);
@@ -921,6 +921,97 @@ describe("save() (sin cobertura hasta ahora)", () => {
     const ok = await store.save();
     expect(ok).toBe(false);
     expect(store.getSnapshot()).toBe(before);
+  });
+
+  it.each(["anon", "uid-959"])("%s conserva la partida adoptada mientras save() espera (#959)", async (identity) => {
+    let deliver: (rev: number) => void = () => { throw new Error("canal sin crear"); };
+    vi.stubGlobal("BroadcastChannel", class {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      constructor() { deliver = (rev) => this.onmessage?.({ data: { rev } } as MessageEvent); }
+      postMessage() {}
+      close() {}
+    });
+    const store = __createPlayStoreForTests(identity);
+    const savedCommitted = Promise.withResolvers<void>();
+    const resumeSave = Promise.withResolvers<void>();
+    let saving: Promise<boolean> | undefined;
+    try {
+      await ready(store);
+      expect(store.start(started(1000))).toBe(true);
+      expect(store.dispatch(makeEvent("game_finished", { winner: "ana", reason: "last_standing" }, 2000, "e-fin"))).toBe(true);
+      await store.__drainWritesForTests();
+      const before = store.getSnapshot();
+      const finished = before.game!;
+      expect(finished.state.status).toBe("finished");
+
+      // Solo retenemos el ACK de la transacción `saved`: el put y el commit
+      // reales de fake-indexeddb sí ocurren, y `active` puede seguir leyendo
+      // y escribiendo. Ni db.ts ni store.ts se mockean. Las dos promesas fijan
+      // el orden causal sin sleeps, timers ni competir entre dos escritores.
+      const transaction = IDBDatabase.prototype.transaction;
+      vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: InstanceType<typeof IDBDatabase>, ...args) {
+        const tx = transaction.apply(this, args);
+        if (args[0] === "saved" && args[1] === "readwrite") {
+          Object.defineProperty(tx, "oncomplete", {
+            set(oncomplete: IDBTransaction["oncomplete"]) {
+              tx.addEventListener("complete", (event) => {
+                savedCommitted.resolve();
+                void resumeSave.promise.then(() => oncomplete?.call(tx, event));
+              }, { once: true });
+            },
+          });
+        }
+        return tx;
+      });
+      const notified = vi.fn();
+      store.subscribe(notified);
+      let saveResolved = false;
+      saving = store.save().then((result) => { saveResolved = true; return result; });
+      await savedCommitted.promise;
+      expect(saveResolved).toBe(false);
+      expect(store.getSnapshot()).toBe(before);
+
+      const adoptedRecord: ActiveGameRecord = {
+        identity,
+        v: SNAPSHOT_VERSION,
+        committed: [started(3000), life(4000, "ana", -7)],
+        pending: null,
+        rev: 10,
+      };
+      expect(await writeActive(adoptedRecord)).toEqual({ ok: true });
+      deliver(adoptedRecord.rev);
+      await store.__drainWritesForTests();
+      await store.__drainWritesForTests();
+      const adopted = store.getSnapshot();
+      expect(adopted).not.toBe(before);
+      expect(adopted.game?.log.committed).toEqual(adoptedRecord.committed);
+      expect((adopted.game?.state as MtgState).players[0].life).toBe(33);
+      expect(notified).toHaveBeenCalledTimes(1);
+
+      resumeSave.resolve();
+      const result = await saving;
+      await store.__drainWritesForTests();
+      expect(store.getSnapshot()).toBe(adopted);
+      expect(notified).toHaveBeenCalledTimes(1);
+      expect(await readActive(identity)).toEqual(adoptedRecord);
+      expect(result).toBe(false);
+      expect(await listSaved(identity)).toEqual([{
+        gameId: finished.log.committed[0].id,
+        identity,
+        v: 2,
+        committed: finished.log.committed,
+        savedAt: expect.any(Number),
+        summary: buildSavedSummary(finished.state),
+        syncStatus: "pending",
+        deletedAt: null,
+      }]);
+    } finally {
+      resumeSave.resolve();
+      await saving;
+      vi.restoreAllMocks();
+      await store.__drainWritesForTests();
+      store.destroy();
+    }
   });
 
   it("si saveFinished falla (BD no disponible), save() devuelve false y no toca la partida activa", async () => {
