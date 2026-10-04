@@ -846,9 +846,17 @@ por generación. El botón real espera la purga antes de revocar Auth/navegar.
 Conserva pending, tombstones y otras identidades/anónimos/activa; borra sólo
 copias synced sin intención de borrado. Nueva sesión puede guardar desde una
 herramienta directa. El rollback de #977 sigue acreditado y v4→v5 es aditivo.
-Tipos y lint PASS; FAIL de preparación/producto conservados. Auth, backend y
-canal son fronteras controladas: navegador, sesiones/RLS reales, cuota física
-y CI del candidato son gates independientes todavía pendientes.
+Tipos y lint PASS; FAIL de preparación/producto conservados. En ese primer corte,
+Auth, backend y canal eran fronteras controladas y la QA web seguía pendiente.
+
+QA posterior del 2026-10-05: TypeScript y 129/129 casos pertinentes PASS;
+revisión r3 independiente 26/26 sin hallazgos. Diez casos funcionales nativos
+acreditados sobre el mismo HEAD `7b5b426` y build de producción, repartidos
+en ocho más uno más uno tras corregir el setup A→B. UI, Auth/backend local e
+IndexedDB reales, con entregas tardías controladas y declaradas. El resultado
+global sigue siendo FAIL: React #418 (seguido en #1385) y errores/cancelaciones
+de red conservados (#1301). El informe focal distingue cada corte y sus límites.
+Cuota física, Android, producción y CI final continúan como gates separados.
 
 La retención de datos y metadatos se documenta explícitamente; no es limpieza
 total del dispositivo. Ver §8.3 de data-model y [#1375](https://github.com/borjar20/Biblioshare/issues/1375).

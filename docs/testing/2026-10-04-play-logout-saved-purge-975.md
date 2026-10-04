@@ -69,7 +69,7 @@ de confirmación de una transacción que sí ha escrito y confirmado en IDB.
 | Typecheck sin caché incremental | PASS | `types-final-06/output.log` |
 | Lint de 15 fuentes cambiadas y fixture tipada final | PASS | `lint-final-02/`, `lint-fixture-final-03/` |
 | Diff y perímetro de archivos | PASS | `diff-check.log`, `source-hashes.json` |
-| Navegador, backend real, build de producción | PENDIENTE de QA coordinada | No se iniciaron servicios |
+| Navegador, backend real, build de producción | Corte inicial: PENDIENTE; ver QA nativa posterior | En este corte no se iniciaron servicios |
 
 Los mutantes eliminan, por separado, protección de pending, alcance por
 identidad, comprobación transaccional de generación, rechazo de ids retirados,
@@ -104,8 +104,9 @@ Sin Auth verificable, con IDB no disponible o con transacción abortada,
 `purgePlaySavedOnLogout` devuelve fallo y el logout sigue siendo posible;
 no se acredita purga ni barrera confirmada en ese caso. Una petición remota
 ya enviada puede terminar: su ACK local retirado se descarta, conservando la
-fuente para una pasada nueva. No se probó cuota física de disco, navegador
-nativo, sesiones reales ni datos productivos.
+fuente para una pasada nueva. Ese corte de pruebas controladas no probó cuota
+física de disco, navegador nativo, sesiones reales ni datos productivos;
+la QA web posterior figura abajo.
 
 Raíz de evidencias: `.scratch/ticket-campaign/20261002-resolve-all/play-logout-saved975-20261004/`
 en el checkout raíz. `manifest.json` y su SHA-256 recogen el inventario de evidencias;
@@ -248,3 +249,50 @@ copia de los ocho fuentes y `manifest.json` sellan esta entrega. r3 sólo
 modifica `saved-auth.ts`, la regresión del componente y este apéndice dentro
 de los ocho archivos propios de r2. Se conservan los otros cinco hashes y
 todas las evidencias anteriores. No hubo escrituras Git, backend, servicios ni publicación.
+
+## QA nativa del candidato integrado — 2026-10-05
+
+**PASS funcional focal agregado: diez casos distintos. Resultado global: FAIL.**
+El corte integrado `7b5b426f3422b01e9d418bc7887d915cba1bdac9` incluye los arreglos
+r2/r3 y el consumidor de celebraciones #1369 sobre su padre #1334. TypeScript
+sin caché y los 129 casos pertinentes de diez archivos pasaron antes de la QA.
+La revisión independiente r3 pasó 26/26 controles sin hallazgos y mantuvo
+los hashes de las 23 fuentes revisadas.
+
+La QA usa Chromium, IndexedDB nativa, login y logout reales, respuestas del
+backend local y build de producción `cwo-7Cx3TNRRZQ8F-k_O7` (Node 24.19.0,
+Next 16.3.8). Los ocho casos de `run03-integrated` acreditan guardado/finalización,
+purga selectiva, pull y ACK de push tardíos, borrar y adoptar tras reentrada,
+ACK de guardado después de logout y ABA. `run05-auth-switch` acredita adopción
+A→B y `run06-auth-delete`, borrado A→B. Es la unión de ocho más uno más uno
+sobre la misma build y fuentes; no una ejecución única de diez casos en verde.
+
+Las fronteras declaradas controlan la entrega de respuestas reales y de
+callbacks de transacciones nativas ya confirmadas. Las filas sintéticas son
+propias. A→B realiza login B en un contexto separado y transfiere en RAM sus
+cookies reales antes de liberar el ACK; confirma B en Auth y A aún abierto
+en IDB. No se forjan JWT ni se simula Auth. El drenaje tardío de 500 ms limita
+las observaciones. Esta tanda no ejercita cuota física, Android ni producción.
+
+El journal continuo conserva dos React #418, errores Failed-to-fetch y
+cancelaciones POST sin clasificación causal. No se relajan las guardas ni
+se declara salud global limpia. El caso MTG original de #1008, ejecutado
+aparte sin actores ni interceptaciones, reproduce dos #418 al llegar a
+`/partida/activa` tanto a 390 como a 1280 px. Ese fallo confirmado se sigue en
+[#1385](https://github.com/borjar20/Biblioshare/issues/1385); las cancelaciones
+de red conservan su seguimiento separado en #1301. CI del candidato final
+y la resolución de sus bloqueos continúan pendientes.
+
+Los seis intentos y los tres cortes MTG se conservan, incluidos los FAIL
+de preparación. Las 1995 fuentes, los diez blobs congelados y el bootstrap
+local se revalidaron sin cambios. Treinta actores propios quedaron con
+Auth404 y cero filas en las once tablas comprobadas. Next y navegador se
+cerraron; Supabase se detuvo normalmente con backup. Los dos directorios y
+volúmenes locales se conservaron, con los cuatro puertos libres.
+
+Evidencia: `.scratch/ticket-campaign/20261004-continue/native-logout975-r2/`.
+`final-report-r1/Report.md`, `receipt.json` y `manifest.json` fijan el dictamen;
+SHA-256 del manifest:
+`0ca8552461986a71e78a09692c8c15394eaebd792481778450fdd8c4a41a9fcd`.
+Este corte sustituye únicamente los estados de QA web pendientes de los
+apartados históricos; conserva sus resultados, fronteras y FAIL originales.
