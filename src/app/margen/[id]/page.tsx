@@ -8,6 +8,7 @@ import { getInteractionSummary } from "@/lib/social/get-interaction-summary";
 import { itemHref } from "@/lib/catalog/item-href";
 import { MarginNoteCard } from "@/components/margin/margin-note-card";
 import { MarginThreadInteractions } from "@/components/margin/margin-thread-interactions";
+import { MarginReportButton } from "@/components/margin/margin-report-button";
 import { MarginRetroSeen } from "@/components/margin/margin-retro-seen";
 import { RouteMessages } from "@/components/route-messages";
 import { SHELL_READ } from "@/lib/ui/layout";
@@ -37,6 +38,7 @@ export default async function MarginThreadRoute({ params }: { params: Promise<{ 
           {t("backToWork")}
         </Link>
         <MarginNoteCard note={{ ...note, encounter: null }} />
+        {note.encounter && user.id !== note.author.id && <MarginReportButton encounterId={note.encounter.id} />}
         {summary && <MarginThreadInteractions summary={summary} viewerLoggedIn />}
         {unseen && note.encounter && <MarginRetroSeen ids={[note.encounter.id]} />}
       </div>
