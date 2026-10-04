@@ -43,7 +43,7 @@ jobs:
       - run: npm run db:local:prepare
       - name: Start disposable database
         run: supabase --workdir .superpowers/supabase-local start --exclude studio,postgres-meta,imgproxy,edge-runtime,logflare,vector,supavisor,realtime > /dev/null
-      - run: npm run test:db:local
+      - run: npm run test:db:local -- --club-rounds-ci-exclusive
       - run: node scripts/ci-local.mjs build
       - run: node scripts/ci-local.mjs smoke
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

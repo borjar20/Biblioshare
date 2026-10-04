@@ -772,3 +772,21 @@ incorporarlo y dejarlo en `done`. Pasan los dos casos existentes y el control
 que retiene y libera la confirmación por señal. El control sin commit rechaza
 el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
 natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
+
+## Matriz SQL y carrera de rondas de club (#401)
+
+[Candidato y protocolo de QA](testing/2026-10-05-club-round-matrix-401.md):
+la matriz fuerza lunes, martes y miércoles dentro de `BEGIN/ROLLBACK` y conduce
+las RPC como `authenticated`. El runner exige GO del coordinador para una base
+Docker local exclusiva; la carrera utiliza dos sesiones y acredita ambos INSERT
+bloqueados antes de soltarlos. Captura y restaura definición, ACL, propietario,
+configuración y OID del reloj, con journal de recuperación ante interrupciones.
+
+El 2026-10-05 pasan 15 contratos Node focales, ocho del bootstrap y lint/sintaxis
+JavaScript. Se conservan los FAIL del caller sin rondas, del GO consultado tarde
+y de un oráculo de preparación. **SQL real y concurrencia PostgreSQL: NOT_RUN**,
+pendientes de receipt de QA975 terminada, actores cero y puerto 3000 libre.
+El HOLD vigente también preserva el backend 966 para el diagnóstico CDP #1385;
+su coordinador debe liberar esa reserva antes de ejecutar esta pieza.
+Estos contratos controlan el transporte; no acreditan parseo SQL, locks reales,
+navegador, dev, producción ni RLS remota. #401 permanece abierto.

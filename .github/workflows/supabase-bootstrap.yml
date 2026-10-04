@@ -31,6 +31,6 @@ jobs:
       - run: npm run test:db:bootstrap
       - run: npm run db:local:prepare
       - run: supabase --workdir .superpowers/supabase-local start --exclude studio,postgres-meta,imgproxy,edge-runtime,logflare,vector,supavisor,realtime
-      - run: npm run test:db:local
+      - run: npm run test:db:local -- --club-rounds-ci-exclusive
       - if: always()
         run: supabase --workdir .superpowers/supabase-local stop --no-backup
