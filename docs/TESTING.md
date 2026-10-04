@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local); fixture de ronda #405 verificado con nueve contratos Node del caller real, tipos y lint el 2026-10-04, sin navegador/SQL]**
 
 ## Cuenta de desarrollo persistente
 
@@ -763,3 +763,20 @@ entre la base de build y main; dos capturas se inspeccionan también desde Root.
 Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
 La tanda no acredita sincronización, otros navegadores ni salud global de red.
 La CI del HEAD integrado sigue siendo un gate de publicación independiente.
+
+## Fixture de ronda: respuestas REST y limpieza (#405)
+
+[Informe focal](testing/2026-10-04-club-round-fixture-405.md): nueve contratos
+Node verifican que un POST de membresía 403 aborta antes del login, que un 201
+entra al callback de UI y que el DELETE 204/500 informa la limpieza sin ocultar
+un fallo previo. Siete casos ejecutan el callback del spec Playwright real
+con fetch y primer punto de UI controlados; dos cubren un cuerpo exitoso.
+RED previo: cinco FAIL y dos PASS. Candidato final: nueve PASS, tipos y lint PASS.
+
+El job `quality` ejecuta `node --import tsx --test
+e2e/support/club-round-fixture.test.ts`. Esta cobertura acredita el caller real
+y sus contratos de fixture; **no acredita navegador, Auth/SQL reales ni #401**
+(reloj y concurrencia de rondas). El job de navegador sólo descubre `e2e/ci`,
+así que no se atribuye a esa CI el e2e completo de `club-ronda.spec.ts`.
+La cuenta QA persistente se conserva; sólo se limpia el club desechable por id.
+La CI remota del HEAD de entrega mantiene su propio gate.
