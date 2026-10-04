@@ -250,4 +250,109 @@ update xr set id=(public.experience_publish_review((select id from xr where k='r
 select public.experience_delete_moment_review((select id from xr where k='review'));
 reset role;
 do $$ begin if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL review delete keeps post'; end if; end $$;
+-- Task 6: reports need current access; removal hides the review and its post.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+update xr set id=(public.experience_save_moment_review((select id from xr where k='moment'),6::smallint,'Reportable')->>'id')::uuid where k='review';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin
+  begin perform public.experience_report_review((select id from xr where k='review'),'spam'); raise exception 'FAIL report without access'; exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='absent'),true);
+do $$ declare rep uuid; begin
+  rep:=(public.experience_report_review((select id from xr where k='review'),'spam')->>'id')::uuid;
+  if rep is null then raise exception 'FAIL group report'; end if;
+end $$;
+reset role;
+insert into private.moderation_state(kind,target_id,removed_at) values('experience_review',(select id from xr where k='review'),now());
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='absent'),true);
+do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL removed review visible'; end if; end $$;
+-- Task 6 (extra): a removed review cannot be reported; the report keeps author and snapshot.
+do $$ begin
+  begin perform public.experience_report_review((select id from xr where k='review'),'spam'); raise exception 'FAIL report removed review'; exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ declare c public.content_reports; begin
+  select * into c from public.content_reports where target_type='experience_review' and target_id=(select id from xr where k='review');
+  if c.reported_user_id is distinct from (select id from xr where k='member') or c.reporter_id is distinct from (select id from xr where k='absent')
+    or c.snapshot->>'body'<>'Reportable' or (c.snapshot->>'rating')::int<>6 or (c.snapshot->>'experience_id')::uuid<>(select id from xr where k='root')
+    or (c.snapshot->>'moment_id')::uuid<>(select id from xr where k='moment') then raise exception 'FAIL report snapshot %',to_jsonb(c); end if;
+  if private.social_target_owner_id('experience_review',(select id from xr where k='review')) is distinct from (select id from xr where k='member') then raise exception 'FAIL review owner'; end if;
+end $$;
+delete from private.moderation_state where kind='experience_review' and target_id=(select id from xr where k='review');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  begin perform public.experience_report_review((select id from xr where k='review'),'spam'); raise exception 'FAIL self report'; exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='absent'),true);
+do $$ begin
+  begin perform public.experience_report_review((select id from xr where k='review'),'nope'); raise exception 'FAIL invalid reason'; exception when sqlstate '22023' then null; end;
+  begin perform public.experience_report_review((select id from xr where k='review'),'other',repeat('a',2001)); raise exception 'FAIL details limit'; exception when sqlstate '22023' then null; end;
+  begin perform public.experience_report_review(gen_random_uuid(),'spam'); raise exception 'FAIL missing review'; exception when sqlstate 'PT404' then null; end;
+end $$;
+-- Task 6 (extra): an admin lists and removes a review; its published post disappears for outsiders.
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),true);
+update xr set id=(public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid where k='post';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin
+  if not exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL outsider sees published review post'; end if;
+  if not public.can_view_target('experience_review',(select id from xr where k='review')) then raise exception 'FAIL can_view_target review'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+do $$ declare l jsonb; begin
+  l:=public.admin_moderation_list('experience_review','active',(select id::text from xr where k='review'),0)->'items';
+  if jsonb_array_length(l)<>1 or (l->0->>'id')::uuid<>(select id from xr where k='review') or (l->0->>'author_id')::uuid<>(select id from xr where k='member') then raise exception 'FAIL admin list review %',l; end if;
+end $$;
+select public.admin_moderate_content('experience_review',(select id from xr where k='review'),'remove','test','');
+do $$ begin
+  if jsonb_array_length(public.admin_moderation_list('experience_review','removed',(select id::text from xr where k='review'),0)->'items')<>1 then raise exception 'FAIL admin list removed review'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin
+  if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL removed review post visible'; end if;
+  if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL removed review visible to outsider'; end if;
+  if public.can_view_target('experience_review',(select id from xr where k='review')) then raise exception 'FAIL can_view_target removed review'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+select public.admin_moderate_content('experience_review',(select id from xr where k='review'),'restore','test','');
+-- Removing the parent experience cascades to its reviews.
+reset role;
+savepoint task6_parent;
+insert into private.moderation_state(kind,target_id,removed_at) values('experience',(select id from xr where k='root'),now());
+do $$ begin
+  if private.moderation_available('experience_review',(select id from xr where k='review')) then raise exception 'FAIL review cascade from experience'; end if;
+end $$;
+rollback to savepoint task6_parent;
+-- Admin hard delete records exactly one history row for the review (isolated in a savepoint).
+savepoint task6_delete;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+select public.admin_moderate_content('experience_review',(select id from xr where k='review'),'delete','test','ELIMINAR');
+reset role;
+do $$ begin
+  if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL admin delete review'; end if;
+  if (select count(*) from private.moderation_history where kind='experience_review' and target_id=(select id from xr where k='review') and action='delete')<>1 then raise exception 'FAIL review delete history'; end if;
+  if exists(select 1 from private.moderation_history where kind='comment' and target_id=(select id from xr where k='review')) then raise exception 'FAIL review recorded as comment'; end if;
+  if exists(select 1 from private.moderation_operations where transaction_id=txid_current()) then raise exception 'FAIL leaked moderation marker'; end if;
+end $$;
+rollback to savepoint task6_delete;
+-- Deletions outside a moderation operation record no history, even when the session user is an admin.
+savepoint task6_admin_plain;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+delete from public.experience_moment_reviews where id=(select id from xr where k='review');
+do $$ begin
+  if exists(select 1 from private.moderation_history where kind='experience_review' and action='delete') then raise exception 'FAIL plain admin delete recorded'; end if;
+end $$;
+rollback to savepoint task6_admin_plain;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_delete_moment_review((select id from xr where k='review'));
+reset role;
+do $$ begin
+  if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL author delete'; end if;
+  if exists(select 1 from private.moderation_history where kind='experience_review' and action='delete') then raise exception 'FAIL author delete recorded'; end if;
+end $$;
 rollback;
