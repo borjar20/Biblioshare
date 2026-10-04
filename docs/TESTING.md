@@ -782,3 +782,20 @@ audiencia tras recargar. Seis capturas inspeccionadas y limpieza de los actores
 propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
 el límite del fallback protegido, sin declarar una auditoría global PASS.
 La CI del HEAD de entrega sigue siendo un gate independiente.
+
+## Formularios visibles durante streaming (#1368)
+
+[Informe focal](testing/2026-10-04-ci-visible-form-controls-1368.md): login y
+búsqueda se acotan al formulario y controles visibles. Conservan el rechazo
+estricto de dos candidatos visibles; no usan `first`, esperas adicionales ni
+excepciones a las aserciones. El control causal distingue seis fallos del
+locator anterior, seis éxitos del helper y seis rechazos de duplicados visibles.
+
+La build Turbopack nueva con `next start` y Supabase local pasa 20/20 casos:
+cuatro reentradas reales de entrenamiento, dos recorridos completos de cuota y
+14 regresiones de DOM controlado. TypeScript, lint y revisión independiente
+32/32 PASS. Se conservan dos FAIL de preparación y el límite del alias privado
+de sólo lectura para el manifiesto de acciones del checkout con junction.
+Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
+sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
+auditoría global de red limpia.
