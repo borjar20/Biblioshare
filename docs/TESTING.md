@@ -693,3 +693,21 @@ Ambos candidatos pasan revisión independiente. Integración sobre main eee8b8c 
 CI del HEAD final son gates de publicación; los informes originales conservan
 sus bases, hashes y alcance. Esta cobertura no acredita APIs actuales ni
 producción o RLS remota.
+
+## Acompañantes según quien mira (#1353)
+
+[Implementación y cobertura](testing/2026-10-04-experience-participants-1353.md):
+detalle, hub y perfil excluyen sólo a la cuenta que mira entre las personas
+aceptadas. El feed mantiene al organizador como sujeto de su narrativa. La
+identidad de sesión ya resuelta pasa hasta la tarjeta; no hay lecturas Auth
+adicionales. Tanda focal 111/111 en 17 archivos, tipos/lint y seis mutantes
+causales PASS; revisión independiente 72/72, sin hallazgos.
+
+[QA nativa](testing/2026-10-04-experience-participants-native-1353.md): 27/27
+checks en Chromium contra una build Turbopack nueva y next start, con Supabase
+local real. Recorre creación, invitación, aceptación, consentimiento y
+publicación, y comprueba detalle, hub, perfil, feed, privacidad y cambios de
+audiencia tras recargar. Seis capturas inspeccionadas y limpieza de los actores
+propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
+el límite del fallback protegido, sin declarar una auditoría global PASS.
+La CI del HEAD de entrega sigue siendo un gate independiente.
