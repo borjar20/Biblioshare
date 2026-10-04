@@ -224,7 +224,7 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
       {isOwner && <FollowRequests requests={pendingRequests} />}
 
       <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />
-      {tab==="experiencias"&&<Suspense fallback={<ProfileSectionSkeleton/>}><ExperiencesTab userId={profile.userId} basePath={basePath} params={parsedParams} isOwner={isOwner}/></Suspense>}
+      {tab==="experiencias"&&<Suspense fallback={<ProfileSectionSkeleton/>}><ExperiencesTab userId={profile.userId} viewerId={user?.id??null} basePath={basePath} params={parsedParams} isOwner={isOwner}/></Suspense>}
 
       {tab === "actividad" && (
         <Suspense fallback={<ProfileSectionSkeleton />}>
