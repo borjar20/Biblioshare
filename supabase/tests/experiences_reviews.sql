@@ -411,4 +411,102 @@ do $$ declare n jsonb; begin
   if n<>'[]'::jsonb then raise exception 'FAIL private experience notifies %',n; end if;
 end $$;
 rollback to savepoint notify_private;
+-- Final review I3: privacy paths read as each actor. Each case is isolated in a savepoint.
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+insert into xr(k) values('invitee'),('invrow'),('guestrow'),('root2'),('root2row'),('ownreview');
+insert into auth.users(id) select id from xr where k='invitee';
+insert into public.profiles(user_id,username,is_public) select id,'rev_'||left(replace(id::text,'-',''),15),true from xr where k='invitee';
+-- (a) An invited, not yet accepted, person cannot read a non-shared review.
+savepoint privacy_invited;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
+update xr set id=(public.experience_invite((select id from xr where k='root'),(select id from xr where k='invitee'))->>'id')::uuid where k='invrow';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+update xr set id=(public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Solo grupo')->>'id')::uuid where k='review';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='invitee'),true);
+do $$ begin
+  if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL invited reads non-shared review'; end if;
+  if exists(select 1 from public.get_experience_rating_summaries(array[(select id from xr where k='root')])) then raise exception 'FAIL invited reads private rating'; end if;
+end $$;
+reset role;
+do $$ begin
+  if (select invitation_state from public.experience_participants where id=(select id from xr where k='invrow'))<>'invited' then raise exception 'FAIL invitee setup'; end if;
+  if (select share_with_profile from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL invitee setup review'; end if;
+end $$;
+rollback to savepoint privacy_invited;
+-- (b) Anonymous readers see only a shared review (share_with_profile + share_identity) in a profile memory.
+savepoint privacy_anon;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+update xr set id=(public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Compartida')->>'id')::uuid where k='review';
+select public.experience_set_review_sharing((select id from xr where k='review'),true);
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
+update xr set id=(public.experience_save_moment_review((select id from xr where k='moment'),2::smallint,'No compartida')->>'id')::uuid where k='ownreview';
+reset role;
+do $$ begin
+  if (select audience from public.experiences where id=(select id from xr where k='root'))<>'profile' then raise exception 'FAIL anon setup audience'; end if;
+  if not (select share_identity from public.experience_participants where id=(select id from xr where k='memberrow')) then raise exception 'FAIL anon setup identity'; end if;
+  if (select share_with_profile from public.experience_moment_reviews where id=(select id from xr where k='ownreview')) then raise exception 'FAIL anon setup own review'; end if;
+end $$;
+select set_config('request.jwt.claim.sub','',true);
+set local role anon;
+do $$ declare s record; begin
+  if auth.uid() is not null then raise exception 'FAIL anon has a uid'; end if;
+  if not exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL anon reads shared review'; end if;
+  if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='ownreview')) then raise exception 'FAIL anon reads non-shared review'; end if;
+  select * into s from public.get_experience_rating_summaries(array[(select id from xr where k='root')]) where moment_id is null;
+  if s.rating_count is distinct from 1 or s.avg_rating is distinct from 8.0 then raise exception 'FAIL anon summary %',s; end if;
+end $$;
+rollback to savepoint privacy_anon;
+-- (c) Removing a participant removes their reviews and their published post.
+savepoint privacy_remove;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+update xr set id=(public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Se va')->>'id')::uuid where k='review';
+select public.experience_set_review_sharing((select id from xr where k='review'),true);
+update xr set id=(public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid where k='post';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
+select public.experience_remove_participant((select id from xr where k='memberrow'));
+reset role;
+do $$ begin
+  if exists(select 1 from public.experience_participants where id=(select id from xr where k='memberrow')) then raise exception 'FAIL participant not removed'; end if;
+  if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL removal keeps review'; end if;
+  if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL removal keeps review post'; end if;
+  if exists(select 1 from private.moderation_operations where transaction_id=txid_current()) then raise exception 'FAIL leaked moderation marker'; end if;
+end $$;
+rollback to savepoint privacy_remove;
+-- (d) A guest (no account) cannot carry a review, even on a direct superuser insert: the guard rejects it.
+savepoint privacy_guest;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
+update xr set id=(public.experience_add_guest((select id from xr where k='root'),'Invitada')->>'id')::uuid where k='guestrow';
+reset role;
+update public.experience_moment_participants set attendance_state='attended' where participant_id=(select id from xr where k='guestrow');
+do $$ begin
+  begin
+    insert into public.experience_moment_reviews(experience_id,moment_id,participant_id,author_id,rating)
+      values((select id from xr where k='root'),(select id from xr where k='moment'),(select id from xr where k='guestrow'),(select id from xr where k='owner'),5);
+    raise exception 'FAIL guest review';
+  exception when insufficient_privilege then if sqlerrm<>'attended lived account required' then raise; end if; end;
+end $$;
+rollback to savepoint privacy_guest;
+-- (e) Ranked hub: a rated memory comes before a newer unrated one.
+savepoint privacy_ranked;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
+update xr set id=(public.experience_create('{"title":"[TEST] reviews 2","kind":"food","state":"lived"}')->>'id')::uuid where k='root2';
+update xr set id=(public.experience_invite((select id from xr where k='root2'),(select id from xr where k='member'))->>'id')::uuid where k='root2row';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_respond_invitation((select id from xr where k='root2row'),'accept');
+select public.experience_save_moment_review((select id from xr where k='moment'),3::smallint,null);
+reset role;
+update public.experiences set created_at=now()+interval '1 day' where id=(select id from xr where k='root2');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ declare ids uuid[]; begin
+  select array_agg(r.id order by r.ordinality) into ids from public.get_own_experiences_ranked('all',null,null,0) with ordinality r;
+  if array_length(ids,1) is distinct from 2 or ids[1]<>(select id from xr where k='root') or ids[2]<>(select id from xr where k='root2') then raise exception 'FAIL ranked order %',ids; end if;
+end $$;
+rollback to savepoint privacy_ranked;
 rollback;
