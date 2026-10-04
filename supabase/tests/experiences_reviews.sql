@@ -78,6 +78,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
 select public.experience_update((select id from xr where k='root'),(select revision from public.experiences where id=(select id from xr where k='root')),'{"title":"[TEST] reviews","state":"lived","shape":"single","audience":"profile"}');
 -- A creator/author block suspends outside attribution; the author can still withdraw under it.
+-- Isolated in a savepoint: later blocks rely on no block and on the review still existing.
+savepoint task3_block;
 reset role;
 insert into public.user_blocks(blocker_id,blocked_id) values((select id from xr where k='owner'),(select id from xr where k='member'));
 set local role authenticated;
@@ -88,6 +90,12 @@ select public.experience_set_review_sharing((select id from xr where k='review')
 select public.experience_delete_moment_review((select id from xr where k='review'));
 reset role;
 do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL withdrawal under block'; end if; end $$;
+rollback to savepoint task3_block;
+-- Back to the pre-block state (role authenticated as the owner); the review is restored.
+do $$ begin
+  if current_user<>'authenticated' or auth.uid()<>(select id from xr where k='owner') then raise exception 'FAIL savepoint session state'; end if;
+  if not exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review') and rating=9 and share_with_profile) then raise exception 'FAIL savepoint restore'; end if;
+end $$;
 -- Guests have no account to call with (save looks up the caller's accepted row); anon has no EXECUTE.
 reset role;
 do $$ begin
