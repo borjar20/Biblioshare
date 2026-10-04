@@ -10,7 +10,7 @@ import { itemHref } from "@/lib/catalog/item-href";
 import type { Note } from "@/lib/notes/types";
 import { getNotesPage } from "@/lib/notes/get-notes";
 import { compareNotes } from "@/lib/notes/sort";
-import { NOTES_PAGE_SIZE, hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
+import { hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
 import { listMarginForNotebook } from "@/lib/margin/queries";
 import { MarginNoteCard } from "@/components/margin/margin-note-card";
 import { MarginRetroSeen } from "@/components/margin/margin-retro-seen";
@@ -139,7 +139,7 @@ async function NotebookContent({
         )}
         {/* La insignia «Nueva» sigue en este render; se marcan vistas para la siguiente visita. */}
         <MarginRetroSeen key={unseen.join(",")} ids={unseen} />
-        <NotesPager query={query} total={hasMore ? (query.page + 1) * NOTES_PAGE_SIZE : query.page * NOTES_PAGE_SIZE} />
+        <NotesPager query={query} hasMore={hasMore} />
       </RouteMessages>
     );
   }

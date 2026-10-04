@@ -118,7 +118,7 @@ export async function NotesFilters({ query }: { query: NotesQuery }) {
           y no hay forma de saber por qué faltan notas. */}
       {hasActiveFilters(query) && (
         <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
-          {query.tag && (
+          {!query.margin && query.tag && (
             <Link
               href={notesHref(query, { tag: null })}
               className="rounded-full border border-border px-3 py-1 hover:text-foreground"
@@ -126,7 +126,7 @@ export async function NotesFilters({ query }: { query: NotesQuery }) {
               {t("notebookTagChip", { tag: query.tag })} ✕
             </Link>
           )}
-          {query.item && (
+          {!query.margin && query.item && (
             <Link
               href={notesHref(query, { item: null })}
               className="rounded-full border border-border px-3 py-1 hover:text-foreground"
@@ -134,7 +134,7 @@ export async function NotesFilters({ query }: { query: NotesQuery }) {
               {t("notebookWorkChip")} ✕
             </Link>
           )}
-          {query.q && (
+          {!query.margin && query.q && (
             <Link
               href={notesHref(query, { q: "" })}
               className="rounded-full border border-border px-3 py-1 hover:text-foreground"
