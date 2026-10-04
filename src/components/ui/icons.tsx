@@ -263,6 +263,14 @@ export function StarIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function RibbonIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon data-icon="ribbon" {...props}>
+      <path d="M6 3h12v18l-6-4-6 4z" />
+    </Icon>
+  );
+}
+
 export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

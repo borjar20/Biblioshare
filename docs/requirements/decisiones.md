@@ -6437,6 +6437,97 @@ se conservan, y la CI del HEAD final es el gate de integración.
 Evidencia: [implementación](../testing/2026-10-04-experience-participants-1353.md)
 y [QA nativa](../testing/2026-10-04-experience-participants-native-1353.md).
 
+## 2026-10-04 — Aborto atómico de la migración IndexedDB de Play (#977)
+
+Se mantiene el aborto completo cuando update/delete falla durante la migración
+de guardados v1. IndexedDB revierte registros, esquema y versión conjuntamente;
+la apertura existente maneja el error y libera la promesa para el siguiente
+intento. Cancelar el error de una petición para continuar permitiría confirmar
+una mezcla de formatos v1/v2. La ausencia de un handler por petición no exige
+ese cambio de comportamiento.
+
+Se aclara [#977](https://github.com/borjar20/Biblioshare/issues/977) mediante
+cobertura durable de rollback y reintento sin reset, sin modificar `db.ts`.
+Los errores se inyectan en el backend asíncrono real de fake-indexeddb; no son
+una reproducción de cuota física de navegador. Evidencia y límites en
+[informe focal](../testing/2026-10-04-play-upgrade-errors-977.md).
+
+## 2026-10-04 — Experiencias: reseña por momento, solo con asistencia confirmada y experiencia vivida (#1293)
+
+Cada persona reseña cada momento con nota 1–10 y/o texto (al menos uno). Solo puede hacerlo
+quien confirmó `attendance_state='attended'` en ese momento, con cuenta y en una
+experiencia `lived`; reseñar no confirma asistencia. Lo exige la RPC y lo respalda el
+trigger `guard_experience_review`, de modo que ningún camino escribe una reseña sin
+presencia. Pasar la asistencia a «no fui» o «por confirmar» con reseña existente se rechaza
+con `PT409` salvo confirmación explícita (`p_drop_reviews`), que borra la reseña y su
+publicación. Pasar la experiencia a `planned` o `cancelled` **conserva** las reseñas y las
+oculta (la RLS exige `lived`); volver a `lived` las recupera. No hay nota propia de la
+experiencia: solo la media derivada de sus reseñas. Contrato:
+[spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md).
+
+## 2026-10-04 — Experiencias: la media se calcula sobre las reseñas visibles para quien mira (precedente #436)
+
+`get_experience_rating_summaries` es `SECURITY INVOKER`: promedia las filas que la RLS deja
+leer a quien llama. Dentro del grupo cuentan todas las reseñas; fuera, solo las que su autor
+comparte (`share_with_profile`, con identidad visible y perfil visible), así que la media que
+ve un tercero puede **diferir** de la que ve el grupo. Es un cambio de comportamiento decidido
+a propósito, igual que `getRatingSummary` (#436), no un efecto colateral. Consecuencia para
+la regla #437: la función no lleva `use cache`, porque el resultado depende de la sesión.
+
+## 2026-10-04 — Experiencias: tabla propia para las reseñas en lugar de columnas en la asistencia
+
+Se descartó añadir `rating`/`body`/consentimiento a `experience_moment_participants`: esa
+tabla ya la filtran las reglas de `share_identity` y admite asistencia propuesta por el
+creador; mezclar texto libre y un segundo consentimiento ampliaba la superficie de fuga y
+obligaba a grants por columna (#375). Una reseña como post directo también se descartó
+porque debe poder existir en privado dentro del grupo. `experience_moment_reviews` guarda la
+reseña con FK compuestas a la asistencia, a la experiencia y al participante, y la
+visibilidad la decide un único helper, `private.can_view_experience_review`.
+
+## 2026-10-04 — Experiencias: los avisos de reseña van solo al grupo, no a seguidores
+
+`experience_reviewed` se envía a los miembros aceptados con cuenta y acceso actual, salvo el
+autor y los bloqueos, y se deduplica por reseña y destinatario (`experience_reviewed:{reseña}:{usuario}`,
+porque el índice único de `dedupe_key` es global): editar una reseña no reenvía. Los posts de
+reseña publicados en Actividad **no** avisan a seguidores como los posts de experiencia; la
+reseña es un comentario sobre un recuerdo compartido y el grupo es quien lo vivió. El texto
+no viaja en el push.
+
+## 2026-10-04 — Experiencias: retirar consentimiento, borrar y despublicar funcionan aunque haya bloqueo o moderación
+
+Activar «Compartir fuera del grupo» exige acceso completo (`experience_lock` +
+`can_contribute_experience`); **desactivarlo**, borrar la reseña y despublicar la publicación
+usan `private.experience_withdrawal_lock`, el mismo patrón que `experience_set_share_identity`.
+Un autor bloqueado por el creador, o cuya experiencia está moderada, debe poder retirar su
+propio texto. Quitar el post bajo moderación usa `private.delete_experience_review_post`, que
+toma el marcador de operación solo si hace falta y solo lo retira si lo añadió, sin escribir
+historial de moderación falso.
+
+## 2026-10-04 — Experiencias: un post de reseña moderado por un administrador no se puede recrear
+
+`private.guard_experience_post` rechaza con `publication unavailable` crear un post de reseña
+cuando `private.moderation_history` registra para esa reseña un `delete`, o un `remove` cuya
+retirada sigue activa en `private.moderation_state`. Sin esa regla el autor podía deshacer la
+moderación despublicando el post retirado y volviendo a publicar (`moderation_state` no tiene
+FK a posts, así que la retirada sobrevive al borrado). Restaurar la retirada lo permite de nuevo.
+
+## 2026-10-04 — Experiencias: el extracto del perfil muestra solo reseñas compartidas, también al dueño
+
+`getProfileReviewExcerpts` filtra `share_with_profile=true`. La RLS deja leer también al autor y
+a los compañeros las reseñas no compartidas; sin el filtro, el extracto del perfil las habría
+enseñado al dueño y a los miembros del grupo que lo visitan, contradiciendo el consentimiento
+por reseña. Consecuencia aceptada: el dueño no ve extracto de una reseña que mantuvo dentro
+del grupo; la ve en el detalle de la experiencia.
+
+## 2026-10-04 — Experiencias: las reseñas no entran en el filtro «Reseñas» del feed (pendiente de decisión del propietario)
+
+El filtro «Reseñas» del feed es solo de catálogo (`kind='finished'`) y las reseñas de
+experiencia aparecen en el feed general con la tarjeta de experiencia. Por ahora **no** se
+incluyen en ese filtro. **Pendiente de decisión del propietario:** si «Reseñas» debe mezclar
+las de obras con las de experiencias. Hasta entonces la conducta actual es la de la entrega;
+no se ha decidido ni implementado lo contrario. Rastreado en
+[#1358](https://github.com/borjar20/Biblioshare/issues/1358).
+
 ## 2026-10-04 — Diagnósticos ligados a la generación del consumidor (#1369)
 
 Un resultado o rechazo del claim sólo se registra como fallo vigente si el

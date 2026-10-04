@@ -678,7 +678,7 @@ Next/browser propios cerrados y Supabase detenido después con backup normal.
 Dev fue activado el 2026-10-03 y sus objetos/ACL/11 grants por operación se
 revalidaron el 2026-10-04, conservando las 26 filas históricas. Un probe directo
 PostgreSQL con rol/claims sintéticos y ROLLBACK no sustituye Auth/REST remoto.
-Producción y CI de publicación siguen pendientes en este corte. Los registros
+Producción y CI de publicación seguían pendientes en ese corte anterior. Los registros
 extra del transporte se conservan y siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
 El ACK ambiguo puede permitir repetición en otro consumidor.
 
@@ -706,10 +706,28 @@ traza. La guarda de diagnóstico obsoleto se sigue en
 errores del E2E ni atribuir un fallo de SQL. La entrega requiere CI del HEAD
 que integre las correcciones.
 
-[Expansión compatible de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
-fase 1 confirmada a las 16:42:17 UTC, objetos/ACL/grants e historia reales
-verificados después. El ledger completo de statements conserva el carrier
-auténtico; las fases 2/3 siguen pendientes de su gate independiente.
+[Expansión y activación de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
+fase 1 confirmada a las 16:42:17 UTC; cierre de admisión confirmado y activación
+final aplicada a las 20:15:35 UTC. Dos snapshots completos acreditaron cohorte
+vacía, cero prepared transactions y cero otras transacciones; el guard real
+se ejecutó en la misma transacción que DDL y ledger. Dos intentos anteriores
+conservaron FAIL SQLSTATE `55000` y ROLLBACK por otras transacciones actuales;
+sus identidades no quedaron capturadas y no se atribuye una causa al éxito
+posterior. El diagnóstico PREguard añadido sólo registra metadatos y conserva
+la fuente canónica y la barrera independiente exactas.
+
+El corte final de las 20:16:22 UTC verifica 11 columnas/33 grants, RLS activa,
+cuatro RPC invoker con MD5 iguales a dev y EXECUTE sólo de authenticated,
+legacy compatible de cero filas, las 221 filas previas intactas y el mismo
+hash de los 303 registros anteriores. Ledger 307: dos canónicas y dos carriers
+nuevos, preservados sin normalizar. Seguridad sin grupos ni hallazgos nuevos
+tras excluir sólo `observed_at`; SECURITY DEFINER autenticadas baja 95→94 por
+retirar exactamente el legacy, sin declarar resueltos los otros avisos.
+Esto acredita activación de esquema y permisos. Al capturar el recibo de las
+20:16:22 UTC, el consumidor de PR #1364 todavía no estaba integrado ni desplegado.
+La entrega y CI sobre el HEAD final se siguen en la PR. Este recibo no acredita
+Auth/REST o presentación remota, ni el cierre de #1334.
+El FAIL global de #1301 y los límites nativos de #1356 permanecen separados.
 
 ## Motivo de abandono en el diario (#655)
 
@@ -783,6 +801,23 @@ propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
 el límite del fallback protegido, sin declarar una auditoría global PASS.
 La CI del HEAD de entrega sigue siendo un gate independiente.
 
+## Aborto atómico y reintento de la migración local (#977)
+
+[Informe](testing/2026-10-04-play-upgrade-errors-977.md): dos casos nuevos
+provocan errores asíncronos de update/delete después de cambios anteriores en
+la migración v1. Comprueban el rollback de registros, esquema y versión, el
+fallback existente y la recuperación de los guardados al reabrir sin reset.
+El motor completo pasa 144/144 casos; tipos, lint y diff PASS. Dos mutantes
+detectan la promesa rechazada retenida y el commit parcial por cancelar errores.
+
+`db.ts` conserva su comportamiento: el aborto completo protege la fuente v1.
+El diagnóstico de #977 se aclara con este contrato y su cobertura; no se añade
+`preventDefault`. La cuota se inyecta en el backend asíncrono de fake-indexeddb,
+sin acreditar disco lleno en un navegador. El harness no promete rehidratar un
+store ya activo; verifica la siguiente apertura de la API. Se conserva un FAIL
+de preparación con cero tests, separado de los dos mutantes causales. La CI del
+HEAD de entrega sigue siendo un gate independiente.
+
 ## Formularios visibles durante streaming (#1368)
 
 [Informe focal](testing/2026-10-04-ci-visible-form-controls-1368.md): login y
@@ -799,6 +834,33 @@ de sólo lectura para el manifiesto de acciones del checkout con junction.
 Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
 sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
 auditoría global de red limpia.
+
+## Fichas de acompañantes y asientos de MTG (#1006, #1008)
+
+[Informe nativo](testing/2026-10-04-play-seat-interactions-1006-1008.md): ocho
+recorridos de Chromium contra build Turbopack nueva y `next start`, a 390 y
+1280 px. Recursos acredita que tocar sólo abre el panel y que quitar a Ana
+conserva a Beto tras recargar. MTG cubre el quinto asiento, retirada intermedia
+y reutilización de un id libre, inicio con Eva, mínimo de dos y Duelo.
+
+Los oráculos combinan UI accesible y lectura de IndexedDB real, sin imports
+de producto, interceptaciones ni actores remotos. Ocho PASS, tipos/lint
+correctos y diez capturas inspeccionadas. La revisión de integración verifica
+67 artefactos sellados, ambos blobs fuente y ausencia de delta de producto
+entre la base de build y main; dos capturas se inspeccionan también desde Root.
+
+Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
+La tanda no acredita sincronización, otros navegadores ni salud global de red.
+La CI del HEAD integrado sigue siendo un gate de publicación independiente.
+
+## CI: confirmar el ZIP antes de cerrar Letterboxd (#1373)
+
+[Informe focal](testing/2026-10-04-letterboxd-confirmation-1373.md): la UI real
+persiste el job en `running` antes del cierre; después el cron real debe
+incorporarlo y dejarlo en `done`. Pasan los dos casos existentes y el control
+que retiene y libera la confirmación por señal. El control sin commit rechaza
+el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
+natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
 
 ## Diagnósticos de claims obsoletos (#1369)
 
