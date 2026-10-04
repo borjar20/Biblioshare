@@ -6302,3 +6302,70 @@ Recursos activa publishAfterPersist del core existente. El valor ordinario del t
 Si IDB falla, se puede seguir en memoria con aviso de que los últimos cambios se perderán al salir, recargar o cerrar. No se promete conservar eventos aceptados al cerrar antes del ACK. Aleatorio y Turnos siguen optimistas; no hay nube, esquema o formato nuevos. El editor se remonta al cambiar opened.name para cancelar el gesto anterior (#1007); los nombres siguen únicos y los presets siguen siendo atajos.
 
 La causa inicial de #1007 (ocultar Oro ocupado) no era un bug. El defecto real trasladaba la vista previa de Madera a Oro. RED y fallos de recarga #1328 se conservan. Base4a: 57 unitarios PASS, ocho casos de Recursos y un contexto visual independiente PASS en build w0f. Informes: docs/testing/2026-10-03-resource-editor-1007.md y docs/testing/2026-10-03-resources-durable-updates-1328.md. Nueva QA en base Experiencias y CI exigidas antes del merge.
+
+## 2026-10-03 — Celebraciones: reservar, presentar y confirmar por separado (#1334)
+
+Una fila pendiente se reserva con un token y lease de 30 segundos antes de
+devolverla. La reclamación no sella `displayed_at`: una entrega cancelada se
+recupera tras release o expiración. La cabeza compatible mantiene FIFO entre
+pestañas y no se salta si está reservada. ACK y release comprueban dueño y
+token; el ACK es idempotente, y un token sustituido no puede confirmar la nueva
+reserva. El earning, sus claves y los sellos históricos conservan su semántica.
+
+El consumidor global conserva una sola operación en vuelo y valida el DTO en
+runtime. Actor, generación, preferencia, visibilidad y deadline seguro cercan
+las respuestas. Solo un portal conectado y habilitado después de dos frames
+nativos produce un recibo de presentación y permite ACK. Un ACK pendiente se
+reintenta con el mismo token sin volver a mostrar en ese consumidor. Una
+presentación cuyo ACK no llegó puede repetirse en otro consumidor: no se
+promete exactamente una visualización. Los eventos locales siguen separados
+de reservas remotas y no reciben ACK remoto.
+
+AppShell entrega identidad y una observación nueva después de `connection()`,
+bajo Suspense y fuera de ChromeGate, incluido `/mascota`. Cambiar la observación
+vuelve a bindear la misma identidad sin cleanup previo; el desmontaje usa el
+último binding. Así A→B→A puede recuperarse aunque el servidor vuelva a entregar
+el mismo actor. Las acciones autentican cada operación; la clase real del SDK
+para sesión ausente se clasifica como `no_session`. No hay caché compartida de
+sesión, outbox ni token persistido en el navegador.
+
+La activación del esquema exige tres fases: expansión con RPC cerradas, cierre
+del drain antiguo con COMMIT y quiescencia antes de activar el no-op compatible
+y los grants nuevos. REVOKE o sustituir la función no retira un UPDATE ya
+admitido. El checker observa cohortes completas y terminales, prepared=0 y cero
+otras transacciones; el guard SQL vuelve a comprobarlo con estadísticas frescas.
+Cualquier backend `disabled` bloquea aunque su `xact_start` aparezca NULL.
+DDL/grants finales y ledger se aplican en una sola transacción. La pausa de
+despachos owner/superuser es una disciplina operativa explícita, no una barrera
+contra administradores activos. Procedimiento en
+`scripts/db/celebrations-cutover.md`; el replay vacío usa el mismo guard.
+
+Estado de verificación al registrar esta decisión: 75/75 unitarios del
+consumidor, 20/20 contratos Node, fixture real de `disabled` 20/20 y pipeline
+PostgreSQL cold-r2 completo PASS, ledger285 y grants 11/11/11. Los FAIL causales
+anteriores se conservan. La revisión independiente aprueba las tres correcciones;
+G4 nativo, activación dev/prod y CI de publicación siguen pendientes. Este
+defecto condicional no atribuye los POST cancelados originales de #1301.
+
+## 2026-10-04 — Celebraciones: separar aceptación funcional, cohorte incidental y entrega remota (#1334)
+
+El G4 local de HEAD `3c6edaa` usa una única build de producción y acredita el
+caso central: perder la respuesta después de reservar no sella la fila; se
+recupera tras vencer el lease, se presenta y se confirma. También distingue
+ACK comprometido con respuesta perdida, reintento idempotente y FIFO real.
+Se acepta esa evidencia funcional manteniendo la auditoría global **FAIL** de
+390 incidentales y sus 45 correlaciones en #1301. Un Action ID o HTTP 200 no
+acredita por sí solo inocuidad ni pérdida. Las fronteras de visibilidad nativa
+oculta, navegación con acción retenida y nuevo observationId siguen en #1356;
+la frontera híbrida no se renombra como nativa.
+
+Las tres fases ya aplicadas en dev se revalidan contra objetos reales el
+2026-10-04: cuatro funciones invoker, ejecución sólo authenticated y grants
+11/11/11, con las 26 filas históricas intactas. El probe directo PostgreSQL con
+identidad sintética y rollback no acredita Auth/REST remoto. Los registros
+canónicos se insertaron con su SQL en la misma transacción y se conservan los
+tres registros extra que añade el transporte MCP; su reconciliación operativa
+se sigue en #1355, sin borrar, normalizar ni inventar migraciones de relleno.
+Producción conserva el legacy y la publicación/CI siguen pendientes al
+registrar esta decisión. Los resultados y límites de los cortes anteriores
+permanecen como evidencia histórica.

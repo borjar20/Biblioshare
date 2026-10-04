@@ -1,14 +1,17 @@
 # Modelo de datos
 
-> **Delta 2026-10-03 (#1334, esquema verificado local; dev/prod pendientes):**
+> **Delta 2026-10-04 (#1334, local y dev verificados; producción pendiente):**
 > Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
 > reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
 > cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
 > target real. La fase final instala un no-op compatible para clientes antiguos.
 > `scripts/db/celebrations-cutover.mjs` comprueba actividad fresca, ACL efectivas y
 > cada transacción previa terminal; el SQL vuelve a comprobarlo y exige cero otras
-> transacciones actuales. No hay activación remota acreditada ni recuperación de
-> sellos históricos. Un control PostgreSQL causal con tracking desactivado
+> transacciones actuales. Las tres fases se aplicaron en dev el 2026-10-03 y los
+> objetos, ACL y grants por columna se revalidaron el 2026-10-04 a las 15:54 UTC:
+> cuatro RPC invoker, ejecución sólo authenticated y grants 11/11/11; 26 filas
+> históricas intactas. Producción conserva el legacy anterior en ese corte;
+> no hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
 > mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
 > Contrato, fases y límites en §7bis.
 
@@ -4031,13 +4034,15 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
-## 7bis. Celebraciones — `user_celebrations` (base dev/prod 2026-08-05; delta local #1334)
+## 7bis. Celebraciones — `user_celebrations` (base 2026-08-05; delta #1334 verificado en dev 2026-10-04)
 
 > (Antes numerada «7.9», chocando con «7.9 Motivo de la ventana recomendada» dentro de Sagas;
 > renumerada a 7bis el 2026-08-19 — es sección propia, no una subsección de §7 Sagas.)
 
-Memoria de las microanimaciones ganadas por usuario, para que un hito **no se repita** entre
-recargas ni entre dispositivos (localStorage no se comparte). **No es estado de progreso** —
+Memoria de las microanimaciones ganadas por usuario, con deduplicación del hito y
+entrega recuperable tras una respuesta perdida. Si una presentación no recibe ACK,
+otro consumidor puede repetirla; no se garantiza una única visualización.
+**No es estado de progreso** —
 el estado vivo sigue en `passes`; esta tabla es memoria de UI persistida.
 
 **La tabla** `user_celebrations`: `id`, `user_id` (FK `auth.users`, `on delete cascade`),
@@ -4054,7 +4059,7 @@ deduplicación**: ganar dos veces el mismo hito no crea segunda fila. Índice pa
 gana SUS celebraciones con su sesión, sin service-role. `grant select, insert, update` a
 `authenticated`.
 
-**Contrato anterior (base remota, hasta su cutover acreditado)**:
+**Contrato anterior (producción a las 15:54 UTC del 2026-10-04, hasta su cutover acreditado)**:
 `pull_pending_celebrations()` sella con `UPDATE … RETURNING` antes de que el cliente
 presente el overlay. Ese orden origina #1334: una navegación puede interrumpir la
 presentación después de que el SQL haya consumido la fila. No se modifica ningún
@@ -4117,6 +4122,22 @@ misma fase 3 protegida. La documentación operativa está en
 **Aplicada a prod el 2026-08-05** (misma pasada que dev): verificado contra objetos reales —
 `user_celebrations` con RLS activa y 3 políticas, 3 índices, y `pull_pending_celebrations`
 `security definer` con `search_path=public`, ejecutable por `authenticated` y **no** por `anon`.
+
+**Delta #1334 en dev, aplicado el 2026-10-03 y revalidado el 2026-10-04:**
+las tres versiones canónicas `20261003184419`, `20261003184423` y `20261003184427`
+coexisten con tres registros adicionales del transporte MCP, conservados sin
+reescribir historia. Objetos reales: 11 columnas, CHECK de pareja, RLS activa,
+las cuatro RPC `SECURITY INVOKER`/`VOLATILE`, `search_path=public, pg_temp` y
+EXECUTE únicamente de authenticated; anon, PUBLIC y service_role no lo tienen.
+Superficie 6: authenticated tiene SELECT/INSERT/UPDATE sobre las 11 columnas.
+Las 26 filas anteriores conservan su hash `da101aa7aee93ad33076e3c4bacbcd81`.
+El probe directo PostgreSQL del 2026-10-04 ejecuta una transacción con rol
+authenticated e identidad sintética sin filas: cola vacía, ACK/release stale,
+legacy vacío y rechazo 42501 al retirar la identidad; ROLLBACK y estado anterior
+comprobados. No acredita Auth/REST remoto; la cadena real Auth/RPC/PostgreSQL
+pertenece al G4 local. Los siete avisos SECURITY DEFINER autenticados adicionales
+de dev proceden del delta de reseñas de Experiencias de otra entrega, no de estas
+RPC. Los registros de transporte se siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
 
 **Pendiente (issues abiertas):** #459 marcar episodios desde la pestaña Episodios
 (`episode-actions.ts`) y publicar/votar en club aún no disparan `checkCelebrations()` en cliente

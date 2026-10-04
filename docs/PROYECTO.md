@@ -144,7 +144,7 @@ los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 - **Notificaciones**: in-app (`notifications`, campana) + push unificado Web
   (VAPID) y Android (FCM) con preferencias opt-out por canal×categoría;
   planificador `pg_cron`+`pg_net` (recordatorios de eventos).
-- **Celebraciones** (hitos ganar→drenar, `user_celebrations`) con animación.
+- **Celebraciones** (`user_celebrations`) con animación. El candidato #1334 separa ganar→reservar→mostrar→confirmar para recuperar entregas canceladas; esquema activo en dev y verificado el 2026-10-04, publicación y producción pendientes en ese corte.
 
 ## Clubes
 

@@ -586,3 +586,45 @@ repiten ni se suman a esta ejecución. No se arrancan servicios ni DB.
 final. Un PASS local o de otro SHA no acredita la CI de este lote. La evidencia
 de publicación se vincula a ese HEAD, sin convertir la cobertura local en
 verificación de navegador, media nativa, RLS o proveedores.
+
+## Celebraciones recuperables: gates de consumidor y esquema (#1334)
+
+El [procedimiento de cutover](../scripts/db/celebrations-cutover.md) exige cerrar
+admisión y observar quiescencia antes de activar el no-op legado y las RPC de
+reserva/ACK/release. El gate SQL y el ledger final comparten transacción; ni un
+timeout, ni un HTTP 200, ni una llamada vacía sustituyen esa evidencia.
+
+El candidato del 2026-10-03 pasa 75/75 unitarios de acciones, Provider, puente,
+overlay y registro. Las fronteras de transporte, identidad, tiempo y frames
+están controladas en esos tests. La revisión independiente aprobó las tres
+correcciones: sesión ausente real del SDK, A→B→A con observación nueva y rechazo
+de cualquier backend con tracking `disabled`.
+
+La verificación real de PostgreSQL distingue las tandas anteriores de la
+reconstrucción corregida cold-r2: ledger285, pipeline completo PASS, grants por
+columna 11/11/11, tipos generados compatibles y cero avisos nuevos de advisors.
+Los contratos Node pasan 20/20 y el fixture de tracking oculto pasa 20/20,
+conservando el falso READY y sellado posterior del control antiguo. Los cuatro
+contraejemplos previos de UPDATE ya admitido se conservan por separado.
+
+El [G4 local del 2026-10-03](testing/2026-10-03-recoverable-celebrations-1334.md)
+usa una única build de producción `gmpZaurRiZDtN1lTctOQI` de HEAD `3c6edaa` y
+backend cold-r2/ledger285. Acredita presentación y ACK, respuesta de claim perdida
+tras el commit y recuperación por lease, ACK ambiguo/idempotente, FIFO entre
+pestañas, preferencias, capacidades y legacy compatible. La visibilidad oculta
+sólo queda acreditada en una frontera híbrida; la navegación con acción retenida
+y la captura nativa del nuevo observationId no pasan su gate. Esos tres límites
+se siguen en [#1356](https://github.com/borjar20/Biblioshare/issues/1356).
+
+La auditoría global conserva **FAIL por 390 errores incidentales** y 45 recibos
+de correlación/efecto propios de esa build. No se atribuyen a una pérdida ni se
+retroatribuyen a las cohortes anteriores; [#1301](https://github.com/borjar20/Biblioshare/issues/1301#issuecomment-5981922480)
+conserva este corte. Los 34 actores sintéticos tienen Auth404 y residuos cero;
+Next/browser propios cerrados y Supabase detenido después con backup normal.
+
+Dev fue activado el 2026-10-03 y sus objetos/ACL/11 grants por operación se
+revalidaron el 2026-10-04, conservando las 26 filas históricas. Un probe directo
+PostgreSQL con rol/claims sintéticos y ROLLBACK no sustituye Auth/REST remoto.
+Producción y CI de publicación siguen pendientes en este corte. Los registros
+extra del transporte se conservan y siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
+El ACK ambiguo puede permitir repetición en otro consumidor.
