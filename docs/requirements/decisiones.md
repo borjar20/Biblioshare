@@ -6436,3 +6436,16 @@ para afirmar el fallback de un DTO nulo. Los abortos de red y FAIL de driver
 se conservan, y la CI del HEAD final es el gate de integración.
 Evidencia: [implementación](../testing/2026-10-04-experience-participants-1353.md)
 y [QA nativa](../testing/2026-10-04-experience-participants-native-1353.md).
+
+## 2026-10-04 — Diagnósticos ligados a la generación del consumidor (#1369)
+
+Un resultado o rechazo del claim sólo se registra como fallo vigente si el
+consumidor continúa activo con el mismo actor y generación. Cambiar de cuenta,
+cerrar o reiniciar invalida también su diagnóstico; un error de la generación
+actual conserva su notificación. Los casos A→B→A no reutilizan la validez de A.
+
+La decisión se verifica con diez casos y el control del código anterior.
+El recorrido nativo #754 pasa, pero no observa la generación en el catch ni
+demuestra por sí solo el origen del fallo CI previo. Evidencia y límites:
+[cobertura](../testing/2026-10-04-celebrations-stale-diagnostics-1369.md) y
+[navegador](../testing/2026-10-04-celebrations-stale-diagnostics-native-1369.md).
