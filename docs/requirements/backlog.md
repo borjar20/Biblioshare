@@ -460,6 +460,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] [#1349](https://github.com/borjar20/Biblioshare/issues/1349) — Cabecera móvil compacta, tema en Más y panel de notificaciones acotado al viewport.
   Evidencia y alcance local: [build/start y QA focal (2026-10-04)](../testing/2026-10-04-header-notifications.md).
 - [x] Acción «Nueva experiencia» compacta en móvil: 44 × 44 px, nombre accesible y etiqueta completa desde 640 px; ocho combinaciones de viewport/tema y apertura del formulario verificadas en Next dev (2026-10-03). Evidencia: `docs/testing/2026-10-03-experiencias-mobile-button.md`.
+- [x] [#1353](https://github.com/borjar20/Biblioshare/issues/1353) — Acompañantes de detalle, hub y perfil relativos a quien mira; contexto narrativo del feed explícito. 111 unitarios, revisión independiente y 27 checks de build/start local PASS el 2026-10-04; CI del HEAD final exigida para entrega. Evidencia: [QA nativa](../testing/2026-10-04-experience-participants-native-1353.md).
 - [x] Ocho migraciones aplicadas en producción el 2026-10-03; objetos, definiciones y permisos reales verificados a las 10:04 UTC (#1293).
   Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
