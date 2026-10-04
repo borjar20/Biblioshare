@@ -8,8 +8,9 @@ const createMarginNote = vi.fn().mockResolvedValue({ ok: true, id: "n1" });
 vi.mock("@/lib/margin/actions", () => ({
   createMarginNote: (...a: unknown[]) => createMarginNote(...a),
 }));
+const searchMyFollowers = vi.fn().mockResolvedValue([]);
 vi.mock("@/lib/margin/follower-search", () => ({
-  searchMyFollowers: vi.fn().mockResolvedValue([]),
+  searchMyFollowers: (...a: unknown[]) => searchMyFollowers(...a),
 }));
 
 import { MarginNoteComposer } from "./margin-note-composer";
@@ -78,5 +79,24 @@ describe("MarginNoteComposer", () => {
     fireEvent.click(screen.getByLabelText("Una persona"));
     const btn = screen.getByRole("button", { name: "Dejar la nota" }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
+  });
+
+  it("tras guardar muestra la confirmación y luego avisa con onDone", async () => {
+    const onDone = vi.fn();
+    setup({ itemType: "movie", defaultPage: undefined, pages: undefined, onDone });
+    type("Tu nota", "qué final");
+    save();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Nota dejada en el margen"));
+    expect(onDone).not.toHaveBeenCalled();
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1), { timeout: 2000 });
+  });
+
+  it("si la búsqueda de seguidores falla, no lanza y no hay resultados", async () => {
+    searchMyFollowers.mockRejectedValueOnce(new Error("red"));
+    setup({ itemType: "movie", defaultPage: undefined, pages: undefined });
+    fireEvent.click(screen.getByLabelText("Una persona"));
+    fireEvent.change(screen.getByLabelText("Busca entre quienes te siguen"), { target: { value: "ana" } });
+    await waitFor(() => expect(searchMyFollowers).toHaveBeenCalledWith("ana"), { timeout: 1000 });
+    expect(screen.queryByRole("button", { name: /@/ })).toBeNull();
   });
 });

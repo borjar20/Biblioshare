@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ComponentProps } from "react";
+import { useCallback, useEffect, useRef, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
 import { MarginNoteComposer } from "./margin-note-composer";
 
@@ -18,6 +18,9 @@ export function MarginNoteSheet({
 }: ComposerProps & { open: boolean; onClose: () => void }) {
   const t = useTranslations("margin");
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // Identidad estable: el compositor la usa como dependencia de su temporizador.
+  const closeSheet = useCallback(() => dialogRef.current?.close(), []);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -50,7 +53,7 @@ export function MarginNoteSheet({
         </button>
       </div>
       <div className="max-h-[75dvh] overflow-y-auto px-5 py-4">
-        {open && <MarginNoteComposer {...composer} onDone={() => dialogRef.current?.close()} />}
+        {open && <MarginNoteComposer {...composer} onDone={closeSheet} />}
       </div>
     </dialog>
   );

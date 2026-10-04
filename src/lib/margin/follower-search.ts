@@ -2,13 +2,17 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { MarginPerson } from "./types";
-// El saneado vive aparte: una función exportada desde un fichero "use server"
-// es una server action invocable desde fuera, y esta no debe serlo.
-import { sanitizeFollowerQuery } from "./follower-query";
+// El filtrado vive aparte: una función exportada desde un fichero "use server"
+// es una server action invocable desde fuera, y estas no deben serlo.
+import { FOLLOWER_SEARCH_MIN, normalizeSearch, rankFollowers, type FollowerCandidate } from "./follower-query";
 
+const CHUNK = 100;
+
+// Sin filtro `.or(ilike…)`: el término nunca llega a PostgREST (sin escapado ni
+// límite de URL). Se leen los seguidores aceptados, se traen sus perfiles por
+// lotes de 100 y se filtra en TS.
 export async function searchMyFollowers(q: string): Promise<MarginPerson[]> {
-  const term = sanitizeFollowerQuery(q);
-  if (term.length < 2) return [];
+  if (normalizeSearch(q).length < FOLLOWER_SEARCH_MIN) return [];
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,13 +26,15 @@ export async function searchMyFollowers(q: string): Promise<MarginPerson[]> {
     .limit(1000);
   const ids = (follows ?? []).map((f) => f.follower_id);
   if (ids.length === 0) return [];
-  const { data } = await supabase
-    .from("profiles")
-    .select("user_id, username, display_name, avatar_url")
-    .in("user_id", ids)
-    .or(`username.ilike.%${term}%,display_name.ilike.%${term}%`)
-    .limit(8);
-  return (data ?? []).map((p) => ({
+  const candidates: FollowerCandidate[] = [];
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("user_id, username, display_name, avatar_url")
+      .in("user_id", ids.slice(i, i + CHUNK));
+    candidates.push(...(data ?? []));
+  }
+  return rankFollowers(candidates, q).map((p) => ({
     id: p.user_id,
     username: p.username,
     displayName: p.display_name,

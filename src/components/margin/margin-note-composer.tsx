@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { Button } from "@/components/ui/button";
@@ -46,13 +46,41 @@ export function MarginNoteComposer({ itemType, itemId, defaultPage, pages, defau
   const hint =
     itemType === "book" && pageNumber && pages ? unlockPageHint(pageNumber / pages, pages) : null;
 
-  async function onSearch(value: string) {
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (debounce.current) clearTimeout(debounce.current);
+    },
+    [],
+  );
+
+  // Con debounce de 250 ms; un fallo de la búsqueda deja la lista vacía, no rompe.
+  function onSearch(value: string) {
     setRecipient(null);
     setQuery(value);
     const seq = ++searchSeq.current;
-    const found = value.trim().length >= 2 ? await searchMyFollowers(value) : [];
-    if (seq === searchSeq.current) setResults(found);
+    if (debounce.current) clearTimeout(debounce.current);
+    if (value.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    debounce.current = setTimeout(async () => {
+      let found: MarginPerson[] = [];
+      try {
+        found = await searchMyFollowers(value);
+      } catch {
+        found = [];
+      }
+      if (seq === searchSeq.current) setResults(found);
+    }, 250);
   }
+
+  // Tras guardar, la confirmación se ve un instante y entonces se cierra la hoja.
+  useEffect(() => {
+    if (!saved || !onDone) return;
+    const id = setTimeout(onDone, 900);
+    return () => clearTimeout(id);
+  }, [saved, onDone]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,7 +101,6 @@ export function MarginNoteComposer({ itemType, itemId, defaultPage, pages, defau
       });
       if (!result.ok) return setError(result.error);
       setSaved(true);
-      onDone?.();
     });
   }
 
@@ -147,7 +174,7 @@ export function MarginNoteComposer({ itemType, itemId, defaultPage, pages, defau
               aria-label={t("searchFollower")}
               placeholder={t("searchFollower")}
               value={recipient ? recipient.username : query}
-              onChange={(e) => void onSearch(e.target.value)}
+              onChange={(e) => onSearch(e.target.value)}
               className="min-h-11"
             />
             {!recipient && results.length > 0 && (
@@ -185,7 +212,7 @@ export function MarginNoteComposer({ itemType, itemId, defaultPage, pages, defau
           {t(`errors.${error}`)}
         </p>
       )}
-      {saved && !onDone && (
+      {saved && (
         <p role="status" className="text-sm text-muted-foreground">
           {t("saved")}
         </p>
