@@ -1,0 +1,82 @@
+{
+  "query": "palabras radiantes",
+  "records": [
+    {
+      "file": "work-OL16813053W.json",
+      "url": "https://openlibrary.org/works/OL16813053W.json",
+      "requestedAt": "2026-10-03T21:25:59.939Z",
+      "capturedAt": "2026-10-03T21:26:00.672Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/works/OL16813053W.json",
+      "contentType": "application/json",
+      "bytes": 4018,
+      "sha256": "bb3dd9035293a94948379c38250b58663800aee2fe8fa865598c6fc6e2d1be78"
+    },
+    {
+      "file": "work-OL38056408W.json",
+      "url": "https://openlibrary.org/works/OL38056408W.json",
+      "requestedAt": "2026-10-03T21:25:59.982Z",
+      "capturedAt": "2026-10-03T21:26:00.598Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/works/OL38056408W.json",
+      "contentType": "application/json",
+      "bytes": 407,
+      "sha256": "87db3937cdf0091307aac4698717cd63ee7fad67fdd10576ee70524b788e7321"
+    },
+    {
+      "file": "openlibrary-search-es.json",
+      "url": "https://openlibrary.org/search.json?q=palabras+radiantes&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=es",
+      "requestedAt": "2026-10-03T21:25:59.983Z",
+      "capturedAt": "2026-10-03T21:26:00.682Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/search.json?q=palabras+radiantes&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=es",
+      "contentType": "application/json",
+      "bytes": 837,
+      "sha256": "d9b2aa178a83e943e7946585d4e8ad970dd62847ab8713c88b4af1fbb066c95f"
+    },
+    {
+      "file": "openlibrary-search-en.json",
+      "url": "https://openlibrary.org/search.json?q=palabras+radiantes&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=en",
+      "requestedAt": "2026-10-03T21:25:59.984Z",
+      "capturedAt": "2026-10-03T21:26:00.731Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/search.json?q=palabras+radiantes&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=en",
+      "contentType": "application/json",
+      "bytes": 837,
+      "sha256": "d9b2aa178a83e943e7946585d4e8ad970dd62847ab8713c88b4af1fbb066c95f"
+    },
+    {
+      "file": "inventaire-search.json",
+      "url": "https://inventaire.io/api/search?types=works&search=palabras%20radiantes&limit=20&lang=es",
+      "requestedAt": "2026-10-03T21:25:59.984Z",
+      "capturedAt": "2026-10-03T21:26:01.298Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/search?types=works&search=palabras%20radiantes&limit=20&lang=es",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 4524,
+      "sha256": "676dc257467ea105f3bbbc964770b7f360e20d0baf487b29e76cdca844ef2c90"
+    },
+    {
+      "file": "inventaire-works.json",
+      "url": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ8034469%7Cwd%3AQ1215306%7Cwd%3AQ19216131%7Cwd%3AQ230356%7Cwd%3AQ126087317%7Cwd%3AQ125441929%7Cwd%3AQ125907418%7Cwd%3AQ126151088%7Cwd%3AQ104030832%7Cwd%3AQ125631185%7Cwd%3AQ125870481%7Cwd%3AQ8561242%7Cwd%3AQ125575429%7Cwd%3AQ125873362%7Cwd%3AQ1519440%7Cwd%3AQ126456098%7Cwd%3AQ125384079%7Cwd%3AQ86191488%7Cwd%3AQ125087787%7Cwd%3AQ126107327",
+      "requestedAt": "2026-10-03T21:26:01.299Z",
+      "capturedAt": "2026-10-03T21:26:03.097Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ8034469%7Cwd%3AQ1215306%7Cwd%3AQ19216131%7Cwd%3AQ230356%7Cwd%3AQ126087317%7Cwd%3AQ125441929%7Cwd%3AQ125907418%7Cwd%3AQ126151088%7Cwd%3AQ104030832%7Cwd%3AQ125631185%7Cwd%3AQ125870481%7Cwd%3AQ8561242%7Cwd%3AQ125575429%7Cwd%3AQ125873362%7Cwd%3AQ1519440%7Cwd%3AQ126456098%7Cwd%3AQ125384079%7Cwd%3AQ86191488%7Cwd%3AQ125087787%7Cwd%3AQ126107327",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 23533,
+      "sha256": "6f512b9338e414e04b252c861f063777ff404cce63b3151016c501b72e4ae7f8"
+    },
+    {
+      "file": "inventaire-authors.json",
+      "url": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ457608%7Cwd%3AQ44272%7Cwd%3AQ5752%7Cwd%3AQ272615%7Cwd%3AQ1531656%7Cwd%3AQ1708911%7Cwd%3AQ5676026%7Cwd%3AQ3328083%7Cwd%3AQ93430283%7Cwd%3AQ3754087%7Cwd%3AQ195236%7Cwd%3AQ311001%7Cwd%3AQ2997430%7Cwd%3AQ2975508%7Cwd%3AQ101054%7Cwd%3AQ3754140%7Cwd%3AQ232273%7Cwd%3AQ8210199%7Cwd%3AQ3068803%7Cwd%3AQ3118678",
+      "requestedAt": "2026-10-03T21:26:03.099Z",
+      "capturedAt": "2026-10-03T21:26:04.458Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ457608%7Cwd%3AQ44272%7Cwd%3AQ5752%7Cwd%3AQ272615%7Cwd%3AQ1531656%7Cwd%3AQ1708911%7Cwd%3AQ5676026%7Cwd%3AQ3328083%7Cwd%3AQ93430283%7Cwd%3AQ3754087%7Cwd%3AQ195236%7Cwd%3AQ311001%7Cwd%3AQ2997430%7Cwd%3AQ2975508%7Cwd%3AQ101054%7Cwd%3AQ3754140%7Cwd%3AQ232273%7Cwd%3AQ8210199%7Cwd%3AQ3068803%7Cwd%3AQ3118678",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 129769,
+      "sha256": "8c9c2c8586bd03931cd940a7740f92a3dc1718f22a026d312304e6cb96845b22"
+    }
+  ]
+}
