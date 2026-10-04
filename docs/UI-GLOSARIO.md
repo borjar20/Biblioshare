@@ -69,6 +69,21 @@ enlazan al momento. En la pestaña «Experiencias» del perfil, cada tarjeta mue
 un extracto de la mejor reseña propia compartida en el perfil; si solo tiene nota,
 «Solo puso nota».
 
+Delta 2026-10-04, reseñas en el detalle de la experiencia: una **Reseña de momento**
+es la nota 1–10 (en dots, nunca estrellas) y/o el texto que cada persona deja sobre
+un momento al que fue («Fui») en una experiencia **Vivida**; la experiencia no tiene
+nota propia, solo la media de sus reseñas. Sin presencia confirmada no se ofrece
+«Reseñar» desactivado: se explica «Confirma que fuiste a {momento} para poder
+reseñarlo». **Compartir fuera del grupo** es el consentimiento de cada reseña para que
+la vean quienes ven la experiencia en el perfil de su autor; sin él, solo la leen los
+acompañantes aceptados. **Publicar en tu actividad** es la acción explícita y
+adicional que la lleva al feed, y solo se habilita con la reseña compartida y la
+experiencia visible en el perfil. Las reseñas ajenas se pueden «Denunciar reseña»;
+si ya la denunciaste: «Ya denunciaste esta reseña.». **Mi momento** sustituye a «Mi
+momento favorito» como etiqueta del favorito (icono de cinta, no estrella).
+**Lo vivimos** es la acción rápida del creador que pasa un plan a **Vivida** y lleva
+a confirmar la presencia y reseñar.
+
 Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
 **Experiencias**, **Comunidad** y **Buscar** son las entradas principales.
 **Comunidad** reúne **Clubes** y **Personas**: aquí «Personas» son cuentas de
