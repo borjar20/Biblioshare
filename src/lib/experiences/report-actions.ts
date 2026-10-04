@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 import type {ExperienceResult} from "./types";
 import {isReportReason} from "@/lib/social/moderation";
 import {isExperienceId} from "./validation";

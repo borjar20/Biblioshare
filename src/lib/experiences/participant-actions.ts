@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 import {createClient} from "@/lib/supabase/server";
 import {usersAreBlocked} from "@/lib/social/block-state";
 import {notify} from "@/lib/social/notifications";

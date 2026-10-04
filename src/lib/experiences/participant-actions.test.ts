@@ -1,4 +1,4 @@
-﻿import {beforeEach,expect,it,vi} from "vitest";
+import {beforeEach,expect,it,vi} from "vitest";
 const mocks=vi.hoisted(()=>({rpc:vi.fn(),getUser:vi.fn(),revalidate:vi.fn(),notify:vi.fn()}));
 vi.mock("server-only",()=>({}));
 vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser:mocks.getUser},rpc:mocks.rpc})}));

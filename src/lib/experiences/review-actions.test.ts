@@ -1,4 +1,4 @@
-﻿import {beforeEach,expect,it,vi} from "vitest";
+import {beforeEach,expect,it,vi} from "vitest";
 const m=vi.hoisted(()=>({rpc:vi.fn(),getUser:vi.fn(),revalidate:vi.fn(),notify:vi.fn()}));
 vi.mock("server-only",()=>({}));
 vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser:m.getUser},rpc:m.rpc})}));
@@ -23,7 +23,21 @@ it("notifies the group once, only on creation, without the review text",async()=
   m.rpc.mockResolvedValue({data:{id:review,experienceId:root,created:true,notifyUserIds:[friend]},error:null});
   await saveMomentReview(moment,{rating:8,body:"secreto"});
   expect(m.notify).toHaveBeenCalledTimes(1);
-  expect(m.notify).toHaveBeenCalledWith(expect.anything(),{userId:friend,actorId:me,type:"experience_reviewed",targetType:"experience",targetId:root,dedupeKey:`experience_reviewed:${review}`,context:undefined});
+  expect(m.notify).toHaveBeenCalledWith(expect.anything(),{userId:friend,actorId:me,type:"experience_reviewed",targetType:"experience",targetId:root,dedupeKey:`experience_reviewed:${review}:${friend}`,context:undefined});
+});
+it("sends one notice per recipient with distinct dedupe keys",async()=>{
+  const other="de9eb8c7-08f5-464d-8c5b-76f5b58bfce9";
+  m.rpc.mockResolvedValue({data:{id:review,experienceId:root,created:true,notifyUserIds:[friend,other]},error:null});
+  await saveMomentReview(moment,{rating:8,body:null});
+  expect(m.notify).toHaveBeenCalledTimes(2);
+  const calls=m.notify.mock.calls.map(c=>c[1] as {userId:string;dedupeKey:string});
+  expect(calls.map(c=>c.userId)).toEqual([friend,other]);
+  expect(new Set(calls.map(c=>c.dedupeKey)).size).toBe(2);
+});
+it("does not notify when the review was not created, even with recipients",async()=>{
+  m.rpc.mockResolvedValue({data:{id:review,experienceId:root,created:false,notifyUserIds:[friend]},error:null});
+  await saveMomentReview(moment,{rating:8,body:null});
+  expect(m.notify).not.toHaveBeenCalled();
 });
 it("maps SQL errors and does not notify on failure",async()=>{
   m.rpc.mockResolvedValue({data:null,error:{code:"42501"}});
@@ -42,3 +56,4 @@ it("sharing, deletion and publication go through author-only RPCs",async()=>{
   expect(await unpublishReview(review)).toEqual({ok:true,data:null});
   expect(m.rpc).toHaveBeenLastCalledWith("experience_unpublish_review",{p_review_id:review});
 });
+

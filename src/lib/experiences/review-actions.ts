@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 import {notify} from "@/lib/social/notifications";
 import type {ExperienceResult,SaveReviewInput} from "./types";
 import {experienceMutation} from "./mutation";
@@ -12,8 +12,8 @@ export async function saveMomentReview(momentId:string,input:SaveReviewInput):Pr
     const data=saved.data as Saved|null;
     if(!saved.error&&data?.created&&data.id) {
       const {data:{user}}=await client.auth.getUser();
-      // The review text never travels: the notice only names the memory.
-      for(const userId of data.notifyUserIds) await notify(client,{userId,actorId:user!.id,type:"experience_reviewed",targetType:"experience",targetId:data.experienceId,dedupeKey:`experience_reviewed:${data.id}`,context:undefined});
+      // Dedupe is per (review, recipient): the index on dedupe_key is global. The review text never travels: the notice only names the memory.
+      for(const userId of data.notifyUserIds) await notify(client,{userId,actorId:user!.id,type:"experience_reviewed",targetType:"experience",targetId:data.experienceId,dedupeKey:`experience_reviewed:${data.id}:${userId}`,context:undefined});
     }
     return saved;
   });

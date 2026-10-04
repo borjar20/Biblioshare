@@ -1,4 +1,4 @@
-﻿import {beforeEach,it,expect,vi} from "vitest";
+import {beforeEach,it,expect,vi} from "vitest";
 const h=vi.hoisted(()=>({auth:vi.fn(),rpc:vi.fn(),invalidate:vi.fn()}));
 vi.mock("server-only",()=>({}));vi.mock("@/lib/supabase/server",()=>({createClient:async()=>({auth:{getUser:h.auth},rpc:h.rpc})}));vi.mock("@/lib/reactivity/revalidate",()=>({revalidateExperiences:h.invalidate}));
 import {reportExperience,reportReview} from "./report-actions";
