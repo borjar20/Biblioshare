@@ -745,3 +745,21 @@ de sólo lectura para el manifiesto de acciones del checkout con junction.
 Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
 sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
 auditoría global de red limpia.
+
+## Purga de copias sincronizadas al salir de Partidas (#975)
+
+[Informe focal](testing/2026-10-04-play-logout-saved-purge-975.md): 500/500
+pruebas Play/logout en 41 archivos, 24 controles causales y nueve mutantes
+detectados. Dos conexiones a la misma factoría fake-indexeddb prueban la
+barrera transaccional sin depender del canal, ABA, pulls/ACK tardíos y candados
+por generación. El botón real espera la purga antes de revocar Auth/navegar.
+
+Conserva pending, tombstones y otras identidades/anónimos/activa; borra sólo
+copias synced sin intención de borrado. Nueva sesión puede guardar desde una
+herramienta directa. El rollback de #977 sigue acreditado y v4→v5 es aditivo.
+Tipos y lint PASS; FAIL de preparación/producto conservados. Auth, backend y
+canal son fronteras controladas: navegador, sesiones/RLS reales, cuota física
+y CI del candidato son gates independientes todavía pendientes.
+
+La retención de datos y metadatos se documenta explícitamente; no es limpieza
+total del dispositivo. Ver §8.3 de data-model y [#1375](https://github.com/borjar20/Biblioshare/issues/1375).

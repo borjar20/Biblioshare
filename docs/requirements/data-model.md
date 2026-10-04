@@ -4108,6 +4108,38 @@ prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados cont
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
 
+### 8.3. Espejo local y cierre de sesión (#975)
+
+**[Canónico · contrato contrastado con código y 500 unitarios Play/logout el
+2026-10-04; navegador y CI del candidato pendientes]**
+
+`biblioshare-play` es una base IndexedDB del dispositivo, independiente de las
+tablas anteriores. La versión 5 añade `saved_sessions` (keyPath `identity`) a
+`active`, `saved`, `players` y `companion`. El cambio v4→v5 es aditivo; no mueve
+ni elimina sus registros. La migración histórica v1→v2 de guardadas conserva
+su rollback completo frente a errores de petición y su reintento sin reset.
+
+`saved` contiene `gameId`, `identity`, `v=2`, log `committed`, `savedAt`,
+`summary`, `syncStatus` (`pending|synced`) y `deletedAt`. Un tombstone, aunque
+tenga `syncStatus=synced`, conserva una intención de borrado pendiente de ACK.
+Cerrar sesión elimina únicamente `synced && deletedAt === null` de la identidad
+validada en Auth y confirma esa purga junto al cierre de su generación.
+
+`saved_sessions` guarda identidad, generación monótona, `sessionId`, `closed`
+e ids `retired`. Son metadatos de cancelación; no guardan tokens, contraseñas
+ni cookies ni conceden acceso remoto. El uid se valida mediante `getUser` con
+el token capturado en RAM; `session_id` distingue un login nuevo de un refresh.
+Una sesión retirada no reabre la generación. Cada escritura/borrado de sync
+comprueba su contexto en la misma transacción que toca `saved`, incluso entre
+documentos sin recibir BroadcastChannel.
+
+Se conservan pendientes, tombstones, otras identidades, anónimas y activa.
+`players`/`companion` quedan fuera de la purga. Sin Auth verificable o IDB
+confirmado, el logout sigue siendo posible y no se acredita limpieza. La purga
+total confirmada y la retención de metadatos se siguen en [#1375](https://github.com/borjar20/Biblioshare/issues/1375);
+no se atribuye mezcla de cuentas en la lista ni cambios de RLS/grants remotos.
+Evidencia: [contrato y límites](../testing/2026-10-04-play-logout-saved-purge-975.md).
+
 ## 8bis. Mascota
 
 > (Sección insertada el 2026-09-02 entre «8. Play» y «9. Seguridad», sin renumerar el resto.)
