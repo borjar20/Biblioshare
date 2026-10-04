@@ -338,5 +338,34 @@ do $$ declare who text; n int; begin
   if (select notified_at from public.margin_note_encounters where id=(select enc2 from margin_leak)) is not null then
     raise exception 'FAIL E4: blocked dedicated encounter was marked notified'; end if;
 end $$;
+-- F: denunciar la nota. Solo el lector (con acceso al hilo y no dueño) puede; el autor
+-- no se denuncia a sí mismo y un tercero no ve el hilo. Estado limpio: relación viva.
+delete from public.user_blocks;
+insert into public.follows(follower_id,followee_id,status)
+  values ((select id from margin_fixture where k='follower'),(select id from margin_fixture where k='author'),'accepted')
+  on conflict do nothing;
+do $$ declare who text; enc uuid := (select enc from margin_leak); begin
+  -- F1: el lector denuncia: reported_user = autor y el snapshot lleva el cuerpo.
+  perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='follower'),true);
+  set local role authenticated;
+  insert into public.content_reports(reporter_id,target_type,target_id,reason)
+    values ((select id from margin_fixture where k='follower'),'margin_encounter',enc,'spam');
+  reset role;
+  if not exists(select 1 from public.content_reports r where r.target_type='margin_encounter' and r.target_id=enc
+      and r.reported_user_id=(select id from margin_fixture where k='author')
+      and r.snapshot->>'body'='[TEST] aquí lloré' and r.snapshot->>'encounter_id'=enc::text) then
+    raise exception 'FAIL F1: reader report missing reported_user/snapshot'; end if;
+  -- F2 (autor) y F3 (tercero): RLS lo rechaza.
+  foreach who in array array['author','stranger'] loop
+    perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
+    set local role authenticated;
+    begin
+      insert into public.content_reports(reporter_id,target_type,target_id,reason)
+        values ((select id from margin_fixture where k=who),'margin_encounter',enc,'spam');
+      reset role;
+      raise exception 'FAIL F2/F3: % reported the encounter',who;
+    exception when insufficient_privilege then reset role; end;
+  end loop;
+end $$;
 -- La tarea 5 añade aquí sus bloques, ANTES del rollback.
 rollback;
