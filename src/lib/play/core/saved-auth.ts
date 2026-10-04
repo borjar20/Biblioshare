@@ -62,3 +62,24 @@ export async function savedSessionForWrite(identity: string): Promise<SavedSessi
     return null;
   }
 }
+
+// Borrar/adoptar son acciones explícitas sobre el historial. Si la generación
+// ya fue validada y Auth sigue en ella, funcionan también sin un pull; al
+// reentrar esperan la validación nueva, sin confiar sólo en el uid del render.
+export async function savedSessionForMutation(identity: string): Promise<SavedSession | null> {
+  if (identity === "anon") return readSavedSession(identity);
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const client = createClient();
+    const current = await readSavedSession(identity);
+    if (current?.sessionId && await isSavedAuthCurrent(client, { identity, sessionId: current.sessionId })) return current;
+    const context = await verifiedSavedAuth(client);
+    if (context?.identity !== identity) return null;
+    const session = await startSavedSession(identity, context.sessionId);
+    // Auth puede cambiar mientras se confirma IDB. El uid ya fue validado;
+    // releer su session_id cancela ese relevo sin repetir getUser ni impedir refresh.
+    return session && await isSavedAuthCurrent(client, context) ? session : null;
+  } catch {
+    return null;
+  }
+}

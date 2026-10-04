@@ -337,6 +337,36 @@ export async function isSavedSessionCurrent(session: SavedSession): Promise<bool
   return current !== null && current.generation === session.generation && current.sessionId === session.sessionId;
 }
 
+// La lectura de isSavedSessionCurrent puede entregar un snapshot anterior al
+// cierre desde otra pestaña. Liberar active comprueba generación y revisión
+// en la MISMA transacción que borra: nunca encola un deleteActive sin barrera.
+export async function releaseSavedActive(record: ActiveGameRecord, session: SavedSession): Promise<boolean> {
+  if (record.identity !== session.identity || !record.committed[0]?.id) return false;
+  try {
+    const db = await openDb();
+    return await new Promise<boolean>((resolve) => {
+      const tx = db.transaction(["active", "saved_sessions"], "readwrite");
+      const active = tx.objectStore("active");
+      const getSession = tx.objectStore("saved_sessions").get(session.identity);
+      let released = false;
+      getSession.onsuccess = () => {
+        if (!currentSavedSession(getSession.result as SavedSessionRecord | undefined, session)) return;
+        const get = active.get(record.identity);
+        get.onsuccess = () => {
+          const current = get.result as ActiveGameRecord | undefined;
+          if (current && (current.rev !== record.rev || current.committed[0]?.id !== record.committed[0].id)) return;
+          active.delete(record.identity);
+          released = true;
+        };
+      };
+      tx.oncomplete = () => resolve(released);
+      tx.onerror = tx.onabort = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
 // Quien llama valida el uid contra Auth ANTES de registrar este contexto. Un
 // refresh conserva session_id; un login nuevo puede reabrir con otro id. Los
 // ids retirados impiden que una pestaña antigua reabra una sesión después de ABA.
@@ -441,6 +471,52 @@ export async function saveFinished(record: SavedGameRecord, session?: SavedSessi
   } catch {
     return false;
   }
+}
+
+// Las acciones del historial releen la fila y su dueño dentro de la barrera.
+// Así un cambio de syncStatus mientras se valida Auth no convierte una fila
+// ya subida en un borrado local sin tombstone, ni adopta una fila ajena.
+async function mutateSaved(
+  gameId: string,
+  session: SavedSession,
+  sourceIdentity: string,
+  change: (record: SavedGameRecord) => SavedGameRecord | null,
+): Promise<boolean> {
+  try {
+    const db = await openDb();
+    return await new Promise<boolean>((resolve) => {
+      const tx = db.transaction(["saved", "saved_sessions"], "readwrite");
+      const saved = tx.objectStore("saved");
+      const getSession = tx.objectStore("saved_sessions").get(session.identity);
+      let accepted = false;
+      getSession.onsuccess = () => {
+        if (!currentSavedSession(getSession.result as SavedSessionRecord | undefined, session)) return;
+        const get = saved.get(gameId);
+        get.onsuccess = () => {
+          const record = get.result as SavedGameRecord | undefined;
+          if (!record || record.identity !== sourceIdentity || record.deletedAt !== null) return;
+          const next = change(record);
+          if (next) saved.put(next);
+          else saved.delete(gameId);
+          accepted = true;
+        };
+      };
+      tx.oncomplete = () => resolve(accepted);
+      tx.onerror = tx.onabort = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
+export function deleteSavedFromHistory(gameId: string, session: SavedSession): Promise<boolean> {
+  return mutateSaved(gameId, session, session.identity, (record) =>
+    record.syncStatus === "pending" ? null : { ...record, deletedAt: Date.now() });
+}
+
+export function adoptAnonymousSaved(gameId: string, session: SavedSession): Promise<boolean> {
+  if (session.identity === "anon" || !session.sessionId) return Promise.resolve(false);
+  return mutateSaved(gameId, session, "anon", (record) => ({ ...record, identity: session.identity, syncStatus: "pending" }));
 }
 
 // Para la guarda de rancidez del ejecutor de sync (I2): releer el registro
