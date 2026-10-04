@@ -219,8 +219,8 @@ export class CelebrationConsumer {
       else if (current && result.kind === "busy") {
         this.requested = true;
         this.notBefore = this.boundary.now() + result.retryAfterMs + 100;
-      } else if (result.kind === "unavailable") this.diagnostic("claim");
-    } catch { this.diagnostic("claim"); }
+      } else if (current && result.kind === "unavailable") this.diagnostic("claim");
+    } catch { if (this.active && this.generation === generation && this.actor === actor) this.diagnostic("claim"); }
     finally {
       if (this.inFlight === operation) this.inFlight = null;
       if (this.requested) this.schedule();
