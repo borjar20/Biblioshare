@@ -1,4 +1,4 @@
-import { EXPERIENCE_LIMITS, MOMENT_KINDS, type CreateExperienceInput, type SaveMomentInput, type UpdateExperienceInput } from "./types";
+import { EXPERIENCE_LIMITS, MOMENT_KINDS, type CreateExperienceInput, type SaveMomentInput, type SaveReviewInput, type UpdateExperienceInput } from "./types";
 
 type RecordInput = Record<string, unknown>;
 function record(input: unknown): RecordInput | null {
@@ -52,4 +52,14 @@ export function validateMoment(input: unknown): SaveMomentInput | null {
 }
 export function validateGuestName(input: unknown): string | null {
   return text(input, EXPERIENCE_LIMITS.guest, true) ?? null;
+}
+
+export function validateReview(input: unknown): SaveReviewInput | null {
+  const value = record(input);
+  if (!value || !allowed(value, ["rating", "body"])) return null;
+  const rating = value.rating === null || value.rating === undefined ? null : value.rating;
+  if (rating !== null && (typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 10)) return null;
+  const body = text(value.body, EXPERIENCE_LIMITS.reviewBody);
+  if (body === undefined) return null;
+  return { rating: rating as number | null, body };
 }

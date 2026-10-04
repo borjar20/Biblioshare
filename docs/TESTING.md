@@ -800,6 +800,23 @@ propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
 el límite del fallback protegido, sin declarar una auditoría global PASS.
 La CI del HEAD de entrega sigue siendo un gate independiente.
 
+## Aborto atómico y reintento de la migración local (#977)
+
+[Informe](testing/2026-10-04-play-upgrade-errors-977.md): dos casos nuevos
+provocan errores asíncronos de update/delete después de cambios anteriores en
+la migración v1. Comprueban el rollback de registros, esquema y versión, el
+fallback existente y la recuperación de los guardados al reabrir sin reset.
+El motor completo pasa 144/144 casos; tipos, lint y diff PASS. Dos mutantes
+detectan la promesa rechazada retenida y el commit parcial por cancelar errores.
+
+`db.ts` conserva su comportamiento: el aborto completo protege la fuente v1.
+El diagnóstico de #977 se aclara con este contrato y su cobertura; no se añade
+`preventDefault`. La cuota se inyecta en el backend asíncrono de fake-indexeddb,
+sin acreditar disco lleno en un navegador. El harness no promete rehidratar un
+store ya activo; verifica la siguiente apertura de la API. Se conserva un FAIL
+de preparación con cero tests, separado de los dos mutantes causales. La CI del
+HEAD de entrega sigue siendo un gate independiente.
+
 ## Formularios visibles durante streaming (#1368)
 
 [Informe focal](testing/2026-10-04-ci-visible-form-controls-1368.md): login y
@@ -816,3 +833,21 @@ de sólo lectura para el manifiesto de acciones del checkout con junction.
 Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
 sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
 auditoría global de red limpia.
+
+## Fichas de acompañantes y asientos de MTG (#1006, #1008)
+
+[Informe nativo](testing/2026-10-04-play-seat-interactions-1006-1008.md): ocho
+recorridos de Chromium contra build Turbopack nueva y `next start`, a 390 y
+1280 px. Recursos acredita que tocar sólo abre el panel y que quitar a Ana
+conserva a Beto tras recargar. MTG cubre el quinto asiento, retirada intermedia
+y reutilización de un id libre, inicio con Eva, mínimo de dos y Duelo.
+
+Los oráculos combinan UI accesible y lectura de IndexedDB real, sin imports
+de producto, interceptaciones ni actores remotos. Ocho PASS, tipos/lint
+correctos y diez capturas inspeccionadas. La revisión de integración verifica
+67 artefactos sellados, ambos blobs fuente y ausencia de delta de producto
+entre la base de build y main; dos capturas se inspeccionan también desde Root.
+
+Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
+La tanda no acredita sincronización, otros navegadores ni salud global de red.
+La CI del HEAD integrado sigue siendo un gate de publicación independiente.

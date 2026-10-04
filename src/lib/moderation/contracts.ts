@@ -1,4 +1,4 @@
-export const CONTENT_KINDS = ["post", "club_post", "comment", "club", "experience"] as const;
+export const CONTENT_KINDS = ["post", "club_post", "comment", "club", "experience", "experience_review"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 export type ModerationAction = "remove" | "restore" | "delete";
 export type ModerationKind = ContentKind | "report" | "history";

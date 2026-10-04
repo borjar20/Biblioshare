@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateCreateExperience, validateUpdateExperience, validateMoment, isExperienceId, validateGuestName } from "./validation";
+import { validateCreateExperience, validateUpdateExperience, validateMoment, isExperienceId, validateGuestName, validateReview } from "./validation";
 
 const minimum = { title: "  Una noche en el teatro  ", state: "planned", kind: "show" };
 const update = { title: "Escapada", shape: "trip", state: "lived", audience: "participants", startsOn: null, endsOn: null };
@@ -46,5 +46,21 @@ describe("experience inputs", () => {
     expect(validateGuestName("x".repeat(80))).not.toBeNull();
     expect(validateGuestName("x".repeat(81))).toBeNull();
     expect(validateGuestName("  ")).toBeNull();
+  });
+});
+
+describe("validateReview", () => {
+  it("accepts rating, body or both, trimming body", () => {
+    expect(validateReview({ rating: 8, body: null })).toEqual({ rating: 8, body: null });
+    expect(validateReview({ rating: null, body: "  Bien  " })).toEqual({ rating: null, body: "Bien" });
+    expect(validateReview({ rating: 10, body: "x" })).toEqual({ rating: 10, body: "x" });
+  });
+  it("treats empty as clear and rejects out-of-range or malformed", () => {
+    expect(validateReview({ rating: null, body: "   " })).toEqual({ rating: null, body: null });
+    expect(validateReview({ rating: 0, body: null })).toBeNull();
+    expect(validateReview({ rating: 11, body: null })).toBeNull();
+    expect(validateReview({ rating: 7.5, body: null })).toBeNull();
+    expect(validateReview({ rating: null, body: "a".repeat(4001) })).toBeNull();
+    expect(validateReview({ rating: 5, body: null, author: "x" })).toBeNull();
   });
 });

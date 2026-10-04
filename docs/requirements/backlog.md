@@ -19,6 +19,7 @@
 > navegación principal, herramientas de Biblioteca y Comunidad verificadas contra código y navegador con build/start local el 2026-10-03;
 > cabecera y panel de notificaciones #1349 verificados con build/start local y siete E2E focales PASS el 2026-10-04; verificación sobre candidato local; integración/publicación rastreadas en [PR #1351](https://github.com/borjar20/Biblioshare/pull/1351);
 > Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
+> fichas Recursos y edición de asientos MTG #1006/#1008 verificadas con ocho E2E de build/start, a 390/1280 px, el 2026-10-04; CI del HEAD integrado exigida;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
@@ -463,6 +464,12 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] [#1353](https://github.com/borjar20/Biblioshare/issues/1353) — Acompañantes de detalle, hub y perfil relativos a quien mira; contexto narrativo del feed explícito. 111 unitarios, revisión independiente y 27 checks de build/start local PASS el 2026-10-04; CI del HEAD final exigida para entrega. Evidencia: [QA nativa](../testing/2026-10-04-experience-participants-native-1353.md).
 - [x] Ocho migraciones aplicadas en producción el 2026-10-03; objetos, definiciones y permisos reales verificados a las 10:04 UTC (#1293).
   Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.
+- [x] Reseñas por momento (nota 1–10 y/o texto, solo con asistencia confirmada y experiencia
+  vivida; media visible; publicación opcional en Actividad; «Lo vivimos», favorito con cinta,
+  cuatro tipos de momento nuevos y orden «Mejor valoradas»): **aplicado en dev 2026-10-04;
+  producción pendiente.** Contrato:
+  [spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md).
+  Evidencia: [reseñas por momento (2026-10-04)](../testing/2026-10-04-experiencias-resenas.md).
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
   Contrato: `docs/superpowers/specs/2026-10-02-experiencias-design.md`.
   Evidencia: [funcional (2026-10-02)](../testing/2026-10-02-experiencias.md)
@@ -524,6 +531,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] BiblioPlay — Tracker de turnos: cuarto acompañante (fuera del registro) en `/partidas/turnos` — orden de turno 2–8 jugadores, rondas que suben al ENVOLVER (regla posicional, simétrica en ambas direcciones), fases opcionales 0–6, dirección invertible, saltar, eliminar/restaurar conservando asiento. Diseñado visual-first DESDE la spec (regla en memoria tras tres correcciones): anillo de fichas con el centro como botón de avance, fases como píldoras preset que se encienden en orden de toque, cero inputs a la vista. Sobre `useCompanionStore` (clave `{identity}:turns`), deshacer expuesto. EPIC #931, spec `docs/superpowers/specs/2026-09-01-play-turns-design.md`, plan `docs/superpowers/plans/2026-09-01-play-turns.md`. Decisión en `decisiones.md` 2026-09-01.
 - [x] BiblioPlay — pasada visual-first tras la critique (25/40): hoja de ronda con chips y steppers, config de MTG con fichas y panel, presets de Recursos con glifos SVG propios y `resource_updated`, límite Libre/Rondas/Puntos con `TargetStepper` y juego tras «+», bolsa sin inputs, ficha unificada «tocar abre panel» (`SeatRow`). EPIC #931, spec `docs/superpowers/specs/2026-09-01-play-visual-first-design.md`, plan `docs/superpowers/plans/2026-09-01-play-visual-first.md`. Actas en `decisiones.md` 2026-09-01.
 - [x] BiblioPlay — selector y ficha comunes (#995, #999): `SeatPicker` explica duplicados y mesa llena con estado accesible y botón Añadir visible; `SeatRow`/`SeatToken` ya compartidos. El texto pequeño de los seis asientos supera 4,5:1 en claro y oscuro, ajustando sólo el asiento 5 claro. Evidencia: `docs/testing/2026-10-02-clock-setup-995.md` y `docs/testing/2026-10-02-seat-text-contrast-999.md`.
+- [x] BiblioPlay — cobertura de fichas y asientos (#1006, #1008): panel y retirada persistida en Recursos; alta/baja, mínimo, Duelo e inicio con ids únicos en MTG. Ocho E2E de build/start a 390/1280 px. Evidencia: `docs/testing/2026-10-04-play-seat-interactions-1006-1008.md`.
 - [ ] BiblioPlay fases 7+: estadísticas derivadas del log por `playerId`, vinculación habitual→usuario Biblioshare, sync en tiempo real multi-dispositivo de la partida activa.
 
 **Mascota**
