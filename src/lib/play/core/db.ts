@@ -10,7 +10,7 @@ import { buildSavedSummary } from "../tools";
 // degrada a memoria, igual que hacía el localStorage de fase 1.
 
 export const DB_NAME = "biblioshare-play";
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 export type ActiveGameRecord = {
   identity: string; // uid real o "anon": mismo aislamiento que la clave de fase 1
@@ -32,6 +32,14 @@ export type SavedGameRecord = {
   syncStatus: "pending" | "synced";
   deletedAt: number | null; // tombstone: borrado pendiente de replicar
 };
+
+// Contexto de cancelación del espejo, nunca una credencial ni autorización.
+// La generación se comprueba en la MISMA transacción que cada escritura.
+export type SavedSession = { identity: string; generation: number; sessionId: string | null };
+type SavedSessionRecord = SavedSession & { closed: boolean; retired: string[] };
+export type SavedPurgeResult =
+  | { ok: true; deleted: number; retained: number; generation: number }
+  | { ok: false; reason: "unavailable" | "stale" };
 
 // PlayerRecord llega en fase 6: el almacén `players` es el ESPEJO local de
 // play_players, con el mismo patrón que `saved` (identity + syncStatus +
@@ -97,6 +105,9 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains("companion")) {
           db.createObjectStore("companion", { keyPath: "identity" });
+        }
+        if (!db.objectStoreNames.contains("saved_sessions")) {
+          db.createObjectStore("saved_sessions", { keyPath: "identity" });
         }
         // v1 → v2: los guardados de fase 3/4 ganan summary (derivado por replay,
         // UNA vez, aquí) y quedan pendientes de subir. Un log que no re-juega
@@ -290,13 +301,140 @@ export async function deleteCompanion(identity: string): Promise<void> {
   }
 }
 
-export async function saveFinished(record: SavedGameRecord): Promise<boolean> {
+function validSavedSession(record: SavedSessionRecord, identity: string): boolean {
+  return record.identity === identity && Number.isSafeInteger(record.generation) && record.generation > 0 &&
+    typeof record.closed === "boolean" && typeof record.sessionId === "string" && record.sessionId.length > 0 &&
+    Array.isArray(record.retired) && record.retired.every((id) => typeof id === "string");
+}
+
+function currentSavedSession(record: SavedSessionRecord | undefined, session: SavedSession): boolean {
+  if (!record) return session.generation === 0 && session.sessionId === null;
+  return validSavedSession(record, session.identity) && !record.closed &&
+    record.generation === session.generation && record.sessionId === session.sessionId;
+}
+
+export async function readSavedSession(identity: string): Promise<SavedSession | null> {
   try {
     const db = await openDb();
+    return await new Promise((resolve) => {
+      const tx = db.transaction("saved_sessions", "readonly");
+      const get = tx.objectStore("saved_sessions").get(identity);
+      tx.oncomplete = () => {
+        const record = get.result as SavedSessionRecord | undefined;
+        if (!record) resolve({ identity, generation: 0, sessionId: null });
+        else resolve(validSavedSession(record, identity) && !record.closed
+          ? { identity, generation: record.generation, sessionId: record.sessionId } : null);
+      };
+      tx.onerror = tx.onabort = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function isSavedSessionCurrent(session: SavedSession): Promise<boolean> {
+  const current = await readSavedSession(session.identity);
+  return current !== null && current.generation === session.generation && current.sessionId === session.sessionId;
+}
+
+// Quien llama valida el uid contra Auth ANTES de registrar este contexto. Un
+// refresh conserva session_id; un login nuevo puede reabrir con otro id. Los
+// ids retirados impiden que una pestaña antigua reabra una sesión después de ABA.
+export async function startSavedSession(identity: string, sessionId: string): Promise<SavedSession | null> {
+  if (!identity || identity === "anon" || !sessionId) return null;
+  try {
+    const db = await openDb();
+    return await new Promise((resolve) => {
+      const tx = db.transaction("saved_sessions", "readwrite");
+      const store = tx.objectStore("saved_sessions");
+      const get = store.get(identity);
+      let result: SavedSession | null = null;
+      get.onsuccess = () => {
+        const previous = get.result as SavedSessionRecord | undefined;
+        if (previous && (!validSavedSession(previous, identity) || previous.retired.includes(sessionId))) return;
+        if (previous && !previous.closed && previous.sessionId === sessionId) {
+          result = { identity, generation: previous.generation, sessionId };
+          return;
+        }
+        const generation = (previous?.generation ?? 0) + 1;
+        if (!Number.isSafeInteger(generation)) return;
+        const retired = [...(previous?.retired ?? [])];
+        if (previous?.sessionId && !retired.includes(previous.sessionId)) retired.push(previous.sessionId);
+        store.put({ identity, generation, sessionId, closed: false, retired } satisfies SavedSessionRecord);
+        result = { identity, generation, sessionId };
+      };
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = tx.onabort = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Cierre y purga son atómicos entre documentos. Un tombstone, incluso marcado
+// synced, todavía representa una intención de borrado SIN confirmar; synced
+// acredita su subida original, no el ACK del delete remoto (#975).
+export async function purgeSyncedSavedFor(identity: string, sessionId: string): Promise<SavedPurgeResult> {
+  if (!identity || identity === "anon" || !sessionId) return { ok: false, reason: "stale" };
+  try {
+    const db = await openDb();
+    return await new Promise((resolve) => {
+      const tx = db.transaction(["saved", "saved_sessions"], "readwrite");
+      const sessions = tx.objectStore("saved_sessions");
+      const get = sessions.get(identity);
+      let result: SavedPurgeResult = { ok: false, reason: "stale" };
+      get.onsuccess = () => {
+        const previous = get.result as SavedSessionRecord | undefined;
+        if (previous && (!validSavedSession(previous, identity) || previous.sessionId !== sessionId)) return;
+        const generation = previous?.closed ? previous.generation : (previous?.generation ?? 0) + 1;
+        if (!Number.isSafeInteger(generation)) return;
+        const retired = [...(previous?.retired ?? [])];
+        if (!retired.includes(sessionId)) retired.push(sessionId);
+        sessions.put({ identity, generation, sessionId, closed: true, retired } satisfies SavedSessionRecord);
+        const counts = { ok: true as const, deleted: 0, retained: 0, generation };
+        result = counts;
+        const cursor = tx.objectStore("saved").index("identity").openCursor(identity);
+        cursor.onsuccess = () => {
+          const row = cursor.result;
+          if (!row) return;
+          const saved = row.value as SavedGameRecord;
+          if (saved.syncStatus === "synced" && saved.deletedAt === null) {
+            row.delete();
+            counts.deleted++;
+          } else counts.retained++;
+          row.continue();
+        };
+      };
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = tx.onabort = () => resolve({ ok: false, reason: "unavailable" });
+    });
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
+}
+
+export async function saveFinished(record: SavedGameRecord, session?: SavedSession): Promise<boolean> {
+  try {
+    const context = session ?? await readSavedSession(record.identity);
+    if (!context || context.identity !== record.identity) return false;
+    const db = await openDb();
     return await new Promise<boolean>((resolve) => {
-      const tx = db.transaction("saved", "readwrite");
-      tx.objectStore("saved").put(record);
-      tx.oncomplete = () => resolve(true);
+      const tx = db.transaction(["saved", "saved_sessions"], "readwrite");
+      const saved = tx.objectStore("saved");
+      const getSession = tx.objectStore("saved_sessions").get(record.identity);
+      let accepted = false;
+      getSession.onsuccess = () => {
+        if (!currentSavedSession(getSession.result as SavedSessionRecord | undefined, context)) return;
+        const get = saved.get(record.gameId);
+        get.onsuccess = () => {
+          // Sólo la adopción local explícita (sin contexto de sync) puede mover
+          // una guardada anónima. Una respuesta de A jamás pisa la fila de B.
+          if (session && get.result && (get.result as SavedGameRecord).identity !== record.identity) return;
+          saved.put(record);
+          accepted = true;
+        };
+      };
+      tx.oncomplete = () => resolve(accepted);
       tx.onerror = () => resolve(false);
       tx.onabort = () => resolve(false);
     });
@@ -339,12 +477,23 @@ export async function listSaved(identity: string): Promise<SavedGameRecord[]> {
   }
 }
 
-export async function deleteSaved(gameId: string): Promise<void> {
+export async function deleteSaved(gameId: string, session?: SavedSession): Promise<void> {
   try {
+    const record = session ? null : await readSaved(gameId);
+    const context = session ?? (record && await readSavedSession(record.identity));
+    if (!context) return;
     const db = await openDb();
     await new Promise<void>((resolve) => {
-      const tx = db.transaction("saved", "readwrite");
-      tx.objectStore("saved").delete(gameId);
+      const tx = db.transaction(["saved", "saved_sessions"], "readwrite");
+      const saved = tx.objectStore("saved");
+      const getSession = tx.objectStore("saved_sessions").get(context.identity);
+      getSession.onsuccess = () => {
+        if (!currentSavedSession(getSession.result as SavedSessionRecord | undefined, context)) return;
+        const get = saved.get(gameId);
+        get.onsuccess = () => {
+          if ((get.result as SavedGameRecord | undefined)?.identity === context.identity) saved.delete(gameId);
+        };
+      };
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();

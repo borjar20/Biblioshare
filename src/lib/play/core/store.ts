@@ -5,6 +5,7 @@ import { replay } from "./replay";
 import { PlayEventError } from "./errors";
 import {
   deleteActive,
+  isSavedSessionCurrent,
   readActive,
   saveFinished,
   writeActive,
@@ -12,6 +13,7 @@ import {
 } from "./db";
 import type { ActiveGameSnapshot, EventLog, PlayEvent } from "./types";
 import { buildSavedSummary, type PlayGameState } from "@/lib/play/tools";
+import { savedSessionForWrite } from "./saved-auth";
 
 // Store local-first. Anatomía de src/lib/sessions/timer.ts: lo puro arriba,
 // el IO abajo con try/catch (modo privado o cuota llena degradan a memoria,
@@ -434,6 +436,8 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
       if (current.status !== "ready" || current.game === null) return false;
       if (current.game.state.status !== "finished") return false;
       const game = current.game;
+      const session = await savedSessionForWrite(identity);
+      if (!session) return false;
       const ok = await saveFinished({
         gameId: game.log.committed[0].id,
         identity,
@@ -443,8 +447,8 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
         summary: buildSavedSummary(game.state),
         syncStatus: "pending",
         deletedAt: null,
-      });
-      if (!ok) return false;
+      }, session);
+      if (!ok || !await isSavedSessionCurrent(session)) return false;
       // Mientras la BD guardaba, el espejo pudo adoptar el registro de otra
       // pestaña (p. ej. la otra descartó y empezó una partida nueva): el
       // snapshot que se serializó arriba ya no es el del store. Seguir aquí

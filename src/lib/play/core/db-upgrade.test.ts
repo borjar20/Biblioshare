@@ -205,7 +205,7 @@ describe("upgrade v1: errores asíncronos conservan la fuente y permiten reinten
         });
       }
       expect(await physicalSnapshot()).toEqual({
-        version: DB_VERSION, stores: ["active", "companion", "players", "saved"],
+        version: DB_VERSION, stores: ["active", "companion", "players", "saved", "saved_sessions"],
         active: [active], saved: migrated,
       });
     } finally { fault.restore(); }

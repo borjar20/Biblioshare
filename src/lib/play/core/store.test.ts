@@ -951,7 +951,8 @@ describe("save()", () => {
       const transaction = IDBDatabase.prototype.transaction;
       vi.spyOn(IDBDatabase.prototype, "transaction").mockImplementation(function (this: InstanceType<typeof IDBDatabase>, ...args) {
         const tx = transaction.apply(this, args);
-        if (args[0] === "saved" && args[1] === "readwrite") {
+        const stores = Array.isArray(args[0]) ? args[0] : [args[0]];
+        if (stores.includes("saved") && args[1] === "readwrite") {
           Object.defineProperty(tx, "oncomplete", {
             set(oncomplete: IDBTransaction["oncomplete"]) {
               tx.addEventListener("complete", (event) => {
