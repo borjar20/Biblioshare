@@ -682,6 +682,17 @@ Producción y CI de publicación siguen pendientes en este corte. Los registros
 extra del transporte se conservan y siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
 El ACK ambiguo puede permitir repetición en otro consumidor.
 
+La primera CI de #1364 conservó FAIL en `empty-database`: el workflow dedicado
+arrancaba 284 pasos y verificaba un ledger de 285 sin ejecutar la activación
+diferida. Se añade la misma llamada al checker protegido que ya usa
+`critical-flows`, antes del verificador. El FAIL y su ordinal ausente
+`20000101000284` se conservan; el nuevo HEAD requiere CI completa de nuevo.
+La expansión de producción del 2026-10-04 mantiene el legacy anterior,
+las tres RPC nuevas cerradas y las 220 filas históricas intactas; CHECK de
+pareja validado y grants 11/11/11. Los avisos de seguridad coinciden exactamente
+al retirar únicamente sus timestamps `observed_at`; los avisos previos siguen
+abiertos. Cierre de admisión y activación productiva pendientes en ese corte.
+
 ## Motivo de abandono en el diario (#655)
 
 [Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho
