@@ -466,8 +466,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.
 - [x] Reseñas por momento (nota 1–10 y/o texto, solo con asistencia confirmada y experiencia
   vivida; media visible; publicación opcional en Actividad; «Lo vivimos», favorito con cinta,
-  cuatro tipos de momento nuevos y orden «Mejor valoradas»): **aplicado en dev 2026-10-04;
-  producción pendiente.** Contrato:
+  cuatro tipos de momento nuevos y orden «Mejor valoradas»): **aplicado en dev y en producción el 2026-10-04;
+  desplegado con la PR #1376.** Contrato:
   [spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md).
   Evidencia: [reseñas por momento (2026-10-04)](../testing/2026-10-04-experiencias-resenas.md).
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
