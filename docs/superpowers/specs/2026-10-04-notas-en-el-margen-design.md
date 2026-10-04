@@ -268,3 +268,30 @@ Todos los textos nombran la obra.
   2. Retroactiva: la autora escribe sobre una obra que el lector ya terminó. Aparece en
      la ficha y en el Cuaderno como nueva, sin hoja.
   3. Serie: la nota en el T1E3 se abre al marcar ese episodio, no al marcar el T1E4.
+
+## 8. Correcciones de implementación (2026-10-04)
+
+Detectadas al planificar contra el código. No cambian el producto.
+
+1. **Sin audiencia nueva `encounter_pair`.** `private.can_view_interaction_target`
+   ya resuelve por `kind` antes que por audiencia (así lo hace `experience`). El target
+   `margin_encounter` lleva `audience_kind='profile'` y `audience_id=<lector>`, y su
+   visibilidad la decide la rama `kind='margin_encounter'` → `private.can_read_margin_encounter`.
+   `audience_id` sirve además para saber a quién avisar cuando escribe el autor.
+2. **Disparadores sobre `passes`, no sobre `progress_sessions`.** Toda sesión, cierre e
+   importación mueve `passes.position` o `passes.status`. Un trigger ahí cubre todos los
+   caminos (incluido Letterboxd) con un solo punto. La proporción del lector se calcula
+   por pase con la edición de ese pase.
+3. **Avisos de dedicadas con columna `notified_at`.** Los encuentros nacen en triggers, pero
+   el push solo se envía desde TypeScript (`notify()`). La RPC `margin_claim_notices()`
+   marca y devuelve los pendientes en los que quien llama es autor o lector. La llaman
+   las acciones de sesión, episodios, transición de estado, escritura de nota, follow y
+   «marcar vista».
+   **Límite asumido:** un encuentro creado por un camino que no llama a la RPC (p. ej. una
+   importación) avisa en la siguiente llamada de cualquiera de las dos personas.
+4. **Revelación:** la ficha pinta los encuentros con `seen_at is null` y
+   `found_via <> 'retro'`. La revalidación que ya hacen esas acciones vuelve a renderizarla
+   tras guardar.
+5. **Inmutabilidad del ancla, la obra y la audiencia por grants de columna**, no por
+   trigger. Así `merge_book_into` (SECURITY DEFINER) puede reasignar `item_id` al fusionar
+   libros.
