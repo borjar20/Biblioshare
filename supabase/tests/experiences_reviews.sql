@@ -263,6 +263,10 @@ do $$ declare rep uuid; begin
   rep:=(public.experience_report_review((select id from xr where k='review'),'spam')->>'id')::uuid;
   if rep is null then raise exception 'FAIL group report'; end if;
 end $$;
+-- Fix round 1: the reporter cannot read the review report's evidence back.
+do $$ begin
+  if exists(select 1 from public.content_reports where target_type='experience_review' and target_id=(select id from xr where k='review')) then raise exception 'FAIL reporter reads review report evidence'; end if;
+end $$;
 reset role;
 insert into private.moderation_state(kind,target_id,removed_at) values('experience_review',(select id from xr where k='review'),now());
 set local role authenticated;
@@ -316,6 +320,12 @@ do $$ begin
   if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL removed review visible to outsider'; end if;
   if public.can_view_target('experience_review',(select id from xr where k='review')) then raise exception 'FAIL can_view_target removed review'; end if;
 end $$;
+-- Fix round 1: a removed review cannot be edited or blanked by its author.
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  begin perform public.experience_save_moment_review((select id from xr where k='moment'),7::smallint,'Edited'); raise exception 'FAIL edit removed review'; exception when insufficient_privilege then null; end;
+  begin perform public.experience_save_moment_review((select id from xr where k='moment'),null,null); raise exception 'FAIL blank removed review'; exception when insufficient_privilege then null; end;
+end $$;
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
 select public.admin_moderate_content('experience_review',(select id from xr where k='review'),'restore','test','');
 -- Removing the parent experience cascades to its reviews.
@@ -326,6 +336,19 @@ do $$ begin
   if private.moderation_available('experience_review',(select id from xr where k='review')) then raise exception 'FAIL review cascade from experience'; end if;
 end $$;
 rollback to savepoint task6_parent;
+-- Fix round 1: an admin hard delete of the experience records one review 'delete' row per review.
+savepoint task6_experience_delete;
+create temporary table task6_reviews on commit drop as select id from public.experience_moment_reviews where experience_id=(select id from xr where k='root');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+select public.admin_moderate_content('experience',(select id from xr where k='root'),'delete','test','ELIMINAR');
+reset role;
+do $$ begin
+  if (select count(*) from task6_reviews)<1 then raise exception 'FAIL no reviews before experience delete'; end if;
+  if exists(select 1 from task6_reviews t where (select count(*) from private.moderation_history h where h.kind='experience_review' and h.target_id=t.id and h.action='delete')<>1) then raise exception 'FAIL review history on experience delete'; end if;
+  if exists(select 1 from private.moderation_history h join task6_reviews t on t.id=h.target_id where h.kind='comment') then raise exception 'FAIL review recorded as comment on experience delete'; end if;
+end $$;
+rollback to savepoint task6_experience_delete;
 -- Admin hard delete records exactly one history row for the review (isolated in a savepoint).
 savepoint task6_delete;
 set local role authenticated;
@@ -354,5 +377,8 @@ reset role;
 do $$ begin
   if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL author delete'; end if;
   if exists(select 1 from private.moderation_history where kind='experience_review' and action='delete') then raise exception 'FAIL author delete recorded'; end if;
+  -- Fix round 1: the review's report is closed when its target disappears.
+  if exists(select 1 from public.content_reports where target_type='experience_review' and target_id=(select id from xr where k='review') and (target_deleted_at is null or status<>'actioned')) then raise exception 'FAIL review report not closed'; end if;
+  if not exists(select 1 from public.content_reports where target_type='experience_review' and target_id=(select id from xr where k='review')) then raise exception 'FAIL review report missing'; end if;
 end $$;
 rollback;
