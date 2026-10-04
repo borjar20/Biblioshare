@@ -18,7 +18,7 @@ el siguiente: lo verificado en dev no dice nada de producción.
 | Local (bootstrap vacío, Docker) | Seis migraciones aplicadas en el orden del manifiesto; `npm run test:db:local` PASS con 288 pasos de bootstrap. |
 | `biblioshare-dev` | Seis migraciones aplicadas con `apply_migration`, contenido exacto de cada fichero (la sexta, `20261004100500`, tras la revisión final); objetos verificados contra `pg_proc`/`pg_class`/`pg_policies`; `experiences_reviews.sql` PASS con rollback. |
 | E2E | 16/16 contra `next build` + `next start` en el puerto 3000, un worker, cero reintentos. |
-| Producción | **No aplicado.** Sin migraciones, sin verificación de objetos, sin despliegue de código. Se hará en una operación aparte, tras revisión de la PR y visto bueno del propietario. |
+| Producción | **Aplicado el 2026-10-04 con el visto bueno del propietario**, en el orden de «Despliegue a producción». Antes de aplicar, los 23 digests de funciones, políticas y restricciones afectadas coincidían con los de dev previos a su migración. Tras aplicar se verificaron contra objetos reales: 13 funciones sin EXECUTE de `PUBLIC` (`anon` solo en `get_experience_rating_summaries` y helpers de `private`), RLS, 3 políticas, solo `SELECT` en la tabla, 4 triggers, CHECK ampliados, enums y el filtro de destinatarios. El digest conjunto de las 77 funciones de Experiencias y moderación es idéntico en dev y producción. No se ejecutaron fixtures en producción. Después se fusionó la PR #1376 (merge `bcd3c869`) y Vercel desplegó con éxito. Smoke anónimo: `/`, `/experiencias`, `/comunidad` y la pestaña Experiencias de un perfil devuelven 200 sin errores de render. |
 
 ## Migraciones
 
@@ -125,7 +125,7 @@ Contra objetos reales, no contra el ledger:
 | EXECUTE | `PUBLIC` sin permiso en ninguna de las funciones nuevas; `anon` solo en `get_experience_rating_summaries(uuid[])` |
 | Triggers de la tabla | `experience_moment_reviews_guard`, `experience_review_cleanup_post`, `experience_review_cleanup_target`, `moderation_capture_delete` |
 
-## Despliegue a producción (pendiente; orden obligatorio)
+## Despliegue a producción (hecho el 2026-10-04 siguiendo este orden)
 
 **Migraciones primero, código después.** El código nuevo depende de objetos que solo existen
 tras las migraciones: `getExperiencePreviews` llama a `get_experience_rating_summaries` (la

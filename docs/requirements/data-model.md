@@ -22,7 +22,7 @@
 > Contrato, fases y límites en §7bis.
 
 > **Delta 2026-10-04 (#1293, reseñas por momento; verificado en dev 2026-10-04 contra
-> pg_proc/pg_class/pg_policies; producción pendiente):** seis migraciones nuevas
+> pg_proc/pg_class/pg_policies; aplicado y verificado en producción el 2026-10-04):** seis migraciones nuevas
 > (`20261004100000` … `20261004100500`) añaden `experience_moment_reviews`, los tipos
 > de momento `food`/`festival`/`sport`/`nature`, la publicación de reseñas en Actividad,
 > el kind de moderación `experience_review` y la firma de tres argumentos de
@@ -4781,7 +4781,7 @@ Tipos nuevos generados desde el esquema local y añadidos sin sustituir contrato
 previos de main. Pruebas SQL con siete actores y rollback; carrera local produce
 un éxito y un conflicto, sin perder momentos.
 
-### 8ter.1 Reseñas por momento (2026-10-04; verificado en dev, producción pendiente)
+### 8ter.1 Reseñas por momento (2026-10-04; verificado en dev y en producción)
 
 Migraciones `20261004100000_experience_reviews_enums.sql` (sola, en su transacción),
 `20261004100100_experience_moment_kinds.sql`, `20261004100200_experience_reviews_core.sql`,
@@ -4915,7 +4915,7 @@ Borrar una reseña desde moderación registra una fila `delete` de kind `experie
 helpers `private.can_view_experience_review` y `private.is_experience_kind` también tienen
 EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
-Bootstrap local: 288 pasos (con `20261004100500`). **Producción: no aplicado.**
+Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`).
 
 ## 9. Seguridad
 
