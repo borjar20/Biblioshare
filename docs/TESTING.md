@@ -851,3 +851,12 @@ entre la base de build y main; dos capturas se inspeccionan también desde Root.
 Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
 La tanda no acredita sincronización, otros navegadores ni salud global de red.
 La CI del HEAD integrado sigue siendo un gate de publicación independiente.
+
+## CI: confirmar el ZIP antes de cerrar Letterboxd (#1373)
+
+[Informe focal](testing/2026-10-04-letterboxd-confirmation-1373.md): la UI real
+persiste el job en `running` antes del cierre; después el cron real debe
+incorporarlo y dejarlo en `done`. Pasan los dos casos existentes y el control
+que retiene y libera la confirmación por señal. El control sin commit rechaza
+el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
+natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
