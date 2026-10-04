@@ -24,9 +24,9 @@ describe("favorito, nota en tarjetas y orden del hub", () => {
 
   it("card shows the visible average only when there is one", () => {
     const e = detailFixture({});
-    const { rerender } = render(withIntl(<ExperienceCard experience={{ ...e, rating: null }} />));
+    const { rerender } = render(withIntl(<ExperienceCard viewerId={null} experience={{ ...e, rating: null }} />));
     expect(screen.queryByText(/reseña/)).toBeNull();
-    rerender(withIntl(<ExperienceCard experience={{ ...e, rating: { avg: 8.5, count: 2 } }} />));
+    rerender(withIntl(<ExperienceCard viewerId={null} experience={{ ...e, rating: { avg: 8.5, count: 2 } }} />));
     expect(screen.getByText("8.5")).toBeTruthy();
     expect(screen.getByText(/2 reseñas/)).toBeTruthy();
   });
@@ -50,14 +50,14 @@ describe("favorito, nota en tarjetas y orden del hub", () => {
 
   it("excerpt shows the rating in dots and keeps «Solo puso nota» as text fallback", () => {
     const e = detailFixture({});
-    const { rerender } = render(withIntl(<ExperienceCard experience={e} excerpt={{ momentId: "moment-1", rating: 8, body: "Muy bonito" }} />));
+    const { rerender } = render(withIntl(<ExperienceCard viewerId={null} experience={e} excerpt={{ momentId: "moment-1", rating: 8, body: "Muy bonito" }} />));
     expect(screen.getByRole("img", { name: "4 de 5" })).toBeTruthy();
     expect(screen.getByText("Muy bonito")).toBeTruthy();
     expect(screen.queryByText("Solo puso nota")).toBeNull();
-    rerender(withIntl(<ExperienceCard experience={e} excerpt={{ momentId: "moment-1", rating: 7, body: null }} />));
+    rerender(withIntl(<ExperienceCard viewerId={null} experience={e} excerpt={{ momentId: "moment-1", rating: 7, body: null }} />));
     expect(screen.getByRole("img", { name: "3,5 de 5" })).toBeTruthy();
     expect(screen.getByText("Solo puso nota")).toBeTruthy();
-    rerender(withIntl(<ExperienceCard experience={e} excerpt={{ momentId: "moment-1", rating: null, body: "Solo texto" }} />));
+    rerender(withIntl(<ExperienceCard viewerId={null} experience={e} excerpt={{ momentId: "moment-1", rating: null, body: "Solo texto" }} />));
     expect(screen.queryByRole("img", { name: /de 5/ })).toBeNull();
   });
 

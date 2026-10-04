@@ -25,10 +25,12 @@ import {ExperienceRating} from "./experience-rating";
 import {ExperienceLivedAction} from "./experience-lived-action";
 import { ExperienceArtwork,ExperienceKindIcon,ExperiencePeople } from "./experience-artwork";
 import { MomentEditor,MomentActions } from "./moment-editor";
+import { getExperienceCompanionNames } from "./experience-companion-names";
 export function ExperienceDetail({experience:e}:{experience:Detail}) {
   const t=useTranslations("experiences"),router=useRouter(),fieldId=useId();
   const [deleting,setDeleting]=useState(false),[error,setError]=useState<ExperienceError|null>(null),[pending,startTransition]=useTransition();
   const kind=e.moments[0]?.kind??"other";
+  const people=getExperienceCompanionNames(e.participants,e.viewerId,t("companion"));
   return <div className="space-y-7">
     <div className="flex items-center justify-between gap-3"><Link href="/experiencias" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeftIcon aria-hidden className="h-4 w-4"/>{t("back")}</Link>{e.canEdit&&<ActionMenu label={t("experienceActions")} items={[{key:"edit",label:t("edit"),onSelect:()=>router.push(`/experiencia/${e.id}/editar`)},{key:"delete",label:t("delete"),danger:true,onSelect:()=>{setError(null);setDeleting(true);}}]}/>}</div>
     <header className="grid overflow-hidden rounded-card border border-border bg-surface shadow-card md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
@@ -38,7 +40,7 @@ export function ExperienceDetail({experience:e}:{experience:Detail}) {
         <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarIcon aria-hidden className="h-4 w-4"/><ExperienceDate startsOn={e.startsOn} endsOn={e.endsOn}/>{e.shape==="single"&&e.moments[0]?.placeLabel&&<><span aria-hidden>·</span><span>{e.moments[0].placeLabel}</span></>}</p>
         <ExperienceRating rating={e.rating} size="md"/>
         <ExperienceLivedAction experience={e}/>
-        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4"><ExperiencePeople people={e.participants}/><span className="text-sm text-muted-foreground">{e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).length ? t("with",{names:e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).slice(0,3).map(p=>p.guestName??p.displayName??p.username??t("companion")).join(", ")}) : t("personal")}</span></div>
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4"><ExperiencePeople people={e.participants}/><span className="text-sm text-muted-foreground">{people.length ? t("with",{names:people.slice(0,3).join(", ")}) : t("personal")}</span></div>
       </div>
     </header>
     <div className={HOME_TWO_COL}>

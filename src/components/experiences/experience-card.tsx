@@ -8,9 +8,17 @@ import { RatingDots } from "@/components/ui/rating-dots";
 import { ExperienceDate } from "./experience-date";
 import { ExperienceRating } from "./experience-rating";
 import { ExperienceArtwork,ExperienceKindIcon,ExperiencePeople } from "./experience-artwork";
-export function ExperienceCard({experience:e,variant="album",excerpt}:{experience:ExperiencePreview;variant?:"album"|"feed";excerpt?:{momentId:string;rating:number|null;body:string|null}}) {
+import { getExperienceCompanionNames } from "./experience-companion-names";
+
+type ExperienceCardProps = {experience:ExperiencePreview;excerpt?:{momentId:string;rating:number|null;body:string|null}} & (
+  | {variant?:"album";viewerId:string|null}
+  | {variant:"feed";viewerId?:never}
+);
+
+export function ExperienceCard({experience:e,variant="album",viewerId,excerpt}:ExperienceCardProps) {
   const t=useTranslations("experiences");
-  const people=e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).map(p=>p.guestName??p.displayName??p.username).filter(Boolean);
+  // The feed already presents the organizer as its actor; the album describes the viewer's companions.
+  const people=getExperienceCompanionNames(e.participants,variant==="feed" ? e.creatorId : viewerId??null,t("companion"));
   const kind=e.moments[0]?.kind??"other";
   return <Link href={`/experiencia/${e.id}`} className={`group flex h-full min-w-0 flex-col bg-surface transition-colors ${variant==="feed" ? "rounded-cover" : "rounded-card border border-border p-2 shadow-card hover:border-foreground-soft"}`}>
     <div className="relative aspect-[16/10] overflow-hidden rounded-cover bg-surface-muted">

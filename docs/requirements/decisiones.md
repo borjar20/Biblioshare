@@ -6346,6 +6346,45 @@ y [PR #1351](https://github.com/borjar20/Biblioshare/pull/1351).
 Ocho estados de QA en Next dev y 17 unitarios existentes PASS; alcance,
 mediciones y límites en [separación de iconos](../testing/2026-10-04-header-icons-spacing.md).
 
+## 2026-10-04 — Acompañantes relativos al contexto de Experiencias (#1353)
+
+En detalle y álbum, «Con» describe a las personas aceptadas salvo quien mira.
+Un invitado aceptado ve al organizador y a los otros acompañantes; una visita
+anónima no excluye a ninguna cuenta ni confunde su identidad nula con la de
+un invitado sin cuenta. El perfil usa la identidad del visitante, separada de
+la del propietario. Se conserva el máximo visual de tres nombres.
+
+El feed presenta al organizador como actor y conserva sus acompañantes como
+sujeto narrativo, aunque uno de ellos esté mirando. ExperienceCard exige un
+contexto explícito: viewerId en álbum y creatorId como sujeto en feed. Un
+helper compartido selecciona aceptados y resuelve sus nombres con el fallback
+traducido existente. Las consultas y RLS mantienen sus fronteras; la ruta
+transporta la identidad que ya tenía sin añadir Auth por tarjeta.
+
+Verificación local: 111/111 tests en 17 archivos, seis mutantes causales,
+tipos/lint y revisión independiente sin hallazgos. La build/start nueva pasa
+27/27 checks de Chromium con Supabase local, incluyendo privacidad y feed.
+El backend externo elimina la identidad privada: ese recorrido no se usa
+para afirmar el fallback de un DTO nulo. Los abortos de red y FAIL de driver
+se conservan, y la CI del HEAD final es el gate de integración.
+Evidencia: [implementación](../testing/2026-10-04-experience-participants-1353.md)
+y [QA nativa](../testing/2026-10-04-experience-participants-native-1353.md).
+
+## 2026-10-04 — Aborto atómico de la migración IndexedDB de Play (#977)
+
+Se mantiene el aborto completo cuando update/delete falla durante la migración
+de guardados v1. IndexedDB revierte registros, esquema y versión conjuntamente;
+la apertura existente maneja el error y libera la promesa para el siguiente
+intento. Cancelar el error de una petición para continuar permitiría confirmar
+una mezcla de formatos v1/v2. La ausencia de un handler por petición no exige
+ese cambio de comportamiento.
+
+Se aclara [#977](https://github.com/borjar20/Biblioshare/issues/977) mediante
+cobertura durable de rollback y reintento sin reset, sin modificar `db.ts`.
+Los errores se inyectan en el backend asíncrono real de fake-indexeddb; no son
+una reproducción de cuota física de navegador. Evidencia y límites en
+[informe focal](../testing/2026-10-04-play-upgrade-errors-977.md).
+
 ## 2026-10-04 — Experiencias: reseña por momento, solo con asistencia confirmada y experiencia vivida (#1293)
 
 Cada persona reseña cada momento con nota 1–10 y/o texto (al menos uno). Solo puede hacerlo

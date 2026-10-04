@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { appendFileSync, readFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test as base, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { visibleFormContaining } from "../support/visible-form";
 
 const API_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 if (API_URL !== "http://127.0.0.1:54321") throw new Error("#1237 requires disposable local Supabase");
@@ -135,15 +136,17 @@ test.use({ trace: "off" });
 
 async function login(page: Page, actor: Actor) {
   await page.goto(`/login?next=${encodeURIComponent("/buscar?type=book")}`);
-  await page.locator('input[name="email"]').fill(actor.email);
-  await page.locator('input[name="password"]').fill(actor.password);
-  await page.locator('button[type="submit"]').click();
+  const form = visibleFormContaining(page, 'input[name="email"]');
+  await form.locator('input[name="email"]:visible').fill(actor.email);
+  await form.locator('input[name="password"]:visible').fill(actor.password);
+  await form.locator('button[type="submit"]:visible').click();
   await expect(page).toHaveURL(/\/buscar\?type=book$/);
-  await expect(page.locator('input[name="q"]')).toBeVisible();
+  await expect(visibleFormContaining(page, 'input[name="q"]').locator('input[name="q"]:visible')).toBeVisible();
 }
 async function search(page: Page, fixture: Fixture) {
-  await page.locator('input[name="q"]').fill(fixture.isbn);
-  await page.getByRole("button", { name: "Buscar", exact: true }).click();
+  const form = visibleFormContaining(page, 'input[name="q"]');
+  await form.locator('input[name="q"]:visible').fill(fixture.isbn);
+  await form.getByRole("button", { name: "Buscar", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`q=${fixture.isbn}`));
   const card = page.getByTestId("search-result-card");
   await expect(card).toHaveCount(1); await expect(card).toBeVisible();

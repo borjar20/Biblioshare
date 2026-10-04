@@ -682,3 +682,84 @@ permite la vía de sistema con auth.uid() NULL: se verifica qué cliente escribe
 sin inventar un rechazo SQL para el reset de sistema. No se acredita RLS, grants,
 proveedores ni POST nativos. No cambia el producto; CI del HEAD final es gate
 de publicación.
+
+## Respuestas de catálogo grabadas y movimiento de PetSprite (#916, #1024, #1064)
+
+- [Colapso por QID #916](testing/2026-10-03-catalog-qid-fixtures-916.md): seis casos nuevos ejecutan búsqueda/fan-out, normalizadores, Inventaire y colapso reales contra 17 respuestas completas capturadas. Tanda focal 79/79 PASS y tres regresiones temporales detectadas. La inversión de relevancia distingue la causa del superviviente: edition_count sólo desempata en la deduplicación anterior; el colapso prioriza catalogId y después el primer candidato. Fixtures y manifests conservan sus bytes/hashes, sin red durante tests ni cambios de producto.
+- [DOM y CSS #1024/#1064](testing/2026-10-03-pet-motion-coverage-1024-1064.md): 17 casos nuevos, 29/29 focales PASS y cuatro controles causales; CSS real compilado, AST/keyframes y componente/manifiesto reales, sin cambiar configuración global.
+- [Navegador focal del 2026-10-04](testing/2026-10-04-pet-motion-native-1024-1064.md): 22/22 checks en Chromium con Next/Webpack y Lightning CSS privados. Reproducción de strips, reinicio en el mismo nodo, evolución y preferencia nativa de movimiento reducido; tres capturas inspeccionadas. Tres FAIL de preparación conservados. Acredita este montaje privado, con límites explícitos de integración del layout/Auth, Turbopack, build/start y dispositivo.
+
+Ambos candidatos pasan revisión independiente. Integración sobre main eee8b8c y
+CI del HEAD final son gates de publicación; los informes originales conservan
+sus bases, hashes y alcance. Esta cobertura no acredita APIs actuales ni
+producción o RLS remota.
+
+## Acompañantes según quien mira (#1353)
+
+[Implementación y cobertura](testing/2026-10-04-experience-participants-1353.md):
+detalle, hub y perfil excluyen sólo a la cuenta que mira entre las personas
+aceptadas. El feed mantiene al organizador como sujeto de su narrativa. La
+identidad de sesión ya resuelta pasa hasta la tarjeta; no hay lecturas Auth
+adicionales. Tanda focal 111/111 en 17 archivos, tipos/lint y seis mutantes
+causales PASS; revisión independiente 72/72, sin hallazgos.
+
+[QA nativa](testing/2026-10-04-experience-participants-native-1353.md): 27/27
+checks en Chromium contra una build Turbopack nueva y next start, con Supabase
+local real. Recorre creación, invitación, aceptación, consentimiento y
+publicación, y comprueba detalle, hub, perfil, feed, privacidad y cambios de
+audiencia tras recargar. Seis capturas inspeccionadas y limpieza de los actores
+propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
+el límite del fallback protegido, sin declarar una auditoría global PASS.
+La CI del HEAD de entrega sigue siendo un gate independiente.
+
+## Aborto atómico y reintento de la migración local (#977)
+
+[Informe](testing/2026-10-04-play-upgrade-errors-977.md): dos casos nuevos
+provocan errores asíncronos de update/delete después de cambios anteriores en
+la migración v1. Comprueban el rollback de registros, esquema y versión, el
+fallback existente y la recuperación de los guardados al reabrir sin reset.
+El motor completo pasa 144/144 casos; tipos, lint y diff PASS. Dos mutantes
+detectan la promesa rechazada retenida y el commit parcial por cancelar errores.
+
+`db.ts` conserva su comportamiento: el aborto completo protege la fuente v1.
+El diagnóstico de #977 se aclara con este contrato y su cobertura; no se añade
+`preventDefault`. La cuota se inyecta en el backend asíncrono de fake-indexeddb,
+sin acreditar disco lleno en un navegador. El harness no promete rehidratar un
+store ya activo; verifica la siguiente apertura de la API. Se conserva un FAIL
+de preparación con cero tests, separado de los dos mutantes causales. La CI del
+HEAD de entrega sigue siendo un gate independiente.
+
+## Formularios visibles durante streaming (#1368)
+
+[Informe focal](testing/2026-10-04-ci-visible-form-controls-1368.md): login y
+búsqueda se acotan al formulario y controles visibles. Conservan el rechazo
+estricto de dos candidatos visibles; no usan `first`, esperas adicionales ni
+excepciones a las aserciones. El control causal distingue seis fallos del
+locator anterior, seis éxitos del helper y seis rechazos de duplicados visibles.
+
+La build Turbopack nueva con `next start` y Supabase local pasa 20/20 casos:
+cuatro reentradas reales de entrenamiento, dos recorridos completos de cuota y
+14 regresiones de DOM controlado. TypeScript, lint y revisión independiente
+32/32 PASS. Se conservan dos FAIL de preparación y el límite del alias privado
+de sólo lectura para el manifiesto de acciones del checkout con junction.
+Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
+sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
+auditoría global de red limpia.
+
+## Fichas de acompañantes y asientos de MTG (#1006, #1008)
+
+[Informe nativo](testing/2026-10-04-play-seat-interactions-1006-1008.md): ocho
+recorridos de Chromium contra build Turbopack nueva y `next start`, a 390 y
+1280 px. Recursos acredita que tocar sólo abre el panel y que quitar a Ana
+conserva a Beto tras recargar. MTG cubre el quinto asiento, retirada intermedia
+y reutilización de un id libre, inicio con Eva, mínimo de dos y Duelo.
+
+Los oráculos combinan UI accesible y lectura de IndexedDB real, sin imports
+de producto, interceptaciones ni actores remotos. Ocho PASS, tipos/lint
+correctos y diez capturas inspeccionadas. La revisión de integración verifica
+67 artefactos sellados, ambos blobs fuente y ausencia de delta de producto
+entre la base de build y main; dos capturas se inspeccionan también desde Root.
+
+Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
+La tanda no acredita sincronización, otros navegadores ni salud global de red.
+La CI del HEAD integrado sigue siendo un gate de publicación independiente.
