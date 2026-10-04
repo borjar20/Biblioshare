@@ -39,7 +39,29 @@ test("ZIP completo: confirmar, cerrar, recuperar por cron, historial, pendientes
     await expect(page.getByRole("heading", { name: "Resumen del archivo" })).toBeVisible();
     const before = await admin.from("passes").select("id").eq("user_id", actorIds[0]);
     expect(before.data).toHaveLength(0);
+    const draft = await admin.from("archive_imports").select("id,state").eq("user_id", actorIds[0]).single();
+    expect(draft.error).toBeNull();
+    expect(draft.data?.state).toBe("draft");
+    const jobId = draft.data!.id;
+    // Keep the browser dispatcher pending, without fabricating its response:
+    // the real cron must process this job only after the importing page closes.
+    await page.route(url => url.pathname === `/api/import/archive/${jobId}/dispatch`, route => {
+      if (route.request().method() !== "POST") return route.continue();
+    });
     await page.getByRole("button", { name: "Confirmar importación", exact: true }).click();
+    // click() only acknowledges the gesture. Read the durable confirmation
+    // written by the real server action before destroying its request owner.
+    await expect.poll(async () => {
+      const confirmed = await admin.from("archive_imports").select("state").eq("id", jobId).eq("user_id", actorIds[0]).single();
+      expect(confirmed.error).toBeNull();
+      return confirmed.data?.state;
+    }).toBe("running");
+    const pending = await admin.from("archive_import_items").select("state").eq("job_id", jobId).eq("user_id", actorIds[0]);
+    expect(pending.error).toBeNull();
+    expect(pending.data?.map(item => item.state)).toEqual(["pending"]);
+    const unprocessed = await admin.from("passes").select("id").eq("user_id", actorIds[0]);
+    expect(unprocessed.error).toBeNull();
+    expect(unprocessed.data).toHaveLength(0);
     await page.close();
     // Simulate the durable scheduled request after the importing browser closes.
     // The local fixture has no production Vault/cron configuration.
@@ -47,6 +69,12 @@ test("ZIP completo: confirmar, cerrar, recuperar por cron, historial, pendientes
       headers: { "x-cron-secret": process.env.CRON_SECRET! },
     });
     expect(recovered.status()).toBe(200);
+    const work = await recovered.json() as { jobs: number; batches: number };
+    expect(work.jobs).toBeGreaterThanOrEqual(1);
+    expect(work.batches).toBeGreaterThanOrEqual(1);
+    const completed = await admin.from("archive_imports").select("state").eq("id", jobId).eq("user_id", actorIds[0]).single();
+    expect(completed.error).toBeNull();
+    expect(completed.data?.state).toBe("done");
     const back = await page.context().newPage();
     await back.goto("/importar");
     await expect(back.getByText("1 de 1 películas incorporadas", { exact: true })).toBeVisible();
