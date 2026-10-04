@@ -62,6 +62,13 @@ sustituir el consentimiento individual de identidad y fotos. «Revisar mis
 participaciones» y «Revisar mis fotos» mantienen el acceso a la gestión de
 aportaciones propias cuando ya no se puede abrir el recuerdo.
 
+Delta 2026-10-04, reseñas de momentos en feed y perfil: la cabecera de un post de
+reseña dice «reseñó {momento}» (en minúscula, tras el nombre de quien escribe) en
+vez de «Compartió una experiencia»; debajo de la tarjeta, la nota en dots y el texto
+enlazan al momento. En la pestaña «Experiencias» del perfil, cada tarjeta muestra
+un extracto de la mejor reseña propia compartida en el perfil; si solo tiene nota,
+«Solo puso nota».
+
 Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
 **Experiencias**, **Comunidad** y **Buscar** son las entradas principales.
 **Comunidad** reúne **Clubes** y **Personas**: aquí «Personas» son cuentas de

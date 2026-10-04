@@ -151,6 +151,19 @@ export async function getProfileExperiences(userId:string,filters:ExperienceFilt
   const rows=data??[],page=rows.slice(0,20),last=page.at(-1);
   return {items:await getExperiencePreviews(client,page),nextCursor:rows.length>20&&last?Buffer.from(JSON.stringify({createdAt:last.created_at,id:last.id})).toString("base64url"):null};
 }
+/** Mejor reseña propia por experiencia para la pestaña del perfil: la de nota más alta, y a igualdad la más reciente.
+ * Solo las que su autor decidió mostrar en el perfil (share_with_profile): la RLS dejaría ver al propio autor y al
+ * grupo también las no compartidas, y el perfil no es el sitio para ellas. Sin `use cache` (depende de la sesión, #437). */
+export async function getProfileReviewExcerpts(userId:string,experienceIds:string[]):Promise<Map<string,{momentId:string;rating:number|null;body:string|null}>> {
+  if(!isExperienceId(userId)||!experienceIds.length) return new Map();
+  const client=await createClient();
+  const {data,error}=await client.from("experience_moment_reviews").select("experience_id,moment_id,rating,body,created_at").eq("author_id",userId).eq("share_with_profile",true).in("experience_id",experienceIds)
+    .order("rating",{ascending:false,nullsFirst:false}).order("created_at",{ascending:false});
+  if(error) throw error;
+  const map=new Map<string,{momentId:string;rating:number|null;body:string|null}>();
+  for(const r of data??[]) if(!map.has(r.experience_id)) map.set(r.experience_id,{momentId:r.moment_id,rating:r.rating,body:r.body});
+  return map;
+}
 async function readAttendance(client:Client,id:string) {
   // 50 moments × 30 people exceeds PostgREST's 1,000-row response cap.
   const query=()=>client.from("experience_moment_participants").select("*").eq("experience_id",id).order("moment_id").order("participant_id");

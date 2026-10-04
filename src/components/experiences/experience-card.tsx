@@ -6,7 +6,7 @@ import { ChevronRightIcon } from "@/components/ui/icons";
 import type { ExperiencePreview } from "@/lib/experiences/types";
 import { ExperienceDate } from "./experience-date";
 import { ExperienceArtwork,ExperienceKindIcon,ExperiencePeople } from "./experience-artwork";
-export function ExperienceCard({experience:e,variant="album"}:{experience:ExperiencePreview;variant?:"album"|"feed"}) {
+export function ExperienceCard({experience:e,variant="album",excerpt}:{experience:ExperiencePreview;variant?:"album"|"feed";excerpt?:{momentId:string;rating:number|null;body:string|null}}) {
   const t=useTranslations("experiences");
   const people=e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).map(p=>p.guestName??p.displayName??p.username).filter(Boolean);
   const kind=e.moments[0]?.kind??"other";
@@ -20,6 +20,7 @@ export function ExperienceCard({experience:e,variant="album"}:{experience:Experi
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1.5"><span aria-hidden className={`h-1.5 w-1.5 rounded-full ${e.state==="lived" ? "bg-green" : e.state==="cancelled" ? "bg-status-dropped" : "bg-gold"}`}/>{t(`states.${e.state}`)}</span><ExperienceDate startsOn={e.startsOn} endsOn={e.endsOn}/></div>
       <h2 className="break-words font-serif text-xl font-semibold leading-snug group-hover:text-accent">{e.title}</h2>
       {e.shape==="single"&&e.moments[0]?.placeLabel&&<p className="text-sm text-muted-foreground">{e.moments[0].placeLabel}</p>}
+      {excerpt&&(excerpt.body||excerpt.rating!==null)&&<p className="line-clamp-3 border-l-2 border-border pl-3 text-sm text-muted-foreground">{excerpt.body??t("ratedOnly")}</p>}
       <div className="mt-auto flex items-center gap-3 border-t border-border pt-3"><ExperiencePeople people={e.participants} size="sm"/><p className="min-w-0 flex-1 text-xs text-muted-foreground">{people.length ? t("with",{names:people.slice(0,3).join(", ")}) : t("personal")}</p><ChevronRightIcon aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground"/></div>
     </div>
   </Link>;

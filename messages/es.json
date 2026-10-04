@@ -41,6 +41,8 @@
     "viewPublication": "Ver publicación",
     "publishAudienceHint": "Elige «Quien pueda ver mi perfil» para compartir en el feed.",
     "sharedMemory": "Compartió una experiencia",
+    "reviewedMoment": "reseñó {name}",
+    "ratedOnly": "Solo puso nota",
     "profileEmptyTitle": "Sin experiencias para mostrar",
     "profileEmptyMessage": "Aquí aparecerán los recuerdos y planes que puedas ver de esta persona.",
     "unavailableTitle": "Experiencia no disponible",
