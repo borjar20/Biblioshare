@@ -10,7 +10,11 @@ import { itemHref } from "@/lib/catalog/item-href";
 import type { Note } from "@/lib/notes/types";
 import { getNotesPage } from "@/lib/notes/get-notes";
 import { compareNotes } from "@/lib/notes/sort";
-import { hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
+import { NOTES_PAGE_SIZE, hasActiveFilters, parseNotesQuery } from "@/lib/notes/query";
+import { listMarginForNotebook } from "@/lib/margin/queries";
+import { MarginNoteCard } from "@/components/margin/margin-note-card";
+import { MarginRetroSeen } from "@/components/margin/margin-retro-seen";
+import { RouteMessages } from "@/components/route-messages";
 import { NoteCard } from "@/components/notes/note-card";
 import { NOTE_GRID_COLS, SHELL_GRID } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -100,6 +104,45 @@ async function NotebookContent({
 
   const t = await getTranslations("notes");
   const query = parseNotesQuery(await searchParams);
+
+  if (query.margin) {
+    const [profile, { notes, hasMore }] = await Promise.all([
+      getOwnProfile(user.id),
+      listMarginForNotebook(supabase, user.id, query.margin, query.page),
+    ]);
+    const unseen = query.margin === "found"
+      ? notes.flatMap((n) => (n.encounter && n.encounter.seenAt === null ? [n.encounter.id] : []))
+      : [];
+    return (
+      <RouteMessages ns={["margin", "feed", "notes"]}>
+        <div className="mb-4">
+          <PageHeader
+            title={t("notebookTitle")}
+            backHref={profile ? `/u/${profile.username}?tab=rincon` : "/"}
+            backLabel={t("notebookBack")}
+          />
+        </div>
+        <div className="mb-4">
+          <NotesFilters query={query} />
+        </div>
+        {notes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {query.margin === "found" ? t("notebookFoundEmpty") : t("notebookMineEmpty")}
+          </p>
+        ) : (
+          <div className={`grid items-start gap-3 ${NOTE_GRID_COLS}`}>
+            {notes.map((n) => (
+              <MarginNoteCard key={n.noteId + (n.encounter?.id ?? "")} note={n}
+                showNew={n.encounter !== null && n.encounter.seenAt === null} />
+            ))}
+          </div>
+        )}
+        {/* La insignia «Nueva» sigue en este render; se marcan vistas para la siguiente visita. */}
+        <MarginRetroSeen key={unseen.join(",")} ids={unseen} />
+        <NotesPager query={query} total={hasMore ? (query.page + 1) * NOTES_PAGE_SIZE : query.page * NOTES_PAGE_SIZE} />
+      </RouteMessages>
+    );
+  }
 
   const [profile, { notes, total }] = await Promise.all([
     getOwnProfile(user.id),

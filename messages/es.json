@@ -3145,6 +3145,10 @@
     "actionsLabel": "Acciones de la nota",
     "favoriteOn": "Quitar de favoritas",
     "favoriteOff": "Marcar como favorita",
+    "notebookFound": "Encontradas",
+    "notebookMine": "En el margen",
+    "notebookFoundEmpty": "Cuando alguien a quien sigues te deje una nota y llegues a ese punto, aparecerá aquí",
+    "notebookMineEmpty": "Aún no has dejado notas en el margen",
     "notebookTitle": "Cuaderno",
     "notebookBack": "Volver",
     "notebookSeeAll": "Ver todas",
@@ -3709,6 +3713,7 @@
     }
   },
   "margin": {
+    "backToWork": "Volver a la obra",
     "sectionTitle": "Notas en el margen",
     "sectionEmpty": "Aún no has encontrado notas en esta obra",
     "mine": "Las que dejaste",

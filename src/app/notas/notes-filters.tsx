@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { SearchIcon } from "@/components/ui/icons";
 import {
+  defaultNotesQuery,
   hasActiveFilters,
   notesHref,
   type NotesKindFilter,
@@ -89,20 +90,27 @@ export async function NotesFilters({ query }: { query: NotesQuery }) {
 
       <div className="flex flex-wrap items-center gap-2">
         {kinds.map((k) => (
-          <Pill key={k.value} href={notesHref(query, { kind: k.value })} active={query.kind === k.value}>
+          <Pill key={k.value} href={notesHref(query, { kind: k.value, margin: null })} active={!query.margin && query.kind === k.value}>
             {k.label}
           </Pill>
         ))}
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-        <Pill href={notesHref(query, { favorites: !query.favorites })} active={query.favorites}>
+        <Pill href={notesHref(query, { favorites: !query.favorites, margin: null })} active={!query.margin && query.favorites}>
           {t("notebookFavorites")}
         </Pill>
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
         {sorts.map((s) => (
-          <Pill key={s.value} href={notesHref(query, { sort: s.value })} active={query.sort === s.value}>
+          <Pill key={s.value} href={notesHref(query, { sort: s.value, margin: null })} active={!query.margin && query.sort === s.value}>
             {s.label}
           </Pill>
         ))}
+        <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+        <Pill href={notesHref(defaultNotesQuery(), { margin: "found" })} active={query.margin === "found"}>
+          {t("notebookFound")}
+        </Pill>
+        <Pill href={notesHref(defaultNotesQuery(), { margin: "mine" })} active={query.margin === "mine"}>
+          {t("notebookMine")}
+        </Pill>
       </div>
 
       {/* Los filtros que no tienen pill propia (etiqueta, obra, búsqueda) se ven
