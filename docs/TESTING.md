@@ -693,6 +693,24 @@ pareja validado y grants 11/11/11. Los avisos de seguridad coinciden exactamente
 al retirar únicamente sus timestamps `observed_at`; los avisos previos siguen
 abiertos. Cierre de admisión y activación productiva pendientes en ese corte.
 
+La CI corregida de `cc9c565` pasa la reconstrucción vacía (run 37218346000),
+quality y CodeQL, pero conserva FAIL en siete de 146 flujos críticos
+(run 37218345996): cuatro selectores de email encuentran un campo visible y
+otro en el fragmento de streaming oculto, y dos selectores de búsqueda
+encuentran dos nodos con una sola caja visible. Estos drivers se corrigen en
+[#1368](https://github.com/borjar20/Biblioshare/issues/1368), en entrega aparte.
+El caso de notas #754 registra un POST de claim cancelado durante la primera
+salida de portada y un aviso cliente; la generación efectiva no está en la
+traza. La guarda de diagnóstico obsoleto se sigue en
+[#1369](https://github.com/borjar20/Biblioshare/issues/1369), sin silenciar los
+errores del E2E ni atribuir un fallo de SQL. La entrega requiere CI del HEAD
+que integre las correcciones.
+
+[Expansión compatible de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
+fase 1 confirmada a las 16:42:17 UTC, objetos/ACL/grants e historia reales
+verificados después. El ledger completo de statements conserva el carrier
+auténtico; las fases 2/3 siguen pendientes de su gate independiente.
+
 ## Motivo de abandono en el diario (#655)
 
 [Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho

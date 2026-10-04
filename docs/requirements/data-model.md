@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-10-04 (#1334, local y dev verificados; producción pendiente):**
+> **Delta 2026-10-04 (#1334, local/dev verificados; expansión de producción aplicada, activación pendiente):**
 > Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
 > reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
 > cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
@@ -10,8 +10,11 @@
 > transacciones actuales. Las tres fases se aplicaron en dev el 2026-10-03 y los
 > objetos, ACL y grants por columna se revalidaron el 2026-10-04 a las 15:54 UTC:
 > cuatro RPC invoker, ejecución sólo authenticated y grants 11/11/11; 26 filas
-> históricas intactas. Producción conserva el legacy anterior en ese corte;
-> no hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
+> históricas intactas. Producción recibió la expansión el 2026-10-04 a las
+> 16:42:17 UTC; a las 16:44 UTC se verificaron RLS y grants 11/11/11, CHECK
+> válido y tres RPC invoker cerradas a los roles ordinarios. El legacy anterior
+> conserva definición y ACL; cierre de admisión y activación siguen pendientes.
+> No hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
 > mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
 > Contrato, fases y límites en §7bis.
 
@@ -4138,6 +4141,20 @@ comprobados. No acredita Auth/REST remoto; la cadena real Auth/RPC/PostgreSQL
 pertenece al G4 local. Los siete avisos SECURITY DEFINER autenticados adicionales
 de dev proceden del delta de reseñas de Experiencias de otra entrega, no de estas
 RPC. Los registros de transporte se siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
+
+**Expansión #1334 en producción, aplicada el 2026-10-04 a las 16:42:17 UTC:**
+11 columnas con SELECT/INSERT/UPDATE de authenticated, CHECK de pareja validado
+y RLS activa. Las tres RPC invoker coinciden con dev y todavía no permiten
+EXECUTE a ningún rol ordinario; `pull_pending_celebrations` conserva exactamente
+su cuerpo, definición y acceso anterior de authenticated/service_role. No se
+ha cerrado la admisión ni activado el nuevo protocolo en este corte.
+Las 220 filas históricas conservan su hash `9d3aa09e3634ab4edf328021a71db0fe`;
+las 301 filas previas del ledger mantienen versión, nombre y MD5 de statements.
+Se añadieron la canónica `20261003184419` y el carrier real `20261004164217`,
+sin reescribir historia. Advisors sin hallazgos nuevos; sólo cambia el instante
+de observación. Evidencia: [expansión compatible de producción](../testing/2026-10-04-celebrations-prod-expansion-1334.md).
+La deuda de correspondencia histórica global se sigue aparte en
+[#1366](https://github.com/borjar20/Biblioshare/issues/1366).
 
 **Pendiente (issues abiertas):** #459 marcar episodios desde la pestaña Episodios
 (`episode-actions.ts`) y publicar/votar en club aún no disparan `checkCelebrations()` en cliente
