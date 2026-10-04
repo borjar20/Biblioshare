@@ -15,8 +15,8 @@ el siguiente: lo verificado en dev no dice nada de producción.
 
 | Entorno | Estado verificado |
 |---|---|
-| Local (bootstrap vacío, Docker) | Cinco migraciones aplicadas en el orden del manifiesto; `npm run test:db:local` PASS con 287 pasos de bootstrap. |
-| `biblioshare-dev` | Cinco migraciones aplicadas con `apply_migration`, contenido exacto de cada fichero; objetos verificados contra `pg_proc`/`pg_class`/`pg_policies`; `experiences_reviews.sql` PASS con rollback. |
+| Local (bootstrap vacío, Docker) | Seis migraciones aplicadas en el orden del manifiesto; `npm run test:db:local` PASS con 288 pasos de bootstrap. |
+| `biblioshare-dev` | Seis migraciones aplicadas con `apply_migration`, contenido exacto de cada fichero (la sexta, `20261004100500`, tras la revisión final); objetos verificados contra `pg_proc`/`pg_class`/`pg_policies`; `experiences_reviews.sql` PASS con rollback. |
 | E2E | 16/16 contra `next build` + `next start` en el puerto 3000, un worker, cero reintentos. |
 | Producción | **No aplicado.** Sin migraciones, sin verificación de objetos, sin despliegue de código. Se hará en una operación aparte, tras revisión de la PR y visto bueno del propietario. |
 
@@ -30,6 +30,9 @@ en la transacción que lo crea):
 3. `20261004100200_experience_reviews_core.sql`
 4. `20261004100300_experience_reviews_social.sql`
 5. `20261004100400_experience_reviews_moderation.sql`
+6. `20261004100500_experience_reviews_notify_access.sql` — solo `create or replace` de
+   `experience_save_moment_review`: los destinatarios de `experience_reviewed` exigen acceso
+   actual (revisión final, I2). Conserva el ACL (`authenticated` y `service_role`).
 
 ## Unitarios (Vitest, local)
 
@@ -39,6 +42,7 @@ en la transacción que lo crea):
 | Suite `src/lib src/components src/app` tras el delta de feed y perfil | 461 archivos, 4.586 pruebas PASS |
 | Suite `src/components src/lib src/app` tras favorito, tipos nuevos, nota en tarjetas y orden del hub | **465 archivos, 4.607 pruebas PASS** (último corte de la suite completa) |
 | Panel de moderación (reseña con nota de solo lectura) | 3 pruebas nuevas; 19 pruebas PASS en admin y moderación |
+| Correcciones de la revisión final (avisos en paralelo, denunciar solo con sesión, vaciar = borrar con confirmación, diálogo de asistencia solo con `PT409`); `npx vitest run` completo | 5 pruebas nuevas vistas en RED; **466 archivos, 4.615 pruebas PASS** |
 
 `tsc --noEmit`: 0 errores en cada corte. `eslint` limpio sobre los ficheros cambiados; el
 `npm run lint` global conserva 9 errores y 28 avisos previos en `test-results/*.cjs` sin
@@ -47,31 +51,63 @@ seguimiento, ajenos a esta rama.
 ## SQL local (`supabase/tests/experiences_reviews.sql`)
 
 Reconstrucción vacía del stack local y `npm run test:db:local`, con el test terminando en
-`rollback`. La suite recorre al creador, aceptado asistente, aceptado no asistente, pendiente,
-retirado, tercero, anónimo, bloqueado y administrador. Cubre, entre otros:
+`rollback`. Actores que el test usa de verdad: creador, miembro aceptado asistente, miembro
+aceptado no asistente, tercero con cuenta, invitado sin aceptar, anónimo (`set local role anon`
+sin claim), invitado sin cuenta (fila de `experience_add_guest`) y administrador. Lo que
+afirma, sin más:
 
-- sin `attended`, en `planned`/`cancelled` o sin cuenta: rechazo; trigger de respaldo;
-- cambiar asistencia con reseña: `PT409` sin `p_drop_reviews`; con él, borra reseña y post;
-- revertir a `planned` oculta y volver a `lived` recupera;
-- terceros sin consentimiento no ven reseñas ni identidades ocultas; media fuera del
-  grupo solo con compartidas; bloqueo creador↔autor oculta la atribución;
+- sin `attended` (asistencia `planned`): rechazo `42501`; nota fuera de 1–10 y texto > 4000:
+  `22023`; upsert con una fila por persona y momento; escritura directa por REST cerrada;
+- invitado sin cuenta: un INSERT directo como superusuario (`reset role`) con su fila de
+  participante y asistencia `attended` lo rechaza el guard (`42501`, «attended lived account
+  required»). La RPC no tiene camino para él: busca la fila aceptada de `auth.uid()`;
+- cambiar asistencia con reseña: `PT409` sin `p_drop_reviews`; con él, borra la reseña; no
+  queda la sobrecarga de dos argumentos;
+- pasar a `planned` oculta (sin borrar) y volver a `lived` recupera;
+- lectura: el grupo lee; el tercero no lee sin `share_with_profile` + `share_identity`, ni
+  cuando se retira el flag; bloqueo creador↔autor oculta la atribución; el invitado sin
+  aceptar no lee una reseña no compartida ni obtiene media; el anónimo lee solo la reseña
+  compartida de una experiencia `profile` (no la no compartida) y la media que recibe cuenta
+  solo esa;
+- media: dentro del grupo cuenta todo lo visible; fuera, vacía si nada es compartido;
+- hub ordenado: solo experiencias propias aceptadas; con dos experiencias, la puntuada va
+  antes que una más reciente sin nota; `kind` desconocido: `22023`;
+- avisos (`notifyUserIds`): un miembro aceptado normal y el creador los reciben y el autor no;
+  un miembro bloqueado con el creador queda fuera; en una experiencia `private` la lista va
+  vacía;
+- retirar a un participante (`experience_remove_participant` como creador) borra en cascada
+  sus reseñas y su post publicado, sin dejar marcador de operación;
+- publicación: exige consentimiento y audiencia `profile`; **idempotente (secuencial)**: dos
+  llamadas seguidas devuelven el mismo post. No hay prueba concurrente de la publicación de
+  reseñas (la de `verify-experience-concurrency.mjs` es de `experience_publish`, el post de
+  la experiencia). El post de una reseña moderada por un administrador no se recrea (borrado
+  y retirada); el guard exige la RPC aunque se salte la RLS;
 - retirar consentimiento, borrar y despublicar funcionan bajo bloqueo y bajo moderación,
   sin dejar marcador de operación ni historial falso;
-- publicación concurrente produce un único post; el post de una reseña moderada por un
-  administrador no se recrea (borrado y retirada);
-- denuncia: sin acceso, propia, motivo inválido y detalles largos se rechazan; la evidencia
-  no es legible por quien denuncia; al borrar la reseña, la denuncia queda `actioned`;
-- moderación: listar, retirar, restaurar y eliminar; cascada desde la experiencia;
-- cero `EXECUTE` de `PUBLIC` en las funciones nuevas.
+- denuncia: sin acceso, propia, motivo inválido, detalles largos y reseña inexistente se
+  rechazan; la evidencia no es legible por quien denuncia; al borrar la reseña, la denuncia
+  queda `actioned`;
+- moderación: listar, retirar, restaurar y eliminar; reseña retirada no editable ni vaciable;
+  cascada desde la experiencia (retirada y borrado con un historial por reseña);
+- cero `EXECUTE` de `PUBLIC` en las funciones `experience%review%`; `anon` sin EXECUTE en
+  `experience_save_moment_review`.
 
-Cada tarea se comprobó con RED antes de implementar (error esperado) y GREEN tras
-reconstruir; varias aserciones se mutaron a propósito para comprobar que fallan. Última
-ejecución completa: `PASS: 287 bootstrap steps, schema contracts and role privileges.`
+Cada caso añadido tras la revisión final va en su propio `savepoint` y deja el estado igual.
+Los de avisos se vieron fallar (RED) contra las cinco migraciones previas y pasar tras
+`20261004100500`; los de privacidad pasan sin cambio de esquema (cobertura). Última ejecución
+completa: `PASS: 288 bootstrap steps, schema contracts and role privileges.`
 
 ## SQL en dev
 
 `supabase/tests/experiences_reviews.sql` ejecutado entero en `biblioshare-dev` mediante
-`execute_sql` (BEGIN … ROLLBACK): PASS, ninguna excepción `FAIL`. Comprobación de que no
+`execute_sql` (BEGIN … ROLLBACK): PASS, ninguna excepción `FAIL`. Repetido el 2026-10-04 con
+los casos de la revisión final, tras aplicar `20261004100500`: PASS; después, 0 experiencias
+`[TEST] reviews%` y 0 perfiles `rev_%`.
+
+`20261004100500` en dev: antes de aplicarla, el `md5(prosrc)` de
+`experience_save_moment_review` en dev era idéntico al cuerpo de `20261004100400`
+(`8e0b61e9…`). Después: el `prosrc` contiene `e.audience<>'private'`, ACL sin cambios
+(`postgres`, `authenticated`, `service_role`; ni `anon` ni `PUBLIC`). Comprobación de que no
 queda nada: `experience_moment_reviews` con 0 filas, 0 usuarios sintéticos y 0 perfiles
 `rev_%` tras la prueba.
 
@@ -88,6 +124,34 @@ Contra objetos reales, no contra el ledger:
 | Grants de columna | `anon` y `authenticated`: SELECT en las 10 columnas, ningún otro privilegio |
 | EXECUTE | `PUBLIC` sin permiso en ninguna de las funciones nuevas; `anon` solo en `get_experience_rating_summaries(uuid[])` |
 | Triggers de la tabla | `experience_moment_reviews_guard`, `experience_review_cleanup_post`, `experience_review_cleanup_target`, `moderation_capture_delete` |
+
+## Despliegue a producción (pendiente; orden obligatorio)
+
+**Migraciones primero, código después.** El código nuevo depende de objetos que solo existen
+tras las migraciones: `getExperiencePreviews` llama a `get_experience_rating_summaries` (la
+usan `/experiencias`, la pestaña del perfil y `resolvePostDrafts` para cualquier página del
+feed con un post de experiencia: el feed devolvería 500), y `setMomentAttendance` envía
+siempre `p_drop_reviews` (contra la función vieja de dos argumentos es PGRST202 y la
+asistencia se rompe). Al revés es seguro: el código viejo tolera el esquema nuevo (ver la
+revisión final de la rama).
+
+1. **Justo antes de aplicar**, comparar en producción `md5(prosrc)` (y, si difiere,
+   `pg_get_functiondef`) de las funciones compartidas que `20261004100400` reescribe con el
+   cuerpo de la migración: `private.moderation_available`, `public.admin_moderation_list`,
+   `private.moderation_row_available`, `public.admin_moderate_content`,
+   `private.capture_moderation_deletion`, `private.prepare_content_report`,
+   `private.social_target_owner_id`, `public.can_view_target` y
+   `private.guard_experience_post`. Esos cuerpos se copiaron de dev el 2026-10-04; si otra
+   rama cambió alguna en producción después, aplicar la migración tal cual revertiría ese
+   cambio en silencio. Si alguna difiere, parar y fusionar a mano antes de seguir.
+2. Aplicar las seis migraciones en orden, la de enums **sola** primero (Postgres no deja usar
+   un valor de enum en la transacción que lo crea): `20261004100000`, `…100100`, `…100200`,
+   `…100300`, `…100400`, `…100500`. Verificar contra objetos reales con las mismas consultas
+   de «Verificación de objetos en dev» (funciones, RLS, políticas, grants de tabla y columna,
+   EXECUTE, triggers) y que `experience_save_moment_review` contiene `e.audience<>'private'`.
+   No ejecutar `experiences_reviews.sql` con fixtures en producción.
+3. **Solo entonces** hacer merge de la PR o promover el despliegue. Después, regenerar
+   `database.types.ts`.
 
 ## E2E (Playwright, `next build` + `next start`)
 

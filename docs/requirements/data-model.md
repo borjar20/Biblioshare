@@ -1,8 +1,8 @@
 # Modelo de datos
 
 > **Delta 2026-10-04 (#1293, reseñas por momento; verificado en dev 2026-10-04 contra
-> pg_proc/pg_class/pg_policies; producción pendiente):** cinco migraciones nuevas
-> (`20261004100000` … `20261004100400`) añaden `experience_moment_reviews`, los tipos
+> pg_proc/pg_class/pg_policies; producción pendiente):** seis migraciones nuevas
+> (`20261004100000` … `20261004100500`) añaden `experience_moment_reviews`, los tipos
 > de momento `food`/`festival`/`sport`/`nature`, la publicación de reseñas en Actividad,
 > el kind de moderación `experience_review` y la firma de tres argumentos de
 > `experience_set_attendance`. Aplicadas en `biblioshare-dev` el 2026-10-04: trece
@@ -4653,8 +4653,10 @@ un éxito y un conflicto, sin perder momentos.
 
 Migraciones `20261004100000_experience_reviews_enums.sql` (sola, en su transacción),
 `20261004100100_experience_moment_kinds.sql`, `20261004100200_experience_reviews_core.sql`,
-`20261004100300_experience_reviews_social.sql` y
-`20261004100400_experience_reviews_moderation.sql`. Contrato:
+`20261004100300_experience_reviews_social.sql`,
+`20261004100400_experience_reviews_moderation.sql` y
+`20261004100500_experience_reviews_notify_access.sql` (destinatarios del aviso con acceso
+actual; aplicada en dev el 2026-10-04 con el mismo ACL). Contrato:
 [spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md) (histórica).
 
 **Enums aditivos:** `post_kind`, `post_source_kind` y `target_kind` ganan
@@ -4722,7 +4724,7 @@ del autor borra el post aunque haya moderación, sin escribir historial falso.
 
 | RPC | Lock | Comportamiento |
 |---|---|---|
-| `experience_save_moment_review(p_moment_id uuid, p_rating smallint, p_body text)` | `experience_lock` | Upsert de la reseña propia; exige miembro con asistencia `attended` en experiencia `lived`. Rating 1–10 o nulo; `body` recortado ≤ 4000. Ambos nulos borra. Rechaza (`42501`) editar o vaciar una reseña retirada por moderación. Devuelve `id`, `experienceId`, `created` y `notifyUserIds` (miembros aceptados con cuenta salvo el autor y bloqueos; vacío si la reseña ya existía). |
+| `experience_save_moment_review(p_moment_id uuid, p_rating smallint, p_body text)` | `experience_lock` | Upsert de la reseña propia; exige miembro con asistencia `attended` en experiencia `lived`. Rating 1–10 o nulo; `body` recortado ≤ 4000. Ambos nulos borra. Rechaza (`42501`) editar o vaciar una reseña retirada por moderación. Devuelve `id`, `experienceId`, `created` y `notifyUserIds`: miembros aceptados con cuenta y **acceso actual** (audiencia no `private` salvo el creador, sin bloqueo con el creador en ningún sentido, experiencia no retirada por moderación), salvo el autor y quien esté bloqueado con él; vacío si la reseña ya existía (`20261004100500`). |
 | `experience_set_review_sharing(p_review_id uuid, p_enabled boolean)` | activar: `experience_lock` + `can_contribute_experience`; **desactivar: `experience_withdrawal_lock`** | Solo autor; relee la fila `for update`. Desactivar borra el post vía trigger. |
 | `experience_delete_moment_review(p_review_id uuid)` | **`experience_withdrawal_lock`** | Solo autor; borra la reseña (y el post por trigger). |
 | `experience_publish_review(p_review_id uuid)` | `experience_lock` | Solo autor; exige `share_with_profile` y experiencia `profile` + `lived`. Idempotente (devuelve el post existente); un post moderado → `publication unavailable`. |
@@ -4777,9 +4779,11 @@ Borrar una reseña desde moderación registra una fila `delete` de kind `experie
 `experience_moment_reviews_read`, `posts_experience_visible` y
 `content_reports_experience_evidence_private`, grants de tabla solo SELECT para
 `anon`/`authenticated`, cuatro triggers propios sobre la tabla y cero EXECUTE de PUBLIC
-(solo `get_experience_rating_summaries` es ejecutable por `anon`).
+(de las RPC públicas, solo `get_experience_rating_summaries` es ejecutable por `anon`; los
+helpers `private.can_view_experience_review` y `private.is_experience_kind` también tienen
+EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
-Bootstrap local: 287 pasos. **Producción: no aplicado.**
+Bootstrap local: 288 pasos (con `20261004100500`). **Producción: no aplicado.**
 
 ## 9. Seguridad
 
