@@ -678,7 +678,7 @@ Next/browser propios cerrados y Supabase detenido después con backup normal.
 Dev fue activado el 2026-10-03 y sus objetos/ACL/11 grants por operación se
 revalidaron el 2026-10-04, conservando las 26 filas históricas. Un probe directo
 PostgreSQL con rol/claims sintéticos y ROLLBACK no sustituye Auth/REST remoto.
-Producción y CI de publicación siguen pendientes en este corte. Los registros
+Producción y CI de publicación seguían pendientes en ese corte anterior. Los registros
 extra del transporte se conservan y siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
 El ACK ambiguo puede permitir repetición en otro consumidor.
 
@@ -706,10 +706,27 @@ traza. La guarda de diagnóstico obsoleto se sigue en
 errores del E2E ni atribuir un fallo de SQL. La entrega requiere CI del HEAD
 que integre las correcciones.
 
-[Expansión compatible de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
-fase 1 confirmada a las 16:42:17 UTC, objetos/ACL/grants e historia reales
-verificados después. El ledger completo de statements conserva el carrier
-auténtico; las fases 2/3 siguen pendientes de su gate independiente.
+[Expansión y activación de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
+fase 1 confirmada a las 16:42:17 UTC; cierre de admisión confirmado y activación
+final aplicada a las 20:15:35 UTC. Dos snapshots completos acreditaron cohorte
+vacía, cero prepared transactions y cero otras transacciones; el guard real
+se ejecutó en la misma transacción que DDL y ledger. Dos intentos anteriores
+conservaron FAIL SQLSTATE `55000` y ROLLBACK por otras transacciones actuales;
+sus identidades no quedaron capturadas y no se atribuye una causa al éxito
+posterior. El diagnóstico PREguard añadido sólo registra metadatos y conserva
+la fuente canónica y la barrera independiente exactas.
+
+El corte final de las 20:16:22 UTC verifica 11 columnas/33 grants, RLS activa,
+cuatro RPC invoker con MD5 iguales a dev y EXECUTE sólo de authenticated,
+legacy compatible de cero filas, las 221 filas previas intactas y el mismo
+hash de los 303 registros anteriores. Ledger 307: dos canónicas y dos carriers
+nuevos, preservados sin normalizar. Seguridad sin grupos ni hallazgos nuevos
+tras excluir sólo `observed_at`; SECURITY DEFINER autenticadas baja 95→94 por
+retirar exactamente el legacy, sin declarar resueltos los otros avisos.
+Esto acredita activación de esquema y permisos. El consumidor de PR #1364
+todavía no está integrado ni desplegado y requiere CI sobre el HEAD final de
+documentación. No acredita Auth/REST o presentación remota, ni cierra #1334.
+El FAIL global de #1301 y los límites nativos de #1356 permanecen separados.
 
 ## Motivo de abandono en el diario (#655)
 

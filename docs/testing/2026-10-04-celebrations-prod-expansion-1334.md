@@ -1,5 +1,10 @@
 # Celebraciones: expansión compatible en producción (#1334)
 
+> **[Estado actual · producción activada el 2026-10-04 a las 20:15:35 UTC,
+> objetos y permisos verificados a las 20:16:22 UTC; consumidor PR #1364
+> pendiente de integración, despliegue y CI final. El corte de expansión
+> siguiente se conserva como historia.]**
+
 > **[Corte real de producción · 2026-10-04, 16:44 UTC; fase 1 aplicada;
 > cierre de admisión y activación pendientes]**
 
@@ -58,3 +63,53 @@ Fases 2 y 3 requieren cierre de admisión confirmado, inspección fresca del
 target real y el checker de quiescencia independiente. Que los backends
 estuvieran idle en este corte no sustituye ese gate. Tampoco la deuda global
 de timestamps del CLI #1366 se considera resuelta al archivar estos carriers.
+
+## Activación final — 2026-10-04, 20:16:22 UTC
+
+El cierre de admisión de la fase 2 recibió success y COMMIT antes del nuevo
+cutoff. Dos intentos de fase 3 fallaron con SQLSTATE `55000`, «Other current
+transactions block celebration activation», y ROLLBACK; se conservan sus
+peticiones y respuestas. No se obtuvo la identidad de esas transacciones y
+no se atribuye una causa ni una cura al éxito posterior.
+
+El tercer intento recibió success a las 20:15:35 UTC. Usó dos snapshots reales
+completos con estadísticas visibles, cohorte vacía, cero prepared transactions
+y cero otras transacciones. Conservó la fuente canónica y el guard independiente
+exactos; añadió sólo un diagnóstico PREguard con metadatos, sin texto de
+consultas ni secretos. El guard real, DDL y INSERT canónico del ledger se
+ejecutaron en la misma transacción. No se sustituyó la barrera por el diagnóstico.
+
+| Comprobación posterior, 20:16:22 UTC | Resultado |
+| --- | --- |
+| Target real: database OID 5, user_celebrations OID 20578 | PASS |
+| 11 columnas, RLS activa y SELECT/INSERT/UPDATE authenticated por columna | PASS, 33 grants |
+| Cuatro RPC INVOKER, search_path public, pg_temp y MD5 iguales a dev | PASS |
+| EXECUTE sólo de authenticated; legacy compatible de cero filas sin escritura | PASS |
+| 221 filas del preflight, MD5 f958c90882c2708b12392d4a0f385dbe | PASS, intactas |
+| 303 registros previos del ledger, MD5 49108bb7aa70f5526918f1071f872f59 | PASS, intactos |
+| Ledger final 307: 303 previos + dos canónicas + dos carriers | PASS |
+
+Se conservan las canónicas `20261003184423`/`20261003184427` y los carriers
+reales `20261004200916`/`20261004201535`, además del par de expansión anterior.
+El mapping de #1355 queda intacto, sin normalización del historial.
+La relectura de ACL efectivas de las 20:26:21 UTC confirma PUBLIC sin EXECUTE,
+`ordinary_executors=[authenticated]` y las cuatro RPC invoker. Las seis filas
+de historia se releen con sus arrays completos de statements, sin modificarlos.
+La comparación de seguridad excluye exclusivamente `observed_at`: no hay
+grupos nuevos ni hallazgos añadidos. SECURITY DEFINER autenticadas baja 95→94
+por retirar exactamente `public.pull_pending_celebrations()`; los otros grupos
+mantienen 2/4/1/28/1. No se consideran resueltos los avisos preexistentes.
+
+Recibos nuevos en el repo raíz:
+`.scratch/ticket-campaign/20261004-continue/`: `prod-preflight.json`,
+`dev-contract.json`, `phase2-approved-response.json`, `phase3-response.json`,
+`phase3-after-rollback.json`, `phase3-attempt02/`, `phase3-attempt03/`,
+`production-final-status.json`, `prior-ledger-before.json`,
+`prior-ledger-final.json`, `final-effective-acl.json`,
+`transport-history-complete.json` y `security-comparison.json`.
+
+Este corte acredita esquema activo, permisos y preservación de datos/historia.
+El consumidor de PR #1364 aún no está integrado ni desplegado: no se acredita
+Auth/REST o presentación remota, ni cierre de #1334. La CI debe volver a pasar
+sobre su HEAD final. El FAIL global de #1301 y las tres fronteras nativas
+pendientes de #1356 conservan sus dictámenes.

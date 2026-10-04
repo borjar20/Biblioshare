@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-10-04 (#1334, local/dev verificados; expansión de producción aplicada, activación pendiente):**
+> **Delta 2026-10-04 (#1334, esquema activo en dev y producción; consumidor pendiente de publicación):**
 > Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
 > reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
 > cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
@@ -10,10 +10,13 @@
 > transacciones actuales. Las tres fases se aplicaron en dev el 2026-10-03 y los
 > objetos, ACL y grants por columna se revalidaron el 2026-10-04 a las 15:54 UTC:
 > cuatro RPC invoker, ejecución sólo authenticated y grants 11/11/11; 26 filas
-> históricas intactas. Producción recibió la expansión el 2026-10-04 a las
-> 16:42:17 UTC; a las 16:44 UTC se verificaron RLS y grants 11/11/11, CHECK
-> válido y tres RPC invoker cerradas a los roles ordinarios. El legacy anterior
-> conserva definición y ACL; cierre de admisión y activación siguen pendientes.
+> históricas intactas. Producción recibió la expansión a las 16:42:17 UTC y
+> la activación final a las 20:15:35 UTC, tras cierre de admisión confirmado y
+> quiescencia real. El corte de las 20:16:22 UTC verifica cuatro RPC invoker
+> iguales a dev, EXECUTE sólo de authenticated, legacy compatible de cero filas,
+> RLS y grants 11/11/11; las 221 filas del preflight y los 303 registros previos
+> del ledger siguen intactos. El consumidor de PR #1364 aún no está integrado
+> ni desplegado; este corte acredita esquema y permisos, no presentación remota.
 > No hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
 > mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
 > Contrato, fases y límites en §7bis.
@@ -4037,7 +4040,7 @@ y **dos tienen hueco fijo** (*Saga de los Huesos Verdes*, huecos 1 y 2 de 5): un
 en la COLUMNA, así que tratar «opcional» como sinónimo de «rama punteada» —que es como la dibuja el
 mockup— dejaría esas dos siempre visibles.
 
-## 7bis. Celebraciones — `user_celebrations` (base 2026-08-05; delta #1334 verificado en dev 2026-10-04)
+## 7bis. Celebraciones — `user_celebrations` (base 2026-08-05; delta #1334 activo y verificado en dev/producción 2026-10-04)
 
 > (Antes numerada «7.9», chocando con «7.9 Motivo de la ventana recomendada» dentro de Sagas;
 > renumerada a 7bis el 2026-08-19 — es sección propia, no una subsección de §7 Sagas.)
@@ -4062,7 +4065,7 @@ deduplicación**: ganar dos veces el mismo hito no crea segunda fila. Índice pa
 gana SUS celebraciones con su sesión, sin service-role. `grant select, insert, update` a
 `authenticated`.
 
-**Contrato anterior (producción a las 15:54 UTC del 2026-10-04, hasta su cutover acreditado)**:
+**Contrato anterior (corte de producción a las 15:54 UTC del 2026-10-04; retirado en la activación final)**:
 `pull_pending_celebrations()` sella con `UPDATE … RETURNING` antes de que el cliente
 presente el overlay. Ese orden origina #1334: una navegación puede interrumpir la
 presentación después de que el SQL haya consumido la fila. No se modifica ningún
@@ -4142,7 +4145,7 @@ pertenece al G4 local. Los siete avisos SECURITY DEFINER autenticados adicionale
 de dev proceden del delta de reseñas de Experiencias de otra entrega, no de estas
 RPC. Los registros de transporte se siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
 
-**Expansión #1334 en producción, aplicada el 2026-10-04 a las 16:42:17 UTC:**
+**Corte histórico de expansión #1334 en producción, aplicado el 2026-10-04 a las 16:42:17 UTC:**
 11 columnas con SELECT/INSERT/UPDATE de authenticated, CHECK de pareja validado
 y RLS activa. Las tres RPC invoker coinciden con dev y todavía no permiten
 EXECUTE a ningún rol ordinario; `pull_pending_celebrations` conserva exactamente
@@ -4155,6 +4158,33 @@ sin reescribir historia. Advisors sin hallazgos nuevos; sólo cambia el instante
 de observación. Evidencia: [expansión compatible de producción](../testing/2026-10-04-celebrations-prod-expansion-1334.md).
 La deuda de correspondencia histórica global se sigue aparte en
 [#1366](https://github.com/borjar20/Biblioshare/issues/1366).
+
+**Activación final #1334 en producción, aplicada el 2026-10-04 a las 20:15:35 UTC
+y verificada a las 20:16:22 UTC:** cierre de admisión confirmado en una transacción
+anterior; dos snapshots completos acreditan cohorte vacía, cero prepared
+transactions y cero otras transacciones. El guard independiente volvió a
+comprobar el target real en la misma transacción que el DDL y el INSERT del
+ledger. Dos intentos previos de activación fallaron con SQLSTATE `55000`,
+«Other current transactions block celebration activation», y se revirtieron.
+No se capturó la identidad de esas transacciones ni se atribuye una causa al
+éxito posterior. El tercer intento conserva SQL canónico y guard exactos y
+añade sólo un diagnóstico previo con metadatos, sin textos de consultas ni secretos.
+
+Objetos finales de producción (`database_oid=5`, `table_oid=20578`): 11 columnas,
+33 grants SELECT/INSERT/UPDATE, RLS activa y cuatro RPC `SECURITY INVOKER`,
+`search_path=public, pg_temp`, con definiciones MD5 iguales a dev y EXECUTE sólo
+de authenticated. El legacy es un no-op compatible de cero filas, sin sellado.
+Las 221 filas observadas antes del cierre mantienen MD5
+`f958c90882c2708b12392d4a0f385dbe`; los 303 registros previos del ledger conservan
+MD5 `49108bb7aa70f5526918f1071f872f59`. El ledger final tiene 307: se añaden las
+canónicas `20261003184423`/`20261003184427` y los carriers reales
+`20261004200916`/`20261004201535`, sin normalizar el mapping de #1355.
+La comparación de seguridad excluye sólo `observed_at`: sin grupos ni hallazgos
+nuevos; el grupo de SECURITY DEFINER autenticadas baja de 95 a 94 por retirar
+exactamente `public.pull_pending_celebrations()`. Los avisos preexistentes no
+se consideran corregidos. Evidencia en el mismo informe de producción.
+PR #1364 sigue pendiente de integración, despliegue y CI de su HEAD final;
+el esquema activo no acredita el consumidor remoto ni cierra #1334.
 
 **Pendiente (issues abiertas):** #459 marcar episodios desde la pestaña Episodios
 (`episode-actions.ts`) y publicar/votar en club aún no disparan `checkCelebrations()` en cliente
