@@ -6369,3 +6369,18 @@ para afirmar el fallback de un DTO nulo. Los abortos de red y FAIL de driver
 se conservan, y la CI del HEAD final es el gate de integración.
 Evidencia: [implementación](../testing/2026-10-04-experience-participants-1353.md)
 y [QA nativa](../testing/2026-10-04-experience-participants-native-1353.md).
+
+## 2026-10-04 — Aborto atómico de la migración IndexedDB de Play (#977)
+
+Se mantiene el aborto completo cuando update/delete falla durante la migración
+de guardados v1. IndexedDB revierte registros, esquema y versión conjuntamente;
+la apertura existente maneja el error y libera la promesa para el siguiente
+intento. Cancelar el error de una petición para continuar permitiría confirmar
+una mezcla de formatos v1/v2. La ausencia de un handler por petición no exige
+ese cambio de comportamiento.
+
+Se aclara [#977](https://github.com/borjar20/Biblioshare/issues/977) mediante
+cobertura durable de rollback y reintento sin reset, sin modificar `db.ts`.
+Los errores se inyectan en el backend asíncrono real de fake-indexeddb; no son
+una reproducción de cuota física de navegador. Evidencia y límites en
+[informe focal](../testing/2026-10-04-play-upgrade-errors-977.md).
