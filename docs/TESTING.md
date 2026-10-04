@@ -764,6 +764,7 @@ Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
 La tanda no acredita sincronización, otros navegadores ni salud global de red.
 La CI del HEAD integrado sigue siendo un gate de publicación independiente.
 
+<<<<<<< HEAD
 ## Fixture de ronda: respuestas REST y limpieza (#405)
 
 [Informe focal](testing/2026-10-04-club-round-fixture-405.md): nueve contratos
@@ -780,3 +781,13 @@ y sus contratos de fixture; **no acredita navegador, Auth/SQL reales ni #401**
 así que no se atribuye a esa CI el e2e completo de `club-ronda.spec.ts`.
 La cuenta QA persistente se conserva; sólo se limpia el club desechable por id.
 La CI remota del HEAD de entrega mantiene su propio gate.
+=======
+## CI: confirmar el ZIP antes de cerrar Letterboxd (#1373)
+
+[Informe focal](testing/2026-10-04-letterboxd-confirmation-1373.md): la UI real
+persiste el job en `running` antes del cierre; después el cron real debe
+incorporarlo y dejarlo en `done`. Pasan los dos casos existentes y el control
+que retiene y libera la confirmación por señal. El control sin commit rechaza
+el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
+natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
+>>>>>>> f5839cf8c55b649daf62ffc08d216268eb28a9f3
