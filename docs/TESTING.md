@@ -711,3 +711,20 @@ audiencia tras recargar. Seis capturas inspeccionadas y limpieza de los actores
 propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
 el límite del fallback protegido, sin declarar una auditoría global PASS.
 La CI del HEAD de entrega sigue siendo un gate independiente.
+
+## Aborto atómico y reintento de la migración local (#977)
+
+[Informe](testing/2026-10-04-play-upgrade-errors-977.md): dos casos nuevos
+provocan errores asíncronos de update/delete después de cambios anteriores en
+la migración v1. Comprueban el rollback de registros, esquema y versión, el
+fallback existente y la recuperación de los guardados al reabrir sin reset.
+El motor completo pasa 144/144 casos; tipos, lint y diff PASS. Dos mutantes
+detectan la promesa rechazada retenida y el commit parcial por cancelar errores.
+
+`db.ts` conserva su comportamiento: el aborto completo protege la fuente v1.
+El diagnóstico de #977 se aclara con este contrato y su cobertura; no se añade
+`preventDefault`. La cuota se inyecta en el backend asíncrono de fake-indexeddb,
+sin acreditar disco lleno en un navegador. El harness no promete rehidratar un
+store ya activo; verifica la siguiente apertura de la API. Se conserva un FAIL
+de preparación con cero tests, separado de los dos mutantes causales. La CI del
+HEAD de entrega sigue siendo un gate independiente.
