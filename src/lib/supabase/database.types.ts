@@ -3105,6 +3105,8 @@ export type Database = {
       }
       user_celebrations: {
         Row: {
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           displayed_at: string | null
           event_key: string
@@ -3116,6 +3118,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           displayed_at?: string | null
           event_key: string
@@ -3127,6 +3131,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           displayed_at?: string | null
           event_key?: string
@@ -3218,6 +3224,74 @@ export type Database = {
             columns: ["moment_id", "experience_id"]
             isOneToOne: false
             referencedRelation: "experience_moments"
+            referencedColumns: ["id", "experience_id"]
+          },
+        ]
+      }
+      experience_moment_reviews: {
+        Row: {
+          author_id: string
+          body: string | null
+          created_at: string
+          experience_id: string
+          id: string
+          moment_id: string
+          participant_id: string
+          rating: number | null
+          share_with_profile: boolean
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body?: string | null
+          created_at?: string
+          experience_id: string
+          id?: string
+          moment_id: string
+          participant_id: string
+          rating?: number | null
+          share_with_profile?: boolean
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string | null
+          created_at?: string
+          experience_id?: string
+          id?: string
+          moment_id?: string
+          participant_id?: string
+          rating?: number | null
+          share_with_profile?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_moment_reviews_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_moment_reviews_moment_id_experience_id_fkey"
+            columns: ["moment_id", "experience_id"]
+            isOneToOne: false
+            referencedRelation: "experience_moments"
+            referencedColumns: ["id", "experience_id"]
+          },
+          {
+            foreignKeyName: "experience_moment_reviews_moment_id_participant_id_fkey"
+            columns: ["moment_id", "participant_id"]
+            isOneToOne: true
+            referencedRelation: "experience_moment_participants"
+            referencedColumns: ["moment_id", "participant_id"]
+          },
+          {
+            foreignKeyName: "experience_moment_reviews_participant_id_experience_id_fkey"
+            columns: ["participant_id", "experience_id"]
+            isOneToOne: false
+            referencedRelation: "experience_participants"
             referencedColumns: ["id", "experience_id"]
           },
         ]
@@ -4044,6 +4118,14 @@ export type Database = {
         Returns: undefined
       }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
+      ack_celebration: {
+        Args: { p_claim_token: string; p_id: string }
+        Returns: string
+      }
+      claim_next_celebration: {
+        Args: { p_supported_types: string[] }
+        Returns: Json
+      }
       pull_pending_celebrations: {
         Args: never
         Returns: {
@@ -4051,6 +4133,10 @@ export type Database = {
           event_type: string
           payload: Json
         }[]
+      }
+      release_celebration: {
+        Args: { p_claim_token: string; p_id: string }
+        Returns: string
       }
       register_book_edition: {
         Args: {
@@ -4381,7 +4467,7 @@ export type Database = {
         Returns: Json
       }
       experience_set_attendance: {
-        Args: { p_moment_id: string; p_state: string }
+        Args: { p_drop_reviews?: boolean; p_moment_id: string; p_state: string }
         Returns: Json
       }
       experience_set_favorite: {
@@ -4526,6 +4612,71 @@ export type Database = {
           title: string
         }[]
       }
+      experience_delete_moment_review: {
+        Args: { p_review_id: string }
+        Returns: Json
+      }
+      experience_publish_review: { Args: { p_review_id: string }; Returns: Json }
+      experience_report_review: {
+        Args: { p_details?: string; p_reason: string; p_review_id: string }
+        Returns: Json
+      }
+      experience_save_moment_review: {
+        Args: { p_body: string; p_moment_id: string; p_rating: number }
+        Returns: Json
+      }
+      experience_set_review_sharing: {
+        Args: { p_enabled: boolean; p_review_id: string }
+        Returns: Json
+      }
+      experience_unpublish_review: {
+        Args: { p_review_id: string }
+        Returns: Json
+      }
+      get_experience_rating_summaries: {
+        Args: { p_ids: string[] }
+        Returns: {
+          avg_rating: number
+          experience_id: string
+          moment_id: string
+          rating_count: number
+        }[]
+      }
+      get_experience_review_publications: {
+        Args: { p_ids: string[] }
+        Returns: {
+          post_id: string
+          review_id: string
+        }[]
+      }
+      get_own_experiences_ranked: {
+        Args: {
+          p_companion?: string
+          p_kind?: string
+          p_offset?: number
+          p_state?: string
+        }
+        Returns: {
+          audience: string
+          cover_photo_id: string | null
+          created_at: string
+          creator_id: string
+          ends_on: string | null
+          id: string
+          revision: number
+          shape: string
+          starts_on: string | null
+          state: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "experiences"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
 }
     Enums: {
       activity_kind:
@@ -4557,7 +4708,7 @@ export type Database = {
       item_type: "book" | "movie" | "series"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       notification_type:
-        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience"
+        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience" | "experience_reviewed"
       pass_dropped_reason:
         | "no_enganchado"
         | "aburrido"
@@ -4567,12 +4718,13 @@ export type Database = {
       pending_import_status: "pending" | "resolved" | "dismissed"
       post_anchor_type: "book" | "movie" | "series" | "saga" | "person" | "experience"
       post_kind:
-        "started" | "finished" | "dropped" | "progressed" | "watched" | "thought" | "joint" | "experience"
+        "started" | "finished" | "dropped" | "progressed" | "watched" | "thought" | "joint" | "experience" | "experience_review"
       post_source_kind:
         | "pass"
         | "progress_session"
         | "episode_watch"
         | "joint_viewing"
+        | "experience_review"
       push_channel: "web"
       push_platform: "web_push" | "fcm_android" | "apns_ios"
       saga_item_role:
@@ -4586,7 +4738,7 @@ export type Database = {
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
       target_kind:
-        "diary_entry" | "episode_watch" | "club_post" | "comment" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session" | "club_round" | "thought" | "post" | "experience"
+        "diary_entry" | "episode_watch" | "club_post" | "comment" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session" | "club_round" | "thought" | "post" | "experience" | "experience_review"
       thought_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       user_role: "user" | "collaborator" | "admin"
     }
@@ -4741,7 +4893,7 @@ export const Constants = {
       ],
       item_type: ["book", "movie", "series"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience", "experience_reviewed"],
       pass_dropped_reason: [
         "no_enganchado",
         "aburrido",
@@ -4751,12 +4903,13 @@ export const Constants = {
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
       post_anchor_type: ["book", "movie", "series", "saga", "person", "experience"],
-      post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience"],
+      post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience", "experience_review"],
       post_source_kind: [
         "pass",
         "progress_session",
         "episode_watch",
         "joint_viewing",
+        "experience_review",
       ],
       push_channel: ["web"],
       push_platform: ["web_push", "fcm_android", "apns_ios"],
@@ -4771,7 +4924,7 @@ export const Constants = {
       saga_placement: ["fijo", "libre", "anclado"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],
-      target_kind: ["diary_entry", "episode_watch", "club_post", "comment", "activity_checkpoint", "club_activity", "pass", "progress_session", "club_round", "thought", "post", "experience"],
+      target_kind: ["diary_entry", "episode_watch", "club_post", "comment", "activity_checkpoint", "club_activity", "pass", "progress_session", "club_round", "thought", "post", "experience", "experience_review"],
       thought_anchor_type: ["book", "movie", "series", "saga", "person"],
       user_role: ["user", "collaborator", "admin"],
     },

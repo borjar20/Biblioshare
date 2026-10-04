@@ -62,6 +62,44 @@ sustituir el consentimiento individual de identidad y fotos. «Revisar mis
 participaciones» y «Revisar mis fotos» mantienen el acceso a la gestión de
 aportaciones propias cuando ya no se puede abrir el recuerdo.
 
+Delta 2026-10-04, reseñas de momentos en feed y perfil: la cabecera de un post de
+reseña dice «reseñó {momento}» (en minúscula, tras el nombre de quien escribe) en
+vez de «Compartió una experiencia»; debajo de la tarjeta, la nota en dots y el texto
+enlazan al momento. En la pestaña «Experiencias» del perfil, cada tarjeta muestra
+un extracto de la mejor reseña propia compartida en el perfil; si solo tiene nota,
+«Solo puso nota».
+
+Delta 2026-10-04, reseñas en el detalle de la experiencia: una **Reseña de momento**
+es la nota 1–10 (en dots, nunca estrellas) y/o el texto que cada persona deja sobre
+un momento al que fue («Fui») en una experiencia **Vivida**; la experiencia no tiene
+nota propia, solo la media de sus reseñas. Sin presencia confirmada no se ofrece
+«Reseñar» desactivado: se explica «Confirma que fuiste a {momento} para poder
+reseñarlo». **Compartir fuera del grupo** es el consentimiento de cada reseña para que
+la vean quienes ven la experiencia en el perfil de su autor; sin él, solo la leen los
+acompañantes aceptados. **Publicar en tu actividad** es la acción explícita y
+adicional que la lleva al feed, y solo se habilita con la reseña compartida y la
+experiencia visible en el perfil. Las reseñas ajenas se pueden «Denunciar reseña»;
+si ya la denunciaste: «Ya denunciaste esta reseña.». **Mi momento** sustituye a «Mi
+momento favorito» como etiqueta del favorito (icono de cinta, no estrella).
+**Lo vivimos** es la acción rápida del creador que pasa un plan a **Vivida** y lleva
+a confirmar la presencia y reseñar.
+Copy del flujo: título «¿A qué fuiste?», ayuda «Marca los momentos en los que
+estuviste. Podrás cambiarlo después.», botón «Guardar», y al acabar «Reseñar ahora» o
+«Más tarde». En una experiencia **Vivida** con tu presencia aún «Por confirmar», el
+selector se encabeza con «¿Fuiste? Confirma y reseña». Pasar a «No fui» o «Por
+confirmar» un momento que ya reseñaste pide confirmación: «Borrar tu reseña» — «Tienes
+una reseña de {momento}. Si dices que no fuiste, se borrará junto con su
+publicación.» — botón «Cambiar y borrar la reseña».
+Tipos de momento nuevos: «Gastronomía», «Festival», «Deporte» y «Naturaleza» (junto a
+Concierto, Espectáculo, Exposición, Museo, Paseo y «Otra experiencia»). El favorito se
+llama «Mi momento»; el de otra persona, «Momento de {nombre}»; sus acciones son
+«Marcar {momento} como mi momento» y «Quitar {momento} como mi momento». Las tarjetas
+muestran la media visible en dots con «N reseñas» solo cuando hay alguna. En el hub,
+«Orden» ofrece «Recientes» (por defecto) y «Mejor valoradas» (por media visible).
+Avisos: «{nombre} reseñó un momento de una experiencia» (solo al grupo; el texto de la
+reseña no viaja en el aviso). Moderación: el tipo de contenido se llama «Reseña de
+experiencia».
+
 Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
 **Experiencias**, **Comunidad** y **Buscar** son las entradas principales.
 **Comunidad** reúne **Clubes** y **Personas**: aquí «Personas» son cuentas de

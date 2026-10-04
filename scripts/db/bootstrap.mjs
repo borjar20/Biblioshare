@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACTIVATION_MIGRATION, renderEmptyBootstrapCutoverContextSql } from './celebrations-cutover.mjs';
 
 export const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (path) => readFileSync(path, 'utf8').replaceAll('\r\n', '\n');
@@ -26,7 +27,8 @@ export function loadPlan(root = repoRoot) {
         source = 'supabase/bootstrap/empty-graph-data.sql';
         sql = read(join(root, source));
       }
-      return { name: name.replace(/\.sql$/, ''), source, sql, originalSha256 };
+      return { name: name.replace(/\.sql$/, ''), source, sql, originalSha256,
+        ...(name === ACTIVATION_MIGRATION.file ? { requiresCutover: true } : {}) };
     }),
   ];
 }
@@ -37,7 +39,24 @@ export function renderBaseline(root = repoRoot) {
 -- Empty database only. Requires psql (not the SQL editor); stop on the first error.
 -- Sources: bootstrap/initial.sql + bootstrap/manifest.json + migrations/*.sql.
 \\set ON_ERROR_STOP on
-` + steps.map((step) => `\n-- ${step.name}\nbegin;\n\\ir ${step.source.slice('supabase/'.length)}\ncommit;\n`).join('');
+` + steps.map((step) => {
+    const migration = `\n-- ${step.name}\nbegin;\n\\ir ${step.source.slice('supabase/'.length)}\ncommit;\n`;
+    if (!step.requiresCutover) return migration;
+    return `
+-- Protected activation: explicitly attest owner/superuser dispatch is paused.
+-- Pass psql -v celebrations_privileged_dispatch_paused=true; the live SQL gate
+-- still checks full visibility, admission, empty data and transaction completion.
+\\if :{?celebrations_privileged_dispatch_paused}
+select set_config('biblioshare.celebrations_privileged_dispatch_paused', :'celebrations_privileged_dispatch_paused', false);
+\\else
+\\warn Missing explicit celebrations_privileged_dispatch_paused attestation.
+\\quit 1
+\\endif
+${renderEmptyBootstrapCutoverContextSql()}${migration}
+reset biblioshare.celebrations_cutover;
+reset biblioshare.celebrations_privileged_dispatch_paused;
+`;
+  }).join('');
 }
 
 export function prepare(root = repoRoot, destination = join(root, '.superpowers/supabase-local')) {
@@ -63,8 +82,16 @@ export function prepare(root = repoRoot, destination = join(root, '.superpowers/
     // Ordinal local ledger, independent of historical duplicate/8-digit names.
     const version = String(20000101000000n + BigInt(index));
     const filename = `${version}_${step.name}.sql`;
-    writeFileSync(join(migrationDir, filename), `-- Source: ${step.source}\n${step.sql}`);
-    return { version, file: filename, source: step.source, sha256: createHash('sha256').update(step.sql).digest('hex'), originalSha256: step.originalSha256 };
+    // The activation guard cannot run in Supabase's automatic replay: it needs
+    // a fresh observation after admission revocation COMMITTED. Keep its ordinal
+    // in the complete plan, and activate separately through the real checker.
+    const generatedSql = `-- Source: ${step.source}\n${step.sql}`;
+    if (!step.requiresCutover) writeFileSync(join(migrationDir, filename), generatedSql);
+    else if (existsSync(join(migrationDir, filename)) && read(join(migrationDir, filename)) !== generatedSql) {
+      throw new Error('Protected generated activation SQL differs');
+    }
+    return { version, file: filename, source: step.source, sha256: createHash('sha256').update(step.sql).digest('hex'), originalSha256: step.originalSha256,
+      ...(step.requiresCutover ? { deferred: true } : {}) };
   });
   writeFileSync(join(destination, 'supabase/config.toml'), `project_id = "${projectId}"\n
 [api]

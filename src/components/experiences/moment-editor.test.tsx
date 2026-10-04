@@ -15,7 +15,7 @@ beforeEach(()=>{
   HTMLDialogElement.prototype.showModal=function(){this.open=true;};
   HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new Event("close"));};
 });
-const experience:ExperienceDetail={id:"memory",creatorId:"owner",viewerId:"owner",title:"Madrid",revision:12,shape:"single",state:"planned",audience:"private",startsOn:null,endsOn:null,coverPhotoId:null,createdAt:"2026-10-03",canEdit:true,canContribute:true,moments:[{id:"existing",title:"Primer concierto",kind:"concert",placeLabel:null,startsOn:null,endsOn:null,position:0}],participants:[],attendance:[],favorites:[],photos:[],publicationId:null,interactionTargetId:null};
+const experience:ExperienceDetail={id:"memory",creatorId:"owner",viewerId:"owner",title:"Madrid",revision:12,shape:"single",state:"planned",audience:"private",startsOn:null,endsOn:null,coverPhotoId:null,createdAt:"2026-10-03",canEdit:true,canContribute:true,moments:[{id:"existing",title:"Primer concierto",kind:"concert",placeLabel:null,startsOn:null,endsOn:null,position:0}],participants:[],attendance:[],favorites:[],photos:[],publicationId:null,interactionTargetId:null,rating:null,momentRatings:{},reviews:[]};
 function show(){return render(<NextIntlClientProvider locale="es" messages={messages}><MomentEditor experience={experience} {...{variant:"inline" as const}}/></NextIntlClientProvider>);}
 describe("composición de momentos desde el recuerdo",()=>{
   it("ofrece añadir sin volver a dibujar los momentos que ya aparecen en el recorrido",()=>{

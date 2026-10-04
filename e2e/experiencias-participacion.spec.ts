@@ -42,7 +42,7 @@ test("three people accept, confirm their own moments, and lose access when remov
     }
     const attendance=members[0].getByRole("radiogroup",{name:"Tu presencia en Museo de la escapada",exact:true});
     await chooseExperienceRadio(attendance.getByRole("radio",{name:"No fui",exact:true}));
-    await members[0].getByRole("button",{name:`Elegir ${EXPERIENCE_QA_PREFIX}Escapada compartida como favorito`,exact:true}).click();
+    await members[0].getByRole("button",{name:`Marcar ${EXPERIENCE_QA_PREFIX}Escapada compartida como mi momento`,exact:true}).click();
     await editExperience(page,id);await chooseExperienceRadio(page.getByRole("radio",{name:"Vivida",exact:true}));
     await page.getByRole("button",{name:"Guardar cambios",exact:true}).click();await expect(page).toHaveURL(`/experiencia/${id}`);
     const rows=await (await experienceRest(`experience_moment_participants?experience_id=eq.${id}&select=attendance_state,experience_participants!inner(user_id)`)).json() as {attendance_state:string;experience_participants:{user_id:string}}[];

@@ -281,6 +281,15 @@
     "20261002120712_experiences_social_visibility.sql",
     "20261002125917_experiences_advisor_hardening.sql",
     "20261002132635_experiences_review_fixes.sql",
-    "20261003153110_guard_comment_target_recursion.sql"
+    "20261003153110_guard_comment_target_recursion.sql",
+    "20261003184419_recoverable_celebrations_expand.sql",
+    "20261003184423_retire_eager_celebration_admission.sql",
+    "20261003184427_activate_recoverable_celebrations.sql",
+    "20261004100000_experience_reviews_enums.sql",
+    "20261004100100_experience_moment_kinds.sql",
+    "20261004100200_experience_reviews_core.sql",
+    "20261004100300_experience_reviews_social.sql",
+    "20261004100400_experience_reviews_moderation.sql",
+    "20261004100500_experience_reviews_notify_access.sql"
   ]
 }

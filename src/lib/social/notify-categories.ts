@@ -22,6 +22,7 @@ export const CATEGORY_FOR_POST_KIND: Record<PostKind, NotifyCategory> = {
   thought: "thought",
   joint: "milestone",
   experience: "milestone",
+  experience_review: "milestone",
 };
 
 // Record (no Partial) a propósito, igual que NOTIFICATION_CATEGORY en push:
@@ -40,6 +41,9 @@ export const POST_KIND_NOTIFICATION_TYPE: Record<PostKind, NotificationType> = {
   // kind, un texto); si algún día se avisa a seguidores, necesitará uno nuevo.
   joint: "joint_viewing_accepted",
   experience: "followed_experience",
+  // Review posts do not notify followers (only the group, via experience_reviewed);
+  // the Record still needs a type so a new kind cannot be forgotten.
+  experience_review: "experience_reviewed",
 };
 
 const VALID = new Set<string>(NOTIFY_CATEGORIES);

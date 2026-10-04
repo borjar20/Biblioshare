@@ -14,7 +14,7 @@ beforeEach(()=>{
   HTMLDialogElement.prototype.showModal=function(){this.open=true;};
   HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new Event("close"));};
 });
-const experience:ExperienceDetail={id:"memory",creatorId:"owner",viewerId:"owner",title:"Madrid",revision:12,shape:"single",state:"planned",audience:"private",startsOn:null,endsOn:null,coverPhotoId:null,createdAt:"2026-10-03",canEdit:true,canContribute:true,moments:[],participants:[{id:"person",userId:"owner",guestName:null,displayName:"Clara",username:"clara",avatarUrl:null,shareIdentity:false,invitationState:"accepted"}],attendance:[],favorites:[],photos:[],publicationId:null,interactionTargetId:null};
+const experience:ExperienceDetail={id:"memory",creatorId:"owner",viewerId:"owner",title:"Madrid",revision:12,shape:"single",state:"planned",audience:"private",startsOn:null,endsOn:null,coverPhotoId:null,createdAt:"2026-10-03",canEdit:true,canContribute:true,moments:[],participants:[{id:"person",userId:"owner",guestName:null,displayName:"Clara",username:"clara",avatarUrl:null,shareIdentity:false,invitationState:"accepted"}],attendance:[],favorites:[],photos:[],publicationId:null,interactionTargetId:null,rating:null,momentRatings:{},reviews:[]};
 function show(){return render(<NextIntlClientProvider locale="es" messages={messages}><ExperienceParticipants experience={experience}/></NextIntlClientProvider>);}
 describe("añadir personas al recuerdo",()=>{
   it("conserva ambos nombres al alternar entre una cuenta y un invitado",async()=>{
