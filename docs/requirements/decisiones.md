@@ -6528,6 +6528,19 @@ las de obras con las de experiencias. Hasta entonces la conducta actual es la de
 no se ha decidido ni implementado lo contrario. Rastreado en
 [#1358](https://github.com/borjar20/Biblioshare/issues/1358).
 
+## 2026-10-04 — Diagnósticos ligados a la generación del consumidor (#1369)
+
+Un resultado o rechazo del claim sólo se registra como fallo vigente si el
+consumidor continúa activo con el mismo actor y generación. Cambiar de cuenta,
+cerrar o reiniciar invalida también su diagnóstico; un error de la generación
+actual conserva su notificación. Los casos A→B→A no reutilizan la validez de A.
+
+La decisión se verifica con diez casos y el control del código anterior.
+El recorrido nativo #754 pasa, pero no observa la generación en el catch ni
+demuestra por sí solo el origen del fallo CI previo. Evidencia y límites:
+[cobertura](../testing/2026-10-04-celebrations-stale-diagnostics-1369.md) y
+[navegador](../testing/2026-10-04-celebrations-stale-diagnostics-native-1369.md).
+
 ## 2026-10-04 — Cierre de sesión conserva fuentes sin ACK y retira generaciones (#975)
 
 El logout de Partidas purga sólo `synced && deletedAt === null`: una partida
