@@ -9,6 +9,7 @@ import { notifyMentions } from "./notify-mentions";
 import { isAllowedEmoji } from "./emoji-catalog";
 import { commentContext } from "./notification-context";
 import { getInteractionTarget } from "./interaction-target-gate";
+import { threadRecipients } from "./thread-recipient";
 
 export async function toggleReaction(
   interactionTargetId: string,
@@ -69,10 +70,10 @@ export async function toggleReaction(
       throw error;
     }
 
-    if (target.owner_id !== user.id) {
+    for (const recipientId of threadRecipients(target, user.id)) {
       try {
         await notify(supabase, {
-          userId: target.owner_id,
+          userId: recipientId,
           actorId: user.id,
           type: target.reaction_notification_type,
           interactionTargetId,
@@ -157,10 +158,11 @@ export async function addComment(
       console.error(mentionError);
     }
 
-    if (target.owner_id !== user.id && !mentioned.includes(target.owner_id)) {
+    for (const recipientId of threadRecipients(target, user.id)) {
+      if (mentioned.includes(recipientId)) continue;
       try {
         await notify(supabase, {
-          userId: target.owner_id,
+          userId: recipientId,
           actorId: user.id,
           type: target.comment_notification_type,
           interactionTargetId,
@@ -183,7 +185,7 @@ export async function addComment(
         if (
           parent &&
           parent.author_id !== user.id &&
-          parent.author_id !== target.owner_id &&
+          !threadRecipients(target, user.id).includes(parent.author_id) &&
           !mentioned.includes(parent.author_id)
         ) {
           await notify(supabase, {
