@@ -71,3 +71,13 @@ describe("alias privados del perfil", () => {
     expect(findElement(await profileContent(), "YouRow")).toBeUndefined();
   });
 });
+
+describe("contexto de quien mira las Experiencias del perfil", () => {
+  it.each(["owner", "visitor", null])("pasa %s a la pestaña sin sustituirlo por el dueño del perfil", async (viewerId) => {
+    mocks.user = viewerId === null ? null : { id: viewerId };
+    const tab = findElement(await profileContent({ tab: "experiencias" }), "ExperiencesTab");
+
+    expect(tab).toBeDefined();
+    expect(tab!.props).toMatchObject({ userId: "owner", viewerId });
+  });
+});
