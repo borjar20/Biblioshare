@@ -39,7 +39,10 @@ language sql stable security definer set search_path='' as $$
       and not public.users_are_blocked(r.author_id)
       and (private.can_contribute_experience(e.id)
         or (e.audience='profile' and r.share_with_profile and p.share_identity
-          and p.invitation_state='accepted' and public.can_view_profile(r.author_id))));
+          and p.invitation_state='accepted' and public.can_view_profile(r.author_id)
+          and not exists(select 1 from public.user_blocks b
+            where (b.blocker_id=e.creator_id and b.blocked_id=r.author_id)
+               or (b.blocker_id=r.author_id and b.blocked_id=e.creator_id)))));
 $$;
 revoke all on function private.can_view_experience_review(uuid) from public;
 grant execute on function private.can_view_experience_review(uuid) to anon,authenticated;
@@ -108,14 +111,22 @@ begin
   return jsonb_build_object('id',saved,'experienceId',root,'created',existing is null,'notifyUserIds',to_jsonb(coalesce(recipients,'{}')));
 end $$;
 
+-- Granting consent needs full group access; withdrawing it (and deleting) is the author's own
+-- withdrawal and must work despite blocks or moderation, as with experience_set_share_identity.
 create function public.experience_set_review_sharing(p_review_id uuid,p_enabled boolean) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare r public.experience_moment_reviews;
 begin
+  if p_enabled is null then raise exception 'invalid consent' using errcode='22023'; end if;
   select * into r from public.experience_moment_reviews where id=p_review_id;
   if not found then raise exception 'not found' using errcode='PT404'; end if;
-  perform private.experience_lock(r.experience_id);
-  if r.author_id<>auth.uid() or p_enabled is null then raise exception 'author required' using errcode='42501'; end if;
+  if p_enabled then
+    perform private.experience_lock(r.experience_id);
+    if not private.can_contribute_experience(r.experience_id) then raise exception 'member required' using errcode='42501'; end if;
+  else perform private.experience_withdrawal_lock(r.experience_id); end if;
+  select * into r from public.experience_moment_reviews where id=p_review_id for update;
+  if not found then raise exception 'not found' using errcode='PT404'; end if;
+  if r.author_id<>auth.uid() then raise exception 'author required' using errcode='42501'; end if;
   update public.experience_moment_reviews set share_with_profile=p_enabled,updated_at=now() where id=p_review_id;
   return jsonb_build_object('experienceId',r.experience_id);
 end $$;
@@ -126,7 +137,9 @@ declare r public.experience_moment_reviews;
 begin
   select * into r from public.experience_moment_reviews where id=p_review_id;
   if not found then raise exception 'not found' using errcode='PT404'; end if;
-  perform private.experience_lock(r.experience_id);
+  perform private.experience_withdrawal_lock(r.experience_id);
+  select * into r from public.experience_moment_reviews where id=p_review_id for update;
+  if not found then raise exception 'not found' using errcode='PT404'; end if;
   if r.author_id<>auth.uid() then raise exception 'author required' using errcode='42501'; end if;
   delete from public.experience_moment_reviews where id=p_review_id;
   return jsonb_build_object('experienceId',r.experience_id);

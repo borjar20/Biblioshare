@@ -21,7 +21,7 @@ select public.experience_respond_invitation((select id from xr where k='memberro
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='absent'),true);
 select public.experience_respond_invitation((select id from xr where k='absentrow'),'accept');
 select public.experience_set_attendance((select id from xr where k='moment'),'skipped');
--- Member without confirmed attendance cannot review.
+-- Member whose attendance is still the default 'planned' cannot review.
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
 do $$ begin
   begin perform public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Genial'); raise exception 'FAIL review without attendance'; exception when insufficient_privilege then null; end;
@@ -55,6 +55,14 @@ select set_config('request.jwt.claim.sub',(select id::text from xr where k='memb
 select public.experience_set_share_identity((select id from xr where k='root'),true);
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
 do $$ begin if not exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL consented outsider read'; end if; end $$;
+-- The per-review flag alone gates outside reading: withdrawing it hides the review again.
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),false);
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL unshared outsider read'; end if; end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),true);
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
 -- Only the author changes sharing or deletes.
 do $$ begin
   begin perform public.experience_set_review_sharing((select id from xr where k='review'),false); raise exception 'FAIL foreign sharing'; exception when insufficient_privilege then null; end;
@@ -69,7 +77,18 @@ do $$ begin if not exists(select 1 from public.experience_moment_reviews where i
 set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
 select public.experience_update((select id from xr where k='root'),(select revision from public.experiences where id=(select id from xr where k='root')),'{"title":"[TEST] reviews","state":"lived","shape":"single","audience":"profile"}');
--- Guests cannot review; anon has no EXECUTE.
+-- A creator/author block suspends outside attribution; the author can still withdraw under it.
+reset role;
+insert into public.user_blocks(blocker_id,blocked_id) values((select id from xr where k='owner'),(select id from xr where k='member'));
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL blocked attribution'; end if; end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),false);
+select public.experience_delete_moment_review((select id from xr where k='review'));
+reset role;
+do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL withdrawal under block'; end if; end $$;
+-- Guests have no account to call with (save looks up the caller's accepted row); anon has no EXECUTE.
 reset role;
 do $$ begin
   if has_function_privilege('anon','public.experience_save_moment_review(uuid,smallint,text)','execute') then raise exception 'FAIL anon execute'; end if;
