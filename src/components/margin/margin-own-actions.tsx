@@ -10,12 +10,16 @@ export function MarginOwnActions({ noteId, conversations }: { noteId: string; co
   const t = useTranslations("margin");
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
+  const [failed, setFailed] = useState(false);
 
   if (!confirming) {
     return (
       <button
         type="button"
-        onClick={() => setConfirming(true)}
+        onClick={() => {
+          setFailed(false);
+          setConfirming(true);
+        }}
         className="min-h-11 self-start py-2 text-sm text-muted-foreground underline"
       >
         {t("delete")}
@@ -23,16 +27,19 @@ export function MarginOwnActions({ noteId, conversations }: { noteId: string; co
     );
   }
   return (
-    <div role="alert" className="flex flex-col gap-2 text-sm">
+    <div className="flex flex-col gap-2 text-sm">
       <p>{t("deleteConfirm", { count: conversations })}</p>
+      {failed && <p role="alert">{t("deleteError")}</p>}
       <div className="flex gap-2">
         <button
           type="button"
           disabled={pending}
           onClick={() =>
             start(async () => {
-              await deleteMarginNote(noteId);
-              setConfirming(false);
+              setFailed(false);
+              const res = await deleteMarginNote(noteId);
+              if (res.ok) setConfirming(false);
+              else setFailed(true);
             })
           }
           className="min-h-11 rounded-md bg-primary px-4 text-primary-foreground disabled:opacity-60"

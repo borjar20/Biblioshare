@@ -42,6 +42,12 @@ describe("MarginReveal", () => {
     const { container } = setup([]);
     expect(container.innerHTML).toBe("");
   });
+  it("cerrar con Escape (evento close del dialog) también las marca, una vez", () => {
+    setup([note("1")]);
+    fireEvent(screen.getByRole("dialog"), new Event("close"));
+    expect(markMarginSeen).toHaveBeenCalledTimes(1);
+    expect(markMarginSeen).toHaveBeenCalledWith(["e1"]);
+  });
   it("anuncia y marca como vistas al cerrar", () => {
     setup([note("1"), note("2")]);
     expect(screen.getByRole("dialog", { name: "Has encontrado 2 notas en el margen" })).toBeTruthy();

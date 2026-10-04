@@ -4,6 +4,7 @@ import type { getItemMarginNotes } from "@/lib/margin/queries";
 import { MarginComposerButton } from "./margin-composer-button";
 import { MarginNoteCard } from "./margin-note-card";
 import { MarginReveal } from "./margin-reveal";
+import { MarginRetroSeen } from "./margin-retro-seen";
 
 export async function MarginSection({
   itemType,
@@ -19,6 +20,9 @@ export async function MarginSection({
   const t = await getTranslations("margin");
   const { found, mine } = await marginPromise;
   const reveal = found.filter((n) => n.encounter && !n.encounter.seenAt && n.encounter.foundVia !== "retro");
+  const retroUnseen = found.flatMap((n) =>
+    n.encounter && !n.encounter.seenAt && n.encounter.foundVia === "retro" ? [n.encounter.id] : [],
+  );
   return (
     <section className="flex flex-col gap-3" aria-labelledby="margin-title">
       <div className="flex items-center justify-between gap-2">
@@ -42,6 +46,7 @@ export async function MarginSection({
           {mine.map((n) => <MarginNoteCard key={n.noteId} note={n} />)}
         </>
       )}
+      <MarginRetroSeen key={retroUnseen.join(",")} ids={retroUnseen} />
       {/* El key remonta (y reabre) la hoja cuando una revalidación trae encuentros nuevos. */}
       <MarginReveal key={reveal.map((n) => n.encounter!.id).join(",")} notes={reveal} />
     </section>

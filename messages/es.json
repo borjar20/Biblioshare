@@ -3725,6 +3725,7 @@
     "revealClose": "Seguir",
     "delete": "Borrar",
     "deleteCancel": "Cancelar",
+    "deleteError": "No se pudo borrar la nota. Inténtalo de nuevo",
     "deleteConfirm": "{count, plural, =0 {¿Borrar esta nota?} one {¿Borrar esta nota? Se perderá la conversación con una persona.} other {¿Borrar esta nota? Se perderán # conversaciones.}}",
     "leave": "Dejar en el margen",
     "leaveEpisode": "Dejar nota en este episodio",

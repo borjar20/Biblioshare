@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { markMarginSeen } from "@/lib/margin/actions";
+import { markSeenInChunks } from "./mark-seen";
 import type { MarginNoteView } from "@/lib/margin/types";
 import { MarginNoteCard } from "./margin-note-card";
 
@@ -29,7 +29,7 @@ export function MarginReveal({ notes }: { notes: MarginNoteView[] }) {
 
   const dismiss = () => {
     setOpen(false);
-    void markMarginSeen(notes.flatMap((n) => (n.encounter ? [n.encounter.id] : [])));
+    void markSeenInChunks(notes.flatMap((n) => (n.encounter ? [n.encounter.id] : [])));
   };
 
   return (
