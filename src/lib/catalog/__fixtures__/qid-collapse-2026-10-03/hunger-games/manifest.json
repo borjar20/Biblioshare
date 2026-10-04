@@ -1,0 +1,60 @@
+{
+  "query": "hunger games",
+  "records": [
+    {
+      "file": "openlibrary-search-es.json",
+      "url": "https://openlibrary.org/search.json?q=hunger+games&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=es",
+      "requestedAt": "2026-10-03T21:28:20.739Z",
+      "capturedAt": "2026-10-03T21:28:21.896Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/search.json?q=hunger+games&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=es",
+      "contentType": "application/json",
+      "bytes": 13552,
+      "sha256": "d540fa8ba61c09bbfc5b654687816ada74090ba605909d2e9dbb4f38c0e9f641"
+    },
+    {
+      "file": "openlibrary-search-en.json",
+      "url": "https://openlibrary.org/search.json?q=hunger+games&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=en",
+      "requestedAt": "2026-10-03T21:28:20.799Z",
+      "capturedAt": "2026-10-03T21:28:22.365Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/search.json?q=hunger+games&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=en",
+      "contentType": "application/json",
+      "bytes": 13574,
+      "sha256": "279927c7f127771f19e720c1911e1cefe58c4f4e57695f1470721816a59f41cc"
+    },
+    {
+      "file": "inventaire-search.json",
+      "url": "https://inventaire.io/api/search?types=works&search=hunger%20games&limit=20&lang=es",
+      "requestedAt": "2026-10-03T21:28:20.801Z",
+      "capturedAt": "2026-10-03T21:28:22.733Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/search?types=works&search=hunger%20games&limit=20&lang=es",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 5018,
+      "sha256": "4784d14a1e1e6cc1298ccad9079354447c3eb918c5a21b8d45f62810f2f77d1a"
+    },
+    {
+      "file": "inventaire-works.json",
+      "url": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ11678%7Cwd%3AQ40354%7Cwd%3AQ81925268%7Cwd%3AQ837140%7Cwd%3AQ166967%7Cwd%3AQ139741054%7Cwd%3AQ111964328%7Cwd%3AQ126390804%7Cwd%3AQ110060727",
+      "requestedAt": "2026-10-03T21:28:22.734Z",
+      "capturedAt": "2026-10-03T21:28:22.867Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ11678%7Cwd%3AQ40354%7Cwd%3AQ81925268%7Cwd%3AQ837140%7Cwd%3AQ166967%7Cwd%3AQ139741054%7Cwd%3AQ111964328%7Cwd%3AQ126390804%7Cwd%3AQ110060727",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 29585,
+      "sha256": "5825d288291292a9d5fca7a61d091bbf091feccdf7c50791f37c6c06a4371fd6"
+    },
+    {
+      "file": "inventaire-authors.json",
+      "url": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ228624%7Cwd%3AQ6668265%7Cwd%3AQ26721182",
+      "requestedAt": "2026-10-03T21:28:22.869Z",
+      "capturedAt": "2026-10-03T21:28:22.941Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ228624%7Cwd%3AQ6668265%7Cwd%3AQ26721182",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 13165,
+      "sha256": "b10ccab6fe28c2f92149f6c25e1aa2415e0759aeae8549e46a9bb2fe7f323f4b"
+    }
+  ]
+}

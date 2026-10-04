@@ -1,0 +1,60 @@
+{
+  "query": "the stranger",
+  "records": [
+    {
+      "file": "openlibrary-search-es.json",
+      "url": "https://openlibrary.org/search.json?q=the+stranger&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=es",
+      "requestedAt": "2026-10-03T21:27:00.215Z",
+      "capturedAt": "2026-10-03T21:27:05.114Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/search.json?q=the+stranger&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=es",
+      "contentType": "application/json",
+      "bytes": 13074,
+      "sha256": "7ac33f88edf22f777a0fe03f849fd2e3e64f8bf144315b2d2b0cf6bbecedf875"
+    },
+    {
+      "file": "openlibrary-search-en.json",
+      "url": "https://openlibrary.org/search.json?q=the+stranger&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=en",
+      "requestedAt": "2026-10-03T21:27:00.255Z",
+      "capturedAt": "2026-10-03T21:27:03.117Z",
+      "status": 200,
+      "finalUrl": "https://openlibrary.org/search.json?q=the+stranger&limit=40&fields=key%2Ctitle%2Cauthor_name%2Cauthor_key%2Ccover_i%2Cfirst_publish_year%2Cedition_count%2Clanguage%2Ceditions%2Ceditions.title%2Ceditions.language&lang=en",
+      "contentType": "application/json",
+      "bytes": 13094,
+      "sha256": "138ba94c2ea381954f07e2d00216ea07883494e8e51c43f92b763b39776ea827"
+    },
+    {
+      "file": "inventaire-search.json",
+      "url": "https://inventaire.io/api/search?types=works&search=the%20stranger&limit=20&lang=es",
+      "requestedAt": "2026-10-03T21:27:00.256Z",
+      "capturedAt": "2026-10-03T21:27:01.864Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/search?types=works&search=the%20stranger&limit=20&lang=es",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 4497,
+      "sha256": "16cb0c4ab8d817b8f49284082d1ca9be56226ba8bad798ddbdc5d58926db578a"
+    },
+    {
+      "file": "inventaire-works.json",
+      "url": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ7718450%7Cwd%3AQ163297%7Cwd%3AQ7766946%7Cwd%3AQ3211255%7Cwd%3AQ3819724%7Cwd%3AQ116952040%7Cwd%3AQ7766925%7Cwd%3AQ929821%7Cwd%3AQ107296246%7Cwd%3AQ19985789%7Cwd%3AQ7766935%7Cwd%3AQ2678340%7Cwd%3AQ61070794%7Cwd%3AQ2690102%7Cwd%3AQ55807289%7Cwd%3AQ4659847%7Cwd%3AQ1660753%7Cwd%3AQ7756709%7Cwd%3AQ3548901",
+      "requestedAt": "2026-10-03T21:27:05.116Z",
+      "capturedAt": "2026-10-03T21:27:06.012Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ7718450%7Cwd%3AQ163297%7Cwd%3AQ7766946%7Cwd%3AQ3211255%7Cwd%3AQ3819724%7Cwd%3AQ116952040%7Cwd%3AQ7766925%7Cwd%3AQ929821%7Cwd%3AQ107296246%7Cwd%3AQ19985789%7Cwd%3AQ7766935%7Cwd%3AQ2678340%7Cwd%3AQ61070794%7Cwd%3AQ2690102%7Cwd%3AQ55807289%7Cwd%3AQ4659847%7Cwd%3AQ1660753%7Cwd%3AQ7756709%7Cwd%3AQ3548901",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 36709,
+      "sha256": "5ebf8c2963c9467abad68d44dc6ea436385b2a2e82ba3e5e36835c9be2539b17"
+    },
+    {
+      "file": "inventaire-authors.json",
+      "url": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ207640%7Cwd%3AQ34670%7Cwd%3AQ2415420%7Cwd%3AQ231736%7Cwd%3AQ237555%7Cwd%3AQ137273557%7Cwd%3AQ316048%7Cwd%3AQ123078%7Cwd%3AQ318099%7Cwd%3AQ191050%7Cwd%3AQ704553%7Cwd%3AQ168040%7Cwd%3AQ35064%7Cwd%3AQ105118%7Cwd%3AQ15504879%7Cwd%3AQ7932229%7Cwd%3AQ363810%7Cwd%3AQ7117303%7Cwd%3AQ72653",
+      "requestedAt": "2026-10-03T21:27:06.014Z",
+      "capturedAt": "2026-10-03T21:27:07.022Z",
+      "status": 200,
+      "finalUrl": "https://inventaire.io/api/entities?action=by-uris&uris=wd%3AQ207640%7Cwd%3AQ34670%7Cwd%3AQ2415420%7Cwd%3AQ231736%7Cwd%3AQ237555%7Cwd%3AQ137273557%7Cwd%3AQ316048%7Cwd%3AQ123078%7Cwd%3AQ318099%7Cwd%3AQ191050%7Cwd%3AQ704553%7Cwd%3AQ168040%7Cwd%3AQ35064%7Cwd%3AQ105118%7Cwd%3AQ15504879%7Cwd%3AQ7932229%7Cwd%3AQ363810%7Cwd%3AQ7117303%7Cwd%3AQ72653",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 169211,
+      "sha256": "32598a90e81d21173af323e3c444cba9a85e1b3b054bbcd6ee81511ba4ad9108"
+    }
+  ]
+}
