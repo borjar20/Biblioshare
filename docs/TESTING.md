@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local)]**
 
 ## Cuenta de desarrollo persistente
 
@@ -118,6 +118,31 @@ navegador" tras implementar una feature de UI.
   `qa-verifier`.
 - Verificación no-UI (tsc/eslint, consultas SQL de solo lectura, lectura de
   archivos) la sigue haciendo el agente directamente, como siempre.
+
+### Cabecera y panel de notificaciones (#1349)
+
+`e2e/header-notifications-mobile.spec.ts` aporta cinco casos y se ejecuta
+junto con dos casos de navegación/avatar de `e2e/ia-navegacion.spec.ts`.
+Los siete pasan contra build/start local Next 16.3.8 en 19,7 s, sin reintentos,
+skip ni flaky. La matriz cubre 320/360/390/412/768 px, claro/oscuro, tema en
+Más bajo 768 px, perfil directo, teclado en opciones visibles, área de
+campana de 44 × 44 px y cierre por Escape y puntero fuera. La altura
+corta se comprueba a 320 × 360 px.
+
+El caso de lista larga sustituye solo la respuesta de lectura de
+`fetchNotifications` por 20 avisos sintéticos. Mide `clientHeight = 203` y
+`scrollHeight = 1690`; el scroll alcanza el último aviso y el footer de push
+dentro de la región. El informe conserva una oclusión parcial del texto del
+footer por la mascota flotante: [#1350](https://github.com/borjar20/Biblioshare/issues/1350),
+hallazgo separado de #1349. Los cinco casos nuevos
+tienen cero errores de consola; se registran peticiones `ERR_ABORTED`, así
+que este PASS focal no acredita una auditoría global de red limpia.
+
+Los 17 unitarios focales pasan e incluyen además el cierre por foco fuera
+con foco real en NotificationBell. La suite general posterior pasa 4.565
+pruebas en 459 archivos (233,52 s). El build y esta QA verifican el candidato local;
+la publicación tiene su propio estado. Evidencia, capturas y límites:
+[cabecera y notificaciones](testing/2026-10-04-header-notifications.md).
 
 ### Arranque automático en Windows (#1073)
 
@@ -275,19 +300,47 @@ El reloj de cada pausa se obtiene del navegador, después de mostrar la UI;
 usar Date.now de Node tras runFor puede intentar pausar en el pasado.
 Limpieza conjunta de las nueve cuentas de preparación/QA/regresión verificada.
 
-### Lecturas previas al guardar un pase (#1110)
+### Lecturas previas al guardar un pase (#1110, #1345)
 
 `src/lib/passes/actions.test.ts` fuerza por separado el fallo de lectura de
 fechas al cerrar y el de reseña previa al editar. Ambos deben devolver
 `generic`, sin escrituras, avisos de menciones ni revalidación. La lectura
-de reseña permanece antes del guardado para calcular sólo las menciones nuevas.
+previa conserva el cálculo de sólo las menciones nuevas.
 
-El lote focalizado con `get-passes.test.ts` pasa 27 casos, incluidos los
-contratos de #657 y la diferencia entre error y consulta vacía correcta.
-Los formularios existentes conservan la edición abierta y muestran el error.
-Esta comprobación de interfaz es por código; el fallo se reproduce con un
-cliente controlado, sin simular una avería de Supabase en producción.
-Evidencia: [lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
+**La reseña se lee por `pass_reviews`, con filtros de pase y propietario.**
+El SELECT de `passes.review` está revocado deliberadamente para proteger
+reseñas privadas; conservar permiso UPDATE no permite leer esa columna.
+#1345 reprodujo el error 42501 de esa lectura previa, que bloqueaba editar
+tanto pases de «ver juntos» como individuales. Los dobles anteriores
+permitían una lectura prohibida: el guard de #1110 era correcto, pero no
+probaba los permisos reales.
+
+La regresión nueva modela esos permisos y pasó de devolver `generic` a
+persistir fecha, nota, reseña, spoiler y privacidad, avisando sólo de la
+mención añadida. El lote focalizado de acciones, lecturas y menciones pasa
+55 casos en cuatro archivos; TypeScript completo y ESLint de los dos
+archivos de acciones también pasan. Revisión independiente sin hallazgos.
+
+`supabase/tests/pass_review_edit_permissions.sql`, integrado en
+`scripts/db/verify.mjs`, verifica 29 condiciones con roles reales: dos
+miembros aceptados y un pase individual, lectura propia por la vista,
+escritura del payload de edición, vínculos/post/metadatos conservados y
+reseñas privadas inaccesibles a terceros y anónimos. Ejecutado en dev el
+2026-10-03 desde el archivo exacto, con rollback y cero perfiles/películas
+de prueba restantes. No hay cambios de esquema ni permisos.
+
+Chromium real contra dev verificó edición de reseña, después fecha y nota,
+y persistencia de los tres campos al recargar; el vínculo se conservó.
+La segunda pasada tuvo cero errores de consola y POST de guardado 200.
+El fixture de navegador tenía un miembro aceptado: la prueba con dos
+participantes corresponde al SQL anterior. No hubo RED en navegador;
+el parche ya estaba aplicado al terminar la preparación. Fixtures
+eliminados, cuenta persistente conservada y puerto 3000 libre al acabar.
+
+La evidencia histórica de los guards se conserva en
+[lecturas previas de pases](testing/2026-10-01-pass-prerequisite-reads-1110.md).
+El diagnóstico y la evidencia de integración y despliegue se
+rastrean en [#1345](https://github.com/borjar20/Biblioshare/issues/1345).
 
 ### Contrato de resultados históricos de combate (#1116)
 
@@ -628,3 +681,46 @@ PostgreSQL con rol/claims sintéticos y ROLLBACK no sustituye Auth/REST remoto.
 Producción y CI de publicación siguen pendientes en este corte. Los registros
 extra del transporte se conservan y siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
 El ACK ambiguo puede permitir repetición en otro consumidor.
+
+## Motivo de abandono en el diario (#655)
+
+[Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho
+casos ejecutan `PassDiary` e Intl reales en jsdom. Cubren las cinco categorías
+de abandono, la nota completa de «Otro», la ausencia de motivo y un pase
+completado con motivo residual. La tanda focal del 2026-10-03 pasa 35/35 en
+tres archivos, con tipos y lint correctos. Dos controles negativos detectan
+la retirada del gate de estado y el truncado de la nota; después se restaura
+el producto con sus bytes originales.
+
+Las acciones de servidor y la carga conjunta están controladas. Esta cobertura
+acredita el DOM local; no acredita layout de navegador, persistencia ni RLS.
+No cambia el producto y no arranca servicios. La entrega requiere CI sobre el
+HEAD final de la PR.
+
+## Guardado de Partidas frente a adopción del espejo (#959)
+
+[Informe](testing/2026-10-03-play-save-staleness-959.md): dos casos deterministas,
+anónimo y con identidad, retienen el ACK de `saved` mientras se adopta una partida
+ajena. Comprueban que la anterior queda guardada y que la nueva permanece en
+memoria e IndexedDB sin borrado ni notificación adicional. Suite focal 76/76,
+tipos y lint PASS; retirar la guarda causa dos FAIL y se restaura el producto.
+
+Se aclara el boolean de `save()` sin cambiar comportamiento. Los consumidores
+actuales no muestran el supuesto mensaje de «no guardado». La prueba ejecuta
+store y adaptadores reales sobre fake-indexeddb con canal controlado; no acredita
+navegador, sincronización remota ni RLS. Requiere CI sobre el HEAD de entrega.
+
+## Reevaluación de representación: petición y sistema (#897)
+
+[Informe](testing/2026-10-03-catalog-representation-coverage-897.md): 18 casos
+ejecutan la acción, roles, hidratación y builders SDK reales. Comprueban el gate
+de colaborador antes de escribir, el reset con cliente de petición, la RPC con
+cliente de sistema y el orden de las esperas; los fallos de hidratación siguen
+sin invalidar un reset correcto. La tanda focal pasa 104/104, con tipos y lint
+correctos. Cinco mutaciones independientes provocan sus FAIL causales.
+
+Sesión, HTTP, proveedores y Next son fronteras controladas. El trigger canónico
+permite la vía de sistema con auth.uid() NULL: se verifica qué cliente escribe,
+sin inventar un rechazo SQL para el reset de sistema. No se acredita RLS, grants,
+proveedores ni POST nativos. No cambia el producto; CI del HEAD final es gate
+de publicación.

@@ -26,6 +26,7 @@ sql(readFileSync(join(repoRoot, 'scripts/db/verify-celebrations.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/notification_type_mentioned.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/hydrate_screen_permissions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/pass_interaction_hrefs.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/pass_review_edit_permissions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/catalog_technical_gate.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/shared_rate_limits.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/verified_book_editions.sql'), 'utf8'));

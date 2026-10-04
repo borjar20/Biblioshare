@@ -25,6 +25,7 @@ export async function Header({
   unreadCount: number;
 }) {
   const t = await getTranslations("nav");
+  const hasAppMenu = Boolean(username) || !loggedIn;
 
   return (
     // Altura fija (--topbar-h) en vez de crecer con el contenido: las
@@ -38,10 +39,12 @@ export async function Header({
         {(username || !loggedIn) && <TopNav username={username} />}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center">
         {loggedIn && <NotificationBell initialUnreadCount={unreadCount} />}
-        <ThemeToggle />
-        {(username || !loggedIn) && <AppMenu authenticated={Boolean(username)} />}
+        <div className={hasAppMenu ? "hidden md:block" : undefined}>
+          <ThemeToggle />
+        </div>
+        {hasAppMenu && <AppMenu authenticated={Boolean(username)} />}
         {/* El avatar muestra a la persona; las herramientas tienen su propio menú. */}
         {username && <UserMenu username={username} avatarUrl={avatarUrl} />}
         {!loggedIn && (

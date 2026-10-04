@@ -6369,3 +6369,46 @@ se sigue en #1355, sin borrar, normalizar ni inventar migraciones de relleno.
 Producción conserva el legacy y la publicación/CI siguen pendientes al
 registrar esta decisión. Los resultados y límites de los cortes anteriores
 permanecen como evidencia histórica.
+
+## 2026-10-04 — Cabecera móvil compacta y panel de notificaciones dentro de la ventana (#1349)
+
+Por debajo de 768 px, la cabecera del usuario con perfil muestra marca,
+campana, Más y avatar. «Cambiar tema» pasa a Más para liberar espacio; desde
+768 px conserva su icono directo. El avatar sigue enlazando al perfil y Más
+conserva Partidas, Mascota y Ajustes. Esta composición aprobada aprovecha
+el menú existente y mantiene el acceso directo al perfil.
+
+El panel de notificaciones continúa como desplegable: en móvil se ancla a
+la cabecera sticky, con margen al viewport, en lugar de seguir la posición
+horizontal de la campana. Su ancho y altura quedan dentro de la ventana,
+reservando espacio para la barra inferior y la safe-area; título, avisos y
+control de push comparten un único scroll. Este ajuste resuelve el panel
+sin introducir un drawer. En escritorio conserva el anclaje a la campana.
+El botón tiene 44 × 44 px y controla una región con nombre accesible;
+Escape cierra y devuelve el foco; el puntero y el foco fuera cierran el panel.
+
+Las copias montadas de ThemeToggle siguen el tema del documento para que el
+icono de escritorio refleje un cambio hecho en Más al cruzar el breakpoint.
+El teclado de Más omite las opciones ocultas en ese viewport. Verificación
+local del 2026-10-04: build Next 16.3.8, 17 unitarios focales y suite general
+de 4.565 pruebas en 459 archivos PASS. Siete E2E contra build/start pasan en
+19,7 s, sin reintentos, skip ni flaky: cinco nuevos y dos de navegación/avatar.
+Cubren 320/360/390/412/768 px en claro/oscuro, tema, perfil, teclado y cierre
+por Escape y puntero fuera, además de 320 × 360 px. El cierre por foco fuera
+se verifica en el unitario de NotificationBell con foco real. Con 20 avisos
+sintéticos solo en la respuesta de lectura, el scroll alcanza el último aviso
+y el footer dentro de la región. El informe conserva la oclusión parcial del
+footer por la mascota flotante y las peticiones ERR_ABORTED; los cinco casos
+nuevos tienen cero errores de consola. Este corte acredita un candidato local,
+pendiente de publicación.
+Evidencia: [cabecera y notificaciones #1349](../testing/2026-10-04-header-notifications.md).
+
+## 2026-10-04 — Acciones contiguas en la cabecera
+
+Los iconos de acción y el avatar mantienen cajas de 44 × 44 px y quedan
+contiguos: Header retira `gap-1` y UserMenu retira `ml-1`. El grupo pasa de
+144 a 132 px en móvil y de 192 a 176 px en escritorio, conservando targets y
+acceso directo al perfil. Es un refinamiento de [#1349](https://github.com/borjar20/Biblioshare/issues/1349)
+y [PR #1351](https://github.com/borjar20/Biblioshare/pull/1351).
+Ocho estados de QA en Next dev y 17 unitarios existentes PASS; alcance,
+mediciones y límites en [separación de iconos](../testing/2026-10-04-header-icons-spacing.md).
