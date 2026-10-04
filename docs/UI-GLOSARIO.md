@@ -90,6 +90,12 @@ selector se encabeza con «¿Fuiste? Confirma y reseña». Pasar a «No fui» o 
 confirmar» un momento que ya reseñaste pide confirmación: «Borrar tu reseña» — «Tienes
 una reseña de {momento}. Si dices que no fuiste, se borrará junto con su
 publicación.» — botón «Cambiar y borrar la reseña».
+Tipos de momento nuevos: «Gastronomía», «Festival», «Deporte» y «Naturaleza» (junto a
+Concierto, Espectáculo, Exposición, Museo, Paseo y «Otra experiencia»). El favorito se
+llama «Mi momento»; el de otra persona, «Momento de {nombre}»; sus acciones son
+«Marcar {momento} como mi momento» y «Quitar {momento} como mi momento». Las tarjetas
+muestran la media visible en dots con «N reseñas» solo cuando hay alguna. En el hub,
+«Orden» ofrece «Recientes» (por defecto) y «Mejor valoradas» (por media visible).
 
 Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
 **Experiencias**, **Comunidad** y **Buscar** son las entradas principales.

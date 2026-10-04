@@ -8,9 +8,9 @@ const kindTone: Record<MomentKind, string> = {
   exhibition: "text-accent",
   museum: "text-foreground-soft",
   walk: "text-status-completed-ink",
-  food: "text-gold-ink",
-  festival: "text-accent",
-  sport: "text-status-completed-ink",
+  food: "text-status-dropped",
+  festival: "text-gold-ink",
+  sport: "text-accent",
   nature: "text-status-completed-ink",
   other: "text-accent",
 };
@@ -41,6 +41,29 @@ export function ExperienceArtwork({ kind, className = "", compact = false }: {
       {kind === "walk" && <>
         <path d="M49 162C107 145 147 185 192 142S271 77 345 107" stroke="currentColor" strokeWidth="3" strokeDasharray="5 8" strokeLinecap="round" /><path d="M49 180C122 144 163 224 259 155S341 142 392 120" stroke="currentColor" opacity=".13" strokeWidth="38" /><path d="M95 94L75 126H115ZM299 39L272 82H326Z" fill="currentColor" opacity=".3" /><path d="M95 125V146M299 81V103" stroke="currentColor" strokeWidth="4" /><circle cx="69" cy="156" r="8" fill="var(--surface)" stroke="currentColor" strokeWidth="3" /><path d="M333 144C333 157 314 173 314 173S295 157 295 144A19 19 0 01333 144Z" fill="var(--surface)" stroke="currentColor" strokeWidth="3" /><circle cx="314" cy="144" r="6" fill="currentColor" /><circle cx="200" cy="71" r="24" fill="currentColor" opacity=".12" />
       </>}
+      {kind === "food" && <>
+        <path d="M51 209H350" stroke="currentColor" strokeWidth="2" opacity=".4" /><path d="M96 58V100A14 14 0 0 0 124 100V58M110 58V194" stroke="currentColor" strokeWidth="4" strokeLinecap="round" /><path d="M103 58V90M117 58V90" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".6" />
+        <path d="M304 56C290 70 284 94 284 116H304Z" fill="currentColor" opacity=".3" /><path d="M304 56C290 70 284 94 284 116H304V194" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="200" cy="132" r="64" fill="var(--surface)" stroke="currentColor" strokeWidth="2" /><circle cx="200" cy="132" r="46" fill="currentColor" opacity=".1" /><circle cx="200" cy="132" r="46" stroke="currentColor" opacity=".45" /><path d="M170 140A30 20 0 0 1 230 140Z" fill="currentColor" opacity=".55" /><path d="M200 120C206 110 216 108 222 112C216 120 206 122 200 120Z" fill="currentColor" opacity=".8" />
+        <path d="M184 46C178 54 190 58 184 66M200 40C194 48 206 52 200 60M216 46C210 54 222 58 216 66" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".45" />
+      </>}
+      {kind === "festival" && <>
+        <path d="M28 52Q114 92 190 62M210 62Q286 92 372 52" stroke="currentColor" strokeWidth="1.5" opacity=".6" /><path d="M52 63L58 80L66 68ZM86 75L90 93L100 79ZM122 80L124 98L135 82ZM158 74L158 92L169 75ZM242 75L242 92L253 74ZM278 82L276 98L289 80ZM312 79L310 93L322 75ZM344 68L342 80L350 63Z" fill="currentColor" opacity=".45" />
+        <path d="M300 196L338 130L376 196Z" fill="currentColor" opacity=".13" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M108 196L200 50L292 196Z" fill="var(--surface)" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M200 50L150 196M200 50L250 196" stroke="currentColor" strokeWidth="10" opacity=".18" /><path d="M168 196L200 134L232 196Z" fill="currentColor" opacity=".35" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M200 50V24" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /><path d="M200 24L226 32L200 40Z" fill="currentColor" /><path d="M83 209H317" stroke="currentColor" strokeWidth="3" opacity=".5" /><circle cx="76" cy="132" r="4" fill="currentColor" opacity=".5" /><circle cx="56" cy="164" r="3" fill="currentColor" opacity=".35" /><circle cx="330" cy="108" r="3" fill="currentColor" opacity=".5" />
+      </>}
+      {kind === "sport" && <>
+        <path d="M54 190V84H186V190" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" /><path d="M54 84L76 104H164L186 84M76 104V190M164 104V190" stroke="currentColor" strokeWidth="2" opacity=".45" /><path d="M98 104V190M120 104V190M142 104V190M76 126H164M76 148H164M76 170H164" stroke="currentColor" opacity=".25" />
+        <path d="M200 112H222M192 130H218M200 148H222" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".45" /><ellipse cx="290" cy="198" rx="44" ry="7" fill="currentColor" opacity=".15" />
+        <circle cx="290" cy="128" r="56" fill="var(--surface)" stroke="currentColor" strokeWidth="2.5" /><circle cx="290" cy="128" r="56" fill="currentColor" opacity=".08" /><path d="M290 72A84 84 0 0 1 290 184M234 128H346M246 94C272 111 308 111 334 94M246 162C272 145 308 145 334 162" stroke="currentColor" strokeWidth="2" opacity=".7" />
+      </>}
+      {kind === "nature" && <>
+        <circle cx="306" cy="60" r="22" fill="currentColor" opacity=".2" /><path d="M210 52Q216 46 222 52Q228 46 234 52M240 72Q245 67 250 72Q255 67 260 72" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".55" />
+        <path d="M30 200L134 66L196 146L250 96L372 200Z" fill="currentColor" opacity=".13" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M116 89L134 66L152 89L143 84L134 94L125 84Z" fill="var(--surface)" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M96 204V172" stroke="currentColor" strokeWidth="4" strokeLinecap="round" /><path d="M72 172L96 118L120 172Z" fill="var(--surface)" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" /><path d="M84 152L96 136L108 152" stroke="currentColor" opacity=".45" />
+        <path d="M306 204V182" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /><path d="M288 182L306 144L324 182Z" fill="currentColor" opacity=".35" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" /><path d="M51 209H350" stroke="currentColor" strokeWidth="2" opacity=".4" />
+      </>}
       {kind === "other" && <>
         <g transform="rotate(-8 153 129)"><path d="M74 61H248V186H74Z" fill="var(--surface)" stroke="currentColor" strokeWidth="2" /><path d="M91 79H232V162H91Z" fill="currentColor" opacity=".1" /><path d="M107 143L143 101L172 126L196 105L220 143" stroke="currentColor" strokeWidth="3" /><circle cx="203" cy="93" r="9" fill="currentColor" opacity=".5" /></g><circle cx="291" cy="118" r="42" fill="var(--surface)" stroke="currentColor" strokeWidth="2" /><path d="M304 100L297 127L278 139L285 112Z" fill="currentColor" opacity=".6" /><path d="M291 69V78M291 158V167M242 118H251M331 118H340" stroke="currentColor" strokeWidth="2" />
       </>}
@@ -55,10 +78,10 @@ export function ExperienceKindIcon({ kind, className = "" }: { kind: MomentKind;
     exhibition: <><path d="M3 4h18v16H3zM6 7h12v10H6zM7 16l4-4 3 2 2-3 2 5" /><circle cx="9" cy="10" r="1" /></>,
     museum: <><path d="M2 9l10-6 10 6H2zM4 20h16M6 11v6m6-6v6m6-6v6M3 17h18" /></>,
     walk: <><path d="M3 19c6 0 5-7 10-7s3-7 8-7M6 4L3 9h6L6 4zm0 5v3" /><circle cx="3" cy="19" r="1" /><circle cx="21" cy="5" r="1" /></>,
-    food: <><path d="M7 3v8M5 3v5a2 2 0 004 0V3M7 11v10M17 3c-2 2-2 6 0 8v10" /></>,
-    festival: <><path d="M12 3l2 5 5 .5-4 3.5 1.5 5L12 14l-4.5 3 1.5-5L5 8.5 10 8z" /></>,
-    sport: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>,
-    nature: <><path d="M12 21v-8M12 13c-4 0-6-3-6-7 4 0 6 3 6 7zM12 15c3 0 5-2 5-5-3 0-5 2-5 5z" /></>,
+    food: <><path d="M4 3v8a3 3 0 0 0 6 0V3M7 3v18M17 3c-2 2-3 5-3 8h3v10" /></>,
+    festival: <><path d="M3 21 12 3l9 18zM8 21l4-8 4 8" /><path d="M12 3V1" /></>,
+    sport: <><circle cx="12" cy="12" r="9" /><path d="M12 3a15 15 0 0 1 0 18M3 12h18M5 6c4 3 10 3 14 0M5 18c4-3 10-3 14 0" /></>,
+    nature: <><path d="M12 22V12M7 12l5-9 5 9zM4 18l4-6 3 4" /></>,
     other: <><circle cx="12" cy="12" r="9" /><path d="M16 7l-2 7-6 3 2-7 6-3z" /></>,
   };
   return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[kind]}</svg>;
