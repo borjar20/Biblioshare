@@ -290,6 +290,7 @@
     "20261004100500_experience_reviews_notify_access.sql",
     "20261004120000_margin_notes_enums.sql",
     "20261004120100_margin_notes_core.sql",
-    "20261004120200_margin_notes_opening.sql"
+    "20261004120200_margin_notes_opening.sql",
+    "20261004120300_margin_notes_social.sql"
   ]
 }

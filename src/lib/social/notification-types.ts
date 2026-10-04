@@ -71,7 +71,10 @@ export type NotificationType =
   | "experience_invited"
   | "experience_accepted"
   | "followed_experience"
-  | "experience_reviewed";
+  | "experience_reviewed"
+  | "margin_note_dedicated"
+  | "margin_commented"
+  | "margin_liked";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -164,6 +167,9 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   experience_accepted: "experienceAccepted",
   followed_experience: "followedExperience",
   experience_reviewed: "experienceReviewed",
+  margin_note_dedicated: "marginNoteDedicated",
+  margin_commented: "marginCommented",
+  margin_liked: "marginLiked",
 };
 
 /**

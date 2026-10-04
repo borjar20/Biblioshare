@@ -203,5 +203,60 @@ do $$ begin
   if not exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] final' and e.found_via='finish') then
     raise exception 'FAIL C13: completing the pass did not open the finish note via finish'; end if;
 end $$;
--- Las tareas 3 y 4 añaden aquí sus bloques, ANTES del rollback.
+-- D: hilo privado. El target existe y solo lo ven autor y lector.
+do $$ begin
+  if not exists(select 1 from public.interaction_targets t join public.margin_note_encounters e on e.id=t.source_id
+      where t.kind='margin_encounter' and t.audience_id=e.reader_id and t.href='/margen/'||e.id and t.commentable) then
+    raise exception 'FAIL D1: encounter target missing'; end if;
+end $$;
+do $$ declare who record; seen int; begin
+  for who in select k,id from margin_fixture where k in ('author','follower','stranger','blocked') loop
+    perform set_config('request.jwt.claim.sub',who.id::text,true);
+    set local role authenticated;
+    select count(*) into seen from public.interaction_targets t join public.margin_note_encounters e on e.id=t.source_id
+      where t.kind='margin_encounter' and e.reader_id=(select id from margin_fixture where k='follower');
+    if (seen>0) <> (who.k in ('author','follower')) then raise exception 'FAIL D2: % thread visibility %',who.k,seen; end if;
+    reset role;
+  end loop;
+end $$;
+-- D3: reclamar avisos de dedicadas — una vez y solo autor/lector.
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='author'),true);
+set local role authenticated;
+insert into public.margin_notes(item_type,item_id,anchor,chapter_label,body,audience,recipient_id)
+  values ('book',(select id from margin_fixture where k='book'),'{"kind":"finish"}','Cap. 30','[TEST] para ti','person',(select id from margin_fixture where k='follower'));
+reset role;
+update public.passes set status='completed' where user_id=(select id from margin_fixture where k='follower') and item_type='book';
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='stranger'),true);
+set local role authenticated;
+do $$ begin
+  if exists(select 1 from public.margin_claim_notices()) then raise exception 'FAIL D3: stranger claimed notices'; end if;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='follower'),true);
+set local role authenticated;
+do $$ declare n int; begin
+  select count(*) into n from public.margin_claim_notices();
+  if n <> 1 then raise exception 'FAIL D4: expected one dedicated notice, got %',n; end if;
+  select count(*) into n from public.margin_claim_notices();
+  if n <> 0 then raise exception 'FAIL D5: notice claimed twice'; end if;
+end $$;
+reset role;
+-- D6: borrar la nota borra encuentros, targets y (por cascada) sus comentarios.
+insert into public.comments(author_id,body,interaction_target_id)
+  select e.reader_id,'[TEST] hilo',t.id from public.margin_notes n
+  join public.margin_note_encounters e on e.note_id=n.id
+  join public.interaction_targets t on t.kind='margin_encounter' and t.source_id=e.id
+  where n.body='[TEST] para ti';
+do $$ begin
+  if not exists(select 1 from public.comments where body='[TEST] hilo') then raise exception 'FAIL D6: fixture comment missing'; end if;
+end $$;
+delete from public.margin_notes where body='[TEST] para ti';
+do $$ begin
+  if exists(select 1 from public.interaction_targets t where t.kind='margin_encounter'
+      and not exists(select 1 from public.margin_note_encounters e where e.id=t.source_id)) then
+    raise exception 'FAIL D6: orphan margin_encounter target'; end if;
+  if exists(select 1 from public.comments where body='[TEST] hilo') then
+    raise exception 'FAIL D6: orphan comment'; end if;
+end $$;
+-- La tarea 5 añade aquí sus bloques, ANTES del rollback.
 rollback;
