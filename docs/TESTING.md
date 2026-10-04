@@ -693,6 +693,24 @@ pareja validado y grants 11/11/11. Los avisos de seguridad coinciden exactamente
 al retirar únicamente sus timestamps `observed_at`; los avisos previos siguen
 abiertos. Cierre de admisión y activación productiva pendientes en ese corte.
 
+La CI corregida de `cc9c565` pasa la reconstrucción vacía (run 37218346000),
+quality y CodeQL, pero conserva FAIL en siete de 146 flujos críticos
+(run 37218345996): cuatro selectores de email encuentran un campo visible y
+otro en el fragmento de streaming oculto, y dos selectores de búsqueda
+encuentran dos nodos con una sola caja visible. Estos drivers se corrigen en
+[#1368](https://github.com/borjar20/Biblioshare/issues/1368), en entrega aparte.
+El caso de notas #754 registra un POST de claim cancelado durante la primera
+salida de portada y un aviso cliente; la generación efectiva no está en la
+traza. La guarda de diagnóstico obsoleto se sigue en
+[#1369](https://github.com/borjar20/Biblioshare/issues/1369), sin silenciar los
+errores del E2E ni atribuir un fallo de SQL. La entrega requiere CI del HEAD
+que integre las correcciones.
+
+[Expansión compatible de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
+fase 1 confirmada a las 16:42:17 UTC, objetos/ACL/grants e historia reales
+verificados después. El ledger completo de statements conserva el carrier
+auténtico; las fases 2/3 siguen pendientes de su gate independiente.
+
 ## Motivo de abandono en el diario (#655)
 
 [Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho
@@ -735,3 +753,49 @@ permite la vía de sistema con auth.uid() NULL: se verifica qué cliente escribe
 sin inventar un rechazo SQL para el reset de sistema. No se acredita RLS, grants,
 proveedores ni POST nativos. No cambia el producto; CI del HEAD final es gate
 de publicación.
+
+## Respuestas de catálogo grabadas y movimiento de PetSprite (#916, #1024, #1064)
+
+- [Colapso por QID #916](testing/2026-10-03-catalog-qid-fixtures-916.md): seis casos nuevos ejecutan búsqueda/fan-out, normalizadores, Inventaire y colapso reales contra 17 respuestas completas capturadas. Tanda focal 79/79 PASS y tres regresiones temporales detectadas. La inversión de relevancia distingue la causa del superviviente: edition_count sólo desempata en la deduplicación anterior; el colapso prioriza catalogId y después el primer candidato. Fixtures y manifests conservan sus bytes/hashes, sin red durante tests ni cambios de producto.
+- [DOM y CSS #1024/#1064](testing/2026-10-03-pet-motion-coverage-1024-1064.md): 17 casos nuevos, 29/29 focales PASS y cuatro controles causales; CSS real compilado, AST/keyframes y componente/manifiesto reales, sin cambiar configuración global.
+- [Navegador focal del 2026-10-04](testing/2026-10-04-pet-motion-native-1024-1064.md): 22/22 checks en Chromium con Next/Webpack y Lightning CSS privados. Reproducción de strips, reinicio en el mismo nodo, evolución y preferencia nativa de movimiento reducido; tres capturas inspeccionadas. Tres FAIL de preparación conservados. Acredita este montaje privado, con límites explícitos de integración del layout/Auth, Turbopack, build/start y dispositivo.
+
+Ambos candidatos pasan revisión independiente. Integración sobre main eee8b8c y
+CI del HEAD final son gates de publicación; los informes originales conservan
+sus bases, hashes y alcance. Esta cobertura no acredita APIs actuales ni
+producción o RLS remota.
+
+## Acompañantes según quien mira (#1353)
+
+[Implementación y cobertura](testing/2026-10-04-experience-participants-1353.md):
+detalle, hub y perfil excluyen sólo a la cuenta que mira entre las personas
+aceptadas. El feed mantiene al organizador como sujeto de su narrativa. La
+identidad de sesión ya resuelta pasa hasta la tarjeta; no hay lecturas Auth
+adicionales. Tanda focal 111/111 en 17 archivos, tipos/lint y seis mutantes
+causales PASS; revisión independiente 72/72, sin hallazgos.
+
+[QA nativa](testing/2026-10-04-experience-participants-native-1353.md): 27/27
+checks en Chromium contra una build Turbopack nueva y next start, con Supabase
+local real. Recorre creación, invitación, aceptación, consentimiento y
+publicación, y comprueba detalle, hub, perfil, feed, privacidad y cambios de
+audiencia tras recargar. Seis capturas inspeccionadas y limpieza de los actores
+propios PASS. Conserva tres FAIL de preparación/driver, 294 abortos de red y
+el límite del fallback protegido, sin declarar una auditoría global PASS.
+La CI del HEAD de entrega sigue siendo un gate independiente.
+
+## Formularios visibles durante streaming (#1368)
+
+[Informe focal](testing/2026-10-04-ci-visible-form-controls-1368.md): login y
+búsqueda se acotan al formulario y controles visibles. Conservan el rechazo
+estricto de dos candidatos visibles; no usan `first`, esperas adicionales ni
+excepciones a las aserciones. El control causal distingue seis fallos del
+locator anterior, seis éxitos del helper y seis rechazos de duplicados visibles.
+
+La build Turbopack nueva con `next start` y Supabase local pasa 20/20 casos:
+cuatro reentradas reales de entrenamiento, dos recorridos completos de cuota y
+14 regresiones de DOM controlado. TypeScript, lint y revisión independiente
+32/32 PASS. Se conservan dos FAIL de preparación y el límite del alias privado
+de sólo lectura para el manifiesto de acciones del checkout con junction.
+Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
+sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
+auditoría global de red limpia.

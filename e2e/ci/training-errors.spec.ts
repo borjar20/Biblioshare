@@ -5,6 +5,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { RULESET } from "../../src/lib/pet/battle/content";
 import { BATTLE_RELEASES, replayBattle } from "../../src/lib/pet/battle/replay";
 import { snapshotForProfile } from "../../src/lib/pet/battle/profiles";
+import { visibleFormContaining } from "../support/visible-form";
 
 if (process.env.NEXT_PUBLIC_SUPABASE_URL !== "http://127.0.0.1:54321") throw new Error("#1171 requires disposable local Supabase");
 const database = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -27,9 +28,10 @@ async function cleanBattles() { check(await database.from("pet_battles").delete(
 async function pet() { check(await database.from("pet_state").upsert({ user_id: ownId(), name: "Nuez QA1171", class: "wizard" })); }
 async function login(page: Page) {
   await page.goto(`/login?next=${encodeURIComponent("/mascota?view=training")}`);
-  await page.locator('input[name="email"]').fill(credentials.email);
-  await page.locator('input[name="password"]').fill(credentials.password);
-  await page.locator('button[type="submit"]').click();
+  const form = visibleFormContaining(page, 'input[name="email"]');
+  await form.locator('input[name="email"]:visible').fill(credentials.email);
+  await form.locator('input[name="password"]:visible').fill(credentials.password);
+  await form.locator('button[type="submit"]:visible').click();
   await expect(page.getByRole("region", { name: "Entrenamiento", exact: true })).toBeVisible();
 }
 async function signInAgain(page: Page, panel: Locator) {
@@ -38,10 +40,11 @@ async function signInAgain(page: Page, panel: Locator) {
   await expect(panel.getByRole("button", { name: /Reintentar/ })).toHaveCount(0);
   await link.focus(); await expect(link).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page.locator('input[name="email"]')).toBeVisible();
-  await page.locator('input[name="email"]').fill(credentials.email);
-  await page.locator('input[name="password"]').fill(credentials.password);
-  await page.locator('button[type="submit"]').click();
+  const form = visibleFormContaining(page, 'input[name="email"]');
+  await expect(form.locator('input[name="email"]:visible')).toBeVisible();
+  await form.locator('input[name="email"]:visible').fill(credentials.email);
+  await form.locator('input[name="password"]:visible').fill(credentials.password);
+  await form.locator('button[type="submit"]:visible').click();
   await expect(panel).toBeVisible();
   await expect(page).toHaveURL(/\/mascota\?view=training$/);
 }
