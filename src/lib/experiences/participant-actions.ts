@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 import {createClient} from "@/lib/supabase/server";
 import {usersAreBlocked} from "@/lib/social/block-state";
 import {notify} from "@/lib/social/notifications";
@@ -27,8 +27,8 @@ export async function addGuest(id:string,name:string) {
 export async function respondInvitation(id:string,response:"accept"|"decline") {
   return participation(isExperienceId(id)&&["accept","decline"].includes(response),client=>client.rpc("experience_respond_invitation",{p_participant_id:id,p_response:response}),response==="accept" ? "experience_accepted" : undefined);
 }
-export async function setMomentAttendance(id:string,state:AttendanceState) {
-  return participation(isExperienceId(id)&&["planned","attended","skipped"].includes(state),client=>client.rpc("experience_set_attendance",{p_moment_id:id,p_state:state}));
+export async function setMomentAttendance(id:string,state:AttendanceState,dropReviews=false) {
+  return participation(isExperienceId(id)&&["planned","attended","skipped"].includes(state)&&typeof dropReviews==="boolean",client=>client.rpc("experience_set_attendance",{p_moment_id:id,p_state:state,p_drop_reviews:dropReviews}));
 }
 export async function setGuestAttendance(moment:string,person:string,state:AttendanceState) {
   return participation(isExperienceId(moment)&&isExperienceId(person)&&["planned","attended","skipped"].includes(state),client=>client.rpc("experience_set_guest_attendance",{p_moment_id:moment,p_participant_id:person,p_state:state}));
