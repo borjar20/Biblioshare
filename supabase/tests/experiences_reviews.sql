@@ -381,4 +381,34 @@ do $$ begin
   if exists(select 1 from public.content_reports where target_type='experience_review' and target_id=(select id from xr where k='review') and (target_deleted_at is null or status<>'actioned')) then raise exception 'FAIL review report not closed'; end if;
   if not exists(select 1 from public.content_reports where target_type='experience_review' and target_id=(select id from xr where k='review')) then raise exception 'FAIL review report missing'; end if;
 end $$;
+-- Final review I2: experience_reviewed goes only to members with current access to the experience.
+-- Each case is isolated in a savepoint; the final state is unchanged.
+savepoint notify_normal;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ declare n jsonb; begin
+  n:=public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Aviso')->'notifyUserIds';
+  if not n ? (select id::text from xr where k='absent') or not n ? (select id::text from xr where k='owner') or n ? (select id::text from xr where k='member') then raise exception 'FAIL normal recipients %',n; end if;
+end $$;
+rollback to savepoint notify_normal;
+savepoint notify_blocked;
+reset role;
+insert into public.user_blocks(blocker_id,blocked_id) values((select id from xr where k='absent'),(select id from xr where k='owner'));
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ declare n jsonb; begin
+  n:=public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Aviso')->'notifyUserIds';
+  if n ? (select id::text from xr where k='absent') then raise exception 'FAIL recipient blocked with creator %',n; end if;
+  if not n ? (select id::text from xr where k='owner') then raise exception 'FAIL creator dropped by unrelated block %',n; end if;
+end $$;
+rollback to savepoint notify_blocked;
+savepoint notify_private;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='owner'),true);
+select public.experience_update((select id from xr where k='root'),(select revision from public.experiences where id=(select id from xr where k='root')),'{"title":"[TEST] reviews","state":"lived","shape":"single","audience":"private"}');
+do $$ declare n jsonb; begin
+  n:=public.experience_save_moment_review((select id from xr where k='moment'),8::smallint,'Privada')->'notifyUserIds';
+  if n<>'[]'::jsonb then raise exception 'FAIL private experience notifies %',n; end if;
+end $$;
+rollback to savepoint notify_private;
 rollback;

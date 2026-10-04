@@ -286,6 +286,7 @@
     "20261004100100_experience_moment_kinds.sql",
     "20261004100200_experience_reviews_core.sql",
     "20261004100300_experience_reviews_social.sql",
-    "20261004100400_experience_reviews_moderation.sql"
+    "20261004100400_experience_reviews_moderation.sql",
+    "20261004100500_experience_reviews_notify_access.sql"
   ]
 }
