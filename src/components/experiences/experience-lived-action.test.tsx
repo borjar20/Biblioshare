@@ -34,6 +34,15 @@ describe("ExperienceLivedAction", () => {
     expect(a.setMomentAttendance).toHaveBeenCalledWith(e.moments[0].id, "attended");
     expect((await screen.findByRole("link", { name: "Reseñar ahora" })).getAttribute("href")).toBe(`#moment-${e.moments[0].id}`);
   });
+  it("does not bring the button back after closing the sheet, before the refresh lands", async () => {
+    const e = detailFixture({ state: "planned", canEdit: true });
+    render(withIntl(<ExperienceLivedAction experience={e} />));
+    fireEvent.click(screen.getByRole("button", { name: "Lo vivimos" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Guardar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Más tarde" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Más tarde" })).toBeNull());
+    expect(screen.queryByRole("button", { name: "Lo vivimos" })).toBeNull();
+  });
   it("shows the update error with role=alert and stays closed", async () => {
     a.updateExperience.mockResolvedValue({ ok: false, error: "conflict" });
     const e = detailFixture({ state: "planned", canEdit: true });
