@@ -6,6 +6,14 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { EllipsisIcon } from "@/components/ui/icons";
 import { appMenuItems } from "./nav-items";
+import { ThemeToggle } from "@/components/theme-toggle";
+
+function getVisibleMenuItems(menu: HTMLElement | null) {
+  return Array.from(menu?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? []).filter((item) => {
+    const style = window.getComputedStyle(item);
+    return style.display !== "none" && style.visibility !== "hidden";
+  });
+}
 
 export function AppMenu({ authenticated }: { authenticated: boolean }) {
   const pathname = usePathname();
@@ -29,8 +37,8 @@ function AppMenuPanel({ pathname, authenticated }: { pathname: string; authentic
 
   useEffect(() => {
     if (!open) return;
-    const links = menuRef.current?.querySelectorAll<HTMLAnchorElement>("[role='menuitem']");
-    links?.[firstFocus.current === "first" ? 0 : links.length - 1]?.focus();
+    const menuItems = getVisibleMenuItems(menuRef.current);
+    menuItems[firstFocus.current === "first" ? 0 : menuItems.length - 1]?.focus();
 
     function onPointer(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
@@ -57,12 +65,12 @@ function AppMenuPanel({ pathname, authenticated }: { pathname: string; authentic
   function onMenuKey(event: KeyboardEvent<HTMLDivElement>) {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const links = Array.from(menuRef.current?.querySelectorAll<HTMLAnchorElement>("[role='menuitem']") ?? []);
-    const current = links.indexOf(document.activeElement as HTMLAnchorElement);
+    const menuItems = getVisibleMenuItems(menuRef.current);
+    const current = menuItems.indexOf(document.activeElement as HTMLElement);
     const next = event.key === "Home" ? 0
-      : event.key === "End" ? links.length - 1
-      : (current + (event.key === "ArrowDown" ? 1 : -1) + links.length) % links.length;
-    links[next]?.focus();
+      : event.key === "End" ? menuItems.length - 1
+      : (current + (event.key === "ArrowDown" ? 1 : -1) + menuItems.length) % menuItems.length;
+    menuItems[next]?.focus();
   }
 
   return (
@@ -110,6 +118,10 @@ function AppMenuPanel({ pathname, authenticated }: { pathname: string; authentic
               </Link>
             );
           })}
+          <ThemeToggle variant="menu" onToggle={() => {
+            setOpen(false);
+            triggerRef.current?.focus();
+          }} />
         </div>
       )}
     </div>

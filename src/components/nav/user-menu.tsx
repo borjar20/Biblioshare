@@ -18,7 +18,7 @@ export function UserMenu({
     <Link
       href={`/u/${username}`}
       aria-label={t("you.profile")}
-      className="ml-1 grid h-11 w-11 shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="grid h-11 w-11 shrink-0 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <UserAvatar name={username} avatarUrl={avatarUrl} size={34} />
     </Link>

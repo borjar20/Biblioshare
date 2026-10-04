@@ -211,9 +211,10 @@ export async function updatePass(
 
   // Se lee ANTES de guardar: savePassFields sobrescribe review, y el diff de
   // menciones (issue #317) necesita el texto previo para saber cuáles son
-  // nuevas.
+  // nuevas. pass_reviews aplica la privacidad de la reseña; el SELECT de
+  // passes.review está revocado aunque el usuario pueda actualizar su pase.
   const { data: existing, error: existingError } = await supabase
-    .from("passes")
+    .from("pass_reviews")
     .select("review")
     .eq("id", passId)
     .eq("user_id", user.id)
