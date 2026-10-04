@@ -31,6 +31,7 @@ const experience: Detail = {
   coverPhotoId: null, createdAt: "2026-10-04T10:00:00Z", revision: 1, moments: [],
   participants: [organizer, invitee, companion], canEdit: false, canContribute: true,
   attendance: [], favorites: [], photos: [], publicationId: null, interactionTargetId: null,
+  reviews: [], rating: null, momentRatings: {},
 };
 
 describe("acompañantes de la cabecera de Experiencias", () => {

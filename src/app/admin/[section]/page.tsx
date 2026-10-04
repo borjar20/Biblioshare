@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { getModerationPage } from "@/lib/moderation/queries";
 import { evidenceText,evidencePhotoIds, isContentKind, type ContentRow, type HistoryRow, type ModerationKind, type ReportRow } from "@/lib/moderation/contracts";
 import { ContentControls, ReportControls } from "../moderation-controls";
+import { ExperienceReviewRating } from "../experience-review-rating";
 
 export const instant = false;
 export const metadata = { title: "Moderación — Biblioshare" };
@@ -61,7 +62,7 @@ export default async function ModerationPage({ params, searchParams }: {
     <form className="flex flex-wrap items-end gap-3" method="get">
       {name === "content" && <label className="flex flex-col gap-1 text-sm" htmlFor="moderation-kind">{t("type")}
         <select name="kind" id="moderation-kind" defaultValue={kind} className="rounded-lg border border-border bg-surface px-3 py-2">
-          {["post", "club_post", "comment", "experience"].map((value) => <option key={value} value={value}>{t(`kinds.${value}`)}</option>)}
+          {["post", "club_post", "comment", "experience", "experience_review"].map((value) => <option key={value} value={value}>{t(`kinds.${value}`)}</option>)}
         </select>
       </label>}
       {name !== "history" && <label className="flex flex-col gap-1 text-sm" htmlFor="moderation-status">{t("statusLabel")}
@@ -103,8 +104,9 @@ export default async function ModerationPage({ params, searchParams }: {
           })() : (() => {
             const item = row as ContentRow;
             return <>
-              <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="min-w-0 break-words font-serif text-lg font-semibold">{(item.kind === "club" ? item.title : item.title?.slice(0, 120)) || t(`kinds.${item.kind}`)}</h2><span className="text-sm text-muted-foreground">{t(`statuses.${item.deleted_at ? "deleted" : item.removed_at || item.parent_removed ? "removed" : "active"}`)}</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="min-w-0 break-words font-serif text-lg font-semibold">{(item.kind === "club" ? item.title : item.kind === "experience_review" ? "" : item.title?.slice(0, 120)) || t(`kinds.${item.kind}`)}</h2><span className="text-sm text-muted-foreground">{t(`statuses.${item.deleted_at ? "deleted" : item.removed_at || item.parent_removed ? "removed" : "active"}`)}</span></div>
               <p className="text-xs text-muted-foreground">{item.author_name ?? item.author_id ?? t("unknownAuthor")} · {date(item.created_at)}</p>
+              {item.kind === "experience_review" && <ExperienceReviewRating snapshot={item.snapshot} />}
               {item.body && <p className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-sm leading-relaxed">{item.body}</p>}
               {item.parent_removed && <p className="text-sm text-status-dropped">{t("parentRemoved")}</p>}
               {item.kind === "comment" && typeof item.snapshot?.audio_path === "string" && <audio controls preload="none" className="max-w-full" src={`/api/admin/voice-notes/${item.id}`} />}

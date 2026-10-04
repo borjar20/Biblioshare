@@ -198,7 +198,9 @@ type FeedEventDraft = Omit<FeedEvent, "interactionTarget" | "postId"> & {
   } | null;
 };
 
-export type ExperienceFeedEvent = Pick<FeedEvent,"id"|"postId"|"actorId"|"actorUsername"|"actorDisplayName"|"actorAvatarUrl"|"eventDate"|"orderDate"|"sortDate"|"interactionTarget"|"reactionCount"|"viewerReacted"|"commentCount"|"comments"|"reactions"|"viewerCanDelete"> & {kind:"experience";experience:ExperiencePreview;body:string|null};
+export type ExperienceFeedEvent = Pick<FeedEvent,"id"|"postId"|"actorId"|"actorUsername"|"actorDisplayName"|"actorAvatarUrl"|"eventDate"|"orderDate"|"sortDate"|"interactionTarget"|"reactionCount"|"viewerReacted"|"commentCount"|"comments"|"reactions"|"viewerCanDelete"> & {kind:"experience";experience:ExperiencePreview;body:string|null;review:ExperienceFeedReview|null};
+/** Reseña de momento de un post `experience_review` (kind del evento sigue siendo "experience"; `review` lo distingue). */
+export interface ExperienceFeedReview {id:string;momentId:string;momentTitle:string;rating:number|null;body:string|null}
 type ExperienceFeedDraft=Omit<ExperienceFeedEvent,"interactionTarget"|"postId"> & Pick<FeedEventDraft,"interactionTarget"|"postId">;
 type SocialPostDraft=FeedEventDraft|ExperienceFeedDraft;
 export function isExperienceEvent(event:FeedEvent|ExperienceFeedEvent):event is ExperienceFeedEvent;
@@ -766,18 +768,30 @@ async function resolveCatalogPostDrafts(
 
 /** Both feed and post detail use the same bounded batch for the new domain. */
 async function resolvePostDrafts(supabase:SupabaseServerClient,rows:PostRow[],reviewsOnly:boolean,fullBody=false):Promise<SocialPostDraft[]> {
-  const xp=reviewsOnly?[]:rows.filter(r=>r.kind==="experience"&&r.anchor_type==="experience");
-  const [catalog,roots,actors]=await Promise.all([
+  const xp=reviewsOnly?[]:rows.filter(r=>(r.kind==="experience"||r.kind==="experience_review")&&r.anchor_type==="experience");
+  // Posts de reseña: el texto vive en la reseña (body del post es null). La RLS
+  // de experience_moment_reviews oculta las que el lector no puede ver; si la
+  // fila no vuelve, el post se descarta.
+  const reviewIds=[...new Set(xp.filter(r=>r.kind==="experience_review"&&r.source_id).map(r=>r.source_id as string))];
+  const [catalog,roots,actors,reviews]=await Promise.all([
     resolveCatalogPostDrafts(supabase,rows,reviewsOnly,fullBody),
     xp.length?supabase.from("experiences").select("*").in("id",[...new Set(xp.map(r=>r.anchor_id))]):Promise.resolve({data:[],error:null}),
     xp.length?supabase.from("profile_identities").select("user_id,username,display_name,avatar_url").in("user_id",[...new Set(xp.map(r=>r.author_id))]):Promise.resolve({data:[],error:null}),
+    reviewIds.length?supabase.from("experience_moment_reviews").select("id,moment_id,rating,body").in("id",reviewIds):Promise.resolve({data:[],error:null}),
   ]);
-  if(roots.error)throw roots.error;if(actors.error)throw actors.error;
+  if(roots.error)throw roots.error;if(actors.error)throw actors.error;if(reviews.error)throw reviews.error;
   const previews=await getExperiencePreviews(supabase,roots.data??[]);
   const byId=new Map(previews.map(e=>[e.id,e])),byActor=new Map((actors.data??[]).map(a=>[a.user_id,a]));
+  const reviewById=new Map(((reviews.data??[]) as ReviewRow[]).map(r=>[r.id,r]));
   const experiences:ExperienceFeedDraft[]=xp.flatMap(row=>{
     const experience=byId.get(row.anchor_id),actor=byActor.get(row.author_id);if(!experience||!actor?.username)return [];
-    return [{id:`posts:${row.id}`,postId:row.id,kind:"experience",experience,body:row.body,actorId:row.author_id,actorUsername:actor.username,actorDisplayName:actor.display_name,actorAvatarUrl:actor.avatar_url,eventDate:row.created_at,orderDate:row.created_at,sortDate:row.created_at,interactionTarget:{targetType:"post",targetId:row.id,interactionTargetId:null},reactionCount:0,viewerReacted:false,commentCount:0,comments:[],reactions:emptyReactions()}];
+    let review:ExperienceFeedReview|null=null;
+    if(row.kind==="experience_review") {
+      const r=row.source_id?reviewById.get(row.source_id):undefined;if(!r)return [];
+      const moment=experience.moments.find(m=>m.id===r.moment_id);if(!moment)return [];
+      review={id:r.id,momentId:r.moment_id,momentTitle:moment.title,rating:r.rating,body:r.body};
+    }
+    return [{id:`posts:${row.id}`,postId:row.id,kind:"experience",experience,body:row.body,review,actorId:row.author_id,actorUsername:actor.username,actorDisplayName:actor.display_name,actorAvatarUrl:actor.avatar_url,eventDate:row.created_at,orderDate:row.created_at,sortDate:row.created_at,interactionTarget:{targetType:"post",targetId:row.id,interactionTargetId:null},reactionCount:0,viewerReacted:false,commentCount:0,comments:[],reactions:emptyReactions()}];
   });
   return [...catalog,...experiences];
 }
@@ -1280,7 +1294,7 @@ type PostRow = {
   kind: PostKind;
   anchor_type: AnchorType;
   anchor_id: string;
-  source_kind: "pass" | "progress_session" | "episode_watch" | "joint_viewing" | null;
+  source_kind: "pass" | "progress_session" | "episode_watch" | "joint_viewing" | "experience_review" | null;
   source_id: string | null;
   body: string | null;
   is_spoiler: boolean;
@@ -1295,4 +1309,5 @@ type PassRow = { id: string; started_on: string | null; finished_on: string | nu
 type SessionRow = { id: string; duration_minutes: number | null; position: unknown };
 type EpisodeRow = { id: string; user_id: string; series_id: string; season_number: number; episode_number: number; rating: number | null; review: string | null; review_is_spoiler: boolean; watched_on: string };
 type EpisodeTitleRow = { series_id: string; season_number: number; episode_number: number; title: string | null };
+type ReviewRow = { id: string; moment_id: string; rating: number | null; body: string | null };
 type ActorRow = { user_id: string | null; username: string | null; display_name: string | null; avatar_url: string | null };

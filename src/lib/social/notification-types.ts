@@ -70,7 +70,8 @@ export type NotificationType =
   | "joint_viewing_accepted"
   | "experience_invited"
   | "experience_accepted"
-  | "followed_experience";
+  | "followed_experience"
+  | "experience_reviewed";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -93,7 +94,8 @@ export type ReviewTargetType =
   | "club_round"
   // Un visionado conjunto (#1220): su página es `/juntos/[id]`, donde se acepta.
   | "joint_viewing"
-  | "experience";
+  | "experience"
+  | "experience_review";
 
 export type Notification = {
   id: string;
@@ -161,6 +163,7 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   experience_invited: "experienceInvited",
   experience_accepted: "experienceAccepted",
   followed_experience: "followedExperience",
+  experience_reviewed: "experienceReviewed",
 };
 
 /**

@@ -1412,3 +1412,33 @@ commit;
 begin;
 \ir migrations/20261003153110_guard_comment_target_recursion.sql
 commit;
+
+-- 20261004100000_experience_reviews_enums
+begin;
+\ir migrations/20261004100000_experience_reviews_enums.sql
+commit;
+
+-- 20261004100100_experience_moment_kinds
+begin;
+\ir migrations/20261004100100_experience_moment_kinds.sql
+commit;
+
+-- 20261004100200_experience_reviews_core
+begin;
+\ir migrations/20261004100200_experience_reviews_core.sql
+commit;
+
+-- 20261004100300_experience_reviews_social
+begin;
+\ir migrations/20261004100300_experience_reviews_social.sql
+commit;
+
+-- 20261004100400_experience_reviews_moderation
+begin;
+\ir migrations/20261004100400_experience_reviews_moderation.sql
+commit;
+
+-- 20261004100500_experience_reviews_notify_access
+begin;
+\ir migrations/20261004100500_experience_reviews_notify_access.sql
+commit;

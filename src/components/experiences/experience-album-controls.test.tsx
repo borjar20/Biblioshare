@@ -30,7 +30,7 @@ const detail: ExperienceDetail = {
   id: "experience-1", creatorId: "viewer", title: "Madrid", shape: "single", state: "planned", audience: "private",
   startsOn: null, endsOn: null, coverPhotoId: null, createdAt: "2026-10-03T10:00:00Z", revision: 7,
   moments: [moment], participants: [own], viewerId: "viewer", canEdit: true, canContribute: true,
-  attendance: [{ momentId: moment.id, participantId: own.id, state: "planned" }], favorites: [], photos: [photo], publicationId: null, interactionTargetId: null,
+  attendance: [{ momentId: moment.id, participantId: own.id, state: "planned" }], favorites: [], photos: [photo], publicationId: null, interactionTargetId: null, rating: null, momentRatings: {}, reviews: [],
 };
 beforeEach(() => {
   vi.clearAllMocks();
