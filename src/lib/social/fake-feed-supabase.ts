@@ -32,6 +32,7 @@ export const FAKE_ITEM_ID = FAKE_BOOK_ID;
 export type FakeFeedSource =
   | "posts"
   | "experiences"
+  | "experience_moment_reviews"
   | "follows"
   | "profile_identities"
   | "books"
@@ -58,6 +59,12 @@ export type FakeFeedData = {
   /** Filas de `posts` (la fuente de contenido del feed). */
   posts?: FakeRow[];
   experiences?: FakeRow[];
+  /**
+   * Reseñas de momento (posts `experience_review`). Como en los visionados
+   * conjuntos, aquí SÍ se aplica `.in()`: la RLS que oculta una reseña se modela
+   * no poniéndola.
+   */
+  experienceMomentReviews?: FakeRow[];
   /** Filas de `club_activities` (la segunda fuente, columna `created_at`). */
   clubActivities?: FakeRow[];
   /** Filas fuente para display de posts `finished`, por `id` = source_id del post. */
@@ -163,6 +170,7 @@ function sourceOf(table: string): FakeFeedSource {
   switch (table) {
     case "posts":
     case "experiences":
+    case "experience_moment_reviews":
     case "follows":
     case "profile_identities":
     case "books":
@@ -255,6 +263,8 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
         return posts;
       case "experiences":
         return rows.experiences ?? [];
+      case "experience_moment_reviews":
+        return rows.experienceMomentReviews ?? [];
       case "interaction_targets":
         return interactionTargets;
       case "passes":
@@ -349,7 +359,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       for (const [column, value] of eqs) (eqFilters[source] ??= {})[column] = value;
 
       let result = dataFor(source);
-      if (source === "joint_viewings" || source === "joint_viewing_members") {
+      if (source === "joint_viewings" || source === "joint_viewing_members" || source === "experience_moment_reviews") {
         for (const [column, values] of ins) result = result.filter((r) => values.map(text).includes(text(r[column])));
         for (const [column, value] of eqs) result = result.filter((r) => text(r[column]) === text(value));
       }
