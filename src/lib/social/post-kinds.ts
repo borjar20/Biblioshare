@@ -17,6 +17,7 @@ export const POST_KINDS = [
   // visionado y fuente = la fila de `joint_viewings`.
   "joint",
   "experience",
+  "experience_review",
 ] as const;
 
 export type PostKind = (typeof POST_KINDS)[number];

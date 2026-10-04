@@ -47,7 +47,7 @@ export async function getExperiencePreviews(client:Client,roots:Root[]):Promise<
   if(identities.error) throw identities.error;
   const byId=new Map((identities.data??[]).map(p=>[p.user_id,p]));
   return roots.map(root=>({
-    id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:coverByRoot.get(root.id)??null,createdAt:root.created_at,revision:root.revision,
+    id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],rating:null,momentRatings:{},startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:coverByRoot.get(root.id)??null,createdAt:root.created_at,revision:root.revision,
     moments:(moments.data??[]).filter(m=>m.experience_id===root.id).map(m=>({id:m.id,title:m.title,kind:m.kind as ExperiencePreview["moments"][number]["kind"],placeLabel:m.place_label,startsOn:m.starts_on,endsOn:m.ends_on,position:m.position})),
     participants:(people.data??[]).filter(p=>p.experience_id===root.id).map(p=>({id:p.id,userId:p.user_id,guestName:p.guest_name,invitationState:p.invitation_state as ExperiencePreview["participants"][number]["invitationState"],shareIdentity:p.share_identity,username:byId.get(p.user_id)?.username??null,displayName:byId.get(p.user_id)?.display_name??null,avatarUrl:byId.get(p.user_id)?.avatar_url??null})),
   }));
@@ -97,7 +97,7 @@ export async function getExperience(id:string):Promise<ExperienceDetail|null> {
   ]);
   if(publication.error)throw publication.error;if(target.error)throw target.error;
   return {...preview,viewerId,canEdit,canContribute:canEdit||(viewerId!==null&&preview.participants.some(p=>p.userId===viewerId&&p.invitationState==="accepted")),
-    publicationId:publication.data,interactionTargetId:target.data?.id??null,
+    publicationId:publication.data,interactionTargetId:target.data?.id??null,reviews:[],
     attendance:(attendance.data??[]).map(a=>({momentId:a.moment_id,participantId:a.participant_id,state:a.attendance_state as ExperienceDetail["attendance"][number]["state"]})),
     favorites:(favorites.data??[]).map(f=>({userId:f.user_id,momentId:f.moment_id})),
     photos:(photos.data as unknown as ExperiencePhoto[]).map(p=>({...p,canManage:p.canManage===true,isAuthor:p.isAuthor===true})),

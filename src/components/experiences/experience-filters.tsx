@@ -11,7 +11,7 @@ export function ExperienceFiltersBar({filters,people,basePath="/experiencias"}:{
   const [expanded,setExpanded]=useState(Boolean(filters.kind||filters.companion));
   function href(change:Partial<ExperienceFilters>) {
     const values={...filters,...change,cursor:undefined},params=new URLSearchParams(basePath.split("?")[1]);
-    for(const [key,value] of Object.entries(values)) {params.delete(key);if(value&&value!=="all") params.set(key,value);}
+    for(const [key,value] of Object.entries(values)) {params.delete(key);if(value&&value!=="all") params.set(key,String(value));}
     return `${basePath.split("?")[0]}${params.size ? `?${params}` : ""}`;
   }
   const companions=[...new Map(people.map(p=>[p.userId??p.id,p])).values()];

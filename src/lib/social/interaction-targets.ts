@@ -14,7 +14,8 @@ export type TargetType =
   | "club_round"
   | "thought"
   | "post"
-  | "experience";
+  | "experience"
+  | "experience_review";
 
 export type InteractionTargetRef = {
   id: string;

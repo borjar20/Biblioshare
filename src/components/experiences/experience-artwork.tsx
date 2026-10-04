@@ -8,6 +8,10 @@ const kindTone: Record<MomentKind, string> = {
   exhibition: "text-accent",
   museum: "text-foreground-soft",
   walk: "text-status-completed-ink",
+  food: "text-gold-ink",
+  festival: "text-accent",
+  sport: "text-status-completed-ink",
+  nature: "text-status-completed-ink",
   other: "text-accent",
 };
 
@@ -51,6 +55,10 @@ export function ExperienceKindIcon({ kind, className = "" }: { kind: MomentKind;
     exhibition: <><path d="M3 4h18v16H3zM6 7h12v10H6zM7 16l4-4 3 2 2-3 2 5" /><circle cx="9" cy="10" r="1" /></>,
     museum: <><path d="M2 9l10-6 10 6H2zM4 20h16M6 11v6m6-6v6m6-6v6M3 17h18" /></>,
     walk: <><path d="M3 19c6 0 5-7 10-7s3-7 8-7M6 4L3 9h6L6 4zm0 5v3" /><circle cx="3" cy="19" r="1" /><circle cx="21" cy="5" r="1" /></>,
+    food: <><path d="M7 3v8M5 3v5a2 2 0 004 0V3M7 11v10M17 3c-2 2-2 6 0 8v10" /></>,
+    festival: <><path d="M12 3l2 5 5 .5-4 3.5 1.5 5L12 14l-4.5 3 1.5-5L5 8.5 10 8z" /></>,
+    sport: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></>,
+    nature: <><path d="M12 21v-8M12 13c-4 0-6-3-6-7 4 0 6 3 6 7zM12 15c3 0 5-2 5-5-3 0-5 2-5 5z" /></>,
     other: <><circle cx="12" cy="12" r="9" /><path d="M16 7l-2 7-6 3 2-7 6-3z" /></>,
   };
   return <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[kind]}</svg>;
