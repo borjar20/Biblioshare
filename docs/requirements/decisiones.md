@@ -6419,4 +6419,5 @@ El filtro «Reseñas» del feed es solo de catálogo (`kind='finished'`) y las r
 experiencia aparecen en el feed general con la tarjeta de experiencia. Por ahora **no** se
 incluyen en ese filtro. **Pendiente de decisión del propietario:** si «Reseñas» debe mezclar
 las de obras con las de experiencias. Hasta entonces la conducta actual es la de la entrega;
-no se ha decidido ni implementado lo contrario.
+no se ha decidido ni implementado lo contrario. Rastreado en
+[#1358](https://github.com/borjar20/Biblioshare/issues/1358).

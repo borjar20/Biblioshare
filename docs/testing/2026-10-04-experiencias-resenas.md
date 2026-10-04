@@ -136,12 +136,20 @@ asistencia se rompe). Al revés es seguro: el código viejo tolera el esquema nu
 revisión final de la rama).
 
 1. **Justo antes de aplicar**, comparar en producción `md5(prosrc)` (y, si difiere,
-   `pg_get_functiondef`) de las funciones compartidas que `20261004100400` reescribe con el
-   cuerpo de la migración: `private.moderation_available`, `public.admin_moderation_list`,
-   `private.moderation_row_available`, `public.admin_moderate_content`,
-   `private.capture_moderation_deletion`, `private.prepare_content_report`,
-   `private.social_target_owner_id`, `public.can_view_target` y
-   `private.guard_experience_post`. Esos cuerpos se copiaron de dev el 2026-10-04; si otra
+   `pg_get_functiondef`) de las funciones existentes que las migraciones reescriben con
+   `create or replace`, frente al cuerpo de dev del que se copiaron:
+   - `20261004100400`: `private.moderation_available`, `private.admin_moderation_list`,
+     `private.moderation_row_available`, `private.admin_moderate_content` (las versiones
+     `private.`; los envoltorios `public.` del mismo nombre no se tocan),
+     `private.capture_moderation_deletion`, `private.prepare_content_report`,
+     `private.social_target_owner_id` y `public.can_view_target`;
+   - `20261004100300`: `private.guard_experience_post`;
+   - `20261004100100`/`…100200`: `public.experience_create`, `public.experience_save_moment`,
+     `public.get_profile_experiences` y `public.experience_set_attendance(uuid,text)` (que se
+     borra y se recrea con tres argumentos).
+
+   El 2026-10-04, antes de aplicar en dev, los digests de todas ellas coincidían entre dev y
+   producción. Esos cuerpos se copiaron de dev el 2026-10-04; si otra
    rama cambió alguna en producción después, aplicar la migración tal cual revertiría ese
    cambio en silencio. Si alguna difiere, parar y fusionar a mano antes de seguir.
 2. Aplicar las seis migraciones en orden, la de enums **sola** primero (Postgres no deja usar
@@ -151,7 +159,16 @@ revisión final de la rama).
    EXECUTE, triggers) y que `experience_save_moment_review` contiene `e.audience<>'private'`.
    No ejecutar `experiences_reviews.sql` con fixtures en producción.
 3. **Solo entonces** hacer merge de la PR o promover el despliegue. Después, regenerar
-   `database.types.ts`.
+   `database.types.ts` ([#1357](https://github.com/borjar20/Biblioshare/issues/1357)).
+
+Pendientes de la entrega, rastreados como issues: tipos generados
+([#1357](https://github.com/borjar20/Biblioshare/issues/1357)), filtro «Reseñas» del feed
+([#1358](https://github.com/borjar20/Biblioshare/issues/1358)), paginación por offset del hub
+([#1359](https://github.com/borjar20/Biblioshare/issues/1359)), `/post/[id]` 200 en producción
+([#1360](https://github.com/borjar20/Biblioshare/issues/1360)), cobertura
+([#1361](https://github.com/borjar20/Biblioshare/issues/1361)), deuda de backend y UX
+([#1362](https://github.com/borjar20/Biblioshare/issues/1362)) y limpieza de los E2E
+([#1363](https://github.com/borjar20/Biblioshare/issues/1363)).
 
 ## E2E (Playwright, `next build` + `next start`)
 
