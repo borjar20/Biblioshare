@@ -134,4 +134,75 @@ select public.experience_set_attendance((select id from xr where k='moment'),'sk
 reset role;
 do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL drop reviews'; end if; end $$;
 do $$ begin if exists(select 1 from pg_proc where proname='experience_set_attendance' and pronargs=2) then raise exception 'FAIL ambiguous overload'; end if; end $$;
+-- Task 5: publication needs consent + profile audience; one post; revoked with consent.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_attendance((select id from xr where k='moment'),'attended');
+update xr set id=(public.experience_save_moment_review((select id from xr where k='moment'),7::smallint,'Otra vez')->>'id')::uuid where k='review';
+do $$ begin
+  begin perform public.experience_publish_review((select id from xr where k='review')); raise exception 'FAIL publish without consent'; exception when insufficient_privilege then null; end;
+end $$;
+select public.experience_set_review_sharing((select id from xr where k='review'),true);
+update xr set id=(public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid where k='post';
+do $$ begin
+  if (public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid<>(select id from xr where k='post') then raise exception 'FAIL duplicate post'; end if;
+  begin insert into public.posts(author_id,kind,anchor_type,anchor_id,source_kind,source_id) values(auth.uid(),'experience_review','experience',(select id from xr where k='root'),'experience_review',(select id from xr where k='review')); raise exception 'FAIL REST post'; exception when insufficient_privilege or check_violation or unique_violation then null; end;
+  if not exists(select 1 from public.get_experience_review_publications(array[(select id from xr where k='review')]) where post_id=(select id from xr where k='post')) then raise exception 'FAIL own publications'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin if not exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL outsider sees published review'; end if; end $$;
+do $$ begin
+  if exists(select 1 from public.get_experience_review_publications(array[(select id from xr where k='review')])) then raise exception 'FAIL foreign publications'; end if;
+  begin perform public.experience_unpublish_review((select id from xr where k='review')); raise exception 'FAIL foreign unpublish'; exception when insufficient_privilege then null; end;
+end $$;
+-- Consent withdrawal removes the post even under a creator/author block or a moderated experience.
+-- Isolated in a savepoint: later steps rely on no block, no moderation and the post still existing.
+savepoint task5_withdrawal;
+reset role;
+insert into public.user_blocks(blocker_id,blocked_id) values((select id from xr where k='owner'),(select id from xr where k='member'));
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL blocked review post visible'; end if; end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),false);
+reset role;
+do $$ begin if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL consent revoke under block keeps post'; end if; end $$;
+rollback to savepoint task5_withdrawal;
+reset role;
+insert into private.moderation_state(kind,target_id,removed_at) values('experience',(select id from xr where k='root'),now());
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),false);
+reset role;
+do $$ begin if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL consent revoke under moderation keeps post'; end if; end $$;
+rollback to savepoint task5_withdrawal;
+reset role;
+do $$ begin
+  if not exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL savepoint restore post'; end if;
+  if exists(select 1 from private.moderation_operations where transaction_id=txid_current()) then raise exception 'FAIL leaked moderation marker'; end if;
+end $$;
+-- Unpublishing keeps the review and its consent; republishing works.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_unpublish_review((select id from xr where k='review'));
+do $$ begin
+  if exists(select 1 from public.posts where kind='experience_review' and source_id=(select id from xr where k='review')) then raise exception 'FAIL unpublish'; end if;
+  if not exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review') and share_with_profile) then raise exception 'FAIL unpublish touched review'; end if;
+end $$;
+update xr set id=(public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid where k='post';
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),false);
+reset role;
+do $$ begin
+  if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL consent revoke keeps post'; end if;
+  if exists(select 1 from private.moderation_operations where transaction_id=txid_current()) then raise exception 'FAIL leaked moderation marker'; end if;
+end $$;
+-- Deleting the review deletes its post too.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),true);
+update xr set id=(public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid where k='post';
+select public.experience_delete_moment_review((select id from xr where k='review'));
+reset role;
+do $$ begin if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL review delete keeps post'; end if; end $$;
 rollback;
