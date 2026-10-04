@@ -209,12 +209,14 @@ do $$ begin
       where t.kind='margin_encounter' and t.audience_id=e.reader_id and t.href='/margen/'||e.id and t.commentable) then
     raise exception 'FAIL D1: encounter target missing'; end if;
 end $$;
-do $$ declare who record; seen int; begin
+do $$ declare who record; seen int; eids uuid[]; begin
+  select array_agg(e.id) into eids from public.margin_note_encounters e where e.reader_id=(select id from margin_fixture where k='follower');
   for who in select k,id from margin_fixture where k in ('author','follower','stranger','blocked') loop
     perform set_config('request.jwt.claim.sub',who.id::text,true);
     set local role authenticated;
-    select count(*) into seen from public.interaction_targets t join public.margin_note_encounters e on e.id=t.source_id
-      where t.kind='margin_encounter' and e.reader_id=(select id from margin_fixture where k='follower');
+    -- Directo sobre interaction_targets (sin join a encuentros): prueba su RLS, no la de los encuentros.
+    select count(*) into seen from public.interaction_targets t
+      where t.kind='margin_encounter' and t.source_id = any(eids);
     if (seen>0) <> (who.k in ('author','follower')) then raise exception 'FAIL D2: % thread visibility %',who.k,seen; end if;
     reset role;
   end loop;
@@ -257,6 +259,84 @@ do $$ begin
     raise exception 'FAIL D6: orphan margin_encounter target'; end if;
   if exists(select 1 from public.comments where body='[TEST] hilo') then
     raise exception 'FAIL D6: orphan comment'; end if;
+end $$;
+-- E: la relación rota (desseguir / bloquear) cierra el hilo también al autor-moderador.
+create temporary table margin_leak(enc uuid, tgt uuid, cmt uuid, enc2 uuid);
+grant select on margin_leak to anon, authenticated;
+insert into margin_leak(enc,tgt)
+  select e.id,t.id from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id
+  join public.interaction_targets t on t.kind='margin_encounter' and t.source_id=e.id
+  where n.body='[TEST] aquí lloré' and e.reader_id=(select id from margin_fixture where k='follower');
+insert into public.comments(author_id,body,interaction_target_id)
+  select (select id from margin_fixture where k='follower'),'[TEST] privado',tgt from margin_leak;
+update margin_leak set cmt=(select id from public.comments where body='[TEST] privado');
+-- nota dedicada pendiente de aviso, para el claim con la relación rota
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='author'),true);
+set local role authenticated;
+insert into public.margin_notes(item_type,item_id,anchor,chapter_label,body,audience,recipient_id)
+  values ('book',(select id from margin_fixture where k='book'),'{"kind":"finish"}','Cap. 31','[TEST] dedicada rota','person',(select id from margin_fixture where k='follower'));
+reset role;
+update margin_leak set enc2=(select e.id from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] dedicada rota');
+do $$ begin
+  if (select enc2 from margin_leak) is null then raise exception 'FAIL E0: dedicated encounter not opened (fixture)'; end if;
+end $$;
+-- E1: control. Con la relación viva, autor y lector ven target y comentario.
+do $$ declare who text; t int; c int; begin
+  foreach who in array array['author','follower'] loop
+    perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
+    set local role authenticated;
+    select count(*) into t from public.interaction_targets where id=(select tgt from margin_leak);
+    select count(*) into c from public.comments where id=(select cmt from margin_leak);
+    reset role;
+    if t<>1 or c<>1 then raise exception 'FAIL E1: % should see thread (t=%, c=%)',who,t,c; end if;
+  end loop;
+end $$;
+-- E2: el lector deja de seguir al autor: ni el autor ni el lector ven target ni comentario.
+delete from public.follows where follower_id=(select id from margin_fixture where k='follower') and followee_id=(select id from margin_fixture where k='author');
+do $$ declare who text; t int; c int; begin
+  foreach who in array array['author','follower'] loop
+    perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
+    set local role authenticated;
+    select count(*) into t from public.interaction_targets where id=(select tgt from margin_leak);
+    select count(*) into c from public.comments where id=(select cmt from margin_leak);
+    reset role;
+    -- El lector sigue viendo SU PROPIO comentario (regla general de comments: c.author_id = auth.uid()); lo que no puede es ver el hilo.
+    if t<>0 or (who='author' and c<>0) then raise exception 'FAIL E2: % still sees thread after unfollow (t=%, c=%)',who,t,c; end if;
+  end loop;
+end $$;
+-- E3: vuelve a seguir y el autor lo bloquea: igual.
+insert into public.follows(follower_id,followee_id,status)
+  values ((select id from margin_fixture where k='follower'),(select id from margin_fixture where k='author'),'accepted');
+insert into public.user_blocks(blocker_id,blocked_id)
+  values ((select id from margin_fixture where k='author'),(select id from margin_fixture where k='follower'));
+do $$ declare who text; t int; c int; begin
+  foreach who in array array['author','follower'] loop
+    perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
+    set local role authenticated;
+    select count(*) into t from public.interaction_targets where id=(select tgt from margin_leak);
+    select count(*) into c from public.comments where id=(select cmt from margin_leak);
+    reset role;
+    -- El lector sigue viendo SU PROPIO comentario (regla general de comments: c.author_id = auth.uid()); lo que no puede es ver el hilo.
+    if t<>0 or (who='author' and c<>0) then raise exception 'FAIL E3: % still sees thread after block (t=%, c=%)',who,t,c; end if;
+  end loop;
+end $$;
+-- E4: con bloqueo (y sin follow) el claim no devuelve la dedicada, a nadie; y jamás una de audiencia 'followers'.
+insert into public.follows(follower_id,followee_id,status)
+  values ((select id from margin_fixture where k='follower'),(select id from margin_fixture where k='author'),'accepted')
+  on conflict do nothing;
+do $$ declare who text; n int; begin
+  foreach who in array array['author','follower'] loop
+    perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
+    set local role authenticated;
+    select count(*) into n from public.margin_claim_notices();
+    reset role;
+    if n<>0 then raise exception 'FAIL E4: % claimed % notices under a block',who,n; end if;
+  end loop;
+  if exists(select 1 from public.margin_note_encounters e join public.margin_notes m on m.id=e.note_id
+      where m.audience='followers' and e.notified_at is not null) then
+    raise exception 'FAIL E4: a followers-audience encounter was claimed'; end if;
+  if (select notified_at from public.margin_note_encounters where id=(select enc2 from margin_leak)) is not null then
+    raise exception 'FAIL E4: blocked dedicated encounter was marked notified'; end if;
 end $$;
 -- La tarea 5 añade aquí sus bloques, ANTES del rollback.
 rollback;

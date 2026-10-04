@@ -43,7 +43,7 @@ AS $function$
 $function$;
 
 -- (c) public.can_view_target (base: 20261004100400_experience_reviews_moderation.sql)
-CREATE OR REPLACE FUNCTION public.can_view_target(p_target_type target_kind, p_target_id uuid)
+CREATE OR REPLACE FUNCTION public.can_view_target(p_target_type public.target_kind, p_target_id uuid)
  RETURNS boolean
  LANGUAGE sql
  STABLE SECURITY DEFINER
@@ -91,7 +91,7 @@ AS $function$
 $function$;
 
 -- (d) private.social_target_owner_id (base: 20261004100400_experience_reviews_moderation.sql)
-CREATE OR REPLACE FUNCTION private.social_target_owner_id(p_target_type target_kind, p_target_id uuid)
+CREATE OR REPLACE FUNCTION private.social_target_owner_id(p_target_type public.target_kind, p_target_id uuid)
  RETURNS uuid
  LANGUAGE sql
  STABLE SECURITY DEFINER
@@ -99,8 +99,14 @@ CREATE OR REPLACE FUNCTION private.social_target_owner_id(p_target_type target_k
 AS $function$
   select case p_target_type
     when 'experience' then (select creator_id from public.experiences where id=p_target_id)
+    -- El autor solo es "dueño" (y por tanto moderador) mientras la relación se mantiene:
+    -- follow aceptado del lector y ningún bloqueo en ningún sentido.
     when 'margin_encounter' then (select n.author_id from public.margin_note_encounters e
-      join public.margin_notes n on n.id=e.note_id where e.id=p_target_id)
+      join public.margin_notes n on n.id=e.note_id
+      where e.id=p_target_id
+        and exists(select 1 from public.follows f where f.follower_id=e.reader_id and f.followee_id=n.author_id and f.status='accepted')
+        and not exists(select 1 from public.user_blocks b where (b.blocker_id=e.reader_id and b.blocked_id=n.author_id)
+          or (b.blocker_id=n.author_id and b.blocked_id=e.reader_id)))
     when 'diary_entry' then (select p.user_id from public.passes p where p.id = p_target_id)
     when 'pass' then (select p.user_id from public.passes p where p.id = p_target_id)
     when 'episode_watch' then (select e.user_id from public.episode_watches e where e.id = p_target_id)
