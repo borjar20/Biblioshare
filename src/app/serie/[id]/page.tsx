@@ -23,7 +23,7 @@ import { RouteMessages } from "@/components/route-messages";
 // más `episode` (rejilla de episodios).
 const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions", "episode",
-  "item", "library", "notes", "passes", "social", "joint",
+  "item", "library", "margin", "notes", "passes", "social", "joint",
 ] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";

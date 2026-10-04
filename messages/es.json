@@ -3708,6 +3708,36 @@
       "resetConfirm": "¿Seguro? Vuelve a la configuración"
     }
   },
+  "margin": {
+    "leave": "Dejar en el margen",
+    "leaveEpisode": "Dejar nota en este episodio",
+    "leaveFromDetail": "Dejar una nota en el margen",
+    "sheetTitle": "Una nota en el margen",
+    "close": "Cerrar",
+    "chapter": "Capítulo",
+    "chapterHint": "A qué capítulo se refiere, para que nadie se líe con las páginas",
+    "page": "Página",
+    "atFinish": "Al terminar",
+    "body": "Tu nota",
+    "audience": "Para quién",
+    "audienceFollowers": "Mis seguidores",
+    "audiencePerson": "Una persona",
+    "searchFollower": "Busca entre quienes te siguen",
+    "spoiler": "Destripa más allá de este punto",
+    "opensAround": "Se abrirá hacia la p. {page} de una edición como la tuya",
+    "opensAtFinish": "Se abrirá cuando terminen la obra",
+    "save": "Dejar la nota",
+    "saving": "Guardando…",
+    "saved": "Nota dejada en el margen",
+    "errors": {
+      "invalidPosition": "Revisa la página o el episodio",
+      "invalidBody": "Escribe la nota (máximo 2000 caracteres)",
+      "invalidChapter": "Indica el capítulo (máximo 80 caracteres)",
+      "recipientNotFollower": "Esa persona ya no te sigue",
+      "unauthenticated": "Inicia sesión para dejar una nota",
+      "generic": "No se pudo guardar. Inténtalo de nuevo"
+    }
+  },
   "pet": {
     "game": {
       "sections": { "camp": "Campamento", "character": "Personaje", "diary": "Diario", "burrow": "Madriguera", "adventure": "Aventura", "training": "Entrenamiento" },

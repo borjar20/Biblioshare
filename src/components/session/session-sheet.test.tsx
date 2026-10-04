@@ -15,6 +15,9 @@ vi.mock("@/lib/sessions/timer", async (importOriginal) => ({
   clearTimer: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+// Los server actions del margen arrastran server-only: aquí solo interesa el render.
+vi.mock("@/lib/margin/actions", () => ({ createMarginNote: vi.fn() }));
+vi.mock("@/lib/margin/follower-search", () => ({ searchMyFollowers: vi.fn() }));
 vi.mock("./session-modal", () => ({ useModalClose: () => undefined }));
 vi.mock("./session-hero", () => ({ SessionHero: () => null }));
 vi.mock("./session-notebook", () => ({ SessionNotebook: () => null }));
