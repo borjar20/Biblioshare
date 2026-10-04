@@ -1000,6 +1000,7 @@
     "jointViewingInvite": "{name} dice que lo disfrutasteis juntos",
     "jointViewingAccepted": "{name} confirmó que lo disfrutasteis juntos",
     "jointViewingInviteSubject": "{name} dice que disfrutasteis {subject} juntos",
+    "marginNoteDedicatedSubject": "{name} te dejó una nota en el margen de {subject}",
     "jointViewingAcceptedSubject": "{name} confirmó que disfrutasteis {subject} juntos"
   },
   "joint": {

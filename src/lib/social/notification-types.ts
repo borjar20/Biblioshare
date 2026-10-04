@@ -218,4 +218,5 @@ export const ENRICHED_NOTIFICATION_KEY: Partial<
   followed_dropped: { subject: "followedDroppedSubject" },
   joint_viewing_invite: { subject: "jointViewingInviteSubject" },
   joint_viewing_accepted: { subject: "jointViewingAcceptedSubject" },
+  margin_note_dedicated: { subject: "marginNoteDedicatedSubject" },
 };
