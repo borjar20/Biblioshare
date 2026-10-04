@@ -66,19 +66,17 @@ porque debe poder existir en privado dentro del grupo.
 - Insertar o actualizar una reseña exige asistencia `attended` del participante en ese
   momento y experiencia `state='lived'`. Lo comprueba la RPC y lo respalda un trigger
   `BEFORE INSERT OR UPDATE`.
-- Un trigger sobre `experience_moment_participants` rechaza cambiar `attendance_state`
-  desde `attended` mientras exista reseña, salvo dentro de la RPC de asistencia con
-  `p_drop_reviews=true` (flag de sesión transaccional, mismo patrón que `app.hydrating`).
+- La RPC `experience_set_attendance(p_moment_id, p_state, p_drop_reviews)` borra primero la reseña cuando `p_drop_reviews=true` y después actualiza. El trigger sobre `experience_moment_participants` rechaza con `PT409` cualquier cambio desde `attended` mientras exista reseña, así que ningún otro camino la deja huérfana. No hace falta un flag de sesión.
 - Cambiar la experiencia a `planned` o `cancelled` **conserva** las reseñas y las oculta:
   la RLS exige `lived`. Revertir a `lived` las recupera. No se destruye texto por un
   cambio de estado.
-- Borrar momento, retirar participante o borrar la experiencia elimina las reseñas por
-  cascada. El autor conserva `experience_delete_moment_review` aunque haya salido del
-  grupo, igual que con sus fotos.
+- Retirar a un participante borra sus filas de `experience_moment_participants` y sus
+  reseñas caen en cascada. `experience_delete_moment_review` sigue existiendo para borrar
+  la propia reseña estando dentro.
 
 ### 2.3 Enums (migración propia, anterior a consumidores)
 
-- `moment_kind += 'food', 'festival', 'sport', 'nature'`.
+- `experience_moments.kind` es `text` con `CHECK`, no un enum. Se amplía el CHECK y la lista se centraliza en `private.is_experience_kind(text)`, que usan `experience_create`, `experience_save_moment`, `get_profile_experiences` y el hub ordenado.
 - `post_kind += 'experience_review'`; `post_source_kind += 'experience_review'`.
 - `target_kind += 'experience_review'`.
 - Tipo de notificación `experience_reviewed`.
@@ -107,7 +105,7 @@ directa. Policy de lectura mediante helper en `private` (`search_path=''`, `auth
 |---|---|
 | `experience_save_moment_review(p_moment_id, p_rating, p_body)` | Upsert de la reseña propia. Ambos nulos → borra (y su post). Devuelve `id` o nulo. |
 | `experience_set_review_sharing(p_review_id, p_enabled)` | Solo autor. Desactivar retira su post en la misma transacción. |
-| `experience_delete_moment_review(p_review_id)` | Solo autor; funciona tras salir del grupo. |
+| `experience_delete_moment_review(p_review_id)` | Solo autor; borra su propia reseña. |
 | `experience_publish_review(p_review_id)` | Solo autor; exige `share_with_profile` y audiencia `profile`. Idempotente: devuelve el post existente. |
 | `experience_unpublish_review(p_review_id)` | Solo autor; borra el post y conserva la reseña. |
 | `experience_set_attendance` (existente) | Nuevo parámetro `p_drop_reviews boolean default false`. Si hay reseña y es `false` → `conflict`; si es `true` → borra reseña y post. |
@@ -156,11 +154,9 @@ createdAt, updatedAt }`; `ExperienceDetail.reviews: ExperienceReview[]`;
 
 ### 4.2 Feed
 
-`FeedEntry` gana `source:'experience_review'` con `postId`, actor, target de interacción,
-`review` (nota, texto) y `ExperiencePreview` acotada al momento reseñado. Se resuelve en
-batch en el mapper común de `getFeed`/`getPostEvent`, conservando cursor, reacciones y
-comentarios. Tarjeta `ExperienceReviewFeedCard`: momento y experiencia, `RatingDots` (oro,
-sin tipo de obra) y texto; enlaza a `/experiencia/[id]#moment-<momentId>`.
+Se reutiliza `source:'experience'`. `ExperienceFeedEvent` gana `review: ExperienceFeedReview | null`,
+y `ExperienceFeedCard` renderiza la variante de reseña cuando no es nulo. Así se evita
+duplicar el camino de cursor, reacciones y comentarios.
 
 ### 4.3 Perfil
 
