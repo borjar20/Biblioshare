@@ -21,7 +21,7 @@ begin
     kind := case target when 'books' then 'book'::public.item_type when 'movies' then 'movie'::public.item_type else 'series'::public.item_type end;
     execute format('insert into public.%I(id,title) values($1,$2)',target) using item,'[TEST] catalog reference';
     foreach ref in array array['passes','club_activity_items','club_activity_opinions','club_activity_placements',
-      'club_rounds','collection_items','library_entries','notes','saga_items','saga_optional_skips',
+      'club_rounds','collection_items','library_entries','notes','margin_notes','saga_items','saga_optional_skips',
       'saga_placement_windows','after_anchor','before_anchor','saga_route_entries'] loop
       begin
         case ref
@@ -33,6 +33,8 @@ begin
           when 'collection_items' then insert into public.collection_items(collection_id,item_type,item_id) values(collection,kind,item);
           when 'library_entries' then insert into public.library_entries(user_id,item_type,item_id) values(actor,kind,item);
           when 'notes' then insert into public.notes(user_id,item_type,item_id,kind,body) values(actor,kind,item,'note','[TEST] note');
+          when 'margin_notes' then insert into public.margin_notes(author_id,item_type,item_id,anchor,chapter_label,body,audience)
+            values(actor,kind,item,'{"kind":"finish"}',case when kind='book' then '[TEST] cap' end,'[TEST] margin','followers');
           when 'saga_items' then insert into public.saga_items(saga_id,item_type,item_id) values(saga,kind,item);
           when 'saga_optional_skips' then insert into public.saga_optional_skips(user_id,saga_id,item_type,item_id) values(actor,saga,kind,item);
           when 'saga_placement_windows' then insert into public.saga_placement_windows(saga_id,item_type,item_id,after_item_type,after_item_id) values(saga,kind,item,'book',anchor);
@@ -91,7 +93,7 @@ begin
   if not blocked then raise exception 'FAIL: newly populated optional anchor not protected'; end if;
   update public.saga_placement_windows set before_item_type=null,before_item_id=null where saga_id=saga;
   delete from public.books where id=item;
-  if (select count(*) from private.catalog_reference_rules()) <> 15 then raise exception 'FAIL: incomplete reference inventory'; end if;
+  if (select count(*) from private.catalog_reference_rules()) <> 16 then raise exception 'FAIL: incomplete reference inventory'; end if;
   if has_function_privilege('authenticated','private.lock_catalog_reference()','execute') or
      has_function_privilege('anon','private.protect_catalog_references()','execute') then raise exception 'FAIL: trigger helpers exposed'; end if;
   raise notice 'PASS #708: % table/type restrictions and cascades, missing target and helper grants',checks;
