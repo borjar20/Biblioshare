@@ -1,9 +1,9 @@
 # Celebraciones: expansión compatible en producción (#1334)
 
-> **[Estado actual · producción activada el 2026-10-04 a las 20:15:35 UTC,
-> objetos y permisos verificados a las 20:16:22 UTC; consumidor PR #1364
-> pendiente de integración, despliegue y CI final. El corte de expansión
-> siguiente se conserva como historia.]**
+> **[Corte de activación · producción activada el 2026-10-04 a las 20:15:35 UTC,
+> objetos y permisos verificados a las 20:16:22 UTC. En ese momento el consumidor
+> PR #1364 estaba pendiente de integración, despliegue y CI final; su entrega
+> posterior se sigue en la PR. El corte de expansión siguiente se conserva.]**
 
 > **[Corte real de producción · 2026-10-04, 16:44 UTC; fase 1 aplicada;
 > cierre de admisión y activación pendientes]**
@@ -109,7 +109,7 @@ Recibos nuevos en el repo raíz:
 `transport-history-complete.json` y `security-comparison.json`.
 
 Este corte acredita esquema activo, permisos y preservación de datos/historia.
-El consumidor de PR #1364 aún no está integrado ni desplegado: no se acredita
-Auth/REST o presentación remota, ni cierre de #1334. La CI debe volver a pasar
-sobre su HEAD final. El FAIL global de #1301 y las tres fronteras nativas
-pendientes de #1356 conservan sus dictámenes.
+Al capturar este recibo, el consumidor de PR #1364 aún no estaba integrado
+ni desplegado. El recibo no acredita Auth/REST o presentación remota, ni cierre
+de #1334; la entrega y CI del HEAD final se siguen en la PR. El FAIL global de
+#1301 y las tres fronteras nativas pendientes de #1356 conservan sus dictámenes.

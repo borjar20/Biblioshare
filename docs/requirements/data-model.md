@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-10-04 (#1334, esquema activo en dev y producción; consumidor pendiente de publicación):**
+> **Delta 2026-10-04 (#1334, esquema activo en dev y producción; consumidor en PR #1364):**
 > Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
 > reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
 > cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
@@ -15,8 +15,8 @@
 > quiescencia real. El corte de las 20:16:22 UTC verifica cuatro RPC invoker
 > iguales a dev, EXECUTE sólo de authenticated, legacy compatible de cero filas,
 > RLS y grants 11/11/11; las 221 filas del preflight y los 303 registros previos
-> del ledger siguen intactos. El consumidor de PR #1364 aún no está integrado
-> ni desplegado; este corte acredita esquema y permisos, no presentación remota.
+> del ledger siguen intactos. Este corte de esquema precede a la entrega del
+> consumidor, seguida en PR #1364; acredita permisos, no presentación remota.
 > No hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
 > mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
 > Contrato, fases y límites en §7bis.
@@ -4193,8 +4193,9 @@ La comparación de seguridad excluye sólo `observed_at`: sin grupos ni hallazgo
 nuevos; el grupo de SECURITY DEFINER autenticadas baja de 95 a 94 por retirar
 exactamente `public.pull_pending_celebrations()`. Los avisos preexistentes no
 se consideran corregidos. Evidencia en el mismo informe de producción.
-PR #1364 sigue pendiente de integración, despliegue y CI de su HEAD final;
-el esquema activo no acredita el consumidor remoto ni cierra #1334.
+Este recibo corresponde al corte de esquema de las 20:16:22 UTC, anterior a
+la entrega del consumidor. Integración, despliegue y CI se siguen en PR #1364;
+el recibo de esquema no acredita el consumidor remoto ni el cierre de #1334.
 
 **Pendiente (issues abiertas):** #459 marcar episodios desde la pestaña Episodios
 (`episode-actions.ts`) y publicar/votar en club aún no disparan `checkCelebrations()` en cliente

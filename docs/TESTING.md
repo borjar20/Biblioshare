@@ -723,9 +723,10 @@ hash de los 303 registros anteriores. Ledger 307: dos canónicas y dos carriers
 nuevos, preservados sin normalizar. Seguridad sin grupos ni hallazgos nuevos
 tras excluir sólo `observed_at`; SECURITY DEFINER autenticadas baja 95→94 por
 retirar exactamente el legacy, sin declarar resueltos los otros avisos.
-Esto acredita activación de esquema y permisos. El consumidor de PR #1364
-todavía no está integrado ni desplegado y requiere CI sobre el HEAD final de
-documentación. No acredita Auth/REST o presentación remota, ni cierra #1334.
+Esto acredita activación de esquema y permisos. Al capturar el recibo de las
+20:16:22 UTC, el consumidor de PR #1364 todavía no estaba integrado ni desplegado.
+La entrega y CI sobre el HEAD final se siguen en la PR. Este recibo no acredita
+Auth/REST o presentación remota, ni el cierre de #1334.
 El FAIL global de #1301 y los límites nativos de #1356 permanecen separados.
 
 ## Motivo de abandono en el diario (#655)
