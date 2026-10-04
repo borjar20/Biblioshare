@@ -763,3 +763,21 @@ y CI del candidato son gates independientes todavía pendientes.
 
 La retención de datos y metadatos se documenta explícitamente; no es limpieza
 total del dispositivo. Ver §8.3 de data-model y [#1375](https://github.com/borjar20/Biblioshare/issues/1375).
+
+## Fichas de acompañantes y asientos de MTG (#1006, #1008)
+
+[Informe nativo](testing/2026-10-04-play-seat-interactions-1006-1008.md): ocho
+recorridos de Chromium contra build Turbopack nueva y `next start`, a 390 y
+1280 px. Recursos acredita que tocar sólo abre el panel y que quitar a Ana
+conserva a Beto tras recargar. MTG cubre el quinto asiento, retirada intermedia
+y reutilización de un id libre, inicio con Eva, mínimo de dos y Duelo.
+
+Los oráculos combinan UI accesible y lectura de IndexedDB real, sin imports
+de producto, interceptaciones ni actores remotos. Ocho PASS, tipos/lint
+correctos y diez capturas inspeccionadas. La revisión de integración verifica
+67 artefactos sellados, ambos blobs fuente y ausencia de delta de producto
+entre la base de build y main; dos capturas se inspeccionan también desde Root.
+
+Se conservan los FAIL de preparación/análisis y 23 cancelaciones de red.
+La tanda no acredita sincronización, otros navegadores ni salud global de red.
+La CI del HEAD integrado sigue siendo un gate de publicación independiente.
