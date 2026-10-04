@@ -45,7 +45,7 @@
 
 ---
 
-### Tarea 0: Corregir la spec con lo encontrado en el código
+### Task 0: Corregir la spec con lo encontrado en el código
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-10-04-experiencias-resenas-design.md`
@@ -66,7 +66,7 @@ git commit -m "docs(experiencias): ajustar spec de reseñas a los contratos real
 
 ---
 
-### Tarea 1: Valores de enum
+### Task 1: Valores de enum
 
 **Files:**
 - Create: `supabase/migrations/20261004100000_experience_reviews_enums.sql`
@@ -103,7 +103,7 @@ git commit -m "feat(experiencias): enums de reseñas de momento"
 
 ---
 
-### Tarea 2: Tipos de momento nuevos (SQL)
+### Task 2: Tipos de momento nuevos (SQL)
 
 **Files:**
 - Create: `supabase/migrations/20261004100100_experience_moment_kinds.sql`
@@ -247,7 +247,7 @@ git commit -m "feat(experiencias): centralizar y ampliar los tipos de momento"
 
 ---
 
-### Tarea 3: Tabla de reseñas, RLS y RPC de reseña
+### Task 3: Tabla de reseñas, RLS y RPC de reseña
 
 **Files:**
 - Create: `supabase/migrations/20261004100200_experience_reviews_core.sql`
@@ -499,7 +499,7 @@ git commit -m "feat(experiencias): tabla de reseñas por momento con RLS y RPC"
 
 ---
 
-### Tarea 4: Asistencia, media y hub ordenado (SQL)
+### Task 4: Asistencia, media y hub ordenado (SQL)
 
 **Files:**
 - Modify: `supabase/migrations/20261004100200_experience_reviews_core.sql` (añadir al final; aún no ha salido de local)
@@ -625,7 +625,7 @@ git commit -m "feat(experiencias): asistencia protege reseñas, media visible y 
 
 ---
 
-### Tarea 5: Publicación social de reseñas (SQL)
+### Task 5: Publicación social de reseñas (SQL)
 
 **Files:**
 - Create: `supabase/migrations/20261004100300_experience_reviews_social.sql`
@@ -808,7 +808,7 @@ git commit -m "feat(experiencias): publicar reseñas en actividad con revocació
 
 ---
 
-### Tarea 6: Moderación de reseñas (SQL)
+### Task 6: Moderación de reseñas (SQL)
 
 **Files:**
 - Create: `supabase/migrations/20261004100400_experience_reviews_moderation.sql`
@@ -914,7 +914,7 @@ git commit -m "feat(experiencias): denunciar y moderar reseñas de momento"
 
 ---
 
-### Tarea 7: Tipos generados y contratos TS
+### Task 7: Tipos generados y contratos TS
 
 **Files:**
 - Modify: `src/lib/supabase/database.types.ts` (regenerado)
@@ -1049,7 +1049,7 @@ git commit -m "feat(experiencias): contratos TS de reseñas y tipos de momento"
 
 ---
 
-### Tarea 8: Server actions de reseña
+### Task 8: Server actions de reseña
 
 **Files:**
 - Create: `src/lib/experiences/review-actions.ts`, `src/lib/experiences/review-actions.test.ts`
@@ -1214,7 +1214,7 @@ git commit -m "feat(experiencias): server actions de reseñas y asistencia con c
 
 ---
 
-### Tarea 9: Lecturas: reseñas, medias y hub ordenado
+### Task 9: Lecturas: reseñas, medias y hub ordenado
 
 **Files:**
 - Modify: `src/lib/experiences/queries.ts`
@@ -1345,7 +1345,7 @@ git commit -m "feat(experiencias): leer reseñas, medias visibles y hub por nota
 
 ---
 
-### Tarea 10: Feed, Actividad y pestaña del perfil
+### Task 10: Feed, Actividad y pestaña del perfil
 
 **Files:**
 - Modify: `src/lib/social/feed.ts`, `src/lib/social/fake-feed-supabase.ts`, `src/lib/social/feed-experiences.test.ts`
@@ -1467,7 +1467,7 @@ git commit -m "feat(experiencias): reseñas publicadas en feed y extracto en el 
 
 ---
 
-### Tarea 11: Bloque de reseñas en el detalle
+### Task 11: Bloque de reseñas en el detalle
 
 **Files:**
 - Create: `src/components/experiences/moment-reviews.tsx`, `src/components/experiences/moment-reviews.test.tsx`, `src/components/experiences/review-report.tsx`, `src/components/experiences/experience-rating.tsx`
@@ -1701,7 +1701,7 @@ git commit -m "feat(experiencias): reseñar momentos desde el detalle"
 
 ---
 
-### Tarea 12: Asistencia con confirmación y «Lo vivimos»
+### Task 12: Asistencia con confirmación y «Lo vivimos»
 
 **Files:**
 - Modify: `src/components/experiences/moment-attendance.tsx`
@@ -1830,7 +1830,7 @@ git commit -m "feat(experiencias): lo vivimos y confirmación al retirar asisten
 
 ---
 
-### Tarea 13: Favorito sin estrella, tipos nuevos en UI, nota en tarjetas y orden del hub
+### Task 13: Favorito sin estrella, tipos nuevos en UI, nota en tarjetas y orden del hub
 
 **Files:**
 - Modify: `src/components/ui/icons.tsx`, `src/components/experiences/moment-favorite.tsx`
@@ -1936,7 +1936,7 @@ git commit -m "feat(experiencias): favorito con cinta, tipos nuevos, nota en tar
 
 ---
 
-### Tarea 14: Moderación en el panel de admin
+### Task 14: Moderación en el panel de admin
 
 **Files:**
 - Modify: `messages/es.json` (`kinds` del panel de moderación, línea ~2563)
@@ -1965,7 +1965,7 @@ git commit -m "feat(moderacion): reseñas de experiencia en el panel"
 
 ---
 
-### Tarea 15: E2E contra build de producción
+### Task 15: E2E contra build de producción
 
 **Files:**
 - Create: `e2e/experiencias-resenas.spec.ts`, `e2e/experiencias-resenas-social.spec.ts`
@@ -2054,7 +2054,7 @@ git commit -m "test(experiencias): e2e de reseñas, publicación y revocación"
 
 ---
 
-### Tarea 16: Despliegue en dev y producción, y documentación de cierre
+### Task 16: Despliegue en dev y producción, y documentación de cierre
 
 **Files:**
 - Modify: `docs/requirements/data-model.md`, `docs/requirements/decisiones.md`, `docs/requirements/backlog.md`, `docs/architecture/graph.json`
