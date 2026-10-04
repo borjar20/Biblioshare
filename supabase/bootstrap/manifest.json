@@ -282,6 +282,7 @@
     "20261002125917_experiences_advisor_hardening.sql",
     "20261002132635_experiences_review_fixes.sql",
     "20261003153110_guard_comment_target_recursion.sql",
-    "20261004100000_experience_reviews_enums.sql"
+    "20261004100000_experience_reviews_enums.sql",
+    "20261004100100_experience_moment_kinds.sql"
   ]
 }
