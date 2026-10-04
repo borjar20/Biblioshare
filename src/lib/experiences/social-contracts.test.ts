@@ -8,6 +8,7 @@ describe("experience notification contracts", () => {
     ["experience_invited", "experienceInvited"],
     ["experience_accepted", "experienceAccepted"],
     ["followed_experience", "followedExperience"],
+    ["experience_reviewed", "experienceReviewed"],
   ])("keeps %s in the social preference with its own copy", (type, key) => {
     expect(NOTIFICATION_CATEGORY[type as NotificationType]).toBe("social");
     expect(notificationCopy({ type: type as NotificationType, name: "Ana" })).toEqual({ key, values: { name: "Ana" } });

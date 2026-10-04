@@ -17,7 +17,7 @@ it("rejects malformed IDs, states and guest labels",async()=>{
 });
 it("normalizes guest and invalidates the root",async()=>{await addGuest(root," Ana ");expect(mocks.rpc).toHaveBeenCalledWith("experience_add_guest",{p_id:root,p_name:"Ana"});expect(mocks.revalidate).toHaveBeenCalledWith(root);});
 it("changes only own attendance and own favorite, no supplied user identity",async()=>{
-  await setMomentAttendance(person,"skipped");expect(mocks.rpc).toHaveBeenLastCalledWith("experience_set_attendance",{p_moment_id:person,p_state:"skipped"});
+  await setMomentAttendance(person,"skipped");expect(mocks.rpc).toHaveBeenLastCalledWith("experience_set_attendance",{p_moment_id:person,p_state:"skipped",p_drop_reviews:false});
   await setFavorite(root,person);expect(mocks.rpc).toHaveBeenLastCalledWith("experience_set_favorite",{p_id:root,p_moment_id:person});
   await setFavorite(root,null);expect(mocks.rpc).toHaveBeenLastCalledWith("experience_set_favorite",{p_id:root,p_moment_id:undefined});
 });
@@ -29,3 +29,17 @@ it("notifies from SQL-derived recipient and dedupes per invitation without priva
   expect(mocks.notify).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({type:"experience_invited",targetType:"experience",targetId:root,dedupeKey:`experience_invited:${person}`,context:undefined}));
 });
 it("removing a member stays behind authenticated SQL ownership",async()=>{await removeParticipant(person);expect(mocks.rpc).toHaveBeenCalledWith("experience_remove_participant",{p_participant_id:person});});
+it("marks only PT409 (a review on the moment) as reviewExists, not a 40001 retry",async()=>{
+  mocks.rpc.mockResolvedValue({data:null,error:{code:"PT409"}});
+  expect(await setMomentAttendance(person,"skipped")).toEqual({ok:false,error:"conflict",reviewExists:true});
+  mocks.rpc.mockResolvedValue({data:null,error:{code:"40001"}});
+  expect(await setMomentAttendance(person,"skipped")).toEqual({ok:false,error:"conflict"});
+  mocks.rpc.mockResolvedValue({data:null,error:{code:"PT409"}});
+  expect(await removeParticipant(person)).toEqual({ok:false,error:"conflict"});
+});
+it("only drops reviews when asked explicitly",async()=>{
+  await setMomentAttendance(person,"skipped");
+  expect(mocks.rpc).toHaveBeenLastCalledWith("experience_set_attendance",{p_moment_id:person,p_state:"skipped",p_drop_reviews:false});
+  await setMomentAttendance(person,"skipped",true);
+  expect(mocks.rpc).toHaveBeenLastCalledWith("experience_set_attendance",{p_moment_id:person,p_state:"skipped",p_drop_reviews:true});
+});

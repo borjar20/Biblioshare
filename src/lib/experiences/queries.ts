@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
-import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation,ExperiencePhoto,ExperienceOwnPhotoPage,ExperienceCompanion,ExperienceOwnMembership } from "./types";
+import type { ExperienceDetail, ExperienceFilters, ExperiencePage, ExperiencePreview, ExperienceInvitation,ExperiencePhoto,ExperienceOwnPhotoPage,ExperienceCompanion,ExperienceOwnMembership,ExperienceRating,ExperienceReview } from "./types";
 import { MOMENT_KINDS } from "./types";
 import { isExperienceId } from "./validation";
 
@@ -15,6 +15,24 @@ function cursor(value?:string):{createdAt:string;id:string}|null {
     return parsed;
   } catch {return null;}
 }
+// moment_id is NULL on the experience-level row (SQL GROUPING SETS), though the generated types say string.
+type SummaryRow={experience_id:string;moment_id:string|null;avg_rating:number;rating_count:number};
+export function ratingsByRoot(rows:SummaryRow[]):Map<string,{rating:ExperienceRating|null;momentRatings:Record<string,ExperienceRating>}> {
+  const map=new Map<string,{rating:ExperienceRating|null;momentRatings:Record<string,ExperienceRating>}>();
+  for(const row of rows) {
+    const entry=map.get(row.experience_id)??{rating:null,momentRatings:{}};
+    const value={avg:Number(row.avg_rating),count:row.rating_count};
+    if(row.moment_id) entry.momentRatings[row.moment_id]=value; else entry.rating=value;
+    map.set(row.experience_id,entry);
+  }
+  return map;
+}
+type ReviewRow={id:string;moment_id:string;author_id:string;rating:number|null;body:string|null;share_with_profile:boolean;created_at:string;updated_at:string};
+type Identity={username:string|null;display_name:string|null;avatar_url:string|null};
+export function mapReviews(rows:ReviewRow[],identities:Map<string,Identity>,publications:Map<string,string>,viewerId:string|null):ExperienceReview[] {
+  return rows.map(r=>({id:r.id,momentId:r.moment_id,authorId:r.author_id,authorName:identities.get(r.author_id)?.display_name??null,authorUsername:identities.get(r.author_id)?.username??null,authorAvatarUrl:identities.get(r.author_id)?.avatar_url??null,
+    rating:r.rating,body:r.body,shareWithProfile:r.share_with_profile,isAuthor:r.author_id===viewerId,publicationId:publications.get(r.id)??null,createdAt:r.created_at,updatedAt:r.updated_at}));
+}
 export function parseExperienceFilters(params:Record<string,string|string[]|undefined>):ExperienceFilters {
   const first=(key:string)=>typeof params[key]==="string" ? params[key] as string : undefined;
   const state=first("state"),kind=first("kind"),companion=first("companion");
@@ -23,6 +41,8 @@ export function parseExperienceFilters(params:Record<string,string|string[]|unde
     kind:MOMENT_KINDS.includes(kind as never) ? kind as ExperienceFilters["kind"] : undefined,
     companion:isExperienceId(companion) ? companion : undefined,
     cursor:cursor(first("cursor")) ? first("cursor") : undefined,
+    sort:first("sort")==="rating" ? "rating" : "recent",
+    offset:(()=>{const n=Number(first("offset"));return Number.isInteger(n)&&n>=0&&n<=10000 ? n : 0;})(),
   };
 }
 /** Uses the caller's RLS for every relation; shared with the social batch mapper. */
@@ -33,21 +53,24 @@ export async function getExperiencePreviews(client:Client,roots:Root[]):Promise<
     return (await Promise.all(batches.map(batch=>getExperiencePreviews(client,batch)))).flat();
   }
   const ids=roots.map(r=>r.id);
-  const [moments,people,covers]=await Promise.all([
+  const [moments,people,covers,summaries]=await Promise.all([
     client.from("experience_moments").select("*").in("experience_id",ids).order("position"),
     client.from("experience_participants").select("*").in("experience_id",ids).order("created_at").order("id"),
     client.rpc("get_experience_cover_photos",{p_ids:ids}),
+    client.rpc("get_experience_rating_summaries",{p_ids:ids}),
   ]);
   if(moments.error) throw moments.error;
   if(people.error) throw people.error;
   if(covers.error) throw covers.error;
+  if(summaries.error) throw summaries.error;
+  const ratings=ratingsByRoot((summaries.data??[]) as SummaryRow[]);
   const coverByRoot=new Map((covers.data as {experienceId:string;id:string}[]).map(p=>[p.experienceId,p.id]));
   const userIds=[...new Set((people.data??[]).flatMap(p=>p.user_id ? [p.user_id] : []))];
   const identities=userIds.length ? await client.from("profile_identities").select("user_id,username,display_name,avatar_url").in("user_id",userIds) : {data:[],error:null};
   if(identities.error) throw identities.error;
   const byId=new Map((identities.data??[]).map(p=>[p.user_id,p]));
   return roots.map(root=>({
-    id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:coverByRoot.get(root.id)??null,createdAt:root.created_at,revision:root.revision,
+    id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],rating:ratings.get(root.id)?.rating??null,momentRatings:ratings.get(root.id)?.momentRatings??{},startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:coverByRoot.get(root.id)??null,createdAt:root.created_at,revision:root.revision,
     moments:(moments.data??[]).filter(m=>m.experience_id===root.id).map(m=>({id:m.id,title:m.title,kind:m.kind as ExperiencePreview["moments"][number]["kind"],placeLabel:m.place_label,startsOn:m.starts_on,endsOn:m.ends_on,position:m.position})),
     participants:(people.data??[]).filter(p=>p.experience_id===root.id).map(p=>({id:p.id,userId:p.user_id,guestName:p.guest_name,invitationState:p.invitation_state as ExperiencePreview["participants"][number]["invitationState"],shareIdentity:p.share_identity,username:byId.get(p.user_id)?.username??null,displayName:byId.get(p.user_id)?.display_name??null,avatarUrl:byId.get(p.user_id)?.avatar_url??null})),
   }));
@@ -56,6 +79,13 @@ export async function getExperiences(filters:ExperienceFilters={}):Promise<Exper
   const client=await createClient();
   const {data:{user}}=await client.auth.getUser();
   if(!user) return {items:[],nextCursor:null};
+  if(filters.sort==="rating") {
+    const offset=filters.offset??0;
+    const {data,error}=await client.rpc("get_own_experiences_ranked",{p_state:filters.state??"all",p_kind:filters.kind,p_companion:filters.companion,p_offset:offset});
+    if(error) throw error;
+    const rows=(data??[]) as unknown as Root[],page=rows.slice(0,20);
+    return {items:await getExperiencePreviews(client,page),nextCursor:rows.length>20?String(offset+20):null};
+  }
   const attendance=filters.state==="lived" ? ",experience_moment_participants!inner(attendance_state)" : "";
   const kind=filters.kind ? ",kinds:experience_moments!inner(kind)" : "";
   const companion=filters.companion&&isExperienceId(filters.companion) ? ",companion:experience_participants!inner(id,user_id)" : "";
@@ -91,13 +121,23 @@ export async function getExperience(id:string):Promise<ExperienceDetail|null> {
   if(photos.error) throw photos.error;
   const viewerId=auth.data.user?.id??null,preview=previews[0];
   const canEdit=viewerId!==null&&root.creator_id===viewerId;
+  const reviewRows=await client.from("experience_moment_reviews").select("id,moment_id,author_id,rating,body,share_with_profile,created_at,updated_at").eq("experience_id",id).order("created_at");
+  if(reviewRows.error) throw reviewRows.error;
+  const ownReviewIds=(reviewRows.data??[]).filter(r=>r.author_id===viewerId).map(r=>r.id);
+  const authorIds=[...new Set((reviewRows.data??[]).map(r=>r.author_id))];
+  const [authors,pubs]=await Promise.all([
+    authorIds.length?client.from("profile_identities").select("user_id,username,display_name,avatar_url").in("user_id",authorIds):Promise.resolve({data:[],error:null}),
+    viewerId&&ownReviewIds.length?client.rpc("get_experience_review_publications",{p_ids:ownReviewIds}):Promise.resolve({data:[],error:null}),
+  ]);
+  if(authors.error) throw authors.error; if(pubs.error) throw pubs.error;
+  const reviews=mapReviews(reviewRows.data??[],new Map((authors.data??[]).flatMap(a=>a.user_id?[[a.user_id,a] as const]:[])),new Map((pubs.data??[]).map(p=>[p.review_id,p.post_id])),viewerId);
   const [publication,target]=await Promise.all([
     canEdit?client.rpc("get_experience_publication",{p_id:id}):Promise.resolve({data:null,error:null}),
     client.from("interaction_targets").select("id").eq("kind","experience").eq("source_id",id).maybeSingle(),
   ]);
   if(publication.error)throw publication.error;if(target.error)throw target.error;
   return {...preview,viewerId,canEdit,canContribute:canEdit||(viewerId!==null&&preview.participants.some(p=>p.userId===viewerId&&p.invitationState==="accepted")),
-    publicationId:publication.data,interactionTargetId:target.data?.id??null,
+    publicationId:publication.data,interactionTargetId:target.data?.id??null,reviews,
     attendance:(attendance.data??[]).map(a=>({momentId:a.moment_id,participantId:a.participant_id,state:a.attendance_state as ExperienceDetail["attendance"][number]["state"]})),
     favorites:(favorites.data??[]).map(f=>({userId:f.user_id,momentId:f.moment_id})),
     photos:(photos.data as unknown as ExperiencePhoto[]).map(p=>({...p,canManage:p.canManage===true,isAuthor:p.isAuthor===true})),
@@ -110,6 +150,19 @@ export async function getProfileExperiences(userId:string,filters:ExperienceFilt
   if(error)throw error;
   const rows=data??[],page=rows.slice(0,20),last=page.at(-1);
   return {items:await getExperiencePreviews(client,page),nextCursor:rows.length>20&&last?Buffer.from(JSON.stringify({createdAt:last.created_at,id:last.id})).toString("base64url"):null};
+}
+/** Mejor reseña propia por experiencia para la pestaña del perfil: la de nota más alta, y a igualdad la más reciente.
+ * Solo las que su autor decidió mostrar en el perfil (share_with_profile): la RLS dejaría ver al propio autor y al
+ * grupo también las no compartidas, y el perfil no es el sitio para ellas. Sin `use cache` (depende de la sesión, #437). */
+export async function getProfileReviewExcerpts(userId:string,experienceIds:string[]):Promise<Map<string,{momentId:string;rating:number|null;body:string|null}>> {
+  if(!isExperienceId(userId)||!experienceIds.length) return new Map();
+  const client=await createClient();
+  const {data,error}=await client.from("experience_moment_reviews").select("experience_id,moment_id,rating,body,created_at").eq("author_id",userId).eq("share_with_profile",true).in("experience_id",experienceIds)
+    .order("rating",{ascending:false,nullsFirst:false}).order("created_at",{ascending:false});
+  if(error) throw error;
+  const map=new Map<string,{momentId:string;rating:number|null;body:string|null}>();
+  for(const r of data??[]) if(!map.has(r.experience_id)) map.set(r.experience_id,{momentId:r.moment_id,rating:r.rating,body:r.body});
+  return map;
 }
 async function readAttendance(client:Client,id:string) {
   // 50 moments × 30 people exceeds PostgREST's 1,000-row response cap.

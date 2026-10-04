@@ -37,11 +37,12 @@ const tables: Record<string, unknown[]> = {
     guest_name: null, invitation_state: "accepted", share_identity: true,
   })),
   profile_identities: identities,
+  experience_moment_reviews: [],
 };
-type Query = Promise<{ data: unknown[]; error: null }> & { select: () => Query; in: () => Query; order: () => Query };
+type Query = Promise<{ data: unknown[]; error: null }> & { select: () => Query; in: () => Query; eq: () => Query; order: () => Query };
 function query(data: unknown[]): Query {
   return Object.assign(Promise.resolve({ data, error: null }), {
-    select: () => query(data), in: () => query(data), order: () => query(data),
+    select: () => query(data), in: () => query(data), eq: () => query(data), order: () => query(data),
   });
 }
 const database = {
@@ -50,7 +51,7 @@ const database = {
     return query(tables[table]);
   },
   rpc: async (name: string) => {
-    if (name === "get_experience_cover_photos") return { data: [], error: null };
+    if (name === "get_experience_cover_photos" || name === "get_experience_rating_summaries") return { data: [], error: null };
     if (name !== "get_profile_experiences") throw new Error(`Unexpected RPC: ${name}`);
     return { data: [{ id: experienceId, creator_id: organizerId, title: "Salida a Sevilla",
       shape: "single", state: "lived", audience: "profile", starts_on: null, ends_on: null,
