@@ -162,5 +162,46 @@ do $$ begin
   if exists(select 1 from public.margin_notes) then raise exception 'FAIL C11: unfollowed reader still reads'; end if;
 end $$;
 reset role;
+-- C11b: volver a seguir recupera lo encontrado.
+insert into public.follows(follower_id,followee_id,status)
+  values ((select id from margin_fixture where k='stranger'),(select id from margin_fixture where k='author'),'accepted');
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='stranger'),true);
+set local role authenticated;
+do $$ begin
+  if not exists(select 1 from public.margin_notes) then raise exception 'FAIL C11b: re-followed reader does not read again'; end if;
+end $$;
+reset role;
+-- C12: frontera exacta, espejo de isRatioReached (TS). Obra aparte de 600 páginas, ratio 0.058333333333333334:
+-- (ratio+0.03)*600 = 53.0000000000000004 -> TS abre en la p.53 (épsilon 1e-9); sin épsilon SQL abriría en la 54.
+create temporary table margin_fixture2(id uuid not null default gen_random_uuid());
+grant select on margin_fixture2 to anon, authenticated;
+insert into margin_fixture2 default values;
+insert into public.books(id,title,total_pages) select id,'[TEST] margin boundary book',600 from margin_fixture2;
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='author'),true);
+set local role authenticated;
+insert into public.margin_notes(item_type,item_id,anchor,chapter_label,body,audience)
+  select 'book',id,'{"kind":"ratio","ratio":0.058333333333333334,"page":35,"pages":600}','Cap. 1','[TEST] frontera','followers' from margin_fixture2;
+insert into public.margin_notes(item_type,item_id,anchor,chapter_label,body,audience)
+  select 'book',id,'{"kind":"finish"}','Final','[TEST] final','followers' from margin_fixture2;
+reset role;
+insert into public.passes(user_id,item_type,item_id,status,position)
+  select (select id from margin_fixture where k='follower'),'book',id,'in_progress','{"page":52}' from margin_fixture2;
+do $$ begin
+  if exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body in ('[TEST] frontera','[TEST] final')) then
+    raise exception 'FAIL C12a: boundary note opened at p.52/600'; end if;
+end $$;
+update public.passes set position='{"page":53}' where user_id=(select id from margin_fixture where k='follower') and item_id=(select id from margin_fixture2);
+do $$ begin
+  if not exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] frontera' and e.found_via='progress') then
+    raise exception 'FAIL C12b: boundary note not opened at p.53/600'; end if;
+  if exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] final') then
+    raise exception 'FAIL C12b: finish note opened before finishing'; end if;
+end $$;
+-- C13: cerrar el pase abre la nota 'finish' con found_via='finish'.
+update public.passes set status='completed' where user_id=(select id from margin_fixture where k='follower') and item_id=(select id from margin_fixture2);
+do $$ begin
+  if not exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] final' and e.found_via='finish') then
+    raise exception 'FAIL C13: completing the pass did not open the finish note via finish'; end if;
+end $$;
 -- Las tareas 3 y 4 añaden aquí sus bloques, ANTES del rollback.
 rollback;

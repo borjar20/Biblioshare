@@ -14,8 +14,8 @@ language sql stable security definer set search_path='' as $$
         cross join lateral (select coalesce(be.total_pages, b.total_pages)::numeric as pages) t
         where p.user_id=p_reader and p.item_type='book' and p.item_id=p_note.item_id
           and t.pages > 0 and (p.position->>'page') ~ '^[0-9]+$'
-          and (p.position->>'page')::numeric / t.pages
-            >= (p_note.anchor->>'ratio')::numeric + greatest(0.03, 5 / t.pages))
+          and (p.position->>'page')::numeric
+            >= ceil(((p_note.anchor->>'ratio')::numeric + greatest(0.03, 5 / t.pages)) * t.pages - 0.000000001))
       else false
     end;
 $$;
