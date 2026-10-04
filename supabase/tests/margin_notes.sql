@@ -74,5 +74,93 @@ do $$ begin
   exception when insufficient_privilege then null; end; -- anon no tiene grant: también vale
 end $$;
 reset role;
+-- C: apertura. El seguidor lee una edición de 600 páginas: umbral 0.565 → p. 339.
+insert into public.book_editions(id,book_id,label,total_pages)
+  select gen_random_uuid(),id,'[TEST] 600 pp',600 from margin_fixture where k='book';
+insert into public.passes(user_id,item_type,item_id,status,position,edition_id)
+  select (select id from margin_fixture where k='follower'),'book',id,'in_progress','{"page":300}',
+    (select be.id from public.book_editions be where be.book_id=margin_fixture.id and be.total_pages=600)
+  from margin_fixture where k='book';
+do $$ declare n int; begin
+  select count(*) into n from public.margin_note_encounters;
+  if n <> 0 then raise exception 'FAIL C1: opened at p.300/600 (%)',n; end if;
+end $$;
+update public.passes set position='{"page":338}' where user_id=(select id from margin_fixture where k='follower') and item_type='book';
+do $$ begin
+  if exists(select 1 from public.margin_note_encounters) then raise exception 'FAIL C2: opened at p.338/600'; end if;
+end $$;
+update public.passes set position='{"page":339}' where user_id=(select id from margin_fixture where k='follower') and item_type='book';
+do $$ begin
+  if not exists(select 1 from public.margin_note_encounters e where e.found_via='progress'
+      and e.reader_id=(select id from margin_fixture where k='follower')) then raise exception 'FAIL C3: not opened at p.339/600'; end if;
+end $$;
+-- C4: retroceder no quita el encuentro (339 → 300; 300/600 sigue bastando para la nota retro de C7).
+update public.passes set position='{"page":300}' where user_id=(select id from margin_fixture where k='follower') and item_type='book';
+do $$ begin
+  if not exists(select 1 from public.margin_note_encounters) then raise exception 'FAIL C4: encounter removed on rewind'; end if;
+end $$;
+-- C5 (fixture): el bloqueo borra el follow; se restaura para que solo el bloqueo explique la ausencia de encuentro.
+insert into public.follows(follower_id,followee_id,status)
+  select f.id,a.id,'accepted' from margin_fixture f, margin_fixture a where f.k='blocked' and a.k='author';
+-- C5: el seguidor ahora la VE; el bloqueado, aunque siga y tenga pase completado, no tiene encuentro.
+insert into public.passes(user_id,item_type,item_id,status)
+  select (select id from margin_fixture where k='blocked'),'book',id,'completed' from margin_fixture where k='book';
+do $$ begin
+  if exists(select 1 from public.margin_note_encounters where reader_id=(select id from margin_fixture where k='blocked')) then
+    raise exception 'FAIL C5: blocked reader got an encounter'; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='follower'),true);
+set local role authenticated;
+do $$ begin
+  if not exists(select 1 from public.margin_notes where body='[TEST] aquí lloré') then raise exception 'FAIL C6: follower cannot read opened note'; end if;
+end $$;
+reset role;
+-- C7: retroactiva — nota nueva sobre algo que el seguidor ya superó → encuentro 'retro'.
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='author'),true);
+set local role authenticated;
+insert into public.margin_notes(item_type,item_id,anchor,chapter_label,body,audience)
+  values ('book',(select id from margin_fixture where k='book'),'{"kind":"ratio","ratio":0.01,"page":4,"pages":400}','Cap. 1','[TEST] retro','followers');
+reset role;
+do $$ begin
+  if not exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id
+      where n.body='[TEST] retro' and e.found_via='retro') then raise exception 'FAIL C7: retro not delivered'; end if;
+end $$;
+-- C8: serie — la nota del T1E3 no se abre al ver el T1E4, sí al ver el T1E3.
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='author'),true);
+set local role authenticated;
+insert into public.margin_notes(item_type,item_id,anchor,body,audience)
+  values ('series',(select id from margin_fixture where k='series'),'{"kind":"episode","season":1,"episode":3}','[TEST] ep3','followers');
+reset role;
+insert into public.passes(id,user_id,item_type,item_id,status)
+  select gen_random_uuid(),(select id from margin_fixture where k='follower'),'series',id,'in_progress' from margin_fixture where k='series';
+insert into public.episode_watches(user_id,series_id,pass_id,season_number,episode_number)
+  select (select id from margin_fixture where k='follower'),s.id,p.id,1,4 from margin_fixture s join public.passes p on p.item_id=s.id where s.k='series';
+do $$ begin
+  if exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] ep3') then
+    raise exception 'FAIL C8: opened by a later episode'; end if;
+end $$;
+insert into public.episode_watches(user_id,series_id,pass_id,season_number,episode_number)
+  select (select id from margin_fixture where k='follower'),s.id,p.id,1,3 from margin_fixture s join public.passes p on p.item_id=s.id where s.k='series';
+do $$ begin
+  if not exists(select 1 from public.margin_note_encounters e join public.margin_notes n on n.id=e.note_id where n.body='[TEST] ep3') then
+    raise exception 'FAIL C9: not opened by its episode'; end if;
+end $$;
+-- C10: un follow nuevo recibe lo ya superado ('retro').
+insert into public.passes(user_id,item_type,item_id,status)
+  select (select id from margin_fixture where k='stranger'),'book',id,'completed' from margin_fixture where k='book';
+insert into public.follows(follower_id,followee_id,status)
+  values ((select id from margin_fixture where k='stranger'),(select id from margin_fixture where k='author'),'accepted');
+do $$ begin
+  if (select count(*) from public.margin_note_encounters where reader_id=(select id from margin_fixture where k='stranger') and found_via='retro') <> 2 then
+    raise exception 'FAIL C10: new follower did not receive both book notes'; end if;
+end $$;
+-- C11: dejar de seguir oculta lo encontrado; volver a seguir lo recupera.
+delete from public.follows where follower_id=(select id from margin_fixture where k='stranger');
+select set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k='stranger'),true);
+set local role authenticated;
+do $$ begin
+  if exists(select 1 from public.margin_notes) then raise exception 'FAIL C11: unfollowed reader still reads'; end if;
+end $$;
+reset role;
 -- Las tareas 3 y 4 añaden aquí sus bloques, ANTES del rollback.
 rollback;
