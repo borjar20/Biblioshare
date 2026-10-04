@@ -22,6 +22,7 @@ import {ExperiencePublication} from "./experience-publication";
 import {ExperienceReport} from "./experience-report";
 import {MomentReviews} from "./moment-reviews";
 import {ExperienceRating} from "./experience-rating";
+import {ExperienceLivedAction} from "./experience-lived-action";
 import { ExperienceArtwork,ExperienceKindIcon,ExperiencePeople } from "./experience-artwork";
 import { MomentEditor,MomentActions } from "./moment-editor";
 export function ExperienceDetail({experience:e}:{experience:Detail}) {
@@ -36,6 +37,7 @@ export function ExperienceDetail({experience:e}:{experience:Detail}) {
         <h1 className="break-words font-serif text-2xl font-semibold leading-tight lg:text-[28px]">{e.title}</h1>
         <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><CalendarIcon aria-hidden className="h-4 w-4"/><ExperienceDate startsOn={e.startsOn} endsOn={e.endsOn}/>{e.shape==="single"&&e.moments[0]?.placeLabel&&<><span aria-hidden>·</span><span>{e.moments[0].placeLabel}</span></>}</p>
         <ExperienceRating rating={e.rating} size="md"/>
+        <ExperienceLivedAction experience={e}/>
         <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4"><ExperiencePeople people={e.participants}/><span className="text-sm text-muted-foreground">{e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).length ? t("with",{names:e.participants.filter(p=>p.invitationState==="accepted"&&p.userId!==e.creatorId).slice(0,3).map(p=>p.guestName??p.displayName??p.username??t("companion")).join(", ")}) : t("personal")}</span></div>
       </div>
     </header>

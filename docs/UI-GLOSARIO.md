@@ -83,6 +83,13 @@ si ya la denunciaste: «Ya denunciaste esta reseña.». **Mi momento** sustituye
 momento favorito» como etiqueta del favorito (icono de cinta, no estrella).
 **Lo vivimos** es la acción rápida del creador que pasa un plan a **Vivida** y lleva
 a confirmar la presencia y reseñar.
+Copy del flujo: título «¿A qué fuiste?», ayuda «Marca los momentos en los que
+estuviste. Podrás cambiarlo después.», botón «Guardar», y al acabar «Reseñar ahora» o
+«Más tarde». En una experiencia **Vivida** con tu presencia aún «Por confirmar», el
+selector se encabeza con «¿Fuiste? Confirma y reseña». Pasar a «No fui» o «Por
+confirmar» un momento que ya reseñaste pide confirmación: «Borrar tu reseña» — «Tienes
+una reseña de {momento}. Si dices que no fuiste, se borrará junto con su
+publicación.» — botón «Cambiar y borrar la reseña».
 
 Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
 **Experiencias**, **Comunidad** y **Buscar** son las entradas principales.

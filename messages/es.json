@@ -214,6 +214,20 @@
       "unknown": "No se pudo guardar. Vuelve a intentarlo."
     },
     "refresh": "Actualizar",
+    "lived": {
+      "action": "Lo vivimos",
+      "title": "¿A qué fuiste?",
+      "hint": "Marca los momentos en los que estuviste. Podrás cambiarlo después.",
+      "confirm": "Guardar",
+      "reviewNow": "Reseñar ahora",
+      "later": "Más tarde",
+      "confirmAttendance": "¿Fuiste? Confirma y reseña"
+    },
+    "dropReview": {
+      "title": "Borrar tu reseña",
+      "message": "Tienes una reseña de {name}. Si dices que no fuiste, se borrará junto con su publicación.",
+      "confirm": "Cambiar y borrar la reseña"
+    },
     "until": "Hasta",
     "companion": "Acompañante",
     "companions": "Acompañantes"

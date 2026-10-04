@@ -26,8 +26,14 @@ export function detailFixture(opts: {
   ownAttendance?: AttendanceState;
   audience?: ExperienceAudience;
   reviews?: ReviewFixture[];
+  canEdit?: boolean;
+  moments?: number;
 } = {}): ExperienceDetail {
-  const moment = { id: "moment-1", title: "Museo", kind: "museum" as const, placeLabel: null, startsOn: null, endsOn: null, position: 0 };
+  const titles = ["Museo", "Cena", "Concierto", "Paseo"];
+  const moments = Array.from({ length: Math.max(1, opts.moments ?? 1) }, (_, index) => ({
+    id: `moment-${index + 1}`, title: titles[index] ?? `Momento ${index + 1}`, kind: "museum" as const, placeLabel: null, startsOn: null, endsOn: null, position: index,
+  }));
+  const moment = moments[0];
   const me = { id: "participant-1", userId: VIEWER_ID, guestName: null, invitationState: "accepted" as const, shareIdentity: true, username: "yo", displayName: "Yo", avatarUrl: null };
   const reviews: ExperienceReview[] = (opts.reviews ?? []).map((r, index) => ({
     id: `review-${index + 1}`, momentId: moment.id, authorId: r.mine ? VIEWER_ID : `author-${index + 1}`,
@@ -38,7 +44,7 @@ export function detailFixture(opts: {
   return {
     id: "experience-1", creatorId: VIEWER_ID, title: "Madrid", shape: "single", state: opts.state ?? "lived", audience: opts.audience ?? "profile",
     startsOn: null, endsOn: null, coverPhotoId: null, createdAt: "2026-10-03T10:00:00Z", revision: 1,
-    moments: [moment], participants: [me], viewerId: VIEWER_ID, canEdit: true, canContribute: true,
+    moments, participants: [me], viewerId: VIEWER_ID, canEdit: opts.canEdit ?? true, canContribute: true,
     attendance: [{ momentId: moment.id, participantId: me.id, state: opts.ownAttendance ?? "planned" }],
     favorites: [], photos: [], publicationId: null, interactionTargetId: "target-1", rating: null, momentRatings: {}, reviews,
   };
