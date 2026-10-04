@@ -462,6 +462,12 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] Acción «Nueva experiencia» compacta en móvil: 44 × 44 px, nombre accesible y etiqueta completa desde 640 px; ocho combinaciones de viewport/tema y apertura del formulario verificadas en Next dev (2026-10-03). Evidencia: `docs/testing/2026-10-03-experiencias-mobile-button.md`.
 - [x] Ocho migraciones aplicadas en producción el 2026-10-03; objetos, definiciones y permisos reales verificados a las 10:04 UTC (#1293).
   Integración y despliegue de Experiencias, álbum y navegación: PR #1323 y #1293.
+- [x] Reseñas por momento (nota 1–10 y/o texto, solo con asistencia confirmada y experiencia
+  vivida; media visible; publicación opcional en Actividad; «Lo vivimos», favorito con cinta,
+  cuatro tipos de momento nuevos y orden «Mejor valoradas»): **aplicado en dev 2026-10-04;
+  producción pendiente.** Contrato:
+  [spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md).
+  Evidencia: [reseñas por momento (2026-10-04)](../testing/2026-10-04-experiencias-resenas.md).
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
   Contrato: `docs/superpowers/specs/2026-10-02-experiencias-design.md`.
   Evidencia: [funcional (2026-10-02)](../testing/2026-10-02-experiencias.md)

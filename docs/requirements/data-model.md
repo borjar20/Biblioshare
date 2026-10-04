@@ -1,5 +1,15 @@
 # Modelo de datos
 
+> **Delta 2026-10-04 (#1293, reseñas por momento; verificado en dev 2026-10-04 contra
+> pg_proc/pg_class/pg_policies; producción pendiente):** cinco migraciones nuevas
+> (`20261004100000` … `20261004100400`) añaden `experience_moment_reviews`, los tipos
+> de momento `food`/`festival`/`sport`/`nature`, la publicación de reseñas en Actividad,
+> el kind de moderación `experience_review` y la firma de tres argumentos de
+> `experience_set_attendance`. Aplicadas en `biblioshare-dev` el 2026-10-04: trece
+> funciones, RLS activa, tres políticas, solo SELECT para `anon`/`authenticated` y
+> `supabase/tests/experiences_reviews.sql` PASS con rollback. **No aplicadas en
+> producción.** Ver §8ter.1 y la [evidencia](../testing/2026-10-04-experiencias-resenas.md).
+
 > **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
 > `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
 > de `public.can_view_target` frente a la reordenación del planner. Antes de recursar,
@@ -4638,6 +4648,138 @@ Enums aditivos: ancla/kind/target `experience`; notificaciones `experience_invit
 Tipos nuevos generados desde el esquema local y añadidos sin sustituir contratos
 previos de main. Pruebas SQL con siete actores y rollback; carrera local produce
 un éxito y un conflicto, sin perder momentos.
+
+### 8ter.1 Reseñas por momento (2026-10-04; verificado en dev, producción pendiente)
+
+Migraciones `20261004100000_experience_reviews_enums.sql` (sola, en su transacción),
+`20261004100100_experience_moment_kinds.sql`, `20261004100200_experience_reviews_core.sql`,
+`20261004100300_experience_reviews_social.sql` y
+`20261004100400_experience_reviews_moderation.sql`. Contrato:
+[spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md) (histórica).
+
+**Enums aditivos:** `post_kind`, `post_source_kind` y `target_kind` ganan
+`experience_review`; `notification_type` gana `experience_reviewed`.
+
+**Tipos de momento.** `experience_moments.kind` sigue siendo `text` con CHECK, ahora de
+10 valores: `concert, show, exhibition, museum, walk, food, festival, sport, nature, other`.
+La lista vive en `private.is_experience_kind(text)` (SQL, IMMUTABLE, `search_path=''`;
+`coalesce(...,false)`, así que un kind nulo es inválido; EXECUTE a `anon`/`authenticated`,
+no a PUBLIC). La usan `experience_create`, `experience_save_moment`,
+`get_profile_experiences` y `get_own_experiences_ranked`.
+
+**Tabla `public.experience_moment_reviews`.** Una reseña por persona y momento.
+
+| Columna | Regla |
+|---|---|
+| `id` | `uuid` PK, `gen_random_uuid()` |
+| `experience_id` | `uuid not null` → `experiences(id)` `on delete cascade` |
+| `moment_id`, `participant_id` | `uuid not null`; FK compuestas `on delete cascade`: `(moment_id,participant_id)` → `experience_moment_participants`, `(moment_id,experience_id)` → `experience_moments(id,experience_id)` y `(participant_id,experience_id)` → `experience_participants(id,experience_id)` |
+| `author_id` | `uuid not null` → `auth.users(id)` `on delete cascade` |
+| `rating` | `smallint null`, `check (rating between 1 and 10)` |
+| `body` | `text null`, `check (body=btrim(body) and char_length(body) between 1 and 4000)` |
+| `share_with_profile` | `boolean not null default false` (consentimiento por reseña) |
+| `created_at`, `updated_at` | `timestamptz not null default now()` |
+
+- `check (rating is not null or body is not null)` y `unique (moment_id,participant_id)`.
+- Índices: `experience_moment_reviews_root(experience_id)`, `_author(author_id)`,
+  `_moment_root(moment_id,experience_id)` y `_person_root(participant_id,experience_id)`
+  (cubren las FK compuestas).
+- RLS activa. `revoke all` de `public`, `anon`, `authenticated`; **`grant select`** a
+  `anon`/`authenticated` (SELECT en las 10 columnas, sin otro privilegio de columna);
+  todo a `service_role`. Cero escritura directa: se escribe solo por RPC. Al no haber
+  grants finos por columna no hay que ampliarlos (superficie 6 de `DRIFT-CHECK.md`); en
+  dev se comprobó que los privilegios de columna son solo SELECT.
+- Policy `experience_moment_reviews_read` (SELECT): `private.can_view_experience_review(id)`.
+
+**Helper `private.can_view_experience_review(p_id uuid)`** (SQL, STABLE, SECURITY DEFINER,
+`search_path=''`; EXECUTE a `anon`/`authenticated`, no a PUBLIC). Exige experiencia
+`lived`, `private.moderation_available('experience_review', id)`,
+`private.can_view_experience(experiencia)` y que no haya bloqueo entre el que mira y el
+autor (`public.users_are_blocked`). Después, dos ramas:
+
+- **Grupo** (`private.can_contribute_experience`): ve todas las reseñas.
+- **Fuera del grupo:** `audience='profile'`, `share_with_profile`, `share_identity` del
+  participante con invitación `accepted`, `public.can_view_profile(autor)` y **sin bloqueo
+  entre el creador y el autor** en ninguna dirección (misma regla que
+  `can_view_experience_participant`).
+
+**Triggers.**
+
+| Trigger → función | Tabla y momento | Efecto |
+|---|---|---|
+| `experience_moment_reviews_guard` → `private.guard_experience_review` | reviews, BEFORE INSERT/UPDATE de rating, body, moment_id, participant_id, author_id | Exige asistencia `attended`, participante con cuenta (`user_id=author_id`) aceptado y experiencia `lived`; si no, `42501`. Fija `updated_at`. |
+| `experience_attendance_review_guard` → `private.guard_reviewed_attendance` | `experience_moment_participants`, BEFORE UPDATE de `attendance_state` | Rechaza con **`PT409`** salir de `attended` mientras exista reseña. Ningún camino la deja huérfana. |
+| `experience_review_cleanup_post` → `private.cleanup_experience_review_post` | reviews, AFTER DELETE o UPDATE de `share_with_profile` | Si se borra la reseña o se retira el consentimiento, borra su post con `private.delete_experience_review_post`. |
+| `experience_review_cleanup_target` → `private.cleanup_social_target('experience_review')` | reviews, AFTER DELETE | Cierra denuncias del target (`actioned`, `target_deleted_at`) y limpia `interaction_targets`/`notifications` de ese kind. |
+| `moderation_capture_delete` → `private.capture_moderation_deletion` | reviews, BEFORE DELETE | Captura evidencia solo bajo marcador de moderación de un administrador. |
+
+`private.delete_experience_review_post(uuid)` toma el marcador `private.moderation_operations`
+solo si el post no está disponible (moderado) y solo lo retira si lo añadió él: la retirada
+del autor borra el post aunque haya moderación, sin escribir historial falso.
+
+**RPC (SECURITY DEFINER, `search_path=''`, identidad de `auth.uid()`; EXECUTE solo a
+`authenticated`, revocado a `public`/`anon`):**
+
+| RPC | Lock | Comportamiento |
+|---|---|---|
+| `experience_save_moment_review(p_moment_id uuid, p_rating smallint, p_body text)` | `experience_lock` | Upsert de la reseña propia; exige miembro con asistencia `attended` en experiencia `lived`. Rating 1–10 o nulo; `body` recortado ≤ 4000. Ambos nulos borra. Rechaza (`42501`) editar o vaciar una reseña retirada por moderación. Devuelve `id`, `experienceId`, `created` y `notifyUserIds` (miembros aceptados con cuenta salvo el autor y bloqueos; vacío si la reseña ya existía). |
+| `experience_set_review_sharing(p_review_id uuid, p_enabled boolean)` | activar: `experience_lock` + `can_contribute_experience`; **desactivar: `experience_withdrawal_lock`** | Solo autor; relee la fila `for update`. Desactivar borra el post vía trigger. |
+| `experience_delete_moment_review(p_review_id uuid)` | **`experience_withdrawal_lock`** | Solo autor; borra la reseña (y el post por trigger). |
+| `experience_publish_review(p_review_id uuid)` | `experience_lock` | Solo autor; exige `share_with_profile` y experiencia `profile` + `lived`. Idempotente (devuelve el post existente); un post moderado → `publication unavailable`. |
+| `experience_unpublish_review(p_review_id uuid)` | **`experience_withdrawal_lock`** | Solo autor; borra el post y conserva la reseña. |
+| `experience_report_review(p_review_id uuid, p_reason text, p_details text default null)` | `experience_lock` | Exige visibilidad actual comprobada dentro de la RPC y que no sea propia (`42501`); motivo en `spam, harassment, spoiler, hate, other`; detalles ≤ 2000. |
+| `get_experience_review_publications(p_ids uuid[])` | — | SQL, STABLE, SECURITY DEFINER; `(review_id, post_id)` de las reseñas **propias** (máx. 200 ids). |
+
+Retirar el consentimiento, borrar y despublicar usan `private.experience_withdrawal_lock`:
+funcionan aunque haya bloqueo o moderación, como `experience_set_share_identity`.
+
+**`experience_set_attendance`** cambia de firma: `drop function (uuid,text)` y nueva
+`(p_moment_id uuid, p_state text, p_drop_reviews boolean default false)`. El trigger rechaza
+orfandad con `PT409`; con `p_drop_reviews=true` y estado distinto de `attended`, la RPC borra
+antes la reseña (y su post por trigger). Solo existe la sobrecarga de tres argumentos
+(verificado en dev).
+
+**Media derivada.** `get_experience_rating_summaries(p_ids uuid[])` →
+`(experience_id, moment_id, avg_rating numeric, rating_count integer)`; **SECURITY INVOKER**,
+STABLE, `grouping sets` por experiencia y por momento, solo filas con `rating`, máx. 100 ids,
+EXECUTE a `anon`/`authenticated`. Promedia **solo las reseñas que la RLS deja ver a quien
+llama**: fuera del grupo cuenta solo las compartidas y puede diferir de la media del grupo.
+Sin `use cache` (regla #437).
+
+**Hub por nota.** `get_own_experiences_ranked(p_state, p_kind, p_companion, p_offset)` →
+`setof experiences`, SECURITY INVOKER, solo `authenticated`; orden por media visible
+descendente (sin nota al final), `created_at desc`, `id desc`; paginación por offset
+(≤ 10 000), 21 filas.
+
+**Posts de reseña.** `posts.kind='experience_review'`, `anchor_type='experience'`,
+`anchor_id=experience_id`, `source_kind='experience_review'`, `source_id=review_id`, cuerpo
+nulo (nota y texto se leen en vivo de la reseña). Índice parcial único
+`posts_one_experience_review(source_id) where kind='experience_review'`.
+`private.guard_experience_post` valida: INSERT solo con marcador de operación (RPC), `body`
+nulo, reseña propia con `share_with_profile`, experiencia `profile` + `lived` y disponible
+para moderación. **No se recrea** un post que un administrador retiró o eliminó
+(`private.moderation_history` con `remove`/`delete`, con la retirada aún activa en el primer
+caso) → `publication unavailable`. La policy restrictiva `posts_experience_visible`
+(recreada) añade, para ese kind, `private.can_view_experience_review(source_id)`, y
+`public.can_view_target` aplica el mismo gate en su rama `post` y gana la rama
+`experience_review` (→ `can_view_experience_review`).
+
+**Moderación.** `private.moderation_state_kind_check` admite `experience_review`;
+`moderation_available('experience_review', id)` sigue a la disponibilidad de la experiencia;
+`admin_moderation_list`, `moderation_row_available`, `admin_moderate_content`,
+`capture_moderation_deletion`, `prepare_content_report` y `social_target_owner_id` ganan su
+rama. La policy restrictiva `content_reports_experience_evidence_private` pasa a
+`target_type not in ('experience','experience_review')`: quien denuncia no lee la evidencia.
+Borrar una reseña desde moderación registra una fila `delete` de kind `experience_review`.
+
+**Verificación en dev (2026-10-04).** Contra objetos reales: 13 funciones (las 12 del plan más
+`delete_experience_review_post`), `relrowsecurity=true`, políticas
+`experience_moment_reviews_read`, `posts_experience_visible` y
+`content_reports_experience_evidence_private`, grants de tabla solo SELECT para
+`anon`/`authenticated`, cuatro triggers propios sobre la tabla y cero EXECUTE de PUBLIC
+(solo `get_experience_rating_summaries` es ejecutable por `anon`).
+`supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
+Bootstrap local: 287 pasos. **Producción: no aplicado.**
 
 ## 9. Seguridad
 

@@ -96,6 +96,9 @@ llama «Mi momento»; el de otra persona, «Momento de {nombre}»; sus acciones 
 «Marcar {momento} como mi momento» y «Quitar {momento} como mi momento». Las tarjetas
 muestran la media visible en dots con «N reseñas» solo cuando hay alguna. En el hub,
 «Orden» ofrece «Recientes» (por defecto) y «Mejor valoradas» (por media visible).
+Avisos: «{nombre} reseñó un momento de una experiencia» (solo al grupo; el texto de la
+reseña no viaja en el aviso). Moderación: el tipo de contenido se llama «Reseña de
+experiencia».
 
 Delta 2026-10-03, navegación de la app: **Inicio**, **Biblioteca**,
 **Experiencias**, **Comunidad** y **Buscar** son las entradas principales.
