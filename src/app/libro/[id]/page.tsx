@@ -22,7 +22,7 @@ import { RouteMessages } from "@/components/route-messages";
 // Namespaces de cliente de la ficha (medidos por su subárbol, #444).
 const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
-  "item", "library", "notes", "passes", "social", "joint",
+  "item", "library", "margin", "notes", "passes", "social", "joint",
 ] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
@@ -72,6 +72,8 @@ import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { NotesSection } from "@/components/notes/notes-section";
 import { getNotesForItem } from "@/lib/notes/get-notes";
+import { MarginSection } from "@/components/margin/margin-section";
+import { getItemMarginNotes } from "@/lib/margin/queries";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
@@ -148,6 +150,14 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   // consumidor sólo marca el rechazo como atendido; la promesa original sigue
   // viajando a NotesSection y allí se propaga al renderer.
   void notesPromise?.catch(() => undefined);
+
+  // Misma regla que notesPromise: empieza durante el render, antes de cualquier
+  // `after()`, y su rechazo se atiende aquí sin alterar la promesa que espera
+  // MarginSection. Sin `use cache`: el resultado depende de quién mira (RLS, #437).
+  const marginPromise = user
+    ? getItemMarginNotes(supabase, user.id, "book", book.id)
+    : null;
+  void marginPromise?.catch(() => undefined);
 
   // Invitación a un visionado conjunto de esta obra sin contestar (#1224): se
   // lanza ya y se espera antes de pintar, en paralelo con lo del hero. Un fallo
@@ -340,6 +350,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
               book={book}
               userId={user?.id ?? null}
               notesPromise={notesPromise}
+              marginPromise={marginPromise}
               ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
@@ -356,12 +367,14 @@ async function BookTabs({
   book,
   userId,
   notesPromise,
+  marginPromise,
   ratingSummary,
   cerrar,
 }: {
   book: BookRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
+  marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
@@ -665,6 +678,11 @@ async function BookTabs({
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}
+          {userId && marginPromise && (
+            <Suspense fallback={null}>
+              <MarginSection itemType="book" itemId={book.id} pages={book.total_pages} marginPromise={marginPromise} />
+            </Suspense>
+          )}
         </div>
       }
     />
