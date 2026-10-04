@@ -102,4 +102,36 @@ do $$ begin
   if has_function_privilege('anon','public.experience_save_moment_review(uuid,smallint,text)','execute') then raise exception 'FAIL anon execute'; end if;
   if exists(select 1 from pg_proc p where p.proname like 'experience%review%' and has_function_privilege('public',p.oid,'execute')) then raise exception 'FAIL public execute'; end if;
 end $$;
+-- Task 4: attendance change with a review is a conflict unless reviews are dropped.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  begin perform public.experience_set_attendance((select id from xr where k='moment'),'skipped'); raise exception 'FAIL orphan review'; exception when sqlstate 'PT409' then null; end;
+end $$;
+-- Rating summary only counts what the caller can see.
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='absent'),true);
+do $$ declare s record; begin
+  select * into s from public.get_experience_rating_summaries(array[(select id from xr where k='root')]) where moment_id is null;
+  if s.avg_rating<>9.0 or s.rating_count<>1 then raise exception 'FAIL group summary %',s; end if;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_review_sharing((select id from xr where k='review'),false);
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin
+  if exists(select 1 from public.get_experience_rating_summaries(array[(select id from xr where k='root')])) then raise exception 'FAIL summary leaks private rating'; end if;
+end $$;
+-- Ranked hub: own accepted experiences only, rated first.
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  if (select id from public.get_own_experiences_ranked('all',null,null,0) limit 1)<>(select id from xr where k='root') then raise exception 'FAIL ranked hub'; end if;
+  begin perform public.get_own_experiences_ranked('all','karaoke',null,0); raise exception 'FAIL ranked kind'; exception when sqlstate '22023' then null; end;
+end $$;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='outsider'),true);
+do $$ begin if exists(select 1 from public.get_own_experiences_ranked('all',null,null,0)) then raise exception 'FAIL ranked foreign'; end if; end $$;
+-- Dropping deletes the review in the same transaction.
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_set_attendance((select id from xr where k='moment'),'skipped',true);
+reset role;
+do $$ begin if exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review')) then raise exception 'FAIL drop reviews'; end if; end $$;
+do $$ begin if exists(select 1 from pg_proc where proname='experience_set_attendance' and pronargs=2) then raise exception 'FAIL ambiguous overload'; end if; end $$;
 rollback;

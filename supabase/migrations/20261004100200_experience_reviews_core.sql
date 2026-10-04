@@ -149,3 +149,55 @@ revoke all on function public.experience_save_moment_review(uuid,smallint,text),
   public.experience_set_review_sharing(uuid,boolean),public.experience_delete_moment_review(uuid) from public,anon;
 grant execute on function public.experience_save_moment_review(uuid,smallint,text),
   public.experience_set_review_sharing(uuid,boolean),public.experience_delete_moment_review(uuid) to authenticated;
+
+drop function public.experience_set_attendance(uuid,text);
+create function public.experience_set_attendance(p_moment_id uuid,p_state text,p_drop_reviews boolean default false) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare root uuid; person uuid;
+begin
+  select experience_id into root from public.experience_moments where id=p_moment_id;
+  perform private.experience_lock(root);
+  if not private.can_contribute_experience(root) then raise exception 'member required' using errcode='42501'; end if;
+  select id into person from public.experience_participants where experience_id=root and user_id=auth.uid() and invitation_state='accepted';
+  if person is null then raise exception 'member required' using errcode='42501'; end if;
+  if p_state is null or p_state not in ('planned','attended','skipped') then raise exception 'invalid attendance' using errcode='22023'; end if;
+  -- The trigger rejects orphaning a review; only an explicit confirmation removes it first.
+  if p_state<>'attended' and coalesce(p_drop_reviews,false) then
+    delete from public.experience_moment_reviews where moment_id=p_moment_id and participant_id=person;
+  end if;
+  insert into public.experience_moment_participants(experience_id,moment_id,participant_id,attendance_state) values(root,p_moment_id,person,p_state)
+    on conflict(moment_id,participant_id) do update set attendance_state=excluded.attendance_state;
+  return jsonb_build_object('experienceId',root);
+end $$;
+revoke all on function public.experience_set_attendance(uuid,text,boolean) from public,anon;
+grant execute on function public.experience_set_attendance(uuid,text,boolean) to authenticated;
+
+-- Invoker on purpose: the average is over the rows the caller can read (decisiones.md).
+create function public.get_experience_rating_summaries(p_ids uuid[])
+returns table(experience_id uuid,moment_id uuid,avg_rating numeric,rating_count integer)
+language sql stable security invoker set search_path='' as $$
+  select r.experience_id,r.moment_id,round(avg(r.rating)::numeric,1),count(r.rating)::integer
+  from public.experience_moment_reviews r
+  where r.experience_id=any(p_ids[1:100]) and r.rating is not null
+  group by grouping sets((r.experience_id),(r.experience_id,r.moment_id));
+$$;
+revoke all on function public.get_experience_rating_summaries(uuid[]) from public;
+grant execute on function public.get_experience_rating_summaries(uuid[]) to anon,authenticated;
+
+create function public.get_own_experiences_ranked(p_state text default 'all',p_kind text default null,p_companion uuid default null,p_offset integer default 0)
+returns setof public.experiences language plpgsql stable security invoker set search_path='' as $$
+begin
+  if auth.uid() is null then return; end if;
+  if p_state is null or p_state not in ('all','planned','lived','cancelled') or (p_kind is not null and not private.is_experience_kind(p_kind))
+    or p_offset is null or p_offset<0 or p_offset>10000 then raise exception 'invalid filters' using errcode='22023'; end if;
+  return query select e.* from public.experiences e
+    join public.experience_participants own on own.experience_id=e.id and own.user_id=auth.uid() and own.invitation_state='accepted'
+    left join lateral (select avg(r.rating) a from public.experience_moment_reviews r where r.experience_id=e.id and r.rating is not null) s on true
+    where (p_state='all' or (p_state='lived' and e.state<>'cancelled' and exists(select 1 from public.experience_moment_participants m where m.participant_id=own.id and m.attendance_state='attended'))
+        or (p_state in ('planned','cancelled') and e.state=p_state))
+      and (p_kind is null or exists(select 1 from public.experience_moments m where m.experience_id=e.id and m.kind=p_kind))
+      and (p_companion is null or exists(select 1 from public.experience_participants c where c.experience_id=e.id and (c.user_id=p_companion or c.id=p_companion)))
+    order by s.a desc nulls last,e.created_at desc,e.id desc limit 21 offset p_offset;
+end $$;
+revoke all on function public.get_own_experiences_ranked(text,text,uuid,integer) from public,anon;
+grant execute on function public.get_own_experiences_ranked(text,text,uuid,integer) to authenticated;
