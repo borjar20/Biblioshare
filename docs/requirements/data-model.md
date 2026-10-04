@@ -7,8 +7,10 @@
 > el kind de moderación `experience_review` y la firma de tres argumentos de
 > `experience_set_attendance`. Aplicadas en `biblioshare-dev` el 2026-10-04: trece
 > funciones, RLS activa, tres políticas, solo SELECT para `anon`/`authenticated` y
-> `supabase/tests/experiences_reviews.sql` PASS con rollback. **No aplicadas en
-> producción.** Ver §8ter.1 y la [evidencia](../testing/2026-10-04-experiencias-resenas.md).
+> `supabase/tests/experiences_reviews.sql` PASS con rollback en dev. **Producción:** las
+> seis migraciones se aplicaron y sus objetos se verificaron el 2026-10-04; sin fixtures
+> en producción. Ver §8ter.1 y el [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04),
+> recogido en [PR #1378](https://github.com/borjar20/Biblioshare/pull/1378).
 
 > **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
 > `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
@@ -4783,7 +4785,7 @@ Borrar una reseña desde moderación registra una fila `delete` de kind `experie
 helpers `private.can_view_experience_review` y `private.is_experience_kind` también tienen
 EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
-Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`).
+Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`). Fuente y límites: [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04), recogido en PR #1378; sin fixtures ni recorrido autenticado de reseñas acreditados en producción.
 
 ## 9. Seguridad
 
