@@ -14,6 +14,13 @@ begin
         where r.id=new.source_id and r.author_id=new.author_id and r.experience_id=new.anchor_id and r.share_with_profile
           and e.audience='profile' and e.state='lived' and private.moderation_available('experience_review',r.id))
       then raise exception 'invalid experience review publication' using errcode='23514'; end if;
+    -- An admin-moderated publication stays down: neither republishing after a delete nor
+    -- unpublishing a removed post and publishing again recreates it. moderation_state has no
+    -- FK to posts, so a removal stays live after the author withdraws the post.
+    if tg_op='INSERT' and exists(select 1 from private.moderation_history h where h.kind='post' and h.action in ('remove','delete')
+      and h.snapshot->>'kind'='experience_review' and h.snapshot->>'source_id'=new.source_id::text
+      and (h.action='delete' or exists(select 1 from private.moderation_state s where s.kind='post' and s.target_id=h.target_id and s.removed_at is not null)))
+      then raise exception 'publication unavailable' using errcode='42501'; end if;
     return new;
   end if;
   if new.kind='experience' or new.anchor_type='experience' then

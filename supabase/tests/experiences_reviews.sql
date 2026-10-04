@@ -181,6 +181,43 @@ do $$ begin
   if not exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL savepoint restore post'; end if;
   if exists(select 1 from private.moderation_operations where transaction_id=txid_current()) then raise exception 'FAIL leaked moderation marker'; end if;
 end $$;
+-- Review posts carry no text of their own: the owner cannot attach a body.
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  begin update public.posts set body='x' where id=(select id from xr where k='post'); raise exception 'FAIL review post body';
+  exception when sqlstate '23514' then if sqlerrm<>'invalid experience review publication' then raise; end if; end;
+end $$;
+-- Admin moderation of a review post cannot be undone by republishing (isolated in a savepoint).
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+insert into xr(k) values('admin');
+insert into auth.users(id) select id from xr where k='admin';
+insert into public.profiles(user_id,username,is_public,role) select id,'rev_'||left(replace(id::text,'-',''),15),true,'admin'::public.user_role from xr where k='admin';
+savepoint task5_admin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+select public.admin_moderate_content('post',(select id from xr where k='post'),'delete','test','ELIMINAR');
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  begin perform public.experience_publish_review((select id from xr where k='review')); raise exception 'FAIL republish after admin delete';
+  exception when insufficient_privilege then if sqlerrm<>'publication unavailable' then raise; end if; end;
+end $$;
+rollback to savepoint task5_admin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='admin'),true);
+select public.admin_moderate_content('post',(select id from xr where k='post'),'remove','test','');
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+select public.experience_unpublish_review((select id from xr where k='review'));
+reset role;
+do $$ begin if exists(select 1 from public.posts where id=(select id from xr where k='post')) then raise exception 'FAIL unpublish removed post'; end if; end $$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
+do $$ begin
+  begin perform public.experience_publish_review((select id from xr where k='review')); raise exception 'FAIL republish after admin remove';
+  exception when insufficient_privilege then if sqlerrm<>'publication unavailable' then raise; end if; end;
+end $$;
+rollback to savepoint task5_admin;
 -- Unpublishing keeps the review and its consent; republishing works.
 set local role authenticated;
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
@@ -189,6 +226,14 @@ do $$ begin
   if exists(select 1 from public.posts where kind='experience_review' and source_id=(select id from xr where k='review')) then raise exception 'FAIL unpublish'; end if;
   if not exists(select 1 from public.experience_moment_reviews where id=(select id from xr where k='review') and share_with_profile) then raise exception 'FAIL unpublish touched review'; end if;
 end $$;
+-- The guard itself, not RLS, requires the RPC: a well-formed insert past RLS without the marker fails.
+reset role;
+do $$ begin
+  begin insert into public.posts(author_id,kind,anchor_type,anchor_id,source_kind,source_id) values((select id from xr where k='member'),'experience_review','experience',(select id from xr where k='root'),'experience_review',(select id from xr where k='review')); raise exception 'FAIL guard without marker';
+  exception when insufficient_privilege then if sqlerrm<>'publication RPC required' then raise; end if; end;
+end $$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
 update xr set id=(public.experience_publish_review((select id from xr where k='review'))->>'id')::uuid where k='post';
 select set_config('request.jwt.claim.sub',(select id::text from xr where k='member'),true);
 select public.experience_set_review_sharing((select id from xr where k='review'),false);
