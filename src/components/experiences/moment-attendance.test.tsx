@@ -38,8 +38,16 @@ describe("MomentAttendance", () => {
     await waitFor(() => expect(a.setMomentAttendance).toHaveBeenCalledWith(e.moments[0].id, "skipped", true));
     expect(a.setMomentAttendance).toHaveBeenCalledTimes(1);
   });
-  it("opens the same confirmation when the server reports a hidden review (conflict)", async () => {
+  it("shows a plain conflict (e.g. a serialization retry) as an error, not as the drop dialog", async () => {
     a.setMomentAttendance.mockResolvedValueOnce({ ok: false, error: "conflict" });
+    const e = detailFixture({ state: "lived", ownAttendance: "attended" });
+    render(withIntl(<MomentAttendance experience={e} moment={e.moments[0]} />));
+    fireEvent.click(screen.getByRole("radio", { name: "No fui" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText(DROP)).toBeNull();
+  });
+  it("opens the same confirmation when the server reports a hidden review (PT409)", async () => {
+    a.setMomentAttendance.mockResolvedValueOnce({ ok: false, error: "conflict", reviewExists: true });
     const e = detailFixture({ state: "lived", ownAttendance: "attended" });
     render(withIntl(<MomentAttendance experience={e} moment={e.moments[0]} />));
     fireEvent.click(screen.getByRole("radio", { name: "No fui" }));

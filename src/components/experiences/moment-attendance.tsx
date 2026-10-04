@@ -22,14 +22,15 @@ export function MomentAttendance({experience:e,moment:m}:{experience:ExperienceD
   const t=useTranslations("experiences"),router=useRouter(),[pending,start]=useTransition(),[error,setError]=useState<ExperienceError|null>(null);
   const own=e.participants.find(p=>p.userId===e.viewerId&&p.userId!==null),rows=e.attendance.filter(a=>a.momentId===m.id);
   // Retirar la presencia de un momento reseñado borra la reseña: se confirma antes.
-  // El servidor responde `conflict` (PT409) si existe una reseña propia que la RLS
-  // aún oculta (experiencia no vivida) u otra pestaña la creó: mismo diálogo.
+  // El servidor marca `reviewExists` (solo PT409) si existe una reseña propia que la RLS
+  // aún oculta (experiencia no vivida) u otra pestaña la creó: mismo diálogo. Otro
+  // `conflict` (p. ej. 40001) es un error normal.
   const [pendingState,setPendingState]=useState<AttendanceState|null>(null),[dropError,setDropError]=useState<ExperienceError|null>(null);
   const ownReview=e.reviews.some(r=>r.isAuthor&&r.momentId===m.id);
   function change(state:AttendanceState,guest?:string) {
     setError(null);
     if(!guest&&state!=="attended"&&ownReview){setDropError(null);setPendingState(state);return;}
-    start(async()=>{const result=guest ? await setGuestAttendance(m.id,guest,state) : await setMomentAttendance(m.id,state);if(result.ok) router.refresh();else if(!guest&&state!=="attended"&&result.error==="conflict"){setDropError(null);setPendingState(state);}else setError(result.error);});
+    start(async()=>{const result=guest ? await setGuestAttendance(m.id,guest,state) : await setMomentAttendance(m.id,state);if(result.ok) router.refresh();else if(!guest&&state!=="attended"&&"reviewExists" in result&&result.reviewExists){setDropError(null);setPendingState(state);}else setError(result.error);});
   }
   function confirmDrop() {
     if(!pendingState) return;

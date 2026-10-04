@@ -23,9 +23,12 @@ function ReviewBody({review}:{review:ExperienceReview}) {
 function ReviewSheet({moment:m,review,onClose}:{moment:ExperienceMoment;review?:ExperienceReview;onClose:()=>void}) {
   const t=useTranslations("experiences"),router=useRouter(),id=useId();
   const [rating,setRating]=useState<number|null>(review?.rating??null),[body,setBody]=useState(review?.body??"");
-  const [error,setError]=useState<ExperienceError|null>(null),[pending,start]=useTransition();
+  const [error,setError]=useState<ExperienceError|null>(null),[pending,start]=useTransition(),[confirmDelete,setConfirmDelete]=useState(false);
+  const done=(result:ExperienceResult<unknown>)=>{if(!result.ok) setError(result.error);else {onClose();router.refresh();}};
+  // Vaciar una reseña existente la borra (y su publicación) en SQL: pasa por la misma confirmación que «Borrar».
+  if(confirmDelete&&review) return <SheetShell title={t("reviews.delete")} onClose={onClose}><p className="mb-4 text-sm">{t("reviews.deleteConfirm",{name:m.title})}</p>{error&&<p role="alert" className="mb-4 text-sm text-status-dropped">{t(`errors.${error}`)}</p>}<Button variant="danger" className="min-h-11 w-full" disabled={pending} onClick={()=>{setError(null);start(async()=>done(await deleteMomentReview(review.id)));}}>{t("reviews.delete")}</Button></SheetShell>;
   return <SheetShell title={t("reviews.sheetTitle",{name:m.title})} onClose={onClose}>
-    <form className="space-y-5" onSubmit={event=>{event.preventDefault();setError(null);start(async()=>{const result=await saveMomentReview(m.id,{rating,body:body.trim()||null});if(!result.ok) setError(result.error);else {onClose();router.refresh();}});}}>
+    <form className="space-y-5" onSubmit={event=>{event.preventDefault();setError(null);if(review&&rating===null&&!body.trim()){setConfirmDelete(true);return;}start(async()=>done(await saveMomentReview(m.id,{rating,body:body.trim()||null})));}}>
       <fieldset disabled={pending} className="space-y-5">
         {/* RatingDots no acepta aria-*: el grupo de fuera le pone nombre. */}
         <div role="group" aria-labelledby={`${id}-rating`}><p id={`${id}-rating`} className="mb-2 text-sm font-medium">{t("reviews.rating")}</p><RatingDots value={rating} onChange={setRating} size="lg" disabled={pending}/></div>
@@ -69,7 +72,7 @@ export function MomentReviews({experience:e,moment:m}:{experience:ExperienceDeta
         : own
           ? <article className="space-y-2 rounded-cover bg-surface-muted p-3"><div className="flex items-center justify-between gap-2">{own.rating!==null?<RatingDots value={own.rating} size="sm"/>:<span/>}<ActionMenu label={t("reviews.actions",{name:m.title})} items={[{key:"edit",label:t("reviews.edit"),onSelect:()=>setEditing(true)},{key:"delete",label:t("reviews.delete"),danger:true,onSelect:()=>{setDeleteError(null);setDeleting(true);}}]}/></div><ReviewBody review={own}/><OwnReviewControls experience={e} review={own}/></article>
           : <Button variant="secondary" className="min-h-11" onClick={()=>setEditing(true)}>{t("reviews.write")}</Button>)}
-    {others.length>0&&<ul className="space-y-3">{others.map(r=><li key={r.id} className="space-y-1.5"><div className="flex items-center gap-2"><UserAvatar name={authorName(r)} avatarUrl={r.authorAvatarUrl} size={24}/><span className="min-w-0 truncate text-sm font-medium">{authorName(r)}</span>{r.rating!==null&&<RatingDots value={r.rating} size="sm"/>}<span className="ml-auto"><ReviewReport id={r.id}/></span></div><ReviewBody review={r}/></li>)}</ul>}
+    {others.length>0&&<ul className="space-y-3">{others.map(r=><li key={r.id} className="space-y-1.5"><div className="flex items-center gap-2"><UserAvatar name={authorName(r)} avatarUrl={r.authorAvatarUrl} size={24}/><span className="min-w-0 truncate text-sm font-medium">{authorName(r)}</span>{r.rating!==null&&<RatingDots value={r.rating} size="sm"/>}{e.viewerId&&<span className="ml-auto"><ReviewReport id={r.id}/></span>}</div><ReviewBody review={r}/></li>)}</ul>}
     {!own&&!others.length&&e.state==="lived"&&<p className="text-xs text-muted-foreground">{t("reviews.empty")}</p>}
     {editing&&<ReviewSheet moment={m} review={own} onClose={()=>setEditing(false)}/>}
     {deleting&&own&&<SheetShell title={t("reviews.delete")} onClose={()=>setDeleting(false)}><p className="mb-4 text-sm">{t("reviews.deleteConfirm",{name:m.title})}</p>{deleteError&&<p role="alert" className="mb-4 text-sm text-status-dropped">{t(`errors.${deleteError}`)}</p>}<Button variant="danger" className="min-h-11 w-full" disabled={pending} onClick={()=>{setDeleteError(null);start(async()=>{const r=await deleteMomentReview(own.id);if(r.ok){setDeleting(false);router.refresh();}else setDeleteError(r.error);});}}>{t("reviews.delete")}</Button></SheetShell>}

@@ -53,6 +53,27 @@ describe("MomentReviews", () => {
     expect(screen.getByText(/tiene que ser visible en el perfil/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Publicar en tu actividad" })).toBeNull();
   });
+  it("does not offer reporting to an anonymous viewer", () => {
+    const e = { ...detailFixture({ state: "lived", reviews: [{ author: "Ana", rating: 9, body: "Lo mejor" }] }), viewerId: null, canContribute: false, canEdit: false };
+    render(withIntl(<MomentReviews experience={e} moment={e.moments[0]} />));
+    expect(screen.getByText("Lo mejor")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Denunciar reseña" })).toBeNull();
+  });
+  it("saving an emptied review asks for the same confirmation as deleting it", async () => {
+    actions.deleteMomentReview.mockResolvedValue({ ok: true, data: null });
+    const e = detailFixture({ state: "lived", ownAttendance: "attended", reviews: [{ author: "Yo", mine: true, rating: null, body: "Bien" }] });
+    render(withIntl(<MomentReviews experience={e} moment={e.moments[0]} />));
+    fireEvent.click(screen.getByRole("button", { name: "Acciones de la reseña de Museo" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Editar reseña" }));
+    fireEvent.change(screen.getByLabelText("Qué tal fue"), { target: { value: "  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar reseña", hidden: true }));
+    expect(await screen.findByText("Se borrará tu reseña de Museo y su publicación, si la tiene.")).toBeTruthy();
+    expect(actions.saveMomentReview).not.toHaveBeenCalled();
+    expect(actions.deleteMomentReview).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Borrar reseña", hidden: true }));
+    await waitFor(() => expect(actions.deleteMomentReview).toHaveBeenCalledWith("review-1"));
+    expect(actions.saveMomentReview).not.toHaveBeenCalled();
+  });
   it("tells the reporter when the review was already reported", async () => {
     reports.reportReview.mockResolvedValue({ ok: false, error: "conflict" });
     const e = detailFixture({ state: "lived", ownAttendance: "attended", reviews: [{ author: "Ana", rating: 9, body: "Lo mejor" }] });

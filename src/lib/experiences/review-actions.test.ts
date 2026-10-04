@@ -34,6 +34,15 @@ it("sends one notice per recipient with distinct dedupe keys",async()=>{
   expect(calls.map(c=>c.userId)).toEqual([friend,other]);
   expect(new Set(calls.map(c=>c.dedupeKey)).size).toBe(2);
 });
+it("sends the group notices concurrently, not one after another",async()=>{
+  const other="de9eb8c7-08f5-464d-8c5b-76f5b58bfce9",pending:Array<()=>void>=[];
+  m.notify.mockImplementation(()=>new Promise<void>(resolve=>{pending.push(resolve);}));
+  m.rpc.mockResolvedValue({data:{id:review,experienceId:root,created:true,notifyUserIds:[friend,other]},error:null});
+  const saving=saveMomentReview(moment,{rating:8,body:null});
+  await vi.waitFor(()=>expect(m.notify).toHaveBeenCalledTimes(2),{timeout:500});
+  pending.forEach(resolve=>resolve());
+  expect(await saving).toEqual({ok:true,data:{id:review}});
+});
 it("does not notify when the review was not created, even with recipients",async()=>{
   m.rpc.mockResolvedValue({data:{id:review,experienceId:root,created:false,notifyUserIds:[friend]},error:null});
   await saveMomentReview(moment,{rating:8,body:null});

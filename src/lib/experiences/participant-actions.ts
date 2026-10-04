@@ -27,8 +27,16 @@ export async function addGuest(id:string,name:string) {
 export async function respondInvitation(id:string,response:"accept"|"decline") {
   return participation(isExperienceId(id)&&["accept","decline"].includes(response),client=>client.rpc("experience_respond_invitation",{p_participant_id:id,p_response:response}),response==="accept" ? "experience_accepted" : undefined);
 }
-export async function setMomentAttendance(id:string,state:AttendanceState,dropReviews=false) {
-  return participation(isExperienceId(id)&&["planned","attended","skipped"].includes(state)&&typeof dropReviews==="boolean",client=>client.rpc("experience_set_attendance",{p_moment_id:id,p_state:state,p_drop_reviews:dropReviews}));
+// `reviewExists` marks only SQL PT409 (an own review on the moment, maybe still hidden by RLS):
+// the UI offers the drop-review dialog for it. A 40001 retry is also `conflict`, but not this.
+export async function setMomentAttendance(id:string,state:AttendanceState,dropReviews=false):Promise<ExperienceResult<Result>|{ok:false;error:"conflict";reviewExists:true}> {
+  let code:string|undefined;
+  const result=await participation(isExperienceId(id)&&["planned","attended","skipped"].includes(state)&&typeof dropReviews==="boolean",async client=>{
+    const response=await client.rpc("experience_set_attendance",{p_moment_id:id,p_state:state,p_drop_reviews:dropReviews});
+    code=response.error?.code;
+    return response;
+  });
+  return !result.ok&&code==="PT409" ? {ok:false,error:"conflict",reviewExists:true} : result;
 }
 export async function setGuestAttendance(moment:string,person:string,state:AttendanceState) {
   return participation(isExperienceId(moment)&&isExperienceId(person)&&["planned","attended","skipped"].includes(state),client=>client.rpc("experience_set_guest_attendance",{p_moment_id:moment,p_participant_id:person,p_state:state}));
