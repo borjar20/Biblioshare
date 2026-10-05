@@ -39,6 +39,15 @@ describe("EpisodeTiles", () => {
 describe("EpisodeCurve", () => {
   const four = [ep(4, 8), ep(5, 7), ep(6, null), ep(7, 10)];
 
+  it("el mejor punto va en el color de series (no blanco), con halo y su nota en tinta de series", () => {
+    const { container } = wrap(<EpisodeCurve episodes={four} size="feed" />);
+    const svg = container.querySelector("svg")!;
+    expect(svg.querySelectorAll("[data-best-halo]")).toHaveLength(1);
+    expect(svg.innerHTML).not.toContain("var(--foreground)");
+    const labels = [...svg.querySelectorAll("[data-point-label]")];
+    expect(labels.every((l) => l.getAttribute("fill") === "var(--type-series-ink)")).toBe(true);
+  });
+
   it("es una imagen con las notas de cada episodio en su nombre accesible", () => {
     wrap(<EpisodeCurve episodes={four} size="feed" />);
     expect(screen.getByRole("img", { name: /S1E4: 4; S1E5: 3,5; S1E6: sin nota; S1E7: 5/ })).toBeTruthy();

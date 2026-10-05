@@ -115,21 +115,28 @@ function CurveSvg({
         {g.points.map((p) => (
           <g key={episodeCode(p.episode)}>
             {p.rated ? (
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={labels ? (p.best ? 6 : 4.5) : p.best ? 4 : 2}
-                fill={p.best ? "var(--foreground)" : "var(--type-series)"}
-                stroke="var(--surface)"
-                strokeWidth="2"
-              />
+              <>
+                {/* El mejor se distingue por tamaño y un halo del mismo color,
+                    no por otro color: toda la curva habla en el de series. */}
+                {p.best && (
+                  <circle data-best-halo cx={p.x} cy={p.y} r={labels ? 10 : 7} fill="var(--type-series)" opacity="0.25" />
+                )}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={labels ? (p.best ? 6 : 4.5) : p.best ? 4 : 2}
+                  fill="var(--type-series)"
+                  stroke="var(--surface)"
+                  strokeWidth="2"
+                />
+              </>
             ) : (
               <circle cx={p.x} cy={p.y} r={labels ? 4 : 2} fill="var(--surface)" stroke="var(--muted-foreground)" strokeDasharray="2 2" />
             )}
             {labels && (
               <>
                 {p.rated && (
-                  <text data-point-label x={p.x} y={p.y - 9} textAnchor="middle" fontSize="10.5" fontWeight="700" fill={p.best ? "var(--foreground)" : "var(--type-series-ink)"}>
+                  <text data-point-label x={p.x} y={p.y - (p.best ? 13 : 9)} textAnchor="middle" fontSize={p.best ? 12 : 10.5} fontWeight="700" fill="var(--type-series-ink)">
                     {formatDots(p.episode.rating)}
                   </text>
                 )}
