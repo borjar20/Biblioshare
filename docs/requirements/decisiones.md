@@ -6582,3 +6582,7 @@ los cuatro. Se decidió sobre maquetas (spec `2026-10-05-feed-patron-c-design.md
   esquema; cliente de la petición, no se cachea — regla #437). Un episodio marcado dos veces el
   mismo día cuenta una vez y gana la marca con nota. `episodeCount` desaparece.
 - **El verbo dice qué se valoró**: «valoró la serie» frente a «valoró/vio N episodios».
+- **Episodios: el verbo es «valoró» o «vio», nunca «reseñó».** Un episodio reseñado sin nota dice
+  «vio un episodio» y lleva el extracto debajo; `verbForReviewable` sigue decidiendo el verbo
+  guardado del post, pero la tarjeta de episodios no lo lee. Con varios episodios, el extracto es el
+  del episodio del que cuelga el post y no se atribuye todavía (anotado en la issue de pulido).
