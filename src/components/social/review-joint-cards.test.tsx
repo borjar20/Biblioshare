@@ -106,17 +106,36 @@ describe("ReviewCard", () => {
     expect(container.textContent).toContain("de Loki");
   });
 
-  it("varios episodios: cada uno con su nota, «Sin nota» si no la tiene y «+N más» pasado el tercero", () => {
-    const { container } = wrap(
-      <ReviewCard event={watched([ep(3, 4, "1893"), ep(4, 8), ep(5, null), ep(6, 6)])} viewerLoggedIn knownUsernames={[]} />,
-    );
-    expect(container.textContent).toContain("valoró 4 episodios");
-    expect(screen.getByRole("link", { name: "Loki" })).toBeTruthy();
-    expect(container.textContent).toContain("S2E4");
-    expect(screen.getByLabelText("Sin nota")).toBeTruthy();
-    expect(screen.getByRole("img", { name: "Sin nota" })).toBeTruthy();
-    expect(container.textContent).not.toContain("S2E6");
-    expect(container.textContent).toContain("+1 más");
+  it("2-3 episodios: fichas con la nota sobre 5 y la temporada en los datos", () => {
+    const { container } = wrap(<ReviewCard event={watched([ep(3, 4, "1893"), ep(4, 7), ep(5, null)])} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).toContain("valoró 3 episodios");
+    expect(container.textContent).toContain("Temporada 2");
+    expect(container.textContent).toContain("3,5/5");
+    expect(container.textContent).toContain("sin nota");
+    expect(container.textContent).not.toContain("más");
+  });
+
+  it("4 o más en el feed: curva con todas las notas, sin «+N más», y el mejor debajo", () => {
+    const eps = [ep(3, 4, "1893"), ep(4, 8, "Corazón"), ep(5, null), ep(6, 6), ep(7, 10, "Gloria")];
+    const { container } = wrap(<ReviewCard event={watched(eps)} viewerLoggedIn knownUsernames={[]} />);
+    expect(screen.getByRole("img", { name: /S2E3: 2; S2E4: 4; S2E5: sin nota; S2E6: 3; S2E7: 5/ })).toBeTruthy();
+    expect(container.textContent).toContain("S2E7 · Gloria");
+    expect(container.textContent).not.toContain("más");
+  });
+
+  it("post con 4-12: curva y la lista completa", () => {
+    const eps = [ep(3, 4, "1893"), ep(4, 8, "Corazón"), ep(5, 6, "Ciencia"), ep(6, 6, "Final")];
+    wrap(<ReviewCard event={watched(eps)} viewerLoggedIn knownUsernames={[]} showInteractions={false} />);
+    expect(screen.getByRole("img", { name: /S2E3: 2/ })).toBeTruthy();
+    expect(screen.getByText("Final")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Ver los/ })).toBeNull();
+  });
+
+  it("post con 13+: curva, lo mejor y lo peor, y «Ver los 13 episodios»", () => {
+    const eps = Array.from({ length: 13 }, (_, i) => ep(i + 1, (i % 9) + 2, `Cap ${i + 1}`));
+    const { container } = wrap(<ReviewCard event={watched(eps)} viewerLoggedIn knownUsernames={[]} showInteractions={false} />);
+    expect(container.textContent).toContain("Lo mejor");
+    expect(screen.getByRole("button", { name: "Ver los 13 episodios" })).toBeTruthy();
   });
 
   it("`episodes` vacío cae al episodio único del evento, no a «vio 0 episodios»", () => {
