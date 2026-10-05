@@ -115,7 +115,10 @@ export async function markMarginSeen(encounterIds: string[]): Promise<void> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  await supabase.from("margin_note_encounters").update({ seen_at: new Date().toISOString() })
+  const { error } = await supabase.from("margin_note_encounters").update({ seen_at: new Date().toISOString() })
     .in("id", encounterIds).eq("reader_id", user.id).is("seen_at", null);
+  // Best-effort (no revierte nada), pero un fallo silencioso dejaría la nota
+  // «sin ver» para siempre sin rastro: se registra.
+  if (error) console.error("markMarginSeen failed", error);
   await deliverMarginNotices(supabase);
 }
