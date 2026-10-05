@@ -56,6 +56,15 @@ do $$ begin
     raise exception 'FAIL A6: client wrote encounter';
   exception when insufficient_privilege then null; end;
 end $$;
+-- A7: INSERT ... RETURNING del autor (createMarginNote usa .select('id')): la política de
+-- select debe ver su propia fila nueva aunque can_read_margin_note (STABLE) no la vea.
+do $$ declare v uuid; begin
+  insert into public.margin_notes(item_type,item_id,anchor,chapter_label,body,audience)
+    values ('book',(select id from margin_fixture where k='book'),'{"kind":"ratio","ratio":0.1,"page":40,"pages":400}','Cap. 2','[TEST] returning','followers')
+    returning id into v;
+  if v is null then raise exception 'FAIL A7: no id returned'; end if;
+  delete from public.margin_notes where id=v; -- no contaminar los conteos de los bloques siguientes
+end $$;
 reset role;
 
 -- B1: sin encuentro nadie más que el autor ve la nota.
