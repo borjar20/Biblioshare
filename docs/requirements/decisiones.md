@@ -6555,3 +6555,14 @@ enlace para saltar al contenido mantienen su ubicación. La decisión responde
 a dos discrepancias HTML localizadas en el shell al entrar en partida activa.
 Su regresión discrimina ambas topologías; el gate de Next/build/navegador
 del candidato sigue pendiente. [Evidencia y límites](../testing/2026-10-05-chrome-hydration-1385.md).
+
+## 2026-10-05 — Verificación posterior del límite de chrome (#1385)
+
+La decisión anterior queda contrastada con revisión independiente y una build
+local nueva del pin e5fdb395. Pasan el recorrido original MTG a 390/1280px y los
+dos controles de regreso por historial, con cero errores de hidratación. Se
+conservan separados el global FAIL por 16 GET RSC cancelados sin clasificación
+y el FAIL del gate que comparaba toda .next: el servicio añadió 56 route-cache,
+sin modificar los 2445 archivos compilados previos. No se reescribe esa
+evidencia ni se relajan las guardas. La parada física independiente pasa y la
+CI del HEAD integrado conserva su gate. [Corte y límites](../testing/2026-10-05-chrome-hydration-1385.md).

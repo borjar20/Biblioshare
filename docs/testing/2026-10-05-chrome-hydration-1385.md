@@ -1,12 +1,14 @@
 # #1385: ruta y sesión del chrome tienen límites de hidratación independientes
 
-> **[Canónico · verificado contra código y React DOM SSR/hidratación el 2026-10-05; gate nativo de build/start pendiente]**
+> **[Canónico · verificado contra código, revisión independiente y build/start local el 2026-10-05; MTG 2/2 y retorno 2/2 PASS; auditoría global FAIL, CI integrada pendiente]**
 
 El candidato separa la espera de `usePathname` de la espera de sesión de
 Header, BottomNav y la compañera. La regresión discrimina las dos topologías:
 el límite compartido recupera dos discrepancias de HTML al navegar a una
 pantalla completa con sesión pendiente; el límite separado retira las barras
-sin recuperación. Esto todavía no cierra la verificación nativa de la issue.
+sin recuperación. Una compilación nueva del pin `e5fdb395` pasa después los
+dos casos originales de MTG y los dos controles de retorno. La auditoría
+global conserva sus fallos; la entrega exige la CI del HEAD integrado.
 
 ## Evidencia que motivó el cambio
 
@@ -116,7 +118,13 @@ es exclusivamente el límite interno del helper.
 | ESLint de AppShell, helper y regresión | PASS |
 | TypeScript focal de los tres fuentes y sus importaciones | PASS |
 | Diff sin errores de espacios | PASS |
-| Repetición nativa del spec MTG sobre build/start del candidato | SKIPPED en este handoff; pendiente del gate coordinado |
+| Revisión fresca independiente | PASS: 5 regresiones, 34 controles estáticos, cero hallazgos |
+| Spec MTG original sobre build/start nuevo | PASS: 390px y 1280px, 2/2, retry0, guardas intactas |
+| Retorno desde partida activa por historial | PASS: 390px y 1280px, 2/2, retry0 |
+| Diario global de navegador | FAIL conservado: 16 GET RSC cancelados sin clasificación; cero pageerror, console.error y HTTP>=400 |
+| Freeze de fuentes y archivos compilados previos | PASS: 3272 fuentes y 2445 archivos generados originales idénticos |
+| Gate de inventario completo de `.next` | FAIL conservado: 56 archivos nuevos en `server/route-cache` |
+| Parada física independiente | PASS: procesos propios, perfiles, pilas y puertos libres; backup y volúmenes conservados |
 
 Invocación focal de pruebas:
 
@@ -148,9 +156,58 @@ guarda los fuentes antes de ejecutar, sus hashes, el log y el resultado.
   `checks/tsc-r2-result.json` conserva el PASS después de incluir ese archivo
   existente. Los dos TS2307 originales y su explicación no se borraron.
 
-El candidato parte de `2c487a8d74a06acf8a7026d0ac35ee42fbe2fa84` en
-`codex/chrome-hydration-1385`. Queda preparado para la build de producción y
-el spec original a 390px y 1280px, con sus guardas intactas. El PASS de la
-costura React DOM no sustituye ese gate ni acredita medidas de altura o
-layout en un navegador real. No se arrancaron servicios ni se ejecutaron
-acciones Git o remotas durante este arreglo.
+El handoff del autor partió de `2c487a8d74a06acf8a7026d0ac35ee42fbe2fa84` en
+`codex/chrome-hydration-1385`, sin servicios ni operaciones Git o remotas. El
+coordinador recibió después la revisión independiente y guardó el pin
+`e5fdb395d20e97c5b6b99378c24389ba60ceca65` antes del runtime siguiente.
+
+## Verificación Native y límites del corte e5fdb395
+
+La revisión fresca conserva cero hallazgos, cinco regresiones PASS, 34 controles
+estáticos y fuentes idénticas. Su manifiesto es
+`b5468085d4459611497ee46c1be48dfc4c05dae0caa4d72c635f6129d35dfc27`.
+
+La ejecución única usa Node24.19, Next16.3.8 y el backend local 966 con ledger291
+y censo vacío. Construye desde una `.next` nueva la build
+`rS5hN2l856Bf-eL5iOPir`; la build anterior se conserva aparte. No hay actores,
+semillas, CDP, interceptación de red/almacenamiento, imports de producto ni
+cambios en el spec original. Sus dos casos pasan en 3616ms y los dos controles
+estrechos de retorno en 1934ms, sin SKIP, flaky, repeticiones ni reintentos.
+
+El diario observa los cuatro contextos hasta su cierre: cero errores de página,
+consola y HTTP>=400. Conserva 16 `GET` de tipo `fetch`, `?_rsc` y `ERR_ABORTED`:
+seis en MTG móvil, siete en escritorio y tres en el control móvil. Permanecen
+sin clasificación causal en el alcance de #1301; no se añade una allowlist ni
+se afirma una auditoría global limpia.
+
+El supervisor también conserva un FAIL material de su gate de inventario
+completo: `.next` pasa de 2445 a 2501 archivos. La inspección posterior encuentra
+56 añadidos exclusivamente en `server/route-cache`, cero modificados o
+eliminados. Los 2445 hashes previos, incluidos 792 ejecutables, BUILD_ID y
+manifiestos de rutas/referencias permanecen idénticos. Next instalado define y
+escribe esa caché; la forma observada es compatible con ese mecanismo, sin
+trazar cada escritor ni auditar payload o privacidad de la caché. Este
+diagnóstico no convierte el gate original en PASS. Las 3272 fuentes conservaron
+el hash de inventario
+`477c6d966a4af15f7f7bbf959ae37a1eda040202b5a552cb7da48d480926c384`.
+La auditoría de build encuentra cero ocurrencias de service_role; el anon
+público se pasa intencionalmente a la build. No se leen archivos `.env`.
+
+Antes de parar, el ledger conserva 291 pasos y el censo de
+Auth/sesiones/perfiles/pases/partidas/jugadores continúa vacío. Un recibo
+independiente posterior acredita parada normal con backup, 40 volúmenes previos
+conservados, nueve PIDs propios ausentes, cero perfiles Playwright,
+cero contenedores activos y puertos
+3000/3001/9222/54320–54329 libres. SHA del recibo:
+`a438b86b8d3ce5a66ef332b19064ee83f1cf088a48c47c4901762d8b842bd08b`.
+
+Ejecución sellada bajo
+`.scratch/ticket-campaign/20261005-resume/qa-chrome1385-native-r1/execution-r1/`,
+manifiesto `dc0205bba68d0079775c55f90056e6c6058370643dc2687e4c9f04c682033c97`;
+diagnóstico posterior en `postrun-diagnostic-r1/`, manifiesto
+`af3813f0e2cd1ebe8cf2135d3b3c909e995febe1d840c36c4a15178d36078c14`.
+No hubo otro runtime.
+Estos PASS focales acreditan Chromium anónimo local; no miden geometría del
+fallback, Android, Auth real ni producción. La CI del HEAD final y su entrega
+a main siguen pendientes. El delta documental posterior conserva las mismas
+fuentes ejecutables del pin Native.

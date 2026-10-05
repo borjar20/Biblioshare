@@ -1,6 +1,6 @@
 # Mapa de arquitectura (máquina + humano)
 
-> **[Delta #1385 · verificado contra código y regresión React DOM el 2026-10-05: ChromeBoundary separa la resolución de ruta de la espera de sesión de Header, BottomNav y compañera. Cinco regresiones y 26 controles PASS; revisión independiente y nueva build/QA nativa pendientes. El resto conserva sus fechas y alcance.]**
+> **[Delta #1385 · verificado el 2026-10-05: ChromeBoundary separa ruta y sesión. Cinco regresiones y 26 controles PASS, revisión independiente sin hallazgos; build nueva e5fdb395 pasa MTG original 2/2 y retorno 2/2 con cero React #418. Global FAIL por 16 RSC cancelados y gate de inventario completo FAIL por 56 route-cache nuevos; 2445 archivos previos y 3272 fuentes idénticos, parada física PASS. CI integrada pendiente. El resto conserva sus fechas y alcance.]**
 
 > **[Derivado · delta de celebraciones recuperables #1334 verificado contra código, 75 unitarios y PostgreSQL local cold-r2 el 2026-10-03; revisión independiente PASS. El flujo nuevo distingue claim, presentación y ACK. G4 nativo, activación remota y CI pendientes al registrar el delta.]**
 
