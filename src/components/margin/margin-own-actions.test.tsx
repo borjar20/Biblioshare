@@ -28,4 +28,18 @@ describe("MarginOwnActions", () => {
     expect(alert.textContent).toBe("No se pudo borrar la nota. Inténtalo de nuevo");
     expect(screen.getByRole("button", { name: "Cancelar" })).toBeTruthy();
   });
+
+  it("si la acción lanza una excepción, también avisa", async () => {
+    deleteMarginNote.mockRejectedValue(new Error("boom"));
+    render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <MarginOwnActions noteId="n1" conversations={2} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Borrar" }));
+    const alert = await waitFor(() => screen.getByRole("alert"));
+    expect(alert.textContent).toBe("No se pudo borrar la nota. Inténtalo de nuevo");
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeTruthy();
+  });
 });

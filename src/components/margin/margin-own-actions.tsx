@@ -37,9 +37,14 @@ export function MarginOwnActions({ noteId, conversations }: { noteId: string; co
           onClick={() =>
             start(async () => {
               setFailed(false);
-              const res = await deleteMarginNote(noteId);
-              if (res.ok) setConfirming(false);
-              else setFailed(true);
+              try {
+                const res = await deleteMarginNote(noteId);
+                if (res.ok) setConfirming(false);
+                else setFailed(true);
+              } catch {
+                // Una server action que lanza (red, 500) no debe dejar la UI muda.
+                setFailed(true);
+              }
             })
           }
           className="min-h-11 rounded-md bg-primary px-4 text-primary-foreground disabled:opacity-60"

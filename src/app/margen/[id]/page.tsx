@@ -37,7 +37,7 @@ export default async function MarginThreadRoute({ params }: { params: Promise<{ 
         <Link href={itemHref(note.itemType, note.itemId)} className="min-h-11 py-2 text-sm underline">
           {t("backToWork")}
         </Link>
-        <MarginNoteCard note={{ ...note, encounter: null }} />
+        <MarginNoteCard note={{ ...note, encounter: null }} hideOwnActions />
         {note.encounter && user.id !== note.author.id && <MarginReportButton encounterId={note.encounter.id} />}
         {summary && <MarginThreadInteractions summary={summary} viewerLoggedIn />}
         {unseen && note.encounter && <MarginRetroSeen ids={[note.encounter.id]} />}

@@ -26,7 +26,18 @@ function FoundBy({ template, foundBy }: { template: string; foundBy: NonNullable
   );
 }
 
-export function MarginNoteCard({ note, showNew = false }: { note: MarginNoteView; showNew?: boolean }) {
+// `hideOwnActions`: en el hilo de un encuentro `foundBy` solo trae a ESE lector,
+// así que el borrado (que se lleva la nota y todos sus hilos) no puede decir la
+// cifra real. Allí no se ofrece; el borrado vive en la ficha, que cuenta bien.
+export function MarginNoteCard({
+  note,
+  showNew = false,
+  hideOwnActions = false,
+}: {
+  note: MarginNoteView;
+  showNew?: boolean;
+  hideOwnActions?: boolean;
+}) {
   const t = useTranslations("margin");
   const authorName = note.author.displayName ?? note.author.username;
   const where =
@@ -64,7 +75,7 @@ export function MarginNoteCard({ note, showNew = false }: { note: MarginNoteView
           )}
         </p>
       )}
-      {note.foundBy && <MarginOwnActions noteId={note.noteId} conversations={note.foundBy.length} />}
+      {note.foundBy && !hideOwnActions && <MarginOwnActions noteId={note.noteId} conversations={note.foundBy.length} />}
     </article>
   );
 }

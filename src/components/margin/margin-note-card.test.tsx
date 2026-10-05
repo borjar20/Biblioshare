@@ -59,4 +59,15 @@ describe("MarginNoteCard", () => {
     cleanup();
     expect(text({ ...base, foundBy: [] })).toContain("Nadie la ha encontrado todavía");
   });
+  it("hideOwnActions: el hilo no ofrece borrar la nota (no sabría contar las conversaciones)", () => {
+    const own = { ...base, foundBy: [{ encounterId: "e1", reader: { id: "r", username: "ana", displayName: null, avatarUrl: null } }] };
+    const { container, unmount } = render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <MarginNoteCard note={own} hideOwnActions />
+      </NextIntlClientProvider>,
+    );
+    expect(container.textContent).not.toContain("Borrar");
+    unmount();
+    expect(text(own)).toContain("Borrar");
+  });
 });
