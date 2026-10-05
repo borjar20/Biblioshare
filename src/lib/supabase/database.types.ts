@@ -4269,8 +4269,8 @@ export type Database = {
       pin_comment: {
         Args: { p_comment_id: string; p_pinned: boolean }
         Returns: undefined
-      place_upsert: { Args: { p_input: Json }; Returns: string }
       }
+      place_upsert: { Args: { p_input: Json }; Returns: string }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
       pull_pending_celebrations: {
         Args: never
