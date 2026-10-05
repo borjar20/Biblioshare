@@ -8,8 +8,9 @@ import { Header } from "@/components/header";
 import { PetCompanion } from "@/components/pet/pet-companion";
 import { PetReturnTracker } from "@/components/pet/game/pet-return-tracker";
 import { BottomNav } from "./bottom-nav";
-import { ChromeGate } from "./chrome-gate";
+import { ChromeBoundary } from "./chrome-boundary";
 import { SkipLink } from "./skip-link";
+import { CelebrationActorBridge } from "@/components/celebrations/celebration-actor-bridge";
 
 // Chrome de la app. El ARMAZÓN (los divs y dónde va cada barra) es estático y no
 // espera a nada; las dos piezas que dependen de la sesión —topbar y barra
@@ -29,18 +30,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <SkipLink />
+      {/* La identidad del consumidor también vive en /mascota: fuera del gate
+          de chrome y sin bloquear el shell ni el landmark principal. */}
+      <Suspense fallback={null}>
+        <SessionCelebrationActor />
+      </Suspense>
       {/* `/partida/activa` y `/mascota` tienen su propio marco de juego sin
           topbar ni barra general de cinco (#931, #1165).
-          El gate va DENTRO del `<Suspense>`, no envolviéndolo: lee la ruta con
-          `usePathname`, y un hook de cliente sin boundary por encima bloquea el
-          prerender de TODA ruta que llegue a prerenderarse (`CLIENT_HOOK_DYNAMIC`) —
-          `next build` se cae, aunque `next dev` no diga nada. Dentro del boundary es
-          exactamente lo que ya hacía `BottomNav` con `/post/*`. */}
-      <Suspense fallback={<HeaderSkeleton />}>
-        <ChromeGate>
-          <SessionChrome />
-        </ChromeGate>
-      </Suspense>
+          ChromeBoundary mantiene `usePathname` bajo un Suspense externo para
+          rutas con parámetros desconocidos durante el prerender. La sesión
+          espera bajo otro límite INTERNO: el gate debe hidratarse antes y poder
+          retirar las barras al navegar sin hidratar su HTML con otra ruta
+          (#1385). Ambos límites conservan la misma reserva de altura. */}
+      <ChromeBoundary fallback={<HeaderSkeleton />}>
+        <SessionChrome />
+      </ChromeBoundary>
       {/* El landmark <main> vive AQUÍ, en el armazón, y no en cada página: así lo
           tienen las 17 rutas de una vez y no hay forma de olvidarlo al crear la
           siguiente (issue #816). Las cuatro páginas que traían su propio <main>
@@ -51,20 +55,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main id="contenido" tabIndex={-1} className="flex flex-1 flex-col">
         {children}
       </main>
-      <Suspense fallback={<BottomNavSkeleton />}>
-        <ChromeGate>
-          <SessionNav />
-        </ChromeGate>
-      </Suspense>
-      {/* Compañera flotante (spec mascota §6). Bajo su propio <Suspense> y dentro
-          del gate por lo mismo que las barras: lee sesión y no puede bloquear el
-          armazón; no aparece en pantallas a sangre. Fallback null: no reserva
-          sitio porque flota. */}
-      <Suspense fallback={null}>
-        <ChromeGate>
-          <SessionCompanion />
-        </ChromeGate>
-      </Suspense>
+      <ChromeBoundary fallback={<BottomNavSkeleton />}>
+        <SessionNav />
+      </ChromeBoundary>
+      {/* Compañera flotante (spec mascota §6). Separa ruta y sesión igual que las
+          barras: no bloquea el armazón ni aparece en pantallas a sangre.
+          Fallback null: no reserva sitio porque flota. */}
+      <ChromeBoundary fallback={null}>
+        <SessionCompanion />
+      </ChromeBoundary>
     </div>
   );
 }
@@ -93,6 +92,13 @@ async function readChromeIdentity() {
   const username = profile?.username ?? null;
   const showNav = Boolean(username) && profile?.onboardedAt != null;
   return { user, username, avatarUrl: profile?.avatarUrl ?? null, showNav };
+}
+
+async function SessionCelebrationActor() {
+  await connection();
+  const observationId = crypto.randomUUID(); // Sólo después de una petición real.
+  const user = await getCurrentUser(); // React.cache comparte sólo esta petición.
+  return <CelebrationActorBridge actorId={user?.id ?? null} observationId={observationId} />;
 }
 
 // Topbar. Necesita, además de la identidad, el CONTADOR de no leídas —el badge

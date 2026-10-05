@@ -33,9 +33,9 @@ export function subscribeCelebrationPreference(callback: () => void): () => void
   };
 }
 
-// Señal "revisa si hay celebraciones que drenar", para llamar tras una mutación
+// Señal "revisa si hay celebraciones que reservar", para llamar tras una mutación
 // de dominio desde cualquier componente cliente SIN usar el hook ni prop
-// drilling. El provider la escucha y drena.
+// drilling. El provider la escucha y coalesce el trabajo recuperable.
 const CHECK_EVENT = "celebrations:check";
 
 export function checkCelebrations(): void {
@@ -48,9 +48,10 @@ export function onCelebrationCheck(handler: () => void): () => void {
   return () => window.removeEventListener(CHECK_EVENT, handler);
 }
 
-// Señal "se acaban de encolar celebraciones para mostrar", con su payload. La
-// compañera (src/components/pet/pet-companion.tsx) la escucha para saltar: es
-// un consumidor más del canal ganar → drenar, sin tocar la cola del provider.
+// Señal "la cabeza tuvo oportunidad observable de presentación", con su payload.
+// Se emite tras conectar el portal y dos frames visibles, nunca al reservar.
+// La compañera (src/components/pet/pet-companion.tsx) la escucha para saltar: es
+// un consumidor más del canal ganar → presentar, sin tocar la cola ni el ACK.
 const SHOWN_EVENT = "celebrations:shown";
 
 export function emitCelebrationsShown(items: CelebrationPayload[]): void {

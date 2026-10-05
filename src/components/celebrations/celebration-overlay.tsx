@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import styles from "./celebration-overlay.module.css";
 import { CELEBRATIONS } from "@/lib/celebrations/registry";
-import { logCelebration } from "@/lib/celebrations/analytics";
+import { readCelebrationPreference } from "@/lib/celebrations/preference";
+import type { DisplayReceipt, QueueEntry } from "@/lib/celebrations/protocol";
 import type {
   CelebrationPayload,
   CelebrationPreference,
@@ -126,36 +127,68 @@ function getReduceMotion(): boolean {
 }
 
 export function CelebrationOverlay({
-  payload,
+  entry,
+  generation,
   preference,
+  onShown,
   onDone,
 }: {
-  payload: CelebrationPayload | null;
+  entry: QueueEntry | null;
+  generation: number;
   preference: CelebrationPreference;
-  onDone: () => void;
+  onShown: (receipt: DisplayReceipt) => void;
+  onDone: (key: string) => void;
 }) {
+  const card = useRef<HTMLDivElement>(null);
+  const presented = useRef<{ key: string; shownAt: number } | null>(null);
+  const visible = useSyncExternalStore(subscribeVisibility, getVisibility, () => false);
   const systemReduce = useSyncExternalStore(
     subscribeReduceMotion,
     getReduceMotion,
     () => false,
   );
   const reduce = preference === "reduced" || systemReduce;
+  const payload = entry ? entry.source === "local" ? entry.payload : entry.reservation.payload : null;
+  const key = entry?.key ?? null;
+  const safeDeadline = entry?.source === "remote" ? entry.safeDeadline : Infinity;
+  const enabled = preference !== "disabled";
+  const withinBudget = useDisplayBudget(safeDeadline);
 
   useEffect(() => {
-    if (!payload) return;
+    if (!payload || !key || !enabled || !visible || !withinBudget) return;
     const config = CELEBRATIONS[payload.event];
-    logCelebration("celebration_displayed", {
-      event: payload.event,
-      reducedMotion: reduce,
-    });
-    // El fallback estático se mantiene un poco menos; el completo dura lo que
-    // diga su config (600–1800 ms) + un respiro para que cierre la animación.
-    const ms = reduce ? 1200 : config.durationMs + 200;
-    const timer = setTimeout(onDone, ms);
-    return () => clearTimeout(timer);
-  }, [payload, reduce, onDone]);
+    let cancelled = false;
+    let frame = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const valid = () => !cancelled && card.current?.isConnected && document.visibilityState === "visible" && readCelebrationPreference() !== "disabled" && performance.now() < safeDeadline;
+    const finishAfterPresentation = () => {
+      const shownAt = presented.current?.shownAt;
+      if (shownAt === undefined) return;
+      const duration = reduce ? 1200 : config.durationMs + 200;
+      timer = setTimeout(() => { if (!cancelled) onDone(key); }, Math.max(0, shownAt + duration - performance.now()));
+    };
+    if (presented.current?.key === key) finishAfterPresentation();
+    else {
+      // A connected portal alone is not a presentation receipt. Both frames
+      // must remain visible, enabled and within this reservation's budget.
+      frame = requestAnimationFrame(() => {
+        if (!valid()) return;
+        frame = requestAnimationFrame(() => {
+          if (!valid()) return;
+          presented.current = { key, shownAt: performance.now() };
+          onShown({ key, generation });
+          finishAfterPresentation();
+        });
+      });
+    }
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [payload, key, generation, enabled, visible, withinBudget, safeDeadline, reduce, onShown, onDone]);
 
-  if (!payload || typeof document === "undefined") return null;
+  if (!payload || !enabled || !visible || !withinBudget || typeof document === "undefined") return null;
 
   const config = CELEBRATIONS[payload.event];
 
@@ -164,6 +197,7 @@ export function CelebrationOverlay({
       {/* role=status + aria-live: nada se comunica solo por movimiento. */}
       <div
         className={styles.card}
+        ref={card}
         data-intensity={config.intensity}
         role="status"
         aria-live="polite"
@@ -183,4 +217,23 @@ export function CelebrationOverlay({
     </div>,
     document.body,
   );
+}
+
+function subscribeVisibility(callback: () => void): () => void {
+  document.addEventListener("visibilitychange", callback);
+  return () => document.removeEventListener("visibilitychange", callback);
+}
+function getVisibility(): boolean { return document.visibilityState === "visible"; }
+
+// Time is an external store with one transition at this deadline, rather than
+// an impure clock read in the component's render. Frames still recheck the live
+// budget to cover a suspension before React commits the store notification.
+function useDisplayBudget(deadline: number): boolean {
+  const subscribe = useCallback((changed: () => void) => {
+    if (!Number.isFinite(deadline)) return () => {};
+    const timer = setTimeout(changed, Math.max(0, deadline - performance.now()));
+    return () => clearTimeout(timer);
+  }, [deadline]);
+  const snapshot = useCallback(() => performance.now() < deadline, [deadline]);
+  return useSyncExternalStore(subscribe, snapshot, () => false);
 }
