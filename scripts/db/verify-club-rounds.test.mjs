@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { MATRIX_CASES, recoverClubRounds, verifyClubRounds } from './verify-club-rounds.mjs';
@@ -93,9 +94,10 @@ function controlledDatabase(options = {}) {
   let observation = 0;
   let rows = 0;
   const events = [];
+  const queries = [];
   const sessions = [];
   const driver = {
-    events, sessions,
+    events, queries, sessions,
     get clock() { return clock; }, get journal() { return journal; }, get rows() { return rows; },
     hasRecovery: () => Boolean(journal),
     saveRecovery(value) { journal = structuredClone(value); events.push('journal'); },
@@ -103,6 +105,7 @@ function controlledDatabase(options = {}) {
     loadRecovery: () => structuredClone(journal),
     async preflight() { events.push('preflight'); if (options.preflightError) throw options.preflightError; },
     async sql(query) {
+      queries.push(query);
       if (query.includes('-- club-rounds:capture-clock')) return JSON.stringify(clock);
       if (query.startsWith('-- Matriz de regresión')) {
         events.push('matrix');
@@ -173,6 +176,31 @@ function controlledDatabase(options = {}) {
 
 const run = (driver, extra = {}) => verifyClubRounds(projectId, {
   receipt, driver, pause: async () => {}, barrierAttempts: 3, ...extra,
+});
+
+test('the real race seed fits the canonical club slug constraint and cleans its original club ID', async (context) => {
+  const constraintSource = readFileSync(new URL('../../supabase/migrations/20260715_text_length_limits.sql', import.meta.url), 'utf8');
+  const constraint = constraintSource.match(/clubs_slug_format\s+check\s*\(slug\s*~\s*'([^']+)'\)/i);
+  assert.ok(constraint, 'read the product constraint instead of inventing a fixture-only limit');
+  const acceptedSlug = new RegExp(constraint[1]);
+  const fixtures = [];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const driver = controlledDatabase();
+    await run(driver);
+    const seed = driver.queries.find((query) => query.includes('-- club-rounds:seed-race'));
+    const inserted = seed?.match(/insert\s+into\s+public\.clubs\s*\([^)]*\)\s*values\s*\(\s*'([^']+)'\s*,\s*'([^']+)'/i);
+    assert.ok(inserted, 'observe the actual seed emitted by the public checker');
+    const [, clubId, slug] = inserted;
+    assert.match(slug, acceptedSlug, `the actual race seed slug (${slug.length} characters) must satisfy clubs_slug_format`);
+    const cleanup = driver.queries.find((query) => query.includes('-- club-rounds:cleanup-race'));
+    const deleted = cleanup?.match(/delete\s+from\s+public\.clubs\s+where\s+id\s*=\s*'([^']+)'/i);
+    assert.ok(deleted, 'the original cleanup must still own the seeded club');
+    assert.equal(deleted[1], clubId);
+    fixtures.push({ clubId, slug });
+    context.diagnostic(`actual race seed ${attempt + 1}: slug length ${slug.length}; cleanup owns the original club ID`);
+  }
+  assert.notEqual(fixtures[0].clubId, fixtures[1].clubId);
+  assert.notEqual(fixtures[0].slug, fixtures[1].slug, 'separate fixtures cannot share a constant valid slug');
 });
 
 test('a missing or mismatched local GO refuses all DB access', async () => {

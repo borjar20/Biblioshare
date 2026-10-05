@@ -1,12 +1,20 @@
-# Rondas #401: candidato estático y gate de SQL local
+# Rondas #401: matriz SQL y corrección del slug del fixture
 
-[Candidato · verificado contra runner Node el 2026-10-05 · SQL y concurrencia NOT_RUN]
+[Candidato · verificado el 2026-10-05 · matriz SQL 11 PASS en 3a · carrera FAIL en seed · corrección de slug pendiente de nuevo runtime]
 
-La matriz y su runner están preparados para verificar las ramas de la casa y la
-relectura del ganador de una carrera. **#401 sigue abierto: no se ha ejecutado
-PostgreSQL, Docker, navegador ni un backend durante esta implementación.** El
-coordinador mantiene HOLD: ahora tiene prioridad el diagnóstico CDP #1385 sobre
-el backend 966 congelado. Sólo su nuevo GO puede liberar la ejecución de #401.
+La matriz real ha pasado sus 11 comprobaciones sobre el pin `3a3b9e4` en el
+backend local nuevo `f3d738c9`, con ledger de 288 pasos. La carrera falló antes
+de abrir sus sesiones: el seed generaba un slug de 42 caracteres y SQL exige
+3–40. El checker limpió y restauró el reloj, y el backend quedó parado con
+backup normal y censo cero. El FAIL se conserva. **#401 sigue abierto.**
+
+El slug del candidato ahora elimina los guiones del UUID, conserva sus 32
+caracteres y mide 38 con el prefijo. Una regresión del checker real contrasta
+su seed con la constraint SQL vigente y comprueba unicidad entre fixtures y
+limpieza por el ID original. Esta corrección sólo tiene verificación Node:
+La revisión independiente del ajuste ha pasado; necesita pin y GO nuevos
+antes de otro runtime. El coordinador
+reserva ahora el backend para la QA de #1385; no se ha repetido SQL ni navegador.
 
 Base: `f5839cf8c55b649daf62ffc08d216268eb28a9f3`, rama
 `codex/club-round-matrix-401`, worktree `coverage1307`. La rama hermana #405 se
@@ -66,19 +74,21 @@ RowExclusiveLock; su estado granted=false se observa en pg_locks.
   exclusivo. `test:db:bootstrap` incluye los contratos Node y el comando focal
   `test:db:club-rounds` evita repetir la suite SQL completa para esta QA.
 
-## Qué está acreditado ahora
+## Evidencia estática original
 
-Node 24.19.0, compatible con los engines del repo. Quince contratos del checker
-y ocho del bootstrap pasan: **23/23**, cero skip. Lint focal y node --check de
-los tres módulos JavaScript pasan. No cambia TypeScript/producto ni se repite
-la suite general de UI o el baseline SQL.
+Node 24.19.0, compatible con los engines del repo. La entrega original acreditó
+quince contratos del checker y ocho del bootstrap: **23/23**, cero skip. Lint
+focal y node --check de los tres módulos JavaScript pasaron. No cambió
+TypeScript/producto ni se repitió la suite general de UI o el baseline SQL.
 
 Los contratos ejecutan el caller real mediante VM y el checker real con
 transporte PostgreSQL controlado. Cubren GO antes de acceder, marcas SQL
 incompletas, rollback filtrado, barrera incompleta, pid duplicado, perdedor
 NULL, dos filas pese a IDs iguales, fallo de worker más cleanup, sesiones sin
 terminar, restauración fallida/OID cambiado y recuperación antes del reintento.
-**Estos PASS no acreditan parseo, funciones SQL ni locks PostgreSQL reales.**
+**Aquellos PASS no acreditaban parseo, funciones SQL ni locks PostgreSQL reales.**
+La revisión fresca de ese mismo pin añadió 20 sondas RAM sin hallazgos; no
+comprobó la longitud del slug emitido por el seed contra la constraint SQL.
 
 Evidencia histórica en
 `.scratch/ticket-campaign/20261002-resolve-all/club-round-matrix401-20261004-static-r1/`.
@@ -97,13 +107,71 @@ postcondiciones de limpieza de la matriz, está en la ruta nueva
 | seal.json, HANDOFF.md (r2) | Sellado | Fuentes finales, hashes y gate pendiente |
 
 Los FAIL no se sobrescriben ni se suman como pruebas PostgreSQL. La firma
-round_prompt se contrastó con el código real antes de entregar; la ejecución
-SQL sigue pendiente.
+round_prompt se contrastó con el código real antes de entregar; en esa entrega
+la ejecución SQL quedaba pendiente.
 
-## GO y protocolo para QA
+## Único runtime real y corrección acotada del seed
 
-El coordinador debe confirmar proyecto/contenedor exactos, QA975 terminada,
-actores ajenos cero y puerto 3000 libre. El receipt es un JSON local de esa
+El GO del coordinador `GO-coordinator-20261005-r1.json`, SHA
+`7f0d7e60fe521f0dbc381a48a6d3cfc1f9c7636a28274a6b7dc700f5463ecfce`,
+autorizó sólo el supervisor sellado y las copias exactas de 3a. El bootstrap
+auténtico del proyecto `biblioshare-local-f3d738c9` tiene SHA
+`6ddcc827b7cbff583c6ab2b9e5539a5b6b5f269db9ee3ee12f769fbe806ae79e`.
+Su ledger real confirmó las 288 versiones esperadas; los 291 pasos de 966
+corresponden a otro candidato y no se intercambiaron.
+
+| Fase | Resultado | Receipt SHA-256 |
+|---|---|---|
+| Start | PASS, PostgreSQL17/Auth0, ledger288 y censo0 | `52e59844708dabdd5e7f4c61b99238b423c4a188cd58a9b15ae4412627935869` |
+| SQL | FAIL global; matriz11 PASS, seed de carrera rechazado | `1e6fe779c1b8a59b147aec9554200b6252da50bd57de0ce94c4ce3762a605cd9` |
+| Stop | PASS, censo0, backup normal y volúmenes conservados | `69eb433cf78eafa38462fc5d5b56bee95c229525784c23139b1fdf0d3d95dbfd` |
+
+La causa es directa: `20260715_text_length_limits.sql` define
+`clubs_slug_format = ^[a-z0-9-]{3,40}$`; el checker generaba `cr401-<UUID>`
+de 42 caracteres. PostgreSQL rechazó esa inserción. No se alcanzaron las
+sesiones ni la barrera, por lo que no se acredita la carrera ni se diagnostica
+un fallo de concurrencia del producto.
+
+El finally original dejó cleanup/restoration PASS, comparó definición, ACL,
+propietario, configuración y OID, y retiró su journal. SHA del reloj antes y
+después: `65fed91b998e2910593bebfafd3baf994d6732362c4a3d2ce0043718ea254814`.
+Stop confirmó cero auth.users, auth.sessions, perfiles, passes, clubs, miembros,
+rondas y targets; cero pila Supabase activa y puertos libres. Los volúmenes
+f3/eeaa/966 permanecen conservados. No se precisó comando recover.
+
+Las evidencias de ese intento están en
+`.scratch/ticket-campaign/20261004-continue/club401-native-r1/resume-20261005-final-r1/`.
+El manifest SHA `148e9ad0acbf7f7a9acc3f519688333f032ecf4b914a24a6c7607de3b2bc8040`
+se selló antes de esta corrección, con el FAIL y los tres receipts originales.
+No se reescribieron las copias/pins de 3a ni el supervisor.
+
+La corrección posterior cambia únicamente el slug a `cr401-<UUID sin guiones>`:
+38 caracteres, con todos los dígitos del UUID. El ID del club y la limpieza
+permanecen iguales. La regresión llama al checker público, observa el SQL de
+seed/cleanup en su frontera de transporte y extrae la regla de la migración
+vigente; no duplica la fórmula del slug ni exporta el helper privado. Dos
+fixtures independientes deben emitir slugs válidos distintos y limpiar sus
+IDs originales. RED produjo 1 FAIL por longitud 42; GREEN observa longitud 38.
+
+Los checks de la corrección y sus fuentes están en
+`.scratch/ticket-campaign/20261004-continue/club401-native-r1/resume-20261005-slug-fix-r1/`.
+Los 16 contratos del checker y ocho del bootstrap pasan: **24/24**, cero skip;
+la regresión focal pasa 1/1. Lint focal y sintaxis de los dos módulos pasan.
+Es una corrección del harness: no cambia ninguna constraint, SQL de matriz,
+migración, configuración, esquema o código de producto. Los contratos Node
+no sustituyen el nuevo runtime. La revisión independiente del ajuste pasó
+28 controles de fuente, 69 hashes y 16 contratos focales, sin defectos de
+código; su recibo sellado es
+`4caa310b142ae0a4ca5bf1092e273460df46df5338f0d6b7f29c59b5b6a98bb4`.
+El coordinador aclaró después el tiempo histórico de la evidencia original,
+sin modificar el checker ni la regresión revisados. Se requieren pin y GO propios,
+manteniendo íntegro el intento fallido anterior.
+
+## GO y protocolo para la siguiente QA
+
+La autorización anterior corresponde al checker de 3a y no sirve para ejecutar
+este candidato corregido. El coordinador debe confirmar proyecto/contenedor
+exactos, QA975 terminada, actores ajenos cero y puerto 3000 libre. El receipt es un JSON local de esa
 autorización. Sustituir el ejemplo por los valores del manifest real:
 
 ```json
@@ -162,7 +230,9 @@ Si un agente externo cambia el OID o la base queda inaccesible, no se declara
 restauración PASS: se conserva el FAIL/journal para el coordinador. No se
 promete restauración durante una caída física del backend.
 
-Esta fase no acredita SQL válido, RLS real, grants remotos, concurrencia nativa
-ni navegador. No toca migraciones, passes, Auth persistente, credenciales,
-dependencias, dev/prod o configuración de producción. No hay push, PR, merge
-ni cierre remoto en este encargo.
+La matriz SQL de 3a sí se ha ejecutado y pasado. La corrección del seed todavía
+no acredita aceptación nativa ni la carrera real; tampoco grants remotos,
+navegador o CI del candidato integrado. No toca migraciones, passes, Auth
+persistente, credenciales, dependencias, dev/prod o configuración de producción.
+La entrega del autor y su revisión no hicieron operaciones Git ni remotas;
+el coordinador prepara el pin posterior. No se ha cerrado #401.

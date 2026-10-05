@@ -782,11 +782,20 @@ Docker local exclusiva; la carrera utiliza dos sesiones y acredita ambos INSERT
 bloqueados antes de soltarlos. Captura y restaura definición, ACL, propietario,
 configuración y OID del reloj, con journal de recuperación ante interrupciones.
 
-El 2026-10-05 pasan 15 contratos Node focales, ocho del bootstrap y lint/sintaxis
-JavaScript. Se conservan los FAIL del caller sin rondas, del GO consultado tarde
-y de un oráculo de preparación. **SQL real y concurrencia PostgreSQL: NOT_RUN**,
-pendientes de receipt de QA975 terminada, actores cero y puerto 3000 libre.
-El HOLD vigente también preserva el backend 966 para el diagnóstico CDP #1385;
-su coordinador debe liberar esa reserva antes de ejecutar esta pieza.
-Estos contratos controlan el transporte; no acreditan parseo SQL, locks reales,
-navegador, dev, producción ni RLS remota. #401 permanece abierto.
+El único runtime del 2026-10-05 sobre `3a3b9e4`/f3/288 pasó la matriz SQL real
+con 11 marcas. La carrera falló antes de abrir sus sesiones: el seed generaba
+un slug de 42 caracteres y `clubs_slug_format` admite 3–40. Se conserva ese
+FAIL, con restauración exacta del reloj, cleanup/censo cero y parada normal con
+backup; los volúmenes f3/eeaa/966 quedaron conservados.
+
+La corrección acotada del slug emite 38 caracteres y mantiene el UUID/cleanup.
+Pasan 16 contratos Node focales y ocho del bootstrap: 24/24, cero skip, más
+lint/sintaxis. La regresión observa el seed real contra la constraint SQL
+vigente. No hubo un segundo runtime: la aceptación nativa del seed corregido,
+dos sesiones/locks reales y la carrera siguen pendientes de pin y GO nuevos.
+La revisión independiente pasó 28 controles de fuente, 69 hashes y los 16
+contratos focales sin defectos de código. El coordinador aclaró una frase
+histórica del reporte después de esa revisión. El backend quedó liberado para
+que el coordinador organice la QA #1385.
+No se acreditan navegador, dev, producción, RLS remota ni CI del candidato
+integrado. #401 permanece abierto; los FAIL anteriores también se conservan.

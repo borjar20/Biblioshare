@@ -161,7 +161,7 @@ insert into public.profiles (user_id, username, display_name, is_public, role) v
  (${literal(ana)}, ${literal(`cr401_a_${fixture.club.slice(0, 8)}`)}, 'Ronda QA A', true, 'user'),
  (${literal(beto)}, ${literal(`cr401_b_${fixture.club.slice(0, 8)}`)}, 'Ronda QA B', true, 'user');
 insert into public.clubs (id, slug, name, visibility, owner_id, created_at) values
- (${literal(fixture.club)}, ${literal(`cr401-${fixture.club}`)}, '[TEST] Rondas 401', 'public', ${literal(ana)}, '2026-07-20 10:00:00+02');
+ (${literal(fixture.club)}, ${literal(`cr401-${fixture.club.replaceAll('-', '')}`)}, '[TEST] Rondas 401', 'public', ${literal(ana)}, '2026-07-20 10:00:00+02');
 insert into public.club_members (club_id, user_id, role, status, joined_at) values
  (${literal(fixture.club)}, ${literal(ana)}, 'owner', 'active', '2026-07-20 10:00:00+02'),
  (${literal(fixture.club)}, ${literal(beto)}, 'member', 'active', '2026-07-27 10:00:00+02');
