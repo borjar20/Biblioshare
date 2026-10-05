@@ -114,8 +114,51 @@ describe("ReviewCard", () => {
     expect(screen.getByRole("link", { name: "Loki" })).toBeTruthy();
     expect(container.textContent).toContain("S2E4");
     expect(screen.getByLabelText("Sin nota")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Sin nota" })).toBeTruthy();
     expect(container.textContent).not.toContain("S2E6");
     expect(container.textContent).toContain("+1 más");
+  });
+
+  it("`episodes` vacío cae al episodio único del evento, no a «vio 0 episodios»", () => {
+    const event = makeFeedEvent({
+      kind: "watched",
+      verb: "rated",
+      itemType: "series",
+      itemId: "loki",
+      itemTitle: "Loki",
+      rating: 4,
+      episode: { season: 2, episode: 3, title: "1893" },
+      episodes: [],
+    });
+    const { container } = wrap(<ReviewCard event={event} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).toContain("valoró un episodio");
+    expect(container.textContent).not.toContain("0 episodios");
+    expect(screen.getByRole("link", { name: "S2E3 · 1893" })).toBeTruthy();
+  });
+
+  it("watched sin episodio visible dice «marcó un episodio de», no «terminó»", () => {
+    const event = makeFeedEvent({ kind: "watched", verb: "watchedEpisode", itemType: "series", episode: null });
+    const { container } = wrap(<ReviewCard event={event} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).toContain("marcó un episodio de");
+    expect(container.textContent).not.toContain("terminó");
+  });
+
+  it.each([
+    ["en el feed", true],
+    ["en /post/[id] (sin interacciones)", false],
+  ])("reseña con spoiler %s: el texto queda tras el botón hasta revelarlo", (_name, showInteractions) => {
+    wrap(
+      <ReviewCard
+        event={review({ reviewIsSpoiler: true })}
+        viewerLoggedIn
+        knownUsernames={[]}
+        showInteractions={showInteractions}
+      />,
+    );
+    expect(screen.queryByText(/Top 3 peores apocalipsis/)).toBeNull();
+    const reveal = screen.getByRole("button", { name: messages.feed.progress.showSpoiler });
+    act(() => reveal.click());
+    expect(screen.getByText(/Top 3 peores apocalipsis/)).toBeTruthy();
   });
 
   it("episodios sin ninguna nota dicen «vio», no «valoró»", () => {

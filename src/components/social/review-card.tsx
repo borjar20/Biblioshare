@@ -46,7 +46,7 @@ export function ReviewCard({
   let row: React.ReactNode;
   if (event.episode) {
     // Las previews legadas (shared-activity) no traen `episodes`: un episodio.
-    const eps: FeedEpisode[] = event.episodes ?? [{ ...event.episode, rating: event.rating }];
+    const eps: FeedEpisode[] = event.episodes?.length ? event.episodes : [{ ...event.episode, rating: event.rating }];
     verb = t("card.episodes", { rated: eps.some((e) => e.rating != null) ? "yes" : "no", count: eps.length });
     if (eps.length === 1) {
       const [only] = eps;
@@ -78,7 +78,7 @@ export function ReviewCard({
                 e.rating != null ? (
                   <RatingDots value={e.rating} size="sm" itemType={event.itemType} />
                 ) : (
-                  <span aria-label={t("card.noRating")} className="font-mono text-[10.5px] text-muted-foreground">—</span>
+                  <span role="img" aria-label={t("card.noRating")} className="font-mono text-[10.5px] text-muted-foreground">—</span>
                 ),
             }))}
           />
@@ -87,7 +87,7 @@ export function ReviewCard({
     }
   } else {
     const v = event.verb === "rated" || event.verb === "reviewed" ? event.verb : "finished";
-    verb = t(`card.${v}`, { itemType: event.itemType });
+    verb = event.verb === "watchedEpisode" ? t("verbs.watchedEpisode") : t(`card.${v}`, { itemType: event.itemType });
     const facts = [
       workType,
       event.itemSubtitle,
