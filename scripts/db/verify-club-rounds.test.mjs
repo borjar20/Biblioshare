@@ -11,7 +11,7 @@ function controlledCaller(denied = false) {
   const script = `
     import assert from 'node:assert/strict';
     import { readFileSync } from 'node:fs';
-    import { join } from 'node:path';
+    import { join, resolve } from 'node:path';
     import { SourceTextModule, SyntheticModule } from 'node:vm';
     const calls = [];
     const sqlCalls = [];
@@ -25,8 +25,11 @@ function controlledCaller(denied = false) {
       } },
       'node:fs': { readFileSync: (path) => path.endsWith('bootstrap.json')
         ? JSON.stringify({ projectId, migrations: [{ version: '20260101' }] }) : '-- controlled SQL' },
-      'node:path': { join },
+      'node:path': { join, resolve },
       './bootstrap.mjs': { repoRoot: root, loadPlan: () => [{ version: '20260101' }] },
+      './activate-local-celebrations.mjs': {
+        preparedLocalActivation: () => ({ container: 'supabase_db_' + projectId }),
+      },
       './verify-club-rounds.mjs': {
         clubRoundsOptions: () => {
           if (${denied}) throw new Error('NOT_RUN: GO missing');

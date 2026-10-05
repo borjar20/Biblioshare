@@ -21,6 +21,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Bootstrap and guarded cutover contracts
+        run: node --test scripts/db/bootstrap.test.mjs scripts/db/celebrations-cutover.test.mjs
       - name: Lint all source files
         run: npm run lint
       - run: npx next typegen
@@ -45,6 +47,8 @@ jobs:
       - run: npm run db:local:prepare
       - name: Start disposable database
         run: supabase --workdir .superpowers/supabase-local start --exclude studio,postgres-meta,imgproxy,edge-runtime,logflare,vector,supavisor,realtime > /dev/null
+      - name: Activate recoverable celebrations after database quiescence
+        run: node scripts/db/activate-local-celebrations.mjs --privileged-dispatch-paused
       - run: npm run test:db:local -- --club-rounds-ci-exclusive
       - run: node scripts/ci-local.mjs build
       - run: node scripts/ci-local.mjs smoke

@@ -1,6 +1,6 @@
 # Rondas #401: matriz SQL y corrección del slug del fixture
 
-[Candidato · verificado el 2026-10-05 · Native 44be/F3/288: matriz 11/11 y carrera/cleanup y revisión independiente PASS · integración main f1205 · CI final pendiente]
+[Candidato · verificado el 2026-10-05 · Native 44be/F3/288: matriz 11/11 y carrera/cleanup y revisión independiente PASS · integración main 8424 · CI final pendiente]
 
 El checker corregido `44be5bb` ha pasado la matriz real 11/11 y la carrera de
 dos sesiones PostgreSQL en el F3 auténtico conservado `f3d738c9`, ledger 288.
@@ -24,9 +24,10 @@ recibió en `d2274d07a44e70cc45db6fbf44db15168f169c47`. El coordinador integró
 su baseline documental en `f4119d476fa478a50519ea2236dd303a0a002790`; el primer
 commit sigue siendo ancestro y este worker no modificó esa rama. Esta pieza
 incorpora después main `4949bc376f5555e3a521915b0444d2f0bde3ccb4` y luego
-`f1205b958861170c8ae2a5af3d9aa4030aebaa53`, con Notas en el margen PR #1396,
-Experiencias/Lugares y la corrección #405 ya integrada. Sus fuentes, siete
-migraciones posteriores, schema-baseline, tipos, data-model, graph y contratos
+`f1205b958861170c8ae2a5af3d9aa4030aebaa53` y la main definitiva
+`8424eeccd1e906cb9fcf93d309832cdc927fb3f0`, con Notas en el margen PR #1396,
+Experiencias/Lugares, Celebraciones, #1369/#1385 y la corrección #405 integrada.
+Sus fuentes, migraciones, schema-baseline, tipos, data-model, graph y contratos
 de CI se preservan; no se atribuye el Native F3/288 al nuevo plan integrado.
 
 ## Problema y fuentes
@@ -253,17 +254,61 @@ cambio de contenido ni nuevo commit de matriz. Checker y matriz conservan
 respectivamente SHA `f663ec597d575e15c9b262c4384f92e64b0e2d0b38318220caf07963149ae9fa`
 y `fc8eed0c6d9930dffae820d526704b40b185ff2ac019898b03f6e322e94bf8a0`.
 
-La comparación de integración acredita los 3316 blobs de `f1205` fuera de los
+La comparación de aquel corte acredita los 3316 blobs de `f1205` fuera de los
 nueve archivos propios; el caller, workflows, package e índice sólo añaden el
-alcance de #401. No cambian dependencias. En el candidato integrado pasan
+alcance de #401. No cambian dependencias. En aquel candidato pasaron
 24/24 contratos Node del bootstrap/checker y 9/9 del caller real de #405, cero
 skip, además de lint focal, tipos sin emisión y sintaxis de bootstrap, caller
 y checker. Los comandos, salidas y receipts se conservan en la cápsula de
 integración; estos checks no ejecutan PostgreSQL ni navegador.
 
-La main definitiva con Celebraciones se integrará bajo coordinación antes de
-una única CI final. Esta comprobación local no inicia Docker, Next, navegador
-o SQL, ni autoriza publicar o cerrar #401.
+En aquel corte quedaba integrar la main definitiva con Celebraciones antes
+de una única CI final. Su continuación se conserva en una carpeta nueva.
+
+### Main definitiva 8424 y contratos del caller actual
+
+La main `8424eeccd1e906cb9fcf93d309832cdc927fb3f0` tiene el mismo árbol Git
+`fb875b85fc2770f57650b41b1aaeadbc4586a45e` que el candidato `0c663a3` probado
+por el coordinador. El merge local conserva Celebraciones, diagnósticos #1369,
+cabecera #1385, Notas y Lugares. El plan natural tiene **298 etapas**, con las
+tres migraciones de Celebraciones y su activación protegida recibidas de main;
+este worker no añade ni modifica migraciones.
+
+Hubo tres conflictos: los dos workflows y `docs/TESTING.md`. La resolución
+conserva exactamente el step de activación tras quiescencia, los 20 contratos
+bootstrap/cutover y la fixture Node de #405, y añade sólo el flag de
+exclusividad de rondas a cada comando DB. El índice conserva íntegra la doc
+incoming y anexa #401. El caller mantiene todas las fases SQL de main, incluida
+`verify-celebrations.sql`, y el gate de rondas anterior al ledger general.
+
+El caller ahora importa `preparedLocalActivation`, que sólo contrasta fuentes,
+stamp e identidad de configuración antes de devolver el contenedor; no ejecuta
+SQL ni procesos. El harness VM anterior rechazó ese import nuevo: RED real de
+27 casos, 25 PASS y dos FAIL del caller. Se guardaron salida y fuentes antes del
+arreglo. La adaptación añade exclusivamente esa frontera de lectura y `resolve`
+al transporte controlado; conserva los oráculos de reachability y ausencia de
+SQL sin GO, además de las 14 pruebas restantes de rondas. Checker y matriz
+siguen con sus bytes y blobs revisados.
+
+GREEN del candidato: **36/36** contratos Node, cero skip/fail: 11 bootstrap,
+nueve cutover y 16 rondas. Son los 20 de main y los 27 bootstrap/rondas con 11
+compartidos; no se suman como tandas independientes. La fixture #405 pasa
+9/9, tipos sin emisión, lint focal y sintaxis del bootstrap/caller PASS.
+
+El diff-check general contra el corte anterior detectó una línea en blanco al
+final de `20261003184419_recoverable_celebrations_expand.sql:212`, ya presente
+en main `8424`. El FAIL y su reproducción entre commits incoming se conservan;
+el blob de esa migración sigue idéntico. El diff-check del delta propio de #401
+contra `8424` pasa. No se corrige la migración recibida para ocultar el FAIL.
+
+Captura, conflictos, RED y checks finales en
+`.scratch/ticket-campaign/20261005-resume/club401-main-integration-r1/main8424-r1/`
+y sus receipts asociados dentro de la misma cápsula. Los 168 artefactos del
+sello anterior `f1205` conservan sus hashes. La revisión runtime sigue PASS en
+su pin 44be/F3/288; la **CI del nuevo HEAD integrado está pendiente** y deberá
+ejecutar la matriz/carrera en la base actual. No se repite el F3 histórico.
+En esta entrega SQL/Docker/Next/navegador quedan NOT_RUN; publicación y cierre
+requieren el gate del coordinador. #401 sigue abierto.
 
 ## GO y protocolo reproducible para una siguiente QA
 

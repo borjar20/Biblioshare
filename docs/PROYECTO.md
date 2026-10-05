@@ -151,7 +151,7 @@ los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
   reacciones; la sección de la ficha y la revelación viven en «Mi registro» (`?tab=log`); el Cuaderno
   (`/notas`) filtra con `margen=encontradas|mias`. Solo las dedicadas avisan (push `social`).
   Se puede denunciar desde el hilo; las acciones de admin sobre ella están pendientes (#1384).
-- **Celebraciones** (hitos ganar→drenar, `user_celebrations`) con animación.
+- **Celebraciones** (`user_celebrations`) con animación. El protocolo #1334 separa ganar→reservar→mostrar→confirmar para recuperar entregas canceladas; esquema activo en dev y producción, verificado el 2026-10-04 a las 20:16:22 UTC, con legacy compatible de cero filas. La entrega del consumidor y sus controles se siguen en PR #1364; el corte de esquema y G4 local no acreditan presentación remota.
 
 ## Clubes
 
