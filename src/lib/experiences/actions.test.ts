@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks=vi.hoisted(()=>({createClient:vi.fn(),revalidateExperiences:vi.fn(),rpc:vi.fn(),getUser:vi.fn()}));
+const mocks=vi.hoisted(()=>({createClient:vi.fn(),revalidateExperiences:vi.fn(),rpc:vi.fn(),getUser:vi.fn(),resolvePlaceToken:vi.fn()}));
 vi.mock("server-only",()=>({}));
 vi.mock("@/lib/supabase/server",()=>({createClient:mocks.createClient}));
 vi.mock("@/lib/reactivity/revalidate",()=>({revalidateExperiences:mocks.revalidateExperiences}));
+vi.mock("@/lib/places/register",()=>({resolvePlaceToken:mocks.resolvePlaceToken}));
 import { createExperience, updateExperience, saveMoment, removeMoment, reorderMoments, deleteExperience } from "./actions";
 const id="78f7377a-73c6-40c4-8c86-a395518d4bb0";
 const second="78f7377a-73c6-40c4-8c86-a395518d4bb1";
@@ -10,6 +11,7 @@ const capture={title:"  Plan  ",state:"planned" as const,kind:"walk" as const};
 const update={title:"Plan",shape:"single" as const,state:"planned" as const,audience:"private" as const,startsOn:null,endsOn:null};
 beforeEach(()=>{
   vi.clearAllMocks();
+  mocks.resolvePlaceToken.mockResolvedValue(null);
   mocks.getUser.mockResolvedValue({data:{user:{id:"user"}},error:null});
   mocks.rpc.mockResolvedValue({data:{id},error:null});
   mocks.createClient.mockResolvedValue({auth:{getUser:mocks.getUser},rpc:mocks.rpc});
@@ -54,5 +56,28 @@ describe("experience actions",()=>{
   it("turns transport errors into a recoverable inline error",async()=>{
     mocks.rpc.mockRejectedValue(new Error("connection lost"));
     expect(await createExperience(capture)).toEqual({ok:false,error:"unknown"});
+  });
+});
+describe("place links",()=>{
+  const placeId="11111111-2222-4333-8444-555555555555";
+  it("swaps a valid token for placeId and never sends the token to SQL",async()=>{
+    mocks.resolvePlaceToken.mockResolvedValue(placeId);
+    await createExperience({...capture,placeLabel:"Museo",placeToken:"a.b"});
+    expect(mocks.resolvePlaceToken).toHaveBeenCalledWith("a.b");
+    expect(mocks.rpc).toHaveBeenCalledWith("experience_create",{p_input:{title:"Plan",state:"planned",kind:"walk",placeLabel:"Museo",startsOn:null,endsOn:null,placeId}});
+  });
+  it("keeps the text when the token does not verify",async()=>{
+    await saveMoment(id,4,{title:"Museo",kind:"museum",placeLabel:"Museo",placeToken:"bad.token"});
+    expect(mocks.rpc).toHaveBeenLastCalledWith("experience_save_moment",{p_id:id,p_revision:4,p_input:{title:"Museo",kind:"museum",placeLabel:"Museo",startsOn:null,endsOn:null}});
+  });
+  it("forwards keepPlace without resolving anything",async()=>{
+    await saveMoment(id,4,{id:second,title:"Museo",kind:"museum",keepPlace:true});
+    expect(mocks.resolvePlaceToken).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenLastCalledWith("experience_save_moment",{p_id:id,p_revision:4,p_input:{id:second,title:"Museo",kind:"museum",placeLabel:null,startsOn:null,endsOn:null,keepPlace:true}});
+  });
+  it("does not resolve tokens for anonymous callers",async()=>{
+    mocks.getUser.mockResolvedValue({data:{user:null},error:null});
+    await createExperience({...capture,placeToken:"a.b"});
+    expect(mocks.resolvePlaceToken).not.toHaveBeenCalled();
   });
 });

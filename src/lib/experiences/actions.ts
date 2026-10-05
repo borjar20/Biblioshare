@@ -3,9 +3,17 @@ import type { CreateExperienceInput, ExperienceResult, SaveMomentInput, UpdateEx
 import { experienceMutation, validRevision } from "./mutation";
 import { isExperienceId, validateCreateExperience, validateUpdateExperience, validateMoment } from "./validation";
 import {removeExperienceImage} from "@/lib/storage/experience-photos";
+import { resolvePlaceToken } from "@/lib/places/register";
+
+// The token never reaches SQL: a verified one becomes placeId; anything else saves as text.
+async function withPlace<T extends {placeToken?:string|null}>(value:T) {
+  const {placeToken,...rest}=value;
+  const placeId=placeToken ? await resolvePlaceToken(placeToken) : null;
+  return placeId ? {...rest,placeId} : rest;
+}
 export async function createExperience(input:CreateExperienceInput):Promise<ExperienceResult<{id:string}>> {
   const value=validateCreateExperience(input);
-  return experienceMutation(Boolean(value),(client)=>client.rpc("experience_create",{p_input:{...value!}}));
+  return experienceMutation(Boolean(value),async(client)=>client.rpc("experience_create",{p_input:await withPlace(value!)}));
 }
 export async function updateExperience(id:string,revision:number,input:UpdateExperienceInput):Promise<ExperienceResult<{revision:number}>> {
   const value=validateUpdateExperience(input);
@@ -13,7 +21,7 @@ export async function updateExperience(id:string,revision:number,input:UpdateExp
 }
 export async function saveMoment(id:string,revision:number,input:SaveMomentInput):Promise<ExperienceResult<{id:string;revision:number}>> {
   const value=validateMoment(input);
-  return experienceMutation(isExperienceId(id)&&validRevision(revision)&&Boolean(value),(client)=>client.rpc("experience_save_moment",{p_id:id,p_revision:revision,p_input:{...value!}}),id);
+  return experienceMutation(isExperienceId(id)&&validRevision(revision)&&Boolean(value),async(client)=>client.rpc("experience_save_moment",{p_id:id,p_revision:revision,p_input:await withPlace(value!)}),id);
 }
 export async function removeMoment(id:string,revision:number,moment:string):Promise<ExperienceResult<{revision:number}>> {
   return experienceMutation(isExperienceId(id)&&validRevision(revision)&&isExperienceId(moment),(client)=>client.rpc("experience_remove_moment",{p_id:id,p_revision:revision,p_moment_id:moment}),id);

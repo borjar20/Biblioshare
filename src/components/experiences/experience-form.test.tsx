@@ -20,7 +20,7 @@ const experience: ExperienceDetail = {
   id: "memory", creatorId: "owner", viewerId: "owner", title: "Madrid con Ana", revision: 7,
   shape: "trip", state: "lived", audience: "participants", startsOn: "2026-10-03", endsOn: "2026-10-04",
   coverPhotoId: null, createdAt: "2026-10-03T12:00:00Z", canEdit: true, canContribute: true,
-  moments: [{ id: "moment", title: "Museo", kind: "museum", placeLabel: null, startsOn: null, endsOn: null, position: 0 }],
+  moments: [{ id: "moment", title: "Museo", kind: "museum", placeLabel: null, placeId: null, startsOn: null, endsOn: null, position: 0 }],
   participants: [], attendance: [], favorites: [], photos: [], publicationId: null, interactionTargetId: null, rating: null, momentRatings: {}, reviews: [],
 };
 
