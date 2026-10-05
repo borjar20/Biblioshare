@@ -1,6 +1,6 @@
 # Experiencias — reseñas por momento
 
-> **[Evidencia · 2026-10-04 · local + biblioshare-dev; producción NO aplicada]**
+> **[Evidencia · 2026-10-04 · local + biblioshare-dev + producción; esquema aplicado y verificado en producción]**
 
 Cierre de la entrega «reseñas por momento y ampliaciones» sobre la rama
 `feat/experiencias-resenas` (seguimiento #1293). Contrato:
@@ -125,7 +125,27 @@ Contra objetos reales, no contra el ledger:
 | EXECUTE | `PUBLIC` sin permiso en ninguna de las funciones nuevas; `anon` solo en `get_experience_rating_summaries(uuid[])` |
 | Triggers de la tabla | `experience_moment_reviews_guard`, `experience_review_cleanup_post`, `experience_review_cleanup_target`, `moderation_capture_delete` |
 
+## Verificación de producción y alcance (2026-10-04)
+
+La fila de producción de «Estado por entorno» recoge la aplicación y la auditoría
+documentadas en [PR #1378](https://github.com/borjar20/Biblioshare/pull/1378): objetos reales,
+13 funciones, las tres políticas afectadas (reseñas, posts y evidencia de denuncias), ACL,
+triggers y digests, seguidas del despliegue y del smoke anónimo allí descritos. Las pruebas
+SQL con fixtures y los 16 E2E pertenecen a local/dev; no acreditan un recorrido autenticado
+de reseñar, compartir o retirar consentimiento en producción.
+
+El recibo independiente `experience-production-doc-meta.json`, conservado en
+`.scratch/ticket-campaign/20261004-continue/` (2026-10-04, 21:03:00.016365 UTC), confirma un
+alcance menor: existe `experience_moment_reviews`, tiene RLS activa y una política en esa
+tabla, `anon` y `authenticated` tienen SELECT, y existe
+`get_experience_rating_summaries(uuid[])`. Este recibo no verifica los cuerpos o ACL de las
+13 funciones, las definiciones de las tres políticas ni flujos con datos en producción.
+La sincronización documental [#1379](https://github.com/borjar20/Biblioshare/issues/1379)
+se apoya en ambas fuentes con esos límites; no añade una nueva auditoría ni aceptación UI.
+
 ## Despliegue a producción (hecho el 2026-10-04 siguiendo este orden)
+
+El orden siguiente conserva el procedimiento ejecutado en ese corte histórico.
 
 **Migraciones primero, código después.** El código nuevo depende de objetos que solo existen
 tras las migraciones: `getExperiencePreviews` llama a `get_experience_rating_summaries` (la
@@ -200,9 +220,12 @@ comprueba la revocación por contenido, como `posts.spec.ts`.
 
 ## Alcance y límites
 
-- Esta evidencia acredita local, dev y E2E. **No acredita producción**: ni migraciones ni
-  objetos ni despliegue. La aplicación del esquema en producción se verificará contra
-  `pg_proc`/`pg_class`/`pg_policies` y se añadirá aquí como sección propia.
+- **Corte local/dev anterior a aplicar en producción (2026-10-04):** los unitarios,
+  las pruebas SQL y los E2E acreditan sus propios entornos; la comprobación de producción
+  estaba pendiente en ese corte. Los resultados y sus límites se conservan.
+- **Estado posterior (2026-10-04):** aplicación, objetos y despliegue registrados en
+  «Estado por entorno» y «Verificación de producción y alcance». Sin fixtures en
+  producción; el smoke anónimo no acredita un recorrido autenticado de reseñas.
 - La superficie 6 de `DRIFT-CHECK.md` (grants por columna) no obliga a ampliar nada: la tabla
   nueva solo concede SELECT y `posts` no gana columnas.
 - Ninguna función nueva usa `use cache` (regla #437): la media depende de la sesión.

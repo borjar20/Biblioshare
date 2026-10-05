@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { withClubRoundFixture } from "./support/club-round-fixture";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -9,10 +10,6 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 function adminHeaders() {
   return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
 }
-function adminJson() {
-  return { ...adminHeaders(), "Content-Type": "application/json" };
-}
-
 async function devtestId(): Promise<string> {
   const rows = (await (
     await fetch(
@@ -50,37 +47,9 @@ test("ronda: el titular propone y la ronda queda respondible", async ({ page }) 
 
   const owner = await devtestId();
   const ts = Date.now();
-  const slug = `e2e-ronda-${ts}`; // único por ejecución: dos pasadas seguidas o
-  // dos sesiones a la vez no pueden chocar en el índice único de slug.
-
-  let clubId: string | null = null;
-
-  try {
-    const [club] = (await (
-      await fetch(`${SUPABASE_URL}/rest/v1/clubs`, {
-        method: "POST",
-        headers: { ...adminJson(), Prefer: "return=representation" },
-        body: JSON.stringify({
-          slug,
-          name: `E2E Ronda ${ts}`,
-          visibility: "private",
-          owner_id: owner,
-        }),
-      })
-    ).json()) as { id: string }[];
-    if (!club?.id) throw new Error("no se pudo crear el club desechable");
-    clubId = club.id;
-
-    // Insertar el club directo por REST se salta create_club(), que es quien
-    // normalmente crea esta fila de forma atómica junto con la del club. Sin
-    // ella el roster de get_club_round_state sale vacío y el titular es NULL
-    // -- el composer no se pintaría y el test fallaría sin que hubiera bug.
-    await fetch(`${SUPABASE_URL}/rest/v1/club_members`, {
-      method: "POST",
-      headers: adminJson(),
-      body: JSON.stringify({ club_id: clubId, user_id: owner, role: "owner", status: "active" }),
-    });
-
+  await withClubRoundFixture({
+    supabaseUrl: SUPABASE_URL, headers: adminHeaders(), ownerId: owner, timestamp: ts,
+  }, async ({ clubId, slug }) => {
     // El composer solo se pinta para el titular AUTENTICADO (RoundBlock recibe
     // viewerId de getCurrentUser() en la página del club) -- sin login, esMiTurno
     // nunca es true y el test fallaría sin que hubiera ningún bug. El brief no
@@ -150,15 +119,5 @@ test("ronda: el titular propone y la ronda queda respondible", async ({ page }) 
     // La obra viajó hasta la fila, no solo hasta el enlace en pantalla.
     expect(round?.item_type).not.toBeNull();
     expect(round?.item_id).not.toBeNull();
-  } finally {
-    // Autolimpieza: el club es desechable y nadie más lo usa, así que basta con
-    // borrarlo por id -- el cascade se lleva club_members y club_rounds. No hay
-    // nada que restaurar (no se tocó ningún club compartido).
-    if (clubId) {
-      await fetch(`${SUPABASE_URL}/rest/v1/clubs?id=eq.${clubId}`, {
-        method: "DELETE",
-        headers: adminHeaders(),
-      });
-    }
-  }
+  }, fetch);
 });
