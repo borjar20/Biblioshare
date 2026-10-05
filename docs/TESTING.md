@@ -926,3 +926,48 @@ de route-cache añadidos, 2445 previos idénticos. Fuentes3272 y ejecutables792
 conservan sus hashes. Parada física independiente PASS con backup, censo0,
 puertos libres y volúmenes conservados. Las guardas originales siguen intactas;
 CI integrada y main pendientes. No acredita Auth real, Android ni producción.
+
+## Matriz SQL y carrera de rondas de club (#401)
+
+[Candidato y protocolo de QA](testing/2026-10-05-club-round-matrix-401.md):
+la matriz fuerza lunes, martes y miércoles dentro de `BEGIN/ROLLBACK` y conduce
+las RPC como `authenticated`. El runner exige GO del coordinador para una base
+Docker local exclusiva; la carrera utiliza dos sesiones y observa ambos INSERT
+bloqueados antes de soltarlos. Captura y restaura definición, ACL, propietario,
+configuración y OID del reloj, con journal real de recuperación.
+
+El runtime corregido del 2026-10-05 sobre `44be5bb` y el F3 auténtico de 288
+etapas pasó la matriz SQL **11/11** y la carrera: PID 312 y 313, dos
+`RowExclusiveLock` no concedidos antes del release, ambos RPC con el mismo UUID,
+una ronda física y un target. Cleanup/restauración PASS, hash del reloj original
+idéntico, journal ausente y nueve categorías del censo en cero. No fue necesario
+recovery. Stop normal con backup: Docker vacío, 13 puertos IPv4/IPv6 libres y
+todos los volúmenes previos conservados; ownership liberado al coordinador.
+
+El primer runtime sobre `3a3b9e4`/F3/288 conserva el FAIL del seed de 42 caracteres
+rechazado por `clubs_slug_format`, además de sus 11 marcas de matriz PASS y
+cleanup/restauración exactos. El arreglo emite 38 caracteres sin cambiar el UUID,
+cleanup o constraint. Conserva RED significativo y 24/24 contratos Node; su
+revisión fresca pasó 28 controles de fuente, 69 hashes y 16 contratos focales.
+
+La revisión independiente del runtime pasó sin hallazgos: 49 cotejos, 15
+artefactos finales, 338 de preparación y seis referencias históricas. Conserva
+el límite de su pin `44be5bb`/F3/288 y no inspeccionó el worktree integrado.
+
+El checker y la matriz probados conservan sus blobs al integrar main `8424eec`,
+incluidas Notas en el margen, Experiencias/Lugares, Celebraciones y la CI de
+#405. El nuevo plan natural tiene 298 etapas; el PASS nativo del corte anterior
+de 288 no acredita su SQL. La CI del nuevo HEAD integrado sigue pendiente.
+#401 permanece abierto. No se atribuyen navegador, dev, producción ni RLS remota
+a esta tanda.
+
+La integración final conserva la activación protegida de Celebraciones y sus
+20 contratos bootstrap/cutover. El nuevo import de identidad local exigió
+adaptar sólo el transporte VM del caller: RED de 27 casos, 25 PASS y dos FAIL.
+GREEN: 36/36 (11 bootstrap, nueve cutover, 16 rondas) y fixture #405 9/9, cero
+skip. Tipos y lint PASS; no se ejecutó SQL del plan de 298 etapas.
+
+Los informes de entrega de Celebraciones/#1385 se actualizan por los patches
+del coordinador: CI ancestral 4873/168/298 PASS, merge `8424` y entrega acreditada
+con sus límites. Conservan los FAIL Native/global/FULL. Esa entrega anterior
+no sustituye la CI pendiente del nuevo candidato #401.

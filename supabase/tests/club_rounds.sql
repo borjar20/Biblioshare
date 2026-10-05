@@ -1,5 +1,6 @@
 -- Matriz de regresión de las rondas de club.
--- Se ejecuta SOLO contra biblioshare-dev. Todo se revierte.
+-- Sólo Docker local desechable, mediante verify-club-rounds.mjs y su GO.
+-- El reloj se sustituye dentro de BEGIN/ROLLBACK; nunca en dev o producción.
 begin;
 
 create or replace function pg_temp.assert_true(p_condition boolean, p_message text)
@@ -8,6 +9,21 @@ begin
   if not coalesce(p_condition, false) then
     raise exception 'assertion_failed: %', p_message;
   end if;
+end;
+$function$;
+
+create or replace function pg_temp.expect_error(p_sql text, p_state text, p_error text)
+returns void language plpgsql as $function$
+declare v_state text; v_error text;
+begin
+  begin
+    execute p_sql;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_error = message_text;
+    if v_state = p_state and v_error = p_error then return; end if;
+    raise exception 'assertion_failed: esperaba %/%, llegó %/%', p_state, p_error, v_state, v_error;
+  end;
+  raise exception 'assertion_failed: se esperaba %/% pero la sentencia funcionó', p_state, p_error;
 end;
 $function$;
 
@@ -166,6 +182,7 @@ select pg_temp.assert_true(
   private.club_now() is distinct from (now() at time zone 'UTC'),
   'club_now() usa Europe/Madrid, no UTC'
 );
+select 'PASS club-rounds:real-madrid-clock';
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
 
@@ -273,40 +290,113 @@ select pg_temp.assert_true(
   'house_prompt es null cuando el periodo ya tiene ronda escrita'
 );
 
--- Fuera de esa rama, house_prompt es una PROPIEDAD frente a
--- private.house_prompt(): coincide con ella cuando toca (día >= 3 y sin
--- ronda) y es null en cualquier otro caso. Sin costura de inyección para
--- forzar club_now() (issue diferida de la Task 2, #4: "el camino de
--- consigna de la casa no tiene cobertura"), se escribe como propiedad válida
--- sea cual sea el día real en que corra la matriz, en vez de asumirlo. Club
--- 204 nunca recibe una ronda en todo este fichero -- aísla el efecto del día
--- sin la ronda ya escrita de por medio. La lectura pasa por
--- get_club_round_state (rol authenticated, como un cliente real); la
--- comparación con private.house_prompt() necesita el rol privilegiado
--- (revocado a authenticated a propósito), así que el resultado se pasa de
--- una sesión de rol a otra por una tabla temporal -- mismo motivo que
--- reset role antes de llamar a private.house_prompt() más abajo.
-create temporary table pg_temp.house_prompt_probe as
-select day_index, round_id, house_prompt, period_key
-from public.get_club_round_state('00000000-0000-4000-8000-000000000204');
+-- #401: tres fechas conocidas, mismas RPC/roles de cliente y dos clubes
+-- propios alineados con el reloj fijo. La casa está pendiente en 205 y en
+-- 206 ya existe una ronda del titular: su prioridad se prueba en cada día.
 reset role;
-do $$
-declare v_day int; v_round uuid; v_house text; v_period text;
-begin
-  select day_index, round_id, house_prompt, period_key
-    into v_day, v_round, v_house, v_period
-  from pg_temp.house_prompt_probe;
-  if v_round is null and v_day >= 3 then
-    perform pg_temp.assert_true(
-      v_house = private.house_prompt('00000000-0000-4000-8000-000000000204', v_period),
-      'house_prompt trae la consigna de la casa cuando toca (día >= 3, sin ronda)');
-  else
-    perform pg_temp.assert_true(
-      v_house is null,
-      'house_prompt es null fuera de la ventana de la casa (día < 3, sin ronda todavía)');
-  end if;
-end $$;
-drop table pg_temp.house_prompt_probe;
+insert into public.clubs (id, slug, name, visibility, owner_id, created_at) values
+ ('00000000-0000-4000-8000-000000000205', 'rondas-fixed-empty', 'Rondas reloj fijo', 'public',
+  '00000000-0000-4000-8000-0000000002a1', '2026-07-20 10:00:00+02'),
+ ('00000000-0000-4000-8000-000000000206', 'rondas-fixed-existing', 'Rondas reloj fijo existente', 'public',
+  '00000000-0000-4000-8000-0000000002a1', '2026-07-20 10:00:00+02');
+insert into public.club_members (club_id, user_id, role, status, joined_at) values
+ ('00000000-0000-4000-8000-000000000205', '00000000-0000-4000-8000-0000000002a1', 'owner', 'active', '2026-07-20 10:00:00+02'),
+ ('00000000-0000-4000-8000-000000000205', '00000000-0000-4000-8000-0000000002b2', 'member', 'active', '2026-07-27 10:00:00+02'),
+ ('00000000-0000-4000-8000-000000000206', '00000000-0000-4000-8000-0000000002a1', 'owner', 'active', '2026-07-20 10:00:00+02'),
+ ('00000000-0000-4000-8000-000000000206', '00000000-0000-4000-8000-0000000002b2', 'member', 'active', '2026-07-27 10:00:00+02');
+insert into public.club_rounds (id, club_id, period_key, author_id, prompt) values
+ ('00000000-0000-4000-8000-000000000207', '00000000-0000-4000-8000-000000000206',
+  '2026-W40', '00000000-0000-4000-8000-0000000002a1', 'Ya existe la pregunta del titular');
+
+create or replace function private.club_now()
+returns timestamp language sql stable security invoker set search_path = ''
+as $clock$ select timestamp '2026-09-28 12:00:00'; $clock$;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
+select pg_temp.assert_true(
+ (select day_index = 1 and period_key = '2026-W40' and round_id is null and house_prompt is null
+  from public.get_club_round_state('00000000-0000-4000-8000-000000000205')),
+ 'lunes sin ronda no anuncia consigna de la casa');
+select pg_temp.expect_error(
+ $$select public.ensure_club_round('00000000-0000-4000-8000-000000000205')$$,
+ '42501', 'house_round_too_early');
+select 'PASS club-rounds:monday-early';
+select pg_temp.assert_true(
+ (select day_index = 1 and round_id = '00000000-0000-4000-8000-000000000207'
+   and round_prompt = 'Ya existe la pregunta del titular' and house_prompt is null
+  from public.get_club_round_state('00000000-0000-4000-8000-000000000206'))
+ and public.ensure_club_round('00000000-0000-4000-8000-000000000206') = '00000000-0000-4000-8000-000000000207',
+ 'lunes con ronda devuelve la existente incluso al responder sin prompt');
+select 'PASS club-rounds:monday-existing';
+
+reset role;
+create or replace function private.club_now()
+returns timestamp language sql stable security invoker set search_path = ''
+as $clock$ select timestamp '2026-09-29 12:00:00'; $clock$;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002b2","role":"authenticated"}';
+select pg_temp.assert_true(
+ (select day_index = 2 and period_key = '2026-W40' and round_id is null and house_prompt is null
+  from public.get_club_round_state('00000000-0000-4000-8000-000000000205')),
+ 'martes sin ronda no anuncia consigna de la casa');
+select pg_temp.expect_error(
+ $$select public.ensure_club_round('00000000-0000-4000-8000-000000000205')$$,
+ '42501', 'house_round_too_early');
+select 'PASS club-rounds:tuesday-early';
+select pg_temp.assert_true(
+ (select day_index = 2 and round_id = '00000000-0000-4000-8000-000000000207'
+   and round_prompt = 'Ya existe la pregunta del titular' and house_prompt is null
+  from public.get_club_round_state('00000000-0000-4000-8000-000000000206'))
+ and public.ensure_club_round('00000000-0000-4000-8000-000000000206') = '00000000-0000-4000-8000-000000000207',
+ 'martes con ronda devuelve la existente a otro socio');
+select 'PASS club-rounds:tuesday-existing';
+
+reset role;
+create or replace function private.club_now()
+returns timestamp language sql stable security invoker set search_path = ''
+as $clock$ select timestamp '2026-09-30 12:00:00'; $clock$;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002a1","role":"authenticated"}';
+create temporary table pg_temp.house_before as
+ select * from public.get_club_round_state('00000000-0000-4000-8000-000000000205');
+select pg_temp.assert_true(
+ (select day_index = 3 and period_key = '2026-W40' and round_id is null
+   and nullif(house_prompt, '') is not null from pg_temp.house_before),
+ 'miércoles sin ronda muestra una consigna antes de materializarla');
+select 'PASS club-rounds:wednesday-visible';
+create temporary table pg_temp.house_written as
+ select public.ensure_club_round('00000000-0000-4000-8000-000000000205') as id;
+select pg_temp.assert_true(
+ (select id is not null from pg_temp.house_written)
+ and (select round_id = (select id from pg_temp.house_written) and round_author is null
+   and round_prompt = (select house_prompt from pg_temp.house_before) and house_prompt is null
+  from public.get_club_round_state('00000000-0000-4000-8000-000000000205')),
+ 'responder sin prompt materializa la casa y devuelve la ronda con su consigna');
+select 'PASS club-rounds:wednesday-materialized';
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-0000000002b2","role":"authenticated"}';
+select pg_temp.assert_true(
+ public.ensure_club_round('00000000-0000-4000-8000-000000000205') = (select id from pg_temp.house_written),
+ 'la siguiente respuesta de otro socio devuelve la misma ronda');
+select 'PASS club-rounds:wednesday-idempotent';
+select pg_temp.assert_true(
+ (select day_index = 3 and round_id = '00000000-0000-4000-8000-000000000207'
+   and round_prompt = 'Ya existe la pregunta del titular' and house_prompt is null
+  from public.get_club_round_state('00000000-0000-4000-8000-000000000206'))
+ and public.ensure_club_round('00000000-0000-4000-8000-000000000206') = '00000000-0000-4000-8000-000000000207',
+ 'miércoles con ronda del titular no anuncia ni crea otra de la casa');
+select 'PASS club-rounds:wednesday-existing';
+reset role;
+select pg_temp.assert_true(
+ (select house_prompt from pg_temp.house_before)
+   = private.house_prompt('00000000-0000-4000-8000-000000000205', '2026-W40')
+ and (select count(*) from public.club_rounds where club_id = '00000000-0000-4000-8000-000000000205') = 1
+ and (select count(*) from public.interaction_targets
+   where kind = 'club_round' and source_id = (select id from pg_temp.house_written)
+     and owner_id = '00000000-0000-4000-8000-0000000002a1'
+     and audience_kind = 'club_member' and audience_id = '00000000-0000-4000-8000-000000000205'
+     and commentable and reactable) = 1,
+ 'una única ronda y target de la casa conservan consigna, dueño y audiencia canónicos');
+select 'PASS club-rounds:wednesday-target';
 
 -- La consigna de la casa es determinista y depende del club Y del periodo.
 -- private.house_prompt() es una función interna: el Step 3 le revoca
@@ -338,3 +428,4 @@ select pg_temp.assert_true(
 select set_config('request.jwt.claims', '', true);
 
 rollback;
+select 'PASS club-rounds:rollback';
