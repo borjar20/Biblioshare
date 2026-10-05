@@ -18,6 +18,7 @@ import { maybeAutopostWatchedDay } from "@/lib/social/autopost-watched";
 import { todayISO as todayUtcISO } from "@/lib/series/aired";
 import { parseWatchedOn } from "@/lib/series/watched-on";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { deliverMarginNotices } from "@/lib/margin/deliver";
 import { createPost } from "@/lib/social/post-actions";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 
@@ -279,6 +280,7 @@ export async function addSession(
       revalidateReadingLog(itemType, itemId);
       return { ok: true, passClosed: true };
     }
+    await deliverMarginNotices(supabase);
     revalidateReadingLog(itemType, itemId);
     return { ok: true };
   }
@@ -399,6 +401,7 @@ export async function addSession(
     return { ok: true, passClosed: true };
   }
 
+  await deliverMarginNotices(supabase);
   revalidateReadingLog(itemType, itemId);
   return { ok: true };
 }

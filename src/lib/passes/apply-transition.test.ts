@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   maybeAutopostMilestone: vi.fn(),
 }));
 
+vi.mock("@/lib/margin/deliver", () => ({ deliverMarginNotices: vi.fn() }));
 vi.mock("./get-passes", () => ({ getActivePass: mocks.getActivePass }));
 vi.mock("@/lib/social/autopost", () => ({
   maybeAutopostMilestone: mocks.maybeAutopostMilestone,

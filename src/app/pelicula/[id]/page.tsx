@@ -21,7 +21,7 @@ import { RouteMessages } from "@/components/route-messages";
 // Namespaces de cliente de la ficha (medidos por su subárbol, #444).
 const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
-  "item", "library", "notes", "passes", "social", "joint",
+  "item", "library", "margin", "notes", "passes", "social", "joint",
 ] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
@@ -71,6 +71,8 @@ import {
 } from "@/components/detail/catalog-editor";
 import { NotesSection } from "@/components/notes/notes-section";
 import { getNotesForItem } from "@/lib/notes/get-notes";
+import { MarginSection } from "@/components/margin/margin-section";
+import { getItemMarginNotes } from "@/lib/margin/queries";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
 
@@ -151,6 +153,14 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   // Evita un unhandledRejection antes de que Tabs entregue la misma promesa a
   // NotesSection; no transforma el rechazo que espera el renderer.
   void notesPromise?.catch(() => undefined);
+
+  // Misma regla que notesPromise: empieza durante el render, antes de cualquier
+  // `after()`, y su rechazo se atiende aquí sin alterar la promesa que espera
+  // MarginSection. Sin `use cache`: el resultado depende de quién mira (RLS, #437).
+  const marginPromise = user
+    ? getItemMarginNotes(supabase, user.id, "movie", movie.id)
+    : null;
+  void marginPromise?.catch(() => undefined);
 
   // Invitación a un visionado conjunto de esta obra sin contestar (#1224): se
   // lanza ya y se espera antes de pintar, en paralelo con lo del hero. Un fallo
@@ -272,6 +282,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
               movie={movie}
               userId={user?.id ?? null}
               notesPromise={notesPromise}
+              marginPromise={marginPromise}
               ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
@@ -288,12 +299,14 @@ async function MovieTabs({
   movie,
   userId,
   notesPromise,
+  marginPromise,
   ratingSummary,
   cerrar,
 }: {
   movie: MovieRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
+  marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
@@ -567,6 +580,11 @@ async function MovieTabs({
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="movie" notesPromise={notesPromise} />}
+          {userId && marginPromise && (
+            <Suspense fallback={null}>
+              <MarginSection itemType="movie" itemId={movie.id} pages={null} marginPromise={marginPromise} />
+            </Suspense>
+          )}
         </div>
       }
     />

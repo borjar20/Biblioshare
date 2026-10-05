@@ -51,6 +51,8 @@ vi.mock("@/components/detail/editions-loading", () => ({ EditionsLoading: () => 
 vi.mock("@/components/detail/hydration-watch", () => ({ HydrationWatch: () => null }));
 vi.mock("@/components/detail/saga-list", () => ({ SagaList: () => null }));
 vi.mock("@/components/notes/notes-section", () => ({ NotesSection: () => null }));
+vi.mock("@/lib/margin/queries", () => ({ getItemMarginNotes: async () => ({ found: [], mine: [] }) }));
+vi.mock("@/components/margin/margin-section", () => ({ MarginSection: () => null }));
 import BookDetailPage from "@/app/libro/[id]/page";
 
 type RouteProps = Parameters<typeof BookDetailPage>[0];

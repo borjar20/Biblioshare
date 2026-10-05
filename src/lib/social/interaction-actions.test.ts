@@ -31,7 +31,7 @@ vi.mock("./interaction-target-gate", () => ({
     const { data, error } = await supabase
       .from("interaction_targets")
       .select(
-        "id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
+        "id, kind, owner_id, audience_id, commentable, reactable, comment_notification_type, reaction_notification_type",
       )
       .eq("id", interactionTargetId)
       .maybeSingle();
@@ -48,6 +48,7 @@ type TargetRow = {
   kind: string;
   source_id: string;
   owner_id: string;
+  audience_id: string;
   commentable: boolean;
   reactable: boolean;
   comment_notification_type: string | null;
@@ -151,6 +152,7 @@ const passTarget: TargetRow = {
   kind: "pass",
   source_id: "pass-1",
   owner_id: "owner",
+  audience_id: "owner",
   commentable: true,
   reactable: true,
   comment_notification_type: "activity_commented",
@@ -209,6 +211,27 @@ describe("toggleReaction", () => {
 
     expect(fake.insertedReactions).toHaveLength(1);
     expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("en un hilo de margen, la reacción del autor avisa al lector", async () => {
+    const fake = makeActionClient({
+      target: {
+        ...passTarget,
+        kind: "margin_encounter",
+        owner_id: "actor",
+        audience_id: "reader",
+        reaction_notification_type: "margin_liked",
+      },
+    });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await toggleReaction("target-pass");
+
+    expect(mocks.notify).toHaveBeenCalledTimes(1);
+    expect(mocks.notify).toHaveBeenCalledWith(
+      fake.client,
+      expect.objectContaining({ userId: "reader", type: "margin_liked" }),
+    );
   });
 
   it("falla con el error estable si el target no es visible", async () => {
@@ -343,6 +366,7 @@ describe("addComment", () => {
     kind: "activity_checkpoint",
     source_id: "checkpoint-1",
     owner_id: "owner",
+    audience_id: "owner",
     commentable: true,
     reactable: false,
     comment_notification_type: "checkpoint_commented",
@@ -353,6 +377,7 @@ describe("addComment", () => {
     kind: "comment",
     source_id: "comment-1",
     owner_id: "actor",
+    audience_id: "actor",
     commentable: false,
     reactable: true,
     comment_notification_type: null,
@@ -424,6 +449,49 @@ describe("addComment", () => {
     expect(fake.insertedComments).toHaveLength(1);
     expect(mocks.notifyMentions).toHaveBeenCalledOnce();
     expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it("en un hilo de margen, la respuesta del autor avisa al lector", async () => {
+    const fake = makeActionClient({
+      target: {
+        ...checkpointTarget,
+        kind: "margin_encounter",
+        owner_id: "actor",
+        audience_id: "reader",
+        comment_notification_type: "margin_commented",
+      },
+      commentTarget,
+    });
+    mocks.createClient.mockResolvedValue(fake.client);
+
+    await addComment("target-checkpoint", "Gracias");
+
+    expect(mocks.notify).toHaveBeenCalledTimes(1);
+    expect(mocks.notify).toHaveBeenCalledWith(
+      fake.client,
+      expect.objectContaining({ userId: "reader", type: "margin_commented" }),
+    );
+  });
+
+  it("en un hilo de margen, una @mención a un tercero no genera aviso ni texto fuera de los dos", async () => {
+    const fake = makeActionClient({
+      target: {
+        ...checkpointTarget,
+        kind: "margin_encounter",
+        owner_id: "actor",
+        audience_id: "reader",
+        comment_notification_type: "margin_commented",
+      },
+      commentTarget,
+    });
+    mocks.createClient.mockResolvedValue(fake.client);
+    mocks.notifyMentions.mockResolvedValue(["tercero"]);
+
+    await addComment("target-checkpoint", "@tercero mira esto");
+
+    expect(mocks.notifyMentions).not.toHaveBeenCalled();
+    const notified = mocks.notify.mock.calls.map((call) => (call[1] as { userId: string }).userId);
+    expect(notified).toEqual(["reader"]);
   });
 
   it("mantiene el aviso normal al owner si la mención no llegó a insertarse", async () => {

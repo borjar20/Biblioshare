@@ -201,3 +201,12 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
   el perfil se abre desde el avatar, las secciones tienen entradas propias y
   **«Más opciones»** reúne los accesos secundarios globales. «Tu cuenta» y
   «Lo tuyo» ya no describen la navegación principal ni la cabecera del perfil.
+
+Delta 2026-10-04, notas en el margen: **nota en el margen** es la nota breve que una
+persona deja anclada a un punto de una obra para quien la lea después; **encontrada**
+es la nota que un lector se topa por proporción de avance (hilo privado entre autor y
+lector, `interaction_targets.kind = margin_encounter`); **dedicada** es la nota que su
+autor dirige a una persona concreta (aviso `margin_note_dedicated`). Los avisos de
+respuesta y reacción en ese hilo llegan a ambos: «respondió en vuestra nota del margen».
+
+Delta 2026-10-05, notas en el margen (escribir): los botones que abren el formulario dicen **«Dejar en el margen»** (hoja de sesión), **«Dejar nota en este episodio»** (episodio visto) y **«Dejar una nota en el margen»** (ficha); la hoja se titula «Una nota en el margen» y el guardado dice «Nota dejada en el margen». «Margen» solo se usa para estas notas, nunca para el cuaderno privado de la sesión («Notas»).
