@@ -20,7 +20,8 @@
 > cabecera y panel de notificaciones #1349 verificados con build/start local y siete E2E focales PASS el 2026-10-04; verificación sobre candidato local; integración/publicación rastreadas en [PR #1351](https://github.com/borjar20/Biblioshare/pull/1351);
 > Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
 > fichas Recursos y edición de asientos MTG #1006/#1008 verificadas con ocho E2E de build/start, a 390/1280 px, el 2026-10-04; CI del HEAD integrado exigida;
-> esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293]**
+> esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293;
+> notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05, producción pendiente]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -476,6 +477,23 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   y [UX de álbum (2026-10-03)](../testing/2026-10-03-experiencias-album.md);
   [navegación de la app (2026-10-03)](../testing/2026-10-03-navegacion-app.md)
   y [release (2026-10-03)](../testing/2026-10-03-experiencias-release.md).
+
+**Notas en el margen — implementadas y verificadas en dev (2026-10-05); producción pendiente (#1380)**
+- [x] [#1380](https://github.com/borjar20/Biblioshare/issues/1380) — Notas ancladas a un punto de la obra
+  que se abren a quien te sigue al llegar a él (libros por proporción con margen hacia atrás, series
+  por episodio, películas al terminar), con audiencia seguidores o dedicada, notas retroactivas,
+  hilo privado por lector, aviso solo en dedicadas, denuncia desde el hilo y revisión en la ficha
+  («Mi registro») y en el Cuaderno. Esquema aplicado y verificado en dev el 2026-10-05 (objetos reales y
+  `supabase/tests/margin_notes.sql` PASS con rollback). **Seis migraciones sin aplicar en producción** y
+  PR sin abrir: hace falta el OK del propietario. Contrato:
+  [spec](../superpowers/specs/2026-10-04-notas-en-el-margen-design.md); esquema: `data-model.md` §8quater.
+- [ ] Seguimientos abiertos, fuera de alcance de #1380:
+  [#1381](https://github.com/borjar20/Biblioshare/issues/1381) (minuto en películas),
+  [#1382](https://github.com/borjar20/Biblioshare/issues/1382) (aviso agrupado de retroactivas),
+  [#1383](https://github.com/borjar20/Biblioshare/issues/1383) (notas en un club),
+  [#1384](https://github.com/borjar20/Biblioshare/issues/1384) (panel de moderación: acciones de admin sobre
+  la nota denunciada) y [#1387](https://github.com/borjar20/Biblioshare/issues/1387) (categoría push propia;
+  hoy `social`).
 
 ## Features que no existen (P2-P3, por dominio)
 
