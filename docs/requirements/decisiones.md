@@ -6565,3 +6565,20 @@ Trade-off: una petición lenta mantiene abierta la conexión saliente hasta 8 s 
 la aborte (relevante para #1401). El texto libre nunca se bloquea: se puede escribir y guardar
 sin esperar ni elegir sugerencia. La latencia del Photon público sigue siendo un riesgo
 externo (#1398). Seguimiento: #1405.
+
+## 2026-10-05 — Feed: patrón C y nota por episodio en el post diario de series
+
+Las tarjetas «valoró» / «marcó un episodio» desperdiciaban alto (tarjeta + caja interior con
+portada de 58 px + fila de pie) y no distinguían valorar la serie de valorar un episodio: el post
+diario `watched` llevaba solo la nota del PRIMER episodio junto a «+3 episodios», y parecía la de
+los cuatro. Se decidió sobre maquetas (spec `2026-10-05-feed-patron-c-design.md`):
+
+- **Patrón C** para todo el feed: cabecera fina de una línea (el icono de comentarios sustituye al
+  pie), lo que se valoró/hizo como título, el valor a la derecha, contenido debajo solo si existe.
+  Piezas en `src/components/social/feed-card/`. Se migra por PRs: valoración/reseña primero; hito,
+  visionado conjunto y pensamiento después; avances, colección y club al final. Experiencias, fuera.
+- **Una nota por episodio**: `getFeed` añade `episodes` (temporada, episodio, título, nota) al post
+  `watched`, de la misma consulta `dayWatches` que ya contaba los del día (sin consultas nuevas ni
+  esquema; cliente de la petición, no se cachea — regla #437). Un episodio marcado dos veces el
+  mismo día cuenta una vez y gana la marca con nota. `episodeCount` desaparece.
+- **El verbo dice qué se valoró**: «valoró la serie» frente a «valoró/vio N episodios».
