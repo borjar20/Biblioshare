@@ -861,3 +861,41 @@ incorporarlo y dejarlo en `done`. Pasan los dos casos existentes y el control
 que retiene y libera la confirmación por señal. El control sin commit rechaza
 el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
 natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
+
+## Diagnósticos de claims obsoletos (#1369)
+
+[Cobertura focal](testing/2026-10-04-celebrations-stale-diagnostics-1369.md):
+el consumidor sólo informa de un claim fallido si siguen vigentes actor,
+generación y actividad. Diez casos distinguen errores actuales de resultados
+obsoletos tras cambiar de cuenta, cerrar o reiniciar, incluido A→B→A. Las ocho
+regresiones fallan con el código anterior; la tanda completa pasa 85/85, tipos
+y lint PASS. Revisión independiente 39/39, sin hallazgos.
+
+[Navegador focal](testing/2026-10-04-celebrations-stale-diagnostics-native-1369.md):
+una build Turbopack nueva pasa el recorrido natural #754 con checks de salud
+intactos. Se observa el claim abortado al navegar al primer detalle, sin errores
+de navegador; no se capturan generación/actor/actividad en el catch ni existe
+un antes/después causal. Los 17 abortos y la captura de Colección aún en skeleton
+se conservan. Actor, libros y servicios propios limpios. La CI sobre el HEAD
+integrado mantiene su gate independiente; no se declara cura causal del fallo
+CI anterior ni una auditoría global de red limpia.
+
+## Hidratación de cabecera y navegación al iniciar MTG (#1385)
+
+[Informe focal](testing/2026-10-05-chrome-hydration-1385.md): el gate de ruta
+mantiene un Suspense externo y el payload de sesión espera en otro interno.
+La regresión SSR/hidratación conserva dos FAIL con la topología anterior y
+pasa sus cinco casos con el candidato; la tanda de navegación suma 31/31.
+Antes de navegar se acredita la hidratación de los gates, y las barras se
+retiran mientras la sesión sigue pendiente. Lint y tipos focales PASS.
+
+El diagnóstico nativo anterior localiza dos React #418 en Header y BottomNav
+bajo AppShell. La revisión independiente ha pasado sin hallazgos. La build
+nueva `rS5hN2l856Bf-eL5iOPir` sobre `e5fdb395` pasa el spec original a 390 y
+1280px y dos controles de retorno por historial: 4/4, retry0, cero errores de
+página, consola o HTTP. Se mantienen global FAIL por 16 GET RSC cancelados
+sin clasificación (#1301) y el FAIL del gate de inventario completo: 56 archivos
+de route-cache añadidos, 2445 previos idénticos. Fuentes3272 y ejecutables792
+conservan sus hashes. Parada física independiente PASS con backup, censo0,
+puertos libres y volúmenes conservados. Las guardas originales siguen intactas;
+CI integrada y main pendientes. No acredita Auth real, Android ni producción.
