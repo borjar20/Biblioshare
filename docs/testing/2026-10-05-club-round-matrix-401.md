@@ -1,5 +1,14 @@
 # Rondas #401: matriz SQL y corrección del slug del fixture
 
+[Canónico · verificado el 2026-10-05 · Native 44be/F3/288 PASS · CI final 61cf/298 PASS · PR #1416 integrada en main 3c7 · cortes anteriores conservados]
+
+La entrega final de PR #1416 pasa su CI completa sobre `61cf20e5` y se integra
+en main `3c7b7e03` el 2026-10-05. El corte final al final del informe actualiza
+las referencias históricas a CI pendiente sin alterar sus evidencias. No
+acredita producción, dev ni una nueva tanda Native de #975.
+
+## Corte histórico anterior a la CI final
+
 [Candidato · verificado el 2026-10-05 · Native 44be/F3/288: matriz 11/11 y carrera/cleanup y revisión independiente PASS · integración main 8424 · CI final pendiente]
 
 El checker corregido `44be5bb` ha pasado la matriz real 11/11 y la carrera de
@@ -381,3 +390,39 @@ producción. La integración local posterior conserva las migraciones de main y
 el checker/matriz probados; no añade migraciones ni altera esquema. La revisión
 independiente del runtime pasó; la CI final del candidato integrado sigue
 pendiente. No se ha cerrado #401.
+
+## Corte final de entrega — 2026-10-05
+
+[PR #1416](https://github.com/borjar20/Biblioshare/pull/1416) se fusiona normalmente
+a las 15:28:30 UTC en `3c7b7e03efbfc916a768edd41a97858e7722b5b2`.
+Su HEAD es `61cf20e56acb52cc9f522826be230275fa9ae2bf`, base
+`ea77ed21f288bbf515e1b5b12dc04caf4deda816`; ocho checks SUCCESS/CLEAN.
+Los apartados anteriores conservan el estado pendiente que existía en su corte.
+
+| CI del HEAD 61cf | Resultado verificado |
+|---|---|
+| [Tests 37331509507](https://github.com/borjar20/Biblioshare/actions/runs/37331509507) | PASS: 497 archivos, 4.889 unitarios y 168 E2E; quality 20 Node y fixture #405 9/9 |
+| [Bootstrap 37331509492](https://github.com/borjar20/Biblioshare/actions/runs/37331509492) | PASS: 27 contratos Node, bootstrap SQL298 y contratos de esquema/roles |
+| Matriz y carrera en ambas CI | PASS: once marcas; dos RowExclusiveLock no concedidos antes del release; restauración y cleanup PASS |
+
+Los contratos Node distintos son 36: 20 y 27 con once compartidos. No se
+cuentan como 47 controles independientes; la fixture #405 añade nueve casos.
+Las sesiones observadas de carrera tienen pids388/389 y `granted:false`.
+El reloj antes/después conserva SHA-256
+`57a35e10f9756548090449a2669f13a9bc5e7d94607a05a882a8e2c36a257353`.
+Esta CI del plan integrado de 298 acredita la frontera que el Native histórico
+F3/288 no cubría. No convierte el FAIL de slug42 ni los controles estáticos
+anteriores en otra ejecución SQL.
+
+Recibo y logs preservados por el coordinador:
+`.scratch/ticket-campaign/20261005-resume/club401-delivery-r1/ci-61cf-final-r2.json`,
+SHA-256 `c78ef7a1101d3d537ec4d71dd5c7f1adf99fe93a8aad35a67b408ee123e916b1`.
+El recibo se tomó a las 15:27:05 UTC y conserva `noMergeYet:true`; el merge
+posterior se acredita por su recibo independiente y no reescribe ese corte.
+
+La incorporación documental a #975 no ejecuta otra matriz, build o navegador.
+La tanda #975 sigue anclada a `5679ec91`: funcional10/10 y GLOBAL FAIL/exit1,
+con seguimiento en [#1301](https://github.com/borjar20/Biblioshare/issues/1301#issuecomment-5997420268)
+y [#1417](https://github.com/borjar20/Biblioshare/issues/1417). La CI de la
+composición posterior de #975 es independiente. No se atribuye a esta entrega
+ninguna comprobación de producción, dev, grants remotos o RLS remota.

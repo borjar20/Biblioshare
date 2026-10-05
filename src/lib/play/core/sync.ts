@@ -1,6 +1,6 @@
 import type { PlayEvent, SavedGameSummary } from "./types";
-import type { SavedGameRecord } from "./db";
-import { deleteSaved, listSaved, readSaved, saveFinished } from "./db";
+import type { SavedGameRecord, SavedSession } from "./db";
+import { deleteSaved, isSavedSessionCurrent, listSaved, readSaved, readSavedSession, saveFinished } from "./db";
 
 // Fila de `play_games` tal y como la ve el motor: SIN owner_id -- lo inyecta
 // el adaptador Supabase (Task 6), RLS ya filtra por auth.uid().
@@ -94,9 +94,12 @@ export type MirrorApi<R> = {
   remove(ids: string[]): Promise<{ error: boolean }>;
 };
 
-// La API pública de fase 5 NO cambia: PlayGamesApi sigue siendo el nombre que
-// usa el resto del código (Task 6, play-games-api.ts).
-export type PlayGamesApi = MirrorApi<PlayGameRow>;
+// El reconciliador compartido sigue usando MirrorApi. Sólo las guardadas
+// necesitan registrar el contexto de sesión antes de iniciar una pasada.
+export type PlayGamesApi = MirrorApi<PlayGameRow> & {
+  // El adaptador valida Auth y registra el contexto antes del snapshot local.
+  prepareSession?(): Promise<SavedSession | null>;
+};
 
 export const SAVED_CHANNEL_PREFIX = "biblioshare:play:saved:";
 
@@ -186,44 +189,91 @@ export async function runMirrorSync<L extends MirrorRecord, R extends { id: stri
   notifyChanged(store.channelPrefix, identity);
 }
 
-const savedStore: MirrorStore<SavedGameRecord, PlayGameRow> = {
-  list: listSaved,
-  read: readSaved,
-  put: saveFinished,
-  remove: deleteSaved,
-  localId: (record) => record.gameId,
-  toRow: rowFromRecord,
-  fromRow: recordFromRow,
-  channelPrefix: SAVED_CHANNEL_PREFIX,
-};
-
-export function runSavedSync(identity: string, api: PlayGamesApi): Promise<void> {
-  return runMirrorSync(identity, api, savedStore);
+export async function runSavedSync(identity: string, api: PlayGamesApi, prepared?: SavedSession): Promise<void> {
+  let channel: BroadcastChannel | null = null;
+  try {
+    const session = prepared ?? await (api.prepareSession ? api.prepareSession() : readSavedSession(identity));
+    if (!session || session.identity !== identity) return;
+    let cancelled = false;
+    try {
+      channel = new BroadcastChannel(SAVED_CHANNEL_PREFIX + identity);
+      channel.onmessage = ({ data }: MessageEvent) => {
+        if (data?.type === "session-ended" && data.generation > session.generation) cancelled = true;
+      };
+    } catch {
+      // El canal acelera la cancelación. IDB protege también entre documentos
+      // sin canal, incluyendo el intervalo entre la lectura y la escritura.
+    }
+    const current = async () => !cancelled && await isSavedSessionCurrent(session);
+    const guardedApi: MirrorApi<PlayGameRow> = {
+      async selectAll() {
+        if (!await current()) return { error: true };
+        const result = await api.selectAll();
+        return await current() ? result : { error: true };
+      },
+      async upsert(rows) {
+        if (!await current()) return { error: true };
+        const result = await api.upsert(rows);
+        return await current() ? result : { error: true };
+      },
+      async remove(ids) {
+        if (!await current()) return { error: true };
+        const result = await api.remove(ids);
+        return await current() ? result : { error: true };
+      },
+    };
+    const store: MirrorStore<SavedGameRecord, PlayGameRow> = {
+      list: listSaved,
+      async read(id) {
+        const record = await readSaved(id);
+        return record?.identity === identity ? record : null;
+      },
+      put: (record) => cancelled ? Promise.resolve(false) : saveFinished(record, session),
+      remove: (id) => cancelled ? Promise.resolve() : deleteSaved(id, session),
+      localId: (record) => record.gameId,
+      toRow: rowFromRecord,
+      fromRow: recordFromRow,
+      channelPrefix: SAVED_CHANNEL_PREFIX,
+    };
+    await runMirrorSync(identity, guardedApi, store);
+  } catch {
+    // Un fallo de Auth/red/IDB conserva los pendientes para otra pasada.
+  } finally {
+    channel?.close();
+  }
 }
 
 // Candado por identidad: una pasada en vuelo; si llega otra petición, se anota
 // y corre UNA vez más al terminar (sin colas largas — spec §5).
-const inFlight = new Map<string, { rerun: boolean }>();
+const inFlight = new Map<string, { rerun: boolean; session: SavedSession }>();
 
 export function requestSavedSync(identity: string): void {
   if (identity === "anon") return;
   if (typeof navigator !== "undefined" && !navigator.onLine) return;
-  const current = inFlight.get(identity);
-  if (current) {
-    current.rerun = true;
-    return;
-  }
-  const entry = { rerun: false };
-  inFlight.set(identity, entry);
   void (async () => {
+    let entry: { rerun: boolean; session: SavedSession } | undefined;
     try {
+      const { createPlayGamesApi } = await import("./play-games-api");
+      const api = createPlayGamesApi(identity);
+      const session = await api.prepareSession?.();
+      if (!session) return;
+      const current = inFlight.get(identity);
+      if (current?.session.generation === session.generation) {
+        current.rerun = true;
+        return;
+      }
+      // Una sesión nueva puede avanzar aunque la respuesta de la antigua no
+      // haya llegado. El finally antiguo no puede soltar el candado nuevo.
+      entry = { rerun: false, session };
+      inFlight.set(identity, entry);
       do {
         entry.rerun = false;
-        const { createPlayGamesApi } = await import("./play-games-api");
-        await runSavedSync(identity, createPlayGamesApi(identity));
-      } while (entry.rerun);
+        await runSavedSync(identity, api, session);
+      } while (entry.rerun && await isSavedSessionCurrent(session));
+    } catch {
+      // Se reintentará al montar/volver online; no se borra ninguna fuente.
     } finally {
-      inFlight.delete(identity);
+      if (entry && inFlight.get(identity) === entry) inFlight.delete(identity);
     }
   })();
 }
