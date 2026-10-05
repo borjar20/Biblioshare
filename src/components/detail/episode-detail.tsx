@@ -5,6 +5,7 @@ import type { EpisodeRow, OwnWatch } from "@/lib/series/get-episode-data";
 import { formatDots } from "@/lib/rating/dots";
 import type { GridSource } from "./episode-grid";
 import { ReviewSpoilerField } from "./review-spoiler-field";
+import { EpisodeMarginAction } from "@/components/margin/episode-margin-action";
 
 const dateFmt = new Intl.DateTimeFormat("es", {
   day: "numeric",
@@ -32,6 +33,9 @@ type DetailProps = {
   /** Cuántos marcaría «Vistos hasta aquí» (incluido este); 0 lo oculta. */
   markUpToCount: number;
   onMarkUpTo: () => void;
+  /** Id de la serie: con él, los episodios vistos ofrecen «Dejar nota en este
+   *  episodio». Sin él (tests, usos sueltos) no se pinta la acción. */
+  itemId?: string;
 };
 
 // La línea `.em` de los frames: duración · emitido · nota, en mono y apagada.
@@ -122,6 +126,7 @@ export function EpisodeInlineDetail({
   onSave,
   markUpToCount,
   onMarkUpTo,
+  itemId,
 }: DetailProps) {
   const t = useTranslations("episode");
   return (
@@ -152,6 +157,15 @@ export function EpisodeInlineDetail({
         >
           {t("markUpTo", { count: markUpToCount })}
         </button>
+      )}
+      {/* Solo episodios vistos: la nota se abre al llegar a ese punto. */}
+      {interactive && own.watched && itemId && (
+        <EpisodeMarginAction
+          key={`${episode.season}:${episode.episode}`}
+          itemId={itemId}
+          season={episode.season}
+          episode={episode.episode}
+        />
       )}
     </div>
   );

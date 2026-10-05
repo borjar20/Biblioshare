@@ -1569,3 +1569,38 @@ commit;
 begin;
 \ir migrations/20261004100500_experience_reviews_notify_access.sql
 commit;
+
+-- 20261004120000_margin_notes_enums
+begin;
+\ir migrations/20261004120000_margin_notes_enums.sql
+commit;
+
+-- 20261004120100_margin_notes_core
+begin;
+\ir migrations/20261004120100_margin_notes_core.sql
+commit;
+
+-- 20261004120200_margin_notes_opening
+begin;
+\ir migrations/20261004120200_margin_notes_opening.sql
+commit;
+
+-- 20261004120300_margin_notes_social
+begin;
+\ir migrations/20261004120300_margin_notes_social.sql
+commit;
+
+-- 20261004120400_margin_notes_reports
+begin;
+\ir migrations/20261004120400_margin_notes_reports.sql
+commit;
+
+-- 20261004120500_margin_notes_select_own
+begin;
+\ir migrations/20261004120500_margin_notes_select_own.sql
+commit;
+
+-- 20261005100000_experience_places
+begin;
+\ir migrations/20261005100000_experience_places.sql
+commit;

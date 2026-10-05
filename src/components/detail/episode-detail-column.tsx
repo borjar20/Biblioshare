@@ -20,6 +20,8 @@ export type EpisodeDetailColumnProps = {
   onSave: (reviewIsSpoiler?: boolean) => void;
   markUpToCount: number;
   onMarkUpTo: () => void;
+  /** Id de la serie, para «Dejar nota en este episodio» si está visto. */
+  itemId?: string;
   /**
    * Cambia (a un valor no nulo) solo cuando el usuario elige un episodio a
    * propósito en PC — nunca en el montaje ni al cambiar de temporada. Mueve

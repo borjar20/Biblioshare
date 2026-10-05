@@ -155,6 +155,9 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, PushCategory> = {
   experience_accepted: "social",
   followed_experience: "social",
   experience_reviewed: "social",
+  margin_note_dedicated: "social",
+  margin_commented: "social",
+  margin_liked: "social",
 };
 
 // Canal de notificación Android por categoría (spec item 8). El registro nativo

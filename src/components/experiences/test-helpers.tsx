@@ -31,7 +31,7 @@ export function detailFixture(opts: {
 } = {}): ExperienceDetail {
   const titles = ["Museo", "Cena", "Concierto", "Paseo"];
   const moments = Array.from({ length: Math.max(1, opts.moments ?? 1) }, (_, index) => ({
-    id: `moment-${index + 1}`, title: titles[index] ?? `Momento ${index + 1}`, kind: "museum" as const, placeLabel: null, startsOn: null, endsOn: null, position: index,
+    id: `moment-${index + 1}`, title: titles[index] ?? `Momento ${index + 1}`, kind: "museum" as const, placeLabel: null, placeId: null, startsOn: null, endsOn: null, position: index,
   }));
   const moment = moments[0];
   const me = { id: "participant-1", userId: VIEWER_ID, guestName: null, invitationState: "accepted" as const, shareIdentity: true, username: "yo", displayName: "Yo", avatarUrl: null };

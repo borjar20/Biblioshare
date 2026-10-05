@@ -23,6 +23,8 @@ export type NotesQuery = {
   item: { itemType: ItemType; itemId: string } | null;
   favorites: boolean;
   sort: NotesSort;
+  /** Notas en el margen en vez de notas propias: «encontradas» o «las que dejé». */
+  margin: "found" | "mine" | null;
   /** 1-based. */
   page: number;
 };
@@ -47,6 +49,7 @@ export function defaultNotesQuery(): NotesQuery {
     item: null,
     favorites: false,
     sort: "recientes",
+    margin: null,
     page: 1,
   };
 }
@@ -90,6 +93,10 @@ export function parseNotesQuery(params: RawParams): NotesQuery {
 
   if (one(params.orden) === "obra") query.sort = "obra";
 
+  const margen = one(params.margen);
+  if (margen === "encontradas") query.margin = "found";
+  else if (margen === "mias") query.margin = "mine";
+
   const pagina = Number(one(params.pagina));
   if (Number.isInteger(pagina) && pagina >= 1) query.page = pagina;
 
@@ -114,6 +121,12 @@ export function notesHref(query: NotesQuery, overrides: Partial<NotesQuery> = {}
   };
 
   const params = new URLSearchParams();
+  // El margen es otra lista, no un filtro más: no arrastra los filtros de notas.
+  if (next.margin) {
+    params.set("margen", next.margin === "found" ? "encontradas" : "mias");
+    if (next.page > 1) params.set("pagina", String(next.page));
+    return `/notas?${params.toString()}`;
+  }
   // Solo lo que no es el defecto: una URL limpia se puede leer de un vistazo.
   if (next.q) params.set("q", next.q);
   if (next.kind !== "all") params.set("tipo", KIND_PARAM[next.kind]);
@@ -130,5 +143,5 @@ export function notesHref(query: NotesQuery, overrides: Partial<NotesQuery> = {}
 // ¿Hay algún filtro puesto? Distingue «no tienes notas» de «no hay notas con
 // estos filtros», que son dos vacíos con dos salidas distintas.
 export function hasActiveFilters(query: NotesQuery): boolean {
-  return Boolean(query.q || query.kind !== "all" || query.tag || query.item || query.favorites);
+  return Boolean(query.q || query.kind !== "all" || query.tag || query.item || query.favorites || query.margin);
 }

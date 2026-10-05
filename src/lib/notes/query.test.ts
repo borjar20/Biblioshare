@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NOTES_PAGE_SIZE, defaultNotesQuery, notesHref, parseNotesQuery } from "./query";
+import { NOTES_PAGE_SIZE, defaultNotesQuery, hasActiveFilters, notesHref, parseNotesQuery } from "./query";
 
 describe("parseNotesQuery", () => {
   it("sin parámetros devuelve el estado por defecto", () => {
@@ -106,12 +106,31 @@ describe("notesHref", () => {
       item: { itemType: "movie" as const, itemId: "m1" },
       favorites: true,
       sort: "obra" as const,
+      margin: null,
       page: 4,
     };
     const params = Object.fromEntries(
       new URLSearchParams(notesHref(q).split("?")[1]).entries(),
     );
     expect(parseNotesQuery(params)).toEqual(q);
+  });
+});
+
+describe("filtro de margen", () => {
+  it("lee el filtro de margen", () => {
+    expect(parseNotesQuery({ margen: "encontradas" }).margin).toBe("found");
+    expect(parseNotesQuery({ margen: "mias" }).margin).toBe("mine");
+    expect(parseNotesQuery({ margen: "otra" }).margin).toBeNull();
+    expect(defaultNotesQuery().margin).toBeNull();
+  });
+
+  it("ida y vuelta por la URL y cuenta como filtro activo", () => {
+    const q = { ...defaultNotesQuery(), margin: "found" as const };
+    expect(notesHref(q)).toBe("/notas?margen=encontradas");
+    const back = parseNotesQuery(Object.fromEntries(new URLSearchParams(notesHref(q).split("?")[1]).entries()));
+    expect(back.margin).toBe("found");
+    expect(hasActiveFilters(q)).toBe(true);
+    expect(hasActiveFilters(defaultNotesQuery())).toBe(false);
   });
 });
 

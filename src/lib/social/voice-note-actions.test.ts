@@ -5,7 +5,9 @@ const h = vi.hoisted(() => {
     user: { id: "user-1" } as { id: string } | null,
     target: {
       id: "target-1",
+      kind: "post",
       owner_id: "owner-1",
+      audience_id: "owner-1",
       commentable: true,
       reactable: true,
       comment_notification_type: "commented",

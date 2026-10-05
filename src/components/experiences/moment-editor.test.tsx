@@ -4,7 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
 import type { ExperienceDetail } from "@/lib/experiences/types";
-import { MomentEditor } from "./moment-editor";
+import { MomentActions, MomentEditor } from "./moment-editor";
 const h=vi.hoisted(()=>({save:vi.fn(),refresh:vi.fn()}));
 vi.mock("next/navigation",()=>({useRouter:()=>({refresh:h.refresh}),usePathname:()=>"/experiencia/memory"}));
 vi.mock("@/lib/experiences/actions",()=>({saveMoment:h.save,removeMoment:vi.fn(),reorderMoments:vi.fn(),createExperience:vi.fn(),updateExperience:vi.fn()}));
@@ -15,7 +15,7 @@ beforeEach(()=>{
   HTMLDialogElement.prototype.showModal=function(){this.open=true;};
   HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new Event("close"));};
 });
-const experience:ExperienceDetail={id:"memory",creatorId:"owner",viewerId:"owner",title:"Madrid",revision:12,shape:"single",state:"planned",audience:"private",startsOn:null,endsOn:null,coverPhotoId:null,createdAt:"2026-10-03",canEdit:true,canContribute:true,moments:[{id:"existing",title:"Primer concierto",kind:"concert",placeLabel:null,startsOn:null,endsOn:null,position:0}],participants:[],attendance:[],favorites:[],photos:[],publicationId:null,interactionTargetId:null,rating:null,momentRatings:{},reviews:[]};
+const experience:ExperienceDetail={id:"memory",creatorId:"owner",viewerId:"owner",title:"Madrid",revision:12,shape:"single",state:"planned",audience:"private",startsOn:null,endsOn:null,coverPhotoId:null,createdAt:"2026-10-03",canEdit:true,canContribute:true,moments:[{id:"existing",title:"Primer concierto",kind:"concert",placeLabel:null,placeId:null,startsOn:null,endsOn:null,position:0}],participants:[],attendance:[],favorites:[],photos:[],publicationId:null,interactionTargetId:null,rating:null,momentRatings:{},reviews:[]};
 function show(){return render(<NextIntlClientProvider locale="es" messages={messages}><MomentEditor experience={experience} {...{variant:"inline" as const}}/></NextIntlClientProvider>);}
 describe("composición de momentos desde el recuerdo",()=>{
   it("ofrece añadir sin volver a dibujar los momentos que ya aparecen en el recorrido",()=>{
@@ -31,5 +31,15 @@ describe("composición de momentos desde el recuerdo",()=>{
     await waitFor(()=>expect(h.refresh).toHaveBeenCalled());
     expect(h.save).toHaveBeenCalledWith("memory",12,{title:"Museo por la mañana",kind:"museum",placeLabel:null,startsOn:null,endsOn:null});
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+  it("al editar un momento con lugar enlazado lo conserva con keepPlace y sin token",async()=>{
+    const linked={...experience.moments[0],placeLabel:"Lisboa",placeId:"place-1"};
+    render(<NextIntlClientProvider locale="es" messages={messages}><MomentActions experience={{...experience,moments:[linked]}} moment={linked} index={0}/></NextIntlClientProvider>);
+    fireEvent.click(screen.getByRole("button",{name:"Editar momento"}));
+    fireEvent.click(screen.getByRole("button",{name:"Guardar momento"}));
+    await waitFor(()=>expect(h.save).toHaveBeenCalled());
+    const payload=h.save.mock.calls[0][2];
+    expect(payload).toMatchObject({id:"existing",placeLabel:"Lisboa",keepPlace:true});
+    expect(payload).not.toHaveProperty("placeToken");
   });
 });

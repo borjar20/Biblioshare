@@ -18,6 +18,9 @@ vi.mock("@/lib/series/episode-actions", () => actions);
 vi.mock("@/lib/passes/actions", () => ({ ratePass: vi.fn() }));
 vi.mock("@/lib/library/manage-actions", () => ({ updateStatus: vi.fn() }));
 vi.mock("next/image", () => ({ default: () => null }));
+// Los server actions del margen arrastran server-only: aquí solo interesa el render.
+vi.mock("@/lib/margin/actions", () => ({ createMarginNote: vi.fn() }));
+vi.mock("@/lib/margin/follower-search", () => ({ searchMyFollowers: vi.fn() }));
 
 afterEach(() => {
   cleanup();

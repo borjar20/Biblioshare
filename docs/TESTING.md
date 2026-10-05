@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local); fixture de ronda #405 verificado con nueve contratos Node del caller real, tipos y lint el 2026-10-04, sin navegador/SQL]**
 
 ## Cuenta de desarrollo persistente
 
@@ -861,6 +861,13 @@ Cuota física, Android, producción y CI final continúan como gates separados.
 La retención de datos y metadatos se documenta explícitamente; no es limpieza
 total del dispositivo. Ver §8.3 de data-model y [#1375](https://github.com/borjar20/Biblioshare/issues/1375).
 
+Preparación final del 2026-10-05: el candidato incorpora #1385 y main de
+Notas/Lugares, conservando los 19 fuentes de #975 y los siete pins r3. Pasan
+20 contratos Node, 124 pruebas focales en 11 archivos, tipos sin caché e
+integridad del grafo. La tanda conjunta de diez casos, build nueva y bootstrap
+natural del árbol completo siguen en HOLD hasta GO escrito; estos checks no
+sustituyen los resultados Native pendientes ni los FAIL históricos.
+
 ## Fichas de acompañantes y asientos de MTG (#1006, #1008)
 
 [Informe nativo](testing/2026-10-04-play-seat-interactions-1006-1008.md): ocho
@@ -888,6 +895,33 @@ que retiene y libera la confirmación por señal. El control sin commit rechaza
 el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
 natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
 
+## Fixture de ronda: respuestas REST y limpieza (#405)
+
+[Informe focal](testing/2026-10-04-club-round-fixture-405.md): nueve contratos
+Node verifican que un POST de membresía 403 aborta antes del login, que un 201
+entra al callback de UI y que el DELETE 204/500 informa la limpieza sin ocultar
+un fallo previo. Siete casos ejecutan el callback del spec Playwright real
+con fetch y primer punto de UI controlados; dos cubren un cuerpo exitoso.
+RED previo: cinco FAIL y dos PASS. Candidato final: nueve PASS, tipos y lint PASS.
+
+El job `quality` ejecuta `node --import tsx --test
+e2e/support/club-round-fixture.test.ts`. Esta cobertura acredita el caller real
+y sus contratos de fixture; **no acredita navegador, Auth/SQL reales ni #401**
+(reloj y concurrencia de rondas). El job de navegador sólo descubre `e2e/ci`,
+así que no se atribuye a esa CI el e2e completo de `club-ronda.spec.ts`.
+La cuenta QA persistente se conserva; sólo se limpia el club desechable por id.
+La CI remota del HEAD de entrega mantiene su propio gate.
+
+## Integración de celebraciones con main (#1334, #1369, #1385)
+
+[Corte de integración](testing/2026-10-05-celebrations-main-integration-1334.md):
+las dos CI de las ramas dependientes pasan 4744 unitarios y 168 recorridos.
+El candidato sobre mainf1205 conserva el código probado y los cambios ajenos;
+90 unitarios focales, 20 contratos Node, tipos e integridad del mapa PASS.
+La CI final de PR #1364 y su despliegue conservan el gate independiente.
+El GLOBAL FAIL de #1301, el inventario completo FAIL de #1385 y las fronteras
+pendientes de #1356 mantienen sus evidencias y límites.
+
 ## Diagnósticos de claims obsoletos (#1369)
 
 [Cobertura focal](testing/2026-10-04-celebrations-stale-diagnostics-1369.md):
@@ -905,3 +939,23 @@ un antes/después causal. Los 17 abortos y la captura de Colección aún en skel
 se conservan. Actor, libros y servicios propios limpios. La CI sobre el HEAD
 integrado mantiene su gate independiente; no se declara cura causal del fallo
 CI anterior ni una auditoría global de red limpia.
+
+## Hidratación de cabecera y navegación al iniciar MTG (#1385)
+
+[Informe focal](testing/2026-10-05-chrome-hydration-1385.md): el gate de ruta
+mantiene un Suspense externo y el payload de sesión espera en otro interno.
+La regresión SSR/hidratación conserva dos FAIL con la topología anterior y
+pasa sus cinco casos con el candidato; la tanda de navegación suma 31/31.
+Antes de navegar se acredita la hidratación de los gates, y las barras se
+retiran mientras la sesión sigue pendiente. Lint y tipos focales PASS.
+
+El diagnóstico nativo anterior localiza dos React #418 en Header y BottomNav
+bajo AppShell. La revisión independiente ha pasado sin hallazgos. La build
+nueva `rS5hN2l856Bf-eL5iOPir` sobre `e5fdb395` pasa el spec original a 390 y
+1280px y dos controles de retorno por historial: 4/4, retry0, cero errores de
+página, consola o HTTP. Se mantienen global FAIL por 16 GET RSC cancelados
+sin clasificación (#1301) y el FAIL del gate de inventario completo: 56 archivos
+de route-cache añadidos, 2445 previos idénticos. Fuentes3272 y ejecutables792
+conservan sus hashes. Parada física independiente PASS con backup, censo0,
+puertos libres y volúmenes conservados. Las guardas originales siguen intactas;
+CI integrada y main pendientes. No acredita Auth real, Android ni producción.

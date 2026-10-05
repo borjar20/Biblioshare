@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-3.6921,40.4138]},"properties":{"osm_type":"W","osm_id":28118138,"osm_key":"tourism","osm_value":"museum","type":"house","name":"Museo Nacional del Prado","city":"Madrid","state":"Comunidad de Madrid","country":"España","countrycode":"ES","extra":{"wikidata":"Q160112"}}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-9.1365,38.7077]},"properties":{"osm_type":"R","osm_id":5400890,"osm_key":"place","osm_value":"city","type":"city","name":"Lisboa","state":"Lisboa","country":"Portugal","countrycode":"PT"}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-5.86,43.29]},"properties":{"osm_type":"R","osm_id":349033,"osm_key":"boundary","osm_value":"administrative","type":"state","name":"Asturias","country":"España","countrycode":"ES"}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-3.7,40.4]},"properties":{"osm_type":"R","osm_id":1311341,"osm_key":"place","osm_value":"country","type":"country","name":"España","countrycode":"ES"}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-3.69,40.41]},"properties":{"osm_type":"W","osm_id":4387126,"osm_key":"highway","osm_value":"residential","type":"street","name":"Calle del Prado","city":"Madrid","country":"España","countrycode":"ES"}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-3.69,40.41]},"properties":{"osm_type":"N","osm_id":999,"osm_key":"place","osm_value":"house","type":"house","housenumber":"3","street":"Calle del Prado","city":"Madrid","country":"España","countrycode":"ES"}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-3.69,40.41]},"properties":{"osm_type":"W","osm_id":1000,"osm_key":"building","osm_value":"yes","type":"house","name":"Edificio","city":"Madrid","country":"España","countrycode":"ES"}},
+    {"type":"Feature","geometry":{"type":"Point","coordinates":[-3.69,40.41]},"properties":{"osm_type":"N","osm_id":1001,"osm_key":"amenity","osm_value":"bar","type":"house","city":"Madrid","country":"España","countrycode":"ES"}}
+  ]
+}

@@ -296,3 +296,28 @@ SHA-256 del manifest:
 `0ca8552461986a71e78a09692c8c15394eaebd792481778450fdd8c4a41a9fcd`.
 Este corte sustituye únicamente los estados de QA web pendientes de los
 apartados históricos; conserva sus resultados, fronteras y FAIL originales.
+
+## Preparación de la tanda final integrada — 2026-10-05
+
+Se integra el objeto local `0c663a3d396e43e3524f8e11b12dc5cd852618af`
+sobre `9d7271ebdc2b00e9b93433ec56d84ab118ef5a07`, conservando #1334/#1369,
+el arreglo de chrome #1385 y los cambios de main de Notas en el margen y
+Lugares. Los 19 archivos fuente propios de #975 conservan sus bytes; los
+siete pins de código r3 siguen iguales al recibo original. El único conflicto
+documental conserva ambas entradas de `decisiones.md`, sin comportamiento nuevo.
+
+Antes de congelar el candidato pasan 20 contratos Node del bootstrap/cutover,
+124 pruebas focales de Play/logout en 11 archivos, TypeScript sin caché y la
+integridad del grafo (141 nodos, 280 aristas, 30 flujos y 267 pasos). Son
+comprobaciones estáticas; no acreditan la futura build ni una tanda de navegador.
+
+La nueva cápsula es
+`.scratch/ticket-campaign/20261005-resume/logout975-preparation-r1/`.
+Prepara los diez casos juntos contra una build de producción nueva y un
+bootstrap natural calculado con `loadPlan` sobre este árbol completo; no
+reutiliza el ledger 291 ni la build anterior. Conserva el setup A→B mediante
+login real B y cookies sólo en RAM, los selectores corregidos en run06 y los
+callbacks originales de IndexedDB retenidos después de su commit nativo.
+El spec original de salud permanece intacto. La ejecución está en HOLD hasta
+un GO escrito del coordinador; no se arrancaron servidores, Docker ni SQL.
+Los diez PASS agregados y todos los FAIL históricos mantienen su alcance.

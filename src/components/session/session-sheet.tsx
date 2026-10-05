@@ -21,6 +21,7 @@ import { SeriesEpisodeGrid } from "./series-episode-grid";
 import { SessionHero } from "./session-hero";
 import type { NoteAnchor } from "@/components/notes/note-composer";
 import { SessionNotebook } from "./session-notebook";
+import { MarginNoteSheet } from "@/components/margin/margin-note-sheet";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -62,6 +63,7 @@ export function SessionSheet({
   const t = useTranslations("session");
   const tLibrary = useTranslations("library");
   const tResume = useTranslations("passes.resume");
+  const tMargin = useTranslations("margin");
   const router = useRouter();
   // null en modo "page" (no hay SessionModal por encima). En modo "modal" es
   // el único punto de salida del <dialog> exterior (ver session-modal.tsx):
@@ -194,6 +196,8 @@ export function SessionSheet({
   );
   const [noteCount, setNoteCount] = useState(0);
   const [notePending, setNotePending] = useState(false);
+  // Nota en el margen (libros): hoja aparte, pintada FUERA del <form> de la sesión.
+  const [marginOpen, setMarginOpen] = useState(false);
   // Compartir en el perfil (Spec 2): opt-in. Controla si se despliega el texto
   // social; sin marcar, la sesión queda privada (+ notas) como hasta ahora.
   const [share, setShare] = useState(false);
@@ -333,6 +337,19 @@ export function SessionSheet({
             onCountChange={setNoteCount}
           />
 
+          {/* Nota en el margen: la que lee OTRA persona al llegar a este punto,
+              no el cuaderno privado de arriba. En series va por episodio. */}
+          {itemType === "book" && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-h-11 self-start"
+              onClick={() => setMarginOpen(true)}
+            >
+              {tMargin("leave")}
+            </Button>
+          )}
+
           {/* Compartir en el perfil (Spec 2): opt-in explícito dentro del propio
               formulario — la decisión de compartir vive aquí, no en un compositor
               aparte. Marcado, addSession publica un post 'progressed' con el
@@ -433,6 +450,17 @@ export function SessionSheet({
           ?cerrar (lo que hacía el servidor hasta ahora), la hoja de cierre sube
           aquí mismo. Al cerrarla, entonces sí salimos — por el mismo closeSheet
           que usa el ✕ y el guardado normal. */}
+      {itemType === "book" && (
+        <MarginNoteSheet
+          open={marginOpen}
+          onClose={() => setMarginOpen(false)}
+          itemType={itemType}
+          itemId={itemId}
+          defaultPage={livePage ?? undefined}
+          pages={total}
+        />
+      )}
+
       <ClosePassSheet
         passId={passId}
         itemType={itemType}

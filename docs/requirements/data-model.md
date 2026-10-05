@@ -1,5 +1,19 @@
 # Modelo de datos
 
+> **Delta 2026-10-05 (lugares de Experiencias; verificado en dev 2026-10-05; producción
+> pendiente):** migración `20261005100000_experience_places.sql`: tabla `places`,
+> `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
+> en las RPC de momentos. Aplicada en `biblioshare-dev`; `supabase/tests/experiences_places.sql`
+> PASS con rollback. **No aplicada en producción.** Ver §8ter.2.
+
+> **Delta 2026-10-05 (#1380, notas en el margen; esquema verificado en dev 2026-10-05; producción
+> pendiente):** seis migraciones nuevas (`20261004120000` … `20261004120500`) añaden
+> `margin_notes` y `margin_note_encounters`, los enums `margin_audience` y `margin_found_via`,
+> el target `margin_encounter` (hilo privado por lector), tres tipos de aviso, la rama de
+> denuncia y la RPC `margin_claim_notices`. `merge_book_into` repunta `margin_notes`. Aplicadas en
+> `biblioshare-dev` el 2026-10-05 y `supabase/tests/margin_notes.sql` PASS con rollback.
+> **No aplicadas en producción.** Ver §8quater.
+
 > **Delta 2026-10-04 (#1334, esquema activo en dev y producción; consumidor en PR #1364):**
 > Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
 > reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
@@ -28,8 +42,10 @@
 > el kind de moderación `experience_review` y la firma de tres argumentos de
 > `experience_set_attendance`. Aplicadas en `biblioshare-dev` el 2026-10-04: trece
 > funciones, RLS activa, tres políticas, solo SELECT para `anon`/`authenticated` y
-> `supabase/tests/experiences_reviews.sql` PASS con rollback. **No aplicadas en
-> producción.** Ver §8ter.1 y la [evidencia](../testing/2026-10-04-experiencias-resenas.md).
+> `supabase/tests/experiences_reviews.sql` PASS con rollback en dev. **Producción:** las
+> seis migraciones se aplicaron y sus objetos se verificaron el 2026-10-04; sin fixtures
+> en producción. Ver §8ter.1 y el [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04),
+> recogido en [PR #1378](https://github.com/borjar20/Biblioshare/pull/1378).
 
 > **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
 > `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
@@ -540,7 +556,7 @@ En #708 la implementa el guard unificado descrito a continuación.
 
 **Integridad polimórfica (#708).**
 `20260907093534_catalog_reference_guards.sql` centraliza la política en
-`private.catalog_reference_rules()` (15 pares, 13 tablas). Créditos derivados
+`private.catalog_reference_rules()` (16 pares, 14 tablas; `margin_notes` desde 2026-10-05, #1380, con política `restrict`). Créditos derivados
 se borran en cascada; pases, notas, colecciones, biblioteca congelada, rondas,
 selecciones/opiniones/clasificaciones de actividades y las estructuras curadas
 de saga bloquean el borrado. Las ventanas incluyen sujeto y anclas before/after.
@@ -548,7 +564,7 @@ de saga bloquean el borrado. Las ventanas incluyen sujeto y anclas before/after.
 seis triggers por un trigger BEFORE DELETE en cada tabla de catálogo.
 
 `private.lock_catalog_reference()` comprueba destinos nuevos/cambiados y toma
-KEY SHARE para coordinarse con el borrado. Son 15 triggers de referencia. No se
+KEY SHARE para coordinarse con el borrado. Son 16 triggers de referencia (con `trg_catalog_reference_item_type` de `margin_notes`). No se
 añaden columnas ni se limpian filas históricas. Todos los helpers fijan
 `search_path=''` y revocan EXECUTE a PUBLIC/anon/authenticated. El mantenimiento
 DELETE requiere READ COMMITTED; otras instantáneas transaccionales se rechazan
@@ -1158,7 +1174,7 @@ función. Definición vigente: `20261001102000_merge_book_club_event_refs.sql`, 
 la comparación canónica de ISBN de `20260930171000_merge_book_canonical_isbn.sql`.
 Los antecedentes `20260889`/`20260888`/`20260887` documentan cómo se completó la lista.
 
-**Se repuntan 18 superficies tipadas/href y dos formatos JSON, sin FK.** Este es el punto que hay que
+**Se repuntan 19 superficies tipadas/href y dos formatos JSON, sin FK** (la 19ª, `margin_notes`, entró el 2026-10-05 con `20261004120100`, #1380; el resto del texto cuenta 18 por historia). Este es el punto que hay que
 entender antes de tocar nada: la integridad de la fusión no la sostiene ningún constraint. La
 única FK real a `books` en todo el esquema es `book_editions.book_id`. Todo lo demás es
 `(_type, _id)` sin FK, así que **una tabla que falte en la función deja filas de usuario
@@ -1166,7 +1182,7 @@ apuntando a una obra inexistente y no lo detecta nadie** — la app las esconde 
 
 | Grupo | Columnas |
 |---|---|
-| 13 con `item_type`/`item_id` | `credits`, `passes`, `collection_items`, `library_entries`, `notes`, `saga_items`, `saga_optional_skips`, `saga_placement_windows`, `saga_route_entries`, `club_activity_items`, `club_activity_opinions`, `club_activity_placements`, `club_rounds` |
+| 14 con `item_type`/`item_id` | `credits`, `passes`, `collection_items`, `library_entries`, `notes`, `margin_notes`, `saga_items`, `saga_optional_skips`, `saga_placement_windows`, `saga_route_entries`, `club_activity_items`, `club_activity_opinions`, `club_activity_placements`, `club_rounds` |
 | 4 con OTRO nombre | `posts.anchor_type`/`anchor_id` (enum `post_anchor_type`), `saga_placement_windows.after_item_*`, `saga_placement_windows.before_item_*`, `club_activities.spawned_from_item_*` |
 | 1 con el **id incrustado en texto** | `interaction_targets.href` — `text` con la URL `/libro/<uuid>` dentro, escrita por `private.item_interaction_href()` (`20260730212803`). 232 filas en prod en el baseline de 2026-08-27. |
 | 2 formatos JSON de evento (#875) | Solo `kind='evento'`: `event_type='lanzamiento'`, `config.item` con `itemType='book'`; `event_type='fecha_destacada'`, elementos `config.relations[]` de `kind='item'`/`itemType='book'`. |
@@ -4948,7 +4964,178 @@ Borrar una reseña desde moderación registra una fila `delete` de kind `experie
 helpers `private.can_view_experience_review` y `private.is_experience_kind` también tienen
 EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
-Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`).
+Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`). Fuente y límites: [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04), recogido en PR #1378; sin fixtures ni recorrido autenticado de reseñas acreditados en producción.
+
+### 8ter.2 Lugares (2026-10-05; verificado en dev, producción pendiente)
+
+Migración `20261005100000_experience_places.sql`. Contrato:
+[spec](../superpowers/specs/2026-10-05-experiencias-lugares-design.md).
+
+**`public.places`** (catálogo global): `id uuid` PK, `provider text` (CHECK `in ('osm')`),
+`provider_ref text` (CHECK `^[NWR][0-9]+$`), `name` (1–240), `category` (3–120), `layer`
+(CHECK `poi|city|region|country`), `lat`/`lng` (rangos válidos), `city`/`region`/`country`
+(≤240, nulables), `country_code` (`^[A-Z]{2}$`), `wikidata_qid` (`^Q[0-9]+$`), `created_at`,
+`updated_at`; `unique (provider, provider_ref)`. RLS activa; política `places_read` (select a
+`anon` y `authenticated`, `using (true)`); `revoke all` + `grant select` a `anon, authenticated`.
+Ningún cliente escribe: ni insert, ni update, ni delete.
+
+**`experience_moments.place_id`** `uuid references places(id) on delete set null`, con índice
+parcial `experience_moments_place` (`where place_id is not null`). No hay grants por columna en
+`experience_moments` (se escribe solo por RPC SECURITY DEFINER), así que la superficie 6 de
+`DRIFT-CHECK.md` no cambia.
+
+**`public.place_upsert(p_input jsonb) returns uuid`**: SECURITY DEFINER, `search_path=''`,
+`execute` **solo `service_role`** (revocado a `public`, `anon`, `authenticated`). Upsert por
+`(provider, provider_ref)`; conserva `wikidata_qid` previo si el nuevo es nulo. Solo se llama
+desde el servidor tras verificar la firma HMAC de la sugerencia: una RPC `authenticated` se
+saltaría la firma.
+
+**`private.experience_input_place(p jsonb)`**: resuelve `placeId` (id válido y existente, si no
+`22023`) o, sin `placeId`, el texto libre `placeLabel`. Sin grants a clientes.
+
+**RPC `experience_create` / `experience_save_moment`** (mismas firmas, `create or replace`):
+- Claves nuevas `placeId` (uuid de `places`) y, solo en guardado, `keepPlace` (boolean).
+- `place_label` es una **instantánea** del nombre oficial al enlazar; un `place_upsert` posterior
+  que refresque el nombre **no** la reescribe. Por eso ninguna lectura cambia.
+- `placeId: null` es inválido (`22023`): hay que **omitir la clave** si no hay lugar.
+- `keepPlace` conserva `place_id` y `place_label` intactos; solo vale para un momento existente
+  y **nunca junto a `placeId`** (`22023`).
+
+**Estado por entorno.** Dev (`biblioshare-dev`) aplicada el 2026-10-05; `supabase/tests/experiences_places.sql`
+PASS con rollback; 0 filas residuales; `experience_create`/`experience_save_moment` ejecutables
+por `authenticated` y no por `anon`; `private.experience_input_place` no ejecutable por
+`authenticated`; una sola sobrecarga de `experience_create`. **Producción: NO aplicada**
+(ver [issue #1399](https://github.com/borjar20/Biblioshare/issues/1399)). e2e `e2e/experiencias-lugares.spec.ts`: 1 passed contra
+`next build`/`next start` el 2026-10-05. Requiere `PLACES_SIGNING_SECRET` en el entorno.
+
+## 8quater. Notas en el margen (#1380; verificado en dev y en producción el 2026-10-05)
+
+**[Canónico · esquema y permisos verificados en `biblioshare-dev` el 2026-10-05 contra
+pg_proc/pg_class/pg_policies/pg_trigger y `supabase/tests/margin_notes.sql` (PASS con rollback);
+entorno: dev y prod. Las seis migraciones se aplicaron en producción el 2026-10-05, hacia las
+07:47 UTC y antes del código. Se verificaron en prod contra pg_proc, pg_class, pg_policies,
+pg_trigger y los grants por columna; el md5 de `pg_get_functiondef` coincide con dev en las
+siete funciones redefinidas o nuevas. La matriz SQL no se ejecuta en prod.]**
+
+Seis migraciones: `20261004120000_margin_notes_enums.sql` (sola, en su transacción),
+`…120100_margin_notes_core.sql`, `…120200_margin_notes_opening.sql`,
+`…120300_margin_notes_social.sql`, `…120400_margin_notes_reports.sql` y
+`…120500_margin_notes_select_own.sql`. Contrato de producto:
+[spec](../superpowers/specs/2026-10-04-notas-en-el-margen-design.md) (histórica; su §8 recoge
+las correcciones de implementación). Una nota es un texto que un autor ancla a un punto de una
+obra y que solo llega a quien le sigue cuando ese lector alcanza el punto. Dominio independiente
+de `notes` (citas/notas privadas con política pública, ver
+[decisiones](./decisiones.md)); `passes` sigue siendo el estado usuario↔obra y de él se deriva
+el progreso del lector.
+
+**Enums aditivos:** `target_kind` gana `margin_encounter`; `notification_type` gana
+`margin_note_dedicated`, `margin_commented` y `margin_liked`. Tipos nuevos:
+`margin_audience` (`followers | person`) y `margin_found_via` (`progress | finish | retro`).
+
+| Tabla | Contrato |
+|---|---|
+| `margin_notes` | `id`, `author_id` (default `auth.uid()`, FK `auth.users` cascade), `item_type`/`item_id` (polimórfico, sin FK; entra en el guard de catálogo), `anchor jsonb`, `chapter_label`, `body`, `is_spoiler`, `audience`, `recipient_id` (FK cascade), `created_at`, `edited_at`. CHECK de ancla (`private.margin_anchor_valid`), de cuerpo (recortado, 1–2000), de capítulo (obligatorio y 1–80 en libros, nulo en el resto) y de destinatario (`audience='person'` ⇔ `recipient_id`, y nunca el propio autor). Índices por obra, por autor y por destinatario. |
+| `margin_note_encounters` | Una nota abierta a un lector: `note_id` (cascade), `reader_id` (cascade), `found_at`, `found_via`, `seen_at`, `notified_at`; único `(note_id, reader_id)`. **Nadie escribe aquí desde el cliente**: solo los triggers de apertura (SECURITY DEFINER). |
+
+**Formas de ancla** (`margin_anchor_valid`, IMMUTABLE): `{"kind":"finish"}` exacto (cualquier
+obra); `ratio` solo en libros, con exactamente `ratio` (0,1], `page` y `pages` enteros y
+`1 ≤ page ≤ pages`; `episode` solo en series, con exactamente `season` y `episode ≥ 1`.
+
+**Grants por columna (superficie 6 de `DRIFT-CHECK.md`).** `margin_notes` para `authenticated`:
+`select`, `delete`, `insert` en exactamente nueve columnas (`author_id, item_type, item_id,
+anchor, chapter_label, body, is_spoiler, audience, recipient_id`) y `update` solo en `body`,
+`chapter_label`, `is_spoiler`. **Ancla, obra y audiencia son inmutables por falta de grant, no
+por trigger**, para que `merge_book_into` (SECURITY DEFINER) pueda reasignar `item_id`.
+`margin_note_encounters`: `select` y `update (seen_at)` únicamente. `service_role`: todo.
+Cualquier columna nueva exige revisar estos grants (#375).
+
+**Invariante de privacidad.** Una nota la ve **su autor, o un lector con encuentro que siga al
+autor (`follows.status='accepted'`) y sin bloqueo entre ambos**. Lo decide
+`private.can_read_margin_note(id)`; el encuentro (y su hilo) lo decide
+`private.can_read_margin_encounter(id)`: lo ve el autor o el lector mientras el lector siga al
+autor y no haya bloqueo, así que **el hilo desaparece para los dos a la vez**. Bloquear borra
+los follows entre ambos (trigger de `20260730191652`), y con ello el acceso.
+
+**Políticas (6).** `margin_notes_select` = `author_id = auth.uid() OR
+private.can_read_margin_note(id)`; `margin_notes_insert` (`author_id = auth.uid()`),
+`margin_notes_update` y `margin_notes_delete` (`author_id = auth.uid()`);
+`margin_encounters_select` (`private.can_read_margin_encounter(id)`) y `margin_encounters_seen`
+(update, `reader_id = auth.uid()`). ⚠️ **La primera rama de `margin_notes_select` es
+imprescindible:** `INSERT … RETURNING` (la acción usa `.select('id')`) evalúa la política de
+select sobre la fila recién insertada, pero `can_read_margin_note` es STABLE y consulta
+`margin_notes` con el snapshot de INICIO de la sentencia, así que no ve esa fila y el insert se
+rechazaba con 42501. Lo encontró el E2E y lo corrige `…120500`.
+
+**Helpers y grants.** `private.margin_anchor_valid`, `can_read_margin_note` y
+`can_read_margin_encounter` tienen `execute` para `authenticated` (las políticas y la CHECK se
+evalúan como quien llama; USAGE en `private` ya existe); `margin_anchor_valid` también para
+`service_role` (la CHECK corre en fixtures y tareas de servidor). El resto (`margin_reached`,
+`open_margin_notes`, los `margin_on_*`, `guard_margin_note`, `sync_margin_encounter_target`)
+son internos o de trigger y no tienen grants. `search_path=''` en todos.
+
+**Guard de escritura (`margin_notes_guard`, BEFORE INSERT/UPDATE).** En insert: una nota
+`person` solo a quien sigue al autor y sin bloqueo (`42501 recipient must follow author`); una
+nota de episodio solo si está emitido (`22023 episode not aired`); `created_at` y `edited_at`
+los pone el servidor. En update, `edited_at` solo cambia si cambian cuerpo, capítulo o
+spoiler (una fusión que solo cambia `item_id` no es edición). «Autor = quien llama» lo impone
+la política de insert: dentro de la función SECURITY DEFINER `current_user` es el dueño.
+
+**Apertura (triggers que crean encuentros).** `private.open_margin_notes(lector, tipo, obra,
+via, nota?, autor?)` inserta encuentros (`on conflict do nothing`) para las notas que el lector
+puede recibir —`followers`, o `person` dirigidas a él—, de autores que sigue y sin bloqueo, y
+para las que `private.margin_reached` es cierto:
+
+- Alcanzado = pase `completed` de esa obra, **o** episodio visto (`episode_watches`) exacto del
+  ancla, **o** posición del pase en un libro `page >= ceil((ratio + greatest(0.03, 5/pages)) *
+  pages - 1e-9)` con `pages = coalesce(edición del pase, libro).total_pages`. **El umbral SQL
+  espeja `src/lib/margin/threshold.ts`: si cambias uno, cambia el otro y sus pruebas.** El
+  margen hacia atrás (precedente #471) hace que quien lee por la ratio no vea la nota hasta
+  estar un poco más allá del punto, y nunca antes.
+- `margin_open_on_pass` (AFTER INSERT/UPDATE de `position`, `status` en `passes`; cubre
+  sesiones, cierres e importaciones; `via` = `finish` si el pase está `completed`, si no
+  `progress`), `margin_open_on_episode` (AFTER INSERT en `episode_watches`),
+  `margin_open_on_note` (nota nueva: encuentro **retroactivo y en silencio** para quien ya
+  tiene pase de la obra) y `margin_open_on_follow` (follow que pasa a `accepted`: el nuevo
+  seguidor recibe lo que ya superó, `via='retro'`).
+
+**Target `margin_encounter` (hilo privado).** `margin_encounters_sync_target` (AFTER INSERT/DELETE)
+registra cada encuentro en `interaction_targets` como `kind='margin_encounter'`, `source_id` =
+encuentro, `owner_id` = autor de la nota, `audience_kind='profile'` y `audience_id` = lector
+(no hay audiencia nueva `encounter_pair`: `can_view_interaction_target` resuelve por `kind`
+antes que por audiencia, como `experience`), `href='/margen/<id>'`, comentable y reaccionable,
+con `margin_commented`/`margin_liked`. Al borrar el encuentro se borra su target y, por
+cascada, comentarios, reacciones y avisos. Se rellenaron los encuentros previos al trigger.
+Ramas añadidas: `private.can_view_interaction_target` y `public.can_view_target` →
+`private.can_read_margin_encounter`.
+
+**Moderación del hilo condicionada a la relación.** `private.social_target_owner_id` devuelve
+al autor de la nota como «dueño» de un `margin_encounter` **solo mientras el lector siga
+sosteniendo el follow y no haya bloqueo en ningún sentido**; si no, devuelve nulo y el autor
+pierde moderación y lectura de las respuestas del lector.
+
+**RPC `public.margin_claim_notices()`** (VOLATILE, SECURITY DEFINER, `search_path=''`;
+`execute` solo `authenticated`, sin `anon`; exige `auth.uid()`). Marca `notified_at` y devuelve
+`(encounter_id, reader_id, author_id, target_id, item_type, item_id, chapter_label)` de los
+encuentros de notas **dedicadas** (`audience='person'`) sin avisar en los que quien llama es
+autor o lector, con follow vigente y sin bloqueo. Quien reclama primero se lleva el aviso. El
+push se envía luego desde TypeScript (`src/lib/margin/deliver.ts` → `notify`), con categoría
+push `social` (deuda: #1387). **Límites asumidos:** el aviso se reclama y después se envía, así
+que si `notify` falla tras reclamar, ese aviso se pierde; las importaciones que abren notas no
+llaman a la entrega, y el aviso espera a la siguiente reclamación de cualquiera de las dos
+personas; cambiar la edición de un pase, el total de páginas o fusionar libros no reevalúa
+notas (llegan con la siguiente posición o cambio de estado).
+
+**Denuncia.** `content_reports.target_type='margin_encounter'`: la rama de
+`private.prepare_content_report` fija como denunciado a `margin_notes.author_id` y guarda en el
+snapshot cuerpo, capítulo, obra, ancla, id del encuentro y fecha (sobrevive al borrado de la
+nota). Las acciones de moderación administrativa sobre la nota **no están hechas** (#1384).
+Pendiente de decisión, ver [decisiones](./decisiones.md): si los administradores pueden leer
+comentarios de hilos privados por la ruta global de moderación (`has_min_role('admin')`).
+
+**Integridad de catálogo.** `margin_notes` entra en `private.catalog_reference_rules()`
+(`restrict`, par 16) con su `trg_catalog_reference_item_type`, y `merge_book_into` la repunta
+(`update public.margin_notes set item_id = p_winner`), reemitida desde `20261001102000`. Ver §2
+y §2.2.
 
 ## 9. Seguridad
 
