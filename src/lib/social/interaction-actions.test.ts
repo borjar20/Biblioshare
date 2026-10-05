@@ -473,6 +473,27 @@ describe("addComment", () => {
     );
   });
 
+  it("en un hilo de margen, una @mención a un tercero no genera aviso ni texto fuera de los dos", async () => {
+    const fake = makeActionClient({
+      target: {
+        ...checkpointTarget,
+        kind: "margin_encounter",
+        owner_id: "actor",
+        audience_id: "reader",
+        comment_notification_type: "margin_commented",
+      },
+      commentTarget,
+    });
+    mocks.createClient.mockResolvedValue(fake.client);
+    mocks.notifyMentions.mockResolvedValue(["tercero"]);
+
+    await addComment("target-checkpoint", "@tercero mira esto");
+
+    expect(mocks.notifyMentions).not.toHaveBeenCalled();
+    const notified = mocks.notify.mock.calls.map((call) => (call[1] as { userId: string }).userId);
+    expect(notified).toEqual(["reader"]);
+  });
+
   it("mantiene el aviso normal al owner si la mención no llegó a insertarse", async () => {
     const fake = makeActionClient({ target: passTarget, commentTarget });
     mocks.createClient.mockResolvedValue(fake.client);

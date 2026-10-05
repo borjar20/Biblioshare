@@ -145,7 +145,12 @@ export async function addComment(
       if (commentTargetError) throw commentTargetError;
       if (commentTarget) {
         commentTargetId = commentTarget.id;
-        mentioned = await notifyMentions(supabase, {
+        // Hilo privado de nota en el margen: solo lo ven el autor y ese lector.
+        // notifyMentions resolvería destinatarios por la audiencia heredada
+        // (perfil del lector) y avisaría -- con el texto y un push -- a
+        // terceros. threadRecipients ya avisa a la contraparte, así que se
+        // omite por completo: ninguna mención sale de los dos.
+        if (target.kind !== "margin_encounter") mentioned = await notifyMentions(supabase, {
           authorId: user.id,
           text: trimmed,
           interactionTargetId: commentTarget.id,
