@@ -379,7 +379,7 @@ begin
                  where w.item_type = 'book' and w.item_id = p_winner
                    and w.person_id = l.person_id and w.role = l.role);
 
-  -- ── Repunte: las 13 columnas `item_type`/`item_id` ───────────────────────
+  -- ── Repunte: las 14 columnas `item_type`/`item_id` (13 previas + margin_notes) ───────────────────────
   update public.credits                  set item_id = p_winner where item_type = 'book' and item_id = p_loser;
   update public.passes                   set item_id = p_winner where item_type = 'book' and item_id = p_loser;
   update public.collection_items         set item_id = p_winner where item_type = 'book' and item_id = p_loser;
@@ -491,6 +491,6 @@ end;
 $function$;
 
 comment on function public.merge_book_into(uuid, uuid) is
-  'Fusión conservadora de books: conserva guardas de datos de usuario y deduplicación canónica de ISBN; repunta las 18 superficies tipadas/href y los dos formatos de referencias de evento (lanzamiento.config.item, fecha_destacada.config.relations). Conserva orden y claves ajenas del JSON, no cambia otras clases de actividad/medio y tolera config malformado. Storage queda fuera (#880). El llamador elige ganador. Solo service_role.';
+  'Fusión conservadora de books: conserva guardas de datos de usuario y deduplicación canónica de ISBN; repunta las 19 superficies tipadas (18 previas + margin_notes)/href y los dos formatos de referencias de evento (lanzamiento.config.item, fecha_destacada.config.relations). Conserva orden y claves ajenas del JSON, no cambia otras clases de actividad/medio y tolera config malformado. Storage queda fuera (#880). El llamador elige ganador. Solo service_role.';
 revoke all on function public.merge_book_into(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.merge_book_into(uuid, uuid) to service_role;
