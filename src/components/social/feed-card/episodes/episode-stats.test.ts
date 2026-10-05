@@ -43,6 +43,19 @@ describe("highlights", () => {
     expect(best.map((e) => e.episode)).toEqual([2, 1]);
     expect(worst.map((e) => e.episode)).toEqual([3]);
   });
+  it("13 episodios con la misma nota: mejores y peores no se solapan", () => {
+    const eps = Array.from({ length: 13 }, (_, i) => ep(i + 1, 7));
+    const { best, worst } = highlights(eps);
+    expect(best.map((e) => e.episode)).toEqual([1, 2, 3]);
+    expect(worst.map((e) => e.episode)).toEqual([4, 5, 6]);
+  });
+  it("un empate a caballo del medio no repite episodios", () => {
+    const eps = [ep(1, 8), ep(2, 6), ep(3, 6), ep(4, 6), ep(5, 4)];
+    const { best, worst } = highlights(eps);
+    expect(best.map((e) => e.episode)).toEqual([1, 2, 3]);
+    expect(worst.map((e) => e.episode)).toEqual([5, 4]);
+    expect(best.filter((e) => worst.includes(e))).toEqual([]);
+  });
 });
 
 describe("averageRating y seasonsOf", () => {

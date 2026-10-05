@@ -26,10 +26,16 @@ export function bestEpisodes(eps: FeedEpisode[]): Set<FeedEpisode> {
 export function highlights(eps: FeedEpisode[], k = 3): { best: FeedEpisode[]; worst: FeedEpisode[] } {
   const order = (e: FeedEpisode) => e.season * 10_000 + e.episode;
   const byBest = [...rated(eps)].sort((a, b) => b.rating - a.rating || order(a) - order(b));
-  const byWorst = [...rated(eps)].sort((a, b) => a.rating - b.rating || order(a) - order(b));
   const nBest = Math.min(k, Math.ceil(byBest.length / 2));
   const nWorst = Math.min(k, Math.floor(byBest.length / 2));
-  return { best: byBest.slice(0, nBest), worst: byWorst.slice(0, nWorst) };
+  const best = byBest.slice(0, nBest);
+  // Los peores se sacan de los que NO están ya en `best`: con empates (13
+  // episodios con un 7) dos ordenaciones independientes repetirían episodios.
+  const taken = new Set(best);
+  const byWorst = [...rated(eps)]
+    .filter((e) => !taken.has(e))
+    .sort((a, b) => a.rating - b.rating || order(a) - order(b));
+  return { best, worst: byWorst.slice(0, nWorst) };
 }
 
 export function averageRating(eps: FeedEpisode[]): number | null {
