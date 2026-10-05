@@ -4269,8 +4269,8 @@ misma pasada (ANEXO 2026-08-31), como manda §11.
 
 ### 8.3. Espejo local y cierre de sesión (#975)
 
-**[Canónico · contrato contrastado con código y 500 unitarios Play/logout el
-2026-10-04; navegador y CI del candidato pendientes]**
+**[Canónico · contrato y Native focal verificados el 2026-10-05;
+purga selectiva y ACK 10/10 PASS, GLOBAL FAIL conservado]**
 
 `biblioshare-play` es una base IndexedDB del dispositivo, independiente de las
 tablas anteriores. La versión 5 añade `saved_sessions` (keyPath `identity`) a
