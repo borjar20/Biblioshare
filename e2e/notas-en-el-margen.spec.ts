@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { deleteExperienceActor, experienceActor, loginExperienceUser } from "./support/experience-fixtures";
 import {
   MARGIN_QA_PREFIX,
+  cleanupMargin,
   clearMarginFixtures,
   encountersForReader,
   follow,
@@ -10,6 +11,7 @@ import {
   startSeriesPass,
   marginBook,
   marginSeries,
+  notificationsFor,
   resetEncountersUnseen,
   setReaderProgress,
   watchEpisode,
@@ -19,6 +21,8 @@ import {
 // `next dev`: un `use cache` mal puesto pasa el build y falla en `next start`.
 // El progreso del lector se escribe por REST (mismo trigger de BD que una
 // sesión real); la revelación SÍ se comprueba en el navegador al recargar la ficha.
+
+type Actor = Awaited<ReturnType<typeof experienceActor>>;
 
 async function loggedInPage(browser: Browser, actor: { email: string; password: string }) {
   const page = await (await browser.newContext()).newPage();
@@ -46,11 +50,12 @@ const ANY_REVEAL = /nota en el margen|notas en el margen/;
 
 test.describe("notas en el margen", () => {
   test("se abre al pasar el margen, se responde y la autora ve el hilo", async ({ browser }) => {
-    const author = await experienceActor("margin-author", true);
-    const reader = await experienceActor("margin-reader", true);
-    const book = await marginBook();
+    let author: Actor | undefined, reader: Actor | undefined, book: { id: string } | undefined;
     const body = `${MARGIN_QA_PREFIX}aquí lloré`;
     try {
+      author = await experienceActor("margin-author", true);
+      reader = await experienceActor("margin-reader", true);
+      book = await marginBook();
       await follow(reader.id, author.id);
 
       // La autora deja la nota con la hoja real de la ficha (se hace seguidora de la obra para ver «Mi registro»).
@@ -63,6 +68,9 @@ test.describe("notas en el margen", () => {
       await setReaderProgress(reader.id, book.id, { page: 200 });
       await r.goto(`/libro/${book.id}?tab=log`);
       await expect(r.getByRole("heading", { name: "Notas en el margen" })).toBeVisible();
+      // Margen de asentamiento: una ausencia solo vale si la hidratación ya terminó.
+      await r.waitForLoadState("networkidle");
+      await r.waitForTimeout(1000);
       await expect(r.getByRole("dialog", { name: ANY_REVEAL })).toHaveCount(0);
       await expect(r.getByText(body)).toHaveCount(0);
 
@@ -82,6 +90,9 @@ test.describe("notas en el margen", () => {
       await r.getByRole("button", { name: "Comentar", exact: true }).click();
       await expect(r.getByText(reply)).toBeVisible();
 
+      // La autora recibe el aviso del comentario (notify es asíncrono: se sondea).
+      await expect.poll(async () => (await notificationsFor(author!.id, "margin_commented")).length).toBeGreaterThan(0);
+
       // La autora ve quién la encontró y el hilo.
       await a.goto(`/libro/${book.id}?tab=log`);
       await expect(a.getByText(/La encontraron: /)).toBeVisible();
@@ -90,18 +101,21 @@ test.describe("notas en el margen", () => {
       await a.getByRole("button", { name: /^1 comentario$/ }).click();
       await expect(a.getByText(reply)).toBeVisible();
     } finally {
-      await clearMarginFixtures([book.id]);
-      await deleteExperienceActor(author);
-      await deleteExperienceActor(reader);
+      await cleanupMargin([
+        book && (() => clearMarginFixtures([book!.id])),
+        author && (() => deleteExperienceActor(author!)),
+        reader && (() => deleteExperienceActor(reader!)),
+      ]);
     }
   });
 
   test("retroactiva: aparece como nueva en la ficha y en el Cuaderno, sin hoja", async ({ browser }) => {
-    const author = await experienceActor("margin-author", true);
-    const reader = await experienceActor("margin-reader", true);
-    const book = await marginBook();
+    let author: Actor | undefined, reader: Actor | undefined, book: { id: string } | undefined;
     const body = `${MARGIN_QA_PREFIX}retro`;
     try {
+      author = await experienceActor("margin-author", true);
+      reader = await experienceActor("margin-reader", true);
+      book = await marginBook();
       await follow(reader.id, author.id);
       // El lector ya terminó el libro ANTES de que la autora escriba.
       await setReaderProgress(reader.id, book.id, { status: "completed" });
@@ -115,24 +129,27 @@ test.describe("notas en el margen", () => {
       await expect(r.getByRole("dialog", { name: ANY_REVEAL })).toHaveCount(0);
 
       // La ficha las marca vistas; se devuelve a «sin ver» para probar el Cuaderno.
-      await expect.poll(async () => (await encountersForReader(reader.id)).every((e) => e.seen_at)).toBe(true);
+      await expect.poll(async () => (await encountersForReader(reader!.id)).every((e) => e.seen_at)).toBe(true);
       await resetEncountersUnseen(reader.id);
       await r.goto("/notas?margen=encontradas");
       await expect(r.getByText(body)).toBeVisible();
       await expect(r.getByText("Nueva", { exact: true })).toBeVisible();
     } finally {
-      await clearMarginFixtures([book.id]);
-      await deleteExperienceActor(author);
-      await deleteExperienceActor(reader);
+      await cleanupMargin([
+        book && (() => clearMarginFixtures([book!.id])),
+        author && (() => deleteExperienceActor(author!)),
+        reader && (() => deleteExperienceActor(reader!)),
+      ]);
     }
   });
 
   test("serie: la nota del T1E3 no se abre al ver el T1E4 y sí al ver el T1E3", async ({ browser }) => {
-    const author = await experienceActor("margin-author", true);
-    const reader = await experienceActor("margin-reader", true);
-    const series = await marginSeries();
+    let author: Actor | undefined, reader: Actor | undefined, series: { id: string } | undefined;
     const body = `${MARGIN_QA_PREFIX}giro del tercero`;
     try {
+      author = await experienceActor("margin-author", true);
+      reader = await experienceActor("margin-reader", true);
+      series = await marginSeries();
       await follow(reader.id, author.id);
       // Nota de episodio por REST: la ficha no fija episodio (eso lo hace el panel de episodios).
       await insertEpisodeNote(author, series.id, 1, 3, body);
@@ -152,22 +169,27 @@ test.describe("notas en el margen", () => {
       await expect(reveal.getByText(body)).toBeVisible();
       await expect(reveal.getByText("T1 · E3")).toBeVisible();
     } finally {
-      await clearMarginFixtures([], [series.id]);
-      await deleteExperienceActor(author);
-      await deleteExperienceActor(reader);
+      await cleanupMargin([
+        series && (() => clearMarginFixtures([], [series!.id])),
+        author && (() => deleteExperienceActor(author!)),
+        reader && (() => deleteExperienceActor(reader!)),
+      ]);
     }
   });
 
   test("la hoja de la ficha deja la nota y la autora la ve en su ficha", async ({ browser }) => {
-    const author = await experienceActor("margin-author", true);
-    const book = await marginBook();
+    let author: Actor | undefined, book: { id: string } | undefined;
     try {
+      author = await experienceActor("margin-author", true);
+      book = await marginBook();
       const a = await loggedInPage(browser, author);
       await leaveBookNote(a, book.id, "214", "Cap. 12", `${MARGIN_QA_PREFIX}desde la hoja`);
       await expect(a.getByText(`${MARGIN_QA_PREFIX}desde la hoja`)).toBeVisible();
     } finally {
-      await clearMarginFixtures([book.id]);
-      await deleteExperienceActor(author);
+      await cleanupMargin([
+        book && (() => clearMarginFixtures([book!.id])),
+        author && (() => deleteExperienceActor(author!)),
+      ]);
     }
   });
 });

@@ -5,6 +5,14 @@ import { experienceRest } from "./experience-fixtures";
 // crea lleva el prefijo `[QA Margin] ` para poder reconocerlo y barrerlo.
 export const MARGIN_QA_PREFIX = "[QA Margin] ";
 
+/** Misma guarda que experienceRest: solo local o biblioshare-dev. */
+function assertMarginHost(url: string) {
+  const host = new URL(url).hostname;
+  if (!["127.0.0.1", "localhost", "tyvzpuhxfwxrnkcpzxyg.supabase.co"].includes(host)) {
+    throw new Error("Margin fixtures require local or biblioshare-dev");
+  }
+}
+
 const returning = { Prefer: "return=representation" };
 
 async function insertOne<T>(table: string, row: Record<string, unknown>): Promise<T> {
@@ -58,16 +66,13 @@ export async function follow(followerId: string, followeeId: string) {
 
 /**
  * Inserta una nota COMO LA AUTORA (JWT de su sesión, rol authenticated) y SIN
- * RETURNING. Dos motivos, ambos hallazgos de producto (ver informe de la Tarea 10):
- * con service_role la CHECK falla con «permission denied for function
- * margin_anchor_valid», y con `Prefer: return=representation` (el
- * `.select("id").single()` de createMarginNote) la política de select no ve la
- * fila recién insertada y el insert entero se rechaza por RLS.
+ * RETURNING (no hace falta el id). Con service_role la nota también se puede
+ * insertar desde la migración 20261004120500, pero así se prueba el camino real.
  */
 async function insertNoteAs(author: { email: string; password: string }, row: Record<string, unknown>) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  if (new URL(url).hostname !== "tyvzpuhxfwxrnkcpzxyg.supabase.co") throw new Error("Actor REST requires dev");
+  assertMarginHost(url);
   const auth = await fetch(`${url}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: anon, "Content-Type": "application/json" },
@@ -202,4 +207,30 @@ export async function clearMarginFixtures(bookIds: string[], seriesIds: string[]
   if (bookIds.length) {
     await experienceRest(`books?id=in.(${bookIds.join(",")})&title=${like}`, { method: "DELETE" });
   }
+}
+
+/** Notificaciones del tipo dado para un usuario (lectura con service role). */
+export async function notificationsFor(userId: string, type: string) {
+  return (await (
+    await experienceRest(`notifications?user_id=eq.${userId}&type=eq.${type}&select=id`)
+  ).json()) as { id: string }[];
+}
+
+/**
+ * Limpieza resistente: cada paso corre aunque otro falle (para no dejar actores
+ * huérfanos en dev) y al final se relanza el primer error.
+ */
+export async function cleanupMargin(
+  steps: Array<(() => Promise<unknown>) | false | undefined | null>,
+) {
+  const errors: unknown[] = [];
+  for (const step of steps) {
+    if (!step) continue;
+    try {
+      await step();
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length) throw errors[0];
 }
