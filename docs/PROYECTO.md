@@ -144,7 +144,7 @@ los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 - **Notificaciones**: in-app (`notifications`, campana) + push unificado Web
   (VAPID) y Android (FCM) con preferencias opt-out por canal×categoría;
   planificador `pg_cron`+`pg_net` (recordatorios de eventos).
-- **Notas en el margen** (#1380; esquema en dev, producción pendiente): una nota anclada a un
+- **Notas en el margen** (#1380; esquema en dev y producción desde el 2026-10-05; código en la PR): una nota anclada a un
   punto de una obra (página/proporción en libros, episodio en series, «al terminar» en películas)
   que se abre a quien te sigue cuando llega a ese punto, o al instante si ya lo había pasado. Para
   seguidores o dedicada a una persona; hilo privado por lector en `/margen/[id]` con comentarios y

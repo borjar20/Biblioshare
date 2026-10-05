@@ -4793,11 +4793,14 @@ EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
 Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`).
 
-## 8quater. Notas en el margen (#1380; verificado en dev 2026-10-05, producción pendiente)
+## 8quater. Notas en el margen (#1380; verificado en dev y en producción el 2026-10-05)
 
 **[Canónico · esquema y permisos verificados en `biblioshare-dev` el 2026-10-05 contra
 pg_proc/pg_class/pg_policies/pg_trigger y `supabase/tests/margin_notes.sql` (PASS con rollback);
-entorno: dev; prod pendiente — las seis migraciones NO están aplicadas en producción)**
+entorno: dev y prod. Las seis migraciones se aplicaron en producción el 2026-10-05, hacia las
+07:47 UTC y antes del código. Se verificaron en prod contra pg_proc, pg_class, pg_policies,
+pg_trigger y los grants por columna; el md5 de `pg_get_functiondef` coincide con dev en las
+siete funciones redefinidas o nuevas. La matriz SQL no se ejecuta en prod.]**
 
 Seis migraciones: `20261004120000_margin_notes_enums.sql` (sola, en su transacción),
 `…120100_margin_notes_core.sql`, `…120200_margin_notes_opening.sql`,

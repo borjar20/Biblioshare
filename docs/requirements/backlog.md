@@ -21,7 +21,7 @@
 > Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
 > fichas Recursos y edición de asientos MTG #1006/#1008 verificadas con ocho E2E de build/start, a 390/1280 px, el 2026-10-04; CI del HEAD integrado exigida;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293;
-> notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05, producción pendiente]**
+> notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05; esquema aplicado en producción el mismo día; código en la PR]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;
@@ -478,7 +478,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   [navegación de la app (2026-10-03)](../testing/2026-10-03-navegacion-app.md)
   y [release (2026-10-03)](../testing/2026-10-03-experiencias-release.md).
 
-**Notas en el margen — implementadas y verificadas en dev (2026-10-05); producción pendiente (#1380)**
+**Notas en el margen — verificadas en dev; esquema en producción el 2026-10-05; código en la PR (#1380)**
 - [x] [#1380](https://github.com/borjar20/Biblioshare/issues/1380) — Notas ancladas a un punto de la obra
   que se abren a quien te sigue al llegar a él (libros por proporción con margen hacia atrás, series
   por episodio, películas al terminar), con audiencia seguidores o dedicada, notas retroactivas,
