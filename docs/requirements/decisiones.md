@@ -6646,6 +6646,25 @@ demuestra por sí solo el origen del fallo CI previo. Evidencia y límites:
 [cobertura](../testing/2026-10-04-celebrations-stale-diagnostics-1369.md) y
 [navegador](../testing/2026-10-04-celebrations-stale-diagnostics-native-1369.md).
 
+## 2026-10-04 — Cierre de sesión conserva fuentes sin ACK y retira generaciones (#975)
+
+El logout de Partidas purga sólo `synced && deletedAt === null`: una partida
+pending puede ser la única copia y un tombstone synced aún espera el ACK del
+borrado. No se borran automáticamente esas fuentes. Activa, otras identidades,
+anónimas, jugadores y acompañantes quedan fuera del perímetro de esta purga.
+
+La barrera vive en IndexedDB v5 (`saved_sessions`) y se comprueba en la misma
+transacción de cada escritura, porque un canal o cancelación en memoria no
+protege otra pestaña. El uid se valida en Auth; session_id y generación sólo
+identifican trabajo retirado. Un login nuevo puede reabrir y un refresh no;
+los ids retirados impiden ABA. Guardar desde una URL directa puede registrar
+el contexto nuevo sin haber montado el historial.
+
+Auth/IDB no disponibles dejan continuar el logout sin afirmar purga. La
+retención residual y una opción de borrado total confirmado requieren issue
+[#1375](https://github.com/borjar20/Biblioshare/issues/1375) y una política explícita; no se promete privacidad por RLS sobre disco
+local. Contrato y límites en el informe de #975; QA y CI finales pendientes.
+
 ## 2026-10-05 — Separar la hidratación de ruta de la espera de sesión en el shell (#1385)
 
 Header, BottomNav y la compañera usan ChromeBoundary: un Suspense exterior

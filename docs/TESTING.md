@@ -835,6 +835,64 @@ Actores, libros, navegador y servidor propios limpios. La CI del HEAD integrado
 sigue siendo un gate independiente; esta tanda no acredita #754/#1369 ni una
 auditoría global de red limpia.
 
+## Purga de copias sincronizadas al salir de Partidas (#975)
+
+[Informe focal](testing/2026-10-04-play-logout-saved-purge-975.md): 500/500
+pruebas Play/logout en 41 archivos, 24 controles causales y nueve mutantes
+detectados. Dos conexiones a la misma factoría fake-indexeddb prueban la
+barrera transaccional sin depender del canal, ABA, pulls/ACK tardíos y candados
+por generación. El botón real espera la purga antes de revocar Auth/navegar.
+
+Conserva pending, tombstones y otras identidades/anónimos/activa; borra sólo
+copias synced sin intención de borrado. Nueva sesión puede guardar desde una
+herramienta directa. El rollback de #977 sigue acreditado y v4→v5 es aditivo.
+Tipos y lint PASS; FAIL de preparación/producto conservados. En ese primer corte,
+Auth, backend y canal eran fronteras controladas y la QA web seguía pendiente.
+
+QA posterior del 2026-10-05: TypeScript y 129/129 casos pertinentes PASS;
+revisión r3 independiente 26/26 sin hallazgos. Diez casos funcionales nativos
+acreditados sobre el mismo HEAD `7b5b426` y build de producción, repartidos
+en ocho más uno más uno tras corregir el setup A→B. UI, Auth/backend local e
+IndexedDB reales, con entregas tardías controladas y declaradas. El resultado
+global sigue siendo FAIL: React #418 (seguido en #1385) y errores/cancelaciones
+de red conservados (#1301). El informe focal distingue cada corte y sus límites.
+Cuota física, Android, producción y CI final continúan como gates separados.
+
+La retención de datos y metadatos se documenta explícitamente; no es limpieza
+total del dispositivo. Ver §8.3 de data-model y [#1375](https://github.com/borjar20/Biblioshare/issues/1375).
+
+Tanda final local del 2026-10-05: **10/10 funcionales PASS juntos**, una build
+de producción nueva `n7uFqvxOmrMQs2Tcyczt4`, HEAD
+`5679ec91db0563d06747c5a549da7274fbe8bf12`, worker1/retry0/repeat1, sin
+skips ni flaky. Auth A/B y backend local reales, IndexedDB nativa y callbacks
+originales retenidos tras commit. El bootstrap natural valida 298 versiones.
+Los 20 contratos Node, 124 pruebas focales en 11 archivos, tipos y mapa se
+conservan como evidencia estática separada. R1 conserva su FAIL de preparación;
+R2 corrige el supervisor y sus tres controles locales pasan antes del único GO.
+
+El supervisor termina **exit1 / FAIL_PRESERVED**: auditoría global
+FAIL_UNCLASSIFIED, con pageerror0, console7, HTTP409 dos veces y 170 abortos
+(121 GET RSC, 5 GET Auth/user, 44 POST Next). Los dos409 ocurren tras guardar
+el estado final del caso y antes del cierre del contexto; la posible carrera
+del teardown Auth con sync residual sigue como sospecha en
+[#1417](https://github.com/borjar20/Biblioshare/issues/1417).
+Las cancelaciones y efectos no clasificados se siguen en
+[#1301](https://github.com/borjar20/Biblioshare/issues/1301#issuecomment-5997420268).
+No hay allowlists ni una identificación de cada acción Next desde el journal.
+La revisión fresca de la evidencia acredita PASS focal, integridad y limpieza;
+mantiene GLOBAL FAIL y el corte `5679ec91`, sin ejecutar otra tanda.
+
+Limpieza PASS: 20 actores propios comprobados, censo cero con ledger298,
+parada normal con backup, 40 volúmenes previos preservados y 43 presentes.
+El contraste host acredita 13 puertos libres, perfiles/Node Native/Docker0;
+fuentes y compilados conservan identidad y las únicas adiciones de `.next`
+son caché de respuesta de Next. Evidencia y hashes en el informe focal.
+El candidato de entrega integra después main de Patrón C del feed, conservando
+los 19 fuentes/tests de #975 y siete pins r3; la tanda describe el corte
+`5679ec91`, no una ejecución del árbol posterior completo. CI final, Android,
+cuota física y producción siguen sin acreditarse por esta tanda; no hubo
+acceso a prod/dev remoto ni a `codex_qa`. La retención residual sigue en #1375.
+
 ## Fichas de acompañantes y asientos de MTG (#1006, #1008)
 
 [Informe nativo](testing/2026-10-04-play-seat-interactions-1006-1008.md): ocho
@@ -971,3 +1029,17 @@ Los informes de entrega de Celebraciones/#1385 se actualizan por los patches
 del coordinador: CI ancestral 4873/168/298 PASS, merge `8424` y entrega acreditada
 con sus límites. Conservan los FAIL Native/global/FULL. Esa entrega anterior
 no sustituye la CI pendiente del nuevo candidato #401.
+
+### Corte final de entrega #401 — 2026-10-05
+
+Las referencias anteriores a CI pendiente corresponden al corte histórico.
+[PR #1416](https://github.com/borjar20/Biblioshare/pull/1416) se integra a las
+15:28:30 UTC en main `3c7b7e03efbfc916a768edd41a97858e7722b5b2`, con ocho
+checks SUCCESS sobre `61cf20e56acb52cc9f522826be230275fa9ae2bf` y base `ea77`.
+[Tests](https://github.com/borjar20/Biblioshare/actions/runs/37331509507)
+acredita 497 archivos, 4.889 unitarios y 168 E2E;
+[bootstrap](https://github.com/borjar20/Biblioshare/actions/runs/37331509492)
+acredita SQL298 y matriz11/carrera/restauración/cleanup PASS en ambas CI.
+Los contratos Node suman 36 distintos (20 y 27 con once compartidos), más
+fixture #405 9/9. Este corte no acredita dev, producción ni el árbol posterior
+de #975; su CI de entrega y su GLOBAL FAIL Native conservan gates propios.

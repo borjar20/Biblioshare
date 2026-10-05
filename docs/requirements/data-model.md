@@ -1,10 +1,10 @@
 # Modelo de datos
 
-> **Delta 2026-10-05 (lugares de Experiencias; verificado en dev 2026-10-05; producción
-> pendiente):** migración `20261005100000_experience_places.sql`: tabla `places`,
+> **Delta 2026-10-05 (lugares de Experiencias; verificado en dev y en producción 2026-10-05):**
+> migración `20261005100000_experience_places.sql`: tabla `places`,
 > `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
 > en las RPC de momentos. Aplicada en `biblioshare-dev`; `supabase/tests/experiences_places.sql`
-> PASS con rollback. **No aplicada en producción.** Ver §8ter.2.
+> PASS con rollback. Aplicada en producción el mismo día con cuerpos idénticos a dev (md5). Ver §8ter.2.
 
 > **Delta 2026-10-05 (#1380, notas en el margen; esquema verificado en dev 2026-10-05; producción
 > pendiente):** seis migraciones nuevas (`20261004120000` … `20261004120500`) añaden
@@ -4267,6 +4267,38 @@ prod el 2026-08-31** (tabla, las cuatro políticas y el índice comprobados cont
 `pg_class`/`pg_policies` en ambos, tras pasar los e2e). Anexada a `schema-baseline.sql` en la
 misma pasada (ANEXO 2026-08-31), como manda §11.
 
+### 8.3. Espejo local y cierre de sesión (#975)
+
+**[Canónico · contrato y Native focal verificados el 2026-10-05;
+purga selectiva y ACK 10/10 PASS, GLOBAL FAIL conservado]**
+
+`biblioshare-play` es una base IndexedDB del dispositivo, independiente de las
+tablas anteriores. La versión 5 añade `saved_sessions` (keyPath `identity`) a
+`active`, `saved`, `players` y `companion`. El cambio v4→v5 es aditivo; no mueve
+ni elimina sus registros. La migración histórica v1→v2 de guardadas conserva
+su rollback completo frente a errores de petición y su reintento sin reset.
+
+`saved` contiene `gameId`, `identity`, `v=2`, log `committed`, `savedAt`,
+`summary`, `syncStatus` (`pending|synced`) y `deletedAt`. Un tombstone, aunque
+tenga `syncStatus=synced`, conserva una intención de borrado pendiente de ACK.
+Cerrar sesión elimina únicamente `synced && deletedAt === null` de la identidad
+validada en Auth y confirma esa purga junto al cierre de su generación.
+
+`saved_sessions` guarda identidad, generación monótona, `sessionId`, `closed`
+e ids `retired`. Son metadatos de cancelación; no guardan tokens, contraseñas
+ni cookies ni conceden acceso remoto. El uid se valida mediante `getUser` con
+el token capturado en RAM; `session_id` distingue un login nuevo de un refresh.
+Una sesión retirada no reabre la generación. Cada escritura/borrado de sync
+comprueba su contexto en la misma transacción que toca `saved`, incluso entre
+documentos sin recibir BroadcastChannel.
+
+Se conservan pendientes, tombstones, otras identidades, anónimas y activa.
+`players`/`companion` quedan fuera de la purga. Sin Auth verificable o IDB
+confirmado, el logout sigue siendo posible y no se acredita limpieza. La purga
+total confirmada y la retención de metadatos se siguen en [#1375](https://github.com/borjar20/Biblioshare/issues/1375);
+no se atribuye mezcla de cuentas en la lista ni cambios de RLS/grants remotos.
+Evidencia: [contrato y límites](../testing/2026-10-04-play-logout-saved-purge-975.md).
+
 ## 8bis. Mascota
 
 > (Sección insertada el 2026-09-02 entre «8. Play» y «9. Seguridad», sin renumerar el resto.)
@@ -4934,7 +4966,7 @@ EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
 Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`). Fuente y límites: [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04), recogido en PR #1378; sin fixtures ni recorrido autenticado de reseñas acreditados en producción.
 
-### 8ter.2 Lugares (2026-10-05; verificado en dev, producción pendiente)
+### 8ter.2 Lugares (2026-10-05; verificado en dev y en producción)
 
 Migración `20261005100000_experience_places.sql`. Contrato:
 [spec](../superpowers/specs/2026-10-05-experiencias-lugares-design.md).
@@ -4972,8 +5004,14 @@ saltaría la firma.
 **Estado por entorno.** Dev (`biblioshare-dev`) aplicada el 2026-10-05; `supabase/tests/experiences_places.sql`
 PASS con rollback; 0 filas residuales; `experience_create`/`experience_save_moment` ejecutables
 por `authenticated` y no por `anon`; `private.experience_input_place` no ejecutable por
-`authenticated`; una sola sobrecarga de `experience_create`. **Producción: NO aplicada**
-(ver [issue #1399](https://github.com/borjar20/Biblioshare/issues/1399)). e2e `e2e/experiencias-lugares.spec.ts`: 1 passed contra
+`authenticated`; una sola sobrecarga de `experience_create`. **Producción** (`biblioshare`)
+aplicada el 2026-10-05 ([#1399](https://github.com/borjar20/Biblioshare/issues/1399)). Antes de aplicar
+se comprobó que las dos RPC vivas eran las de `20261004100100` (1380/2118 caracteres, sin `placeId`).
+Después: md5 de `experience_create`, `experience_save_moment`, `place_upsert` y
+`private.experience_input_place` idénticos a dev; SECURITY DEFINER y `search_path=''` donde
+corresponde; `places` con RLS, SELECT para `anon`, sin INSERT para `authenticated`; `place_upsert`
+solo para `service_role`; una sola sobrecarga de cada RPC. El test SQL no se repitió en producción
+(siembra actores en `auth.users`; el proyecto no siembra fixtures en prod). e2e `e2e/experiencias-lugares.spec.ts`: 1 passed contra
 `next build`/`next start` el 2026-10-05. Requiere `PLACES_SIGNING_SECRET` en el entorno.
 
 ## 8quater. Notas en el margen (#1380; verificado en dev y en producción el 2026-10-05)
