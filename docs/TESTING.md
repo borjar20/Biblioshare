@@ -879,3 +879,18 @@ un antes/después causal. Los 17 abortos y la captura de Colección aún en skel
 se conservan. Actor, libros y servicios propios limpios. La CI sobre el HEAD
 integrado mantiene su gate independiente; no se declara cura causal del fallo
 CI anterior ni una auditoría global de red limpia.
+
+## Hidratación de cabecera y navegación al iniciar MTG (#1385)
+
+[Informe focal](testing/2026-10-05-chrome-hydration-1385.md): el gate de ruta
+mantiene un Suspense externo y el payload de sesión espera en otro interno.
+La regresión SSR/hidratación conserva dos FAIL con la topología anterior y
+pasa sus cinco casos con el candidato; la tanda de navegación suma 31/31.
+Antes de navegar se acredita la hidratación de los gates, y las barras se
+retiran mientras la sesión sigue pendiente. Lint y tipos focales PASS.
+
+El diagnóstico nativo anterior localiza dos React #418 en Header y BottomNav
+bajo AppShell. El candidato todavía necesita revisión independiente y una
+build nueva con el recorrido original de MTG a 390 y 1280 px. Los controles
+React DOM no acreditan streaming de Next, Auth real ni layout de navegador.
+No se relajan las guardas del spec original ni se cierra la issue con este PASS.

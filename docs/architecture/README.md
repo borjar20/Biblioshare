@@ -1,5 +1,7 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta #1385 · verificado contra código y regresión React DOM el 2026-10-05: ChromeBoundary separa la resolución de ruta de la espera de sesión de Header, BottomNav y compañera. Cinco regresiones y 26 controles PASS; revisión independiente y nueva build/QA nativa pendientes. El resto conserva sus fechas y alcance.]**
+
 > **[Derivado · delta de celebraciones recuperables #1334 verificado contra código, 75 unitarios y PostgreSQL local cold-r2 el 2026-10-03; revisión independiente PASS. El flujo nuevo distingue claim, presentación y ACK. G4 nativo, activación remota y CI pendientes al registrar el delta.]**
 
 > **[Delta verificado el 2026-10-04 · #1334: G4 local de build `gmpZaurRiZDtN1lTctOQI` acredita recuperación después de claim perdido, presentación y ACK. Auditoría global FAIL de 390 incidentales conservada en #1301; tres fronteras nativas pendientes en #1356. Dev y producción activos: corte productivo de las 20:16:22 UTC, cuatro RPC invoker iguales a dev, grants 11/11/11, legacy compatible de cero filas y datos/ledger previos intactos, tras guard de quiescencia real. El corte de las 20:16:22 UTC precede a la entrega del consumidor, seguida en PR #1364; no acredita presentación remota. El delta anterior conserva su fecha y alcance.]**
