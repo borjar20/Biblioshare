@@ -53,11 +53,10 @@ test.describe("notas en el margen", () => {
     try {
       await follow(reader.id, author.id);
 
-      // La nota va por REST como la autora: la hoja de la ficha está rota (ver el último test).
-      await insertBookNote(author, book.id, 214, 400, "Cap. 12", body);
-      // «Mi registro» (donde vive el margen) solo existe si la obra está seguida: la autora tiene su pase.
-      await setReaderProgress(author.id, book.id, { page: 214 });
+      // La autora deja la nota con la hoja real de la ficha (se hace seguidora de la obra para ver «Mi registro»).
       const a = await loggedInPage(browser, author);
+      await leaveBookNote(a, book.id, "214", "Cap. 12", body);
+      await expect(a.getByText(body)).toBeVisible();
 
       const r = await loggedInPage(browser, reader);
       // Sesión hasta la 200: aún no.
@@ -159,13 +158,7 @@ test.describe("notas en el margen", () => {
     }
   });
 
-  // BUG DE PRODUCTO conocido (informe de la Tarea 10): createMarginNote inserta con
-  // `.select("id").single()`; el RETURNING evalúa margin_notes_select, que llama a
-  // can_read_margin_note (STABLE, no ve la fila de su propia sentencia), y el insert
-  // acaba en 42501, que la acción traduce a «Esa persona ya no te sigue». Cuando se
-  // arregle, este test pasará y Playwright avisará: quita entonces el test.fail().
-  test("la hoja de la ficha deja la nota (hoy falla: RETURNING + RLS)", async ({ browser }) => {
-    test.fail();
+  test("la hoja de la ficha deja la nota y la autora la ve en su ficha", async ({ browser }) => {
     const author = await experienceActor("margin-author", true);
     const book = await marginBook();
     try {
