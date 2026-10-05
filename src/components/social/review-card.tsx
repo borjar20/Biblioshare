@@ -2,14 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import type { FeedEpisode, FeedEvent } from "@/lib/social/feed";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { MentionText } from "@/components/social/mention-text";
 import { SpoilerGate } from "@/components/social/spoiler-gate";
 import { FeedCardShell } from "./feed-card/feed-card-shell";
 import { FeedWorkRow } from "./feed-card/feed-work-row";
-import { FeedMiniList } from "./feed-card/feed-mini-list";
+import { formatDots } from "@/lib/rating/dots";
+import { EpisodeTiles } from "./feed-card/episodes/episode-tiles";
+import { EpisodeCurve } from "./feed-card/episodes/episode-curve";
+import { EpisodeList } from "./feed-card/episodes/episode-list";
+import { EpisodeHighlights } from "./feed-card/episodes/episode-highlights";
+import { averageRating, episodeCode, seasonsOf } from "./feed-card/episodes/episode-stats";
 
 // Tarjeta de valoración/reseña (finished/watched y los legados rated/reviewed/
 // watchedEpisode) con el patrón C (spec 2026-10-05-feed-patron-c): lo que se
@@ -20,7 +25,8 @@ import { FeedMiniList } from "./feed-card/feed-mini-list";
 //   «valoró la serie», «reseñó»…
 // - EPISODIOS (post diario `watched`): «valoró/vio N episodios». Con uno solo,
 //   el episodio es el título («S2E3 · 1893», «de Loki»); con varios, la serie
-//   es el título y debajo cada episodio con SU nota. Antes el post llevaba
+//   es el título y debajo van las notas de cada episodio: fichas (2-3) o curva
+//   (4+) y, en el post, lista completa (hasta 12) o lo mejor y lo peor. Antes el post llevaba
 //   solo la nota del primero junto a «+3 episodios» y parecía la de todos.
 //
 // La reseña: en el feed, bajo la fila, recortada a 4 líneas con «Seguir
@@ -40,10 +46,12 @@ export function ReviewCard({
   showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
+  const format = useFormatter();
   const workType = t("workType", { itemType: event.itemType });
 
   let verb: string;
   let row: React.ReactNode;
+  let episodesView: React.ReactNode = null;
   if (event.episode) {
     // Las previews legadas (shared-activity) no traen `episodes`: un episodio.
     const eps: FeedEpisode[] = event.episodes?.length ? event.episodes : [{ ...event.episode, rating: event.rating }];
@@ -61,29 +69,43 @@ export function ReviewCard({
         />
       );
     } else {
+      const seasons = seasonsOf(eps);
+      const avg = averageRating(eps);
+      const facts = [
+        workType,
+        t("card.seasons", {
+          count: seasons.length,
+          list: format.list(seasons.map(String), { type: "conjunction" }),
+        }),
+        avg != null ? t("card.average", { value: formatDots(avg) ?? "" }) : null,
+      ].filter(Boolean).join(" · ");
       row = (
         <FeedWorkRow
           itemType={event.itemType}
           itemId={event.itemId}
           coverUrl={event.itemCoverUrl}
           title={event.itemTitle}
-          facts={workType}
-        >
-          <FeedMiniList
-            rows={eps.map((e) => ({
-              key: episodeCode(e),
-              label: episodeCode(e),
-              text: e.title ?? "",
-              value:
-                e.rating != null ? (
-                  <RatingDots value={e.rating} size="sm" itemType={event.itemType} />
-                ) : (
-                  <span role="img" aria-label={t("card.noRating")} className="font-mono text-[10.5px] text-muted-foreground">—</span>
-                ),
-            }))}
-          />
-        </FeedWorkRow>
+          facts={facts}
+        />
       );
+      // Fichas con 2-3 (una curva de 2-3 puntos no tiene forma); curva desde 4.
+      // En el post (sin interacciones) hay sitio: lista completa hasta 12 y,
+      // desde 13, lo mejor y lo peor con el resto plegado.
+      episodesView =
+        eps.length <= 3 ? (
+          <EpisodeTiles episodes={eps} itemType={event.itemType} size={showInteractions ? "feed" : "post"} />
+        ) : showInteractions ? (
+          <EpisodeCurve episodes={eps} size="feed" showBest />
+        ) : (
+          <>
+            <EpisodeCurve episodes={eps} size="post" />
+            {eps.length <= 12 ? (
+              <EpisodeList episodes={eps} itemType={event.itemType} />
+            ) : (
+              <EpisodeHighlights episodes={eps} itemType={event.itemType} />
+            )}
+          </>
+        );
     }
   } else {
     const v = event.verb === "rated" || event.verb === "reviewed" ? event.verb : "finished";
@@ -142,14 +164,12 @@ export function ReviewCard({
       showInteractions={showInteractions}
     >
       {row}
+      {episodesView}
       {excerpt}
     </FeedCardShell>
   );
 }
 
-function episodeCode(e: { season: number; episode: number }): string {
-  return `S${e.season}E${e.episode}`;
-}
 
 // Extracto de la reseña en el feed (R2): 4 líneas como mucho. «Seguir leyendo»
 // sale si el recorte visual esconde algo o si el servidor ya lo cortó

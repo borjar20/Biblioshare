@@ -6711,3 +6711,22 @@ los cuatro. Se decidió sobre maquetas (spec `2026-10-05-feed-patron-c-design.md
   «vio un episodio» y lleva el extracto debajo; `verbForReviewable` sigue decidiendo el verbo
   guardado del post, pero la tarjeta de episodios no lo lee. Con varios episodios, el extracto es el
   del episodio del que cuelga el post y no se atribuye todavía (anotado en la issue de pulido).
+
+## 2026-10-05 — Feed: episodios del día en fichas o curva, sin notas ocultas
+
+La mini-lista de la tarjeta de varios episodios (#1415) recortaba a 3 filas con «+N más» y escondía
+notas. Se decidió sobre maquetas (spec `2026-10-05-feed-episodios-curva-design.md`); se descartaron
+barras, mapa de calor y carrusel:
+
+- **Regla por número, igual en feed y post:** 1 episodio, el episodio es el título; **2-3, fichas**
+  (con tan pocos puntos una curva no tiene forma); **4 o más, curva**. En el feed la curva lleva nota
+  y código por punto hasta 8 y queda compacta desde 9. En `/post/[id]`, curva siempre etiquetada y
+  debajo **la lista completa (4-12)** o **lo mejor y lo peor, 3 y 3, con el resto plegado (13+)**.
+- **Escala sobre 5 con medios** en todo lo que se lee (`formatDots`), como el resto de la app.
+- **Curva:** eje 1-5 fijo en todos los tamaños y **sin línea de media**; sin nota = círculo hueco
+  en la base con el tramo que lo salta en discontinuo; cambio de temporada marcado con «T2». SVG
+  propio con la geometría en una función pura (`curve-geometry.ts`), sin librería de gráficos.
+- **Empates:** la ★ va a todos los empatados en la nota más alta; si empatan todos, ninguno. «Lo
+  mejor» y «lo peor» nunca repiten episodio.
+- **Reseña:** sigue siendo solo la del episodio del que cuelga el post (ver issue de reseñas por
+  episodio).
