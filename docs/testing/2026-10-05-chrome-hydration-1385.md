@@ -1,6 +1,6 @@
 # #1385: ruta y sesión del chrome tienen límites de hidratación independientes
 
-> **[Canónico · verificado contra código, revisión independiente y build/start local el 2026-10-05; MTG 2/2 y retorno 2/2 PASS; auditoría global FAIL, CI integrada pendiente]**
+> **[Canónico · verificado contra código, revisión independiente, build/start local y entrega a main el 2026-10-05; MTG 2/2 y retorno 2/2 PASS; CI integrada PASS; auditoría global y gate FULL históricos FAIL]**
 
 El candidato separa la espera de `usePathname` de la espera de sesión de
 Header, BottomNav y la compañera. La regresión discrimina las dos topologías:
@@ -8,7 +8,7 @@ el límite compartido recupera dos discrepancias de HTML al navegar a una
 pantalla completa con sesión pendiente; el límite separado retira las barras
 sin recuperación. Una compilación nueva del pin `e5fdb395` pasa después los
 dos casos originales de MTG y los dos controles de retorno. La auditoría
-global conserva sus fallos; la entrega exige la CI del HEAD integrado.
+global conserva sus fallos; la entrega posterior pasa la CI integrada y se fusiona en main8424.
 
 ## Evidencia que motivó el cambio
 
@@ -208,6 +208,12 @@ diagnóstico posterior en `postrun-diagnostic-r1/`, manifiesto
 `af3813f0e2cd1ebe8cf2135d3b3c909e995febe1d840c36c4a15178d36078c14`.
 No hubo otro runtime.
 Estos PASS focales acreditan Chromium anónimo local; no miden geometría del
-fallback, Android, Auth real ni producción. La CI del HEAD final y su entrega
-a main siguen pendientes. El delta documental posterior conserva las mismas
-fuentes ejecutables del pin Native.
+fallback, Android, Auth real ni producción. La entrega posterior queda
+verificada en [el corte integrado de #1334/#1369/#1385](2026-10-05-celebrations-main-integration-1334.md):
+PR #1407 y #1372 fusionadas con CI verde, PR #1364 fusionada en main
+`8424eeccd1e906cb9fcf93d309832cdc927fb3f0` y CI final de 496 archivos/4873
+unitarios, 20+9 contratos Node, 298 pasos SQL y 168/168 recorridos PASS.
+GitHub registra el despliegue de ese commit y la URL habitual carga el
+consumidor nuevo; ese check público no acredita presentación autenticada.
+El delta documental posterior conserva las mismas fuentes ejecutables del
+pin Native y todos los FAIL y límites anteriores.
