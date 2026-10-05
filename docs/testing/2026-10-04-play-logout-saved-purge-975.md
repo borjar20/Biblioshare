@@ -1,12 +1,18 @@
 # Purga del espejo de partidas al cerrar sesión — #975
 
-[Informe de verificación · 2026-10-04]
+[Informe de verificación · 2026-10-05 · Native local en corte 5679ec91]
 
 La salida real de Ajustes espera la purga de las **copias sincronizadas sin
 tombstone** de la identidad validada por Auth. Conserva partidas pendientes,
 intenciones de borrado, otras identidades, las guardadas anónimas y la partida
 activa. Una transacción compartida con el contexto de sesión impide que el
 trabajo de sincronización retirado repueble ese espejo después del logout.
+
+La tanda final local acredita **diez casos funcionales juntos en una build
+nueva**, con Auth/backend e IndexedDB nativos. El resultado agregado del
+supervisor conserva **exit1 / GLOBAL FAIL_UNCLASSIFIED**. El apartado final
+fija el corte probado, el diario completo, la limpieza y los límites; los
+intentos anteriores permanecen como historia con sus propios resultados.
 
 ## Diagnóstico y política
 
@@ -297,7 +303,7 @@ SHA-256 del manifest:
 Este corte sustituye únicamente los estados de QA web pendientes de los
 apartados históricos; conserva sus resultados, fronteras y FAIL originales.
 
-## Preparación de la tanda final integrada — 2026-10-05
+## Preparación de la tanda final integrada — 2026-10-05 (corte histórico)
 
 Se integra el objeto local `0c663a3d396e43e3524f8e11b12dc5cd852618af`
 sobre `9d7271ebdc2b00e9b93433ec56d84ab118ef5a07`, conservando #1334/#1369,
@@ -321,3 +327,125 @@ callbacks originales de IndexedDB retenidos después de su commit nativo.
 El spec original de salud permanece intacto. La ejecución está en HOLD hasta
 un GO escrito del coordinador; no se arrancaron servidores, Docker ni SQL.
 Los diez PASS agregados y todos los FAIL históricos mantienen su alcance.
+
+## Tanda final Native local — 2026-10-05
+
+Único intento sobre HEAD `5679ec91db0563d06747c5a549da7274fbe8bf12`, árbol
+`88ecd9978d488ba75757517eaee60a94d8fac370`. Node 24.19.0 y Next 16.3.8 construyen
+una `.next` nueva mediante el `scripts/ci-local.mjs build` del candidato.
+BUILD_ID `n7uFqvxOmrMQs2Tcyczt4`, SHA-256
+`625cdd64a8b1e0fda00c410c82a9da07bdb3fb82ee2bf1a862a98dc7e8fb1d19`.
+Los diez casos originales se recogen y pasan juntos, worker1/retry0/repeat1,
+sin skip, unexpected ni flaky, en 32,29 segundos.
+
+| Caso funcional | Resultado |
+|---|---|
+| Guardar real: ACK de saved y liberación de active antes de navegar | PASS |
+| Logout selectivo: purga sólo own synced vivo y conserva fuentes | PASS |
+| Pull retirado: respuesta remota tardía no repuebla tras salir | PASS |
+| Push retirado: ACK tardío conserva la fuente pending | PASS |
+| Nueva sesión: borrar sin esperar el pull anterior del historial | PASS |
+| Relevo A→B después del commit IDB: borrar rechaza el ACK de A | PASS |
+| Nueva sesión: adoptar sin esperar el pull anterior del historial | PASS |
+| Relevo A→B después del commit IDB: adoptar rechaza el ACK de A | PASS |
+| ACK nativo de guardar después de logout conserva la activa finalizada | PASS |
+| ABA: pull de A1 retirado durante dos reentradas reales | PASS |
+
+El backend nuevo `biblioshare-local-eabc24f2` se genera desde el plan completo:
+298 pasos, 297 materializados y una activación protegida diferida. Start y
+checker/quiescencia/COMMIT canónicos completan 298 versiones reales exactas;
+no se reutilizan ledger291, stamp o volumen anterior. El censo inicial está
+a cero. Los actores A/B son locales y propios; el cambio A→B usa login real B
+y cookies Auth en RAM antes del ACK. IndexedDB ejecuta el commit nativo y el
+observer entrega tarde el callback original. Se declaran las filas IDB/remotas
+sintéticas propias y las respuestas REST reales retenidas. No hay JWT forjado,
+Auth simulado, respuestas de Next interceptadas ni cambios del spec de salud.
+
+La preparación R1 se conserva con FAIL material: su creación de Next podía
+emitir un error fuera del try/finally. R2 instala la escucha desde la creación
+y propaga el error dentro del supervisor protegido, incluyendo comandos y
+salida anterior a readiness. Tres controles de proceso locales PASS acreditan
+la llegada al callback y recibo de limpieza de su fixture; no se presentaron
+como un PASS Native. La revisión R2 precede al único GO escrito.
+
+### Global FAIL conservado y límites causales
+
+El supervisor observado termina **exit1 / FAIL_PRESERVED**, pese al PASS
+funcional 10/10. El diario pasivo continúa hasta cerrar todos los contextos:
+6.613 eventos, 12 contextos cerrados, pageerror0, console7, HTTP2 y
+requestfailed170. Los abortos son 121 GET RSC, 5 GET Auth/user y **44 POST
+Next**, todos `net::ERR_ABORTED`. La consola conserva dos errores asociados
+a409 y cinco `Failed to fetch` con `getUser` en el stack. Cero allowlists.
+Los títulos y URLs de los POST están conservados; el journal no recoge
+headers `Next-Action`, cuerpos, action IDs o el click iniciador, por lo que
+no identifica cada acción ni su posible efecto servidor.
+Seguimiento de cancelaciones:
+[#1301](https://github.com/borjar20/Biblioshare/issues/1301#issuecomment-5997420268).
+
+Los dos HTTP409 son POST reales a `/rest/v1/play_games`:
+
+| Caso / paso conocido | Estado final escrito UTC | POST iniciado UTC | Respuesta409 UTC | Contexto cerrado UTC |
+|---|---|---|---|---|
+| Natural: finalizar y Guardar partida | 14:59:58.256 | 14:59:58.299 | 14:59:58.333 | 14:59:58.354 |
+| Nueva sesión, adoptar: Añadir a mi cuenta, GET real retenido | 15:00:14.340 | 15:00:14.410 | 15:00:14.432 | 15:00:14.448 |
+
+Ninguna fixture sintetiza ni espera409. Ambos estados finales siguen pending;
+sus asserts cubren el guardado/adopción local y la barrera de sesión, sin
+afirmar terminación del sync remoto. `withBattleUsers` borra Auth en finally
+tras el cuerpo y el contexto aún permanece abierto. Esa ventana es compatible
+con una carrera entre cleanup y sync residual, pero no demuestra la causa:
+faltan body/SQLSTATE y timestamp del DELETE. El timestamp del estado se
+observó después sobre el archivo sellado. La sospecha independiente sigue
+en [#1417](https://github.com/borjar20/Biblioshare/issues/1417).
+
+### Identidad, limpieza y entrega
+
+Las 3.184 fuentes congeladas conservan sus hashes antes/después; ambos
+inventarios tienen SHA-256
+`d12bd96474f931ffec394935aed0a64b2e964ca555d66f5e4fd31d49cf439864`.
+`.next` pasa de 2.527 a 2.694 archivos: cero previos modificados/eliminados,
+827 ejecutables estables y 167 adiciones sólo en `server/route-cache/`.
+El gate fijado previamente es PASS_COMPILED_IDENTITY; el inventario FULL
+registra las adiciones y el FAIL FULL histórico de #1385 no se reescribe.
+Service_role está ausente de build, backup y evidencia; el anon público
+aparece en 13 archivos de build, como corresponde. No se leen `.env` reales.
+
+Veinte actores propios quedan comprobados con Auth404 y cero filas en las
+once tablas observadas. Antes de parar: ledger298, Auth/sesiones/perfiles/
+pases/partidas/jugadores/celebraciones0. Stop normal con backup exit0; los
+40 volúmenes iniciales y los tres nuevos se preservan. El contraste desde
+host acredita 13 puertos libres, perfiles Playwright0, Node Native0, Docker0,
+HEAD limpio y BUILD_ID rehasheado igual. El censo se cita del corte anterior
+a la parada; no se rearrancó ni consultó la base detenida para repetirlo.
+
+Evidencia en
+`.scratch/ticket-campaign/20261005-resume/logout975-preparation-r2/`:
+
+| Artefacto | SHA-256 |
+|---|---|
+| `execution-r1/manifest-final.sha256.json` (2.739 archivos) | `2df89f748c69bfc33523837513ef6b2ac65d7653d98975002abf372b892a8cd5` |
+| `execution-r1/browser-journal.ndjson` | `91bfcd202e64143487d79e5865a03b29d53271ab7465e8ef143b2f92408b8d59` |
+| `post-runtime-observation-r1/manifest-observation-r1.sha256.json` | `90332e213002980519af36793ef2590046cf4fecec1e5dfbedbaf59a8a41ed7b` |
+| `post-runtime-observation-r1/receipt.json` | `d9c4ed7360291663570073fc4fff12f26786ec82f8e240132fd5b9494d7b9d25` |
+| `manifest-causal-addendum-r1.sha256.json` | `6232aab5f50f214dfe04f61e4ce8b711bf8f01d477af375e1b0a1be62253f332` |
+
+La revisión independiente fresca de la tanda acredita **PASS funcional focal,
+integridad y limpieza**, conservando GLOBAL FAIL. Contrasta los 3.184 pins en
+el corte `5679ec91`, nueve dependencias y 827 ejecutables, callbacks originales
+tras commit, diez snapshots y los recibos completos; no ejecuta otra tanda.
+Manifest de `.scratch/ticket-campaign/20261005-resume/review-logout975-runtime-fresh-r2/`:
+`2f3f05e2ad90710cbabda2d8c3f8732892f841399026a8fa9e6245044e91baf2`.
+
+La entrega integra después main `3c7b7e03efbfc916a768edd41a97858e7722b5b2`
+con Patrón C del feed y #401, preservando los 19 fuentes/tests de #975 y los
+siete pins r3. Ese árbol posterior incluye cambios ajenos a la tanda congelada:
+no se afirma que se ejecutó Native sobre toda la entrega posterior. CI final
+y publicación se coordinan aparte; esta tanda no acredita producción, dev
+remoto, Android ni cuota física. `codex_qa` se conserva y no se usa.
+
+El alcance de #975 sigue siendo purga selectiva de copias sincronizadas vivas
+y retiro de generaciones. Pending, tombstones, anonimato, otras identidades,
+activa y metadatos de sesión pueden permanecer en disco. Un fallo Auth/IDB
+no acredita borrado; no se promete limpieza total del dispositivo ni privacidad
+local por RLS. La política residual y el borrado total confirmado siguen en
+[#1375](https://github.com/borjar20/Biblioshare/issues/1375), sin cierre implícito.

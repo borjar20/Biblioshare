@@ -861,12 +861,37 @@ Cuota física, Android, producción y CI final continúan como gates separados.
 La retención de datos y metadatos se documenta explícitamente; no es limpieza
 total del dispositivo. Ver §8.3 de data-model y [#1375](https://github.com/borjar20/Biblioshare/issues/1375).
 
-Preparación final del 2026-10-05: el candidato incorpora #1385 y main de
-Notas/Lugares, conservando los 19 fuentes de #975 y los siete pins r3. Pasan
-20 contratos Node, 124 pruebas focales en 11 archivos, tipos sin caché e
-integridad del grafo. La tanda conjunta de diez casos, build nueva y bootstrap
-natural del árbol completo siguen en HOLD hasta GO escrito; estos checks no
-sustituyen los resultados Native pendientes ni los FAIL históricos.
+Tanda final local del 2026-10-05: **10/10 funcionales PASS juntos**, una build
+de producción nueva `n7uFqvxOmrMQs2Tcyczt4`, HEAD
+`5679ec91db0563d06747c5a549da7274fbe8bf12`, worker1/retry0/repeat1, sin
+skips ni flaky. Auth A/B y backend local reales, IndexedDB nativa y callbacks
+originales retenidos tras commit. El bootstrap natural valida 298 versiones.
+Los 20 contratos Node, 124 pruebas focales en 11 archivos, tipos y mapa se
+conservan como evidencia estática separada. R1 conserva su FAIL de preparación;
+R2 corrige el supervisor y sus tres controles locales pasan antes del único GO.
+
+El supervisor termina **exit1 / FAIL_PRESERVED**: auditoría global
+FAIL_UNCLASSIFIED, con pageerror0, console7, HTTP409 dos veces y 170 abortos
+(121 GET RSC, 5 GET Auth/user, 44 POST Next). Los dos409 ocurren tras guardar
+el estado final del caso y antes del cierre del contexto; la posible carrera
+del teardown Auth con sync residual sigue como sospecha en
+[#1417](https://github.com/borjar20/Biblioshare/issues/1417).
+Las cancelaciones y efectos no clasificados se siguen en
+[#1301](https://github.com/borjar20/Biblioshare/issues/1301#issuecomment-5997420268).
+No hay allowlists ni una identificación de cada acción Next desde el journal.
+La revisión fresca de la evidencia acredita PASS focal, integridad y limpieza;
+mantiene GLOBAL FAIL y el corte `5679ec91`, sin ejecutar otra tanda.
+
+Limpieza PASS: 20 actores propios comprobados, censo cero con ledger298,
+parada normal con backup, 40 volúmenes previos preservados y 43 presentes.
+El contraste host acredita 13 puertos libres, perfiles/Node Native/Docker0;
+fuentes y compilados conservan identidad y las únicas adiciones de `.next`
+son caché de respuesta de Next. Evidencia y hashes en el informe focal.
+El candidato de entrega integra después main de Patrón C del feed, conservando
+los 19 fuentes/tests de #975 y siete pins r3; la tanda describe el corte
+`5679ec91`, no una ejecución del árbol posterior completo. CI final, Android,
+cuota física y producción siguen sin acreditarse por esta tanda; no hubo
+acceso a prod/dev remoto ni a `codex_qa`. La retención residual sigue en #1375.
 
 ## Fichas de acompañantes y asientos de MTG (#1006, #1008)
 
@@ -959,3 +984,62 @@ de route-cache añadidos, 2445 previos idénticos. Fuentes3272 y ejecutables792
 conservan sus hashes. Parada física independiente PASS con backup, censo0,
 puertos libres y volúmenes conservados. Las guardas originales siguen intactas;
 CI integrada y main pendientes. No acredita Auth real, Android ni producción.
+
+## Matriz SQL y carrera de rondas de club (#401)
+
+[Candidato y protocolo de QA](testing/2026-10-05-club-round-matrix-401.md):
+la matriz fuerza lunes, martes y miércoles dentro de `BEGIN/ROLLBACK` y conduce
+las RPC como `authenticated`. El runner exige GO del coordinador para una base
+Docker local exclusiva; la carrera utiliza dos sesiones y observa ambos INSERT
+bloqueados antes de soltarlos. Captura y restaura definición, ACL, propietario,
+configuración y OID del reloj, con journal real de recuperación.
+
+El runtime corregido del 2026-10-05 sobre `44be5bb` y el F3 auténtico de 288
+etapas pasó la matriz SQL **11/11** y la carrera: PID 312 y 313, dos
+`RowExclusiveLock` no concedidos antes del release, ambos RPC con el mismo UUID,
+una ronda física y un target. Cleanup/restauración PASS, hash del reloj original
+idéntico, journal ausente y nueve categorías del censo en cero. No fue necesario
+recovery. Stop normal con backup: Docker vacío, 13 puertos IPv4/IPv6 libres y
+todos los volúmenes previos conservados; ownership liberado al coordinador.
+
+El primer runtime sobre `3a3b9e4`/F3/288 conserva el FAIL del seed de 42 caracteres
+rechazado por `clubs_slug_format`, además de sus 11 marcas de matriz PASS y
+cleanup/restauración exactos. El arreglo emite 38 caracteres sin cambiar el UUID,
+cleanup o constraint. Conserva RED significativo y 24/24 contratos Node; su
+revisión fresca pasó 28 controles de fuente, 69 hashes y 16 contratos focales.
+
+La revisión independiente del runtime pasó sin hallazgos: 49 cotejos, 15
+artefactos finales, 338 de preparación y seis referencias históricas. Conserva
+el límite de su pin `44be5bb`/F3/288 y no inspeccionó el worktree integrado.
+
+El checker y la matriz probados conservan sus blobs al integrar main `8424eec`,
+incluidas Notas en el margen, Experiencias/Lugares, Celebraciones y la CI de
+#405. El nuevo plan natural tiene 298 etapas; el PASS nativo del corte anterior
+de 288 no acredita su SQL. La CI del nuevo HEAD integrado sigue pendiente.
+#401 permanece abierto. No se atribuyen navegador, dev, producción ni RLS remota
+a esta tanda.
+
+La integración final conserva la activación protegida de Celebraciones y sus
+20 contratos bootstrap/cutover. El nuevo import de identidad local exigió
+adaptar sólo el transporte VM del caller: RED de 27 casos, 25 PASS y dos FAIL.
+GREEN: 36/36 (11 bootstrap, nueve cutover, 16 rondas) y fixture #405 9/9, cero
+skip. Tipos y lint PASS; no se ejecutó SQL del plan de 298 etapas.
+
+Los informes de entrega de Celebraciones/#1385 se actualizan por los patches
+del coordinador: CI ancestral 4873/168/298 PASS, merge `8424` y entrega acreditada
+con sus límites. Conservan los FAIL Native/global/FULL. Esa entrega anterior
+no sustituye la CI pendiente del nuevo candidato #401.
+
+### Corte final de entrega #401 — 2026-10-05
+
+Las referencias anteriores a CI pendiente corresponden al corte histórico.
+[PR #1416](https://github.com/borjar20/Biblioshare/pull/1416) se integra a las
+15:28:30 UTC en main `3c7b7e03efbfc916a768edd41a97858e7722b5b2`, con ocho
+checks SUCCESS sobre `61cf20e56acb52cc9f522826be230275fa9ae2bf` y base `ea77`.
+[Tests](https://github.com/borjar20/Biblioshare/actions/runs/37331509507)
+acredita 497 archivos, 4.889 unitarios y 168 E2E;
+[bootstrap](https://github.com/borjar20/Biblioshare/actions/runs/37331509492)
+acredita SQL298 y matriz11/carrera/restauración/cleanup PASS en ambas CI.
+Los contratos Node suman 36 distintos (20 y 27 con once compartidos), más
+fixture #405 9/9. Este corte no acredita dev, producción ni el árbol posterior
+de #975; su CI de entrega y su GLOBAL FAIL Native conservan gates propios.

@@ -848,6 +848,15 @@
       "dropped": "abandonó",
       "joint": "compartió un visionado"
     },
+    "card": {
+      "finished": "{itemType, select, series {terminó la serie} other {terminó}}",
+      "rated": "{itemType, select, series {valoró la serie} other {terminó y valoró}}",
+      "reviewed": "{itemType, select, series {reseñó la serie} other {reseñó}}",
+      "episodes": "{rated, select, yes {valoró} other {vio}} {count, plural, one {un episodio} other {# episodios}}",
+      "episodeOf": "de {title}",
+      "moreItems": "+{count} más",
+      "noRating": "Sin nota"
+    },
     "joint": {
       "header": "{names} {itemType, select, book {leyeron} other {vieron}} juntos",
       "andMore": "{count} más",
@@ -898,8 +907,7 @@
     "review": {
       "readMore": "Seguir leyendo",
       "metaDays": "{count, plural, one {# día} other {# días}}",
-      "metaPages": "{count} pág.",
-      "moreEpisodes": "{count, plural, one {+# episodio} other {+# episodios}}"
+      "metaPages": "{count} pág."
     },
     "filters": {
       "label": "Filtrar el feed",

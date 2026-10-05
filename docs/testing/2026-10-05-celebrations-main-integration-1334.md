@@ -1,7 +1,8 @@
 # Celebraciones: integración con main de #1334, #1369 y #1385
 
-**[Corte de integración · verificado el 2026-10-05 contra código y checks locales;
-CI del candidato final y despliegue pendientes al registrar este corte.]**
+**[Corte de entrega · verificado el 2026-10-05 contra main8424, CI final,
+consumidor público y metadata de dev/producción. Presentación autenticada en
+producción no observada.]**
 
 El candidato de PR #1364 incorpora los consumidores recuperables de #1334,
 los diagnósticos vigentes de #1369 (PR #1372) y ChromeBoundary de #1385 (PR
@@ -20,8 +21,9 @@ el JSON integrado.
 El código de `src/lib/celebrations`, `src/components/celebrations`, AppShell,
 ChromeBoundary, el bootstrap y sus contratos, el cutover y su activador, y
 `scripts/ci-local.mjs` conserva sus blobs del padre probado. No se añade una
-migración ni se ejecuta SQL en dev/producción durante esta integración. Los
-objetos productivos de #1334 ya estaban activos en el corte del 2026-10-04.
+migración ni se ejecuta DDL/DML en dev/producción durante esta integración. Los
+objetos productivos de #1334 ya estaban activos en el corte del 2026-10-04;
+la comprobación posterior de entrega consulta sólo metadata.
 
 ## Gates observados
 
@@ -33,13 +35,49 @@ objetos productivos de #1334 ya estaban activos en el corte del 2026-10-04.
 | Integración con mainf1205, consumidores/overlay/chrome | 6 archivos, 90/90 unitarios PASS |
 | Integración con mainf1205, route typegen + tsc | PASS |
 | Integración con mainf1205, mapa y whitespace | PASS |
-| CI final de PR #1364 y despliegue | Pendientes en este corte; se registra su resultado en la PR |
+| CI final de PR #1364, head0c663a3/basef1205 | Tests37317754111: 496 archivos/4873 unitarios, 20 contratos Node + 9 de fixture, 298 pasos SQL y 168/168 recorridos PASS |
+| Bootstrap final37317754201 y ocho checks de PR #1364 | 298 pasos PASS; Tests, bootstrap, CodeQL y Vercel SUCCESS |
+| Fusión normal de PR #1364 en main8424 | 2026-10-05 13:50:21 UTC; árbol idéntico al candidato probado |
+| Entrega posterior | GitHub deployment6860799429 success; consumidor público y metadata PASS dentro del alcance siguiente |
 
 Los checks de salud originales y los dos anchos MTG siguen activos. El recorrido
 #754 pasó en ambas CI citadas; no se infiere por ello la causa de sus fallos
 anteriores. Los logs y recibos de merges/CI y los snapshots de los conflictos
 se conservan en el checkout principal, bajo
 `.scratch/ticket-campaign/20261005-resume/celebrations-main-delivery-r1/`.
+
+## Entrega y observación posterior
+
+La revisión independiente final del candidato `0c663a3` pasa sin pérdidas:
+156 blobs exclusivos, siete migraciones de main, tipos, baseline y mapa
+preservados. Sello del informe/manifest:
+`5cb89c4b87603246c7139dea474273e32183298cd9c515ce88efddcfceec58a6`.
+La CI final está en [Tests37317754111](https://github.com/borjar20/Biblioshare/actions/runs/37317754111)
+y [bootstrap37317754201](https://github.com/borjar20/Biblioshare/actions/runs/37317754201).
+Main `8424eeccd1e906cb9fcf93d309832cdc927fb3f0` conserva el árbol probado
+`fb875b85fc2770f57650b41b1aaeadbc4586a45e`.
+
+GitHub registra deployment `6860799429`, entorno Production, para ese commit,
+con status success a las 13:52:03 UTC. La URL habitual
+[https://biblioshare-nine.vercel.app/](https://biblioshare-nine.vercel.app/)
+devuelve la aplicación sin cookies y carga el consumidor claim/ACK/release,
+incluidas las guardas de generación/identidad de #1369. BUILD_ID público
+`jVsRogOjndJOARrRJex7U`; recurso `1zgyt7-9tmbvz.js`, SHA-256
+`d5eaa350e802d6b90ea34fcffe21f0e184854e92c315e276d0672815a25da713`.
+El host individual del deployment redirige al login protegido de Vercel:
+su HTTP200 y sus scripts no acreditan entrega de Biblioshare. La API del equipo
+responde403; no se usa bypass ni se verifica por esa API la correspondencia
+exacta BUILD_ID/SHA. El registro GitHub y el consumidor público son evidencias
+independientes con ese límite.
+
+A las 13:58 UTC se comprueban los objetos reales de dev y producción: RLS,
+11 columnas con 33 grants authenticated, cuatro RPC INVOKER con EXECUTE sólo
+authenticated y mismas definiciones MD5. No se leen filas privadas ni se
+reaplican las fases productivas. Recibo metadata SHA-256
+`6aa464baefe2648accdb66a274f1e3fd79e663187caabf7d898306aaeb30295a`;
+recibo público SHA-256
+`e45a45a5c7162a9b80213eee35bfd5a34d94b23222913918ab4e6b65552a6529`.
+No se acredita Auth/animación real en producción.
 
 ## Límites conservados
 

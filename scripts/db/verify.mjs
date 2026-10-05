@@ -9,12 +9,15 @@ import { verifyGoogleVolumeQuotaConcurrency } from './check-google-volume-quota-
 import { verifyCatalogReferenceConcurrency } from './verify-catalog-reference-concurrency.mjs';
 import { verifyBookEditionIsbnConcurrency } from './check-book-edition-isbn-concurrency.mjs';
 import { verifyExperienceConcurrency } from './verify-experience-concurrency.mjs';
+import { clubRoundsOptions, verifyClubRounds } from './verify-club-rounds.mjs';
 
 // Only the disposable container named by this checkout's generated manifest.
 const workdir = resolve(process.env.SUPABASE_LOCAL_WORKDIR ?? join(repoRoot, '.superpowers/supabase-local'));
 const local = preparedLocalActivation(workdir);
 const stamp = JSON.parse(readFileSync(join(workdir, 'bootstrap.json'), 'utf8'));
 assert.match(stamp.projectId, /^biblioshare-local-[a-f0-9]{8}$/);
+const clubOptions = clubRoundsOptions(stamp.projectId);
+console.log('PASS: club-rounds', await verifyClubRounds(stamp.projectId, clubOptions));
 function sql(query) {
   return execFileSync('docker', ['exec', '-i', local.container, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-At'], { input: query, encoding: 'utf8' }).trim();
 }
