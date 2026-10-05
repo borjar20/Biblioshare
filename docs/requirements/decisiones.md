@@ -6541,3 +6541,15 @@ hay que restringirlo, por ejemplo a hilos con una denuncia abierta. Hasta que el
 decida, la conducta es la de la entrega y no debe presentarse como decisión tomada. La
 moderación administrativa sobre la nota denunciada tampoco está hecha: [#1384](https://github.com/borjar20/Biblioshare/issues/1384).
 La decisión se sigue en [#1389](https://github.com/borjar20/Biblioshare/issues/1389).
+
+## 2026-10-05 — Experiencias: lugares de OSM vía Photon con sugerencias firmadas
+
+Contexto: el lugar de un momento era texto libre; se quiere autocompletar y guardar el dato
+para fichas/contadores futuros. Decisión: Photon (OSM, gratis, autocompletado permitido) a
+través de un proxy autenticado; lista blanca de sitios/ciudades/regiones/países (nunca
+direcciones); sugerencias firmadas con HMAC; alta en `places` solo con el cliente de servicio
+(`place_upsert` de `service_role`) porque una RPC `authenticated` se saltaría la firma. El
+nombre oficial se copia en `place_label`, así ninguna lectura cambia. Descartados: Google
+Places (coste y ToS de almacenamiento), Nominatim público (prohíbe autocompletar), cliente
+directo a Photon (expone IP/tecleo y deja la tabla abierta a datos inventados).
+Spec: `docs/superpowers/specs/2026-10-05-experiencias-lugares-design.md`.

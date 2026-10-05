@@ -1,5 +1,11 @@
 # Modelo de datos
 
+> **Delta 2026-10-05 (lugares de Experiencias; verificado en dev 2026-10-05; producción
+> pendiente):** migración `20261005100000_experience_places.sql`: tabla `places`,
+> `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
+> en las RPC de momentos. Aplicada en `biblioshare-dev`; `supabase/tests/experiences_places.sql`
+> PASS con rollback. **No aplicada en producción.** Ver §8ter.2.
+
 > **Delta 2026-10-05 (#1380, notas en el margen; esquema verificado en dev 2026-10-05; producción
 > pendiente):** seis migraciones nuevas (`20261004120000` … `20261004120500`) añaden
 > `margin_notes` y `margin_note_encounters`, los enums `margin_audience` y `margin_found_via`,
@@ -4794,6 +4800,48 @@ helpers `private.can_view_experience_review` y `private.is_experience_kind` tamb
 EXECUTE para `anon`, pero viven en el esquema `private`, fuera de la API).
 `supabase/tests/experiences_reviews.sql` PASS con rollback y sin datos persistidos.
 Bootstrap local: 288 pasos (con `20261004100500`). **Producción:** seis migraciones aplicadas el 2026-10-04 en el orden del manifiesto (enums sola primero), tras comprobar que los digests de las funciones reescritas coincidían con dev; mismos objetos, ACL, políticas y triggers que en dev, y digest de las 77 funciones de Experiencias y moderación idéntico al de dev. Código desplegado con la PR #1376 (merge `bcd3c869`). Fuente y límites: [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04), recogido en PR #1378; sin fixtures ni recorrido autenticado de reseñas acreditados en producción.
+
+### 8ter.2 Lugares (2026-10-05; verificado en dev, producción pendiente)
+
+Migración `20261005100000_experience_places.sql`. Contrato:
+[spec](../superpowers/specs/2026-10-05-experiencias-lugares-design.md).
+
+**`public.places`** (catálogo global): `id uuid` PK, `provider text` (CHECK `in ('osm')`),
+`provider_ref text` (CHECK `^[NWR][0-9]+$`), `name` (1–240), `category` (3–120), `layer`
+(CHECK `poi|city|region|country`), `lat`/`lng` (rangos válidos), `city`/`region`/`country`
+(≤240, nulables), `country_code` (`^[A-Z]{2}$`), `wikidata_qid` (`^Q[0-9]+$`), `created_at`,
+`updated_at`; `unique (provider, provider_ref)`. RLS activa; política `places_read` (select a
+`anon` y `authenticated`, `using (true)`); `revoke all` + `grant select` a `anon, authenticated`.
+Ningún cliente escribe: ni insert, ni update, ni delete.
+
+**`experience_moments.place_id`** `uuid references places(id) on delete set null`, con índice
+parcial `experience_moments_place` (`where place_id is not null`). No hay grants por columna en
+`experience_moments` (se escribe solo por RPC SECURITY DEFINER), así que la superficie 6 de
+`DRIFT-CHECK.md` no cambia.
+
+**`public.place_upsert(p_input jsonb) returns uuid`**: SECURITY DEFINER, `search_path=''`,
+`execute` **solo `service_role`** (revocado a `public`, `anon`, `authenticated`). Upsert por
+`(provider, provider_ref)`; conserva `wikidata_qid` previo si el nuevo es nulo. Solo se llama
+desde el servidor tras verificar la firma HMAC de la sugerencia: una RPC `authenticated` se
+saltaría la firma.
+
+**`private.experience_input_place(p jsonb)`**: resuelve `placeId` (id válido y existente, si no
+`22023`) o, sin `placeId`, el texto libre `placeLabel`. Sin grants a clientes.
+
+**RPC `experience_create` / `experience_save_moment`** (mismas firmas, `create or replace`):
+- Claves nuevas `placeId` (uuid de `places`) y, solo en guardado, `keepPlace` (boolean).
+- `place_label` es una **instantánea** del nombre oficial al enlazar; un `place_upsert` posterior
+  que refresque el nombre **no** la reescribe. Por eso ninguna lectura cambia.
+- `placeId: null` es inválido (`22023`): hay que **omitir la clave** si no hay lugar.
+- `keepPlace` conserva `place_id` y `place_label` intactos; solo vale para un momento existente
+  y **nunca junto a `placeId`** (`22023`).
+
+**Estado por entorno.** Dev (`biblioshare-dev`) aplicada el 2026-10-05; `supabase/tests/experiences_places.sql`
+PASS con rollback; 0 filas residuales; `experience_create`/`experience_save_moment` ejecutables
+por `authenticated` y no por `anon`; `private.experience_input_place` no ejecutable por
+`authenticated`; una sola sobrecarga de `experience_create`. **Producción: NO aplicada**
+(ver issue de seguimiento). e2e `e2e/experiencias-lugares.spec.ts`: 1 passed contra
+`next build`/`next start` el 2026-10-05. Requiere `PLACES_SIGNING_SECRET` en el entorno.
 
 ## 8quater. Notas en el margen (#1380; verificado en dev y en producción el 2026-10-05)
 
