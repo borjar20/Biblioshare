@@ -52,6 +52,8 @@ export type FeedVerb =
   // Visionado conjunto (#1220): un post `joint`, tarjeta propia.
   | "joint";
 
+export type FeedEpisode = { season: number; episode: number; title: string | null; rating: number | null };
+
 export type FeedEvent = {
   id: string; // `posts:${postId}` en el feed; etiqueta de fuente en previews legadas
   // El id estable del post → ruta propia `/post/[id]` (deep-link de
@@ -112,9 +114,10 @@ export type FeedEvent = {
   // leerlo), mismo criterio que `progress.note.isSpoiler`.
   reviewIsSpoiler: boolean;
   episode: { season: number; episode: number; title: string | null } | null;
-  // Solo posts `watched`: episodios de esa serie marcados ese mismo día (el post
-  // es el día, colgado del primero). Ausente en el resto.
-  episodeCount?: number | null;
+  // Solo posts `watched`: los episodios de esa serie que el autor marcó ese
+  // mismo día (el post es el día, colgado del primero), cada uno con SU nota,
+  // ordenados y sin duplicados. Ausente en el resto.
+  episodes?: FeedEpisode[] | null;
   // Meta de la tarjeta de reseña: solo `finished`. El resto va a null.
   reviewMeta: { readingDays: number | null; totalPages: number | null } | null;
   progress: {
@@ -595,25 +598,43 @@ async function resolveCatalogPostDrafts(
     episodeSeriesIds.length
       ? supabase
           .from("episode_watches")
-          .select("user_id, series_id, watched_on")
+          .select("user_id, series_id, watched_on, season_number, episode_number, rating")
           .in("series_id", episodeSeriesIds)
           .in("user_id", episodeDayUsers)
           .in("watched_on", episodeDays)
       : Promise.resolve({
-          data: [] as { user_id: string; series_id: string; watched_on: string }[],
+          data: [] as {
+            user_id: string; series_id: string; watched_on: string;
+            season_number: number; episode_number: number; rating: number | null;
+          }[],
           error: null,
         }),
   ]);
   if (episodeTitlesError) throw episodeTitlesError;
   if (dayWatchesError) throw dayWatchesError;
-  const episodesPerDay = new Map<string, number>();
-  for (const w of dayWatches ?? []) {
-    const k = `${w.user_id}:${w.series_id}:${w.watched_on}`;
-    episodesPerDay.set(k, (episodesPerDay.get(k) ?? 0) + 1);
-  }
   const titleByEpisode = new Map(
     (episodeTitles ?? []).map((e) => [`${e.series_id}:${e.season_number}:${e.episode_number}`, e.title]),
   );
+  // Episodios de cada (autor, serie, día), uno por (temporada, episodio): si se
+  // marcó dos veces, gana la marca con nota.
+  const episodesByDay = new Map<string, Map<string, FeedEpisode>>();
+  for (const w of dayWatches ?? []) {
+    const dayKey = `${w.user_id}:${w.series_id}:${w.watched_on}`;
+    const epKey = `${w.season_number}:${w.episode_number}`;
+    const day = episodesByDay.get(dayKey) ?? new Map<string, FeedEpisode>();
+    const prev = day.get(epKey);
+    if (!prev || (prev.rating == null && w.rating != null)) {
+      day.set(epKey, {
+        season: w.season_number,
+        episode: w.episode_number,
+        title: titleByEpisode.get(`${w.series_id}:${w.season_number}:${w.episode_number}`) ?? null,
+        rating: w.rating,
+      });
+    }
+    episodesByDay.set(dayKey, day);
+  }
+  const episodesForDay = (key: string): FeedEpisode[] =>
+    [...(episodesByDay.get(key)?.values() ?? [])].sort((a, b) => a.season - b.season || a.episode - b.episode);
 
   const jointByViewing = await resolveJointCards(supabase, jointSourceIds, reviewOrExcerpt);
 
@@ -735,9 +756,7 @@ async function resolveCatalogPostDrafts(
       drafts.push({
         ...base,
         verb: verbForReviewable(ep?.rating ?? null, ep?.review ?? null, "watchedEpisode"),
-        episodeCount: ep
-          ? (episodesPerDay.get(`${ep.user_id}:${ep.series_id}:${ep.watched_on}`) ?? 1)
-          : null,
+        episodes: ep ? episodesForDay(`${ep.user_id}:${ep.series_id}:${ep.watched_on}`) : null,
         rating: ep?.rating ?? null,
         reviewExcerpt: reviewOrExcerpt(ep?.review ?? null),
         reviewIsSpoiler: ep?.review_is_spoiler ?? false,

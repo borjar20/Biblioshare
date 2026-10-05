@@ -640,6 +640,95 @@ final. Un PASS local o de otro SHA no acredita la CI de este lote. La evidencia
 de publicación se vincula a ese HEAD, sin convertir la cobertura local en
 verificación de navegador, media nativa, RLS o proveedores.
 
+## Celebraciones recuperables: gates de consumidor y esquema (#1334)
+
+El [procedimiento de cutover](../scripts/db/celebrations-cutover.md) exige cerrar
+admisión y observar quiescencia antes de activar el no-op legado y las RPC de
+reserva/ACK/release. El gate SQL y el ledger final comparten transacción; ni un
+timeout, ni un HTTP 200, ni una llamada vacía sustituyen esa evidencia.
+
+El candidato del 2026-10-03 pasa 75/75 unitarios de acciones, Provider, puente,
+overlay y registro. Las fronteras de transporte, identidad, tiempo y frames
+están controladas en esos tests. La revisión independiente aprobó las tres
+correcciones: sesión ausente real del SDK, A→B→A con observación nueva y rechazo
+de cualquier backend con tracking `disabled`.
+
+La verificación real de PostgreSQL distingue las tandas anteriores de la
+reconstrucción corregida cold-r2: ledger285, pipeline completo PASS, grants por
+columna 11/11/11, tipos generados compatibles y cero avisos nuevos de advisors.
+Los contratos Node pasan 20/20 y el fixture de tracking oculto pasa 20/20,
+conservando el falso READY y sellado posterior del control antiguo. Los cuatro
+contraejemplos previos de UPDATE ya admitido se conservan por separado.
+
+El [G4 local del 2026-10-03](testing/2026-10-03-recoverable-celebrations-1334.md)
+usa una única build de producción `gmpZaurRiZDtN1lTctOQI` de HEAD `3c6edaa` y
+backend cold-r2/ledger285. Acredita presentación y ACK, respuesta de claim perdida
+tras el commit y recuperación por lease, ACK ambiguo/idempotente, FIFO entre
+pestañas, preferencias, capacidades y legacy compatible. La visibilidad oculta
+sólo queda acreditada en una frontera híbrida; la navegación con acción retenida
+y la captura nativa del nuevo observationId no pasan su gate. Esos tres límites
+se siguen en [#1356](https://github.com/borjar20/Biblioshare/issues/1356).
+
+La auditoría global conserva **FAIL por 390 errores incidentales** y 45 recibos
+de correlación/efecto propios de esa build. No se atribuyen a una pérdida ni se
+retroatribuyen a las cohortes anteriores; [#1301](https://github.com/borjar20/Biblioshare/issues/1301#issuecomment-5981922480)
+conserva este corte. Los 34 actores sintéticos tienen Auth404 y residuos cero;
+Next/browser propios cerrados y Supabase detenido después con backup normal.
+
+Dev fue activado el 2026-10-03 y sus objetos/ACL/11 grants por operación se
+revalidaron el 2026-10-04, conservando las 26 filas históricas. Un probe directo
+PostgreSQL con rol/claims sintéticos y ROLLBACK no sustituye Auth/REST remoto.
+Producción y CI de publicación seguían pendientes en ese corte anterior. Los registros
+extra del transporte se conservan y siguen en [#1355](https://github.com/borjar20/Biblioshare/issues/1355).
+El ACK ambiguo puede permitir repetición en otro consumidor.
+
+La primera CI de #1364 conservó FAIL en `empty-database`: el workflow dedicado
+arrancaba 284 pasos y verificaba un ledger de 285 sin ejecutar la activación
+diferida. Se añade la misma llamada al checker protegido que ya usa
+`critical-flows`, antes del verificador. El FAIL y su ordinal ausente
+`20000101000284` se conservan; el nuevo HEAD requiere CI completa de nuevo.
+La expansión de producción del 2026-10-04 mantiene el legacy anterior,
+las tres RPC nuevas cerradas y las 220 filas históricas intactas; CHECK de
+pareja validado y grants 11/11/11. Los avisos de seguridad coinciden exactamente
+al retirar únicamente sus timestamps `observed_at`; los avisos previos siguen
+abiertos. Cierre de admisión y activación productiva pendientes en ese corte.
+
+La CI corregida de `cc9c565` pasa la reconstrucción vacía (run 37218346000),
+quality y CodeQL, pero conserva FAIL en siete de 146 flujos críticos
+(run 37218345996): cuatro selectores de email encuentran un campo visible y
+otro en el fragmento de streaming oculto, y dos selectores de búsqueda
+encuentran dos nodos con una sola caja visible. Estos drivers se corrigen en
+[#1368](https://github.com/borjar20/Biblioshare/issues/1368), en entrega aparte.
+El caso de notas #754 registra un POST de claim cancelado durante la primera
+salida de portada y un aviso cliente; la generación efectiva no está en la
+traza. La guarda de diagnóstico obsoleto se sigue en
+[#1369](https://github.com/borjar20/Biblioshare/issues/1369), sin silenciar los
+errores del E2E ni atribuir un fallo de SQL. La entrega requiere CI del HEAD
+que integre las correcciones.
+
+[Expansión y activación de producción](testing/2026-10-04-celebrations-prod-expansion-1334.md):
+fase 1 confirmada a las 16:42:17 UTC; cierre de admisión confirmado y activación
+final aplicada a las 20:15:35 UTC. Dos snapshots completos acreditaron cohorte
+vacía, cero prepared transactions y cero otras transacciones; el guard real
+se ejecutó en la misma transacción que DDL y ledger. Dos intentos anteriores
+conservaron FAIL SQLSTATE `55000` y ROLLBACK por otras transacciones actuales;
+sus identidades no quedaron capturadas y no se atribuye una causa al éxito
+posterior. El diagnóstico PREguard añadido sólo registra metadatos y conserva
+la fuente canónica y la barrera independiente exactas.
+
+El corte final de las 20:16:22 UTC verifica 11 columnas/33 grants, RLS activa,
+cuatro RPC invoker con MD5 iguales a dev y EXECUTE sólo de authenticated,
+legacy compatible de cero filas, las 221 filas previas intactas y el mismo
+hash de los 303 registros anteriores. Ledger 307: dos canónicas y dos carriers
+nuevos, preservados sin normalizar. Seguridad sin grupos ni hallazgos nuevos
+tras excluir sólo `observed_at`; SECURITY DEFINER autenticadas baja 95→94 por
+retirar exactamente el legacy, sin declarar resueltos los otros avisos.
+Esto acredita activación de esquema y permisos. Al capturar el recibo de las
+20:16:22 UTC, el consumidor de PR #1364 todavía no estaba integrado ni desplegado.
+La entrega y CI sobre el HEAD final se siguen en la PR. Este recibo no acredita
+Auth/REST o presentación remota, ni el cierre de #1334.
+El FAIL global de #1301 y los límites nativos de #1356 permanecen separados.
+
 ## Motivo de abandono en el diario (#655)
 
 [Informe de cobertura](testing/2026-10-03-dropped-reason-coverage-655.md): ocho
@@ -789,3 +878,51 @@ y sus contratos de fixture; **no acredita navegador, Auth/SQL reales ni #401**
 así que no se atribuye a esa CI el e2e completo de `club-ronda.spec.ts`.
 La cuenta QA persistente se conserva; sólo se limpia el club desechable por id.
 La CI remota del HEAD de entrega mantiene su propio gate.
+
+## Integración de celebraciones con main (#1334, #1369, #1385)
+
+[Corte de integración](testing/2026-10-05-celebrations-main-integration-1334.md):
+las dos CI de las ramas dependientes pasan 4744 unitarios y 168 recorridos.
+El candidato sobre mainf1205 conserva el código probado y los cambios ajenos;
+90 unitarios focales, 20 contratos Node, tipos e integridad del mapa PASS.
+La CI final de PR #1364 y su despliegue conservan el gate independiente.
+El GLOBAL FAIL de #1301, el inventario completo FAIL de #1385 y las fronteras
+pendientes de #1356 mantienen sus evidencias y límites.
+
+## Diagnósticos de claims obsoletos (#1369)
+
+[Cobertura focal](testing/2026-10-04-celebrations-stale-diagnostics-1369.md):
+el consumidor sólo informa de un claim fallido si siguen vigentes actor,
+generación y actividad. Diez casos distinguen errores actuales de resultados
+obsoletos tras cambiar de cuenta, cerrar o reiniciar, incluido A→B→A. Las ocho
+regresiones fallan con el código anterior; la tanda completa pasa 85/85, tipos
+y lint PASS. Revisión independiente 39/39, sin hallazgos.
+
+[Navegador focal](testing/2026-10-04-celebrations-stale-diagnostics-native-1369.md):
+una build Turbopack nueva pasa el recorrido natural #754 con checks de salud
+intactos. Se observa el claim abortado al navegar al primer detalle, sin errores
+de navegador; no se capturan generación/actor/actividad en el catch ni existe
+un antes/después causal. Los 17 abortos y la captura de Colección aún en skeleton
+se conservan. Actor, libros y servicios propios limpios. La CI sobre el HEAD
+integrado mantiene su gate independiente; no se declara cura causal del fallo
+CI anterior ni una auditoría global de red limpia.
+
+## Hidratación de cabecera y navegación al iniciar MTG (#1385)
+
+[Informe focal](testing/2026-10-05-chrome-hydration-1385.md): el gate de ruta
+mantiene un Suspense externo y el payload de sesión espera en otro interno.
+La regresión SSR/hidratación conserva dos FAIL con la topología anterior y
+pasa sus cinco casos con el candidato; la tanda de navegación suma 31/31.
+Antes de navegar se acredita la hidratación de los gates, y las barras se
+retiran mientras la sesión sigue pendiente. Lint y tipos focales PASS.
+
+El diagnóstico nativo anterior localiza dos React #418 en Header y BottomNav
+bajo AppShell. La revisión independiente ha pasado sin hallazgos. La build
+nueva `rS5hN2l856Bf-eL5iOPir` sobre `e5fdb395` pasa el spec original a 390 y
+1280px y dos controles de retorno por historial: 4/4, retry0, cero errores de
+página, consola o HTTP. Se mantienen global FAIL por 16 GET RSC cancelados
+sin clasificación (#1301) y el FAIL del gate de inventario completo: 56 archivos
+de route-cache añadidos, 2445 previos idénticos. Fuentes3272 y ejecutables792
+conservan sus hashes. Parada física independiente PASS con backup, censo0,
+puertos libres y volúmenes conservados. Las guardas originales siguen intactas;
+CI integrada y main pendientes. No acredita Auth real, Android ni producción.
