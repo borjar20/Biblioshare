@@ -55,6 +55,28 @@ describe("PlaceCombobox", () => {
     expect(fields()).toEqual({ placeLabel: "Museo Nacional del Prado", placeToken: "tok-prado" });
     expect(screen.getByRole("button", { name: "Quitar Museo Nacional del Prado" })).toBeTruthy();
   });
+  it("moves focus to the remove button after choosing with Enter", async () => {
+    show();
+    await type("prado");
+    const input = screen.getByRole("combobox", { name: "Lugar" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Quitar Museo Nacional del Prado" }));
+  });
+  it("names the chip as the place and ties it to the field id", async () => {
+    show({ defaultLabel: "Lisboa", linked: true });
+    const group = screen.getByRole("group", { name: "Lugar: Lisboa" });
+    expect(group.id).toBe("p");
+  });
+  it("ArrowDown reopens a closed list that still has items", async () => {
+    show();
+    await type("prado");
+    const input = screen.getByRole("combobox", { name: "Lugar" });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(screen.getByRole("listbox")).toBeTruthy();
+  });
   it("Escape closes the list and keeps the typed text", async () => {
     show();
     await type("prado");

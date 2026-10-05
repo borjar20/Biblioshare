@@ -6,6 +6,7 @@ import {removeExperienceImage} from "@/lib/storage/experience-photos";
 import { resolvePlaceToken } from "@/lib/places/register";
 
 // The token never reaches SQL: a verified one becomes placeId; anything else saves as text.
+// place_upsert (service role) may run before the RPC's own authorization/revision checks; harmless: signed real OSM data only, idempotent.
 async function withPlace<T extends {placeToken?:string|null}>(value:T) {
   const {placeToken,...rest}=value;
   const placeId=placeToken ? await resolvePlaceToken(placeToken) : null;

@@ -4840,7 +4840,7 @@ saltaría la firma.
 PASS con rollback; 0 filas residuales; `experience_create`/`experience_save_moment` ejecutables
 por `authenticated` y no por `anon`; `private.experience_input_place` no ejecutable por
 `authenticated`; una sola sobrecarga de `experience_create`. **Producción: NO aplicada**
-(ver issue de seguimiento). e2e `e2e/experiencias-lugares.spec.ts`: 1 passed contra
+(ver [issue #1399](https://github.com/borjar20/Biblioshare/issues/1399)). e2e `e2e/experiencias-lugares.spec.ts`: 1 passed contra
 `next build`/`next start` el 2026-10-05. Requiere `PLACES_SIGNING_SECRET` en el entorno.
 
 ## 8quater. Notas en el margen (#1380; verificado en dev y en producción el 2026-10-05)
