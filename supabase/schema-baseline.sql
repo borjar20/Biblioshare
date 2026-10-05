@@ -1472,3 +1472,8 @@ commit;
 begin;
 \ir migrations/20261004120500_margin_notes_select_own.sql
 commit;
+
+-- 20261005100000_experience_places
+begin;
+\ir migrations/20261005100000_experience_places.sql
+commit;

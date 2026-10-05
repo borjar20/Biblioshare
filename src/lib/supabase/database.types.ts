@@ -2314,6 +2314,60 @@ export type Database = {
         }
         Relationships: []
       }
+      places: {
+        Row: {
+          category: string
+          city: string | null
+          country: string | null
+          country_code: string | null
+          created_at: string
+          id: string
+          lat: number
+          layer: string
+          lng: number
+          name: string
+          provider: string
+          provider_ref: string
+          region: string | null
+          updated_at: string
+          wikidata_qid: string | null
+        }
+        Insert: {
+          category: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          lat: number
+          layer: string
+          lng: number
+          name: string
+          provider: string
+          provider_ref: string
+          region?: string | null
+          updated_at?: string
+          wikidata_qid?: string | null
+        }
+        Update: {
+          category?: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          lat?: number
+          layer?: string
+          lng?: number
+          name?: string
+          provider?: string
+          provider_ref?: string
+          region?: string | null
+          updated_at?: string
+          wikidata_qid?: string | null
+        }
+        Relationships: []
+      }
       play_games: {
         Row: {
           created_at: string
@@ -3380,6 +3434,7 @@ export type Database = {
           experience_id: string
           id: string
           kind: string
+          place_id: string | null
           place_label: string | null
           position: number
           starts_on: string | null
@@ -3392,6 +3447,7 @@ export type Database = {
           experience_id: string
           id?: string
           kind: string
+          place_id?: string | null
           place_label?: string | null
           position: number
           starts_on?: string | null
@@ -3404,6 +3460,7 @@ export type Database = {
           experience_id?: string
           id?: string
           kind?: string
+          place_id?: string | null
           place_label?: string | null
           position?: number
           starts_on?: string | null
@@ -3416,6 +3473,13 @@ export type Database = {
             columns: ["experience_id"]
             isOneToOne: false
             referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_moments_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -4206,6 +4270,7 @@ export type Database = {
         Args: { p_comment_id: string; p_pinned: boolean }
         Returns: undefined
       }
+      place_upsert: { Args: { p_input: Json }; Returns: string }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
       pull_pending_celebrations: {
         Args: never

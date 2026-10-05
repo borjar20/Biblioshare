@@ -71,7 +71,7 @@ export async function getExperiencePreviews(client:Client,roots:Root[]):Promise<
   const byId=new Map((identities.data??[]).map(p=>[p.user_id,p]));
   return roots.map(root=>({
     id:root.id,creatorId:root.creator_id,title:root.title,shape:root.shape as ExperiencePreview["shape"],state:root.state as ExperiencePreview["state"],audience:root.audience as ExperiencePreview["audience"],rating:ratings.get(root.id)?.rating??null,momentRatings:ratings.get(root.id)?.momentRatings??{},startsOn:root.starts_on,endsOn:root.ends_on,coverPhotoId:coverByRoot.get(root.id)??null,createdAt:root.created_at,revision:root.revision,
-    moments:(moments.data??[]).filter(m=>m.experience_id===root.id).map(m=>({id:m.id,title:m.title,kind:m.kind as ExperiencePreview["moments"][number]["kind"],placeLabel:m.place_label,startsOn:m.starts_on,endsOn:m.ends_on,position:m.position})),
+    moments:(moments.data??[]).filter(m=>m.experience_id===root.id).map(m=>({id:m.id,title:m.title,kind:m.kind as ExperiencePreview["moments"][number]["kind"],placeLabel:m.place_label,placeId:m.place_id,startsOn:m.starts_on,endsOn:m.ends_on,position:m.position})),
     participants:(people.data??[]).filter(p=>p.experience_id===root.id).map(p=>({id:p.id,userId:p.user_id,guestName:p.guest_name,invitationState:p.invitation_state as ExperiencePreview["participants"][number]["invitationState"],shareIdentity:p.share_identity,username:byId.get(p.user_id)?.username??null,displayName:byId.get(p.user_id)?.display_name??null,avatarUrl:byId.get(p.user_id)?.avatar_url??null})),
   }));
 }

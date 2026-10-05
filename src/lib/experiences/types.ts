@@ -7,12 +7,13 @@ export type InvitationState = "invited" | "accepted" | "declined";
 export type AttendanceState = "planned" | "attended" | "skipped";
 export type ExperienceError = "unauthenticated" | "forbidden" | "not_found" | "invalid" | "conflict" | "limit" | "too_large" | "unsupported_image" | "unknown";
 export type ExperienceResult<T> = { ok: true; data: T } | { ok: false; error: ExperienceError };
-export const EXPERIENCE_LIMITS = { title: 160, place: 240, guest: 80, moments: 50, participants: 30, photos: 40, photoBytes: 2 * 1024 * 1024, reviewBody: 4000 } as const;
+export const EXPERIENCE_LIMITS = { title: 160, place: 240, guest: 80, moments: 50, participants: 30, photos: 40, photoBytes: 2 * 1024 * 1024, reviewBody: 4000, placeToken: 2048 } as const;
 export interface CreateExperienceInput {
   title: string;
   state: "planned" | "lived";
   kind: MomentKind;
   placeLabel?: string | null;
+  placeToken?: string | null;
   startsOn?: string | null;
   endsOn?: string | null;
 }
@@ -29,6 +30,8 @@ export interface SaveMomentInput {
   title: string;
   kind: MomentKind;
   placeLabel?: string | null;
+  placeToken?: string | null;
+  keepPlace?: boolean;
   startsOn?: string | null;
   endsOn?: string | null;
 }
@@ -48,6 +51,7 @@ export interface ExperienceMoment {
   title: string;
   kind: MomentKind;
   placeLabel: string | null;
+  placeId: string | null;
   startsOn: string | null;
   endsOn: string | null;
   position: number;

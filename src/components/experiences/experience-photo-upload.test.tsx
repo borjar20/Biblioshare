@@ -15,7 +15,7 @@ beforeEach(()=>{
   HTMLDialogElement.prototype.showModal=function(){this.open=true;};
   HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new Event("close"));};
 });
-function show(){return render(<NextIntlClientProvider locale="es" messages={messages}><ExperiencePhotoUpload experienceId="memory" moments={[{id:"one",title:"Un paseo",kind:"walk",placeLabel:null,startsOn:null,endsOn:null,position:0}]}/></NextIntlClientProvider>);}
+function show(){return render(<NextIntlClientProvider locale="es" messages={messages}><ExperiencePhotoUpload experienceId="memory" moments={[{id:"one",title:"Un paseo",kind:"walk",placeLabel:null,placeId:null,startsOn:null,endsOn:null,position:0}]}/></NextIntlClientProvider>);}
 describe("foto antes de subirla",()=>{
   it("no pide asociar una foto a un único momento",()=>{
     show();fireEvent.click(screen.getByRole("button",{name:"Añadir foto"}));
