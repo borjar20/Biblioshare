@@ -6540,3 +6540,4 @@ administrador podría leer comentarios de hilos que solo deberían ver el autor 
 hay que restringirlo, por ejemplo a hilos con una denuncia abierta. Hasta que el propietario
 decida, la conducta es la de la entrega y no debe presentarse como decisión tomada. La
 moderación administrativa sobre la nota denunciada tampoco está hecha: [#1384](https://github.com/borjar20/Biblioshare/issues/1384).
+La decisión se sigue en [#1389](https://github.com/borjar20/Biblioshare/issues/1389).
