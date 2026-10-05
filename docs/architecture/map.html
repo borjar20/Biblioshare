@@ -129,7 +129,7 @@
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
     "generatedAt": "2026-10-05",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · utilidad compartida de vibración #996 desde código, equivalencia literal de función y nueve unitarios existentes verificados el 2026-10-02 · delta de publicación confirmada del Reloj #1313 desde candidato r3: código, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) verificados el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR · delta de reporte push #1052 desde commit 4419656: 116 unitarios pertinentes, revisión independiente sin hallazgos (1.144 escenarios) y primera CI 4.201 unitarios/123 recorridos; accepted es ACK del proveedor, errores resueltos/rechazados de health observados sin invalidar aceptación (#1329; 51 pruebas focales y tres diagnósticos independientes PASS), 2026-10-03 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; ocho migraciones aplicadas y objetos/definiciones/ACL verificados en producción 2026-10-03 a las 10:04 UTC; integración y despliegue seguidos en PR #1323 y #1293 · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; publicación seguida en PR #1323 y #1293 · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03 · Recursos #1328/#1007: 57 unitarios, revisión del coordinador y ocho casos nativos de Recursos más un contexto visual PASS en build w0f/base4a, 2026-10-03; integración con maina0b0/Experiencias exige nueva QA y CI · gate actual de Recursos/Colecciones sobre main a0b0/Experiencias: 95 unitarios focales y nueve recorridos funcionales PASS en build zOSPb8W0Exp_IruBgC7iv/backend282 el 2026-10-03; auditoría global FAIL de tres POST conservada en #1301/#1334, sin efecto RPC por petición acreditado; CI final exigida en la PR · delta documental BiblioPlay #937/#938: referencia de esquema inexistente retirada y recorrido de crear, jugar, resumir y guardar contrastado estáticamente con rutas, imports y persistencia en main e4f33f2, 2026-10-03; sin nueva ejecución funcional, de navegador o de backend; las demás fuentes se conservan · cabecera y panel de notificaciones #1349: composición móvil, tema en Más, región acotada al viewport y cierre por Escape/puntero verificados contra código, build Next 16.3.8 y siete E2E focales build/start local el 2026-10-04 (19,7 s, cero reintentos/skip/flaky; cinco nuevos y dos de navegación/avatar; 320/360/390/412/768 px, claro/oscuro y 320×360 px); lista larga de 20 avisos sintéticos solo en respuesta de lectura: último aviso/footer dentro de la región y scroll alcanzable, sin acreditar ausencia de oclusiones; cero errores de consola en los cinco nuevos, ERR_ABORTED conservados; 17 unitarios focales PASS (incluido cierre por foco fuera con foco real en NotificationBell) y suite general de 459 archivos/4565 pruebas PASS (233,52 s); verificación sobre candidato local; integración/publicación rastreadas en PR #1351 (https://github.com/borjar20/Biblioshare/pull/1351); las demás fuentes conservan su alcance · delta reseñas por momento de Experiencias (#1293): corte local/dev del nodo t-experience-reviews y flow-experience-review contrastado con las cinco migraciones iniciales 20261004100000-100400 y con los ficheros de src de la rama feat/experiencias-resenas el 2026-10-04; aplicado y verificado en dev contra pg_proc/pg_class/pg_policies; aplicación y verificación en producción de las seis migraciones 20261004100000-100500 el 2026-10-04 documentadas en docs/testing/2026-10-04-experiencias-resenas.md, recogido en PR #1378; recibo independiente de metadata 21:03 UTC limitado a tabla, RLS, una política, SELECT y existencia de get_experience_rating_summaries; sin fixtures ni recorrido autenticado de reseñas acreditados en producción; E2E 16/16 contra build/start local",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · utilidad compartida de vibración #996 desde código, equivalencia literal de función y nueve unitarios existentes verificados el 2026-10-02 · delta de publicación confirmada del Reloj #1313 desde candidato r3: código, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) verificados el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR · delta de reporte push #1052 desde commit 4419656: 116 unitarios pertinentes, revisión independiente sin hallazgos (1.144 escenarios) y primera CI 4.201 unitarios/123 recorridos; accepted es ACK del proveedor, errores resueltos/rechazados de health observados sin invalidar aceptación (#1329; 51 pruebas focales y tres diagnósticos independientes PASS), 2026-10-03 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; ocho migraciones aplicadas y objetos/definiciones/ACL verificados en producción 2026-10-03 a las 10:04 UTC; integración y despliegue seguidos en PR #1323 y #1293 · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; publicación seguida en PR #1323 y #1293 · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03 · Recursos #1328/#1007: 57 unitarios, revisión del coordinador y ocho casos nativos de Recursos más un contexto visual PASS en build w0f/base4a, 2026-10-03; integración con maina0b0/Experiencias exige nueva QA y CI · gate actual de Recursos/Colecciones sobre main a0b0/Experiencias: 95 unitarios focales y nueve recorridos funcionales PASS en build zOSPb8W0Exp_IruBgC7iv/backend282 el 2026-10-03; auditoría global FAIL de tres POST conservada en #1301/#1334, sin efecto RPC por petición acreditado; CI final exigida en la PR · delta documental BiblioPlay #937/#938: referencia de esquema inexistente retirada y recorrido de crear, jugar, resumir y guardar contrastado estáticamente con rutas, imports y persistencia en main e4f33f2, 2026-10-03; sin nueva ejecución funcional, de navegador o de backend; las demás fuentes se conservan · cabecera y panel de notificaciones #1349: composición móvil, tema en Más, región acotada al viewport y cierre por Escape/puntero verificados contra código, build Next 16.3.8 y siete E2E focales build/start local el 2026-10-04 (19,7 s, cero reintentos/skip/flaky; cinco nuevos y dos de navegación/avatar; 320/360/390/412/768 px, claro/oscuro y 320×360 px); lista larga de 20 avisos sintéticos solo en respuesta de lectura: último aviso/footer dentro de la región y scroll alcanzable, sin acreditar ausencia de oclusiones; cero errores de consola en los cinco nuevos, ERR_ABORTED conservados; 17 unitarios focales PASS (incluido cierre por foco fuera con foco real en NotificationBell) y suite general de 459 archivos/4565 pruebas PASS (233,52 s); verificación sobre candidato local; integración/publicación rastreadas en PR #1351 (https://github.com/borjar20/Biblioshare/pull/1351); las demás fuentes conservan su alcance · delta reseñas por momento de Experiencias (#1293): corte local/dev del nodo t-experience-reviews y flow-experience-review contrastado con las cinco migraciones iniciales 20261004100000-100400 y con los ficheros de src de la rama feat/experiencias-resenas el 2026-10-04; aplicado y verificado en dev contra pg_proc/pg_class/pg_policies; aplicación y verificación en producción de las seis migraciones 20261004100000-100500 el 2026-10-04 documentadas en docs/testing/2026-10-04-experiencias-resenas.md, recogido en PR #1378; recibo independiente de metadata 21:03 UTC limitado a tabla, RLS, una política, SELECT y existencia de get_experience_rating_summaries; sin fixtures ni recorrido autenticado de reseñas acreditados en producción; E2E 16/16 contra build/start local · celebraciones recuperables #1334 sobre candidato a64f2e3/main14ad944: 75 unitarios, Node20/20, PostgreSQL local cold-r2 ledger285, grants11/11/11 y revisión independiente de tres correcciones PASS, 2026-10-03; G4 nativo, activación dev/prod y CI de publicación pendientes al registrar este delta · corte de celebraciones #1334 revalidado el 2026-10-04: G4 local de build gmpZaurRiZDtN1lTctOQI acredita recuperación post-commit, presentación y ACK; 390 incidentales conservados como GLOBAL FAIL en #1301 y tres fronteras nativas pendientes en #1356; dev activo con objetos/ACL/grants11/11/11 revalidados y filas históricas intactas; registros extra del transporte seguidos en #1355; producción y CI de publicación pendientes en ese corte anterior · activación productiva de celebraciones #1334 aplicada el 2026-10-04 a las 20:15:35 UTC y verificada a las 20:16:22 UTC: guard real de quiescencia y ledger en la misma transacción, cuatro RPC invoker iguales a dev y EXECUTE sólo authenticated, grants 11/11/11, legacy compatible de cero filas; 221 filas y 303 registros previos del ledger intactos, total 307 sin normalizar carriers (#1355); dos FAIL SQLSTATE 55000 con rollback y sin identidad de las transacciones, sin atribuir causa al éxito posterior; seguridad sin grupos ni hallazgos nuevos, sólo se retira el aviso del legacy; el corte de las 20:16:22 UTC precede a la entrega del consumidor seguida en PR #1364, no acredita presentación remota; FAIL global #1301 y límites nativos #1356 conservados · delta ChromeBoundary #1385: límites de ruta y payload de sesión separados en AppShell, verificados contra código y cinco regresiones SSR/hidratación React DOM más 26 controles de navegación el 2026-10-05; RED final 2 FAIL/3 PASS conservado; revisión independiente PASS; build nueva e5fdb395 pasa MTG original 2/2 y retorno 2/2 a 390/1280px con cero errores de hidratación; global FAIL por 16 GET RSC cancelados sin clasificación y gate de inventario completo FAIL por 56 route-cache nuevos, con 2445 archivos previos y 3272 fuentes idénticos; parada física independiente PASS con backup y censo0; CI integrada pendiente; las demás fuentes mantienen su alcance · integración documental con main f1205b9 el 2026-10-05; CI del hijo71fd8bf/base3262374 PASS477 archivos/4744 unitarios/20 contratos Node/291 pasosSQL/168 recorridos; CI del candidato de main y despliegue pendientes",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -203,6 +203,11 @@
         "id": "inv-margin-privacy",
         "rule": "Una nota en el margen solo la ve su autor, o un lector con encuentro que siga al autor (follow accepted) sin bloqueo entre ambos. Los encuentros solo los escriben los triggers de apertura; ninguna lectura de notas usa caché compartida.",
         "evidence": "supabase/tests/margin_notes.sql; supabase/migrations/20261004120100_margin_notes_core.sql (can_read_margin_note)"
+      },
+      {
+        "id": "inv-celebration-delivery",
+        "rule": "Reclamar una celebración pendiente no sella displayed_at. Solo un ACK autenticado del token vigente tras un recibo de presentación puede sellar esa reserva; release, entrega perdida y legado no-op no la consumen.",
+        "evidence": "supabase/migrations/20261003184419_recoverable_celebrations_expand.sql; src/lib/celebrations/consumer.ts; src/components/celebrations/celebration-overlay.tsx; scripts/db/verify-celebrations.sql"
       }
     ],
     "layers": [
@@ -675,6 +680,9 @@
       "summary": "Fuente única de cinco destinos: Inicio · Biblioteca · Experiencias · Comunidad · Buscar. TopNav desde 768px y BottomNav por debajo; avatar directo al perfil en ambos. AppMenu global separado ofrece Partidas, Mascota y Ajustes, o solo Partidas sin sesión. Cambiar tema vive en Más bajo 768px y como icono directo desde 768px. El panel de la campana se acota al viewport y se ancla a Header en móvil. Conserva pantallas a sangre.",
       "files": [
         "src/components/nav",
+        "src/components/nav/app-shell.tsx",
+        "src/components/nav/chrome-boundary.tsx",
+        "src/components/nav/chrome-gate.tsx",
         "src/components/header.tsx",
         "src/components/nav/nav-items.ts",
         "src/components/nav/app-menu.tsx",
@@ -682,6 +690,7 @@
         "src/components/theme-toggle.tsx"
       ],
       "gotchas": [
+        "ChromeBoundary conserva Suspense externo para usePathname y espera el payload de sesión en otro interno bajo ChromeGate. Retener ruta y sesión en el mismo límite deja Header/Nav sin hidratar al entrar en una pantalla completa (#1385). Actor y main quedan fuera del gate; no cachear identidad compartida. Regresión React DOM y revisión independiente PASS el 2026-10-05; build nueva e5fdb395 pasa MTG 2/2 y retorno 2/2 sin React #418. Conserva global FAIL de 16 RSC cancelados y el gate completo FAIL por route-cache nuevo; ejecutables previos idénticos. CI integrada pendiente.",
         "AppMenu se reinicia por pathname + query bajo Suspense de AppShell: cambiar tabs por query o recorrer el historial también debe cerrar el menú. El avatar es un enlace, no su disparador.",
         "NotificationBell usa Header sticky como ancla bajo 768px, margen al viewport y una sola zona de scroll para título, lista y PushToggle; su altura reserva barra inferior y safe-area. Desde 768px recupera el anclaje a la campana. ThemeToggle sincroniza sus copias y AppMenu excluye del teclado la fila de tema oculta en escritorio. Escape devuelve el foco a la campana; puntero o foco fuera también cierran el panel."
       ]
@@ -1272,12 +1281,19 @@
       "layer": "domain",
       "kind": "module",
       "size": 6,
-      "summary": "Motor genérico de celebraciones (rachas, subida de nivel/evolución de la mascota...): earn.ts registra un logro idempotente en user_celebrations; registry.ts es el catálogo de tipos y umbrales (p. ej. STREAK_MILESTONES). Otros dominios lo invocan puntualmente (earnCelebration); no escucha eventos ni tiene ganchos automáticos en cada escritura — la lección de #459.",
+      "summary": "Logros idempotentes en user_celebrations y catálogo explícito de tipos. El consumidor separa reserva recuperable, presentación y ACK autenticado: una entrega perdida no sella la fila. Una sola operación por consumidor, FIFO compatible y token/lease por reserva excluyen otras pestañas. Los productores siguen siendo llamadas puntuales a earnCelebration; no se añaden ganchos automáticos (#459).",
       "files": [
         "src/lib/celebrations/earn.ts",
         "src/lib/celebrations/registry.ts",
         "src/lib/celebrations/preference.ts",
-        "src/lib/celebrations/pull-actions.ts"
+        "src/lib/celebrations/pull-actions.ts",
+        "src/lib/celebrations/protocol.ts",
+        "src/lib/celebrations/consumer.ts"
+      ],
+      "gotchas": [
+        "El payload remoto se valida en runtime. Una respuesta tardía, actor distinto, pestaña oculta, preferencia disabled o lease agotado no puede presentar ni ACKear; se libera la reserva o se recupera al expirar.",
+        "La política permite repetir una celebración tras presentación cuyo ACK no llegó y un consumidor nuevo: no garantiza exactamente una visualización. Un ACK retenido del mismo consumidor se reintenta con el mismo token sin volver a mostrar.",
+        "pullPendingCelebrations devuelve [] sin RPC; pull_pending_celebrations es no-op después del cutover. REVOKE o CREATE OR REPLACE no bastan contra un UPDATE antiguo ya admitido: scripts/db/celebrations-cutover.mjs exige estadísticas visibles, cohortes terminales y cero transacciones ajenas; cualquier backend disabled bloquea."
       ]
     },
     {
@@ -2122,6 +2138,37 @@
         "El umbral SQL espeja src/lib/margin/threshold.ts: cambia uno y cambias el otro (y sus pruebas).",
         "Cambiar la edición de un pase, sus páginas totales o fusionar libros no reevalúa notas: llegan en la siguiente posición/estado. merge_book_into repunta margin_notes.item_id.",
         "social_target_owner_id devuelve al autor solo mientras el lector lo siga y no haya bloqueo; si no, pierde moderación y lectura de las respuestas del lector."
+      ]
+    },
+    {
+      "id": "c-celebrations",
+      "label": "components/celebrations",
+      "layer": "ui",
+      "kind": "ui",
+      "summary": "Provider global con consumidor retenido, puente de identidad del AppShell bajo Suspense y overlay en portal. El puente observa un UUID nuevo por petición después de connection(), incluso en /mascota; Activity desmonta el binding vigente. Solo un portal conectado, visible y habilitado tras dos rAF nativos genera el recibo de presentación.",
+      "files": [
+        "src/components/celebrations/celebration-provider.tsx",
+        "src/components/celebrations/celebration-actor-bridge.tsx",
+        "src/components/celebrations/celebration-overlay.tsx"
+      ],
+      "gotchas": [
+        "Cambiar observationId vuelve a observar la misma actorId sin cleanup previo; A→B→A no depende de un remount. El cleanup usa el último binding. No hay caché compartida de sesión ni token persistido en localStorage."
+      ]
+    },
+    {
+      "id": "t-user-celebrations",
+      "label": "user_celebrations",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Logros por usuario/tipo/clave con deduplicación y RLS de dueño. Una fila pendiente puede tener claim_token + claim_expires_at (CHECK de pareja), lease de 30 s y ACK idempotente cercado por token. claim/release nunca sellan displayed_at; una cabeza compatible reservada devuelve busy sin saltarla.",
+      "files": [
+        "supabase/migrations/20260805_user_celebrations.sql",
+        "supabase/migrations/20261003184419_recoverable_celebrations_expand.sql",
+        "supabase/migrations/20261003184423_retire_eager_celebration_admission.sql",
+        "supabase/migrations/20261003184427_activate_recoverable_celebrations.sql"
+      ],
+      "gotchas": [
+        "Las cuatro RPC finales son SECURITY INVOKER con search_path público/pg_temp y EXECUTE solo authenticated. Fase 2 debe hacer COMMIT antes de capturar el cutoff; guard final y ledger se aplican juntos. Los sellos históricos y el earning no cambian."
       ]
     }
   ],
@@ -3584,6 +3631,30 @@
       "to": "t-margin-notes",
       "kind": "writes",
       "label": "mover position/status del pase dispara margin_open_on_pass"
+    },
+    {
+      "from": "c-nav",
+      "to": "c-celebrations",
+      "kind": "renders",
+      "label": "SessionCelebrationActor / CelebrationActorBridge"
+    },
+    {
+      "from": "c-celebrations",
+      "to": "m-celebrations",
+      "kind": "calls",
+      "label": "bindActor, cola, claim, recibo de presentación y ACK"
+    },
+    {
+      "from": "m-celebrations",
+      "to": "sb-server",
+      "kind": "calls",
+      "label": "createClient autenticado por cada acción"
+    },
+    {
+      "from": "m-celebrations",
+      "to": "t-user-celebrations",
+      "kind": "writes",
+      "label": "earning idempotente y RPC autenticadas de reserva/ACK/release"
     }
   ],
   "flows": [
@@ -5146,6 +5217,85 @@
       ],
       "notes": [
         "Acciones de moderación de admin sobre la nota: pendientes (#1384). Los avisos usan la categoría push social (deuda #1387)."
+      ]
+    },
+    {
+      "id": "flow-celebration-delivery",
+      "name": "Recuperar una celebración y confirmarla después de mostrarla",
+      "category": "core",
+      "summary": "Claim recuperable, exclusión FIFO entre pestañas, recibo de presentación y ACK cercado por token. La cancelación después del commit del claim conserva la fila pendiente hasta release o expiración; una cancelación del ACK puede implicar repetición en otro consumidor.",
+      "entrypoint": "src/components/nav/app-shell.tsx:SessionCelebrationActor",
+      "notes": [
+        "El puente vive fuera de ChromeGate y observa también /mascota. Una observación nueva permite recuperarse de A→B→A aunque la actorId vuelva a ser la misma.",
+        "Solo se reclaman tipos soportados, con actor actual, visibilidad y preferencia habilitada. Un lease incluye la espera del transporte y reserva un margen de 3 s antes de mostrar.",
+        "Cutover: expandir cerrado, cerrar legacy y hacer COMMIT, observar quiescencia real, activar no-op/nuevos grants con ledger en la misma transacción. No se infiere quiescencia de un timeout o HTTP 200."
+      ],
+      "steps": [
+        {
+          "node": "c-nav",
+          "action": "connection() + getCurrentUser por petición; crear observationId nuevo y entregar actor al puente bajo Suspense",
+          "file": "src/components/nav/app-shell.tsx"
+        },
+        {
+          "node": "c-celebrations",
+          "action": "Bindear la observación vigente; cleanup de Activity/desmontaje retira el último binding",
+          "file": "src/components/celebrations/celebration-actor-bridge.tsx"
+        },
+        {
+          "node": "c-celebrations",
+          "action": "Despertar el consumidor retenido por montaje, visibilidad o comprobación explícita; Server Actions se despachan con startTransition",
+          "file": "src/components/celebrations/celebration-provider.tsx"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Una operación en vuelo: actor vigente, preferencia y visibilidad antes de reclamar",
+          "file": "src/lib/celebrations/consumer.ts"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Validar input/capacidades; getUser de SDK distingue no_session, identity_changed y unavailable antes del RPC",
+          "file": "src/lib/celebrations/pull-actions.ts"
+        },
+        {
+          "node": "sb-server",
+          "action": "Cliente de la petición con sesión/RLS; no cliente público ni service role",
+          "file": "src/lib/supabase/server.ts"
+        },
+        {
+          "node": "t-user-celebrations",
+          "action": "claim_next_celebration bloquea la cabeza compatible, reserva token + lease30s o devuelve busy; no escribe displayed_at",
+          "file": "supabase/migrations/20261003184419_recoverable_celebrations_expand.sql"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Validar DTO y payload soportado; respuesta tardía/inválida o reserva expirada se libera y no entra en el overlay",
+          "file": "src/lib/celebrations/protocol.ts"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Encolar reserva vigente, conservando FIFO y deadline seguro del consumidor",
+          "file": "src/lib/celebrations/consumer.ts"
+        },
+        {
+          "node": "c-celebrations",
+          "action": "Portal conectado, visible y habilitado tras dos rAF: onShown entrega recibo con reserva/generación",
+          "file": "src/components/celebrations/celebration-overlay.tsx"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Validar recibo y conservar ACK pendiente del mismo token; reintentar fallo sin volver a presentar en el consumidor",
+          "file": "src/lib/celebrations/consumer.ts"
+        },
+        {
+          "node": "m-celebrations",
+          "action": "Autenticar de nuevo actor/UUID/token antes de ack_celebration; no confiar en el actor del cliente",
+          "file": "src/lib/celebrations/pull-actions.ts"
+        },
+        {
+          "node": "t-user-celebrations",
+          "action": "ACK cercado por dueño + token vigente: acked/already_acked/stale; release de no mostrado deja la fila pendiente",
+          "file": "supabase/migrations/20261003184419_recoverable_celebrations_expand.sql"
+        }
       ]
     }
   ]

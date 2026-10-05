@@ -3242,6 +3242,8 @@ export type Database = {
       }
       user_celebrations: {
         Row: {
+          claim_expires_at: string | null
+          claim_token: string | null
           created_at: string
           displayed_at: string | null
           event_key: string
@@ -3253,6 +3255,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           displayed_at?: string | null
           event_key: string
@@ -3264,6 +3268,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          claim_expires_at?: string | null
+          claim_token?: string | null
           created_at?: string
           displayed_at?: string | null
           event_key?: string
@@ -4272,6 +4278,14 @@ export type Database = {
       }
       place_upsert: { Args: { p_input: Json }; Returns: string }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
+      ack_celebration: {
+        Args: { p_claim_token: string; p_id: string }
+        Returns: string
+      }
+      claim_next_celebration: {
+        Args: { p_supported_types: string[] }
+        Returns: Json
+      }
       pull_pending_celebrations: {
         Args: never
         Returns: {
@@ -4279,6 +4293,10 @@ export type Database = {
           event_type: string
           payload: Json
         }[]
+      }
+      release_celebration: {
+        Args: { p_claim_token: string; p_id: string }
+        Returns: string
       }
       register_book_edition: {
         Args: {
