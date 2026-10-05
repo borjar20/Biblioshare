@@ -471,6 +471,9 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   desplegado con la PR #1376.** Contrato:
   [spec](../superpowers/specs/2026-10-04-experiencias-resenas-design.md).
   Evidencia: [reseñas por momento (2026-10-04)](../testing/2026-10-04-experiencias-resenas.md).
+- [x] Lugares autocompletados (OSM/Photon) en momentos, con proxy autenticado y sugerencias
+  firmadas: aplicado en dev el 2026-10-05; producción pendiente. Contrato:
+  [spec](../superpowers/specs/2026-10-05-experiencias-lugares-design.md).
 - [ ] Ampliaciones: catálogos externos, fusionar recuerdos y filtro entre hobbies (#1293).
   Contrato: `docs/superpowers/specs/2026-10-02-experiencias-design.md`.
   Evidencia: [funcional (2026-10-02)](../testing/2026-10-02-experiencias.md)

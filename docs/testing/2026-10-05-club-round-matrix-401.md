@@ -1,14 +1,14 @@
 # Rondas #401: matriz SQL y corrección del slug del fixture
 
-[Candidato · verificado el 2026-10-05 · Native 44be/F3/288: matriz 11/11 y carrera/cleanup PASS · integración main 4949 · revisión runtime independiente y CI final pendientes]
+[Candidato · verificado el 2026-10-05 · Native 44be/F3/288: matriz 11/11 y carrera/cleanup y revisión independiente PASS · integración main f1205 · CI final pendiente]
 
 El checker corregido `44be5bb` ha pasado la matriz real 11/11 y la carrera de
 dos sesiones PostgreSQL en el F3 auténtico conservado `f3d738c9`, ledger 288.
 Observó dos locks no concedidos antes del release, ambos RPC devolvieron el
 mismo UUID y SQL confirmó una ronda y un target canónicos. Cleanup y reloj
 exacto PASS, censo cero y parada normal con backup; ownership liberado al
-coordinador. La revisión independiente del runtime y la CI del candidato
-integrado siguen pendientes. **#401 sigue abierto.**
+coordinador. La revisión independiente del runtime pasó sin hallazgos; la CI
+del candidato final integrado sigue pendiente. **#401 sigue abierto.**
 
 El slug del candidato ahora elimina los guiones del UUID, conserva sus 32
 caracteres y mide 38 con el prefijo. La regresión Node del checker real contrasta
@@ -23,10 +23,11 @@ Base: `f5839cf8c55b649daf62ffc08d216268eb28a9f3`, rama
 recibió en `d2274d07a44e70cc45db6fbf44db15168f169c47`. El coordinador integró
 su baseline documental en `f4119d476fa478a50519ea2236dd303a0a002790`; el primer
 commit sigue siendo ancestro y este worker no modificó esa rama. Esta pieza
-incorpora después main `4949bc376f5555e3a521915b0444d2f0bde3ccb4`, que contiene
-Notas en el margen PR #1396 y la corrección #405 ya integrada. Sus fuentes,
-migraciones, schema-baseline, tipos, data-model, graph y contratos de CI se
-preservan; no se atribuye el Native F3/288 al nuevo plan SQL integrado.
+incorpora después main `4949bc376f5555e3a521915b0444d2f0bde3ccb4` y luego
+`f1205b958861170c8ae2a5af3d9aa4030aebaa53`, con Notas en el margen PR #1396,
+Experiencias/Lugares y la corrección #405 ya integrada. Sus fuentes, siete
+migraciones posteriores, schema-baseline, tipos, data-model, graph y contratos
+de CI se preservan; no se atribuye el Native F3/288 al nuevo plan integrado.
 
 ## Problema y fuentes
 
@@ -216,7 +217,53 @@ Las evidencias y la liberación de ownership están en
 Manifest de 15 artefactos SHA
 `6a9e66005e44ab139b27f49e37fc596c445796d12236d8d357aabdd1bb1dba20`.
 Este PASS local no acredita SQL del plan posterior integrado, navegador o
-dev/prod; requiere revisión independiente del runtime y CI del HEAD final.
+dev/prod; la revisión independiente siguiente conserva ese límite y la CI del
+HEAD final continúa siendo un gate distinto.
+
+## Revisión independiente del runtime e integración local
+
+La revisión fresca `PASS_LOCAL_NATIVE_EVIDENCE` no encontró hallazgos. Cotejó
+49 controles de metadatos, los 15 artefactos finales, 338 de preparación y seis
+referencias históricas contra sus hashes y los oráculos del checker real.
+Verificó secuencia start/run/stop, once casos, dos locks anteriores al release,
+UUID/filas, restauración y limpieza registradas. No repitió SQL ni servicios,
+no inspeccionó el worktree en edición y no atribuyó el resultado al nuevo plan
+de main. Se conservan el FAIL del primer seed y las respuestas SQL cuyo valor
+se acredita por las aserciones ejecutadas, sin inventar payloads crudos.
+
+El manifest está en
+`.scratch/ticket-campaign/20261005-resume/review-club401-runtime-fresh-r1/manifest.json`,
+SHA `8e7a61f3dec69a326ef274054d5490742121161f0ba1040a9bcd23fd5610d943`.
+
+La integración de `4949` quedó en el merge local
+`d0fa1ac9ba24504da7c521cb4e7506665c93fb08`. Su único conflicto estaba en el
+índice de testing: se conserva íntegra la entrada recibida de #405 y se añade
+#401. El merge posterior de `f1205` no produjo conflictos. El caller mantiene
+las consultas de `margin_notes.sql` y `experiences_places.sql`, además del gate
+de rondas previo al ledger. Los workflows conservan el contrato Node de #405
+y la exclusividad de #401. El plan natural actual tiene 295 etapas; aquí no se
+ejecuta SQL. `.env.example` se conserva por su blob recibido, sin leer valores.
+
+Los pins y comprobaciones de preservación están en
+`.scratch/ticket-campaign/20261005-resume/club401-main-integration-r1/`.
+El checkout de Git convirtió inicialmente la matriz a CRLF: se guardó el FAIL
+de comparación de bytes y se restituyeron los LF revisados, tras probar que
+el blob y el contenido normalizado eran idénticos. El índice se refrescó sin
+cambio de contenido ni nuevo commit de matriz. Checker y matriz conservan
+respectivamente SHA `f663ec597d575e15c9b262c4384f92e64b0e2d0b38318220caf07963149ae9fa`
+y `fc8eed0c6d9930dffae820d526704b40b185ff2ac019898b03f6e322e94bf8a0`.
+
+La comparación de integración acredita los 3316 blobs de `f1205` fuera de los
+nueve archivos propios; el caller, workflows, package e índice sólo añaden el
+alcance de #401. No cambian dependencias. En el candidato integrado pasan
+24/24 contratos Node del bootstrap/checker y 9/9 del caller real de #405, cero
+skip, además de lint focal, tipos sin emisión y sintaxis de bootstrap, caller
+y checker. Los comandos, salidas y receipts se conservan en la cápsula de
+integración; estos checks no ejecutan PostgreSQL ni navegador.
+
+La main definitiva con Celebraciones se integrará bajo coordinación antes de
+una única CI final. Esta comprobación local no inicia Docker, Next, navegador
+o SQL, ni autoriza publicar o cerrar #401.
 
 ## GO y protocolo reproducible para una siguiente QA
 
@@ -286,5 +333,6 @@ No acreditan SQL del plan posterior integrado, grants remotos, navegador ni CI
 del candidato integrado. El runtime no cambió fuentes, migraciones, passes,
 Auth persistente, credenciales, dependencias, dev/prod o configuración de
 producción. La integración local posterior conserva las migraciones de main y
-el checker/matriz probados; no añade migraciones ni altera esquema. Su revisión
-runtime independiente y la CI final siguen pendientes. No se ha cerrado #401.
+el checker/matriz probados; no añade migraciones ni altera esquema. La revisión
+independiente del runtime pasó; la CI final del candidato integrado sigue
+pendiente. No se ha cerrado #401.

@@ -813,9 +813,13 @@ cleanup/restauración exactos. El arreglo emite 38 caracteres sin cambiar el UUI
 cleanup o constraint. Conserva RED significativo y 24/24 contratos Node; su
 revisión fresca pasó 28 controles de fuente, 69 hashes y 16 contratos focales.
 
-El checker y la matriz probados conservan sus blobs al integrar main `4949bc3`,
-incluidas Notas en el margen y la CI de #405. El PASS nativo corresponde al
-corte anterior de 288 etapas, no acredita SQL del candidato integrado con sus
-migraciones posteriores. La revisión independiente del runtime y la CI del
-HEAD integrado siguen pendientes. #401 permanece abierto. No se atribuyen
-navegador, dev, producción ni RLS remota a esta tanda.
+La revisión independiente del runtime pasó sin hallazgos: 49 cotejos, 15
+artefactos finales, 338 de preparación y seis referencias históricas. Conserva
+el límite de su pin `44be5bb`/F3/288 y no inspeccionó el worktree integrado.
+
+El checker y la matriz probados conservan sus blobs al integrar main `f1205b9`,
+incluidas Notas en el margen, Experiencias/Lugares y la CI de #405. El nuevo plan
+natural tiene 295 etapas; el PASS nativo del corte anterior de 288 no acredita
+su SQL. La CI del HEAD final tras integrar la main definitiva sigue pendiente.
+#401 permanece abierto. No se atribuyen navegador, dev, producción ni RLS remota
+a esta tanda.

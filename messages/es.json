@@ -139,6 +139,14 @@
     "shape": "Forma",
     "audience": "Quién puede verlo",
     "place": "Lugar",
+    "places": {
+      "hint": "Busca un sitio o una ciudad, o escribe lo que quieras.",
+      "remove": "Quitar {name}",
+      "chosen": "Lugar: {name}",
+      "searching": "Buscando…",
+      "attribution": "© OpenStreetMap",
+      "layers": { "poi": "Sitio", "city": "Ciudad", "region": "Región", "country": "País" }
+    },
     "kind": "Tipo",
     "optional": "Detalles opcionales",
     "startsOn": "Fecha de inicio",
