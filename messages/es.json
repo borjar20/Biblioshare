@@ -907,8 +907,7 @@
     "review": {
       "readMore": "Seguir leyendo",
       "metaDays": "{count, plural, one {# día} other {# días}}",
-      "metaPages": "{count} pág.",
-      "moreEpisodes": "{count, plural, one {+# episodio} other {+# episodios}}"
+      "metaPages": "{count} pág."
     },
     "filters": {
       "label": "Filtrar el feed",

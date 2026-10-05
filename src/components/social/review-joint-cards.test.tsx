@@ -6,7 +6,7 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
-import type { JointCardMember } from "@/lib/social/feed";
+import type { FeedEpisode, JointCardMember } from "@/lib/social/feed";
 import { makeFeedEvent } from "./test-feed-event";
 
 vi.mock("next/navigation", () => ({
@@ -50,12 +50,12 @@ describe("ReviewCard", () => {
     expect(container.textContent).toContain("Película · 2014");
   });
 
-  it("en el feed la reseña va dentro de la caja de la obra", () => {
+  it("en el feed la reseña va recortada a 4 líneas, sin caja interior ni pie «Comentar»", () => {
     wrap(<ReviewCard event={review()} viewerLoggedIn knownUsernames={[]} />);
     const text = screen.getByText(/Top 3 peores apocalipsis/);
-    const box = screen.getAllByRole("link", { name: "Interstellar" }).at(-1)!.parentElement!;
-    expect(box.contains(text)).toBe(true);
     expect(text.className).toContain("line-clamp-4");
+    expect(text.closest(".bg-surface-muted")).toBeNull();
+    expect(screen.getByRole("link", { name: "Comentar" }).textContent).toBe("");
   });
 
   it("«Seguir leyendo» lleva al post cuando el servidor cortó el extracto", () => {
@@ -68,12 +68,60 @@ describe("ReviewCard", () => {
     expect(screen.queryByRole("link", { name: "Seguir leyendo" })).toBeNull();
   });
 
-  it("en /post/[id] (sin interacciones) el texto entero va fuera de la caja y sin recortar", () => {
+  it("en /post/[id] (sin interacciones) el texto va entero, sin recortar ni icono de comentarios", () => {
     wrap(<ReviewCard event={review()} viewerLoggedIn knownUsernames={[]} showInteractions={false} />);
-    const text = screen.getByText(/Top 3 peores apocalipsis/);
-    const box = screen.getAllByRole("link", { name: "Interstellar" }).at(-1)!.parentElement!;
-    expect(box.contains(text)).toBe(false);
-    expect(text.className).not.toContain("line-clamp");
+    expect(screen.getByText(/Top 3 peores apocalipsis/).className).not.toContain("line-clamp");
+    expect(screen.queryByRole("link", { name: "Comentar" })).toBeNull();
+  });
+
+  it("valorar la serie entera dice «valoró la serie»", () => {
+    const { container } = wrap(
+      <ReviewCard
+        event={review({ verb: "rated", itemType: "series", itemId: "loki", itemTitle: "Loki", itemYear: 2021, reviewExcerpt: null, rating: 7 })}
+        viewerLoggedIn
+        knownUsernames={[]}
+      />,
+    );
+    expect(container.textContent).toContain("valoró la serie");
+    expect(container.textContent).toContain("Serie · 2021");
+  });
+
+  const watched = (episodes: FeedEpisode[]) =>
+    makeFeedEvent({
+      kind: "watched",
+      verb: episodes[0].rating != null ? "rated" : "watchedEpisode",
+      itemType: "series",
+      itemId: "loki",
+      itemTitle: "Loki",
+      rating: episodes[0].rating,
+      episode: { season: episodes[0].season, episode: episodes[0].episode, title: episodes[0].title },
+      episodes,
+    });
+  const ep = (episode: number, rating: number | null, title: string | null = null): FeedEpisode => ({ season: 2, episode, title, rating });
+
+  it("un episodio valorado: el episodio es el título y la serie va en los datos", () => {
+    const { container } = wrap(<ReviewCard event={watched([ep(3, 4, "1893")])} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).toContain("valoró un episodio");
+    expect(screen.getByRole("link", { name: "S2E3 · 1893" })).toBeTruthy();
+    expect(container.textContent).toContain("de Loki");
+  });
+
+  it("varios episodios: cada uno con su nota, «Sin nota» si no la tiene y «+N más» pasado el tercero", () => {
+    const { container } = wrap(
+      <ReviewCard event={watched([ep(3, 4, "1893"), ep(4, 8), ep(5, null), ep(6, 6)])} viewerLoggedIn knownUsernames={[]} />,
+    );
+    expect(container.textContent).toContain("valoró 4 episodios");
+    expect(screen.getByRole("link", { name: "Loki" })).toBeTruthy();
+    expect(container.textContent).toContain("S2E4");
+    expect(screen.getByLabelText("Sin nota")).toBeTruthy();
+    expect(container.textContent).not.toContain("S2E6");
+    expect(container.textContent).toContain("+1 más");
+  });
+
+  it("episodios sin ninguna nota dicen «vio», no «valoró»", () => {
+    const { container } = wrap(<ReviewCard event={watched([ep(3, null), ep(4, null)])} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).toContain("vio 2 episodios");
+    expect(container.textContent).not.toContain("valoró");
   });
 });
 
