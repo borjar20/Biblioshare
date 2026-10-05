@@ -879,3 +879,23 @@ un antes/después causal. Los 17 abortos y la captura de Colección aún en skel
 se conservan. Actor, libros y servicios propios limpios. La CI sobre el HEAD
 integrado mantiene su gate independiente; no se declara cura causal del fallo
 CI anterior ni una auditoría global de red limpia.
+
+## Hidratación de cabecera y navegación al iniciar MTG (#1385)
+
+[Informe focal](testing/2026-10-05-chrome-hydration-1385.md): el gate de ruta
+mantiene un Suspense externo y el payload de sesión espera en otro interno.
+La regresión SSR/hidratación conserva dos FAIL con la topología anterior y
+pasa sus cinco casos con el candidato; la tanda de navegación suma 31/31.
+Antes de navegar se acredita la hidratación de los gates, y las barras se
+retiran mientras la sesión sigue pendiente. Lint y tipos focales PASS.
+
+El diagnóstico nativo anterior localiza dos React #418 en Header y BottomNav
+bajo AppShell. La revisión independiente ha pasado sin hallazgos. La build
+nueva `rS5hN2l856Bf-eL5iOPir` sobre `e5fdb395` pasa el spec original a 390 y
+1280px y dos controles de retorno por historial: 4/4, retry0, cero errores de
+página, consola o HTTP. Se mantienen global FAIL por 16 GET RSC cancelados
+sin clasificación (#1301) y el FAIL del gate de inventario completo: 56 archivos
+de route-cache añadidos, 2445 previos idénticos. Fuentes3272 y ejecutables792
+conservan sus hashes. Parada física independiente PASS con backup, censo0,
+puertos libres y volúmenes conservados. Las guardas originales siguen intactas;
+CI integrada y main pendientes. No acredita Auth real, Android ni producción.

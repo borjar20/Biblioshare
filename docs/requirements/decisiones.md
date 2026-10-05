@@ -6540,3 +6540,29 @@ El recorrido nativo #754 pasa, pero no observa la generación en el catch ni
 demuestra por sí solo el origen del fallo CI previo. Evidencia y límites:
 [cobertura](../testing/2026-10-04-celebrations-stale-diagnostics-1369.md) y
 [navegador](../testing/2026-10-04-celebrations-stale-diagnostics-native-1369.md).
+
+## 2026-10-05 — Separar la hidratación de ruta de la espera de sesión en el shell (#1385)
+
+Header, BottomNav y la compañera usan ChromeBoundary: un Suspense exterior
+permite resolver usePathname con Cache Components, ChromeGate decide si la
+ruta tiene su propio marco y un Suspense interior espera el payload de sesión.
+El gate puede hidratarse y retirar las barras al navegar aunque esa sesión
+siga pendiente. Cada frontera conserva su fallback y reserva de altura.
+
+La identidad continúa resolviéndose por petición; no se añade caché compartida
+ni se mueve CelebrationActorBridge dentro del gate. El landmark main y el
+enlace para saltar al contenido mantienen su ubicación. La decisión responde
+a dos discrepancias HTML localizadas en el shell al entrar en partida activa.
+Su regresión discrimina ambas topologías; el gate de Next/build/navegador
+del candidato sigue pendiente. [Evidencia y límites](../testing/2026-10-05-chrome-hydration-1385.md).
+
+## 2026-10-05 — Verificación posterior del límite de chrome (#1385)
+
+La decisión anterior queda contrastada con revisión independiente y una build
+local nueva del pin e5fdb395. Pasan el recorrido original MTG a 390/1280px y los
+dos controles de regreso por historial, con cero errores de hidratación. Se
+conservan separados el global FAIL por 16 GET RSC cancelados sin clasificación
+y el FAIL del gate que comparaba toda .next: el servicio añadió 56 route-cache,
+sin modificar los 2445 archivos compilados previos. No se reescribe esa
+evidencia ni se relajan las guardas. La parada física independiente pasa y la
+CI del HEAD integrado conserva su gate. [Corte y límites](../testing/2026-10-05-chrome-hydration-1385.md).
