@@ -16,6 +16,7 @@ function show(props: Partial<Parameters<typeof PlaceCombobox>[0]> = {}) {
 }
 const fields = () => Object.fromEntries(new FormData(form).entries());
 async function type(value: string) {
+  fireEvent.focus(screen.getByRole("combobox", { name: "Lugar" }));
   fireEvent.change(screen.getByRole("combobox", { name: "Lugar" }), { target: { value } });
   await act(async () => { await vi.advanceTimersByTimeAsync(300); });
 }
@@ -74,5 +75,28 @@ describe("PlaceCombobox", () => {
     await type("prado");
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("does not open the list when the field was left before the debounce elapsed", async () => {
+    show();
+    const input = screen.getByRole("combobox", { name: "Lugar" });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "prado" } });
+    fireEvent.blur(input);
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+  it("drops stale suggestions when the text falls below three characters", async () => {
+    show();
+    await type("prado");
+    expect(screen.getByRole("listbox")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Lugar" }), { target: { value: "pr" } });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.change(screen.getByRole("combobox", { name: "Lugar" }), { target: { value: "pra" } });
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+  it("stays a chip when linked even without a label", async () => {
+    show({ linked: true });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(fields()).toEqual({ placeLabel: "", keepPlace: "true" });
   });
 });

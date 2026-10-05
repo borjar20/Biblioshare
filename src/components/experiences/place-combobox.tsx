@@ -12,9 +12,9 @@ type Props = { id: string; defaultLabel?: string | null; linked?: boolean };
 export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
   const t = useTranslations("experiences.places"), listId = useId();
   const [text, setText] = useState(linked ? "" : defaultLabel ?? "");
-  const [chosen, setChosen] = useState<Chosen | null>(linked && defaultLabel ? { name: defaultLabel, token: null } : null);
+  const [chosen, setChosen] = useState<Chosen | null>(linked ? { name: defaultLabel ?? "", token: null } : null);
   const [items, setItems] = useState<PlaceSuggestion[]>([]), [open, setOpen] = useState(false), [active, setActive] = useState(-1);
-  const input = useRef<HTMLInputElement>(null), refocus = useRef(false);
+  const input = useRef<HTMLInputElement>(null), refocus = useRef(false), focused = useRef(false);
 
   useEffect(() => {
     if (chosen) return;
@@ -26,7 +26,7 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
         const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`, { signal: abort.signal });
         const body = res.ok ? await res.json() as { items?: PlaceSuggestion[] } : { items: [] };
         const next = Array.isArray(body.items) ? body.items : [];
-        setItems(next); setOpen(next.length > 0); setActive(-1);
+        setItems(next); setOpen(next.length > 0 && focused.current); setActive(-1);
       } catch { if (!abort.signal.aborted) { setItems([]); setOpen(false); } }
     }, 300);
     return () => { clearTimeout(timer); abort.abort(); };
@@ -40,9 +40,9 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
   if (chosen) return <div className="flex min-h-11 items-center">
     <input type="hidden" name="placeLabel" value={chosen.name}/>
     {chosen.token ? <input type="hidden" name="placeToken" value={chosen.token}/> : <input type="hidden" name="keepPlace" value="true"/>}
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-surface-muted py-1 pl-3 pr-1 text-sm">
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-surface-muted py-0 pl-3 pr-0 text-sm">
       <span className="truncate">{chosen.name}</span>
-      <button type="button" onClick={clear} aria-label={t("remove", { name: chosen.name })} className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent">✕</button>
+      <button type="button" onClick={clear} aria-label={t("remove", { name: chosen.name })} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-accent">✕</button>
     </span>
   </div>;
 
@@ -52,8 +52,9 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
     <Input ref={input} id={id} name="placeLabel" value={text} maxLength={240} autoComplete="off" className="min-h-11 w-full"
       role="combobox" aria-autocomplete="list" aria-expanded={shown} aria-controls={listId} aria-describedby={`${listId}-hint`}
       aria-activedescendant={shown && active >= 0 ? optionId(active) : undefined}
-      onChange={(event) => setText(event.target.value)}
-      onBlur={() => setTimeout(() => setOpen(false), 150)}
+      onFocus={() => { focused.current = true; }}
+      onChange={(event) => { const v = event.target.value; setText(v); if (v.trim().length < 3) { setItems([]); setOpen(false); } }}
+      onBlur={() => { focused.current = false; setOpen(false); }}
       onKeyDown={(event) => {
         if (!shown) return;
         if (event.key === "ArrowDown") { event.preventDefault(); setActive((i) => (i + 1) % items.length); }

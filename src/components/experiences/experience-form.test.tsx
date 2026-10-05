@@ -104,4 +104,20 @@ describe("captura breve de experiencias", () => {
     finish({ ok: true, data: { id: "new-memory" } });
     await waitFor(() => expect(h.push).toHaveBeenCalledWith("/experiencia/new-memory"));
   });
+
+  it("al elegir una sugerencia de lugar envía el token firmado y el nombre oficial", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [{ token: "tok-prado", name: "Museo Nacional del Prado", layer: "poi", subtitle: "Madrid, España" }] }))));
+    try {
+      const { container } = show();
+      container.querySelector("details")!.open = true;
+      fireEvent.change(screen.getByLabelText("Nombre *"), { target: { value: "Visita" } });
+      const place = screen.getByLabelText("Lugar");
+      fireEvent.focus(place);
+      fireEvent.change(place, { target: { value: "prado" } });
+      fireEvent.mouseDown(await screen.findByRole("option", { name: /Museo Nacional del Prado/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Guardar experiencia" }));
+      await waitFor(() => expect(h.create).toHaveBeenCalled());
+      expect(h.create.mock.calls[0][0]).toMatchObject({ placeLabel: "Museo Nacional del Prado", placeToken: "tok-prado" });
+    } finally { vi.unstubAllGlobals(); }
+  });
 });
