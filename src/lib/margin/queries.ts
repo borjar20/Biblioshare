@@ -18,15 +18,17 @@ type EncounterRow = {
   found_via: "progress" | "finish" | "retro"; seen_at: string | null;
 };
 
+// Identidad vía `profile_identities`: `profiles` oculta a los usuarios privados
+// que el que mira no sigue (un seguidor privado saldría en blanco).
 async function people(supabase: SupabaseServerClient, ids: string[]): Promise<Map<string, MarginPerson>> {
   const unique = [...new Set(ids)];
   if (unique.length === 0) return new Map();
   const { data, error } = await supabase
-    .from("profiles").select("user_id, username, display_name, avatar_url").in("user_id", unique);
+    .from("profile_identities").select("user_id, username, display_name, avatar_url").in("user_id", unique);
   if (error) throw error;
-  return new Map((data ?? []).map((p) => [p.user_id, {
-    id: p.user_id, username: p.username, displayName: p.display_name, avatarUrl: p.avatar_url,
-  }]));
+  return new Map((data ?? []).flatMap((p) => (p.user_id ? [[p.user_id, {
+    id: p.user_id, username: p.username ?? "", displayName: p.display_name, avatarUrl: p.avatar_url,
+  } satisfies MarginPerson] as const] : [])));
 }
 
 const UNKNOWN: MarginPerson = { id: "", username: "", displayName: null, avatarUrl: null };

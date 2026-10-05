@@ -10,7 +10,9 @@ const CHUNK = 100;
 
 // Sin filtro `.or(ilike…)`: el término nunca llega a PostgREST (sin escapado ni
 // límite de URL). Se leen los seguidores aceptados, se traen sus perfiles por
-// lotes de 100 y se filtra en TS.
+// lotes de 100 y se filtra en TS. La identidad sale de `profile_identities`
+// (no de `profiles`): la RLS de profiles esconde a los seguidores privados que
+// yo no sigo, y la vista expone solo columnas de identidad.
 export async function searchMyFollowers(q: string): Promise<MarginPerson[]> {
   if (normalizeSearch(q).length < FOLLOWER_SEARCH_MIN) return [];
   const supabase = await createClient();
@@ -29,10 +31,13 @@ export async function searchMyFollowers(q: string): Promise<MarginPerson[]> {
   const candidates: FollowerCandidate[] = [];
   for (let i = 0; i < ids.length; i += CHUNK) {
     const { data } = await supabase
-      .from("profiles")
+      .from("profile_identities")
       .select("user_id, username, display_name, avatar_url")
       .in("user_id", ids.slice(i, i + CHUNK));
-    candidates.push(...(data ?? []));
+    for (const r of data ?? []) {
+      // La vista tipa todo como nullable; en la práctica user_id/username no lo son.
+      if (r.user_id && r.username) candidates.push({ ...r, user_id: r.user_id, username: r.username });
+    }
   }
   return rankFollowers(candidates, q).map((p) => ({
     id: p.user_id,
