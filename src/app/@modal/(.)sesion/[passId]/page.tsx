@@ -27,7 +27,7 @@ export default async function SessionModalPage({
   // "Información" — con back() esto salía gratis porque la URL anterior ya lo
   // llevaba.
   return (
-    <RouteMessages ns={["episode", "library", "notes", "passes", "session"]}>
+    <RouteMessages ns={["episode", "library", "margin", "notes", "passes", "session"]}>
       <SessionModal exitHref={`${itemHref(ctx.itemType, ctx.itemId)}?tab=log`}>
         <SessionSheet
           ctx={ctx}

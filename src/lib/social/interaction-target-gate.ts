@@ -14,7 +14,7 @@ export async function getInteractionTarget(
   const { data, error } = await supabase
     .from("interaction_targets")
     .select(
-      "id, owner_id, commentable, reactable, comment_notification_type, reaction_notification_type",
+      "id, kind, owner_id, audience_id, commentable, reactable, comment_notification_type, reaction_notification_type",
     )
     .eq("id", interactionTargetId)
     .maybeSingle();

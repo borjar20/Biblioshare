@@ -53,6 +53,8 @@ export type EpisodeListProps = {
    * para que el cuadro de reseña exista una sola vez.
    */
   inlineDetail: boolean;
+  /** Id de la serie, para «Dejar nota en este episodio» en los vistos. */
+  itemId?: string;
 };
 
 export function EpisodeList(props: EpisodeListProps) {
@@ -161,6 +163,7 @@ function EpisodeItem({
   upToPendingCount,
   onMarkUpTo,
   inlineDetail,
+  itemId,
 }: EpisodeListProps & { episode: EpisodeRow }) {
   const t = useTranslations("episode");
   const tPasses = useTranslations("passes");
@@ -291,6 +294,7 @@ function EpisodeItem({
             // episodio sin nada detrás es la casilla de la fila.
             markUpToCount={canAct ? upToPendingCount(episode) : 0}
             onMarkUpTo={() => onMarkUpTo(episode)}
+            itemId={itemId}
           />
         </div>
       )}

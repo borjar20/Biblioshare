@@ -4,6 +4,7 @@ import type { MediaStatus } from "@/lib/library/types";
 import { planTransition } from "./transitions";
 import { getActivePass } from "./get-passes";
 import { maybeAutopostMilestone } from "@/lib/social/autopost";
+import { deliverMarginNotices } from "@/lib/margin/deliver";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -59,6 +60,10 @@ export async function applyTransition(
   // se puede caer por esto.
   async function publishing(outcome: TransitionOutcome): Promise<TransitionOutcome> {
     if (outcome.kind !== "done" || options?.silent) return outcome;
+    // Cambiar de estado puede abrir notas del margen (terminar = «al terminar»).
+    // Solo en la vía NO silenciosa: la silenciosa es la de quick-add/importación,
+    // que corre en bucle y solo crea pases «planned» (no abre nada).
+    await deliverMarginNotices(supabase);
     await maybeAutopostMilestone(supabase, {
       userId,
       passId: outcome.passId,

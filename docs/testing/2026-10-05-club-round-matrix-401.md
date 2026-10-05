@@ -1,27 +1,32 @@
 # Rondas #401: matriz SQL y corrección del slug del fixture
 
-[Candidato · verificado el 2026-10-05 · matriz SQL 11 PASS en 3a · carrera FAIL en seed · corrección de slug pendiente de nuevo runtime]
+[Candidato · verificado el 2026-10-05 · Native 44be/F3/288: matriz 11/11 y carrera/cleanup PASS · integración main 4949 · revisión runtime independiente y CI final pendientes]
 
-La matriz real ha pasado sus 11 comprobaciones sobre el pin `3a3b9e4` en el
-backend local nuevo `f3d738c9`, con ledger de 288 pasos. La carrera falló antes
-de abrir sus sesiones: el seed generaba un slug de 42 caracteres y SQL exige
-3–40. El checker limpió y restauró el reloj, y el backend quedó parado con
-backup normal y censo cero. El FAIL se conserva. **#401 sigue abierto.**
+El checker corregido `44be5bb` ha pasado la matriz real 11/11 y la carrera de
+dos sesiones PostgreSQL en el F3 auténtico conservado `f3d738c9`, ledger 288.
+Observó dos locks no concedidos antes del release, ambos RPC devolvieron el
+mismo UUID y SQL confirmó una ronda y un target canónicos. Cleanup y reloj
+exacto PASS, censo cero y parada normal con backup; ownership liberado al
+coordinador. La revisión independiente del runtime y la CI del candidato
+integrado siguen pendientes. **#401 sigue abierto.**
 
 El slug del candidato ahora elimina los guiones del UUID, conserva sus 32
-caracteres y mide 38 con el prefijo. Una regresión del checker real contrasta
+caracteres y mide 38 con el prefijo. La regresión Node del checker real contrasta
 su seed con la constraint SQL vigente y comprueba unicidad entre fixtures y
-limpieza por el ID original. Esta corrección sólo tiene verificación Node:
-La revisión independiente del ajuste ha pasado; necesita pin y GO nuevos
-antes de otro runtime. El coordinador
-reserva ahora el backend para la QA de #1385; no se ha repetido SQL ni navegador.
+limpieza por el ID original. Su revisión fresca pasó antes del nuevo GO; el
+runtime corregido acreditó después aceptación SQL y concurrencia real. El primer
+FAIL de `3a3b9e4` por seed de 42 caracteres permanece intacto, con sus 11 casos de
+matriz PASS y cleanup/restauración; no se convierte en un fallo del producto.
 
 Base: `f5839cf8c55b649daf62ffc08d216268eb28a9f3`, rama
 `codex/club-round-matrix-401`, worktree `coverage1307`. La rama hermana #405 se
 recibió en `d2274d07a44e70cc45db6fbf44db15168f169c47`. El coordinador integró
 su baseline documental en `f4119d476fa478a50519ea2236dd303a0a002790`; el primer
 commit sigue siendo ancestro y este worker no modificó esa rama. Esta pieza
-no contiene la corrección del fixture E2E #405.
+incorpora después main `4949bc376f5555e3a521915b0444d2f0bde3ccb4`, que contiene
+Notas en el margen PR #1396 y la corrección #405 ya integrada. Sus fuentes,
+migraciones, schema-baseline, tipos, data-model, graph y contratos de CI se
+preservan; no se atribuye el Native F3/288 al nuevo plan SQL integrado.
 
 ## Problema y fuentes
 
@@ -110,7 +115,7 @@ Los FAIL no se sobrescriben ni se suman como pruebas PostgreSQL. La firma
 round_prompt se contrastó con el código real antes de entregar; en esa entrega
 la ejecución SQL quedaba pendiente.
 
-## Único runtime real y corrección acotada del seed
+## Primer runtime real y corrección acotada del seed
 
 El GO del coordinador `GO-coordinator-20261005-r1.json`, SHA
 `7f0d7e60fe521f0dbc381a48a6d3cfc1f9c7636a28274a6b7dc700f5463ecfce`,
@@ -164,13 +169,59 @@ no sustituyen el nuevo runtime. La revisión independiente del ajuste pasó
 código; su recibo sellado es
 `4caa310b142ae0a4ca5bf1092e273460df46df5338f0d6b7f29c59b5b6a98bb4`.
 El coordinador aclaró después el tiempo histórico de la evidencia original,
-sin modificar el checker ni la regresión revisados. Se requieren pin y GO propios,
-manteniendo íntegro el intento fallido anterior.
+sin modificar el checker ni la regresión revisados. El pin y GO propios del
+runtime corregido se registran a continuación; el intento fallido anterior
+permanece íntegro.
 
-## GO y protocolo para la siguiente QA
+## Runtime corregido 44be: matriz y carrera reales PASS
 
-La autorización anterior corresponde al checker de 3a y no sirve para ejecutar
-este candidato corregido. El coordinador debe confirmar proyecto/contenedor
+El nuevo GO root tiene SHA
+`7d33d143f515bf770736c25bda8abf4ab1b20001db0f8a21ac0cd6cec36984b1`.
+Liga el pin `44be5bbcc452ed5a7a3a1b5fd3e21d0cb6b8bc53`, el checker
+`f663ec597d575e15c9b262c4384f92e64b0e2d0b38318220caf07963149ae9fa`,
+la cápsula nueva y el mismo F3/288. La planificación natural verificó 290
+entradas fuente y los 288 SQL generados completos, así como los 348 artefactos
+históricos, sin cambiar bind, stamp o config. El supervisor importó los exports
+auténticos del checker copiado byte a byte, con journal natural en la cápsula
+nueva; no falsificó el stamp fijo del CLI ni sustituyó el driver/restauración.
+
+| Acción | Resultado | Receipt SHA-256 |
+|---|---|---|
+| Start | PASS, F3/288/Auth0, PostgreSQL17 | `9b03cc8379fd8c289a1c89e9bb004c2df6545bd615378955ad670b47390eda46` |
+| Run | PASS, matriz11/11 y carrera real | `aee78a634aa0aa78bd651a5c6e3cd4766cbcd7cc505a80700fc223a704f67764` |
+| Recover | No necesario; journal ausente | No se invocó |
+| Stop | PASS, normal backup, censo0, volúmenes/puertos verificados | `696d5384558ab0dee6e477a0ee94dbf67e8daa8440be0c79c8eb512f44bc7065` |
+
+Se ejecutó una sola llamada corregida de matriz/carrera, secuencialmente desde
+host, después de examinar el start. La matriz acabó sus 11 marcas y revirtió
+reloj/actores dentro de BEGIN/ROLLBACK. La carrera observó simultáneamente los
+PID 312 y 313 con `RowExclusiveLock`, `granted=false`, sobre `club_rounds` y sólo
+después liberó la barrera. Ambos `ensure_club_round` sin prompt devolvieron
+`d911e5d5-5631-4ed7-be98-44d3a09ba8e3`; pasaron los oráculos de una fila, autor
+NULL, prompt canónico, período 2026-W40 y un target. La evidencia guarda locks
+y UUID final; los conteos/igualdad corresponden a las aserciones ejecutadas del
+checker revisado, sin respuestas SQL crudas adicionales.
+
+Cleanup y restoration PASS. SHA del reloj original antes/después:
+`65fed91b998e2910593bebfafd3baf994d6732362c4a3d2ce0043718ea254814`.
+Comparación exacta de OID, definición, owner, ACL, config y execute privado.
+Auth users/sessions, profiles, passes, clubs, miembros, rondas, targets y
+sesiones `cr401-*` quedaron en cero. El checker retiró su journal; no se llamó
+recover. Stop normal acabó a las 12:57:31 UTC: Docker vacío, puertos 3000, 3001,
+9222 y 54320–54329 libres IPv4/IPv6 y todos los volúmenes previos conservados.
+Los 338 ficheros de preparación y todo el intento3a conservaron sus hashes.
+
+Las evidencias y la liberación de ownership están en
+`.scratch/ticket-campaign/20261005-resume/club401-native-corrected-r1/runtime-final-r1/`.
+Manifest de 15 artefactos SHA
+`6a9e66005e44ab139b27f49e37fc596c445796d12236d8d357aabdd1bb1dba20`.
+Este PASS local no acredita SQL del plan posterior integrado, navegador o
+dev/prod; requiere revisión independiente del runtime y CI del HEAD final.
+
+## GO y protocolo reproducible para una siguiente QA
+
+Los GO históricos corresponden a sus pins/cápsulas y no autorizan un nuevo
+runtime del candidato integrado. El coordinador debe confirmar proyecto/contenedor
 exactos, QA975 terminada, actores ajenos cero y puerto 3000 libre. El receipt es un JSON local de esa
 autorización. Sustituir el ejemplo por los valores del manifest real:
 
@@ -230,9 +281,10 @@ Si un agente externo cambia el OID o la base queda inaccesible, no se declara
 restauración PASS: se conserva el FAIL/journal para el coordinador. No se
 promete restauración durante una caída física del backend.
 
-La matriz SQL de 3a sí se ha ejecutado y pasado. La corrección del seed todavía
-no acredita aceptación nativa ni la carrera real; tampoco grants remotos,
-navegador o CI del candidato integrado. No toca migraciones, passes, Auth
-persistente, credenciales, dependencias, dev/prod o configuración de producción.
-La entrega del autor y su revisión no hicieron operaciones Git ni remotas;
-el coordinador prepara el pin posterior. No se ha cerrado #401.
+La matriz SQL y la carrera corregidas sí se ejecutaron y pasaron en44be/F3/288.
+No acreditan SQL del plan posterior integrado, grants remotos, navegador ni CI
+del candidato integrado. El runtime no cambió fuentes, migraciones, passes,
+Auth persistente, credenciales, dependencias, dev/prod o configuración de
+producción. La integración local posterior conserva las migraciones de main y
+el checker/matriz probados; no añade migraciones ni altera esquema. Su revisión
+runtime independiente y la CI final siguen pendientes. No se ha cerrado #401.

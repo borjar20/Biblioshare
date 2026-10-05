@@ -12,6 +12,7 @@ import {
   rollSeriesProgress,
 } from "./episode-watch-store";
 import { revalidateReadingLog } from "@/lib/reactivity/revalidate";
+import { deliverMarginNotices } from "@/lib/margin/deliver";
 import { parseWatchedOn } from "./watched-on";
 import { earnDailyLoopCelebrations } from "@/lib/celebrations/earn";
 import { maybeAutopostWatchedDay } from "@/lib/social/autopost-watched";
@@ -84,7 +85,11 @@ async function rollAndMaybeClose(
   // Ver un episodio es actividad del día (fase 4, D3): primera actividad,
   // hito de racha. Antes solo lo ganaba la hoja de sesión. Best-effort: nunca
   // lanza. El cliente lo drena con checkCelebrations().
-  if (addedProgress) await earnDailyLoopCelebrations(supabase, userId);
+  if (addedProgress) {
+    await earnDailyLoopCelebrations(supabase, userId);
+    // Un episodio nuevo puede abrir notas del margen (lo dispara la BD).
+    await deliverMarginNotices(supabase);
+  }
   if (!reachedEnd || !addedProgress) return;
   if (!(await isAutoCloseable(supabase, passId, userId))) return;
 

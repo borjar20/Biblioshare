@@ -1,6 +1,6 @@
 # Testing manual / con agentes
 
-> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local)]**
+> **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local); fixture de ronda #405 verificado con nueve contratos Node del caller real, tipos y lint el 2026-10-04, sin navegador/SQL]**
 
 ## Cuenta de desarrollo persistente
 
@@ -773,29 +773,49 @@ que retiene y libera la confirmación por señal. El control sin commit rechaza
 el borrador y conserva su FAIL. No cambia el producto ni acredita el transporte
 natural del dispatcher o el cron externo. La CI del HEAD final sigue exigida.
 
+## Fixture de ronda: respuestas REST y limpieza (#405)
+
+[Informe focal](testing/2026-10-04-club-round-fixture-405.md): nueve contratos
+Node verifican que un POST de membresía 403 aborta antes del login, que un 201
+entra al callback de UI y que el DELETE 204/500 informa la limpieza sin ocultar
+un fallo previo. Siete casos ejecutan el callback del spec Playwright real
+con fetch y primer punto de UI controlados; dos cubren un cuerpo exitoso.
+RED previo: cinco FAIL y dos PASS. Candidato final: nueve PASS, tipos y lint PASS.
+
+El job `quality` ejecuta `node --import tsx --test
+e2e/support/club-round-fixture.test.ts`. Esta cobertura acredita el caller real
+y sus contratos de fixture; **no acredita navegador, Auth/SQL reales ni #401**
+(reloj y concurrencia de rondas). El job de navegador sólo descubre `e2e/ci`,
+así que no se atribuye a esa CI el e2e completo de `club-ronda.spec.ts`.
+La cuenta QA persistente se conserva; sólo se limpia el club desechable por id.
+La CI remota del HEAD de entrega mantiene su propio gate.
+
 ## Matriz SQL y carrera de rondas de club (#401)
 
 [Candidato y protocolo de QA](testing/2026-10-05-club-round-matrix-401.md):
 la matriz fuerza lunes, martes y miércoles dentro de `BEGIN/ROLLBACK` y conduce
 las RPC como `authenticated`. El runner exige GO del coordinador para una base
-Docker local exclusiva; la carrera utiliza dos sesiones y acredita ambos INSERT
+Docker local exclusiva; la carrera utiliza dos sesiones y observa ambos INSERT
 bloqueados antes de soltarlos. Captura y restaura definición, ACL, propietario,
-configuración y OID del reloj, con journal de recuperación ante interrupciones.
+configuración y OID del reloj, con journal real de recuperación.
 
-El único runtime del 2026-10-05 sobre `3a3b9e4`/f3/288 pasó la matriz SQL real
-con 11 marcas. La carrera falló antes de abrir sus sesiones: el seed generaba
-un slug de 42 caracteres y `clubs_slug_format` admite 3–40. Se conserva ese
-FAIL, con restauración exacta del reloj, cleanup/censo cero y parada normal con
-backup; los volúmenes f3/eeaa/966 quedaron conservados.
+El runtime corregido del 2026-10-05 sobre `44be5bb` y el F3 auténtico de 288
+etapas pasó la matriz SQL **11/11** y la carrera: PID 312 y 313, dos
+`RowExclusiveLock` no concedidos antes del release, ambos RPC con el mismo UUID,
+una ronda física y un target. Cleanup/restauración PASS, hash del reloj original
+idéntico, journal ausente y nueve categorías del censo en cero. No fue necesario
+recovery. Stop normal con backup: Docker vacío, 13 puertos IPv4/IPv6 libres y
+todos los volúmenes previos conservados; ownership liberado al coordinador.
 
-La corrección acotada del slug emite 38 caracteres y mantiene el UUID/cleanup.
-Pasan 16 contratos Node focales y ocho del bootstrap: 24/24, cero skip, más
-lint/sintaxis. La regresión observa el seed real contra la constraint SQL
-vigente. No hubo un segundo runtime: la aceptación nativa del seed corregido,
-dos sesiones/locks reales y la carrera siguen pendientes de pin y GO nuevos.
-La revisión independiente pasó 28 controles de fuente, 69 hashes y los 16
-contratos focales sin defectos de código. El coordinador aclaró una frase
-histórica del reporte después de esa revisión. El backend quedó liberado para
-que el coordinador organice la QA #1385.
-No se acreditan navegador, dev, producción, RLS remota ni CI del candidato
-integrado. #401 permanece abierto; los FAIL anteriores también se conservan.
+El primer runtime sobre `3a3b9e4`/F3/288 conserva el FAIL del seed de 42 caracteres
+rechazado por `clubs_slug_format`, además de sus 11 marcas de matriz PASS y
+cleanup/restauración exactos. El arreglo emite 38 caracteres sin cambiar el UUID,
+cleanup o constraint. Conserva RED significativo y 24/24 contratos Node; su
+revisión fresca pasó 28 controles de fuente, 69 hashes y 16 contratos focales.
+
+El checker y la matriz probados conservan sus blobs al integrar main `4949bc3`,
+incluidas Notas en el margen y la CI de #405. El PASS nativo corresponde al
+corte anterior de 288 etapas, no acredita SQL del candidato integrado con sus
+migraciones posteriores. La revisión independiente del runtime y la CI del
+HEAD integrado siguen pendientes. #401 permanece abierto. No se atribuyen
+navegador, dev, producción ni RLS remota a esta tanda.

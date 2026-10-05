@@ -6460,3 +6460,84 @@ incluyen en ese filtro. **Pendiente de decisión del propietario:** si «Reseña
 las de obras con las de experiencias. Hasta entonces la conducta actual es la de la entrega;
 no se ha decidido ni implementado lo contrario. Rastreado en
 [#1358](https://github.com/borjar20/Biblioshare/issues/1358).
+
+## 2026-10-05 — Notas en el margen: tabla propia en lugar de ampliar `notes`
+
+`margin_notes` es una tabla nueva, no una columna o un `kind` de `notes`. `notes` lleva la
+política aditiva `"public notes select"` (`is_public` + `can_view_profile`), pensada para que el
+feed de tarjetas muestre notas públicas; una nota de margen es lo contrario: no debe verla nadie
+que no haya llegado a ese punto de la obra, ni siquiera un perfil público. Mezclarlas habría
+obligado a que cada política y cada consulta distinguiera los dos significados de «nota», y un
+descuido habría destripado la obra. Con tabla propia el invariante es uno solo y vive en
+`private.can_read_margin_note`: el autor, o un lector con encuentro que siga al autor sin
+bloqueo. Coste aceptado: el Cuaderno (`/notas`) combina dos orígenes (filtros
+`margen=encontradas|mias`). Esquema: `data-model.md` §8quater. Rastreado en
+[#1380](https://github.com/borjar20/Biblioshare/issues/1380).
+
+## 2026-10-05 — Notas en el margen: apertura por proporción con margen hacia atrás
+
+Una nota de libro se abre cuando la página del lector cumple
+`page >= ceil((ratio + greatest(0.03, 5/pages)) * pages - 1e-9)`: la proporción del autor más un
+margen de al menos el 3 % o 5 páginas. Elegimos que la nota llegue tarde antes que destripe,
+porque el lector puede estar en otra edición con distinta paginación; es el mismo criterio que el
+precedente de hitos autodeclarados (#471, `data-model.md` §6). Quien no registra progreso la
+recibe al terminar la obra; en series se abre al ver el episodio exacto y en películas solo al
+terminar. El umbral existe dos veces —`private.margin_reached` en SQL (triggers) y
+`src/lib/margin/threshold.ts` (pantallas)— y **deben cambiar juntos con sus pruebas**. Se evalúa
+con la edición del pase del lector, no con la del autor. Disparadores sobre `passes`, no sobre
+`progress_sessions`: cualquier sesión, cierre o importación mueve `position` o `status`, así que
+un solo punto cubre todos los caminos.
+
+## 2026-10-05 — Notas en el margen: los avisos de dedicadas se reclaman desde TypeScript
+
+Los encuentros nacen en triggers de Postgres, pero el push solo se envía desde TypeScript
+(`notify()`). La RPC `margin_claim_notices()` marca `notified_at` y devuelve los avisos pendientes
+en los que quien llama es autor o lector; la llaman las acciones de sesión, episodio, transición
+de estado, escritura de nota, follow y «marcar vista». Límites asumidos, no bugs: si `notify`
+falla después de reclamar, ese aviso se pierde (reclamar-y-enviar no es atómico); las
+importaciones que abren notas no llaman a la entrega, y el aviso espera a la siguiente reclamación
+de cualquiera de las dos personas; cambiar la edición de un pase, sus páginas totales o fusionar
+libros no reevalúa notas (llegan con la siguiente posición o cambio de estado). Las generales no
+avisan: se revelan al registrar progreso. Los avisos usan la categoría push `social`; una
+categoría propia queda como deuda en [#1387](https://github.com/borjar20/Biblioshare/issues/1387).
+
+## 2026-10-05 — Notas en el margen: el autor solo modera el hilo mientras dure la relación
+
+`private.social_target_owner_id` devuelve al autor de la nota como dueño de un
+`margin_encounter` únicamente si el lector sigue sosteniendo el follow aceptado y no hay bloqueo
+en ningún sentido. Si el lector deja de seguir o hay bloqueo, devuelve nulo: el autor pierde la
+moderación y la lectura de las respuestas del lector, y el hilo desaparece para los dos a la vez
+(`can_read_margin_encounter`). Si volviera a seguir, recuperaría el acceso. La alternativa —
+dejar al autor como dueño permanente— le habría dado poder sobre las palabras de alguien que ya
+rompió la relación.
+
+## 2026-10-05 — Notas en el margen: `margin_notes_select` incluye «autor = quien mira» como primera rama
+
+La política de select es `author_id = auth.uid() OR private.can_read_margin_note(id)`. Con solo
+el helper, `INSERT … RETURNING` falla para el propio autor: el helper es STABLE y consulta
+`margin_notes` con el snapshot de inicio de la sentencia, por lo que no ve la fila que se está
+insertando y el insert se rechaza con 42501. Lo detectó el E2E con la hoja real y lo corrige
+`20261004120500_margin_notes_select_own.sql`. Regla general: una política de select que delegue
+en una función STABLE y deba funcionar con `RETURNING` necesita una rama directa por columna.
+
+## 2026-10-05 — Notas en el margen: los helpers de políticas y CHECK llevan `execute` para quien escribe
+
+`private.margin_anchor_valid` (CHECK de ancla), `can_read_margin_note` y
+`can_read_margin_encounter` (políticas) se evalúan con el rol de quien llama, no con el dueño de
+la función, así que necesitan `grant execute … to authenticated` (USAGE sobre `private` ya
+existe). `margin_anchor_valid` además a `service_role`, porque la CHECK también corre en
+fixtures y tareas de servidor; los otros dos no, porque `service_role` salta RLS y solo viven en
+políticas. Las funciones de trigger y las internas (`margin_reached`, `open_margin_notes`,
+`margin_on_*`) siguen sin grants. Sin esto la tabla compila y pasa el typecheck, y revienta con
+42501 al primer insert.
+
+## 2026-10-05 — Notas en el margen: ¿pueden los administradores leer comentarios de hilos privados? (PENDIENTE de decisión del propietario)
+
+La ruta global de moderación permite a quien cumple `has_min_role('admin')` leer comentarios
+por su `interaction_target`; como el hilo de una nota es un `margin_encounter`, un
+administrador podría leer comentarios de hilos que solo deberían ver el autor y ese lector. Hoy
+**no está decidido** si eso es aceptable (la moderación lo necesita para atender denuncias) o si
+hay que restringirlo, por ejemplo a hilos con una denuncia abierta. Hasta que el propietario
+decida, la conducta es la de la entrega y no debe presentarse como decisión tomada. La
+moderación administrativa sobre la nota denunciada tampoco está hecha: [#1384](https://github.com/borjar20/Biblioshare/issues/1384).
+La decisión se sigue en [#1389](https://github.com/borjar20/Biblioshare/issues/1389).
