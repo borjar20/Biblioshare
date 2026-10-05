@@ -855,7 +855,6 @@
       "episodes": "{rated, select, yes {valoró} other {vio}} {count, plural, one {un episodio} other {# episodios}}",
       "episodeOf": "de {title}",
       "moreItems": "+{count} más",
-      "noRating": "Sin nota",
       "outOf5": "/5",
       "noRatingShort": "sin nota",
       "curveLabel": "Notas por episodio: {list}",

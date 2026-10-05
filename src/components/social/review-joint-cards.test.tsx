@@ -115,6 +115,26 @@ describe("ReviewCard", () => {
     expect(container.textContent).not.toContain("más");
   });
 
+  it("episodios de las temporadas 1 y 2: «Temporadas 1 y 2» y la media", () => {
+    const eps: FeedEpisode[] = [
+      { season: 1, episode: 5, title: null, rating: 6 },
+      { season: 2, episode: 1, title: null, rating: 8 },
+    ];
+    const { container } = wrap(<ReviewCard event={watched(eps)} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).toContain("Temporadas 1 y 2");
+    expect(container.textContent).toContain("media");
+  });
+
+  it("2 episodios sin nota: no hay «media»", () => {
+    const { container } = wrap(<ReviewCard event={watched([ep(3, null), ep(4, null)])} viewerLoggedIn knownUsernames={[]} />);
+    expect(container.textContent).not.toContain("media");
+  });
+
+  it("post con 3 episodios: fichas con el título entero, sin recortar", () => {
+    wrap(<ReviewCard event={watched([ep(3, 4, "Título larguísimo del episodio tres"), ep(4, 7, "Dos"), ep(5, 6, "Tres")])} viewerLoggedIn knownUsernames={[]} showInteractions={false} />);
+    expect(screen.getByText("Título larguísimo del episodio tres").className).not.toContain("line-clamp-2");
+  });
+
   it("4 o más en el feed: curva con todas las notas, sin «+N más», y el mejor debajo", () => {
     const eps = [ep(3, 4, "1893"), ep(4, 8, "Corazón"), ep(5, null), ep(6, 6), ep(7, 10, "Gloria")];
     const { container } = wrap(<ReviewCard event={watched(eps)} viewerLoggedIn knownUsernames={[]} />);
@@ -126,7 +146,7 @@ describe("ReviewCard", () => {
   it("post con 4-12: curva y la lista completa", () => {
     const eps = [ep(3, 4, "1893"), ep(4, 8, "Corazón"), ep(5, 6, "Ciencia"), ep(6, 6, "Final")];
     wrap(<ReviewCard event={watched(eps)} viewerLoggedIn knownUsernames={[]} showInteractions={false} />);
-    expect(screen.getByRole("img", { name: /S2E3: 2/ })).toBeTruthy();
+    expect(screen.getAllByRole("img", { name: /S2E3: 2/ })).toHaveLength(2);
     expect(screen.getByText("Final")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Ver los/ })).toBeNull();
   });

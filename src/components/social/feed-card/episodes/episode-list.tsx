@@ -37,7 +37,7 @@ export function EpisodeRow({
   return (
     <li className={`flex break-inside-avoid items-center gap-2.5 rounded-md px-1.5 py-1 text-[13px] ${best ? "bg-surface-muted" : ""}`}>
       <span className={`shrink-0 font-mono text-[10.5px] text-muted-foreground ${longCode ? "w-11" : "w-8"}`}>{episodeCode(e, !longCode)}</span>
-      <span className="min-w-0 flex-1 truncate">
+      <span className="min-w-0 flex-1 truncate" title={e.title ?? undefined}>
         {e.title}
         {best && (
           <span role="img" aria-label={t("card.bestLine")} className="ml-1 text-gold-ink">
@@ -48,7 +48,7 @@ export function EpisodeRow({
       {e.rating != null ? (
         <>
           <RatingDots value={e.rating} size="sm" itemType={itemType} />
-          <span className="w-7 shrink-0 text-right font-mono text-[11px] text-[var(--type-series)]">{formatDots(e.rating)}</span>
+          <span className="w-7 shrink-0 text-right font-mono text-[11px] text-type-series-ink">{formatDots(e.rating)}</span>
         </>
       ) : (
         <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{t("card.noRatingShort")}</span>

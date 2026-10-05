@@ -10,9 +10,13 @@ import { bestEpisodes, episodeCode } from "./episode-stats";
 // Curva de los episodios del día (4 o más). SVG propio; la geometría vive en
 // curve-geometry.ts. Eje 1-5 siempre, sin línea de media. En el feed lleva la
 // nota y el código en cada punto hasta 8 episodios; desde 9 queda compacta.
-// En el post, siempre con etiquetas.
-const SIZE = { feed: { width: 320, labeled: 124, compact: 80 }, post: { width: 600, labeled: 170, compact: 170 } };
-const FEED_LABEL_MAX = 8;
+// En el post hay dos SVG (uno estrecho para móvil, otro ancho desde `sm`) para
+// que el texto no se encoja: etiquetas hasta 12 episodios en el estrecho y
+// hasta 24 en el ancho; más allá, compacta.
+type CurveConfig = { width: number; labeled: number; compact: number; labelMax: number };
+const FEED: CurveConfig = { width: 320, labeled: 124, compact: 80, labelMax: 8 };
+const POST_NARROW: CurveConfig = { width: 340, labeled: 150, compact: 110, labelMax: 12 };
+const POST_WIDE: CurveConfig = { width: 600, labeled: 170, compact: 110, labelMax: 24 };
 
 export function EpisodeCurve({
   episodes,
@@ -24,11 +28,6 @@ export function EpisodeCurve({
   showBest?: boolean;
 }) {
   const t = useTranslations("feed");
-  const gradId = `episode-curve-fill-${useId().replace(/:/g, "")}`;
-  const labels = size === "post" || episodes.length <= FEED_LABEL_MAX;
-  const { width } = SIZE[size];
-  const height = labels ? SIZE[size].labeled : SIZE[size].compact;
-  const g = curveGeometry(episodes, { width, height, labels });
   const label = t("card.curveLabel", {
     list: episodes.map((e) => `${episodeCode(e)}: ${e.rating != null ? formatDots(e.rating) : t("card.noRatingShort")}`).join("; "),
   });
@@ -36,7 +35,45 @@ export function EpisodeCurve({
 
   return (
     <div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} className="block h-auto w-full">
+      {size === "feed" ? (
+        <CurveSvg episodes={episodes} cfg={FEED} label={label} />
+      ) : (
+        <>
+          <CurveSvg episodes={episodes} cfg={POST_NARROW} label={label} className="sm:hidden" />
+          <CurveSvg episodes={episodes} cfg={POST_WIDE} label={label} className="hidden sm:block" />
+        </>
+      )}
+      {showBest && best && (
+        <p className="mt-1.5 text-[12px]">
+          <span role="img" className="text-gold-ink" aria-label={t("card.bestLine")}>★</span>{" "}
+          <span className="font-semibold">{[episodeCode(best), best.title].filter(Boolean).join(" · ")}</span>{" "}
+          <span className="font-mono text-type-series-ink">{formatDots(best.rating)}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CurveSvg({
+  episodes,
+  cfg,
+  label,
+  className = "",
+}: {
+  episodes: FeedEpisode[];
+  cfg: CurveConfig;
+  label: string;
+  className?: string;
+}) {
+  const gradId = `episode-curve-fill-${useId().replace(/:/g, "")}`;
+  const labels = episodes.length <= cfg.labelMax;
+  const { width } = cfg;
+  const height = labels ? cfg.labeled : cfg.compact;
+  const g = curveGeometry(episodes, { width, height, labels });
+
+  return (
+    <>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} className={`block h-auto w-full ${className}`}>
         <defs>
           <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" stopColor="var(--type-series)" stopOpacity="0.28" />
@@ -92,7 +129,7 @@ export function EpisodeCurve({
             {labels && (
               <>
                 {p.rated && (
-                  <text data-point-label x={p.x} y={p.y - 9} textAnchor="middle" fontSize="10.5" fontWeight="700" fill={p.best ? "var(--foreground)" : "var(--type-series)"}>
+                  <text data-point-label x={p.x} y={p.y - 9} textAnchor="middle" fontSize="10.5" fontWeight="700" fill={p.best ? "var(--foreground)" : "var(--type-series-ink)"}>
                     {formatDots(p.episode.rating)}
                   </text>
                 )}
@@ -105,18 +142,11 @@ export function EpisodeCurve({
         ))}
       </svg>
       {!labels && (
-        <p className="mt-0.5 flex justify-between font-mono text-[9.5px] text-muted-foreground">
+        <p aria-hidden className={`mt-0.5 flex justify-between font-mono text-[9.5px] text-muted-foreground ${className.replace("sm:block", "sm:flex")}`}>
           <span>{episodeCode(episodes[0])}</span>
           <span>{episodeCode(episodes[episodes.length - 1])}</span>
         </p>
       )}
-      {showBest && best && (
-        <p className="mt-1.5 text-[12px]">
-          <span className="text-gold-ink" aria-label={t("card.bestLine")}>★</span>{" "}
-          <span className="font-semibold">{[episodeCode(best), best.title].filter(Boolean).join(" · ")}</span>{" "}
-          <span className="font-mono text-[var(--type-series)]">{formatDots(best.rating)}</span>
-        </p>
-      )}
-    </div>
+    </>
   );
 }

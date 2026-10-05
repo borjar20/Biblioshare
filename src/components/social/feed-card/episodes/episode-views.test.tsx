@@ -60,10 +60,30 @@ describe("EpisodeCurve", () => {
     expect(many.querySelectorAll("[data-point-label]")).toHaveLength(0);
   });
 
-  it("en el post, etiquetas siempre", () => {
+  it("en el post hay dos SVG: con 9 episodios ambos llevan etiquetas", () => {
     const nine = Array.from({ length: 9 }, (_, i) => ep(i + 1, 5 + (i % 5)));
     const { container } = wrap(<EpisodeCurve episodes={nine} size="post" />);
-    expect(container.querySelectorAll("[data-point-label]")).toHaveLength(9);
+    const [narrow, wide] = [...container.querySelectorAll("svg")];
+    expect(container.querySelectorAll("svg")).toHaveLength(2);
+    expect(narrow.querySelectorAll("[data-point-label]")).toHaveLength(9);
+    expect(wide.querySelectorAll("[data-point-label]")).toHaveLength(9);
+  });
+
+  it("en el post con 14: el estrecho (móvil) es compacto con pie y el ancho lleva etiquetas", () => {
+    const fourteen = Array.from({ length: 14 }, (_, i) => ep(i + 1, 5 + (i % 5)));
+    const { container } = wrap(<EpisodeCurve episodes={fourteen} size="post" />);
+    const [narrow, wide] = [...container.querySelectorAll("svg")];
+    expect(narrow.getAttribute("class")).toContain("sm:hidden");
+    expect(wide.getAttribute("class")).toContain("hidden sm:block");
+    expect(narrow.querySelectorAll("[data-point-label]")).toHaveLength(0);
+    expect(wide.querySelectorAll("[data-point-label]")).toHaveLength(14);
+    expect(container.querySelectorAll("p[aria-hidden]")).toHaveLength(1);
+  });
+
+  it("los degradados de los dos SVG del post tienen id distinto", () => {
+    const { container } = wrap(<EpisodeCurve episodes={four} size="post" />);
+    const ids = [...container.querySelectorAll("linearGradient")].map((n) => n.id);
+    expect(new Set(ids).size).toBe(2);
   });
 
   it("showBest pinta el mejor episodio con su título y nota", () => {

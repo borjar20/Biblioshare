@@ -33,11 +33,16 @@ export function EpisodeTiles({
           >
             <p className={`font-mono text-[9.5px] ${isBest ? "text-gold-ink" : "text-muted-foreground"}`}>
               {episodeCode(e)}
-              {isBest && " ★"}
+              {isBest && (
+                <>
+                  {" "}
+                  <span role="img" aria-label={t("card.bestLine")}>★</span>
+                </>
+              )}
             </p>
             {e.rating != null ? (
               <>
-                <p className={`font-bold leading-tight text-[var(--type-series)] ${post ? "text-[28px]" : "text-[20px]"}`}>
+                <p className={`font-bold leading-tight text-type-series-ink ${post ? "text-[28px]" : "text-[20px]"}`}>
                   {formatDots(e.rating)}
                   <span className="text-[10px] font-normal text-muted-foreground">{t("card.outOf5")}</span>
                 </p>

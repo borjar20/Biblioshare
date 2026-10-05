@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import type { FeedEpisode, FeedEvent } from "@/lib/social/feed";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { MentionText } from "@/components/social/mention-text";
@@ -14,7 +14,7 @@ import { EpisodeTiles } from "./feed-card/episodes/episode-tiles";
 import { EpisodeCurve } from "./feed-card/episodes/episode-curve";
 import { EpisodeList } from "./feed-card/episodes/episode-list";
 import { EpisodeHighlights } from "./feed-card/episodes/episode-highlights";
-import { averageRating, seasonsOf } from "./feed-card/episodes/episode-stats";
+import { averageRating, episodeCode, seasonsOf } from "./feed-card/episodes/episode-stats";
 
 // Tarjeta de valoración/reseña (finished/watched y los legados rated/reviewed/
 // watchedEpisode) con el patrón C (spec 2026-10-05-feed-patron-c): lo que se
@@ -46,6 +46,7 @@ export function ReviewCard({
   showInteractions?: boolean;
 }) {
   const t = useTranslations("feed");
+  const format = useFormatter();
   const workType = t("workType", { itemType: event.itemType });
 
   let verb: string;
@@ -74,7 +75,7 @@ export function ReviewCard({
         workType,
         t("card.seasons", {
           count: seasons.length,
-          list: new Intl.ListFormat("es", { type: "conjunction" }).format(seasons.map(String)),
+          list: format.list(seasons.map(String), { type: "conjunction" }),
         }),
         avg != null ? t("card.average", { value: formatDots(avg) ?? "" }) : null,
       ].filter(Boolean).join(" · ");
@@ -169,9 +170,6 @@ export function ReviewCard({
   );
 }
 
-function episodeCode(e: { season: number; episode: number }): string {
-  return `S${e.season}E${e.episode}`;
-}
 
 // Extracto de la reseña en el feed (R2): 4 líneas como mucho. «Seguir leyendo»
 // sale si el recorte visual esconde algo o si el servidor ya lo cortó
