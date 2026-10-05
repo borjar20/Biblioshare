@@ -1,4 +1,5 @@
 "use client";
+import { PlaceCombobox } from "./place-combobox";
 import Link from "next/link";
 import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -38,7 +39,7 @@ function ExperienceFormDraft({ experience, initialKind = "other" }: ExperienceFo
       const fields = { title, state, startsOn: value("startsOn") || null, endsOn: value("endsOn") || null };
       const result = experience
         ? await updateExperience(experience.id, experience.revision, { ...fields, shape: value("shape"), audience: value("audience") } as UpdateExperienceInput)
-        : await createExperience({ ...fields, kind, placeLabel: value("placeLabel") || null } as CreateExperienceInput);
+        : await createExperience({ ...fields, kind, placeLabel: value("placeLabel") || null, ...(value("placeToken") ? { placeToken: value("placeToken") } : {}) } as CreateExperienceInput);
       if (!result.ok) { setError(result.error); return; }
       const id = experience?.id ?? ("id" in result.data ? result.data.id : "");
       router.push(`/experiencia/${id}`);
@@ -64,7 +65,7 @@ function ExperienceFormDraft({ experience, initialKind = "other" }: ExperienceFo
           {experience ? <>
             <Field label={t("shape")} htmlFor={field("shape")}><Select id={field("shape")} name="shape" defaultValue={experience.shape} className="min-h-11 w-full"><option value="single" disabled={experience.moments.length > 1}>{t("single")}</option><option value="trip">{t("trip")}</option></Select></Field>
             <Field label={t("audience")} htmlFor={field("audience")} hint={t("audienceHint")}><Select id={field("audience")} name="audience" defaultValue={experience.audience} className="min-h-11 w-full">{(["private", "participants", "profile"] as const).map(audience => <option key={audience} value={audience}>{t(audience)}</option>)}</Select></Field>
-          </> : <Field label={t("place")} htmlFor={field("place")}><Input id={field("place")} name="placeLabel" maxLength={240} className="min-h-11 w-full"/></Field>}
+          </> : <Field label={t("place")} htmlFor={field("place")}><PlaceCombobox id={field("place")}/></Field>}
           <div className="grid gap-4 sm:grid-cols-2"><Field label={t("startsOn")} htmlFor={field("startsOn")}><Input type="date" id={field("startsOn")} name="startsOn" defaultValue={experience?.startsOn ?? ""} className="min-h-11 w-full"/></Field><Field label={t("endsOn")} htmlFor={field("endsOn")}><Input type="date" id={field("endsOn")} name="endsOn" defaultValue={experience?.endsOn ?? ""} className="min-h-11 w-full"/></Field></div>
         </div>
       </details>

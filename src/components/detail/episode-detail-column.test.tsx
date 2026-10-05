@@ -7,6 +7,9 @@ import type { EpisodeRow } from "@/lib/series/get-episode-data";
 import { EpisodeDetailColumn, type EpisodeDetailColumnProps } from "./episode-detail-column";
 
 vi.mock("next/image", () => ({ default: () => null }));
+// Los server actions del margen arrastran server-only: aquí solo interesa el render.
+vi.mock("@/lib/margin/actions", () => ({ createMarginNote: vi.fn() }));
+vi.mock("@/lib/margin/follower-search", () => ({ searchMyFollowers: vi.fn() }));
 afterEach(cleanup);
 
 const episode: EpisodeRow = {
@@ -59,6 +62,18 @@ describe("EpisodeDetailColumn", () => {
     expect(screen.getByRole("heading", { name: "Tormenta" })).toBeTruthy();
     expect(screen.getByText("Todo se complica en la costa.")).toBeTruthy();
     expect(screen.getByRole("textbox")).toBeTruthy();
+  });
+
+  it("«Dejar nota en este episodio» solo en episodios vistos (y con itemId)", () => {
+    const watched = { ...episode.own, watched: true };
+    renderColumn({ itemId: "s1", own: watched });
+    expect(screen.getByRole("button", { name: "Dejar nota en este episodio" })).toBeTruthy();
+    cleanup();
+    renderColumn({ itemId: "s1" });
+    expect(screen.queryByRole("button", { name: "Dejar nota en este episodio" })).toBeNull();
+    cleanup();
+    renderColumn({ own: watched });
+    expect(screen.queryByRole("button", { name: "Dejar nota en este episodio" })).toBeNull();
   });
 
   it("sin título, usa el «sin título» de es.json", () => {

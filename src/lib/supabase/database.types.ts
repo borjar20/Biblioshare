@@ -1574,6 +1574,89 @@ export type Database = {
         }
         Relationships: []
       }
+      margin_note_encounters: {
+        Row: {
+          found_at: string
+          found_via: Database["public"]["Enums"]["margin_found_via"]
+          id: string
+          note_id: string
+          notified_at: string | null
+          reader_id: string
+          seen_at: string | null
+        }
+        Insert: {
+          found_at?: string
+          found_via: Database["public"]["Enums"]["margin_found_via"]
+          id?: string
+          note_id: string
+          notified_at?: string | null
+          reader_id: string
+          seen_at?: string | null
+        }
+        Update: {
+          found_at?: string
+          found_via?: Database["public"]["Enums"]["margin_found_via"]
+          id?: string
+          note_id?: string
+          notified_at?: string | null
+          reader_id?: string
+          seen_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "margin_note_encounters_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "margin_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      margin_notes: {
+        Row: {
+          anchor: Json
+          audience: Database["public"]["Enums"]["margin_audience"]
+          author_id: string
+          body: string
+          chapter_label: string | null
+          created_at: string
+          edited_at: string | null
+          id: string
+          is_spoiler: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          recipient_id: string | null
+        }
+        Insert: {
+          anchor: Json
+          audience: Database["public"]["Enums"]["margin_audience"]
+          author_id?: string
+          body: string
+          chapter_label?: string | null
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          is_spoiler?: boolean
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          recipient_id?: string | null
+        }
+        Update: {
+          anchor?: Json
+          audience?: Database["public"]["Enums"]["margin_audience"]
+          author_id?: string
+          body?: string
+          chapter_label?: string | null
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          is_spoiler?: boolean
+          item_id?: string
+          item_type?: Database["public"]["Enums"]["item_type"]
+          recipient_id?: string | null
+        }
+        Relationships: []
+      }
       movie_versions: {
         Row: {
           created_at: string
@@ -2228,6 +2311,60 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      places: {
+        Row: {
+          category: string
+          city: string | null
+          country: string | null
+          country_code: string | null
+          created_at: string
+          id: string
+          lat: number
+          layer: string
+          lng: number
+          name: string
+          provider: string
+          provider_ref: string
+          region: string | null
+          updated_at: string
+          wikidata_qid: string | null
+        }
+        Insert: {
+          category: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          lat: number
+          layer: string
+          lng: number
+          name: string
+          provider: string
+          provider_ref: string
+          region?: string | null
+          updated_at?: string
+          wikidata_qid?: string | null
+        }
+        Update: {
+          category?: string
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          lat?: number
+          layer?: string
+          lng?: number
+          name?: string
+          provider?: string
+          provider_ref?: string
+          region?: string | null
+          updated_at?: string
+          wikidata_qid?: string | null
         }
         Relationships: []
       }
@@ -3303,6 +3440,7 @@ export type Database = {
           experience_id: string
           id: string
           kind: string
+          place_id: string | null
           place_label: string | null
           position: number
           starts_on: string | null
@@ -3315,6 +3453,7 @@ export type Database = {
           experience_id: string
           id?: string
           kind: string
+          place_id?: string | null
           place_label?: string | null
           position: number
           starts_on?: string | null
@@ -3327,6 +3466,7 @@ export type Database = {
           experience_id?: string
           id?: string
           kind?: string
+          place_id?: string | null
           place_label?: string | null
           position?: number
           starts_on?: string | null
@@ -3339,6 +3479,13 @@ export type Database = {
             columns: ["experience_id"]
             isOneToOne: false
             referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "experience_moments_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -4098,6 +4245,18 @@ export type Database = {
           round_id: string
         }[]
       }
+      margin_claim_notices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          author_id: string
+          chapter_label: string
+          encounter_id: string
+          item_id: string
+          item_type: Database["public"]["Enums"]["item_type"]
+          reader_id: string
+          target_id: string
+        }[]
+      }
       merge_book_into: {
         Args: { p_loser: string; p_winner: string }
         Returns: undefined
@@ -4117,6 +4276,7 @@ export type Database = {
         Args: { p_comment_id: string; p_pinned: boolean }
         Returns: undefined
       }
+      place_upsert: { Args: { p_input: Json }; Returns: string }
       profile_is_public: { Args: { target_user_id: string }; Returns: boolean }
       ack_celebration: {
         Args: { p_claim_token: string; p_id: string }
@@ -4706,9 +4866,11 @@ export type Database = {
         | "activity_participant"
         | "checkpoint_reached"
       item_type: "book" | "movie" | "series"
+      margin_audience: "followers" | "person"
+      margin_found_via: "progress" | "finish" | "retro"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       notification_type:
-        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience" | "experience_reviewed"
+        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience" | "experience_reviewed" | "margin_note_dedicated" | "margin_commented" | "margin_liked"
       pass_dropped_reason:
         | "no_enganchado"
         | "aburrido"
@@ -4738,7 +4900,7 @@ export type Database = {
       saga_tandem_mode: "simultaneo" | "indistinto"
       saga_window_reason: "spoiler" | "contexto"
       target_kind:
-        "diary_entry" | "episode_watch" | "club_post" | "comment" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session" | "club_round" | "thought" | "post" | "experience" | "experience_review"
+        "diary_entry" | "episode_watch" | "club_post" | "comment" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session" | "club_round" | "thought" | "post" | "experience" | "experience_review" | "margin_encounter"
       thought_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       user_role: "user" | "collaborator" | "admin"
     }
@@ -4892,8 +5054,10 @@ export const Constants = {
         "checkpoint_reached",
       ],
       item_type: ["book", "movie", "series"],
+      margin_audience: ["followers", "person"],
+      margin_found_via: ["progress", "finish", "retro"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience", "experience_reviewed"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience", "experience_reviewed", "margin_note_dedicated", "margin_commented", "margin_liked"],
       pass_dropped_reason: [
         "no_enganchado",
         "aburrido",
@@ -4924,7 +5088,7 @@ export const Constants = {
       saga_placement: ["fijo", "libre", "anclado"],
       saga_tandem_mode: ["simultaneo", "indistinto"],
       saga_window_reason: ["spoiler", "contexto"],
-      target_kind: ["diary_entry", "episode_watch", "club_post", "comment", "activity_checkpoint", "club_activity", "pass", "progress_session", "club_round", "thought", "post", "experience", "experience_review"],
+      target_kind: ["diary_entry", "episode_watch", "club_post", "comment", "activity_checkpoint", "club_activity", "pass", "progress_session", "club_round", "thought", "post", "experience", "experience_review", "margin_encounter"],
       thought_anchor_type: ["book", "movie", "series", "saga", "person"],
       user_role: ["user", "collaborator", "admin"],
     },

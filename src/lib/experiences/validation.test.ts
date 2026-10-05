@@ -64,3 +64,21 @@ describe("validateReview", () => {
     expect(validateReview({ rating: 5, body: null, author: "x" })).toBeNull();
   });
 });
+
+describe("place fields", () => {
+  it("passes a token through and omits absent place fields", () => {
+    expect(validateCreateExperience({ ...minimum, placeToken: "a.b" })).toMatchObject({ placeToken: "a.b" });
+    expect(validateCreateExperience(minimum)).not.toHaveProperty("placeToken");
+    expect(validateMoment({ id: "78f7377a-73c6-40c4-8c86-a395518d4bb0", title: "Paseo", kind: "walk", keepPlace: true })).toMatchObject({ keepPlace: true });
+  });
+  it.each([
+    { placeToken: 7 }, { placeToken: "x".repeat(2049) }, { keepPlace: "yes" },
+    { keepPlace: true }, // new moment cannot keep a place
+    { id: "78f7377a-73c6-40c4-8c86-a395518d4bb0", keepPlace: true, placeToken: "a.b" },
+  ])("rejects %o on moments", (extra) => {
+    expect(validateMoment({ title: "Paseo", kind: "walk", ...extra })).toBeNull();
+  });
+  it("rejects keepPlace on creation", () => {
+    expect(validateCreateExperience({ ...minimum, keepPlace: true })).toBeNull();
+  });
+});

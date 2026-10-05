@@ -109,3 +109,15 @@ describe("notificationCopy agrupada", () => {
     ).toEqual({ key: "thoughtLiked", values: { name: nombre, count: 2 } });
   });
 });
+
+describe("notificationCopy de nota dedicada del margen", () => {
+  it("con título de obra usa la copia con obra; sin él, la genérica", () => {
+    expect(
+      notificationCopy({ type: "margin_note_dedicated", context: { subject: "Dune" }, name: nombre }),
+    ).toEqual({ key: "marginNoteDedicatedSubject", values: { name: nombre, subject: "Dune" } });
+    expect(notificationCopy({ type: "margin_note_dedicated", name: nombre })).toEqual({
+      key: "marginNoteDedicated",
+      values: { name: nombre },
+    });
+  });
+});

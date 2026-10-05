@@ -23,7 +23,7 @@ vi.mock("@/lib/experiences/photo-actions", () => ({ setPhotoSharing: actions.pho
 vi.mock("@/lib/experiences/publish-actions", () => ({ publishExperience: actions.publish, unpublishExperience: actions.unpublish }));
 vi.mock("@/lib/experiences/actions", () => ({ updateExperience: actions.updateExperience }));
 
-const moment = { id: "moment-1", title: "Museo", kind: "museum" as const, placeLabel: null, startsOn: null, endsOn: null, position: 0 };
+const moment = { id: "moment-1", title: "Museo", kind: "museum" as const, placeLabel: null, placeId: null, startsOn: null, endsOn: null, position: 0 };
 const own = { id: "participant-1", userId: "viewer", guestName: null, invitationState: "accepted" as const, shareIdentity: false, username: "viewer", displayName: "Mar", avatarUrl: null };
 const photo: ExperiencePhoto = { id: "photo-1", momentId: moment.id, mimeType: "image/png", createdAt: "2026-10-03T10:00:00Z", shareWithProfile: false, authorId: "viewer", authorName: "Mar", canManage: true, isAuthor: true };
 const detail: ExperienceDetail = {

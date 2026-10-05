@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
+vi.mock("@/lib/margin/deliver", () => ({ deliverMarginNotices: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/passes/get-passes", () => ({
   getActivePass: mocks.getActivePass,

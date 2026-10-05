@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { SheetShell } from "@/components/saga/sheet-shell";
 import { saveMoment, removeMoment, reorderMoments } from "@/lib/experiences/actions";
 import type { ExperienceDetail, ExperienceMoment, ExperienceError, MomentKind } from "@/lib/experiences/types";
+import { PlaceCombobox } from "./place-combobox";
 import { ExperienceDate } from "./experience-date";
 import { ExperienceKindIcon } from "./experience-artwork";
 import { ExperienceKindPicker } from "./experience-kind-picker";
@@ -22,7 +23,7 @@ function MomentSheet({ experience: e, moment, onClose }: { experience: Experienc
       event.preventDefault(); setError(null);
       const data = new FormData(event.currentTarget), value = (name: string) => String(data.get(name) ?? "");
       start(async () => {
-        const result = await saveMoment(e.id, e.revision, { ...(moment ? { id: moment.id } : {}), title: value("title"), kind, placeLabel: value("placeLabel") || null, startsOn: value("startsOn") || null, endsOn: value("endsOn") || null });
+        const result = await saveMoment(e.id, e.revision, { ...(moment ? { id: moment.id } : {}), title: value("title"), kind, placeLabel: value("placeLabel") || null, ...(value("placeToken") ? { placeToken: value("placeToken") } : {}), ...(moment && value("keepPlace") === "true" ? { keepPlace: true } : {}), startsOn: value("startsOn") || null, endsOn: value("endsOn") || null });
         if (!result.ok) setError(result.error); else { onClose(); router.refresh(); }
       });
     }}>
@@ -32,7 +33,7 @@ function MomentSheet({ experience: e, moment, onClose }: { experience: Experienc
         <details className="group border-y border-border">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between py-3 text-sm font-medium">{t("album.dateAndPlace")}<span aria-hidden className="text-lg group-open:rotate-45">+</span></summary>
           <div className="space-y-4 pb-5 pt-2">
-            <Field label={t("place")} htmlFor={`${prefix}-place`}><Input id={`${prefix}-place`} name="placeLabel" defaultValue={moment?.placeLabel ?? ""} maxLength={240} className="min-h-11 w-full"/></Field>
+            <Field label={t("place")} htmlFor={`${prefix}-place`}><PlaceCombobox id={`${prefix}-place`} defaultLabel={moment?.placeLabel} linked={Boolean(moment?.placeId)}/></Field>
             <div className="grid gap-3 sm:grid-cols-2"><Field label={t("startsOn")} htmlFor={`${prefix}-start`}><Input type="date" id={`${prefix}-start`} name="startsOn" defaultValue={moment?.startsOn ?? ""} className="min-h-11 w-full"/></Field><Field label={t("endsOn")} htmlFor={`${prefix}-end`}><Input type="date" id={`${prefix}-end`} name="endsOn" defaultValue={moment?.endsOn ?? ""} className="min-h-11 w-full"/></Field></div>
           </div>
         </details>

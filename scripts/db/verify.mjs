@@ -42,6 +42,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/pet_acorns.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/admin_content_moderation.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_archive.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_recovery.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/margin_notes.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_access.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_transitions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_deletion.sql'), 'utf8'));
@@ -54,6 +55,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_report_access.sql'),
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_companion_history.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_own_photo_preview.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_reviews.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_places.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyGoogleVolumeQuotaConcurrency(stamp.projectId);
 await verifyCatalogReferenceConcurrency(stamp.projectId);

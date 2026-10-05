@@ -144,6 +144,13 @@ los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 - **Notificaciones**: in-app (`notifications`, campana) + push unificado Web
   (VAPID) y Android (FCM) con preferencias opt-out por canal×categoría;
   planificador `pg_cron`+`pg_net` (recordatorios de eventos).
+- **Notas en el margen** (#1380; esquema en dev y producción desde el 2026-10-05; código en la PR): una nota anclada a un
+  punto de una obra (página/proporción en libros, episodio en series, «al terminar» en películas)
+  que se abre a quien te sigue cuando llega a ese punto, o al instante si ya lo había pasado. Para
+  seguidores o dedicada a una persona; hilo privado por lector en `/margen/[id]` con comentarios y
+  reacciones; la sección de la ficha y la revelación viven en «Mi registro» (`?tab=log`); el Cuaderno
+  (`/notas`) filtra con `margen=encontradas|mias`. Solo las dedicadas avisan (push `social`).
+  Se puede denunciar desde el hilo; las acciones de admin sobre ella están pendientes (#1384).
 - **Celebraciones** (`user_celebrations`) con animación. El protocolo #1334 separa ganar→reservar→mostrar→confirmar para recuperar entregas canceladas; esquema activo en dev y producción, verificado el 2026-10-04 a las 20:16:22 UTC, con legacy compatible de cero filas. La entrega del consumidor y sus controles se siguen en PR #1364; el corte de esquema y G4 local no acreditan presentación remota.
 
 ## Clubes

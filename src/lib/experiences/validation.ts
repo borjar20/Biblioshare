@@ -29,12 +29,20 @@ function common(input: RecordInput) {
 function allowed(input: RecordInput, keys: string[]): boolean {
   return Object.keys(input).every((key) => keys.includes(key));
 }
-export function validateCreateExperience(input: unknown): Required<CreateExperienceInput> | null {
+function placeFields(value: RecordInput, allowKeep: boolean): { placeToken?: string; keepPlace?: true } | null {
+  const token = value.placeToken, keep = value.keepPlace;
+  if (token !== undefined && token !== null && (typeof token !== "string" || token.length > EXPERIENCE_LIMITS.placeToken)) return null;
+  if (keep !== undefined && typeof keep !== "boolean") return null;
+  if (keep && (!allowKeep || token)) return null;
+  return { ...(token ? { placeToken: token as string } : {}), ...(keep ? { keepPlace: true as const } : {}) };
+}
+export type ValidCreateExperience = Required<Omit<CreateExperienceInput, "placeToken">> & { placeToken?: string };
+export function validateCreateExperience(input: unknown): ValidCreateExperience | null {
   const value = record(input);
-  if (!value || !allowed(value, ["title", "state", "kind", "placeLabel", "startsOn", "endsOn"])) return null;
-  const fields = common(value), placeLabel = text(value.placeLabel, EXPERIENCE_LIMITS.place);
-  if (!fields || placeLabel === undefined || !MOMENT_KINDS.includes(value.kind as never) || !["planned", "lived"].includes(value.state as string)) return null;
-  return { ...fields, placeLabel, kind: value.kind as CreateExperienceInput["kind"], state: value.state as CreateExperienceInput["state"] };
+  if (!value || !allowed(value, ["title", "state", "kind", "placeLabel", "placeToken", "startsOn", "endsOn"])) return null;
+  const fields = common(value), placeLabel = text(value.placeLabel, EXPERIENCE_LIMITS.place), place = placeFields(value, false);
+  if (!fields || !place || placeLabel === undefined || !MOMENT_KINDS.includes(value.kind as never) || !["planned", "lived"].includes(value.state as string)) return null;
+  return { ...fields, placeLabel, kind: value.kind as CreateExperienceInput["kind"], state: value.state as CreateExperienceInput["state"], ...place };
 }
 export function validateUpdateExperience(input: unknown): UpdateExperienceInput | null {
   const value = record(input);
@@ -45,10 +53,11 @@ export function validateUpdateExperience(input: unknown): UpdateExperienceInput 
 }
 export function validateMoment(input: unknown): SaveMomentInput | null {
   const value = record(input);
-  if (!value || !allowed(value, ["id", "title", "kind", "placeLabel", "startsOn", "endsOn"])) return null;
+  if (!value || !allowed(value, ["id", "title", "kind", "placeLabel", "placeToken", "keepPlace", "startsOn", "endsOn"])) return null;
   const fields = common(value), placeLabel = text(value.placeLabel, EXPERIENCE_LIMITS.place);
-  if (!fields || placeLabel === undefined || !MOMENT_KINDS.includes(value.kind as never) || (value.id !== undefined && !isExperienceId(value.id))) return null;
-  return { ...fields, placeLabel, kind: value.kind as SaveMomentInput["kind"], ...(value.id ? { id: value.id as string } : {}) };
+  const place = placeFields(value, value.id !== undefined);
+  if (!fields || !place || placeLabel === undefined || !MOMENT_KINDS.includes(value.kind as never) || (value.id !== undefined && !isExperienceId(value.id))) return null;
+  return { ...fields, placeLabel, kind: value.kind as SaveMomentInput["kind"], ...(value.id ? { id: value.id as string } : {}), ...place };
 }
 export function validateGuestName(input: unknown): string | null {
   return text(input, EXPERIENCE_LIMITS.guest, true) ?? null;

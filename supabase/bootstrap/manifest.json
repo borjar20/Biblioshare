@@ -290,6 +290,13 @@
     "20261004100200_experience_reviews_core.sql",
     "20261004100300_experience_reviews_social.sql",
     "20261004100400_experience_reviews_moderation.sql",
-    "20261004100500_experience_reviews_notify_access.sql"
+    "20261004100500_experience_reviews_notify_access.sql",
+    "20261004120000_margin_notes_enums.sql",
+    "20261004120100_margin_notes_core.sql",
+    "20261004120200_margin_notes_opening.sql",
+    "20261004120300_margin_notes_social.sql",
+    "20261004120400_margin_notes_reports.sql",
+    "20261004120500_margin_notes_select_own.sql",
+    "20261005100000_experience_places.sql"
   ]
 }

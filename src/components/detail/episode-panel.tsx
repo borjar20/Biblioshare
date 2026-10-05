@@ -539,6 +539,7 @@ export function EpisodePanel({
                 upToPendingCount={(ep) => upToPending(ep).length}
                 onMarkUpTo={(ep) => markMany(upToPending(ep))}
                 inlineDetail={!isDesktop}
+                itemId={seriesId}
               />
             </div>
 
@@ -565,6 +566,7 @@ export function EpisodePanel({
                   interactive && selectedEpisode?.aired ? upToPending(selectedEpisode).length : 0
                 }
                 onMarkUpTo={() => selectedEpisode && markMany(upToPending(selectedEpisode))}
+                itemId={seriesId}
                 focusKey={focusKey}
                 onFocused={() => setFocusKey(null)}
               />

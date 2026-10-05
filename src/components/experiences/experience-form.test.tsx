@@ -20,7 +20,7 @@ const experience: ExperienceDetail = {
   id: "memory", creatorId: "owner", viewerId: "owner", title: "Madrid con Ana", revision: 7,
   shape: "trip", state: "lived", audience: "participants", startsOn: "2026-10-03", endsOn: "2026-10-04",
   coverPhotoId: null, createdAt: "2026-10-03T12:00:00Z", canEdit: true, canContribute: true,
-  moments: [{ id: "moment", title: "Museo", kind: "museum", placeLabel: null, startsOn: null, endsOn: null, position: 0 }],
+  moments: [{ id: "moment", title: "Museo", kind: "museum", placeLabel: null, placeId: null, startsOn: null, endsOn: null, position: 0 }],
   participants: [], attendance: [], favorites: [], photos: [], publicationId: null, interactionTargetId: null, rating: null, momentRatings: {}, reviews: [],
 };
 
@@ -103,5 +103,21 @@ describe("captura breve de experiencias", () => {
     expect(screen.getByLabelText("Nombre *").matches(":disabled")).toBe(true);
     finish({ ok: true, data: { id: "new-memory" } });
     await waitFor(() => expect(h.push).toHaveBeenCalledWith("/experiencia/new-memory"));
+  });
+
+  it("al elegir una sugerencia de lugar envía el token firmado y el nombre oficial", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [{ token: "tok-prado", name: "Museo Nacional del Prado", layer: "poi", subtitle: "Madrid, España" }] }))));
+    try {
+      const { container } = show();
+      container.querySelector("details")!.open = true;
+      fireEvent.change(screen.getByLabelText("Nombre *"), { target: { value: "Visita" } });
+      const place = screen.getByLabelText("Lugar");
+      fireEvent.focus(place);
+      fireEvent.change(place, { target: { value: "prado" } });
+      fireEvent.mouseDown(await screen.findByRole("option", { name: /Museo Nacional del Prado/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Guardar experiencia" }));
+      await waitFor(() => expect(h.create).toHaveBeenCalled());
+      expect(h.create.mock.calls[0][0]).toMatchObject({ placeLabel: "Museo Nacional del Prado", placeToken: "tok-prado" });
+    } finally { vi.unstubAllGlobals(); }
   });
 });

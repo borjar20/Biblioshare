@@ -15,7 +15,8 @@ export type TargetType =
   | "thought"
   | "post"
   | "experience"
-  | "experience_review";
+  | "experience_review"
+  | "margin_encounter";
 
 export type InteractionTargetRef = {
   id: string;

@@ -28,6 +28,8 @@ jobs:
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npm test -- --maxWorkers=1 --no-file-parallelism
+      - name: Club round fixture response and cleanup contracts
+        run: node --import tsx --test e2e/support/club-round-fixture.test.ts
   critical-flows:
     runs-on: ubuntu-latest
     timeout-minutes: 25

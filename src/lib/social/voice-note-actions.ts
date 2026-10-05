@@ -15,6 +15,7 @@ import {
   baseMimeType,
 } from "@/lib/voice/voice-note-limits";
 import { getInteractionTarget } from "./interaction-target-gate";
+import { threadRecipients } from "./thread-recipient";
 import { notify } from "./notifications";
 import { voiceCommentContext } from "./notification-context";
 import type { CommentActionResult } from "./interaction-actions";
@@ -149,10 +150,10 @@ export async function addVoiceComment(
       console.error(e);
     }
 
-    if (target.owner_id !== user.id) {
+    for (const recipientId of threadRecipients(target, user.id)) {
       try {
         await notify(supabase, {
-          userId: target.owner_id,
+          userId: recipientId,
           actorId: user.id,
           type: target.comment_notification_type,
           interactionTargetId,
@@ -170,7 +171,7 @@ export async function addVoiceComment(
           .select("author_id")
           .eq("id", inserted.parent_id)
           .maybeSingle();
-        if (parent && parent.author_id !== user.id && parent.author_id !== target.owner_id) {
+        if (parent && parent.author_id !== user.id && !threadRecipients(target, user.id).includes(parent.author_id)) {
           await notify(supabase, {
             userId: parent.author_id,
             actorId: user.id,

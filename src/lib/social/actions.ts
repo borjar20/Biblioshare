@@ -1,5 +1,6 @@
 "use server";
 
+import { deliverMarginNotices } from "@/lib/margin/deliver";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { notify } from "./notifications";
@@ -57,6 +58,8 @@ export async function followUser(targetUserId: string): Promise<void> {
       actorId: user.id,
       type: isPublic ? "new_follower" : "follow_request",
     });
+    // Un follow ya aceptado puede abrir notas del margen del seguido (retro).
+    if (isPublic) await deliverMarginNotices(supabase);
   }
   revalidateProfiles();
   // La card "A quién seguir" del home vive fuera de /u/[username]: sin esto,
@@ -107,6 +110,8 @@ export async function acceptFollowRequest(followerId: string): Promise<void> {
       actorId: user.id,
       type: "follow_accepted",
     });
+    // Aceptar abre las notas del margen que el seguidor ya podía alcanzar.
+    await deliverMarginNotices(supabase);
   }
   revalidateProfiles();
 }
