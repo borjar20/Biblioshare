@@ -302,15 +302,17 @@ do $$ declare who text; t int; c int; begin
 end $$;
 -- E2: el lector deja de seguir al autor: ni el autor ni el lector ven target ni comentario.
 delete from public.follows where follower_id=(select id from margin_fixture where k='follower') and followee_id=(select id from margin_fixture where k='author');
-do $$ declare who text; t int; c int; begin
+do $$ declare who text; t int; c int; e int; begin
   foreach who in array array['author','follower'] loop
     perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
     set local role authenticated;
     select count(*) into t from public.interaction_targets where id=(select tgt from margin_leak);
     select count(*) into c from public.comments where id=(select cmt from margin_leak);
+    select count(*) into e from public.margin_note_encounters where id=(select enc from margin_leak);
     reset role;
     -- El lector sigue viendo SU PROPIO comentario (regla general de comments: c.author_id = auth.uid()); lo que no puede es ver el hilo.
     if t<>0 or (who='author' and c<>0) then raise exception 'FAIL E2: % still sees thread after unfollow (t=%, c=%)',who,t,c; end if;
+    if e<>0 then raise exception 'FAIL E2: % still sees the encounter after unfollow',who; end if;
   end loop;
 end $$;
 -- E3: vuelve a seguir y el autor lo bloquea: igual.
@@ -318,15 +320,17 @@ insert into public.follows(follower_id,followee_id,status)
   values ((select id from margin_fixture where k='follower'),(select id from margin_fixture where k='author'),'accepted');
 insert into public.user_blocks(blocker_id,blocked_id)
   values ((select id from margin_fixture where k='author'),(select id from margin_fixture where k='follower'));
-do $$ declare who text; t int; c int; begin
+do $$ declare who text; t int; c int; e int; begin
   foreach who in array array['author','follower'] loop
     perform set_config('request.jwt.claim.sub',(select id::text from margin_fixture where k=who),true);
     set local role authenticated;
     select count(*) into t from public.interaction_targets where id=(select tgt from margin_leak);
     select count(*) into c from public.comments where id=(select cmt from margin_leak);
+    select count(*) into e from public.margin_note_encounters where id=(select enc from margin_leak);
     reset role;
     -- El lector sigue viendo SU PROPIO comentario (regla general de comments: c.author_id = auth.uid()); lo que no puede es ver el hilo.
     if t<>0 or (who='author' and c<>0) then raise exception 'FAIL E3: % still sees thread after block (t=%, c=%)',who,t,c; end if;
+    if e<>0 then raise exception 'FAIL E3: % still sees the encounter after block',who; end if;
   end loop;
 end $$;
 -- E4: con bloqueo (y sin follow) el claim no devuelve la dedicada, a nadie; y jamás una de audiencia 'followers'.
@@ -376,5 +380,19 @@ do $$ declare who text; enc uuid := (select enc from margin_leak); begin
     exception when insufficient_privilege then reset role; end;
   end loop;
 end $$;
--- La tarea 5 añade aquí sus bloques, ANTES del rollback.
+-- G: merge_book_into repunta la nota al libro ganador y NO cuenta como edición
+-- (edited_at intacto: es una fusión, no una edición del autor). Se ejecuta como
+-- superusuario del fixture (la función es solo service_role en producción).
+create temporary table margin_merge(winner uuid not null default gen_random_uuid(), edited_before timestamptz, note uuid);
+insert into margin_merge(winner) values (default);
+insert into public.books(id,title,total_pages) select winner,'[TEST] margin winner',400 from margin_merge;
+update margin_merge set note=(select id from public.margin_notes where body='[TEST] dedicada rota');
+update margin_merge set edited_before=(select edited_at from public.margin_notes where id=note);
+do $$ begin
+  perform public.merge_book_into((select id from margin_fixture where k='book'),(select winner from margin_merge));
+  if (select item_id from public.margin_notes where id=(select note from margin_merge)) is distinct from (select winner from margin_merge) then
+    raise exception 'FAIL G1: margin note not repointed to the winner'; end if;
+  if (select edited_at from public.margin_notes where id=(select note from margin_merge)) is distinct from (select edited_before from margin_merge) then
+    raise exception 'FAIL G2: merge_book_into set edited_at'; end if;
+end $$;
 rollback;
