@@ -24,7 +24,7 @@ export function curveGeometry(
   eps: FeedEpisode[],
   { width, height, labels }: { width: number; height: number; labels: boolean },
 ): CurveGeometry {
-  const plotTop = labels ? 22 : 10;
+  const plotTop = labels ? 30 : 16;
   const plotBottom = height - (labels ? 20 : 10);
   const left = AXIS_W + (labels ? 16 : 8);
   const right = width - PAD_R;

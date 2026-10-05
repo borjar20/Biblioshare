@@ -29,7 +29,7 @@ export function EpisodeTiles({
         return (
           <li
             key={episodeCode(e)}
-            className={`min-w-0 rounded-lg border px-2 py-1.5 ${isBest ? "border-[var(--type-series)] bg-surface-muted" : "border-border bg-surface-muted/60"} ${post ? "px-3 py-2.5" : ""}`}
+            className={`min-w-0 rounded-lg border ${post ? "px-3 py-2.5" : "px-2 py-1.5"} ${isBest ? "border-[var(--type-series)] bg-surface-muted" : "border-border bg-surface-muted/60"}`}
           >
             <p className={`font-mono text-[9.5px] ${isBest ? "text-gold-ink" : "text-muted-foreground"}`}>
               {episodeCode(e)}

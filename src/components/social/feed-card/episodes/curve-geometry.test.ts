@@ -52,4 +52,12 @@ describe("curveGeometry", () => {
     expect(a.plotTop).toBeGreaterThan(b.plotTop);
     expect(a.plotBottom).toBeLessThan(b.plotBottom);
   });
+
+  it("deja sitio para el rótulo de temporada y las notas sin recortarse", () => {
+    const eps = [ep(1, 10), ep(2, 7), ep(3, 6), ep(4, 5)];
+    const a = curveGeometry(eps, { ...opts, labels: true });
+    const b = curveGeometry(eps, { ...opts, labels: false });
+    expect(a.plotTop - 9).toBeGreaterThan(12);
+    expect(b.plotTop).toBeGreaterThanOrEqual(16);
+  });
 });

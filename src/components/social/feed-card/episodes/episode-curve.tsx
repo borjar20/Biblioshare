@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 import type { FeedEpisode } from "@/lib/social/feed";
 import { formatDots } from "@/lib/rating/dots";
@@ -23,6 +24,7 @@ export function EpisodeCurve({
   showBest?: boolean;
 }) {
   const t = useTranslations("feed");
+  const gradId = `episode-curve-fill-${useId().replace(/:/g, "")}`;
   const labels = size === "post" || episodes.length <= FEED_LABEL_MAX;
   const { width } = SIZE[size];
   const height = labels ? SIZE[size].labeled : SIZE[size].compact;
@@ -36,7 +38,7 @@ export function EpisodeCurve({
     <div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label} className="block h-auto w-full">
         <defs>
-          <linearGradient id="episode-curve-fill" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" stopColor="var(--type-series)" stopOpacity="0.28" />
             <stop offset="1" stopColor="var(--type-series)" stopOpacity="0" />
           </linearGradient>
@@ -50,11 +52,11 @@ export function EpisodeCurve({
           </g>
         ))}
         <line x1={g.axisX} x2={g.axisX} y1={g.ticks[4].y - 4} y2={g.plotBottom} stroke="var(--border)" />
-        {g.area && <path d={g.area} fill="url(#episode-curve-fill)" />}
+        {g.area && <path d={g.area} fill={`url(#${gradId})`} />}
         {g.seasonBreaks.map((b) => (
           <g key={b.season}>
-            <line x1={b.x} x2={b.x} y1={g.plotTop - 6} y2={g.plotBottom} stroke="var(--border)" strokeDasharray="2 3" />
-            <text x={b.x + 3} y={g.plotTop - 8} fontSize="8.5" fill="var(--muted-foreground)" fontFamily="var(--font-mono, monospace)">
+            <line x1={b.x} x2={b.x} y1={12} y2={g.plotBottom} stroke="var(--border)" strokeDasharray="2 3" />
+            <text x={b.x + 3} y={9} fontSize="8.5" fill="var(--muted-foreground)" fontFamily="var(--font-mono, monospace)">
               T{b.season}
             </text>
           </g>

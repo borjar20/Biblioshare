@@ -71,6 +71,13 @@ describe("EpisodeCurve", () => {
     expect(container.textContent).toContain("S1E7 · Título 7");
   });
 
+  it("showBest con empate nombra el primer episodio empatado", () => {
+    const tie = [ep(4, 10), ep(5, 6), ep(6, 10), ep(7, 7)];
+    const { container } = wrap(<EpisodeCurve episodes={tie} size="feed" showBest />);
+    expect(container.textContent).toContain("S1E4");
+    expect(container.textContent).not.toContain("S1E6 ·");
+  });
+
   it("separador de temporada rotulado", () => {
     const { container } = wrap(<EpisodeCurve episodes={[ep(25, 8, null, 1), ep(26, 7, null, 1), ep(1, 6, null, 2), ep(2, 9, null, 2)]} size="feed" />);
     expect(container.textContent).toContain("T2");
