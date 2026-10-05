@@ -19,7 +19,9 @@ export function EpisodeHighlights({ episodes, itemType }: { episodes: FeedEpisod
         {[
           { key: "best", title: t("card.highlightsBest"), list: best },
           { key: "worst", title: t("card.highlightsWorst"), list: worst },
-        ].map((col) => (
+        ]
+          .filter((col) => col.list.length > 0)
+          .map((col) => (
           <section key={col.key}>
             <h3 className="mb-1 font-mono text-[10px] tracking-[0.06em] text-muted-foreground uppercase">{col.title}</h3>
             <ul>
