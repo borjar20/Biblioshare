@@ -143,6 +143,7 @@
       "hint": "Busca un sitio o una ciudad, o escribe lo que quieras.",
       "remove": "Quitar {name}",
       "chosen": "Lugar: {name}",
+      "searching": "Buscando…",
       "attribution": "© OpenStreetMap",
       "layers": { "poi": "Sitio", "city": "Ciudad", "region": "Región", "country": "País" }
     },

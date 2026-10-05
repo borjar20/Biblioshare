@@ -77,7 +77,7 @@ instancia propia de Photon, reconciliación de ids de OSM que cambian.
 ## 3. Búsqueda: `GET /api/places/search?q=`
 
 - Exige sesión (401 si no hay). `q` recortada, 3–100 caracteres; si no, `[]`.
-- Llama a `https://photon.komoot.io/api/?q=…&limit=15` con timeout de 3 s, filtra y
+- Llama a `https://photon.komoot.io/api/?q=…&limit=15` con timeout de 8 s (ajustado 2026-10-05 tras medir 4,9–6 s de latencia real de Photon, #1405), filtra y
   devuelve como mucho **6** resultados.
 - La llamada a Photon vive en una función `use cache` con `q` normalizada como único
   argumento escalar. **Regla #437:** el dato es idéntico para anónimo, dueño y tercero (no
@@ -120,6 +120,10 @@ y `moment-editor.tsx`.
 - **Texto libre**: escribir sin elegir funciona como hoy (`placeLabel`).
 - **Sugerencias**: espera 300 ms sin teclear, `AbortController` cancela la búsqueda anterior;
   lista de ≤ 6 con nombre y una línea "capa · subtítulo". Pie «© OpenStreetMap» (ODbL).
+  Mientras la petición está en vuelo (campo con foco, ≥ 3 caracteres) se muestra bajo el
+  campo una línea tenue «Buscando…» (`role="status"`, `aria-live="polite"`); desaparece al
+  llegar resultados, fallar, bajar de 3 caracteres, salir del campo o elegir
+  (ajustado 2026-10-05 tras medir 4,9–6 s de latencia real de Photon, #1405).
 - **Elegida**: chip con nombre oficial + ✕; inputs ocultos `placeToken` y `placeLabel`.
   ✕ vuelve a input vacío con foco.
 - **Edición de momento vinculado**: arranca en chip; si no se toca, envía `keepPlace`.
@@ -129,7 +133,7 @@ y `moment-editor.tsx`.
 
 ## 6. Errores y límites
 
-- Photon caído o > 3 s → sin lista y sin aviso; el texto libre sigue.
+- Photon caído o > 8 s → sin lista y sin aviso; el texto libre sigue.
 - Token inválido/caducado → se guarda como texto (§4).
 - `place_id` con `on delete set null`; `places` no se borra desde la app.
 - Sin migración de etiquetas antiguas.

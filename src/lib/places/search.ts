@@ -5,7 +5,7 @@ import { classifyPhotonFeature } from "./classify";
 import type { PlaceData } from "./types";
 
 const PHOTON = "https://photon.komoot.io/api/";
-const TIMEOUT_MS = 3000;
+const TIMEOUT_MS = 8000;
 const MAX_RESULTS = 6;
 
 export function normalizePlaceQuery(q: string | null): string | null {

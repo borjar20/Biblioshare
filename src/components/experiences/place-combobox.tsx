@@ -13,7 +13,7 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
   const t = useTranslations("experiences.places"), listId = useId();
   const [text, setText] = useState(linked ? "" : defaultLabel ?? "");
   const [chosen, setChosen] = useState<Chosen | null>(linked ? { name: defaultLabel ?? "", token: null } : null);
-  const [items, setItems] = useState<PlaceSuggestion[]>([]), [open, setOpen] = useState(false), [active, setActive] = useState(-1);
+  const [items, setItems] = useState<PlaceSuggestion[]>([]), [open, setOpen] = useState(false), [searching, setSearching] = useState(false), [active, setActive] = useState(-1);
   const input = useRef<HTMLInputElement>(null), refocus = useRef(false), removeBtn = useRef<HTMLButtonElement>(null), focusChip = useRef(false), focused = useRef(false);
 
   useEffect(() => {
@@ -22,12 +22,14 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
     if (q.length < 3) return;
     const abort = new AbortController();
     const timer = setTimeout(async () => {
+      if (!focused.current) return;
+      setSearching(true);
       try {
         const res = await fetch(`/api/places/search?q=${encodeURIComponent(q)}`, { signal: abort.signal });
         const body = res.ok ? await res.json() as { items?: PlaceSuggestion[] } : { items: [] };
         const next = Array.isArray(body.items) ? body.items : [];
-        setItems(next); setOpen(next.length > 0 && focused.current); setActive(-1);
-      } catch { if (!abort.signal.aborted) { setItems([]); setOpen(false); } }
+        setItems(next); setOpen(next.length > 0 && focused.current); setActive(-1); setSearching(false);
+      } catch { if (!abort.signal.aborted) { setItems([]); setOpen(false); setSearching(false); } }
     }, 300);
     return () => { clearTimeout(timer); abort.abort(); };
   }, [text, chosen]);
@@ -37,7 +39,7 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
   // The input unmounts on choose; park focus on the chip's remove button instead of <body>.
   useEffect(() => { if (chosen && focusChip.current) { focusChip.current = false; removeBtn.current?.focus(); } }, [chosen]);
 
-  const choose = (item: PlaceSuggestion) => { focusChip.current = true; setChosen({ name: item.name, token: item.token }); setOpen(false); setItems([]); };
+  const choose = (item: PlaceSuggestion) => { focusChip.current = true; setChosen({ name: item.name, token: item.token }); setOpen(false); setSearching(false); setItems([]); };
   const clear = () => { refocus.current = true; setChosen(null); setText(""); };
 
   if (chosen) return <div id={id} role="group" aria-label={t("chosen", { name: chosen.name })} className="flex min-h-11 items-center">
@@ -56,8 +58,8 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
       role="combobox" aria-autocomplete="list" aria-expanded={shown} aria-controls={listId} aria-describedby={`${listId}-hint`}
       aria-activedescendant={shown && active >= 0 ? optionId(active) : undefined}
       onFocus={() => { focused.current = true; }}
-      onChange={(event) => { const v = event.target.value; setText(v); if (v.trim().length < 3) { setItems([]); setOpen(false); } }}
-      onBlur={() => { focused.current = false; setOpen(false); }}
+      onChange={(event) => { const v = event.target.value; setText(v); if (v.trim().length < 3) { setItems([]); setOpen(false); setSearching(false); } }}
+      onBlur={() => { focused.current = false; setOpen(false); setSearching(false); }}
       onKeyDown={(event) => {
         if (!shown) {
           if (event.key === "ArrowDown" && items.length > 0 && text.trim().length >= 3) { event.preventDefault(); setOpen(true); }
@@ -69,6 +71,7 @@ export function PlaceCombobox({ id, defaultLabel, linked = false }: Props) {
         else if (event.key === "Escape") { event.preventDefault(); setOpen(false); }
       }}/>
     <p id={`${listId}-hint`} className="mt-1 text-xs text-muted-foreground">{t("hint")}</p>
+    {searching && <p role="status" aria-live="polite" className="mt-1 text-xs text-muted-foreground">{t("searching")}</p>}
     {shown && <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border bg-surface shadow-cover">
       <ul id={listId} role="listbox" className="max-h-72 overflow-y-auto py-1">
         {items.map((item, index) => <li key={item.token} id={optionId(index)} role="option" aria-selected={index === active}

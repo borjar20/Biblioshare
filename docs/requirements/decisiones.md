@@ -6553,3 +6553,15 @@ nombre oficial se copia en `place_label`, así ninguna lectura cambia. Descartad
 Places (coste y ToS de almacenamiento), Nominatim público (prohíbe autocompletar), cliente
 directo a Photon (expone IP/tecleo y deja la tabla abierta a datos inventados).
 Spec: `docs/superpowers/specs/2026-10-05-experiencias-lugares-design.md`.
+
+## 2026-10-05 — Lugares: timeout de Photon 8 s con indicador «Buscando…»
+
+Contexto: en el smoke-check bajo `next start` el Photon público respondió en 4,9–6 s (3 muestras
+con curl) y, con el timeout de 3 s, la ruta devolvía `items: []` (200) sin que se viera por
+qué. Con 20 s (solo en prueba) la primera llamada tardó 5,1 s y la segunda, servida desde la
+caché `use cache`, 127 ms. Decisión: timeout a 8 s y una línea tenue «Buscando…»
+(`role="status"`) mientras la petición está en vuelo, para que la espera no parezca un fallo.
+Trade-off: una petición lenta mantiene abierta la conexión saliente hasta 8 s aunque el cliente
+la aborte (relevante para #1401). El texto libre nunca se bloquea: se puede escribir y guardar
+sin esperar ni elegir sugerencia. La latencia del Photon público sigue siendo un riesgo
+externo (#1398). Seguimiento: #1405.

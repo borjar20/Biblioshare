@@ -121,4 +121,44 @@ describe("PlaceCombobox", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(fields()).toEqual({ placeLabel: "", keepPlace: "true" });
   });
+  describe("searching indicator", () => {
+    let resolveFetch: (r: Response) => void;
+    const pending = () => vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise<Response>((r) => { resolveFetch = r; })));
+    it("shows while the request is pending and clears when results arrive", async () => {
+      pending();
+      show();
+      await type("prado");
+      expect(screen.getByRole("status").textContent).toBe("Buscando…");
+      await act(async () => { resolveFetch(new Response(JSON.stringify({ items }))); });
+      expect(screen.queryByRole("status")).toBeNull();
+      expect(screen.getByRole("listbox")).toBeTruthy();
+    });
+    it("clears on failure", async () => {
+      let reject: (e: Error) => void;
+      vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise<Response>((_, r) => { reject = r; })));
+      show();
+      await type("prado");
+      expect(screen.getByRole("status")).toBeTruthy();
+      await act(async () => { reject(new Error("down")); });
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+    it("is not shown below three characters", async () => {
+      pending();
+      show();
+      await type("pr");
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+    it("clears when the text drops below three characters or the field is left", async () => {
+      pending();
+      show();
+      await type("prado");
+      expect(screen.getByRole("status")).toBeTruthy();
+      fireEvent.change(screen.getByRole("combobox", { name: "Lugar" }), { target: { value: "pr" } });
+      expect(screen.queryByRole("status")).toBeNull();
+      await type("prado");
+      expect(screen.getByRole("status")).toBeTruthy();
+      fireEvent.blur(screen.getByRole("combobox", { name: "Lugar" }));
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+  });
 });

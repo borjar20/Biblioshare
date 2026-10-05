@@ -14,7 +14,7 @@
 
 - Proveedor único `'osm'`; `provider_ref` = `osm_type` + `osm_id` (`^[NWR][0-9]+$`).
 - Capas: `poi`, `city`, `region`, `country`. Nunca direcciones, calles, edificios sin nombre.
-- Búsqueda: sesión obligatoria (401), `q` recortada de 3–100 caracteres, ≤ 6 resultados, timeout Photon 3 s.
+- Búsqueda: sesión obligatoria (401), `q` recortada de 3–100 caracteres, ≤ 6 resultados, timeout Photon 8 s (ajustado 2026-10-05 tras medir 4,9–6 s de latencia real de Photon, #1405).
 - Token: HMAC-SHA256 con `PLACES_SIGNING_SECRET` (server-only, ≥ 32 caracteres), caduca a 1 h, ≤ 2048 caracteres.
 - El guardado **nunca** falla por el lugar: token inválido/caducado → se guarda como texto.
 - `place_upsert` ejecutable **solo** por `service_role`. `places`: RLS, solo SELECT para clientes.
@@ -661,7 +661,7 @@ import { classifyPhotonFeature } from "./classify";
 import type { PlaceData } from "./types";
 
 const PHOTON = "https://photon.komoot.io/api/";
-const TIMEOUT_MS = 3000;
+const TIMEOUT_MS = 8000;
 const MAX_RESULTS = 6;
 
 export function normalizePlaceQuery(q: string | null): string | null {
