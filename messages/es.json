@@ -855,7 +855,17 @@
       "episodes": "{rated, select, yes {valoró} other {vio}} {count, plural, one {un episodio} other {# episodios}}",
       "episodeOf": "de {title}",
       "moreItems": "+{count} más",
-      "noRating": "Sin nota"
+      "noRating": "Sin nota",
+      "outOf5": "/5",
+      "noRatingShort": "sin nota",
+      "curveLabel": "Notas por episodio: {list}",
+      "bestLine": "Mejor episodio",
+      "seasons": "{count, plural, one {Temporada {list}} other {Temporadas {list}}}",
+      "average": "media {value}",
+      "highlightsBest": "Lo mejor",
+      "highlightsWorst": "Lo peor",
+      "showAll": "Ver los {count} episodios",
+      "showLess": "Ver menos"
     },
     "joint": {
       "header": "{names} {itemType, select, book {leyeron} other {vieron}} juntos",
