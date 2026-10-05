@@ -119,7 +119,7 @@ y `moment-editor.tsx`.
 
 - **Texto libre**: escribir sin elegir funciona como hoy (`placeLabel`).
 - **Sugerencias**: espera 300 ms sin teclear, `AbortController` cancela la búsqueda anterior;
-  lista de ≤ 6 con icono por capa, nombre y subtítulo. Pie «© OpenStreetMap» (ODbL).
+  lista de ≤ 6 con nombre y una línea "capa · subtítulo". Pie «© OpenStreetMap» (ODbL).
 - **Elegida**: chip con nombre oficial + ✕; inputs ocultos `placeToken` y `placeLabel`.
   ✕ vuelve a input vacío con foco.
 - **Edición de momento vinculado**: arranca en chip; si no se toca, envía `keepPlace`.
