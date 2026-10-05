@@ -351,6 +351,9 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
               userId={user?.id ?? null}
               notesPromise={notesPromise}
               marginPromise={marginPromise}
+              // Mismo total que usará el servidor para el ancla (pagesForPass sobre la
+              // edición del pase), no `book.total_pages` a secas.
+              marginPages={totalPages > 0 ? totalPages : null}
               ratingSummary={ratingSummary}
               cerrar={cerrar}
             />
@@ -368,6 +371,7 @@ async function BookTabs({
   userId,
   notesPromise,
   marginPromise,
+  marginPages,
   ratingSummary,
   cerrar,
 }: {
@@ -375,6 +379,7 @@ async function BookTabs({
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
+  marginPages: number | null;
   ratingSummary: RatingSummary;
   cerrar?: string;
 }) {
@@ -680,7 +685,7 @@ async function BookTabs({
           {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}
           {userId && marginPromise && (
             <Suspense fallback={null}>
-              <MarginSection itemType="book" itemId={book.id} pages={book.total_pages} marginPromise={marginPromise} />
+              <MarginSection itemType="book" itemId={book.id} pages={marginPages} marginPromise={marginPromise} />
             </Suspense>
           )}
         </div>

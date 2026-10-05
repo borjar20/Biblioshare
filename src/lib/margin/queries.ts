@@ -85,12 +85,6 @@ export async function getItemMarginNotes(supabase: SupabaseServerClient, viewerI
   return { found: found.sort(byAnchor), mine: mine.sort(byAnchor) };
 }
 
-export async function getMarginReveal(supabase: SupabaseServerClient, viewerId: string,
-  itemType: ItemType, itemId: string): Promise<MarginNoteView[]> {
-  const { found } = await getItemMarginNotes(supabase, viewerId, itemType, itemId);
-  return found.filter((n) => n.encounter && n.encounter.seenAt === null && n.encounter.foundVia !== "retro");
-}
-
 export async function getMarginThread(supabase: SupabaseServerClient, viewerId: string,
   encounterId: string): Promise<MarginNoteView | null> {
   const { data: enc, error } = await supabase.from("margin_note_encounters")

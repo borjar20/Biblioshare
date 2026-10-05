@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type ComponentProps } from "react";
+import { useCallback, useEffect, useId, useRef, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
 import { MarginNoteComposer } from "./margin-note-composer";
 
@@ -18,6 +18,8 @@ export function MarginNoteSheet({
 }: ComposerProps & { open: boolean; onClose: () => void }) {
   const t = useTranslations("margin");
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // Una hoja por episodio en la misma página: un id fijo se repetiría.
+  const titleId = useId();
 
   // Identidad estable: el compositor la usa como dependencia de su temporizador.
   const closeSheet = useCallback(() => dialogRef.current?.close(), []);
@@ -33,14 +35,14 @@ export function MarginNoteSheet({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      aria-labelledby="margin-sheet-title"
+      aria-labelledby={titleId}
       className="m-auto w-[min(420px,92vw)] rounded-card border border-border bg-surface p-0 text-foreground shadow-card backdrop:bg-scrim"
       onClick={(event) => {
         if (event.target === dialogRef.current) dialogRef.current?.close();
       }}
     >
       <div className="flex items-center justify-between border-b border-border px-5 py-2">
-        <h2 id="margin-sheet-title" className="font-serif text-lg font-semibold">
+        <h2 id={titleId} className="font-serif text-lg font-semibold">
           {t("sheetTitle")}
         </h2>
         <button
