@@ -1,7 +1,8 @@
 # Biblioshare — qué existe hoy
 
 > **[Canónico · verificado contra código el 2026-08-19; delta de Biblioteca
-> material verificado contra código y build/start local el 2026-10-06]**
+> material verificado contra código y build/start local el 2026-10-07, incluida la
+> corrección de favoritos equivalentes e iconos SVG (PR #1435)]**
 >
 > Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
 > Delta Novedades implementado en código, base local y biblioshare-dev el 2026-10-06;
@@ -127,12 +128,13 @@ evidencia y límites: `docs/testing/2026-10-06-novedades.md`.
 - **Colección** (`/coleccion`): pestañas Todo / Colecciones / Sagas; filtros;
   colecciones/listas del usuario (`collections`, con visibilidad y sorteables) y
   «sacar un lomo» (sorteo animado de la pila).
-- **Biblioteca material** (candidato local, 2026-10-06): las tarjetas de Todo
+- **Biblioteca material** (candidato de la [PR #1435](https://github.com/borjar20/Biblioshare/pull/1435), corrección del 2026-10-07): las tarjetas de Todo
   muestran libros con lomo/canto y cine/series como carteles, con estado bajo
-  los metadatos. Resumen acompaña a Destacados, que muestra todos los favoritos
-  en su orden actual; el primero permite añadir sesión si es libro/serie en
-  curso con pase activo. Se reutilizan los accesos a Cuaderno, Retos y objetivos
-  y Estadísticas. Presentación opt-in de `LibraryItemCard` y nuevo
+  los metadatos. Resumen acompaña a Destacados: todos los favoritos tienen
+  tarjetas equivalentes en su orden actual, con ficha y sesión por cada
+  libro/serie en curso con pase activo. Cuaderno, Retos y objetivos y
+  Estadísticas usan iconos SVG pixelados de `LibraryToolIcon`, con sus mismos
+  nombres y destinos. Presentación opt-in de `LibraryItemCard` y
   `LibraryHighlights`; el perfil conserva su presentación. No cambia el esquema,
   las consultas, las APIs, RLS ni la caché. [Evidencia local y límites](testing/2026-10-06-biblioteca-material.md).
 - **Notas y citas** (`/notas`, «Cuaderno»): captura desde ficha/sesión con ancla

@@ -38,7 +38,7 @@ function item(overrides: Partial<LibraryItem> = {}): LibraryItem {
 }
 
 describe("LibraryHighlights", () => {
-  it("features the first pinned item and keeps every other favorite linked in order", async () => {
+  it("presents every favorite with equal cards and keeps their linked order", async () => {
     const favorites = [
       item({ status: "completed" }),
       item({ entryId: "entry-movie", itemId: "movie-2", itemType: "movie", title: "El espíritu de la colmena", subtitle: null, pinnedOrder: 1 }),
@@ -50,12 +50,31 @@ describe("LibraryHighlights", () => {
 
     render(await LibraryHighlights({ items: favorites }));
 
-    const hero = screen.getByRole("article", { name: "La isla de las voces" });
-    expect(within(hero).getByRole("heading", { name: "La isla de las voces" })).toBeTruthy();
-    expect(within(hero).getByRole("link", { name: "Ver ficha" }).getAttribute("href")).toBe("/libro/book-1");
-    const links = within(screen.getByRole("list")).getAllByRole("link");
-    expect(links.map((link) => link.textContent)).toEqual(["El espíritu de la colmena", "Detectorists", "Los inconsolables", "El sur", "Solaris"]);
-    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/pelicula/movie-2", "/serie/series-3", "/libro/book-4", "/pelicula/movie-5", "/libro/book-6"]);
+    expect(screen.getAllByRole("heading", { name: "Destacados" })).toHaveLength(1);
+    const cards = within(screen.getByRole("list")).getAllByRole("article");
+    expect(cards).toHaveLength(6);
+    expect(cards.map((card) => within(card).getByRole("heading").textContent)).toEqual([
+      "La isla de las voces", "El espíritu de la colmena", "Detectorists", "Los inconsolables", "El sur", "Solaris",
+    ]);
+    expect(new Set(cards.map((card) => card.className)).size).toBe(1);
+    expect(cards.map((card) => within(card).getByRole("link", { name: "Ver ficha" }).getAttribute("href"))).toEqual([
+      "/libro/book-1", "/pelicula/movie-2", "/serie/series-3", "/libro/book-4", "/pelicula/movie-5", "/libro/book-6",
+    ]);
+    for (const card of cards) {
+      expect(within(card).getByText(/Completado|En curso/)).toBeTruthy();
+    }
+  });
+
+  it("offers session registration for eligible favorites after the first item", async () => {
+    render(await LibraryHighlights({ items: [
+      item({ itemType: "movie", status: "completed", title: "Primera película" }),
+      item({ entryId: "entry-second", itemId: "book-2", title: "Segundo libro", activePassId: "pass-second" }),
+      item({ entryId: "entry-third", itemId: "series-3", itemType: "series", title: "Tercera serie", activePassId: "pass-third" }),
+    ] }));
+
+    expect(within(screen.getByRole("article", { name: "Primera película" })).queryByRole("link", { name: "Registrar sesión" })).toBeNull();
+    expect(within(screen.getByRole("article", { name: "Segundo libro" })).getByRole("link", { name: "Registrar sesión" }).getAttribute("href")).toBe("/sesion/pass-second");
+    expect(within(screen.getByRole("article", { name: "Tercera serie" })).getByRole("link", { name: "Registrar sesión" }).getAttribute("href")).toBe("/sesion/pass-third");
   });
 
   it.each(["book", "series"] as const)("offers session registration for an in-progress %s with its active pass", async (itemType) => {
@@ -68,6 +87,8 @@ describe("LibraryHighlights", () => {
     { status: "completed" as const },
     { status: "dropped" as const },
     { activePassId: null },
+    { activePassId: "" },
+    { activePassId: "   " },
     { itemType: "movie" as const },
   ])("keeps session registration unavailable for $status $activePassId $itemType", async (overrides) => {
     render(await LibraryHighlights({ items: [item(overrides)] }));

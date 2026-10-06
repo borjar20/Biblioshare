@@ -5,6 +5,7 @@ import {
 } from "@/components/ui/skeleton";
 import { CARD_GRID_COLS, TILE_GRID_COLS } from "@/lib/ui/layout";
 import styles from "./library-view.module.css";
+import highlightStyles from "./library-highlights.module.css";
 
 // Skeleton del Resumen de la colección (tab `Todo`). Compartido entre
 // `coleccion/loading.tsx` (fallback de página) y el fallback granular de
@@ -22,15 +23,27 @@ export function CollectionOverviewSkeleton() {
         </div>
         <Skeleton className="h-12 w-full" />
       </SkeletonCard>
-      <SkeletonCard className="flex min-h-[240px] items-center justify-between gap-6 p-6">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <SkeletonLine className="w-24" />
-          <SkeletonLine className="h-7 w-3/4" />
-          <SkeletonLine className="w-1/2" />
-          <Skeleton className="h-10 w-32 rounded-chip" />
+      <div aria-hidden className={highlightStyles.highlights}>
+        <SkeletonLine className="mb-5 h-5 w-24" />
+        <div className={highlightStyles.grid}>
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className={highlightStyles.slot}>
+              <div className={highlightStyles.card}>
+                <Skeleton className={`${highlightStyles.coverLink} aspect-[2/3] rounded-cover`} />
+                <div className={`${highlightStyles.content} min-h-[74px]`}>
+                  <SkeletonLine className="h-9 w-4/5" />
+                  <SkeletonLine className="h-3 w-3/5" />
+                  <SkeletonLine className="mt-auto h-3 w-16" />
+                </div>
+                <div className={highlightStyles.actions}>
+                  <Skeleton className="h-11 w-full" />
+                  <SkeletonLine className="mx-auto mt-3 w-3/4" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <Skeleton className="h-[156px] w-[104px] shrink-0 rounded-cover" />
-      </SkeletonCard>
+      </div>
     </div>
   );
 }

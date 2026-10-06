@@ -151,7 +151,8 @@ components:
 
 > **[Canónico · verificado contra `src/app/globals.css`, `src/lib/ui/layout.ts` y
 > `src/components/ui/` el 2026-08-27; excepción local de Biblioteca material
-> contrastada con `src/components/library/*.module.css` el 2026-10-06]**
+> contrastada con `src/components/library/*.module.css` y `library-tool-icon.tsx`
+> el 2026-10-07 (candidato de la PR #1435)]**
 >
 > Manda para **tokens**: color, tipografía, forma, elevación, layout y primitivos. Los
 > **patrones** de pantalla (columnas, navegación secundaria, dónde vive lo destructivo) los manda
@@ -509,7 +510,8 @@ documentado como estado actual, **no como invariante**: un logo mejor puede sust
 
 ### Iconografía
 Set propio, `viewBox` 24, trazo 1.8 con extremos y uniones redondeados, sin relleno, en
-`currentColor`. El logo es la única excepción multicolor.
+`currentColor`. El logo es la excepción multicolor del set general; los tres
+iconos de herramientas de Biblioteca tienen la excepción local descrita abajo.
 
 ## Do's and Don'ts
 
@@ -524,18 +526,24 @@ Los cantos locales son contacto de un objeto, no una tercera elevación global:
 
 «Añadir obra» conserva terracota y tiene relieve corto de 2 × 3 px, radio
 asimétrico `7px 7px 2px 7px`, altura mínima 44 px y padding horizontal de 12 px.
-El buscador usa 8 px; las cubiertas del destacado y sus miniaturas, 3 px; los
-enlaces de acción del destacado, 6 px. Son radios locales de estas piezas,
-incluida la excepción a la píldora de los controles. El destacado invierte la
-tinta sobre una mezcla de los tokens Paper `type-movie` y `foreground` (o
-`background` en oscuro); su acción rellena usa la tinta del panel y mantiene
-el contraste. El resto de los botones sigue la escala general.
+El buscador usa 8 px; todas las cubiertas de Destacados, 3 px; sus enlaces de
+acción, 6 px. Son radios locales de estas piezas,
+incluida la excepción a la píldora de los controles. El panel Destacados comparte
+el contraste inverso de una mezcla de los tokens Paper `type-movie` y
+`foreground` (o `background` en oscuro) entre todas sus obras. Cada favorito
+usa la misma cubierta: 64 px bajo 360 px, 80 px de 360 a 639 px y 96 px desde
+640 px, con acciones de al menos 44 px. «Ver ficha» es discreto: ancho de
+contenido, fondo transparente y borde de tinta al 60 %. El resto de los
+botones sigue la escala general.
 
 El subrayado de la pestaña activa tiene escalón de 5 px. La barra de Resumen
 mantiene la proporción de los estados reales, con segmentos cuadrados separados
-3 px; no representa un objetivo inventado. Cuaderno y Retos y objetivos reutilizan
-`/pet/badges/notes.png` y `missions.png` a 32 px, con `image-rendering: pixelated`.
-No se añade arte ni una segunda mascota. Patrón y datos:
+3 px; no representa un objetivo inventado. Los tres accesos usan
+`LibraryToolIcon`: SVG de código nativo en rejilla `16 × 16`, dibujados a 32 px
+con `shapeRendering="crispEdges"`. Cuaderno tiene anillas, Estadísticas barras
+y Retos y objetivos una diana. Usan superficies/tintas/acento y colores de tipo
+Paper; esta excepción local al set mono no cambia la iconografía global.
+No son imágenes de `public/pet/` ni requieren un sprite nuevo. Patrón y datos:
 [Guía de UI](docs/UI-GUIA.md#biblioteca-material-coleccion-2026-10-06);
 decisión: [registro vigente](docs/requirements/decisiones.md).
 

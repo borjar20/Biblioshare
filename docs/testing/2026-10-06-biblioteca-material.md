@@ -116,3 +116,92 @@ no cambia el esquema, las APIs, RLS, consultas ni caché.
 La tanda cierra sus navegadores; el coordinador detiene el servidor de pruebas
 en 3100 y elimina los scripts temporales, conservando la evidencia local.
 No se modificaron filas de catálogo, pases, colecciones o favoritos.
+
+## Delta posterior — favoritos equivalentes e iconos SVG
+
+Corrección solicitada por el usuario para el candidato de la PR #1435. Los
+controles de las secciones anteriores corresponden al diseño de un favorito
+principal y miniaturas; no se trasladan como evidencia visual de esta corrección.
+
+Todos los favoritos comparten tarjeta: dos columnas en móvil, tres desde
+640 px, cubiertas de 80/96 px, estado textual y ficha en cada uno. Cada
+libro/serie en curso con pase activo válido tiene su acceso a sesión.
+`LibraryToolIcon` sustituye los dos PNG y el icono anterior de Estadísticas
+por tres SVG nativos, rejilla de 16 unidades a 32 px y `crispEdges`, con los
+mismos nombres/destinos y tokens Paper. No hay cambios del plano de datos.
+
+El coordinador acredita **151 tests focales PASS en 15 archivos**, incluidos
+**21 casos de componentes** (14 de Destacados y siete de tarjetas), y lint
+focal de los cinco TSX del delta PASS. El trabajador verificó TDD 14/14.
+**Build/TypeScript PASS**: compilación 16,4 s, TypeScript 17,4 s y 86 rutas
+estáticas; build ID `jVxX_ZUqaSS_YzPsEj1pa`. Los nuevos controles de navegador
+se están ejecutando contra esta build; sus resultados se añadirán después.
+
+Contrato de la corrección: [spec nueva](../superpowers/specs/2026-10-06-biblioteca-destacados-equivalentes-design.md).
+Esta evidencia local no acredita merge, CI o publicación del candidato.
+
+## Cierre del delta — 2026-10-07
+
+La tanda descrita en el delta anterior terminó con **87/87 checks PASS** sobre
+`jVxX_ZUqaSS_YzPsEj1pa`: ocho vistas a 320/390/768/1280 px en claro y oscuro,
+los tres favoritos reales equivalentes, tres rutas de herramientas, las tres
+fichas y el formulario de sesión real con regreso a su origen. La revisión
+visual posterior pidió reducir el alto móvil: esa tanda conserva el diseño de
+dos columnas en móvil y no acredita por sí sola la compactación final.
+
+La compactación cambia solo CSS y `Image.sizes`: tres columnas desde 320 px,
+cubiertas de 64/80/96 px, padding de 16/20/24 px y «Ver ficha» discreto, con
+ancho de contenido y borde de tinta al 60 %. Cada tarjeta mantiene su bloque
+de acciones de 92 px y dianas de al menos 44 px. No cambia JSX de acciones,
+rutas, pase activo ni consultas.
+
+El trabajador repitió **14/14 tests de Destacados y lint PASS** después del
+delta. Se conservan los **151 tests focales** anteriores como otra ejecución;
+no se suman a los 14 ni se presentan como repetidos tras la compactación.
+La build final **`YEmHomgRHNnsp3dQQZDn0` PASS** compiló en 5,7 s, pasó
+TypeScript en 5,9 s y generó 86 rutas estáticas en 2,8 s.
+
+### Navegador de la build final
+
+**103/103 checks PASS**, ocho vistas a 320/390/768/1280 px en claro y oscuro.
+Los tres favoritos ocupan una fila, con el mismo ancho/alto de tarjeta,
+tratamiento tipográfico y cubierta en cada viewport. No hay overflow;
+acciones y contenido permanecen dentro de su tarjeta. El control exige un
+panel que no supera 460 px de alto en ninguna de las ocho vistas:
+
+| Viewport | Cubierta | Alto de Destacados, claro y oscuro |
+|---:|---:|---:|
+| 320 px | 64 px | 390,86 px |
+| 390 px | 80 px | 422,86 px |
+| 768 px | 96 px | 437,78 px |
+| 1280 px | 96 px | 437,78 px |
+
+El coordinador había medido aproximadamente 748 px en móvil antes de la
+compactación. El foco conserva outline de 2 px, el hover de puntero fino
+mueve la cubierta −3 px y movimiento reducido da `0s`/`none`. Los tres SVG
+miden 32 px y comparten la rejilla de 16 unidades y `crispEdges`, también en
+oscuro. Este corte final comprueba la geometría nueva; no repite las tres
+herramientas, fichas y sesión ya probadas en los 87 checks con el mismo JSX,
+pases y destinos.
+
+### Observaciones y límites conservados
+
+Ambas tandas registran cero errores de consola, excepciones de página o
+respuestas HTTP de error y `dataCreated = 0`. La de 87 checks conserva
+**86 `net::ERR_ABORTED` (83 GET, 3 POST)**; la final conserva **40 (38 GET,
+2 POST)**. No se suman, deduplican ni atribuyen a una causa; el seguimiento
+[#1301](https://github.com/borjar20/Biblioshare/issues/1301) sigue vigente.
+La superposición de mascota [#1350](https://github.com/borjar20/Biblioshare/issues/1350)
+registrada antes continúa siendo un límite separado de este cambio.
+
+La cuenta real tiene tres favoritos y solo uno elegible para sesión. Seis
+favoritos y una segunda obra elegible quedan cubiertos por los 14 casos de
+componente, no por esta tanda de navegador. La revisión independiente sin
+hallazgos corresponde a la primera corrección de equivalencia/JSX/iconos;
+el CSS final tiene lectura del coordinador y los 103 controles de navegador.
+No se acredita suite general, Android nativo, CI, merge o publicación.
+
+Los artefactos locales permanecen separados en las visualizaciones de esta
+tarea: `library-revision-qa/verification.json` y
+`library-revision-final-qa/verification.json`. El coordinador cerró los
+navegadores y detuvo el servidor de pruebas en 3100.

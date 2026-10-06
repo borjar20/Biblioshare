@@ -6811,3 +6811,43 @@ filtros sticky, paginación y modelo de datos mantienen su contrato.
 
 Contrato: [spec histórica](../superpowers/specs/2026-10-06-biblioteca-material-design.md).
 Entrega: candidato local; [evidencia y límites](../testing/2026-10-06-biblioteca-material.md).
+
+## 2026-10-06 — Biblioteca: favoritos equivalentes e iconos propios de las herramientas
+
+El usuario descarta el reparto de un favorito principal y el resto en
+miniaturas: el orden de pin expresa orden, no dos categorías de favoritos.
+`LibraryHighlights` muestra todos con la misma tarjeta, dos columnas en móvil
+y tres desde 640 px, cubiertas de 80/96 px y los mismos metadatos/estado.
+Cada tarjeta tiene «Ver ficha»; cada libro o serie en curso con pase activo
+no vacío tiene además «Registrar sesión». Se conserva «Al día», el orden
+recibido y la consulta actual, sin refetch ni caché. Esta decisión sustituye
+el reparto visual de la entrada anterior, sin reescribir su historial.
+
+Los tres accesos de herramientas comparten `LibraryToolIcon`, SVG de código
+nativo con rejilla `16 × 16` a 32 px, `crispEdges` y tokens Paper. Cuaderno se
+representa con anillas, Retos y objetivos con diana y Estadísticas con barras.
+Sustituye los PNG de notas/misiones y el icono habitual de Estadísticas; las
+rutas, nombres y semántica de enlace se conservan. Es una excepción local al
+set general mono, no una nueva iconografía global ni un sprite de `public/pet/`.
+
+Contrato: [spec de la corrección](../superpowers/specs/2026-10-06-biblioteca-destacados-equivalentes-design.md).
+Entrega: candidato de la [PR #1435](https://github.com/borjar20/Biblioshare/pull/1435), sin merge/publicación acreditados.
+La [evidencia](../testing/2026-10-06-biblioteca-material.md) añade este delta y
+conserva los controles de la implementación anterior.
+
+## 2026-10-07 — Biblioteca: compactar Destacados conservando el mismo peso
+
+La primera corrección de favoritos equivalentes pasó sus controles, pero el
+panel móvil de tres favoritos ocupaba aproximadamente 748 px al hacer dos
+filas. La revisión visual adopta tres columnas desde 320 px, cubiertas de
+64/80/96 px y padding de 16/20/24 px según los tramos 320–359/360–639/640+.
+El espacio horizontal es 12 px en móvil y 24 px desde 640 px. Cada tarjeta
+mantiene los mismos metadatos y bloque de acciones de 92 px; «Ver ficha» pasa
+a borde de tinta al 60 % y ancho de contenido, con diana mínima de 44 px.
+
+La compactación cambia solo CSS y `Image.sizes`; los destinos, la elegibilidad
+de sesión y las consultas se conservan. La tanda de 87 checks anterior y la
+final de 103 pertenecen a builds distintas y se registran por separado, sin
+extender la revisión independiente de la primera a este último delta CSS.
+Contrato: [spec de la corrección](../superpowers/specs/2026-10-06-biblioteca-destacados-equivalentes-design.md).
+Evidencia y límites: [informe local](../testing/2026-10-06-biblioteca-material.md).

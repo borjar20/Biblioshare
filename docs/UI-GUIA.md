@@ -5,7 +5,9 @@
 > verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
 > notificaciones verificados contra código y build/start local el 2026-10-04
 > (#1349; siete E2E focales PASS; candidato local); Biblioteca material
-> verificada contra código y build/start local el 2026-10-06 (candidato local)]**
+> verificada contra código y build/start local el 2026-10-07, incluida la corrección de
+> favoritos equivalentes e iconos SVG (candidato de la PR #1435;
+> evidencia de navegador por delta en el informe)]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -134,18 +136,28 @@ reducido permanecen quietos. El perfil conserva la presentación por defecto.
 
 Resumen y Destacados forman dos columnas desde 1024 px, con Resumen de 280 px
 (320 px desde 1280 px), y se apilan en móvil. Sin favoritos, Resumen se queda
-solo. `LibraryHighlights` recibe los favoritos de la consulta actual, respeta
-su orden y muestra todos: primero uno en el panel principal, después el resto
-en una lista de miniaturas. No vuelve a consultarlos ni los cachea. «Añadir
-sesión» aparece solo en un libro o serie en curso con `activePassId`; la ficha
-siempre tiene enlace. El destacado usa contraste inverso con los tokens Paper.
+solo. `LibraryHighlights` recibe los favoritos de la consulta actual y muestra
+todos con la misma tarjeta, manteniendo su orden. Su rejilla tiene tres columnas
+en el rango admitido desde 320 px; las cubiertas miden 64 px bajo 360 px,
+80 px de 360 a 639 px y 96 px desde 640 px. El panel usa padding de 16/20/24 px
+en esos tramos, y separación horizontal de 12 px en móvil y 24 px desde 640 px.
+Cada tarjeta incluye título, subtítulo si existe, estado (incluido «Al día»)
+y «Ver ficha». Cada libro o serie en curso con `activePassId` recibe
+además «Registrar sesión»; el identificador no puede quedar vacío al recortar
+espacios.
+No hay una obra principal ni miniaturas subordinadas. «Ver ficha» usa borde
+ligero y ancho de contenido, con altura mínima 44 px; todas las tarjetas
+reservan el mismo bloque de acciones de 92 px. No se vuelve a consultar ni
+cachear el favorito. El contraste inverso Paper pertenece a todo el panel.
 
 La barra de Resumen sigue siendo un reparto de los estados reales; los
 segmentos cuadrados no cambian su significado a «avance hacia una meta».
 Herramientas y pestañas conservan sus destinos: Cuaderno, Retos y objetivos,
-Estadísticas y Todo / Colecciones / Sagas. Los dos primeros accesos reutilizan
-los iconos pixel existentes de notas y misiones a 32 px. Los filtros mantienen
-su propia barra sticky, sin envolverla en un contenedor que limite su recorrido.
+Estadísticas y Todo / Colecciones / Sagas. Los tres accesos usan el mismo
+`LibraryToolIcon`: SVG de código nativo `16 × 16` a 32 px, `crispEdges` y tokens
+Paper, con cuaderno de anillas, diana y barras. Son decorativos (`aria-hidden`)
+y sus enlaces conservan los mismos nombres y destinos. No consumen imágenes
+de mascota. Los filtros mantienen su propia barra sticky, sin envolverla en un contenedor que limite su recorrido.
 Las siluetas de carga siguen la composición de la vista.
 
 El usuario aprobó para estas piezas la excepción local a las reglas de
@@ -153,7 +165,8 @@ sombras, radios y píldoras. Los cantos cortos, el radio asimétrico del alta,
 los controles del destacado y el subrayado escalonado están acotados en CSS
 Modules; el sistema general sigue en
 [`DESIGN.md`](../DESIGN.md#excepción-local-biblioteca-material-2026-10-06).
-Contrato histórico: [spec](superpowers/specs/2026-10-06-biblioteca-material-design.md).
+Contrato corregido: [favoritos equivalentes e iconos](superpowers/specs/2026-10-06-biblioteca-destacados-equivalentes-design.md).
+La [spec inicial](superpowers/specs/2026-10-06-biblioteca-material-design.md) conserva el diseño anterior como historia.
 Evidencia y alcance de entrega: [verificación local](testing/2026-10-06-biblioteca-material.md).
 
 ## Reglas móviles y táctiles (fase 4)
