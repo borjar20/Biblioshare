@@ -1,6 +1,6 @@
 # Novedades — entrega
 
-> [En curso · 2026-10-06. Autorizados publicación, PR, merge solo con CI verde y lanzamiento en producción. Las correcciones R1 están en la PR; la primera CI del HEAD corregido detectó selectores E2E ambiguos, ya corregidos localmente. Falta la CI del nuevo HEAD y el despliegue. Producción sigue intacta.]
+> [En curso · 2026-10-06. Autorizados publicación, PR, merge solo con CI verde y lanzamiento en producción. El HEAD de código `22cd6fe` pasó CI; las cinco migraciones se aplicaron y verificaron en producción. El job sigue inactivo y la aplicación aún no está desplegada.]
 
 Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423).
 Revisión del cambio: [PR #1424](https://github.com/borjar20/Biblioshare/pull/1424).
@@ -11,9 +11,9 @@ límites se conservan en [el informe anterior](2026-10-06-novedades.md).
 La autorización explícita posterior cubre publicar los cambios, crear la PR, fusionarla
 solo con CI verde y ejecutar el lanzamiento de producción. Por instrucción del usuario,
 esta continuación se completa sin subagentes y con revisión propia; no se afirma que los
-fixes hayan recibido revisión independiente. La CI del HEAD final y la verificación del
-destino siguen siendo condiciones de cierre. Los informes R1 permanecen separados de
-las correcciones posteriores.
+fixes hayan recibido revisión independiente. La CI de `22cd6fe5356799244b667605981c405b4b26a706`
+pasó en todos los checks. Tras este cambio documental, se exigirá CI verde del nuevo HEAD
+antes de fusionar. Los informes R1 permanecen separados de las correcciones posteriores.
 
 ## Standards
 
@@ -84,6 +84,15 @@ añadidas y cero retiradas). La evidencia de este corte está en `.scratch/noved
 `dev-advisors-after-translation-year-r2.json`; la comparación está en
 `advisor-comparison-r2.txt`.
 
+En producción se aplicaron las cinco migraciones verificadas por SHA-256. El contrato
+metadata-only de posmigración pasa: cuatro tablas con RLS y grants por columna, siete
+políticas, catorce funciones con firma/ACL/configuración esperadas, y un único job horario
+`cultural-releases` inactivo. No hay filas de anuncios, suscripciones ni entregas; el
+sincronizador conserva dos filas técnicas. Los asesores mantienen exactamente las mismas
+138 identidades que el preflight, sin altas ni bajas. No se insertaron fixtures ni se
+leyeron valores de Vault. La aplicación y su endpoint aún deben verificarse tras el merge;
+no se ha activado ni ejecutado manualmente el job.
+
 ## Verificación local de los fixes
 
 - Vitest focal: 107/107 PASS en seis archivos; incluye actions, revalidación,
@@ -118,8 +127,9 @@ presentan como revisión independiente de los fixes.
 - [x] Revisión propia del diff, la migración, la revalidación, el formulario y los
   selectores corregidos. No se hizo revisión independiente, conforme a la instrucción
   de completar esta entrega sin subagentes.
-- [ ] Completar CI del HEAD final y contrastar la base antes de fusionar.
-- [ ] Aplicar y verificar en producción el esquema final ya comprobado en dev.
+- [x] CI verde del HEAD de código `22cd6fe5356799244b667605981c405b4b26a706`: `critical-flows`, `quality`, `empty-database`, CodeQL general/Actions/JS-TS y checks de Vercel.
+- [x] Aplicar y verificar en producción el esquema final ya comprobado en dev.
+- [ ] Volver a completar CI del HEAD documental y fusionar solo con todos los checks verdes.
 - [ ] Verificar despliegue real, endpoint protegido y sincronización real antes de activar el job.
 - [ ] Actualizar documentos canónicos y el ticket con los resultados y límites finales.
 

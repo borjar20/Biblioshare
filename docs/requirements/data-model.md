@@ -1,17 +1,17 @@
 # Modelo de datos
 
-> **Corrección aplicada y verificada en biblioshare-dev 2026-10-06 (Novedades; producción pendiente):**
+> **Corrección aplicada y verificada en biblioshare-dev y producción 2026-10-06 (Novedades):**
 > la quinta migración `20261006134245_cultural_release_translation_publication_year.sql`
 > sustituye solo `private.release_editorial_save`. Al publicar una primera traducción
 > sin obra enlazada, deja `books.published_year=NULL`: la fecha de la traducción no
 > acredita la primera publicación de la obra. La ruta `book` y el año de una obra
 > ya enlazada se conservan. Sin tablas, columnas, firmas ni grants nuevos.
 
-> **Delta 2026-10-06 (Novedades; aplicado y verificado en local y biblioshare-dev; no aplicado en producción):**
+> **Delta 2026-10-06 (Novedades; aplicado y verificado en local, biblioshare-dev y producción):**
 > cinco migraciones `20261006103313` … `20261006134245` añaden anuncios públicos,
 > consentimiento privado por lanzamiento, cola de aceptación de avisos y estado de revisión
 > de las fuentes. El trabajo programado nace **inactivo** hasta verificar la aplicación de
-> destino. No se infieren cambios de `passes`, ni se crean secretos. Ver §8quinquies.
+> destino y el despliegue de la aplicación. No se infieren cambios de `passes`, ni se crean secretos. Ver §8quinquies.
 
 > **Delta 2026-10-05 (lugares de Experiencias; verificado en dev y en producción 2026-10-05):**
 > migración `20261005100000_experience_places.sql`: tabla `places`,
@@ -5156,7 +5156,7 @@ comentarios de hilos privados por la ruta global de moderación (`has_min_role('
 (`update public.margin_notes set item_id = p_winner`), reemitida desde `20261001102000`. Ver §2
 y §2.2.
 
-## 8quinquies. Novedades culturales (2026-10-06; aplicado y verificado en local y biblioshare-dev; sin producción)
+## 8quinquies. Novedades culturales (2026-10-06; aplicado y verificado en local, biblioshare-dev y producción)
 
 Los anuncios públicos no son el estado de una biblioteca ni una segunda watchlist.
 `cultural_releases` conserva una instantánea que puede explorarse sin crear una fila de catálogo:
@@ -5186,7 +5186,7 @@ No llama al alta manual de la UI que también añade Pendiente. El sincronizador
 `release_upsert_tmdb` como `service_role`; una lista vacía o un anuncio que desaparece de la
 respuesta no cancela filas existentes.
 
-La quinta migración, aplicada y verificada en `biblioshare-dev` el 2026-10-06, corrige la
+La quinta migración, aplicada y verificada en `biblioshare-dev` y producción el 2026-10-06, corrige la
 creación de catálogo para `book_translation` sin `book_id`: `date_value` sigue describiendo
 el lanzamiento de la traducción, con su precisión completa, y `books.published_year`
 permanece NULL si no se conoce la primera publicación de la obra. Con `book_id` se conserva
@@ -5263,6 +5263,15 @@ y las pruebas SQL/concurrencia R4 son PASS; las cinco migraciones se aplicaron e
 con cuentas sintéticas y ROLLBACK. La lectura posterior verificó los grants por columna,
 RLS de cuatro tablas, siete políticas, catorce firmas/ACL/search_path y ausencia de overloads
 antiguos; el cron permanece inactivo. No quedaron anuncios, suscripciones o entregas de prueba.
+
+Corte de producción del 2026-10-06, después de aplicar las cinco migraciones revisadas:
+el comprobador de solo lectura confirma RLS y grants por columna en las cuatro tablas,
+siete políticas, catorce firmas y el trabajo `cultural-releases` único, horario e inactivo.
+No hay anuncios, suscripciones ni entregas; `release_sync_state` conserva sus dos filas
+técnicas de control. Las 138 identidades de los asesores de seguridad coinciden con la
+línea base previa (cero añadidas y cero retiradas). No se insertaron datos de prueba ni se
+consultó el valor de ningún secreto. Aún faltan el despliegue del código y una ejecución
+real del horario antes de activar el trabajo.
 
 Recibos: `.scratch/novedades/fresh-replay-r1.log`, `sql-contract-r4.log`,
 `sql-concurrency-r4.log`, `dev-apply-r1.json`, `dev-contract-r1.json` y `dev-metadata-r1.json`.
