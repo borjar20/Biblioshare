@@ -8,19 +8,21 @@
   de aplicación en producción; ambas migraciones ya aplicadas y permisos comprobados
   allí el 2026-09-15. Contrato en la spec del 2026-09-15.
 
-## Novedades — código local/dev; esquema de producción aplicado, entrega pendiente
+## Novedades — activa en producción; curación editorial inicial pendiente
 
 - [x] Primera versión en `codex/novedades`: calendario público, selección personal,
   edición de libros y avisos independientes. Código y esquema local/dev verificados
   el 2026-10-06; seis recorridos y revisión final de navegador R3 PASS. Evidencia:
   `docs/testing/2026-10-06-novedades.md`.
-- [ ] Integrar y desplegar el código, comprobar la ruta protegida y activar el scheduler
-  solo tras verificar el destino desplegado. Las cinco migraciones se aplicaron y
-  verificaron en producción el 2026-10-06; no hay anuncios, suscripciones ni entregas,
-  y el job sigue inactivo. Seguimiento:
-  [#1423](https://github.com/borjar20/Biblioshare/issues/1423), creada el 2026-10-06;
-  publicación, PR, merge con CI verde y despliegue quedaron autorizados explícitamente
-  después.
+- [x] Integrar y desplegar en producción mediante [PR #1424](https://github.com/borjar20/Biblioshare/pull/1424),
+  con CI verde. Las cinco migraciones, las rutas pública/protegida y el endpoint sin
+  credencial se verificaron; el job horario se activó después de esos gates.
+- [x] Observar una ejecución programada real: `run_id=59355` terminó correctamente el
+  2026-10-06 a las 17:00 UTC y publicó 124 anuncios de TMDB. No se insertaron fixtures.
+- [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.
+  Aún no hay filas editoriales, suscripciones ni entregas, así que no se ha probado una
+  notificación a usuarios. Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423),
+  que permanece abierta para este trabajo de contenido.
 
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
@@ -36,7 +38,7 @@
 > fichas Recursos y edición de asientos MTG #1006/#1008 verificadas con ocho E2E de build/start, a 390/1280 px, el 2026-10-04; CI del HEAD integrado exigida;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293;
 > notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05; esquema aplicado en producción el mismo día; código en la PR;
-> Novedades implementadas y verificadas en local/dev el 2026-10-06, incluidos seis recorridos y revisión de navegador R3 PASS; esquema aplicado/verificado en producción, pendiente despliegue de código y activación del scheduler]**
+> Novedades implementadas y verificadas en local/dev el 2026-10-06, incluidos seis recorridos y revisión de navegador R3 PASS; despliegue de código y esquema verificados en producción, scheduler activo y primera ejecución horaria correcta el 2026-10-06; queda pendiente la curación editorial inicial en #1423]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;

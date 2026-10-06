@@ -1,6 +1,6 @@
 # Novedades — entrega
 
-> [En curso · 2026-10-06. Autorizados publicación, PR, merge solo con CI verde y lanzamiento en producción. El HEAD de código `22cd6fe` pasó CI; las cinco migraciones se aplicaron y verificaron en producción. El job sigue inactivo y la aplicación aún no está desplegada.]
+> [Rollout técnico completo · 2026-10-06. PR #1424 se fusionó con CI verde; las cinco migraciones y el despliegue están verificados en producción. El job horario está activo y su primera ejecución real terminó correctamente. Queda pendiente la curación editorial inicial de libros y la revisión de fuentes, seguida en #1423.]
 
 Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423).
 Revisión del cambio: [PR #1424](https://github.com/borjar20/Biblioshare/pull/1424).
@@ -84,14 +84,31 @@ añadidas y cero retiradas). La evidencia de este corte está en `.scratch/noved
 `dev-advisors-after-translation-year-r2.json`; la comparación está en
 `advisor-comparison-r2.txt`.
 
-En producción se aplicaron las cinco migraciones verificadas por SHA-256. El contrato
-metadata-only de posmigración pasa: cuatro tablas con RLS y grants por columna, siete
-políticas, catorce funciones con firma/ACL/configuración esperadas, y un único job horario
-`cultural-releases` inactivo. No hay filas de anuncios, suscripciones ni entregas; el
-sincronizador conserva dos filas técnicas. Los asesores mantienen exactamente las mismas
-138 identidades que el preflight, sin altas ni bajas. No se insertaron fixtures ni se
-leyeron valores de Vault. La aplicación y su endpoint aún deben verificarse tras el merge;
-no se ha activado ni ejecutado manualmente el job.
+En el corte previo al despliegue se aplicaron las cinco migraciones verificadas por SHA-256.
+El contrato metadata-only de posmigración pasó: cuatro tablas con RLS y grants por columna,
+siete políticas, catorce funciones con firma/ACL/configuración esperadas, y un único job
+horario `cultural-releases` inactivo. Entonces no había filas de anuncios, suscripciones ni
+entregas; el sincronizador conservaba dos filas técnicas. Los asesores mantenían las mismas
+138 identidades que el preflight, sin altas ni bajas. No se insertaron fixtures ni se leyeron
+valores de Vault.
+
+### Posdespliegue y primera ejecución programada
+
+La PR [#1424](https://github.com/borjar20/Biblioshare/pull/1424) se fusionó con el HEAD
+`8d4fa69cccf12c5eb89205fabb67930bf8b4eba9` y CI verde; el commit de merge es
+`bd32b161d0bd8f6e7808950a9391b5318b20602b`. La producción quedó desplegada correctamente.
+Comprobaciones HTTP: `/novedades` respondió 200, `/admin/novedades` sin sesión redirigió
+al login (307) y `POST /api/cron/releases` sin credencial respondió 401.
+
+Después de esas comprobaciones se activó el único job horario `cultural-releases`
+(`0 * * * *`, UTC). Su primera ejecución real, `run_id=59355`, empezó a las 17:00:00 UTC
+y terminó `succeeded` a las 17:00:00. En la misma marca horaria hay dos respuestas 200 en
+los metadatos de `pg_net`; no se leyeron cuerpos ni cabeceras y no se asigna cada respuesta
+individualmente al run. La base contiene 124 filas `tmdb` con estado `published`, cero
+filas editoriales, cero suscripciones y cero entregas; el sincronizador conserva dos filas
+técnicas. El delta de asesores de seguridad sigue en cero (138 identidades antes y después).
+No se insertaron fixtures ni se leyeron valores de Vault. No se pudo verificar entrega a
+usuarios porque no hay suscripciones activas.
 
 ## Verificación local de los fixes
 
@@ -127,11 +144,12 @@ presentan como revisión independiente de los fixes.
 - [x] Revisión propia del diff, la migración, la revalidación, el formulario y los
   selectores corregidos. No se hizo revisión independiente, conforme a la instrucción
   de completar esta entrega sin subagentes.
-- [x] CI verde del HEAD de código `22cd6fe5356799244b667605981c405b4b26a706`: `critical-flows`, `quality`, `empty-database`, CodeQL general/Actions/JS-TS y checks de Vercel.
+- [x] CI verde de PR #1424 en `8d4fa69cccf12c5eb89205fabb67930bf8b4eba9`: `critical-flows`, `quality`, `empty-database`, CodeQL general/Actions/JS-TS y checks de Vercel; CI posterior al merge en `bd32b161d0bd8f6e7808950a9391b5318b20602b` también pasó.
 - [x] Aplicar y verificar en producción el esquema final ya comprobado en dev.
-- [ ] Volver a completar CI del HEAD documental y fusionar solo con todos los checks verdes.
-- [ ] Verificar despliegue real, endpoint protegido y sincronización real antes de activar el job.
-- [ ] Actualizar documentos canónicos y el ticket con los resultados y límites finales.
+- [x] CI verde del HEAD publicado, merge de PR #1424 y CI posterior al merge.
+- [x] Verificar despliegue, rutas pública/protegida, rechazo sin credencial y primera ejecución programada.
+- [x] Actualizar documentos canónicos y el ticket con resultados y límites finales.
+- [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes (#1423).
 
 El conector Vercel disponible corresponde a otro scope y devuelve 403 para
 `borjar20s-projects`; el CLI no está instalado. Esto limita sus metadatos y logs;
