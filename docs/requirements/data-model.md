@@ -1,7 +1,14 @@
 # Modelo de datos
 
+> **Corrección aplicada y verificada en biblioshare-dev 2026-10-06 (Novedades; producción pendiente):**
+> la quinta migración `20261006134245_cultural_release_translation_publication_year.sql`
+> sustituye solo `private.release_editorial_save`. Al publicar una primera traducción
+> sin obra enlazada, deja `books.published_year=NULL`: la fecha de la traducción no
+> acredita la primera publicación de la obra. La ruta `book` y el año de una obra
+> ya enlazada se conservan. Sin tablas, columnas, firmas ni grants nuevos.
+
 > **Delta 2026-10-06 (Novedades; aplicado y verificado en local y biblioshare-dev; no aplicado en producción):**
-> cuatro migraciones `20261006103313` … `20261006103544` añaden anuncios públicos,
+> cinco migraciones `20261006103313` … `20261006134245` añaden anuncios públicos,
 > consentimiento privado por lanzamiento, cola de aceptación de avisos y estado de revisión
 > de las fuentes. El trabajo programado nace **inactivo** hasta verificar la aplicación de
 > destino. No se infieren cambios de `passes`, ni se crean secretos. Ver §8quinquies.
@@ -5179,6 +5186,15 @@ No llama al alta manual de la UI que también añade Pendiente. El sincronizador
 `release_upsert_tmdb` como `service_role`; una lista vacía o un anuncio que desaparece de la
 respuesta no cancela filas existentes.
 
+La quinta migración, aplicada y verificada en `biblioshare-dev` el 2026-10-06, corrige la
+creación de catálogo para `book_translation` sin `book_id`: `date_value` sigue describiendo
+el lanzamiento de la traducción, con su precisión completa, y `books.published_year`
+permanece NULL si no se conoce la primera publicación de la obra. Con `book_id` se conserva
+el año original del catálogo; un anuncio ordinario `book` mantiene su año. El probe RED
+de dev observó 2027 donde debía haber NULL, sin crear pases, y confirmó las cuatro
+superficies de fixture a cero después de ROLLBACK. La prueba SQL cubre traducciones con
+día, mes o año, paso de borrador a publicación, obra enlazada y publicación ordinaria.
+
 Cada guardado editorial existente exige también `p_expected_updated_at`, el timestamp exacto
 del snapshot del formulario. El trigger lo adelanta con tiempo de escritura real y al menos
 un microsegundo frente al anterior, incluso dentro de una transacción. Este token detecta
@@ -5233,7 +5249,7 @@ transacción separada y un CHECK exige actor nulo para esos tipos, conservando l
 el endpoint limita TMDB a una revisión satisfactoria diaria. La activación requiere verificar
 el destino desplegado y su autorización, sin asumir que el Vault de dev apunta a dev.
 
-Fuentes reproducibles: las cuatro migraciones están en `supabase/bootstrap/manifest.json` y
+Fuentes reproducibles: las cinco migraciones están en `supabase/bootstrap/manifest.json` y
 `schema-baseline.sql` regenerado. `supabase/tests/cultural_releases.sql` comprueba roles reales,
 dos perfiles públicos, restricciones de fecha, generación/retirada, revisiones/cancelaciones,
 dedupe y publicación sin pases con rollback. `scripts/db/verify-release-concurrency.mjs`
@@ -5242,7 +5258,7 @@ También reproduce dos formularios editoriales simultáneos y observa en `pg_blo
 que una nueva adquisición de fuente espera al lote anterior, además de rechazar sus respuestas
 atrasadas sin rebobinar fechas ni marcar una revisión satisfactoria.
 Ambos forman parte de `scripts/db/verify.mjs`. El replay local vacío de las 302 migraciones
-y las pruebas SQL/concurrencia R4 son PASS; las cuatro migraciones se aplicaron en
+y las pruebas SQL/concurrencia R4 son PASS; las cinco migraciones se aplicaron en
 `biblioshare-dev` (`tyvzpuhxfwxrnkcpzxyg`) el 2026-10-06. El contrato SQL completo pasó en dev
 con cuentas sintéticas y ROLLBACK. La lectura posterior verificó los grants por columna,
 RLS de cuatro tablas, siete políticas, catorce firmas/ACL/search_path y ausencia de overloads

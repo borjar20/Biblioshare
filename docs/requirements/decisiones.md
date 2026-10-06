@@ -6773,3 +6773,13 @@ endpoint desplegado y el destino configurado: que el esquema sea dev no demuestr
 verificado en base local y biblioshare-dev; producción y publicación del código
 permanecen pendientes. Contrato y evidencia en `docs/design/2026-10-06-novedades-implementation.md`
 y `docs/testing/2026-10-06-novedades.md`.
+
+## 2026-10-06 — Novedades: separar el lanzamiento traducido de la primera publicación
+
+La fecha de `book_translation` describe cuándo aparece esa traducción; no acredita el
+año de primera publicación de la obra. Al crear catálogo desde una traducción sin obra
+enlazada, se guarda `books.published_year = NULL`. Con obra enlazada se conserva su año
+conocido, y el anuncio de modalidad `book` mantiene su comportamiento. La migración
+`20261006134245_cultural_release_translation_publication_year.sql` implementa esta
+corrección y su contrato SQL pasa en `biblioshare-dev`. La decisión evita atribuir a la
+obra un año que solo corresponde a una traducción. Producción permanece pendiente.

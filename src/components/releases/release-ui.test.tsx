@@ -155,6 +155,45 @@ describe("formulario editorial", () => {
     expect(mocks.save.mock.calls[0][0].title).toBe("Título editado");
     expect(mocks.save.mock.calls[0].slice(1)).toEqual([row.id, row.revision, row.updated_at]);
   });
+  it.each(["book", "book_translation"] as const)("editar un anuncio INT de %s conserva su identidad y permite corregir título, fecha y fuente", async (modality) => {
+    const row = releaseFixture({ item_type: "book", source: "editorial", modality, market: "INT", language: "es", status: "draft",
+      title: "Título inicial", date_precision: "month", date_value: "2027-03" });
+    render(provider(<EditorialForm initial={row} />));
+    const market = screen.getByLabelText("Mercado") as HTMLSelectElement;
+    const launchType = screen.getByLabelText("Tipo de lanzamiento") as HTMLSelectElement;
+    expect(market.disabled).toBe(true);
+    expect(launchType.disabled).toBe(true);
+    expect(market.value).toBe("INT");
+    expect(launchType.value).toBe(modality);
+    const form = screen.getByRole("button", { name: "Guardar revisión" }).closest("form") as HTMLFormElement;
+    const data = new FormData(form);
+    expect(data.getAll("market")).toEqual(["INT"]);
+    expect(data.getAll("modality")).toEqual([modality]);
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Título corregido" } });
+    fireEvent.change(screen.getByLabelText("Mes de lanzamiento"), { target: { value: "2027-05" } });
+    fireEvent.change(screen.getByLabelText("Enlace del anuncio editorial"), { target: { value: "https://editorial.example/correccion" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar revisión" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0]).toMatchObject({ market: "INT", modality, title: "Título corregido",
+      datePrecision: "month", dateValue: "2027-05", sourceUrl: "https://editorial.example/correccion" });
+    expect(mocks.save.mock.calls[0].slice(1)).toEqual([row.id, row.revision, row.updated_at]);
+    expect(mocks.pending).not.toHaveBeenCalled();
+  });
+  it("al crear permite elegir el mercado y el tipo del nuevo lanzamiento", async () => {
+    render(provider(<EditorialForm />));
+    const market = screen.getByLabelText("Mercado") as HTMLSelectElement;
+    const launchType = screen.getByLabelText("Tipo de lanzamiento") as HTMLSelectElement;
+    expect(market.disabled).toBe(false);
+    expect(launchType.disabled).toBe(false);
+    fireEvent.change(market, { target: { value: "INT" } });
+    fireEvent.change(launchType, { target: { value: "book_translation" } });
+    fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Primera traducción" } });
+    fireEvent.change(screen.getByLabelText("Nombre de la fuente"), { target: { value: "Editorial" } });
+    fireEvent.change(screen.getByLabelText("Enlace del anuncio editorial"), { target: { value: "https://editorial.example/traduccion" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar borrador" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0]).toMatchObject({ market: "INT", modality: "book_translation", language: "es", status: "draft" });
+  });
   it("los cambios sin guardar bloquean publicar o revisar otra instantánea", () => {
     render(provider(<EditorialEditor release={releaseFixture({ item_type: "book", modality: "book", source: "editorial", language: "es", status: "draft" })} />));
     fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Edición sin guardar" } });

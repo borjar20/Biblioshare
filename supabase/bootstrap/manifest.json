@@ -301,6 +301,7 @@
     "20261006103313_cultural_release_notification_types.sql",
     "20261006103332_cultural_releases_core.sql",
     "20261006103440_cultural_release_deliveries.sql",
-    "20261006103544_cultural_release_scheduler.sql"
+    "20261006103544_cultural_release_scheduler.sql",
+    "20261006134245_cultural_release_translation_publication_year.sql"
   ]
 }

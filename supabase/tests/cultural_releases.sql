@@ -192,6 +192,67 @@ do $$ declare published public.cultural_releases; begin
 end $$;
 reset role;
 
+-- Translation dates describe an edition/market; never invent the work's original year.
+-- Cover direct publication at every supported known precision, then draft -> published.
+select set_config('request.jwt.claim.sub',(select id::text from release_fixture where k='admin'),true);
+set local role authenticated;
+do $$ declare
+  input jsonb; published public.cultural_releases; draft public.cultural_releases;
+  original public.cultural_releases; linked public.cultural_releases; date_case record;
+begin
+  input:=jsonb_build_object('title','[TEST] translation original year','author','Test Author',
+    'modality','book_translation','market','ES','language','es','status','published',
+    'sourceName','Test Editorial','sourceUrl','https://example.invalid/translation-year');
+  for date_case in select * from (values
+    ('2027-10-12','day'),('2027-10','month'),('2027','year')
+  ) as wanted(date_value,date_precision) loop
+    select * into published from public.release_editorial_save(
+      input||jsonb_build_object('dateValue',date_case.date_value,'datePrecision',date_case.date_precision));
+    if published.book_id is null then raise exception 'FAIL translated book catalog missing'; end if;
+    if (select published_year from public.books where id=published.book_id) is not null then
+      raise exception 'FAIL translation date invented original publication year (% precision)',date_case.date_precision;
+    end if;
+    if published.date_value is distinct from date_case.date_value
+      or published.date_precision is distinct from date_case.date_precision then
+      raise exception 'FAIL translation announcement date changed';
+    end if;
+  end loop;
+
+  input:=input||jsonb_build_object('title','[TEST] draft translation original year',
+    'dateValue','2028-03','datePrecision','month','status','draft');
+  select * into draft from public.release_editorial_save(input);
+  if draft.book_id is not null then raise exception 'FAIL draft translation created catalog'; end if;
+  select * into published from public.release_editorial_save(input||jsonb_build_object('status','published'),
+    draft.id,draft.revision,draft.updated_at);
+  if published.book_id is null
+    or (select published_year from public.books where id=published.book_id) is not null then
+    raise exception 'FAIL draft publication invented translation original year';
+  end if;
+  if published.date_value<>'2028-03' or published.date_precision<>'month' then
+    raise exception 'FAIL draft translation date changed';
+  end if;
+
+  -- Control: the ordinary book route retains its original publication year.
+  select * into original from public.release_editorial_save(input||jsonb_build_object(
+    'title','[TEST] ordinary book original year','modality','book','status','published',
+    'dateValue','1998','datePrecision','year'));
+  if original.book_id is null
+    or (select published_year from public.books where id=original.book_id) is distinct from 1998 then
+    raise exception 'FAIL ordinary book publication year lost';
+  end if;
+
+  -- Linking a known work preserves its original year rather than replacing it with translation year.
+  select * into linked from public.release_editorial_save(input||jsonb_build_object(
+    'title','[TEST] linked translation original year','modality','book_translation','status','published',
+    'bookId',original.book_id,'dateValue','2030-05','datePrecision','month'));
+  if linked.book_id is distinct from original.book_id
+    or (select published_year from public.books where id=original.book_id) is distinct from 1998 then
+    raise exception 'FAIL linked translation changed original book year';
+  end if;
+end $$;
+reset role;
+
+
 -- Editorial updated_at is a separate all-write token; event revisions never become edit counters.
 select set_config('request.jwt.claim.sub',(select id::text from release_fixture where k='admin'),true);
 set local role authenticated;
@@ -253,5 +314,5 @@ do $$ begin
   if exists(select 1 from cron.job where jobname='cultural-releases' and active) then raise exception 'FAIL scheduler activated before deployment'; end if;
   if exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private') and p.proname in ('release_set_subscription','release_editorial_save','release_upsert_tmdb','claim_release_deliveries','accept_release_delivery','retry_release_delivery','release_delivery_is_current','release_date_valid','release_before_write','release_queue_change','release_invalidate_consent','dispatch_cultural_releases') and not ('search_path=""'=any(p.proconfig))) then raise exception 'FAIL release search_path'; end if;
 end $$;
-select 'PASS: release privacy, real roles, date constraints, opt-in generations, supersession, atomic dedupe, Madrid civil day and catalog-only publication';
+select 'PASS: release privacy, real roles, date constraints, opt-in generations, supersession, atomic dedupe, Madrid civil day, catalog-only publication and original work publication year';
 rollback;

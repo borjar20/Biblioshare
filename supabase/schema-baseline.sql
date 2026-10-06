@@ -1624,3 +1624,8 @@ commit;
 begin;
 \ir migrations/20261006103544_cultural_release_scheduler.sql
 commit;
+
+-- 20261006134245_cultural_release_translation_publication_year
+begin;
+\ir migrations/20261006134245_cultural_release_translation_publication_year.sql
+commit;

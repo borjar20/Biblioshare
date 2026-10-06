@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReleaseEditorialInput } from "@/lib/releases/types";
 
+vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({ user: vi.fn(), role: vi.fn(), pending: vi.fn(), subscription: vi.fn(),
   save: vi.fn(), publish: vi.fn(), review: vi.fn(), cancel: vi.fn(), revalidate: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ getCurrentUser: mocks.user }));
 vi.mock("@/lib/auth/roles", () => ({ getCurrentUserRole: mocks.role }));
-vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
+vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate, revalidateTag: vi.fn(), updateTag: vi.fn() }));
 vi.mock("@/lib/releases/mutations", () => ({ addReleaseToPending: mocks.pending, setReleaseSubscription: mocks.subscription,
   saveEditorialRelease: mocks.save, publishEditorialRelease: mocks.publish, markEditorialReleaseReviewed: mocks.review, cancelEditorialRelease: mocks.cancel }));
 

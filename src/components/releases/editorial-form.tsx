@@ -65,12 +65,18 @@ export function EditorialForm({ initial, onDirtyChange }: { initial?: CulturalRe
       {field("author", t("author"), <Input {...inputProps("author")} defaultValue={initial?.author ?? ""} maxLength={500} />)}
       {field("publisher", t("publisher"), <Input {...inputProps("publisher")} defaultValue={initial?.publisher ?? ""} maxLength={300} />)}
       {field("isbn", t("isbn"), <Input {...inputProps("isbn", true)} defaultValue={initial?.isbn ?? ""} inputMode="numeric" maxLength={30} />, t("isbnHint"))}
-      {field("modality", t("modality"), <Select {...inputProps("modality")} defaultValue={initial?.modality ?? "book"}>
-        <option value="book">{r("modalities.book")}</option><option value="book_translation">{r("modalities.book_translation")}</option>
-      </Select>)}
-      {field("market", t("market"), <Select {...inputProps("market")} defaultValue={initial?.market ?? "ES"}>
-        <option value="ES">{r("markets.ES")}</option><option value="INT">{r("markets.INT")}</option>
-      </Select>)}
+      {field("modality", t("modality"), <>
+        <Select {...inputProps("modality")} defaultValue={initial?.modality ?? "book"} disabled={Boolean(initial)}>
+          <option value="book">{r("modalities.book")}</option><option value="book_translation">{r("modalities.book_translation")}</option>
+        </Select>
+        {initial && <input type="hidden" name="modality" value={initial.modality} />}
+      </>)}
+      {field("market", t("market"), <>
+        <Select {...inputProps("market")} defaultValue={initial?.market ?? "ES"} disabled={Boolean(initial)}>
+          <option value="ES">{r("markets.ES")}</option><option value="INT">{r("markets.INT")}</option>
+        </Select>
+        {initial && <input type="hidden" name="market" value={initial.market} />}
+      </>)}
       {field("language", t("language"), <Input {...inputProps("language", true)} defaultValue={initial?.language ?? "es"} autoCapitalize="none" spellCheck={false} maxLength={10} required />, t("languageHint"))}
       {field("datePrecision", t("precision"), <Select {...inputProps("datePrecision")} value={precision} onChange={(event) => {
         setPrecision(event.target.value as ReleaseDatePrecision);
