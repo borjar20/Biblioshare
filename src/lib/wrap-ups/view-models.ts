@@ -120,7 +120,8 @@ export function closingCopy(
       ...(share.seriesProgress ? [share.seriesProgress.episodes == null
         ? t(`${K}.closing.seriesCount`, {count: share.seriesProgress.count})
         : t(`${K}.closing.seriesProgress`, {count: share.seriesProgress.count, episodes: share.seriesProgress.episodes})] : []),
-      ...(minutes > 0 ? noRuntimeLine(episodesWithoutRuntime, t) : []),
+      ...(minutes > 0 && episodesWithoutRuntime > 0 ? [t(share.seriesProgress?.episodes != null
+        ? `${K}.closing.episodesWithoutRuntime` : `${K}.time.episodesWithoutRuntime`, {count: episodesWithoutRuntime})] : []),
     ],
   };
 }
