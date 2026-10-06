@@ -12,7 +12,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { ItemType } from "@/lib/catalog/types";
 import { addDaysISO, toISODate } from "./dates";
 import type { ItemFilter } from "./filter";
-import { type StatsPeriod, periodBounds, previousBounds } from "./period";
+import { type StatsPeriod, isStatsWindow, periodBounds, previousBounds } from "./period";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -48,6 +48,7 @@ type SessionRow = { session_date: string; duration_minutes: number | null };
 
 /** Qué grano pide cada periodo. */
 export function granularityFor(period: StatsPeriod): PeriodActivity["granularity"] {
+  if (isStatsWindow(period)) return period.grain;
   if (period === "week" || period === "month") return "day";
   return typeof period === "number" ? "month" : "year";
 }
