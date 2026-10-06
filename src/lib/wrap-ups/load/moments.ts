@@ -47,6 +47,17 @@ type NoteRow = { kind: string; body: string; created_at: string; is_favorite: bo
 type MarginRow = { body: string; created_at: string; item_type: ItemType; item_id: string };
 type ExperienceRow = { id: string; title: string; starts_on: string | null; ends_on: string | null };
 
+/** Días distintos de la ventana cubiertos por alguna experiencia (starts_on..coalesce(ends_on, starts_on), recortado). */
+export function experienceDaysIn(xp: { starts_on: string | null; ends_on: string | null }[], w: { start: string; end: string }): number {
+  const days = new Set<string>();
+  for (const e of xp) {
+    if (!e.starts_on) continue;
+    const upto = !e.ends_on ? e.starts_on : e.ends_on < w.end ? e.ends_on : w.end;
+    for (let d = e.starts_on < w.start ? w.start : e.starts_on; d <= upto; d = addDaysISO(d, 1)) days.add(d);
+  }
+  return days.size;
+}
+
 export async function loadMoments(client: WrapUpClient, userId: string, w: WrapUpWindow, finished: ItemRef[]): Promise<MomentFacts> {
   const [rated, notes, margins, experiencesQ, joints, clubPosts] = await Promise.all([
     readAllRows<RatedPassRow>((from, to) => client.from("passes")
@@ -70,7 +81,10 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
     // Experiencias: pocas por usuario y ventana (no pasan del tope de filas).
     client.from("experiences").select("id, title, starts_on, ends_on")
       .eq("creator_id", userId).eq("audience", "profile").eq("state", "lived")
-      .gte("starts_on", w.start).lt("starts_on", w.endExclusive).order("starts_on", { ascending: false }),
+      // Solapa con la ventana: empieza antes de que acabe y termina dentro (o, sin fin, empieza dentro).
+      .lt("starts_on", w.endExclusive)
+      .or(`ends_on.gte.${w.start},and(ends_on.is.null,starts_on.gte.${w.start})`)
+      .order("starts_on", { ascending: false }),
     readAllRows<{ viewing_id: string }>((from, to) => client.from("joint_viewing_members")
       .select("viewing_id, joint_viewings!inner(watched_on)")
       .eq("user_id", userId).eq("status", "accepted")
@@ -91,13 +105,6 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
   ];
 
   const xp = (experiencesQ.data ?? []) as ExperienceRow[];
-  const xpDays = new Set<string>();
-  for (const e of xp) {
-    if (!e.starts_on) continue;
-    // Días entre starts_on y coalesce(ends_on, starts_on), recortados a la ventana.
-    const upto = !e.ends_on ? e.starts_on : e.ends_on < w.end ? e.ends_on : w.end;
-    for (let d = e.starts_on < w.start ? w.start : e.starts_on; d <= upto; d = addDaysISO(d, 1)) xpDays.add(d);
-  }
   const clubDays = new Set(clubPosts.map((p) => madridToday(new Date(p.created_at))));
 
   return {
@@ -105,6 +112,6 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
     phrase: pickPhrase(cands),
     experience: xp[0] ? { experienceId: xp[0].id, title: xp[0].title, date: xp[0].starts_on } : null,
     together: { jointViewings: joints.length, clubDays: clubDays.size },
-    experienceDays: xpDays.size,
+    experienceDays: experienceDaysIn(xp, w),
   };
 }

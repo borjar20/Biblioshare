@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadMoments, pickBestRated, pickPhrase } from "./moments";
+import { experienceDaysIn, loadMoments, pickBestRated, pickPhrase } from "./moments";
 import { wrapUpWindow } from "../windows";
 
 const a = { type: "book" as const, id: "a", title: "A", coverUrl: null, times: 1 };
@@ -51,14 +51,16 @@ describe("pickPhrase", () => {
 });
 
 function fakeClient(tables: Record<string, unknown[]>) {
-  const calls: { table: string; filters: string[] }[] = [];
+  const calls: { table: string; filters: string[]; select: string; ors: string[] }[] = [];
   const client = {
     from: (table: string) => {
-      const entry = { table, filters: [] as string[] };
+      const entry = { table, filters: [] as string[], select: "", ors: [] as string[] };
       calls.push(entry);
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "gte", "lt", "lte", "in", "not", "order", "limit", "is", "range"]) q[m] = () => q;
-      q.eq = (col: string) => { entry.filters.push(col); return q; };
+      for (const m of ["gte", "lt", "lte", "in", "not", "order", "limit", "is", "range"]) q[m] = () => q;
+      q.select = (cols: string) => { entry.select = cols; return q; };
+      q.or = (f: string) => { entry.ors.push(f); return q; };
+      q.eq = (col: string, v: unknown) => { entry.filters.push(`${col}=${String(v)}`); return q; };
       q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(res);
       return q;
     },
@@ -77,7 +79,25 @@ describe("loadMoments", () => {
       experiences: "creator_id", joint_viewing_members: "user_id", club_posts: "author_id",
     };
     expect(new Set(calls.map((c) => c.table))).toEqual(new Set(Object.keys(owner)));
-    for (const c of calls) expect(c.filters).toContain(owner[c.table]);
+    for (const c of calls) expect(c.filters).toContain(`${owner[c.table]}=u1`);
+  });
+
+  it("solo contenido público y sin spoiler: cada filtro de privacidad está", async () => {
+    const { client, calls } = fakeClient({});
+    await loadMoments(client as never, "u1", w, []);
+    const of = (t: string) => calls.find((c) => c.table === t)!;
+    expect(of("notes").filters).toEqual(expect.arrayContaining(["is_public=true", "is_spoiler=false"]));
+    expect(of("margin_notes").filters).toEqual(expect.arrayContaining(["audience=followers", "is_spoiler=false"]));
+    expect(of("experiences").filters).toEqual(expect.arrayContaining(["audience=profile", "state=lived"]));
+    expect(of("joint_viewing_members").select).toContain("joint_viewings!inner");
+    expect(of("joint_viewing_members").filters).toContain("status=accepted");
+  });
+
+  it("experiencias que solapan la ventana: filtro or de solape", async () => {
+    const { client, calls } = fakeClient({});
+    await loadMoments(client as never, "u1", w, []);
+    expect(calls.find((c) => c.table === "experiences")!.ors)
+      .toEqual([`ends_on.gte.${w.start},and(ends_on.is.null,starts_on.gte.${w.start})`]);
   });
 
   it("junta los hechos: frase, experiencia, días de experiencia y compañía", async () => {
@@ -95,5 +115,16 @@ describe("loadMoments", () => {
     expect(f.experience).toEqual({ experienceId: "e1", title: "Feria", date: "2026-09-03" });
     expect(f.experienceDays).toBe(3);
     expect(f.together).toEqual({ jointViewings: 2, clubDays: 2 });
+  });
+});
+
+describe("experienceDaysIn", () => {
+  it("empieza 3 días antes y acaba 2 días dentro: cuenta 2 días", () => {
+    const win = { start: "2026-09-01", end: "2026-09-30" };
+    expect(experienceDaysIn([{ starts_on: "2026-08-29", ends_on: "2026-09-02" }], win)).toBe(2);
+  });
+  it("sin fin cuenta solo el día de inicio; recorta por el final", () => {
+    const win = { start: "2026-09-01", end: "2026-09-30" };
+    expect(experienceDaysIn([{ starts_on: "2026-09-10", ends_on: null }, { starts_on: "2026-09-29", ends_on: "2026-10-05" }], win)).toBe(3);
   });
 });
