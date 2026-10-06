@@ -17,7 +17,7 @@ export function PosterCover({ item }: { item: ItemRef }) {
       ) : (
         <div className={styles.coverFallback}>
           <span className={styles.coverGlyph} aria-hidden="true">{TYPE_GLYPH[item.type]}</span>
-          <span>{item.title}</span>
+          <span className={styles.coverTitle}>{item.title}</span>
         </div>
       )}
     </li>

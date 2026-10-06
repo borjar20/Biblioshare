@@ -36,7 +36,7 @@ export function Poster({ model, palette, narrator, pet, showPet }: PosterProps) 
   const restLines = heroHeading ? lines.slice(1) : lines;
 
   return (
-    <article className={styles.poster} style={{ "--field": POSTER_FIELD[palette] } as CSSProperties} data-layout={layout}>
+    <article lang="es" className={styles.poster} style={{ "--field": POSTER_FIELD[palette] } as CSSProperties} data-layout={layout}>
       {eyebrowIsHeading
         ? <h2 className={styles.eyebrow}>{eyebrow}</h2>
         : <p className={styles.eyebrow}>{eyebrow}</p>}

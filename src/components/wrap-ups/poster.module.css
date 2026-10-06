@@ -37,8 +37,9 @@
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-pixel), ui-monospace, monospace;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  font-synthesis: none;
   line-height: 1.2;
   letter-spacing: 0.02em;
 }
@@ -59,7 +60,9 @@
   margin: 0;
   padding: 10px 18px 12px;
   font-family: var(--font-pixel), ui-monospace, monospace;
-  font-weight: 700;
+  /* Tiny5 solo tiene 400: sin negrita sintética, que emborrona el píxel. */
+  font-weight: 400;
+  font-synthesis: none;
   line-height: 0.95;
 }
 .figureValue {
@@ -68,7 +71,6 @@
 }
 .figureUnit {
   font-size: clamp(1.25rem, 6vw, 1.75rem);
-  font-weight: 500;
 }
 
 /* ---- Frases: fuente de la app ---- */
@@ -144,12 +146,21 @@
   gap: 6px;
   padding: 8px;
   overflow: hidden;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 1.2;
-  /* Corta por sílabas, no a mitad de letra («Severan|ce»). */
+  /* Corta por sílabas con guion (lang="es" en el póster), no a mitad de letra
+     («Severanc|e»): a 11 px un título de ~10 letras cabe entero en la carta y
+     break-word solo actúa como último recurso. Títulos largos: 5 líneas y «…». */
   overflow-wrap: break-word;
   hyphens: auto;
+}
+.coverTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
 }
 .coverGlyph { font-size: 1.25rem; line-height: 1; }
 
@@ -203,7 +214,7 @@
   font-weight: 800;
   line-height: 1;
 }
-.rankingLabel { font-size: 1.0625rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.rankingLabel { font-size: 1.0625rem; font-weight: 700; line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
 .rankingValue { font-size: 0.9375rem; font-weight: 500; }
 
 /* ---- Cita ---- */
@@ -221,6 +232,8 @@
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-pixel), ui-monospace, monospace;
+  font-weight: 400;
+  font-synthesis: none;
   font-size: 2.5rem;
   line-height: 1;
 }

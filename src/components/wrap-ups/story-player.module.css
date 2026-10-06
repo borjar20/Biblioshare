@@ -72,9 +72,9 @@
   gap: 12px;
 }
 .badge {
-  font-family: var(--font-pixel), ui-monospace, monospace;
   font-size: 0.8125rem;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .close {
   display: inline-flex;
@@ -84,7 +84,6 @@
   justify-content: center;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-pixel), ui-monospace, monospace;
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1;

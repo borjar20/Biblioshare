@@ -74,6 +74,8 @@ export function StoryPlayer({ wrapUp, models, onClose }: { wrapUp: OwnWrapUp; mo
   }, [go]);
 
   const clearHold = () => { if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null; };
+  // Un «mantener» a medias no debe disparar setPaused tras desmontar.
+  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
   const onPointerDown = () => {
     held.current = false;
     clearHold();

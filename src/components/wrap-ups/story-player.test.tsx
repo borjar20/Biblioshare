@@ -84,4 +84,18 @@ describe("StoryPlayer", () => {
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(screen.getByRole("button", { name: "Publicar en el feed" })).toBeTruthy();
   });
+  it("al desmontar no deja temporizadores vivos (mantener pulsado incluido)", () => {
+    vi.useFakeTimers();
+    const player = () => wrap(<StoryPlayer wrapUp={wrapUp} models={[model("A"), model("B")]} onClose={() => {}} />);
+    // Línea base: lo que deja React/next-intl por montaje, sin tocar nada.
+    let before = vi.getTimerCount();
+    player().unmount();
+    const baseline = vi.getTimerCount() - before;
+    before = vi.getTimerCount();
+    const { unmount } = player();
+    fireEvent.pointerDown(screen.getByTestId("story-tap-zone"), { clientX: 80 });
+    unmount();
+    expect(vi.getTimerCount() - before).toBe(baseline);
+    vi.useRealTimers();
+  });
 });
