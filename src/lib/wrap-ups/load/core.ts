@@ -4,8 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "@/lib/library/position";
-import { getHabits } from "@/lib/stats/get-habits";
-import { getSeriesDays } from "@/lib/stats/series-days";
+import { computeHabits, habitRows, seriesDayHabitRows, type HabitSessionRow } from "@/lib/stats/get-habits";
+import { groupSeriesDays, type WatchRow } from "@/lib/stats/series-days";
 import { addDaysISO } from "@/lib/stats/dates";
 import { chunkIds } from "@/lib/supabase/in-chunks";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
@@ -84,67 +84,96 @@ async function loadMeta(client: WrapUpClient, refs: { type: ItemType; id: string
   return out;
 }
 
-type SessionRow = { pass_id: string; duration_minutes: number | null; passes: { item_type: ItemType } };
+type SessionRow = HabitSessionRow & { pass_id: string };
+type Bounds = { start: string; endExclusive: string };
 
 /**
  * Los minutos de serie salen SOLO de episode_watches × runtime: las sesiones
  * antiguas de serie (progress_sessions) se excluyen para no contar dos veces.
  */
-export function sessionsForMinutes(rows: SessionRow[]) {
-  return rows.filter((x) => x.passes.item_type !== "series")
-    .map((x) => ({ item_type: x.passes.item_type, pass_id: x.pass_id, duration_minutes: x.duration_minutes }));
+export function sessionsForMinutes(rows: Pick<SessionRow, "pass_id" | "duration_minutes" | "passes">[]) {
+  const out: { item_type: ItemType; pass_id: string; duration_minutes: number | null }[] = [];
+  for (const x of rows) {
+    const t = (Array.isArray(x.passes) ? x.passes[0]?.item_type : x.passes?.item_type) as ItemType | undefined;
+    if (!t || t === "series") continue;
+    out.push({ item_type: t, pass_id: x.pass_id, duration_minutes: x.duration_minutes });
+  }
+  return out;
 }
 
-async function minutesIn(client: WrapUpClient, userId: string, b: { start: string; endExclusive: string }) {
-  const [s, m, e] = await Promise.all([
+/**
+ * Hechos puros de actividad a partir de las filas crudas de la ventana: los
+ * días de serie (groupSeriesDays) alimentan días activos y hábitos igual que en
+ * /estadisticas (habitRows).
+ */
+export function activityFacts(sessions: SessionRow[], watches: WatchRow[], finishedDays: string[]) {
+  const seriesDays = groupSeriesDays(watches);
+  const activeDays = [...new Set([
+    ...sessions.map((r) => r.session_date),
+    ...seriesDays.map((d) => d.day),
+    ...finishedDays,
+  ])].sort();
+  const habits = computeHabits(habitRows(sessions, seriesDayHabitRows(seriesDays)));
+  return { activeDays, habits };
+}
+
+async function loadWindowRows(client: WrapUpClient, userId: string, b: Bounds) {
+  const [sessions, watches] = await Promise.all([
     readAllRows<SessionRow>((from, to) => client.from("progress_sessions")
-      .select("pass_id, duration_minutes, passes!inner(item_type)")
+      .select("pass_id, session_date, duration_minutes, started_at, passes(item_type)")
       .eq("user_id", userId).gte("session_date", b.start).lt("session_date", b.endExclusive)
       .order("id").range(from, to) as unknown as PromiseLike<{ data: SessionRow[] | null; error?: unknown }>),
-    readAllRows<{ id: string; item_id: string }>((from, to) => client.from("passes").select("id, item_id")
-      .eq("user_id", userId).eq("item_type", "movie")
-      .eq("status", "completed").gte("finished_on", b.start).lt("finished_on", b.endExclusive)
-      .order("id").range(from, to)),
-    readAllRows<{ series_id: string }>((from, to) => client.from("episode_watches").select("series_id")
+    readAllRows<WatchRow>((from, to) => client.from("episode_watches")
+      .select("series_id, watched_on, created_at")
       .eq("user_id", userId).gte("watched_on", b.start).lt("watched_on", b.endExclusive)
       .order("id").range(from, to)),
   ]);
+  return { sessions, watches };
+}
+
+async function minutesIn(
+  client: WrapUpClient, userId: string, b: Bounds,
+  rows: { sessions: SessionRow[]; watches: WatchRow[] },
+) {
+  const m = await readAllRows<{ id: string; item_id: string }>((from, to) => client.from("passes").select("id, item_id")
+    .eq("user_id", userId).eq("item_type", "movie")
+    .eq("status", "completed").gte("finished_on", b.start).lt("finished_on", b.endExclusive)
+    .order("id").range(from, to));
   const meta = await loadMeta(client, [
     ...m.map((x) => ({ type: "movie" as const, id: x.item_id })),
-    ...e.map((x) => ({ type: "series" as const, id: x.series_id })),
+    ...rows.watches.map((x) => ({ type: "series" as const, id: x.series_id })),
   ]);
   return {
-    sessions: sessionsForMinutes(s),
+    sessions: sessionsForMinutes(rows.sessions),
     finishedMovies: m.map((x) => ({ pass_id: x.id, duration_minutes: meta.get(key("movie", x.item_id))?.duration ?? null })),
-    episodes: e.map((x) => ({ series_id: x.series_id, episode_runtime_minutes: meta.get(key("series", x.series_id))?.runtime ?? null })),
+    episodes: rows.watches.map((x) => ({ series_id: x.series_id, episode_runtime_minutes: meta.get(key("series", x.series_id))?.runtime ?? null })),
   };
 }
 
 export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWindow): Promise<CoreFacts> {
   const b = { start: w.start, endExclusive: w.endExclusive };
-  // getSeriesDays/getHabits están tipados para el cliente de servidor (cookies);
-  // aquí llega el de service role, que habla el mismo API.
-  const [now, prev, finishedRows, openQ, sessionRows, seriesDays, habits] = await Promise.all([
-    minutesIn(client, userId, b),
-    w.previous ? minutesIn(client, userId, w.previous) : Promise.resolve(null),
+  const [cur, prevRows, finishedRows, openQ] = await Promise.all([
+    loadWindowRows(client, userId, b),
+    w.previous ? loadWindowRows(client, userId, w.previous) : Promise.resolve(null),
     readAllRows<FinishedPassRow>((from, to) => client.from("passes").select("item_type, item_id, finished_on")
       .eq("user_id", userId).eq("status", "completed")
       .gte("finished_on", w.start).lt("finished_on", w.endExclusive).order("id").range(from, to) as unknown as PromiseLike<{ data: FinishedPassRow[] | null; error?: unknown }>),
     // Pases abiertos: pocos por usuario (no pasan del tope de filas).
     client.from("passes").select("id, item_type, item_id, position").eq("user_id", userId)
       .eq("status", "in_progress"),
-    readAllRows<{ session_date: string; pass_id: string }>((from, to) => client.from("progress_sessions")
-      .select("session_date, pass_id").eq("user_id", userId)
-      .gte("session_date", w.start).lt("session_date", w.endExclusive).order("id").range(from, to)),
-    getSeriesDays(client as never, userId, b),
-    getHabits(client as never, userId, w),
   ]);
   if (openQ.error) throw openQ.error;
+  const [now, prev] = await Promise.all([
+    minutesIn(client, userId, b, cur),
+    w.previous && prevRows ? minutesIn(client, userId, w.previous, prevRows) : Promise.resolve(null),
+  ]);
 
-  // «En marcha» = pases abiertos que se tocaron en la ventana (con sesión).
-  const touched = new Set(sessionRows.map((r) => r.pass_id));
+  // En marcha = pases abiertos tocados en la ventana: con una sesión, o (series)
+  // con algún episodio visto de esa serie.
+  const touched = new Set(cur.sessions.map((r) => r.pass_id));
+  const watchedSeries = new Set(cur.watches.map((r) => r.series_id));
   const openRows = ((openQ.data ?? []) as { id: string; item_type: ItemType; item_id: string; position: unknown }[])
-    .filter((r) => touched.has(r.id));
+    .filter((r) => touched.has(r.id) || (r.item_type === "series" && watchedSeries.has(r.item_id)));
 
   const meta = await loadMeta(client, [
     ...finishedRows.map((r) => ({ type: r.item_type, id: r.item_id })),
@@ -161,11 +190,7 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
     return [{ type: r.item_type, id: r.item_id, title: m.title, coverUrl: m.coverUrl, times: 1, percent }];
   });
 
-  const activeDays = [...new Set([
-    ...sessionRows.map((r) => r.session_date),
-    ...seriesDays.map((d) => d.day),
-    ...finishedRows.map((r) => r.finished_on),
-  ])].sort();
+  const { activeDays, habits } = activityFacts(cur.sessions, cur.watches, finishedRows.map((r) => r.finished_on));
 
   const previousMinutes = prev ? (() => {
     const t = computeTime({ ...prev, previousMinutes: null });

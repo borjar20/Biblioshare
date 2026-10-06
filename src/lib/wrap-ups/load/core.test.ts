@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collapseFinished, loadCore, sessionsForMinutes, streakWithin, topGenres } from "./core";
+import { activityFacts, collapseFinished, loadCore, sessionsForMinutes, streakWithin, topGenres } from "./core";
 import { wrapUpWindow } from "../windows";
 
 describe("collapseFinished", () => {
@@ -59,7 +59,51 @@ describe("sessionsForMinutes", () => {
   });
 });
 
+describe("activityFacts", () => {
+  it("los días de serie alimentan días activos y hábitos", () => {
+    const sessions = [
+      { pass_id: "p1", session_date: "2026-09-01", duration_minutes: 30, started_at: "2026-09-01T19:00:00Z", passes: { item_type: "book" } },
+      // sesión antigua de serie: no cuenta en hábitos (ya es día de serie)
+      { pass_id: "p2", session_date: "2026-09-05", duration_minutes: 20, started_at: "2026-09-05T08:00:00Z", passes: { item_type: "series" } },
+    ];
+    const watches = [
+      { series_id: "s1", watched_on: "2026-09-02", created_at: "2026-09-02T21:00:00Z" },
+      { series_id: "s1", watched_on: "2026-09-02", created_at: "2026-09-02T21:40:00Z" },
+    ];
+    const { activeDays, habits } = activityFacts(sessions, watches, ["2026-09-03"]);
+    expect(activeDays).toEqual(["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-05"]);
+    expect(habits.sessions).toBe(2); // 1 libro + 1 día de serie (la sesión de serie antigua se descarta)
+  });
+});
+
 describe("loadCore", () => {
+  it("lista una serie abierta con un episodio visto en la ventana", async () => {
+    const tables: Record<string, unknown[]> = {
+      passes: [{ id: "ps1", item_type: "series", item_id: "s1", position: null, status: "in_progress" }],
+      episode_watches: [{ series_id: "s1", watched_on: "2026-09-10", created_at: "2026-09-10T20:00:00Z" }],
+      series: [{ id: "s1", title: "Serie", cover_url: null, genres: null, episode_runtime_minutes: 40 }],
+    };
+    const client = {
+      from: (table: string) => {
+        const filters: Record<string, unknown> = {};
+        const q: Record<string, unknown> = {};
+        for (const m of ["select", "gte", "lt", "in", "order", "range", "not", "is", "lte", "limit"]) q[m] = () => q;
+        q.eq = (c: string, v: unknown) => { filters[c] = v; return q; };
+        q.then = (res: (v: unknown) => unknown) => {
+          let rows = tables[table] ?? [];
+          if (table === "passes") rows = rows.filter((r) => (r as { status: string }).status === filters.status);
+          return Promise.resolve({ data: rows, error: null }).then(res);
+        };
+        return q;
+      },
+    };
+    const facts = await loadCore(client as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
+    expect(facts.inProgress).toEqual([
+      { type: "series", id: "s1", title: "Serie", coverUrl: null, times: 1, percent: null },
+    ]);
+    expect(facts.time.minutes.series).toBe(40);
+  });
+
   it("toda consulta por usuario filtra por user_id", async () => {
     const { client, calls } = recordingClient();
     await loadCore(client as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
