@@ -73,17 +73,32 @@ export async function petPng(pet: OwnPet | null): Promise<Sprite | null> {
   }
 }
 
-// Orígenes de portada válidos (los de images.remotePatterns de next.config.ts).
-// El servidor no pide URLs arbitrarias que el usuario haya podido guardar.
+// Orígenes de portada válidos: los de images.remotePatterns de next.config.ts,
+// pero Supabase SOLO con el host de ESTE proyecto (un `*.supabase.co` aceptaría
+// el bucket público de cualquiera). El servidor no pide URLs arbitrarias que el
+// usuario haya podido guardar (SSRF), ni tampoco a donde le redirijan: cada salto
+// se vuelve a validar. OpenLibrary redirige SIEMPRE (comprobado con curl,
+// 2026-10-06): covers.openlibrary.org → archive.org/download/… → iaNNNNNN.us.archive.org
+// (nodo de datos del Internet Archive); por eso esos dos, y solo esos.
 const COVER_HOSTS = [/^books\.google\.com$/, /^books\.googleusercontent\.com$/, /^image\.tmdb\.org$/,
-  /^covers\.openlibrary\.org$/, /^[a-z0-9-]+\.supabase\.co$/];
+  /^covers\.openlibrary\.org$/, /^archive\.org$/, /^ia\d+\.us\.archive\.org$/];
 const MAX_COVER_BYTES = 4 * 1024 * 1024;
+const MAX_REDIRECTS = 3;
 export const COVER_TIMEOUT_MS = 3000;
+
+function ownSupabaseHost(): string | null {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname || null;
+  } catch {
+    return null;
+  }
+}
 
 export function isAllowedCoverUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === "https:" && COVER_HOSTS.some((re) => re.test(u.hostname));
+    if (u.protocol !== "https:") return false;
+    return u.hostname === ownSupabaseHost() || COVER_HOSTS.some((re) => re.test(u.hostname));
   } catch {
     return false;
   }
@@ -93,7 +108,17 @@ export function isAllowedCoverUrl(url: string): boolean {
 export async function coverJpeg(item: ItemRef, w: number, h: number, fetchImpl: typeof fetch = fetch): Promise<string | null> {
   if (!item.coverUrl || !isAllowedCoverUrl(item.coverUrl)) return null;
   try {
-    const res = await fetchImpl(item.coverUrl, { signal: AbortSignal.timeout(COVER_TIMEOUT_MS) });
+    // Un solo plazo para toda la cadena de saltos.
+    const signal = AbortSignal.timeout(COVER_TIMEOUT_MS);
+    let url = item.coverUrl;
+    let res = await fetchImpl(url, { signal, redirect: "manual" });
+    for (let hop = 0; res.status >= 300 && res.status < 400; hop++) {
+      const location = res.headers.get("location");
+      if (hop >= MAX_REDIRECTS || !location) return null;
+      url = new URL(location, url).toString();
+      if (!isAllowedCoverUrl(url)) return null;
+      res = await fetchImpl(url, { signal, redirect: "manual" });
+    }
     if (!res.ok || !(res.headers.get("content-type") ?? "").startsWith("image/")) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.byteLength === 0 || buf.byteLength > MAX_COVER_BYTES) return null;

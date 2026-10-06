@@ -41,7 +41,11 @@ const okImage = async () => {
 describe("portadas", () => {
   it("solo https y orígenes conocidos", () => {
     expect(isAllowedCoverUrl("https://image.tmdb.org/t/p/w342/x.jpg")).toBe(true);
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://abc.supabase.co");
     expect(isAllowedCoverUrl("https://abc.supabase.co/storage/v1/object/public/x.png")).toBe(true);
+    // Otro proyecto de Supabase (cualquiera puede crear uno y subir lo que quiera): fuera.
+    expect(isAllowedCoverUrl("https://otro.supabase.co/storage/v1/object/public/x.png")).toBe(false);
+    vi.unstubAllEnvs();
     expect(isAllowedCoverUrl("http://image.tmdb.org/x.jpg")).toBe(false);
     expect(isAllowedCoverUrl("https://169.254.169.254/latest")).toBe(false);
     expect(isAllowedCoverUrl("no es url")).toBe(false);
@@ -70,6 +74,49 @@ describe("portadas", () => {
     expect(await coverJpeg(item(url), 20, 30, html)).toBeNull();
     const garbage = vi.fn(async () => new Response("xx", { headers: { "content-type": "image/png" } })) as unknown as typeof fetch;
     expect(await coverJpeg(item(url), 20, 30, garbage)).toBeNull();
+  });
+
+  it("pide sin seguir redirecciones solo (redirect: manual)", async () => {
+    const f = vi.fn(okImage);
+    await coverJpeg(item("https://image.tmdb.org/x.jpg"), 20, 30, f as unknown as typeof fetch);
+    expect((f.mock.calls[0] as unknown as [string, RequestInit])[1].redirect).toBe("manual");
+  });
+
+  const redirect = (location: string) => new Response(null, { status: 302, headers: { location } });
+
+  it("302 a un origen no permitido → null, y ese origen nunca se pide", async () => {
+    const f = vi.fn(async (url: string) => (url.startsWith("https://covers.openlibrary.org") ? redirect("https://169.254.169.254/latest/meta-data") : okImage()));
+    expect(await coverJpeg(item("https://covers.openlibrary.org/b/id/1-M.jpg"), 20, 30, f as unknown as typeof fetch)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it("302 a http (aunque sea un host permitido) → null", async () => {
+    const f = vi.fn(async () => redirect("http://archive.org/x.jpg"));
+    expect(await coverJpeg(item("https://covers.openlibrary.org/b/id/1-M.jpg"), 20, 30, f as unknown as typeof fetch)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it("OpenLibrary → archive.org → nodo ia*.us.archive.org: se sigue y pinta la portada", async () => {
+    const f = vi.fn(async (url: string) => {
+      if (url.startsWith("https://covers.openlibrary.org")) return redirect("https://archive.org/download/m/x.zip/1-M.jpg");
+      if (url.startsWith("https://archive.org/")) return redirect("https://ia800505.us.archive.org/view_archive.php?file=1-M.jpg");
+      return okImage();
+    });
+    expect(await coverJpeg(item("https://covers.openlibrary.org/b/id/1-M.jpg"), 20, 30, f as unknown as typeof fetch)).toMatch(/^data:image\/jpeg/);
+    expect(f).toHaveBeenCalledTimes(3);
+  });
+
+  it("Location relativa se resuelve contra la URL actual", async () => {
+    const f = vi.fn(async (url: string) => (url.endsWith("/a.jpg") ? redirect("/b.jpg") : okImage()));
+    expect(await coverJpeg(item("https://image.tmdb.org/a.jpg"), 20, 30, f as unknown as typeof fetch)).not.toBeNull();
+    expect((f.mock.calls[1] as unknown as [string])[0]).toBe("https://image.tmdb.org/b.jpg");
+  });
+
+  it("más de 3 saltos → null", async () => {
+    let n = 0;
+    const f = vi.fn(async () => redirect(`https://image.tmdb.org/${++n}.jpg`));
+    expect(await coverJpeg(item("https://image.tmdb.org/0.jpg"), 20, 30, f as unknown as typeof fetch)).toBeNull();
+    expect(f).toHaveBeenCalledTimes(4);
   });
 
   it("sin portada u origen no permitido: ni siquiera pide", async () => {

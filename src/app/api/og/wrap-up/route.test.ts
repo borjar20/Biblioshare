@@ -78,6 +78,13 @@ describe("GET /api/og/wrap-up/share/[id]", () => {
     expect(db.eqs).toEqual([["id", SHARE_ID]]);
   });
 
+  it("error de PostgREST → 500 plano, sin filtrar el error", async () => {
+    db.error = { code: "XX000" };
+    const res = await shareReq(SHARE_ID);
+    expect(res.status).toBe(500);
+    expect(await res.text()).not.toContain("XX000");
+  });
+
   it("404 con un id que no es uuid, sin consultar", async () => {
     expect((await shareReq("nope")).status).toBe(404);
     expect(db.eqs).toEqual([]);
@@ -88,6 +95,7 @@ describe("GET /api/og/wrap-up/share/[id]", () => {
     const res = await shareReq(SHARE_ID);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("image/png");
-    expect(res.headers.get("cache-control")).toMatch(/^private/);
+    // no-cache: tras despublicar, el navegador no puede seguir enseñándola sin revalidar.
+    expect(res.headers.get("cache-control")).toBe("private, no-cache");
   }, 30_000);
 });
