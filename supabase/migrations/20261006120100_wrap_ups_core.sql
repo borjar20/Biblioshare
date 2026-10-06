@@ -77,16 +77,27 @@ create trigger wrap_ups_cleanup_share after update or delete on public.wrap_ups
   for each row execute function private.wrap_up_cleanup_share();
 
 -- Un post wrap_up solo nace por publish_wrap_up (marcador de operación, patrón
--- de private.guard_experience_post).
+-- de private.guard_experience_post). Cubre cualquier marca wrap_up (kind, anchor
+-- o source), no solo el kind: un post «thought» colgado de un share no lo
+-- limpiaría ningún trigger. En UPDATE las marcas no se ponen, quitan ni redirigen.
+-- SECURITY INVOKER: solo lee NEW/OLD y un GUC.
 create or replace function private.guard_wrap_up_post()
-returns trigger language plpgsql security definer set search_path to '' as $$
+returns trigger language plpgsql security invoker set search_path to '' as $$
 begin
-  if new.kind = 'wrap_up' and coalesce(current_setting('biblioshare.wrap_up_publish', true), '') <> 'on' then
-    raise exception 'wrap_up posts are created only by publish_wrap_up';
+  if tg_op = 'INSERT' then
+    if (new.kind = 'wrap_up' or new.anchor_type = 'wrap_up' or new.source_kind = 'wrap_up_share')
+       and coalesce(current_setting('biblioshare.wrap_up_publish', true), '') <> 'on' then
+      raise exception 'wrap_up posts are created only by publish_wrap_up' using errcode = '42501';
+    end if;
+  elsif (old.kind = 'wrap_up' or old.anchor_type = 'wrap_up' or old.source_kind = 'wrap_up_share'
+         or new.kind = 'wrap_up' or new.anchor_type = 'wrap_up' or new.source_kind = 'wrap_up_share')
+        and (new.kind, new.anchor_type, new.anchor_id, new.source_kind, new.source_id)
+            is distinct from (old.kind, old.anchor_type, old.anchor_id, old.source_kind, old.source_id) then
+    raise exception 'wrap_up posts are created only by publish_wrap_up' using errcode = '42501';
   end if;
   return new;
 end $$;
-create trigger posts_guard_wrap_up before insert on public.posts
+create trigger posts_guard_wrap_up before insert or update on public.posts
   for each row execute function private.guard_wrap_up_post();
 
 create or replace function public.mark_wrap_up_seen(p_kind public.wrap_up_kind)
@@ -107,6 +118,9 @@ begin
   select * into v_row from public.wrap_ups where user_id = v_uid and kind = p_kind for update;
   if not found then raise exception 'wrap_up_not_found'; end if;
   if v_row.published_post_id is not null then return v_row.published_post_id; end if;
+  if coalesce(jsonb_typeof(v_row.payload->'share'), 'null') = 'null' then
+    raise exception 'wrap_up_share_missing';
+  end if;
 
   insert into public.wrap_up_shares (user_id, kind, period_start, period_end, summary)
   values (v_uid, p_kind, v_row.period_start, v_row.period_end, v_row.payload->'share')
@@ -172,23 +186,3 @@ begin
   if exists (select 1 from cron.job where jobname = 'wrap-ups') then perform cron.unschedule('wrap-ups'); end if;
   perform cron.schedule('wrap-ups', '0 * * * *', $job$ select private.dispatch_wrap_ups(); $job$);
 end $$;
-
--- #1188: `posts insert own` rechaza cualquier source_kind sin rama. publish_wrap_up
--- es security definer (su dueño ignora RLS), pero la policy debe describir igual
--- la regla «la fuente es del autor» para el tipo nuevo. Recreada entera desde
--- pg_policies (dev, 2026-10-06) + la rama wrap_up_share.
-alter policy "posts insert own" on public.posts
-  with check (
-    (select auth.uid()) = author_id
-    and (
-      source_id is null
-      or (source_kind = 'pass'
-          and exists (select 1 from public.passes s where s.id = source_id and s.user_id = author_id))
-      or (source_kind = 'progress_session'
-          and exists (select 1 from public.progress_sessions s where s.id = source_id and s.user_id = author_id))
-      or (source_kind = 'episode_watch'
-          and exists (select 1 from public.episode_watches s where s.id = source_id and s.user_id = author_id))
-      or (source_kind = 'wrap_up_share'
-          and exists (select 1 from public.wrap_up_shares s where s.id = source_id and s.user_id = author_id))
-    )
-  );
