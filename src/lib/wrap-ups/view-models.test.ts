@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 import messages from "../../../messages/es.json";
 import { narratorLine } from "./narrator-copy";
-import { formatHours, periodLabel, posterFor } from "./view-models";
+import { closingCopy, formatHours, periodLabel, posterFor, sharedPeriodLabel } from "./view-models";
 import type { ItemRef, NarratorVariant, Story, WrapUpPayload } from "./types";
 
 const t = (k: string, v?: Record<string, string | number>) => (v ? `${k}|${JSON.stringify(v)}` : k);
@@ -14,6 +14,23 @@ describe("periodLabel", () => {
   it("mes", () => expect(periodLabel({ ...base, kind: "month", periodStart: "2026-09-01", periodEnd: "2026-09-30" })).toBe("Septiembre 2026"));
   it("año declara el corte", () => expect(periodLabel({ ...base, kind: "year", periodStart: "2026-01-01", periodEnd: "2026-12-25" })).toBe("Tu 2026 · hasta el 25 de diciembre"));
   it("año completo no declara corte", () => expect(periodLabel({ ...base, kind: "year", periodStart: "2026-01-01", periodEnd: "2026-12-31" })).toBe("Tu 2026"));
+});
+
+describe("sharedPeriodLabel (tarjeta del feed: no se dirige a quien lee)", () => {
+  it("semana igual que periodLabel", () => expect(sharedPeriodLabel(base)).toBe("Semana del 29 sep al 5 oct"));
+  it("año sin «Tu»", () => expect(sharedPeriodLabel({ ...base, kind: "year", periodStart: "2026-01-01", periodEnd: "2026-12-31" })).toBe("2026"));
+  it("año con corte sin «Tu»", () => expect(sharedPeriodLabel({ ...base, kind: "year", periodStart: "2026-01-01", periodEnd: "2026-10-06" })).toBe("2026 · hasta el 6 de octubre"));
+});
+
+describe("closingCopy", () => {
+  it("cifra medida y obras terminadas", () => {
+    const c = closingCopy({ minutes: 372, episodesWithoutRuntime: 0, finished: 2 }, t);
+    expect(c.figure).toEqual({ value: "6,2", unit: "h" });
+    expect(c.lines).toEqual(['wrapUps.stories.closing.finished|{"count":2}']);
+  });
+  it("cero sin medir no es una cifra", () => {
+    expect(closingCopy({ minutes: 0, episodesWithoutRuntime: 0, finished: 0 }, t).figure).toBeUndefined();
+  });
 });
 
 describe("formatHours", () => {

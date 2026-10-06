@@ -50,6 +50,19 @@ export function periodLabel(
   return `Tu ${year} · hasta el ${day(p.periodEnd)} de ${monthLong(p.periodEnd, locale)}`;
 }
 
+/**
+ * Rótulo del periodo para quien NO es el dueño (tarjeta del feed): el del año
+ * se dirige al lector («Tu 2026»), así que ahí se queda en «2026». Semana y mes
+ * ya son neutros.
+ */
+export function sharedPeriodLabel(
+  p: Pick<WrapUpPayload, "kind" | "periodStart" | "periodEnd">,
+  locale = LOCALE,
+): string {
+  const label = periodLabel(p, locale);
+  return p.kind === "year" ? label.replace(/^Tu /, "") : label;
+}
+
 export { formatHours };
 
 const dur = (minutes: number) => {
@@ -84,6 +97,26 @@ function deltaLine(total: number, previous: number | null, kind: WrapUpPayload["
   return diff > 0
     ? [t(`${K}.time.delta`, { sign: "+", value, unit, period: kind })]
     : [t(`${K}.time.deltaDown`, { value, unit, period: kind })];
+}
+
+/**
+ * Cifra y líneas del cierre a partir del resumen PÚBLICO: las comparten la story
+ * de cierre, la imagen 9:16 y la tarjeta del feed (mismas reglas de cero honesto).
+ */
+export function closingCopy(
+  share: Pick<WrapUpPayload["share"], "minutes" | "episodesWithoutRuntime" | "finished">,
+  t: T,
+): { figure?: { value: string; unit: string }; lines: string[] } {
+  const { minutes, episodesWithoutRuntime } = share;
+  const tf = timeFigure(minutes, episodesWithoutRuntime, t);
+  return {
+    figure: tf.figure,
+    lines: [
+      ...tf.lines,
+      t(`${K}.closing.finished`, { count: share.finished }),
+      ...(minutes > 0 ? noRuntimeLine(episodesWithoutRuntime, t) : []),
+    ],
+  };
 }
 
 export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterModel {
@@ -262,20 +295,8 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
         ],
       });
 
-    case "closing": {
-      const { minutes, episodesWithoutRuntime } = payload.share;
-      const tf = timeFigure(minutes, episodesWithoutRuntime, t);
-      return make("closing", {
-        layout: "closing",
-        figure: tf.figure,
-        covers: payload.share.covers,
-        lines: [
-          ...tf.lines,
-          t(`${K}.closing.finished`, { count: payload.share.finished }),
-          ...(minutes > 0 ? noRuntimeLine(episodesWithoutRuntime, t) : []),
-        ],
-      });
-    }
+    case "closing":
+      return make("closing", { layout: "closing", ...closingCopy(payload.share, t), covers: payload.share.covers });
 
     default: {
       const _never: never = story;

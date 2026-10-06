@@ -33,6 +33,7 @@ export type FakeFeedSource =
   | "posts"
   | "experiences"
   | "experience_moment_reviews"
+  | "wrap_up_shares"
   | "follows"
   | "profile_identities"
   | "books"
@@ -65,6 +66,11 @@ export type FakeFeedData = {
    * no poniéndola.
    */
   experienceMomentReviews?: FakeRow[];
+  /**
+   * Resúmenes públicos de wrap-ups publicados (posts `wrap_up`). Se aplica
+   * `.in()`: la RLS (`can_view_profile`) que oculta uno se modela no poniéndolo.
+   */
+  wrapUpShares?: FakeRow[];
   /** Filas de `club_activities` (la segunda fuente, columna `created_at`). */
   clubActivities?: FakeRow[];
   /** Filas fuente para display de posts `finished`, por `id` = source_id del post. */
@@ -171,6 +177,7 @@ function sourceOf(table: string): FakeFeedSource {
     case "posts":
     case "experiences":
     case "experience_moment_reviews":
+    case "wrap_up_shares":
     case "follows":
     case "profile_identities":
     case "books":
@@ -265,6 +272,8 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
         return rows.experiences ?? [];
       case "experience_moment_reviews":
         return rows.experienceMomentReviews ?? [];
+      case "wrap_up_shares":
+        return rows.wrapUpShares ?? [];
       case "interaction_targets":
         return interactionTargets;
       case "passes":
@@ -359,7 +368,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       for (const [column, value] of eqs) (eqFilters[source] ??= {})[column] = value;
 
       let result = dataFor(source);
-      if (source === "joint_viewings" || source === "joint_viewing_members" || source === "experience_moment_reviews") {
+      if (source === "joint_viewings" || source === "joint_viewing_members" || source === "experience_moment_reviews" || source === "wrap_up_shares") {
         for (const [column, values] of ins) result = result.filter((r) => values.map(text).includes(text(r[column])));
         for (const [column, value] of eqs) result = result.filter((r) => text(r[column]) === text(value));
       }

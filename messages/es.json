@@ -4385,6 +4385,12 @@
       "dayActive": "con actividad",
       "dayInactive": "sin actividad",
       "loading": "Preparando tu crónica"
+    },
+    "feed": {
+      "title": "{kind, select, week {Su semana en Biblioshare} month {Su mes en Biblioshare} other {Su año en Biblioshare}}",
+      "openImage": "Ver la imagen de la crónica",
+      "imageAlt": "Crónica de {name}: {period}",
+      "close": "Cerrar"
     }
   }
 }

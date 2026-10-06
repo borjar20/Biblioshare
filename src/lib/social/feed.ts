@@ -7,6 +7,8 @@ import { passPercent } from "@/lib/library/progress";
 import type { PostKind } from "./post-actions";
 import type {ExperiencePreview} from "@/lib/experiences/types";
 import {getExperiencePreviews} from "@/lib/experiences/queries";
+import type {ShareSummary} from "@/lib/wrap-ups/types";
+import {isWrapUpRow,loadWrapUpShares} from "./feed-wrap-ups";
 import {
   emptyReactions,
   type InteractionComment,
@@ -205,10 +207,24 @@ export type ExperienceFeedEvent = Pick<FeedEvent,"id"|"postId"|"actorId"|"actorU
 /** Reseña de momento de un post `experience_review` (kind del evento sigue siendo "experience"; `review` lo distingue). */
 export interface ExperienceFeedReview {id:string;momentId:string;momentTitle:string;rating:number|null;body:string|null}
 type ExperienceFeedDraft=Omit<ExperienceFeedEvent,"interactionTarget"|"postId"> & Pick<FeedEventDraft,"interactionTarget"|"postId">;
-type SocialPostDraft=FeedEventDraft|ExperienceFeedDraft;
-export function isExperienceEvent(event:FeedEvent|ExperienceFeedEvent):event is ExperienceFeedEvent;
+/** Crónica publicada (post `wrap_up`): solo el resumen público congelado del share (feed-wrap-ups.ts). */
+export type WrapUpFeedEvent = Pick<FeedEvent,"id"|"postId"|"actorId"|"actorUsername"|"actorDisplayName"|"actorAvatarUrl"|"eventDate"|"orderDate"|"sortDate"|"interactionTarget"|"reactionCount"|"viewerReacted"|"commentCount"|"comments"|"reactions"|"viewerCanDelete"> & {kind:"wrap_up";shareId:string;summary:ShareSummary};
+type WrapUpFeedDraft=Omit<WrapUpFeedEvent,"interactionTarget"|"postId"> & Pick<FeedEventDraft,"interactionTarget"|"postId">;
+type SocialPostDraft=FeedEventDraft|ExperienceFeedDraft|WrapUpFeedDraft;
+/** Evento ya finalizado de un post (lo que devuelve `getPostEvent`). */
+export type PostFeedEvent=FeedEvent|ExperienceFeedEvent|WrapUpFeedEvent;
+export function isExperienceEvent(event:PostFeedEvent):event is ExperienceFeedEvent;
 export function isExperienceEvent(event:SocialPostDraft):event is ExperienceFeedDraft;
-export function isExperienceEvent(event:FeedEvent|ExperienceFeedEvent|SocialPostDraft):boolean {return "experience" in event;}
+export function isExperienceEvent(event:PostFeedEvent|SocialPostDraft):boolean {return "experience" in event;}
+export function isWrapUpEvent(event:PostFeedEvent):event is WrapUpFeedEvent;
+export function isWrapUpEvent(event:SocialPostDraft):event is WrapUpFeedDraft;
+export function isWrapUpEvent(event:unknown):event is WrapUpFeedEvent;
+export function isWrapUpEvent(event:unknown):boolean {return typeof event==="object"&&event!==null&&"summary" in event&&(event as {kind?:unknown}).kind==="wrap_up";}
+/** Textos con @menciones de un post (las crónicas solo tienen comentarios). */
+function postMentionTexts(e:PostFeedEvent|SocialPostDraft):string[] {
+  if("summary" in e)return e.comments.map(c=>c.body).filter((s):s is string=>!!s);
+  return "experience" in e?[e.body,...e.comments.map(c=>c.body)].filter((s):s is string=>!!s):mentionTextsOf(e);
+}
 
 // El feed mezcla eventos de persona (un post) y de club (una actividad, que
 // puede no tener ítem). En vez de forzar un ítem falso, la lista transporta la
@@ -217,6 +233,7 @@ export function isExperienceEvent(event:FeedEvent|ExperienceFeedEvent|SocialPost
 // singleton `person` y `club`.
 export type FeedEntry =
   | {source:"experience";id:string;eventDate:string;orderDate:string;sortDate:string;event:ExperienceFeedEvent}
+  | {source:"wrap_up";id:string;eventDate:string;orderDate:string;sortDate:string;event:WrapUpFeedEvent}
   | { source: "person"; id: string; eventDate: string; orderDate: string; sortDate: string; event: FeedEvent }
   | PersonGroupEntry
   | { source: "club"; id: string; eventDate: string; orderDate: string; sortDate: string; event: ClubFeedEvent };
@@ -452,11 +469,11 @@ async function withoutJointFinished(
 // página, y como no hay "ver más" en ninguna tarjeta no había forma de leerla.
 async function resolveCatalogPostDrafts(
   supabase: SupabaseServerClient,
-  postRows: PostRow[],
+  rows: PostRow[],
   reviewsOnly: boolean,
   fullBody = false,
 ): Promise<FeedEventDraft[]> {
-  postRows=postRows.filter(r=>r.kind!=="experience"&&r.anchor_type!=="experience");
+  const postRows=rows.filter((r):r is CatalogPostRow=>r.kind!=="experience"&&r.anchor_type!=="experience"&&r.kind!=="wrap_up"&&r.anchor_type!=="wrap_up");
   if (postRows.length === 0) return [];
   const reviewOrExcerpt = (text: string | null) => (fullBody ? text?.trim() || null : excerpt(text));
 
@@ -792,11 +809,15 @@ async function resolvePostDrafts(supabase:SupabaseServerClient,rows:PostRow[],re
   // de experience_moment_reviews oculta las que el lector no puede ver; si la
   // fila no vuelve, el post se descarta.
   const reviewIds=[...new Set(xp.filter(r=>r.kind==="experience_review"&&r.source_id).map(r=>r.source_id as string))];
-  const [catalog,roots,actors,reviews]=await Promise.all([
+  // Crónicas publicadas: su resumen vive en wrap_up_shares (RLS can_view_profile);
+  // si el share no vuelve o no es legible, el post se descarta.
+  const wraps=reviewsOnly?[]:rows.filter(isWrapUpRow),own=[...xp,...wraps];
+  const [catalog,roots,actors,reviews,shares]=await Promise.all([
     resolveCatalogPostDrafts(supabase,rows,reviewsOnly,fullBody),
     xp.length?supabase.from("experiences").select("*").in("id",[...new Set(xp.map(r=>r.anchor_id))]):Promise.resolve({data:[],error:null}),
-    xp.length?supabase.from("profile_identities").select("user_id,username,display_name,avatar_url").in("user_id",[...new Set(xp.map(r=>r.author_id))]):Promise.resolve({data:[],error:null}),
+    own.length?supabase.from("profile_identities").select("user_id,username,display_name,avatar_url").in("user_id",[...new Set(own.map(r=>r.author_id))]):Promise.resolve({data:[],error:null}),
     reviewIds.length?supabase.from("experience_moment_reviews").select("id,moment_id,rating,body").in("id",reviewIds):Promise.resolve({data:[],error:null}),
+    loadWrapUpShares(supabase,wraps),
   ]);
   if(roots.error)throw roots.error;if(actors.error)throw actors.error;if(reviews.error)throw reviews.error;
   const previews=await getExperiencePreviews(supabase,roots.data??[]);
@@ -812,7 +833,11 @@ async function resolvePostDrafts(supabase:SupabaseServerClient,rows:PostRow[],re
     }
     return [{id:`posts:${row.id}`,postId:row.id,kind:"experience",experience,body:row.body,review,actorId:row.author_id,actorUsername:actor.username,actorDisplayName:actor.display_name,actorAvatarUrl:actor.avatar_url,eventDate:row.created_at,orderDate:row.created_at,sortDate:row.created_at,interactionTarget:{targetType:"post",targetId:row.id,interactionTargetId:null},reactionCount:0,viewerReacted:false,commentCount:0,comments:[],reactions:emptyReactions()}];
   });
-  return [...catalog,...experiences];
+  const wrapUps:WrapUpFeedDraft[]=wraps.flatMap(row=>{
+    const summary=shares.get(row.anchor_id),actor=byActor.get(row.author_id);if(!summary||!actor?.username)return [];
+    return [{id:`posts:${row.id}`,postId:row.id,kind:"wrap_up",shareId:row.anchor_id,summary,actorId:row.author_id,actorUsername:actor.username,actorDisplayName:actor.display_name,actorAvatarUrl:actor.avatar_url,eventDate:row.created_at,orderDate:row.created_at,sortDate:row.created_at,interactionTarget:{targetType:"post",targetId:row.id,interactionTargetId:null},reactionCount:0,viewerReacted:false,commentCount:0,comments:[],reactions:emptyReactions()}];
+  });
+  return [...catalog,...experiences,...wrapUps];
 }
 
 // Resuelve borrado (dueño o admin/moderador global, un batch) e interacciones
@@ -991,8 +1016,9 @@ export function buildMilestoneContext(input: {
 
 function finalizePostDraft(draft: FeedEventDraft): FeedEvent;
 function finalizePostDraft(draft: ExperienceFeedDraft): ExperienceFeedEvent;
-function finalizePostDraft(draft:SocialPostDraft):FeedEvent|ExperienceFeedEvent;
-function finalizePostDraft(draft: SocialPostDraft): FeedEvent|ExperienceFeedEvent {
+function finalizePostDraft(draft: WrapUpFeedDraft): WrapUpFeedEvent;
+function finalizePostDraft(draft:SocialPostDraft):PostFeedEvent;
+function finalizePostDraft(draft: SocialPostDraft): PostFeedEvent {
   const target = draft.interactionTarget;
   if (target && target.interactionTargetId === null) {
     throw new Error(`Interaction target unresolved for post:${target.targetId}`);
@@ -1120,11 +1146,11 @@ export async function getFeed(
   // --- Mezcla, orden y corte de página ----------------------------------------
 
   const entries: Array<
-    | { source: "person"|"experience"; id: string; eventDate: string; orderDate: string; sortDate: string; event: SocialPostDraft }
+    | { source: "person"|"experience"|"wrap_up"; id: string; eventDate: string; orderDate: string; sortDate: string; event: SocialPostDraft }
     | { source: "club"; id: string; eventDate: string; orderDate: string; sortDate: string; event: ClubFeedEvent }
   > = [
     ...drafts.map(
-      (event) => ({ source: isExperienceEvent(event)?"experience":"person", id: event.id, eventDate: event.eventDate, orderDate: event.orderDate, sortDate: event.sortDate, event }) as const,
+      (event) => ({ source: isWrapUpEvent(event)?"wrap_up":isExperienceEvent(event)?"experience":"person", id: event.id, eventDate: event.eventDate, orderDate: event.orderDate, sortDate: event.sortDate, event }) as const,
     ),
     ...clubResult.events.map(
       (event) => ({ source: "club", id: event.id, eventDate: event.eventDate, orderDate: event.eventDate, sortDate: event.eventDate, event }) as const,
@@ -1142,12 +1168,13 @@ export async function getFeed(
   const personDrafts = page.filter((e) => e.source !== "club").map((e) => e.event);
   await Promise.all([
     resolvePostInteractions(supabase, viewerId, personDrafts),
-    resolveMilestoneContext(supabase, viewerId, personDrafts.filter((e):e is FeedEventDraft=>!isExperienceEvent(e))),
+    resolveMilestoneContext(supabase, viewerId, personDrafts.filter((e):e is FeedEventDraft=>!isExperienceEvent(e)&&!isWrapUpEvent(e))),
   ]);
 
   const finalizedPage: FeedEntry[] = page.map((entry) =>
     entry.source === "club"
       ? entry
+      : isWrapUpEvent(entry.event)?{source:"wrap_up",id:entry.id,eventDate:entry.eventDate,orderDate:entry.orderDate,sortDate:entry.sortDate,event:finalizePostDraft(entry.event)}
       : isExperienceEvent(entry.event)?{source:"experience",id:entry.id,eventDate:entry.eventDate,orderDate:entry.orderDate,sortDate:entry.sortDate,event:finalizePostDraft(entry.event)}:{
           source: "person",
           id: entry.id,
@@ -1168,7 +1195,7 @@ export async function getFeed(
 
   const knownUsernames = await resolveKnownMentions(
     supabase,
-    personDrafts.flatMap((e) => isExperienceEvent(e)?[e.body,...e.comments.map(c=>c.body)].filter((s):s is string=>!!s):mentionTextsOf(e)),
+    personDrafts.flatMap(postMentionTexts),
   );
 
   return { events: finalizedPage, nextCursor, knownUsernames };
@@ -1183,7 +1210,7 @@ export async function getPostEvent(
   supabase: SupabaseServerClient,
   viewerId: string | null,
   postId: string,
-): Promise<{ event: FeedEvent|ExperienceFeedEvent; knownUsernames: string[] } | null> {
+): Promise<{ event: PostFeedEvent; knownUsernames: string[] } | null> {
   const { data, error } = await supabase.from("posts").select(POST_COLUMNS).eq("id", postId).maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -1194,7 +1221,7 @@ export async function getPostEvent(
 
   await resolvePostInteractions(supabase, viewerId, drafts);
   const event = finalizePostDraft(drafts[0]);
-  const knownUsernames = await resolveKnownMentions(supabase, isExperienceEvent(event)?[event.body,...event.comments.map(c=>c.body)].filter((s):s is string=>!!s):mentionTextsOf(event));
+  const knownUsernames = await resolveKnownMentions(supabase, postMentionTexts(event));
   return { event, knownUsernames };
 }
 
@@ -1227,7 +1254,7 @@ export type PostContext = {
 
 const RELATED_LIMIT = 4;
 
-function toRelatedPost(d: SocialPostDraft): RelatedPost {
+function toRelatedPost(d: FeedEventDraft|ExperienceFeedDraft): RelatedPost {
   return {
     postId: d.postId,
     kind: d.kind!, // resolvePostDrafts siempre lo informa (base.kind = r.kind)
@@ -1241,14 +1268,16 @@ function toRelatedPost(d: SocialPostDraft): RelatedPost {
 
 export async function getPostContext(
   supabase: SupabaseServerClient,
-  event: FeedEvent|ExperienceFeedEvent,
+  event: PostFeedEvent,
 ): Promise<PostContext> {
   const empty: PostContext = { moreByAuthor: [], moreAboutWork: [] };
   if (!event.postId) return empty;
-  if(isExperienceEvent(event)) {
+  // Experiencias y crónicas no tienen obra: solo «Más de {usuario}», y sin
+  // crónicas en el raíl (sus mini-cards pintan una obra que estas no tienen).
+  if(isExperienceEvent(event)||isWrapUpEvent(event)) {
     const {data,error}=await supabase.from("posts").select(POST_COLUMNS).eq("author_id",event.actorId).neq("id",event.postId).neq("kind","progressed").order("created_at",{ascending:false}).order("id",{ascending:false}).limit(RELATED_LIMIT);
     if(error)throw error;
-    return {moreByAuthor:(await resolvePostDrafts(supabase,(data??[]) as PostRow[],false)).sort((a,b)=>Date.parse(b.sortDate)-Date.parse(a.sortDate)).map(toRelatedPost),moreAboutWork:[]};
+    return {moreByAuthor:(await resolvePostDrafts(supabase,((data??[]) as PostRow[]).filter(r=>!isWrapUpRow(r)),false)).filter((d):d is FeedEventDraft|ExperienceFeedDraft=>!isWrapUpEvent(d)).sort((a,b)=>Date.parse(b.sortDate)-Date.parse(a.sortDate)).map(toRelatedPost),moreAboutWork:[]};
   }
   // Ancla REAL de la obra: para un pensamiento vive en `thought.anchor`
   // (itemType/itemId son un placeholder inerte, ver FeedEvent); para el resto,
@@ -1310,15 +1339,19 @@ export async function getPostContext(
 type PostRow = {
   id: string;
   author_id: string;
-  kind: PostKind;
-  anchor_type: AnchorType;
+  // `wrap_up` (crónica publicada) no es un PostKind/AnchorType de catálogo: no
+  // lo crea createPost ni se notifica por kind; solo se LEE aquí.
+  kind: PostKind | "wrap_up";
+  anchor_type: AnchorType | "wrap_up";
   anchor_id: string;
-  source_kind: "pass" | "progress_session" | "episode_watch" | "joint_viewing" | "experience_review" | null;
+  source_kind: "pass" | "progress_session" | "episode_watch" | "joint_viewing" | "experience_review" | "wrap_up_share" | null;
   source_id: string | null;
   body: string | null;
   is_spoiler: boolean;
   created_at: string;
 };
+/** Fila de un post de catálogo (sin crónicas: esas se resuelven en resolvePostDrafts). */
+type CatalogPostRow = PostRow & { kind: PostKind; anchor_type: AnchorType };
 type BookRow = { id: string; title: string | null; author: string | null; cover_url: string | null; total_pages: number | null; published_year: number | null };
 type ScreenRow = { id: string; title: string | null; cover_url: string | null; release_year: number | null };
 type SeriesRow = ScreenRow & { total_seasons: number | null };

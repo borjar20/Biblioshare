@@ -13,13 +13,45 @@ type Messages = Record<string, unknown>;
 // del es.json entero se queda en el bundle de servidor y solo el subconjunto
 // elegido se serializa al provider de cliente. Manual porque next-intl v4 ya no
 // exporta `pick` (el ejemplo del issue #444 estaba desactualizado).
+//
+// Un `ns` con puntos («wrapUps.feed») manda SOLO ese subárbol, para no cargar un
+// namespace entero en rutas que usan dos claves suyas (la tarjeta de crónica del
+// feed). Si la ruta pide también el namespace completo, gana el completo.
 function pickMessages(ns: readonly string[]): Messages {
   const all = messages as Messages;
   const out: Messages = {};
-  for (const key of new Set([...BASE, ...ns])) {
+  const keys = [...new Set([...BASE, ...ns])];
+  for (const key of keys.filter((k) => !k.includes("."))) {
     if (key in all) out[key] = all[key];
   }
+  for (const path of keys.filter((k) => k.includes("."))) pickPath(all, out, path.split("."));
   return out;
+}
+
+function isRecord(v: unknown): v is Messages {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Copia `all[a][b]…` en `out` sin pisar lo que ya haya (un ancestro completo gana). */
+function pickPath(all: Messages, out: Messages, parts: string[]) {
+  let src: unknown = all;
+  let dst = out;
+  for (let i = 0; i < parts.length; i++) {
+    const key = parts[i];
+    if (!isRecord(src) || !(key in src)) return;
+    src = src[key];
+    if (i === parts.length - 1) {
+      if (!(key in dst)) dst[key] = src;
+      return;
+    }
+    // Un ancestro ya copiado entero es el MISMO objeto del catálogo: no se toca
+    // (ni hace falta, ya lo lleva todo).
+    if (dst[key] === src) return;
+    if (dst[key] === undefined) dst[key] = {};
+    const next = dst[key];
+    if (!isRecord(next)) return;
+    dst = next;
+  }
 }
 
 // Provider de i18n POR RUTA (#444): en vez de mandar los 42 namespaces (~89 KB)

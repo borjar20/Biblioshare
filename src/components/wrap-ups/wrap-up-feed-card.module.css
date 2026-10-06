@@ -1,0 +1,118 @@
+/* Cierre compacto de la tarjeta del feed (post `wrap_up`). Mismo lenguaje que
+   poster.module.css —campo plano por paleta, tinta, placas de papel con sombra
+   en escalera—, a escala de tarjeta. Como en el póster, TODO el texto va sobre
+   papel o sobre tinta, nunca sobre el campo (contraste: cabecera de
+   poster.module.css). Las clases compartidas (eyebrow, plate, covers,
+   narratorStamp) vienen de poster.module.css y leen estas mismas variables. */
+.mini {
+  --ink: #1c1714;
+  --paper: #fffdf8;
+  --step: 0 0 0 3px var(--ink), 6px 6px 0 3px var(--ink);
+  --step-sm: 0 0 0 2px var(--ink), 4px 4px 0 2px var(--ink);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  padding: 14px 16px 16px;
+  border-radius: var(--radius-cover, 6px);
+  color: var(--ink);
+  background-color: var(--field);
+  background-image: repeating-conic-gradient(rgb(28 23 20 / 0.07) 0 25%, transparent 0 50%);
+  background-size: 8px 8px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 16px;
+}
+
+.figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  margin: 0;
+  padding: 6px 12px 8px;
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  font-weight: 400;
+  font-synthesis: none;
+  line-height: 0.95;
+}
+.figureValue { font-size: 3rem; letter-spacing: -0.02em; }
+.figureUnit { font-size: 1.125rem; }
+
+.lines {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 9px 9px 0;
+  padding: 8px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.lines p { margin: 0; }
+
+/* Cartas más pequeñas que en el póster; el `max-height` del póster no aplica aquí. */
+.covers { justify-content: flex-start; gap: 10px; }
+.covers > li { flex: 0 1 84px; }
+
+.cast {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.narrator { zoom: 0.75; }
+.pet { display: flex; }
+
+/* Botón invisible que cubre el cierre: foco visible con el anillo de la app. */
+.open {
+  position: absolute;
+  inset: 0;
+  cursor: zoom-in;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+}
+.open:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+
+.detail { display: flex; justify-content: center; }
+.image {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  background: var(--surface-muted);
+}
+
+/* Centrado a mano: el preflight de Tailwind quita el `margin: auto` nativo del
+   <dialog>. Ancho = el que deja caber la imagen 9:16 y el botón en la altura. */
+.dialog {
+  width: min(92vw, calc((100dvh - 96px) * 9 / 16));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+}
+.dialog::backdrop { background: rgb(28 23 20 / 0.9); }
+.dialog .image { max-width: none; }
+.close {
+  display: block;
+  margin: 0 0 8px auto;
+  min-height: 44px;
+  padding: 0 14px;
+  background: #fffdf8;
+  color: #1c1714;
+  font-weight: 700;
+  border: 0;
+  box-shadow: 0 0 0 2px #1c1714, 4px 4px 0 2px #1c1714;
+}
