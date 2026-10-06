@@ -6802,3 +6802,7 @@ Sin historial #1426 (acta), BiblioPlay #1427, comparación con amigos #1428 ni v
 ### 2026-10-07 — Activación de crónicas
 
 Con autorización explícita del usuario tras CI verde, se aplicaron las dos migraciones en producción y se integró PR #1436. Auditoría independiente de ocho superficies idénticas a dev, alias Vercel READY del commit 5d6b447c y barrido semanal pg_net HTTP 200 (cuatro crónicas, cero fallos). El corte inicial del 6 oct que dejaba producción pendiente queda superado por el recibo #1433. El destino y secreto del cron dev permanecen separados y pendientes en #1439; no se apunta dev al alias productivo. No se generaron fixtures ni publicaciones de prueba en producción.
+
+### 2026-10-07 — Entrada permanente de crónicas en Inicio (#1441)
+
+La entrada mantiene tarjeta, narradora, periodo visible y «Ver crónica» incluso después de verla o si el periodo es tranquilo. Sólo se retira «Nueva». Sustituye la decisión inicial de degradar la crónica vista a un enlace discreto: el acceso ocupaba 18,75 px de alto y resultaba difícil de descubrir. La tarjeta usa la tipografía editorial y los tokens de Inicio; reserva 104 px tanto en el enlace como en el fallback de Suspense. Es un único enlace, sin botón interactivo anidado. No cambian la selección del periodo ni su lectura con sesión/RLS. Evidencia en [verificación de la entrada](../testing/2026-10-07-wrap-home-entry.md).

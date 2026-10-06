@@ -39,14 +39,24 @@ describe("WrapUpsRow", () => {
 });
 
 describe("HomeWrapUpCover", () => {
-  it("prefiere el full sin ver y lo marca con anillo", async () => {
+  it.each([
+    ["ya vista", { ...week, seenAt: "2026-10-05T10:00:00Z" }],
+    ["tranquila", month],
+  ])("%s: conserva una acción explícita para abrir la crónica", async (_, wrap) => {
+    wrapUps.list = [wrap];
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    expect(screen.getByRole("link", { name: /view/ }).getAttribute("href")).toBe(`/wrap/${wrap.kind}`);
+    expect(screen.getByText("view")).toBeTruthy();
+  });
+  it("prefiere el full sin ver y lo marca como Nueva", async () => {
     const { HomeWrapUpCover } = await import("./wrap-up-entry");
     render((await HomeWrapUpCover())!);
     const link = screen.getByRole("link");
     expect(link.getAttribute("href")).toBe("/wrap/week");
     expect(link.getAttribute("data-unseen")).toBe("true");
   });
-  it("ya visto: enlace discreto al más reciente, sin anillo", async () => {
+  it("ya visto: tarjeta al más reciente, sin marca Nueva", async () => {
     wrapUps.list = [month, { ...week, seenAt: "2026-10-05T10:00:00Z" }];
     const { HomeWrapUpCover } = await import("./wrap-up-entry");
     render((await HomeWrapUpCover())!);
@@ -54,7 +64,7 @@ describe("HomeWrapUpCover", () => {
     expect(link.getAttribute("href")).toBe("/wrap/week");
     expect(link.getAttribute("data-unseen")).toBe("false");
   });
-  it("un quiet sin ver no lleva anillo", async () => {
+  it("un quiet sin ver no se marca como Nueva", async () => {
     wrapUps.list = [month];
     const { HomeWrapUpCover } = await import("./wrap-up-entry");
     render((await HomeWrapUpCover())!);
@@ -71,12 +81,12 @@ describe("HomeWrapUpCover", () => {
     render((await HomeWrapUpCover())!);
     expect(screen.getByRole("link").getAttribute("href")).toBe("/wrap/week");
   });
-  it("el enlace con anillo incluye el periodo en su nombre accesible", async () => {
+  it("la tarjeta nueva incluye el periodo en su nombre accesible", async () => {
     const { HomeWrapUpCover } = await import("./wrap-up-entry");
     render((await HomeWrapUpCover())!);
     expect(screen.getByRole("link", { name: /Semana del 28 sep al 4 oct/ })).toBeTruthy();
   });
-  it("el enlace discreto incluye el periodo (sr-only)", async () => {
+  it("la tarjeta ya vista incluye el periodo", async () => {
     wrapUps.list = [{ ...week, seenAt: "2026-10-05T10:00:00Z" }];
     const { HomeWrapUpCover } = await import("./wrap-up-entry");
     render((await HomeWrapUpCover())!);

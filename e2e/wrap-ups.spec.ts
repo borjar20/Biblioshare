@@ -96,10 +96,17 @@ test.describe("crónicas (wrap-ups)", () => {
     expect(row?.published_post_id, "publish_wrap_up dejó el post enlazado").toBeTruthy();
     expect(row?.seen_at, "abrir la crónica la marca vista").toBeTruthy();
 
-    // Escape cierra el <dialog> nativo y vuelve a la home, ya sin el anillo de «sin ver».
+    // Escape cierra el <dialog> nativo y vuelve a la home, con tarjeta y acción visibles, ya sin la marca «Nueva».
     await a.keyboard.press("Escape");
     await expect(a).toHaveURL(/\/$/);
-    await expect(a.getByRole("link", { name: /^Tu semana/ })).toHaveAttribute("data-unseen", "false");
+    const seenCover = a.getByRole("link", { name: /^Tu semana/ });
+    await expect(seenCover).toHaveAttribute("data-unseen", "false");
+    await expect(seenCover.getByText("Ver crónica", { exact: true })).toBeVisible();
+    await expect(seenCover.getByText(/Semana del/)).toBeVisible();
+    await seenCover.getByText("Ver crónica", { exact: true }).click();
+    await expect(a.getByRole("dialog")).toBeVisible();
+    await a.keyboard.press("Escape");
+    await expect(a).toHaveURL(/\/$/);
 
     // B (sigue a A) ve la tarjeta en su feed y abre la imagen grande.
     const b = await loggedInPage(browser, follower!);

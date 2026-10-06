@@ -1,0 +1,636 @@
+{
+  "stage": "after",
+  "cases": [
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.883654623102904
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 4.883654623102904,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-light-unseen"
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 5.8964219712239485,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-light-seen",
+      "keyboard": true
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu mes",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Septiembre 2026",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 5.8964219712239485,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-light-quiet"
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu año",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.883654623102904
+        },
+        {
+          "text": "Tu 2026 · hasta el 25 de diciembre",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 4.883654623102904,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-light-year"
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.848884675891113
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 4.848884675891113,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-dark-unseen"
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 5.86497304509132,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-dark-seen"
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu mes",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Septiembre 2026",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 5.86497304509132,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-dark-quiet"
+    },
+    {
+      "width": 280,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu año",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.848884675891113
+        },
+        {
+          "text": "Tu 2026 · hasta el 25 de diciembre",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 4.848884675891113,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "320-dark-year"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.883654623102904
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 4.883654623102904,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-light-unseen"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 5.8964219712239485,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-light-seen"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu mes",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Septiembre 2026",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 5.8964219712239485,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-light-quiet"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu año",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.883654623102904
+        },
+        {
+          "text": "Tu 2026 · hasta el 25 de diciembre",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 4.883654623102904,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-light-year"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.848884675891113
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 4.848884675891113,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-dark-unseen",
+      "click": true
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 5.86497304509132,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-dark-seen"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu mes",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Septiembre 2026",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 5.86497304509132,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-dark-quiet"
+    },
+    {
+      "width": 350,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu año",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.848884675891113
+        },
+        {
+          "text": "Tu 2026 · hasta el 25 de diciembre",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 4.848884675891113,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "390-dark-year"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.883654623102904
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 4.883654623102904,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-light-unseen"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 5.8964219712239485,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-light-seen"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu mes",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Septiembre 2026",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 5.8964219712239485,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-light-quiet"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu año",
+          "contrast": 14.700841274473865
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.883654623102904
+        },
+        {
+          "text": "Tu 2026 · hasta el 25 de diciembre",
+          "contrast": 5.8964219712239485
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.745615621310854
+        }
+      ],
+      "minContrast": 4.883654623102904,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-light-year"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.848884675891113
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 4.848884675891113,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-dark-unseen"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu semana",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 5.86497304509132,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-dark-seen"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu mes",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Septiembre 2026",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 5.86497304509132,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-dark-quiet"
+    },
+    {
+      "width": 493.328125,
+      "height": 104,
+      "clips": [],
+      "texts": [
+        {
+          "text": "Tu año",
+          "contrast": 12.730768701761427
+        },
+        {
+          "text": "Nueva",
+          "contrast": 4.848884675891113
+        },
+        {
+          "text": "Tu 2026 · hasta el 25 de diciembre",
+          "contrast": 5.86497304509132
+        },
+        {
+          "text": "Ver crónica",
+          "contrast": 11.43307126134825
+        }
+      ],
+      "minContrast": 4.848884675891113,
+      "hit": true,
+      "pageOverflow": false,
+      "hasAction": true,
+      "label": "1440-dark-year"
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "wrapUps": 0,
+    "actorDeleted": true
+  }
+}
