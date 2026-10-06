@@ -6730,3 +6730,46 @@ barras, mapa de calor y carrusel:
   mejor» y «lo peor» nunca repiten episodio.
 - **Reseña:** sigue siendo solo la del episodio del que cuelga el post (ver issue de reseñas por
   episodio).
+
+## 2026-10-06 — Novedades: distinguir obra, lanzamiento y elección de avisos (diseño)
+
+La entrevista de producto acepta una obra única con varios lanzamientos por modalidad y mercado. Una película puede tener fechas distintas de cine y digital; un libro puede tener una salida editorial en castellano posterior a su publicación original. Una fecha única asociada a la obra resulta ambigua para ese uso, por lo que el diseño trata el lanzamiento como concepto propio y conserva la precisión de la fecha anunciada.
+
+«Añadir a Pendiente» expresa interés por la obra; «Avisarme» es una elección independiente sobre un lanzamiento. El cambio o paso de su fecha conserva el estado personal de lectura o visionado. Publicar una novedad desde administración conserva la biblioteca personal del administrador. «Explorar» muestra información pública; «Lo que esperas» y las elecciones de avisos pertenecen a la persona autenticada.
+
+Estado: decisión de diseño aceptada en las tres primeras rondas; implementación pendiente. No establece un esquema aplicado ni modifica datos. Los detalles de entrada editorial y frecuencia de revisión siguen abiertos en `docs/design/2026-10-06-novedades.md`. El vocabulario está en `CONTEXT.md`.
+
+Confirmación posterior, 2026-10-06: la cuarta ronda acepta la introducción y revisión manual de la selección inicial de libros desde administración, actualización diaria automática de películas y series desde TMDB y revisión editorial semanal de libros, mostrando la última revisión. Con las trece recomendaciones aceptadas queda cerrado el diseño de producto. La importación automática de anuncios editoriales requiere una fuente comprobada y queda fuera de la primera versión. La implementación sigue pendiente; el acuerdo de diseño no constituye autorización de cambios productivos ni publicación. Referencia: `docs/design/2026-10-06-novedades.md`.
+
+## 2026-10-06 — Novedades: identidad, concurrencia y garantías de avisos (local/dev)
+
+El mercado `ES/INT` forma parte de la identidad inmutable de `cultural_releases`.
+Ambos anuncios pueden coexistir bajo el mismo `work_key`, con claves de fuente y
+consentimientos separados: confirmar un estreno español no transforma una fecha
+internacional ni transfiere automáticamente su elección de avisos.
+
+El guardado editorial exige el `updated_at` exacto del formulario, conservando los
+microsegundos en la UI. `revision` sigue representando cambios efectivos de fecha,
+precisión o estado; corregir título, portada o fuente no debe emitir avisos. La RPC
+`release_upsert_tmdb(p_rows,p_expected_attempt)` bloquea el estado de fuente y valida
+el intento vigente durante todo el lote; su finalización también compara ese token.
+Así, un formulario o una respuesta antiguos fallan sin sobrescribir el resultado nuevo.
+
+El alta desde Novedades usa `requireAbsent` en el escritor canónico de pases.
+La decisión «Añadir a Pendiente» crea solo si falta; conserva cualquier pase que ya
+exista, incluido el creado por otra petición tras la lectura inicial. Cambiar una fecha
+de lanzamiento o elegir un aviso no modifica el estado de lectura o visionado.
+
+`accepted_at` en `release_deliveries` acredita la notificación persistida en la
+campana, mediante una transacción que vuelve a comprobar lanzamiento y consentimiento
+vigentes. No es un recibo de Web Push/Android. Los reintentos no vuelven a enviar una
+entrega ya aceptada; una caída entre aceptación y transporte puede perder el push,
+conforme al transporte existente. Se conserva esta garantía sin prometer recepción
+exactamente una vez en un dispositivo.
+
+El job `cultural-releases` se instala inactivo. Su activación requiere comprobar el
+endpoint desplegado y el destino configurado: que el esquema sea dev no demuestra que
+`app_base_url` apunte a desarrollo. Las cuatro migraciones y sus contratos se han
+verificado en base local y biblioshare-dev; producción y publicación del código
+permanecen pendientes. Contrato y evidencia en `docs/design/2026-10-06-novedades-implementation.md`
+y `docs/testing/2026-10-06-novedades.md`.

@@ -1,5 +1,12 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta Novedades · 2026-10-06: rutas pública/editorial/cron, módulo de lanzamientos,
+> cuatro tablas y flujo `flow-cultural-releases` contrastados con el código local;
+> esquema y permisos verificados en biblioshare-dev. `graph.json` y `map.html`
+> sincronizados. Cortes funcionales y límites en
+> [el informe de verificación](../testing/2026-10-06-novedades.md).
+> Producción y publicación pendientes; los demás deltas conservan su alcance.]**
+
 > **[Delta #1385 · verificado el 2026-10-05: ChromeBoundary separa ruta y sesión. Cinco regresiones y 26 controles PASS, revisión independiente sin hallazgos; build nueva e5fdb395 pasa MTG original 2/2 y retorno 2/2 con cero React #418. Global FAIL por 16 RSC cancelados y gate de inventario completo FAIL por 56 route-cache nuevos; 2445 archivos previos y 3272 fuentes idénticos, parada física PASS. CI integrada pendiente. El resto conserva sus fechas y alcance.]**
 
 > **[Derivado · delta de celebraciones recuperables #1334 verificado contra código, 75 unitarios y PostgreSQL local cold-r2 el 2026-10-03; revisión independiente PASS. El flujo nuevo distingue claim, presentación y ACK. G4 nativo, activación remota y CI pendientes al registrar el delta.]**

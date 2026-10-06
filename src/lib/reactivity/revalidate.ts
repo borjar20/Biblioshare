@@ -19,6 +19,13 @@ export function revalidateFeed(): void {
   revalidatePath("/");
 }
 
+/** Announcement changes affect the calendar, editorial queue and home preview. */
+export function revalidateReleases(): void {
+  revalidatePath("/novedades");
+  revalidatePath("/admin/novedades");
+  revalidatePath("/");
+}
+
 /** Shared memory affects hub, detail/edit, participants' profiles and its post. */
 export function revalidateExperiences(id?: string): void {
   revalidatePath("/experiencias");

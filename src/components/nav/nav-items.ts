@@ -53,6 +53,7 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
   const paths = item.key === "experiences" ? [item.href, "/experiencia"]
     : item.key === "community" ? [item.href, "/clubes", "/club"]
     : item.key === "collection" ? [item.href, "/notas", "/estadisticas"]
+    : item.key === "search" ? [item.href, "/novedades"]
     : [item.href];
   return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }

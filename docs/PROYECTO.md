@@ -2,7 +2,9 @@
 
 > **[Canónico · verificado contra código el 2026-08-19]**
 >
-> Mapa de features construidas y desplegadas, por dominio, con su ruta principal.
+> Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
+> Delta Novedades implementado en código, base local y biblioshare-dev el 2026-10-06;
+> seis recorridos y revisión final de navegador R3 PASS; entrega a usuarios pendiente.
 > Este doc dice **qué hay**; cómo está organizado lo dice `docs/ARQUITECTURA.md`,
 > el esquema `docs/requirements/data-model.md`, y lo pendiente
 > `docs/requirements/backlog.md` + las issues del repo. El producto y su porqué:
@@ -56,6 +58,32 @@ activos/archivados, objetivo diario, Memorizar y sorteo. Comunidad (`/comunidad`
 reúne Clubes y Personas; `/clubes` sigue funcionando. Los enlaces propios antiguos
 de Estadísticas/Panel y Rincón redirigen a sus nuevas superficies, conservando
 los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
+
+## Novedades — implementación local/dev; entrega a usuarios pendiente
+
+`/novedades` reúne películas, series, temporadas, libros y primeras traducciones
+al castellano. Se accede desde Buscar y desde «Sale esta semana» en Inicio.
+«Explorar» es público; «Lo que esperas» usa los pases y las sagas de la persona
+autenticada. Una obra agrupa lanzamientos de cine, digital o editoriales con su
+mercado, fuente y precisión de fecha; los anuncios sin día exacto se muestran sin
+inventarlo. España e internacional tienen identidades y elecciones de avisos propias.
+
+«Añadir a Pendiente» conserva cualquier pase existente y no activa avisos.
+«Avisarme» se elige por lanzamiento y se retira por separado. La campana recibe
+recordatorios de día exacto, confirmaciones, cambios y cancelaciones con deduplicación;
+la aceptación del aviso acredita persistencia en la campana, sin acreditar recepción
+de Web Push o Android. `/admin/novedades` permite introducir, revisar, publicar,
+corregir y cancelar libros, también sin ISBN, conservando la biblioteca del administrador.
+
+La sincronización diaria de TMDB y la revisión editorial semanal están implementadas
+con fecha de última comprobación efectiva. El esquema se ha aplicado y verificado en
+biblioshare-dev; el job `cultural-releases` permanece inactivo hasta comprobar el
+destino desplegado. Código, permisos y concurrencia verificados; navegador R3 completó
+seis recorridos contra build/start local a 390/1280 px, con revisión independiente PASS.
+La comprobación funcional no acredita una auditoría global de red limpia; sus límites
+y los cortes FAIL anteriores se conservan en el informe.
+Producción y publicación del código siguen pendientes en [#1423](https://github.com/borjar20/Biblioshare/issues/1423). Contrato: `docs/design/2026-10-06-novedades-implementation.md`;
+evidencia y límites: `docs/testing/2026-10-06-novedades.md`.
 
 ## Catálogo compartido
 

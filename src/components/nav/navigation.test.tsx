@@ -54,6 +54,13 @@ describe("destinos de la navegación principal", () => {
     expect(screen.getAllByRole("link").filter((link) => link.hasAttribute("aria-current"))).toHaveLength(1);
   });
 
+  it.each(["/novedades", "/novedades?seleccion=personal"])("%s mantiene Buscar como área de novedades", (route) => {
+    pathname = route.split("?")[0];
+    render(<TopNav username="ana" />);
+    expect(screen.getByRole("link", { name: "search" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getAllByRole("link").filter((link) => link.hasAttribute("aria-current"))).toHaveLength(1);
+  });
+
   it.each(["/experiencia-ajena", "/club-ajeno", "/notas-ajenas"])("%s no activa un área por un prefijo ambiguo", (route) => {
     pathname = route;
     render(<TopNav username="ana" />);

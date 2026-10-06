@@ -19,6 +19,7 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
 import { SHELL_HOME } from "@/lib/ui/layout";
+import { ThisWeekReleases } from "@/components/releases/this-week-releases";
 
 // Sin `instant = false` (#476): el boundary de la ruta es `loading.tsx`, que
 // espeja esta estructura — el shell estático es ese esqueleto y todo lo de aquí
@@ -40,17 +41,16 @@ export default async function Home({
 
   if (!user) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-4 py-12 text-center">
-        <AppLogoIcon className="h-16 w-16" />
-        <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
-          Biblio<span className="text-accent">share</span>
-        </h1>
-        <p className="max-w-md text-lg text-muted-foreground">
-          {t("home.tagline")}
-        </p>
-        <Link href="/signup" className={buttonVariants("primary", "px-6")}>
-          {t("home.cta")}
-        </Link>
+      <div className="mx-auto grid w-full max-w-5xl flex-1 gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col items-center justify-center gap-6 text-center lg:py-16">
+          <AppLogoIcon className="h-16 w-16" />
+          <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
+            Biblio<span className="text-accent">share</span>
+          </h1>
+          <p className="max-w-md text-lg text-muted-foreground">{t("home.tagline")}</p>
+          <Link href="/signup" className={buttonVariants("primary", "px-6")}>{t("home.cta")}</Link>
+        </div>
+        <Suspense fallback={null}><ThisWeekReleases /></Suspense>
       </div>
     );
   }
@@ -98,6 +98,7 @@ export default async function Home({
           <Suspense fallback={<TodayBlockSkeleton />}>
             <TodayBlock userId={user.id} />
           </Suspense>
+          <div className="mt-5"><Suspense fallback={null}><ThisWeekReleases /></Suspense></div>
         </div>
 
         {/* FEED: compartir un pensamiento + filtros + actividad de tu gente. */}
