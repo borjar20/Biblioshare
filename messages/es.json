@@ -4369,6 +4369,8 @@
       "pause": "Pausa",
       "play": "Reanudar",
       "share": "Compartir",
+      "download": "Descargar imagen",
+      "shareError": "No se pudo preparar la imagen. Inténtalo de nuevo.",
       "publish": "Publicar en el feed",
       "published": "Publicado",
       "unpublish": "Despublicar",

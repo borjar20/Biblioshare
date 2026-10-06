@@ -1,19 +1,64 @@
 "use client";
-// Acciones del dueño en la story de cierre (spec 2026-10-06 §2 y §4): Publicar /
-// Despublicar y Actualizar. «Actualizar» se deshabilita con el motivo VISIBLE
-// cuando canRefresh ≠ ok (no un tooltip: en móvil no hay hover). El botón
-// Compartir lo añade la Task 16 en el hueco `share`.
-import { useState, useTransition, type ReactNode } from "react";
+// Acciones del dueño en la story de cierre (spec 2026-10-06 §2 y §4): Compartir
+// la imagen 9:16, Publicar / Despublicar y Actualizar. «Actualizar» se
+// deshabilita con el motivo VISIBLE cuando canRefresh ≠ ok (no un tooltip: en
+// móvil no hay hover).
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { publishWrapUp, refreshWrapUp, unpublishWrapUp } from "@/lib/wrap-ups/actions";
 import type { OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { canRefresh } from "@/lib/wrap-ups/refresh-policy";
+import type { WrapUpKind } from "@/lib/wrap-ups/windows";
+import { browserShareEnv, imageFileName, imageUrl, shareMode, shareWrapUpImage, type ShareMode } from "./share-image";
 import styles from "./story-player.module.css";
 
-type Notice = "refreshed" | "refreshLater" | "refreshPublished" | "refreshEmpty" | "actionError" | null;
+type Notice = "refreshed" | "refreshLater" | "refreshPublished" | "refreshEmpty" | "actionError" | "shareError" | null;
 
-export function ClosingActions({ wrapUp, share }: { wrapUp: OwnWrapUp; share?: ReactNode }) {
+/**
+ * «Compartir»: hoja del sistema con el PNG si el dispositivo sabe compartir
+ * ficheros (APK con el plugin, o Web Share); si no, un enlace de descarga. El
+ * camino se decide tras montar (en SSR no hay `navigator`): hasta entonces es el
+ * botón, que es lo que verá casi todo el mundo (móvil).
+ */
+function ShareButton({ kind, onError }: { kind: WrapUpKind; onError: () => void }) {
+  const t = useTranslations("wrapUps");
+  const [mode, setMode] = useState<ShareMode | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    browserShareEnv().then((env) => { if (live) setMode(shareMode(env)); }, () => { if (live) setMode("download"); });
+    return () => { live = false; };
+  }, []);
+
+  if (mode === "download") {
+    return (
+      <a className={`${styles.btn} ${styles.btnPrimary}`} href={imageUrl(kind)} download={imageFileName(kind)}>
+        {t("ui.download")}
+      </a>
+    );
+  }
+
+  const share = async () => {
+    setBusy(true);
+    try {
+      await shareWrapUpImage(await browserShareEnv(), kind, t("stories.cover.title", { kind }));
+    } catch {
+      onError();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={share} disabled={busy} aria-busy={busy}>
+      {t("ui.share")}
+    </button>
+  );
+}
+
+export function ClosingActions({ wrapUp }: { wrapUp: OwnWrapUp }) {
   const t = useTranslations("wrapUps.ui");
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -52,9 +97,8 @@ export function ClosingActions({ wrapUp, share }: { wrapUp: OwnWrapUp; share?: R
   return (
     <div className={styles.actions} aria-busy={pending}>
       <div className={styles.actionRow}>
-        {/* Task 16: el botón «Compartir» va aquí, primero de la fila. */}
-        {share}
-        <button type="button" className={published ? styles.btn : `${styles.btn} ${styles.btnPrimary}`} onClick={togglePublish} disabled={pending}>
+        <ShareButton kind={wrapUp.kind} onError={() => setNotice("shareError")} />
+        <button type="button" className={styles.btn} onClick={togglePublish} disabled={pending}>
           {published ? t("unpublish") : t("publish")}
         </button>
         <button type="button" className={styles.btn} onClick={refresh} disabled={pending || verdict !== "ok"}
