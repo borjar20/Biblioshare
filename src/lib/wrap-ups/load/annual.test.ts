@@ -60,7 +60,7 @@ describe("loadAnnual", () => {
 
   it("junta hechos: creadores con mínimo 2, pila y aventuras ganadas", async () => {
     const { client } = fakeClient({
-      progress_sessions: [{ session_date: "2026-03-01", duration_minutes: 90 }, { session_date: "2026-03-02", duration_minutes: 20 }],
+      progress_sessions: [{ session_date: "2026-03-01", duration_minutes: 90, passes: { item_type: "book" } }, { session_date: "2026-03-02", duration_minutes: 20, passes: { item_type: "movie" } }],
       passes: [{ item_type: "book", item_id: "a", started_on: "2026-03-01", finished_on: "2026-03-05", status: "completed" },
                { item_type: "book", item_id: "b", started_on: null, finished_on: "2026-04-05", status: "dropped" }],
       books: [{ id: "a", author: "Ursula" }, { id: "b", author: "Ursula" }, { id: "c", author: "Solo" }],
@@ -76,7 +76,26 @@ describe("loadAnnual", () => {
   });
 });
 
+describe("loadAnnual: sesiones de serie antiguas", () => {
+  it("no cuentan en meses, mes más intenso ni sesión más larga", async () => {
+    const { client } = fakeClient({
+      progress_sessions: [
+        { pass_id: "p1", session_date: "2026-02-01", duration_minutes: 500, passes: { item_type: "series" } },
+        { pass_id: "p2", session_date: "2026-03-01", duration_minutes: 30, passes: { item_type: "book" } },
+      ],
+    });
+    const r = await loadAnnual(client as never, "u1", w, []);
+    expect(r.months[1].minutes).toBe(0);
+    expect(r.records.busiestMonth).toEqual({ month: "2026-03", minutes: 30 });
+    expect(r.records.longestSessionMinutes).toBe(30);
+  });
+});
+
 describe("loadOwnPet", () => {
+  it("last_stage inválido, null", async () => {
+    const { client } = fakeClient({ pet_state: [{ name: "X", class: "wizard", last_stage: "dragon" }] });
+    expect(await loadOwnPet(client as never, "u1")).toBeNull();
+  });
   it("filtra por user_id y mapea last_stage", async () => {
     const { client, calls } = fakeClient({ pet_state: [{ name: "Bruto", class: "barbarian", last_stage: "young" }] });
     expect(await loadOwnPet(client as never, "u1")).toEqual({ name: "Bruto", petClass: "barbarian", stage: "young" });

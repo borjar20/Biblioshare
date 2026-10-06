@@ -7,7 +7,7 @@ import { chunkIds } from "@/lib/supabase/in-chunks";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import type { ItemRef, OwnPet, WrapUpInputs } from "../types";
 import type { WrapUpWindow } from "../windows";
-import type { WrapUpClient } from "./core";
+import { isCountableSession, type WrapUpClient } from "./core";
 
 const DAY = 86_400_000;
 type SessionRow = { session_date: string; duration_minutes: number | null };
@@ -53,10 +53,10 @@ export async function loadOwnPet(client: WrapUpClient, userId: string): Promise<
 
 export async function loadAnnual(client: WrapUpClient, userId: string, w: WrapUpWindow, finished: ItemRef[]): Promise<NonNullable<WrapUpInputs["annual"]>> {
   const year = Number(w.start.slice(0, 4));
-  const [sess, closedRows, added, battleRows] = await Promise.all([
-    readAllRows<SessionRow>((from, to) => client.from("progress_sessions").select("session_date, duration_minutes").eq("user_id", userId)
+  const [allSess, closedRows, added, battleRows] = await Promise.all([
+    readAllRows<SessionRow & { passes: unknown }>((from, to) => client.from("progress_sessions").select("id, pass_id, session_date, duration_minutes, passes(item_type)").eq("user_id", userId)
       .gte("session_date", w.start).lt("session_date", w.endExclusive)
-      .order("id").range(from, to)),
+      .order("id").range(from, to) as unknown as PromiseLike<{ data: (SessionRow & { passes: unknown })[] | null; error?: unknown }>),
     readAllRows<ClosedRow>((from, to) => client.from("passes").select("item_type, item_id, started_on, finished_on, status").eq("user_id", userId)
       .in("status", ["completed", "dropped"]).gte("finished_on", w.start).lt("finished_on", w.endExclusive)
       .order("id").range(from, to) as unknown as PromiseLike<{ data: ClosedRow[] | null; error?: unknown }>),
@@ -69,6 +69,8 @@ export async function loadAnnual(client: WrapUpClient, userId: string, w: WrapUp
   ]);
   if (added.error) throw added.error;
 
+  // Series: sus minutos salen de episode_watches, no de sesiones antiguas (misma regla que core).
+  const sess = allSess.filter((s) => isCountableSession(s as never));
   const completed = closedRows.filter((r) => r.status === "completed");
   const months = buildMonths(year, sess, completed.map((r) => r.finished_on));
   const busiest = months.reduce((a, b) => (b.minutes > a.minutes ? b : a), months[0]);

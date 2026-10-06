@@ -91,12 +91,21 @@ type Bounds = { start: string; endExclusive: string };
  * Los minutos de serie salen SOLO de episode_watches × runtime: las sesiones
  * antiguas de serie (progress_sessions) se excluyen para no contar dos veces.
  */
+export function sessionItemType(x: Pick<SessionRow, "passes">): ItemType | undefined {
+  return (Array.isArray(x.passes) ? x.passes[0]?.item_type : x.passes?.item_type) as ItemType | undefined;
+}
+
+/** Una sesión cuenta como minutos si NO es de serie (ni de tipo desconocido). Regla única: core y anual. */
+export function isCountableSession(x: Pick<SessionRow, "passes">): boolean {
+  const t = sessionItemType(x);
+  return !!t && t !== "series";
+}
+
 export function sessionsForMinutes(rows: Pick<SessionRow, "pass_id" | "duration_minutes" | "passes">[]) {
   const out: { item_type: ItemType; pass_id: string; duration_minutes: number | null }[] = [];
   for (const x of rows) {
-    const t = (Array.isArray(x.passes) ? x.passes[0]?.item_type : x.passes?.item_type) as ItemType | undefined;
-    if (!t || t === "series") continue;
-    out.push({ item_type: t, pass_id: x.pass_id, duration_minutes: x.duration_minutes });
+    if (!isCountableSession(x)) continue;
+    out.push({ item_type: sessionItemType(x)!, pass_id: x.pass_id, duration_minutes: x.duration_minutes });
   }
   return out;
 }
