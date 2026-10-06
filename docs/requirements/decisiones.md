@@ -6797,3 +6797,8 @@ Tipografía final Tiny5 en cifras/rótulos, no Pixelify Sans: peso400 sin sínte
 Actualización compare-and-set por periodo y versión/timestamps: no pisa cron ni elude diez minutos, y no anuncia éxito sin fila afectada. Cron sustituye sólo periodos anteriores con escritura atómica; un solo ganador reclama push; reintentos preservan actualización/publicación actual. El informe cuenta filas realmente escritas/borradas. Las fixtures usan dueño/seguidor desechables y nunca borran publicaciones de QA persistente.
 
 Sin historial #1426 (acta), BiblioPlay #1427, comparación con amigos #1428 ni vídeo #1429. Límites del CHECK #1430, Android #1431 y bordes UTC de notas/club #1432 quedan rastreados. Implementación local/dev verificada; activación remota #1433.
+
+
+### 2026-10-07 — Activación de crónicas
+
+Con autorización explícita del usuario tras CI verde, se aplicaron las dos migraciones en producción y se integró PR #1436. Auditoría independiente de ocho superficies idénticas a dev, alias Vercel READY del commit 5d6b447c y barrido semanal pg_net HTTP 200 (cuatro crónicas, cero fallos). El corte inicial del 6 oct que dejaba producción pendiente queda superado por el recibo #1433. El destino y secreto del cron dev permanecen separados y pendientes en #1439; no se apunta dev al alias productivo. No se generaron fixtures ni publicaciones de prueba en producción.

@@ -228,10 +228,10 @@ Contrato y evidencia en `superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
 
 Etiquetas privadas, modo «en pausa», método de adquisición del ejemplar, diario
 emocional, OCR de citas, recomendador, tabla de adaptaciones/relaciones entre
-obras, listas colaborativas, seguir editoriales, retos personalizables, «Tu año
-en Biblioshare», comparar bibliotecas, offline-first con escritura, IGDB
+obras, listas colaborativas, seguir editoriales, retos personalizables, comparar
+bibliotecas, offline-first con escritura, IGDB
 (videojuegos), app iOS. Estado y prioridades: `docs/requirements/backlog.md`.
 
-## Crónicas visuales — entrega local/dev 2026-10-06
+## Crónicas visuales — activas en producción 2026-10-07
 
-Última semana, mes y año en `/wrap/[kind]`, aviso/entrada en Inicio y fila en Estadísticas. Stories adaptativas, narradora pixel, imagen1080×1920 y resumen publicable en el feed bajo privacidad del perfil. Código y navegador verificados; **no desplegadas todavía**, activación seguida en [#1433](https://github.com/borjar20/Biblioshare/issues/1433). [Spec](superpowers/specs/2026-10-06-wrap-ups-design.md) y [evidencia](testing/2026-10-06-wrap-ups.md).
+Última semana, mes y año en `/wrap/[kind]`, aviso/entrada en Inicio y fila en Estadísticas. Stories adaptativas, narradora pixel, imagen1080×1920 y resumen publicable en el feed bajo privacidad del perfil. Código, navegador, esquema y primer barrido productivo verificados; integradas en [PR #1436](https://github.com/borjar20/Biblioshare/pull/1436), con activación cerrada en [#1433](https://github.com/borjar20/Biblioshare/issues/1433). [Spec](superpowers/specs/2026-10-06-wrap-ups-design.md) y [evidencia](testing/2026-10-06-wrap-ups.md).
