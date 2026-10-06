@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import styles from "@/components/library/library-view.module.css";
 
 // Subpestañas VISIBLES de Mi Biblioteca (Colección v2, sesión 1; «Sagas»
 // añadida en F5 Task 4). Las píldoras por tipo (antes Libros/Películas/Series)
@@ -31,7 +32,7 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
     // Enlaces que NAVEGAN, así que `aria-current="page"` y no el patrón
     // tablist: la activa se marcaba solo por color de texto y borde, que es
     // exactamente lo que un lector de pantalla no ve.
-    <nav aria-label={t("navLabel")} className="flex gap-6 border-b border-border">
+    <nav aria-label={t("navLabel")} className={`${styles.tabs} flex gap-6 border-b border-border`}>
       {COLLECTION_TABS.map((tab) => {
         const href = tab === "todo" ? "/coleccion" : `/coleccion?tab=${tab}`;
         const isActive = tab === active;
@@ -40,7 +41,7 @@ export async function CollectionTabs({ active }: { active: KnownTab }) {
             key={tab}
             href={href}
             aria-current={isActive ? "page" : undefined}
-            className={`-mb-px shrink-0 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
+            className={`${styles.tab} ${isActive ? styles.activeTab : ""} -mb-px shrink-0 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
               isActive
                 ? "border-accent text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"

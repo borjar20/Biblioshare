@@ -38,7 +38,8 @@
 > fichas Recursos y edición de asientos MTG #1006/#1008 verificadas con ocho E2E de build/start, a 390/1280 px, el 2026-10-04; CI del HEAD integrado exigida;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293;
 > notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05; esquema aplicado en producción el mismo día; código en la PR;
-> Novedades implementadas y verificadas en local/dev el 2026-10-06, incluidos seis recorridos y revisión de navegador R3 PASS; despliegue de código y esquema verificados en producción, scheduler activo y primera ejecución horaria correcta el 2026-10-06; queda pendiente la curación editorial inicial en #1423]**
+> Novedades implementadas y verificadas en local/dev el 2026-10-06, incluidos seis recorridos y revisión de navegador R3 PASS; despliegue de código y esquema verificados en producción, scheduler activo y primera ejecución horaria correcta el 2026-10-06; queda pendiente la curación editorial inicial en #1423;
+> Biblioteca material verificada contra código y build/start local el 2026-10-06; candidato local, sin acreditación de integración/publicación; [evidencia focal](../testing/2026-10-06-biblioteca-material.md)]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;

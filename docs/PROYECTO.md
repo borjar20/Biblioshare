@@ -1,6 +1,7 @@
 # Biblioshare — qué existe hoy
 
-> **[Canónico · verificado contra código el 2026-08-19]**
+> **[Canónico · verificado contra código el 2026-08-19; delta de Biblioteca
+> material verificado contra código y build/start local el 2026-10-06]**
 >
 > Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
 > Delta Novedades implementado en código, base local y biblioshare-dev el 2026-10-06;
@@ -126,6 +127,14 @@ evidencia y límites: `docs/testing/2026-10-06-novedades.md`.
 - **Colección** (`/coleccion`): pestañas Todo / Colecciones / Sagas; filtros;
   colecciones/listas del usuario (`collections`, con visibilidad y sorteables) y
   «sacar un lomo» (sorteo animado de la pila).
+- **Biblioteca material** (candidato local, 2026-10-06): las tarjetas de Todo
+  muestran libros con lomo/canto y cine/series como carteles, con estado bajo
+  los metadatos. Resumen acompaña a Destacados, que muestra todos los favoritos
+  en su orden actual; el primero permite añadir sesión si es libro/serie en
+  curso con pase activo. Se reutilizan los accesos a Cuaderno, Retos y objetivos
+  y Estadísticas. Presentación opt-in de `LibraryItemCard` y nuevo
+  `LibraryHighlights`; el perfil conserva su presentación. No cambia el esquema,
+  las consultas, las APIs, RLS ni la caché. [Evidencia local y límites](testing/2026-10-06-biblioteca-material.md).
 - **Notas y citas** (`/notas`, «Cuaderno»): captura desde ficha/sesión con ancla
   (página, episodio), spoiler-flag, notas públicas o privadas.
 - **Diario/estadísticas** (`/estadisticas`): muro de paneles de datos agregados

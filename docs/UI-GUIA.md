@@ -4,7 +4,8 @@
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
 > verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
 > notificaciones verificados contra código y build/start local el 2026-10-04
-> (#1349; siete E2E focales PASS; candidato local)]**
+> (#1349; siete E2E focales PASS; candidato local); Biblioteca material
+> verificada contra código y build/start local el 2026-10-06 (candidato local)]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -120,6 +121,40 @@ editor de catálogo inline (banner + barra sticky).
    no haya cambios de formulario sin guardar.
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados
     juntos derivan del mismo dato (una fórmula por métrica).
+
+## Biblioteca material (`/coleccion`, 2026-10-06)
+
+La variante `material` de `LibraryItemCard` se activa desde Biblioteca. La
+portada conserva la proporción 2/3: libro con lomo y canto estrecho, película
+y serie como carteles planos. Título, subtítulo, nota/relecturas y estado van
+debajo; el estado mantiene texto además del punto. Los controles de favorito
+y colección son hermanos del enlace de la obra. Objeto y controles se elevan
+3 px solo con `(hover: hover) and (pointer: fine)`; con foco o movimiento
+reducido permanecen quietos. El perfil conserva la presentación por defecto.
+
+Resumen y Destacados forman dos columnas desde 1024 px, con Resumen de 280 px
+(320 px desde 1280 px), y se apilan en móvil. Sin favoritos, Resumen se queda
+solo. `LibraryHighlights` recibe los favoritos de la consulta actual, respeta
+su orden y muestra todos: primero uno en el panel principal, después el resto
+en una lista de miniaturas. No vuelve a consultarlos ni los cachea. «Añadir
+sesión» aparece solo en un libro o serie en curso con `activePassId`; la ficha
+siempre tiene enlace. El destacado usa contraste inverso con los tokens Paper.
+
+La barra de Resumen sigue siendo un reparto de los estados reales; los
+segmentos cuadrados no cambian su significado a «avance hacia una meta».
+Herramientas y pestañas conservan sus destinos: Cuaderno, Retos y objetivos,
+Estadísticas y Todo / Colecciones / Sagas. Los dos primeros accesos reutilizan
+los iconos pixel existentes de notas y misiones a 32 px. Los filtros mantienen
+su propia barra sticky, sin envolverla en un contenedor que limite su recorrido.
+Las siluetas de carga siguen la composición de la vista.
+
+El usuario aprobó para estas piezas la excepción local a las reglas de
+sombras, radios y píldoras. Los cantos cortos, el radio asimétrico del alta,
+los controles del destacado y el subrayado escalonado están acotados en CSS
+Modules; el sistema general sigue en
+[`DESIGN.md`](../DESIGN.md#excepción-local-biblioteca-material-2026-10-06).
+Contrato histórico: [spec](superpowers/specs/2026-10-06-biblioteca-material-design.md).
+Evidencia y alcance de entrega: [verificación local](testing/2026-10-06-biblioteca-material.md).
 
 ## Reglas móviles y táctiles (fase 4)
 

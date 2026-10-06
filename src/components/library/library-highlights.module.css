@@ -1,0 +1,270 @@
+.highlights {
+  /* The poster uses Paper's existing teal and ink; no global theme tokens. */
+  --highlight-surface: color-mix(in srgb, var(--type-movie) 46%, var(--foreground));
+  --highlight-ink: var(--surface);
+  --highlight-muted: color-mix(in srgb, var(--highlight-ink) 86%, var(--highlight-surface));
+  min-width: 0;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(110px, 23%, 154px);
+  align-items: center;
+  gap: 26px;
+  min-height: 222px;
+  padding: 24px 30px 24px 26px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--highlight-surface);
+  color: var(--highlight-ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--highlight-surface) 28%, transparent);
+}
+
+.content {
+  min-width: 0;
+}
+
+.labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  color: var(--highlight-muted);
+  font-size: 11px;
+}
+
+.heading {
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.4;
+}
+
+.statusDot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  background: var(--status-planned);
+}
+
+.status[data-status="in_progress"] .statusDot { background: var(--status-in-progress); }
+.status[data-status="completed"] .statusDot { background: var(--status-completed); }
+.status[data-status="dropped"] .statusDot { background: var(--status-dropped); }
+
+.title {
+  font-family: var(--font-fraunces), serif;
+  margin-top: 10px;
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 600;
+  line-height: 1.06;
+  overflow-wrap: anywhere;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: var(--highlight-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 22px;
+  font-size: 12px;
+}
+
+.primaryAction,
+.detailAction {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.primaryAction {
+  padding: 9px 14px;
+  background: var(--highlight-ink);
+  color: var(--highlight-surface);
+  font-weight: 500;
+  transition: background 160ms ease;
+}
+
+.primaryAction:hover {
+  background: color-mix(in srgb, var(--highlight-ink) 92%, var(--highlight-surface));
+}
+
+.detailAction {
+  padding: 9px 2px;
+  color: var(--highlight-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.hero :is(a):focus-visible {
+  outline-color: var(--highlight-ink);
+}
+
+.heroCover {
+  position: relative;
+  display: block;
+  transform: rotate(4deg);
+  transition: transform 180ms ease;
+}
+
+.heroCover:hover {
+  transform: rotate(1deg);
+}
+
+.cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--highlight-ink) 18%, transparent);
+  border-radius: 3px;
+  background: var(--surface-muted);
+  box-shadow: var(--shadow-cover);
+}
+
+/* Only books have a page block and a spine. Films and series are flat posters. */
+.heroCover[data-media-type="book"]::before {
+  position: absolute;
+  inset: 5px -5px -5px 5px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  box-shadow: var(--shadow-cover);
+  content: "";
+}
+
+.heroCover[data-media-type="book"] .cover::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: linear-gradient(90deg, rgba(44, 38, 32, 0.28), transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.coverImage {
+  object-fit: cover;
+}
+
+.coverFallback {
+  display: grid;
+  height: 100%;
+  place-content: center;
+  padding: 10px;
+  color: var(--foreground);
+  font-family: var(--font-fraunces), serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.more {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 17px;
+  list-style: none;
+}
+
+.moreLink {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 66px;
+}
+
+.thumbnail {
+  position: relative;
+  display: block;
+  width: 44px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-muted);
+  box-shadow: var(--shadow-cover);
+}
+
+.moreTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  color: var(--foreground);
+  font-family: var(--font-fraunces), serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.moreLink:hover .moreTitle {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+:global(.dark) .highlights {
+  --highlight-surface: color-mix(in srgb, var(--type-movie) 28%, var(--background));
+  --highlight-ink: var(--foreground);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not(.light):not(.dark)) .highlights {
+    --highlight-surface: color-mix(in srgb, var(--type-movie) 28%, var(--background));
+    --highlight-ink: var(--foreground);
+  }
+}
+
+@media (max-width: 639px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 16px;
+    min-height: 218px;
+    padding: 20px 22px 20px 18px;
+  }
+
+  .title {
+  font-family: var(--font-fraunces), serif;
+    font-size: 27px;
+  }
+
+  .actions {
+    gap: 3px 10px;
+    margin-top: 16px;
+  }
+
+  .primaryAction {
+    padding-inline: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroCover,
+  .primaryAction {
+    transition: none;
+  }
+
+  .heroCover:hover {
+    transform: rotate(4deg);
+  }
+}

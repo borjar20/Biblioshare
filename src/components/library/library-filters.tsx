@@ -22,6 +22,7 @@ const MOVIE_STATUSES: MediaStatus[] = ["planned", "completed", "dropped"];
 const SORTS: LibrarySort[] = ["recent", "rating", "title"];
 
 export async function LibraryFilters({
+  className = "",
   itemType,
   lockedType,
   status,
@@ -35,6 +36,7 @@ export async function LibraryFilters({
   showDropped = false,
   extraParams,
 }: {
+  className?: string;
   itemType?: ItemType;
   /**
    * El tipo que la vista aplica SIN que el usuario lo haya pedido (interés
@@ -125,7 +127,7 @@ export async function LibraryFilters({
     // `-mx`/`px` replican el padding del contenedor de la página (`px-4 sm:px-6
     // lg:px-8`) para que el fondo llegue a los bordes y las portadas no se vean
     // pasar por el hueco.
-    <div className="flex flex-col gap-2.5 sm:sticky sm:top-[var(--topbar-h)] sm:z-10 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:border-b sm:border-border sm:bg-background/90 sm:px-6 sm:py-3 sm:backdrop-blur lg:-mx-8 lg:px-8">
+    <div className={`${className} flex flex-col gap-2.5 sm:sticky sm:top-[var(--topbar-h)] sm:z-10 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:border-b sm:border-border sm:bg-background/90 sm:px-6 sm:py-3 sm:backdrop-blur lg:-mx-8 lg:px-8`}>
       {/* Búsqueda: píldora con la lupa dentro y SIN botón aparte (Enter envía) —
           ocupa una fila menos. */}
       <form action={basePath} className="relative w-full sm:max-w-xl sm:flex-1">

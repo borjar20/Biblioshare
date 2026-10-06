@@ -12,13 +12,16 @@ import { toggleFavorite } from "@/lib/library/favorite-actions";
 import { useOptimisticAction } from "@/lib/reactivity/use-optimistic-action";
 import { SparklesIcon } from "@/components/ui/icons";
 import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
+import styles from "./library-item-card.module.css";
 
 export function LibraryItemCard({
   item,
   isOwner,
+  presentation = "default",
 }: {
   item: LibraryItem;
   isOwner: boolean;
+  presentation?: "default" | "material";
 }) {
   const t = useTranslations("library");
   // Favorito optimista: el pin/unpin se pinta al instante y revierte en error.
@@ -32,17 +35,33 @@ export function LibraryItemCard({
     reducer: (p) => !p,
   });
   const accent = MEDIA_ACCENT[item.itemType];
+  const material = presentation === "material";
+  const statusBadge = (
+    <StatusBadge
+      status={item.status}
+      // Una serie al día sigue «en curso», pero no queda nada emitido por ver.
+      label={item.upToDate ? t("upToDate") : t(`status.${item.status}`)}
+      variant="overlay"
+    />
+  );
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Portada con overlays: badge de estado arriba y, para el dueño, los
-          botones de acción abajo. Ambos van FUERA del <Link> de la portada
-          para que pulsarlos no navegue a la ficha; sobre la portada quedan en
-          posición FIJA (no dependen de cuántos metadatos tenga la tarjeta). */}
-      <div className="relative">
+    <div
+      className={material ? `flex flex-col gap-2 ${styles.materialCard}` : "flex flex-col gap-2"}
+      data-item-type={material ? item.itemType : undefined}
+    >
+      {/* Los controles quedan fuera del enlace y se mueven con la portada.
+          En material el estado vive en los metadatos para dejar ver el arte. */}
+      <div
+        className={material
+          ? `relative ${styles.materialObject} ${item.itemType === "book" ? styles.bookObject : ""}`
+          : "relative"}
+      >
         <Link
           href={itemHref(item.itemType, item.itemId)}
-          className={`group block aspect-[2/3] w-full overflow-hidden rounded-cover border ${accent.borderSoft} bg-surface-muted shadow-cover`}
+          className={material
+            ? `${styles.materialCover} ${item.itemType === "book" ? styles.bookCover : ""}`
+            : `group block aspect-[2/3] w-full overflow-hidden rounded-cover border ${accent.borderSoft} bg-surface-muted shadow-cover`}
         >
           {item.coverUrl ? (
             <Image
@@ -50,7 +69,7 @@ export function LibraryItemCard({
               alt={item.title}
               fill
               sizes="(max-width: 768px) 45vw, 200px"
-              className="object-cover transition-transform duration-200 group-hover:scale-105"
+              className={material ? "object-cover" : "object-cover transition-transform duration-200 group-hover:scale-105"}
             />
           ) : (
             <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
@@ -59,15 +78,9 @@ export function LibraryItemCard({
           )}
         </Link>
 
-        <div className="absolute right-1.5 top-1.5">
-          <StatusBadge
-            status={item.status}
-            // Una serie al día sigue «en curso» (mismo color), pero se dice lo
-            // que es: no queda nada emitido por ver.
-            label={item.upToDate ? t("upToDate") : t(`status.${item.status}`)}
-            variant="overlay"
-          />
-        </div>
+        {!material && (
+          <div className="absolute right-1.5 top-1.5">{statusBadge}</div>
+        )}
 
         {isOwner && (
           <div
@@ -134,9 +147,8 @@ export function LibraryItemCard({
           rejilla no las necesitaba para alinearse: las filas de CSS grid ya
           igualan su alto y las portadas son `aspect-[2/3]`, así que las
           cubiertas de una misma fila quedan a ras igual. Editorial y barra de
-          progreso quedan en la ficha; el estado ya lo da el badge de la
-          portada. */}
-      <div className="flex flex-col gap-0.5">
+          progreso quedan en la ficha; el estado lo da el badge. */}
+      <div className={material ? `flex flex-col gap-0.5 ${styles.materialMeta}` : "flex flex-col gap-0.5"}>
         <Link href={itemHref(item.itemType, item.itemId)} className="block">
           <span className="line-clamp-2 font-serif text-sm leading-tight font-semibold text-foreground">
             {item.title}
@@ -163,6 +175,7 @@ export function LibraryItemCard({
               .join(" · ")}
           </span>
         )}
+        {material && <div className={styles.materialStatus}>{statusBadge}</div>}
       </div>
 
       {isOwner && failed && (

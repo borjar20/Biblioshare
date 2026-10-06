@@ -47,7 +47,7 @@ export async function CollectionSummary({
       </div>
 
       {/* Barra apilada por estado. */}
-      <div className="flex h-2 overflow-hidden rounded-full bg-surface-muted">
+      <div data-summary-bar className="flex h-2 overflow-hidden rounded-full bg-surface-muted">
         {present.map((status) => (
           <div
             key={status}
@@ -61,7 +61,7 @@ export async function CollectionSummary({
 
       {/* Leyenda en dos columnas: dot + nombre …… recuento (mono semibold a la
           derecha, mockup `.leg`). */}
-      <div className="grid grid-cols-2 gap-x-3.5 gap-y-2">
+      <div data-summary-legend className="grid grid-cols-2 gap-x-3.5 gap-y-2">
         {present.map((status) => (
           <span key={status} className="flex items-center gap-1.5">
             <span

@@ -6783,3 +6783,31 @@ conocido, y el anuncio de modalidad `book` mantiene su comportamiento. La migrac
 `20261006134245_cultural_release_translation_publication_year.sql` implementa esta
 corrección y su contrato SQL pasa en `biblioshare-dev`. La decisión evita atribuir a la
 obra un año que solo corresponde a una traducción. Producción permanece pendiente.
+
+## 2026-10-06 — Biblioteca material: excepción visual local y favoritos desde la consulta actual
+
+El usuario aprobó una biblioteca más táctil dentro de Paper. `/coleccion` activa
+`presentation="material"` en `LibraryItemCard`: libro con lomo y canto estrecho,
+película/serie como carteles planos, estado debajo de los metadatos. Los controles
+quedan fuera del enlace y se mueven con el objeto solo al hover de puntero fino;
+foco y movimiento reducido conservan el objeto quieto. El perfil utiliza la
+presentación por defecto para acotar el cambio a la superficie aprobada.
+
+La aprobación incluye una excepción local a las reglas de dos sombras, radios
+y píldoras de `DESIGN.md`: cantos cortos de contacto en paneles/herramientas,
+relieve del botón de alta con radio `7px 7px 2px 7px`, cubiertas de Destacados de
+3 px, acciones de 6 px y buscador de 8 px. Viven en tres CSS Modules de
+`components/library`; componen las sombras y los colores existentes sin añadir
+un token global ni otro nivel de elevación. Cuaderno y Retos y objetivos
+reutilizan los iconos pixel de notas/misiones a 32 px; no se genera nuevo arte.
+
+`LibraryHighlights` es de servidor y recibe los favoritos ya leídos por
+`getLibraryView`: conserva el orden de pin, destaca el primero y muestra todos
+los demás. No añade consulta ni caché; el progreso privado sigue pasando por
+la identidad de la petición y las mismas reglas RLS (#437). El acceso a sesión
+requiere libro/serie, estado `in_progress` y `activePassId`. Resumen muestra
+la distribución real por estado, sin introducir una meta ficticia. Las rutas,
+filtros sticky, paginación y modelo de datos mantienen su contrato.
+
+Contrato: [spec histórica](../superpowers/specs/2026-10-06-biblioteca-material-design.md).
+Entrega: candidato local; [evidencia y límites](../testing/2026-10-06-biblioteca-material.md).

@@ -62,15 +62,19 @@ export function SkeletonCard({
 export function SkeletonCoverGrid({
   count = 10,
   cols = "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+  statusLine = false,
 }: {
   count?: number;
   cols?: string;
+  /** Reserve the metadata status row of material LibraryItemCard. */
+  statusLine?: boolean;
 }) {
   return (
     <div className={`grid gap-4 ${cols}`}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex flex-col gap-2">
           <SkeletonCover />
+          {statusLine && <SkeletonLine className="h-4 w-20" />}
           <SkeletonLine className="w-3/4" />
         </div>
       ))}

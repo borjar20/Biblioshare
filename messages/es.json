@@ -2837,6 +2837,9 @@
     "emptyCta": "Buscar algo",
     "recentlyUpdated": "Actualizado recientemente",
     "diaryTitle": "Revisionados",
+    "highlights": {
+      "viewItem": "Ver ficha"
+    },
     "filters": {
       "allTypes": "Todo",
       "allStatuses": "Todos los estados",

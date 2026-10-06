@@ -28,7 +28,8 @@ import type { ItemType } from "@/lib/catalog/types";
 import type { LibrarySort, MediaStatus } from "@/lib/library/types";
 import { CollectionTabs, KNOWN_TABS, type KnownTab } from "./collection-tabs";
 import { CollectionSummary } from "@/components/library/collection-summary";
-import { FavoritesShelf } from "@/components/favorites-shelf";
+import { LibraryHighlights } from "@/components/library/library-highlights";
+import styles from "@/components/library/library-view.module.css";
 import { CollectionsGrid } from "@/components/library/collections-grid";
 import { getLibrarySummary } from "@/lib/library/get-library-summary";
 import { getFollowedSagas } from "@/lib/sagas/get-followed-sagas";
@@ -234,7 +235,7 @@ export default async function CollectionPage({
 
   return (
     <div
-      className={`mx-auto flex w-full ${shell} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
+      className={`${styles.page} mx-auto flex w-full ${shell} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
     >
       {/* Cabecera del frame A/C: barrita de acento + título serif. El recuento
           NO va aquí (la maqueta deja el wordmark limpio): en `Colecciones` lo
@@ -246,18 +247,20 @@ export default async function CollectionPage({
           Goodreads, añadir es LA acción. Va en la cabecera para estar en las
           tres pestañas y no depender del scroll: la rejilla mide 23.062px en
           móvil. */}
-      <PageHeader
+      <div className={styles.header}>
+        <PageHeader
         title={t("title")}
         action={
           <Link
             href="/buscar"
-            className={buttonVariants("primary", "gap-1.5 whitespace-nowrap")}
+            className={buttonVariants("primary", `${styles.addWork} gap-1.5 whitespace-nowrap`)}
           >
             <PlusIcon aria-hidden className="h-4 w-4" />
             {t("addWork")}
           </Link>
         }
-      />
+        />
+      </div>
 
       <LibraryTools />
       <CollectionTabs active={tab} />
@@ -273,9 +276,11 @@ export default async function CollectionPage({
             </Suspense>
             <NewCollectionButton />
           </div>
-          <Suspense fallback={<CollectionsGridSkeleton />}>
-            <CollectionsGrid userId={user.id} />
-          </Suspense>
+          <div className={styles.collectionCards}>
+            <Suspense fallback={<CollectionsGridSkeleton />}>
+              <CollectionsGrid userId={user.id} />
+            </Suspense>
+          </div>
           {/* Lo que no está en ninguna colección, al pie: se pinta sola solo si
               hay algo suelto Y el usuario ya tiene alguna colección. */}
           <Suspense fallback={null}>
@@ -297,6 +302,7 @@ export default async function CollectionPage({
             </Suspense>
           )}
           <LibraryFilters
+            className={styles.filters}
             itemType={itemType}
             status={status}
             search={search}
@@ -312,7 +318,7 @@ export default async function CollectionPage({
           />
           <Suspense
             key={`todo:${itemType ?? ""}:${status ?? ""}:${search ?? ""}:${sort}:${genre ?? ""}:${hideDropped}`}
-            fallback={<SkeletonCoverGrid count={16} cols={COVER_GRID_COLS} />}
+            fallback={<SkeletonCoverGrid count={16} cols={COVER_GRID_COLS} statusLine />}
           >
             <LibraryGrid
               userId={user.id}
@@ -336,9 +342,11 @@ export default async function CollectionPage({
       )}
 
       {tab === "sagas" && (
-        <Suspense fallback={<SagasPanelSkeleton />}>
-          <FollowedSagasPanel userId={user.id} />
-        </Suspense>
+        <div className={styles.collectionCards}>
+          <Suspense fallback={<SagasPanelSkeleton />}>
+            <FollowedSagasPanel userId={user.id} />
+          </Suspense>
+        </div>
       )}
     </div>
   );
@@ -383,7 +391,7 @@ async function TodoOverview({
 
   if (summary.total === 0) return null;
 
-  // En escritorio ancho el Resumen y los Destacados van EN PARALELO: apilados
+  // Desde escritorio el Resumen y los Destacados van EN PARALELO: apilados
   // a 1600px, la tarjeta del Resumen quedaba con la leyenda «En curso ····· 4»
   // separada medio metro y el estante de portadas se inflaba a 6 portadas
   // gigantes. Sin destacados que poner al lado, el Resumen se topa en vez de
@@ -393,16 +401,16 @@ async function TodoOverview({
 
   return (
     <div
-      className={`flex flex-col gap-6 ${hasFavorites ? "xl:flex-row xl:items-start" : ""}`}
+      className={`${styles.overview} ${hasFavorites ? styles.withHighlights : ""}`}
     >
       <div
-        className={hasFavorites ? "xl:w-[360px] xl:shrink-0" : "xl:max-w-3xl"}
+        className={`${styles.summary} ${hasFavorites ? "" : styles.summaryAlone}`}
       >
         <CollectionSummary summary={summary} />
       </div>
       {hasFavorites && (
         <div className="min-w-0 flex-1">
-          <FavoritesShelf items={favorites} />
+          <LibraryHighlights items={favorites} />
         </div>
       )}
     </div>
@@ -502,7 +510,7 @@ async function LibraryGrid({
     <div className="flex flex-col gap-4">
       <div className={`grid gap-4 ${COVER_GRID_COLS}`}>
         {items.map((item) => (
-          <LibraryItemCard key={item.entryId} item={item} isOwner />
+          <LibraryItemCard key={item.entryId} item={item} isOwner presentation="material" />
         ))}
       </div>
       {pending > 0 ? (
@@ -514,6 +522,7 @@ async function LibraryGrid({
             <SkeletonCoverGrid
               count={Math.min(pageSize, pending)}
               cols={COVER_GRID_COLS}
+              statusLine
             />
           }
         />

@@ -1,0 +1,23 @@
+.page {
+  --library-edge: color-mix(in srgb, var(--foreground) 14%, var(--surface));
+}
+.header h1 { letter-spacing: -0.025em; font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1.15; }
+.addWork { min-height: 44px; padding-inline: 12px; border-radius: 7px 7px 2px 7px; box-shadow: 2px 3px 0 color-mix(in srgb, var(--accent) 70%, var(--foreground)); transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease; }
+.addWork:active { transform: translateY(2px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 70%, var(--foreground)); }
+.tools { gap: 10px; }
+.tool { min-height: 49px; border-bottom-width: 2px; box-shadow: 0 1px 0 color-mix(in srgb, var(--foreground) 14%, var(--surface)); }
+.pixelIcon { width: 32px; height: 32px; flex-shrink: 0; image-rendering: pixelated; }
+.tabs { gap: 24px; }
+.tab { position: relative; border-bottom-color: transparent; }
+.activeTab::after { position: absolute; bottom: -1px; left: 0; width: 100%; height: 5px; content: ""; background: var(--accent); clip-path: polygon(0 0, calc(100% - 4px) 0, calc(100% - 4px) 2px, 100% 2px, 100% 5px, 0 5px); }
+.overview { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 24px; }
+.summary > div { box-shadow: 0 3px 0 color-mix(in srgb, var(--foreground) 14%, var(--surface)), var(--shadow-card); }
+.summary [data-summary-bar] { border-radius: 0; gap: 3px; background: transparent; }
+.summary [data-summary-legend] > span > span:first-child { border-radius: 0; }
+.summaryAlone { max-width: 768px; }
+.filters input[type="search"] { border-radius: 8px; box-shadow: inset 0 1px 2px color-mix(in srgb, var(--foreground) 9%, transparent); }
+.filters input[type="search"]:focus { box-shadow: none; }
+.collectionCards :global(.shadow-card) { box-shadow: 0 3px 0 color-mix(in srgb, var(--foreground) 14%, var(--surface)), var(--shadow-card); }
+@media (min-width: 1024px) { .withHighlights { grid-template-columns: 280px minmax(0, 1fr); } }
+@media (min-width: 1280px) { .withHighlights { grid-template-columns: 320px minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .addWork { transition: none; } }

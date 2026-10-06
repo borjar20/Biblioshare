@@ -1,6 +1,7 @@
-import { SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { LoadingAnnounce } from "@/components/ui/loading-announce";
 import { SHELL_GRID } from "@/lib/ui/layout";
+import styles from "@/components/library/library-view.module.css";
 
 // Skeleton de /coleccion: SOLO lo que no depende de la subpestaña — título y
 // subpestañas.
@@ -22,14 +23,17 @@ import { SHELL_GRID } from "@/lib/ui/layout";
 export default function Loading() {
   return (
     <div
-      className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
+      className={`${styles.page} mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}
     >
       <LoadingAnnounce />
-      <SkeletonLine className="h-7 w-40" />
+      <SkeletonLine className="h-9 w-44" />
+      <div className="flex flex-wrap gap-2.5">
+        {["w-28", "w-40", "w-32"].map((w) => <Skeleton key={w} className={`h-[49px] ${w} rounded-lg`} />)}
+      </div>
 
       {/* Subpestañas */}
       <div className="flex gap-6 border-b border-border pb-3">
-        {["w-24", "w-14"].map((w) => (
+        {["w-14", "w-24", "w-16"].map((w) => (
           <SkeletonLine key={w} className={w} />
         ))}
       </div>

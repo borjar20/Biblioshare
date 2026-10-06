@@ -150,7 +150,8 @@ components:
 # Design System: Biblioshare
 
 > **[Canónico · verificado contra `src/app/globals.css`, `src/lib/ui/layout.ts` y
-> `src/components/ui/` el 2026-08-27]**
+> `src/components/ui/` el 2026-08-27; excepción local de Biblioteca material
+> contrastada con `src/components/library/*.module.css` el 2026-10-06]**
 >
 > Manda para **tokens**: color, tipografía, forma, elevación, layout y primitivos. Los
 > **patrones** de pantalla (columnas, navegación secundaria, dónde vive lo destructivo) los manda
@@ -206,6 +207,8 @@ declara los mismos valores que `.dark`.
 
 Las tarjetas de biblioteca, tanto en Colección como en el perfil público, muestran
 siempre la etiqueta de estado con la variante `overlay`: el color no es su única señal.
+En la presentación `material` de `/coleccion`, la etiqueta va bajo los metadatos;
+la presentación por defecto del perfil la conserva sobre la portada.
 Los errores de formulario sobre surface conservan el rojo existente, cuyo contraste
 ya cumple. Las superficies tintadas se comprueban en navegador con su composición real.
 
@@ -393,7 +396,8 @@ Ambas son marrones, no negras: una sombra gris sobre papel cálido se lee como s
 
 **La Regla de las Dos Sombras.** Hay dos sombras y tienen nombre. Una sombra nueva —o un
 `shadow-lg` de Tailwind colado en una tarjeta— es deriva, y necesita entrada en `decisiones.md`
-antes que código.
+antes que código. La excepción local de Biblioteca material, descrita abajo y aprobada
+el 2026-10-06, compone cantos de contacto sin añadir otro nivel global de elevación.
 
 **La Regla del Tono Primero.** Antes de añadir sombra, pregunta si el escalón de superficie
 resuelve la separación. Casi siempre lo hace.
@@ -411,7 +415,8 @@ queda deliberadamente fuera del mapeo.
 
 **La forma separa el gesto del contenido:** lo que se pulsa es **píldora** (`rounded-full`:
 botones, badges de estado, chips de filtro, el avatar); lo que contiene es **caja** (6/10/14). Es
-la señal de affordance más barata del sistema y por eso no se rompe.
+la señal de affordance más barata del sistema. Las excepciones locales aprobadas se
+documentan con sus consumidores; no amplían la escala de radios global.
 
 El borde es una sola línea: `--border`, un tinte de la tinta al 14 % (12 % en oscuro), nunca un
 gris opaco — así el borde toma temperatura del papel que tenga debajo. El borde **discontinuo**
@@ -484,6 +489,12 @@ grupo. Debajo, título en Fraunces 14 px a dos líneas máximo y subtítulo en F
 12 px. La opción `fixedTitleHeight` reserva siempre las dos líneas, y solo se usa cuando bajo la
 tarjeta va algo más que deba quedar a la misma altura entre vecinas.
 
+`LibraryItemCard` conserva ese contrato por defecto. Solo `/coleccion` activa
+`presentation="material"`: la cubierta completa se desplaza 3 px hacia arriba con
+sus controles al hover de puntero fino, sin escalar la imagen. El libro añade lomo
+y canto de papel estrecho; película y serie conservan la silueta de cartel plano.
+El foco deja el objeto quieto y `prefers-reduced-motion` elimina el movimiento.
+
 ### Vacío (componente firma)
 `EmptyState` tiene **dos tallas, no dos componentes**: `page` (glifo de 64 px, titular serif de
 20 px, 128 px de aire — cuando el vacío ES la pantalla) y `panel` (glifo de 44 px, titular serif
@@ -501,6 +512,32 @@ Set propio, `viewBox` 24, trazo 1.8 con extremos y uniones redondeados, sin rell
 `currentColor`. El logo es la única excepción multicolor.
 
 ## Do's and Don'ts
+
+### Excepción local: Biblioteca material (2026-10-06)
+
+**Aprobada expresamente para `/coleccion`.** La materialidad de la biblioteca se
+concentra en `library-view.module.css`, `library-item-card.module.css` y
+`library-highlights.module.css`; los tokens de `globals.css` conservan su escala.
+Se reutilizan `--shadow-card`, `--shadow-cover`, las superficies y las tintas Paper.
+Los cantos locales son contacto de un objeto, no una tercera elevación global:
+3 px bajo Resumen y colecciones, 1 px bajo herramientas y 4 px bajo Destacados.
+
+«Añadir obra» conserva terracota y tiene relieve corto de 2 × 3 px, radio
+asimétrico `7px 7px 2px 7px`, altura mínima 44 px y padding horizontal de 12 px.
+El buscador usa 8 px; las cubiertas del destacado y sus miniaturas, 3 px; los
+enlaces de acción del destacado, 6 px. Son radios locales de estas piezas,
+incluida la excepción a la píldora de los controles. El destacado invierte la
+tinta sobre una mezcla de los tokens Paper `type-movie` y `foreground` (o
+`background` en oscuro); su acción rellena usa la tinta del panel y mantiene
+el contraste. El resto de los botones sigue la escala general.
+
+El subrayado de la pestaña activa tiene escalón de 5 px. La barra de Resumen
+mantiene la proporción de los estados reales, con segmentos cuadrados separados
+3 px; no representa un objetivo inventado. Cuaderno y Retos y objetivos reutilizan
+`/pet/badges/notes.png` y `missions.png` a 32 px, con `image-rendering: pixelated`.
+No se añade arte ni una segunda mascota. Patrón y datos:
+[Guía de UI](docs/UI-GUIA.md#biblioteca-material-coleccion-2026-10-06);
+decisión: [registro vigente](docs/requirements/decisiones.md).
 
 ### Excepción de la mascota: RPG de bosque (#1165, 2026-09-09)
 

@@ -4,6 +4,7 @@ import {
   SkeletonCard,
 } from "@/components/ui/skeleton";
 import { CARD_GRID_COLS, TILE_GRID_COLS } from "@/lib/ui/layout";
+import styles from "./library-view.module.css";
 
 // Skeleton del Resumen de la colección (tab `Todo`). Compartido entre
 // `coleccion/loading.tsx` (fallback de página) y el fallback granular de
@@ -11,14 +12,26 @@ import { CARD_GRID_COLS, TILE_GRID_COLS } from "@/lib/ui/layout";
 // bloque "Ahora mismo · En curso": salió de Colección (Colección v2, Sesión 1).
 export function CollectionOverviewSkeleton() {
   return (
-    <SkeletonCard className="flex flex-col gap-4">
-      <SkeletonLine className="h-6 w-16" />
-      <Skeleton className="h-2 w-full rounded-full" />
-      <div className="flex gap-4">
-        <SkeletonLine className="w-24" />
-        <SkeletonLine className="w-24" />
-      </div>
-    </SkeletonCard>
+    <div className={`${styles.overview} ${styles.withHighlights}`}>
+      <SkeletonCard className="flex flex-col gap-4">
+        <SkeletonLine className="w-28" />
+        <SkeletonLine className="h-8 w-16" />
+        <Skeleton className="h-2 w-full rounded-none" />
+        <div className="grid grid-cols-2 gap-2">
+          {Array.from({ length: 4 }, (_, i) => <SkeletonLine key={i} className="w-full" />)}
+        </div>
+        <Skeleton className="h-12 w-full" />
+      </SkeletonCard>
+      <SkeletonCard className="flex min-h-[240px] items-center justify-between gap-6 p-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <SkeletonLine className="w-24" />
+          <SkeletonLine className="h-7 w-3/4" />
+          <SkeletonLine className="w-1/2" />
+          <Skeleton className="h-10 w-32 rounded-chip" />
+        </div>
+        <Skeleton className="h-[156px] w-[104px] shrink-0 rounded-cover" />
+      </SkeletonCard>
+    </div>
   );
 }
 
