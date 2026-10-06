@@ -147,3 +147,27 @@ describe("refreshWrapUp: escritura condicionada a la versión leída", () => {
     expect(m.writes).toBe(0);
   });
 });
+
+import { samplePayload } from "@/components/wrap-ups/__fixtures__/sample-payload";
+describe("publicar semanales generadas antes del resumen de series", () => {
+ beforeEach(() => {
+ const p=samplePayload();p.stories=[{id:"series_progress",items:[{type:"series",id:"s1",title:"The Bear",coverUrl:null,times:1,episodes:3}],total:1}];p.share={...p.share,covers:[]};
+ m.row={kind:"week",payload:p,seenAt:null,refreshedAt:null,generatedAt:"2026-10-05T07:00:00Z",publishedPostId:null};
+ m.update.mockReset();m.rpc.mockClear();m.writes=0;
+ });
+ it("persiste solo el resumen derivado antes de tomar el snapshot público", async () => {
+ expect(await publishWrapUp("week")).toEqual({ok:true,postId:"post-1"});
+ expect(m.update).toHaveBeenCalledWith({payload:expect.objectContaining({share:expect.objectContaining({seriesProgress:{count:1,episodes:3}})})});
+ expect(m.writes).toBe(1);expect(m.rpc).toHaveBeenCalledOnce();
+ });
+ it("si cambia la versión, no publica un resumen desfasado", async () => {
+ m.update.mockImplementation(() => {m.row={...(m.row as object),refreshedAt:new Date().toISOString()};});
+ expect(await publishWrapUp("week")).toEqual({ok:false,reason:"wrap_up_changed"});
+ expect(m.writes).toBe(0);expect(m.rpc).not.toHaveBeenCalled();
+ });
+ it("una publicación existente no se reescribe", async () => {
+ m.row={...(m.row as object),publishedPostId:"existing"};
+ expect(await publishWrapUp("week")).toEqual({ok:true,postId:"post-1"});
+ expect(m.update).not.toHaveBeenCalled();
+ });
+});

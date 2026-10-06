@@ -48,7 +48,7 @@ function parsePet(v: unknown): OwnPet | null {
 /** Valida el ShareSummary de un share; `null` = no se puede pintar (el post se descarta). */
 export function parseShareSummary(raw: unknown): ShareSummary | null {
   if (!isObject(raw)) return null;
-  const { kind, periodStart, periodEnd, narrator, palette, minutes, episodesWithoutRuntime, finished, covers, pet } = raw;
+  const { kind, periodStart, periodEnd, narrator, palette, minutes, episodesWithoutRuntime, finished, covers, pet, seriesProgress } = raw;
   if (!isWrapUpKind(kind)) return null;
   if (typeof periodStart !== "string" || !ISO_DAY.test(periodStart)) return null;
   if (typeof periodEnd !== "string" || !ISO_DAY.test(periodEnd)) return null;
@@ -60,6 +60,9 @@ export function parseShareSummary(raw: unknown): ShareSummary | null {
     kind, periodStart, periodEnd,
     narrator: narrator as ShareSummary["narrator"], palette: palette as Palette,
     minutes, episodesWithoutRuntime, finished,
+    ...(isObject(seriesProgress) && isCount(seriesProgress.count) && seriesProgress.count > 0
+      && (seriesProgress.episodes === null || isCount(seriesProgress.episodes))
+      ? { seriesProgress: {count: seriesProgress.count, episodes: seriesProgress.episodes} } : {}),
     covers: covers.map(parseCover).filter((c): c is ItemRef => c !== null).slice(0, MAX_COVERS),
     pet: parsePet(pet),
   };

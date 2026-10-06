@@ -151,3 +151,12 @@ describe("parseShareSummary", () => {
     expect(parseShareSummary(raw)).toBeNull();
   });
 });
+
+it("el feed conserva contadores de series y episodios del resumen público", async () => {
+ const sb=fakeSupabase({posts:[wrapPost()],wrapUpShares:[{id:SHARE_ID,summary:{...summary,seriesProgress:{count:2,episodes:8,private:"omit"}}}]});
+ const page=await getFeed(sb.client,"viewer",{});const entry=page.events[0];
+ if (entry.source !== "wrap_up") throw new Error("Missing wrap-up entry");
+ const event=entry.event;
+ if (!isWrapUpEvent(event)) throw new Error("Missing wrap-up");
+ expect(event.summary.seriesProgress).toEqual({count:2,episodes:8});
+});

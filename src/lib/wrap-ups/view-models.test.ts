@@ -227,3 +227,10 @@ describe("posterFor con el traductor real y estricto", () => {
  expect(m.lines).toEqual(["The Bear · 1 episodio visto esta semana", "y 1 serie más"]);
  expect(m.narratorLine).toBe("Tus series también avanzan episodio a episodio.");
  });
+
+it("el cierre recupera los avances de una semanal ya generada", () => {
+ const p={...base, share:{minutes:120,episodesWithoutRuntime:0,finished:0,covers:[]}, stories:[{id:"series_progress",items:[{type:"series",id:"s1",title:"The Bear",coverUrl:null,times:1,episodes:3}],total:1}]} as unknown as WrapUpPayload;
+ const strict=createTranslator({locale:"es",messages});const tr=(key:string,values?:Record<string,string|number>)=>strict(key as never, values as never);
+ const m=posterFor({id:"closing"},p,tr);
+ expect(m.lines).toContain("3 episodios vistos en 1 serie");expect(m.covers?.[0].title).toBe("The Bear");
+});

@@ -4443,6 +4443,8 @@
       },
       "closing": {
         "title": "Y ya está",
+        "seriesProgress": "{episodes, plural, one {# episodio visto} other {# episodios vistos}} en {count, plural, one {# serie} other {# series}}",
+        "seriesCount": "{count, plural, one {Avanzaste en # serie} other {Avanzaste en # series}}",
         "finished": "{count, plural, one {# obra terminada} other {# obras terminadas}}"
       }
     },

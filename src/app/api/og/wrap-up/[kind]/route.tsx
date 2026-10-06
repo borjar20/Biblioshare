@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getOwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { loadWrapUpImageAssets } from "@/lib/wrap-ups/og-assets";
+import { summaryForPayload } from "@/lib/wrap-ups/share-summary";
 import { wrapUpImage } from "@/lib/wrap-ups/og-image";
 import { isWrapUpKind } from "@/lib/wrap-ups/windows";
 
@@ -17,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ kind: s
   const wrapUp = await getOwnWrapUp(kind);
   if (!wrapUp) return new Response("No encontrado", { status: 404 });
 
-  const summary = wrapUp.payload.share;
+  const summary = summaryForPayload(wrapUp.payload);
   return wrapUpImage(summary, await loadWrapUpImageAssets(summary), {
     headers: {
       "Cache-Control": "private, no-store",

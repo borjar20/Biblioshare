@@ -5303,6 +5303,8 @@ real está en `docs/testing/2026-10-06-novedades-release.md`.
 
 **[Canónico · verificado contra biblioshare-dev y producción el 2026-10-07]**
 
+Contrato JSON de aplicación ampliado el 2026-10-07 (verificación local): `ShareSummary.seriesProgress? = {count, episodes}` para avances semanales; `episodes = null` cuando una story previa truncada no permite reconstruir el total. Las portadas combinan terminadas y series avanzadas, sin duplicados y con tope cuatro. Cierre, PNG y feed usan el mismo resumen. Al publicar una semanal anterior, la adaptación de `payload.share` se persiste sólo para el dueño y la versión leída (CAS), sin cambiar timestamps de cálculo ni snapshots ya publicados. No cambia el esquema, RPC, RLS o grants. [Evidencia de aplicación](../testing/2026-10-07-wrap-closing-series.md).
+
 Migraciones `20261006120000_wrap_ups_enums.sql` y `20261006120100_wrap_ups_core.sql`, en ese orden. Ambas incluidas en el manifiesto exhaustivo y baseline. El contrato `supabase/tests/wrap_ups.sql` entra en `scripts/db/verify.mjs`.
 
 - `wrap_up_kind`: `week/month/year`. Nuevos valores `post_kind.wrap_up`, `post_anchor_type.wrap_up` y `post_source_kind.wrap_up_share`.
