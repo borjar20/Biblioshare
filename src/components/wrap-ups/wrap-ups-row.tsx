@@ -2,11 +2,18 @@
 // wrap-ups, también los quiet (spec §5). Servidor, sin `use cache` (#437).
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { getOwnWrapUps } from "@/lib/wrap-ups/get-own-wrap-ups";
+import { getOwnWrapUps, type OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { periodLabel } from "@/lib/wrap-ups/view-models";
 
 export async function WrapUpsRow() {
-  const all = await getOwnWrapUps();
+  let all: OwnWrapUp[];
+  try {
+    all = await getOwnWrapUps();
+  } catch (e) {
+    // Un fallo aquí (tabla o grant ausente) no debe tumbar /estadisticas.
+    console.error("WrapUpsRow: no se pudieron leer los wrap-ups", e instanceof Error ? e.message : "error");
+    return null;
+  }
   if (all.length === 0) return null;
   const t = await getTranslations("wrapUps.entry");
   return (

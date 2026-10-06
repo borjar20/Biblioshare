@@ -2,19 +2,26 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const wrapUps = vi.hoisted(() => ({ list: [] as unknown[] }));
-vi.mock("@/lib/wrap-ups/get-own-wrap-ups", () => ({ getOwnWrapUps: async () => wrapUps.list }));
+const wrapUps = vi.hoisted(() => ({ list: [] as unknown[], fail: false }));
+vi.mock("@/lib/wrap-ups/get-own-wrap-ups", () => ({
+  getOwnWrapUps: async () => {
+    if (wrapUps.fail) throw new Error("boom");
+    return wrapUps.list;
+  },
+}));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => (key: string, v?: { kind?: string }) => (v?.kind ? `${key}:${v.kind}` : key),
 }));
 vi.mock("./pixel-font", () => ({ pixelFont: { variable: "pixel" } }));
 
 const month = { kind: "month", seenAt: null, payload: { kind: "month", periodStart: "2026-09-01", periodEnd: "2026-09-30", intensity: "quiet", narrator: "quiet", palette: "mixed" } };
+const year = { kind: "year", seenAt: null, payload: { kind: "year", periodStart: "2026-01-01", periodEnd: "2026-09-25", intensity: "full", narrator: "festive", palette: "mixed" } };
 const week = { kind: "week", seenAt: null, payload: { kind: "week", periodStart: "2026-09-28", periodEnd: "2026-10-04", intensity: "full", narrator: "reader", palette: "book" } };
 
 afterEach(cleanup);
 beforeEach(() => {
   wrapUps.list = [month, week];
+  wrapUps.fail = false;
 });
 
 describe("WrapUpsRow", () => {
@@ -57,5 +64,41 @@ describe("HomeWrapUpCover", () => {
     wrapUps.list = [];
     const { HomeWrapUpCover } = await import("./wrap-up-entry");
     expect(await HomeWrapUpCover()).toBeNull();
+  });
+  it("entre varios full sin ver gana el de periodEnd más reciente", async () => {
+    wrapUps.list = [year, week];
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    expect(screen.getByRole("link").getAttribute("href")).toBe("/wrap/week");
+  });
+  it("el enlace con anillo incluye el periodo en su nombre accesible", async () => {
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    expect(screen.getByRole("link", { name: /Semana del 28 sep al 4 oct/ })).toBeTruthy();
+  });
+  it("el enlace discreto incluye el periodo (sr-only)", async () => {
+    wrapUps.list = [{ ...week, seenAt: "2026-10-05T10:00:00Z" }];
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    expect(screen.getByRole("link", { name: /Semana del 28 sep al 4 oct/ })).toBeTruthy();
+  });
+  it("si getOwnWrapUps falla, loguea una vez y devuelve null", async () => {
+    wrapUps.fail = true;
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    expect(await HomeWrapUpCover()).toBeNull();
+    expect(err).toHaveBeenCalledTimes(1);
+    err.mockRestore();
+  });
+});
+
+describe("WrapUpsRow (fallo)", () => {
+  it("si getOwnWrapUps falla, loguea una vez y devuelve null", async () => {
+    wrapUps.fail = true;
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { WrapUpsRow } = await import("./wrap-ups-row");
+    expect(await WrapUpsRow()).toBeNull();
+    expect(err).toHaveBeenCalledTimes(1);
+    err.mockRestore();
   });
 });

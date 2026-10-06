@@ -43,10 +43,19 @@ function NarratorThumb({ variant }: { variant: OwnWrapUp["payload"]["narrator"] 
 }
 
 export async function HomeWrapUpCover() {
-  const all = await getOwnWrapUps();
+  let all: OwnWrapUp[];
+  try {
+    all = await getOwnWrapUps();
+  } catch (e) {
+    // Un fallo aquí (tabla o grant ausente) no debe tumbar la home entera.
+    console.error("HomeWrapUpCover: no se pudieron leer los wrap-ups", e instanceof Error ? e.message : "error");
+    return null;
+  }
   if (all.length === 0) return null;
-  const unseenFull = all.find((w) => w.payload.intensity === "full" && w.seenAt === null);
-  const wrap = unseenFull ?? all.reduce((latest, w) => (w.payload.periodEnd > latest.payload.periodEnd ? w : latest));
+  const latest = (list: OwnWrapUp[]) => list.reduce((a, w) => (w.payload.periodEnd > a.payload.periodEnd ? w : a));
+  const unseenFulls = all.filter((w) => w.payload.intensity === "full" && w.seenAt === null);
+  const unseenFull = unseenFulls.length > 0 ? latest(unseenFulls) : null;
+  const wrap = unseenFull ?? latest(all);
   const t = await getTranslations("wrapUps.entry");
   const label = t("label", { kind: wrap.kind });
   const href = `/wrap/${wrap.kind}`;
