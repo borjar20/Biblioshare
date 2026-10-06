@@ -4187,4 +4187,18 @@
       "error": "No se pudo completar. Vuelve a intentarlo."
     }
   }
+  ,"wrapUps": {
+    "push": {
+      "title": { "week": "Tu semana está lista 🐿️", "month": "Tu mes está listo 🐿️", "year": "Tu año en Biblioshare 🐿️" },
+      "body": {
+        "reader": "Páginas, horas y alguna sorpresa. Échale un ojo.",
+        "cinephile": "Palomitas incluidas: mira lo que has visto.",
+        "binger": "Episodio a episodio, mira tu maratón.",
+        "explorer": "Lugares, momentos y algo más. Ven a verlo.",
+        "social": "Esta vez no has ido solo. Míralo.",
+        "quiet": "Un periodo tranquilo. También cuenta.",
+        "festive": "Tu año, contado en un ratito."
+      }
+    }
+  }
 }
