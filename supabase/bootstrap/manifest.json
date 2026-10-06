@@ -302,6 +302,8 @@
     "20261006103332_cultural_releases_core.sql",
     "20261006103440_cultural_release_deliveries.sql",
     "20261006103544_cultural_release_scheduler.sql",
-    "20261006134245_cultural_release_translation_publication_year.sql"
+    "20261006134245_cultural_release_translation_publication_year.sql",
+    "20261006120000_wrap_ups_enums.sql",
+    "20261006120100_wrap_ups_core.sql"
   ]
 }

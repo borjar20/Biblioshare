@@ -8,6 +8,10 @@
 import type { NotificationType } from "@/lib/social/notification-types";
 import type { PetNudgeType } from "@/lib/pet/nudges/types";
 
+// Aviso de crónica lista (spec 2026-10-06). Como PetNudgeType, no inserta fila
+// en `notifications`: es un aviso del sistema, no una interacción.
+export type WrapUpPushType = "wrap_up_ready";
+
 export type { NotificationType };
 
 // Espeja el enum public.push_platform (20260828_push_devices.sql). Se declara a
@@ -28,7 +32,7 @@ export type NotificationEvent = {
   notificationId?: string;
   recipientUserId: string;
   category: PushCategory;
-  type: NotificationType | PetNudgeType;
+  type: NotificationType | PetNudgeType | WrapUpPushType;
   title: string;
   body: string;
   path: string;

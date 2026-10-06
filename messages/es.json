@@ -4319,5 +4319,212 @@
       },
       "error": "No se pudo completar. Vuelve a intentarlo."
     }
+  },
+  "wrapUps": {
+    "push": {
+      "title": { "week": "Tu semana está lista 🐿️", "month": "Tu mes está listo 🐿️", "year": "Tu año en Biblioshare 🐿️" },
+      "body": {
+        "reader": "Páginas, horas y alguna sorpresa. Échale un ojo.",
+        "cinephile": "Palomitas incluidas: mira lo que has visto.",
+        "binger": "Episodio a episodio, mira tu maratón.",
+        "explorer": "Lugares, momentos y algo más. Ven a verlo.",
+        "social": "Esta vez no has ido en solitario. Míralo.",
+        "quiet": "Un periodo tranquilo. También cuenta.",
+        "festive": "Tu año, contado en un ratito."
+      }
+    },
+    "entry": {
+      "rowTitle": "Tus crónicas",
+      "label": "{kind, select, week {Tu semana} month {Tu mes} other {Tu año}}",
+      "unseen": "Nueva"
+    },
+    "stories": {
+      "cover": {
+        "title": "{kind, select, week {Tu semana} month {Tu mes} other {Tu año}}"
+      },
+      "time": {
+        "title": "Tiempo",
+        "episodesUnit": "{count, plural, one {episodio} other {episodios}}",
+        "unknownDuration": "Su duración no es conocida, así que no se convierte en horas",
+        "noData": "Sin datos de tiempo en este periodo",
+        "delta": "{sign}{value} {unit} más que {period, select, week {la semana anterior} month {el mes pasado} other {el año pasado}}",
+        "deltaDown": "{value} {unit} menos que {period, select, week {la semana anterior} month {el mes pasado} other {el año pasado}}",
+        "deltaSame": "Igual que {period, select, week {la semana anterior} month {el mes pasado} other {el año pasado}}",
+        "episodesWithoutRuntime": "{count, plural, one {y # episodio sin duración conocida} other {y # episodios sin duración conocida}}"
+      },
+      "finished": {
+        "title": "Terminado",
+        "unit": "{count, plural, one {obra terminada} other {obras terminadas}}",
+        "more": "y {count} más"
+      },
+      "in_progress": {
+        "title": "En marcha",
+        "item": "{title}",
+        "itemPercent": "{title} · {percent} %"
+      },
+      "rhythm": {
+        "title": "Ritmo",
+        "unit": "{count, plural, one {día con actividad} other {días con actividad}}",
+        "streak": "Tu mejor racha: {count} días seguidos",
+        "favoriteDay": "Tu día más activo: {day}",
+        "favoriteBand": "Tu franja más activa: de {from}:00 a {to}:00",
+        "weekday": {
+          "0": "lunes",
+          "1": "martes",
+          "2": "miércoles",
+          "3": "jueves",
+          "4": "viernes",
+          "5": "sábado",
+          "6": "domingo"
+        }
+      },
+      "genres": {
+        "title": "Géneros",
+        "works": "{count, plural, one {# obra} other {# obras}}"
+      },
+      "best_rated": {
+        "title": "Mejor nota"
+      },
+      "phrase": {
+        "title": "Una frase",
+        "source": {
+          "note": "De tus notas",
+          "quote": "De tus citas",
+          "margin": "De tus márgenes"
+        }
+      },
+      "experience": {
+        "title": "Una experiencia"
+      },
+      "together": {
+        "title": "En compañía",
+        "unit": "{count, plural, one {plan compartido} other {planes compartidos}}",
+        "jointViewings": "{count, plural, one {# visionado conjunto} other {# visionados conjuntos}}",
+        "clubDays": "{count, plural, one {# día de club} other {# días de club}}"
+      },
+      "months": {
+        "title": "Mes a mes",
+        "works": "{count, plural, one {# obra} other {# obras}}",
+        "cutoff": "Diciembre llega hasta el {date}",
+        "timeSource": "Tiempo registrado en sesiones"
+      },
+      "records": {
+        "title": "Récords",
+        "busiestMonth": "Mes más intenso",
+        "fastest": "Lectura más rápida",
+        "longestSession": "Sesión más larga",
+        "days": "{count, plural, one {# día} other {# días}}"
+      },
+      "creators": {
+        "title": "Autores y directores",
+        "works": "{count, plural, one {# obra} other {# obras}}"
+      },
+      "pile": {
+        "title": "Tu pila",
+        "none": "Tu pila no se movió",
+        "unit": "{count, plural, one {obra nueva en tu pila} other {obras nuevas en tu pila}}",
+        "removed": "{count, plural, one {# salió de ella} other {# salieron de ella}}"
+      },
+      "pet": {
+        "title": "Tu ardilla",
+        "stage": "Etapa: {stage}",
+        "stages": {
+          "acorn": "Bellota",
+          "young": "Cría",
+          "adult": "Adulta",
+          "veteran": "Veterana"
+        },
+        "adventures": "{count, plural, one {# aventura ganada} other {# aventuras ganadas}}",
+        "loot": "Botín: {count}"
+      },
+      "closing": {
+        "title": "Y ya está",
+        "finished": "{count, plural, one {# obra terminada} other {# obras terminadas}}"
+      }
+    },
+    "narrator": {
+      "default": {
+        "cover": "Aquí tienes tu resumen.",
+        "time": "Tiempo bien invertido: {value} {unit}.",
+        "timeEpisodes": "Episodios vistos, aunque sin duración conocida.",
+        "timeNone": "Un periodo sin tiempo registrado.",
+        "finished": "{count, plural, one {Cerraste # obra. Una menos pendiente.} other {Cerraste # obras. Qué buen ritmo.}}",
+        "in_progress": "{count, plural, one {Hay # obra a medias esperándote.} other {Hay # obras a medias esperándote.}}",
+        "rhythm": "{count, plural, one {Un día con algo entre manos.} other {{count} días con algo entre manos.}}",
+        "genres": "Esto es lo que más ha pesado en tu estantería.",
+        "best_rated": "La que mejor puntuaste: {title}.",
+        "phrase": "Esta frase se quedó contigo.",
+        "experience": "{title}: eso no se ve en una pantalla.",
+        "together": "Esta vez no fue en solitario.",
+        "months": "Así fue repartiéndose tu año.",
+        "records": "Los números que se salen de tu normalidad.",
+        "creators": "{name} encabeza tu lista del periodo.",
+        "creators_empty": "Sin autores ni directores que destacar.",
+        "pile": "Tu pila se movió: {added, plural, one {entró #} other {entraron #}} y {removed, plural, one {salió #} other {salieron #}}.",
+        "pileAdded": "{added, plural, one {Entró # obra} other {Entraron # obras}} a tu pila.",
+        "pileRemoved": "{removed, plural, one {Salió # obra} other {Salieron # obras}} de tu pila.",
+        "pileNone": "Tu pila se quedó como estaba.",
+        "pet": "Tu ardilla también ha crecido.",
+        "closing": "Eso fue todo."
+      },
+      "reader": {
+        "cover": "Páginas, horas y alguna sorpresa. Vamos a verlo.",
+        "closing": "Marca la página: seguimos pronto."
+      },
+      "cinephile": {
+        "cover": "Se apagan las luces. Empieza tu resumen.",
+        "closing": "Fundido a negro. Hasta la próxima sesión."
+      },
+      "binger": {
+        "cover": "Un episodio más y lo dejas. Mira cómo ha ido.",
+        "closing": "¿Siguiente episodio en 5 segundos?"
+      },
+      "explorer": {
+        "cover": "Mapa en mano: esto es lo que has recorrido.",
+        "closing": "Fin del trayecto. El próximo mapa ya te espera."
+      },
+      "social": {
+        "cover": "Esta vez no vas en solitario. Mira lo que has compartido.",
+        "closing": "Compartido es mejor. Hasta la próxima."
+      },
+      "quiet": {
+        "cover": "Un periodo tranquilo. También cuenta.",
+        "closing": "Descansar también es leer entre líneas."
+      },
+      "festive": {
+        "cover": "Es tu año contado en un ratito. Ven a verlo.",
+        "closing": "Gracias por un año de historias."
+      }
+    },
+    "ui": {
+      "close": "Cerrar",
+      "next": "Siguiente",
+      "previous": "Anterior",
+      "pause": "Pausa",
+      "play": "Reanudar",
+      "share": "Compartir",
+      "download": "Descargar imagen",
+      "shareError": "No se pudo preparar la imagen. Inténtalo de nuevo.",
+      "publish": "Publicar en el feed",
+      "published": "Publicado",
+      "unpublish": "Despublicar",
+      "refresh": "Actualizar",
+      "refreshed": "Actualizado hace un momento",
+      "refreshLater": "Podrás actualizar de nuevo en unos minutos",
+      "refreshPublished": "Para actualizarlo, despublícalo primero",
+      "refreshEmpty": "Este periodo no tiene novedades que contar",
+      "actionError": "Algo ha ido mal. Inténtalo de nuevo.",
+      "progress": "Story {current} de {total}",
+      "paused": "En pausa",
+      "dayActive": "con actividad",
+      "dayInactive": "sin actividad",
+      "loading": "Preparando tu crónica"
+    },
+    "feed": {
+      "title": "{kind, select, week {Su semana en Biblioshare} month {Su mes en Biblioshare} other {Su año en Biblioshare}}",
+      "openImage": "Ver la imagen de la crónica",
+      "imageAlt": "Crónica de {name}: {period}",
+      "close": "Cerrar"
+    }
   }
 }

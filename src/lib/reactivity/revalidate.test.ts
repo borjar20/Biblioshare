@@ -32,6 +32,7 @@ import {
   revalidateSagaMembership,
   expireItemCredits,
   expireSagaMembership,
+  revalidateWrapUp,
 } from "./revalidate";
 
 beforeEach(() => {
@@ -49,6 +50,19 @@ describe("revalidate helpers", () => {
   it("revalidateFeed revalida el feed de inicio", () => {
     revalidateFeed();
     expect(calls()).toEqual(["/"]);
+  });
+
+  it("revalidateWrapUp (dueño) cubre inicio, estadísticas y su reproductor", () => {
+    revalidateWrapUp("week");
+    expect(calls()).toEqual(["/", "/estadisticas", "/wrap/week"]);
+  });
+
+  it("revalidateWrapUp al publicar/despublicar alcanza también el post y los perfiles", () => {
+    revalidateWrapUp("month", { social: true });
+    expect(calls()).toEqual([
+      "/", "/estadisticas", "/wrap/month",
+      "/post/[id] page", "/u/[username] page", "/coleccion/rincon",
+    ]);
   });
 
   it("revalidateItemPage usa la ruta literal del item", () => {

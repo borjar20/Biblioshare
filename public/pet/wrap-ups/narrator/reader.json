@@ -1,0 +1,12 @@
+{
+  "state": "reader",
+  "character_id": "752d24ff-0d70-4b2e-a617-bf1d85547c3b",
+  "animation_group_id": "3494b8ad-8858-48a1-a1e7-cb4fa8c22d35",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 88,
+  "frames": 4,
+  "width": 352,
+  "height": 88,
+  "hash": "538ca51e16"
+}

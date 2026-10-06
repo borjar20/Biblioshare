@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
-import { getPostEvent, getPostContext, isExperienceEvent, type FeedEntry } from "@/lib/social/feed";
+import { getPostEvent, getPostContext, isExperienceEvent, isWrapUpEvent, type FeedEntry } from "@/lib/social/feed";
 import { FeedItem } from "@/components/social/feed-item";
+import { WrapUpFeedCard } from "@/components/wrap-ups/wrap-up-feed-card";
+import { WRAP_UP_FEED_MESSAGES } from "@/components/wrap-ups/wrap-up-feed-messages";
+import { sharedPeriodLabel } from "@/lib/wrap-ups/view-models";
 import { PostThread } from "@/components/social/post-thread";
 import { PostAside, type AsideParticipant } from "@/components/social/post-aside";
 import { WorkSummaryCard } from "@/components/social/work-summary-card";
@@ -31,7 +34,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   if (!result) notFound();
 
   const { event, knownUsernames } = result;
-  const entry: FeedEntry = isExperienceEvent(event)?{source:"experience",id:event.id,eventDate:event.eventDate,orderDate:event.orderDate,sortDate:event.sortDate,event}:{
+  const entry: FeedEntry = isWrapUpEvent(event)?{source:"wrap_up",id:event.id,eventDate:event.eventDate,orderDate:event.orderDate,sortDate:event.sortDate,event}:isExperienceEvent(event)?{source:"experience",id:event.id,eventDate:event.eventDate,orderDate:event.orderDate,sortDate:event.sortDate,event}:{
     source: "person",
     id: event.id,
     eventDate: event.eventDate,
@@ -44,8 +47,9 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // Ancla REAL de la obra: para un pensamiento vive en `thought.anchor`
   // (itemType/itemId son un placeholder inerte); para el resto, el par
   // itemType/itemId ES el ancla de catálogo. Mismo criterio que `getPostContext`.
-  const anchorType = isExperienceEvent(event)?"experience":event.thought?.anchor.type ?? event.itemType;
-  const anchorId = isExperienceEvent(event)?event.experience.id:event.thought?.anchor.id ?? event.itemId;
+  // Una crónica (wrap_up) no tiene obra: sin resumen de obra ni «Más sobre…».
+  const anchorType = isWrapUpEvent(event)?null:isExperienceEvent(event)?"experience":event.thought?.anchor.type ?? event.itemType;
+  const anchorId = isWrapUpEvent(event)?null:isExperienceEvent(event)?event.experience.id:event.thought?.anchor.id ?? event.itemId;
 
   // Contexto SOCIAL del raíl derecho + resumen de la OBRA del raíl izquierdo, en
   // paralelo (ambos dependen solo de `event`). Participantes = autores DISTINTOS
@@ -54,7 +58,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // propias de `getPostContext`.
   const [context, workSummary] = await Promise.all([
     getPostContext(supabase, event),
-    getWorkSummary(supabase, user?.id ?? null, anchorType, anchorId),
+    anchorType && anchorId ? getWorkSummary(supabase, user?.id ?? null, anchorType, anchorId) : Promise.resolve(null),
   ]);
   const participantsById = new Map<string, AsideParticipant>();
   for (const c of event.comments) {
@@ -63,7 +67,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     }
   }
   const participants = [...participantsById.values()];
-  const workTitle = isExperienceEvent(event)?event.experience.title:event.thought?.anchor.title ?? event.itemTitle;
+  const workTitle = isWrapUpEvent(event)?sharedPeriodLabel(event.summary):isExperienceEvent(event)?event.experience.title:event.thought?.anchor.title ?? event.itemTitle;
 
   // Cabecera = el post (tarjeta-hero, SIN su barra de interacción:
   // `showInteractions={false}`), y debajo el hilo como ciudadano de primera —
@@ -83,16 +87,21 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // página; el árbol ya no lo añade). Cabecera = el post (tarjeta-hero, SIN su
   // barra de interacción) y debajo el hilo anidado con su composer y deep-link.
   return (
-    <RouteMessages ns={["feed", "social", "experiences"]}>
+    <RouteMessages ns={["feed", "social", "experiences", ...WRAP_UP_FEED_MESSAGES]}>
       <div className={`mx-auto w-full ${SHELL_POST} flex-1 px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
         <div className="post-grid pb-28 min-[1023px]:pb-0">
           <div data-area="conversacion" className="flex min-w-0 flex-col gap-4">
-            <FeedItem
-              entry={entry}
-              viewerLoggedIn={!!user}
-              knownUsernames={knownUsernames}
-              showInteractions={false}
-            />
+            {/* Crónica: la tarjeta en grande, con la imagen 9:16 en vez del cierre compacto. */}
+            {entry.source === "wrap_up" ? (
+              <WrapUpFeedCard event={entry.event} viewerLoggedIn={!!user} showInteractions={false} variant="detail" />
+            ) : (
+              <FeedItem
+                entry={entry}
+                viewerLoggedIn={!!user}
+                knownUsernames={knownUsernames}
+                showInteractions={false}
+              />
+            )}
             {targetId && (
               <PostThread
                 interactionTargetId={targetId}

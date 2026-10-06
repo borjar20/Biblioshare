@@ -1629,3 +1629,13 @@ commit;
 begin;
 \ir migrations/20261006134245_cultural_release_translation_publication_year.sql
 commit;
+
+-- 20261006120000_wrap_ups_enums
+begin;
+\ir migrations/20261006120000_wrap_ups_enums.sql
+commit;
+
+-- 20261006120100_wrap_ups_core
+begin;
+\ir migrations/20261006120100_wrap_ups_core.sql
+commit;

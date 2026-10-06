@@ -2,6 +2,7 @@ import "server-only";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
 import { itemHref, sagaHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
+import type { WrapUpKind } from "@/lib/wrap-ups/windows";
 
 // Única fuente de verdad de "qué rutas afecta mutar X". Toda server action
 // revalida a través de estos helpers en vez de llamar a revalidatePath suelto,
@@ -43,6 +44,20 @@ export function revalidateExperiences(id?: string): void {
   revalidatePath("/post/[id]", "page");
   revalidateProfilePages();
   revalidateFeed();
+}
+
+/** Crónica (wrap-up) del dueño: la portada con anillo de inicio, la fila de
+ *  /estadisticas y su reproductor. Con `social` (publicar/despublicar) además
+ *  el post (/post/[id]) y la Actividad de los perfiles; el feed de inicio ya va
+ *  en "/". */
+export function revalidateWrapUp(kind: WrapUpKind, opts: { social?: boolean } = {}): void {
+  revalidateFeed();
+  revalidatePath("/estadisticas");
+  revalidatePath(`/wrap/${kind}`);
+  if (opts.social) {
+    revalidatePath("/post/[id]", "page");
+    revalidateProfilePages();
+  }
 }
 
 /** Moderation can hide a whole club and descendants across every social surface. */

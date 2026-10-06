@@ -205,3 +205,26 @@ Los artefactos locales permanecen separados en las visualizaciones de esta
 tarea: `library-revision-qa/verification.json` y
 `library-revision-final-qa/verification.json`. El coordinador cerró los
 navegadores y detuvo el servidor de pruebas en 3100.
+
+## Integración con Crónicas en main — 2026-10-07
+
+Tras entrar la PR #1436 en `origin/main` `5d6b447c`, se integra esa rama en el
+candidato de Biblioteca para resolver el conflicto documental. Las decisiones
+de ambas features y los bytes de los documentos canónicos entrantes se
+conservan. `src/components/library` y `src/app/coleccion` quedan idénticos al
+commit de la corrección `ad905869`; no se vuelve a diseñar la vista.
+
+Con las dependencias de main instaladas, **170 tests focales PASS en 16
+archivos**, incluidos los 19 contratos entrantes del revalidador central.
+**Build/TypeScript PASS**, build `bBtvvYubiW1ioxKhyl5A7`: compilación 14,9 s,
+TypeScript 50 s y 88 rutas estáticas en 2,6 s.
+
+Navegador integrado: **51/51 checks PASS**, cuatro vistas (390/1280 px,
+claro/oscuro), tarjetas equivalentes, las tres herramientas, las tres fichas,
+formulario de sesión real y cierre sin guardar, foco/hover/movimiento reducido
+e iconos. Este corte no sustituye ni repite la matriz anterior de ocho vistas;
+se conserva por separado en `library-merge-qa/verification.json`.
+Cero errores de consola/página/HTTP y **86 abortos (81 GET, 5 POST)**, sin
+atribuirlos ni agregarlos a los cortes anteriores. Cero datos nuevos y
+navegadores y servidor de pruebas cerrados. No acredita activación remota de
+Crónicas, Android nativo, merge en main ni CI del candidato integrado.

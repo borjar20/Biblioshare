@@ -1,0 +1,12 @@
+{
+  "state": "quiet",
+  "character_id": "9800cfe4-d868-4275-b3e3-2f101b39c413",
+  "animation_group_id": "5032866b-dfc1-44cb-885a-f981ab580018",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 88,
+  "frames": 4,
+  "width": 352,
+  "height": 88,
+  "hash": "ff52a2558c"
+}

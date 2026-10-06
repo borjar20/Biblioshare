@@ -1,0 +1,12 @@
+{
+  "state": "social",
+  "character_id": "a409ba26-9836-434c-b35a-096e4ab7fde9",
+  "animation_group_id": "82142405-4cd2-4363-b762-d7fba6d23450",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 100,
+  "frames": 4,
+  "width": 400,
+  "height": 100,
+  "hash": "6c900a314f"
+}

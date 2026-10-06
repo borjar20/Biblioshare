@@ -1,0 +1,12 @@
+{
+  "state": "explorer",
+  "character_id": "9c5194ea-bb9c-4a78-94f1-8bc17e76b06a",
+  "animation_group_id": "e001d0af-ff8a-4cd7-a630-1876d4eb11cf",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 92,
+  "frames": 4,
+  "width": 368,
+  "height": 92,
+  "hash": "b0ec82d19c"
+}

@@ -14,7 +14,24 @@
 
 import { addDaysISO, toISODate } from "./dates";
 
-export type StatsPeriod = "week" | "month" | "all" | number;
+/**
+ * Ventana CERRADA y explícita (wrap-ups, spec 2026-10-06). A diferencia de
+ * "week"/"month" no depende de `now`: la decide quien la construye y trae su
+ * propio periodo anterior, porque «el mismo tamaño» no vale para meses de
+ * distinta longitud ni para un año cortado el 25 de diciembre.
+ */
+export type StatsWindow = {
+  start: string;
+  endExclusive: string;
+  previous: { start: string; endExclusive: string } | null;
+  grain: "day" | "month";
+};
+
+export type StatsPeriod = "week" | "month" | "all" | number | StatsWindow;
+
+export function isStatsWindow(period: StatsPeriod): period is StatsWindow {
+  return typeof period === "object" && period !== null;
+}
 
 /** Los pills que se ofrecen, en orden. */
 export function availablePeriods(now = new Date()): StatsPeriod[] {
@@ -48,6 +65,7 @@ export function resolvePeriod(
 
 /** Período → `?periodo=`: el valor que lleva de vuelta a esta misma vista. */
 export function periodParam(period: StatsPeriod): string {
+  if (isStatsWindow(period)) return "todo";
   if (period === "week") return "semana";
   if (period === "month") return "mes";
   if (period === "all") return "todo";
@@ -56,6 +74,7 @@ export function periodParam(period: StatsPeriod): string {
 
 /** Etiqueta para el rótulo de cada panel: contesta «¿de cuándo me hablas?». */
 export function periodLabel(period: StatsPeriod): string {
+  if (isStatsWindow(period)) return `${period.start} – ${addDaysISO(period.endExclusive, -1)}`;
   if (period === "week") return "Últimos 7 días";
   if (period === "month") return "Este mes";
   if (period === "all") return "Todo el histórico";
@@ -64,6 +83,7 @@ export function periodLabel(period: StatsPeriod): string {
 
 /** Etiqueta del pill. «Año» a secas no vale: en la fila hay dos años. */
 export function periodPillLabel(period: StatsPeriod): string {
+  if (isStatsWindow(period)) return "Periodo";
   if (period === "week") return "Semana";
   if (period === "month") return "Mes";
   if (period === "all") return "Todo";
@@ -85,6 +105,7 @@ export function periodBounds(
   period: StatsPeriod,
   now = new Date(),
 ): { start: string; endExclusive: string } | null {
+  if (isStatsWindow(period)) return { start: period.start, endExclusive: period.endExclusive };
   if (period === "all") return null;
   if (typeof period === "number") return yearBounds(period);
 
@@ -107,6 +128,7 @@ export function previousBounds(
   period: StatsPeriod,
   now = new Date(),
 ): { start: string; endExclusive: string } | null {
+  if (isStatsWindow(period)) return period.previous;
   if (period === "all") return null;
   if (typeof period === "number") return yearBounds(period - 1);
 
@@ -122,6 +144,7 @@ export function previousBounds(
 
 /** Cómo nombrar al período anterior en la prosa del delta. */
 export function previousLabel(period: StatsPeriod): string {
+  if (isStatsWindow(period)) return "el periodo anterior";
   if (period === "week") return "los 7 días anteriores";
   if (period === "month") return "el mes pasado";
   if (period === "all") return "";

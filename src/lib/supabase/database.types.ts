@@ -3677,6 +3677,83 @@ export type Database = {
           },
         ]
       }
+      wrap_up_shares: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["wrap_up_kind"]
+          period_end: string
+          period_start: string
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["wrap_up_kind"]
+          period_end: string
+          period_start: string
+          summary: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["wrap_up_kind"]
+          period_end?: string
+          period_start?: string
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wrap_ups: {
+        Row: {
+          generated_at: string
+          intensity: string
+          kind: Database["public"]["Enums"]["wrap_up_kind"]
+          payload: Json
+          period_end: string
+          period_start: string
+          published_post_id: string | null
+          refreshed_at: string | null
+          seen_at: string | null
+          user_id: string
+        }
+        Insert: {
+          generated_at?: string
+          intensity: string
+          kind: Database["public"]["Enums"]["wrap_up_kind"]
+          payload: Json
+          period_end: string
+          period_start: string
+          published_post_id?: string | null
+          refreshed_at?: string | null
+          seen_at?: string | null
+          user_id: string
+        }
+        Update: {
+          generated_at?: string
+          intensity?: string
+          kind?: Database["public"]["Enums"]["wrap_up_kind"]
+          payload?: Json
+          period_end?: string
+          period_start?: string
+          published_post_id?: string | null
+          refreshed_at?: string | null
+          seen_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wrap_ups_published_post_id_fkey"
+            columns: ["published_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
 }
     Views: {
       club_identities: {
@@ -4910,6 +4987,18 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      mark_wrap_up_seen: {
+        Args: { p_kind: Database["public"]["Enums"]["wrap_up_kind"] }
+        Returns: undefined
+      }
+      publish_wrap_up: {
+        Args: { p_kind: Database["public"]["Enums"]["wrap_up_kind"] }
+        Returns: string
+      }
+      unpublish_wrap_up: {
+        Args: { p_kind: Database["public"]["Enums"]["wrap_up_kind"] }
+        Returns: undefined
+      }
 }
     Enums: {
       activity_kind:
@@ -4951,15 +5040,16 @@ export type Database = {
         | "no_esperado"
         | "otro"
       pending_import_status: "pending" | "resolved" | "dismissed"
-      post_anchor_type: "book" | "movie" | "series" | "saga" | "person" | "experience"
+      post_anchor_type: "book" | "movie" | "series" | "saga" | "person" | "experience" | "wrap_up"
       post_kind:
-        "started" | "finished" | "dropped" | "progressed" | "watched" | "thought" | "joint" | "experience" | "experience_review"
+        "started" | "finished" | "dropped" | "progressed" | "watched" | "thought" | "joint" | "experience" | "experience_review" | "wrap_up"
       post_source_kind:
         | "pass"
         | "progress_session"
         | "episode_watch"
         | "joint_viewing"
         | "experience_review"
+        | "wrap_up_share"
       push_channel: "web"
       push_platform: "web_push" | "fcm_android" | "apns_ios"
       saga_item_role:
@@ -4976,6 +5066,7 @@ export type Database = {
         "diary_entry" | "episode_watch" | "club_post" | "comment" | "activity_checkpoint" | "club_activity" | "pass" | "progress_session" | "club_round" | "thought" | "post" | "experience" | "experience_review" | "margin_encounter"
       thought_anchor_type: "book" | "movie" | "series" | "saga" | "person"
       user_role: "user" | "collaborator" | "admin"
+      wrap_up_kind: "week" | "month" | "year"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5139,14 +5230,15 @@ export const Constants = {
         "otro",
       ],
       pending_import_status: ["pending", "resolved", "dismissed"],
-      post_anchor_type: ["book", "movie", "series", "saga", "person", "experience"],
-      post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience", "experience_review"],
+      post_anchor_type: ["book", "movie", "series", "saga", "person", "experience", "wrap_up"],
+      post_kind: ["started", "finished", "dropped", "progressed", "watched", "thought", "joint", "experience", "experience_review", "wrap_up"],
       post_source_kind: [
         "pass",
         "progress_session",
         "episode_watch",
         "joint_viewing",
         "experience_review",
+        "wrap_up_share",
       ],
       push_channel: ["web"],
       push_platform: ["web_push", "fcm_android", "apns_ios"],
@@ -5164,6 +5256,7 @@ export const Constants = {
       target_kind: ["diary_entry", "episode_watch", "club_post", "comment", "activity_checkpoint", "club_activity", "pass", "progress_session", "club_round", "thought", "post", "experience", "experience_review", "margin_encounter"],
       thought_anchor_type: ["book", "movie", "series", "saga", "person"],
       user_role: ["user", "collaborator", "admin"],
+      wrap_up_kind: ["week", "month", "year"],
     },
   },
 } as const
