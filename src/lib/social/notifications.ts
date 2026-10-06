@@ -221,6 +221,8 @@ export async function notifyMany(
     //     Nótese que esto NO afloja el filtro para nadie más: el resto de
     //     llamantes lo siguen pasando, y la función SQL sigue igual de estricta.
     systemDelivery?: boolean;
+    /** Cron-only claim. Persistence verifies current consent/revision atomically. */
+    releaseDelivery?: { id: string; claimToken: string };
     // pushBody: el cuerpo por defecto se construye desde una clave i18n con solo
     // {name}, y un recordatorio necesita evento, club, hora y tiempo restante
     // (§9.3). Cuando llega, sustituye al cuerpo; el título y el enlace se siguen
@@ -258,6 +260,10 @@ export async function notifyMany(
     }
   }
   if (userIds.length === 0) return [];
+  if (params.releaseDelivery && (
+    !params.systemDelivery || params.actorId !== null || userIds.length !== 1 ||
+    params.targetType !== "release" || !params.type.startsWith("release_")
+  )) return [];
 
   // Map user_id → notificationId de la fila recién insertada (1:1: cada usuario
   // recibe una sola fila). Viaja en el data payload del push (spec item 8). Con
@@ -277,7 +283,12 @@ export async function notifyMany(
       dedupe_key: params.dedupeKey ? `${params.dedupeKey}:${userId}` : null,
       context: params.context ?? null,
     }));
-    const { data: insertedRows, error } = params.dedupeKey
+    const { data: insertedRows, error } = params.releaseDelivery
+      ? await notificationWriter.rpc("accept_release_delivery", {
+          p_delivery_id: params.releaseDelivery.id,
+          p_claim_token: params.releaseDelivery.claimToken,
+        })
+      : params.dedupeKey
       ? await notificationWriter
           .from("notifications")
           .upsert(rows, { onConflict: "dedupe_key", ignoreDuplicates: true })
@@ -296,6 +307,15 @@ export async function notifyMany(
   if (deliveredUserIds.length === 0) return [];
 
   try {
+    if (params.releaseDelivery) {
+      // The in-app row is already accepted. Check again just before best-effort
+      // transport: withdrawal after acceptance must not start a new push attempt.
+      const { data: current, error } = await createServiceRoleClient().rpc("release_delivery_is_current", {
+        p_delivery_id: params.releaseDelivery.id,
+        p_claim_token: params.releaseDelivery.claimToken,
+      });
+      if (error || !current) return deliveredUserIds;
+    }
     const content = await buildPushPayload(supabase, params);
     // El cuerpo a medida sustituye al de la clave i18n, pero se conserva el
     // título y —sobre todo— la ruta que ya resolvió buildPushPayload: es lo que
@@ -341,6 +361,11 @@ async function resolveTargetHrefs(
   targets: { targetType: string; targetId: string }[],
 ): Promise<Map<string, string>> {
   const hrefByKey = new Map<string, string>();
+  for (const target of targets) {
+    if (target.targetType === "release") {
+      hrefByKey.set(`release:${target.targetId}`, `/novedades?lanzamiento=${encodeURIComponent(target.targetId)}`);
+    }
+  }
   const diaryIds = targets.filter((t) => t.targetType === "diary_entry").map((t) => t.targetId);
   const episodeIds = targets.filter((t) => t.targetType === "episode_watch").map((t) => t.targetId);
   const clubIds = targets.filter((t) => t.targetType === "club").map((t) => t.targetId);

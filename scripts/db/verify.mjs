@@ -9,6 +9,7 @@ import { verifyGoogleVolumeQuotaConcurrency } from './check-google-volume-quota-
 import { verifyCatalogReferenceConcurrency } from './verify-catalog-reference-concurrency.mjs';
 import { verifyBookEditionIsbnConcurrency } from './check-book-edition-isbn-concurrency.mjs';
 import { verifyExperienceConcurrency } from './verify-experience-concurrency.mjs';
+import { verifyReleaseConcurrency } from './verify-release-concurrency.mjs';
 import { clubRoundsOptions, verifyClubRounds } from './verify-club-rounds.mjs';
 
 // Only the disposable container named by this checkout's generated manifest.
@@ -59,9 +60,11 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_companion_history.sq
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_own_photo_preview.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_reviews.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_places.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/cultural_releases.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyGoogleVolumeQuotaConcurrency(stamp.projectId);
 await verifyCatalogReferenceConcurrency(stamp.projectId);
 await verifyBookEditionIsbnConcurrency(stamp.projectId);
 await verifyExperienceConcurrency(stamp.projectId);
+await verifyReleaseConcurrency(stamp.projectId);
 console.log(`PASS: ${versions.length} bootstrap steps, schema contracts and role privileges.`);

@@ -8,6 +8,20 @@
   de aplicación en producción; ambas migraciones ya aplicadas y permisos comprobados
   allí el 2026-09-15. Contrato en la spec del 2026-09-15.
 
+## Novedades — código local/dev; esquema de producción aplicado, entrega pendiente
+
+- [x] Primera versión en `codex/novedades`: calendario público, selección personal,
+  edición de libros y avisos independientes. Código y esquema local/dev verificados
+  el 2026-10-06; seis recorridos y revisión final de navegador R3 PASS. Evidencia:
+  `docs/testing/2026-10-06-novedades.md`.
+- [ ] Integrar y desplegar el código, comprobar la ruta protegida y activar el scheduler
+  solo tras verificar el destino desplegado. Las cinco migraciones se aplicaron y
+  verificaron en producción el 2026-10-06; no hay anuncios, suscripciones ni entregas,
+  y el job sigue inactivo. Seguimiento:
+  [#1423](https://github.com/borjar20/Biblioshare/issues/1423), creada el 2026-10-06;
+  publicación, PR, merge con CI verde y despliegue quedaron autorizados explícitamente
+  después.
+
 > **[Estado vivo · reconstruido contra código + issues el 2026-08-19 · §P0/§P1
 > reverificadas contra issues y BD el 2026-08-24 · recuento de issues al
 > 2026-08-28 · estado de Mascota RPG UI actualizado el 2026-09-09 · Mascota RPG R5
@@ -21,7 +35,8 @@
 > Recursos #1328/#1007 verificados en la base Experiencias con cinco casos de persistencia y dos de editor PASS el 2026-10-03; CI de publicación exigida en la PR;
 > fichas Recursos y edición de asientos MTG #1006/#1008 verificadas con ocho E2E de build/start, a 390/1280 px, el 2026-10-04; CI del HEAD integrado exigida;
 > esquema de Experiencias aplicado y verificado en producción el 2026-10-03; integración/despliegue en PR #1323 y #1293;
-> notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05; esquema aplicado en producción el mismo día; código en la PR]**
+> notas en el margen #1380 implementadas y verificadas en dev el 2026-10-05; esquema aplicado en producción el mismo día; código en la PR;
+> Novedades implementadas y verificadas en local/dev el 2026-10-06, incluidos seis recorridos y revisión de navegador R3 PASS; esquema aplicado/verificado en producción, pendiente despliegue de código y activación del scheduler]**
 >
 > **Las issues SON el backlog operativo** (regla de AGENTS.md): **330 abiertas a
 > 2026-08-28** —**0 P0**, 6 P1, 227 P2, 97 P3—, todas con área/tipo/prioridad;

@@ -74,7 +74,10 @@ export type NotificationType =
   | "experience_reviewed"
   | "margin_note_dedicated"
   | "margin_commented"
-  | "margin_liked";
+  | "margin_liked"
+  | "release_reminder"
+  | "release_updated"
+  | "release_cancelled";
 
 export type ReviewTargetType =
   | "diary_entry"
@@ -98,7 +101,8 @@ export type ReviewTargetType =
   // Un visionado conjunto (#1220): su página es `/juntos/[id]`, donde se acepta.
   | "joint_viewing"
   | "experience"
-  | "experience_review";
+  | "experience_review"
+  | "release";
 
 export type Notification = {
   id: string;
@@ -170,6 +174,9 @@ export const NOTIFICATION_TYPE_KEY: Record<NotificationType, string> = {
   margin_note_dedicated: "marginNoteDedicated",
   margin_commented: "marginCommented",
   margin_liked: "marginLiked",
+  release_reminder: "releaseReminder",
+  release_updated: "releaseUpdated",
+  release_cancelled: "releaseCancelled",
 };
 
 /**
@@ -219,4 +226,7 @@ export const ENRICHED_NOTIFICATION_KEY: Partial<
   joint_viewing_invite: { subject: "jointViewingInviteSubject" },
   joint_viewing_accepted: { subject: "jointViewingAcceptedSubject" },
   margin_note_dedicated: { subject: "marginNoteDedicatedSubject" },
+  release_reminder: { subject: "releaseReminderSubject" },
+  release_updated: { subject: "releaseUpdatedSubject" },
+  release_cancelled: { subject: "releaseCancelledSubject" },
 };

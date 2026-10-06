@@ -1,5 +1,14 @@
 # Arquitectura
 
+> **Delta Novedades 2026-10-06 · código y esquema local/dev:** `/novedades`
+> combina exploración pública y selección privada; `components/releases` y
+> `lib/releases` separan obra, lanzamiento y elección de aviso. `/admin/novedades`
+> publica libros sin crear un pase del editor. `/api/cron/releases` revisa TMDB y
+> acepta avisos deduplicados; su scheduler nace inactivo. Las nuevas tablas tienen
+> RLS y grants mínimos; las lecturas personales no usan caché compartida.
+> Estado y límites en [verificación de Novedades](./testing/2026-10-06-novedades.md).
+> Producción y publicación del código pendientes.
+
 > **[Canónico · verificado contra código el 2026-08-19]**
 
 > Cómo encaja Biblioshare. Verificado contra el código el **2026-08-19**

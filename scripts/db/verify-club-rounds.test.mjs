@@ -14,6 +14,7 @@ function controlledCaller(denied = false) {
     import { join, resolve } from 'node:path';
     import { SourceTextModule, SyntheticModule } from 'node:vm';
     const calls = [];
+    const releaseCalls = [];
     const sqlCalls = [];
     const projectId = 'biblioshare-local-12345678';
     const root = '/controlled-checkout';
@@ -42,6 +43,9 @@ function controlledCaller(denied = false) {
       './verify-catalog-reference-concurrency.mjs': { verifyCatalogReferenceConcurrency: async () => {} },
       './check-book-edition-isbn-concurrency.mjs': { verifyBookEditionIsbnConcurrency: async () => {} },
       './verify-experience-concurrency.mjs': { verifyExperienceConcurrency: async () => {} },
+      './verify-release-concurrency.mjs': {
+        verifyReleaseConcurrency: async (id) => releaseCalls.push({ id, clubChecks: calls.length }),
+      },
     };
     const module = new SourceTextModule(readFileSync(${JSON.stringify(fileURLToPath(new URL('./verify.mjs', import.meta.url)))}, 'utf8'));
     await module.link((name) => {
@@ -56,7 +60,7 @@ function controlledCaller(denied = false) {
       if (!${denied}) throw error;
       message = error.message;
     }
-    console.log(JSON.stringify({ calls, sqlCalls, message }));
+    console.log(JSON.stringify({ calls, releaseCalls, sqlCalls, message }));
   `;
   const output = execFileSync(process.execPath,
     ['--experimental-vm-modules', '--input-type=module', '--eval', script],
@@ -70,9 +74,17 @@ test('the local/CI entry point reaches the club-rounds checker', () => {
   }], 'the real entry point must run the club matrix/concurrency checker');
 });
 
+test('the local/CI entry point reaches the release concurrency checker after the guarded club check', () => {
+  assert.deepEqual(controlledCaller().releaseCalls, [{
+    id: 'biblioshare-local-12345678', clubChecks: 1,
+  }], 'the real entry point must run the release checker once against the same guarded local project');
+});
+
 test('the real entry point checks its GO before even the migration-ledger query', () => {
   const result = controlledCaller(true);
   assert.equal(result.message, 'NOT_RUN: GO missing');
+  assert.deepEqual(result.calls, [], 'a missing GO must not start the club checker');
+  assert.deepEqual(result.releaseCalls, [], 'a missing GO must not start the release checker');
   assert.deepEqual(result.sqlCalls, [], 'a missing GO must leave the local backend untouched');
 });
 

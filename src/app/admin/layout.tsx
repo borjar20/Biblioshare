@@ -17,7 +17,7 @@ async function AdminSession({ children }: { children: ReactNode }) {
   await connection();
   if (!await getCurrentUser()) redirect(loginHref("/admin"));
   if (await getCurrentUserRole() !== "admin") redirect("/");
-  return <RouteMessages ns={["admin", "adminModeration"]}><AdminNav />{children}</RouteMessages>;
+  return <RouteMessages ns={["admin", "adminModeration", "releases", "releaseAdmin"]}><AdminNav />{children}</RouteMessages>;
 }
 
 export default function MessagesLayout({ children }: { children: ReactNode }) {

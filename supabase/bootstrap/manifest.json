@@ -297,6 +297,11 @@
     "20261004120300_margin_notes_social.sql",
     "20261004120400_margin_notes_reports.sql",
     "20261004120500_margin_notes_select_own.sql",
-    "20261005100000_experience_places.sql"
+    "20261005100000_experience_places.sql",
+    "20261006103313_cultural_release_notification_types.sql",
+    "20261006103332_cultural_releases_core.sql",
+    "20261006103440_cultural_release_deliveries.sql",
+    "20261006103544_cultural_release_scheduler.sql",
+    "20261006134245_cultural_release_translation_publication_year.sql"
   ]
 }

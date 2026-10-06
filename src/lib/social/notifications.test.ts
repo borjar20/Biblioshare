@@ -228,6 +228,48 @@ describe("experience notification destinations",()=>{
     expect(sendPushToUser.mock.calls[0]?.slice(0,2)).toEqual(["user-1",expect.objectContaining({path:"/experiencias",category:"social",type:"experience_invited",body:'notifications.experienceInvited:{"name":"Ana"}'})]);
   });
 });
+
+describe("release claims use the shared notification path", () => {
+  const releaseParams = () => ({ userIds: ["user-1"], actorId: null, type: "release_updated" as const,
+    targetType: "release" as const, targetId: "release-1", systemDelivery: true,
+    releaseDelivery: { id: "delivery-1", claimToken: "claim-token" }, dedupeKey: "release:stable",
+    context: { subject: "Libro futuro" } });
+  it("atomically accepted rows fan out once and resolve the same deep link in the bell", async () => {
+    const tables = baseTables();
+    let alreadyAccepted = false;
+    const writer = makeFakeSupabase(tables);
+    writer.rpc = vi.fn(async (name: string) => {
+      if (name === "release_delivery_is_current") return { data: true, error: null };
+      if (name !== "accept_release_delivery") throw new Error("unexpected RPC");
+      if (alreadyAccepted) return { data: [], error: null };
+      alreadyAccepted = true;
+      tables.notifications.push({ id: "release-notification", user_id: "user-1", actor_id: null, type: "release_updated", target_type: "release",
+        target_id: "release-1", context: { subject: "Libro futuro" }, read_at: null, created_at: "2026-10-06T08:00:00Z" });
+      return { data: [{ id: "release-notification", user_id: "user-1" }], error: null };
+    });
+    trustedWriter.create.mockReturnValue(writer);
+    expect(await notifyMany(writer, releaseParams())).toEqual(["user-1"]);
+    expect(await notifyMany(writer, releaseParams())).toEqual([]);
+    expect(tables.notifications).toHaveLength(1);
+    expect(sendPushToUsers).toHaveBeenCalledTimes(1);
+    expect(sendPushToUsers.mock.calls[0][1]).toMatchObject({ path: "/novedades?lanzamiento=release-1", category: "system", type: "release_updated" });
+    expect((await listNotifications(writer, "user-1"))[0].href).toBe("/novedades?lanzamiento=release-1");
+  });
+  it("does not start transport when consent was withdrawn after in-app acceptance", async () => {
+    const writer = makeFakeSupabase(baseTables());
+    writer.rpc = vi.fn(async (name: string) => ({ data: name === "accept_release_delivery" ? [{ id: "accepted", user_id: "user-1" }] : false, error: null }));
+    trustedWriter.create.mockReturnValue(writer);
+    expect(await notifyMany(writer, releaseParams())).toEqual(["user-1"]);
+    expect(sendPushToUsers).not.toHaveBeenCalled();
+  });
+  it("rejects actor or multi-recipient misuse of a single delivery claim", async () => {
+    const caller = makeFakeSupabase(baseTables());
+    expect(await notifyMany(caller, { ...releaseParams(), actorId: "actor-1" })).toEqual([]);
+    expect(await notifyMany(caller, { ...releaseParams(), userIds: ["user-1", "user-2"] })).toEqual([]);
+    expect(trustedWriter.create).not.toHaveBeenCalled();
+    expect(sendPushToUsers).not.toHaveBeenCalled();
+  });
+});
 function baseTables(): Record<string, Row[]> {
   return {
     clubs: [{ id: "club-1", slug: "club-lectura" }],

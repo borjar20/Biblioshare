@@ -1,5 +1,18 @@
 # Modelo de datos
 
+> **Corrección aplicada y verificada en biblioshare-dev y producción 2026-10-06 (Novedades):**
+> la quinta migración `20261006134245_cultural_release_translation_publication_year.sql`
+> sustituye solo `private.release_editorial_save`. Al publicar una primera traducción
+> sin obra enlazada, deja `books.published_year=NULL`: la fecha de la traducción no
+> acredita la primera publicación de la obra. La ruta `book` y el año de una obra
+> ya enlazada se conservan. Sin tablas, columnas, firmas ni grants nuevos.
+
+> **Delta 2026-10-06 (Novedades; aplicado y verificado en local, biblioshare-dev y producción):**
+> cinco migraciones `20261006103313` … `20261006134245` añaden anuncios públicos,
+> consentimiento privado por lanzamiento, cola de aceptación de avisos y estado de revisión
+> de las fuentes. El trabajo programado nace **inactivo** hasta verificar la aplicación de
+> destino y el despliegue de la aplicación. No se infieren cambios de `passes`, ni se crean secretos. Ver §8quinquies.
+
 > **Delta 2026-10-05 (lugares de Experiencias; verificado en dev y en producción 2026-10-05):**
 > migración `20261005100000_experience_places.sql`: tabla `places`,
 > `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
@@ -5142,6 +5155,133 @@ comentarios de hilos privados por la ruta global de moderación (`has_min_role('
 (`restrict`, par 16) con su `trg_catalog_reference_item_type`, y `merge_book_into` la repunta
 (`update public.margin_notes set item_id = p_winner`), reemitida desde `20261001102000`. Ver §2
 y §2.2.
+
+## 8quinquies. Novedades culturales (2026-10-06; aplicado y verificado en local, biblioshare-dev y producción)
+
+Los anuncios públicos no son el estado de una biblioteca ni una segunda watchlist.
+`cultural_releases` conserva una instantánea que puede explorarse sin crear una fila de catálogo:
+identidad `id`, `work_key` para agrupar obra y `source/source_key` únicos para el lanzamiento;
+`item_type` (`book/movie/series`), modalidad (`cinema/digital/series/season/book/book_translation`),
+temporada positiva solo para `season`, mercado `ES/INT`, idioma, título/subtítulo/portada/sinopsis,
+autor/editorial/ISBN opcionales, atribución y URL de la fuente. La plataforma digital solo se
+guarda con evidencia y únicamente en modalidad digital. Los vínculos opcionales apuntan a
+`books`, `movies`, `series` y `book_editions`; una edición vinculada debe pertenecer al libro.
+El mercado forma parte de la identidad inmutable del lanzamiento: los anuncios ES e INT
+coexisten bajo la misma obra, con claves de fuente y consentimientos separados. Una fecha
+internacional no se transforma en un estreno español ni hereda automáticamente sus avisos.
+
+`date_value` preserva exactamente `YYYY-MM-DD`, `YYYY-MM` o `YYYY`, junto con `date_precision`
+(`day/month/year/unknown`); desconocida exige `NULL`. Un CHECK comprueba el calendario real,
+incluidos bisiestos. No se añade un día para ordenar o avisar. `book_translation` representa
+primera traducción al castellano y solo admite `es` o `es-ES`. `checked_at` registra una revisión
+efectiva; modificar portada/título o volver a consultar una fuente no aumenta `revision`.
+Un trigger controla el número de revisión; el cliente no puede escribirlo directamente.
+
+Solo `published/cancelled` son legibles por `anon/authenticated`. La cancelación conserva la
+identidad pública del anuncio para sus avisos. `draft` solo lo ve administración, consultando
+el rol autoritativo de `profiles`. Los clientes no reciben INSERT/UPDATE/DELETE de tabla.
+`release_editorial_save` verifica administrador y revisión esperada; al publicar un libro aún
+sin catálogo llama a `register_manual_catalog_item`, que registra catálogo sin crear pases.
+No llama al alta manual de la UI que también añade Pendiente. El sincronizador solo ejecuta
+`release_upsert_tmdb` como `service_role`; una lista vacía o un anuncio que desaparece de la
+respuesta no cancela filas existentes.
+
+La quinta migración, aplicada y verificada en `biblioshare-dev` y producción el 2026-10-06, corrige la
+creación de catálogo para `book_translation` sin `book_id`: `date_value` sigue describiendo
+el lanzamiento de la traducción, con su precisión completa, y `books.published_year`
+permanece NULL si no se conoce la primera publicación de la obra. Con `book_id` se conserva
+el año original del catálogo; un anuncio ordinario `book` mantiene su año. El probe RED
+de dev observó 2027 donde debía haber NULL, sin crear pases, y confirmó las cuatro
+superficies de fixture a cero después de ROLLBACK. La prueba SQL cubre traducciones con
+día, mes o año, paso de borrador a publicación, obra enlazada y publicación ordinaria.
+
+Cada guardado editorial existente exige también `p_expected_updated_at`, el timestamp exacto
+del snapshot del formulario. El trigger lo adelanta con tiempo de escritura real y al menos
+un microsegundo frente al anterior, incluso dentro de una transacción. Este token detecta
+ediciones antiguas de título, URL, catálogo y revisión/publicación sin convertir `revision`
+en un contador de edición ni emitir avisos por correcciones de metadatos. Crear un anuncio
+no exige snapshot anterior; guardar, revisar, publicar o cancelar uno existente sí.
+La UI conserva el texto completo del timestamp, sin recortarlo a milisegundos de JavaScript.
+
+`release_subscriptions` tiene PK `(user_id,release_id)`, `active`, `consent_generation` UUID,
+`baseline_revision` y fechas de creación/actualización. Solo el dueño lee sus elecciones,
+incluso con perfil público. Las muta `release_set_subscription`, que toma `auth.uid()`;
+al activar se registra la revisión actual y no se envían cambios históricos. Repetir la misma
+elección no cambia generación. Desactivar/reactivar crea otra generación e invalida trabajo
+anterior. Añadir a Pendiente y retirar un aviso no se implican mutuamente.
+
+`release_deliveries` es exclusivamente del servidor. Deduplica por persona, lanzamiento,
+generación, revisión y motivo (`reminder/confirmed/changed/cancelled`). Conserva estados
+`pending/claimed/accepted/suppressed`, disponibilidad, token/lease, intentos, error y relación
+con la notificación aceptada. La aceptación sobrevive a la limpieza normal de notificaciones.
+Un cambio de revisión o consentimiento suprime los trabajos anteriores aún no aceptados.
+`claim_release_deliveries` reserva con `FOR UPDATE SKIP LOCKED`; una lease vencida permite
+reintentar con token nuevo. Los recordatorios solo se generan para día exacto que sea mañana
+según la fecha civil de `Europe/Madrid`, sin restar veinticuatro horas a través del cambio horario.
+
+`accept_release_delivery` bloquea lanzamiento, consentimiento y entrega en el mismo orden que
+las escrituras anteriores, valida token/generación/revisión vigentes, inserta la notificación
+deduplicada y marca `accepted_at` en una transacción. Devuelve únicamente las filas nuevas para
+el transporte de `notifyMany`; un reintento aceptado no vuelve a mandar push. `accepted_at`
+acredita persistencia en campana; no acredita recepción de Web Push/Android. Una caída entre
+aceptación y transporte puede perder ese push, conforme al transporte existente. Las RPC
+`release_delivery_is_current` y `retry_release_delivery` completan la reserva recuperable.
+
+`release_sync_state` guarda `source,last_attempt_at,last_success_at,last_error`; solo accede el
+servidor. La consulta pública devuelve el estado de revisión con errores sanitizados. Un fallo
+de TMDB conserva anuncios anteriores y no se sustituye por una fuente sin resultados.
+
+La RPC única `release_upsert_tmdb(p_rows,p_expected_attempt)` bloquea la fila TMDB de
+`release_sync_state` y exige que su `last_attempt_at` siga siendo el intento que obtuvo el
+sincronizador. El bloqueo se conserva hasta el commit del lote. Un intento sustituido o
+sin token falla antes de escribir snapshots, revisiones o cola; la finalización también
+actualiza el éxito mediante CAS contra ese intento. No se mantiene el overload antiguo de
+un argumento, que abriría otra ruta de escritura y haría ambiguo el RPC de PostgREST.
+
+Los wrappers personales/editoriales son SECURITY INVOKER; sus helpers privados son DEFINER
+con comprobación de sesión y rol. Los demás RPC son INVOKER y solo ejecutables por service_role.
+Todas las funciones/trigger nuevos fijan `search_path=''`, los grants son explícitos y las
+cuatro tablas tienen RLS. Se añaden `release_reminder/release_updated/release_cancelled` en una
+transacción separada y un CHECK exige actor nulo para esos tipos, conservando los avisos previos.
+
+`private.dispatch_cultural_releases` reutiliza Vault `app_base_url/cron_secret` y POST
+`/api/cron/releases` con `x-cron-secret`. El job horario `cultural-releases` nace `active=false`;
+el endpoint limita TMDB a una revisión satisfactoria diaria. La activación requiere verificar
+el destino desplegado y su autorización, sin asumir que el Vault de dev apunta a dev.
+
+Fuentes reproducibles: las cinco migraciones están en `supabase/bootstrap/manifest.json` y
+`schema-baseline.sql` regenerado. `supabase/tests/cultural_releases.sql` comprueba roles reales,
+dos perfiles públicos, restricciones de fecha, generación/retirada, revisiones/cancelaciones,
+dedupe y publicación sin pases con rollback. `scripts/db/verify-release-concurrency.mjs`
+comprueba reservas y aceptaciones concurrentes, recuperación de lease y limpieza de aviso.
+También reproduce dos formularios editoriales simultáneos y observa en `pg_blocking_pids`
+que una nueva adquisición de fuente espera al lote anterior, además de rechazar sus respuestas
+atrasadas sin rebobinar fechas ni marcar una revisión satisfactoria.
+Ambos forman parte de `scripts/db/verify.mjs`. El replay local vacío de las 302 migraciones
+y las pruebas SQL/concurrencia R4 son PASS; las cinco migraciones se aplicaron en
+`biblioshare-dev` (`tyvzpuhxfwxrnkcpzxyg`) el 2026-10-06. El contrato SQL completo pasó en dev
+con cuentas sintéticas y ROLLBACK. La lectura posterior verificó los grants por columna,
+RLS de cuatro tablas, siete políticas, catorce firmas/ACL/search_path y ausencia de overloads
+antiguos; el cron permanece inactivo. No quedaron anuncios, suscripciones o entregas de prueba.
+
+Corte de producción del 2026-10-06, después de aplicar las cinco migraciones revisadas:
+el comprobador de solo lectura confirma RLS y grants por columna en las cuatro tablas,
+siete políticas, catorce firmas y el trabajo `cultural-releases` único, horario e inactivo.
+No hay anuncios, suscripciones ni entregas; `release_sync_state` conserva sus dos filas
+técnicas de control. Las 138 identidades de los asesores de seguridad coinciden con la
+línea base previa (cero añadidas y cero retiradas). No se insertaron datos de prueba ni se
+consultó el valor de ningún secreto. Aún faltan el despliegue del código y una ejecución
+real del horario antes de activar el trabajo.
+
+Recibos: `.scratch/novedades/fresh-replay-r1.log`, `sql-contract-r4.log`,
+`sql-concurrency-r4.log`, `dev-apply-r1.json`, `dev-contract-r1.json` y `dev-metadata-r1.json`.
+La comparación de tipos generados en dev/local con las formas mantenidas a mano pasó 69
+comprobaciones (`types-comparison-dev-r1.json`); solo conserva las unions de dominio de los
+CHECK y la proyección garantizada de la instantánea JSON del claim. El diff de advisors por
+entidad es **0 añadidos y 0 retirados** respecto del estado previo real
+(`security-advisor-delta-r1.json`); las advertencias existentes no se atribuyen a este cambio.
+La consolidación de estos checks corresponde al acta `docs/testing/2026-10-06-novedades.md`.
+Producción y la activación del job permanecen fuera de este delta.
 
 ## 9. Seguridad
 

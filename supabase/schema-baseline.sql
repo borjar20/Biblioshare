@@ -1604,3 +1604,28 @@ commit;
 begin;
 \ir migrations/20261005100000_experience_places.sql
 commit;
+
+-- 20261006103313_cultural_release_notification_types
+begin;
+\ir migrations/20261006103313_cultural_release_notification_types.sql
+commit;
+
+-- 20261006103332_cultural_releases_core
+begin;
+\ir migrations/20261006103332_cultural_releases_core.sql
+commit;
+
+-- 20261006103440_cultural_release_deliveries
+begin;
+\ir migrations/20261006103440_cultural_release_deliveries.sql
+commit;
+
+-- 20261006103544_cultural_release_scheduler
+begin;
+\ir migrations/20261006103544_cultural_release_scheduler.sql
+commit;
+
+-- 20261006134245_cultural_release_translation_publication_year
+begin;
+\ir migrations/20261006134245_cultural_release_translation_publication_year.sql
+commit;
