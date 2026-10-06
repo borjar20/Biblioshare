@@ -1,6 +1,6 @@
 # Novedades — entrega
 
-> [En curso · 2026-10-06. Publicación y producción autorizadas por «Enga dale». Las correcciones R1 están implementadas y verificadas en local/dev; falta publicarlas en la rama, obtener CI verde y completar la revisión independiente de los fixes. Producción sigue intacta.]
+> [En curso · 2026-10-06. Autorizados publicación, PR, merge solo con CI verde y lanzamiento en producción. Las correcciones R1 están en la PR; la primera CI del HEAD corregido detectó selectores E2E ambiguos, ya corregidos localmente. Falta la CI del nuevo HEAD y el despliegue. Producción sigue intacta.]
 
 Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423).
 Revisión del cambio: [PR #1424](https://github.com/borjar20/Biblioshare/pull/1424).
@@ -8,11 +8,12 @@ Base `bd98ec117567a45436cce4a6c18987d00814ddf7`; primer candidato
 `80d09b51bef91d725b661f688fabb2c689fadfc5`. Las pruebas de implementación y sus
 límites se conservan en [el informe anterior](2026-10-06-novedades.md).
 
-La aprobación del ticket no autorizó por sí misma publicar código ni producción.
-La petición posterior de continuar inicia esta entrega; mantiene CI del HEAD final,
-revisión independiente y verificación del destino como condiciones antes del cierre.
-Los dos revisores y el responsable SQL utilizan GPT-6.1 Sol con esfuerzo max y
-contexto nuevo. Los informes R1 permanecen separados de las correcciones posteriores.
+La autorización explícita posterior cubre publicar los cambios, crear la PR, fusionarla
+solo con CI verde y ejecutar el lanzamiento de producción. Por instrucción del usuario,
+esta continuación se completa sin subagentes y con revisión propia; no se afirma que los
+fixes hayan recibido revisión independiente. La CI del HEAD final y la verificación del
+destino siguen siendo condiciones de cierre. Los informes R1 permanecen separados de
+las correcciones posteriores.
 
 ## Standards
 
@@ -93,17 +94,24 @@ añadidas y cero retiradas). La evidencia de este corte está en `.scratch/noved
 - La revisión de navegador R3 del candidato inicial fue 6/6; el formulario corregido
   añade pruebas DOM/FormData. Esta observación no reemplaza la CI del candidato final.
 
-**La CI que falló pertenece al candidato inicial `80d09b5`; no certifica estas
-correcciones.** Hay que incorporar las correcciones en un candidato nuevo y exigir
-todos sus checks terminados en verde. La revisión y preflight R1 registraron los
-problemas originales; no los reescriben ni se presentan como revisión independiente
-de los fixes.
+El candidato inicial `80d09b5` falló durante el bootstrap porque el harness no cargaba
+la prueba de concurrencia y el baseline no incluía la quinta migración. Ambas causas se
+corrieron en `a167a88`. En ese HEAD, bootstrap vacío, calidad, CodeQL y Vercel pasaron;
+`critical-flows` ejecutó 174 pruebas: 171 pasaron y tres assertions de Playwright
+fallaron por encontrar nodos duplicados en selectores de mercado y login. Las capturas
+confirman que había una sola fila internacional y un solo formulario visibles. Se
+ajustaron los selectores para limitarse al contenido visible y comprobar una sola fila
+internacional visible. ESLint del spec corregido pasa; se exige CI verde del nuevo HEAD
+antes de fusionar. Los informes R1 registran los problemas originales y no se presentan
+como revisión independiente de los fixes.
 
 ## Estado de entrega
 
 - [x] Rama y primer candidato publicados; PR creada y adjunta al chat.
 - [x] Corregir y verificar los hallazgos en local y desarrollo.
-- [ ] Revisión independiente de los fixes por alguien que no los haya escrito.
+- [x] Revisión propia del diff, la migración, la revalidación, el formulario y los
+  selectores corregidos. No se hizo revisión independiente, conforme a la instrucción
+  de completar esta entrega sin subagentes.
 - [ ] Completar CI del HEAD final y contrastar la base antes de fusionar.
 - [ ] Aplicar y verificar en producción el esquema final ya comprobado en dev.
 - [ ] Verificar despliegue real, endpoint protegido y sincronización real antes de activar el job.

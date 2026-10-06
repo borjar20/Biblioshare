@@ -89,9 +89,9 @@ test.afterAll(async () => {
 
 async function login(page: Page, actor: typeof actors.a) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill(actor.email);
-  await page.locator('input[name="password"]').fill(actor.password);
-  await page.locator('button[type="submit"]').click();
+  await page.locator('input[name="email"]:visible').fill(actor.email);
+  await page.locator('input[name="password"]:visible').fill(actor.password);
+  await page.locator('button[type="submit"]:visible').click();
   await expect(page).not.toHaveURL(/\/login/);
 }
 async function countPasses(actorId: string) {
@@ -125,7 +125,9 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
   await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
   await expect(movie).toHaveCount(1);
   await expect(movie.getByRole("link", { name: "Avisarme", exact: true })).toHaveCount(3);
-  await expect(movie.locator(`[data-release-id="${internationalId}"]`).getByText("Internacional", { exact: true })).toBeVisible();
+  const international = movie.locator(`[data-release-id="${internationalId}"]:visible`);
+  await expect(international).toHaveCount(1);
+  await expect(international).toContainText("Internacional");
   await page.goto("/novedades?tipo=series");
   await expect(page.getByText("Las fechas disponibles de estas series son internacionales", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Ver fechas internacionales", exact: true }).click();
@@ -142,9 +144,9 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
 test("Lo que esperas conserva retorno de sesión y distingue Pendiente, consentimiento por modalidad y dos cuentas", async ({ page, browser }) => {
   await page.goto("/novedades?seleccion=personal&tipo=movie");
   await expect(page).toHaveURL(/\/login\?next=%2Fnovedades%3Fseleccion%3Dpersonal%26tipo%3Dmovie/);
-  await page.locator('input[name="email"]').fill(actors.a.email);
-  await page.locator('input[name="password"]').fill(actors.a.password);
-  await page.locator('button[type="submit"]').click();
+  await page.locator('input[name="email"]:visible').fill(actors.a.email);
+  await page.locator('input[name="password"]:visible').fill(actors.a.password);
+  await page.locator('button[type="submit"]:visible').click();
   await expect(page).toHaveURL(/\/novedades\?seleccion=personal&tipo=movie/);
   await expect(page.getByText("Aún no esperas ningún lanzamiento", { exact: true })).toBeVisible();
   await page.goto("/novedades?tipo=movie");
