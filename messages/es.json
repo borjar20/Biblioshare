@@ -4332,6 +4332,7 @@
     },
     "entry": {
       "rowTitle": "Tus crónicas",
+      "view": "Ver crónica",
       "label": "{kind, select, week {Tu semana} month {Tu mes} other {Tu año}}",
       "unseen": "Nueva"
     },

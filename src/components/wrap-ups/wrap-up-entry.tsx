@@ -10,13 +10,10 @@ import { getTranslations } from "next-intl/server";
 import { getOwnWrapUps, type OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { periodLabel } from "@/lib/wrap-ups/view-models";
 import { narratorSheet } from "@/lib/wrap-ups/narrator";
-import { pixelFont } from "./pixel-font";
+import { buttonVariants } from "@/components/ui/button";
 
-const COVER_HEIGHT = 68;
+const COVER_HEIGHT = 104;
 const THUMB = 48;
-// Los tres colores de tipo, en cónico: el anillo de «sin ver».
-const RING = "conic-gradient(var(--type-book), var(--type-movie), var(--type-series), var(--type-book))";
-const PIXEL_FACE = "var(--font-pixel), ui-monospace, monospace";
 
 export function WrapUpCoverSkeleton() {
   return <div aria-hidden className="mb-3" style={{ height: COVER_HEIGHT }} />;
@@ -60,37 +57,31 @@ export async function HomeWrapUpCover() {
   const label = t("label", { kind: wrap.kind });
   const href = `/wrap/${wrap.kind}`;
 
-  if (!unseenFull) {
-    return (
-      <div className="mb-3 flex items-center" style={{ height: COVER_HEIGHT }}>
-        <Link
-          href={href}
-          data-unseen="false"
-          className="text-[12.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-        >
-          {label}
-          <span className="sr-only"> · {periodLabel(wrap.payload)}</span>
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <div className={`${pixelFont.variable} mb-3`} style={{ height: COVER_HEIGHT }}>
-      <Link href={href} data-unseen="true" className="block h-full rounded-card p-[3px]" style={{ backgroundImage: RING }}>
-        <span className="flex h-full items-center gap-3 rounded-[10px] bg-surface px-3">
+    <div className="mb-3" style={{ height: COVER_HEIGHT }}>
+      <Link
+        href={href}
+        data-unseen={unseenFull ? "true" : "false"}
+        className="group flex h-full items-center gap-3 rounded-card border border-border border-l-4 border-l-accent bg-surface px-3 py-2 transition-colors hover:border-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+      >
+        <span className="shrink-0 rounded-xl bg-surface-muted p-1">
           <NarratorThumb variant={wrap.payload.narrator} />
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-[15px] leading-tight text-foreground" style={{ fontFamily: PIXEL_FACE }}>
-              {label}
-            </span>
-            <span className="truncate text-[12px] text-muted-foreground">{periodLabel(wrap.payload)}</span>
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="font-serif text-lg font-semibold leading-5 text-foreground">{label}</span>
+            {unseenFull && (
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold leading-4 text-accent-ink">
+                {t("unseen")}
+              </span>
+            )}
           </span>
-          <span
-            className="shrink-0 bg-foreground px-2 py-1 text-[12px] leading-none text-background"
-            style={{ fontFamily: PIXEL_FACE }}
-          >
-            {t("unseen")}
+          <span className="text-[12.5px] leading-4 text-muted-foreground">{periodLabel(wrap.payload)}</span>
+          <span className={buttonVariants("secondary", "pointer-events-none gap-1.5 bg-surface-muted px-2.5 py-1 text-[12.5px]")}>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 3.5v17L20 12Z" />
+            </svg>
+            {t("view")}
           </span>
         </span>
       </Link>
