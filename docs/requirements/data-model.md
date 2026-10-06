@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-10-06 (crónicas; verificado en dev con rollback):** tablas/RLS/ACL/RPC/triggers/cron contrastados con objetos reales. Producción pendiente #1433; ver §8sexies.
+> **Delta 2026-10-07 (crónicas activas en dev y producción):** dos migraciones aplicadas, ocho superficies de esquema/ACL verificadas idénticas y cron productivo probado con HTTP 200. Ver §8sexies y el recibo de #1433.
 
 > **Corrección aplicada y verificada en biblioshare-dev y producción 2026-10-06 (Novedades):**
 > la quinta migración `20261006134245_cultural_release_translation_publication_year.sql`
@@ -5301,7 +5301,7 @@ real está en `docs/testing/2026-10-06-novedades-release.md`.
 
 ## 8sexies. Crónicas semanales, mensuales y anuales
 
-**[Canónico · verificado contra biblioshare-dev el 2026-10-06; sin objetos en producción en este corte]**
+**[Canónico · verificado contra biblioshare-dev y producción el 2026-10-07]**
 
 Migraciones `20261006120000_wrap_ups_enums.sql` y `20261006120100_wrap_ups_core.sql`, en ese orden. Ambas incluidas en el manifiesto exhaustivo y baseline. El contrato `supabase/tests/wrap_ups.sql` entra en `scripts/db/verify.mjs`.
 
@@ -5311,11 +5311,13 @@ Migraciones `20261006120000_wrap_ups_enums.sql` y `20261006120100_wrap_ups_core.
 - RLS de `wrap_ups`: SELECT/DELETE sólo dueño; authenticated sin INSERT/UPDATE. Payload y tiempo de actualización se escriben con service_role tras autenticar al dueño. RLS de shares: SELECT anon/authenticated condicionado por `can_view_profile(user_id)` (perfil público o seguidor aceptado, sin bloqueo); sesión sin escritura directa.
 - RPC `mark_wrap_up_seen`, `publish_wrap_up`, `unpublish_wrap_up`: SECURITY DEFINER, search_path vacío, sin EXECUTE PUBLIC/anon, sólo authenticated. Usan auth.uid(); publicar bloquea fila FOR UPDATE, extrae su share guardado, crea share/post y enlaza post. Publicar dos veces devuelve el mismo post.
 - Triggers: `wrap_up_shares_cleanup_post`, `posts_wrap_up_cleanup_share`, `wrap_ups_cleanup_share` y `posts_guard_wrap_up`. Borrar share/post elimina su pareja; sustituir o borrar crónica elimina share/post. El guard impide INSERT directo y cambiar kind/anchor/source por UPDATE.
-- `private.dispatch_wrap_ups()`: SECURITY DEFINER, search_path vacío, sin EXECUTE PUBLIC/anon/authenticated. Job `wrap-ups`, `0 * * * *`; guard Europe/Madrid: lunes 09:00, día 1 a 09:00 y26-dic a10:00. Usa app_base_url/cron_secret de Vault y pg_net. En dev no existen esos dos secretos: el job está registrado pero no despacha. La activación remota se sigue en #1433.
+- `private.dispatch_wrap_ups()`: SECURITY DEFINER, search_path vacío, sin EXECUTE PUBLIC/anon/authenticated. Job `wrap-ups`, `0 * * * *`; guard Europe/Madrid: lunes 09:00, día 1 a 09:00 y26-dic a10:00. Usa app_base_url/cron_secret de Vault y pg_net. En dev no existen esos dos secretos: el job está registrado pero no despacha. Producción activa: alias y secreto verificados, barrido semanal HTTP 200; el destino de dev se sigue en #1439.
 
 Superficie6 comprobada: no cambian los grants finos de posts (11  columnas/8  INSERT/2  UPDATE), ni las 15 filas del inventario entre dev/prod. Las dos tablas nuevas usan grants de tabla: no dan INSERT/UPDATE de sesión, por lo que no aparecen en ese inventario de columnas escribibles. Las8 funciones reales coinciden con la fuente, normalizando CRLF. Contrato SQL PASS con rollback; usuarios/posts/shares/crónicas sintéticos0 al terminar. Advisors sólo añade las 3 RPC definer autenticadas previstas; sin avisos nuevos de search_path o RLS.
 
-El CHECK `payload->>'v'='1'` admite versión ausente por NULL; constructor actual produce v1 y la sesión no escribe. Endurecimiento pendiente #1430. Activación productiva y prueba del despacho remoto pendientes #1433; Android #1431. Evidencia en [verificación de crónicas](../testing/2026-10-06-wrap-ups.md).
+El CHECK `payload->>'v'='1'` admite versión ausente por NULL; constructor actual produce v1 y la sesión no escribe. Endurecimiento pendiente #1430. Activación productiva y despacho remoto verificados en #1433 (cerrada); destino de dev #1439 y Android #1431. Evidencia en [verificación de crónicas](../testing/2026-10-06-wrap-ups.md).
+
+Recibo productivo del 2026-10-07: auditoría independiente a las 00:07:18 Madrid, checks de funciones/tablas/columnas/políticas/triggers/enums/cron/superficie 6 todos verdaderos e idénticos a dev. Advisors añade sólo las tres RPC definer autenticadas previstas. Despliegue Vercel READY del commit 5d6b447c y alias biblioshare-nine.vercel.app. Petición pg_net 18196, HTTP 200 sin timeout/error: candidates 4, written 4, deleted 0, pushed 3, failed 0. Persistidas cuatro semanas 2026-09-28…2026-10-04: tres full y una quiet. No se sembraron fixtures en producción. [Evidencia](../testing/2026-10-06-wrap-ups.md#activación-productiva-2026-10-07).
 
 ## 9. Seguridad
 
