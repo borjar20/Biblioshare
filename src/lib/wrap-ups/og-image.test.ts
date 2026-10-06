@@ -85,7 +85,7 @@ describe("portadas", () => {
   const redirect = (location: string) => new Response(null, { status: 302, headers: { location } });
 
   it("302 a un origen no permitido → null, y ese origen nunca se pide", async () => {
-    const f = vi.fn(async (url: string) => (url.startsWith("https://covers.openlibrary.org") ? redirect("https://169.254.169.254/latest/meta-data") : okImage()));
+    const f = vi.fn(async (url: string) => (new URL(url).origin === "https://covers.openlibrary.org" ? redirect("https://169.254.169.254/latest/meta-data") : okImage()));
     expect(await coverJpeg(item("https://covers.openlibrary.org/b/id/1-M.jpg"), 20, 30, f as unknown as typeof fetch)).toBeNull();
     expect(f).toHaveBeenCalledTimes(1);
   });
@@ -98,7 +98,7 @@ describe("portadas", () => {
 
   it("OpenLibrary → archive.org → nodo ia*.us.archive.org: se sigue y pinta la portada", async () => {
     const f = vi.fn(async (url: string) => {
-      if (url.startsWith("https://covers.openlibrary.org")) return redirect("https://archive.org/download/m/x.zip/1-M.jpg");
+      if (new URL(url).origin === "https://covers.openlibrary.org") return redirect("https://archive.org/download/m/x.zip/1-M.jpg");
       if (url.startsWith("https://archive.org/")) return redirect("https://ia800505.us.archive.org/view_archive.php?file=1-M.jpg");
       return okImage();
     });
