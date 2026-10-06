@@ -1,0 +1,12 @@
+{
+  "state": "cinephile",
+  "character_id": "0c615e28-f5de-41a8-a99f-65cc389cb086",
+  "animation_group_id": "5139e72b-fa51-4bfd-8a04-5b583b654a4f",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 92,
+  "frames": 4,
+  "width": 368,
+  "height": 92,
+  "hash": "c0cca21dc1"
+}

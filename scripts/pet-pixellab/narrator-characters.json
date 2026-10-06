@@ -1,0 +1,12 @@
+{
+  "base": "81f82432-d36b-42a3-8e82-2166389eb082",
+  "states": {
+    "reader": "752d24ff-0d70-4b2e-a617-bf1d85547c3b",
+    "cinephile": "0c615e28-f5de-41a8-a99f-65cc389cb086",
+    "binger": "e2c2498b-65e4-4033-b292-4fac8c0afb76",
+    "explorer": "9c5194ea-bb9c-4a78-94f1-8bc17e76b06a",
+    "social": "a409ba26-9836-434c-b35a-096e4ab7fde9",
+    "quiet": "9800cfe4-d868-4275-b3e3-2f101b39c413",
+    "festive": "49e30cf6-5d46-4b5c-80c0-12ba043d931e"
+  }
+}
