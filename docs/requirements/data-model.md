@@ -5264,14 +5264,27 @@ con cuentas sintéticas y ROLLBACK. La lectura posterior verificó los grants po
 RLS de cuatro tablas, siete políticas, catorce firmas/ACL/search_path y ausencia de overloads
 antiguos; el cron permanece inactivo. No quedaron anuncios, suscripciones o entregas de prueba.
 
-Corte de producción del 2026-10-06, después de aplicar las cinco migraciones revisadas:
-el comprobador de solo lectura confirma RLS y grants por columna en las cuatro tablas,
-siete políticas, catorce firmas y el trabajo `cultural-releases` único, horario e inactivo.
-No hay anuncios, suscripciones ni entregas; `release_sync_state` conserva sus dos filas
-técnicas de control. Las 138 identidades de los asesores de seguridad coinciden con la
-línea base previa (cero añadidas y cero retiradas). No se insertaron datos de prueba ni se
-consultó el valor de ningún secreto. Aún faltan el despliegue del código y una ejecución
-real del horario antes de activar el trabajo.
+Corte previo al despliegue y a la activación, 2026-10-06: después de aplicar las cinco
+migraciones revisadas, el comprobador de solo lectura confirmó RLS y grants por columna en
+las cuatro tablas, siete políticas, catorce firmas y el trabajo `cultural-releases` único,
+horario e inactivo. No había anuncios, suscripciones ni entregas; `release_sync_state`
+conservaba sus dos filas técnicas de control. Las 138 identidades de los asesores de
+seguridad coincidían con la línea base previa (cero añadidas y cero retiradas). No se
+insertaron datos de prueba ni se consultó el valor de ningún secreto.
+
+Estado posterior al despliegue, verificado el 2026-10-06: PR #1424 se fusionó en
+`bd32b161d0bd8f6e7808950a9391b5318b20602b` y Vercel marcó la producción como correcta.
+`/novedades` responde 200; `/admin/novedades` sin sesión redirige al login (307), y el
+endpoint del cron sin credencial responde 401. Tras esos gates se activó el único job
+`cultural-releases`, propietario `postgres`, con horario `0 * * * *` (UTC). La primera
+ejecución programada real, `run_id=59355` a las 17:00 UTC, terminó `succeeded`; en la misma
+marca horaria constan dos respuestas HTTP 200 de `pg_net`, sin inspeccionar cuerpos ni
+cabeceras ni atribuirlas individualmente a la ejecución. Produjo 124 anuncios TMDB con
+estado `published`; siguen siendo cero las filas editoriales, suscripciones y entregas,
+y `release_sync_state` mantiene dos filas técnicas. La línea base de seguridad conserva
+138 identidades (cero añadidas o retiradas). No se insertaron fixtures ni se leyeron
+valores de secretos. La entrega de notificaciones a usuarios no se ha probado porque no
+hay suscripciones activas.
 
 Recibos: `.scratch/novedades/fresh-replay-r1.log`, `sql-contract-r4.log`,
 `sql-concurrency-r4.log`, `dev-apply-r1.json`, `dev-contract-r1.json` y `dev-metadata-r1.json`.
@@ -5280,8 +5293,9 @@ comprobaciones (`types-comparison-dev-r1.json`); solo conserva las unions de dom
 CHECK y la proyección garantizada de la instantánea JSON del claim. El diff de advisors por
 entidad es **0 añadidos y 0 retirados** respecto del estado previo real
 (`security-advisor-delta-r1.json`); las advertencias existentes no se atribuyen a este cambio.
-La consolidación de estos checks corresponde al acta `docs/testing/2026-10-06-novedades.md`.
-Producción y la activación del job permanecen fuera de este delta.
+La consolidación de las pruebas de implementación corresponde al acta
+`docs/testing/2026-10-06-novedades.md`; el seguimiento del despliegue y del primer horario
+real está en `docs/testing/2026-10-06-novedades-release.md`.
 
 ## 9. Seguridad
 
