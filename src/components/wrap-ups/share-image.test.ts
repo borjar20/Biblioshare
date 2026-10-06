@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { shareMode, shareWrapUpImage, type ShareEnv } from "./share-image";
+import { prepareWrapUpImage, shareMode, shareWrapUpImage, type ShareEnv } from "./share-image";
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
 
@@ -35,10 +35,21 @@ describe("shareMode", () => {
 });
 
 describe("shareWrapUpImage", () => {
+  it("web: llama a share antes de cualquier await para conservar la activación del clic", async () => {
+    const share = vi.fn(async () => {});
+    const e = env({ navigator: webNav(true, share) });
+    const file = new File([PNG], "biblioshare-week.png", { type: "image/png" });
+    const result = shareWrapUpImage(e, "week", "Tu semana", file);
+    expect(share).toHaveBeenCalledWith({ files: [file], title: "Tu semana" });
+    expect(e.fetch).not.toHaveBeenCalled();
+    expect(await result).toBe("shared");
+  });
+
   it("web: pide el PNG del kind y lo comparte como fichero", async () => {
     const share = vi.fn(async () => {});
     const e = env({ navigator: webNav(true, share) });
-    expect(await shareWrapUpImage(e, "month", "Tu mes")).toBe("shared");
+    const file = await prepareWrapUpImage(e, "month");
+    expect(await shareWrapUpImage(e, "month", "Tu mes", file)).toBe("shared");
     expect(e.fetch).toHaveBeenCalledWith("/api/og/wrap-up/month", { credentials: "same-origin" });
     const arg = (share.mock.calls[0] as unknown as [ShareData])[0];
     expect(arg.title).toBe("Tu mes");
@@ -54,14 +65,15 @@ describe("shareWrapUpImage", () => {
 
   it("cerrar la hoja no es un error", async () => {
     const abort = vi.fn(async () => { throw new DOMException("x", "AbortError"); });
-    expect(await shareWrapUpImage(env({ navigator: webNav(true, abort) }), "week", "t")).toBe("cancelled");
+    const web = env({ navigator: webNav(true, abort) });
+    expect(await shareWrapUpImage(web, "week", "t", await prepareWrapUpImage(web, "week"))).toBe("cancelled");
     const nativeCancel = vi.fn(async () => { throw new Error("Share canceled"); });
     expect(await shareWrapUpImage(env({ native: true, plugins: ["Share", "Filesystem"], nativeShare: nativeCancel }), "week", "t")).toBe("cancelled");
   });
 
   it("si la imagen no se puede generar, falla (el componente avisa)", async () => {
     const e = env({ navigator: webNav(true), fetch: vi.fn(async () => new Response("", { status: 401 })) as unknown as typeof fetch });
-    await expect(shareWrapUpImage(e, "week", "t")).rejects.toThrow("wrap_up_image_401");
+    await expect(prepareWrapUpImage(e, "week")).rejects.toThrow("wrap_up_image_401");
   });
 
   it("sin ningún camino no hace nada: lo cubre el enlace de descarga", async () => {

@@ -512,7 +512,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 **Estadísticas y retos**
 - Diario emocional / contexto del pase (§7.18; solapa con #427/#428).
 - Retos personalizables (§7.23; #310 aporta el vocabulario de género).
-- «Tu año en Biblioshare» (§7.24) y comparar bibliotecas (§7.25).
+- [x] «Tu año en Biblioshare» (§7.24), ampliado a semana y mes: implementado y verificado en local/dev; [spec](../superpowers/specs/2026-10-06-wrap-ups-design.md). Activación remota pendiente [#1433](https://github.com/borjar20/Biblioshare/issues/1433).
+- Comparar bibliotecas (§7.25).
 
 **Social y clubes**
 - Listas colaborativas (§7.26; hoy solo existe `list_challenge` de club).

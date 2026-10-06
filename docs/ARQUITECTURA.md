@@ -267,3 +267,7 @@ Detalle en [TESTING.md](./TESTING.md).
 ⚠️ En la máquina de desarrollo actual (8 GB) **la suite e2e completa de una tacada no es
 señal fiable**: el dev server muere y los workers caen con errores que parecen bugs de
 producto. Trocearla en grupos de 2–3 specs. Ver [Trampas §5](./TRAMPAS.md).
+
+## Crónicas por periodo (delta 2026-10-06)
+
+Implementación verificada en local/dev, activación remota #1433. `src/lib/wrap-ups` combina loaders con stats y ventanas cerradas Madrid. Cron→endpoint autenticado→barrido→payload privado; dueño→`/wrap/[kind]`→stories/imagen; publicar→RPC→share congelado/post→feed. Revalidación central `revalidateWrapUp`: ver/actualizar alcanza dueño; publicar/despublicar añade feed/post/perfiles. Ninguna lectura depende de caché compartida. El detalle del esquema manda en data-model §8quinquies, y el flujo máquina en graph.json.

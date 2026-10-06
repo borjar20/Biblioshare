@@ -203,3 +203,7 @@ emocional, OCR de citas, recomendador, tabla de adaptaciones/relaciones entre
 obras, listas colaborativas, seguir editoriales, retos personalizables, «Tu año
 en Biblioshare», comparar bibliotecas, offline-first con escritura, IGDB
 (videojuegos), app iOS. Estado y prioridades: `docs/requirements/backlog.md`.
+
+## Crónicas visuales — entrega local/dev 2026-10-06
+
+Última semana, mes y año en `/wrap/[kind]`, aviso/entrada en Inicio y fila en Estadísticas. Stories adaptativas, narradora pixel, imagen1080×1920 y resumen publicable en el feed bajo privacidad del perfil. Código y navegador verificados; **no desplegadas todavía**, activación seguida en [#1433](https://github.com/borjar20/Biblioshare/issues/1433). [Spec](superpowers/specs/2026-10-06-wrap-ups-design.md) y [evidencia](testing/2026-10-06-wrap-ups.md).

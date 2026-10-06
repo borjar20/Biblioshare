@@ -41,7 +41,7 @@ describe("narradora y paleta", () => {
     expect(paletteFor(t(40, 30, 30))).toBe("mixed");
   });
   it("precedencia festive > quiet > social > dominante > explorer", () => {
-    const social = emptyInputs({ time: t(90, 0, 0), together: { jointViewings: 1, clubDays: 1 } });
+    const social = emptyInputs({ time: t(90, 0, 0), together: { jointViewings: 1, clubDays: 1 }, socialDays: 2 });
     expect(narratorFor("year", "full", social)).toBe("festive");
     expect(narratorFor("month", "quiet", social)).toBe("quiet");
     expect(narratorFor("month", "full", social)).toBe("social");

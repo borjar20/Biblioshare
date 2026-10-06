@@ -41,7 +41,7 @@ const BY_TYPE: Record<ItemType, NarratorVariant> = { book: "reader", movie: "cin
 export function narratorFor(kind: WrapUpKind, intensity: Intensity, i: WrapUpInputs): NarratorVariant {
   if (kind === "year") return "festive";
   if (intensity === "quiet") return "quiet";
-  if (i.together.jointViewings + i.together.clubDays >= 2) return "social";
+  if ((i.socialDays ?? i.together.clubDays) >= 2) return "social";
   const dominant = dominantType(i.time);
   if (dominant) return BY_TYPE[dominant];
   if (i.experienceDays > 0) return "explorer";

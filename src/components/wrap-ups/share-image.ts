@@ -59,14 +59,21 @@ async function toBase64(blob: Blob): Promise<string> {
 const isCancel = (e: unknown) =>
   (e instanceof DOMException && e.name === "AbortError") || /cancel/i.test(e instanceof Error ? e.message : String(e));
 
-export async function shareWrapUpImage(env: ShareEnv, kind: WrapUpKind, title: string): Promise<ShareResult> {
+/** Preparar antes del clic: Web Share exige que la activación siga vigente. */
+export async function prepareWrapUpImage(env: ShareEnv, kind: WrapUpKind): Promise<File> {
+  return new File([await fetchImage(env, kind)], imageFileName(kind), { type: "image/png" });
+}
+
+export async function shareWrapUpImage(env: ShareEnv, kind: WrapUpKind, title: string, file?: File): Promise<ShareResult> {
   const mode = shareMode(env);
   if (mode === "download") throw new Error("share_unavailable");
-  const blob = await fetchImage(env, kind);
   const name = imageFileName(kind);
   try {
-    if (mode === "native") await env.nativeShare({ name, base64: await toBase64(blob), title });
-    else await env.navigator!.share({ files: [new File([blob], name, { type: "image/png" })], title });
+    if (mode === "native") await env.nativeShare({ name, base64: await toBase64(await fetchImage(env, kind)), title });
+    else {
+      if (!file) throw new Error("share_image_not_ready");
+      await env.navigator!.share({ files: [file], title });
+    }
     return "shared";
   } catch (e) {
     if (isCancel(e)) return "cancelled";

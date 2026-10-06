@@ -72,6 +72,7 @@ export type WrapUpInputs = {
   phrase: { source: "note" | "quote" | "margin"; body: string; item: ItemRef | null } | null;
   experience: { experienceId: string; title: string; date: string | null } | null;
   together: { jointViewings: number; clubDays: number };
+  socialDays?: number;            // unión de fechas de visionados y club, sin duplicados
   experienceDays: number;          // días de la ventana con alguna experiencia vivida (para narradora)
   annual: {
     months: { month: string; minutes: number; works: number }[];

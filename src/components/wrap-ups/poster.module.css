@@ -117,6 +117,18 @@
   .narratorSprite, .pet > * { zoom: 0.75; }
   .lines { padding-block: 8px; }
 }
+/* El cierre comparte columna con las acciones del dueño (~150 px): con el umbral
+   de arriba desbordaba ~40 px en 390×844 y 1440×900 (barra de scroll y bocadillo
+   cortado). Se compacta antes, solo él. */
+@media (max-height: 980px) {
+  .poster[data-layout="closing"] { gap: 14px; }
+  .poster[data-layout="closing"] .body { gap: 16px; }
+  .poster[data-layout="closing"] .figureValue { font-size: clamp(3.5rem, 9vh, 5.5rem); }
+  .poster[data-layout="closing"] .coverCard { flex-basis: 76px; }
+  .poster[data-layout="closing"] .narratorSprite,
+  .poster[data-layout="closing"] .pet > * { zoom: 0.75; }
+  .poster[data-layout="closing"] .lines { padding-block: 8px; }
+}
 
 /* ---- Portadas como cartas ---- */
 .covers {
@@ -173,6 +185,11 @@
   padding: 12px;
   list-style: none;
 }
+.strip[data-values="true"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.stripValue { text-align: center; font-weight: 600; }
 .stripCell {
   display: flex;
   flex-direction: column;

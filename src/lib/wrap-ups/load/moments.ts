@@ -9,7 +9,7 @@ import type { WrapUpWindow } from "../windows";
 import { madridToday } from "../windows";
 import type { WrapUpClient } from "./core";
 
-export type MomentFacts = Pick<WrapUpInputs, "bestRated" | "phrase" | "experience" | "together" | "experienceDays">;
+export type MomentFacts = Pick<WrapUpInputs, "bestRated" | "phrase" | "experience" | "together" | "experienceDays" | "socialDays">;
 export type RatedPassRow = {
   item_type: ItemType; item_id: string; rating: number; review: string | null;
   is_public: boolean; review_is_spoiler: boolean; finished_on?: string | null;
@@ -45,6 +45,7 @@ export function pickPhrase(cands: PhraseCandidate[]): MomentFacts["phrase"] {
 
 type NoteRow = { kind: string; body: string; created_at: string; is_favorite: boolean; item_type: ItemType; item_id: string };
 type MarginRow = { body: string; created_at: string; item_type: ItemType; item_id: string };
+type JointRow = { viewing_id: string; joint_viewings: { watched_on: string } | { watched_on: string }[] };
 type ExperienceRow = { id: string; title: string; starts_on: string | null; ends_on: string | null };
 
 /** Días distintos de la ventana cubiertos por alguna experiencia (starts_on..coalesce(ends_on, starts_on), recortado). */
@@ -85,11 +86,11 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
       .lt("starts_on", w.endExclusive)
       .or(`ends_on.gte.${w.start},and(ends_on.is.null,starts_on.gte.${w.start})`)
       .order("starts_on", { ascending: false }),
-    readAllRows<{ viewing_id: string }>((from, to) => client.from("joint_viewing_members")
+    readAllRows<JointRow>((from, to) => client.from("joint_viewing_members")
       .select("viewing_id, joint_viewings!inner(watched_on)")
       .eq("user_id", userId).eq("status", "accepted")
       .gte("joint_viewings.watched_on", w.start).lt("joint_viewings.watched_on", w.endExclusive)
-      .order("viewing_id").range(from, to) as unknown as PromiseLike<{ data: { viewing_id: string }[] | null; error?: unknown }>),
+      .order("viewing_id").range(from, to) as unknown as PromiseLike<{ data: JointRow[] | null; error?: unknown }>),
     readAllRows<{ created_at: string }>((from, to) => client.from("club_posts").select("created_at")
       .eq("author_id", userId)
       .gte("created_at", w.start).lt("created_at", w.endExclusive)
@@ -106,12 +107,18 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
 
   const xp = (experiencesQ.data ?? []) as ExperienceRow[];
   const clubDays = new Set(clubPosts.map((p) => madridToday(new Date(p.created_at))));
+  const socialDays = new Set(clubDays);
+  for (const joint of joints) {
+    const viewings = Array.isArray(joint.joint_viewings) ? joint.joint_viewings : [joint.joint_viewings];
+    for (const viewing of viewings) if (viewing?.watched_on) socialDays.add(viewing.watched_on);
+  }
 
   return {
     bestRated: pickBestRated(rated, finished),
     phrase: pickPhrase(cands),
     experience: xp[0] ? { experienceId: xp[0].id, title: xp[0].title, date: xp[0].starts_on } : null,
     together: { jointViewings: joints.length, clubDays: clubDays.size },
+    socialDays: socialDays.size,
     experienceDays: experienceDaysIn(xp, w),
   };
 }

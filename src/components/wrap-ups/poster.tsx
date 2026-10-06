@@ -83,7 +83,7 @@ function LayoutBody({ model }: { model: PosterModel }) {
       return (
         <>
           {figure && <Figure figure={figure} />}
-          {strip && strip.length > 0 && <Strip cells={strip} />}
+          {strip && strip.length > 0 && <Strip cells={strip} showValues={model.stripValues} />}
         </>
       );
     case "ranking":
@@ -146,15 +146,17 @@ function Covers({ covers }: { covers: NonNullable<PosterModel["covers"]> }) {
   );
 }
 
-function Strip({ cells }: { cells: NonNullable<PosterModel["strip"]> }) {
+function Strip({ cells, showValues = false }: { cells: NonNullable<PosterModel["strip"]>; showValues?: boolean }) {
   const t = useTranslations("wrapUps.ui");
   return (
-    <ol className={`${styles.plate} ${styles.strip}`} style={{ "--cells": cells.length } as CSSProperties}>
+    <ol data-values={showValues} className={`${styles.plate} ${styles.strip}`} style={{ "--cells": cells.length } as CSSProperties}>
       {cells.map((c, i) => (
         <li key={i} className={styles.stripCell} data-active={c.active}>
-          <span aria-hidden="true">{c.label}</span>
+          <span aria-hidden={showValues ? undefined : true}>{c.label}</span>
           <span className={styles.stripMark} aria-hidden="true" />
-          <span className="sr-only">{`${c.value}: ${c.active ? t("dayActive") : t("dayInactive")}`}</span>
+          <span className={showValues ? styles.stripValue : "sr-only"}>
+            {showValues ? c.value : `${c.value}: ${c.active ? t("dayActive") : t("dayInactive")}`}
+          </span>
         </li>
       ))}
     </ol>

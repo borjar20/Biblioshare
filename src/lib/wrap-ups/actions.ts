@@ -43,10 +43,20 @@ export async function refreshWrapUp(
   const window = wrapUpWindow(kind, anchor);
   const payload = await buildWrapUp(admin as unknown as Parameters<typeof buildWrapUp>[0], user.id, window);
   if (!payload) return { ok: false, reason: "empty" };
-  const { error } = await admin.from("wrap_ups")
+  // Compare-and-set: el cálculo sólo pertenece a la versión que acabamos de leer.
+  let update = admin.from("wrap_ups")
     .update({ payload: payload as never, intensity: payload.intensity, refreshed_at: new Date().toISOString() })
-    .eq("user_id", user.id).eq("kind", kind).is("published_post_id", null);
+    .eq("user_id", user.id).eq("kind", kind).eq("period_start", row.payload.periodStart)
+    .eq("generated_at", row.generatedAt).is("published_post_id", null);
+  update = row.refreshedAt == null ? update.is("refreshed_at", null) : update.eq("refreshed_at", row.refreshedAt);
+  const { data, error } = await update.select("kind");
   if (error) throw error;
+  if (!data?.length) {
+    const current = await getOwnWrapUp(kind);
+    if (!current || current.payload.periodStart !== row.payload.periodStart) return { ok: false, reason: "not_found" };
+    const latest = canRefresh(current, new Date());
+    return { ok: false, reason: latest === "ok" ? "too_soon" : latest };
+  }
   revalidateWrapUp(kind);
   return { ok: true };
 }

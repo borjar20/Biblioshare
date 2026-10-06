@@ -71,6 +71,22 @@ function fakeClient(tables: Record<string, unknown[]>) {
 const w = wrapUpWindow("month", new Date("2026-10-01T07:00:00Z"));
 
 describe("loadMoments", () => {
+  it("la narradora social cuenta días distintos, uniendo club y visionados", async () => {
+    const { client } = fakeClient({
+      joint_viewing_members: [
+        { viewing_id: "v1", joint_viewings: { watched_on: "2026-09-04" } },
+        { viewing_id: "v2", joint_viewings: { watched_on: "2026-09-04" } },
+      ],
+      club_posts: [{ created_at: "2026-09-04T10:00:00Z" }],
+    });
+    expect((await loadMoments(client as never, "u1", w, [])).socialDays).toBe(1);
+    const next = fakeClient({ joint_viewing_members: [
+      { viewing_id: "v1", joint_viewings: { watched_on: "2026-09-04" } },
+      { viewing_id: "v2", joint_viewings: { watched_on: "2026-09-05" } },
+    ] });
+    expect((await loadMoments(next.client as never, "u1", w, [])).socialDays).toBe(2);
+  });
+
   it("toda consulta por usuario filtra por su columna de dueño", async () => {
     const { client, calls } = fakeClient({});
     await loadMoments(client as never, "u1", w, []);

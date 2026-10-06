@@ -1604,3 +1604,13 @@ commit;
 begin;
 \ir migrations/20261005100000_experience_places.sql
 commit;
+
+-- 20261006120000_wrap_ups_enums
+begin;
+\ir migrations/20261006120000_wrap_ups_enums.sql
+commit;
+
+-- 20261006120100_wrap_ups_core
+begin;
+\ir migrations/20261006120100_wrap_ups_core.sql
+commit;

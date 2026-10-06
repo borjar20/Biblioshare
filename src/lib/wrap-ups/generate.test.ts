@@ -11,8 +11,8 @@ function deps(over: Partial<SweepDeps>): SweepDeps {
     candidates: async () => ["u1"],
     build: async () => payload("full"),
     current: async () => null,
-    upsert: vi.fn(async () => {}),
-    remove: vi.fn(async () => {}),
+    upsert: vi.fn(async () => true),
+    remove: vi.fn(async () => true),
     push: vi.fn(async () => {}),
     ...over,
   };
@@ -31,13 +31,22 @@ describe("sweepWrapUps", () => {
     expect(d.push).not.toHaveBeenCalled();
     expect(d.upsert).toHaveBeenCalledWith("u1", expect.anything(), true);
   });
+  it("no avisa si otra generación ya ganó la escritura", async () => {
+    const d = deps({ upsert: async () => false });
+    expect(await sweepWrapUps("week", NOW, d)).toMatchObject({ written: 0, pushed: 0 });
+    expect(d.push).not.toHaveBeenCalled();
+  });
   it("quiet no avisa", async () => {
     expect((await sweepWrapUps("week", NOW, deps({ build: async () => payload("quiet") }))).pushed).toBe(0);
   });
   it("sin actividad borra la fila", async () => {
     const d = deps({ build: async () => null });
     expect((await sweepWrapUps("week", NOW, d)).deleted).toBe(1);
-    expect(d.remove).toHaveBeenCalledWith("u1", "week");
+    expect(d.remove).toHaveBeenCalledWith("u1", "week", "2026-09-28");
+  });
+  it("no declara borrada una publicación que el guard conserva", async () => {
+    const d = deps({ build: async () => null, remove: async () => false });
+    expect((await sweepWrapUps("week", NOW, d)).deleted).toBe(0);
   });
   it("un fallo no tumba el barrido", async () => {
     const d = deps({

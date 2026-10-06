@@ -10,7 +10,7 @@ import { publishWrapUp, refreshWrapUp, unpublishWrapUp } from "@/lib/wrap-ups/ac
 import type { OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { canRefresh } from "@/lib/wrap-ups/refresh-policy";
 import type { WrapUpKind } from "@/lib/wrap-ups/windows";
-import { browserShareEnv, imageFileName, imageUrl, shareMode, shareWrapUpImage, type ShareMode } from "./share-image";
+import { browserShareEnv, imageFileName, imageUrl, prepareWrapUpImage, shareMode, shareWrapUpImage, type ShareEnv, type ShareMode } from "./share-image";
 import styles from "./story-player.module.css";
 
 type Notice = "refreshed" | "refreshLater" | "refreshPublished" | "refreshEmpty" | "actionError" | "shareError" | null;
@@ -25,12 +25,17 @@ function ShareButton({ kind, onError }: { kind: WrapUpKind; onError: () => void 
   const t = useTranslations("wrapUps");
   const [mode, setMode] = useState<ShareMode | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState<{ env: ShareEnv; file?: File } | null>(null);
 
   useEffect(() => {
     let live = true;
-    browserShareEnv().then((env) => { if (live) setMode(shareMode(env)); }, () => { if (live) setMode("download"); });
+    browserShareEnv().then(async (env) => {
+      const nextMode = shareMode(env);
+      const file = nextMode === "web" ? await prepareWrapUpImage(env, kind) : undefined;
+      if (live) { setReady({ env, file }); setMode(nextMode); }
+    }).catch(() => { if (live) setMode("download"); });
     return () => { live = false; };
-  }, []);
+  }, [kind]);
 
   if (mode === "download") {
     return (
@@ -41,9 +46,10 @@ function ShareButton({ kind, onError }: { kind: WrapUpKind; onError: () => void 
   }
 
   const share = async () => {
+    if (!ready) return;
     setBusy(true);
     try {
-      await shareWrapUpImage(await browserShareEnv(), kind, t("stories.cover.title", { kind }));
+      await shareWrapUpImage(ready.env, kind, t("stories.cover.title", { kind }), ready.file);
     } catch {
       onError();
     } finally {
@@ -52,7 +58,7 @@ function ShareButton({ kind, onError }: { kind: WrapUpKind; onError: () => void 
   };
 
   return (
-    <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={share} disabled={busy} aria-busy={busy}>
+    <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={share} disabled={busy || !ready} aria-busy={busy || !ready}>
       {t("ui.share")}
     </button>
   );
@@ -97,7 +103,7 @@ export function ClosingActions({ wrapUp }: { wrapUp: OwnWrapUp }) {
   return (
     <div className={styles.actions} aria-busy={pending}>
       <div className={styles.actionRow}>
-        <ShareButton kind={wrapUp.kind} onError={() => setNotice("shareError")} />
+        <ShareButton key={wrapUp.refreshedAt ?? wrapUp.generatedAt} kind={wrapUp.kind} onError={() => setNotice("shareError")} />
         <button type="button" className={styles.btn} onClick={togglePublish} disabled={pending}>
           {published ? t("unpublish") : t("publish")}
         </button>

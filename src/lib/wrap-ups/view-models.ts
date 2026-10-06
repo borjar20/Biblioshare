@@ -16,6 +16,7 @@ export type PosterModel = {
   lines: string[];
   covers?: ItemRef[];
   strip?: { label: string; value: string; active: boolean }[];
+  stripValues?: boolean;
   ranking?: { label: string; value: string }[];
   quote?: { body: string; attribution: string | null };
   narratorLine: string;
@@ -159,9 +160,9 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
       return make("finished", {
         layout: "covers",
         figure: { value: String(story.total), unit: t(`${K}.finished.unit`, { count: story.total }) },
-        covers: story.items,
-        lines: story.total > story.items.length
-          ? [t(`${K}.finished.more`, { count: story.total - story.items.length })] : [],
+        covers: story.items.slice(0, 4),
+        lines: story.total > Math.min(4, story.items.length)
+          ? [t(`${K}.finished.more`, { count: story.total - Math.min(4, story.items.length) })] : [],
       });
 
     case "in_progress":
@@ -237,13 +238,15 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
     }
 
     case "months": {
-      const lines = payload.periodEnd.slice(5) === "12-31" ? [] : [
+      const lines = [t(`${K}.months.timeSource`)];
+      if (payload.periodEnd.slice(5) !== "12-31") lines.push(
         t(`${K}.months.cutoff`, { date: `${day(payload.periodEnd)} de ${monthLong(payload.periodEnd, LOCALE)}` }),
-      ];
+      );
       return make("months", {
         layout: "strip",
+        stripValues: true,
         strip: story.months.map((m) => ({
-          label: monthLong(`${m.month}-01`, LOCALE).charAt(0).toUpperCase(),
+          label: monthLong(`${m.month}-01`, LOCALE),
           value: `${dur(m.minutes)} · ${t(`${K}.months.works`, { count: m.works })}`,
           active: m.minutes > 0,
         })),

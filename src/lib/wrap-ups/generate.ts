@@ -17,8 +17,8 @@ export type SweepDeps = {
   candidates: (w: WrapUpWindow) => Promise<string[]>;
   build: (userId: string, w: WrapUpWindow) => Promise<WrapUpPayload | null>;
   current: (userId: string, kind: WrapUpKind) => Promise<{ period_start: string } | null>;
-  upsert: (userId: string, p: WrapUpPayload, samePeriod: boolean) => Promise<void>;
-  remove: (userId: string, kind: WrapUpKind) => Promise<void>;
+  upsert: (userId: string, p: WrapUpPayload, samePeriod: boolean) => Promise<boolean>;
+  remove: (userId: string, kind: WrapUpKind, periodStart: string) => Promise<boolean>;
   push: (userId: string, p: WrapUpPayload) => Promise<void>;
 };
 
@@ -30,13 +30,13 @@ export async function sweepWrapUps(kind: WrapUpKind, now: Date, deps: SweepDeps)
     try {
       const payload = await deps.build(userId, w);
       if (!payload) {
-        await deps.remove(userId, kind);
-        report.deleted += 1;
+        if (await deps.remove(userId, kind, w.start)) report.deleted += 1;
         continue;
       }
       const before = await deps.current(userId, kind);
       const samePeriod = before?.period_start === payload.periodStart;
-      await deps.upsert(userId, payload, samePeriod);
+      const written = await deps.upsert(userId, payload, samePeriod);
+      if (!written) continue;
       report.written += 1;
       if (payload.intensity === "full" && !samePeriod) {
         await deps.push(userId, payload);
@@ -59,15 +59,19 @@ export function adminSweepDeps(admin: AdminClient): SweepDeps {
       const inWindow = (table: "progress_sessions" | "episode_watches" | "passes", col: string) =>
         readAllRows<UserRow>((from, to) => admin.from(table).select("user_id")
           .gte(col, w.start).lt(col, w.endExclusive).order("id").range(from, to) as unknown as UserPage);
-      const [sessions, watches, passes, existing] = await Promise.all([
+      const [sessions, watches, passes, existing, experiences] = await Promise.all([
         inWindow("progress_sessions", "session_date"),
         inWindow("episode_watches", "watched_on"),
         inWindow("passes", "finished_on"),
         // Quien ya tiene fila de este kind entra para que se la borre si ya no hay actividad.
         readAllRows<UserRow>((from, to) => admin.from("wrap_ups").select("user_id")
           .eq("kind", w.kind).order("user_id").range(from, to) as unknown as UserPage),
+        readAllRows<{ creator_id: string }>((from, to) => admin.from("experiences").select("creator_id")
+          .eq("audience", "profile").eq("state", "lived").lt("starts_on", w.endExclusive)
+          .or(`ends_on.gte.${w.start},and(ends_on.is.null,starts_on.gte.${w.start})`)
+          .order("id").range(from, to) as unknown as PromiseLike<{ data: { creator_id: string }[] | null; error?: unknown }>),
       ]);
-      return [...new Set([sessions, watches, passes, existing].flatMap((rows) => rows.map((r) => r.user_id)))];
+      return [...new Set([...sessions, ...watches, ...passes, ...existing].map((r) => r.user_id).concat(experiences.map((r) => r.creator_id)))];
     },
     build: (userId, w) => buildWrapUp(admin as unknown as Parameters<typeof buildWrapUp>[0], userId, w),
     async current(userId, kind) {
@@ -79,23 +83,33 @@ export function adminSweepDeps(admin: AdminClient): SweepDeps {
     async upsert(userId, p, samePeriod) {
       if (samePeriod) {
         // Reintento del mismo periodo: no reencender el anillo ni romper la publicación.
-        const { error } = await admin.from("wrap_ups")
+        const { data, error } = await admin.from("wrap_ups")
           .update({ intensity: p.intensity, payload: p as never, generated_at: new Date().toISOString() })
-          .eq("user_id", userId).eq("kind", p.kind).is("published_post_id", null);
+          .eq("user_id", userId).eq("kind", p.kind).eq("period_start", p.periodStart)
+          .is("published_post_id", null).is("refreshed_at", null).select("kind");
         if (error) throw error;
-        return;
+        return Boolean(data?.length);
       }
-      // Periodo nuevo: upsert completo. published_post_id se limpia solo (trigger wrap_ups_cleanup_share).
-      const { error } = await admin.from("wrap_ups").upsert({
+      // Sustitución monotónica y atómica: sólo un barrido gana y reclama el push.
+      const values = {
         user_id: userId, kind: p.kind, period_start: p.periodStart, period_end: p.periodEnd,
         intensity: p.intensity, payload: p as never, generated_at: new Date().toISOString(),
-        seen_at: null, refreshed_at: null,
-      }, { onConflict: "user_id,kind" });
+        seen_at: null, refreshed_at: null, published_post_id: null,
+      };
+      const { data, error } = await admin.from("wrap_ups").update(values)
+        .eq("user_id", userId).eq("kind", p.kind).lt("period_start", p.periodStart).select("kind");
       if (error) throw error;
+      if (data?.length) return true;
+      const inserted = await admin.from("wrap_ups").insert(values).select("kind");
+      if (inserted.error?.code === "23505") return false; // otra generación ya ganó, o existe un periodo más nuevo
+      if (inserted.error) throw inserted.error;
+      return Boolean(inserted.data?.length);
     },
-    async remove(userId, kind) {
-      const { error } = await admin.from("wrap_ups").delete().eq("user_id", userId).eq("kind", kind);
+    async remove(userId, kind, periodStart) {
+      const { data, error } = await admin.from("wrap_ups").delete().eq("user_id", userId).eq("kind", kind).lte("period_start", periodStart)
+        .or(`period_start.lt.${periodStart},published_post_id.is.null`).select("kind");
       if (error) throw error;
+      return Boolean(data?.length);
     },
     async push(userId, p) {
       const t = await getTranslations("wrapUps.push");

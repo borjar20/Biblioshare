@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "@/lib/library/position";
+import { passPercent } from "@/lib/library/progress";
 import { computeHabits, habitRows, seriesDayHabitRows, type HabitSessionRow } from "@/lib/stats/get-habits";
 import { groupSeriesDays, type WatchRow } from "@/lib/stats/series-days";
 import { addDaysISO } from "@/lib/stats/dates";
@@ -195,7 +196,8 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
     // Solo los libros tienen porcentaje: position.page / books.total_pages.
     const pos = r.item_type === "book" ? parsePosition("book", r.position) : null;
     const page = pos && "page" in pos && pos.page !== undefined ? pos.page : null;
-    const percent = page != null && m.totalPages ? Math.min(100, Math.round((page / m.totalPages) * 100)) : null;
+    // passPercent: el 100 solo con la última página leída (668/669 redondeaba a 100 en un pase abierto).
+    const percent = page != null && m.totalPages ? passPercent(page, m.totalPages) : null;
     return [{ type: r.item_type, id: r.item_id, title: m.title, coverUrl: m.coverUrl, times: 1, percent }];
   });
 

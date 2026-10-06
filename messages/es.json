@@ -4272,7 +4272,8 @@
       "months": {
         "title": "Mes a mes",
         "works": "{count, plural, one {# obra} other {# obras}}",
-        "cutoff": "Diciembre llega hasta el {date}"
+        "cutoff": "Diciembre llega hasta el {date}",
+        "timeSource": "Tiempo registrado en sesiones"
       },
       "records": {
         "title": "Récords",

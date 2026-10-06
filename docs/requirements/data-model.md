@@ -1,5 +1,7 @@
 # Modelo de datos
 
+> **Delta 2026-10-06 (crónicas; verificado en dev con rollback):** tablas/RLS/ACL/RPC/triggers/cron contrastados con objetos reales. Producción pendiente #1433; ver §8quinquies.
+
 > **Delta 2026-10-05 (lugares de Experiencias; verificado en dev y en producción 2026-10-05):**
 > migración `20261005100000_experience_places.sql`: tabla `places`,
 > `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
@@ -5110,6 +5112,24 @@ comentarios de hilos privados por la ruta global de moderación (`has_min_role('
 (`restrict`, par 16) con su `trg_catalog_reference_item_type`, y `merge_book_into` la repunta
 (`update public.margin_notes set item_id = p_winner`), reemitida desde `20261001102000`. Ver §2
 y §2.2.
+
+## 8quinquies. Crónicas semanales, mensuales y anuales
+
+**[Canónico · verificado contra biblioshare-dev el 2026-10-06; sin objetos en producción en este corte]**
+
+Migraciones `20261006120000_wrap_ups_enums.sql` y `20261006120100_wrap_ups_core.sql`, en ese orden. Ambas incluidas en el manifiesto exhaustivo y baseline. El contrato `supabase/tests/wrap_ups.sql` entra en `scripts/db/verify.mjs`.
+
+- `wrap_up_kind`: `week/month/year`. Nuevos valores `post_kind.wrap_up`, `post_anchor_type.wrap_up` y `post_source_kind.wrap_up_share`.
+- `wrap_ups`: PK `(user_id,kind)`, FK de usuario con cascada; fechas locales inclusivas `period_start/period_end`, `intensity` full/quiet, payload JSONB v1 y sellos `generated_at/refreshed_at/seen_at`. `published_post_id` referencia posts con SET NULL. Máximo tres filas por usuario.
+- `wrap_up_shares`: UUID id, usuario, tipo y periodo, JSONB `summary`, `created_at` y UNIQUE usuario/tipo. Congela exclusivamente cifras, portadas y apariencia del cierre; no copia stories, frases ni datos privados del payload.
+- RLS de `wrap_ups`: SELECT/DELETE sólo dueño; authenticated sin INSERT/UPDATE. Payload y tiempo de actualización se escriben con service_role tras autenticar al dueño. RLS de shares: SELECT anon/authenticated condicionado por `can_view_profile(user_id)` (perfil público o seguidor aceptado, sin bloqueo); sesión sin escritura directa.
+- RPC `mark_wrap_up_seen`, `publish_wrap_up`, `unpublish_wrap_up`: SECURITY DEFINER, search_path vacío, sin EXECUTE PUBLIC/anon, sólo authenticated. Usan auth.uid(); publicar bloquea fila FOR UPDATE, extrae su share guardado, crea share/post y enlaza post. Publicar dos veces devuelve el mismo post.
+- Triggers: `wrap_up_shares_cleanup_post`, `posts_wrap_up_cleanup_share`, `wrap_ups_cleanup_share` y `posts_guard_wrap_up`. Borrar share/post elimina su pareja; sustituir o borrar crónica elimina share/post. El guard impide INSERT directo y cambiar kind/anchor/source por UPDATE.
+- `private.dispatch_wrap_ups()`: SECURITY DEFINER, search_path vacío, sin EXECUTE PUBLIC/anon/authenticated. Job `wrap-ups`, `0 * * * *`; guard Europe/Madrid: lunes 09:00, día 1 a 09:00 y26-dic a10:00. Usa app_base_url/cron_secret de Vault y pg_net. En dev no existen esos dos secretos: el job está registrado pero no despacha. La activación remota se sigue en #1433.
+
+Superficie6 comprobada: no cambian los grants finos de posts (11  columnas/8  INSERT/2  UPDATE), ni las 15 filas del inventario entre dev/prod. Las dos tablas nuevas usan grants de tabla: no dan INSERT/UPDATE de sesión, por lo que no aparecen en ese inventario de columnas escribibles. Las8 funciones reales coinciden con la fuente, normalizando CRLF. Contrato SQL PASS con rollback; usuarios/posts/shares/crónicas sintéticos0 al terminar. Advisors sólo añade las 3 RPC definer autenticadas previstas; sin avisos nuevos de search_path o RLS.
+
+El CHECK `payload->>'v'='1'` admite versión ausente por NULL; constructor actual produce v1 y la sesión no escribe. Endurecimiento pendiente #1430. Activación productiva y prueba del despacho remoto pendientes #1433; Android #1431. Evidencia en [verificación de crónicas](../testing/2026-10-06-wrap-ups.md).
 
 ## 9. Seguridad
 

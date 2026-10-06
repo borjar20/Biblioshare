@@ -62,6 +62,26 @@ describe("Poster", () => {
     expect(cells[2].textContent).toContain("sin actividad");
   });
 
+  it("months: las cifras de cada mes son visibles, no sólo para lectores de pantalla", () => {
+    const m = modelOf("months");
+    renderPoster(m);
+    const cells = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(cells).toHaveLength(12);
+    for (let i = 0; i < cells.length; i++) {
+      const value = within(cells[i]).getByText(m.strip![i].value);
+      expect(value.classList.contains("sr-only")).toBe(false);
+      expect(value.getAttribute("aria-hidden")).not.toBe("true");
+    }
+  });
+
+  it("finished: el contador adicional incluye las obras que no caben en las cuatro cartas", () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({ type: "book" as const, id: String(i), title: "Libro " + i, coverUrl: null, times: 1 }));
+    const m = posterFor({ id: "finished", items, total: 6 }, payload, t);
+    renderPoster(m);
+    expect(screen.getAllByRole("listitem")).toHaveLength(4);
+    expect(m.lines.join(" ")).toContain("2");
+  });
+
   it("ranking: lista ordenada con etiqueta y valor; sin cifra, el rótulo es el h2", () => {
     const m = modelOf("genres");
     renderPoster(m);

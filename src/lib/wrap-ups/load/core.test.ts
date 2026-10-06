@@ -104,6 +104,32 @@ describe("loadCore", () => {
     expect(facts.time.minutes.series).toBe(40);
   });
 
+  it("un libro abierto a una página del final no se anuncia al 100 % (passPercent)", async () => {
+    // Regresión: 668/669
+    // salía «· 100 %» en «En marcha» mientras la home decía 99 %.
+    const tables: Record<string, unknown[]> = {
+      passes: [{ id: "pb1", item_type: "book", item_id: "b1", position: { page: 668 }, status: "in_progress" }],
+      progress_sessions: [{ pass_id: "pb1", session_date: "2026-09-10", duration_minutes: 30, started_at: "2026-09-10T20:00:00Z", passes: { item_type: "book" } }],
+      books: [{ id: "b1", title: "Libro", cover_url: null, genres: null, total_pages: 669 }],
+    };
+    const client = {
+      from: (table: string) => {
+        const filters: Record<string, unknown> = {};
+        const q: Record<string, unknown> = {};
+        for (const m of ["select", "gte", "lt", "in", "order", "range", "not", "is", "lte", "limit"]) q[m] = () => q;
+        q.eq = (c: string, v: unknown) => { filters[c] = v; return q; };
+        q.then = (res: (v: unknown) => unknown) => {
+          let rows = tables[table] ?? [];
+          if (table === "passes") rows = rows.filter((r) => (r as { status: string }).status === filters.status);
+          return Promise.resolve({ data: rows, error: null }).then(res);
+        };
+        return q;
+      },
+    };
+    const facts = await loadCore(client as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
+    expect(facts.inProgress.map((i) => i.percent)).toEqual([99]);
+  });
+
   it("toda consulta por usuario filtra por user_id", async () => {
     const { client, calls } = recordingClient();
     await loadCore(client as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
