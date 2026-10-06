@@ -96,14 +96,16 @@ añadidas y cero retiradas). La evidencia de este corte está en `.scratch/noved
 
 El candidato inicial `80d09b5` falló durante el bootstrap porque el harness no cargaba
 la prueba de concurrencia y el baseline no incluía la quinta migración. Ambas causas se
-corrieron en `a167a88`. En ese HEAD, bootstrap vacío, calidad, CodeQL y Vercel pasaron;
+corrigieron en `a167a88`. En ese HEAD, bootstrap vacío, calidad, CodeQL y Vercel pasaron;
 `critical-flows` ejecutó 174 pruebas: 171 pasaron y tres assertions de Playwright
 fallaron por encontrar nodos duplicados en selectores de mercado y login. Las capturas
-confirman que había una sola fila internacional y un solo formulario visibles. Se
-ajustaron los selectores para limitarse al contenido visible y comprobar una sola fila
-internacional visible. ESLint del spec corregido pasa; se exige CI verde del nuevo HEAD
-antes de fusionar. Los informes R1 registran los problemas originales y no se presentan
-como revisión independiente de los fixes.
+mostraban una sola fila internacional y un solo formulario visibles. El primer ajuste,
+publicado en `66bd343`, resolvió esos tres casos; la nueva CI pasó 170/174 y expuso cuatro
+selectores más ambiguos en los avisos de estado vacío y el formulario editorial. Las
+capturas también muestran una sola copia visible. Se ampliaron los filtros `visible`
+solo a esas aserciones/campos E2E. La siguiente CI debe validar el HEAD completo antes
+de fusionar. Los informes R1 registran los problemas originales y no se presentan como
+revisión independiente de los fixes.
 
 ## Estado de entrega
 
