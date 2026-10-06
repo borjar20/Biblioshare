@@ -15,6 +15,7 @@ import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
 import { FeedListSkeleton } from "@/components/social/feed-skeleton";
 import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
+import { HomeWrapUpCover, WrapUpCoverSkeleton } from "@/components/wrap-ups/wrap-up-entry";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
@@ -95,6 +96,10 @@ export default async function Home({
             con `fallback={null}` empujaba el feed al llegar — 0.51 de CLS en
             móvil, la peor métrica de la app (issue #284). */}
         <div data-area="personal">
+          {/* Portada del wrap-up: alto reservado en el fallback (CLS, #284). */}
+          <Suspense fallback={<WrapUpCoverSkeleton />}>
+            <HomeWrapUpCover />
+          </Suspense>
           <Suspense fallback={<TodayBlockSkeleton />}>
             <TodayBlock userId={user.id} />
           </Suspense>

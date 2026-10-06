@@ -4200,6 +4200,11 @@
         "festive": "Tu año, contado en un ratito."
       }
     },
+    "entry": {
+      "rowTitle": "Tus crónicas",
+      "label": "{kind, select, week {Tu semana} month {Tu mes} other {Tu año}}",
+      "unseen": "Nueva"
+    },
     "stories": {
       "cover": {
         "title": "{kind, select, week {Tu semana} month {Tu mes} other {Tu año}}"

@@ -1,0 +1,61 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const wrapUps = vi.hoisted(() => ({ list: [] as unknown[] }));
+vi.mock("@/lib/wrap-ups/get-own-wrap-ups", () => ({ getOwnWrapUps: async () => wrapUps.list }));
+vi.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string, v?: { kind?: string }) => (v?.kind ? `${key}:${v.kind}` : key),
+}));
+vi.mock("./pixel-font", () => ({ pixelFont: { variable: "pixel" } }));
+
+const month = { kind: "month", seenAt: null, payload: { kind: "month", periodStart: "2026-09-01", periodEnd: "2026-09-30", intensity: "quiet", narrator: "quiet", palette: "mixed" } };
+const week = { kind: "week", seenAt: null, payload: { kind: "week", periodStart: "2026-09-28", periodEnd: "2026-10-04", intensity: "full", narrator: "reader", palette: "book" } };
+
+afterEach(cleanup);
+beforeEach(() => {
+  wrapUps.list = [month, week];
+});
+
+describe("WrapUpsRow", () => {
+  it("lista los quiet también, con enlace a su ruta", async () => {
+    const { WrapUpsRow } = await import("./wrap-ups-row");
+    render((await WrapUpsRow())!);
+    expect(screen.getByRole("link", { name: /Septiembre 2026/ }).getAttribute("href")).toBe("/wrap/month");
+    expect(screen.getByRole("link", { name: /Semana del 28 sep/ }).getAttribute("href")).toBe("/wrap/week");
+  });
+  it("sin wrap-ups no pinta nada", async () => {
+    wrapUps.list = [];
+    const { WrapUpsRow } = await import("./wrap-ups-row");
+    expect(await WrapUpsRow()).toBeNull();
+  });
+});
+
+describe("HomeWrapUpCover", () => {
+  it("prefiere el full sin ver y lo marca con anillo", async () => {
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    const link = screen.getByRole("link");
+    expect(link.getAttribute("href")).toBe("/wrap/week");
+    expect(link.getAttribute("data-unseen")).toBe("true");
+  });
+  it("ya visto: enlace discreto al más reciente, sin anillo", async () => {
+    wrapUps.list = [month, { ...week, seenAt: "2026-10-05T10:00:00Z" }];
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    const link = screen.getByRole("link");
+    expect(link.getAttribute("href")).toBe("/wrap/week");
+    expect(link.getAttribute("data-unseen")).toBe("false");
+  });
+  it("un quiet sin ver no lleva anillo", async () => {
+    wrapUps.list = [month];
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    render((await HomeWrapUpCover())!);
+    expect(screen.getByRole("link").getAttribute("data-unseen")).toBe("false");
+  });
+  it("sin wrap-ups devuelve null", async () => {
+    wrapUps.list = [];
+    const { HomeWrapUpCover } = await import("./wrap-up-entry");
+    expect(await HomeWrapUpCover()).toBeNull();
+  });
+});
