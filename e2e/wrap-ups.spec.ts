@@ -119,6 +119,7 @@ test.describe("crónicas (wrap-ups)", () => {
 
     // Despublicar se lleva el post del feed de B (share → post por trigger).
     await a.goto("/wrap/week");
+    await expect(a.getByRole("dialog")).toBeVisible();
     for (let i = 1; i < total; i++) await a.keyboard.press("ArrowRight");
     await a.getByRole("dialog").getByRole("button", { name: "Despublicar" }).click();
     await expect(a.getByRole("dialog").getByRole("button", { name: "Publicar en el feed" })).toBeVisible();
@@ -129,6 +130,7 @@ test.describe("crónicas (wrap-ups)", () => {
   test("la imagen publicada revalida perfil privado, seguimiento y bloqueo", async ({ browser, request }) => {
     const a = await loggedInPage(browser);
     await a.goto("/wrap/week");
+    await expect(a.getByRole("dialog")).toBeVisible();
     for (let i = 1; i < payload.stories.length; i++) await a.keyboard.press("ArrowRight");
     await a.getByRole("dialog").getByRole("button", { name: "Publicar en el feed" }).click();
     await expect(a.getByRole("dialog").getByText("Publicado", { exact: true })).toBeVisible();
@@ -177,6 +179,7 @@ test.describe("crónicas (wrap-ups)", () => {
       await route.continue();
     });
     await a.goto("/wrap/week");
+    await expect(a.getByRole("dialog")).toBeVisible();
     for (let i = 1; i < payload.stories.length; i++) await a.keyboard.press("ArrowRight");
     const share = a.getByRole("dialog").getByRole("button", { name: "Compartir", exact: true });
     await expect(share).toBeEnabled({ timeout: 30_000 });

@@ -13,6 +13,8 @@ export type TransitionOutcome =
   | { kind: "askResume" };
 
 export type TransitionOptions = {
+  /** Create only when absent; preserve every existing active pass, including closed ones. */
+  requireAbsent?: boolean;
   /**
    * `true` = esta transición NO publica hito. El defecto es publicar.
    *
@@ -77,6 +79,9 @@ export async function applyTransition(
   }
 
   const active = await getActivePass(supabase, itemType, itemId, userId);
+  if (options?.requireAbsent && active) {
+    return { kind: "done", passId: active.id, closed: false, created: false };
+  }
   const plan = planTransition(
     active ? { id: active.id, status: active.status } : null,
     to,
@@ -137,6 +142,14 @@ export async function applyTransition(
     })
     .select("id")
     .single();
+  if (error && options?.requireAbsent) {
+    // Only this partial unique index proves that another action won the active-pass race.
+    // Re-read the canonical winner; unrelated unique failures or absence remain errors.
+    if (error.code !== "23505" || !/\bpasses_one_active\b/.test(error.message)) throw error;
+    const winner = await getActivePass(supabase, itemType, itemId, userId);
+    if (!winner) throw error;
+    return { kind: "done", passId: winner.id, closed: false, created: false };
+  }
   if (error && error.code !== "23505") throw error;
   return publishing({
     kind: "done",

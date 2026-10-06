@@ -23,6 +23,14 @@ export function LogoutButton() {
       disabled={isPending}
       onClick={() =>
         startTransition(async () => {
+          try {
+            // Esperar la transacción antes de revocar Auth/navegar. Sólo se
+            // purgan copias sincronizadas; las fuentes pendientes se conservan.
+            const { purgePlaySavedOnLogout } = await import("@/lib/play/core/logout");
+            await purgePlaySavedOnLogout();
+          } catch {
+            // Sin Auth verificable o IDB, el logout sigue siendo posible.
+          }
           if (getNotificationPlatform() === "android") {
             try {
               const { teardownAndroidPush } = await import("@/lib/push/android");

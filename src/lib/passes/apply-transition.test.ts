@@ -42,6 +42,7 @@ function fakeClient() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getActivePass.mockReset();
   mocks.maybeAutopostMilestone.mockResolvedValue(undefined);
 });
 
@@ -145,5 +146,57 @@ describe("applyTransition publica el hito por defecto", () => {
     await applyTransition(fakeClient(), "usuario", "book", "libro-1", "in_progress");
 
     expect(mocks.maybeAutopostMilestone).toHaveBeenCalledTimes(1);
+  });
+  it("without the absence guard an explicit transition to planned still changes the active pass", async () => {
+    mocks.getActivePass.mockResolvedValue({ id: "existing", status: "in_progress" });
+    const client = fakeClient() as unknown as { from: () => Record<string, unknown> };
+    const writes: unknown[] = [];
+    client.from().update = (patch: unknown) => { writes.push(patch); return client.from(); };
+    await applyTransition(client as never, "user", "book", "book", "planned", undefined, { silent: true });
+    expect(writes).toEqual([expect.objectContaining({ status: "planned" })]);
+  });
+});
+
+describe("applyTransition requireAbsent preserves concurrent personal decisions", () => {
+  it.each(["planned", "in_progress", "completed", "dropped"])("does not write an existing %s pass", async (status) => {
+    const existing = { id: "existing", status, pinnedOrder: 4, position: { page: 84 } };
+    mocks.getActivePass.mockResolvedValue(existing);
+    const from = vi.fn();
+    const result = await applyTransition({ from } as never, "user", "book", "book", "planned", undefined, { requireAbsent: true });
+    expect(result).toEqual({ kind: "done", passId: "existing", closed: false, created: false });
+    expect(from).not.toHaveBeenCalled();
+    expect(existing).toEqual({ id: "existing", status, pinnedOrder: 4, position: { page: 84 } });
+    expect(mocks.maybeAutopostMilestone).not.toHaveBeenCalled();
+  });
+
+  it.each(["in_progress", "completed"])("preserves a %s pass arriving after the canonical absence read", async (status) => {
+    const concurrent = { id: "concurrent", status, position: { page: 84 } };
+    mocks.getActivePass.mockResolvedValueOnce(null).mockResolvedValueOnce(concurrent);
+    const client = fakeClient() as unknown as { from: () => Record<string, unknown> };
+    const update = vi.fn();
+    client.from().update = update;
+    client.from().single = async () => ({ data: null, error: { code: "23505", message: 'duplicate key value violates unique constraint "passes_one_active"' } });
+    const result = await applyTransition(client as never, "user", "book", "book", "planned", undefined, { requireAbsent: true });
+    expect(result).toEqual({ kind: "done", passId: "concurrent", closed: false, created: false });
+    expect(update).not.toHaveBeenCalled();
+    expect(concurrent).toEqual({ id: "concurrent", status, position: { page: 84 } });
+    expect(mocks.maybeAutopostMilestone).not.toHaveBeenCalled();
+  });
+
+  it.each(["passes_one_active", "passes_other_unique"])("does not hide a %s conflict without a confirmed active winner", async (constraint) => {
+    mocks.getActivePass.mockResolvedValue(null);
+    const error = { code: "23505", message: `duplicate key value violates unique constraint "${constraint}"` };
+    const client = fakeClient() as unknown as { from: () => Record<string, unknown> };
+    client.from().single = async () => ({ data: null, error });
+    await expect(applyTransition(client as never, "user", "book", "book", "planned", undefined, { requireAbsent: true })).rejects.toEqual(error);
+    expect(mocks.maybeAutopostMilestone).not.toHaveBeenCalled();
+  });
+
+  it("does not treat an unrelated unique error as an active-pass conflict even if a pass now exists", async () => {
+    mocks.getActivePass.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "concurrent", status: "in_progress" });
+    const error = { code: "23505", message: 'duplicate key value violates unique constraint "passes_other_unique"' };
+    const client = fakeClient() as unknown as { from: () => Record<string, unknown> };
+    client.from().single = async () => ({ data: null, error });
+    await expect(applyTransition(client as never, "user", "book", "book", "planned", undefined, { requireAbsent: true })).rejects.toEqual(error);
   });
 });

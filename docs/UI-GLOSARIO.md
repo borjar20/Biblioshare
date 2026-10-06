@@ -24,6 +24,21 @@ de la app, por bien dibujada que esté cada pantalla.
 
 ## Los términos
 
+Delta 2026-10-06, Novedades (implementación local pendiente de verificación):
+**Novedades** reúne próximos **Lanzamientos** de obras culturales. **Explorar**
+es la selección pública y **Lo que esperas** parte de Pendiente, del seguimiento
+de series o sagas y de los avisos elegidos. **Añadir a Pendiente** registra una
+obra; **Avisarme** elige un aviso para un lanzamiento concreto. **Retirar aviso**
+conserva Pendiente. **Cine** y **Digital** son modalidades de una película y se
+presentan dentro de una misma obra. **Temporada {número}** identifica un anuncio
+de temporada, sin confundirlo con un estreno de serie. **Primera traducción al
+castellano** distingue una salida editorial de un libro nuevo. **Fecha por
+confirmar** conserva la ausencia de un día; **Anuncios sin día exacto** separa
+meses, años y fechas desconocidas. **Internacional** identifica un mercado
+distinto de España. **Sale esta semana** enlaza desde Inicio al calendario.
+La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
+**Publicar**; publicar un anuncio no registra la obra en su biblioteca.
+
 Delta 2026-10-02, Experiencias (#1293): **Experiencia** es una salida o recuerdo
 compartido; **Escapada** agrupa varios **Momentos** en el mismo recuerdo;
 **Acompañante** es una cuenta invitada o una etiqueta privada sin cuenta.

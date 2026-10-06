@@ -9,7 +9,7 @@ import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { Input } from "@/components/ui/input";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SearchIcon, TiersIcon } from "@/components/ui/icons";
+import { CalendarIcon, SearchIcon, TiersIcon } from "@/components/ui/icons";
 import { SearchForm } from "./search-form";
 import { SearchResultCard } from "./search-result-card";
 import { PeopleResults } from "./people-results";
@@ -43,6 +43,9 @@ export default async function SearchPage({
   return (
     <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <PageHeader title={t("title")} />
+      <Link href="/novedades" className="inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-border bg-surface px-3.5 py-2 text-[13px] font-medium text-foreground transition-colors hover:bg-surface-muted">
+        <CalendarIcon className="h-4 w-4 text-muted-foreground" />{t("browseReleases")}
+      </Link>
       <Suspense fallback={<SearchBodySkeleton />}>
         <SearchContent searchParams={searchParams} />
       </Suspense>

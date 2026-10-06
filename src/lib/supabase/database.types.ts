@@ -1,3 +1,11 @@
+import type { CulturalRelease, ReleaseSubscription, ReleaseSourceStatus, ReleaseDelivery, ReleaseDeliveryClaim } from "@/lib/releases/types";
+
+// Keep hand-maintained checked domain unions for only the new release tables.
+type ReleaseDatabaseRow = { [K in keyof CulturalRelease]: CulturalRelease[K] };
+type ReleaseSubscriptionRow = { [K in keyof ReleaseSubscription]: ReleaseSubscription[K] };
+type ReleaseSourceStatusRow = { [K in keyof ReleaseSourceStatus]: ReleaseSourceStatus[K] };
+type ReleaseDeliveryRow = { [K in keyof ReleaseDelivery]: ReleaseDelivery[K] };
+
 export type Json =
   | string
   | number
@@ -14,6 +22,40 @@ export type Database = {
   }
   public: {
     Tables: {
+      cultural_releases: {
+        Row: ReleaseDatabaseRow
+        Insert: Pick<ReleaseDatabaseRow, "work_key" | "source" | "source_key" | "item_type" | "modality" | "market" | "title" | "source_name" | "source_url"> & Partial<ReleaseDatabaseRow>
+        Update: Partial<ReleaseDatabaseRow>
+        Relationships: [
+          { foreignKeyName: "cultural_releases_book_id_fkey"; columns: ["book_id"]; isOneToOne: false; referencedRelation: "books"; referencedColumns: ["id"] },
+          { foreignKeyName: "cultural_releases_movie_id_fkey"; columns: ["movie_id"]; isOneToOne: false; referencedRelation: "movies"; referencedColumns: ["id"] },
+          { foreignKeyName: "cultural_releases_series_id_fkey"; columns: ["series_id"]; isOneToOne: false; referencedRelation: "series"; referencedColumns: ["id"] },
+          { foreignKeyName: "cultural_releases_book_edition_id_fkey"; columns: ["book_edition_id"]; isOneToOne: false; referencedRelation: "book_editions"; referencedColumns: ["id"] },
+        ]
+      }
+      release_subscriptions: {
+        Row: ReleaseSubscriptionRow
+        Insert: Pick<ReleaseSubscriptionRow, "user_id" | "release_id" | "baseline_revision"> & Partial<ReleaseSubscriptionRow>
+        Update: Partial<ReleaseSubscriptionRow>
+        Relationships: [
+          { foreignKeyName: "release_subscriptions_release_id_fkey"; columns: ["release_id"]; isOneToOne: false; referencedRelation: "cultural_releases"; referencedColumns: ["id"] },
+        ]
+      }
+      release_sync_state: {
+        Row: ReleaseSourceStatusRow
+        Insert: Pick<ReleaseSourceStatusRow, "source"> & Partial<ReleaseSourceStatusRow>
+        Update: Partial<ReleaseSourceStatusRow>
+        Relationships: []
+      }
+      release_deliveries: {
+        Row: ReleaseDeliveryRow
+        Insert: Pick<ReleaseDeliveryRow, "release_id" | "user_id" | "release_revision" | "reason" | "consent_generation"> & Partial<ReleaseDeliveryRow>
+        Update: Partial<ReleaseDeliveryRow>
+        Relationships: [
+          { foreignKeyName: "release_deliveries_release_id_fkey"; columns: ["release_id"]; isOneToOne: false; referencedRelation: "cultural_releases"; referencedColumns: ["id"] },
+          { foreignKeyName: "release_deliveries_notification_id_fkey"; columns: ["notification_id"]; isOneToOne: false; referencedRelation: "notifications"; referencedColumns: ["id"] },
+        ]
+      }
       archive_import_decisions: {
         Row: {
           decision: string
@@ -3856,6 +3898,37 @@ export type Database = {
       }
     }
     Functions: {
+      release_set_subscription: {
+        Args: { p_release_id: string; p_active: boolean }
+        Returns: ReleaseSubscriptionRow[]
+        SetofOptions: { from: "*"; to: "release_subscriptions"; isOneToOne: false; isSetofReturn: true }
+      }
+      release_editorial_save: {
+        Args: { p_input: Json; p_release_id?: string; p_expected_revision?: number; p_expected_updated_at?: string }
+        Returns: ReleaseDatabaseRow[]
+        SetofOptions: { from: "*"; to: "cultural_releases"; isOneToOne: false; isSetofReturn: true }
+      }
+      release_upsert_tmdb: {
+        Args: { p_rows: Json; p_expected_attempt: string }
+        Returns: ReleaseDatabaseRow[]
+        SetofOptions: { from: "*"; to: "cultural_releases"; isOneToOne: false; isSetofReturn: true }
+      }
+      claim_release_deliveries: {
+        Args: { p_limit?: number; p_now?: string }
+        Returns: (Omit<ReleaseDeliveryClaim, "release_payload"> & { release_payload: Json })[]
+      }
+      accept_release_delivery: {
+        Args: { p_delivery_id: string; p_claim_token: string }
+        Returns: { id: string; user_id: string }[]
+      }
+      retry_release_delivery: {
+        Args: { p_delivery_id: string; p_claim_token: string; p_error?: string }
+        Returns: boolean
+      }
+      release_delivery_is_current: {
+        Args: { p_delivery_id: string; p_claim_token: string }
+        Returns: boolean
+      }
       experience_delete: {
         Args: { p_id: string; p_confirmation: string }
         Returns: Json
@@ -4959,7 +5032,7 @@ export type Database = {
       margin_found_via: "progress" | "finish" | "retro"
       media_status: "planned" | "in_progress" | "completed" | "dropped"
       notification_type:
-        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience" | "experience_reviewed" | "margin_note_dedicated" | "margin_commented" | "margin_liked"
+        "follow_request" | "new_follower" | "follow_accepted" | "review_liked" | "review_commented" | "club_join_request" | "club_join_approved" | "club_invite" | "club_invite_accepted" | "club_post" | "club_post_liked" | "club_post_commented" | "comment_liked" | "club_activity_proposed" | "club_activity_activated" | "club_activity_spawned" | "club_event_created" | "mentioned" | "activity_liked" | "activity_commented" | "checkpoint_commented" | "club_round_proposed" | "club_round_commented" | "club_round_liked" | "followed_finished" | "followed_session" | "followed_episode" | "followed_added" | "club_event_reminder" | "club_event_updated" | "club_event_cancelled" | "thought_commented" | "thought_liked" | "post_commented" | "post_liked" | "followed_started" | "followed_dropped" | "followed_thought" | "joint_viewing_invite" | "joint_viewing_accepted" | "experience_invited" | "experience_accepted" | "followed_experience" | "experience_reviewed" | "margin_note_dedicated" | "margin_commented" | "margin_liked" | "release_reminder" | "release_updated" | "release_cancelled"
       pass_dropped_reason:
         | "no_enganchado"
         | "aburrido"
@@ -5148,7 +5221,7 @@ export const Constants = {
       margin_audience: ["followers", "person"],
       margin_found_via: ["progress", "finish", "retro"],
       media_status: ["planned", "in_progress", "completed", "dropped"],
-      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience", "experience_reviewed", "margin_note_dedicated", "margin_commented", "margin_liked"],
+      notification_type: ["follow_request", "new_follower", "follow_accepted", "review_liked", "review_commented", "club_join_request", "club_join_approved", "club_invite", "club_invite_accepted", "club_post", "club_post_liked", "club_post_commented", "comment_liked", "club_activity_proposed", "club_activity_activated", "club_activity_spawned", "club_event_created", "mentioned", "activity_liked", "activity_commented", "checkpoint_commented", "club_round_proposed", "club_round_commented", "club_round_liked", "followed_finished", "followed_session", "followed_episode", "followed_added", "club_event_reminder", "club_event_updated", "club_event_cancelled", "thought_commented", "thought_liked", "post_commented", "post_liked", "followed_started", "followed_dropped", "followed_thought", "joint_viewing_invite", "joint_viewing_accepted", "experience_invited", "experience_accepted", "followed_experience", "experience_reviewed", "margin_note_dedicated", "margin_commented", "margin_liked", "release_reminder", "release_updated", "release_cancelled"],
       pass_dropped_reason: [
         "no_enganchado",
         "aburrido",

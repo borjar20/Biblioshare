@@ -1,5 +1,14 @@
 # Arquitectura
 
+> **Delta Novedades 2026-10-06 · código y esquema local/dev:** `/novedades`
+> combina exploración pública y selección privada; `components/releases` y
+> `lib/releases` separan obra, lanzamiento y elección de aviso. `/admin/novedades`
+> publica libros sin crear un pase del editor. `/api/cron/releases` revisa TMDB y
+> acepta avisos deduplicados; su scheduler nace inactivo. Las nuevas tablas tienen
+> RLS y grants mínimos; las lecturas personales no usan caché compartida.
+> Estado y límites en [verificación de Novedades](./testing/2026-10-06-novedades.md).
+> Producción y publicación del código pendientes.
+
 > **[Canónico · verificado contra código el 2026-08-19]**
 
 > Cómo encaja Biblioshare. Verificado contra el código el **2026-08-19**
@@ -270,4 +279,4 @@ producto. Trocearla en grupos de 2–3 specs. Ver [Trampas §5](./TRAMPAS.md).
 
 ## Crónicas por periodo (delta 2026-10-06)
 
-Implementación verificada en local/dev, activación remota #1433. `src/lib/wrap-ups` combina loaders con stats y ventanas cerradas Madrid. Cron→endpoint autenticado→barrido→payload privado; dueño→`/wrap/[kind]`→stories/imagen; publicar→RPC→share congelado/post→feed. Revalidación central `revalidateWrapUp`: ver/actualizar alcanza dueño; publicar/despublicar añade feed/post/perfiles. Ninguna lectura depende de caché compartida. El detalle del esquema manda en data-model §8quinquies, y el flujo máquina en graph.json.
+Implementación verificada en local/dev, activación remota #1433. `src/lib/wrap-ups` combina loaders con stats y ventanas cerradas Madrid. Cron→endpoint autenticado→barrido→payload privado; dueño→`/wrap/[kind]`→stories/imagen; publicar→RPC→share congelado/post→feed. Revalidación central `revalidateWrapUp`: ver/actualizar alcanza dueño; publicar/despublicar añade feed/post/perfiles. Ninguna lectura depende de caché compartida. El detalle del esquema manda en data-model §8sexies, y el flujo máquina en graph.json.

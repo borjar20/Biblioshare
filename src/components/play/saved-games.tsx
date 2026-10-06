@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { deleteSaved, listSaved, saveFinished, type SavedGameRecord } from "@/lib/play/core/db";
+import { adoptAnonymousSaved, deleteSavedFromHistory, listSaved, type SavedGameRecord } from "@/lib/play/core/db";
+import { savedSessionForMutation } from "@/lib/play/core/saved-auth";
 import { requestSavedSync, SAVED_CHANNEL_PREFIX } from "@/lib/play/core/sync";
 import { playTools } from "@/lib/play/tools";
 import { seatAccent } from "@/lib/play/ui/seats";
@@ -57,6 +58,7 @@ export function SavedGames({ identity }: { identity: string }) {
   const [anonCount, setAnonCount] = useState(0);
   const [selected, setSelected] = useState<SavedGameRecord | null>(null);
   const [adoptDismissed, setAdoptDismissed] = useState(false);
+  const [mutating, setMutating] = useState(false);
 
   const reload = useCallback(async (isCancelled: () => boolean = () => false) => {
     const own = (await listSaved(identity)).filter((r) => r.deletedAt === null);
@@ -99,26 +101,35 @@ export function SavedGames({ identity }: { identity: string }) {
   }, [identity, reload]);
 
   async function handleDelete(record: SavedGameRecord) {
+    if (mutating) return;
     if (!window.confirm(t("saved.deleteConfirm"))) return;
-    if (record.syncStatus === "pending") {
-      // Nunca subió: no hay copia remota que tumbstonear.
-      await deleteSaved(record.gameId);
-    } else {
-      await saveFinished({ ...record, deletedAt: Date.now() });
+    setMutating(true);
+    try {
+      const session = await savedSessionForMutation(identity);
+      if (!session || !await deleteSavedFromHistory(record.gameId, session)) return;
+      setSelected(null);
+      await reload();
+      requestSavedSync(identity);
+    } finally {
+      setMutating(false);
     }
-    setSelected(null);
-    await reload();
-    requestSavedSync(identity);
   }
 
   async function handleAdopt() {
-    const anon = (await listSaved("anon")).filter((r) => r.deletedAt === null);
-    for (const record of anon) {
-      // keyPath = gameId: re-etiquetar la identidad es un put, no un registro nuevo.
-      await saveFinished({ ...record, identity, syncStatus: "pending" });
+    if (mutating) return;
+    setMutating(true);
+    try {
+      const session = await savedSessionForMutation(identity);
+      if (!session) return;
+      const anon = (await listSaved("anon")).filter((r) => r.deletedAt === null);
+      for (const record of anon) {
+        if (!await adoptAnonymousSaved(record.gameId, session)) break;
+      }
+      await reload();
+      requestSavedSync(identity);
+    } finally {
+      setMutating(false);
     }
-    await reload();
-    requestSavedSync(identity);
   }
 
   // null = cargando: no pintar nada (ni el banner) hasta que la primera
@@ -143,6 +154,7 @@ export function SavedGames({ identity }: { identity: string }) {
             <button
               type="button"
               onClick={handleAdopt}
+              disabled={mutating}
               className={buttonVariants("primary", "flex-1 justify-center py-2 text-[13px]")}
             >
               {t("saved.adopt")}
@@ -150,6 +162,7 @@ export function SavedGames({ identity }: { identity: string }) {
             <button
               type="button"
               onClick={() => setAdoptDismissed(true)}
+              disabled={mutating}
               className={buttonVariants("ghost", "flex-1 justify-center py-2 text-[13px]")}
             >
               {t("saved.adoptDismiss")}
@@ -209,6 +222,7 @@ export function SavedGames({ identity }: { identity: string }) {
           t={t}
           onClose={() => setSelected(null)}
           onDelete={() => handleDelete(selected)}
+          deleting={mutating}
         />
       )}
     </section>
@@ -220,11 +234,13 @@ function SavedGameDetail({
   t,
   onClose,
   onDelete,
+  deleting,
 }: {
   record: SavedGameRecord;
   t: T;
   onClose: () => void;
   onDelete: () => void;
+  deleting: boolean;
 }) {
   const { summary } = record;
   const date = new Date(record.savedAt).toLocaleDateString();
@@ -297,7 +313,7 @@ function SavedGameDetail({
 
       <div className="mt-4">
         <SheetGroup>
-          <SheetRow label={t("saved.delete")} onClick={onDelete} danger />
+          <SheetRow label={t("saved.delete")} onClick={onDelete} disabled={deleting} danger />
         </SheetGroup>
       </div>
     </PlaySheet>

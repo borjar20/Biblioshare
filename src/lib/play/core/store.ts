@@ -5,13 +5,16 @@ import { replay } from "./replay";
 import { PlayEventError } from "./errors";
 import {
   deleteActive,
+  isSavedSessionCurrent,
   readActive,
+  releaseSavedActive,
   saveFinished,
   writeActive,
   type ActiveGameRecord,
 } from "./db";
 import type { ActiveGameSnapshot, EventLog, PlayEvent } from "./types";
 import { buildSavedSummary, type PlayGameState } from "@/lib/play/tools";
+import { savedSessionForWrite } from "./saved-auth";
 
 // Store local-first. Anatomía de src/lib/sessions/timer.ts: lo puro arriba,
 // el IO abajo con try/catch (modo privado o cuota llena degradan a memoria,
@@ -434,6 +437,9 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
       if (current.status !== "ready" || current.game === null) return false;
       if (current.game.state.status !== "finished") return false;
       const game = current.game;
+      const currentRev = rev;
+      const session = await savedSessionForWrite(identity);
+      if (!session) return false;
       const ok = await saveFinished({
         gameId: game.log.committed[0].id,
         identity,
@@ -443,21 +449,30 @@ function createPlayStore(identity: string): PlayStoreWithTestHooks {
         summary: buildSavedSummary(game.state),
         syncStatus: "pending",
         deletedAt: null,
-      });
-      if (!ok) return false;
+      }, session);
+      if (!ok || !await isSavedSessionCurrent(session)) return false;
       // Mientras la BD guardaba, el espejo pudo adoptar el registro de otra
       // pestaña (p. ej. la otra descartó y empezó una partida nueva): el
-      // snapshot que se serializó arriba ya no es el del store. Seguir aquí
-      // borraría de memoria —y de la BD, porque el borrado de persistCurrent
-      // NO lleva CAS— una partida adoptada que nadie pidió tirar. Las
-      // referencias de snapshot son estables entre commits, así que comparar
-      // identidad es una comprobación de rancidez válida.
-      if (snapshot !== current) return false;
-      rev += 1;
-      snapshot = { status: "ready", game: null };
-      persistCurrent();
-      emit();
-      return true;
+      // snapshot que se serializó arriba ya no es el del store. No se libera
+      // una activa adoptada que nadie pidió tirar: las referencias de snapshot
+      // son estables entre commits, y la liberación en IDB comprueba además
+      // revisión, partida y generación en su propia transacción.
+      if (snapshot !== current || rev !== currentRev) return false;
+      let released = false;
+      enqueue(async () => {
+        if (controller.signal.aborted || snapshot !== current || rev !== currentRev) return;
+        // Espera las escrituras aceptadas de la activa y confirma su liberación
+        // con CAS y generación dentro de IDB, no con el snapshot del readonly.
+        if (!await releaseSavedActive(recordFromGame(game, currentRev), session)) return;
+        if (controller.signal.aborted || snapshot !== current || rev !== currentRev) return;
+        rev += 1;
+        snapshot = { status: "ready", game: null };
+        channel?.postMessage({ rev });
+        emit();
+        released = true;
+      });
+      await writeChain;
+      return released;
     },
     destroy() {
       clearSealTimer();

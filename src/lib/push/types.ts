@@ -162,6 +162,9 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, PushCategory> = {
   margin_note_dedicated: "social",
   margin_commented: "social",
   margin_liked: "social",
+  release_reminder: "system",
+  release_updated: "system",
+  release_cancelled: "system",
 };
 
 // Canal de notificación Android por categoría (spec item 8). El registro nativo

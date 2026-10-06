@@ -107,6 +107,17 @@ editor de catálogo inline (banner + barra sticky).
    Más. Desde 768 px, el tema mantiene su icono directo en la cabecera. Estas
    decisiones y la sustitución del reparto «Tú» de 2026-08-21 constan en
    `decisiones.md`.
+
+   **Novedades (2026-10-06, candidato local; navegador R3 6/6 PASS).** Cuelga de
+   Buscar y del bloque público «Sale esta semana» de Inicio. Explorar permite
+   visitantes; Lo que esperas y las acciones personales requieren sesión.
+   España es el filtro inicial y las fechas internacionales tienen su etiqueta
+   y selector. Una obra agrupa sus modalidades: Pendiente se elige una vez y
+   Avisarme por lanzamiento. Las fechas con día y los anuncios parciales se
+   separan conservando la precisión. Fuente y revisión efectiva acompañan cada
+   lanzamiento. La edición administrativa separa Guardar revisión, Publicar,
+   Confirmar revisión de la fuente y Cancelar; las tres últimas esperan a que
+   no haya cambios de formulario sin guardar.
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados
     juntos derivan del mismo dato (una fórmula por métrica).
 
