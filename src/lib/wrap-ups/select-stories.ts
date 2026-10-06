@@ -17,6 +17,9 @@ export function hasAnyActivity(i: WrapUpInputs): boolean {
 }
 
 export function intensityFor(kind: WrapUpKind, i: WrapUpInputs): Intensity {
+  if (kind === "year") {
+    return hasAnyActivity(i) ? "full" : "quiet";
+  }
   return i.activeDays.length < QUIET_BELOW[kind] ? "quiet" : "full";
 }
 

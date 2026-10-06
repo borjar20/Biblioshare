@@ -1,20 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { WrapUpInputs } from "./types";
 import { dominantType, hasAnyActivity, intensityFor, narratorFor, paletteFor, selectStories } from "./select-stories";
 import { wrapUpWindow } from "./windows";
+import { emptyInputs } from "./__fixtures__/inputs";
 
 const book = (id: string, title = id) => ({ type: "book" as const, id, title, coverUrl: null, times: 1 });
-
-export function emptyInputs(over: Partial<WrapUpInputs> = {}): WrapUpInputs {
-  return {
-    time: { minutes: { book: 0, movie: 0, series: 0 }, episodesWithoutRuntime: 0, previousMinutes: null },
-    activeDays: [], finished: [], inProgress: [], bestStreak: 0,
-    favoriteWeekday: null, favoriteBandStartHour: null, genres: [],
-    bestRated: null, phrase: null, experience: null,
-    together: { jointViewings: 0, clubDays: 0 }, experienceDays: 0,
-    annual: null, pet: null, ...over,
-  };
-}
 
 const WEEK = wrapUpWindow("week", new Date("2026-10-05T07:00:00Z"));
 const MONTH = wrapUpWindow("month", new Date("2026-10-01T07:00:00Z"));
@@ -35,6 +24,8 @@ describe("actividad e intensidad", () => {
   });
   it("año con un solo día es full", () =>
     expect(intensityFor("year", emptyInputs({ activeDays: ["a"] }))).toBe("full"));
+  it("año sin días activos pero con actividad es full", () =>
+    expect(intensityFor("year", emptyInputs({ activeDays: [], experienceDays: 2 }))).toBe("full"));
 });
 
 describe("narradora y paleta", () => {
