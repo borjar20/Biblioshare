@@ -4206,9 +4206,9 @@
       },
       "time": {
         "title": "Tiempo",
-    "episodesUnit": "{count, plural, one {episodio} other {episodios}}",
-    "unknownDuration": "Su duración no es conocida, así que no se convierte en horas",
-    "noData": "Sin datos de tiempo en este periodo",
+        "episodesUnit": "{count, plural, one {episodio} other {episodios}}",
+        "unknownDuration": "Su duración no es conocida, así que no se convierte en horas",
+        "noData": "Sin datos de tiempo en este periodo",
         "delta": "{sign}{value} {unit} más que {period, select, week {la semana anterior} month {el mes pasado} other {el año pasado}}",
         "deltaDown": "{value} {unit} menos que {period, select, week {la semana anterior} month {el mes pasado} other {el año pasado}}",
         "deltaSame": "Igual que {period, select, week {la semana anterior} month {el mes pasado} other {el año pasado}}",
@@ -4259,14 +4259,14 @@
         "title": "Una experiencia"
       },
       "together": {
-        "title": "Acompañado",
+        "title": "En compañía",
         "unit": "{count, plural, one {plan compartido} other {planes compartidos}}",
         "jointViewings": "{count, plural, one {# visionado conjunto} other {# visionados conjuntos}}",
         "clubDays": "{count, plural, one {# día de club} other {# días de club}}"
       },
       "months": {
         "title": "Mes a mes",
-    "works": "{count, plural, one {# obra} other {# obras}}",
+        "works": "{count, plural, one {# obra} other {# obras}}",
         "cutoff": "Diciembre llega hasta el {date}"
       },
       "records": {
@@ -4282,7 +4282,7 @@
       },
       "pile": {
         "title": "Tu pila",
-    "none": "Tu pila no se movió",
+        "none": "Tu pila no se movió",
         "unit": "{count, plural, one {obra nueva en tu pila} other {obras nuevas en tu pila}}",
         "removed": "{count, plural, one {# salió de ella} other {# salieron de ella}}"
       },

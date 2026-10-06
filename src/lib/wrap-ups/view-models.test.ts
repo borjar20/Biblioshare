@@ -170,3 +170,17 @@ describe("ceros honestos y copy neutro", () => {
   });
 });
 function year0() { return { ...base, kind: "year", periodStart: "2026-01-01", periodEnd: "2026-12-31" } as unknown as WrapUpPayload; }
+
+describe("participios que se dirigen a quien lee", () => {
+  // Todo participio del namespace debe concordar con algo neutro (obra, semana, tiempo…),
+  // nunca con el usuario (acompañado/a, cansado/a…). Lista cerrada: uno nuevo obliga a revisarlo.
+  const OK = new Set(["actualizado", "compartido", "compartidos", "fundido", "publicado", "contado", "crecido",
+    "ganada", "ganadas", "incluidas", "invertido", "pasado", "pesado", "recorrido", "registrado", "rápida",
+    "seguidos", "sábado", "terminado", "terminada", "terminadas", "visionado", "visionados", "conocida"]);
+  it("ninguno se refiere al usuario", () => {
+    const text = JSON.stringify((messages as { wrapUps: unknown }).wrapUps);
+    const found = (text.match(/(?<![a-záéíóúñ])[a-záéíóúñ]+(?:ad|id)[oa]s?(?![a-záéíóúñ])/gi) ?? []).map((w) => w.toLowerCase());
+    expect(found.filter((w) => !OK.has(w))).toEqual([]);
+    expect(text).not.toMatch(/acompañad[oa]/i);
+  });
+});
