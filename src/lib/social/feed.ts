@@ -1275,7 +1275,7 @@ export async function getPostContext(
   // Experiencias y crónicas no tienen obra: solo «Más de {usuario}», y sin
   // crónicas en el raíl (sus mini-cards pintan una obra que estas no tienen).
   if(isExperienceEvent(event)||isWrapUpEvent(event)) {
-    const {data,error}=await supabase.from("posts").select(POST_COLUMNS).eq("author_id",event.actorId).neq("id",event.postId).neq("kind","progressed").order("created_at",{ascending:false}).order("id",{ascending:false}).limit(RELATED_LIMIT);
+    const {data,error}=await supabase.from("posts").select(POST_COLUMNS).eq("author_id",event.actorId).neq("id",event.postId).neq("kind","progressed").neq("kind","wrap_up").order("created_at",{ascending:false}).order("id",{ascending:false}).limit(RELATED_LIMIT);
     if(error)throw error;
     return {moreByAuthor:(await resolvePostDrafts(supabase,((data??[]) as PostRow[]).filter(r=>!isWrapUpRow(r)),false)).filter((d):d is FeedEventDraft|ExperienceFeedDraft=>!isWrapUpEvent(d)).sort((a,b)=>Date.parse(b.sortDate)-Date.parse(a.sortDate)).map(toRelatedPost),moreAboutWork:[]};
   }

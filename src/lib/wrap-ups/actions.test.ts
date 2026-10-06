@@ -5,11 +5,14 @@ const m = vi.hoisted(() => ({
   row: null as unknown,
   build: vi.fn(),
   update: vi.fn(),
+  revalidateWrapUp: vi.fn(),
+  rpc: vi.fn(async (name: string) => ({ data: name === "publish_wrap_up" ? "post-1" : null, error: null })),
 }));
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+// Las rutas viven en el módulo central (revalidate-guard): aquí solo se mira QUÉ ámbito se pide.
+vi.mock("@/lib/reactivity/revalidate", () => ({ revalidateWrapUp: m.revalidateWrapUp }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
+  createClient: vi.fn(async () => ({ rpc: m.rpc })),
   getCurrentUser: vi.fn(async () => ({ id: "u1" })),
 }));
 vi.mock("./get-own-wrap-ups", () => ({ getOwnWrapUp: vi.fn(async () => m.row) }));
@@ -26,7 +29,7 @@ vi.mock("@/lib/supabase/service-role", () => ({
   }),
 }));
 
-import { refreshWrapUp } from "./actions";
+import { markWrapUpSeen, publishWrapUp, refreshWrapUp, unpublishWrapUp } from "./actions";
 
 const now = new Date("2026-10-05T10:00:00Z");
 describe("canRefresh", () => {
@@ -63,5 +66,26 @@ describe("refreshWrapUp: ancla de ventana", () => {
     const w = m.build.mock.calls[0][2];
     expect(w.start.slice(0, 4)).toBe("2025");
     expect(w.end.slice(0, 4)).toBe("2025");
+  });
+});
+
+describe("revalidación a través del módulo central", () => {
+  beforeEach(() => m.revalidateWrapUp.mockReset());
+
+  it("ver y actualizar solo tocan las superficies del dueño", async () => {
+    await markWrapUpSeen("week");
+    expect(m.revalidateWrapUp).toHaveBeenLastCalledWith("week");
+    m.build.mockResolvedValue({ intensity: "normal", periodStart: "x", periodEnd: "y" });
+    m.row = { seenAt: null, refreshedAt: null, generatedAt: "2026-10-05T07:00:00Z", publishedPostId: null, kind: "week",
+      payload: { periodStart: "2026-09-28", periodEnd: "2026-10-04" } };
+    await refreshWrapUp("week");
+    expect(m.revalidateWrapUp).toHaveBeenLastCalledWith("week");
+  });
+
+  it("publicar y despublicar alcanzan el feed, el post y los perfiles", async () => {
+    expect(await publishWrapUp("month")).toEqual({ ok: true, postId: "post-1" });
+    expect(m.revalidateWrapUp).toHaveBeenLastCalledWith("month", { social: true });
+    await unpublishWrapUp("month");
+    expect(m.revalidateWrapUp).toHaveBeenLastCalledWith("month", { social: true });
   });
 });

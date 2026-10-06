@@ -105,6 +105,16 @@ describe("posts wrap_up en /post/[id]", () => {
     expect(context.moreByAuthor.every((p) => p.postId !== "wp")).toBe(true);
   });
 
+  it("«Más de» excluye las crónicas en SQL (el raíl no se queda corto)", async () => {
+    for (const post of [wrapPost(), { id: "xp", kind: "experience", anchor_type: "experience", anchor_id: "e1", created_at: "2026-10-05T08:00:00Z" }]) {
+      const sb = fakeSupabase({ posts: [post], wrapUpShares: [{ id: SHARE_ID, summary }], experiences: [{ id: "e1", title: "Paseo" }] });
+      const detail = await getPostEvent(sb.client, null, String(post.id));
+      if (!detail) throw new Error("no detail");
+      await getPostContext(sb.client, detail.event);
+      expect(sb.neqFilters.posts?.kind).toEqual(expect.arrayContaining(["progressed", "wrap_up"]));
+    }
+  });
+
   it("getPostEvent devuelve null si el share no es visible", async () => {
     const sb = fakeSupabase({ posts: [wrapPost()], wrapUpShares: [] });
     expect(await getPostEvent(sb.client, null, "wp")).toBeNull();

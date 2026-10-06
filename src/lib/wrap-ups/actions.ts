@@ -2,7 +2,7 @@
 // Acciones del dueño (spec 2026-10-06 §2 y §4). «Actualizar» recalcula con
 // service role DESPUÉS de identificar al usuario por su sesión: el payload
 // nunca viaja desde el navegador.
-import { revalidatePath } from "next/cache";
+import { revalidateWrapUp } from "@/lib/reactivity/revalidate";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { buildWrapUp } from "./build";
@@ -19,7 +19,7 @@ export async function markWrapUpSeen(kind: WrapUpKind): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("mark_wrap_up_seen", { p_kind: kind });
   if (error) throw error;
-  revalidatePath("/");
+  revalidateWrapUp(kind);
 }
 
 export async function refreshWrapUp(
@@ -47,7 +47,7 @@ export async function refreshWrapUp(
     .update({ payload: payload as never, intensity: payload.intensity, refreshed_at: new Date().toISOString() })
     .eq("user_id", user.id).eq("kind", kind).is("published_post_id", null);
   if (error) throw error;
-  revalidatePath(`/wrap/${kind}`);
+  revalidateWrapUp(kind);
   return { ok: true };
 }
 
@@ -58,7 +58,7 @@ export async function publishWrapUp(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("publish_wrap_up", { p_kind: kind });
   if (error) return { ok: false, reason: error.message };
-  revalidatePath("/");
+  revalidateWrapUp(kind, { social: true });
   return { ok: true, postId: data as string };
 }
 
@@ -67,5 +67,5 @@ export async function unpublishWrapUp(kind: WrapUpKind): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("unpublish_wrap_up", { p_kind: kind });
   if (error) throw error;
-  revalidatePath("/");
+  revalidateWrapUp(kind, { social: true });
 }

@@ -102,6 +102,8 @@ export type FakeFeedSupabase = {
   inFilters: Record<string, Record<string, unknown[]>>;
   /** Valores de cada `.eq(columna, valor)` recibida, por fuente y columna. */
   eqFilters: Record<string, Record<string, unknown>>;
+  /** Valores de cada `.neq(columna, valor)` recibida, por fuente y columna (todos, en orden). */
+  neqFilters: Record<string, Record<string, unknown[]>>;
   /** Claves de `.order()` de CADA query, por fuente. */
   orderCalls: Record<string, FakeOrderCall[][]>;
 };
@@ -241,6 +243,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
   const orderCalls: Record<string, FakeOrderCall[][]> = {};
   const inFilters: Record<string, Record<string, unknown[]>> = {};
   const eqFilters: Record<string, Record<string, unknown>> = {};
+  const neqFilters: Record<string, Record<string, unknown[]>> = {};
 
   // Un `interaction_target` `kind='post'` por cada post: `getInteractionSummary`
   // (vía `getInteractionTargetRefs`) resuelve el UUID canónico ahí y LANZA si
@@ -332,7 +335,12 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
 
     const builder: Record<string, unknown> = {};
     const chain = () => builder;
-    for (const method of ["neq", "not", "gte"]) {
+    const neqs: Array<[string, unknown]> = [];
+    builder.neq = (column: string, value: unknown) => {
+      neqs.push([column, value]);
+      return builder;
+    };
+    for (const method of ["not", "gte"]) {
       builder[method] = chain;
     }
     builder.maybeSingle = () => {
@@ -366,6 +374,7 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
       if (orders.length) (orderCalls[source] ??= []).push(orders);
       for (const [column, values] of ins) (inFilters[source] ??= {})[column] = values;
       for (const [column, value] of eqs) (eqFilters[source] ??= {})[column] = value;
+      for (const [column, value] of neqs) ((neqFilters[source] ??= {})[column] ??= []).push(value);
 
       let result = dataFor(source);
       if (source === "joint_viewings" || source === "joint_viewing_members" || source === "experience_moment_reviews" || source === "wrap_up_shares") {
@@ -412,5 +421,6 @@ export function fakeSupabase(rows: FakeFeedData = {}): FakeFeedSupabase {
     orderCalls,
     inFilters,
     eqFilters,
+    neqFilters,
   };
 }
