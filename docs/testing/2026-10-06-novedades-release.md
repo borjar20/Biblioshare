@@ -102,10 +102,14 @@ fallaron por encontrar nodos duplicados en selectores de mercado y login. Las ca
 mostraban una sola fila internacional y un solo formulario visibles. El primer ajuste,
 publicado en `66bd343`, resolvió esos tres casos; la nueva CI pasó 170/174 y expuso cuatro
 selectores más ambiguos en los avisos de estado vacío y el formulario editorial. Las
-capturas también muestran una sola copia visible. Se ampliaron los filtros `visible`
-solo a esas aserciones/campos E2E. La siguiente CI debe validar el HEAD completo antes
-de fusionar. Los informes R1 registran los problemas originales y no se presentan como
-revisión independiente de los fixes.
+capturas también muestran una sola copia visible. En `bd79826`, la CI pasó 171/174: las
+dos fallas restantes de Novedades encontraron dos selectores `tipo` con el mismo `id`,
+y la tercera fue ajena a esta PR, en `e2e/ci/saga-parent-mobile.spec.ts:199` (dos
+`input[name="name"]`, con el mismo valor). El selector de Novedades ahora exige la
+instancia visible; la prueba externa no se ha modificado y se comprobará si se repite
+antes de decidir si requiere un ticket aparte. La siguiente CI debe validar el HEAD
+completo antes de fusionar. Los informes R1 registran los problemas originales y no se
+presentan como revisión independiente de los fixes.
 
 ## Estado de entrega
 

@@ -132,7 +132,7 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
   await expect(page.getByRole("heading", { name: "Las fechas disponibles de estas series son internacionales", exact: true }).filter({ visible: true })).toBeVisible();
   await page.getByRole("link", { name: "Ver fechas internacionales", exact: true }).click();
   await expect(page).toHaveURL(/\/novedades\?tipo=series&mercado=INT$/);
-  await expect(page.locator('select[name="tipo"]')).toHaveValue("series");
+  await expect(page.locator('select[name="tipo"]').filter({ visible: true })).toHaveValue("series");
   await expect(page.getByLabel("Mercado", { exact: true }).filter({ visible: true })).toHaveValue("INT");
   await expect(page.getByText("Temporada 2", { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.getByText("Fecha internacional. No confirma disponibilidad en España.", { exact: true }).filter({ visible: true })).toBeVisible();
