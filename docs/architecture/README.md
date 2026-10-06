@@ -137,3 +137,5 @@ detectar que este mapa ya miente.
 `sync.mjs --check` está listo para un hook o un workflow, pero se dejó **fuera a propósito**:
 un check que falle por un doc derivado bloquearía PRs de código que no tienen nada que ver.
 Si el mapa demuestra que se pudre igual, la alternativa es meterlo como check no bloqueante.
+
+> **Delta 2026-10-06:** crónicas (`r-wrap-ups`, `m-wrap-ups`, `c-wrap-ups`, `t-wrap-ups`, `flow-wrap-up`), verificadas contra código, regresiones, SQL dev con rollback y QA 32 escenarios build/start. Producción/cron remoto pendientes [#1433](https://github.com/borjar20/Biblioshare/issues/1433).

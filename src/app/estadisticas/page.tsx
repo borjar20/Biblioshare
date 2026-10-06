@@ -46,6 +46,7 @@ import {
 import { StatPanel } from "@/components/stats/panel/stat-panel";
 import { StatsControls } from "@/components/stats/stats-controls";
 import { StatsWallSkeleton } from "@/components/stats/stats-wall-skeleton";
+import { WrapUpsRow } from "@/components/wrap-ups/wrap-ups-row";
 import { SectionTabs } from "./section-tabs";
 import { SHELL_APP } from "@/lib/ui/layout";
 import { PageHeader } from "@/components/ui/page-header";
@@ -139,6 +140,10 @@ export default async function FullStatsPage({
           />
         </div>
       </details>
+
+      <Suspense fallback={null}>
+        <WrapUpsRow />
+      </Suspense>
 
       {/* El muro —18 consultas— detrás de su boundary. El fallback reserva altura
           (masonry) para no mover columnas al resolverse (CLS, #284/#440). */}

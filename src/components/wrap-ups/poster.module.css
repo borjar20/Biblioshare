@@ -1,0 +1,332 @@
+/* Póster pixel de los wrap-ups (spec 2026-10-06 §5, «Lenguaje visual»).
+   Campo de color plano por paleta (--field, lo pone el componente), tinta #1c1714
+   y bordes duros con sombra en escalera.
+
+   CONTRASTE (medido, ver .superpowers/sdd/task-14-report.md): la tinta sobre los
+   --type-* CLAROS no llega ni al 3:1 de una cifra grande (movie 2,99:1, series
+   2,89:1). Por eso TODO el texto va sobre placas de papel (--paper) o sobre tinta,
+   nunca directamente sobre el campo: tinta/papel 17,5:1 en los dos temas. El papel
+   es fijo y no `--surface`: el --surface oscuro (#2a231d) con tinta da 1,15:1. El
+   campo queda como fondo decorativo (no lleva información). */
+.poster {
+  --ink: #1c1714;
+  --paper: #fffdf8;
+  --step: 0 0 0 3px var(--ink), 6px 6px 0 3px var(--ink);
+  --step-sm: 0 0 0 2px var(--ink), 4px 4px 0 2px var(--ink);
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  gap: 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+  color: var(--ink);
+  /* Trama de píxeles: un damero de tinta al 7 %, 4 px por celda. */
+  background-color: var(--field);
+  background-image: repeating-conic-gradient(rgb(28 23 20 / 0.07) 0 25%, transparent 0 50%);
+  background-size: 8px 8px;
+}
+
+/* ---- Rótulos y cifras: la ÚNICA tipografía pixel del póster ---- */
+.eyebrow {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 6px 10px 5px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  font-synthesis: none;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.plate {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--step);
+}
+
+.figure {
+  align-self: flex-start;
+  display: flex;
+  max-width: calc(100% - 9px);
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 12px;
+  margin: 0;
+  padding: 10px 18px 12px;
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  /* Tiny5 solo tiene 400: sin negrita sintética, que emborrona el píxel. */
+  font-weight: 400;
+  font-synthesis: none;
+  line-height: 0.95;
+}
+.figureValue {
+  font-size: clamp(4.25rem, 22vw, 7rem);
+  letter-spacing: -0.02em;
+}
+.figureUnit {
+  font-size: clamp(1.25rem, 6vw, 1.75rem);
+}
+
+/* ---- Frases: fuente de la app ---- */
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.lines p { margin: 0; }
+
+.heroTitle {
+  margin: 0;
+  align-self: flex-start;
+  max-width: calc(100% - 9px);
+  padding: 10px 16px 12px;
+  font-size: clamp(2.5rem, 13vw, 3.75rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* flex-shrink 0: si no cabe, desborda el póster (que hace scroll) en vez de
+   centrar hacia arriba y dejar el principio fuera de alcance. */
+.body {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+}
+/* Pantallas bajas (portátiles, móvil apaisado): cifra y cartas más contenidas. */
+@media (max-height: 820px) {
+  .poster { gap: 14px; }
+  .body { gap: 16px; }
+  .figureValue { font-size: clamp(3.5rem, 16vh, 5.5rem); }
+  .coverCard { flex-basis: 76px; }
+  .heroTitle { font-size: clamp(2.25rem, 9vh, 3.25rem); }
+  /* `zoom` y no `transform`: el hueco que ocupa en el flujo también encoge. */
+  .narratorSprite, .pet > * { zoom: 0.75; }
+  .lines { padding-block: 8px; }
+}
+/* El cierre comparte columna con las acciones del dueño (~150 px): con el umbral
+   de arriba desbordaba ~40 px en 390×844 y 1440×900 (barra de scroll y bocadillo
+   cortado). Se compacta antes, solo él. */
+@media (max-height: 980px) {
+  .poster[data-layout="closing"] { gap: 14px; }
+  .poster[data-layout="closing"] .body { gap: 16px; }
+  .poster[data-layout="closing"] .figureValue { font-size: clamp(3.5rem, 9vh, 5.5rem); }
+  .poster[data-layout="closing"] .coverCard { flex-basis: 76px; }
+  .poster[data-layout="closing"] .narratorSprite,
+  .poster[data-layout="closing"] .pet > * { zoom: 0.75; }
+  .poster[data-layout="closing"] .lines { padding-block: 8px; }
+}
+
+/* ---- Portadas como cartas ---- */
+.covers {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  padding: 6px 6px 10px 0;
+  list-style: none;
+}
+.coverCard {
+  position: relative;
+  flex: 0 1 108px;
+  min-width: 0;
+  aspect-ratio: 2 / 3;
+  background: var(--paper);
+  box-shadow: var(--step-sm);
+}
+.coverCard:nth-child(odd) { transform: rotate(-3deg); }
+.coverCard:nth-child(even) { transform: rotate(2deg) translateY(6px); }
+.coverCard img { object-fit: cover; }
+.coverFallback {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px;
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  /* Corta por sílabas con guion (lang="es" en el póster), no a mitad de letra
+     («Severanc|e»): a 11 px un título de ~10 letras cabe entero en la carta y
+     break-word solo actúa como último recurso. Títulos largos: 5 líneas y «…». */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.coverTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+.coverGlyph { font-size: 1.25rem; line-height: 1; }
+
+/* ---- Tira de días / meses ---- */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(var(--cells), minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 12px;
+  list-style: none;
+}
+.strip[data-values="true"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.stripValue { text-align: center; font-weight: 600; }
+.stripCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.stripMark {
+  width: 100%;
+  max-width: 28px;
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+}
+.stripCell[data-active="true"] .stripMark {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 3px var(--paper);
+}
+
+/* ---- Ranking ---- */
+.ranking {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px 14px;
+  list-style: none;
+}
+.rankingItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 12px;
+  padding: 10px 0;
+}
+.rankingItem + .rankingItem { border-top: 2px dashed rgb(28 23 20 / 0.35); }
+.rankingIndex {
+  grid-row: span 2;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.rankingLabel { font-size: 1.0625rem; font-weight: 700; line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
+.rankingValue { font-size: 0.9375rem; font-weight: 500; }
+
+/* ---- Cita ---- */
+.quote {
+  position: relative;
+  margin: 0;
+  padding: 22px 18px 14px;
+}
+.quote::before {
+  content: "“";
+  position: absolute;
+  top: -18px;
+  left: 10px;
+  padding: 0 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.quote p {
+  margin: 0;
+  font-size: 1.125rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.quote footer { margin-top: 10px; font-size: 0.875rem; font-weight: 700; }
+.quoteRow { display: flex; align-items: flex-start; gap: 18px; }
+.quoteRow .covers { flex: 0 0 96px; padding: 0; }
+.quoteRow .figure { align-self: center; }
+
+/* ---- Ardilla propia ---- */
+.pet { display: flex; justify-content: center; }
+
+/* ---- Narradora: sello de papel + bocadillo ---- */
+.narrator {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-end;
+  gap: 14px;
+}
+.narratorStamp {
+  flex: 0 0 auto;
+  padding: 4px;
+  background: var(--paper);
+  box-shadow: var(--step-sm);
+}
+.narratorSprite {
+  display: block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+@keyframes narratorIdle {
+  from { background-position-x: 0; }
+  to { background-position-x: calc(var(--n-frames) * var(--n-cell) * -1); }
+}
+.bubble {
+  position: relative;
+  flex: 1 1 auto;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--paper);
+  box-shadow: var(--step-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+/* Pico del bocadillo hacia la narradora, en escalera de 2 px. */
+.bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: -10px;
+  width: 8px;
+  height: 8px;
+  background: var(--paper);
+  box-shadow: -2px 0 0 0 var(--ink), 0 2px 0 0 var(--ink), 0 -2px 0 0 var(--ink);
+}
+
+/* ---- Entrada: cada póster se monta de nuevo al cambiar de story (key). ---- */
+.enter > * {
+  animation: posterIn 280ms steps(4, end) both;
+}
+.enter > *:nth-child(2) { animation-delay: 60ms; }
+.enter > *:nth-child(3) { animation-delay: 120ms; }
+@keyframes posterIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .narratorSprite { animation: none !important; }
+  .enter > * { animation: none; }
+}

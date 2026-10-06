@@ -3,12 +3,18 @@ import {
   availablePeriods,
   availableYears,
   inPeriod,
+  isStatsWindow,
   periodBounds,
+  periodLabel,
   periodParam,
+  periodPillLabel,
   previousBounds,
+  previousLabel,
   resolvePeriod,
+  type StatsWindow,
   yearBounds,
 } from "./period";
+import { granularityFor } from "./get-period-activity";
 
 const NOW = new Date("2026-07-17T00:00:00Z");
 // Los límites de semana y mes se calculan en hora LOCAL (como `session_date`),
@@ -143,5 +149,34 @@ describe("inPeriod", () => {
     expect(inPeriod("2026-12-31T22:00:00Z", 2026)).toBe(true);
     expect(inPeriod("2025-12-31", 2026)).toBe(false);
     expect(inPeriod(null, 2026)).toBe(false);
+  });
+});
+
+describe("StatsWindow (ventana cerrada)", () => {
+  const w: StatsWindow = {
+    start: "2026-09-28",
+    endExclusive: "2026-10-05",
+    previous: { start: "2026-09-21", endExclusive: "2026-09-28" },
+    grain: "day",
+  };
+  it("se reconoce", () => {
+    expect(isStatsWindow(w)).toBe(true);
+    expect(isStatsWindow("week")).toBe(false);
+    expect(isStatsWindow(2026)).toBe(false);
+  });
+  it("periodBounds y previousBounds devuelven lo declarado, sin mirar `now`", () => {
+    expect(periodBounds(w, new Date("2030-01-01"))).toEqual({ start: "2026-09-28", endExclusive: "2026-10-05" });
+    expect(previousBounds(w)).toEqual({ start: "2026-09-21", endExclusive: "2026-09-28" });
+  });
+  it("inPeriod usa la ventana", () => {
+    expect(inPeriod("2026-10-04", w)).toBe(true);
+    expect(inPeriod("2026-10-05", w)).toBe(false);
+  });
+  it("granularityFor respeta grain", () => {
+    expect(granularityFor(w)).toBe("day");
+    expect(granularityFor({ ...w, grain: "month" })).toBe("month");
+  });
+  it("periodParam no vuelca un objeto en la URL", () => {
+    expect(periodParam(w)).toBe("todo");
   });
 });

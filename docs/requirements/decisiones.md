@@ -6783,3 +6783,17 @@ conocido, y el anuncio de modalidad `book` mantiene su comportamiento. La migrac
 `20261006134245_cultural_release_translation_publication_year.sql` implementa esta
 corrección y su contrato SQL pasa en `biblioshare-dev`. La decisión evita atribuir a la
 obra un año que solo corresponde a una traducción. Producción permanece pendiente.
+
+### 2026-10-06 — Crónicas por periodo: póster pixel, datos y publicación
+
+Spec: `docs/superpowers/specs/2026-10-06-wrap-ups-design.md`. Semana, mes y año entran juntos. Las reglas se calculan en Node, reutilizando stats y ventanas explícitas, para evitar otra implementación SQL de qué cuenta. Sólo se conserva el último periodo de cada tipo; la sustitución elimina su post. El anual sale26-dic y corta25-dic; el rótulo declara el corte.
+
+El payload propio admite sólo textos elegibles públicos y sin spoiler. Publicar es voluntario y congela un resumen en `wrap_up_shares`, separado del payload y de `posts`: refina la propuesta inicial de JSON en posts y evita cambiar sus grants por columna. La lectura del dueño y de imagen publicada usa sesión/RLS, sin caché compartida; imagen privada no-cache para revalidar revocaciones.
+
+El total suma lectura registrada, películas por duración y episodios por runtime; los episodios desconocidos se declaran como tales. Meses/récords del anual usan tiempo registrado en sesiones (excluyen sesiones genéricas de serie) y llevan rótulo propio: no prometen sumar el total estimado. Narradora social exige dos días distintos de club/visionado, unidos sin duplicados.
+
+Tipografía final Tiny5 en cifras/rótulos, no Pixelify Sans: peso400 sin síntesis para conservar píxel legible. Texto normal queda en la fuente de la app. Tinta/papel constantes protegen contraste17,48:1 en ambos temas; color del tipo es decorativo. Meses3×4 con horas y obras visibles. Compartir web precarga entorno y PNG antes del clic; la llamada Web Share conserva activación transitoria. Native usa Cache/FileProvider y plugins nuevos, con prueba de dispositivo pendiente #1431.
+
+Actualización compare-and-set por periodo y versión/timestamps: no pisa cron ni elude diez minutos, y no anuncia éxito sin fila afectada. Cron sustituye sólo periodos anteriores con escritura atómica; un solo ganador reclama push; reintentos preservan actualización/publicación actual. El informe cuenta filas realmente escritas/borradas. Las fixtures usan dueño/seguidor desechables y nunca borran publicaciones de QA persistente.
+
+Sin historial #1426 (acta), BiblioPlay #1427, comparación con amigos #1428 ni vídeo #1429. Límites del CHECK #1430, Android #1431 y bordes UTC de notas/club #1432 quedan rastreados. Implementación local/dev verificada; activación remota #1433.

@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { ItemFilter } from "./filter";
 import { type StatsPeriod, periodBounds } from "./period";
-import { getSeriesDays } from "./series-days";
+import { getSeriesDays, type SeriesDay } from "./series-days";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,6 +27,24 @@ export type HabitRow = {
   duration_minutes: number | null;
   started_at: string | null;
 };
+
+export type HabitSessionRow = HabitRow & {
+  passes: { item_type: string } | { item_type: string }[] | null;
+};
+
+// Une sesiones y días de serie en las filas que consume computeHabits: las
+// sesiones antiguas de serie se descartan (ya cuentan como días de serie).
+// Compartido con el loader de los wrap-ups.
+export function habitRows(sessionRows: HabitSessionRow[], seriesRows: HabitRow[]): HabitRow[] {
+  const itemTypeOf = (r: HabitSessionRow) =>
+    Array.isArray(r.passes) ? r.passes[0]?.item_type : r.passes?.item_type;
+  return [...sessionRows.filter((r) => itemTypeOf(r) !== "series"), ...seriesRows];
+}
+
+// Un día de serie como fila de hábitos: la hora del primer episodio es su inicio.
+export function seriesDayHabitRows(days: SeriesDay[]): HabitRow[] {
+  return days.map((d) => ({ session_date: d.day, duration_minutes: null, started_at: d.firstAt }));
+}
 
 // Cálculo puro (testable) de "Cuándo lees" a partir de las sesiones. La franja
 // se saca de started_at (la hora real de inicio, P8); las filas sin ella no
@@ -96,7 +114,7 @@ export async function getHabits(
   const wantSeries = itemFilter === "all" || itemFilter === "series";
   const seriesRowsPromise: Promise<HabitRow[]> = wantSeries
     ? getSeriesDays(supabase, userId, bounds ?? undefined).then((days) =>
-        days.map((d) => ({ session_date: d.day, duration_minutes: null, started_at: d.firstAt })),
+        seriesDayHabitRows(days),
       )
     : Promise.resolve([]);
   if (itemFilter === "series") return computeHabits(await seriesRowsPromise);
@@ -129,13 +147,7 @@ export async function getHabits(
   // `select()` recibe la lista de columnas como variable, así que Supabase no
   // puede inferir la forma y devuelve su tipo de error de parseo. El doble paso
   // por `unknown` es lo que cuesta poder pedir el join solo cuando hace falta.
-  const sessionRows = (data ?? []) as unknown as (HabitRow & {
-    passes: { item_type: string } | { item_type: string }[] | null;
-  })[];
-  const itemTypeOf = (r: (typeof sessionRows)[number]) =>
-    Array.isArray(r.passes) ? r.passes[0]?.item_type : r.passes?.item_type;
-  return computeHabits([
-    ...sessionRows.filter((r) => itemTypeOf(r) !== "series"),
-    ...seriesRows,
-  ]);
+  return computeHabits(
+    habitRows((data ?? []) as unknown as HabitSessionRow[], seriesRows),
+  );
 }

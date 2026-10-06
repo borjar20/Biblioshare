@@ -1,0 +1,12 @@
+{
+  "state": "binger",
+  "character_id": "e2c2498b-65e4-4033-b292-4fac8c0afb76",
+  "animation_group_id": "4739d3be-76e1-4580-9f73-9be6e40fc512",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 96,
+  "frames": 4,
+  "width": 384,
+  "height": 96,
+  "hash": "4e2ce46f76"
+}

@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+// La Actividad monta FeedItem → tarjeta de crónica → next/font, que solo existe en el compilador de Next.
+vi.mock("@/components/wrap-ups/pixel-font", () => ({ pixelFont: { variable: "font-pixel" } }));
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: mocks.createClient,

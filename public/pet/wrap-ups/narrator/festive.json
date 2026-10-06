@@ -1,0 +1,12 @@
+{
+  "state": "festive",
+  "character_id": "49e30cf6-5d46-4b5c-80c0-12ba043d931e",
+  "animation_group_id": "6ea58b41-ea19-4b62-965b-22df3929a47d",
+  "direction": "south-west",
+  "animation": "idle",
+  "cell": 104,
+  "frames": 4,
+  "width": 416,
+  "height": 104,
+  "hash": "4fbaad9a0d"
+}
