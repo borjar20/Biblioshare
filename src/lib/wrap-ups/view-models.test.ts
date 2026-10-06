@@ -111,3 +111,62 @@ describe("textos reales en español", () => {
     expect(same).toContain("Igual que la semana anterior");
   });
 });
+
+describe("ceros honestos y copy neutro", () => {
+  const tr = createTranslator({ locale: "es", messages });
+  const real = (k: string, v?: Record<string, string | number>) => tr(k as never, v as never);
+  const z = { book: 0, movie: 0, series: 0 };
+  const p = (share: Partial<WrapUpPayload["share"]>) => ({ ...base, share: { minutes: 0, episodesWithoutRuntime: 0, finished: 0, covers: [], ...share } }) as unknown as WrapUpPayload;
+
+  it("formatHours no inventa números con valores no finitos", () => {
+    expect(formatHours(NaN)).toEqual({ value: "0", unit: "min" });
+    expect(formatHours(Infinity)).toEqual({ value: "0", unit: "min" });
+  });
+  it("time solo con episodios sin duración: cifra de episodios, no «0 min»", () => {
+    const s: Story = { id: "time", minutes: z, episodesWithoutRuntime: 4, previousMinutes: 120 };
+    const m = posterFor(s, base, real);
+    expect(m.figure).toEqual({ value: "4", unit: "episodios" });
+    expect(m.lines.join(" ")).toContain("duración no es conocida");
+    expect(m.lines.join(" ")).not.toMatch(/menos que|más que/);
+    expect(m.narratorLine).toContain("sin duración conocida");
+  });
+  it("time todo a cero: sin cifra y con «Sin datos de tiempo»", () => {
+    const m = posterFor({ id: "time", minutes: z, episodesWithoutRuntime: 0, previousMinutes: null }, base, real);
+    expect(m.figure).toBeUndefined();
+    expect(m.lines.join(" ")).toContain("Sin datos de tiempo");
+    expect(m.narratorLine).not.toMatch(/\b0\b/);
+  });
+  it("closing sigue la misma regla", () => {
+    expect(posterFor({ id: "closing" }, p({ episodesWithoutRuntime: 2 }), real).figure).toEqual({ value: "2", unit: "episodios" });
+    const none = posterFor({ id: "closing" }, p({}), real);
+    expect(none.figure).toBeUndefined();
+    expect(none.lines.join(" ")).toContain("Sin datos de tiempo");
+  });
+  it("deltaDown sin signo duplicado", () => {
+    const m = posterFor({ id: "time", minutes: { ...z, book: 60 }, episodesWithoutRuntime: 0, previousMinutes: 300 }, base, real);
+    expect(m.lines.join(" ")).toContain("4 h menos que la semana anterior");
+    expect(m.lines.join(" ")).not.toContain("−");
+  });
+  it("pile omite partes a cero", () => {
+    const only = posterFor({ id: "pile", added: 0, removed: 2 }, base, real);
+    expect(only.figure).toBeUndefined();
+    expect(only.lines.join(" ")).not.toContain("+0");
+    expect(only.narratorLine).toBe("Salieron 2 obras de tu pila.");
+    expect(posterFor({ id: "pile", added: 0, removed: 0 }, base, real).lines.join(" ")).toContain("no se movió");
+    expect(posterFor({ id: "pile", added: 3, removed: 0 }, base, real).lines).toEqual([]);
+  });
+  it("creators vacío y sin «vuelve»", () => {
+    const m = posterFor({ id: "creators", top: [] }, base, real);
+    expect(m.narratorLine).toBe("Sin autores ni directores que destacar.");
+    expect(posterFor({ id: "creators", top: [{ name: "Ursula", works: 1 }] }, base, real).narratorLine).not.toMatch(/volvi|vuelto/);
+  });
+  it("months: valor legible por lector de pantalla", () => {
+    const m = posterFor({ id: "months", months: [{ month: "2026-01", minutes: 180, works: 2 }] }, year0(), real);
+    expect(m.strip?.[0].value).toBe("3 h · 2 obras");
+  });
+  it("copy en singular y neutro en género", () => {
+    const wrap = JSON.stringify((messages as { wrapUps: unknown }).wrapUps);
+    expect(wrap).not.toMatch(/\b(solo|sola|solos|habéis|vais|vas solo)\b/i);
+  });
+});
+function year0() { return { ...base, kind: "year", periodStart: "2026-01-01", periodEnd: "2026-12-31" } as unknown as WrapUpPayload; }

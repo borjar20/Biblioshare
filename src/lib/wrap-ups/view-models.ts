@@ -5,6 +5,7 @@
 // lleva valor, dirección, unidad y periodo.
 import type { ItemType } from "@/lib/catalog/types";
 import { formatDots } from "@/lib/rating/dots";
+import { formatHours, timeKind } from "./format";
 import { narratorLine } from "./narrator-copy";
 import type { ItemRef, Story, WrapUpPayload } from "./types";
 
@@ -49,14 +50,7 @@ export function periodLabel(
   return `Tu ${year} · hasta el ${day(p.periodEnd)} de ${monthLong(p.periodEnd, locale)}`;
 }
 
-/** <1 h en minutos; <10 h con un decimal («1,6»); más, enteras. */
-export function formatHours(minutes: number): { value: string; unit: string } {
-  const m = Math.max(0, Math.round(minutes));
-  if (m < 60) return { value: String(m), unit: "min" };
-  const h = m / 60;
-  const value = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: h < 10 ? 1 : 0 }).format(h);
-  return { value, unit: "h" };
-}
+export { formatHours };
 
 const dur = (minutes: number) => {
   const { value, unit } = formatHours(minutes);
@@ -69,14 +63,27 @@ function noRuntimeLine(n: number, t: T): string[] {
   return n > 0 ? [t(`${K}.time.episodesWithoutRuntime`, { count: n })] : [];
 }
 
+/** Cifra y líneas del tiempo: un cero solo se enseña como cifra si de verdad se midió. */
+function timeFigure(minutes: number, episodes: number, t: T): { figure?: { value: string; unit: string }; lines: string[] } {
+  switch (timeKind(minutes, episodes)) {
+    case "measured": return { figure: formatHours(minutes), lines: [] };
+    case "episodesOnly":
+      return {
+        figure: { value: String(episodes), unit: t(`${K}.time.episodesUnit`, { count: episodes }) },
+        lines: [t(`${K}.time.unknownDuration`)],
+      };
+    case "none": return { lines: [t(`${K}.time.noData`)] };
+  }
+}
+
 function deltaLine(total: number, previous: number | null, kind: WrapUpPayload["kind"], t: T): string[] {
-  if (previous == null) return [];
+  if (previous == null || !(total > 0)) return [];
   const diff = total - previous;
   if (diff === 0) return [t(`${K}.time.deltaSame`, { period: kind })];
   const { value, unit } = formatHours(Math.abs(diff));
   return diff > 0
     ? [t(`${K}.time.delta`, { sign: "+", value, unit, period: kind })]
-    : [t(`${K}.time.deltaDown`, { sign: "−", value, unit, period: kind })];
+    : [t(`${K}.time.deltaDown`, { value, unit, period: kind })];
 }
 
 export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterModel {
@@ -95,13 +102,16 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
       const total = sum(story.minutes);
       const breakdown = TYPES.filter((ty) => story.minutes[ty] > 0)
         .map((ty) => `${GLYPH[ty]} ${dur(story.minutes[ty])}`).join(" · ");
+      const tf = timeFigure(total, story.episodesWithoutRuntime, t);
       return make("time", {
         layout: "figure",
-        figure: formatHours(total),
+        figure: tf.figure,
         lines: [
           ...(breakdown ? [breakdown] : []),
+          ...tf.lines,
           ...deltaLine(total, story.previousMinutes, payload.kind, t),
-          ...noRuntimeLine(story.episodesWithoutRuntime, t),
+          // Con solo episodios, la línea de duración desconocida ya lo dice.
+          ...(total > 0 ? noRuntimeLine(story.episodesWithoutRuntime, t) : []),
         ],
       });
     }
@@ -195,7 +205,7 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
         layout: "strip",
         strip: story.months.map((m) => ({
           label: monthLong(`${m.month}-01`, LOCALE).charAt(0).toUpperCase(),
-          value: `${dur(m.minutes)} · ${m.works}`,
+          value: `${dur(m.minutes)} · ${t(`${K}.months.works`, { count: m.works })}`,
           active: m.minutes > 0,
         })),
         lines,
@@ -231,8 +241,9 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
     case "pile":
       return make("pile", {
         layout: "figure",
-        figure: { value: `+${story.added}`, unit: t(`${K}.pile.unit`, { count: story.added }) },
-        lines: [t(`${K}.pile.removed`, { count: story.removed })],
+        figure: story.added > 0 ? { value: `+${story.added}`, unit: t(`${K}.pile.unit`, { count: story.added }) } : undefined,
+        lines: story.removed > 0 ? [t(`${K}.pile.removed`, { count: story.removed })]
+          : story.added > 0 ? [] : [t(`${K}.pile.none`)],
       });
 
     case "pet":
@@ -245,16 +256,20 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
         ],
       });
 
-    case "closing":
+    case "closing": {
+      const { minutes, episodesWithoutRuntime } = payload.share;
+      const tf = timeFigure(minutes, episodesWithoutRuntime, t);
       return make("closing", {
         layout: "closing",
-        figure: formatHours(payload.share.minutes),
+        figure: tf.figure,
         covers: payload.share.covers,
         lines: [
+          ...tf.lines,
           t(`${K}.closing.finished`, { count: payload.share.finished }),
-          ...noRuntimeLine(payload.share.episodesWithoutRuntime, t),
+          ...(minutes > 0 ? noRuntimeLine(episodesWithoutRuntime, t) : []),
         ],
       });
+    }
 
     default: {
       const _never: never = story;
