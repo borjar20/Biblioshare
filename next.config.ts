@@ -65,6 +65,17 @@ const nextConfig: NextConfig = {
   // shell por sesión en el cliente (doc partialPrefetching.md). No había
   // ningún <Link prefetch={true}> heredado que auditar (auditoría #448).
   partialPrefetching: true,
+  // La imagen 9:16 de los wrap-ups lee del disco en el render (sin red): sus
+  // fuentes y los sprites de public/. El trazado no sigue rutas con el nombre
+  // de la variante dentro y `public/` no entra en la función por defecto: sin
+  // esto, en Vercel el readFile falla (ENOENT) aunque en local funcione.
+  outputFileTracingIncludes: {
+    "/api/og/wrap-up/**": [
+      "./src/lib/wrap-ups/assets/*.ttf",
+      "./public/pet/wrap-ups/narrator/*.png",
+      "./public/pet/sheets/**/*.png",
+    ],
+  },
   experimental: {
     serverActions: {
       // Goodreads exports include free-text reviews; a few hundred rows can
