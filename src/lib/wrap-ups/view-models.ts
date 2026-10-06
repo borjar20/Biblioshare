@@ -1,0 +1,264 @@
+// Modelos de póster (spec 2026-10-06): puros, sin React ni i18n global. Cada story
+// del payload se convierte en un PosterModel con el texto YA escrito (el lector de
+// pantalla lee lo mismo que se ve). Reglas de texto: principios 4, 6 y 7 de
+// docs/design/paneles-estadisticos.md — sin dato no hay línea, y toda variación
+// lleva valor, dirección, unidad y periodo.
+import type { ItemType } from "@/lib/catalog/types";
+import { formatDots } from "@/lib/rating/dots";
+import { narratorLine } from "./narrator-copy";
+import type { ItemRef, Story, WrapUpPayload } from "./types";
+
+export type PosterModel = {
+  layout: "hero" | "figure" | "covers" | "strip" | "ranking" | "quote" | "closing";
+  eyebrow: string;
+  figure?: { value: string; unit: string };
+  lines: string[];
+  covers?: ItemRef[];
+  strip?: { label: string; value: string; active: boolean }[];
+  ranking?: { label: string; value: string }[];
+  quote?: { body: string; attribution: string | null };
+  narratorLine: string;
+};
+
+export type T = (key: string, values?: Record<string, string | number>) => string;
+
+const GLYPH: Record<ItemType, string> = { book: "●", movie: "■", series: "▲" };
+const TYPES: ItemType[] = ["book", "movie", "series"];
+const K = "wrapUps.stories";
+const LOCALE = "es-ES";
+
+const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
+const monthLong = (iso: string, locale: string) =>
+  new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" }).format(utc(iso));
+const day = (iso: string) => Number(iso.slice(8, 10));
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** «29 sep»: las tres primeras letras del mes largo (el «sept.» de Intl no es lo que se escribe). */
+function shortDate(iso: string, locale: string): string {
+  return `${day(iso)} ${monthLong(iso, locale).slice(0, 3)}`;
+}
+
+export function periodLabel(
+  p: Pick<WrapUpPayload, "kind" | "periodStart" | "periodEnd">,
+  locale = LOCALE,
+): string {
+  if (p.kind === "week") return `Semana del ${shortDate(p.periodStart, locale)} al ${shortDate(p.periodEnd, locale)}`;
+  if (p.kind === "month") return `${cap(monthLong(p.periodStart, locale))} ${p.periodStart.slice(0, 4)}`;
+  const year = p.periodStart.slice(0, 4);
+  if (p.periodEnd.slice(5) === "12-31") return `Tu ${year}`;
+  return `Tu ${year} · hasta el ${day(p.periodEnd)} de ${monthLong(p.periodEnd, locale)}`;
+}
+
+/** <1 h en minutos; <10 h con un decimal («1,6»); más, enteras. */
+export function formatHours(minutes: number): { value: string; unit: string } {
+  const m = Math.max(0, Math.round(minutes));
+  if (m < 60) return { value: String(m), unit: "min" };
+  const h = m / 60;
+  const value = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: h < 10 ? 1 : 0 }).format(h);
+  return { value, unit: "h" };
+}
+
+const dur = (minutes: number) => {
+  const { value, unit } = formatHours(minutes);
+  return `${value} ${unit}`;
+};
+const longDate = (iso: string) => `${day(iso)} de ${monthLong(iso, LOCALE)} de ${iso.slice(0, 4)}`;
+const sum = (m: Record<ItemType, number>) => m.book + m.movie + m.series;
+
+function noRuntimeLine(n: number, t: T): string[] {
+  return n > 0 ? [t(`${K}.time.episodesWithoutRuntime`, { count: n })] : [];
+}
+
+function deltaLine(total: number, previous: number | null, kind: WrapUpPayload["kind"], t: T): string[] {
+  if (previous == null) return [];
+  const diff = total - previous;
+  if (diff === 0) return [t(`${K}.time.deltaSame`, { period: kind })];
+  const { value, unit } = formatHours(Math.abs(diff));
+  return diff > 0
+    ? [t(`${K}.time.delta`, { sign: "+", value, unit, period: kind })]
+    : [t(`${K}.time.deltaDown`, { sign: "−", value, unit, period: kind })];
+}
+
+export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterModel {
+  const period = periodLabel(payload);
+  const nl = narratorLine(story, payload, t);
+  const make = (
+    id: string,
+    m: Omit<PosterModel, "eyebrow" | "narratorLine" | "lines"> & { lines?: string[]; eyebrow?: string },
+  ): PosterModel => ({ lines: [], eyebrow: `${period} · ${t(`${K}.${id}.title`)}`, narratorLine: nl, ...m });
+
+  switch (story.id) {
+    case "cover":
+      return make("cover", { layout: "hero", eyebrow: period, lines: [t(`${K}.cover.title`, { kind: payload.kind })] });
+
+    case "time": {
+      const total = sum(story.minutes);
+      const breakdown = TYPES.filter((ty) => story.minutes[ty] > 0)
+        .map((ty) => `${GLYPH[ty]} ${dur(story.minutes[ty])}`).join(" · ");
+      return make("time", {
+        layout: "figure",
+        figure: formatHours(total),
+        lines: [
+          ...(breakdown ? [breakdown] : []),
+          ...deltaLine(total, story.previousMinutes, payload.kind, t),
+          ...noRuntimeLine(story.episodesWithoutRuntime, t),
+        ],
+      });
+    }
+
+    case "finished":
+      return make("finished", {
+        layout: "covers",
+        figure: { value: String(story.total), unit: t(`${K}.finished.unit`, { count: story.total }) },
+        covers: story.items,
+        lines: story.total > story.items.length
+          ? [t(`${K}.finished.more`, { count: story.total - story.items.length })] : [],
+      });
+
+    case "in_progress":
+      return make("in_progress", {
+        layout: "covers",
+        covers: story.items,
+        lines: story.items.map((i) => i.percent == null
+          ? t(`${K}.in_progress.item`, { title: i.title })
+          : t(`${K}.in_progress.itemPercent`, { title: i.title, percent: Math.round(i.percent) })),
+      });
+
+    case "rhythm": {
+      const lines: string[] = [];
+      if (story.bestStreak >= 2) lines.push(t(`${K}.rhythm.streak`, { count: story.bestStreak }));
+      if (story.favoriteWeekday != null) {
+        lines.push(t(`${K}.rhythm.favoriteDay`, { day: t(`${K}.rhythm.weekday.${story.favoriteWeekday}`) }));
+      }
+      if (story.favoriteBandStartHour != null) {
+        const pad = (h: number) => String(h % 24).padStart(2, "0");
+        lines.push(t(`${K}.rhythm.favoriteBand`, { from: pad(story.favoriteBandStartHour), to: pad(story.favoriteBandStartHour + 2) }));
+      }
+      return make("rhythm", {
+        layout: "strip",
+        figure: { value: String(story.activeDays), unit: t(`${K}.rhythm.unit`, { count: story.activeDays }) },
+        // El anual no trae tira diaria: sin días, sin tira (solo cifras y líneas).
+        strip: story.days.length === 0 ? undefined : story.days.map((d) => ({
+          label: "LMXJVSD"[(utc(d.date).getUTCDay() + 6) % 7],
+          value: shortDate(d.date, LOCALE),
+          active: d.active,
+        })),
+        lines,
+      });
+    }
+
+    case "genres":
+      return make("genres", {
+        layout: "ranking",
+        ranking: story.top.map((g) => ({ label: g.name, value: t(`${K}.genres.works`, { count: g.works }) })),
+      });
+
+    case "best_rated":
+      return make("best_rated", {
+        layout: "quote",
+        figure: { value: formatDots(story.rating) ?? "", unit: "/5" },
+        covers: [story.item],
+        lines: [story.item.title],
+        quote: story.review ? { body: story.review, attribution: story.item.title } : undefined,
+      });
+
+    case "phrase":
+      return make("phrase", {
+        layout: "quote",
+        lines: [t(`${K}.phrase.source.${story.source}`)],
+        quote: { body: story.body, attribution: story.item?.title ?? null },
+      });
+
+    case "experience":
+      return make("experience", {
+        layout: "hero",
+        lines: [story.title, ...(story.date ? [longDate(story.date)] : [])],
+      });
+
+    case "together": {
+      const lines: string[] = [];
+      if (story.jointViewings > 0) lines.push(t(`${K}.together.jointViewings`, { count: story.jointViewings }));
+      if (story.clubDays > 0) lines.push(t(`${K}.together.clubDays`, { count: story.clubDays }));
+      const total = story.jointViewings + story.clubDays;
+      return make("together", {
+        layout: "figure",
+        figure: { value: String(total), unit: t(`${K}.together.unit`, { count: total }) },
+        lines,
+      });
+    }
+
+    case "months": {
+      const lines = payload.periodEnd.slice(5) === "12-31" ? [] : [
+        t(`${K}.months.cutoff`, { date: `${day(payload.periodEnd)} de ${monthLong(payload.periodEnd, LOCALE)}` }),
+      ];
+      return make("months", {
+        layout: "strip",
+        strip: story.months.map((m) => ({
+          label: monthLong(`${m.month}-01`, LOCALE).charAt(0).toUpperCase(),
+          value: `${dur(m.minutes)} · ${m.works}`,
+          active: m.minutes > 0,
+        })),
+        lines,
+      });
+    }
+
+    case "records": {
+      const ranking: { label: string; value: string }[] = [];
+      if (story.busiestMonth) {
+        ranking.push({
+          label: t(`${K}.records.busiestMonth`),
+          value: `${cap(monthLong(`${story.busiestMonth.month}-01`, LOCALE))} · ${dur(story.busiestMonth.minutes)}`,
+        });
+      }
+      if (story.fastest) {
+        ranking.push({
+          label: t(`${K}.records.fastest`),
+          value: `${story.fastest.item.title} · ${t(`${K}.records.days`, { count: story.fastest.days })}`,
+        });
+      }
+      if (story.longestSessionMinutes != null) {
+        ranking.push({ label: t(`${K}.records.longestSession`), value: dur(story.longestSessionMinutes) });
+      }
+      return make("records", { layout: "ranking", ranking });
+    }
+
+    case "creators":
+      return make("creators", {
+        layout: "ranking",
+        ranking: story.top.map((c) => ({ label: c.name, value: t(`${K}.creators.works`, { count: c.works }) })),
+      });
+
+    case "pile":
+      return make("pile", {
+        layout: "figure",
+        figure: { value: `+${story.added}`, unit: t(`${K}.pile.unit`, { count: story.added }) },
+        lines: [t(`${K}.pile.removed`, { count: story.removed })],
+      });
+
+    case "pet":
+      return make("pet", {
+        layout: "hero",
+        lines: [
+          t(`${K}.pet.stage`, { stage: t(`${K}.pet.stages.${story.stage}`) }),
+          t(`${K}.pet.adventures`, { count: story.adventuresWon }),
+          t(`${K}.pet.loot`, { count: story.loot }),
+        ],
+      });
+
+    case "closing":
+      return make("closing", {
+        layout: "closing",
+        figure: formatHours(payload.share.minutes),
+        covers: payload.share.covers,
+        lines: [
+          t(`${K}.closing.finished`, { count: payload.share.finished }),
+          ...noRuntimeLine(payload.share.episodesWithoutRuntime, t),
+        ],
+      });
+
+    default: {
+      const _never: never = story;
+      return _never;
+    }
+  }
+}
