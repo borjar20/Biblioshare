@@ -73,6 +73,7 @@ export function selectStories(w: WrapUpWindow, i: WrapUpInputs): Story[] {
 
   if (w.kind === "week") {
     if (finished) out.push(finished);
+    if (i.seriesProgress?.length) out.push({ id: "series_progress", items: i.seriesProgress.slice(0, 4), total: i.seriesProgress.length });
     if (rhythm) out.push(rhythm);
     const first = momentStories(i)[0];
     if (first) out.push(first);

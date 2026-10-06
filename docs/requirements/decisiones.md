@@ -6806,3 +6806,10 @@ Con autorización explícita del usuario tras CI verde, se aplicaron las dos mig
 ### 2026-10-07 — Entrada permanente de crónicas en Inicio (#1441)
 
 La entrada mantiene tarjeta, narradora, periodo visible y «Ver crónica» incluso después de verla o si el periodo es tranquilo. Sólo se retira «Nueva». Sustituye la decisión inicial de degradar la crónica vista a un enlace discreto: el acceso ocupaba 18,75 px de alto y resultaba difícil de descubrir. La tarjeta usa la tipografía editorial y los tokens de Inicio; reserva 104 px tanto en el enlace como en el fallback de Suspense. Es un único enlace, sin botón interactivo anidado. No cambian la selección del periodo ni su lectura con sesión/RLS. Evidencia en [verificación de la entrada](../testing/2026-10-07-wrap-home-entry.md).
+
+
+### 2026-10-07 — Tiempo legible y avances semanales en series
+
+El tiempo se desglosa con nombres explícitos (Libros, Películas, Series), una fila por categoría y horas/minutos exactos; sustituye los glifos sin leyenda. La semanal incorpora una story de avances por serie basada en episode_watches del usuario y la ventana, independiente del estado actual de sus pases. Muestra hasta cuatro series, ordenadas por episodios y título, y declara cuántas quedan fuera. Cuenta episodios sin runtime; no transforma avances en obras terminadas ni altera el resumen público. La alternativa de avances fue solicitada para el caso en que los hitos fueran complejos: temporada completada y ponerse al día requieren transiciones históricas fiables y quedan en #1444. El catálogo actual mutable no prueba el estado emitido/temporada definitiva al cierre de aquella semana.
+
+Payload v1 compatible: las crónicas anteriores conservan sus stories y ganan el nuevo texto del tiempo al renderizar. Los avances aparecen al generar o actualizar una semanal; no se reescriben automáticamente crónicas ni shares publicados. Sin cambio de esquema, cron o permisos. Evidencia local en [verificación de claridad](../testing/2026-10-07-wrap-clarity.md).

@@ -7,6 +7,7 @@ export type NarratorVariant = "reader" | "cinephile" | "binger" | "explorer" | "
 export type Palette = ItemType | "mixed";
 
 export type ItemRef = { type: ItemType; id: string; title: string; coverUrl: string | null; times: number };
+export type SeriesProgress = ItemRef & { episodes: number };
 export type MinutesByType = Record<ItemType, number>;
 
 export type TimeFacts = {
@@ -21,6 +22,7 @@ export type Story =
   | ({ id: "time" } & TimeFacts)
   | { id: "finished"; items: ItemRef[]; total: number }
   | { id: "in_progress"; items: (ItemRef & { percent: number | null })[] }
+  | { id: "series_progress"; items: SeriesProgress[]; total: number }
   | { id: "rhythm"; days: { date: string; active: boolean }[]; activeDays: number; bestStreak: number;
       favoriteWeekday: number | null; favoriteBandStartHour: number | null }
   | { id: "genres"; top: { name: string; works: number }[] }
@@ -64,6 +66,7 @@ export type WrapUpInputs = {
   activeDays: string[];            // fechas YYYY-MM-DD distintas con actividad (sesiones + días de serie + terminados)
   finished: ItemRef[];             // obras terminadas en la ventana, una por obra, `times` = pases
   inProgress: (ItemRef & { percent: number | null })[];
+  seriesProgress?: SeriesProgress[]; // episodios vistos por serie en la ventana; compatible con fixtures antiguos
   bestStreak: number;              // racha máxima DENTRO de la ventana
   favoriteWeekday: number | null;
   favoriteBandStartHour: number | null;

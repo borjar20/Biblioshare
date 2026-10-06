@@ -71,6 +71,27 @@ test.describe("crónicas (wrap-ups)", () => {
     if (errors.length) throw errors[0];
   });
 
+  test("tiempo legible y avances de series en una semanal tranquila", async ({ browser }) => {
+    const p: WrapUpPayload = { ...payload, intensity: "quiet", stories: [
+      {id: "cover"},
+      {id: "time", minutes: {book: 412, movie: 236, series: 380}, episodesWithoutRuntime: 0, previousMinutes: null},
+      {id: "series_progress", items: [{type: "series", id: "s1", title: "The Bear", coverUrl: null, times: 1, episodes: 3}], total: 1},
+      {id: "closing"},
+    ] };
+    await upsertWrapUp(admin, ownerId, p);
+    const a = await loggedInPage(browser);
+    await a.setViewportSize({width: 320, height: 740});
+    await a.goto("/wrap/week");
+    const player = a.getByRole("dialog");
+    await expect(player).toBeVisible();
+    await a.keyboard.press("ArrowRight");
+    for (const text of ["Libros · 6 h 52 min", "Películas · 3 h 56 min", "Series · 6 h 20 min"]) await expect(player.getByText(text, {exact: true})).toBeVisible();
+    await a.keyboard.press("ArrowRight");
+    await expect(player.getByRole("heading", {name: /Tus avances en series/})).toBeVisible();
+    await expect(player.getByText("The Bear · 3 episodios vistos esta semana", {exact: true})).toBeVisible();
+    await expect(player).not.toContainText("temporada completada");
+  });
+
   test("abrir, avanzar, publicar y verlo desde un seguidor", async ({ browser }) => {
     const a = await loggedInPage(browser);
     await a.goto("/");
