@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collapseFinished, loadCore, streakWithin, topGenres } from "./core";
+import { collapseFinished, loadCore, sessionsForMinutes, streakWithin, topGenres } from "./core";
 import { wrapUpWindow } from "../windows";
 
 describe("collapseFinished", () => {
@@ -41,13 +41,23 @@ function recordingClient() {
     const entry = { table, filters: [] as string[] };
     calls.push(entry);
     const q: Record<string, unknown> = {};
-    for (const m of ["select", "gte", "lt", "lte", "in", "not", "order", "limit", "is"]) q[m] = () => q;
+    for (const m of ["select", "gte", "lt", "lte", "in", "not", "order", "limit", "is", "range"]) q[m] = () => q;
     q.eq = (col: string) => { entry.filters.push(col); return q; };
     q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(res);
     return q;
   };
   return { client: { from: builder, rpc: () => Promise.resolve({ data: [], error: null }) }, calls };
 }
+
+describe("sessionsForMinutes", () => {
+  it("excluye las sesiones antiguas de serie: sus minutos salen de episode_watches", () => {
+    const rows = [
+      { pass_id: "p1", duration_minutes: 30, passes: { item_type: "book" as const } },
+      { pass_id: "p2", duration_minutes: 45, passes: { item_type: "series" as const } },
+    ];
+    expect(sessionsForMinutes(rows)).toEqual([{ item_type: "book", pass_id: "p1", duration_minutes: 30 }]);
+  });
+});
 
 describe("loadCore", () => {
   it("toda consulta por usuario filtra por user_id", async () => {

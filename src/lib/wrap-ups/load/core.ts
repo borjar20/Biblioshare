@@ -7,6 +7,8 @@ import { parsePosition } from "@/lib/library/position";
 import { getHabits } from "@/lib/stats/get-habits";
 import { getSeriesDays } from "@/lib/stats/series-days";
 import { addDaysISO } from "@/lib/stats/dates";
+import { chunkIds } from "@/lib/supabase/in-chunks";
+import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { computeTime } from "../compute-time";
 import type { ItemRef, WrapUpInputs } from "../types";
 import type { WrapUpWindow } from "../windows";
@@ -63,9 +65,13 @@ async function loadMeta(client: WrapUpClient, refs: { type: ItemType; id: string
     const cols = type === "book" ? "id,title,cover_url,genres,total_pages"
       : type === "movie" ? "id,title,cover_url,genres,duration_minutes"
       : "id,title,cover_url,genres,episode_runtime_minutes";
-    const { data, error } = await client.from(TABLE[type]).select(cols).in("id", ids);
-    if (error) throw error;
-    for (const r of (data ?? []) as unknown as Record<string, unknown>[]) {
+    const rows: Record<string, unknown>[] = [];
+    for (const chunk of chunkIds(ids)) {
+      const { data, error } = await client.from(TABLE[type]).select(cols).in("id", chunk);
+      if (error) throw error;
+      rows.push(...((data ?? []) as unknown as Record<string, unknown>[]));
+    }
+    for (const r of rows) {
       out.set(key(type, r.id as string), {
         title: r.title as string, coverUrl: (r.cover_url as string | null) ?? null,
         genres: (r.genres as string[] | null) ?? null,
@@ -78,25 +84,37 @@ async function loadMeta(client: WrapUpClient, refs: { type: ItemType; id: string
   return out;
 }
 
+type SessionRow = { pass_id: string; duration_minutes: number | null; passes: { item_type: ItemType } };
+
+/**
+ * Los minutos de serie salen SOLO de episode_watches × runtime: las sesiones
+ * antiguas de serie (progress_sessions) se excluyen para no contar dos veces.
+ */
+export function sessionsForMinutes(rows: SessionRow[]) {
+  return rows.filter((x) => x.passes.item_type !== "series")
+    .map((x) => ({ item_type: x.passes.item_type, pass_id: x.pass_id, duration_minutes: x.duration_minutes }));
+}
+
 async function minutesIn(client: WrapUpClient, userId: string, b: { start: string; endExclusive: string }) {
-  const [sessions, movies, episodes] = await Promise.all([
-    client.from("progress_sessions").select("pass_id, duration_minutes, passes!inner(item_type)")
-      .eq("user_id", userId).gte("session_date", b.start).lt("session_date", b.endExclusive),
-    client.from("passes").select("id, item_id").eq("user_id", userId).eq("item_type", "movie")
-      .eq("status", "completed").gte("finished_on", b.start).lt("finished_on", b.endExclusive),
-    client.from("episode_watches").select("series_id").eq("user_id", userId)
-      .gte("watched_on", b.start).lt("watched_on", b.endExclusive),
+  const [s, m, e] = await Promise.all([
+    readAllRows<SessionRow>((from, to) => client.from("progress_sessions")
+      .select("pass_id, duration_minutes, passes!inner(item_type)")
+      .eq("user_id", userId).gte("session_date", b.start).lt("session_date", b.endExclusive)
+      .order("id").range(from, to) as unknown as PromiseLike<{ data: SessionRow[] | null; error?: unknown }>),
+    readAllRows<{ id: string; item_id: string }>((from, to) => client.from("passes").select("id, item_id")
+      .eq("user_id", userId).eq("item_type", "movie")
+      .eq("status", "completed").gte("finished_on", b.start).lt("finished_on", b.endExclusive)
+      .order("id").range(from, to)),
+    readAllRows<{ series_id: string }>((from, to) => client.from("episode_watches").select("series_id")
+      .eq("user_id", userId).gte("watched_on", b.start).lt("watched_on", b.endExclusive)
+      .order("id").range(from, to)),
   ]);
-  for (const r of [sessions, movies, episodes]) if (r.error) throw r.error;
-  const s = (sessions.data ?? []) as unknown as { pass_id: string; duration_minutes: number | null; passes: { item_type: ItemType } }[];
-  const m = (movies.data ?? []) as { id: string; item_id: string }[];
-  const e = (episodes.data ?? []) as { series_id: string }[];
   const meta = await loadMeta(client, [
     ...m.map((x) => ({ type: "movie" as const, id: x.item_id })),
     ...e.map((x) => ({ type: "series" as const, id: x.series_id })),
   ]);
   return {
-    sessions: s.map((x) => ({ item_type: x.passes.item_type, pass_id: x.pass_id, duration_minutes: x.duration_minutes })),
+    sessions: sessionsForMinutes(s),
     finishedMovies: m.map((x) => ({ pass_id: x.id, duration_minutes: meta.get(key("movie", x.item_id))?.duration ?? null })),
     episodes: e.map((x) => ({ series_id: x.series_id, episode_runtime_minutes: meta.get(key("series", x.series_id))?.runtime ?? null })),
   };
@@ -106,22 +124,23 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   const b = { start: w.start, endExclusive: w.endExclusive };
   // getSeriesDays/getHabits están tipados para el cliente de servidor (cookies);
   // aquí llega el de service role, que habla el mismo API.
-  const [now, prev, finishedQ, openQ, sessionDaysQ, seriesDays, habits] = await Promise.all([
+  const [now, prev, finishedRows, openQ, sessionRows, seriesDays, habits] = await Promise.all([
     minutesIn(client, userId, b),
     w.previous ? minutesIn(client, userId, w.previous) : Promise.resolve(null),
-    client.from("passes").select("item_type, item_id, finished_on").eq("user_id", userId)
-      .eq("status", "completed").gte("finished_on", w.start).lt("finished_on", w.endExclusive),
+    readAllRows<FinishedPassRow>((from, to) => client.from("passes").select("item_type, item_id, finished_on")
+      .eq("user_id", userId).eq("status", "completed")
+      .gte("finished_on", w.start).lt("finished_on", w.endExclusive).order("id").range(from, to) as unknown as PromiseLike<{ data: FinishedPassRow[] | null; error?: unknown }>),
+    // Pases abiertos: pocos por usuario (no pasan del tope de filas).
     client.from("passes").select("id, item_type, item_id, position").eq("user_id", userId)
       .eq("status", "in_progress"),
-    client.from("progress_sessions").select("session_date, pass_id").eq("user_id", userId)
-      .gte("session_date", w.start).lt("session_date", w.endExclusive),
+    readAllRows<{ session_date: string; pass_id: string }>((from, to) => client.from("progress_sessions")
+      .select("session_date, pass_id").eq("user_id", userId)
+      .gte("session_date", w.start).lt("session_date", w.endExclusive).order("id").range(from, to)),
     getSeriesDays(client as never, userId, b),
     getHabits(client as never, userId, w),
   ]);
-  for (const r of [finishedQ, openQ, sessionDaysQ]) if (r.error) throw r.error;
+  if (openQ.error) throw openQ.error;
 
-  const finishedRows = (finishedQ.data ?? []) as FinishedPassRow[];
-  const sessionRows = (sessionDaysQ.data ?? []) as { session_date: string; pass_id: string }[];
   // «En marcha» = pases abiertos que se tocaron en la ventana (con sesión).
   const touched = new Set(sessionRows.map((r) => r.pass_id));
   const openRows = ((openQ.data ?? []) as { id: string; item_type: ItemType; item_id: string; position: unknown }[])
