@@ -4341,6 +4341,7 @@
         "title": "{kind, select, week {Tu semana} month {Tu mes} other {Tu año}}"
       },
       "time": {
+        "types": { "book": "Libros", "movie": "Películas", "series": "Series" },
         "title": "Tiempo",
         "episodesUnit": "{count, plural, one {episodio} other {episodios}}",
         "unknownDuration": "Su duración no es conocida, así que no se convierte en horas",
@@ -4354,6 +4355,11 @@
         "title": "Terminado",
         "unit": "{count, plural, one {obra terminada} other {obras terminadas}}",
         "more": "y {count} más"
+      },
+      "series_progress": {
+        "title": "Tus avances en series",
+        "item": "{title} · {count, plural, one {# episodio visto esta semana} other {# episodios vistos esta semana}}",
+        "more": "{count, plural, one {y # serie más} other {y # series más}}"
       },
       "in_progress": {
         "title": "En marcha",
@@ -4447,6 +4453,7 @@
         "timeEpisodes": "Episodios vistos, aunque sin duración conocida.",
         "timeNone": "Un periodo sin tiempo registrado.",
         "finished": "{count, plural, one {Cerraste # obra. Una menos pendiente.} other {Cerraste # obras. Qué buen ritmo.}}",
+        "series_progress": "Tus series también avanzan episodio a episodio.",
         "in_progress": "{count, plural, one {Hay # obra a medias esperándote.} other {Hay # obras a medias esperándote.}}",
         "rhythm": "{count, plural, one {Un día con algo entre manos.} other {{count} días con algo entre manos.}}",
         "genres": "Esto es lo que más ha pesado en tu estantería.",

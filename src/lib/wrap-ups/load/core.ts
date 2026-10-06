@@ -11,12 +11,12 @@ import { addDaysISO } from "@/lib/stats/dates";
 import { chunkIds } from "@/lib/supabase/in-chunks";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { computeTime } from "../compute-time";
-import type { ItemRef, WrapUpInputs } from "../types";
+import type { ItemRef, SeriesProgress, WrapUpInputs } from "../types";
 import type { WrapUpWindow } from "../windows";
 
 export type WrapUpClient = SupabaseClient<Database>;
 export type CoreFacts = Pick<WrapUpInputs, "time" | "activeDays" | "finished" | "inProgress" | "bestStreak"
-  | "favoriteWeekday" | "favoriteBandStartHour" | "genres">;
+  | "favoriteWeekday" | "favoriteBandStartHour" | "genres" | "seriesProgress">;
 export type FinishedPassRow = { item_type: ItemType; item_id: string; finished_on: string };
 type Meta = { title: string; coverUrl: string | null; genres: string[] | null };
 type FullMeta = Meta & { runtime: number | null; duration: number | null; totalPages: number | null };
@@ -34,6 +34,16 @@ export function collapseFinished(rows: FinishedPassRow[], meta: Map<string, Meta
     else out.set(k, { type: r.item_type, id: r.item_id, title: m.title, coverUrl: m.coverUrl, times: 1 });
   }
   return [...out.values()];
+}
+
+/** Todas las series vistas en la ventana, incluso con pase cerrado o sin pase. */
+export function seriesProgressFacts(rows: { series_id: string }[], meta: Map<string, Pick<Meta, "title" | "coverUrl">>): SeriesProgress[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) counts.set(row.series_id, (counts.get(row.series_id) ?? 0) + 1);
+  return [...counts].flatMap(([id, episodes]) => {
+    const m = meta.get(key("series", id));
+    return m ? [{ type: "series" as const, id, title: m.title, coverUrl: m.coverUrl, times: 1, episodes }] : [];
+  }).sort((a, b) => b.episodes - a.episodes || a.title.localeCompare(b.title, "es") || a.id.localeCompare(b.id));
 }
 
 export function streakWithin(days: string[]): number {
@@ -188,6 +198,7 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   const meta = await loadMeta(client, [
     ...finishedRows.map((r) => ({ type: r.item_type, id: r.item_id })),
     ...openRows.map((r) => ({ type: r.item_type, id: r.item_id })),
+    ...(w.kind === "week" ? cur.watches.map((r) => ({ type: "series" as const, id: r.series_id })) : []),
   ]);
   const finished = collapseFinished(finishedRows, meta);
   const inProgress = openRows.flatMap((r) => {
@@ -211,6 +222,7 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   return {
     time: computeTime({ ...now, previousMinutes }),
     activeDays, finished, inProgress,
+    seriesProgress: w.kind === "week" ? seriesProgressFacts(cur.watches, meta) : [],
     bestStreak: streakWithin(activeDays),
     favoriteWeekday: habits.favoriteWeekday,
     favoriteBandStartHour: habits.favoriteBand?.startHour ?? null,

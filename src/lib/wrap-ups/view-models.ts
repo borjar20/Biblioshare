@@ -24,7 +24,7 @@ export type PosterModel = {
 
 export type T = (key: string, values?: Record<string, string | number>) => string;
 
-const GLYPH: Record<ItemType, string> = { book: "●", movie: "■", series: "▲" };
+
 const TYPES: ItemType[] = ["book", "movie", "series"];
 const K = "wrapUps.stories";
 const LOCALE = "es-ES";
@@ -67,8 +67,9 @@ export function sharedPeriodLabel(
 export { formatHours };
 
 const dur = (minutes: number) => {
-  const { value, unit } = formatHours(minutes);
-  return `${value} ${unit}`;
+  const m = Math.max(0, Math.round(minutes));
+  const h = Math.floor(m / 60), rest = m % 60;
+  return h ? `${h} h${rest ? ` ${rest} min` : ""}` : `${rest} min`;
 };
 const longDate = (iso: string) => `${day(iso)} de ${monthLong(iso, LOCALE)} de ${iso.slice(0, 4)}`;
 const sum = (m: Record<ItemType, number>) => m.book + m.movie + m.series;
@@ -141,13 +142,13 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
     case "time": {
       const total = sum(story.minutes);
       const breakdown = TYPES.filter((ty) => story.minutes[ty] > 0)
-        .map((ty) => `${GLYPH[ty]} ${dur(story.minutes[ty])}`).join(" · ");
+        .map((ty) => `${t(`${K}.time.types.${ty}`)} · ${dur(story.minutes[ty])}`);
       const tf = timeFigure(total, story.episodesWithoutRuntime, t);
       return make("time", {
         layout: "figure",
         figure: tf.figure,
         lines: [
-          ...(breakdown ? [breakdown] : []),
+          ...breakdown,
           ...tf.lines,
           ...deltaLine(total, story.previousMinutes, payload.kind, t),
           // Con solo episodios, la línea de duración desconocida ya lo dice.
@@ -163,6 +164,16 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
         covers: story.items.slice(0, 4),
         lines: story.total > Math.min(4, story.items.length)
           ? [t(`${K}.finished.more`, { count: story.total - Math.min(4, story.items.length) })] : [],
+      });
+
+    case "series_progress":
+      return make("series_progress", {
+        layout: "covers",
+        covers: story.items,
+        lines: [
+          ...story.items.map(i => t(`${K}.series_progress.item`, {title: i.title, count: i.episodes})),
+          ...(story.total > story.items.length ? [t(`${K}.series_progress.more`, {count: story.total - story.items.length})] : []),
+        ],
       });
 
     case "in_progress":

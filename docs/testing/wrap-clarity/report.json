@@ -1,0 +1,2313 @@
+{
+  "cases": [
+    {
+      "layout": "figure",
+      "theme": "light",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "poster": {
+        "clientHeight": 674,
+        "scrollHeight": 674,
+        "clientWidth": 320,
+        "scrollWidth": 320,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 649.5,
+        "bottom": 710,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tiempo",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "17",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "h",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Libros · 6 h 52 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Películas · 3 h 56 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Series · 6 h 20 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "+3,1 h más que la semana anterior",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 episodios sin duración conocida",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tiempo bien invertido: 17 h.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "320-light-time"
+    },
+    {
+      "layout": "covers",
+      "theme": "light",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "poster": {
+        "clientHeight": 674,
+        "scrollHeight": 674,
+        "clientWidth": 320,
+        "scrollWidth": 320,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 629.25,
+        "bottom": 710,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tus avances en series",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2 · 2 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3 · 3 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4 · 4 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 series más",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tus series también avanzan episodio a episodio.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "320-light-series_progress"
+    },
+    {
+      "layout": "figure",
+      "theme": "dark",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "poster": {
+        "clientHeight": 674,
+        "scrollHeight": 674,
+        "clientWidth": 320,
+        "scrollWidth": 320,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 649.5,
+        "bottom": 710,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tiempo",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "17",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "h",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Libros · 6 h 52 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Películas · 3 h 56 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Series · 6 h 20 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "+3,1 h más que la semana anterior",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 episodios sin duración conocida",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tiempo bien invertido: 17 h.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "320-dark-time"
+    },
+    {
+      "layout": "covers",
+      "theme": "dark",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "poster": {
+        "clientHeight": 674,
+        "scrollHeight": 674,
+        "clientWidth": 320,
+        "scrollWidth": 320,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 629.25,
+        "bottom": 710,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tus avances en series",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2 · 2 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3 · 3 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4 · 4 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 series más",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tus series también avanzan episodio a episodio.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "320-dark-series_progress"
+    },
+    {
+      "layout": "figure",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 829.75,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tiempo",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "17",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "h",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Libros · 6 h 52 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Películas · 3 h 56 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Series · 6 h 20 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "+3,1 h más que la semana anterior",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 episodios sin duración conocida",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tiempo bien invertido: 17 h.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "390-light-time"
+    },
+    {
+      "layout": "covers",
+      "theme": "light",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 809.5,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tus avances en series",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2 · 2 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3 · 3 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4 · 4 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 series más",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tus series también avanzan episodio a episodio.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "390-light-series_progress"
+    },
+    {
+      "layout": "figure",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 829.75,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tiempo",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "17",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "h",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Libros · 6 h 52 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Películas · 3 h 56 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Series · 6 h 20 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "+3,1 h más que la semana anterior",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 episodios sin duración conocida",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tiempo bien invertido: 17 h.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "390-dark-time"
+    },
+    {
+      "layout": "covers",
+      "theme": "dark",
+      "viewport": {
+        "width": 390,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 809.5,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tus avances en series",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2 · 2 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3 · 3 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4 · 4 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 series más",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tus series también avanzan episodio a episodio.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "390-dark-series_progress"
+    },
+    {
+      "layout": "figure",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 480,
+        "scrollWidth": 480,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 829.75,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tiempo",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "17",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "h",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Libros · 6 h 52 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Películas · 3 h 56 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Series · 6 h 20 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "+3,1 h más que la semana anterior",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 episodios sin duración conocida",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tiempo bien invertido: 17 h.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "1440-light-time"
+    },
+    {
+      "layout": "covers",
+      "theme": "light",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 480,
+        "scrollWidth": 480,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 809.5,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tus avances en series",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2 · 2 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3 · 3 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4 · 4 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 series más",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tus series también avanzan episodio a episodio.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "1440-light-series_progress"
+    },
+    {
+      "layout": "figure",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 480,
+        "scrollWidth": 480,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 829.75,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tiempo",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "17",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "h",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Libros · 6 h 52 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Películas · 3 h 56 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Series · 6 h 20 min",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "+3,1 h más que la semana anterior",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 episodios sin duración conocida",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tiempo bien invertido: 17 h.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "1440-dark-time"
+    },
+    {
+      "layout": "covers",
+      "theme": "dark",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "poster": {
+        "clientHeight": 834,
+        "scrollHeight": 834,
+        "clientWidth": 480,
+        "scrollWidth": 480,
+        "scrollTop": 0
+      },
+      "bubble": {
+        "top": 809.5,
+        "bottom": 870,
+        "visible": true
+      },
+      "horizontalClipping": [],
+      "texts": [
+        {
+          "text": "✕",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Semana del 28 sep al 4 oct · Tus avances en series",
+          "contrast": 17.48,
+          "fg": [
+            255,
+            253,
+            248,
+            1
+          ],
+          "bg": [
+            28,
+            23,
+            20
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Una serie con un título deliberadamente largo para comprobar lectura en pantallas peq",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 2 · 2 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 3 · 3 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Serie 4 · 4 episodios vistos esta semana",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "y 2 series más",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        },
+        {
+          "text": "Tus series también avanzan episodio a episodio.",
+          "contrast": 17.48,
+          "fg": [
+            28,
+            23,
+            20,
+            1
+          ],
+          "bg": [
+            255,
+            253,
+            248
+          ]
+        }
+      ],
+      "minContrast": 17.48,
+      "documentOverflow": false,
+      "actions": [],
+      "label": "1440-dark-series_progress"
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "actorDeleted": true,
+    "wrapUps": 0
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activityFacts, collapseFinished, loadCore, sessionsForMinutes, streakWithin, topGenres } from "./core";
+import { seriesProgressFacts, activityFacts, collapseFinished, loadCore, sessionsForMinutes, streakWithin, topGenres } from "./core";
 import { wrapUpWindow } from "../windows";
 
 describe("collapseFinished", () => {
@@ -138,3 +138,34 @@ describe("loadCore", () => {
     for (const c of perUser) expect(c.filters).toContain("user_id");
   });
 });
+
+ it("los avances agrupan todos los episodios de la ventana, sin exigir pase abierto", () => {
+ const meta = new Map([["series:s1", {title: "Serie", coverUrl: null}], ["series:s2", {title: "Otra", coverUrl: null}]]);
+ const rows = [{series_id: "s1"}, {series_id: "s2"}, {series_id: "s1"}, {series_id: "missing"}];
+ expect(seriesProgressFacts(rows, meta)).toEqual([
+ {type: "series", id: "s1", title: "Serie", coverUrl: null, times: 1, episodes: 2},
+ {type: "series", id: "s2", title: "Otra", coverUrl: null, times: 1, episodes: 1},
+ ]);
+ });
+
+ it("loadCore semanal recupera títulos y episodios aunque no haya pases abiertos", async () => {
+ const tables: Record<string, unknown[]> = {
+ episode_watches: [{id: "w1", user_id: "u1", series_id: "s1", watched_on: "2026-09-29", created_at: "2026-09-29T20:00:00Z"}, {id: "w2", user_id: "u1", series_id: "s1", watched_on: "2026-09-30", created_at: "2026-09-30T20:00:00Z"}, {id: "w3", user_id: "other", series_id: "s1", watched_on: "2026-09-30"}, {id: "w4", user_id: "u1", series_id: "s1", watched_on: "2026-09-27"}],
+ series: [{id: "s1", title: "Sin pase", cover_url: null, genres: null, episode_runtime_minutes: null}],
+ };
+ const client = {from: (table: string) => {
+ const predicates: ((r: Record<string, unknown>) => boolean)[] = [];
+ const q: Record<string, unknown> = {};
+ for (const method of ["select", "order", "range"]) q[method] = () => q;
+ q.eq = (c: string, v: unknown) => {predicates.push(r => r[c] === v);return q;};
+ q.gte = (c: string, v: string) => {predicates.push(r => String(r[c]) >= v);return q;};
+ q.lt = (c: string, v: string) => {predicates.push(r => String(r[c]) < v);return q;};
+ q.in = (c: string, values: unknown[]) => {predicates.push(r => values.includes(r[c]));return q;};
+ q.then = (res: (v: unknown) => unknown) => Promise.resolve({data: (tables[table] ?? []).filter(r => predicates.every(p => p(r as Record<string, unknown>))), error: null}).then(res);
+ return q;
+ }};
+ const facts = await loadCore(client as never, "u1", wrapUpWindow("week", new Date("2026-10-05T07:00:00Z")));
+ expect(facts.seriesProgress).toEqual([{type: "series", id: "s1", title: "Sin pase", coverUrl: null, times: 1, episodes: 2}]);
+ expect(facts.time.episodesWithoutRuntime).toBe(2);
+ expect(facts.inProgress).toEqual([]);
+ });

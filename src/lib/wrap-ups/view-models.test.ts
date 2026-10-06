@@ -50,9 +50,9 @@ describe("posterFor time", () => {
     expect(m.lines.join("\n")).toContain('wrapUps.stories.time.delta|{"sign":"+","value":"2","unit":"h","period":"week"}');
     expect(m.lines.join("\n")).toContain("episodesWithoutRuntime");
   });
-  it("desglose por tipo con glifos, solo tipos con tiempo", () => {
+  it("desglose por nombre, solo tipos con tiempo", () => {
     const m = posterFor({ id: "time", minutes: { book: 120, movie: 0, series: 30 }, episodesWithoutRuntime: 0, previousMinutes: null }, base, t);
-    expect(m.lines[0]).toBe("● 2 h · ▲ 30 min");
+    expect(m.lines).toEqual(["wrapUps.stories.time.types.book · 2 h", "wrapUps.stories.time.types.series · 30 min"]);
   });
 });
 
@@ -212,3 +212,18 @@ describe("posterFor con el traductor real y estricto", () => {
     expect(() => posterFor({ id: "cover" }, payload, real)).not.toThrow();
   });
 });
+
+ it("distribución con nombres explícitos y horas/minutos exactos", () => {
+ const strict = createTranslator({locale: "es", messages});
+ const tr = (key: string, values?: Record<string, string | number>) => strict(key as never, values as never);
+ const m = posterFor({id: "time", minutes: {book: 412, movie: 236, series: 380}, previousMinutes: null, episodesWithoutRuntime: 0}, base, tr);
+ expect(m.lines).toEqual(["Libros · 6 h 52 min", "Películas · 3 h 56 min", "Series · 6 h 20 min"]);
+ });
+
+ it("avances semanales con plural real y resto explícito", () => {
+ const strict = createTranslator({locale: "es", messages, onError: e => {throw e;}});
+ const tr = (key: string, values?: Record<string, string | number>) => strict(key as never, values as never);
+ const m = posterFor({id: "series_progress", items: [{type: "series", id: "s", title: "The Bear", coverUrl: null, times: 1, episodes: 1}], total: 2}, base, tr);
+ expect(m.lines).toEqual(["The Bear · 1 episodio visto esta semana", "y 1 serie más"]);
+ expect(m.narratorLine).toBe("Tus series también avanzan episodio a episodio.");
+ });

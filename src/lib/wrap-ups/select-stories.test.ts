@@ -126,3 +126,11 @@ describe("selectStories", () => {
     expect(s).toContain("months"); // la tira de 12 meses sale siempre en el anual
   });
 });
+
+ it("semana con episodios incluye avances aunque no haya series terminadas", () => {
+ const item = {type: "series" as const, id: "s1", title: "Serie", coverUrl: null, times: 1, episodes: 3};
+ const inputs = emptyInputs({activeDays: ["2026-09-29"], seriesProgress: [item]});
+ expect(selectStories(WEEK, inputs).find(s => s.id === "series_progress")).toEqual({id: "series_progress", items: [item], total: 1});
+ expect(selectStories(MONTH, inputs).some(s => s.id === "series_progress")).toBe(false);
+ expect(selectStories(WEEK, emptyInputs()).some(s => s.id === "series_progress")).toBe(false);
+ });
