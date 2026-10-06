@@ -228,8 +228,8 @@ Contrato y evidencia en `superpowers/specs/2026-09-09-mascota-rpg-ui-design.md`.
 
 Etiquetas privadas, modo «en pausa», método de adquisición del ejemplar, diario
 emocional, OCR de citas, recomendador, tabla de adaptaciones/relaciones entre
-obras, listas colaborativas, seguir editoriales, retos personalizables, «Tu año
-en Biblioshare», comparar bibliotecas, offline-first con escritura, IGDB
+obras, listas colaborativas, seguir editoriales, retos personalizables, comparar
+bibliotecas, offline-first con escritura, IGDB
 (videojuegos), app iOS. Estado y prioridades: `docs/requirements/backlog.md`.
 
 ## Crónicas visuales — activas en producción 2026-10-07

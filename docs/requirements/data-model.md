@@ -5317,7 +5317,7 @@ Superficie6 comprobada: no cambian los grants finos de posts (11  columnas/8  IN
 
 El CHECK `payload->>'v'='1'` admite versión ausente por NULL; constructor actual produce v1 y la sesión no escribe. Endurecimiento pendiente #1430. Activación productiva y despacho remoto verificados en #1433 (cerrada); destino de dev #1439 y Android #1431. Evidencia en [verificación de crónicas](../testing/2026-10-06-wrap-ups.md).
 
-Recibo productivo del 2026-10-07: auditoría independiente a las 00:07:18 Madrid, checks de funciones/tablas/columnas/políticas/triggers/enums/cron/superficie 6 todos verdaderos e idénticos a dev. Advisors añade sólo las tres RPC definer autenticadas previstas. Despliegue Vercel READY del commit 5d6b447c y alias biblioshare-nine.vercel.app. Petición pg_net 18196, HTTP 200 sin timeout/error: candidates 4, written 4, deleted 0, pushed 3, failed 0. Persistidas cuatro semanas 2026-09-28…2026-10-04: tres full y una quiet. No se sembraron fixtures en producción. [Evidencia](../testing/2026-10-06-wrap-ups.md#activación-productiva-2026-10-07).
+Recibo productivo del 2026-10-07: auditoría independiente a las 00:07:18 Madrid, checks de funciones/tablas/columnas/políticas/triggers/enums/cron/superficie 6 todos verdaderos e idénticos a dev. Advisors añade sólo las tres RPC definer autenticadas previstas. Despliegue Vercel READY del commit 5d6b447c y alias biblioshare-nine.vercel.app. Petición pg_net 18196, HTTP 200 sin timeout/error: candidates 4, written 4, deleted 0, pushed 3, failed 0. Persistidas cuatro semanas 2026-09-28…2026-10-04: tres full y una quiet. No se sembraron fixtures en producción. [Evidencia](../testing/2026-10-06-wrap-ups.md#activación-productiva--2026-10-07).
 
 ## 9. Seguridad
 
