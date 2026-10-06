@@ -184,3 +184,14 @@ describe("participios que se dirigen a quien lee", () => {
     expect(text).not.toMatch(/acompañad[oa]/i);
   });
 });
+
+describe("posterFor con el traductor real y estricto", () => {
+  // getTranslations del servidor informa de un FORMATTING_ERROR aunque el valor
+  // se sobrescriba después: la portada no debe pedir su título sin `kind`.
+  const strict = createTranslator({ locale: "es", messages, onError: (e) => { throw e; } });
+  const real = (k: string, v?: Record<string, string | number>) => strict(k as never, v as never);
+  it("la portada no formatea el título ICU sin sus valores", () => {
+    const payload = { ...base, stories: [{ id: "cover" }] } as unknown as WrapUpPayload;
+    expect(() => posterFor({ id: "cover" }, payload, real)).not.toThrow();
+  });
+});

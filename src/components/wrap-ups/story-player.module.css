@@ -1,0 +1,170 @@
+/* Reproductor de stories (spec 2026-10-06 §5). Columna de 480 px como máximo
+   sobre el campo de color oscurecido; la cromería (progreso, cerrar, acciones)
+   va en bandas de tinta con texto en papel (17,5:1), así no depende del campo. */
+.dialog {
+  --ink: #1c1714;
+  --paper: #fffdf8;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  color: var(--paper);
+  background: color-mix(in srgb, var(--field) 35%, var(--ink));
+}
+.dialog::backdrop { background: rgb(28 23 20 / 0.9); }
+
+.column {
+  display: flex;
+  height: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  flex-direction: column;
+  background: var(--field);
+}
+@media (min-width: 520px) {
+  .column { box-shadow: 0 0 0 3px var(--ink), 8px 8px 0 3px rgb(0 0 0 / 0.45); }
+}
+
+.chrome {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  background: var(--ink);
+}
+.progress {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.segment {
+  flex: 1 1 0;
+  height: 4px;
+  overflow: hidden;
+  background: rgb(255 253 248 / 0.3);
+}
+.segmentFill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--paper);
+}
+.segmentFill[data-state="done"],
+.segmentFill[data-state="static"] { width: 100%; }
+/* La duración (6 s) y la pausa (animation-play-state) las pone el componente. */
+.segmentFill[data-state="running"] { animation-name: segmentFill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes segmentFill { from { width: 0; } to { width: 100%; } }
+
+.chromeRow {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.badge {
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+}
+.close {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.close:focus-visible,
+.btn:focus-visible,
+.srButton:focus-visible {
+  outline: 3px solid var(--paper);
+  outline-offset: 3px;
+}
+
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.actions {
+  flex: 0 0 auto;
+  padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+  background: var(--ink);
+}
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.btn {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 2px solid var(--paper);
+  background: transparent;
+  color: var(--paper);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+.btnPrimary {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 4px 4px 0 0 var(--field);
+}
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.btn:not(:disabled):active { transform: translate(2px, 2px); }
+.note {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+.note:empty { display: none; }
+
+/* Botones para teclado y lector: invisibles hasta que reciben foco. */
+.srNav {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+.srButton {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.srButton:focus-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  clip: auto;
+  padding: 6px 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 700;
+}
+.stage:focus { outline: none; }
+.stage:focus-visible { outline: 3px solid var(--paper); outline-offset: -3px; }

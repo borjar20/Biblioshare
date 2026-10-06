@@ -4369,7 +4369,15 @@
       "unpublish": "Despublicar",
       "refresh": "Actualizar",
       "refreshed": "Actualizado hace un momento",
-      "refreshLater": "Podrás actualizar de nuevo en unos minutos"
+      "refreshLater": "Podrás actualizar de nuevo en unos minutos",
+      "refreshPublished": "Para actualizarlo, despublícalo primero",
+      "refreshEmpty": "Este periodo no tiene novedades que contar",
+      "actionError": "Algo ha ido mal. Inténtalo de nuevo.",
+      "progress": "Story {current} de {total}",
+      "paused": "En pausa",
+      "dayActive": "con actividad",
+      "dayInactive": "sin actividad",
+      "loading": "Preparando tu crónica"
     }
   }
 }

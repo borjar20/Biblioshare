@@ -92,7 +92,13 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
   const make = (
     id: string,
     m: Omit<PosterModel, "eyebrow" | "narratorLine" | "lines"> & { lines?: string[]; eyebrow?: string },
-  ): PosterModel => ({ lines: [], eyebrow: `${period} · ${t(`${K}.${id}.title`)}`, narratorLine: nl, ...m });
+  ): PosterModel => ({
+    lines: [], narratorLine: nl, ...m,
+    // Solo se formatea si la story no trae su rótulo: el título ICU de la portada
+    // pide `kind` y el traductor real del servidor informa del error aunque luego
+    // se sobrescriba.
+    eyebrow: m.eyebrow ?? `${period} · ${t(`${K}.${id}.title`)}`,
+  });
 
   switch (story.id) {
     case "cover":
