@@ -1,5 +1,7 @@
 # Biblioshare — qué existe hoy
 
+> **[Delta calendario lateral Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+
 > **[Canónico · verificado contra código el 2026-08-19]**
 >
 > Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
@@ -92,9 +94,14 @@ en caso contrario, el detalle público del anuncio sin crear catálogo ni pases 
 Verificación y seguimiento de publicación/enriquecimiento: `docs/testing/2026-10-07-novedades-quality.md`.
 El rediseño Paper está implementado y verificado en el candidato local de #1450: Inicio
 con abanico de portadas reales y cuatro tarjetas horizontales; Novedades con agenda por
-día, portadas 72/56 px y fuentes plegables. El ancla de una obra prioriza su próxima fecha
-publicada y conserva los avisos históricos dentro de ella. Integración/publicación pendientes;
-evidencia y límites en `docs/testing/2026-10-07-novedades-paper.md`.
+día, portadas 72/56 px y fuentes plegables. El calendario lateral conserva esas tarjetas,
+limita la agenda al mes/día elegido y da acceso directo a Información limitada y Sin mes
+confirmado. Cada modalidad exacta marca su día real; las fechas parciales no reciben un
+día artificial. La URL, el historial y el retorno del login mantienen mes/día/vista/filtros.
+El ancla de una obra prioriza su próxima fecha publicada dentro del período y conserva
+los avisos históricos dentro de ella. Integración/publicación pendientes en PR #1455;
+evidencia y límites en `docs/testing/2026-10-07-novedades-paper.md` y
+`docs/testing/2026-10-07-novedades-calendar.md`.
 
 ## Catálogo compartido
 

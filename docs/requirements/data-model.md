@@ -5194,7 +5194,12 @@ y escritura sólo de servicio, función idéntica a dev/local tras normalizar CR
 políticas RLS y los 311 anuncios previos intactos. No se insertaron fixtures productivos.
 
 La presentación agrupa las modalidades antes de exigir portada HTTPS segura y sinopsis no
-vacía. Explorar separa las obras limitadas en una lista plegable con motivos; el bloque de
+vacía. La vista publicada de Explorar separa obras limitadas en una lista plegable;
+el candidato Paper con calendario lateral (PR #1455) las hace accesibles arriba en
+«Información limitada» para el mes/día elegido, conservando motivos y acciones. La
+agenda mensual deriva de los mismos anuncios, sin nuevas tablas: sólo marcas para
+fechas exactas, meses parciales en su mes y año/unknown en «Sin mes confirmado».
+La obra abierta conserva todas sus modalidades. El bloque de
 Inicio filtra completas **antes** del límite: cuatro obras en el candidato de Inicio público
 Paper #1450 y tres en el Inicio personal. El abanico y el bloque público comparten lectura
 sin sesión mediante React.cache sólo durante el render actual; no hay caché persistente

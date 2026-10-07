@@ -1,5 +1,8 @@
 # Novedades e Inicio público — candidato Paper
 
+> Extensión posterior del mismo candidato: calendario lateral por mes/día que conserva
+> estas tarjetas e Inicio; evidencia final en [el informe del calendario](2026-10-07-novedades-calendar.md).
+
 > **[Verificado localmente · 2026-10-07]** Rama codex/novedades-paper, base main
 > 9e3d45b5. UI implementada y verificada; integración/publicación pendientes en #1450.
 > La mejora anterior de datos/enlaces sí está publicada mediante PR #1452.

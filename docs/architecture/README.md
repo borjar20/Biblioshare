@@ -1,5 +1,10 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta calendario lateral Paper #1450 · 2026-10-07: 65 unitarios focales y
+> 22 recorridos build/start PASS; agenda mensual/diaria, vistas superiores y URL/historial,
+> conservando tarjetas e Inicio aprobados. Candidato en PR #1455; publicación pendiente.
+> Evidencia en [el informe del calendario](../testing/2026-10-07-novedades-calendar.md).]**
+
 > **[Delta Paper #1450 · 2026-10-07: candidato local verificado con 44 unitarios,
 > 19 casos build/start a 320–1920 px en claro/oscuro y ocho capturas con metadatos
 > públicos reales. Inicio público con abanico/cuatro obras; agenda compacta por día

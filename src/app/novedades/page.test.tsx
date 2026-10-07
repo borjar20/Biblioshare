@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { Children, Suspense, isValidElement, type ReactElement } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { Children, Suspense, isValidElement, useSyncExternalStore, type ReactElement } from "react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({ user: vi.fn(), public: vi.fn(), personal: vi.f
 vi.mock("@/lib/supabase/server", () => ({ getCurrentUser: mocks.user }));
 vi.mock("@/lib/releases/queries", () => ({ getPublicReleases: mocks.public, getPersonalReleases: mocks.personal, getReleaseSourceStatus: mocks.sources, getReleaseUserState: mocks.state, getReleaseById: mocks.byId }));
 vi.mock("next/server", () => ({ connection: async () => undefined }));
-vi.mock("next/navigation", () => ({ redirect: (href: string) => { throw new Error(`redirect:${href}`); }, useRouter: () => ({ refresh: mocks.refresh, push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ redirect: (href: string) => { throw new Error(`redirect:${href}`); }, useRouter: () => ({ refresh: mocks.refresh, push: vi.fn() }), useSearchParams: () => new URLSearchParams(useSyncExternalStore((listener) => { window.addEventListener("popstate", listener); return () => window.removeEventListener("popstate", listener); }, () => window.location.search, () => "")) }));
 vi.mock("next-intl/server", () => ({ getTranslations: async (namespace: "releases") => createTranslator({ locale: "es", messages, namespace }) }));
 vi.mock("@/app/novedades/actions", () => ({ addNoveltyToPending: vi.fn(), chooseReleaseNotice: vi.fn() }));
 
@@ -32,16 +32,20 @@ async function body(params: Record<string, string> = {}) {
   return resolve(child.props);
 }
 async function display(params: Record<string, string> = {}) {
-  const content = await body(params);
+  const presentation = { mes: "2027-02", ...params };
+  window.history.replaceState(null, "", "/novedades?" + new URLSearchParams(presentation));
+  const content = await body(presentation);
   return render(<NextIntlClientProvider locale="es" timeZone="Europe/Madrid" messages={{ releases: messages.releases }}>{content}</NextIntlClientProvider>);
 }
-beforeEach(() => { vi.clearAllMocks(); mocks.user.mockResolvedValue(null); mocks.public.mockResolvedValue([]); mocks.personal.mockResolvedValue([]); mocks.sources.mockResolvedValue([]); mocks.state.mockResolvedValue({}); mocks.byId.mockResolvedValue(null); });
-afterEach(cleanup);
+beforeEach(() => { vi.clearAllMocks();
+  const push = window.history.pushState.bind(window.history);
+  vi.spyOn(window.history, "pushState").mockImplementation((...args) => { push(...args); window.dispatchEvent(new PopStateEvent("popstate")); }); mocks.user.mockResolvedValue(null); mocks.public.mockResolvedValue([]); mocks.personal.mockResolvedValue([]); mocks.sources.mockResolvedValue([]); mocks.state.mockResolvedValue({}); mocks.byId.mockResolvedValue(null); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("calendario público y frontera privada", () => {
   it("la consulta pública usa España/castellano sin escribir ni exigir sesión", async () => {
     await display();
-    expect(mocks.public).toHaveBeenCalledWith({ type: "all", market: "ES", language: "es", includeUndated: true });
+    expect(mocks.public).toHaveBeenCalledWith({ type: "all", market: "ES", language: "es", includeUndated: true, from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     expect(mocks.state).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Mercado", { exact: true }).getAttribute("name")).toBe("mercado");
     expect(within(screen.getByRole("navigation", { name: "Filtros de novedades" })).getByRole("link", { name: "Todo" }).getAttribute("aria-current")).toBe("page");
@@ -120,9 +124,10 @@ describe("calendario público y frontera privada", () => {
       cover_url: "https://images.example/cover.jpg", synopsis: "Una descripción disponible" });
     mocks.public.mockResolvedValue(groupReleaseWorks([incomplete, complete], {}, new Date("2026-10-06T12:00:00Z")));
     await display();
-    const limited = screen.getByText("Anuncios con información limitada").closest("details");
-    expect(limited).toBeTruthy();
-    expect(within(limited!).getByRole("heading", { name: "Anuncio incompleto", hidden: true })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Información limitada/ }));
+    expect(screen.getByRole("heading", { name: "Anuncio incompleto" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Anuncio completo" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Estrenos/ }));
     const main = screen.getByRole("heading", { name: "Con día confirmado" }).closest("section")!;
     expect(within(main).queryByRole("heading", { name: "Anuncio incompleto" })).toBeNull();
     expect(within(main).getByRole("heading", { name: "Anuncio completo" })).toBeTruthy();
@@ -150,6 +155,39 @@ it("quick type filters preserve the personal selection and the explicit market",
   mocks.user.mockResolvedValue({ id: "actor" });
   await display({ seleccion: "personal", tipo: "movie", mercado: "INT" });
   const filters = within(screen.getByRole("navigation", { name: "Filtros de novedades" }));
-  expect(filters.getByRole("link", { name: "Libros" }).getAttribute("href")).toBe("/novedades?seleccion=personal&tipo=book&mercado=INT");
+  const path = new URL(filters.getByRole("link", { name: "Libros" }).getAttribute("href")!, "http://localhost");
+  expect(Object.fromEntries(path.searchParams)).toEqual({ mes: "2027-02", seleccion: "personal", tipo: "book", mercado: "INT" });
   expect(filters.getByRole("link", { name: "Películas" }).getAttribute("aria-current")).toBe("page");
+});
+it("una obra enfocada conserva su marca de calendario sin duplicar la ficha", async () => {
+  const row = releaseFixture();
+  mocks.byId.mockResolvedValue(row);
+  mocks.public.mockResolvedValue(groupReleaseWorks([row], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ lanzamiento: row.id });
+  expect(screen.getByRole("button", { name: /^14 de febrero de 2027: 1 obra/ })).toBeTruthy();
+  expect(screen.getAllByRole("heading", { name: row.title })).toHaveLength(1);
+});
+
+it("el retorno de login de la ficha enfocada sigue el mes elegido en el cliente", async () => {
+  const row = releaseFixture();
+  mocks.byId.mockResolvedValue(row);
+  mocks.public.mockResolvedValue(groupReleaseWorks([row], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ lanzamiento: row.id });
+  fireEvent.click(screen.getByRole("button", { name: "Mes siguiente" }));
+  const article = screen.getByRole("heading", { name: row.title }).closest("article")!;
+  const login = new URL(within(article).getByRole("link", { name: "Añadir a Pendiente" }).getAttribute("href")!, "http://localhost");
+  const next = new URL(login.searchParams.get("next")!, "http://localhost");
+  expect(next.searchParams.get("mes")).toBe("2027-03");
+  expect(next.searchParams.get("lanzamiento")).toBe(row.id);
+});
+
+it("cerrar el detalle mediante un filtro conserva el mes visible derivado de ese anuncio", async () => {
+  const row = releaseFixture();
+  mocks.byId.mockResolvedValue(row);
+  mocks.public.mockResolvedValue(groupReleaseWorks([row], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ lanzamiento: row.id, mes: "" });
+  const filters = within(screen.getByRole("navigation", { name: "Filtros de novedades" }));
+  const path = new URL(filters.getByRole("link", { name: "Libros" }).getAttribute("href")!, "http://localhost");
+  expect(path.searchParams.get("mes")).toBe("2027-02");
+  expect(path.searchParams.has("lanzamiento")).toBe(false);
 });

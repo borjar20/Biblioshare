@@ -6869,3 +6869,25 @@ Estado: candidato local #1450; 44 unitarios y 19 casos build/start PASS, incluye
 datos/enlaces anterior sí se publicó en PR #1452 (merge 9e3d45b5, 09:24:48 UTC; smoke
 público 09:27:24 UTC del 2026-10-07). #1451 conserva la observación del enriquecimiento
 diario. Evidencia visual en `docs/testing/2026-10-07-novedades-paper.md`.
+
+## 2026-10-07 — Novedades: calendario lateral conservando el diseño Paper aprobado
+
+El usuario acepta calendario lateral y pide conservar las tarjetas Paper e Inicio
+aprobados. Se reutiliza ReleaseWorkCard y su CSS sin cambios; el calendario tiene
+estilos propios. En escritorio es lateral sticky y en móvil precede a la agenda.
+
+La lista muestra un mes o un día. Cada modalidad con día exacto marca su fecha real:
+la misma obra puede aparecer en meses distintos, pero una sola vez en la lista del
+período. Dentro de la tarjeta conserva todos sus lanzamientos y avisos. Un anuncio con
+mes va a ese mes sin asignarle día; año/unknown permanece en una vista global.
+Información limitada es una vista accesible arriba, también en días mixtos, sin
+atravesar los otros meses. La calidad y la precisión siguen siendo ejes independientes.
+
+mes/dia/vista viven en la URL mediante el History API integrado con useSearchParams.
+Cambiar período usa los datos de la petición ya recibidos; filtros/acciones mantienen
+su contexto, historial nativo y retorno al login. No hay caché de elecciones personales,
+consulta nueva para cambiar mes ni migración. La ficha enfocada se cuenta en el mapa,
+se muestra una sola vez arriba y conserva el mes implícito al cerrarse con un filtro.
+
+Estado: candidato local en PR #1455; integración/publicación pendientes en #1450.
+Evidencia y límites: docs/testing/2026-10-07-novedades-calendar.md.

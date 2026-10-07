@@ -1,5 +1,7 @@
 # Guía de UI — principios y patrones
 
+> **[Delta calendario lateral Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+
 > **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19);
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
 > verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
@@ -123,7 +125,13 @@ editor de catálogo inline (banner + barra sticky).
    inglesa se etiqueta. El candidato Paper #1450 verificado localmente usa tarjetas
    horizontales sin altura mínima, portadas de 72 px (56 px en móvil) y título serif de
    19 px. Agrupa por próximo día publicado sin duplicar la obra ni desplazarla a un aviso
-   histórico; conserva los anuncios parciales fuera de los grupos diarios. Los filtros
+   histórico. El calendario lateral mantiene estas tarjetas y muestra un mes o día a la vez:
+   las marcas cuentan obras por fecha real (incluidas modalidades del mismo título en
+   meses distintos); no asigna día a fechas parciales. Los anuncios con sólo mes aparecen
+   en ese mes, y los de año/fecha desconocida en «Sin mes confirmado». «Información
+   limitada» está accesible arriba, sin atravesar toda la agenda. En móvil el calendario
+   precede a la lista; en escritorio permanece en el lateral. URL/historial conservan
+   mes, día, vista y filtros, también al volver del login. Los filtros
    rápidos mantienen selección y mercado; fuente/revisión por modalidad quedan en un
    desplegable de 44 px. Pendiente aparece en la fila del lanzamiento que ejecuta;
    Avisarme sigue siendo independiente por lanzamiento. La revisión global queda al

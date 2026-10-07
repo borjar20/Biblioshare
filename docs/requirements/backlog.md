@@ -26,8 +26,11 @@
 - [ ] Observar el siguiente enriquecimiento diario (#1451); evidencia en
   `docs/testing/2026-10-07-novedades-quality.md`.
 - [x] Implementar y verificar localmente el rediseño Paper de Inicio y Novedades (#1450).
+- [x] Añadir calendario lateral por mes/día, acceso directo a información limitada y
+  anuncios sin mes, conservando las tarjetas Paper (#1450, candidato en PR #1455).
 - [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
-  Evidencia: `docs/testing/2026-10-07-novedades-paper.md`.
+  Evidencia: `docs/testing/2026-10-07-novedades-paper.md` y
+  `docs/testing/2026-10-07-novedades-calendar.md`.
 - [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.
   Aún no hay filas editoriales, suscripciones ni entregas, así que no se ha probado una
   notificación a usuarios. Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423),
