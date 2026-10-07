@@ -6841,3 +6841,103 @@ catálogo ni pases. No se añade estado de publicación ni una segunda cola de a
 Estado: código/local/dev del 2026-10-07; producción pendiente en #1451 y #1449.
 El rediseño visual Paper acordado se sigue en #1450. Evidencia en
 `docs/testing/2026-10-07-novedades-quality.md`.
+
+
+## 2026-10-07 — Paper: portada y fecha por delante de controles repetidos
+
+Inicio público conserva el diseño aprobado: mensaje de producto, abanico de hasta tres
+portadas reales y cuatro obras semanales en tarjetas horizontales de dos columnas
+(una en móvil). La columna del Inicio personal mantiene tres obras. No se inventan
+portadas ni obras para rellenar un estado vacío.
+
+Novedades usa tarjetas sin altura mínima, portada 72 px/56 px y título serif de 19 px.
+Cada obra aparece una sola vez en el grupo de su próximo día publicado; si sólo quedan
+avisos históricos o cancelados, se conserva su día real. El historial y las modalidades
+permanecen dentro de la obra. Fechas parciales y calidad limitada siguen siendo ejes
+independientes. Pendiente va en la fila del lanzamiento que ejecuta; los avisos siguen
+siendo elecciones individuales por modalidad.
+
+La procedencia/revisión por lanzamiento queda en un desplegable nativo con objetivo
+táctil de 44 px, y la revisión global al pie. En móvil las fechas y acciones usan todo
+el ancho de la tarjeta; esto evita apilar innecesariamente controles junto a la portada.
+El color de la portada aporta una atmósfera discreta; se conservan los tokens Paper.
+La lectura pública semanal se deduplica sólo dentro del render con React.cache y
+cliente sin sesión, sin caché persistente ni estado privado compartido.
+
+Estado: candidato local #1450; 44 unitarios y 19 casos build/start PASS, incluyendo
+320/390/768/1280/1920 px y claro/oscuro. Integración/publicación pendientes. La mejora de
+datos/enlaces anterior sí se publicó en PR #1452 (merge 9e3d45b5, 09:24:48 UTC; smoke
+público 09:27:24 UTC del 2026-10-07). #1451 conserva la observación del enriquecimiento
+diario. Evidencia visual en `docs/testing/2026-10-07-novedades-paper.md`.
+
+## 2026-10-07 — Novedades: calendario lateral conservando el diseño Paper aprobado
+
+El usuario acepta calendario lateral y pide conservar las tarjetas Paper e Inicio
+aprobados. Se reutiliza ReleaseWorkCard y su CSS sin cambios; el calendario tiene
+estilos propios. En escritorio es lateral sticky y en móvil precede a la agenda.
+
+La lista muestra un mes o un día. Cada modalidad con día exacto marca su fecha real:
+la misma obra puede aparecer en meses distintos, pero una sola vez en la lista del
+período. Dentro de la tarjeta conserva todos sus lanzamientos y avisos. Un anuncio con
+mes va a ese mes sin asignarle día; año/unknown permanece en una vista global.
+Información limitada es una vista accesible arriba, también en días mixtos, sin
+atravesar los otros meses. La calidad y la precisión siguen siendo ejes independientes.
+
+mes/dia/vista viven en la URL mediante el History API integrado con useSearchParams.
+Cambiar período usa los datos de la petición ya recibidos; filtros/acciones mantienen
+su contexto, historial nativo y retorno al login. No hay caché de elecciones personales,
+consulta nueva para cambiar mes ni migración. La ficha enfocada se cuenta en el mapa,
+se muestra una sola vez arriba y conserva el mes implícito al cerrarse con un filtro.
+
+Estado: candidato local en PR #1455; integración/publicación pendientes en #1450.
+Evidencia y límites: docs/testing/2026-10-07-novedades-calendar.md.
+
+## 2026-10-07 — Volver arriba en Novedades móvil
+
+Se añade a petición del usuario un control flotante Paper, sólo bajo 768 px, visible
+después de bajar 480 px. Se coloca a la izquierda con separación de la barra inferior
+y safe-area, dejando libre la zona derecha de la mascota. Su objetivo mide 44 px.
+
+La suscripción pasiva usa useSyncExternalStore con snapshot SSR falso y limpieza del
+listener. Al activar, enfoca el h1 de su propia página y vuelve a scroll 0, suave o
+instantáneo según prefers-reduced-motion. No cambia URL, filtros ni período. Se monta
+también en estados de error/vacío, fuera del Suspense de los datos.
+
+Estado: candidato local de PR #1455; publicación pendiente en #1450. Tres regresiones
+RED→GREEN, 26 focales de página/calendario, 24 E2E y 548 archivos/5441 unitarios PASS.
+Los dos timeouts iniciales de escaneo y su control aislado se conservan en #1459.
+
+## 2026-10-07 — Volver arriba: lado derecho por preferencia del usuario
+
+El usuario solicita mover el control móvil de izquierda a derecha. Conserva su
+separación de la barra inferior y el safe-area. Si está la compañera flotante, el
+control se eleva para mantener pulsables ambos elementos. No cambia la navegación.
+
+## 2026-10-07 — Novedades: un panel Paper para tipos, mercado y vistas
+
+El usuario pide agrupar y mejorar la estética de los filtros. Se reúnen en una
+superficie Paper: Tipo de obra segmentado 2×2 en móvil y cuatro columnas desde 640 px,
+Mercado y Aplicar alineados, y las vistas mensuales con sus contadores al pie. Se
+mantienen los tokens, objetivos de 44 px y estados accesibles de selección/foco.
+
+ReleaseCalendarViews se extrae de la agenda para componerlo dentro de ReleaseFilterControls.
+Continúa usando el mismo estado de URL y los datos recibidos; tipo/mercado conservan
+mes/día/vista, y cambiar de vista no pide anuncios nuevos. El botón compacto conserva
+el nombre accesible Aplicar filtros. Las tarjetas, el calendario y el Inicio aprobados
+no cambian. Sin migración, consultas nuevas ni caché adicional.
+
+Estado: candidato verificado de PR #1455; integración/publicación pendientes en #1450.
+Evidencia funcional y visual en docs/testing/2026-10-07-novedades-calendar.md.
+
+## 2026-10-07 — Novedades: plegar el panel aprobado sin perder cambios
+
+El usuario aprueba los filtros agrupados y pide poder ocultarlos. El panel empieza
+abierto para conservar la presentación aprobada, y la cabecera permite Ocultar filtros
+/ Mostrar filtros. Cerrado resume el tipo y mercado aplicados. El botón mantiene el
+foco y declara el estado y el cuerpo controlado; los controles ocultos quedan fuera
+de la navegación accesible.
+
+El cuerpo se oculta sin desmontarse: un cambio de mercado aún no aplicado permanece
+al abrirlo de nuevo. Plegar no aplica filtros, no cambia URL, vista ni período y no
+introduce persistencia o consultas. Estado: candidato en PR #1455; publicación
+pendiente en #1450. Evidencia en docs/testing/2026-10-07-novedades-calendar.md.

@@ -1,5 +1,7 @@
 # Glosario de UI — un nombre por concepto
 
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+
 > **[Canónico · verificado 2026-08-20]**
 > Delta de navegación principal y herramientas de Biblioteca verificado 2026-10-03;
 > el resto conserva su fecha de verificación.
@@ -39,6 +41,21 @@ distinto de España. **Sale esta semana** enlaza desde Inicio al calendario.
 **Anuncios con información limitada** agrupa obras sin portada segura o sinopsis;
 **Sin portada** y **Sin sinopsis** explican el motivo. **Sinopsis en inglés** describe el
 texto disponible, sin cambiar el mercado ni el idioma de edición/doblaje del lanzamiento.
+El candidato Paper local de #1450 añade **Fuente y revisión** para la procedencia por
+lanzamiento y **Detalles del lanzamiento** para el anuncio abierto. **Pendiente** es la
+etiqueta breve del botón compacto; su nombre accesible sigue siendo **Añadir a Pendiente**.
+El calendario lateral del candidato muestra **Estrenos** e **Información limitada**
+para el mes o día consultado; **Sin mes confirmado** reúne anuncios con año o fecha
+por confirmar, accesibles desde cualquier mes. **Ir a un mes**, **Mes actual** y
+**Ver mes completo** navegan sin inventar una fecha exacta. **Volver arriba** devuelve
+al título de Novedades desde la lista móvil sin cambiar el período ni los filtros.
+**Tipo de obra** agrupa Todo, Libros, Películas y Series y temporadas en el panel de
+filtros. **Mercado** conserva España, Internacional y Todos los mercados; **Aplicar**
+es la etiqueta compacta del botón, cuyo nombre accesible sigue siendo **Aplicar filtros**.
+Las vistas y contadores comparten ese panel con separación visual. **Filtros** titula
+la cabecera plegable; **Ocultar filtros** y **Mostrar filtros** cierran/abren el panel
+sin aplicar ni borrar elecciones.
+Integración/publicación pendientes; no cambia el efecto de los controles.
 La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
 **Publicar**; publicar un anuncio no registra la obra en su biblioteca.
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { Children, Suspense, isValidElement, type ReactElement } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { Children, Suspense, cloneElement, isValidElement, useSyncExternalStore, type ReactElement } from "react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({ user: vi.fn(), public: vi.fn(), personal: vi.f
 vi.mock("@/lib/supabase/server", () => ({ getCurrentUser: mocks.user }));
 vi.mock("@/lib/releases/queries", () => ({ getPublicReleases: mocks.public, getPersonalReleases: mocks.personal, getReleaseSourceStatus: mocks.sources, getReleaseUserState: mocks.state, getReleaseById: mocks.byId }));
 vi.mock("next/server", () => ({ connection: async () => undefined }));
-vi.mock("next/navigation", () => ({ redirect: (href: string) => { throw new Error(`redirect:${href}`); }, useRouter: () => ({ refresh: mocks.refresh, push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ redirect: (href: string) => { throw new Error(`redirect:${href}`); }, useRouter: () => ({ refresh: mocks.refresh, push: vi.fn() }), useSearchParams: () => new URLSearchParams(useSyncExternalStore((listener) => { window.addEventListener("popstate", listener); return () => window.removeEventListener("popstate", listener); }, () => window.location.search, () => "")) }));
 vi.mock("next-intl/server", () => ({ getTranslations: async (namespace: "releases") => createTranslator({ locale: "es", messages, namespace }) }));
 vi.mock("@/app/novedades/actions", () => ({ addNoveltyToPending: vi.fn(), chooseReleaseNotice: vi.fn() }));
 
@@ -32,19 +32,23 @@ async function body(params: Record<string, string> = {}) {
   return resolve(child.props);
 }
 async function display(params: Record<string, string> = {}) {
-  const content = await body(params);
+  const presentation = { mes: "2027-02", ...params };
+  window.history.replaceState(null, "", "/novedades?" + new URLSearchParams(presentation));
+  const content = await body(presentation);
   return render(<NextIntlClientProvider locale="es" timeZone="Europe/Madrid" messages={{ releases: messages.releases }}>{content}</NextIntlClientProvider>);
 }
-beforeEach(() => { vi.clearAllMocks(); mocks.user.mockResolvedValue(null); mocks.public.mockResolvedValue([]); mocks.personal.mockResolvedValue([]); mocks.sources.mockResolvedValue([]); mocks.state.mockResolvedValue({}); mocks.byId.mockResolvedValue(null); });
-afterEach(cleanup);
+beforeEach(() => { vi.clearAllMocks();
+  const push = window.history.pushState.bind(window.history);
+  vi.spyOn(window.history, "pushState").mockImplementation((...args) => { push(...args); window.dispatchEvent(new PopStateEvent("popstate")); }); mocks.user.mockResolvedValue(null); mocks.public.mockResolvedValue([]); mocks.personal.mockResolvedValue([]); mocks.sources.mockResolvedValue([]); mocks.state.mockResolvedValue({}); mocks.byId.mockResolvedValue(null); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("calendario público y frontera privada", () => {
   it("la consulta pública usa España/castellano sin escribir ni exigir sesión", async () => {
     await display();
-    expect(mocks.public).toHaveBeenCalledWith({ type: "all", market: "ES", language: "es", includeUndated: true });
+    expect(mocks.public).toHaveBeenCalledWith({ type: "all", market: "ES", language: "es", includeUndated: true, from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     expect(mocks.state).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Mercado", { exact: true }).getAttribute("name")).toBe("mercado");
-    expect(screen.getByLabelText("Filtros de novedades", { exact: true, selector: "select" }).getAttribute("name")).toBe("tipo");
+    expect(within(screen.getByRole("navigation", { name: "Filtros de novedades" })).getByRole("link", { name: "Todo" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByText("No hay novedades para estos filtros")).toBeTruthy();
   });
   it("un error de lectura ofrece reintento y nunca finge un vacío", async () => {
@@ -69,7 +73,7 @@ describe("calendario público y frontera privada", () => {
     await display();
     expect(screen.getByRole("heading", { name: "Con día confirmado" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Anuncios sin día exacto" })).toBeTruthy();
-    expect(screen.getByText("febrero de 2027")).toBeTruthy();
+    expect(within(screen.getByRole("heading", { name: "Libro de febrero" }).closest("article")!).getByText("febrero de 2027")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
   });
   it("una serie con fecha internacional ofrece ese filtro explícitamente", async () => {
@@ -97,7 +101,7 @@ describe("calendario público y frontera privada", () => {
     const row = releaseFixture({ market: "INT", status: "cancelled" });
     mocks.byId.mockResolvedValue(row);
     await display({ lanzamiento: row.id });
-    expect(screen.getByRole("heading", { name: "Lanzamiento del aviso" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Detalles del lanzamiento" })).toBeTruthy();
     expect(screen.getByText("Lanzamiento cancelado")).toBeTruthy();
     expect(within(screen.getByRole("article")).getByText("Internacional")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Avisarme" })).toBeNull();
@@ -120,9 +124,10 @@ describe("calendario público y frontera privada", () => {
       cover_url: "https://images.example/cover.jpg", synopsis: "Una descripción disponible" });
     mocks.public.mockResolvedValue(groupReleaseWorks([incomplete, complete], {}, new Date("2026-10-06T12:00:00Z")));
     await display();
-    const limited = screen.getByText("Anuncios con información limitada").closest("details");
-    expect(limited).toBeTruthy();
-    expect(within(limited!).getByRole("heading", { name: "Anuncio incompleto", hidden: true })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Información limitada/ }));
+    expect(screen.getByRole("heading", { name: "Anuncio incompleto" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Anuncio completo" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Estrenos/ }));
     const main = screen.getByRole("heading", { name: "Con día confirmado" }).closest("section")!;
     expect(within(main).queryByRole("heading", { name: "Anuncio incompleto" })).toBeNull();
     expect(within(main).getByRole("heading", { name: "Anuncio completo" })).toBeTruthy();
@@ -144,4 +149,130 @@ describe("calendario público y frontera privada", () => {
     expect(screen.getByText("Sinopsis en inglés")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Retirar aviso" })).toBeTruthy();
   });
+});
+
+it("quick type filters preserve the personal selection and the explicit market", async () => {
+  mocks.user.mockResolvedValue({ id: "actor" });
+  await display({ seleccion: "personal", tipo: "movie", mercado: "INT" });
+  const filters = within(screen.getByRole("navigation", { name: "Filtros de novedades" }));
+  const path = new URL(filters.getByRole("link", { name: "Libros" }).getAttribute("href")!, "http://localhost");
+  expect(Object.fromEntries(path.searchParams)).toEqual({ mes: "2027-02", seleccion: "personal", tipo: "book", mercado: "INT" });
+  expect(filters.getByRole("link", { name: "Películas" }).getAttribute("aria-current")).toBe("page");
+});
+it("una obra enfocada conserva su marca de calendario sin duplicar la ficha", async () => {
+  const row = releaseFixture();
+  mocks.byId.mockResolvedValue(row);
+  mocks.public.mockResolvedValue(groupReleaseWorks([row], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ lanzamiento: row.id });
+  expect(screen.getByRole("button", { name: /^14 de febrero de 2027: 1 obra/ })).toBeTruthy();
+  expect(screen.getAllByRole("heading", { name: row.title })).toHaveLength(1);
+});
+
+it("el retorno de login de la ficha enfocada sigue el mes elegido en el cliente", async () => {
+  const row = releaseFixture();
+  mocks.byId.mockResolvedValue(row);
+  mocks.public.mockResolvedValue(groupReleaseWorks([row], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ lanzamiento: row.id });
+  fireEvent.click(screen.getByRole("button", { name: "Mes siguiente" }));
+  const article = screen.getByRole("heading", { name: row.title }).closest("article")!;
+  const login = new URL(within(article).getByRole("link", { name: "Añadir a Pendiente" }).getAttribute("href")!, "http://localhost");
+  const next = new URL(login.searchParams.get("next")!, "http://localhost");
+  expect(next.searchParams.get("mes")).toBe("2027-03");
+  expect(next.searchParams.get("lanzamiento")).toBe(row.id);
+});
+
+it("cerrar el detalle mediante un filtro conserva el mes visible derivado de ese anuncio", async () => {
+  const row = releaseFixture();
+  mocks.byId.mockResolvedValue(row);
+  mocks.public.mockResolvedValue(groupReleaseWorks([row], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ lanzamiento: row.id, mes: "" });
+  const filters = within(screen.getByRole("navigation", { name: "Filtros de novedades" }));
+  const path = new URL(filters.getByRole("link", { name: "Libros" }).getAttribute("href")!, "http://localhost");
+  expect(path.searchParams.get("mes")).toBe("2027-02");
+  expect(path.searchParams.has("lanzamiento")).toBe(false);
+});
+
+async function displayPageWithTopControl() {
+  const root = await ReleasesPage({ searchParams: Promise.resolve({}) });
+  const content = await body();
+  const children = Children.map(root.props.children, (child) => isValidElement(child) && child.type === Suspense ? content : child);
+  return render(<NextIntlClientProvider locale="es" timeZone="Europe/Madrid" messages={{ releases: messages.releases }}>{cloneElement(root, {}, children)}</NextIntlClientProvider>);
+}
+function scrollPageTo(top: number) {
+  act(() => { vi.stubGlobal("scrollY", top); window.dispatchEvent(new Event("scroll")); });
+}
+
+describe("volver arriba desde la lista de novedades", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("aparece al bajar y desaparece al volver al inicio", async () => {
+    vi.stubGlobal("scrollY", 0);
+    await displayPageWithTopControl();
+    expect(screen.queryByRole("button", { name: "Volver arriba" })).toBeNull();
+    scrollPageTo(700);
+    expect(screen.getByRole("button", { name: "Volver arriba" })).toBeTruthy();
+    scrollPageTo(0);
+    expect(screen.queryByRole("button", { name: "Volver arriba" })).toBeNull();
+  });
+  it("devuelve scroll y foco al título sin modificar la URL", async () => {
+    vi.stubGlobal("scrollY", 700);
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    vi.stubGlobal("scrollTo", (options: ScrollToOptions) => scrollPageTo(options.top ?? 0));
+    await displayPageWithTopControl();
+    const path = window.location.href;
+    fireEvent.click(screen.getByRole("button", { name: "Volver arriba" }));
+    expect(window.scrollY).toBe(0);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Novedades", level: 1 }));
+    expect(window.location.href).toBe(path);
+    expect(screen.queryByRole("button", { name: "Volver arriba" })).toBeNull();
+  });
+  it("vuelve sin animación cuando se prefiere movimiento reducido", async () => {
+    vi.stubGlobal("scrollY", 700);
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    const movement: ScrollBehavior[] = [];
+    vi.stubGlobal("scrollTo", (options: ScrollToOptions) => { movement.push(options.behavior!); scrollPageTo(options.top ?? 0); });
+    await displayPageWithTopControl();
+    fireEvent.click(screen.getByRole("button", { name: "Volver arriba" }));
+    expect(window.scrollY).toBe(0);
+    expect(movement).toEqual(["instant"]);
+  });
+});
+
+it("agrupa tipos, mercado y vistas sin perder el período al cambiar de vista", async () => {
+  const complete = releaseFixture({ work_key: "grouped-main", title: "Estreno de febrero" });
+  const limited = releaseFixture({ id: "8174f7cd-39ed-40eb-8195-3d3d713a6a04", work_key: "grouped-limited", title: "Limitado de febrero", cover_url: null });
+  mocks.public.mockResolvedValue(groupReleaseWorks([complete, limited], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ mercado: "all", dia: "2027-02-03" });
+  const filters = within(screen.getByRole("region", { name: "Filtros de novedades" }));
+  expect(filters.getByRole("link", { name: "Libros" })).toBeTruthy();
+  expect(filters.getByRole("combobox", { name: "Mercado" })).toBeTruthy();
+  expect(filters.getByRole("button", { name: "Aplicar filtros" })).toBeTruthy();
+  fireEvent.click(filters.getByRole("button", { name: /Información limitada/ }));
+  const params = new URLSearchParams(window.location.search);
+  expect(Object.fromEntries(params)).toMatchObject({ mercado: "all", mes: "2027-02", dia: "2027-02-03", vista: "limitadas" });
+  const form = filters.getByRole("form", { name: "Filtros de novedades" });
+  expect(form.querySelector<HTMLInputElement>('input[name="mes"]')?.value).toBe("2027-02");
+  expect(form.querySelector<HTMLInputElement>('input[name="vista"]')?.value).toBe("limitadas");
+});
+
+it("folds filters without losing a draft market, the selected view or URL context", async () => {
+  mocks.public.mockResolvedValue(groupReleaseWorks([releaseFixture({ cover_url: null })]));
+  await display({ tipo: "movie", mercado: "INT", dia: "2027-02-10", vista: "limitadas" });
+  const panel = within(screen.getByRole("region", { name: "Filtros de novedades" }));
+  const market = panel.getByRole("combobox", { name: "Mercado" }) as HTMLSelectElement;
+  fireEvent.change(market, { target: { value: "all" } });
+  const url = window.location.href;
+  const hide = panel.getByRole("button", { name: "Ocultar filtros" });
+  expect(hide.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(hide);
+  expect(panel.queryByRole("combobox", { name: "Mercado" })).toBeNull();
+  expect(panel.queryByRole("link", { name: "Libros" })).toBeNull();
+  expect(panel.queryByRole("button", { name: /Información limitada/ })).toBeNull();
+  expect(window.location.href).toBe(url);
+  const show = panel.getByRole("button", { name: "Mostrar filtros" });
+  expect(show.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(show);
+  expect(panel.getByRole("combobox", { name: "Mercado" })).toBe(market);
+  expect(market.value).toBe("all");
+  expect(panel.getByRole("button", { name: /Información limitada/ }).getAttribute("aria-pressed")).toBe("true");
+  expect(window.location.href).toBe(url);
 });

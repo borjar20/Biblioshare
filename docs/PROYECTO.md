@@ -1,5 +1,7 @@
 # Biblioshare — qué existe hoy
 
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+
 > **[Canónico · verificado contra código el 2026-08-19]**
 >
 > Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
@@ -85,12 +87,25 @@ El delta de calidad (#1451, código en PR #1452 y esquema aplicado en producció
 y portada oficiales antes de clasificar. Explorar reserva las obras con portada y sinopsis
 para el listado principal; las restantes mantienen fecha, fuente y acciones en «Anuncios
 con información limitada». La sinopsis inglesa se etiqueta. Inicio selecciona sólo obras
-completas antes de limitar a tres. Los datos conocidos sobreviven a un fallo opcional;
+completas antes de limitar a cuatro en Inicio público y tres en la columna del Inicio personal. Los datos conocidos sobreviven a un fallo opcional;
 completarlos mueve la obra al listado principal en la siguiente consulta. Lo que esperas
 conserva las elecciones personales. Título y portada abren catálogo cuando existe y,
 en caso contrario, el detalle público del anuncio sin crear catálogo ni pases (#1449).
 Verificación y seguimiento de publicación/enriquecimiento: `docs/testing/2026-10-07-novedades-quality.md`.
-El rediseño visual acordado se sigue por separado en #1450.
+El rediseño Paper está implementado y verificado en el candidato local de #1450: Inicio
+con abanico de portadas reales y cuatro tarjetas horizontales; Novedades con agenda por
+día, portadas 72/56 px y fuentes plegables. El calendario lateral conserva esas tarjetas,
+limita la agenda al mes/día elegido y da acceso directo a Información limitada y Sin mes
+confirmado. Cada modalidad exacta marca su día real; las fechas parciales no reciben un
+día artificial. Tipo de obra, Mercado/Aplicar y las vistas con sus contadores se agrupan
+ahora en un panel Paper compacto, con segmentación 2×2 en móvil y una fila en escritorio.
+El panel se puede plegar; cerrado resume tipo/mercado y conserva borradores y selecciones.
+La URL, el historial y el retorno del login mantienen mes/día/vista/filtros.
+En móvil, Volver arriba aparece al bajar, respeta movimiento reducido y retorna al título.
+El ancla de una obra prioriza su próxima fecha publicada dentro del período y conserva
+los avisos históricos dentro de ella. Integración/publicación pendientes en PR #1455;
+evidencia y límites en `docs/testing/2026-10-07-novedades-paper.md` y
+`docs/testing/2026-10-07-novedades-calendar.md`.
 
 ## Catálogo compartido
 

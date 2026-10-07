@@ -6,7 +6,7 @@ import type { CulturalRelease } from "../../src/lib/releases/types";
 import { addDays, madridDay, formatReleaseDate } from "../../src/lib/releases/precision";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-if (url !== "http://127.0.0.1:54321") throw new Error("Novedades fixtures require disposable local Supabase");
+if (!["http://127.0.0.1:54321", "http://127.0.0.1:55421"].includes(url)) throw new Error("Novedades fixtures require disposable local Supabase");
 const service = createClient<Database>(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const movieId = "cbc1a019-0ac0-4d5e-8b24-9febc1bf0a10";
 const monthBookId = "cbc1a019-0ac0-4d5e-8b24-9febc1bf0a11";
@@ -76,6 +76,8 @@ test.beforeAll(async () => {
       movie_id: null, tmdb_id: null, language: "es", date_precision: "month", date_value: month }),
     row(unknownId, "CI Novedades libro sin fecha", { source: "editorial", work_key: `book:${unknownBookId}`, item_type: "book", modality: "book_translation", book_id: unknownBookId,
       movie_id: null, tmdb_id: null, language: "es", date_precision: "unknown", date_value: null }),
+    ...Array.from({ length: 3 }, (_, i) => row(`cbc1a019-0ac0-4d5e-8b24-9febc1bf0a3${i}`, i === 1 ? "CI Novedades un título largo para comprobar que el texto se ajusta sin recortarse" : `CI Novedades estreno ${i + 1}`,
+      { work_key: `tmdb:movie:${97139004 + i}`, tmdb_id: 97139004 + i, movie_id: null })),
     row(seasonId, "CI Novedades serie", { work_key: "tmdb:tv:97139002", item_type: "series", modality: "season", season_number: 2, market: "INT", movie_id: null,
       tmdb_id: 97139002, date_value: addDays(today, 3) }),
   ];
@@ -120,12 +122,17 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
   await expect(movie.getByRole("link", { name: "Avisarme", exact: true })).toHaveCount(2);
   await expect(movie.getByText("Internacional", { exact: true }).filter({ visible: true })).toHaveCount(0);
   await expect(movie.getByText(/Netflix|Prime|Disney/).filter({ visible: true })).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Ir a un mes", exact: true }).selectOption(month);
+  await expect(movie).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Anuncios sin día exacto", exact: true })).toBeVisible();
   const monthly = page.locator(`article[data-work-key="book:${monthBookId}"]`);
   await expect(monthly.getByText(formatReleaseDate({ date_precision: "month", date_value: month }), { exact: true }).filter({ visible: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Sin mes confirmado/ }).click();
   const unknown = page.locator(`article[data-work-key="book:${unknownBookId}"]`);
   await expect(unknown.getByText("Fecha por confirmar", { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(unknown.getByText("Primera traducción al castellano", { exact: true }).filter({ visible: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Estrenos/ }).click();
+  await page.getByRole("combobox", { name: "Ir a un mes", exact: true }).selectOption(today.slice(0, 7));
   await expect(page.locator("main")).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`explorar-${width}.png`), fullPage: true });
@@ -140,7 +147,7 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
   await expect(page.getByRole("heading", { name: "Las fechas disponibles de estas series son internacionales", exact: true }).filter({ visible: true })).toBeVisible();
   await page.getByRole("link", { name: "Ver fechas internacionales", exact: true }).click();
   await expect(page).toHaveURL(/\/novedades\?tipo=series&mercado=INT$/);
-  await expect(page.locator('select[name="tipo"]').filter({ visible: true })).toHaveValue("series");
+  await expect(page.getByRole("navigation", { name: "Filtros de novedades", exact: true }).getByRole("link", { name: "Series y temporadas", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByLabel("Mercado", { exact: true }).filter({ visible: true })).toHaveValue("INT");
   await expect(page.getByText("Temporada 2", { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.getByText("Fecha internacional. No confirma disponibilidad en España.", { exact: true }).filter({ visible: true })).toBeVisible();
@@ -159,9 +166,10 @@ for (const width of [390, 1280]) test(`Información limitada, ficha pública y p
   await expect(weekly.getByRole("link", { name: "CI Novedades película", exact: true })).toHaveAttribute("href", `/pelicula/${movieId}`);
   await page.goto("/novedades");
   const limited = page.locator(`article[data-work-key="${limitedKey}"]`);
-  await expect(limited).toHaveCount(1);
-  await expect(limited).toBeHidden();
-  const disclosure = page.locator("summary").filter({ hasText: "Anuncios con información limitada" });
+  await expect(limited).toHaveCount(0);
+  const main = page.locator('article[data-work-key="tmdb:movie:97139001"]');
+  await expect(main.getByRole("link", { name: "Ver detalles de CI Novedades película", exact: true })).toHaveAttribute("href", "/pelicula/" + movieId);
+  const disclosure = page.getByRole("button", { name: /^Información limitada/ });
   await disclosure.focus();
   await disclosure.press("Enter");
   await expect(page.locator("html")).toHaveClass(width === 1280 ? /dark/ : /light/);
@@ -169,8 +177,6 @@ for (const width of [390, 1280]) test(`Información limitada, ficha pública y p
   await expect(limited.getByText("Sin portada", { exact: true })).toBeVisible();
   await expect(limited.getByText("Sinopsis en inglés", { exact: true })).toBeVisible();
   await expect(limited.locator("img")).toHaveCount(0);
-  const main = page.locator('article[data-work-key="tmdb:movie:97139001"]');
-  await expect(main.getByRole("link", { name: "Ver detalles de CI Novedades película", exact: true })).toHaveAttribute("href", `/pelicula/${movieId}`);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: testInfo.outputPath(`information-quality-${width}.png`), fullPage: true });
@@ -184,7 +190,7 @@ for (const width of [390, 1280]) test(`Información limitada, ficha pública y p
   await page.goto("/novedades");
   await expect(limited).toHaveCount(1);
   await expect(limited).toBeVisible();
-  await expect(page.locator("summary").filter({ hasText: "Anuncios con información limitada" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Información limitada/ })).toHaveCount(0);
 });
 
 test("un anuncio limitado conserva avisos en Lo que esperas sin crear una obra ni un pase", async ({ page }) => {
@@ -370,4 +376,210 @@ test("el cron protegido acepta un recordatorio una vez, la campana abre su merca
   const retained = await noticeQuery();
   expect(retained.error).toBeNull(); expect(retained.data).toEqual(initial.data);
   expect(await countPasses(actors.a.id)).toBe(0);
+});
+
+test("calendario mensual: modalidades en dos meses, día, fechas parciales e historial sin nueva consulta", async ({ page }) => {
+  const changedDate = month + "-20";
+  try {
+    expect((await service.from("cultural_releases").update({ date_value: changedDate }).eq("id", digitalId)).error).toBeNull();
+    await page.goto("/novedades");
+    const movie = page.locator('article[data-work-key="tmdb:movie:97139001"]');
+    const monthly = page.locator('article[data-work-key="book:' + monthBookId + '"]');
+    await expect(movie).toHaveCount(1);
+    const renders: string[] = [];
+    page.on("request", request => {
+      if (request.method() === "GET" && new URL(request.url()).pathname === "/novedades" && request.headers()["rsc"] === "1" && request.headers()["next-router-prefetch"] !== "1") renders.push(request.url());
+    });
+    await page.getByRole("combobox", { name: "Ir a un mes", exact: true }).selectOption(month);
+    await expect(movie).toHaveCount(1);
+    await expect(monthly).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "2 obras" })).toBeVisible();
+    const launchDay = page.locator('button[data-date="' + changedDate + '"]');
+    await expect(launchDay).toHaveAccessibleName(/1 obra, 0 con información limitada/);
+    await launchDay.click();
+    await expect(launchDay).toHaveAttribute("aria-pressed", "true");
+    await expect(monthly).toHaveCount(0);
+    await expect(movie).toHaveCount(1);
+    await expect(page.getByRole("status").filter({ hasText: "1 obra" })).toBeVisible();
+    expect(new URL(page.url()).searchParams.get("dia")).toBe(changedDate);
+    await page.goBack();
+    await expect(monthly).toHaveCount(1);
+    expect(new URL(page.url()).searchParams.has("dia")).toBe(false);
+    await page.goForward();
+    await expect(monthly).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.get("dia")).toBe(changedDate);
+    expect(renders).toEqual([]);
+    const bookLink = page.getByRole("navigation", { name: "Filtros de novedades", exact: true }).getByRole("link", { name: "Libros", exact: true });
+    expect(new URL((await bookLink.getAttribute("href"))!, page.url()).searchParams.get("mes")).toBe(month);
+    await page.getByRole("button", { name: "Ver mes completo", exact: true }).click();
+    await page.getByLabel("Mercado", { exact: true }).selectOption("all");
+    await page.getByRole("button", { name: "Aplicar filtros", exact: true }).click();
+    expect(new URL(page.url()).searchParams.get("mes")).toBe(month);
+    await expect(monthly).toHaveCount(1);
+  } finally {
+    expect((await service.from("cultural_releases").update({ date_value: addDays(today, 2) }).eq("id", digitalId)).error).toBeNull();
+  }
+});
+
+test("días mixtos conservan Información limitada y la ficha conserva el contexto de login", async ({ page }) => {
+  await page.goto("/novedades");
+  const day = page.getByRole("grid", { name: /^Calendario de novedades:/ }).locator('button[data-date="' + today + '"]');
+  await expect(day).toHaveAccessibleName(/5 obras, 1 con información limitada/);
+  await page.getByRole("button", { name: /^Información limitada/ }).click();
+  await day.click();
+  await expect(page.getByRole("button", { name: /^Información limitada/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('article[data-work-key="' + limitedKey + '"]')).toBeVisible();
+  await page.goto("/novedades?lanzamiento=" + limitedId);
+  await expect(page.locator('article[data-work-key="' + limitedKey + '"]')).toHaveCount(1);
+  await expect(page.getByRole("grid", { name: /^Calendario de novedades:/ }).locator('button[data-date="' + today + '"]')).toHaveAccessibleName(/5 obras, 1 con información limitada/);
+  await page.getByRole("button", { name: "Mes siguiente", exact: true }).click();
+  const focused = page.getByRole("region", { name: "Detalles del lanzamiento", exact: true });
+  const loginPath = new URL((await focused.getByRole("link", { name: "Añadir a Pendiente", exact: true }).getAttribute("href"))!, page.url());
+  const next = new URL(loginPath.searchParams.get("next")!, page.url());
+  expect(next.searchParams.get("lanzamiento")).toBe(limitedId);
+  expect(next.searchParams.get("mes")).toBe(month);
+  expect(await countPasses(actors.a.id)).toBe(0);
+});
+
+test("calendario a 320px: objetivos de 44px y recorrido de teclado por la cuadrícula", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 850 });
+  await page.goto("/novedades");
+  for (const name of ["Mes anterior", "Mes siguiente"]) {
+    const icon = page.getByRole("button", { name, exact: true }).locator("svg");
+    const bounds = await icon.boundingBox();
+    expect(bounds?.width).toBeGreaterThanOrEqual(16);
+    expect(bounds?.height).toBeGreaterThanOrEqual(16);
+  }
+  const grid = page.getByRole("grid", { name: /^Calendario de novedades:/ });
+  await expect(grid.locator('button[tabindex="0"]')).toHaveCount(1);
+  const cells = await grid.locator("button").evaluateAll(nodes => nodes.map(node => {
+    const bounds = node.getBoundingClientRect(); return { width: bounds.width, height: bounds.height };
+  }));
+  expect(cells.every(cell => cell.width >= 44 && cell.height >= 44)).toBe(true);
+  const first = grid.locator('button[data-date="' + today.slice(0, 7) + '-15"]');
+  await first.focus();
+  await first.press("ArrowRight");
+  const next = grid.locator('button[data-date="' + today.slice(0, 7) + '-16"]');
+  await expect(next).toBeFocused();
+  await expect(grid.locator('button[tabindex="0"]')).toHaveCount(1);
+  await next.press("Enter");
+  expect(new URL(page.url()).searchParams.get("dia")).toBe(today.slice(0, 7) + "-16");
+  await next.press("Tab");
+  await expect(page.getByRole("button", { name: "Mes actual", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+
+for (const width of [320, 390, 768, 1280, 1920]) for (const theme of ["light", "dark"]) test(`Paper visual: fan, four weekly slots and dense agenda · ${width}px · ${theme}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+  await page.goto("/");
+  const fan = page.getByRole("group", { name: "Algunas novedades de esta semana", exact: true });
+  await expect(fan.getByRole("link")).toHaveCount(3);
+  await expect(page.getByRole("heading", { level: 1, name: "Tu biblioteca de todo, compartida.", exact: true })).toBeVisible();
+  const week = page.getByRole("region", { name: "Sale esta semana", exact: true });
+  const slots = week.getByRole("article");
+  await expect(slots).toHaveCount(4);
+  const boxes = await slots.evaluateAll((nodes) => nodes.map((node) => { const r = node.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }));
+  if (width >= 640) { expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(3); expect(boxes[2].y).toBeGreaterThan(boxes[0].y); }
+  else { expect(boxes[1].y).toBeGreaterThan(boxes[0].y); }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path:testInfo.outputPath(`home-${width}-${theme}.png`),fullPage:true });
+  await page.goto("/novedades");
+  const card = page.locator('article[data-work-key="tmdb:movie:97139004"]');
+  await expect(card).toHaveCount(1);
+  await expect(card.getByRole("heading", { name:"CI Novedades estreno 1",exact:true })).toBeVisible();
+  const bounds = await card.boundingBox(); expect(bounds?.height).toBeLessThan(width < 640 ? 250 : 230);
+  const references = card.locator("details"); await references.locator("summary").focus(); await references.locator("summary").press("Enter");
+  await expect(references.getByRole("link", { name:"Fuente: CI Novedades fuente",exact:true })).toBeVisible();
+  await references.locator("summary").press("Enter");
+  const buttons = card.getByRole("link").filter({ hasText:/Pendiente|Avisarme/ });
+  for (const button of await buttons.all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => scrollTo(0,0));
+  await page.screenshot({ path:testInfo.outputPath(`agenda-${width}-${theme}.png`),fullPage:true });
+});
+for (const [width, motion, authenticated] of [[320, "no-preference", false], [390, "reduce", true]] as const) test("Volver arriba móvil: " + width + "px · " + motion, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 850 });
+  await page.emulateMedia({ reducedMotion: motion });
+  if (authenticated) await login(page, actors.a);
+  await page.goto("/novedades?tipo=movie&mes=" + today.slice(0, 7));
+  const top = page.getByRole("button", { name: "Volver arriba", exact: true });
+  await expect(page.getByRole("grid", { name: /^Calendario de novedades:/ })).toBeVisible();
+  await expect(top).toHaveCount(0);
+  const path = page.url();
+  await page.evaluate(() => window.scrollTo({ top: 1100, behavior: "instant" }));
+  await expect(top).toBeVisible();
+  const buttonBounds = (await top.boundingBox())!;
+  const navBounds = (await page.getByRole("navigation", { name: "Navegación principal", exact: true }).filter({ visible: true }).last().boundingBox())!;
+  expect(buttonBounds.height).toBeGreaterThanOrEqual(44);
+  expect(buttonBounds.y + buttonBounds.height).toBeLessThan(navBounds.y);
+  await page.screenshot({ path: testInfo.outputPath("volver-arriba-" + width + ".png") });
+  await top.focus();
+  await top.press("Enter");
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.getByRole("heading", { name: "Novedades", level: 1, exact: true })).toBeFocused();
+  await expect(top).toHaveCount(0);
+  expect(page.url()).toBe(path);
+  await page.setViewportSize({ width: 1280, height: 850 });
+  await page.evaluate(() => { document.body.style.minHeight = "2000px"; window.scrollTo({ top: 800, behavior: "instant" }); });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(480);
+  const desktopControl = page.locator("button").filter({ hasText: "Volver arriba" });
+  await expect(desktopControl).toHaveCount(1);
+  await expect(desktopControl).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+for (const width of [320, 390, 1280]) test("Filtros agrupados Paper: " + width + "px", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("theme", "dark"));
+  await page.goto("/novedades?tipo=movie");
+  const filters = page.getByRole("region", { name: "Filtros de novedades", exact: true });
+  await expect(filters).toBeVisible();
+  await expect(filters.getByRole("link", { name: "Series y temporadas", exact: true })).toBeVisible();
+  const market = filters.getByRole("combobox", { name: "Mercado", exact: true });
+  const apply = filters.getByRole("button", { name: "Aplicar filtros", exact: true });
+  const initialPath = page.url();
+  await market.selectOption("INT");
+  const hide = filters.getByRole("button", { name: "Ocultar filtros", exact: true });
+  await hide.focus(); await hide.press("Enter");
+  const show = filters.getByRole("button", { name: "Mostrar filtros", exact: true });
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+  await expect(show).toBeFocused();
+  await expect(market).toBeHidden();
+  await expect(filters.getByRole("link", { name: "Libros", exact: true })).toBeHidden();
+  await expect(filters.getByRole("button", { name: /^Estrenos/ })).toBeHidden();
+  expect(page.url()).toBe(initialPath);
+  expect((await show.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await filters.boundingBox())!.height).toBeLessThan(140);
+  await page.screenshot({ path: testInfo.outputPath("filtros-plegados-" + width + ".png") });
+  await show.press("Space");
+  await expect(hide).toHaveAttribute("aria-expanded", "true");
+  await expect(hide).toBeFocused();
+  await expect(market).toHaveValue("INT");
+  await market.selectOption("ES");
+  const field = (await market.boundingBox())!, submit = (await apply.boundingBox())!;
+  expect(Math.abs(field.y - submit.y)).toBeLessThan(1);
+  for (const item of await filters.getByRole("navigation", { name: "Filtros de novedades", exact: true }).getByRole("link").all()) {
+    expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
+  const limited = filters.getByRole("button", { name: /^Información limitada/ });
+  await limited.focus(); await limited.press("Enter");
+  await expect(limited).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('article[data-work-key="' + limitedKey + '"]')).toBeVisible();
+  await filters.getByRole("button", { name: /^Estrenos/ }).click();
+  await page.getByRole("button", { name: "Mes siguiente", exact: true }).click();
+  await page.getByRole("button", { name: "Mes siguiente", exact: true }).click();
+  const selectedMonth = new URL(page.url()).searchParams.get("mes");
+  await expect(filters.getByRole("button", { name: /^Estrenos/ })).toContainText("(0)");
+  await expect(filters.getByRole("button", { name: /^Información limitada/ })).toContainText("(0)");
+  await market.selectOption("all");
+  await apply.click();
+  expect(new URL(page.url()).searchParams.get("mes")).toBe(selectedMonth);
+  await expect(filters).toBeVisible();
+  await page.getByRole("button", { name: "Mes actual", exact: true }).click();
+  await expect(filters.getByRole("button", { name: /^Estrenos/ })).toContainText("(4)");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.screenshot({ path: testInfo.outputPath("filtros-" + width + ".png") });
 });

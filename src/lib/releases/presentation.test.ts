@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupReleaseWorks } from "./presentation";
+import { groupReleaseWorks, groupReleaseDays } from "./presentation";
 import { releaseFixture } from "./releases.fixture";
 const now = new Date("2026-10-06T08:00:00Z");
 
@@ -47,4 +47,29 @@ describe("calendar work grouping and truthful precision", () => {
       releaseFixture({ id: "blank", work_key: "blank", cover_url: "https://images.example/cover.jpg", synopsis: "  " })];
     expect(groupReleaseWorks(rows, { completeness: "complete" }, now)).toEqual([]);
   });
+});
+
+it("organizes the agenda by the first exact date without duplicating multi-date works", () => {
+  const works = groupReleaseWorks([
+    releaseFixture({ id: "cinema", work_key: "movie", date_value: "2026-10-09", modality: "cinema" }),
+    releaseFixture({ id: "digital", work_key: "movie", date_value: "2026-10-11", modality: "digital" }),
+    releaseFixture({ id: "other", work_key: "other", date_value: "2026-10-09" }),
+    releaseFixture({ id: "earlier", work_key: "earlier", date_value: "2026-10-08" }),
+    releaseFixture({ id: "partial", work_key: "partial", date_value: "2026-11", date_precision: "month" }),
+  ], {}, now);
+  const days = groupReleaseDays(works, now);
+  expect(days.map((day) => [day.date, day.works.map((work) => work.workKey)])).toEqual([
+    ["2026-10-08", ["earlier"]], ["2026-10-09", ["movie", "other"]],
+  ]);
+  expect(days[1].works[0].releases.map((release) => release.id)).toEqual(["cinema", "digital"]);
+  expect(works.find((work) => work.workKey === "partial")?.releases[0].date_value).toBe("2026-11");
+});
+it("anchors a mixed personal work to its next published day and retains historical notices", () => {
+  const work = groupReleaseWorks([releaseFixture({ id: "future", work_key: "mixed", date_value: "2026-10-10", modality: "digital" })], {}, now)[0];
+  const historic = releaseFixture({ id: "historic", work_key: "mixed", date_value: "2026-09-01", status: "cancelled", modality: "cinema" });
+  const upcomingCancellation = releaseFixture({ id: "cancelled", work_key: "mixed", date_value: "2026-10-07", status: "cancelled" });
+  work.releases.push(historic, upcomingCancellation);
+  const days = groupReleaseDays([work], now);
+  expect(days[0].date).toBe("2026-10-10");
+  expect(days[0].works[0].releases).toEqual([work.releases[0], historic, upcomingCancellation]);
 });
