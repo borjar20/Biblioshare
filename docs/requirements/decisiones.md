@@ -6903,3 +6903,18 @@ incluye el gap del detalle recogido (106px) para mantener el alto total al resol
 el streaming. PC conserva la presentación y los laterales de la decisión anterior.
 Este acuerdo sustituye el uso de diálogos para los tres paneles; las decisiones y
 specs previas se conservan como historia. Evidencia en docs/testing/2026-10-07-inicio-inline.md.
+
+
+## 2026-10-07 — Transformación continua entre resumen y detalle de Inicio (#1457)
+
+El usuario pide que cada apertura se perciba como transformación de un estado a
+otro. El resumen y la cabecera permanecen en el mismo botón y se funden mediante
+opacidad/posición; no se sustituyen con display:none. El contorno y la altura se
+interpolan durante 460 ms, mientras el detalle entra 100 ms después. Recoger invierte
+el recorrido. Las portadas semanales reducen su inclinación y separan sus lomos.
+
+Se elimina la altura mínima que forzaba un salto de 64 a 106 px al recoger. La
+preferencia de movimiento reducido prevalece también sobre las reglas del estado
+expandido. Se conserva el comportamiento inline, el estado funcional y la
+presentación de PC. Verificación focal de fotogramas y alcance en
+`docs/testing/2026-10-07-inicio-motion.md`.

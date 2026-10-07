@@ -84,15 +84,48 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     await page.getByRole("button", { name: "Compartir un pensamiento", exact: true }).click();
     await page.locator("textarea").fill("Borrador que conserva el feed");
   }
+  if (width === 390) {
+    // Pausar en el cambio de estado, antes de pintar: el host lento no altera
+    // el fotograma que se compara ni convierte la prueba en una carrera de reloj.
+    await page.locator(".home-today-panel").evaluate((panel) => {
+      const observer = new MutationObserver(() => {
+        if (panel.getAttribute("data-expanded") !== "true") return;
+        panel.getAnimations({ subtree: true }).forEach((animation) => { animation.pause(); animation.currentTime = 0; });
+        observer.disconnect();
+      });
+      observer.observe(panel, { attributes: true, attributeFilter: ["data-expanded"] });
+    });
+  }
   await trigger.click();
   const todayDialog = page.getByRole("region", { name: "Lo que disfrutas", exact: true });
+  if (width === 390) {
+    const morph = page.locator(".home-today-panel");
+    // La cara anterior sigue presente al comenzar; la siguiente entra después.
+    const firstFrame = await morph.evaluate((panel) => {
+      const animations = panel.getAnimations({ subtree: true });
+      animations.forEach((animation) => { animation.pause(); animation.currentTime = 0; });
+      const compact = getComputedStyle(panel.querySelector(".home-summary-compact")!);
+      return { animations: animations.length, compact: compact.display, opacity: Number(compact.opacity), title: Number(getComputedStyle(panel.querySelector(".home-summary-expanded")!).opacity), body: Number(getComputedStyle(panel.querySelector(".home-panel-surface")!).opacity) };
+    });
+    expect(firstFrame.animations).toBeGreaterThan(0);
+    expect(firstFrame.compact).not.toBe("none");
+    expect(firstFrame.opacity).toBeGreaterThan(0.95);
+    expect(firstFrame.title).toBeLessThan(0.05);
+    expect(firstFrame.body).toBeLessThan(0.05);
+    const middle = await morph.evaluate((panel) => {
+      panel.getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; });
+      return { height: panel.querySelector(".home-panel-summary")!.getBoundingClientRect().height, title: Number(getComputedStyle(panel.querySelector(".home-summary-expanded")!).opacity) };
+    });
+    expect(middle.height).toBeGreaterThan(64);
+    expect(middle.height).toBeLessThan(106);
+    expect(middle.title).toBeGreaterThan(0);
+    expect(middle.title).toBeLessThan(1);
+    await morph.evaluate((panel) => { panel.getAnimations({ subtree: true }).forEach((animation) => animation.finish()); });
+    await page.screenshot({ path: testInfo.outputPath("home-expanded.png"), fullPage: false });
+  }
   await expect(todayDialog).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
-  if (width === 390) {
-    await todayDialog.evaluate((dialog) => Promise.all(dialog.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {}))));
-    await page.screenshot({ path: testInfo.outputPath("home-expanded.png"), fullPage: false });
-  }
   await todayDialog.getByRole("button", { name: `Poner ${books[1].title} arriba`, exact: true }).click();
   await todayDialog.getByRole("button", { name: "Recoger: Lo que disfrutas", exact: true }).click();
   await expect(todayDialog).toBeHidden(); await expect(trigger).toBeFocused(); await expect(trigger).toContainText(books[1].title);
