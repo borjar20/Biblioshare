@@ -80,29 +80,47 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   expect(await seen("week")).toBeNull(); expect(await seen("month")).toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: false });
-  const scroll = await page.evaluate(() => scrollY);
-  await trigger.click();
-  const todayDialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
-  await expect(todayDialog).toBeVisible();
   if (width === 390) {
-    await todayDialog.evaluate((dialog) => Promise.all(dialog.getAnimations({ subtree: true }).filter((animation) => animation.id.startsWith("home-panel-")).map((animation) => animation.finished.catch(() => {}))));
+    await page.getByRole("button", { name: "Compartir un pensamiento", exact: true }).click();
+    await page.locator("textarea").fill("Borrador que conserva el feed");
+  }
+  await trigger.click();
+  const todayDialog = page.getByRole("region", { name: "Lo que disfrutas", exact: true });
+  await expect(todayDialog).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+  if (width === 390) {
+    await todayDialog.evaluate((dialog) => Promise.all(dialog.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {}))));
     await page.screenshot({ path: testInfo.outputPath("home-expanded.png"), fullPage: false });
   }
   await todayDialog.getByRole("button", { name: `Poner ${books[1].title} arriba`, exact: true }).click();
-  await todayDialog.getByRole("button", { name: "Cerrar vista completa", exact: true }).click();
+  await todayDialog.getByRole("button", { name: "Recoger: Lo que disfrutas", exact: true }).click();
   await expect(todayDialog).toBeHidden(); await expect(trigger).toBeFocused(); await expect(trigger).toContainText(books[1].title);
-  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  await expect(trigger).toBeInViewport();
+  if (width === 390) await expect(page.locator("textarea")).toHaveValue("Borrador que conserva el feed");
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
   await expect(page.locator('.home-panel-quick a')).toHaveAttribute("href", `/sesion/${passes[1]}`);
   await trigger.click(); await expect(todayDialog.locator('.today-card-body')).toContainText(books[1].title);
   await page.keyboard.press("Escape"); await expect(todayDialog).toBeHidden();
+  if (width === 390) {
+    await trigger.click();
+    await page.getByRole("button", { name: "Ampliar tu actividad", exact: true }).click();
+    await expect(todayDialog).toBeHidden();
+    await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeVisible();
+    await trigger.click();
+    await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeHidden();
+    const footer = todayDialog.getByRole("button", { name: "Recoger: Lo que disfrutas", exact: true });
+    await footer.click(); await expect(todayDialog).toBeHidden();
+    await expect(trigger).toBeInViewport();
+  }
   await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
-  const releasesDialog = page.getByRole("dialog", { name: "Sale esta semana", exact: true });
+  const releasesDialog = page.locator(".home-releases-panel .home-panel-details");
   await expect(releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true })).toHaveAttribute("href", "/novedades");
   await expect(releasesDialog.locator('[data-release-id]')).toHaveCount(3);
-  await releasesDialog.getByRole("button", { name: "Cerrar vista completa", exact: true }).click(); await expect(releasesDialog).toBeHidden();
+  await releasesDialog.getByRole("button", { name: "Recoger", exact: true }).click(); await expect(releasesDialog).toBeHidden();
   await page.getByRole("button", { name: "Ampliar tu actividad", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Tu actividad", exact: true })).toBeVisible();
-  await page.keyboard.press("Escape"); await expect(page.getByRole("dialog", { name: "Tu actividad", exact: true })).toBeHidden();
+  await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Abrir tu crónica", exact: true }).click();
   const story = page.getByRole("dialog").filter({ has: page.locator('ol') });
   await expect(story).toBeVisible();
@@ -141,10 +159,10 @@ test("resize y navegación a sesión no dejan diálogo ni bloqueo al regresar", 
   await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
   await page.setViewportSize({ width: 1280, height: 680 });
   await expect(page.locator('.today-card-body')).toBeVisible(); expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
-  expect(await page.locator('.home-panel-surface').first().evaluate((element) => element.getAnimations().length)).toBe(0);
+  expect(await page.locator('.home-panel-details').first().evaluate((element) => element.getAnimations().length)).toBe(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
+  const dialog = page.getByRole("region", { name: "Lo que disfrutas", exact: true });
   await dialog.getByRole("link", { name: /Registrar/, exact: false }).first().click();
   await expect(page).toHaveURL(new RegExp(`/sesion/${passes[0]}`));
   await page.goBack(); await expect(page).toHaveURL(/\/$/);
@@ -161,7 +179,7 @@ test("cola, colección y descubrimiento conservan sus vistas completas", async (
   const trigger = page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true });
   await expect(trigger).toContainText("Tu siguiente historia");
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
+  const dialog = page.getByRole("region", { name: "Lo que disfrutas", exact: true });
   await expect(dialog.getByRole("button", { name: /Sacar un lomo/ })).toBeVisible();
   await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
   expect((await service.from("passes").delete().in("id", passes.slice(2))).error).toBeNull();
@@ -175,5 +193,5 @@ test("cola, colección y descubrimiento conservan sus vistas completas", async (
   await trigger.click(); await expect(dialog.getByRole("link").first()).toBeVisible();
   await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Sale esta semana", exact: true }).getByRole("link", { name: "Ver todas las novedades", exact: true })).toBeVisible();
+  await expect(page.locator(".home-releases-panel .home-panel-details").getByRole("link", { name: "Ver todas las novedades", exact: true })).toBeVisible();
 });

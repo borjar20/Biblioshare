@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { usePathname } from "next/navigation";
-import { XIcon } from "@/components/ui/icons";
+import { ChevronRightIcon } from "@/components/ui/icons";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
-import { animateHomePanel, cancelHomePanelMotion, type PanelRect } from "./panel-motion";
 
 const NARROW = "(max-width: 1099px)";
 export function useNarrowHome() {
@@ -18,120 +17,98 @@ export function useNarrowHome() {
     () => false,
   );
 }
+
+const Panels = createContext<{ active: string | null; setActive: Dispatch<SetStateAction<string | null>> } | null>(null);
+
+/** Coordina solo la identidad del bloque abierto; los slots siguen en servidor. */
+export function HomePanelsProvider({ children }: { children: ReactNode }) {
+  const [active, setActive] = useState<string | null>(null);
+  const mobile = useNarrowHome();
+  const pathname = usePathname();
+  const previousPath = useRef(pathname);
+  useEffect(() => {
+    if (!mobile || previousPath.current !== pathname) setActive(null);
+    previousPath.current = pathname;
+  }, [mobile, pathname]);
+  const value = useMemo(() => ({ active, setActive }), [active]);
+  return <Panels.Provider value={value}>{children}</Panels.Provider>;
+}
+
 export type HomePanelLabels = { title: string; openLabel: string; closeLabel: string };
 
 export function HomeExpandable({ title, openLabel, closeLabel, summary, quickAction, children, className = "" }: HomePanelLabels & {
-  summary: ReactNode; quickAction?: ReactNode; children: ReactNode; className?: string;
+  summary: ReactNode;
+  quickAction?: ReactNode;
+  children: ReactNode;
+  className?: string;
 }) {
   const mobile = useNarrowHome();
   const reduced = useReducedMotion();
   const pathname = usePathname();
   const previousPath = useRef(pathname);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const group = useContext(Panels);
+  const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const origin = useRef<PanelRect | null>(null);
-  const active = useRef(false);
-  const busy = useRef(false);
-  const closing = useRef(false);
-  const generation = useRef(0);
-  const previousOverflow = useRef<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [local, setLocal] = useState(false);
+  const expanded = mobile && (group ? group.active === id : local);
+  const setActive = group?.setActive;
+  const change = useCallback((value: boolean) => {
+    if (setActive) setActive(value ? id : null);
+    else setLocal(value);
+  }, [id, setActive]);
 
-  function unlock() {
-    if (previousOverflow.current !== null) {
-      document.body.style.overflow = previousOverflow.current;
-      previousOverflow.current = null;
-    }
-  }
-  function cancelMotion() {
-    if (dialogRef.current) cancelHomePanelMotion(dialogRef.current);
-  }
+  // Respaldo para el componente aislado; en Inicio el provider limpia la ruta.
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    generation.current += 1;
-    cancelMotion();
-    busy.current = false;
-    closing.current = false;
-    if (mobile) {
-      if (!active.current && dialog.open) dialog.close();
-    } else {
-      if (active.current) dialog.close();
-      dialog.setAttribute("open", "");
-      active.current = false;
-      unlock();
-    }
-    return () => {
-      generation.current += 1;
-      cancelMotion();
-      if (active.current) dialog.close();
-      unlock();
-    };
-  }, [mobile]);
-
-  // Cache Components conserva la ruta oculta. El top layer y su bloqueo de
-  // scroll deben cerrarse al navegar, aunque el contenido no se desmonte.
-  useEffect(() => {
-    if (previousPath.current === pathname) return;
+    if (!mobile || previousPath.current !== pathname) setLocal(false);
     previousPath.current = pathname;
-    generation.current += 1;
-    cancelMotion();
-    if (active.current) dialogRef.current?.close();
-    unlock();
-  }, [pathname]);
+  }, [mobile, pathname]);
 
-  async function open() {
-    const dialog = dialogRef.current;
-    if (!dialog || !mobile || busy.current || active.current) return;
-    busy.current = true;
-    const current = ++generation.current;
-    origin.current = triggerRef.current?.closest(".home-panel-summary")?.getBoundingClientRect() ?? null;
-    if (dialog.open) dialog.close();
-    active.current = true;
-    dialog.dataset.expanded = "true";
-    setExpanded(true);
-    previousOverflow.current = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    dialog.showModal();
-    await animateHomePanel(dialog, origin.current, reduced);
-    if (generation.current !== current) return;
-    busy.current = false;
-  }
-  async function close() {
-    const dialog = dialogRef.current;
-    if (!dialog || !active.current || closing.current) return;
-    closing.current = true;
-    busy.current = true;
-    cancelMotion();
-    const current = ++generation.current;
-    await animateHomePanel(dialog, origin.current, reduced, true);
-    if (generation.current !== current) return;
-    dialog.close();
-  }
-  function finishClose() {
-    const wasActive = active.current;
-    active.current = false;
-    busy.current = false;
-    closing.current = false;
-    setExpanded(false);
-    unlock();
-    if (wasActive && mobile) triggerRef.current?.focus({ preventScroll: true });
-  }
+  const close = useCallback(() => {
+    change(false);
+    const trigger = triggerRef.current;
+    trigger?.focus({ preventScroll: true });
+    requestAnimationFrame(() => {
+      if (!trigger?.isConnected) return;
+      const box = trigger.getBoundingClientRect();
+      if (box.top < 72 || box.bottom > window.innerHeight - 80) {
+        trigger.scrollIntoView?.({ block: "nearest", behavior: reduced ? "instant" : "smooth" });
+      }
+    });
+  }, [change, reduced]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      // Las hojas de sesión y el reproductor conservan su propio Escape.
+      if (event.key !== "Escape" || event.defaultPrevented || document.querySelector("dialog[open]")) return;
+      event.preventDefault();
+      close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded, close]);
 
   return (
-    <div className={`home-panel ${className}`}>
+    <div className={`home-panel ${className}`} data-expanded={expanded ? "true" : undefined}>
       <div className="home-panel-summary">
-        <button ref={triggerRef} type="button" className="home-panel-trigger" aria-label={openLabel} aria-haspopup="dialog" onClick={open}>{summary}</button>
+        <button ref={triggerRef} type="button" className="home-panel-trigger" aria-label={expanded ? `${closeLabel}: ${title}` : openLabel}
+          aria-expanded={expanded} aria-controls={id} onClick={() => expanded ? close() : change(true)}>
+          <span className="home-summary-compact">{summary}</span>
+          <span className="home-summary-expanded">{title}<ChevronRightIcon className="h-4 w-4 -rotate-90" /></span>
+        </button>
         {quickAction && <div className="home-panel-quick">{quickAction}</div>}
       </div>
-      <dialog ref={dialogRef} open role={mobile ? "dialog" : "region"} aria-label={title}
-        aria-modal={expanded ? true : undefined} data-expanded={expanded ? "true" : undefined}
-        className="home-panel-dialog" onClose={finishClose}
-        onCancel={(event) => { event.preventDefault(); void close(); }}
-        onClick={(event) => { if (event.target === event.currentTarget) void close(); }}>
-        <div className="home-panel-surface"><header className="home-panel-header"><h2 className="font-serif text-xl font-semibold">{title}</h2><button type="button" className="home-panel-close" aria-label={closeLabel} onClick={close}><XIcon className="h-4 w-4" /></button></header>
-        <div className="home-panel-body">{children}</div></div>
-      </dialog>
+      <section id={id} role="region" aria-label={title} aria-hidden={mobile && !expanded ? true : undefined}
+        inert={mobile && !expanded} data-expanded={expanded ? "true" : undefined} className="home-panel-details">
+        <div className="home-panel-clip"><div className="home-panel-surface">
+          <header className="home-panel-header">
+            <h2 className="font-serif text-xl font-semibold">{title}</h2>
+            <button type="button" className="home-panel-close" aria-label={closeLabel} onClick={close}><ChevronRightIcon className="h-4 w-4 -rotate-90" /></button>
+          </header>
+          <div className="home-panel-body">{children}</div>
+          <footer className="home-panel-footer"><button type="button" className="home-panel-collapse" aria-label={`${closeLabel}: ${title}`} onClick={close}>{closeLabel}</button></footer>
+        </div></div>
+      </section>
     </div>
   );
 }
