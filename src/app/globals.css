@@ -1126,6 +1126,7 @@ body {
  .home-shared-panel .home-focus-collapse { top:0; right:0; pointer-events:auto; }
  .home-shared-panel .home-focus-trigger { right:0; }
  .home-shared-panel .home-focus-card:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:14px; }
+ .home-stats-morph .home-focus-collapse { top:50%; transform:translateY(-50%); }
  .home-stats-morph .home-focus-heading { left:77px; top:10px; right:12px; transition:left var(--home-morph-duration) var(--home-morph-ease),top var(--home-morph-duration) var(--home-morph-ease); }
  .home-stats-morph[data-expanded="true"] .home-focus-heading { left:17px; top:17px; }
  .home-stats-morph .home-weekly-card { padding:9px 12px; transition:padding var(--home-morph-duration) var(--home-morph-ease); }

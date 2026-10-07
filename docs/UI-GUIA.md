@@ -104,6 +104,8 @@ editor de catálogo inline (banner + barra sticky).
    en las tarjetas, creciendo a todo el ancho debajo de la crónica, que permanece
    visible e interactiva. El cierre de novedades ocupa su propia zona de 44 px,
    con 12 px de separación respecto al título y «Ver todas las novedades».
+   En Tu semana, el cierre se centra verticalmente respecto al título y conserva
+   sus 44 px de área de pulsación, también cuando aún no hay actividad.
    Los títulos siguen visibles en ambos estados. Al recoger,
    la transición recorre el camino inverso. El contenido permanece
    montado, con foco de vuelta al recoger y desplazamiento de página normal.

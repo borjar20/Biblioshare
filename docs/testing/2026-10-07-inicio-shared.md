@@ -80,3 +80,18 @@ inverso, claro/oscuro, movimiento reducido y PC a 1280 px. TypeScript y eslint
 focal PASS. El E2E autenticado existente incorpora la aserción de no solapamiento
 a 320/390/768 px para CI; no se repite la suite autenticada completa ni build/start
 de producción en este ajuste CSS.
+
+## Corrección de Tu semana: cierre centrado con el título
+
+La captura del usuario muestra la flecha por debajo de «Tu semana». RED en
+Chromium: 13 px entre los centros verticales del título y botón. El botón de
+44 px estaba anclado al borde superior de una cabecera de 18 px. Se centra
+en esa cabecera con top:50% y translateY(-50%), solo para Tu semana en móvil.
+
+GREEN con diferencia inferior a 0,5 px a 320/390/520/768/1099 px y en el estado
+sin actividad a 390 px. Se conservan 44×44 px y el cierre por clic normal.
+El mismo probe mantiene portadas/barras persistentes, morph de ida/vuelta,
+claro/oscuro, movimiento reducido y PC a 1280 px. TypeScript y eslint focal
+PASS. La regresión de alineación, tamaño y clic del cierre se añade al E2E
+existente de 320/390/768 px para CI; no se repite aquí la suite autenticada
+completa ni build/start de producción.

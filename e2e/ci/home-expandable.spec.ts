@@ -195,7 +195,12 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     expect(await bar!.evaluate((node) => node === document.querySelector(".home-stats-morph .weekly-strip-bar"))).toBe(true);
   }
   await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeVisible();
-  await page.keyboard.press("Escape"); await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeHidden();
+  const statsClose = statsPanel.locator(".home-focus-collapse");
+  const statsCloseBox = (await statsClose.boundingBox())!;
+  const statsHeadingBox = (await statsPanel.locator(".home-shared-title").boundingBox())!;
+  expect(statsCloseBox.y + statsCloseBox.height / 2).toBeCloseTo(statsHeadingBox.y + statsHeadingBox.height / 2, 0);
+  expect(statsCloseBox.width).toBe(44); expect(statsCloseBox.height).toBe(44);
+  await statsClose.click(); await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Abrir tu crónica", exact: true }).click();
   const story = page.getByRole("dialog").filter({ has: page.locator('ol') });
   await expect(story).toBeVisible();

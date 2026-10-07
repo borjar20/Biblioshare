@@ -6967,3 +6967,12 @@ el título y «Ver todas las novedades» respetan esa reserva, interpolada
 durante el morph. Se corrige el solapamiento en tablet conservando las
 portadas persistentes y la presentación de PC. Evidencia RED/GREEN en
 `docs/testing/2026-10-07-inicio-shared.md`.
+
+
+## 2026-10-07 — Tu semana alinea su cierre con el título (#1457)
+
+El botón de Recoger conserva 44×44 px y centra su flecha en el eje vertical
+de «Tu semana», tanto con gráfico como sin actividad. Su altura deja de
+determinar la posición del icono respecto a la cabecera de 18 px. Ajuste
+local en móvil, conservando morph y PC; evidencia RED/GREEN en
+`docs/testing/2026-10-07-inicio-shared.md`.
