@@ -194,6 +194,7 @@ test("un anuncio limitado conserva avisos en Lo que esperas sin crear una obra n
   await expect(page.locator(`[data-release-id="${limitedId}"]`).getByRole("button", { name: "Retirar aviso", exact: true })).toBeVisible();
   await page.goto("/novedades?seleccion=personal");
   const limited = page.locator(`article[data-work-key="${limitedKey}"]`);
+  await expect(limited).toHaveCount(1);
   await expect(limited).toBeVisible();
   await expect(limited.getByText("Sin portada", { exact: true })).toBeVisible();
   await limited.getByRole("button", { name: "Retirar aviso", exact: true }).click();
@@ -313,6 +314,7 @@ test("el cron protegido acepta un recordatorio una vez, la campana abre su merca
   await login(page, actors.a);
   await page.goto(`/novedades?lanzamiento=${internationalId}`);
   const target = page.locator(`[data-release-id="${internationalId}"]`);
+  await expect(target).toHaveCount(1);
   await expect(target.getByText("Internacional", { exact: true })).toBeVisible();
   await target.getByRole("button", { name: "Avisarme", exact: true }).click();
   await expect(target.getByRole("button", { name: "Retirar aviso", exact: true })).toBeVisible();
@@ -352,6 +354,7 @@ test("el cron protegido acepta un recordatorio una vez, la campana abre su merca
   await expect(notification).toHaveAttribute("href", `/novedades?lanzamiento=${internationalId}`);
   await notification.click();
   await expect(page).toHaveURL(new RegExp(`/novedades\\?lanzamiento=${internationalId}$`));
+  await expect(target).toHaveCount(1);
   await expect(target.getByText("Internacional", { exact: true })).toBeVisible();
   await target.getByRole("button", { name: "Retirar aviso", exact: true }).click();
   await expect(target.getByRole("button", { name: "Avisarme", exact: true })).toBeVisible();

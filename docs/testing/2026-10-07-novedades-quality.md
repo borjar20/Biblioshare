@@ -111,3 +111,15 @@ Proyecto vmutcradmodhiltuohys; verificación posterior a las 08:57:59 UTC.
 La aplicación de esquema ya no bloquea el despliegue. El código se entrega en PR #1452;
 CI, publicación y siguiente enriquecimiento se siguen en #1451. Este recibo acredita
 esquema y compatibilidad, sin atribuir entrega de notificaciones a usuarios.
+
+## CI de publicación: espera de streaming — R1
+
+En 0f427d0e, calidad, CodeQL, Vercel y bootstrap vacío pasan. La batería completa de
+navegador ejecuta 177 casos: 175 PASS y dos FAIL por strict mode en Novedades.
+Los selectores de la tarjeta personal y del lanzamiento internacional encuentran la
+copia transitoria de streaming antes de que quede un único nodo. Se exige cardinalidad
+uno antes de comprobar texto o interactuar, igual que en la prueba de promoción;
+no se usa first(), no se ocultan duplicados visibles ni se omiten casos. Las comprobaciones
+de consentimiento, deduplicación y ausencia de pases se conservan. La CI completa del
+HEAD corregido es el gate de merge; R1 no se presenta como PASS.
+Recibo: https://github.com/borjar20/Biblioshare/actions/runs/37597546064
