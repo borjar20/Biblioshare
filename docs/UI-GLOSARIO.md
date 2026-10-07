@@ -39,6 +39,10 @@ distinto de España. **Sale esta semana** enlaza desde Inicio al calendario.
 **Anuncios con información limitada** agrupa obras sin portada segura o sinopsis;
 **Sin portada** y **Sin sinopsis** explican el motivo. **Sinopsis en inglés** describe el
 texto disponible, sin cambiar el mercado ni el idioma de edición/doblaje del lanzamiento.
+El candidato Paper local de #1450 añade **Fuente y revisión** para la procedencia por
+lanzamiento y **Detalles del lanzamiento** para el anuncio abierto. **Pendiente** es la
+etiqueta breve del botón compacto; su nombre accesible sigue siendo **Añadir a Pendiente**.
+Integración/publicación pendientes; no cambia el vocabulario de acciones ni su efecto.
 La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
 **Publicar**; publicar un anuncio no registra la obra en su biblioteca.
 

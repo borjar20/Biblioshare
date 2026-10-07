@@ -6841,3 +6841,31 @@ catálogo ni pases. No se añade estado de publicación ni una segunda cola de a
 Estado: código/local/dev del 2026-10-07; producción pendiente en #1451 y #1449.
 El rediseño visual Paper acordado se sigue en #1450. Evidencia en
 `docs/testing/2026-10-07-novedades-quality.md`.
+
+
+## 2026-10-07 — Paper: portada y fecha por delante de controles repetidos
+
+Inicio público conserva el diseño aprobado: mensaje de producto, abanico de hasta tres
+portadas reales y cuatro obras semanales en tarjetas horizontales de dos columnas
+(una en móvil). La columna del Inicio personal mantiene tres obras. No se inventan
+portadas ni obras para rellenar un estado vacío.
+
+Novedades usa tarjetas sin altura mínima, portada 72 px/56 px y título serif de 19 px.
+Cada obra aparece una sola vez en el grupo de su próximo día publicado; si sólo quedan
+avisos históricos o cancelados, se conserva su día real. El historial y las modalidades
+permanecen dentro de la obra. Fechas parciales y calidad limitada siguen siendo ejes
+independientes. Pendiente va en la fila del lanzamiento que ejecuta; los avisos siguen
+siendo elecciones individuales por modalidad.
+
+La procedencia/revisión por lanzamiento queda en un desplegable nativo con objetivo
+táctil de 44 px, y la revisión global al pie. En móvil las fechas y acciones usan todo
+el ancho de la tarjeta; esto evita apilar innecesariamente controles junto a la portada.
+El color de la portada aporta una atmósfera discreta; se conservan los tokens Paper.
+La lectura pública semanal se deduplica sólo dentro del render con React.cache y
+cliente sin sesión, sin caché persistente ni estado privado compartido.
+
+Estado: candidato local #1450; 44 unitarios y 19 casos build/start PASS, incluyendo
+320/390/768/1280/1920 px y claro/oscuro. Integración/publicación pendientes. La mejora de
+datos/enlaces anterior sí se publicó en PR #1452 (merge 9e3d45b5, 09:24:48 UTC; smoke
+público 09:27:24 UTC del 2026-10-07). #1451 conserva la observación del enriquecimiento
+diario. Evidencia visual en `docs/testing/2026-10-07-novedades-paper.md`.

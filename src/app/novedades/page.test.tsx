@@ -44,7 +44,7 @@ describe("calendario público y frontera privada", () => {
     expect(mocks.public).toHaveBeenCalledWith({ type: "all", market: "ES", language: "es", includeUndated: true });
     expect(mocks.state).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Mercado", { exact: true }).getAttribute("name")).toBe("mercado");
-    expect(screen.getByLabelText("Filtros de novedades", { exact: true, selector: "select" }).getAttribute("name")).toBe("tipo");
+    expect(within(screen.getByRole("navigation", { name: "Filtros de novedades" })).getByRole("link", { name: "Todo" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByText("No hay novedades para estos filtros")).toBeTruthy();
   });
   it("un error de lectura ofrece reintento y nunca finge un vacío", async () => {
@@ -69,7 +69,7 @@ describe("calendario público y frontera privada", () => {
     await display();
     expect(screen.getByRole("heading", { name: "Con día confirmado" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Anuncios sin día exacto" })).toBeTruthy();
-    expect(screen.getByText("febrero de 2027")).toBeTruthy();
+    expect(within(screen.getByRole("heading", { name: "Libro de febrero" }).closest("article")!).getByText("febrero de 2027")).toBeTruthy();
     expect(screen.getAllByRole("article")).toHaveLength(2);
   });
   it("una serie con fecha internacional ofrece ese filtro explícitamente", async () => {
@@ -97,7 +97,7 @@ describe("calendario público y frontera privada", () => {
     const row = releaseFixture({ market: "INT", status: "cancelled" });
     mocks.byId.mockResolvedValue(row);
     await display({ lanzamiento: row.id });
-    expect(screen.getByRole("heading", { name: "Lanzamiento del aviso" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Detalles del lanzamiento" })).toBeTruthy();
     expect(screen.getByText("Lanzamiento cancelado")).toBeTruthy();
     expect(within(screen.getByRole("article")).getByText("Internacional")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Avisarme" })).toBeNull();
@@ -144,4 +144,12 @@ describe("calendario público y frontera privada", () => {
     expect(screen.getByText("Sinopsis en inglés")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Retirar aviso" })).toBeTruthy();
   });
+});
+
+it("quick type filters preserve the personal selection and the explicit market", async () => {
+  mocks.user.mockResolvedValue({ id: "actor" });
+  await display({ seleccion: "personal", tipo: "movie", mercado: "INT" });
+  const filters = within(screen.getByRole("navigation", { name: "Filtros de novedades" }));
+  expect(filters.getByRole("link", { name: "Libros" }).getAttribute("href")).toBe("/novedades?seleccion=personal&tipo=book&mercado=INT");
+  expect(filters.getByRole("link", { name: "Películas" }).getAttribute("aria-current")).toBe("page");
 });

@@ -76,6 +76,8 @@ test.beforeAll(async () => {
       movie_id: null, tmdb_id: null, language: "es", date_precision: "month", date_value: month }),
     row(unknownId, "CI Novedades libro sin fecha", { source: "editorial", work_key: `book:${unknownBookId}`, item_type: "book", modality: "book_translation", book_id: unknownBookId,
       movie_id: null, tmdb_id: null, language: "es", date_precision: "unknown", date_value: null }),
+    ...Array.from({ length: 3 }, (_, i) => row(`cbc1a019-0ac0-4d5e-8b24-9febc1bf0a3${i}`, i === 1 ? "CI Novedades un título largo para comprobar que el texto se ajusta sin recortarse" : `CI Novedades estreno ${i + 1}`,
+      { work_key: `tmdb:movie:${97139004 + i}`, tmdb_id: 97139004 + i, movie_id: null })),
     row(seasonId, "CI Novedades serie", { work_key: "tmdb:tv:97139002", item_type: "series", modality: "season", season_number: 2, market: "INT", movie_id: null,
       tmdb_id: 97139002, date_value: addDays(today, 3) }),
   ];
@@ -140,7 +142,7 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
   await expect(page.getByRole("heading", { name: "Las fechas disponibles de estas series son internacionales", exact: true }).filter({ visible: true })).toBeVisible();
   await page.getByRole("link", { name: "Ver fechas internacionales", exact: true }).click();
   await expect(page).toHaveURL(/\/novedades\?tipo=series&mercado=INT$/);
-  await expect(page.locator('select[name="tipo"]').filter({ visible: true })).toHaveValue("series");
+  await expect(page.getByRole("navigation", { name: "Filtros de novedades", exact: true }).getByRole("link", { name: "Series y temporadas", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(page.getByLabel("Mercado", { exact: true }).filter({ visible: true })).toHaveValue("INT");
   await expect(page.getByText("Temporada 2", { exact: true }).filter({ visible: true })).toBeVisible();
   await expect(page.getByText("Fecha internacional. No confirma disponibilidad en España.", { exact: true }).filter({ visible: true })).toBeVisible();
@@ -370,4 +372,34 @@ test("el cron protegido acepta un recordatorio una vez, la campana abre su merca
   const retained = await noticeQuery();
   expect(retained.error).toBeNull(); expect(retained.data).toEqual(initial.data);
   expect(await countPasses(actors.a.id)).toBe(0);
+});
+
+for (const width of [320, 390, 768, 1280, 1920]) for (const theme of ["light", "dark"]) test(`Paper visual: fan, four weekly slots and dense agenda · ${width}px · ${theme}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+  await page.goto("/");
+  const fan = page.getByRole("group", { name: "Algunas novedades de esta semana", exact: true });
+  await expect(fan.getByRole("link")).toHaveCount(3);
+  await expect(page.getByRole("heading", { level: 1, name: "Tu biblioteca de todo, compartida.", exact: true })).toBeVisible();
+  const week = page.getByRole("region", { name: "Sale esta semana", exact: true });
+  const slots = week.getByRole("article");
+  await expect(slots).toHaveCount(4);
+  const boxes = await slots.evaluateAll((nodes) => nodes.map((node) => { const r = node.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }));
+  if (width >= 640) { expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(3); expect(boxes[2].y).toBeGreaterThan(boxes[0].y); }
+  else { expect(boxes[1].y).toBeGreaterThan(boxes[0].y); }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path:testInfo.outputPath(`home-${width}-${theme}.png`),fullPage:true });
+  await page.goto("/novedades");
+  const card = page.locator('article[data-work-key="tmdb:movie:97139004"]');
+  await expect(card).toHaveCount(1);
+  await expect(card.getByRole("heading", { name:"CI Novedades estreno 1",exact:true })).toBeVisible();
+  const bounds = await card.boundingBox(); expect(bounds?.height).toBeLessThan(width < 640 ? 250 : 230);
+  const references = card.locator("details"); await references.locator("summary").focus(); await references.locator("summary").press("Enter");
+  await expect(references.getByRole("link", { name:"Fuente: CI Novedades fuente",exact:true })).toBeVisible();
+  await references.locator("summary").press("Enter");
+  const buttons = card.getByRole("link").filter({ hasText:/Pendiente|Avisarme/ });
+  for (const button of await buttons.all()) expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => scrollTo(0,0));
+  await page.screenshot({ path:testInfo.outputPath(`agenda-${width}-${theme}.png`),fullPage:true });
 });

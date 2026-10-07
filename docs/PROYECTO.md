@@ -85,12 +85,16 @@ El delta de calidad (#1451, código en PR #1452 y esquema aplicado en producció
 y portada oficiales antes de clasificar. Explorar reserva las obras con portada y sinopsis
 para el listado principal; las restantes mantienen fecha, fuente y acciones en «Anuncios
 con información limitada». La sinopsis inglesa se etiqueta. Inicio selecciona sólo obras
-completas antes de limitar a tres. Los datos conocidos sobreviven a un fallo opcional;
+completas antes de limitar a cuatro en Inicio público y tres en la columna del Inicio personal. Los datos conocidos sobreviven a un fallo opcional;
 completarlos mueve la obra al listado principal en la siguiente consulta. Lo que esperas
 conserva las elecciones personales. Título y portada abren catálogo cuando existe y,
 en caso contrario, el detalle público del anuncio sin crear catálogo ni pases (#1449).
 Verificación y seguimiento de publicación/enriquecimiento: `docs/testing/2026-10-07-novedades-quality.md`.
-El rediseño visual acordado se sigue por separado en #1450.
+El rediseño Paper está implementado y verificado en el candidato local de #1450: Inicio
+con abanico de portadas reales y cuatro tarjetas horizontales; Novedades con agenda por
+día, portadas 72/56 px y fuentes plegables. El ancla de una obra prioriza su próxima fecha
+publicada y conserva los avisos históricos dentro de ella. Integración/publicación pendientes;
+evidencia y límites en `docs/testing/2026-10-07-novedades-paper.md`.
 
 ## Catálogo compartido
 

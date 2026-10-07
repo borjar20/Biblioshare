@@ -61,11 +61,16 @@
     "missingSynopsis": "Sin sinopsis",
     "synopsisEnglish": "Sinopsis en inglés",
     "viewDetails": "Ver detalles de {title}",
-    "selectedRelease": "Lanzamiento del aviso",
+    "selectedRelease": "Detalles del lanzamiento",
     "unavailableTitle": "Lanzamiento no disponible",
     "unavailableBody": "Puede que se haya retirado o que necesites iniciar sesión para consultar tu aviso.",
     "login": "Iniciar sesión",
     "weekTitle": "Sale esta semana",
+    "fanLabel": "Algunas novedades de esta semana",
+    "fanCaption": "Encuentra lo próximo en tu biblioteca.",
+    "sourceDetails": "Fuente y revisión",
+    "sourceAttention": "Hay una consulta de fuentes pendiente de completar",
+    "pendingShort": "Pendiente",
     "weekLink": "Ver todas las novedades",
     "weekEmpty": "No hay lanzamientos con día confirmado para esta semana.",
     "errors": { "auth": "Inicia sesión para guardar esta elección.", "forbidden": "No tienes permiso para realizar esta acción.", "notFound": "Este lanzamiento ya no está disponible.", "invalid": "Revisa los datos e inténtalo de nuevo.", "conflict": "El anuncio cambió mientras lo editabas. Vuelve a cargarlo antes de guardar.", "unknown": "No se pudo guardar. Vuelve a intentarlo." }
@@ -520,6 +525,9 @@
   },
   "home": {
     "tagline": "Tu biblioteca de todo, compartida.",
+    "publicIntro": "Libros, películas y series. Guarda lo que quieres disfrutar y comparte lo que te deja.",
+    "exploreReleases": "Explora las novedades",
+    "publicFootnote": "Una biblioteca para recordar lo que disfrutas y encontrar lo próximo.",
     "cta": "Empieza tu estantería",
     "feedTitle": "Novedades",
     "greeting": "Hola, {name}"

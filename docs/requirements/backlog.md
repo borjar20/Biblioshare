@@ -22,9 +22,12 @@
 - [x] Implementar recuperación opcional de metadatos y separar anuncios con información limitada
   en código (PR #1452) y esquema local/dev/producción (2026-10-07, #1451); acceso público
   desde título/portada (#1449).
-- [ ] Verificar publicación del código de PR #1452 y observar el enriquecimiento diario (#1451); evidencia en
+- [x] Publicar código de PR #1452: merge 9e3d45b5 y smoke público de rutas/enlaces del 2026-10-07; #1449 cerrada.
+- [ ] Observar el siguiente enriquecimiento diario (#1451); evidencia en
   `docs/testing/2026-10-07-novedades-quality.md`.
-- [ ] Aplicar el rediseño Paper del Inicio y Novedades acordado en #1450.
+- [x] Implementar y verificar localmente el rediseño Paper de Inicio y Novedades (#1450).
+- [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
+  Evidencia: `docs/testing/2026-10-07-novedades-paper.md`.
 - [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.
   Aún no hay filas editoriales, suscripciones ni entregas, así que no se ha probado una
   notificación a usuarios. Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423),

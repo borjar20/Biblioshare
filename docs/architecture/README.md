@@ -1,5 +1,11 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta Paper #1450 · 2026-10-07: candidato local verificado con 44 unitarios,
+> 19 casos build/start a 320–1920 px en claro/oscuro y ocho capturas con metadatos
+> públicos reales. Inicio público con abanico/cuatro obras; agenda compacta por día
+> publicado y fuentes plegables. Integración/publicación pendientes. Evidencia en
+> [el informe Paper](../testing/2026-10-07-novedades-paper.md).]**
+
 > **[Delta Novedades · 2026-10-07: calidad por obra, enriquecimiento TMDB opcional,
 > idioma de sinopsis y enlaces públicos contrastados con código, SQL local/dev/producción,
 > build/start y navegador. Primera versión activa en producción desde el 2026-10-06;

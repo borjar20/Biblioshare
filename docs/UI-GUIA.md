@@ -120,7 +120,16 @@ editor de catálogo inline (banner + barra sticky).
    visibles. No se confunde información limitada con fecha parcial. Inicio filtra antes
    de limitar su selección. Lo que esperas y el anuncio abierto conservan sus acciones.
    Título y portada abren catálogo o detalle público del anuncio (#1449); la sinopsis
-   inglesa se etiqueta. El rediseño visual completo sigue en #1450.
+   inglesa se etiqueta. El candidato Paper #1450 verificado localmente usa tarjetas
+   horizontales sin altura mínima, portadas de 72 px (56 px en móvil) y título serif de
+   19 px. Agrupa por próximo día publicado sin duplicar la obra ni desplazarla a un aviso
+   histórico; conserva los anuncios parciales fuera de los grupos diarios. Los filtros
+   rápidos mantienen selección y mercado; fuente/revisión por modalidad quedan en un
+   desplegable de 44 px. Pendiente aparece en la fila del lanzamiento que ejecuta;
+   Avisarme sigue siendo independiente por lanzamiento. La revisión global queda al
+   pie, sin panel lateral estirado. Inicio público combina abanico real y cuatro tarjetas
+   en dos columnas, una en móvil. Integración/publicación siguen pendientes en #1450;
+   evidencia en `docs/testing/2026-10-07-novedades-paper.md`.
    La edición administrativa separa Guardar revisión, Publicar,
    Confirmar revisión de la fuente y Cancelar; las tres últimas esperan a que
    no haya cambios de formulario sin guardar.

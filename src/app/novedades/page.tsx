@@ -17,6 +17,8 @@ import { Select } from "@/components/ui/select";
 import { CalendarIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SHELL_GRID } from "@/lib/ui/layout";
+import { groupReleaseDays } from "@/lib/releases/presentation";
+import { formatReleaseDate } from "@/lib/releases/precision";
 import { releaseInformationGaps } from "@/lib/releases/quality";
 import type { CulturalRelease } from "@/lib/releases/types";
 import type { ReleaseUserState } from "@/components/releases/release-view";
@@ -104,26 +106,28 @@ async function ReleasesContent({ searchParams }: { searchParams: Promise<Release
       </Link>)}
     </nav>
     <p className="-mt-3 text-sm text-muted-foreground">{selection === "personal" ? t("personalHint") : t("scope")}</p>
-    <form key={`${selection}:${type}:${market}`} action="/novedades" aria-label={t("filters")} className="flex flex-wrap items-end gap-3">
-      {selection === "personal" && <input type="hidden" name="seleccion" value="personal" />}
-      <div className="flex min-w-0 flex-col gap-1 text-xs font-medium">
-        <label htmlFor="novedades-tipo">{t("filters")}</label>
-        <Select id="novedades-tipo" name="tipo" defaultValue={type} className="min-h-11">
-          {(["all", "book", "movie", "series"] as const).map((value) => <option key={value} value={value}>{t(`types.${value}`)}</option>)}
-        </Select>
-      </div>
-      <div className="flex flex-col gap-1 text-xs font-medium">
-        <label htmlFor="novedades-mercado">{t("market")}</label>
-        <Select id="novedades-mercado" name="mercado" defaultValue={market} className="min-h-11">
-          {(["ES", "INT", "all"] as const).map((value) => <option key={value} value={value}>{t(`markets.${value}`)}</option>)}
-        </Select>
-      </div>
-      <Button type="submit" variant="secondary" className="min-h-11">{t("apply")}</Button>
-    </form>
-    {!stateAvailable && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-surface p-4 text-sm">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <nav aria-label={t("filters")} className="flex min-w-0 flex-wrap gap-2">
+        {(["all", "book", "movie", "series"] as const).map((value) => <Link key={value} href={releasePath(selection, value, market)} aria-current={type === value ? "page" : undefined}
+          className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm transition-colors ${type === value ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:bg-surface-muted hover:text-foreground"}`}>
+          {t(`types.${value}`)}
+        </Link>)}
+      </nav>
+      <form key={`${selection}:${type}:${market}`} action="/novedades" aria-label={t("filters")} className="flex flex-wrap items-end gap-2">
+        {selection === "personal" && <input type="hidden" name="seleccion" value="personal" />}
+        <input type="hidden" name="tipo" value={type} />
+        <div className="flex flex-col gap-1 text-xs font-medium">
+          <label htmlFor="novedades-mercado">{t("market")}</label>
+          <Select id="novedades-mercado" name="mercado" defaultValue={market} className="min-h-11">
+            {(["ES", "INT", "all"] as const).map((value) => <option key={value} value={value}>{t(`markets.${value}`)}</option>)}
+          </Select>
+        </div>
+        <Button type="submit" variant="secondary" className="min-h-11">{t("apply")}</Button>
+      </form>
+    </div>    {!stateAvailable && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-surface p-4 text-sm">
       <p>{t("stateUnavailable")}</p><ReleaseRetry />
     </div>}
-    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+    <div className="flex min-w-0 flex-col gap-6">
       <div className="flex min-w-0 flex-col gap-8">
         {focusedId && (focusedResult.status === "rejected" ? <EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("loadErrorTitle")} message={t("loadErrorBody")} action={<ReleaseRetry />} />
           : focused ? <section aria-labelledby="novedades-aviso"><h2 id="novedades-aviso" className="mb-4 font-serif text-xl font-semibold">{t("selectedRelease")}</h2>
@@ -139,14 +143,25 @@ async function ReleasesContent({ searchParams }: { searchParams: Promise<Release
             </Link>} /> : <>
             {exact.length > 0 && <section aria-labelledby="novedades-exactas">
               <h2 id="novedades-exactas" className="mb-4 font-serif text-xl font-semibold">{t("exact")}</h2>
-              <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                {exact.map((work) => <ReleaseWorkCard key={`${work.workKey}:${user?.id ?? "anon"}`} releases={work.releases} authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />)}
+              <div className="flex min-w-0 flex-col">
+                {groupReleaseDays(exact).map((day) => <section key={day.date} aria-labelledby={`dia-${day.date}`} className="grid min-w-0 gap-4 border-t border-border py-5 md:grid-cols-[80px_minmax(0,1fr)] md:gap-6">
+                  <h3 id={`dia-${day.date}`} className="flex items-baseline gap-2 font-serif md:flex-col md:items-start md:gap-1">
+                    <span className="text-sm text-muted-foreground">{new Intl.DateTimeFormat("es-ES", { weekday: "long", timeZone: "UTC" }).format(new Date(`${day.date}T12:00:00Z`))}</span>
+                    <time dateTime={day.date} aria-label={formatReleaseDate({ date_value: day.date, date_precision: "day" })} className="flex items-baseline gap-2 md:flex-col md:gap-1">
+                      <span className="text-4xl leading-none tracking-tight md:text-5xl">{Number(day.date.slice(8))}</span>
+                      <span className="font-sans text-xs text-muted-foreground">{new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${day.date}T12:00:00Z`))}</span>
+                    </time>
+                  </h3>
+                  <div className="grid min-w-0 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+                    {day.works.map((work) => <ReleaseWorkCard key={`${work.workKey}:${user?.id ?? "anon"}`} releases={work.releases} headingLevel={4} authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />)}
+                  </div>
+                </section>)}
               </div>
             </section>}
             {announcements.length > 0 && <section aria-labelledby="novedades-anuncios">
               <h2 id="novedades-anuncios" className="font-serif text-xl font-semibold">{t("announcements")}</h2>
               <p className="mb-4 mt-2 text-sm text-muted-foreground">{t("announcementsNote")}</p>
-              <div className="grid min-w-0 gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                 {announcements.map((work) => <ReleaseWorkCard key={`${work.workKey}:${user?.id ?? "anon"}`} releases={work.releases} authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />)}
               </div>
             </section>}

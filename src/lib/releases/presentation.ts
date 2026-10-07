@@ -68,3 +68,22 @@ export function groupReleaseWorks(rows: CulturalRelease[], filters: ReleaseFilte
   });
   return filters.limit === undefined ? result : result.slice(0, Math.max(0, Math.floor(filters.limit)));
 }
+
+export type ReleaseDayGroup = { date: string; works: ReleaseWork[] };
+
+/** Anchor to the next published day; historical/cancelled notices stay in the same work. */
+export function groupReleaseDays(works: ReleaseWork[], now = new Date()): ReleaseDayGroup[] {
+  const today = madridDay(now);
+  const days = new Map<string, ReleaseWork[]>();
+  for (const work of works) {
+    const dated = work.releases.filter((row) => row.date_precision === "day" && row.date_value);
+    const upcoming = dated.filter((row) => row.status === "published" && row.date_value! >= today);
+    const published = dated.filter((row) => row.status === "published");
+    const date = (upcoming.length ? upcoming : published.length ? published : dated)
+      .map((row) => row.date_value!).sort()[0];
+    if (!date) continue;
+    const entries = days.get(date) ?? [];
+    entries.push(work); days.set(date, entries);
+  }
+  return [...days].sort(([a], [b]) => a.localeCompare(b)).map(([date, entries]) => ({ date, works: entries }));
+}
